@@ -11,7 +11,7 @@ Varia (varia@bu.edu).
 Initial Experiment
 --------------------------------------------------------------------
 
-Our [first experiment](../master/nesvd-2017] was formalizing and
+Our [first experiment](../master/nesvd-2017) was formalizing and
 proving the UC security of Diffie-Hellman key exchange, as reported at
 [2017 New England Systems Verification
 Day](http://svd.csail.mit.edu/2017/). This is very preliminary work,
