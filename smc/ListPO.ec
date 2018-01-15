@@ -1,0 +1,273 @@
+(* ListPO.ec *)
+
+(* Prefix Ordering on Lists *)
+
+(* We define a partial ordering between lists xs and ys: xs is
+   less-than-or-equal-to ys iff xs is a prefix of ys, i.e.,
+   concatenating (possibly nothing) to the end of xs will form ys
+
+   We actually implement this as an operator producing one of four
+   results, and only later define the expected binary relations *)
+
+require import AllCore List.
+
+(* comparison results *)
+
+type resu = [
+  | Eq   (* first equals second *)
+  | LT   (* first less than second *)
+  | GT   (* first greater than second *)
+  | Inc  (* first and second imcomparable *)
+].
+
+(* comparison operator *)
+
+op lpo (xs ys : 'a list) : resu =
+  with xs = []      =>
+    ((ys = []) ? Eq : LT)
+  with xs = u :: us =>
+    ((ys = []) ?
+     GT :
+     let (v, vs) = (head u ys, behead ys)
+     in ((u = v) ? lpo us vs : Inc)).
+
+(* inductive predicates for relationships *)
+
+inductive lt_spec (xs ys : 'a list) =
+  | LTS (us : 'a list) of
+        (us <> [])
+      & (xs ++ us = ys).
+
+inductive inc_spec (xs ys : 'a list) =
+  | IncS (x y : 'a, us vs ws : 'a list) of
+        (x <> y)
+      & (xs = us ++ [x] ++ vs)
+      & (ys = us ++ [y] ++ ws).
+
+lemma lpo_nil :
+  lpo <:'a>[] [] = Eq.
+proof. done. qed.
+
+lemma lpo_nil_non_nil (y : 'a, ys : 'a list) :
+  lpo [] (y :: ys) = LT.
+proof. done. qed.
+
+lemma lpo_non_nil_nil (x : 'a, xs : 'a list) :
+  lpo (x :: xs) [] = GT.
+proof. done. qed.
+
+lemma lpo_non_nil_eq (x y : 'a, xs ys : 'a list) :
+  x = y => lpo (x :: xs) (y :: ys) = lpo xs ys.
+proof. done. qed.
+
+lemma lpo_non_nil_ne (x y : 'a, xs ys : 'a list) :
+  x <> y => lpo (x :: xs) (y :: ys) = Inc.
+proof.
+move => ne_xy; by rewrite /= ne_xy.
+qed.
+
+lemma lpo_eqP (xs ys : 'a list) :
+  lpo xs ys = Eq <=> xs = ys.
+proof.
+split.
+move : ys; elim xs.
+case; done.
+move => x xs IH [] // y ys.
+case (x = y) => -> //= eq.
+by rewrite (IH ys).
+move => ->; elim ys; done.
+qed.
+
+lemma lpo_ltP (xs ys : 'a list) :
+  lpo xs ys = LT <=> lt_spec xs ys.
+proof.
+split.
+move : ys; elim xs.
+case => // x xs _.
+apply (LTS [] (x :: xs) (x :: xs)).
+move => x xs IH [] // y ys.
+case (x = y) => -> //= lt.
+have [] us us_ne_nil <- := (IH ys lt).
+by apply (LTS (y :: xs) (y :: (xs ++ us)) us).
+case => us us_ne_nil <-.
+elim xs => //=.
+by rewrite us_ne_nil.
+qed.
+
+lemma lpo_gtP (xs ys : 'a list) :
+  lpo xs ys = GT <=> lt_spec ys xs.
+proof.
+split.
+move : xs; elim ys.
+case => // y ys _.
+apply (LTS [] (y :: ys) (y :: ys)).
+move => y ys IH [] // x xs.
+case (x = y) => -> //= gt.
+have [] us us_ne_nil <- := (IH xs gt).
+by apply (LTS (y :: ys) (y :: (ys ++ us)) us).
+case => us us_ne_nil <- //.
+move : us us_ne_nil.
+case => // u us _.
+by elim ys.
+qed.
+
+lemma lpo_sym_lt_gt (xs ys : 'a list) :
+  lpo xs ys = LT <=> lpo ys xs = GT.
+proof.
+split.
+move => /lpo_ltP lts.
+by rewrite lpo_gtP.
+move => /lpo_gtP lts.
+by rewrite lpo_ltP.
+qed.
+
+lemma lpo_lt_trans (ys xs zs : 'a list) :
+  lpo xs ys = LT => lpo ys zs = LT =>
+  lpo xs zs = LT.
+proof.
+move => /lpo_ltP [] us us_ne_nil <-.
+move => /lpo_ltP [] vs vs_ne_nil <-.
+rewrite lpo_ltP -catA
+        (LTS xs (xs ++ (us ++ vs)) (us ++ vs)) //.
+move : us vs us_ne_nil vs_ne_nil; by case.
+qed.
+
+lemma lpo_gt_trans (ys xs zs : 'a list) :
+  lpo xs ys = GT => lpo ys zs = GT =>
+  lpo xs zs = GT.
+proof.
+move => /lpo_gtP [] us us_ne_nil <-.
+move => /lpo_gtP [] vs vs_ne_nil <-.
+rewrite lpo_gtP -catA
+        (LTS zs (zs ++ (vs ++ us)) (vs ++ us)) //.
+move : vs us us_ne_nil vs_ne_nil; by case.
+qed.
+
+lemma lpo_incP (xs ys : 'a list) :
+  lpo xs ys = Inc <=> inc_spec xs ys.
+proof.
+split.
+move : ys; elim xs.
+case; done.
+move => x xs IH [] // y ys.
+case (x = y) => [-> /= inc | ne_xy /=].
+have [] x0 y0 us vs ws ne_x0_y0 -> -> := (IH ys inc).
+by rewrite -!catA -!cat_cons !catA
+           (IncS
+            ((y :: us) ++ [x0] ++ vs) ((y :: us) ++ [y0] ++ ws)
+            x0 y0 (y :: us) vs ws)
+           // ne_x0_y0.
+by rewrite ne_xy /=
+           (IncS (x :: xs) (y :: ys) x y [] xs ys).
+case => x y us vs ws ne_xy -> ->.
+elim us => //=; by rewrite ne_xy.
+qed.
+
+lemma lpo_inc_sym (xs ys : 'a list) :
+  lpo xs ys = Inc <=> lpo ys xs = Inc.
+proof.
+split.
+move => /lpo_incP [] x y us vs ws ne_xy -> ->.
+by rewrite lpo_incP
+           (IncS (us ++ [y] ++ ws) (us ++ [x] ++ vs)
+            y x us ws vs)
+           // eq_sym.
+move => /lpo_incP [] x y us vs ws ne_xy -> ->.
+by rewrite lpo_incP
+           (IncS (us ++ [y] ++ ws) (us ++ [x] ++ vs)
+            y x us ws vs)
+           // eq_sym.
+qed.
+
+lemma lpo_inc_ext1 (xs ys zs : 'a list) :
+  lpo xs ys = Inc => lpo (xs ++ zs) ys = Inc.
+proof.
+move => /lpo_incP [] x0 y0 us vs ws x0_ne_y0 -> ->.
+by rewrite -catA lpo_incP
+           (IncS
+            (us ++ [x0] ++ (vs ++ zs)) (us ++ [y0] ++ ws)
+            x0 y0 us (vs ++ zs) ws).
+qed.
+
+lemma lpo_inc_ext2 (xs ys zs : 'a list) :
+  lpo xs ys = Inc => lpo xs (ys ++ zs) = Inc.
+proof.
+move => /lpo_incP [] x0 y0 us vs ws x0_ne_y0 -> ->.
+by rewrite -(catA (us ++ [y0])) lpo_incP
+           (IncS
+            (us ++ [x0] ++ vs) (us ++ [y0] ++ (ws ++ zs))
+            x0 y0 us vs (ws ++ zs)).
+qed.
+
+lemma lpo_inc_ext (xs ys zs ws : 'a list) :
+  lpo xs ys = Inc => lpo (xs ++ zs) (ys ++ ws) = Inc.
+proof.
+move => /lpo_incP [] x y us vs ws0 x_ne_0 -> ->.
+by rewrite -catA -(catA (us ++ [y])) lpo_incP
+           (IncS
+            (us ++ [x] ++ (vs ++ zs)) (us ++ [y] ++ (ws0 ++ ws))
+            x y us (vs ++ zs) (ws0 ++ ws)).
+qed.
+
+(* abbreviations *)
+
+op (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
+
+op (<=) (xs ys : 'a list) : bool =
+  let r = lpo xs ys in r = LT \/ r = Eq.
+
+op lpo_inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
+
+lemma lt_trans (ys xs zs : 'a list) :
+  xs < ys < zs => xs < zs.
+proof.
+move => @/(<) />; apply lpo_lt_trans.
+qed.
+
+lemma le_refl (xs : 'a list) : xs <= xs.
+proof.
+rewrite /(<=) /=.
+right; by rewrite lpo_eqP.
+qed.
+
+lemma le_trans (ys xs zs : 'a list) :
+  xs <= ys <= zs => xs <= zs.
+proof.
+move => @/(<=) />.
+case => [lt_xs_ys | /lpo_eqP ->].
+case => [lt_ys_zs | /lpo_eqP <-].
+left; by apply (lpo_lt_trans ys).
+by left.
+case => [lt_ys_zs | /lpo_eqP <-].
+by left.
+right; by rewrite lpo_eqP.
+qed.
+
+lemma le_anti (xs ys : 'a list) :
+  xs <= ys <= xs => xs = ys.
+proof.
+move => @/(<=) /> [lt_xs_ys | /lpo_eqP ->].
+move => [lt_ys_xs | /lpo_eqP -> //].
+rewrite lpo_sym_lt_gt in lt_ys_xs.
+have // : LT = GT by rewrite -lt_xs_ys lt_ys_xs.
+by move => [lt_ys_ys | /lpo_eqP ->].
+qed.
+
+lemma le_lt_trans (ys xs zs : 'a list) :
+  xs <= ys < zs => xs <= zs.
+proof.
+move => @/(<=) @/(<) />.
+case => [lt_xs_ys lt_ys_zs | /lpo_eqP -> lt_ys_zs].
+left; by rewrite (lpo_lt_trans ys).
+by left.
+qed.
+
+lemma lt_le_trans (ys xs zs : 'a list) :
+  xs < ys <= zs => xs <= zs.
+proof.
+move => @/(<=) @/(<) />.
+move => lt_xs_ys.
+case => [lt_ys_zs | /lpo_eqP <-].
+left; by rewrite (lpo_lt_trans ys).
+by left.
+qed.
