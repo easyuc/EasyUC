@@ -26,5 +26,5 @@ formalizing UC security of secure message transmission using a
 one-time pad that's agreed using Diffie-Hellman key exchange. Our goal
 in this example is to illustrate how UC's composition operation and
 theorem may be formalized in EasyCrypt. As in our initial experiment,
-we are using manual action distribution to model the coroutine-style
+we are using manual message routing to model the coroutine-style
 communication of UC.

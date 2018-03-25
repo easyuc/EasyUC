@@ -2,6 +2,8 @@
 
 (* Prefix Ordering on Lists *)
 
+prover ["!"].  (* no provers *)
+
 (* We define a partial ordering between lists xs and ys: xs is
    less-than-or-equal-to ys iff xs is a prefix of ys, i.e.,
    concatenating (possibly nothing) to the end of xs will form ys
@@ -32,6 +34,10 @@ op lpo (xs ys : 'a list) : resu =
      in ((u = v) ? lpo us vs : Inc)).
 
 (* inductive predicates for relationships *)
+
+inductive le_spec (xs ys : 'a list) =
+  | LES (us : 'a list) of
+      (xs ++ us = ys).
 
 inductive lt_spec (xs ys : 'a list) =
   | LTS (us : 'a list) of
@@ -218,6 +224,29 @@ op (<=) (xs ys : 'a list) : bool =
 
 op lpo_inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
+lemma leP (xs ys : 'a list) :
+  xs <= ys <=> le_spec xs ys.
+proof.
+split.
+move => @/(<=) /= [].
+move => /lpo_ltP [] us nonnil_us xs_us_eq_ys.
+by rewrite (LES xs ys us).
+move => /lpo_eqP ->.
+by rewrite (LES ys ys []) cats0.
+rewrite /(<=) /=.
+case => us xs_us_eq_ys.
+case (us = []) => [nil_us | nonnil_us].
+right; by rewrite lpo_eqP -xs_us_eq_ys nil_us cats0.
+left; by rewrite lpo_ltP (LTS xs ys us).
+qed.
+
+lemma le_drop (xs ys : 'a list) :
+  xs <= ys => xs ++ drop (size xs) ys = ys.
+proof.
+move => /leP [] us <-.
+congr; by rewrite drop_size_cat.
+qed.
+
 lemma lt_trans (ys xs zs : 'a list) :
   xs < ys < zs => xs < zs.
 proof.
@@ -270,4 +299,16 @@ move => lt_xs_ys.
 case => [lt_ys_zs | /lpo_eqP <-].
 left; by rewrite (lpo_lt_trans ys).
 by left.
+qed.
+
+lemma not_leP (xs ys : 'a list) :
+  !(xs <= ys) <=> ys < xs \/ lpo_inc xs ys.
+proof.
+split.
+rewrite /(<=) /(<) /= /lpo_inc
+        (lpo_sym_lt_gt ys xs) negb_or.
+by case (lpo xs ys).
+rewrite /(<=) /(<) /lpo_inc /= (lpo_sym_lt_gt ys xs)
+        negb_or.
+by case => ->.
 qed.

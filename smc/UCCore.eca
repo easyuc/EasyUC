@@ -1,0 +1,590 @@
+(* UCCore.ec *)
+
+prover ["!"].  (* no provers *)
+
+(* Abstract Theory of Core UC Definitions and Lemmas *)
+
+require import AllCore List FSet ListPO.
+
+(* theory parameters *)
+
+(* base type should be instantiated, e.g., with a datatype consisting
+   of the disjoint union of whatever base types are needed - see univ
+   below *)
+
+type base.
+
+(* end of theory parameters *)
+
+(* functionality addresses
+
+   if a functionality has address alpha, it is also responsible for all
+   sub-functionalities with addresses beta >= alpha (in the prefix
+   partial ordering of ListPO) *)
+
+type addr = int list.
+
+(* ports - pairs of functionality addresses and port indices
+
+   a functionality's ports are used/interpreted however the
+   functionality chooses *)
+
+type port = addr * int.
+
+(* universe of values *)
+
+type univ = [
+    UnivUnit
+  | UnivBase of base
+  | UnivBool of bool
+  | UnivInt  of int
+  | UnivReal of real
+  | UnivAddr of addr
+  | UnivPort of port
+  | UnivPair of (univ * univ)
+].
+
+(* universe decoding functions *)
+
+op dec_univ_base (v : univ) : base option =
+     with v = UnivUnit   => None
+     with v = UnivBase b => Some b
+     with v = UnivBool _ => None
+     with v = UnivInt _  => None
+     with v = UnivReal _ => None
+     with v = UnivAddr _ => None
+     with v = UnivPort _ => None
+     with v = UnivPair _ => None.  
+
+op is_univ_base (v : univ) : bool =
+     dec_univ_base v <> None.
+
+lemma is_univ_base (b : base) :
+  is_univ_base (UnivBase b).
+proof. done. qed.
+
+op dec_univ_bool (v : univ) : bool option =
+     with v = UnivUnit   => None
+     with v = UnivBase _ => None
+     with v = UnivBool b => Some b
+     with v = UnivInt _  => None
+     with v = UnivReal _ => None
+     with v = UnivAddr _ => None
+     with v = UnivPort _ => None
+     with v = UnivPair _ => None.  
+
+op is_univ_bool (v : univ) : bool =
+     dec_univ_bool v <> None.
+
+lemma is_univ_bool (b : bool) :
+  is_univ_bool (UnivBool b).
+proof. done. qed.
+
+op dec_univ_int (v : univ) : int option =
+     with v = UnivUnit   => None
+     with v = UnivBase _ => None
+     with v = UnivBool _ => None
+     with v = UnivInt n  => Some n
+     with v = UnivReal _ => None
+     with v = UnivAddr _ => None
+     with v = UnivPort _ => None
+     with v = UnivPair _ => None.  
+
+op is_univ_int (v : univ) : bool =
+     dec_univ_int v <> None.
+
+lemma is_univ_int (n : int) :
+  is_univ_int (UnivInt n).
+proof. done. qed.
+
+op dec_univ_real (v : univ) : real option =
+     with v = UnivUnit   => None
+     with v = UnivBase _ => None
+     with v = UnivBool _ => None
+     with v = UnivInt _  => None
+     with v = UnivReal r => Some r
+     with v = UnivAddr _ => None
+     with v = UnivPort _ => None
+     with v = UnivPair _ => None.  
+
+op is_univ_real (v : univ) : bool =
+     dec_univ_real v <> None.
+
+lemma is_univ_real (r : real) :
+  is_univ_real (UnivReal r).
+proof. done. qed.
+
+op dec_univ_addr (v : univ) : addr option =
+     with v = UnivUnit   => None
+     with v = UnivBase _ => None
+     with v = UnivBool _ => None
+     with v = UnivInt _  => None
+     with v = UnivReal _ => None
+     with v = UnivAddr x => Some x
+     with v = UnivPort _ => None
+     with v = UnivPair _ => None.  
+
+op is_univ_addr (v : univ) : bool =
+     dec_univ_addr v <> None.
+
+lemma is_univ_addr (addr : addr) :
+  is_univ_addr (UnivAddr addr).
+proof. done. qed.
+
+op dec_univ_port (v : univ) : port option =
+     with v = UnivUnit    => None
+     with v = UnivBase _  => None
+     with v = UnivBool _  => None
+     with v = UnivInt _   => None
+     with v = UnivReal _  => None
+     with v = UnivAddr _  => None
+     with v = UnivPort pt => Some pt
+     with v = UnivPair _  => None.  
+
+op is_univ_port (v : univ) : bool =
+     dec_univ_port v <> None.
+
+lemma is_univ_port (pt : port) :
+  is_univ_port (UnivPort pt).
+proof. done. qed.
+
+op dec_univ_pair (v : univ) : (univ * univ)option =
+     with v = UnivUnit   => None
+     with v = UnivBase _ => None
+     with v = UnivBool _ => None
+     with v = UnivInt _  => None
+     with v = UnivReal _ => None
+     with v = UnivAddr _ => None
+     with v = UnivPort _ => None
+     with v = UnivPair p => Some p.
+
+op is_univ_pair (v : univ) : bool =
+     dec_univ_pair v <> None.
+
+lemma is_univ_pair (p : univ * univ) :
+  is_univ_pair (UnivPair p).
+proof. done. qed.
+
+(* higher-order universe encoding/decoding functions *)
+
+op univ_triple (u1 u2 u3 : univ) : univ =
+     UnivPair(u1, UnivPair(u2, u3)).
+
+op dec_univ_triple (v : univ) : (univ * univ * univ)option =
+     (dec_univ_pair v = None) ?
+     None :
+     let (u1, v') = oget(dec_univ_pair v)
+     in (dec_univ_pair v' = None) ?
+        None :
+        let (u2, u3) = oget(dec_univ_pair v')
+        in Some(u1, u2, u3).
+
+op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
+
+lemma enc_dec_univ_triple (u1 u2 u3 : univ) :
+  dec_univ_triple (univ_triple u1 u2 u3) = Some(u1, u2, u3).
+proof. done. qed.
+
+lemma is_univ_triple (u1 u2 u3 : univ) :
+  is_univ_triple(univ_triple u1 u2 u3).
+proof. done. qed.
+
+op univ_4tuple (u1 u2 u3 u4 : univ) : univ =
+     univ_triple u1 u2 (UnivPair(u3, u4)).
+
+op dec_univ_4tuple (v : univ) : (univ * univ * univ * univ)option =
+     (dec_univ_triple v = None) ?
+     None :
+     let (u1, u2, v') = oget(dec_univ_triple v)
+     in (dec_univ_pair v' = None) ?
+        None :
+        let (u3, u4) = oget(dec_univ_pair v')
+        in Some(u1, u2, u3, u4).
+
+op is_univ_4tuple (v : univ) : bool = dec_univ_4tuple v <> None.
+
+lemma enc_dec_univ_4tuple (u1 u2 u3 u4 : univ) :
+  dec_univ_4tuple (univ_4tuple u1 u2 u3 u4) = Some(u1, u2, u3, u4).
+proof.
+by rewrite /univ_4tuple /dec_univ_4tuple /= enc_dec_univ_triple.
+qed.
+
+lemma is_univ_4tuple (u1 u2 u3 u4 : univ) :
+  is_univ_4tuple(univ_4tuple u1 u2 u3 u4).
+proof.
+by rewrite /is_univ_4tuple enc_dec_univ_4tuple.
+qed.
+
+(* messages have modes:
+
+     * direct - not observable by adversaries/simulators
+
+     * adversarial - communication between functionalties and
+         adversaries/simulators, communication between different
+         adversaries/simulators, and communication between
+         environments and adversaries/simulators *)
+
+type mode = [
+    Dir  (* direct *)
+  | Adv  (* adversarial *)
+].
+
+(* a message has the form (mod, pt1, pt2, u), for a mode mod, a
+   destination port pt1, a source port pt2, and a universe
+   value u
+
+   no attempt is made to enforce that a message's source port
+   corresponds with the originating functionality *)
+
+type msg = (mode * port * port * univ).
+
+(* module type of functionalities
+
+   a functionality may handle messages for sub-functionalities either
+   itself or by routing them to another instance of FUNC *)
+
+pred func_init_pre (self adv : addr) =
+  !(self <= adv).
+
+module type FUNC = {
+  (* initialize functionality, telling it its address (self) and the
+     address of its adversary (adv)
+
+     precondition: func_init_pre self adv *)
+
+  proc * init(self adv : addr) : unit
+
+  (* respond to an incoming message, producing an optional
+     outgoing message (None means error)
+
+     normally (but note that abstract functionalities (e.g.,
+     adversaries) can't be relied on to behave like this):
+
+     if an incoming message's destination address isn't >= the
+     functionality's address, self, None should be returned, signaling
+     an error
+
+     if Some m' is returned, then the destination address of m' should
+     not be >= self, and the source address of m' should be >= self *)
+
+  proc invoke(m : msg) : msg option
+}.
+
+(* module type of interfaces (to environment) *)
+
+pred inter_init_pre (func adv : addr, in_guard : int fset) =
+       [] < func /\ [] < adv /\ lpo_inc func adv /\
+       ! mem in_guard 0.
+
+module type INTER = {
+  (* initialize interface, telling it:
+
+       * the address (func) of its functionality part;
+
+       * the address (adv) of its adversary part;
+
+       * an incoming message guard (in_guard)
+
+     precondition:
+
+       inter_init_pre func adv in_guard *)
+
+  proc * init(func adv : addr, in_guard : int fset) : unit
+
+  (* respond to an incoming message, producing an optional
+     outgoing message (None means error)
+
+     messages whose destination addresses aren't either >= the
+     interface's functionality part's address, func, or equal to the
+     interface's adversary part's addresss, adv, should result in None
+     being returned
+
+     if the interface's functionality part returns a message with
+     destination address >= func, or if the interface's adversary part
+     returns a message with destination address >= adv, then
+     None should be returned
+
+     all incoming messages with mode Env are routed to the interface's
+     functionality part; all incoming messages with mode Adv are
+     routed to the interface's adversary part
+
+     all outgoing messages with mode Env come from the interface's
+     functionality part; all outgoing messages with mode Adv come from
+     the interface's adversary part
+
+     the standard (Adv mode) channel between the environment and the
+     interface's adversary part consists of messages between port
+     ([], 0) (in the environment) and port (adv, 0) (in the
+     interface's adversary part)
+
+     the environment may communicate with other parts of the
+     interface's adversary part, except that such a communication will
+     result in an error if its destination port isn't of the form
+     (adv, n) for some n in in_guard
+
+     if the interface's functionality part sends a message to the
+     interface's adversary part, this message must have mode Adv,
+     and it may not have destination port (adv, 0)
+
+     if the interface's adversary part sends a message to the
+     interface's functionality part, this message must have mode
+     Adv *)
+
+  proc invoke(m : msg) : msg option
+}.
+
+(* module type of environments, parameterized by interfaces *)
+
+pred env_init_pre (func adv : addr, in_guard : int fset) =
+  inter_init_pre func adv in_guard.
+
+module type ENV (Inter : INTER) = {
+  (* start environment, and let it interact with Inter (only via
+     Inter.invoke, not via Inter.init), eventually returning a boolean
+     judgment
+
+     we have:
+
+       * fun is the address of interface's functionality part
+
+       * adv is the address of interface's adversary part
+
+     the standard (Adv mode) channel between the environment and the
+     interface's adversary part consists of messages between port
+     ([], 0) (in the environment) and port (adv, 0) (in the
+     interface's adversary part)
+
+     the environment may communicate with other parts of the
+     interface's adversary part, except that such a communication will
+     result in an error if its destination port isn't of the form
+     (adv, n) for some n in in_guard
+
+     precondition : env_pre func adv in_guard *)
+
+  proc * main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
+}.
+
+(* carry out experiment in which the environment is allowed to
+   interact with, and issue a final boolean judgment about, an
+   interface, which is first initialized *)
+
+pred exper_pre (func adv : addr, in_guard : int fset) =
+       inter_init_pre func adv in_guard.
+
+module Exper (Inter : INTER, Env : ENV) = {
+  module E = Env(Inter)
+
+  (* arguments to main:
+
+       * func is address of interface's functionality part
+
+       * adv is the address of the interface's adversary part
+
+       * in_guard is the incoming message guard used by the interface
+         and supplied to the environment
+
+     precondition:
+
+       exper_pre func adv in_guard *)
+
+  proc main(func adv : addr, in_guard : int fset) : bool = {
+    var b : bool;
+    Inter.init(func, adv, in_guard);
+    b <@ E.main(func, adv, in_guard);
+    return b;
+  }    
+}.
+
+(* make interface out of functionality and adversary parts *)
+
+module MakeInter (Func : FUNC, Adv : FUNC) : INTER = {
+  var func, adv : addr
+  var in_guard : int fset
+
+  proc init(func_ adv_ : addr, in_guard_ : int fset) : unit = {
+    func <- func_; adv <- adv_; in_guard <- in_guard_;
+    Func.init(func, adv);
+    Adv.init(adv, []);
+  }
+
+  proc loop(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr1 : addr; var n1 : int;
+    var r : msg option <- None;
+    var not_done : bool <- true;
+
+    (* loop invariant in terms of m:
+
+         not_done =>
+         func <= m.`2.`1 \/
+         m.`2.`1 = adv /\ mod = Adv *)
+
+    while (not_done) {
+      (mod, pt1, pt2, u) <- m;
+      (addr1, n1) <- pt1;
+      if (func <= addr1) {
+        r <@ Func.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;  (* next iteration, if any, will use m *)
+          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (func <= addr1) {
+            r <- None; not_done <- false;
+          }
+          elif (mod = Dir) {
+            not_done <- false;
+            if (adv <= addr1) {
+              r <- None;
+            }
+          }
+          else {  (* mod = Adv *)
+            if (addr1 <> adv \/ n1 = 0) {
+              r <- None; not_done <- false;
+            }
+          }
+        }          
+      }
+      else {  (* addr1 = adv *)
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;  (* next iteration, if any, will use m *)
+          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (adv <= addr1 \/ mod = Dir) {
+            r <- None; not_done <- false;
+          }
+          elif (! func <= addr1) {
+            not_done <- false;
+          }
+        }
+      }      
+    }
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr1, addr2 : addr; var n1 : int;
+    var r : msg option <- None;
+    (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+    if (func <= addr1) {
+      if (mod = Adv) {
+        r <- None;
+      }
+      else {
+        r <@ loop(m);
+      }
+    }
+    elif (addr1 = adv) {
+      if (mod = Dir \/ (pt1.`2 <> 0 /\ ! mem in_guard pt1.`2)) {
+        r <- None;
+      } else {
+        r <@ loop(m);
+      }
+    }
+    return r;
+  }
+}.
+
+(* dummy adversary *)
+
+(* message from port 0 of environment to port 0 of dummy adversary,
+   telling dummy adversary to send the message (Adv, pt1, (da, n2),
+   u) *)
+
+op da_from_env (da env : addr, pt1 : port, n2: int, u : univ) : msg =
+     (Adv, (da, 0), (env, 0),
+      univ_triple (UnivPort pt1) (UnivInt n2) u).
+
+op dec_da_from_env (m : msg) : (addr * addr * port * int * univ) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> 0 \/ pt2.`2 <> 0 \/ ! is_univ_triple v) ?
+        None :
+        let (v1, v2, v3) = oget (dec_univ_triple v)
+        in (! is_univ_port v1 \/ ! is_univ_int v2) ?
+           None :
+           Some (pt1.`1, pt2.`1, oget (dec_univ_port v1),
+                 oget (dec_univ_int v2), v3).
+
+lemma enc_dec_da_from_env (da env : addr, pt1 : port, n2 : int, u : univ) :
+  dec_da_from_env (da_from_env da env pt1 n2 u) =
+  Some (da, env, pt1, n2, u).
+proof.           
+by rewrite /da_from_env /dec_da_from_env /=
+           (is_univ_triple (UnivPort pt1) (UnivInt n2) u) /=
+           enc_dec_univ_triple oget_some.
+qed.
+
+op is_da_from_env (m : msg) : bool =
+     dec_da_from_env m <> None.
+
+lemma is_da_from_env (da env : addr, pt1 : port, n2 : int, u : univ) :
+  is_da_from_env (da_from_env da env pt1 n2 u).
+proof.
+by rewrite /is_da_from_env enc_dec_da_from_env.
+qed.
+
+(* message from port 0 of dummy adversary to port 0 of environment,
+   telling environment that dummy adversary received message (Adv,
+   (da, n1), pt2, u) *)
+
+op da_to_env (da env : addr, n1 : int, pt2 : port, u : univ) : msg =
+     (Adv, (env, 0), (da, 0),
+      univ_triple (UnivInt n1) (UnivPort pt2) u).
+
+op dec_da_to_env (m : msg) : (addr * addr * int * port * univ) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> 0 \/ pt2.`2 <> 0 \/ ! is_univ_triple v) ?
+        None :
+        let (v1, v2, v3) = oget (dec_univ_triple v)
+        in (! is_univ_int v1 \/ ! is_univ_port v2) ?
+           None :
+           Some (pt2.`1, pt1.`1, oget (dec_univ_int v1),
+                 oget (dec_univ_port v2), v3).
+
+lemma enc_dec_da_to_env (da env : addr, n1 : int, pt2 : port, u : univ) :
+  dec_da_to_env (da_to_env da env n1 pt2 u) =
+  Some (da, env, n1, pt2, u).
+proof.           
+by rewrite /da_to_env /dec_da_to_env /=
+           (is_univ_triple (UnivInt n1) (UnivPort pt2) u) /=
+           enc_dec_univ_triple oget_some.
+qed.
+
+op is_da_to_env (m : msg) : bool =
+     dec_da_to_env m <> None.
+
+lemma is_da_to_env (da env : addr, n1 : int, pt2 : port, u : univ) :
+  is_da_to_env (da_to_env da env n1 pt2 u).
+proof.
+by rewrite /is_da_to_env enc_dec_da_to_env.
+qed.
+
+module DummyAdv : FUNC = {
+  var self, env : addr
+
+  proc init(self_ env_ : addr) = {
+    self <- self_; env <- env_;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var pt1, pt2 : port; var n1, n2 : int; var u : univ; 
+    var addr1, addr2 : addr;
+    var r : msg option <- None;
+
+    if (is_da_from_env m) {
+      (addr1, addr2, pt1, n2, u) <- oget (dec_da_from_env m);
+      if (addr1 = self /\ addr2 = env) {
+        r <- Some (Adv, pt1, (self, n2), u);
+      }
+    }
+    elif (m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1) {
+      r <- Some (da_to_env self env m.`2.`2 m.`3 m.`4);
+    }
+    return r;
+  }
+}.
