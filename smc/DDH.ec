@@ -2,7 +2,7 @@
 
 (* Decisional Diffie-Hellman Assumption *)
 
-prover ["!"].  (* no provers *)
+prover [""].  (* no provers *)
 
 require import AllCore Distr.
 
@@ -60,18 +60,18 @@ module type DDH_ADV = {
 
 module DDH1 (Adv : DDH_ADV) = {
   proc main() : bool = {
-    var b : bool; var q1, q2 : exp;
-    q1 <$ dexp; q2 <$ dexp;
-    b <@ Adv.main(g ^ q1, g ^ q2, g ^ (q1 * q2));
+    var b : bool; var u1, u2 : exp;
+    u1 <$ dexp; u2 <$ dexp;
+    b <@ Adv.main(g ^ u1, g ^ u2, g ^ (u1 * u2));
     return b;
   }
 }.
   
 module DDH2 (Adv : DDH_ADV) = {
   proc main() : bool = {
-    var b : bool; var q1, q2, u3 : exp;
-    q1 <$ dexp; q2 <$ dexp; u3 <$ dexp;
-    b <@ Adv.main(g ^ q1, g ^ q2 , g ^ u3);
+    var b : bool; var u1, u2, u3 : exp;
+    u1 <$ dexp; u2 <$ dexp; u3 <$ dexp;
+    b <@ Adv.main(g ^ u1, g ^ u2 , g ^ u3);
     return b;
   }
 }.

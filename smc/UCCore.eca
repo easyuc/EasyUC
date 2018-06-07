@@ -1,6 +1,6 @@
 (* UCCore.ec *)
 
-prover ["!"].  (* no provers *)
+prover [""].  (* no provers *)
 
 (* Abstract Theory of Core UC Definitions and Lemmas *)
 
@@ -168,49 +168,49 @@ proof. done. qed.
 (* higher-order universe encoding/decoding functions *)
 
 op univ_triple (u1 u2 u3 : univ) : univ =
-     UnivPair(u1, UnivPair(u2, u3)).
+     UnivPair (u1, UnivPair (u2, u3)).
 
 op dec_univ_triple (v : univ) : (univ * univ * univ)option =
      (dec_univ_pair v = None) ?
      None :
-     let (u1, v') = oget(dec_univ_pair v)
+     let (u1, v') = oget (dec_univ_pair v)
      in (dec_univ_pair v' = None) ?
         None :
-        let (u2, u3) = oget(dec_univ_pair v')
-        in Some(u1, u2, u3).
+        let (u2, u3) = oget (dec_univ_pair v')
+        in Some (u1, u2, u3).
 
 op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
 
 lemma enc_dec_univ_triple (u1 u2 u3 : univ) :
-  dec_univ_triple (univ_triple u1 u2 u3) = Some(u1, u2, u3).
+  dec_univ_triple (univ_triple u1 u2 u3) = Some (u1, u2, u3).
 proof. done. qed.
 
 lemma is_univ_triple (u1 u2 u3 : univ) :
-  is_univ_triple(univ_triple u1 u2 u3).
+  is_univ_triple (univ_triple u1 u2 u3).
 proof. done. qed.
 
 op univ_4tuple (u1 u2 u3 u4 : univ) : univ =
-     univ_triple u1 u2 (UnivPair(u3, u4)).
+     univ_triple u1 u2 (UnivPair (u3, u4)).
 
 op dec_univ_4tuple (v : univ) : (univ * univ * univ * univ)option =
      (dec_univ_triple v = None) ?
      None :
-     let (u1, u2, v') = oget(dec_univ_triple v)
+     let (u1, u2, v') = oget (dec_univ_triple v)
      in (dec_univ_pair v' = None) ?
         None :
-        let (u3, u4) = oget(dec_univ_pair v')
-        in Some(u1, u2, u3, u4).
+        let (u3, u4) = oget (dec_univ_pair v')
+        in Some (u1, u2, u3, u4).
 
 op is_univ_4tuple (v : univ) : bool = dec_univ_4tuple v <> None.
 
 lemma enc_dec_univ_4tuple (u1 u2 u3 u4 : univ) :
-  dec_univ_4tuple (univ_4tuple u1 u2 u3 u4) = Some(u1, u2, u3, u4).
+  dec_univ_4tuple (univ_4tuple u1 u2 u3 u4) = Some (u1, u2, u3, u4).
 proof.
 by rewrite /univ_4tuple /dec_univ_4tuple /= enc_dec_univ_triple.
 qed.
 
 lemma is_univ_4tuple (u1 u2 u3 u4 : univ) :
-  is_univ_4tuple(univ_4tuple u1 u2 u3 u4).
+  is_univ_4tuple (univ_4tuple u1 u2 u3 u4).
 proof.
 by rewrite /is_univ_4tuple enc_dec_univ_4tuple.
 qed.
@@ -273,7 +273,7 @@ module type FUNC = {
 (* module type of interfaces (to environment) *)
 
 pred inter_init_pre (func adv : addr, in_guard : int fset) =
-       [] < func /\ [] < adv /\ lpo_inc func adv /\
+       [] < func /\ [] < adv /\ inc func adv /\
        ! mem in_guard 0.
 
 module type INTER = {
@@ -371,6 +371,18 @@ module type ENV (Inter : INTER) = {
 pred exper_pre (func adv : addr, in_guard : int fset) =
        inter_init_pre func adv in_guard.
 
+lemma exper_pre_ext1 (func adv ext : addr, in_guard : int fset) :
+  exper_pre func adv in_guard =>
+  exper_pre (func ++ ext) adv in_guard.
+proof.
+rewrite /exper_pre /inter_init_pre.
+move => |> gt_emp_func gt_emp_adv inc_fun_adv _.
+split.
+rewrite (lt_le_trans func) //.
+by rewrite leP (LES _ _ ext).
+by apply inc_ext1.
+qed.
+
 module Exper (Inter : INTER, Env : ENV) = {
   module E = Env(Inter)
 
@@ -397,7 +409,7 @@ module Exper (Inter : INTER, Env : ENV) = {
 
 (* make interface out of functionality and adversary parts *)
 
-module MakeInter (Func : FUNC, Adv : FUNC) : INTER = {
+module MI (Func : FUNC, Adv : FUNC) : INTER = {
   var func, adv : addr
   var in_guard : int fset
 
@@ -417,7 +429,7 @@ module MakeInter (Func : FUNC, Adv : FUNC) : INTER = {
 
          not_done =>
          func <= m.`2.`1 \/
-         m.`2.`1 = adv /\ mod = Adv *)
+         m.`1 = Adv /\ m.`2.`1 = adv *)
 
     while (not_done) {
       (mod, pt1, pt2, u) <- m;
@@ -469,22 +481,96 @@ module MakeInter (Func : FUNC, Adv : FUNC) : INTER = {
   proc invoke(m : msg) : msg option = {
     var mod : mode; var pt1, pt2 : port; var u : univ;
     var addr1, addr2 : addr; var n1 : int;
-    var r : msg option <- None;
+    var r : msg option;
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-    if (func <= addr1) {
-      if (mod = Adv) {
-        r <- None;
-      }
-      else {
-        r <@ loop(m);
-      }
+    if (func <= addr1 /\ mod = Dir \/
+        addr1 = adv /\ mod = Adv /\ (pt1.`2 = 0 \/ mem in_guard pt1.`2)) {
+      r <@ loop(m);
     }
-    elif (addr1 = adv) {
-      if (mod = Dir \/ (pt1.`2 <> 0 /\ ! mem in_guard pt1.`2)) {
-        r <- None;
-      } else {
-        r <@ loop(m);
+    else {
+      r <- None;
+    }
+    return r;
+  }
+}.
+
+(* make interface out of functionality and adversary parts,
+   but where output of and communication between parts is
+   unrestricted *)
+
+module MI_UOC (Func : FUNC, Adv : FUNC) : INTER = {
+  var func, adv : addr
+  var in_guard : int fset
+
+  proc init(func_ adv_ : addr, in_guard_ : int fset) : unit = {
+    func <- func_; adv <- adv_; in_guard <- in_guard_;
+    Func.init(func, adv);
+    Adv.init(adv, []);
+  }
+
+  proc loop(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr1 : addr; var n1 : int;
+    var r : msg option <- None;
+    var not_done : bool <- true;
+
+    (* loop invariant in terms of m:
+
+         not_done => func <= m.`2.`1 \/ m.`2.`1 = adv *)
+
+    while (not_done) {
+      (mod, pt1, pt2, u) <- m;
+      (addr1, n1) <- pt1;
+      if (func <= addr1) {
+        r <@ Func.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;  (* next iteration, if any, will use m *)
+          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (func <= addr1) {
+            r <- None; not_done <- false;
+          }
+          elif (! adv <= addr1) {
+            not_done <- false;
+          }
+          elif (addr1 <> adv) {
+            r <- None; not_done <- false;            
+          }
+        }          
       }
+      else {  (* addr1 = adv *)
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;  (* next iteration, if any, will use m *)
+          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (adv <= addr1) {
+            r <- None; not_done <- false;
+          }
+          elif (! func <= addr1) {
+            not_done <- false;
+          }
+        }
+      }      
+    }
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr1, addr2 : addr; var n1 : int;
+    var r : msg option;
+    (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+    if (func <= addr1 /\ mod = Dir \/
+        addr1 = adv /\ mod = Adv /\ (pt1.`2 = 0 \/ mem in_guard pt1.`2)) {
+      r <@ loop(m);
+    }
+    else {
+      r <- None;
     }
     return r;
   }
