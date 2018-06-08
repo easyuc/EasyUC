@@ -2,7 +2,7 @@
 
 (* Prefix Ordering on Lists *)
 
-prover ["!"].  (* no provers *)
+prover [""].  (* no provers *)
 
 (* We define a partial ordering between lists xs and ys: xs is
    less-than-or-equal-to ys iff xs is a prefix of ys, i.e.,
@@ -11,7 +11,7 @@ prover ["!"].  (* no provers *)
    We actually implement this as an operator producing one of four
    results, and only later define the expected binary relations *)
 
-require import AllCore List.
+require import AllCore List Aux.
 
 (* comparison results *)
 
@@ -343,4 +343,27 @@ lemma inc_le_excl2 (xs ys zs : 'a list) :
   inc xs ys => ys <= zs => !(xs <= zs).
 proof.
 move => /@inc_sym; apply inc_le_excl1.
+qed.
+
+lemma lt_ext_nonnil_r (xs ys : 'a list) :
+  ys <> [] => xs < xs ++ ys.
+proof.
+move => nonnil_ys.
+by rewrite /(<) lpo_ltP (LTS xs (xs ++ ys) ys).
+qed.
+
+lemma le_ext_r (xs ys : 'a list) :
+  xs <= xs ++ ys.
+proof.
+by rewrite leP (LES xs (xs ++ ys) ys).
+qed.
+
+lemma not_le_ext_nonnil_l (xs ys : 'a list) :
+  ys <> [] => ! xs ++ ys <= xs.
+proof.
+move => nonnil_ys.
+case (xs ++ ys <= xs) => [/leP [us eq] | //].
+rewrite -catA in eq.
+have // := (ne_cat_nonnil_r xs (ys ++ us) _).
+  by apply nonnil_cat_nonnil_l.
 qed.
