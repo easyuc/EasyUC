@@ -367,3 +367,10 @@ rewrite -catA in eq.
 have // := (ne_cat_nonnil_r xs (ys ++ us) _).
   by apply nonnil_cat_nonnil_l.
 qed.
+
+lemma ge_nonnil_ext_imp_ne (xs ys zs : 'a list) :
+  ys <> [] => xs ++ ys <= zs => zs <> xs.
+proof.
+move => nonnil_ys /leP [us <-].
+by rewrite -catA ne_cat_nonnil_r // nonnil_cat_nonnil_l.
+qed.
