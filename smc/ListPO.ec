@@ -358,6 +358,29 @@ proof.
 by rewrite leP (LES xs (xs ++ ys) ys).
 qed.
 
+lemma le_ext_comm (xs ys zs : 'a list) :
+  xs ++ ys <= xs ++ zs <=> ys <= zs.
+proof.
+rewrite 2!leP; split.
+case => us eq.
+by rewrite (LES ys zs us) (catsI xs (ys ++ us) zs) 1:catA.
+case => us eq.
+by rewrite (LES (xs ++ ys) (xs ++ zs) us) -eq catA.
+qed.
+
+lemma sing_not_le (x y : 'a) :
+  x <> y => ! [x] <= [y].
+proof.
+move => ne_xy; rewrite leP.
+case (! le_spec [x] [y]) => // contrad.
+rewrite /= in contrad.
+case contrad => us eq.
+have x_eq : nth x ([x] ++ us) 0 = x.
+  by rewrite cat1s /=.
+have y_eq : nth x [y] 0 = y by trivial.
+have // : x = y by rewrite -x_eq -y_eq; congr.
+qed.
+
 lemma not_le_ext_nonnil_l (xs ys : 'a list) :
   ys <> [] => ! xs ++ ys <= xs.
 proof.
