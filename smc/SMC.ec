@@ -1095,8 +1095,8 @@ auto.
 inline KEReal.loop KERealSimp.parties.
 sp 3 2.
 rcondt{1} 1; auto.
-rcondf{1} 1; first auto; progress; smt(not_le_ext_nonnil_l).
-rcondt{2} 1; first auto; progress; smt().
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondt{2} 1; first auto; smt().
 rcondf{2} 1; first auto; progress; rewrite /is_ke_req1 /dec_ke_req1 /= /#.
 seq 1 0 :
   (r0{1} = None /\ r0{2} = None /\
@@ -1159,7 +1159,7 @@ seq 4 0 :
 rcondt{1} 1; first auto.
 inline{1} (1) KEReal.parties.
 sp.
-rcondf{1} 1; first auto; progress; smt().
+rcondf{1} 1; first auto; smt().
 rcondt{1} 1.
 auto; progress.
 rewrite /is_ke_real_state_wait_fwd1 /dec_ke_real_state_wait_fwd1 /#.
@@ -1246,15 +1246,15 @@ seq 4 0 :
    pt1' pt2' q1').
 if{1}.
 inline{1} (1) Fwd1.Forw.invoke. 
-rcondf{1} 3; first auto; progress; smt().
-rcondt{1} 3; first auto; progress; smt(Fwd1.is_fw_state_wait).
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(Fwd1.is_fw_state_wait).
 sp 3 0.
 if{1}.
 rcondf{1} 2; first auto; progress.
 smt(Fwd1.dest_good_fw_ok).
 rcondt{1} 3; first auto.
 rcondf{1} 4; first auto.
-auto; progress; smt().
+auto; smt().
 rcondt{1} 2; first auto.
 rcondf{1} 3; first auto.
 auto; smt().
@@ -1262,7 +1262,7 @@ inline{1} (1) Fwd2.Forw.invoke.
 rcondt{1} 3; first auto; smt().
 sp 2 0.
 if{1}.
-rcondf{1} 2; first auto; progress; smt(Fwd2.dest_good_fw_req).
+rcondf{1} 2; first auto; smt(Fwd2.dest_good_fw_req).
 rcondt{1} 3; first auto.
 rcondf{1} 4; first auto.
 auto; smt().
@@ -1343,10 +1343,10 @@ auto.
 inline KEReal.loop KERealSimp.parties.
 sp 3 2.
 rcondt{1} 1; auto.
-rcondf{1} 1; first auto; progress; smt(not_le_ext_nonnil_l).
-rcondf{2} 1; first auto; progress; smt().
-rcondf{2} 1; first auto; progress; smt().
-rcondt{2} 1; first auto; progress; smt(is_ke_real_simp_state_wait_req2).
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_real_simp_state_wait_req2).
 rcondf{2} 2; first auto; progress; rewrite /is_ke_req2 /dec_ke_req2 /= /#.
 seq 1 0 :
   (r0{1} = None /\ r0{2} = None /\
@@ -1408,9 +1408,9 @@ seq 4 0 :
 rcondt{1} 1; first auto.
 inline{1} (1) KEReal.parties.
 sp.
-rcondf{1} 1; first auto; progress; smt().
-rcondf{1} 1; first auto; progress; smt().
-rcondf{1} 1; first auto; progress; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
 rcondt{1} 1.
 auto; progress.
 rewrite /is_ke_real_state_wait_fwd2 /dec_ke_real_state_wait_fwd2 /#.
@@ -1443,7 +1443,7 @@ inline{1} (1) Fwd2.Forw.invoke.
 rcondf{1} 3; first auto; smt().
 rcondt{1} 3; first auto; smt(Fwd2.is_fw_state_wait).
 rcondt{1} 4; first auto.
-rcondt{1} 5; first auto; progress; smt(Fwd2.dest_good_fw_ok).
+rcondt{1} 5; first auto; smt(Fwd2.dest_good_fw_ok).
 rcondf{1} 8.
 auto => |> &hr _ _ _ _ _ @/ke_real_simp_rel3 /= [#] _ _ _ _ -> _ _ _ _.
 rewrite oget_some /fw_rsp /= oget_some /= le_refl.
@@ -1510,7 +1510,7 @@ rcondf{1} 3; first auto.
 auto; smt().
 sp 0 1.
 if{2}.
-rcondf{2} 2; first auto; progress; smt(Fwd2.dest_good_fw_ok).
+rcondf{2} 2; first auto; smt(Fwd2.dest_good_fw_ok).
 auto; progress; by apply (KERealSimpRel3 _ pt1' pt2' q1' q2').
 auto; progress; by apply (KERealSimpRel3 _ pt1' pt2' q1' q2').
 case
@@ -1574,16 +1574,18 @@ auto; progress; by apply (KERealSimpRel4 _ pt1' pt2' q1' q2').
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
-(* request sent from port 1 of key exchange ideal functionality to
+(* Ideal Functionality *)
+
+(* request sent from port 3 of key exchange ideal functionality to
    port ke_sim_adv_pi of key exchange simulator, initiating first phase
    of execution of simulator *)
 
 op ke_sim_req1 (ideal adv : addr) : msg =
-     (Adv, (adv, ke_sim_adv_pi), (ideal, 1), UnivUnit).
+     (Adv, (adv, ke_sim_adv_pi), (ideal, 3), UnivUnit).
 
 op dec_ke_sim_req1 (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 1 \/
+     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
          ! v = UnivUnit) ?
         None :
         Some (pt2.`1, pt1.`1).
@@ -1600,15 +1602,15 @@ lemma is_ke_sim_req1 (ideal adv : addr) :
 proof. done. qed.
 
 (* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 2 of key exchange ideal functionality, completing first
+   port 3 of key exchange ideal functionality, completing first
    phase of simulator execution *)
 
 op ke_sim_rsp1 (ideal adv : addr) : msg =
-     (Adv, (ideal, 2), (adv, ke_sim_adv_pi), UnivUnit).
+     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
 
 op dec_ke_sim_rsp1 (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 2 \/ pt2.`2 <> ke_sim_adv_pi \/
+     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
          ! v = UnivUnit) ?
         None :
         Some (pt1.`1, pt2.`1).
@@ -1624,16 +1626,16 @@ lemma is_ke_sim_rsp1 (ideal adv : addr) :
   is_ke_sim_rsp1 (ke_sim_rsp1 ideal adv).
 proof. done. qed.
 
-(* request sent from port 2 of key exchange ideal functionality to
+(* request sent from port 3 of key exchange ideal functionality to
    port ke_sim_adv_pi of key exchange simulator, initiating second phase
    of execution of simulator *)
 
 op ke_sim_req2 (ideal adv : addr) : msg =
-     (Adv, (adv, ke_sim_adv_pi), (ideal, 2), UnivUnit).
+     (Adv, (adv, ke_sim_adv_pi), (ideal, 3), UnivUnit).
 
 op dec_ke_sim_req2 (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 2 \/
+     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
          ! v = UnivUnit) ?
         None :
         Some (pt2.`1, pt1.`1).
@@ -1650,15 +1652,15 @@ lemma is_ke_sim_req2 (ideal adv : addr) :
 proof. done. qed.
 
 (* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 1 of key exchange ideal functionality, completing second
+   port 3 of key exchange ideal functionality, completing second
    phase of simulator execution *)
 
 op ke_sim_rsp2 (ideal adv : addr) : msg =
-     (Adv, (ideal, 1), (adv, ke_sim_adv_pi), UnivUnit).
+     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
 
 op dec_ke_sim_rsp2 (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> ke_sim_adv_pi \/
+     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
          ! v = UnivUnit) ?
         None :
         Some (pt1.`1, pt2.`1).
@@ -1773,6 +1775,7 @@ module KEIdeal : FUNC = {
     var r : msg option <- None;
     if (st = KEIdealStateWaitReq1) {  (* P1 can respond *)
       if (is_ke_req1 m) {
+        (* destination of m is (self, 1), mode of m is Dir *)
         (addr1, pt1, pt2) <- oget (dec_ke_req1 m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
           q <$ dexp;
@@ -1784,6 +1787,7 @@ module KEIdeal : FUNC = {
     elif (is_ke_ideal_state_wait_sim1 st) {  (* P2 can respond *)
       (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim1 st);
       if (is_ke_sim_rsp1 m) {
+        (* destination of m is (self, 3), mode of m is Adv *)
         (addr1, addr2) <- oget (dec_ke_sim_rsp1 m);
         r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
         st <- KEIdealStateWaitReq2 (pt1, pt2, q);
@@ -1792,6 +1796,7 @@ module KEIdeal : FUNC = {
     elif (is_ke_ideal_state_wait_req2 st) {  (* P2 can respond *)
       (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_req2 st);
       if (is_ke_req2 m) {
+        (* destination of m is (self, 2), mode of m is Dir *)
         (addr1, pt2') <- oget (dec_ke_req2 m);
         if (pt2' = pt2) {
           r <- Some (ke_sim_req2 self adv);
@@ -1802,6 +1807,7 @@ module KEIdeal : FUNC = {
     elif (is_ke_ideal_state_wait_sim2 st) {  (* P1 can respond *)
       (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim2 st);
       if (is_ke_sim_rsp2 m) {
+        (* destination of m is (self, 3), mode of m is Adv *)
         (addr1, addr2) <- oget (dec_ke_sim_rsp2 m);
         r <- Some (ke_rsp2 self pt1 (g ^ q));
         st <- KEIdealStateFinal (pt1, pt2, q);
@@ -1818,12 +1824,15 @@ module KEIdeal : FUNC = {
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m;
     (addr1, n1) <- pt1;
-    if (mod = Dir /\ addr1 = self) {
+    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
+        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
       r <- parties(m);
     }
     return r;
   }
 }.
+
+(* Simulator *)
 
 type ke_sim_state = [
     KESimStateWaitReq1
@@ -1933,7 +1942,7 @@ module KESim (Adv : FUNC) = {
             (addr1, addr2) <- oget (dec_ke_sim_req1 m);
             q1 <$ dexp;
             r <-
-              Some (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 1) (addr1, 2)
+              Some (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
                     (UnivBase (BaseBits (g ^ q1))));
             st <- KESimStateWaitAdv1 (addr1, q1);
           }
@@ -1943,7 +1952,7 @@ module KESim (Adv : FUNC) = {
           if (is_ke_sim_req2 m) {
             (addr1, addr2) <- oget (dec_ke_sim_req2 m);
             r <-
-              Some (Fwd2.fw_obs (addr ++ [2]) self (addr, 2) (addr, 1)
+              Some (Fwd2.fw_obs (addr ++ [2]) self (addr, 4) (addr, 3)
                     (UnivBase (BaseBits (g ^ q2))));
             st <- KESimStateWaitAdv2 (addr, q1, q2);
           }
@@ -2054,6 +2063,8 @@ qed.
 
 end KeyExchange.
 
+(*********************** Secure Message Communication *************************)
+
 theory SMC.
 
 (* theory parameters *)
@@ -2146,6 +2157,8 @@ lemma is_smc_rsp (func : addr, pt1 pt2 : port, x : bits) :
 proof.
 by rewrite /is_smc_rsp enc_dec_smc_rsp.
 qed.
+
+(* Real Functionality *)
 
 clone Forward as Fwd
   with op adv_pi <- adv_fw_pi
@@ -2258,10 +2271,11 @@ module SMCReal (KE : FUNC) : FUNC = {
     var r : msg option <- None;
     if (st = SMCRealStateWaitReq) {  (* P1 *)
       if (is_smc_req m) {
+        (* destination of m is (self, 1) *)
         (addr, pt1, pt2, x1) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
           r <-
-            Some (KeyEx.ke_req1 (self ++ [2]) (self, 1) (self, 2));
+            Some (KeyEx.ke_req1 (self ++ [2]) (self, 3) (self, 4));
           st <- SMCRealStateWaitKE1 (pt1, pt2, x1);
         }
       }
@@ -2270,19 +2284,24 @@ module SMCReal (KE : FUNC) : FUNC = {
       (pt1, pt2, x1) <- oget (dec_smc_real_state_wait_ke1 st);
       if (KeyEx.is_ke_rsp1 m) {
         (addr, pt1', pt2', k2) <- oget (KeyEx.dec_ke_rsp1 m);
-        r <-
-          Some (KeyEx.ke_req2 (self ++ [2]) (self, 2));
-        st <- SMCRealStateWaitKE2 (pt1, pt2, x1, k2);
+        if (pt2' = (self, 4)) {
+          (* destination of m is (self, 4) *)
+          r <- Some (KeyEx.ke_req2 (self ++ [2]) (self, 4));
+          st <- SMCRealStateWaitKE2 (pt1, pt2, x1, k2);
+        }
       }
     }
     elif (is_smc_real_state_wait_ke2 st) {  (* P1 *)
       (pt1, pt2, x1, k2) <- oget (dec_smc_real_state_wait_ke2 st);
       if (KeyEx.is_ke_rsp2 m) {
         (addr, pt1', k1) <- oget (KeyEx.dec_ke_rsp2 m);
-        r <-
-          Some (Fwd.fw_req (self ++ [1]) (self, 1) (self, 2)
-                (UnivBase (BaseBits (x1 ^^ k1))));
-        st <- SMCRealStateWaitFwd (pt1, pt2, x1, k2, k1);
+        if (pt1' = (self, 3)) {
+          (* destination of m is (self, 3) *)
+          r <-
+            Some (Fwd.fw_req (self ++ [1]) (self, 3) (self, 4)
+                  (UnivBase (BaseBits (x1 ^^ k1))));
+          st <- SMCRealStateWaitFwd (pt1, pt2, x1, k2, k1);
+        }
       }
     }
     elif (is_smc_real_state_wait_fwd st) {  (* P2 *)
@@ -2312,7 +2331,7 @@ module SMCReal (KE : FUNC) : FUNC = {
         if (r <> None /\
             let (mod, pt1, pt2, u) = oget r in
             let (addr1, n1) = pt1
-            in !((mod = Dir /\ addr1 = self) \/
+            in !((mod = Dir /\ addr1 = self /\ (n1 = 3 \/ n1 = 4)) \/
                  (mod = Adv /\ ! self <= addr1))) {
           r <- None;
         }
@@ -2333,7 +2352,7 @@ module SMCReal (KE : FUNC) : FUNC = {
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m;
     (addr1, n1) <- pt1;
-    if ((mod = Dir /\ addr1 = self) \/
+    if ((mod = Dir /\ addr1 = self /\ n1 = 1) \/
         (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
       r <- loop(m);
     }
@@ -2341,15 +2360,17 @@ module SMCReal (KE : FUNC) : FUNC = {
   }
 }.
 
-(* request sent from port 1 of SMC ideal functionality to port
+(* Ideal Functionality *)
+
+(* request sent from port 3 of SMC ideal functionality to port
    smc_sim_adv_pi of SMC simulator *)
 
 op smc_sim_req (ideal adv : addr) : msg =
-     (Adv, (adv, smc_sim_adv_pi), (ideal, 1), UnivUnit).
+     (Adv, (adv, smc_sim_adv_pi), (ideal, 3), UnivUnit).
 
 op dec_smc_sim_req (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> smc_sim_adv_pi \/ pt2.`2 <> 1 \/
+     in (mod = Dir \/ pt1.`2 <> smc_sim_adv_pi \/ pt2.`2 <> 3 \/
          v <> UnivUnit) ?
         None :
         Some (pt2.`1, pt1.`1).
@@ -2365,15 +2386,15 @@ lemma is_smc_sim_req (ideal adv : addr) :
   is_smc_sim_req (smc_sim_req ideal adv).
 proof. done. qed.
 
-(* response sent from port smc_sim_adv_pi of SMC simulator to port 2
+(* response sent from port smc_sim_adv_pi of SMC simulator to port 3
    of SMC ideal functionality *)
 
 op smc_sim_rsp (ideal adv : addr) : msg =
-     (Adv, (ideal, 2), (adv, smc_sim_adv_pi), UnivUnit).
+     (Adv, (ideal, 3), (adv, smc_sim_adv_pi), UnivUnit).
 
 op dec_smc_sim_rsp (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 2 \/ pt2.`2 <> smc_sim_adv_pi \/
+     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> smc_sim_adv_pi \/
          ! v = UnivUnit) ?
         None :
         Some (pt1.`1, pt2.`1).
@@ -2444,6 +2465,7 @@ module SMCIdeal : FUNC = {
     var r : msg option <- None;
     if (st = SMCIdealStateWaitReq) {  (* P1 *)
       if (is_smc_req m) {
+        (* destination of m is (self, 1) *)
         (addr, pt1, pt2, x) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
           r <- Some (smc_sim_req self adv);
@@ -2454,6 +2476,7 @@ module SMCIdeal : FUNC = {
     elif (is_smc_ideal_state_wait_sim st) {  (* P2 *)
       (pt1, pt2, x) <- oget (dec_smc_ideal_state_wait_sim st);
       if (is_smc_sim_rsp m) {
+        (* destination of m is (self, 3) *)
         (addr1, addr2) <- oget (dec_smc_sim_rsp m);
         r <- Some (smc_rsp self pt1 pt2 x);
         st <- SMCIdealStateFinal (pt1, pt2, x);
@@ -2468,12 +2491,15 @@ module SMCIdeal : FUNC = {
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m;
     (addr1, n1) <- pt1;
-    if (mod = Dir /\ addr1 = self) {
+    if ((mod = Dir /\ addr1 = self /\ n1 = 1) \/
+        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
       r <- parties(m);
     }
     return r;
   }
 }.
+
+(* Simulator *)
 
 type smc_sim_state = [
     SMCSimStateWaitReq
@@ -2615,7 +2641,7 @@ module SMCSim (Adv : FUNC) = {
               (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp2 m);
               if (addr1 = addr ++ [2]) {
                 r <-
-                  Some (Fwd.fw_obs (addr ++ [1]) self (addr, 1) (addr, 2)
+                  Some (Fwd.fw_obs (addr ++ [1]) self (addr, 3) (addr, 4)
                         (UnivBase (BaseBits (g ^ q))));
                 st <- SMCSimStateWaitAdv3 (addr, q);
               }
