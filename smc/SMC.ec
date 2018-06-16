@@ -2,7 +2,7 @@
 
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
-require import AllCore List FSet Distr Aux ListPO.
+require import AllCore List FSet Distr ListAux ListPO.
 require DDH UCCore.
 
 (************************** Bitstrings and Exponents **************************)
@@ -477,7 +477,8 @@ op dec_ke_rsp1 (m : msg) : (addr * port * port * bits) option =
            let b = oget (dec_univ_base v2)
            in (! is_base_bits b) ?
               None :
-              Some (pt2.`1, oget (dec_univ_port v1), pt1, oget (dec_base_bits b)).
+              Some (pt2.`1, oget (dec_univ_port v1), pt1,
+                    oget (dec_base_bits b)).
 
 lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : bits) :
   dec_ke_rsp1 (ke_rsp1 func pt1 pt2 x) = Some (func, pt1, pt2, x).
@@ -563,7 +564,7 @@ clone Forward as Fwd2
 proof *.
 realize fwd_pi_uniq. by have := ke_pi_uniq. qed.
 
-(* states for Parties 1 and 2 *)
+(* state for Party 1 *)
 
 type ke_real_p1_state = [
     KERealP1StateWaitReq1
@@ -604,6 +605,8 @@ op is_ke_real_p1_state_final (st : ke_real_p1_state) : bool =
 lemma is_ke_real_p1_state_final (x : port * port * exp) :
   is_ke_real_p1_state_final (KERealP1StateFinal x).
 proof. done. qed.
+
+(* state for Party 2 *)
 
 type ke_real_p2_state = [
     KERealP2StateWaitFwd1
@@ -649,6 +652,11 @@ module KEReal : FUNC = {
   var self, adv : addr
   var st1 : ke_real_p1_state
   var st2 : ke_real_p2_state
+
+  (* Party 1 (P1) manages ports (self, 1) and (self, 3)
+     Party 2 (P2) manages ports (self, 2) and (self, 4)
+     First forwarder (Fwd1) is at address self ++ [1]
+     Second forwarder (Fwd2) is at address self ++ [2] *)
 
   proc init(self_ adv_ : addr) : unit = {
     self <- self_; adv <- adv_;
@@ -719,9 +727,10 @@ module KEReal : FUNC = {
         (addr, pt2') <- oget (dec_ke_req2 m);
         if (pt2' = pt2) {
           r <-
-            Some (Fwd2.fw_req
-                  (self ++ [2]) (self, 4) (self, 3)
-                  (UnivBase (BaseBits (g ^ q2))));
+            Some 
+            (Fwd2.fw_req
+             (self ++ [2]) (self, 4) (self, 3)
+             (UnivBase (BaseBits (g ^ q2))));
           st2 <- KERealP2StateFinal (pt1, pt2, q2);
         }
       }
@@ -760,11 +769,456 @@ module KEReal : FUNC = {
 
   proc invoke(m : msg) : msg option = {
     var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr; var n1, n2 : int;
+    var addr1 : addr; var n1 : int;
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
         (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
+      r <- loop(m);
+    }
+    return r;
+  }
+}.
+
+(* Ideal Functionality *)
+
+(* request sent from port index 3 of key exchange ideal functionality
+   to port index ke_sim_adv_pi of key exchange simulator, initiating
+   first phase of execution of simulator *)
+
+op ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) : msg =
+     (Adv, (adv, ke_sim_adv_pi), (ideal, 3),
+      UnivPair (UnivPort pt1, UnivPort pt2)).
+
+op dec_ke_sim_req1 (m : msg) : (addr * addr * port * port) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
+         ! is_univ_pair v) ?
+        None :
+        let (v1, v2) = oget (dec_univ_pair v)
+        in (! is_univ_port v1 \/ ! is_univ_port v2) ?
+           None :
+           Some (pt2.`1, pt1.`1,
+                 oget (dec_univ_port v1), oget (dec_univ_port v2)).
+
+lemma enc_dec_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
+  dec_ke_sim_req1 (ke_sim_req1 ideal adv pt1 pt2) =
+  Some (ideal, adv, pt1, pt2).
+proof. done. qed.
+
+op is_ke_sim_req1 (m : msg) : bool =
+     dec_ke_sim_req1 m <> None.
+
+lemma is_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
+  is_ke_sim_req1 (ke_sim_req1 ideal adv pt1 pt2).
+proof. done. qed.
+
+(* response sent from port ke_sim_adv_pi of key exchange simulator to
+   port 3 of key exchange ideal functionality, completing first
+   phase of simulator execution *)
+
+op ke_sim_rsp1 (ideal adv : addr) : msg =
+     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
+
+op dec_ke_sim_rsp1 (m : msg) : (addr * addr) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
+         ! v = UnivUnit) ?
+        None :
+        Some (pt1.`1, pt2.`1).
+
+lemma enc_dec_ke_sim_rsp1 (ideal adv : addr) :
+  dec_ke_sim_rsp1 (ke_sim_rsp1 ideal adv) = Some (ideal, adv).
+proof. done. qed.
+
+op is_ke_sim_rsp1 (m : msg) : bool =
+     dec_ke_sim_rsp1 m <> None.
+
+lemma is_ke_sim_rsp1 (ideal adv : addr) :
+  is_ke_sim_rsp1 (ke_sim_rsp1 ideal adv).
+proof. done. qed.
+
+(* request sent from port 3 of key exchange ideal functionality to
+   port ke_sim_adv_pi of key exchange simulator, initiating second phase
+   of execution of simulator *)
+
+op ke_sim_req2 (ideal adv : addr) : msg =
+     (Adv, (adv, ke_sim_adv_pi), (ideal, 3), UnivUnit).
+
+op dec_ke_sim_req2 (m : msg) : (addr * addr) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
+         ! v = UnivUnit) ?
+        None :
+        Some (pt2.`1, pt1.`1).
+
+lemma enc_dec_ke_sim_req2 (ideal adv : addr) :
+  dec_ke_sim_req2 (ke_sim_req2 ideal adv) = Some (ideal, adv).
+proof. done. qed.
+
+op is_ke_sim_req2 (m : msg) : bool =
+     dec_ke_sim_req2 m <> None.
+
+lemma is_ke_sim_req2 (ideal adv : addr) :
+  is_ke_sim_req2 (ke_sim_req2 ideal adv).
+proof. done. qed.
+
+(* response sent from port ke_sim_adv_pi of key exchange simulator to
+   port 3 of key exchange ideal functionality, completing second
+   phase of simulator execution *)
+
+op ke_sim_rsp2 (ideal adv : addr) : msg =
+     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
+
+op dec_ke_sim_rsp2 (m : msg) : (addr * addr) option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
+         ! v = UnivUnit) ?
+        None :
+        Some (pt1.`1, pt2.`1).
+
+lemma enc_dec_ke_sim_rsp2 (ideal adv : addr) :
+  dec_ke_sim_rsp2 (ke_sim_rsp2 ideal adv) = Some (ideal, adv).
+proof. done. qed.
+
+op is_ke_sim_rsp2 (m : msg) : bool =
+     dec_ke_sim_rsp2 m <> None.
+
+lemma is_ke_sim_rsp2 (ideal adv : addr) :
+  is_ke_sim_rsp2 (ke_sim_rsp2 ideal adv).
+proof. done. qed.
+
+type ke_ideal_state = [
+    KEIdealStateWaitReq1
+  | KEIdealStateWaitSim1 of (port * port * exp)
+  | KEIdealStateWaitReq2 of (port * port * exp)
+  | KEIdealStateWaitSim2 of (port * port * exp)
+  | KEIdealStateFinal    of (port * port * exp)
+].
+
+op dec_ke_ideal_state_wait_sim1 (st : ke_ideal_state) :
+     (port * port * exp) option =
+     with st = KEIdealStateWaitReq1   => None
+     with st = KEIdealStateWaitSim1 x => Some x
+     with st = KEIdealStateWaitReq2 _ => None
+     with st = KEIdealStateWaitSim2 _ => None
+     with st = KEIdealStateFinal _    => None.
+
+lemma enc_dec_ke_ideal_state_wait_sim1 (x : port * port * exp) :
+  dec_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x) = Some x.
+proof. done. qed.
+
+op is_ke_ideal_state_wait_sim1 (st : ke_ideal_state) : bool =
+  dec_ke_ideal_state_wait_sim1 st <> None.
+
+lemma is_ke_ideal_state_wait_sim1 (x : port * port * exp) :
+  is_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x).
+proof. done. qed.
+
+op dec_ke_ideal_state_wait_req2 (st : ke_ideal_state) :
+     (port * port * exp) option =
+     with st = KEIdealStateWaitReq1   => None
+     with st = KEIdealStateWaitSim1 _ => None
+     with st = KEIdealStateWaitReq2 x => Some x
+     with st = KEIdealStateWaitSim2 _ => None
+     with st = KEIdealStateFinal _    => None.
+
+lemma enc_dec_ke_ideal_state_wait_req2 (x : port * port * exp) :
+  dec_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x) = Some x.
+proof. done. qed.
+
+op is_ke_ideal_state_wait_req2 (st : ke_ideal_state) : bool =
+  dec_ke_ideal_state_wait_req2 st <> None.
+
+lemma is_ke_ideal_state_wait_req2 (x : port * port * exp) :
+  is_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x).
+proof. done. qed.
+
+op dec_ke_ideal_state_wait_sim2 (st : ke_ideal_state) :
+     (port * port * exp) option =
+     with st = KEIdealStateWaitReq1   => None
+     with st = KEIdealStateWaitSim1 _ => None
+     with st = KEIdealStateWaitReq2 _ => None
+     with st = KEIdealStateWaitSim2 x => Some x
+     with st = KEIdealStateFinal _    => None.
+
+lemma enc_dec_ke_ideal_state_wait_sim2 (x : port * port * exp) :
+  dec_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x) = Some x.
+proof. done. qed.
+
+op is_ke_ideal_state_wait_sim2 (st : ke_ideal_state) : bool =
+  dec_ke_ideal_state_wait_sim2 st <> None.
+
+lemma is_ke_ideal_state_wait_sim2 (x : port * port * exp) :
+  is_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x).
+proof. done. qed.
+
+op dec_ke_ideal_state_final (st : ke_ideal_state) :
+     (port * port * exp) option =
+     with st = KEIdealStateWaitReq1   => None
+     with st = KEIdealStateWaitSim1 _ => None
+     with st = KEIdealStateWaitReq2 _ => None
+     with st = KEIdealStateWaitSim2 _ => None
+     with st = KEIdealStateFinal x    => Some x.
+
+lemma enc_dec_ke_ideal_state_final (x : port * port * exp) :
+  dec_ke_ideal_state_final (KEIdealStateFinal x) = Some x.
+proof. done. qed.
+
+op is_ke_ideal_state_final (st : ke_ideal_state) : bool =
+  dec_ke_ideal_state_final st <> None.
+
+lemma is_ke_ideal_state_final (x : port * port * exp) :
+  is_ke_ideal_state_final (KEIdealStateFinal x).
+proof. done. qed.
+
+module KEIdeal : FUNC = {
+  var self, adv : addr
+  var st : ke_ideal_state
+
+  proc init(self_ adv_ : addr) : unit = {
+    self <- self_; adv <- adv_;
+    st <- KEIdealStateWaitReq1;
+  }
+
+  proc parties(m : msg) : msg option = {
+    var pt1, pt2, pt2' : port; var addr1, addr2 : addr;
+    var q : exp;
+    var r : msg option <- None;
+    if (st = KEIdealStateWaitReq1) {
+      if (is_ke_req1 m) {
+        (* destination of m is (self, 1), mode of m is Dir *)
+        (addr1, pt1, pt2) <- oget (dec_ke_req1 m);
+        if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
+          q <$ dexp;
+          r <- Some (ke_sim_req1 self adv pt1 pt2);
+          st <- KEIdealStateWaitSim1 (pt1, pt2, q);
+        }
+      }
+    }
+    elif (is_ke_ideal_state_wait_sim1 st) {
+      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim1 st);
+      if (is_ke_sim_rsp1 m) {
+        (* destination of m is (self, 3), mode of m is Adv *)
+        r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
+        st <- KEIdealStateWaitReq2 (pt1, pt2, q);
+      }
+    }
+    elif (is_ke_ideal_state_wait_req2 st) {
+      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_req2 st);
+      if (is_ke_req2 m) {
+        (* destination of m is (self, 2), mode of m is Dir *)
+        (addr1, pt2') <- oget (dec_ke_req2 m);
+        if (pt2' = pt2) {
+          r <- Some (ke_sim_req2 self adv);
+          st <- KEIdealStateWaitSim2 (pt1, pt2, q);
+        }
+      }
+    }
+    elif (is_ke_ideal_state_wait_sim2 st) {
+      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim2 st);
+      if (is_ke_sim_rsp2 m) {
+        (* destination of m is (self, 3), mode of m is Adv *)
+        r <- Some (ke_rsp2 self pt1 (g ^ q));
+        st <- KEIdealStateFinal (pt1, pt2, q);
+      }
+    }
+    else {  (* st = KEIdealStateFinal *)
+    }
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr1, addr2 : addr; var n1, n2 : int;
+    var r : msg option <- None;
+    (mod, pt1, pt2, u) <- m;
+    (addr1, n1) <- pt1;
+    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
+        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
+      r <- parties(m);
+    }
+    return r;
+  }
+}.
+
+(* Simulator *)
+
+type ke_sim_state = [
+    KESimStateWaitReq1
+  | KESimStateWaitAdv1 of (addr * exp)
+  | KESimStateWaitReq2 of (addr * exp * exp)
+  | KESimStateWaitAdv2 of (addr * exp * exp)
+  | KESimStateFinal    of (addr * exp * exp)
+].
+
+op dec_ke_sim_state_wait_adv1 (st : ke_sim_state) : (addr * exp) option =
+     with st = KESimStateWaitReq1   => None
+     with st = KESimStateWaitAdv1 x => Some x
+     with st = KESimStateWaitReq2 _ => None
+     with st = KESimStateWaitAdv2 _ => None
+     with st = KESimStateFinal _    => None.
+
+lemma enc_dec_ke_sim_state_wait_adv1 (x : addr * exp) :
+  dec_ke_sim_state_wait_adv1 (KESimStateWaitAdv1 x) = Some x.
+proof. done. qed.
+
+op is_ke_sim_state_wait_adv1 (st : ke_sim_state) : bool =
+  dec_ke_sim_state_wait_adv1 st <> None.
+
+lemma is_ke_sim_state_wait_adv1 (x : addr * exp) :
+  is_ke_sim_state_wait_adv1 (KESimStateWaitAdv1 x).
+proof. done. qed.
+
+op dec_ke_sim_state_wait_req2 (st : ke_sim_state) :
+     (addr * exp * exp) option =
+     with st = KESimStateWaitReq1   => None
+     with st = KESimStateWaitAdv1 _ => None
+     with st = KESimStateWaitReq2 x => Some x
+     with st = KESimStateWaitAdv2 _ => None
+     with st = KESimStateFinal _    => None.
+
+lemma enc_dec_ke_sim_state_wait_req2 (x : addr * exp * exp) :
+  dec_ke_sim_state_wait_req2 (KESimStateWaitReq2 x) = Some x.
+proof. done. qed.
+
+op is_ke_sim_state_wait_req2 (st : ke_sim_state) : bool =
+  dec_ke_sim_state_wait_req2 st <> None.
+
+lemma is_ke_sim_state_wait_req2 (x : addr * exp * exp) :
+  is_ke_sim_state_wait_req2 (KESimStateWaitReq2 x).
+proof. done. qed.
+
+op dec_ke_sim_state_wait_adv2 (st : ke_sim_state) :
+     (addr * exp * exp) option =
+     with st = KESimStateWaitReq1   => None
+     with st = KESimStateWaitAdv1 _ => None
+     with st = KESimStateWaitReq2 _ => None
+     with st = KESimStateWaitAdv2 x => Some x
+     with st = KESimStateFinal _    => None.
+
+lemma enc_dec_ke_sim_state_wait_adv2 (x : addr * exp * exp) :
+  dec_ke_sim_state_wait_adv2 (KESimStateWaitAdv2 x) = Some x.
+proof. done. qed.
+
+op is_ke_sim_state_wait_adv2 (st : ke_sim_state) : bool =
+  dec_ke_sim_state_wait_adv2 st <> None.
+
+lemma is_ke_sim_state_wait_adv2 (x : addr * exp * exp) :
+  is_ke_sim_state_wait_adv2 (KESimStateWaitAdv2 x).
+proof. done. qed.
+
+op dec_ke_sim_state_final (st : ke_sim_state) :
+     (addr * exp * exp) option =
+     with st = KESimStateWaitReq1   => None
+     with st = KESimStateWaitAdv1 _ => None
+     with st = KESimStateWaitReq2 _ => None
+     with st = KESimStateWaitAdv2 _ => None
+     with st = KESimStateFinal x    => Some x.
+
+lemma enc_dec_ke_sim_state_final (x : addr * exp * exp) :
+  dec_ke_sim_state_final (KESimStateFinal x) = Some x.
+proof. done. qed.
+
+op is_ke_sim_state_final (st : ke_sim_state) : bool =
+  dec_ke_sim_state_final st <> None.
+
+lemma is_ke_sim_state_final (x : addr * exp * exp) :
+  is_ke_sim_state_final (KESimStateFinal x).
+proof. done. qed.
+
+module KESim (Adv : FUNC) = {
+  var self, adv : addr
+  var st : ke_sim_state
+
+  proc init(self_ adv_ : addr) : unit = {
+    self <- self_; adv <- adv_;
+    Adv.init(self, adv);
+    st <- KESimStateWaitReq1;
+  }
+
+  proc loop(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var addr, addr1, addr2 : addr; var q1, q2 : exp;
+    var r : msg option <- None;
+    var not_done : bool <- true;
+    while (not_done) {
+      (* mod = Adv /\ pt1.`1 = self *)
+      (mod, pt1, pt2, u) <- m;
+      if (pt1.`2 = ke_sim_adv_pi) {  (* simulator *)
+        r <- None;
+        if (st = KESimStateWaitReq1) {
+          if (is_ke_sim_req1 m) {
+            (addr1, addr2) <- oget (dec_ke_sim_req1 m);
+            q1 <$ dexp;
+            r <-
+              Some (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
+                    (UnivBase (BaseBits (g ^ q1))));
+            st <- KESimStateWaitAdv1 (addr1, q1);
+          }
+        }
+        elif (is_ke_sim_state_wait_req2 st) {
+          (addr, q1, q2) <- oget (dec_ke_sim_state_wait_req2 st);
+          if (is_ke_sim_req2 m) {
+            (addr1, addr2) <- oget (dec_ke_sim_req2 m);
+            r <-
+              Some (Fwd2.fw_obs (addr ++ [2]) self (addr, 4) (addr, 3)
+                    (UnivBase (BaseBits (g ^ q2))));
+            st <- KESimStateWaitAdv2 (addr, q1, q2);
+          }
+        }
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;
+        }
+      }
+      else {  (* adversary *)
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r;
+          (mod, pt1, pt2, u) <- m;
+          if (is_ke_sim_state_wait_adv1 st) {
+            (addr, q1) <- oget (dec_ke_sim_state_wait_adv1 st);
+            r <- None;
+            if (Fwd1.is_fw_ok m) {
+              (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
+              if (addr1 = addr ++ [1]) {
+                q2 <$ dexp;
+                r <- Some (ke_sim_rsp1 addr self);
+                st <- KESimStateWaitReq2 (addr, q1, q2);
+              }
+            }
+          }
+          elif (is_ke_sim_state_wait_adv2 st) {
+            r <- None;
+            (addr, q1, q2) <- oget (dec_ke_sim_state_wait_adv2 st);
+            if (Fwd2.is_fw_ok m) {
+              (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
+              if (addr1 = addr ++ [2]) {
+                r <- Some (ke_sim_rsp2 addr self);
+                st <- KESimStateFinal (addr, q1, q2);
+              }
+            }
+          }
+          else {  (* not waiting on adversary *)
+            not_done <- false;
+          }
+        }
+      }
+    }
+    return r;
+  }  
+
+  proc invoke(m : msg) : msg option = {
+    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var r : msg option <- None;
+    (mod, pt1, pt2, u) <- m;
+    if (mod = Adv /\ pt1.`1 = self) {
       r <- loop(m);
     }
     return r;
@@ -937,6 +1391,8 @@ module KERealSimp : FUNC = {
     return r;
   }
 }.
+
+(* relational invariant for connecting KEReal and KERealSimp *)
 
 type ke_real_simp_st = {
   ke_real_simp_st_func : addr;
@@ -1698,447 +2154,6 @@ auto; progress; by apply (KERealSimpRel4 _ pt1' pt2' q1' q2').
 (* no more cases *)
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
-
-(* Ideal Functionality *)
-
-(* request sent from port 3 of key exchange ideal functionality to
-   port ke_sim_adv_pi of key exchange simulator, initiating first phase
-   of execution of simulator *)
-
-op ke_sim_req1 (ideal adv : addr) : msg =
-     (Adv, (adv, ke_sim_adv_pi), (ideal, 3), UnivUnit).
-
-op dec_ke_sim_req1 (m : msg) : (addr * addr) option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
-         ! v = UnivUnit) ?
-        None :
-        Some (pt2.`1, pt1.`1).
-
-lemma enc_dec_ke_sim_req1 (ideal adv : addr) :
-  dec_ke_sim_req1 (ke_sim_req1 ideal adv) = Some (ideal, adv).
-proof. done. qed.
-
-op is_ke_sim_req1 (m : msg) : bool =
-     dec_ke_sim_req1 m <> None.
-
-lemma is_ke_sim_req1 (ideal adv : addr) :
-  is_ke_sim_req1 (ke_sim_req1 ideal adv).
-proof. done. qed.
-
-(* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 3 of key exchange ideal functionality, completing first
-   phase of simulator execution *)
-
-op ke_sim_rsp1 (ideal adv : addr) : msg =
-     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
-
-op dec_ke_sim_rsp1 (m : msg) : (addr * addr) option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
-         ! v = UnivUnit) ?
-        None :
-        Some (pt1.`1, pt2.`1).
-
-lemma enc_dec_ke_sim_rsp1 (ideal adv : addr) :
-  dec_ke_sim_rsp1 (ke_sim_rsp1 ideal adv) = Some (ideal, adv).
-proof. done. qed.
-
-op is_ke_sim_rsp1 (m : msg) : bool =
-     dec_ke_sim_rsp1 m <> None.
-
-lemma is_ke_sim_rsp1 (ideal adv : addr) :
-  is_ke_sim_rsp1 (ke_sim_rsp1 ideal adv).
-proof. done. qed.
-
-(* request sent from port 3 of key exchange ideal functionality to
-   port ke_sim_adv_pi of key exchange simulator, initiating second phase
-   of execution of simulator *)
-
-op ke_sim_req2 (ideal adv : addr) : msg =
-     (Adv, (adv, ke_sim_adv_pi), (ideal, 3), UnivUnit).
-
-op dec_ke_sim_req2 (m : msg) : (addr * addr) option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> ke_sim_adv_pi \/ pt2.`2 <> 3 \/
-         ! v = UnivUnit) ?
-        None :
-        Some (pt2.`1, pt1.`1).
-
-lemma enc_dec_ke_sim_req2 (ideal adv : addr) :
-  dec_ke_sim_req2 (ke_sim_req2 ideal adv) = Some (ideal, adv).
-proof. done. qed.
-
-op is_ke_sim_req2 (m : msg) : bool =
-     dec_ke_sim_req2 m <> None.
-
-lemma is_ke_sim_req2 (ideal adv : addr) :
-  is_ke_sim_req2 (ke_sim_req2 ideal adv).
-proof. done. qed.
-
-(* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 3 of key exchange ideal functionality, completing second
-   phase of simulator execution *)
-
-op ke_sim_rsp2 (ideal adv : addr) : msg =
-     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
-
-op dec_ke_sim_rsp2 (m : msg) : (addr * addr) option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
-         ! v = UnivUnit) ?
-        None :
-        Some (pt1.`1, pt2.`1).
-
-lemma enc_dec_ke_sim_rsp2 (ideal adv : addr) :
-  dec_ke_sim_rsp2 (ke_sim_rsp2 ideal adv) = Some (ideal, adv).
-proof. done. qed.
-
-op is_ke_sim_rsp2 (m : msg) : bool =
-     dec_ke_sim_rsp2 m <> None.
-
-lemma is_ke_sim_rsp2 (ideal adv : addr) :
-  is_ke_sim_rsp2 (ke_sim_rsp2 ideal adv).
-proof. done. qed.
-
-type ke_ideal_state = [
-    KEIdealStateWaitReq1
-  | KEIdealStateWaitSim1 of (port * port * exp)
-  | KEIdealStateWaitReq2 of (port * port * exp)
-  | KEIdealStateWaitSim2 of (port * port * exp)
-  | KEIdealStateFinal    of (port * port * exp)
-].
-
-op dec_ke_ideal_state_wait_sim1 (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 x => Some x
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_sim1 (x : port * port * exp) :
-  dec_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_sim1 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_sim1 st <> None.
-
-lemma is_ke_ideal_state_wait_sim1 (x : port * port * exp) :
-  is_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_wait_req2 (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 x => Some x
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_req2 (x : port * port * exp) :
-  dec_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_req2 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_req2 st <> None.
-
-lemma is_ke_ideal_state_wait_req2 (x : port * port * exp) :
-  is_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_wait_sim2 (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 x => Some x
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_sim2 (x : port * port * exp) :
-  dec_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_sim2 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_sim2 st <> None.
-
-lemma is_ke_ideal_state_wait_sim2 (x : port * port * exp) :
-  is_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_final (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal x    => Some x.
-
-lemma enc_dec_ke_ideal_state_final (x : port * port * exp) :
-  dec_ke_ideal_state_final (KEIdealStateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_final (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_final st <> None.
-
-lemma is_ke_ideal_state_final (x : port * port * exp) :
-  is_ke_ideal_state_final (KEIdealStateFinal x).
-proof. done. qed.
-
-module KEIdeal : FUNC = {
-  var self, adv : addr
-  var st : ke_ideal_state
-
-  proc init(self_ adv_ : addr) : unit = {
-    self <- self_; adv <- adv_;
-    st <- KEIdealStateWaitReq1;
-  }
-
-  proc parties(m : msg) : msg option = {
-    var pt1, pt2, pt2' : port; var addr1, addr2 : addr;
-    var q : exp;
-    var r : msg option <- None;
-    if (st = KEIdealStateWaitReq1) {  (* P1 can respond *)
-      if (is_ke_req1 m) {
-        (* destination of m is (self, 1), mode of m is Dir *)
-        (addr1, pt1, pt2) <- oget (dec_ke_req1 m);
-        if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
-          q <$ dexp;
-          r <- Some (ke_sim_req1 self adv);
-          st <- KEIdealStateWaitSim1 (pt1, pt2, q);
-        }
-      }
-    }
-    elif (is_ke_ideal_state_wait_sim1 st) {  (* P2 can respond *)
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim1 st);
-      if (is_ke_sim_rsp1 m) {
-        (* destination of m is (self, 3), mode of m is Adv *)
-        (addr1, addr2) <- oget (dec_ke_sim_rsp1 m);
-        r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
-        st <- KEIdealStateWaitReq2 (pt1, pt2, q);
-      }
-    }
-    elif (is_ke_ideal_state_wait_req2 st) {  (* P2 can respond *)
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_req2 st);
-      if (is_ke_req2 m) {
-        (* destination of m is (self, 2), mode of m is Dir *)
-        (addr1, pt2') <- oget (dec_ke_req2 m);
-        if (pt2' = pt2) {
-          r <- Some (ke_sim_req2 self adv);
-          st <- KEIdealStateWaitSim2 (pt1, pt2, q);
-        }
-      }
-    }
-    elif (is_ke_ideal_state_wait_sim2 st) {  (* P1 can respond *)
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim2 st);
-      if (is_ke_sim_rsp2 m) {
-        (* destination of m is (self, 3), mode of m is Adv *)
-        (addr1, addr2) <- oget (dec_ke_sim_rsp2 m);
-        r <- Some (ke_rsp2 self pt1 (g ^ q));
-        st <- KEIdealStateFinal (pt1, pt2, q);
-      }
-    }
-    else {  (* st = KEIdealStateFinal *)
-    }
-    return r;
-  }
-
-  proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr; var n1, n2 : int;
-    var r : msg option <- None;
-    (mod, pt1, pt2, u) <- m;
-    (addr1, n1) <- pt1;
-    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
-        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
-      r <- parties(m);
-    }
-    return r;
-  }
-}.
-
-(* Simulator *)
-
-type ke_sim_state = [
-    KESimStateWaitReq1
-  | KESimStateWaitAdv1 of (addr * exp)
-  | KESimStateWaitReq2 of (addr * exp * exp)
-  | KESimStateWaitAdv2 of (addr * exp * exp)
-  | KESimStateFinal    of (addr * exp * exp)
-].
-
-op dec_ke_sim_state_wait_adv1 (st : ke_sim_state) : (addr * exp) option =
-     with st = KESimStateWaitReq1   => None
-     with st = KESimStateWaitAdv1 x => Some x
-     with st = KESimStateWaitReq2 _ => None
-     with st = KESimStateWaitAdv2 _ => None
-     with st = KESimStateFinal _    => None.
-
-lemma enc_dec_ke_sim_state_wait_adv1 (x : addr * exp) :
-  dec_ke_sim_state_wait_adv1 (KESimStateWaitAdv1 x) = Some x.
-proof. done. qed.
-
-op is_ke_sim_state_wait_adv1 (st : ke_sim_state) : bool =
-  dec_ke_sim_state_wait_adv1 st <> None.
-
-lemma is_ke_sim_state_wait_adv1 (x : addr * exp) :
-  is_ke_sim_state_wait_adv1 (KESimStateWaitAdv1 x).
-proof. done. qed.
-
-op dec_ke_sim_state_wait_req2 (st : ke_sim_state) :
-     (addr * exp * exp) option =
-     with st = KESimStateWaitReq1   => None
-     with st = KESimStateWaitAdv1 _ => None
-     with st = KESimStateWaitReq2 x => Some x
-     with st = KESimStateWaitAdv2 _ => None
-     with st = KESimStateFinal _    => None.
-
-lemma enc_dec_ke_sim_state_wait_req2 (x : addr * exp * exp) :
-  dec_ke_sim_state_wait_req2 (KESimStateWaitReq2 x) = Some x.
-proof. done. qed.
-
-op is_ke_sim_state_wait_req2 (st : ke_sim_state) : bool =
-  dec_ke_sim_state_wait_req2 st <> None.
-
-lemma is_ke_sim_state_wait_req2 (x : addr * exp * exp) :
-  is_ke_sim_state_wait_req2 (KESimStateWaitReq2 x).
-proof. done. qed.
-
-op dec_ke_sim_state_wait_adv2 (st : ke_sim_state) :
-     (addr * exp * exp) option =
-     with st = KESimStateWaitReq1   => None
-     with st = KESimStateWaitAdv1 _ => None
-     with st = KESimStateWaitReq2 _ => None
-     with st = KESimStateWaitAdv2 x => Some x
-     with st = KESimStateFinal _    => None.
-
-lemma enc_dec_ke_sim_state_wait_adv2 (x : addr * exp * exp) :
-  dec_ke_sim_state_wait_adv2 (KESimStateWaitAdv2 x) = Some x.
-proof. done. qed.
-
-op is_ke_sim_state_wait_adv2 (st : ke_sim_state) : bool =
-  dec_ke_sim_state_wait_adv2 st <> None.
-
-lemma is_ke_sim_state_wait_adv2 (x : addr * exp * exp) :
-  is_ke_sim_state_wait_adv2 (KESimStateWaitAdv2 x).
-proof. done. qed.
-
-op dec_ke_sim_state_final (st : ke_sim_state) :
-     (addr * exp * exp) option =
-     with st = KESimStateWaitReq1   => None
-     with st = KESimStateWaitAdv1 _ => None
-     with st = KESimStateWaitReq2 _ => None
-     with st = KESimStateWaitAdv2 _ => None
-     with st = KESimStateFinal x    => Some x.
-
-lemma enc_dec_ke_sim_state_final (x : addr * exp * exp) :
-  dec_ke_sim_state_final (KESimStateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_sim_state_final (st : ke_sim_state) : bool =
-  dec_ke_sim_state_final st <> None.
-
-lemma is_ke_sim_state_final (x : addr * exp * exp) :
-  is_ke_sim_state_final (KESimStateFinal x).
-proof. done. qed.
-
-module KESim (Adv : FUNC) = {
-  var self, adv : addr
-  var st : ke_sim_state
-
-  proc init(self_ adv_ : addr) : unit = {
-    self <- self_; adv <- adv_;
-    Adv.init(self, adv);
-    st <- KESimStateWaitReq1;
-  }
-
-  proc loop(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr, addr1, addr2 : addr; var q1, q2 : exp;
-    var r : msg option <- None;
-    var not_done : bool <- true;
-    while (not_done) {
-      (* mod = Adv /\ pt1.`1 = self *)
-      (mod, pt1, pt2, u) <- m;
-      if (pt1.`2 = ke_sim_adv_pi) {  (* simulator *)
-        r <- None;
-        if (st = KESimStateWaitReq1) {
-          if (is_ke_sim_req1 m) {
-            (addr1, addr2) <- oget (dec_ke_sim_req1 m);
-            q1 <$ dexp;
-            r <-
-              Some (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
-                    (UnivBase (BaseBits (g ^ q1))));
-            st <- KESimStateWaitAdv1 (addr1, q1);
-          }
-        }
-        elif (is_ke_sim_state_wait_req2 st) {
-          (addr, q1, q2) <- oget (dec_ke_sim_state_wait_req2 st);
-          if (is_ke_sim_req2 m) {
-            (addr1, addr2) <- oget (dec_ke_sim_req2 m);
-            r <-
-              Some (Fwd2.fw_obs (addr ++ [2]) self (addr, 4) (addr, 3)
-                    (UnivBase (BaseBits (g ^ q2))));
-            st <- KESimStateWaitAdv2 (addr, q1, q2);
-          }
-        }
-        if (r = None) {
-          not_done <- false;
-        }
-        else {
-          m <- oget r;
-        }
-      }
-      else {  (* adversary *)
-        r <@ Adv.invoke(m);
-        if (r = None) {
-          not_done <- false;
-        }
-        else {
-          m <- oget r;
-          (mod, pt1, pt2, u) <- m;
-          if (is_ke_sim_state_wait_adv1 st) {
-            (addr, q1) <- oget (dec_ke_sim_state_wait_adv1 st);
-            r <- None;
-            if (Fwd1.is_fw_ok m) {
-              (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
-              if (addr1 = addr ++ [1]) {
-                q2 <$ dexp;
-                r <- Some (ke_sim_rsp1 addr self);
-                st <- KESimStateWaitReq2 (addr, q1, q2);
-              }
-            }
-          }
-          elif (is_ke_sim_state_wait_adv2 st) {
-            r <- None;
-            (addr, q1, q2) <- oget (dec_ke_sim_state_wait_adv2 st);
-            if (Fwd2.is_fw_ok m) {
-              (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
-              if (addr1 = addr ++ [2]) {
-                r <- Some (ke_sim_rsp2 addr self);
-                st <- KESimStateFinal (addr, q1, q2);
-              }
-            }
-          }
-          else {  (* not waiting on adversary *)
-            not_done <- false;
-          }
-        }
-      }
-    }
-    return r;
-  }  
-
-  proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var r : msg option <- None;
-    (mod, pt1, pt2, u) <- m;
-    if (mod = Adv /\ pt1.`1 = self) {
-      r <- loop(m);
-    }
-    return r;
-  }
-}.
 
 module DDH_Adv (Env : ENV, Adv : FUNC) = {
   var func, adv : addr

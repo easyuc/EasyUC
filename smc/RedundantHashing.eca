@@ -1,0 +1,809 @@
+(* RedundantHashing.ec *)
+
+(* Redundant Hashing *)
+
+(* This abstract theory implements random oracles with procedures for
+   ordinary and redundant hashing (as well as an initialization
+   procedure).
+
+   There are two implementations:
+
+     A "non-optimized" one, in which redundant hashing works just like
+     ordinary hashing (and using the same map), but the hashing results
+     are discarded.
+
+     An "optimized" one in which redundant hashing does nothing.
+
+   The main lemma allows one to go back and forth between these
+   two implementations, as long as one only cares about an overall
+   boolean result. *)
+
+prover quorum=2 ["Alt-Ergo" "Z3"].  (* both Alt-Ergo and Z3 must succeed *)
+
+(***************************** Standard Theories ******************************)
+
+require import AllCore Distr FSet SmtMap List.
+require IterProc.
+
+(***************************** Auxiliary Theories *****************************)
+
+require import ListAux.
+require import FSetAux.
+
+(***************************** Theory Parameters ******************************)
+
+type input.  (* type of oracle inputs *)
+
+type output.  (* type of oracle outputs *)
+
+(* lossless distribution on outputs *)
+
+op output_distr : output distr.
+
+axiom output_distr_ll : is_lossless output_distr.
+
+(************************** End of Theory Parameters **************************)
+
+(* Hashing Oracles *)
+
+module type HASHING = {
+  (* initialization *)
+
+  proc init() : unit
+
+  (* ordinary hashing *)
+
+  proc hash(inp : input) : output
+
+  (* redundant hashing - result ignored *)
+
+  proc rhash(inp : input) : unit
+}.
+
+(* non-optimized implementation of Hashing Oracle *)
+
+module NonOptHashing : HASHING = {
+  var mp : (input, output) fmap
+
+  proc init() : unit = {
+    mp <- empty;
+  }
+
+  proc hash(inp : input) : output = {
+    if (! dom mp inp) {
+      mp.[inp] <$ output_distr;
+    }
+    return oget mp.[inp];
+  }
+
+  proc rhash(inp : input) : unit = {
+    hash(inp);
+  }
+}.
+
+(* optimized implementation of Hashing Oracle *)
+
+module OptHashing : HASHING = {
+  var mp : (input, output) fmap
+
+  proc init() : unit = {
+    mp <- empty;
+  }
+
+  proc hash(inp : input) : output = {
+    if (! dom mp inp) {
+      mp.[inp] <$ output_distr;
+    }
+    return oget mp.[inp];
+  }
+
+  proc rhash(inp : input) : unit = { }
+}.
+
+(* Hashing Adversary *)
+
+module type HASHING_ADV (H : HASHING) = {
+  proc * main() : bool {H.hash H.rhash}
+}.
+
+(* games based on the two implementations of hashing *)
+
+module GNonOptHashing (HashAdv : HASHING_ADV) = {
+  module HA = HashAdv(NonOptHashing)
+
+  proc main() : bool = {
+    var b : bool;
+    NonOptHashing.init();
+    b <@ HA.main();
+    return b;
+  }
+}.
+
+module GOptHashing (HashAdv : HASHING_ADV) = {
+  module HA = HashAdv(OptHashing)
+
+  proc main() : bool = {
+    var b : bool;
+    OptHashing.init();
+    b <@ HA.main();
+    return b;
+  }
+}.
+
+(* see end of section for main lemma *)
+
+section.
+
+(* our proof uses EasyCrypt's eager tactics, but the idea behind the
+   proof is simple: we can repeatedly postpone redundant hashing,
+   until the point when it is (non-redundantly) hashed or the hashing
+   adversary has already returned its boolean result (and so oracle
+   map equality is no longer of interest) *)
+
+declare module HashAdv : HASHING_ADV{NonOptHashing, OptHashing}.
+
+(* extended hashing module interface
+
+   implementations include two global variables: the oracle's map,
+   plus a record of which inputs are *redundant* - i.e., have been
+   supplied to rhash but not to hash
+
+   some of the details of the two implementations that follow can be
+   best understood by reading the subsequent proofs *)
+
+module type HASHING' = {
+  (* initialization *)
+
+  proc init() : unit
+
+  (* ordinary hashing *)
+
+  proc hash(inp : input) : output
+
+  (* redundant hashing - result ignored *)
+
+  proc rhash(inp : input) : unit
+
+  (* rehash redundant inputs *)
+
+  proc rehash_red_inps() : unit
+
+  (* rehash redundant inputs, and then look up value of inp *)
+
+  proc rehash_red_inps_rslt(inp : input) : output
+
+  (* hash inp either before or after (depending on the implementation)
+     rehashing redundant inputs, returning value of inp (obtained
+     immediately after hashing it) *)
+
+  proc rehash_red_inps_addl(inp : input) : output
+}.
+
+(* so we can use iteration over inputs *)
+
+local clone include IterProc with type t <- input
+proof *.
+(* nothing to realize *)
+
+(* non-optimized implementation *)
+
+local module NOH' : HASHING, HASHING' = {
+  var mp : (input, output) fmap
+  var red_inps : input fset
+
+  proc init() : unit = {
+    mp <- empty; red_inps <- fset0;
+  }
+
+  proc hash(inp : input) : output = {
+    if (! dom mp inp) {
+      mp.[inp] <$ output_distr;
+    }
+    else {
+      (* if inp was redundant it's no longer so *)
+      red_inps <- red_inps `\` fset1 inp;
+    }
+    return oget mp.[inp];
+  }
+
+  proc rhash(inp : input) : unit = {
+    if (! dom mp inp) {
+      mp.[inp] <$ output_distr;
+      (* inp is redundant *)
+      red_inps <- red_inps `|` fset1 inp;
+    }
+  }
+
+  module I = {
+    proc f (inp : input) = {
+      mp.[inp] <$ output_distr;
+    }
+  }
+
+  proc rehash_red_inps() = {
+    Iter(I).iter(elems red_inps);
+  }
+
+  proc rehash_red_inps_rslt(inp : input) : output = {
+    var out : output;
+    rehash_red_inps();
+    out <- oget mp.[inp];
+    return out;
+  }
+
+  proc rehash_red_inps_addl(inp : input) : output = {
+    var out : output;
+    rehash_red_inps();
+    mp.[inp] <$ output_distr;  (* after *)
+    out <- oget mp.[inp];
+    return out;
+  }
+}.
+
+(* optimized implementation *)
+
+local module OH' : HASHING, HASHING' = {
+  var mp : (input, output) fmap
+  var red_inps : input fset
+
+  proc init() : unit = {
+    mp <- empty; red_inps <- fset0;
+  }
+
+  proc hash(inp : input) : output = {
+    (* the second disjunct is needed for the proof of
+       lemma eager_hash *)
+    if (! dom mp inp \/ mem red_inps inp) {
+      mp.[inp] <$ output_distr;
+      red_inps <- red_inps `\` fset1 inp;
+    }
+    return oget mp.[inp];
+  }
+
+  proc rhash(inp : input) : unit = {
+    if (! dom mp inp) {
+      red_inps <- red_inps `|` fset1 inp;
+    }
+  }
+
+  module I = {
+    proc f (inp : input) = {
+      mp.[inp] <$ output_distr;
+    }
+  }
+
+  proc rehash_red_inps() = {
+    Iter(I).iter(elems red_inps);
+  }
+
+  proc rehash_red_inps_rslt(inp : input) : output = {
+    var out : output;
+    rehash_red_inps();
+    out <- oget mp.[inp];
+    return out;
+  }
+
+  proc rehash_red_inps_addl(inp : input) : output = {
+    var out : output;
+    mp.[inp] <$ output_distr;  (* before *)
+    out <- oget mp.[inp];
+    rehash_red_inps();
+    return out;
+  }
+}.
+
+local lemma OH'_rehash_red_inps_ll :
+  islossless OH'.rehash_red_inps.
+proof.
+proc.
+call (iter_ll OH'.I _).
+proc; auto; progress; apply output_distr_ll.
+auto.
+qed.
+
+local lemma NOH'_rehash_red_inps_preserves_map mp':
+  phoare
+  [NOH'.rehash_red_inps :
+   NOH'.mp = mp' /\ NOH'.red_inps = fset0 ==>
+   NOH'.mp = mp'] = 1%r.
+proof.
+proc.
+inline*.
+seq 1 : (l = [] /\ NOH'.mp = mp'); first auto.
+auto; smt(elems_fset0).
+rcondf 1; auto.
+hoare; auto; smt(elems_fset0).
+trivial.
+qed.
+
+(* games based on the two extended hashing implementations,
+   where adversay only gets access to hash and rhash *)
+
+local module GNOH' = {
+  module HA = HashAdv(NOH')
+
+  proc main() : bool = {
+    var b : bool;
+    NOH'.init();
+    b <@ HA.main();
+    return b;
+  }
+}.
+
+local module GOH' = {
+  module HA = HashAdv(OH')
+
+  proc main() : bool = {
+    var b : bool;
+    OH'.init();
+    b <@ HA.main();
+    return b;
+  }
+}.
+
+(* moving from NonOptHashing to NOH' *)
+
+local lemma NonOptHashing_NOH'_hash :
+  equiv
+  [NonOptHashing.hash ~ NOH'.hash :
+   ={inp} /\ ={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2} ==>
+   ={res} /\ ={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2}].
+proof.
+proc.
+if => //.
+auto; progress; move => x; rewrite fdom_set in_fsetU in_fset1; smt(subsetP).
+auto; progress => x; rewrite in_fsetD1 /#.
+qed.
+
+local lemma NonOptHashing_NOH'_rhash :
+  equiv
+  [NonOptHashing.rhash ~ NOH'.rhash :
+   ={inp} /\ ={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2} ==>
+   ={res} /\ ={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2}].
+proof.
+proc; inline NonOptHashing.hash; sp.
+if => //.
+auto; progress; rewrite fdom_set; smt(in_fsetU1).
+qed.
+
+local lemma GNonOptHashing_GNOH'_main :
+  equiv
+  [GNonOptHashing(HashAdv).main ~ GNOH'.main :
+   true ==> ={res}].
+proof.
+proc; inline NonOptHashing.init NOH'.init.
+seq 1 2 :
+  (={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2}).   
+auto; smt(fdom0).
+call
+  (_ :
+   ={mp}(NonOptHashing, NOH') /\
+   NOH'.red_inps{2} \subset fdom NOH'.mp{2}).
+apply NonOptHashing_NOH'_hash.
+apply NonOptHashing_NOH'_rhash.
+auto.
+qed.
+
+local lemma GNonOptHashing_GNOH' &m :
+  Pr[GNonOptHashing(HashAdv).main() @ &m : res] = Pr[GNOH'.main() @ &m : res].
+proof. by byequiv GNonOptHashing_GNOH'_main. qed.
+
+(* moving from OH' to OptHashing *)
+
+local lemma OH'_OptHashing_hash :
+  equiv
+  [OH'.hash ~ OptHashing.hash:
+   ={inp} /\ ={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp') ==>
+   ={res} /\ ={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp')].
+proof.
+proc.
+if.
+smt().
+auto; progress;
+  rewrite -mem_fdom fdom_set in_fsetU1 negb_or; smt(in_fsetD1 mem_fdom).
+auto.
+qed.
+
+local lemma OH'_OptHashing_rhash :
+  equiv
+  [OH'.rhash ~ OptHashing.rhash:
+   ={inp} /\ ={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp') ==>
+   ={res} /\ ={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp')].
+proof.
+proc; auto; progress; smt(fdom_set mem_fdom in_fsetU1 in_fsetD1).
+qed.
+
+local lemma GOH'_GOptHashing_main :
+  equiv
+  [GOH'.main ~ GOptHashing(HashAdv).main :
+   true ==> ={res}].
+proof.
+proc; inline OH'.init OptHashing.init.
+seq 2 1 :
+  (={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp')).
+auto; smt(in_fset0).
+call
+  (_ :
+   ={mp}(OH', OptHashing) /\
+   (forall (inp' : input),
+    mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp')).
+apply OH'_OptHashing_hash.
+apply OH'_OptHashing_rhash.
+auto.
+qed.
+
+local lemma GOH'_GOptHashing &m :
+  Pr[GOH'.main() @ &m : res] = Pr[GOptHashing(HashAdv).main() @ &m : res].
+proof. by byequiv GOH'_GOptHashing_main. qed.
+
+(* middle step of sequence of games *)
+
+local lemma NOH'_rehash_red_inps_red_dom (inp' : input) :
+  hoare
+  [NOH'.rehash_red_inps :
+   mem NOH'.red_inps inp' ==> dom NOH'.mp inp'].
+proof.
+proc; inline*; sp.
+while (mem l inp' \/ dom NOH'.mp inp').
+auto; progress;
+  rewrite -mem_fdom fdom_set in_fsetU1; smt(mem_fdom mem_ne_list_drop1).
+auto; smt(memE).
+qed.
+
+local lemma NOH'_rehash_red_inps_not_red_not_dom (inp' : input) :
+  hoare
+  [NOH'.rehash_red_inps :
+   ! mem NOH'.red_inps inp' /\ ! dom NOH'.mp inp' ==>
+   ! dom NOH'.mp inp'].
+proof.
+proc; inline*; sp.
+while (! mem l inp' /\ ! dom NOH'.mp inp').
+auto; progress;
+  [smt(mem_ne_list_drop1) |
+   rewrite -mem_fdom fdom_set in_fsetU1 mem_fdom;
+   smt(mem_ne_list_drop1)].
+auto; smt(memE).
+qed.
+
+local lemma NOH'_rehash_red_inps_not_red_dom (inp' : input) :
+  hoare
+  [NOH'.rehash_red_inps :
+   ! mem NOH'.red_inps inp' /\ dom NOH'.mp inp' ==>
+   dom NOH'.mp inp'].
+proof.
+proc; inline*; sp.
+while (dom NOH'.mp inp').
+auto; progress.
+rewrite -mem_fdom fdom_set in_fsetU1 mem_fdom /#.
+auto.
+qed.
+
+local lemma NOH'_OH'_rehash_red_inps_indep_pres
+            (inp : input, out : output) :
+  equiv
+  [NOH'.rehash_red_inps ~ OH'.rehash_red_inps :
+   ={mp, red_inps}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp /\
+   oget NOH'.mp{1}.[inp] = out ==>
+   NOH'.mp{1} = OH'.mp{2} /\ oget NOH'.mp{1}.[inp] = out].
+proof.
+proc; inline*; sp.
+while
+  (={l} /\ NOH'.mp{1} = OH'.mp{2} /\
+   ! mem l{1} inp /\ oget NOH'.mp{1}.[inp] = out).
+auto; progress; [smt(mem_drop) | smt(mem_ne_list_drop1 get_setE)].
+auto; smt(memE).
+qed.
+
+local lemma NOH'_OH'_rehash_red_inps_addl_not_red :
+  equiv
+  [NOH'.rehash_red_inps_addl ~ OH'.rehash_red_inps_addl :
+   ={inp} /\ ={mp, red_inps}(NOH', OH') /\
+   ! mem NOH'.red_inps{1} inp{1} ==>
+  ={res} /\ NOH'.mp{1} = OH'.mp{2}].
+proof.
+proc.
+alias{1} 2 with resu; swap{1} 2 -1.
+alias{2} 1 with resu.
+seq 1 1 : 
+  (={inp, resu} /\ ={mp, red_inps}(NOH', OH') /\
+   ! mem NOH'.red_inps{1} inp{1}); first auto.
+inline*; swap{2} 3 -2.
+seq 1 1 : 
+  (={inp, resu, l} /\ ={mp, red_inps}(NOH', OH') /\
+   ! mem l{1} inp{1}); first auto; smt(memE).
+wp; sp => /=; elim* => mp_R.
+while
+  (={inp, resu, l} /\ ! mem l{1} inp{1} /\
+   NOH'.red_inps{1} = OH'.red_inps{2} /\
+   NOH'.mp{1}.[inp{1} <- resu{1}] = OH'.mp{2}).
+auto; progress;
+  [smt(mem_drop) |
+   rewrite 2!set_setE; smt(mem_ne_list_drop1)].
+auto; progress; by rewrite 2!get_set_sameE.
+qed.
+
+(* lemma for using iters_perm *)
+
+local lemma iter_perm2 :
+  equiv
+  [Iter(NOH'.I).iter_12 ~ Iter(NOH'.I).iter_21 :
+   ={glob NOH'.I, t1, t2} ==> ={glob NOH'.I}].
+proof.
+proc => /=; inline*; sp.
+case (t1{1} = t2{1}); first auto.
+alias{1} 1 with x1; alias{1} 4 with x2; swap{1} 4 -3.
+alias{2} 1 with y1; alias{2} 4 with y2; swap{2} 4 -2.
+seq 2 2 :
+  (={t1, t2, glob NOH'.I} /\ inp{1} = t1{1} /\ inp{2} = t2{2} /\
+   t1{1} <> t2{2} /\ x1{1} = y2{2} /\ x2{1} = y1{2}); first auto.
+auto; progress; rewrite 2!set_setE /#.
+qed.
+
+local lemma NOH'_rehash_red_inps_rslt_rehash_red_inps_addl :
+  equiv
+  [NOH'.rehash_red_inps_rslt ~ NOH'.rehash_red_inps_addl :
+   ={inp, NOH'.mp} /\ ! mem NOH'.red_inps{2} inp{1} /\
+   NOH'.red_inps{1} = NOH'.red_inps{2} `|` fset1 inp{1} ==>
+   ={res, NOH'.mp}].
+proof.
+proc; inline NOH'.rehash_red_inps; wp.
+conseq (_ : _ ==> ={NOH'.mp}) => //.
+transitivity{2}
+  { Iter(NOH'.I).iters(elems NOH'.red_inps, [inp]); }
+  (={inp, NOH'.mp} /\ ! mem NOH'.red_inps{2} inp{1} /\
+   NOH'.red_inps{1} = NOH'.red_inps{2} `|` fset1 inp{1} ==>
+   ={NOH'.mp})
+  (={inp, NOH'.mp, NOH'.red_inps} ==> ={NOH'.mp}) => //.
+progress; by exists NOH'.mp{2} NOH'.red_inps{2} inp{2}.
+symmetry.
+call (iters_perm NOH'.I iter_perm2).
+auto; progress.
+rewrite setUE elems_fset1.
+have {1}<- :
+  undup(elems NOH'.red_inps{1} ++ [inp{1}]) =
+  elems NOH'.red_inps{1} ++ [inp{1}]
+  by rewrite undup_id 1:cat_uniq 1:uniq_elems /= 1:-memE.
+rewrite FSet.oflistK.
+inline Iter(NOH'.I).iters; inline{1} (2) Iter(NOH'.I).iter.
+seq 4 1 : (={inp, NOH'.mp, NOH'.red_inps} /\ l{1} = [inp{1}]).
+sp; wp.
+call (_ : ={glob NOH'.I}); first sim.
+auto.
+rcondt{1} 1; first auto.
+inline{1} (1) NOH'.I.f.
+seq 3 1 : (={NOH'.mp} /\ l{1} = []); first auto.
+rcondf{1} 1; auto.
+qed.
+
+local lemma NOH'_rehash_red_inps_rslt_OH'_rehash_red_inps :
+  equiv
+  [NOH'.rehash_red_inps_rslt ~ OH'.rehash_red_inps :
+   ={mp, red_inps}(NOH', OH') ==> ={mp, red_inps}(NOH', OH')].
+proof.
+proc*; inline NOH'.rehash_red_inps_rslt; wp; sp.
+call (_ : ={mp, red_inps}(NOH', OH')); first sim.
+auto.
+qed.
+
+(* now we use the eager tactics: *)
+
+local lemma eager_hash :
+  eager
+  [NOH'.rehash_red_inps(); , NOH'.hash ~
+   OH'.hash, OH'.rehash_red_inps(); :
+   ={inp} /\ ={mp, red_inps}(NOH', OH') ==>
+   ={res} /\ ={mp, red_inps}(NOH', OH')].
+proof.
+eager proc.
+case (mem NOH'.red_inps{1} inp{1}).
+rcondt{2} 1; first auto; smt().
+rcondf{1} 2; first auto; call (NOH'_rehash_red_inps_red_dom inp{m}); auto.
+swap{1} 2 1; swap{2} 2 -1; wp 2 4; sp; elim* => red_inps_R.
+conseq
+  (_ :
+   ={inp} /\ NOH'.mp{1} = OH'.mp{2} /\ ! mem OH'.red_inps{2} inp{1} /\
+   NOH'.red_inps{1} = OH'.red_inps{2} `|` fset1 inp{1} ==>
+   ={result} /\ NOH'.mp{1} = OH'.mp{2}) => //.
+progress;
+  [smt(in_fsetD1) |
+   rewrite fsetP; smt(in_fsetU1 in_fsetU in_fsetD1 in_fset1)].
+transitivity{1}
+  { result <@ NOH'.rehash_red_inps_rslt(inp); }
+  (={inp, NOH'.mp, NOH'.red_inps} ==> ={result, NOH'.mp, NOH'.red_inps})
+  (={inp} /\ ={mp}(NOH', OH') /\ ! mem OH'.red_inps{2} inp{1} /\
+   NOH'.red_inps{1} = OH'.red_inps{2} `|` fset1 inp{1} ==>
+   ={result} /\ ={mp}(NOH', OH')) => //.
+progress; by exists OH'.mp{2} (OH'.red_inps{2} `|` fset1 inp{2}) inp{2}.
+inline NOH'.rehash_red_inps_rslt; sim.
+transitivity{1}
+  { result <@ NOH'.rehash_red_inps_addl(inp); }
+  (={inp, NOH'.mp} /\
+   ! mem NOH'.red_inps{2} inp{1} /\
+   NOH'.red_inps{1} = NOH'.red_inps{2} `|` fset1 inp{1} ==>
+   ={result} /\ ={mp}(NOH', NOH'))
+  (={inp} /\ ={mp, red_inps}(NOH', OH') /\
+   ! mem OH'.red_inps{2} inp{1} ==>
+   ={result} /\ ={mp}(NOH', OH')) => //.
+progress; by exists OH'.mp{2} OH'.red_inps{2} inp{2}.
+call NOH'_rehash_red_inps_rslt_rehash_red_inps_addl; auto.
+transitivity{2}
+  { result <@ OH'.rehash_red_inps_addl(inp); }
+  (={inp} /\ ={mp, red_inps}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} ==>
+   ={result} /\ ={mp}(NOH', OH'))
+  (={inp, OH'.mp, OH'.red_inps} ==> ={result, OH'.mp}) => //.
+progress; by exists OH'.mp{2} OH'.red_inps{2} inp{2}.
+call NOH'_OH'_rehash_red_inps_addl_not_red; auto.
+inline OH'.rehash_red_inps_addl; sim.
+(* second case: ! mem NOH'.red_inps{1} inp{1} *)
+case (! dom NOH'.mp{1} inp{1}).
+rcondt{2} 1; first auto; smt().
+rcondt{1} 2;
+  first auto; call (NOH'_rehash_red_inps_not_red_not_dom inp{m}); auto.
+swap{2} 2 -1.
+seq 0 1 : 
+  (={inp} /\ NOH'.mp{1} = OH'.mp{2} /\ NOH'.red_inps{1} = OH'.red_inps{2} /\
+   ! mem NOH'.red_inps{1} inp{1}).
+auto; progress.
+rewrite fsetP => inp; smt(in_fsetD1).
+transitivity{1}
+  { result <@ NOH'.rehash_red_inps_addl(inp); }
+  (={inp, NOH'.mp, NOH'.red_inps} ==> ={result, NOH'.mp, NOH'.red_inps})
+  (={inp} /\ ={mp, red_inps}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} ==>
+   ={result} /\ ={mp, red_inps}(NOH', OH')) => //.
+progress; by exists OH'.mp{2} OH'.red_inps{2} inp{2}.
+inline NOH'.rehash_red_inps_addl; sim.
+transitivity{2}
+  { result <@ OH'.rehash_red_inps_addl(inp); }
+  (={inp} /\ ={mp, red_inps}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} ==>
+   ={result} /\ ={mp, red_inps}(NOH', OH'))
+  (={inp, OH'.mp, OH'.red_inps} ==> ={result, OH'.mp, OH'.red_inps}) => //.
+progress; exists OH'.mp{2} OH'.red_inps{2} inp{2};
+progress; by exists OH'.mp{2} OH'.red_inps{2} inp{2}.
+call NOH'_OH'_rehash_red_inps_addl_not_red; auto.
+inline OH'.rehash_red_inps_addl; sim.
+(* second subcase: mem (dom NOH'.mp{1}) inp{1} *)
+rcondf{2} 1; first auto; smt().
+rcondf{1} 2;
+  first auto; call (NOH'_rehash_red_inps_not_red_dom inp{m}); auto.
+wp; sp.
+exists* inp{1}; elim* => inp'. exists* result{2}; elim* => out'.
+call (NOH'_OH'_rehash_red_inps_indep_pres inp' out').
+auto; progress; by rewrite minus1_not_mem.
+qed.
+
+local lemma eager_rhash :
+  eager
+  [NOH'.rehash_red_inps(); , NOH'.rhash ~
+   OH'.rhash, OH'.rehash_red_inps(); :
+   ={inp} /\ ={mp, red_inps}(NOH', OH') ==>
+   ={res} /\ ={mp, red_inps}(NOH', OH')].
+proof.
+eager proc.
+case (mem NOH'.red_inps{1} inp{1}).
+seq 0 1 :
+  (={inp} /\ NOH'.mp{1} = OH'.mp{2} /\ NOH'.red_inps{1} = OH'.red_inps{2} /\
+   mem NOH'.red_inps{1} inp{1}).
+if{2} => //.
+auto; progress.
+rewrite fsetUC subset_fsetU_id //.
+move => x; by rewrite in_fset1.
+rcondf{1} 2; auto.
+call{1} (NOH'_rehash_red_inps_red_dom inp{m}); auto.
+sim.
+case (dom NOH'.mp{1} inp{1}).
+rcondf{2} 1; first auto. rcondf{1} 2; auto.
+call (NOH'_rehash_red_inps_not_red_dom inp{m}); auto.
+sim.
+rcondt{2} 1; first auto. rcondt{1} 2; first auto.
+call (NOH'_rehash_red_inps_not_red_not_dom inp{m}); auto.
+wp 2 2; sp; elim* => red_inps_R.
+conseq
+  (_ :
+   ={inp} /\ ={mp}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} /\
+   NOH'.red_inps{1} `|` fset1 inp{1} = OH'.red_inps{2} ==>
+   NOH'.mp{1} = OH'.mp{2}) => //.
+alias{1} 2 with result.
+transitivity{1}
+  { result <@ NOH'.rehash_red_inps_addl(inp); }
+  (={inp, NOH'.mp, NOH'.red_inps} /\ ! mem NOH'.red_inps{1} inp{1} ==>
+   ={result, NOH'.mp})
+  (={inp} /\ ={mp}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} /\
+   NOH'.red_inps{1} `|` fset1 inp{1} = OH'.red_inps{2} ==>
+   ={mp}(NOH', OH')) => //.
+progress; by exists OH'.mp{2} NOH'.red_inps{1} inp{2}.
+inline NOH'.rehash_red_inps_addl; sp; wp.
+rnd.
+call (_ : ={NOH'.mp, NOH'.red_inps}); first sim.
+skip; progress; by rewrite get_set_sameE oget_some.
+transitivity{1}
+  { result <@ NOH'.rehash_red_inps_rslt(inp); }
+  (={inp, NOH'.mp} /\ ! mem NOH'.red_inps{1} inp{1} /\
+   NOH'.red_inps{1} `|` fset1 inp{1} = NOH'.red_inps{2} ==>
+   ={NOH'.mp})
+  (={inp} /\ ={mp, red_inps}(NOH', OH') ==> ={mp}(NOH', OH')) => //.
+progress; by exists OH'.mp{2} (NOH'.red_inps{1} `|` fset1 inp{2}) inp{2}.
+symmetry.
+call NOH'_rehash_red_inps_rslt_rehash_red_inps_addl; auto.
+call NOH'_rehash_red_inps_rslt_OH'_rehash_red_inps; auto.
+qed.
+
+(* now we use eager_hash and eager_rhash to prove: *)
+
+local lemma eager_hashing_adv :
+  eager
+  [NOH'.rehash_red_inps(); , HashAdv(NOH').main ~
+   HashAdv(OH').main, OH'.rehash_red_inps(); :
+   ={mp, red_inps}(NOH', OH') ==>
+   ={res} /\ ={mp, red_inps}(NOH', OH')].
+proof.
+eager proc
+  (base : NOH'.rehash_red_inps(); ~ OH'.rehash_red_inps(); :
+        ={mp, red_inps}(NOH', OH') ==> ={mp, red_inps}(NOH', OH'))
+  (={mp, red_inps}(NOH', OH')) => //.
+sim.
+apply eager_hash.
+sim.
+apply eager_rhash.
+sim.
+qed.
+
+(* finish the middle step: *)
+
+local lemma GNOH'_GOH' &m :
+  Pr[GNOH'.main() @ &m : res] = Pr[GOH'.main() @ &m : res].
+proof.
+byequiv => //; proc.
+seq 1 1 : (={mp, red_inps}(NOH', OH') /\ NOH'.red_inps{1} = fset0).
+inline*; auto.
+transitivity{1}
+ { NOH'.rehash_red_inps(); b <@ GNOH'.HA.main(); }
+ (={NOH'.mp, NOH'.red_inps} /\ NOH'.red_inps{1} = fset0 ==> ={b})
+ (={mp, red_inps}(NOH', OH') ==> ={b}) => //.
+progress; by exists OH'.mp{2} fset0.
+seq 0 1 : (={NOH'.mp, NOH'.red_inps}).
+exists* NOH'.mp{2}; elim* => mp'.
+call{2} (NOH'_rehash_red_inps_preserves_map mp'); auto.
+sim.
+transitivity{2}
+ { b <@ GOH'.HA.main(); OH'.rehash_red_inps(); }
+ (={mp, red_inps}(NOH', OH') ==> ={b})
+ (={OH'.mp, OH'.red_inps} ==> ={b}) => //.
+progress; by exists OH'.mp{2} OH'.red_inps{2}.
+eager call eager_hashing_adv; auto.
+call{1} OH'_rehash_red_inps_ll.
+sim.
+qed.
+
+(* putting it all together *)
+
+lemma GNonOptHashing_GOH' &m :
+  Pr[GNonOptHashing(HashAdv).main() @ &m : res] =
+  Pr[GOptHashing(HashAdv).main() @ &m : res].
+proof.
+by rewrite (GNonOptHashing_GNOH' &m)
+           (GNOH'_GOH' &m)
+           (GOH'_GOptHashing &m).
+qed.
+
+end section.
+
+lemma GNonOptHashing_GOptHashing
+      (HashAdv <: HASHING_ADV{NonOptHashing, OptHashing}) &m :
+    Pr[GNonOptHashing(HashAdv).main() @ &m : res] =
+    Pr[GOptHashing(HashAdv).main() @ &m : res].
+proof. apply (GNonOptHashing_GOH' HashAdv &m). qed.

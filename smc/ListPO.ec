@@ -11,7 +11,7 @@ prover [""].  (* no provers *)
    We actually implement this as an operator producing one of four
    results, and only later define the expected binary relations *)
 
-require import AllCore List Aux.
+require import AllCore List ListAux.
 
 (* comparison results *)
 
