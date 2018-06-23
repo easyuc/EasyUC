@@ -3,7 +3,7 @@
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import AllCore List FSet Distr ListAux ListPO.
-require DDH UCCore.
+require DDH UCCore RedundantHashing.
 
 (************************** Bitstrings and Exponents **************************)
 
@@ -1138,22 +1138,23 @@ module KESim (Adv : FUNC) = {
   }
 
   proc loop(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
+    var mod : mode; var pt1, pt2, pt1', pt2' : port; var u : univ;
     var addr, addr1, addr2 : addr; var q1, q2 : exp;
     var r : msg option <- None;
     var not_done : bool <- true;
     while (not_done) {
-      (* mod = Adv /\ pt1.`1 = self *)
-      (mod, pt1, pt2, u) <- m;
-      if (pt1.`2 = ke_sim_adv_pi) {  (* simulator *)
+      (* m.`1 = Adv /\ m.`2.`1 = self *)
+      if (m.`2.`2 = ke_sim_adv_pi) {  (* simulator *)
         r <- None;
         if (st = KESimStateWaitReq1) {
           if (is_ke_sim_req1 m) {
-            (addr1, addr2) <- oget (dec_ke_sim_req1 m);
+            (addr1, addr2, pt1', pt2') <- oget (dec_ke_sim_req1 m);
             q1 <$ dexp;
             r <-
-              Some (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
-                    (UnivBase (BaseBits (g ^ q1))));
+              Some
+              (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
+               (univ_triple (UnivPort pt1') (UnivPort pt2')
+                (UnivBase (BaseBits (g ^ q1)))));
             st <- KESimStateWaitAdv1 (addr1, q1);
           }
         }
@@ -1224,6 +1225,8 @@ module KESim (Adv : FUNC) = {
     return r;
   }
 }.
+
+abstract theory KESimp.
 
 (* a simplified version of KEReal, not built using forwarders, so
    simpler to work with in proofs *)
@@ -2155,12 +2158,179 @@ auto; progress; by apply (KERealSimpRel4 _ pt1' pt2' q1' q2').
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
+end KESimp.
+
+type ke_hybrid_state = [
+    KEHybridStateWaitReq1
+  | KEHybridStateWaitAdv1 of (port * port)
+  | KEHybridStateWaitReq2 of (port * port)
+  | KEHybridStateWaitAdv2 of (port * port)
+  | KEHybridStateFinal    of (port * port)
+].
+
+op dec_ke_hybrid_state_wait_adv1 (st : ke_hybrid_state) :
+     (port * port) option =
+     with st = KEHybridStateWaitReq1   => None
+     with st = KEHybridStateWaitAdv1 x => Some x
+     with st = KEHybridStateWaitReq2 _ => None
+     with st = KEHybridStateWaitAdv2 _ => None
+     with st = KEHybridStateFinal _    => None.
+
+lemma enc_dec_ke_hybrid_state_wait_adv1 (x : port * port) :
+  dec_ke_hybrid_state_wait_adv1 (KEHybridStateWaitAdv1 x) = Some x.
+proof. done. qed.
+
+op is_ke_hybrid_state_wait_adv1 (st : ke_hybrid_state) : bool =
+  dec_ke_hybrid_state_wait_adv1 st <> None.
+
+lemma is_ke_hybrid_state_wait_adv1 (x : port * port) :
+  is_ke_hybrid_state_wait_adv1 (KEHybridStateWaitAdv1 x).
+proof. done. qed.
+
+op dec_ke_hybrid_state_wait_req2 (st : ke_hybrid_state) :
+     (port * port) option =
+     with st = KEHybridStateWaitReq1   => None
+     with st = KEHybridStateWaitAdv1 _ => None
+     with st = KEHybridStateWaitReq2 x => Some x
+     with st = KEHybridStateWaitAdv2 _ => None
+     with st = KEHybridStateFinal _    => None.
+
+lemma enc_dec_ke_hybrid_state_wait_req2 (x : port * port) :
+  dec_ke_hybrid_state_wait_req2 (KEHybridStateWaitReq2 x) = Some x.
+proof. done. qed.
+
+op is_ke_hybrid_state_wait_req2 (st : ke_hybrid_state) : bool =
+  dec_ke_hybrid_state_wait_req2 st <> None.
+
+lemma is_ke_hybrid_state_wait_req2 (x : port * port) :
+  is_ke_hybrid_state_wait_req2 (KEHybridStateWaitReq2 x).
+proof. done. qed.
+
+op dec_ke_hybrid_state_wait_adv2 (st : ke_hybrid_state) :
+     (port * port) option =
+     with st = KEHybridStateWaitReq1   => None
+     with st = KEHybridStateWaitAdv1 _ => None
+     with st = KEHybridStateWaitReq2 _ => None
+     with st = KEHybridStateWaitAdv2 x => Some x
+     with st = KEHybridStateFinal _    => None.
+
+lemma enc_dec_ke_hybrid_state_wait_adv2 (x : port * port) :
+  dec_ke_hybrid_state_wait_adv2 (KEHybridStateWaitAdv2 x) = Some x.
+proof. done. qed.
+
+op is_ke_hybrid_state_wait_adv2 (st : ke_hybrid_state) : bool =
+  dec_ke_hybrid_state_wait_adv2 st <> None.
+
+lemma is_ke_hybrid_state_wait_adv2 (x : port * port) :
+  is_ke_hybrid_state_wait_adv2 (KEHybridStateWaitAdv2 x).
+proof. done. qed.
+
+op dec_ke_hybrid_state_final (st : ke_hybrid_state) :
+     (port * port) option =
+     with st = KEHybridStateWaitReq1   => None
+     with st = KEHybridStateWaitAdv1 _ => None
+     with st = KEHybridStateWaitReq2 _ => None
+     with st = KEHybridStateWaitAdv2 _ => None
+     with st = KEHybridStateFinal x    => Some x.
+
+lemma enc_dec_ke_hybrid_state_wait_final (x : port * port) :
+  dec_ke_hybrid_state_final (KEHybridStateFinal x) = Some x.
+proof. done. qed.
+
+op is_ke_hybrid_state_final (st : ke_hybrid_state) : bool =
+  dec_ke_hybrid_state_final st <> None.
+
+lemma is_ke_hybrid_state_final (x : port * port) :
+  is_ke_hybrid_state_final (KEHybridStateFinal x).
+proof. done. qed.
+
 module DDH_Adv (Env : ENV, Adv : FUNC) = {
   var func, adv : addr
+  var x1, x2, x3 : bits
 
-  proc main(x1 x2 x3 : bits) : bool = {
-    (* placeholder *)
-    return true;
+  module KEHybrid : FUNC = {
+    var self, adv : addr
+    var st : ke_hybrid_state
+
+    proc init(self_ adv_ : addr) : unit = {
+      self <- self_; adv <- adv_;
+      st <- KEHybridStateWaitReq1;
+    }
+
+    proc parties(m : msg) : msg option = {
+      var pt1, pt2, pt1', pt2' : port; var addr, addr1, addr2 : addr;
+      var u : univ; var q1, q2 : exp;
+      var r : msg option <- None;
+      if (st = KEHybridStateWaitReq1) {
+        if (is_ke_req1 m) {
+          (* destination of m is (self, 1); mode of m is Dir *)
+          (addr, pt1, pt2) <- oget (dec_ke_req1 m);
+          if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
+            u <-
+              univ_triple (UnivPort pt1) (UnivPort pt2)
+                          (UnivBase (BaseBits x1));
+            r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
+            st <- KEHybridStateWaitAdv1 (pt1, pt2);
+          }
+        }
+      }
+      elif (is_ke_hybrid_state_wait_adv1 st) {
+        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_adv1 st);
+        if (Fwd1.is_fw_ok m) {
+          (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
+          if (addr1 = self ++ [1]) {
+            (* destination of m is (self ++ [1], 1); mode of m is Adv *)
+            r <- Some (ke_rsp1 self pt1 pt2 x3);
+            st <- KEHybridStateWaitReq2 (pt1, pt2);
+          }
+        }
+      }
+      elif (is_ke_hybrid_state_wait_req2 st) {
+        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_req2 st);
+        if (is_ke_req2 m) {
+          (* destination of m is (self, 2); mode of m is Dir *)
+          (addr, pt2') <- oget (dec_ke_req2 m);
+          if (pt2' = pt2) {
+            u <- UnivBase (BaseBits x2);
+            r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
+            st <- KEHybridStateWaitAdv2 (pt1, pt2);
+          }
+        }
+      }
+      elif (is_ke_hybrid_state_wait_adv2 st) {
+        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_adv2 st);
+        if (Fwd2.is_fw_ok m) {
+          (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
+          if (addr1 = self ++ [2]) {
+            (* destination of m is (self ++ [2], 1); mode of m is Adv *)
+            r <- Some (ke_rsp2 self pt1 x3);
+            st <- KEHybridStateFinal (pt1, pt2);
+          }
+        }
+      }
+      else {  (* st = KEHybridStateFinal *)
+      }
+      return r;
+    }
+
+    proc invoke(m : msg) : msg option = {
+      var mod : mode; var pt1, pt2 : port; var u : univ;
+      var addr1, addr2 : addr; var n1, n2 : int;
+      var r : msg option <- None;
+      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+      if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
+          (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
+        r <- parties(m);
+      }
+      return r;
+    }
+  }
+
+  proc main(x1_ x2_ x3_ : bits) : bool = {
+    var b : bool;
+    x1 <- x1_; x2 <- x2_; x3 <- x3_; 
+    b <@ Exper(MI(KEHybrid, Adv), Env).main(func, adv, fset1 adv_fw_pi);
+    return b;
   }
 }.
 
@@ -2817,6 +2987,8 @@ module SMCSim (Adv : FUNC) = {
       return r;
     }
 }.
+
+clone import MI_UOC.
 
 module CompEnv (Env : ENV, Inter : INTER) = {
   module Stub : FUNC = {

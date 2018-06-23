@@ -494,6 +494,8 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
   }
 }.
 
+abstract theory MI_UOC.
+
 (* make interface out of functionality and adversary parts,
    but where output of and communication between parts is
    unrestricted *)
@@ -575,6 +577,8 @@ module MI_UOC (Func : FUNC, Adv : FUNC) : INTER = {
     return r;
   }
 }.
+
+end MI_UOC.
 
 (* dummy adversary *)
 
