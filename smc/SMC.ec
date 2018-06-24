@@ -890,28 +890,28 @@ proof. done. qed.
 
 type ke_ideal_state = [
     KEIdealStateWaitReq1
-  | KEIdealStateWaitSim1 of (port * port * exp)
+  | KEIdealStateWaitSim1 of (port * port)
   | KEIdealStateWaitReq2 of (port * port * exp)
   | KEIdealStateWaitSim2 of (port * port * exp)
   | KEIdealStateFinal    of (port * port * exp)
 ].
 
 op dec_ke_ideal_state_wait_sim1 (st : ke_ideal_state) :
-     (port * port * exp) option =
+     (port * port) option =
      with st = KEIdealStateWaitReq1   => None
      with st = KEIdealStateWaitSim1 x => Some x
      with st = KEIdealStateWaitReq2 _ => None
      with st = KEIdealStateWaitSim2 _ => None
      with st = KEIdealStateFinal _    => None.
 
-lemma enc_dec_ke_ideal_state_wait_sim1 (x : port * port * exp) :
+lemma enc_dec_ke_ideal_state_wait_sim1 (x : port * port) :
   dec_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x) = Some x.
 proof. done. qed.
 
 op is_ke_ideal_state_wait_sim1 (st : ke_ideal_state) : bool =
   dec_ke_ideal_state_wait_sim1 st <> None.
 
-lemma is_ke_ideal_state_wait_sim1 (x : port * port * exp) :
+lemma is_ke_ideal_state_wait_sim1 (x : port * port) :
   is_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x).
 proof. done. qed.
 
@@ -990,16 +990,16 @@ module KEIdeal : FUNC = {
         (* destination of m is (self, 1), mode of m is Dir *)
         (addr1, pt1, pt2) <- oget (dec_ke_req1 m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
-          q <$ dexp;
           r <- Some (ke_sim_req1 self adv pt1 pt2);
-          st <- KEIdealStateWaitSim1 (pt1, pt2, q);
+          st <- KEIdealStateWaitSim1 (pt1, pt2);
         }
       }
     }
     elif (is_ke_ideal_state_wait_sim1 st) {
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim1 st);
+      (pt1, pt2) <- oget (dec_ke_ideal_state_wait_sim1 st);
       if (is_ke_sim_rsp1 m) {
         (* destination of m is (self, 3), mode of m is Adv *)
+        q <$ dexp;
         r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
         st <- KEIdealStateWaitReq2 (pt1, pt2, q);
       }
@@ -2338,6 +2338,217 @@ section.
 
 declare module Adv : FUNC{MI, KEReal, KEIdeal, KESim, DDH_Adv}.
 declare module Env : ENV{Adv, MI, KEReal, KEIdeal, KESim, DDH_Adv}.
+
+local clone import KESimp as KESimp'.
+
+local lemma Exper_KEReal_KERealSimp (func' adv' : addr) &m :
+  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  Pr[Exper(MI(KEReal, Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[Exper(MI(KERealSimp, Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res].
+proof.
+move => pre.
+byequiv => //.
+proc.
+seq 1 1 :
+  (={func, adv, in_guard} /\
+   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! func' <= adv' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ={glob Adv} /\
+   ke_real_simp_rel
+   {|ke_real_simp_st_func = func';
+     ke_real_simp_st_r1s  = KEReal.st1{1};
+     ke_real_simp_st_r2s  = KEReal.st2{1};
+     ke_real_simp_st_fws1 = Fwd1.Forw.st{1};
+     ke_real_simp_st_fws2 = Fwd2.Forw.st{1};
+     ke_real_simp_st_rss  = KERealSimp.st{2}|}).
+inline*.
+call (_ : true).
+auto; progress; [smt() | rewrite KERealSimpRel0 /#].
+call 
+  (_ :
+   ={MI.func, MI.adv, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! func' <= adv' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ={glob Adv} /\
+   ke_real_simp_rel
+   {|ke_real_simp_st_func = func';
+     ke_real_simp_st_r1s  = KEReal.st1{1};
+     ke_real_simp_st_r2s  = KEReal.st2{1};
+     ke_real_simp_st_fws1 = Fwd1.Forw.st{1};
+     ke_real_simp_st_fws2 = Fwd2.Forw.st{1};
+     ke_real_simp_st_rss  = KERealSimp.st{2}|}).
+proc.
+sp 2 2.
+if => //.
+inline MI(KEReal, Adv).loop MI(KERealSimp, Adv).loop.
+wp; sp 3 3.
+while
+  (={not_done} /\ ={m0, r0} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! func' <= adv' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ={glob Adv} /\
+   ke_real_simp_rel
+   {|ke_real_simp_st_func = func';
+     ke_real_simp_st_r1s  = KEReal.st1{1};
+     ke_real_simp_st_r2s  = KEReal.st2{1};
+     ke_real_simp_st_fws1 = Fwd1.Forw.st{1};
+     ke_real_simp_st_fws2 = Fwd2.Forw.st{1};
+     ke_real_simp_st_rss  = KERealSimp.st{2}|}).
+sp 2 2.
+if => //.
+wp; call (KEReal_KERealSimp_invoke func' adv'); auto.
+wp; call (_ : true); auto.
+auto.
+auto.
+auto.
+qed.
+
+type exp_names = [exp1 | exp2 | exp3].
+
+local clone RedundantHashing as RH with
+  type input <- exp_names,
+  type output <- exp,
+  op doutput <- dexp
+proof *.
+realize doutput_ll. apply dexp_ll. qed.
+
+local module (KERealSimpHashingAdv : RH.HASHING_ADV)
+             (Hash : RH.HASHING) = {
+  var func, adv : addr
+
+  module KERealSimpHash : FUNC = {
+    var self, adv : addr
+    var st : ke_real_simp_state
+
+    proc init(self_ adv_ : addr) : unit = {
+      self <- self_; adv <- adv_;
+      st <- KERealSimpStateWaitReq1;
+    }
+
+    proc parties(m : msg) : msg option = {
+      var pt1, pt2, pt1', pt2' : port; var addr, addr1, addr2 : addr;
+      var u : univ; var q1, q2 : exp;
+      var r : msg option <- None;
+      if (st = KERealSimpStateWaitReq1) {
+        if (is_ke_req1 m) {
+          (* destination of m is (self, 1); mode of m is Dir *)
+          (addr, pt1, pt2) <- oget (dec_ke_req1 m);
+          if (! self <= pt1.`1 /\ ! self <= pt2.`1) {
+            q1 <@ Hash.hash(exp1);
+            u <-
+              univ_triple (UnivPort pt1) (UnivPort pt2)
+                          (UnivBase (BaseBits (g ^ q1)));
+            r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
+            st <- KERealSimpStateWaitAdv1 (pt1, pt2, q1);
+          }
+        }
+      }
+      elif (is_ke_real_simp_state_wait_adv1 st) {
+        (pt1, pt2, q1) <- oget (dec_ke_real_simp_state_wait_adv1 st);
+        if (Fwd1.is_fw_ok m) {
+          (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
+          if (addr1 = self ++ [1]) {
+            (* destination of m is (self ++ [1], 1); mode of m is Adv *)
+            q2 <@ Hash.hash(exp2);
+            r <- Some (ke_rsp1 self pt1 pt2 ((g ^ q1) ^ q2));
+            st <- KERealSimpStateWaitReq2 (pt1, pt2, q1, q2);
+          }
+        }
+      }
+      elif (is_ke_real_simp_state_wait_req2 st) {
+        (pt1, pt2, q1, q2) <- oget (dec_ke_real_simp_state_wait_req2 st);
+        if (is_ke_req2 m) {
+          (* destination of m is (self, 2); mode of m is Dir *)
+          (addr, pt2') <- oget (dec_ke_req2 m);
+          if (pt2' = pt2) {
+            u <- UnivBase (BaseBits (g ^ q2));
+            r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
+            st <- KERealSimpStateWaitAdv2 (pt1, pt2, q1, q2);
+          }
+        }
+      }
+      elif (is_ke_real_simp_state_wait_adv2 st) {
+        (pt1, pt2, q1, q2) <- oget (dec_ke_real_simp_state_wait_adv2 st);
+        if (Fwd2.is_fw_ok m) {
+          (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
+          if (addr1 = self ++ [2]) {
+            (* destination of m is (self ++ [2], 1); mode of m is Adv *)
+            r <- Some (ke_rsp2 self pt1 ((g ^ q2) ^ q1));
+            st <- KERealSimpStateFinal (pt1, pt2, q1, q2);
+          }
+        }
+      }
+      else {  (* st = KERealStateFinal *)
+      }
+      return r;
+    }
+  
+    proc invoke(m : msg) : msg option = {
+      var mod : mode; var pt1, pt2 : port; var u : univ;
+      var addr1, addr2 : addr; var n1, n2 : int;
+      var r : msg option <- None;
+      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+      if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
+          (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
+        r <- parties(m);
+      }
+      return r;
+    }
+  }
+
+  proc main() : bool = {
+    var b : bool;
+    Hash.rhash(exp1); Hash.rhash(exp2); Hash.rhash(exp3);
+    b <@ Exper(MI(KERealSimpHash, Adv), Env).main
+           (func, adv, fset1 adv_fw_pi);
+    return b;
+  }
+}.
+
+local lemma Exper_KERealSimp_OptHashing_KERealSimpHash (func' adv' : addr) &m :
+  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  KERealSimpHashingAdv.func{m} = func' =>
+  KERealSimpHashingAdv.adv{m} = adv' =>
+  Pr[Exper(MI(KERealSimp, Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[RH.GOptHashing(KERealSimpHashingAdv).main() @ &m : res].
+proof.
+move => pre func_eq adv_eq.
+byequiv => //.
+proc.
+inline MI(KERealSimp, Adv).init
+       KERealSimp.init
+       RH.OptHashing.init
+       RH.GOptHashing(KERealSimpHashingAdv).HA.main
+       RH.OptHashing.rhash
+       Exper(MI(KERealSimpHashingAdv(RH.OptHashing).KERealSimpHash,
+                Adv),
+             Env).main
+       KERealSimpHashingAdv(RH.OptHashing).KERealSimpHash.init
+       MI(KERealSimpHashingAdv(RH.OptHashing).KERealSimpHash, Adv).init.
+wp.
+
+
 
 lemma ke_sec (func adv : addr) &m :
   exper_pre func adv (fset1 adv_fw_pi) =>

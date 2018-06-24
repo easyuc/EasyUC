@@ -38,9 +38,9 @@ type output.  (* type of oracle outputs *)
 
 (* lossless distribution on outputs *)
 
-op output_distr : output distr.
+op doutput : output distr.
 
-axiom output_distr_ll : is_lossless output_distr.
+axiom doutput_ll : is_lossless doutput.
 
 (************************** End of Theory Parameters **************************)
 
@@ -71,7 +71,7 @@ module NonOptHashing : HASHING = {
 
   proc hash(inp : input) : output = {
     if (! dom mp inp) {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
     }
     return oget mp.[inp];
   }
@@ -92,7 +92,7 @@ module OptHashing : HASHING = {
 
   proc hash(inp : input) : output = {
     if (! dom mp inp) {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
     }
     return oget mp.[inp];
   }
@@ -197,7 +197,7 @@ local module NOH' : HASHING, HASHING' = {
 
   proc hash(inp : input) : output = {
     if (! dom mp inp) {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
     }
     else {
       (* if inp was redundant it's no longer so *)
@@ -208,7 +208,7 @@ local module NOH' : HASHING, HASHING' = {
 
   proc rhash(inp : input) : unit = {
     if (! dom mp inp) {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
       (* inp is redundant *)
       red_inps <- red_inps `|` fset1 inp;
     }
@@ -216,7 +216,7 @@ local module NOH' : HASHING, HASHING' = {
 
   module I = {
     proc f (inp : input) = {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
     }
   }
 
@@ -234,7 +234,7 @@ local module NOH' : HASHING, HASHING' = {
   proc rehash_red_inps_addl(inp : input) : output = {
     var out : output;
     rehash_red_inps();
-    mp.[inp] <$ output_distr;  (* after *)
+    mp.[inp] <$ doutput;  (* after *)
     out <- oget mp.[inp];
     return out;
   }
@@ -254,7 +254,7 @@ local module OH' : HASHING, HASHING' = {
     (* the second disjunct is needed for the proof of
        lemma eager_hash *)
     if (! dom mp inp \/ mem red_inps inp) {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
       red_inps <- red_inps `\` fset1 inp;
     }
     return oget mp.[inp];
@@ -268,7 +268,7 @@ local module OH' : HASHING, HASHING' = {
 
   module I = {
     proc f (inp : input) = {
-      mp.[inp] <$ output_distr;
+      mp.[inp] <$ doutput;
     }
   }
 
@@ -285,7 +285,7 @@ local module OH' : HASHING, HASHING' = {
 
   proc rehash_red_inps_addl(inp : input) : output = {
     var out : output;
-    mp.[inp] <$ output_distr;  (* before *)
+    mp.[inp] <$ doutput;  (* before *)
     out <- oget mp.[inp];
     rehash_red_inps();
     return out;
@@ -297,7 +297,7 @@ local lemma OH'_rehash_red_inps_ll :
 proof.
 proc.
 call (iter_ll OH'.I _).
-proc; auto; progress; apply output_distr_ll.
+proc; auto; progress; apply doutput_ll.
 auto.
 qed.
 
