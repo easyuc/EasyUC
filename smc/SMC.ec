@@ -2173,108 +2173,108 @@ qed.
 
 end KESimp.
 
-type ke_hybrid_state = [
-    KEHybridStateWaitReq1
-  | KEHybridStateWaitAdv1 of (port * port)
-  | KEHybridStateWaitReq2 of (port * port)
-  | KEHybridStateWaitAdv2 of (port * port)
-  | KEHybridStateFinal    of (port * port)
+type ke_ddh_state = [
+    KEDDHStateWaitReq1
+  | KEDDHStateWaitAdv1 of (port * port)
+  | KEDDHStateWaitReq2 of (port * port)
+  | KEDDHStateWaitAdv2 of (port * port)
+  | KEDDHStateFinal    of (port * port)
 ].
 
-op dec_ke_hybrid_state_wait_adv1 (st : ke_hybrid_state) :
+op dec_ke_ddh_state_wait_adv1 (st : ke_ddh_state) :
      (port * port) option =
-     with st = KEHybridStateWaitReq1   => None
-     with st = KEHybridStateWaitAdv1 x => Some x
-     with st = KEHybridStateWaitReq2 _ => None
-     with st = KEHybridStateWaitAdv2 _ => None
-     with st = KEHybridStateFinal _    => None.
+     with st = KEDDHStateWaitReq1   => None
+     with st = KEDDHStateWaitAdv1 x => Some x
+     with st = KEDDHStateWaitReq2 _ => None
+     with st = KEDDHStateWaitAdv2 _ => None
+     with st = KEDDHStateFinal _    => None.
 
-lemma enc_dec_ke_hybrid_state_wait_adv1 (x : port * port) :
-  dec_ke_hybrid_state_wait_adv1 (KEHybridStateWaitAdv1 x) = Some x.
+lemma enc_dec_ke_ddh_state_wait_adv1 (x : port * port) :
+  dec_ke_ddh_state_wait_adv1 (KEDDHStateWaitAdv1 x) = Some x.
 proof. done. qed.
 
-op is_ke_hybrid_state_wait_adv1 (st : ke_hybrid_state) : bool =
-  dec_ke_hybrid_state_wait_adv1 st <> None.
+op is_ke_ddh_state_wait_adv1 (st : ke_ddh_state) : bool =
+  dec_ke_ddh_state_wait_adv1 st <> None.
 
-lemma is_ke_hybrid_state_wait_adv1 (x : port * port) :
-  is_ke_hybrid_state_wait_adv1 (KEHybridStateWaitAdv1 x).
+lemma is_ke_ddh_state_wait_adv1 (x : port * port) :
+  is_ke_ddh_state_wait_adv1 (KEDDHStateWaitAdv1 x).
 proof. done. qed.
 
-op dec_ke_hybrid_state_wait_req2 (st : ke_hybrid_state) :
+op dec_ke_ddh_state_wait_req2 (st : ke_ddh_state) :
      (port * port) option =
-     with st = KEHybridStateWaitReq1   => None
-     with st = KEHybridStateWaitAdv1 _ => None
-     with st = KEHybridStateWaitReq2 x => Some x
-     with st = KEHybridStateWaitAdv2 _ => None
-     with st = KEHybridStateFinal _    => None.
+     with st = KEDDHStateWaitReq1   => None
+     with st = KEDDHStateWaitAdv1 _ => None
+     with st = KEDDHStateWaitReq2 x => Some x
+     with st = KEDDHStateWaitAdv2 _ => None
+     with st = KEDDHStateFinal _    => None.
 
-lemma enc_dec_ke_hybrid_state_wait_req2 (x : port * port) :
-  dec_ke_hybrid_state_wait_req2 (KEHybridStateWaitReq2 x) = Some x.
+lemma enc_dec_ke_ddh_state_wait_req2 (x : port * port) :
+  dec_ke_ddh_state_wait_req2 (KEDDHStateWaitReq2 x) = Some x.
 proof. done. qed.
 
-op is_ke_hybrid_state_wait_req2 (st : ke_hybrid_state) : bool =
-  dec_ke_hybrid_state_wait_req2 st <> None.
+op is_ke_ddh_state_wait_req2 (st : ke_ddh_state) : bool =
+  dec_ke_ddh_state_wait_req2 st <> None.
 
-lemma is_ke_hybrid_state_wait_req2 (x : port * port) :
-  is_ke_hybrid_state_wait_req2 (KEHybridStateWaitReq2 x).
+lemma is_ke_ddh_state_wait_req2 (x : port * port) :
+  is_ke_ddh_state_wait_req2 (KEDDHStateWaitReq2 x).
 proof. done. qed.
 
-op dec_ke_hybrid_state_wait_adv2 (st : ke_hybrid_state) :
+op dec_ke_ddh_state_wait_adv2 (st : ke_ddh_state) :
      (port * port) option =
-     with st = KEHybridStateWaitReq1   => None
-     with st = KEHybridStateWaitAdv1 _ => None
-     with st = KEHybridStateWaitReq2 _ => None
-     with st = KEHybridStateWaitAdv2 x => Some x
-     with st = KEHybridStateFinal _    => None.
+     with st = KEDDHStateWaitReq1   => None
+     with st = KEDDHStateWaitAdv1 _ => None
+     with st = KEDDHStateWaitReq2 _ => None
+     with st = KEDDHStateWaitAdv2 x => Some x
+     with st = KEDDHStateFinal _    => None.
 
-lemma enc_dec_ke_hybrid_state_wait_adv2 (x : port * port) :
-  dec_ke_hybrid_state_wait_adv2 (KEHybridStateWaitAdv2 x) = Some x.
+lemma enc_dec_ke_ddh_state_wait_adv2 (x : port * port) :
+  dec_ke_ddh_state_wait_adv2 (KEDDHStateWaitAdv2 x) = Some x.
 proof. done. qed.
 
-op is_ke_hybrid_state_wait_adv2 (st : ke_hybrid_state) : bool =
-  dec_ke_hybrid_state_wait_adv2 st <> None.
+op is_ke_ddh_state_wait_adv2 (st : ke_ddh_state) : bool =
+  dec_ke_ddh_state_wait_adv2 st <> None.
 
-lemma is_ke_hybrid_state_wait_adv2 (x : port * port) :
-  is_ke_hybrid_state_wait_adv2 (KEHybridStateWaitAdv2 x).
+lemma is_ke_ddh_state_wait_adv2 (x : port * port) :
+  is_ke_ddh_state_wait_adv2 (KEDDHStateWaitAdv2 x).
 proof. done. qed.
 
-op dec_ke_hybrid_state_final (st : ke_hybrid_state) :
+op dec_ke_ddh_state_final (st : ke_ddh_state) :
      (port * port) option =
-     with st = KEHybridStateWaitReq1   => None
-     with st = KEHybridStateWaitAdv1 _ => None
-     with st = KEHybridStateWaitReq2 _ => None
-     with st = KEHybridStateWaitAdv2 _ => None
-     with st = KEHybridStateFinal x    => Some x.
+     with st = KEDDHStateWaitReq1   => None
+     with st = KEDDHStateWaitAdv1 _ => None
+     with st = KEDDHStateWaitReq2 _ => None
+     with st = KEDDHStateWaitAdv2 _ => None
+     with st = KEDDHStateFinal x    => Some x.
 
-lemma enc_dec_ke_hybrid_state_wait_final (x : port * port) :
-  dec_ke_hybrid_state_final (KEHybridStateFinal x) = Some x.
+lemma enc_dec_ke_ddh_state_wait_final (x : port * port) :
+  dec_ke_ddh_state_final (KEDDHStateFinal x) = Some x.
 proof. done. qed.
 
-op is_ke_hybrid_state_final (st : ke_hybrid_state) : bool =
-  dec_ke_hybrid_state_final st <> None.
+op is_ke_ddh_state_final (st : ke_ddh_state) : bool =
+  dec_ke_ddh_state_final st <> None.
 
-lemma is_ke_hybrid_state_final (x : port * port) :
-  is_ke_hybrid_state_final (KEHybridStateFinal x).
+lemma is_ke_ddh_state_final (x : port * port) :
+  is_ke_ddh_state_final (KEDDHStateFinal x).
 proof. done. qed.
 
 module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   var func, adv : addr
   var x1, x2, x3 : bits
 
-  module KEHybrid : FUNC = {
+  module KEDDH : FUNC = {
     var self, adv : addr
-    var st : ke_hybrid_state
+    var st : ke_ddh_state
 
     proc init(self_ adv_ : addr) : unit = {
       self <- self_; adv <- adv_;
-      st <- KEHybridStateWaitReq1;
+      st <- KEDDHStateWaitReq1;
     }
 
     proc parties(m : msg) : msg option = {
       var pt1, pt2, pt1', pt2' : port; var addr, addr1, addr2 : addr;
       var u : univ; var q1, q2 : exp;
       var r : msg option <- None;
-      if (st = KEHybridStateWaitReq1) {
+      if (st = KEDDHStateWaitReq1) {
         if (is_ke_req1 m) {
           (* destination of m is (self, 1); mode of m is Dir *)
           (addr, pt1, pt2) <- oget (dec_ke_req1 m);
@@ -2283,45 +2283,45 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
               univ_triple (UnivPort pt1) (UnivPort pt2)
                           (UnivBase (BaseBits x1));
             r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
-            st <- KEHybridStateWaitAdv1 (pt1, pt2);
+            st <- KEDDHStateWaitAdv1 (pt1, pt2);
           }
         }
       }
-      elif (is_ke_hybrid_state_wait_adv1 st) {
-        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_adv1 st);
+      elif (is_ke_ddh_state_wait_adv1 st) {
+        (pt1, pt2) <- oget (dec_ke_ddh_state_wait_adv1 st);
         if (Fwd1.is_fw_ok m) {
           (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
           if (addr1 = self ++ [1]) {
             (* destination of m is (self ++ [1], 1); mode of m is Adv *)
             r <- Some (ke_rsp1 self pt1 pt2 x3);
-            st <- KEHybridStateWaitReq2 (pt1, pt2);
+            st <- KEDDHStateWaitReq2 (pt1, pt2);
           }
         }
       }
-      elif (is_ke_hybrid_state_wait_req2 st) {
-        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_req2 st);
+      elif (is_ke_ddh_state_wait_req2 st) {
+        (pt1, pt2) <- oget (dec_ke_ddh_state_wait_req2 st);
         if (is_ke_req2 m) {
           (* destination of m is (self, 2); mode of m is Dir *)
           (addr, pt2') <- oget (dec_ke_req2 m);
           if (pt2' = pt2) {
             u <- UnivBase (BaseBits x2);
             r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
-            st <- KEHybridStateWaitAdv2 (pt1, pt2);
+            st <- KEDDHStateWaitAdv2 (pt1, pt2);
           }
         }
       }
-      elif (is_ke_hybrid_state_wait_adv2 st) {
-        (pt1, pt2) <- oget (dec_ke_hybrid_state_wait_adv2 st);
+      elif (is_ke_ddh_state_wait_adv2 st) {
+        (pt1, pt2) <- oget (dec_ke_ddh_state_wait_adv2 st);
         if (Fwd2.is_fw_ok m) {
           (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
           if (addr1 = self ++ [2]) {
             (* destination of m is (self ++ [2], 1); mode of m is Adv *)
             r <- Some (ke_rsp2 self pt1 x3);
-            st <- KEHybridStateFinal (pt1, pt2);
+            st <- KEDDHStateFinal (pt1, pt2);
           }
         }
       }
-      else {  (* st = KEHybridStateFinal *)
+      else {  (* st = KEDDHStateFinal *)
       }
       return r;
     }
@@ -2342,7 +2342,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   proc main(x1_ x2_ x3_ : bits) : bool = {
     var b : bool;
     x1 <- x1_; x2 <- x2_; x3 <- x3_; 
-    b <@ Exper(MI(KEHybrid, Adv), Env).main(func, adv, fset1 adv_fw_pi);
+    b <@ Exper(MI(KEDDH, Adv), Env).main(func, adv, fset1 adv_fw_pi);
     return b;
   }
 }.
@@ -2814,19 +2814,19 @@ type real_simp_hash_ddh1_rel_st = {
   real_simp_hash_ddh1_rel_st_x1 : bits;
   real_simp_hash_ddh1_rel_st_x2 : bits;
   real_simp_hash_ddh1_rel_st_rss : ke_real_simp_state;
-  real_simp_hash_ddh1_rel_st_hs  : ke_hybrid_state;
+  real_simp_hash_ddh1_rel_st_hs  : ke_ddh_state;
 }.
 
 pred real_simp_hash_ddh1_rel0 (st : real_simp_hash_ddh1_rel_st) =
   st.`real_simp_hash_ddh1_rel_st_rss = KERealSimpStateWaitReq1 /\
-  st.`real_simp_hash_ddh1_rel_st_hs = KEHybridStateWaitReq1.
+  st.`real_simp_hash_ddh1_rel_st_hs = KEDDHStateWaitReq1.
 
 pred real_simp_hash_ddh1_rel1
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
   st.`real_simp_hash_ddh1_rel_st_rss =
   KERealSimpStateWaitAdv1 (pt1, pt2, log st.`real_simp_hash_ddh1_rel_st_x1) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
-  KEHybridStateWaitAdv1 (pt1, pt2).
+  KEDDHStateWaitAdv1 (pt1, pt2).
 
 pred real_simp_hash_ddh1_rel2
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
@@ -2836,7 +2836,7 @@ pred real_simp_hash_ddh1_rel2
    log st.`real_simp_hash_ddh1_rel_st_x1,
    log st.`real_simp_hash_ddh1_rel_st_x2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
-  KEHybridStateWaitReq2 (pt1, pt2).
+  KEDDHStateWaitReq2 (pt1, pt2).
 
 pred real_simp_hash_ddh1_rel3
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
@@ -2846,7 +2846,7 @@ pred real_simp_hash_ddh1_rel3
    log st.`real_simp_hash_ddh1_rel_st_x1,
    log st.`real_simp_hash_ddh1_rel_st_x2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
-  KEHybridStateWaitAdv2 (pt1, pt2).
+  KEDDHStateWaitAdv2 (pt1, pt2).
 
 pred real_simp_hash_ddh1_rel4
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
@@ -2856,7 +2856,7 @@ pred real_simp_hash_ddh1_rel4
    log st.`real_simp_hash_ddh1_rel_st_x1,
    log st.`real_simp_hash_ddh1_rel_st_x2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
-  KEHybridStateFinal (pt1, pt2).
+  KEDDHStateFinal (pt1, pt2).
 
 inductive real_simp_hash_ddh1_rel (st : real_simp_hash_ddh1_rel_st) =
     RealSimpHashDDH1Rel0 of (real_simp_hash_ddh1_rel0 st)
@@ -2869,40 +2869,40 @@ inductive real_simp_hash_ddh1_rel (st : real_simp_hash_ddh1_rel_st) =
   | RealSimpHashDDH1Rel4 (pt1 pt2 : port) of
       (real_simp_hash_ddh1_rel4 st pt1 pt2).
 
-local lemma KERealSimpHash_NonOptHashing_KEHybrid_DDH1_invoke :
+local lemma KERealSimpHash_NonOptHashing_KEDDH_DDH1_invoke :
   equiv
   [KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.invoke ~
-   DDH_Adv(Env, Adv).KEHybrid.invoke :
+   DDH_Adv(Env, Adv).KEDDH.invoke :
    ={m} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
    DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEHybrid) /\
-   DDH_Adv.KEHybrid.self{2} = MI.func{1} /\
-   DDH_Adv.KEHybrid.adv{2} = MI.adv{1} /\
+   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
+   DDH_Adv.KEDDH.self{2} = MI.func{1} /\
+   DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|} ==>
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|} ==>
    ={res} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
    DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEHybrid) /\
-   DDH_Adv.KEHybrid.self{2} = MI.func{1} /\
-   DDH_Adv.KEHybrid.adv{2} = MI.adv{1} /\
+   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
+   DDH_Adv.KEDDH.self{2} = MI.func{1} /\
+   DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}].
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}].
 proof.
 proc.
 case 
@@ -2911,11 +2911,11 @@ case
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}).
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
 sp 3 3.
 if => //.
 inline KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.parties
-       DDH_Adv(Env, Adv).KEHybrid.parties.
+       DDH_Adv(Env, Adv).KEDDH.parties.
 sp 2 2.
 rcondt{1} 1; first auto; smt().
 rcondt{2} 1; first auto; smt().
@@ -2938,18 +2938,18 @@ case
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
    pt1 pt2).
 elim* => pt1 pt2.
 sp 3 3.
 if => //.
 inline KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.parties
-       DDH_Adv(Env, Adv).KEHybrid.parties.
+       DDH_Adv(Env, Adv).KEDDH.parties.
 sp 2 2.
 rcondf{1} 1; first auto; smt().
 rcondt{1} 1; first auto; smt(is_ke_real_simp_state_wait_adv1).
 rcondf{2} 1; first auto; smt().
-rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_adv1).
+rcondt{2} 1; first auto; smt(is_ke_ddh_state_wait_adv1).
 sp 1 1.
 if => //.
 sp 1 1.
@@ -2979,20 +2979,20 @@ case
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
    pt1 pt2).
 elim* => pt1 pt2.
 sp 3 3.
 if => //.
 inline KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.parties
-       DDH_Adv(Env, Adv).KEHybrid.parties.
+       DDH_Adv(Env, Adv).KEDDH.parties.
 sp 2 2.
 rcondf{1} 1; first auto; smt().
 rcondf{1} 1; first auto; smt().
 rcondt{1} 1; first auto; smt(is_ke_real_simp_state_wait_req2).
 rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto; smt().
-rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_req2).
+rcondt{2} 1; first auto; smt(is_ke_ddh_state_wait_req2).
 sp 1 1.
 if => //.
 sp 1 1.
@@ -3024,13 +3024,13 @@ case
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
    pt1 pt2).
 elim* => pt1 pt2.
 sp 3 3.
 if => //.
 inline KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.parties
-       DDH_Adv(Env, Adv).KEHybrid.parties.
+       DDH_Adv(Env, Adv).KEDDH.parties.
 sp 2 2.
 rcondf{1} 1; first auto; smt().
 rcondf{1} 1; first auto; smt().
@@ -3039,7 +3039,7 @@ rcondt{1} 1; first auto; smt(is_ke_real_simp_state_wait_adv2).
 rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto; smt().
-rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_adv2).
+rcondt{2} 1; first auto; smt(is_ke_ddh_state_wait_adv2).
 sp 1 1.
 if => //.
 sp 1 1.
@@ -3069,13 +3069,13 @@ case
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
    pt1 pt2).
 elim* => pt1 pt2.
 sp 3 3.
 if => //.
 inline KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.parties
-       DDH_Adv(Env, Adv).KEHybrid.parties.
+       DDH_Adv(Env, Adv).KEDDH.parties.
 sp 2 2.
 rcondf{1} 1; first auto; smt().
 rcondf{1} 1; first auto; smt().
@@ -3107,9 +3107,9 @@ inline RH.NonOptHashing.init
        MI(KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash, Adv).init
        KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.init
        DDH_Adv(Env, Adv).main
-       Exper(MI(DDH_Adv(Env, Adv).KEHybrid, Adv), Env).main
-       MI(DDH_Adv(Env, Adv).KEHybrid, Adv).init
-       DDH_Adv(Env, Adv).KEHybrid.init.
+       Exper(MI(DDH_Adv(Env, Adv).KEDDH, Adv), Env).main
+       MI(DDH_Adv(Env, Adv).KEDDH, Adv).init
+       DDH_Adv(Env, Adv).KEDDH.init.
 rcondt{1} 4; first auto; smt(mem_empty).
 rcondt{1} 7; first auto; smt(mem_set mem_empty).
 rcondt{1} 10; first auto; smt(mem_set mem_empty).
@@ -3137,12 +3137,12 @@ seq 15 15 :
      DDH_Adv.func, DDH_Adv.adv} /\
    func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
-   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEHybrid) /\
-   DDH_Adv.KEHybrid.self{2} = MI.func{1} /\
-   DDH_Adv.KEHybrid.adv{2} = MI.adv{1} /\
+   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
+   DDH_Adv.KEDDH.self{2} = MI.func{1} /\
+   DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    KERealSimpHashingAdv.KERealSimpHash.st{1} = KERealSimpStateWaitReq1 /\
-   DDH_Adv.KEHybrid.st{2} = KEHybridStateWaitReq1).
+   DDH_Adv.KEDDH.st{2} = KEDDHStateWaitReq1).
 call (_ : true).
 auto.
 call
@@ -3151,21 +3151,21 @@ call
    RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
    DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEHybrid) /\
-   DDH_Adv.KEHybrid.self{2} = MI.func{1} /\
-   DDH_Adv.KEHybrid.adv{2} = MI.adv{1} /\
+   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
+   DDH_Adv.KEDDH.self{2} = MI.func{1} /\
+   DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}).
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
 proc.
 sp 2 2.
 if => //.
 inline MI(KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash, Adv).loop
-       MI(DDH_Adv(Env, Adv).KEHybrid, Adv).loop.
+       MI(DDH_Adv(Env, Adv).KEDDH, Adv).loop.
 sp 3 3; wp.
 while
   (={not_done} /\ ={m0, r0} /\
@@ -3173,20 +3173,20 @@ while
    RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
    DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEHybrid) /\
-   DDH_Adv.KEHybrid.self{2} = MI.func{1} /\
-   DDH_Adv.KEHybrid.adv{2} = MI.adv{1} /\
+   ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
+   DDH_Adv.KEDDH.self{2} = MI.func{1} /\
+   DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
      real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEHybrid.st{2}|}).
+     real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
 sp 2 2.
 if => //.
 wp.
-call KERealSimpHash_NonOptHashing_KEHybrid_DDH1_invoke.
+call KERealSimpHash_NonOptHashing_KEDDH_DDH1_invoke.
 auto.
 wp.
 call (_ : true).
