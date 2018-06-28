@@ -103,7 +103,7 @@ module OptHashing : HASHING = {
 (* Hashing Adversary *)
 
 module type HASHING_ADV (H : HASHING) = {
-  proc * main() : bool {H.hash H.rhash}
+  proc main() : bool {H.hash H.rhash}
 }.
 
 (* games based on the two implementations of hashing *)
@@ -373,11 +373,11 @@ qed.
 local lemma GNonOptHashing_GNOH'_main :
   equiv
   [GNonOptHashing(HashAdv).main ~ GNOH'.main :
-   true ==> ={res}].
+   ={glob HashAdv} ==> ={res}].
 proof.
 proc; inline NonOptHashing.init NOH'.init.
 seq 1 2 :
-  (={mp}(NonOptHashing, NOH') /\
+  (={glob HashAdv} /\ ={mp}(NonOptHashing, NOH') /\
    NOH'.red_inps{2} \subset fdom NOH'.mp{2}).   
 auto; smt(fdom0).
 call
@@ -429,11 +429,11 @@ qed.
 local lemma GOH'_GOptHashing_main :
   equiv
   [GOH'.main ~ GOptHashing(HashAdv).main :
-   true ==> ={res}].
+   ={glob HashAdv} ==> ={res}].
 proof.
 proc; inline OH'.init OptHashing.init.
 seq 2 1 :
-  (={mp}(OH', OptHashing) /\
+  (={glob HashAdv} /\ ={mp}(OH', OptHashing) /\
    (forall (inp' : input),
     mem OH'.red_inps{1} inp' => ! dom OH'.mp{1} inp')).
 auto; smt(in_fset0).
@@ -748,7 +748,7 @@ local lemma eager_hashing_adv :
   eager
   [NOH'.rehash_red_inps(); , HashAdv(NOH').main ~
    HashAdv(OH').main, OH'.rehash_red_inps(); :
-   ={mp, red_inps}(NOH', OH') ==>
+   ={glob HashAdv} /\ ={mp, red_inps}(NOH', OH') ==>
    ={res} /\ ={mp, red_inps}(NOH', OH')].
 proof.
 eager proc
@@ -768,22 +768,27 @@ local lemma GNOH'_GOH' &m :
   Pr[GNOH'.main() @ &m : res] = Pr[GOH'.main() @ &m : res].
 proof.
 byequiv => //; proc.
-seq 1 1 : (={mp, red_inps}(NOH', OH') /\ NOH'.red_inps{1} = fset0).
+seq 1 1 :
+  (={glob HashAdv} /\ ={mp, red_inps}(NOH', OH') /\
+   NOH'.red_inps{1} = fset0).
 inline*; auto.
 transitivity{1}
  { NOH'.rehash_red_inps(); b <@ GNOH'.HA.main(); }
- (={NOH'.mp, NOH'.red_inps} /\ NOH'.red_inps{1} = fset0 ==> ={b})
- (={mp, red_inps}(NOH', OH') ==> ={b}) => //.
-progress; by exists OH'.mp{2} fset0.
-seq 0 1 : (={NOH'.mp, NOH'.red_inps}).
+ (={glob HashAdv} /\ ={NOH'.mp, NOH'.red_inps} /\
+  NOH'.red_inps{1} = fset0 ==>
+  ={b})
+ (={glob HashAdv} /\ ={mp, red_inps}(NOH', OH') ==> ={b}) => //.
+progress.
+progress; by exists (glob HashAdv){2} OH'.mp{2} fset0.
+seq 0 1 : (={glob HashAdv} /\ ={NOH'.mp, NOH'.red_inps}).
 exists* NOH'.mp{2}; elim* => mp'.
 call{2} (NOH'_rehash_red_inps_preserves_map mp'); auto.
 sim.
 transitivity{2}
  { b <@ GOH'.HA.main(); OH'.rehash_red_inps(); }
- (={mp, red_inps}(NOH', OH') ==> ={b})
- (={OH'.mp, OH'.red_inps} ==> ={b}) => //.
-progress; by exists OH'.mp{2} OH'.red_inps{2}.
+ (={glob HashAdv} /\ ={mp, red_inps}(NOH', OH') ==> ={b})
+ (={glob HashAdv} /\ ={OH'.mp, OH'.red_inps} ==> ={b}) => //.
+progress; by exists (glob HashAdv){2} OH'.mp{2} OH'.red_inps{2}.
 eager call eager_hashing_adv; auto.
 call{1} OH'_rehash_red_inps_ll.
 sim.

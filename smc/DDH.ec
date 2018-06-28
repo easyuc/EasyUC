@@ -28,6 +28,8 @@ op ( * ) : exp -> exp -> exp.  (* multiplication *)
 
 axiom mulC (q r : exp) : q * r = r * q.
 
+axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
 (* full, uniform and lossless distribution over exp - which implies
    that exp is finite *)
 
@@ -43,6 +45,8 @@ op g : key.  (* generator *)
 
 op (^) : key -> exp -> key.  (* exponentiation *)
 
+axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
+
 (* the following axioms say that each key is uniquely generated from g
    by exponentiation *)
 
@@ -55,7 +59,7 @@ axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 (* DDH Adversary *)
 
 module type DDH_ADV = {
-  proc * main(x1 x2 x3 : key) : bool
+  proc main(x1 x2 x3 : key) : bool
 }.
 
 module DDH1 (Adv : DDH_ADV) = {
