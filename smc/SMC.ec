@@ -4184,6 +4184,30 @@ inductive ke_hybrid_ideal_sim_rel (st : ke_hybrid_ideal_sim_rel_st) =
   | KEHybridIdealSimRel4 (pt1 pt2 : port, q1 q2 q3 : exp) of
       (ke_hybrid_ideal_sim_rel4 st pt1 pt2 q1 q2 q3).
 
+local lemma MI_KEHybrid_KEIdeal_Sim_invoke :
+  equiv
+  [MI(KEHybrid, Adv).invoke ~ MI(KEIdeal, KESim(Adv)).invoke :
+   ={m} /\ ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+     {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+       ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+       ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+       ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|} ==>
+   ={res, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+     {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+       ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+       ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+       ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}].
+proof.
+admit.
+qed.
+
 local lemma Exper_KEHybrid_KEIdeal_KESim (func' adv' : addr) &m :
   exper_pre func' adv' (fset1 adv_fw_pi) =>
   Pr[Exper(MI(KEHybrid, Adv), Env).main
@@ -4223,10 +4247,10 @@ call
    ={glob Adv} /\
    ke_hybrid_ideal_sim_rel
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
-     ke_hybrid_ideal_sim_rel_st_hs = KEHybrid.st{1};
-     ke_hybrid_ideal_sim_rel_st_is = KEIdeal.st{2};
-     ke_hybrid_ideal_sim_rel_st_ss = KESim.st{2}|}).
-admit.
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
+conseq MI_KEHybrid_KEIdeal_Sim_invoke => //.
 auto; progress; by rewrite KEHybridIdealSimRel0.
 qed.
 
