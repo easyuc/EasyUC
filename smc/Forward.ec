@@ -83,8 +83,6 @@ lemma is_fw_rsp (func : addr, pt1 pt2 : port, u : univ) :
   is_fw_rsp (fw_rsp func pt1 pt2 u).
 proof. done. qed.
 
-print fw_rsp.
-
 lemma dest_good_fw_rsp (m : msg) :
   is_fw_rsp m => (oget (dec_fw_rsp m)).`3 = m.`2.
 proof.
