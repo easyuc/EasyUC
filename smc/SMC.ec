@@ -2730,7 +2730,8 @@ auto.
 exfalso => &1 &2 [#] _ _ _ _ []; smt().
 qed.
 
-local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv (func' adv' : addr) &m :
+local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+            (func' adv' : addr) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
   Pr[Exper(MI(KERealSimp, Adv), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
@@ -2797,8 +2798,7 @@ auto.
 auto.
 auto.
 auto; progress.
-apply RealSimpHashRel0.
-rewrite /real_simp_hash_rel0 /=; smt(emptyE).
+rewrite RealSimpHashRel0 /real_simp_hash_rel0 /=; smt(emptyE).
 qed.
 
 (* relation supporting transition from
@@ -3276,7 +3276,7 @@ lemma is_ke_hybrid_state_final (x : port * port * exp * exp * exp) :
   is_ke_hybrid_state_final (KEHybridStateFinal x).
 proof. done. qed.
 
-module KEHybrid : FUNC = {
+local module KEHybrid : FUNC = {
   var self, adv : addr
   var st : ke_hybrid_state
 
@@ -3858,6 +3858,207 @@ by rewrite log_genK.
 by rewrite HybridHashDDH2Rel0.
 qed.
 
+(* relation between state of KEHybridHash and map of
+   RH.OptHashing *)
+
+type hybrid_hash_rel_st = {
+  hybrid_hash_rel_st_rss : ke_hybrid_state;
+  hybrid_hash_rel_st_map : (exp_names, exp) fmap;
+}.
+
+pred hybrid_hash_rel0 (st : hybrid_hash_rel_st) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq1 /\
+  st.`hybrid_hash_rel_st_map.[exp1] = None /\
+  st.`hybrid_hash_rel_st_map.[exp2] = None /\
+  st.`hybrid_hash_rel_st_map.[exp3] = None.
+
+pred hybrid_hash_rel1 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv1 (pt1, pt2, q1) /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = None /\
+  st.`hybrid_hash_rel_st_map.[exp3] = None.
+
+pred hybrid_hash_rel2 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq2 (pt1, pt2, q1, q2, q3) /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
+  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+
+pred hybrid_hash_rel3 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv2 (pt1, pt2, q1, q2, q3) /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
+  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+
+pred hybrid_hash_rel4 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateFinal (pt1, pt2, q1, q2, q3) /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
+  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+
+inductive hybrid_hash_rel (st : hybrid_hash_rel_st) =
+    HybridHashRel0 of (hybrid_hash_rel0 st)
+  | HybridHashRel1 (pt1 pt2 : port, q1 : exp) of
+      (hybrid_hash_rel1 st pt1 pt2 q1)
+  | HybridHashRel2 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_hash_rel2 st pt1 pt2 q1 q2 q3)
+  | HybridHashRel3 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_hash_rel3 st pt1 pt2 q1 q2 q3)
+  | HybridHashRel4 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_hash_rel4 st pt1 pt2 q1 q2 q3).
+
+local lemma KEHybrid_KEHybridHash_OptHashing_invoke :
+  equiv
+  [KEHybrid.invoke ~ 
+   KEHybridHashingAdv(RH.OptHashing).KEHybridHash.invoke :
+   ={m} /\
+   ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
+   ={res} /\
+   ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}].
+proof.
+proc.
+case 
+  (hybrid_hash_rel0
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}).
+sp 3 3.
+if => //.
+inline KEHybrid.parties
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.parties.
+sp 2 2.
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+if => //.
+sp 1 1.
+if => //.
+move => &1 &2 /> <- //.
+wp.
+inline RH.OptHashing.hash.
+rcondt{2} 2; first auto; smt().
+auto => &1 &2 /> <-.
+progress.
+by rewrite get_setE /= oget_some.
+by rewrite get_setE /= oget_some.
+rewrite (HybridHashRel1 _ pt10{2} pt20{2} q1L)
+        /hybrid_hash_rel1 /=.
+by rewrite 3!get_setE.
+auto.
+auto.
+case 
+  (exists (pt1 pt2 : port) (q1 : exp),
+   hybrid_hash_rel1
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+   pt1 pt2 q1).
+elim* => pt1 pt2 q1.
+sp 3 3.
+if => //.
+inline KEHybrid.parties
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.parties.
+sp 2 2.
+rcondf{1} 1; first auto; smt().
+rcondt{1} 1; first auto; smt(is_ke_hybrid_state_wait_adv1).
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_adv1).
+sp 1 1.
+if => //.
+sp 1 1.
+if.
+move => &1 &2 [#] dec_fw_ok2 dec_fw_ok1 dec_wait2 dec_wait1
+        ->> _ ->> _ _ _ _ _ _ _ ->> <<- <<- <<-.
+rewrite -dec_fw_ok2 /= in dec_fw_ok1.
+by elim dec_fw_ok1 => ->.
+wp.
+inline RH.OptHashing.hash.
+rcondt{2} 2; first auto; smt().
+rcondt{2} 5; first auto; smt(mem_set).
+auto => &1 &2 |> _ _ ^ st2_eq <- /= [#] -> -> -> _ _
+        @/hybrid_hash_rel1 /= [#] ->>.
+progress.
+by rewrite get_setE /= oget_some.
+by rewrite get_setE /= oget_some.
+by rewrite get_setE /= oget_some.
+rewrite (HybridHashRel2 _ pt10{2} pt20{2} q1 q2L q3L)
+        /hybrid_hash_rel2 /=.
+rewrite 6!get_setE /= /#.
+auto.
+auto.
+case 
+  (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
+   hybrid_hash_rel2
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+   pt1 pt2 q1 q2 q3).
+elim* => pt1 pt2 q1 q2 q3.
+sp 3 3.
+if => //.
+inline KEHybrid.parties
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.parties.
+sp 2 2.
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondt{1} 1; first auto; smt(is_ke_hybrid_state_wait_req2).
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_req2).
+auto => &1 &2 |> _ _ _ @/hybrid_hash_rel2 /= [#].
+progress.
+rewrite oget_some (HybridHashRel3 _ pt1 pt2 q1 q2 q3)
+        /hybrid_hash_rel3 /= /#.
+case 
+  (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
+   hybrid_hash_rel3
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+   pt1 pt2 q1 q2 q3).
+elim* => pt1 pt2 q1 q2 q3.
+sp 3 3.
+if => //.
+inline KEHybrid.parties
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.parties.
+sp 2 2.
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondt{1} 1; first auto; smt(is_ke_hybrid_state_wait_adv2).
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_adv2).
+auto => &1 &2 |> _ _ _ @/hybrid_hash_rel3 /= [#].
+progress.
+rewrite oget_some (HybridHashRel4 _ pt1 pt2 q1 q2 q3)
+        /hybrid_hash_rel4 /= /#.
+case 
+  (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
+   hybrid_hash_rel4
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+   pt1 pt2 q1 q2 q3).
+elim* => pt1 pt2 q1 q2 q3.
+sp 3 3.
+if => //.
+inline KEHybrid.parties
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.parties.
+sp 2 2.
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+auto.
+exfalso => &1 &2 [#] _ _ _ _ []; smt().
+qed.
+
 local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
             (func' adv' : addr) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
@@ -3865,7 +4066,68 @@ local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[RH.GOptHashing(KEHybridHashingAdv).main() @ &m : res].
 proof.
-admit.
+move => func'_eq adv'_eq.
+byequiv => //.
+proc.
+inline MI(KEHybrid, Adv).init
+       KEHybrid.init
+       RH.OptHashing.init
+       RH.GOptHashing(KEHybridHashingAdv).HA.main
+       RH.OptHashing.rhash
+       Exper(MI(KEHybridHashingAdv(RH.OptHashing).KEHybridHash,
+                Adv),
+             Env).main
+       KEHybridHashingAdv(RH.OptHashing).KEHybridHash.init
+       MI(KEHybridHashingAdv(RH.OptHashing).KEHybridHash, Adv).init.
+wp.
+seq 12 19 :
+  (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
+   ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   func' = func{1} /\ func{1} = MI.func{1} /\
+   KEHybrid.self{1} = func{1} /\
+   adv' = adv{1} /\ adv{1} = MI.adv{1} /\
+   KEHybrid.adv{1} = adv{1} /\
+   KEHybrid.st{1} = KEHybridStateWaitReq1 /\
+   RH.OptHashing.mp{2} = empty /\
+   ={glob Adv}).
+call (_ : true).
+auto; smt().
+call
+  (_ :
+   ={MI.func, MI.adv, MI.in_guard} /\
+   ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
+   ={glob Adv} /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}).
+proc.
+sp 2 2.
+if => //.
+inline MI(KEHybrid, Adv).loop
+       MI(KEHybridHashingAdv(RH.OptHashing).KEHybridHash, Adv).loop.
+sp 3 3; wp.
+while
+  (={not_done} /\ ={m0, r0} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
+   ={glob Adv} /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid.st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}).
+sp 2 2.
+if => //.
+wp.
+call KEHybrid_KEHybridHash_OptHashing_invoke.
+auto.
+wp.
+call (_ : true).
+auto.
+auto.
+auto.
+auto; progress.
+rewrite HybridHashRel0 /hybrid_hash_rel0 /=; smt(emptyE).
 qed.
 
 local lemma Exper_KEHybrid_KEIdeal_KESim (func' adv' : addr) &m :
