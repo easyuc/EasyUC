@@ -229,6 +229,14 @@ type mode = [
   | Adv  (* adversarial *)
 ].
 
+lemma not_dir (mod : mode) :
+  mod <> Dir <=> mod = Adv.
+proof. by case mod. qed.
+
+lemma not_adv (mod : mode) :
+  mod <> Adv <=> mod = Dir.
+proof. by case mod. qed.
+
 (* a message has the form (mod, pt1, pt2, u), for a mode mod, a
    destination port pt1, a source port pt2, and a universe
    value u
