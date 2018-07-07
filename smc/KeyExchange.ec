@@ -3760,8 +3760,7 @@ local module MI_KEHybrid_AfterAdv = {
   proc after_adv(m : msg, r : msg option, not_done : bool) :
          msg option = {
     var mod : mode; var pt1, pt2 : port;
-    var addr1 : addr; var n1 : int;
-    var u : univ;
+    var addr1 : addr; var n1 : int; var u : univ;
     (mod, pt1, pt2, u) <- m;
     (addr1, n1) <- pt1;
     if (MI.adv <= addr1 \/ mod = Dir) {
@@ -3817,7 +3816,7 @@ local module MI_KEHybrid_AfterAdv = {
 }.
 
 local module MI_KEIdeal_KESim_AfterAdv = {
-  proc after_adv(m : msg, r : msg option, not_done not_done0 : bool) :
+  proc after_adv(m : msg, r : msg option, not_done not_done' : bool) :
          msg option = {
     var mod : mode; var pt1, pt2, pt1', pt2' : port;
     var addr, addr1, addr2 : addr; var n1 : int;
@@ -3847,9 +3846,9 @@ local module MI_KEIdeal_KESim_AfterAdv = {
       }
     }
     else {
-      not_done0 <- false;
+      not_done' <- false;
     }
-    while (not_done0) {
+    while (not_done') {
       if (m.`2.`2 = ke_sim_adv_pi) {
         r <- None;
         if (KESim.st = KESimStateWaitReq1) {
@@ -3878,7 +3877,7 @@ local module MI_KEIdeal_KESim_AfterAdv = {
           }
         }
         if (r = None) {
-          not_done0 <- false;
+          not_done' <- false;
         }
         else {
           m <- oget r;
@@ -3887,7 +3886,7 @@ local module MI_KEIdeal_KESim_AfterAdv = {
       else {
         r <@ Adv.invoke(m);
         if (r = None) {
-          not_done0 <- false;
+          not_done' <- false;
         } else {
           m <- oget r;
           (mod, pt1, pt2, u) <- m;
@@ -3915,7 +3914,7 @@ local module MI_KEIdeal_KESim_AfterAdv = {
             }
           }
           else {
-            not_done0 <- false;
+            not_done' <- false;
           }
         }
       }
@@ -3985,7 +3984,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv
   equiv
   [MI_KEHybrid_AfterAdv.after_adv ~
    MI_KEIdeal_KESim_AfterAdv.after_adv :
-   ={m, r} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={m, r} /\ not_done{1} /\ not_done{2} /\ not_done'{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4214,7 +4213,7 @@ auto.
 inline MI_KEIdeal_KESim_AfterAdv.after_adv.
 sp 4 0.
 seq 3 3 :
-  (r5{1} = r4{2} /\ not_done00{1} = not_done0{2} /\
+  (r5{1} = r4{2} /\ not_done'{1} = not_done0{2} /\
    not_done1{1} = not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard,
    KEIdeal.self, KEIdeal.adv, KEIdeal.st,
