@@ -4315,31 +4315,30 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by rewrite KEHybridIdealSimRel0.
-sp 3 2.
+sp 3 3.
+if; first move => |> &1 &2 <- /#.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto; progress; by rewrite KEHybridIdealSimRel0.
+case ((MI.func <= addr10){1}).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+sp 2 0.
+rcondt{1} 1; first auto.
+inline{1} (1) KEHybrid.invoke.
+sp 4 0.
 rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
 rcondf{2} 2; first auto.
 rcondf{2} 4; first auto.
 sp 0 6.
-if => //.
-by move => |> &1 &2 not_done_R <-.
-rcondf{1} 3; first auto.
-rcondf{2} 3; first auto.
-auto; progress; by rewrite KEHybridIdealSimRel0.
-if => //.
-by move => |> &1 &2 not_done_R <-.
-rcondf{1} 2; first auto.
-rcondf{2} 2; first auto.
-auto; progress; by rewrite KEHybridIdealSimRel0.
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto.
-sp 2 2.
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto; smt().
-elim* => addr10_R n10_R mod0_R pt10_R pt20_R u0_R addr10_L
-         n10_L mod0_L pt10_L pt20_L u0_L not_done0_R.
-seq 1 0 :
-  (r0{1} = None /\ m0{2}.`1 = Adv /\ KEIdeal.self{2} <= m0{2}.`2.`1 /\
+elim* => not_done0_R addr10_L n10_L mod0_L pt10_L pt20_L u0_L.
+seq 2 0 :
+  (r0{1} = None /\ mod0{2} = Adv /\ MI.func{2} <= addr10{2} /\
+   m0{2}.`1 = mod0{2} /\ m0{2}.`2.`1 = addr10{2} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\ KEHybrid.self{1} = MI.func{1} /\
    exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
@@ -4351,29 +4350,44 @@ seq 1 0 :
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
-inline{1} (1) KEHybrid.invoke.
-sp 4 0.
 if{1}.
 wp; inline KEHybrid.parties.
 rcondt{1} 3; first auto; smt().
 rcondf{1} 3; first auto; progress.
 rewrite /is_ke_req1 /dec_ke_req1 /= /#.
 auto; smt().
-auto => |> &1 &2 <- [#] <- _ _ _ /= [#] -> _ _ _ _ _ _ _ _ _ _
-        /negb_or [#] _ /not_dir -> _ _ /#.
+auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _ _
+        _ _ _ /negb_or [#] _ /not_dir -> _ _ /#.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
-wp; inline{2} (1) KEIdeal.invoke.
+rcondf{2} 1; first auto; smt(inc_le_excl2).
+rcondf{2} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{2} 1; first auto.
+inline{2} (1) KEIdeal.invoke.
 sp 0 4.
 if{2}.
-inline KEIdeal.parties.
-rcondt{2} 3; first auto; smt().
-rcondf{2} 3; first auto.
-rcondt{2} 5; first auto.
-rcondf{2} 6; first auto.
+inline{2} (1) KEIdeal.parties.
+sp 0 2.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 1; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
 auto; progress; by rewrite KEHybridIdealSimRel0.
 rcondt{2} 2; first auto.
 rcondf{2} 3; first auto.
+auto; progress; by rewrite KEHybridIdealSimRel0.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto; smt().
+rcondf{2} 7; first auto; smt().
+rcondt{2} 7; first auto; smt().
+rcondf{2} 8; first auto.
 auto; progress; by rewrite KEHybridIdealSimRel0.
 auto.
 case
@@ -4534,7 +4548,7 @@ call (MI_KEHybrid_KEIdeal_KESim_after_adv_1 pt1' pt2' q1').
 auto.
 inline MI_KEIdeal_KESim_AfterAdv.after_adv.
 sp 3 0.
-seq 4 4 :
+seq 5 5 :
   (r3{1} = r2{2} /\ not_done'{1} = not_done0{2} /\
    not_done1{1} = not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard,
