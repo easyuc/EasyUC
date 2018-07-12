@@ -4081,7 +4081,58 @@ elim dec_sim_wait_eq => -> ->.
 progress.
 rewrite (KEHybridIdealSimRel2 _ pt1' pt2' q1' q2L q3L)
         /ke_hybrid_ideal_sim_rel2 /= oget_some /= /#.
-admit.
+seq 2 0 :
+  (r{1} = None /\ r{2} = None /\
+   (addr{2} ++ [1] <> m{2}.`2.`1 \/
+   ! (Fwd1.is_fw_ok m{2})) /\
+   (mod{2}, pt1{2}, pt2{2}, u{2}) = m{2} /\
+   (addr1{2}, n1{2}) = pt1{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
+   KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
+   KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel1
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1' pt2' q1').
+if{1}.
+inline KEHybrid.parties.
+sp 2 0.
+rcondf{1} 1; first auto; smt().
+rcondt{1} 1; first auto; smt(is_ke_hybrid_state_wait_adv1).
+sp 1 0.
+if{1}.
+rcondf{1} 2; first auto.
+move => |> &hr _ _ <- /= [#] -> -> -> -> -> _ _ _ _ _.
+rewrite /is_fw_ok /dec_fw_ok /=.
+case
+  (mod{m} = Dir \/ n1{m} <> 1 \/ pt2{m}.`2 <> adv_fw_pi \/
+   u{m} <> UnivUnit) => //=.
+rewrite oget_some /= /#.
+auto; progress; smt().
+auto; progress; smt().
+auto; progress. smt().
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+if{2}.
+rcondf{2} 2; first auto.
+move => |> &hr [] //.
+rewrite /is_fw_ok /dec_fw_ok /=.
+case
+  (mod{hr} = Dir \/ n1{hr} <> 1 \/ pt2{hr}.`2 <> adv_fw_pi \/
+   u{hr} <> UnivUnit) => //.
+rewrite {2}oget_some /= /#.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto; progress; by apply (KEHybridIdealSimRel1 _ pt1' pt2' q1').
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by apply (KEHybridIdealSimRel1 _ pt1' pt2' q1').
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
 rcondf{2} 1; first auto.
