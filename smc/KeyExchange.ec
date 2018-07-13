@@ -4160,12 +4160,14 @@ local lemma MI_KEHybrid_KEIdeal_Sim_invoke :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel
      {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+       ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
        ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
        ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
        ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|} ==>
    ={res, glob Adv} /\
    ke_hybrid_ideal_sim_rel
      {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+       ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
        ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
        ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
        ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}].
@@ -4174,6 +4176,7 @@ proc.
 case
   (ke_hybrid_ideal_sim_rel0
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
@@ -4251,6 +4254,7 @@ seq 11 4 :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4273,6 +4277,7 @@ seq 1 1 :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
@@ -4316,6 +4321,7 @@ transitivity{1}
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
@@ -4323,6 +4329,7 @@ transitivity{1}
    ={r, glob Adv} /\
    ke_hybrid_ideal_sim_rel
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
@@ -4342,21 +4349,23 @@ transitivity{2}
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
    pt12{1} pt22{1} q1{1} ==>
-  ={r, glob Adv} /\
-  ke_hybrid_ideal_sim_rel
-  {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
-    ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
-    ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
-    ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|})
+   ={r, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|})
   (r0{1} = r4{2} /\
    ={MI.func, MI.adv, MI.in_guard,
      KEIdeal.self, KEIdeal.adv, KEIdeal.st,
      KESim.self, KESim.adv, KESim.st, glob Adv} /\
-     not_done{2} ==>
+   not_done{2} ==>
    ={r, MI.func, MI.adv, MI.in_guard,
      KEIdeal.self, KEIdeal.adv, KEIdeal.st,
      KESim.self, KESim.adv, KESim.st, glob Adv}) => //.
@@ -4413,6 +4422,7 @@ seq 1 1 :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel0
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
@@ -4460,6 +4470,7 @@ seq 2 0 :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel0
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
@@ -4507,6 +4518,7 @@ case
   (exists (pt1 pt2 : port) (q1 : exp),
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4534,6 +4546,7 @@ seq 1 0 :
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4580,6 +4593,7 @@ seq 1 1 :
     KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4623,6 +4637,7 @@ transitivity{1}
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
@@ -4630,6 +4645,7 @@ transitivity{1}
    ={r, glob Adv} /\
    ke_hybrid_ideal_sim_rel
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
@@ -4650,20 +4666,22 @@ transitivity{2}
    KESim.adv{2} = [] /\ ={glob Adv} /\
    ke_hybrid_ideal_sim_rel1
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
    pt1' pt2' q1' ==>
-  ={r, glob Adv} /\
-  ke_hybrid_ideal_sim_rel
-  {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
-    ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
-    ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
-    ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|})
+   ={r, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|})
   (={r2, MI.func, MI.adv, MI.in_guard,
      KEIdeal.self, KEIdeal.adv, KEIdeal.st,
      KESim.self, KESim.adv, KESim.st, glob Adv} /\
-     not_done{2} ==>
+   not_done{2} ==>
    ={r, MI.func, MI.adv, MI.in_guard,
      KEIdeal.self, KEIdeal.adv, KEIdeal.st,
      KESim.self, KESim.adv, KESim.st, glob Adv}) => //.
@@ -4692,6 +4710,7 @@ case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
    ke_hybrid_ideal_sim_rel2
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4702,6 +4721,7 @@ case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
    ke_hybrid_ideal_sim_rel3
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4712,6 +4732,7 @@ case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
    ke_hybrid_ideal_sim_rel4
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
@@ -4760,6 +4781,7 @@ call
    ={glob Adv} /\
    ke_hybrid_ideal_sim_rel
    {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
      ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
