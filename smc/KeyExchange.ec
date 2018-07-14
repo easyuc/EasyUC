@@ -4149,6 +4149,35 @@ rcondf{2} 5; first auto.
 auto; progress; by apply (KEHybridIdealSimRel1 _ pt1' pt2' q1').
 qed.
 
+local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
+            (pt1' pt2' : port, q1' q2' q3' : exp) :
+  equiv
+  [MI_KEHybrid_AfterAdv.after_adv ~
+   MI_KEIdeal_KESim_AfterAdv.after_adv :
+   ={r} /\ r{1} <> None /\ ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
+   KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
+   KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel3
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1' pt2' q1' q2' q3' ==>
+   ={res, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}].
+proof.
+admit.
+qed.
+
 local lemma MI_KEHybrid_KEIdeal_Sim_invoke :
   equiv
   [MI(KEHybrid, Adv).invoke ~ MI(KEIdeal, KESim(Adv)).invoke :
@@ -4413,7 +4442,7 @@ rcondf{2} 7; first auto; progress.
 have /= := ke_pi_uniq; smt(in_fset1).
 sp 0 6.
 seq 1 1 :
-  (not_done{1} /\ not_done{2} /\ not_done0{2} /\ r0{1} = r2{2} /\
+  (not_done{1} /\ not_done{2} /\ r0{1} = r2{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
@@ -4458,7 +4487,7 @@ rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto.
 rcondf{2} 3; first auto.
 sp 0 5.
-elim* => not_done0_R addr10_L n10_L mod0_L pt10_L pt20_L u0_L.
+elim* => addr10_L n10_L mod0_L pt10_L pt20_L u0_L.
 seq 2 0 :
   (r0{1} = None /\ mod0{2} = Adv /\ MI.func{2} <= addr10{2} /\
    m0{2}.`1 = mod0{2} /\ m0{2}.`2.`1 = addr10{2} /\ not_done{2} /\
@@ -4480,7 +4509,7 @@ rcondt{1} 3; first auto; smt().
 rcondf{1} 3; first auto; progress.
 rewrite /is_ke_req1 /dec_ke_req1 /= /#.
 auto; smt().
-auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _ _
+auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _ 
         _ _ _ /negb_or [#] _ /not_dir -> _ _ /#.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -4715,8 +4744,360 @@ case
      ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
    pt1 pt2 q1 q2 q3).
-elim* => pt1' pt2' q1' q2' q3'.
-admit.
+elim* => pt1'' pt2'' q1' q2' q3'.
+sp 2 2.
+if => //.
+inline MI(KEHybrid, Adv).loop MI(KEIdeal, KESim(Adv)).loop.
+sp 3 3.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+if => //.
+inline{1} (1) KEHybrid.invoke.
+inline{2} (1) KEIdeal.invoke.
+sp 4 4.
+if => //.
+progress; smt().
+inline{1} (1) KEHybrid.parties.
+inline{2} (1) KEIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_ke_hybrid_state_wait_req2).
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+sp 3 3.
+if => //.
+sp 1 1.
+if.
+move => &1 &2 [#] dec_req_2 dec_req_1 ->> _ dec_ideal_wait_eq
+        ->> _ dec_hybrid_wait_eq ->> _ _ _ ->> _ _ _ _ _
+        _ _ ->> _ _ ->> _ _ _ _ _ _ ->> _ _ _ _ _ _ _ _ _
+        _ _ _ _ _ _.
+rewrite -dec_req_2 /= in dec_req_1.
+elim dec_req_1 => ->> ->>.
+move => [] /= _ [#] _ _ _ ->> ->> _.
+rewrite /= oget_some /= in dec_ideal_wait_eq.
+rewrite /= oget_some /= in dec_hybrid_wait_eq.
+elim dec_hybrid_wait_eq => ->> [#] ->> _ _ _.
+elim dec_ideal_wait_eq => _ [#] -> //.
+rcondf{2} 5; first auto.
+rcondf{2} 8; first auto.
+move => &hr |> <- /= [#] _ ->.
+rewrite oget_some /ke_sim_req2 /= /#.
+rcondf{2} 8; first auto.
+rcondf{2} 8; first auto.
+move => &hr |> <- /= [#] _ ->.
+rewrite oget_some /ke_sim_req2 /=.
+smt(ke_pi_uniq).
+rcondt{2} 8; first auto.
+rcondf{2} 10; first auto.
+move => &hr |> <- /= [#] _ ->.
+rewrite oget_some /ke_sim_req2 /= /#.
+sp 0 9.
+inline{2} (1) KESim(Adv).invoke.
+rcondt{2} 4; first auto.
+inline{2} (1) KESim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto; smt().
+rcondt{2} 8; first auto; smt(is_ke_sim_state_wait_req2).
+rcondt{2} 9; first auto.
+rcondf{2} 12; first auto.
+rcondt{2} 13; first auto.
+rcondf{2} 13; first auto; progress.
+rewrite oget_some /= /fw_obs /=; smt(ke_pi_uniq).
+sp 0 12.
+rcondf{1} 6; first auto.
+rcondf{1} 9; first auto; progress.
+rewrite oget_some /fw_obs /= /#.
+rcondf{1} 9; first auto.
+rcondf{1} 9; first auto; progress.
+rewrite oget_some /fw_obs /=; smt(ke_pi_uniq).
+rcondt{1} 9; first auto.
+rcondf{1} 11; first auto; progress.
+rewrite oget_some /fw_obs /= /#.
+sp 10 0.
+conseq
+  (_ :
+   m0{1} = m4{2} /\ not_done{1} /\ not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel3
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1'' pt2'' q1' q2' q3' ==>
+   _).
+move => |> &1 &2 mod0_L pt10_L pt20_L u0_L st_L.
+rewrite !oget_some /=.
+move => ^H <- [#] <<- <<- <<- <<- st_R.
+move : H.
+rewrite /fw_obs /=.
+move => [#] -> -> -> -> -> dec_sim_wait_eq _ st_R0
+        _ _ _ dec_ideal_wait_eq dec_ke_req_eq pre _ _ _
+        [] /= out_pt1''1 [#] out_pt2''1 out_pt1''2 out_pt2''2
+        ->> ->> ->>.
+rewrite /= oget_some /= in dec_sim_wait_eq.
+elim dec_sim_wait_eq => ->> [#] ->> ->>.
+rewrite /= oget_some /= in dec_ke_req_eq.
+elim dec_ke_req_eq => ->> [#] ->> ->> ->> ->> /=.
+rewrite /ke_hybrid_ideal_sim_rel3 /=.
+rewrite /= oget_some /= in dec_ideal_wait_eq.
+elim dec_ideal_wait_eq => ->> [#] ->> ->> //.
+seq 1 1 :
+  (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel3
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1'' pt2'' q1' q2' q3').
+call (_ : true).
+auto.
+sp 0 1.
+rcondf{2} 2; first auto.
+sp.
+if.
+sp.
+if.
+auto.
+if.
+sp.
+if; [sp; if; [sp; if; auto | auto] | auto].
+auto.
+auto.
+case (r0{1} = None).
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 1; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto; by progress;
+  rewrite (KEHybridIdealSimRel3 _ pt1'' pt2'' q1' q2' q3').
+rcondf{1} 1; first auto.
+rcondt{2} 1; first auto.
+transitivity{1}
+  {r <- MI_KEHybrid_AfterAdv.after_adv(r0);}
+  (={r0, MI.func, MI.adv, MI.in_guard,
+     KEHybrid.self, KEHybrid.adv, KEHybrid.st, glob Adv} /\
+     not_done{1} ==>
+   ={r, MI.func, MI.adv, MI.in_guard,
+     KEHybrid.self, KEHybrid.adv, KEHybrid.st, glob Adv})
+  (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{1} /\ not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel3
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1'' pt2'' q1' q2' q3' ==>
+   ={r, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} KEHybrid.st{1}
+          MI.adv{2} MI.func{2} (fset1 adv_fw_pi)
+          not_done{1} r4{2}.
+inline MI_KEHybrid_AfterAdv.after_adv.
+sim; auto => |>.
+transitivity{2}
+  {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r0);}
+  (={r0, MI.func, MI.adv, MI.in_guard} /\ r0{1} <> None /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
+   KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
+   KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel3
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}
+   pt1'' pt2'' q1' q2' q3' ==>
+   ={r, glob Adv} /\
+   ke_hybrid_ideal_sim_rel
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|})
+  (r0{1} = r4{2} /\
+   ={MI.func, MI.adv, MI.in_guard,
+     KEIdeal.self, KEIdeal.adv, KEIdeal.st,
+     KESim.self, KESim.adv, KESim.st, glob Adv} /\
+   not_done{2} ==>
+   ={r, MI.func, MI.adv, MI.in_guard,
+     KEIdeal.self, KEIdeal.adv, KEIdeal.st,
+     KESim.self, KESim.adv, KESim.st, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} KEIdeal.st{2}
+          [] MI.adv{2} KESim.st{2} MI.adv{2} MI.func{2}
+          (fset1 adv_fw_pi) r4{2}.
+call (MI_KEHybrid_KEIdeal_KESim_after_adv_2 pt1'' pt2'' q1' q2' q3').
+auto.
+inline MI_KEIdeal_KESim_AfterAdv.after_adv.
+sp 3 0.
+seq 4 4 :
+  (r5{1} = r4{2} /\ not_done1{1} = not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard,
+   KEIdeal.self, KEIdeal.adv, KEIdeal.st,
+   KESim.self, KESim.adv, KESim.st, glob Adv}).
+sim => |>.
+sp 0 2.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) KESim(Adv).invoke.
+rcondt{2} 4; first auto; smt().
+inline{2} (1) KESim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondf{2} 7; first auto; progress.
+have /= := ke_pi_uniq; smt(in_fset1).
+sp 0 6.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{2} /\ r0{1} = r2{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel2
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}
+   pt1'' pt2'' q1' q2' q3').
+call (_ : true); auto.
+sp 0 1.
+case (r0{1} = None).
+rcondt{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 1; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto; progress; by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
+rcondf{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 3 3.
+if; first move => |> &1 &2 <- /#.
+rcondf{1} 3; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto; progress; by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
+case ((MI.func <= addr10){1}).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+sp 2 0.
+rcondt{1} 1; first auto.
+inline{1} (1) KEHybrid.invoke.
+sp 4 0.
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
+rcondt{2} 2; first auto.
+move => |> &hr <- /= [#] -> -> _ _ _ _ _ _ _ _
+        [] /= [#] _ [#] _ _ _ _ _ -> /=.
+by rewrite oget_some.
+rcondf{2} 3; first auto; smt().
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+wp.
+elim* => addr10_L n10_L mod0_L pt10_L pt20_L u0_L not_done0_R.
+(*
+seq 2 0 :
+  (r0{1} = None /\ mod2{2} = Adv /\ MI.func{2} <= addr11{2} /\
+   m0{2}.`1 = mod2{2} /\ m0{2}.`2.`1 = addr11{2} /\ not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard} /\ KEHybrid.self{1} = MI.func{1} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
+   KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
+   KESim.adv{2} = [] /\ ={glob Adv} /\
+   ke_hybrid_ideal_sim_rel0
+   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
+     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
+     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
+     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
+     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
+*)
+if{1}.
+wp; inline{1} (1) KEHybrid.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_ke_hybrid_state_wait_req2).
+rcondf{1} 4; first auto; progress.
+rewrite /is_ke_req2 /dec_ke_req2 /= /#.
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto.
+auto; progress;
+  by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto; progress;
+  by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 1; first auto; smt(inc_le_excl2).
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
+rcondf{2} 2; first auto.
+move => |> &hr <- /= [#] -> -> _ _ _ not_done0_R _ _ _
+        _ [] /= _ [#] _ _ _ _ _ -> /=.
+by rewrite oget_some.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondf{2} 7; first auto; smt().
+rcondt{2} 7; first auto; smt().
+rcondf{2} 8; first auto.
+auto; progress;
+  by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
+auto.
 case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
    ke_hybrid_ideal_sim_rel3
