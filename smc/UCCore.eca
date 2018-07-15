@@ -458,10 +458,8 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
               r <- None;
             }
           }
-          else {  (* mod = Adv *)
-            if (addr1 <> adv \/ n1 = 0) {
-              r <- None; not_done <- false;
-            }
+          elif (addr1 <> adv \/ n1 = 0) {
+            r <- None; not_done <- false;
           }
         }          
       }
