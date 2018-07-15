@@ -440,8 +440,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
          m.`1 = Adv /\ m.`2.`1 = adv *)
 
     while (not_done) {
-      (mod, pt1, pt2, u) <- m;
-      (addr1, n1) <- pt1;
+      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
       if (func <= addr1) {
         r <@ Func.invoke(m);
         if (r = None) {
@@ -492,7 +491,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
     var r : msg option;
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if (func <= addr1 /\ mod = Dir \/
-        addr1 = adv /\ mod = Adv /\ (pt1.`2 = 0 \/ mem in_guard pt1.`2)) {
+        addr1 = adv /\ mod = Adv /\ (n1 = 0 \/ mem in_guard n1)) {
       r <@ loop(m);
     }
     else {
