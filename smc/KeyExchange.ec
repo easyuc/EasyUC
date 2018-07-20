@@ -329,6 +329,15 @@ module KEReal : FUNC = {
   proc loop(m : msg) : msg option = {
     var r : msg option <- None;
     var not_done : bool <- true;
+
+    (* invariant: 
+
+         m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/
+          m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
+         self ++ [1] <= m.`2.`1 \/
+         self ++ [2] <= m.`2.`1 *)
+
     while (not_done) {
       if (m.`2.`1 = self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
         r <- party1(m);

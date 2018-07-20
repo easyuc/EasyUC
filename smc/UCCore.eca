@@ -417,6 +417,8 @@ module Exper (Inter : INTER, Env : ENV) = {
 
 (* make interface out of functionality and adversary parts *)
 
+abstract theory MakeInterface.
+
 module MI (Func : FUNC, Adv : FUNC) : INTER = {
   var func, adv : addr
   var in_guard : int fset
@@ -499,90 +501,10 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
   }
 }.
 
-abstract theory MI_UOC.
+end MakeInterface.
 
-(* make interface out of functionality and adversary parts,
-   but where output of and communication between parts is
-   unrestricted *)
-
-module MI_UOC (Func : FUNC, Adv : FUNC) : INTER = {
-  var func, adv : addr
-  var in_guard : int fset
-
-  proc init(func_ adv_ : addr, in_guard_ : int fset) : unit = {
-    func <- func_; adv <- adv_; in_guard <- in_guard_;
-    Func.init(func, adv);
-    Adv.init(adv, []);
-  }
-
-  proc loop(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1 : addr; var n1 : int;
-    var r : msg option <- None;
-    var not_done : bool <- true;
-
-    (* loop invariant in terms of m:
-
-         not_done => func <= m.`2.`1 \/ m.`2.`1 = adv *)
-
-    while (not_done) {
-      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-      if (func <= addr1) {
-        r <@ Func.invoke(m);
-        if (r = None) {
-          not_done <- false;
-        }
-        else {
-          m <- oget r;  (* next iteration, if any, will use m *)
-          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-          if (func <= addr1) {
-            r <- None; not_done <- false;
-          }
-          elif (! adv <= addr1) {
-            not_done <- false;
-          }
-          elif (addr1 <> adv) {
-            r <- None; not_done <- false;            
-          }
-        }          
-      }
-      else {  (* addr1 = adv *)
-        r <@ Adv.invoke(m);
-        if (r = None) {
-          not_done <- false;
-        }
-        else {
-          m <- oget r;  (* next iteration, if any, will use m *)
-          (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-          if (adv <= addr1) {
-            r <- None; not_done <- false;
-          }
-          elif (! func <= addr1) {
-            not_done <- false;
-          }
-        }
-      }      
-    }
-    return r;
-  }
-
-  proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr; var n1 : int;
-    var r : msg option;
-    (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-    if (func <= addr1 /\ mod = Dir \/
-        addr1 = adv /\ mod = Adv /\ (n1 = 0 \/ mem in_guard n1)) {
-      r <@ loop(m);
-    }
-    else {
-      r <- None;
-    }
-    return r;
-  }
-}.
-
-end MI_UOC.
+clone include MakeInterface
+proof *.
 
 (* dummy adversary *)
 
