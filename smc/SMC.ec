@@ -701,7 +701,7 @@ module CompEnv (Env : ENV, Inter : INTER) = {
         r <@ Inter.invoke(m);
         if (r <> None) {
           m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-          if (mod = Adv /\ ! func <= addr1) {
+          if (mod = Adv) {
             stub_st <- Some m;
             r <- Some (Adv, (adv, 1), (func ++ [2], 1), UnivUnit);
           }
@@ -725,8 +725,9 @@ module CompEnv (Env : ENV, Inter : INTER) = {
         r <@ Inter.invoke(m);
         if (r <> None) {
           m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-          if (mod = Adv /\ addr1 = func) {
+          if (mod = Dir) {
             stub_st <- Some m;
+            (* only mode and destination address matter *)
             r <- Some (Adv, (func ++ [2], 1), (adv, 1), UnivUnit);
           }
         }
@@ -754,42 +755,6 @@ declare module Adv : FUNC{MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
 declare module Env : ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
                          KeyEx.DDH_Adv, CompEnv}.
 
-(*
-type smc_sec1_ke_real_bridge_st = {
-  func  : addr;
-  smcrs : smc_real_state;
-  fws   : Fwd.fw_state;
-  
-
-}.
-
-   SMCReal.st{1} = SMCRealStateWaitReq /\
-   Fwd.Forw.st{1} = Fwd.FwStateInit /\
-   KeyEx.Fwd1.Forw.st{1} = KeyEx.Fwd1.FwStateInit /\
-   KeyEx.Fwd2.Forw.st{1} = KeyEx.Fwd2.FwStateInit ==>
-
-
-
-pred smc_sec2_rel0 (st : smc_sec2_st) =
-  (st.`smcrs = SMCRealStateWaitReq) /\
-  (st.`fws   = Fwd.FwStateInit) /\
-  (st.`keis  = KeyEx.KEIdealStateWaitReq1) /\
-  (st.`smcis = SMCIdealStateWaitReq) /\
-  (st.`smcss = SMCSimStateWaitReq).
-
-inductive smc_sec2_rel (st : smc_sec2_st) =
-    SMCSec2Rel0 of (smc_sec2_rel0 st)
-  | SMCSec2Rel1 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_sec2_rel1 st pt1 pt2 x q)
-  | SMCSec2Rel2 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_sec2_rel2 st pt1 pt2 x q)
-  | SMCSec2Rel3 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_sec2_rel3 st pt1 pt2 x q)
-  | SMCSec2Rel4 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_sec2_rel4 st pt1 pt2 x q).
-
-*)
-
 lemma smc_sec1_ke_real_bridge (func adv : addr) &m :
   exper_pre func adv (fset1 adv_fw_pi) =>
   Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
@@ -797,6 +762,7 @@ lemma smc_sec1_ke_real_bridge (func adv : addr) &m :
   Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
        (func ++ [2], adv, fset1 adv_fw_pi) @ &m : res].
 proof.
+(*
 move : func adv; move => func' adv' pre.
 byequiv => //.
 proc; inline*; wp; swap{2} 22 26; sp.
@@ -869,6 +835,8 @@ call
 proc.
 admit.
 auto.
+*)
+admit.
 qed.
 
 lemma smc_sec1_ke_ideal_bridge (func adv : addr) &m :
@@ -901,10 +869,10 @@ lemma smc_sec1 (func adv : addr) &m :
     Pr[DDH2(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res]|.
 proof.
 move => pre func_eq adv_eq.
-rewrite (smc_sec1_ke_real_bridge Adv Env func adv &m) //.
-rewrite (smc_sec1_ke_ideal_bridge (KeyEx.KESim(Adv)) Env func adv &m) //.
-apply (KeyEx.ke_security Adv (CompEnv(Env)) (func ++ [2]) adv &m) => //.
-by apply exper_pre_ext1.
+by rewrite (smc_sec1_ke_real_bridge Adv Env func adv &m) //
+           (smc_sec1_ke_ideal_bridge (KeyEx.KESim(Adv)) Env func adv &m) //
+           (KeyEx.ke_security Adv (CompEnv(Env)) (func ++ [2]) adv &m) //
+           exper_pre_ext1.
 qed.
 
 end section.
@@ -936,6 +904,7 @@ rewrite /involutive /cancel /pad_iso => q.
 by rewrite gen_logK xorA xorK xor_0 log_genK.
 qed.
 
+(*
 type smc_sec2_st = {
   smc_sec2_st_func  : addr;
   smc_sec2_st_smcrs : smc_real_state;
@@ -1598,6 +1567,8 @@ auto; progress; by apply SMCSec2Rel0.
 qed.
 
 end section.
+*)
+
 
 lemma smc_security2
         (Adv <: FUNC{MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal})
@@ -1610,7 +1581,10 @@ lemma smc_security2
        (func, adv, fset1 adv_fw_pi) @ &m : res].
 proof.
 move => pre.
+(*
 by apply (smc_sec2 Adv Env func adv &m).
+*)
+admit.
 qed.
 
 lemma smc_security
