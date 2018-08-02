@@ -1763,6 +1763,102 @@ auto; progress; by apply (RealSimpRel4 _ pt1' pt2' q1' q2').
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
+lemma MI_KEReal_KERealSimp
+      (func' adv' : addr) (in_guard' : int fset)
+      (Adv <: FUNC{MI, KEReal, KERealSimp})
+      (Env <: ENV{MI, KEReal, KERealSimp, Adv}) &m :
+  ! func' <= adv' =>
+  Pr[Exper(MI(KEReal, Adv), Env).main
+       (func', adv', in_guard') @ &m : res] =
+  Pr[Exper(MI(KERealSimp, Adv), Env).main
+       (func', adv', in_guard') @ &m : res].
+proof.
+move => pre.
+byequiv => //; proc; inline*.
+seq 23 12 :
+  (! func' <= adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
+   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ke_real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+call (_ : true).
+auto; progress; by rewrite RealSimpRel0 /real_simp_rel0.
+call
+  (_ :
+   ! func' <= adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
+   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ke_real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} ==>
+   ={res, glob Adv, glob MI} /\
+   ke_real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+proc
+  (! func' <= adv' /\ ={glob Adv, glob MI} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ke_real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}) => //.
+proc.
+sp 2 2.
+if => //.
+inline MI(KEReal, Adv).loop MI(KERealSimp, Adv).loop.
+wp; sp.
+while
+  (={not_done, m0, r0} /\ 
+   ! func' <= adv' /\ ={glob Adv, glob MI} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
+   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
+   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
+   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
+   ke_real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+sp 2 2.
+if => //.
+wp; call (KEReal_KERealSimp_invoke func' adv'); auto.
+wp; call (_ : true); auto.
+auto.
+auto.
+auto.
+qed.
+
 end KESimp.
 
 type ke_ddh_state = [
@@ -4698,7 +4794,7 @@ auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _
         _ _ _ /negb_or [#] _ /not_dir -> _ _ /#.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
-rcondf{2} 1; first auto; smt(inc_le_excl2).
+rcondf{2} 1; first auto; smt(inc_le2_not_lr).
 rcondf{2} 1; first auto.
 rcondt{2} 1; first auto.
 sp 2 2.
@@ -5268,7 +5364,7 @@ auto; progress;
   by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
-rcondf{2} 1; first auto; smt(inc_le_excl2).
+rcondf{2} 1; first auto; smt(inc_le2_not_lr).
 rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
 rcondf{2} 2; first auto.

@@ -332,17 +332,30 @@ proof.
 rewrite /inc; apply lpo_inc_ext2.
 qed.
 
-lemma inc_le_excl1 (xs ys zs : 'a list) :
+lemma inc_le1_not_rl (xs ys zs : 'a list) :
   inc xs ys => xs <= zs => !(ys <= zs).
 proof.
 move => lpo_inc_xs_ys /@leP [us <-].
-rewrite not_leP inc_sym; right; by rewrite inc_ext1.
+by rewrite not_leP inc_sym inc_ext1.
 qed.
 
-lemma inc_le_excl2 (xs ys zs : 'a list) :
+lemma inc_le1_not_lr (xs ys zs : 'a list) :
+  inc xs ys => xs <= zs => !(zs <= ys).
+proof.
+move => lpo_inc_xs_ys /@leP [us <-].
+by rewrite not_leP inc_ext1.
+qed.
+
+lemma inc_le2_not_lr (xs ys zs : 'a list) :
   inc xs ys => ys <= zs => !(xs <= zs).
 proof.
-move => /@inc_sym; apply inc_le_excl1.
+move => /@inc_sym; apply inc_le1_not_rl.
+qed.
+
+lemma inc_le2_not_rl (xs ys zs : 'a list) :
+  inc xs ys => ys <= zs => !(zs <= xs).
+proof.
+move => /@inc_sym; apply inc_le1_not_lr.
 qed.
 
 lemma lt_ext_nonnil_r (xs ys : 'a list) :
