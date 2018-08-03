@@ -920,6 +920,73 @@ auto.
 auto.
 qed.
 
+type sec1_real_bridge_rel_st = {
+  sec1_real_bridge_rel_fun     : addr;
+  sec1_real_bridge_rel_smc_p1s : smc_real_p1_state;
+  sec1_real_bridge_rel_smc_p2s : smc_real_p2_state;
+  sec1_real_bridge_rel_fws     : Fwd.fw_state;
+  sec1_real_bridge_rel_rss     : KESimp.ke_real_simp_state
+}.
+
+pred sec1_real_bridge_rel0 (st : sec1_real_bridge_rel_st) =
+  st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateWaitReq /\
+  st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitKE1 /\
+  st.`sec1_real_bridge_rel_fws     = Fwd.FwStateInit /\
+  st.`sec1_real_bridge_rel_rss     = KESimp.KERealSimpStateWaitReq1.
+
+pred sec1_real_bridge_rel1
+     (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x : bits, q1 : exp) =
+  st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateWaitKE2 (pt1, pt2, x) /\
+  st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitKE1 /\
+  st.`sec1_real_bridge_rel_fws     = Fwd.FwStateInit /\
+  st.`sec1_real_bridge_rel_rss     =
+    KESimp.KERealSimpStateWaitAdv1 (pt1, pt2, q1).
+
+pred sec1_real_bridge_rel2
+     (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateWaitKE2 (pt1, pt2, x) /\
+  st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitFwd k /\
+  st.`sec1_real_bridge_rel_fws     = Fwd.FwStateInit /\
+  st.`sec1_real_bridge_rel_rss     =
+    KESimp.KERealSimpStateWaitAdv2 (pt1, pt2, q1, q2).
+
+pred sec1_real_bridge_rel3
+     (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateFinal (pt1, pt2, x, k) /\
+  st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitFwd k /\
+  st.`sec1_real_bridge_rel_fws     =
+    Fwd.FwStateWait
+    ((st.`sec1_real_bridge_rel_fun, 3),
+     (st.`sec1_real_bridge_rel_fun, 4),
+     (univ_triple (UnivPort pt1) (UnivPort pt2)
+                  (UnivBase (BaseBits (x ^^ k))))) /\
+  st.`sec1_real_bridge_rel_rss     =
+    KESimp.KERealSimpStateFinal (pt1, pt2, q1, q2).
+
+pred sec1_real_bridge_rel4
+     (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateFinal (pt1, pt2, x, k) /\
+  st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateFinal k /\
+  st.`sec1_real_bridge_rel_fws     =
+    Fwd.FwStateFinal
+    ((st.`sec1_real_bridge_rel_fun, 3),
+     (st.`sec1_real_bridge_rel_fun, 4),
+     (univ_triple (UnivPort pt1) (UnivPort pt2)
+                  (UnivBase (BaseBits (x ^^ k))))) /\
+  st.`sec1_real_bridge_rel_rss     =
+    KESimp.KERealSimpStateFinal (pt1, pt2, q1, q2).
+
+inductive sec1_real_bridge_rel (st : sec1_real_bridge_rel_st) =
+    Sec1RealBridgeRel0 of (sec1_real_bridge_rel0 st)
+  | Sec1RealBridgeRel1 (pt1 pt2 : port, x : bits, q1 : exp) of
+      (sec1_real_bridge_rel1 st pt1 pt2 x q1)
+  | Sec1RealBridgeRel2 (pt1 pt2 : port, x k : bits, q1 q2 : exp) of
+      (sec1_real_bridge_rel2 st pt1 pt2 x k q1 q2)
+  | Sec1RealBridgeRel3 (pt1 pt2 : port, x k : bits, q1 q2 : exp) of
+      (sec1_real_bridge_rel3 st pt1 pt2 x k q1 q2)
+  | Sec1RealBridgeRel4 (pt1 pt2 : port, x k : bits, q1 q2 : exp) of
+      (sec1_real_bridge_rel4 st pt1 pt2 x k q1 q2).
+
 lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
   exper_pre func' adv' (fset1 adv_fw_pi) =>
   Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
@@ -951,7 +1018,8 @@ seq 23 42 :
    KESimp.KERealSimp.self{1} = func' ++ [2] /\
    KESimp.KERealSimp.adv{1} = adv' /\
    KESimp.KERealSimp.st{1} = KESimp.KERealSimpStateWaitReq1 /\
-   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\ CompEnv.stub_st{2} = None).
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None).
 call (_ : true).
 auto; progress; by rewrite size_cat /= -addzA /= take_size_cat.
 admit.
