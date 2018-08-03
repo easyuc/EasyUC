@@ -1794,21 +1794,12 @@ call (_ : true).
 auto; progress; by rewrite RealSimpRel0 /real_simp_rel0.
 call
   (_ :
-   ! func' <= adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
-   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
+   ! func' <= adv' /\ ={glob Adv, glob MI} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
    Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
    KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ke_real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = KEReal.st1{1};
-     real_simp_rel_st_r2s  = KEReal.st2{1};
-     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} ==>
-   ={res, glob Adv, glob MI} /\
    ke_real_simp_rel
    {|real_simp_rel_st_func = func';
      real_simp_rel_st_r1s  = KEReal.st1{1};
@@ -1816,20 +1807,6 @@ call
      real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
      real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
      real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-proc
-  (! func' <= adv' /\ ={glob Adv, glob MI} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
-   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
-   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
-   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ke_real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = KEReal.st1{1};
-     real_simp_rel_st_r2s  = KEReal.st2{1};
-     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}) => //.
 proc.
 sp 2 2.
 if => //.
@@ -5330,23 +5307,6 @@ rcondt{2} 5; first auto.
 rcondf{2} 6; first auto.
 wp.
 elim* => addr10_L n10_L mod0_L pt10_L pt20_L u0_L not_done0_R.
-(*
-seq 2 0 :
-  (r0{1} = None /\ mod2{2} = Adv /\ MI.func{2} <= addr11{2} /\
-   m0{2}.`1 = mod2{2} /\ m0{2}.`2.`1 = addr11{2} /\ not_done{2} /\
-   ={MI.func, MI.adv, MI.in_guard} /\ KEHybrid.self{1} = MI.func{1} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
-   KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
-   KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
-   KESim.adv{2} = [] /\ ={glob Adv} /\
-   ke_hybrid_ideal_sim_rel0
-   {|ke_hybrid_ideal_sim_rel_st_func = MI.func{1};
-     ke_hybrid_ideal_sim_rel_st_adv  = MI.adv{1};
-     ke_hybrid_ideal_sim_rel_st_hs   = KEHybrid.st{1};
-     ke_hybrid_ideal_sim_rel_st_is   = KEIdeal.st{2};
-     ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2}|}).
-*)
 if{1}.
 wp; inline{1} (1) KEHybrid.parties.
 rcondf{1} 3; first auto; smt().

@@ -844,37 +844,11 @@ seq 34 23 :
      KESimp.real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
      KESimp.real_simp_rel_st_rss  = KESimp.KERealSimp.st{2}|}).
 call (_ : true).
-auto; progress.
-rewrite -catA; congr.
-rewrite -catA; congr.
+auto; progress; first 2 rewrite -catA; congr.
 by rewrite KESimp.RealSimpRel0 /real_simp_rel0.
 call
   (_ :
    ! func' <= adv' /\
-   ={func, adv, in_guard, glob Adv, glob MI, glob SMCReal} /\
-   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\ KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2; 1] /\ KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2; 2] /\ KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KESimp.KERealSimp.self{2} = func' ++ [2] /\ KESimp.KERealSimp.adv{2} = adv' /\
-   KESimp.ke_real_simp_rel
-   {|KESimp.real_simp_rel_st_func = func' ++ [2];
-     KESimp.real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     KESimp.real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     KESimp.real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     KESimp.real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     KESimp.real_simp_rel_st_rss  = KESimp.KERealSimp.st{2}|} ==>
-   ={res, glob Adv, glob MI, glob SMCReal} /\
-   KESimp.ke_real_simp_rel
-   {|KESimp.real_simp_rel_st_func = func' ++ [2];
-     KESimp.real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     KESimp.real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     KESimp.real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     KESimp.real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     KESimp.real_simp_rel_st_rss  = KESimp.KERealSimp.st{2}|}).
-proc
-  (! func' <= adv' /\
    ={glob Adv, glob MI, glob SMCReal} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KeyEx.KEReal.self{1} = func' ++ [2] /\ KeyEx.KEReal.adv{1} = adv' /\
@@ -887,7 +861,7 @@ proc
      KESimp.real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
      KESimp.real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
      KESimp.real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     KESimp.real_simp_rel_st_rss  = KESimp.KERealSimp.st{2}|}) => //.
+     KESimp.real_simp_rel_st_rss  = KESimp.KERealSimp.st{2}|}).
 proc.
 sp 2 2.
 if => //.
@@ -987,6 +961,145 @@ inductive sec1_real_bridge_rel (st : sec1_real_bridge_rel_st) =
   | Sec1RealBridgeRel4 (pt1 pt2 : port, x k : bits, q1 q2 : exp) of
       (sec1_real_bridge_rel4 st pt1 pt2 x k q1 q2).
 
+local lemma smc_sec1_ke_real_bridge_invoke (func' adv' : addr) :
+  equiv
+  [MI(SMCReal(KESimp.KERealSimp), Adv).invoke ~
+   MakeInt'.MI(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
+                       CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv).invoke :
+   ={m, glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
+   MI.in_guard{2} = fset1 adv_fw_pi /\
+   MakeInt'.MI.func{2} = func' /\ MakeInt'.MI.adv{2} = adv' /\
+   MakeInt'.MI.in_guard{2} = fset1 adv_fw_pi /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KESimp.KERealSimp.self{1} = func' ++ [2] /\
+   KESimp.KERealSimp.adv{1} = adv' /\
+   sec1_real_bridge_rel
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|} ==>
+   ={res, glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   CompEnv.stub_st{2} = None /\
+   sec1_real_bridge_rel
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}].
+proof.
+proc.
+case
+  (sec1_real_bridge_rel0
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}).
+sp 2 2.
+if => //.
+inline MI(SMCReal(KESimp.KERealSimp), Adv).loop
+       MakeInt'.MI(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
+                   CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv).loop.
+sp 3 3.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp 2 2.
+if => //.
+inline{1} (1) SMCReal(KESimp.KERealSimp).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE).invoke.
+sp 4 4.
+if => //.
+inline{1} (1) SMCReal(KESimp.KERealSimp).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE).loop.
+sp 3 3.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto => |> pre _ _ [] H2 [] /#.
+rcondt{2} 1; first auto => |> &hr pre _ _ [] H2 [] /#.
+inline{1} (1) SMCReal(KESimp.KERealSimp).party1.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE).party1.
+sp 2 2.
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+if => //.
+sp 1 1.
+if; first move => |> &1 &2 <- /#.
+admit.
+rcondt{1} 2; first auto. rcondt{2} 2; first auto.
+rcondf{1} 3; first auto. rcondf{2} 3; first auto.
+rcondt{1} 5; first auto. rcondt{2} 5; first auto.
+rcondf{1} 6; first auto. rcondf{2} 6; first auto.
+auto.
+rcondt{1} 2; first auto. rcondt{2} 2; first auto.
+rcondf{1} 3; first auto. rcondf{2} 3; first auto.
+rcondt{1} 5; first auto. rcondt{2} 5; first auto.
+rcondf{1} 6; first auto. rcondf{2} 6; first auto.
+auto.
+rcondt{1} 2; first auto. rcondt{2} 2; first auto.
+rcondf{1} 3; first auto. rcondf{2} 3; first auto.
+auto.
+inline{2} (1) CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KESimp.KERealSimp, Adv).invoke.
+rcondt{2} 5; first auto; smt().
+sp 0 4.
+inline{2} (1) MI(KESimp.KERealSimp, Adv).loop.
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto; progress; smt(le_ext_r le_trans).
+sp 0 5.
+admit.
+admit.
+case
+  (exists (pt1 pt2 : port) (x : bits) (q1 : exp),
+   sec1_real_bridge_rel1
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}
+   pt1 pt2 x q1).
+admit.
+case
+  (exists (pt1 pt2 : port) (x k : bits) (q1 q2 : exp),
+   sec1_real_bridge_rel2
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}
+   pt1 pt2 x k q1 q2).
+admit.
+case
+  (exists (pt1 pt2 : port) (x k : bits) (q1 q2 : exp),
+   sec1_real_bridge_rel3
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}
+   pt1 pt2 x k q1 q2).
+admit.
+case
+  (exists (pt1 pt2 : port) (x k : bits) (q1 q2 : exp),
+   sec1_real_bridge_rel4
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}
+   pt1 pt2 x k q1 q2).
+admit.
+exfalso =>
+  &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+  _ _ _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
+qed.
+
 lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
   exper_pre func' adv' (fset1 adv_fw_pi) =>
   Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
@@ -1004,6 +1117,12 @@ byequiv => //; proc; inline*.
 swap{2} 12 30; wp.
 seq 23 42 :
   (={glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
+   func{2} = func' ++ [2] /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
+   func0{2} = func' /\ adv0{2} = adv' /\ in_guard1{2} = fset1 adv_fw_pi /\
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
@@ -1017,12 +1136,33 @@ seq 23 42 :
    Fwd.Forw.st{1} = Fwd.FwStateInit /\
    KESimp.KERealSimp.self{1} = func' ++ [2] /\
    KESimp.KERealSimp.adv{1} = adv' /\
-   KESimp.KERealSimp.st{1} = KESimp.KERealSimpStateWaitReq1 /\
-   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
-   CompEnv.stub_st{2} = None).
+   KESimp.KERealSimp.st{1} = KESimp.KERealSimpStateWaitReq1).
 call (_ : true).
 auto; progress; by rewrite size_cat /= -addzA /= take_size_cat.
-admit.
+call
+  (_ :
+   ={glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
+   MI.in_guard{2} = fset1 adv_fw_pi /\
+   MakeInt'.MI.func{2} = func' /\ MakeInt'.MI.adv{2} = adv' /\
+   MakeInt'.MI.in_guard{2} = fset1 adv_fw_pi /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KESimp.KERealSimp.self{1} = func' ++ [2] /\
+   KESimp.KERealSimp.adv{1} = adv' /\
+   sec1_real_bridge_rel
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}).
+conseq (smc_sec1_ke_real_bridge_invoke func' adv') => //.
+auto; progress; by rewrite Sec1RealBridgeRel0.
 qed.
 
 lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
