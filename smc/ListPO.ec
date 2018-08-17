@@ -394,6 +394,20 @@ have y_eq : nth x [y] 0 = y by trivial.
 have // : x = y by rewrite -x_eq -y_eq; congr.
 qed.
 
+lemma not_le_other_branch (xs zs : 'a list, x y : 'a) :
+  x <> y => xs ++ [x] <= zs => ! (xs ++ [y] <= zs).
+proof.
+move => ne_xy /leP le_xs_x_zs.
+case (xs ++ [y] <= zs) => [/leP [us <<-] | //].
+case le_xs_x_zs => vs eq.
+have eq2 : [x] ++ vs = [y] ++ us
+  by rewrite (catsI xs ([x] ++ vs) ([y] ++ us)) 1:!catA.
+have // : x = y.
+  have -> : y = head y ([y] ++ vs) by trivial.
+  have -> : x = head x ([x] ++ vs) by trivial.
+  by rewrite eq2.
+qed.
+
 lemma not_le_ext_nonnil_l (xs ys : 'a list) :
   ys <> [] => ! xs ++ ys <= xs.
 proof.

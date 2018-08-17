@@ -895,7 +895,8 @@ auto.
 qed.
 
 type sec1_real_bridge_rel_st = {
-  sec1_real_bridge_rel_fun     : addr;
+  sec1_real_bridge_rel_func     : addr;
+  sec1_real_bridge_rel_adv     : addr;
   sec1_real_bridge_rel_smc_p1s : smc_real_p1_state;
   sec1_real_bridge_rel_smc_p2s : smc_real_p2_state;
   sec1_real_bridge_rel_fws     : Fwd.fw_state;
@@ -910,6 +911,10 @@ pred sec1_real_bridge_rel0 (st : sec1_real_bridge_rel_st) =
 
 pred sec1_real_bridge_rel1
      (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x : bits, q1 : exp) =
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
   st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateWaitKE2 (pt1, pt2, x) /\
   st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitKE1 /\
   st.`sec1_real_bridge_rel_fws     = Fwd.FwStateInit /\
@@ -918,6 +923,10 @@ pred sec1_real_bridge_rel1
 
 pred sec1_real_bridge_rel2
      (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
   st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateWaitKE2 (pt1, pt2, x) /\
   st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitFwd k /\
   st.`sec1_real_bridge_rel_fws     = Fwd.FwStateInit /\
@@ -926,12 +935,16 @@ pred sec1_real_bridge_rel2
 
 pred sec1_real_bridge_rel3
      (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
   st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateFinal (pt1, pt2, x, k) /\
   st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateWaitFwd k /\
   st.`sec1_real_bridge_rel_fws     =
     Fwd.FwStateWait
-    ((st.`sec1_real_bridge_rel_fun, 3),
-     (st.`sec1_real_bridge_rel_fun, 4),
+    ((st.`sec1_real_bridge_rel_func, 3),
+     (st.`sec1_real_bridge_rel_func, 4),
      (univ_triple (UnivPort pt1) (UnivPort pt2)
                   (UnivBase (BaseBits (x ^^ k))))) /\
   st.`sec1_real_bridge_rel_rss     =
@@ -939,12 +952,16 @@ pred sec1_real_bridge_rel3
 
 pred sec1_real_bridge_rel4
      (st : sec1_real_bridge_rel_st, pt1 pt2 : port, x k : bits, q1 q2 : exp) =
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_func <= pt1.`1 /\
+  ! st.`sec1_real_bridge_rel_adv <= pt1.`1 /\
   st.`sec1_real_bridge_rel_smc_p1s = SMCRealP1StateFinal (pt1, pt2, x, k) /\
   st.`sec1_real_bridge_rel_smc_p2s = SMCRealP2StateFinal k /\
   st.`sec1_real_bridge_rel_fws     =
     Fwd.FwStateFinal
-    ((st.`sec1_real_bridge_rel_fun, 3),
-     (st.`sec1_real_bridge_rel_fun, 4),
+    ((st.`sec1_real_bridge_rel_func, 3),
+     (st.`sec1_real_bridge_rel_func, 4),
      (univ_triple (UnivPort pt1) (UnivPort pt2)
                   (UnivBase (BaseBits (x ^^ k))))) /\
   st.`sec1_real_bridge_rel_rss     =
@@ -964,8 +981,8 @@ inductive sec1_real_bridge_rel (st : sec1_real_bridge_rel_st) =
 local lemma smc_sec1_ke_real_bridge_invoke (func' adv' : addr) :
   equiv
   [MI(SMCReal(KESimp.KERealSimp), Adv).invoke ~
-   MakeInt'.MI(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
-                       CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv).invoke :
+   MI'(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
+               CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv).invoke :
    ={m, glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
    exper_pre func' adv' (fset1 adv_fw_pi) /\
    CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
@@ -974,14 +991,15 @@ local lemma smc_sec1_ke_real_bridge_invoke (func' adv' : addr) :
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
    MI.in_guard{2} = fset1 adv_fw_pi /\
-   MakeInt'.MI.func{2} = func' /\ MakeInt'.MI.adv{2} = adv' /\
-   MakeInt'.MI.in_guard{2} = fset1 adv_fw_pi /\
+   MI'.func{2} = func' /\ MI'.adv{2} = adv' /\
+   MI'.in_guard{2} = fset1 adv_fw_pi /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
    Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
    KESimp.KERealSimp.self{1} = func' ++ [2] /\
    KESimp.KERealSimp.adv{1} = adv' /\
    sec1_real_bridge_rel
-   {|sec1_real_bridge_rel_fun     = func';
+   {|sec1_real_bridge_rel_func    = func';
+     sec1_real_bridge_rel_adv     = adv';
      sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
      sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
      sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
@@ -989,7 +1007,8 @@ local lemma smc_sec1_ke_real_bridge_invoke (func' adv' : addr) :
    ={res, glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
    CompEnv.stub_st{2} = None /\
    sec1_real_bridge_rel
-   {|sec1_real_bridge_rel_fun     = func';
+   {|sec1_real_bridge_rel_func     = func';
+     sec1_real_bridge_rel_adv     = adv';
      sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
      sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
      sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
@@ -998,7 +1017,8 @@ proof.
 proc.
 case
   (sec1_real_bridge_rel0
-   {|sec1_real_bridge_rel_fun     = func';
+   {|sec1_real_bridge_rel_func    = func';
+     sec1_real_bridge_rel_adv     = adv';
      sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
      sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
      sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
@@ -1006,7 +1026,7 @@ case
 sp 2 2.
 if => //.
 inline MI(SMCReal(KESimp.KERealSimp), Adv).loop
-       MakeInt'.MI(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
+       MI'(SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE),
                    CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubAdv).loop.
 sp 3 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
@@ -1030,7 +1050,141 @@ rcondt{2} 1; first auto; smt().
 if => //.
 sp 1 1.
 if; first move => |> &1 &2 <- /#.
+rcondf{1} 4; first auto; progress;
+  rewrite oget_some /ke_req1 /=; smt(le_ext_r).
+rcondf{2} 4; first auto; progress;
+  rewrite oget_some /ke_req1 /=; smt(le_ext_r).
+rcondt{1} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{1} 5; first auto; progress;
+  by rewrite oget_some /ke_req1 /= ne_cat_nonnil_r.
+rcondf{2} 5; first auto; progress;
+  by rewrite oget_some /ke_req1 /= ne_cat_nonnil_r.
+rcondf{1} 5; first auto; progress;
+  by rewrite oget_some /ke_req1 /= ne_cat_nonnil_r.
+rcondf{2} 5; first auto; progress;
+  by rewrite oget_some /ke_req1 /= ne_cat_nonnil_r.
+rcondf{1} 5; first auto; progress;
+  rewrite oget_some /ke_req1 /=
+          1:(not_le_other_branch CompEnv.func{m} (CompEnv.func{m} ++ [2]) 2 1)
+          // le_refl.
+rcondf{2} 5; first auto; progress;
+   rewrite oget_some /ke_req1 /=
+           1:(not_le_other_branch CompEnv.func{hr} (CompEnv.func{hr} ++ [2]) 2 1)
+           // le_refl.
+inline{2} (1) CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE.invoke.
+rcondf{2} 6; first auto.
+inline{2} (1) MI(KESimp.KERealSimp, Adv).invoke.
+rcondt{2} 9; first auto; progress;
+  rewrite oget_some /ke_req1 /= le_refl.
+inline{2} (1) MI(KESimp.KERealSimp, Adv).loop.
+rcondt{2} 12; first auto.
+rcondt{2} 14; first auto; progress;
+  rewrite oget_some /ke_req1 /= le_refl.
+sp 4 13.
+inline{1} (1) KESimp.KERealSimp.invoke.
+inline{2} (1) KESimp.KERealSimp.invoke.
+rcondt{1} 5; first auto.
+rcondt{2} 5; first auto.
+inline{1} (1) KESimp.KERealSimp.parties.
+inline{2} (1) KESimp.KERealSimp.parties.
+rcondt{1} 7; first auto; smt().
+rcondt{2} 7; first auto; smt().
+rcondt{1} 7; first auto; smt().
+rcondt{2} 7; first auto; smt().
+rcondt{1} 8; first auto; progress.
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(not_le_ext_nonnil_l).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(not_le_ext_nonnil_l).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(inc_le1_not_rl).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(inc_le1_not_rl).
+rcondt{2} 8; first auto; progress.
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(not_le_ext_nonnil_l).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(not_le_ext_nonnil_l).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(inc_le1_not_rl).
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=;
+  smt(inc_le1_not_rl).
+rcondf{1} 14; first auto; progress; smt(inc_le1_not_rl).
+rcondt{1} 14; first auto; progress;
+  rewrite oget_some /fw_obs /=; smt(inc_le1_not_rl).
+rcondf{1} 15; first auto.
+rcondf{1} 17; first auto.
+rcondf{1} 20; first auto; progress;
+  rewrite oget_some /fw_obs /=; smt(inc_le1_not_rl).
+rcondf{1} 20; first auto.
+rcondf{1} 20; first auto; progress;
+  rewrite oget_some /fw_obs /=; smt(smc_pi_uniq).
+rcondt{1} 20; first auto.
+rcondf{1} 22; first auto; progress;
+  rewrite oget_some /fw_obs /=; smt(inc_le1_not_rl).
+rcondf{2} 14; first auto.
+rcondf{2} 17; first auto; progress;
+  rewrite oget_some /fw_obs /=;
+  smt(le_trans le_ext_r inc_le1_not_rl).
+rcondf{2} 17; first auto.
+rcondf{2} 17; first auto; progress;
+  rewrite oget_some /fw_obs /=; smt(smc_pi_uniq).
+rcondt{2} 17; first auto.
+rcondf{2} 19; first auto; progress.
+  rewrite oget_some /fw_obs /=; smt(le_trans le_ext_r inc_le1_not_rl).
+seq 22 19 :
+  (r0{1} = r6{2} /\ ={x, pt12, pt22, q1} /\
+   ={glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
+   MI.in_guard{2} = fset1 adv_fw_pi /\
+   MI'.func{2} = func' /\ MI'.adv{2} = adv' /\
+   MI'.in_guard{2} = fset1 adv_fw_pi /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KESimp.KERealSimp.self{1} = func' ++ [2] /\
+   KESimp.KERealSimp.adv{1} = adv' /\
+   sec1_real_bridge_rel1
+   {|sec1_real_bridge_rel_func    = func';
+     sec1_real_bridge_rel_adv     = adv';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}
+   pt12{1} pt22{1} x{1} q1{1}).
+call (_ : true).
+wp; rnd; auto.
+move => &1 &2 |> st1_R.
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some
+        /ke_req1 /sec1_real_bridge_rel1 /=.
+move => [#] _ <- _ <- _ [#] _ <- _ <- _ <- [#] _ -> -> ->
+        pre _ [] /=.
+progress.
 admit.
+
+
+
+
+
+        
+
+
+move => &1 &2 |> st1_R.
+rewrite oget_some  /ke_req1
+        /dec_smc_req /=.
+
+
+
+
+
+
+
+
 rcondt{1} 2; first auto. rcondt{2} 2; first auto.
 rcondf{1} 3; first auto. rcondf{2} 3; first auto.
 rcondt{1} 5; first auto. rcondt{2} 5; first auto.
@@ -1053,8 +1207,158 @@ inline{2} (1) MI(KESimp.KERealSimp, Adv).loop.
 rcondt{2} 4; first auto.
 rcondf{2} 6; first auto; progress; smt(le_ext_r le_trans).
 sp 0 5.
-admit.
-admit.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   r0{1} = r3{2} /\ m0{1} = m3{2} /\
+   (mod0{1}, pt10{1}, pt20{1}, u0{1}) = m0{1} /\
+   (addr10{1}, n10{1}) = pt10{1} /\
+   (mod3{2}, pt13{2}, pt23{2}, u3{2}) = m3{2} /\
+   (addr13{2}, n13{2}) = pt13{2} /\
+   ={glob Adv, glob SMCReal, glob Fwd.Forw, glob KESimp.KERealSimp} /\
+   exper_pre func' adv' (fset1 adv_fw_pi) /\
+   CompEnv.func{2} = func' /\ CompEnv.adv{2} = adv' /\
+   CompEnv.stub_st{2} = None /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
+   MI.in_guard{2} = fset1 adv_fw_pi /\
+   MI'.func{2} = func' /\ MI'.adv{2} = adv' /\
+   MI'.in_guard{2} = fset1 adv_fw_pi /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KESimp.KERealSimp.self{1} = func' ++ [2] /\
+   KESimp.KERealSimp.adv{1} = adv' /\
+   sec1_real_bridge_rel0
+   {|sec1_real_bridge_rel_fun     = func';
+     sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
+     sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
+     sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
+     sec1_real_bridge_rel_rss     = KESimp.KERealSimp.st{1}|}).
+call (_ : true); first auto.
+if => //.
+rcondf{1} 2; first auto. rcondf{2} 2; first auto.
+rcondf{2} 4; first auto. rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+sp 3 3.
+if; first move => |> &1 &2 <- //.
+rcondf{1} 3; first auto. rcondf{2} 3; first auto. 
+rcondf{2} 5; first auto. rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+case (func' ++ [2] <= addr10{1}).
+rcondf{1} 1; first auto; smt(le_trans le_ext_r).
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_trans le_ext_r).
+sp 2 0.
+inline{1} (1) SMCReal(KESimp.KERealSimp).invoke.
+rcondt{1} 5; first auto; progress.
+rewrite negb_or not_dir in H8; smt().
+inline{1} (1) SMCReal(KESimp.KERealSimp).loop.
+rcondt{1} 8; first auto.
+rcondf{1} 8; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 8; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 8; first auto; smt(not_le_other_branch).
+inline{1} (1) KESimp.KERealSimp.invoke.
+rcondt{2} 1; first auto.
+rcondt{2} 3; first auto; progress; smt(le_trans le_ext_r).
+inline{2} (1) KESimp.KERealSimp.invoke.
+sp 11 6.
+if; first move => |> &1 &2 <- //.
+inline KESimp.KERealSimp.parties.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+rcondf{1} 3; first auto; progress.
+rewrite negb_or not_dir in H8.
+rewrite /is_ke_req1 /dec_ke_req1 /= /#.
+rcondf{2} 3; first auto.
+move => |> &hr <-; progress.
+rewrite negb_or not_dir in H5.
+rewrite /is_ke_req1 /dec_ke_req1 /= /#.
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+rcondt{1} 8; first auto.
+rcondf{1} 9; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 8; first auto.
+rcondt{2} 9; first auto.
+rcondf{2} 10; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 7; first auto; smt(not_dir).
+rcondf{2} 8; first auto.
+rcondf{2} 11; first auto; smt().
+sp 0 10.
+if; first move => |> &1 &2 _ _ <- //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto => |> &hr _ _ <- //.
+inline{1} (1) SMCReal(KESimp.KERealSimp).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE).invoke.
+sp 4 4.
+if.
+move => |> &1 &2 _ _ <- /#.
+inline{1} (1) SMCReal(KESimp.KERealSimp).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KESimp.KERealSimp, Adv)).StubKE).loop.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+sp 3 3.
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+inline Fwd.Forw.invoke.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+rcondf{1} 3; first auto; progress.
+rewrite negb_or not_dir in H10.
+elim H10 => _ ->>.
+rewrite /is_fw_req /dec_fw_req /#.
+rcondf{2} 3; first auto.
+move => |> &hr _ _ <-.
+progress.
+rewrite negb_or not_dir in H5.
+elim H5 => _ ->>.
+by rewrite /is_fw_req /dec_fw_req.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{1} 5; first auto.
+rcondf{2} 5; first auto.
+rcondt{1} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{1} 8; first auto.
+rcondf{2} 8; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto; progress; by rewrite Sec1RealBridgeRel0.
+auto.
 case
   (exists (pt1 pt2 : port) (x : bits) (q1 : exp),
    sec1_real_bridge_rel1
@@ -1127,8 +1431,8 @@ seq 23 42 :
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
    MI.in_guard{2} = fset1 adv_fw_pi /\
-   MakeInt'.MI.func{2} = func' /\ MakeInt'.MI.adv{2} = adv' /\
-   MakeInt'.MI.in_guard{2} = fset1 adv_fw_pi /\
+   MI'.func{2} = func' /\ MI'.adv{2} = adv' /\
+   MI'.in_guard{2} = fset1 adv_fw_pi /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
    SMCReal.st1{1} = SMCRealP1StateWaitReq /\
    SMCReal.st2{1} = SMCRealP2StateWaitKE1 /\
@@ -1149,14 +1453,15 @@ call
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = func' ++ [2] /\ MI.adv{2} = adv' /\
    MI.in_guard{2} = fset1 adv_fw_pi /\
-   MakeInt'.MI.func{2} = func' /\ MakeInt'.MI.adv{2} = adv' /\
-   MakeInt'.MI.in_guard{2} = fset1 adv_fw_pi /\
+   MI'.func{2} = func' /\ MI'.adv{2} = adv' /\
+   MI'.in_guard{2} = fset1 adv_fw_pi /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
    Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
    KESimp.KERealSimp.self{1} = func' ++ [2] /\
    KESimp.KERealSimp.adv{1} = adv' /\
    sec1_real_bridge_rel
-   {|sec1_real_bridge_rel_fun     = func';
+   {|sec1_real_bridge_rel_func    = func';
+     sec1_real_bridge_rel_adv     = adv';
      sec1_real_bridge_rel_smc_p1s = SMCReal.st1{1};
      sec1_real_bridge_rel_smc_p2s = SMCReal.st2{1};
      sec1_real_bridge_rel_fws     = Fwd.Forw.st{1};
