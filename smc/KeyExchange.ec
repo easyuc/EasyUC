@@ -5801,19 +5801,7 @@ move => pre func_eq adv_eq.
 by apply (ke_sec Adv Env func adv &m).
 qed.
 
-(* termination metrics *)
-
-(*
-op real_p1_state_term_metric (st : ke_real_p1_state) : int =
-     with st = KERealP1StateWaitReq1   => 2
-     with st = KERealP1StateWaitFwd2 _ => 1
-     with st = KERealP1StateFinal _    => 0.
-
-op real_p2_state_term_metric (st : ke_real_p2_state) : int =
-     with st = KERealP2StateWaitFwd1   => 2
-     with st = KERealP2StateWaitReq2 x => 1
-     with st = KERealP2StateFinal _    => 0.
-*)
+(* termination metric and proof for KEReal *)
 
 type real_term_rel_st = {
   real_term_rel_st_func : addr;
@@ -5822,12 +5810,6 @@ type real_term_rel_st = {
   real_term_rel_st_fws1 : Fwd1.fw_state;
   real_term_rel_st_fws2 : Fwd2.fw_state;
 }.
-
-(*
-op real_term_rel_st_metric (st : real_term_rel_st) : int =
-     real_p1_state_term_metric st.`real_term_rel_st_r1s +
-     real_p2_state_term_metric st.`real_term_rel_st_r2s.
-*)
 
 op real_term_rel_metric_max : int = 4.
 
@@ -5943,9 +5925,6 @@ lemma KEReal_term_invoke (func adv : addr, met : int) :
      real_term_rel_st_fws1 = Fwd1.Forw.st{1};
      real_term_rel_st_fws2 = Fwd2.Forw.st{1}|} ==>
    ={res, glob KEReal} /\
-   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
-   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
-   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
    (real_term_rel (met - 1)
     {|real_term_rel_st_func = func;
       real_term_rel_st_r1s  = KEReal.st1{1};
@@ -6522,4 +6501,183 @@ rcondf{1} 5; first auto. rcondf{2} 5; first auto.
 auto; progress; right; trivial.
 auto; progress; right; trivial.
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
+qed.
+
+(* termination metric and proof for KEIdeal *)
+
+type ideal_term_rel_st = {
+  ideal_term_rel_st_is   : ke_ideal_state;
+}.
+
+op ideal_term_rel_metric_max : int = 4.
+
+pred ideal_term_rel0 (met : int, st : ideal_term_rel_st) =
+  met = 4 /\
+  (st.`ideal_term_rel_st_is = KEIdealStateWaitReq1).
+
+pred ideal_term_rel1 (met : int, st : ideal_term_rel_st, pt1 pt2 : port) =
+  met = 3 /\
+  (st.`ideal_term_rel_st_is = KEIdealStateWaitSim1 (pt1, pt2)).
+
+pred ideal_term_rel2 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
+  met = 2 /\
+  (st.`ideal_term_rel_st_is = KEIdealStateWaitReq2 (pt1, pt2, q)).
+
+pred ideal_term_rel3 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
+  met = 1 /\
+  (st.`ideal_term_rel_st_is = KEIdealStateWaitSim2 (pt1, pt2, q)).
+
+pred ideal_term_rel4 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
+  met = 0 /\
+  (st.`ideal_term_rel_st_is = KEIdealStateFinal (pt1, pt2, q)).
+
+inductive ideal_term_rel (met : int, st : ideal_term_rel_st) =
+    IdealTermRel0 of (ideal_term_rel0 met st)
+  | IdealTermRel1 (pt1 pt2 : port) of
+      (ideal_term_rel1 met st pt1 pt2)
+  | IdealTermRel2 (pt1 pt2 : port, q : exp) of
+      (ideal_term_rel2 met st pt1 pt2 q)
+  | IdealTermRel3 (pt1 pt2 : port, q : exp) of
+      (ideal_term_rel3 met st pt1 pt2 q)
+  | IdealTermRel4 (pt1 pt2 : port, q : exp) of
+      (ideal_term_rel4 met st pt1 pt2 q).
+
+lemma ideal_term_rel_ge0_met (met : int, st : ideal_term_rel_st) :
+  ideal_term_rel met st => 0 <= met.
+proof. by case; delta. qed.
+
+lemma KEIdeal_term_init (func : addr) :
+  equiv
+  [KEIdeal.init ~ KEIdeal.init :
+   ={self_, adv_} /\ self_{1} = func ==>
+   ={glob KEIdeal} /\ KEIdeal.self{1} = func /\
+   ideal_term_rel ideal_term_rel_metric_max
+   {|ideal_term_rel_st_is = KEIdeal.st{1};|}].
+proof.
+proc; inline*; auto; progress; by rewrite IdealTermRel0.
+qed.
+
+lemma KEIdeal_term_invoke (func adv : addr, met : int) :
+  equiv
+  [KEIdeal.invoke ~ KEIdeal.invoke :
+   ={m, glob KEIdeal} /\ KEIdeal.self{1} = func /\
+   ideal_term_rel met
+   {|ideal_term_rel_st_is = KEIdeal.st{1};|} ==>
+   ={res, glob KEIdeal} /\
+   (ideal_term_rel (met - 1)
+    {|ideal_term_rel_st_is = KEIdeal.st{1}|} \/
+    res{1} = None /\
+    ideal_term_rel met
+    {|ideal_term_rel_st_is = KEIdeal.st{1}|})].
+proof.
+proc.
+case
+  (ideal_term_rel0 met
+   {|ideal_term_rel_st_is = KEIdeal.st{1}|}).
+sp 3 3.
+if => //.
+inline KEIdeal.parties.
+rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
+sp 2 2.
+if => //.
+sp 1 1.
+if; first move => |> &1 &2 <- //.
+auto => |> &1 &2 <- [#] _ -> -> _ [] -> /=.
+progress.
+by rewrite (IdealTermRel1 3 _ pt10{2} pt20{2}).
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+case
+  (exists pt1 pt2,
+   ideal_term_rel1 met
+   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
+   pt1 pt2).
+elim* => pt1' pt2'.
+sp 3 3.
+if => //.
+inline KEIdeal.parties.
+rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+sp 3 3.
+if => //.
+auto => |> &1 &2 <- [#] -> -> _ _ [] -> /=.
+progress.
+by rewrite (IdealTermRel2 2 _ pt10{2} pt20{2} qL).
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+case
+  (exists pt1 pt2 q,
+   ideal_term_rel2 met
+   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
+   pt1 pt2 q).
+elim* => pt1' pt2' q'.
+sp 3 3.
+if => //.
+inline KEIdeal.parties.
+rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+sp 3 3.
+if => //.
+sp 1 1.
+if.
+move => &1 &2 [#] dec_req2_2 dec_req2_1 ->> _ dec_wait_req2_2
+        ->> _ dec_wait_req2_1 _ _ _ _ _ _ ->> ->> _ _ _ _ _ _
+        [] _ /= _ _ _.
+rewrite -dec_req2_2 in dec_req2_1.
+elim dec_req2_1 => _ ->.
+rewrite -dec_wait_req2_2 in dec_wait_req2_1.
+elim dec_wait_req2_1 => _ -> _ //.
+auto => |> &1 &2 <- [#] _ -> <- [#] -> -> -> _ _ _ [] ->.
+progress.
+by rewrite (IdealTermRel3 1 _ pt10{2} pt20{2} q{2}).
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+case
+  (exists pt1 pt2 q,
+   ideal_term_rel3 met
+   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
+   pt1 pt2 q).
+elim* => pt1' pt2' q'.
+sp 3 3.
+if => //.
+inline KEIdeal.parties.
+rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
+rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
+sp 3 3.
+if => //.
+auto => |> &1 &2 <- [#] -> -> -> _ _ _ _ [] ->.
+progress.
+by rewrite (IdealTermRel4 0 _ pt10{2} pt20{2} q{2}).
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+case
+  (exists pt1 pt2 q,
+   ideal_term_rel4 met
+   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
+   pt1 pt2 q).
+elim* => pt1' pt2' q'.
+sp 3 3.
+if => //.
+inline KEIdeal.parties.
+rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
+rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
+rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
+auto; progress; right; trivial.
+auto; progress; right; trivial.
+exfalso => &1 &2 [#] _ _ _ _ _ []; smt().
 qed.
