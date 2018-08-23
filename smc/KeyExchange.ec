@@ -5925,12 +5925,14 @@ lemma KEReal_term_invoke (func adv : addr, met : int) :
      real_term_rel_st_fws1 = Fwd1.Forw.st{1};
      real_term_rel_st_fws2 = Fwd2.Forw.st{1}|} ==>
    ={res, glob KEReal} /\
-   (real_term_rel (met - 1)
-    {|real_term_rel_st_func = func;
-      real_term_rel_st_r1s  = KEReal.st1{1};
-      real_term_rel_st_r2s  = KEReal.st2{1};
-      real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-      real_term_rel_st_fws2 = Fwd2.Forw.st{1}|} \/
+   ((exists met',
+     met' < met /\
+     real_term_rel met'
+     {|real_term_rel_st_func = func;
+       real_term_rel_st_r1s  = KEReal.st1{1};
+       real_term_rel_st_r2s  = KEReal.st2{1};
+       real_term_rel_st_fws1 = Fwd1.Forw.st{1};
+       real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}) \/
     res{1} = None /\
     real_term_rel met
     {|real_term_rel_st_func = func;
@@ -6008,10 +6010,11 @@ rcondt{2} 8; first auto; progress;
               not_le_ext_nonnil_l].
 rcondt{1} 11; first auto. rcondt{2} 11; first auto.
 rcondf{1} 12; first auto. rcondf{2} 12; first auto.
-auto; progress;
-  rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-          (RealTermRel1 (met - 1) _ pt10{2} pt20{2} q1{2})
-          /#.
+auto; progress; exists (met - 1).
+split; first smt().
+rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
+        (RealTermRel1 (met - 1) _ pt10{2} pt20{2} q1{2})
+        /#.
 rcondt{1} 2; first auto. rcondt{2} 2; first auto.
 rcondf{1} 3; first auto. rcondf{2} 3; first auto.
 auto; progress; right; trivial.
@@ -6192,6 +6195,7 @@ auto => |> &1 &2 _ _ ^ dec_fwd_state <- [#] -> -> -> _ _ _
 rewrite !oget_some !Fwd1.enc_dec_fw_rsp !oget_some /=.
 rewrite /= oget_some /= in dec_fwd_state.
 elim dec_fwd_state => -> [#] -> ->.
+exists 2. split => //.
 by rewrite /= enc_dec_univ_triple oget_some /= !oget_some
           (RealTermRel2 _ _ pt1' pt2' q1' q2L)
           /real_term_rel2.
@@ -6303,6 +6307,7 @@ move => ^ dec_p2_wait_req2 <- [#] -> -> -> _ _ _ _
         [] -> /= [#] pt1'_out pt2'_out -> ->> _ _ _ _ _ _.
 rewrite /= oget_some in dec_p2_wait_req2.
 elim dec_p2_wait_req2 => -> -> ->.
+exists 1; split => //.
 by rewrite (RealTermRel3 1 _ pt1' pt2' q1' q2').
 rcondt{1} 2; first auto. rcondt{2} 2; first auto.
 rcondf{1} 3; first auto. rcondf{2} 3; first auto.
@@ -6444,6 +6449,7 @@ auto => |> &1 &2 _ _ ^ dec_fwd_state <- [#] -> -> -> _ _ _ _ _
         _ _ _ _ _.
 rewrite /= oget_some /= in dec_fwd_state.
 elim dec_fwd_state => -> [#] -> ->.
+exists 0; split => //.
 rewrite /= oget_some (RealTermRel4 _ _ pt1' pt2' q1' q2')
         /real_term_rel4 /= /#.
 rcondt{1} 2; first auto. rcondt{2} 2; first auto.
@@ -6564,8 +6570,10 @@ lemma KEIdeal_term_invoke (func adv : addr, met : int) :
    ideal_term_rel met
    {|ideal_term_rel_st_is = KEIdeal.st{1};|} ==>
    ={res, glob KEIdeal} /\
-   (ideal_term_rel (met - 1)
-    {|ideal_term_rel_st_is = KEIdeal.st{1}|} \/
+   ((exists met',
+     met' < met /\
+     ideal_term_rel met'
+     {|ideal_term_rel_st_is = KEIdeal.st{1}|}) \/
     res{1} = None /\
     ideal_term_rel met
     {|ideal_term_rel_st_is = KEIdeal.st{1}|})].
@@ -6582,8 +6590,8 @@ sp 2 2.
 if => //.
 sp 1 1.
 if; first move => |> &1 &2 <- //.
-auto => |> &1 &2 <- [#] _ -> -> _ [] -> /=.
-progress.
+auto => |> &1 &2 <- [#] _ -> -> _ []-> /=.
+progress; exists 3.
 by rewrite (IdealTermRel1 3 _ pt10{2} pt20{2}).
 auto; progress; right; trivial.
 auto; progress; right; trivial.
@@ -6603,7 +6611,7 @@ rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
 sp 3 3.
 if => //.
 auto => |> &1 &2 <- [#] -> -> _ _ [] -> /=.
-progress.
+progress; exists 2.
 by rewrite (IdealTermRel2 2 _ pt10{2} pt20{2} qL).
 auto; progress; right; trivial.
 auto; progress; right; trivial.
@@ -6633,7 +6641,7 @@ elim dec_req2_1 => _ ->.
 rewrite -dec_wait_req2_2 in dec_wait_req2_1.
 elim dec_wait_req2_1 => _ -> _ //.
 auto => |> &1 &2 <- [#] _ -> <- [#] -> -> -> _ _ _ [] ->.
-progress.
+progress; exists 1.
 by rewrite (IdealTermRel3 1 _ pt10{2} pt20{2} q{2}).
 auto; progress; right; trivial.
 auto; progress; right; trivial.
@@ -6657,7 +6665,7 @@ rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
 sp 3 3.
 if => //.
 auto => |> &1 &2 <- [#] -> -> -> _ _ _ _ [] ->.
-progress.
+progress; exists 0.
 by rewrite (IdealTermRel4 0 _ pt10{2} pt20{2} q{2}).
 auto; progress; right; trivial.
 auto; progress; right; trivial.
