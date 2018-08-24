@@ -409,28 +409,28 @@ lemma is_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
 proof. done. qed.
 
 (* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 3 of key exchange ideal functionality, completing first
-   phase of simulator execution *)
+   port 3 of key exchange ideal functionality, completing first or
+   second phase of simulator execution *)
 
-op ke_sim_rsp1 (ideal adv : addr) : msg =
+op ke_sim_rsp (ideal adv : addr) : msg =
      (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
 
-op dec_ke_sim_rsp1 (m : msg) : (addr * addr) option =
+op dec_ke_sim_rsp (m : msg) : (addr * addr) option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
          ! v = UnivUnit) ?
         None :
         Some (pt1.`1, pt2.`1).
 
-lemma enc_dec_ke_sim_rsp1 (ideal adv : addr) :
-  dec_ke_sim_rsp1 (ke_sim_rsp1 ideal adv) = Some (ideal, adv).
+lemma enc_dec_ke_sim_rsp (ideal adv : addr) :
+  dec_ke_sim_rsp (ke_sim_rsp ideal adv) = Some (ideal, adv).
 proof. done. qed.
 
-op is_ke_sim_rsp1 (m : msg) : bool =
-     dec_ke_sim_rsp1 m <> None.
+op is_ke_sim_rsp (m : msg) : bool =
+     dec_ke_sim_rsp m <> None.
 
-lemma is_ke_sim_rsp1 (ideal adv : addr) :
-  is_ke_sim_rsp1 (ke_sim_rsp1 ideal adv).
+lemma is_ke_sim_rsp (ideal adv : addr) :
+  is_ke_sim_rsp (ke_sim_rsp ideal adv).
 proof. done. qed.
 
 (* request sent from port 3 of key exchange ideal functionality to
@@ -456,31 +456,6 @@ op is_ke_sim_req2 (m : msg) : bool =
 
 lemma is_ke_sim_req2 (ideal adv : addr) :
   is_ke_sim_req2 (ke_sim_req2 ideal adv).
-proof. done. qed.
-
-(* response sent from port ke_sim_adv_pi of key exchange simulator to
-   port 3 of key exchange ideal functionality, completing second
-   phase of simulator execution *)
-
-op ke_sim_rsp2 (ideal adv : addr) : msg =
-     (Adv, (ideal, 3), (adv, ke_sim_adv_pi), UnivUnit).
-
-op dec_ke_sim_rsp2 (m : msg) : (addr * addr) option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 3 \/ pt2.`2 <> ke_sim_adv_pi \/
-         ! v = UnivUnit) ?
-        None :
-        Some (pt1.`1, pt2.`1).
-
-lemma enc_dec_ke_sim_rsp2 (ideal adv : addr) :
-  dec_ke_sim_rsp2 (ke_sim_rsp2 ideal adv) = Some (ideal, adv).
-proof. done. qed.
-
-op is_ke_sim_rsp2 (m : msg) : bool =
-     dec_ke_sim_rsp2 m <> None.
-
-lemma is_ke_sim_rsp2 (ideal adv : addr) :
-  is_ke_sim_rsp2 (ke_sim_rsp2 ideal adv).
 proof. done. qed.
 
 type ke_ideal_state = [
@@ -593,7 +568,7 @@ module KEIdeal : FUNC = {
     }
     elif (is_ke_ideal_state_wait_sim1 st) {
       (pt1, pt2) <- oget (dec_ke_ideal_state_wait_sim1 st);
-      if (is_ke_sim_rsp1 m) {
+      if (is_ke_sim_rsp m) {
         (* destination of m is (self, 3), mode of m is Adv *)
         q <$ dexp;
         r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
@@ -613,7 +588,7 @@ module KEIdeal : FUNC = {
     }
     elif (is_ke_ideal_state_wait_sim2 st) {
       (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim2 st);
-      if (is_ke_sim_rsp2 m) {
+      if (is_ke_sim_rsp m) {
         (* destination of m is (self, 3), mode of m is Adv *)
         r <- Some (ke_rsp2 self pt1 (g ^ q));
         st <- KEIdealStateFinal (pt1, pt2, q);
@@ -788,7 +763,7 @@ module KESim (Adv : FUNC) = {
                 (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
                 if (addr1 = addr ++ [1]) {
                   q2 <$ dexp;
-                  r <- Some (ke_sim_rsp1 addr self);
+                  r <- Some (ke_sim_rsp addr self);
                   st <- KESimStateWaitReq2 (addr, q1, q2);
                 }
               }
@@ -801,7 +776,7 @@ module KESim (Adv : FUNC) = {
               if (Fwd2.is_fw_ok m) {
                 (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
                 if (addr1 = addr ++ [2]) {
-                  r <- Some (ke_sim_rsp2 addr self);
+                  r <- Some (ke_sim_rsp addr self);
                   st <- KESimStateFinal (addr, q1, q2);
                 }
               }
@@ -3946,7 +3921,7 @@ local module MI_KEIdeal_KESim_AfterAdv = {
           (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
           if (addr1 = addr ++ [1]) {
             q2 <$ dexp;
-            r <- Some (ke_sim_rsp1 addr KESim.self);
+            r <- Some (ke_sim_rsp addr KESim.self);
             KESim.st <- KESimStateWaitReq2 (addr, q1, q2);
           }
         }
@@ -3959,7 +3934,7 @@ local module MI_KEIdeal_KESim_AfterAdv = {
         if (Fwd2.is_fw_ok m) {
           (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
           if (addr1 = addr ++ [2]) {
-            r <- Some (ke_sim_rsp2 addr KESim.self);
+            r <- Some (ke_sim_rsp addr KESim.self);
             KESim.st <- KESimStateFinal (addr, q1, q2);
           }
         }
@@ -4117,7 +4092,7 @@ rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> _ /negb_or [#].
 rewrite not_dir.
 progress.
-rewrite oget_some negb_or /ke_sim_rsp1 /=.
+rewrite oget_some negb_or /ke_sim_rsp /=.
 smt(not_leP inc_sym).
 rcondf{2} 8; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
@@ -4322,7 +4297,7 @@ rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> _ /negb_or [#].
 rewrite not_dir.
 progress.
-rewrite oget_some negb_or /ke_sim_rsp2 /=.
+rewrite oget_some negb_or /ke_sim_rsp /=.
 smt(not_leP inc_sym).
 rcondf{2} 7; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
@@ -4851,7 +4826,7 @@ inline KEIdeal.parties.
 rcondf{2} 3; first auto; smt().
 rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
 rcondf{2} 4; first auto; progress.
-rewrite /is_ke_sim_rsp1 /dec_ke_sim_rsp1 /= /#.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /= /#.
 sp 1 5.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -5393,7 +5368,7 @@ rcondf{2} 3; first auto; smt().
 rcondf{2} 3; first auto; smt().
 rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
 rcondf{2} 4; first auto; progress.
-rewrite /is_ke_sim_rsp2 /dec_ke_sim_rsp2 /= /#.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /= /#.
 sp 1 5.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
