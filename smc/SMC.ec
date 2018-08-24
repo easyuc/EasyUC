@@ -854,7 +854,7 @@ module SMCRealKEIdealSimp : FUNC = {
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ n1 = 1) \/
-        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
+        (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
       r <- parties(m);
     }
     return r;
