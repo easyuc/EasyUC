@@ -805,7 +805,7 @@ module KESim (Adv : FUNC) = {
   }
 }.
 
-abstract theory KESimp.
+abstract theory RealSimp.
 
 (* a simplified version of KEReal, not built using forwarders, so
    simpler to work with in proofs *)
@@ -1051,7 +1051,7 @@ pred real_simp_rel4 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) =
       UnivBase (BaseBits (g ^ q2)))) /\
   (st.`real_simp_rel_st_rss  = KERealSimpStateFinal (pt1, pt2, q1, q2)).
 
-inductive ke_real_simp_rel (st : real_simp_rel_st) =
+inductive real_simp_rel (st : real_simp_rel_st) =
     RealSimpRel0 of (real_simp_rel0 st)
   | RealSimpRel1 (pt1 pt2 : port, q1 : exp) of
       (real_simp_rel1 st pt1 pt2 q1)
@@ -1070,7 +1070,7 @@ lemma KEReal_KERealSimp_invoke (func adv : addr) :
    Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
    Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
    KERealSimp.self{2} = func /\ KERealSimp.adv{2} = adv /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func;
      real_simp_rel_st_r1s  = KEReal.st1{1};
      real_simp_rel_st_r2s  = KEReal.st2{1};
@@ -1078,11 +1078,7 @@ lemma KEReal_KERealSimp_invoke (func adv : addr) :
      real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
      real_simp_rel_st_rss  = KERealSimp.st{2}|} ==>
    ={res} /\
-   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
-   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
-   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
-   KERealSimp.self{2} = func /\ KERealSimp.adv{2} = adv /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func;
      real_simp_rel_st_r1s  = KEReal.st1{1};
      real_simp_rel_st_r2s  = KEReal.st2{1};
@@ -1195,7 +1191,7 @@ seq 1 0 :
    Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
    Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
    KERealSimp.self{2} = func /\ KERealSimp.adv{2} = adv /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func;
      real_simp_rel_st_r1s = KEReal.st1{1};
      real_simp_rel_st_r2s = KEReal.st2{1};
@@ -1738,10 +1734,10 @@ auto; progress; by apply (RealSimpRel4 _ pt1' pt2' q1' q2').
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
-lemma MI_KEReal_KERealSimp
-      (func' adv' : addr) (in_guard' : int fset)
+lemma Exper_KEReal_KERealSimp
+      (func' adv' : addr) (in_guard' : int fset) &m
       (Adv <: FUNC{MI, KEReal, KERealSimp})
-      (Env <: ENV{MI, KEReal, KERealSimp, Adv}) &m :
+      (Env <: ENV{MI, KEReal, KERealSimp, Adv}) :
   ! func' <= adv' =>
   Pr[Exper(MI(KEReal, Adv), Env).main
        (func', adv', in_guard') @ &m : res] =
@@ -1758,7 +1754,7 @@ seq 23 12 :
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
    Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
    KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func';
      real_simp_rel_st_r1s  = KEReal.st1{1};
      real_simp_rel_st_r2s  = KEReal.st2{1};
@@ -1775,7 +1771,7 @@ call
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
    Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
    KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func';
      real_simp_rel_st_r1s  = KEReal.st1{1};
      real_simp_rel_st_r2s  = KEReal.st2{1};
@@ -1795,7 +1791,7 @@ while
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
    Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
    KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ke_real_simp_rel
+   real_simp_rel
    {|real_simp_rel_st_func = func';
      real_simp_rel_st_r1s  = KEReal.st1{1};
      real_simp_rel_st_r2s  = KEReal.st2{1};
@@ -1811,7 +1807,7 @@ auto.
 auto.
 qed.
 
-end KESimp.
+end RealSimp.
 
 type ke_ddh_state = [
     KEDDHStateWaitReq1
@@ -1993,90 +1989,8 @@ section.
 declare module Adv : FUNC{MI, KEReal, KEIdeal, KESim, DDH_Adv}.
 declare module Env : ENV{Adv, MI, KEReal, KEIdeal, KESim, DDH_Adv}.
 
-local clone import KESimp as KESimp'
+local clone import RealSimp as RS
 proof *.
-
-local lemma Exper_KEReal_KERealSimp (func' adv' : addr) &m :
-  exper_pre func' adv' (fset1 adv_fw_pi) =>
-  Pr[Exper(MI(KEReal, Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
-  Pr[Exper(MI(KERealSimp, Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res].
-proof.
-move => pre.
-byequiv => //.
-proc.
-seq 1 1 :
-  (={func, adv, in_guard} /\
-   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
-   ={MI.func, MI.adv, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
-   ! func' <= adv' /\
-   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
-   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
-   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ={glob Adv} /\
-   ke_real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = KEReal.st1{1};
-     real_simp_rel_st_r2s  = KEReal.st2{1};
-     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-inline*.
-call (_ : true).
-auto; progress; [smt() | rewrite RealSimpRel0 /#].
-call
-  (_ :
-   ={MI.func, MI.adv, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
-   ! func' <= adv' /\
-   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
-   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
-   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ={glob Adv} /\
-   ke_real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = KEReal.st1{1};
-     real_simp_rel_st_r2s  = KEReal.st2{1};
-     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-proc.
-sp 2 2.
-if => //.
-inline MI(KEReal, Adv).loop MI(KERealSimp, Adv).loop.
-wp; sp 3 3.
-while
-  (={not_done} /\ ={m0, r0} /\
-   ={MI.func, MI.adv, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
-   ! func' <= adv' /\
-   KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
-   Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
-   Fwd2.Forw.self{1} = func' ++ [2] /\ Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' /\ KERealSimp.adv{2} = adv' /\
-   ={glob Adv} /\
-   ke_real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = KEReal.st1{1};
-     real_simp_rel_st_r2s  = KEReal.st2{1};
-     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-sp 2 2.
-if => //.
-wp; call (KEReal_KERealSimp_invoke func' adv'); auto.
-wp; call (_ : true); auto.
-auto.
-auto.
-auto.
-qed.
 
 type exp_names = [exp1 | exp2 | exp3].
 
@@ -5744,7 +5658,8 @@ lemma ke_sec (func adv : addr) &m :
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
 move => pre func_eq adv_eq.
-by rewrite (Exper_KEReal_KERealSimp func adv &m) //
+by rewrite (Exper_KEReal_KERealSimp func adv (fset1 adv_fw_pi) &m Adv Env)
+           1:/#
            (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
             func adv &m) //
            -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m)
