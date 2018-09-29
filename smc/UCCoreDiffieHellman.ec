@@ -40,7 +40,8 @@ axiom xorA (x y z : bits) : x ^^ y ^^ z = x ^^ (y ^^ z).
 
 axiom xor0_ (x : bits) : zero ^^ x = x.
 
-axiom xor_0 (x : bits) : x ^^ zero = x.
+lemma xor_0 (x : bits) : x ^^ zero = x.
+proof. by rewrite xorC xor0_. qed.
 
 axiom xorK (x : bits) : x ^^ x = zero.
 
