@@ -28,13 +28,13 @@ axiom smc_pi_uniq : uniq [smc_sim_adv_pi; ke_sim_adv_pi; adv_fw_pi; 0].
 (* end theory parameters *)
 
 (* request sent to port index 1 of SMC functionality: pt1 wants to
-   send x to pt2 *)
+   send t to pt2 *)
 
-op smc_req (func : addr, pt1 pt2 : port, x : bits) : msg =
+op smc_req (func : addr, pt1 pt2 : port, t : text) : msg =
      (Dir, (func, 1), pt1,
-      UnivPair (UnivPort pt2, UnivBase (BaseBits x))).
+      UnivPair (UnivPort pt2, UnivBase (BaseText t))).
 
-op dec_smc_req (m : msg) : (addr * port * port * bits) option =
+op dec_smc_req (m : msg) : (addr * port * port * text) option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt1.`2 <> 1 \/ ! is_univ_pair v) ?
         None :
@@ -42,35 +42,35 @@ op dec_smc_req (m : msg) : (addr * port * port * bits) option =
         in (! is_univ_port v1 \/ ! is_univ_base v2) ?
            None :
            let bse = oget (dec_univ_base v2)
-           in (! is_base_bits bse) ?
+           in (! is_base_text bse) ?
               None :
               Some (pt1.`1, pt2, oget (dec_univ_port v1),
-                    oget (dec_base_bits bse)).
+                    oget (dec_base_text bse)).
 
-lemma enc_dec_smc_req (func : addr, pt1 pt2 : port, x : bits) :
-  dec_smc_req (smc_req func pt1 pt2 x) = Some (func, pt1, pt2, x).
+lemma enc_dec_smc_req (func : addr, pt1 pt2 : port, t : text) :
+  dec_smc_req (smc_req func pt1 pt2 t) = Some (func, pt1, pt2, t).
 proof.
 by rewrite /smc_req /dec_smc_req /=
-           (is_univ_pair (UnivPort pt2, UnivBase (BaseBits x))) /=
+           (is_univ_pair (UnivPort pt2, UnivBase (BaseText t))) /=
            oget_some /= (is_univ_port pt2) /= oget_some.
 qed.
 
 op is_smc_req (m : msg) : bool =
      dec_smc_req m <> None.
 
-lemma is_smc_req (func : addr, pt1 pt2 : port, x : bits) :
-  is_smc_req (smc_req func pt1 pt2 x).
+lemma is_smc_req (func : addr, pt1 pt2 : port, t : text) :
+  is_smc_req (smc_req func pt1 pt2 t).
 proof.
 by rewrite /is_smc_req enc_dec_smc_req.
 qed.
 
 (* response sent from port index 2 of SMC functionality to pt2,
-   completing the sending of x from pt1 *)
+   completing the sending of t from pt1 *)
 
-op smc_rsp (func : addr, pt1 pt2 : port, x : bits) : msg =
-     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1, UnivBase (BaseBits x))).
+op smc_rsp (func : addr, pt1 pt2 : port, t : text) : msg =
+     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1, UnivBase (BaseText t))).
 
-op dec_smc_rsp (m : msg) : (addr * port * port * bits) option =
+op dec_smc_rsp (m : msg) : (addr * port * port * text) option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt2.`2 <> 2 \/ ! is_univ_pair v) ?
         None :
@@ -78,23 +78,23 @@ op dec_smc_rsp (m : msg) : (addr * port * port * bits) option =
         in (! is_univ_port v1 \/ ! is_univ_base v2) ?
            None :
            let b = oget (dec_univ_base v2)
-           in (! is_base_bits b) ?
+           in (! is_base_text b) ?
               None :
-              Some (pt2.`1, oget (dec_univ_port v1), pt1, oget (dec_base_bits b)).
+              Some (pt2.`1, oget (dec_univ_port v1), pt1, oget (dec_base_text b)).
 
-lemma enc_dec_smc_rsp (func : addr, pt1 pt2 : port, x : bits) :
-  dec_smc_rsp (smc_rsp func pt1 pt2 x) = Some (func, pt1, pt2, x).
+lemma enc_dec_smc_rsp (func : addr, pt1 pt2 : port, t : text) :
+  dec_smc_rsp (smc_rsp func pt1 pt2 t) = Some (func, pt1, pt2, t).
 proof.
 by rewrite /smc_rsp /dec_smc_rsp /=
-           (is_univ_pair (UnivPort pt1, UnivBase (BaseBits x))) /=
+           (is_univ_pair (UnivPort pt1, UnivBase (BaseText t))) /=
            oget_some /= (is_univ_port pt1) /= oget_some.
 qed.
 
 op is_smc_rsp (m : msg) : bool =
      dec_smc_rsp m <> None.
 
-lemma is_smc_rsp (func : addr, pt1 pt2 : port, x : bits) :
-  is_smc_rsp (smc_rsp func pt1 pt2 x).
+lemma is_smc_rsp (func : addr, pt1 pt2 : port, t : text) :
+  is_smc_rsp (smc_rsp func pt1 pt2 t).
 proof.
 by rewrite /is_smc_rsp enc_dec_smc_rsp.
 qed.
@@ -116,41 +116,41 @@ realize ke_pi_uniq. by have := smc_pi_uniq. qed.
 
 type smc_real_p1_state = [
     SMCRealP1StateWaitReq
-  | SMCRealP1StateWaitKE2 of (port * port * bits)
-  | SMCRealP1StateFinal   of (port * port * bits)
+  | SMCRealP1StateWaitKE2 of (port * port * text)
+  | SMCRealP1StateFinal   of (port * port * text)
 ].
 
 op dec_smc_real_p1_state_wait_ke2 (st : smc_real_p1_state) :
-     (port * port * bits) option =
+     (port * port * text) option =
      with st = SMCRealP1StateWaitReq   => None
      with st = SMCRealP1StateWaitKE2 x => Some x
      with st = SMCRealP1StateFinal _   => None.
 
-lemma enc_dec_smc_real_p1_state_wait_ke2 (x : port * port * bits) :
+lemma enc_dec_smc_real_p1_state_wait_ke2 (x : port * port * text) :
   dec_smc_real_p1_state_wait_ke2 (SMCRealP1StateWaitKE2 x) = Some x.
 proof. done. qed.
 
 op is_smc_real_p1_state_wait_ke2 (st : smc_real_p1_state) : bool =
   dec_smc_real_p1_state_wait_ke2 st <> None.
 
-lemma is_smc_real_p1_state_wait_ke2 (x : port * port * bits) :
+lemma is_smc_real_p1_state_wait_ke2 (x : port * port * text) :
   is_smc_real_p1_state_wait_ke2 (SMCRealP1StateWaitKE2 x).
 proof. done. qed.
 
 op dec_smc_real_p1_state_final (st : smc_real_p1_state) :
-     (port * port * bits) option =
+     (port * port * text) option =
      with st = SMCRealP1StateWaitReq   => None
      with st = SMCRealP1StateWaitKE2 _ => None
      with st = SMCRealP1StateFinal x   => Some x.
 
-lemma enc_dec_smc_real_p1_state_final (x : port * port * bits) :
+lemma enc_dec_smc_real_p1_state_final (x : port * port * text) :
   dec_smc_real_p1_state_final (SMCRealP1StateFinal x) = Some x.
 proof. done. qed.
 
 op is_smc_real_p1_state_final (st : smc_real_p1_state) : bool =
   dec_smc_real_p1_state_final st <> None.
 
-lemma is_smc_real_p1_state_final (x : port * port * bits) :
+lemma is_smc_real_p1_state_final (x : port * port * text) :
   is_smc_real_p1_state_final (SMCRealP1StateFinal x).
 proof. done. qed.
 
@@ -158,41 +158,41 @@ proof. done. qed.
 
 type smc_real_p2_state = [
     SMCRealP2StateWaitKE1
-  | SMCRealP2StateWaitFwd of bits
-  | SMCRealP2StateFinal   of bits
+  | SMCRealP2StateWaitFwd of key
+  | SMCRealP2StateFinal   of key
 ].
 
 op dec_smc_real_p2_state_wait_fwd (st : smc_real_p2_state) :
-     bits option =
+     key option =
      with st = SMCRealP2StateWaitKE1   => None
      with st = SMCRealP2StateWaitFwd x => Some x
      with st = SMCRealP2StateFinal _   => None.
 
-lemma enc_dec_smc_real_p2_state_wait_fwd (x : bits) :
+lemma enc_dec_smc_real_p2_state_wait_fwd (x : key) :
   dec_smc_real_p2_state_wait_fwd (SMCRealP2StateWaitFwd x) = Some x.
 proof. done. qed.
 
 op is_smc_real_p2_state_wait_fwd (st : smc_real_p2_state) : bool =
   dec_smc_real_p2_state_wait_fwd st <> None.
 
-lemma is_smc_real_p2_state_wait_fwd (x : bits) :
+lemma is_smc_real_p2_state_wait_fwd (x : key) :
   is_smc_real_p2_state_wait_fwd (SMCRealP2StateWaitFwd x).
 proof. done. qed.
 
 op dec_smc_real_p2_state_final (st : smc_real_p2_state) :
-     bits option =
+     key option =
      with st = SMCRealP2StateWaitKE1   => None
      with st = SMCRealP2StateWaitFwd _ => None
      with st = SMCRealP2StateFinal x    => Some x.
 
-lemma enc_dec_smc_real_p2_state_final (x : bits) :
+lemma enc_dec_smc_real_p2_state_final (x : key) :
   dec_smc_real_p2_state_final (SMCRealP2StateFinal x) = Some x.
 proof. done. qed.
 
 op is_smc_real_p2_state_final (st : smc_real_p2_state) : bool =
   dec_smc_real_p2_state_final st <> None.
 
-lemma is_smc_real_p2_state_final (x : bits) :
+lemma is_smc_real_p2_state_final (x : key) :
   is_smc_real_p2_state_final (SMCRealP2StateFinal x).
 proof. done. qed.
 
@@ -214,22 +214,22 @@ module SMCReal (KE : FUNC) = {
 
   proc party1(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var x, k : bits;
+    var t : text; var k : key;
     var r : msg option <- None;
     if (st1 = SMCRealP1StateWaitReq) {
       if (is_smc_req m) {
         (* destination of m is (self, 1) *)
-        (addr, pt1, pt2, x) <- oget (dec_smc_req m);
+        (addr, pt1, pt2, t) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
             ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
           r <-
             Some (KeyEx.ke_req1 (self ++ [2]) (self, 3) (self, 4));
-          st1 <- SMCRealP1StateWaitKE2 (pt1, pt2, x);
+          st1 <- SMCRealP1StateWaitKE2 (pt1, pt2, t);
         }
       }
     }
     elif (is_smc_real_p1_state_wait_ke2 st1) {
-      (pt1, pt2, x) <- oget (dec_smc_real_p1_state_wait_ke2 st1);
+      (pt1, pt2, t) <- oget (dec_smc_real_p1_state_wait_ke2 st1);
       if (KeyEx.is_ke_rsp2 m) {
         (addr, pt1', k) <- oget (KeyEx.dec_ke_rsp2 m);
         if (pt1' = (self, 3)) {
@@ -238,8 +238,8 @@ module SMCReal (KE : FUNC) = {
             Some
             (Fwd.fw_req (self ++ [1]) (self, 3) (self, 4)
              (univ_triple (UnivPort pt1) (UnivPort pt2)
-              (UnivBase (BaseBits (x ^^ k)))));
-          st1 <- SMCRealP1StateFinal (pt1, pt2, x);
+              (UnivBase (BaseKey (inj t ^^ k)))));
+          st1 <- SMCRealP1StateFinal (pt1, pt2, t);
         }
       }
     }
@@ -250,15 +250,14 @@ module SMCReal (KE : FUNC) = {
 
   proc party2(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u, v1, v2, v3 : univ; var x, y, k : bits;
+    var u, v1, v2, v3 : univ; var x, k : key;
     var r : msg option <- None;
     if (st2 = SMCRealP2StateWaitKE1) {
       if (KeyEx.is_ke_rsp1 m) {
         (addr, pt1', pt2', k) <- oget (KeyEx.dec_ke_rsp1 m);
         if (pt2' = (self, 4)) {
           (* destination of m is (self, 4) *)
-          r <-
-            Some (KeyEx.ke_req2 (self ++ [2]) (self, 4));
+          r <- Some (KeyEx.ke_req2 (self ++ [2]) (self, 4));
           st2 <- SMCRealP2StateWaitFwd k;
         }
       }
@@ -272,8 +271,8 @@ module SMCReal (KE : FUNC) = {
           (v1, v2, v3) <- oget (dec_univ_triple u);
           pt1 <- oget (dec_univ_port v1);
           pt2 <- oget (dec_univ_port v2);
-          x <- oget (dec_base_bits (oget (dec_univ_base v3)));
-          r <- Some (smc_rsp self pt1 pt2 (x ^^ k));
+          x <- oget (dec_base_key (oget (dec_univ_base v3)));
+          r <- Some (smc_rsp self pt1 pt2 (oget (proj (x ^^ kinv k))));
           st2 <- SMCRealP2StateFinal k;
         }
       }
@@ -397,41 +396,41 @@ proof. done. qed.
 
 type smc_ideal_state = [
     SMCIdealStateWaitReq
-  | SMCIdealStateWaitSim of (port * port * bits)
-  | SMCIdealStateFinal   of (port * port * bits)
+  | SMCIdealStateWaitSim of (port * port * text)
+  | SMCIdealStateFinal   of (port * port * text)
 ].
 
 op dec_smc_ideal_state_wait_sim (st : smc_ideal_state) :
-     (port * port * bits) option =
+     (port * port * text) option =
      with st = SMCIdealStateWaitReq   => None
      with st = SMCIdealStateWaitSim x => Some x
      with st = SMCIdealStateFinal _   => None.
 
-lemma enc_dec_smc_ideal_state_wait_sim (x : port * port * bits) :
+lemma enc_dec_smc_ideal_state_wait_sim (x : port * port * text) :
   dec_smc_ideal_state_wait_sim (SMCIdealStateWaitSim x) = Some x.
 proof. done. qed.
 
 op is_smc_ideal_state_wait_sim (st : smc_ideal_state) : bool =
   dec_smc_ideal_state_wait_sim st <> None.
 
-lemma is_smc_ideal_state_wait_sim (x : port * port * bits) :
+lemma is_smc_ideal_state_wait_sim (x : port * port * text) :
   is_smc_ideal_state_wait_sim (SMCIdealStateWaitSim x).
 proof. done. qed.
 
 op dec_smc_ideal_state_final (st : smc_ideal_state) :
-     (port * port * bits) option =
+     (port * port * text) option =
      with st = SMCIdealStateWaitReq   => None
      with st = SMCIdealStateWaitSim _ => None
      with st = SMCIdealStateFinal x   => Some x.
 
-lemma enc_dec_smc_ideal_state_final (x : port * port * bits) :
+lemma enc_dec_smc_ideal_state_final (x : port * port * text) :
   dec_smc_ideal_state_final (SMCIdealStateFinal x) = Some x.
 proof. done. qed.
 
 op is_smc_ideal_state_final (st : smc_ideal_state) : bool =
   dec_smc_ideal_state_final st <> None.
 
-lemma is_smc_ideal_state_final (x : port * port * bits) :
+lemma is_smc_ideal_state_final (x : port * port * text) :
   is_smc_ideal_state_final (SMCIdealStateFinal x).
 proof. done. qed.
 
@@ -446,26 +445,26 @@ module SMCIdeal : FUNC = {
 
   proc parties(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr, addr1, addr2 : addr;
-    var x : bits;
+    var t : text;
     var r : msg option <- None;
     if (st = SMCIdealStateWaitReq) {
       if (is_smc_req m) {
         (* destination of m is (self, 1) *)
-        (addr, pt1, pt2, x) <- oget (dec_smc_req m);
+        (addr, pt1, pt2, t) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
             ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
           r <- Some (smc_sim_req self adv pt1 pt2);
-          st <- SMCIdealStateWaitSim (pt1, pt2, x);
+          st <- SMCIdealStateWaitSim (pt1, pt2, t);
         }
       }
     }
     elif (is_smc_ideal_state_wait_sim st) {
-      (pt1, pt2, x) <- oget (dec_smc_ideal_state_wait_sim st);
+      (pt1, pt2, t) <- oget (dec_smc_ideal_state_wait_sim st);
       if (is_smc_sim_rsp m) {
         (* destination of m is (self, 3) *)
         (addr1, addr2) <- oget (dec_smc_sim_rsp m);
-        r <- Some (smc_rsp self pt1 pt2 x);
-        st <- SMCIdealStateFinal (pt1, pt2, x);
+        r <- Some (smc_rsp self pt1 pt2 t);
+        st <- SMCIdealStateFinal (pt1, pt2, t);
       }
     }
     return r;
@@ -637,7 +636,7 @@ module SMCSim (Adv : FUNC) = {
                   Some
                   (Fwd.fw_obs (addr ++ [1]) self (addr, 3) (addr, 4)
                    (univ_triple (UnivPort pt1) (UnivPort pt2)
-                    (UnivBase (BaseBits (g ^ q)))));
+                    (UnivBase (BaseKey (g ^ q)))));
                 not_done <- true;
                 st <- SMCSimStateWaitAdv3 (pt1, pt2, addr, q);
               }
@@ -681,22 +680,22 @@ abstract theory SMCRealKEIdealSimp.
 
 type smc_real_ke_ideal_simp_state = [
     SMCRealKEIdealSimpStateWaitReq
-  | SMCRealKEIdealSimpStateWaitAdv1 of (port * port * bits)
-  | SMCRealKEIdealSimpStateWaitAdv2 of (port * port * bits * bits)
-  | SMCRealKEIdealSimpStateWaitAdv3 of (port * port * bits * bits)
-  | SMCRealKEIdealSimpStateFinal    of (port * port * bits * bits)
+  | SMCRealKEIdealSimpStateWaitAdv1 of (port * port * text)
+  | SMCRealKEIdealSimpStateWaitAdv2 of (port * port * text * key)
+  | SMCRealKEIdealSimpStateWaitAdv3 of (port * port * text * key)
+  | SMCRealKEIdealSimpStateFinal    of (port * port * text * key)
 ].
 
 op dec_smc_real_ke_ideal_simp_state_wait_adv1
    (st : smc_real_ke_ideal_simp_state) :
-     (port * port * bits) option =
+     (port * port * text) option =
      with st = SMCRealKEIdealSimpStateWaitReq    => None
      with st = SMCRealKEIdealSimpStateWaitAdv1 x => Some x
      with st = SMCRealKEIdealSimpStateWaitAdv2 _ => None
      with st = SMCRealKEIdealSimpStateWaitAdv3 _ => None
      with st = SMCRealKEIdealSimpStateFinal    _ => None.
 
-lemma enc_dec_smc_real_ke_ideal_simp_state_wait_adv1 (x : port * port * bits) :
+lemma enc_dec_smc_real_ke_ideal_simp_state_wait_adv1 (x : port * port * text) :
   dec_smc_real_ke_ideal_simp_state_wait_adv1
   (SMCRealKEIdealSimpStateWaitAdv1 x) = Some x.
 proof. done. qed.
@@ -705,14 +704,14 @@ op is_smc_real_ke_ideal_simp_state_wait_adv1
    (st : smc_real_ke_ideal_simp_state) : bool =
   dec_smc_real_ke_ideal_simp_state_wait_adv1 st <> None.
 
-lemma is_smc_real_ke_ideal_simp_state_wait_adv1 (x : port * port * bits) :
+lemma is_smc_real_ke_ideal_simp_state_wait_adv1 (x : port * port * text) :
   is_smc_real_ke_ideal_simp_state_wait_adv1
   (SMCRealKEIdealSimpStateWaitAdv1 x).
 proof. done. qed.
 
 op dec_smc_real_ke_ideal_simp_state_wait_adv2
    (st : smc_real_ke_ideal_simp_state) :
-     (port * port * bits * bits) option =
+     (port * port * text * key) option =
      with st = SMCRealKEIdealSimpStateWaitReq    => None
      with st = SMCRealKEIdealSimpStateWaitAdv1 _ => None
      with st = SMCRealKEIdealSimpStateWaitAdv2 x => Some x
@@ -720,7 +719,7 @@ op dec_smc_real_ke_ideal_simp_state_wait_adv2
      with st = SMCRealKEIdealSimpStateFinal    _ => None.
 
 lemma enc_dec_smc_real_ke_ideal_simp_state_wait_adv2
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   dec_smc_real_ke_ideal_simp_state_wait_adv2
   (SMCRealKEIdealSimpStateWaitAdv2 x) = Some x.
 proof. done. qed.
@@ -730,14 +729,14 @@ op is_smc_real_ke_ideal_simp_state_wait_adv2
   dec_smc_real_ke_ideal_simp_state_wait_adv2 st <> None.
 
 lemma is_smc_real_ke_ideal_simp_state_wait_adv2
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   is_smc_real_ke_ideal_simp_state_wait_adv2
   (SMCRealKEIdealSimpStateWaitAdv2 x).
 proof. done. qed.
 
 op dec_smc_real_ke_ideal_simp_state_wait_adv3
    (st : smc_real_ke_ideal_simp_state) :
-     (port * port * bits * bits) option =
+     (port * port * text * key) option =
      with st = SMCRealKEIdealSimpStateWaitReq    => None
      with st = SMCRealKEIdealSimpStateWaitAdv1 _ => None
      with st = SMCRealKEIdealSimpStateWaitAdv2 _ => None
@@ -745,7 +744,7 @@ op dec_smc_real_ke_ideal_simp_state_wait_adv3
      with st = SMCRealKEIdealSimpStateFinal    _ => None.
 
 lemma enc_dec_smc_real_ke_ideal_simp_state_wait_adv3
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   dec_smc_real_ke_ideal_simp_state_wait_adv3
   (SMCRealKEIdealSimpStateWaitAdv3 x) = Some x.
 proof. done. qed.
@@ -755,14 +754,14 @@ op is_smc_real_ke_ideal_simp_state_wait_adv3
   dec_smc_real_ke_ideal_simp_state_wait_adv3 st <> None.
 
 lemma is_smc_real_ke_ideal_simp_state_wait_adv3
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   is_smc_real_ke_ideal_simp_state_wait_adv3
   (SMCRealKEIdealSimpStateWaitAdv3 x).
 proof. done. qed.
 
 op dec_smc_real_ke_ideal_simp_state_final
    (st : smc_real_ke_ideal_simp_state) :
-     (port * port * bits * bits) option =
+     (port * port * text * key) option =
      with st = SMCRealKEIdealSimpStateWaitReq    => None
      with st = SMCRealKEIdealSimpStateWaitAdv1 _ => None
      with st = SMCRealKEIdealSimpStateWaitAdv2 _ => None
@@ -770,7 +769,7 @@ op dec_smc_real_ke_ideal_simp_state_final
      with st = SMCRealKEIdealSimpStateFinal    x => Some x.
 
 lemma enc_dec_smc_real_ke_ideal_simp_state_final
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   dec_smc_real_ke_ideal_simp_state_final
   (SMCRealKEIdealSimpStateFinal x) = Some x.
 proof. done. qed.
@@ -780,7 +779,7 @@ op is_smc_real_ke_ideal_simp_state_final
   dec_smc_real_ke_ideal_simp_state_final st <> None.
 
 lemma is_smc_real_ke_ideal_simp_state_final
-      (x : port * port * bits * bits) :
+      (x : port * port * text * key) :
   is_smc_real_ke_ideal_simp_state_final
   (SMCRealKEIdealSimpStateFinal x).
 proof. done. qed.
@@ -796,33 +795,33 @@ module SMCRealKEIdealSimp : FUNC = {
 
   proc parties(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr, addr1, addr2 : addr;
-    var x, k : bits; var q : exp;
+    var t : text; var k : key; var q : exp;
     var r : msg option <- None;
     if (st = SMCRealKEIdealSimpStateWaitReq) {
       if (is_smc_req m) {
         (* destination of m is (self, 1) *)
-        (addr, pt1, pt2, x) <- oget (dec_smc_req m);
+        (addr, pt1, pt2, t) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
             ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
           r <- Some (KeyEx.ke_sim_req1 self adv (self, 3) (self, 4));
-          st <- SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, x);
+          st <- SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, t);
         }
       }
     }
     elif (is_smc_real_ke_ideal_simp_state_wait_adv1 st) {
-      (pt1, pt2, x) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv1 st);
+      (pt1, pt2, t) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv1 st);
       if (KeyEx.is_ke_sim_rsp m) {
         (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
         if (addr1 = self ++ [2]) {
           (* destination of m is (self ++ [2], 3), mode of m is Adv *)
           q <$ dexp;
           r <- Some (KeyEx.ke_sim_req2 self adv);
-          st <- SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, x, g ^ q);
+          st <- SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, t, g ^ q);
         }
       }
     }
     elif (is_smc_real_ke_ideal_simp_state_wait_adv2 st) {
-      (pt1, pt2, x, k) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv2 st);
+      (pt1, pt2, t, k) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv2 st);
       if (KeyEx.is_ke_sim_rsp m) {
         (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
         if (addr1 = self ++ [2]) {
@@ -831,19 +830,19 @@ module SMCRealKEIdealSimp : FUNC = {
                (Fwd.fw_obs
                 (self ++ [1]) adv (self, 3) (self, 4)
                 (univ_triple (UnivPort pt1) (UnivPort pt2)
-                 (UnivBase (BaseBits (x ^^ k)))));
-          st <- SMCRealKEIdealSimpStateWaitAdv3 (pt1, pt2, x, k);
+                 (UnivBase (BaseKey (inj t ^^ k)))));
+          st <- SMCRealKEIdealSimpStateWaitAdv3 (pt1, pt2, t, k);
         }
       }
     }
     elif (is_smc_real_ke_ideal_simp_state_wait_adv3 st) {
-      (pt1, pt2, x, k) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv3 st);
+      (pt1, pt2, t, k) <- oget (dec_smc_real_ke_ideal_simp_state_wait_adv3 st);
       if (Fwd.is_fw_ok m) {
         (addr1, addr2) <- oget (Fwd.dec_fw_ok m);
         if (addr1 = self ++ [1]) {
           (* destination of m is (self ++ [1], 1), mode of m is Adv *)
-          r <- Some (smc_rsp self pt1 pt2 x);
-          st <- SMCRealKEIdealSimpStateFinal (pt1, pt2, x, k);
+          r <- Some (smc_rsp self pt1 pt2 t);
+          st <- SMCRealKEIdealSimpStateFinal (pt1, pt2, t, k);
         }
       }
     }
@@ -883,11 +882,11 @@ pred smc_real_ke_ideal_simp_rel0 (st : smc_real_ke_ideal_simp_rel_st) =
   (st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitReq).
 
 pred smc_real_ke_ideal_simp_rel1
-     (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, x : bits) =
+     (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, t : text) =
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt1.`1) /\
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt2.`1) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r1s  =
-   SMCRealP1StateWaitKE2 (pt1, pt2, x)) /\
+   SMCRealP1StateWaitKE2 (pt1, pt2, t)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r2s  = SMCRealP2StateWaitKE1) /\
   (st.`smc_real_ke_ideal_simp_rel_st_fws  = Fwd.FwStateInit) /\
   (st.`smc_real_ke_ideal_simp_rel_st_keis =
@@ -895,15 +894,15 @@ pred smc_real_ke_ideal_simp_rel1
    ((st.`smc_real_ke_ideal_simp_rel_st_func, 3),
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4))) /\
   (st.`smc_real_ke_ideal_simp_rel_st_riss =
-   SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, x)).
+   SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, t)).
 
 pred smc_real_ke_ideal_simp_rel2
      (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port,
-      x : bits, q : exp) =
+      t : text, q : exp) =
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt1.`1) /\
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt2.`1) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r1s  =
-   SMCRealP1StateWaitKE2 (pt1, pt2, x)) /\
+   SMCRealP1StateWaitKE2 (pt1, pt2, t)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r2s  =
    SMCRealP2StateWaitFwd (g ^ q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_fws  = Fwd.FwStateInit) /\
@@ -913,15 +912,15 @@ pred smc_real_ke_ideal_simp_rel2
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4),
     q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_riss =
-   SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, x, g ^ q)).
+   SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, t, g ^ q)).
 
 pred smc_real_ke_ideal_simp_rel3
      (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port,
-      x : bits, q : exp) =
+      t : text, q : exp) =
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt1.`1) /\
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt2.`1) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r1s  =
-   SMCRealP1StateFinal (pt1, pt2, x)) /\
+   SMCRealP1StateFinal (pt1, pt2, t)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r2s  =
    SMCRealP2StateWaitFwd (g ^ q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_fws  =
@@ -929,22 +928,22 @@ pred smc_real_ke_ideal_simp_rel3
    ((st.`smc_real_ke_ideal_simp_rel_st_func, 3),
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4),
     univ_triple (UnivPort pt1) (UnivPort pt2)
-                (UnivBase (BaseBits (x ^^ (g ^ q)))))) /\
+                (UnivBase (BaseKey (inj t ^^ (g ^ q)))))) /\
   (st.`smc_real_ke_ideal_simp_rel_st_keis =
    KeyEx.KEIdealStateFinal
    ((st.`smc_real_ke_ideal_simp_rel_st_func, 3),
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4),
     q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_riss =
-   SMCRealKEIdealSimpStateWaitAdv3 (pt1, pt2, x, g ^ q)).
+   SMCRealKEIdealSimpStateWaitAdv3 (pt1, pt2, t, g ^ q)).
 
 pred smc_real_ke_ideal_simp_rel4
      (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port,
-      x : bits, q : exp) =
+      t : text, q : exp) =
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt1.`1) /\
   ! (st.`smc_real_ke_ideal_simp_rel_st_func <= pt2.`1) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r1s  =
-   SMCRealP1StateFinal (pt1, pt2, x)) /\
+   SMCRealP1StateFinal (pt1, pt2, t)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_r2s  =
    SMCRealP2StateFinal (g ^ q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_fws  =
@@ -952,26 +951,26 @@ pred smc_real_ke_ideal_simp_rel4
    ((st.`smc_real_ke_ideal_simp_rel_st_func, 3),
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4),
     univ_triple (UnivPort pt1) (UnivPort pt2)
-                (UnivBase (BaseBits (x ^^ (g ^ q)))))) /\
+                (UnivBase (BaseKey (inj t ^^ (g ^ q)))))) /\
   (st.`smc_real_ke_ideal_simp_rel_st_keis =
    KeyEx.KEIdealStateFinal
    ((st.`smc_real_ke_ideal_simp_rel_st_func, 3),
     (st.`smc_real_ke_ideal_simp_rel_st_func, 4),
     q)) /\
   (st.`smc_real_ke_ideal_simp_rel_st_riss =
-   SMCRealKEIdealSimpStateFinal (pt1, pt2, x, g ^ q)).
+   SMCRealKEIdealSimpStateFinal (pt1, pt2, t, g ^ q)).
 
 inductive smc_real_ke_ideal_simp_rel
           (st : smc_real_ke_ideal_simp_rel_st) =
     SMCRealKEIdealSimpRel0 of (smc_real_ke_ideal_simp_rel0 st)
-  | SMCRealKEIdealSimpRel1 (pt1 pt2 : port, x : bits) of
-      (smc_real_ke_ideal_simp_rel1 st pt1 pt2 x)
-  | SMCRealKEIdealSimpRel2 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_real_ke_ideal_simp_rel2 st pt1 pt2 x q)
-  | SMCRealKEIdealSimpRel3 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_real_ke_ideal_simp_rel3 st pt1 pt2 x q)
-  | SMCRealKEIdealSimpRel4 (pt1 pt2 : port, x : bits, q : exp) of
-      (smc_real_ke_ideal_simp_rel4 st pt1 pt2 x q).
+  | SMCRealKEIdealSimpRel1 (pt1 pt2 : port, t : text) of
+      (smc_real_ke_ideal_simp_rel1 st pt1 pt2 t)
+  | SMCRealKEIdealSimpRel2 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_real_ke_ideal_simp_rel2 st pt1 pt2 t q)
+  | SMCRealKEIdealSimpRel3 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_real_ke_ideal_simp_rel3 st pt1 pt2 t q)
+  | SMCRealKEIdealSimpRel4 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_real_ke_ideal_simp_rel4 st pt1 pt2 t q).
 
 lemma SMCReal_KEIdeal_SMCRealKEIdealSimp_invoke (func adv : addr) :
   equiv
@@ -1234,12 +1233,21 @@ move => pre func_eq adv_eq.
 by apply (smc_sec1 Adv Env func adv &m).
 qed.
 
-op pad_iso (x : bits, q : exp) : exp = log (gen q ^^ x).
-  
-lemma pad_isoK (x : bits) : involutive (pad_iso x).
+(* padding isomorphism *)
+
+op pad_iso_l (t : text, q : exp) : exp = log (inj t ^^ (g ^ q)).
+op pad_iso_r (t : text, q : exp) : exp = log (kinv (inj t) ^^ (g ^ q)).
+
+lemma pad_iso_lr (t : text) : cancel (pad_iso_l t) (pad_iso_r t).
 proof.
-rewrite /involutive /cancel /pad_iso => q.
-by rewrite gen_logK xorA xorK xor_0 log_genK.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -2!/gen log_gen -kmulA kinv_l kid_l gen_log.
+qed.
+
+lemma pad_iso_rl (t : text) : cancel (pad_iso_r t) (pad_iso_l t).
+proof.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -2!/gen log_gen -kmulA kinv_r kid_l gen_log.
 qed.
 
 section.

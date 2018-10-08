@@ -5,110 +5,92 @@ prover quorum=2 ["Alt-Ergo" "Z3"].
 require import AllCore Distr.
 require UCCore DDH.
 
-(************************** Bitstrings and Exponents **************************)
+(********************** Keys, Exponents and Plain texts ***********************)
 
-(* we minimally axiomatize two types and related operators
+(* group of keys *)
 
-   a type bits of bitstrings of length n, equipped with an all zero
-   element (zero), a bitwise exclusive or operator (^^) satisfying
-   the usual axioms, and a generator g (see below)
+type key.
 
-   a type exp of exponents equipped with an element e (about which
-   nothing is assumed), a commutative multiplication operator ( * ),
-   and a lossless distribution dexp in which every exponent's value is
-   1%r / (2 ^ n)%r (so the size of exp is 2 ^ n)
+op (^^) : key -> key -> key.  (* binary operation *)
 
-   bits and exp are connected via an exponentiation operator (^) of
-   type bits -> exp -> bits with the property that every element of
-   bits is uniquely generated using exponentiation from g
+op kid : key.  (* identity *)
 
-   consequently there is a bijection between bits and exp: from exp
-   to bits the function is (fun q => g ^ q); from bits to exp, the
-   function is the discrete logarithm *)
+op kinv : key -> key.  (* inverse *)
 
-op n : {int | 0 <= n} as ge0_n.  (* length of bitstrings *)
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
 
-type bits.  (* bitstrings *)
+axiom kid_l (x : key) : kid ^^ x = x.
 
-op zero : bits.  (* the all zero bitstring *)
+axiom kid_r (x : key) : x ^^ kid = x.
 
-op (^^) : bits -> bits -> bits.  (* pointwise exclusive or *)
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
 
-axiom xorC (x y : bits) : x ^^ y = y ^^ x.
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
 
-axiom xorA (x y z : bits) : x ^^ y ^^ z = x ^^ (y ^^ z).
+(* commutative semigroup of exponents *)
 
-axiom xor0_ (x : bits) : zero ^^ x = x.
-
-lemma xor_0 (x : bits) : x ^^ zero = x.
-proof. by rewrite xorC xor0_. qed.
-
-axiom xorK (x : bits) : x ^^ x = zero.
-
-type exp.  (* exponents *)
+type exp.
 
 op e : exp.  (* some exponent *)
 
-op ( * ) : exp -> exp -> exp.  (* exponent multiplication *)
+op ( * ) : exp -> exp -> exp.  (* multiplication *)
 
 axiom mulC (q r : exp) : q * r = r * q.
 
 axiom mulA (q r s : exp) : q * r * s = q * (r * s).
 
-(* distribution over exp *)
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
 
 op dexp : exp distr.
 
-(* every exponent q has the same value in dexp: 1%r / (2 ^ n)%r;
-   consequently, dexp's support is all of exp, i.e., dexp is
-   full as well as uniform *)
-
-axiom dexp1E (q : exp) : mu1 dexp q = 1%r / (2 ^ n)%r.
-
-(* because dexp is also lossless (the sum of the values in dexp of all
-   exponents is 1%r), this tells us that the size of exp is 2 ^ n *)
-
+axiom dexp_fu : is_full dexp.
+axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll : is_lossless dexp.
 
-op g : bits.  (* generator *)
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
 
-op (^) : bits -> exp -> bits.  (* exponentiation *)
+op g : key.  (* generator *)
+
+op (^) : key -> exp -> key.  (* exponentiation *)
 
 axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
 
-(* the following axioms say that each bits is uniquely generated from g
+(* the following axioms say that each key is uniquely generated from g
    by exponentiation *)
 
-axiom gen_surj (x : bits) : exists (q : exp), x = g ^ q.
+axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
 
 axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 
+(* plain texts, with injection into keys, and partial projection back *)
+
+type text.
+
+op inj  : text -> key.  (* injection *)
+op proj : key -> text option.  (* partial projection *)
+
+axiom inj_inj (t s : text) : inj t = inj s => t = s.
+
+axiom proj_inj_out (x : key, t : text) : proj x = None => inj t <> x.
+
+axiom proj_inj_in (x : key, t : text) : proj x = Some t => inj t = x.
+
 (* consequences of axioms *)
 
-(* dexp is indeed full and uniform *)
+(* we can define a bijection between exp and key *)
 
-lemma dexp_uni : is_uniform dexp.
-proof.
-move => x y _ _; by rewrite 2!dexp1E.
-qed.
+op gen (q : exp) : key = g ^ q.
 
-lemma dexp_fu : is_full dexp.
-proof.
-move => x.
-rewrite /support dexp1E.
-by rewrite StdRing.RField.div1r StdOrder.RealOrder.invr_gt0
-           lt_fromint powPos.
-qed.
+op gen_rel (x : key) (q : exp) : bool = x = g ^ q.
 
-(* we can define a bijection between exp and bits *)
+op log (x : key) : exp = choiceb (gen_rel x) e.
 
-op gen (q : exp) : bits = g ^ q.
-
-op gen_rel (x : bits) (q : exp) : bool = x = g ^ q.
-
-op log (x : bits) : exp = choiceb (gen_rel x) e.
-
-lemma log_genK : cancel gen log.
+lemma gen_log : cancel gen log.
 proof.
 rewrite /gen /log /cancel => q.
 have choice_g2q := choicebP (gen_rel (g ^ q)) e.
@@ -117,31 +99,50 @@ have /choice_g2q @/gen_rel /gen_inj {2}-> // :
   by rewrite /gen_rel; by exists q.
 qed.
 
-lemma gen_logK : cancel log gen.
+lemma log_gen : cancel log gen.
 proof.
 rewrite /gen /log /cancel => x.
 have @/gen_rel <- // := choicebP (gen_rel x) e.
 rewrite gen_surj.
 qed.
 
-lemma double_exp (x : bits, q1 q2 : exp) :
+lemma double_exp (x : key, q1 q2 : exp) :
   (x ^ q1) ^ q2 = x ^ (q1 * q2).
 proof.
-have -> : x = g ^ log x by smt(gen_logK).
+have -> : x = g ^ log x
+  by rewrite -/gen log_gen.
 by rewrite !double_exp_gen mulA.
+qed.
+
+lemma proj_injK (t : text) : proj (inj t) = Some t.
+proof.
+case (proj (inj t) = None).
+by have := (proj_inj_out (inj t) t).
+move => /some_oget /proj_inj_in /inj_inj {2}<-.
+have inj_proj_t_ne_none : proj (inj t) <> None
+  by have := (proj_inj_out (inj t) t).
+by rewrite -some_oget.
 qed.
 
 (******************** Decisional Diffie-Hellman Assumption ********************)
 
 clone export DDH as DDH' with
+  type key <- key,
+  op (^^) <- (^^),
+  op kid <- kid,
+  op kinv <- kinv,
   type exp <- exp,
   op e <- e,
   op ( * ) <- ( * ),
-  type key <- bits,
+  op dexp <- dexp,
   op g <- g,
-  op (^) <- (^),
-  op dexp <- dexp
+  op (^) <- (^)
 proof *.
+realize kmulA. apply kmulA. qed.
+realize kid_l. apply kid_l. qed.
+realize kid_r. apply kid_r. qed.
+realize kinv_l. apply kinv_l. qed.
+realize kinv_r. apply kinv_r. qed.
 realize mulC. apply mulC. qed.
 realize mulA. apply mulA. qed.
 realize dexp_fu. apply dexp_fu. qed.
@@ -155,12 +156,14 @@ realize gen_inj. apply gen_inj. qed.
 
 type base = [
     BaseExp of exp
-  | BaseBits of bits
+  | BaseKey of key
+  | BaseText of text
 ].
 
 op dec_base_exp (bse : base) : exp option =
      with bse = BaseExp q  => Some q
-     with bse = BaseBits _ => None.
+     with bse = BaseKey _  => None
+     with bse = BaseText _ => None.
 
 lemma enc_dec_base_exp (q : exp) :
   dec_base_exp (BaseExp q) = Some q.
@@ -173,19 +176,36 @@ lemma is_base_exp (q : exp) :
   is_base_exp (BaseExp q).
 proof. done. qed.
 
-op dec_base_bits (bse : base) : bits option =
+op dec_base_key (bse : base) : key option =
      with bse = BaseExp _  => None
-     with bse = BaseBits x => Some x.
+     with bse = BaseKey x  => Some x
+     with bse = BaseText _ => None.
 
-lemma enc_dec_base_bits (x : bits) :
-  dec_base_bits (BaseBits x) = Some x.
+lemma enc_dec_base_key (x : key) :
+  dec_base_key (BaseKey x) = Some x.
 proof. done. qed.
 
-op is_base_bits (bse : base) : bool =
-     dec_base_bits bse <> None.
+op is_base_key (bse : base) : bool =
+     dec_base_key bse <> None.
 
-lemma is_base_bits (x : bits) :
-  is_base_bits (BaseBits x).
+lemma is_base_key (x : key) :
+  is_base_key (BaseKey x).
+proof. done. qed.
+
+op dec_base_text (bse : base) : text option =
+     with bse = BaseExp _  => None
+     with bse = BaseKey _  => None
+     with bse = BaseText x => Some x.
+
+lemma enc_dec_base_text (x : text) :
+  dec_base_text (BaseText x) = Some x.
+proof. done. qed.
+
+op is_base_text (bse : base) : bool =
+     dec_base_text bse <> None.
+
+lemma is_base_text (x : text) :
+  is_base_text (BaseText x).
 proof. done. qed.
 
 clone export UCCore as UCCore' with

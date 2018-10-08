@@ -8,19 +8,29 @@ require import AllCore Distr.
 
 (***************************** Exponents and Keys *****************************)
 
-(* we minimally axiomatize two types and associated operators
+(* group of keys *)
 
-   a type key of keys, equipped with a generator g
+type key.
 
-   a type exp of exponents equipped with an element e (about which
-   nothing is assumed), a commutative multiplication operator ( * ),
-   and a full, uniform and lossless distribution over exp
+op (^^) : key -> key -> key.  (* binary operation *)
 
-   key and exp are connected via an exponentiation operator (^) of
-   type key -> exp -> key with the property that every element of
-   key is uniquely generated using exponentiation from g *)
+op kid : key.  (* identity *)
 
-type exp.  (* exponents *)
+op kinv : key -> key.  (* inverse *)
+
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
+
+axiom kid_l (x : key) : kid ^^ x = x.
+
+axiom kid_r (x : key) : x ^^ kid = x.
+
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
+
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
+
+(* commutative semigroup of exponents *)
+
+type exp.
 
 op e : exp.  (* some exponent *)
 
@@ -30,8 +40,11 @@ axiom mulC (q r : exp) : q * r = r * q.
 
 axiom mulA (q r s : exp) : q * r * s = q * (r * s).
 
-(* full, uniform and lossless distribution over exp - which implies
-   that exp is finite *)
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
 
 op dexp : exp distr.
 
@@ -39,7 +52,8 @@ axiom dexp_fu : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll : is_lossless dexp.
 
-type key.  (* keys *)
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
 
 op g : key.  (* generator *)
 
@@ -84,6 +98,7 @@ module DDH2 (Adv : DDH_ADV) = {
 
    `|Pr[DDH1(Adv).main() @ &m : res] - Pr[DDH2(Adv).main() @ &m : res]|
 
-   this will be negligible under certain assumptions about exp, key, *,
-   ^ and Adv (including that Adv doesn't compute the inverse of
-   fun q => g ^ q *)
+   this will be negligible under certain assumptions about the group
+   key, the commutative semigroup exp, and the efficiency of Adv
+   (including that Adv doesn't compute the inverse of fun q => g ^
+   q *)

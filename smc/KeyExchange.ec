@@ -49,10 +49,10 @@ proof. done. qed.
 (* response sent from port index 2 of key exchange functionality to
    pt2, completing first phase of key exchange initiated by pt1 *)
 
-op ke_rsp1 (func : addr, pt1 pt2 : port, x : bits) : msg =
-     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1, UnivBase (BaseBits x))).
+op ke_rsp1 (func : addr, pt1 pt2 : port, x : key) : msg =
+     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1, UnivBase (BaseKey x))).
 
-op dec_ke_rsp1 (m : msg) : (addr * port * port * bits) option =
+op dec_ke_rsp1 (m : msg) : (addr * port * port * key) option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt2.`2 <> 2 \/ ! is_univ_pair v) ?
         None :
@@ -60,23 +60,23 @@ op dec_ke_rsp1 (m : msg) : (addr * port * port * bits) option =
         in (! is_univ_port v1 \/ ! is_univ_base v2) ?
            None :
            let b = oget (dec_univ_base v2)
-           in (! is_base_bits b) ?
+           in (! is_base_key b) ?
               None :
               Some (pt2.`1, oget (dec_univ_port v1), pt1,
-                    oget (dec_base_bits b)).
+                    oget (dec_base_key b)).
 
-lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : bits) :
+lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
   dec_ke_rsp1 (ke_rsp1 func pt1 pt2 x) = Some (func, pt1, pt2, x).
 proof.
 by rewrite /ke_rsp1 /dec_ke_rsp1 /=
-           (is_univ_pair (UnivPort pt1, UnivBase (BaseBits x))) /=
+           (is_univ_pair (UnivPort pt1, UnivBase (BaseKey x))) /=
            oget_some /= (is_univ_port pt1) /= oget_some.
 qed.
 
 op is_ke_rsp1 (m : msg) : bool =
      dec_ke_rsp1 m <> None.
 
-lemma is_ke_rsp1 (func : addr, pt1 pt2 : port, x : bits) :
+lemma is_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
   is_ke_rsp1 (ke_rsp1 func pt1 pt2 x).
 proof.
 by rewrite /is_ke_rsp1 enc_dec_ke_rsp1.
@@ -109,29 +109,29 @@ proof. done. qed.
    pt1, completing second phase of key exchange with pt2 initiated by
    itself *)
 
-op ke_rsp2 (func : addr, pt1 : port, x : bits) : msg =
-     (Dir, pt1, (func, 1), UnivBase (BaseBits x)).
+op ke_rsp2 (func : addr, pt1 : port, x : key) : msg =
+     (Dir, pt1, (func, 1), UnivBase (BaseKey x)).
 
-op dec_ke_rsp2 (m : msg) : (addr * port * bits) option =
+op dec_ke_rsp2 (m : msg) : (addr * port * key) option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt2.`2 <> 1 \/ ! is_univ_base v) ?
         None :
         let bse = oget (dec_univ_base v)
-        in (! is_base_bits bse) ?
+        in (! is_base_key bse) ?
            None :
-           Some (pt2.`1, pt1, oget (dec_base_bits bse)).
+           Some (pt2.`1, pt1, oget (dec_base_key bse)).
 
-lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, x : bits) :
+lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, x : key) :
   dec_ke_rsp2 (ke_rsp2 func pt1 x) = Some (func, pt1, x).
 proof.
-by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseBits x)) /=
-           oget_some (is_base_bits x).
+by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey x)) /=
+           oget_some (is_base_key x).
 qed.
 
 op is_ke_rsp2 (m : msg) : bool =
      dec_ke_rsp2 m <> None.
 
-lemma is_ke_rsp2 (func : addr, pt1 : port, x : bits) :
+lemma is_ke_rsp2 (func : addr, pt1 : port, x : key) :
   is_ke_rsp2 (ke_rsp2 func pt1 x).
 proof.
 by rewrite /is_ke_rsp2 enc_dec_ke_rsp2.
@@ -251,7 +251,7 @@ module KEReal : FUNC = {
 
   proc party1(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u : univ; var x2 : bits; var q1 : exp;
+    var u : univ; var x2 : key; var q1 : exp;
     var r : msg option <- None;
     if (st1 = KERealP1StateWaitReq1) {
       if (is_ke_req1 m) {
@@ -265,7 +265,7 @@ module KEReal : FUNC = {
             (Fwd1.fw_req
              (self ++ [1]) (self, 3) (self, 4)
               (univ_triple (UnivPort pt1) (UnivPort pt2)
-               (UnivBase (BaseBits (g ^ q1)))));
+               (UnivBase (BaseKey (g ^ q1)))));
           st1 <- KERealP1StateWaitFwd2 (pt1, pt2, q1);
         }
       }
@@ -276,7 +276,7 @@ module KEReal : FUNC = {
         (addr, pt1', pt2', u) <- oget (Fwd2.dec_fw_rsp m);
         if (pt2' = (self, 3)) {
           (* destination of m is (self, 3) *)
-          x2 <- oget (dec_base_bits (oget (dec_univ_base u)));
+          x2 <- oget (dec_base_key (oget (dec_univ_base u)));
           r <- Some (ke_rsp2 self pt1 (x2 ^ q1));
           st1 <- KERealP1StateFinal (pt1, pt2, q1);
         }
@@ -289,7 +289,7 @@ module KEReal : FUNC = {
 
   proc party2(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u, v1, v2, v3 : univ; var x1 : bits; var q2 : exp;
+    var u, v1, v2, v3 : univ; var x1 : key; var q2 : exp;
     var r : msg option <- None;
     if (st2 = KERealP2StateWaitFwd1) {
       if (Fwd1.is_fw_rsp m) {
@@ -299,7 +299,7 @@ module KEReal : FUNC = {
           (v1, v2, v3) <- oget (dec_univ_triple u);
           pt1 <- oget (dec_univ_port v1);
           pt2 <- oget (dec_univ_port v2);
-          x1 <- oget (dec_base_bits (oget (dec_univ_base v3)));
+          x1 <- oget (dec_base_key (oget (dec_univ_base v3)));
           q2 <$ dexp;
           r <- Some (ke_rsp1 self pt1 pt2 (x1 ^ q2));
           st2 <- KERealP2StateWaitReq2 (pt1, pt2, q2);
@@ -316,7 +316,7 @@ module KEReal : FUNC = {
             Some
             (Fwd2.fw_req
              (self ++ [2]) (self, 4) (self, 3)
-             (UnivBase (BaseBits (g ^ q2))));
+             (UnivBase (BaseKey (g ^ q2))));
           st2 <- KERealP2StateFinal (pt1, pt2, q2);
         }
       }
@@ -726,7 +726,7 @@ module KESim (Adv : FUNC) = {
               Some
               (Fwd1.fw_obs (addr1 ++ [1]) self (addr1, 3) (addr1, 4)
                (univ_triple (UnivPort pt1') (UnivPort pt2')
-                (UnivBase (BaseBits (g ^ q1)))));
+                (UnivBase (BaseKey (g ^ q1)))));
             st <- KESimStateWaitAdv1 (addr1, q1);
           }
         }
@@ -736,7 +736,7 @@ module KESim (Adv : FUNC) = {
             (addr1, addr2) <- oget (dec_ke_sim_req2 m);
             r <-
               Some (Fwd2.fw_obs (addr ++ [2]) self (addr, 4) (addr, 3)
-                    (UnivBase (BaseBits (g ^ q2))));
+                    (UnivBase (BaseKey (g ^ q2))));
             st <- KESimStateWaitAdv2 (addr, q1, q2);
           }
         }
@@ -916,7 +916,7 @@ module KERealSimp : FUNC = {
           q1 <$ dexp;
           u <-
             univ_triple (UnivPort pt1) (UnivPort pt2)
-                        (UnivBase (BaseBits (g ^ q1)));
+                        (UnivBase (BaseKey (g ^ q1)));
           r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
           st <- KERealSimpStateWaitAdv1 (pt1, pt2, q1);
         }
@@ -940,7 +940,7 @@ module KERealSimp : FUNC = {
         (* destination of m is (self, 2); mode of m is Dir *)
         (addr, pt2') <- oget (dec_ke_req2 m);
         if (pt2' = pt2) {
-          u <- UnivBase (BaseBits (g ^ q2));
+          u <- UnivBase (BaseKey (g ^ q2));
           r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
           st <- KERealSimpStateWaitAdv2 (pt1, pt2, q1, q2);
         }
@@ -1002,7 +1002,7 @@ pred real_simp_rel1 (st : real_simp_rel_st, pt1 pt2 : port, q1 : exp) =
      Fwd1.FwStateWait
      ((st.`real_simp_rel_st_func, 3), (st.`real_simp_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_simp_rel_st_fws2 = Fwd2.FwStateInit) /\
   (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv1 (pt1, pt2, q1)).
 
@@ -1015,7 +1015,7 @@ pred real_simp_rel2 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) =
      Fwd1.FwStateFinal
      ((st.`real_simp_rel_st_func, 3), (st.`real_simp_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_simp_rel_st_fws2 = Fwd2.FwStateInit) /\
   (st.`real_simp_rel_st_rss  = KERealSimpStateWaitReq2 (pt1, pt2, q1, q2)).
 
@@ -1028,11 +1028,11 @@ pred real_simp_rel3 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) =
      Fwd1.FwStateFinal
      ((st.`real_simp_rel_st_func, 3), (st.`real_simp_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_simp_rel_st_fws2 =
      Fwd2.FwStateWait
      ((st.`real_simp_rel_st_func, 4), (st.`real_simp_rel_st_func, 3),
-      UnivBase (BaseBits (g ^ q2)))) /\
+      UnivBase (BaseKey (g ^ q2)))) /\
   (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv2 (pt1, pt2, q1, q2)).
 
 pred real_simp_rel4 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) =
@@ -1044,11 +1044,11 @@ pred real_simp_rel4 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) =
      Fwd1.FwStateFinal
      ((st.`real_simp_rel_st_func, 3), (st.`real_simp_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_simp_rel_st_fws2 =
      Fwd2.FwStateFinal
      ((st.`real_simp_rel_st_func, 4), (st.`real_simp_rel_st_func, 3),
-      UnivBase (BaseBits (g ^ q2)))) /\
+      UnivBase (BaseKey (g ^ q2)))) /\
   (st.`real_simp_rel_st_rss  = KERealSimpStateFinal (pt1, pt2, q1, q2)).
 
 inductive real_simp_rel (st : real_simp_rel_st) =
@@ -1338,7 +1338,7 @@ elim dec_tripl => ->> [#] ->> ->>.
 elim dec_simp_st => ->> [#] ->> ->>.
 split.
 progress.
-by rewrite oget_some enc_dec_base_bits oget_some.
+by rewrite oget_some enc_dec_base_key oget_some.
 rewrite (RealSimpRel2 _ pt1' pt2' q1' q) /real_simp_rel2 /=.
 progress.
 seq 4 0 :
@@ -1895,7 +1895,7 @@ proof. done. qed.
 
 module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   var func, adv : addr
-  var x1, x2, x3 : bits
+  var x1, x2, x3 : key
 
   module KEDDH : FUNC = {
     var self, adv : addr
@@ -1918,7 +1918,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
               ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
             u <-
               univ_triple (UnivPort pt1) (UnivPort pt2)
-                          (UnivBase (BaseBits x1));
+                          (UnivBase (BaseKey x1));
             r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
             st <- KEDDHStateWaitAdv1 (pt1, pt2);
           }
@@ -1941,7 +1941,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
           (* destination of m is (self, 2); mode of m is Dir *)
           (addr, pt2') <- oget (dec_ke_req2 m);
           if (pt2' = pt2) {
-            u <- UnivBase (BaseBits x2);
+            u <- UnivBase (BaseKey x2);
             r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
             st <- KEDDHStateWaitAdv2 (pt1, pt2);
           }
@@ -1976,7 +1976,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
     }
   }
 
-  proc main(x1_ x2_ x3_ : bits) : bool = {
+  proc main(x1_ x2_ x3_ : key) : bool = {
     var b : bool;
     x1 <- x1_; x2 <- x2_; x3 <- x3_;
     b <@ Exper(MI(KEDDH, Adv), Env).main(func, adv, fset1 adv_fw_pi);
@@ -2025,7 +2025,7 @@ local module (KERealSimpHashingAdv : RH.HASHING_ADV)
             q1 <@ Hash.hash(exp1);
             u <-
               univ_triple (UnivPort pt1) (UnivPort pt2)
-                          (UnivBase (BaseBits (g ^ q1)));
+                          (UnivBase (BaseKey (g ^ q1)));
             r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
             st <- KERealSimpStateWaitAdv1 (pt1, pt2, q1);
           }
@@ -2049,7 +2049,7 @@ local module (KERealSimpHashingAdv : RH.HASHING_ADV)
           (* destination of m is (self, 2); mode of m is Dir *)
           (addr, pt2') <- oget (dec_ke_req2 m);
           if (pt2' = pt2) {
-            u <- UnivBase (BaseBits (g ^ q2));
+            u <- UnivBase (BaseKey (g ^ q2));
             r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
             st <- KERealSimpStateWaitAdv2 (pt1, pt2, q1, q2);
           }
@@ -2363,8 +2363,8 @@ qed.
   DDH1(DDH_Adv(Env, Adv)) *)
 
 type real_simp_hash_ddh1_rel_st = {
-  real_simp_hash_ddh1_rel_st_x1 : bits;
-  real_simp_hash_ddh1_rel_st_x2 : bits;
+  real_simp_hash_ddh1_rel_st_x1 : key;
+  real_simp_hash_ddh1_rel_st_x2 : key;
   real_simp_hash_ddh1_rel_st_rss : ke_real_simp_state;
   real_simp_hash_ddh1_rel_st_hs  : ke_ddh_state;
 }.
@@ -2856,7 +2856,7 @@ local module KEHybrid : FUNC = {
           q1 <$ dexp;
           u <-
             univ_triple (UnivPort pt1) (UnivPort pt2)
-                        (UnivBase (BaseBits (g ^ q1)));
+                        (UnivBase (BaseKey (g ^ q1)));
           r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
           st <- KEHybridStateWaitAdv1 (pt1, pt2, q1);
         }
@@ -2880,7 +2880,7 @@ local module KEHybrid : FUNC = {
         (* destination of m is (self, 2); mode of m is Dir *)
         (addr, pt2') <- oget (dec_ke_req2 m);
         if (pt2' = pt2) {
-          u <- UnivBase (BaseBits (g ^ q2));
+          u <- UnivBase (BaseKey (g ^ q2));
           r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
           st <- KEHybridStateWaitAdv2 (pt1, pt2, q1, q2, q3);
         }
@@ -2939,7 +2939,7 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
           q1 <@ Hash.hash(exp1);
           u <-
             univ_triple (UnivPort pt1) (UnivPort pt2)
-                        (UnivBase (BaseBits (g ^ q1)));
+                        (UnivBase (BaseKey (g ^ q1)));
           r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
           st <- KEHybridStateWaitAdv1 (pt1, pt2, q1);
         }
@@ -2963,7 +2963,7 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
         (* destination of m is (self, 2); mode of m is Dir *)
         (addr, pt2') <- oget (dec_ke_req2 m);
         if (pt2' = pt2) {
-          u <- UnivBase (BaseBits (g ^ q2));
+          u <- UnivBase (BaseKey (g ^ q2));
           r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
           st <- KEHybridStateWaitAdv2 (pt1, pt2, q1, q2, q3);
         }
@@ -3012,9 +3012,9 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
    DDH2(DDH_Adv(Env, Adv)) *)
 
 type hybrid_hash_ddh2_rel_st = {
-  hybrid_hash_ddh2_rel_st_x1 : bits;
-  hybrid_hash_ddh2_rel_st_x2 : bits;
-  hybrid_hash_ddh2_rel_st_x3 : bits;
+  hybrid_hash_ddh2_rel_st_x1 : key;
+  hybrid_hash_ddh2_rel_st_x2 : key;
+  hybrid_hash_ddh2_rel_st_x3 : key;
   hybrid_hash_ddh2_rel_st_rss : ke_hybrid_state;
   hybrid_hash_ddh2_rel_st_hs  : ke_ddh_state;
 }.
@@ -5720,7 +5720,7 @@ pred real_term_rel1 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 : exp)
      Fwd1.FwStateWait
      ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_term_rel_st_fws2 = Fwd2.FwStateInit).
 
 pred real_term_rel2 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
@@ -5733,7 +5733,7 @@ pred real_term_rel2 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : e
      Fwd1.FwStateFinal
      ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_term_rel_st_fws2 = Fwd2.FwStateInit).
 
 pred real_term_rel3 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
@@ -5746,11 +5746,11 @@ pred real_term_rel3 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : e
      Fwd1.FwStateFinal
      ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_term_rel_st_fws2 =
      Fwd2.FwStateWait
      ((st.`real_term_rel_st_func, 4), (st.`real_term_rel_st_func, 3),
-      UnivBase (BaseBits (g ^ q2)))).
+      UnivBase (BaseKey (g ^ q2)))).
 
 pred real_term_rel4 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
   met = 0 /\
@@ -5762,11 +5762,11 @@ pred real_term_rel4 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : e
      Fwd1.FwStateFinal
      ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
       univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseBits (g ^ q1))))) /\
+                  (UnivBase (BaseKey (g ^ q1))))) /\
   (st.`real_term_rel_st_fws2 =
      Fwd2.FwStateFinal
      ((st.`real_term_rel_st_func, 4), (st.`real_term_rel_st_func, 3),
-      UnivBase (BaseBits (g ^ q2)))).
+      UnivBase (BaseKey (g ^ q2)))).
 
 inductive real_term_rel (met : int, st : real_term_rel_st) =
     RealTermRel0 of (real_term_rel0 met st)
