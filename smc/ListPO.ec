@@ -320,6 +320,32 @@ proof.
 by rewrite /inc lpo_inc_sym.
 qed.
 
+lemma inc_nle_l (xs ys : 'a list) :
+  inc xs ys => !(xs <= ys).
+proof.
+rewrite /inc /(<=) /=.
+by move => ->.
+qed.
+
+lemma inc_nle_r (xs ys : 'a list) :
+  inc xs ys => !(ys <= xs).
+proof.
+rewrite inc_sym.
+apply inc_nle_l.
+qed.
+
+lemma incP (xs ys : 'a list) :
+  inc xs ys <=> !(xs <= ys) /\ !(ys <= xs).
+proof.
+split.
+move => inc_xs_ys.
+split; [by rewrite inc_nle_l | by rewrite inc_nle_r].
+move => [#]; rewrite not_leP.
+move => [] //.
+rewrite /(<) /(<=) /inc /= negb_or.
+by move => ->.
+qed.
+
 lemma inc_ext1 (xs ys zs : 'a list) :
   inc xs ys => inc (xs ++ zs) ys.
 proof.

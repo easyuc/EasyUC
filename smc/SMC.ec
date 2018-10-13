@@ -803,7 +803,7 @@ module SMCRealKEIdealSimp : FUNC = {
         (addr, pt1, pt2, t) <- oget (dec_smc_req m);
         if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
             ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
-          r <- Some (KeyEx.ke_sim_req1 self adv (self, 3) (self, 4));
+          r <- Some (KeyEx.ke_sim_req1 (self ++ [2]) adv (self, 3) (self, 4));
           st <- SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, t);
         }
       }
@@ -975,7 +975,7 @@ inductive smc_real_ke_ideal_simp_rel
 lemma SMCReal_KEIdeal_SMCRealKEIdealSimp_invoke (func adv : addr) :
   equiv
   [SMCReal(KeyEx.KEIdeal).invoke ~ SMCRealKEIdealSimp.invoke :
-   ! func <= adv /\ ={m} /\
+   inc func adv /\ ={m} /\
    SMCReal.self{1} = func /\ SMCReal.adv{1} = adv /\
    Fwd.Forw.self{1} = func ++ [1] /\ Fwd.Forw.adv{1} = adv /\
    KeyEx.KEIdeal.self{1} = func ++ [2] /\ KeyEx.KEIdeal.adv{1} = adv /\
@@ -1005,6 +1005,111 @@ case
      smc_real_ke_ideal_simp_rel_st_fws  = Fwd.Forw.st{1};
      smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
      smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}).
+sp 3 3.
+if => //.
+inline SMCReal(KeyEx.KEIdeal).loop SMCRealKEIdealSimp.parties.
+sp 3 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto; smt().
+case (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1).
+rcondt{1} 1; first auto.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party1.
+rcondt{1} 3; first auto; smt().
+sp 2 0.
+if => //.
+sp 1 1.
+if; first move => /> &1 &2 <- //.
+rcondf{1} 4; first auto.
+move => /> &1 &2.
+rewrite oget_some /ke_req1 /=.
+smt(le_ext_r).
+rcondt{1} 5; first auto.
+rcondf{1} 5; first auto.
+move => /> &hr <-.
+rewrite oget_some /ke_req1 /=.
+smt(ne_cat_nonnil_r).
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+move => /> &hr.
+by rewrite oget_some /ke_req1 /= le_ext_comm.
+inline{1} (1) KeyEx.KEIdeal.invoke.
+rcondt{1} 9; first auto.
+inline{1} (1) KeyEx.KEIdeal.parties.
+rcondt{1} 11; first auto; smt().
+rcondt{1} 11; first auto.
+rcondt{1} 12; first auto.
+move => /> &hr <-.
+rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=.
+progress.
+by rewrite not_le_ext_nonnil_l.
+by rewrite not_le_ext_nonnil_l.
+by rewrite inc_nle_r.
+by rewrite inc_nle_r.
+rcondf{1} 16; first auto; progress.
+by rewrite inc_nle_l.
+rcondt{1} 16; first auto.
+move => /> &hr.
+rewrite !oget_some KeyEx.enc_dec_ke_req1 oget_some /=
+        /ke_sim_req1 /=.
+progress; by rewrite inc_nle_l.
+rcondf{1} 17; first auto.
+auto => |> &1 &2.
+rewrite !oget_some KeyEx.enc_dec_ke_req1 !oget_some /ke_simp_req1 /=.
+move => <- [#] _ -> -> ->.
+progress; rewrite (SMCRealKEIdealSimpRel1 _ pt10{2} pt20{2} t{2}) /#.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 1; first auto; smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto.
+move => |> &hr inc_self_adv _ _.
+progress; rewrite /is_smc_req /dec_smc_req; smt(not_dir).
+if{1}.
+inline{1} (1) Fwd.Forw.invoke.
+rcondt{1} 3; first auto; smt().
+rcondf{1} 3; first auto.
+move => |> &hr.
+progress; rewrite /is_fw_req /dec_fw_req; smt(not_dir).
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto.
+inline{1} (1) KeyEx.KEIdeal.invoke.
+sp 4 0.
+if{1}.
+inline KeyEx.KEIdeal.parties.
+rcondt{1} 3; first auto; smt().
+rcondf{1} 3; first auto.
+move => |> &hr.
+progress; rewrite /is_ke_req1 /dec_ke_req1; smt(not_dir).
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
+case
+  (exists pt1' pt2' t',
+   smc_real_ke_ideal_simp_rel1
+   {|smc_real_ke_ideal_simp_rel_st_func = func;
+     smc_real_ke_ideal_simp_rel_st_r1s  = SMCReal.st1{1};
+     smc_real_ke_ideal_simp_rel_st_r2s  = SMCReal.st2{1};
+     smc_real_ke_ideal_simp_rel_st_fws  = Fwd.Forw.st{1};
+     smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
+     smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}
+   pt1' pt2' t').
+sp 3 3.
+if => //.
+inline SMCReal(KeyEx.KEIdeal).loop SMCRealKEIdealSimp.parties.
+sp 3 2.
+rcondt{1} 1; first auto.
+case (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1).
+admit.
 admit.
 admit.
 qed.
