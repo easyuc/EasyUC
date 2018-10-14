@@ -82,6 +82,21 @@ proof.
 by rewrite /is_ke_rsp1 enc_dec_ke_rsp1.
 qed.
 
+lemma dest_good_ke_rsp1 (m : msg) :
+  is_ke_rsp1 m => (oget (dec_ke_rsp1 m)).`3 = m.`2.
+proof.
+rewrite /is_ke_rsp1 /dec_ke_rsp1 /=.
+case m => x1 x2 x3 x4 /=.
+case (x1 = Adv \/ x3.`2 <> 2 \/ ! is_univ_pair x4) => //=.
+rewrite !negb_or /= not_adv.
+case x4; first 7 smt().
+move => [z1 z2] [#] _ _.
+rewrite is_univ_pair /= oget_some /=.
+case (! is_univ_port z1 \/ ! is_univ_base z2) => //=.
+rewrite negb_or /=.
+by case (! is_base_key (oget (dec_univ_base z2))).
+qed.
+
 (* request sent to port index 2 of key exchange functionality by pt2 to
    initiate phase 2 of key exchange with pt1 *)
 
@@ -135,6 +150,15 @@ lemma is_ke_rsp2 (func : addr, pt1 : port, x : key) :
   is_ke_rsp2 (ke_rsp2 func pt1 x).
 proof.
 by rewrite /is_ke_rsp2 enc_dec_ke_rsp2.
+qed.
+
+lemma dest_good_ke_rsp2 (m : msg) :
+  is_ke_rsp2 m => (oget (dec_ke_rsp2 m)).`2 = m.`2.
+proof.
+rewrite /is_ke_rsp2 /dec_ke_rsp2 /=.
+case m => x1 x2 x3 x4 /=.
+case (x1 = Adv \/ x3.`2 <> 1 \/ ! is_univ_base x4) => //= H1.
+by case (is_base_key (oget (dec_univ_base x4))).
 qed.
 
 (* Real Functionality *)
@@ -432,6 +456,23 @@ op is_ke_sim_rsp (m : msg) : bool =
 lemma is_ke_sim_rsp (ideal adv : addr) :
   is_ke_sim_rsp (ke_sim_rsp ideal adv).
 proof. done. qed.
+
+lemma dest_good_ke_sim_rsp (m : msg) :
+  is_ke_sim_rsp m => (oget (dec_ke_sim_rsp m)).`1 = m.`2.`1.
+proof.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /=.
+case m => x1 x2 x3 x4 /=.
+by case (x1 = Dir \/ x2.`2 <> 3 \/ x3.`2 <> ke_sim_adv_pi \/ x4 <> UnivUnit).
+qed.
+
+lemma port_good_ke_sim_rsp (m : msg) :
+  is_ke_sim_rsp m => m.`2.`2 = 3.
+proof.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /=.
+case m => x1 x2 x3 x4 /=.
+case (x1 = Dir \/ x2.`2 <> 3 \/ x3.`2 <> ke_sim_adv_pi \/ x4 <> UnivUnit) => //.
+rewrite !negb_or /#.
+qed.
 
 (* request sent from port 3 of key exchange ideal functionality to
    port ke_sim_adv_pi of key exchange simulator, initiating second phase

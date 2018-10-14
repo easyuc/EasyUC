@@ -815,7 +815,7 @@ module SMCRealKEIdealSimp : FUNC = {
         if (addr1 = self ++ [2]) {
           (* destination of m is (self ++ [2], 3), mode of m is Adv *)
           q <$ dexp;
-          r <- Some (KeyEx.ke_sim_req2 self adv);
+          r <- Some (KeyEx.ke_sim_req2 (self ++ [2]) adv);
           st <- SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, t, g ^ q);
         }
       }
@@ -1103,14 +1103,172 @@ case
      smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
      smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}
    pt1' pt2' t').
+elim* => pt1' pt2' t'.
 sp 3 3.
 if => //.
 inline SMCReal(KeyEx.KEIdeal).loop SMCRealKEIdealSimp.parties.
 sp 3 2.
 rcondt{1} 1; first auto.
 case (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1).
-admit.
-admit.
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv1).
+rcondf{2} 2; first auto.
+if{1}.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party1.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_p1_state_wait_ke2).
+sp 3 0.
+if{1}.
+rcondf{1} 2; first auto.
+move => |> &hr.
+smt(KeyEx.dest_good_ke_rsp2).
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
+exfalso; smt().
+rcondf{1} 1; first auto.
+move => |> &hr.
+smt(not_le_ext_nonnil_l).
+rcondf{1} 1; first auto.
+move => |> &hr.
+smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv1).
+case (addr1{1} = SMCReal.self{1} ++ [2] /\ n1{1} = 3).
+rcondf{1} 1; first auto; progress.
+rewrite (not_le_other_branch SMCReal.self{hr}
+         (SMCReal.self{hr} ++ [2]) 2 1) // le_refl.
+inline KeyEx.KEIdeal.invoke.
+rcondt{1} 5; first auto; smt().
+inline{1} (1) KeyEx.KEIdeal.parties.
+rcondf{1} 7; first auto; smt().
+rcondt{1} 7; first auto; smt(KeyEx.is_ke_ideal_state_wait_sim1).
+sp 7 1.
+if => //.
+rcondt{2} 2; first auto; smt(KeyEx.dest_good_ke_sim_rsp).
+swap{2} 2 -1.
+rcondf{1} 6; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+by elim dec_ke_ideal_wait_sim1 => -> ->.
+rcondf{1} 6; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+elim dec_ke_ideal_wait_sim1 => -> -> /=.
+rewrite le_refl.
+rcondt{1} 7; first auto.
+rcondf{1} 7; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+by elim dec_ke_ideal_wait_sim1 => -> ->.
+rcondt{1} 7; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+by elim dec_ke_ideal_wait_sim1 => -> ->.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party2.
+rcondt{1} 9; first auto; smt().
+rcondt{1} 9; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+elim dec_ke_ideal_wait_sim1 => -> ->.
+rewrite oget_some KeyEx.is_ke_rsp1.
+rcondt{1} 10; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+elim dec_ke_ideal_wait_sim1 => -> ->.
+by rewrite oget_some KeyEx.enc_dec_ke_rsp1 oget_some.
+rcondf{1} 13; first auto; progress.
+by rewrite oget_some /KeyEx.ke_req2 /= le_ext_r.
+rcondt{1} 14; first auto.
+rcondf{1} 14; first auto.
+rcondf{1} 14; first auto.
+move => |> &hr.
+rewrite oget_some /KeyEx.ke_req2 /=.
+smt(ne_cat_nonnil_r).
+rcondf{1} 14; first auto.
+progress.
+rewrite oget_some /KeyEx.ke_req2 /=.
+rewrite (not_le_other_branch SMCReal.self{hr}
+         (SMCReal.self{hr} ++ [2]) 2 1) // le_refl.
+rcondt{1} 18; first auto; smt().
+inline{1} (1) KeyEx.KEIdeal.parties.
+rcondf{1} 20; first auto; smt().
+rcondf{1} 20; first auto; smt(is_ke_ideal_state_wait_sim1).
+rcondt{1} 20; first auto; smt().
+rcondt{1} 21; first auto.
+rcondt{1} 22; first auto.
+move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+elim dec_ke_ideal_wait_sim1 => -> ->.
+by rewrite oget_some KeyEx.enc_dec_ke_req2 !oget_some.
+rcondf{1} 26; first auto; progress; smt(inc_le1_not_lr).
+rcondt{1} 26; first auto; progress.
+rewrite oget_some /KeyEx.ke_sim_req2 /=.
+smt(inc_le1_not_lr).
+rcondf{1} 27; first auto.
+auto => |> &1 &2 _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
+        _ _ _ ->> _ _ _ q _.
+rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+elim dec_ke_ideal_wait_sim1 => -> ->.
+rewrite !oget_some /= KeyEx.enc_dec_ke_rsp1 oget_some /=.
+rewrite (SMCRealKEIdealSimpRel2 _ pt10{2} pt20{2} t{2} q)
+        /smc_real_ke_ideal_simp_rel2 /#.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+seq 0 3 :
+  (smc_real_ke_ideal_simp_rel1
+   {|smc_real_ke_ideal_simp_rel_st_func = func;
+     smc_real_ke_ideal_simp_rel_st_r1s = SMCReal.st1{1};
+     smc_real_ke_ideal_simp_rel_st_r2s = SMCReal.st2{1};
+     smc_real_ke_ideal_simp_rel_st_fws = Fwd.Forw.st{1};
+     smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
+     smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2};|}
+     pt1' pt2' t' /\
+   SMCReal.self{1} ++ [2] = KeyEx.KEIdeal.self{1} /\
+   (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1 \/
+    mod{1} = Adv /\
+    (SMCReal.self{1} ++ [1] <= addr1{1} \/
+     SMCReal.self{1} ++ [2] <= addr1{1})) /\
+   ! (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1) /\
+   ! (addr1{1} = SMCReal.self{1} ++ [2] /\ n1{1} = 3) /\
+   r{2} = None /\
+   m0{1} = (mod{1}, pt1{1}, pt2{1}, u{1}) /\
+   (addr1{1}, n1{1}) = pt1{1}).
+sp 0 1.
+if{2}.
+rcondf{2} 2; first auto.
+move => |> &hr.
+progress; smt(KeyEx.dest_good_ke_sim_rsp KeyEx.port_good_ke_sim_rsp).
+auto.
+auto.
+if{1}.
+inline{1} (1) Fwd.Forw.invoke.
+rcondt{1} 3; first auto; smt().
+rcondf{1} 3; first auto.
+move => |> &hr.
+rewrite /Fwd.is_fw_req /Fwd.dec_fw_req.
+smt(not_dir).
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto; progress; rewrite (SMCRealKEIdealSimpRel1 _ pt1' pt2' t') /#.
+inline{1} (1) KeyEx.KEIdeal.invoke.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 6; first auto.
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto.
+auto; progress; rewrite (SMCRealKEIdealSimpRel1 _ pt1' pt2' t') /#.
 admit.
 qed.
 
@@ -1118,7 +1276,7 @@ lemma Exper_SMCReal_KEIdeal_SMCRealKEIdealSimp
       (func' adv' : addr) (in_guard' : int fset) &m
       (Adv <: FUNC{MI, SMCReal, KeyEx.KEIdeal, SMCRealKEIdealSimp})
       (Env <: ENV{MI, SMCReal, KeyEx.KEIdeal, SMCRealKEIdealSimp, Adv}) :
-  ! func' <= adv' =>
+  inc func' adv' =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
        (func', adv', in_guard') @ &m : res] =
   Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main
@@ -1127,7 +1285,7 @@ proof.
 move => pre.
 byequiv => //; proc; inline*.
 seq 23 12 :
-  (! func' <= adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
+  (inc func' adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
    func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
@@ -1146,7 +1304,7 @@ auto; progress;
   by rewrite SMCRealKEIdealSimpRel0 /smc_real_ke_ideal_simp_rel0.
 call
   (_ :
-   ! func' <= adv' /\ ={glob Adv, glob MI} /\
+   inc func' adv' /\ ={glob Adv, glob MI} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
    Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
@@ -1167,7 +1325,7 @@ inline MI(SMCReal(KeyEx.KEIdeal), Adv).loop
 wp; sp.
 while
   (={not_done, m0, r0} /\ 
-   ! func' <= adv' /\ ={glob Adv, glob MI} /\
+   inc func' adv' /\ ={glob Adv, glob MI} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
    Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
