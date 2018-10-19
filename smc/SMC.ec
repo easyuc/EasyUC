@@ -1615,7 +1615,52 @@ case
      smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}
    pt1' pt2' t' q').
 elim* => pt1' pt2' t' q'.
-admit.
+sp 3 3.
+if => //.
+inline SMCReal(KeyEx.KEIdeal).loop SMCRealKEIdealSimp.parties.
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondt{1} 4; first auto.
+wp; sp.
+if{1}.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party1.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto.
+if{1}.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party2.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto.
+if{1}.
+inline{1} (1) Fwd.Forw.invoke.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto.
+inline KeyEx.KEIdeal.invoke.
+sp 4 0.
+if{1}.
+inline KeyEx.KEIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
