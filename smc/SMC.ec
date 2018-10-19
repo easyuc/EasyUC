@@ -1453,7 +1453,170 @@ rcondt{1} 6; first auto.
 rcondf{1} 7; first auto.
 auto; progress;
   rewrite (SMCRealKEIdealSimpRel2 _ pt1' pt2' t' q') /#.
+case
+  (exists pt1' pt2' t' q',
+   smc_real_ke_ideal_simp_rel3
+   {|smc_real_ke_ideal_simp_rel_st_func = func;
+     smc_real_ke_ideal_simp_rel_st_r1s  = SMCReal.st1{1};
+     smc_real_ke_ideal_simp_rel_st_r2s  = SMCReal.st2{1};
+     smc_real_ke_ideal_simp_rel_st_fws  = Fwd.Forw.st{1};
+     smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
+     smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}
+   pt1' pt2' t' q').
+elim* => pt1' pt2' t' q'.
+sp 3 3.
+if => //.
+inline SMCReal(KeyEx.KEIdeal).loop SMCRealKEIdealSimp.parties.
+sp 3 2.
+rcondt{1} 1; first auto.
+case (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1).
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv3).
+rcondf{2} 2; first auto.
+if{1}.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).party1.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto.
+exfalso; smt().
+rcondf{1} 1; first auto.
+move => |> &hr.
+smt(not_le_ext_nonnil_l).
+rcondf{1} 1; first auto.
+move => |> &hr.
+smt(not_le_ext_nonnil_l).
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv3).
+case (addr1{1} = SMCReal.self{1} ++ [1] /\ n1{1} = 1).
+rcondt{1} 1; first auto; smt(le_refl).
+inline{1} (1) Fwd.Forw.invoke.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(Fwd.is_fw_state_wait).
+sp 3 1.
+if => //.
+rcondt{1} 2; first auto; smt(Fwd.dest_good_fw_ok).
+rcondt{2} 2; first auto; smt(Fwd.dest_good_fw_ok).
+rcondf{1} 5; first auto.
+move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+elim dec_fw_wait_eq => -> [#] -> _ /=.
+smt(le_refl).
+rcondt{1} 6; first auto.
+rcondf{1} 6; first auto.
+move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+by elim dec_fw_wait_eq.
+rcondt{1} 6; first auto.
+move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+by elim dec_fw_wait_eq.
+inline SMCReal(KeyEx.KEIdeal).party2.
+rcondf{1} 8; first auto; smt().
+rcondt{1} 8; first auto; smt(is_smc_real_p2_state_wait_fwd).
+rcondt{1} 9; first auto; smt().
+rcondt{1} 10; first auto.
+move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+elim dec_fw_wait_eq =>  -> [#] -> _ /=.
+by rewrite oget_some Fwd.enc_dec_fw_rsp oget_some.
+rcondt{1} 17; first auto.
+move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] pt2'_out _ _ ->> _ ->>.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+elim dec_fw_wait_eq =>  -> [#] -> -> /=.
+by rewrite !oget_some !Fwd.enc_dec_fw_rsp !oget_some /=
+           !enc_dec_univ_triple !oget_some /= !oget_some.
+rcondf{1} 18; first auto.
+auto.
+move => |> &1 &2 dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
+        _ _ _ _ _ [] /= _ [#] pt2'_out -> -> ->> _ ->> _ _ _.
+rewrite /= oget_some /= in dec_fw_wait_eq.
+elim dec_fw_wait_eq =>  -> [#] -> -> /=.
+rewrite /= oget_some /= in dec_smc_real_ke_ideal_simp_wait_adv3_eq.
+elim dec_smc_real_ke_ideal_simp_wait_adv3_eq => -> [#] -> -> ->.
+rewrite !oget_some /= !Fwd.enc_dec_fw_rsp !oget_some /=
+        !enc_dec_univ_triple !oget_some /= !oget_some /= !oget_some
+        kmulA kinv_r kid_r proj_injK oget_some /=.
+by rewrite (SMCRealKEIdealSimpRel4 _ pt1' pt2' t' q').
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto.
+seq 0 3 :
+  (smc_real_ke_ideal_simp_rel3
+   {|smc_real_ke_ideal_simp_rel_st_func = func;
+     smc_real_ke_ideal_simp_rel_st_r1s = SMCReal.st1{1};
+     smc_real_ke_ideal_simp_rel_st_r2s = SMCReal.st2{1};
+     smc_real_ke_ideal_simp_rel_st_fws = Fwd.Forw.st{1};
+     smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
+     smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2};|}
+     pt1' pt2' t' q' /\
+   SMCReal.self{1} ++ [1] = Fwd.Forw.self{1} /\
+   (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1 \/
+    mod{1} = Adv /\
+    (SMCReal.self{1} ++ [1] <= addr1{1} \/
+     SMCReal.self{1} ++ [2] <= addr1{1})) /\
+   ! (mod{1} = Dir /\ addr1{1} = SMCReal.self{1} /\ n1{1} = 1) /\
+   ! (addr1{1} = SMCReal.self{1} ++ [1] /\ n1{1} = 1) /\
+   r{2} = None /\
+   m0{1} = (mod{1}, pt1{1}, pt2{1}, u{1}) /\
+   (addr1{1}, n1{1}) = pt1{1}).
+sp 0 1.
+if{2}.
+rcondf{2} 2; first auto; smt(Fwd.dest_good_fw_ok).
+auto.
+auto.
+if{1}.
+inline{1} (1) Fwd.Forw.invoke.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(Fwd.is_fw_state_wait).
+sp 3 0.
+if{1}.
+rcondf{1} 2; first auto; smt(Fwd.dest_good_fw_ok).
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto; progress; by rewrite (SMCRealKEIdealSimpRel3 _ pt1' pt2' t' q').
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto; progress; by rewrite (SMCRealKEIdealSimpRel3 _ pt1' pt2' t' q').
+inline{1} (1) KeyEx.KEIdeal.invoke.
+sp 4 0.
+if{1}.
+inline{1} (1) KeyEx.KEIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt(KeyEx.is_ke_ideal_state_wait_sim1).
+rcondf{1} 3; first auto; smt(KeyEx.is_ke_ideal_state_wait_req2).
+rcondf{1} 3; first auto; smt(KeyEx.is_ke_ideal_state_wait_sim2).
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+auto; progress; by rewrite (SMCRealKEIdealSimpRel3 _ pt1' pt2' t' q').
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto; progress; by rewrite (SMCRealKEIdealSimpRel3 _ pt1' pt2' t' q').
+case
+  (exists pt1' pt2' t' q',
+   smc_real_ke_ideal_simp_rel4
+   {|smc_real_ke_ideal_simp_rel_st_func = func;
+     smc_real_ke_ideal_simp_rel_st_r1s  = SMCReal.st1{1};
+     smc_real_ke_ideal_simp_rel_st_r2s  = SMCReal.st2{1};
+     smc_real_ke_ideal_simp_rel_st_fws  = Fwd.Forw.st{1};
+     smc_real_ke_ideal_simp_rel_st_keis = KeyEx.KEIdeal.st{1};
+     smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp.st{2}|}
+   pt1' pt2' t' q').
+elim* => pt1' pt2' t' q'.
 admit.
+exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
 lemma Exper_SMCReal_KEIdeal_SMCRealKEIdealSimp
