@@ -487,28 +487,28 @@ module SMCIdeal : FUNC = {
 
 type smc_sim_state = [
     SMCSimStateWaitReq
-  | SMCSimStateWaitAdv1 of (port * port * addr * exp)
+  | SMCSimStateWaitAdv1 of (port * port * addr)
   | SMCSimStateWaitAdv2 of (port * port * addr * exp)
   | SMCSimStateWaitAdv3 of (port * port * addr * exp)
   | SMCSimStateFinal    of (port * port * addr * exp)
 ].
 
 op dec_smc_sim_state_wait_adv1 (st : smc_sim_state) :
-     (port * port * addr * exp) option =
+     (port * port * addr) option =
      with st = SMCSimStateWaitReq    => None
      with st = SMCSimStateWaitAdv1 x => Some x
      with st = SMCSimStateWaitAdv2 _ => None
      with st = SMCSimStateWaitAdv3 _ => None
      with st = SMCSimStateFinal _    => None.
 
-lemma enc_dec_smc_sim_state_wait_adv1 (x : port * port * addr * exp) :
+lemma enc_dec_smc_sim_state_wait_adv1 (x : port * port * addr) :
   dec_smc_sim_state_wait_adv1 (SMCSimStateWaitAdv1 x) = Some x.
 proof. done. qed.
 
 op is_smc_sim_state_wait_adv1 (st : smc_sim_state) : bool =
   dec_smc_sim_state_wait_adv1 st <> None.
 
-lemma is_smc_sim_state_wait_adv1 (x : port * port * addr * exp) :
+lemma is_smc_sim_state_wait_adv1 (x : port * port * addr) :
   is_smc_sim_state_wait_adv1 (SMCSimStateWaitAdv1 x).
 proof. done. qed.
 
@@ -592,12 +592,11 @@ module SMCSim (Adv : FUNC) = {
         if (st = SMCSimStateWaitReq) {
           if (is_smc_sim_req m) {
             (addr1, addr2, pt1, pt2) <- oget (dec_smc_sim_req m);
-            q <$ dexp;
             r <-
               Some
               (KeyEx.ke_sim_req1 (addr1 ++ [2]) self
                (addr1, 3) (addr1, 4));
-            st <- SMCSimStateWaitAdv1 (pt1, pt2, addr1, q);
+            st <- SMCSimStateWaitAdv1 (pt1, pt2, addr1);
           }
         }
         if (r = None) {
@@ -615,11 +614,12 @@ module SMCSim (Adv : FUNC) = {
         else {
           m <- oget r; (mod, pt1, pt2, u) <- m;
           if (is_smc_sim_state_wait_adv1 st) {
-            (pt1, pt2, addr, q) <- oget (dec_smc_sim_state_wait_adv1 st);
+            (pt1, pt2, addr) <- oget (dec_smc_sim_state_wait_adv1 st);
             r <- None; not_done <- false;
             if (KeyEx.is_ke_sim_rsp m) {
               (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
               if (addr1 = addr ++ [2]) {
+                q <$ dexp;
                 r <- Some (KeyEx.ke_sim_req2 (addr ++ [2]) self);
                 not_done <- true;
                 st <- SMCSimStateWaitAdv2 (pt1, pt2, addr, q);
@@ -1527,13 +1527,13 @@ rcondt{1} 10; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
 rewrite /= oget_some /= in dec_fw_wait_eq.
-elim dec_fw_wait_eq =>  -> [#] -> _ /=.
+elim dec_fw_wait_eq => -> [#] -> _ /=.
 by rewrite oget_some Fwd.enc_dec_fw_rsp oget_some.
 rcondt{1} 17; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] pt2'_out _ _ ->> _ ->>.
 rewrite /= oget_some /= in dec_fw_wait_eq.
-elim dec_fw_wait_eq =>  -> [#] -> -> /=.
+elim dec_fw_wait_eq => -> [#] -> -> /=.
 by rewrite !oget_some !Fwd.enc_dec_fw_rsp !oget_some /=
            !enc_dec_univ_triple !oget_some /= !oget_some.
 rcondf{1} 18; first auto.
@@ -1541,7 +1541,7 @@ auto.
 move => |> &1 &2 dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] pt2'_out -> -> ->> _ ->> _ _ _.
 rewrite /= oget_some /= in dec_fw_wait_eq.
-elim dec_fw_wait_eq =>  -> [#] -> -> /=.
+elim dec_fw_wait_eq => -> [#] -> -> /=.
 rewrite /= oget_some /= in dec_smc_real_ke_ideal_simp_wait_adv3_eq.
 elim dec_smc_real_ke_ideal_simp_wait_adv3_eq => -> [#] -> -> ->.
 rewrite !oget_some /= !Fwd.enc_dec_fw_rsp !oget_some /=
@@ -1912,6 +1912,133 @@ declare module Env : ENV{Adv, MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal}.
 
 local clone import SMCRealKEIdealSimp as SRKEIS.
 
+(* relational invariant for connecting SMCRealKEIdealSimp and
+   SMCIdeal *)
+
+type smc_sec2_rel_st = {
+  smc_sec2_rel_st_func : addr;
+  smc_sec2_rel_st_adv  : addr;
+  smc_sec2_rel_st_riss : smc_real_ke_ideal_simp_state;
+  smc_sec2_rel_st_is   : smc_ideal_state;
+  smc_sec2_rel_st_sims : smc_sim_state;
+}.
+
+pred smc_sec2_rel0 (st : smc_sec2_rel_st) =
+  (st.`smc_sec2_rel_st_riss = SMCRealKEIdealSimpStateWaitReq) /\
+  (st.`smc_sec2_rel_st_is   = SMCIdealStateWaitReq) /\
+  (st.`smc_sec2_rel_st_sims = SMCSimStateWaitReq).
+
+pred smc_sec2_rel1
+     (st : smc_sec2_rel_st, pt1 pt2 : port, t : text) =
+  ! (st.`smc_sec2_rel_st_func <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_func <= pt2.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt2.`1) /\
+  (st.`smc_sec2_rel_st_riss =
+   SMCRealKEIdealSimpStateWaitAdv1 (pt1, pt2, t)) /\
+  (st.`smc_sec2_rel_st_is = SMCIdealStateWaitSim (pt1, pt2, t)) /\
+  (st.`smc_sec2_rel_st_sims =
+   SMCSimStateWaitAdv1 (pt1, pt2, st.`smc_sec2_rel_st_func)).
+
+pred smc_sec2_rel2
+     (st : smc_sec2_rel_st, pt1 pt2 : port, t : text, q : exp) =
+  ! (st.`smc_sec2_rel_st_func <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_func <= pt2.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt2.`1) /\
+  (st.`smc_sec2_rel_st_riss =
+   SMCRealKEIdealSimpStateWaitAdv2 (pt1, pt2, t, g ^ q)) /\
+  (st.`smc_sec2_rel_st_is = SMCIdealStateWaitSim (pt1, pt2, t)) /\
+  (st.`smc_sec2_rel_st_sims =
+   SMCSimStateWaitAdv2 (pt1, pt2, st.`smc_sec2_rel_st_func, pad_iso_l t q)).
+
+pred smc_sec2_rel3
+     (st : smc_sec2_rel_st, pt1 pt2 : port, t : text, q : exp) =
+  ! (st.`smc_sec2_rel_st_func <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_func <= pt2.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt2.`1) /\
+  (st.`smc_sec2_rel_st_riss =
+   SMCRealKEIdealSimpStateWaitAdv3 (pt1, pt2, t, g ^ q)) /\
+  (st.`smc_sec2_rel_st_is = SMCIdealStateWaitSim (pt1, pt2, t)) /\
+  (st.`smc_sec2_rel_st_sims =
+   SMCSimStateWaitAdv3 (pt1, pt2, st.`smc_sec2_rel_st_func, pad_iso_l t q)).
+
+pred smc_sec2_rel4
+     (st : smc_sec2_rel_st, pt1 pt2 : port, t : text, q : exp) =
+  ! (st.`smc_sec2_rel_st_func <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_func <= pt2.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt1.`1) /\
+  ! (st.`smc_sec2_rel_st_adv <= pt2.`1) /\
+  (st.`smc_sec2_rel_st_riss =
+   SMCRealKEIdealSimpStateFinal (pt1, pt2, t, g ^ q)) /\
+  (st.`smc_sec2_rel_st_is = SMCIdealStateFinal (pt1, pt2, t)) /\
+  (st.`smc_sec2_rel_st_sims =
+   SMCSimStateFinal (pt1, pt2, st.`smc_sec2_rel_st_func, pad_iso_l t q)).
+
+inductive smc_sec2_rel (st : smc_sec2_rel_st) =
+    SMCSec2Rel0 of (smc_sec2_rel0 st)
+  | SMCSec2Rel1 (pt1 pt2 : port, t : text) of
+      (smc_sec2_rel1 st pt1 pt2 t)
+  | SMCSec2Rel2 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_sec2_rel2 st pt1 pt2 t q)
+  | SMCSec2Rel3 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_sec2_rel3 st pt1 pt2 t q)
+  | SMCSec2Rel4 (pt1 pt2 : port, t : text, q : exp) of
+      (smc_sec2_rel4 st pt1 pt2 t q).
+
+local lemma Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim (func' adv' : addr) &m :
+  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[Exper(MI(SMCIdeal, SMCSim(Adv)), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res].
+proof.
+move => pre.
+byequiv => //.
+proc.
+inline MI(SMCRealKEIdealSimp, Adv).init MI(SMCIdeal, SMCSim(Adv)).init
+       SMCRealKEIdealSimp.init SMCIdeal.init SMCSim(Adv).init.
+seq 12 17 :
+  (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
+   func{1} = MI.func{1} /\ adv{1} = MI.adv{1} /\
+   in_guard{1} = MI.in_guard{1} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   ={glob Adv} /\
+   SMCRealKEIdealSimp.st{1} = SMCRealKEIdealSimpStateWaitReq /\
+   SMCIdeal.st{2} = SMCIdealStateWaitReq /\
+   SMCSim.st{2} = SMCSimStateWaitReq).
+swap{2} 16 1.
+call (_ : true).
+auto.
+call
+  (_ :
+   ={MI.func, MI.adv, MI.in_guard} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   ={glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv  = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is   = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2}|}).
+(*
+conseq MI_SMCRealKEIdealSimp_SMCIdeal_SMCSim_invoke => //.
+*)
+admit.
+auto; progress; by rewrite SMCSec2Rel0.
+qed.
+
 lemma smc_sec2 (func adv : addr) &m :
   exper_pre func adv (fset1 adv_fw_pi) =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
@@ -1920,9 +2047,9 @@ lemma smc_sec2 (func adv : addr) &m :
        (func, adv, fset1 adv_fw_pi) @ &m : res].
 proof.
 move => pre.
-rewrite (Exper_SMCReal_KEIdeal_SMCRealKEIdealSimp func adv (fset1 adv_fw_pi)
-         &m Adv Env) 1:/#.
-admit.
+by rewrite (Exper_SMCReal_KEIdeal_SMCRealKEIdealSimp func adv (fset1 adv_fw_pi)
+            &m Adv Env) 1:/#
+           (Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim func adv &m).
 qed.
 
 end section.

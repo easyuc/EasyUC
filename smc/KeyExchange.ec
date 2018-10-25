@@ -2520,7 +2520,7 @@ inline{1} (1) RH.NonOptHashing.hash.
 rcondf{1} 2; first auto; smt().
 auto => &1 &2 |> <-.
 progress.
-clear H8 H7 H6 H5; smt(gen_logK).
+clear H8 H7 H6 H5; smt(log_gen).
 by rewrite (RealSimpHashDDH1Rel1 _ pt10{2} pt20{2})
            /real_simp_hash_ddh1_rel1 /= H oget_some.
 auto.
@@ -2607,7 +2607,7 @@ elim st2_eq => ->> ->>.
 rewrite /= oget_some /= in st1_eq.
 elim st1_eq => ->> [#] ->> ->> ->>.
 progress.
-smt(gen_logK).
+smt(log_gen).
 by rewrite (RealSimpHashDDH1Rel3 _ pt1 pt2) /real_simp_hash_ddh1_rel3.
 auto.
 auto.
@@ -2785,9 +2785,9 @@ auto.
 auto.
 auto.
 auto; progress.
-by rewrite log_genK.
-by rewrite log_genK.
-by rewrite 2!log_genK.
+by rewrite gen_log.
+by rewrite gen_log.
+by rewrite 2!gen_log.
 by rewrite RealSimpHashDDH1Rel0.
 qed.
 
@@ -3176,7 +3176,7 @@ inline{1} (1) RH.NonOptHashing.hash.
 rcondf{1} 2; first auto; smt().
 auto => &1 &2 |> <-.
 progress.
-smt(gen_logK).
+smt(log_gen).
 rewrite (HybridHashDDH2Rel1 _ pt10{2} pt20{2})
         /hybrid_hash_ddh2_rel1 /= /#.
 auto.
@@ -3219,7 +3219,7 @@ rewrite /= oget_some /= in st2_eq.
 elim st1_eq => [#] ->> [#] ->> ->>.
 elim st2_eq => -> ->.
 progress.
-by rewrite mp_exp3_eq oget_some; smt(gen_logK).
+by rewrite mp_exp3_eq oget_some; smt(log_gen).
 by rewrite (HybridHashDDH2Rel2 _ pt1 pt2)
            /hybrid_hash_ddh2_rel2 /=
            mp_exp2_eq oget_some mp_exp3_eq oget_some.
@@ -3267,7 +3267,7 @@ elim st2_eq => ->> ->>.
 rewrite /= oget_some /= in st1_eq.
 elim st1_eq => ->> [#] ->> ->> ->>.
 progress.
-smt(gen_logK).
+smt(log_gen).
 by rewrite (HybridHashDDH2Rel3 _ pt1 pt2) /hybrid_hash_ddh2_rel3.
 auto.
 auto.
@@ -3313,7 +3313,7 @@ elim dec_wait1 => ->> [#] ->> ->> ->>.
 rewrite /= oget_some /= in dec_wait2.
 elim dec_wait2 => ->> ->>.
 progress.
-smt(gen_logK).
+smt(log_gen).
 rewrite (HybridHashDDH2Rel4 _ pt1 pt2) /#.
 auto.
 auto.
@@ -3453,9 +3453,9 @@ auto.
 auto.
 auto.
 auto; progress.
-by rewrite log_genK.
-by rewrite log_genK.
-by rewrite log_genK.
+by rewrite gen_log.
+by rewrite gen_log.
+by rewrite gen_log.
 by rewrite HybridHashDDH2Rel0.
 qed.
 
