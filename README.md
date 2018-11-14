@@ -28,3 +28,10 @@ in this example is to illustrate how UC's composition operation and
 theorem may be formalized in EasyCrypt. As in our initial experiment,
 we are using manual message routing to model the coroutine-style
 communication of UC.
+
+The case study is mostly complete, and is giving us confidence that
+our architecture is sound. But it is involving heavy use of manual
+symbolic execution, guided by case analysis. Consequently, in order
+for this approch to scale-up to realistic protocols, various
+improvements will be necessary.
+
