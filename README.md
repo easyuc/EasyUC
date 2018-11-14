@@ -2,7 +2,7 @@ Experiments with Universal Composability in EasyCrypt
 ====================================================================
 
 This repository contains experiments in formalizing Ran Canetti's
-Universal Composable (UC) Security using the
+Universally Composable (UC) Security using the
 [EasyCrypt](https://www.easycrypt.info/trac/) proof assistant. This is
 joint work between [Alley Stoughton](http://alleystoughton.us)
 (alley.stoughton@icloud.com), Ran Canetti (canetti@bu.edu) and Mayank
