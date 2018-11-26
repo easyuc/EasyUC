@@ -2095,6 +2095,7 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel1 _ pt12{2} pt22{2} t{2}).
+sp 3 3.
 admit.
 rcondt{1} 3; first auto.
 rcondt{2} 3; first auto.
@@ -2178,11 +2179,11 @@ seq 5 0 :
    SMCSim.self{2} = MI.adv{1} /\
    SMCSim.adv{2} = [] /\
    smc_sec2_rel0
-     {|smc_sec2_rel_st_func = MI.func{1};
-       smc_sec2_rel_st_adv = MI.adv{1};
-       smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
-       smc_sec2_rel_st_is = SMCIdeal.st{2};
-       smc_sec2_rel_st_sims = SMCSim.st{2};|}).
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}).
 if{1}.
 inline{1} (1) SMCRealKEIdealSimp.parties.
 rcondt{1} 3; first auto; smt().
@@ -2219,7 +2220,70 @@ case
      smc_sec2_rel_st_sims = SMCSim.st{2};|}
    pt1' pt2' t').
 elim* => pt1' pt2' t'.
+sp 2 2.
+if => //.
+inline MI(SMCRealKEIdealSimp, Adv).loop MI(SMCIdeal, SMCSim(Adv)).loop.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+sp 5 5.
+if => //.
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+inline{2} (1) SMCIdeal.invoke.
+sp 4 4.
+if; first auto; progress; smt().
+inline{1} (1) SMCRealKEIdealSimp.parties.
+inline{2} (1) SMCIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv1).
+rcondf{2} 3; first auto; smt().
+rcondt{2} 3; first auto; smt(is_smc_ideal_state_wait_sim).
+rcondf{1} 4; first auto; progress.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /= /#.
+rcondf{2} 4; first auto; progress.
+rewrite /is_smc_sim_rsp /dec_smc_sim_rsp /= /#.
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) SMCSim(Adv).invoke.
+rcondt{2} 4; first auto; smt().
+inline{2} (1) SMCSim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto; progress.
+elim H3 => // [#] _ _ []; smt(smc_pi_uniq in_fset1).
+sp.
+seq 1 1 :
+  (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel1
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t').
+call (_ : true).
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto; progress; by apply (SMCSec2Rel1 _ pt1' pt2' t').
+sp 3 3.
 admit.
+auto.
 case
   (exists pt1' pt2' t' q',
    smc_sec2_rel2
@@ -2229,7 +2293,71 @@ case
      smc_sec2_rel_st_sims = SMCSim.st{2};|}
    pt1' pt2' t' q').
 elim* => pt1' pt2' t' q'.
+sp 2 2.
+if => //.
+inline MI(SMCRealKEIdealSimp, Adv).loop MI(SMCIdeal, SMCSim(Adv)).loop.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+sp 5 5.
+if => //.
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+inline{2} (1) SMCIdeal.invoke.
+sp 4 4.
+if; first auto; progress; smt().
+inline{1} (1) SMCRealKEIdealSimp.parties.
+inline{2} (1) SMCIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv2).
+rcondf{2} 3; first auto; smt().
+rcondt{2} 3; first auto; smt(is_smc_ideal_state_wait_sim).
+rcondf{1} 4; first auto; progress.
+rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /= /#.
+rcondf{2} 4; first auto; progress.
+rewrite /is_smc_sim_rsp /dec_smc_sim_rsp /= /#.
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) SMCSim(Adv).invoke.
+rcondt{2} 4; first auto; smt().
+inline{2} (1) SMCSim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto; progress.
+elim H4 => // [#] _ _ []; smt(smc_pi_uniq in_fset1).
+sp.
+seq 1 1 :
+  (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel2
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q').
+call (_ : true).
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto; progress; by apply (SMCSec2Rel2 _ pt1' pt2' t' q').
+sp 3 3.
 admit.
+auto.
 case
   (exists pt1' pt2' t' q',
    smc_sec2_rel3
@@ -2239,7 +2367,72 @@ case
      smc_sec2_rel_st_sims = SMCSim.st{2};|}
    pt1' pt2' t' q').
 elim* => pt1' pt2' t' q'.
+sp 2 2.
+if => //.
+inline MI(SMCRealKEIdealSimp, Adv).loop MI(SMCIdeal, SMCSim(Adv)).loop.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+sp 5 5.
+if => //.
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+inline{2} (1) SMCIdeal.invoke.
+sp 4 4.
+if; first auto; progress; smt().
+inline{1} (1) SMCRealKEIdealSimp.parties.
+inline{2} (1) SMCIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv3).
+rcondf{2} 3; first auto; smt().
+rcondt{2} 3; first auto; smt(is_smc_ideal_state_wait_sim).
+rcondf{1} 4; first auto; progress.
+rewrite /is_fw_ok /dec_fw_ok /= /#.
+rcondf{2} 4; first auto; progress.
+rewrite /is_smc_sim_rsp /dec_smc_sim_rsp /= /#.
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) SMCSim(Adv).invoke.
+rcondt{2} 4; first auto; smt().
+inline{2} (1) SMCSim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto; progress.
+elim H5 => // [#] _ _ []; smt(smc_pi_uniq in_fset1).
+sp.
+seq 1 1 :
+  (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel3
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q').
+call (_ : true).
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto; progress; by apply (SMCSec2Rel3 _ pt1' pt2' t' q').
+sp 3 3.
 admit.
+auto.
 case
   (exists pt1' pt2' t' q',
    smc_sec2_rel4
@@ -2249,7 +2442,133 @@ case
      smc_sec2_rel_st_sims = SMCSim.st{2};|}
    pt1' pt2' t' q').
 elim* => pt1' pt2' t' q'.
-admit.
+sp 2 2.
+if => //.
+inline MI(SMCRealKEIdealSimp, Adv).loop MI(SMCIdeal, SMCSim(Adv)).loop.
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+sp 5 5.
+if => //.
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+inline{2} (1) SMCIdeal.invoke.
+sp 4 4.
+if; first auto; progress; smt().
+inline{1} (1) SMCRealKEIdealSimp.parties.
+inline{2} (1) SMCIdeal.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondt{1} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{1} 6; first auto.
+rcondf{2} 6; first auto.
+auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) SMCSim(Adv).invoke.
+rcondt{2} 4; first auto; smt().
+inline{2} (1) SMCSim(Adv).loop.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto; progress.
+elim H6 => // [#] _ _ []; smt(smc_pi_uniq in_fset1).
+sp.
+seq 1 1 :
+  (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel4
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q').
+call (_ : true).
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto; smt().
+rcondf{2} 7; first auto; smt().
+sp 0 6; elim* => not_done0_R.
+if; first smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+sp 2 2.
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+inline{2} (1) SMCIdeal.invoke.
+sp 4 4.
+seq 5 0 :
+  (m3{2}.`1 = mod3{2} /\ m3{2}.`2.`1 = addr12{2} /\
+   r{1} = None /\ r3{2} = None /\
+   mod3{2} = Adv /\ SMCIdeal.self{2} <= addr12{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\
+   SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\
+   SMCSim.adv{2} = [] /\
+   smc_sec2_rel4
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q').
+if{1}.
+inline{1} (1) SMCRealKEIdealSimp.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 5; first auto.
+rcondf{1} 6; first auto.
+auto => |> &1 &2 <- /#.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto => |> &1 &2 <-; progress.
+rewrite negb_or not_dir in H5; smt().
+if{2}.
+inline{2} (1) SMCIdeal.parties.
+rcondf{2} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+auto.
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ [] /#.
 qed.
 
