@@ -1989,6 +1989,256 @@ inductive smc_sec2_rel (st : smc_sec2_rel_st) =
   | SMCSec2Rel4 (pt1 pt2 : port, t : text, q : exp) of
       (smc_sec2_rel4 st pt1 pt2 t q).
 
+local module MI_SMCRealKEIdealSimp_AfterAdv = {
+  proc after_adv(r : msg option) : msg option = {
+    var not_done : bool <- true; var m : msg;
+    var mod : mode; var pt1, pt2 : port;
+    var addr1 : addr; var n1 : int; var u : univ;
+
+    m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+    if (MI.adv <= addr1 \/ mod = Dir) {
+      r <- None; not_done <- false;
+    }
+    elif (! MI.func <= addr1) {
+      not_done <- false;
+    }
+    while (not_done) {
+      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+      if (MI.func <= addr1) {
+        r <@ SMCRealKEIdealSimp.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (MI.func <= addr1) {
+            r <- None; not_done <- false;
+          }
+          elif (mod = Dir) {
+            not_done <- false;
+            if (MI.adv <= addr1) {
+              r <- None;
+            }
+          }
+          elif (addr1 <> MI.adv \/ n1 = 0) {
+            r <- None; not_done <- false;
+          }
+        }
+      }
+      else {
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (MI.adv <= addr1 \/ mod = Dir) {
+            r <- None; not_done <- false;
+          }
+          elif (! MI.func <= addr1) {
+            not_done <- false;
+          }
+        }
+      }
+    }
+    return r;
+  }
+}.
+
+local module MI_SMCIdeal_SMCSim_AfterAdv = {
+  proc after_adv(r : msg option) : msg option = {
+    var not_done : bool <- true; var not_done0 <- true; var m : msg;
+    var mod : mode; var pt1, pt2 : port;
+    var addr1, addr2, addr : addr; var n1 : int; var u : univ;
+    var q : exp;
+
+    m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+    if (mod = Dir \/ SMCSim.self <= addr1) {
+      r <- None; not_done0 <- false;
+    }
+    elif (is_smc_sim_state_wait_adv1 SMCSim.st) {
+      (pt1, pt2, addr) <- oget (dec_smc_sim_state_wait_adv1 SMCSim.st);
+      if (addr <= addr1) {
+        r <- None; not_done0 <- false;
+        if (KeyEx.is_ke_sim_rsp m) {
+          (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
+          if (addr1 = addr ++ [2]) {
+            q <$ dexp;
+            m <- KeyEx.ke_sim_req2 (addr ++ [2]) SMCSim.self;
+            not_done0 <- true;
+            SMCSim.st <- SMCSimStateWaitAdv2 (pt1, pt2, addr, q);
+          }
+        }
+      }
+    }
+    elif (is_smc_sim_state_wait_adv2 SMCSim.st) {
+      (pt1, pt2, addr, q) <- oget (dec_smc_sim_state_wait_adv2 SMCSim.st);
+      if (addr <= addr1) {
+        r <- None; not_done0 <- false;
+        if (KeyEx.is_ke_sim_rsp m) {
+          (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
+          if (addr1 = addr ++ [2]) {
+            m <-
+              Fwd.fw_obs
+              (addr ++ [1]) SMCSim.self (addr, 3) (addr, 4)
+              (univ_triple
+               (UnivPort pt1) (UnivPort pt2)
+               (UnivBase (BaseKey (g ^ q))));
+            not_done0 <- true;
+            SMCSim.st <- SMCSimStateWaitAdv3 (pt1, pt2, addr, q);
+          }
+        }
+      }
+    }
+    elif (is_smc_sim_state_wait_adv3 SMCSim.st) {
+      (pt1, pt2, addr, q) <- oget (dec_smc_sim_state_wait_adv3 SMCSim.st);
+      if (addr <= addr1) {
+        r <- None; not_done0 <- false;
+        if (Fwd.is_fw_ok m) {
+          (addr1, addr2) <- oget (Fwd.dec_fw_ok m);
+          if (addr1 = addr ++ [1]) {
+            r <-Some (smc_sim_rsp addr SMCSim.self);
+            SMCSim.st <- SMCSimStateFinal (pt1, pt2, addr, q);
+          }
+        }
+      }
+    }
+    else {
+      not_done0 <- false;
+    }
+    while (not_done0) {
+      (mod, pt1, pt2, u) <- m;
+      if (pt1.`2 = smc_sim_adv_pi) {
+        r <- None; not_done0 <- false;
+        if (SMCSim.st = SMCSimStateWaitReq) {
+          if (is_smc_sim_req m) {
+            (addr1, addr2, pt1, pt2) <- oget (dec_smc_sim_req m);
+            m <-
+              KeyEx.ke_sim_req1 (addr1 ++ [2]) SMCSim.self
+              (addr1, 3) (addr1, 4);
+            not_done0 <- true;
+            SMCSim.st <- SMCSimStateWaitAdv1 (pt1, pt2, addr1);
+          }
+        }
+      }
+      else {
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done0 <- false;
+        }
+        else {
+          m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (mod = Dir \/ SMCSim.self <= addr1) {
+            r <- None; not_done0 <- false;
+          }
+          elif (is_smc_sim_state_wait_adv1 SMCSim.st) {
+            (pt1, pt2, addr) <- oget (dec_smc_sim_state_wait_adv1 SMCSim.st);
+            if (addr <= addr1) {
+              r <- None; not_done0 <- false;
+              if (KeyEx.is_ke_sim_rsp m) {
+                (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
+                if (addr1 = addr ++ [2]) {
+                  q <$ dexp;
+                  m <- KeyEx.ke_sim_req2 (addr ++ [2]) SMCSim.self;
+                  not_done0 <- true;
+                  SMCSim.st <- SMCSimStateWaitAdv2 (pt1, pt2, addr, q);
+                }
+              }
+            }
+          }
+          elif (is_smc_sim_state_wait_adv2 SMCSim.st) {
+            (pt1, pt2, addr, q) <- oget (dec_smc_sim_state_wait_adv2 SMCSim.st);
+            if (addr <= addr1) {
+              r <- None; not_done0 <- false;
+              if (KeyEx.is_ke_sim_rsp m) {
+                (addr1, addr2) <- oget (KeyEx.dec_ke_sim_rsp m);
+                if (addr1 = addr ++ [2]) {
+                  m <-
+                    Fwd.fw_obs
+                    (addr ++ [1]) SMCSim.self (addr, 3) (addr, 4)
+                    (univ_triple
+                     (UnivPort pt1) (UnivPort pt2)
+                     (UnivBase (BaseKey (g ^ q))));
+                  not_done0 <- true;
+                  SMCSim.st <- SMCSimStateWaitAdv3 (pt1, pt2, addr, q);
+                }
+              }
+            }
+          }
+          elif (is_smc_sim_state_wait_adv3 SMCSim.st) {
+            (pt1, pt2, addr, q) <- oget (dec_smc_sim_state_wait_adv3 SMCSim.st);
+            if (addr <= addr1) {
+              r <- None; not_done0 <- false;
+              if (Fwd.is_fw_ok m) {
+                (addr1, addr2) <- oget (Fwd.dec_fw_ok m);
+                if (addr1 = addr ++ [1]) {
+                  r <-Some (smc_sim_rsp addr SMCSim.self);
+                  SMCSim.st <- SMCSimStateFinal (pt1, pt2, addr, q);
+                }
+              }
+            }
+          }
+          else {
+            not_done0 <- false;
+          }
+        }
+      }
+    }
+    if (r = None) {
+      not_done <- false;
+    }
+    else {
+      m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+      if (MI.adv <= addr1 \/ mod = Dir) {
+        r <- None; not_done <- false;
+      }
+      elif (! MI.func <= addr1) {
+        not_done <- false;
+      }
+    }
+    while (not_done) {
+      (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+      if (MI.func <= addr1) {
+        r <@ SMCRealKEIdealSimp.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (MI.func <= addr1) {
+            r <- None; not_done <- false;
+          }
+          elif (mod = Dir) {
+            not_done <- false;
+            if (MI.adv <= addr1) {
+              r <- None;
+            }
+          }
+          elif (addr1 <> MI.adv \/ n1 = 0) {
+            r <- None; not_done <- false;
+          }
+        }
+      }
+      else {
+        r <@ Adv.invoke(m);
+        if (r = None) {
+          not_done <- false;
+        }
+        else {
+          m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
+          if (MI.adv <= addr1 \/ mod = Dir) {
+            r <- None; not_done <- false;
+          }
+          elif (! MI.func <= addr1) {
+            not_done <- false;
+          }
+        }
+      }
+    }
+    return r;
+  }
+}.
+
 local lemma MI_SMCRealKEIdealSimp_SMCIdeal_SMCSim_invoke :
   equiv
   [MI(SMCRealKEIdealSimp, Adv).invoke ~ MI(SMCIdeal, SMCSim(Adv)).invoke :
@@ -2095,7 +2345,6 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel1 _ pt12{2} pt22{2} t{2}).
-sp 3 3.
 admit.
 rcondt{1} 3; first auto.
 rcondt{2} 3; first auto.
@@ -2281,7 +2530,6 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel1 _ pt1' pt2' t').
-sp 3 3.
 admit.
 auto.
 case
@@ -2355,7 +2603,6 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel2 _ pt1' pt2' t' q').
-sp 3 3.
 admit.
 auto.
 case
@@ -2430,7 +2677,6 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel3 _ pt1' pt2' t' q').
-sp 3 3.
 admit.
 auto.
 case
@@ -2501,6 +2747,9 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
+admit.
+admit.
+(*
 sp 3 3.
 if; first smt().
 rcondf{1} 3; first auto.
@@ -2569,6 +2818,7 @@ rcondt{2} 2; first auto.
 rcondf{2} 3; first auto.
 auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
 auto.
+*)
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ [] /#.
 qed.
 
