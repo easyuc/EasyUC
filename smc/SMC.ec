@@ -2239,6 +2239,36 @@ local module MI_SMCIdeal_SMCSim_AfterAdv = {
   }
 }.
 
+local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_1
+            (pt1' pt2' : port, t' : text) :
+  equiv
+  [MI_SMCRealKEIdealSimp_AfterAdv.after_adv ~
+   MI_SMCIdeal_SMCSim_AfterAdv.after_adv :
+   ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel1
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' ==>
+   ={res, glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}].
+proof.
+admit.
+qed.
+
 local lemma MI_SMCRealKEIdealSimp_SMCIdeal_SMCSim_invoke :
   equiv
   [MI(SMCRealKEIdealSimp, Adv).invoke ~ MI(SMCIdeal, SMCSim(Adv)).invoke :
@@ -2415,7 +2445,9 @@ progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} SMCIdeal.st{2}
           [] MI.adv{2} SMCSim.st{2} MI.adv{2} MI.func{2}
           (fset1 adv_fw_pi) pt12{2} pt22{2} r4{2} t{2}.
-admit.
+exlim pt12{2}, pt22{2}, t{2} => pt1' pt2' t'.
+call (MI_KEHybrid_KEIdeal_KESim_after_adv_1 pt1' pt2' t').
+auto.
 inline MI_SMCIdeal_SMCSim_AfterAdv.after_adv.
 sp 3 0.
 seq 5 5 :
@@ -2616,7 +2648,94 @@ rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel1 _ pt1' pt2' t').
-admit.
+transitivity{1}
+  {r <- MI_SMCRealKEIdealSimp_AfterAdv.after_adv(r0);}
+  (={r0, MI.func, MI.adv, MI.in_guard,
+     SMCRealKEIdealSimp.self, SMCRealKEIdealSimp.adv,
+     SMCRealKEIdealSimp.st, glob Adv} /\
+   not_done{1} ==>
+   ={r, MI.func, MI.adv, MI.in_guard,
+     SMCRealKEIdealSimp.self, SMCRealKEIdealSimp.adv,
+     SMCRealKEIdealSimp.st, glob Adv})
+  (r0{1} = r2{2} /\ r0{1} <> None /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel1
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' ==>
+   ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} SMCRealKEIdealSimp.st{1}
+          MI.adv{2} MI.func{2} (fset1 adv_fw_pi) r2{2}.
+inline MI_SMCRealKEIdealSimp_AfterAdv.after_adv.
+sim; auto => |>.
+transitivity{2}
+  {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r0);}
+  (={r0, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel1
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' ==>
+   ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|})
+   (r0{1} = r2{2} /\ not_done{2} /\ not_done0{2} /\
+    ={MI.func, MI.adv, MI.in_guard, glob Adv,
+      SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+      SMCSim.self, SMCSim.adv, SMCSim.st} ==>
+    ={r, MI.func, MI.adv, MI.in_guard, glob Adv,
+      SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+      SMCSim.self, SMCSim.adv, SMCSim.st}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} SMCIdeal.st{2}
+          [] MI.adv{2} SMCSim.st{2} MI.adv{2} MI.func{2}
+          (fset1 adv_fw_pi) r2{2}.
+call (MI_KEHybrid_KEIdeal_KESim_after_adv_1 pt1' pt2' t').
+auto.
+inline MI_SMCIdeal_SMCSim_AfterAdv.after_adv.
+sp 3 0.
+seq 5 5 :
+  (r3{1} = r2{2} /\
+   not_done1{1} = not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard,
+   SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+   SMCSim.self, SMCSim.adv, SMCSim.st, glob Adv}).
+sim.
+progress; [by rewrite H0 | by rewrite H].
+sp 0 2.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
 auto.
 case
   (exists pt1' pt2' t' q',
