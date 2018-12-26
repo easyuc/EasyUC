@@ -2594,8 +2594,94 @@ rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto.
 sim.
-admit.
-admit.
+rcondf{2} 4; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+sp.
+if{1}.
+inline SMCRealKEIdealSimp.parties.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv1).
+rcondf{1} 4; first auto; smt().
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto; smt().
+auto; progress.
+by rewrite (SMCSec2Rel1 _ pt1' pt2' t') /smc_sec2_rel1.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto; progress.
+by rewrite (SMCSec2Rel1 _ pt1' pt2' t') /smc_sec2_rel1.
+seq 10 0 :
+  (r{1} = None /\
+   not_done{2} = true /\ not_done0{2} = true /\
+   m{2} = oget r{2} /\ (mod{2}, pt1{2}, pt2{2}, u{2}) = m{2} /\
+   (addr1{2}, n1{2}) = pt1{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel1
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' /\
+   mod{2} = Adv /\ m{2}.`2.`1 <= addr1{2} /\
+   MI.func{2} ++ [2] <> m{2}.`2.`1).
+sp.
+if{1}.
+inline{1} (1) SMCRealKEIdealSimp.parties.
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv1).
+sp 3 0.
+if{1}.
+rcondf{1} 2; first auto.
+move => |> &hr.
+rewrite /KeyEx.is_ke_sim_rsp /KeyEx.dec_ke_sim_rsp /=.
+case 
+  (mod{hr} = Dir \/ n1{hr} <> 3 \/
+   pt2{hr}.`2 <> ke_sim_adv_pi \/ u{hr} <> UnivUnit) => //=.
+rewrite oget_some /#.
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto; smt(le_refl).
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto; smt(le_refl).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto => |> &1 &2 <- [#] -> -> -> _ _ _ _.
+rewrite negb_or not_dir /=.
+smt(le_refl).
+sp.
+if{2}.
+sp.
+elim* => addr1_R r_R not_done0_R pt1_R pt2_R.
+rcondf{2} 1; first auto.
+move =>
+  |> &hr oget_dec_ke_sim_rsp oget_dec_smc_sim_state_wait_adv1
+  oget_r_R [] /= _ [#] _ _ _ _ _ ->> _ ne is_rsp.
+rewrite /= oget_some in oget_dec_smc_sim_state_wait_adv1.
+elim oget_dec_smc_sim_state_wait_adv1 => _ _ ->>.
+move : oget_dec_ke_sim_rsp.
+rewrite -oget_r_R /=.
+rewrite -oget_r_R /= in ne.
+move : is_rsp.
+rewrite -oget_r_R /KeyEx.is_ke_sim_rsp /KeyEx.dec_ke_sim_rsp /=.
+case
+  (n1{hr} <> 3 \/ pt2_R.`2 <> ke_sim_adv_pi \/ u{hr} <> UnivUnit) => //.
+rewrite oget_some /= /#.
+rcondf{2} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+auto; progress; rewrite (SMCSec2Rel1 _ pt1' pt2' t') /#.
+rcondf{2} 1; first auto.
+rcondt{2} 1; first auto.        
+rcondf{2} 2; first auto.
+auto; progress; rewrite (SMCSec2Rel1 _ pt1' pt2' t') /#.
 qed.
 
 local lemma MI_SMCRealKEIdealSimp_SMCIdeal_SMCSim_invoke :
