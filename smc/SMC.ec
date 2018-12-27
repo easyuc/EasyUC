@@ -2335,7 +2335,287 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
      smc_sec2_rel_st_is = SMCIdeal.st{2};
      smc_sec2_rel_st_sims = SMCSim.st{2};|}].
 proof.
-admit.
+proc.
+sp 4 5.
+if; first move => |> &1 &2 <- /#.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto; progress; by apply (SMCSec2Rel2 _ pt1' pt2' t' q').
+rcondf{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(is_smc_sim_state_wait_adv2).
+case (! MI.func{1} <= addr1{1}).
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 3; first auto.
+move =>
+  |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _
+  _ _ ->.
+by rewrite /= oget_some.
+rcondf{2} 3; first auto.
+sp 0 2.
+if{2}.
+rcondf{2} 2; first auto.
+auto; progress; by apply (SMCSec2Rel2 _ pt1' pt2' t' q').
+rcondf{2} 4; first auto; smt().
+rcondt{2} 4; first auto; smt().
+rcondf{2} 5; first auto.
+auto; progress; by apply (SMCSec2Rel2 _ pt1' pt2' t' q').
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt().
+inline{1} (1) SMCRealKEIdealSimp.invoke.
+rcondt{2} 3; first auto.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> /=.
+by rewrite oget_some.
+case (MI.func{2} ++ [2] = m{2}.`2.`1).
+case (KeyEx.is_ke_sim_rsp m{2}).
+rcondt{2} 4; first auto.
+rcondt{2} 5; first auto.
+move =>
+  |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
+rewrite /= oget_some /= negb_or not_dir.
+move => [#] _ -> _.
+rewrite /KeyEx.is_ke_sim_rsp.
+rewrite /KeyEx.dec_ke_sim_rsp /=.
+case
+  (n1{hr} <> 3 \/ pt2{hr}.`2 <> ke_sim_adv_pi \/
+   u{hr} <> UnivUnit) => //.
+rcondt{1} 7; first auto.
+move => |> &hr <- /= [#] -> -> <- <- <- _ _.
+rewrite negb_or not_dir.
+move => [#] _ -> _ -> _ /=.
+right; apply le_refl.
+inline{1} (1) SMCRealKEIdealSimp.parties.
+rcondf{1} 9; first auto; smt().
+rcondf{1} 9; first auto; smt().
+rcondt{1} 9; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv2).
+rcondt{1} 10; first auto.
+rcondt{1} 11; first auto.
+move => |> &hr <- _ _ _ _ _.
+rewrite /KeyEx.is_ke_sim_rsp /KeyEx.dec_ke_sim_rsp /=.
+case
+  (mod{m} = Dir \/ n1{m} <> 3 \/
+   pt2{m}.`2 <> ke_sim_adv_pi \/ u{m} <> UnivUnit) => //.
+rcondf{1} 15; first auto.
+rcondf{1} 18; first auto.
+move => |> &hr.
+rewrite oget_some /Fwd.fw_obs /=; smt(inc_nle_r).
+rcondf{1} 18; first auto.
+rcondf{1} 18; first auto.
+move => |> &hr.
+rewrite oget_some /Fwd.fw_obs /=; smt(Fwd.fwd_pi_uniq).
+rcondt{1} 18; first auto.
+rcondf{1} 20; first auto.
+move => |> &hr.
+rewrite oget_some /Fwd.fw_obs /=; smt(inc_nle_r).
+rcondt{2} 8; first auto.
+rcondf{2} 9; first auto.
+move => |> &hr.
+rewrite /Fwd.fw_obs /=; smt(smc_pi_uniq).
+seq 20 9 :
+  (={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\
+   SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\
+   SMCSim.adv{2} = [] /\
+   smc_sec2_rel3
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q').
+call (_ : true).
+auto =>
+  |> &1 &2 <- [#] -> -> _ _ _ _ [] /= out_pt1'_func [#]
+  out_pt2'_func out_pt1'_adv out_pt2'_adv -> -> -> /negb_or
+  [#] _ /not_dir -> _ _ _.
+rewrite !oget_some /= !oget_some /=.
+split => [| _ //].
+do 4!congr; by rewrite /pad_iso_l -{2}/gen log_gen.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto; progress; by apply (SMCSec2Rel3 _ pt1' pt2' t' q').
+transitivity{1}
+  {r <- MI_SMCRealKEIdealSimp_AfterAdv.after_adv(r);}
+  (={r, MI.func, MI.adv, MI.in_guard,
+     SMCRealKEIdealSimp.self, SMCRealKEIdealSimp.adv,
+     SMCRealKEIdealSimp.st, glob Adv} /\
+   not_done{1} ==>
+   ={r, MI.func, MI.adv, MI.in_guard,
+     SMCRealKEIdealSimp.self, SMCRealKEIdealSimp.adv,
+     SMCRealKEIdealSimp.st, glob Adv})
+  (={r} /\ r{1} <> None /\ not_done{2} /\ not_done0{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel3
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q' ==>
+   ={r, glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} SMCRealKEIdealSimp.st{1}
+          MI.adv{2} MI.func{2} (fset1 adv_fw_pi) r{2}.
+inline MI_SMCRealKEIdealSimp_AfterAdv.after_adv.
+sim; auto => |>.
+transitivity{2}
+  {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r);}
+  (={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel3
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q' ==>
+   ={r, glob Adv} /\
+   smc_sec2_rel
+   {|smc_sec2_rel_st_func = MI.func{1};
+     smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|})
+   (={r} /\ not_done{2} /\ not_done0{2} /\
+    ={MI.func, MI.adv, MI.in_guard, glob Adv,
+      SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+      SMCSim.self, SMCSim.adv, SMCSim.st} ==>
+    ={r, MI.func, MI.adv, MI.in_guard, glob Adv,
+      SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+      SMCSim.self, SMCSim.adv, SMCSim.st}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{2} SMCIdeal.st{2}
+       [] MI.adv{2} SMCSim.st{2} MI.adv{2} MI.func{2}
+       (fset1 adv_fw_pi) r{2}.
+call (MI_KEHybrid_KEIdeal_KESim_after_adv_3 pt1' pt2' t' q').
+auto.
+inline MI_SMCIdeal_SMCSim_AfterAdv.after_adv.
+sp 3 0.
+seq 5 5 :
+  (r0{1} = r{2} /\
+   not_done1{1} = not_done{2} /\
+   ={MI.func, MI.adv, MI.in_guard,
+   SMCIdeal.self, SMCIdeal.adv, SMCIdeal.st,
+   SMCSim.self, SMCSim.adv, SMCSim.st, glob Adv}).
+sim; progress; by rewrite H.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+rcondf{2} 4; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+sp.
+if{1}.
+inline SMCRealKEIdealSimp.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv2).
+rcondf{1} 4; first auto; smt().
+rcondt{1} 6; first auto.
+rcondf{1} 7; first auto; smt().
+auto; progress.
+by rewrite (SMCSec2Rel2 _ pt1' pt2' t' q').
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto; progress.
+by rewrite (SMCSec2Rel2 _ pt1' pt2' t' q').
+seq 10 0 :
+  (r{1} = None /\
+   not_done{2} = true /\ not_done0{2} = true /\
+   m{2} = oget r{2} /\ (mod{2}, pt1{2}, pt2{2}, u{2}) = m{2} /\
+   (addr1{2}, n1{2}) = pt1{2} /\
+   ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   SMCRealKEIdealSimp.self{1} = MI.func{1} /\
+   SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
+   SMCIdeal.self{2} = MI.func{1} /\ SMCIdeal.adv{2} = MI.adv{1} /\
+   SMCSim.self{2} = MI.adv{1} /\ SMCSim.adv{2} = [] /\
+   smc_sec2_rel2
+   {|smc_sec2_rel_st_func = MI.func{1}; smc_sec2_rel_st_adv = MI.adv{1};
+     smc_sec2_rel_st_riss = SMCRealKEIdealSimp.st{1};
+     smc_sec2_rel_st_is = SMCIdeal.st{2};
+     smc_sec2_rel_st_sims = SMCSim.st{2};|}
+   pt1' pt2' t' q' /\
+   mod{2} = Adv /\ m{2}.`2.`1 <= addr1{2} /\
+   MI.func{2} ++ [2] <> m{2}.`2.`1).
+sp.
+if{1}.
+inline{1} (1) SMCRealKEIdealSimp.parties.
+rcondf{1} 3; first auto; smt().
+rcondf{1} 3; first auto; smt().
+rcondt{1} 3; first auto; smt(is_smc_real_ke_ideal_simp_state_wait_adv2).
+sp 3 0.
+if{1}.
+rcondf{1} 2; first auto.
+move => |> &hr.
+rewrite /KeyEx.is_ke_sim_rsp /KeyEx.dec_ke_sim_rsp /=.
+case 
+  (mod{hr} = Dir \/ n1{hr} <> 3 \/
+   pt2{hr}.`2 <> ke_sim_adv_pi \/ u{hr} <> UnivUnit) => //=.
+rewrite oget_some /#.
+rcondt{1} 4; first auto.
+rcondf{1} 5; first auto.
+auto; smt(le_refl).
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto; smt(le_refl).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+auto => |> &1 &2 <- [#] -> -> -> _ _ _ _.
+rewrite negb_or not_dir /=.
+smt(le_refl).
+sp 0 3.
+if{2}.
+rcondf{2} 2; first auto.
+move =>
+  |> &hr r_R pt2_r oget_dec_smc_sim_state_wait_adv2 <-
+  [] /= _ [#] _ _ _ _ _ ->>.
+rewrite /= oget_some in oget_dec_smc_sim_state_wait_adv2.
+elim oget_dec_smc_sim_state_wait_adv2 => _ _ ->.
+rewrite /KeyEx.is_ke_sim_rsp /KeyEx.dec_ke_sim_rsp /=.
+case
+  (n1{hr} <> 3 \/ pt2_r.`2 <> ke_sim_adv_pi \/ u{hr} <> UnivUnit) => //.
+rewrite oget_some /= /#.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto; progress; rewrite (SMCSec2Rel2 _ pt1' pt2' t' q') /#.
+rcondf{2} 1; first auto.
+rcondt{2} 1; first auto.        
+rcondf{2} 2; first auto.
+auto; progress; rewrite (SMCSec2Rel2 _ pt1' pt2' t' q') /#.
 qed.
 
 local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_1
