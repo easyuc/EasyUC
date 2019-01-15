@@ -251,8 +251,7 @@ type msg = (mode * port * port * univ).
    a functionality may handle messages for sub-functionalities either
    itself or by routing them to another instance of FUNC *)
 
-pred func_init_pre (self adv : addr) =
-  !(self <= adv).
+pred func_init_pre (self adv : addr) = !(self <= adv).
 
 module type FUNC = {
   (* initialize functionality, telling it its address (self) and the
@@ -280,9 +279,8 @@ module type FUNC = {
 
 (* module type of interfaces (to environment) *)
 
-pred inter_init_pre (func adv : addr, in_guard : int fset) =
-       [] < func /\ [] < adv /\ inc func adv /\
-       ! mem in_guard 0.
+pred inter_init_pre (func adv : addr) =
+       [] < func /\ [] < adv /\ inc func adv.
 
 module type INTER = {
   (* initialize interface, telling it:
@@ -295,7 +293,7 @@ module type INTER = {
 
      precondition:
 
-       inter_init_pre func adv in_guard *)
+       inter_init_pre func adv *)
 
   proc * init(func adv : addr, in_guard : int fset) : unit
 
@@ -343,8 +341,7 @@ module type INTER = {
 
 (* module type of environments, parameterized by interfaces *)
 
-pred env_init_pre (func adv : addr, in_guard : int fset) =
-  inter_init_pre func adv in_guard.
+pred env_init_pre (func adv : addr) = inter_init_pre func adv.
 
 module type ENV (Inter : INTER) = {
   (* start environment, and let it interact with Inter (only via
@@ -367,7 +364,7 @@ module type ENV (Inter : INTER) = {
      result in an error if its destination port isn't of the form
      (adv, n) for some n in in_guard
 
-     precondition : env_pre func adv in_guard *)
+     precondition : env_pre func adv *)
 
   proc * main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
@@ -376,15 +373,13 @@ module type ENV (Inter : INTER) = {
    interact with, and issue a final boolean judgment about, an
    interface, which is first initialized *)
 
-pred exper_pre (func adv : addr, in_guard : int fset) =
-       inter_init_pre func adv in_guard.
+pred exper_pre (func adv : addr) = inter_init_pre func adv.
 
-lemma exper_pre_ext1 (func adv ext : addr, in_guard : int fset) :
-  exper_pre func adv in_guard =>
-  exper_pre (func ++ ext) adv in_guard.
+lemma exper_pre_ext1 (func adv ext : addr) :
+  exper_pre func adv => exper_pre (func ++ ext) adv.
 proof.
 rewrite /exper_pre /inter_init_pre.
-move => |> gt_emp_func gt_emp_adv inc_fun_adv _.
+move => |> gt_emp_func gt_emp_adv inc_fun_adv.
 split.
 rewrite (lt_le_trans func) //.
 by rewrite leP (LES _ _ ext).
@@ -405,7 +400,7 @@ module Exper (Inter : INTER, Env : ENV) = {
 
      precondition:
 
-       exper_pre func adv in_guard *)
+       exper_pre func adv *)
 
   proc main(func adv : addr, in_guard : int fset) : bool = {
     var b : bool;

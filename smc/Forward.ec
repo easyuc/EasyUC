@@ -238,3 +238,64 @@ module Forw : FUNC = {
     return r;
   }
 }.
+
+(* termination metric and proof *)
+
+op term_metric_max : int = 2.
+
+op term_metric (st : fw_state) : int =
+     with st = FwStateInit    => 2
+     with st = FwStateWait _  => 1
+     with st = FwStateFinal _ => 0.
+
+lemma ge0_term_metric (st : fw_state) : 0 <= term_metric st.
+proof. by case st. qed.
+
+lemma term_metric_is_fw_state_wait (st : fw_state) :
+  is_fw_state_wait st => term_metric st = 1.
+proof. by case st. qed.
+
+lemma init :
+  equiv
+  [Forw.init ~ Forw.init :
+   ={self_, adv_} ==> ={res, glob Forw}].
+proof.
+proc; auto.
+qed.
+
+lemma term_init :
+  equiv
+  [Forw.init ~ Forw.init :
+   ={self_, adv_} ==>
+   ={res, glob Forw} /\ term_metric Forw.st{1} = term_metric_max].
+proof.
+proc; auto.
+qed.
+
+lemma term_invoke (n : int) :
+  equiv
+  [Forw.invoke ~ Forw.invoke :
+   ={m, glob Forw} /\
+   term_metric Forw.st{1} = n ==>
+   ={res, Forw.st} /\
+   (res{1} = None \/ term_metric Forw.st{1} = n - 1)].
+proof.
+proc; sp 1 1.
+if => //.
+if => //.
+sp 1 1.
+if; first by move => |> &1 &2 <-.
+auto => |> &1 &2 <- //.
+auto.
+if => //.
+sp 1 1.
+if => //.
+sp 1 1.
+if.
+move => &1 &2 [#] oget_dec_1 oget_dec_2 _ _ _ _ ->>.
+rewrite -oget_dec_1 /= in oget_dec_2.
+by elim oget_dec_2 => -> _.
+auto => |> &1 &2.
+smt(term_metric_is_fw_state_wait).
+auto.
+qed.

@@ -399,6 +399,18 @@ module KEReal : FUNC = {
   }
 }.
 
+lemma ke_real_init :
+  equiv
+  [KEReal.init ~ KEReal.init :
+   ={self_, adv_} ==> ={res, glob KEReal}].
+proof.
+proc.
+swap [5..6] -2.
+call Fwd2.init.
+call Fwd1.init.
+auto.
+qed.
+
 (* Ideal Functionality *)
 
 (* request sent from port index 3 of key exchange ideal functionality
@@ -653,6 +665,12 @@ module KEIdeal : FUNC = {
     return r;
   }
 }.
+
+lemma ke_ideal_init :
+  equiv
+  [KEIdeal.init ~ KEIdeal.init :
+   ={self_, adv_} ==> ={res, glob KEIdeal}].
+proof. proc; auto. qed.
 
 (* Simulator *)
 
@@ -3964,7 +3982,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_1
   [MI_KEHybrid_AfterAdv.after_adv ~
    MI_KEIdeal_KESim_AfterAdv.after_adv :
    ={r} /\ r{1} <> None /\ ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -4100,7 +4118,7 @@ seq 2 0 :
    (mod{2}, pt1{2}, pt2{2}, u{2}) = m{2} /\
    (addr1{2}, n1{2}) = pt1{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -4167,7 +4185,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
   [MI_KEHybrid_AfterAdv.after_adv ~
    MI_KEIdeal_KESim_AfterAdv.after_adv :
    ={r} /\ r{1} <> None /\ ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -4303,7 +4321,7 @@ seq 2 0 :
    (mod{2}, pt1{2}, pt2{2}, u{2}) = m{2} /\
    (addr1{2}, n1{2}) = pt1{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -4370,7 +4388,7 @@ local lemma MI_KEHybrid_KEIdeal_Sim_invoke :
   equiv
   [MI(KEHybrid, Adv).invoke ~ MI(KEIdeal, KESim(Adv)).invoke :
    ={m} /\ ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4464,7 +4482,7 @@ seq 11 4 :
   (not_done{1} /\ not_done{2} /\ not_done0{2} /\
    m0{1} = m4{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4487,7 +4505,7 @@ by move => [#] <<- <<- <<- <<- <- /= [#].
 seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
@@ -4531,7 +4549,7 @@ transitivity{1}
      KEHybrid.self, KEHybrid.adv, KEHybrid.st, glob Adv})
   (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
@@ -4559,7 +4577,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard} /\ r0{1} <> None /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -4632,7 +4650,7 @@ sp 0 6.
 seq 1 1 :
   (not_done{1} /\ not_done{2} /\ r0{1} = r2{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4680,7 +4698,7 @@ seq 2 0 :
   (r0{1} = None /\ mod0{2} = Adv /\ MI.func{2} <= addr10{2} /\
    m0{2}.`1 = mod0{2} /\ m0{2}.`2.`1 = addr10{2} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\ KEHybrid.self{1} = MI.func{1} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4756,7 +4774,7 @@ seq 1 0 :
    m1{2}.`2 = (addr11, n11){2} /\ mod1{2} = Dir /\
    MI.func{1} <= addr11{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4803,7 +4821,7 @@ sp 0 6.
 seq 1 1 :
    (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
     ={MI.func, MI.adv, MI.in_guard} /\
-    exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+    exper_pre MI.func{1} MI.adv{1} /\
     MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
     KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
     KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4847,7 +4865,7 @@ transitivity{1}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -4876,7 +4894,7 @@ transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r2);}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5010,7 +5028,7 @@ conseq
   (_ :
    m0{1} = m4{2} /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
@@ -5042,7 +5060,7 @@ elim dec_ideal_wait_eq => ->> [#] ->> ->> //.
 seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
@@ -5087,7 +5105,7 @@ transitivity{1}
      KEHybrid.self, KEHybrid.adv, KEHybrid.st, glob Adv})
   (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
@@ -5115,7 +5133,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard} /\ r0{1} <> None /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -5187,7 +5205,7 @@ sp 0 6.
 seq 1 1 :
   (not_done{1} /\ not_done{2} /\ not_done0{2} /\ r0{1} = r2{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5294,7 +5312,7 @@ seq 1 0 :
    m1{2}.`2 = (addr11, n11){2} /\ mod1{2} = Dir /\
    MI.func{1} <= addr11{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5347,7 +5365,7 @@ sp 0 6.
 seq 1 1 :
    (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
     ={MI.func, MI.adv, MI.in_guard} /\
-    exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+    exper_pre MI.func{1} MI.adv{1} /\
     MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
     KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
     KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5392,7 +5410,7 @@ transitivity{1}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5421,7 +5439,7 @@ transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r2);}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5491,7 +5509,7 @@ seq 6 0 :
   (={m} /\ r0{1} = None /\
    MI.func{1} <= m{1}.`2.`1 /\ m{1}.`1 = Dir /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
@@ -5542,7 +5560,7 @@ smt(in_fset1).
 sp 0 3.
 seq 1 1 :
   (r0{1} = r3{2} /\ not_done{1} /\ not_done{2} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
@@ -5599,7 +5617,7 @@ inline{2} (1) KEIdeal.invoke.
 sp 4 4.
 seq 2 0 :
   (r0{1} = None /\ r5{2} = None /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
@@ -5642,7 +5660,7 @@ exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
 local lemma Exper_KEHybrid_KEIdeal_KESim (func' adv' : addr) &m :
-  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  exper_pre func' adv' =>
   Pr[Exper(MI(KEHybrid, Adv), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
@@ -5657,7 +5675,7 @@ seq 12 17 :
   (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    func{1} = MI.func{1} /\ adv{1} = MI.adv{1} /\
    in_guard{1} = MI.in_guard{1} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -5672,7 +5690,7 @@ auto.
 call
   (_ :
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
@@ -5689,7 +5707,7 @@ auto; progress; by rewrite KEHybridIdealSimRel0.
 qed.
 
 lemma ke_sec (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   DDH_Adv.func{m} = func => DDH_Adv.adv{m} = adv =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
          (func, adv, fset1 adv_fw_pi) @ &m : res] -
@@ -5719,7 +5737,7 @@ lemma ke_security
       (Adv <: FUNC{MI, KEReal, KEIdeal, KESim, DDH_Adv})
       (Env <: ENV{Adv, MI, KEReal, KEIdeal, KESim, DDH_Adv})
       (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   DDH_Adv.func{m} = func => DDH_Adv.adv{m} = adv =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
          (func, adv, fset1 adv_fw_pi) @ &m : res] -
@@ -5734,889 +5752,409 @@ qed.
 
 (* termination metric and proof for KEReal *)
 
-type real_term_rel_st = {
-  real_term_rel_st_func : addr;
-  real_term_rel_st_r1s  : ke_real_p1_state;
-  real_term_rel_st_r2s  : ke_real_p2_state;
-  real_term_rel_st_fws1 : Fwd1.fw_state;
-  real_term_rel_st_fws2 : Fwd2.fw_state;
+type real_term_met_st = {
+  real_term_met_st_p1s  : ke_real_p1_state;
+  real_term_met_st_p2s  : ke_real_p2_state;
+  real_term_met_st_fws1 : Fwd1.fw_state;
+  real_term_met_st_fws2 : Fwd2.fw_state;
 }.
 
-op real_term_rel_metric_max : int = 4.
+op real_p1_term_metric_max : int = 2.
 
-pred real_term_rel0 (met : int, st : real_term_rel_st) =
-  met = 4 /\
-  (st.`real_term_rel_st_r1s  = KERealP1StateWaitReq1) /\
-  (st.`real_term_rel_st_r2s  = KERealP2StateWaitFwd1) /\
-  (st.`real_term_rel_st_fws1 = Fwd1.FwStateInit) /\
-  (st.`real_term_rel_st_fws2 = Fwd2.FwStateInit).
+op ke_real_p1_term_metric (st : ke_real_p1_state) : int =
+     with st = KERealP1StateWaitReq1   => 2
+     with st = KERealP1StateWaitFwd2 _ => 1
+     with st = KERealP1StateFinal _    => 0.
 
-pred real_term_rel1 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 : exp) =
-  met = 3 /\
-  ! (st.`real_term_rel_st_func <= pt1.`1) /\
-  ! (st.`real_term_rel_st_func <= pt2.`1) /\
-  (st.`real_term_rel_st_r1s  = KERealP1StateWaitFwd2 (pt1, pt2, q1)) /\
-  (st.`real_term_rel_st_r2s  = KERealP2StateWaitFwd1) /\
-  (st.`real_term_rel_st_fws1 =
-     Fwd1.FwStateWait
-     ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
-      univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseKey (g ^ q1))))) /\
-  (st.`real_term_rel_st_fws2 = Fwd2.FwStateInit).
+lemma ge0_real_p1_term_metric (st : ke_real_p1_state) :
+  0 <= ke_real_p1_term_metric st.
+proof. by case st. qed.
 
-pred real_term_rel2 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  met = 2 /\
-  ! (st.`real_term_rel_st_func <= pt1.`1) /\
-  ! (st.`real_term_rel_st_func <= pt2.`1) /\
-  (st.`real_term_rel_st_r1s  = KERealP1StateWaitFwd2 (pt1, pt2, q1)) /\
-  (st.`real_term_rel_st_r2s  = KERealP2StateWaitReq2 (pt1, pt2, q2)) /\
-  (st.`real_term_rel_st_fws1 =
-     Fwd1.FwStateFinal
-     ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
-      univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseKey (g ^ q1))))) /\
-  (st.`real_term_rel_st_fws2 = Fwd2.FwStateInit).
+lemma real_p1_term_metric_is_ke_real_p1_state_wait_fwd2
+      (st : ke_real_p1_state) :
+  is_ke_real_p1_state_wait_fwd2 st => ke_real_p1_term_metric st = 1.
+proof. by case st. qed.
 
-pred real_term_rel3 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  met = 1 /\
-  ! (st.`real_term_rel_st_func <= pt1.`1) /\
-  ! (st.`real_term_rel_st_func <= pt2.`1) /\
-  (st.`real_term_rel_st_r1s  = KERealP1StateWaitFwd2 (pt1, pt2, q1)) /\
-  (st.`real_term_rel_st_r2s  = KERealP2StateFinal (pt1, pt2, q2)) /\
-  (st.`real_term_rel_st_fws1 =
-     Fwd1.FwStateFinal
-     ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
-      univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseKey (g ^ q1))))) /\
-  (st.`real_term_rel_st_fws2 =
-     Fwd2.FwStateWait
-     ((st.`real_term_rel_st_func, 4), (st.`real_term_rel_st_func, 3),
-      UnivBase (BaseKey (g ^ q2)))).
+op real_p2_term_metric_max : int = 2.
 
-pred real_term_rel4 (met : int, st : real_term_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  met = 0 /\
-  ! (st.`real_term_rel_st_func <= pt1.`1) /\
-  ! (st.`real_term_rel_st_func <= pt2.`1) /\
-  (st.`real_term_rel_st_r1s  = KERealP1StateFinal (pt1, pt2, q1)) /\
-  (st.`real_term_rel_st_r2s  = KERealP2StateFinal (pt1, pt2, q2)) /\
-  (st.`real_term_rel_st_fws1 =
-     Fwd1.FwStateFinal
-     ((st.`real_term_rel_st_func, 3), (st.`real_term_rel_st_func, 4),
-      univ_triple (UnivPort pt1) (UnivPort pt2)
-                  (UnivBase (BaseKey (g ^ q1))))) /\
-  (st.`real_term_rel_st_fws2 =
-     Fwd2.FwStateFinal
-     ((st.`real_term_rel_st_func, 4), (st.`real_term_rel_st_func, 3),
-      UnivBase (BaseKey (g ^ q2)))).
+op ke_real_p2_term_metric (st : ke_real_p2_state) : int =
+     with st = KERealP2StateWaitFwd1   => 2
+     with st = KERealP2StateWaitReq2 _ => 1
+     with st = KERealP2StateFinal _    => 0.
 
-inductive real_term_rel (met : int, st : real_term_rel_st) =
-    RealTermRel0 of (real_term_rel0 met st)
-  | RealTermRel1 (pt1 pt2 : port, q1 : exp) of
-      (real_term_rel1 met st pt1 pt2 q1)
-  | RealTermRel2 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_term_rel2 met st pt1 pt2 q1 q2)
-  | RealTermRel3 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_term_rel3 met st pt1 pt2 q1 q2)
-  | RealTermRel4 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_term_rel4 met st pt1 pt2 q1 q2).
+lemma ge0_real_p2_term_metric (st : ke_real_p2_state) :
+  0 <= ke_real_p2_term_metric st.
+proof. by case st. qed.
 
-lemma real_term_rel_ge0_met (met : int, st : real_term_rel_st) :
-  real_term_rel met st => 0 <= met.
-proof. by case; delta. qed.
+lemma real_p2_term_metric_is_ke_real_p2_state_wait_req2
+      (st : ke_real_p2_state) :
+  is_ke_real_p2_state_wait_req2 st => ke_real_p2_term_metric st = 1.
+proof. by case st. qed.
 
-lemma KEReal_term_init (func adv : addr) :
-  equiv
-  [KEReal.init ~ KEReal.init :
-   ={self_, adv_} /\ self_{1} = func /\ adv_{1} = adv ==>
-   ={glob KEReal} /\
-   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
-   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
-   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
-   real_term_rel real_term_rel_metric_max
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}].
+op real_term_metric_max : int =
+     real_p1_term_metric_max +
+     real_p2_term_metric_max +
+     Fwd1.term_metric_max +
+     Fwd2.term_metric_max.
+
+op real_term_metric (rtms : real_term_met_st) : int =
+     ke_real_p1_term_metric rtms.`real_term_met_st_p1s +
+     ke_real_p2_term_metric rtms.`real_term_met_st_p2s +
+     Fwd1.term_metric rtms.`real_term_met_st_fws1 +
+     Fwd2.term_metric rtms.`real_term_met_st_fws2.
+
+lemma ge0_real_term_metric (rtms : real_term_met_st) :
+  0 <= real_term_metric rtms.
 proof.
-proc; inline*; auto; progress; by rewrite RealTermRel0.
+delta.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd1.ge0_term_metric Fwd2.ge0_term_metric).
 qed.
 
-lemma KEReal_term_invoke (func adv : addr, met : int) :
+lemma real_term_metric0 (rtms : real_term_met_st) :
+  real_term_metric rtms = 0 =>
+  ke_real_p1_term_metric rtms.`real_term_met_st_p1s = 0 /\
+  ke_real_p2_term_metric rtms.`real_term_met_st_p2s = 0 /\
+  Fwd1.term_metric rtms.`real_term_met_st_fws1 = 0 /\
+  Fwd2.term_metric rtms.`real_term_met_st_fws2 = 0.
+proof.
+delta.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd1.ge0_term_metric Fwd2.ge0_term_metric).
+qed.
+
+lemma ke_real_term_init :
   equiv
-  [KEReal.invoke ~ KEReal.invoke :
-   ! func <= adv /\ ={m, glob KEReal} /\
-   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
-   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
-   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
-   real_term_rel met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|} ==>
+  [KEReal.init ~ KEReal.init :
+   ={self_, adv_} ==>
    ={res, glob KEReal} /\
-   ((exists met',
-     met' < met /\
-     real_term_rel met'
-     {|real_term_rel_st_func = func;
-       real_term_rel_st_r1s  = KEReal.st1{1};
-       real_term_rel_st_r2s  = KEReal.st2{1};
-       real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-       real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}) \/
-    res{1} = None /\
-    real_term_rel met
-    {|real_term_rel_st_func = func;
-      real_term_rel_st_r1s  = KEReal.st1{1};
-      real_term_rel_st_r2s  = KEReal.st2{1};
-      real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-      real_term_rel_st_fws2 = Fwd2.Forw.st{1}|})].
+   real_term_metric
+   {|real_term_met_st_p1s = KEReal.st1{1};
+     real_term_met_st_p2s = KEReal.st2{1};
+     real_term_met_st_fws1 = Fwd1.Forw.st{1};
+     real_term_met_st_fws2 = Fwd2.Forw.st{1}|} =
+   real_term_metric_max].
 proof.
 proc.
-case
-  (real_term_rel0 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}).
-sp 3 3.
+swap [5..6] -2.
+call Fwd2.term_init.
+call Fwd1.term_init.
+auto; progress; smt().
+qed.
+
+lemma ke_real_term_invoke (n : int) :
+  equiv
+  [KEReal.invoke ~ KEReal.invoke :
+   ={m, glob KEReal} /\
+   real_term_metric
+   {|real_term_met_st_p1s = KEReal.st1{1};
+     real_term_met_st_p2s = KEReal.st2{1};
+     real_term_met_st_fws1 = Fwd1.Forw.st{1};
+     real_term_met_st_fws2 = Fwd2.Forw.st{1}|} = n ==>
+   ={res, KEReal.st1, KEReal.st2, Fwd1.Forw.st, Fwd2.Forw.st} /\
+   (res{1} = None \/
+    real_term_metric
+    {|real_term_met_st_p1s = KEReal.st1{1};
+      real_term_met_st_p2s = KEReal.st2{1};
+      real_term_met_st_fws1 = Fwd1.Forw.st{1};
+      real_term_met_st_fws2 = Fwd2.Forw.st{1}|} < n)].
+proof.
+case (n < 0).
+move => lt0_n.
+proc; exfalso; smt(ge0_real_term_metric).
+rewrite -lezNgt.
+move => ge0_n.
+proc; sp 3 3.
 if => //.
 inline KEReal.loop.
-wp; sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp 3 3; wp.
+conseq
+  (_ :
+   ={not_done, m0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
+   not_done{1} /\
+   real_term_metric
+   {|real_term_met_st_p1s = KEReal.st1{1};
+     real_term_met_st_p2s = KEReal.st2{1};
+     real_term_met_st_fws1 = Fwd1.Forw.st{1};
+     real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n ==>
+   _) => //.
+move : ge0_n.
+elim n.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
 if => //.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
-sp 2 2.
+inline{1} (1) KEReal.party1.
+inline{2} (1) KEReal.party1.
+rcondf{1} 3; first auto; smt(real_term_metric0).
+rcondf{2} 3; first auto; smt(real_term_metric0).
+rcondf{1} 3; first auto;
+  smt(real_term_metric0 real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
+rcondf{2} 3; first auto;
+  smt(real_term_metric0 real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{1} 5; first auto.
+rcondf{2} 5; first auto.
+auto.
 if => //.
-sp 1 1.
-if; first move => |> &1 &2 <- //.
+inline{1} (1) KEReal.party2.
+inline{2} (1) KEReal.party2.
+rcondf{1} 3; first auto; smt(real_term_metric0).
+rcondf{2} 3; first auto; smt(real_term_metric0).
+rcondf{1} 3; first auto;
+  smt(real_term_metric0 real_p2_term_metric_is_ke_real_p2_state_wait_req2).
+rcondf{2} 3; first auto;
+  smt(real_term_metric0 real_p2_term_metric_is_ke_real_p2_state_wait_req2).
+rcondt{1} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{1} 5; first auto.
+rcondf{2} 5; first auto.
+auto.
+if => //.
 seq 1 1 :
-  (! func <= adv /\ ={m, glob KEReal} /\
-   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
-   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
-   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
-   real_term_rel0 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|} /\
-   ={q1, pt10, pt20} /\ not_done{1} /\ not_done{2} /\
-   ! KEReal.self{1} <= pt10{1}.`1 /\
-   ! KEReal.self{1} <= pt20{1}.`1).
-by auto => |> &1 &2 <-.
-rcondf{1} 4; first auto;
-  progress; rewrite oget_some /fw_req /= le_ext_r.
-rcondf{2} 4; first auto;
-  progress; rewrite oget_some /fw_req /= le_ext_r.
-rcondt{1} 5; first auto. rcondt{2} 5; first auto.
-rcondf{1} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{2} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{1} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{2} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondt{1} 5; first auto; progress;
-  rewrite oget_some /fw_req /= le_refl.
-rcondt{2} 5; first auto; progress;
-  rewrite oget_some /fw_req /= le_refl.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondt{1} 7; first auto; smt(). rcondt{2} 7; first auto; smt().
-rcondt{1} 7; first auto. rcondt{2} 7; first auto.
-rcondt{1} 8; first auto; progress;
-  [by rewrite oget_some Fwd1.enc_dec_fw_req oget_some |
-   by rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l |
-   by rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l].
-rcondt{2} 8; first auto; progress;
-  [by rewrite oget_some Fwd1.enc_dec_fw_req oget_some |
-   by rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l |
-   by rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l].
-rcondt{1} 11; first auto. rcondt{2} 11; first auto.
-rcondf{1} 12; first auto. rcondf{2} 12; first auto.
-auto; progress; exists (met - 1).
-split; first smt().
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=
-        (RealTermRel1 (met - 1) _ pt10{2} pt20{2} q1{2})
-        /#.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
+  (={not_done, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
+   r0{1} = None).
+call (Fwd1.term_invoke 0).
+auto; progress; smt(real_term_metric0 Fwd1.ge0_term_metric).
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+seq 1 1 :
+  (={not_done, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
+   r0{1} = None).
+call (Fwd2.term_invoke 0).
+auto; progress; smt(real_term_metric0 Fwd2.ge0_term_metric).
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+move => n ge0_n IH.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+seq 1 1 :
+   (={not_done, m0, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
+    not_done{1} /\
+    (r0{1} = None \/
+     real_term_metric
+     {|real_term_met_st_p1s = KEReal.st1{1};
+       real_term_met_st_p2s = KEReal.st2{1};
+       real_term_met_st_fws1 = Fwd1.Forw.st{1};
+       real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n)).
 if => //.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
+inline KEReal.party1.
 sp 2 2.
 if => //.
-rcondf{1} 2; first auto => &hr |> _ _ _ [];
-  [smt(Fwd1.dest_good_fw_rsp) |
-   move => [#] -> _;
-   rewrite /Fwd1.is_fw_rsp /Fwd1.dec_fw_rsp /#].
-rcondf{2} 2; first auto => &hr |> _ _ _ [];
-  [smt(Fwd1.dest_good_fw_rsp) |
-   move => [#] -> _;
-   rewrite /Fwd1.is_fw_rsp /Fwd1.dec_fw_rsp /#].
-rcondt{1} 3; first auto. rcondt{2} 3; first auto.
-rcondf{1} 4; first auto. rcondf{2} 4; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
 if => //.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q1,
-   real_term_rel1 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}
-   pt1 pt2 q1).
-elim* => pt1' pt2' q1'.
-sp 3 3.
+sp 1 1.
+if; first by move => &1 &2 |> <-.
+auto => &1 &2 |> <-; smt().
+auto.
+auto.
 if => //.
-inline KEReal.loop.
-wp; sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp 1 1.
 if => //.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{2} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-sp 3 3.
+sp 1 1.
+if.
+move => &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1 _ _ ->> _
+        ->> _ _ ->>.
+rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
+by elim oget_dec_fw_rsp1.
+auto => |> &1 &2 <- [#] _ _ _ -> <- [#] -> -> -> _ /=.
+rewrite /real_term_metric /=.
+smt(real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
+auto.
+auto.
+auto.
+inline KEReal.party2.
 if => //.
-rcondf{1} 2; first auto => &hr |> _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondf{2} 2; first auto => &hr |> _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondt{1} 3; first auto. rcondt{2} 3; first auto.
-rcondf{1} 4; first auto. rcondf{2} 4; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondt{1} 3; first auto; smt().
-rcondt{2} 3; first auto; smt().
 sp 2 2.
 if => //.
-rcondf{1} 2; first auto => &hr |> _ _ _ _ _ _ [];
-  [smt(Fwd1.dest_good_fw_rsp) |
-   rewrite /Fwd1.is_fw_rsp /Fwd1.dec_fw_rsp /#].
-rcondf{2} 2; first auto => &hr |> _ _ _ _ _ _ [];
-  [smt(Fwd1.dest_good_fw_rsp) |
-   rewrite /Fwd1.is_fw_rsp /Fwd1.dec_fw_rsp /#].
-rcondt{1} 3; first auto. rcondt{2} 3; first auto.
-rcondf{1} 4; first auto. rcondf{2} 4; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondt{2} 3; first auto; smt(Fwd1.is_fw_state_wait).
-sp 3 3.
 if => //.
 sp 1 1.
 if.
-auto => &1 &2 [#] dec_fw_ok2 dec_fw_ok1 ->> _ _ ->> _ _
-        ->> _ _ ->> _ _ _ _ _ _ _ _ _ ->> _ _ _ _ _ _ _
-        _ _ -> _ _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite -dec_fw_ok2 in dec_fw_ok1.
-by elim dec_fw_ok1 => ->.
-rcondf{1} 4; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _
-        [] /= _ [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] -> _ /=.
-rewrite le_refl.
-rcondf{2} 4; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state _ _ _ _ _ [] _ /=
-        [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] -> _ /=.
-rewrite le_refl.
-rcondt{1} 5; first auto. rcondt{2} 5; first auto.
-rcondf{1} 5; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondf{2} 5; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondt{1} 5; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondt{2} 5; first auto => |> &hr.
-rewrite oget_some /Fwd1.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondt{1} 7; first auto; smt(). rcondt{2} 7; first auto; smt().
-rcondt{1} 7; first auto; smt(). rcondt{2} 7; first auto; smt().
-rcondt{1} 8; first auto => |> &hr.
-rewrite oget_some Fwd1.enc_dec_fw_rsp oget_some /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondt{2} 8; first auto => |> &hr.
-rewrite oget_some Fwd1.enc_dec_fw_rsp oget_some /=.
-move => _ _ ^ dec_fwd_state <- [#] _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ ->> _ _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#].
-rcondt{1} 16; first auto.
-move => |> &hr _ _ ^ dec_fwd_state <- [#] -> -> ->
-        _ _ _ [] _ /= [#] _ _ _ _ ->> _ _ _ _ _ _ q20 _.
-rewrite !oget_some /= Fwd1.enc_dec_fw_rsp oget_some /ke_rsp1 /=.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] _ -> /=.
-by rewrite enc_dec_univ_triple oget_some /= oget_some.
-rcondt{2} 16; first auto.
-move => |> &hr _ _ ^ dec_fwd_state <- [#] _ _ _
-        _ _ _ [] _ /= [#] _ _ _ _ ->> _ _ _ _ _ _ q20 _.
-rewrite !oget_some /= Fwd1.enc_dec_fw_rsp oget_some /ke_rsp1 /=.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] _ -> /=.
-by rewrite enc_dec_univ_triple oget_some /= oget_some.
-rcondf{1} 17; first auto. rcondf{2} 17; first auto.
-auto => |> &1 &2 _ _ ^ dec_fwd_state <- [#] -> -> -> _ _ _
-        [] -> /= [#] pt1'_out pt2'_out -> _ ->> ->
-        _ _ _ _ _ q2L _.
-rewrite !oget_some !Fwd1.enc_dec_fw_rsp !oget_some /=.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => -> [#] -> ->.
-exists 2. split => //.
-by rewrite /= enc_dec_univ_triple oget_some /= !oget_some
-          (RealTermRel2 _ _ pt1' pt2' q1' q2L)
-          /real_term_rel2.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q1 q2,
-   real_term_rel2 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}
-   pt1 pt2 q1 q2).
-elim* => pt1' pt2' q1' q2'.
-sp 3 3.
-if => //.
-inline KEReal.loop.
-wp; sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-if => //.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{2} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-sp 3 3.
-if => //.
-rcondf{1} 2; first auto => &hr |> _ _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   move => [#] -> _;
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondf{2} 2; first auto => &hr |> _ _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   move => [#] -> _;
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondt{1} 3; first auto. rcondt{2} 3; first auto.
-rcondf{1} 4; first auto. rcondf{2} 4; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(is_ke_real_p2_state_wait_req2).
-rcondt{2} 3; first auto; smt(is_ke_real_p2_state_wait_req2).
-sp 3 3.
+move =>
+  &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1 ->> _ ->> _ _ ->>.
+rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
+by elim oget_dec_fw_rsp1.
+auto => &1 &2 |> <-; smt().
+auto.
+auto.
 if => //.
 sp 1 1.
-if.
-move => &1 &2 [#] dec_req2_2 dec_req2_1 ->> _ dec_p2_wait_req2_2 ->>
-        _ dec_p2_wait_req2_1 ->> _ _ ->> _ _ _ _ _ _ _ _ _ ->> ->>.
-rewrite -dec_req2_2 in dec_req2_1.
-elim dec_req2_1 => _ ->.
-rewrite -dec_p2_wait_req2_2 in dec_p2_wait_req2_1.
-by elim dec_p2_wait_req2_1 => _ ->.
-rcondf{1} 4; first auto;
-  progress; rewrite oget_some /fw_req /= le_ext_r.
-rcondf{2} 4; first auto;
-  progress; rewrite oget_some /fw_req /= le_ext_r.
-rcondt{1} 5; first auto. rcondt{2} 5; first auto.
-rcondf{1} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{2} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{1} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{2} 5; first auto; progress;
-  by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
-rcondf{1} 5; first auto; progress;
-  rewrite oget_some /fw_req /=
-          (not_le_other_branch KEReal.self{m}
-           (KEReal.self{m} ++ [2]) 2 1) // le_refl.
-rcondf{2} 5; first auto; progress;
-  rewrite oget_some /fw_req /=
-          (not_le_other_branch KEReal.self{hr}
-           (KEReal.self{hr} ++ [2]) 2 1) // le_refl.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondt{1} 7; first auto; smt(). rcondt{2} 7; first auto; smt().
-rcondt{1} 7; first auto. rcondt{2} 7; first auto.
-rcondt{1} 8; first auto; progress;
-  [by rewrite oget_some Fwd2.enc_dec_fw_req oget_some |
-   by rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l |
-   by rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l].
-rcondt{2} 8; first auto; progress;
-  [by rewrite oget_some Fwd2.enc_dec_fw_req oget_some |
-   by rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l |
-   by rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=
-              not_le_ext_nonnil_l].
-rcondt{1} 11; first auto. rcondt{2} 11; first auto.
-rcondf{1} 12; first auto. rcondf{2} 12; first auto.
-auto => |> &1 &2 _ _.
-rewrite !oget_some !Fwd2.enc_dec_fw_req !/Fwd2.fw_obs !oget_some /=.
-move => ^ dec_p2_wait_req2 <- [#] -> -> -> _ _ _ _
-        [] -> /= [#] pt1'_out pt2'_out -> ->> _ _ _ _ _ _.
-rewrite /= oget_some in dec_p2_wait_req2.
-elim dec_p2_wait_req2 => -> -> ->.
-exists 1; split => //.
-by rewrite (RealTermRel3 1 _ pt1' pt2' q1' q2').
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondf{2} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q1 q2,
-   real_term_rel3 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}
-   pt1 pt2 q1 q2).
-elim* => pt1' pt2' q1' q2'.
-sp 3 3.
-if => //.
-inline KEReal.loop.
-wp; sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-if => //.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{2} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-sp 3 3.
-if => //.
-rcondf{1} 2; first auto => &hr |> _ _ _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondf{2} 2; first auto => &hr |> _ _ _ _ _ _ _ _ [];
-  [smt(Fwd2.dest_good_fw_rsp) |
-   rewrite /Fwd2.is_fw_rsp /Fwd2.dec_fw_rsp /#].
-rcondt{1} 3; first auto. rcondt{2} 3; first auto.
-rcondf{1} 4; first auto. rcondf{2} 4; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_real_p2_state_wait_req2).
-rcondf{2} 3; first auto; smt(is_ke_real_p2_state_wait_req2).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondf{2} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(Fwd2.is_fw_state_wait).
-rcondt{2} 3; first auto; smt(Fwd2.is_fw_state_wait).
-sp 3 3.
 if => //.
 sp 1 1.
-if.
-auto => &1 &2 [#] dec_fw_ok2 dec_fw_ok1 ->> _ _ ->> _ _
-        ->> _ _ ->> _ _ _ _ _ _ _ _ _ ->> _ _ _ _ _ _ ->
-        _ _ -> _ _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite -dec_fw_ok2 in dec_fw_ok1.
-by elim dec_fw_ok1 => ->.
-rcondf{1} 4; first auto => |> &hr.
-rewrite oget_some /Fwd2.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ _ _
-        [] /= _ [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] -> _ /=.
-rewrite le_refl.
-rcondf{2} 4; first auto => |> &hr.
-rewrite oget_some /Fwd2.fw_rsp /=.
-move => _ _ ^ dec_fwd_state _ _ _ _ _ _ _ [] _ /=
-        [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => _ [#] -> _ /=.
-rewrite le_refl.
-rcondt{1} 5; first auto. rcondt{2} 5; first auto.
-rcondt{1} 5; first auto => |> &hr.
-rewrite oget_some /Fwd2.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondt{2} 5; first auto => |> &hr.
-rewrite oget_some /Fwd2.fw_rsp /=.
-move => _ _ ^ dec_fwd_state <- [#] _ _ _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondf{1} 7; first auto; smt(). rcondf{2} 7; first auto; smt().
-rcondt{1} 7; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{2} 7; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{1} 8; first auto; smt(). rcondt{2} 8; first auto; smt().
-rcondt{1} 9; first auto => |> &hr.
-rewrite oget_some Fwd2.enc_dec_fw_rsp oget_some /=.
-move => _ _ ^ dec_fwd_state <- [#] _ -> _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#] -> _.
-rcondt{2} 9; first auto => |> &hr.
-rewrite oget_some Fwd2.enc_dec_fw_rsp oget_some /=.
-move => _ _ ^ dec_fwd_state <- [#] _ _ _ _ _ _ _ _ []
-        _ /= [#] _ _ _ _ _ ->> _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-by elim dec_fwd_state => _ [#].
-rcondt{1} 13; first auto.
-move => |> &hr _ _ <- [#] -> -> -> _ _ _ _ _ [] _ /=
-        [#] pt1'_out pt2'_out -> //.
-rcondt{2} 13; first auto.
-move => |> &hr _ _ <- [#] _ _ _  _ _ _ _ _ [] _ /=
-        [#] pt1'_out pt2'_out -> //.
-rcondf{1} 14; first auto. rcondf{2} 14; first auto.
-auto => |> &1 &2 _ _ ^ dec_fwd_state <- [#] -> -> -> _ _ _ _ _
-        [] -> /= [#] pt1'_out pt2'_out -> _ _ ->>
-        _ _ _ _ _.
-rewrite /= oget_some /= in dec_fwd_state.
-elim dec_fwd_state => -> [#] -> ->.
-exists 0; split => //.
-rewrite /= oget_some (RealTermRel4 _ _ pt1' pt2' q1' q2')
-        /real_term_rel4 /= /#.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-rcondt{1} 2; first auto. rcondt{2} 2; first auto.
-rcondf{1} 3; first auto. rcondf{2} 3; first auto.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q1 q2,
-   real_term_rel4 met
-   {|real_term_rel_st_func = func;
-     real_term_rel_st_r1s  = KEReal.st1{1};
-     real_term_rel_st_r2s  = KEReal.st2{1};
-     real_term_rel_st_fws1 = Fwd1.Forw.st{1};
-     real_term_rel_st_fws2 = Fwd2.Forw.st{1}|}
-   pt1 pt2 q1 q2).
-elim* => pt1' pt2' q1' q2'.
-sp 3 3.
 if => //.
-inline KEReal.loop.
-wp; sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+move =>
+  &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1
+  oget_dec_wait_req2_2 oget_dec_wait_req2_1
+  ->> _ ->> _ _ ->> ->>.
+rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
+elim oget_dec_fw_rsp1.
+rewrite -oget_dec_wait_req2_2 /= in oget_dec_wait_req2_1.
+by elim oget_dec_wait_req2_1.
+auto => &1 &2 |> <- [#] _ -> <-.
+progress.
+smt(real_p2_term_metric_is_ke_real_p2_state_wait_req2).
+auto.
+auto.
+auto.
 if => //.
-inline{1} (1) KEReal.party1. inline{2} (1) KEReal.party1.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondf{2} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
+exlim (Fwd1.term_metric Fwd1.Forw.st{1}) => m.
+call (Fwd1.term_invoke m).
+auto.
+auto; progress; smt().
+exlim (Fwd2.term_metric Fwd2.Forw.st{1}) => m.
+call (Fwd2.term_invoke m).
+auto.
+auto; progress; smt().
 if => //.
-inline{1} (1) KEReal.party2. inline{2} (1) KEReal.party2.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondf{2} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-if => //.
-inline{1} (1) Fwd1.Forw.invoke. inline{2} (1) Fwd1.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondf{2} 3; first auto; smt(Fwd1.is_fw_state_wait).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-inline{1} (1) Fwd2.Forw.invoke. inline{2} (1) Fwd2.Forw.invoke.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(Fwd2.is_fw_state_wait).
-rcondf{2} 3; first auto; smt(Fwd2.is_fw_state_wait).
-rcondt{1} 4; first auto. rcondt{2} 4; first auto.
-rcondf{1} 5; first auto. rcondf{2} 5; first auto.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; smt().
+sp 1 1.
+conseq
+  (_ :
+    ={not_done, m0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
+    not_done{1} /\
+    real_term_metric
+    {|real_term_met_st_p1s = KEReal.st1{1};
+      real_term_met_st_p2s = KEReal.st2{1};
+      real_term_met_st_fws1 = Fwd1.Forw.st{1};
+      real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n ==>
+    ={r0, KEReal.st1, KEReal.st2, Fwd1.Forw.st, Fwd2.Forw.st} /\
+    (r0{1} = None \/
+     real_term_metric
+     {|real_term_met_st_p1s = KEReal.st1{1};
+       real_term_met_st_p2s = KEReal.st2{1};
+       real_term_met_st_fws1 = Fwd1.Forw.st{1};
+       real_term_met_st_fws2 = Fwd2.Forw.st{1};|} < n)) => //.
+progress; smt().
+progress; smt().
 qed.
 
 (* termination metric and proof for KEIdeal *)
 
-type ideal_term_rel_st = {
-  ideal_term_rel_st_is   : ke_ideal_state;
-}.
+op ideal_term_metric_max : int = 4.
 
-op ideal_term_rel_metric_max : int = 4.
+op ideal_term_metric (st : ke_ideal_state) : int =
+     with st = KEIdealStateWaitReq1   => 4
+     with st = KEIdealStateWaitSim1 _ => 3
+     with st = KEIdealStateWaitReq2 _ => 2
+     with st = KEIdealStateWaitSim2 _ => 1
+     with st = KEIdealStateFinal    _ => 0.
 
-pred ideal_term_rel0 (met : int, st : ideal_term_rel_st) =
-  met = 4 /\
-  (st.`ideal_term_rel_st_is = KEIdealStateWaitReq1).
+lemma ge0_ideal_term_metric (st : ke_ideal_state) :
+  0 <= ideal_term_metric st.
+proof. by case st. qed.
 
-pred ideal_term_rel1 (met : int, st : ideal_term_rel_st, pt1 pt2 : port) =
-  met = 3 /\
-  (st.`ideal_term_rel_st_is = KEIdealStateWaitSim1 (pt1, pt2)).
+lemma ideal_term_metric_is_ke_ideal_state_wait_sim1
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_sim1 st => ideal_term_metric st = 3.
+proof. by case st. qed.
 
-pred ideal_term_rel2 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
-  met = 2 /\
-  (st.`ideal_term_rel_st_is = KEIdealStateWaitReq2 (pt1, pt2, q)).
+lemma ideal_term_metric_is_ke_ideal_state_wait_req2
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_req2 st => ideal_term_metric st = 2.
+proof. by case st. qed.
 
-pred ideal_term_rel3 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
-  met = 1 /\
-  (st.`ideal_term_rel_st_is = KEIdealStateWaitSim2 (pt1, pt2, q)).
+lemma ideal_term_metric_is_ke_ideal_state_wait_sim2
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_sim2 st => ideal_term_metric st = 1.
+proof. by case st. qed.
 
-pred ideal_term_rel4 (met : int, st : ideal_term_rel_st, pt1 pt2 : port, q : exp) =
-  met = 0 /\
-  (st.`ideal_term_rel_st_is = KEIdealStateFinal (pt1, pt2, q)).
-
-inductive ideal_term_rel (met : int, st : ideal_term_rel_st) =
-    IdealTermRel0 of (ideal_term_rel0 met st)
-  | IdealTermRel1 (pt1 pt2 : port) of
-      (ideal_term_rel1 met st pt1 pt2)
-  | IdealTermRel2 (pt1 pt2 : port, q : exp) of
-      (ideal_term_rel2 met st pt1 pt2 q)
-  | IdealTermRel3 (pt1 pt2 : port, q : exp) of
-      (ideal_term_rel3 met st pt1 pt2 q)
-  | IdealTermRel4 (pt1 pt2 : port, q : exp) of
-      (ideal_term_rel4 met st pt1 pt2 q).
-
-lemma ideal_term_rel_ge0_met (met : int, st : ideal_term_rel_st) :
-  ideal_term_rel met st => 0 <= met.
-proof. by case; delta. qed.
-
-lemma KEIdeal_term_init (func : addr) :
+lemma ke_ideal_term_init :
   equiv
   [KEIdeal.init ~ KEIdeal.init :
-   ={self_, adv_} /\ self_{1} = func ==>
-   ={glob KEIdeal} /\ KEIdeal.self{1} = func /\
-   ideal_term_rel ideal_term_rel_metric_max
-   {|ideal_term_rel_st_is = KEIdeal.st{1};|}].
-proof.
-proc; inline*; auto; progress; by rewrite IdealTermRel0.
-qed.
+   ={self_, adv_} ==>
+   ={res, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = ideal_term_metric_max].
+proof. proc; auto. qed.
 
-lemma KEIdeal_term_invoke (func adv : addr, met : int) :
+lemma ke_ideal_term_invoke_min1 (n : int) :
   equiv
   [KEIdeal.invoke ~ KEIdeal.invoke :
-   ={m, glob KEIdeal} /\ KEIdeal.self{1} = func /\
-   ideal_term_rel met
-   {|ideal_term_rel_st_is = KEIdeal.st{1};|} ==>
-   ={res, glob KEIdeal} /\
-   ((exists met',
-     met' < met /\
-     ideal_term_rel met'
-     {|ideal_term_rel_st_is = KEIdeal.st{1}|}) \/
-    res{1} = None /\
-    ideal_term_rel met
-    {|ideal_term_rel_st_is = KEIdeal.st{1}|})].
+   ={m, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = n ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)].
 proof.
-proc.
-case
-  (ideal_term_rel0 met
-   {|ideal_term_rel_st_is = KEIdeal.st{1}|}).
-sp 3 3.
+proc; sp 3 3.
 if => //.
 inline KEIdeal.parties.
-rcondt{1} 3; first auto; smt(). rcondt{2} 3; first auto; smt().
 sp 2 2.
 if => //.
-sp 1 1.
-if; first move => |> &1 &2 <- //.
-auto => |> &1 &2 <- [#] _ -> -> _ []-> /=.
-progress; exists 3.
-by rewrite (IdealTermRel1 3 _ pt10{2} pt20{2}).
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2,
-   ideal_term_rel1 met
-   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
-   pt1 pt2).
-elim* => pt1' pt2'.
-sp 3 3.
-if => //.
-inline KEIdeal.parties.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-sp 3 3.
-if => //.
-auto => |> &1 &2 <- [#] -> -> _ _ [] -> /=.
-progress; exists 2.
-by rewrite (IdealTermRel2 2 _ pt10{2} pt20{2} qL).
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q,
-   ideal_term_rel2 met
-   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
-   pt1 pt2 q).
-elim* => pt1' pt2' q'.
-sp 3 3.
-if => //.
-inline KEIdeal.parties.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-sp 3 3.
 if => //.
 sp 1 1.
-if.
-move => &1 &2 [#] dec_req2_2 dec_req2_1 ->> _ dec_wait_req2_2
-        ->> _ dec_wait_req2_1 _ _ _ _ _ _ ->> ->> _ _ _ _ _ _
-        [] _ /= _ _ _.
-rewrite -dec_req2_2 in dec_req2_1.
-elim dec_req2_1 => _ ->.
-rewrite -dec_wait_req2_2 in dec_wait_req2_1.
-elim dec_wait_req2_1 => _ -> _ //.
-auto => |> &1 &2 <- [#] _ -> <- [#] -> -> -> _ _ _ [] ->.
-progress; exists 1.
-by rewrite (IdealTermRel3 1 _ pt10{2} pt20{2} q{2}).
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q,
-   ideal_term_rel3 met
-   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
-   pt1 pt2 q).
-elim* => pt1' pt2' q'.
-sp 3 3.
+if; first by move => |> &1 &2 <-.
+auto =>
+  &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
+  ->>.
+rewrite -oget_req1_2 /= in oget_req1_1.
+by elim oget_req1_1 => _ [#] -> ->.
+auto.
+auto.
 if => //.
-inline KEIdeal.parties.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-rcondt{1} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
-rcondt{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
-sp 3 3.
+sp 1 1.
 if => //.
-auto => |> &1 &2 <- [#] -> -> -> _ _ _ _ [] ->.
-progress; exists 0.
-by rewrite (IdealTermRel4 0 _ pt10{2} pt20{2} q{2}).
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-case
-  (exists pt1 pt2 q,
-   ideal_term_rel4 met
-   {|ideal_term_rel_st_is = KEIdeal.st{1}|}
-   pt1 pt2 q).
-elim* => pt1' pt2' q'.
-sp 3 3.
+auto.
+auto =>
+  &1 &2 [#] oget_wait_sim1_2 oget_wait_sim1_1 ->> _ ->> _ _ _ _ _ _ _
+  ->> ->>.
+rewrite -oget_wait_sim1_2 /= in oget_wait_sim1_1.
+elim oget_wait_sim1_1 => -> [#] ->.
+smt(ideal_term_metric_is_ke_ideal_state_wait_sim1).
+auto.
 if => //.
-inline KEIdeal.parties.
-rcondf{1} 3; first auto; smt(). rcondf{2} 3; first auto; smt().
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim1).
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_req2).
-rcondf{1} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
-rcondf{2} 3; first auto; smt(is_ke_ideal_state_wait_sim2).
-auto; progress; right; trivial.
-auto; progress; right; trivial.
-exfalso => &1 &2 [#] _ _ _ _ _ []; smt().
+sp 1 1.
+if => //.
+sp 1 1.
+if => //.
+auto =>
+  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
+  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
+rewrite -oget_req2_2 /= in oget_req2_1.
+elim oget_req2_1 => _ ->.
+rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
+by elim oget_wait_req2_1 => _ [#] ->.
+auto =>
+  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
+  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
+rewrite -oget_req2_2 /= in oget_req2_1.
+elim oget_req2_1 => _ ->.
+rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
+smt(ideal_term_metric_is_ke_ideal_state_wait_req2).
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+auto =>
+   &1 &2 [#] oget_wait_req2_2 oget_wait_req2_1 ->> _ ->> _ _ _ _ _ _ _
+   ->> ->>.
+rewrite -oget_wait_req2_2 in oget_wait_req2_1.
+elim oget_wait_req2_1 => -> -> ->.
+smt(ideal_term_metric_is_ke_ideal_state_wait_sim2). 
+auto.
+auto.
+qed.
+
+lemma ke_ideal_term_invoke (n : int) :
+  equiv
+  [KEIdeal.invoke ~ KEIdeal.invoke :
+   ={m, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = n ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} < n)].
+proof.
+conseq
+  (_ :
+   _ ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)).
+progress.
+smt(ge0_ideal_term_metric).
+apply (ke_ideal_term_invoke_min1 n).
 qed.

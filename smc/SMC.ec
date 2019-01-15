@@ -1826,18 +1826,162 @@ declare module Adv : FUNC{MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
 declare module Env : ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
                          KeyEx.DDH_Adv, CompEnv}.
 
+type real_term_met_st = {
+  real_term_met_st_p1s : smc_real_p1_state;
+  real_term_met_st_p2s : smc_real_p2_state;
+  real_term_met_st_fws : Fwd.fw_state;
+  real_term_met_st_kes : KeyEx.real_term_met_st
+}.
+
+op real_p1_term_metric_max : int = 2.
+
+op real_p1_term_metric (st : smc_real_p1_state) : int =
+     with st = SMCRealP1StateWaitReq   => 2
+     with st = SMCRealP1StateWaitKE2 _ => 1
+     with st = SMCRealP1StateFinal _   => 0.
+
+lemma ge0_real_p1_term_metric (st : smc_real_p1_state) :
+  0 <= real_p1_term_metric st.
+proof. by case st. qed.
+
+lemma real_p1_term_metric_is_smc_real_p1_state_wait_ke2
+      (st : smc_real_p1_state) :
+  is_smc_real_p1_state_wait_ke2 st => real_p1_term_metric st = 1.
+proof. by case st. qed.
+
+op real_p2_term_metric_max : int = 2.
+
+print smc_real_p2_state.
+
+op real_p2_term_metric (st : smc_real_p2_state) : int =
+     with st = SMCRealP2StateWaitKE1   => 2
+     with st = SMCRealP2StateWaitFwd _ => 1
+     with st = SMCRealP2StateFinal _   => 0.
+
+lemma ge0_real_p2_term_metric (st : smc_real_p2_state) :
+  0 <= real_p2_term_metric st.
+proof. by case st. qed.
+
+lemma real_p2_term_metric_is_smc_real_p2_state_wait_fwd
+      (st : smc_real_p2_state) :
+  is_smc_real_p2_state_wait_fwd st => real_p2_term_metric st = 1.
+proof. by case st. qed.
+
+op real_term_metric_max : int =
+     real_p1_term_metric_max +
+     real_p2_term_metric_max +
+     Fwd.term_metric_max +
+     KeyEx.real_term_metric_max.
+
+op real_term_metric (rtms : real_term_met_st) : int =
+     real_p1_term_metric rtms.`real_term_met_st_p1s +
+     real_p2_term_metric rtms.`real_term_met_st_p2s +
+     Fwd.term_metric rtms.`real_term_met_st_fws +
+     KeyEx.real_term_metric rtms.`real_term_met_st_kes.
+
+lemma ge0_real_term_metric (rtms : real_term_met_st) :
+  0 <= real_term_metric rtms.
+proof.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd.ge0_term_metric KeyEx.ge0_real_term_metric).
+qed.
+
+lemma real_term_metric0 (rtms : real_term_met_st) :
+  real_term_metric rtms = 0 =>
+  real_p1_term_metric rtms.`real_term_met_st_p1s = 0 /\
+  real_p2_term_metric rtms.`real_term_met_st_p2s = 0 /\
+  Fwd.term_metric rtms.`real_term_met_st_fws = 0 /\
+  KeyEx.real_term_metric rtms.`real_term_met_st_kes = 0.
+proof.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd.ge0_term_metric KeyEx.ge0_real_term_metric).
+qed.
+
+lemma smc_sec1_ke_real_bridge_invoke :
+  equiv
+  [MI(SMCReal(KeyEx.KEReal), Adv).invoke ~
+   MakeInt'.MI
+   (SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
+    CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv).invoke :
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{1} = MI.func{1} /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\
+   SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\
+   CompEnv.stub_st{2} = None ==>
+   ={res, glob SMCReal, glob Adv} /\
+   CompEnv.stub_st{2} = None].
+proof.
+admit.
+qed.
+
 lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
-  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  exper_pre func' adv' =>
   Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
        (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
 proof.
-admit.
+move => pre; byequiv => //; proc => /=.
+inline MI(SMCReal(KeyEx.KEReal), Adv).init
+       MI(KeyEx.KEReal, Adv).init
+       SMCReal(KeyEx.KEReal).init
+       Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).E.main
+       Exper
+       (MI'
+        (SMCReal
+         (CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
+          CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv),
+        Env).main
+       MakeInt'.MI
+       (SMCReal
+        (CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
+         CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv).init
+       CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE.init
+       CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv.init
+       SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE).init.
+seq 15 34 :
+  (={adv, in_guard, MI.adv, MI.in_guard, glob SMCReal, glob Adv} /\
+   exper_pre func{1} adv{1} /\
+   in_guard{1} = fset1 adv_fw_pi /\
+   func{2} = func{1} ++ [2] /\ func0{2} = func{1} /\
+   adv0{2} = adv{2} /\ in_guard1{2} = in_guard{2} /\
+   MI.func{1} = func{1} /\ MI.func{2} = func{2} /\
+   MI.adv{1} = adv{1} /\ MI.in_guard{1} = in_guard{1} /\
+   MakeInt'.MI.func{2} = func{1} /\ MakeInt'.MI.adv{2} = adv{2} /\
+   MakeInt'.MI.in_guard{2} = in_guard{2} /\
+   SMCReal.self{1} = func{1} /\ SMCReal.adv{1} = adv{1} /\
+   CompEnv.func{2} = func{1} /\
+   CompEnv.stub_st{2} = None).
+swap{1} [11..12] 2.
+swap{2} 28 6.
+swap{2} [7..8] 26.
+call (_ : true).
+call KeyEx.ke_real_init.
+call Fwd.init.
+auto; progress; first 5 smt(size_cat take_size_cat).
+wp.
+call
+  (_ :
+   ={MI.adv, MI.in_guard, glob SMCReal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{1} = MI.func{1} /\
+   MakeInt'.MI.func{2} = MI.func{1} /\ MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.stub_st{2} = None).
+conseq smc_sec1_ke_real_bridge_invoke => // |>.
+auto; progress; by exists real_term_metric_max.
 qed.
 
 lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
-  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  exper_pre func' adv' =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(KeyEx.KEIdeal, Adv), CompEnv(Env)).main
@@ -1856,7 +2000,7 @@ declare module Env : ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
                          KeyEx.KESim, KeyEx.DDH_Adv, CompEnv}.
 
 lemma smc_sec1 (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   KeyEx.DDH_Adv.func{m} = func ++ [2] => KeyEx.DDH_Adv.adv{m} = adv =>
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
          (func, adv, fset1 adv_fw_pi) @ &m : res] -
@@ -1880,7 +2024,7 @@ lemma smc_security1
       (Env <: ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
                   KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
       (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   KeyEx.DDH_Adv.func{m} = func ++ [2] => KeyEx.DDH_Adv.adv{m} = adv =>
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
          (func, adv, fset1 adv_fw_pi) @ &m : res] -
@@ -2254,7 +2398,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_3
   [MI_SMCRealKEIdealSimp_AfterAdv.after_adv ~
    MI_SMCIdeal_SMCSim_AfterAdv.after_adv :
    ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2344,7 +2488,7 @@ move => |> &hr <- [#] -> -> _ _ _ exp_pre [] /= _ [#] out_pt1'_func _ _ -> _ _.
 by rewrite oget_some /smc_rsp /= oget_some.
 rcondt{1} 18; first auto.
 rcondf{1} 19; first auto.
-move => |> &hr <- [#] -> -> _ _ _ exppre [] /= _ [#] _ _ out_pt2'_adv -> _ _.
+move => |> &hr <- [#] -> -> _ _ _ exp_pre [] /= _ [#] _ _ out_pt2'_adv -> _ _.
 by rewrite oget_some enc_dec_smc_real_ke_ideal_simp_state_wait_adv3 oget_some /=
            /smc_rsp.
 rcondf{1} 19; first auto.
@@ -2497,7 +2641,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
   [MI_SMCRealKEIdealSimp_AfterAdv.after_adv ~
    MI_SMCIdeal_SMCSim_AfterAdv.after_adv :
    ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2599,7 +2743,7 @@ rewrite /Fwd.fw_obs /=; smt(smc_pi_uniq).
 seq 20 9 :
   (={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
    not_done{1} /\ not_done{2} /\ not_done0{2} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2639,7 +2783,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (={r} /\ r{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2667,7 +2811,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r);}
   (={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2806,7 +2950,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_1
   [MI_SMCRealKEIdealSimp_AfterAdv.after_adv ~
    MI_SMCIdeal_SMCSim_AfterAdv.after_adv :
    ={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2895,7 +3039,7 @@ seq 1 1 :
    pt1{2} = pt1' /\ pt2{2} = pt2' /\
    ={MI.func, MI.adv, MI.in_guard} /\
    addr{2} = MI.func{1} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2944,7 +3088,7 @@ seq 10 5 :
   (={r, glob Adv} /\
    not_done{1} /\ not_done{2} /\ not_done0{2} /\ 
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -2979,7 +3123,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (={r} /\ r{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3007,7 +3151,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r);}
   (={r, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3149,7 +3293,7 @@ local lemma MI_SMCRealKEIdealSimp_SMCIdeal_SMCSim_invoke :
   equiv
   [MI(SMCRealKEIdealSimp, Adv).invoke ~ MI(SMCIdeal, SMCSim(Adv)).invoke :
    ={m, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3227,7 +3371,7 @@ rewrite !oget_some enc_dec_smc_sim_req oget_some /=
 seq 10 24 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\ SMCIdeal.self{2} = MI.func{1} /\
    SMCIdeal.adv{2} = MI.adv{1} /\ SMCSim.self{2} = MI.adv{1} /\
@@ -3262,7 +3406,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3290,7 +3434,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3366,7 +3510,7 @@ sp.
 seq 1 1 :
   (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\ SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\ SMCIdeal.self{2} = MI.func{1} /\
    SMCIdeal.adv{2} = MI.adv{1} /\ SMCSim.self{2} = MI.adv{1} /\
@@ -3503,7 +3647,7 @@ sp.
 seq 1 1 :
   (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3534,7 +3678,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (r0{1} = r2{2} /\ r0{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3562,7 +3706,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3663,7 +3807,7 @@ sp.
 seq 1 1 :
   (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3694,7 +3838,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (r0{1} = r2{2} /\ r0{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3722,7 +3866,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3824,7 +3968,7 @@ sp.
 seq 1 1 :
   (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3855,7 +3999,7 @@ transitivity{1}
      SMCRealKEIdealSimp.st, glob Adv})
   (r0{1} = r2{2} /\ r0{1} <> None /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3883,7 +4027,7 @@ sim; auto => |>.
 transitivity{2}
   {r <- MI_SMCIdeal_SMCSim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -3981,7 +4125,7 @@ sp.
 seq 1 1 :
   (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -4032,7 +4176,7 @@ seq 5 0 :
    mod3{2} = m3{2}.`1 /\ addr12{2} = m3{2}.`2.`1 /\
    n12{2} = m3{2}.`2.`2 /\
    ={MI.func, MI.adv, MI.in_guard, glob Adv} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -4074,22 +4218,20 @@ exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ [] /#.
 qed.
 
 local lemma Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim (func' adv' : addr) &m :
-  exper_pre func' adv' (fset1 adv_fw_pi) =>
+  exper_pre func' adv' =>
   Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(SMCIdeal, SMCSim(Adv)), Env).main
        (func', adv', fset1 adv_fw_pi) @ &m : res].
 proof.
-move => pre.
-byequiv => //.
-proc.
+move => pre; byequiv => //; proc.
 inline MI(SMCRealKEIdealSimp, Adv).init MI(SMCIdeal, SMCSim(Adv)).init
        SMCRealKEIdealSimp.init SMCIdeal.init SMCSim(Adv).init.
 seq 12 17 :
   (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    func{1} = MI.func{1} /\ adv{1} = MI.adv{1} /\
    in_guard{1} = MI.in_guard{1} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -4105,7 +4247,7 @@ auto.
 call
   (_ :
    ={MI.func, MI.adv, MI.in_guard} /\
-   exper_pre MI.func{1} MI.adv{1} (fset1 adv_fw_pi) /\
+   exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    SMCRealKEIdealSimp.self{1} = MI.func{1} /\
    SMCRealKEIdealSimp.adv{1} = MI.adv{1} /\
@@ -4123,7 +4265,7 @@ auto; progress; by rewrite SMCSec2Rel0.
 qed.
 
 lemma smc_sec2 (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
        (func, adv, fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(SMCIdeal, SMCSim(Adv)), Env).main
@@ -4141,7 +4283,7 @@ lemma smc_security2
       (Adv <: FUNC{MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal})
       (Env <: ENV{Adv, MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal})
       (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
        (func, adv, fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(SMCIdeal, SMCSim(Adv)), Env).main
@@ -4157,7 +4299,7 @@ lemma smc_security
       (Env <: ENV{Adv, MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEReal,
                   KeyEx.KEIdeal, KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
       (func adv : addr) &m :
-  exper_pre func adv (fset1 adv_fw_pi) =>
+  exper_pre func adv =>
   KeyEx.DDH_Adv.func{m} = func ++ [2] => KeyEx.DDH_Adv.adv{m} = adv =>
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
          (func, adv, fset1 adv_fw_pi) @ &m : res] -
