@@ -1851,8 +1851,6 @@ proof. by case st. qed.
 
 op real_p2_term_metric_max : int = 2.
 
-print smc_real_p2_state.
-
 op real_p2_term_metric (st : smc_real_p2_state) : int =
      with st = SMCRealP2StateWaitKE1   => 2
      with st = SMCRealP2StateWaitFwd _ => 1
@@ -1906,18 +1904,24 @@ lemma smc_sec1_ke_real_bridge_invoke :
    ={m, MI.adv, MI.in_guard, glob SMCReal, glob Adv} /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
-   MI.func{1} = MI.func{1} /\
    MakeInt'.MI.func{2} = MI.func{1} /\
    MakeInt'.MI.adv{2} = MI.adv{2} /\
    MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
-   SMCReal.self{1} = MI.func{1} /\
-   SMCReal.adv{1} = MI.adv{1} /\
-   CompEnv.func{2} = MI.func{1} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None ==>
    ={res, glob SMCReal, glob Adv} /\
    CompEnv.stub_st{2} = None].
 proof.
+proc => /=.
+sp 2 2.
+if => //.
+inline MI(SMCReal(KeyEx.KEReal), Adv).loop.
+inline MakeInt'.MI
+       (SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
+        CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv).loop.
 admit.
+auto.
 qed.
 
 lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
@@ -1956,7 +1960,7 @@ seq 15 34 :
    MakeInt'.MI.func{2} = func{1} /\ MakeInt'.MI.adv{2} = adv{2} /\
    MakeInt'.MI.in_guard{2} = in_guard{2} /\
    SMCReal.self{1} = func{1} /\ SMCReal.adv{1} = adv{1} /\
-   CompEnv.func{2} = func{1} /\
+   CompEnv.func{2} = func{1} /\ CompEnv.adv{2} = adv{1} /\
    CompEnv.stub_st{2} = None).
 swap{1} [11..12] 2.
 swap{2} 28 6.
@@ -1971,11 +1975,11 @@ call
    ={MI.adv, MI.in_guard, glob SMCReal, glob Adv} /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
-   MI.func{1} = MI.func{1} /\
    MakeInt'.MI.func{2} = MI.func{1} /\ MakeInt'.MI.adv{2} = MI.adv{2} /\
    MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
-   CompEnv.func{2} = MI.func{1} /\ CompEnv.stub_st{2} = None).
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None).
 conseq smc_sec1_ke_real_bridge_invoke => // |>.
 auto; progress; by exists real_term_metric_max.
 qed.
