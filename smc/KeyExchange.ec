@@ -364,16 +364,16 @@ module KEReal : FUNC = {
 
     while (not_done) {
       if (m.`2.`1 = self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
-        r <- party1(m);
+        r <@ party1(m);
       }
       elif (m.`2.`1 = self /\ (m.`2.`2 = 2 \/ m.`2.`2 = 4)) {
-        r <- party2(m);
+        r <@ party2(m);
       }
       elif (self ++ [1] <= m.`2.`1) {
-        r <- Fwd1.Forw.invoke(m);
+        r <@ Fwd1.Forw.invoke(m);
       }
       else {  (* self ++ [2] <= m.`2.`1 *)
-        r <- Fwd2.Forw.invoke(m);
+        r <@ Fwd2.Forw.invoke(m);
       }
 
       if (r = None \/ ! self <= (oget r).`2.`1) {
@@ -393,7 +393,7 @@ module KEReal : FUNC = {
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
         (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-      r <- loop(m);
+      r <@ loop(m);
     }
     return r;
   }
@@ -660,7 +660,7 @@ module KEIdeal : FUNC = {
     (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
         (mod = Adv /\ addr1 = self /\ n1 = 3)) {
-      r <- parties(m);
+      r <@ parties(m);
     }
     return r;
   }
@@ -858,7 +858,7 @@ module KESim (Adv : FUNC) = {
     var r : msg option <- None;
     (mod, pt1, pt2, u) <- m;
     if (mod = Adv /\ pt1.`1 = self) {
-      r <- loop(m);
+      r <@ loop(m);
     }
     return r;
   }
@@ -1028,7 +1028,7 @@ module KERealSimp : FUNC = {
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
         (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-      r <- parties(m);
+      r <@ parties(m);
     }
     return r;
   }
@@ -2029,7 +2029,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
       (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
       if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
           (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-        r <- parties(m);
+        r <@ parties(m);
       }
       return r;
     }
@@ -2137,7 +2137,7 @@ local module (KERealSimpHashingAdv : RH.HASHING_ADV)
       (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
       if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
           (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-        r <- parties(m);
+        r <@ parties(m);
       }
       return r;
     }
@@ -2968,7 +2968,7 @@ local module KEHybrid : FUNC = {
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
         (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-      r <- parties(m);
+      r <@ parties(m);
     }
     return r;
   }
@@ -3051,7 +3051,7 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
       (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
       if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
           (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-        r <- parties(m);
+        r <@ parties(m);
       }
       return r;
     }

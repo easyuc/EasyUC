@@ -450,3 +450,11 @@ proof.
 move => nonnil_ys /leP [us <-].
 by rewrite -catA ne_cat_nonnil_r // nonnil_cat_nonnil_l.
 qed.
+
+lemma not_le_ext (xs ys zs : 'a list) :
+  ! xs <= ys => ! xs ++ zs <= ys.
+proof.
+move => not_le_xs_ys.
+case (xs ++ zs <= ys) => [not_le_xs_conc_zs_ys | //].
+have // : xs <= ys by rewrite (le_trans (xs ++ zs)) 1:le_ext_r.
+qed.
