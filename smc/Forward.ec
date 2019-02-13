@@ -267,7 +267,8 @@ lemma term_init :
   equiv
   [Forw.init ~ Forw.init :
    ={self_, adv_} ==>
-   ={res, glob Forw} /\ term_metric Forw.st{1} = term_metric_max].
+   ={res, glob Forw} /\
+   term_metric Forw.st{1} = term_metric_max].
 proof.
 proc; auto.
 qed.

@@ -259,7 +259,7 @@ module type FUNC = {
 
      precondition: func_init_pre self adv *)
 
-  proc * init(self adv : addr) : unit
+  proc init(self adv : addr) : unit
 
   (* respond to an incoming message, producing an optional
      outgoing message (None means error)
@@ -366,7 +366,7 @@ module type ENV (Inter : INTER) = {
 
      precondition : env_pre func adv *)
 
-  proc * main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
+  proc main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
 
 (* carry out experiment in which the environment is allowed to

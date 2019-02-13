@@ -356,6 +356,7 @@ module KEReal : FUNC = {
 
     (* invariant: 
 
+         not_done =>
          m.`2.`1 = self /\
          (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/
           m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
@@ -1806,7 +1807,7 @@ proof.
 move => pre.
 byequiv => //; proc; inline*.
 seq 23 12 :
-  (! func' <= adv' /\ ={func, adv, in_guard, glob Adv, glob MI} /\
+  (! func' <= adv' /\ ={func, adv, in_guard, glob Env, glob Adv, glob MI} /\
    func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
@@ -2376,7 +2377,7 @@ seq 12 18 :
    KERealSimp.adv{1} = adv{1} /\
    KERealSimp.st{1} = KERealSimpStateWaitReq1 /\
    RH.OptHashing.mp{2} = empty /\
-   ={glob Adv}).
+   ={glob Adv, glob Env}).
 call (_ : true).
 auto; smt().
 call
@@ -2726,7 +2727,7 @@ rcondt{1} 4; first auto; smt(mem_empty).
 rcondt{1} 7; first auto; smt(mem_set mem_empty).
 wp.
 seq 7 8 :
-  (={DDH_Adv.func, DDH_Adv.adv} /\
+  (={DDH_Adv.func, DDH_Adv.adv, glob Adv, glob Env} /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
    RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
    RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
@@ -2749,7 +2750,7 @@ seq 15 15 :
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
-   ={glob Adv} /\
+   ={glob Adv, glob Env} /\
    KERealSimpHashingAdv.KERealSimpHash.st{1} = KERealSimpStateWaitReq1 /\
    DDH_Adv.KEDDH.st{2} = KEDDHStateWaitReq1).
 call (_ : true).
@@ -3389,7 +3390,7 @@ rcondt{1} 7; first auto; smt(mem_set mem_empty).
 rcondt{1} 10; first auto; smt(mem_set mem_empty).
 wp.
 seq 10 9 :
-  (={DDH_Adv.func, DDH_Adv.adv} /\
+  (={DDH_Adv.func, DDH_Adv.adv, glob Adv, glob Env} /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
    RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
    RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
@@ -3415,7 +3416,7 @@ seq 15 15 :
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
-   ={glob Adv} /\
+   ={glob Adv, glob Env} /\
    KEHybridHashingAdv.KEHybridHash.st{1} = KEHybridStateWaitReq1 /\
    DDH_Adv.KEDDH.st{2} = KEDDHStateWaitReq1).
 call (_ : true).
@@ -3708,7 +3709,7 @@ seq 12 19 :
    KEHybrid.adv{1} = adv{1} /\
    KEHybrid.st{1} = KEHybridStateWaitReq1 /\
    RH.OptHashing.mp{2} = empty /\
-   ={glob Adv}).
+   ={glob Adv, glob Env}).
 call (_ : true).
 auto; smt().
 call
@@ -5680,7 +5681,7 @@ seq 12 17 :
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\
-   ={glob Adv} /\
+   ={glob Adv, glob Env} /\
    KEHybrid.st{1} = KEHybridStateWaitReq1 /\
    KEIdeal.st{2} = KEIdealStateWaitReq1 /\
    KESim.st{2} = KESimStateWaitReq1).
@@ -5837,6 +5838,7 @@ lemma ke_real_term_init :
 proof.
 proc.
 swap [5..6] -2.
+exlim adv_{1} => adv'.
 call Fwd2.term_init.
 call Fwd1.term_init.
 auto; progress; smt().
