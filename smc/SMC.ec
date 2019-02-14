@@ -3070,7 +3070,153 @@ sp 1 1.
 (* induction *)
 admit.
 rcondf{2} 4; first auto.
+case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 8; first auto.
+rcondf{2} 9; first auto.
+rcondt{2} 9; first auto.
+rcondf{2} 10; first auto.
+rcondt{2} 10; first auto.
+rcondf{2} 11; first auto.
+wp.
+if{1}.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto.
+auto.
+rcondf{1} 1; first auto.
+move => |> &hr _ _ _ _ _ ep _.
+case (r2{m}) => // msg.
+case msg => mod pt1 pt2 u.
+case pt1 => addr1 n1 /= _.
+rewrite oget_some not_dir negb_or /=.
+smt(inc_nle_l).
+rcondf{2} 4; first auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+sp 4 3.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+sp 2 2.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+   r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEReal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_term_metric
+    {|real_term_met_st_p1s = SMCReal.st1{1};
+      real_term_met_st_p2s = SMCReal.st2{1};
+      real_term_met_st_fws = Fwd.Forw.st{1};
+      real_term_met_st_kes =
+      {|KeyEx.real_term_met_st_p1s = KeyEx.KEReal.st1{1};
+        KeyEx.real_term_met_st_p2s = KeyEx.KEReal.st2{1};
+        KeyEx.real_term_met_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+        KeyEx.real_term_met_st_fws2 = KeyEx.Fwd2.Forw.st{1}|}|} < n)).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondf{1} 1; first auto; smt(le_trans le_ext_r).
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_trans le_ext_r).
+inline{1} (1) SMCReal(KeyEx.KEReal).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <-; by rewrite negb_or not_dir.
+inline{1} (1) SMCReal(KeyEx.KEReal).loop.
+sp 9 0.
+(* induction *)
 admit.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 7; first auto.
+move => |> &hr <-; by rewrite negb_or not_dir.
+rcondf{2} 10; first auto => |> &hr <-; progress; smt(incP).
+rcondt{2} 10; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 11; first auto.
+rcondf{2} 11; first auto.
+rcondf{2} 14; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 14; first auto.
+rcondf{2} 14; first auto.
+rcondt{2} 14; first auto.
+rcondf{2} 16; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv.invoke.
+rcondt{2} 17; first auto.
+rcondf{2} 20; first auto.
+rcondf{2} 23; first auto => |> &hr <- /#.
+sp 0 22.
+if; first auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _ <- //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by rewrite some_oget.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto => |> &hr _ _ _ _ _ _ _ _ _ _ _ _ _.
+rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KeyEx.KEReal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE).invoke.
+sp 4 4.
+if.
+auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _.
+rewrite oget_some; by move => <-.
+inline{1} (1) SMCReal(KeyEx.KEReal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE).loop.
+sp 3 3.
+(* induction *)
+admit.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
 qed.
 
 lemma smc_sec1_ke_real_bridge_invoke :
