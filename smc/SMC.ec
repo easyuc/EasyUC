@@ -2508,13 +2508,522 @@ local module SMCSec1Bridge_BotRightKE (KE : FUNC) = {
   }
 }.
 
-(* KEReal bridging lemma - uses KERealSimp *)
+(* working up to KEReal bridging lemma
+
+   first we enable core proof to be done using KERealSimp *)
 
 local clone import KeyEx.RealSimp as KERS
 proof *.
 
-local module CompEnvStubKE = CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE.
-local module CompEnvStubAdv = CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubAdv.
+local lemma smc_real_ke_real_simp (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[Exper(MI(SMCReal(KERS.KERealSimp), Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res].
+proof.
+move => ep.
+byequiv => //.
+proc.
+seq 1 1 :
+  (={func, adv, in_guard, glob MI, glob Adv, glob Env, glob SMCReal} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+inline MI(SMCReal(KeyEx.KEReal), Adv).init
+       MI(SMCReal(KERealSimp), Adv).init
+       SMCReal(KeyEx.KEReal).init
+       SMCReal(KERealSimp).init.
+swap 12 2.
+call (_ : true).
+call (KEReal_KERealSimp_init (func' ++ [2]) adv').
+inline*; auto.
+call
+  (_ :
+   ={glob MI, glob Adv, glob SMCReal} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+proc.
+sp 2 2.
+if => //.
+inline MI(SMCReal(KeyEx.KEReal), Adv).loop
+       MI(SMCReal(KERealSimp), Adv).loop.
+sp 3 3; wp.
+while
+  (={not_done, m0, r0, glob MI, glob Adv, glob SMCReal} /\
+   MI.func{1} = func' /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+sp 2 2.
+if => //.
+wp.
+call
+  (_ :
+   ={glob SMCReal} /\
+   exper_pre func' adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+sp 3 3.
+if => //.
+inline SMCReal(KeyEx.KEReal).loop SMCReal(KERealSimp).loop.
+sp 3 3; wp.
+while
+  (={not_done, m0, r0} /\
+   ={glob SMCReal} /\
+   exper_pre func' adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+if => //.
+wp; call (_ : ={glob SMCReal}); first sim.
+auto.
+if => //.
+wp; call (_ : ={glob SMCReal}); first sim.
+auto.
+if => //.
+wp; call (_ : ={glob SMCReal}); first sim.
+auto.
+wp; call (KEReal_KERealSimp_invoke (func' ++ [2]) adv').
+auto; progress; smt(not_le_ext incP).
+auto.
+auto.
+wp; call (_ : true).
+auto.
+auto.
+auto.
+auto.
+qed.
+
+local lemma MI_KEReal_KERealSimp_invoke (func' adv') :
+  equiv
+  [MI(KeyEx.KEReal, Adv).invoke ~ MI(KERealSimp, Adv).invoke :
+   ={m, glob MI, glob Adv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} ==>
+   ={res, glob MI, glob Adv} /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}].
+proof.
+proc.
+sp 2 2.
+if => //.
+inline MI(KeyEx.KEReal, Adv).loop MI(KERealSimp, Adv).loop.
+sp 3 3; wp.
+while
+  (={not_done, m0, r0, glob MI, glob Adv} /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+sp 2 2.
+if => //.
+wp.
+call (KEReal_KERealSimp_invoke (func' ++ [2]) adv').
+auto; progress; smt(inc_nle_l inc_ext1).
+wp.
+call (_ : true).
+auto.
+auto.
+auto.
+qed.
+
+local lemma smc_real_ke_real_simp_comp_env (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
+       (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[Exper(MI(KERS.KERealSimp, Adv), CompEnv(Env)).main
+       (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
+proof.
+move => ep.
+byequiv => //.
+proc.
+seq 1 1 :
+  (={func, adv, in_guard, glob MI, glob Adv, glob Env} /\
+   func{1} = func' ++ [2] /\ adv{1} = adv' /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
+inline MI(KeyEx.KEReal, Adv).init
+       MI(KERealSimp, Adv).init.
+call (_ : true).
+call (KEReal_KERealSimp_init (func' ++ [2]) adv').
+auto; progress.
+inline*.
+seq 30 30 :
+  (={func0, adv0, in_guard1, glob MI, glob MakeInt'.MI, glob Adv, glob Env,
+     glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+auto; progress; by rewrite size_cat /= take_size_cat.
+wp.
+call
+  (_ : 
+   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+proc.
+sp 2 2.
+if => //.
+inline MakeInt'.MI(SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
+                   CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv).loop.
+inline MakeInt'.MI(SMCReal(CompEnv(Env, MI(KERealSimp, Adv)).StubKE),
+                   CompEnv(Env, MI(KERealSimp, Adv)).StubAdv).loop.
+sp 3 3.
+wp.
+while
+  (={not_done, m0, r0} /\
+   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+sp 2 2.
+if => //.
+wp.
+call
+  (_ :
+   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+sp 3 3.
+if => //.
+call
+  (_ :
+   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+sp 2 2.
+while
+  (={m, r, glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+if => //.
+wp.
+call (_ : ={glob SMCReal}).
+sim.
+auto.
+if => //.
+wp.
+call (_ : ={glob SMCReal}).
+sim.
+auto.
+if => //.
+wp.
+call (_ : ={glob SMCReal}).
+sim.
+auto.
+wp.
+inline CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE.invoke
+       CompEnv(Env, MI(KERealSimp, Adv)).StubKE.invoke.
+sp 1 1.
+if => //.
+auto.
+seq 1 1 :
+  (={m, r0, glob MI, glob MakeInt'.MI, glob Adv,
+     glob SMCReal, glob CompEnv} /\
+   not_done{1} /\ not_done{2} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+call (MI_KEReal_KERealSimp_invoke func' adv').
+auto.
+if => //.
+sp 3 3.
+if; first smt().
+auto.
+auto.
+auto.
+auto.
+auto.
+auto.
+inline CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv.invoke
+       CompEnv(Env, MI(KERealSimp, Adv)).StubAdv.invoke.
+sp 1 1.
+if => //.
+auto.
+seq 1 1 :
+  (={r1, m0, not_done} /\
+   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
+   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
+   exper_pre func' adv' /\
+   KeyEx.KEReal.self{1} = func' ++ [2] /\
+   KeyEx.KEReal.adv{1} = adv' /\
+   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
+   KeyEx.Fwd1.Forw.adv{1} = adv' /\
+   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
+   KeyEx.Fwd2.Forw.adv{1} = adv' /\
+   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func' ++ [2];
+     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
+     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
+     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
+   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
+   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
+   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
+   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
+call (MI_KEReal_KERealSimp_invoke func' adv').
+auto.
+if => //.
+sp 3 3.
+if; first smt().
+auto.
+sp 1 1.
+if => //.
+auto.
+auto.
+auto.
+auto.
+auto.
+auto.
+qed.
+
+(* start of core of KERealSimp bridging lemma proof
+
+   will be replicated via textual substitutions for KEIdeal (need to
+   have way of doing this proof once, and instantiating twice) *)
+
+local module StubKE_KERealSimp = CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE.
 
 type real_term_met_st = {
   real_term_met_st_p1s   : smc_real_p1_state;
@@ -2648,7 +3157,7 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
-call (smc_party1_met KERS.KERealSimp CompEnvStubKE p1_met).
+call (smc_party1_met KERS.KERealSimp StubKE_KERealSimp p1_met).
 auto; smt(real_term_metric0 ge0_real_p1_term_metric).
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
@@ -2675,7 +3184,7 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
-call (smc_party2_met KERS.KERealSimp CompEnvStubKE p2_met).
+call (smc_party2_met KERS.KERealSimp StubKE_KERealSimp p2_met).
 auto; smt(real_term_metric0 ge0_real_p2_term_metric).
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
@@ -2855,7 +3364,7 @@ seq 1 1 :
       real_term_met_st_fws   = Fwd.Forw.st{1};
       real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
 exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
-call (smc_party1_met KERS.KERealSimp CompEnvStubKE p1_met).
+call (smc_party1_met KERS.KERealSimp StubKE_KERealSimp p1_met).
 auto; progress; smt().
 if => //.
 rcondt{1} 2; first auto.
@@ -3032,7 +3541,7 @@ seq 1 1 :
       real_term_met_st_fws   = Fwd.Forw.st{1};
       real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
 exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
-call (smc_party2_met KERS.KERealSimp CompEnvStubKE p2_met).
+call (smc_party2_met KERS.KERealSimp StubKE_KERealSimp p2_met).
 auto; progress; smt().
 if => //.
 rcondt{1} 2; first auto.
@@ -3920,521 +4429,14 @@ auto.
 auto.
 qed.
 
-local lemma smc_real_ke_real_simp (func' adv' : addr) &m :
+local lemma smc_sec1_ke_real_simp_bridge (func' adv' : addr) &m :
   exper_pre func' adv' =>
-  Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(SMCReal(KERS.KERealSimp), Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res].
-proof.
-move => ep.
-byequiv => //.
-proc.
-seq 1 1 :
-  (={func, adv, in_guard, glob MI, glob Adv, glob Env, glob SMCReal} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-inline MI(SMCReal(KeyEx.KEReal), Adv).init
-       MI(SMCReal(KERealSimp), Adv).init
-       SMCReal(KeyEx.KEReal).init
-       SMCReal(KERealSimp).init.
-swap 12 2.
-call (_ : true).
-call (KEReal_KERealSimp_init (func' ++ [2]) adv').
-inline*; auto.
-call
-  (_ :
-   ={glob MI, glob Adv, glob SMCReal} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-proc.
-sp 2 2.
-if => //.
-inline MI(SMCReal(KeyEx.KEReal), Adv).loop
-       MI(SMCReal(KERealSimp), Adv).loop.
-sp 3 3; wp.
-while
-  (={not_done, m0, r0, glob MI, glob Adv, glob SMCReal} /\
-   MI.func{1} = func' /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-sp 2 2.
-if => //.
-wp.
-call
-  (_ :
-   ={glob SMCReal} /\
-   exper_pre func' adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-sp 3 3.
-if => //.
-inline SMCReal(KeyEx.KEReal).loop SMCReal(KERealSimp).loop.
-sp 3 3; wp.
-while
-  (={not_done, m0, r0} /\
-   ={glob SMCReal} /\
-   exper_pre func' adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-if => //.
-wp; call (_ : ={glob SMCReal}); first sim.
-auto.
-if => //.
-wp; call (_ : ={glob SMCReal}); first sim.
-auto.
-if => //.
-wp; call (_ : ={glob SMCReal}); first sim.
-auto.
-wp; call (KEReal_KERealSimp_invoke (func' ++ [2]) adv').
-auto; progress; smt(not_le_ext incP).
-auto.
-auto.
-wp; call (_ : true).
-auto.
-auto.
-auto.
-auto.
-qed.
-
-local lemma MI_KEReal_KERealSimp_invoke (func' adv') :
-  equiv
-  [MI(KeyEx.KEReal, Adv).invoke ~ MI(KERealSimp, Adv).invoke :
-   ={m, glob MI, glob Adv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} ==>
-   ={res, glob MI, glob Adv} /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}].
-proof.
-proc.
-sp 2 2.
-if => //.
-inline MI(KeyEx.KEReal, Adv).loop MI(KERealSimp, Adv).loop.
-sp 3 3; wp.
-while
-  (={not_done, m0, r0, glob MI, glob Adv} /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-sp 2 2.
-if => //.
-wp.
-call (KEReal_KERealSimp_invoke (func' ++ [2]) adv').
-auto; progress; smt(inc_nle_l inc_ext1).
-wp.
-call (_ : true).
-auto.
-auto.
-auto.
-qed.
-
-local lemma smc_real_ke_real_simp_comp_env (func' adv' : addr) &m :
-  exper_pre func' adv' =>
-  Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
-       (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res] =
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(KERS.KERealSimp, Adv), CompEnv(Env)).main
        (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
 proof.
-move => ep.
-byequiv => //.
-proc.
-seq 1 1 :
-  (={func, adv, in_guard, glob MI, glob Adv, glob Env} /\
-   func{1} = func' ++ [2] /\ adv{1} = adv' /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|}).
-inline MI(KeyEx.KEReal, Adv).init
-       MI(KERealSimp, Adv).init.
-call (_ : true).
-call (KEReal_KERealSimp_init (func' ++ [2]) adv').
-auto; progress.
-inline*.
-seq 30 30 :
-  (={func0, adv0, in_guard1, glob MI, glob MakeInt'.MI, glob Adv, glob Env,
-     glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-auto; progress; by rewrite size_cat /= take_size_cat.
-wp.
-call
-  (_ : 
-   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-proc.
-sp 2 2.
-if => //.
-inline MakeInt'.MI(SMCReal(CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE),
-                   CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv).loop.
-inline MakeInt'.MI(SMCReal(CompEnv(Env, MI(KERealSimp, Adv)).StubKE),
-                   CompEnv(Env, MI(KERealSimp, Adv)).StubAdv).loop.
-sp 3 3.
-wp.
-while
-  (={not_done, m0, r0} /\
-   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-sp 2 2.
-if => //.
-wp.
-call
-  (_ :
-   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-sp 3 3.
-if => //.
-call
-  (_ :
-   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-sp 2 2.
-while
-  (={m, r, glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-if => //.
-wp.
-call (_ : ={glob SMCReal}).
-sim.
-auto.
-if => //.
-wp.
-call (_ : ={glob SMCReal}).
-sim.
-auto.
-if => //.
-wp.
-call (_ : ={glob SMCReal}).
-sim.
-auto.
-wp.
-inline CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubKE.invoke
-       CompEnv(Env, MI(KERealSimp, Adv)).StubKE.invoke.
-sp 1 1.
-if => //.
-auto.
-seq 1 1 :
-  (={m, r0, glob MI, glob MakeInt'.MI, glob Adv,
-     glob SMCReal, glob CompEnv} /\
-   not_done{1} /\ not_done{2} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-call (MI_KEReal_KERealSimp_invoke func' adv').
-auto.
-if => //.
-sp 3 3.
-if; first smt().
-auto.
-auto.
-auto.
-auto.
-auto.
-auto.
-inline CompEnv(Env, MI(KeyEx.KEReal, Adv)).StubAdv.invoke
-       CompEnv(Env, MI(KERealSimp, Adv)).StubAdv.invoke.
-sp 1 1.
-if => //.
-auto.
-seq 1 1 :
-  (={r1, m0, not_done} /\
-   ={glob MI, glob MakeInt'.MI, glob Adv, glob SMCReal, glob CompEnv} /\
-   MI.func{1} = func' ++ [2] /\ MI.adv{1} = adv' /\
-   exper_pre func' adv' /\
-   KeyEx.KEReal.self{1} = func' ++ [2] /\
-   KeyEx.KEReal.adv{1} = adv' /\
-   KeyEx.Fwd1.Forw.self{1} = func' ++ [2] ++ [1] /\
-   KeyEx.Fwd1.Forw.adv{1} = adv' /\
-   KeyEx.Fwd2.Forw.self{1} = func' ++ [2] ++ [2] /\
-   KeyEx.Fwd2.Forw.adv{1} = adv' /\
-   KERealSimp.self{2} = func' ++ [2] /\ KERealSimp.adv{2} = adv' /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func' ++ [2];
-     real_simp_rel_st_r1s  = KeyEx.KEReal.st1{1};
-     real_simp_rel_st_r2s  = KeyEx.KEReal.st2{1};
-     real_simp_rel_st_fws1 = KeyEx.Fwd1.Forw.st{1};
-     real_simp_rel_st_fws2 = KeyEx.Fwd2.Forw.st{1};
-     real_simp_rel_st_rss  = KERealSimp.st{2}|} /\
-   MakeInt'.MI.func{1} = func' /\ MakeInt'.MI.adv{1} = adv' /\
-   CompEnv.func{1} = func' /\ CompEnv.adv{1} = adv' /\
-   SMCReal.self{1} = func' /\ SMCReal.adv{1} = adv' /\
-   Fwd.Forw.self{1} = func' ++ [1] /\ Fwd.Forw.adv{1} = adv').
-call (MI_KEReal_KERealSimp_invoke func' adv').
-auto.
-if => //.
-sp 3 3.
-if; first smt().
-auto.
-sp 1 1.
-if => //.
-auto.
-auto.
-auto.
-auto.
-auto.
-auto.
-qed.
-
-lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
-  exper_pre func' adv' =>
-  Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
-  Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
-       (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
-proof.
-move => pre.
-rewrite (smc_real_ke_real_simp func' adv' &m) //
-        (smc_real_ke_real_simp_comp_env func' adv' &m) //.
-byequiv => //.
-proc.
+move => pre; byequiv => //; proc.
 inline MI(SMCReal(KERS.KERealSimp), Adv).init
        MI(KERS.KERealSimp, Adv).init
        SMCReal(KERS.KERealSimp).init
@@ -4489,9 +4491,22 @@ conseq smc_sec1_ke_real_simp_bridge_invoke => // |>.
 auto; progress.
 qed.
 
-(* KEIdeal bridging lemma - apart from the use of KERealSimp,
-   a substitution of the KEReal side (there needs to be a way
-   of doing a single proof, and instantiating it twice!) *)
+(* end of core of KERealSimp bridging lemma proof *)
+
+lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+  Pr[Exper(MI(KeyEx.KEReal, Adv), CompEnv(Env)).main
+       (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
+proof.
+move => ep.
+by rewrite (smc_real_ke_real_simp func' adv' &m) //
+           (smc_real_ke_real_simp_comp_env func' adv' &m) //
+           (smc_sec1_ke_real_simp_bridge func' adv' &m).
+qed.
+
+(* start of core of KEIdeal bridging lemma proof *)
 
 lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
   exper_pre func' adv' =>
@@ -4502,6 +4517,8 @@ lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
 proof.
 admit.
 qed.
+
+(* end of core of KEIdeal bridging lemma proof *)
 
 end section.
 
