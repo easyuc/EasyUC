@@ -2508,6 +2508,8 @@ local module SMCSec1Bridge_BotRightKE (KE : FUNC) = {
   }
 }.
 
+(* KEReal bridging lemma - uses KERealSimp *)
+
 local clone import KeyEx.RealSimp as KERS
 proof *.
 
@@ -2624,7 +2626,209 @@ move => lt0_n.
 (split; last split); proc; exfalso; smt(ge0_real_term_metric).
 rewrite -lezNgt.
 elim n => [| n ge0_n IH].
-admit.
+(* basis step *)
+split; last split.
+(* SMCSec1Bridge_Left(KERS.KERealSimp).rest ~
+   SMCSec1Bridge_TopRight(KERS.KERealSimp).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+sp 2 2.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
+call (smc_party1_met KERS.KERealSimp CompEnvStubKE p1_met).
+auto; smt(real_term_metric0 ge0_real_p1_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
+call (smc_party2_met KERS.KERealSimp CompEnvStubKE p2_met).
+auto; smt(real_term_metric0 ge0_real_p2_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (Fwd.term_metric Fwd.Forw.st{1}) => fwd_met.
+call (Fwd.term_invoke fwd_met).
+auto; smt(real_term_metric0 Fwd.ge0_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) CompEnv(Env, MI(KERealSimp, Adv)).StubKE.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KERealSimp, Adv).invoke.
+rcondt{2} 5; first auto; smt().
+inline{2} (1) MI(KERealSimp, Adv).loop.
+rcondt{2} 8; first auto.
+rcondt{2} 10; first auto; smt().
+sp 0 9.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2}
+   /\ r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
+call (KERS.ke_real_simp_term_invoke ke_met).
+auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+sp 0 5.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto; smt().
+rcondt{2} 2; first auto; smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto; smt().
+(* SMCSec1Bridge_Left(KERealSimp).rest ~
+   SMCSec1Bridge_BotRightKE(KERealSimp).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 6; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 5.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
+call (KERS.ke_real_simp_term_invoke ke_met).
+auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+(* SMCSec1Bridge_Left(KERealSimp).rest ~
+   SMCSec1Bridge_BotRightAdv(KERealSimp).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 4.
+seq 1 1 :
+  (not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
+call (KERS.ke_real_simp_term_invoke ke_met).
+auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto.
+(* inductive step *)
 split; last split.
 (* SMCSec1Bridge_Left(KERS.KERealSimp).rest ~
    SMCSec1Bridge_TopRight(KERS.KERealSimp).rest *)
@@ -4284,6 +4488,10 @@ call
 conseq smc_sec1_ke_real_simp_bridge_invoke => // |>.
 auto; progress.
 qed.
+
+(* KEIdeal bridging lemma - apart from the use of KERealSimp,
+   a substitution of the KEReal side (there needs to be a way
+   of doing a single proof, and instantiating it twice!) *)
 
 lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
   exper_pre func' adv' =>
