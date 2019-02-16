@@ -673,6 +673,130 @@ lemma ke_ideal_init :
    ={self_, adv_} ==> ={res, glob KEIdeal}].
 proof. proc; auto. qed.
 
+(* termination metric and proof for KEIdeal *)
+
+op ideal_term_metric_max : int = 4.
+
+op ideal_term_metric (st : ke_ideal_state) : int =
+     with st = KEIdealStateWaitReq1   => 4
+     with st = KEIdealStateWaitSim1 _ => 3
+     with st = KEIdealStateWaitReq2 _ => 2
+     with st = KEIdealStateWaitSim2 _ => 1
+     with st = KEIdealStateFinal    _ => 0.
+
+lemma ge0_ideal_term_metric (st : ke_ideal_state) :
+  0 <= ideal_term_metric st.
+proof. by case st. qed.
+
+lemma ideal_term_metric_is_ke_ideal_state_wait_sim1
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_sim1 st => ideal_term_metric st = 3.
+proof. by case st. qed.
+
+lemma ideal_term_metric_is_ke_ideal_state_wait_req2
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_req2 st => ideal_term_metric st = 2.
+proof. by case st. qed.
+
+lemma ideal_term_metric_is_ke_ideal_state_wait_sim2
+      (st : ke_ideal_state) :
+  is_ke_ideal_state_wait_sim2 st => ideal_term_metric st = 1.
+proof. by case st. qed.
+
+lemma ke_ideal_term_init :
+  equiv
+  [KEIdeal.init ~ KEIdeal.init :
+   ={self_, adv_} ==>
+   ={res, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = ideal_term_metric_max].
+proof. proc; auto. qed.
+
+lemma ke_ideal_term_invoke_min1 (n : int) :
+  equiv
+  [KEIdeal.invoke ~ KEIdeal.invoke :
+   ={m, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = n ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)].
+proof.
+proc; sp 3 3.
+if => //.
+inline KEIdeal.parties.
+sp 2 2.
+if => //.
+if => //.
+sp 1 1.
+if; first by move => |> &1 &2 <-.
+auto =>
+  &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
+  ->>.
+rewrite -oget_req1_2 /= in oget_req1_1.
+by elim oget_req1_1 => _ [#] -> ->.
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+auto.
+auto =>
+  &1 &2 [#] oget_wait_sim1_2 oget_wait_sim1_1 ->> _ ->> _ _ _ _ _ _ _
+  ->> ->>.
+rewrite -oget_wait_sim1_2 /= in oget_wait_sim1_1.
+elim oget_wait_sim1_1 => -> [#] ->.
+smt(ideal_term_metric_is_ke_ideal_state_wait_sim1).
+auto.
+if => //.
+sp 1 1.
+if => //.
+sp 1 1.
+if => //.
+auto =>
+  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
+  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
+rewrite -oget_req2_2 /= in oget_req2_1.
+elim oget_req2_1 => _ ->.
+rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
+by elim oget_wait_req2_1 => _ [#] ->.
+auto =>
+  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
+  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
+rewrite -oget_req2_2 /= in oget_req2_1.
+elim oget_req2_1 => _ ->.
+rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
+smt(ideal_term_metric_is_ke_ideal_state_wait_req2).
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+auto =>
+   &1 &2 [#] oget_wait_req2_2 oget_wait_req2_1 ->> _ ->> _ _ _ _ _ _ _
+   ->> ->>.
+rewrite -oget_wait_req2_2 in oget_wait_req2_1.
+elim oget_wait_req2_1 => -> -> ->.
+smt(ideal_term_metric_is_ke_ideal_state_wait_sim2). 
+auto.
+auto.
+qed.
+
+lemma ke_ideal_term_invoke (n : int) :
+  equiv
+  [KEIdeal.invoke ~ KEIdeal.invoke :
+   ={m, glob KEIdeal} /\
+   ideal_term_metric KEIdeal.st{1} = n ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} < n)].
+proof.
+conseq
+  (_ :
+   _ ==>
+   ={res, KEIdeal.st} /\
+   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)).
+progress.
+smt(ge0_ideal_term_metric).
+apply (ke_ideal_term_invoke_min1 n).
+qed.
+
 (* Simulator *)
 
 type ke_sim_state = [
@@ -1035,6 +1159,109 @@ module KERealSimp : FUNC = {
   }
 }.
 
+lemma ke_real_simp_init :
+  equiv
+  [KERealSimp.init ~ KERealSimp.init :
+   ={self_, adv_} ==> ={glob KERealSimp}].
+proof.
+proc; auto.
+qed.
+
+(* termination metric and proof for KERealSimp *)
+
+op ke_real_simp_term_metric_max : int = 4.
+
+op ke_real_simp_term_metric (st : ke_real_simp_state) : int =
+     with st = KERealSimpStateWaitReq1   => 4
+     with st = KERealSimpStateWaitAdv1 _ => 3
+     with st = KERealSimpStateWaitReq2 _ => 2
+     with st = KERealSimpStateWaitAdv2 _ => 1
+     with st = KERealSimpStateFinal _    => 0.
+
+lemma ge0_ke_real_simp_term_metric (st : ke_real_simp_state) :
+  0 <= ke_real_simp_term_metric st.
+proof. by case st. qed.
+
+lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv1
+      (st : ke_real_simp_state) :
+  is_ke_real_simp_state_wait_adv1 st => ke_real_simp_term_metric st = 3.
+proof. by case st. qed.
+
+lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_req2
+      (st : ke_real_simp_state) :
+  is_ke_real_simp_state_wait_req2 st => ke_real_simp_term_metric st = 2.
+proof. by case st. qed.
+
+lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv2
+      (st : ke_real_simp_state) :
+  is_ke_real_simp_state_wait_adv2 st => ke_real_simp_term_metric st = 1.
+proof. by case st. qed.
+
+lemma ke_real_simp_term_init :
+  equiv
+  [KERealSimp.init ~ KERealSimp.init :
+   ={self_, adv_} ==>
+   ={res, glob KERealSimp} /\
+   ke_real_simp_term_metric KERealSimp.st{1} = ke_real_simp_term_metric_max].
+proof. proc; auto. qed.
+
+lemma ke_real_simp_term_invoke (n : int) :
+  equiv
+  [KERealSimp.invoke ~ KERealSimp.invoke :
+   ={m, glob KERealSimp} /\
+   ke_real_simp_term_metric KERealSimp.st{1} = n ==>
+   ={res, KERealSimp.st} /\
+   (res{1} = None \/ ke_real_simp_term_metric KERealSimp.st{1} = n - 1)].
+proof.
+proc; sp 3 3.
+if => //.
+inline KERealSimp.parties.
+sp 2 2.
+if => //.
+if => //.
+sp 1 1.
+if; first by move => |> &1 &2 <-.
+auto =>
+  &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
+  ->>.
+rewrite -oget_req1_2 /= in oget_req1_1.
+by elim oget_req1_1 => _ [#] -> ->.
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+sp 1 1.
+if; first smt().
+auto.
+auto => &1 &2 |> _ _ <- [#] -> -> ->.
+progress.
+smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv1).
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+sp 1 1.
+if; first smt().
+auto => |> &1 &2 _ _ <- [#] -> -> -> ->.
+progress.
+smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_req2).
+auto.
+auto.
+if => //.
+sp 1 1.
+if => //.
+sp 1 1.
+if; first smt().
+auto => |> &1 &2 _ _ <- [#] -> -> -> ->.
+progress.
+smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv2).
+auto.
+auto.
+auto.
+qed.
+
 (* relational invariant for connecting KEReal and KERealSimp *)
 
 type real_simp_rel_st = {
@@ -1121,6 +1348,26 @@ inductive real_simp_rel (st : real_simp_rel_st) =
       (real_simp_rel3 st pt1 pt2 q1 q2)
   | RealSimpRel4 (pt1 pt2 : port, q1 q2 : exp) of
       (real_simp_rel4 st pt1 pt2 q1 q2).
+
+lemma KEReal_KERealSimp_init (func adv : addr) :
+  equiv
+  [KEReal.init ~ KERealSimp.init :  
+   ={self_, adv_} /\ self_{1} = func /\ adv_{1} = adv ==>
+   KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
+   Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
+   Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
+   KERealSimp.self{2} = func /\ KERealSimp.adv{2} = adv /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = KEReal.st1{1};
+     real_simp_rel_st_r2s  = KEReal.st2{1};
+     real_simp_rel_st_fws1 = Fwd1.Forw.st{1};
+     real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
+     real_simp_rel_st_rss  = KERealSimp.st{2}|}].
+proof.
+proc; inline*; auto; progress.
+apply RealSimpRel0; smt().
+qed.
 
 lemma KEReal_KERealSimp_invoke (func adv : addr) :
   equiv
@@ -5749,414 +5996,4 @@ lemma ke_security
 proof.
 move => pre func_eq adv_eq.
 by apply (ke_sec Adv Env func adv &m).
-qed.
-
-(* termination metric and proof for KEReal *)
-
-type real_term_met_st = {
-  real_term_met_st_p1s  : ke_real_p1_state;
-  real_term_met_st_p2s  : ke_real_p2_state;
-  real_term_met_st_fws1 : Fwd1.fw_state;
-  real_term_met_st_fws2 : Fwd2.fw_state;
-}.
-
-op real_p1_term_metric_max : int = 2.
-
-op ke_real_p1_term_metric (st : ke_real_p1_state) : int =
-     with st = KERealP1StateWaitReq1   => 2
-     with st = KERealP1StateWaitFwd2 _ => 1
-     with st = KERealP1StateFinal _    => 0.
-
-lemma ge0_real_p1_term_metric (st : ke_real_p1_state) :
-  0 <= ke_real_p1_term_metric st.
-proof. by case st. qed.
-
-lemma real_p1_term_metric_is_ke_real_p1_state_wait_fwd2
-      (st : ke_real_p1_state) :
-  is_ke_real_p1_state_wait_fwd2 st => ke_real_p1_term_metric st = 1.
-proof. by case st. qed.
-
-op real_p2_term_metric_max : int = 2.
-
-op ke_real_p2_term_metric (st : ke_real_p2_state) : int =
-     with st = KERealP2StateWaitFwd1   => 2
-     with st = KERealP2StateWaitReq2 _ => 1
-     with st = KERealP2StateFinal _    => 0.
-
-lemma ge0_real_p2_term_metric (st : ke_real_p2_state) :
-  0 <= ke_real_p2_term_metric st.
-proof. by case st. qed.
-
-lemma real_p2_term_metric_is_ke_real_p2_state_wait_req2
-      (st : ke_real_p2_state) :
-  is_ke_real_p2_state_wait_req2 st => ke_real_p2_term_metric st = 1.
-proof. by case st. qed.
-
-op real_term_metric_max : int =
-     real_p1_term_metric_max +
-     real_p2_term_metric_max +
-     Fwd1.term_metric_max +
-     Fwd2.term_metric_max.
-
-op real_term_metric (rtms : real_term_met_st) : int =
-     ke_real_p1_term_metric rtms.`real_term_met_st_p1s +
-     ke_real_p2_term_metric rtms.`real_term_met_st_p2s +
-     Fwd1.term_metric rtms.`real_term_met_st_fws1 +
-     Fwd2.term_metric rtms.`real_term_met_st_fws2.
-
-lemma ge0_real_term_metric (rtms : real_term_met_st) :
-  0 <= real_term_metric rtms.
-proof.
-delta.
-smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
-    Fwd1.ge0_term_metric Fwd2.ge0_term_metric).
-qed.
-
-lemma real_term_metric0 (rtms : real_term_met_st) :
-  real_term_metric rtms = 0 =>
-  ke_real_p1_term_metric rtms.`real_term_met_st_p1s = 0 /\
-  ke_real_p2_term_metric rtms.`real_term_met_st_p2s = 0 /\
-  Fwd1.term_metric rtms.`real_term_met_st_fws1 = 0 /\
-  Fwd2.term_metric rtms.`real_term_met_st_fws2 = 0.
-proof.
-delta.
-smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
-    Fwd1.ge0_term_metric Fwd2.ge0_term_metric).
-qed.
-
-lemma ke_real_term_init :
-  equiv
-  [KEReal.init ~ KEReal.init :
-   ={self_, adv_} ==>
-   ={res, glob KEReal} /\
-   real_term_metric
-   {|real_term_met_st_p1s = KEReal.st1{1};
-     real_term_met_st_p2s = KEReal.st2{1};
-     real_term_met_st_fws1 = Fwd1.Forw.st{1};
-     real_term_met_st_fws2 = Fwd2.Forw.st{1}|} =
-   real_term_metric_max].
-proof.
-proc.
-swap [5..6] -2.
-exlim adv_{1} => adv'.
-call Fwd2.term_init.
-call Fwd1.term_init.
-auto; progress; smt().
-qed.
-
-lemma ke_real_term_invoke (n : int) :
-  equiv
-  [KEReal.invoke ~ KEReal.invoke :
-   ={m, glob KEReal} /\
-   real_term_metric
-   {|real_term_met_st_p1s = KEReal.st1{1};
-     real_term_met_st_p2s = KEReal.st2{1};
-     real_term_met_st_fws1 = Fwd1.Forw.st{1};
-     real_term_met_st_fws2 = Fwd2.Forw.st{1}|} = n ==>
-   ={res, KEReal.st1, KEReal.st2, Fwd1.Forw.st, Fwd2.Forw.st} /\
-   (res{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s = KEReal.st1{1};
-      real_term_met_st_p2s = KEReal.st2{1};
-      real_term_met_st_fws1 = Fwd1.Forw.st{1};
-      real_term_met_st_fws2 = Fwd2.Forw.st{1}|} < n)].
-proof.
-case (n < 0).
-move => lt0_n.
-proc; exfalso; smt(ge0_real_term_metric).
-rewrite -lezNgt.
-move => ge0_n.
-proc; sp 3 3.
-if => //.
-inline KEReal.loop.
-sp 3 3; wp.
-conseq
-  (_ :
-   ={not_done, m0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
-   not_done{1} /\
-   real_term_metric
-   {|real_term_met_st_p1s = KEReal.st1{1};
-     real_term_met_st_p2s = KEReal.st2{1};
-     real_term_met_st_fws1 = Fwd1.Forw.st{1};
-     real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n ==>
-   _) => //.
-move : ge0_n.
-elim n.
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto.
-if => //.
-inline{1} (1) KEReal.party1.
-inline{2} (1) KEReal.party1.
-rcondf{1} 3; first auto; smt(real_term_metric0).
-rcondf{2} 3; first auto; smt(real_term_metric0).
-rcondf{1} 3; first auto;
-  smt(real_term_metric0 real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
-rcondf{2} 3; first auto;
-  smt(real_term_metric0 real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
-rcondt{1} 4; first auto.
-rcondt{2} 4; first auto.
-rcondf{1} 5; first auto.
-rcondf{2} 5; first auto.
-auto.
-if => //.
-inline{1} (1) KEReal.party2.
-inline{2} (1) KEReal.party2.
-rcondf{1} 3; first auto; smt(real_term_metric0).
-rcondf{2} 3; first auto; smt(real_term_metric0).
-rcondf{1} 3; first auto;
-  smt(real_term_metric0 real_p2_term_metric_is_ke_real_p2_state_wait_req2).
-rcondf{2} 3; first auto;
-  smt(real_term_metric0 real_p2_term_metric_is_ke_real_p2_state_wait_req2).
-rcondt{1} 4; first auto.
-rcondt{2} 4; first auto.
-rcondf{1} 5; first auto.
-rcondf{2} 5; first auto.
-auto.
-if => //.
-seq 1 1 :
-  (={not_done, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
-   r0{1} = None).
-call (Fwd1.term_invoke 0).
-auto; progress; smt(real_term_metric0 Fwd1.ge0_term_metric).
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto.
-rcondf{1} 2; first auto.
-rcondf{2} 2; first auto.
-auto.
-seq 1 1 :
-  (={not_done, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
-   r0{1} = None).
-call (Fwd2.term_invoke 0).
-auto; progress; smt(real_term_metric0 Fwd2.ge0_term_metric).
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto.
-rcondf{1} 2; first auto.
-rcondf{2} 2; first auto.
-auto.
-move => n ge0_n IH.
-rcondt{1} 1; first auto.
-rcondt{2} 1; first auto.
-seq 1 1 :
-   (={not_done, m0, r0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
-    not_done{1} /\
-    (r0{1} = None \/
-     real_term_metric
-     {|real_term_met_st_p1s = KEReal.st1{1};
-       real_term_met_st_p2s = KEReal.st2{1};
-       real_term_met_st_fws1 = Fwd1.Forw.st{1};
-       real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n)).
-if => //.
-inline KEReal.party1.
-sp 2 2.
-if => //.
-if => //.
-sp 1 1.
-if; first by move => &1 &2 |> <-.
-auto => &1 &2 |> <-; smt().
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if.
-move => &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1 _ _ ->> _
-        ->> _ _ ->>.
-rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
-by elim oget_dec_fw_rsp1.
-auto => |> &1 &2 <- [#] _ _ _ -> <- [#] -> -> -> _ /=.
-rewrite /real_term_metric /=.
-smt(real_p1_term_metric_is_ke_real_p1_state_wait_fwd2).
-auto.
-auto.
-auto.
-inline KEReal.party2.
-if => //.
-sp 2 2.
-if => //.
-if => //.
-sp 1 1.
-if.
-move =>
-  &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1 ->> _ ->> _ _ ->>.
-rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
-by elim oget_dec_fw_rsp1.
-auto => &1 &2 |> <-; smt().
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if => //.
-move =>
-  &1 &2 [#] oget_dec_fw_rsp2 oget_dec_fw_rsp1
-  oget_dec_wait_req2_2 oget_dec_wait_req2_1
-  ->> _ ->> _ _ ->> ->>.
-rewrite -oget_dec_fw_rsp2 /= in oget_dec_fw_rsp1.
-elim oget_dec_fw_rsp1.
-rewrite -oget_dec_wait_req2_2 /= in oget_dec_wait_req2_1.
-by elim oget_dec_wait_req2_1.
-auto => &1 &2 |> <- [#] _ -> <-.
-progress.
-smt(real_p2_term_metric_is_ke_real_p2_state_wait_req2).
-auto.
-auto.
-auto.
-if => //.
-exlim (Fwd1.term_metric Fwd1.Forw.st{1}) => m.
-call (Fwd1.term_invoke m).
-auto.
-auto; progress; smt().
-exlim (Fwd2.term_metric Fwd2.Forw.st{1}) => m.
-call (Fwd2.term_invoke m).
-auto.
-auto; progress; smt().
-if => //.
-rcondf{1} 2; first auto.
-rcondf{2} 2; first auto.
-auto; progress; smt().
-sp 1 1.
-conseq
-  (_ :
-    ={not_done, m0, glob KEReal, glob Fwd1.Forw, glob Fwd2.Forw} /\
-    not_done{1} /\
-    real_term_metric
-    {|real_term_met_st_p1s = KEReal.st1{1};
-      real_term_met_st_p2s = KEReal.st2{1};
-      real_term_met_st_fws1 = Fwd1.Forw.st{1};
-      real_term_met_st_fws2 = Fwd2.Forw.st{1};|} = n ==>
-    ={r0, KEReal.st1, KEReal.st2, Fwd1.Forw.st, Fwd2.Forw.st} /\
-    (r0{1} = None \/
-     real_term_metric
-     {|real_term_met_st_p1s = KEReal.st1{1};
-       real_term_met_st_p2s = KEReal.st2{1};
-       real_term_met_st_fws1 = Fwd1.Forw.st{1};
-       real_term_met_st_fws2 = Fwd2.Forw.st{1};|} < n)) => //.
-progress; smt().
-progress; smt().
-qed.
-
-(* termination metric and proof for KEIdeal *)
-
-op ideal_term_metric_max : int = 4.
-
-op ideal_term_metric (st : ke_ideal_state) : int =
-     with st = KEIdealStateWaitReq1   => 4
-     with st = KEIdealStateWaitSim1 _ => 3
-     with st = KEIdealStateWaitReq2 _ => 2
-     with st = KEIdealStateWaitSim2 _ => 1
-     with st = KEIdealStateFinal    _ => 0.
-
-lemma ge0_ideal_term_metric (st : ke_ideal_state) :
-  0 <= ideal_term_metric st.
-proof. by case st. qed.
-
-lemma ideal_term_metric_is_ke_ideal_state_wait_sim1
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim1 st => ideal_term_metric st = 3.
-proof. by case st. qed.
-
-lemma ideal_term_metric_is_ke_ideal_state_wait_req2
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_req2 st => ideal_term_metric st = 2.
-proof. by case st. qed.
-
-lemma ideal_term_metric_is_ke_ideal_state_wait_sim2
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim2 st => ideal_term_metric st = 1.
-proof. by case st. qed.
-
-lemma ke_ideal_term_init :
-  equiv
-  [KEIdeal.init ~ KEIdeal.init :
-   ={self_, adv_} ==>
-   ={res, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = ideal_term_metric_max].
-proof. proc; auto. qed.
-
-lemma ke_ideal_term_invoke_min1 (n : int) :
-  equiv
-  [KEIdeal.invoke ~ KEIdeal.invoke :
-   ={m, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = n ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)].
-proof.
-proc; sp 3 3.
-if => //.
-inline KEIdeal.parties.
-sp 2 2.
-if => //.
-if => //.
-sp 1 1.
-if; first by move => |> &1 &2 <-.
-auto =>
-  &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
-  ->>.
-rewrite -oget_req1_2 /= in oget_req1_1.
-by elim oget_req1_1 => _ [#] -> ->.
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-auto.
-auto =>
-  &1 &2 [#] oget_wait_sim1_2 oget_wait_sim1_1 ->> _ ->> _ _ _ _ _ _ _
-  ->> ->>.
-rewrite -oget_wait_sim1_2 /= in oget_wait_sim1_1.
-elim oget_wait_sim1_1 => -> [#] ->.
-smt(ideal_term_metric_is_ke_ideal_state_wait_sim1).
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if => //.
-auto =>
-  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
-  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
-rewrite -oget_req2_2 /= in oget_req2_1.
-elim oget_req2_1 => _ ->.
-rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
-by elim oget_wait_req2_1 => _ [#] ->.
-auto =>
-  &1 &2 [#] oget_req2_2 oget_req2_1 oget_wait_req2_2 oget_wait_req2_1
-  ->> _ ->> _ _ _ _ _ _ _ ->> ->>.
-rewrite -oget_req2_2 /= in oget_req2_1.
-elim oget_req2_1 => _ ->.
-rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
-smt(ideal_term_metric_is_ke_ideal_state_wait_req2).
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-auto =>
-   &1 &2 [#] oget_wait_req2_2 oget_wait_req2_1 ->> _ ->> _ _ _ _ _ _ _
-   ->> ->>.
-rewrite -oget_wait_req2_2 in oget_wait_req2_1.
-elim oget_wait_req2_1 => -> -> ->.
-smt(ideal_term_metric_is_ke_ideal_state_wait_sim2). 
-auto.
-auto.
-qed.
-
-lemma ke_ideal_term_invoke (n : int) :
-  equiv
-  [KEIdeal.invoke ~ KEIdeal.invoke :
-   ={m, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = n ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} < n)].
-proof.
-conseq
-  (_ :
-   _ ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)).
-progress.
-smt(ge0_ideal_term_metric).
-apply (ke_ideal_term_invoke_min1 n).
 qed.
