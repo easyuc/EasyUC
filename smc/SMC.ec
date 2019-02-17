@@ -3749,6 +3749,14 @@ auto.
 case (MI.func{1} ++ [2] <= addr1{1}).
 rcondf{1} 1; first auto; smt(le_trans le_ext_r).
 rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KERealSimp).invoke.
+rcondt{1} 7; first auto; progress.
+right; rewrite negb_or not_dir in H8.
+smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KERealSimp).loop.
+sp 9 0.
 (* induction *)
 admit.
 rcondt{2} 1; first auto; smt().
@@ -4028,7 +4036,271 @@ rcondf{2} 3; first auto.
 auto.
 (* SMCSec1Bridge_Left(KERS.KERealSimp).rest ~
    SMCSec1Bridge_BotRightKE(KERS.KERealSimp).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 6; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 5.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_term_metric
+    {|real_term_met_st_p1s   = SMCReal.st1{1};
+      real_term_met_st_p2s   = SMCReal.st2{1};
+      real_term_met_st_fws   = Fwd.Forw.st{1};
+      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
+call (KERS.ke_real_simp_term_invoke ke_met).
+auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+case (r{1} = None).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+rcondf{2} 1; first auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondt{1} 1; first auto; smt(not_le_ext_nonnil_l le_trans le_ext_r).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondt{2} 4; first auto. 
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+auto.
+rcondf{2} 4; first auto.
+case ((oget r{1}).`1 = Dir).
+rcondt{2} 4; first auto.
+case (MI.adv{1} <= (oget r{1}).`2.`1).
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+rcondt{1} 1; first auto; smt(incP not_dir not_le_ext_nonnil_l).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondf{2} 5; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 8; first auto; smt().
+sp 0 7.
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+sp 4 4.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+sp 1 1.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+(* induction *)
 admit.
+rcondf{2} 4; first auto.
+case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+if{1}.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto.
+auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{1} 1; first auto.
+move => |> &hr _ _ _ _ _ ep _.
+case (r{m}) => // x.
+case x => x1 x2 x3 x4 /=.
+rewrite oget_some /=.
+case x2 => addr1 n1 /=.
+rewrite negb_or not_dir /=.
+move => _ -> [#] -> _ /=.
+smt(inc_nle_l).
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto; smt().
+sp 6 5.
+seq 1 1 :
+  (!not_done0{1} /\ not_done{1} /\ not_done{2} /\
+   not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondf{2} 1; first auto; smt().
+rcondf{1} 1; first auto; smt(le_ext_r le_trans).
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KERealSimp).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <- [#] -> -> /=.
+by rewrite negb_or not_dir.
+inline{1} (1) SMCReal(KERealSimp).loop.
+sp 9 0.
+(* induction *)
+admit.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondt{2} 5; first auto.
+move => &hr /> <- [#] -> /=.
+by rewrite negb_or not_dir.
+rcondf{2} 7; first auto.
+move => &hr /> <- [#] -> -> /=; smt(incP).
+rcondt{2} 7; first auto.
+move => &hr /> <- [#] -> ->.
+rewrite oget_some /=; smt(incP).
+rcondf{2} 8; first auto.
+rcondf{2} 8; first auto.
+sp 0 10.
+rcondf{2} 1; first auto.
+move => &hr />; smt(inc_nle_l).
+rcondf{2} 1; first auto.
+move => &hr />.
+rcondf{2} 1; first auto.
+move => &hr />.
+rcondt{2} 1; first auto.
+rcondf{2} 3; first auto.
+move => &hr />.
+rewrite oget_some /=; smt(inc_nle_l).
+inline{2} (1) CompEnv(Env, MI(KERealSimp, Adv)).StubAdv.invoke.
+rcondt{2} 4; first auto.
+rcondf{2} 7; first auto.
+sp 0 9.
+rcondf{2} 1; first auto.
+move => &hr />; rewrite oget_some; move => <- //.
+if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by rewrite some_oget.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+move => &hr />; rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KERealSimp).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KERealSimp, Adv)).StubKE).invoke.
+sp 4 4.
+if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KERealSimp).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KERealSimp, Adv)).StubKE).loop.
+sp 3 3.
+(* induction *)
+admit.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
 (* SMCSec1Bridge_Left(KERS.KERealSimp).rest ~
    SMCSec1Bridge_BotRightAdv(KERS.KERealSimp).rest *)
 admit.
