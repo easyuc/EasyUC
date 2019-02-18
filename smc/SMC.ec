@@ -3025,44 +3025,44 @@ qed.
 
 local module StubKE_KERealSimp = CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE.
 
-type real_term_met_st = {
-  real_term_met_st_p1s   : smc_real_p1_state;
-  real_term_met_st_p2s   : smc_real_p2_state;
-  real_term_met_st_fws   : Fwd.fw_state;
-  real_term_met_st_kerss : ke_real_simp_state
+type real_ke_real_simp_term_met_st = {
+  real_ke_real_simp_term_met_st_p1s : smc_real_p1_state;
+  real_ke_real_simp_term_met_st_p2s : smc_real_p2_state;
+  real_ke_real_simp_term_met_st_fws : Fwd.fw_state;
+  real_ke_real_simp_term_met_st_kes  : ke_real_simp_state
 }.
 
-op real_term_metric_max : int =
+op real_ke_real_term_metric_max : int =
      real_p1_term_metric_max +
      real_p2_term_metric_max +
      Fwd.term_metric_max +
      KERS.ke_real_simp_term_metric_max.
 
-op real_term_metric (rtms : real_term_met_st) : int =
-     real_p1_term_metric rtms.`real_term_met_st_p1s +
-     real_p2_term_metric rtms.`real_term_met_st_p2s +
-     Fwd.term_metric rtms.`real_term_met_st_fws +
-     KERS.ke_real_simp_term_metric rtms.`real_term_met_st_kerss.
+op real_ke_real_term_metric (rtms : real_ke_real_simp_term_met_st) : int =
+     real_p1_term_metric rtms.`real_ke_real_simp_term_met_st_p1s +
+     real_p2_term_metric rtms.`real_ke_real_simp_term_met_st_p2s +
+     Fwd.term_metric rtms.`real_ke_real_simp_term_met_st_fws +
+     KERS.ke_real_simp_term_metric rtms.`real_ke_real_simp_term_met_st_kes.
 
-lemma ge0_real_term_metric (rtms : real_term_met_st) :
-  0 <= real_term_metric rtms.
+lemma ge0_real_ke_real_term_metric (rtms : real_ke_real_simp_term_met_st) :
+  0 <= real_ke_real_term_metric rtms.
 proof.
 smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
     Fwd.ge0_term_metric KERS.ge0_ke_real_simp_term_metric).
 qed.
 
-lemma real_term_metric0 (rtms : real_term_met_st) :
-  real_term_metric rtms = 0 =>
-  real_p1_term_metric rtms.`real_term_met_st_p1s = 0 /\
-  real_p2_term_metric rtms.`real_term_met_st_p2s = 0 /\
-  Fwd.term_metric rtms.`real_term_met_st_fws = 0 /\
-  KERS.ke_real_simp_term_metric rtms.`real_term_met_st_kerss = 0.
+lemma real_ke_real_term_metric0 (rtms : real_ke_real_simp_term_met_st) :
+  real_ke_real_term_metric rtms = 0 =>
+  real_p1_term_metric rtms.`real_ke_real_simp_term_met_st_p1s = 0 /\
+  real_p2_term_metric rtms.`real_ke_real_simp_term_met_st_p2s = 0 /\
+  Fwd.term_metric rtms.`real_ke_real_simp_term_met_st_fws = 0 /\
+  KERS.ke_real_simp_term_metric rtms.`real_ke_real_simp_term_met_st_kes = 0.
 proof.
 smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
     Fwd.ge0_term_metric KERS.ge0_ke_real_simp_term_metric).
 qed.
 
-local lemma smc_sec1_ke_real_bridge_induction (n : int) :
+local lemma smc_sec1_ke_real_simp_bridge_induction (n : int) :
   equiv
   [SMCSec1Bridge_Left(KERS.KERealSimp).rest ~
    SMCSec1Bridge_TopRight(KERS.KERealSimp).rest :
@@ -3071,11 +3071,11 @@ local lemma smc_sec1_ke_real_bridge_induction (n : int) :
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3092,11 +3092,11 @@ local lemma smc_sec1_ke_real_bridge_induction (n : int) :
    SMCSec1Bridge_BotRightKE(KERS.KERealSimp).rest :
    ={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3113,11 +3113,11 @@ local lemma smc_sec1_ke_real_bridge_induction (n : int) :
    SMCSec1Bridge_BotRightAdv(KERS.KERealSimp).rest :
    ={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3132,7 +3132,7 @@ local lemma smc_sec1_ke_real_bridge_induction (n : int) :
 proof.
 case (n < 0).
 move => lt0_n.
-(split; last split); proc; exfalso; smt(ge0_real_term_metric).
+(split; last split); proc; exfalso; smt(ge0_real_ke_real_term_metric).
 rewrite -lezNgt.
 elim n => [| n ge0_n IH].
 (* basis step *)
@@ -3158,7 +3158,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
 call (smc_party1_met KERS.KERealSimp StubKE_KERealSimp p1_met).
-auto; smt(real_term_metric0 ge0_real_p1_term_metric).
+auto; smt(real_ke_real_term_metric0 ge0_real_p1_term_metric).
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
 rcondt{1} 1; first auto.
@@ -3185,7 +3185,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
 call (smc_party2_met KERS.KERealSimp StubKE_KERealSimp p2_met).
-auto; smt(real_term_metric0 ge0_real_p2_term_metric).
+auto; smt(real_ke_real_term_metric0 ge0_real_p2_term_metric).
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
 rcondt{1} 1; first auto.
@@ -3212,7 +3212,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (Fwd.term_metric Fwd.Forw.st{1}) => fwd_met.
 call (Fwd.term_invoke fwd_met).
-auto; smt(real_term_metric0 Fwd.ge0_term_metric).
+auto; smt(real_ke_real_term_metric0 Fwd.ge0_term_metric).
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
 rcondt{1} 1; first auto.
@@ -3247,7 +3247,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
-auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+auto; smt(real_ke_real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
 rcondt{2} 1; first auto.
 rcondf{2} 2; first auto.
 sp 0 5.
@@ -3286,7 +3286,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
-auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+auto; smt(real_ke_real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
 rcondf{1} 1; first auto.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -3325,7 +3325,7 @@ seq 1 1 :
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
-auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+auto; smt(real_ke_real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
 rcondf{1} 1; first auto.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -3358,11 +3358,11 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
 call (smc_party1_met KERS.KERealSimp StubKE_KERealSimp p1_met).
 auto; progress; smt().
@@ -3399,11 +3399,11 @@ conseq
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    r{1} <> None /\
    (oget r{1}).`1 = Dir /\
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
@@ -3428,11 +3428,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3455,11 +3455,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -3488,11 +3488,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -3515,11 +3515,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -3541,11 +3541,11 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
 call (smc_party2_met KERS.KERealSimp StubKE_KERealSimp p2_met).
 auto; progress; smt().
@@ -3582,11 +3582,11 @@ conseq
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    r{1} <> None /\
    (oget r{1}).`1 = Dir /\
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
@@ -3624,11 +3624,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3651,11 +3651,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -3684,11 +3684,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -3711,11 +3711,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -3737,11 +3737,11 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (Fwd.term_metric Fwd.Forw.st{1}) => fwd_met.
 call (Fwd.term_invoke fwd_met).
 auto; progress; smt().
@@ -3778,11 +3778,11 @@ conseq
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    r{1} <> None /\
    ((oget r{1}).`1 = Dir /\ (oget r{1}).`2.`1 = MI.func{1} /\
     (oget r{1}).`2.`2 = 4 \/
@@ -3835,11 +3835,11 @@ seq 1 1 :
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n).
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n).
 call (_ : true).
 auto; smt().
 if => //.
@@ -3874,11 +3874,11 @@ conseq
    ={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m1{1} = m2{2} /\
    m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -3900,11 +3900,11 @@ transitivity{1}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m2{2} /\
  m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -3940,11 +3940,11 @@ transitivity{2}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m2{2} /\
  m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -3967,11 +3967,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [_ [_ IH_third]] := IH.
 call IH_third.
 auto.
@@ -4024,11 +4024,11 @@ conseq
     (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
     (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -4053,11 +4053,11 @@ transitivity{1}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done2{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4096,11 +4096,11 @@ transitivity{2}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -4123,11 +4123,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m4{2} r4{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -4158,11 +4158,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -4185,11 +4185,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4218,11 +4218,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -4245,11 +4245,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -4279,11 +4279,11 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
 auto; progress; smt().
@@ -4363,11 +4363,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -4390,11 +4390,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4423,11 +4423,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -4450,11 +4450,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -4521,11 +4521,11 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 call (_ : true).
 auto; smt().
 if => //.
@@ -4565,11 +4565,11 @@ conseq
    ={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m1{1} = m2{2} /\
    m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -4591,11 +4591,11 @@ transitivity{1}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m2{2} /\
  m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4631,11 +4631,11 @@ transitivity{2}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m2{2} /\
  m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -4658,11 +4658,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [_ [IH_second _]] := IH.
 call IH_second.
 auto.
@@ -4748,11 +4748,11 @@ conseq
     (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
     (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -4777,11 +4777,11 @@ transitivity{1}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done2{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -4820,11 +4820,11 @@ transitivity{2}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -4847,11 +4847,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m5{2} r5{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -4896,14 +4896,14 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
-auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+auto; smt(real_ke_real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
 case (r{1} = None).
 rcondf{1} 1; first auto.
 rcondt{1} 1; first auto.
@@ -4993,11 +4993,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -5020,11 +5020,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -5053,11 +5053,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -5080,11 +5080,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -5150,11 +5150,11 @@ seq 1 1 :
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n).
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n).
 call (_ : true).
 auto; smt().
 if => //.
@@ -5195,11 +5195,11 @@ conseq
    ={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m1{1} = m{2} /\
    m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -5221,11 +5221,11 @@ transitivity{1}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m{2} /\
  m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -5261,11 +5261,11 @@ transitivity{2}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m{2} /\
  m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -5288,11 +5288,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [_ [IH_second _]] := IH.
 call IH_second.
 auto.
@@ -5374,11 +5374,11 @@ conseq
     (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
     (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -5403,11 +5403,11 @@ transitivity{1}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done2{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -5446,11 +5446,11 @@ transitivity{2}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -5473,11 +5473,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -5522,14 +5522,14 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
    (r{1} = None \/
-    real_term_metric
-    {|real_term_met_st_p1s   = SMCReal.st1{1};
-      real_term_met_st_p2s   = SMCReal.st2{1};
-      real_term_met_st_fws   = Fwd.Forw.st{1};
-      real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n)).
+    real_ke_real_term_metric
+    {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+      real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n)).
 exlim (KERS.ke_real_simp_term_metric KERS.KERealSimp.st{1}) => ke_met.
 call (KERS.ke_real_simp_term_invoke ke_met).
-auto; smt(real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
+auto; smt(real_ke_real_term_metric0 KERS.ge0_ke_real_simp_term_metric).
 case (r{1} = None).
 rcondf{1} 1; first auto.
 rcondt{1} 1; first auto.
@@ -5624,11 +5624,11 @@ conseq
     (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m{1}.`2.`1 \/
     (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -5658,11 +5658,11 @@ transitivity{1}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -5692,11 +5692,11 @@ transitivity{2}
   (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m{1}.`2.`1 \/
   (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -5719,11 +5719,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -5794,11 +5794,11 @@ seq 1 1 :
    SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n).
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n).
 call (_ : true).
 auto; smt().
 if => //.
@@ -5833,11 +5833,11 @@ conseq
    ={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
    m1{1} = m{2} /\
    m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -5859,11 +5859,11 @@ transitivity{1}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m{2} /\
  m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done0{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -5899,11 +5899,11 @@ transitivity{2}
 (={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
  m1{1} = m{2} /\
  m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -5926,11 +5926,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [_ [_ IH_third]] := IH.
 call IH_third.
 auto.
@@ -5979,11 +5979,11 @@ conseq
     (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
     MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
     (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-   real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+   real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
    exper_pre MI.func{1} MI.adv{1} /\
    MI.in_guard{1} = fset1 adv_fw_pi /\
    MI.func{2} = MI.func{1} ++ [2] /\
@@ -6006,11 +6006,11 @@ transitivity{1}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
- real_term_metric
- {|real_term_met_st_p1s   = SMCReal.st1{1};
-   real_term_met_st_p2s   = SMCReal.st2{1};
-   real_term_met_st_fws   = Fwd.Forw.st{1};
-   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ real_ke_real_term_metric
+ {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+   real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+   real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+   real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  not_done{2} /\ not_done1{2} /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
@@ -6048,11 +6048,11 @@ transitivity{2}
   (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
   MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
   (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
-  real_term_metric
-  {|real_term_met_st_p1s   = SMCReal.st1{1};
-    real_term_met_st_p2s   = SMCReal.st2{1};
-    real_term_met_st_fws   = Fwd.Forw.st{1};
-    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+  real_ke_real_term_metric
+  {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+    real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+    real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+    real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|} = n /\
  exper_pre MI.func{1} MI.adv{1} /\
  MI.in_guard{1} = fset1 adv_fw_pi /\
  MI.func{2} = MI.func{1} ++ [2] /\
@@ -6075,11 +6075,11 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
           MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [IH_first _] := IH.
 call IH_first.
 auto.
@@ -6213,12 +6213,12 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
           m2{2} r2{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
-have [lem_first _] := smc_sec1_ke_real_bridge_induction met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
+have [lem_first _] := smc_sec1_ke_real_simp_bridge_induction met.
 call lem_first.
 auto.
 inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
@@ -6352,12 +6352,12 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
           (oget r3{2}) r3{2}.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
-have [_ [_ lem_third]] := smc_sec1_ke_real_bridge_induction met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
+have [_ [_ lem_third]] := smc_sec1_ke_real_simp_bridge_induction met.
 call lem_third.
 auto.
 inline SMCSec1Bridge_BotRightAdv(KERS.KERealSimp).rest.
@@ -6472,12 +6472,12 @@ by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.s
           (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
           m5{2} None.
 exlim
-  (real_term_metric
-   {|real_term_met_st_p1s   = SMCReal.st1{1};
-     real_term_met_st_p2s   = SMCReal.st2{1};
-     real_term_met_st_fws   = Fwd.Forw.st{1};
-     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
-have [lem_first _] := smc_sec1_ke_real_bridge_induction met.
+  (real_ke_real_term_metric
+   {|real_ke_real_simp_term_met_st_p1s = SMCReal.st1{1};
+     real_ke_real_simp_term_met_st_p2s = SMCReal.st2{1};
+     real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
+     real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
+have [lem_first _] := smc_sec1_ke_real_simp_bridge_induction met.
 call lem_first.
 auto.
 inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
@@ -6575,7 +6575,3485 @@ by rewrite (smc_real_ke_real_simp func' adv' &m) //
            (smc_sec1_ke_real_simp_bridge func' adv' &m).
 qed.
 
-(* start of core of KEIdeal bridging lemma proof *)
+(* start of core of KEIdeal bridging lemma proof
+
+   this is formed via textual substitutions of the KERealSimp
+   version *)
+
+local module StubKE_KEIdeal = CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.
+
+type real_ideal_term_met_st = {
+  real_ideal_term_met_st_p1s : smc_real_p1_state;
+  real_ideal_term_met_st_p2s : smc_real_p2_state;
+  real_ideal_term_met_st_fws : Fwd.fw_state;
+  real_ideal_term_met_st_kes : KeyEx.ke_ideal_state
+}.
+
+op real_ideal_term_metric_max : int =
+     real_p1_term_metric_max +
+     real_p2_term_metric_max +
+     Fwd.term_metric_max +
+     KeyEx.ideal_term_metric_max.
+
+op real_ideal_term_metric (rtms : real_ideal_term_met_st) : int =
+     real_p1_term_metric rtms.`real_ideal_term_met_st_p1s +
+     real_p2_term_metric rtms.`real_ideal_term_met_st_p2s +
+     Fwd.term_metric rtms.`real_ideal_term_met_st_fws +
+     KeyEx.ideal_term_metric rtms.`real_ideal_term_met_st_kes.
+
+lemma ge0_real_ideal_term_metric (rtms : real_ideal_term_met_st) :
+  0 <= real_ideal_term_metric rtms.
+proof.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd.ge0_term_metric KeyEx.ge0_ideal_term_metric).
+qed.
+
+lemma real_ideal_term_metric0 (rtms : real_ideal_term_met_st) :
+  real_ideal_term_metric rtms = 0 =>
+  real_p1_term_metric rtms.`real_ideal_term_met_st_p1s = 0 /\
+  real_p2_term_metric rtms.`real_ideal_term_met_st_p2s = 0 /\
+  Fwd.term_metric rtms.`real_ideal_term_met_st_fws = 0 /\
+  KeyEx.ideal_term_metric rtms.`real_ideal_term_met_st_kes = 0.
+proof.
+smt(ge0_real_p1_term_metric ge0_real_p2_term_metric
+    Fwd.ge0_term_metric KeyEx.ge0_ideal_term_metric).
+qed.
+
+local lemma smc_sec1_ke_ideal_bridge_induction (n : int) :
+  equiv
+  [SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest :
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   ={res, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   CompEnv.stub_st{2} = None] /\
+  equiv
+  [SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest :
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   ={res, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   CompEnv.stub_st{2} = None] /\
+  equiv
+  [SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest :
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   ={res, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   CompEnv.stub_st{2} = None].
+proof.
+case (n < 0).
+move => lt0_n.
+(split; last split); proc; exfalso; smt(ge0_real_ideal_term_metric).
+rewrite -lezNgt.
+elim n => [| n ge0_n IH].
+(* basis step *)
+split; last split.
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+sp 2 2.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
+call (smc_party1_met KeyEx.KEIdeal StubKE_KEIdeal p1_met).
+auto; smt(real_ideal_term_metric0 ge0_real_p1_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
+call (smc_party2_met KeyEx.KEIdeal StubKE_KEIdeal p2_met).
+auto; smt(real_ideal_term_metric0 ge0_real_p2_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (Fwd.term_metric Fwd.Forw.st{1}) => fwd_met.
+call (Fwd.term_invoke fwd_met).
+auto; smt(real_ideal_term_metric0 Fwd.ge0_term_metric).
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).invoke.
+rcondt{2} 5; first auto; smt().
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).loop.
+rcondt{2} 8; first auto.
+rcondt{2} 10; first auto; smt().
+sp 0 9.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2}
+   /\ r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; smt(real_ideal_term_metric0 KeyEx.ge0_ideal_term_metric).
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+sp 0 5.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto; smt().
+rcondt{2} 2; first auto; smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto; smt().
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 6; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 5.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; smt(real_ideal_term_metric0 KeyEx.ge0_ideal_term_metric).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 4.
+seq 1 1 :
+  (not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\ r{1} = None).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; smt(real_ideal_term_metric0 KeyEx.ge0_ideal_term_metric).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto.
+(* inductive step *)
+split; last split.
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest *)
+proc; sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
+call (smc_party1_met KeyEx.KEIdeal StubKE_KEIdeal p1_met).
+auto; progress; smt().
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+case (r{1} = None).
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+conseq
+  (_ :
+   not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   r{1} <> None /\
+   (oget r{1}).`1 = Dir /\
+   (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
+    SMCReal.self{1} ++ [1] <= (oget r{1}).`2.`1) ==>
+   _).
+move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+case (r{2}) => // x /=.
+rewrite oget_some.
+case (x) => x1 x2 x3 x4 /=.
+case x2 => addr1 n1 /=.
+smt(le_trans le_ext_r).
+rcondf{1} 1; first auto.
+progress; smt(le_trans le_ext_r).
+rcondf{2} 1; first auto.
+progress; smt(le_trans le_ext_r).
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (real_p2_term_metric SMCReal.st2{1}) => p2_met.
+call (smc_party2_met KeyEx.KEIdeal StubKE_KEIdeal p2_met).
+auto; progress; smt().
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+case (r{1} = None).
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+conseq
+  (_ :
+   not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   r{1} <> None /\
+   (oget r{1}).`1 = Dir /\
+   (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
+    ! SMCReal.self{1} <= (oget r{1}).`2.`1) ==>
+   _).
+move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+case (r{2}) => // x /=.
+rewrite oget_some.
+case (x) => x1 x2 x3 x4 /=.
+case x2 => addr1 n1 /=.
+smt(le_trans le_ext_r).
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{2} 5; first auto; smt().
+rcondt{1} 5; first auto.
+rcondt{2} 5; first auto.
+sp 5 5.
+if; first smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
+if => //.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (Fwd.term_metric Fwd.Forw.st{1}) => fwd_met.
+call (Fwd.term_invoke fwd_met).
+auto; progress; smt().
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+case (r{1} = None).
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+conseq
+  (_ :
+   not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   r{1} <> None /\
+   ((oget r{1}).`1 = Dir /\ (oget r{1}).`2.`1 = MI.func{1} /\
+    (oget r{1}).`2.`2 = 4 \/
+    (oget r{1}).`1 = Adv /\ ! MI.func{1} <= (oget r{1}).`2.`1 /\
+    (oget r{1}).`2.`2 = adv_fw_pi) ==>
+   _).
+move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+case (r{2}) => // x /=.
+rewrite oget_some.
+case (x) => x1 x2 x3 x4 /=.
+case x2 => addr1 n1 /=.
+smt(le_trans le_ext_r).
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{2} 5; first auto; smt().
+rcondf{1} 5; first auto; smt(le_refl).
+rcondf{2} 5; first auto; smt(le_refl).
+sp 4 4.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+sp 2 2.
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).invoke.
+rcondt{2} 5; first auto; smt(in_fset1 le_refl incP).
+inline MI(KeyEx.KEIdeal, Adv).loop.
+rcondt{2} 8; first auto.
+rcondf{2} 10; first auto; smt(inc_le1_not_lr le_ext_r).
+sp 0 9.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ !not_done0{1} /\ !not_done0{2} /\
+   not_done1{2} /\ r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+case (MI.func{1} ++ [2] <= addr1{1}).
+rcondf{1} 1; first auto; smt(le_trans le_ext_r).
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+rcondt{1} 7; first auto; progress.
+right; rewrite negb_or not_dir in H8.
+smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+sp 9 0.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done1{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m2{2} /\
+   m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 />. rewrite negb_or not_dir /#.
+(* use part 3 of induction: *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m2{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest(m2, r2);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [_ [_ IH_third]] := IH.
+call IH_third.
+auto.
+inline SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r0{2} /\ not_done00{1} = not_done1{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+seq 1 2 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done00{1} = not_done1{2} /\ not_done2{1} = not_done{2}).
+sim.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 3 of induction *)
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto; smt().
+rcondf{2} 7; first auto; smt().
+rcondf{2} 8; first auto.
+rcondf{2} 11; first auto; smt().
+sp 0 10.
+if; first smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 6 6.
+if; first smt().
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m4{2} /\
+   (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+    (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+    (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 /> _ <- [#] -> -> -> -> -> /#.
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m4{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m4{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m4, r4);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m4{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m4, r4, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m4{2} r4{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r5{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).invoke.
+rcondt{2} 5; first auto; smt().
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).loop.
+rcondt{2} 8; first auto.
+rcondt{2} 10; first auto; smt().
+sp 0 9.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   not_done1{2} /\ r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; progress; smt().
+case (r{1} = None).
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+rcondf{2} 1; first auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondt{1} 1; first auto; smt(not_le_ext_nonnil_l le_trans le_ext_r).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondt{2} 4; first auto. 
+rcondf{2} 6; first auto.
+rcondf{2} 8; first auto.
+rcondf{2} 9; first auto.
+rcondt{2} 9; first auto.
+rcondf{2} 10; first auto.
+rcondt{2} 10; first auto.
+rcondf{2} 11; first auto.
+auto.
+rcondf{2} 4; first auto.
+case ((oget r{1}).`1 = Dir).
+rcondt{2} 4; first auto.
+case (MI.adv{1} <= (oget r{1}).`2.`1).
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 8; first auto.
+sp 0 8.
+rcondt{1} 1; first auto; smt(incP le_refl).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto.
+rcondf{2} 5; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 10; first auto; smt().
+sp 0 10.
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+rcondf{1} 1; first auto; smt(le_refl).
+rcondf{2} 1; first auto; smt(le_refl).
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done0{2} /\
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
+rcondf{2} 4; first auto.
+case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 8; first auto.
+rcondf{2} 9; first auto.
+rcondt{2} 9; first auto.
+rcondf{2} 10; first auto.
+rcondt{2} 10; first auto.
+rcondf{2} 11; first auto.
+wp.
+if{1}.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto.
+auto.
+rcondf{1} 1; first auto.
+move => |> &hr _ _ _ _ _ ep _.
+case (r2{m}) => // msg.
+case msg => mod pt1 pt2 u.
+case pt1 => addr1 n1 /= _.
+rewrite oget_some not_dir negb_or /=.
+smt(inc_nle_l).
+rcondf{2} 4; first auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+sp 4 3.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 3; first auto; smt().
+rcondf{2} 3; first auto; smt().
+sp 2 2.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+   r{1} = r2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondf{1} 1; first auto; smt(le_trans le_ext_r).
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_trans le_ext_r).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <-; by rewrite negb_or not_dir.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+sp 9 0.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m2{2} /\
+   m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 />. rewrite negb_or not_dir /#.
+(* use part 2 of induction: *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m2{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest(m2, r2);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [_ [IH_second _]] := IH.
+call IH_second.
+auto.
+inline SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest.
+sp 5 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r0{2} /\ not_done00{1} = not_done1{2} /\
+   not_done10{1} = not_done0{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+seq 1 2 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done00{1} = not_done1{2} /\
+   not_done10{1} = not_done0{2} /\ not_done2{1} = not_done{2}).
+sim.
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+sp 1 1.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+sim.
+(* end of use of part 2 of induction *)
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 7; first auto.
+move => |> &hr <-; by rewrite negb_or not_dir.
+rcondf{2} 10; first auto => |> &hr <-; progress; smt(incP).
+rcondt{2} 10; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 11; first auto.
+rcondf{2} 11; first auto.
+rcondf{2} 14; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 14; first auto.
+rcondf{2} 14; first auto.
+rcondt{2} 14; first auto.
+rcondf{2} 16; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
+rcondt{2} 17; first auto.
+rcondf{2} 20; first auto.
+rcondf{2} 23; first auto => |> &hr <- /#.
+sp 0 22.
+if; first auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _ <- //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by rewrite some_oget.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto => |> &hr _ _ _ _ _ _ _ _ _ _ _ _ _.
+rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 4 4.
+if.
+auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _.
+rewrite oget_some; by move => <-.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m5{2} /\
+   (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+    (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+    (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 /> _ _ <- [#] -> -> -> -> -> /#.
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m5{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m5{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m5, r5);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m5{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m5, r5, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m5{2} r5{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r6{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 4; first auto.
+rcondt{2} 6; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 5.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; smt(real_ideal_term_metric0 KeyEx.ge0_ideal_term_metric).
+case (r{1} = None).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+rcondf{2} 1; first auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondt{1} 1; first auto; smt(not_le_ext_nonnil_l le_trans le_ext_r).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondt{2} 4; first auto. 
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+auto.
+rcondf{2} 4; first auto.
+case ((oget r{1}).`1 = Dir).
+rcondt{2} 4; first auto.
+case (MI.adv{1} <= (oget r{1}).`2.`1).
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+rcondt{1} 1; first auto; smt(incP not_dir not_le_ext_nonnil_l).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondf{2} 5; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 8; first auto; smt().
+sp 0 7.
+if => //.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{1} 4; first auto.
+rcondf{2} 4; first auto.
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+sp 4 4.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondt{1} 1; first auto; smt().
+rcondt{2} 1; first auto; smt().
+sp 1 1.
+rcondf{1} 1; first auto; smt().
+rcondf{2} 1; first auto; smt().
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done1{2} /\
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
+rcondf{2} 4; first auto.
+case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{2} 7; first auto.
+rcondf{2} 8; first auto.
+if{1}.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto.
+auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{1} 1; first auto.
+move => |> &hr _ _ _ _ _ ep _.
+case (r{m}) => // x.
+case x => x1 x2 x3 x4 /=.
+rewrite oget_some /=.
+case x2 => addr1 n1 /=.
+rewrite negb_or not_dir /=.
+move => _ -> [#] -> _ /=.
+smt(inc_nle_l).
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto; smt().
+sp 6 5.
+seq 1 1 :
+  (!not_done0{1} /\ not_done{1} /\ not_done{2} /\
+   not_done1{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 5; first auto.
+auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondf{2} 1; first auto; smt().
+rcondf{1} 1; first auto; smt(le_ext_r le_trans).
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <- [#] -> -> /=.
+by rewrite negb_or not_dir.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+sp 9 0.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m{2} /\
+   m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 />. rewrite negb_or not_dir /#.
+(* use part 2 of induction: *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m{2} /\
+ m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest(m, r);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m{2} /\
+ m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [_ [IH_second _]] := IH.
+call IH_second.
+auto.
+inline SMCSec1Bridge_BotRightKE(KeyEx.KEIdeal).rest.
+sp 5 0.
+seq 1 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r0{1} = r{2} /\ not_done00{1} = not_done0{2} /\
+   not_done10{1} = not_done1{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+sim.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+(* end of use of part 2 of induction *)
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondt{2} 5; first auto.
+move => &hr /> <- [#] -> /=.
+by rewrite negb_or not_dir.
+rcondf{2} 7; first auto.
+move => &hr /> <- [#] -> -> /=; smt(incP).
+rcondt{2} 7; first auto.
+move => &hr /> <- [#] -> ->.
+rewrite oget_some /=; smt(incP).
+rcondf{2} 8; first auto.
+rcondf{2} 8; first auto.
+sp 0 10.
+rcondf{2} 1; first auto.
+move => &hr />; smt(inc_nle_l).
+rcondf{2} 1; first auto.
+move => &hr />.
+rcondf{2} 1; first auto.
+move => &hr />.
+rcondt{2} 1; first auto.
+rcondf{2} 3; first auto.
+move => &hr />.
+rewrite oget_some /=; smt(inc_nle_l).
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
+rcondt{2} 4; first auto.
+rcondf{2} 7; first auto.
+sp 0 9.
+rcondf{2} 1; first auto.
+move => &hr />; rewrite oget_some; move => <- //.
+if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto; progress; by rewrite some_oget.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+move => &hr />; rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 4 4.
+if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done2{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m2{2} /\
+   (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+    (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+    (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 />; rewrite oget_some /= /#.
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m2{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m2, r2);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m2{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+(* SMCSec1Bridge_Left(KeyEx.KEIdeal).rest ~
+   SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest *)
+proc.
+rcondt{1} 3; first auto.
+rcondt{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_ext_nonnil_l).
+rcondf{1} 3; first auto; smt(not_le_other_branch).
+sp 2 4.
+seq 1 1 :
+  (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   (r{1} = None \/
+    real_ideal_term_metric
+    {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+      real_ideal_term_met_st_p2s = SMCReal.st2{1};
+      real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+      real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n)).
+exlim (KeyEx.ideal_term_metric KeyEx.KEIdeal.st{1}) => ke_met.
+call (KeyEx.ke_ideal_term_invoke ke_met).
+auto; smt(real_ideal_term_metric0 KeyEx.ge0_ideal_term_metric).
+case (r{1} = None).
+rcondf{1} 1; first auto.
+rcondt{1} 1; first auto.
+rcondf{1} 2; first auto.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto.
+rcondf{2} 1; first auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondt{1} 1; first auto; smt(not_le_ext_nonnil_l le_trans le_ext_r).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondt{2} 4; first auto. 
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+rcondf{2} 4; first auto.
+case ((oget r{1}).`1 = Dir).
+rcondt{2} 4; first auto.
+case (MI.adv{1} <= (oget r{1}).`2.`1).
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+rcondt{1} 1; first auto; smt(incP not_dir not_le_ext_nonnil_l).
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondf{2} 5; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 5; first auto.
+rcondt{2} 8; first auto.
+rcondf{2} 10; first auto.
+rcondf{2} 13; first auto.
+move => &hr />; rewrite oget_some /=.
+smt(inc_le1_not_rl le_ext_r).
+rcondf{2} 13; first auto.
+move => &hr />; rewrite oget_some /=.
+smt(inc_le1_not_rl le_ext_r).
+rcondt{2} 13; first auto.
+rcondt{2} 15; first auto.
+move => &hr />; rewrite oget_some /=.
+smt(inc_le1_not_rl le_ext_r).
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+rcondt{2} 19; first auto.
+move => &hr />; rewrite oget_some /=. smt(le_refl).
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+rcondt{2} 22; first auto.
+rcondf{2} 22; first auto.
+move => &hr />; rewrite oget_some /=.
+smt(ne_cat_nonnil_r).
+rcondf{2} 22; first auto.
+rcondf{2} 22; first auto.
+move => &hr />; rewrite oget_some /=.
+rewrite (not_le_other_branch MI.func{m} (MI.func{m} ++ [2]) 2 1) // le_refl.
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.invoke.
+rcondt{2} 23; first auto.
+sp 0 25.
+if; first auto => &1 &2 />.
+by rewrite oget_some.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto.
+rcondf{1} 1; first auto; smt(le_refl).
+rcondf{2} 1; first auto.
+move => &hr />; rewrite oget_some; smt(le_refl).
+sp 1 1.
+conseq
+  (_ :
+   not_done{1} /\ not_done0{1} /\ not_done{2} /\ not_done1{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m{1} = m1{2} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+    (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+    (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 /> ? ? ? ? ? ? ? ? ? _ r1_eq H1 H2 H3 H4 H5 H6 H7.
+elim => // <- r1_not_none /= H8 H9 H10 H11.
+left.
+move : r1_not_none H9 H11.
+case (oget r{1}) => x1 x2 x3 x4 /= _ ->.
+case x2 => addr1 n1 /= /#.
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m{1} = m1{2} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m1{2} r{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m1, r1);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m{1} = m1{2} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
+rcondf{2} 4; first auto.
+case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{2} 6; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+if{1}.
+rcondt{1} 2; first auto.
+rcondf{1} 3; first auto.
+rcondt{1} 3; first auto.
+rcondf{1} 4; first auto.
+auto.
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto.
+auto.
+rcondf{2} 4; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+rcondf{1} 1; first auto.
+move => |> &hr _ _ _ _ ep _.
+case (r{m}) => // x.
+case x => x1 x2 x3 x4 /=.
+rewrite oget_some /=.
+case x2 => addr1 n1 /=.
+rewrite negb_or not_dir /=.
+move => _ -> [#] -> _ /=.
+smt(inc_nle_l).
+rcondt{1} 1; first auto; smt().
+rcondf{1} 2; first auto.
+rcondf{1} 2; first auto.
+rcondf{1} 5; first auto; smt().
+rcondf{1} 5; first auto.
+rcondf{1} 5; first auto.
+rcondt{1} 5; first auto.
+rcondf{1} 7; first auto; smt().
+sp 6 5.
+seq 1 1 :
+  (!not_done0{1} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={r, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n).
+call (_ : true).
+auto; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 3; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 3; first auto.
+rcondt{2} 3; first auto.
+rcondf{2} 4; first auto.
+auto.
+case (MI.func{1} ++ [2] <= (oget r{1}).`2.`1).
+rcondf{2} 1; first auto; smt().
+rcondf{1} 1; first auto; smt(le_ext_r le_trans).
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <- [#] -> -> /=.
+by rewrite negb_or not_dir.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+sp 9 0.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} = true /\ not_done{2} /\ not_done0{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m{2} /\
+   m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _).
+move => &1 &2 />. rewrite negb_or not_dir /#.
+(* use part 3 of induction: *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m{2} /\
+ m1{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest(m, r);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m1{1} = m{2} /\
+ m1{1}.`1 = UCCore'.Adv /\ MI.func{1} ++ [2] <= m1{1}.`2.`1 /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [_ [_ IH_third]] := IH.
+call IH_third.
+auto.
+inline SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 2 2 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r0{1} = r{2} /\ not_done00{1} = not_done0{2} /\ not_done1{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 3 of induction *)
+rcondt{2} 1; first auto; smt().
+rcondf{2} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{2} 5; first auto; smt().
+rcondf{2} 5; first auto.
+rcondf{2} 8; first auto; smt().
+sp 0 7.
+if; first smt().
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+sp 2 2.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 4 4.
+if; first smt().
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+conseq
+  (_ :
+   not_done{1} /\ not_done1{1} /\ not_done{2} /\ not_done1{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   m1{1} = m1{2} /\
+   (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+    (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+    MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+    (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+   real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   _); first smt().
+(* use part 1 of induction *)
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m1, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_ideal_term_metric
+ {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+   real_ideal_term_met_st_p2s = SMCReal.st2{1};
+   real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+   real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m1{2} r1{1}.
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m1, r1);}
+(={m1, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_ideal_term_metric
+  {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+    real_ideal_term_met_st_p2s = SMCReal.st2{1};
+    real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+    real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m1, r1, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+     glob Adv} /\
+   r2{1} = r{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+(* end of use of part 1 of induction *)
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+qed.
+
+local lemma smc_sec1_ke_ideal_bridge_invoke :
+  equiv
+  [MI(SMCReal(KeyEx.KEIdeal), Adv).invoke ~
+   MakeInt'.MI
+   (SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE),
+    CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv).invoke :
+   ={m, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None ==>
+   ={res, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   CompEnv.stub_st{2} = None].
+proof.
+proc => /=.
+sp 2 2.
+if => //.
+inline MI(SMCReal(KeyEx.KEIdeal), Adv).loop.
+inline MakeInt'.MI
+       (SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE),
+        CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv).loop.
+sp 3 3.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 2 2.
+if => //.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 4 4.
+if => //.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m2, r2);}
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={m2, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{1} /\
+  (m2{1}.`2.`2 = 1 \/ m2{1}.`2.`2 = 2 \/ m2{1}.`2.`2 = 3 \/ m2{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m2{1}.`2.`1 \/
+  (m2{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m2{1}.`2.`1)) /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+       SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+       Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+       KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+       (mod1{2}, (addr11{2}, n11{2}), pt21{2}, u1{2}) None.
+progress; smt(not_dir).
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r0{1} = r3{2} /\ not_done{1} = not_done1{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m2, r2);}
+(={m2, MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{1} /\
+  (m2{1}.`2.`2 = 1 \/ m2{1}.`2.`2 = 2 \/ m2{1}.`2.`2 = 3 \/ m2{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m2{1}.`2.`1 \/
+  (m2{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m2{1}.`2.`1)) /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1}
+          (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
+          m2{2} r2{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [lem_first _] := smc_sec1_ke_ideal_bridge_induction met.
+call lem_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv, glob CompEnv, glob MakeInt'.MI} /\
+   r3{1} = r0{2} /\ not_done1{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+rcondt{1} 2; first auto.
+rcondt{2} 2; first auto.
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+auto.
+inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
+rcondf{2} 2; first auto.
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).invoke.
+rcondt{2} 5; first auto; smt().
+inline{2} (1) MI(KeyEx.KEIdeal, Adv).loop.
+rcondt{2} 8; first auto.
+rcondf{2} 10; first auto; smt(not_le_ext).
+sp 0 9.
+seq 1 1 :
+  (r0{1} = r3{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\
+   MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None).
+call (_ : true).
+auto.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+rcondf{2} 4; first auto.
+rcondt{2} 5; first auto.
+rcondf{2} 6; first auto.
+auto.
+sp 3 3.
+if; first smt().
+rcondf{1} 3; first auto.
+rcondf{2} 3; first auto.
+rcondf{2} 5; first auto.
+rcondt{2} 6; first auto.
+rcondf{2} 7; first auto.
+auto.
+case (MI.func{2} <= addr13{2}).
+rcondf{1} 1; first auto; smt(le_ext_r le_trans).
+rcondt{1} 1; first auto.
+rcondt{1} 3; first auto; smt(le_ext_r le_trans).
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+rcondt{1} 7; first auto.
+move => |> &hr <- /=; rewrite negb_or not_dir /#.
+rcondf{2} 1; first auto.
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+sp 9 0.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m2, r2);}
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={ MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m2{1} = m3{2} /\ oget r3{2} = m3{2} /\
+ m2{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m2{1}.`2.`1 /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+move => |> &1 &2 <- [#] -> ->; progress.
+exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+       SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+       Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+       KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+       (mod3{2}, (addr13{2}, n13{2}), pt23{2}, u3{2}) None.
+progress; rewrite negb_or not_dir in H4; smt().
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r0{1} = r3{2} /\ not_done{1} = not_done1{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest(m3, r3);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m2{1} = m3{2} /\
+ m2{1}.`1 = Adv /\ MI.func{1} ++ [2] <= m2{1}.`2.`1 /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv} /\
+ ={m3, r3} /\ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1}
+          (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
+          (oget r3{2}) r3{2}.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [_ [_ lem_third]] := smc_sec1_ke_ideal_bridge_induction met.
+call lem_third.
+auto.
+inline SMCSec1Bridge_BotRightAdv(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv, glob CompEnv, glob MakeInt'.MI} /\
+   r4{1} = r1{2} /\ not_done1{1} = not_done{2}).
+sim; smt().
+seq 1 2 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv, glob CompEnv, glob MakeInt'.MI} /\
+   r4{1} = r0{2} /\ not_done1{1} = not_done{2}).
+sim.
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+rcondt{2} 1; first auto.
+rcondf{2} 2; first auto.
+rcondt{2} 4; first auto.
+rcondf{2} 7; first auto; smt().
+rcondf{2} 8; first auto.
+rcondf{2} 11; first auto; smt().
+sp 0 10.
+if; first smt().
+rcondf{1} 2; first auto. rcondf{2} 2; first auto.
+auto.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 3; first auto; smt().
+rcondt{2} 3; first auto; smt().
+inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
+sp 6 6.
+if; first smt().
+inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
+inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
+sp 3 3.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m2, r2);}
+(={m2, r2, glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m2{1} = m5{2} /\
+ (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{1} /\
+  (m2{1}.`2.`2 = 1 \/ m2{1}.`2.`2 = 2 \/ m2{1}.`2.`2 = 3 \/ m2{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m2{1}.`2.`1 \/
+  (m2{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m2{1}.`2.`1)) /\
+ not_done{2} /\ not_done1{2} /\ r5{2} = None /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+move => |> &1 &2 not_done0_R <- [#] -> -> -> -> ->.
+progress.
+exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+       SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+       Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+       KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+       (mod1{2}, (addr11{2}, n11{2}), pt21{2}, u1{2}) None.
+progress; smt().
+inline SMCSec1Bridge_Left(KeyEx.KEIdeal).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv} /\
+   r0{1} = r3{2} /\ not_done{1} = not_done1{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest(m5, r5);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ m2{1} = m5{2} /\
+ (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{1} /\
+  (m2{1}.`2.`2 = 1 \/ m2{1}.`2.`2 = 2 \/ m2{1}.`2.`2 = 3 \/ m2{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m2{1}.`2.`1 \/
+  (m2{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m2{1}.`2.`1)) /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv,
+   glob Adv} /\
+ ={m5, r5} /\ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KeyEx.KEIdeal, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KeyEx.KEIdeal.adv{2} KeyEx.KEIdeal.self{2}
+          KeyEx.KEIdeal.st{2} MI.adv{2} MI.func{1}
+          (fset1 adv_fw_pi) MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi)
+          m5{2} None.
+exlim
+  (real_ideal_term_metric
+   {|real_ideal_term_met_st_p1s = SMCReal.st1{1};
+     real_ideal_term_met_st_p2s = SMCReal.st2{1};
+     real_ideal_term_met_st_fws = Fwd.Forw.st{1};
+     real_ideal_term_met_st_kes = KeyEx.KEIdeal.st{1}|}) => met.
+have [lem_first _] := smc_sec1_ke_ideal_bridge_induction met.
+call lem_first.
+auto.
+inline SMCSec1Bridge_TopRight(KeyEx.KEIdeal).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KeyEx.KEIdeal,
+     glob Adv, glob CompEnv, glob MakeInt'.MI} /\
+   r6{1} = r0{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+rcondt{1} 2; first auto. rcondt{2} 2; first auto.
+rcondf{1} 3; first auto. rcondf{2} 3; first auto.
+auto.
+auto.
+qed.
 
 lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
   exper_pre func' adv' =>
@@ -6584,7 +10062,59 @@ lemma smc_sec1_ke_ideal_bridge (func' adv' : addr) &m :
   Pr[Exper(MI(KeyEx.KEIdeal, Adv), CompEnv(Env)).main
        (func' ++ [2], adv', fset1 adv_fw_pi) @ &m : res].
 proof.
-admit.
+move => pre; byequiv => //; proc.
+inline MI(SMCReal(KeyEx.KEIdeal), Adv).init
+       MI(KeyEx.KEIdeal, Adv).init
+       SMCReal(KeyEx.KEIdeal).init
+       Exper(MI(KeyEx.KEIdeal, Adv), CompEnv(Env)).E.main
+       Exper
+       (MI'
+        (SMCReal
+         (CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE),
+          CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv),
+        Env).main
+       MakeInt'.MI
+       (SMCReal
+        (CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE),
+         CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv).init
+       CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.init
+       CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.init
+       SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).init.
+seq 15 34 :
+  (={adv, in_guard, MI.adv, MI.in_guard, glob SMCReal,
+     glob KeyEx.KEIdeal, glob Env, glob Adv} /\
+   exper_pre func{1} adv{1} /\
+   in_guard{1} = fset1 adv_fw_pi /\
+   func{2} = func{1} ++ [2] /\ func0{2} = func{1} /\
+   adv0{2} = adv{2} /\ in_guard1{2} = in_guard{2} /\
+   MI.func{1} = func{1} /\ MI.func{2} = func{2} /\
+   MI.adv{1} = adv{1} /\ MI.in_guard{1} = in_guard{1} /\
+   MakeInt'.MI.func{2} = func{1} /\ MakeInt'.MI.adv{2} = adv{2} /\
+   MakeInt'.MI.in_guard{2} = in_guard{2} /\
+   SMCReal.self{1} = func{1} /\ SMCReal.adv{1} = adv{1} /\
+   CompEnv.func{2} = func{1} /\ CompEnv.adv{2} = adv{1} /\
+   CompEnv.stub_st{2} = None).
+swap{1} [11..12] 2.
+swap{2} 28 6.
+swap{2} [7..8] 26.
+call (_ : true).
+call KeyEx.ke_ideal_init.
+call Fwd.term_init.
+auto; progress; first 5 smt(size_cat take_size_cat).
+wp.
+call
+  (_ :
+   ={MI.adv, MI.in_guard, glob SMCReal, glob KeyEx.KEIdeal, glob Adv} /\
+   exper_pre MI.func{1} MI.adv{1} /\
+   MI.in_guard{1} = fset1 adv_fw_pi /\
+   MI.func{2} = MI.func{1} ++ [2] /\
+   MakeInt'.MI.func{2} = MI.func{1} /\ MakeInt'.MI.adv{2} = MI.adv{2} /\
+   MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+   SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+   CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+   CompEnv.stub_st{2} = None).
+conseq smc_sec1_ke_ideal_bridge_invoke => // |>.
+auto; progress.
 qed.
 
 (* end of core of KEIdeal bridging lemma proof *)

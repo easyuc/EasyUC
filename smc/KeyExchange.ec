@@ -711,7 +711,7 @@ lemma ke_ideal_term_init :
    ideal_term_metric KEIdeal.st{1} = ideal_term_metric_max].
 proof. proc; auto. qed.
 
-lemma ke_ideal_term_invoke_min1 (n : int) :
+lemma ke_ideal_term_invoke (n : int) :
   equiv
   [KEIdeal.invoke ~ KEIdeal.invoke :
    ={m, glob KEIdeal} /\
@@ -777,24 +777,6 @@ elim oget_wait_req2_1 => -> -> ->.
 smt(ideal_term_metric_is_ke_ideal_state_wait_sim2). 
 auto.
 auto.
-qed.
-
-lemma ke_ideal_term_invoke (n : int) :
-  equiv
-  [KEIdeal.invoke ~ KEIdeal.invoke :
-   ={m, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = n ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} < n)].
-proof.
-conseq
-  (_ :
-   _ ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)).
-progress.
-smt(ge0_ideal_term_metric).
-apply (ke_ideal_term_invoke_min1 n).
 qed.
 
 (* Simulator *)
