@@ -3526,6 +3526,7 @@ auto.
 inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
 sp 4 0.
 sim; smt().
+(* end of use of part 1 of induction *)
 if => //.
 seq 1 1 :
   (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
@@ -3639,7 +3640,89 @@ conseq
    CompEnv.stub_st{2} = None ==>
    _); first smt().
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
 if => //.
 seq 1 1 :
   (not_done{1} /\ not_done{2} /\ not_done0{1} /\ not_done0{2} /\
@@ -3958,7 +4041,109 @@ conseq
    _).
 move => &1 &2 /> _ <- [#] -> -> -> -> -> /#.
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m4{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m4{2} r1{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m4, r4);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m4{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m4, r4, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m4{2} r4{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+     glob Adv} /\
+   r5{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
 rcondt{1} 2; first auto.
 rcondt{2} 2; first auto.
 rcondf{1} 3; first auto.
@@ -3989,7 +4174,89 @@ conseq
    CompEnv.stub_st{2} = None ==>
    _); first smt().
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
 inline{2} (1) CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE.invoke.
 rcondf{2} 2; first auto.
 inline{2} (1) MI(KERS.KERealSimp, Adv).invoke.
@@ -4112,7 +4379,89 @@ conseq
    CompEnv.stub_st{2} = None ==>
    _); first smt().
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done0{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done0{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
 rcondf{2} 4; first auto.
 case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
 rcondt{2} 4; first auto.
@@ -4416,7 +4765,109 @@ conseq
    _).
 move => &1 &2 /> _ _ <- [#] -> -> -> -> -> /#.
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m5{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m5{2} r1{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m5, r5);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m5{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m5, r5, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m5{2} r5{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+     glob Adv} /\
+   r6{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
 rcondt{1} 2; first auto.
 rcondt{2} 2; first auto.
 rcondf{1} 3; first auto.
@@ -4558,7 +5009,89 @@ conseq
    CompEnv.stub_st{2} = None ==>
    _); first smt().
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m{2} r{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m, r);}
+(={m, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m{2} r{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+sim; smt().
+(* end of use of part 1 of induction *)
 rcondf{2} 4; first auto.
 case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
 rcondt{2} 4; first auto.
@@ -4858,7 +5391,109 @@ conseq
    _).
 move => &1 &2 />; rewrite oget_some /= /#.
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m2{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done2{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m2{2} r1{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m2, r2);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m1{1} = m2{2} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m2, r2, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done2{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m2{2} r2{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done3{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
 rcondt{1} 2; first auto.
 rcondt{2} 2; first auto.
 rcondf{1} 3; first auto.
@@ -5011,7 +5646,100 @@ move : r1_not_none H9 H11.
 case (oget r{1}) => x1 x2 x3 x4 /= _ ->.
 case x2 => addr1 n1 /= /#.
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
+(={m, r, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done0{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m{1} = m1{2} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m1{2} r{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m1, r1);}
+(={MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ m{1} = m1{2} /\
+ (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{1} /\
+  (m{1}.`2.`2 = 1 \/ m{1}.`2.`2 = 2 \/ m{1}.`2.`2 = 3 \/ m{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m{1}.`2.`1 \/
+  (m{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+     glob Adv} /\
+   r3{1} = r{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim.
+(* end of use of part 1 of induction *)
 rcondf{2} 4; first auto.
 case ((oget r{1}).`2.`1 <> MI.adv{1} \/ (oget r{1}).`2.`2 = 0).
 rcondt{2} 4; first auto.
@@ -5267,7 +5995,107 @@ conseq
    CompEnv.stub_st{2} = None ==>
    _); first smt().
 (* use part 1 of induction *)
-admit.
+transitivity{1}
+{r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m1, r1);}
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp,
+   glob Adv} /\
+ not_done{1} /\ not_done1{1} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob Adv})
+(={m1, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+ real_term_metric
+ {|real_term_met_st_p1s   = SMCReal.st1{1};
+   real_term_met_st_p2s   = SMCReal.st2{1};
+   real_term_met_st_fws   = Fwd.Forw.st{1};
+   real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ not_done{2} /\ not_done1{2} /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          m1{2} r1{1}.
+inline SMCSec1Bridge_Left(KERS.KERealSimp).rest.
+sp 0 4.
+seq 3 1 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp,
+     glob Adv} /\
+   r{1} = r2{2} /\ not_done{1} = not_done2{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+transitivity{2}
+{r <@ SMCSec1Bridge_TopRight(KERS.KERealSimp).rest(m1, r1);}
+(={m1, MI.adv, MI.in_guard, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{1} /\
+  (m1{1}.`2.`2 = 1 \/ m1{1}.`2.`2 = 2 \/ m1{1}.`2.`2 = 3 \/ m1{1}.`2.`2 = 4) \/
+  MI.func{1} ++ [1] <= m1{1}.`2.`1 \/
+  (m1{1}.`1 = Dir /\ MI.func{1} ++ [2] <= m1{1}.`2.`1)) /\
+  real_term_metric
+  {|real_term_met_st_p1s   = SMCReal.st1{1};
+    real_term_met_st_p2s   = SMCReal.st2{1};
+    real_term_met_st_fws   = Fwd.Forw.st{1};
+    real_term_met_st_kerss = KERS.KERealSimp.st{1}|} = n /\
+ exper_pre MI.func{1} MI.adv{1} /\
+ MI.in_guard{1} = fset1 adv_fw_pi /\
+ MI.func{2} = MI.func{1} ++ [2] /\
+ MakeInt'.MI.func{2} = MI.func{1} /\
+ MakeInt'.MI.adv{2} = MI.adv{2} /\
+ MakeInt'.MI.in_guard{2} = MI.in_guard{2} /\
+ SMCReal.self{1} = MI.func{1} /\ SMCReal.adv{1} = MI.adv{1} /\
+ CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
+ CompEnv.stub_st{2} = None ==>
+ ={r, glob SMCReal, glob KERS.KERealSimp, glob Adv} /\
+ CompEnv.stub_st{2} = None)
+(={m1, r1, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+   glob Adv} /\
+ not_done{2} /\ not_done1{2} ==>
+ ={r, glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv, glob Adv}) => //.
+progress.
+by exists (glob Adv){2} MI.adv{2} MI.func{1} None MI.adv{2} MI.func{1} SMCReal.st1{2}
+          SMCReal.st2{2} Fwd.Forw.adv{2} Fwd.Forw.self{2}
+          Fwd.Forw.st{2} KERS.KERealSimp.adv{2} KERS.KERealSimp.self{2}
+          KERS.KERealSimp.st{2} MI.adv{2} MI.func{1} (fset1 adv_fw_pi)
+          MI.adv{2} (MI.func{1} ++ [2]) (fset1 adv_fw_pi) m1{2} r1{2}.
+exlim
+  (real_term_metric
+   {|real_term_met_st_p1s   = SMCReal.st1{1};
+     real_term_met_st_p2s   = SMCReal.st2{1};
+     real_term_met_st_fws   = Fwd.Forw.st{1};
+     real_term_met_st_kerss = KERS.KERealSimp.st{1}|}) => met.
+have [IH_first _] := IH.
+call IH_first.
+auto.
+inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
+sp 4 0.
+seq 1 3 :
+  (={glob MI, glob SMCReal, glob KERS.KERealSimp, glob CompEnv,
+     glob Adv} /\
+   r2{1} = r{2} /\ not_done2{1} = not_done{2}).
+sim; smt().
+if => //.
+rcondf{1} 2; first auto.
+rcondf{2} 2; first auto.
+auto.
+sim; smt().
+(* end of use of part 1 of induction *)
 rcondt{1} 2; first auto.
 rcondt{2} 2; first auto.
 rcondf{1} 3; first auto.
