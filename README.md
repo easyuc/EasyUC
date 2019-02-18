@@ -29,9 +29,9 @@ operation and theorem may be formalized in EasyCrypt. As in our
 initial experiment, we used manual message routing to model the
 coroutine-style communication of UC.
 
-The case study is complete, giving us confidence that our
-EasyCrypt UC architecture is sound. But it involved heavy use of manual
-symbolic execution, guided by case analysis. Consequently, in order
-for this approach to scale-up to realistic protocols, various
-improvements will be necessary.
+The proof is complete (but still being cleaned up), giving us
+confidence that our EasyCrypt UC architecture is sound. But it
+involved heavy use of manual symbolic execution, guided by case
+analysis. Consequently, in order for this approach to scale-up to
+realistic protocols, various improvements will be necessary.
 
