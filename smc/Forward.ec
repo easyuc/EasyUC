@@ -36,6 +36,24 @@ lemma enc_dec_fw_req (func : addr, pt1 pt2 : port, u : univ) :
   dec_fw_req (fw_req func pt1 pt2 u) = Some (func, pt1, pt2, u).
 proof. done. qed.
 
+lemma dec_enc_fw_req (m : msg, func : addr, pt1 pt2 : port, u : univ) :
+  dec_fw_req m = Some (func, pt1, pt2, u) =>
+  fw_req func pt1 pt2 u = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_fw_req /fw_req /=.
+case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] => -> H1.
+rewrite /is_univ_pair.
+case u' => //.
+case => x1 x2 /=.
+rewrite oget_some /=.
+rewrite /is_univ_port.
+case x1 => // p /=.
+rewrite oget_some /#.
+qed.
+
 op is_fw_req (m : msg) : bool =
      dec_fw_req m <> None.
 
@@ -75,6 +93,24 @@ op dec_fw_rsp (m : msg) : (addr * port * port * univ) option =
 lemma enc_dec_fw_rsp (func : addr, pt1 pt2 : port, u : univ) :
   dec_fw_rsp (fw_rsp func pt1 pt2 u) = Some (func, pt1, pt2, u).
 proof. done. qed.
+
+lemma dec_enc_fw_rsp (m : msg, func : addr, pt1 pt2 : port, u : univ) :
+  dec_fw_rsp m = Some (func, pt1, pt2, u) =>
+  fw_rsp func pt1 pt2 u = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_fw_rsp /fw_rsp /=.
+case (mod = Adv \/ pt2'.`2 <> 1 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> H1 /=.
+rewrite /is_univ_pair.
+case u' => //.
+case => x1 x2 /=.
+rewrite oget_some /=.
+rewrite /is_univ_port.
+case x1 => // p /=.
+rewrite oget_some /#.
+qed.
 
 op is_fw_rsp (m : msg) : bool =
      dec_fw_rsp m <> None.
@@ -125,6 +161,36 @@ by rewrite /fw_obs /dec_fw_obs /=
     enc_dec_univ_triple.
 qed.
 
+lemma dec_enc_fw_obs (m : msg, func adv : addr, pt1 pt2 : port, u : univ) :
+  dec_fw_obs m = Some (func, adv, pt1, pt2, u) =>
+  fw_obs func adv pt1 pt2 u = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_fw_obs /fw_obs /=.
+case (mod = Dir \/ pt1'.`2 <> adv_pi \/ pt2'.`2 <> 1 \/
+      ! is_univ_triple u') => //.
+rewrite !negb_or not_dir /=.
+move => [#] => -> H1 H2.
+rewrite /is_univ_triple.
+case u'; first 7 smt().
+case => x1 x2.
+rewrite /dec_univ_triple /= oget_some /=.
+case x2 => //.
+case => x2 x3 /=.
+rewrite oget_some /= oget_some /=.
+case (! is_univ_port x1 \/ ! is_univ_port x2) => //=.
+rewrite negb_or /=.
+move => [#] => H3 H4 [#] <- <- <- <- <-.
+rewrite /univ_triple.
+split; first smt().
+move => _; split; first smt().
+move => _.
+congr; congr.
+move : H3; by case x1.
+congr; congr.
+move : H4; by case x2.
+qed.
+
 op is_fw_obs (m : msg) : bool =
      dec_fw_obs m <> None.
 
@@ -146,6 +212,16 @@ op dec_fw_ok (m : msg) : (addr * addr) option =
          v <> UnivUnit) ?
         None :
         Some (pt1.`1, pt2.`1).
+
+lemma dec_enc_fw_ok (m : msg, func adv) :
+  dec_fw_ok m = Some (func, adv) =>
+  fw_ok func adv = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_fw_ok /fw_ok /=.
+case (mod = Dir \/ pt1'.`2 <> 1 \/ pt2'.`2 <> adv_pi \/ u' <> UnivUnit) => //.
+rewrite !negb_or not_dir /#.
+qed.
 
 op is_fw_ok (m : msg) : bool =
      dec_fw_ok m <> None.
