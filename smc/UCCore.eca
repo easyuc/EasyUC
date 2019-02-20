@@ -56,6 +56,14 @@ op dec_univ_base (v : univ) : base option =
      with v = UnivPort _ => None
      with v = UnivPair _ => None.  
 
+lemma enc_dec_univ_base (b : base) :
+  dec_univ_base (UnivBase b) = Some b.
+proof. trivial. qed.
+
+lemma dec_enc_univ_base (v : univ, b : base) :
+  dec_univ_base v = Some b => v = UnivBase b.
+proof. by case v. qed.
+
 op is_univ_base (v : univ) : bool =
      dec_univ_base v <> None.
 
@@ -72,6 +80,14 @@ op dec_univ_bool (v : univ) : bool option =
      with v = UnivAddr _ => None
      with v = UnivPort _ => None
      with v = UnivPair _ => None.  
+
+lemma enc_dec_univ_bool (b : bool) :
+  dec_univ_bool (UnivBool b) = Some b.
+proof. trivial. qed.
+
+lemma dec_enc_univ_bool (v : univ, b : bool) :
+  dec_univ_bool v = Some b => v = UnivBool b.
+proof. by case v. qed.
 
 op is_univ_bool (v : univ) : bool =
      dec_univ_bool v <> None.
@@ -90,6 +106,14 @@ op dec_univ_int (v : univ) : int option =
      with v = UnivPort _ => None
      with v = UnivPair _ => None.  
 
+lemma enc_dec_univ_int (n : int) :
+  dec_univ_int (UnivInt n) = Some n.
+proof. trivial. qed.
+
+lemma dec_enc_univ_int (v : univ, n : int) :
+  dec_univ_int v = Some n => v = UnivInt n.
+proof. by case v. qed.
+
 op is_univ_int (v : univ) : bool =
      dec_univ_int v <> None.
 
@@ -106,6 +130,14 @@ op dec_univ_real (v : univ) : real option =
      with v = UnivAddr _ => None
      with v = UnivPort _ => None
      with v = UnivPair _ => None.  
+
+lemma enc_dec_univ_real (r : real) :
+  dec_univ_real (UnivReal r) = Some r.
+proof. trivial. qed.
+
+lemma dec_enc_univ_real (v : univ, r : real) :
+  dec_univ_real v = Some r => v = UnivReal r.
+proof. by case v. qed.
 
 op is_univ_real (v : univ) : bool =
      dec_univ_real v <> None.
@@ -124,6 +156,14 @@ op dec_univ_addr (v : univ) : addr option =
      with v = UnivPort _ => None
      with v = UnivPair _ => None.  
 
+lemma enc_dec_univ_addr (addr : addr) :
+  dec_univ_addr (UnivAddr addr) = Some addr.
+proof. trivial. qed.
+
+lemma dec_enc_univ_addr (v : univ, x : addr) :
+  dec_univ_addr v = Some x => v = UnivAddr x.
+proof. by case v. qed.
+
 op is_univ_addr (v : univ) : bool =
      dec_univ_addr v <> None.
 
@@ -141,6 +181,14 @@ op dec_univ_port (v : univ) : port option =
      with v = UnivPort pt => Some pt
      with v = UnivPair _  => None.  
 
+lemma enc_dec_univ_port (pt : port) :
+  dec_univ_port (UnivPort pt) = Some pt.
+proof. trivial. qed.
+
+lemma dec_enc_univ_port (v : univ, pt : port) :
+  dec_univ_port v = Some pt => v = UnivPort pt.
+proof. by case v. qed.
+
 op is_univ_port (v : univ) : bool =
      dec_univ_port v <> None.
 
@@ -157,6 +205,14 @@ op dec_univ_pair (v : univ) : (univ * univ)option =
      with v = UnivAddr _ => None
      with v = UnivPort _ => None
      with v = UnivPair p => Some p.
+
+lemma enc_dec_univ_pair (v1 v2 : univ) :
+  dec_univ_pair (UnivPair(v1, v2)) = Some (v1, v2).
+proof. trivial. qed.
+
+lemma dec_enc_univ_pair (v v1 v2 : univ) :
+  dec_univ_pair v = Some (v1, v2) => v = UnivPair (v1, v2).
+proof. by case v. qed.
 
 op is_univ_pair (v : univ) : bool =
      dec_univ_pair v <> None.
@@ -179,11 +235,27 @@ op dec_univ_triple (v : univ) : (univ * univ * univ)option =
         let (u2, u3) = oget (dec_univ_pair v')
         in Some (u1, u2, u3).
 
-op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
+lemma dec_enc_univ_triple (v v1 v2 v3 : univ) :
+  dec_univ_triple v = Some (v1, v2, v3) => v = univ_triple v1 v2 v3.
+proof.
+rewrite /dec_univ_triple /univ_triple.
+case (dec_univ_pair v = None) => // dup_v.
+have [] p : exists (p : univ * univ), dec_univ_pair v = Some p.
+  exists (oget (dec_univ_pair v)); by rewrite -some_oget.
+case p => p1 p2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (dec_univ_pair p2 = None) => // dup_p2.
+have [] q : exists (q : univ * univ), dec_univ_pair p2 = Some q.
+  exists (oget (dec_univ_pair p2)); by rewrite -some_oget.
+case q => q1 q2 /dec_enc_univ_pair -> /=.
+by rewrite oget_some.
+qed.
 
 lemma enc_dec_univ_triple (u1 u2 u3 : univ) :
   dec_univ_triple (univ_triple u1 u2 u3) = Some (u1, u2, u3).
 proof. done. qed.
+
+op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
 
 lemma is_univ_triple (u1 u2 u3 : univ) :
   is_univ_triple (univ_triple u1 u2 u3).
@@ -200,6 +272,22 @@ op dec_univ_4tuple (v : univ) : (univ * univ * univ * univ)option =
         None :
         let (u3, u4) = oget (dec_univ_pair v')
         in Some (u1, u2, u3, u4).
+
+lemma dec_enc_univ_4tuple (v v1 v2 v3 v4 : univ) :
+  dec_univ_4tuple v = Some (v1, v2, v3, v4) => v = univ_4tuple v1 v2 v3 v4.
+proof.
+rewrite /dec_univ_4tuple /univ_4tuple.
+case (dec_univ_triple v = None) => // dut_v.
+have [] p : exists (p : univ * univ * univ), dec_univ_triple v = Some p.
+  exists (oget (dec_univ_triple v)); by rewrite -some_oget.
+case p => p1 p2 p3 /dec_enc_univ_triple ->.
+rewrite enc_dec_univ_triple oget_some /=.
+case (dec_univ_pair p3 = None) => // dup_p3.
+have [] q : exists (q : univ * univ), dec_univ_pair p3 = Some q.
+  exists (oget (dec_univ_pair p3)); by rewrite -some_oget.
+case q => q1 q2 /dec_enc_univ_pair -> /=.
+by rewrite oget_some.
+qed.
 
 op is_univ_4tuple (v : univ) : bool = dec_univ_4tuple v <> None.
 
@@ -530,6 +618,32 @@ by rewrite /da_from_env /dec_da_from_env /=
            enc_dec_univ_triple oget_some.
 qed.
 
+lemma dec_enc_da_from_env (m : msg, da env : addr, pt1 : port, n2: int, u : univ) :
+  dec_da_from_env m = Some (da, env, pt1, n2, u) =>
+  m = da_from_env da env pt1 n2 u.
+proof.
+rewrite /dec_da_from_env /da_from_env.
+case m => mod' pt1' pt2' v' /=.
+case (mod' = Dir \/ pt1'.`2 <> 0 \/ pt2'.`2 <> 0 \/ ! is_univ_triple v') => //.
+rewrite !negb_or not_dir /=.
+move => [#] -> pt1'_2 pt2'_2 iut_v'.
+have [t] : exists (t : univ * univ * univ), dec_univ_triple v' = Some t.
+  exists (oget (dec_univ_triple v')); by rewrite -some_oget.
+case t => t1 t2 t3 /dec_enc_univ_triple ->.
+rewrite enc_dec_univ_triple oget_some /=.
+case (! is_univ_port t1 \/ ! is_univ_int t2) => //.
+rewrite !negb_or /= =>
+  [#] iupt_t1 iui_t2 [#] <- <- odupt_t1_pt1 odui_t2_n2 -> /=.
+have /dec_enc_univ_port -> : dec_univ_port t1 = Some pt1
+  by rewrite -odupt_t1_pt1 -some_oget.
+have /dec_enc_univ_int -> : dec_univ_int t2 = Some n2
+  by rewrite -odui_t2_n2 -some_oget.
+rewrite -{1}pt1'_2 -{1}pt2'_2.
+move : pt1'_2 pt2'_2.
+case pt1' => x1 x2.
+case pt2' => y1 y2 //.
+qed.
+
 op is_da_from_env (m : msg) : bool =
      dec_da_from_env m <> None.
 
@@ -564,6 +678,32 @@ proof.
 by rewrite /da_to_env /dec_da_to_env /=
            (is_univ_triple (UnivInt n1) (UnivPort pt2) u) /=
            enc_dec_univ_triple oget_some.
+qed.
+
+lemma dec_enc_da_to_env (m : msg, da env : addr, n1 : int, pt2 : port, u : univ) :
+  dec_da_to_env m = Some (da, env, n1, pt2, u) =>
+  m = da_to_env da env n1 pt2 u.
+proof.
+rewrite /dec_da_to_env /da_to_env.
+case m => mod' pt1' pt2' v' /=.
+case (mod' = Dir \/ pt1'.`2 <> 0 \/ pt2'.`2 <> 0 \/ ! is_univ_triple v') => //.
+rewrite !negb_or not_dir /=.
+move => [#] -> pt1'_2 pt2'_2 iut_v'.
+have [t] : exists (t : univ * univ * univ), dec_univ_triple v' = Some t.
+  exists (oget (dec_univ_triple v')); by rewrite -some_oget.
+case t => t1 t2 t3 /dec_enc_univ_triple ->.
+rewrite enc_dec_univ_triple oget_some /=.
+case (! is_univ_int t1 \/ ! is_univ_port t2) => //.
+rewrite negb_or /= =>
+  [#] iui_t1 iupt_t2 [#] <- <- odui_t1_n1 odupt_t2_pt2 -> /=.
+have /dec_enc_univ_int -> : dec_univ_int t1 = Some n1.
+  by rewrite -odui_t1_n1 -some_oget.
+have /dec_enc_univ_port -> : dec_univ_port t2 = Some pt2
+  by rewrite -odupt_t2_pt2 -some_oget.
+rewrite -{1}pt1'_2 -{1}pt2'_2.
+move : pt1'_2 pt2'_2.
+case pt1' => x1 x2.
+case pt2' => y1 y2 //.
 qed.
 
 op is_da_to_env (m : msg) : bool =

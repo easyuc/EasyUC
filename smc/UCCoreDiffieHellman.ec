@@ -169,6 +169,11 @@ lemma enc_dec_base_exp (q : exp) :
   dec_base_exp (BaseExp q) = Some q.
 proof. done. qed.
 
+lemma dec_enc_base_exp (bse : base, q : exp) :
+  dec_base_exp bse = Some q =>
+  bse = BaseExp q.
+proof. by case bse. qed.
+
 op is_base_exp (bse : base) : bool =
      dec_base_exp bse <> None.
 
@@ -185,6 +190,11 @@ lemma enc_dec_base_key (x : key) :
   dec_base_key (BaseKey x) = Some x.
 proof. done. qed.
 
+lemma dec_enc_base_key (bse : base, x : key) :
+  dec_base_key bse = Some x =>
+  bse = BaseKey x.
+proof. by case bse. qed.
+
 op is_base_key (bse : base) : bool =
      dec_base_key bse <> None.
 
@@ -200,6 +210,11 @@ op dec_base_text (bse : base) : text option =
 lemma enc_dec_base_text (x : text) :
   dec_base_text (BaseText x) = Some x.
 proof. done. qed.
+
+lemma dec_enc_base_text (bse : base, x : text) :
+  dec_base_text bse = Some x =>
+  bse = BaseText x.
+proof. by case bse. qed.
 
 op is_base_text (bse : base) : bool =
      dec_base_text bse <> None.
