@@ -383,7 +383,7 @@ module type INTER = {
 
        inter_init_pre func adv *)
 
-  proc * init(func adv : addr, in_guard : int fset) : unit
+  proc init(func adv : addr, in_guard : int fset) : unit
 
   (* respond to an incoming message, producing an optional
      outgoing message (None means error)
