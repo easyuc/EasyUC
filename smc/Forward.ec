@@ -44,13 +44,15 @@ case m => mod pt1' pt2' u'.
 rewrite /dec_fw_req /fw_req /=.
 case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_pair u') => //.
 rewrite !negb_or /= not_adv.
-move => [#] => -> H1.
-rewrite /is_univ_pair.
-case u' => //.
-case => x1 x2 /=.
+move => [#]-> pt1'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
 rewrite oget_some /=.
-rewrite /is_univ_port.
-case x1 => // p /=.
+case (is_univ_port v1) => // iupt_v1.
+have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port => -> /=.
 rewrite oget_some /#.
 qed.
 
@@ -102,13 +104,15 @@ case m => mod pt1' pt2' u'.
 rewrite /dec_fw_rsp /fw_rsp /=.
 case (mod = Adv \/ pt2'.`2 <> 1 \/ ! is_univ_pair u') => //.
 rewrite !negb_or /= not_adv.
-move => [#] -> H1 /=.
-rewrite /is_univ_pair.
-case u' => //.
-case => x1 x2 /=.
+move => [#] -> pt2'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
 rewrite oget_some /=.
-rewrite /is_univ_port.
-case x1 => // p /=.
+case (is_univ_port v1) => // iupt_v1.
+have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port => -> /=.
 rewrite oget_some /#.
 qed.
 
@@ -170,25 +174,20 @@ rewrite /dec_fw_obs /fw_obs /=.
 case (mod = Dir \/ pt1'.`2 <> adv_pi \/ pt2'.`2 <> 1 \/
       ! is_univ_triple u') => //.
 rewrite !negb_or not_dir /=.
-move => [#] => -> H1 H2.
-rewrite /is_univ_triple.
-case u'; first 7 smt().
-case => x1 x2.
-rewrite /dec_univ_triple /= oget_some /=.
-case x2 => //.
-case => x2 x3 /=.
-rewrite oget_some /= oget_some /=.
-case (! is_univ_port x1 \/ ! is_univ_port x2) => //=.
+move => [#] -> pt1'_2 pt2'_2 iut_u'.
+have [] t : exists (t : univ * univ * univ), dec_univ_triple u' = Some t.
+  exists (oget (dec_univ_triple u')); by rewrite -some_oget.
+case t => v1 v2 v3 /dec_enc_univ_triple -> /=.
+rewrite enc_dec_univ_triple oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
 rewrite negb_or /=.
-move => [#] => H3 H4 [#] <- <- <- <- <-.
-rewrite /univ_triple.
-split; first smt().
-move => _; split; first smt().
-move => _.
-congr; congr.
-move : H3; by case x1.
-congr; congr.
-move : H4; by case x2.
+move => [#] iupt_v1 iupt_v2 [#] pt2'_1 pt1'_1 odupt_v1 odupt_v2 ->.
+have : dec_univ_port v1 = Some pt1
+  by rewrite -odupt_v1 -some_oget.
+move => /dec_enc_univ_port ->.
+have : dec_univ_port v2 = Some pt2
+  by rewrite -odupt_v2 -some_oget.
+move => /dec_enc_univ_port -> /#.
 qed.
 
 op is_fw_obs (m : msg) : bool =
