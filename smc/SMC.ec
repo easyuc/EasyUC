@@ -1863,7 +1863,7 @@ module CompEnv (Env : ENV, Inter : INTER) = {
     }
   }
 
-  (* func will end with 2 *)
+  (* func_ will end with 2 *)
 
   proc main(func_ adv_ : addr, in_guard : int fset) : bool = {
     var b : bool;
