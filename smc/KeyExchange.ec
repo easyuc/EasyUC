@@ -2024,9 +2024,9 @@ exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
 lemma Exper_KEReal_KERealSimp
-      (func' adv' : addr) (in_guard' : int fset) &m
       (Adv <: FUNC{MI, KEReal, KERealSimp})
-      (Env <: ENV{MI, KEReal, KERealSimp, Adv}) :
+      (Env <: ENV{MI, KEReal, KERealSimp, Adv})
+      (func' adv' : addr) (in_guard' : int fset) &m :
   ! func' <= adv' =>
   Pr[Exper(MI(KEReal, Adv), Env).main
        (func', adv', in_guard') @ &m : res] =
@@ -5936,29 +5936,29 @@ conseq MI_KEHybrid_KEIdeal_Sim_invoke => //.
 auto; progress; by rewrite KEHybridIdealSimRel0.
 qed.
 
-lemma ke_sec (func adv : addr) &m :
-  exper_pre func adv =>
-  DDH_Adv.func{m} = func => DDH_Adv.adv{m} = adv =>
+lemma ke_sec (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', fset1 adv_fw_pi) @ &m : res] -
     Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
-move => pre func_eq adv_eq.
-by rewrite (Exper_KEReal_KERealSimp func adv (fset1 adv_fw_pi) &m Adv Env)
+move => pre func'_eq adv'_eq.
+by rewrite (Exper_KEReal_KERealSimp Adv Env func' adv' (fset1 adv_fw_pi) &m)
            1:/#
            (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
-            func adv &m) //
+            func' adv' &m) //
            -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m)
            (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
-            func adv &m) //
-           -(Exper_KEHybrid_KEIdeal_KESim func adv &m) //
-           (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func adv &m) //
+            func' adv' &m) //
+           -(Exper_KEHybrid_KEIdeal_KESim func' adv' &m) //
+           (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func' adv' &m) //
            -(RH.GNonOptHashing_GOptHashing KEHybridHashingAdv &m) //
            -(KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
-             func adv &m).
+             func' adv' &m).
 qed.
 
 end section.
@@ -5966,16 +5966,16 @@ end section.
 lemma ke_security
       (Adv <: FUNC{MI, KEReal, KEIdeal, KESim, DDH_Adv})
       (Env <: ENV{Adv, MI, KEReal, KEIdeal, KESim, DDH_Adv})
-      (func adv : addr) &m :
-  exper_pre func adv =>
-  DDH_Adv.func{m} = func => DDH_Adv.adv{m} = adv =>
+      (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', fset1 adv_fw_pi) @ &m : res] -
     Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
-move => pre func_eq adv_eq.
-by apply (ke_sec Adv Env func adv &m).
+move => pre func'_eq adv'_eq.
+by apply (ke_sec Adv Env func' adv' &m).
 qed.

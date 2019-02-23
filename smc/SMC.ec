@@ -6219,8 +6219,8 @@ lemma smc_sec1_ke_real_bridge (func' adv' : addr) &m :
 proof.
 move => ep.
 by rewrite (smc_real_ke_real_simp func' adv' &m) //
-           (KERS.Exper_KEReal_KERealSimp (func' ++ [2]) adv'
-            (fset1 adv_fw_pi) &m Adv (CompEnv(Env)))
+           (KERS.Exper_KEReal_KERealSimp Adv (CompEnv(Env))
+            (func' ++ [2]) adv' (fset1 adv_fw_pi) &m)
            1:(inc_le1_not_lr func' adv' (func' ++ [2]))
            1:/# 1:le_ext_r //
            (smc_sec1_ke_real_simp_bridge func' adv' &m).
@@ -9803,18 +9803,18 @@ lemma smc_security1
                    KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
       (Env <: ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
                   KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
-      (func adv : addr) &m :
-  exper_pre func adv =>
-  KeyEx.DDH_Adv.func{m} = func ++ [2] => KeyEx.DDH_Adv.adv{m} = adv =>
+      (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  KeyEx.DDH_Adv.func{m} = func' ++ [2] => KeyEx.DDH_Adv.adv{m} = adv' =>
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', fset1 adv_fw_pi) @ &m : res] -
     Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), KeyEx.KESim(Adv)), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
   `|Pr[DDH1(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res] -
     Pr[DDH2(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res]|.
 proof.
-move => pre func_eq adv_eq.
-by apply (smc_sec1 Adv Env func adv &m).
+move => pre func'_eq adv'_eq.
+by apply (smc_sec1 Adv Env func' adv' &m).
 qed.
 
 (* padding isomorphism *)
@@ -12062,15 +12062,15 @@ end section.
 lemma smc_security2
       (Adv <: FUNC{MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal})
       (Env <: ENV{Adv, MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEIdeal})
-      (func adv : addr) &m :
-  exper_pre func adv =>
+      (func' adv' : addr) &m :
+  exper_pre func' adv' =>
   Pr[Exper(MI(SMCReal(KeyEx.KEIdeal), Adv), Env).main
-       (func, adv, fset1 adv_fw_pi) @ &m : res] =
+       (func', adv', fset1 adv_fw_pi) @ &m : res] =
   Pr[Exper(MI(SMCIdeal, SMCSim(Adv)), Env).main
-       (func, adv, fset1 adv_fw_pi) @ &m : res].
+       (func', adv', fset1 adv_fw_pi) @ &m : res].
 proof.
 move => pre.
-by apply (smc_sec2 Adv Env func adv &m).
+by apply (smc_sec2 Adv Env func' adv' &m).
 qed.
 
 lemma smc_security
@@ -12078,17 +12078,17 @@ lemma smc_security
                    KeyEx.KEIdeal, KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
       (Env <: ENV{Adv, MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEReal,
                   KeyEx.KEIdeal, KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
-      (func adv : addr) &m :
-  exper_pre func adv =>
-  KeyEx.DDH_Adv.func{m} = func ++ [2] => KeyEx.DDH_Adv.adv{m} = adv =>
+      (func' adv' : addr) &m :
+  exper_pre func' adv' =>
+  KeyEx.DDH_Adv.func{m} = func' ++ [2] => KeyEx.DDH_Adv.adv{m} = adv' =>
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', fset1 adv_fw_pi) @ &m : res] -
     Pr[Exper(MI(SMCIdeal, SMCSim(KeyEx.KESim(Adv))), Env).main
-         (func, adv, fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
   `|Pr[DDH1(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res] -
     Pr[DDH2(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res]|.
 proof.
-move => pre func_eq adv_eq.
-by rewrite -(smc_security2 (KeyEx.KESim(Adv)) Env func adv &m) //
-           (smc_security1 Adv Env func adv &m).
+move => pre func'_eq adv'_eq.
+by rewrite -(smc_security2 (KeyEx.KESim(Adv)) Env func' adv' &m) //
+           (smc_security1 Adv Env func' adv' &m).
 qed.
