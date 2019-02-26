@@ -1880,9 +1880,9 @@ section.
 (* working up to composition theorem bridging lemmas *)
 
 declare module Adv : FUNC{MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
-                          KeyEx.DDH_Adv, CompEnv}.
+                          CompEnv}.
 declare module Env : ENV{Adv, MI, SMCReal, KeyEx.KEReal, KeyEx.KEIdeal,
-                         KeyEx.DDH_Adv, CompEnv}.
+                         CompEnv}.
 
 op real_p1_term_metric_max : int = 2.
 
