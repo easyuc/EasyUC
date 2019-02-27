@@ -3057,7 +3057,7 @@ conseq
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
     SMCReal.self{1} ++ [1] <= (oget r{1}).`2.`1) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -3240,7 +3240,7 @@ conseq
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
     ! SMCReal.self{1} <= (oget r{1}).`2.`1) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -3437,7 +3437,7 @@ conseq
     (oget r{1}).`1 = Adv /\ ! MI.func{1} <= (oget r{1}).`2.`1 /\
     (oget r{1}).`2.`2 = adv_fw_pi) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -5287,12 +5287,7 @@ conseq
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None ==>
    _).
-move => &1 &2 /> ? ? ? ? ? ? ? ? ? _ r1_eq H1 H2 H3 H4 H5 H6 H7.
-elim => // <- r1_not_none /= H8 H9 H10 H11.
-left.
-move : r1_not_none H9 H11.
-case (oget r{1}) => x1 x2 x3 x4 /= _ ->.
-case x2 => addr1 n1 /= /#.
+move => &1 &2 />; smt().
 (* use part 1 of induction *)
 transitivity{1}
 {r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m, r);}
@@ -6617,7 +6612,7 @@ conseq
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
     SMCReal.self{1} ++ [1] <= (oget r{1}).`2.`1) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -6800,7 +6795,7 @@ conseq
    (SMCReal.self{1} ++ [2] <= (oget r{1}).`2.`1 \/
     ! SMCReal.self{1} <= (oget r{1}).`2.`1) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -6997,7 +6992,7 @@ conseq
     (oget r{1}).`1 = Adv /\ ! MI.func{1} <= (oget r{1}).`2.`1 /\
     (oget r{1}).`2.`2 = adv_fw_pi) ==>
    _).
-move => /> &1 &2 _ _ _ _ _ _ _ [] // metr.
+move => /> &1 &2 _ _ _ _ _ [] // metr.
 case (r{2}) => // x /=.
 rewrite oget_some.
 case (x) => x1 x2 x3 x4 /=.
@@ -8847,12 +8842,7 @@ conseq
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None ==>
    _).
-move => &1 &2 /> ? ? ? ? ? ? ? ? ? _ r1_eq H1 H2 H3 H4 H5 H6 H7.
-elim => // <- r1_not_none /= H8 H9 H10 H11.
-left.
-move : r1_not_none H9 H11.
-case (oget r{1}) => x1 x2 x3 x4 /= _ ->.
-case x2 => addr1 n1 /= /#.
+move => &1 &2 />; smt().
 (* use part 1 of induction *)
 transitivity{1}
 {r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m, r);}

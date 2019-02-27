@@ -367,8 +367,7 @@ module type FUNC = {
 
 (* module type of interfaces (to environment) *)
 
-pred inter_init_pre (func adv : addr) =
-       [] < func /\ [] < adv /\ inc func adv.
+pred inter_init_pre (func adv : addr) = inc func adv.
 
 module type INTER = {
   (* initialize interface, telling it:
@@ -467,10 +466,7 @@ lemma exper_pre_ext1 (func adv ext : addr) :
   exper_pre func adv => exper_pre (func ++ ext) adv.
 proof.
 rewrite /exper_pre /inter_init_pre.
-move => |> gt_emp_func gt_emp_adv inc_fun_adv.
-split.
-rewrite (lt_le_trans func) //.
-by rewrite leP (LES _ _ ext).
+move => |> inc_fun_adv.
 by apply inc_ext1.
 qed.
 
