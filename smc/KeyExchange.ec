@@ -2184,6 +2184,7 @@ proof. done. qed.
 
 module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   var func, adv : addr
+  var in_guard : int fset
   var x1, x2, x3 : key
 
   module KEDDH : FUNC = {
@@ -2268,7 +2269,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   proc main(x1_ x2_ x3_ : key) : bool = {
     var b : bool;
     x1 <- x1_; x2 <- x2_; x3 <- x3_;
-    b <@ Exper(MI(KEDDH, Adv), Env).main(func, adv, fset1 adv_fw_pi);
+    b <@ Exper(MI(KEDDH, Adv), Env).main(func, adv, in_guard);
     return b;
   }
 }.
@@ -2377,7 +2378,7 @@ local module (KERealSimpHashingAdv : RH.HASHING_ADV)
     var b : bool;
     Hash.rhash(exp1); Hash.rhash(exp2);
     b <@ Exper(MI(KERealSimpHash, Adv), Env).main
-           (DDH_Adv.func, DDH_Adv.adv, fset1 adv_fw_pi);
+           (DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard);
     return b;
   }
 }.
@@ -2577,13 +2578,14 @@ exfalso => &1 &2 [#] _ _ _ _ []; smt().
 qed.
 
 local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
-            (func' adv' : addr) &m :
+            (func' adv' : addr, in_guard' : int fset) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   Pr[Exper(MI(KERealSimp, Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+       (func', adv', in_guard') @ &m : res] =
   Pr[RH.GOptHashing(KERealSimpHashingAdv).main() @ &m : res].
 proof.
-move => func'_eq adv'_eq.
+move => func'_eq adv'_eq in_guard'_eq.
 byequiv => //.
 proc.
 inline MI(KERealSimp, Adv).init
@@ -2600,10 +2602,9 @@ wp.
 seq 12 18 :
   (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    ={self, adv, st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
-   func' = func{1} /\ func{1} = MI.func{1} /\
-   KERealSimp.self{1} = func{1} /\
-   adv' = adv{1} /\ adv{1} = MI.adv{1} /\
-   KERealSimp.adv{1} = adv{1} /\
+   func{1} = MI.func{1} /\ KERealSimp.self{1} = func{1} /\
+   adv{1} = MI.adv{1} /\ KERealSimp.adv{1} = adv{1} /\
+   in_guard_{1} = MI.in_guard{1} /\
    KERealSimp.st{1} = KERealSimpStateWaitReq1 /\
    RH.OptHashing.mp{2} = empty /\
    ={glob Adv, glob Env}).
@@ -2932,12 +2933,13 @@ exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
 local lemma KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
-            (func' adv' : addr) &m :
+            (func' adv' : addr, in_guard' : int fset) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   Pr[RH.GNonOptHashing(KERealSimpHashingAdv).main() @ &m : res] =
   Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res].
 proof.
-move => func'_eq adv'_eq.
+move => func'_eq adv'_eq in_guard'_eq.
 byequiv => //.
 proc.
 inline RH.NonOptHashing.init
@@ -2956,7 +2958,7 @@ rcondt{1} 4; first auto; smt(mem_empty).
 rcondt{1} 7; first auto; smt(mem_set mem_empty).
 wp.
 seq 7 8 :
-  (={DDH_Adv.func, DDH_Adv.adv, glob Adv, glob Env} /\
+  (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
    RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
    RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
@@ -2972,10 +2974,7 @@ seq 15 15 :
    DDH_Adv.x1{2} = g ^ u1{2} /\
    DDH_Adv.x2{2} = g ^ u2{2} /\
    DDH_Adv.x3{2} = g ^ (u1{2} * u2{2}) /\
-   ={func, adv, in_guard, MI.func, MI.adv, MI.in_guard,
-     DDH_Adv.func, DDH_Adv.adv} /\
-   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
-   DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
+   ={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
@@ -3291,7 +3290,7 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
     var b : bool;
     Hash.rhash(exp1); Hash.rhash(exp2); Hash.rhash(exp3);
     b <@ Exper(MI(KEHybridHash, Adv), Env).main
-           (DDH_Adv.func, DDH_Adv.adv, fset1 adv_fw_pi);
+           (DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard);
     return b;
   }
 }.
@@ -3594,12 +3593,13 @@ exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
 local lemma KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
-            (func' adv' : addr) &m :
+            (func' adv' : addr, in_guard' : int fset) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   Pr[RH.GNonOptHashing(KEHybridHashingAdv).main() @ &m : res] =
   Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res].
 proof.
-move => func'_eq adv'_eq.
+move => func'_eq adv'_eq in_guard'_eq.
 byequiv => //.
 proc.
 inline RH.NonOptHashing.init
@@ -3619,8 +3619,7 @@ rcondt{1} 7; first auto; smt(mem_set mem_empty).
 rcondt{1} 10; first auto; smt(mem_set mem_empty).
 wp.
 seq 10 9 :
-  (={DDH_Adv.func, DDH_Adv.adv, glob Adv, glob Env} /\
-   DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
+  (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
    RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
    RH.NonOptHashing.mp{1}.[exp3] = Some u3{2} /\
@@ -3640,8 +3639,6 @@ seq 15 15 :
    DDH_Adv.x3{2} = g ^ u3{2} /\
    ={func, adv, in_guard, MI.func, MI.adv, MI.in_guard,
      DDH_Adv.func, DDH_Adv.adv} /\
-   func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = fset1 adv_fw_pi /\
-   DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
@@ -3909,13 +3906,14 @@ exfalso => &1 &2 [#] _ _ _ _ []; smt().
 qed.
 
 local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
-            (func' adv' : addr) &m :
+            (func' adv' : addr, in_guard' : int fset) &m :
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   Pr[Exper(MI(KEHybrid, Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+       (func', adv', in_guard') @ &m : res] =
   Pr[RH.GOptHashing(KEHybridHashingAdv).main() @ &m : res].
 proof.
-move => func'_eq adv'_eq.
+move => func'_eq adv'_eq in_guard'_eq.
 byequiv => //.
 proc.
 inline MI(KEHybrid, Adv).init
@@ -3932,10 +3930,8 @@ wp.
 seq 12 19 :
   (={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    ={self, adv, st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
-   func' = func{1} /\ func{1} = MI.func{1} /\
-   KEHybrid.self{1} = func{1} /\
-   adv' = adv{1} /\ adv{1} = MI.adv{1} /\
-   KEHybrid.adv{1} = adv{1} /\
+   func{1} = MI.func{1} /\ KEHybrid.self{1} = func{1} /\
+   adv{1} = MI.adv{1} /\ KEHybrid.adv{1} = adv{1} /\
    KEHybrid.st{1} = KEHybridStateWaitReq1 /\
    RH.OptHashing.mp{2} = empty /\
    ={glob Adv, glob Env}).
@@ -4213,7 +4209,6 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_1
    MI_KEIdeal_KESim_AfterAdv.after_adv :
    ={r} /\ r{1} <> None /\ ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4349,7 +4344,6 @@ seq 2 0 :
    (addr1{2}, n1{2}) = pt1{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4416,7 +4410,6 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
    MI_KEIdeal_KESim_AfterAdv.after_adv :
    ={r} /\ r{1} <> None /\ ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4552,7 +4545,6 @@ seq 2 0 :
    (addr1{2}, n1{2}) = pt1{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4619,7 +4611,8 @@ local lemma MI_KEHybrid_KEIdeal_Sim_invoke :
   [MI(KEHybrid, Adv).invoke ~ MI(KEIdeal, KESim(Adv)).invoke :
    ={m} /\ ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4713,7 +4706,8 @@ seq 11 4 :
    m0{1} = m4{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4736,7 +4730,8 @@ seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4780,7 +4775,8 @@ transitivity{1}
   (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4800,7 +4796,7 @@ transitivity{1}
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEHybrid.st{1}
-          MI.adv{2} MI.func{2} (fset1 adv_fw_pi)
+          MI.adv{2} MI.func{2} MI.in_guard{2}
           not_done{1} pt12{1} pt22{1} q1{1} r4{2}.
 inline MI_KEHybrid_AfterAdv.after_adv.
 sim; auto => |>.
@@ -4808,7 +4804,7 @@ transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard} /\ r0{1} <> None /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4837,7 +4833,7 @@ transitivity{2}
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEIdeal.st{2}
           [] MI.adv{2} KESim.st{2} MI.adv{2} MI.func{2}
-          (fset1 adv_fw_pi) r4{2}.
+          MI.in_guard{2} r4{2}.
 exists* pt12{1}, pt22{1}, q1{1}; elim* => pt1' pt2' q1'.
 call (MI_KEHybrid_KEIdeal_KESim_after_adv_1 pt1' pt2' q1').
 auto.
@@ -4875,13 +4871,14 @@ rcondt{2} 4; first auto; smt().
 inline{2} (1) KESim(Adv).loop.
 rcondt{2} 7; first auto.
 rcondf{2} 7; first auto; progress.
-have /= := ke_pi_uniq; smt(in_fset1).
+have /= := ke_pi_uniq; smt().
 sp 0 6.
 seq 1 1 :
   (not_done{1} /\ not_done{2} /\ r0{1} = r2{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4929,7 +4926,8 @@ seq 2 0 :
    m0{2}.`1 = mod0{2} /\ m0{2}.`2.`1 = addr10{2} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\ KEHybrid.self{1} = MI.func{1} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! mem MI.in_guard{1} ke_sim_adv_pi /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -4945,8 +4943,8 @@ rcondt{1} 3; first auto; smt().
 rcondf{1} 3; first auto; progress.
 rewrite /is_ke_req1 /dec_ke_req1 /= /#.
 auto; smt().
-auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _ 
-        _ _ _ /negb_or [#] _ /not_dir -> _ _ /#.
+auto => |> &1 &2 <- [#] <- _ _ _ /= _ [#] -> _ _ _ _ _ _ _ _ _ _
+        /negb_or [#] _ /not_dir -> _ _ /#.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
 rcondf{2} 1; first auto; smt(inc_le2_not_lr).
@@ -5005,7 +5003,8 @@ seq 1 0 :
    MI.func{1} <= addr11{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5046,13 +5045,14 @@ rcondt{2} 4; first auto; smt().
 inline{2} (1) KESim(Adv).loop.
 rcondt{2} 7; first auto.
 rcondf{2} 7; first auto; progress.
-have /= := ke_pi_uniq; smt(in_fset1).
+have /= := ke_pi_uniq; smt().
 sp 0 6.
 seq 1 1 :
    (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
     ={MI.func, MI.adv, MI.in_guard} /\
     exper_pre MI.func{1} MI.adv{1} /\
-    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+    ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+    KEHybrid.self{1} = MI.func{1} /\
     KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
     KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
     KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5096,7 +5096,8 @@ transitivity{1}
    not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5116,7 +5117,7 @@ transitivity{1}
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEHybrid.st{1}
-          MI.adv{2} MI.func{2} (fset1 adv_fw_pi)
+          MI.adv{2} MI.func{2} MI.in_guard{2}
           not_done{1} r2{2}.
 inline MI_KEHybrid_AfterAdv.after_adv.
 sim; auto => |>.
@@ -5125,7 +5126,8 @@ transitivity{2}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5153,7 +5155,7 @@ transitivity{2}
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEIdeal.st{2}
           [] MI.adv{2} KESim.st{2} MI.adv{2} MI.func{2}
-          (fset1 adv_fw_pi) r2{2}.
+          MI.in_guard{2} r2{2}.
 call (MI_KEHybrid_KEIdeal_KESim_after_adv_1 pt1' pt2' q1').
 auto.
 inline MI_KEIdeal_KESim_AfterAdv.after_adv.
@@ -5259,7 +5261,8 @@ conseq
    m0{1} = m4{2} /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5277,7 +5280,7 @@ move => ^H <- [#] <<- <<- <<- <<- st_R.
 move : H.
 rewrite /fw_obs /=.
 move => [#] -> -> -> -> -> dec_sim_wait_eq _ st_R0
-        _ _ _ dec_ideal_wait_eq dec_ke_req_eq pre _ _ _
+        _ _ _ dec_ideal_wait_eq dec_ke_req_eq pre _ _ _ _
         [] /= out_pt1''1 [#] out_pt2''1 out_pt1''2 out_pt2''2
         ->> ->> ->>.
 rewrite /= oget_some /= in dec_sim_wait_eq.
@@ -5291,7 +5294,8 @@ seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5336,7 +5340,8 @@ transitivity{1}
   (r0{1} = r4{2} /\ r0{1} <> None /\ not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\ KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5356,7 +5361,7 @@ transitivity{1}
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEHybrid.st{1}
-          MI.adv{2} MI.func{2} (fset1 adv_fw_pi)
+          MI.adv{2} MI.func{2} MI.in_guard{2}
           not_done{1} r4{2}.
 inline MI_KEHybrid_AfterAdv.after_adv.
 sim; auto => |>.
@@ -5364,7 +5369,7 @@ transitivity{2}
   {r <- MI_KEIdeal_KESim_AfterAdv.after_adv(r0);}
   (={r0, MI.func, MI.adv, MI.in_guard} /\ r0{1} <> None /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5393,7 +5398,7 @@ transitivity{2}
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEIdeal.st{2}
           [] MI.adv{2} KESim.st{2} MI.adv{2} MI.func{2}
-          (fset1 adv_fw_pi) r4{2}.
+          MI.in_guard{2} r4{2}.
 call (MI_KEHybrid_KEIdeal_KESim_after_adv_2 pt1'' pt2'' q1' q2' q3').
 auto.
 inline MI_KEIdeal_KESim_AfterAdv.after_adv.
@@ -5436,7 +5441,8 @@ seq 1 1 :
   (not_done{1} /\ not_done{2} /\ not_done0{2} /\ r0{1} = r2{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5477,7 +5483,7 @@ rcondf{2} 1; first auto; smt().
 rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
 rcondt{2} 2; first auto.
-move => |> &hr <- /= [#] -> -> _ _ _ _ _ _ _ _
+move => |> &hr <- /= [#] -> -> _ _ _ _ _ _ _ _ _
         [] /= [#] _ [#] _ _ _ _ _ -> /=.
 by rewrite oget_some.
 rcondf{2} 3; first auto; smt().
@@ -5507,7 +5513,7 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
 rcondf{2} 2; first auto.
 move => |> &hr <- /= [#] -> -> _ _ _ not_done0_R _ _ _
-        _ [] /= _ [#] _ _ _ _ _ -> /=.
+        _ _ [] /= _ [#] _ _ _ _ _ -> /=.
 by rewrite oget_some.
 rcondf{2} 2; first auto.
 rcondf{2} 4; first auto.
@@ -5543,7 +5549,8 @@ seq 1 0 :
    MI.func{1} <= addr11{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5596,7 +5603,8 @@ seq 1 1 :
    (r0{1} = r2{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
     ={MI.func, MI.adv, MI.in_guard} /\
     exper_pre MI.func{1} MI.adv{1} /\
-    MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
     KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
     KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
     KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5641,7 +5649,8 @@ transitivity{1}
    not_done{1} /\ not_done{2} /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5661,7 +5670,7 @@ transitivity{1}
      ke_hybrid_ideal_sim_rel_st_ss   = KESim.st{2};|}) => //.
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEHybrid.st{1}
-          MI.adv{2} MI.func{2} (fset1 adv_fw_pi)
+          MI.adv{2} MI.func{2} MI.in_guard{2}
           not_done{1} r2{2}.
 inline MI_KEHybrid_AfterAdv.after_adv.
 sim; auto => |>.
@@ -5670,7 +5679,8 @@ transitivity{2}
   (r0{1} = r2{2} /\ r0{1} <> None /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5698,7 +5708,7 @@ transitivity{2}
 progress.
 by exists (glob Adv){2} MI.adv{2} MI.func{2} KEIdeal.st{2}
           [] MI.adv{2} KESim.st{2} MI.adv{2} MI.func{2}
-          (fset1 adv_fw_pi) r2{2}.
+          MI.in_guard{2} r2{2}.
 call (MI_KEHybrid_KEIdeal_KESim_after_adv_2 pt1'' pt2'' q1' q2' q3').
 auto.
 inline MI_KEIdeal_KESim_AfterAdv.after_adv.
@@ -5740,7 +5750,8 @@ seq 6 0 :
    MI.func{1} <= m{1}.`2.`1 /\ m{1}.`1 = Dir /\
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5792,7 +5803,8 @@ seq 1 1 :
   (r0{1} = r3{2} /\ not_done{1} /\ not_done{2} /\
    exper_pre MI.func{1} MI.adv{1} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5849,7 +5861,8 @@ seq 2 0 :
   (r0{1} = None /\ r5{2} = None /\
    exper_pre MI.func{1} MI.adv{1} /\
    ={MI.func, MI.adv, MI.in_guard} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\ KEHybrid.self{1} = MI.func{1} /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
+   KEHybrid.self{1} = MI.func{1} /\
    KEHybrid.adv{1} = MI.adv{1} /\ KEIdeal.self{2} = MI.func{1} /\
    KEIdeal.adv{2} = MI.adv{1} /\  KESim.self{2} = MI.adv{1} /\
    KESim.adv{2} = [] /\ ={glob Adv} /\
@@ -5889,14 +5902,15 @@ auto.
 exfalso => &1 &2 [#] _ _ _ _ _ _ _ _ _ _ _ _ _ []; smt().
 qed.
 
-local lemma Exper_KEHybrid_KEIdeal_KESim (func' adv' : addr) &m :
-  exper_pre func' adv' =>
+local lemma Exper_KEHybrid_KEIdeal_KESim
+            (func' adv' : addr, in_guard' : int fset) &m :
+  exper_pre func' adv' => ! (ke_sim_adv_pi \in in_guard') =>
   Pr[Exper(MI(KEHybrid, Adv), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res] =
+       (func', adv', in_guard') @ &m : res] =
   Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
-       (func', adv', fset1 adv_fw_pi) @ &m : res].
+       (func', adv', in_guard') @ &m : res].
 proof.
-move => pre.
+move => pre not_in_guard'.
 byequiv => //.
 proc.
 inline MI(KEHybrid, Adv).init MI(KEIdeal, KESim(Adv)).init
@@ -5906,7 +5920,7 @@ seq 12 17 :
    func{1} = MI.func{1} /\ adv{1} = MI.adv{1} /\
    in_guard{1} = MI.in_guard{1} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\
@@ -5921,7 +5935,7 @@ call
   (_ :
    ={MI.func, MI.adv, MI.in_guard} /\
    exper_pre MI.func{1} MI.adv{1} /\
-   MI.in_guard{1} = fset1 adv_fw_pi /\
+   ! (ke_sim_adv_pi \in MI.in_guard{1}) /\
    KEHybrid.self{1} = MI.func{1} /\ KEHybrid.adv{1} = MI.adv{1} /\
    KEIdeal.self{2} = MI.func{1} /\ KEIdeal.adv{2} = MI.adv{1} /\
    KESim.self{2} = MI.adv{1} /\ KESim.adv{2} = [] /\
@@ -5936,29 +5950,30 @@ conseq MI_KEHybrid_KEIdeal_Sim_invoke => //.
 auto; progress; by rewrite KEHybridIdealSimRel0.
 qed.
 
-lemma ke_sec (func' adv' : addr) &m :
-  exper_pre func' adv' =>
+lemma ke_sec (func' adv' : addr, in_guard' : int fset) &m :
+  exper_pre func' adv' => ! (ke_sim_adv_pi \in in_guard') =>
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
-         (func', adv', fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', in_guard') @ &m : res] -
     Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
-         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', in_guard') @ &m : res]| <=
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
-move => pre func'_eq adv'_eq.
-by rewrite (Exper_KEReal_KERealSimp Adv Env func' adv' (fset1 adv_fw_pi) &m)
-           1:/#
+move => pre not_in_guard' func'_eq adv'_eq in_guard'_eq.
+by rewrite (Exper_KEReal_KERealSimp Adv Env func' adv' in_guard' &m) 1:/#
            (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
-            func' adv' &m) //
+            func' adv' in_guard' &m) //
            -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m)
            (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
-            func' adv' &m) //
-           -(Exper_KEHybrid_KEIdeal_KESim func' adv' &m) //
-           (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func' adv' &m) //
+            func' adv' in_guard' &m) //
+           -(Exper_KEHybrid_KEIdeal_KESim func' adv' in_guard' &m) //
+           (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func' adv' in_guard'
+            &m) //
            -(RH.GNonOptHashing_GOptHashing KEHybridHashingAdv &m) //
            -(KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
-             func' adv' &m).
+             func' adv' in_guard' &m).
 qed.
 
 end section.
@@ -5966,16 +5981,18 @@ end section.
 lemma ke_security
       (Adv <: FUNC{MI, KEReal, KEIdeal, KESim, DDH_Adv})
       (Env <: ENV{Adv, MI, KEReal, KEIdeal, KESim, DDH_Adv})
-      (func' adv' : addr) &m :
-  exper_pre func' adv' =>
+      (func' adv' : addr, in_guard' : int fset) &m :
+  exper_pre func' adv' => ! (ke_sim_adv_pi \in in_guard') =>
+  (* parameters for modules in upper bound: *)
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
+  DDH_Adv.in_guard{m} = in_guard' =>
   `|Pr[Exper(MI(KEReal, Adv), Env).main
-         (func', adv', fset1 adv_fw_pi) @ &m : res] -
+         (func', adv', in_guard') @ &m : res] -
     Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
-         (func', adv', fset1 adv_fw_pi) @ &m : res]| <=
+         (func', adv', in_guard') @ &m : res]| <=
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
-move => pre func'_eq adv'_eq.
-by apply (ke_sec Adv Env func' adv' &m).
+move => pre func'_eq adv'_eq in_guard'_eq.
+by apply (ke_sec Adv Env func' adv' in_guard' &m).
 qed.

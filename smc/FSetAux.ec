@@ -22,9 +22,20 @@ lemma oflist_rcons (x : 'a, ys : 'a list) :
 proof. by rewrite -cats1 oflist_cat set1E fsetUC. qed.
 
 lemma minus1_not_mem (xs : 'a fset, y : 'a) :
-  ! mem xs y =>
-  xs `\` fset1 y = xs.
+  ! mem xs y => xs `\` fset1 y = xs.
 proof.
 move => not_mem_xs_y.
 apply fsetP => x; smt(in_fsetD1).
+qed.
+
+lemma subset_union_r (xs ys : 'a fset) :
+  xs \subset ys `|` xs.
+proof.
+rewrite subsetP => z; rewrite in_fsetU => />.
+qed.
+
+lemma subset_union_l (xs ys : 'a fset) :
+  xs \subset xs `|` ys.
+proof.
+rewrite subsetP => z; rewrite in_fsetU => />.
 qed.
