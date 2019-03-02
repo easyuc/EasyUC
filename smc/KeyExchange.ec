@@ -675,32 +675,32 @@ proof. proc; auto. qed.
 
 (* termination metric and proof for KEIdeal *)
 
-op ideal_term_metric_max : int = 4.
+op ke_ideal_term_metric_max : int = 4.
 
-op ideal_term_metric (st : ke_ideal_state) : int =
+op ke_ideal_term_metric (st : ke_ideal_state) : int =
      with st = KEIdealStateWaitReq1   => 4
      with st = KEIdealStateWaitSim1 _ => 3
      with st = KEIdealStateWaitReq2 _ => 2
      with st = KEIdealStateWaitSim2 _ => 1
      with st = KEIdealStateFinal    _ => 0.
 
-lemma ge0_ideal_term_metric (st : ke_ideal_state) :
-  0 <= ideal_term_metric st.
+lemma ge0_ke_ideal_term_metric (st : ke_ideal_state) :
+  0 <= ke_ideal_term_metric st.
 proof. by case st. qed.
 
-lemma ideal_term_metric_is_ke_ideal_state_wait_sim1
+lemma ke_ideal_term_metric_is_ke_ideal_state_wait_sim1
       (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim1 st => ideal_term_metric st = 3.
+  is_ke_ideal_state_wait_sim1 st => ke_ideal_term_metric st = 3.
 proof. by case st. qed.
 
-lemma ideal_term_metric_is_ke_ideal_state_wait_req2
+lemma ke_ideal_term_metric_is_ke_ideal_state_wait_req2
       (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_req2 st => ideal_term_metric st = 2.
+  is_ke_ideal_state_wait_req2 st => ke_ideal_term_metric st = 2.
 proof. by case st. qed.
 
-lemma ideal_term_metric_is_ke_ideal_state_wait_sim2
+lemma ke_ideal_term_metric_is_ke_ideal_state_wait_sim2
       (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim2 st => ideal_term_metric st = 1.
+  is_ke_ideal_state_wait_sim2 st => ke_ideal_term_metric st = 1.
 proof. by case st. qed.
 
 lemma ke_ideal_term_init :
@@ -708,16 +708,16 @@ lemma ke_ideal_term_init :
   [KEIdeal.init ~ KEIdeal.init :
    ={self_, adv_} ==>
    ={res, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = ideal_term_metric_max].
+   ke_ideal_term_metric KEIdeal.st{1} = ke_ideal_term_metric_max].
 proof. proc; auto. qed.
 
 lemma ke_ideal_term_invoke (n : int) :
   equiv
   [KEIdeal.invoke ~ KEIdeal.invoke :
    ={m, glob KEIdeal} /\
-   ideal_term_metric KEIdeal.st{1} = n ==>
+   ke_ideal_term_metric KEIdeal.st{1} = n ==>
    ={res, KEIdeal.st} /\
-   (res{1} = None \/ ideal_term_metric KEIdeal.st{1} = n - 1)].
+   (res{1} = None \/ ke_ideal_term_metric KEIdeal.st{1} = n - 1)].
 proof.
 proc; sp 3 3.
 if => //.
@@ -743,7 +743,7 @@ auto =>
   ->> ->>.
 rewrite -oget_wait_sim1_2 /= in oget_wait_sim1_1.
 elim oget_wait_sim1_1 => -> [#] ->.
-smt(ideal_term_metric_is_ke_ideal_state_wait_sim1).
+smt(ke_ideal_term_metric_is_ke_ideal_state_wait_sim1).
 auto.
 if => //.
 sp 1 1.
@@ -763,7 +763,7 @@ auto =>
 rewrite -oget_req2_2 /= in oget_req2_1.
 elim oget_req2_1 => _ ->.
 rewrite -oget_wait_req2_2 /= in oget_wait_req2_1.
-smt(ideal_term_metric_is_ke_ideal_state_wait_req2).
+smt(ke_ideal_term_metric_is_ke_ideal_state_wait_req2).
 auto.
 auto.
 if => //.
@@ -774,7 +774,7 @@ auto =>
    ->> ->>.
 rewrite -oget_wait_req2_2 in oget_wait_req2_1.
 elim oget_wait_req2_1 => -> -> ->.
-smt(ideal_term_metric_is_ke_ideal_state_wait_sim2). 
+smt(ke_ideal_term_metric_is_ke_ideal_state_wait_sim2). 
 auto.
 auto.
 qed.
