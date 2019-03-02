@@ -12370,6 +12370,8 @@ move => pre not_in_guard'.
 by apply (smc_sec2 Adv Env func' adv' in_guard' &m).
 qed.
 
+module SMCSimComp (Adv : FUNC) = SMCSim(KeyEx.KESim(Adv)).
+
 lemma smc_security
       (Adv <: FUNC{MI, SMCReal, SMCIdeal, SMCSim, KeyEx.KEReal,
                    KeyEx.KEIdeal, KeyEx.KESim, KeyEx.DDH_Adv, CompEnv})
@@ -12382,9 +12384,10 @@ lemma smc_security
   CompEnv.in_guard_low{m} = in_guard' =>
   KeyEx.DDH_Adv.func{m} = func' ++ [2] => KeyEx.DDH_Adv.adv{m} = adv' =>
   KeyEx.DDH_Adv.in_guard{m} = in_guard' `|` fset1 adv_fw_pi =>
+  (* end of paramters for modules in upper bound *)
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
          (func', adv', in_guard') @ &m : res] -
-    Pr[Exper(MI(SMCIdeal, SMCSim(KeyEx.KESim(Adv))), Env).main
+    Pr[Exper(MI(SMCIdeal, SMCSimComp(Adv)), Env).main
          (func', adv', in_guard') @ &m : res]| <=
   `|Pr[DDH1(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res] -
     Pr[DDH2(KeyEx.DDH_Adv(CompEnv(Env), Adv)).main() @ &m : res]|.
