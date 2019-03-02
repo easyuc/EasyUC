@@ -6473,7 +6473,6 @@ seq 1 1 :
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None /\ r{1} = None).
 exlim (real_p1_term_metric SMCReal.st1{1}) => p1_met.
-print smc_party1_met.
 call (smc_party1_met KeyEx.KEIdeal StubKE_KEIdeal p1_met).
 auto; smt(real_ke_ideal_term_metric0 ge0_real_p1_term_metric).
 rcondf{1} 1; first auto.
