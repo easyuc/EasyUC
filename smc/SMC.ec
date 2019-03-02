@@ -55,6 +55,36 @@ by rewrite /smc_req /dec_smc_req /=
            oget_some /= (is_univ_port pt2) /= oget_some.
 qed.
 
+lemma dec_enc_smc_req (m : msg, func : addr, pt1 pt2 : port, t : text) :
+  dec_smc_req m = Some (func, pt1, pt2, t) =>
+  smc_req func pt1 pt2 t = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_smc_req /smc_req /=.
+case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt1'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
+rewrite !negb_or /=.
+move => [#] iupt_v1 iubse_v2.
+have [] pt2'' : exists (pt2'' : port), dec_univ_port v1 = Some pt2''.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /=.
+have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
+  exists (oget (dec_univ_base v2)); by rewrite -some_oget.
+move => /dec_enc_univ_base -> /=.
+rewrite oget_some.
+case (! is_base_text bse) => //= ibt_bse.
+have [] t' : exists (t' : text), dec_base_text bse = Some t'.
+  exists (oget (dec_base_text bse)); by rewrite -some_oget.
+move => /dec_enc_base_text -> /=.
+rewrite !oget_some /= /#.
+qed.
+
 op is_smc_req (m : msg) : bool =
      dec_smc_req m <> None.
 
@@ -88,6 +118,36 @@ proof.
 by rewrite /smc_rsp /dec_smc_rsp /=
            (is_univ_pair (UnivPort pt1, UnivBase (BaseText t))) /=
            oget_some /= (is_univ_port pt1) /= oget_some.
+qed.
+
+lemma dec_enc_smc_rsp (m : msg, func : addr, pt1 pt2 : port, t : text) :
+  dec_smc_rsp m = Some (func, pt1, pt2, t) =>
+  smc_rsp func pt1 pt2 t = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_smc_rsp /smc_rsp /=.
+case (mod = Adv \/ pt2'.`2 <> 2 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt2'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
+rewrite !negb_or /=.
+move => [#] iupt_v1 iupt_v2.
+have [] pt1'' : exists (pt1'' : port), dec_univ_port v1 = Some pt1''.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /=.
+have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
+  exists (oget (dec_univ_base v2)); by rewrite -some_oget.
+move => /dec_enc_univ_base -> /=.
+case (! is_base_text (oget (Some bse))) => //.
+rewrite oget_some /= => ibsetxt_bse.
+rewrite oget_some.
+have [] t' : exists (t' : text), dec_base_text bse = Some t'.
+  exists (oget (dec_base_text bse)); by rewrite -some_oget.
+move => /dec_enc_base_text -> /= /#.
 qed.
 
 op is_smc_rsp (m : msg) : bool =
@@ -386,6 +446,31 @@ lemma enc_dec_smc_sim_req (ideal adv : addr, pt1 pt2 : port) :
   Some (ideal, adv, pt1, pt2).
 proof. done. qed.
 
+lemma dec_enc_smc_sim_req (m : msg, ideal adv : addr, pt1 pt2 : port) :
+  dec_smc_sim_req m = Some (ideal, adv, pt1, pt2) =>
+  smc_sim_req ideal adv pt1 pt2 = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_smc_sim_req /smc_sim_req /=.
+case (mod = Dir \/ pt1'.`2 <> smc_sim_adv_pi \/
+      pt2'.`2 <> 3 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> pt1'_2 pt2'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
+rewrite !negb_or /= => [#] iupt_v1 iupt_v2.
+have [] pt1'' : exists (pt1'' : port), dec_univ_port v1 = Some pt1''.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port ->.
+have [] pt2'' : exists (pt2'' : port), dec_univ_port v2 = Some pt2''.
+  exists (oget (dec_univ_port v2)); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /=.
+rewrite !oget_some /= /#.
+qed.
+
 op is_smc_sim_req (m : msg) : bool =
      dec_smc_sim_req m <> None.
 
@@ -409,6 +494,18 @@ op dec_smc_sim_rsp (m : msg) : (addr * addr) option =
 lemma enc_dec_smc_sim_rsp (ideal adv : addr) :
   dec_smc_sim_rsp (smc_sim_rsp ideal adv) = Some (ideal, adv).
 proof. done. qed.
+
+lemma dec_enc_smc_sim_rsp (m : msg, ideal adv : addr) :
+  dec_smc_sim_rsp m = Some (ideal, adv) =>
+  smc_sim_rsp ideal adv = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_smc_sim_rsp /smc_sim_rsp /=.
+case (mod = Dir \/ pt1'.`2 <> 3 \/
+      pt2'.`2 <> smc_sim_adv_pi \/ u' <> UnivUnit) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> pt1'_2 pt2'_2 -> /#.
+qed.
 
 op is_smc_sim_rsp (m : msg) : bool =
      dec_smc_sim_rsp m <> None.

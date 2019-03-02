@@ -235,6 +235,10 @@ op dec_univ_triple (v : univ) : (univ * univ * univ)option =
         let (u2, u3) = oget (dec_univ_pair v')
         in Some (u1, u2, u3).
 
+lemma enc_dec_univ_triple (u1 u2 u3 : univ) :
+  dec_univ_triple (univ_triple u1 u2 u3) = Some (u1, u2, u3).
+proof. done. qed.
+
 lemma dec_enc_univ_triple (v v1 v2 v3 : univ) :
   dec_univ_triple v = Some (v1, v2, v3) => v = univ_triple v1 v2 v3.
 proof.
@@ -250,10 +254,6 @@ have [] q : exists (q : univ * univ), dec_univ_pair p2 = Some q.
 case q => q1 q2 /dec_enc_univ_pair -> /=.
 by rewrite oget_some.
 qed.
-
-lemma enc_dec_univ_triple (u1 u2 u3 : univ) :
-  dec_univ_triple (univ_triple u1 u2 u3) = Some (u1, u2, u3).
-proof. done. qed.
 
 op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
 
@@ -273,6 +273,12 @@ op dec_univ_4tuple (v : univ) : (univ * univ * univ * univ)option =
         let (u3, u4) = oget (dec_univ_pair v')
         in Some (u1, u2, u3, u4).
 
+lemma enc_dec_univ_4tuple (u1 u2 u3 u4 : univ) :
+  dec_univ_4tuple (univ_4tuple u1 u2 u3 u4) = Some (u1, u2, u3, u4).
+proof.
+by rewrite /univ_4tuple /dec_univ_4tuple /= enc_dec_univ_triple.
+qed.
+
 lemma dec_enc_univ_4tuple (v v1 v2 v3 v4 : univ) :
   dec_univ_4tuple v = Some (v1, v2, v3, v4) => v = univ_4tuple v1 v2 v3 v4.
 proof.
@@ -290,12 +296,6 @@ by rewrite oget_some.
 qed.
 
 op is_univ_4tuple (v : univ) : bool = dec_univ_4tuple v <> None.
-
-lemma enc_dec_univ_4tuple (u1 u2 u3 u4 : univ) :
-  dec_univ_4tuple (univ_4tuple u1 u2 u3 u4) = Some (u1, u2, u3, u4).
-proof.
-by rewrite /univ_4tuple /dec_univ_4tuple /= enc_dec_univ_triple.
-qed.
 
 lemma is_univ_4tuple (u1 u2 u3 u4 : univ) :
   is_univ_4tuple (univ_4tuple u1 u2 u3 u4).
@@ -614,7 +614,8 @@ by rewrite /da_from_env /dec_da_from_env /=
            enc_dec_univ_triple oget_some.
 qed.
 
-lemma dec_enc_da_from_env (m : msg, da env : addr, pt1 : port, n2: int, u : univ) :
+lemma dec_enc_da_from_env
+      (m : msg, da env : addr, pt1 : port, n2 : int, u : univ) :
   dec_da_from_env m = Some (da, env, pt1, n2, u) =>
   m = da_from_env da env pt1 n2 u.
 proof.
@@ -676,7 +677,8 @@ by rewrite /da_to_env /dec_da_to_env /=
            enc_dec_univ_triple oget_some.
 qed.
 
-lemma dec_enc_da_to_env (m : msg, da env : addr, n1 : int, pt2 : port, u : univ) :
+lemma dec_enc_da_to_env
+      (m : msg, da env : addr, n1 : int, pt2 : port, u : univ) :
   dec_da_to_env m = Some (da, env, n1, pt2, u) =>
   m = da_to_env da env n1 pt2 u.
 proof.

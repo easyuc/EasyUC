@@ -39,6 +39,21 @@ lemma enc_dec_ke_req1 (func : addr, pt1 pt2 : port) :
   dec_ke_req1 (ke_req1 func pt1 pt2) = Some (func, pt1, pt2).
 proof. done. qed.
 
+lemma dec_enc_ke_req1 (m : msg, func : addr, pt1 pt2 : port) :
+  dec_ke_req1 m = Some (func, pt1, pt2) =>
+  ke_req1 func pt1 pt2 = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_req1 /ke_req1 /=.
+case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_port u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt1'_2 iupt_u'.
+have [] pt2'' : exists (pt2'' : port), dec_univ_port u' = Some pt2''.
+  exists (oget (dec_univ_port u')); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /=.
+rewrite oget_some /= /#.
+qed.
+
 op is_ke_req1 (m : msg) : bool =
      dec_ke_req1 m <> None.
 
@@ -73,6 +88,36 @@ by rewrite /ke_rsp1 /dec_ke_rsp1 /=
            oget_some /= (is_univ_port pt1) /= oget_some.
 qed.
 
+lemma dec_enc_ke_rsp1 (m : msg, func : addr, pt1 pt2 : port, k : key) :
+  dec_ke_rsp1 m = Some (func, pt1, pt2, k) =>
+  ke_rsp1 func pt1 pt2 k = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_rsp1 /ke_rsp1 /=.
+case (mod = Adv \/ pt2'.`2 <> 2 \/ ! is_univ_pair u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt2'_2 iup_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
+rewrite !negb_or /=.
+move => [#] iupt_v1 iub_v2.
+case (! is_base_key (oget (dec_univ_base v2))) => //=.
+have [] pt' : exists (pt' : port), dec_univ_port v1 = Some pt'.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /=.
+have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
+  exists (oget (dec_univ_base v2)); by rewrite -some_oget.
+move => /dec_enc_univ_base -> /=.
+rewrite oget_some => ibk_bse.
+have [] k' : exists (k' : key), dec_base_key bse = Some k'.
+  exists (oget (dec_base_key bse)); by rewrite -some_oget.
+move => /dec_enc_base_key -> /=.
+rewrite oget_some /#.
+qed.
+
 op is_ke_rsp1 (m : msg) : bool =
      dec_ke_rsp1 m <> None.
 
@@ -85,16 +130,12 @@ qed.
 lemma dest_good_ke_rsp1 (m : msg) :
   is_ke_rsp1 m => (oget (dec_ke_rsp1 m)).`3 = m.`2.
 proof.
-rewrite /is_ke_rsp1 /dec_ke_rsp1 /=.
-case m => x1 x2 x3 x4 /=.
-case (x1 = Adv \/ x3.`2 <> 2 \/ ! is_univ_pair x4) => //=.
-rewrite !negb_or /= not_adv.
-case x4; first 7 smt().
-move => [z1 z2] [#] _ _.
-rewrite is_univ_pair /= oget_some /=.
-case (! is_univ_port z1 \/ ! is_univ_base z2) => //=.
-rewrite negb_or /=.
-by case (! is_base_key (oget (dec_univ_base z2))).
+move => is_ke_rsp1_m.
+have [] x : exists (x : addr * port * port * key),
+  dec_ke_rsp1 m = Some x.
+  exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 /dec_enc_ke_rsp1 <-.
+by rewrite enc_dec_ke_rsp1 oget_some /ke_rsp1.
 qed.
 
 (* request sent to port index 2 of key exchange functionality by pt2 to
@@ -112,6 +153,17 @@ op dec_ke_req2 (m : msg) : (addr * port) option =
 lemma enc_dec_ke_req2 (func : addr, pt2 : port) :
   dec_ke_req2 (ke_req2 func pt2) = Some (func, pt2).
 proof. done. qed.
+
+lemma dec_enc_ke_req2 (m : msg, func : addr, pt2 : port) :
+  dec_ke_req2 m = Some (func, pt2) =>
+  ke_req2 func pt2 = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_req2 /ke_req2 /=.
+case (mod = Adv \/ pt1'.`2 <> 2 \/ u' <> UnivUnit) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt1'_2 -> /#.
+qed.
 
 op is_ke_req2 (m : msg) : bool =
      dec_ke_req2 m <> None.
@@ -136,11 +188,31 @@ op dec_ke_rsp2 (m : msg) : (addr * port * key) option =
            None :
            Some (pt2.`1, pt1, oget (dec_base_key bse)).
 
-lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, x : key) :
-  dec_ke_rsp2 (ke_rsp2 func pt1 x) = Some (func, pt1, x).
+lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, k : key) :
+  dec_ke_rsp2 (ke_rsp2 func pt1 k) = Some (func, pt1, k).
 proof.
-by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey x)) /=
-           oget_some (is_base_key x).
+by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey k)) /=
+           oget_some (is_base_key k).
+qed.
+
+lemma dec_enc_ke_rsp2 (m : msg, func : addr, pt1 : port, k : key) :
+  dec_ke_rsp2 m = Some (func, pt1, k) =>
+  ke_rsp2 func pt1 k = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_rsp2 /ke_rsp2 /=.
+case (mod = Adv \/ pt2'.`2 <> 1 \/ ! is_univ_base u') => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> pt2'_2 iup_u'.
+have [] bse : exists (bse : base), dec_univ_base u' = Some bse.
+  exists (oget (dec_univ_base u')); by rewrite -some_oget.
+move => /dec_enc_univ_base ->.
+case (! is_base_key (oget (dec_univ_base (UnivBase bse)))) => //=.
+rewrite oget_some.
+move => ibk_bse.
+have [] k' : exists (k' : key), dec_base_key bse = Some k'.
+  exists (oget (dec_base_key bse)); by rewrite -some_oget.
+move => /dec_enc_base_key -> /#.
 qed.
 
 op is_ke_rsp2 (m : msg) : bool =
@@ -155,10 +227,11 @@ qed.
 lemma dest_good_ke_rsp2 (m : msg) :
   is_ke_rsp2 m => (oget (dec_ke_rsp2 m)).`2 = m.`2.
 proof.
-rewrite /is_ke_rsp2 /dec_ke_rsp2 /=.
-case m => x1 x2 x3 x4 /=.
-case (x1 = Adv \/ x3.`2 <> 1 \/ ! is_univ_base x4) => //= H1.
-by case (is_base_key (oget (dec_univ_base x4))).
+move => is_ke_rsp2_m.
+have [] x : exists (x : addr * port * key), dec_ke_rsp2 m = Some x.
+  exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
+case x => x1 x2 x3 /dec_enc_ke_rsp2 <-.
+by rewrite enc_dec_ke_rsp2 oget_some /ke_rsp2.
 qed.
 
 (* Real Functionality *)
@@ -438,6 +511,31 @@ lemma enc_dec_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
   Some (ideal, adv, pt1, pt2).
 proof. done. qed.
 
+lemma dec_enc_ke_sim_req1 (m : msg, ideal adv : addr, pt1 pt2 : port) :
+  dec_ke_sim_req1 m = Some (ideal, adv, pt1, pt2) =>
+  ke_sim_req1 ideal adv pt1 pt2 = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_sim_req1 /ke_sim_req1 /=.
+case (mod = Dir \/ pt1'.`2 <> ke_sim_adv_pi \/ pt2'.`2 <> 3 \/
+      ! is_univ_pair u') => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> pt1'_2 pt2'_2 iupt_u'.
+have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
+  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
+case p => v1 v2 /dec_enc_univ_pair -> /=.
+rewrite oget_some /=.
+case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
+rewrite !negb_or /=.
+move => [#] iupt_v1 iupt_v2.
+have [] pt1'' : exists (pt1'' : port), dec_univ_port v1 = Some pt1''.
+  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
+move => /dec_enc_univ_port ->.
+have [] pt2'' : exists (pt2'' : port), dec_univ_port v2 = Some pt2''.
+  exists (oget (dec_univ_port v2)); by rewrite -some_oget.
+move => /dec_enc_univ_port -> /> /#.
+qed.
+
 op is_ke_sim_req1 (m : msg) : bool =
      dec_ke_sim_req1 m <> None.
 
@@ -463,6 +561,18 @@ lemma enc_dec_ke_sim_rsp (ideal adv : addr) :
   dec_ke_sim_rsp (ke_sim_rsp ideal adv) = Some (ideal, adv).
 proof. done. qed.
 
+lemma dec_enc_ke_sim_rsp (m : msg, ideal adv : addr) :
+  dec_ke_sim_rsp m = Some (ideal, adv) =>
+  ke_sim_rsp ideal adv = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_sim_rsp /ke_sim_rsp /=.
+case (mod = Dir \/ pt1'.`2 <> 3 \/ pt2'.`2 <> ke_sim_adv_pi \/
+      u' <> UnivUnit) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> pt1'_2 pt2'_2 iupt_u' [#] /#.
+qed.
+
 op is_ke_sim_rsp (m : msg) : bool =
      dec_ke_sim_rsp m <> None.
 
@@ -473,18 +583,21 @@ proof. done. qed.
 lemma dest_good_ke_sim_rsp (m : msg) :
   is_ke_sim_rsp m => (oget (dec_ke_sim_rsp m)).`1 = m.`2.`1.
 proof.
-rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /=.
-case m => x1 x2 x3 x4 /=.
-by case (x1 = Dir \/ x2.`2 <> 3 \/ x3.`2 <> ke_sim_adv_pi \/ x4 <> UnivUnit).
+move => is_ke_sim_rsp_m.
+have [] p : exists (p : addr * addr), dec_ke_sim_rsp m = Some p.
+  exists (oget (dec_ke_sim_rsp m)); by rewrite -some_oget.
+case p => ideal adv /dec_enc_ke_sim_rsp <-.
+by rewrite enc_dec_ke_sim_rsp oget_some /ke_sim_rsp.
 qed.
 
 lemma port_good_ke_sim_rsp (m : msg) :
   is_ke_sim_rsp m => m.`2.`2 = 3.
 proof.
-rewrite /is_ke_sim_rsp /dec_ke_sim_rsp /=.
-case m => x1 x2 x3 x4 /=.
-case (x1 = Dir \/ x2.`2 <> 3 \/ x3.`2 <> ke_sim_adv_pi \/ x4 <> UnivUnit) => //.
-rewrite !negb_or /#.
+move => is_ke_sim_rsp_m.
+have [] p : exists (p : addr * addr), dec_ke_sim_rsp m = Some p.
+  exists (oget (dec_ke_sim_rsp m)); by rewrite -some_oget.
+case p => ideal adv /dec_enc_ke_sim_rsp <-.
+by rewrite /ke_sim_rsp.
 qed.
 
 (* request sent from port 3 of key exchange ideal functionality to
@@ -504,6 +617,18 @@ op dec_ke_sim_req2 (m : msg) : (addr * addr) option =
 lemma enc_dec_ke_sim_req2 (ideal adv : addr) :
   dec_ke_sim_req2 (ke_sim_req2 ideal adv) = Some (ideal, adv).
 proof. done. qed.
+
+lemma dec_enc_ke_sim_req2 (m : msg, ideal adv : addr) :
+  dec_ke_sim_req2 m = Some (ideal, adv) =>
+  ke_sim_req2 ideal adv = m.
+proof.
+case m => mod pt1' pt2' u'.
+rewrite /dec_ke_sim_req2 /ke_sim_req2 /=.
+case (mod = Dir \/ pt1'.`2 <> ke_sim_adv_pi \/ pt2'.`2 <> 3 \/
+      u' <> UnivUnit) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> pt1'_2 pt2'_2 -> /#.
+qed.
 
 op is_ke_sim_req2 (m : msg) : bool =
      dec_ke_sim_req2 m <> None.
