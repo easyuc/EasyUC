@@ -44,7 +44,7 @@ case m => mod pt1' pt2' u'.
 rewrite /dec_fw_req /fw_req /=.
 case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_pair u') => //.
 rewrite !negb_or /= not_adv.
-move => [#]-> pt1'_2 iup_u'.
+move => [#] -> pt1'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
@@ -67,14 +67,12 @@ lemma dest_good_fw_req (m : msg) :
   is_fw_req m =>
   (oget (dec_fw_req m)).`1 = m.`2.`1 /\ m.`2.`2 = 1.
 proof.
-case m => mod pt1 pt2 u.
-rewrite /is_fw_req /dec_fw_req /=.
-case (mod = Adv \/ pt1.`2 <> 1 \/ ! is_univ_pair u) => //.
-rewrite !negb_or /=.
-move => [#] _ _.
-rewrite /is_univ_pair /dec_univ_pair; case u => // x /=.
-rewrite oget_some; case x => /= x1 x2.
-case (is_univ_port x1) => //=.
+move => ifr_m.
+have [] x : exists (x : addr * port * port * univ),
+  dec_fw_req m = Some x.
+  exists (oget (dec_fw_req m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 /dec_enc_fw_req <-.
+by rewrite enc_dec_fw_req oget_some /fw_req.
 qed.
 
 (* response sent from port index 1 of forwarding functionality to pt2,
@@ -126,14 +124,12 @@ proof. done. qed.
 lemma dest_good_fw_rsp (m : msg) :
   is_fw_rsp m => (oget (dec_fw_rsp m)).`3 = m.`2.
 proof.
-case m => mod pt1 pt2 u.
-rewrite /is_fw_rsp /dec_fw_rsp /=.
-case (mod = Adv \/ pt2.`2 <> 1 \/ ! is_univ_pair u) => //.
-rewrite !negb_or /=.
-move => [#] _ _.
-rewrite /is_univ_pair /dec_univ_pair; case u => // x /=.
-rewrite oget_some; case x => /= x1 x2.
-case (is_univ_port x1) => //.
+move => ifr_m.
+have [] x : exists (x : addr * port * port * univ),
+  dec_fw_rsp m = Some x.
+  exists (oget (dec_fw_rsp m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 /dec_enc_fw_rsp <-.
+by rewrite enc_dec_fw_rsp oget_some /fw_rsp.
 qed.
 
 (* message from forwarding functionality to adversary, letting it
@@ -212,6 +208,12 @@ op dec_fw_ok (m : msg) : (addr * addr) option =
         None :
         Some (pt1.`1, pt2.`1).
 
+lemma enc_dec_fw_ok (func adv : addr) :
+  dec_fw_ok (fw_ok func adv) = Some (func, adv).
+proof.
+by rewrite /dec_fw_ok /fw_ok.
+qed.
+
 lemma dec_enc_fw_ok (m : msg, func adv) :
   dec_fw_ok m = Some (func, adv) =>
   fw_ok func adv = m.
@@ -233,12 +235,11 @@ lemma dest_good_fw_ok (m : msg) :
   is_fw_ok m => (oget (dec_fw_ok m)).`1 = m.`2.`1 /\
   m.`2.`2 = 1.
 proof.
-case m => mod pt1 pt2 u.
-rewrite /is_fw_ok /dec_fw_ok /=.
-case
-  (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi \/
-   u <> UnivUnit) => //.
-by rewrite !negb_or /=.
+move => ifo_m.
+have [] x : exists (x : addr * addr), dec_fw_ok m = Some x.
+  exists (oget (dec_fw_ok m)); by rewrite -some_oget.
+case x => x1 x2 /dec_enc_fw_ok <-.
+by rewrite enc_dec_fw_ok.
 qed.
 
 type fw_state = [
