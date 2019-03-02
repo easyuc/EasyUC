@@ -1,12 +1,12 @@
 Experiments with Universal Composability in EasyCrypt
 ====================================================================
 
-This repository contains experiments in formalizing
-Universally Composable (UC) Security using the
+This repository contains experiments in formalizing Universally
+Composable (UC) Security using the
 [EasyCrypt](https://www.easycrypt.info/trac/) proof assistant. This is
-joint work between [Alley Stoughton](http://alleystoughton.us)
-(stough@bu.edu), Ran Canetti (canetti@bu.edu) and Mayank
-Varia (varia@bu.edu).
+joint work between Ran Canetti (canetti@bu.edu), [Alley
+Stoughton](http://alleystoughton.us) (stough@bu.edu) and Mayank Varia
+(varia@bu.edu).
 
 Secure Message Communication
 --------------------------------------------------------------------
