@@ -4909,12 +4909,8 @@ rcondf{2} 4; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
-move => |> &hr _ _ _ _ _ ep _.
-case (r{m}) => // x.
-case x => x1 x2 x3 x4 /=.
-rewrite oget_some /=.
-case x2 => addr1 n1 /=.
-rewrite negb_or not_dir /=.
+move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
+rewrite oget_some not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -5564,12 +5560,8 @@ rcondf{2} 4; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
-move => |> &hr _ _ _ _ ep _.
-case (r{m}) => // x.
-case x => x1 x2 x3 x4 /=.
-rewrite oget_some /=.
-case x2 => addr1 n1 /=.
-rewrite negb_or not_dir /=.
+move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
+rewrite oget_some not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -8551,12 +8543,8 @@ rcondf{2} 4; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
-move => |> &hr _ _ _ _ _ ep _.
-case (r{m}) => // x.
-case x => x1 x2 x3 x4 /=.
-rewrite oget_some /=.
-case x2 => addr1 n1 /=.
-rewrite negb_or not_dir /=.
+move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
+rewrite oget_some not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -9206,12 +9194,8 @@ rcondf{2} 4; first auto.
 rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
-move => |> &hr _ _ _ _ ep _.
-case (r{m}) => // x.
-case x => x1 x2 x3 x4 /=.
-rewrite oget_some /=.
-case x2 => addr1 n1 /=.
-rewrite negb_or not_dir /=.
+move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
+rewrite oget_some not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
