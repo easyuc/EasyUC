@@ -44,7 +44,15 @@ type univ = [
   | UnivPair of (univ * univ)
 ].
 
-(* universe decoding functions *)
+(* note on universe encoding/decoding operations: each encoding
+   operation or constructor has a corresponding decoding operation,
+   producing an optional value. then the expected pair of lemmas is
+   proved: (1) encoding and then decoding results in Some of what was
+   encoded (in tuple form, if there are multiple values); and (2) if
+   decoding results in Some x, then encoding x results in the original
+   universe value *)
+
+(* universe decoding operations *)
 
 op dec_univ_base (v : univ) : base option =
      with v = UnivUnit   => None
@@ -221,7 +229,7 @@ lemma is_univ_pair (p : univ * univ) :
   is_univ_pair (UnivPair p).
 proof. done. qed.
 
-(* higher-order universe encoding/decoding functions *)
+(* higher-order universe encoding/decoding operations *)
 
 op univ_triple (u1 u2 u3 : univ) : univ =
      UnivPair (u1, UnivPair (u2, u3)).
@@ -333,6 +341,13 @@ proof. by case mod. qed.
    the context of where the message came from *)
 
 type msg = (mode * port * port * univ).
+
+(* note on message encoding/decoding operations: each operation has a
+   corresponding decoding operation, producing an optional value. then
+   the expected pair of lemmas is proved: (1) encoding and then
+   decoding results in Some of what was encoded (in tuple form, if
+   there are multiple values); and (2) if decoding results in Some x,
+   then encoding x results in the original message *)
 
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities"), as well as adversaries and
