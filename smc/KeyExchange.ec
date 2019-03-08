@@ -1513,16 +1513,15 @@ seq 1 1 :
      real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
      real_simp_rel_st_rss = KERealSimp.st{2};|}).
 auto; smt().
-rcondf{1} 4.
-auto; progress; rewrite oget_some /fw_req /= le_ext_r.
+rcondf{1} 4; first auto; progress; rewrite oget_some; smt(le_ext_r).
 sp.
 rcondt{1} 1; first auto.
 rcondf{1} 1.
-progress; auto; progress; by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
+progress; auto; progress; rewrite oget_some; smt(ne_cat_nonnil_r).
 rcondf{1} 1.
-progress; auto; progress; by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
+progress; auto; progress; rewrite oget_some; smt(ne_cat_nonnil_r).
 rcondt{1} 1.
-auto; progress; rewrite oget_some /fw_req /= le_refl.
+progress; auto; progress; rewrite oget_some; smt(le_refl).
 inline Fwd1.Forw.invoke.
 rcondt{1} 3; first auto; smt().
 rcondt{1} 3; auto.
@@ -1588,13 +1587,11 @@ seq 1 0 :
 if{1}.
 inline Fwd1.Forw.invoke.
 rcondt{1} 3; first auto; smt().
-rcondf{1} 3.
-auto; progress; rewrite /Fwd1.is_fw_req /Fwd1.dec_fw_req /= /#.
+rcondf{1} 3; first auto; smt(Fwd1.not_is_fw_req_suff).
 auto.
 inline Fwd2.Forw.invoke.
 rcondt{1} 3; first auto; smt().
-rcondf{1} 3.
-auto; progress; rewrite /Fwd2.is_fw_req /Fwd2.dec_fw_req /= /#.
+rcondf{1} 3; first auto; smt(Fwd1.not_is_fw_req_suff).
 auto.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -1684,14 +1681,14 @@ rcondt{1} 5; first auto; smt(Fwd1.dest_good_fw_ok).
 rcondf{1} 8.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#]
         _ _ _ _ -> _ _ _ _ _.
-rewrite oget_some /fw_rsp /= oget_some /= le_refl.
+rewrite oget_some /= oget_some /=; smt(Fwd1.dest_good_fw_ok le_refl).
 rcondt{1} 9; first auto.
 rcondf{1} 9; first auto.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#] _ _ _ _ -> _ _ _ _ _.
-by rewrite oget_some /fw_rsp /= oget_some.
+rewrite oget_some /= oget_some /#.
 rcondt{1} 9.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#] _ _ _ _ -> _ _ _ _ _.
-by rewrite oget_some /fw_rsp /= oget_some.
+rewrite oget_some /= oget_some /#.
 sp 8 0; elim* => r0_L st_L.
 inline{1} (1) KEReal.party2.
 rcondt{1} 3; first auto; smt().
@@ -1839,14 +1836,15 @@ rewrite -dec_req2_0 /= in dec_req2_1.
 rewrite -m2_eq /= in m1_eq.
 smt().
 wp.
-rcondf{1} 4; first auto; progress; rewrite oget_some /fw_req /= le_ext_r.
+rcondf{1} 4; first auto; progress.
+rewrite oget_some /=; smt(le_ext_r).
 sp.
 rcondt{1} 1; first auto.
-rcondf{1} 1; first auto.
-progress; by rewrite oget_some /fw_req /= ne_cat_nonnil_r.
+rcondf{1} 1; first auto; progress.
+rewrite oget_some /=; smt(ne_cat_nonnil_r).
 rcondf{1} 1; first auto.
 rcondf{1} 1; first auto; progress.
-by rewrite oget_some /fw_req /= le_ext_comm sing_not_le.
+rewrite oget_some /=; smt(le_ext_comm sing_not_le).
 inline{1} (1) Fwd2.Forw.invoke.
 rcondt{1} 3; first auto; smt().
 rcondt{1} 3; first auto.
@@ -1897,8 +1895,7 @@ rcondf{1} 3; first auto; smt().
 auto.
 inline Fwd2.Forw.invoke.
 rcondt{1} 3; first auto; smt().
-rcondf{1} 3.
-auto; progress; rewrite /Fwd2.is_fw_req /Fwd2.dec_fw_req /= /#.
+rcondf{1} 3; first auto; smt(Fwd1.not_is_fw_req_suff).
 auto.
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
@@ -1984,11 +1981,11 @@ rcondt{1} 5; first auto; smt(Fwd2.dest_good_fw_ok).
 rcondf{1} 8.
 auto => |> &hr _ _ _ _ _ @/real_simp_rel3 /= [#]
         _ _ _ _ _ -> _ _ _ _.
-rewrite oget_some /fw_rsp /= oget_some /= le_refl.
+rewrite oget_some /= oget_some /=; smt(le_refl).
 rcondt{1} 9; first auto.
 rcondt{1} 9.
 auto => |> &hr _ _ _ _ _ @/real_simp_rel3 /= [#] _ _ _ _ _ -> _ _ _ _.
-by rewrite oget_some /fw_rsp /= oget_some.
+rewrite oget_some /= oget_some /#.
 sp 8 0; elim* => r0_L st_L.
 inline{1} (1) KEReal.party1.
 rcondf{1} 3; first auto; smt().
@@ -4702,23 +4699,15 @@ rcondt{2} 8; first auto; smt().
 rcondt{2} 8; first auto.
 sp 0 8.
 rcondf{1} 7; first auto.
+rcondf{1} 10; first auto; progress; rewrite oget_some /#.
 rcondf{1} 10; first auto.
-progress.
-rewrite oget_some /fw_obs /= /#.
-rcondf{1} 10; first auto.
-rcondf{1} 10; first auto.
-progress.
-rewrite oget_some /fw_obs /=.
-smt(ke_pi_uniq).
+rcondf{1} 10; first auto; progress.
+rewrite oget_some /Fwd1.fw_obs /=; smt(ke_pi_uniq).
 rcondt{1} 10; first auto.
-rcondf{1} 12; first auto.
-progress.
-rewrite oget_some /fw_obs /= /#.
+rcondf{1} 12; first auto; progress; rewrite oget_some /Fwd1.fw_obs /= /#.
 rcondf{2} 4; first auto.
 rcondt{2} 5; first auto.
-rcondf{2} 5; first auto.
-progress.
-rewrite oget_some /fw_obs /=.
+rcondf{2} 5; first auto; progress; rewrite oget_some /Fwd1.fw_obs /=.
 smt(ke_pi_uniq).
 seq 11 4 :
   (not_done{1} /\ not_done{2} /\ not_done0{2} /\
@@ -5263,17 +5252,15 @@ rcondt{2} 9; first auto.
 rcondf{2} 12; first auto.
 rcondt{2} 13; first auto.
 rcondf{2} 13; first auto; progress.
-rewrite oget_some /= /fw_obs /=; smt(ke_pi_uniq).
+rewrite oget_some /= /Fwd2.fw_obs /=; smt(ke_pi_uniq).
 sp 0 12.
 rcondf{1} 6; first auto.
-rcondf{1} 9; first auto; progress.
-rewrite oget_some /fw_obs /= /#.
+rcondf{1} 9; first auto; progress; rewrite oget_some /Fwd2.fw_obs /= /#.
 rcondf{1} 9; first auto.
 rcondf{1} 9; first auto; progress.
-rewrite oget_some /fw_obs /=; smt(ke_pi_uniq).
+rewrite oget_some /Fwd2.fw_obs /=; smt(ke_pi_uniq).
 rcondt{1} 9; first auto.
-rcondf{1} 11; first auto; progress.
-rewrite oget_some /fw_obs /= /#.
+rcondf{1} 11; first auto; progress; rewrite oget_some /Fwd2.fw_obs /= /#.
 sp 10 0.
 conseq
   (_ :
@@ -5295,9 +5282,8 @@ conseq
    _).
 move => |> &1 &2 mod0_L pt10_L pt20_L u0_L st_L.
 rewrite !oget_some /=.
-move => ^H <- [#] <<- <<- <<- <<- st_R.
-move : H.
-rewrite /fw_obs /=.
+move => ^H <- [#] <<- <<- <<- <<- st_R; move : H.
+rewrite /Fwd2.fw_obs /=.
 move => [#] -> -> -> -> -> dec_sim_wait_eq _ st_R0
         _ _ _ dec_ideal_wait_eq dec_ke_req_eq pre _ _ _ _
         [] /= out_pt1''1 [#] out_pt2''1 out_pt1''2 out_pt2''2

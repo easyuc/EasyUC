@@ -75,6 +75,15 @@ case x => x1 x2 x3 x4 /dec_enc_fw_req <-.
 by rewrite enc_dec_fw_req oget_some /fw_req.
 qed.
 
+lemma not_is_fw_req_suff (m : msg) :
+  m.`1 = Adv \/ m.`2.`2 <> 1 => ! is_fw_req m.
+proof.
+rewrite /is_fw_req /dec_fw_req.
+case (m) => mod pt1 pt2 u.
+case pt1 => addr1 n1 /=.
+smt().
+qed.
+
 (* response sent from port index 1 of forwarding functionality to pt2,
    completing the forwarding of u that was requested by pt1 *)
 

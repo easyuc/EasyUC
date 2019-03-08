@@ -1148,17 +1148,15 @@ rcondf{1} 4; first auto.
 move => /> &hr <-; smt(le_refl).
 rcondf{1} 4; first auto.
 move => /> &1 &2.
-rewrite oget_some /ke_req1 /=.
-smt(le_ext_r).
+rewrite oget_some /KeyEx.ke_req1 /=; smt(le_ext_r).
 rcondt{1} 5; first auto.
 rcondf{1} 5; first auto.
 move => /> &hr <-.
-rewrite oget_some /ke_req1 /=.
-smt(ne_cat_nonnil_r).
+rewrite oget_some /KeyEx.ke_req1 /=; smt(ne_cat_nonnil_r).
 rcondf{1} 5; first auto.
 rcondf{1} 5; first auto.
 move => /> &hr.
-by rewrite oget_some /ke_req1 /= le_ext_comm.
+by rewrite oget_some /KeyEx.ke_req1 /= le_ext_comm.
 inline{1} (1) KeyEx.KEIdeal.invoke.
 rcondt{1} 9; first auto.
 inline{1} (1) KeyEx.KEIdeal.parties.
@@ -1181,7 +1179,7 @@ rewrite !oget_some KeyEx.enc_dec_ke_req1 oget_some /=
 progress; by rewrite inc_nle_l.
 rcondf{1} 17; first auto.
 auto => |> &1 &2.
-rewrite !oget_some KeyEx.enc_dec_ke_req1 !oget_some /ke_simp_req1 /=.
+rewrite !oget_some KeyEx.enc_dec_ke_req1 !oget_some /=.
 move => <- [#] _ -> -> ->.
 progress; rewrite (SMCRealKEIdealSimpRel1 _ pt10{2} pt20{2} t{2}) /#.
 rcondf{1} 2; first auto.
@@ -1390,10 +1388,7 @@ auto.
 if{1}.
 inline{1} (1) Fwd.Forw.invoke.
 rcondt{1} 3; first auto; smt().
-rcondf{1} 3; first auto.
-move => |> &hr.
-rewrite /Fwd.is_fw_req /Fwd.dec_fw_req.
-smt(not_dir).
+rcondf{1} 3; first auto; smt(Fwd.not_is_fw_req_suff).
 rcondf{1} 4; first auto.
 rcondt{1} 4; first auto.
 rcondf{1} 5; first auto.
@@ -1515,7 +1510,7 @@ move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _.
 rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-rewrite !oget_some /fw_req /= le_refl.
+rewrite !oget_some /Fwd.fw_req /= le_refl.
 inline Fwd.Forw.invoke.
 rcondt{1} 16; first auto; smt().
 rcondt{1} 16; first auto.
@@ -1579,10 +1574,7 @@ auto.
 if{1}.
 inline{1} (1) Fwd.Forw.invoke.
 rcondt{1} 3; first auto; smt().
-rcondf{1} 3; first auto.
-move => |> &hr.
-rewrite /Fwd.is_fw_req /Fwd.dec_fw_req.
-smt(not_dir).
+rcondf{1} 3; first auto; smt(Fwd.not_is_fw_req_suff).
 rcondf{1} 4; first auto.
 rcondt{1} 4; first auto.
 rcondf{1} 5; first auto.
@@ -11291,13 +11283,13 @@ sp 1 1.
 if; first smt().
 rcondf{1} 5; first auto.
 rcondf{1} 8; first auto; progress.
-rewrite oget_some /ke_sim_req1 /#.
+rewrite oget_some /KeyEx.ke_sim_req1 /#.
 rcondf{1} 8; first auto.
 rcondf{1} 8; first auto; progress.
-rewrite oget_some /ke_sim_req1 /=; smt(smc_pi_uniq).
+rewrite oget_some /KeyEx.ke_sim_req1 /=; smt(smc_pi_uniq).
 rcondt{1} 8; first auto.
 rcondf{1} 10; first auto; progress.
-rewrite oget_some /ke_sim_req1 /= /#.
+rewrite oget_some /KeyEx.ke_sim_req1 /= /#.
 rcondf{2} 5; first auto.
 rcondf{2} 8; first auto; progress.
 rewrite oget_some /smc_sim_req /= /#.
@@ -11340,7 +11332,7 @@ seq 10 24 :
    pt12{2} pt22{2} t{2}).
 call (_ : true).
 auto => |> &1 &2 <- [#] _ -> -> -> _ _ [] /= _ [#] _ _;
-  by rewrite !oget_some /ke_sim_req1 /= enc_dec_smc_sim_req.
+  by rewrite !oget_some /KeyEx.ke_sim_req1 /= enc_dec_smc_sim_req.
 if => //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
