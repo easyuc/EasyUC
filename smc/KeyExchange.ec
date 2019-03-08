@@ -1300,7 +1300,7 @@ sp 2 2.
 if => //.
 if => //.
 sp 1 1.
-if; first by move => |> &1 &2 <-.
+if; first smt().
 auto =>
   &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
   ->>.
@@ -4920,7 +4920,7 @@ auto; progress; by rewrite KEHybridIdealSimRel0.
 rcondf{1} 1; first auto.
 rcondt{2} 1; first auto.
 sp 3 3.
-if; first move => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
@@ -5485,7 +5485,7 @@ auto; progress; by rewrite (KEHybridIdealSimRel2 _ pt1'' pt2'' q1' q2' q3').
 rcondf{1} 1; first auto.
 rcondt{2} 1; first auto.
 sp 3 3.
-if; first move => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
@@ -5848,7 +5848,7 @@ auto; progress;
 rcondf{1} 1; first auto.
 rcondt{2} 1; first auto.
 sp 3 3.
-if; first auto => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 2; first auto.
 rcondt{2} 4; first auto.
@@ -5863,7 +5863,7 @@ rcondf{2} 3; first auto.
 rcondf{2} 6; first auto.
 move => |> &hr /= <- [#] <- <- //.
 sp 0 5.
-if; first move => |> &1 &2 <- //.
+if; first smt().
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress;

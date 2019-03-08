@@ -2027,7 +2027,7 @@ sp 1 1.
 if => //.
 if => //.
 sp 1 1.
-if; first by move => |> &1 &2 <-.
+if; first smt().
 auto => |> &1 &2 <- //.
 auto.
 if => //.
@@ -10667,7 +10667,7 @@ local lemma MI_KEHybrid_KEIdeal_KESim_after_adv_2
 proof.
 proc.
 sp 4 5.
-if; first move => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 3; first auto.
 rcondt{2} 3; first auto.
@@ -11288,7 +11288,7 @@ rcondt{2} 3; first auto; smt().
 sp 2 2.
 if => //.
 sp 1 1.
-if; first move => |> &1 &2 <- //.
+if; first smt().
 rcondf{1} 5; first auto.
 rcondf{1} 8; first auto; progress.
 rewrite oget_some /ke_sim_req1 /#.
@@ -11479,7 +11479,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply SMCSec2Rel0.
 sp 3 3.
-if; first move => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 3; first auto.
 rcondt{2} 5; first auto.
@@ -11565,7 +11565,7 @@ if => //.
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 inline{2} (1) SMCIdeal.invoke.
 sp 4 4.
-if; first auto; progress; smt().
+if; first smt().
 inline{1} (1) SMCRealKEIdealSimp.parties.
 inline{2} (1) SMCIdeal.parties.
 rcondf{1} 3; first auto; smt().
@@ -11723,7 +11723,7 @@ if => //.
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 inline{2} (1) SMCIdeal.invoke.
 sp 4 4.
-if; first auto; progress; smt().
+if; first smt().
 inline{1} (1) SMCRealKEIdealSimp.parties.
 inline{2} (1) SMCIdeal.parties.
 rcondf{1} 3; first auto; smt().
@@ -11883,7 +11883,7 @@ if => //.
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 inline{2} (1) SMCIdeal.invoke.
 sp 4 4.
-if; first auto; progress; smt().
+if; first smt().
 inline{1} (1) SMCRealKEIdealSimp.parties.
 inline{2} (1) SMCIdeal.parties.
 rcondf{1} 3; first auto; smt().
@@ -12044,7 +12044,7 @@ if => //.
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 inline{2} (1) SMCIdeal.invoke.
 sp 4 4.
-if; first auto; progress; smt().
+if; first smt().
 inline{1} (1) SMCRealKEIdealSimp.parties.
 inline{2} (1) SMCIdeal.parties.
 rcondf{1} 3; first auto; smt().
@@ -12094,7 +12094,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
 sp 3 3.
-if; first move => |> &1 &2 <- /#.
+if; first smt().
 rcondf{1} 3; first auto.
 rcondf{2} 3; first auto.
 rcondt{2} 5; first auto.
@@ -12107,7 +12107,7 @@ rcondf{2} 2; first auto.
 rcondf{2} 4; first auto.
 rcondf{2} 7; first auto; smt().
 sp 0 6.
-if; first auto => |> &1 &2 _ <- //.
+if; first smt().
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress; by apply (SMCSec2Rel4 _ pt1' pt2' t' q').
