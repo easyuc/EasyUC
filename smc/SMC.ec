@@ -587,6 +587,8 @@ module SMCIdeal : FUNC = {
         st <- SMCIdealStateFinal (pt1, pt2, t);
       }
     }
+    else {  (* is_smc_ideal_state_final st *)
+    }
     return r;
   }
 

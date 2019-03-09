@@ -773,7 +773,7 @@ module KEIdeal : FUNC = {
         st <- KEIdealStateFinal (pt1, pt2, q);
       }
     }
-    else {  (* st = KEIdealStateFinal *)
+    else {  (* is_ke_ideal_state_final st *)
     }
     return r;
   }
