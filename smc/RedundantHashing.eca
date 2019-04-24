@@ -346,28 +346,20 @@ local module GOH' = {
 local lemma NonOptHashing_NOH'_hash :
   equiv
   [NonOptHashing.hash ~ NOH'.hash :
-   ={inp} /\ ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2} ==>
-   ={res} /\ ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2}].
+   ={inp} /\ ={mp}(NonOptHashing, NOH') ==>
+   ={res} /\ ={mp}(NonOptHashing, NOH')].
 proof.
-proc.
-if => //.
-auto; progress; move => x; rewrite fdom_set in_fsetU in_fset1; smt(subsetP).
-auto; progress => x; rewrite in_fsetD1 /#.
+proc; if => //; auto.
 qed.
 
 local lemma NonOptHashing_NOH'_rhash :
   equiv
   [NonOptHashing.rhash ~ NOH'.rhash :
-   ={inp} /\ ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2} ==>
-   ={res} /\ ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2}].
+   ={inp} /\ ={mp}(NonOptHashing, NOH') ==>
+   ={res} /\ ={mp}(NonOptHashing, NOH')].
 proof.
 proc; inline NonOptHashing.hash; sp.
-if => //.
-auto; progress; rewrite fdom_set; smt(in_fsetU1).
+if => //; auto.
 qed.
 
 local lemma GNonOptHashing_GNOH'_main :
@@ -376,14 +368,9 @@ local lemma GNonOptHashing_GNOH'_main :
    ={glob HashAdv} ==> ={res}].
 proof.
 proc; inline NonOptHashing.init NOH'.init.
-seq 1 2 :
-  (={glob HashAdv} /\ ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2}).   
-auto; smt(fdom0).
-call
-  (_ :
-   ={mp}(NonOptHashing, NOH') /\
-   NOH'.red_inps{2} \subset fdom NOH'.mp{2}).
+seq 1 2 : (={glob HashAdv} /\ ={mp}(NonOptHashing, NOH')).   
+auto.
+call (_ : ={mp}(NonOptHashing, NOH')).
 apply NonOptHashing_NOH'_hash.
 apply NonOptHashing_NOH'_rhash.
 auto.
