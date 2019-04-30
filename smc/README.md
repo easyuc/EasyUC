@@ -26,10 +26,15 @@ The proof is complete, giving us confidence that our EasyCrypt UC
 architecture is sound. But there is much work to be done before
 the method can scale-up to realistic protocols. Most importantly:
 
-* Proving relationships between structurally dissimilar programs involved
-  heavy use of manual symbolic program evaluation, guided by case
-  analysis. There is a pressing need for better EasyCrypt support for
-  symbolic evaluation.
+* Proving relationships between structurally dissimilar programs
+  involved heavy use of manual symbolic program evaluation, guided by
+  case analysis - essentially running programs using repeated
+  applications of the EasyCrypt tactics `sp` (for pushing assignments
+  into the precondition), `inline` (for inlining procedures) and
+  `rcondt`/`rcondf` (for reducing conditionals/while loops for which
+  the truth/falsity of their boolean expressions can be proved).  There is
+  a pressing need for better EasyCrypt support for symbolic
+  evaluation.
 
 * We need to generalize from proving single instances of the UC
   composition theorem to either proving the theorem in EasyCrypt's
