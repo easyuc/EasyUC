@@ -11,9 +11,10 @@ The proof is complete, giving us confidence that our EasyCrypt UC
 architecture is sound. But there is much work to be done before
 the method can scale-up to realistic protocols. Most importantly:
 
-* It involved heavy use of manual symbolic program evaluation, guided
-  by case analysis. There is a pressing need for better EasyCrypt
-  support for symbolic evaluation.
+* Proving relations between structurally dissimilar programs involved
+  heavy use of manual symbolic program evaluation, guided by case
+  analysis. There is a pressing need for better EasyCrypt support for
+  symbolic evaluation.
 
 * We need to generalize from proving a single instance of the UC
   composition theorem to either proving this theorem in EasyCrypt's
