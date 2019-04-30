@@ -2,6 +2,10 @@
 
 (* Forwarding Functionality *)
 
+(* This functionality implements authenticated forwarding (Fauth),
+   where the adversary is asked to approve the forwarding of a value,
+   but may not corrupt either the value or its destination/source *)
+
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import AllCore List ListPO.
