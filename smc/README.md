@@ -32,7 +32,7 @@ the method can scale-up to realistic protocols. Most importantly:
   applications of the EasyCrypt tactics `sp` (for pushing assignments
   into the precondition), `inline` (for inlining procedures) and
   `rcondt`/`rcondf` (for reducing conditionals/while loops for which
-  the truth/falsity of their boolean expressions can be proved).  There is
+  the truth/falsity of their boolean expressions can be established).  There is
   a pressing need for better EasyCrypt support for symbolic
   evaluation.
 
