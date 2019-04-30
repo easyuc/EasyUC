@@ -13,3 +13,29 @@ execution, guided by case analysis. Consequently, in order for this
 approach to scale-up to realistic protocols, various improvements will
 be necessary.
 
+
+
+Auxiliary Theories
+--------------------------------------------------------------------
+
+* [`ListAux.ec` - ](ListAux.ec)
+* [`FSetAux.ec` - ](FSetAux.ec)
+
+Supplementary Theories
+--------------------------------------------------------------------
+
+* [`ListPO.ec` - ](ListPO.ec)
+* [`UCCore.eca` - ](UCCore.eca)
+* [`RedundantHashing.eca` - ](RedundantHashing.eca)
+
+* [`DDH.ec` - ](DDH.ec)
+* [`UCCoreDiffieHellman.ec` - ](UCCoreDiffieHellman.ec)
+* [`Forward.ec` - ](Forward.ec)
+* [`KeyExchange.ec` - ](KeyExchange.ec)
+* [`SMC.ec` - ](SMC.ec)
+
+Scripts
+--------------------------------------------------------------------
+
+* [`check-all-scripts` - shell script for running EasyCrypt on
+   all scripts](check-all-scripts)
