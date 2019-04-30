@@ -18,7 +18,7 @@ be necessary.
 Auxiliary Theories
 --------------------------------------------------------------------
 
-* [`ListAux.ec` - auxiliary lemmas on lists](ListAux.ec)
+* [`ListAux.ec`: auxiliary lemmas on lists](ListAux.ec)
 * [`FSetAux.ec` - auxiliary lemmas on finite sets](FSetAux.ec)
 
 Supplementary Theories
