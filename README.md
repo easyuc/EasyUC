@@ -10,7 +10,7 @@ joint work between
 * [Alley Stoughton](http://alleystoughton.us) (stough@bu.edu)
 * Mayank Varia (varia@bu.edu)
 
-In our architecture, functionalties (real protocols, or ideal
+In our architecture, functionalities (real protocols, or ideal
 functionalities) have hierarchical addresses, and we build
 abstractions that route messages to their destinations, modeling
 the coroutine-style communication of UC.
