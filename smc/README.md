@@ -16,17 +16,17 @@ the method can scale-up to realistic protocols. Most importantly:
   analysis. There is a pressing need for better EasyCrypt support for
   symbolic evaluation.
 
-* We need to generalize from proving a single instance of the UC
-  composition theorem to either proving this theorem in EasyCrypt's
+* We need to generalize from proving single instances of the UC
+  composition theorem to either proving the theorem in EasyCrypt's
   metatheory (e.g., in Coq), or being able to automatically generate
   the EasyCrypt proofs of needed instances of the theorem (so support
-  for composition could be added without extending EasyCrypt's trusted
+  for composition could be provided without extending EasyCrypt's trusted
   computing base).
 
 * Writing functionalities, simulators, etc., directly in EasyCrypt is
-  somewhat tedious and error prone. We plan to develop a domain specific
-  language for expressing functionalities, simulators, etc., with the
-  short term goal of automatically translating DSL program to actual
+  somewhat tedious and error prone. We plan to develop a domain
+  specific language for expressing functionalities, etc., with the
+  short term goal of automatically translating DSL programs to actual
   EasyCrypt code.
 
 Auxiliary Theories
