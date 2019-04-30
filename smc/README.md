@@ -11,7 +11,7 @@ The proof is complete, giving us confidence that our EasyCrypt UC
 architecture is sound. But there is much work to be done before
 the method can scale-up to realistic protocols. Most importantly:
 
-* Proving relations between structurally dissimilar programs involved
+* Proving relationships between structurally dissimilar programs involved
   heavy use of manual symbolic program evaluation, guided by case
   analysis. There is a pressing need for better EasyCrypt support for
   symbolic evaluation.
