@@ -10,7 +10,7 @@ Diffie-Hellman key exchange.
   constructed DDH adversary. This proof makes uses of EasyCrypt's
   eager/lazy random sampling facilities, because, in the real and
   ideal functionalities, the DDH exponents are chosen in the middle of
-  the functionality execution.
+  the functionalities' execution.
 
 * We then use the security of Diffie-Hellman key exchange to prove the
   security of secure message communication using a one-time pad agreed
