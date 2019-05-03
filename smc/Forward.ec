@@ -308,7 +308,9 @@ module Forw : FUNC = {
     if (st = FwStateInit) {
       if (is_fw_req m) {
         (addr1, pt1, pt2, u) <- oget (dec_fw_req m);
-        if (self = addr1 /\ ! self <= pt1.`1 /\ ! self <= pt2.`1) {
+        if (self = addr1 /\
+            ! self <= pt1.`1 /\ ! self <= pt2.`1 /\
+            ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
           r <- Some (fw_obs self adv pt1 pt2 u);
           st <- FwStateWait (pt1, pt2, u);
         }

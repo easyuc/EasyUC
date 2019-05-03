@@ -1452,7 +1452,7 @@ qed.
 lemma KEReal_KERealSimp_invoke (func adv : addr) :
   equiv
   [KEReal.invoke ~ KERealSimp.invoke :
-   ! func <= adv /\ ={m} /\
+   inc func adv /\ ={m} /\
    KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
    Fwd1.Forw.self{1} = func ++ [1] /\ Fwd1.Forw.adv{1} = adv /\
    Fwd2.Forw.self{1} = func ++ [2] /\ Fwd2.Forw.adv{1} = adv /\
@@ -1498,7 +1498,7 @@ if => //.
 sp.
 if; first smt().
 seq 1 1 :
-  (! KEReal.self{1} <= KEReal.adv{1} /\
+  (inc KEReal.self{1} KEReal.adv{1} /\
    not_done{1} = true /\ ={q1, pt10, pt20} /\
   ! KEReal.self{1} <= pt10{1}.`1 /\ ! KEReal.self{1} <= pt20{1}.`1 /\
    KEReal.self{1} = func /\ KEReal.adv{1} = adv /\
@@ -1532,7 +1532,12 @@ rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
 by rewrite not_le_ext_nonnil_l.
 rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
 by rewrite not_le_ext_nonnil_l.
-rcondt{1} 7; first auto.
+rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+by rewrite inc_nle_r.
+rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+by rewrite inc_nle_r.
+rcondt{1} 7; first auto; progress.
+by rewrite oget_some /Fwd1.fw_obs /= inc_nle_l.
 rcondf{1} 8; first auto.
 auto; progress;
   first 3 by rewrite oget_some Fwd1.enc_dec_fw_req oget_some.
@@ -1851,8 +1856,13 @@ rcondt{1} 3; first auto.
 sp 3 0.
 rcondt{1} 1; first auto => /> &hr.
 rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=.
-progress; by rewrite not_le_ext_nonnil_l.
-rcondt{1} 4; auto.
+progress.
+by rewrite not_le_ext_nonnil_l.
+by rewrite not_le_ext_nonnil_l.
+by rewrite inc_nle_r.
+by rewrite inc_nle_r.
+rcondt{1} 4; auto; progress.
+by rewrite oget_some /Fwd2.fw_obs /= inc_nle_l.
 rcondf{1} 5; first auto.
 auto => /> &1 &2.
 rewrite !oget_some Fwd2.enc_dec_fw_req oget_some /=.
@@ -2122,7 +2132,7 @@ lemma Exper_KEReal_KERealSimp
       (Adv <: FUNC{MI, KEReal, KERealSimp})
       (Env <: ENV{MI, KEReal, KERealSimp, Adv})
       (func' adv' : addr) (in_guard' : int fset) &m :
-  ! func' <= adv' =>
+  inc func' adv' =>
   Pr[Exper(MI(KEReal, Adv), Env).main
        (func', adv', in_guard') @ &m : res] =
   Pr[Exper(MI(KERealSimp, Adv), Env).main
@@ -2131,7 +2141,7 @@ proof.
 move => pre.
 byequiv => //; proc; inline*.
 seq 23 12 :
-  (! func' <= adv' /\ ={func, adv, in_guard, glob Env, glob Adv, glob MI} /\
+  (inc func' adv' /\ ={func, adv, in_guard, glob Env, glob Adv, glob MI} /\
    func{1} = func' /\ adv{1} = adv' /\ in_guard{1} = in_guard' /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
@@ -2149,7 +2159,7 @@ call (_ : true).
 auto; progress; by rewrite RealSimpRel0 /real_simp_rel0.
 call
   (_ :
-   ! func' <= adv' /\ ={glob Adv, glob MI} /\
+   inc func' adv' /\ ={glob Adv, glob MI} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\
@@ -2169,7 +2179,7 @@ inline MI(KEReal, Adv).loop MI(KERealSimp, Adv).loop.
 wp; sp.
 while
   (={not_done, m0, r0} /\ 
-   ! func' <= adv' /\ ={glob Adv, glob MI} /\
+   inc func' adv' /\ ={glob Adv, glob MI} /\
    MI.func{1} = func' /\ MI.adv{1} = adv' /\ MI.in_guard{1} = in_guard' /\
    KEReal.self{1} = func' /\ KEReal.adv{1} = adv' /\
    Fwd1.Forw.self{1} = func' ++ [1] /\ Fwd1.Forw.adv{1} = adv' /\

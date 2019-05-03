@@ -1522,7 +1522,7 @@ move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
 rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
 rewrite !oget_some Fwd.enc_dec_fw_req !oget_some /=.
-smt(not_le_ext_nonnil_l).
+smt(not_le_ext_nonnil_l inc_nle_r).
 rcondf{1} 20; first auto.
 move => /> &hr; smt(incP).
 rcondt{1} 20; first auto.
@@ -2749,7 +2749,7 @@ if => //.
 wp; call (_ : ={glob SMCReal}); first sim.
 auto.
 wp; call (KERS.KEReal_KERealSimp_invoke (func' ++ [2]) adv').
-auto; progress; smt(not_le_ext incP).
+auto; progress; by rewrite inc_ext1.
 auto.
 auto.
 wp; call (_ : true).
@@ -6386,9 +6386,7 @@ proof.
 move => pre in_guard'_sub not_in_guard' ce_in_guard'_eq.
 rewrite (smc_real_ke_real_simp func' adv' in_guard_low' &m) //.
 rewrite (KERS.Exper_KEReal_KERealSimp Adv (CompEnv(Env))
-        (func' ++ [2]) adv' in_guard_hi' &m)
-        1:(inc_le1_not_lr func' adv' (func' ++ [2]))
-        1:/# 1:le_ext_r //.
+        (func' ++ [2]) adv' in_guard_hi' &m) 1:inc_ext1 //.
 by rewrite (smc_sec1_ke_real_simp_bridge func' adv' in_guard_low'
            in_guard_hi' &m).
 qed.
