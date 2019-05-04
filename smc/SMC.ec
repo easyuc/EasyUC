@@ -6302,7 +6302,7 @@ auto.
 qed.
 
 local lemma smc_sec1_ke_real_simp_bridge
-            (func' adv' : addr, in_guard_low' in_guard_hi' : int fset ) &m :
+            (func' adv' : addr, in_guard_low' in_guard_hi' : int fset) &m :
   exper_pre func' adv' =>
   in_guard_low' \subset in_guard_hi' => adv_fw_pi \in in_guard_hi' =>
   CompEnv.in_guard_low{m} = in_guard_low' =>
@@ -9934,7 +9934,7 @@ auto.
 qed.
 
 lemma smc_sec1_ke_ideal_bridge
-            (func' adv' : addr, in_guard_low' in_guard_hi' : int fset ) &m :
+            (func' adv' : addr, in_guard_low' in_guard_hi' : int fset) &m :
   exper_pre func' adv' =>
   in_guard_low' \subset in_guard_hi' => adv_fw_pi \in in_guard_hi' =>
   CompEnv.in_guard_low{m} = in_guard_low' =>
