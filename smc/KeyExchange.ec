@@ -6001,7 +6001,7 @@ lemma ke_security
   (* parameters for modules in upper bound: *)
   DDH_Adv.func{m} = func' => DDH_Adv.adv{m} = adv' =>
   DDH_Adv.in_guard{m} = in_guard' =>
-  (* end of paramters for modules in upper bound *)
+  (* end of parameters for modules in upper bound *)
   `|Pr[Exper(MI(KEReal, Adv), Env).main
          (func', adv', in_guard') @ &m : res] -
     Pr[Exper(MI(KEIdeal, KESim(Adv)), Env).main
