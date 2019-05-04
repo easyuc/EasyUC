@@ -12248,7 +12248,7 @@ lemma smc_security
   CompEnv.in_guard_low{m} = in_guard' =>
   KeyEx.DDH_Adv.func{m} = func' ++ [2] => KeyEx.DDH_Adv.adv{m} = adv' =>
   KeyEx.DDH_Adv.in_guard{m} = in_guard' `|` fset1 adv_fw_pi =>
-  (* end of paramters for modules in upper bound *)
+  (* end of parameters for modules in upper bound *)
   `|Pr[Exper(MI(SMCReal(KeyEx.KEReal), Adv), Env).main
          (func', adv', in_guard') @ &m : res] -
     Pr[Exper(MI(SMCIdeal, SMCSimComp(Adv)), Env).main
