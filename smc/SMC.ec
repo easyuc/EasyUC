@@ -1922,6 +1922,8 @@ module CompEnv (Env : ENV, Inter : INTER) = {
           m <- oget r; (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
           if (mod = Adv) {
             stub_st <- Some m;
+            (* only mode and destination port matter (destination port id
+               must not be 0) *)
             r <- Some (Adv, (adv, 1), (func ++ [2], 1), UnivUnit);
           }
         }
