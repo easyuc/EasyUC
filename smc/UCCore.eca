@@ -594,7 +594,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
     var r : msg option;
     (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
     if (func <= addr1 /\ mod = Dir \/
-        addr1 = adv /\ mod = Adv /\ (n1 = 0 \/ mem in_guard n1)) {
+        addr1 = adv /\ mod = Adv /\ (n1 = 0 \/ n1 \in in_guard)) {
       r <@ loop(m);
     }
     else {
