@@ -348,7 +348,7 @@ module KEReal : FUNC = {
 
   proc party1(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u : univ; var x2 : key; var q1 : exp;
+    var u : univ; var k2 : key; var q1 : exp;
     var r : msg option <- None;
     if (st1 = KERealP1StateWaitReq1) {
       if (is_ke_req1 m) {
@@ -373,8 +373,8 @@ module KEReal : FUNC = {
         (addr, pt1', pt2', u) <- oget (Fwd2.dec_fw_rsp m);
         if (pt2' = (self, 3)) {
           (* destination of m is (self, 3) *)
-          x2 <- oget (dec_base_key (oget (dec_univ_base u)));
-          r <- Some (ke_rsp2 self pt1 (x2 ^ q1));
+          k2 <- oget (dec_base_key (oget (dec_univ_base u)));
+          r <- Some (ke_rsp2 self pt1 (k2 ^ q1));
           st1 <- KERealP1StateFinal (pt1, pt2, q1);
         }
       }
@@ -386,7 +386,7 @@ module KEReal : FUNC = {
 
   proc party2(m : msg) : msg option = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u, v1, v2, v3 : univ; var x1 : key; var q2 : exp;
+    var u, v1, v2, v3 : univ; var k1 : key; var q2 : exp;
     var r : msg option <- None;
     if (st2 = KERealP2StateWaitFwd1) {
       if (Fwd1.is_fw_rsp m) {
@@ -396,9 +396,9 @@ module KEReal : FUNC = {
           (v1, v2, v3) <- oget (dec_univ_triple u);
           pt1 <- oget (dec_univ_port v1);
           pt2 <- oget (dec_univ_port v2);
-          x1 <- oget (dec_base_key (oget (dec_univ_base v3)));
+          k1 <- oget (dec_base_key (oget (dec_univ_base v3)));
           q2 <$ dexp;
-          r <- Some (ke_rsp1 self pt1 pt2 (x1 ^ q2));
+          r <- Some (ke_rsp1 self pt1 pt2 (k1 ^ q2));
           st2 <- KERealP2StateWaitReq2 (pt1, pt2, q2);
         }
       }
@@ -2290,7 +2290,7 @@ proof. done. qed.
 module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
   var func, adv : addr
   var in_guard : int fset
-  var x1, x2, x3 : key
+  var k1, k2, k3 : key
 
   module KEDDH : FUNC = {
     var self, adv : addr
@@ -2313,7 +2313,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
               ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
             u <-
               univ_triple (UnivPort pt1) (UnivPort pt2)
-                          (UnivBase (BaseKey x1));
+                          (UnivBase (BaseKey k1));
             r <- Some (Fwd1.fw_obs (self ++ [1]) adv (self, 3) (self, 4) u);
             st <- KEDDHStateWaitAdv1 (pt1, pt2);
           }
@@ -2325,7 +2325,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
           (addr1, addr2) <- oget (Fwd1.dec_fw_ok m);
           if (addr1 = self ++ [1]) {
             (* destination of m is (self ++ [1], 1); mode of m is Adv *)
-            r <- Some (ke_rsp1 self pt1 pt2 x3);
+            r <- Some (ke_rsp1 self pt1 pt2 k3);
             st <- KEDDHStateWaitReq2 (pt1, pt2);
           }
         }
@@ -2336,7 +2336,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
           (* destination of m is (self, 2); mode of m is Dir *)
           (addr, pt2') <- oget (dec_ke_req2 m);
           if (pt2' = pt2) {
-            u <- UnivBase (BaseKey x2);
+            u <- UnivBase (BaseKey k2);
             r <- Some (Fwd2.fw_obs (self ++ [2]) adv (self, 4) (self, 3) u);
             st <- KEDDHStateWaitAdv2 (pt1, pt2);
           }
@@ -2348,7 +2348,7 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
           (addr1, addr2) <- oget (Fwd2.dec_fw_ok m);
           if (addr1 = self ++ [2]) {
             (* destination of m is (self ++ [2], 1); mode of m is Adv *)
-            r <- Some (ke_rsp2 self pt1 x3);
+            r <- Some (ke_rsp2 self pt1 k3);
             st <- KEDDHStateFinal (pt1, pt2);
           }
         }
@@ -2371,9 +2371,9 @@ module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
     }
   }
 
-  proc main(x1_ x2_ x3_ : key) : bool = {
+  proc main(k1_ k2_ k3_ : key) : bool = {
     var b : bool;
-    x1 <- x1_; x2 <- x2_; x3 <- x3_;
+    k1 <- k1_; k2 <- k2_; k3 <- k3_;
     b <@ Exper(MI(KEDDH, Adv), Env).main(func, adv, in_guard);
     return b;
   }
@@ -2754,8 +2754,8 @@ qed.
   DDH1(DDH_Adv(Env, Adv)) *)
 
 type real_simp_hash_ddh1_rel_st = {
-  real_simp_hash_ddh1_rel_st_x1 : key;
-  real_simp_hash_ddh1_rel_st_x2 : key;
+  real_simp_hash_ddh1_rel_st_k1  : key;
+  real_simp_hash_ddh1_rel_st_k2  : key;
   real_simp_hash_ddh1_rel_st_rss : ke_real_simp_state;
   real_simp_hash_ddh1_rel_st_hs  : ke_ddh_state;
 }.
@@ -2767,7 +2767,7 @@ pred real_simp_hash_ddh1_rel0 (st : real_simp_hash_ddh1_rel_st) =
 pred real_simp_hash_ddh1_rel1
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
   st.`real_simp_hash_ddh1_rel_st_rss =
-  KERealSimpStateWaitAdv1 (pt1, pt2, log st.`real_simp_hash_ddh1_rel_st_x1) /\
+  KERealSimpStateWaitAdv1 (pt1, pt2, log st.`real_simp_hash_ddh1_rel_st_k1) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateWaitAdv1 (pt1, pt2).
 
@@ -2776,8 +2776,8 @@ pred real_simp_hash_ddh1_rel2
   st.`real_simp_hash_ddh1_rel_st_rss =
   KERealSimpStateWaitReq2
   (pt1, pt2,
-   log st.`real_simp_hash_ddh1_rel_st_x1,
-   log st.`real_simp_hash_ddh1_rel_st_x2) /\
+   log st.`real_simp_hash_ddh1_rel_st_k1,
+   log st.`real_simp_hash_ddh1_rel_st_k2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateWaitReq2 (pt1, pt2).
 
@@ -2786,8 +2786,8 @@ pred real_simp_hash_ddh1_rel3
   st.`real_simp_hash_ddh1_rel_st_rss =
   KERealSimpStateWaitAdv2
   (pt1, pt2,
-   log st.`real_simp_hash_ddh1_rel_st_x1,
-   log st.`real_simp_hash_ddh1_rel_st_x2) /\
+   log st.`real_simp_hash_ddh1_rel_st_k1,
+   log st.`real_simp_hash_ddh1_rel_st_k2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateWaitAdv2 (pt1, pt2).
 
@@ -2796,8 +2796,8 @@ pred real_simp_hash_ddh1_rel4
   st.`real_simp_hash_ddh1_rel_st_rss =
   KERealSimpStateFinal
   (pt1, pt2,
-   log st.`real_simp_hash_ddh1_rel_st_x1,
-   log st.`real_simp_hash_ddh1_rel_st_x2) /\
+   log st.`real_simp_hash_ddh1_rel_st_k1,
+   log st.`real_simp_hash_ddh1_rel_st_k2) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateFinal (pt1, pt2).
 
@@ -2817,32 +2817,32 @@ local lemma KERealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
   [KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.invoke ~
    DDH_Adv(Env, Adv).KEDDH.invoke :
    ={m} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   DDH_Adv.k3{2} = g ^ (log DDH_Adv.k1{2} * log DDH_Adv.k2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|} ==>
    ={res} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   DDH_Adv.k3{2} = g ^ (log DDH_Adv.k1{2} * log DDH_Adv.k2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}].
@@ -2850,8 +2850,8 @@ proof.
 proc.
 case
   (real_simp_hash_ddh1_rel0
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
@@ -2878,8 +2878,8 @@ auto.
 case
   (exists (pt1 pt2 : port),
    real_simp_hash_ddh1_rel1
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -2915,8 +2915,8 @@ auto.
 case
   (exists (pt1 pt2 : port),
    real_simp_hash_ddh1_rel2
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -2960,8 +2960,8 @@ auto.
 case
   (exists (pt1 pt2 : port),
    real_simp_hash_ddh1_rel3
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -2999,8 +2999,8 @@ auto.
 case
   (exists (pt1 pt2 : port),
    real_simp_hash_ddh1_rel4
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -3051,20 +3051,20 @@ wp.
 seq 7 8 :
   (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
-   DDH_Adv.x1{2} = g ^ u1{2} /\
-   DDH_Adv.x2{2} = g ^ u2{2} /\
-   DDH_Adv.x3{2} = g ^ (u1{2} * u2{2})).
+   RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
+   DDH_Adv.k1{2} = g ^ q1{2} /\
+   DDH_Adv.k2{2} = g ^ q2{2} /\
+   DDH_Adv.k3{2} = g ^ (q1{2} * q2{2})).
 auto; progress.
 by rewrite get_setE /= get_setE /=.
 by rewrite get_setE /=.
 seq 15 15 :
-  (RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
-   DDH_Adv.x1{2} = g ^ u1{2} /\
-   DDH_Adv.x2{2} = g ^ u2{2} /\
-   DDH_Adv.x3{2} = g ^ (u1{2} * u2{2}) /\
+  (RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
+   DDH_Adv.k1{2} = g ^ q1{2} /\
+   DDH_Adv.k2{2} = g ^ q2{2} /\
+   DDH_Adv.k3{2} = g ^ (q1{2} * q2{2}) /\
    ={func, adv, in_guard, MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
@@ -3076,17 +3076,17 @@ call (_ : true).
 auto.
 call
   (_ :
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   DDH_Adv.k3{2} = g ^ (log DDH_Adv.k1{2} * log DDH_Adv.k2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
@@ -3098,17 +3098,17 @@ inline MI(KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash, Adv).loop
 sp 3 3; wp.
 while
   (={not_done} /\ ={m0, r0} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   DDH_Adv.x3{2} = g ^ (log DDH_Adv.x1{2} * log DDH_Adv.x2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   DDH_Adv.k3{2} = g ^ (log DDH_Adv.k1{2} * log DDH_Adv.k2{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KERealSimpHashingAdv.KERealSimpHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_x1 = DDH_Adv.x1{2};
-     real_simp_hash_ddh1_rel_st_x2 = DDH_Adv.x2{2};
+   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv.k1{2};
+     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
      KERealSimpHashingAdv.KERealSimpHash.st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
@@ -3391,9 +3391,9 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
    DDH2(DDH_Adv(Env, Adv)) *)
 
 type hybrid_hash_ddh2_rel_st = {
-  hybrid_hash_ddh2_rel_st_x1 : key;
-  hybrid_hash_ddh2_rel_st_x2 : key;
-  hybrid_hash_ddh2_rel_st_x3 : key;
+  hybrid_hash_ddh2_rel_st_k1  : key;
+  hybrid_hash_ddh2_rel_st_k2  : key;
+  hybrid_hash_ddh2_rel_st_k3  : key;
   hybrid_hash_ddh2_rel_st_rss : ke_hybrid_state;
   hybrid_hash_ddh2_rel_st_hs  : ke_ddh_state;
 }.
@@ -3405,7 +3405,7 @@ pred hybrid_hash_ddh2_rel0 (st : hybrid_hash_ddh2_rel_st) =
 pred hybrid_hash_ddh2_rel1
      (st : hybrid_hash_ddh2_rel_st, pt1 pt2 : port) =
   st.`hybrid_hash_ddh2_rel_st_rss =
-  KEHybridStateWaitAdv1 (pt1, pt2, log st.`hybrid_hash_ddh2_rel_st_x1) /\
+  KEHybridStateWaitAdv1 (pt1, pt2, log st.`hybrid_hash_ddh2_rel_st_k1) /\
   st.`hybrid_hash_ddh2_rel_st_hs =
   KEDDHStateWaitAdv1 (pt1, pt2).
 
@@ -3414,9 +3414,9 @@ pred hybrid_hash_ddh2_rel2
   st.`hybrid_hash_ddh2_rel_st_rss =
   KEHybridStateWaitReq2
   (pt1, pt2,
-   log st.`hybrid_hash_ddh2_rel_st_x1,
-   log st.`hybrid_hash_ddh2_rel_st_x2,
-   log st.`hybrid_hash_ddh2_rel_st_x3) /\
+   log st.`hybrid_hash_ddh2_rel_st_k1,
+   log st.`hybrid_hash_ddh2_rel_st_k2,
+   log st.`hybrid_hash_ddh2_rel_st_k3) /\
   st.`hybrid_hash_ddh2_rel_st_hs =
   KEDDHStateWaitReq2 (pt1, pt2).
 
@@ -3425,9 +3425,9 @@ pred hybrid_hash_ddh2_rel3
   st.`hybrid_hash_ddh2_rel_st_rss =
   KEHybridStateWaitAdv2
   (pt1, pt2,
-   log st.`hybrid_hash_ddh2_rel_st_x1,
-   log st.`hybrid_hash_ddh2_rel_st_x2,
-   log st.`hybrid_hash_ddh2_rel_st_x3) /\
+   log st.`hybrid_hash_ddh2_rel_st_k1,
+   log st.`hybrid_hash_ddh2_rel_st_k2,
+   log st.`hybrid_hash_ddh2_rel_st_k3) /\
   st.`hybrid_hash_ddh2_rel_st_hs =
   KEDDHStateWaitAdv2 (pt1, pt2).
 
@@ -3436,9 +3436,9 @@ pred hybrid_hash_ddh2_rel4
   st.`hybrid_hash_ddh2_rel_st_rss =
   KEHybridStateFinal
   (pt1, pt2,
-   log st.`hybrid_hash_ddh2_rel_st_x1,
-   log st.`hybrid_hash_ddh2_rel_st_x2,
-   log st.`hybrid_hash_ddh2_rel_st_x3) /\
+   log st.`hybrid_hash_ddh2_rel_st_k1,
+   log st.`hybrid_hash_ddh2_rel_st_k2,
+   log st.`hybrid_hash_ddh2_rel_st_k3) /\
   st.`hybrid_hash_ddh2_rel_st_hs =
   KEDDHStateFinal (pt1, pt2).
 
@@ -3458,34 +3458,34 @@ local lemma KEHybridHashingAdv_NonOptHashing_KEDDH_DDH2_invoke :
   [KEHybridHashingAdv(RH.NonOptHashing).KEHybridHash.invoke ~
    DDH_Adv(Env, Adv).KEDDH.invoke :
    ={m} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.x3{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.k3{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|} ==>
    ={res} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.x3{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.k3{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}].
@@ -3493,9 +3493,9 @@ proof.
 proc.
 case
   (hybrid_hash_ddh2_rel0
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
@@ -3521,9 +3521,9 @@ auto.
 case
   (exists (pt1 pt2 : port),
    hybrid_hash_ddh2_rel1
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -3561,9 +3561,9 @@ auto.
 case
   (exists (pt1 pt2 : port),
    hybrid_hash_ddh2_rel2
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -3607,9 +3607,9 @@ auto.
 case
   (exists (pt1 pt2 : port),
    hybrid_hash_ddh2_rel3
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -3647,9 +3647,9 @@ auto.
 case
   (exists (pt1 pt2 : port),
    hybrid_hash_ddh2_rel4
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}
@@ -3700,23 +3700,23 @@ rcondt{1} 10; first auto; smt(mem_set mem_empty).
 wp.
 seq 10 9 :
   (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some u3{2} /\
-   DDH_Adv.x1{2} = g ^ u1{2} /\
-   DDH_Adv.x2{2} = g ^ u2{2} /\
-   DDH_Adv.x3{2} = g ^ u3{2}).
+   RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some q3{2} /\
+   DDH_Adv.k1{2} = g ^ q1{2} /\
+   DDH_Adv.k2{2} = g ^ q2{2} /\
+   DDH_Adv.k3{2} = g ^ q3{2}).
 auto; progress.
 by rewrite get_setE /= get_setE /= get_setE.
 by rewrite get_setE /= get_setE.
 by rewrite get_setE.
 seq 15 15 :
-  (RH.NonOptHashing.mp{1}.[exp1] = Some u1{2} /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some u2{2} /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some u3{2} /\
-   DDH_Adv.x1{2} = g ^ u1{2} /\
-   DDH_Adv.x2{2} = g ^ u2{2} /\
-   DDH_Adv.x3{2} = g ^ u3{2} /\
+  (RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some q3{2} /\
+   DDH_Adv.k1{2} = g ^ q1{2} /\
+   DDH_Adv.k2{2} = g ^ q2{2} /\
+   DDH_Adv.k3{2} = g ^ q3{2} /\
    ={func, adv, in_guard, MI.func, MI.adv, MI.in_guard,
      DDH_Adv.func, DDH_Adv.adv} /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
@@ -3729,18 +3729,18 @@ call (_ : true).
 auto.
 call
   (_ :
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.x3{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.k3{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).
@@ -3752,18 +3752,18 @@ inline MI(KEHybridHashingAdv(RH.NonOptHashing).KEHybridHash, Adv).loop
 sp 3 3; wp.
 while
   (={not_done} /\ ={m0, r0} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.x1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.x2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.x3{2}) /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv.k3{2}) /\
    ={MI.func, MI.adv, MI.in_guard} /\
    ={self, adv}(KEHybridHashingAdv.KEHybridHash, DDH_Adv.KEDDH) /\
    DDH_Adv.KEDDH.self{2} = MI.func{1} /\
    DDH_Adv.KEDDH.adv{2} = MI.adv{1} /\
    ={glob Adv} /\
    hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_x1 = DDH_Adv.x1{2};
-     hybrid_hash_ddh2_rel_st_x2 = DDH_Adv.x2{2};
-     hybrid_hash_ddh2_rel_st_x3 = DDH_Adv.x3{2};
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv.k3{2};
      hybrid_hash_ddh2_rel_st_rss =
      KEHybridHashingAdv.KEHybridHash.st{1};
      hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH.st{2}|}).

@@ -73,23 +73,23 @@ axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 (* DDH Adversary *)
 
 module type DDH_ADV = {
-  proc main(x1 x2 x3 : key) : bool
+  proc main(k1 k2 k3 : key) : bool
 }.
 
 module DDH1 (Adv : DDH_ADV) = {
   proc main() : bool = {
-    var b : bool; var u1, u2 : exp;
-    u1 <$ dexp; u2 <$ dexp;
-    b <@ Adv.main(g ^ u1, g ^ u2, g ^ (u1 * u2));
+    var b : bool; var q1, q2 : exp;
+    q1 <$ dexp; q2 <$ dexp;
+    b <@ Adv.main(g ^ q1, g ^ q2, g ^ (q1 * q2));
     return b;
   }
 }.
   
 module DDH2 (Adv : DDH_ADV) = {
   proc main() : bool = {
-    var b : bool; var u1, u2, u3 : exp;
-    u1 <$ dexp; u2 <$ dexp; u3 <$ dexp;
-    b <@ Adv.main(g ^ u1, g ^ u2 , g ^ u3);
+    var b : bool; var q1, q2, q3 : exp;
+    q1 <$ dexp; q2 <$ dexp; q3 <$ dexp;
+    b <@ Adv.main(g ^ q1, g ^ q2 , g ^ q3);
     return b;
   }
 }.
