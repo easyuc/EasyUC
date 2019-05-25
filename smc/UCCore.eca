@@ -313,7 +313,8 @@ qed.
 
 (* messages have modes:
 
-     * direct - not observable by adversaries/simulators
+     * direct - supplying functionality inputs, consuming their
+         outputs
 
      * adversarial - communication between functionalties and
          adversaries/simulators, communication between different
@@ -353,15 +354,15 @@ type msg = (mode * port * port * univ).
    (collectively, "functionalities"), as well as adversaries and
    simulators *)
 
-pred func_init_pre (self adv : addr) = !(self <= adv).
+pred func_init_pre (self adv : addr) = inc self adv.
 
 module type FUNC = {
   (* initialize functionality (or adversary), telling it its address
      (self) and the address of its adversary (adv)
 
-     in the case of the adversary, the second argument will be [],
-     the address of the environment (so the adversary's adversary
-     is the environment)
+     in the case of the adversary, the second argument will be [], the
+     root address of the environment (so the adversary's adversary is
+     the environment)
 
      precondition: func_init_pre self adv *)
 
@@ -397,10 +398,9 @@ module type INTER = {
 
        * an incoming message guard (in_guard)
 
-     the interface will initialize its functionality and
-     adversary parts; when calling the adversary part's
-     init function, the second argument will be [],
-     the address of the environment
+     the interface will initialize its functionality and adversary
+     parts; when calling the adversary part's init function, the
+     second argument will be [], the root address of the environment
 
      precondition:
 
