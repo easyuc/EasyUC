@@ -49,6 +49,10 @@ the method can scale-up to realistic protocols. Most importantly:
   short term goal of automatically translating DSL programs to actual
   EasyCrypt code.
 
+This work is described in the entended version of the CSF 2019 paper,
+[EasyUC: Using EasyCrypt to Mechanize Proofs of Universally Composable
+Security](https://eprint.iacr.org/2019/582).
+
 Auxiliary Theories
 --------------------------------------------------------------------
 

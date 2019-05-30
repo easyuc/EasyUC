@@ -24,3 +24,7 @@ that's agreed using Diffie-Hellman key exchange. Our goal in this
 example was to test our EasyCrypt UC architecture, illustrating how
 instances of UC's composition operation and theorem may be formalized
 in EasyCrypt.
+
+This work is described in the entended version of the CSF 2019 paper,
+[EasyUC: Using EasyCrypt to Mechanize Proofs of Universally Composable
+Security](https://eprint.iacr.org/2019/582).
