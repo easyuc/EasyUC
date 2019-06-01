@@ -7,7 +7,7 @@ Diffie-Hellman key exchange.
 
 * We first proved the security of Diffie-Hellman key exchange,
   reducing it to the Decisional Diffie-Hellman assumption for a
-  constructed DDH adversary. This proof makes uses of EasyCrypt's
+  constructed DDH adversary. This proof makes use of EasyCrypt's
   eager/lazy random sampling facilities, because, in the real and
   ideal functionalities, the DDH exponents are chosen in the middle of
   the functionalities' execution.
