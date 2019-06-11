@@ -3514,8 +3514,8 @@ rcondf{1} 2; first auto; smt().
 auto => &1 &2 |> <-.
 progress.
 smt(log_gen).
-rewrite (HybridHashDDH2Rel1 _ pt10{2} pt20{2})
-        /hybrid_hash_ddh2_rel1 /= /#.
+by rewrite (HybridHashDDH2Rel1 _ pt10{2} pt20{2})
+           /hybrid_hash_ddh2_rel1 /= H oget_some.
 auto.
 auto.
 case
