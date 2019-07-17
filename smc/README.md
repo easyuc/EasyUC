@@ -36,12 +36,13 @@ the method can scale-up to realistic protocols. Most importantly:
   a pressing need for better EasyCrypt support for symbolic
   evaluation.
 
-* We need to generalize from proving single instances of the UC
-  composition theorem to either proving the theorem in EasyCrypt's
-  metatheory (e.g., in Coq), or being able to automatically generate
-  the EasyCrypt proofs of needed instances of the theorem (so support
-  for composition could be provided without extending EasyCrypt's trusted
-  computing base).
+* In our case study, we proved an instance of the UC Composition
+  Theorem, via the definition of the composed environment and bridging
+  lemmas. We are now generalizing this work, producing a generic
+  version of these definitions/proofs.  To obtain needed instances of
+  the composition theorem, we’ll then instantiate the generic
+  definitions/proofs, and automatically generate some additional
+  bridging definitions and proofs.
 
 * Writing functionalities, simulators, etc., directly in EasyCrypt is
   somewhat tedious and error prone. We plan to develop a domain
