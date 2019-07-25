@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# check all the SMC EasyCrypt scripts
+
+# SMT timeout in seconds -- try increasing
+
+timeout=2
+
+check() {
+  echo checking $1;
+  if easycrypt -timeout $timeout $1;
+  then echo passed: $1;
+       echo "";
+  else echo failed: $1;
+       echo "";
+       echo "skipping remaining scripts";
+  exit 1;
+  fi;
+}
+
+echo "********** Checking SMC EasyCrypt Scripts **********"
+echo ""
+
+echo "********** Auxiliary Theories **********"
+echo ""
+
+check FSetAux.ec
+check ListAux.ec
+
+echo "********** Supporting Theories **********"
+echo ""
+
+check ListPO.ec
+check RedundantHashing.eca
+
+echo "********** UC Core **********"
+echo ""
+
+check UCCore.eca
+
+echo "********** DDH **********"
+echo ""
+
+check DDH.ec
+check UCCoreDiffieHellman.ec
+
+echo "********** Main SMC **********"
+echo ""
+
+check Forward.ec
+check KeyExchange.ec
+check SMC.ec
