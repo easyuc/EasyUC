@@ -41,7 +41,7 @@ type univ = [
   | UnivReal of real
   | UnivAddr of addr
   | UnivPort of port
-  | UnivPair of (univ * univ)
+  | UnivPair of univ & univ
 ].
 
 (* note on universe encoding/decoding operations: each encoding
@@ -159,24 +159,26 @@ proof. done. qed.
 op dec_univ_pair : univ -> (univ * univ)option = get_as_UnivPair.
 
 lemma enc_dec_univ_pair (v1 v2 : univ) :
-  dec_univ_pair (UnivPair(v1, v2)) = Some (v1, v2).
+  dec_univ_pair (UnivPair v1 v2) = Some (v1, v2).
 proof. trivial. qed.
 
 lemma dec_enc_univ_pair (v v1 v2 : univ) :
-  dec_univ_pair v = Some (v1, v2) => v = UnivPair (v1, v2).
-proof. by case v. qed.
+  dec_univ_pair v = Some (v1, v2) => v = UnivPair v1 v2.
+proof.
+case v => // u1 u2; by delta.
+qed.
 
 op is_univ_pair (v : univ) : bool =
      dec_univ_pair v <> None.
 
-lemma is_univ_pair (p : univ * univ) :
-  is_univ_pair (UnivPair p).
+lemma is_univ_pair (u1 u2 : univ) :
+  is_univ_pair (UnivPair u1 u2).
 proof. done. qed.
 
 (* higher-order universe encoding/decoding operations *)
 
 op univ_triple (u1 u2 u3 : univ) : univ =
-     UnivPair (u1, UnivPair (u2, u3)).
+     UnivPair u1 (UnivPair u2 u3).
 
 op dec_univ_triple (v : univ) : (univ * univ * univ) option =
   match dec_univ_pair v with
@@ -196,9 +198,9 @@ lemma dec_enc_univ_triple (v v1 v2 v3 : univ) :
   dec_univ_triple v = Some (v1, v2, v3) => v = univ_triple v1 v2 v3.
 proof.
 rewrite /dec_univ_triple /univ_triple.
-case v => // [[u1 u2]].
+case v => // u1 u2.
 rewrite enc_dec_univ_pair /=.
-case u2 => // [[u2_1 u2_2]].
+case u2 => // t1 t2.
 by rewrite enc_dec_univ_pair.
 qed.
 
@@ -209,7 +211,7 @@ lemma is_univ_triple (u1 u2 u3 : univ) :
 proof. done. qed.
 
 op univ_4tuple (u1 u2 u3 u4 : univ) : univ =
-     univ_triple u1 u2 (UnivPair (u3, u4)).
+     univ_triple u1 u2 (UnivPair u3 u4).
 
 op dec_univ_4tuple (v : univ) : (univ * univ * univ * univ) option =
   match dec_univ_triple v with
@@ -280,6 +282,21 @@ proof. by case mod. qed.
    the context of where the message came from *)
 
 type msg = (mode * port * port * univ).
+
+(* guard an optional message using predicate *)
+
+op opt_msg_guard :
+     (mode -> addr -> int -> addr -> int -> univ -> bool) ->
+     msg option -> msg option =
+     fun f : mode -> addr -> int -> addr -> int -> univ -> bool =>
+     fun m_opt : msg option =>
+       match m_opt with
+         None   => None
+       | Some m =>
+           if f m.`1 m.`2.`1 m.`2.`2 m.`3.`1 m.`3.`2 m.`4
+           then Some m
+           else None
+       end.
 
 (* note on message encoding/decoding operations: each operation has a
    corresponding decoding operation, producing an optional value. then

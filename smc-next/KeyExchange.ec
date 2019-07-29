@@ -37,7 +37,9 @@ op dec_ke_req1 (m : msg) : (addr * port * port) option =
 
 lemma enc_dec_ke_req1 (func : addr, pt1 pt2 : port) :
   dec_ke_req1 (ke_req1 func pt1 pt2) = Some (func, pt1, pt2).
-proof. done. qed.
+proof.
+by rewrite /dec_ke_req1 /ke_req1 /= (is_univ_port pt2) /= enc_dec_univ_port.
+qed.
 
 lemma dec_enc_ke_req1 (m : msg, func : addr, pt1 pt2 : port) :
   dec_ke_req1 m = Some (func, pt1, pt2) =>
@@ -51,7 +53,7 @@ move => [#] -> pt1'_2 iupt_u'.
 have [] pt2'' : exists (pt2'' : port), dec_univ_port u' = Some pt2''.
   exists (oget (dec_univ_port u')); by rewrite -some_oget.
 move => /dec_enc_univ_port -> /=.
-rewrite oget_some /= /#.
+rewrite enc_dec_univ_port oget_some /= /#.
 qed.
 
 op is_ke_req1 (m : msg) : bool =
@@ -65,7 +67,7 @@ proof. done. qed.
    pt2, completing first phase of key exchange initiated by pt1 *)
 
 op ke_rsp1 (func : addr, pt1 pt2 : port, x : key) : msg =
-     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1, UnivBase (BaseKey x))).
+     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1) (UnivBase (BaseKey x))).
 
 op dec_ke_rsp1 (m : msg) : (addr * port * port * key) option =
      let (mod, pt1, pt2, v) = m
@@ -84,8 +86,10 @@ lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
   dec_ke_rsp1 (ke_rsp1 func pt1 pt2 x) = Some (func, pt1, pt2, x).
 proof.
 by rewrite /ke_rsp1 /dec_ke_rsp1 /=
-           (is_univ_pair (UnivPort pt1, UnivBase (BaseKey x))) /=
-           oget_some /= (is_univ_port pt1) /= oget_some.
+           (is_univ_pair (UnivPort pt1) (UnivBase (BaseKey x))) /=
+           enc_dec_univ_pair oget_some /= (is_univ_port pt1) /=
+           enc_dec_univ_base /= oget_some (is_base_key x) /=
+           enc_dec_univ_port enc_dec_base_key.
 qed.
 
 lemma dec_enc_ke_rsp1 (m : msg, func : addr, pt1 pt2 : port, k : key) :
@@ -100,7 +104,7 @@ move => [#] -> pt2'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
+rewrite enc_dec_univ_pair oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iub_v2.
@@ -111,11 +115,11 @@ move => /dec_enc_univ_port -> /=.
 have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
   exists (oget (dec_univ_base v2)); by rewrite -some_oget.
 move => /dec_enc_univ_base -> /=.
-rewrite oget_some => ibk_bse.
+rewrite enc_dec_univ_base oget_some => ibk_bse.
 have [] k' : exists (k' : key), dec_base_key bse = Some k'.
   exists (oget (dec_base_key bse)); by rewrite -some_oget.
 move => /dec_enc_base_key -> /=.
-rewrite oget_some /#.
+rewrite enc_dec_univ_port enc_dec_base_key oget_some /#.
 qed.
 
 op is_ke_rsp1 (m : msg) : bool =
@@ -192,7 +196,8 @@ lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, k : key) :
   dec_ke_rsp2 (ke_rsp2 func pt1 k) = Some (func, pt1, k).
 proof.
 by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey k)) /=
-           oget_some (is_base_key k).
+           enc_dec_univ_base oget_some (is_base_key k) /=
+           enc_dec_base_key.
 qed.
 
 lemma dec_enc_ke_rsp2 (m : msg, func : addr, pt1 : port, k : key) :
@@ -208,11 +213,12 @@ have [] bse : exists (bse : base), dec_univ_base u' = Some bse.
   exists (oget (dec_univ_base u')); by rewrite -some_oget.
 move => /dec_enc_univ_base ->.
 case (! is_base_key (oget (dec_univ_base (UnivBase bse)))) => //=.
-rewrite oget_some.
+rewrite enc_dec_univ_base oget_some.
 move => ibk_bse.
 have [] k' : exists (k' : key), dec_base_key bse = Some k'.
   exists (oget (dec_base_key bse)); by rewrite -some_oget.
-move => /dec_enc_base_key -> /#.
+move => /dec_enc_base_key ->.
+rewrite enc_dec_base_key /#.
 qed.
 
 op is_ke_rsp2 (m : msg) : bool =
@@ -250,85 +256,17 @@ realize fwd_pi_uniq. by have := ke_pi_uniq. qed.
 
 type ke_real_p1_state = [
     KERealP1StateWaitReq1
-  | KERealP1StateWaitFwd2 of (port * port * exp)
-  | KERealP1StateFinal    of (port * port * exp)
+  | KERealP1StateWaitFwd2 of port & port & exp
+  | KERealP1StateFinal    of port & port & exp
 ].
-
-op dec_ke_real_p1_state_wait_fwd2 (st : ke_real_p1_state) :
-     (port * port * exp) option =
-     with st = KERealP1StateWaitReq1   => None
-     with st = KERealP1StateWaitFwd2 x => Some x
-     with st = KERealP1StateFinal _    => None.
-
-lemma enc_dec_ke_real_p1_state_wait_fwd2 (x : port * port * exp) :
-  dec_ke_real_p1_state_wait_fwd2 (KERealP1StateWaitFwd2 x) = Some x.
-proof. done. qed.
-
-op is_ke_real_p1_state_wait_fwd2 (st : ke_real_p1_state) : bool =
-  dec_ke_real_p1_state_wait_fwd2 st <> None.
-
-lemma is_ke_real_p1_state_wait_fwd2 (x : port * port * exp) :
-  is_ke_real_p1_state_wait_fwd2 (KERealP1StateWaitFwd2 x).
-proof. done. qed.
-
-op dec_ke_real_p1_state_final (st : ke_real_p1_state) :
-     (port * port * exp) option =
-     with st = KERealP1StateWaitReq1   => None
-     with st = KERealP1StateWaitFwd2 _ => None
-     with st = KERealP1StateFinal x    => Some x.
-
-lemma enc_dec_ke_real_p1_state_final (x : port * port * exp) :
-  dec_ke_real_p1_state_final (KERealP1StateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_real_p1_state_final (st : ke_real_p1_state) : bool =
-  dec_ke_real_p1_state_final st <> None.
-
-lemma is_ke_real_p1_state_final (x : port * port * exp) :
-  is_ke_real_p1_state_final (KERealP1StateFinal x).
-proof. done. qed.
 
 (* state for Party 2 *)
 
 type ke_real_p2_state = [
     KERealP2StateWaitFwd1
-  | KERealP2StateWaitReq2 of (port * port * exp)
-  | KERealP2StateFinal    of (port * port * exp)
+  | KERealP2StateWaitReq2 of port & port & exp
+  | KERealP2StateFinal    of port & port & exp
 ].
-
-op dec_ke_real_p2_state_wait_req2 (st : ke_real_p2_state) :
-     (port * port * exp) option =
-     with st = KERealP2StateWaitFwd1   => None
-     with st = KERealP2StateWaitReq2 x => Some x
-     with st = KERealP2StateFinal _    => None.
-
-lemma enc_dec_ke_real_p2_state_wait_req2 (x : port * port * exp) :
-  dec_ke_real_p2_state_wait_req2 (KERealP2StateWaitReq2 x) = Some x.
-proof. done. qed.
-
-op is_ke_real_p2_state_wait_req2 (st : ke_real_p2_state) : bool =
-  dec_ke_real_p2_state_wait_req2 st <> None.
-
-lemma is_ke_real_p2_state_wait_req2 (x : port * port * exp) :
-  is_ke_real_p2_state_wait_req2 (KERealP2StateWaitReq2 x).
-proof. done. qed.
-
-op dec_ke_real_p2_state_final (st : ke_real_p2_state) :
-     (port * port * exp) option =
-     with st = KERealP2StateWaitFwd1   => None
-     with st = KERealP2StateWaitReq2 _ => None
-     with st = KERealP2StateFinal x    => Some x.
-
-lemma enc_dec_ke_real_p2_state_final (x : port * port * exp) :
-  dec_ke_real_p2_state_final (KERealP2StateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_real_p2_state_final (st : ke_real_p2_state) : bool =
-  dec_ke_real_p2_state_final st <> None.
-
-lemma is_ke_real_p2_state_final (x : port * port * exp) :
-  is_ke_real_p2_state_final (KERealP2StateFinal x).
-proof. done. qed.
 
 module KEReal : FUNC = {
   var self, adv : addr
@@ -350,37 +288,43 @@ module KEReal : FUNC = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
     var u : univ; var k2 : key; var q1 : exp;
     var r : msg option <- None;
-    if (st1 = KERealP1StateWaitReq1) {
-      if (is_ke_req1 m) {
-        (* destination of m is (self, 1) *)
-        (addr, pt1, pt2) <- oget (dec_ke_req1 m);
-        if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
-            ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
-          q1 <$ dexp;
-          r <-
-            Some
-            (Fwd1.fw_req
-             (self ++ [1]) (self, 3) (self, 4)
-              (univ_triple (UnivPort pt1) (UnivPort pt2)
-               (UnivBase (BaseKey (g ^ q1)))));
-          st1 <- KERealP1StateWaitFwd2 (pt1, pt2, q1);
-        }
+    match st1 with
+      KERealP1StateWaitReq1 => {
+        match dec_ke_req1 m with
+          Some x => {
+            (* destination of m is (self, 1) *)
+            (addr, pt1, pt2) <- x;
+            if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
+                ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
+              q1 <$ dexp;
+              r <-
+                Some
+                (Fwd1.fw_req
+                 (self ++ [1]) (self, 3) (self, 4)
+                  (univ_triple (UnivPort pt1) (UnivPort pt2)
+                   (UnivBase (BaseKey (g ^ q1)))));
+              st1 <- KERealP1StateWaitFwd2 pt1 pt2 q1;
+            }
+          }
+        | None => { }
+        end;
       }
-    }
-    elif (is_ke_real_p1_state_wait_fwd2 st1) {
-      (pt1, pt2, q1) <- oget (dec_ke_real_p1_state_wait_fwd2 st1);
-      if (Fwd2.is_fw_rsp m) {
-        (addr, pt1', pt2', u) <- oget (Fwd2.dec_fw_rsp m);
-        if (pt2' = (self, 3)) {
-          (* destination of m is (self, 3) *)
-          k2 <- oget (dec_base_key (oget (dec_univ_base u)));
-          r <- Some (ke_rsp2 self pt1 (k2 ^ q1));
-          st1 <- KERealP1StateFinal (pt1, pt2, q1);
-        }
+    | KERealP1StateWaitFwd2 pt1 pt2 q1 => {
+        match Fwd2.dec_fw_rsp m with
+          Some x => {
+            (addr, pt1', pt2', u) <- x;
+              if (pt2' = (self, 3)) {
+                (* destination of m is (self, 3) *)
+                k2 <- oget (dec_base_key (oget (dec_univ_base u)));
+                r <- Some (ke_rsp2 self pt1 (k2 ^ q1));
+                st1 <- KERealP1StateFinal pt1 pt2 q1;
+              }
+            }
+        | None => { }
+        end;
       }
-    }
-    else {  (* is_ke_real_p1_state_final st1 *)
-    }
+    | KERealP1StateFinal _ _ _ => { }
+    end;
     return r;
   }
 
@@ -388,38 +332,44 @@ module KEReal : FUNC = {
     var pt1, pt2, pt1', pt2' : port; var addr : addr;
     var u, v1, v2, v3 : univ; var k1 : key; var q2 : exp;
     var r : msg option <- None;
-    if (st2 = KERealP2StateWaitFwd1) {
-      if (Fwd1.is_fw_rsp m) {
-        (addr, pt1', pt2', u) <- oget (Fwd1.dec_fw_rsp m);
-        if (pt2' = (self, 4)) {
-          (* destination of m is (self, 4) *)
-          (v1, v2, v3) <- oget (dec_univ_triple u);
-          pt1 <- oget (dec_univ_port v1);
-          pt2 <- oget (dec_univ_port v2);
-          k1 <- oget (dec_base_key (oget (dec_univ_base v3)));
-          q2 <$ dexp;
-          r <- Some (ke_rsp1 self pt1 pt2 (k1 ^ q2));
-          st2 <- KERealP2StateWaitReq2 (pt1, pt2, q2);
-        }
+    match st2 with
+      KERealP2StateWaitFwd1 => {
+        match Fwd1.dec_fw_rsp m with
+          Some x => {
+            (addr, pt1', pt2', u) <- x;
+              if (pt2' = (self, 4)) {
+                (* destination of m is (self, 4) *)
+                (v1, v2, v3) <- oget (dec_univ_triple u);
+                pt1 <- oget (dec_univ_port v1);
+                pt2 <- oget (dec_univ_port v2);
+                k1 <- oget (dec_base_key (oget (dec_univ_base v3)));
+                q2 <$ dexp;
+                r <- Some (ke_rsp1 self pt1 pt2 (k1 ^ q2));
+                st2 <- KERealP2StateWaitReq2 pt1 pt2 q2;
+              }
+            }
+        | None => { }
+        end;
       }
-    }
-    elif (is_ke_real_p2_state_wait_req2 st2) {
-      (pt1, pt2, q2) <- oget (dec_ke_real_p2_state_wait_req2 st2);
-      if (is_ke_req2 m) {
-        (* destination of m is (self, 2) *)
-        (addr, pt2') <- oget (dec_ke_req2 m);
-        if (pt2' = pt2) {
-          r <-
-            Some
-            (Fwd2.fw_req
-             (self ++ [2]) (self, 4) (self, 3)
-             (UnivBase (BaseKey (g ^ q2))));
-          st2 <- KERealP2StateFinal (pt1, pt2, q2);
-        }
+    | KERealP2StateWaitReq2 pt1 pt2 q2 => {
+        match dec_ke_req2 m with
+          Some x => {
+            (* destination of m is (self, 2) *)
+            (addr, pt2') <- x;
+            if (pt2' = pt2) {
+              r <-
+                Some
+                (Fwd2.fw_req
+                 (self ++ [2]) (self, 4) (self, 3)
+                 (UnivBase (BaseKey (g ^ q2))));
+              st2 <- KERealP2StateFinal pt1 pt2 q2;
+            }
+          }
+        | None => { }
+        end;
       }
-    }
-    else {  (* is_ke_real_p2_state_final st2 *)
-    }
+    | KERealP2StateFinal _ _ _ => { }
+    end;
     return r;
   }
 
@@ -430,9 +380,8 @@ module KEReal : FUNC = {
     (* invariant: 
 
          not_done =>
-         m.`2.`1 = self /\
-         (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/
-          m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
+         m.`1 = Dir /\ m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/ m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
          self ++ [1] <= m.`2.`1 \/
          self ++ [2] <= m.`2.`1 *)
 
@@ -446,8 +395,12 @@ module KEReal : FUNC = {
       elif (self ++ [1] <= m.`2.`1) {
         r <@ Fwd1.Forw.invoke(m);
       }
-      else {  (* self ++ [2] <= m.`2.`1 *)
+      elif (self ++ [2] <= m.`2.`1) {
         r <@ Fwd2.Forw.invoke(m);
+      }
+      else {
+        (* can't happen *)
+        r <- None;
       }
 
       if (r = None \/ ! self <= (oget r).`2.`1) {
@@ -461,12 +414,11 @@ module KEReal : FUNC = {
   }
 
   proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1 : addr; var n1 : int;
     var r : msg option <- None;
-    (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
-        (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2)) \/
+        (m.`1 = Adv /\
+         (self ++ [1] <= m.`2.`1 \/ self ++ [2] <= m.`2.`1))) {
       r <@ loop(m);
     }
     return r;
@@ -485,6 +437,375 @@ call Fwd1.init.
 auto.
 qed.
 
+(* termination metric and proof for KEReal *)
+
+op ke_real_term_metric_max : int = 8.
+
+op ke_real_p1_term_metric (st : ke_real_p1_state) : int =
+     match st with
+       KERealP1StateWaitReq1       => 2
+     | KERealP1StateWaitFwd2 _ _ _ => 1
+     | KERealP1StateFinal _ _ _    => 0
+     end.
+
+op ke_real_p2_term_metric (st : ke_real_p2_state) : int =
+     match st with
+       KERealP2StateWaitFwd1       => 2
+     | KERealP2StateWaitReq2 _ _ _ => 1
+     | KERealP2StateFinal _ _ _    => 0
+     end.
+
+(* FIXME when better glob type
+
+  print glob KEReal:
+
+  1: KEReal.st2 : ke_real_p2_state
+  2: KEReal.st1 : ke_real_p1_state
+  3: KEReal.adv : addr
+  4: KEReal.self : addr
+  5: Fwd2.Forw.st : Fwd2.fw_state
+  6: Fwd2.Forw.adv : addr
+  7: Fwd2.Forw.self : addr
+  8: Fwd1.Forw.st : Fwd1.fw_state
+  9: Fwd1.Forw.adv : addr
+  10: Fwd1.Forw.self : addr
+*)
+
+op ke_real_term_metric (g : glob KEReal) : int =
+     ke_real_p1_term_metric g.`2 +
+     ke_real_p2_term_metric g.`1 +
+     Fwd1.term_metric (g.`8, g.`9, g.`10) +
+     Fwd2.term_metric (g.`5, g.`6, g.`7).
+
+lemma ge0_ke_real_term_metric (g : glob KEReal) :
+  0 <= ke_real_term_metric g.
+proof.
+rewrite /ke_real_term_metric.
+have p1_ge0 : 0 <= ke_real_p1_term_metric g.`2 by smt().
+have p2_ge0 : 0 <= ke_real_p2_term_metric g.`1 by smt().
+have fwd1_ge0 := Fwd1.ge0_term_metric (g.`8, g.`9, g.`10).
+have fwd2_ge0 := Fwd2.ge0_term_metric (g.`5, g.`6, g.`7).
+smt().
+qed.
+
+lemma ke_real_term_init :
+  equiv
+  [KEReal.init ~ KEReal.init :
+   ={self_, adv_} ==>
+   ={res, glob KEReal} /\
+   ke_real_term_metric (glob KEReal){1} = ke_real_term_metric_max].
+proof.
+proc.
+swap [5..6] -2.
+call Fwd2.term_init.
+call Fwd1.term_init.
+auto; smt().
+qed.
+
+lemma ke_real_term_party1 (n : int) :
+  equiv
+  [KEReal.party1 ~ KEReal.party1 :
+   ={m, glob KEReal} /\
+   ke_real_p1_term_metric KEReal.st1{1} = n ==>
+   ={res, glob KEReal} /\
+   (res{1} = None \/ ke_real_p1_term_metric KEReal.st1{1} < n)].
+proof.
+proc.
+sp 1 1.
+match => //.
+match => //.
+move => x y.
+sp 1 1.
+if; first smt().
+auto; smt().
+auto.
+move => pt1 pt2 q1 pt1' pt2' q1'.
+match => //.
+move => x y.
+sp 1 1.
+if; first smt().
+auto; smt().
+auto.
+qed.
+
+lemma ke_real_term_party2 (n : int) :
+  equiv
+  [KEReal.party2 ~ KEReal.party2 :
+   ={m, glob KEReal} /\
+   ke_real_p2_term_metric KEReal.st2{1} = n ==>
+   ={res, glob KEReal} /\
+   (res{1} = None \/ ke_real_p2_term_metric KEReal.st2{1} < n)].
+proof.
+proc.
+sp 1 1.
+match => //.
+match => //.
+move => x y.
+sp 1 1.
+if; first smt().
+auto; smt().
+auto.
+move => pt1 pt2 q2 pt1' pt2' q2'.
+match => //.
+move => x y.
+sp 1 1.
+if; first smt().
+auto; smt().
+auto.
+qed.
+
+module KERealLoop = {
+  proc loop(m : msg, r : msg option, not_done : bool) : msg option = {
+
+    while (not_done) {
+      if (m.`2.`1 = KEReal.self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
+        r <@ KEReal.party1(m);
+      }
+      elif (m.`2.`1 = KEReal.self /\ (m.`2.`2 = 2 \/ m.`2.`2 = 4)) {
+        r <@ KEReal.party2(m);
+      }
+      elif (KEReal.self ++ [1] <= m.`2.`1) {
+        r <@ Fwd1.Forw.invoke(m);
+      }
+      elif (KEReal.self ++ [2] <= m.`2.`1) {
+        r <@ Fwd2.Forw.invoke(m);
+      }
+      else {
+        (* can't happen *)
+        r <- None;
+      }
+
+      if (r = None \/ ! KEReal.self <= (oget r).`2.`1) {
+        not_done <- false;
+      }
+      else {
+        m <- oget r;
+      }
+    }
+    return r;
+  }
+}.
+
+lemma ke_real_term_loop (n : int) :
+  equiv
+  [KERealLoop.loop ~ KERealLoop.loop :
+   ={m, r, not_done, glob KEReal} /\ not_done{1} /\
+   ke_real_term_metric (glob KEReal){1} = n ==>
+   ={res, glob KEReal} /\
+   (res{1} = None \/ ke_real_term_metric (glob KEReal){1} < n)].
+proof.
+case (n < 0) => [le0_n | not_le_n].
+exfalso; smt(ge0_ke_real_term_metric).
+have : 0 <= n by smt().
+clear not_le_n.
+elim/sintind n => n ge0_n IH.
+proc => /=.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+if => //.
+(* Party 1 *)
+seq 1 1 :
+  (={r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   (r{1} = None \/
+    ke_real_term_metric (glob KEReal){1} < n)).
+exlim (ke_real_p1_term_metric KEReal.st1{1}) => p1_met.
+call (ke_real_term_party1 p1_met).
+auto => &1 &2 |> _ _ ? ? [] // lt_p1_met.
+right; rewrite /ke_real_term_metric /#.
+if => //.
+sp 1 1.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{1} r{2}.
+inline{2} (1) KERealLoop.loop; sp; sim.
+transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{2} r{2}.
+conseq
+  (_ :
+   ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   ke_real_term_metric (glob KEReal){1} < n ==>
+   _) => [|> &1 &2 _ _ [] // |].
+exlim (ke_real_term_metric (glob KEReal){1}) => met.
+case @[ambient] (0 <= met < n) => met_le_0_lt_n.
+have IH_met := IH met met_le_0_lt_n.
+call IH_met.
+auto; progress; smt().
+exfalso; smt(ge0_ke_real_term_metric).
+inline{1} KERealLoop.loop; sp; sim.
+if => //.
+(* Party 2 *)
+seq 1 1 :
+  (={r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   (r{1} = None \/
+    ke_real_term_metric (glob KEReal){1} < n)).
+exlim (ke_real_p2_term_metric KEReal.st2{1}) => p2_met.
+call (ke_real_term_party2 p2_met).
+auto => &1 &2 |> _ _ _ ? ? [] // lt_p2_met.
+right; rewrite /ke_real_term_metric /#.
+if => //.
+sp 1 1.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{1} r{2}.
+inline{2} (1) KERealLoop.loop; sp; sim.
+transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{2} r{2}.
+conseq
+  (_ :
+   ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   ke_real_term_metric (glob KEReal){1} < n ==>
+   _) => [|> &1 &2 _ _ [] // |].
+exlim (ke_real_term_metric (glob KEReal){1}) => met.
+case @[ambient] (0 <= met < n) => met_le_0_lt_n.
+have IH_met := IH met met_le_0_lt_n.
+call IH_met.
+auto; progress; smt().
+exfalso; smt(ge0_ke_real_term_metric).
+inline{1} KERealLoop.loop; sp; sim.
+if => //.
+(* Fwd1 *)
+seq 1 1 :
+  (={r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   (r{1} = None \/
+    ke_real_term_metric (glob KEReal){1} < n)).
+exlim (Fwd1.term_metric (glob Fwd1.Forw){1}) => fwd1_met.
+call (Fwd1.term_invoke fwd1_met).
+auto => &1 &2 |> _ _ _ _ ? ? [] // lt_fwd1_met.
+right; rewrite /ke_real_term_metric /#.
+if => //.
+sp 1 1.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{1} r{2}.
+inline{2} (1) KERealLoop.loop; sp; sim.
+transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{2} r{2}.
+conseq
+  (_ :
+   ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   ke_real_term_metric (glob KEReal){1} < n ==>
+   _) => [|> &1 &2 _ _ [] // |].
+exlim (ke_real_term_metric (glob KEReal){1}) => met.
+case @[ambient] (0 <= met < n) => met_le_0_lt_n.
+have IH_met := IH met met_le_0_lt_n.
+call IH_met.
+auto; progress; smt().
+exfalso; smt(ge0_ke_real_term_metric).
+inline{1} KERealLoop.loop; sp; sim.
+if => //.
+(* Fwd2 *)
+seq 1 1 :
+  (={r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   (r{1} = None \/
+    ke_real_term_metric (glob KEReal){1} < n)).
+exlim (Fwd2.term_metric (glob Fwd2.Forw){1}) => fwd2_met.
+call (Fwd2.term_invoke fwd2_met).
+auto => &1 &2 |> _ _ _ _ _ ? ? [] // lt_fwd2_met.
+right; rewrite /ke_real_term_metric /#.
+if => //.
+sp 1 1.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+sp 1 1.
+transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{1} r{2}.
+inline{2} (1) KERealLoop.loop; sp; sim.
+transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          (oget r{2}) not_done{2} r{2}.
+conseq
+  (_ :
+   ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
+   ke_real_term_metric (glob KEReal){1} < n ==>
+   _) => [|> &1 &2 _ _ [] // |].
+exlim (ke_real_term_metric (glob KEReal){1}) => met.
+case @[ambient] (0 <= met < n) => met_le_0_lt_n.
+have IH_met := IH met met_le_0_lt_n.
+call IH_met.
+auto; progress; smt().
+exfalso; smt(ge0_ke_real_term_metric).
+inline{1} KERealLoop.loop; sp; sim.
+sp 1 1.
+rcondt{1} 1; first auto.
+rcondt{2} 1; first auto.
+sp 1 1.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+auto.
+qed.
+
+lemma ke_real_term_invoke (n : int) :
+  equiv
+  [KEReal.invoke ~ KEReal.invoke :
+   ={m, glob KEReal} /\
+   ke_real_term_metric (glob KEReal){1} = n ==>
+   ={res, glob KEReal} /\
+   (res{1} = None \/ ke_real_term_metric (glob KEReal){1} < n)].
+proof.
+proc.
+sp 1 1.
+if => //.
+inline KEReal.loop.
+sp 3 3; wp.
+transitivity*{1} { r0 <@ KERealLoop.loop(m0, r0, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          m{2} m{2} true None None.
+inline{2} KERealLoop.loop; sp; sim.
+transitivity*{2} { r0 <@ KERealLoop.loop(m0, r0, not_done); } => //.
+progress.
+by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
+          Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
+          Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
+          m{2} m{2} true None None.
+call (ke_real_term_loop n).
+auto.
+inline{1} KERealLoop.loop; sp; sim.
+qed.
+
 (* Ideal Functionality *)
 
 (* request sent from port index 3 of key exchange ideal functionality
@@ -493,7 +814,7 @@ qed.
 
 op ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) : msg =
      (Adv, (adv, ke_sim_adv_pi), (ideal, 3),
-      UnivPair (UnivPort pt1, UnivPort pt2)).
+      UnivPair (UnivPort pt1) (UnivPort pt2)).
 
 op dec_ke_sim_req1 (m : msg) : (addr * addr * port * port) option =
      let (mod, pt1, pt2, v) = m
@@ -509,7 +830,12 @@ op dec_ke_sim_req1 (m : msg) : (addr * addr * port * port) option =
 lemma enc_dec_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
   dec_ke_sim_req1 (ke_sim_req1 ideal adv pt1 pt2) =
   Some (ideal, adv, pt1, pt2).
-proof. done. qed.
+proof.
+by rewrite /dec_ke_sim_req1 /ke_sim_req1 /=
+           (is_univ_pair (UnivPort pt1) (UnivPort pt2)) /=
+           enc_dec_univ_pair oget_some /= (is_univ_port pt1)
+           !enc_dec_univ_port.
+qed.
 
 lemma dec_enc_ke_sim_req1 (m : msg, ideal adv : addr, pt1 pt2 : port) :
   dec_ke_sim_req1 m = Some (ideal, adv, pt1, pt2) =>
@@ -524,7 +850,7 @@ move => [#] -> pt1'_2 pt2'_2 iupt_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
+rewrite enc_dec_univ_pair oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iupt_v2.
@@ -533,7 +859,8 @@ have [] pt1'' : exists (pt1'' : port), dec_univ_port v1 = Some pt1''.
 move => /dec_enc_univ_port ->.
 have [] pt2'' : exists (pt2'' : port), dec_univ_port v2 = Some pt2''.
   exists (oget (dec_univ_port v2)); by rewrite -some_oget.
-move => /dec_enc_univ_port -> /> /#.
+move => /dec_enc_univ_port -> />.
+rewrite !enc_dec_univ_port !oget_some /#.
 qed.
 
 op is_ke_sim_req1 (m : msg) : bool =
@@ -541,7 +868,9 @@ op is_ke_sim_req1 (m : msg) : bool =
 
 lemma is_ke_sim_req1 (ideal adv : addr, pt1 pt2 : port) :
   is_ke_sim_req1 (ke_sim_req1 ideal adv pt1 pt2).
-proof. done. qed.
+proof.
+by rewrite /is_ke_sim_req1 enc_dec_ke_sim_req1.
+qed.
 
 (* response sent from port ke_sim_adv_pi of key exchange simulator to
    port 3 of key exchange ideal functionality, completing first or
@@ -639,87 +968,11 @@ proof. done. qed.
 
 type ke_ideal_state = [
     KEIdealStateWaitReq1
-  | KEIdealStateWaitSim1 of (port * port)
-  | KEIdealStateWaitReq2 of (port * port * exp)
-  | KEIdealStateWaitSim2 of (port * port * exp)
-  | KEIdealStateFinal    of (port * port * exp)
+  | KEIdealStateWaitSim1 of port & port
+  | KEIdealStateWaitReq2 of port & port & exp
+  | KEIdealStateWaitSim2 of port & port & exp
+  | KEIdealStateFinal    of port & port & exp
 ].
-
-op dec_ke_ideal_state_wait_sim1 (st : ke_ideal_state) :
-     (port * port) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 x => Some x
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_sim1 (x : port * port) :
-  dec_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_sim1 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_sim1 st <> None.
-
-lemma is_ke_ideal_state_wait_sim1 (x : port * port) :
-  is_ke_ideal_state_wait_sim1 (KEIdealStateWaitSim1 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_wait_req2 (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 x => Some x
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_req2 (x : port * port * exp) :
-  dec_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_req2 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_req2 st <> None.
-
-lemma is_ke_ideal_state_wait_req2 (x : port * port * exp) :
-  is_ke_ideal_state_wait_req2 (KEIdealStateWaitReq2 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_wait_sim2 (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 x => Some x
-     with st = KEIdealStateFinal _    => None.
-
-lemma enc_dec_ke_ideal_state_wait_sim2 (x : port * port * exp) :
-  dec_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_wait_sim2 (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_wait_sim2 st <> None.
-
-lemma is_ke_ideal_state_wait_sim2 (x : port * port * exp) :
-  is_ke_ideal_state_wait_sim2 (KEIdealStateWaitSim2 x).
-proof. done. qed.
-
-op dec_ke_ideal_state_final (st : ke_ideal_state) :
-     (port * port * exp) option =
-     with st = KEIdealStateWaitReq1   => None
-     with st = KEIdealStateWaitSim1 _ => None
-     with st = KEIdealStateWaitReq2 _ => None
-     with st = KEIdealStateWaitSim2 _ => None
-     with st = KEIdealStateFinal x    => Some x.
-
-lemma enc_dec_ke_ideal_state_final (x : port * port * exp) :
-  dec_ke_ideal_state_final (KEIdealStateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_ideal_state_final (st : ke_ideal_state) : bool =
-  dec_ke_ideal_state_final st <> None.
-
-lemma is_ke_ideal_state_final (x : port * port * exp) :
-  is_ke_ideal_state_final (KEIdealStateFinal x).
-proof. done. qed.
 
 module KEIdeal : FUNC = {
   var self, adv : addr
@@ -734,58 +987,58 @@ module KEIdeal : FUNC = {
     var pt1, pt2, pt2' : port; var addr1, addr2 : addr;
     var q : exp;
     var r : msg option <- None;
-    if (st = KEIdealStateWaitReq1) {
-      if (is_ke_req1 m) {
-        (* destination of m is (self, 1), mode of m is Dir *)
-        (addr1, pt1, pt2) <- oget (dec_ke_req1 m);
-        if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
-            ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
-          r <- Some (ke_sim_req1 self adv pt1 pt2);
-          st <- KEIdealStateWaitSim1 (pt1, pt2);
+    match st with
+      KEIdealStateWaitReq1 => {
+        match dec_ke_req1 m with
+          Some x => {
+            (* destination of m is (self, 1), mode of m is Dir *)
+            (addr1, pt1, pt2) <- x;
+            if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
+                ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
+              r <- Some (ke_sim_req1 self adv pt1 pt2);
+              st <- KEIdealStateWaitSim1 pt1 pt2;
+            }
+          }
+        | None => { }
+        end;
+      }
+    | KEIdealStateWaitSim1 pt1 pt2 => {
+        if (is_ke_sim_rsp m) {
+          (* destination of m is (self, 3), mode of m is Adv *)
+          q <$ dexp;
+          r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
+          st <- KEIdealStateWaitReq2 pt1 pt2 q;
         }
       }
-    }
-    elif (is_ke_ideal_state_wait_sim1 st) {
-      (pt1, pt2) <- oget (dec_ke_ideal_state_wait_sim1 st);
-      if (is_ke_sim_rsp m) {
-        (* destination of m is (self, 3), mode of m is Adv *)
-        q <$ dexp;
-        r <- Some (ke_rsp1 self pt1 pt2 (g ^ q));
-        st <- KEIdealStateWaitReq2 (pt1, pt2, q);
+    | KEIdealStateWaitReq2 pt1 pt2 q => {
+        match dec_ke_req2 m with
+          Some x => {
+            (* destination of m is (self, 2), mode of m is Dir *)
+            (addr1, pt2') = x;
+            if (pt2' = pt2) {
+              r <- Some (ke_sim_req2 self adv);
+              st <- KEIdealStateWaitSim2 pt1 pt2 q;
+            }
+          }
+        | None => { }
+        end;
       }
-    }
-    elif (is_ke_ideal_state_wait_req2 st) {
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_req2 st);
-      if (is_ke_req2 m) {
-        (* destination of m is (self, 2), mode of m is Dir *)
-        (addr1, pt2') <- oget (dec_ke_req2 m);
-        if (pt2' = pt2) {
-          r <- Some (ke_sim_req2 self adv);
-          st <- KEIdealStateWaitSim2 (pt1, pt2, q);
+    | KEIdealStateWaitSim2 pt1 pt2 q => {
+        if (is_ke_sim_rsp m) {
+          (* destination of m is (self, 3), mode of m is Adv *)
+          r <- Some (ke_rsp2 self pt1 (g ^ q));
+          st <- KEIdealStateFinal pt1 pt2 q;
         }
       }
-    }
-    elif (is_ke_ideal_state_wait_sim2 st) {
-      (pt1, pt2, q) <- oget (dec_ke_ideal_state_wait_sim2 st);
-      if (is_ke_sim_rsp m) {
-        (* destination of m is (self, 3), mode of m is Adv *)
-        r <- Some (ke_rsp2 self pt1 (g ^ q));
-        st <- KEIdealStateFinal (pt1, pt2, q);
-      }
-    }
-    else {  (* is_ke_ideal_state_final st *)
-    }
+    | KEIdealStateFinal _ _ _ => { }
+    end;
     return r;
   }
 
   proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr; var n1, n2 : int;
     var r : msg option <- None;
-    (mod, pt1, pt2, u) <- m;
-    (addr1, n1) <- pt1;
-    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
-        (mod = Adv /\ addr1 = self /\ n1 = 3)) {
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 2)) \/
+        (m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 = 3)) {
       r <@ parties(m);
     }
     return r;
@@ -802,78 +1055,53 @@ proof. proc; auto. qed.
 
 op ke_ideal_term_metric_max : int = 4.
 
-op ke_ideal_term_metric (st : ke_ideal_state) : int =
-     with st = KEIdealStateWaitReq1   => 4
-     with st = KEIdealStateWaitSim1 _ => 3
-     with st = KEIdealStateWaitReq2 _ => 2
-     with st = KEIdealStateWaitSim2 _ => 1
-     with st = KEIdealStateFinal    _ => 0.
-
-lemma ge0_ke_ideal_term_metric (st : ke_ideal_state) :
-  0 <= ke_ideal_term_metric st.
-proof. by case st. qed.
-
-lemma ke_ideal_term_metric_is_ke_ideal_state_wait_sim1
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim1 st => ke_ideal_term_metric st = 3.
-proof. by case st. qed.
-
-lemma ke_ideal_term_metric_is_ke_ideal_state_wait_req2
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_req2 st => ke_ideal_term_metric st = 2.
-proof. by case st. qed.
-
-lemma ke_ideal_term_metric_is_ke_ideal_state_wait_sim2
-      (st : ke_ideal_state) :
-  is_ke_ideal_state_wait_sim2 st => ke_ideal_term_metric st = 1.
-proof. by case st. qed.
+op ke_ideal_term_metric (x : glob KEIdeal) : int =
+     match x.`1 with
+       KEIdealStateWaitReq1       => 4
+     | KEIdealStateWaitSim1 _ _   => 3
+     | KEIdealStateWaitReq2 _ _ _ => 2
+     | KEIdealStateWaitSim2 _ _ _ => 1
+     | KEIdealStateFinal    _ _ _ => 0
+     end.
 
 lemma ke_ideal_term_init :
   equiv
   [KEIdeal.init ~ KEIdeal.init :
    ={self_, adv_} ==>
    ={res, glob KEIdeal} /\
-   ke_ideal_term_metric KEIdeal.st{1} = ke_ideal_term_metric_max].
+   ke_ideal_term_metric (glob KEIdeal){1} = ke_ideal_term_metric_max].
 proof. proc; auto. qed.
 
 lemma ke_ideal_term_invoke (n : int) :
   equiv
   [KEIdeal.invoke ~ KEIdeal.invoke :
    ={m, glob KEIdeal} /\
-   ke_ideal_term_metric KEIdeal.st{1} = n ==>
-   ={res, KEIdeal.st} /\
-   (res{1} = None \/ ke_ideal_term_metric KEIdeal.st{1} = n - 1)].
+   ke_ideal_term_metric (glob KEIdeal){1} = n ==>
+   ={res, glob KEIdeal} /\
+   (res{1} = None \/ ke_ideal_term_metric (glob KEIdeal){1} < n)].
 proof.
-proc; sp 3 3.
+proc; sp 1 1.
 if => //.
 inline KEIdeal.parties.
 sp 2 2.
-if => //.
-if => //.
+match; first 5 smt().
+match => //.
+auto.
+move => x y.
 sp 1 1.
 if; first smt().
 auto; smt().
 auto.
+move => pt1 pt2 pt1' pt2'.
+if => //; auto.
+move => pt1 pt2 q pt1' pt2' q'.
+match; first 2 smt().
 auto.
-if => //.
+move => x y.
 sp 1 1.
-if => //.
-auto; smt(ke_ideal_term_metric_is_ke_ideal_state_wait_sim1).
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if => //.
-auto; smt().
-auto; smt(ke_ideal_term_metric_is_ke_ideal_state_wait_req2).
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-auto; smt(ke_ideal_term_metric_is_ke_ideal_state_wait_sim2).
-auto.
+if; [smt() | auto | auto].
+move => pt1 pt2 q pt1' pt2' q'.
+if => //; auto.
 auto.
 qed.
 
