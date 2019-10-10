@@ -8,10 +8,9 @@
 
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
-require import AllCore List ListPO.
-require import UCCoreDiffieHellman.
+require import AllCore List ListPO Encoding UCCore.
 
-(* theory parameters *)
+(* begin theory parameters *)
 
 (* port index of adversary that functionality communicates with *)
 
@@ -19,77 +18,84 @@ op adv_pi : int.
 
 axiom fwd_pi_uniq : uniq [adv_pi; 0].
 
+clone EPDP as EPDP_Univ_Unit with
+  type orig <- unit, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortUniv with
+  type orig <- port * univ, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPortUniv with
+  type orig <- port * port * univ, type enc <- univ.
+
 (* end theory parameters *)
 
 (* request sent to port index 1 of forwarding functionality: pt1 is
    asking to forward u to pt2 *)
 
-op fw_req (func : addr, pt1 pt2 : port, u : univ) : msg =
-     (Dir, (func, 1), pt1, UnivPair (UnivPort pt2) u).
+type fw_req =
+  {fw_req_func : addr;   (* address of functionality *)
+   fw_req_pt1  : port;   (* port requesting forwarding *)
+   (* data: *)
+   fw_req_pt2  : port;   (* port being forwarded to *)
+   fw_req_u    : univ}.  (* universe value to be forwarded *)
 
-op dec_fw_req (m : msg) : (addr * port * port * univ) option =
+op fw_req (x : fw_req) : msg =
+     (Dir, (x.`fw_req_func, 1), x.`fw_req_pt1,
+      EPDP_Univ_PortUniv.enc (x.`fw_req_pt2, x.`fw_req_u)).
+
+op dec_fw_req (m : msg) : fw_req option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt1.`2 <> 1 \/ ! is_univ_pair v) ?
+     in (mod = Adv \/ pt1.`2 <> 1 \/ ! EPDP_Univ_PortUniv.valid v) ?
         None :
-        let (v1, v2) = oget (dec_univ_pair v)
-        in (! is_univ_port v1) ?
-           None :
-           Some (pt1.`1, pt2, oget (dec_univ_port v1), v2).
+        let (pt2', u) = oget (EPDP_Univ_PortUniv.dec v)
+        in Some {|fw_req_func = pt1.`1; fw_req_pt1 = pt2;
+                  fw_req_pt2 = pt2'; fw_req_u = u|}.
 
-lemma enc_dec_fw_req (func : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_req (fw_req func pt1 pt2 u) = Some (func, pt1, pt2, u).
+lemma epdp_fw_req : epdp fw_req dec_fw_req.
 proof.
-by rewrite /dec_fw_req /fw_req /= (is_univ_pair (UnivPort pt2) u)
-           /= enc_dec_univ_pair oget_some /= (is_univ_port pt2) /=
-           enc_dec_univ_port.
+apply epdp_intro.
+move => m.
+rewrite /fw_req /dec_fw_req /= EPDP_Univ_PortUniv.valid_enc
+        /= EPDP_Univ_PortUniv.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /fw_req /dec_fw_req /=.
+case (mod = Adv \/ pt1.`2 <> 1 \/ ! (EPDP_Univ_PortUniv.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 val_u.
+have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
+  exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_PortUniv.dec_enc <-.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
 qed.
 
-lemma dec_enc_fw_req (m : msg, func : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_req m = Some (func, pt1, pt2, u) =>
-  fw_req func pt1 pt2 u = m.
+lemma dest_valid_fw_req (m : msg) :
+  dec2valid dec_fw_req m =>
+  m.`2.`1 = (oget (dec_fw_req m)).`fw_req_func /\ m.`2.`2 = 1.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_fw_req /fw_req /=.
-case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_pair u') => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt1'_2 iup_u'.
-have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
-  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
-case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite enc_dec_univ_pair oget_some /=.
-case (is_univ_port v1) => // iupt_v1.
-have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
-  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
-move => /dec_enc_univ_port => -> /=.
-rewrite enc_dec_univ_port oget_some /#.
-qed.
-
-op is_fw_req (m : msg) : bool =
-     dec_fw_req m <> None.
-
-lemma is_fw_req (func : addr, pt1 pt2 : port, u : univ) :
-  is_fw_req (fw_req func pt1 pt2 u).
-proof.
-by rewrite /is_fw_req enc_dec_fw_req.
-qed.
-
-lemma dest_good_fw_req (m : msg) :
-  is_fw_req m =>
-  (oget (dec_fw_req m)).`1 = m.`2.`1 /\ m.`2.`2 = 1.
-proof.
-move => ifr_m.
-have [] x : exists (x : addr * port * port * univ),
-  dec_fw_req m = Some x.
+move => val_m.
+have [] x : exists (x : fw_req), dec_fw_req m = Some x.
   exists (oget (dec_fw_req m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 /dec_enc_fw_req <-.
-by rewrite enc_dec_fw_req oget_some /fw_req.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_req).
+qed.
+
+lemma source_valid_fw_req (m : msg) :
+  dec2valid dec_fw_req m =>
+  m.`3 = (oget (dec_fw_req m)).`fw_req_pt1.
+proof.
+move => val_m.
+have [] x : exists (x : fw_req), dec_fw_req m = Some x.
+  exists (oget (dec_fw_req m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_req).
 qed.
 
 lemma not_is_fw_req_suff (m : msg) :
-  m.`1 = Adv \/ m.`2.`2 <> 1 => ! is_fw_req m.
+  m.`1 = Adv \/ m.`2.`2 <> 1 => ! dec2valid dec_fw_req m.
 proof.
 rewrite /is_fw_req /dec_fw_req.
-case (m) => mod pt1 pt2 u.
+case m => mod pt1 pt2 u.
 case pt1 => addr1 n1 /=.
 smt().
 qed.
@@ -97,181 +103,197 @@ qed.
 (* response sent from port index 1 of forwarding functionality to pt2,
    completing the forwarding of u that was requested by pt1 *)
 
-op fw_rsp (func : addr, pt1 pt2 : port, u : univ) : msg =
-     (Dir, pt2, (func, 1), UnivPair (UnivPort pt1) u).
+type fw_rsp =
+  {fw_rsp_func : addr;   (* address of functionality *)
+   fw_rsp_pt2  : port;   (* port being forwarded to *)
+   (* data: *)
+   fw_rsp_pt1  : port;   (* port requesting forwarding *)
+   fw_rsp_u    : univ}.  (* universe value to be forwarded *)
 
-op dec_fw_rsp (m : msg) : (addr * port * port * univ) option =
+op fw_rsp (x : fw_rsp) : msg =
+     (Dir, x.`fw_rsp_pt2, (x.`fw_rsp_func, 1),
+      EPDP_Univ_PortUniv.enc (x.`fw_rsp_pt1, x.`fw_rsp_u)).
+
+op dec_fw_rsp (m : msg) : fw_rsp option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt2.`2 <> 1 \/ ! is_univ_pair v) ?
+     in (mod = Adv \/ pt2.`2 <> 1 \/ ! EPDP_Univ_PortUniv.valid v) ?
         None :
-        let (v1, v2) = oget (dec_univ_pair v)
-        in (! is_univ_port v1) ?
-           None :
-           Some (pt2.`1, oget (dec_univ_port v1), pt1, v2).
+        let (pt1', u) = oget (EPDP_Univ_PortUniv.dec v)
+        in Some {|fw_rsp_func = pt2.`1; fw_rsp_pt1 = pt1';
+                  fw_rsp_pt2 = pt1; fw_rsp_u = u|}.
 
-lemma enc_dec_fw_rsp (func : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_rsp (fw_rsp func pt1 pt2 u) = Some (func, pt1, pt2, u).
+lemma epdp_fw_rsp : epdp fw_rsp dec_fw_rsp.
 proof.
-by rewrite /dec_fw_rsp /fw_rsp /= (is_univ_pair (UnivPort pt1) u) /=
-           (enc_dec_univ_pair (UnivPort pt1) u) /= oget_some /=
-           (is_univ_port pt1) /= enc_dec_univ_port.
+apply epdp_intro.
+move => m.
+rewrite /fw_rsp /dec_fw_rsp /= EPDP_Univ_PortUniv.valid_enc
+        /= EPDP_Univ_PortUniv.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /fw_rsp /dec_fw_rsp /=.
+case (mod = Adv \/ pt2.`2 <> 1 \/ ! (EPDP_Univ_PortUniv.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 val_u.
+have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
+  exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_PortUniv.dec_enc <-.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
 qed.
 
-lemma dec_enc_fw_rsp (m : msg, func : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_rsp m = Some (func, pt1, pt2, u) =>
-  fw_rsp func pt1 pt2 u = m.
+lemma dest_valid_fw_rsp (m : msg) :
+  dec2valid dec_fw_rsp m =>
+  m.`2 = (oget (dec_fw_rsp m)).`fw_rsp_pt2.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_fw_rsp /fw_rsp /=.
-case (mod = Adv \/ pt2'.`2 <> 1 \/ ! is_univ_pair u') => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt2'_2 iup_u'.
-have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
-  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
-case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite enc_dec_univ_pair oget_some /=.
-case (is_univ_port v1) => // iupt_v1.
-have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
-  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
-move => /dec_enc_univ_port => -> /=.
-rewrite enc_dec_univ_port oget_some /#.
-qed.
-
-op is_fw_rsp (m : msg) : bool =
-     dec_fw_rsp m <> None.
-
-lemma is_fw_rsp (func : addr, pt1 pt2 : port, u : univ) :
-  is_fw_rsp (fw_rsp func pt1 pt2 u).
-proof.
-by rewrite /is_fw_rsp enc_dec_fw_rsp.
-qed.
-
-lemma dest_good_fw_rsp (m : msg) :
-  is_fw_rsp m => (oget (dec_fw_rsp m)).`3 = m.`2.
-proof.
-move => ifr_m.
-have [] x : exists (x : addr * port * port * univ),
-  dec_fw_rsp m = Some x.
+move => val_m.
+have [] x : exists (x : fw_rsp), dec_fw_rsp m = Some x.
   exists (oget (dec_fw_rsp m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 /dec_enc_fw_rsp <-.
-by rewrite enc_dec_fw_rsp oget_some /fw_rsp.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_rsp) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_rsp).
+qed.
+
+lemma source_valid_fw_rsp (m : msg) :
+  dec2valid dec_fw_rsp m =>
+  m.`3 = ((oget (dec_fw_rsp m)).`fw_rsp_func, 1).
+proof.
+move => val_m.
+have [] x : exists (x : fw_rsp), dec_fw_rsp m = Some x.
+  exists (oget (dec_fw_rsp m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_rsp) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_rsp).
 qed.
 
 (* message from forwarding functionality to adversary, letting it
    observe that the functionality is proposing to forward u to
    pt2 on behalf of pt1 *)
 
-op fw_obs (func adv : addr, pt1 pt2 : port, u : univ) : msg =
-     (Adv, (adv, adv_pi), (func, 1),
-      univ_triple (UnivPort pt1) (UnivPort pt2) u).
+type fw_obs =
+  {fw_obs_func : addr;   (* address of functionality *)
+   fw_obs_adv  : addr;   (* address of adversary *)
+   (* data: *)
+   fw_obs_pt1  : port;   (* port requesting forwarding *)
+   fw_obs_pt2  : port;   (* port being forwarded to *)
+   fw_obs_u    : univ}.  (* universe value to be forwarded *)
 
-op dec_fw_obs (m : msg) : (addr * addr * port * port * univ) option =
+op fw_obs (x : fw_obs) : msg =
+     (Adv, (x.`fw_obs_adv, adv_pi), (x.`fw_obs_func, 1),
+      EPDP_Univ_PortPortUniv.enc (x.`fw_obs_pt1, x.`fw_obs_pt2, x.`fw_obs_u)).
+
+op dec_fw_obs (m : msg) : fw_obs option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1 \/
-         ! is_univ_triple v) ?
+         ! EPDP_Univ_PortPortUniv.valid v) ?
         None :
-        let (v1, v2, v3) = oget (dec_univ_triple v)
-        in (! is_univ_port v1 \/ ! is_univ_port v2) ?
-           None :
-           Some (pt2.`1, pt1.`1,
-                 oget (dec_univ_port v1),
-                 oget (dec_univ_port v2),
-                 v3).
+        let (pt1', pt2', u) = oget (EPDP_Univ_PortPortUniv.dec v)
+        in Some {|fw_obs_func = pt2.`1; fw_obs_adv = pt1.`1;
+                  fw_obs_pt1 = pt1'; fw_obs_pt2 = pt2'; fw_obs_u = u|}.
 
-lemma enc_dec_fw_obs (func adv : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_obs (fw_obs func adv pt1 pt2 u) = Some (func, adv, pt1, pt2, u).
+lemma epdp_fw_obs : epdp fw_obs dec_fw_obs.
 proof.
-by rewrite /fw_obs /dec_fw_obs /=
-           (is_univ_triple (UnivPort pt2) (UnivPort pt2) u) /=
-           enc_dec_univ_triple oget_some /= (is_univ_port pt1) /=
-           !enc_dec_univ_port.
+apply epdp_intro.
+move => m.
+rewrite /fw_obs /dec_fw_obs /= EPDP_Univ_PortPortUniv.valid_enc
+        /= EPDP_Univ_PortPortUniv.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /fw_obs /dec_fw_obs /=.
+case (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1 \/
+      ! (EPDP_Univ_PortPortUniv.valid u)) => //.
+rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 val_u.
+have [] t : exists (t : port * port * univ), EPDP_Univ_PortPortUniv.dec u = Some t.
+  exists (oget (EPDP_Univ_PortPortUniv.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_PortPortUniv.dec_enc <-.
+rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /= /#.
 qed.
 
-lemma dec_enc_fw_obs (m : msg, func adv : addr, pt1 pt2 : port, u : univ) :
-  dec_fw_obs m = Some (func, adv, pt1, pt2, u) =>
-  fw_obs func adv pt1 pt2 u = m.
+lemma dest_valid_fw_obs (m : msg) :
+  dec2valid dec_fw_obs m =>
+  m.`2.`1 = (oget (dec_fw_obs m)).`fw_obs_adv /\ m.`2.`2 = adv_pi.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_fw_obs /fw_obs /=.
-case (mod = Dir \/ pt1'.`2 <> adv_pi \/ pt2'.`2 <> 1 \/
-      ! is_univ_triple u') => //.
-rewrite !negb_or not_dir /=.
-move => [#] -> pt1'_2 pt2'_2 iut_u'.
-have [] t : exists (t : univ * univ * univ), dec_univ_triple u' = Some t.
-  exists (oget (dec_univ_triple u')); by rewrite -some_oget.
-case t => v1 v2 v3 /dec_enc_univ_triple -> /=.
-rewrite enc_dec_univ_triple oget_some /=.
-case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
-rewrite negb_or /=.
-move => [#] iupt_v1 iupt_v2 [#] pt2'_1 pt1'_1 odupt_v1 odupt_v2 ->.
-have : dec_univ_port v1 = Some pt1
-  by rewrite -odupt_v1 -some_oget.
-move => /dec_enc_univ_port ->.
-have : dec_univ_port v2 = Some pt2
-  by rewrite -odupt_v2 -some_oget.
-move => /dec_enc_univ_port -> /#.
+move => val_m.
+have [] x : exists (x : fw_obs), dec_fw_obs m = Some x.
+  exists (oget (dec_fw_obs m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 x5.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_obs) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_obs).
 qed.
 
-op is_fw_obs (m : msg) : bool =
-     dec_fw_obs m <> None.
-
-lemma is_fw_obs (func adv : addr, pt1 pt2 : port, u : univ) :
-  is_fw_obs (fw_obs func adv pt1 pt2 u).
+lemma source_valid_fw_obs (m : msg) :
+  dec2valid dec_fw_obs m =>
+  m.`3 = ((oget (dec_fw_obs m)).`fw_obs_func, 1).
 proof.
-by rewrite /is_fw_obs enc_dec_fw_obs.
+move => val_m.
+have [] x : exists (x : fw_obs), dec_fw_obs m = Some x.
+  exists (oget (dec_fw_obs m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 x5.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_obs) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_obs).
 qed.
 
 (* message from adversary telling forwarding functionality it may
    proceed with forwarding *)
 
-op fw_ok (func adv : addr) : msg =
-     (Adv, (func, 1), (adv, adv_pi), UnivUnit).
+type fw_ok =
+  {fw_ok_func : addr;   (* address of functionality *)
+   fw_ok_adv  : addr
+   (* data: (none) *)
+  }.  (* address of adversary *)
 
-op dec_fw_ok (m : msg) : (addr * addr) option =
+op fw_ok (x : fw_ok) : msg =
+     (Adv, (x.`fw_ok_func, 1), (x.`fw_ok_adv, adv_pi),
+      EPDP_Univ_Unit.enc ()).
+
+op dec_fw_ok (m : msg) : fw_ok option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi \/
-         v <> UnivUnit) ?
+         ! EPDP_Univ_Unit.valid v) ?
         None :
-        Some (pt1.`1, pt2.`1).
+        Some {|fw_ok_func = pt1.`1; fw_ok_adv = pt2.`1|}.
 
-lemma enc_dec_fw_ok (func adv : addr) :
-  dec_fw_ok (fw_ok func adv) = Some (func, adv).
+lemma epdp_fw_ok : epdp fw_ok dec_fw_ok.
 proof.
-by rewrite /dec_fw_ok /fw_ok.
+apply epdp_intro.
+move => m.
+rewrite /fw_ok /dec_fw_ok /= EPDP_Univ_Unit.valid_enc /= /#.
+move => [mod pt1 pt2 u] v.
+rewrite /fw_ok /dec_fw_ok /=.
+case (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi \/
+      ! (EPDP_Univ_Unit.valid u)) => //.
+rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 val_u.
+have [] s : exists (s : unit), EPDP_Univ_Unit.dec u = Some s.
+  exists (oget (EPDP_Univ_Unit.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_Unit.dec_enc <- <- /=.
+split; first smt().
+split; first smt().
+congr.
 qed.
 
-lemma dec_enc_fw_ok (m : msg, func adv) :
-  dec_fw_ok m = Some (func, adv) =>
-  fw_ok func adv = m.
-proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_fw_ok /fw_ok /=.
-case (mod = Dir \/ pt1'.`2 <> 1 \/ pt2'.`2 <> adv_pi \/ u' <> UnivUnit) => //.
-rewrite !negb_or not_dir /#.
-qed.
-
-op is_fw_ok (m : msg) : bool =
-     dec_fw_ok m <> None.
-
-lemma is_fw_ok (func adv : addr) :
-  is_fw_ok (fw_ok func adv).
-proof. done. qed.
-
-lemma dest_good_fw_ok (m : msg) :
-  is_fw_ok m => (oget (dec_fw_ok m)).`1 = m.`2.`1 /\
+lemma dest_valid_fw_ok (m : msg) :
+  dec2valid dec_fw_ok m =>
+  m.`2.`1 = (oget (dec_fw_ok m)).`fw_ok_func /\
   m.`2.`2 = 1.
 proof.
-move => ifo_m.
-have [] x : exists (x : addr * addr), dec_fw_ok m = Some x.
+move => val_m.
+have [] x : exists (x : fw_ok), dec_fw_ok m = Some x.
   exists (oget (dec_fw_ok m)); by rewrite -some_oget.
-case x => x1 x2 /dec_enc_fw_ok <-.
-by rewrite enc_dec_fw_ok.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_ok) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_ok).
+qed.
+
+lemma source_valid_fw_ok (m : msg) :
+  dec2valid dec_fw_ok m =>
+  m.`3.`1 = (oget (dec_fw_ok m)).`fw_ok_adv /\
+  m.`3.`2 = adv_pi.
+proof.
+move => val_m.
+have [] x : exists (x : fw_ok), dec_fw_ok m = Some x.
+  exists (oget (dec_fw_ok m)); by rewrite -some_oget.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_ok) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_ok).
 qed.
 
 type fw_state = [
     FwStateInit
-  | FwStateWait  of port & port & univ
-  | FwStateFinal of port & port & univ
+  | FwStateWait of port & port & univ
+  | FwStateFinal
 ].
 
 module Forw : FUNC = {
@@ -282,20 +304,21 @@ module Forw : FUNC = {
     self <- self_; adv <- adv_; st <- FwStateInit;
   }
 
-  proc invoke(m : msg) : msg option = {
-    var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr;
+  proc parties(m : msg) : msg option = {
     var r : msg option <- None;
     match st with
       FwStateInit => {
         match dec_fw_req m with
           Some x => {
-            (addr1, pt1, pt2, u) <- x;
-            if (self = addr1 /\
-                ! self <= pt1.`1 /\ ! self <= pt2.`1 /\
-                ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
-              r <- Some (fw_obs self adv pt1 pt2 u);
-              st <- FwStateWait pt1 pt2 u;
+            (* ! self <= x.`fw_req_pt1.`1 /\ ! adv <= x.`fw_req_pt1.`1 *)
+            if (! self <= x.`fw_req_pt2.`1 /\ ! adv <= x.`fw_req_pt2.`1) {
+              r <-
+                Some
+                (fw_obs
+                 {|fw_obs_func = self; fw_obs_adv = adv;
+                   fw_obs_pt1 = x.`fw_req_pt1; fw_obs_pt2 = x.`fw_req_pt2;
+                   fw_obs_u = x.`fw_req_u|});
+              st <- FwStateWait x.`fw_req_pt1 x.`fw_req_pt2 x.`fw_req_u;
             }
           }
         | None => { }
@@ -304,17 +327,28 @@ module Forw : FUNC = {
     | FwStateWait pt1 pt2 u => {
         match dec_fw_ok m with
           Some x => {
-            (addr1, addr2) <- x;
-            if (addr1 = self) {
-              r <- Some (fw_rsp self pt1 pt2 u);
-              st <- FwStateFinal pt1 pt2 u;
-            }
+            r <-
+              Some
+              (fw_rsp
+               {|fw_rsp_func = self; fw_rsp_pt1 = pt1;
+                 fw_rsp_pt2 = pt2; fw_rsp_u = u|});
+            st <- FwStateFinal;
           }
         | None => { }
         end;
       }
-    | FwStateFinal _ _ _ => { }
+    | FwStateFinal => { }
     end;
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    (* we can assume m.`3.`1 is not >= self and not >= adv *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\ m.`2.`2 = 1) \/
+        (m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 = 1)) {
+      r <@ parties(m);
+    }
     return r;
   }
 }.
@@ -332,9 +366,9 @@ op term_metric_max : int = 2.
 
 op term_metric (g : glob Forw) : int =
      match g.`1 with
-       FwStateInit        => 2
-     | FwStateWait _ _ _  => 1
-     | FwStateFinal _ _ _ => 0
+       FwStateInit       => 2
+     | FwStateWait _ _ _ => 1
+     | FwStateFinal      => 0
      end.
 
 lemma ge0_term_metric (g : glob Forw) : 0 <= term_metric g.
@@ -369,20 +403,20 @@ lemma term_invoke (n : int) :
    (res{1} = None \/ term_metric (glob Forw){1} < n)].
 proof.
 proc; sp 1 1.
+if => //.
+inline Forw.parties.
+sp 2 2.
 match => //.
-match => // x y.
-sp 1 1.
-if; first move => |> &1 &2 -> //.
-auto => |> &1 &2 -> //.
+match => //.
+auto.
+move => x x'.
+if; first smt().
+auto; first smt().
 auto.
 move => pt1 pt2 u pt1' pt2' u'.
-match => // x y.
-sp 1 1.
-if.
-(*FIXME - use better crush*)
-move => &1 &2 [#] *.
-move : H7 H1 H2 H H0 H10.
-move => -> -> /= -> <- [#] -> _ -> //.
+match => //.
+auto.
+move => x x'.
 auto.
 auto.
 qed.

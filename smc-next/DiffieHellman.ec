@@ -3,7 +3,6 @@
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import AllCore Distr.
-require UCCore DDH.
 
 (********************** Keys, Exponents and Plain texts ***********************)
 
@@ -126,95 +125,35 @@ qed.
 
 (******************** Decisional Diffie-Hellman Assumption ********************)
 
-clone export DDH as DDH' with
-  type key <- key,
-  op (^^) <- (^^),
-  op kid <- kid,
-  op kinv <- kinv,
-  type exp <- exp,
-  op e <- e,
-  op ( * ) <- ( * ),
-  op dexp <- dexp,
-  op g <- g,
-  op (^) <- (^)
-proof *.
-realize kmulA. apply kmulA. qed.
-realize kid_l. apply kid_l. qed.
-realize kid_r. apply kid_r. qed.
-realize kinv_l. apply kinv_l. qed.
-realize kinv_r. apply kinv_r. qed.
-realize mulC. apply mulC. qed.
-realize mulA. apply mulA. qed.
-realize dexp_fu. apply dexp_fu. qed.
-realize dexp_uni. apply dexp_uni. qed.
-realize dexp_ll. apply dexp_ll. qed.
-realize double_exp_gen. apply double_exp_gen. qed.
-realize gen_surj. apply gen_surj. qed.
-realize gen_inj. apply gen_inj. qed.
+(* DDH Adversary *)
 
-(********************* Clone UCCore with Needed Base Type *********************)
+module type DDH_ADV = {
+  proc main(k1 k2 k3 : key) : bool
+}.
 
-type base = [
-    BaseExp of exp
-  | BaseKey of key
-  | BaseText of text
-].
+module DDH1 (Adv : DDH_ADV) = {
+  proc main() : bool = {
+    var b : bool; var q1, q2 : exp;
+    q1 <$ dexp; q2 <$ dexp;
+    b <@ Adv.main(g ^ q1, g ^ q2, g ^ (q1 * q2));
+    return b;
+  }
+}.
+  
+module DDH2 (Adv : DDH_ADV) = {
+  proc main() : bool = {
+    var b : bool; var q1, q2, q3 : exp;
+    q1 <$ dexp; q2 <$ dexp; q3 <$ dexp;
+    b <@ Adv.main(g ^ q1, g ^ q2 , g ^ q3);
+    return b;
+  }
+}.
 
-op dec_base_exp : base -> exp option = get_as_BaseExp.
+(* the *advantage* of a DDH adversary Adv is
 
-lemma enc_dec_base_exp (q : exp) :
-  dec_base_exp (BaseExp q) = Some q.
-proof. done. qed.
+   `|Pr[DDH1(Adv).main() @ &m : res] - Pr[DDH2(Adv).main() @ &m : res]|
 
-lemma dec_enc_base_exp (bse : base, q : exp) :
-  dec_base_exp bse = Some q =>
-  bse = BaseExp q.
-proof. by case bse. qed.
-
-op is_base_exp (bse : base) : bool =
-     dec_base_exp bse <> None.
-
-lemma is_base_exp (q : exp) :
-  is_base_exp (BaseExp q).
-proof. done. qed.
-
-op dec_base_key : base -> key option = get_as_BaseKey.
-
-lemma enc_dec_base_key (x : key) :
-  dec_base_key (BaseKey x) = Some x.
-proof. done. qed.
-
-lemma dec_enc_base_key (bse : base, x : key) :
-  dec_base_key bse = Some x =>
-  bse = BaseKey x.
-proof. by case bse. qed.
-
-op is_base_key (bse : base) : bool =
-     dec_base_key bse <> None.
-
-lemma is_base_key (x : key) :
-  is_base_key (BaseKey x).
-proof. done. qed.
-
-op dec_base_text : base -> text option = get_as_BaseText.
-
-lemma enc_dec_base_text (x : text) :
-  dec_base_text (BaseText x) = Some x.
-proof. done. qed.
-
-lemma dec_enc_base_text (bse : base, x : text) :
-  dec_base_text bse = Some x =>
-  bse = BaseText x.
-proof. by case bse. qed.
-
-op is_base_text (bse : base) : bool =
-     dec_base_text bse <> None.
-
-lemma is_base_text (x : text) :
-  is_base_text (BaseText x).
-proof. done. qed.
-
-clone export UCCore as UCCore' with
-  type base <- base
-proof *.
-(* nothing to realize *)
+   this will be negligible under certain assumptions about the group
+   key, the commutative semigroup exp, and the efficiency of Adv
+   (including that Adv doesn't compute the inverse of fun q => g ^
+   q *)

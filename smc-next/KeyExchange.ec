@@ -377,29 +377,42 @@ module KEReal : FUNC = {
     var r : msg option <- None;
     var not_done : bool <- true;
 
-    (* invariant: 
+    (* if the parties and sub-functionalities are well-behaved,
+       this loop invariant holds:
 
          not_done =>
          m.`1 = Dir /\ m.`2.`1 = self /\
          (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/ m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
          self ++ [1] <= m.`2.`1 \/
-         self ++ [2] <= m.`2.`1 *)
+         self ++ [2] <= m.`2.`1
+
+       we guard the calls to the parties and sub-functionalities so
+       that we can do some proofs treating them as black boxes *)
 
     while (not_done) {
       if (m.`2.`1 = self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
         r <@ party1(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
       }
       elif (m.`2.`1 = self /\ (m.`2.`2 = 2 \/ m.`2.`2 = 4)) {
         r <@ party2(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
       }
       elif (self ++ [1] <= m.`2.`1) {
         r <@ Fwd1.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
       }
       elif (self ++ [2] <= m.`2.`1) {
         r <@ Fwd2.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
       }
       else {
-        (* can't happen *)
+        (* can't happen, assuming parties and sub-functionalities
+           are well behaved *)
         r <- None;
       }
 
@@ -560,15 +573,23 @@ module KERealLoop = {
     while (not_done) {
       if (m.`2.`1 = KEReal.self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
         r <@ KEReal.party1(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
       }
       elif (m.`2.`1 = KEReal.self /\ (m.`2.`2 = 2 \/ m.`2.`2 = 4)) {
         r <@ KEReal.party2(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
       }
       elif (KEReal.self ++ [1] <= m.`2.`1) {
         r <@ Fwd1.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
       }
       elif (KEReal.self ++ [2] <= m.`2.`1) {
         r <@ Fwd2.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
       }
       else {
         (* can't happen *)
@@ -612,30 +633,35 @@ exlim (ke_real_p1_term_metric KEReal.st1{1}) => p1_met.
 call (ke_real_term_party1 p1_met).
 auto => &1 &2 |> _ _ ? ? [] // lt_p1_met.
 right; rewrite /ke_real_term_metric /#.
+sp 1 1; elim* => r_R r_L.
 if => //.
 sp 1 1.
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
-auto.
+auto; smt().
 sp 1 1.
 transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{1} r{2}.
+          (oget (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R))
+          not_done{1}
+          (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R).
 inline{2} (1) KERealLoop.loop; sp; sim.
 transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{2} r{2}.
+          (oget (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R))
+          not_done{2}
+          (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R).
 conseq
   (_ :
    ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
    ke_real_term_metric (glob KEReal){1} < n ==>
-   _) => [|> &1 &2 _ _ [] // |].
+   _) => [|> &1 &2 _ _ [] /# |].
 exlim (ke_real_term_metric (glob KEReal){1}) => met.
 case @[ambient] (0 <= met < n) => met_le_0_lt_n.
 have IH_met := IH met met_le_0_lt_n.
@@ -653,30 +679,35 @@ exlim (ke_real_p2_term_metric KEReal.st2{1}) => p2_met.
 call (ke_real_term_party2 p2_met).
 auto => &1 &2 |> _ _ _ ? ? [] // lt_p2_met.
 right; rewrite /ke_real_term_metric /#.
+sp 1 1; elim* => r_R r_L.
 if => //.
 sp 1 1.
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
-auto.
+auto; smt().
 sp 1 1.
 transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{1} r{2}.
+          (oget (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R))
+          not_done{1}
+          (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R).
 inline{2} (1) KERealLoop.loop; sp; sim.
 transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{2} r{2}.
+          (oget (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R))
+          not_done{2}
+          (opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r_R).
 conseq
   (_ :
    ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
    ke_real_term_metric (glob KEReal){1} < n ==>
-   _) => [|> &1 &2 _ _ [] // |].
+   _) => [|> &1 &2 _ _ [] /# |].
 exlim (ke_real_term_metric (glob KEReal){1}) => met.
 case @[ambient] (0 <= met < n) => met_le_0_lt_n.
 have IH_met := IH met met_le_0_lt_n.
@@ -694,30 +725,41 @@ exlim (Fwd1.term_metric (glob Fwd1.Forw){1}) => fwd1_met.
 call (Fwd1.term_invoke fwd1_met).
 auto => &1 &2 |> _ _ _ _ ? ? [] // lt_fwd1_met.
 right; rewrite /ke_real_term_metric /#.
+sp 1 1; elim* => r_R r_L.
 if => //.
 sp 1 1.
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
-auto.
+auto; smt().
 sp 1 1.
 transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{1} r{2}.
+          (oget
+           (opt_msg_guard
+            (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R))
+           not_done{1}
+          (opt_msg_guard
+           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R).
 inline{2} (1) KERealLoop.loop; sp; sim.
 transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{2} r{2}.
+          (oget
+           (opt_msg_guard
+            (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R))
+           not_done{2}
+          (opt_msg_guard
+           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R).
 conseq
   (_ :
    ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
    ke_real_term_metric (glob KEReal){1} < n ==>
-   _) => [|> &1 &2 _ _ [] // |].
+   _) => [|> &1 &2 _ _ [] /# |].
 exlim (ke_real_term_metric (glob KEReal){1}) => met.
 case @[ambient] (0 <= met < n) => met_le_0_lt_n.
 have IH_met := IH met met_le_0_lt_n.
@@ -735,30 +777,41 @@ exlim (Fwd2.term_metric (glob Fwd2.Forw){1}) => fwd2_met.
 call (Fwd2.term_invoke fwd2_met).
 auto => &1 &2 |> _ _ _ _ _ ? ? [] // lt_fwd2_met.
 right; rewrite /ke_real_term_metric /#.
+sp 1 1; elim* => r_R r_L.
 if => //.
 sp 1 1.
 rcondf{1} 1; first auto.
 rcondf{2} 1; first auto.
-auto.
+auto; smt().
 sp 1 1.
 transitivity*{1} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{1} r{2}.
+          (oget
+           (opt_msg_guard
+            (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R))
+           not_done{1}
+          (opt_msg_guard
+           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R).
 inline{2} (1) KERealLoop.loop; sp; sim.
 transitivity*{2} { r <@ KERealLoop.loop(m, r, not_done); } => //.
 progress.
 by exists KEReal.adv{2} KEReal.self{2} KEReal.st1{2} KEReal.st2{2}
           Fwd1.Forw.adv{2} Fwd1.Forw.self{2} Fwd1.Forw.st{2}
           Fwd2.Forw.adv{2} Fwd2.Forw.self{2} Fwd2.Forw.st{2}
-          (oget r{2}) not_done{2} r{2}.
+          (oget
+           (opt_msg_guard
+            (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R))
+           not_done{2}
+          (opt_msg_guard
+           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi) r_R).
 conseq
   (_ :
    ={m, r, glob KEReal} /\ not_done{1} /\ not_done{2} /\
    ke_real_term_metric (glob KEReal){1} < n ==>
-   _) => [|> &1 &2 _ _ [] // |].
+   _) => [|> &1 &2 _ _ [] /# |].
 exlim (ke_real_term_metric (glob KEReal){1}) => met.
 case @[ambient] (0 <= met < n) => met_le_0_lt_n.
 have IH_met := IH met met_le_0_lt_n.
