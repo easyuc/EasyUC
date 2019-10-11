@@ -49,7 +49,7 @@ proof.
 smt().
 qed.
 
-theory EPDP.
+abstract theory EPDP.
 
 type orig, enc.
 

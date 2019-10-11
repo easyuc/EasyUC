@@ -4,260 +4,332 @@
 
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
-require import AllCore List FSet SmtMap Distr ListAux ListPO.
-require import UCCoreDiffieHellman.
+require import AllCore List FSet SmtMap Distr ListAux ListPO
+               Encoding DiffieHellman UCCore.
 require Forward RedundantHashing.
 
 (* theory parameters *)
 
-(* port index of adversary that forwarding functionalities communicate
-   with *)
+(* port indices of adversary that the two forwarding functionalities
+   use *)
 
-op adv_fw_pi : int.
+op adv_fw1_pi : int.
+op adv_fw2_pi : int.
 
 (* port index of adversary for key exchange simulator *)
 
 op ke_sim_adv_pi : int.
 
-axiom ke_pi_uniq : uniq [ke_sim_adv_pi; adv_fw_pi; 0].
+axiom ke_pi_uniq : uniq [ke_sim_adv_pi; adv_fw1_pi; adv_fw2_pi; 0].
+
+clone EPDP as EPDP_Univ_Unit with
+  type orig <- unit, type enc <- univ.
+
+clone EPDP as EPDP_Univ_Key with
+  type orig <- key, type enc <- univ.
+
+clone EPDP as EPDP_Univ_Port with
+  type orig <- port, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortKey with
+  type orig <- port * key, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPort with
+  type orig <- port * key, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortUniv with
+  type orig <- port * univ, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPortUniv with
+  type orig <- port * port * univ, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPortKey with
+  type orig <- port * port * key, type enc <- univ.
 
 (* end theory parameters *)
 
 (* request sent to port index 1 of key exchange functionality: pt1
    wants to exchange a key with pt2 *)
 
-op ke_req1 (func : addr, pt1 pt2 : port) : msg =
-     (Dir, (func, 1), pt1, UnivPort pt2).
+type ke_req1 =
+  {ke_req1_func : addr;   (* address of functionality *)
+   ke_req1_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_req1_pt2  : port}.  (* recipient of exchanged key *)
 
-op dec_ke_req1 (m : msg) : (addr * port * port) option =
+op ke_req1 (x : ke_req1) : msg =
+     (Dir, (x.`ke_req1_func, 1), x.`ke_req1_pt1,
+      EPDP_Univ_Port.enc x.`ke_req1_pt2).
+
+op dec_ke_req1 (m : msg) : ke_req1 option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt1.`2 <> 1 \/ ! is_univ_port v) ?
+     in (mod = Adv \/ pt1.`2 <> 1 \/ ! EPDP_Univ_Port.valid v) ?
         None :
-        Some (pt1.`1, pt2, oget (dec_univ_port v)).
+        let pt2' = oget (EPDP_Univ_Port.dec v)
+        in Some {|ke_req1_func = pt1.`1; ke_req1_pt1 = pt2;
+                  ke_req1_pt2 = pt2'|}.
 
-lemma enc_dec_ke_req1 (func : addr, pt1 pt2 : port) :
-  dec_ke_req1 (ke_req1 func pt1 pt2) = Some (func, pt1, pt2).
+lemma epdp_ke_req1 : epdp ke_req1 dec_ke_req1.
 proof.
-by rewrite /dec_ke_req1 /ke_req1 /= (is_univ_port pt2) /= enc_dec_univ_port.
+apply epdp_intro.
+move => m.
+rewrite /ke_req1 /dec_ke_req1 /= EPDP_Univ_Port.valid_enc
+        /= EPDP_Univ_Port.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /ke_req1 /dec_ke_req1 /=.
+case (mod = Adv \/ pt1.`2 <> 1 \/ ! (EPDP_Univ_Port.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 val_u.
+have [] p : exists (p : port), EPDP_Univ_Port.dec u = Some p.
+  exists (oget (EPDP_Univ_Port.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_Port.dec_enc <-.
+rewrite EPDP_Univ_Port.enc_dec oget_some /#.
 qed.
 
-lemma dec_enc_ke_req1 (m : msg, func : addr, pt1 pt2 : port) :
-  dec_ke_req1 m = Some (func, pt1, pt2) =>
-  ke_req1 func pt1 pt2 = m.
+lemma dest_valid_ke_req1 (m : msg) :
+  dec2valid dec_ke_req1 m =>
+  m.`2.`1 = (oget (dec_ke_req1 m)).`ke_req1_func /\ m.`2.`2 = 1.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_ke_req1 /ke_req1 /=.
-case (mod = Adv \/ pt1'.`2 <> 1 \/ ! is_univ_port u') => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt1'_2 iupt_u'.
-have [] pt2'' : exists (pt2'' : port), dec_univ_port u' = Some pt2''.
-  exists (oget (dec_univ_port u')); by rewrite -some_oget.
-move => /dec_enc_univ_port -> /=.
-rewrite enc_dec_univ_port oget_some /= /#.
+move => val_m.
+have [] x : exists (x : ke_req1), dec_ke_req1 m = Some x.
+  exists (oget (dec_ke_req1 m)); by rewrite -some_oget.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_req1) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_req1).
 qed.
 
-op is_ke_req1 (m : msg) : bool =
-     dec_ke_req1 m <> None.
-
-lemma is_ke_req1 (func : addr, pt1 pt2 : port) :
-  is_ke_req1 (ke_req1 func pt1 pt2).
-proof. done. qed.
+lemma source_valid_ke_req1 (m : msg) :
+  dec2valid dec_ke_req1 m =>
+  m.`3 = (oget (dec_ke_req1 m)).`ke_req1_pt1.
+proof.
+move => val_m.
+have [] x : exists (x : ke_req1), dec_ke_req1 m = Some x.
+  exists (oget (dec_ke_req1 m)); by rewrite -some_oget.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_req1) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_req1).
+qed.
 
 (* response sent from port index 2 of key exchange functionality to
    pt2, completing first phase of key exchange initiated by pt1 *)
 
-op ke_rsp1 (func : addr, pt1 pt2 : port, x : key) : msg =
-     (Dir, pt2, (func, 2), UnivPair (UnivPort pt1) (UnivBase (BaseKey x))).
+type ke_rsp1 =
+  {ke_rsp1_func : addr;   (* address of functionality *)
+   ke_rsp1_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_rsp1_pt2  : port;   (* port to exchange key with *)
+   ke_rsp1_key  : key}.   (* exchanged key *)
 
-op dec_ke_rsp1 (m : msg) : (addr * port * port * key) option =
+op ke_rsp1 (x : ke_rsp1) : msg =
+     (Dir, x.`ke_rsp1_pt2, (x.`ke_rsp1_func, 2),
+      EPDP_Univ_PortKey.enc (x.`ke_rsp1_pt1, x.`ke_rsp1_key)).
+
+op dec_ke_rsp1 (m : msg) : ke_rsp1 option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt2.`2 <> 2 \/ ! is_univ_pair v) ?
+     in (mod = Adv \/ pt2.`2 <> 2 \/ ! EPDP_Univ_PortKey.valid v) ?
         None :
-        let (v1, v2) = oget (dec_univ_pair v)
-        in (! is_univ_port v1 \/ ! is_univ_base v2) ?
-           None :
-           let b = oget (dec_univ_base v2)
-           in (! is_base_key b) ?
-              None :
-              Some (pt2.`1, oget (dec_univ_port v1), pt1,
-                    oget (dec_base_key b)).
+        let (pt1', k) = oget (EPDP_Univ_PortKey.dec v)
+        in Some {|ke_rsp1_func = pt2.`1; ke_rsp1_pt1 = pt1';
+                  ke_rsp1_pt2 = pt1; ke_rsp1_key = k|}.
 
-lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
-  dec_ke_rsp1 (ke_rsp1 func pt1 pt2 x) = Some (func, pt1, pt2, x).
+lemma epdp_ke_rsp1 : epdp ke_rsp1 dec_ke_rsp1.
 proof.
-by rewrite /ke_rsp1 /dec_ke_rsp1 /=
-           (is_univ_pair (UnivPort pt1) (UnivBase (BaseKey x))) /=
-           enc_dec_univ_pair oget_some /= (is_univ_port pt1) /=
-           enc_dec_univ_base /= oget_some (is_base_key x) /=
-           enc_dec_univ_port enc_dec_base_key.
+apply epdp_intro.
+move => m.
+rewrite /ke_rsp1 /dec_ke_rsp1 /= EPDP_Univ_PortKey.valid_enc
+        /= EPDP_Univ_PortKey.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /ke_rsp1 /dec_ke_rsp1 /=.
+case (mod = Adv \/ pt2.`2 <> 2 \/ ! (EPDP_Univ_PortKey.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 val_u.
+have [] p : exists (p : port * key), EPDP_Univ_PortKey.dec u = Some p.
+  exists (oget (EPDP_Univ_PortKey.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_PortKey.dec_enc <-.
+rewrite EPDP_Univ_PortKey.enc_dec oget_some /#.
 qed.
 
-lemma dec_enc_ke_rsp1 (m : msg, func : addr, pt1 pt2 : port, k : key) :
-  dec_ke_rsp1 m = Some (func, pt1, pt2, k) =>
-  ke_rsp1 func pt1 pt2 k = m.
+lemma dest_valid_ke_rsp1 (m : msg) :
+  dec2valid dec_ke_rsp1 m =>
+  m.`2 = (oget (dec_ke_rsp1 m)).`ke_rsp1_pt2.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_ke_rsp1 /ke_rsp1 /=.
-case (mod = Adv \/ pt2'.`2 <> 2 \/ ! is_univ_pair u') => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt2'_2 iup_u'.
-have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
-  exists (oget (dec_univ_pair u')); by rewrite -some_oget.
-case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite enc_dec_univ_pair oget_some /=.
-case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
-rewrite !negb_or /=.
-move => [#] iupt_v1 iub_v2.
-case (! is_base_key (oget (dec_univ_base v2))) => //=.
-have [] pt' : exists (pt' : port), dec_univ_port v1 = Some pt'.
-  exists (oget (dec_univ_port v1)); by rewrite -some_oget.
-move => /dec_enc_univ_port -> /=.
-have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
-  exists (oget (dec_univ_base v2)); by rewrite -some_oget.
-move => /dec_enc_univ_base -> /=.
-rewrite enc_dec_univ_base oget_some => ibk_bse.
-have [] k' : exists (k' : key), dec_base_key bse = Some k'.
-  exists (oget (dec_base_key bse)); by rewrite -some_oget.
-move => /dec_enc_base_key -> /=.
-rewrite enc_dec_univ_port enc_dec_base_key oget_some /#.
-qed.
-
-op is_ke_rsp1 (m : msg) : bool =
-     dec_ke_rsp1 m <> None.
-
-lemma is_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
-  is_ke_rsp1 (ke_rsp1 func pt1 pt2 x).
-proof.
-by rewrite /is_ke_rsp1 enc_dec_ke_rsp1.
-qed.
-
-lemma dest_good_ke_rsp1 (m : msg) :
-  is_ke_rsp1 m => (oget (dec_ke_rsp1 m)).`3 = m.`2.
-proof.
-move => is_ke_rsp1_m.
-have [] x : exists (x : addr * port * port * key),
-  dec_ke_rsp1 m = Some x.
+move => val_m.
+have [] x : exists (x : ke_rsp1), dec_ke_rsp1 m = Some x.
   exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 /dec_enc_ke_rsp1 <-.
-by rewrite enc_dec_ke_rsp1 oget_some /ke_rsp1.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_rsp1) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_rsp1).
+qed.
+
+lemma source_valid_ke_rsp1 (m : msg) :
+  dec2valid dec_ke_rsp1 m =>
+  m.`3.`1 = (oget (dec_ke_rsp1 m)).`ke_rsp1_func /\ m.`3.`2 = 2.
+proof.
+move => val_m.
+have [] x : exists (x : ke_rsp1), dec_ke_rsp1 m = Some x.
+  exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_rsp1) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_rsp1).
 qed.
 
 (* request sent to port index 2 of key exchange functionality by pt2 to
    initiate phase 2 of key exchange with pt1 *)
 
-op ke_req2 (func : addr, pt2 : port) : msg =
-     (Dir, (func, 2), pt2, UnivUnit).
+type ke_req2 =
+  {ke_req2_func : addr;  (* address of functionality *)
+   ke_req2_pt2  : port   (* port to exchange key with *)
+   (* data: (none) *)
+  }.
 
-op dec_ke_req2 (m : msg) : (addr * port) option =
+op ke_req2 (x : ke_req2) : msg =
+     (Dir, (x.`ke_req2_func, 2), x.`ke_req2_pt2, EPDP_Univ_Unit.enc ()).
+
+op dec_ke_req2 (m : msg) : ke_req2 option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt1.`2 <> 2 \/ v <> UnivUnit) ?
+     in (mod = Adv \/ pt1.`2 <> 2 \/ ! EPDP_Univ_Unit.valid v) ?
         None :
-        Some (pt1.`1, pt2).
+        Some {|ke_req2_func = pt1.`1; ke_req2_pt2 = pt2|}.
 
-lemma enc_dec_ke_req2 (func : addr, pt2 : port) :
-  dec_ke_req2 (ke_req2 func pt2) = Some (func, pt2).
-proof. done. qed.
-
-lemma dec_enc_ke_req2 (m : msg, func : addr, pt2 : port) :
-  dec_ke_req2 m = Some (func, pt2) =>
-  ke_req2 func pt2 = m.
+lemma epdp_ke_req2 : epdp ke_req2 dec_ke_req2.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_ke_req2 /ke_req2 /=.
-case (mod = Adv \/ pt1'.`2 <> 2 \/ u' <> UnivUnit) => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt1'_2 -> /#.
+apply epdp_intro.
+move => m.
+rewrite /ke_req2 /dec_ke_req2 /= EPDP_Univ_Unit.valid_enc /= /#.
+move => [mod pt1 pt2 u] v.
+rewrite /ke_req2 /dec_ke_req2 /=.
+case (mod = Adv \/ pt1.`2 <> 2 \/ ! (EPDP_Univ_Unit.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 val_u.
+have [] p : exists (p : unit), EPDP_Univ_Unit.dec u = Some p.
+  exists (oget (EPDP_Univ_Unit.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_Unit.dec_enc => <- <-.
+split; first smt().
+split; first smt().
+split; first smt().
+congr.
 qed.
 
-op is_ke_req2 (m : msg) : bool =
-     dec_ke_req2 m <> None.
+lemma dest_valid_ke_req2 (m : msg) :
+  dec2valid dec_ke_req2 m =>
+  m.`2.`1 = (oget (dec_ke_req2 m)).`ke_req2_func /\
+  m.`2.`2 = 2.
+proof.
+move => val_m.
+have [] x : exists (x : ke_req2), dec_ke_req2 m = Some x.
+  exists (oget (dec_ke_req2 m)); by rewrite -some_oget.
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_req2) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_req2).
+qed.
 
-lemma is_ke_req2 (func : addr, pt2 : port) :
-  is_ke_req2 (ke_req2 func pt2).
-proof. done. qed.
+lemma source_valid_ke_req2 (m : msg) :
+  dec2valid dec_ke_req2 m =>
+  m.`3 = (oget (dec_ke_req2 m)).`ke_req2_pt2.
+proof.
+move => val_m.
+have [] x : exists (x : ke_req2), dec_ke_req2 m = Some x.
+  exists (oget (dec_ke_req2 m)); by rewrite -some_oget.
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_req2) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_req2).
+qed.
 
 (* response sent from port index 1 of key exchange functionality to
    pt1, completing second phase of key exchange with pt2 initiated by
    itself *)
 
-op ke_rsp2 (func : addr, pt1 : port, x : key) : msg =
-     (Dir, pt1, (func, 1), UnivBase (BaseKey x)).
+type ke_rsp2 =
+  {ke_rsp2_func : addr;   (* address of functionality *)
+   ke_rsp2_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_rsp2_key  : key}.   (* exchanged key *)
 
-op dec_ke_rsp2 (m : msg) : (addr * port * key) option =
+op ke_rsp2 (x : ke_rsp2) : msg =
+     (Dir, x.`ke_rsp2_pt1, (x.`ke_rsp2_func, 1),
+      EPDP_Univ_Key.enc x.`ke_rsp2_key).
+
+op dec_ke_rsp2 (m : msg) : ke_rsp2 option =
      let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt2.`2 <> 1 \/ ! is_univ_base v) ?
+     in (mod = Adv \/ pt2.`2 <> 1 \/ ! EPDP_Univ_Key.valid v) ?
         None :
-        let bse = oget (dec_univ_base v)
-        in (! is_base_key bse) ?
-           None :
-           Some (pt2.`1, pt1, oget (dec_base_key bse)).
+        let k = oget (EPDP_Univ_Key.dec v)
+        in Some {|ke_rsp2_func = pt2.`1; ke_rsp2_pt1 = pt1;
+                  ke_rsp2_key = k|}.
 
-lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, k : key) :
-  dec_ke_rsp2 (ke_rsp2 func pt1 k) = Some (func, pt1, k).
+lemma epdp_ke_rsp2 : epdp ke_rsp2 dec_ke_rsp2.
 proof.
-by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey k)) /=
-           enc_dec_univ_base oget_some (is_base_key k) /=
-           enc_dec_base_key.
+apply epdp_intro.
+move => m.
+rewrite /ke_rsp2 /dec_ke_rsp2 /= EPDP_Univ_Key.valid_enc
+        /= EPDP_Univ_Key.enc_dec oget_some /#.
+move => [mod pt1 pt2 u] v.
+rewrite /ke_rsp2 /dec_ke_rsp2 /=.
+case (mod = Adv \/ pt2.`2 <> 1 \/ ! (EPDP_Univ_Key.valid u)) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 val_u.
+have [] x : exists (x : key), EPDP_Univ_Key.dec u = Some x.
+  exists (oget (EPDP_Univ_Key.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_Key.dec_enc <-.
+rewrite EPDP_Univ_Key.enc_dec oget_some /#.
 qed.
 
-lemma dec_enc_ke_rsp2 (m : msg, func : addr, pt1 : port, k : key) :
-  dec_ke_rsp2 m = Some (func, pt1, k) =>
-  ke_rsp2 func pt1 k = m.
+lemma dest_valid_ke_rsp2 (m : msg) :
+  dec2valid dec_ke_rsp2 m =>
+  m.`2 = (oget (dec_ke_rsp2 m)).`ke_rsp2_pt1.
 proof.
-case m => mod pt1' pt2' u'.
-rewrite /dec_ke_rsp2 /ke_rsp2 /=.
-case (mod = Adv \/ pt2'.`2 <> 1 \/ ! is_univ_base u') => //.
-rewrite !negb_or /= not_adv.
-move => [#] -> pt2'_2 iup_u'.
-have [] bse : exists (bse : base), dec_univ_base u' = Some bse.
-  exists (oget (dec_univ_base u')); by rewrite -some_oget.
-move => /dec_enc_univ_base ->.
-case (! is_base_key (oget (dec_univ_base (UnivBase bse)))) => //=.
-rewrite enc_dec_univ_base oget_some.
-move => ibk_bse.
-have [] k' : exists (k' : key), dec_base_key bse = Some k'.
-  exists (oget (dec_base_key bse)); by rewrite -some_oget.
-move => /dec_enc_base_key ->.
-rewrite enc_dec_base_key /#.
-qed.
-
-op is_ke_rsp2 (m : msg) : bool =
-     dec_ke_rsp2 m <> None.
-
-lemma is_ke_rsp2 (func : addr, pt1 : port, x : key) :
-  is_ke_rsp2 (ke_rsp2 func pt1 x).
-proof.
-by rewrite /is_ke_rsp2 enc_dec_ke_rsp2.
-qed.
-
-lemma dest_good_ke_rsp2 (m : msg) :
-  is_ke_rsp2 m => (oget (dec_ke_rsp2 m)).`2 = m.`2.
-proof.
-move => is_ke_rsp2_m.
-have [] x : exists (x : addr * port * key), dec_ke_rsp2 m = Some x.
+move => val_m.
+have [] x : exists (x : ke_rsp2), dec_ke_rsp2 m = Some x.
   exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
-case x => x1 x2 x3 /dec_enc_ke_rsp2 <-.
-by rewrite enc_dec_ke_rsp2 oget_some /ke_rsp2.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_rsp2) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_rsp2).
+qed.
+
+lemma source_valid_ke_rsp2 (m : msg) :
+  dec2valid dec_ke_rsp2 m =>
+  m.`3.`1 = (oget (dec_ke_rsp2 m)).`ke_rsp2_func /\ m.`3.`2 = 1.
+proof.
+move => val_m.
+have [] x : exists (x : ke_rsp2), dec_ke_rsp2 m = Some x.
+  exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ _ epdp_ke_rsp2) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_ke_rsp2).
 qed.
 
 (* Real Functionality *)
 
-clone Forward as Fwd1
-  with op adv_pi <- adv_fw_pi
+clone Forward as Fwd1 with
+  op adv_pi                     <- adv_fw1_pi,
+  op EPDP_Univ_Unit.enc         <- Top.EPDP_Univ_Unit.enc,
+  op EPDP_Univ_Unit.dec         <- Top.EPDP_Univ_Unit.dec,
+  op EPDP_Univ_PortUniv.enc     <- Top.EPDP_Univ_PortUniv.enc,
+  op EPDP_Univ_PortUniv.dec     <- Top.EPDP_Univ_PortUniv.dec,
+  op EPDP_Univ_PortPortUniv.enc <- Top.EPDP_Univ_PortPortUniv.enc,
+  op EPDP_Univ_PortPortUniv.dec <- Top.EPDP_Univ_PortPortUniv.dec
 proof *.
-realize fwd_pi_uniq. by have := ke_pi_uniq. qed.
+realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
+realize EPDP_Univ_Unit.epdp. apply Top.EPDP_Univ_Unit.epdp. qed.
+realize EPDP_Univ_PortUniv.epdp. apply Top.EPDP_Univ_PortUniv.epdp. qed.
+realize EPDP_Univ_PortPortUniv.epdp. apply Top.EPDP_Univ_PortPortUniv.epdp. qed.
 
-clone Forward as Fwd2
-  with op adv_pi <- adv_fw_pi
+clone Forward as Fwd2 with
+  op adv_pi                     <- adv_fw2_pi,
+  op EPDP_Univ_Unit.enc         <- Top.EPDP_Univ_Unit.enc,
+  op EPDP_Univ_Unit.dec         <- Top.EPDP_Univ_Unit.dec,
+  op EPDP_Univ_PortUniv.enc     <- Top.EPDP_Univ_PortUniv.enc,
+  op EPDP_Univ_PortUniv.dec     <- Top.EPDP_Univ_PortUniv.dec,
+  op EPDP_Univ_PortPortUniv.enc <- Top.EPDP_Univ_PortPortUniv.enc,
+  op EPDP_Univ_PortPortUniv.dec <- Top.EPDP_Univ_PortPortUniv.dec
 proof *.
-realize fwd_pi_uniq. by have := ke_pi_uniq. qed.
+realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
+realize EPDP_Univ_Unit.epdp. apply Top.EPDP_Univ_Unit.epdp. qed.
+realize EPDP_Univ_PortUniv.epdp. apply Top.EPDP_Univ_PortUniv.epdp. qed.
+realize EPDP_Univ_PortPortUniv.epdp. apply Top.EPDP_Univ_PortPortUniv.epdp. qed.
 
 (* state for Party 1 *)
 
 type ke_real_p1_state = [
     KERealP1StateWaitReq1
   | KERealP1StateWaitFwd2 of port & port & exp
-  | KERealP1StateFinal    of port & port & exp
+  | KERealP1StateFinal
 ].
 
 (* state for Party 2 *)
@@ -265,7 +337,7 @@ type ke_real_p1_state = [
 type ke_real_p2_state = [
     KERealP2StateWaitFwd1
   | KERealP2StateWaitReq2 of port & port & exp
-  | KERealP2StateFinal    of port & port & exp
+  | KERealP2StateFinal
 ].
 
 module KEReal : FUNC = {
@@ -285,25 +357,25 @@ module KEReal : FUNC = {
   }
 
   proc party1(m : msg) : msg option = {
-    var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u : univ; var k2 : key; var q1 : exp;
+    var q1 : exp; var k2 : key;
     var r : msg option <- None;
     match st1 with
       KERealP1StateWaitReq1 => {
         match dec_ke_req1 m with
           Some x => {
             (* destination of m is (self, 1) *)
-            (addr, pt1, pt2) <- x;
-            if (! self <= pt1.`1 /\ ! self <= pt2.`1 /\
-                ! adv <= pt1.`1 /\ ! adv <= pt2.`1) {
+            if (! self <= x.`ke_req1_pt2.`1 /\ ! adv <= x.`ke_req1_pt2.`1) {
               q1 <$ dexp;
               r <-
                 Some
                 (Fwd1.fw_req
-                 (self ++ [1]) (self, 3) (self, 4)
-                  (univ_triple (UnivPort pt1) (UnivPort pt2)
-                   (UnivBase (BaseKey (g ^ q1)))));
-              st1 <- KERealP1StateWaitFwd2 pt1 pt2 q1;
+                 {|Fwd1.fw_req_func = (self ++ [1]);
+                   Fwd1.fw_req_pt1 = (self, 3);
+                   Fwd1.fw_req_pt2 = (self, 4);
+                   Fwd1.fw_req_u =
+                     EPDP_Univ_PortPortKey.enc
+                     (x.`ke_req1_pt1, x.`ke_req1_pt2, (g ^ q1))|});
+              st1 <- KERealP1StateWaitFwd2 x.`ke_req1_pt1 x.`ke_req1_pt2 q1;
             }
           }
         | None => { }
@@ -312,42 +384,44 @@ module KEReal : FUNC = {
     | KERealP1StateWaitFwd2 pt1 pt2 q1 => {
         match Fwd2.dec_fw_rsp m with
           Some x => {
-            (addr, pt1', pt2', u) <- x;
-              if (pt2' = (self, 3)) {
+              if (x.`Fwd2.fw_rsp_pt2 = (self, 3)) {
                 (* destination of m is (self, 3) *)
-                k2 <- oget (dec_base_key (oget (dec_univ_base u)));
-                r <- Some (ke_rsp2 self pt1 (k2 ^ q1));
-                st1 <- KERealP1StateFinal pt1 pt2 q1;
+                k2 <- oget (EPDP_Univ_Key.dec x.`Fwd2.fw_rsp_u);
+                r <-
+                  Some
+                  (ke_rsp2
+                   ({|ke_rsp2_func = self; ke_rsp2_pt1 = pt1;
+                      ke_rsp2_key = (k2 ^ q1)|}));
+                st1 <- KERealP1StateFinal;
               }
             }
         | None => { }
         end;
       }
-    | KERealP1StateFinal _ _ _ => { }
+    | KERealP1StateFinal => { }
     end;
     return r;
   }
 
   proc party2(m : msg) : msg option = {
-    var pt1, pt2, pt1', pt2' : port; var addr : addr;
-    var u, v1, v2, v3 : univ; var k1 : key; var q2 : exp;
+    var pt1, pt2 : port; var q2 : exp; var k1 : key;
     var r : msg option <- None;
     match st2 with
       KERealP2StateWaitFwd1 => {
         match Fwd1.dec_fw_rsp m with
           Some x => {
-            (addr, pt1', pt2', u) <- x;
-              if (pt2' = (self, 4)) {
+              if (x.`Fwd1.fw_rsp_pt2 = (self, 4)) {
                 (* destination of m is (self, 4) *)
-                (v1, v2, v3) <- oget (dec_univ_triple u);
-                pt1 <- oget (dec_univ_port v1);
-                pt2 <- oget (dec_univ_port v2);
-                k1 <- oget (dec_base_key (oget (dec_univ_base v3)));
+                (pt1, pt2, k1) <-
+                  oget (EPDP_Univ_PortPortKey.dec x.`Fwd1.fw_rsp_u);
                 q2 <$ dexp;
-                r <- Some (ke_rsp1 self pt1 pt2 (k1 ^ q2));
-                st2 <- KERealP2StateWaitReq2 pt1 pt2 q2;
+                r <-
+                  Some
+                  (ke_rsp1
+                   ({|ke_rsp1_func = self; ke_rsp1_pt1 = pt1;
+                      ke_rsp1_pt2 = pt2; ke_rsp1_key = (k1 ^ q2)|}));
               }
-            }
+          }
         | None => { }
         end;
       }
@@ -355,20 +429,21 @@ module KEReal : FUNC = {
         match dec_ke_req2 m with
           Some x => {
             (* destination of m is (self, 2) *)
-            (addr, pt2') <- x;
-            if (pt2' = pt2) {
+            if (x.`ke_req2_pt2 = pt2) {
               r <-
                 Some
                 (Fwd2.fw_req
-                 (self ++ [2]) (self, 4) (self, 3)
-                 (UnivBase (BaseKey (g ^ q2))));
-              st2 <- KERealP2StateFinal pt1 pt2 q2;
+                 {|Fwd2.fw_req_func = (self ++ [2]);
+                   Fwd2.fw_req_pt1  = (self, 4);
+                   Fwd2.fw_req_pt2  = (self, 3);
+                   Fwd2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
+              st2 <- KERealP2StateFinal;
             }
           }
         | None => { }
         end;
       }
-    | KERealP2StateFinal _ _ _ => { }
+    | KERealP2StateFinal => { }
     end;
     return r;
   }
@@ -402,13 +477,13 @@ module KEReal : FUNC = {
         r <@ Fwd1.Forw.invoke(m);
         r <-
           opt_msg_guard
-          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw1_pi) r;
       }
       elif (self ++ [2] <= m.`2.`1) {
         r <@ Fwd2.Forw.invoke(m);
         r <-
           opt_msg_guard
-          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw_pi ) r;
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw1_pi) r;
       }
       else {
         (* can't happen, assuming parties and sub-functionalities
@@ -428,6 +503,7 @@ module KEReal : FUNC = {
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
+    (* we can assume m.`3.`1 is not >= self and not >= adv *)
     if ((m.`1 = Dir /\ m.`2.`1 = self /\
          (m.`2.`2 = 1 \/ m.`2.`2 = 2)) \/
         (m.`1 = Adv /\
@@ -458,14 +534,14 @@ op ke_real_p1_term_metric (st : ke_real_p1_state) : int =
      match st with
        KERealP1StateWaitReq1       => 2
      | KERealP1StateWaitFwd2 _ _ _ => 1
-     | KERealP1StateFinal _ _ _    => 0
+     | KERealP1StateFinal          => 0
      end.
 
 op ke_real_p2_term_metric (st : ke_real_p2_state) : int =
      match st with
        KERealP2StateWaitFwd1       => 2
      | KERealP2StateWaitReq2 _ _ _ => 1
-     | KERealP2StateFinal _ _ _    => 0
+     | KERealP2StateFinal          => 0
      end.
 
 (* FIXME when better glob type

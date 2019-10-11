@@ -79,8 +79,8 @@ split.
 move : ys; elim xs.
 case; done.
 move => x xs IH [] // y ys.
-case (x = y) => -> //= eq.
-by rewrite (IH ys).
+case (x = y) => [-> /= | /= -> //].
+apply IH.
 move => ->; elim ys; done.
 qed.
 
@@ -92,7 +92,7 @@ move : ys; elim xs.
 case => // x xs _.
 apply (LTS [] (x :: xs) (x :: xs)).
 move => x xs IH [] // y ys.
-case (x = y) => -> //= lt.
+case (x = y) => [-> /= lt | /= -> //].
 have [] us us_ne_nil <- := (IH ys lt).
 by apply (LTS (y :: xs) (y :: (xs ++ us)) us).
 case => us us_ne_nil <-.
@@ -108,7 +108,7 @@ move : xs; elim ys.
 case => // y ys _.
 apply (LTS [] (y :: ys) (y :: ys)).
 move => y ys IH [] // x xs.
-case (x = y) => -> //= gt.
+case (x = y) => [-> /= gt | /= -> //].
 have [] us us_ne_nil <- := (IH xs gt).
 by apply (LTS (y :: ys) (y :: (ys ++ us)) us).
 case => us us_ne_nil <- //.
