@@ -18,15 +18,6 @@ op adv_pi : int.
 
 axiom fwd_pi_uniq : uniq [adv_pi; 0].
 
-clone EPDP as EPDP_Univ_Unit with
-  type orig <- unit, type enc <- univ.
-
-clone EPDP as EPDP_Univ_PortUniv with
-  type orig <- port * univ, type enc <- univ.
-
-clone EPDP as EPDP_Univ_PortPortUniv with
-  type orig <- port * port * univ, type enc <- univ.
-
 (* end theory parameters *)
 
 (* request sent to port index 1 of forwarding functionality: pt1 is

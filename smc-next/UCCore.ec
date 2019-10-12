@@ -4,7 +4,7 @@ prover quorum=2 ["Alt-Ergo" "Z3"].
 
 (* Core UC Definitions and Lemmas *)
 
-require import AllCore List FSet ListPO Encoding.
+require import AllCore List FSet ListPO Encoding Union.
 
 (* real protocols and ideal functionalities (collectively,
    "functionalities") have hierarchical addresses
@@ -55,16 +55,42 @@ proof. by case mod. qed.
 
 (* begin theory parameters *)
 
-type univ.  (* universe of values *)
+type univ.  (* universe of values - we can implement this at top level *)
+
+(* encoding/decoding unions of universe values *)
+
+clone EPDP as EPDP_Univ_Union2Univ with
+  type orig <- (univ, univ) union2,
+  type enc  <- univ.
+
+clone EPDP as EPDP_Univ_Union3Univ with
+  type orig <- (univ, univ, univ) union3,
+  type enc  <- univ.
+
+clone EPDP as EPDP_Univ_Union4Univ with
+  type orig <- (univ, univ, univ, univ) union4,
+  type enc  <- univ.
 
 (* universe encoding/decoding operators - more can be added by
    other theories *)
 
-(* univ encoding: port * int * univ *)
+clone EPDP as EPDP_Univ_Unit with  (* unit *)
+  type orig <- unit, type enc <- univ.
 
-clone EPDP as EPDP_Univ_PortIntUniv with
-  type orig <- port * int * univ,
-  type enc  <- univ.
+clone EPDP as EPDP_Univ_Port with  (* port *)
+  type orig <- port, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPort with  (* port * port *)
+  type orig <- port * port, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortUniv with  (* port * univ *)
+  type orig <- port * univ, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortPortUniv with  (* port * port * univ *)
+  type orig <- port * port * univ, type enc <- univ.
+
+clone EPDP as EPDP_Univ_PortIntUniv with  (* port * int * univ *)
+  type orig <- port * int * univ, type enc  <- univ.
 
 (* end theory parameters *)
 
