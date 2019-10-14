@@ -10073,13 +10073,15 @@ op pad_iso_r (t : text, q : exp) : exp = log (kinv (inj t) ^^ (g ^ q)).
 lemma pad_iso_lr (t : text) : cancel (pad_iso_l t) (pad_iso_r t).
 proof.
 rewrite /cancel /pad_iso_l /pad_iso_r => q.
-by rewrite -2!/gen log_gen -kmulA kinv_l kid_l gen_log.
+by rewrite -/(gen q) -/(gen (log (inj t ^^ (g ^ q))))
+   log_gen -kmulA kinv_l kid_l gen_log.
 qed.
 
 lemma pad_iso_rl (t : text) : cancel (pad_iso_r t) (pad_iso_l t).
 proof.
 rewrite /cancel /pad_iso_l /pad_iso_r => q.
-by rewrite -2!/gen log_gen -kmulA kinv_r kid_l gen_log.
+by  rewrite -/(gen q) -/(gen (log (kinv (inj t) ^^ gen q)))
+            log_gen -kmulA kinv_r kid_l gen_log.
 qed.
 
 section.
@@ -10750,7 +10752,9 @@ auto =>
   [#] _ /not_dir -> _ _ _.
 rewrite !oget_some /= !oget_some /=.
 split => [| _ //].
-do 4!congr; by rewrite /pad_iso_l -{2}/gen log_gen.
+do 4!congr;
+  by rewrite /pad_iso_l -/(gen q') -/(gen (log (inj t' ^^ gen q')))
+     log_gen.
 if => //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.

@@ -110,7 +110,7 @@ lemma double_exp (x : key, q1 q2 : exp) :
   (x ^ q1) ^ q2 = x ^ (q1 * q2).
 proof.
 have -> : x = g ^ log x
-  by rewrite -/gen log_gen.
+  by rewrite -/(gen (log x)) log_gen.
 by rewrite !double_exp_gen mulA.
 qed.
 

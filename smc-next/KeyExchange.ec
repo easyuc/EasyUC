@@ -1422,82 +1422,6 @@ type ke_real_simp_state = [
   | KERealSimpStateFinal    of (port * port * exp * exp)
 ].
 
-op dec_ke_real_simp_state_wait_adv1 (st : ke_real_simp_state) :
-     (port * port * exp) option =
-     with st = KERealSimpStateWaitReq1   => None
-     with st = KERealSimpStateWaitAdv1 x => Some x
-     with st = KERealSimpStateWaitReq2 _ => None
-     with st = KERealSimpStateWaitAdv2 _ => None
-     with st = KERealSimpStateFinal _    => None.
-
-lemma enc_dec_ke_real_simp_state_wait_adv1 (x : port * port * exp) :
-  dec_ke_real_simp_state_wait_adv1 (KERealSimpStateWaitAdv1 x) = Some x.
-proof. done. qed.
-
-op is_ke_real_simp_state_wait_adv1 (st : ke_real_simp_state) : bool =
-  dec_ke_real_simp_state_wait_adv1 st <> None.
-
-lemma is_ke_real_simp_state_wait_adv1 (x : port * port * exp) :
-  is_ke_real_simp_state_wait_adv1 (KERealSimpStateWaitAdv1 x).
-proof. done. qed.
-
-op dec_ke_real_simp_state_wait_req2 (st : ke_real_simp_state) :
-     (port * port * exp * exp) option =
-     with st = KERealSimpStateWaitReq1   => None
-     with st = KERealSimpStateWaitAdv1 _ => None
-     with st = KERealSimpStateWaitReq2 x => Some x
-     with st = KERealSimpStateWaitAdv2 _ => None
-     with st = KERealSimpStateFinal _    => None.
-
-lemma enc_dec_ke_real_simp_state_wait_req2 (x : port * port * exp * exp) :
-  dec_ke_real_simp_state_wait_req2 (KERealSimpStateWaitReq2 x) = Some x.
-proof. done. qed.
-
-op is_ke_real_simp_state_wait_req2 (st : ke_real_simp_state) : bool =
-  dec_ke_real_simp_state_wait_req2 st <> None.
-
-lemma is_ke_real_simp_state_wait_req2 (x : port * port * exp * exp) :
-  is_ke_real_simp_state_wait_req2 (KERealSimpStateWaitReq2 x).
-proof. done. qed.
-
-op dec_ke_real_simp_state_wait_adv2 (st : ke_real_simp_state) :
-     (port * port * exp * exp) option =
-     with st = KERealSimpStateWaitReq1   => None
-     with st = KERealSimpStateWaitAdv1 _ => None
-     with st = KERealSimpStateWaitReq2 _ => None
-     with st = KERealSimpStateWaitAdv2 x => Some x
-     with st = KERealSimpStateFinal _    => None.
-
-lemma enc_dec_ke_real_simp_state_wait_adv2 (x : port * port * exp * exp) :
-  dec_ke_real_simp_state_wait_adv2 (KERealSimpStateWaitAdv2 x) = Some x.
-proof. done. qed.
-
-op is_ke_real_simp_state_wait_adv2 (st : ke_real_simp_state) : bool =
-  dec_ke_real_simp_state_wait_adv2 st <> None.
-
-lemma is_ke_real_simp_state_wait_adv2 (x : port * port * exp * exp) :
-  is_ke_real_simp_state_wait_adv2 (KERealSimpStateWaitAdv2 x).
-proof. done. qed.
-
-op dec_ke_real_simp_state_final (st : ke_real_simp_state) :
-     (port * port * exp * exp) option =
-     with st = KERealSimpStateWaitReq1   => None
-     with st = KERealSimpStateWaitAdv1 _ => None
-     with st = KERealSimpStateWaitReq2 _ => None
-     with st = KERealSimpStateWaitAdv2 _ => None
-     with st = KERealSimpStateFinal x    => Some x.
-
-lemma enc_dec_ke_real_simp_state_final (x : port * port * exp * exp) :
-  dec_ke_real_simp_state_final (KERealSimpStateFinal x) = Some x.
-proof. done. qed.
-
-op is_ke_real_simp_state_final (st : ke_real_simp_state) : bool =
-  dec_ke_real_simp_state_final st <> None.
-
-lemma is_ke_real_simp_state_final (x : port * port * exp * exp) :
-  is_ke_real_simp_state_final (KERealSimpStateFinal x).
-proof. done. qed.
-
 module KERealSimp : FUNC = {
   var self, adv : addr
   var st : ke_real_simp_state
@@ -1567,13 +1491,13 @@ module KERealSimp : FUNC = {
   }
 
   proc invoke(m : msg) : msg option = {
-    var mod : mode; var pt1, pt2 : port; var u : univ;
-    var addr1, addr2 : addr; var n1, n2 : int;
     var r : msg option <- None;
-    (mod, pt1, pt2, u) <- m; (addr1, n1) <- pt1;
-    if ((mod = Dir /\ addr1 = self /\ (n1 = 1 \/ n1 = 2)) \/
-        (mod = Adv /\ (self ++ [1] <= addr1 \/ self ++ [2] <= addr1))) {
-      r <@ parties(m);
+    (* we can assume m.`3.`1 is not >= self and not >= adv *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2)) \/
+        (m.`1 = Adv /\
+         (self ++ [1] <= m.`2.`1 \/ self ++ [2] <= m.`2.`1))) {
+      r <@ loop(m);
     }
     return r;
   }
@@ -1585,101 +1509,6 @@ lemma ke_real_simp_init :
    ={self_, adv_} ==> ={glob KERealSimp}].
 proof.
 proc; auto.
-qed.
-
-(* termination metric and proof for KERealSimp *)
-
-op ke_real_simp_term_metric_max : int = 4.
-
-op ke_real_simp_term_metric (st : ke_real_simp_state) : int =
-     with st = KERealSimpStateWaitReq1   => 4
-     with st = KERealSimpStateWaitAdv1 _ => 3
-     with st = KERealSimpStateWaitReq2 _ => 2
-     with st = KERealSimpStateWaitAdv2 _ => 1
-     with st = KERealSimpStateFinal _    => 0.
-
-lemma ge0_ke_real_simp_term_metric (st : ke_real_simp_state) :
-  0 <= ke_real_simp_term_metric st.
-proof. by case st. qed.
-
-lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv1
-      (st : ke_real_simp_state) :
-  is_ke_real_simp_state_wait_adv1 st => ke_real_simp_term_metric st = 3.
-proof. by case st. qed.
-
-lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_req2
-      (st : ke_real_simp_state) :
-  is_ke_real_simp_state_wait_req2 st => ke_real_simp_term_metric st = 2.
-proof. by case st. qed.
-
-lemma ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv2
-      (st : ke_real_simp_state) :
-  is_ke_real_simp_state_wait_adv2 st => ke_real_simp_term_metric st = 1.
-proof. by case st. qed.
-
-lemma ke_real_simp_term_init :
-  equiv
-  [KERealSimp.init ~ KERealSimp.init :
-   ={self_, adv_} ==>
-   ={res, glob KERealSimp} /\
-   ke_real_simp_term_metric KERealSimp.st{1} = ke_real_simp_term_metric_max].
-proof. proc; auto. qed.
-
-lemma ke_real_simp_term_invoke (n : int) :
-  equiv
-  [KERealSimp.invoke ~ KERealSimp.invoke :
-   ={m, glob KERealSimp} /\
-   ke_real_simp_term_metric KERealSimp.st{1} = n ==>
-   ={res, KERealSimp.st} /\
-   (res{1} = None \/ ke_real_simp_term_metric KERealSimp.st{1} = n - 1)].
-proof.
-proc; sp 3 3.
-if => //.
-inline KERealSimp.parties.
-sp 2 2.
-if => //.
-if => //.
-sp 1 1.
-if; first smt().
-auto =>
-  &1 &2 [#] oget_req1_2 oget_req1_1 ->> _ ->> _ _ _ _ _ _ _
-  ->>.
-rewrite -oget_req1_2 /= in oget_req1_1.
-by elim oget_req1_1 => _ [#] -> ->.
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if; first smt().
-auto.
-auto => &1 &2 |> _ _ <- [#] -> -> ->.
-progress.
-smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv1).
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if; first smt().
-auto => |> &1 &2 _ _ <- [#] -> -> -> ->.
-progress.
-smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_req2).
-auto.
-auto.
-if => //.
-sp 1 1.
-if => //.
-sp 1 1.
-if; first smt().
-auto => |> &1 &2 _ _ <- [#] -> -> -> ->.
-progress.
-smt(ke_real_simp_term_metric_is_ke_real_simp_state_wait_adv2).
-auto.
-auto.
-auto.
 qed.
 
 (* relational invariant for connecting KEReal and KERealSimp *)
