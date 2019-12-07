@@ -51,7 +51,7 @@ move => [#] -> pt1'_2 iupt_u'.
 have [] pt2'' : exists (pt2'' : port), dec_univ_port u' = Some pt2''.
   exists (oget (dec_univ_port u')); by rewrite -some_oget.
 move => /dec_enc_univ_port -> /=.
-rewrite oget_some /= /#.
+smt().
 qed.
 
 op is_ke_req1 (m : msg) : bool =
@@ -84,8 +84,7 @@ lemma enc_dec_ke_rsp1 (func : addr, pt1 pt2 : port, x : key) :
   dec_ke_rsp1 (ke_rsp1 func pt1 pt2 x) = Some (func, pt1, pt2, x).
 proof.
 by rewrite /ke_rsp1 /dec_ke_rsp1 /=
-           (is_univ_pair (UnivPort pt1, UnivBase (BaseKey x))) /=
-           oget_some /= (is_univ_port pt1) /= oget_some.
+           (is_univ_pair (UnivPort pt1, UnivBase (BaseKey x))).
 qed.
 
 lemma dec_enc_ke_rsp1 (m : msg, func : addr, pt1 pt2 : port, k : key) :
@@ -100,7 +99,6 @@ move => [#] -> pt2'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iub_v2.
@@ -111,11 +109,11 @@ move => /dec_enc_univ_port -> /=.
 have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
   exists (oget (dec_univ_base v2)); by rewrite -some_oget.
 move => /dec_enc_univ_base -> /=.
-rewrite oget_some => ibk_bse.
+move => ibk_bse.
 have [] k' : exists (k' : key), dec_base_key bse = Some k'.
   exists (oget (dec_base_key bse)); by rewrite -some_oget.
 move => /dec_enc_base_key -> /=.
-rewrite oget_some /#.
+smt().
 qed.
 
 op is_ke_rsp1 (m : msg) : bool =
@@ -135,7 +133,7 @@ have [] x : exists (x : addr * port * port * key),
   dec_ke_rsp1 m = Some x.
   exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 /dec_enc_ke_rsp1 <-.
-by rewrite enc_dec_ke_rsp1 oget_some /ke_rsp1.
+by rewrite enc_dec_ke_rsp1 /ke_rsp1.
 qed.
 
 (* request sent to port index 2 of key exchange functionality by pt2 to
@@ -191,8 +189,7 @@ op dec_ke_rsp2 (m : msg) : (addr * port * key) option =
 lemma enc_dec_ke_rsp2 (func : addr, pt1 : port, k : key) :
   dec_ke_rsp2 (ke_rsp2 func pt1 k) = Some (func, pt1, k).
 proof.
-by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey k)) /=
-           oget_some (is_base_key k).
+by rewrite /ke_rsp2 /dec_ke_rsp2 /= (is_univ_base (BaseKey k)).
 qed.
 
 lemma dec_enc_ke_rsp2 (m : msg, func : addr, pt1 : port, k : key) :
@@ -208,7 +205,6 @@ have [] bse : exists (bse : base), dec_univ_base u' = Some bse.
   exists (oget (dec_univ_base u')); by rewrite -some_oget.
 move => /dec_enc_univ_base ->.
 case (! is_base_key (oget (dec_univ_base (UnivBase bse)))) => //=.
-rewrite oget_some.
 move => ibk_bse.
 have [] k' : exists (k' : key), dec_base_key bse = Some k'.
   exists (oget (dec_base_key bse)); by rewrite -some_oget.
@@ -231,7 +227,7 @@ move => is_ke_rsp2_m.
 have [] x : exists (x : addr * port * key), dec_ke_rsp2 m = Some x.
   exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
 case x => x1 x2 x3 /dec_enc_ke_rsp2 <-.
-by rewrite enc_dec_ke_rsp2 oget_some /ke_rsp2.
+by rewrite enc_dec_ke_rsp2 /ke_rsp2.
 qed.
 
 (* Real Functionality *)
@@ -524,7 +520,6 @@ move => [#] -> pt1'_2 pt2'_2 iupt_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iupt_v2.
@@ -587,7 +582,7 @@ move => is_ke_sim_rsp_m.
 have [] p : exists (p : addr * addr), dec_ke_sim_rsp m = Some p.
   exists (oget (dec_ke_sim_rsp m)); by rewrite -some_oget.
 case p => ideal adv /dec_enc_ke_sim_rsp <-.
-by rewrite enc_dec_ke_sim_rsp oget_some /ke_sim_rsp.
+by rewrite enc_dec_ke_sim_rsp /ke_sim_rsp.
 qed.
 
 lemma port_good_ke_sim_rsp (m : msg) :
@@ -1513,35 +1508,35 @@ seq 1 1 :
      real_simp_rel_st_fws2 = Fwd2.Forw.st{1};
      real_simp_rel_st_rss = KERealSimp.st{2};|}).
 auto; smt().
-rcondf{1} 4; first auto; progress; rewrite oget_some; smt(le_ext_r).
+rcondf{1} 4; first auto; progress; smt(le_ext_r).
 sp.
 rcondt{1} 1; first auto.
 rcondf{1} 1.
-progress; auto; progress; rewrite oget_some; smt(ne_cat_nonnil_r).
+progress; auto; progress; smt(ne_cat_nonnil_r).
 rcondf{1} 1.
-progress; auto; progress; rewrite oget_some; smt(ne_cat_nonnil_r).
+progress; auto; progress; smt(ne_cat_nonnil_r).
 rcondt{1} 1.
-progress; auto; progress; rewrite oget_some; smt(le_refl).
+progress; auto; progress;  smt(le_refl).
 inline Fwd1.Forw.invoke.
 rcondt{1} 3; first auto; smt().
 rcondt{1} 3; auto.
 rcondt{1} 4.
 auto; progress.
-by rewrite oget_some Fwd1.enc_dec_fw_req oget_some.
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+by rewrite Fwd1.enc_dec_fw_req.
+rewrite Fwd1.enc_dec_fw_req /=.
 by rewrite not_le_ext_nonnil_l.
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+rewrite Fwd1.enc_dec_fw_req /=.
 by rewrite not_le_ext_nonnil_l.
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+rewrite Fwd1.enc_dec_fw_req /=.
 by rewrite inc_nle_r.
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some /=.
+rewrite Fwd1.enc_dec_fw_req /=.
 by rewrite inc_nle_r.
 rcondt{1} 7; first auto; progress.
-by rewrite oget_some /Fwd1.fw_obs /= inc_nle_l.
+by rewrite /Fwd1.fw_obs /= inc_nle_l.
 rcondf{1} 8; first auto.
 auto; progress;
-  first 3 by rewrite oget_some Fwd1.enc_dec_fw_req oget_some.
-rewrite oget_some Fwd1.enc_dec_fw_req oget_some
+  first 3 by rewrite Fwd1.enc_dec_fw_req.
+rewrite Fwd1.enc_dec_fw_req
         (RealSimpRel1 _ pt10{2} pt20{2} q1{2})
         /real_simp_rel1 /= /#.
 rcondt{1} 2; first auto.
@@ -1686,14 +1681,14 @@ rcondt{1} 5; first auto; smt(Fwd1.dest_good_fw_ok).
 rcondf{1} 8.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#]
         _ _ _ _ -> _ _ _ _ _.
-rewrite oget_some /= oget_some /=; smt(Fwd1.dest_good_fw_ok le_refl).
+rewrite /= /=; smt(Fwd1.dest_good_fw_ok le_refl).
 rcondt{1} 9; first auto.
 rcondf{1} 9; first auto.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#] _ _ _ _ -> _ _ _ _ _.
-rewrite oget_some /= oget_some /#.
+rewrite /= /#.
 rcondt{1} 9.
 auto => |> &hr _ _ _ @/real_simp_rel1 /= [#] _ _ _ _ -> _ _ _ _ _.
-rewrite oget_some /= oget_some /#.
+smt().
 sp 8 0; elim* => r0_L st_L.
 inline{1} (1) KEReal.party2.
 rcondt{1} 3; first auto; smt().
@@ -1701,33 +1696,30 @@ rcondt{1} 3; first auto.
 rcondt{1} 4; first auto =>
   |> &hr dec_fw_st _ _ _ _ @/real_simp_rel1 /= [#]
   pt1'_nonloc pt2'_nonloc _ _ ->> _ _ _ _ _.
-rewrite Fwd1.enc_dec_fw_state_wait oget_some /= in dec_fw_st.
-rewrite oget_some Fwd1.enc_dec_fw_rsp oget_some /= /#.
+rewrite Fwd1.enc_dec_fw_state_wait /= in dec_fw_st.
+rewrite Fwd1.enc_dec_fw_rsp /= /#.
 rcondt{1} 12; first auto =>
   |> &hr dec_fw_st _ _ _ _ @/real_simp_rel1 /= [#]
   pt1'_nonloc pt2'_nonloc _ _ ->> _ _ _ _ _ q _.
-rewrite /= oget_some /= in dec_fw_st.
-rewrite oget_some /ke_rsp1 /= oget_some.
+rewrite /= /= in dec_fw_st.
+rewrite /ke_rsp1 /=.
 elim dec_fw_st => -> [#] -> ->.
-by rewrite Fwd1.enc_dec_fw_rsp oget_some /= enc_dec_univ_triple
-   oget_some.
+by rewrite Fwd1.enc_dec_fw_rsp /= enc_dec_univ_triple.
 rcondf{1} 13; first auto.
 wp; sp; rnd.
 auto => |> &1 &2 dec_simp_st _ dec_fw_rsp dec_tripl dec_fw_st dec_fw_ok
         _ _ _ @/real_simp_rel1 /= [#] pt1'_nonloc pt2'_nonloc _ _ ->> _ ->>
         _ _ _ q _.
-rewrite enc_dec_ke_real_simp_state_wait_adv1 oget_some /= in dec_simp_st.
-rewrite oget_some Fwd1.enc_dec_fw_rsp oget_some in dec_fw_rsp.
-rewrite Fwd1.enc_dec_fw_state_wait oget_some /= in dec_fw_st.
+rewrite enc_dec_ke_real_simp_state_wait_adv1 /= in dec_simp_st.
+rewrite Fwd1.enc_dec_fw_rsp in dec_fw_rsp.
+rewrite Fwd1.enc_dec_fw_state_wait /= in dec_fw_st.
 elim dec_fw_st => ->> [#] ->> ->>.
 rewrite /= in dec_fw_rsp.
 elim dec_fw_rsp => ->> [#] ->> ->> ->>.
-rewrite enc_dec_univ_triple oget_some /= in dec_tripl.
+rewrite enc_dec_univ_triple /= in dec_tripl.
 elim dec_tripl => ->> [#] ->> ->>.
 elim dec_simp_st => ->> [#] ->> ->>.
-split.
-progress.
-by rewrite oget_some enc_dec_base_key oget_some.
+split => //.
 rewrite (RealSimpRel2 _ pt1' pt2' q1' q) /real_simp_rel2 /=.
 progress.
 seq 4 0 :
@@ -1842,30 +1834,30 @@ rewrite -m2_eq /= in m1_eq.
 smt().
 wp.
 rcondf{1} 4; first auto; progress.
-rewrite oget_some /=; smt(le_ext_r).
+rewrite /=; smt(le_ext_r).
 sp.
 rcondt{1} 1; first auto.
 rcondf{1} 1; first auto; progress.
-rewrite oget_some /=; smt(ne_cat_nonnil_r).
+rewrite /=; smt(ne_cat_nonnil_r).
 rcondf{1} 1; first auto.
 rcondf{1} 1; first auto; progress.
-rewrite oget_some /=; smt(le_ext_comm sing_not_le).
+rewrite /=; smt(le_ext_comm sing_not_le).
 inline{1} (1) Fwd2.Forw.invoke.
 rcondt{1} 3; first auto; smt().
 rcondt{1} 3; first auto.
 sp 3 0.
 rcondt{1} 1; first auto => /> &hr.
-rewrite oget_some Fwd2.enc_dec_fw_req oget_some /=.
+rewrite Fwd2.enc_dec_fw_req /=.
 progress.
 by rewrite not_le_ext_nonnil_l.
 by rewrite not_le_ext_nonnil_l.
 by rewrite inc_nle_r.
 by rewrite inc_nle_r.
 rcondt{1} 4; auto; progress.
-by rewrite oget_some /Fwd2.fw_obs /= inc_nle_l.
+by rewrite /Fwd2.fw_obs /= inc_nle_l.
 rcondf{1} 5; first auto.
 auto => /> &1 &2.
-rewrite !oget_some Fwd2.enc_dec_fw_req oget_some /=.
+rewrite Fwd2.enc_dec_fw_req /=.
 progress.
 rewrite (RealSimpRel3 _ pt10{2} pt20{2} q1{2} q2{2})
         /real_simp_rel3 /= /#.
@@ -1991,31 +1983,28 @@ rcondt{1} 5; first auto; smt(Fwd2.dest_good_fw_ok).
 rcondf{1} 8.
 auto => |> &hr _ _ _ _ _ @/real_simp_rel3 /= [#]
         _ _ _ _ _ -> _ _ _ _.
-rewrite oget_some /= oget_some /=; smt(le_refl).
+smt(le_refl).
 rcondt{1} 9; first auto.
 rcondt{1} 9.
 auto => |> &hr _ _ _ _ _ @/real_simp_rel3 /= [#] _ _ _ _ _ -> _ _ _ _.
-rewrite oget_some /= oget_some /#.
+smt().
 sp 8 0; elim* => r0_L st_L.
 inline{1} (1) KEReal.party1.
 rcondf{1} 3; first auto; smt().
 rcondt{1} 3; first auto; smt(is_ke_real_p1_state_wait_fwd2).
 rcondt{1} 4; first auto.
 rcondt{1} 5.
-auto; progress; rewrite oget_some Fwd2.enc_dec_fw_rsp oget_some /= /#.
+auto; progress; rewrite Fwd2.enc_dec_fw_rsp /= /#.
 rcondt{1} 9; first auto =>
   |> &hr _ _ _ _ _ _ _ @/real_simp_rel3 /= [#]
   _ _ -> _ _ ->> _ _ _ _.
-by rewrite oget_some /ke_rsp2 /= oget_some /=.
+by rewrite /ke_rsp2.
 rcondf{1} 10; first auto.
 auto =>
   |> &1 &2 dec_fw_st _ _ _ _ _ _ @/real_simp_rel3 /= [#]
   _ _ -> _ _ ->> -> _ _ _ /=.
-rewrite oget_some /= oget_some Fwd2.enc_dec_fw_rsp oget_some /=.
-rewrite /= oget_some /= in dec_fw_st.
+rewrite /= Fwd2.enc_dec_fw_rsp /=.
 elim dec_fw_st => -> [#] -> -> /=.
-rewrite oget_some /= oget_some.
-split => //.
 by rewrite (RealSimpRel4 _ pt1' pt2' q1' q2').
 seq 4 0 :
   (={m0} /\ r{1} = None /\ r0{2} = None /\
@@ -2568,8 +2557,8 @@ inline RH.OptHashing.hash.
 rcondt{2} 2; first auto; smt().
 auto => &1 &2 /> <-.
 progress.
-by rewrite get_setE /= oget_some.
-by rewrite get_setE /= oget_some.
+by rewrite get_setE.
+by rewrite get_setE.
 rewrite (RealSimpHashRel1 _ pt10{2} pt20{2} q1L)
         /real_simp_hash_rel1 /=.
 by rewrite 2!get_setE.
@@ -2601,8 +2590,8 @@ rcondt{2} 2; first auto; smt().
 auto => &1 &2 |> _ _ ^ st2_eq <- /= [#] -> -> -> _ _
         @/real_simp_hash_rel1 /= [#] ->>.
 progress.
-by rewrite get_setE /= oget_some.
-by rewrite get_setE /= oget_some.
+by rewrite get_setE.
+by rewrite get_setE.
 rewrite (RealSimpHashRel2 _ pt10{2} pt20{2} q1 q2L)
         /real_simp_hash_rel2 /=.
 rewrite 2!get_setE /= /#.
@@ -2628,7 +2617,8 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_real_simp_state_wait_req2).
 auto => &1 &2 |> _ _ _ @/real_simp_hash_rel2 /= [#].
 progress.
-rewrite oget_some (RealSimpHashRel3 _ pt1 pt2 q1 q2)
+rewrite (RealSimpHashRel3 _ pt1
+         ((oget (dec_ke_req2 (mod{2}, (addr1{2}, n1{2}), pt2{2}, u{2}))).`2) q1 q2)
         /real_simp_hash_rel3 /= /#.
 case
   (exists (pt1 pt2 : port) (q1 q2 : exp),
@@ -2652,7 +2642,7 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_real_simp_state_wait_adv2).
 auto => &1 &2 |> _ _ _ @/real_simp_hash_rel3 /= [#].
 progress.
-rewrite oget_some (RealSimpHashRel4 _ pt1 pt2 q1 q2)
+rewrite (RealSimpHashRel4 _ pt1 pt2 q1 q2)
         /real_simp_hash_rel4 /= /#.
 case
   (exists (pt1 pt2 : port) (q1 q2 : exp),
@@ -2872,7 +2862,7 @@ auto => &1 &2 |> <-.
 progress.
 clear H8 H7 H6 H5; smt(log_gen).
 by rewrite (RealSimpHashDDH1Rel1 _ pt10{2} pt20{2})
-           /real_simp_hash_ddh1_rel1 /= H oget_some.
+           /real_simp_hash_ddh1_rel1 /= H.
 auto.
 auto.
 case
@@ -2902,14 +2892,12 @@ inline{1} (1) RH.NonOptHashing.hash.
 rcondf{1} 2; first auto; smt().
 auto => &1 &2 |> _ _  st2_eq st1_eq mp_exp1_eq mp_exp2_eq
         _ _ @/real_simp_hash_ddh1_rel1 /= [#] ->> ->>.
-rewrite /= oget_some /= in st1_eq.
-rewrite /= oget_some /= in st2_eq.
 elim st1_eq => [#] ->> [#] ->> ->>.
 elim st2_eq => -> ->.
 progress.
-by rewrite mp_exp2_eq oget_some double_exp_gen.
+by rewrite mp_exp2_eq double_exp_gen.
 by rewrite (RealSimpHashDDH1Rel2 _ pt1 pt2)
-           /real_simp_hash_ddh1_rel2 /= mp_exp2_eq oget_some.
+           /real_simp_hash_ddh1_rel2 /= mp_exp2_eq.
 auto.
 auto.
 case
@@ -2942,15 +2930,11 @@ move => &1 &2 [#] dec_ke_req2 dec_ke_req1 dec_wait2 dec_wait1
         @/real_simp_hash_ddh1_rel2 /= [#] ->> ->> _ _.
 rewrite -dec_ke_req2 /= in dec_ke_req1.
 elim dec_ke_req1 => _ ->>.
-rewrite /= oget_some /= in dec_wait1.
 elim dec_wait1 => ->> [#] ->> ->> _.
-rewrite /= oget_some /= in dec_wait2.
 by elim dec_wait2 => _ <-.
 auto => &1 &2 |> _ _ st2_eq st1_eq mp_exp1_eq mp_exp2_eq _ _ _
         @/real_simp_hash_ddh1_rel2 /= [#] ->> ->> _ _.
-rewrite /= oget_some /= in st2_eq.
 elim st2_eq => ->> ->>.
-rewrite /= oget_some /= in st1_eq.
 elim st1_eq => ->> [#] ->> ->> ->>.
 progress.
 smt(log_gen).
@@ -2987,9 +2971,7 @@ if; first smt().
 auto => &1 &2 |> <- /= [#] -> _ dec_wait2 dec_wait1
         mp_exp1_eq mp_exp2_eq _ _ _ _
         @/real_simp_hash_ddh1_rel3 /= [#] ->> ->> _ _.
-rewrite /= oget_some /= in dec_wait1.
 elim dec_wait1 => ->> [#] ->> ->> ->>.
-rewrite /= oget_some /= in dec_wait2.
 elim dec_wait2 => ->> ->>.
 progress.
 by rewrite double_exp_gen mulC.
@@ -3515,7 +3497,7 @@ auto => &1 &2 |> <-.
 progress.
 smt(log_gen).
 by rewrite (HybridHashDDH2Rel1 _ pt10{2} pt20{2})
-           /hybrid_hash_ddh2_rel1 /= H oget_some.
+           /hybrid_hash_ddh2_rel1 /= H.
 auto.
 auto.
 case
@@ -3547,15 +3529,13 @@ rcondf{1} 2; first auto; smt().
 rcondf{1} 4; first auto; smt().
 auto => &1 &2 |> _ _  st2_eq st1_eq mp_exp1_eq mp_exp2_eq
         mp_exp3_eq _ _ @/hybrid_hash_ddh2_rel1 /= [#] ->> ->>.
-rewrite /= oget_some /= in st1_eq.
-rewrite /= oget_some /= in st2_eq.
 elim st1_eq => [#] ->> [#] ->> ->>.
 elim st2_eq => -> ->.
 progress.
-by rewrite mp_exp3_eq oget_some; smt(log_gen).
+by rewrite mp_exp3_eq; smt(log_gen).
 by rewrite (HybridHashDDH2Rel2 _ pt1 pt2)
            /hybrid_hash_ddh2_rel2 /=
-           mp_exp2_eq oget_some mp_exp3_eq oget_some.
+           mp_exp2_eq mp_exp3_eq.
 auto.
 auto.
 case
@@ -3589,15 +3569,11 @@ move => &1 &2 [#] dec_ke_req2 dec_ke_req1 dec_wait2 dec_wait1
         @/hybrid_hash_ddh2_rel2 /= [#] ->> ->> _ _.
 rewrite -dec_ke_req2 /= in dec_ke_req1.
 elim dec_ke_req1 => _ ->>.
-rewrite /= oget_some /= in dec_wait1.
 elim dec_wait1 => ->> [#] ->> ->> _.
-rewrite /= oget_some /= in dec_wait2.
 by elim dec_wait2 => _ <-.
 auto => &1 &2 |> _ _ st2_eq st1_eq mp_exp1_eq mp_exp2_eq _ _ _ _
         @/hybrid_hash_ddh2_rel2 /= [#] ->> ->> _ _.
-rewrite /= oget_some /= in st2_eq.
 elim st2_eq => ->> ->>.
-rewrite /= oget_some /= in st1_eq.
 elim st1_eq => ->> [#] ->> ->> ->>.
 progress.
 smt(log_gen).
@@ -3635,9 +3611,7 @@ if; first smt().
 auto => &1 &2 |> <- /= [#] -> _ dec_wait2 dec_wait1
         mp_exp1_eq mp_exp2_eq _ _ _ _ _
         @/hybrid_hash_ddh2_rel3 /= [#] ->> ->>.
-rewrite /= oget_some /= in dec_wait1.
 elim dec_wait1 => ->> [#] ->> ->> ->>.
-rewrite /= oget_some /= in dec_wait2.
 elim dec_wait2 => ->> ->>.
 progress.
 smt(log_gen).
@@ -3868,8 +3842,8 @@ inline RH.OptHashing.hash.
 rcondt{2} 2; first auto; smt().
 auto => &1 &2 /> <-.
 progress.
-by rewrite get_setE /= oget_some.
-by rewrite get_setE /= oget_some.
+by rewrite get_setE.
+by rewrite get_setE.
 rewrite (HybridHashRel1 _ pt10{2} pt20{2} q1L)
         /hybrid_hash_rel1 /=.
 by rewrite 3!get_setE.
@@ -3902,9 +3876,9 @@ rcondt{2} 5; first auto; smt(mem_set).
 auto => &1 &2 |> _ _ ^ st2_eq <- /= [#] -> -> -> _ _
         @/hybrid_hash_rel1 /= [#] ->>.
 progress.
-by rewrite get_setE /= oget_some.
-by rewrite get_setE /= oget_some.
-by rewrite get_setE /= oget_some.
+by rewrite get_setE.
+by rewrite get_setE.
+by rewrite get_setE.
 rewrite (HybridHashRel2 _ pt10{2} pt20{2} q1 q2L q3L)
         /hybrid_hash_rel2 /=.
 rewrite 6!get_setE /= /#.
@@ -3930,7 +3904,9 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_req2).
 auto => &1 &2 |> _ _ _ @/hybrid_hash_rel2 /= [#].
 progress.
-rewrite oget_some (HybridHashRel3 _ pt1 pt2 q1 q2 q3)
+rewrite (HybridHashRel3 _ pt1
+         (oget (dec_ke_req2 (mod{2}, (addr1{2}, n1{2}), pt2{2}, u{2}))).`2
+         q1 q2 q3)
         /hybrid_hash_rel3 /= /#.
 case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
@@ -3954,7 +3930,7 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_hybrid_state_wait_adv2).
 auto => &1 &2 |> _ _ _ @/hybrid_hash_rel3 /= [#].
 progress.
-rewrite oget_some (HybridHashRel4 _ pt1 pt2 q1 q2 q3)
+rewrite (HybridHashRel4 _ pt1 pt2 q1 q2 q3)
         /hybrid_hash_rel4 /= /#.
 case
   (exists (pt1 pt2 : port) (q1 q2 q3 : exp),
@@ -4316,7 +4292,7 @@ rcondf{1} 1; first auto.
 rcondt{2} 1; first auto.
 move => |> &hr dec_sim_state <- /= [#] -> -> _ _ _ _ _
         [] /= [#] _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_state.
+rewrite /= /= in dec_sim_state.
 elim dec_sim_state => -> _ //.
 rcondt{1} 1; first auto.
 sp 2 1.
@@ -4349,30 +4325,25 @@ rcondf{2} 5; first auto.
 rcondf{2} 8; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> _ /negb_or [#].
 rewrite not_dir.
 progress.
-rewrite oget_some /=.
 smt(not_leP inc_sym).
 rcondf{2} 8; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => ->.
 smt(le_refl).
 rcondt{2} 8; first auto.
 rcondt{2} 10; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => ->.
 smt(le_refl).
 inline{2} (1) KEIdeal.invoke.
 rcondt{2} 14; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> //.
 inline{2} (1) KEIdeal.parties.
 rcondf{2} 16; first auto; smt().
@@ -4392,13 +4363,11 @@ auto => |> &1 &2 addr1R _ dec_hybrid_wait_eq _
         dec_sim_wait_eq <- /= [#] -> -> -> -> -> _
         pre [] /= pt1'_out1 [#] pt2'_out1 pt1'_out2 pt2'_out2
         ->> -> ->>.
-rewrite /= oget_some /= in dec_hybrid_wait_eq.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_hybrid_wait_eq => -> [#] -> ->.
 elim dec_sim_wait_eq => -> ->.
 progress.
 rewrite (KEHybridIdealSimRel2 _ pt1' pt2' q1' q2L q3L)
-        /ke_hybrid_ideal_sim_rel2 /= oget_some /= /#.
+        /ke_hybrid_ideal_sim_rel2 /#.
 seq 2 0 :
   (r{1} = None /\ r{2} = None /\
    (addr{2} ++ [1] <> m{2}.`2.`1 \/
@@ -4443,7 +4412,6 @@ rcondf{1} 2; first auto.
 rcondf{2} 1; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => //.
 rcondf{2} 1; first auto.
 rcondf{2} 4; first auto; smt().
@@ -4492,7 +4460,6 @@ rcondf{1} 1; first auto.
 rcondt{2} 1; first auto.
 move => |> &hr dec_sim_state <- /= [#] -> -> _ _ _ _ _
         [] /= [#] _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_state.
 elim dec_sim_state => -> _ //.
 rcondt{1} 1; first auto.
 sp 2 1.
@@ -4522,37 +4489,32 @@ rcondf{1} 13; first auto.
 rcondt{2} 1; first auto; smt().
 rcondt{2} 2; first auto.
 move => |> &hr dec_sim_wait _ <- _ _ [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait.
 elim dec_sim_wait => -> [#] _ _.
 smt(Fwd2.dest_good_fw_ok).
 rcondf{2} 4; first auto.
 rcondf{2} 7; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
-elim dec_sim_wait_eq => -> _ /negb_or [#].
+elim dec_sim_wait_eq => -> _ _ /negb_or [#].
 rewrite not_dir.
 progress.
-rewrite oget_some negb_or /ke_sim_rsp /=.
+rewrite negb_or /ke_sim_rsp /=.
 smt(not_leP inc_sym).
 rcondf{2} 7; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => ->.
 smt(le_refl).
 rcondt{2} 7; first auto.
 rcondt{2} 9; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => ->.
 smt(le_refl).
 inline{2} (1) KEIdeal.invoke.
 rcondt{2} 13; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> //.
 inline{2} (1) KEIdeal.parties.
 rcondf{2} 15; first auto; smt().
@@ -4572,9 +4534,8 @@ rcondf{2} 24; first auto.
 auto => |> &1 &2 dec_sim_wait_eq _ _ _ _ [] /=
         pt1'_out1 [#] pt2'_out1 pt1'_out2 pt2'_out2
         -> -> ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => -> [#] -> ->.
-progress; rewrite !oget_some.
+progress.
 rewrite (KEHybridIdealSimRel4 _ pt1' pt2' q1' q2' q3')
         /ke_hybrid_ideal_sim_rel4 /= /#.
 seq 2 0 :
@@ -4623,7 +4584,6 @@ rcondf{1} 2; first auto.
 rcondf{2} 1; first auto.
 move => |> &hr dec_sim_wait_eq <- /= [#] -> -> _ _ _ _
         pre [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => //.
 rcondf{2} 1; first auto.
 rcondf{2} 4; first auto; smt().
@@ -4690,15 +4650,15 @@ if; first smt().
 rcondf{2} 5; first auto.
 rcondf{2} 8; first auto.
 move => &hr |> <- /= [#] _ -> ->.
-rewrite oget_some /=; smt().
+smt().
 rcondf{2} 8; first auto.
 rcondf{2} 8; first auto.
 move => &hr |> <- /= [#] _ -> ->.
-rewrite oget_some /ke_sim_req1 /=; smt(ke_pi_uniq).
+rewrite /ke_sim_req1 /=; smt(ke_pi_uniq).
 rcondt{2} 8; first auto.
 rcondf{2} 10; first auto.
 move => &hr |> <- /= [#] _ -> ->.
-rewrite oget_some /ke_sim_req1 /= /#.
+rewrite /ke_sim_req1 /= /#.
 sp 0 9.
 inline{2} (1) KESim(Adv).invoke.
 rcondt{2} 4; first auto.
@@ -4709,15 +4669,15 @@ rcondt{2} 8; first auto; smt().
 rcondt{2} 8; first auto.
 sp 0 8.
 rcondf{1} 7; first auto.
-rcondf{1} 10; first auto; progress; rewrite oget_some /#.
+rcondf{1} 10; first auto; progress; smt().
 rcondf{1} 10; first auto.
 rcondf{1} 10; first auto; progress.
-rewrite oget_some /Fwd1.fw_obs /=; smt(ke_pi_uniq).
+rewrite /Fwd1.fw_obs /=; smt(ke_pi_uniq).
 rcondt{1} 10; first auto.
-rcondf{1} 12; first auto; progress; rewrite oget_some /Fwd1.fw_obs /= /#.
+rcondf{1} 12; first auto; progress; rewrite /Fwd1.fw_obs /= /#.
 rcondf{2} 4; first auto.
 rcondt{2} 5; first auto.
-rcondf{2} 5; first auto; progress; rewrite oget_some /Fwd1.fw_obs /=.
+rcondf{2} 5; first auto; progress; rewrite /Fwd1.fw_obs /=.
 smt(ke_pi_uniq).
 seq 11 4 :
   (not_done{1} /\ not_done{2} /\ not_done0{2} /\
@@ -4738,11 +4698,9 @@ seq 11 4 :
    pt12{1} pt22{1} q1{1}).
 wp; rnd.
 auto => |> &1 &2 dec_sim_req1_eq st_R.
-rewrite oget_some.
 move => enc_ke_sim_req1_eq.
 move : dec_sim_req1_eq.
 rewrite enc_ke_sim_req1_eq enc_dec_ke_sim_req1.
-rewrite oget_some /=.
 by move => [#] <<- <<- <<- <<- <- /= [#].
 seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
@@ -5233,23 +5191,21 @@ move => &1 &2 [#] dec_req_2 dec_req_1 ->> _ dec_ideal_wait_eq
 rewrite -dec_req_2 /= in dec_req_1.
 elim dec_req_1 => ->> ->>.
 move => [] /= _ [#] _ _ _ ->> ->> _.
-rewrite /= oget_some /= in dec_ideal_wait_eq.
-rewrite /= oget_some /= in dec_hybrid_wait_eq.
 elim dec_hybrid_wait_eq => ->> [#] ->> _ _ _.
 elim dec_ideal_wait_eq => _ [#] -> //.
 rcondf{2} 5; first auto.
 rcondf{2} 8; first auto.
 move => &hr |> <- /= [#] _ ->.
-rewrite oget_some /ke_sim_req2 /= /#.
+rewrite /ke_sim_req2 /= /#.
 rcondf{2} 8; first auto.
 rcondf{2} 8; first auto.
 move => &hr |> <- /= [#] _ ->.
-rewrite oget_some /ke_sim_req2 /=.
+rewrite /ke_sim_req2 /=.
 smt(ke_pi_uniq).
 rcondt{2} 8; first auto.
 rcondf{2} 10; first auto.
 move => &hr |> <- /= [#] _ ->.
-rewrite oget_some /ke_sim_req2 /= /#.
+rewrite /ke_sim_req2 /= /#.
 sp 0 9.
 inline{2} (1) KESim(Adv).invoke.
 rcondt{2} 4; first auto.
@@ -5262,15 +5218,15 @@ rcondt{2} 9; first auto.
 rcondf{2} 12; first auto.
 rcondt{2} 13; first auto.
 rcondf{2} 13; first auto; progress.
-rewrite oget_some /= /Fwd2.fw_obs /=; smt(ke_pi_uniq).
+rewrite /= /Fwd2.fw_obs /=; smt(ke_pi_uniq).
 sp 0 12.
 rcondf{1} 6; first auto.
-rcondf{1} 9; first auto; progress; rewrite oget_some /Fwd2.fw_obs /= /#.
+rcondf{1} 9; first auto; progress; rewrite /Fwd2.fw_obs /= /#.
 rcondf{1} 9; first auto.
 rcondf{1} 9; first auto; progress.
-rewrite oget_some /Fwd2.fw_obs /=; smt(ke_pi_uniq).
+rewrite /Fwd2.fw_obs /=; smt(ke_pi_uniq).
 rcondt{1} 9; first auto.
-rcondf{1} 11; first auto; progress; rewrite oget_some /Fwd2.fw_obs /= /#.
+rcondf{1} 11; first auto; progress; rewrite /Fwd2.fw_obs /= /#.
 sp 10 0.
 conseq
   (_ :
@@ -5291,19 +5247,15 @@ conseq
    pt1'' pt2'' q1' q2' q3' ==>
    _).
 move => |> &1 &2 mod0_L pt10_L pt20_L u0_L st_L.
-rewrite !oget_some /=.
 move => ^H <- [#] <<- <<- <<- <<- st_R; move : H.
 rewrite /Fwd2.fw_obs /=.
 move => [#] -> -> -> -> -> dec_sim_wait_eq _ st_R0
         _ _ _ dec_ideal_wait_eq dec_ke_req_eq pre _ _ _ _
         [] /= out_pt1''1 [#] out_pt2''1 out_pt1''2 out_pt2''2
         ->> ->> ->>.
-rewrite /= oget_some /= in dec_sim_wait_eq.
 elim dec_sim_wait_eq => ->> [#] ->> ->>.
-rewrite /= oget_some /= in dec_ke_req_eq.
 elim dec_ke_req_eq => ->> [#] ->> ->> ->> ->> /=.
 rewrite /ke_hybrid_ideal_sim_rel3 /=.
-rewrite /= oget_some /= in dec_ideal_wait_eq.
 elim dec_ideal_wait_eq => ->> [#] ->> ->> //.
 seq 1 1 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\
@@ -5499,8 +5451,7 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
 rcondt{2} 2; first auto.
 move => |> &hr <- /= [#] -> -> _ _ _ _ _ _ _ _ _
-        [] /= [#] _ [#] _ _ _ _ _ -> /=.
-by rewrite oget_some.
+        [] /= [#] _ [#] _ _ _ _ _ -> //.
 rcondf{2} 3; first auto; smt().
 rcondt{2} 5; first auto.
 rcondf{2} 6; first auto.
@@ -5528,8 +5479,7 @@ rcondf{2} 1; first auto; smt().
 rcondt{2} 1; first auto; smt(is_ke_sim_state_wait_req2).
 rcondf{2} 2; first auto.
 move => |> &hr <- /= [#] -> -> _ _ _ not_done0_R _ _ _
-        _ _ [] /= _ [#] _ _ _ _ _ -> /=.
-by rewrite oget_some.
+        _ _ [] /= _ [#] _ _ _ _ _ -> //.
 rcondf{2} 2; first auto.
 rcondf{2} 4; first auto.
 rcondf{2} 7; first auto; smt().

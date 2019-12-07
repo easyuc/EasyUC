@@ -51,8 +51,7 @@ lemma enc_dec_smc_req (func : addr, pt1 pt2 : port, t : text) :
   dec_smc_req (smc_req func pt1 pt2 t) = Some (func, pt1, pt2, t).
 proof.
 by rewrite /smc_req /dec_smc_req /=
-           (is_univ_pair (UnivPort pt2, UnivBase (BaseText t))) /=
-           oget_some /= (is_univ_port pt2) /= oget_some.
+           (is_univ_pair (UnivPort pt2, UnivBase (BaseText t))).
 qed.
 
 lemma dec_enc_smc_req (m : msg, func : addr, pt1 pt2 : port, t : text) :
@@ -67,7 +66,6 @@ move => [#] -> pt1'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iubse_v2.
@@ -77,12 +75,11 @@ move => /dec_enc_univ_port -> /=.
 have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
   exists (oget (dec_univ_base v2)); by rewrite -some_oget.
 move => /dec_enc_univ_base -> /=.
-rewrite oget_some.
 case (! is_base_text bse) => //= ibt_bse.
 have [] t' : exists (t' : text), dec_base_text bse = Some t'.
   exists (oget (dec_base_text bse)); by rewrite -some_oget.
 move => /dec_enc_base_text -> /=.
-rewrite !oget_some /= /#.
+smt().
 qed.
 
 op is_smc_req (m : msg) : bool =
@@ -116,8 +113,7 @@ lemma enc_dec_smc_rsp (func : addr, pt1 pt2 : port, t : text) :
   dec_smc_rsp (smc_rsp func pt1 pt2 t) = Some (func, pt1, pt2, t).
 proof.
 by rewrite /smc_rsp /dec_smc_rsp /=
-           (is_univ_pair (UnivPort pt1, UnivBase (BaseText t))) /=
-           oget_some /= (is_univ_port pt1) /= oget_some.
+           (is_univ_pair (UnivPort pt1, UnivBase (BaseText t))).
 qed.
 
 lemma dec_enc_smc_rsp (m : msg, func : addr, pt1 pt2 : port, t : text) :
@@ -132,7 +128,6 @@ move => [#] -> pt2'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_base v2) => //.
 rewrite !negb_or /=.
 move => [#] iupt_v1 iupt_v2.
@@ -142,9 +137,7 @@ move => /dec_enc_univ_port -> /=.
 have [] bse : exists (bse : base), dec_univ_base v2 = Some bse.
   exists (oget (dec_univ_base v2)); by rewrite -some_oget.
 move => /dec_enc_univ_base -> /=.
-case (! is_base_text (oget (Some bse))) => //.
-rewrite oget_some /= => ibsetxt_bse.
-rewrite oget_some.
+case (! is_base_text bse) => //= ibsetxt_bse.
 have [] t' : exists (t' : text), dec_base_text bse = Some t'.
   exists (oget (dec_base_text bse)); by rewrite -some_oget.
 move => /dec_enc_base_text -> /= /#.
@@ -459,7 +452,6 @@ move => [#] -> pt1'_2 pt2'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
 rewrite !negb_or /= => [#] iupt_v1 iupt_v2.
 have [] pt1'' : exists (pt1'' : port), dec_univ_port v1 = Some pt1''.
@@ -468,7 +460,7 @@ move => /dec_enc_univ_port ->.
 have [] pt2'' : exists (pt2'' : port), dec_univ_port v2 = Some pt2''.
   exists (oget (dec_univ_port v2)); by rewrite -some_oget.
 move => /dec_enc_univ_port -> /=.
-rewrite !oget_some /= /#.
+smt().
 qed.
 
 op is_smc_sim_req (m : msg) : bool =
@@ -1150,15 +1142,15 @@ rcondf{1} 4; first auto.
 move => /> &hr <-; smt(le_refl).
 rcondf{1} 4; first auto.
 move => /> &1 &2.
-rewrite oget_some /KeyEx.ke_req1 /=; smt(le_ext_r).
+rewrite /KeyEx.ke_req1 /=; smt(le_ext_r).
 rcondt{1} 5; first auto.
 rcondf{1} 5; first auto.
 move => /> &hr <-.
-rewrite oget_some /KeyEx.ke_req1 /=; smt(ne_cat_nonnil_r).
+rewrite /KeyEx.ke_req1 /=; smt(ne_cat_nonnil_r).
 rcondf{1} 5; first auto.
 rcondf{1} 5; first auto.
 move => /> &hr.
-by rewrite oget_some /KeyEx.ke_req1 /= le_ext_comm.
+by rewrite /KeyEx.ke_req1 /= le_ext_comm.
 inline{1} (1) KeyEx.KEIdeal.invoke.
 rcondt{1} 9; first auto.
 inline{1} (1) KeyEx.KEIdeal.parties.
@@ -1166,7 +1158,7 @@ rcondt{1} 11; first auto; smt().
 rcondt{1} 11; first auto.
 rcondt{1} 12; first auto.
 move => /> &hr <-.
-rewrite oget_some KeyEx.enc_dec_ke_req1 oget_some /=.
+rewrite KeyEx.enc_dec_ke_req1 /=.
 progress.
 by rewrite not_le_ext_nonnil_l.
 by rewrite not_le_ext_nonnil_l.
@@ -1176,12 +1168,11 @@ rcondf{1} 16; first auto; progress.
 by rewrite inc_nle_l.
 rcondt{1} 16; first auto.
 move => /> &hr.
-rewrite !oget_some KeyEx.enc_dec_ke_req1 oget_some /=
-        /ke_sim_req1 /=.
+rewrite KeyEx.enc_dec_ke_req1 /= /ke_sim_req1 /=.
 progress; by rewrite inc_nle_l.
 rcondf{1} 17; first auto.
 auto => |> &1 &2.
-rewrite !oget_some KeyEx.enc_dec_ke_req1 !oget_some /=.
+rewrite KeyEx.enc_dec_ke_req1 /=.
 move => <- [#] _ -> -> ->.
 progress; rewrite (SMCRealKEIdealSimpRel1 _ pt10{2} pt20{2} t{2}) /#.
 rcondf{1} 2; first auto.
@@ -1285,52 +1276,47 @@ swap{2} 2 -1.
 rcondf{1} 6; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 by elim dec_ke_ideal_wait_sim1 => -> ->.
 rcondf{1} 6; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
+rewrite /= in dec_ke_ideal_wait_sim1.
 elim dec_ke_ideal_wait_sim1 => -> -> /=.
 rewrite le_refl.
 rcondt{1} 7; first auto.
 rcondf{1} 7; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 by elim dec_ke_ideal_wait_sim1 => -> ->.
 rcondt{1} 7; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 by elim dec_ke_ideal_wait_sim1 => -> ->.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).party2.
 rcondt{1} 9; first auto; smt().
 rcondt{1} 9; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 elim dec_ke_ideal_wait_sim1 => -> ->.
-rewrite oget_some KeyEx.is_ke_rsp1.
+rewrite KeyEx.is_ke_rsp1.
 rcondt{1} 10; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 elim dec_ke_ideal_wait_sim1 => -> ->.
-by rewrite oget_some KeyEx.enc_dec_ke_rsp1 oget_some.
+by rewrite KeyEx.enc_dec_ke_rsp1.
 rcondf{1} 13; first auto.
 move => /> &hr; smt(le_refl).
 rcondf{1} 13; first auto; progress.
-by rewrite oget_some /KeyEx.ke_req2 /= le_ext_r.
+by rewrite /KeyEx.ke_req2 /= le_ext_r.
 rcondt{1} 14; first auto.
 rcondf{1} 14; first auto.
 rcondf{1} 14; first auto.
 move => |> &hr.
-rewrite oget_some /KeyEx.ke_req2 /=.
+rewrite /KeyEx.ke_req2 /=.
 smt(ne_cat_nonnil_r).
 rcondf{1} 14; first auto.
 progress.
-rewrite oget_some /KeyEx.ke_req2 /=.
+rewrite /KeyEx.ke_req2 /=.
 rewrite (not_le_other_branch SMCReal.self{hr}
          (SMCReal.self{hr} ++ [2]) 2 1) // le_refl.
 rcondt{1} 18; first auto; smt().
@@ -1342,19 +1328,17 @@ rcondt{1} 21; first auto.
 rcondt{1} 22; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
-elim dec_ke_ideal_wait_sim1 => -> ->.
-by rewrite oget_some KeyEx.enc_dec_ke_req2 !oget_some.
+elim dec_ke_ideal_wait_sim1.
+by rewrite KeyEx.enc_dec_ke_req2.
 rcondf{1} 26; first auto; progress; smt(inc_le1_not_lr).
 rcondt{1} 26; first auto; progress.
-rewrite oget_some /KeyEx.ke_sim_req2 /=.
+rewrite /KeyEx.ke_sim_req2 /=.
 smt(inc_le1_not_lr).
 rcondf{1} 27; first auto.
 auto => |> &1 &2 _ dec_ke_ideal_wait_sim1 _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _ q _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim1.
 elim dec_ke_ideal_wait_sim1 => -> ->.
-rewrite !oget_some /= KeyEx.enc_dec_ke_rsp1 oget_some /=.
+rewrite /= KeyEx.enc_dec_ke_rsp1 /=.
 rewrite (SMCRealKEIdealSimpRel2 _ pt10{2} pt20{2} t{2} q)
         /smc_real_ke_ideal_simp_rel2 /#.
 rcondf{1} 3; first auto.
@@ -1467,12 +1451,10 @@ swap{2} 2 -1.
 rcondf{1} 5; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->>.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 by elim dec_ke_ideal_wait_sim2.
 rcondf{1} 5; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->>.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
 move => _ _ _.
 rewrite le_refl.
@@ -1480,7 +1462,6 @@ rcondt{1} 6; first auto.
 rcondt{1} 6; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->>.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 by elim dec_ke_ideal_wait_sim2 => -> _.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).party1.
 rcondf{1} 8; first auto; smt().
@@ -1488,60 +1469,52 @@ rcondt{1} 8; first auto; smt(is_smc_real_p1_state_wait_ke2).
 rcondt{1} 9; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->>.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-by rewrite oget_some KeyEx.is_ke_rsp2.
+by rewrite KeyEx.is_ke_rsp2.
 rcondt{1} 10; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->>.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-by rewrite oget_some KeyEx.enc_dec_ke_rsp2.
+by rewrite KeyEx.enc_dec_ke_rsp2.
 rcondf{1} 13; first auto.
 move => /> &hr; smt(le_refl).
 rcondf{1} 13; first auto; progress.
-rewrite !oget_some /Fwd.fw_req /= le_ext_r.
+rewrite /Fwd.fw_req /= le_ext_r.
 rcondt{1} 14; first auto.
 rcondf{1} 14; first auto.
 move => |> &hr.
-rewrite oget_some /Fwd.fw_req /=.
+rewrite /Fwd.fw_req /=.
 smt(ne_cat_nonnil_r).
 rcondf{1} 14; first auto.
 rcondt{1} 14; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-rewrite !oget_some /Fwd.fw_req /= le_refl.
+rewrite /Fwd.fw_req /= le_refl.
 inline Fwd.Forw.invoke.
 rcondt{1} 16; first auto; smt().
 rcondt{1} 16; first auto.
 rcondt{1} 17; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-rewrite !oget_some Fwd.enc_dec_fw_req !oget_some /=.
+rewrite Fwd.enc_dec_fw_req /=.
 smt(not_le_ext_nonnil_l inc_nle_r).
 rcondf{1} 20; first auto.
 move => /> &hr; smt(incP).
 rcondt{1} 20; first auto.
 move => |> &hr _ dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _ [#] _
         _ _ _ ->> _ _ _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> _ /= _.
-by rewrite !oget_some Fwd.enc_dec_fw_req !oget_some /Fwd.fw_obs
+by rewrite Fwd.enc_dec_fw_req /Fwd.fw_obs
            /= inc_nle_l.
 rcondf{1} 21; first auto.
 auto => |> &1 &2 dec_smc_real_ke_ideal_simp_wait_adv2
         dec_ke_ideal_wait_sim2 _ _ _ _ [] /= _
         [#] _ -> _ _ ->> ->> _ _.
-rewrite /= oget_some in dec_ke_ideal_wait_sim2.
 elim dec_ke_ideal_wait_sim2 => -> -> -> /=.
-rewrite /= oget_some /= in dec_smc_real_ke_ideal_simp_wait_adv2.
 elim dec_smc_real_ke_ideal_simp_wait_adv2 => -> [#] -> -> ->.
-rewrite !oget_some Fwd.enc_dec_fw_req !oget_some
-         /Fwd.fw_obs /= KeyEx.enc_dec_ke_rsp2 !oget_some /=.
+rewrite Fwd.enc_dec_fw_req /Fwd.fw_obs /= KeyEx.enc_dec_ke_rsp2 /=.
 rewrite (SMCRealKEIdealSimpRel3 _ pt1' pt2' t' q') /#.
 rcondf{1} 3; first auto.
 rcondt{1} 3; first auto.
@@ -1640,23 +1613,20 @@ if => //.
 rcondt{1} 2; first auto; smt(Fwd.dest_good_fw_ok).
 rcondt{2} 2; first auto; smt(Fwd.dest_good_fw_ok).
 rcondf{1} 5; first auto.
-move => /> &hr; by rewrite !oget_some.
+move => /> &hr //.
 rcondf{1} 5; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 elim dec_fw_wait_eq => -> [#] -> _ /=.
 smt(le_refl).
 rcondt{1} 6; first auto.
 rcondf{1} 6; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 by elim dec_fw_wait_eq.
 rcondt{1} 6; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 by elim dec_fw_wait_eq.
 inline SMCReal(KeyEx.KEIdeal).party2.
 rcondf{1} 8; first auto; smt().
@@ -1665,34 +1635,26 @@ rcondt{1} 9; first auto; smt().
 rcondt{1} 10; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] _ _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 elim dec_fw_wait_eq => -> [#] -> _ /=.
-by rewrite oget_some Fwd.enc_dec_fw_rsp oget_some.
+by rewrite Fwd.enc_dec_fw_rsp.
 rcondf{1} 17; first auto.
 move => |> &hr _ dec_fw_wait_eq _ _ _ _ _ [] /= _ [#] pt2'_out _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 elim dec_fw_wait_eq => -> [#] -> -> /=.
-rewrite !oget_some !Fwd.enc_dec_fw_rsp !oget_some /=
-        !enc_dec_univ_triple !oget_some /= !oget_some /smc_rsp /=.
+rewrite !Fwd.enc_dec_fw_rsp /= !enc_dec_univ_triple /= /smc_rsp /=.
 smt(not_le_ext).
 rcondt{1} 17; first auto.
 move => |> &hr dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] pt2'_out _ _ ->> _ ->>.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 elim dec_fw_wait_eq => -> [#] -> -> /=.
-by rewrite !oget_some !Fwd.enc_dec_fw_rsp !oget_some /=
-           !enc_dec_univ_triple !oget_some /= !oget_some.
+by rewrite !Fwd.enc_dec_fw_rsp /= !enc_dec_univ_triple /=.
 rcondf{1} 18; first auto.
 auto.
 move => |> &1 &2 dec_smc_real_ke_ideal_simp_wait_adv3_eq dec_fw_wait_eq
         _ _ _ _ _ [] /= _ [#] pt2'_out -> -> ->> _ ->> _ _ _.
-rewrite /= oget_some /= in dec_fw_wait_eq.
 elim dec_fw_wait_eq => -> [#] -> -> /=.
-rewrite /= oget_some /= in dec_smc_real_ke_ideal_simp_wait_adv3_eq.
 elim dec_smc_real_ke_ideal_simp_wait_adv3_eq => -> [#] -> -> ->.
-rewrite !oget_some /= !Fwd.enc_dec_fw_rsp !oget_some /=
-        !enc_dec_univ_triple !oget_some /= !oget_some /= !oget_some
-        kmulA kinv_r kid_r proj_injK oget_some /=.
+rewrite /= !Fwd.enc_dec_fw_rsp /= !enc_dec_univ_triple /=
+        kmulA kinv_r kid_r proj_injK /=.
 by rewrite (SMCRealKEIdealSimpRel4 _ pt1' pt2' t' q').
 rcondf{1} 2; first auto.
 rcondt{1} 2; first auto.
@@ -4261,7 +4223,7 @@ move => |> &hr _ _ _ _ _ ep _.
 case (r2{m}) => // msg.
 case msg => mod pt1 pt2 u.
 case pt1 => addr1 n1 /= _.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondf{2} 4; first auto.
 rcondt{1} 1; first auto; smt().
@@ -4482,20 +4444,20 @@ rcondt{2} 4; first auto.
 rcondt{2} 7; first auto.
 move => |> &hr <-; by rewrite negb_or not_dir.
 rcondf{2} 10; first auto => |> &hr <-; progress; smt(incP).
-rcondt{2} 10; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondt{2} 10; first auto => |> &hr <-; rewrite /=; smt(incP).
 rcondf{2} 11; first auto.
 rcondf{2} 11; first auto.
-rcondf{2} 14; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 14; first auto => |> &hr <-; rewrite /=; smt(incP).
 rcondf{2} 14; first auto.
 rcondf{2} 14; first auto.
 rcondt{2} 14; first auto.
-rcondf{2} 16; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 16; first auto => |> &hr <-; rewrite /=; smt(incP).
 inline{2} (1) CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubAdv.invoke.
 rcondt{2} 17; first auto.
 rcondf{2} 20; first auto.
 rcondf{2} 23; first auto => |> &hr <- /#.
 sp 0 22.
-if; first auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _ <- //.
+if; first auto => |> &1 &2 _ _ <- //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress; by rewrite some_oget.
@@ -4503,14 +4465,12 @@ rcondt{1} 1; first auto.
 rcondt{2} 1; first auto.
 sp 2 2.
 rcondt{1} 1; first auto.
-rcondt{2} 1; first auto => |> &hr _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite oget_some; move => <- //.
+rcondt{2} 1; first auto => |> &hr _ _ <- //.
 inline{1} (1) SMCReal(KERS.KERealSimp).invoke.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).invoke.
 sp 4 4.
 if.
-auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite oget_some; by move => <-.
+auto => |> &1 &2 _ _ <- //.
 inline{1} (1) SMCReal(KERS.KERealSimp).loop.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).loop.
 sp 3 3.
@@ -4906,7 +4866,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
 move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -5114,27 +5074,25 @@ rcondf{2} 7; first auto.
 move => &hr /> <- [#] -> -> /=; smt(incP).
 rcondt{2} 7; first auto.
 move => &hr /> <- [#] -> ->.
-rewrite oget_some /=; smt(incP).
+rewrite /=; smt(incP).
 rcondf{2} 8; first auto.
 rcondf{2} 8; first auto.
 sp 0 10.
 rcondf{2} 1; first auto.
 move => &hr />; smt(inc_nle_l).
 rcondf{2} 1; first auto.
-move => &hr />.
 rcondf{2} 1; first auto.
-move => &hr />.
 rcondt{2} 1; first auto.
 rcondf{2} 3; first auto.
 move => &hr />.
-rewrite oget_some /=; smt(inc_nle_l).
+rewrite /=; smt(inc_nle_l).
 inline{2} (1) CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubAdv.invoke.
 rcondt{2} 4; first auto.
 rcondf{2} 7; first auto.
 sp 0 9.
 rcondf{2} 1; first auto.
-move => &hr />; rewrite oget_some; move => <- //.
-if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+move => &hr />; move => <- //.
+if; first auto => &1 &2 /> <- //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress; by rewrite some_oget.
@@ -5143,11 +5101,11 @@ rcondt{2} 1; first auto.
 sp 2 2.
 rcondt{1} 1; first auto.
 rcondt{2} 1; first auto.
-move => &hr />; rewrite oget_some; move => <- //.
+move => &hr /> <- //.
 inline{1} (1) SMCReal(KERS.KERealSimp).invoke.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).invoke.
 sp 4 4.
-if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+if; first auto => &1 &2 /> <- //.
 inline{1} (1) SMCReal(KERS.KERealSimp).loop.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).loop.
 sp 3 3.
@@ -5176,7 +5134,7 @@ conseq
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None ==>
    _).
-move => &1 &2 />; rewrite oget_some /= /#.
+move => &1 &2 /> /= /#.
 (* use part 1 of induction *)
 transitivity{1}
 {r <@ SMCSec1Bridge_Left(KERS.KERealSimp).rest(m1, r1);}
@@ -5367,32 +5325,31 @@ rcondt{2} 5; first auto.
 rcondt{2} 8; first auto.
 rcondf{2} 10; first auto.
 rcondf{2} 13; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 rcondf{2} 13; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 rcondt{2} 13; first auto.
 rcondt{2} 15; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).invoke.
 rcondt{2} 19; first auto.
-move => &hr />; rewrite oget_some /=. smt(le_refl).
+move => &hr />; smt(le_refl).
 inline{2} (1) SMCReal(CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE).loop.
 rcondt{2} 22; first auto.
 rcondf{2} 22; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(ne_cat_nonnil_r).
 rcondf{2} 22; first auto.
 rcondf{2} 22; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 rewrite (not_le_other_branch MI.func{m} (MI.func{m} ++ [2]) 2 1) // le_refl.
 inline{2} (1) CompEnv(Env, MI(KERS.KERealSimp, Adv)).StubKE.invoke.
 rcondt{2} 23; first auto.
 sp 0 25.
 if; first auto => &1 &2 />.
-by rewrite oget_some.
 rcondt{1} 2; first auto.
 rcondf{1} 3; first auto.
 rcondt{1} 3; first auto.
@@ -5404,7 +5361,7 @@ rcondf{2} 6; first auto.
 auto.
 rcondf{1} 1; first auto; smt(le_refl).
 rcondf{2} 1; first auto.
-move => &hr />; rewrite oget_some; smt(le_refl).
+move => &hr />; smt(le_refl).
 sp 1 1.
 conseq
   (_ :
@@ -5557,7 +5514,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
 move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -7893,7 +7850,7 @@ move => |> &hr _ _ _ _ _ ep _.
 case (r2{m}) => // msg.
 case msg => mod pt1 pt2 u.
 case pt1 => addr1 n1 /= _.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondf{2} 4; first auto.
 rcondt{1} 1; first auto; smt().
@@ -8114,20 +8071,20 @@ rcondt{2} 4; first auto.
 rcondt{2} 7; first auto.
 move => |> &hr <-; by rewrite negb_or not_dir.
 rcondf{2} 10; first auto => |> &hr <-; progress; smt(incP).
-rcondt{2} 10; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondt{2} 10; first auto => |> &hr <- /=; smt(incP).
 rcondf{2} 11; first auto.
 rcondf{2} 11; first auto.
-rcondf{2} 14; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 14; first auto => |> &hr <- /=; smt(incP).
 rcondf{2} 14; first auto.
 rcondf{2} 14; first auto.
 rcondt{2} 14; first auto.
-rcondf{2} 16; first auto => |> &hr <-; rewrite oget_some /=; smt(incP).
+rcondf{2} 16; first auto => |> &hr <- /=; smt(incP).
 inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
 rcondt{2} 17; first auto.
 rcondf{2} 20; first auto.
 rcondf{2} 23; first auto => |> &hr <- /#.
 sp 0 22.
-if; first auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _ <- //.
+if; first auto => |> &1 &2 _ _ <- //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress; by rewrite some_oget.
@@ -8135,14 +8092,12 @@ rcondt{1} 1; first auto.
 rcondt{2} 1; first auto.
 sp 2 2.
 rcondt{1} 1; first auto.
-rcondt{2} 1; first auto => |> &hr _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite oget_some; move => <- //.
+rcondt{2} 1; first auto => |> &hr _ _ <- //.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
 sp 4 4.
 if.
-auto => |> &1 &2 _ _ _ _ _ _ _ _ _ _ _ _ _.
-rewrite oget_some; by move => <-.
+auto => |> &1 &2 _ _ <- //.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
 sp 3 3.
@@ -8538,7 +8493,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
 move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -8746,27 +8701,25 @@ rcondf{2} 7; first auto.
 move => &hr /> <- [#] -> -> /=; smt(incP).
 rcondt{2} 7; first auto.
 move => &hr /> <- [#] -> ->.
-rewrite oget_some /=; smt(incP).
+rewrite /=; smt(incP).
 rcondf{2} 8; first auto.
 rcondf{2} 8; first auto.
 sp 0 10.
 rcondf{2} 1; first auto.
 move => &hr />; smt(inc_nle_l).
 rcondf{2} 1; first auto.
-move => &hr />.
 rcondf{2} 1; first auto.
-move => &hr />.
 rcondt{2} 1; first auto.
 rcondf{2} 3; first auto.
 move => &hr />.
-rewrite oget_some /=; smt(inc_nle_l).
+smt(inc_nle_l).
 inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubAdv.invoke.
 rcondt{2} 4; first auto.
 rcondf{2} 7; first auto.
 sp 0 9.
 rcondf{2} 1; first auto.
-move => &hr />; rewrite oget_some; move => <- //.
-if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+move => &hr /> <- //.
+if; first auto => &1 &2 /> <- //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
 auto; progress; by rewrite some_oget.
@@ -8775,11 +8728,11 @@ rcondt{2} 1; first auto.
 sp 2 2.
 rcondt{1} 1; first auto.
 rcondt{2} 1; first auto.
-move => &hr />; rewrite oget_some; move => <- //.
+move => &hr /> <- //.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).invoke.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
 sp 4 4.
-if; first auto => &1 &2 />; rewrite oget_some; move => <- //.
+if; first auto => &1 &2 /> <- //.
 inline{1} (1) SMCReal(KeyEx.KEIdeal).loop.
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
 sp 3 3.
@@ -8808,7 +8761,7 @@ conseq
    CompEnv.func{2} = MI.func{1} /\ CompEnv.adv{2} = MI.adv{1} /\
    CompEnv.stub_st{2} = None ==>
    _).
-move => &1 &2 />; rewrite oget_some /= /#.
+move => &1 &2 /> /#.
 (* use part 1 of induction *)
 transitivity{1}
 {r <@ SMCSec1Bridge_Left(KeyEx.KEIdeal).rest(m1, r1);}
@@ -8999,32 +8952,31 @@ rcondt{2} 5; first auto.
 rcondt{2} 8; first auto.
 rcondf{2} 10; first auto.
 rcondf{2} 13; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 rcondf{2} 13; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 rcondt{2} 13; first auto.
 rcondt{2} 15; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(inc_le1_not_rl le_ext_r).
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).invoke.
 rcondt{2} 19; first auto.
-move => &hr />; rewrite oget_some /=. smt(le_refl).
+move => &hr /> /=. smt(le_refl).
 inline{2} (1) SMCReal(CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE).loop.
 rcondt{2} 22; first auto.
 rcondf{2} 22; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 smt(ne_cat_nonnil_r).
 rcondf{2} 22; first auto.
 rcondf{2} 22; first auto.
-move => &hr />; rewrite oget_some /=.
+move => &hr /> /=.
 rewrite (not_le_other_branch MI.func{m} (MI.func{m} ++ [2]) 2 1) // le_refl.
 inline{2} (1) CompEnv(Env, MI(KeyEx.KEIdeal, Adv)).StubKE.invoke.
 rcondt{2} 23; first auto.
 sp 0 25.
 if; first auto => &1 &2 />.
-by rewrite oget_some.
 rcondt{1} 2; first auto.
 rcondf{1} 3; first auto.
 rcondt{1} 3; first auto.
@@ -9036,7 +8988,7 @@ rcondf{2} 6; first auto.
 auto.
 rcondf{1} 1; first auto; smt(le_refl).
 rcondf{2} 1; first auto.
-move => &hr />; rewrite oget_some; smt(le_refl).
+move => &hr />; smt(le_refl).
 sp 1 1.
 conseq
   (_ :
@@ -9189,7 +9141,7 @@ rcondt{2} 4; first auto.
 rcondf{2} 6; first auto.
 rcondf{1} 1; first auto.
 move => /> &hr; case (r{m}) => // [[]] ? [] ? ? ? ?.
-rewrite oget_some not_dir negb_or /=.
+rewrite not_dir negb_or /=.
 smt(inc_nle_l).
 rcondt{1} 1; first auto; smt().
 rcondf{1} 2; first auto.
@@ -10464,8 +10416,7 @@ rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
 rcondf{2} 3; first auto.
 move =>
-  |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-by rewrite /= oget_some.
+  |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 rcondf{2} 3; first auto.
 sp 0 2.
 if{2}.
@@ -10480,15 +10431,14 @@ rcondt{1} 1; first auto.
 rcondt{1} 3; first auto; smt().
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 rcondt{2} 3; first auto.
-move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> /=.
-by rewrite oget_some.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 case (MI.func{2} ++ [1] = m{2}.`2.`1).
 case (Fwd.is_fw_ok m{2}).
 rcondt{2} 4; first auto.
 rcondt{2} 5; first auto.
 move =>
   |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-rewrite /= oget_some /= negb_or not_dir.
+rewrite /= negb_or not_dir.
 smt(Fwd.dest_good_fw_ok).
 rcondt{1} 7; first auto.
 move => |> &hr <- /= [#] -> -> <- <- <- _ _.
@@ -10505,36 +10455,32 @@ rcondt{1} 11; first auto; smt(Fwd.dest_good_fw_ok).
 rcondf{1} 15; first auto.
 rcondf{1} 18; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp_pre [] /= _ [#] out_pt1'_func _ _ -> _ _.
-by rewrite oget_some /smc_rsp /= oget_some.
+by rewrite /smc_rsp.
 rcondt{1} 18; first auto.
 rcondf{1} 19; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp_pre [] /= _ [#] _ _ out_pt2'_adv -> _ _.
-by rewrite oget_some enc_dec_smc_real_ke_ideal_simp_state_wait_adv3 oget_some /=
+by rewrite enc_dec_smc_real_ke_ideal_simp_state_wait_adv3 /=
            /smc_rsp.
 rcondf{1} 19; first auto.
 rcondf{2} 7; first auto.
 rcondf{2} 7; first auto.
 rcondf{2} 10; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp [] /= _ [#] _ _ _ _ _ ->.
-rewrite oget_some enc_dec_smc_sim_state_wait_adv3 oget_some
-        /= /smc_sim_rsp /=.
+rewrite enc_dec_smc_sim_state_wait_adv3 /= /smc_sim_rsp /=.
 smt(inc_nle_r).
 rcondf{2} 10; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp [] /= _ [#] _ _ _ _ _ ->.
-rewrite oget_some enc_dec_smc_sim_state_wait_adv3 oget_some
-        /= /smc_sim_rsp /=.
+rewrite enc_dec_smc_sim_state_wait_adv3 /= /smc_sim_rsp /=.
 smt(le_refl).
 rcondt{2} 10; first auto.
 rcondt{2} 12; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp [] /= _ [#] _ _ _ _ _ ->.
-rewrite oget_some enc_dec_smc_sim_state_wait_adv3 oget_some
-        /= /smc_sim_rsp /=.
+rewrite enc_dec_smc_sim_state_wait_adv3 /= /smc_sim_rsp /=.
 smt(le_refl).
 inline{2} (1) SMCIdeal.invoke.
 rcondt{2} 16; first auto.
 move => |> &hr <- [#] -> -> _ _ _ exp [] /= _ [#] _ _ _ _ _ ->.
-by rewrite oget_some enc_dec_smc_sim_state_wait_adv3 oget_some
-           /= /smc_sim_rsp.
+by rewrite enc_dec_smc_sim_state_wait_adv3 /= /smc_sim_rsp.
 inline{2} (1) SMCIdeal.parties.
 rcondf{2} 18; first auto; smt().
 rcondt{2} 18; first auto; smt(is_smc_ideal_state_wait_sim).
@@ -10543,14 +10489,12 @@ rcondf{2} 24; first auto.
 rcondf{2} 27; first auto.
 move =>
   |> &hr <- [#] -> -> _ _ _ exppre [] /= _ [#] out_pt2'_func _ _ _ -> _.
-by rewrite oget_some enc_dec_smc_ideal_state_wait_sim oget_some /=
-           /smc_rsp.
+by rewrite enc_dec_smc_ideal_state_wait_sim /= /smc_rsp.
 rcondt{2} 27; first auto.
 rcondf{2} 28; first auto.
 move =>
   |> &hr <- [#] -> -> _ _ _ exppre [] /= _ [#] out_pt2'_func _ _ _ -> _.
-by rewrite oget_some enc_dec_smc_ideal_state_wait_sim oget_some /=
-           /smc_rsp.
+by rewrite enc_dec_smc_ideal_state_wait_sim /= /smc_rsp.
 rcondf{2} 28; first auto.
 auto =>
   |> &1 &2 <- [#] -> -> _ _ _ exppre [] /= out_pt1'_func [#]
@@ -10558,7 +10502,7 @@ auto =>
   /negb_or [#] _ _ _ _ _.
 rewrite enc_dec_smc_sim_state_wait_adv3
         enc_dec_smc_real_ke_ideal_simp_state_wait_adv3
-        enc_dec_smc_ideal_state_wait_sim !oget_some /smc_rsp /=.
+        enc_dec_smc_ideal_state_wait_sim /smc_rsp /=.
 by rewrite (SMCSec2Rel4 _ pt1' pt2' t' q').
 rcondf{2} 4; first auto.
 rcondf{2} 4; first auto.
@@ -10622,8 +10566,7 @@ rcondf{2} 2; first auto.
 move =>
   |> &hr r_R pt2_r oget_dec_smc_sim_state_wait_adv3 <-
   [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some in oget_dec_smc_sim_state_wait_adv3.
-elim oget_dec_smc_sim_state_wait_adv3 => _ _ ->.
+rewrite /= in oget_dec_smc_sim_state_wait_adv3.
 smt(Fwd.dest_good_fw_ok).
 rcondf{2} 2; first auto.
 rcondt{2} 2; first auto.
@@ -10675,8 +10618,7 @@ case (! MI.func{1} <= addr1{1}).
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
 rcondf{2} 3; first auto.
-move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-by rewrite /= oget_some.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 rcondf{2} 3; first auto.
 sp 0 2.
 if{2}.
@@ -10691,14 +10633,13 @@ rcondt{1} 1; first auto.
 rcondt{1} 3; first auto; smt().
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 rcondt{2} 3; first auto.
-move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> /=.
-by rewrite oget_some.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 case (MI.func{2} ++ [2] = m{2}.`2.`1).
 case (KeyEx.is_ke_sim_rsp m{2}).
 rcondt{2} 4; first auto.
 rcondt{2} 5; first auto.
 move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-rewrite /= oget_some /= negb_or not_dir.
+rewrite negb_or not_dir.
 move => [#] _ -> _.
 smt(KeyEx.dest_good_ke_sim_rsp).
 rcondt{1} 7; first auto.
@@ -10715,15 +10656,15 @@ rcondt{1} 11; first auto; smt(KeyEx.dest_good_ke_sim_rsp).
 rcondf{1} 15; first auto.
 rcondf{1} 18; first auto.
 move => |> &hr.
-rewrite oget_some /Fwd.fw_obs /=; smt(inc_nle_r).
+rewrite /Fwd.fw_obs /=; smt(inc_nle_r).
 rcondf{1} 18; first auto.
 rcondf{1} 18; first auto.
 move => |> &hr.
-rewrite oget_some /Fwd.fw_obs /=; smt(Fwd.fwd_pi_uniq).
+rewrite /Fwd.fw_obs /=; smt(Fwd.fwd_pi_uniq).
 rcondt{1} 18; first auto.
 rcondf{1} 20; first auto.
 move => |> &hr.
-rewrite oget_some /Fwd.fw_obs /=; smt(inc_nle_r).
+rewrite /Fwd.fw_obs /=; smt(inc_nle_r).
 rcondt{2} 8; first auto.
 rcondf{2} 9; first auto.
 move => |> &hr.
@@ -10749,8 +10690,7 @@ call (_ : true).
 auto =>
   |> &1 &2 <- [#] -> -> _ _ _ _ [] /= out_pt1'_func [#]
   out_pt2'_func out_pt1'_adv out_pt2'_adv -> -> -> /negb_or
-  [#] _ /not_dir -> _ _ _.
-rewrite !oget_some /= !oget_some /=.
+  [#] _ /not_dir -> _ _ _ //.
 split => [| _ //].
 do 4!congr;
   by rewrite /pad_iso_l -/(gen q') -/(gen (log (inj t' ^^ gen q')))
@@ -10908,7 +10848,6 @@ rcondf{2} 2; first auto.
 move =>
   |> &hr r_R pt2_r oget_dec_smc_sim_state_wait_adv2 <-
   [] /= _ [#] _ _ _ _ _ ->>.
-rewrite /= oget_some in oget_dec_smc_sim_state_wait_adv2.
 elim oget_dec_smc_sim_state_wait_adv2 => _ _ ->.
 smt(KeyEx.dest_good_ke_sim_rsp).
 rcondf{2} 2; first auto.
@@ -10960,8 +10899,7 @@ case (! MI.func{1} <= addr1{1}).
 rcondt{1} 1; first auto.
 rcondf{1} 2; first auto.
 rcondf{2} 3; first auto.
-move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-by rewrite /= oget_some.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 rcondf{2} 3; first auto.
 sp 0 2.
 if{2}.
@@ -10976,15 +10914,14 @@ rcondt{1} 1; first auto.
 rcondt{1} 3; first auto; smt().
 inline{1} (1) SMCRealKEIdealSimp.invoke.
 rcondt{2} 3; first auto.
-move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> /=.
-by rewrite oget_some.
+move => |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ -> //.
 case (MI.func{2} ++ [2] = m{2}.`2.`1).
 case (KeyEx.is_ke_sim_rsp m{2}).
 rcondt{2} 4; first auto.
 rcondt{2} 5; first auto.
 move =>
   |> &hr <- [#] -> -> _ _ _ _ [] /= _ [#] _ _ _ _ _ ->.
-rewrite /= oget_some /= negb_or not_dir.
+rewrite negb_or not_dir.
 move => [#] _ -> _.
 smt(KeyEx.dest_good_ke_sim_rsp).
 rcondt{1} 7; first auto.
@@ -11024,8 +10961,6 @@ auto =>
   |> &1 &2 addr1_R pt2_R oget_dec_smc_sim_state_wait_adv1 _
   oget_dec_smc_real_ke_ideal_simp_wait_adv1 _ _ _ _
   [] /= _ [#] _ _ _ ->> _ ->>.
-rewrite /= oget_some /= in oget_dec_smc_sim_state_wait_adv1.
-rewrite /= oget_some /= in oget_dec_smc_real_ke_ideal_simp_wait_adv1.
 elim oget_dec_smc_sim_state_wait_adv1 => -> [#] -> ->.
 elim oget_dec_smc_real_ke_ideal_simp_wait_adv1 => -> [#] -> ->.
 progress.
@@ -11036,15 +10971,15 @@ by rewrite pad_iso_lr.
 rcondf{1} 5; first auto.
 rcondf{1} 8; first auto.
 move => |> &hr.
-rewrite oget_some /KeyEx.ke_sim_req2 /=; smt(inc_nle_r).
+rewrite /KeyEx.ke_sim_req2 /=; smt(inc_nle_r).
 rcondf{1} 8; first auto.
 rcondf{1} 8; first auto.
 move => |> &hr.
-rewrite oget_some /KeyEx.ke_sim_req2 /=; smt(KeyEx.ke_pi_uniq).
+rewrite /KeyEx.ke_sim_req2 /=; smt(KeyEx.ke_pi_uniq).
 rcondt{1} 8; first auto.
 rcondf{1} 10; first auto.
 move => |> &hr.
-rewrite oget_some /KeyEx.ke_sim_req2 /=; smt(inc_nle_r).
+rewrite /KeyEx.ke_sim_req2 /=; smt(inc_nle_r).
 rcondt{2} 4; first auto.
 rcondf{2} 5; first auto.
 move => |> &hr.
@@ -11069,7 +11004,7 @@ seq 10 5 :
    pt1' pt2' t' q{1}).
 call (_ : true).
 auto => |> &1 &2 _ _ exp_pre [] /=.
-rewrite oget_some /= /#.
+smt().
 if => //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.
@@ -11224,7 +11159,6 @@ rcondf{2} 1; first auto.
 move =>
   |> &hr oget_dec_ke_sim_rsp oget_dec_smc_sim_state_wait_adv1
   oget_r_R [] /= _ [#] _ _ _ _ _ ->> _ ne is_rsp.
-rewrite /= oget_some in oget_dec_smc_sim_state_wait_adv1.
 elim oget_dec_smc_sim_state_wait_adv1 => _ _ ->>.
 move : oget_dec_ke_sim_rsp.
 smt(KeyEx.dest_good_ke_sim_rsp).
@@ -11289,22 +11223,22 @@ sp 1 1.
 if; first smt().
 rcondf{1} 5; first auto.
 rcondf{1} 8; first auto; progress.
-rewrite oget_some /KeyEx.ke_sim_req1 /#.
+rewrite /KeyEx.ke_sim_req1 /#.
 rcondf{1} 8; first auto.
 rcondf{1} 8; first auto; progress.
-rewrite oget_some /KeyEx.ke_sim_req1 /=; smt(smc_pi_uniq).
+rewrite /KeyEx.ke_sim_req1 /=; smt(smc_pi_uniq).
 rcondt{1} 8; first auto.
 rcondf{1} 10; first auto; progress.
-rewrite oget_some /KeyEx.ke_sim_req1 /= /#.
+rewrite /KeyEx.ke_sim_req1 /= /#.
 rcondf{2} 5; first auto.
 rcondf{2} 8; first auto; progress.
-rewrite oget_some /smc_sim_req /= /#.
+rewrite /smc_sim_req /= /#.
 rcondf{2} 8; first auto.
 rcondf{2} 8; first auto; progress.
-rewrite oget_some /smc_sim_req /=; smt(smc_pi_uniq).
+rewrite /smc_sim_req /=; smt(smc_pi_uniq).
 rcondt{2} 8; first auto.
 rcondf{2} 10; first auto; progress.
-rewrite oget_some /smc_sim_req /= /#.
+rewrite /smc_sim_req /= /#.
 inline{2} (1) SMCSim(Adv).invoke.
 rcondt{2} 13; first auto.
 inline{2} (1) SMCSim(Adv).loop.
@@ -11314,8 +11248,7 @@ rcondt{2} 19; first auto; smt().
 rcondt{2} 19; first auto; smt().
 rcondt{2} 23; first auto.
 rcondf{2} 24; first auto; progress.
-rewrite !oget_some enc_dec_smc_sim_req oget_some /=
-        /ke_sim_req1 /=;
+rewrite enc_dec_smc_sim_req oget_some /= /ke_sim_req1 /=;
   smt(smc_pi_uniq).
 seq 10 24 :
   (r0{1} = r4{2} /\ not_done{1} /\ not_done{2} /\ not_done0{2} /\
@@ -11338,7 +11271,7 @@ seq 10 24 :
    pt12{2} pt22{2} t{2}).
 call (_ : true).
 auto => |> &1 &2 <- [#] _ -> -> -> _ _ [] /= _ [#] _ _;
-  by rewrite !oget_some /KeyEx.ke_sim_req1 /= enc_dec_smc_sim_req.
+  by rewrite /KeyEx.ke_sim_req1 /= enc_dec_smc_sim_req.
 if => //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.

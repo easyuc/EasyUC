@@ -52,12 +52,11 @@ move => [#] -> pt1'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (is_univ_port v1) => // iupt_v1.
 have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
   exists (oget (dec_univ_port v1)); by rewrite -some_oget.
 move => /dec_enc_univ_port => -> /=.
-rewrite oget_some /#.
+smt().
 qed.
 
 op is_fw_req (m : msg) : bool =
@@ -76,7 +75,7 @@ have [] x : exists (x : addr * port * port * univ),
   dec_fw_req m = Some x.
   exists (oget (dec_fw_req m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 /dec_enc_fw_req <-.
-by rewrite enc_dec_fw_req oget_some /fw_req.
+by rewrite enc_dec_fw_req /fw_req.
 qed.
 
 lemma not_is_fw_req_suff (m : msg) :
@@ -119,12 +118,11 @@ move => [#] -> pt2'_2 iup_u'.
 have [] p : exists (p : univ * univ), dec_univ_pair u' = Some p.
   exists (oget (dec_univ_pair u')); by rewrite -some_oget.
 case p => v1 v2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (is_univ_port v1) => // iupt_v1.
 have [] pt3 : exists pt3, dec_univ_port v1 = Some pt3.
   exists (oget (dec_univ_port v1)); by rewrite -some_oget.
 move => /dec_enc_univ_port => -> /=.
-rewrite oget_some /#.
+smt().
 qed.
 
 op is_fw_rsp (m : msg) : bool =
@@ -142,7 +140,7 @@ have [] x : exists (x : addr * port * port * univ),
   dec_fw_rsp m = Some x.
   exists (oget (dec_fw_rsp m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 /dec_enc_fw_rsp <-.
-by rewrite enc_dec_fw_rsp oget_some /fw_rsp.
+by rewrite enc_dec_fw_rsp /fw_rsp.
 qed.
 
 (* message from forwarding functionality to adversary, letting it
@@ -187,7 +185,7 @@ move => [#] -> pt1'_2 pt2'_2 iut_u'.
 have [] t : exists (t : univ * univ * univ), dec_univ_triple u' = Some t.
   exists (oget (dec_univ_triple u')); by rewrite -some_oget.
 case t => v1 v2 v3 /dec_enc_univ_triple -> /=.
-rewrite enc_dec_univ_triple oget_some /=.
+rewrite enc_dec_univ_triple /=.
 case (! is_univ_port v1 \/ ! is_univ_port v2) => //.
 rewrite negb_or /=.
 move => [#] iupt_v1 iupt_v2 [#] pt2'_1 pt1'_1 odupt_v1 odupt_v2 ->.

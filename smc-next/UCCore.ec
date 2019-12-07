@@ -1,6 +1,6 @@
 (* UCCore.eca *)
 
-prover quorum=2 ["Alt-Ergo" "Z3"].
+prover [""].
 
 (* Core UC Definitions and Lemmas *)
 
@@ -57,25 +57,14 @@ proof. by case mod. qed.
 
 type univ.  (* universe of values - we can implement this at top level *)
 
-(* encoding/decoding unions of universe values *)
-
-clone EPDP as EPDP_Univ_Union2Univ with
-  type orig <- (univ, univ) union2,
-  type enc  <- univ.
-
-clone EPDP as EPDP_Univ_Union3Univ with
-  type orig <- (univ, univ, univ) union3,
-  type enc  <- univ.
-
-clone EPDP as EPDP_Univ_Union4Univ with
-  type orig <- (univ, univ, univ, univ) union4,
-  type enc  <- univ.
-
 (* universe encoding/decoding operators - more can be added by
    other theories *)
 
 clone EPDP as EPDP_Univ_Unit with  (* unit *)
   type orig <- unit, type enc <- univ.
+
+clone EPDP as EPDP_Univ_IntUniv with  (* int * univ *)
+  type orig <- int * univ, type enc <- univ.
 
 clone EPDP as EPDP_Univ_Port with  (* port *)
   type orig <- port, type enc <- univ.
@@ -90,7 +79,7 @@ clone EPDP as EPDP_Univ_PortPortUniv with  (* port * port * univ *)
   type orig <- port * port * univ, type enc <- univ.
 
 clone EPDP as EPDP_Univ_PortIntUniv with  (* port * int * univ *)
-  type orig <- port * int * univ, type enc  <- univ.
+  type orig <- port * int * univ, type enc <- univ.
 
 (* end theory parameters *)
 
@@ -404,7 +393,8 @@ proof.
 apply epdp_intro.
 move => x.
 rewrite /da_from_env /dec_da_from_env /= EPDP_Univ_PortIntUniv.valid_enc
-        /= EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
+        /= EPDP_Univ_PortIntUniv.enc_dec oget_some.
+by case x.
 move => [mod pt1 pt2 u] v.
 rewrite /da_from_env /dec_da_from_env /=.
 case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/
@@ -413,8 +403,19 @@ rewrite !negb_or /= not_dir => [#] -> pt1_2 -> val_u.
 have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
   exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortIntUniv.dec_enc <-.
-rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
+rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some.
+case t => />.
+move : pt1 pt1_2.
+by case.
 qed.
+
+lemma da_from_env_enc_dec (x : da_from_env) :
+  dec_da_from_env (da_from_env x) = Some x.
+proof.
+apply (epdp_enc_dec _ _ _ epdp_da_from_env).
+qed.
+
+hint simplify da_from_env_enc_dec.
 
 lemma dest_valid_da_from_env (m : msg) :
   dec2valid dec_da_from_env m =>
@@ -424,8 +425,7 @@ move => val_m.
 have [] x : exists (x : da_from_env), dec_da_from_env m = Some x.
   exists (oget (dec_da_from_env m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) <-.
-by rewrite (epdp_enc_dec _ _ _ epdp_da_from_env).
+move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) <- //.
 qed.
 
 lemma source_valid_da_from_env (m : msg) :
@@ -466,7 +466,8 @@ proof.
 apply epdp_intro.
 move => x.
 rewrite /da_to_env /dec_da_to_env /= EPDP_Univ_PortIntUniv.valid_enc
-        /= EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
+        /= EPDP_Univ_PortIntUniv.enc_dec oget_some /=.
+by case x.
 move => [mod pt1 pt2 u] v.
 rewrite /da_to_env /dec_da_to_env /=.
 case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/
@@ -475,7 +476,10 @@ rewrite !negb_or /= not_dir => [#] -> -> pt2_2 val_u.
 have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
   exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortIntUniv.dec_enc <-.
-rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
+rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some.
+case t => />.
+move : pt2 pt2_2.
+by case.
 qed.
 
 lemma dest_valid_da_to_env (m : msg) :

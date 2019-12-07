@@ -716,7 +716,7 @@ progress; by exists OH'.mp{2} NOH'.red_inps{1} inp{2}.
 inline NOH'.rehash_red_inps_addl; sp; wp.
 rnd.
 call (_ : ={NOH'.mp, NOH'.red_inps}); first sim.
-skip; progress; by rewrite get_set_sameE oget_some.
+skip; progress; by rewrite get_set_sameE.
 transitivity{1}
   { result <@ NOH'.rehash_red_inps_rslt(inp); }
   (={inp, NOH'.mp} /\ ! mem NOH'.red_inps{1} inp{1} /\

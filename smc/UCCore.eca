@@ -255,12 +255,10 @@ case (dec_univ_pair v = None) => // dup_v.
 have [] p : exists (p : univ * univ), dec_univ_pair v = Some p.
   exists (oget (dec_univ_pair v)); by rewrite -some_oget.
 case p => p1 p2 /dec_enc_univ_pair -> /=.
-rewrite oget_some /=.
 case (dec_univ_pair p2 = None) => // dup_p2.
 have [] q : exists (q : univ * univ), dec_univ_pair p2 = Some q.
   exists (oget (dec_univ_pair p2)); by rewrite -some_oget.
-case q => q1 q2 /dec_enc_univ_pair -> /=.
-by rewrite oget_some.
+case q => q1 q2 /dec_enc_univ_pair -> //.
 qed.
 
 op is_univ_triple (v : univ) : bool = dec_univ_triple v <> None.
@@ -295,12 +293,11 @@ case (dec_univ_triple v = None) => // dut_v.
 have [] p : exists (p : univ * univ * univ), dec_univ_triple v = Some p.
   exists (oget (dec_univ_triple v)); by rewrite -some_oget.
 case p => p1 p2 p3 /dec_enc_univ_triple ->.
-rewrite enc_dec_univ_triple oget_some /=.
+rewrite enc_dec_univ_triple /=.
 case (dec_univ_pair p3 = None) => // dup_p3.
 have [] q : exists (q : univ * univ), dec_univ_pair p3 = Some q.
   exists (oget (dec_univ_pair p3)); by rewrite -some_oget.
-case q => q1 q2 /dec_enc_univ_pair -> /=.
-by rewrite oget_some.
+case q => q1 q2 /dec_enc_univ_pair -> //.
 qed.
 
 op is_univ_4tuple (v : univ) : bool = dec_univ_4tuple v <> None.
@@ -635,7 +632,7 @@ lemma enc_dec_da_from_env (da env : addr, pt1 : port, n2 : int, u : univ) :
 proof.           
 by rewrite /da_from_env /dec_da_from_env /=
            (is_univ_triple (UnivPort pt1) (UnivInt n2) u) /=
-           enc_dec_univ_triple oget_some.
+           enc_dec_univ_triple.
 qed.
 
 lemma dec_enc_da_from_env
@@ -651,7 +648,7 @@ move => [#] -> pt1'_2 pt2'_2 iut_v'.
 have [t] : exists (t : univ * univ * univ), dec_univ_triple v' = Some t.
   exists (oget (dec_univ_triple v')); by rewrite -some_oget.
 case t => t1 t2 t3 /dec_enc_univ_triple ->.
-rewrite enc_dec_univ_triple oget_some /=.
+rewrite enc_dec_univ_triple /=.
 case (! is_univ_port t1 \/ ! is_univ_int t2) => //.
 rewrite !negb_or /= =>
   [#] iupt_t1 iui_t2 [#] <- <- odupt_t1_pt1 odui_t2_n2 -> /=.
@@ -698,7 +695,7 @@ lemma enc_dec_da_to_env (da env : addr, n1 : int, pt2 : port, u : univ) :
 proof.           
 by rewrite /da_to_env /dec_da_to_env /=
            (is_univ_triple (UnivInt n1) (UnivPort pt2) u) /=
-           enc_dec_univ_triple oget_some.
+           enc_dec_univ_triple.
 qed.
 
 lemma dec_enc_da_to_env
@@ -714,7 +711,7 @@ move => [#] -> pt1'_2 pt2'_2 iut_v'.
 have [t] : exists (t : univ * univ * univ), dec_univ_triple v' = Some t.
   exists (oget (dec_univ_triple v')); by rewrite -some_oget.
 case t => t1 t2 t3 /dec_enc_univ_triple ->.
-rewrite enc_dec_univ_triple oget_some /=.
+rewrite enc_dec_univ_triple /=.
 case (! is_univ_int t1 \/ ! is_univ_port t2) => //.
 rewrite negb_or /= =>
   [#] iui_t1 iupt_t2 [#] <- <- odui_t1_n1 odupt_t2_pt2 -> /=.

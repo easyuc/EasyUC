@@ -71,6 +71,8 @@ proof.
 apply /epdp_enc_dec /epdp.
 qed.
 
+hint simplify enc_dec.
+
 lemma dec_enc (x : orig, y : enc) :
   dec y = Some x => enc x = y.
 proof.

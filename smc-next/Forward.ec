@@ -25,7 +25,7 @@ axiom fwd_pi_uniq : uniq [adv_pi; 0].
 
 type fw_req =
   {fw_req_func : addr;   (* address of functionality *)
-   fw_req_pt1  : port;   (* port requesting forwarding *)
+   fw_req_pt1  : port;   (* source = port requesting forwarding *)
    (* data: *)
    fw_req_pt2  : port;   (* port being forwarded to *)
    fw_req_u    : univ}.  (* universe value to be forwarded *)
@@ -46,8 +46,9 @@ lemma epdp_fw_req : epdp fw_req dec_fw_req.
 proof.
 apply epdp_intro.
 move => m.
-rewrite /fw_req /dec_fw_req /= EPDP_Univ_PortUniv.valid_enc
-        /= EPDP_Univ_PortUniv.enc_dec oget_some /#.
+rewrite /fw_req /dec_fw_req /= EPDP_Univ_PortUniv.valid_enc /=
+        oget_some /=.
+by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_req /dec_fw_req /=.
 case (mod = Adv \/ pt1.`2 <> 1 \/ ! (EPDP_Univ_PortUniv.valid u)) => //.
@@ -55,8 +56,23 @@ rewrite !negb_or /= not_adv => [#] -> pt1_2 val_u.
 have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
   exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some.
+case p => />.
+move : pt1 pt1_2.
+by case.
 qed.
+
+lemma dest_valid_fw_req (x : fw_req) :
+  m.`2.`1 = (oget (dec_fw_req m)).`fw_req_func /\ m.`2.`2 = 1.
+proof.
+move => val_m.
+have [] x : exists (x : fw_req), dec_fw_req m = Some x.
+  exists (oget (dec_fw_req m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <-.
+by rewrite (epdp_enc_dec _ _ _ epdp_fw_req).
+qed.
+
 
 lemma dest_valid_fw_req (m : msg) :
   dec2valid dec_fw_req m =>
@@ -82,21 +98,12 @@ move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <-.
 by rewrite (epdp_enc_dec _ _ _ epdp_fw_req).
 qed.
 
-lemma not_is_fw_req_suff (m : msg) :
-  m.`1 = Adv \/ m.`2.`2 <> 1 => ! dec2valid dec_fw_req m.
-proof.
-rewrite /is_fw_req /dec_fw_req.
-case m => mod pt1 pt2 u.
-case pt1 => addr1 n1 /=.
-smt().
-qed.
-
 (* response sent from port index 1 of forwarding functionality to pt2,
    completing the forwarding of u that was requested by pt1 *)
 
 type fw_rsp =
   {fw_rsp_func : addr;   (* address of functionality *)
-   fw_rsp_pt2  : port;   (* port being forwarded to *)
+   fw_rsp_pt2  : port;   (* destination = port being forwarded to *)
    (* data: *)
    fw_rsp_pt1  : port;   (* port requesting forwarding *)
    fw_rsp_u    : univ}.  (* universe value to be forwarded *)
@@ -118,7 +125,8 @@ proof.
 apply epdp_intro.
 move => m.
 rewrite /fw_rsp /dec_fw_rsp /= EPDP_Univ_PortUniv.valid_enc
-        /= EPDP_Univ_PortUniv.enc_dec oget_some /#.
+        /= oget_some /=.
+by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_rsp /dec_fw_rsp /=.
 case (mod = Adv \/ pt2.`2 <> 1 \/ ! (EPDP_Univ_PortUniv.valid u)) => //.
@@ -126,7 +134,10 @@ rewrite !negb_or /= not_adv => [#] -> pt2_2 val_u.
 have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
   exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some.
+case p => />.
+move : pt2 pt2_2.
+by case.
 qed.
 
 lemma dest_valid_fw_rsp (m : msg) :
@@ -183,7 +194,8 @@ proof.
 apply epdp_intro.
 move => m.
 rewrite /fw_obs /dec_fw_obs /= EPDP_Univ_PortPortUniv.valid_enc
-        /= EPDP_Univ_PortPortUniv.enc_dec oget_some /#.
+        /= oget_some /=.
+by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_obs /dec_fw_obs /=.
 case (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1 \/
@@ -192,7 +204,11 @@ rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 val_u.
 have [] t : exists (t : port * port * univ), EPDP_Univ_PortPortUniv.dec u = Some t.
   exists (oget (EPDP_Univ_PortPortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortPortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /= /#.
+rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /=.
+case t => />.
+split.
+move : pt1 pt1_2; by case.
+move : pt2 pt2_2; by case.
 qed.
 
 lemma dest_valid_fw_obs (m : msg) :
@@ -224,9 +240,9 @@ qed.
 
 type fw_ok =
   {fw_ok_func : addr;   (* address of functionality *)
-   fw_ok_adv  : addr
+   fw_ok_adv  : addr    (* address of adversary *)
    (* data: (none) *)
-  }.  (* address of adversary *)
+  }.
 
 op fw_ok (x : fw_ok) : msg =
      (Adv, (x.`fw_ok_func, 1), (x.`fw_ok_adv, adv_pi),
@@ -243,7 +259,8 @@ lemma epdp_fw_ok : epdp fw_ok dec_fw_ok.
 proof.
 apply epdp_intro.
 move => m.
-rewrite /fw_ok /dec_fw_ok /= EPDP_Univ_Unit.valid_enc /= /#.
+rewrite /fw_ok /dec_fw_ok /= EPDP_Univ_Unit.valid_enc /=.
+by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_ok /dec_fw_ok /=.
 case (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi \/
@@ -252,8 +269,8 @@ rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 val_u.
 have [] s : exists (s : unit), EPDP_Univ_Unit.dec u = Some s.
   exists (oget (EPDP_Univ_Unit.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_Unit.dec_enc <- <- /=.
-split; first smt().
-split; first smt().
+split; first move : pt1 pt1_2; by case.
+split; first move : pt2 pt2_2; by case.
 congr.
 qed.
 
@@ -364,6 +381,7 @@ op term_metric (g : glob Forw) : int =
 
 lemma ge0_term_metric (g : glob Forw) : 0 <= term_metric g.
 proof.
+rewrite /term_metric.
 smt().
 qed.
 
@@ -401,8 +419,8 @@ match => //.
 match => //.
 auto.
 move => x x'.
-if; first smt().
-auto; first smt().
+if; first move => /> &2 -> /= -> />.
+auto; first move => /> &2 -> /= -> />.
 auto.
 move => pt1 pt2 u pt1' pt2' u'.
 match => //.
