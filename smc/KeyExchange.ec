@@ -3028,9 +3028,9 @@ inline RH.NonOptHashing.init
        MI(DDH_Adv(Env, Adv).KEDDH, Adv).init
        DDH_Adv(Env, Adv).KEDDH.init.
 rcondt{1} 4; first auto; smt(mem_empty).
-rcondt{1} 7; first auto; smt(mem_set mem_empty).
+rcondt{1} 8; first auto; smt(mem_set mem_empty).
 wp.
-seq 7 8 :
+seq 9 8 :
   (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
    DDH_Adv.func{1} = func' /\ DDH_Adv.adv{1} = adv' /\
    RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
@@ -3669,10 +3669,10 @@ inline RH.NonOptHashing.init
        MI(DDH_Adv(Env, Adv).KEDDH, Adv).init
        DDH_Adv(Env, Adv).KEDDH.init.
 rcondt{1} 4; first auto; smt(mem_empty).
-rcondt{1} 7; first auto; smt(mem_set mem_empty).
-rcondt{1} 10; first auto; smt(mem_set mem_empty).
+rcondt{1} 8; first auto; smt(mem_set mem_empty).
+rcondt{1} 12; first auto; smt(mem_set mem_empty).
 wp.
-seq 10 9 :
+seq 13 9 :
   (={DDH_Adv.func, DDH_Adv.adv, DDH_Adv.in_guard, glob Adv, glob Env} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
    RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
@@ -3872,7 +3872,7 @@ if; first smt().
 wp.
 inline RH.OptHashing.hash.
 rcondt{2} 2; first auto; smt().
-rcondt{2} 5; first auto; smt(mem_set).
+rcondt{2} 6; first auto; smt(mem_set).
 auto => &1 &2 |> _ _ ^ st2_eq <- /= [#] -> -> -> _ _
         @/hybrid_hash_rel1 /= [#] ->>.
 progress.
