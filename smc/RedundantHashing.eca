@@ -246,7 +246,7 @@ local module NOH' : HASHING, HASHING' = {
     rehash_red_inps();
     out <$ doutput;  (* after *)
     mp.[inp] <- out;
-    out <- oget mp.[inp];
+    out <- oget mp.[inp];  (* makes easier to use *)
     return out;
   }
 }.
@@ -305,7 +305,7 @@ local module OH' : HASHING, HASHING' = {
     var out : output;
     out <$ doutput;  (* before *)
     mp.[inp] <- out;
-    out <- oget mp.[inp];
+    out <- oget mp.[inp];  (* makes easier to use *)
     rehash_red_inps();
     return out;
   }
@@ -671,7 +671,7 @@ transitivity{2}
   (={inp} /\ ={mp, red_inps}(NOH', OH') /\ ! mem NOH'.red_inps{1} inp{1} ==>
    ={result} /\ ={mp, red_inps}(NOH', OH'))
   (={inp, OH'.mp, OH'.red_inps} ==> ={result, OH'.mp, OH'.red_inps}) => //.
-progress; exists OH'.mp{2} OH'.red_inps{2} inp{2};
+progress; exists OH'.mp{2} OH'.red_inps{2} inp{2}.
 progress; by exists OH'.mp{2} OH'.red_inps{2} inp{2}.
 call NOH'_OH'_rehash_red_inps_addl_not_red; auto.
 inline OH'.rehash_red_inps_addl; sim.
@@ -724,8 +724,7 @@ transitivity{1}
    NOH'.red_inps{1} `|` fset1 inp{1} = OH'.red_inps{2} ==>
    ={mp}(NOH', OH')) => //.
 progress; by exists OH'.mp{2} NOH'.red_inps{1} inp{2}.
-inline NOH'.rehash_red_inps_addl; sp; wp.
-rnd.
+inline NOH'.rehash_red_inps_addl; sp; wp; rnd.
 call (_ : ={NOH'.mp, NOH'.red_inps}); first sim.
 skip; progress; by rewrite get_set_sameE.
 transitivity{1}
