@@ -21,7 +21,7 @@ message-routing boilerplate will be automatically generated.
 As an example, the file [`case-study.uc`](case-study.uc) contains the
 definitions of the functionalities and simulators of our SMC (secure
 message transmission) case study. It makes use of the definitions
-in [and EasyCrypt theory](KeysExponentsAndPlainTexts.ec).
+in [an EasyCrypt theory](KeysExponentsAndPlainTexts.ec).
 
 The OCaml code for a lexer and parser of the DSL can be found
 in the subdirectory [`LexerParser`](LexerParser). A translator
