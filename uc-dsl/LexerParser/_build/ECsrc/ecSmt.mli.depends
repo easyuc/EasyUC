@@ -1,0 +1,1 @@
+ECsrc/ecSmt.mli: EcDecl EcEnv EcFol EcPath EcProvers LDecl Sp Sx

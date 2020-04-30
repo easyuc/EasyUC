@@ -1,0 +1,12 @@
+#directory "_build";;
+#directory "_build/ECsrc";;
+#directory "_build/ECsrc/system";;
+#directory "_build/ECsrc/phl";;
+#require "batteries";;
+#require "zarith";;
+#require "pcre";;
+#require "inifiles";;
+#require "why3";;
+#load_rec "dlEcInterface.cmo";;
+#rectypes;;
+

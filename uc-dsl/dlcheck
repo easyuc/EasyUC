@@ -1,0 +1,3 @@
+#!/bin/bash
+
+LexerParser_v3/dlCheck.byte $1
