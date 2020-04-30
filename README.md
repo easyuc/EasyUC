@@ -38,15 +38,15 @@ UC Domain Specific Language
 --------------------------------------------------------------------
 
 We have designed and implemented a prototype parser and typechecker
-for a [domain specific language (DSL) for expressing functionalities
-(protocols and ideal functionalities) and
-simulators](../master/uc-dsl). The DSL will allow crypto theorists to
-easily write and understand functionalities and simulators.  The DSL
-design was driven by the expression of functionalities and simulators
-in our EasyCrypt architecture for UC.  But it allows expression at a
-much higher level, avoiding all the message-routing boilerplate.  DSL
-type-checking will catch errors like badly formed messages (e.g., ones
-with bad source addresses) or simulators that interfere with
-communication between environment and adversary. When DSL code is
-translated into EasyCrypt's procedural programming language,
-message-routing boilerplate will be automatically generated.
+for a [domain specific language (DSL)](../master/uc-dsl) for
+expressing functionalities (protocols and ideal functionalities) and
+simulators. The DSL will allow crypto theorists to easily write and
+understand functionalities and simulators.  The DSL design was driven
+by the expression of functionalities and simulators in our EasyCrypt
+architecture for UC.  But it allows expression at a much higher level,
+avoiding all the message-routing boilerplate.  DSL type-checking will
+catch errors like badly formed messages (e.g., ones with bad source
+addresses) or simulators that interfere with communication between
+environment and adversary. When DSL code is translated into
+EasyCrypt's procedural programming language, message-routing
+boilerplate will be automatically generated.
