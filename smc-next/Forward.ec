@@ -30,11 +30,11 @@ type fw_req =
    fw_req_pt2  : port;   (* port being forwarded to *)
    fw_req_u    : univ}.  (* universe value to be forwarded *)
 
-op fw_req (x : fw_req) : msg =
+op nosmt fw_req (x : fw_req) : msg =
      (Dir, (x.`fw_req_func, 1), x.`fw_req_pt1,
       EPDP_Univ_PortUniv.enc (x.`fw_req_pt2, x.`fw_req_u)).
 
-op dec_fw_req (m : msg) : fw_req option =
+op nosmt dec_fw_req (m : msg) : fw_req option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt1.`2 <> 1 \/ ! EPDP_Univ_PortUniv.valid v) ?
         None :
@@ -46,8 +46,7 @@ lemma epdp_fw_req : epdp fw_req dec_fw_req.
 proof.
 apply epdp_intro.
 move => m.
-rewrite /fw_req /dec_fw_req /= EPDP_Univ_PortUniv.valid_enc /=
-        oget_some /=.
+rewrite /fw_req /dec_fw_req /= EPDP_Univ_PortUniv.valid_enc /=.
 by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_req /dec_fw_req /=.
@@ -56,23 +55,14 @@ rewrite !negb_or /= not_adv => [#] -> pt1_2 val_u.
 have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
   exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortUniv.enc_dec oget_some.
-case p => />.
-move : pt1 pt1_2.
-by case.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
 qed.
 
-lemma dest_valid_fw_req (x : fw_req) :
-  m.`2.`1 = (oget (dec_fw_req m)).`fw_req_func /\ m.`2.`2 = 1.
-proof.
-move => val_m.
-have [] x : exists (x : fw_req), dec_fw_req m = Some x.
-  exists (oget (dec_fw_req m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <-.
-by rewrite (epdp_enc_dec _ _ _ epdp_fw_req).
-qed.
-
+op dec_fw_req_check (m : msg, func : addr) : fw_req option =
+  match dec_fw_req m with
+    None   => None
+  | Some x => (x.`fw_req_func = func) ? Some x : None
+  end.
 
 lemma dest_valid_fw_req (m : msg) :
   dec2valid dec_fw_req m =>
@@ -108,11 +98,11 @@ type fw_rsp =
    fw_rsp_pt1  : port;   (* port requesting forwarding *)
    fw_rsp_u    : univ}.  (* universe value to be forwarded *)
 
-op fw_rsp (x : fw_rsp) : msg =
+op nosmt fw_rsp (x : fw_rsp) : msg =
      (Dir, x.`fw_rsp_pt2, (x.`fw_rsp_func, 1),
       EPDP_Univ_PortUniv.enc (x.`fw_rsp_pt1, x.`fw_rsp_u)).
 
-op dec_fw_rsp (m : msg) : fw_rsp option =
+op nosmt dec_fw_rsp (m : msg) : fw_rsp option =
      let (mod, pt1, pt2, v) = m
      in (mod = Adv \/ pt2.`2 <> 1 \/ ! EPDP_Univ_PortUniv.valid v) ?
         None :
@@ -124,8 +114,7 @@ lemma epdp_fw_rsp : epdp fw_rsp dec_fw_rsp.
 proof.
 apply epdp_intro.
 move => m.
-rewrite /fw_rsp /dec_fw_rsp /= EPDP_Univ_PortUniv.valid_enc
-        /= oget_some /=.
+rewrite /fw_rsp /dec_fw_rsp /= EPDP_Univ_PortUniv.valid_enc /=.
 by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_rsp /dec_fw_rsp /=.
@@ -134,10 +123,7 @@ rewrite !negb_or /= not_adv => [#] -> pt2_2 val_u.
 have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
   exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortUniv.enc_dec oget_some.
-case p => />.
-move : pt2 pt2_2.
-by case.
+rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
 qed.
 
 lemma dest_valid_fw_rsp (m : msg) :
@@ -154,7 +140,7 @@ qed.
 
 lemma source_valid_fw_rsp (m : msg) :
   dec2valid dec_fw_rsp m =>
-  m.`3 = ((oget (dec_fw_rsp m)).`fw_rsp_func, 1).
+  m.`3.`1 = (oget (dec_fw_rsp m)).`fw_rsp_func /\ m.`3.`2 = 1.
 proof.
 move => val_m.
 have [] x : exists (x : fw_rsp), dec_fw_rsp m = Some x.
@@ -176,11 +162,11 @@ type fw_obs =
    fw_obs_pt2  : port;   (* port being forwarded to *)
    fw_obs_u    : univ}.  (* universe value to be forwarded *)
 
-op fw_obs (x : fw_obs) : msg =
+op nosmt fw_obs (x : fw_obs) : msg =
      (Adv, (x.`fw_obs_adv, adv_pi), (x.`fw_obs_func, 1),
       EPDP_Univ_PortPortUniv.enc (x.`fw_obs_pt1, x.`fw_obs_pt2, x.`fw_obs_u)).
 
-op dec_fw_obs (m : msg) : fw_obs option =
+op nosmt dec_fw_obs (m : msg) : fw_obs option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1 \/
          ! EPDP_Univ_PortPortUniv.valid v) ?
@@ -193,8 +179,7 @@ lemma epdp_fw_obs : epdp fw_obs dec_fw_obs.
 proof.
 apply epdp_intro.
 move => m.
-rewrite /fw_obs /dec_fw_obs /= EPDP_Univ_PortPortUniv.valid_enc
-        /= oget_some /=.
+rewrite /fw_obs /dec_fw_obs /= EPDP_Univ_PortPortUniv.valid_enc /=.
 by case m.
 move => [mod pt1 pt2 u] v.
 rewrite /fw_obs /dec_fw_obs /=.
@@ -204,11 +189,7 @@ rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 val_u.
 have [] t : exists (t : port * port * univ), EPDP_Univ_PortPortUniv.dec u = Some t.
   exists (oget (EPDP_Univ_PortPortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortPortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /=.
-case t => />.
-split.
-move : pt1 pt1_2; by case.
-move : pt2 pt2_2; by case.
+rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /= /#.
 qed.
 
 lemma dest_valid_fw_obs (m : msg) :
@@ -225,7 +206,7 @@ qed.
 
 lemma source_valid_fw_obs (m : msg) :
   dec2valid dec_fw_obs m =>
-  m.`3 = ((oget (dec_fw_obs m)).`fw_obs_func, 1).
+  m.`3.`1 = (oget (dec_fw_obs m)).`fw_obs_func /\ m.`3.`2 = 1.
 proof.
 move => val_m.
 have [] x : exists (x : fw_obs), dec_fw_obs m = Some x.
@@ -244,11 +225,11 @@ type fw_ok =
    (* data: (none) *)
   }.
 
-op fw_ok (x : fw_ok) : msg =
+op nosmt fw_ok (x : fw_ok) : msg =
      (Adv, (x.`fw_ok_func, 1), (x.`fw_ok_adv, adv_pi),
       EPDP_Univ_Unit.enc ()).
 
-op dec_fw_ok (m : msg) : fw_ok option =
+op nosmt dec_fw_ok (m : msg) : fw_ok option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi \/
          ! EPDP_Univ_Unit.valid v) ?
@@ -276,8 +257,7 @@ qed.
 
 lemma dest_valid_fw_ok (m : msg) :
   dec2valid dec_fw_ok m =>
-  m.`2.`1 = (oget (dec_fw_ok m)).`fw_ok_func /\
-  m.`2.`2 = 1.
+  m.`2.`1 = (oget (dec_fw_ok m)).`fw_ok_func /\ m.`2.`2 = 1.
 proof.
 move => val_m.
 have [] x : exists (x : fw_ok), dec_fw_ok m = Some x.
@@ -288,8 +268,7 @@ qed.
 
 lemma source_valid_fw_ok (m : msg) :
   dec2valid dec_fw_ok m =>
-  m.`3.`1 = (oget (dec_fw_ok m)).`fw_ok_adv /\
-  m.`3.`2 = adv_pi.
+  m.`3.`1 = (oget (dec_fw_ok m)).`fw_ok_adv /\ m.`3.`2 = adv_pi.
 proof.
 move => val_m.
 have [] x : exists (x : fw_ok), dec_fw_ok m = Some x.
@@ -316,10 +295,10 @@ module Forw : FUNC = {
     var r : msg option <- None;
     match st with
       FwStateInit => {
-        match dec_fw_req m with
+        match dec_fw_req_check m self with
           Some x => {
-            (* ! self <= x.`fw_req_pt1.`1 /\ ! adv <= x.`fw_req_pt1.`1 *)
-            if (! self <= x.`fw_req_pt2.`1 /\ ! adv <= x.`fw_req_pt2.`1) {
+            (* envport self adv x.`fw_req_pt1 *)
+            if (envport self adv x.`fw_req_pt2) {
               r <-
                 Some
                 (fw_obs
@@ -352,7 +331,7 @@ module Forw : FUNC = {
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    (* we can assume m.`3.`1 is not >= self and not >= adv *)
+    (* we can assume (envport self adv m.`3) *)
     if ((m.`1 = Dir /\ m.`2.`1 = self /\ m.`2.`2 = 1) \/
         (m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 = 1)) {
       r <@ parties(m);
