@@ -541,7 +541,7 @@ type da_from_env =
    dfe_n  : int;    (* source port index of message to be sent by DA *)
    dfe_u  : univ}.  (* value of message to be sent by DA *)
 
-op nosmt da_from_env (x : da_from_env) : msg =
+op da_from_env (x : da_from_env) : msg =
      (Adv, (x.`dfe_da, 0), ([], 0),
       EPDP_Univ_PortIntUniv.enc (x.`dfe_pt, x.`dfe_n, x.`dfe_u)).
 
@@ -583,6 +583,16 @@ op nosmt dec_da_from_env_check (m : msg, da : addr) : da_from_env option =
   | Some x => (x.`dfe_da = da) ? Some x : None
   end.
 
+lemma mode_valid_da_from_env (m : msg) :
+  dec2valid dec_da_from_env m => m.`1 = Adv.
+proof.
+move => val_m.
+have [] x : exists (x : da_from_env), dec_da_from_env m = Some x.
+  exists (oget (dec_da_from_env m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) <- //.
+qed.
+
 lemma dest_valid_da_from_env (m : msg) :
   dec2valid dec_da_from_env m =>
   m.`2.`1 = (oget (dec_da_from_env m)).`dfe_da /\ m.`2.`2 = 0.
@@ -617,7 +627,7 @@ type da_to_env =
                        this isn't checked *)
    dte_u  : univ}.  (* value of message sent to DA *)
 
-op nosmt da_to_env (x : da_to_env) : msg =
+op da_to_env (x : da_to_env) : msg =
      (Adv, ([], 0), (x.`dte_da, 0), 
       EPDP_Univ_PortPortUniv.enc(x.`dte_spt, x.`dte_dpt, x.`dte_u)).
 
@@ -644,6 +654,16 @@ have [] t : exists (t : port * port * univ), EPDP_Univ_PortPortUniv.dec u = Some
   exists (oget (EPDP_Univ_PortPortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortPortUniv.dec_enc <-.
 rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /#.
+qed.
+
+lemma mode_valid_da_to_env (m : msg) :
+  dec2valid dec_da_to_env m => m.`1 = Adv.
+proof.
+move => val_m.
+have [] x : exists (x : da_to_env), dec_da_to_env m = Some x.
+  exists (oget (dec_da_to_env m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_da_to_env) <- //.
 qed.
 
 lemma dest_valid_da_to_env (m : msg) :

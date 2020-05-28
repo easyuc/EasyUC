@@ -30,7 +30,7 @@ type fw_req =
    fw_req_pt2  : port;   (* port being forwarded to *)
    fw_req_u    : univ}.  (* universe value to be forwarded *)
 
-op nosmt fw_req (x : fw_req) : msg =
+op fw_req (x : fw_req) : msg =
      (Dir, (x.`fw_req_func, 1), x.`fw_req_pt1,
       EPDP_Univ_PortUniv.enc (x.`fw_req_pt2, x.`fw_req_u)).
 
@@ -58,11 +58,29 @@ move => /EPDP_Univ_PortUniv.dec_enc <-.
 rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
 qed.
 
+lemma fw_req_enc_dec (x : fw_req) :
+  dec_fw_req (fw_req x) = Some x.
+proof.
+apply (epdp_enc_dec _ _ _ epdp_fw_req).
+qed.
+
+hint simplify fw_req_enc_dec.
+
 op dec_fw_req_check (m : msg, func : addr) : fw_req option =
   match dec_fw_req m with
     None   => None
   | Some x => (x.`fw_req_func = func) ? Some x : None
   end.
+
+lemma mode_valid_fw_req (m : msg) :
+  dec2valid dec_fw_req m => m.`1 = Dir.
+proof.
+move => val_m.
+have [] x : exists (x : fw_req), dec_fw_req m = Some x.
+  exists (oget (dec_fw_req m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_req) <- //.
+qed.
 
 lemma dest_valid_fw_req (m : msg) :
   dec2valid dec_fw_req m =>
@@ -98,7 +116,7 @@ type fw_rsp =
    fw_rsp_pt1  : port;   (* port requesting forwarding *)
    fw_rsp_u    : univ}.  (* universe value to be forwarded *)
 
-op nosmt fw_rsp (x : fw_rsp) : msg =
+op fw_rsp (x : fw_rsp) : msg =
      (Dir, x.`fw_rsp_pt2, (x.`fw_rsp_func, 1),
       EPDP_Univ_PortUniv.enc (x.`fw_rsp_pt1, x.`fw_rsp_u)).
 
@@ -124,6 +142,30 @@ have [] p : exists (p : port * univ), EPDP_Univ_PortUniv.dec u = Some p.
   exists (oget (EPDP_Univ_PortUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortUniv.dec_enc <-.
 rewrite EPDP_Univ_PortUniv.enc_dec oget_some /#.
+qed.
+
+lemma fw_rsp_enc_dec (x : fw_rsp) :
+  dec_fw_rsp (fw_rsp x) = Some x.
+proof.
+apply (epdp_enc_dec _ _ _ epdp_fw_rsp).
+qed.
+
+hint simplify fw_rsp_enc_dec.
+
+op dec_fw_rsp_check (m : msg, func : addr, pt2 : port) : fw_rsp option =
+  match dec_fw_rsp m with
+    None   => None
+  | Some x => (x.`fw_rsp_func = func /\ x.`fw_rsp_pt2 = pt2) ? Some x : None
+  end.
+
+lemma mode_valid_fw_rsp (m : msg) :
+  dec2valid dec_fw_rsp m => m.`1 = Dir.
+proof.
+move => val_m.
+have [] x : exists (x : fw_rsp), dec_fw_rsp m = Some x.
+  exists (oget (dec_fw_rsp m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_rsp) <- //.
 qed.
 
 lemma dest_valid_fw_rsp (m : msg) :
@@ -192,6 +234,30 @@ move => /EPDP_Univ_PortPortUniv.dec_enc <-.
 rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /= /#.
 qed.
 
+lemma fw_obs_enc_dec (x : fw_obs) :
+  dec_fw_obs (fw_obs x) = Some x.
+proof.
+apply (epdp_enc_dec _ _ _ epdp_fw_obs).
+qed.
+
+hint simplify fw_obs_enc_dec.
+
+op dec_fw_obs_check (m : msg, func adv : addr) : fw_obs option =
+  match dec_fw_obs m with
+    None   => None
+  | Some x => (x.`fw_obs_func = func /\ x.`fw_obs_adv = adv) ? Some x : None
+  end.
+
+lemma mode_valid_fw_obs (m : msg) :
+  dec2valid dec_fw_obs m => m.`1 = Adv.
+proof.
+move => val_m.
+have [] x : exists (x : fw_obs), dec_fw_obs m = Some x.
+  exists (oget (dec_fw_obs m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4 x5.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_obs) <- //.
+qed.
+
 lemma dest_valid_fw_obs (m : msg) :
   dec2valid dec_fw_obs m =>
   m.`2.`1 = (oget (dec_fw_obs m)).`fw_obs_adv /\ m.`2.`2 = adv_pi.
@@ -255,6 +321,30 @@ split; first move : pt2 pt2_2; by case.
 congr.
 qed.
 
+lemma fw_ok_enc_dec (x : fw_ok) :
+  dec_fw_ok (fw_ok x) = Some x.
+proof.
+apply (epdp_enc_dec _ _ _ epdp_fw_ok).
+qed.
+
+hint simplify fw_ok_enc_dec.
+
+op dec_fw_ok_check (m : msg, func adv : addr) : fw_ok option =
+  match dec_fw_ok m with
+    None   => None
+  | Some x => (x.`fw_ok_func = func /\ x.`fw_ok_adv = adv) ? Some x : None
+  end.
+
+lemma mode_valid_fw_ok (m : msg) :
+  dec2valid dec_fw_ok m => m.`1 = Adv.
+proof.
+move => val_m.
+have [] x : exists (x : fw_ok), dec_fw_ok m = Some x.
+  exists (oget (dec_fw_ok m)); by rewrite -some_oget.
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ _ epdp_fw_ok) <- //.
+qed.
+
 lemma dest_valid_fw_ok (m : msg) :
   dec2valid dec_fw_ok m =>
   m.`2.`1 = (oget (dec_fw_ok m)).`fw_ok_func /\ m.`2.`2 = 1.
@@ -312,7 +402,7 @@ module Forw : FUNC = {
         end;
       }
     | FwStateWait pt1 pt2 u => {
-        match dec_fw_ok m with
+        match dec_fw_ok_check m self adv with
           Some x => {
             r <-
               Some
