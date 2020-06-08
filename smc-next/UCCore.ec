@@ -71,11 +71,11 @@ type univ = bool list.  (* universe values are lists of bits *)
 clone EPDP as EPDP_Univ_Unit with  (* unit *)
   type orig <- unit, type enc <- univ.
 
-clone EPDP as EPDP_Univ_Int with  (* int *)
-  type orig <- int, type enc <- univ.
-
 clone EPDP as EPDP_Univ_Bool with  (* bool *)
   type orig <- bool, type enc <- univ.
+
+clone EPDP as EPDP_Univ_Int with  (* int *)
+  type orig <- int, type enc <- univ.
 
 clone EPDP as EPDP_Univ_UnivPair with  (* univ * univ *)
   type orig <- univ * univ, type enc <- univ.
@@ -216,6 +216,40 @@ have val_u :
   by rewrite (EPDP_Univ_Addr.dec_enc x.`1 p1).
   by rewrite (EPDP_Univ_Int.dec_enc x.`2 p2).
 by rewrite (EPDP_Univ_UnivPair.dec_enc _ u).
+qed.
+
+(* port * univ encoding: *)
+
+op nosmt enc_port_univ (x : port * univ) : univ =
+  EPDP_Univ_UnivPair.enc (EPDP_Univ_Port.enc x.`1, x.`2).
+
+op nosmt dec_port_univ (u : univ) : (port * univ) option =
+  match EPDP_Univ_UnivPair.dec u with
+    None   => None
+  | Some p =>
+      match EPDP_Univ_Port.dec p.`1 with
+        None    => None
+      | Some pt => Some (pt, p.`2)
+      end
+  end.
+
+clone EPDP as EPDP_Univ_PortUniv with (* port * univ *)
+  type orig <- port * univ, type enc <- univ,
+  op enc = enc_port_univ, op dec = dec_port_univ
+proof *.
+realize epdp.
+apply epdp_intro => [x | u x].
+rewrite /enc /dec /enc_port_univ /dec_port_univ /=.
+by case x.
+rewrite /enc /dec /enc_port_univ /dec_port_univ => match_dec_u_eq_some.
+rewrite (EPDP_Univ_UnivPair.dec_enc _ u) //.
+move : match_dec_u_eq_some.
+case (EPDP_Univ_UnivPair.dec u) => // [[]] x1 x2 /=.
+move => match_dec_x1_eq_some.
+have val_dec_x1 : EPDP_Univ_Port.dec x1 = Some x.`1 by smt().
+move : match_dec_x1_eq_some.
+rewrite val_dec_x1 /= => <- /=.
+by rewrite (EPDP_Univ_Port.dec_enc _ x1).
 qed.
 
 (* port * port * univ encoding: *)
@@ -706,38 +740,82 @@ qed.
 
 (* phoare lemmas for after_func and after_adv: *)
 
-lemma MI_after_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_func_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ r = r' ==>
-   (res.`3 =>
-    res.`1 = r' /\ r' = Some res.`2 /\ res.`2.`1 = Adv /\
-    res.`2.`2.`1 = MI.adv /\ res.`2.`2.`2 <> 0 /\
-    MI.func <= res.`2.`3.`1) /\
-   (!res.`3 =>
-    res.`1 = None \/
-    (res.`1 = r' /\ r' = Some res.`2 /\ res.`2.`1 = Dir /\
-     envport MI.func MI.adv res.`2.`2 /\ res.`2.`2 <> ([], 0) /\
-     MI.func <= res.`2.`3.`1))] = 1%r.
+   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
+   (oget r).`1 = Dir /\  envport MI.func MI.adv (oget r).`2 /\
+   (oget r).`2 <> ([], 0) /\ MI.func <= (oget r).`3.`1 ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
 qed.
 
-lemma MI_after_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_func_to_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+      (r' : msg option) :
+  phoare
+  [MI(Func, Adv).after_func :
+   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
+   (oget r).`1 = Adv /\ (oget r).`2.`1 = MI.adv /\ (oget r).`2.`2 <> 0 /\
+   MI.func <= (oget r).`3.`1 ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc; auto; smt().
+qed.
+
+lemma MI_after_func_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+  phoare
+  [MI(Func, Adv).after_func :
+   inter_init_pre MI.func MI.adv /\
+   (r = None \/
+    MI.func <= (oget r).`2.`1 \/
+    ! MI.func <= (oget r).`3.`1 \/
+    ((oget r).`1 = Dir /\
+     (MI.adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0))) \/
+    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> MI.adv \/ (oget r).`2.`2 = 0))) ==>
+   res.`1 = None /\ !res.`3] = 1%r.
+proof.
+proc; auto; smt().
+qed.
+
+lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' ==>
-   (res.`3 =>
-    res.`1 = r' /\ r' = Some res.`2 /\ res.`2.`1 = Adv /\
-    MI.func <= res.`2.`2.`1 /\ res.`2.`3.`1 = MI.adv /\
-    res.`2.`3.`2 <> 0) /\
-   (!res.`3 =>
-    res.`1 = None \/
-    (res.`1 = r' /\ r' = Some res.`2 /\ res.`2.`1 = Adv /\
-     envport MI.func MI.adv res.`2.`2 /\ MI.adv = res.`2.`3.`1 /\
-     (res.`2.`2 = ([], 0) <=> res.`2.`3.`2 = 0)))] = 1%r.
+   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
+   (oget r).`1 = Adv /\ MI.func <= (oget r).`2.`1 /\
+   (oget r).`3.`1 = MI.adv /\ (oget r).`3.`2 <> 0 ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc; auto; smt(inc_le1_not_rl).
+qed.
+
+lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+      (r' : msg option) :
+  phoare
+  [MI(Func, Adv).after_adv :
+   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
+   (oget r).`1 = Adv /\ envport MI.func MI.adv (oget r).`2 /\
+   MI.adv = (oget r).`3.`1 /\
+   ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0) ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
+proof.
+proc; auto; smt().
+qed.
+
+lemma MI_after_adv_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+  phoare
+  [MI(Func, Adv).after_adv :
+   inter_init_pre MI.func MI.adv /\
+   (r = None \/
+    (oget r).`1 = Dir \/
+    MI.adv <= (oget r).`2.`1 \/
+    MI.adv <> (oget r).`3.`1 \/
+    (MI.func <= (oget r).`2.`1 /\ (oget r).`3.`2 = 0) \/
+    (! MI.func <= (oget r).`2.`1 /\
+     ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = ([], 0)))) ==>
+   res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
 qed.

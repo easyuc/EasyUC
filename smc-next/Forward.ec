@@ -291,7 +291,7 @@ type fw_ok =
    (* data: (none) *)
   }.
 
-op nosmt fw_ok (x : fw_ok) : msg =
+op fw_ok (x : fw_ok) : msg =
      (Adv, (x.`fw_ok_func, 1), (x.`fw_ok_adv, adv_pi),
       EPDP_Univ_Unit.enc ()).
 
