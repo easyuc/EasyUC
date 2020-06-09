@@ -369,11 +369,18 @@ op opt_msg_guard :
 
 pred func_init_pre (self adv : addr) = inc self adv.
 
-(* envport self adv pt says that pt is part of the environment,
-   not the funcitonality or adversary *)
+(* envport0 self adv pt says that pt is part of the environment, not
+   the functionality or adversary; it's allowed to be the root port,
+   ([], 0) *)
+
+op envport0 (self adv : addr, pt : port) : bool =
+  ! self <= pt.`1 /\ ! adv <= pt.`1.
+
+(* envport self adv pt says that pt is part of the
+   environment and is not the root port *)
 
 op envport (self adv : addr, pt : port) : bool =
-  ! self <= pt.`1 /\ ! adv <= pt.`1.
+  envport0 self adv pt /\ pt <> ([], 0).
 
 module type FUNC = {
   (* initialize functionality (or adversary), telling it its address
@@ -565,11 +572,11 @@ pred mi_loop_invar
    (m.`1 = Adv /\ m.`2.`1 = adv /\
     ((func <= m.`3.`1 /\ m.`2.`2 <> 0) \/
      (m.`3 = ([], 0) /\ m.`2.`2 = 0) \/
-     (envport func adv m.`3 /\ m.`3 <> ([], 0) /\
-      m.`2.`2 <> 0 /\ m.`2.`2 \in in_guard)))) /\
+     (envport func adv m.`3 /\ m.`2.`2 <> 0 /\
+     m.`2.`2 \in in_guard)))) /\
   (! not_done =>
    r = None \/
-   (r <> None /\ envport func adv (oget r).`2 /\
+   (envport0 func adv (oget r).`2 /\
     (((oget r).`1 = Dir /\ (oget r).`2 <> ([], 0) /\
       func <= (oget r).`3.`1) \/
      ((oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\
@@ -587,12 +594,10 @@ qed.
 (* guard for invoke procedure of interface *)
 
 op main_guard (func adv : addr, in_guard : int fset, m : msg) : bool =
-  m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3 /\
-  m.`3 <> ([], 0) \/
+  m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3 \/
   m.`1 = Adv /\ m.`2.`1 = adv /\
   (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/
-   m.`2.`2 <> 0 /\ m.`2.`2 \in in_guard /\
-   envport func adv m.`3 /\ m.`3 <> ([], 0)).
+   m.`2.`2 <> 0 /\ m.`2.`2 \in in_guard /\ envport func adv m.`3).
 
 module MI (Func : FUNC, Adv : FUNC) : INTER = {
   var func, adv : addr
@@ -615,13 +620,13 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
       if (func <= m.`2.`1 \/ ! func <= m.`3.`1) {
         r <- None; not_done <- false;
       }
-      (* else: ! func <= m.`2.`1 /\  func <= m.`3.`1 *)
+      (* else: ! func <= m.`2.`1 /\ func <= m.`3.`1 *)
       elif (m.`1 = Dir) {
         not_done <- false;
         if (adv <= m.`2.`1 \/ m.`2 = ([], 0)) {
           r <- None;
         }
-        (* else: envport func adv m.`2 /\ m.`2 <> ([], 0) *)
+        (* else: envport func adv m.`2 *)
       }
       (* else: m.`1 = Adv *)
       elif (m.`2.`1 <> adv \/ m.`2.`2 = 0) {
@@ -650,7 +655,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
         }
         (* else: m.`3.`2 <> 0 *)
       }
-      else {  (* envport func adv m.`2 *)
+      else {  (* envport0 func adv m.`2 *)
         not_done <- false;
         if (! (m.`3.`2 = 0 <=> m.`2 = ([], 0))) {
           r <- None;
@@ -714,7 +719,7 @@ lemma MI_invoke_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
   [MI(Func, Adv).invoke :
    inter_init_pre MI.func MI.adv ==>
    res = None \/
-   (res <> None /\ envport MI.func MI.adv (oget res).`2 /\
+   (envport0 MI.func MI.adv (oget res).`2 /\
     (((oget res).`1 = Dir /\ (oget res).`2 <> ([], 0) /\
       MI.func <= (oget res).`3.`1) \/
      ((oget res).`1 = Adv /\ MI.adv = (oget res).`3.`1 /\
@@ -740,13 +745,38 @@ qed.
 
 (* phoare lemmas for after_func and after_adv: *)
 
+pred after_func_to_env (func adv : addr, r : msg option) =
+  r <> None /\
+  (oget r).`1 = Dir /\ envport func adv (oget r).`2 /\
+  func <= (oget r).`3.`1.
+
+pred after_func_to_adv (func adv : addr, r : msg option) =
+  r <> None /\
+  (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ (oget r).`2.`2 <> 0 /\
+  func <= (oget r).`3.`1.
+
+pred after_func_error (func adv : addr, r : msg option) =
+   (r = None \/
+    func <= (oget r).`2.`1 \/
+    ! func <= (oget r).`3.`1 \/
+    ((oget r).`1 = Dir /\
+     (adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0))) \/
+    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 = 0))).
+
+lemma after_func_disj (func adv : addr, r : msg option) :
+  after_func_to_env func adv r \/
+  after_func_to_adv func adv r \/
+  after_func_error func adv r.
+proof.
+smt().
+qed.
+
 lemma MI_after_func_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
-   (oget r).`1 = Dir /\  envport MI.func MI.adv (oget r).`2 /\
-   (oget r).`2 <> ([], 0) /\ MI.func <= (oget r).`3.`1 ==>
+   inter_init_pre MI.func MI.adv /\ r = r' /\
+   after_func_to_env MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
@@ -756,9 +786,8 @@ lemma MI_after_func_to_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
-   (oget r).`1 = Adv /\ (oget r).`2.`1 = MI.adv /\ (oget r).`2.`2 <> 0 /\
-   MI.func <= (oget r).`3.`1 ==>
+   inter_init_pre MI.func MI.adv /\ r = r' /\
+   after_func_to_adv MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
 proc; auto; smt().
@@ -767,25 +796,46 @@ qed.
 lemma MI_after_func_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\
-   (r = None \/
-    MI.func <= (oget r).`2.`1 \/
-    ! MI.func <= (oget r).`3.`1 \/
-    ((oget r).`1 = Dir /\
-     (MI.adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0))) \/
-    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> MI.adv \/ (oget r).`2.`2 = 0))) ==>
+   inter_init_pre MI.func MI.adv /\ after_func_error MI.func MI.adv r ==>
    res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
+qed.
+
+pred after_adv_to_env (func adv : addr, r : msg option) =
+   r <> None /\
+   (oget r).`1 = Adv /\ envport0 func adv (oget r).`2 /\
+   adv = (oget r).`3.`1 /\
+   ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0).
+
+pred after_adv_to_func (func adv : addr, r : msg option) =
+  r <> None /\
+  (oget r).`1 = Adv /\ func <= (oget r).`2.`1 /\
+  (oget r).`3.`1 = adv /\ (oget r).`3.`2 <> 0.
+
+pred after_adv_error (func adv : addr, r : msg option) =
+   (r = None \/
+    (oget r).`1 = Dir \/
+    adv <= (oget r).`2.`1 \/
+    adv <> (oget r).`3.`1 \/
+    (func <= (oget r).`2.`1 /\ (oget r).`3.`2 = 0) \/
+    (! func <= (oget r).`2.`1 /\
+     ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = ([], 0)))).
+
+lemma after_adv_disj (func adv : addr, r : msg option) :
+  after_adv_to_env func adv r  \/
+  after_adv_to_func func adv r \/
+  after_adv_error func adv r.
+proof.
+smt().
 qed.
 
 lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
-   (oget r).`1 = Adv /\ MI.func <= (oget r).`2.`1 /\
-   (oget r).`3.`1 = MI.adv /\ (oget r).`3.`2 <> 0 ==>
+   inter_init_pre MI.func MI.adv /\ r = r' /\
+   after_adv_to_func MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
 proc; auto; smt(inc_le1_not_rl).
@@ -795,10 +845,8 @@ lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' /\ r <> None /\
-   (oget r).`1 = Adv /\ envport MI.func MI.adv (oget r).`2 /\
-   MI.adv = (oget r).`3.`1 /\
-   ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0) ==>
+   inter_init_pre MI.func MI.adv /\ r = r' /\
+   after_adv_to_env MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
@@ -807,14 +855,7 @@ qed.
 lemma MI_after_adv_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\
-   (r = None \/
-    (oget r).`1 = Dir \/
-    MI.adv <= (oget r).`2.`1 \/
-    MI.adv <> (oget r).`3.`1 \/
-    (MI.func <= (oget r).`2.`1 /\ (oget r).`3.`2 = 0) \/
-    (! MI.func <= (oget r).`2.`1 /\
-     ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = ([], 0)))) ==>
+   inter_init_pre MI.func MI.adv /\ after_adv_error MI.func MI.adv r ==>
    res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
@@ -828,8 +869,9 @@ abstract theory DummyAdversary.
 
 (* message from port ([], 0) of environment to port (dfe_da, 0) of
    dummy adversary, instructing dummy adversary to send message (Adv,
-   dfe_pt, (dfe_da, dfe_n), dfe_u); dfa_n should not be 0, and
-   dfe_pt should not be [] or be >= address of DA *)
+   dfe_pt, (dfe_da, dfe_n), dfe_u); MI will reject the message if
+   dfe_n is 0 (unless dfe_pt is ([], 0)), or if the address of dfe_pt
+   is >= dfe_da, or if dfe_pt is ([], 0) (unless dfe_n is 0) *)
 
 type da_from_env =
   {dfe_da : addr;   (* address of dummy adversary *)
@@ -913,44 +955,43 @@ qed.
 
 (* message from port (dte_da, 0) of dummy adversary to port ([], 0) of
    environment, telling environment that dummy adversary received
-   message (Adv, dte_dpt, dte_spt, dte_u) *)
+   message (Adv, (dte_da, dte_n), dte_pt, dte_u) *)
 
 type da_to_env =
   {dte_da : addr;   (* address of dummy adversary *)
    (* data: *)
-   dte_spt : port;  (* source port of message sent to DA *)
-   dte_dpt : port;  (* destination port of message sent to DA;
-                       should have form (dte_da, n), for n <> 0, but
-                       this isn't checked *)
+   dte_pt : port;   (* source port of message sent to DA *)
+   dte_n : int;     (* destination port index of message; the port's
+                       address will be dte_da (enforced by MI) *)
    dte_u  : univ}.  (* value of message sent to DA *)
 
 op da_to_env (x : da_to_env) : msg =
      (Adv, ([], 0), (x.`dte_da, 0), 
-      EPDP_Univ_PortPortUniv.enc(x.`dte_spt, x.`dte_dpt, x.`dte_u)).
+      EPDP_Univ_PortIntUniv.enc(x.`dte_pt, x.`dte_n, x.`dte_u)).
 
 op nosmt dec_da_to_env (m : msg) : da_to_env option =
      let (mod, pt1, pt2, v) = m
      in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/
-         ! EPDP_Univ_PortPortUniv.valid v) ?
+         ! EPDP_Univ_PortIntUniv.valid v) ?
         None :
-        let (spt, dpt, u) = oget (EPDP_Univ_PortPortUniv.dec v)
-        in Some {|dte_da = pt2.`1; dte_spt = spt; dte_dpt = dpt; dte_u = u|}.
+        let (pt, n, u) = oget (EPDP_Univ_PortIntUniv.dec v)
+        in Some {|dte_da = pt2.`1; dte_pt = pt; dte_n = n; dte_u = u|}.
 
 lemma epdp_da_to_env : epdp da_to_env dec_da_to_env.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /da_to_env /dec_da_to_env /= EPDP_Univ_PortPortUniv.valid_enc /=.
+rewrite /da_to_env /dec_da_to_env /= EPDP_Univ_PortIntUniv.valid_enc /=.
 by case x.
 move => [mod pt1 pt2 u] v.
 rewrite /da_to_env /dec_da_to_env /=.
 case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/
-      ! (EPDP_Univ_PortPortUniv.valid u)) => //.
+      ! (EPDP_Univ_PortIntUniv.valid u)) => //.
 rewrite !negb_or /= not_dir => [#] -> -> pt2_2 val_u.
-have [] t : exists (t : port * port * univ), EPDP_Univ_PortPortUniv.dec u = Some t.
-  exists (oget (EPDP_Univ_PortPortUniv.dec u)); by rewrite -some_oget.
-move => /EPDP_Univ_PortPortUniv.dec_enc <-.
-rewrite EPDP_Univ_PortPortUniv.enc_dec oget_some /#.
+have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
+  exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
+move => /EPDP_Univ_PortIntUniv.dec_enc <-.
+rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
 qed.
 
 lemma mode_valid_da_to_env (m : msg) :
@@ -1003,13 +1044,18 @@ module DummyAdv : FUNC = {
         }
       }
     | None   => {
-        (* message from functionality or environment; we should have
-           m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 <> 0 /\
-           ! self <= m.`3.`1, but none of this is checked *)
+        (* message from functionality or environment; MI will enforce
+           that m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1
+
+           if m has come from functionality, then MI will have enforced
+           that m.`2.`2 <> 0
+
+           if m has come from environment, then m.`2.`2 <> 0 iff
+           m.`3 <> ([], 0) *)
         r <-
           Some
           (da_to_env
-           {|dte_da = self; dte_spt = m.`3; dte_dpt = m.`2; dte_u = m.`4|});
+           {|dte_da = self; dte_pt = m.`3; dte_n = m.`2.`2; dte_u = m.`4|});
       }
     end;
     return r;
