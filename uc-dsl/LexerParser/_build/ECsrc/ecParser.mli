@@ -58,7 +58,6 @@ type token =
   | SELF
   | SECTION
   | SEARCH
-  | SAMPLE
   | RWNORMAL
   | RRARROW
   | RPBRACE
@@ -98,6 +97,7 @@ type token =
   | PRAGMA
   | PR
   | POSE
+  | PNUMOP of (EcSymbols.symbol)
   | PLUS
   | PIPEPIPEGT
   | PIPEGT
@@ -109,6 +109,7 @@ type token =
   | OR
   | OP
   | OF
+  | NUMOP of (string)
   | NOTATION
   | NOT
   | NOSMT
@@ -119,6 +120,7 @@ type token =
   | MODPATH
   | MINUS
   | MIDENT of (EcSymbols.symbol)
+  | MATCH
   | LTSTARGTGT
   | LTSTARGT
   | LTLTSTARGT
@@ -147,6 +149,7 @@ type token =
   | LAST
   | LARROW
   | KILL
+  | IS
   | IOTA
   | INTERLEAVE
   | INSTANCE
@@ -259,6 +262,8 @@ exception Error
 val prog: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (EcParsetree.prog  )
 
 val is_uniop: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (unit)
+
+val is_numop: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (unit)
 
 val is_binop: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (unit)
 

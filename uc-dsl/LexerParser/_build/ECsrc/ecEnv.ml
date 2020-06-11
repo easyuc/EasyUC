@@ -770,7 +770,14 @@ module MC = struct
 
           let mc = _up_axiom candup mc (fst schcase) (fst_map ipath schcase) in
           let mc = _up_axiom candup mc (fst schelim) (fst_map ipath schelim) in
-            mc
+
+          let projs = (mypath, tyd.tyd_params, dtype) in
+          let projs = EcInductive.datatype_projectors projs in
+
+          List.fold_left (fun mc (c, op) ->
+              let name = EcInductive.datatype_proj_name c in
+              _up_operator candup mc name (ipath name, op)
+            ) mc projs
 
       | `Record (scheme, fields) ->
           let params  = List.map (fun (x, _) -> tvar x) tyd.tyd_params in
@@ -1398,12 +1405,13 @@ module Reduction = struct
   let add_rules (rules : (path * rule option) list) (db : mredinfo) =
     List.fold_left ((^~) add_rule) db rules
 
-  let add (rules : (path * rule option) list) (env : env) =
+  let add (rules : (path * rule_option * rule option) list) (env : env) =
+    let rstrip = List.map (fun (x, _, y) -> (x, y)) rules in
     { env with
-        env_redbase = add_rules rules env.env_redbase;
+        env_redbase = add_rules rstrip env.env_redbase;
         env_item    = CTh_reduction rules :: env.env_item; }
 
-  let add1 (prule : path * rule option) (env : env) =
+  let add1 (prule : path * rule_option * rule option) (env : env) =
     add [prule] env
 
   let get (p : topsym) (env : env) =
@@ -1530,6 +1538,11 @@ module Ty = struct
           | _ -> None
       end
       | _ -> None
+
+  let get_top_decl (ty : ty) (env : env) =
+    match (hnorm ty env).ty_node with
+    | Tconstr (p, tys) -> Some (p, oget (by_path_opt p env), tys)
+    | _ -> None
 
   let rebind name ty env =
     let env = MC.bind_tydecl name ty env in
@@ -2617,7 +2630,7 @@ module Op = struct
     let op = oget (by_path_opt p env) in
     let f  =
       match op.op_kind with
-      | OB_oper (Some (OP_Plain e)) ->
+      | OB_oper (Some (OP_Plain (e, _))) ->
           form_of_expr EcCoreFol.mhr e
       | OB_pred (Some (PR_Plain f)) ->
           f
@@ -2910,8 +2923,9 @@ module Theory = struct
   (* ------------------------------------------------------------------ *)
   let bind_rd_cth =
     let for1 _path db = function
-      | CTh_reduction x ->
-         Some (Reduction.add_rules x db)
+      | CTh_reduction rules ->
+         let rules = List.map (fun (x, _, y) -> (x, y)) rules in
+         Some (Reduction.add_rules rules db)
       | _ -> None
 
     in bind_base_cth for1

@@ -97,6 +97,7 @@ let pf_first_asgn   pe st = pf_first_gen  "asgn"   destr_asgn   pe st
 let pf_first_rnd    pe st = pf_first_gen  "rnd"    destr_rnd    pe st
 let pf_first_call   pe st = pf_first_gen  "call"   destr_call   pe st
 let pf_first_if     pe st = pf_first_gen  "if"     destr_if     pe st
+let pf_first_match  pe st = pf_first_gen  "match"  destr_match  pe st
 let pf_first_while  pe st = pf_first_gen  "while"  destr_while  pe st
 let pf_first_assert pe st = pf_first_gen  "assert" destr_assert pe st
 
@@ -105,6 +106,7 @@ let pf_last_asgn   pe st = pf_last_gen  "asgn"   destr_asgn   pe st
 let pf_last_rnd    pe st = pf_last_gen  "rnd"    destr_rnd    pe st
 let pf_last_call   pe st = pf_last_gen  "call"   destr_call   pe st
 let pf_last_if     pe st = pf_last_gen  "if"     destr_if     pe st
+let pf_last_match  pe st = pf_last_gen  "match"  destr_match  pe st
 let pf_last_while  pe st = pf_last_gen  "while"  destr_while  pe st
 let pf_last_assert pe st = pf_last_gen  "assert" destr_assert pe st
 
@@ -113,6 +115,7 @@ let tc1_first_asgn   tc st = pf_first_asgn   !!tc st
 let tc1_first_rnd    tc st = pf_first_rnd    !!tc st
 let tc1_first_call   tc st = pf_first_call   !!tc st
 let tc1_first_if     tc st = pf_first_if     !!tc st
+let tc1_first_match  tc st = pf_first_match  !!tc st
 let tc1_first_while  tc st = pf_first_while  !!tc st
 let tc1_first_assert tc st = pf_first_assert !!tc st
 
@@ -121,6 +124,7 @@ let tc1_last_asgn   tc st = pf_last_asgn   !!tc st
 let tc1_last_rnd    tc st = pf_last_rnd    !!tc st
 let tc1_last_call   tc st = pf_last_call   !!tc st
 let tc1_last_if     tc st = pf_last_if     !!tc st
+let tc1_last_match  tc st = pf_last_match  !!tc st
 let tc1_last_while  tc st = pf_last_while  !!tc st
 let tc1_last_assert tc st = pf_last_assert !!tc st
 
@@ -136,6 +140,7 @@ let pf_pos_last_asgn   pe s = pf_pos_last_gen "asgn"   is_asgn   pe s
 let pf_pos_last_rnd    pe s = pf_pos_last_gen "rnd"    is_rnd    pe s
 let pf_pos_last_call   pe s = pf_pos_last_gen "call"   is_call   pe s
 let pf_pos_last_if     pe s = pf_pos_last_gen "if"     is_if     pe s
+let pf_pos_last_match  pe s = pf_pos_last_gen "match"  is_match  pe s
 let pf_pos_last_while  pe s = pf_pos_last_gen "while"  is_while  pe s
 let pf_pos_last_assert pe s = pf_pos_last_gen "assert" is_assert pe s
 
@@ -144,6 +149,7 @@ let tc1_pos_last_asgn   tc s = pf_pos_last_asgn   !!tc s
 let tc1_pos_last_rnd    tc s = pf_pos_last_rnd    !!tc s
 let tc1_pos_last_call   tc s = pf_pos_last_call   !!tc s
 let tc1_pos_last_if     tc s = pf_pos_last_if     !!tc s
+let tc1_pos_last_match  tc s = pf_pos_last_match  !!tc s
 let tc1_pos_last_while  tc s = pf_pos_last_while  !!tc s
 let tc1_pos_last_assert tc s = pf_pos_last_assert !!tc s
 
@@ -308,14 +314,7 @@ let fresh_pv me v =
       (EcMemory.bind v.v_name v.v_type me, v.v_name)
 
 (* -------------------------------------------------------------------- *)
-let lv_subst m lv f =
-  match lv with
-  | LvVar _ -> lv,m,f
-  | LvTuple _ -> lv,m,f
-  | LvMap((p,tys),pv,e,ty) ->
-    let set = f_op p tys (toarrow [ty; e.e_ty; f.f_ty] ty) in
-    let f   = f_app set [f_pvar pv ty m; form_of_expr m e; f] ty in
-    LvVar(pv,ty), m, f
+let lv_subst m lv f = lv, m, f
 
 (* -------------------------------------------------------------------- *)
 let mk_let_of_lv_substs_nolet env (lets, f) =
@@ -332,7 +331,7 @@ let mk_let_of_lv_substs_nolet env (lets, f) =
           List.fold_lefti
             (fun s i (pv,ty) -> PVM.add env pv m (f_proj f i ty) s)
             s vs
-        | LvMap _, _ -> assert false)  PVM.empty lets in
+        )  PVM.empty lets in
     PVM.subst env s f
 
 let add_lv_subst env lv m s =
@@ -349,8 +348,6 @@ let add_lv_subst env lv m s =
         let s = PVM.add env pv m (f_local id t) s in
         s, (id,t)) s pvs in
     LTuple ids, s
-
-  | _ -> assert false
 
 let mk_let_of_lv_substs_let env (lets, f) =
   if List.is_empty lets then f

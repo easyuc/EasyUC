@@ -16,14 +16,10 @@ module Sid = EcIdent.Sid
 module Mid = EcIdent.Mid
 
 (* -------------------------------------------------------------------- *)
-type lvmap =
-    (EcPath.path * EcTypes.ty list)
-  *  EcTypes.prog_var * EcTypes.expr * EcTypes.ty
 
 type lvalue =
   | LvVar   of (EcTypes.prog_var * EcTypes.ty)
   | LvTuple of (EcTypes.prog_var * EcTypes.ty) list
-  | LvMap   of lvmap
 
 let lv_equal lv1 lv2 =
   match lv1, lv2 with
@@ -38,15 +34,6 @@ let lv_equal lv1 lv2 =
           && (EcTypes.ty_equal ty1 ty2))
         tu1 tu2
 
-  | LvMap ((p1, tys1), pv1, e1, ty1),
-    LvMap ((p2, tys2), pv2, e2, ty2) ->
-
-         (EcPath.p_equal   p1  p2 )
-      && (EcTypes.pv_equal pv1 pv2)
-      && (EcTypes.e_equal  e1  e2 )
-      && (EcTypes.ty_equal ty1 ty2)
-      && (List.all2 EcTypes.ty_equal tys1 tys2)
-
   | _, _ -> false
 
 (* -------------------------------------------------------------------- *)
@@ -58,9 +45,6 @@ let lv_fv = function
       let add s (pv, _) = EcIdent.fv_union s (EcTypes.pv_fv pv) in
       List.fold_left add Mid.empty pvs
 
-  | LvMap (_, pv, e, _) ->
-      EcIdent.fv_union (EcTypes.pv_fv pv) (EcTypes.e_fv e)
-
 let symbol_of_lv = function
   | LvVar (pv, _) ->
       EcTypes.symbol_of_pv pv
@@ -68,13 +52,14 @@ let symbol_of_lv = function
   | LvTuple pvs ->
       String.concat "" (List.map (EcTypes.symbol_of_pv |- fst) pvs)
 
-  | LvMap (_, pv, _, _) ->
-      EcTypes.symbol_of_pv pv
-
 let ty_of_lv = function
   | LvVar   (_, ty)       -> ty
   | LvTuple tys           -> EcTypes.ttuple (List.map snd tys)
-  | LvMap   (_, _, _, ty) -> ty
+
+let lv_of_list = function
+  | [] -> None
+  | [(pv, ty)] -> Some (LvVar (pv, ty))
+  | pvs -> Some (LvTuple pvs)
 
 (* -------------------------------------------------------------------- *)
 type instr = {
@@ -89,6 +74,7 @@ and instr_node =
   | Scall     of lvalue option * EcPath.xpath * EcTypes.expr list
   | Sif       of EcTypes.expr * stmt * stmt
   | Swhile    of EcTypes.expr * stmt
+  | Smatch    of expr * ((EcIdent.t * EcTypes.ty) list * stmt) list
   | Sassert   of EcTypes.expr
   | Sabstract of EcIdent.t
 
@@ -136,6 +122,14 @@ module Hinstr = Why3.Hashcons.Make (struct
            (EcTypes.e_equal c1 c2)
         && (s_equal s1 s2)
 
+    | Smatch (e1, b1), Smatch (e2, b2) when List.length b1 = List.length b2 ->
+        let forb (bs1, s1) (bs2, s2) =
+          let forbs (x1, ty1) (x2, ty2) =
+               EcIdent.id_equal x1  x2
+            && EcTypes.ty_equal ty1 ty2
+          in List.all2 forbs bs1 bs2 && s_equal s1 s2
+        in EcTypes.e_equal e1 e2 && List.all2 forb b1 b2
+
     | Sassert e1, Sassert e2 ->
         (EcTypes.e_equal e1 e2)
 
@@ -168,11 +162,18 @@ module Hinstr = Why3.Hashcons.Make (struct
     | Swhile (c, s) ->
         Why3.Hashcons.combine (EcTypes.e_hash c) (s_hash s)
 
+    | Smatch (e, b) ->
+        let forb (bds, s) =
+          let forbs (x, ty) =
+            Why3.Hashcons.combine (EcIdent.id_hash x) (EcTypes.ty_hash ty)
+          in Why3.Hashcons.combine_list forbs (s_hash s) bds
+        in Why3.Hashcons.combine_list forb (EcTypes.e_hash e) b
+
     | Sassert e -> EcTypes.e_hash e
 
     | Sabstract id -> EcIdent.id_hash id
 
-  let i_fv   = function
+  let i_fv = function
     | Sasgn (lv, e) ->
         EcIdent.fv_union (lv_fv lv) (EcTypes.e_fv e)
 
@@ -190,10 +191,19 @@ module Hinstr = Why3.Hashcons.Make (struct
         List.fold_left EcIdent.fv_union Mid.empty
           [EcTypes.e_fv e; s_fv s1; s_fv s2]
 
-    | Swhile (e, s)  ->
+    | Swhile (e, s) ->
         EcIdent.fv_union (EcTypes.e_fv e) (s_fv s)
 
-    | Sassert e    ->
+    | Smatch (e, b) ->
+        let forb (bs, s) =
+          let bs = Sid.of_list (List.map fst bs) in
+          EcIdent.fv_diff (s_fv s) bs
+
+        in List.fold_left
+             (fun s b -> EcIdent.fv_union s (forb b))
+             (EcTypes.e_fv e) b
+
+    | Sassert e ->
         EcTypes.e_fv e
 
     | Sabstract id ->
@@ -243,6 +253,7 @@ let i_rnd      (lv, e)      = mk_instr (Srnd (lv, e))
 let i_call     (lv, m, tys) = mk_instr (Scall (lv, m, tys))
 let i_if       (c, s1, s2)  = mk_instr (Sif (c, s1, s2))
 let i_while    (c, s)       = mk_instr (Swhile (c, s))
+let i_match    (e, b)       = mk_instr (Smatch (e, b))
 let i_assert   e            = mk_instr (Sassert e)
 let i_abstract id           = mk_instr (Sabstract id)
 
@@ -254,6 +265,7 @@ let s_rnd      arg = stmt [i_rnd arg]
 let s_call     arg = stmt [i_call arg]
 let s_if       arg = stmt [i_if arg]
 let s_while    arg = stmt [i_while arg]
+let s_match    arg = stmt [i_match arg]
 let s_assert   arg = stmt [i_assert arg]
 let s_abstract arg = stmt [i_abstract arg]
 
@@ -278,6 +290,10 @@ let get_while = function
   | { i_node = Swhile (e, s) } -> Some (e, s)
   | _ -> None
 
+let get_match = function
+  | { i_node = Smatch (e, b) } -> Some (e, b)
+  | _ -> None
+
 let get_assert = function
   | { i_node = Sassert e } -> Some e
   | _ -> raise Not_found
@@ -291,6 +307,7 @@ let destr_rnd    = _destr_of_get get_rnd
 let destr_call   = _destr_of_get get_call
 let destr_if     = _destr_of_get get_if
 let destr_while  = _destr_of_get get_while
+let destr_match  = _destr_of_get get_match
 let destr_assert = _destr_of_get get_assert
 
 (* -------------------------------------------------------------------- *)
@@ -302,23 +319,23 @@ let is_rnd    = _is_of_get get_rnd
 let is_call   = _is_of_get get_call
 let is_if     = _is_of_get get_if
 let is_while  = _is_of_get get_while
+let is_match  = _is_of_get get_match
 let is_assert = _is_of_get get_assert
 
 (* -------------------------------------------------------------------- *)
 module ISmart : sig
   type lv_var   = EcTypes.prog_var * EcTypes.ty
   type lv_tuple = lv_var list
-  type lv_map   = lvmap
 
   val lv_var   : lvalue * lv_var   -> lv_var   -> lvalue
   val lv_tuple : lvalue * lv_tuple -> lv_tuple -> lvalue
-  val lv_map   : lvalue * lv_map   -> lv_map   -> lvalue
 
   type i_asgn     = lvalue * EcTypes.expr
   type i_rnd      = lvalue * EcTypes.expr
   type i_call     = lvalue option * EcPath.xpath * EcTypes.expr list
   type i_if       = EcTypes.expr * stmt * stmt
   type i_while    = EcTypes.expr * stmt
+  type i_match    = EcTypes.expr * ((EcIdent.t * ty) list * stmt) list
   type i_assert   = EcTypes.expr
   type i_abstract = EcIdent.t
 
@@ -327,6 +344,7 @@ module ISmart : sig
   val i_call     : (instr * i_call    ) -> i_call     -> instr
   val i_if       : (instr * i_if      ) -> i_if       -> instr
   val i_while    : (instr * i_while   ) -> i_while    -> instr
+  val i_match    : (instr * i_match   ) -> i_match    -> instr
   val i_assert   : (instr * i_assert  ) -> i_assert   -> instr
   val i_abstract : (instr * i_abstract) -> i_abstract -> instr
 
@@ -334,13 +352,13 @@ module ISmart : sig
 end = struct
   type lv_var   = EcTypes.prog_var * EcTypes.ty
   type lv_tuple = lv_var list
-  type lv_map   = lvmap
 
   type i_asgn     = lvalue * EcTypes.expr
   type i_rnd      = lvalue * EcTypes.expr
   type i_call     = lvalue option * EcPath.xpath * EcTypes.expr list
   type i_if       = EcTypes.expr * stmt * stmt
   type i_while    = EcTypes.expr * stmt
+  type i_match    = EcTypes.expr * ((EcIdent.t * ty) list * stmt) list
   type i_assert   = EcTypes.expr
   type i_abstract = EcIdent.t
   type s_stmt     = instr list
@@ -350,10 +368,6 @@ end = struct
 
   let lv_tuple (lv, pvs) pvs' =
     if pvs == pvs' then lv else LvTuple pvs'
-
-  let lv_map (lv, ((p, tys), pv, e, ty)) ((p', tys'), pv', e', ty') =
-    if   p == p' && tys == tys' && pv == pv' && e == e' && ty == ty'
-    then lv else LvMap ((p', tys'), pv', e', ty')
 
   let i_asgn (i, (lv, e)) (lv', e') =
     if lv == lv' && e == e' then i else i_asgn (lv', e')
@@ -372,6 +386,9 @@ end = struct
   let i_while (i, (e, s)) (e', s') =
     if e == e' && s == s' then i else i_while (e', s')
 
+  let i_match (i, (e, b)) (e', b') =
+    if e == e' && b == b' then i else i_match (e', b')
+
   let i_assert (i, e) e' =
     if e == e' then i else i_assert e'
 
@@ -383,12 +400,12 @@ end = struct
 end
 
 (* -------------------------------------------------------------------- *)
-let s_subst (s : EcTypes.e_subst) =
+let rec s_subst_top (s : EcTypes.e_subst) =
   let e_subst = EcTypes.e_subst s in
 
   if e_subst == identity then identity else
 
-  let pvt_subst (pv,ty as p) =
+  let pvt_subst (pv, ty as p) =
     let pv' = EcTypes.pv_subst s.EcTypes.es_xp pv in
     let ty' = s.EcTypes.es_ty ty in
 
@@ -403,14 +420,6 @@ let s_subst (s : EcTypes.e_subst) =
         let pvs' = List.Smart.map pvt_subst pvs in
         ISmart.lv_tuple (lv, pvs) pvs'
 
-    | LvMap (((p, tys), pv, e, ty) as lvmap) ->
-        let p'   = s.EcTypes.es_p p in
-        let tys' = List.Smart.map s.EcTypes.es_ty tys in
-        let pv'  = EcTypes.pv_subst s.EcTypes.es_xp pv in
-        let e'   = e_subst e in
-        let ty'  = s.EcTypes.es_ty ty in
-
-        ISmart.lv_map (lv, lvmap) ((p', tys'), pv', e', ty')
   in
 
   let rec i_subst i =
@@ -432,8 +441,17 @@ let s_subst (s : EcTypes.e_subst) =
         ISmart.i_if (i, (e, s1, s2))
           (e_subst e, s_subst s1, s_subst s2)
 
-    | Swhile(e, b) ->
+    | Swhile (e, b) ->
         ISmart.i_while (i, (e, b)) (e_subst e, s_subst b)
+
+    | Smatch (e, b) ->
+        let forb ((xs, subs) as b1) =
+          let s, xs' = EcTypes.add_locals s xs in
+          let subs'  = s_subst_top s subs in
+          if xs == xs' && subs == subs' then b1 else (xs', subs')
+        in
+
+        ISmart.i_match (i, (e, b)) (e_subst e, List.Smart.map forb b)
 
     | Sassert e ->
         ISmart.i_assert (i, e) (e_subst e)
@@ -445,6 +463,9 @@ let s_subst (s : EcTypes.e_subst) =
     ISmart.s_stmt s (List.Smart.map i_subst s.s_node)
 
   in s_subst
+
+(* -------------------------------------------------------------------- *)
+let s_subst = s_subst_top
 
 (* -------------------------------------------------------------------- *)
 module Uninit = struct    (* FIXME: generalize this for use in ecPV *)
@@ -465,17 +486,11 @@ let rec lv_get_uninit_read (w : Sx.t) (lv : lvalue) =
 
   match lv with
   | LvVar (x, _) ->
-      let w = Sx.union (sx_of_pv x) w in
-      (w, Sx.empty)
+      Sx.union (sx_of_pv x) w
 
   | LvTuple xs ->
       let w' = List.map (sx_of_pv |- fst) xs in
-      (Sx.big_union (w :: w'), Sx.empty)
-
-  | LvMap (_, x, e, _) ->
-      let r = Sx.diff (Uninit.e_pv is_loc e) w in
-      let w = Sx.union (sx_of_pv x) w in
-      (w, r)
+      Sx.big_union (w :: w')
 
 and s_get_uninit_read (w : Sx.t) (s : stmt) =
   let do1 (w, r) i =
@@ -487,14 +502,14 @@ and s_get_uninit_read (w : Sx.t) (s : stmt) =
 and i_get_uninit_read (w : Sx.t) (i : instr) =
   match i.i_node with
   | Sasgn (lv, e) | Srnd (lv, e) ->
-      let     r1 = Sx.diff (Uninit.e_pv is_loc e) w in
-      let w2, r2 = lv_get_uninit_read w lv in
-      (Sx.union w w2, Sx.union r1 r2)
+      let r1 = Sx.diff (Uninit.e_pv is_loc e) w in
+      let w2 = lv_get_uninit_read w lv in
+      (Sx.union w w2, r1)
 
   | Scall (olv, _, args) ->
       let r1    = Sx.diff (Sx.big_union (List.map (Uninit.e_pv is_loc) args)) w in
-      let w, r2 = olv |> omap (lv_get_uninit_read w) |> odfl (w, Sx.empty) in
-      (w, Sx.union r1 r2)
+      let w = olv |> omap (lv_get_uninit_read w) |> odfl w in
+      (w, r1)
 
   | Sif (e, s1, s2) ->
       let r = Sx.diff (Uninit.e_pv is_loc e) w in
@@ -506,6 +521,12 @@ and i_get_uninit_read (w : Sx.t) (i : instr) =
       let r  = Sx.diff (Uninit.e_pv is_loc e) w in
       let rs = snd (s_get_uninit_read w s) in
       (w, Sx.union r rs)
+
+  | Smatch (e, bs) ->
+      let r   = Sx.diff (Uninit.e_pv is_loc e) w in
+      let wrs = List.map (fun (_, b) -> s_get_uninit_read w b) bs in
+      let ws, rs = List.split wrs in
+      (Sx.union w (Sx.big_inter ws), Sx.big_union (r :: rs))
 
   | Sassert e ->
       (w, Sx.diff (Uninit.e_pv is_loc e) w)

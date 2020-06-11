@@ -37,10 +37,10 @@ and ty_dtype = {
   tydt_schcase : form;
 }
 
-val tydecl_as_concrete : tydecl -> EcTypes.ty
-val tydecl_as_abstract : tydecl -> Sp.t
-val tydecl_as_datatype : tydecl -> ty_dtype
-val tydecl_as_record   : tydecl -> form * (EcSymbols.symbol * EcTypes.ty) list
+val tydecl_as_concrete : tydecl -> EcTypes.ty option
+val tydecl_as_abstract : tydecl -> Sp.t option
+val tydecl_as_datatype : tydecl -> ty_dtype option
+val tydecl_as_record   : tydecl -> (form * (EcSymbols.symbol * EcTypes.ty) list) option
 
 val abs_tydecl : ?tc:Sp.t -> ?params:ty_pctor -> unit -> tydecl
 
@@ -55,7 +55,7 @@ type operator_kind =
   | OB_nott of notation
 
 and opbody =
-  | OP_Plain  of EcTypes.expr
+  | OP_Plain  of EcTypes.expr * bool (* nosmt? *)
   | OP_Constr of EcPath.path * int
   | OP_Record of EcPath.path
   | OP_Proj   of EcPath.path * int * int
@@ -71,6 +71,7 @@ and opfix = {
   opf_resty    : EcTypes.ty;
   opf_struct   : int list * int;
   opf_branches : opbranches;
+  opf_nosmt    : bool;
 }
 
 and opbranches =

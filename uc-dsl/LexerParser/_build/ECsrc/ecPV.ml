@@ -116,27 +116,22 @@ module Mpv = struct
     | Evar pv -> (try find env pv s with Not_found -> e)
     | _ -> EcTypes.e_map (fun ty -> ty) (esubst env s) e
 
-  let lvsubst env (s : esubst) lv =
-    match lv with
-    | LvVar   _ -> lv
-    | LvTuple _ -> lv
-    | LvMap (m, pv, e, ty) -> LvMap (m, pv, esubst env s e, ty)
-
   let rec isubst env (s : esubst) (i : instr) =
     let esubst = esubst env s in
     let ssubst = ssubst env s in
 
     match i.i_node with
-    | Sasgn  (lv, e)     -> i_asgn   (lvsubst env s lv, esubst e)
-    | Srnd   (lv, e)     -> i_rnd    (lvsubst env s lv, esubst e)
-    | Scall  (lv, f, es) -> i_call   (lv |> omap (lvsubst env s), f, List.map esubst es)
+    | Sasgn  (lv, e)     -> i_asgn   (lv, esubst e)
+    | Srnd   (lv, e)     -> i_rnd    (lv, esubst e)
+    | Scall  (lv, f, es) -> i_call   (lv, f, List.map esubst es)
     | Sif    (c, s1, s2) -> i_if     (esubst c, ssubst s1, ssubst s2)
     | Swhile (e, stmt)   -> i_while  (esubst e, ssubst stmt)
+    | Smatch (e, b)      -> i_match  (esubst e, List.Smart.map (snd_map ssubst) b)
     | Sassert e          -> i_assert (esubst e)
     | Sabstract _        -> i
 
   and issubst env (s : esubst) (is : instr list) =
-    List.map (isubst env s) is
+    List.Smart.map (isubst env s) is
 
   and ssubst env (s : esubst) (st : stmt) =
     stmt (issubst env s st.s_node)
@@ -430,8 +425,6 @@ let lp_write_r env w lp =
       add w pv
   | LvTuple pvs ->
       List.fold_left add w pvs
-  | LvMap (_, pv, _, ty) ->
-      add w (pv, ty)
 
 let rec f_write_r ?(except=Sx.empty) env w f =
   let f    = NormMp.norm_xfun env f in
@@ -480,6 +473,9 @@ and i_write_r ?(except=Sx.empty) env w i =
   | Swhile (_, s) ->
       s_write_r ~except env w s
 
+  | Smatch (_, b) ->
+      List.fold_left (fun w (_, b) -> s_write_r ~except env w b) w b
+
   | Sabstract id ->
       let us = AbsStmt.byid id env in
       let add_pv w (pv,ty) = PV.add env pv ty w in
@@ -513,14 +509,6 @@ let rec e_read_r env r e =
   | Evar pv -> PV.add env pv e.e_ty r
   | _ -> e_fold (e_read_r env) r e
 
-let lp_read_r env r lp =
-  match lp with
-  | LvVar _ | LvTuple _ ->
-      r
-
-  | LvMap (_, pv, e, ty) ->
-      e_read_r env (PV.add env pv ty r) e
-
 let rec is_read_r env w s =
   List.fold_left (i_read_r env) w s
 
@@ -529,13 +517,12 @@ and s_read_r env w s =
 
 and i_read_r env r i =
   match i.i_node with
-  | Sasgn   (lp, e) -> e_read_r env (lp_read_r env r lp) e
-  | Srnd    (lp, e) -> e_read_r env (lp_read_r env r lp) e
+  | Sasgn   (_lp, e) -> e_read_r env r e
+  | Srnd    (_lp, e) -> e_read_r env r e
   | Sassert e       -> e_read_r env r e
 
-  | Scall (lp, f, es) ->
+  | Scall (_lp, f, es) ->
       let r = List.fold_left (e_read_r env) r es in
-      let r = match lp with None -> r | Some lp -> lp_read_r env r lp in
       f_read_r env r f
 
   | Sif (e, s1, s2) ->
@@ -543,6 +530,11 @@ and i_read_r env r i =
 
   | Swhile (e, s) ->
       s_read_r env (e_read_r env r e) s
+
+  | Smatch (e, b) ->
+      List.fold_left
+        (fun r (_, b) -> s_read_r env r b)
+        (e_read_r env r e) b
 
   | Sabstract id ->
       let us = AbsStmt.byid id env in
@@ -573,7 +565,10 @@ module Mpv2 = struct
     s_gl : Sm.t;
   }
 
+  type local = EcIdent.t EcIdent.Mid.t
+
   let empty = { s_pv = Mnpv.empty; s_gl = Sm.empty }
+  let empty_local = EcIdent.Mid.empty
 
   let add env ty pv1 pv2 eqs =
     let pv1 = pvm env pv1 in
@@ -893,11 +888,11 @@ module Mpv2 = struct
 
 (*add_eqs env local eqs e1 e2 : collect a set of equalities with ensure the
    equality of e1 and e2 *)
-  let rec add_eqs env local eqs e1 e2 =
+  let rec add_eqs_loc env local eqs e1 e2 =
     match e1.e_node, e2.e_node with
     | Equant(qt1,bds1,e1), Equant(qt2,bds2,e2) when qt_equal qt1 qt2 ->
       let local = enter_local env local bds1 bds2 in
-      add_eqs env local eqs e1 e2
+      add_eqs_loc env local eqs e1 e2
     | Eint i1, Eint i2 when EcBigInt.equal i1 i2 -> eqs
     | Elocal x1, Elocal x2 when
         opt_equal EcIdent.id_equal (Some x1) (Mid.find_opt x2 local) -> eqs
@@ -910,24 +905,24 @@ module Mpv2 = struct
       when EcPath.p_equal op1 op2 &&
         List.all2  (EcReduction.EqTest.for_type env) tys1 tys2 -> eqs
     | Eapp(f1,a1), Eapp(f2,a2) ->
-      List.fold_left2 (add_eqs env local) eqs (f1::a1) (f2::a2)
+      List.fold_left2 (add_eqs_loc env local) eqs (f1::a1) (f2::a2)
     | Elet(lp1,a1,b1), Elet(lp2,a2,b2) ->
       let blocal = enter_local env local (lp_bind lp1) (lp_bind lp2) in
-      let eqs = add_eqs env local eqs a1 a2 in
-      add_eqs env blocal eqs b1 b2
+      let eqs = add_eqs_loc env local eqs a1 a2 in
+      add_eqs_loc env blocal eqs b1 b2
     | Etuple es1, Etuple es2 ->
-      List.fold_left2 (add_eqs env local) eqs es1 es2
+      List.fold_left2 (add_eqs_loc env local) eqs es1 es2
     | Eproj(es1,i1), Eproj(es2,i2) when i1 = i2 ->
-      add_eqs env local eqs es1 es2
+      add_eqs_loc env local eqs es1 es2
     | Eif(e1,t1,f1), Eif(e2,t2,f2) ->
-      List.fold_left2 (add_eqs env local) eqs [e1;t1;f1] [e2;t2;f2]
+      List.fold_left2 (add_eqs_loc env local) eqs [e1;t1;f1] [e2;t2;f2]
     | Ematch(b1,es1,ty1), Ematch(b2,es2,ty2)
       when EcReduction.EqTest.for_type env ty1 ty2
         && EcReduction.EqTest.for_type env b1.e_ty b2.e_ty ->
-      List.fold_left2 (add_eqs env local) eqs (b1::es1) (b2::es2)
+      List.fold_left2 (add_eqs_loc env local) eqs (b1::es1) (b2::es2)
     | _, _ -> raise EqObsInError
 
-  let add_eqs env e1 e2 eqs =  add_eqs env Mid.empty eqs e1 e2
+  let add_eqs env e1 e2 eqs =  add_eqs_loc env Mid.empty eqs e1 e2
 
 end
 
@@ -937,7 +932,7 @@ end
 
 let is_in_refl env lv eqo =
   match lv with
-  | LvVar (pv,_) | LvMap(_, pv, _, _) -> PV.mem_pv env pv eqo
+  | LvVar (pv,_) -> PV.mem_pv env pv eqo
   | LvTuple lr -> List.exists (fun (pv,_) -> PV.mem_pv env pv eqo) lr
 
 let add_eqs_refl env eqo e =
@@ -947,7 +942,7 @@ let add_eqs_refl env eqo e =
 
 let remove_refl env lv eqo =
   match lv with
-  | LvVar (pv,_) | LvMap(_, pv, _, _) -> PV.remove env pv eqo
+  | LvVar (pv,_) -> PV.remove env pv eqo
   | LvTuple lr -> List.fold_left (fun eqo (pv,_) -> PV.remove env pv eqo) eqo lr
 
 let rec s_eqobs_in_refl env c eqo =
@@ -992,6 +987,12 @@ and i_eqobs_in_refl env i eqo =
       if PV.subset eqi eqo then eqo
       else aux (PV.union eqi eqo) in
     aux (add_eqs_refl env eqo e)
+
+  | Smatch(e,bs) ->
+    (* FIXME: match: something to do with constructors variables? *)
+    let eqs = List.map (fun s -> s_eqobs_in_refl env s eqo) (List.snd bs) in
+    let eqs = List.fold_left PV.union PV.empty eqs in
+    add_eqs_refl env eqs e
 
   | Sassert e -> add_eqs_refl env eqo e
   | Sabstract _ -> assert false

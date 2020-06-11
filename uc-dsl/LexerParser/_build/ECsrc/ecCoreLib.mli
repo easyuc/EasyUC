@@ -45,6 +45,14 @@ module CI_Unit : sig
   val p_tt   : path
 end
 
+(* -------------------------------------------------------------------- *)
+module CI_Option : sig
+  val p_option : path
+  val p_none   : path
+  val p_some   : path
+  val p_oget   : path
+end
+
 (*-------------------------------------------------------------------- *)
 module CI_Bool : sig
   val i_Bool : symbol
@@ -75,9 +83,9 @@ module CI_Int : sig
   val p_int_opp   : path
   val p_int_add   : path
   val p_int_mul   : path
-  val p_int_pow   : path
   val p_int_le    : path
   val p_int_lt    : path
+  val p_int_pow   : path
   val p_int_edivz : path
 end
 

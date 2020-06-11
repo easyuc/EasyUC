@@ -6,19 +6,23 @@ commands in utop_ec.txt
 In order to compile, it is necessary to add a symbolic link "ECsrc"
 pointing to the EC source directory.
 
+If there is already a _build directory, first delete it.
+
+--- not clear this is relevant anymore? ---
 Furthermore, the file ecVersion.ml.in needs to be copied to
 ecVersion.ml, so that both are contained in the EC /src/ directory.
+---
 
 (When building EasyCrypt itself, this is done by its makefile, we
-don't have a makefile) In order for the interface between the UC DSL
+don't have a makefile.) In order for the interface between the UC DSL
 and EC to work there are two paths that need to be setup in
 dlEcInterface.ml.
 
-ecTheoriesDir points to the directory that contains theories that come
-with EasyCrypt.
+* ecTheoriesDir points to the directory that contains theories that
+  come with EasyCrypt:
 
-ucTheoriesDir points to the directory that contains "user-defined"
-types and operators that are imported/required by UC DSL code.
+* ucTheoriesDir points to the directory that contains "user-defined"
+  types and operators that are imported/required by UC DSL code.
 
 The build configuration for ocamlbuild is contained in _tags and
 myocamlbuild.ml files.

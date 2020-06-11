@@ -229,7 +229,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_expression_ : _menhir_env -> 'ttv
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.expressionL list)) = _v in
         let _v : (DlParseTree.expressionL list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 235 "dlParser.ml"
          in
@@ -261,7 +261,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_expression_ : _menhir_env -> 'ttv
           
         in
         
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 267 "dlParser.ml"
          in
@@ -376,7 +376,7 @@ and _menhir_goto_separated_nonempty_list_PIPE_msgMatchCode_ : _menhir_env -> 'tt
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.msgMatchCode list)) = _v in
         let _v : (DlParseTree.msgMatchCode list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 382 "dlParser.ml"
          in
@@ -388,7 +388,7 @@ and _menhir_goto_separated_nonempty_list_PIPE_msgMatchCode_ : _menhir_env -> 'tt
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.msgMatchCode))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.msgMatchCode list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 394 "dlParser.ml"
          in
@@ -404,7 +404,7 @@ and _menhir_goto_separated_nonempty_list_PIPE_msgMatchCodeSim_ : _menhir_env -> 
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.msgMatchCode list)) = _v in
         let _v : (DlParseTree.msgMatchCode list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 410 "dlParser.ml"
          in
@@ -416,7 +416,7 @@ and _menhir_goto_separated_nonempty_list_PIPE_msgMatchCodeSim_ : _menhir_env -> 
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.msgMatchCode))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.msgMatchCode list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 422 "dlParser.ml"
          in
@@ -654,7 +654,7 @@ and _menhir_goto_option_dest_ : _menhir_env -> 'ttv_tail -> (DlParseTree.id opti
     let _4 = () in
     let _2 = () in
     let _v : (DlParseTree.msgInstance) = let tupleInstance = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 660 "dlParser.ml"
      in
@@ -857,7 +857,7 @@ and _menhir_goto_expression_u : _menhir_env -> 'ttv_tail -> Lexing.position -> _
               
             in
             
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 863 "dlParser.ml"
              in
@@ -1717,7 +1717,7 @@ and _menhir_goto_nonempty_list_s_expression_ : _menhir_env -> 'ttv_tail -> Lexin
           
         in
         
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 1723 "dlParser.ml"
          in
@@ -1982,7 +1982,7 @@ and _menhir_goto_nonempty_list_instruction_ : _menhir_env -> 'ttv_tail -> _menhi
                     let _menhir_stack = Obj.magic _menhir_stack in
                     let (_menhir_stack, _menhir_s, (x : (DlParseTree.msgMatchCode))) = _menhir_stack in
                     let _v : (DlParseTree.msgMatchCode list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 1988 "dlParser.ml"
                      in
@@ -2025,7 +2025,7 @@ and _menhir_goto_nonempty_list_instruction_ : _menhir_env -> 'ttv_tail -> _menhi
                     let _menhir_stack = Obj.magic _menhir_stack in
                     let (_menhir_stack, _menhir_s, (x : (DlParseTree.msgMatchCode))) = _menhir_stack in
                     let _v : (DlParseTree.msgMatchCode list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 2031 "dlParser.ml"
                      in
@@ -2070,7 +2070,7 @@ and _menhir_goto_nonempty_list_instruction_ : _menhir_env -> 'ttv_tail -> _menhi
           
         in
         
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 2076 "dlParser.ml"
          in
@@ -2099,7 +2099,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_expression__ : _menhir_en
             let _startpos = _startpos__1_ in
             let _endpos = _endpos__3_ in
             let _v : (DlParseTree.expression) = let es = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 2105 "dlParser.ml"
              in
@@ -2175,7 +2175,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_expression__ : _menhir_en
                     let _menhir_stack = Obj.magic _menhir_stack in
                     let (x : (DlParseTree.id)) = _v in
                     let _v : (DlParseTree.id option) = 
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 2181 "dlParser.ml"
                      in
@@ -2188,7 +2188,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_expression__ : _menhir_en
             | ANDTXT ->
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let _v : (DlParseTree.id option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 2194 "dlParser.ml"
                  in
@@ -2224,7 +2224,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_expression__ : _menhir_en
             let _4 = () in
             let _2 = () in
             let _v : (DlParseTree.stateInstance) = let params = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 2230 "dlParser.ml"
              in
@@ -2278,7 +2278,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_qid_ : _menhir_env -> 'ttv_tail -
 # 2279 "dlParser.ml"
          in
         
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 2284 "dlParser.ml"
          in
@@ -2288,7 +2288,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_qid_ : _menhir_env -> 'ttv_tail -
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.qid list)) = _v in
         let _v : (DlParseTree.qid list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 2294 "dlParser.ml"
          in
@@ -2334,7 +2334,7 @@ and _menhir_goto_s_expression_u : _menhir_env -> 'ttv_tail -> Lexing.position ->
               
             in
             
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 2340 "dlParser.ml"
              in
@@ -2361,7 +2361,7 @@ and _menhir_goto_s_expression_u : _menhir_env -> 'ttv_tail -> Lexing.position ->
 and _menhir_reduce117 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.matchItem list option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 2367 "dlParser.ml"
      in
@@ -2408,7 +2408,7 @@ and _menhir_goto_instruction_u : _menhir_env -> 'ttv_tail -> Lexing.position -> 
           
         in
         
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 2414 "dlParser.ml"
          in
@@ -2421,7 +2421,7 @@ and _menhir_goto_instruction_u : _menhir_env -> 'ttv_tail -> Lexing.position -> 
 and _menhir_reduce60 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.expressionL list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 2427 "dlParser.ml"
      in
@@ -2463,7 +2463,7 @@ and _menhir_goto_separated_nonempty_list_DOT_idL_ : _menhir_env -> 'ttv_tail -> 
           
         in
         
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 2469 "dlParser.ml"
          in
@@ -2510,7 +2510,7 @@ and _menhir_goto_separated_nonempty_list_DOT_idL_ : _menhir_env -> 'ttv_tail -> 
 # 2511 "dlParser.ml"
              in
             
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 2516 "dlParser.ml"
              in
@@ -2533,7 +2533,7 @@ and _menhir_goto_nonempty_list_stateDef_ : _menhir_env -> 'ttv_tail -> _menhir_s
         let _menhir_stack = Obj.magic _menhir_stack in
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.stateDef))), _, (xs : (DlParseTree.stateDef list))) = _menhir_stack in
         let _v : (DlParseTree.stateDef list) = 
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 2539 "dlParser.ml"
          in
@@ -2771,7 +2771,7 @@ and _menhir_goto_separated_nonempty_list_DOT_msgType_ : _menhir_env -> 'ttv_tail
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.msgType))), _endpos__2_) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.msgType list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 2777 "dlParser.ml"
          in
@@ -2948,7 +2948,7 @@ and _menhir_reduce142 : _menhir_env -> 'ttv_tail * Lexing.position * _menhir_sta
       
     in
     
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 2954 "dlParser.ml"
      in
@@ -3008,7 +3008,7 @@ and _menhir_goto_stateDef : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlPars
         let _menhir_stack = Obj.magic _menhir_stack in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.stateDef))) = _menhir_stack in
         let _v : (DlParseTree.stateDef list) = 
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 3014 "dlParser.ml"
          in
@@ -3062,7 +3062,7 @@ and _menhir_goto_msgType : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParse
         let _menhir_stack = Obj.magic _menhir_stack in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.msgType))) = _menhir_stack in
         let _v : (DlParseTree.msgType list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 3068 "dlParser.ml"
          in
@@ -3139,7 +3139,7 @@ and _menhir_goto_nonempty_list_dmessageDef_ : _menhir_env -> 'ttv_tail -> _menhi
         let (xs : (DlParseTree.basicIObody)) = _v in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.messageDef))) = _menhir_stack in
         let _v : (DlParseTree.basicIObody) = 
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 3145 "dlParser.ml"
          in
@@ -3388,7 +3388,7 @@ and _menhir_goto_nonempty_list_subItem_ : _menhir_env -> 'ttv_tail -> _menhir_st
         let _menhir_stack = Obj.magic _menhir_stack in
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.subItem))), _, (xs : (DlParseTree.subItem list))) = _menhir_stack in
         let _v : (DlParseTree.subItem list) = 
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 3394 "dlParser.ml"
          in
@@ -3559,7 +3559,7 @@ and _menhir_goto_list_stateDefSim_ : _menhir_env -> 'ttv_tail -> _menhir_state -
         let _menhir_stack = Obj.magic _menhir_stack in
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.stateDef))), _, (xs : (DlParseTree.stateDef list))) = _menhir_stack in
         let _v : (DlParseTree.stateDef list) = 
-# 213 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 213 "<standard.mly>"
     ( x :: xs )
 # 3565 "dlParser.ml"
          in
@@ -3694,7 +3694,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_qid__ : _menhir_env -> 't
     let (xs : (DlParseTree.qid list)) = _v in
     let _1 = () in
     let _v : (DlParseTree.qid list) = let sl = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 3700 "dlParser.ml"
      in
@@ -3778,7 +3778,7 @@ and _menhir_goto_loption_separated_nonempty_list_PIPE_msgMatchCode__ : _menhir_e
         let _2 = () in
         let _1 = () in
         let _v : (DlParseTree.msgMatchCode list) = let mmc = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 3784 "dlParser.ml"
          in
@@ -3948,7 +3948,7 @@ and _menhir_goto_loption_separated_nonempty_list_PIPE_msgMatchCodeSim__ : _menhi
         let _2 = () in
         let _1 = () in
         let _v : (DlParseTree.msgMatchCode list) = let mmc = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 3954 "dlParser.ml"
          in
@@ -4131,7 +4131,7 @@ and _menhir_goto_nonempty_list_amessageDef_ : _menhir_env -> 'ttv_tail -> _menhi
         let (xs : (DlParseTree.basicIObody)) = _v in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.messageDef))) = _menhir_stack in
         let _v : (DlParseTree.basicIObody) = 
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 4137 "dlParser.ml"
          in
@@ -4154,7 +4154,7 @@ and _menhir_goto_dmessageDef : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlP
         let _menhir_stack = Obj.magic _menhir_stack in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.messageDef))) = _menhir_stack in
         let _v : (DlParseTree.basicIObody) = 
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 4160 "dlParser.ml"
          in
@@ -4232,7 +4232,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_matchItem__ : _menhir_env
         let _3 = () in
         let _1 = () in
         let _v : (DlParseTree.matchItem list) = let tm = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 4238 "dlParser.ml"
          in
@@ -4247,7 +4247,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_matchItem__ : _menhir_env
             let _menhir_stack = Obj.magic _menhir_stack in
             let (x : (DlParseTree.matchItem list)) = _v in
             let _v : (DlParseTree.matchItem list option) = 
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 4253 "dlParser.ml"
              in
@@ -4286,7 +4286,7 @@ and _menhir_goto_subItem : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParse
         let _menhir_stack = Obj.magic _menhir_stack in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.subItem))) = _menhir_stack in
         let _v : (DlParseTree.subItem list) = 
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 4292 "dlParser.ml"
          in
@@ -4299,7 +4299,7 @@ and _menhir_goto_subItem : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParse
 and _menhir_reduce56 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.stateDef list) = 
-# 211 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 211 "<standard.mly>"
     ( [] )
 # 4305 "dlParser.ml"
      in
@@ -4419,7 +4419,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_idL_ : _menhir_env -> 'ttv_tail -
           
         in
         
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 4425 "dlParser.ml"
          in
@@ -4429,7 +4429,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_idL_ : _menhir_env -> 'ttv_tail -
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.id list)) = _v in
         let _v : (DlParseTree.id list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 4435 "dlParser.ml"
          in
@@ -4559,7 +4559,7 @@ and _menhir_run246 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let _menhir_s = MenhirState248 in
                 let _v : (DlParseTree.qid list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 4565 "dlParser.ml"
                  in
@@ -4775,7 +4775,7 @@ and _menhir_run64 : _menhir_env -> 'ttv_tail -> _menhir_state -> Lexing.position
         let _menhir_stack = Obj.magic _menhir_stack in
         let _menhir_s = MenhirState64 in
         let _v : (DlParseTree.matchItem list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 4781 "dlParser.ml"
          in
@@ -4794,7 +4794,7 @@ and _menhir_goto_list_localVarDecl_ : _menhir_env -> 'ttv_tail -> _menhir_state 
         let (xs : (DlParseTree.nameType list list)) = _v in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.nameType list))) = _menhir_stack in
         let _v : (DlParseTree.nameType list list) = 
-# 213 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 213 "<standard.mly>"
     ( x :: xs )
 # 4800 "dlParser.ml"
          in
@@ -4838,7 +4838,7 @@ and _menhir_goto_list_localVarDecl_ : _menhir_env -> 'ttv_tail -> _menhir_state 
                             let _menhir_stack = Obj.magic _menhir_stack in
                             let _menhir_s = MenhirState55 in
                             let _v : (DlParseTree.msgMatchCode list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 4844 "dlParser.ml"
                              in
@@ -4891,7 +4891,7 @@ and _menhir_goto_list_localVarDecl_ : _menhir_env -> 'ttv_tail -> _menhir_state 
                             let _menhir_stack = Obj.magic _menhir_stack in
                             let _menhir_s = MenhirState227 in
                             let _v : (DlParseTree.msgMatchCode list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 4897 "dlParser.ml"
                              in
@@ -4927,7 +4927,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_nameType__ : _menhir_env 
     let _menhir_stack = Obj.magic _menhir_stack in
     let (xs : (DlParseTree.nameType list)) = _v in
     let _v : (DlParseTree.nameType list) = let ps = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 4933 "dlParser.ml"
      in
@@ -5223,7 +5223,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_nameType__ : _menhir_env 
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let (_menhir_stack, _menhir_s, (x : (DlParseTree.messageDef))) = _menhir_stack in
                 let _v : (DlParseTree.basicIObody) = 
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 5229 "dlParser.ml"
                  in
@@ -5292,7 +5292,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_matchItem_ : _menhir_env -> 'ttv_
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.matchItem list)) = _v in
         let _v : (DlParseTree.matchItem list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 5298 "dlParser.ml"
          in
@@ -5304,7 +5304,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_matchItem_ : _menhir_env -> 'ttv_
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.matchItem))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.matchItem list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 5310 "dlParser.ml"
          in
@@ -5401,7 +5401,7 @@ and _menhir_goto_separated_nonempty_list_STAR_tyBr_ : _menhir_env -> 'ttv_tail -
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.ty))), _, (xs : (DlParseTree.ty list))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.ty list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 5407 "dlParser.ml"
          in
@@ -5464,7 +5464,7 @@ and _menhir_goto_loption_separated_nonempty_list_COMMA_idL__ : _menhir_env -> 't
         let _3 = () in
         let _1 = () in
         let _v : (DlParseTree.id list) = let params = 
-# 232 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 232 "<standard.mly>"
     ( xs )
 # 5470 "dlParser.ml"
          in
@@ -5628,7 +5628,7 @@ and _menhir_run16 : _menhir_env -> 'ttv_tail -> Lexing.position -> _menhir_state
           
         in
         
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 5634 "dlParser.ml"
          in
@@ -5772,7 +5772,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_funParam_ : _menhir_env -> 'ttv_t
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.funParam))), _, (xs : (DlParseTree.funParam list))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.funParam list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 5778 "dlParser.ml"
          in
@@ -5783,7 +5783,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_funParam_ : _menhir_env -> 'ttv_t
 and _menhir_reduce66 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.nameType list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 5789 "dlParser.ml"
      in
@@ -5851,7 +5851,7 @@ and _menhir_goto_nonempty_list_ioItem_ : _menhir_env -> 'ttv_tail -> _menhir_sta
         let (xs : (DlParseTree.compositeIObody)) = _v in
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.ioItem))) = _menhir_stack in
         let _v : (DlParseTree.compositeIObody) = 
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 5857 "dlParser.ml"
          in
@@ -5901,7 +5901,7 @@ and _menhir_goto_option_PIPE_ : _menhir_env -> 'ttv_tail -> (unit option) -> 'tt
 and _menhir_reduce54 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.nameType list list) = 
-# 211 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 211 "<standard.mly>"
     ( [] )
 # 5907 "dlParser.ml"
      in
@@ -5928,7 +5928,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_nameType_ : _menhir_env -> 'ttv_t
         let _menhir_stack = Obj.magic _menhir_stack in
         let (x : (DlParseTree.nameType list)) = _v in
         let _v : (DlParseTree.nameType list) = 
-# 144 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 144 "<standard.mly>"
     ( x )
 # 5934 "dlParser.ml"
          in
@@ -5940,7 +5940,7 @@ and _menhir_goto_separated_nonempty_list_COMMA_nameType_ : _menhir_env -> 'ttv_t
         let (_menhir_stack, _menhir_s, (x : (DlParseTree.nameType))) = _menhir_stack in
         let _2 = () in
         let _v : (DlParseTree.nameType list) = 
-# 243 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 243 "<standard.mly>"
     ( x :: xs )
 # 5946 "dlParser.ml"
          in
@@ -5993,7 +5993,7 @@ and _menhir_goto_matchItem : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlPar
             let _menhir_stack = Obj.magic _menhir_stack in
             let (_menhir_stack, _menhir_s, (x : (DlParseTree.matchItem))) = _menhir_stack in
             let _v : (DlParseTree.matchItem list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 5999 "dlParser.ml"
              in
@@ -6067,7 +6067,7 @@ and _menhir_goto_tyBr : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParseTre
             let _menhir_stack = Obj.magic _menhir_stack in
             let (_menhir_stack, _menhir_s, (x : (DlParseTree.ty))) = _menhir_stack in
             let _v : (DlParseTree.ty list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 6073 "dlParser.ml"
              in
@@ -6147,7 +6147,7 @@ and _menhir_goto_list_def_ : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlPar
         let _menhir_stack = Obj.magic _menhir_stack in
         let ((_menhir_stack, _menhir_s, (x : (DlParseTree.def))), _, (xs : (DlParseTree.def list))) = _menhir_stack in
         let _v : (DlParseTree.def list) = 
-# 213 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 213 "<standard.mly>"
     ( x :: xs )
 # 6153 "dlParser.ml"
          in
@@ -6167,7 +6167,7 @@ and _menhir_run15 : _menhir_env -> 'ttv_tail -> _menhir_state -> Lexing.position
         let _menhir_stack = Obj.magic _menhir_stack in
         let _menhir_s = MenhirState15 in
         let _v : (DlParseTree.id list) = 
-# 142 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 142 "<standard.mly>"
     ( [] )
 # 6173 "dlParser.ml"
          in
@@ -6180,7 +6180,7 @@ and _menhir_run15 : _menhir_env -> 'ttv_tail -> _menhir_state -> Lexing.position
 and _menhir_reduce111 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.id option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 6186 "dlParser.ml"
      in
@@ -6222,7 +6222,7 @@ and _menhir_run210 : _menhir_env -> 'ttv_tail -> Lexing.position -> _menhir_stat
       
     in
     
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 6228 "dlParser.ml"
      in
@@ -6328,7 +6328,7 @@ and _menhir_run273 : _menhir_env -> 'ttv_tail -> Lexing.position -> _menhir_stat
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let (_menhir_stack, _menhir_s, (x : (DlParseTree.funParam))) = _menhir_stack in
                 let _v : (DlParseTree.funParam list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 6334 "dlParser.ml"
                  in
@@ -6576,7 +6576,7 @@ and _menhir_run304 : _menhir_env -> 'ttv_tail -> Lexing.position -> _menhir_stat
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let (_menhir_stack, _menhir_s, (x : (DlParseTree.ioItem))) = _menhir_stack in
                 let _v : (DlParseTree.compositeIObody) = 
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 6582 "dlParser.ml"
                  in
@@ -6678,7 +6678,7 @@ and _menhir_goto_ty : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParseTree.
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let (_menhir_stack, _menhir_s, (x : (DlParseTree.nameType))) = _menhir_stack in
                 let _v : (DlParseTree.nameType list) = 
-# 241 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 241 "<standard.mly>"
     ( [ x ] )
 # 6684 "dlParser.ml"
                  in
@@ -6746,7 +6746,7 @@ and _menhir_goto_ty : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParseTree.
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let x = () in
                 let _v : (unit option) = 
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 6752 "dlParser.ml"
                  in
@@ -6754,7 +6754,7 @@ and _menhir_goto_ty : _menhir_env -> 'ttv_tail -> _menhir_state -> (DlParseTree.
             | OK ->
                 let _menhir_stack = Obj.magic _menhir_stack in
                 let _v : (unit option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 6760 "dlParser.ml"
                  in
@@ -6815,7 +6815,7 @@ and _menhir_reduce171 : _menhir_env -> 'ttv_tail * Lexing.position * _menhir_sta
 and _menhir_reduce52 : _menhir_env -> 'ttv_tail -> _menhir_state -> 'ttv_return =
   fun _menhir_env _menhir_stack _menhir_s ->
     let _v : (DlParseTree.def list) = 
-# 211 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 211 "<standard.mly>"
     ( [] )
 # 6821 "dlParser.ml"
      in
@@ -7197,7 +7197,7 @@ and _menhir_goto_nonempty_list_idL_ : _menhir_env -> 'ttv_tail -> _menhir_state 
           
         in
         
-# 223 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 223 "<standard.mly>"
     ( x :: xs )
 # 7203 "dlParser.ml"
          in
@@ -7225,7 +7225,7 @@ and _menhir_goto_nonempty_list_idL_ : _menhir_env -> 'ttv_tail -> _menhir_state 
             let _menhir_stack = Obj.magic _menhir_stack in
             let (x : (DlParseTree.id list)) = _v in
             let _v : (DlParseTree.id list option) = 
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 7231 "dlParser.ml"
              in
@@ -7283,7 +7283,7 @@ and _menhir_goto_nonempty_list_idL_ : _menhir_env -> 'ttv_tail -> _menhir_state 
             let _menhir_stack = Obj.magic _menhir_stack in
             let (x : (DlParseTree.id list)) = _v in
             let _v : (DlParseTree.id list option) = 
-# 116 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 116 "<standard.mly>"
     ( Some x )
 # 7289 "dlParser.ml"
              in
@@ -7318,7 +7318,7 @@ and _menhir_goto_option_reqs_ : _menhir_env -> 'ttv_tail -> (DlParseTree.id list
     | ADVIO | DIRIO | EOF | FUNCT | SIM ->
         let _menhir_stack = Obj.magic _menhir_stack in
         let _v : (DlParseTree.id list option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 7324 "dlParser.ml"
          in
@@ -7743,7 +7743,7 @@ and _menhir_run2 : _menhir_env -> 'ttv_tail -> Lexing.position -> _menhir_state 
           
         in
         
-# 221 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 221 "<standard.mly>"
     ( [ x ] )
 # 7749 "dlParser.ml"
          in
@@ -7796,7 +7796,7 @@ and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
     | ADVIO | DIRIO | EOF | FUNCT | IMPORT | SIM ->
         let _menhir_stack = Obj.magic _menhir_stack in
         let _v : (DlParseTree.id list option) = 
-# 114 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 114 "<standard.mly>"
     ( None )
 # 7802 "dlParser.ml"
          in
@@ -7807,7 +7807,7 @@ and prog : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (
         let _menhir_stack = Obj.magic _menhir_stack in
         raise _eRR)
 
-# 269 "/Users/stough/.opam/default/lib/menhir/standard.mly"
+# 269 "<standard.mly>"
   
 
 # 7814 "dlParser.ml"

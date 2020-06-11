@@ -30,6 +30,10 @@ val gtty    : EcTypes.ty -> gty
 val gtmodty : module_type -> mod_restr -> gty
 val gtmem   : EcMemory.memtype -> gty
 
+val as_gtty  : gty -> EcTypes.ty
+val as_modty : gty -> module_type * mod_restr
+val as_mem   : gty -> EcMemory.memtype
+
 val gty_equal : gty  -> gty -> bool
 val gty_fv    : gty -> int Mid.t
 
@@ -180,6 +184,7 @@ val f_app    : form -> form list -> EcTypes.ty -> form
 val f_tuple  : form list -> form
 val f_proj   : form -> int -> EcTypes.ty -> form
 val f_if     : form -> form -> form -> form
+val f_match  : form -> form list -> EcTypes.ty -> form
 val f_let    : EcTypes.lpattern -> form -> form -> form
 val f_let1   : EcIdent.t -> form -> form -> form
 val f_quant  : quantif -> bindings -> form -> form
@@ -257,7 +262,6 @@ val f_eqs : form list -> form list -> form
 (* soft-constructors - integers *)
 val fop_int_opp : form
 val fop_int_add : form
-val fop_int_opp : form
 val fop_int_pow : form
 
 val f_i0  : form

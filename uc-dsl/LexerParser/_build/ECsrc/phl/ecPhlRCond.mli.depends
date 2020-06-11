@@ -1,1 +1,1 @@
-ECsrc/phl/ecPhlRCond.mli: EcCoreGoal EcParsetree
+ECsrc/phl/ecPhlRCond.mli: EcCoreGoal EcParsetree EcSymbols

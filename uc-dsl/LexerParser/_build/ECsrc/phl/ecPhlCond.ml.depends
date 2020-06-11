@@ -1,1 +1,1 @@
-ECsrc/phl/ecPhlCond.ml: EcCoreGoal EcEnv EcFol EcIdent EcLowGoal EcLowPhlGoal EcMemory EcPhlCase EcPhlRCond EcPhlSkip EcUtils FApi LDecl Zpr
+ECsrc/phl/ecPhlCond.ml: EcCoreGoal EcDecl EcEnv EcFol EcIdent EcLowGoal EcLowPhlGoal EcMemory EcModules EcPath EcPhlCase EcPhlRCond EcPhlSkip EcReduction EcTypes EcUtils FApi LDecl List Mid Zpr

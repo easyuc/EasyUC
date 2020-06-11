@@ -13,7 +13,7 @@ let copyright = [
 ]
 
 let url  = "https://www.easycrypt.info/"
-let hash = "cd341ca1be9972e8d531d6caa84f06e752ceb8c3"
+let hash = "25bcf42835d00ff25e4450588f1d11c52d91e1ce"
 let app  = "easycrypt"
 
 module License = struct

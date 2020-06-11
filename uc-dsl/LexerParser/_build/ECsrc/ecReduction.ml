@@ -106,6 +106,16 @@ module EqTest = struct
     let noconv (f : expr -> expr -> bool) e1 e2 =
       try f e1 e2 with E.NotConv -> false in
 
+    let check_binding env alpha (id1, ty1) (id2, ty2) =
+      if not (for_type env ty1 ty2) then
+        raise E.NotConv;
+      Mid.add id1 id2 alpha in
+
+    let check_bindings env alpha b1 b2 =
+      if List.length b1 <> List.length b2 then
+        raise E.NotConv;
+      List.fold_left2 (check_binding env) alpha b1 b2 in
+
     let check_lpattern alpha lp1 lp2 =
       match lp1, lp2 with
       | LSymbol (id1,_), LSymbol (id2,_) ->
@@ -117,16 +127,6 @@ module EqTest = struct
             alpha lid1 lid2
 
       | _, _ -> raise E.NotConv in
-
-    let check_binding env alpha (id1, ty1) (id2, ty2) =
-      if not (for_type env ty1 ty2) then
-        raise E.NotConv;
-      Mid.add id1 id2 alpha in
-
-    let check_bindings env alpha b1 b2 =
-      if List.length b1 <> List.length b2 then
-        raise E.NotConv;
-      List.fold_left2 (check_binding env) alpha b1 b2 in
 
     let rec aux alpha e1 e2 =
       e_equal e1 e2 || aux_r alpha e1 e2
@@ -167,7 +167,7 @@ module EqTest = struct
 
       | _, _ -> false
 
-    in fun e1 e2 -> aux Mid.empty e1 e2
+    in fun alpha e1 e2 -> aux alpha e1 e2
 
   (* ------------------------------------------------------------------ *)
   let for_lv env ~norm lv1 lv2 =
@@ -180,46 +180,65 @@ module EqTest = struct
           (fun (p1, _) (p2, _) -> for_pv env ~norm p1 p2)
           p1 p2
 
-    | LvMap ((m1, ty1), p1, e1, _), LvMap ((m2, ty2), p2, e2, _) ->
-        p_equal m1 m2
-          && List.all2 (for_type env) ty1 ty2
-          && for_pv env ~norm p1 p2
-          && for_expr env ~norm e1 e2
-
     | _, _ -> false
 
   (* ------------------------------------------------------------------ *)
-  let rec for_stmt env ~norm s1 s2 =
+  let rec for_stmt env alpha ~norm s1 s2 =
        s_equal s1 s2
-    || List.all2 (for_instr env ~norm) s1.s_node s2.s_node
+    || List.all2 (for_instr env alpha ~norm) s1.s_node s2.s_node
 
   (* ------------------------------------------------------------------ *)
-  and for_instr env ~norm i1 i2 =
-    i_equal i1 i2 || for_instr_r env ~norm i1 i2
+  and for_instr env alpha ~norm i1 i2 =
+    i_equal i1 i2 || for_instr_r env alpha ~norm i1 i2
 
-  and for_instr_r env ~norm i1 i2 =
+  and for_instr_r env alpha ~norm i1 i2 =
     match i1.i_node, i2.i_node with
     | Sasgn (lv1, e1), Sasgn (lv2, e2) ->
-        for_lv env ~norm lv1 lv2 && for_expr env ~norm e1 e2
+           for_lv env ~norm lv1 lv2
+        && for_expr env alpha ~norm e1 e2
 
     | Srnd (lv1, e1), Srnd (lv2, e2) ->
-        for_lv env ~norm lv1 lv2 && for_expr env ~norm e1 e2
+           for_lv env ~norm lv1 lv2
+        && for_expr env alpha ~norm e1 e2
 
     | Scall (lv1, f1, e1), Scall (lv2, f2, e2) ->
         oall2 (for_lv env ~norm) lv1 lv2
           && for_xp env ~norm f1 f2
-          && List.all2 (for_expr env ~norm) e1 e2
+          && List.all2 (for_expr env alpha ~norm) e1 e2
 
     | Sif (a1, b1, c1), Sif(a2, b2, c2) ->
-        for_expr env ~norm a1 a2
-          && for_stmt env ~norm b1 b2
-          && for_stmt env ~norm c1 c2
+        for_expr env alpha ~norm a1 a2
+          && for_stmt env alpha ~norm b1 b2
+          && for_stmt env alpha ~norm c1 c2
 
     | Swhile(a1,b1), Swhile(a2,b2) ->
-        for_expr env ~norm a1 a2 && for_stmt env ~norm b1 b2
+           for_expr env alpha ~norm a1 a2
+        && for_stmt env alpha ~norm b1 b2
+
+    | Smatch(e1,bs1), Smatch(e2,bs2)
+        when List.length bs1 = List.length bs2
+      -> begin
+        let module E = struct exception NotConv end in
+
+        let check_branch (xs1, s1) (xs2, s2) =
+          if List.length xs1 <> List.length xs2 then
+            raise E.NotConv;
+          let alpha =
+            let rec do1 alpha (id1, ty1) (id2, ty2) =
+              if not (for_type env ty1 ty2) then
+                raise E.NotConv;
+              Mid.add id1 id2 alpha in
+            List.fold_left2 do1 alpha xs1 xs2
+          in for_stmt env alpha ~norm s1 s2 in
+
+        try
+             for_expr env alpha ~norm e1 e2
+          && List.all2 (check_branch) bs1 bs2
+        with E.NotConv -> false
+      end
 
     | Sassert a1, Sassert a2 ->
-        for_expr env ~norm a1 a2
+        for_expr env alpha ~norm a1 a2
 
     | Sabstract id1, Sabstract id2 ->
         EcIdent.id_equal id1 id2
@@ -230,105 +249,9 @@ module EqTest = struct
   let for_pv    = fun env ?(norm = true) -> for_pv    env ~norm
   let for_xp    = fun env ?(norm = true) -> for_xp    env ~norm
   let for_mp    = fun env ?(norm = true) -> for_mp    env ~norm
-  let for_instr = fun env ?(norm = true) -> for_instr env ~norm
-  let for_stmt  = fun env ?(norm = true) -> for_stmt  env ~norm
-  let for_expr  = fun env ?(norm = true) -> for_expr  env ~norm
-end
-
-(* -------------------------------------------------------------------- *)
-module User = struct
-  type error =
-    | MissingVarInLhs   of EcIdent.t
-    | MissingTyVarInLhs of EcIdent.t
-    | NotAnEq
-    | NotFirstOrder
-    | RuleDependsOnMemOrModule
-    | HeadedByVar
-
-  exception InvalidUserRule of error
-
-  module R = EcTheory
-
-  type rule = EcEnv.Reduction.rule
-
-  let compile ~prio (env : EcEnv.env) (p : EcPath.path) =
-    let ax = EcEnv.Ax.by_path p env in
-    let bds, rl = EcFol.decompose_forall ax.EcDecl.ax_spec in
-
-    let bds =
-      let filter = function
-        | (x, GTty ty) -> (x, ty)
-        | _ -> raise (InvalidUserRule RuleDependsOnMemOrModule)
-      in List.map filter bds in
-
-    let lhs, rhs, conds =
-      let rec doit conds f =
-        match sform_of_form f with
-        | SFimp (f1, f2) -> doit (f1 :: conds) f2
-        | SFeq  (f1, f2) -> (f1, f2, List.rev conds)
-        | _ when ty_equal tbool (EcEnv.ty_hnorm f.f_ty env) ->
-            (f, f_true, List.rev conds)
-        | _ -> raise (InvalidUserRule NotAnEq)
-      in doit [] rl
-    in
-
-    let rule =
-      let rec rule (f : form) : EcTheory.rule_pattern =
-        match EcFol.destr_app f with
-        | { f_node = Fop (p, tys) }, args ->
-            R.Rule (`Op (p, tys), List.map rule args)
-        | { f_node = Ftuple args }, [] ->
-            R.Rule (`Tuple, List.map rule args)
-        | { f_node = Fint i }, [] ->
-            R.Int i
-        | { f_node = Flocal x }, [] ->
-            R.Var x
-        | _ -> raise (InvalidUserRule NotFirstOrder)
-      in rule lhs in
-
-    let lvars, ltyvars =
-      let rec doit (lvars, ltyvars) = function
-        | R.Var x ->
-            (Sid.add x lvars, ltyvars)
-
-        | R.Int _ ->
-            (lvars, ltyvars)
-
-        | R.Rule (op, args) ->
-            let ltyvars =
-              match op with
-              | `Op (_, tys) ->
-                List.fold_left (
-                    let rec doit ltyvars = function
-                      | { ty_node = Tvar a } -> Sid.add a ltyvars
-                      | _ as ty -> ty_fold doit ltyvars ty in doit)
-                  ltyvars tys
-              | `Tuple -> ltyvars in
-            List.fold_left doit (lvars, ltyvars) args
-
-      in doit (Sid.empty, Sid.empty) rule in
-
-    let mvars   =
-      Sid.diff (Sid.of_list (List.map fst bds)) lvars in
-    let mtyvars =
-      Sid.diff (Sid.of_list (List.map fst ax.EcDecl.ax_tparams)) ltyvars in
-
-    if not (Sid.is_empty mvars) then
-      raise (InvalidUserRule (MissingVarInLhs (Sid.choose mvars)));
-    if not (Sid.is_empty mtyvars) then
-      raise (InvalidUserRule (MissingTyVarInLhs (Sid.choose mtyvars)));
-
-    begin match rule with
-    | R.Var _ -> raise (InvalidUserRule (HeadedByVar));
-    | _       -> () end;
-
-    R.{ rl_tyd  = ax.EcDecl.ax_tparams;
-        rl_vars = bds;
-        rl_cond = conds;
-        rl_ptn  = rule;
-        rl_tg   = rhs;
-        rl_prio = prio; }
-
+  let for_instr = fun env ?(norm = true) -> for_instr env Mid.empty ~norm
+  let for_stmt  = fun env ?(norm = true) -> for_stmt  env Mid.empty ~norm
+  let for_expr  = fun env ?(norm = true) -> for_expr  env Mid.empty ~norm
 end
 
 (* -------------------------------------------------------------------- *)
@@ -379,6 +302,8 @@ let nodelta =
       delta_h = EcUtils.pred0;
       delta_p = EcUtils.pred0; }
 
+let delta = { no_red with delta_p = EcUtils.predT; }
+
 let reduce_local ri hyps x  =
   if   ri.delta_h x
   then LDecl.unfold x hyps
@@ -393,6 +318,19 @@ let is_record env f =
   match EcFol.destr_app f with
   | { f_node = Fop (p, _) }, _ -> EcEnv.Op.is_record_ctor env p
   | _ -> false
+
+(* -------------------------------------------------------------------- *)
+let reduce_match env (f, bs, ty) =
+  let op, args = destr_app f in
+
+  match op.f_node with
+  | Fop (p, _) when EcEnv.Op.is_dtype_ctor env p ->
+      let idx = EcEnv.Op.by_path p env in
+      let idx = snd (EcDecl.operator_as_ctor idx) in
+      let br  = oget (List.nth_opt bs idx) in
+      f_app br args ty
+
+  | _ -> raise NotReducible
 
 (* -------------------------------------------------------------------- *)
 let rec h_red_x ri env hyps f =
@@ -466,6 +404,15 @@ let rec h_red_x ri env hyps f =
   | Fif (f1, f2, f3) when ri.iota ->
       let f' = f_if_simpl f1 f2 f3 in
         if f_equal f f' then f_if (h_red_x ri env hyps f1) f2 f3 else f'
+
+    (* ι-reduction (if-then-else) *)
+
+  | Fmatch (cf, bs, ty) when ri.iota -> begin
+      try
+        let f' = reduce_match env (cf, bs, ty) in
+        if f_equal f f' then raise NotReducible else f'
+      with NotReducible -> f_match (h_red_x ri env hyps cf) bs ty
+  end
 
     (* ι-reduction (match-fix) *)
   | Fapp ({ f_node = Fop (p, tys); } as f1, fargs)
@@ -825,7 +772,8 @@ and check_alpha_equal ri hyps f1 f2 =
     | _, _ -> error () in
 
   let check_bindings env subst bd1 bd2 =
-    List.fold_left2 check_binding (env,subst) bd1 bd2 in
+    try  List.fold_left2 check_binding (env,subst) bd1 bd2
+    with Invalid_argument _ -> error () in
 
   let check_local subst id1 f2 id2 =
     match (Mid.find_def f2 id2 subst.fs_loc).f_node with
@@ -865,6 +813,13 @@ and check_alpha_equal ri hyps f1 f2 =
 
     | Fif(a1,b1,c1), Fif(a2,b2,c2) ->
       aux env subst a1 a2; aux env subst b1 b2; aux env subst c1 c2
+
+    | Fmatch(f1,bs1,ty1), Fmatch(f2,bs2,ty2) -> begin
+      aux env subst f1 f2;
+      ensure (EqTest.for_type env ty1 ty2);
+      try  List.iter2 (aux env subst) bs1 bs2
+      with Invalid_argument _ -> error ()
+    end
 
     | Flet(p1,f1',g1), Flet(p2,f2',g2) ->
       aux env subst f1' f2';
@@ -1047,3 +1002,112 @@ let xconv (mode : xconv) hyps =
   | `Eq      -> f_equal
   | `AlphaEq -> is_alpha_eq hyps
   | `Conv    -> is_conv hyps
+
+(* -------------------------------------------------------------------- *)
+module User = struct
+  type options = EcTheory.rule_option
+
+  type error =
+    | MissingVarInLhs   of EcIdent.t
+    | MissingTyVarInLhs of EcIdent.t
+    | NotAnEq
+    | NotFirstOrder
+    | RuleDependsOnMemOrModule
+    | HeadedByVar
+
+  exception InvalidUserRule of error
+
+  module R = EcTheory
+
+  type rule = EcEnv.Reduction.rule
+
+  let compile ~opts ~prio (env : EcEnv.env) (p : EcPath.path) =
+    let simp =
+      if opts.EcTheory.ur_delta then
+        let hyps = EcEnv.LDecl.init env [] in
+        fun f -> odfl f (h_red_opt delta hyps f)
+      else fun f -> f in
+
+    let ax = EcEnv.Ax.by_path p env in
+    let bds, rl = EcFol.decompose_forall (simp ax.EcDecl.ax_spec) in
+
+    let bds =
+      let filter = function
+        | (x, GTty ty) -> (x, ty)
+        | _ -> raise (InvalidUserRule RuleDependsOnMemOrModule)
+      in List.map filter bds in
+
+    let lhs, rhs, conds =
+      try
+        let rec doit conds f =
+          match sform_of_form (simp f) with
+          | SFimp (f1, f2) -> doit (f1 :: conds) f2
+          | SFeq  (f1, f2) -> (f1, f2, List.rev conds)
+          | _ -> raise (InvalidUserRule NotAnEq)
+        in doit [] rl
+
+      with InvalidUserRule NotAnEq
+             when opts.EcTheory.ur_eqtrue &&
+                  ty_equal tbool (EcEnv.ty_hnorm rl.f_ty env)
+           -> (rl, f_true, List.rev [])
+
+    in
+
+    let rule =
+      let rec rule (f : form) : EcTheory.rule_pattern =
+        match EcFol.destr_app f with
+        | { f_node = Fop (p, tys) }, args ->
+            R.Rule (`Op (p, tys), List.map rule args)
+        | { f_node = Ftuple args }, [] ->
+            R.Rule (`Tuple, List.map rule args)
+        | { f_node = Fint i }, [] ->
+            R.Int i
+        | { f_node = Flocal x }, [] ->
+            R.Var x
+        | _ -> raise (InvalidUserRule NotFirstOrder)
+      in rule lhs in
+
+    let lvars, ltyvars =
+      let rec doit (lvars, ltyvars) = function
+        | R.Var x ->
+            (Sid.add x lvars, ltyvars)
+
+        | R.Int _ ->
+            (lvars, ltyvars)
+
+        | R.Rule (op, args) ->
+            let ltyvars =
+              match op with
+              | `Op (_, tys) ->
+                List.fold_left (
+                    let rec doit ltyvars = function
+                      | { ty_node = Tvar a } -> Sid.add a ltyvars
+                      | _ as ty -> ty_fold doit ltyvars ty in doit)
+                  ltyvars tys
+              | `Tuple -> ltyvars in
+            List.fold_left doit (lvars, ltyvars) args
+
+      in doit (Sid.empty, Sid.empty) rule in
+
+    let mvars   =
+      Sid.diff (Sid.of_list (List.map fst bds)) lvars in
+    let mtyvars =
+      Sid.diff (Sid.of_list (List.map fst ax.EcDecl.ax_tparams)) ltyvars in
+
+    if not (Sid.is_empty mvars) then
+      raise (InvalidUserRule (MissingVarInLhs (Sid.choose mvars)));
+    if not (Sid.is_empty mtyvars) then
+      raise (InvalidUserRule (MissingTyVarInLhs (Sid.choose mtyvars)));
+
+    begin match rule with
+    | R.Var _ -> raise (InvalidUserRule (HeadedByVar));
+    | _       -> () end;
+
+    R.{ rl_tyd  = ax.EcDecl.ax_tparams;
+        rl_vars = bds;
+        rl_cond = conds;
+        rl_ptn  = rule;
+        rl_tg   = rhs;
+        rl_prio = prio; }
+
+end

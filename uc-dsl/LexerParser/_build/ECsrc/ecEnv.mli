@@ -321,8 +321,11 @@ module Ty : sig
   val defined : path -> env -> bool
   val unfold  : path -> EcTypes.ty list -> env -> EcTypes.ty
   val hnorm   : EcTypes.ty -> env -> EcTypes.ty
-
   val decompose_fun : EcTypes.ty -> env -> EcTypes.dom * EcTypes.ty
+
+  val get_top_decl :
+    EcTypes.ty -> env -> (path * EcDecl.tydecl * EcTypes.ty list) option
+
 
   val scheme_of_ty :
     [`Ind | `Case] -> EcTypes.ty -> env -> (path * EcTypes.ty list) option
@@ -372,8 +375,8 @@ module Reduction : sig
   type rule   = EcTheory.rule
   type topsym = [ `Path of path | `Tuple ]
 
-  val add1 : path * rule option -> env -> env
-  val add  : (path * rule option) list -> env -> env
+  val add1 : path * rule_option * rule option -> env -> env
+  val add  : (path * rule_option * rule option) list -> env -> env
   val get  : topsym -> env -> rule list
 end
 

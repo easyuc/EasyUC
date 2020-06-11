@@ -19,7 +19,7 @@ open DlTypes
 
 let ecTheoriesDir = Filename.dirname "/usr/local/share/easycrypt/easycrypt/theories"
 
-let ucTheoriesDir = Filename.dirname "/Users/stough/Desktop/UC-DSL"
+let ucTheoriesDir = Filename.dirname "/Users/stough/projs/easycrypt/uc/easy-uc-git/uc-dsl"
 
 let checkmode = {
               EcCommands.cm_checkall  = false; 
@@ -67,7 +67,6 @@ let executeCommand (c:string) =
 
 let requireImport (th:string) =
   executeCommand ("require import "^th^".")
-
 
 
 let env () = EcScope.env (EcCommands.current())

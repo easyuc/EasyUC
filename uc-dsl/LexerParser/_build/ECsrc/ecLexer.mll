@@ -53,9 +53,12 @@
     "var"         , VAR        ;        (* KW: prog *)
     "proc"        , PROC       ;        (* KW: prog *)
     "if"          , IF         ;        (* KW: prog *)
+    "is"          , IS         ;        (* KW: prog *)
+    "match"       , MATCH      ;        (* KW: prog *)
     "then"        , THEN       ;        (* KW: prog *)
     "else"        , ELSE       ;        (* KW: prog *)
     "elif"        , ELIF       ;        (* KW: prog *)
+    "match"       , MATCH      ;        (* KW: prog *)
     "for"         , FOR        ;        (* KW: prog *)
     "while"       , WHILE      ;        (* KW: prog *)
     "assert"      , ASSERT     ;        (* KW: prog *)
@@ -333,13 +336,14 @@ let uident = upper ichar*
 let tident = '\'' lident
 let mident = '&'  (lident | uint)
 
-let opchar = ['=' '<' '>' '+' '-' '*' '/' '\\' '%' '&' '^' '|' ':' '#']
+let opchar = ['=' '<' '>' '+' '-' '*' '/' '\\' '%' '&' '^' '|' ':' '#' '$']
 
 let sop = opchar+ | '`' opchar+ '`'
 let nop = '\\' ichar+
 
 let uniop = nop | ['-' '+']+ | '!'
 let binop = sop | nop
+let numop = '\'' digit+
 
 (* -------------------------------------------------------------------- *)
 rule main = parse
@@ -358,6 +362,7 @@ rule main = parse
 
   | "(*" binop "*)" { main lexbuf }
   | '(' blank* (binop as s) blank* ')' { [PBINOP s] }
+  | '(' blank* (numop as s) blank* ')' { [PNUMOP s] }
 
   | '[' blank* (uniop as s) blank* ']' {
       let name = Printf.sprintf "[%s]" s in
@@ -388,7 +393,6 @@ rule main = parse
   | ','   { [COMMA     ] }
   | ';'   { [SEMICOLON ] }
   | '?'   { [QUESTION  ] }
-  | "$"   { [SAMPLE    ] }
   | "~"   { [TILD      ] }
   | "!"   { [NOT       ] }
   | "@"   { [AT        ] }
@@ -412,6 +416,10 @@ rule main = parse
   | opchar as op {
       let op = operator (Buffer.from_char op) lexbuf in
       lex_operators (Buffer.contents op)
+    }
+
+  | numop as op {
+      [NUMOP op]
     }
 
   (* end of sentence / stream *)

@@ -1161,28 +1161,38 @@ module Op = struct
     if not (EcUnify.UniEnv.closed ue) then
       hierror ~loc "this operator type contains free type variables";
 
+    let nosmt = op.po_nosmt in
+
+    if nosmt &&
+       (match body with
+        | `Plain _  -> false
+        | `Fix _    -> false
+        | `Abstract ->
+            match refts with
+            | [] -> true
+            | _  -> false) then
+      hierror ~loc ("[nosmt] is not supported for pure abstract operators");
+
     let uni     = Tuni.offun (EcUnify.UniEnv.close ue) in
     let ty      = uni ty in
     let tparams = EcUnify.UniEnv.tparams ue in
     let body    =
       match body with
       | `Abstract -> None
-      | `Plain e  -> Some (OP_Plain (e_mapty uni e))
+      | `Plain e  -> Some (OP_Plain (e_mapty uni e, nosmt))
       | `Fix opfx ->
           Some (OP_Fix {
             opf_args     = opfx.EHI.mf_args;
             opf_resty    = opfx.EHI.mf_codom;
             opf_struct   = (opfx.EHI.mf_recs, List.length opfx.EHI.mf_args);
             opf_branches = opfx.EHI.mf_branches;
+            opf_nosmt    = nosmt;
           })
 
     in
 
     let tyop   = EcDecl.mk_op tparams ty body in
     let opname = EcPath.pqname (EcEnv.root (env scope)) (unloc op.po_name) in
-
-    if op.po_nosmt && (is_none op.po_ax) then
-      hierror ~loc "[nosmt] is only supported for axiomatized operators";
 
     if op.po_kind = `Const then begin
       let tue   = EcUnify.UniEnv.copy ue in
@@ -1203,7 +1213,7 @@ module Op = struct
       | None    -> bind scope (unloc op.po_name, tyop)
       | Some ax -> begin
           match tyop.op_kind with
-          | OB_oper (Some (OP_Plain bd)) ->
+          | OB_oper (Some (OP_Plain (bd, _))) ->
               let path  = EcPath.pqname (path scope) (unloc op.po_name) in
               let axop  =
                 let nosmt = op.po_nosmt in
@@ -1213,7 +1223,7 @@ module Op = struct
               let scope = bind scope (unloc op.po_name, tyop) in
               Ax.bind scope false (unloc ax, axop)
 
-          | _ -> hierror ~loc "cannot axiomatized non-plain operators"
+          | _ -> hierror ~loc "cannot axiomatize non-plain operators"
       end
     in
 
@@ -1241,7 +1251,7 @@ module Op = struct
             { ax_tparams = axpm;
               ax_spec    = ax;
               ax_kind    = `Axiom (Ssym.empty, false);
-              ax_nosmt   = false; }
+              ax_nosmt   = nosmt; }
           in Ax.bind scope false (unloc rname, ax))
         scope refts
     in
@@ -2189,17 +2199,22 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Reduction = struct
-  let add_reduction scope reds =
+  let add_reduction scope (opts, reds) =
     check_state `InTop "hint simplify" scope;
     if EcSection.in_section scope.sc_section then
       hierror "cannot add reduction rule in a section";
+
+    let opts = EcTheory.{
+      ur_delta  = List.mem `Delta  opts;
+      ur_eqtrue = List.mem `EqTrue opts;
+    } in
 
     let rules =
       let for1 idx name =
         let idx      = odfl 0 idx in
         let lemma    = fst (EcEnv.Ax.lookup (unloc name) (env scope)) in
-        let red_info = EcReduction.User.compile ~prio:idx (env scope) lemma in
-        (lemma, Some red_info) in
+        let red_info = EcReduction.User.compile ~opts ~prio:idx (env scope) lemma in
+        (lemma, opts, Some red_info) in
 
       let rules = List.map (fun (xs, idx) -> List.map (for1 idx) xs) reds in
       List.flatten rules
@@ -2348,7 +2363,30 @@ module Search = struct
             | [] ->
                 hierror ~loc:q.pl_loc "unknown operator: `%s'"
                   (EcSymbols.string_of_qsymbol q.pl_desc)
-            | paths -> `ByPath (Sp.of_list (List.map fst paths))
+            | paths -> begin
+                let for1 (paths, pts) (p, decl) =
+                  match decl.op_kind with
+                  | OB_nott nt -> begin
+                    let ps  = ref Mid.empty in
+                    let ue  = EcUnify.UniEnv.create None in
+                    let tip = EcUnify.UniEnv.opentvi ue decl.op_tparams None in
+                    let tip = Tvar.subst tip in
+                    let xs  = List.map (snd_map tip) nt.ont_args in
+                    let bd  = EcFol.form_of_expr EcFol.mhr (EcTypes.e_mapty tip nt.ont_body) in
+                    let fp  = EcFol.f_lambda (List.map (snd_map EcFol.gtty) xs) bd in
+
+                    match fp.f_node with
+                    | Fop (pf, _) -> (pf :: paths, pts)
+                    | _ -> (paths, (ps, ue, fp) ::pts)
+                  end
+
+                  | _ -> (p :: paths, pts) in
+
+                let paths, pts = List.fold_left for1 ([], []) paths in
+                let pts = List.map (fun (ps, ue, fp) -> `ByPattern ((ps, ue), fp)) pts in
+
+                `ByOr (`ByPath (Sp.of_list paths) :: pts)
+              end
         end
 
         | _ ->

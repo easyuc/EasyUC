@@ -112,12 +112,6 @@ let on_mpath_lv cb (lv : lvalue) =
     | LvVar   pv  -> for1 pv
     | LvTuple pvs -> List.iter for1 pvs
 
-    | LvMap ((_, pty), pv, e, ty) ->
-        List.iter (on_mpath_ty cb) pty;
-        on_mpath_ty   cb ty;
-        on_mpath_pv   cb pv;
-        on_mpath_expr cb e
-
 let rec on_mpath_instr cb (i : instr)=
   match i.i_node with
   | Srnd (lv, e) | Sasgn (lv, e) ->
@@ -139,6 +133,12 @@ let rec on_mpath_instr cb (i : instr)=
   | Swhile (e, s) ->
       on_mpath_expr cb e;
       on_mpath_stmt cb s
+
+  | Smatch (e, b) ->
+      let forb (bs, s) =
+        List.iter (on_mpath_ty cb |- snd) bs;
+        on_mpath_stmt cb s
+      in on_mpath_expr cb e; List.iter forb b
 
   | Sabstract _ -> ()
 
@@ -354,7 +354,7 @@ let opdecl_use_local_or_abs opdecl lc =
          | OP_Record _ -> ()
          | OP_Proj   _ -> ()
          | OP_TC       -> ()
-         | OP_Plain  e -> on_mpath_expr cb e
+         | OP_Plain  (e, _) -> on_mpath_expr cb e
          | OP_Fix    f ->
            let rec on_mpath_branches br =
              match br with
