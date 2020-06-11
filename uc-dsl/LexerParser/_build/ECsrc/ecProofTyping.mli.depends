@@ -1,1 +1,0 @@
-ECsrc/ecProofTyping.mli: EcCoreGoal EcDecl EcEnv EcFol EcIdent EcMemory EcModules EcParsetree EcSymbols EcTypes EcTyping EcUnify FApi LDecl Mid

@@ -1,1 +1,0 @@
-ECsrc/ecLowGoal.mli: EcCoreGoal EcEnv EcFol EcIdent EcLocation EcMatching EcMemory EcParsetree EcPath EcProofTerm EcProofTyping EcProvers EcReduction EcSymbols EcTypes EcUtils FApi Sid

@@ -1,1 +1,0 @@
-ECsrc/ecTyping.mli: EcDecl EcEnv EcFol EcIdent EcLocation EcMaps EcMemory EcModules EcParsetree EcPath EcSymbols EcTypes EcUnify EcUtils Msym Sx

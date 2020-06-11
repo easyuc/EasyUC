@@ -1,1 +1,0 @@
-ECsrc/ecReduction.mli: EcEnv EcFol EcIdent EcModules EcPath EcTheory EcTypes LDecl

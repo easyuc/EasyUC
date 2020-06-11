@@ -1,1 +1,0 @@
-ECsrc/ecEnv.mli: EcBaseLogic EcCoreFol EcDecl EcGState EcIdent EcMemory EcModules EcPath EcSymbols EcTheory EcTypeClass EcTypes Format Lazy Sp

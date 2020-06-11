@@ -1,1 +1,0 @@
-ECsrc/ecThCloning.mli: EcDecl EcEnv EcLocation EcParsetree EcPath EcRegexp EcSymbols EcTheory EcTypes Msym

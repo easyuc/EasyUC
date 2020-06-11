@@ -1,1 +1,0 @@
-ECsrc/ecHiPredicates.mli: EcDecl EcEnv EcLocation EcParsetree EcSymbols EcTyping

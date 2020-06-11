@@ -1,2 +1,0 @@
-ECsrc/ecParser.ml: EcBigInt EcCoreLib EcFol EcLocation EcMaps EcParsetree EcSymbols EcUtils Hashtbl Lexing List Printf String
-ECsrc/ecParser.mli: EcBigInt EcParsetree EcSymbols Lexing
