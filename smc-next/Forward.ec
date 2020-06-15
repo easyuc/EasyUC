@@ -498,3 +498,134 @@ move => x x'.
 auto.
 auto.
 qed.
+
+(* phoare lemmas for invoke *)
+
+pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
+  dec_fw_req_check m self <> None /\
+  envport self adv (oget (dec_fw_req m)).`fw_req_pt2.
+
+lemma Forw_invoke_init_fw_req (m' : msg) :
+  phoare
+  [Forw.invoke :
+   m' = m /\ Forw.st = FwStateInit /\
+   forw_invoke_init_fw_req Forw.self Forw.adv m ==>
+   let fwr = oget (dec_fw_req m') in
+   res =
+   Some
+   (fw_obs
+    {|fw_obs_func = fwr.`fw_req_func; fw_obs_adv = Forw.adv;
+      fw_obs_pt1 = fwr.`fw_req_pt1; fw_obs_pt2 = fwr.`fw_req_pt2;
+      fw_obs_u = fwr.`fw_req_u|}) /\
+   Forw.st = FwStateWait fwr.`fw_req_pt1 fwr.`fw_req_pt2 fwr.`fw_req_u] = 1%r.
+proof.
+proc.
+sp 1.
+rcondt 1; first auto; progress; smt(mode_valid_fw_req dest_valid_fw_req).
+inline Forw.parties.
+sp 2.
+match FwStateInit 1; first auto; smt().
+match Some 1.
+auto; smt(some_oget).
+rcondt 1; first auto; progress; smt().
+auto => &hr |> dec_fw_req_chk_m.
+have dec_fw_req_m : dec_fw_req m{hr} = Some x{hr} by smt().
+have -> : oget (dec_fw_req m{hr}) = x{hr}
+  by rewrite dec_fw_req_m oget_some.
+smt().
+qed.
+
+lemma Forw_invoke_init_bad :
+  phoare
+  [Forw.invoke :
+   Forw.st = FwStateInit /\
+   ! forw_invoke_init_fw_req Forw.self Forw.adv m ==>
+   res = None /\ Forw.st = FwStateInit] = 1%r.
+proof.
+proc.
+sp 1.
+if.
+inline Forw.parties.
+sp 2.
+match FwStateInit 1; first auto; smt().
+case (dec_fw_req_check m0 Forw.self = None).
+match None 1; first auto; smt().
+auto; smt().
+match Some 1; first auto; progress; smt().
+rcondf 1; first auto; progress; smt().
+auto; smt().
+auto.
+qed.
+
+pred forw_invoke_wait_fw_ok (self adv : addr, m : msg) =
+  dec_fw_ok_check m self adv <> None.
+
+lemma Forw_invoke_wait_fw_ok (st' : fw_state, m' : msg) :
+  phoare
+  [Forw.invoke :
+   st' = Forw.st /\ m' = m /\ get_as_FwStateWait Forw.st <> None /\
+   forw_invoke_wait_fw_ok Forw.self Forw.adv m ==>
+   let wait = oget (get_as_FwStateWait st') in
+   res =
+   Some
+   (fw_rsp
+    {|fw_rsp_func = Forw.self; fw_rsp_pt1 = wait.`1; fw_rsp_pt2 = wait.`2;
+      fw_rsp_u = wait.`3|}) /\
+   Forw.st = FwStateFinal] = 1%r.
+proof.
+proc.
+sp 1.
+rcondt 1; first auto; smt(mode_valid_fw_ok dest_valid_fw_ok).
+inline Forw.parties.
+sp 2.
+match FwStateWait 1.
+auto => /> &hr.
+rewrite /get_as_FwStateWait.
+case (Forw.st{hr}) => // pt1 pt2 u /= _.
+by exists pt1 pt2 u.
+match Some 1.
+auto => &hr />.
+rewrite /forw_invoke_wait_fw_ok.
+case (dec_fw_ok_check m{hr} Forw.self{hr} Forw.adv{hr}) => // fwok.
+progress; by exists fwok.
+auto; by rewrite /get_as_FwStateWait.
+qed.
+
+lemma Forw_invoke_wait_bad (st' : fw_state) :
+  phoare
+  [Forw.invoke :
+   st' = Forw.st /\ get_as_FwStateWait Forw.st <> None /\
+   ! forw_invoke_wait_fw_ok Forw.self Forw.adv m ==>
+   res = None /\ Forw.st = st'] = 1%r.
+proof.
+proc.
+sp 1.
+if.
+inline Forw.parties.
+sp 2.
+match FwStateWait 1.
+auto => /> &hr.
+rewrite /get_as_FwStateWait.
+case (Forw.st{hr}) => // pt1 pt2 u /= _ _.
+by exists pt1 pt2 u.
+match None 1.
+auto.
+auto.
+auto.
+qed.
+
+lemma Forw_invoke_final :
+  phoare
+  [Forw.invoke :
+   Forw.st = FwStateFinal ==>
+   res = None /\ Forw.st = FwStateFinal] = 1%r.
+proof.
+proc.
+sp 1.
+if.
+inline Forw.parties.
+sp 2.
+match FwStateFinal 1; first auto; smt().
+auto.
+auto.
+qed.
