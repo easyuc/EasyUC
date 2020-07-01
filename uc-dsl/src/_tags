@@ -1,0 +1,20 @@
+true : use_menhir, explain, debug
+true : debug
+
+true : warn_Z, warn_Y, warn_+28, warn_-23, warn_+33, warn_-58, warn_-3
+true : -traverse
+true : bin_annot
+
+<ECsrc>            : include
+<ECsrc/why3>       : include
+<ECsrc/phl>        : include
+<ECsrc/extraction> : include
+<ECsrc/system>     : include
+
+# --------------------------------------------------------------------
+<ECsrc/*.{ml,mli}>      : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
+<ECsrc/*/*.{ml,mli}>    : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
+<ECsrc/*.{native,byte}> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
+
+<ECsrc/*> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson), debug
+<*> : package(batteries,pcre,why3,inifiles,zarith,yojson), debug
