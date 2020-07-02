@@ -22,6 +22,9 @@ To clean up the build state, you can run
 (If you get to a state where ocamlbuild is complaining, running
 ./build-cleanup and then ./build often fixes the problem.)
 
+You may want to add ../bin/ucdsl to your shell's search PATH.  Run
+`ucdsl -help` for information about how to invoke the tool.
+
 - - - - the rest of this file is in flux - - - -
 
 to build makeTestCase:
