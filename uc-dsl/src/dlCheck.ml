@@ -21,6 +21,15 @@ let arg_specs =
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
+let () =
+  List.iter
+  (fun x ->
+     if (not (Sys.file_exists x) || not (Sys.is_directory x))
+     then (Printf.fprintf stderr "does not exist or is not a directory: %s\n" x;
+           exit 1)
+     else())
+  (! include_dirs_ref)
+
 let () = DlState.set_include_dirs (! include_dirs_ref)
 
 let file =
