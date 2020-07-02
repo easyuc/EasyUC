@@ -11,10 +11,7 @@ true : bin_annot
 <ECsrc/extraction> : include
 <ECsrc/system>     : include
 
-# --------------------------------------------------------------------
-<ECsrc/*.{ml,mli}>      : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
-<ECsrc/*/*.{ml,mli}>    : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
-<ECsrc/*.{native,byte}> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
+<ECsrc/*.{ml,mli}> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
+<ECsrc/*/*.{ml,mli}> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson)
 
-<ECsrc/*> : package(batteries,menhirLib,why3,inifiles,zarith,pcre,yojson), debug
 <*> : package(batteries,pcre,why3,inifiles,zarith,yojson), debug

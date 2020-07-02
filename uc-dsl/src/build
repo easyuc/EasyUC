@@ -1,0 +1,34 @@
+#!/bin/bash
+
+ecdir=$(ls -l ECdir | sed 's/^.*-> //')
+ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
+
+if [ ! -r ECsrc/ecVersion.ml ];
+then echo "trying to prepare $ecdir"
+     echo "  for building of UC DSL tool";
+     if [ ! -r ECsrc/ecVersion.ml.in ];
+     then echo Bad EasyCrypt source directory;
+          echo exiting...;
+          exit;
+     else cp ECsrc/ecVersion.ml.in ECsrc/ecVersion.ml >& /dev/null;
+          if [[ $? == 0 ]];
+          then echo preparation suceeded;
+          else echo -n "failure due to file permissions in ";
+               echo $ecdir
+               echo exiting...;
+               exit;
+          fi;
+     fi;
+fi
+
+# the following depends on $ectheories not including apostrophes
+# see configure
+sed "s'ECtheories'$ectheories'" dlConfig.ml.in > dlConfig.ml
+if [[ $? != 0 ]];
+then echo failure;
+     echo exiting...
+     exit;
+fi;
+
+ocamlbuild -use-ocamlfind dlCheck.native
+cp dlCheck.native ../bin/ucdsl

@@ -1,3 +1,0 @@
-#!/bin/bash
-
-src/dlCheck.native $1

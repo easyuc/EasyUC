@@ -17,9 +17,7 @@ module EP = EcParsetree
 open DlTypes
 (* -------------------------------------------------------------------- *)
 
-let ecTheoriesDir = Filename.dirname "/usr/local/share/easycrypt/easycrypt/theories"
-
-let ucTheoriesDir = Filename.dirname "/Users/stough/projs/easycrypt/uc/easy-uc-git/uc-dsl"
+let ecTheoriesDir = Filename.dirname DlConfig.ec_theories_dir_str
 
 let checkmode = {
               EcCommands.cm_checkall  = false; 
@@ -27,9 +25,6 @@ let checkmode = {
               EcCommands.cm_cpufactor = 1; 
               EcCommands.cm_nprovers  = 4;
               EcCommands.cm_provers   = None;
-(* Alley: no longer a field
-              EcCommands.cm_wrapper   = None;
-*)
               EcCommands.cm_profile   = false;
               EcCommands.cm_iterate   = false;
             }
@@ -45,8 +40,13 @@ let init () =
  if !initialized=false then
   (initialized:=true;
   EcCommands.addidir ~namespace:`System ~recursive:true ecTheoriesDir;
-  EcCommands.addidir Filename.current_dir_name;
-  EcCommands.addidir ucTheoriesDir;
+  EcCommands.addidir ~namespace:`System ~recursive:false
+  Filename.current_dir_name;
+  (let include_dirs = DlState.get_include_dirs() in
+   List.iter
+   (fun x ->
+    EcCommands.addidir ~namespace:`System ~recursive:false x)
+   include_dirs);
   EcCommands.initialize ~restart:false ~undo:false ~boot:false ~checkmode;
   EcCommands.addnotifier notifier;
   (* Register user messages printers *)
@@ -62,12 +62,9 @@ let executeCommand (c:string) =
                (fun p -> ignore (EcCommands.process ~timed:p.EP.gl_timed p.EP.gl_action))
                commands
 	| EP.P_Undo _ -> raise (Failure "usage of internal keyword undo is unacceptable, sorry")
-  
-
 
 let requireImport (th:string) =
   executeCommand ("require import "^th^".")
-
 
 let env () = EcScope.env (EcCommands.current())
 

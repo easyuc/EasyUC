@@ -1,37 +1,28 @@
-The UC DSL uses some of the EasyCrypt's libraries.
+                        Building the UC DSL Tool
 
-If you want to run EasyCrypt inside utop, you might want to run
-commands in utop_ec.txt
+To build the UC DSL tool ucdsl, first configure the tool by running
 
-In order to compile, it is necessary to add a symbolic link "ECsrc"
-pointing to the EC source directory.
+./configure
 
-If there is already a _build directory, first delete it.
+telling it the full pathname of the EasyCrypt distribution. If you
+installed EasyCrypt using opam, it will be something like
 
---- not clear this is relevant anymore? ---
-Furthermore, the file ecVersion.ml.in needs to be copied to
-ecVersion.ml, so that both are contained in the EC /src/ directory.
----
+/pathto/.opam/default/lib/easycrypt
 
-(When building EasyCrypt itself, this is done by its makefile, we
-don't have a makefile.) In order for the interface between the UC DSL
-and EC to work there are two paths that need to be setup in
-dlEcInterface.ml.
+Next, run
 
-* ecTheoriesDir points to the directory that contains theories that
-  come with EasyCrypt:
+./build
 
-* ucTheoriesDir points to the directory that contains "user-defined"
-  types and operators that are imported/required by UC DSL code.
+to build the tool and copy the binary to ../bin/ucdsl.
 
-The build configuration for ocamlbuild is contained in _tags and
-myocamlbuild.ml files.
+To clean up the build state, you can run
 
-to build dlCheck:
-ocamlbuild -use-ocamlfind dlCheck.byte
+./build-cleanup
 
-to run checks on a UC DSL file:
-./dlCheck.byte filename.uc
+(If you get to a state where ocamlbuild is complaining, running
+./build-cleanup and then ./build often fixes the problem.)
+
+- - - - the rest of this file is in flux - - - -
 
 to build makeTestCase:
 ocamlbuild -use-ocamlfind makeTestCase.byte

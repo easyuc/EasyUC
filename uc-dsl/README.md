@@ -23,6 +23,8 @@ definitions of the functionalities and simulators of our SMC (secure
 message transmission) case study. It makes use of the definitions
 in [an EasyCrypt theory](KeysExponentsAndPlainTexts.ec).
 
-The OCaml code for a lexer and parser of the DSL can be found
-in the subdirectory [`LexerParser`](LexerParser). A translator
-into EasyCrypt is yet to be written.
+The OCaml code for a lexer and parser of the DSL can be found in the
+subdirectory [`src`](src). A translator into EasyCrypt is yet to be
+written. To build the DSL tool, `ucdsl`, see the instructions in
+the subdirectory `src`. The executable will then be in the
+`bin` subdirectory.

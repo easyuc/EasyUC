@@ -3,3 +3,4 @@
 *.eco
 *.byte
 _build
+bin

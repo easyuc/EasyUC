@@ -1,0 +1,45 @@
+#!/bin/bash
+
+if [ -L ECsrc ];
+then echo "symbolic link to EasyCrypt installation directory already set"
+     echo "ECdir ->" $(ls -l ECdir | sed 's/^.*-> //')
+     echo ""
+     read -p 'Do you want to change the symbolic link? [yes/no] ' change
+     if [ $change == yes ];
+     then echo ""
+     else echo "exiting..."
+          exit
+     fi;
+fi
+
+rm -f ECdir ECsrc ECtheories
+
+echo "you need to enter the fully qualified pathname of the Easyrypt "
+echo "installation directory (filename completion will be enabled)"
+echo ""
+read -e -p "EasyCrypt installation directory pathname? " ecdir
+if [[ $ecdir = *\'* ]];
+  then echo ""
+       echo "pathname cannot contain apostrophes"
+       echo symbolic link not created
+       exit;
+elif [[ $ecdir = *\ * ]];
+  then echo ""
+       echo "pathname cannot contain spaces"
+       echo symbolic link not created
+       exit;
+elif [ ! -d $ecdir ];
+  then echo ""
+       echo "pathname is not a directory";
+       echo symbolic link not created
+       exit;
+elif [ ! -e $ecdir/src/ecVersion.ml.in ];
+  then echo ""
+       echo "pathname is not the pathname of EasyCrypt installation directory"
+       echo symbolic link not created
+       exit;
+fi
+
+ln -s $ecdir ECdir
+ln -s $ecdir/src ECsrc
+ln -s $ecdir/theories ECtheories

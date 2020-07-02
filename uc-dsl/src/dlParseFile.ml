@@ -5,17 +5,16 @@ open DlParseTree
 module L = Lexing
 open DlUtils
 
-(*from https://stackoverflow.com/questions/53839695/how-do-i-read-the-entire-content-of-a-given-file-into-a-string*)
-let read_whole_file filename =
-    let ch = open_in filename in
-    let s = really_input_string ch (in_channel_length ch) in
-    close_in ch;
-    s
+let read_to_eof ch =
+  let rec reads xs =
+    match try Some (input_line ch) with
+            End_of_file -> None with
+      None   -> String.concat "" (List.rev xs)
+    | Some x -> reads ((x ^ "\n") :: xs)
+  in reads []
 
-let read_file filename = read_whole_file (filename)
-
-let parse_file filename =
-  let s = read_file filename in
+let parse_file ch =
+  let s = read_to_eof ch in
   let lexbuf = Lexing.from_string s in
   let ast = try
 		prog read lexbuf
