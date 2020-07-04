@@ -18,10 +18,10 @@ communication between environment and adversary. When DSL code is
 translated into EasyCrypt's procedural programming language,
 message-routing boilerplate will be automatically generated.
 
-As an example, the file [`case-study.uc`](case-study.uc) contains the
-definitions of the functionalities and simulators of our SMC (secure
-message transmission) case study. It makes use of the definitions
-in [an EasyCrypt theory](KeysExponentsAndPlainTexts.ec).
+Some examples are in the [`examples`](examples) subdirectory,
+including the file [`case-study.uc`](examples/case-study.uc) contains
+the definitions of the functionalities and simulators of our SMC
+(secure message transmission) case study.
 
 The OCaml code for a lexer and parser of the DSL can be found in the
 subdirectory [`src`](src). The software is still under development.  A
@@ -65,10 +65,13 @@ Files
 
 The file:
 
-* `_tags` contains the `ocamlbuild` tags for the project (`ocamlbuild`
-  is used by the `build` script).
-
 * `.merlin` contains the configuration file for
   [Merlin](https://github.com/ocaml/merlin), a plugin to `emacs` and
   `vim` for assisting in the editing of OCaml code (e.g., learning the
   types of expressions).
+
+* `_tags` contains the `ocamlbuild` tags for the project (`ocamlbuild`
+  is used by the `build` script).
+
+* `myocamlbuild.ml` is the project's `ocamlbuild` plugin, customizing
+  its behavior.
