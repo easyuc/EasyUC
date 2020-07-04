@@ -30,6 +30,11 @@ translator into EasyCrypt is yet to be written.
 Building the UC DSL Tool
 --------------------------------------------------------------------
 
+The following instructions assume you have already installed
+[OCaml](https://ocaml.org), the OCaml Package Manager,
+[`opam`](https://opam.ocaml.org), and
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt).
+
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
      ./configure
@@ -63,6 +68,7 @@ The file:
 * `_tags` contains the `ocamlbuild` tags for the project (`ocamlbuild`
   is used by the `build` script).
 
-* `.merlin` contains the configuration file for Merlin, a plugin
-  to `emacs` and `vim` for assisting in the editing of OCaml code
-  (e.g., learning the types of expressions).
+* `.merlin` contains the configuration file for
+  [Merlin](https://github.com/ocaml/merlin), a plugin to `emacs` and
+  `vim` for assisting in the editing of OCaml code (e.g., learning the
+  types of expressions).
