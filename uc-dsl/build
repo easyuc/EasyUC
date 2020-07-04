@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd src
+
 ecdir=$(ls -l ECdir | sed 's/^.*-> //')
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
 
@@ -30,5 +32,7 @@ then echo failure;
      exit;
 fi;
 
+cd ..
+
 ocamlbuild -use-ocamlfind dlCheck.native
-cp dlCheck.native ../bin/ucdsl
+cp dlCheck.native bin/ucdsl

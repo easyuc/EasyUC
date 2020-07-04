@@ -25,7 +25,41 @@ in [an EasyCrypt theory](KeysExponentsAndPlainTexts.ec).
 
 The OCaml code for a lexer and parser of the DSL can be found in the
 subdirectory [`src`](src). The software is still under development.  A
-translator into EasyCrypt is yet to be written. To build the DSL tool,
-`ucdsl`, see the instructions in the subdirectory `src`. The
-executable will then be in the `bin` subdirectory. Run `ucdsl -help`
-for information about how to invoke the tool.
+translator into EasyCrypt is yet to be written.
+
+Building the UC DSL Tool
+--------------------------------------------------------------------
+
+To build the UC DSL tool `ucdsl`, first configure the tool by running
+
+     ./configure
+
+telling it the full pathname of the EasyCrypt distribution. If you
+installed EasyCrypt using `opam`, it will be something like
+
+     /pathto/.opam/default/lib/easycrypt
+
+Next, run
+
+     ./build
+
+to build the tool and copy the binary to `bin/ucdsl`.
+
+To clean up the build state, you can run
+
+     ./build-cleanup
+
+(If you get to a state where ocamlbuild is complaining, running
+`./build-cleanup` and then `./build` often fixes the problem.)
+
+You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
+`ucdsl -help` for information about how to invoke the tool.
+
+Files
+--------------------------------------------------------------------
+
+The file:
+
+* `_tags` contains the `ocamlbuild` tags for the project;
+
+* `.merlin` contains the configuration file for merlin.

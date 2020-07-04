@@ -1,3 +1,5 @@
+(* ocamlbuild customization program, borrowed from EasyCrypt source *)
+
 open Ocamlbuild_plugin
 
 let _ = dispatch begin function

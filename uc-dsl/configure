@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd src
+
 if [ -L ECsrc ];
 then echo "symbolic link to EasyCrypt installation directory already set"
      echo "ECdir ->" $(ls -l ECdir | sed 's/^.*-> //')
