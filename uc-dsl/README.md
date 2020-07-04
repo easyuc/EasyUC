@@ -31,7 +31,7 @@ Building the UC DSL Tool
 --------------------------------------------------------------------
 
 The following instructions assume you have already installed
-[OCaml](https://ocaml.org), the OCaml Package Manager,
+[OCaml](https://ocaml.org), the OCaml Package Manager
 [`opam`](https://opam.ocaml.org), and
 [EasyCrypt](https://github.com/EasyCrypt/easycrypt).
 
