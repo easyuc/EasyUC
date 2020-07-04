@@ -1,6 +1,6 @@
 ECdir
 ECsrc
 ECtheories
-dlConfig.ml.in
+dlConfig.ml
 *.native
 *.byte
