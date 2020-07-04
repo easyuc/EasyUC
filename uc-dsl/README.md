@@ -49,7 +49,7 @@ To clean up the build state, you can run
 
      ./build-cleanup
 
-(If you get to a state where ocamlbuild is complaining, running
+(If you get to a state where `ocamlbuild` is complaining, running
 `./build-cleanup` and then `./build` often fixes the problem.)
 
 You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
@@ -60,6 +60,9 @@ Files
 
 The file:
 
-* `_tags` contains the `ocamlbuild` tags for the project;
+* `_tags` contains the `ocamlbuild` tags for the project (`ocamlbuild`
+  is used by the `build` script).
 
-* `.merlin` contains the configuration file for merlin.
+* `.merlin` contains the configuration file for Merlin, a plugin
+  to `emacs` and `vim` for assisting in the editing of OCaml code
+  (e.g., learning the types of expressions).
