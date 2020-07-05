@@ -25,7 +25,10 @@ fi
 
 # the following depends on $ectheories not including apostrophes
 # see configure
-sed "s'ECtheories'$ectheories'" dlConfig.ml.in > dlConfig.ml
+sed -e "s'ECtheories'$ectheories'" \
+    -e '1i\
+      (* automatically generated file - do not edit *)' \
+    dlConfig.ml.in > dlConfig.ml
 if [[ $? != 0 ]];
 then echo failure;
      echo exiting...
