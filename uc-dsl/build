@@ -28,7 +28,7 @@ fi
 sed -e "s'ECtheories'$ectheories'" \
     -e '1i\
       (* automatically generated file - do not edit *)' \
-    dlConfig.ml.in > dlConfig.ml
+    ucConfig.ml.in > ucConfig.ml
 if [[ $? != 0 ]];
 then echo failure;
      echo exiting...
@@ -37,5 +37,5 @@ fi;
 
 cd ..
 
-ocamlbuild -use-ocamlfind dlCheck.native
-cp dlCheck.native bin/ucdsl
+ocamlbuild -use-ocamlfind ucdsl.native
+cp ucdsl.native bin/ucdsl

@@ -1,12 +1,12 @@
-open DlParseTree
-open DlTypes
+open UcParseTree
+open UcTypes
 open EcLocation
 
 let checkNamedType (tyname:id) : typ =
 	let tyn = unloc tyname in
 	try ignore (List.find (fun tyn -> tyn=unloc tyname) builtinTypeNames); Tconstr (tyn,None)
 	with Not_found ->
-		if DlEcInterface.existsType tyn then Tconstr (tyn,None)
+		if UcEcInterface.existsType tyn then Tconstr (tyn,None)
 		else parse_error (loc tyname) (Some ("Non-existing type: "^(tyn)) )
 let rec checkType (ty:ty) : typ =
 	match ty with

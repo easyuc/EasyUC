@@ -1,7 +1,6 @@
 open EcLocation
-open DlParseTree
-open DlTypes
-(*DlParsedTree*)
+open UcParseTree
+open UcTypes
 
 module IdMap = Map.Make(String)
 module IdSet = Set.Make(String)

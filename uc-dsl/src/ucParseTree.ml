@@ -1,6 +1,5 @@
 open EcLocation
 
-
 exception ParseError of EcLocation.t * string option
 let parse_error loc msg = raise (ParseError (loc, msg))
 

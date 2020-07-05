@@ -1,10 +1,10 @@
 open EcLocation
-open DlParseTree
-open DlParser
-open DlTypes
-open DlEcTypes
-open DlParsedTree
-open DlUtils
+open UcParseTree
+open UcParser
+open UcTypes
+open UcEcTypes
+open UcTypechecked
+open UcUtils
 
 (*circular references*)
 
@@ -578,7 +578,7 @@ let checkQidType (sv:stateVars) (qid:qid) : typ =
 		if (checkIsInternalPort sv qid) then portType else raise Not_found
 
 let checkExpression (sv:stateVars) (expr:expressionL) : typ =
-	DlExpressions.checkExpression (checkQidType sv) expr
+	UcExpressions.checkExpression (checkQidType sv) expr
 
 let checkValAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
 	let etyp = checkExpression sv ex in
@@ -586,9 +586,9 @@ let checkValAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
 
 let checkSamplAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
 	let etyp = checkExpression sv ex in
-	if not (DlExpressions.isDistribution etyp) then parse_error (loc ex) (Some("You can sample only from distributions."))
+	if not (UcExpressions.isDistribution etyp) then parse_error (loc ex) (Some("You can sample only from distributions."))
 	else
-	let dtyp = DlExpressions.getDistrubutionTyp etyp  in 
+	let dtyp = UcExpressions.getDistrubutionTyp etyp  in 
 	checkTypeAddBinding vid dtyp sv
 
 let checkTransition (si:stateInstance) (ss:stateSig IdMap.t) (sv:stateVars) : unit =
@@ -1056,19 +1056,19 @@ let checkDefs defL =
 		  functionalities = funs;
 		  simulators = sims }
 
-let loadDlImports imps : def list =[]
+let loadUcImports imps : def list =[]
 
 let loadEcReqs reqs =
 		let reqimp idl =
-			try DlEcInterface.requireImport (unloc idl)
+			try UcEcInterface.requireImport (unloc idl)
 			with Failure f -> parse_error (loc idl) (Some("Error when require import-ing "^(unloc idl)^" :"^f))
 		in
 		List.iter reqimp reqs
 
 let checkDL dlprog =
-		DlEcInterface.init();
+		UcEcInterface.init();
 		loadEcReqs dlprog.externals.ecRequirements;
-		let extDefs = loadDlImports dlprog.externals.dlImports in
-		checkDefs (extDefs@dlprog.definitions);
+		let extDefs = loadUcImports dlprog.externals.dlImports in
+		checkDefs (extDefs @ dlprog.definitions);
 
 (*--------------*)

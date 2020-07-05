@@ -1,10 +1,8 @@
-
-
 %{
 
 open EcUtils
 open EcLocation
-open DlParseTree
+open UcParseTree
 
 let toId (mtid:msgType) =
 	match mtid with
@@ -114,7 +112,7 @@ checkDl.ml, with a filename as command line argument, outputs parse error (if an
 tests.ml runs a list of tests defined in testSuite.ml and outputs the test results to command line;
 makeTestCase.ml, with a filename as command line argument, outputs the result of checkDl as ocaml code representing the test case.
 *)
-%start <DlParseTree.dlprog> prog
+%start <UcParseTree.dlprog> prog
 
 %%
 

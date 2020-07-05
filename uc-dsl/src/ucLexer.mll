@@ -10,7 +10,7 @@ ecLexer.mll
    that will simply be copied literally into the generated lexer.ml. *)
 
 {
-  open DlParser
+  open UcParser
   open EcUtils
   module L  = EcLocation
   exception LexicalError of L.t option * string

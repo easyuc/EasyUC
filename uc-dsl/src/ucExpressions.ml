@@ -1,18 +1,18 @@
-open DlParseTree
-open DlParsedTree
-open DlTypes
-open DlEcTypes
-open DlEcInterface
+open UcParseTree
+open UcTypechecked
+open UcTypes
+open UcEcTypes
+open UcEcInterface
 open EcLocation
-open DlUtils
+open UcUtils
 
 let builtinOperators = IdMap.add "envport" (boolType,[portType]) IdMap.empty
 
 let getOpSig (id:id) : typ*typ list =
 	let op = unloc id in
 	if (IdMap.mem op builtinOperators) then IdMap.find op builtinOperators else
-	if (DlEcInterface.existsOperator op) = false then parse_error (loc id) (Some "Nonexisting operator or function.")
-	else DlEcInterface.getOperatorSig op
+	if (UcEcInterface.existsOperator op) = false then parse_error (loc id) (Some "Nonexisting operator or function.")
+	else UcEcInterface.getOperatorSig op
 
 let checkNullaryOp (id:id) : typ =
 	let opsig = getOpSig id in

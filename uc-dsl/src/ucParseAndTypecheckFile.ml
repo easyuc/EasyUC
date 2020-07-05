@@ -1,9 +1,9 @@
-open DlLexer
-open DlParser
-open Dl
-open DlParseTree
+open UcLexer
+open UcParser
+open UcTypecheck
+open UcParseTree
 module L = Lexing
-open DlUtils
+open UcUtils
 
 let read_to_eof ch =
   let rec reads xs =

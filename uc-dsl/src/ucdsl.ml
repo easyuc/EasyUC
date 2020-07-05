@@ -1,6 +1,6 @@
 open Arg
-open DlParseFile
-open DlUtils
+open UcParseAndTypecheckFile
+open UcUtils
 
 let () = Printexc.record_backtrace true
 
@@ -30,7 +30,7 @@ let () =
      else())
   (! include_dirs_ref)
 
-let () = DlState.set_include_dirs (! include_dirs_ref)
+let () = UcState.set_include_dirs (! include_dirs_ref)
 
 let file =
   let files = ! anony_arg_ref in

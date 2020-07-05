@@ -14,10 +14,10 @@ open EcTypes
 open EcPath
 module EP = EcParsetree
 
-open DlTypes
+open UcTypes
 (* -------------------------------------------------------------------- *)
 
-let ecTheoriesDir = Filename.dirname DlConfig.ec_theories_dir_str
+let ecTheoriesDir = Filename.dirname UcConfig.ec_theories_dir_str
 
 let checkmode = {
               EcCommands.cm_checkall  = false; 
@@ -42,7 +42,7 @@ let init () =
   EcCommands.addidir ~namespace:`System ~recursive:true ecTheoriesDir;
   EcCommands.addidir ~namespace:`System ~recursive:false
   Filename.current_dir_name;
-  (let include_dirs = DlState.get_include_dirs() in
+  (let include_dirs = UcState.get_include_dirs() in
    List.iter
    (fun x ->
     EcCommands.addidir ~namespace:`System ~recursive:false x)
