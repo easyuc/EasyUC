@@ -1,3 +1,5 @@
+(* ucEcTypes.ml *)
+
 open UcParseTree
 open UcTypes
 open EcLocation

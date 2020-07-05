@@ -1,11 +1,17 @@
-(*
-  We colapse ty from ecTypes to ty_node and look at only Tconstr, Tfun and Ttuple.
-  We assume there are no name clashes, and we don't need type paths,
-  so EcPath can be colapsed to the last symbol = string.
-  Furthermore, we assume that Tconstr of ty_node is applied to
-  at most one type, so ty list colapses to option (either empty or one element)
-TODO it should be list, since tuples in constructor are not single parameter but list :(
-*)
+(* ucTypes.ml *)
+
+(* We colapse ty from ecTypes to ty_node and look at only Tconstr,
+   Tfun and Ttuple.
+
+   We assume there are no name clashes, and we don't need type paths,
+   so EcPath can be colapsed to the last symbol = string.
+
+   Furthermore, we assume that Tconstr of ty_node is applied to at
+   most one type, so ty list colapses to option (either empty or one
+   element)
+
+   TODO it should be list, since tuples in constructor are
+   not single parameter but list :( *)
 type typ = 
 	| Tconstr of string * typ option
 	| Tvar of string

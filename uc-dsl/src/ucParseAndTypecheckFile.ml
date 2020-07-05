@@ -1,9 +1,12 @@
+(* ucParseAndTypecheckFile.ml *)
+
+(* Parse and then Typecheck a DSL program *)
+
 open UcLexer
 open UcParser
 open UcTypecheck
 open UcParseTree
 module L = Lexing
-open UcUtils
 
 let read_to_eof ch =
   let rec reads xs =

@@ -1,3 +1,7 @@
+(* ucParser.mly *)
+
+(* Menhir Parser Specification for UC DSL *)
+
 %{
 
 open EcUtils

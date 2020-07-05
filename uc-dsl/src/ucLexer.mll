@@ -1,3 +1,7 @@
+(* ucLexer.mll *)
+
+(* OCamlLex Lexer specification for UC DSL *)
+
 (*stuff copied from 
 http://www.cs.cornell.edu/courses/cs3110/2015fa/l/12-interp/rec.html
 and

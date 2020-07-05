@@ -1,3 +1,7 @@
+(* ucTypechecked.ml *)
+
+(* Result of the UC DSL Typechecker *)
+
 open EcLocation
 open UcParseTree
 open UcTypes
@@ -13,7 +17,7 @@ module QidSet = Set.Make(SL)
 module QidMap = Map.Make(SL)
 
 let existsId (idMap:'a IdMap.t) (id:string) : bool = 
-	IdMap.exists (fun key a -> key=id) idMap
+	IdMap.exists (fun key _ -> key=id) idMap
 
 type typC = (typ * int) located
 

@@ -1,21 +1,14 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
+(* ucEcInterface.ml *)
 
-(* -------------------------------------------------------------------- *)
+(* Interface with EasyCrypt tool *)
+
 open EcUtils
-open EcOptions
 open EcDecl
 open EcTypes
 open EcPath
 module EP = EcParsetree
 
 open UcTypes
-(* -------------------------------------------------------------------- *)
 
 let ecTheoriesDir = Filename.dirname UcConfig.ec_theories_dir_str
 
@@ -57,7 +50,7 @@ let init () =
 
 let executeCommand (c:string) =
   match EcLocation.unloc (EcIo.parse (EcIo.from_string c)) with
-	| EP.P_Prog (commands, locterm) ->
+	| EP.P_Prog (commands, _) ->
               List.iter
                (fun p -> ignore (EcCommands.process ~timed:p.EP.gl_timed p.EP.gl_action))
                commands
@@ -70,12 +63,12 @@ let env () = EcScope.env (EcCommands.current())
 
 let existsType (ty:string):bool =
 	match EcEnv.Ty.lookup_opt ([],ty) (env()) with
-	| Some x -> true
+	| Some _ -> true
 	| None -> false
 
 let existsOperator (op:string):bool = 
 	match EcEnv.Op.lookup_opt ([],op) (env()) with
-	| Some x -> true
+	| Some _ -> true
 	| None -> false
 
 
@@ -92,7 +85,7 @@ let getOperatorSig (op:string): typ * typ list =
 	let getLastSym (path:EcPath.path) =
 		match path.p_node with
 		| EcPath.Psymbol sym -> sym
-		| EcPath.Pqname (pth,sym) -> sym
+		| EcPath.Pqname (_,sym) -> sym
 	in
 (*	let tconstrExpected (ty:EcTypes.ty) =
 		match ty.ty_node with
@@ -102,7 +95,7 @@ let getOperatorSig (op:string): typ * typ list =
 	let rec getTyp (tn:EcTypes.ty_node) : typ=
 		match tn with
 		| EcTypes.Tconstr (p,[]) -> Tconstr ((getLastSym p),None)
-		| EcTypes.Tconstr (p,hd::tl) -> Tconstr ((getLastSym p), Some (getTyp hd.ty_node))
+		| EcTypes.Tconstr (p,hd::_) -> Tconstr ((getLastSym p), Some (getTyp hd.ty_node))
 		| EcTypes.Tvar i -> Tvar (EcIdent.name i)
 		| _ -> raise (Failure "EcTypes.Tconstr or EcTypes.Tvar expected.")
 	in
@@ -110,12 +103,12 @@ let getOperatorSig (op:string): typ * typ list =
 		let fstTyp = getTyp (fst tt).ty_node
 		in
 		match (snd tt).ty_node with
-		| EcTypes.Tconstr (t,l) -> (getTyp (snd tt).ty_node)::fstTyp::argTyps
+		| EcTypes.Tconstr _ -> (getTyp (snd tt).ty_node)::fstTyp::argTyps
 		| EcTypes.Tfun (t1,t2) -> getTyps (t1,t2) (fstTyp::argTyps)
 		| _ -> raise (Failure "unexpected EcType")
 	in
 	match ecsig with
-	| EcTypes.Tconstr (t,l) -> getTyp ecsig,[]
+	| EcTypes.Tconstr _ -> getTyp ecsig,[]
 	| EcTypes.Tfun (t1,t2) -> let typs = getTyps (t1,t2) [] in (List.hd typs,List.rev (List.tl typs))
 	| _ -> raise (Failure "unexpected EcType")
 

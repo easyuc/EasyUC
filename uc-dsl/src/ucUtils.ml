@@ -1,3 +1,7 @@
+(* ucUtils.ml *)
+
+(* UC DSL Utilities *)
+
 open UcTypechecked
 open UcParseTree
 open UcLexer
@@ -13,12 +17,12 @@ let index (e:'o) (l:'o list) : int =
 	indexR e l 0
 
 let toList (mapord: ('o * int) IdMap.t) : 'o list =
-	let l = IdMap.fold (fun id v l -> v::l ) mapord [] in
+	let l = IdMap.fold (fun _ v l -> v::l ) mapord [] in
 	let lord = List.sort (fun a1 a2 -> (snd a1)-(snd a2)) l in
 	List.map (fun a -> fst a) lord
 
 let filterMap (fm:'a-> 'b option) (m:'a IdMap.t) : 'b IdMap.t =
-	let flt = IdMap.filter (fun id def -> match fm def with Some x -> true| None -> false) m in
+	let flt = IdMap.filter (fun _ def -> match fm def with Some _ -> true| None -> false) m in
 	IdMap.map (fun def -> match fm def with Some x -> x | None -> raise (Failure "!impossible!")) flt
 
 let unlocm (lm:'a located IdMap.t) : 'a IdMap.t =

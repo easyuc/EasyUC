@@ -1,5 +1,6 @@
+(* ucExpressions.mli *)
+
 open UcParseTree
-open UcTypechecked
 open UcTypes
 
 val checkExpression: (qid->typ)->expressionL->typ
