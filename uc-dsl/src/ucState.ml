@@ -1,6 +1,6 @@
 (* ucState.ml *)
 
-(* Global State of UC DSL *)
+(* Global state of UC DSL tool *)
 
 let include_dirs_ref : string list ref = ref []
 

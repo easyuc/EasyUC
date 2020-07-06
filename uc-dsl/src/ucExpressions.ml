@@ -1,8 +1,8 @@
 (* ucExpressions.ml *)
 
-open UcParseTree
-open UcTypechecked
 open UcTypes
+open UcSpec
+open UcTypedSpec
 open EcLocation
 open UcUtils
 

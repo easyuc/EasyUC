@@ -1,6 +1,6 @@
-(* ucParseTree.ml *)
+(* ucSpec.ml *)
 
-(* UC DSL Parse Trees *)
+(* Specification Parse Trees *)
 
 open EcLocation
 
@@ -111,7 +111,6 @@ type def =
 	| FunDef of funDef
 	| SimDef of simDef
 
-
 type externals = {ecRequirements:id list; dlImports:id list}
 
-type dlprog = {externals:externals; definitions:def list}
+type spec = {externals : externals; definitions : def list}

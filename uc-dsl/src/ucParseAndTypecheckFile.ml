@@ -1,11 +1,11 @@
 (* ucParseAndTypecheckFile.ml *)
 
-(* Parse and then Typecheck a DSL program *)
+(* Parse and then typecheck a DSL specification *)
 
 open UcLexer
 open UcParser
 open UcTypecheck
-open UcParseTree
+open UcSpec
 module L = Lexing
 
 let read_to_eof ch =
@@ -16,14 +16,13 @@ let read_to_eof ch =
     | Some x -> reads ((x ^ "\n") :: xs)
   in reads []
 
-let parse_file ch =
+let parse_and_typecheck_file ch =
   let s = read_to_eof ch in
-  let lexbuf = Lexing.from_string s in
-  let ast = try
-		prog read lexbuf
-	    with
-	    Error -> parse_error (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p ) None
-  in
-  checkDL ast
-
-
+  let lexbuf = L.from_string s in
+  let spec =
+    try spec read lexbuf with
+      Error ->
+        parse_error
+        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)
+        None in
+  typecheck spec

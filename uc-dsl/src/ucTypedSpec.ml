@@ -1,10 +1,10 @@
-(* ucTypechecked.ml *)
+(* ucTypedSpec.ml *)
 
-(* Result of the UC DSL Typechecker *)
+(* Typed Specifications *)
 
 open EcLocation
-open UcParseTree
 open UcTypes
+open UcSpec
 
 module IdMap = Map.Make(String)
 module IdSet = Set.Make(String)
@@ -54,12 +54,10 @@ type simBody = {uses:string; sims:string; simsParamIds: string list; body: state
 
 type simDefC = simBody located
 
-type dlprogC =
+type typed_spec =
 	{
 	  directIOs            : ioC IdMap.t;
 	  adversarialIOs       : ioC IdMap.t;
 	  functionalities      : funC IdMap.t;
 	  simulators           : simDefC IdMap.t;
 	}
-
-(*------------*)

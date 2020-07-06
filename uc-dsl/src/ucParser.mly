@@ -6,7 +6,7 @@
 
 open EcUtils
 open EcLocation
-open UcParseTree
+open UcSpec
 
 let toId (mtid:msgType) =
 	match mtid with
@@ -103,20 +103,20 @@ The operators and code are a small subset of what can be found in easycrypt.
 
 (*
 The input for the dlParser is a list of tokens produced by dlLexer from the uc dsl file.
-This list is parsed by the dlParser, starting with the initial production prog.
-The output of dlParser is a record of dlprog type (defined in dlParseTree.ml).
+This list is parsed by the dlParser, starting with the initial production spec.
+The output of dlParser is a record of spec type (defined in dlParseTree.ml).
 This record is an input to the checkDl function (defined in dl.ml) which checks the uc dsl file for correctness,
 If there are errors checkDl raises a ParseError (or ParseError2) exception (defined in dlParseTree.ml),
 These contain the location (or two) of error together with some error message.
 The location type is defined in ecLocation.ml - from the EasyCrypt project.
-If there are no errors checkDl will return a record of type dlprogC (defined in dlParsedTree.ml)
-The dlprogC is intended to be the input to the code generator which outputs easycrypt code.
+If there are no errors checkDl will return a record of type typed_spec (defined in dlParsedTree.ml)
+The typed_spec is intended to be the input to the code generator which outputs easycrypt code.
 checkDl is called by dlParseFile.ml, which in turn is called by: 
 checkDl.ml, with a filename as command line argument, outputs parse error (if any) to command line;
 tests.ml runs a list of tests defined in testSuite.ml and outputs the test results to command line;
 makeTestCase.ml, with a filename as command line argument, outputs the result of checkDl as ocaml code representing the test case.
 *)
-%start <UcParseTree.dlprog> prog
+%start <UcSpec.spec> spec
 
 %%
 
@@ -137,7 +137,7 @@ makeTestCase.ml, with a filename as command line argument, outputs the result of
 uc dsl file consists of a preamble which references other .ec and .uc files,
 and a list of definitions of direct and adversarial interfaces, functionalities and simlators.
 *)
-prog:
+spec:
 	| ext = preamble; defs = list(def); EOF { {externals=ext; definitions=defs} }
 	;
 	

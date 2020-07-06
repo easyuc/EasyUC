@@ -1,6 +1,6 @@
 (* ucState.mli *)
 
-(* Global State of UC DSL *)
+(* Global state of UC DSL tool *)
 
 val get_include_dirs : unit -> string list
 

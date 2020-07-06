@@ -1,7 +1,7 @@
 (* ucEcTypes.ml *)
 
-open UcParseTree
 open UcTypes
+open UcSpec
 open EcLocation
 
 let checkNamedType (tyname:id) : typ =

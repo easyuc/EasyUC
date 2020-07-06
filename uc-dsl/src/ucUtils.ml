@@ -2,8 +2,8 @@
 
 (* UC DSL Utilities *)
 
-open UcTypechecked
-open UcParseTree
+open UcSpec
+open UcTypedSpec
 open UcLexer
 open EcLocation
 
