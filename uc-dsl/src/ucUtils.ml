@@ -86,5 +86,3 @@ let printEx (ex:exn) : unit =
 	| ParseError2(loc1, loc2, msg) -> print_ParseError2(loc1, loc2, msg)
 	| LexicalError(loco,msg) -> print_LexicalError(loco,msg)
 	| _-> raise ex
-
-(*-------*)

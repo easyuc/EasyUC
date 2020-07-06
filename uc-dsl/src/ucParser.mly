@@ -116,6 +116,11 @@ checkDl.ml, with a filename as command line argument, outputs parse error (if an
 tests.ml runs a list of tests defined in testSuite.ml and outputs the test results to command line;
 makeTestCase.ml, with a filename as command line argument, outputs the result of checkDl as ocaml code representing the test case.
 *)
+
+(* In the generated ucParser.ml:
+
+val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
+
 %start <UcSpec.spec> spec
 
 %%

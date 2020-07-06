@@ -3,4 +3,4 @@
 (* configuration module: build script substitutes for ECtheories the
    fully qualified pathname of EasyCrypt theories directory *)
 
-let ec_theories_dir_str = "ECtheories"
+let ec_theories_dir = "ECtheories"

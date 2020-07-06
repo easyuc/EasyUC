@@ -55,7 +55,7 @@ let checkUniqueId (al: 'a list) (getId: 'a -> id) : 'a IdMap.t =
 
 let checkParams (nTl:nameType list) : typC IdMap.t =
                 let ntMap = checkUniqueId nTl (fun nt -> nt.id) in
-                IdMap.map (fun (nt:nameType) -> mk_loc (loc nt.id) ((checkType nt.ty), (index nt nTl))) ntMap
+                IdMap.map (fun (nt:nameType) -> mk_loc (loc nt.id) ((check_type nt.ty), (index nt nTl))) ntMap
 
 
 
@@ -515,7 +515,7 @@ let checkItemTypeAddBinding (sv:stateVars) (mi:matchItem) (typ:typ) : stateVars 
         match mi with
         | Wildcard _ -> sv
         | Const id -> checkAddConst id typ typ sv
-        | ConstType nt -> checkAddConst nt.id (checkType nt.ty) typ sv
+        | ConstType nt -> checkAddConst nt.id (check_type nt.ty) typ sv
 
 let rec getLocTy (ty:ty) : EcLocation.t =
         match ty with
@@ -581,7 +581,7 @@ let checkQidType (sv:stateVars) (qid:qid) : typ =
                 if (checkIsInternalPort sv qid) then portType else raise Not_found
 
 let checkExpression (sv:stateVars) (expr:expressionL) : typ =
-        UcExpressions.checkExpression (checkQidType sv) expr
+        UcExpressions.check_expression (checkQidType sv) expr
 
 let checkValAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
         let etyp = checkExpression sv ex in
@@ -589,9 +589,9 @@ let checkValAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
 
 let checkSamplAssign (sv:stateVars) (vid:id) (ex:expressionL) : stateVars =
         let etyp = checkExpression sv ex in
-        if not (UcExpressions.isDistribution etyp) then parse_error (loc ex) (Some("You can sample only from distributions."))
+        if not (UcExpressions.is_distribution etyp) then parse_error (loc ex) (Some("You can sample only from distributions."))
         else
-        let dtyp = UcExpressions.getDistrubutionTyp etyp  in 
+        let dtyp = UcExpressions.get_distribution_typ etyp  in 
         checkTypeAddBinding vid dtyp sv
 
 let checkTransition (si:stateInstance) (ss:stateSig IdMap.t) (sv:stateVars) : unit =
@@ -717,7 +717,7 @@ checkDecode (bps:rFbIOPaths) (ss:stateSig IdMap.t) (sv:stateVars) (ex:expression
         if (checkExpression sv ex) <> univType
         then parse_error (loc ex) (Some "Only expressions of univ type can be decoded.")
         else 
-        let dt = match checkType ty with
+        let dt = match check_type ty with
                 | Tconstr (x,y) -> [Tconstr (x,y)]
                 | Ttuple  t -> t
                 | _ -> raise (Failure "checkType is supposed to return only Tconstr or Ttuple.")
@@ -1065,7 +1065,7 @@ let loadUcImports _ : def list =[]
 
 let loadEcReqs reqs =
                 let reqimp idl =
-                        try UcEcInterface.requireImport (unloc idl)
+                        try UcEcInterface.require_import (unloc idl)
                         with Failure f -> parse_error (loc idl) (Some("Error when require import-ing "^(unloc idl)^" :"^f))
                 in
                 List.iter reqimp reqs

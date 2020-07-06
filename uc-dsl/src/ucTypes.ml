@@ -18,7 +18,7 @@ type typ =
         | Tvar of string
         | Ttuple of typ list
 
-let builtinTypeNames = ["port"; "univ"]
+let builtin_type_names = ["port"; "univ"]
 
 let portType = Tconstr ("port", None)
 

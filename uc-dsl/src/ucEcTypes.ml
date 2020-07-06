@@ -4,15 +4,15 @@ open UcTypes
 open UcSpec
 open EcLocation
 
-let checkNamedType (tyname : id) : typ =
+let check_named_type (tyname : id) : typ =
   let tyn = unloc tyname in
-  try ignore (List.find (fun tyn' -> tyn' = tyn) builtinTypeNames);
+  try ignore (List.find (fun tyn' -> tyn' = tyn) builtin_type_names);
       Tconstr (tyn, None) with
     Not_found ->
-      if UcEcInterface.existsType tyn then Tconstr (tyn, None)
+      if UcEcInterface.exists_type tyn then Tconstr (tyn, None)
       else parse_error (loc tyname) (Some ("Non-existing type: " ^ tyn))
 
-let rec checkType (ty : ty) : typ =
+let rec check_type (ty : ty) : typ =
   match ty with
-  | NamedTy id -> checkNamedType id
-  | TupleTy tl -> Ttuple (List.map (fun t -> checkType t) tl)
+  | NamedTy id -> check_named_type id
+  | TupleTy tl -> Ttuple (List.map (fun t -> check_type t) tl)

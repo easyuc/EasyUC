@@ -3,6 +3,6 @@
 open UcTypes
 open UcSpec
 
-val checkExpression: (qid -> typ) -> expressionL -> typ
-val isDistribution: typ -> bool
-val getDistrubutionTyp: typ -> typ
+val check_expression : (qid -> typ) -> expressionL -> typ
+val is_distribution : typ -> bool
+val get_distribution_typ : typ -> typ

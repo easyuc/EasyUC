@@ -2,16 +2,9 @@
 
 (* OCamlLex Lexer specification for UC DSL *)
 
-(*stuff copied from 
-http://www.cs.cornell.edu/courses/cs3110/2015fa/l/12-interp/rec.html
-and
-https://v1.realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html
-and (mostly)
-ecLexer.mll
-*)
-(* The first section of the lexer definition, called the *header*,
-   is the part that appears below between { and }.  It is code
-   that will simply be copied literally into the generated lexer.ml. *)
+(*********************************** Header ***********************************)
+
+(* copied literally into generated ucLexer.ml *)
 
 {
   open UcParser
@@ -26,8 +19,8 @@ ecLexer.mll
     raise (LexicalError (Some (L.of_lexbuf lexbuf), msg))
 
   let _keywords = [                     
-    "direct"        , DIRIO      ;
-    "adversarial"   , ADVIO      ;
+    "direct"          , DIRIO      ;
+    "adversarial"     , ADVIO      ;
     "in"              , IN         ;
     "out"             , OUT        ;
     "message"         , MESSAGE    ;
@@ -78,16 +71,13 @@ ecLexer.mll
     List.iter (curry (Hashtbl.add table)) _keywords; table
 
   let lex_operators (op : string) =
-    try  Hashtbl.find operators op
+    try Hashtbl.find operators op
     with Not_found -> ROP4 op
-	
-
 }
 
+(*********************** Regular Expression Definitions ***********************)
 
-(* The second section of the lexer definition defines *identifiers*
-   that will be used later in the definition.  Each identifier is
-   a *regular expression*. *)
+(* regular expression definitions *)
 
 let empty   = ""
 let blank   = [' ' '\t' '\r']
@@ -97,10 +87,8 @@ let lower   = ['a'-'z']
 let letter  = upper | lower
 let digit   = ['0'-'9']
 
-let jchar  = (letter | digit | '_' | '\'')
-let ident  = (letter jchar*| '_'* letter jchar*)
-
-  (* ------------------------------------------------------------------ *)
+let jchar  = letter | digit | '_' | '\''
+let ident  = letter jchar* | '_'* letter jchar*
 
 let opchar = ['=' '/' '\\' '^' '*']
 
@@ -108,15 +96,12 @@ let sop = opchar+
 
 let binop = sop 
 
-  (* ------------------------------------------------------------------ *)
+(******************************** Lexing Rules ********************************)
 
-(* The final section of the lexer definition defines how to parse a character
-   stream into a token stream.  Each of the rules below has the form 
-     | regexp { action }
-   If the lexer sees the regular expression [regexp], it produces the token 
-   specified by the [action].  We won't go into details on how the actions
-   work.  *)
-(* -------------------------------------------------------------------- *)
+(* in the generated ucLexer.ml:
+
+val read : Lexing.lexbuf -> UcParser.token *)
+
 rule read = parse
   | newline      { Lexing.new_line lexbuf; read lexbuf }
   | blank+       { read lexbuf }
@@ -144,7 +129,6 @@ rule read = parse
       let op = operator (Buffer.from_char op) lexbuf in
       lex_operators (Buffer.contents op)
     }
-
   | eof   { EOF        }
   | _     { lex_error lexbuf "invalid character"}
 
@@ -157,5 +141,3 @@ and comment = parse
   | newline     { Lexing.new_line lexbuf; comment lexbuf }
   | eof         { unterminated_comment () }
   | _           { comment lexbuf }
-
-(* And that's the end of the lexer definition. *)
