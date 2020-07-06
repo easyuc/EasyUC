@@ -27,7 +27,8 @@ fi
 # see configure
 sed -e "s'ECtheories'$ectheories'" \
     -e '1i\
-      (* automatically generated file - do not edit *)' \
+      (* file automatically generated from ucConfig.ml.in  - do not edit *)\
+      \ ' \
     ucConfig.ml.in > ucConfig.ml
 if [[ $? != 0 ]];
 then echo failure;
@@ -38,4 +39,7 @@ fi;
 cd ..
 
 ocamlbuild -use-ocamlfind ucdsl.native
-cp ucdsl.native bin/ucdsl
+
+if [ -e ucdsl.native ];
+then cp -f ucdsl.native bin/ucdsl;
+fi
