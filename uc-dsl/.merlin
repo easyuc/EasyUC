@@ -1,14 +1,14 @@
 S src
-S ECsrc/src
-S ECsrc/src/phl
-S ECsrc/src/system
-S ECsrc/src/why3
+S src/ECsrc
+S src/ECsrc/phl
+S src/ECsrc/system
+S src/ECsrc/why3
 
 B _build/src
-B _build/ECsrc/src
-B _build/ECsrc/src/phl
-B _build/ECsrc/src/system
-B _build/ECsrc/src/why3
+B _build/src/ECsrc
+B _build/src/ECsrc/phl
+B _build/src/ECsrc/system
+B _build/src/ECsrc/why3
 
 PKG batteries
 PKG menhirLib
