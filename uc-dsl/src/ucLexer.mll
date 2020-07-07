@@ -100,7 +100,9 @@ let binop = sop
 
 (* in the generated ucLexer.ml:
 
-val read : Lexing.lexbuf -> UcParser.token *)
+val read     : Lexing.lexbuf -> UcParser.token
+val operator : EcUtils.Buffer.t -> Lexing.lexbuf -> EcUtils.Buffer.t
+val comment  : Lexing.lexbuf -> unit *)
 
 rule read = parse
   | newline      { Lexing.new_line lexbuf; read lexbuf }
