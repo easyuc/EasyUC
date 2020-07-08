@@ -1,4 +1,4 @@
-(* ucParseFile.mli *)
+(* UcParseFile module interface *)
 
 (* parse a DSL specification *)
 

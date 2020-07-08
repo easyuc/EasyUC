@@ -1,4 +1,4 @@
-(* ucParseAndTypecheckFile.mli *)
+(* UcParseAndTypecheckFile module interface *)
 
 (* Parse and then typecheck a DSL specification *)
 

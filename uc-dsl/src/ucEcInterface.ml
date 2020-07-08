@@ -1,4 +1,4 @@
-(* ucEcInterface.ml *)
+(* UcEcInterface module *)
 
 (* Interface with EasyCrypt tool *)
 

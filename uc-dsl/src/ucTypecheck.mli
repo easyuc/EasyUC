@@ -1,4 +1,4 @@
-(* ucTypecheck.mli *)
+(* UcTypecheck module interface *)
 
 (* Typecheck a specification *)
 

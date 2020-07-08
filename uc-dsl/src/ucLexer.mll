@@ -1,10 +1,8 @@
-(* ucLexer.mll *)
-
-(* OCamlLex Lexer specification for UC DSL *)
+(* OCamlLex specification for UC DSL Lexer (UcLexer module) *)
 
 (*********************************** Header ***********************************)
 
-(* copied literally into generated ucLexer.ml *)
+(* copied literally into generated UcLexer *)
 
 {
   open UcParser
@@ -98,7 +96,7 @@ let binop = sop
 
 (******************************** Lexing Rules ********************************)
 
-(* in the generated ucLexer.ml:
+(* in the generated UcLexer:
 
 val read     : Lexing.lexbuf -> UcParser.token
 val operator : EcUtils.Buffer.t -> Lexing.lexbuf -> EcUtils.Buffer.t

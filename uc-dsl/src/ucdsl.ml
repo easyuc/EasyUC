@@ -57,4 +57,4 @@ let ch =
       (Printf.fprintf stderr "unable to open file: %s\n" file;
        exit 1)
 
-let () = try ignore (parse_and_typecheck_file ch) with exn -> printEx exn
+let () = try ignore (parse_and_typecheck_file ch) with exn -> print_ex exn

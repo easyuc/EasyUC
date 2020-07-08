@@ -1,4 +1,4 @@
-(* ucState.mli *)
+(* UcState module interface *)
 
 (* Global state of UC DSL tool *)
 

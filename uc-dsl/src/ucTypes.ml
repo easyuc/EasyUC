@@ -1,4 +1,4 @@
-(* ucTypes.ml *)
+(* UcTypes module *)
 
 (* We colapse ty from ecTypes to ty_node and look at only Tconstr,
    Tfun and Ttuple.
@@ -20,11 +20,11 @@ type typ =
 
 let builtin_type_names = ["port"; "univ"]
 
-let portType = Tconstr ("port", None)
+let port_type = Tconstr ("port", None)
 
-let univType = Tconstr ("univ", None)
+let univ_type = Tconstr ("univ", None)
 
-let boolType = Tconstr ("bool", None)
+let bool_type = Tconstr ("bool", None)
 
 let string_of_typ (typ : typ) : string =
   let rec sot tyi s =

@@ -1,4 +1,4 @@
-(* ucConfig.ml.in *)
+(* source of UcConfig module *)
 
 (* configuration module: build script substitutes for ECtheories the
    fully qualified pathname of EasyCrypt theories directory *)

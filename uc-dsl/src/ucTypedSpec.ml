@@ -1,4 +1,4 @@
-(* ucTypedSpec.ml *)
+(* UcTypedSpec module *)
 
 (* Typed Specifications *)
 
@@ -9,55 +9,63 @@ open UcSpec
 module IdMap = Map.Make(String)
 module IdSet = Set.Make(String)
 module SL = 
-	struct
-	type t = string list
-	let compare = Pervasives.compare
-	end
+  struct
+    type t = string list
+    let compare = Pervasives.compare
+  end
 module QidSet = Set.Make(SL)
 module QidMap = Map.Make(SL)
 
-let existsId (idMap:'a IdMap.t) (id:string) : bool = 
-	IdMap.exists (fun key _ -> key=id) idMap
+let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
+  IdMap.exists (fun key _ -> key = id) id_map
 
-type typC = (typ * int) located
+type typ_tyd = (typ * int) located
 
-type messageDefBody = {direction:msgInOut; content: typC IdMap.t; portLabel: id option}
+type message_def_body =
+  {direction : msg_in_out; content : typ_tyd IdMap.t; port_label : id option}
 
-type basicIObodyC = (messageDefBody located) IdMap.t
+type basic_io_body_tyd = (message_def_body located) IdMap.t
 
-type ioItemC = id located
+type io_item_tyd = id located
 
-type ioBodyC = 
-	| Basic of basicIObodyC
-	| Composite of ioItemC IdMap.t
+type io_body_tyd = 
+  | Basic of basic_io_body_tyd
+  | Composite of io_item_tyd IdMap.t
 
-type ioC = ioBodyC located
+type io_tyd = io_body_tyd located
 
-type stateBody = {isInitial:bool; params:typC IdMap.t; vars:typ located IdMap.t; mmcodes:msgMatchCode list}
+type state_body =
+  {is_initial : bool; params : typ_tyd IdMap.t; vars : typ located IdMap.t;
+   mmcodes : msg_match_code list}
 
-type stateC = stateBody located
+type state_tyd = state_body located
 
-type subFunDeclBody = {funId:string; funParamIds:id list}
+type sub_fun_decl_body = {fun_id : string; fun_param_ids : id list}
 
-type subFunDeclC = subFunDeclBody located
+type sub_fun_decl_tyd = sub_fun_decl_body located
 
-type partyDefBody = {serves:string list located list; code: stateC IdMap.t}
+type party_def_body =
+  {serves : string list located list; code :  state_tyd IdMap.t}
 
-type partyDefC = partyDefBody located
+type party_def_tyd = party_def_body located
 
-(*either states is an empty map or both subFuns and parties are empty maps*)
-type funBody = {params:(ioItemC * int) IdMap.t; idDirIO:string; idAdvIO:string option; subFuns: subFunDeclC IdMap.t; parties: partyDefC IdMap.t; states: stateC IdMap.t}
+(*either states is an empty map or both sub_funs and parties are empty maps*)
+type fun_body =
+  {params : (io_item_tyd * int) IdMap.t; id_dir_io : string;
+   id_adv_io : string option; sub_funs :  sub_fun_decl_tyd IdMap.t;
+   parties :  party_def_tyd IdMap.t; states :  state_tyd IdMap.t}
 
-type funC = funBody located
+type fun_tyd = fun_body located
 
-type simBody = {uses:string; sims:string; simsParamIds: string list; body: stateC IdMap.t}
+type sim_body =
+  {uses : string; sims : string; sims_param_ids :  string list;
+   body :  state_tyd IdMap.t}
 
-type simDefC = simBody located
+type sim_def_tyd = sim_body located
 
 type typed_spec =
-	{
-	  directIOs            : ioC IdMap.t;
-	  adversarialIOs       : ioC IdMap.t;
-	  functionalities      : funC IdMap.t;
-	  simulators           : simDefC IdMap.t;
-	}
+  { direct_i_os      : io_tyd IdMap.t;
+    adversarial_i_os : io_tyd IdMap.t;
+    functionalities  : fun_tyd IdMap.t;
+    simulators       : sim_def_tyd IdMap.t;
+  }

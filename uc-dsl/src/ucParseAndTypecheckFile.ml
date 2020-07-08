@@ -1,4 +1,4 @@
-(* ucParseAndTypecheckFile.ml *)
+(* UcParseAndTypecheckFile module *)
 
 (* parse and then typecheck a DSL specification *)
 

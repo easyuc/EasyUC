@@ -1,4 +1,4 @@
-(* ucEcTypes.ml *)
+(* UcEcTypes module *)
 
 open UcTypes
 open UcSpec
