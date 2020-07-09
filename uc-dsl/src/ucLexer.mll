@@ -5,6 +5,7 @@
 (* copied literally into generated UcLexer *)
 
 {
+  open Batteries
   open EcUtils
   open UcSpec
   open UcParser
@@ -128,7 +129,8 @@ rule read = parse
       lex_operators (Buffer.contents op)
     }
   | eof   { EOF        }
-  | _     { lex_error lexbuf "invalid character" }
+  | _     { let s = String.escaped (Lexing.lexeme lexbuf) in
+            lex_error lexbuf (Printf.sprintf "invalid character: \"%s\"" s) }
 
 and operator buf = parse
   | opchar* as x { Buffer.add_string buf x; buf }
