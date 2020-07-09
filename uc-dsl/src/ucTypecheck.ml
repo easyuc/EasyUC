@@ -27,7 +27,7 @@ let check_circ_refs (get_refs:('o located) IdMap.t-> string -> IdSet.t) (os:('o 
         let circ = IdMap.filter (fun id rs -> IdSet.exists (fun r -> r=id) rs) deps in
         if IdMap.is_empty circ then ()
         else let id = fst (IdMap.choose circ) in let lid = loc (IdMap.find id os) in
-                parse_error lid (Some(id^" contains a circular reference."))
+                type_error lid (id^" contains a circular reference.")
 
 (*-------------------*)
 
@@ -39,7 +39,7 @@ let check_unique_id (al: 'a list) (get_id: 'a -> id) : 'a IdMap.t =
                 (fun id_map a -> 
                 let id_l = get_id a in 
                 if exists_id id_map (unloc id_l) then 
-                  parse_error (loc id_l) (Some ("Duplicate identifier: "^(unloc id_l)))
+                  type_error (loc id_l)  ("Duplicate identifier: "^(unloc id_l))
                 else
                   IdMap.add (unloc id_l) a id_map
                 )
@@ -70,7 +70,7 @@ let check_exists_io (ermsgpref: string) (e_io:string->bool) (io_i:io_item) : io_
                 let uid = unloc io_i.io_id in
                 if e_io uid
                 then mk_loc (loc io_i.id) io_i.io_id
-                else parse_error (loc io_i.io_id) (Some (ermsgpref^" "^uid^" hasn't been defined yet."))
+                else type_error (loc io_i.io_id) (ermsgpref^" "^uid^" hasn't been defined yet.")
 
 let check_comp_io_body (ermsgpref: string) (e_io: string->bool) (iob:composite_io_body) : io_body_tyd =
         let io_item_map = check_unique_id iob (fun io_i -> io_i.id)  in
@@ -89,7 +89,7 @@ let check_composites_ref_basics (ios:io_tyd IdMap.t) =
         match (unloc ioc) with Composite its -> IdMap.iter (fun _ idl -> 
                 let uid = unloc (unloc idl) in
                 if (eb_io uid) then ()
-                else parse_error (loc (unloc idl)) (Some (uid^" is not a basic IO."))
+                else type_error (loc (unloc idl)) (uid^" is not a basic IO.")
         ) its |_->()) composites
 
 
@@ -115,13 +115,13 @@ let check_adv_i_os (adv_io_map: io IdMap.t) = check_adi_os "adversarial_io" adv_
 let check_is_composite (ios: io_tyd IdMap.t) (id:id) : unit =
         let uid= unloc id in
         match unloc (IdMap.find uid ios) with
-        | Basic _ -> parse_error (loc id) (Some("The IO must be composite (even if it has only one component)."))
+        | Basic _ -> type_error (loc id) ("The IO must be composite (even if it has only one component).")
         | Composite _ -> ()
 
 let check_real_fun_params (dir_i_os:io_tyd IdMap.t) (params:fun_param list) : (io_item_tyd * int) IdMap.t =
         let check_real_fun_param (dir_i_os:io_tyd IdMap.t) (param:fun_param) : (io_item_tyd * int) =
                 let dir_i_oid = unloc param.id_dir_io in
-                if not (exists_id dir_i_os dir_i_oid) then parse_error (loc param.id_dir_io) (Some("direct_io "^dir_i_oid^" doesn't exist."))
+                if not (exists_id dir_i_os dir_i_oid) then type_error (loc param.id_dir_io) ("direct_io "^dir_i_oid^" doesn't exist.")
                 else check_is_composite dir_i_os param.id_dir_io;
                 ((mk_loc (loc param.id) param.id_dir_io), (index_of_ex param params))
         in
@@ -132,9 +132,9 @@ let check_sub_fun_decl (e_f_id:string->bool) (e_param:string->bool) (e_sf_id:str
         let fun_id = unloc sf.fun_id in
         if (e_f_id fun_id) then
                 (
-                List.iter (fun p ->let up=unloc p in if (e_param up) || (e_sf_id up) then () else parse_error (loc p) (Some("Parameters to subfunctionalities can be either parameters of functionality or other subfunctionalities. "^up^" is neither.")) ) sf.fun_param_ids
+                List.iter (fun p ->let up=unloc p in if (e_param up) || (e_sf_id up) then () else type_error (loc p) ("Parameters to subfunctionalities can be either parameters of functionality or other subfunctionalities. "^up^" is neither.") ) sf.fun_param_ids
                 )
-        else parse_error (loc sf.fun_id) (Some("Nonexisting functionality : "^fun_id))
+        else type_error (loc sf.fun_id) ("Nonexisting functionality : "^fun_id)
         ;
         mk_loc (loc sf.id) {fun_id=fun_id; fun_param_ids=sf.fun_param_ids}
 
@@ -143,9 +143,9 @@ let check_sub_fun_decl (e_f_id:string->bool) (e_param:string->bool) (e_sf_id:str
 let check_exactly_one_initial_state (id:id) (sds:state_def list) : id =
         let inits = List.filter (fun sd -> match sd with InitialState _ ->true | _ -> false ) sds in
         match List.length inits with
-        | 0 -> parse_error (loc id) (Some((unloc id)^" doesn't have initial state"))
+        | 0 -> type_error (loc id) ((unloc id)^" doesn't have initial state")
         | 1 -> (match List.hd inits with | InitialState s -> s.id | FollowingState _ -> raise (Failure "impossible, list contains only InitialState"))
-        | _ -> parse_error (loc id) (Some((unloc id)^" has more than one initial state"))
+        | _ -> type_error (loc id) ((unloc id)^" has more than one initial state")
 
 let check_state_decl (init_id:id) (s:state) : state_tyd =
         let is_initial = (init_id=s.id) in
@@ -154,7 +154,7 @@ let check_state_decl (init_id:id) (s:state) : state_tyd =
         let dup = IdMap.find_first_opt (fun id -> IdMap.mem id vars) params in
         match dup with
         | None -> mk_loc (loc s.id) {is_initial=is_initial; params=params; vars=vars; mmcodes=s.code.mmcodes}
-        | Some (id,t) -> parse_error (loc t) (Some("Variable name "^id^" is the same as one of the states parameters."))
+        | Some (id,t) -> type_error (loc t) ("Variable name "^id^" is the same as one of the states parameters.")
                         
 let drop_state_ctor (sd:state_def) : state =
         match sd with 
@@ -201,25 +201,25 @@ let check_i_opath (id_dir_io:string) (id_adv_io:string option) (dir_i_os:io_tyd 
         if (List.mem uiop ps) then mk_loc loc uiop else
         let psf = List.filter (fun p -> (List.tl p) = uiop) ps in
         match (List.length psf) with
-        | 0 -> parse_error loc (Some ((string_of_i_opath uiop)^" is not a part of the interfaces implemented by functionality."))
+        | 0 -> type_error loc ((string_of_i_opath uiop)^" is not a part of the interfaces implemented by functionality.")
         | 1 -> mk_loc loc (List.hd psf)
-        | _ -> parse_error loc (Some ((string_of_i_opath uiop)^" is ambiguous, it is in both direct and adversarial IOs implemented by functionality.")) 
+        | _ -> type_error loc ((string_of_i_opath uiop)^" is ambiguous, it is in both direct and adversarial IOs implemented by functionality.") 
 
 let check_served_paths (serves:string list located list) (id_dir_io:string) (pid:id): unit =
         let er = "A party can serve at most one basic direct IO and one basic adversarial IO." in
         let erone ="A party must serve one basic direct IO." in
         match (List.length serves) with
-        | 0 -> parse_error (loc pid) (Some erone)
+        | 0 -> type_error (loc pid)  erone
         | 1 -> if (List.hd (unloc (List.nth serves 0)))=id_dir_io
-                then () else parse_error (loc (List.nth serves 0)) (Some erone)
+                then () else type_error (loc (List.nth serves 0)) erone
         | 2 -> if (List.hd (unloc (List.nth serves 0)))<>(List.hd (unloc (List.nth serves 1)))
-                then () else parse_error (loc (List.nth serves 1)) (Some er)
-        | _ -> parse_error (mergelocs serves) (Some er)
+                then () else type_error (loc (List.nth serves 1)) er
+        | _ -> type_error (mergelocs serves) er
                 
 let check_i_os_unique (iops: string list located list) : unit =
         ignore (List.fold_left (fun l iop ->
                 let uiop = unloc iop in
-                if List.mem uiop l then parse_error (loc iop) (Some ("Parties must serve distinct IOs"))
+                if List.mem uiop l then type_error (loc iop) ("Parties must serve distinct IOs")
                 else uiop::l
         ) [] iops)
 
@@ -228,7 +228,7 @@ let check_i_os_cover (id_dir_io:string) (id_adv_io:string option) (dir_i_os:io_t
         let ps = get_fun_io_paths id_dir_io id_adv_io dir_i_os adv_i_os in
         let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
         if (List.length unserved)=0 then () else
-        parse_error (mergelocs served_ps) (Some ("These IOs are not served by any party: "^(string_of_i_opaths unserved)))
+        type_error (mergelocs served_ps) ("These IOs are not served by any party: "^(string_of_i_opaths unserved))
 
 let check_party_decl (id_dir_io:string) (id_adv_io:string option) (dir_i_os:io_tyd IdMap.t) (adv_i_os:io_tyd IdMap.t)(p:party_def) : party_def_tyd =
         let serves = List.map (check_i_opath id_dir_io id_adv_io dir_i_os adv_i_os) p.serves in
@@ -249,15 +249,15 @@ let get_real_fun_sub_item_id (si:sub_item) : id =
 let check_exists_dir_io (dir_i_os:io_tyd IdMap.t) (id_dir_io:id) =
         let uid_dir_io = unloc id_dir_io in
         if exists_id dir_i_os uid_dir_io then () 
-        else parse_error (loc id_dir_io) (Some("direct_io "^uid_dir_io^" doesn't exist."))
+        else type_error (loc id_dir_io) ("direct_io "^uid_dir_io^" doesn't exist.")
 
 let check_exists_i2_sio (i2s_i_os:io_tyd IdMap.t) (id_i2_sio:id) =
         let uid_i2_sio= unloc id_i2_sio in
         if exists_id i2s_i_os uid_i2_sio then
                 match unloc (IdMap.find uid_i2_sio i2s_i_os) with
                 | Basic _ -> ()
-                | Composite _ -> parse_error (loc id_i2_sio) (Some("This adversarial_io cannot be composite."))
-        else parse_error (loc id_i2_sio) (Some("adversarial_io "^uid_i2_sio^" doesn't exist."))
+                | Composite _ -> type_error (loc id_i2_sio) ("This adversarial_io cannot be composite.")
+        else type_error (loc id_i2_sio) ("adversarial_io "^uid_i2_sio^" doesn't exist.")
 
 
 let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t) (adv_i_os:io_tyd IdMap.t) (r_fun:fun_def) : fun_tyd =
@@ -270,14 +270,14 @@ let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t) (adv_i_os:io_
                                 (
                 let uid = unloc id in
                 if exists_id adv_i_os uid then Some uid
-                else parse_error (loc id) (Some("adversarial_io "^uid^" doesn't exist."))
+                else type_error (loc id) ("adversarial_io "^uid^" doesn't exist.")
                                 ) in
         let sub_items = check_unique_id r_fun.body get_real_fun_sub_item_id in
                 (
                  let dup_ids = IdMap.filter (fun id _ -> IdMap.mem id params) sub_items in
                  if IdMap.is_empty dup_ids then ()
                  else let id,dup = IdMap.choose dup_ids in let lc=loc (get_real_fun_sub_item_id dup) in
-                 parse_error lc (Some("The name "^id^" is the same name as one of the functionalities parameters."))
+                 type_error lc ("The name "^id^" is the same name as one of the functionalities parameters.")
                 );
         let sf_map = filter_map (fun sub_i -> match sub_i with SubFunDecl sf ->Some sf | _->None) sub_items in
         let e_param = exists_id params and e_sf_id = exists_id sf_map in
@@ -293,7 +293,7 @@ let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t) (adv_i_os:io_
                 else
                         let ss = check_states r_fun.id r_fun.state_body in
                         (match r_fun.id_adv_io with
-                        | None -> parse_error (loc r_fun.id) (Some("A functionality with no parties must implement a basic adversarial interface"))
+                        | None -> type_error (loc r_fun.id) ("A functionality with no parties must implement a basic adversarial interface")
                         | Some id -> check_exists_i2_sio adv_i_os id
                         );
                         (IdMap.empty,ss)
@@ -323,8 +323,8 @@ let check_sub_fun_params (funs:fun_tyd IdMap.t) : unit =
                 let sfps = get_param_dir_io_ids funs usf.fun_id in
                 let sfpids = unlocs usf.fun_param_ids in
                 let sfps'= get_dir_io_ids rfid sfpids in
-                if (List.length sfps)<>(List.length sfps') then parse_error (loc sf) (Some("Wrong number of parameters for subfunctionality")) else
-                if sfps<>sfps' then parse_error (loc sf) (Some("Parameter provided to subfunctionality implement different direct_i_os from declared parameters.")) else
+                if (List.length sfps)<>(List.length sfps') then type_error (loc sf) ("Wrong number of parameters for subfunctionality") else
+                if sfps<>sfps' then type_error (loc sf) ("Parameter provided to subfunctionality implement different direct_i_os from declared parameters.") else
                 true
         in
         ignore (IdMap.for_all 
@@ -406,10 +406,10 @@ let check_msg_path (bps:r_fb_io_paths) (mp:msg_path) : msg_path =
 filter_by_msg_type mt (List.filter (fun p-> (unloc (List.hd(List.rev p.io_path)))=(unloc pt)) mpl)
         in
         let unexpected() = 
-                parse_error (msg_loc mp) (Some("The message is unexpected. These messages are expected:"^(string_of_msg_pathl allps))) 
+                type_error (msg_loc mp) ("The message is unexpected. These messages are expected:"^(string_of_msg_pathl allps)) 
         in
         let ambiguous (mtch:msg_path list) =
-                parse_error (msg_loc mp) (Some("The message is ambiguous. There are multiple messages that match the description:"^(string_of_msg_pathl mtch)))
+                type_error (msg_loc mp) ("The message is ambiguous. There are multiple messages that match the description:"^(string_of_msg_pathl mtch))
         in
         let filtered (mtch:msg_path list) (imtch:msg_path list) : msg_path =
                 match (List.length mtch) with
@@ -417,7 +417,7 @@ filter_by_msg_type mt (List.filter (fun p-> (unloc (List.hd(List.rev p.io_path))
                 | 1 ->  let l = merge (mergelocs mp.io_path) (msg_loc mp) in
                         if imtch=[] then 
                         let ret=List.hd mtch in {io_path = List.map (fun id -> mk_loc l (unloc id)) ret.io_path; msg_type = mp.msg_type }
-                        else parse_error l (Some ("Internal messages must have full paths. Did you mean "^(string_of_msg_path (List.hd mtch))^" ?"))
+                        else type_error l ("Internal messages must have full paths. Did you mean "^(string_of_msg_path (List.hd mtch))^" ?")
                 | _ -> ambiguous mtch
         in
         match mp.msg_type with
@@ -446,7 +446,7 @@ let remove_covered_paths (mps:msg_path list) (mp:msg_path) : msg_path list =
         in
         let rem = List.filter (fun mp' -> not (covered mp' mp) ) mps in
         if (List.length mps)=(List.length rem)
-        then parse_error (msg_loc mp) (Some("This match is covered by previous matches and would never execute."))
+        then type_error (msg_loc mp) ("This match is covered by previous matches and would never execute.")
         else rem
 
 let msg_paths_of_r_fb_io_paths_w_othermsg (bps:r_fb_io_paths) : msg_path list =
@@ -464,12 +464,12 @@ let check_msg_match_deltas (rfbps:r_fb_io_paths) (mml:msg_match list) : unit =
         let r = check_mm_ds_non_empty mps (List.map (fun (mm:msg_match) -> mm.path) mml) in
         if r<>[] then
                 let l = msg_loc ((List.hd (List.rev mml)).path)
-                in parse_error l (Some("Message match is not exhaustive, these messages are not matched:"^(string_of_msg_pathl r)))
+                in type_error l ("Message match is not exhaustive, these messages are not matched:"^(string_of_msg_pathl r))
         else ()
 
 let check_types_compatible (vid:id) (vt:typ) (typ:typ) : unit=
         if not (vt=typ)
-        then parse_error (loc vid) (Some((unloc vid)^" doesn't have type compatible with "^(string_of_typ typ)))
+        then type_error (loc vid) ((unloc vid)^" doesn't have type compatible with "^(string_of_typ typ))
 
 let get_declared_const_vars (sv:state_vars)=
         IdMap.union (fun _ _ _ ->raise (Failure "Impossible, we already checked params and local vars have different ids")) sv.consts sv.vars
@@ -478,14 +478,14 @@ let check_exists_and_has_compatible_type (vid:id) (typ:typ) (sv:state_vars) : un
         let uvid = unloc vid in
         let pvs = get_declared_const_vars sv in
         if not (IdMap.mem uvid pvs)
-        then parse_error (loc vid) (Some(uvid^" is neither a local variable nor a state parameter"));
+        then type_error (loc vid) (uvid^" is neither a local variable nor a state parameter");
         let vt = IdMap.find uvid pvs in
         check_types_compatible vid vt typ
         
 let check_add_binding (vid:id) (sv:state_vars) : state_vars =
         let uvid = unloc vid in
         if not (IdMap.mem uvid sv.vars)
-        then parse_error (loc vid) (Some(uvid^" is not a local variable and values cannot be bound to it."))
+        then type_error (loc vid) (uvid^" is not a local variable and values cannot be bound to it.")
         else
         {flags=sv.flags; internal_ports=sv.internal_ports; consts=sv.consts;vars=sv.vars;initialized_vs=(IdSet.add uvid sv.initialized_vs)}
 
@@ -498,7 +498,7 @@ let check_add_const (cid:id) (ct:typ) (valt:typ) (sv:state_vars) : state_vars =
         let ucid = unloc cid in
         let pvs = get_declared_const_vars sv in
         if (IdMap.mem ucid pvs)
-        then parse_error (loc cid) (Some(ucid^" is already used."))
+        then type_error (loc cid) (ucid^" is already used.")
         else {flags=sv.flags; internal_ports=sv.internal_ports; consts=IdMap.add ucid ct sv.consts;vars=sv.vars;initialized_vs=sv.initialized_vs}
 
 let check_port_var_binding (bps:r_fb_io_paths) (mp:string list) (vid:id) (sv:state_vars) : state_vars =
@@ -507,7 +507,7 @@ let check_port_var_binding (bps:r_fb_io_paths) (mp:string list) (vid:id) (sv:sta
         and a = List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.adversarial
         in
         if not (d && not i && not a)
-        then parse_error (loc vid) (Some("The message "^(string_of_i_opath mp)^" maybe isn't an incoming message of a direct_io served by the party and cannot bind the source port to a variable."))
+        then type_error (loc vid) ("The message "^(string_of_i_opath mp)^" maybe isn't an incoming message of a direct_io served by the party and cannot bind the source port to a variable.")
         else
         check_add_const vid port_type port_type sv
 
@@ -534,7 +534,7 @@ let check_msg_content_bindings (ps:b_io_path list) (mp:string list*string) (tm:m
         let p = List.find (fun p-> (fst p) = (fst mp)) ps in
         let mt = to_list (unlocm((unloc(IdMap.find (snd mp) (snd p))).content)) in
         if (List.length mt)<>(List.length tm)
-        then parse_error (get_loc_match_item_list tm) (Some("The number of bindings is different then the number of message parameters."))
+        then type_error (get_loc_match_item_list tm) ("The number of bindings is different then the number of message parameters.")
         else
         List.fold_left2 check_item_type_add_binding sv tm mt
 
@@ -543,7 +543,7 @@ let check_tuple_match (bps:b_io_path list) (mm:msg_match) (sv:state_vars) : stat
         | None -> sv
         | Some mil ->
                 match mm.path.msg_type with
-                | OtherMsg l-> parse_error l (Some("othermsg cannot have value bindings. Do you have redundant parenthesis?"))
+                | OtherMsg l-> type_error l ("othermsg cannot have value bindings. Do you have redundant parenthesis?")
                 | MsgType id -> check_msg_content_bindings bps ((unlocs mm.path.io_path),(unloc id)) mil sv
 
 let check_match_bindings (bps:r_fb_io_paths) (mm:msg_match) (sv:state_vars) : state_vars =
@@ -562,7 +562,7 @@ let get_var_type (sv: state_vars) (id:id) : typ =
 let check_initialized (sv: state_vars) (id:id) : unit =
         let uid = unloc id in
         if (IdMap.mem uid sv.consts)||(IdSet.mem uid sv.initialized_vs) then ()
-        else parse_error (loc id) (Some(uid^" is not initialized."))    
+        else type_error (loc id) (uid^" is not initialized.")    
 
 let check_expr_var (sv: state_vars) (id:id) : typ =
         let r = get_var_type sv id in
@@ -589,7 +589,7 @@ let check_val_assign (sv:state_vars) (vid:id) (ex:expression_l) : state_vars =
 
 let check_sampl_assign (sv:state_vars) (vid:id) (ex:expression_l) : state_vars =
         let etyp = check_expression sv ex in
-        if not (UcExpressions.is_distribution etyp) then parse_error (loc ex) (Some("You can sample only from distributions."))
+        if not (UcExpressions.is_distribution etyp) then type_error (loc ex) ("You can sample only from distributions.")
         else
         let dtyp = UcExpressions.get_distribution_typ etyp  in 
         check_type_add_binding vid dtyp sv
@@ -597,37 +597,37 @@ let check_sampl_assign (sv:state_vars) (vid:id) (ex:expression_l) : state_vars =
 let check_transition (si:state_instance) (ss:state_sig IdMap.t) (sv:state_vars) : unit =
         let ssig =
                 try IdMap.find (unloc(si.id)) ss        
-                with Not_found -> parse_error (loc si.id) (Some ("Non-existing state: "^(unloc si.id)))
+                with Not_found -> type_error (loc si.id) ("Non-existing state: "^(unloc si.id))
         in
         match ssig, si.params with
         | None, None -> ()
-        | None, Some _ -> parse_error (loc si.id) (Some ("State doesn't have parameters, do you have reduntant parentheses?"))
-        | Some _, None ->  parse_error (loc si.id) (Some ("State has parameters, none are provided."))
+        | None, Some _ -> type_error (loc si.id) ("State doesn't have parameters, do you have reduntant parentheses?")
+        | Some _, None ->  type_error (loc si.id) ("State has parameters, none are provided.")
         | Some sp, Some params ->
                 if (List.length sp)<>(List.length params)
-                then parse_error (loc si.id) (Some("Wrong number of parameters."))
+                then type_error (loc si.id) ("Wrong number of parameters.")
                 else
                 let te = List.combine sp params in
                 List.iteri (fun i (sigt,sip) ->
                         let et = check_expression sv sip in
                         if (sigt <> et)&&(sigt<>univ_type)
-                        then parse_error (loc sip) (Some ((string_of_int (i+1))^". parameter of state "^(unloc si.id)^" has type "^(string_of_typ sigt)^", which is incompatible with provided type "^(string_of_typ et)))
+                        then type_error (loc sip) ((string_of_int (i+1))^". parameter of state "^(unloc si.id)^" has type "^(string_of_typ sigt)^", which is incompatible with provided type "^(string_of_typ et))
                         else ()
                    ) te
 
 let check_msg_content_values (es:expression_l list) (mc:typ_tyd IdMap.t) (sv:state_vars): unit =
         let sg = to_list (unlocm mc) in
         let esl = mergelocs es in
-        if (List.length es)<>(List.length sg) then parse_error esl (Some("Parameter number mismatch."))
+        if (List.length es)<>(List.length sg) then type_error esl ("Parameter number mismatch.")
         else 
-        List.iter2 (fun ex typ-> if not ((check_expression sv ex)=typ) then parse_error (loc ex) (Some("Parameter type mismatch")) ) es sg
+        List.iter2 (fun ex typ-> if not ((check_expression sv ex)=typ) then type_error (loc ex) ("Parameter type mismatch") ) es sg
 
 let check_send_direct (msg:msg_instance) (mc:typ_tyd IdMap.t) (sv:state_vars) : unit =
         let l=msg_loc msg.path in
         (
         match msg.port_var with
         | Some p -> check_exists_and_has_compatible_type p port_type sv; check_initialized sv p;
-        | None -> parse_error l (Some("Missing destination port."))
+        | None -> type_error l ("Missing destination port.")
         );
         check_msg_content_values msg.tuple_instance mc sv
 
@@ -635,7 +635,7 @@ let check_send_adversarial (msg:msg_instance) (mc:typ_tyd IdMap.t) (sv:state_var
         let l=msg_loc msg.path in
         (
         match msg.port_var with
-        | Some _ -> parse_error l (Some("Only direct messages can have destination port."))
+        | Some _ -> type_error l ("Only direct messages can have destination port.")
         | None -> ()
         );
         check_msg_content_values msg.tuple_instance mc sv
@@ -644,7 +644,7 @@ let check_send_internal (msg:msg_instance) (mc:typ_tyd IdMap.t) (sv:state_vars) 
         let l=msg_loc msg.path in
         (
         match msg.port_var with
-        | Some _ -> parse_error l (Some("Messages to subfunctionalities cannot have destination port."))
+        | Some _ -> type_error l ("Messages to subfunctionalities cannot have destination port.")
         | None -> ()
         );
         check_msg_content_values msg.tuple_instance mc sv
@@ -667,7 +667,7 @@ let check_send_msg_path (msg:msg_instance) (bps:r_fb_io_paths) (sv:state_vars) :
         let path'= check_msg_path ps msg.path in
         let msg' = {path=path'; tuple_instance=msg.tuple_instance; port_var=msg.port_var} in
         if (List.mem "simulator" sv.flags)&&(msg.path<>msg'.path) then
-                parse_error (msg_loc msg.path) (Some("Messages sent by simulator must have complete path, did you mean "^(string_of_msg_path msg'.path)^" ?"))
+                type_error (msg_loc msg.path) ("Messages sent by simulator must have complete path, did you mean "^(string_of_msg_path msg'.path)^" ?")
         else ();
         msg'
         
@@ -695,7 +695,7 @@ let merge_state_vars (sv1:state_vars) (sv2:state_vars) : state_vars =
 
 
 let rec check_ite (bps:r_fb_io_paths) (ss:state_sig IdMap.t) (sv:state_vars) (ex:expression_l) (tins:instruction_l list) (eins:instruction_l list option) : instruction*state_vars =
-        if (check_expression sv ex)<>bool_type then parse_error (loc ex) (Some("The condition must be a boolean expression.")) 
+        if (check_expression sv ex)<>bool_type then type_error (loc ex) ("The condition must be a boolean expression.") 
         else
         let (tins_c,eins_c,sv') = check_branches bps ss sv tins eins in
         ((ITE (ex, tins_c, eins_c)), sv')
@@ -715,7 +715,7 @@ check_branches (bps:r_fb_io_paths) (ss:state_sig IdMap.t) (sv:state_vars) (tins:
 and     
 check_decode (bps:r_fb_io_paths) (ss:state_sig IdMap.t) (sv:state_vars) (ex:expression_l) (ty:ty) (m_is: match_item list) (okins:instruction_l list) (erins:instruction_l list) : instruction * state_vars =
         if (check_expression sv ex) <> univ_type
-        then parse_error (loc ex) (Some "Only expressions of univ type can be decoded.")
+        then type_error (loc ex) "Only expressions of univ type can be decoded."
         else 
         let dt = match check_type ty with
                 | Tconstr (x,y) -> [Tconstr (x,y)]
@@ -723,7 +723,7 @@ check_decode (bps:r_fb_io_paths) (ss:state_sig IdMap.t) (sv:state_vars) (ex:expr
                 | _ -> raise (Failure "check_type is supposed to return only Tconstr or Ttuple.")
         in
         if (List.length m_is)<>(List.length dt) 
-        then parse_error (get_loc_match_item_list m_is) (Some("The number of bindings is different from the arity of decoded type."))
+        then type_error (get_loc_match_item_list m_is) ("The number of bindings is different from the arity of decoded type.")
         else
         let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
         let (okins_c,erins_c,sv'') = check_branches bps ss sv' okins (Some erins) in
@@ -755,14 +755,14 @@ let rec check_ends_are_sa_tor_f (is: instruction_l list) : unit =
         match is with
         | [] -> raise (Failure "the instruction list cannot be empty")
         | {pl_loc=_;pl_desc=(SendAndTransition _)} ::[] -> ()
-        | {pl_loc=l;pl_desc=(SendAndTransition _)}::_::_ -> parse_error l (Some("The instructions after send and transition will not be executed"))
+        | {pl_loc=l;pl_desc=(SendAndTransition _)}::_::_ -> type_error l ("The instructions after send and transition will not be executed")
         | {pl_loc=_;pl_desc=Fail}::[] -> ()
-        | {pl_loc=l;pl_desc=Fail}::_::_ -> parse_error l (Some("The instructions after fail will not be executed"))
+        | {pl_loc=l;pl_desc=Fail}::_::_ -> type_error l ("The instructions after fail will not be executed")
         | {pl_loc=_;pl_desc=(ITE (_,tins,Some eins))}::[] -> check_ends_are_sa_tor_f tins; check_ends_are_sa_tor_f eins
-        | {pl_loc=_;pl_desc=(ITE (_,tins,Some eins))}::ins::_ when (contains_sa_tor_f tins)&&(contains_sa_tor_f eins) -> parse_error (loc ins) (Some("The instructions after if-then-else will not be executed since both branches contain send and transition or fail commands."))
+        | {pl_loc=_;pl_desc=(ITE (_,tins,Some eins))}::ins::_ when (contains_sa_tor_f tins)&&(contains_sa_tor_f eins) -> type_error (loc ins) ("The instructions after if-then-else will not be executed since both branches contain send and transition or fail commands.")
         | {pl_loc=_;pl_desc=(Decode (_,_,_,okins,erins))}::[] -> check_ends_are_sa_tor_f okins; check_ends_are_sa_tor_f erins
-        | {pl_loc=_;pl_desc=(Decode (_,_,_,okins,erins))}::ins::_ when (contains_sa_tor_f okins)&&(contains_sa_tor_f erins) -> parse_error (loc ins) (Some("The instructions after decode will not be executed since both branches contain send and transition or fail commands."))
-        | ins::[] ->  parse_error (loc ins) (Some("Every branch of execution must end with send and transition or fail command."))
+        | {pl_loc=_;pl_desc=(Decode (_,_,_,okins,erins))}::ins::_ when (contains_sa_tor_f okins)&&(contains_sa_tor_f erins) -> type_error (loc ins) ("The instructions after decode will not be executed since both branches contain send and transition or fail commands.")
+        | ins::[] ->  type_error (loc ins) ("Every branch of execution must end with send and transition or fail command.")
         | _::tl -> check_ends_are_sa_tor_f tl
 
 let check_msg_code (bps:r_fb_io_paths) (ss:state_sig IdMap.t) (sv:state_vars) (is:instruction_l list) : instruction_l list =
@@ -880,16 +880,16 @@ let check_message_path_sim (bps: b_io_path list) (isini:bool) (mmc:msg_match_cod
         let mp = mmc.pattern_match.path in
         let l = msg_loc mp in
         let id =fst (List.find (fun p-> (List.length (fst p))=1) bps) in
-        if isini && ((unlocs mp.io_path)<>id) then parse_error l (Some("Initial state can handle only messages comming from ideal functionality. Did you omit prefix "^(List.hd id)^".?"))
+        if isini && ((unlocs mp.io_path)<>id) then type_error l ("Initial state can handle only messages comming from ideal functionality. Did you omit prefix "^(List.hd id)^".?")
         else    
         (
         let iops = fst(List.split bps) in
-        let invalid_dest() = parse_error l (Some("Not a valid destination, these destinations are valid:"^(string_of_i_opaths iops) )) in
+        let invalid_dest() = type_error l ("Not a valid destination, these destinations are valid:"^(string_of_i_opaths iops) ) in
         let umpiop = (unlocs mp.io_path) in
         match mp.msg_type with
         | MsgType mt -> if not(List.mem umpiop iops) then invalid_dest() else
                         if List.exists (fun bp -> (fst bp)=umpiop && IdMap.mem (unloc mt) (snd bp)) bps then ()
-                        else parse_error (loc mt) (Some((unloc mt)^" is not an incoming message of "^(string_of_i_opath umpiop)))
+                        else type_error (loc mt) ((unloc mt)^" is not an incoming message of "^(string_of_i_opath umpiop))
         | OtherMsg _ -> if (List.exists (fun p-> sl1_starts_with_sl2 p umpiop) iops) then () else invalid_dest()
         )
 
@@ -991,23 +991,23 @@ let check_sim_code (_: io_tyd IdMap.t) (adv_i_os: io_tyd IdMap.t) (funs: fun_tyd
 let check_exists_f (funs: fun_tyd IdMap.t) (rf:id) =
         let urf = unloc rf in
         if exists_id funs urf then ()
-        else parse_error (loc rf) (Some("Functionality "^urf^" doesn't exist."))
+        else type_error (loc rf) ("Functionality "^urf^" doesn't exist.")
 
 let check_is_real_f (funs: fun_tyd IdMap.t) (rf:id) =
         check_exists_f funs rf;
         let f = unloc (IdMap.find (unloc rf) funs) in
-        if f.parties = IdMap.empty then parse_error (loc rf) (Some("The simulated functionality must have parties."))
+        if f.parties = IdMap.empty then type_error (loc rf) ("The simulated functionality must have parties.")
 
 let check_sim_fun_params (funs: fun_tyd IdMap.t) (_: io_tyd IdMap.t) (rf:id) (params:id list) =
         let d_i_os = get_param_dir_io_ids funs (unloc rf) in
         let d_i_os'= List.map (fun id->get_dir_io_id_impl_by_fun id funs) (unlocs params) in
         if (List.length d_i_os)<>(List.length d_i_os')
-        then parse_error (loc rf) (Some("Wrong number of parameters for functionality."))
-        else List.iteri (fun i pid -> if (List.nth d_i_os i)<>(List.nth d_i_os' i) then parse_error (loc pid) (Some("Parameter implements different direct_io than required by functionality."))) params;
+        then type_error (loc rf) ("Wrong number of parameters for functionality.")
+        else List.iteri (fun i pid -> if (List.nth d_i_os i)<>(List.nth d_i_os' i) then type_error (loc pid) ("Parameter implements different direct_io than required by functionality.")) params;
         List.iter (fun pid -> let f= unloc (IdMap.find (unloc pid) funs) in
-                if f.parties<>IdMap.empty then parse_error (loc pid) (Some("The parameter to simulated functionality cannot have parties")) else
+                if f.parties<>IdMap.empty then type_error (loc pid) ("The parameter to simulated functionality cannot have parties") else
                 match f.id_adv_io with
-                | None -> parse_error (loc pid) (Some("The parameter to simulated functionality must implement an adversarial_io"))
+                | None -> type_error (loc pid) ("The parameter to simulated functionality must implement an adversarial_io")
                 | Some _ -> () (*we already checked that it is not composite when checking FunDecl for partyless funs*)
         ) params
 
@@ -1066,7 +1066,7 @@ let load_uc_imports _ : def list =[]
 let load_ec_reqs reqs =
                 let reqimp idl =
                         try UcEcInterface.require_import (unloc idl)
-                        with Failure f -> parse_error (loc idl) (Some("Error when require import-ing "^(unloc idl)^" :"^f))
+                        with Failure f -> type_error (loc idl) ("Error when require import-ing "^(unloc idl)^" :"^f)
                 in
                 List.iter reqimp reqs
 

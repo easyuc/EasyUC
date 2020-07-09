@@ -5,16 +5,13 @@
 (* copied literally into generated UcLexer *)
 
 {
-  open UcParser
   open EcUtils
-  module L  = EcLocation
-  exception LexicalError of L.t option * string
-
-  let unterminated_comment () =
-    raise (LexicalError (None, "unterminated comment"))
+  open UcSpec
+  open UcParser
+  module L = EcLocation
 
   let lex_error lexbuf msg =
-    raise (LexicalError (Some (L.of_lexbuf lexbuf), msg))
+    raise (LexerError (L.of_lexbuf lexbuf, msg))
 
   let _keywords = [                     
     "direct"          , DIRIO      ;
@@ -107,6 +104,7 @@ rule read = parse
   | blank+       { read lexbuf }
   | ident as id  { try Hashtbl.find keywords id with Not_found -> ID (id) }
   | "(*" { comment lexbuf; read lexbuf }
+  | "*)" { lex_error lexbuf "cannot end comment that was not begun" }
   (* punctuation *)
   | '('   { LPAREN     }
   | ')'   { RPAREN     }
@@ -130,7 +128,7 @@ rule read = parse
       lex_operators (Buffer.contents op)
     }
   | eof   { EOF        }
-  | _     { lex_error lexbuf "invalid character"}
+  | _     { lex_error lexbuf "invalid character" }
 
 and operator buf = parse
   | opchar* as x { Buffer.add_string buf x; buf }
@@ -139,5 +137,5 @@ and comment = parse
   | "*)"        { () }
   | "(*"        { comment lexbuf; comment lexbuf }
   | newline     { Lexing.new_line lexbuf; comment lexbuf }
-  | eof         { unterminated_comment () }
+  | eof         { lex_error lexbuf "unterminated comment at end-of-file" }
   | _           { comment lexbuf }

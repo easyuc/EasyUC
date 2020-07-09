@@ -4,11 +4,17 @@
 
 open EcLocation
 
-exception ParseError of EcLocation.t * string option
-let parse_error loc msg = raise (ParseError (loc, msg))
+exception LexerError of EcLocation.t * string
 
-exception ParseError2 of EcLocation.t * EcLocation.t * string
-let parse_error2 loc1 loc2 msg = raise (ParseError2 (loc1, loc2, msg))
+exception ParseError of EcLocation.t * string
+
+exception TypeError of EcLocation.t * string
+
+let parse_error loc msg =
+  raise (ParseError (loc, msg))
+
+let type_error loc msg =
+  raise (TypeError (loc, msg))
 
 type string_l = string located
 

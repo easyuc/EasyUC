@@ -4,4 +4,4 @@
 
 open UcTypedSpec
 
-val parse_and_typecheck_file : in_channel -> typed_spec
+val parse_and_typecheck_file : string -> typed_spec

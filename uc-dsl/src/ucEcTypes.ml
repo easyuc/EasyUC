@@ -10,7 +10,7 @@ let check_named_type (tyname : id) : typ =
       Tconstr (tyn, None) with
     Not_found ->
       if UcEcInterface.exists_type tyn then Tconstr (tyn, None)
-      else parse_error (loc tyname) (Some ("Non-existing type: " ^ tyn))
+      else type_error (loc tyname) ("Non-existing type: " ^ tyn)
 
 let rec check_type (ty : ty) : typ =
   match ty with

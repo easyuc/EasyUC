@@ -4,4 +4,4 @@
 
 open UcSpec
 
-val parse_file : in_channel -> spec
+val parse_file : string -> spec

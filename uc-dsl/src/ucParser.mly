@@ -9,7 +9,7 @@ open UcSpec
 let to_id (mtid:msg_type) =
 	match mtid with
 	| MsgType id -> id
-	| OtherMsg l -> parse_error l (Some "othermsg keyword cannot be followed by '.' ")
+	| OtherMsg l -> raise (ParseError (l, "othermsg keyword cannot be followed by '.' "))
 
 let rec r_mtl2msg_path (mtl:msg_type list) (mp:msg_path)=
 	match mtl with
@@ -18,7 +18,6 @@ let rec r_mtl2msg_path (mtl:msg_type list) (mp:msg_path)=
 	| hd::tl -> r_mtl2msg_path tl {io_path = mp.io_path @ [to_id hd]; msg_type = mp.msg_type}
 
 let mtl2msg_path (mtl:msg_type list) = r_mtl2msg_path mtl {io_path=[];msg_type=OtherMsg _dummy}
-
 
 %}
 
@@ -111,7 +110,7 @@ If there are no errors check_dl will return a record of type typed_spec (defined
 The typed_spec is intended to be the input to the code generator which outputs easycrypt code.
 check_dl is called by UcParseFile.ml, which in turn is called by: 
 check_dl.ml, with a filename as command line argument, outputs parse error (if any) to command line;
-tests.ml runs a list of tests defined in ZtestSuite.ml and outputs the test results to command line;
+tests.ml runs a list of tests defined in testSuite.ml and outputs the test results to command line;
 make_test_case.ml, with a filename as command line argument, outputs the result of check_dl as ocaml code representing the test case.
 *)
 
@@ -161,7 +160,7 @@ reqs:
 
 (*
 A definition is either a definition of an interface, a functionality or a simulator.
-All of the names must be distinct (checked by check_defs in dl.ml, tested by ZtestDuplicateIdInIODefinitions, ZtestRealFunIdSameAsIOid,)
+All of the names must be distinct (checked by check_defs in dl.ml, tested by testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,)
 *)
 def:
 	| iod  = io_def;  {IODef iod  }
@@ -206,15 +205,15 @@ aio_body:
 
 (*
 A composite interface consists of list of name:io_type pairs
-The names must be unique (checked by check_comp_io_body, tested by ZtestDuplicateIdInCompositIOBody)
+The names must be unique (checked by check_comp_io_body, tested by testDuplicateIdInCompositIOBody)
 The io_type must be the name of an existing basic direct interface. 
 (checked by: check_exists_io, check_composites_ref_basics; tested by: 
-ZtestNonExistingDirIoIdInCompositeBody, 
-ZtestCompositeDirIOreferencingNonDirIO, 
-ZtestNonExistingAdvIoIdInCompositeBody, 
-ZtestCompositeAdvIOreferencingNonAdvIO, 
-ZtestCompositeReferencingComposite, 
-ZtestCircularReferenceSelfReference)
+testNonExistingDirIoIdInCompositeBody, 
+testCompositeDirIOreferencingNonDirIO, 
+testNonExistingAdvIoIdInCompositeBody, 
+testCompositeAdvIOreferencingNonAdvIO, 
+testCompositeReferencingComposite, 
+testCircularReferenceSelfReference)
 *)
 io_item:
 	| name = id_l; COLON; io_type = id_l; { {id=name; io_id=io_type} }
@@ -223,7 +222,7 @@ io_item:
 A basic interface has a list of message definitions.
 A Message definition has a direction, a name, and a list of parameters.
 The message names within an interface must be unique 
-(checked by: check_basic_io_body; tested by: ZtestDuplicateMessageId)
+(checked by: check_basic_io_body; tested by: testDuplicateMessageId)
 Additionally, incomming direct messages have a source identifier, and outgoing messages have a destination identifier.
 These identifiers can be anything and are not subject to any checks, their purpose is to document the intended sender/recipient of the message.
 *)
@@ -256,8 +255,8 @@ To check the type, the check_params function calls check_type (UcEcTypes.ml) whi
 and if not found it tries to find the type in easycrypt environment by calling exists_type from UcEcInterface.ml.
 The check_type will either raise exception if the type is not found, or return a typ (defined in UcTypes.ml).
 (checked by: check_params; tested by: 
-ZtestDuplicateParameterId,
-ZtestDirectIOTupleNonexistingType)
+testDuplicateParameterId,
+testDirectIOTupleNonexistingType)
 
 The typ type is a simplified version of ty type from ec_types.ml, for more info on what was removed from ec_types look at documentation in UcTypes.ml.
 The check_param function returns an IdMap of typ_tyd (UcParsedTree.ml), with keys being names from name:type pairs, 
@@ -283,19 +282,19 @@ There are two different types of functionalities - real and ideal.
 For both of them the implemented interfaces must exist, and the direct interface must be composite.
 An ideal functionality must implement a basic adversarial interface, while a real functionality can optionally implement a composite adversarial interface.
 (checked by: check_fun_decl; tested by: 
-ZtestRealFunImplements2DirIOs, 
-ZtestRealFunImplements2AdvIOs, 
-ZtestIdealFunImplements2DirIOs, 
-ZtestIdealFunImplements2AdvIOs,
-ZtestIdealFunImplementsCompositeAdvIO)
+testRealFunImplements2DirIOs, 
+testRealFunImplements2AdvIOs, 
+testIdealFunImplements2DirIOs, 
+testIdealFunImplements2AdvIOs,
+testIdealFunImplementsCompositeAdvIO)
 
 A real functionality can have parameters which is a list of name:interface pairs.
 The parameter names are unique and interfaces are direct and composite (and thus can be implemented by a functionality).
 (checked by: check_real_fun_params tested by:
-ZtestRealFunParamIONonExisting,
-ZtestRealFunParamIdNotUnique,
-ZtestRealFunParamIONotComposite,
-ZtestRealFunParamIOAdversarial
+testRealFunParamIONonExisting,
+testRealFunParamIdNotUnique,
+testRealFunParamIONotComposite,
+testRealFunParamIOAdversarial
 )
 *)
 fun_def:	
@@ -321,25 +320,25 @@ real_fun_body:
 The body of a real functionality consists of subfunctionalities and parties. Their names must be unique and different from the names of the parameters.
 The subfunctionality must have a type of an existing functionality, and it's parameters must be other subfunctionalities and parameters.
 (checked by check_sub_fun_decl, check_fun_decl; tested by:
-ZtestSubFunNonExistingFun,
-ZtestDuplicateSubFunId,
-ZtestSubFunIdSameAsParamId
+testSubFunNonExistingFun,
+testDuplicateSubFunId,
+testSubFunIdSameAsParamId
 )
 
 Once the declarations of all functionalities are checked, the subfunctionalities are further checked by
 for circular references (a functionality cannot be its own subfunctionality),
 (checked by check_circ_refs_in_r_funs; tested by:
-ZtestCircFunRefSingleStep,
-ZtestCircFunRefTwoSteps
+testCircFunRefSingleStep,
+testCircFunRefTwoSteps
 )
 
 and the prameters are checked to match the direct interface types of subfunctionality.
 (checked by check_sub_fun_params; tested by:
-ZtestSubFunRFWrongParamNo,
-ZtestSubFunRFWrongParamTypeIF,
-ZtestSubFunRFWrongParamTypeRF,
-ZtestSubFunRFWrongParamTypeParam,
-ZtestSubFunIdSameAsParamId)
+testSubFunRFWrongParamNo,
+testSubFunRFWrongParamTypeIF,
+testSubFunRFWrongParamTypeRF,
+testSubFunRFWrongParamTypeParam,
+testSubFunIdSameAsParamId)
 *)
 sub_item:
 	| sfd = sub_fun_decl { SubFunDecl sfd }
@@ -357,17 +356,17 @@ param_list:
 The party serves exactly one basic direct interface that is a component of the composite direct interface implemented by the functionality;
 the party serves at most one basic adversarial direct interface hat is a component of the composite adversarial interface implemented by the functionality.
 (checked by: check_party_decl; tested by:
-ZtestPartyServesDeclNoDirIO,
-ZtestPartyServesDeclTwoDirIO,
-ZtestPartyServesDeclIOItemNotASubIO,
-ZtestPartyServesDeclNotInDirIO,
-ZtestPartyServesDeclMultipleInIOs)
+testPartyServesDeclNoDirIO,
+testPartyServesDeclTwoDirIO,
+testPartyServesDeclIOItemNotASubIO,
+testPartyServesDeclNotInDirIO,
+testPartyServesDeclMultipleInIOs)
 
 The parties can't serve the same basic interfaces, and the union of the basic interfaces served by the parties sums up to composite interfaces implemented by the functionality.
 (checked by: check_parties_serve_direct_sum; tested by:
-ZtestPartiesServeSameIO,
-ZtestPartiesDontServeEntireDirIO,
-ZtestPartiesDontServeEntireAdvIO)
+testPartiesServeSameIO,
+testPartiesDontServeEntireDirIO,
+testPartiesDontServeEntireAdvIO)
 *)
 party_def:
 	| PARTY; name=id_l; serves=serves; code=party_code { {id=name;serves=serves;code=code} }
@@ -386,20 +385,20 @@ party_code:
 The party code consists of a list of states.
 The states must have unique names, and there must be exactly one initial state.
 (checked by: check_states; tested by:
-ZtestPartyNoInitialState,
-ZtestPartyMultipleInitialStates,
-ZtestPartyDuplicateStateId
+testPartyNoInitialState,
+testPartyMultipleInitialStates,
+testPartyDuplicateStateId
 )
 
 Individual state's parameters and variables must have unique names and their types must exist.
 (checked by: check_state_decl, check_params; tested by:
-ZtestStateParamsDuplicateIds,
-ZtestStateParamsNonExistingType,
-ZtestStateParamNonExistingType,
-ZtestStateVarsDuplicateIds,
-ZtestStateVarParamDuplicateIds,
-ZtestStateVarsNonExistingType,
-ZtestStateVarNonExistingType)
+testStateParamsDuplicateIds,
+testStateParamsNonExistingType,
+testStateParamNonExistingType,
+testStateVarsDuplicateIds,
+testStateVarParamDuplicateIds,
+testStateVarsNonExistingType,
+testStateVarNonExistingType)
 
 *)
 state_def:
@@ -450,9 +449,9 @@ The check_state_code function calls check_m_mcode on every message match,
 and the entire match message statement is checked to ensure all of the messages are matched,
 and that every match is not covered by a previous match. 
 (checked by check_msg_match_deltas; tested by:
-ZtestMsgMatchAlreadyCovered,
-ZtestMsgMatchIncomplete,
-ZtestIdealFunMsgMatchIncomplete)
+testMsgMatchAlreadyCovered,
+testMsgMatchIncomplete,
+testIdealFunMsgMatchIncomplete)
 
 The check_message_path function filters the r_fb_io_paths record so that the basic interfaces contain only messages the party can receive;
 these are the incomming messages of the direct and adversarial fields, 
@@ -462,9 +461,9 @@ they can contain only message type instead of the full path (e.g. just message_t
 or just the basic interface name followed by the message type (e.g. component_name.message_type_name instead of composite_i_oname.component_name.message_type_name).
 When matching internal messages, the fully qualified path must be used.
 (checked by: check_msg_path; tested by:
-ZtestMsgMatchUnexpected,
-ZtestMsgMatchAmbiguous,
-ZtestMsgMatchInternalNotFQ)
+testMsgMatchUnexpected,
+testMsgMatchAmbiguous,
+testMsgMatchInternalNotFQ)
 
 The check_msg_path returns the fully qualified path, which replaces the original path in the msg_match_code.
 The location information for each of the individual identifiers in the returned path is the same - the location of the entire original path.
@@ -472,7 +471,7 @@ The location information for each of the individual identifiers in the returned 
 The port of the sender of a message received on a functionalities direct interface can be bound to a constant that is declared inline, and has implicitly the type of port. 
 On the other hand, for adversarial and internal messages the sender is known, and its port cannot be bound to a constant.
 (checked by: check_port_var_binding; tested by:
-ZtestMsgMatchBindingPortVarNonDirIO)
+testMsgMatchBindingPortVarNonDirIO)
 If the senders port was bound to a constant, it gets added to the current scope.
 
 Values of the message parameters can be bound to fresh constants that are defined inline.
@@ -480,10 +479,10 @@ The constants may be defined together with a type - the type must match the type
 Some of the parameter values can be left unbound by using the underscore.
 If the value was bound to a constant, the constant gets added to the current scope.
 (checked by: check_msg_content_bindings; tested by:
-ZtestMsgMatchBindingOtherMsg,
-ZtestMsgMatchBindingWrongParamNo,
-ZtestMsgMatchBindingWrongTyp,
-ZtestMsgMatchBindingToStateParam)
+testMsgMatchBindingOtherMsg,
+testMsgMatchBindingWrongParamNo,
+testMsgMatchBindingWrongTyp,
+testMsgMatchBindingToStateParam)
 
 *)
 
@@ -520,11 +519,11 @@ msg_type:
 (*
 The simulator uses a basic adversarial interface (to comunicate with an ideal functionality), simulates a real functionality which is parametrized by ideal functionalities, these must implement the direct interfaces as required by the real functionality.
 (checked by: check_sim_decl, check_exists_i2_sio, check_is_real_f, check_sim_fun_params; tested by:
-ZtestSimUsesNonI2SIO,
-ZtestSimSimulatesNonRealFun,
-ZtestSimWrongParamNumForSimFun,
-ZtestSimParamForSimFunNotIdealFun,
-ZtestSimWrongParamDirIOForSimFun
+testSimUsesNonI2SIO,
+testSimSimulatesNonRealFun,
+testSimWrongParamNumForSimFun,
+testSimParamForSimFunNotIdealFun,
+testSimWrongParamDirIOForSimFun
 )
 *)
 sim_def:
@@ -544,15 +543,15 @@ The state_var record is flagged with "simulator" string which alters the way the
 The initial state of the simulator can match only messages received on the interface it uses (interface to ideal functionality).
 The message paths of the matched messages must be fully qualified, and only outgoing messages from the interface to ideal functionality, or incoming adversarial messages to one of the components of the real functionality can be matched.
 (checked by: check_message_path_sim; tested by:
-ZtestSimInitStateNonI2SMsgMatch,
-ZtestSimMsgMatchOutMsg,
-ZtestSimMsgMatchI2SInMsg,
-ZtestSimMsgMatchRealFunDirIO,
-ZtestSimMsgMatchSubFunDirIO,
-ZtestSimMsgMatchParamFunDirIO)
+testSimInitStateNonI2SMsgMatch,
+testSimMsgMatchOutMsg,
+testSimMsgMatchI2SInMsg,
+testSimMsgMatchRealFunDirIO,
+testSimMsgMatchSubFunDirIO,
+testSimMsgMatchParamFunDirIO)
 
 Unlike the functionality, the simulator's message match doesn't have to cover all of the possible messages, but it still cannot match a mesage that was covered by a previous match.
-(checked by: check_msg_match_deltas_sim; tested by: ZtestSimMsgMatchAlreadyCovered)
+(checked by: check_msg_match_deltas_sim; tested by: testSimMsgMatchAlreadyCovered)
 
 *)
 sim_code:
@@ -620,8 +619,8 @@ Decode command attempts to cast a constant (or variable) of univ type as some ot
 If the cast succeeds, it is matched with the constants defined inline, and one branch is executed,
 if the cast results in an error the other branch is executed.
 (checked by: check_decode; tested by: 
-ZtestDecodeNonuniv,
-ZtestDecodeTupleWrongParamNo)
+testDecodeNonuniv,
+testDecodeTupleWrongParamNo)
 *)
 decode: 
 	| DECODE; ex=expression; AS; ty=ty; WITH; PIPE? OK; t_m=dec_m; ARROW; code1=inst_block; PIPE; ERROR; ARROW; code2=inst_block; END;
@@ -638,16 +637,16 @@ Once the variable is assigned a value it is marked as initialized in the scope (
 The Assign instruction assigns the value of the expression to the variable.
 The expression must have the same type as the variable.
 (checked by: check_val_assign, check_type_add_binding; tested by:
-ZtestValueAssignWrongType,
-ZtestValueAssignInternalPortWrongType,
-ZtestValueAssignNonexistingVar,
-ZtestValueAssignConst)
+testValueAssignWrongType,
+testValueAssignInternalPortWrongType,
+testValueAssignNonexistingVar,
+testValueAssignConst)
 
 The Sample instruction samples from a distribution, and assigns the sampled value to a variable.
 The expression must have a type of distribution over samples that have the same type as the variable.
 (checked by: check_sampl_assign, check_type_add_binding; tested by:
-ZtestSampleAssignWrongType,
-ZtestSampleAssignNotFromDistr)
+testSampleAssignWrongType,
+testSampleAssignNotFromDistr)
 
 *)
 
@@ -658,11 +657,11 @@ assignment:
 (*
 Every branch of the program must end with one of the terminal instructions.
 (checked by: check_ends_are_sa_tor_f; tested by:
-ZtestEndsWSaTorFInstAfterF,
-ZtestEndsWSaTorFInstAfterSaT,
-ZtestEndsWSaTorFNoSaTorF,
-ZtestEndsWSaTorFInstAfterITE,
-ZtestEndsWSaTorFInstAfterDecode)
+testEndsWSaTorFInstAfterF,
+testEndsWSaTorFInstAfterSaT,
+testEndsWSaTorFNoSaTorF,
+testEndsWSaTorFInstAfterITE,
+testEndsWSaTorFInstAfterDecode)
 *)
 
 terminal:
@@ -676,40 +675,40 @@ the send part which sends a message, and the transition part which changes the s
 The check_send_msg_path filters the messages in r_fb_io_paths record, so that only outgoing direct and adversarial and incomming internal messages are considered for sending.
 The check_msg_path checks if the message path is in the filtered messages. The paths for direct and adversarial messages do not need to be fully qualified if there is no ambiguity, and the check_msg_path will return the fully qualified path which replaces the original path. (see the comments for check_msg_path in the documentation of the message match instruction for more details.) If the message is sent by the simulator the scope (state_vars) will contain the "simulator" flag, this enforces the paths to be fully qualified even for adversarial messages.
 (checked by: check_send_msg_path; tested by:
-ZtestSendDirectIn,
-ZtestSendAdversIn,
-ZtestSendInternOut,
-ZtestSimSendNotI2SorRealFun,
-ZtestSimSendI2SOutMsg,
-ZtestSimSendRFDirIO,
-ZtestSimSendRFInAdvMsg,
-ZtestSimSendNotAdvIOofSubFun,
-ZtestSimSendNotOutAdvMsgofSubFun,
-ZtestSimSendNotIOofParamFun,
-ZtestSimSendNotOutMsgOfParamFun,
-ZtestSimSendMsgPathIncomplete
+testSendDirectIn,
+testSendAdversIn,
+testSendInternOut,
+testSimSendNotI2SorRealFun,
+testSimSendI2SOutMsg,
+testSimSendRFDirIO,
+testSimSendRFInAdvMsg,
+testSimSendNotAdvIOofSubFun,
+testSimSendNotOutAdvMsgofSubFun,
+testSimSendNotIOofParamFun,
+testSimSendNotOutMsgOfParamFun,
+testSimSendMsgPathIncomplete
 )
 
 Direct messages must have a destination port defined.
-(checked by: check_send_direct; tested by: ZtestSendDirectNoPort)
+(checked by: check_send_direct; tested by: testSendDirectNoPort)
 
 Adversarial and internal messages cannot have a port defined.
 (checked by: check_send_adversarial, check_send_internal; tested by:
-ZtestSendAdversWithPort, 
-ZtestSendInternWithPort)
+testSendAdversWithPort, 
+testSendInternWithPort)
 
 The parameters of the sent message must have correct type.
 (checked by: check_msg_content_values; tested by:
-ZtestSendWrongParamNo,
-ZtestSendWrongParamType)
+testSendWrongParamNo,
+testSendWrongParamType)
 
 Transition must have parameters that match the signature of the state.
 (checked by: check_transition; tested by:
-ZtestTransitionNonExistingState,
-ZtestTransitionWrongParamNo,
-ZtestTransitionWrongParamType,
-ZtestTransitionNoParams,
-ZtestTransitionInitialWithParams)
+testTransitionNonExistingState,
+testTransitionWrongParamNo,
+testTransitionWrongParamType,
+testTransitionNoParams,
+testTransitionInitialWithParams)
 *)
 send_and_transition:
 	| SEND; msg=msg_instance; ANDTXT; TRANSITION; state=state_instance;  { {msg=msg; state=state} }
@@ -753,29 +752,29 @@ expression_u:
 The type of expression is evaluated with check_expression function (UcExpressons.ml).
 If the expression is an identifier, it is first checked if it is a name of one of the variables, constants or internal ports.
 If it is a variable it must be initialized.
-(checked by: check_expr_var (dl.ml) tested by: ZtestExprUsesUnassignedVar)
+(checked by: check_expr_var (dl.ml) tested by: testExprUsesUnassignedVar)
 If the identifier wasn't found among variables,constants or internal ports then it must be a name of a nullary operator.
 (checked by: check_expr_id, check_nullary_op; tested by:
-ZtestExprNonExistingVarOp,
-ZtestExprNaryOpUsedAsNullaryOp)
+testExprNonExistingVarOp,
+testExprNaryOpUsedAsNullaryOp)
 
 If the expression is a tuple of expressions, each expression is evaluated, and the resulting type is a Ttuple of expression types.
 
 If the expression is not an identifier or a tuple it is an application of a function or an operator to some arguments or an encode expression.
 Encode expression can be applied to a valid expression of any type, and the type of encode expression is univ.
 (checked by: check_expression; tested by:
-ZtestExprTupleWrongArity,
-ZtestExprEncode)
+testExprTupleWrongArity,
+testExprEncode)
 
 Arguments to which an operator (or function) are applied must have the correct types and the operator must exist.
 There is currently only one built-in operator, "envport" which takes one argument of type port and returns a bool.
 If the operator is not a built-in operator it must be one of the operators from the easycrypt environment.
 
 (checked by: check_sig, check_sig_types; tested by:
-ZtestExprNonexistingFun,
-ZtestExprWrongArgNo,
-ZtestExprWrongArgType,
-ZtestExprWrongArgTypeVar) 
+testExprNonexistingFun,
+testExprWrongArgNo,
+testExprWrongArgType,
+testExprWrongArgTypeVar) 
 *)
 %inline  s_expression: x=loc(s_expression_u) { x }
 s_expression_u:

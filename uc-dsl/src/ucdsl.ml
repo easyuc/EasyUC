@@ -4,7 +4,6 @@
 
 open Arg
 open UcParseAndTypecheckFile
-open UcUtils
 
 let () = Printexc.record_backtrace true
 
@@ -51,10 +50,4 @@ let () =
         exit 1)
   else ()
 
-let ch =
-  try open_in file with
-    Sys_error _ ->
-      (Printf.fprintf stderr "unable to open file: %s\n" file;
-       exit 1)
-
-let () = try ignore (parse_and_typecheck_file ch) with exn -> print_ex exn
+let () = ignore (parse_and_typecheck_file file)

@@ -11,12 +11,12 @@ let builtin_operators = IdMap.add "envport" (bool_type,[port_type]) IdMap.empty
 let get_op_sig (id:id) : typ*typ list =
 	let op = unloc id in
 	if (IdMap.mem op builtin_operators) then IdMap.find op builtin_operators else
-	if (UcEcInterface.exists_operator op) = false then parse_error (loc id) (Some "Nonexisting operator or function.")
+	if (UcEcInterface.exists_operator op) = false then type_error (loc id)  "Nonexisting operator or function."
 	else UcEcInterface.get_operator_sig op
 
 let check_nullary_op (id:id) : typ =
 	let opsig = get_op_sig id in
-	if (snd opsig)<>[] then parse_error (loc id) (Some ("Nullary operator expected, operator "^(unloc id)^" has arguments." ))
+	if (snd opsig)<>[] then type_error (loc id) ("Nullary operator expected, operator "^(unloc id)^" has arguments." )
 	else fst opsig
 
 let check_expr_id (sv:qid->typ) (qid:qid) : typ =
@@ -28,7 +28,7 @@ let check_expr_id (sv:qid->typ) (qid:qid) : typ =
 			| _ -> raise Not_found
 		    )		
 		with Not_found ->
-			parse_error (mergelocs qid) (Some ("Nonexisting variable or constant: "^(string_of_i_opath(unlocs qid))))
+			type_error (mergelocs qid) ("Nonexisting variable or constant: "^(string_of_i_opath(unlocs qid)))
 
 
 
@@ -47,7 +47,7 @@ and check_sig sv fid el =
 	let tl = snd opsig in
 	let farno = List.length tl in
 	let arno = List.length el in
-	if farno<>arno then parse_error (loc fid) (Some (op^" expects "^(string_of_int farno)^" arguments, "^(string_of_int arno)^" arguments provided"))
+	if farno<>arno then type_error (loc fid) (op^" expects "^(string_of_int farno)^" arguments, "^(string_of_int arno)^" arguments provided")
 	else
 	check_sig_types fid sv tl el;
 	fst opsig
@@ -57,7 +57,7 @@ and check_sig_types (_:id) (sv:qid->typ) (tl:typ list) (el:expression_l list) : 
 	let teli = fst (List.fold_left (fun (l,i) (t,e) ->(((t,e),i)::l,i+1) ) ([],1) tel) in
 	let telic = List.filter (fun ((t,_),_) -> match t with Tconstr _ ->true | _->false) teli in
 	List.iter 
-(fun ((t,e),i) -> let et=(check_expression sv e) in if t<>et then parse_error (loc e) (Some ("Type mismatch for "^(string_of_int i)^". argument. Expected type:" ^ (string_of_typ t) ^". Provided type:"^ (string_of_typ et) ^".")) else ())
+(fun ((t,e),i) -> let et=(check_expression sv e) in if t<>et then type_error (loc e) ("Type mismatch for "^(string_of_int i)^". argument. Expected type:" ^ (string_of_typ t) ^". Provided type:"^ (string_of_typ et) ^".") else ())
 	  telic;
 	let teliv = List.filter (fun ((t,_),_) -> match t with Tvar _ ->true | _->false) teli in
 	List.iter (fun ((t,_),i) ->
@@ -66,7 +66,7 @@ and check_sig_types (_:id) (sv:qid->typ) (tl:typ list) (el:expression_l list) : 
 			let te = check_expression sv e in
 			List.iter (fun ((_,e'),i') ->
 					if te<>(check_expression sv e')
-					then parse_error (loc e') (Some ("Type mismatch, "^(string_of_int i)^". and "^(string_of_int i')^". argument must have the same type."))
+					then type_error (loc e') ("Type mismatch, "^(string_of_int i)^". and "^(string_of_int i')^". argument must have the same type.")
 					else ()
 				) telivt
 		  ) teliv

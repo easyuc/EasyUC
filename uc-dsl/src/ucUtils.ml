@@ -5,7 +5,6 @@
 open Batteries
 open UcSpec
 open UcTypedSpec
-open UcLexer
 open EcLocation
 
 let index_of_ex x xs =
@@ -71,32 +70,3 @@ let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
       | Some s1 -> s1=s2
       | None    -> false)
    sl2)
-
-let get_msg msg =
-  match msg with
-  | Some s -> s
-  | None   -> "No message???"
-
-let print_ParseError(loc,msg) = 
-  print_string
-  ("Location" ^ EcLocation.tostring loc ^ "\nmsg : " ^ get_msg msg ^ "\n")
-
-let print_ParseError2(loc1,loc2,msg) = 
-  print_string
-  ("Location1" ^ EcLocation.tostring loc1 ^ "\n_location2" ^
-   EcLocation.tostring loc2 ^ "\nmsg : " ^ msg ^"\n")
-
-let print_LexicalError(loco,msg) = 
-  print_string 
-  ("Location" ^
-   (match loco with 
-    | Some loc -> EcLocation.tostring loc
-    | None     -> " : Location not provided") ^
-   "\nmsg : " ^ msg ^ "\n")
-
-let print_ex (ex : exn) : unit =
-  match ex with
-  | ParseError(loc, msg)         -> print_ParseError(loc, msg)
-  | ParseError2(loc1, loc2, msg) -> print_ParseError2(loc1, loc2, msg)
-  | LexicalError(loco,msg)       -> print_LexicalError(loco, msg)
-  | _                            -> raise ex
