@@ -37,22 +37,30 @@ The following instructions assume you have already installed
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
-> ./configure
+```
+./configure
+```
 
 telling it the full pathname of the EasyCrypt distribution. If you
 installed EasyCrypt using `opam`, it will be something like
 
-> /pathto/.opam/default/lib/easycrypt
+```
+/pathto/.opam/default/lib/easycrypt
+```
 
 Next, run
 
-> ./build
+```
+./build
+```
 
 to build the tool and copy the binary to `bin/ucdsl`.
 
 To clean up the build state, you can run
 
-> ./build-cleanup
+```
+./build-cleanup
+```
 
 (If you get to a state where `ocamlbuild` is complaining, running
 `./build-cleanup` and then `./build` often fixes the problem.)
