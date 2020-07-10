@@ -71,9 +71,10 @@ You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
 Emacs Major Mode for editing UC DSL files
 --------------------------------------------------------------------
 
-In the [`emacs`](emacs) subdirectory, there is a simple Emacs major
-mode for editing UC DSL (`.uc`) files. Copy the file `ucdsl-mode.el`
-to Emacs's `site-lisp` directory, and put the code
+In the [`emacs`](emacs) subdirectory, there is a simple
+[Emacs](https://www.gnu.org/software/emacs/) major mode for editing UC
+DSL (`.uc`) files. Copy the file `ucdsl-mode.el` to Emacs's
+`site-lisp` directory, and put the code
 
 ```
 (require 'ucdsl-mode)
