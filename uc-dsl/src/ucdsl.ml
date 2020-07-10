@@ -17,10 +17,16 @@ let anony_arg_ref : string list ref = ref []
 let anony_arg (s : string) =
   (anony_arg_ref := (! anony_arg_ref) @ [s]; ())
 
+let raw_msg_ref : bool ref = ref false
+
+let raw_msg_arg () =
+  (raw_msg_ref := true; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> add directory to include search path");
    ("-include", String include_arg,
-    "<dir> add directory to include search path")]
+    "<dir> add directory to include search path");
+   ("-raw-msg", Unit raw_msg_arg, "issue raw messages")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
@@ -44,10 +50,13 @@ let file =
        exit 1)
 
 let () =
+  if ! raw_msg_ref then UcState.set_raw_messages() else ()
+
+let () =
   let len = String.length file in
-  if len < 4 || String.sub file (len - 3) 3 <> ".uc"
-  then (Printf.fprintf stderr "file lacks \".uc\" suffix: %s\n" file;
-        exit 1)
+  if len < 4 || String.sub file (len - 3) 3 <> ".uc" then
+    (Printf.fprintf stderr "file lacks \".uc\" suffix: %s\n" file;
+     exit 1)
   else ()
 
 let () = ignore (parse_and_typecheck_file file)
