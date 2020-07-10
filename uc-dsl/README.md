@@ -60,6 +60,24 @@ To clean up the build state, you can run
 You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
 `ucdsl -help` for information about how to invoke the tool.
 
+Emacs Major Mode for editing UC DSL files
+--------------------------------------------------------------------
+
+In the [`emacs`](emacs) subdirectory, there is a simple Emacs major
+mode for editing UC DSL (`.uc`) files. Copy the file `ucdsl-mode.el`
+to Emacs's `site-lisp` directory, and put the code
+
+  (require 'ucdsl-mode)
+  (add-to-list 'auto-mode-alist '("\\.uc\\'" . ucdsl-mode))
+
+in your Emacs initialization file (typically `.emacs` in your
+home directory).
+
+The major mode provides simple syntax highlighting. To run the
+`ucdsl` command on a `.uc` file, run `M-x compile`. `M-x next-error`
+(bound to `C-x\``) takes you to the next error in the `*compilation`
+buffer, showing you the location of the error in your source file.
+
 Files
 --------------------------------------------------------------------
 
