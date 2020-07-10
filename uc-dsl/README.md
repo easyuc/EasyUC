@@ -68,7 +68,7 @@ To clean up the build state, you can run
 You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
 `ucdsl -help` for information about how to invoke the tool.
 
-Emacs Major Mode for editing UC DSL files
+Emacs Major Mode for Editing UC DSL Files
 --------------------------------------------------------------------
 
 In the [`emacs`](emacs) subdirectory, there is a simple
