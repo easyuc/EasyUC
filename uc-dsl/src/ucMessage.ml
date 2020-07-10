@@ -21,12 +21,12 @@ let message res mt filename loco msg =
   if raw then
     match loco with
     | None     ->
-        (Printf.fprintf stderr "%s %s\n%s\n" mt_str filename msg; res ())
+        (Printf.fprintf stderr "%s: %s\n%s\n" mt_str filename msg; res ())
     | Some loc ->
         let loc_str = loc_to_str_raw loc in
         (Printf.fprintf
          stderr 
-         "%s %s %s\n%s\n" mt_str filename loc_str msg; res ())
+         "%s: %s %s\n%s\n" mt_str filename loc_str msg; res ())
   else match loco with
        | None     ->
            (Printf.fprintf stderr "[%s: %s] %s\n" mt_str filename msg; res ())
