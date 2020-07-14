@@ -181,11 +181,14 @@ reqs :
    testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,) *)
 
 def : 
-  | iod  = io_def  {IODef iod }
-  | fund = fun_def {FunDef fund}
-  | simd = sim_def {SimDef simd}
+  | iod = io_def
+      {IODef iod }
+  | fund = fun_def
+      {FunDef fund}
+  | simd = sim_def
+      {SimDef simd}
 
-(*Interfaces*)
+(* Interfaces *)
 
 (* An interface can either be direct or adversarial.  Both need to
    satisfy the same rules, so they are checked by the same function,
