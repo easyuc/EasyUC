@@ -32,7 +32,7 @@ type name_type = {id : id; ty : ty}
 
 type message_def =
   {direction : msg_in_out; id : id; content : name_type list;
-   port_label: id option}
+   port_label : id option}
 
 type basic_io_body = message_def list
 

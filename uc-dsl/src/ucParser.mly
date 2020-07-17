@@ -10,7 +10,7 @@ let to_id (mtid : msg_type) =
   match mtid with
   | MsgType id -> id
   | OtherMsg l ->
-      raise (ParseError (l, "othermsg keyword cannot be followed by '.' "))
+      parse_error l "othermsg keyword cannot be followed by '.'"
 
 let rec r_mtl2msg_path (mtl : msg_type list) (mp : msg_path)=
   match mtl with
@@ -251,7 +251,7 @@ abasic_io_body :
       { iob }
 
 dmessage_def : 
-  | IN;  pl = id_l; AT; name = id_l; LPAREN cont = params; RPAREN
+  | IN; pl = id_l; AT; name = id_l; LPAREN cont = params; RPAREN
       { {direction = In;  id = name; content = cont; port_label = Some pl} }
   | OUT; name = id_l; LPAREN; cont = params; RPAREN; AT; pl = id_l
      { {direction = Out; id = name; content = cont; port_label = Some pl} }
