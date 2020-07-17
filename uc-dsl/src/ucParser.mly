@@ -88,10 +88,10 @@ let mtl2msg_path (mtl : msg_type list) =
 %token STAR
 %token <string>  ROP4
 
-(* Operators and their associativity are copied from ec_parser.mly of
-   easycrypt project.  UcLexer.mll contains code from uc_lexer.mll for
-   recognizing operators.  The operators and code are a small subset
-   of what can be found in easycrypt.  *)
+(* Operators and their associativity are copied from EcParser of
+   EasyCrypt project. UcLexer contains code for recognizing
+   operators. The operators and code are currently a small subset of
+   what can be found in EasyCrypt. *)
 
 %right    OR
 %right    AND
@@ -103,26 +103,11 @@ let mtl2msg_path (mtl : msg_type list) =
 %nonassoc ENCODE
 
 (* The input for the UcParser is a list of tokens produced by UcLexer
-   from the uc dsl file.  This list is parsed by the UcParser,
-   starting with the initial production spec.  The output of UcParser
-   is a record of spec type (defined in UcParseTree.ml).  This record
-   is an input to the check_dl function (defined in dl.ml) which
-   checks the uc dsl file for correctness, If there are errors
-   check_dl raises a ParseError (or ParseError2) exception (defined in
-   UcParseTree.ml), These contain the location (or two) of error
-   together with some error message.  The location type is defined in
-   ec_location.ml - from the EasyCrypt project.  If there are no
-   errors check_dl will return a record of type typed_spec (defined in
-   UcParsedTree.ml) The typed_spec is intended to be the input to the
-   code generator which outputs easycrypt code.  check_dl is called by
-   UcParseFile.ml, which in turn is called by : check_dl.ml, with a
-   filename as command line argument, outputs parse error (if any) to
-   command line; tests.ml runs a list of tests defined in testSuite.ml
-   and outputs the test results to command line; make_test_case.ml,
-   with a filename as command line argument, outputs the result of
-   check_dl as ocaml code representing the test case.  *)
+   from the UC DSL file.  This list is parsed by UcParser, starting
+   with the initial production spec.  The output of UcParser is a
+   record of spec type (defined in UcSpec). *)
 
-(* In the generated uc_parser.ml : 
+(* In the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
@@ -165,11 +150,11 @@ imps:
   | IMPORT imps = nonempty_list(id_l) DOT
       { imps }
 
-(* Requires references easycrypt files, these are loaded by
-   load_ec_reqs (dl.ml) which calls require_import (UcEcInterface.ml)
-   which executes an "import require" easycrypt command.  This loads
-   the content of the .ec theory in the easycrypt environment which is
-   later queried for types and operators *)
+(* requires references EasyCrypt files, these are loaded by
+   load_ec_reqs (UcTypecheck) which calls require_import
+   (UcEcInterface) which executes an "import require" EasyCrypt
+   command.  This loads the content of the .ec theory in the EasyCrypt
+   environment which is later queried for types and operators *)
 
 reqs : 
   | REQUIRES reqs = nonempty_list(id_l) DOT
@@ -177,7 +162,7 @@ reqs :
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be distinct
-   (checked by check_defs in dl.ml, tested by
+   (checked by check_defs in UcTypecheck, tested by
    testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,) *)
 
 def : 
@@ -192,10 +177,10 @@ def :
 
 (* An interface can either be direct or adversarial.  Both need to
    satisfy the same rules, so they are checked by the same function,
-   check_adi_os (dl.ml) check_adi_os returns an IdMap of type io_tyd
-   (defined in UcParsedTree.ml).  The keys of the are the names of the
-   interfaces, and io_tyd contains the same information as io in
-   UcParseTree.ml, except for the message parameters - these contain
+   check_adi_os (UcTypecheck) check_adi_os returns an IdMap of type
+   io_tyd (defined in UcTypedSpec).  The keys of the are the names of
+   the interfaces, and io_tyd contains the same information as io in
+   UcSpec, except for the message parameters - these contain
    additional type information.  *)
 
 io_def : 
@@ -288,21 +273,21 @@ params :
    meaning of the parameter.  When the message is later sent or
    received, only the position (index) of the parameters is relevant,
    and not the name.  To check the type, the check_params function
-   calls check_type (UcEcTypes.ml) which first tries to find the type
-   among built-in types (UcTypes.ml), and if not found it tries to
-   find the type in easycrypt environment by calling exists_type from
-   UcEcInterface.ml.  The check_type will either raise exception if
-   the type is not found, or return a typ (defined in UcTypes.ml).
+   calls check_type (UcEcTypes) which first tries to find the type
+   among built-in types (UcTypes), and if not found it tries to
+   find the type in EasyCrypt environment by calling exists_type from
+   UcEcInterface.  The check_type will either raise exception if
+   the type is not found, or return a typ (defined in UcTypes).
 
   (checked by : check_params; tested by : testDuplicateParameterId,
   testDirectIOTupleNonexistingType)
 
-  The typ type is a simplified version of ty type from ec_types.ml,
-  for more info on what was removed from ec_types look at
-  documentation in UcTypes.ml.  The check_param function returns an
-  IdMap of typ_tyd (UcParsedTree.ml), with keys being names from name
-  : type pairs, and typ_tyd contains both the typ of the parameter and
-  the index of the parameter in the list of the name : type pairs.  *)
+  The typ type is a simplified version of ty type from EcTypes, for
+  more info on what was removed from ec_types look at documentation in
+  UcTypes.  The check_param function returns an IdMap of typ_tyd
+  (UcTypedSpec), with keys being names from name : type pairs, and
+  typ_tyd contains both the typ of the parameter and the index of the
+  parameter in the list of the name : type pairs.  *)
 
 name_type : 
   | name = id_l; COLON; t = ty; { {id = name; ty = t} }
@@ -322,12 +307,12 @@ ty_br :
 
 (*Functionalities*)
 
-(* Functionalities are checked by check_funs function (dl.ml) There
-   are two different types of functionalities - real and ideal.  For
-   both of them the implemented interfaces must exist, and the direct
-   interface must be composite.  An ideal functionality must implement
-   a basic adversarial interface, while a real functionality can
-   optionally implement a composite adversarial interface.
+(* Functionalities are checked by check_funs function (UcTypecheck)
+   There are two different types of functionalities - real and ideal.
+   For both of them the implemented interfaces must exist, and the
+   direct interface must be composite.  An ideal functionality must
+   implement a basic adversarial interface, while a real functionality
+   can optionally implement a composite adversarial interface.
 
   (checked by : check_fun_decl; tested by :
   testRealFunImplements2DirIOs, testRealFunImplements2AdvIOs,
@@ -629,7 +614,7 @@ sim_def :
    the components of the functionality.  Since a subfunctionality can
    be a real functionality, get_sim_components uses recursive call to
    get components.  The identifier for the component is of type Qid
-   (UcParsedTree.ml) which is a list of identifiers identifying the
+   (UcTypedSpec) which is a list of identifiers identifying the
    parents of the component, and the component itself.  The
    get_simb_io_paths function then constructs all of the paths to
    basic adversarial interfaces used by the components.  The
@@ -856,7 +841,7 @@ state_instance :
 (* Expressions *)
 
 (* The syntax for expressions and operators is a simplified version of
-   syntax from ec_parser.mly of easycrypt. *)
+   syntax from EcParser of EasyCrypt. *)
 
 %inline uniop : 
   | NOT
@@ -895,10 +880,10 @@ expression_u :
      { Enc e }
 
 (* The type of expression is evaluated with check_expression function
-   (UcExpressons.ml).  If the expression is an identifier, it is first
+   (UcExpressons).  If the expression is an identifier, it is first
    checked if it is a name of one of the variables, constants or
    internal ports.  If it is a variable it must be initialized.
-   (checked by : check_expr_var (dl.ml) tested by :
+   (checked by : check_expr_var (UcTypecheck) tested by :
    testExprUsesUnassignedVar) If the identifier wasn't found among
    variables, constants or internal ports then it must be a name of a
    nullary operator.
@@ -921,7 +906,7 @@ expression_u :
    the correct types and the operator must exist.  There is currently
    only one built-in operator, "envport" which takes one argument of
    type port and returns a bool.  If the operator is not a built-in
-   operator it must be one of the operators from the easycrypt
+   operator it must be one of the operators from the EasyCrypt
    environment.
 
   (checked by : check_sig, check_sig_types; tested by :
