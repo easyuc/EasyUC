@@ -46,7 +46,8 @@ To build the UC DSL tool `ucdsl`, first configure the tool by running
 ./configure
 ```
 
-telling it the full pathname of the EasyCrypt distribution.
+telling it the full pathname of the EasyCrypt distribution (where you
+cloned it).
 
 Next, run
 
