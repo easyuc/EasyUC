@@ -2,6 +2,7 @@
 
 (* Interface with EasyCrypt tool *)
 
+open Batteries
 open EcUtils
 open EcDecl
 open EcTypes

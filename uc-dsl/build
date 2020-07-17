@@ -41,5 +41,8 @@ cd ..
 ocamlbuild -use-ocamlfind ucdsl.native
 
 if [ -e ucdsl.native ];
-then cp -f ucdsl.native bin/ucdsl;
+then if [ ! -d bin ];
+     then mkdir bin;
+     fi;
+     cp -f ucdsl.native bin/ucdsl;
 fi

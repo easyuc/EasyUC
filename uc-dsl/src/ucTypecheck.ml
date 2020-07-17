@@ -2,6 +2,7 @@
 
 (* Typecheck a specification *)
 
+open Batteries
 open EcLocation
 open UcEcTypes
 open UcTypes
@@ -982,7 +983,7 @@ and check_decode (bps : r_fb_io_paths) (ss : state_sig IdMap.t)
        else let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
             let (okins_c, erins_c, sv'') =
               check_branches bps ss sv' okins (Some erins) in
-            ((Decode (ex, ty, m_is, okins_c, BatOption.get erins_c)), sv'')
+            ((Decode (ex, ty, m_is, okins_c, Option.get erins_c)), sv'')
 
 and check_instruction (bps : r_fb_io_paths) (ss : state_sig IdMap.t)
                       (insv : instruction_l list*state_vars)

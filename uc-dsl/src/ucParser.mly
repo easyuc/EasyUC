@@ -177,7 +177,7 @@ def :
 
 (* An interface can either be direct or adversarial.  Both need to
    satisfy the same rules, so they are checked by the same function,
-   check_adi_os (UcTypecheck) check_diradv_ios returns an IdMap of
+   check_diradv_ios (UcTypecheck) check_diradv_ios returns an IdMap of
    type io_tyd (defined in UcTypedSpec).  The keys of the are the
    names of the interfaces, and io_tyd contains the same information
    as io in UcSpec, except for the message parameters - these contain
