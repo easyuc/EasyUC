@@ -144,7 +144,7 @@ preamble :
          dl_imports      = imps |? []} }
 
 (* Importing is supposed to load content from other .uc files - not
-   yet implemented*)
+   yet implemented *)
 
 imps: 
   | IMPORT imps = nonempty_list(id_l) DOT
@@ -177,10 +177,10 @@ def :
 
 (* An interface can either be direct or adversarial.  Both need to
    satisfy the same rules, so they are checked by the same function,
-   check_adi_os (UcTypecheck) check_adi_os returns an IdMap of type
-   io_tyd (defined in UcTypedSpec).  The keys of the are the names of
-   the interfaces, and io_tyd contains the same information as io in
-   UcSpec, except for the message parameters - these contain
+   check_adi_os (UcTypecheck) check_diradv_ios returns an IdMap of
+   type io_tyd (defined in UcTypedSpec).  The keys of the are the
+   names of the interfaces, and io_tyd contains the same information
+   as io in UcSpec, except for the message parameters - these contain
    additional type information.  *)
 
 io_def : 

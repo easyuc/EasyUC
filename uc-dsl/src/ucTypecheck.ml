@@ -102,21 +102,21 @@ let check_composites_ref_basics (ios : io_tyd IdMap.t) =
      | _ -> ())
   composites
 
-let check_adi_os (errmsgpref : string) (ad_io_map : io IdMap.t) = 
-  let e_io = exists_id ad_io_map in
+let check_diradv_ios (errmsgpref : string) (da_io_map : io IdMap.t) = 
+  let e_io = exists_id da_io_map in
   let check_adio_def (io : io) : io_tyd = 
     match io.body with
     | Basic iob     -> mk_loc (loc io.id) (check_basic_io_body iob)
     | Composite iob ->
         mk_loc (loc io.id) (check_comp_io_body errmsgpref e_io iob) in
-  let ad_i_os = IdMap.map check_adio_def ad_io_map in
-  (check_composites_ref_basics ad_i_os; ad_i_os)
+  let da_ios = IdMap.map check_adio_def da_io_map in
+  (check_composites_ref_basics da_ios; da_ios)
 
-let check_dir_i_os (dir_io_map : io IdMap.t) =
-  check_adi_os "direct_io" dir_io_map
+let check_dir_ios (dir_io_map : io IdMap.t) =
+  check_diradv_ios "direct_io" dir_io_map
 
-let check_adv_i_os (adv_io_map : io IdMap.t) =
-  check_adi_os "adversarial_io" adv_io_map
+let check_adv_ios (adv_io_map : io IdMap.t) =
+  check_diradv_ios "adversarial_io" adv_io_map
                 
 (* Real Functionality checks *)
 
@@ -128,19 +128,19 @@ let check_is_composite (ios : io_tyd IdMap.t) (id : id) : unit =
       ("The IO must be composite (even if it has only one component).")
   | Composite _ -> ()
 
-let check_real_fun_params (dir_i_os : io_tyd IdMap.t)
+let check_real_fun_params (dir_ios : io_tyd IdMap.t)
                           (params : fun_param list) :
       (io_item_tyd * int) IdMap.t = 
-  let check_real_fun_param (dir_i_os : io_tyd IdMap.t) (param : fun_param) :
+  let check_real_fun_param (dir_ios : io_tyd IdMap.t) (param : fun_param) :
         (io_item_tyd * int) = 
     let dir_i_oid = unloc param.id_dir_io in
-    if not (exists_id dir_i_os dir_i_oid)
+    if not (exists_id dir_ios dir_i_oid)
     then type_error (loc param.id_dir_io)
                     ("direct_io " ^ dir_i_oid ^ " doesn't exist.")
-    else (check_is_composite dir_i_os param.id_dir_io;
+    else (check_is_composite dir_ios param.id_dir_io;
           (mk_loc (loc param.id) param.id_dir_io, index_of_ex param params)) in
   let param_map = check_unique_id params (fun p -> p.id) in
-  IdMap.map (check_real_fun_param dir_i_os) param_map
+  IdMap.map (check_real_fun_param dir_ios) param_map
 
 let check_sub_fun_decl (e_f_id : string -> bool) (e_param : string -> bool)
                        (e_sf_id : string -> bool) (sf : sub_fun_decl) :
@@ -235,21 +235,21 @@ let get_io_paths (ioid : string) (ios : io_tyd IdMap.t) : string list list =
   List.map (fun bp -> fst bp) bps
 
 let get_fun_io_paths (id_dir_io : string) (id_adv_io : string option)
-                     (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t) :
+                     (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t) :
       string list list = 
-  let dir = get_io_paths id_dir_io dir_i_os in
+  let dir = get_io_paths id_dir_io dir_ios in
   let adv =
         match id_adv_io with
-        | Some id -> get_io_paths id adv_i_os
+        | Some id -> get_io_paths id adv_ios
         | None    -> [] in
   dir @ adv
 
 let check_i_opath (id_dir_io : string) (id_adv_io : string option)
-                  (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t)
+                  (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t)
                   (iop : id list) : string list located = 
   let uiop = unlocs iop in
   let loc = mergelocs iop in
-  let ps = get_fun_io_paths id_dir_io id_adv_io dir_i_os adv_i_os in
+  let ps = get_fun_io_paths id_dir_io id_adv_io dir_ios adv_ios in
   if (List.mem uiop ps) then mk_loc loc uiop
   else let psf = List.filter (fun p -> (List.tl p) = uiop) ps in
        match (List.length psf) with
@@ -281,7 +281,7 @@ let check_served_paths (serves : string list located list)
       else type_error (loc (List.nth serves 1)) er
   | _ -> type_error (mergelocs serves) er
                 
-let check_i_os_unique (iops : string list located list) : unit = 
+let check_ios_unique (iops : string list located list) : unit = 
   ignore
   (List.fold_left
    (fun l iop -> 
@@ -291,11 +291,11 @@ let check_i_os_unique (iops : string list located list) : unit =
       else uiop :: l)
    [] iops)
 
-let check_i_os_cover (id_dir_io : string) (id_adv_io : string option)
-                     (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t)
+let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
+                     (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t)
                      (served_ps : string list located list) : unit = 
   let serps = unlocs served_ps in
-  let ps = get_fun_io_paths id_dir_io id_adv_io dir_i_os adv_i_os in
+  let ps = get_fun_io_paths id_dir_io id_adv_io dir_ios adv_ios in
   let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
   if (List.length unserved) = 0 then ()
   else type_error
@@ -304,11 +304,11 @@ let check_i_os_cover (id_dir_io : string) (id_adv_io : string option)
         (string_of_i_opaths unserved))
 
 let check_party_decl (id_dir_io : string) (id_adv_io : string option)
-                     (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t)
+                     (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t)
                      (p : party_def) : party_def_tyd = 
   let serves =
         List.map
-        (check_i_opath id_dir_io id_adv_io dir_i_os adv_i_os)
+        (check_i_opath id_dir_io id_adv_io dir_ios adv_ios)
         p.serves in
   let () = check_served_paths serves id_dir_io p.id in
   let code = check_states p.id p.code in
@@ -316,27 +316,27 @@ let check_party_decl (id_dir_io : string) (id_adv_io : string option)
 
 let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
       (id_dir_io : string) (id_adv_io : string option)
-      (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t) : unit = 
+      (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t) : unit = 
   let served_ps =
         IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
-  let () = check_i_os_unique served_ps in
-  check_i_os_cover id_dir_io id_adv_io dir_i_os adv_i_os served_ps
+  let () = check_ios_unique served_ps in
+  check_ios_cover id_dir_io id_adv_io dir_ios adv_ios served_ps
 
 let get_real_fun_sub_item_id (si : sub_item) : id = 
   match si with
   | SubFunDecl sf -> sf.id
   | PartyDef p    -> p.id
 
-let check_exists_dir_io (dir_i_os : io_tyd IdMap.t) (id_dir_io : id) = 
+let check_exists_dir_io (dir_ios : io_tyd IdMap.t) (id_dir_io : id) = 
   let uid_dir_io = unloc id_dir_io in
-  if exists_id dir_i_os uid_dir_io then () 
+  if exists_id dir_ios uid_dir_io then () 
   else type_error (loc id_dir_io)
                   ("direct_io " ^ uid_dir_io ^ " doesn't exist.")
 
-let check_exists_i2_sio (i2s_i_os : io_tyd IdMap.t) (id_i2_sio : id) = 
+let check_exists_i2_sio (i2s_ios : io_tyd IdMap.t) (id_i2_sio : id) = 
   let uid_i2_sio = unloc id_i2_sio in
-  if exists_id i2s_i_os uid_i2_sio
-  then match unloc (IdMap.find uid_i2_sio i2s_i_os) with
+  if exists_id i2s_ios uid_i2_sio
+  then match unloc (IdMap.find uid_i2_sio i2s_ios) with
        | Basic _     -> ()
        | Composite _ ->
            type_error (loc id_i2_sio)
@@ -344,17 +344,17 @@ let check_exists_i2_sio (i2s_i_os : io_tyd IdMap.t) (id_i2_sio : id) =
         else type_error (loc id_i2_sio)
              ("adversarial_io " ^ uid_i2_sio ^ " doesn't exist.")
 
-let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t)
-                   (adv_i_os:io_tyd IdMap.t) (r_fun:fun_def) : fun_tyd =
-  let params = check_real_fun_params dir_i_os r_fun.params in 
-  let () = check_exists_dir_io dir_i_os r_fun.id_dir_io in
+let check_fun_decl (e_f_id:string->bool) (dir_ios:io_tyd IdMap.t)
+                   (adv_ios:io_tyd IdMap.t) (r_fun:fun_def) : fun_tyd =
+  let params = check_real_fun_params dir_ios r_fun.params in 
+  let () = check_exists_dir_io dir_ios r_fun.id_dir_io in
   let id_dir_io = unloc r_fun.id_dir_io in 
   let id_adv_io =
         match r_fun.id_adv_io with
         | None    -> None
         | Some id -> 
             (let uid = unloc id in
-             if exists_id adv_i_os uid then Some uid
+             if exists_id adv_ios uid then Some uid
              else type_error (loc id)
                   ("adversarial_io "^uid^" doesn't exist.")) in
   let sub_items = check_unique_id r_fun.body get_real_fun_sub_item_id in
@@ -376,12 +376,12 @@ let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t)
    let e_param = exists_id params and e_sf_id = exists_id sf_map in
    let sub_funs =
          IdMap.map (check_sub_fun_decl e_f_id e_param e_sf_id) sf_map in
-   let () = check_is_composite dir_i_os r_fun.id_dir_io in
+   let () = check_is_composite dir_ios r_fun.id_dir_io in
    let (parties, states) =
          if r_fun.state_body = []
          then let () =
                     match r_fun.id_adv_io with
-                    | Some id -> check_is_composite adv_i_os id
+                    | Some id -> check_is_composite adv_ios id
                     | _       -> () in
                let p_map =
                      filter_map
@@ -392,10 +392,10 @@ let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t)
                      sub_items in
                let ps =
                      IdMap.map
-                     (check_party_decl id_dir_io id_adv_io dir_i_os adv_i_os)
+                     (check_party_decl id_dir_io id_adv_io dir_ios adv_ios)
                      p_map in
                (check_parties_serve_direct_sum ps id_dir_io id_adv_io
-                dir_i_os adv_i_os;
+                dir_ios adv_ios;
                 (ps, IdMap.empty))
          else match r_fun.id_adv_io with
               | None ->
@@ -403,7 +403,7 @@ let check_fun_decl (e_f_id:string->bool) (dir_i_os:io_tyd IdMap.t)
                   ("A functionality with no parties must implement " ^
                    "a basic adversarial interface")
               | Some id ->
-                  (check_exists_i2_sio adv_i_os id;
+                  (check_exists_i2_sio adv_ios id;
                    let ss = check_states r_fun.id r_fun.state_body in
                    (IdMap.empty, ss)) in
    mk_loc (loc r_fun.id)
@@ -442,7 +442,7 @@ let check_sub_fun_params (funs : fun_tyd IdMap.t) : unit =
     else if sfps <> sfps'
       then type_error (loc sf)
                       ("Parameter provided to subfunctionality " ^
-                       "implement different direct_i_os from " ^
+                       "implement different direct_ios from " ^
                        "declared parameters.")
       else true in
   ignore
@@ -1095,22 +1095,22 @@ let filterb_io_paths (bps : b_io_path list) (pfxs : string list located list) :
   (fun bp -> List.exists (fun pfx -> unloc pfx = fst bp) pfxs)
   bps
 
-let get_fb_io_paths (dir_i_os : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t)
+let get_fb_io_paths (dir_ios : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t)
                     (f : fun_tyd) : r_fb_io_paths = 
   let uf = unloc f in
   let iddir = uf.id_dir_io in
-  let direct = getb_io_paths iddir iddir dir_i_os in
+  let direct = getb_io_paths iddir iddir dir_ios in
   let adversarial = 
     match uf.id_adv_io with
-    | Some id -> getb_io_paths id id adv_i_os
+    | Some id -> getb_io_paths id id adv_ios
     | None -> [] in
   {direct = direct; adversarial = adversarial; internal = []}
 
-let get_r_fb_io_paths (dir_i_os : io_tyd IdMap.t)
-                      (adv_i_os : io_tyd IdMap.t)
+let get_r_fb_io_paths (dir_ios : io_tyd IdMap.t)
+                      (adv_ios : io_tyd IdMap.t)
                       (funs : fun_tyd IdMap.t) (r_f : fun_tyd)
                       (p : party_def_tyd) : r_fb_io_paths = 
-  let all = get_fb_io_paths dir_i_os adv_i_os r_f in
+  let all = get_fb_io_paths dir_ios adv_ios r_f in
   let ur_f = unloc r_f in
   let filt = (unloc p).serves in
   let direct =  filterb_io_paths all.direct filt in
@@ -1119,13 +1119,13 @@ let get_r_fb_io_paths (dir_i_os : io_tyd IdMap.t)
     IdMap.mapi
     (fun sfid (sf : sub_fun_decl_tyd) ->
            let did = get_dir_io_id_impl_by_fun ((unloc sf).fun_id) funs in
-           getb_io_paths sfid did dir_i_os)
+           getb_io_paths sfid did dir_ios)
     ur_f.sub_funs in
   let internal_pm =
     IdMap.mapi
     (fun pid p -> 
            let did = unloc (unloc (fst p)) in
-           getb_io_paths pid did dir_i_os)
+           getb_io_paths pid did dir_ios)
     ur_f.params in
   let internal_m =
     IdMap.union
@@ -1147,7 +1147,7 @@ let check_state (ur_f : fun_body) (states : state_tyd IdMap.t)
          {is_initial = us.is_initial; params = us.params; vars = us.vars;
           mmcodes = mmcodes'}
 
-let check_party_code dir_i_os adv_i_os funs = 
+let check_party_code dir_ios adv_ios funs = 
   IdMap.map 
   (fun r_f -> 
          let ur_f = unloc r_f in 
@@ -1156,14 +1156,14 @@ let check_party_code dir_i_os adv_i_os funs =
            IdMap.map 
            (fun p -> 
                   let up = unloc p in
-                  let bps = get_r_fb_io_paths dir_i_os adv_i_os funs r_f p in
+                  let bps = get_r_fb_io_paths dir_ios adv_ios funs r_f p in
                   let states = up.code in
                   let states' =
                         IdMap.map (check_state ur_f states bps) states  in
                   mk_loc (loc p) {serves = up.serves; code = states'})
            parties in
          let states = ur_f.states in
-         let bps = get_fb_io_paths dir_i_os adv_i_os r_f in
+         let bps = get_fb_io_paths dir_ios adv_ios r_f in
          let states' = IdMap.map (check_state ur_f states bps) states in
          mk_loc (loc r_f)
                 {params = ur_f.params; id_dir_io = ur_f.id_dir_io;
@@ -1182,13 +1182,13 @@ let get_sf_refs_to_f_in_rf (funs : fun_tyd IdMap.t) (fid : string) : IdSet.t =
 let check_circ_refs_in_r_funs (rfs : fun_tyd IdMap.t) =
   check_circ_refs get_sf_refs_to_f_in_rf rfs
 
-let check_funs (fun_map : fun_def IdMap.t) (dir_i_os : io_tyd IdMap.t)
-               (adv_i_os : io_tyd IdMap.t) : fun_tyd IdMap.t = 
+let check_funs (fun_map : fun_def IdMap.t) (dir_ios : io_tyd IdMap.t)
+               (adv_ios : io_tyd IdMap.t) : fun_tyd IdMap.t = 
   let e_f_id = exists_id fun_map in 
-  let funs = IdMap.map (check_fun_decl e_f_id dir_i_os adv_i_os) fun_map in
+  let funs = IdMap.map (check_fun_decl e_f_id dir_ios adv_ios) fun_map in
   (check_circ_refs_in_r_funs funs;
    check_sub_fun_params funs;
-   check_party_code dir_i_os adv_i_os funs)
+   check_party_code dir_ios adv_ios funs)
 
 (* Simulator checks *)
 
@@ -1289,10 +1289,10 @@ let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
   let qpids = List.map (fun pid -> r_f :: [pid]) pids in
   disj_union(get_sc funs r_f [r_f] :: List.map2 (get_sc funs) ps qpids)
                 
-let get_component_io_paths (adv_i_os : io_tyd IdMap.t) (f : fun_body) :
+let get_component_io_paths (adv_ios : io_tyd IdMap.t) (f : fun_body) :
                              b_io_path list = 
   match f.id_adv_io with
-  | Some id -> getb_io_paths id id adv_i_os 
+  | Some id -> getb_io_paths id id adv_ios 
   | None    -> []
 
 let invert_dir (dir : msg_in_out) = 
@@ -1316,15 +1316,15 @@ let invert_msg_dirs (bp : b_io_path) : b_io_path =
   let bio' = invertb_i_ob_tyd bio in
   (fst bp, bio')
 
-let get_simb_io_paths (adv_i_os : io_tyd IdMap.t) (uses : string)
+let get_simb_io_paths (adv_ios : io_tyd IdMap.t) (uses : string)
                       (cs : fun_body QidMap.t) : b_io_path list = 
-  let sbps = QidMap.map (get_component_io_paths adv_i_os) cs in        
+  let sbps = QidMap.map (get_component_io_paths adv_ios) cs in        
   let bps =
     QidMap.add
     []
     (List.map
      (fun bp -> invert_msg_dirs bp)
-     (getb_io_paths uses uses adv_i_os))
+     (getb_io_paths uses uses adv_ios))
     sbps in
   QidMap.fold
   (fun q bpl l ->
@@ -1337,13 +1337,13 @@ let get_sim_internal_ports (cs : fun_body QidMap.t) : QidSet.t =
     QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q@ip) ips) rcsips in
   QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
         
-let check_sim_code (_ : io_tyd IdMap.t) (adv_i_os : io_tyd IdMap.t)
+let check_sim_code (_ : io_tyd IdMap.t) (adv_ios : io_tyd IdMap.t)
                    (funs : fun_tyd IdMap.t) (sim : sim_def_tyd) : sim_def_tyd = 
   let usim = unloc sim in
   let states = usim.body in
   let ss = get_state_sigs states in
   let cs = get_sim_components funs usim.sims usim.sims_param_ids in
-  let bps = get_simb_io_paths adv_i_os usim.uses cs in
+  let bps = get_simb_io_paths adv_ios usim.uses cs in
   let states' =
     IdMap.map 
     (fun s -> 
@@ -1373,17 +1373,17 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
 
 let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : io_tyd IdMap.t)
                          (rf : id) (params : id list) = 
-  let d_i_os = get_param_dir_io_ids funs (unloc rf) in
-  let d_i_os' =
+  let d_ios = get_param_dir_io_ids funs (unloc rf) in
+  let d_ios' =
     List.map
     (fun id -> get_dir_io_id_impl_by_fun id funs) (unlocs params) in
-  if List.length d_i_os <> List.length d_i_os'
+  if List.length d_ios <> List.length d_ios'
   then type_error (loc rf)
                   ("Wrong number of parameters for functionality.")
   else let () =
          List.iteri
          (fun i pid ->
-          if List.nth d_i_os i <> List.nth d_i_os' i
+          if List.nth d_ios i <> List.nth d_ios' i
           then type_error (loc pid)
                ("Parameter implements different direct_io than required " ^
                 "by functionality."))
@@ -1405,24 +1405,24 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : io_tyd IdMap.t)
                         (* partyless funs *))
        params
 
-let check_sim_decl (_ : io_tyd IdMap.t) (i2s_i_os : io_tyd IdMap.t)
+let check_sim_decl (_ : io_tyd IdMap.t) (i2s_ios : io_tyd IdMap.t)
                    (funs : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
-  let () = check_exists_i2_sio i2s_i_os sd.uses in
+  let () = check_exists_i2_sio i2s_ios sd.uses in
   let uses = unloc sd.uses in
   let () = check_is_real_f funs sd.sims in
   let sims = unloc sd.sims in
   let () = List.iter (check_exists_f funs) sd.sims_param_ids in
-  let () = check_sim_fun_params funs i2s_i_os sd.sims sd.sims_param_ids in
+  let () = check_sim_fun_params funs i2s_ios sd.sims sd.sims_param_ids in
   let sims_param_ids = unlocs sd.sims_param_ids in
   let body = check_states sd.id sd.body in
   mk_loc (loc sd.id)
   {uses = uses; sims = sims; sims_param_ids = sims_param_ids; body = body}
 
-let check_simulators (sim_map : sim_def IdMap.t) (dir_i_os : io_tyd IdMap.t)
-                     (adv_i_os : io_tyd IdMap.t) (funs : fun_tyd IdMap.t) :
+let check_simulators (sim_map : sim_def IdMap.t) (dir_ios : io_tyd IdMap.t)
+                     (adv_ios : io_tyd IdMap.t) (funs : fun_tyd IdMap.t) :
                        sim_def_tyd IdMap.t = 
-  let sims = IdMap.map (check_sim_decl dir_i_os adv_i_os funs) sim_map in
-  IdMap.map (check_sim_code dir_i_os adv_i_os funs) sims
+  let sims = IdMap.map (check_sim_decl dir_ios adv_ios funs) sim_map in
+  IdMap.map (check_sim_code dir_ios adv_ios funs) sims
 
 (* DL prog checks *)
 
@@ -1480,11 +1480,11 @@ let check_defs def_l =
            | SimDef sd -> Some sd
            | _ -> None)
     def_map in
-  let dir_i_os = check_dir_i_os dir_io_map in
-  let adv_i_os = check_adv_i_os adv_io_map in
-  let funs = check_funs fun_map dir_i_os adv_i_os in
-  let sims = check_simulators sim_map dir_i_os adv_i_os funs in
-  { direct_i_os = dir_i_os; adversarial_i_os = adv_i_os;
+  let dir_ios = check_dir_ios dir_io_map in
+  let adv_ios = check_adv_ios adv_io_map in
+  let funs = check_funs fun_map dir_ios adv_ios in
+  let sims = check_simulators sim_map dir_ios adv_ios funs in
+  { direct_ios = dir_ios; adversarial_ios = adv_ios;
     functionalities = funs; simulators = sims }
 
 (* TODO : redundant code? *)

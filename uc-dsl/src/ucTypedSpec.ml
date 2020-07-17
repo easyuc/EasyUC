@@ -64,8 +64,8 @@ type sim_body =
 type sim_def_tyd = sim_body located
 
 type typed_spec =
-  { direct_i_os      : io_tyd IdMap.t;
-    adversarial_i_os : io_tyd IdMap.t;
+  { direct_ios       : io_tyd IdMap.t;
+    adversarial_ios  : io_tyd IdMap.t;
     functionalities  : fun_tyd IdMap.t;
     simulators       : sim_def_tyd IdMap.t;
   }
