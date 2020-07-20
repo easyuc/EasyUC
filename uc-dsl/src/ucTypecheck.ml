@@ -66,11 +66,11 @@ let check_exists_io (ermsgpref : string) (e_io : string -> bool)
        (ermsgpref ^ " " ^ uid ^ " hasn't been defined yet.")
 
 let check_comp_io_body (ermsgpref : string) (e_io : string -> bool)
-                       (iob : composite_io_body) : io_body_tyd = 
+                       (iob : io_item list) : io_body_tyd = 
   let io_item_map = check_unique_id iob (fun io_i -> io_i.id) in
   Composite (IdMap.map (check_exists_io ermsgpref e_io) io_item_map)
 
-let check_basic_io_body (biob : basic_io_body) : io_body_tyd = 
+let check_basic_io_body (biob : message_def list) : io_body_tyd = 
   let msg_map = check_unique_id biob (fun md -> md.id) in
   Basic
   (IdMap.map

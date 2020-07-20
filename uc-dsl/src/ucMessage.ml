@@ -11,9 +11,19 @@ let message_type_str mt =
   | WarningMessage -> "warning"
   | ErrorMessage   -> "error"
 
+(* make column numbers as well as line numbers begin from 1 *)
+
+let loc_to_str (p : EcLocation.t) =
+  if fst p.loc_start = fst p.loc_end
+  then Printf.sprintf "from line %d columns %d to %d"
+       (fst p.loc_start) (snd p.loc_start + 1) (snd p.loc_end + 1)
+  else Printf.sprintf "from line %d column %d to line %d column %d"
+       (fst p.loc_start) (snd p.loc_start + 1)
+       (fst p.loc_end) (snd p.loc_end + 1)
+
 let loc_to_str_raw (p : EcLocation.t) =
   Printf.sprintf "%d %d %d %d"
-  (fst p.loc_start) (snd p.loc_start) (fst p.loc_end) (snd p.loc_end)
+  (fst p.loc_start) (snd p.loc_start + 1) (fst p.loc_end) (snd p.loc_end + 1)
 
 let message res mt filename loco msg =
   let mt_str = message_type_str mt in
@@ -21,20 +31,20 @@ let message res mt filename loco msg =
   if raw then
     match loco with
     | None     ->
-        (Printf.fprintf stderr "%s: %s\n%s\n" mt_str filename msg; res ())
+        (Printf.fprintf stderr "%s: %s\n\n%s\n" mt_str filename msg; res ())
     | Some loc ->
         let loc_str = loc_to_str_raw loc in
         (Printf.fprintf
          stderr 
-         "%s: %s %s\n%s\n" mt_str filename loc_str msg; res ())
+         "%s: %s %s\n\n%s\n" mt_str filename loc_str msg; res ())
   else match loco with
        | None     ->
            (Printf.fprintf stderr "[%s: %s]\n%s\n" mt_str filename msg; res ())
        | Some loc ->
-           let loc_str = EcLocation.tostring loc in
+           let loc_str = loc_to_str loc in
            (Printf.fprintf
             stderr 
-            "[%s: %s%s]\n%s\n" mt_str filename loc_str msg; res ())
+            "[%s: %s %s]\n\n%s\n" mt_str filename loc_str msg; res ())
 
 let error_message = message (fun () -> exit 1) ErrorMessage
 

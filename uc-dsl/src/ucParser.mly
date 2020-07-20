@@ -25,6 +25,52 @@ let rec r_mtl2msg_path (mtl : msg_type list) (mp : msg_path)=
 let mtl2msg_path (mtl : msg_type list) =
   r_mtl2msg_path mtl {io_path=[]; msg_type=OtherMsg _dummy}
 
+(* check for parse errors in messages of direct or adversarial
+   interfaces due to improper inclusion of omission of source or
+   destination ports *)
+
+let check_parsing_direct_io (io : io) =
+  let check_msg msg =
+    match msg.port_label with
+    | None   ->
+        let is_in =
+          match msg.direction with
+          | In  -> true
+          | Out -> false in
+        parse_error
+        (loc msg.id)
+        ((if is_in then "input" else "output") ^
+         " messages of direct interfaces must have " ^
+         (if is_in then "source" else "destination") ^
+         " ports")
+    | Some _ -> () in
+  match io.body with
+  | Basic msgs -> List.iter check_msg msgs
+  | Composite _ ->
+      (* no parse errors are possible, but there may be type errors *)
+      ()
+
+let check_parsing_adversarial_io (io : io) =
+  let check_msg msg =
+    match msg.port_label with
+    | None    -> ()
+    | Some id ->
+        let is_in =
+          match msg.direction with
+          | In  -> true
+          | Out -> false in
+        parse_error
+        (loc id)
+        ((if is_in then "input" else "output") ^
+         " messages of adversarial interfaces cannot have " ^
+         (if is_in then "source" else "destination") ^
+         " ports") in
+  match io.body with
+  | Basic msgs -> List.iter check_msg msgs
+  | Composite _ ->
+      (* no parse errors are possible, but there may be type errors *)
+      ()
+
 %}
 
 %token <string> ID
@@ -167,145 +213,68 @@ reqs :
 
 def : 
   | iod = io_def
-      {IODef iod }
+      { IODef iod }
   | fund = fun_def
-      {FunDef fund}
+      { FunDef fund }
   | simd = sim_def
-      {SimDef simd}
+      { SimDef simd }
 
 (* Interfaces *)
 
-(* An interface can either be direct or adversarial.  Both need to
-   satisfy the same rules, so they are checked by the same function,
-   check_diradv_ios (UcTypecheck) check_diradv_ios returns an IdMap of
-   type io_tyd (defined in UcTypedSpec).  The keys of the are the
-   names of the interfaces, and io_tyd contains the same information
-   as io in UcSpec, except for the message parameters - these contain
-   additional type information.  *)
+(* An interface can either be direct or adversarial. They have almost
+   the same form. Both have two forms: basic, consisting of a nonempty
+   sequence of input and output messages; or composite, consisting of
+   a nonempty sequence of named subinterfaces. In direct interfaces,
+   input messages must have source ports (but may not have destination
+   ports), whereas output messages must have destination ports (but
+   may not have source ports). In adversarial interfaces, neither
+   input nor output messages may have source or target ports.  The
+   names of message parameters as well as the names of source and
+   destination ports should be considered documentation *)
 
 io_def : 
-  | iod = dirio { iod }
-  | iod = advio { iod }
+  | DIRIO; io = io
+      { check_parsing_direct_io io;
+        DirectIO io }
+  | ADVIO; io = io
+      { check_parsing_adversarial_io io;
+        AdversarialIO io }
 
-dirio : 
-  | DIRIO; io = dio {DirectIO io}
-
-dio : 
-  | name = id_l; LBRACE; iob = dio_body; RBRACE
+io : 
+  | name = id_l; LBRACE; iob = io_body; RBRACE
       { {id = name; body = iob} : io }
 
-advio : 
-  | ADVIO; io = aio {AdversarialIO io}
-
-aio : 
-  | name = id_l; LBRACE; iob = aio_body; RBRACE
-      { {id = name; body = iob} : io }
-
-(* A direct interface is either basic or composite, same as
-   adversarial interface *)
-
-dio_body : 
-  | iob = dbasic_io_body
+io_body : 
+  | iob = nonempty_list(message_def)
       { Basic iob }
   | iob = nonempty_list(io_item)
       { Composite iob }
 
-aio_body : 
-  | iob = abasic_io_body
-      { Basic iob }
-  | iob = nonempty_list(io_item)
-      { Composite iob }
+message_body :
+  | name = id_l; LPAREN; cont = params; RPAREN
+      { {id = name; content = cont} : message_body }
 
-(* A composite interface consists of list of name : io_type pairs The
-   names must be unique (checked by check_comp_io_body, tested by
-   testDuplicateIdInCompositIOBody) The io_type must be the name of an
-   existing basic direct interface.
-
-   (checked by : check_exists_io, check_composites_ref_basics; tested
-   by : testNonExistingDirIoIdInCompositeBody,
-   testCompositeDirIOreferencingNonDirIO,
-   testNonExistingAdvIoIdInCompositeBody,
-   testCompositeAdvIOreferencingNonAdvIO,
-   testCompositeReferencingComposite,
-   testCircularReferenceSelfReference) *)
-
-io_item :
-  | name = id_l; COLON; io_type = id_l { {id = name; io_id = io_type} }
-
-(* A basic interface has a list of message definitions.  A Message
-   definition has a direction, a name, and a list of parameters.  The
-   message names within an interface must be unique (checked by :
-   check_basic_io_body; tested by : testDuplicateMessageId)
-   Additionally, incomming direct messages have a source identifier,
-   and outgoing messages have a destination identifier.  These
-   identifiers can be anything and are not subject to any checks,
-   their purpose is to document the intended sender/recipient of the
-   message.  *)
-
-dbasic_io_body :
-  | iob = nonempty_list(dmessage_def)
-      { iob }
-
-abasic_io_body : 
-  | iob = nonempty_list(amessage_def)
-      { iob }
-
-dmessage_def : 
-  | IN; pl = id_l; AT; name = id_l; LPAREN cont = params; RPAREN
-      { {direction = In;  id = name; content = cont; port_label = Some pl} }
-  | OUT; name = id_l; LPAREN; cont = params; RPAREN; AT; pl = id_l
-     { {direction = Out; id = name; content = cont; port_label = Some pl} }
-
-msg_in_out : 
-  | IN  { In }
-  | OUT { Out }
-
-amessage_def : 
-  | dir = msg_in_out; name = id_l; LPAREN; cont = params; RPAREN
-      { {direction = dir; id = name; content = cont; port_label = None} }
+message_def :
+  | IN; mb = message_body
+      { {direction = In; id = (mb : message_body).id; content = mb.content;
+         port_label = None} : message_def }
+  | IN; pl = id_l; AT; mb = message_body
+      { {direction = In; id = (mb : message_body).id; content = mb.content;
+         port_label = Some pl} }
+  | OUT; mb = message_body
+      { {direction = Out; id = (mb : message_body).id; content = mb.content;
+         port_label = None} }
+  | OUT; mb = message_body; AT; pl = id_l
+      { {direction = Out; id = (mb : message_body).id; content = mb.content;
+         port_label = Some pl} }
 
 params : 
   | ps = separated_list(COMMA, name_type) { ps }
 
-(* The content of the message is a list of parameters, these are name
-   : type pairs.  The names must be unique, however, the names of the
-   parameters are not used, their purpose is to document the intended
-   meaning of the parameter.  When the message is later sent or
-   received, only the position (index) of the parameters is relevant,
-   and not the name.  To check the type, the check_params function
-   calls check_type (UcEcTypes) which first tries to find the type
-   among built-in types (UcTypes), and if not found it tries to
-   find the type in EasyCrypt environment by calling exists_type from
-   UcEcInterface.  The check_type will either raise exception if
-   the type is not found, or return a typ (defined in UcTypes).
+io_item :
+  | name = id_l; COLON; io_type = id_l { {id = name; io_id = io_type} }
 
-  (checked by : check_params; tested by : testDuplicateParameterId,
-  testDirectIOTupleNonexistingType)
-
-  The typ type is a simplified version of ty type from EcTypes, for
-  more info on what was removed from ec_types look at documentation in
-  UcTypes.  The check_param function returns an IdMap of typ_tyd
-  (UcTypedSpec), with keys being names from name : type pairs, and
-  typ_tyd contains both the typ of the parameter and the index of the
-  parameter in the list of the name : type pairs.  *)
-
-name_type : 
-  | name = id_l; COLON; t = ty; { {id = name; ty = t} }
-
-ty : 
-  | name = id_l
-      { NamedTy name }
-  | tuphd = ty_br; STAR; tuptl = separated_nonempty_list(STAR, ty_br)
-      { TupleTy (tuphd :: tuptl) }
-
-ty_br : 
-  | name = id_l
-      { NamedTy name }
-  | LPAREN; tuphd = ty_br; STAR;
-    tuptl = separated_nonempty_list(STAR, ty_br); RPAREN
-      { TupleTy (tuphd :: tuptl) }
-
-(*Functionalities*)
+(* Functionalities *)
 
 (* Functionalities are checked by check_funs function (UcTypecheck)
    There are two different types of functionalities - real and ideal.
@@ -837,6 +806,28 @@ state_instance :
       { {id = id; params = Some params} }
   | id = id_l
       { {id = id; params = None} }
+
+(* Types *)
+
+(* The typ type is a simplified version of ty type from EcTypes, for
+   more info on what was removed from ec_types look at documentation
+   in UcTypes. *)
+
+name_type : 
+  | name = id_l; COLON; t = ty; { {id = name; ty = t} : name_type }
+
+ty : 
+  | name = id_l
+      { NamedTy name }
+  | tuphd = ty_br; STAR; tuptl = separated_nonempty_list(STAR, ty_br)
+      { TupleTy (tuphd :: tuptl) }
+
+ty_br : 
+  | name = id_l
+      { NamedTy name }
+  | LPAREN; tuphd = ty_br; STAR;
+    tuptl = separated_nonempty_list(STAR, ty_br); RPAREN
+      { TupleTy (tuphd :: tuptl) }
 
 (* Expressions *)
 

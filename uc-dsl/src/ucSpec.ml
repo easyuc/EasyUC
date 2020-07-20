@@ -30,19 +30,18 @@ type ty =
 
 type name_type = {id : id; ty : ty}
 
+type message_body =
+  {id : id; content : name_type list}
+
 type message_def =
   {direction : msg_in_out; id : id; content : name_type list;
    port_label : id option}
 
-type basic_io_body = message_def list
-
 type io_item = {id : id; io_id : id}
 
-type composite_io_body = io_item list
-
 type io_body =
-  | Basic     of basic_io_body
-  | Composite of composite_io_body
+  | Basic     of message_def list
+  | Composite of io_item list
 
 type io = {id : id; body : io_body}
 
@@ -52,7 +51,7 @@ type io_def =
 
 type fun_param = {id : id; id_dir_io : id}
 
-type sub_fun_decl = {id : id; fun_id : id; fun_param_ids: id list}
+type sub_fun_decl = {id : id; fun_id : id; fun_param_ids : id list}
 
 type msg_type =
   | MsgType  of id
