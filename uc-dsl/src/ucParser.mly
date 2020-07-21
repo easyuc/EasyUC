@@ -29,7 +29,7 @@ let mtl2msg_path (mtl : msg_type list) =
    interfaces due to improper inclusion of omission of source or
    destination ports *)
 
-let check_parsing_direct_io (io : io) =
+let check_parsing_direct_inter (ni : io) =
   let check_msg msg =
     match msg.port_label with
     | None   ->
@@ -44,13 +44,13 @@ let check_parsing_direct_io (io : io) =
          (if is_in then "source" else "destination") ^
          " ports")
     | Some _ -> () in
-  match io.body with
+  match ni.body with
   | Basic msgs -> List.iter check_msg msgs
   | Composite _ ->
       (* no parse errors are possible, but there may be type errors *)
       ()
 
-let check_parsing_adversarial_io (io : io) =
+let check_parsing_adversarial_inter (ni : io) =
   let check_msg msg =
     match msg.port_label with
     | None    -> ()
@@ -65,7 +65,7 @@ let check_parsing_adversarial_io (io : io) =
          " messages of adversarial interfaces cannot have " ^
          (if is_in then "source" else "destination") ^
          " ports") in
-  match io.body with
+  match ni.body with
   | Basic msgs -> List.iter check_msg msgs
   | Composite _ ->
       (* no parse errors are possible, but there may be type errors *)
@@ -212,14 +212,14 @@ reqs :
    testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,) *)
 
 def : 
-  | iod = io_def
-      { IODef iod }
+  | ind = inter_def
+      { IODef ind }
   | fund = fun_def
       { FunDef fund }
   | simd = sim_def
       { SimDef simd }
 
-(* Interfaces *)
+(* Functionality Interfaces *)
 
 (* An interface can either be direct or adversarial. They have almost
    the same form. Both have two forms: basic, consisting of a nonempty
@@ -232,27 +232,27 @@ def :
    names of message parameters as well as the names of source and
    destination ports should be considered documentation *)
 
-io_def : 
-  | DIRIO; io = io
-      { check_parsing_direct_io io;
-        DirectIO io }
-  | ADVIO; io = io
-      { check_parsing_adversarial_io io;
-        AdversarialIO io }
+inter_def : 
+  | DIRIO; ni = named_inter
+      { check_parsing_direct_inter ni;
+        DirectIO ni }
+  | ADVIO; ni = named_inter
+      { check_parsing_adversarial_inter ni;
+        AdversarialIO ni }
 
-io : 
-  | name = id_l; LBRACE; iob = io_body; RBRACE
-      { {id = name; body = iob} : io }
+named_inter : 
+  | inter_id = id_l; LBRACE; inter = inter; RBRACE
+      { {id = inter_id; body = inter} : io }
 
-io_body : 
-  | iob = nonempty_list(message_def)
-      { Basic iob }
-  | iob = nonempty_list(io_item)
-      { Composite iob }
+inter : 
+  | msgs = nonempty_list(message_def)
+      { Basic msgs }
+  | cis = nonempty_list(comp_item)
+      { Composite cis }
 
 message_body :
-  | name = id_l; LPAREN; cont = params; RPAREN
-      { {id = name; content = cont} : message_body }
+  | msg_id = id_l; LPAREN; params = name_types; RPAREN
+      { {id = msg_id; content = params} : message_body }
 
 message_def :
   | IN; mb = message_body
@@ -268,11 +268,9 @@ message_def :
       { {direction = Out; id = (mb : message_body).id; content = mb.content;
          port_label = Some pl} }
 
-params : 
-  | ps = separated_list(COMMA, name_type) { ps }
-
-io_item :
-  | name = id_l; COLON; io_type = id_l { {id = name; io_id = io_type} }
+comp_item :
+  | sub_id = id_l; COLON; inter_id = id_l
+      { {id = sub_id; io_id = inter_id} }
 
 (* Functionalities *)
 
@@ -406,7 +404,7 @@ party_code :
 state_def : 
   | INITIAL; STATE; name = id_l; code = state_code
       { InitialState   {id = name; params=[]; code = code}  }
-  | STATE; name = id_l; LPAREN; params = params; RPAREN; code = state_code
+  | STATE; name = id_l; LPAREN; params = name_types; RPAREN; code = state_code
       { FollowingState {id = name; params = params; code = code} }
 
 state_code : 
@@ -619,7 +617,8 @@ sim_code :
 state_def_sim : 
   | INITIAL; STATE; name = id_l; code = state_code_sim
       { InitialState {id = name; params=[]; code = code} }
-  | STATE; name = id_l; LPAREN; params = params; RPAREN; code = state_code_sim
+  | STATE; name = id_l; LPAREN; params = name_types; RPAREN;
+    code = state_code_sim
       { FollowingState {id = name; params = params; code = code} }
 
 state_code_sim : 
@@ -815,6 +814,9 @@ state_instance :
 
 name_type : 
   | name = id_l; COLON; t = ty; { {id = name; ty = t} : name_type }
+
+name_types : 
+  | ps = separated_list(COMMA, name_type) { ps }
 
 ty : 
   | name = id_l
