@@ -29,12 +29,12 @@ let mtl2msg_path (mtl : msg_type list) =
    interfaces due to improper inclusion of omission of source or
    destination ports *)
 
-let check_parsing_direct_inter (ni : io) =
+let check_parsing_direct_inter (ni : named_inter) =
   let check_msg msg =
-    match msg.port_label with
+    match msg.port with
     | None   ->
         let is_in =
-          match msg.direction with
+          match msg.dir with
           | In  -> true
           | Out -> false in
         parse_error
@@ -44,19 +44,19 @@ let check_parsing_direct_inter (ni : io) =
          (if is_in then "source" else "destination") ^
          " ports")
     | Some _ -> () in
-  match ni.body with
+  match ni.inter with
   | Basic msgs -> List.iter check_msg msgs
   | Composite _ ->
       (* no parse errors are possible, but there may be type errors *)
       ()
 
-let check_parsing_adversarial_inter (ni : io) =
+let check_parsing_adversarial_inter (ni : named_inter) =
   let check_msg msg =
-    match msg.port_label with
+    match msg.port with
     | None    -> ()
     | Some id ->
         let is_in =
-          match msg.direction with
+          match msg.dir with
           | In  -> true
           | Out -> false in
         parse_error
@@ -65,7 +65,7 @@ let check_parsing_adversarial_inter (ni : io) =
          " messages of adversarial interfaces cannot have " ^
          (if is_in then "source" else "destination") ^
          " ports") in
-  match ni.body with
+  match ni.inter with
   | Basic msgs -> List.iter check_msg msgs
   | Composite _ ->
       (* no parse errors are possible, but there may be type errors *)
@@ -213,7 +213,7 @@ reqs :
 
 def : 
   | ind = inter_def
-      { IODef ind }
+      { InterDef ind }
   | fund = fun_def
       { FunDef fund }
   | simd = sim_def
@@ -221,7 +221,10 @@ def :
 
 (* Functionality Interfaces *)
 
-(* An interface can either be direct or adversarial. They have almost
+(* An interface can either be direct (governing messages that are
+   input from or output to the environment (or a parent
+   functionality); or adversarial (governing messages that are input
+   from or output to the adversary (or a simulator)). They have almost
    the same form. Both have two forms: basic, consisting of a nonempty
    sequence of input and output messages; or composite, consisting of
    a nonempty sequence of named subinterfaces. In direct interfaces,
@@ -242,7 +245,7 @@ inter_def :
 
 named_inter : 
   | inter_id = id_l; LBRACE; inter = inter; RBRACE
-      { {id = inter_id; body = inter} : io }
+      { {id = inter_id; inter = inter} : named_inter }
 
 inter : 
   | msgs = nonempty_list(message_def)
@@ -252,25 +255,25 @@ inter :
 
 message_body :
   | msg_id = id_l; LPAREN; params = name_types; RPAREN
-      { {id = msg_id; content = params} : message_body }
+      { {id = msg_id; params = params} : message_body }
 
 message_def :
   | IN; mb = message_body
-      { {direction = In; id = (mb : message_body).id; content = mb.content;
-         port_label = None} : message_def }
-  | IN; pl = id_l; AT; mb = message_body
-      { {direction = In; id = (mb : message_body).id; content = mb.content;
-         port_label = Some pl} }
+      { {dir = In; id = (mb : message_body).id; params = mb.params;
+         port = None} : message_def }
+  | IN; pt = id_l; AT; mb = message_body
+      { {dir = In; id = (mb : message_body).id; params = mb.params;
+         port = Some pt} }
   | OUT; mb = message_body
-      { {direction = Out; id = (mb : message_body).id; content = mb.content;
-         port_label = None} }
-  | OUT; mb = message_body; AT; pl = id_l
-      { {direction = Out; id = (mb : message_body).id; content = mb.content;
-         port_label = Some pl} }
+      { {dir = Out; id = (mb : message_body).id; params = mb.params;
+         port = None} }
+  | OUT; mb = message_body; AT; pt = id_l
+      { {dir = Out; id = (mb : message_body).id; params = mb.params;
+         port = Some pt} }
 
 comp_item :
   | sub_id = id_l; COLON; inter_id = id_l
-      { {id = sub_id; io_id = inter_id} }
+      { {sub_id = sub_id; inter_id = inter_id} }
 
 (* Functionalities *)
 
@@ -297,25 +300,25 @@ comp_item :
 
 fun_def :        
   | FUNCT; name = id_l; parameters = fun_params; IMPLEM;
-    dir_io = id_l; adv_io = option(id_l); rf_body = real_fun_body
-      { {id = name; params = parameters; id_dir_io = dir_io;
-         id_adv_io = adv_io; body = rf_body; state_body=[]} }
-  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_io = id_l;
-    adv_io = option(id_l); rf_body = real_fun_body
-      { {id = name; params=[]; id_dir_io = dir_io; id_adv_io = adv_io;
-         body = rf_body; state_body=[]} }
-  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_io = id_l;
-    adv_io = option(id_l); if_body = party_code
-      { {id = name; params=[]; id_dir_io = dir_io; id_adv_io = adv_io;
-         body=[]; state_body = if_body} }
+    dir_id = id_l; adv_id = option(id_l); rf_body = real_fun_body
+      { {id = name; params = parameters; id_dir = dir_id;
+         id_adv = adv_id; body = rf_body; state_body=[]} }
+  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_id = id_l;
+    adv_id = option(id_l); rf_body = real_fun_body
+      { {id = name; params=[]; id_dir = dir_id;
+         id_adv = adv_id; body = rf_body; state_body=[]} }
+  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_id = id_l;
+    adv_id = option(id_l); if_body = party_code
+      { {id = name; params=[]; id_dir = dir_id;
+         id_adv = adv_id; body=[]; state_body = if_body} }
 
 fun_params : 
   | LPAREN; fps = separated_nonempty_list(COMMA, fun_param); RPAREN
       { fps }
 
 fun_param : 
-  | name = id_l; COLON; id_dir_io = id_l
-      { {id = name; id_dir_io = id_dir_io} : fun_param }
+  | name = id_l; COLON; id_dir = id_l
+      { {id = name; id_dir = id_dir} : fun_param }
 
 real_fun_body : 
   | LBRACE; sil = nonempty_list(sub_item); RBRACE

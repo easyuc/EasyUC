@@ -22,15 +22,15 @@ let exists_id (id_map : 'a IdMap.t) (id : string) : bool =
 type typ_tyd = (typ * int) located
 
 type message_def_body =
-  {direction : msg_in_out; content : typ_tyd IdMap.t; port_label : id option}
+  {direction : msg_dir; content : typ_tyd IdMap.t; port_label : id option}
 
 type basic_io_body_tyd = (message_def_body located) IdMap.t
 
-type io_item_tyd = id located
+type comp_item_tyd = id located
 
 type io_body_tyd = 
   | Basic of basic_io_body_tyd
-  | Composite of io_item_tyd IdMap.t
+  | Composite of comp_item_tyd IdMap.t
 
 type io_tyd = io_body_tyd located
 
@@ -51,7 +51,7 @@ type party_def_tyd = party_def_body located
 
 (*either states is an empty map or both sub_funs and parties are empty maps*)
 type fun_body =
-  {params : (io_item_tyd * int) IdMap.t; id_dir_io : string;
+  {params : (comp_item_tyd * int) IdMap.t; id_dir_io : string;
    id_adv_io : string option; sub_funs :  sub_fun_decl_tyd IdMap.t;
    parties :  party_def_tyd IdMap.t; states :  state_tyd IdMap.t}
 

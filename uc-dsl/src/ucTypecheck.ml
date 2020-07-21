@@ -57,18 +57,18 @@ let check_params (n_tl : name_type list) : typ_tyd IdMap.t =
 (* IO checks *)
 
 let check_exists_io (ermsgpref : string) (e_io : string -> bool)
-                    (io_i : io_item) : io_item_tyd = 
-  let uid = unloc io_i.io_id in
+                    (io_i : comp_item) : comp_item_tyd = 
+  let uid = unloc io_i.inter_id in
   if e_io uid
-  then mk_loc (loc io_i.id) io_i.io_id
+  then mk_loc (loc io_i.sub_id) io_i.inter_id
   else type_error
-       (loc io_i.io_id)
+       (loc io_i.inter_id)
        (ermsgpref ^ " " ^ uid ^ " hasn't been defined yet.")
 
 let check_comp_io_body (ermsgpref : string) (e_io : string -> bool)
-                       (iob : io_item list) : io_body_tyd = 
-  let io_item_map = check_unique_id iob (fun io_i -> io_i.id) in
-  Composite (IdMap.map (check_exists_io ermsgpref e_io) io_item_map)
+                       (iob : comp_item list) : io_body_tyd = 
+  let comp_item_map = check_unique_id iob (fun io_i -> io_i.sub_id) in
+  Composite (IdMap.map (check_exists_io ermsgpref e_io) comp_item_map)
 
 let check_basic_io_body (biob : message_def list) : io_body_tyd = 
   let msg_map = check_unique_id biob (fun md -> md.id) in
@@ -77,8 +77,8 @@ let check_basic_io_body (biob : message_def list) : io_body_tyd =
    (fun (md : message_def) ->
       mk_loc
       (loc md.id)
-      {direction = md.direction; content = (check_params md.content);
-       port_label = md.port_label})
+      {direction = md.dir; content = (check_params md.params);
+       port_label = md.port})
   msg_map)
 
 let check_composites_ref_basics (ios : io_tyd IdMap.t) = 
@@ -103,20 +103,20 @@ let check_composites_ref_basics (ios : io_tyd IdMap.t) =
      | _ -> ())
   composites
 
-let check_diradv_ios (errmsgpref : string) (da_io_map : io IdMap.t) = 
+let check_diradv_ios (errmsgpref : string) (da_io_map : named_inter IdMap.t) = 
   let e_io = exists_id da_io_map in
-  let check_adio_def (io : io) : io_tyd = 
-    match io.body with
+  let check_adio_def (io : named_inter) : io_tyd = 
+    match io.inter with
     | Basic iob     -> mk_loc (loc io.id) (check_basic_io_body iob)
     | Composite iob ->
         mk_loc (loc io.id) (check_comp_io_body errmsgpref e_io iob) in
   let da_ios = IdMap.map check_adio_def da_io_map in
   (check_composites_ref_basics da_ios; da_ios)
 
-let check_dir_ios (dir_io_map : io IdMap.t) =
+let check_dir_ios (dir_io_map : named_inter IdMap.t) =
   check_diradv_ios "direct_io" dir_io_map
 
-let check_adv_ios (adv_io_map : io IdMap.t) =
+let check_adv_ios (adv_io_map : named_inter IdMap.t) =
   check_diradv_ios "adversarial_io" adv_io_map
                 
 (* Real Functionality checks *)
@@ -131,15 +131,15 @@ let check_is_composite (ios : io_tyd IdMap.t) (id : id) : unit =
 
 let check_real_fun_params (dir_ios : io_tyd IdMap.t)
                           (params : fun_param list) :
-      (io_item_tyd * int) IdMap.t = 
+      (comp_item_tyd * int) IdMap.t = 
   let check_real_fun_param (dir_ios : io_tyd IdMap.t) (param : fun_param) :
-        (io_item_tyd * int) = 
-    let dir_i_oid = unloc param.id_dir_io in
+        (comp_item_tyd * int) = 
+    let dir_i_oid = unloc param.id_dir in
     if not (exists_id dir_ios dir_i_oid)
-    then type_error (loc param.id_dir_io)
+    then type_error (loc param.id_dir)
                     ("direct_io " ^ dir_i_oid ^ " doesn't exist.")
-    else (check_is_composite dir_ios param.id_dir_io;
-          (mk_loc (loc param.id) param.id_dir_io, index_of_ex param params)) in
+    else (check_is_composite dir_ios param.id_dir;
+          (mk_loc (loc param.id) param.id_dir, index_of_ex param params)) in
   let param_map = check_unique_id params (fun p -> p.id) in
   IdMap.map (check_real_fun_param dir_ios) param_map
 
@@ -348,10 +348,10 @@ let check_exists_i2_sio (i2s_ios : io_tyd IdMap.t) (id_i2_sio : id) =
 let check_fun_decl (e_f_id:string->bool) (dir_ios:io_tyd IdMap.t)
                    (adv_ios:io_tyd IdMap.t) (r_fun:fun_def) : fun_tyd =
   let params = check_real_fun_params dir_ios r_fun.params in 
-  let () = check_exists_dir_io dir_ios r_fun.id_dir_io in
-  let id_dir_io = unloc r_fun.id_dir_io in 
+  let () = check_exists_dir_io dir_ios r_fun.id_dir in
+  let id_dir_io = unloc r_fun.id_dir in 
   let id_adv_io =
-        match r_fun.id_adv_io with
+        match r_fun.id_adv with
         | None    -> None
         | Some id -> 
             (let uid = unloc id in
@@ -377,11 +377,11 @@ let check_fun_decl (e_f_id:string->bool) (dir_ios:io_tyd IdMap.t)
    let e_param = exists_id params and e_sf_id = exists_id sf_map in
    let sub_funs =
          IdMap.map (check_sub_fun_decl e_f_id e_param e_sf_id) sf_map in
-   let () = check_is_composite dir_ios r_fun.id_dir_io in
+   let () = check_is_composite dir_ios r_fun.id_dir in
    let (parties, states) =
          if r_fun.state_body = []
          then let () =
-                    match r_fun.id_adv_io with
+                    match r_fun.id_adv with
                     | Some id -> check_is_composite adv_ios id
                     | _       -> () in
                let p_map =
@@ -398,7 +398,7 @@ let check_fun_decl (e_f_id:string->bool) (dir_ios:io_tyd IdMap.t)
                (check_parties_serve_direct_sum ps id_dir_io id_adv_io
                 dir_ios adv_ios;
                 (ps, IdMap.empty))
-         else match r_fun.id_adv_io with
+         else match r_fun.id_adv with
               | None ->
                   type_error (loc r_fun.id)
                   ("A functionality with no parties must implement " ^
@@ -486,7 +486,7 @@ let string_of_msg_path (mp : msg_path) : string =
 let string_of_msg_pathl (mpl : msg_path list) : string = 
   string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
 
-let filterb_io_ps (dir : msg_in_out) (biops : b_io_path list) :
+let filterb_io_ps (dir : msg_dir) (biops : b_io_path list) :
                     b_io_path list = 
   List.map
   (fun biop ->
@@ -1296,7 +1296,7 @@ let get_component_io_paths (adv_ios : io_tyd IdMap.t) (f : fun_body) :
   | Some id -> getb_io_paths id id adv_ios 
   | None    -> []
 
-let invert_dir (dir : msg_in_out) = 
+let invert_dir (dir : msg_dir) = 
   match dir with In -> Out | Out -> In
 
 let invert_mdf (mdf : message_def_body) : message_def_body = 
@@ -1432,7 +1432,7 @@ let get_io_id io_def = match io_def with
   | DirectIO io      -> io.id
 
 let get_def_id (def : def) = match def with
-  | IODef iod -> get_io_id iod
+  | InterDef iod -> get_io_id iod
   | FunDef fd -> fd.id
   | SimDef sd -> sd.id
 
@@ -1457,14 +1457,14 @@ let check_defs def_l =
     filter_map
     (fun def ->
            match def with
-           | IODef DirectIO io -> Some io
+           | InterDef DirectIO io -> Some io
            | _ -> None)
     def_map in
   let adv_io_map =
     filter_map
     (fun def ->
            match def with
-           | IODef AdversarialIO io -> Some io
+           | InterDef AdversarialIO io -> Some io
            | _ -> None)
     def_map in
   let fun_map =

@@ -20,7 +20,7 @@ type string_l = string located
 
 type id = string_l
 
-type msg_in_out =
+type msg_dir =
   | In
   | Out
 
@@ -31,25 +31,24 @@ type ty =
 type name_type = {id : id; ty : ty}
 
 type message_body =
-  {id : id; content : name_type list}
+  {id : id; params : name_type list}
 
 type message_def =
-  {direction : msg_in_out; id : id; content : name_type list;
-   port_label : id option}
+  {dir : msg_dir; id : id; params : name_type list; port : id option}
 
-type io_item = {id : id; io_id : id}
+type comp_item = {sub_id : id; inter_id : id}
 
-type io_body =
+type inter =
   | Basic     of message_def list
-  | Composite of io_item list
+  | Composite of comp_item list
 
-type io = {id : id; body : io_body}
+type named_inter = {id : id; inter : inter}
 
-type io_def =
-  | DirectIO      of io
-  | AdversarialIO of io
+type inter_def =
+  | DirectIO      of named_inter
+  | AdversarialIO of named_inter
 
-type fun_param = {id : id; id_dir_io : id}
+type fun_param = {id : id; id_dir : id}
 
 type sub_fun_decl = {id : id; fun_id : id; fun_param_ids : id list}
 
@@ -115,7 +114,7 @@ type sub_item =
 
 (*either state_body is empty or both params and body are empty*)
 type fun_def =
-  {id : id; params : fun_param list; id_dir_io : id; id_adv_io : id option;
+  {id : id; params : fun_param list; id_dir : id; id_adv : id option;
    body : sub_item list; state_body : state_def list}
 
 type sim_def =
@@ -123,7 +122,7 @@ type sim_def =
    body : state_def list }
 
 type def =
-  | IODef  of io_def
+  | InterDef  of inter_def
   | FunDef of fun_def
   | SimDef of sim_def
 
