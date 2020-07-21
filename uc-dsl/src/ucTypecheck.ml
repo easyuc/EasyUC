@@ -54,7 +54,7 @@ let check_params (n_tl : name_type list) : typ_tyd IdMap.t =
      mk_loc (loc nt.id) ((check_type nt.ty), (index_of_ex nt n_tl)))
   nt_map
 
-(* IO checks *)
+(* interface checks *)
 
 let check_exists_io (ermsgpref : string) (e_io : string -> bool)
                     (io_i : comp_item) : comp_item_tyd = 
@@ -98,7 +98,8 @@ let check_composites_ref_basics (ios : inter_tyd IdMap.t) =
          (fun _ idl -> 
             let uid = unloc (unloc idl) in
             if (eb_io uid) then ()
-            else type_error (loc (unloc idl)) (uid ^ " is not a basic IO."))
+            else type_error (loc (unloc idl))
+                 (uid ^ " is not a basic interface."))
          its
      | _ -> ())
   composites
@@ -126,7 +127,7 @@ let check_is_composite (ios : inter_tyd IdMap.t) (id : id) : unit =
   match unloc (IdMap.find uid ios) with
   | Basic _ ->
       type_error (loc id)
-      ("The IO must be composite (even if it has only one component).")
+      ("The interface must be composite (even if it has only one component).")
   | Composite _ -> ()
 
 let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
@@ -222,7 +223,8 @@ let getb_inter_id_paths (root : string) (ioid : string)
     | Basic b -> b
     | _       ->
         raise (Failure
-               "Cannot happen, this function is called only on Basic IOs") in
+               ("Cannot happen, this function is called only on Basic " ^
+                "interfaces")) in
   let io = IdMap.find ioid ios in
   match (unloc io) with
   | Basic b       -> [([root],b)]
@@ -265,15 +267,15 @@ let check_i_opath (id_dir_io : string) (id_adv_io : string option)
        | _ ->
            type_error loc
            (string_of_i_opath uiop ^
-            " is ambiguous, it is in both direct and adversarial IOs " ^
+            " is ambiguous, it is in both direct and adversarial interfaces " ^
             "implemented by functionality.")
 
 let check_served_paths (serves : string list located list)
                        (id_dir_io : string) (pid : id) : unit = 
   let er =
-        ("A party can serve at most one basic direct IO and one " ^
-         "basic adversarial IO.") in
-  let erone = "A party must serve one basic direct IO." in
+        ("A party can serve at most one basic direct interface and one " ^
+         "basic adversarial interface.") in
+  let erone = "A party must serve one basic direct interface." in
   match (List.length serves) with
   | 0 -> type_error (loc pid)  erone
   | 1 ->
@@ -291,7 +293,7 @@ let check_ios_unique (iops : string list located list) : unit =
    (fun l iop -> 
       let uiop = unloc iop in
       if List.mem uiop l
-      then type_error (loc iop) ("Parties must serve distinct IOs")
+      then type_error (loc iop) ("Parties must serve distinct interfaces")
       else uiop :: l)
    [] iops)
 
@@ -304,7 +306,7 @@ let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
   if (List.length unserved) = 0 then ()
   else type_error
        (mergelocs served_ps)
-       ("These IOs are not served by any party : " ^
+       ("These interfaces are not served by any party : " ^
         (string_of_i_opaths unserved))
 
 let check_party_decl (id_dir_io : string) (id_adv_io : string option)

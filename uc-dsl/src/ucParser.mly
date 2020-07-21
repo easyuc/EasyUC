@@ -80,8 +80,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token RBRACE
 %token COMMA
 %token COLON
-%token DIRIO
-%token ADVIO
+%token DIRECT
+%token ADVERSARIAL
 %token IN
 %token OUT
 %token MESSAGE
@@ -236,10 +236,10 @@ def :
    destination ports should be considered documentation *)
 
 inter_def : 
-  | DIRIO; ni = named_inter
+  | DIRECT; ni = named_inter
       { check_parsing_direct_inter ni;
         DirectInter ni }
-  | ADVIO; ni = named_inter
+  | ADVERSARIAL; ni = named_inter
       { check_parsing_adversarial_inter ni;
         AdversarialInter ni }
 
