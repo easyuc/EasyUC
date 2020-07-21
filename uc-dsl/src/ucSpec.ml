@@ -45,8 +45,8 @@ type inter =
 type named_inter = {id : id; inter : inter}
 
 type inter_def =
-  | DirectIO      of named_inter
-  | AdversarialIO of named_inter
+  | DirectInter      of named_inter
+  | AdversarialInter of named_inter
 
 type fun_param = {id : id; id_dir : id}
 
@@ -58,7 +58,7 @@ type msg_type =
 
 type qid = id list
 
-type msg_path = {io_path: qid; msg_type : msg_type}
+type msg_path = {inter_id_path: qid; msg_type : msg_type}
 
 type match_item =
   | Const of id
@@ -122,9 +122,9 @@ type sim_def =
    body : state_def list }
 
 type def =
-  | InterDef  of inter_def
-  | FunDef of fun_def
-  | SimDef of sim_def
+  | InterDef of inter_def
+  | FunDef   of fun_def
+  | SimDef   of sim_def
 
 type externals = {ec_requirements : id list; dl_imports : id list}
 

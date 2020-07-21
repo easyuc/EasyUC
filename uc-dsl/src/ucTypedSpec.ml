@@ -24,15 +24,15 @@ type typ_tyd = (typ * int) located
 type message_def_body =
   {direction : msg_dir; content : typ_tyd IdMap.t; port_label : id option}
 
-type basic_io_body_tyd = (message_def_body located) IdMap.t
+type basic_inter_body_tyd = (message_def_body located) IdMap.t
 
 type comp_item_tyd = id located
 
-type io_body_tyd = 
-  | Basic of basic_io_body_tyd
+type inter_body_tyd = 
+  | Basic     of basic_inter_body_tyd
   | Composite of comp_item_tyd IdMap.t
 
-type io_tyd = io_body_tyd located
+type inter_tyd = inter_body_tyd located
 
 type state_body =
   {is_initial : bool; params : typ_tyd IdMap.t; vars : typ located IdMap.t;
@@ -64,8 +64,8 @@ type sim_body =
 type sim_def_tyd = sim_body located
 
 type typed_spec =
-  { direct_ios       : io_tyd IdMap.t;
-    adversarial_ios  : io_tyd IdMap.t;
+  { direct_ios       : inter_tyd IdMap.t;
+    adversarial_ios  : inter_tyd IdMap.t;
     functionalities  : fun_tyd IdMap.t;
     simulators       : sim_def_tyd IdMap.t;
   }

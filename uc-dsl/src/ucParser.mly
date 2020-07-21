@@ -17,13 +17,13 @@ let rec r_mtl2msg_path (mtl : msg_type list) (mp : msg_path)=
   | [] ->
       raise
       (Failure "Cannot happen : empty list when converting mtl to msg_path")
-  | [x] -> {io_path = mp.io_path; msg_type = x}
+  | [x] -> {inter_id_path = mp.inter_id_path; msg_type = x}
   | hd :: tl ->
       r_mtl2msg_path tl
-      {io_path = mp.io_path @ [to_id hd]; msg_type = mp.msg_type}
+      {inter_id_path = mp.inter_id_path @ [to_id hd]; msg_type = mp.msg_type}
 
 let mtl2msg_path (mtl : msg_type list) =
-  r_mtl2msg_path mtl {io_path=[]; msg_type=OtherMsg _dummy}
+  r_mtl2msg_path mtl {inter_id_path=[]; msg_type=OtherMsg _dummy}
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -238,10 +238,10 @@ def :
 inter_def : 
   | DIRIO; ni = named_inter
       { check_parsing_direct_inter ni;
-        DirectIO ni }
+        DirectInter ni }
   | ADVIO; ni = named_inter
       { check_parsing_adversarial_inter ni;
-        AdversarialIO ni }
+        AdversarialInter ni }
 
 named_inter : 
   | inter_id = id_l; LBRACE; inter = inter; RBRACE
@@ -423,22 +423,22 @@ local_var_decl :
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
 (* Incomming messages are matched against a list of possible messages
-   contained in a r_fb_io_paths record.  This record contains three
+   contained in a r_fb_inter_id_paths record.  This record contains three
    fields : direct, adversarial and internal, each field is a list of
-   b_io_paths, and a b_io_path is a pair of a string list (a path) and
+   b_inter_id_paths, and a b_inter_id_path is a pair of a string list (a path) and
    a basic interface.  For a party (or an ideal functionality) the
-   r_fb_io_paths record is constructed in check_party_code function,
-   by making calls to get_r_fb_io_paths (or get_fb_io_paths) function.
+   r_fb_inter_id_paths record is constructed in check_party_code function,
+   by making calls to get_r_fb_inter_id_paths (or get_fb_inter_id_paths) function.
 
-   The r_fb_io_paths for a party will contain a single path for the
+   The r_fb_inter_id_paths for a party will contain a single path for the
    basic direct interface the party is serving, a single path for the
    basic adversarial interface the party is serving (or empty list if
    the party doesn't serve adversarial interface) and every component
    of the direct interface implemented by a subfunctionality or
-   functionalities parameter will have a b_io_path in the internal
-   field of the r_fb_io_paths record.
+   functionalities parameter will have a b_inter_id_path in the internal
+   field of the r_fb_inter_id_paths record.
 
-  The internal field of a r_fb_io_path record for an ideal
+  The internal field of a r_fb_inter_id_path record for an ideal
   functionality will be an empty list, the adversarial field will
   contain a single path to the adversarial interface of the
   functionality, and the direct field will contain a path for each of
@@ -479,11 +479,11 @@ local_var_decl :
   : testMsgMatchAlreadyCovered, testMsgMatchIncomplete,
   testIdealFunMsgMatchIncomplete)
 
-  The check_message_path function filters the r_fb_io_paths record so
+  The check_message_path function filters the r_fb_inter_id_paths record so
   that the basic interfaces contain only messages the party can
   receive; these are the incomming messages of the direct and
   adversarial fields, and the outgoing messages from the internal
-  field of the rfb_io_paths.  The paths of the messages do not need to
+  field of the rfb_inter_id_paths.  The paths of the messages do not need to
   be fully qualified if there is no ambiguity- they can contain only
   message type instead of the full path (e.g. just message_type_name
   instead of composite_i_oname.component_name.message_type_name) or
@@ -586,7 +586,7 @@ sim_def :
    get components.  The identifier for the component is of type Qid
    (UcTypedSpec) which is a list of identifiers identifying the
    parents of the component, and the component itself.  The
-   get_simb_io_paths function then constructs all of the paths to
+   get_simb_inter_id_paths function then constructs all of the paths to
    basic adversarial interfaces used by the components.  The
    get_sim_internal_ports function then for every component finds its
    internal ports. The names of the internal ports get prefixed by the
@@ -753,7 +753,7 @@ terminal :
    part which sends a message, and the transition part which changes
    the state.
 
-  The check_send_msg_path filters the messages in r_fb_io_paths
+  The check_send_msg_path filters the messages in r_fb_inter_id_paths
   record, so that only outgoing direct and adversarial and incomming
   internal messages are considered for sending.  The check_msg_path
   checks if the message path is in the filtered messages. The paths
