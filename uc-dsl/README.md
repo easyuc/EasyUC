@@ -37,9 +37,10 @@ The following instructions assume you have already installed
 
 Note: if you have already installed the EasyCrypt tool itself (as
 opposed to the tools it uses, such as SMT solvers) via opam, you
-should also clone the EasyCrypt GitHub repository, so as to obtain the
-full EasyCrypt distribution (including the `src` subdirectory of the
-EasyCrypt source files).
+should also clone the [EasyCrypt GitHub
+repository](https://github.com/EasyCrypt/easycrypt), so as to obtain
+the full EasyCrypt distribution (including the `src` subdirectory of
+the EasyCrypt source files).
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
