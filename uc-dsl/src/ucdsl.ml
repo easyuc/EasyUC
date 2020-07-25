@@ -3,6 +3,7 @@
 (* UC DSL Tool main file *)
 
 open Arg
+open UcMessage
 open UcParseAndTypecheckFile
 
 let () = Printexc.record_backtrace true
@@ -34,8 +35,8 @@ let () =
   List.iter
   (fun x ->
      if (not (Sys.file_exists x) || not (Sys.is_directory x))
-     then (Printf.fprintf stderr "does not exist or is not a directory: %s\n" x;
-           exit 1)
+     then (non_loc_error_message
+           (Printf.sprintf "does not exist or is not a directory: %s" x))
      else())
   (! include_dirs_ref)
 
@@ -55,8 +56,8 @@ let () =
 let () =
   let len = String.length file in
   if len < 4 || String.sub file (len - 3) 3 <> ".uc" then
-    (Printf.fprintf stderr "file lacks \".uc\" suffix: %s\n" file;
-     exit 1)
+    (non_loc_error_message
+     (Printf.sprintf "file lacks \".uc\" suffix: %s" file))
   else ()
 
 let () = ignore (parse_and_typecheck_file file)

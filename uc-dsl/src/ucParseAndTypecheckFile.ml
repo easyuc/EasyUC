@@ -10,6 +10,4 @@ open UcTypecheck
 let parse_and_typecheck_file file =
   let spec = parse_file file in
   try typecheck spec with
-  | TypeError (loc, msg) ->
-      error_message file (Some loc) msg
-
+  | TypeError (loc, msg) -> error_message loc msg
