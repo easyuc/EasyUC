@@ -13,17 +13,17 @@ let message_type_str mt =
 
 (* make column numbers as well as line numbers begin from 1 *)
 
-let loc_to_str (p : EcLocation.t) =
-  if fst p.loc_start = fst p.loc_end
+let loc_to_str (l : EcLocation.t) =
+  if fst l.loc_start = fst l.loc_end
   then Printf.sprintf "from line %d columns %d to %d"
-       (fst p.loc_start) (snd p.loc_start + 1) (snd p.loc_end + 1)
+       (fst l.loc_start) (snd l.loc_start + 1) (snd l.loc_end + 1)
   else Printf.sprintf "from line %d column %d to line %d column %d"
-       (fst p.loc_start) (snd p.loc_start + 1)
-       (fst p.loc_end) (snd p.loc_end + 1)
+       (fst l.loc_start) (snd l.loc_start + 1)
+       (fst l.loc_end) (snd l.loc_end + 1)
 
-let loc_to_str_raw (p : EcLocation.t) =
+let loc_to_str_raw (l : EcLocation.t) =
   Printf.sprintf "%d %d %d %d"
-  (fst p.loc_start) (snd p.loc_start + 1) (fst p.loc_end) (snd p.loc_end + 1)
+  (fst l.loc_start) (snd l.loc_start + 1) (fst l.loc_end) (snd l.loc_end + 1)
 
 let message res mt filename loco msg =
   let mt_str = message_type_str mt in
