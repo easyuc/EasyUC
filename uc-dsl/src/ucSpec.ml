@@ -28,13 +28,13 @@ type ty =
   | NamedTy of id
   | TupleTy of ty list
 
-type name_type = {id : id; ty : ty}
+type type_binding = {id : id; ty : ty}
 
 type message_body =
-  {id : id; params : name_type list}
+  {id : id; params : type_binding list}
 
 type message_def =
-  {dir : msg_dir; id : id; params : name_type list; port : id option}
+  {dir : msg_dir; id : id; params : type_binding list; port : id option}
 
 type comp_item = {sub_id : id; inter_id : id}
 
@@ -62,7 +62,7 @@ type msg_path = {inter_id_path: qid; msg_type : msg_type}
 
 type match_item =
   | Const of id
-  | ConstType of name_type
+  | ConstType of type_binding
   (*| Tuple of match_item list located*)
   | Wildcard of EcLocation.t
 
@@ -98,9 +98,9 @@ and instruction_l = instruction located
 
 type msg_match_code = {pattern_match : msg_match; code: instruction_l list;}
 
-type state_code = {vars : name_type list; mmcodes : msg_match_code list}
+type state_code = {vars : type_binding list; mmcodes : msg_match_code list}
 
-type state = {id : id; params : name_type list ; code : state_code}
+type state = {id : id; params : type_binding list ; code : state_code}
                 
 type state_def =
   | InitialState of state
@@ -110,12 +110,15 @@ type party_def = {id : id; serves : qid list; code : state_def list}
 
 type sub_item =
   | SubFunDecl of sub_fun_decl
-  | PartyDef of party_def
+  | PartyDef   of party_def
 
-(*either state_body is empty or both params and body are empty*)
+type fun_body =
+  | RealFunBody  of sub_item list
+  | IdealFunBody of state_def list
+
 type fun_def =
   {id : id; params : fun_param list; id_dir : id; id_adv : id option;
-   body : sub_item list; state_body : state_def list}
+   fun_body : fun_body}
 
 type sim_def =
   {id : id; uses : id; sims : id; sims_param_ids: id list;

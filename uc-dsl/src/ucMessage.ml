@@ -46,3 +46,9 @@ let warning_message = message (fun () -> ()) WarningMessage
 
 let non_loc_error_message msg =
   (Printf.eprintf "%s\n" msg; exit 1)
+
+(* called to indicate that reaching a given code branch should
+   be impossible *)
+
+let failure msg =
+  raise (Failure msg)

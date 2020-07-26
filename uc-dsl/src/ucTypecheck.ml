@@ -9,6 +9,7 @@ open UcTypes
 open UcSpec
 open UcTypedSpec
 open UcUtils
+open UcMessage
 
 (* circular references *)
 
@@ -47,10 +48,10 @@ let check_unique_id (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t =
 
 (* EC type checks *)
 
-let check_params (n_tl : name_type list) : typ_tyd IdMap.t = 
+let check_params (n_tl : type_binding list) : typ_tyd IdMap.t = 
   let nt_map = check_unique_id n_tl (fun nt -> nt.id) in
   IdMap.map
-  (fun (nt : name_type) -> 
+  (fun (nt : type_binding) -> 
      mk_loc (loc nt.id) ((check_type nt.ty), (index_of_ex nt n_tl)))
   nt_map
 
@@ -176,7 +177,7 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
       (match List.hd inits with
        | InitialState s   -> s.id
        | FollowingState _ ->
-           raise (Failure "impossible, list contains only InitialState"))
+           UcMessage.failure "impossible, list contains only InitialState")
   | _ -> type_error (loc id) ((unloc id) ^ " has more than one initial state")
 
 let check_state_decl (init_id : id) (s : state) : state_tyd = 
@@ -222,9 +223,9 @@ let getb_inter_id_paths (root : string) (ioid : string)
     match (unloc io) with
     | Basic b -> b
     | _       ->
-        raise (Failure
-               ("Cannot happen, this function is called only on Basic " ^
-                "interfaces")) in
+        failure
+        ("Cannot happen, this function is called only on Basic " ^
+         "interfaces") in
   let io = IdMap.find ioid ios in
   match (unloc io) with
   | Basic b       -> [([root],b)]
@@ -350,8 +351,9 @@ let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) =
         else type_error (loc id_i2_sio)
              ("adversarial_io " ^ uid_i2_sio ^ " doesn't exist.")
 
-let check_fun_decl (e_f_id : string->bool) (dir_ios : inter_tyd IdMap.t)
-                   (adv_ios : inter_tyd IdMap.t) (r_fun : fun_def) : fun_tyd =
+let check_fun_decl
+    (e_f_id : string -> bool) (dir_ios : inter_tyd IdMap.t)
+    (adv_ios : inter_tyd IdMap.t) (r_fun : fun_def) : fun_tyd =
   let params = check_real_fun_params dir_ios r_fun.params in 
   let () = check_exists_dir_io dir_ios r_fun.id_dir in
   let id_dir_io = unloc r_fun.id_dir in 
@@ -362,79 +364,95 @@ let check_fun_decl (e_f_id : string->bool) (dir_ios : inter_tyd IdMap.t)
             (let uid = unloc id in
              if exists_id adv_ios uid then Some uid
              else type_error (loc id)
-                  ("adversarial_io "^uid^" doesn't exist.")) in
-  let sub_items = check_unique_id r_fun.body get_real_fun_sub_item_id in
-  let () =
-    let dup_ids = IdMap.filter (fun id _ -> IdMap.mem id params) sub_items in
-    if IdMap.is_empty dup_ids then ()
-    else let id, dup = IdMap.choose dup_ids in
-         let lc=loc (get_real_fun_sub_item_id dup) in
-         type_error lc
-         ("The name " ^ id ^
-          " is the same name as one of the functionalities parameters.") in
-   let sf_map =
-         filter_map
-         (fun sub_i ->
-                match sub_i with
-                | SubFunDecl sf -> Some sf
-                | _ -> None)
-         sub_items in
-   let e_param = exists_id params and e_sf_id = exists_id sf_map in
-   let sub_funs =
-         IdMap.map (check_sub_fun_decl e_f_id e_param e_sf_id) sf_map in
-   let () = check_is_composite dir_ios r_fun.id_dir in
-   let (parties, states) =
-         if r_fun.state_body = []
-         then let () =
-                    match r_fun.id_adv with
-                    | Some id -> check_is_composite adv_ios id
-                    | _       -> () in
-               let p_map =
-                     filter_map
-                     (fun sub_i ->
-                            match sub_i with
-                            | PartyDef p -> Some p
-                            | _ -> None)
-                     sub_items in
-               let ps =
-                     IdMap.map
-                     (check_party_decl id_dir_io id_adv_io dir_ios adv_ios)
-                     p_map in
-               (check_parties_serve_direct_sum ps id_dir_io id_adv_io
-                dir_ios adv_ios;
-                (ps, IdMap.empty))
-         else match r_fun.id_adv with
-              | None ->
-                  type_error (loc r_fun.id)
-                  ("A functionality with no parties must implement " ^
-                   "a basic adversarial interface")
-              | Some id ->
-                  (check_exists_i2_sio adv_ios id;
-                   let ss = check_states r_fun.id r_fun.state_body in
-                   (IdMap.empty, ss)) in
-   mk_loc (loc r_fun.id)
-          {params = params; id_dir_io = id_dir_io; id_adv_io = id_adv_io;
-           sub_funs = sub_funs; parties = parties; states = states}
+                  ("adversarial interface " ^ uid ^ " doesn't exist.")) in
+  match r_fun.fun_body with
+  | RealFunBody sub_items  ->
+      let sub_items = check_unique_id sub_items get_real_fun_sub_item_id in
+      let () =
+        let dup_ids =
+          IdMap.filter (fun id _ -> IdMap.mem id params) sub_items in
+        if IdMap.is_empty dup_ids then ()
+        else let id, dup = IdMap.choose dup_ids in
+             let lc = loc (get_real_fun_sub_item_id dup) in
+             type_error lc
+             ("The name " ^ id ^
+              " is the same name as one of the functionalities parameters.") in
+      let sf_map =
+        filter_map
+        (fun sub_i ->
+               match sub_i with
+               | SubFunDecl sf -> Some sf
+               | _ -> None)
+        sub_items in
+      let e_param = exists_id params and e_sf_id = exists_id sf_map in
+      let sub_funs =
+        IdMap.map (check_sub_fun_decl e_f_id e_param e_sf_id) sf_map in
+      let () = check_is_composite dir_ios r_fun.id_dir in
+      let parties =
+        let () =
+          match r_fun.id_adv with
+          | Some id -> check_is_composite adv_ios id
+          | _       -> () in
+        let p_map =
+          filter_map
+          (fun sub_i ->
+             match sub_i with
+             | PartyDef p -> Some p
+             | _          -> None)
+          sub_items in
+        let ps =
+          IdMap.map
+          (check_party_decl id_dir_io id_adv_io dir_ios adv_ios)
+          p_map in
+        (check_parties_serve_direct_sum ps id_dir_io id_adv_io
+         dir_ios adv_ios;
+         ps) in
+      mk_loc (loc r_fun.id)
+      (FunBodyReal
+       {params = params; id_dir_io = id_dir_io; id_adv_io = id_adv_io;
+        sub_funs = sub_funs; parties = parties})
+  | IdealFunBody state_defs ->
+      let () = check_is_composite dir_ios r_fun.id_dir in
+      let states =
+        match r_fun.id_adv with
+        | None ->
+            type_error (loc r_fun.id)
+            ("An ideal functionality must implement a basic adversarial " ^
+             "interface")
+        | Some id ->
+            (check_exists_i2_sio adv_ios id;
+             check_states r_fun.id state_defs) in
+      mk_loc (loc r_fun.id)
+      (FunBodyIdeal
+       {id_dir_io = id_dir_io; id_adv_io = Option.get id_adv_io;
+        states = states})
 
 let get_dir_io_id_impl_by_fun (fid : string) (funs : fun_tyd IdMap.t) :
                                 string = 
-  let r_f = IdMap.find fid funs in (unloc r_f).id_dir_io
+  let func = IdMap.find fid funs in
+  match unloc func with
+  | FunBodyReal fbr -> fbr.id_dir_io
+  | FunBodyIdeal fbi -> fbi.id_dir_io
 
 let get_param_dir_io_ids (r_funs : fun_tyd IdMap.t) (rfid : string) :
                            string list = 
-  unlocs (unlocs (to_list((unloc (IdMap.find rfid r_funs)).params)))
+  let func = IdMap.find rfid r_funs in
+  match unloc func with
+  | FunBodyReal fbr -> unlocs (unlocs (to_list fbr.params))
+  | FunBodyIdeal _  -> []
 
 let check_sub_fun_params (funs : fun_tyd IdMap.t) : unit = 
   let get_dir_io_id rfid id =                
     let f = unloc (IdMap.find rfid funs) in
-    let p = IdMap.find_opt id f.params in
-    let s = IdMap.find_opt id f.sub_funs in
+    let p = IdMap.find_opt id (params_of_fun f) in
+    let s = IdMap.find_opt id (sub_funs_of_fun f) in
     match (p,s) with
     | (Some pm, None) -> unloc (unloc (fst pm))
     | (None, Some sf) -> get_dir_io_id_impl_by_fun ((unloc sf).fun_id) funs
     | _ ->
-        raise (Failure ("Impossible - we already checked that sub_fun " ^
-                        "params exist and are unique in check_sub_fun_decl")) in
+        failure
+        ("Impossible - we already checked that sub_fun " ^
+         "params exist and are unique in check_sub_fun_decl") in
   let get_dir_io_ids rfid ids =
     List.map (fun id -> get_dir_io_id rfid id) ids in
   let check_sf_ps rfid sf = 
@@ -456,7 +474,9 @@ let check_sub_fun_params (funs : fun_tyd IdMap.t) : unit =
    (fun idrf rf ->
           IdMap.for_all 
           (fun _ sf -> check_sf_ps idrf sf)
-          (unloc rf).sub_funs)
+          (match unloc rf with
+           | FunBodyReal fbr -> fbr.sub_funs
+           | FunBodyIdeal _  -> IdMap.empty))
    funs)
 
 type state_vars =
@@ -649,9 +669,9 @@ let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit =
 let get_declared_const_vars (sv : state_vars) = 
   IdMap.union
   (fun _ _ _ ->
-         raise (Failure
-                ("Impossible, we already checked params and local " ^
-                 "vars have different ids")))
+     failure
+     ("Impossible, we already checked params and local " ^
+      "vars have different ids"))
   sv.consts sv.vars
 
 let check_exists_and_has_compatible_type (vid : id) (typ : typ)
@@ -762,9 +782,9 @@ let get_var_type (sv : state_vars) (id : id) : typ =
   let vs =
     IdMap.union
     (fun _ _ ->
-           raise (Failure
-                  ("Impossible! we already checked that params and " ^
-                   "vars have different names")))
+       failure
+       ("Impossible! we already checked that params and " ^
+        "vars have different names"))
     sv.consts sv.vars in
   IdMap.find (unloc id) vs
 
@@ -893,7 +913,7 @@ let get_msg_def_for_msg_path (mp : msg_path) (bs : b_inter_id_path list) :
     match mp.msg_type with
     | MsgType id -> unloc id
     | OtherMsg _ ->
-        raise (Failure "OtherMsg doesn't have definition in interface") in
+        failure "OtherMsg doesn't have definition in interface" in
   let mdb = IdMap.find mt (snd bio) in
   unloc mdb
 
@@ -926,9 +946,9 @@ let check_send (msg : msg_instance) (bps : r_fb_inter_id_paths)
     | ( _ as p) when is_msg_path_inb_inter_id_paths p bps.internal ->
         check_send_internal msg' mdbc sv
     | _ ->
-        raise (Failure
-               ("impossible - the path is always in one of direct|" ^
-                "adversarial|internal")) in
+        failure
+        ("impossible - the path is always in one of direct|" ^
+         "adversarial|internal") in
   msg'
 
 let check_send_and_transition (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
@@ -978,9 +998,9 @@ and check_decode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
          | Tconstr (x, y) -> [Tconstr (x,y)]
          | Ttuple  t      -> t
          | _              ->
-             raise (Failure
-                    ("check_type is supposed to return only " ^
-                    "Tconstr or Ttuple.")) in
+             failure
+             ("check_type is supposed to return only " ^
+              "Tconstr or Ttuple.") in
        if List.length m_is <> List.length dt
        then type_error (get_loc_match_item_list m_is)
             ("The number of bindings is different from the arity of " ^
@@ -1024,7 +1044,7 @@ let contains_sa_tor_f (is : instruction_l list) : bool =
 
 let rec check_ends_are_sa_tor_f (is : instruction_l list) : unit = 
   match is with
-  | [] -> raise (Failure "the instruction list cannot be empty")
+  | [] -> failure "the instruction list cannot be empty"
   | {pl_loc = _; pl_desc = (SendAndTransition _)} :: [] -> ()
   | {pl_loc = l; pl_desc = (SendAndTransition _)} :: _ :: _ ->
       type_error l
@@ -1092,8 +1112,8 @@ let get_keys (m : 'a IdMap.t) : QidSet.t =
 
 let get_internal_ports (r_f : fun_body) : QidSet.t = 
   QidSet.union
-  (get_keys r_f.parties)
-  (QidSet.union (get_keys r_f.params) (get_keys r_f.sub_funs))
+  (get_keys (parties_of_fun r_f))
+  (QidSet.union (get_keys (params_of_fun r_f)) (get_keys (sub_funs_of_fun r_f)))
 
 let filterb_inter_id_paths (bps : b_inter_id_path list) (pfxs : string list located list) :
                        b_inter_id_path list = 
@@ -1105,10 +1125,10 @@ let get_fb_inter_id_paths (dir_ios : inter_tyd IdMap.t)
                           (adv_ios : inter_tyd IdMap.t)
                           (f : fun_tyd) : r_fb_inter_id_paths = 
   let uf = unloc f in
-  let iddir = uf.id_dir_io in
+  let iddir = id_dir_io_of_fun uf in
   let direct = getb_inter_id_paths iddir iddir dir_ios in
   let adversarial = 
-    match uf.id_adv_io with
+    match id_adv_io_of_fun uf with
     | Some id -> getb_inter_id_paths id id adv_ios
     | None -> [] in
   {direct = direct; adversarial = adversarial; internal = []}
@@ -1127,19 +1147,19 @@ let get_r_fb_inter_id_paths (dir_ios : inter_tyd IdMap.t)
     (fun sfid (sf : sub_fun_decl_tyd) ->
            let did = get_dir_io_id_impl_by_fun ((unloc sf).fun_id) funs in
            getb_inter_id_paths sfid did dir_ios)
-    ur_f.sub_funs in
+    (sub_funs_of_fun ur_f) in
   let internal_pm =
     IdMap.mapi
     (fun pid p -> 
            let did = unloc (unloc (fst p)) in
            getb_inter_id_paths pid did dir_ios)
-    ur_f.params in
+    (params_of_fun ur_f) in
   let internal_m =
     IdMap.union
     (fun _ _ _ ->
-           raise (Failure
-                  ("Impossible, we already checked params and " ^
-                   "subfuns have different ids")))
+       failure
+       ("Impossible, we already checked params and " ^
+        "subfuns have different ids"))
     internal_sfm internal_pm in
   let internal = IdMap.fold (fun _ bps l -> l @ bps) internal_m [] in
   {direct = direct; adversarial = adversarial; internal = internal}
@@ -1157,34 +1177,43 @@ let check_state (ur_f : fun_body) (states : state_tyd IdMap.t)
 let check_party_code dir_ios adv_ios funs = 
   IdMap.map 
   (fun r_f -> 
-         let ur_f = unloc r_f in 
+     match unloc r_f with
+     | FunBodyReal ur_f ->
          let parties = ur_f.parties in
          let parties' =
            IdMap.map 
            (fun p -> 
-                  let up = unloc p in
-                  let bps = get_r_fb_inter_id_paths dir_ios adv_ios funs r_f p in
-                  let states = up.code in
-                  let states' =
-                        IdMap.map (check_state ur_f states bps) states  in
-                  mk_loc (loc p) {serves = up.serves; code = states'})
+              let up = unloc p in
+              let bps = get_r_fb_inter_id_paths dir_ios adv_ios funs r_f p in
+              let states = up.code in
+              let states' =
+                IdMap.map (check_state (unloc r_f) states bps) states  in
+              mk_loc (loc p) {serves = up.serves; code = states'})
            parties in
+         mk_loc (loc r_f)
+         (FunBodyReal
+          {params = ur_f.params; id_dir_io = ur_f.id_dir_io;
+           id_adv_io = ur_f.id_adv_io; sub_funs = ur_f.sub_funs;
+           parties = parties'})
+     | FunBodyIdeal ur_f ->
          let states = ur_f.states in
          let bps = get_fb_inter_id_paths dir_ios adv_ios r_f in
-         let states' = IdMap.map (check_state ur_f states bps) states in
+         let states' = IdMap.map (check_state (unloc r_f) states bps) states in
          mk_loc (loc r_f)
-                {params = ur_f.params; id_dir_io = ur_f.id_dir_io;
-                 id_adv_io = ur_f.id_adv_io; sub_funs = ur_f.sub_funs;
-                 parties = parties'; states = states'})
+         (FunBodyIdeal
+          {id_dir_io = ur_f.id_dir_io; id_adv_io = ur_f.id_adv_io;
+           states = states'}))
   funs
 
 let get_sf_refs_to_f_in_rf (funs : fun_tyd IdMap.t) (fid : string) : IdSet.t = 
-  let rfb = IdMap.find fid funs in
-  let sfrf =
-    IdMap.filter
-    (fun _ r -> exists_id funs (unloc r).fun_id)
-    (unloc rfb).sub_funs in
+  match unloc (IdMap.find fid funs) with
+  | FunBodyReal fbr ->
+      let sfrf =
+        IdMap.filter
+        (fun _ r -> exists_id funs (unloc r).fun_id)
+        fbr.sub_funs in
   IdMap.fold (fun _ r set -> IdSet.add (unloc r).fun_id set) sfrf IdSet.empty
+  | FunBodyIdeal _  -> IdSet.empty
 
 let check_circ_refs_in_r_funs (rfs : fun_tyd IdMap.t) =
   check_circ_refs get_sf_refs_to_f_in_rf rfs
@@ -1271,7 +1300,7 @@ let check_sim_state_code (bps : b_inter_id_path list) (ss : state_sig IdMap.t)
 
 (* TODO : fix this *)
 let disj (_ : 'key) (_ : 'a) (_ : 'a) = 
-  raise (Failure "Not disjoint!")
+  failure "Not disjoint!"
 
 let disj_union (qml : 'a QidMap.t list) : 'a QidMap.t = 
   List.fold_left (fun qm1 qm2 -> QidMap.union disj qm1 qm2) QidMap.empty qml
@@ -1287,18 +1316,18 @@ let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
           IdMap.fold
           (fun sfid sfd l ->
                  (get_sc funs (unloc sfd).fun_id (pfx @ [sfid])) :: l)
-          urf.sub_funs [])
-    else raise (Failure
-                ("Impossible! We already checked that all referenced " ^
-                 "functionalities exist")) in
+          (sub_funs_of_fun urf) [])
+    else failure
+         ("Impossible! We already checked that all referenced " ^
+          "functionalities exist") in
   let urf = unloc(IdMap.find r_f funs) in
-  let pids = IdMap.fold (fun pid _ l -> pid :: l) urf.params [] in
+  let pids = IdMap.fold (fun pid _ l -> pid :: l) (params_of_fun urf) [] in
   let qpids = List.map (fun pid -> r_f :: [pid]) pids in
   disj_union(get_sc funs r_f [r_f] :: List.map2 (get_sc funs) ps qpids)
                 
 let get_component_inter_id_paths (adv_ios : inter_tyd IdMap.t) (f : fun_body) :
                              b_inter_id_path list = 
-  match f.id_adv_io with
+  match id_adv_io_of_fun f with
   | Some id -> getb_inter_id_paths id id adv_ios 
   | None    -> []
 
@@ -1339,7 +1368,7 @@ let get_simb_inter_id_paths (adv_ios : inter_tyd IdMap.t) (uses : string)
   bps []
 
 let get_sim_internal_ports (cs : fun_body QidMap.t) : QidSet.t = 
-  let rcsips = QidMap.map (fun fb -> get_internal_ports fb ) cs in
+  let rcsips = QidMap.map (fun fb -> get_internal_ports fb) cs in
   let rcsqips =
     QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q@ip) ips) rcsips in
   QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
@@ -1375,8 +1404,9 @@ let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) =
 let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let () = check_exists_f funs rf in
   let f = unloc (IdMap.find (unloc rf) funs) in
-  if f.parties = IdMap.empty
-  then type_error (loc rf) ("The simulated functionality must have parties.")
+  if not (is_real_fun f)
+  then type_error (loc rf)
+       ("The simulated functionality must be a real functionality.")
 
 let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
                          (rf : id) (params : id list) = 
@@ -1386,7 +1416,7 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
     (fun id -> get_dir_io_id_impl_by_fun id funs) (unlocs params) in
   if List.length d_ios <> List.length d_ios'
   then type_error (loc rf)
-                  ("Wrong number of parameters for functionality.")
+       ("Wrong number of parameters for functionality.")
   else let () =
          List.iteri
          (fun i pid ->
@@ -1398,18 +1428,15 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
        List.iter
        (fun pid ->
               let f = unloc (IdMap.find (unloc pid) funs) in
-              if f.parties <> IdMap.empty
-                 then type_error (loc pid)
-                      ("The parameter to simulated functionality cannot " ^
-                       "have parties")
-                 else match f.id_adv_io with
-                      | None ->
-                          type_error (loc pid)
-                          ("The parameter to simulated functionality " ^
-                           "must implement an adversarial_io")
-                      | Some _ -> () (* we already checked that it is *)
-                        (* not composite when checking FunDecl for *)
-                        (* partyless funs *))
+              match f with
+              | FunBodyReal _ ->
+                  type_error (loc pid)
+                  ("The parameter to simulated functionality must " ^
+                   "be an ideal functionality")
+              | FunBodyIdeal _  ->
+                  (* we know the ideal functionality implements a basic
+                     adversarial interface *)
+                  ())
        params
 
 let check_sim_decl (_ : inter_tyd IdMap.t) (i2s_ios : inter_tyd IdMap.t)
@@ -1454,7 +1481,7 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
   (fun def ->
          match fm def with
          | Some x -> x
-         | None   -> raise (Failure "!impossible!"))
+         | None   -> failure "!impossible!")
   flt
 
 let check_defs def_l = 

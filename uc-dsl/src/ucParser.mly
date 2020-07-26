@@ -254,7 +254,7 @@ inter :
       { Composite cis }
 
 message_body :
-  | msg_id = id_l; LPAREN; params = name_types; RPAREN
+  | msg_id = id_l; LPAREN; params = type_bindings; RPAREN
       { {id = msg_id; params = params} : message_body }
 
 message_def :
@@ -277,91 +277,86 @@ comp_item :
 
 (* Functionalities *)
 
-(* Functionalities are checked by check_funs function (UcTypecheck)
-   There are two different types of functionalities - real and ideal.
-   For both of them the implemented interfaces must exist, and the
-   direct interface must be composite.  An ideal functionality must
-   implement a basic adversarial interface, while a real functionality
-   can optionally implement a composite adversarial interface.
-
-  (checked by : check_fun_decl; tested by :
-  testRealFunImplements2DirIOs, testRealFunImplements2AdvIOs,
-  testIdealFunImplements2DirIOs, testIdealFunImplements2AdvIOs,
-  testIdealFunImplementsCompositeAdvIO)
-
-  A real functionality can have parameters which is a list of name :
-  interface pairs.  The parameter names are unique and interfaces are
-  direct and composite (and thus can be implemented by a
-  functionality).
-
-  (checked by : check_real_fun_params tested by :
-  testRealFunParamIONonExisting, testRealFunParamIdNotUnique,
-  testRealFunParamIONotComposite, testRealFunParamIOAdversarial) *)
+(* A functionality has a name, parameter list, an implementation
+   specification, and a body. Parameters are composite direct
+   interfaces. Parameter lists may be empty, in which case the "()"
+   may be omitted.  A functionality always implements a composite
+   direct interface (listed first), and optionally implements an
+   adversarial interface (listed second). The body of the
+   functionality has a different form depending upon whether the
+   functionality is real or ideal. A real functionality may have a
+   non-zero number of parameters, but an ideal functionality must have
+   no parameters. An ideal functionality must implement a basic
+   adversarial interface. *)
 
 fun_def :        
-  | FUNCT; name = id_l; parameters = fun_params; IMPLEM;
-    dir_id = id_l; adv_id = option(id_l); rf_body = real_fun_body
-      { {id = name; params = parameters; id_dir = dir_id;
-         id_adv = adv_id; body = rf_body; state_body=[]} }
-  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_id = id_l;
-    adv_id = option(id_l); rf_body = real_fun_body
-      { {id = name; params=[]; id_dir = dir_id;
-         id_adv = adv_id; body = rf_body; state_body=[]} }
-  | FUNCT; name = id_l; LPAREN; RPAREN; IMPLEM; dir_id = id_l;
-    adv_id = option(id_l); if_body = party_code
-      { {id = name; params=[]; id_dir = dir_id;
-         id_adv = adv_id; body=[]; state_body = if_body} }
+  | FUNCT; name = id_l; params = option(fun_params);
+    IMPLEM; dir_id = id_l; adv_id = option(id_l);
+    fun_body = fun_body
+      { let params =
+          match params with
+          | None        -> []
+          | Some params -> params in
+        let is_real =
+          match fun_body with
+          | RealFunBody _  -> true
+          | IdealFunBody _ -> false in
+        let () =
+          if not is_real && not (List.is_empty params)
+          then parse_error (loc name)
+               "ideal functionalities may not have parameters"
+          else () in
+        {id = name; params = params;
+         id_dir = dir_id; id_adv = adv_id;
+         fun_body = fun_body} }
 
 fun_params : 
-  | LPAREN; fps = separated_nonempty_list(COMMA, fun_param); RPAREN
+  | LPAREN; fps = separated_list(COMMA, fun_param); RPAREN
       { fps }
 
 fun_param : 
   | name = id_l; COLON; id_dir = id_l
       { {id = name; id_dir = id_dir} : fun_param }
 
+fun_body :
+  | rfb = real_fun_body
+      { RealFunBody rfb }
+  | ifb = ideal_fun_body
+      { IdealFunBody ifb }
+
 real_fun_body : 
   | LBRACE; sil = nonempty_list(sub_item); RBRACE
       { sil }
 
-(* The body of a real functionality consists of subfunctionalities and
-   parties. Their names must be unique and different from the names of
-   the parameters.  The subfunctionality must have a type of an
-   existing functionality, and it's parameters must be other
-   subfunctionalities and parameters.
+ideal_fun_body :
+  | sm = state_machine
+      { sm }
 
-   (checked by check_sub_fun_decl, check_fun_decl; tested by :
-   testSubFunNonExistingFun, testDuplicateSubFunId,
-   testSubFunIdSameAsParamId)
+(* The body of a real functionality consists of sub-items: instances
+   of subfunctionalities (already defined functionalities applied to
+   arguments - when there are no arugments, the "()" may be omitted)
+   and parties. Their names must be unique and different from the
+   names of the parameters.
 
-   Once the declarations of all functionalities are checked, the
-   subfunctionalities are further checked by for circular references
-   (a functionality cannot be its own subfunctionality),
-
-   (checked by check_circ_refs_in_r_funs; tested by :
-   testCircFunRefSingleStep, testCircFunRefTwoSteps )
-
-   and the prameters are checked to match the direct interface types
-   of subfunctionality.
-
-   (checked by check_sub_fun_params; tested by :
-   testSubFunRFWrongParamNo, testSubFunRFWrongParamTypeIF,
-   testSubFunRFWrongParamTypeRF, testSubFunRFWrongParamTypeParam,
-   testSubFunIdSameAsParamId) *)
+   The body of an ideal functionality is a state machine. *)
 
 sub_item : 
   | sfd = sub_fun_decl
       { SubFunDecl sfd }
-  | pd  = party_def
+  | pd = party_def
       { PartyDef pd }
 
 sub_fun_decl : 
-  | SUBFUN; name = id_l; EQ; fun_name = id_l; params = param_list
-      { {id = name; fun_id = fun_name; fun_param_ids = params} : sub_fun_decl }
+  | SUBFUN; name = id_l; EQ; fun_name = id_l; args = option(fun_args)
+      { let args =
+          match args with
+          | None      -> []
+          | Some args -> args in
+        {id = name; fun_id = fun_name; fun_param_ids = args} : sub_fun_decl }
 
-param_list : 
-  | LPAREN; params = separated_list(COMMA, id_l); RPAREN
-      { params }
+fun_args : 
+  | LPAREN; args = separated_list(COMMA, id_l); RPAREN
+      { args }
 
 (* The party serves exactly one basic direct interface that is a
    component of th e composite direct interface implemented by the
@@ -381,16 +376,16 @@ param_list :
    testPartiesDontServeEntireDirIO, testPartiesDontServeEntireAdvIO) *)
 
 party_def : 
-  | PARTY; name = id_l; serves = serves; code = party_code
-     { {id = name; serves = serves; code = code} }
+  | PARTY; name = id_l; serves = serves; sm = state_machine
+     { {id = name; serves = serves; code = sm} }
 
 serves : 
   | SERVES; sl = separated_list(COMMA, qid)
       { sl }
 
-party_code : 
-  | LBRACE; sdl = nonempty_list(state_def) RBRACE
-      { sdl }
+state_machine : 
+  | LBRACE; sds = nonempty_list(state_def) RBRACE
+      { sds }
 
 (* The party code consists of a list of states.  The states must have
    unique names, and there must be exactly one initial state.
@@ -406,8 +401,9 @@ party_code :
 
 state_def : 
   | INITIAL; STATE; name = id_l; code = state_code
-      { InitialState   {id = name; params=[]; code = code}  }
-  | STATE; name = id_l; LPAREN; params = name_types; RPAREN; code = state_code
+      { InitialState {id = name; params = []; code = code}  }
+  | STATE; name = id_l; LPAREN; params = type_bindings; RPAREN;
+    code = state_code
       { FollowingState {id = name; params = params; code = code} }
 
 state_code : 
@@ -543,7 +539,7 @@ t_m :
 match_item : 
   | id = id_l
       { Const id }
-  | nt = name_type
+  | nt = type_binding
       { ConstType nt }
   | l = loc(UNDERSCORE)
       { Wildcard (loc l) }
@@ -571,8 +567,12 @@ msg_type :
 
 sim_def : 
   | SIM; name = id_l; USES uses = id_l; SIMS sims = id_l;
-    params = param_list; body = sim_code
-      { {id = name; uses = uses; sims = sims; sims_param_ids = params;
+    args = option(fun_args); body = sim_code
+      { let args =
+          match args with
+          | None      -> []
+          | Some args -> args in
+        {id = name; uses = uses; sims = sims; sims_param_ids = args;
          body = body } }
 
 (* The syntax for simulator code is the same as for party code, except
@@ -620,7 +620,7 @@ sim_code :
 state_def_sim : 
   | INITIAL; STATE; name = id_l; code = state_code_sim
       { InitialState {id = name; params=[]; code = code} }
-  | STATE; name = id_l; LPAREN; params = name_types; RPAREN;
+  | STATE; name = id_l; LPAREN; params = type_bindings; RPAREN;
     code = state_code_sim
       { FollowingState {id = name; params = params; code = code} }
 
@@ -815,11 +815,11 @@ state_instance :
    more info on what was removed from ec_types look at documentation
    in UcTypes. *)
 
-name_type : 
-  | name = id_l; COLON; t = ty; { {id = name; ty = t} : name_type }
+type_binding : 
+  | name = id_l; COLON; t = ty; { {id = name; ty = t} : type_binding }
 
-name_types : 
-  | ps = separated_list(COMMA, name_type) { ps }
+type_bindings : 
+  | ps = separated_list(COMMA, type_binding) { ps }
 
 ty : 
   | name = id_l

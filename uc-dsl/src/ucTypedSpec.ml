@@ -49,11 +49,56 @@ type party_def_body =
 
 type party_def_tyd = party_def_body located
 
-(*either states is an empty map or both sub_funs and parties are empty maps*)
+type real_fun_body =
+  {params : (comp_item_tyd * int) IdMap.t;
+   id_dir_io : string;
+   id_adv_io : string option;
+   sub_funs :  sub_fun_decl_tyd IdMap.t;
+   parties :  party_def_tyd IdMap.t}
+
+type ideal_fun_body =
+  {id_dir_io : string;
+   id_adv_io : string;
+   states :  state_tyd IdMap.t}
+
 type fun_body =
-  {params : (comp_item_tyd * int) IdMap.t; id_dir_io : string;
-   id_adv_io : string option; sub_funs :  sub_fun_decl_tyd IdMap.t;
-   parties :  party_def_tyd IdMap.t; states :  state_tyd IdMap.t}
+  | FunBodyReal of real_fun_body
+  | FunBodyIdeal of ideal_fun_body
+
+let is_real_fun fb =
+  match fb with
+  | FunBodyReal _  -> true
+  | FunBodyIdeal _ -> false
+
+let params_of_fun f =
+  match f with
+  | FunBodyReal fbr -> fbr.params
+  | FunBodyIdeal _  -> IdMap.empty
+
+let id_dir_io_of_fun f =
+  match f with
+  | FunBodyReal fbr  -> fbr.id_dir_io
+  | FunBodyIdeal fbi -> fbi.id_dir_io
+
+let id_adv_io_of_fun f =
+  match f with
+  | FunBodyReal fbr  -> fbr.id_adv_io
+  | FunBodyIdeal fbi -> Some fbi.id_adv_io
+
+let sub_funs_of_fun f =
+  match f with
+  | FunBodyReal fbr -> fbr.sub_funs
+  | FunBodyIdeal _  -> IdMap.empty
+
+let parties_of_fun f =
+  match f with
+  | FunBodyReal fbr -> fbr.parties
+  | FunBodyIdeal _  -> IdMap.empty
+
+let states_of_fun f =
+  match f with
+  | FunBodyReal _    -> IdMap.empty
+  | FunBodyIdeal fbi -> fbi.states
 
 type fun_tyd = fun_body located
 

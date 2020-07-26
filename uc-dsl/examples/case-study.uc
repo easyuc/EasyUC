@@ -18,7 +18,7 @@ adversarial FwAdv {
   out fw_obs(pt1 : port, pt2 : port, u : univ)
 }
 
-functionality Forw() implements FwDir FwAdv {
+functionality Forw implements FwDir FwAdv {
   initial state Init {
     match message with
       pt1@fw_req(pt2, u) => {
@@ -64,9 +64,9 @@ direct KEDir {
   Pt2 : KEDirPt2
 }
 
-functionality KEReal() implements KEDir {
-  subfun Fw1 = Forw()
-  subfun Fw2 = Forw()
+functionality KEReal implements KEDir {
+  subfun Fw1 = Forw
+  subfun Fw2 = Forw
 
   party Pt1 serves KEDir.Pt1 {
     initial state WaitReq1 {
@@ -149,7 +149,7 @@ adversarial KEI2S {
   out ke_sim_req2()
 }
 
-functionality KEIdeal() implements KEDir KEI2S {
+functionality KEIdeal implements KEDir KEI2S {
   initial state WaitReq1 {
     match message with
       pt1@ke_req1(pt2) => {
@@ -273,7 +273,7 @@ direct SMCDir {
 }
 
 functionality SMCReal(KE : KEDir) implements SMCDir {
-  subfun Fwd = Forw()
+  subfun Fwd = Forw
 
   party Pt1 serves SMCDir.Pt1 {
     initial state WaitReq {
@@ -343,7 +343,7 @@ adversarial SMC2Sim {
   in sim_rsp()
 }
 
-functionality SMCIdeal() implements SMCDir SMC2Sim {
+functionality SMCIdeal implements SMCDir SMC2Sim {
   initial state WaitReq {
     match message with 
       pt1@smc_req(pt2, t) => {
