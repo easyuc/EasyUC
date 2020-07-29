@@ -521,7 +521,6 @@ msg_match_code :
 msg_match : 
   | port_const = id_l; AT; path = msg_path; tuple_match = option(t_m)
       { {port_var = Some port_const; path = path; tuple_match = tuple_match} }
-
   | path = msg_path; tuple_match = option(t_m)
       { {port_var = None; path = path; tuple_match = tuple_match} }
 
@@ -801,20 +800,18 @@ send_and_transition :
       { {msg = msg; state = state} }
 
 msg_instance : 
-  | path = msg_path; LPAREN;
-    tuple_instance = separated_list(COMMA, expression); RPAREN;
-    port_var = option(dest)
-      { {path = path; tuple_instance = tuple_instance; port_var = port_var} }
+  | path = msg_path; args = option(args); port_var = option(dest)
+      { let args = args |? [] in
+        {path = path; args = args; port_var = port_var} }
 
 dest :
   | AT; pv = id_l
       { pv }
 
 state_instance : 
-  | id = id_l; LPAREN; params = separated_list(COMMA, expression); RPAREN
-      { {id = id; params = Some params} }
-  | id = id_l
-      { {id = id; params = None} }
+  | id = id_l; args = option(args)
+      { let args = args |? [] in
+        {id = id; args = args} }
 
 (* Types *)
 
@@ -842,6 +839,10 @@ ty_br :
       { TupleTy (tuphd :: tuptl) }
 
 (* Expressions *)
+
+args :
+  LPAREN; args = separated_list(COMMA, expression); RPAREN
+    { args }
 
 (* The syntax for expressions and operators is a simplified version of
    syntax from EcParser of EasyCrypt. *)

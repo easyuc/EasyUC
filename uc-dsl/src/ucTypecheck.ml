@@ -444,14 +444,14 @@ let init_state_vars (s : state_body) (ports : QidSet.t)
   {flags = flags; internal_ports = ports; consts = consts;
    vars = vars; initialized_vs = IdSet.empty}
 
-type state_sig = typ list option
+type state_sig = typ list
 
 let get_state_sig (s : state_body) : state_sig = 
-  if s.is_initial then None
+  if s.is_initial then []
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
        let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       Some (fst (List.split tord))
+       (fst (List.split tord))
 
 let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
   IdMap.map (fun s -> get_state_sig (unloc s) ) states
@@ -785,28 +785,21 @@ let check_transition (si : state_instance) (ss : state_sig IdMap.t)
     try IdMap.find (unloc(si.id)) ss with
       Not_found ->
         type_error (loc si.id) ("Non-existing state : " ^ (unloc si.id)) in
-  match ssig, si.params with
-  | None, None   -> ()
-  | None, Some _ ->
-      type_error (loc si.id)
-      "State doesn't have parameters, do you have reduntant parentheses?"
-  | Some _, None ->
-      type_error (loc si.id) "State has parameters, none are provided."
-  | Some sp, Some params -> 
-      if List.length sp <> List.length params
-      then type_error (loc si.id) "Wrong number of parameters."
-      else let te = List.combine sp params in
-           List.iteri
-           (fun i (sigt,sip) -> 
-                  let et = check_expression sv sip in
-                  if sigt <> et && sigt<>univ_type
-                  then type_error (loc sip)
-                       (string_of_int (i+1) ^ ". parameter of state " ^
-                        unloc si.id ^ " has type " ^ string_of_typ sigt ^
-                        ", which is incompatible with provided type " ^
-                        string_of_typ et)
-                  else ())
-           te
+  let sp = ssig and args = si.args in
+  if List.length sp <> List.length args
+  then type_error (loc si.id) "Wrong number of arguments."
+  else let te = List.combine sp args in
+       List.iteri
+       (fun i (sigt, sip) -> 
+              let et = check_expression sv sip in
+              if sigt <> et && sigt <> univ_type
+              then type_error (loc sip)
+                   (string_of_int (i+1) ^ ". parameter of state " ^
+                    unloc si.id ^ " has type " ^ string_of_typ sigt ^
+                    ", which is incompatible with type " ^
+                    string_of_typ et ^ " of provided argument")
+              else ())
+       te
 
 let check_msg_content_values (es : expression_l list) (mc : typ_tyd IdMap.t)
                              (sv : state_vars) : unit = 
@@ -829,7 +822,7 @@ let check_send_direct (msg : msg_instance) (mc : typ_tyd IdMap.t)
         (check_exists_and_has_compatible_type p port_type sv;
          check_initialized sv p)
     | None   -> type_error l ("Missing destination port.") in
-  check_msg_content_values msg.tuple_instance mc sv
+  check_msg_content_values msg.args mc sv
 
 let check_send_adversarial (msg : msg_instance) (mc : typ_tyd IdMap.t)
                            (sv : state_vars) : unit = 
@@ -839,7 +832,7 @@ let check_send_adversarial (msg : msg_instance) (mc : typ_tyd IdMap.t)
     | Some _ ->
         type_error l "Only direct messages can have destination port."
     | None   -> () in
-  check_msg_content_values msg.tuple_instance mc sv
+  check_msg_content_values msg.args mc sv
 
 let check_send_internal (msg : msg_instance) (mc : typ_tyd IdMap.t)
                         (sv : state_vars) : unit = 
@@ -851,7 +844,7 @@ let check_send_internal (msg : msg_instance) (mc : typ_tyd IdMap.t)
                    ("Messages to subfunctionalities cannot have " ^
                     "destination port.")
     | None -> () in
-  check_msg_content_values msg.tuple_instance mc sv
+  check_msg_content_values msg.args mc sv
 
 let is_msg_path_inb_inter_id_paths (mp : msg_path) (bps : b_inter_id_path list) : bool = 
   let bpo = List.find_opt (fun bp -> fst bp = unlocs mp.inter_id_path) bps in
@@ -876,7 +869,7 @@ let check_send_msg_path (msg : msg_instance) (bps : r_fb_inter_id_paths)
   let ps = get_outgoing_msg_paths bps in
   let path' = check_msg_path ps msg.path in
   let msg' =
-    {path = path'; tuple_instance = msg.tuple_instance;
+    {path = path'; args = msg.args;
      port_var = msg.port_var} in
   let () =
     if List.mem "simulator" sv.flags && msg.path <> msg'.path

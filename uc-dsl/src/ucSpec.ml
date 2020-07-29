@@ -78,9 +78,9 @@ type expression =
 and expression_l = expression located
 
 type msg_instance =
-  {path : msg_path; tuple_instance : expression_l list; port_var : id option}
+  {path : msg_path; args : expression_l list; port_var : id option}
 
-type state_instance = {id : id; params : expression_l list option}
+type state_instance = {id : id; args : expression_l list}
 
 type send_and_transition = {msg : msg_instance; state : state_instance}
 
