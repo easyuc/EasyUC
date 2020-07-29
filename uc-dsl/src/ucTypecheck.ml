@@ -458,9 +458,9 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
 
 let string_of_msg_path (mp : msg_path) : string = 
   let siop = string_of_i_opath (unlocs mp.inter_id_path) in
-  match mp.msg_type with 
-  | MsgType id -> siop ^ "." ^ (unloc id)
-  | OtherMsg _ -> siop ^ ".othermsg"
+  match mp.msg_or_other with 
+  | MsgPathId id -> siop ^ "." ^ (unloc id)
+  | MsgPathOtherMsg _ -> siop ^ ".othermsg"
 
 let string_of_msg_pathl (mpl : msg_path list) : string = 
   string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
@@ -486,15 +486,15 @@ let get_outgoing_msg_paths (bps : r_fb_inter_id_paths) : r_fb_inter_id_paths =
     internal = filterb_io_ps In bps.internal }
 
 let msg_loc (mp : msg_path) : EcLocation.t = 
-  match mp.msg_type with
-  | MsgType id -> loc id
-  | OtherMsg l -> l
+  match mp.msg_or_other with
+  | MsgPathId id -> loc id
+  | MsgPathOtherMsg l -> l
 
 let msg_paths_of_b_inter_id_path (bp : b_inter_id_path) : msg_path list =   
   IdMap.fold
   (fun id _ l ->
          { inter_id_path = dummylocl (fst bp);
-           msg_type = MsgType (dummyloc id) } :: l)
+           msg_or_other = MsgPathId (dummyloc id) } :: l)
   (snd bp) []
 
 let mp_of_bpl (bpl : b_inter_id_path list) : msg_path list = 
@@ -512,9 +512,9 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
   let filter_by_msg_type (mt : id) (mpl : msg_path list) : msg_path list = 
     List.filter
     (fun p ->
-           match p.msg_type with
-           | MsgType mt' -> (unloc mt') = (unloc mt)
-           | _           -> false)
+       match p.msg_or_other with
+       | MsgPathId mt' -> (unloc mt') = (unloc mt)
+       | _             -> false)
     mpl in
   let filter_by_port_name_msg_type (pt : id) (mt : id)
                                    (mpl : msg_path list) : msg_path list = 
@@ -542,14 +542,14 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
                   List.map
                   (fun id -> mk_loc l (unloc id))
                   ret.inter_id_path;
-                msg_type = mp.msg_type }
+                msg_or_other = mp.msg_or_other }
         else type_error l
                         ("Internal messages must have full paths. " ^
                          "Did you mean " ^ (string_of_msg_path (List.hd mtch)) ^
                           " ?")
     | _ -> ambiguous mtch in
-  match mp.msg_type with
-  | MsgType mt -> 
+  match mp.msg_or_other with
+  | MsgPathId mt -> 
       if List.exists
          (fun p -> string_of_msg_path p = string_of_msg_path mp)
          allps
@@ -565,7 +565,7 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
                    let imtch = filter ips in
                    filtered mtch imtch
             | _ ->  unexpected ())
-  | OtherMsg _ ->
+  | MsgPathOtherMsg _ ->
       if (List.exists
           (fun p -> qid1_starts_with_qid2 p.inter_id_path mp.inter_id_path)
           allps)
@@ -574,9 +574,10 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
 let remove_covered_paths (mps : msg_path list) (mp : msg_path) :
                            msg_path list = 
   let covered mp1 mp2 = 
-    match mp2.msg_type with
-    | MsgType _  -> string_of_msg_path mp1 = string_of_msg_path mp2
-    | OtherMsg _ -> qid1_starts_with_qid2 mp1.inter_id_path mp2.inter_id_path in
+    match mp2.msg_or_other with
+    | MsgPathId _       -> string_of_msg_path mp1 = string_of_msg_path mp2
+    | MsgPathOtherMsg _ ->
+        qid1_starts_with_qid2 mp1.inter_id_path mp2.inter_id_path in
   let rem = List.filter (fun mp' -> not (covered mp' mp) ) mps in
   if List.length mps = List.length rem
   then type_error (msg_loc mp)
@@ -590,7 +591,7 @@ let msg_paths_of_r_fb_inter_id_paths_w_othermsg (bps : r_fb_inter_id_paths) :
         List.map
         (fun bp ->
              { inter_id_path = dummylocl (fst bp);
-               msg_type = OtherMsg _dummy })
+               msg_or_other = MsgPathOtherMsg _dummy })
         (flatten_r_fb_inter_id_paths bps) in
   mps @ omps
 
@@ -599,12 +600,12 @@ let check_mm_ds_non_empty (bps : r_fb_inter_id_paths) (mpl : msg_path list) :
   let mps = msg_paths_of_r_fb_inter_id_paths_w_othermsg bps in
   List.fold_left (fun mps mp -> remove_covered_paths mps mp) mps mpl
 
-let check_msg_match_deltas (rfbps : r_fb_inter_id_paths) (mml : msg_match list) :
+let check_msg_match_deltas (rfbps : r_fb_inter_id_paths) (mml : msg_pat list) :
                              unit = 
   let mps = get_incoming_msg_paths rfbps in
   let r =
         check_mm_ds_non_empty
-        mps (List.map (fun (mm : msg_match) -> mm.path) mml) in
+        mps (List.map (fun (mm : msg_pat) -> mm.path) mml) in
   if r<>[]
   then let l = msg_loc ((List.hd (List.rev mml)).path)
        in type_error l
@@ -677,30 +678,30 @@ let check_port_var_binding (bps : r_fb_inter_id_paths) (mp : string list)
         "party and cannot bind the source port to a variable.")
   else check_add_const vid port_type port_type sv
 
-let check_item_type_add_binding (sv : state_vars) (mi : match_item)
+let check_item_type_add_binding (sv : state_vars) (mi : pat)
                                 (typ : typ) : state_vars = 
   match mi with
-  | Wildcard _   -> sv
-  | Const id     -> check_add_const id typ typ sv
-  | ConstType nt -> check_add_const nt.id (check_type nt.ty) typ sv
+  | PatWildcard _   -> sv
+  | PatId id     -> check_add_const id typ typ sv
+  | PatIdType nt -> check_add_const nt.id (check_type nt.ty) typ sv
 
 let rec get_loc_ty (ty : ty) : EcLocation.t = 
   match ty with
   | NamedTy id -> loc id
   | TupleTy tl -> mergeall (List.map (fun t -> get_loc_ty t) tl)
 
-let get_loc_match_item (m_i : match_item) : EcLocation.t = 
+let get_loc_match_item (m_i : pat) : EcLocation.t = 
   match m_i with
-  | Wildcard l   -> l
-  | Const id     -> loc id
-  | ConstType nt -> merge (loc nt.id) (get_loc_ty nt.ty)
+  | PatWildcard l   -> l
+  | PatId id     -> loc id
+  | PatIdType nt -> merge (loc nt.id) (get_loc_ty nt.ty)
 
-let get_loc_match_item_list (tm : match_item list) : EcLocation.t =
+let get_loc_match_item_list (tm : pat list) : EcLocation.t =
   mergeall (List.map (fun mi -> get_loc_match_item mi) tm)
 
-let check_msg_content_bindings (ps : b_inter_id_path list) (mp : string list*string)
-                               (tm : match_item list) (sv : state_vars) :
-                                 state_vars = 
+let check_msg_content_bindings
+    (ps : b_inter_id_path list) (mp : string list*string)
+    (tm : pat list) (sv : state_vars) : state_vars = 
   let p = List.find (fun p -> (fst p) = (fst mp)) ps in
   let mt = to_list (unlocm((unloc(IdMap.find (snd mp) (snd p))).content)) in
   if List.length mt <> List.length tm
@@ -709,28 +710,28 @@ let check_msg_content_bindings (ps : b_inter_id_path list) (mp : string list*str
                    "of message parameters.")
   else List.fold_left2 check_item_type_add_binding sv tm mt
 
-let check_tuple_match (bps : b_inter_id_path list) (mm : msg_match)
-                      (sv : state_vars) : state_vars = 
-  match mm.tuple_match with
+let check_pat_args (bps : b_inter_id_path list) (mm : msg_pat)
+                   (sv : state_vars) : state_vars = 
+  match mm.pat_args with
   | None     -> sv
   | Some mil -> 
-      match mm.path.msg_type with
-      | OtherMsg l ->
+      match mm.path.msg_or_other with
+      | MsgPathOtherMsg l ->
           type_error l
-                     ("othermsg cannot have value bindings. Do you have " ^
-                      "redundant parenthesis?")
-      | MsgType id ->
+          ("othermsg cannot have value bindings. Do you have " ^
+           "redundant parenthesis?")
+      | MsgPathId id      ->
           check_msg_content_bindings bps
           ((unlocs mm.path.inter_id_path),(unloc id)) mil sv
 
-let check_match_bindings (bps : r_fb_inter_id_paths) (mm : msg_match)
+let check_match_bindings (bps : r_fb_inter_id_paths) (mm : msg_pat)
                          (sv : state_vars) : state_vars = 
   let sv' =        
-    match mm.port_var with
+    match mm.port_id with
     | Some id -> check_port_var_binding bps (unlocs mm.path.inter_id_path) id sv
     | None    -> sv in
   let ps = bps.direct@bps.adversarial@bps.internal in
-  check_tuple_match ps mm sv'
+  check_pat_args ps mm sv'
 
 let get_var_type (sv : state_vars) (id : id) : typ = 
   let vs =
@@ -817,7 +818,7 @@ let check_send_direct (msg : msg_instance) (mc : typ_tyd IdMap.t)
                       (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
-    match msg.port_var with
+    match msg.port_id with
     | Some p ->
         (check_exists_and_has_compatible_type p port_type sv;
          check_initialized sv p)
@@ -828,7 +829,7 @@ let check_send_adversarial (msg : msg_instance) (mc : typ_tyd IdMap.t)
                            (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
-    match msg.port_var with
+    match msg.port_id with
     | Some _ ->
         type_error l "Only direct messages can have destination port."
     | None   -> () in
@@ -838,7 +839,7 @@ let check_send_internal (msg : msg_instance) (mc : typ_tyd IdMap.t)
                         (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
-    match msg.port_var with
+    match msg.port_id with
     | Some _ ->
         type_error l
                    ("Messages to subfunctionalities cannot have " ^
@@ -857,10 +858,10 @@ let get_msg_def_for_msg_path (mp : msg_path) (bs : b_inter_id_path list) :
   let iop = unlocs mp.inter_id_path in
   let bio = List.find (fun bp -> (fst bp) = iop) bs in
   let mt  =
-    match mp.msg_type with
-    | MsgType id -> unloc id
-    | OtherMsg _ ->
-        failure "OtherMsg doesn't have definition in interface" in
+    match mp.msg_or_other with
+    | MsgPathId id -> unloc id
+    | MsgPathOtherMsg _ ->
+        failure "MsgPathOtherMsg doesn't have definition in interface" in
   let mdb = IdMap.find mt (snd bio) in
   unloc mdb
 
@@ -870,7 +871,7 @@ let check_send_msg_path (msg : msg_instance) (bps : r_fb_inter_id_paths)
   let path' = check_msg_path ps msg.path in
   let msg' =
     {path = path'; args = msg.args;
-     port_var = msg.port_var} in
+     port_id = msg.port_id} in
   let () =
     if List.mem "simulator" sv.flags && msg.path <> msg'.path
     then type_error (msg_loc msg.path)
@@ -936,7 +937,7 @@ and check_branches (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
 
 and check_decode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                  (sv : state_vars) (ex : expression_l) (ty : ty)
-                 (m_is : match_item list) (okins : instruction_l list)
+                 (m_is : pat list) (okins : instruction_l list)
                  (erins : instruction_l list) : instruction * state_vars = 
   if check_expression sv ex <> univ_type
   then type_error (loc ex) "Only expressions of univ type can be decoded."
@@ -1033,8 +1034,9 @@ let check_message_path (bps : r_fb_inter_id_paths) (mmc : msg_match_code) :
                          msg_match_code = 
   let path' =
     check_msg_path (get_incoming_msg_paths bps) mmc.pattern_match.path in
-  {pattern_match = {port_var = mmc.pattern_match.port_var;
-   path = path'; tuple_match = mmc.pattern_match.tuple_match};
+  {pattern_match =
+     {port_id = mmc.pattern_match.port_id;
+      path = path'; pat_args = mmc.pattern_match.pat_args};
    code = mmc.code}
 
 let check_m_mcode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
@@ -1205,8 +1207,8 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
                     ("Not a valid destination, these destinations are " ^
                      "valid : " ^ string_of_i_opaths iops) in
        let umpiop = (unlocs mp.inter_id_path) in
-       match mp.msg_type with
-       | MsgType mt ->
+       match mp.msg_or_other with
+       | MsgPathId mt ->
            if not(List.mem umpiop iops)
              then invalid_dest()
            else if List.exists
@@ -1218,7 +1220,7 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
            else type_error (loc mt)
                 (unloc mt ^ " is not an incoming message of " ^
                  string_of_i_opath umpiop)
-       | OtherMsg _ ->
+       | MsgPathOtherMsg _ ->
            if List.exists
               (fun p -> sl1_starts_with_sl2 p umpiop)
               iops
@@ -1228,7 +1230,7 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
 let check_match_bindings_sim (bps : b_inter_id_path list) (sv : state_vars)
                              (mmc : msg_match_code) : state_vars = 
   let mm = mmc.pattern_match in
-  check_tuple_match bps mm sv
+  check_pat_args bps mm sv
 
 let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
                                (mmcodes : msg_match_code list) : unit = 
@@ -1238,7 +1240,7 @@ let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
    (List.map
     (fun mmc ->
           {inter_id_path = mmc.pattern_match.path.inter_id_path;
-           msg_type = mmc.pattern_match.path.msg_type})
+           msg_or_other = mmc.pattern_match.path.msg_or_other})
     mmcodes))
 
 let check_sim_state_code (bps : b_inter_id_path list) (ss : state_sig IdMap.t)

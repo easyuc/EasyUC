@@ -6,24 +6,26 @@ open EcUtils
 open EcLocation
 open UcSpec
 
-let to_id (mtid : msg_type) =
-  match mtid with
-  | MsgType id -> id
-  | OtherMsg l ->
-      parse_error l "othermsg keyword cannot be followed by '.'"
+let to_id (mpi : msg_path_item) =
+  match mpi with
+  | MsgPathId id      -> id
+  | MsgPathOtherMsg l ->
+      parse_error l "othermsg keyword cannot be followed by \".\""
 
-let rec r_mtl2msg_path (mtl : msg_type list) (mp : msg_path)=
-  match mtl with
-  | [] ->
+let rec to_msg_path (mpis : msg_path_item list) (mp : msg_path) =
+  match mpis with
+  | []       ->
       raise
-      (Failure "Cannot happen : empty list when converting mtl to msg_path")
-  | [x] -> {inter_id_path = mp.inter_id_path; msg_type = x}
+      (Failure "Cannot happen: empty list when converting mpis to msg_path")
+  | [x]      -> {inter_id_path = mp.inter_id_path; msg_or_other = x}
   | hd :: tl ->
-      r_mtl2msg_path tl
-      {inter_id_path = mp.inter_id_path @ [to_id hd]; msg_type = mp.msg_type}
+      to_msg_path tl
+      {inter_id_path = mp.inter_id_path @ [to_id hd];
+       msg_or_other = mp.msg_or_other}
 
-let mtl2msg_path (mtl : msg_type list) =
-  r_mtl2msg_path mtl {inter_id_path=[]; msg_type=OtherMsg _dummy}
+let msg_path_items_to_msg_path (mpis : msg_path_item list) =
+  to_msg_path mpis
+  {inter_id_path = []; msg_or_other = MsgPathOtherMsg _dummy}
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -511,46 +513,47 @@ local_var_decl :
   testMsgMatchBindingWrongTyp, testMsgMatchBindingToStateParam) *)
 
 message_match_codes : 
-  | MATCH; MESSAGE; WITH; mmc = separated_list(PIPE, msg_match_code); END
+  | MATCH; MESSAGE; WITH; PIPE? mmc = separated_list(PIPE, msg_match_code); END
      { mmc }
 
 msg_match_code : 
-  | pattern_match = msg_match; ARROW; code = inst_block
+  | pattern_match = msg_pat; ARROW; code = inst_block
       { {pattern_match = pattern_match; code = code } }
 
-msg_match_body : 
-  | path = msg_path; tuple_match = option(t_m)
-      { {path = path; tuple_match = tuple_match} : msg_match_body }
+msg_pat_body : 
+  | path = msg_path; pat_args = option(pat_args)
+      { {path = path; pat_args = pat_args} : msg_pat_body }
 
-msg_match : 
-  | port_const = id_l; AT; mmb = msg_match_body
-      { {port_var = Some port_const; path = (mmb : msg_match_body).path;
-         tuple_match = mmb.tuple_match} }
-  | mmb = msg_match_body
-      { {port_var = None; path = (mmb : msg_match_body).path;
-         tuple_match = mmb.tuple_match} }
+msg_pat : 
+  | port_id = id_l; AT; mmb = msg_pat_body
+      { {port_id = Some port_id; path = (mmb : msg_pat_body).path;
+         pat_args = mmb.pat_args} }
+  | mmb = msg_pat_body
+      { {port_id = None; path = (mmb : msg_pat_body).path;
+         pat_args = mmb.pat_args} }
 
-t_m :
-  | LPAREN; tm = separated_list(COMMA, match_item); RPAREN
-      {tm}
+pat_args :
+  | LPAREN; pa = separated_list(COMMA, pat); RPAREN
+      { pa }
 
-match_item : 
+pat : 
   | id = id_l
-      { Const id }
+      { PatId id }
   | nt = type_binding
-      { ConstType nt }
+      { PatIdType nt }
   | l = loc(UNDERSCORE)
-      { Wildcard (loc l) }
+      { PatWildcard (loc l) }
 
 msg_path : 
-  | mtl = separated_nonempty_list(DOT, msg_type)
-      { mtl2msg_path mtl }
+  | mpis = separated_nonempty_list(DOT, msg_path_item)
+      { (* OTHERMSG if it appears must be at end *)
+        msg_path_items_to_msg_path mpis }
 
-msg_type : 
-  | m_t = id_l
-      { MsgType m_t }
+msg_path_item : 
+  | id = id_l
+      { MsgPathId id }
   | l = loc(OTHERMSG)
-      { OtherMsg (loc l) }
+      { MsgPathOtherMsg (loc l) }
 
 (*Simulator*)
 
@@ -641,16 +644,23 @@ state_code_sim :
       { {vars = vars; mmcodes = codes} }
 
 message_match_codes_sim : 
-  | MATCH; MESSAGE; WITH; mmc = separated_list(PIPE, msg_match_code_sim); END
+  | MATCH; MESSAGE; WITH; PIPE?
+    mmc = separated_list(PIPE, msg_match_code_sim); END
       { mmc }
 
 msg_match_code_sim : 
-  | pattern_match = msg_match_sim; ARROW; code = inst_block
+  | pattern_match = msg_pat_sim; ARROW; code = inst_block
       { {pattern_match = pattern_match; code = code } }
 
-msg_match_sim : 
-  | msg = msg_path; tuple_match = option(t_m)
-      { {port_var = None; path = msg; tuple_match = tuple_match} }
+msg_pat_sim : 
+  | msg = msg_path; pat_args = option(pat_args)
+      { {port_id = None; path = msg; pat_args = pat_args} }
+
+(* instruction blocks *)
+
+inst_block : 
+  | LBRACE; is = code_block; RBRACE
+      { is }
 
 code_block : 
   | insts = nonempty_list(instruction)
@@ -669,60 +679,6 @@ instruction_u :
       { i }
   | i = terminal
       { i }
-
-inst_block : 
-  | LBRACE; is = code_block; RBRACE
-      { is }
-
-(* The branching condition in the if-then-else command must be a
-   boolean expression.  (checked by : check_ite; tested by :
-   test_it_econd_not_boolean)
-
-   The instructions in branches are then checked, and the variables
-   that were initialized in both branches are marked as initialized in
-   the scope (state_vars record) after the if-then-else command.
-   (checked by : check_branches; tested by :
-   test_ite_init_var_in_one_branch) *)
-
-ifthenelse : 
-  | IF LPAREN; c = expression;RPAREN; tins = inst_block; ift = iftail
-      { ITE (c, tins, ift) }
-
-iftail : 
-  | /*empty*/
-      { None }
-  | ELSE; eins = inst_block
-      { Some eins }
-  | elif = elifthenelse
-      { Some [elif] }
-
-%inline elifthenelse :
-  | x = loc(elifthenelse_u)
-      { x }
-
-elifthenelse_u : 
-  | ELIF LPAREN; c = expression;RPAREN; tins = inst_block; ift = iftail
-      { ITE (c, tins, ift) }
-
-(* Decode command attempts to cast a constant (or variable) of univ
-   type as some other type.  If the cast succeeds, it is matched with
-   the constants defined inline, and one branch is executed, if the
-   cast results in an error the other branch is executed.
-
-   (checked by : check_decode; tested by : testDecodeNonuniv,
-   testDecodeTupleWrongParamNo) *)
-
-decode : 
-  | DECODE; ex = expression; AS; ty = ty; WITH; PIPE? OK;
-    t_m = dec_m; ARROW; code1 = inst_block; PIPE; ERROR; ARROW;
-    code2 = inst_block; END;
-      { Decode (ex, ty, t_m, code1, code2) }
-
-dec_m : 
-  | t_m = t_m
-      { t_m }
-  | m_i = match_item
-      { [m_i] }
 
 (* There are two instructions for assigning a value to the variable.
    Once the variable is assigned a value it is marked as initialized
@@ -747,6 +703,56 @@ assignment :
       { Assign (vid, e) }
   | vid = id_l; ASGSAMPLE; e = expression; SEMICOLON
       { Sample (vid, e) }
+
+(* The branching condition in the if-then-else command must be a
+   boolean expression.  (checked by : check_ite; tested by :
+   test_it_econd_not_boolean)
+
+   The instructions in branches are then checked, and the variables
+   that were initialized in both branches are marked as initialized in
+   the scope (state_vars record) after the if-then-else command.
+   (checked by : check_branches; tested by :
+   test_ite_init_var_in_one_branch) *)
+
+ifthenelse : 
+  | IF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+      { ITE (c, tins, ift) }
+
+iftail : 
+  | /*empty*/
+      { None }
+  | ELSE; eins = inst_block
+      { Some eins }
+  | elif = elifthenelse
+      { Some [elif] }
+
+%inline elifthenelse :
+  | x = loc(elifthenelse_u)
+      { x }
+
+elifthenelse_u : 
+  | ELIF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+      { ITE (c, tins, ift) }
+
+(* Decode command attempts to cast a constant (or variable) of univ
+   type as some other type.  If the cast succeeds, it is matched with
+   the constants defined inline, and one branch is executed, if the
+   cast results in an error the other branch is executed.
+
+   (checked by : check_decode; tested by : testDecodeNonuniv,
+   testDecodeTupleWrongParamNo) *)
+
+decode : 
+  | DECODE; ex = expression; AS; ty = ty; WITH; PIPE? OK;
+    args_pat = dec_m; ARROW; code1 = inst_block; PIPE; ERROR; ARROW;
+    code2 = inst_block; END;
+      { Decode (ex, ty, args_pat, code1, code2) }
+
+dec_m : 
+  | pat_args = pat_args
+      { pat_args }
+  | pat = pat
+      { [pat] }
 
 (* Every branch of the program must end with one of the terminal instructions.
 
@@ -806,9 +812,9 @@ send_and_transition :
       { {msg = msg; state = state} }
 
 msg_instance : 
-  | path = msg_path; args = option(args); port_var = option(dest)
+  | path = msg_path; args = option(args); port_id = option(dest)
       { let args = args |? [] in
-        {path = path; args = args; port_var = port_var} }
+        {path = path; args = args; port_id = port_id} }
 
 dest :
   | AT; pv = id_l

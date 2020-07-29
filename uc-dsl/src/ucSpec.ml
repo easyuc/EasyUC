@@ -52,25 +52,25 @@ type fun_param = {id : id; id_dir : id}
 
 type sub_fun_decl = {id : id; fun_id : id}
 
-type msg_type =
-  | MsgType  of id
-  | OtherMsg of EcLocation.t
+type msg_path_item =
+  | MsgPathId       of id
+  | MsgPathOtherMsg of EcLocation.t
 
 type qid = id list
 
-type msg_path = {inter_id_path: qid; msg_type : msg_type}
+type msg_path = {inter_id_path: qid; msg_or_other : msg_path_item}
 
-type match_item =
-  | Const of id
-  | ConstType of type_binding
+type pat =
+  | PatId of id
+  | PatIdType of type_binding
   (*| Tuple of match_item list located*)
-  | Wildcard of EcLocation.t
+  | PatWildcard of EcLocation.t
 
-type msg_match =
-  {port_var : id option; path : msg_path; tuple_match : match_item list option}
+type msg_pat =
+  {port_id : id option; path : msg_path; pat_args : pat list option}
 
-type msg_match_body =
-  {path : msg_path; tuple_match : match_item list option}
+type msg_pat_body =
+  {path : msg_path; pat_args : pat list option}
 
 type expression =
   | Id    of qid
@@ -81,7 +81,7 @@ type expression =
 and expression_l = expression located
 
 type msg_instance =
-  {path : msg_path; args : expression_l list; port_var : id option}
+  {path : msg_path; args : expression_l list; port_id : id option}
 
 type state_instance = {id : id; args : expression_l list}
 
@@ -92,14 +92,14 @@ type instruction =
   | Sample of id * expression_l
   | ITE of expression_l * instruction_l list * instruction_l list option
   | Decode of
-      expression_l * ty * match_item list * instruction_l list *
+      expression_l * ty * pat list * instruction_l list *
       instruction_l list
   | SendAndTransition of send_and_transition
   | Fail
 
 and instruction_l = instruction located
 
-type msg_match_code = {pattern_match : msg_match; code: instruction_l list;}
+type msg_match_code = {pattern_match : msg_pat; code: instruction_l list;}
 
 type state_code = {vars : type_binding list; mmcodes : msg_match_code list}
 
