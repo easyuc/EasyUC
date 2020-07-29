@@ -69,6 +69,9 @@ type match_item =
 type msg_match =
   {port_var : id option; path : msg_path; tuple_match : match_item list option}
 
+type msg_match_body =
+  {path : msg_path; tuple_match : match_item list option}
+
 type expression =
   | Id    of qid
   | Tuple of expression_l list

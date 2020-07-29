@@ -1484,7 +1484,7 @@ let load_ec_reqs reqs =
     try UcEcInterface.require_import (unloc idl) with
     Failure f ->
       type_error (loc idl)
-                 ("Error when require import-ing " ^ unloc idl ^ " : " ^ f) in
+      ("Error when importing EasyCrypt theory " ^ unloc idl ^ ":\n" ^ f) in
   List.iter reqimp reqs
 
 let typecheck spec = 

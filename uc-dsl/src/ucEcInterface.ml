@@ -56,7 +56,9 @@ let execute_command (c : string) =
       raise (Failure "usage of internal keyword undo is unacceptable, sorry")
 
 let require_import (th : string) =
-  execute_command ("require import " ^ th ^ ".")
+  try execute_command ("require import " ^ th ^ ".") with
+  | EcScope.HiScopeError (_, msg) ->
+      raise (Failure msg)
 
 let env () = EcScope.env (EcCommands.current())
 

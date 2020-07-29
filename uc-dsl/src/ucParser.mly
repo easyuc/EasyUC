@@ -518,11 +518,17 @@ msg_match_code :
   | pattern_match = msg_match; ARROW; code = inst_block
       { {pattern_match = pattern_match; code = code } }
 
-msg_match : 
-  | port_const = id_l; AT; path = msg_path; tuple_match = option(t_m)
-      { {port_var = Some port_const; path = path; tuple_match = tuple_match} }
+msg_match_body : 
   | path = msg_path; tuple_match = option(t_m)
-      { {port_var = None; path = path; tuple_match = tuple_match} }
+      { {path = path; tuple_match = tuple_match} : msg_match_body }
+
+msg_match : 
+  | port_const = id_l; AT; mmb = msg_match_body
+      { {port_var = Some port_const; path = (mmb : msg_match_body).path;
+         tuple_match = mmb.tuple_match} }
+  | mmb = msg_match_body
+      { {port_var = None; path = (mmb : msg_match_body).path;
+         tuple_match = mmb.tuple_match} }
 
 t_m :
   | LPAREN; tm = separated_list(COMMA, match_item); RPAREN
