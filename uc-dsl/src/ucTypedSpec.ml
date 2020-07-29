@@ -40,7 +40,7 @@ type state_body =
 
 type state_tyd = state_body located
 
-type sub_fun_decl_body = {fun_id : string; fun_param_ids : id list}
+type sub_fun_decl_body = {fun_id : string}
 
 type sub_fun_decl_tyd = sub_fun_decl_body located
 
@@ -50,57 +50,57 @@ type party_def_body =
 type party_def_tyd = party_def_body located
 
 type real_fun_body =
-  {params : (comp_item_tyd * int) IdMap.t;
+  {params    : (comp_item_tyd * int) IdMap.t;
    id_dir_io : string;
    id_adv_io : string option;
-   sub_funs :  sub_fun_decl_tyd IdMap.t;
-   parties :  party_def_tyd IdMap.t}
+   sub_funs  : sub_fun_decl_tyd IdMap.t;
+   parties   : party_def_tyd IdMap.t}
 
 type ideal_fun_body =
   {id_dir_io : string;
    id_adv_io : string;
-   states :  state_tyd IdMap.t}
+   states    : state_tyd IdMap.t}
 
-type fun_body =
+type fun_body_tyd =
   | FunBodyReal of real_fun_body
   | FunBodyIdeal of ideal_fun_body
 
-let is_real_fun fb =
+let is_real_fun_body_tyd fb =
   match fb with
   | FunBodyReal _  -> true
   | FunBodyIdeal _ -> false
 
-let params_of_fun f =
+let params_of_fun_body_tyd f =
   match f with
   | FunBodyReal fbr -> fbr.params
   | FunBodyIdeal _  -> IdMap.empty
 
-let id_dir_io_of_fun f =
+let id_dir_io_of_fun_body_tyd f =
   match f with
   | FunBodyReal fbr  -> fbr.id_dir_io
   | FunBodyIdeal fbi -> fbi.id_dir_io
 
-let id_adv_io_of_fun f =
+let id_adv_io_of_fun_body_tyd f =
   match f with
   | FunBodyReal fbr  -> fbr.id_adv_io
   | FunBodyIdeal fbi -> Some fbi.id_adv_io
 
-let sub_funs_of_fun f =
+let sub_funs_of_fun_body_tyd f =
   match f with
   | FunBodyReal fbr -> fbr.sub_funs
   | FunBodyIdeal _  -> IdMap.empty
 
-let parties_of_fun f =
+let parties_of_fun_body_tyd f =
   match f with
   | FunBodyReal fbr -> fbr.parties
   | FunBodyIdeal _  -> IdMap.empty
 
-let states_of_fun f =
+let states_of_fun_body_tyd f =
   match f with
   | FunBodyReal _    -> IdMap.empty
   | FunBodyIdeal fbi -> fbi.states
 
-type fun_tyd = fun_body located
+type fun_tyd = fun_body_tyd located
 
 type sim_body =
   {uses : string; sims : string; sims_param_ids :  string list;

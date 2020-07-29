@@ -227,13 +227,15 @@ def :
    from or output to the adversary (or a simulator)). They have almost
    the same form. Both have two forms: basic, consisting of a nonempty
    sequence of input and output messages; or composite, consisting of
-   a nonempty sequence of named subinterfaces. In direct interfaces,
-   input messages must have source ports (but may not have destination
-   ports), whereas output messages must have destination ports (but
-   may not have source ports). In adversarial interfaces, neither
-   input nor output messages may have source or target ports.  The
-   names of message parameters as well as the names of source and
-   destination ports should be considered documentation *)
+   a nonempty sequence of named subinterfaces. Mesages have typed
+   parameters; when the list of parameters is empty, the "()" may be
+   omitted.  In direct interfaces, input messages must have source
+   ports (but may not have destination ports), whereas output messages
+   must have destination ports (but may not have source ports). In
+   adversarial interfaces, neither input nor output messages may have
+   source or target ports.  The names of message parameters as well as
+   the names of source and destination ports should be considered
+   documentation *)
 
 inter_def : 
   | DIRECT; ni = named_inter
@@ -253,9 +255,14 @@ inter :
   | cis = nonempty_list(comp_item)
       { Composite cis }
 
+message_params :
+  LPAREN; params = type_bindings; RPAREN
+    { params }
+
 message_body :
-  | msg_id = id_l; LPAREN; params = type_bindings; RPAREN
-      { {id = msg_id; params = params} : message_body }
+  | msg_id = id_l; params = option(message_params)
+      { let params = params |? [] in
+        {id = msg_id; params = params} : message_body }
 
 message_def :
   | IN; mb = message_body
@@ -293,16 +300,9 @@ fun_def :
   | FUNCT; name = id_l; params = option(fun_params);
     IMPLEM; dir_id = id_l; adv_id = option(id_l);
     fun_body = fun_body
-      { let params =
-          match params with
-          | None        -> []
-          | Some params -> params in
-        let is_real =
-          match fun_body with
-          | RealFunBody _  -> true
-          | IdealFunBody _ -> false in
+      { let params = params |? [] in
         let () =
-          if not is_real && not (List.is_empty params)
+          if not (is_real_fun_body fun_body) && not (List.is_empty params)
           then parse_error (loc name)
                "ideal functionalities may not have parameters"
           else () in
@@ -320,60 +320,46 @@ fun_param :
 
 fun_body :
   | rfb = real_fun_body
-      { RealFunBody rfb }
+      { FunBodyReal rfb }
   | ifb = ideal_fun_body
-      { IdealFunBody ifb }
+      { FunBodyIdeal ifb }
 
 real_fun_body : 
-  | LBRACE; sil = nonempty_list(sub_item); RBRACE
+  | LBRACE; sil = nonempty_list(fun_body_item); RBRACE
       { sil }
 
 ideal_fun_body :
   | sm = state_machine
       { sm }
 
-(* The body of a real functionality consists of sub-items: instances
-   of subfunctionalities (already defined functionalities applied to
-   arguments - when there are no arugments, the "()" may be omitted)
-   and parties. Their names must be unique and different from the
-   names of the parameters.
+(* The body of a real functionality consists of a nonempty list of
+   fun_body_items: subfunctionalities, which are instances of ideal
+   functionalities; and party definitions. Their names must be unique
+   and different from the names of the parameters.
 
    The body of an ideal functionality is a state machine. *)
 
-sub_item : 
+fun_body_item : 
   | sfd = sub_fun_decl
       { SubFunDecl sfd }
   | pd = party_def
       { PartyDef pd }
 
 sub_fun_decl : 
-  | SUBFUN; name = id_l; EQ; fun_name = id_l; args = option(fun_args)
-      { let args =
-          match args with
-          | None      -> []
-          | Some args -> args in
-        {id = name; fun_id = fun_name; fun_param_ids = args} : sub_fun_decl }
-
-fun_args : 
-  | LPAREN; args = separated_list(COMMA, id_l); RPAREN
-      { args }
+  | SUBFUN; id = id_l; EQ; fun_id = id_l;
+      { {id = id; fun_id = fun_id} : sub_fun_decl }
 
 (* The party serves exactly one basic direct interface that is a
-   component of th e composite direct interface implemented by the
+   component of the composite direct interface implemented by the
    functionality; the party serves at most one basic adversarial
-   direct interface hat is a component of the composite adversarial
+   direct interface that is a component of a composite adversarial
    interface implemented by the functionality.
 
-   (checked by : check_party_decl; tested by :
-   testPartyServesDeclNoDirIO, testPartyServesDeclTwoDirIO,
-   testPartyServesDeclIOItemNotASubIO, testPartyServesDeclNotInDirIO,
-   testPartyServesDeclMultipleInIOs)
+   Different parties can't serve the same basic interfaces, and the
+   union of the basic interfaces served by the parties sums up to
+   composite interfaces implemented by the functionality.
 
-   The parties can't serve the same basic interfaces, and the union of
-   the basic interfaces served by the parties sums up to composite
-   interfaces implemented by the functionality.  (checked by :
-   check_parties_serve_direct_sum; tested by : testPartiesServeSameIO,
-   testPartiesDontServeEntireDirIO, testPartiesDontServeEntireAdvIO) *)
+   The actions of a party are determined by a state machine. *)
 
 party_def : 
   | PARTY; name = id_l; serves = serves; sm = state_machine
@@ -387,24 +373,31 @@ state_machine :
   | LBRACE; sds = nonempty_list(state_def) RBRACE
       { sds }
 
-(* The party code consists of a list of states.  The states must have
-   unique names, and there must be exactly one initial state.
-   (checked by : check_states; tested by : testPartyNoInitialState,
-   testPartyMultipleInitialStates, testPartyDuplicateStateId )
+(* A state machine consists of a list of states.  The states must have
+   unique names, and there must be exactly one initial state. That
+   initial state must take no paramters; the "()" may be omitted. A
+   state's parameters and variables must have unique names and their
+   types must exist. *)
 
-   Individual state's parameters and variables must have unique names
-   and their types must exist.  (checked by : check_state_decl,
-   check_params; tested by : testStateParamsDuplicateIds,
-   testStateParamsNonExistingType, testStateParamNonExistingType,
-   testStateVarsDuplicateIds, testStateVarParamDuplicateIds,
-   testStateVarsNonExistingType, testStateVarNonExistingType) *)
+state_params :
+  LPAREN; params = type_bindings; RPAREN
+    { params }
+
+state : 
+  | STATE; id = id_l; params = option(state_params); code = state_code
+      { let params = params |? [] in
+        {id = id; params = params; code = code} : state }
 
 state_def : 
-  | INITIAL; STATE; name = id_l; code = state_code
-      { InitialState {id = name; params = []; code = code}  }
-  | STATE; name = id_l; LPAREN; params = type_bindings; RPAREN;
-    code = state_code
-      { FollowingState {id = name; params = params; code = code} }
+  | INITIAL; st = state
+      { let l = loc((st : state).id) in
+        let params = st.params in
+        if not (List.is_empty params)
+        then parse_error l "an initial state may not have parameters"
+        else InitialState {id = st.id; params = []; code = st.code} }
+  | st = state
+      { FollowingState
+        {id = (st : state).id; params = st.params; code = st.code} }
 
 state_code : 
   | LBRACE; vars = local_var_decls; codes = message_match_codes; RBRACE
@@ -565,9 +558,14 @@ msg_type :
    testSimSimulatesNonRealFun, testSimWrongParamNumForSimFun,
    testSimParamForSimFunNotIdealFun, testSimWrongParamDirIOForSimFun) *)
 
+fun_args : 
+  | LPAREN; args = separated_list(COMMA, id_l); RPAREN
+      { args }
+
 sim_def : 
-  | SIM; name = id_l; USES uses = id_l; SIMS sims = id_l;
-    args = option(fun_args); body = sim_code
+  | SIM; name = id_l; USES uses = id_l;
+    SIMS sims = id_l; args = option(fun_args);
+    body = sim_code
       { let args =
           match args with
           | None      -> []
@@ -617,12 +615,21 @@ sim_code :
   | LBRACE; sdl = list(state_def_sim) RBRACE
       { sdl }
 
+state_sim : 
+  | STATE; id = id_l; params = option(state_params); code = state_code_sim
+      { let params = params |? [] in
+        {id = id; params = params; code = code} : state }
+
 state_def_sim : 
-  | INITIAL; STATE; name = id_l; code = state_code_sim
-      { InitialState {id = name; params=[]; code = code} }
-  | STATE; name = id_l; LPAREN; params = type_bindings; RPAREN;
-    code = state_code_sim
-      { FollowingState {id = name; params = params; code = code} }
+  | INITIAL; st = state_sim
+      { let l = loc((st : state).id) in
+        let params = st.params in
+        if not (List.is_empty params)
+        then parse_error l "an initial state may not have parameters"
+        else InitialState {id = st.id; params = []; code = st.code} }
+  | st = state_sim
+      { FollowingState
+        {id = (st : state).id; params = st.params; code = st.code} }
 
 state_code_sim : 
   | LBRACE; vars = local_var_decls; codes = message_match_codes_sim; RBRACE

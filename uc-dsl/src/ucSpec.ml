@@ -50,7 +50,7 @@ type inter_def =
 
 type fun_param = {id : id; id_dir : id}
 
-type sub_fun_decl = {id : id; fun_id : id; fun_param_ids : id list}
+type sub_fun_decl = {id : id; fun_id : id}
 
 type msg_type =
   | MsgType  of id
@@ -113,8 +113,13 @@ type sub_item =
   | PartyDef   of party_def
 
 type fun_body =
-  | RealFunBody  of sub_item list
-  | IdealFunBody of state_def list
+  | FunBodyReal  of sub_item list
+  | FunBodyIdeal of state_def list
+
+let is_real_fun_body fb =
+  match fb with
+  | FunBodyReal _  -> true
+  | FunBodyIdeal _ -> false
 
 type fun_def =
   {id : id; params : fun_param list; id_dir : id; id_adv : id option;

@@ -14,7 +14,7 @@ direct fwDir {
 direct FwDir {D : fwDir}
 
 adversarial FwAdv {
-  in fw_ok()
+  in fw_ok
   out fw_obs(pt1 : port, pt2 : port, u : univ)
 }
 
@@ -40,7 +40,7 @@ functionality Forw implements FwDir FwAdv {
     end
   } 
 
-  state Final() {
+  state Final {
     match message with
      othermsg => { fail. }
     end
@@ -55,7 +55,7 @@ direct KEDirPt1 {
 }
 
 direct KEDirPt2 {
-  in pt2@ke_req2()
+  in pt2@ke_req2
   out ke_rsp1(pt1 : port, k : key)@pt2
 }
 
@@ -98,7 +98,7 @@ functionality KEReal implements KEDir {
       end
     }
   
-    state Final() {
+    state Final {
       match message with
         othermsg => { fail. }
       end
@@ -106,7 +106,7 @@ functionality KEReal implements KEDir {
   }
 
   party Pt2 serves KEDir.Pt2 {
-    initial state  WaitFwd1 {
+    initial state WaitFwd1 {
       var q2 : exp;
       match message with
         Fw1.D.fw_rsp(_, u) => {
@@ -135,7 +135,7 @@ functionality KEReal implements KEDir {
       end
     }
 
-    state Final() {
+    state Final {
       match message with
         othermsg => { fail. }
       end
@@ -145,8 +145,8 @@ functionality KEReal implements KEDir {
 
 adversarial KEI2S {
   out ke_sim_req1(pt1 : port, pt2 : port)
-  in ke_sim_rsp()
-  out ke_sim_req2()
+  in ke_sim_rsp
+  out ke_sim_req2
 }
 
 functionality KEIdeal implements KEDir KEI2S {
@@ -194,7 +194,7 @@ functionality KEIdeal implements KEDir KEI2S {
     end
   }
 
-  state Final() {
+  state Final {
     match message with
       othermsg => { fail. }
     end
@@ -250,7 +250,7 @@ simulator KESim uses KEI2S simulates KEReal() {
     end
    }
 
-  state Final() {
+  state Final {
     match message with
       othermsg => { fail. }
     end
@@ -298,7 +298,7 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       end
     }
 
-    state Final() {
+    state Final {
       match message with 
         othermsg => { fail. }
       end
@@ -330,7 +330,7 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       end
     }
 
-    state Final() {
+    state Final {
       match message with 
         othermsg => { fail. }
       end
@@ -340,7 +340,7 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
 
 adversarial SMC2Sim {
   out sim_req(pt1 : port, pt2 : port)
-  in sim_rsp()
+  in sim_rsp
 }
 
 functionality SMCIdeal implements SMCDir SMC2Sim {
@@ -365,7 +365,7 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
     end
   }
 
-  state Final() {
+  state Final {
     match message with 
       othermsg => { fail. }
     end
@@ -418,7 +418,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     end
   }
 
-  state Final() {
+  state Final {
     match message with
       othermsg => { fail. }
     end
