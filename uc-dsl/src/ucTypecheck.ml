@@ -780,7 +780,7 @@ let check_sampl_assign (sv : state_vars) (vid : id) (ex : expression_l) :
   else let dtyp = UcExpressions.get_distribution_typ etyp in 
        check_type_add_binding vid dtyp sv
 
-let check_transition (si : state_instance) (ss : state_sig IdMap.t)
+let check_transition (si : state_expr) (ss : state_sig IdMap.t)
                      (sv : state_vars) : unit = 
   let ssig = 
     try IdMap.find (unloc(si.id)) ss with
@@ -814,7 +814,7 @@ let check_msg_content_values (es : expression_l list) (mc : typ_tyd IdMap.t)
               then type_error (loc ex) ("Parameter type mismatch"))
        es sg
 
-let check_send_direct (msg : msg_instance) (mc : typ_tyd IdMap.t)
+let check_send_direct (msg : msg_expr) (mc : typ_tyd IdMap.t)
                       (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -825,7 +825,7 @@ let check_send_direct (msg : msg_instance) (mc : typ_tyd IdMap.t)
     | None   -> type_error l ("Missing destination port.") in
   check_msg_content_values msg.args mc sv
 
-let check_send_adversarial (msg : msg_instance) (mc : typ_tyd IdMap.t)
+let check_send_adversarial (msg : msg_expr) (mc : typ_tyd IdMap.t)
                            (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -835,7 +835,7 @@ let check_send_adversarial (msg : msg_instance) (mc : typ_tyd IdMap.t)
     | None   -> () in
   check_msg_content_values msg.args mc sv
 
-let check_send_internal (msg : msg_instance) (mc : typ_tyd IdMap.t)
+let check_send_internal (msg : msg_expr) (mc : typ_tyd IdMap.t)
                         (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -865,8 +865,8 @@ let get_msg_def_for_msg_path (mp : msg_path) (bs : b_inter_id_path list) :
   let mdb = IdMap.find mt (snd bio) in
   unloc mdb
 
-let check_send_msg_path (msg : msg_instance) (bps : r_fb_inter_id_paths)
-                        (sv : state_vars) : msg_instance = 
+let check_send_msg_path (msg : msg_expr) (bps : r_fb_inter_id_paths)
+                        (sv : state_vars) : msg_expr = 
   let ps = get_outgoing_msg_paths bps in
   let path' = check_msg_path ps msg.path in
   let msg' =
@@ -880,8 +880,8 @@ let check_send_msg_path (msg : msg_instance) (bps : r_fb_inter_id_paths)
     else () in
   msg'
 
-let check_send (msg : msg_instance) (bps : r_fb_inter_id_paths)
-               (sv : state_vars) : msg_instance = 
+let check_send (msg : msg_expr) (bps : r_fb_inter_id_paths)
+               (sv : state_vars) : msg_expr = 
   let msg' = check_send_msg_path msg bps sv in
   let bs = bps.direct@bps.adversarial@bps.internal in
   let mdbc = (get_msg_def_for_msg_path msg'.path bs).content in
@@ -902,9 +902,9 @@ let check_send (msg : msg_instance) (bps : r_fb_inter_id_paths)
 let check_send_and_transition (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                               (sat : send_and_transition) (sv : state_vars) :
                                 instruction = 
-  let msg' = check_send sat.msg bps sv in
-  let () = check_transition sat.state ss sv in
-  SendAndTransition {msg = msg'; state = sat.state}
+  let msg' = check_send sat.msg_expr bps sv in
+  let () = check_transition sat.state_expr ss sv in
+  SendAndTransition {msg_expr = msg'; state_expr = sat.state_expr}
 
 let merge_state_vars (sv1 : state_vars) (sv2 : state_vars) : state_vars = 
   {flags = sv1.flags; internal_ports = sv1.internal_ports;

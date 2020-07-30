@@ -80,12 +80,12 @@ type expression =
 
 and expression_l = expression located
 
-type msg_instance =
+type msg_expr =
   {path : msg_path; args : expression_l list; port_id : id option}
 
-type state_instance = {id : id; args : expression_l list}
+type state_expr = {id : id; args : expression_l list}
 
-type send_and_transition = {msg : msg_instance; state : state_instance}
+type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 
 type instruction =
   | Assign of id * expression_l

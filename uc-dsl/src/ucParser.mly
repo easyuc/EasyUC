@@ -606,15 +606,11 @@ msg_pat_sim :
   | msg = msg_path; pat_args = option(pat_args)
       { {port_id = None; path = msg; pat_args = pat_args} }
 
-(* instruction blocks *)
+(* Instructions *)
 
 inst_block : 
-  | LBRACE; is = code_block; RBRACE
+  | LBRACE; is = nonempty_list(instruction); RBRACE
       { is }
-
-code_block : 
-  | insts = nonempty_list(instruction)
-      { insts }
 
 %inline instruction :
   | x = loc(instruction_u)
@@ -630,23 +626,9 @@ instruction_u :
   | i = terminal
       { i }
 
-(* There are two instructions for assigning a value to the variable.
-   Once the variable is assigned a value it is marked as initialized
-   in the scope (state_vars record) of the current branch of
-   execution.
-
-   The Assign instruction assigns the value of the expression to the
-   variable.  The expression must have the same type as the variable.
-   (checked by : check_val_assign, check_type_add_binding; tested by :
-   testValueAssignWrongType, testValueAssignInternalPortWrongType,
-   testValueAssignNonexistingVar, testValueAssignConst)
-
-   The Sample instruction samples from a distribution, and assigns the
-   sampled value to a variable.  The expression must have a type of
-   distribution over samples that have the same type as the variable.
-
-   (checked by : check_sampl_assign, check_type_add_binding; tested by
-   : testSampleAssignWrongType, testSampleAssignNotFromDistr) *)
+(* There are two instructions for assigning a value to the variable:
+   ordinary assignment and random asssignment (from a distribution
+   type). *)
 
 assignment : 
   | vid = id_l; ASGVAL; e = expression; SEMICOLON
@@ -654,22 +636,14 @@ assignment :
   | vid = id_l; ASGSAMPLE; e = expression; SEMICOLON
       { Sample (vid, e) }
 
-(* The branching condition in the if-then-else command must be a
-   boolean expression.  (checked by : check_ite; tested by :
-   test_it_econd_not_boolean)
-
-   The instructions in branches are then checked, and the variables
-   that were initialized in both branches are marked as initialized in
-   the scope (state_vars record) after the if-then-else command.
-   (checked by : check_branches; tested by :
-   test_ite_init_var_in_one_branch) *)
+(* Conditional (if-then-else) instructions *)
 
 ifthenelse : 
   | IF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
 iftail : 
-  | /*empty*/
+  | /* empty */
       { None }
   | ELSE; eins = inst_block
       { Some eins }
@@ -684,32 +658,23 @@ elifthenelse_u :
   | ELIF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
-(* Decode command attempts to cast a constant (or variable) of univ
-   type as some other type.  If the cast succeeds, it is matched with
-   the constants defined inline, and one branch is executed, if the
-   cast results in an error the other branch is executed.
-
-   (checked by : check_decode; tested by : testDecodeNonuniv,
-   testDecodeTupleWrongParamNo) *)
+(* A decode command attempts to decode a value of type univ as some
+   other type. If this succeeds, the variables in the pattern are
+   bound. Otherwise the error branch is executed. *)
 
 decode : 
-  | DECODE; ex = expression; AS; ty = ty; WITH; PIPE? OK;
-    args_pat = dec_m; ARROW; code1 = inst_block; PIPE; ERROR; ARROW;
-    code2 = inst_block; END;
+  | DECODE; ex = expression; AS; ty = ty; WITH;
+    PIPE? OK; args_pat = dec_pat; ARROW; code1 = inst_block;
+    PIPE; ERROR; ARROW; code2 = inst_block; END;
       { Decode (ex, ty, args_pat, code1, code2) }
 
-dec_m : 
+dec_pat : 
   | pat_args = pat_args
       { pat_args }
   | pat = pat
       { [pat] }
 
-(* Every branch of the program must end with one of the terminal instructions.
-
-   (checked by : check_ends_are_sa_tor_f; tested by :
-   testEndsWSaTorFInstAfterF, testEndsWSaTorFInstAfterSaT,
-   testEndsWSaTorFNoSaTorF, testEndsWSaTorFInstAfterITE,
-   testEndsWSaTorFInstAfterDecode) *)
+(* Terminal instructions *)
 
 terminal : 
   | sat = send_and_transition; DOT
@@ -718,50 +683,20 @@ terminal :
       { Fail }
 
 (* The send_and_transition command consists of two parts, the send
-   part which sends a message, and the transition part which changes
-   the state.
-
-  The check_send_msg_path filters the messages in r_fb_inter_id_paths
-  record, so that only outgoing direct and adversarial and incomming
-  internal messages are considered for sending.  The check_msg_path
-  checks if the message path is in the filtered messages. The paths
-  for direct and adversarial messages do not need to be fully
-  qualified if there is no ambiguity, and the check_msg_path will
-  return the fully qualified path which replaces the original
-  path. (see the comments for check_msg_path in the documentation of
-  the message match instruction for more details.) If the message is
-  sent by the simulator the scope (state_vars) will contain the
-  "simulator" flag, this enforces the paths to be fully qualified even
-  for adversarial messages.  (checked by : check_send_msg_path; tested
-  by : testSendDirectIn, testSendAdversIn, testSendInternOut,
-  testSimSendNotI2SorRealFun, testSimSendI2SOutMsg,
-  testSimSendRFDirIO, testSimSendRFInAdvMsg,
-  testSimSendNotAdvIOofSubFun, testSimSendNotOutAdvMsgofSubFun,
-  testSimSendNotIOofParamFun, testSimSendNotOutMsgOfParamFun,
-  testSimSendMsgPathIncomplete)
-
-  Direct messages must have a destination port defined.  (checked by :
-  check_send_direct; tested by : testSendDirectNoPort)
-
-  Adversarial and internal messages cannot have a port defined.
-  (checked by : check_send_adversarial, check_send_internal; tested by
-  : testSendAdversWithPort, testSendInternWithPort)
-
-  The parameters of the sent message must have correct type.  (checked
-  by : check_msg_content_values; tested by : testSendWrongParamNo,
-  testSendWrongParamType)
-
-  Transition must have parameters that match the signature of the
-  state.  (checked by : check_transition; tested by :
-  testTransitionNonExistingState, testTransitionWrongParamNo,
-  testTransitionWrongParamType, testTransitionNoParams,
-  testTransitionInitialWithParams) *)
+   part which sends a message, and the transition part designates the
+   state to which control should later return to the functionality or
+   simulator. Direct messages must have a destination port specified;
+   adversarial and internal messages cannot have a port specified. In
+   a functionality, the message paths for direct and adversarial
+   messages do not need to be fully qualified when there is no
+   ambiguity. But message paths for simulators do need to be fully
+   qualified. *)
 
 send_and_transition : 
-  | SEND; msg = msg_instance; ANDTXT; TRANSITION; state = state_instance
-      { {msg = msg; state = state} }
+  | SEND; msg = msg_expr; ANDTXT; TRANSITION; state = state_expr
+      { {msg_expr = msg; state_expr = state} }
 
-msg_instance : 
+msg_expr : 
   | path = msg_path; args = option(args); port_id = option(dest)
       { let args = args |? [] in
         {path = path; args = args; port_id = port_id} }
@@ -770,7 +705,7 @@ dest :
   | AT; pv = id_l
       { pv }
 
-state_instance : 
+state_expr : 
   | id = id_l; args = option(args)
       { let args = args |? [] in
         {id = id; args = args} }
@@ -844,40 +779,6 @@ expression_u :
      { App (op,[e]) }
   | ENCODE; e = expression
      { Enc e }
-
-(* The type of expression is evaluated with check_expression function
-   (UcExpressons).  If the expression is an identifier, it is first
-   checked if it is a name of one of the variables, constants or
-   internal ports.  If it is a variable it must be initialized.
-   (checked by : check_expr_var (UcTypecheck) tested by :
-   testExprUsesUnassignedVar) If the identifier wasn't found among
-   variables, constants or internal ports then it must be a name of a
-   nullary operator.
-
-   (checked by : check_expr_id, check_nullary_op; tested by :
-   testExprNonExistingVarOp, testExprNaryOpUsedAsNullaryOp)
-
-   If the expression is a tuple of expressions, each expression is
-   evaluated, and the resulting type is a Ttuple of expression types.
-
-   If the expression is not an identifier or a tuple it is an
-   application of a function or an operator to some arguments or an
-   encode expression.  Encode expression can be applied to a valid
-   expression of any type, and the type of encode expression is univ.
-
-   (checked by : check_expression; tested by :
-   testExprTupleWrongArity, testExprEncode)
-
-   Arguments to which an operator (or function) are applied must have
-   the correct types and the operator must exist.  There is currently
-   only one built-in operator, "envport" which takes one argument of
-   type port and returns a bool.  If the operator is not a built-in
-   operator it must be one of the operators from the EasyCrypt
-   environment.
-
-  (checked by : check_sig, check_sig_types; tested by :
-  testExprNonexistingFun, testExprWrongArgNo, testExprWrongArgType,
-  testExprWrongArgTypeVar) *)
 
 %inline s_expression :
   | x = loc(s_expression_u)
