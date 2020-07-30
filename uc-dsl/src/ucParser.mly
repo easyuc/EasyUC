@@ -412,95 +412,75 @@ local_var_decl :
   | VAR; lvs = nonempty_list (id_l); COLON; t = ty SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
-(* Incomming messages are matched against a list of possible messages
-   contained in a r_fb_inter_id_paths record.  This record contains
-   three fields : direct, adversarial and internal, each field is a
-   list of b_inter_id_paths, and a b_inter_id_path is a pair of a
-   string list (a path) and a basic interface.  For a party (or an
-   ideal functionality) the r_fb_inter_id_paths record is constructed
-   in check_party_code function, by making calls to
-   get_r_fb_inter_id_paths (or get_fb_inter_id_paths) function.
+(* Message matching specifies how incoming messages should be
+   processed, resulting in a state transition or failure.
 
-   The r_fb_inter_id_paths for a party will contain a single path for the
-   basic direct interface the party is serving, a single path for the
-   basic adversarial interface the party is serving (or empty list if
-   the party doesn't serve adversarial interface) and every component
-   of the direct interface implemented by a subfunctionality or
-   functionalities parameter will have a b_inter_id_path in the internal
-   field of the r_fb_inter_id_paths record.
+   A message path is a "."-separated sequence of identifiers, taking
+   us from the name of a composite interface, to the name of one of
+   its components, to one of the input messages of the component's
+   basic interface.
 
-   The internal field of a r_fb_inter_id_path record for an ideal
-   functionality will be an empty list, the adversarial field will
-   contain a single path to the adversarial interface of the
-   functionality, and the direct field will contain a path for each of
-   the components of the composite interface implemented by the
-   functionality.
+   The possible message paths are determined by the direct and
+   adversarial interfaces implemented by the functionality (restricted
+   to the basic interfaces served by the party, in the case of a real
+   functionality), plus the direct interfaces of the party's
+   subfunctionalities.
 
-   The code of the state consists of a single match message statement
-   containing a list of possible message matches together with the
-   list of statements handling the matched message.
+   For example, suppose the functionality implements FwDir (and, in
+   the case of a real functionality, that the party serves fwDir):
 
-   The match consists of a message path followed by the message type
-   and an optional binding of message parameters to local constants.
-   The message path is a sequence of strings, starting with the
-   component (subfunctionality or parameter) name (or empty string if
-   the component is the functionality itself), followed by the name of
-   the implemented interface, followed by the component of the
-   interface.  The message type can be a message from the basic
-   interface or "othermsg" keyword covering all the messages contained
-   in the path.  The message path doesn't have to be complete when
-   "othermsg" is used, e.g. component_name.othermsg will match against
-   all of the messages comming from that component of the
-   functionality and just othermsg will match against all messages.
+     direct fwDir {
+       in pt1@fw_req(pt2 : port, u : univ)
+       out fw_rsp(pt1 : port, u : univ)@pt2
+     }
 
-   The check_state function initializes the state_vars record - it
-   contains the information about current scope.  Initially it
-   contains the state parameters as constants, state variables as
-   uninitialized variables, and names of parties, subfunctionalities
-   and parameters as internal ports. These can be used in code as
-   constants of type port.  Furthermore, the signatures of all of the
-   states of the party are collected, a signature is a typ list
-   containing the types of the state parameters.  These signatures are
-   used to check transitioning to a state.
+     direct FwDir {D : fwDir}
 
-   The check_state_code function calls check_m_mcode on every message
-   match, and the entire match message statement is checked to ensure
-   all of the messages are matched, and that every match is not
-   covered by a previous match.  (checked by check_msg_match_deltas;
-   tested by : testMsgMatchAlreadyCovered, testMsgMatchIncomplete,
-   testIdealFunMsgMatchIncomplete)
+   Then FwDir.D.fwDir is the only valid message path. If there is
+   a subfunctionality
 
-   The check_message_path function filters the r_fb_inter_id_paths
-   record so that the basic interfaces contain only messages the party
-   can receive; these are the incomming messages of the direct and
-   adversarial fields, and the outgoing messages from the internal
-   field of the rfb_inter_id_paths.  The paths of the messages do not
-   need to be fully qualified if there is no ambiguity- they can
-   contain only message type instead of the full path (e.g. just
-   message_type_name instead of
-   composite_i_oname.component_name.message_type_name) or just the
-   basic interface name followed by the message type
-   (e.g. component_name.message_type_name instead of
-   composite_i_oname.component_name.message_type_name).  When matching
-   internal messages, the fully qualified path must be used.
+     subfun Fw1 = Forw
 
-   The check_msg_path returns the fully qualified path, which replaces
-   the original path in the msg_match_code.  The location information
-   for each of the individual identifiers in the returned path is the
-   same - the location of the entire original path.
+   where the ideal functionality Forw has FwDir as its direct interface,
+   then
 
-   The port of the sender of a message received on a functionalities
-   direct inter face can be bound to a constant that is declared
-   inline, and has implicitly the type of port.  On the other hand,
-   for adversarial and internal messages the sender is known, and its
-   port cannot be bound to a constant.
+     Fw1.D.fw_req
 
-   Values of the message parameters can be bound to fresh constants
-   that are defined inline.  The constants may be defined together
-   with a type - the type must match the type of the parameter.  Some
-   of the parameter values can be left unbound by using the
-   underscore.  If the value was bound to a constant, the constant
-   gets added to the current scope. *)
+   will be a valid message path.
+
+   Message patterns look like message paths, except that:
+
+   (1) they may end with the token "othermsg" to match any completion
+       of the given path;
+
+   (2) message paths for direct interfaces are prefaced with a
+       an identifer id followed by the token "@" - id will become
+       bound to the source port of the message being matched;
+
+   (3) when there is no ambiguity, a prefix of a path may be omitted.
+
+   E.g.,
+
+     pt@fw_req
+     pt@D.fw_req
+     pt@FwDir.D.fw_req
+
+     othermsg
+     D.othermsg
+     FwDir.D.othermsg
+
+   are valid path patterns given the above definitions.
+
+   A message pattern is then a message path pattern followed by
+   an optional tuple of argument patterns. E.g.,
+
+     pt@fw_req(pt' : port, u' : univ)
+     pt@D.fw_req(pt' : port, u' : univ)
+     pt@FwDir.D.fw_req(pt' : port, u' : univ)
+
+   will match a fw_req message, and in the process pt will be bound
+   to its source port, and pt' and u' will be bound to the message
+   arguments. *)
 
 message_matching : 
   | MATCH; MESSAGE; WITH; PIPE?
