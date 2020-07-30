@@ -175,7 +175,7 @@ let check_state_decl (init_id : id) (s : state) : state_tyd =
   | None        ->
       mk_loc (loc s.id)
       {is_initial = is_initial; params = params; vars = vars;
-       mmcodes = s.code.mmcodes}
+       mmclauses = s.code.mmclauses}
   | Some (id,t) ->
       type_error (loc t)
       ("Variable name " ^ id ^ " is the same as one of the states parameters.")
@@ -300,8 +300,8 @@ let check_party_decl (id_dir_io : string) (id_adv_io : string option)
         (check_i_opath id_dir_io id_adv_io dir_ios adv_ios)
         p.serves in
   let () = check_served_paths serves id_dir_io p.id in
-  let code = check_states p.id p.code in
-  mk_loc (loc p.id) {serves = serves; code = code}
+  let code = check_states p.id p.states in
+  mk_loc (loc p.id) {serves = serves; states = code}
 
 let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
       (id_dir_io : string) (id_adv_io : string option)
@@ -1030,8 +1030,8 @@ let check_msg_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
   let () = check_ends_are_sa_tor_f is_tyd in
   is_tyd
 
-let check_message_path (bps : r_fb_inter_id_paths) (mmc : msg_match_code) :
-                         msg_match_code = 
+let check_message_path (bps : r_fb_inter_id_paths) (mmc : msg_match_clause) :
+                         msg_match_clause = 
   let path' =
     check_msg_path (get_incoming_msg_paths bps) mmc.pattern_match.path in
   {pattern_match =
@@ -1040,20 +1040,20 @@ let check_message_path (bps : r_fb_inter_id_paths) (mmc : msg_match_code) :
    code = mmc.code}
 
 let check_m_mcode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
-                  (sv : state_vars) (mmc : msg_match_code) : msg_match_code = 
+                  (sv : state_vars) (mmc : msg_match_clause) : msg_match_clause = 
   let mmc' = check_message_path bps mmc in 
   let sv' = check_match_bindings bps mmc'.pattern_match sv in
   let code' = check_msg_code bps ss sv' mmc'.code in
   {pattern_match = mmc'.pattern_match; code = code'}
 
 let check_state_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
-                     (sv : state_vars) (mmcodes : msg_match_code list) :
-                       msg_match_code list = 
-  let mmcodes' = List.map (fun mmc -> check_m_mcode bps ss sv mmc) mmcodes in
+                     (sv : state_vars) (mmclauses : msg_match_clause list) :
+                       msg_match_clause list = 
+  let mmclauses' = List.map (fun mmc -> check_m_mcode bps ss sv mmc) mmclauses in
   let () =
     check_msg_match_deltas bps
-    (List.map (fun mmc -> mmc.pattern_match) mmcodes') in
-  mmcodes'
+    (List.map (fun mmc -> mmc.pattern_match) mmclauses') in
+  mmclauses'
 
 let get_keys (m : 'a IdMap.t) : QidSet.t = 
   let lp = fst(List.split (IdMap.bindings m)) in
@@ -1119,10 +1119,10 @@ let check_state (ur_f : fun_body_tyd) (states : state_tyd IdMap.t)
   let us = unloc s in
   let sv = init_state_vars (unloc s) (get_internal_ports ur_f) [] in
   let ss = get_state_sigs states in
-  let mmcodes' = check_state_code bps ss sv us.mmcodes in
+  let mmclauses' = check_state_code bps ss sv us.mmclauses in
   mk_loc (loc s)
          {is_initial = us.is_initial; params = us.params; vars = us.vars;
-          mmcodes = mmcodes'}
+          mmclauses = mmclauses'}
 
 let check_party_code dir_ios adv_ios funs = 
   IdMap.map 
@@ -1135,10 +1135,10 @@ let check_party_code dir_ios adv_ios funs =
            (fun p -> 
               let up = unloc p in
               let bps = get_r_fb_inter_id_paths dir_ios adv_ios funs r_f p in
-              let states = up.code in
+              let states = up.states in
               let states' =
                 IdMap.map (check_state (unloc r_f) states bps) states  in
-              mk_loc (loc p) {serves = up.serves; code = states'})
+              mk_loc (loc p) {serves = up.serves; states = states'})
            parties in
          mk_loc (loc r_f)
          (FunBodyReal
@@ -1185,13 +1185,13 @@ let check_funs (fun_map : fun_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
 (* Simulator checks *)
 
 let check_msg_code_sim (fbps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
-                       (mmc : msg_match_code) (sv : state_vars) :
-                         msg_match_code = 
+                       (mmc : msg_match_clause) (sv : state_vars) :
+                         msg_match_clause = 
   let code' = check_msg_code fbps ss sv mmc.code in
   {pattern_match = mmc.pattern_match; code = code'}
 
 let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
-                           (mmc : msg_match_code) : unit = 
+                           (mmc : msg_match_clause) : unit = 
   let bps = filterb_io_ps In bps in
   let mp = mmc.pattern_match.path in
   let l = msg_loc mp in
@@ -1228,12 +1228,12 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
            else invalid_dest ()
 
 let check_match_bindings_sim (bps : b_inter_id_path list) (sv : state_vars)
-                             (mmc : msg_match_code) : state_vars = 
+                             (mmc : msg_match_clause) : state_vars = 
   let mm = mmc.pattern_match in
   check_pat_args bps mm sv
 
 let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
-                               (mmcodes : msg_match_code list) : unit = 
+                               (mmclauses : msg_match_clause list) : unit = 
   let mps = get_incoming_msg_paths rfbps in
   ignore
   (check_mm_ds_non_empty mps
@@ -1241,16 +1241,16 @@ let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
     (fun mmc ->
           {inter_id_path = mmc.pattern_match.path.inter_id_path;
            msg_or_other = mmc.pattern_match.path.msg_or_other})
-    mmcodes))
+    mmclauses))
 
 let check_sim_state_code (bps : b_inter_id_path list) (ss : state_sig IdMap.t)
                          (sv : state_vars) (isini : bool)
-                         (mmcodes : msg_match_code list) :
-                           msg_match_code list = 
-  let () = List.iter (check_message_path_sim bps isini) mmcodes in
-  let svs = List.map (check_match_bindings_sim bps sv) mmcodes in
+                         (mmclauses : msg_match_clause list) :
+                           msg_match_clause list = 
+  let () = List.iter (check_message_path_sim bps isini) mmclauses in
+  let svs = List.map (check_match_bindings_sim bps sv) mmclauses in
   let fbps = {direct = []; adversarial = bps; internal = []} in
-  let ret = List.map2 (check_msg_code_sim fbps ss) mmcodes svs in
+  let ret = List.map2 (check_msg_code_sim fbps ss) mmclauses svs in
   let () = check_msg_match_deltas_sim fbps ret in
   ret
 
@@ -1343,11 +1343,11 @@ let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
            let us = unloc s in
            let sv =
              init_state_vars us (get_sim_internal_ports cs) ["simulator"] in
-           let mmcodes' =
-             check_sim_state_code bps ss sv us.is_initial us.mmcodes in
+           let mmclauses' =
+             check_sim_state_code bps ss sv us.is_initial us.mmclauses in
            mk_loc (loc s)
                   {is_initial = us.is_initial; params = us.params;
-                   vars = us.vars; mmcodes = mmcodes'})
+                   vars = us.vars; mmclauses = mmclauses'})
     states in
   mk_loc (loc sim)
          {uses = usim.uses; sims = usim.sims;

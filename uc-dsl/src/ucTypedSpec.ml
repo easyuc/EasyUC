@@ -36,7 +36,7 @@ type inter_tyd = inter_body_tyd located
 
 type state_body =
   {is_initial : bool; params : typ_tyd IdMap.t; vars : typ located IdMap.t;
-   mmcodes : msg_match_code list}
+   mmclauses : msg_match_clause list}
 
 type state_tyd = state_body located
 
@@ -45,7 +45,7 @@ type sub_fun_decl_body = {fun_id : string}
 type sub_fun_decl_tyd = sub_fun_decl_body located
 
 type party_def_body =
-  {serves : string list located list; code :  state_tyd IdMap.t}
+  {serves : string list located list; states : state_tyd IdMap.t}
 
 type party_def_tyd = party_def_body located
 

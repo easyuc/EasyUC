@@ -136,7 +136,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token STAR
 %token <string>  ROP4
 
-(* Operators and their associativity are copied from EcParser of
+(* operators and their associativity are copied from EcParser of
    EasyCrypt project. UcLexer contains code for recognizing
    operators. The operators and code are currently a small subset of
    what can be found in EasyCrypt. *)
@@ -150,12 +150,12 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 %nonassoc ENCODE
 
-(* The input for the UcParser is a list of tokens produced by UcLexer
+(* the input for the UcParser is a list of tokens produced by UcLexer
    from the UC DSL file.  This list is parsed by UcParser, starting
    with the initial production spec.  The output of UcParser is a
    record of spec type (defined in UcSpec). *)
 
-(* In the generated ucParser.ml : 
+(* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
@@ -178,9 +178,9 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
   | qid = separated_nonempty_list(DOT, id_l)
       { qid }
 
-(* UC DSL specification consists of a preamble which references other
-  .ec and .uc files, and a list of definitions of direct and adversarial
-  interfaces, functionalities and simlators. *)
+(* a UC DSL specification consists of a preamble which references
+  other .ec and .uc files, and a list of definitions of direct and
+  adversarial interfaces, functionalities and simlators. *)
 
 spec : 
   | ext = preamble; defs = list(def); EOF
@@ -191,24 +191,21 @@ preamble :
       { {ec_requirements = reqs |? [];
          dl_imports      = imps |? []} }
 
-(* Importing is supposed to load content from other .uc files - not
-   yet implemented *)
+(* import is supposed to load content from other .uc files - not yet
+   implemented *)
 
 imps: 
   | IMPORT imps = nonempty_list(id_l) DOT
       { imps }
 
-(* requires references EasyCrypt files, these are loaded by
-   load_ec_reqs (UcTypecheck) which calls require_import
-   (UcEcInterface) which executes an "import require" EasyCrypt
-   command.  This loads the content of the .ec theory in the EasyCrypt
-   environment which is later queried for types and operators *)
+(* requires does a "require import" of an EasyCrypt theory, making its
+   types and operators available for use in the UC DSL specification *)
 
 reqs : 
   | REQUIRES reqs = nonempty_list(id_l) DOT
       { reqs }
 
-(* A definition is either a definition of an interface, a
+(* a definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be distinct
    (checked by check_defs in UcTypecheck, tested by
    testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,) *)
@@ -223,7 +220,7 @@ def :
 
 (* Functionality Interfaces *)
 
-(* An interface can either be direct (governing messages that are
+(* an interface can either be direct (governing messages that are
    input from or output to the environment (or a parent
    functionality); or adversarial (governing messages that are input
    from or output to the adversary (or a simulator)). They have almost
@@ -257,15 +254,6 @@ inter :
   | cis = nonempty_list(comp_item)
       { Composite cis }
 
-message_params :
-  LPAREN; params = type_bindings; RPAREN
-    { params }
-
-message_body :
-  | msg_id = id_l; params = option(message_params)
-      { let params = params |? [] in
-        {id = msg_id; params = params} : message_body }
-
 message_def :
   | IN; mb = message_body
       { {dir = In; id = (mb : message_body).id; params = mb.params;
@@ -279,6 +267,15 @@ message_def :
   | OUT; mb = message_body; AT; pt = id_l
       { {dir = Out; id = (mb : message_body).id; params = mb.params;
          port = Some pt} }
+
+message_body :
+  | msg_id = id_l; params = option(message_params)
+      { let params = params |? [] in
+        {id = msg_id; params = params} : message_body }
+
+message_params :
+  LPAREN; params = type_bindings; RPAREN
+    { params }
 
 comp_item :
   | sub_id = id_l; COLON; inter_id = id_l
@@ -296,7 +293,13 @@ comp_item :
    functionality is real or ideal. A real functionality may have a
    non-zero number of parameters, but an ideal functionality must have
    no parameters. An ideal functionality must implement a basic
-   adversarial interface. *)
+   adversarial interface.
+
+   The body of a real functionality consists of a nonempty list of
+   fun_body_items: subfunctionalities, which are instances of ideal
+   functionalities; and party definitions. Their names must be unique
+   and different from the names of the parameters.  The body of an
+   ideal functionality is a state machine. *)
 
 fun_def :        
   | FUNCT; name = id_l; params = option(fun_params);
@@ -327,19 +330,12 @@ fun_body :
       { FunBodyIdeal ifb }
 
 real_fun_body : 
-  | LBRACE; sil = nonempty_list(fun_body_item); RBRACE
-      { sil }
+  | LBRACE; fbis = nonempty_list(fun_body_item); RBRACE
+      { fbis }
 
 ideal_fun_body :
   | sm = state_machine
       { sm }
-
-(* The body of a real functionality consists of a nonempty list of
-   fun_body_items: subfunctionalities, which are instances of ideal
-   functionalities; and party definitions. Their names must be unique
-   and different from the names of the parameters.
-
-   The body of an ideal functionality is a state machine. *)
 
 fun_body_item : 
   | sfd = sub_fun_decl
@@ -347,48 +343,42 @@ fun_body_item :
   | pd = party_def
       { PartyDef pd }
 
+(* a subfunctionality declaration declares a new instance
+   of an ideal functionality *)
+
 sub_fun_decl : 
   | SUBFUN; id = id_l; EQ; fun_id = id_l;
       { {id = id; fun_id = fun_id} : sub_fun_decl }
 
-(* The party serves exactly one basic direct interface that is a
-   component of the composite direct interface implemented by the
-   functionality; the party serves at most one basic adversarial
-   direct interface that is a component of a composite adversarial
-   interface implemented by the functionality.
-
-   Different parties can't serve the same basic interfaces, and the
-   union of the basic interfaces served by the parties sums up to
-   composite interfaces implemented by the functionality.
-
-   The actions of a party are determined by a state machine. *)
+(* A functionality party serves exactly one basic direct interface,
+   which must be a component of the composite direct interface
+   implemented by the functionality; the party serves at most one
+   basic adversarial direct interface, which must be a component of
+   the composite adversarial interface implemented by the
+   functionality. Different parties can't serve the same basic
+   interfaces, and the union of the basic interfaces served by the
+   parties must sum up to the composite interfaces implemented by the
+   functionality. The actions of a party are determined by a state
+   machine. *)
 
 party_def : 
-  | PARTY; name = id_l; serves = serves; sm = state_machine
-     { {id = name; serves = serves; code = sm} }
+  | PARTY; id = id_l; serves = serves; sm = state_machine
+     { {id = id; serves = serves; states = sm} }
 
 serves : 
-  | SERVES; sl = separated_list(COMMA, qid)
-      { sl }
+  | SERVES; serves = separated_list(COMMA, qid)
+      { serves }
 
 state_machine : 
   | LBRACE; sds = nonempty_list(state_def) RBRACE
       { sds }
 
-(* A state machine consists of a list of states.  The states must have
-   unique names, and there must be exactly one initial state. That
-   initial state must take no paramters; the "()" may be omitted. A
-   state's parameters and variables must have unique names and their
-   types must exist. *)
-
-state_params :
-  LPAREN; params = type_bindings; RPAREN
-    { params }
-
-state : 
-  | STATE; id = id_l; params = option(state_params); code = state_code
-      { let params = params |? [] in
-        {id = id; params = params; code = code} : state }
+(* A state machine consists of a list of named states, which are
+   parameterized by typed values. The states must have unique names,
+   and there must be exactly one initial state. That initial state
+   must take no paramters. A state's code declares local variables,
+   and describes how incoming messages should be matched and
+   processed. *)
 
 state_def : 
   | INITIAL; st = state
@@ -401,9 +391,18 @@ state_def :
       { FollowingState
         {id = (st : state).id; params = st.params; code = st.code} }
 
+state : 
+  | STATE; id = id_l; params = option(state_params); code = state_code
+      { let params = params |? [] in
+        {id = id; params = params; code = code} : state }
+
+state_params :
+  LPAREN; params = type_bindings; RPAREN
+    { params }
+
 state_code : 
-  | LBRACE; vars = local_var_decls; codes = message_match_codes; RBRACE
-      { {vars = vars; mmcodes = codes} }
+  | LBRACE; vars = local_var_decls; mm = message_matching; RBRACE
+      { {vars = vars; mmclauses = mm} }
 
 local_var_decls : 
   | lvds = list(local_var_decl)
@@ -414,12 +413,13 @@ local_var_decl :
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
 (* Incomming messages are matched against a list of possible messages
-   contained in a r_fb_inter_id_paths record.  This record contains three
-   fields : direct, adversarial and internal, each field is a list of
-   b_inter_id_paths, and a b_inter_id_path is a pair of a string list (a path) and
-   a basic interface.  For a party (or an ideal functionality) the
-   r_fb_inter_id_paths record is constructed in check_party_code function,
-   by making calls to get_r_fb_inter_id_paths (or get_fb_inter_id_paths) function.
+   contained in a r_fb_inter_id_paths record.  This record contains
+   three fields : direct, adversarial and internal, each field is a
+   list of b_inter_id_paths, and a b_inter_id_path is a pair of a
+   string list (a path) and a basic interface.  For a party (or an
+   ideal functionality) the r_fb_inter_id_paths record is constructed
+   in check_party_code function, by making calls to
+   get_r_fb_inter_id_paths (or get_fb_inter_id_paths) function.
 
    The r_fb_inter_id_paths for a party will contain a single path for the
    basic direct interface the party is serving, a single path for the
@@ -429,100 +429,87 @@ local_var_decl :
    functionalities parameter will have a b_inter_id_path in the internal
    field of the r_fb_inter_id_paths record.
 
-  The internal field of a r_fb_inter_id_path record for an ideal
-  functionality will be an empty list, the adversarial field will
-  contain a single path to the adversarial interface of the
-  functionality, and the direct field will contain a path for each of
-  the components of the composite interface implemented by the
-  functionality.
+   The internal field of a r_fb_inter_id_path record for an ideal
+   functionality will be an empty list, the adversarial field will
+   contain a single path to the adversarial interface of the
+   functionality, and the direct field will contain a path for each of
+   the components of the composite interface implemented by the
+   functionality.
 
-  The code of the state consists of a single match message statement
-  containing a list of possible message matches together with the list
-  of statements handling the matched message.
+   The code of the state consists of a single match message statement
+   containing a list of possible message matches together with the
+   list of statements handling the matched message.
 
-  The match consists of a message path followed by the message type
-  and an optional binding of message parameters to local constants.
-  The message path is a sequence of strings, starting with the
-  component (subfunctionality or parameter) name (or empty string if
-  the component is the functionality itself), followed by the name of
-  the implemented interface, followed by the component of the
-  interface.  The message type can be a message from the basic
-  interface or "othermsg" keyword covering all the messages contained
-  in the path.  The message path doesn't have to be complete when
-  "othermsg" is used, e.g. component_name.othermsg will match against
-  all of the messages comming from that component of the functionality
-  and just othermsg will match against all messages.
+   The match consists of a message path followed by the message type
+   and an optional binding of message parameters to local constants.
+   The message path is a sequence of strings, starting with the
+   component (subfunctionality or parameter) name (or empty string if
+   the component is the functionality itself), followed by the name of
+   the implemented interface, followed by the component of the
+   interface.  The message type can be a message from the basic
+   interface or "othermsg" keyword covering all the messages contained
+   in the path.  The message path doesn't have to be complete when
+   "othermsg" is used, e.g. component_name.othermsg will match against
+   all of the messages comming from that component of the
+   functionality and just othermsg will match against all messages.
 
-  The check_state function initializes the state_vars record - it
-  contains the information about current scope.  Initially it contains
-  the state parameters as constants, state variables as uninitialized
-  variables, and names of parties, subfunctionalities and parameters
-  as internal ports. These can be used in code as constants of type
-  port.  Furthermore, the signatures of all of the states of the party
-  are collected, a signature is a typ list containing the types of the
-  state parameters.  These signatures are used to check transitioning
-  to a state.
+   The check_state function initializes the state_vars record - it
+   contains the information about current scope.  Initially it
+   contains the state parameters as constants, state variables as
+   uninitialized variables, and names of parties, subfunctionalities
+   and parameters as internal ports. These can be used in code as
+   constants of type port.  Furthermore, the signatures of all of the
+   states of the party are collected, a signature is a typ list
+   containing the types of the state parameters.  These signatures are
+   used to check transitioning to a state.
 
-  The check_state_code function calls check_m_mcode on every message
-  match, and the entire match message statement is checked to ensure
-  all of the messages are matched, and that every match is not covered
-  by a previous match.  (checked by check_msg_match_deltas; tested by
-  : testMsgMatchAlreadyCovered, testMsgMatchIncomplete,
-  testIdealFunMsgMatchIncomplete)
+   The check_state_code function calls check_m_mcode on every message
+   match, and the entire match message statement is checked to ensure
+   all of the messages are matched, and that every match is not
+   covered by a previous match.  (checked by check_msg_match_deltas;
+   tested by : testMsgMatchAlreadyCovered, testMsgMatchIncomplete,
+   testIdealFunMsgMatchIncomplete)
 
-  The check_message_path function filters the r_fb_inter_id_paths record so
-  that the basic interfaces contain only messages the party can
-  receive; these are the incomming messages of the direct and
-  adversarial fields, and the outgoing messages from the internal
-  field of the rfb_inter_id_paths.  The paths of the messages do not need to
-  be fully qualified if there is no ambiguity- they can contain only
-  message type instead of the full path (e.g. just message_type_name
-  instead of composite_i_oname.component_name.message_type_name) or
-  just the basic interface name followed by the message type
-  (e.g. component_name.message_type_name instead of
-  composite_i_oname.component_name.message_type_name).  When matching
-  internal messages, the fully qualified path must be used.
+   The check_message_path function filters the r_fb_inter_id_paths
+   record so that the basic interfaces contain only messages the party
+   can receive; these are the incomming messages of the direct and
+   adversarial fields, and the outgoing messages from the internal
+   field of the rfb_inter_id_paths.  The paths of the messages do not
+   need to be fully qualified if there is no ambiguity- they can
+   contain only message type instead of the full path (e.g. just
+   message_type_name instead of
+   composite_i_oname.component_name.message_type_name) or just the
+   basic interface name followed by the message type
+   (e.g. component_name.message_type_name instead of
+   composite_i_oname.component_name.message_type_name).  When matching
+   internal messages, the fully qualified path must be used.
 
-  (checked by : check_msg_path; tested by : testMsgMatchUnexpected,
-  testMsgMatchAmbiguous, testMsgMatchInternalNotFQ)
+   The check_msg_path returns the fully qualified path, which replaces
+   the original path in the msg_match_code.  The location information
+   for each of the individual identifiers in the returned path is the
+   same - the location of the entire original path.
 
-  The check_msg_path returns the fully qualified path, which replaces
-  the original path in the msg_match_code.  The location information
-  for each of the individual identifiers in the returned path is the
-  same - the location of the entire original path.
+   The port of the sender of a message received on a functionalities
+   direct inter face can be bound to a constant that is declared
+   inline, and has implicitly the type of port.  On the other hand,
+   for adversarial and internal messages the sender is known, and its
+   port cannot be bound to a constant.
 
-  The port of the sender of a message received on a functionalities
-  direct inter face can be bound to a constant that is declared
-  inline, and has implicitly the type of port.  On the other hand, for
-  adversarial and internal messages the sender is known, and its port
-  cannot be bound to a constant.
+   Values of the message parameters can be bound to fresh constants
+   that are defined inline.  The constants may be defined together
+   with a type - the type must match the type of the parameter.  Some
+   of the parameter values can be left unbound by using the
+   underscore.  If the value was bound to a constant, the constant
+   gets added to the current scope. *)
 
-  (checked by : check_port_var_binding; tested by :
-  testMsgMatchBindingPortVarNonDirIO) If the senders port was bound to
-  a constant, it gets added to the current scope.
+message_matching : 
+  | MATCH; MESSAGE; WITH; PIPE?
+    mm = separated_list(PIPE, msg_match_clause); END
+     { mm }
 
-  Values of the message parameters can be bound to fresh constants
-  that are defined inline.  The constants may be defined together with
-  a type - the type must match the type of the parameter.  Some of the
-  parameter values can be left unbound by using the underscore.  If
-  the value was bound to a constant, the constant gets added to the
-  current scope.
-
-  (checked by : check_msg_content_bindings; tested by :
-  testMsgMatchBindingOtherMsg, testMsgMatchBindingWrongParamNo,
-  testMsgMatchBindingWrongTyp, testMsgMatchBindingToStateParam) *)
-
-message_match_codes : 
-  | MATCH; MESSAGE; WITH; PIPE? mmc = separated_list(PIPE, msg_match_code); END
-     { mmc }
-
-msg_match_code : 
-  | pattern_match = msg_pat; ARROW; code = inst_block
-      { {pattern_match = pattern_match; code = code } }
-
-msg_pat_body : 
-  | path = msg_path; pat_args = option(pat_args)
-      { {path = path; pat_args = pat_args} : msg_pat_body }
+msg_match_clause : 
+  | msg_pat = msg_pat; ARROW; code = inst_block
+      { {pattern_match = msg_pat; code = code } }
 
 msg_pat : 
   | port_id = id_l; AT; mmb = msg_pat_body
@@ -531,6 +518,10 @@ msg_pat :
   | mmb = msg_pat_body
       { {port_id = None; path = (mmb : msg_pat_body).path;
          pat_args = mmb.pat_args} }
+
+msg_pat_body : 
+  | path = msg_path; pat_args = option(pat_args)
+      { {path = path; pat_args = pat_args} : msg_pat_body }
 
 pat_args :
   | LPAREN; pa = separated_list(COMMA, pat); RPAREN
@@ -546,7 +537,7 @@ pat :
 
 msg_path : 
   | mpis = separated_nonempty_list(DOT, msg_path_item)
-      { (* OTHERMSG if it appears must be at end *)
+      { (* OTHERMSG, if it appears, must be at end *)
         msg_path_items_to_msg_path mpis }
 
 msg_path_item : 
@@ -555,7 +546,7 @@ msg_path_item :
   | l = loc(OTHERMSG)
       { MsgPathOtherMsg (loc l) }
 
-(*Simulator*)
+(* Simulators *)
 
 (* The simulator uses a basic adversarial interface (to comunicate
    with an ideal functionality), simulates a real functionality which
@@ -641,7 +632,7 @@ state_def_sim :
 
 state_code_sim : 
   | LBRACE; vars = local_var_decls; codes = message_match_codes_sim; RBRACE
-      { {vars = vars; mmcodes = codes} }
+      { {vars = vars; mmclauses = codes} }
 
 message_match_codes_sim : 
   | MATCH; MESSAGE; WITH; PIPE?

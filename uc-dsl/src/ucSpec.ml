@@ -99,17 +99,18 @@ type instruction =
 
 and instruction_l = instruction located
 
-type msg_match_code = {pattern_match : msg_pat; code: instruction_l list;}
+type msg_match_clause = {pattern_match : msg_pat; code : instruction_l list}
 
-type state_code = {vars : type_binding list; mmcodes : msg_match_code list}
+type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 
-type state = {id : id; params : type_binding list ; code : state_code}
+type state = {id : id; params : type_binding list; code : state_code}
                 
 type state_def =
   | InitialState of state
   | FollowingState of state 
 
-type party_def = {id : id; serves : qid list; code : state_def list}
+type party_def =
+  {id : id; serves : qid list; states : state_def list}
 
 type sub_item =
   | SubFunDecl of sub_fun_decl
