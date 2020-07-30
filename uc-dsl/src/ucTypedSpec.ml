@@ -103,8 +103,8 @@ let states_of_fun_body_tyd f =
 type fun_tyd = fun_body_tyd located
 
 type sim_body =
-  {uses : string; sims : string; sims_param_ids :  string list;
-   body :  state_tyd IdMap.t}
+  {uses : string; sims : string; sims_arg_ids :  string list;
+   states : state_tyd IdMap.t}
 
 type sim_def_tyd = sim_body located
 

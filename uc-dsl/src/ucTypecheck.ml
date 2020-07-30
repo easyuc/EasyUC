@@ -1033,18 +1033,18 @@ let check_msg_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
 let check_message_path (bps : r_fb_inter_id_paths) (mmc : msg_match_clause) :
                          msg_match_clause = 
   let path' =
-    check_msg_path (get_incoming_msg_paths bps) mmc.pattern_match.path in
-  {pattern_match =
-     {port_id = mmc.pattern_match.port_id;
-      path = path'; pat_args = mmc.pattern_match.pat_args};
+    check_msg_path (get_incoming_msg_paths bps) mmc.msg_pat.path in
+  {msg_pat =
+     {port_id = mmc.msg_pat.port_id;
+      path = path'; pat_args = mmc.msg_pat.pat_args};
    code = mmc.code}
 
 let check_m_mcode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                   (sv : state_vars) (mmc : msg_match_clause) : msg_match_clause = 
   let mmc' = check_message_path bps mmc in 
-  let sv' = check_match_bindings bps mmc'.pattern_match sv in
+  let sv' = check_match_bindings bps mmc'.msg_pat sv in
   let code' = check_msg_code bps ss sv' mmc'.code in
-  {pattern_match = mmc'.pattern_match; code = code'}
+  {msg_pat = mmc'.msg_pat; code = code'}
 
 let check_state_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                      (sv : state_vars) (mmclauses : msg_match_clause list) :
@@ -1052,7 +1052,7 @@ let check_state_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
   let mmclauses' = List.map (fun mmc -> check_m_mcode bps ss sv mmc) mmclauses in
   let () =
     check_msg_match_deltas bps
-    (List.map (fun mmc -> mmc.pattern_match) mmclauses') in
+    (List.map (fun mmc -> mmc.msg_pat) mmclauses') in
   mmclauses'
 
 let get_keys (m : 'a IdMap.t) : QidSet.t = 
@@ -1188,12 +1188,12 @@ let check_msg_code_sim (fbps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                        (mmc : msg_match_clause) (sv : state_vars) :
                          msg_match_clause = 
   let code' = check_msg_code fbps ss sv mmc.code in
-  {pattern_match = mmc.pattern_match; code = code'}
+  {msg_pat = mmc.msg_pat; code = code'}
 
 let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
                            (mmc : msg_match_clause) : unit = 
   let bps = filterb_io_ps In bps in
-  let mp = mmc.pattern_match.path in
+  let mp = mmc.msg_pat.path in
   let l = msg_loc mp in
   let id = fst (List.find (fun p -> (List.length (fst p)) = 1) bps) in
   if isini && unlocs mp.inter_id_path <> id
@@ -1229,7 +1229,7 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
 
 let check_match_bindings_sim (bps : b_inter_id_path list) (sv : state_vars)
                              (mmc : msg_match_clause) : state_vars = 
-  let mm = mmc.pattern_match in
+  let mm = mmc.msg_pat in
   check_pat_args bps mm sv
 
 let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
@@ -1239,8 +1239,8 @@ let check_msg_match_deltas_sim (rfbps : r_fb_inter_id_paths)
   (check_mm_ds_non_empty mps
    (List.map
     (fun mmc ->
-          {inter_id_path = mmc.pattern_match.path.inter_id_path;
-           msg_or_other = mmc.pattern_match.path.msg_or_other})
+          {inter_id_path = mmc.msg_pat.path.inter_id_path;
+           msg_or_other = mmc.msg_pat.path.msg_or_other})
     mmclauses))
 
 let check_sim_state_code (bps : b_inter_id_path list) (ss : state_sig IdMap.t)
@@ -1333,9 +1333,9 @@ let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t =
 let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
                    (funs : fun_tyd IdMap.t) (sim : sim_def_tyd) : sim_def_tyd = 
   let usim = unloc sim in
-  let states = usim.body in
+  let states = usim.states in
   let ss = get_state_sigs states in
-  let cs = get_sim_components funs usim.sims usim.sims_param_ids in
+  let cs = get_sim_components funs usim.sims usim.sims_arg_ids in
   let bps = get_simb_inter_id_paths adv_ios usim.uses cs in
   let states' =
     IdMap.map 
@@ -1351,7 +1351,7 @@ let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
     states in
   mk_loc (loc sim)
          {uses = usim.uses; sims = usim.sims;
-          sims_param_ids = usim.sims_param_ids; body = states'}
+          sims_arg_ids = usim.sims_arg_ids; states = states'}
 
 let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
@@ -1402,12 +1402,12 @@ let check_sim_decl (_ : inter_tyd IdMap.t) (i2s_ios : inter_tyd IdMap.t)
   let uses = unloc sd.uses in
   let () = check_is_real_f funs sd.sims in
   let sims = unloc sd.sims in
-  let () = List.iter (check_exists_f funs) sd.sims_param_ids in
-  let () = check_sim_fun_params funs i2s_ios sd.sims sd.sims_param_ids in
-  let sims_param_ids = unlocs sd.sims_param_ids in
-  let body = check_states sd.id sd.body in
+  let () = List.iter (check_exists_f funs) sd.sims_arg_ids in
+  let () = check_sim_fun_params funs i2s_ios sd.sims sd.sims_arg_ids in
+  let sims_param_ids = unlocs sd.sims_arg_ids in
+  let body = check_states sd.id sd.states in
   mk_loc (loc sd.id)
-  {uses = uses; sims = sims; sims_param_ids = sims_param_ids; body = body}
+  {uses = uses; sims = sims; sims_arg_ids = sims_param_ids; states = body}
 
 let check_simulators (sim_map : sim_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
                      (adv_ios : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t) :

@@ -99,7 +99,7 @@ type instruction =
 
 and instruction_l = instruction located
 
-type msg_match_clause = {pattern_match : msg_pat; code : instruction_l list}
+type msg_match_clause = {msg_pat : msg_pat; code : instruction_l list}
 
 type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 
@@ -130,8 +130,8 @@ type fun_def =
    fun_body : fun_body}
 
 type sim_def =
-  {id : id; uses : id; sims : id; sims_param_ids: id list;
-   body : state_def list }
+  {id : id; uses : id; sims : id; sims_arg_ids : id list;
+   states : state_def list }
 
 type def =
   | InterDef of inter_def

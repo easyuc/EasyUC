@@ -489,7 +489,7 @@ message_matching :
 
 msg_match_clause : 
   | msg_pat = msg_pat; ARROW; code = inst_block
-      { {pattern_match = msg_pat; code = code } }
+      { {msg_pat = msg_pat; code = code } }
 
 msg_pat : 
   | port_id = id_l; AT; mmb = msg_pat_body
@@ -528,76 +528,48 @@ msg_path_item :
 
 (* Simulators *)
 
-(* The simulator uses a basic adversarial interface (to comunicate
-   with an ideal functionality), simulates a real functionality which
-   is parametrized by ideal functionalities, these must implement the
-   direct interfaces as required by the real functionality.  (checked
-   by : check_sim_decl, check_exists_i2_sio, check_is_real_f,
-   check_sim_fun_params; tested by : testSimUsesNonI2SIO,
-   testSimSimulatesNonRealFun, testSimWrongParamNumForSimFun,
-   testSimParamForSimFunNotIdealFun, testSimWrongParamDirIOForSimFun) *)
+(* A simulator uses a basic adversarial interface, to communicate with
+   an ideal functionality. It simulates a real functionality, applied
+   to ideal functionalities (in the case the real functionality is
+   parameterized).
+
+   A simulator's state machine is the same as an ordinary state
+   machine, except that the source port isn't bound in a message
+   pattern, since for simulators the sender is always known (it is
+   either adversary or ideal functionality).
+
+   The initial state of the simulator can match only messages received
+   on the interface it uses (interface to ideal functionality). Messages
+   from the adversary will flow through the simulator.
+
+   The message paths of the matched messages must be fully qualified,
+   and only output messages from the adversarial interface of the
+   ideal functionality, or incoming adversarial messages to one of the
+   components of the simulator real functionality can be matched (and
+   the latter only in non-initial states).
+
+   Unlike the functionality, the simulator's message match doesn't
+   have to cover all of the possible messages, but it still cannot
+   match a mesage that was covered by a previous match. *)
+
+sim_def : 
+  | SIM; name = id_l; USES uses = id_l;
+    SIMS sims = id_l; args = option(fun_args);
+    sms = state_machine_sim
+      { let args =
+          match args with
+          | None      -> []
+          | Some args -> args in
+        {id = name; uses = uses; sims = sims; sims_arg_ids = args;
+         states = sms } }
 
 fun_args : 
   | LPAREN; args = separated_list(COMMA, id_l); RPAREN
       { args }
 
-sim_def : 
-  | SIM; name = id_l; USES uses = id_l;
-    SIMS sims = id_l; args = option(fun_args);
-    body = sim_code
-      { let args =
-          match args with
-          | None      -> []
-          | Some args -> args in
-        {id = name; uses = uses; sims = sims; sims_param_ids = args;
-         body = body } }
-
-(* The syntax for simulator code is the same as for party code, except
-   that the port of the message sender cannot be bound to a constant
-   in amessage match, since for simulators the sender is always known
-   (it is either adversary or ideal functionality).  However, the
-   simulator code is subject to different requirements.  The
-   check_sim_code function calls get_sim_components to collect all of
-   the components of the functionality.  Since a subfunctionality can
-   be a real functionality, get_sim_components uses recursive call to
-   get components.  The identifier for the component is of type Qid
-   (UcTypedSpec) which is a list of identifiers identifying the
-   parents of the component, and the component itself.  The
-   get_simb_inter_id_paths function then constructs all of the paths to
-   basic adversarial interfaces used by the components.  The
-   get_sim_internal_ports function then for every component finds its
-   internal ports. The names of the internal ports get prefixed by the
-   identifier of the parent component.  The state_var record is
-   flagged with "simulator" string which alters the way the send and
-   transition command is checked.
-
-   The initial state of the simulator can match only messages received
-   on the interface it uses (interface to ideal functionality).  The
-   message paths of the matched messages must be fully qualified, and
-   only outgoing messages from the interface to ideal functionality,
-   or incoming adversarial messages to one of the components of the
-   real functionality can be matched.
-
-   (checked by : check_message_path_sim; tested by :
-   testSimInitStateNonI2SMsgMatch, testSimMsgMatchOutMsg,
-   testSimMsgMatchI2SInMsg, testSimMsgMatchRealFunDirIO,
-   testSimMsgMatchSubFunDirIO, testSimMsgMatchParamFunDirIO)
-
-   Unlike the functionality, the simulator's message match doesn't
-   have to cover all of the possible messages, but it still cannot
-   match a mesage that was covered by a previous match.
-
-  (checked by : check_msg_match_deltas_sim; tested by :
-  testSimMsgMatchAlreadyCovered) *)
-
-sim_code : 
-  | LBRACE; sdl = list(state_def_sim) RBRACE
-      { sdl }
-
-state_sim : 
-  | STATE; id = id_l; params = option(state_params); code = state_code_sim
-      { let params = params |? [] in
-        {id = id; params = params; code = code} : state }
+state_machine_sim : 
+  | LBRACE; sds = list(state_def_sim) RBRACE
+      { sds }
 
 state_def_sim : 
   | INITIAL; st = state_sim
@@ -610,18 +582,25 @@ state_def_sim :
       { FollowingState
         {id = (st : state).id; params = st.params; code = st.code} }
 
+state_sim : 
+  | STATE; id = id_l; params = option(state_params); code = state_code_sim
+      { let params = params |? [] in
+        {id = id; params = params; code = code} : state }
+
 state_code_sim : 
-  | LBRACE; vars = local_var_decls; codes = message_match_codes_sim; RBRACE
-      { {vars = vars; mmclauses = codes} }
+  | LBRACE; vars = local_var_decls; mm = message_matching_sim; RBRACE
+      { {vars = vars; mmclauses = mm} }
 
-message_match_codes_sim : 
+message_matching_sim : 
   | MATCH; MESSAGE; WITH; PIPE?
-    mmc = separated_list(PIPE, msg_match_code_sim); END
-      { mmc }
+    mmcs = separated_list(PIPE, msg_match_clause_sim); END
+      { mmcs }
 
-msg_match_code_sim : 
-  | pattern_match = msg_pat_sim; ARROW; code = inst_block
-      { {pattern_match = pattern_match; code = code } }
+msg_match_clause_sim : 
+  | msg_pat = msg_pat_sim; ARROW; code = inst_block
+      { {msg_pat = msg_pat; code = code } }
+
+(* no source port binding: *)
 
 msg_pat_sim : 
   | msg = msg_path; pat_args = option(pat_args)
