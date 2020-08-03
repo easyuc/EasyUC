@@ -32,7 +32,7 @@ let check_circ_refs (get_refs : ('o located) IdMap.t -> string -> IdSet.t)
   if IdMap.is_empty circ then ()
   else let id = fst (IdMap.choose circ) in
        let lid = loc (IdMap.find id os) in
-       type_error lid (id^ " contains a circular reference.")
+       type_error lid (id ^ " contains a circular reference")
 
 (* Convert a list from dl_parse_tree to IdMap *)
 
@@ -42,7 +42,7 @@ let check_unique_id (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t =
   (fun id_map a -> 
      let id_l = get_id a in 
      if exists_id id_map (unloc id_l) then 
-       type_error (loc id_l)  ("Duplicate identifier : " ^ (unloc id_l))
+       type_error (loc id_l)  ("duplicate identifier : " ^ unloc id_l)
      else IdMap.add (unloc id_l) a id_map)
   id_map al
 
@@ -64,7 +64,7 @@ let check_exists_io (ermsgpref : string) (e_io : string -> bool)
   then mk_loc (loc io_i.sub_id) io_i.inter_id
   else type_error
        (loc io_i.inter_id)
-       (ermsgpref ^ " " ^ uid ^ " hasn't been defined yet.")
+       (ermsgpref ^ " " ^ uid ^ " hasn't been defined yet")
 
 let check_comp_io_body (ermsgpref : string) (e_io : string -> bool)
                        (iob : comp_item list) : inter_body_tyd = 
@@ -100,7 +100,7 @@ let check_composites_ref_basics (ios : inter_tyd IdMap.t) =
             let uid = unloc (unloc idl) in
             if (eb_io uid) then ()
             else type_error (loc (unloc idl))
-                 (uid ^ " is not a basic interface."))
+                 (uid ^ " is not a basic interface"))
          its
      | _ -> ())
   composites
@@ -128,7 +128,7 @@ let check_is_composite (ios : inter_tyd IdMap.t) (id : id) : unit =
   match unloc (IdMap.find uid ios) with
   | Basic _ ->
       type_error (loc id)
-      ("The interface must be composite (even if it has only one component).")
+      ("the interface must be composite (even if it has only one component)")
   | Composite _ -> ()
 
 let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
@@ -139,7 +139,7 @@ let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
     let dir_i_oid = unloc param.id_dir in
     if not (exists_id dir_ios dir_i_oid)
     then type_error (loc param.id_dir)
-                    ("direct_io " ^ dir_i_oid ^ " doesn't exist.")
+                    ("direct_io " ^ dir_i_oid ^ " doesn't exist")
     else (check_is_composite dir_ios param.id_dir;
           (mk_loc (loc param.id) param.id_dir, index_of_ex param params)) in
   let param_map = check_unique_id params (fun p -> p.id) in
@@ -154,13 +154,13 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
            | _              -> false)
         sds in
   match List.length inits with
-  | 0 -> type_error (loc id) ((unloc id) ^ " doesn't have initial state")
+  | 0 -> type_error (loc id) (unloc id ^ " doesn't have initial state")
   | 1 ->
       (match List.hd inits with
        | InitialState s   -> s.id
        | FollowingState _ ->
            UcMessage.failure "impossible, list contains only InitialState")
-  | _ -> type_error (loc id) ((unloc id) ^ " has more than one initial state")
+  | _ -> type_error (loc id) (unloc id ^ " has more than one initial state")
 
 let check_state_decl (init_id : id) (s : state) : state_tyd = 
   let is_initial = (init_id = s.id) in
@@ -178,7 +178,7 @@ let check_state_decl (init_id : id) (s : state) : state_tyd =
        mmclauses = s.code.mmclauses}
   | Some (id,t) ->
       type_error (loc t)
-      ("Variable name " ^ id ^ " is the same as one of the states parameters.")
+      ("variable name " ^ id ^ " is the same as one of the states parameters")
                         
 let drop_state_ctor (sd : state_def) : state = 
   match sd with 
@@ -245,13 +245,13 @@ let check_i_opath (id_dir_io : string) (id_adv_io : string option)
        | 0 ->
            type_error loc
            (string_of_i_opath uiop ^
-            " is not a part of the interfaces implemented by functionality.")
+            " is not a part of the interfaces implemented by functionality")
        | 1 -> mk_loc loc (List.hd psf)
        | _ ->
            type_error loc
            (string_of_i_opath uiop ^
             " is ambiguous, it is in both direct and adversarial interfaces " ^
-            "implemented by functionality.")
+            "implemented by functionality")
 
 let check_served_paths (serves : string list located list)
                        (id_dir_io : string) (pid : id) : unit = 
@@ -276,7 +276,7 @@ let check_ios_unique (iops : string list located list) : unit =
    (fun l iop -> 
       let uiop = unloc iop in
       if List.mem uiop l
-      then type_error (loc iop) ("Parties must serve distinct interfaces")
+      then type_error (loc iop) ("parties must serve distinct interfaces")
       else uiop :: l)
    [] iops)
 
@@ -289,7 +289,7 @@ let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
   if (List.length unserved) = 0 then ()
   else type_error
        (mergelocs served_ps)
-       ("These interfaces are not served by any party : " ^
+       ("these interfaces are not served by any party : " ^
         (string_of_i_opaths unserved))
 
 let check_party_decl (id_dir_io : string) (id_adv_io : string option)
@@ -320,7 +320,7 @@ let check_exists_dir_io (dir_ios : inter_tyd IdMap.t) (id_dir_io : id) =
   let uid_dir_io = unloc id_dir_io in
   if exists_id dir_ios uid_dir_io then () 
   else type_error (loc id_dir_io)
-                  ("direct_io " ^ uid_dir_io ^ " doesn't exist.")
+       ("direct_io " ^ uid_dir_io ^ " doesn't exist")
 
 let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) = 
   let uid_i2_sio = unloc id_i2_sio in
@@ -329,9 +329,9 @@ let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) =
        | Basic _     -> ()
        | Composite _ ->
            type_error (loc id_i2_sio)
-           "This adversarial_io cannot be composite."
+           "this adversarial interface cannot be composite"
         else type_error (loc id_i2_sio)
-             ("adversarial_io " ^ uid_i2_sio ^ " doesn't exist.")
+             ("adversarial interface " ^ uid_i2_sio ^ " doesn't exist")
 
 let check_fun_decl
     (e_f_id : string -> bool) (is_real_fun_id : string -> bool)
@@ -347,7 +347,7 @@ let check_fun_decl
             (let uid = unloc id in
              if exists_id adv_ios uid then Some uid
              else type_error (loc id)
-                  ("adversarial interface " ^ uid ^ " doesn't exist.")) in
+                  ("adversarial interface " ^ uid ^ " doesn't exist")) in
   match r_fun.fun_body with
   | FunBodyReal sub_items  ->
       let sub_items = check_unique_id sub_items get_real_fun_sub_item_id in
@@ -358,8 +358,8 @@ let check_fun_decl
         else let id, dup = IdMap.choose dup_ids in
              let lc = loc (get_real_fun_sub_item_id dup) in
              type_error lc
-             ("The name " ^ id ^
-              " is the same name as one of the functionality's parameters.") in
+             ("the name " ^ id ^
+              " is the same name as one of the functionality's parameters") in
       let sf_map =
         filter_map
         (fun sub_i ->
@@ -372,7 +372,7 @@ let check_fun_decl
         let fun_id = unloc sf.fun_id in
         if not (e_f_id fun_id)
           then type_error (loc sf.fun_id)
-               ("Nonexisting functionality : " ^ fun_id)
+               ("nonexisting functionality : " ^ fun_id)
         else if is_real_fun_id fun_id
           then type_error (loc sf.fun_id)
                (fun_id ^ " is not an ideal functionality")
@@ -409,7 +409,7 @@ let check_fun_decl
         match r_fun.id_adv with
         | None ->
             type_error (loc r_fun.id)
-            ("An ideal functionality must implement a basic adversarial " ^
+            ("an ideal functionality must implement a basic adversarial " ^
              "interface")
         | Some id ->
             (check_exists_i2_sio adv_ios id;
@@ -525,11 +525,11 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
      mpl) in
   let unexpected() = 
     type_error (msg_loc mp)
-               ("The message is unexpected. These messages are expected : " ^
+               ("the message is unexpected. these messages are expected : " ^
                 string_of_msg_pathl allps) in
   let ambiguous (mtch : msg_path list) = 
     type_error (msg_loc mp)
-               ("The message is ambiguous. There are multiple messages " ^
+               ("the message is ambiguous. there are multiple messages " ^
                 "that match the description : " ^ string_of_msg_pathl mtch) in
   let filtered (mtch : msg_path list) (imtch : msg_path list) : msg_path = 
     match List.length mtch with
@@ -544,9 +544,9 @@ let check_msg_path (bps : r_fb_inter_id_paths) (mp : msg_path) : msg_path =
                   ret.inter_id_path;
                 msg_or_other = mp.msg_or_other }
         else type_error l
-                        ("Internal messages must have full paths. " ^
-                         "Did you mean " ^ (string_of_msg_path (List.hd mtch)) ^
-                          " ?")
+             ("internal messages must have full paths. " ^
+              "did you mean " ^ (string_of_msg_path (List.hd mtch)) ^
+              " ?")
     | _ -> ambiguous mtch in
   match mp.msg_or_other with
   | MsgPathId mt -> 
@@ -581,7 +581,7 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path) :
   let rem = List.filter (fun mp' -> not (covered mp' mp) ) mps in
   if List.length mps = List.length rem
   then type_error (msg_loc mp)
-       ("This match is covered by previous matches and would never execute.")
+       ("this match is covered by previous matches and would never execute")
   else rem
 
 let msg_paths_of_r_fb_inter_id_paths_w_othermsg (bps : r_fb_inter_id_paths) :
@@ -609,9 +609,8 @@ let check_msg_match_deltas (rfbps : r_fb_inter_id_paths) (mml : msg_pat list) :
   if r<>[]
   then let l = msg_loc ((List.hd (List.rev mml)).path)
        in type_error l
-                     ("Message match is not exhaustive, these " ^
-                      "messages are not matched : " ^
-                      string_of_msg_pathl r)
+          ("message match is not exhaustive, these " ^
+           "messages are not matched : " ^ string_of_msg_pathl r)
   else ()
 
 let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
@@ -643,7 +642,7 @@ let check_add_binding (vid : id) (sv : state_vars) : state_vars =
   let uvid = unloc vid in
   if not (IdMap.mem uvid sv.vars)
   then type_error (loc vid)
-       (uvid ^ " is not a local variable and values cannot be bound to it.")
+       (uvid ^ " is not a local variable and values cannot be bound to it")
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = sv.consts; vars = sv.vars;
         initialized_vs = (IdSet.add uvid sv.initialized_vs)}
@@ -659,7 +658,7 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
   let ucid = unloc cid in
   let pvs = get_declared_const_vars sv in
   if (IdMap.mem ucid pvs)
-  then type_error (loc cid) (ucid ^ " is already used.")
+  then type_error (loc cid) (ucid ^ " is already used")
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
         initialized_vs = sv.initialized_vs}
@@ -673,9 +672,9 @@ let check_port_var_binding (bps : r_fb_inter_id_paths) (mp : string list)
     List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.adversarial in
   if not (d && not i && not a)
   then type_error (loc vid)
-       ("The message " ^ string_of_i_opath mp ^
+       ("the message " ^ string_of_i_opath mp ^
         " maybe isn't an incoming message of a direct_io served by the " ^
-        "party and cannot bind the source port to a variable.")
+        "party and cannot bind the source port to a variable")
   else check_add_const vid port_type port_type sv
 
 let check_item_type_add_binding (sv : state_vars) (mi : pat)
@@ -706,8 +705,8 @@ let check_msg_content_bindings
   let mt = to_list (unlocm((unloc(IdMap.find (snd mp) (snd p))).content)) in
   if List.length mt <> List.length tm
   then type_error (get_loc_match_item_list tm)
-                  ("The number of bindings is different then the number " ^
-                   "of message parameters.")
+       ("the number of bindings is different then the number " ^
+        "of message parameters")
   else List.fold_left2 check_item_type_add_binding sv tm mt
 
 let check_pat_args (bps : b_inter_id_path list) (mm : msg_pat)
@@ -718,7 +717,7 @@ let check_pat_args (bps : b_inter_id_path list) (mm : msg_pat)
       match mm.path.msg_or_other with
       | MsgPathOtherMsg l ->
           type_error l
-          ("othermsg cannot have value bindings. Do you have " ^
+          ("othermsg cannot have value bindings. do you have " ^
            "redundant parenthesis?")
       | MsgPathId id      ->
           check_msg_content_bindings bps
@@ -746,7 +745,7 @@ let get_var_type (sv : state_vars) (id : id) : typ =
 let check_initialized (sv : state_vars) (id : id) : unit = 
   let uid = unloc id in
   if IdMap.mem uid sv.consts || IdSet.mem uid sv.initialized_vs then ()
-  else type_error (loc id) (uid ^ " is not initialized.")    
+  else type_error (loc id) (uid ^ " is not initialized")
 
 let check_expr_var (sv : state_vars) (id : id) : typ = 
   let r = get_var_type sv id in
@@ -776,7 +775,7 @@ let check_sampl_assign (sv : state_vars) (vid : id) (ex : expression_l) :
                          state_vars = 
   let etyp = check_expression sv ex in
   if not (UcExpressions.is_distribution etyp)
-  then type_error (loc ex) ("You can sample only from distributions.")
+  then type_error (loc ex) ("you can sample only from distributions")
   else let dtyp = UcExpressions.get_distribution_typ etyp in 
        check_type_add_binding vid dtyp sv
 
@@ -785,10 +784,10 @@ let check_transition (si : state_expr) (ss : state_sig IdMap.t)
   let ssig = 
     try IdMap.find (unloc(si.id)) ss with
       Not_found ->
-        type_error (loc si.id) ("Non-existing state : " ^ (unloc si.id)) in
+        type_error (loc si.id) ("non-existing state : " ^ (unloc si.id)) in
   let sp = ssig and args = si.args in
   if List.length sp <> List.length args
-  then type_error (loc si.id) "Wrong number of arguments."
+  then type_error (loc si.id) "wrong number of arguments"
   else let te = List.combine sp args in
        List.iteri
        (fun i (sigt, sip) -> 
@@ -807,11 +806,11 @@ let check_msg_content_values (es : expression_l list) (mc : typ_tyd IdMap.t)
   let sg = to_list (unlocm mc) in
   let esl = mergelocs es in
   if List.length es <> List.length sg
-  then type_error esl "Parameter number mismatch."
+  then type_error esl "parameter number mismatch"
   else List.iter2
        (fun ex typ ->
               if not (check_expression sv ex = typ)
-              then type_error (loc ex) ("Parameter type mismatch"))
+              then type_error (loc ex) ("parameter type mismatch"))
        es sg
 
 let check_send_direct (msg : msg_expr) (mc : typ_tyd IdMap.t)
@@ -822,7 +821,7 @@ let check_send_direct (msg : msg_expr) (mc : typ_tyd IdMap.t)
     | Some p ->
         (check_exists_and_has_compatible_type p port_type sv;
          check_initialized sv p)
-    | None   -> type_error l ("Missing destination port.") in
+    | None   -> type_error l ("missing destination port") in
   check_msg_content_values msg.args mc sv
 
 let check_send_adversarial (msg : msg_expr) (mc : typ_tyd IdMap.t)
@@ -831,7 +830,7 @@ let check_send_adversarial (msg : msg_expr) (mc : typ_tyd IdMap.t)
   let () =
     match msg.port_id with
     | Some _ ->
-        type_error l "Only direct messages can have destination port."
+        type_error l "only direct messages can have destination port"
     | None   -> () in
   check_msg_content_values msg.args mc sv
 
@@ -842,8 +841,8 @@ let check_send_internal (msg : msg_expr) (mc : typ_tyd IdMap.t)
     match msg.port_id with
     | Some _ ->
         type_error l
-                   ("Messages to subfunctionalities cannot have " ^
-                    "destination port.")
+        ("messages to subfunctionalities cannot have " ^
+         "destination port")
     | None -> () in
   check_msg_content_values msg.args mc sv
 
@@ -875,7 +874,7 @@ let check_send_msg_path (msg : msg_expr) (bps : r_fb_inter_id_paths)
   let () =
     if List.mem "simulator" sv.flags && msg.path <> msg'.path
     then type_error (msg_loc msg.path)
-         ("Messages sent by simulator must have complete path, did you mean " ^
+         ("messages sent by simulator must have complete path, did you mean " ^
           string_of_msg_path msg'.path ^ " ?")
     else () in
   msg'
@@ -917,7 +916,7 @@ let rec check_ite (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                   (eins : instruction_l list option) :
                     instruction*state_vars = 
   if check_expression sv ex <> bool_type
-  then type_error (loc ex) "The condition must be a boolean expression."
+  then type_error (loc ex) "the condition must be a boolean expression"
   else let (tins_c, eins_c, sv') = check_branches bps ss sv tins eins in
        (ITE (ex, tins_c, eins_c), sv')
 
@@ -940,7 +939,7 @@ and check_decode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                  (m_is : pat list) (okins : instruction_l list)
                  (erins : instruction_l list) : instruction * state_vars = 
   if check_expression sv ex <> univ_type
-  then type_error (loc ex) "Only expressions of univ type can be decoded."
+  then type_error (loc ex) "only expressions of univ type can be decoded"
   else let dt =
          match check_type ty with
          | Tconstr (x, y) -> [Tconstr (x,y)]
@@ -951,8 +950,8 @@ and check_decode (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
               "Tconstr or Ttuple.") in
        if List.length m_is <> List.length dt
        then type_error (get_loc_match_item_list m_is)
-            ("The number of bindings is different from the arity of " ^
-             "decoded type.")
+            ("the number of bindings is different from the arity of " ^
+             "decoded type")
        else let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
             let (okins_c, erins_c, sv'') =
               check_branches bps ss sv' okins (Some erins) in
@@ -996,31 +995,31 @@ let rec check_ends_are_sa_tor_f (is : instruction_l list) : unit =
   | {pl_loc = _; pl_desc = (SendAndTransition _)} :: [] -> ()
   | {pl_loc = l; pl_desc = (SendAndTransition _)} :: _ :: _ ->
       type_error l
-                 ("The instructions after send and transition will " ^
-                  "not be executed")
+      ("the instructions after send and transition will " ^
+       "not be executed")
   | {pl_loc = _; pl_desc = Fail} :: [] -> ()
   | {pl_loc = l; pl_desc = Fail} :: _ :: _ ->
-      type_error l ("The instructions after fail will not be executed")
+      type_error l ("the instructions after fail will not be executed")
   | {pl_loc = _; pl_desc = (ITE (_,tins,Some eins))} :: [] ->
       (check_ends_are_sa_tor_f tins; check_ends_are_sa_tor_f eins)
   | {pl_loc = _; pl_desc = (ITE (_,tins,Some eins))} :: ins :: _
       when (contains_sa_tor_f tins)&&(contains_sa_tor_f eins) ->
       type_error (loc ins)
-                 ("The instructions after if-then-else will not be " ^
-                  " executed since both branches contain send and " ^
-                  "transition or fail commands.")
+      ("the instructions after if-then-else will not be " ^
+       " executed since both branches contain send and " ^
+       "transition or fail commands")
   | {pl_loc = _; pl_desc = (Decode (_,_,_,okins,erins))} :: [] ->
       check_ends_are_sa_tor_f okins; check_ends_are_sa_tor_f erins
   | {pl_loc = _; pl_desc = (Decode (_,_,_,okins,erins))} :: ins :: _
       when contains_sa_tor_f okins && contains_sa_tor_f erins ->
       type_error (loc ins)
-                 ("The instructions after decode will not be executed " ^
-                  "since both branches contain send and transition or " ^
-                  "fail commands.")
+      ("the instructions after decode will not be executed " ^
+       "since both branches contain send and transition or " ^
+       "fail commands")
   | ins :: [] ->
       type_error (loc ins)
-                 ("Every branch of execution must end with send and " ^
-                  "transition or fail command.")
+      ("every branch of execution must end with send and " ^
+       "transition or fail command")
   | _ :: tl -> check_ends_are_sa_tor_f tl
 
 let check_msg_code (bps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
@@ -1198,14 +1197,14 @@ let check_message_path_sim (bps : b_inter_id_path list) (isini : bool)
   let id = fst (List.find (fun p -> (List.length (fst p)) = 1) bps) in
   if isini && unlocs mp.inter_id_path <> id
   then type_error l
-                  ("Initial state can handle only messages comming " ^
-                   "from ideal functionality. Did you omit prefix " ^
-                   List.hd id ^ ".?")
+       ("initial state can handle only messages comming " ^
+        "from ideal functionality. did you omit prefix " ^
+        List.hd id ^ ".?")
   else let iops = fst(List.split bps) in
        let invalid_dest() =
          type_error l
-                    ("Not a valid destination, these destinations are " ^
-                     "valid : " ^ string_of_i_opaths iops) in
+         ("not a valid destination, these destinations are " ^
+          "valid : " ^ string_of_i_opaths iops) in
        let umpiop = (unlocs mp.inter_id_path) in
        match mp.msg_or_other with
        | MsgPathId mt ->
@@ -1356,14 +1355,14 @@ let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
 let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
   if exists_id funs urf then ()
-  else type_error (loc rf) ("Functionality " ^ urf ^ " doesn't exist.")
+  else type_error (loc rf) ("functionality " ^ urf ^ " doesn't exist")
 
 let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let () = check_exists_f funs rf in
   let f = unloc (IdMap.find (unloc rf) funs) in
   if not (is_real_fun_body_tyd f)
   then type_error (loc rf)
-       ("The simulated functionality must be a real functionality.")
+       ("the simulated functionality must be a real functionality")
 
 let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
                          (rf : id) (params : id list) = 
@@ -1373,14 +1372,14 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
     (fun id -> get_dir_io_id_impl_by_fun id funs) (unlocs params) in
   if List.length d_ios <> List.length d_ios'
   then type_error (loc rf)
-       ("Wrong number of arguments for functionality.")
+       ("wrong number of arguments for functionality")
   else let () =
          List.iteri
          (fun i pid ->
           if List.nth d_ios i <> List.nth d_ios' i
           then type_error (loc pid)
-               ("Argument implements different direct interface than " ^
-                "required by functionality."))
+               ("argument implements different direct interface than " ^
+                "required by functionality"))
          params in
        List.iter
        (fun pid ->
@@ -1388,7 +1387,7 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
               match f with
               | FunBodyReal _ ->
                   type_error (loc pid)
-                  ("The argument to simulated functionality must " ^
+                  ("the argument to simulated functionality must " ^
                    "be an ideal functionality")
               | FunBodyIdeal _  ->
                   (* we know the ideal functionality implements a basic
@@ -1486,7 +1485,7 @@ let load_ec_reqs reqs =
     try UcEcInterface.require_import (unloc idl) with
     Failure f ->
       type_error (loc idl)
-      ("Error when importing EasyCrypt theory " ^ unloc idl ^ ":\n" ^ f) in
+      ("error when importing EasyCrypt theory " ^ unloc idl ^ ":\n" ^ f) in
   List.iter reqimp reqs
 
 let typecheck spec = 

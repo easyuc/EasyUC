@@ -5,6 +5,7 @@
 open EcUtils
 open EcLocation
 open UcSpec
+open UcMessage
 
 let to_id (mpi : msg_path_item) =
   match mpi with
@@ -15,8 +16,7 @@ let to_id (mpi : msg_path_item) =
 let rec to_msg_path (mpis : msg_path_item list) (mp : msg_path) =
   match mpis with
   | []       ->
-      raise
-      (Failure "Cannot happen: empty list when converting mpis to msg_path")
+      failure "cannot happen: empty list when converting mpis to msg_path"
   | [x]      -> {inter_id_path = mp.inter_id_path; msg_or_other = x}
   | hd :: tl ->
       to_msg_path tl
