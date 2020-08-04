@@ -11,29 +11,6 @@ open UcTypedSpec
 open UcUtils
 open UcMessage
 
-(* circular references *)
-
-let refs_refs (get_refs : string -> IdSet.t)  (refs : IdSet.t) : IdSet.t = 
-  let add_refs elt set = IdSet.union (get_refs elt) set in
-  IdSet.fold add_refs refs IdSet.empty
-
-let get_dependencies (get_refs : string -> IdSet.t) (id : string)  = 
-  let rec tc refs = 
-    let refs' = refs_refs get_refs refs in
-    if IdSet.subset refs' refs then refs
-    else tc (IdSet.union refs' refs)
-  in tc (get_refs id)
-
-let check_circ_refs (get_refs : ('o located) IdMap.t -> string -> IdSet.t)
-                    (os : ('o located) IdMap.t) : unit = 
-  let deps = IdMap.mapi (fun id _ -> get_dependencies (get_refs os) id) os in
-  let circ =
-        IdMap.filter (fun id rs -> IdSet.exists (fun r -> r = id) rs) deps in
-  if IdMap.is_empty circ then ()
-  else let id = fst (IdMap.choose circ) in
-       let lid = loc (IdMap.find id os) in
-       type_error lid (id ^ " contains a circular reference")
-
 (* Convert a list from dl_parse_tree to IdMap *)
 
 let check_unique_id (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t = 
@@ -1154,19 +1131,6 @@ let check_party_code dir_ios adv_ios funs =
            states = states'}))
   funs
 
-let get_sf_refs_to_f_in_rf (funs : fun_tyd IdMap.t) (fid : string) : IdSet.t = 
-  match unloc (IdMap.find fid funs) with
-  | FunBodyRealTyd fbr ->
-      let sfrf =
-        IdMap.filter
-        (fun _ r -> exists_id funs (unloc r).fun_id)
-        fbr.sub_funs in
-  IdMap.fold (fun _ r set -> IdSet.add (unloc r).fun_id set) sfrf IdSet.empty
-  | FunBodyIdealTyd _  -> IdSet.empty
-
-let check_circ_refs_in_r_funs (rfs : fun_tyd IdMap.t) =
-  check_circ_refs get_sf_refs_to_f_in_rf rfs
-
 let check_funs (fun_map : fun_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
                (adv_ios : inter_tyd IdMap.t) : fun_tyd IdMap.t = 
   let e_f_id = exists_id fun_map in 
@@ -1178,8 +1142,7 @@ let check_funs (fun_map : fun_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
     IdMap.map
     (check_fun_decl e_f_id is_real_fun_id dir_ios adv_ios)
     fun_map in
-  (check_circ_refs_in_r_funs funs;
-   check_party_code dir_ios adv_ios funs)
+  check_party_code dir_ios adv_ios funs
 
 (* Simulator checks *)
 
