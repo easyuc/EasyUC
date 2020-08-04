@@ -35,10 +35,10 @@ let check_params (n_tl : type_binding list) : typ_tyd IdMap.t =
 (* interface checks *)
 
 let check_exists_io (ermsgpref : string) (e_io : string -> bool)
-                    (io_i : comp_item) : comp_item_tyd = 
+                    (io_i : comp_item) : id = 
   let uid = unloc io_i.inter_id in
   if e_io uid
-  then mk_loc (loc io_i.sub_id) io_i.inter_id
+  then mk_loc (loc io_i.sub_id) (unloc io_i.inter_id)
   else type_error
        (loc io_i.inter_id)
        (ermsgpref ^ " " ^ uid ^ " hasn't been defined yet")
@@ -46,11 +46,11 @@ let check_exists_io (ermsgpref : string) (e_io : string -> bool)
 let check_comp_io_body (ermsgpref : string) (e_io : string -> bool)
                        (iob : comp_item list) : inter_body_tyd = 
   let comp_item_map = check_unique_id iob (fun io_i -> io_i.sub_id) in
-  Composite (IdMap.map (check_exists_io ermsgpref e_io) comp_item_map)
+  CompositeTyd (IdMap.map (check_exists_io ermsgpref e_io) comp_item_map)
 
 let check_basic_io_body (biob : message_def list) : inter_body_tyd = 
   let msg_map = check_unique_id biob (fun md -> md.id) in
-  Basic
+  BasicTyd
   (IdMap.map
    (fun (md : message_def) ->
       mk_loc
@@ -64,19 +64,19 @@ let check_composites_ref_basics (ios : inter_tyd IdMap.t) =
     IdMap.partition
     (fun _ ioc ->
        match (unloc ioc) with
-       | Composite _ -> true
-       | _           -> false)
+       | CompositeTyd _ -> true
+       | _              -> false)
     ios in
   let eb_io = exists_id basics in
   IdMap.iter
   (fun _ ioc -> 
      match (unloc ioc) with
-     | Composite its ->
+     | CompositeTyd its ->
          IdMap.iter
          (fun _ idl -> 
-            let uid = unloc (unloc idl) in
+            let uid = unloc idl in
             if (eb_io uid) then ()
-            else type_error (loc (unloc idl))
+            else type_error (loc idl)
                  (uid ^ " is not a basic interface"))
          its
      | _ -> ())
@@ -103,22 +103,23 @@ let check_adv_ios (adv_io_map : named_inter IdMap.t) =
 let check_is_composite (ios : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
   match unloc (IdMap.find uid ios) with
-  | Basic _ ->
+  | BasicTyd _ ->
       type_error (loc id)
       ("the interface must be composite (even if it has only one component)")
-  | Composite _ -> ()
+  | CompositeTyd _ -> ()
 
 let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
                           (params : fun_param list) :
-      (comp_item_tyd * int) IdMap.t = 
+      (id * int) IdMap.t = 
   let check_real_fun_param (dir_ios : inter_tyd IdMap.t) (param : fun_param) :
-        (comp_item_tyd * int) = 
+        (id * int) = 
     let dir_i_oid = unloc param.id_dir in
     if not (exists_id dir_ios dir_i_oid)
     then type_error (loc param.id_dir)
                     ("direct_io " ^ dir_i_oid ^ " doesn't exist")
     else (check_is_composite dir_ios param.id_dir;
-          (mk_loc (loc param.id) param.id_dir, index_of_ex param params)) in
+          (mk_loc (loc param.id) (unloc param.id_dir),
+           index_of_ex param params)) in
   let param_map = check_unique_id params (fun p -> p.id) in
   IdMap.map (check_real_fun_param dir_ios) param_map
 
@@ -180,18 +181,18 @@ let getb_inter_id_paths (root : string) (ioid : string)
   let getb_body (id : string) : basic_inter_body_tyd = 
     let io = IdMap.find id ios in
     match (unloc io) with
-    | Basic b -> b
+    | BasicTyd b -> b
     | _       ->
         failure
         ("Cannot happen, this function is called only on Basic " ^
          "interfaces") in
   let io = IdMap.find ioid ios in
   match (unloc io) with
-  | Basic b       -> [([root],b)]
-  | Composite cio ->
+  | BasicTyd b       -> [([root],b)]
+  | CompositeTyd cio ->
       IdMap.fold
       (fun id it l ->
-         ([root; id], getb_body (unloc (unloc it))) :: l)
+         ([root; id], getb_body (unloc it)) :: l)
       cio []
 
 let get_inter_id_paths (ioid : string) (ios : inter_tyd IdMap.t) :
@@ -303,8 +304,8 @@ let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) =
   let uid_i2_sio = unloc id_i2_sio in
   if exists_id i2s_ios uid_i2_sio
   then match unloc (IdMap.find uid_i2_sio i2s_ios) with
-       | Basic _     -> ()
-       | Composite _ ->
+       | BasicTyd _     -> ()
+       | CompositeTyd _ ->
            type_error (loc id_i2_sio)
            "this adversarial interface cannot be composite"
         else type_error (loc id_i2_sio)
@@ -345,7 +346,7 @@ let check_fun_decl
            | _             -> None)
         sub_items in
       let check_sub_fun_decl (e_f_id : string -> bool) (sf : sub_fun_decl)
-                               : sub_fun_decl_tyd =
+                               : id =
         let fun_id = unloc sf.fun_id in
         if not (e_f_id fun_id)
           then type_error (loc sf.fun_id)
@@ -353,7 +354,7 @@ let check_fun_decl
         else if is_real_fun_id fun_id
           then type_error (loc sf.fun_id)
                (fun_id ^ " is not an ideal functionality")
-        else mk_loc (loc sf.id) {fun_id = fun_id} in
+        else mk_loc (loc sf.id) fun_id in
       let sub_funs =
         IdMap.map (check_sub_fun_decl e_f_id) sf_map in
       let () = check_is_composite dir_ios r_fun.id_dir in
@@ -407,14 +408,14 @@ let get_param_dir_io_ids (r_funs : fun_tyd IdMap.t) (rfid : string) :
                            string list = 
   let func = IdMap.find rfid r_funs in
   match unloc func with
-  | FunBodyRealTyd fbr -> unlocs (unlocs (to_list fbr.params))
+  | FunBodyRealTyd fbr -> unlocs (to_list fbr.params)
   | FunBodyIdealTyd _  -> []
 
 type state_vars =
   {flags : string list; internal_ports : QidSet.t; consts : typ IdMap.t;
    vars : typ IdMap.t; initialized_vs : IdSet.t}
 
-let init_state_vars (s : state_body) (ports : QidSet.t)
+let init_state_vars (s : state_body_tyd) (ports : QidSet.t)
                     (flags : string list) : state_vars = 
   let consts = IdMap.map (fun p -> fst (unloc p)) s.params in
   let vars = IdMap.map (fun v -> unloc v) s.vars in
@@ -423,7 +424,7 @@ let init_state_vars (s : state_body) (ports : QidSet.t)
 
 type state_sig = typ list
 
-let get_state_sig (s : state_body) : state_sig = 
+let get_state_sig (s : state_body_tyd) : state_sig = 
   if s.is_initial then []
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
@@ -830,7 +831,7 @@ let is_msg_path_inb_inter_id_paths (mp : msg_path) (bps : b_inter_id_path list) 
   | None   -> false
 
 let get_msg_def_for_msg_path (mp : msg_path) (bs : b_inter_id_path list) :
-                               message_def_body = 
+                               message_def_body_tyd = 
   let iop = unlocs mp.inter_id_path in
   let bio = List.find (fun bp -> (fst bp) = iop) bs in
   let mt  =
@@ -1070,14 +1071,14 @@ let get_r_fb_inter_id_paths (dir_ios : inter_tyd IdMap.t)
   let adversarial = filterb_inter_id_paths all.adversarial filt in
   let internal_sfm =
     IdMap.mapi
-    (fun sfid (sf : sub_fun_decl_tyd) ->
-           let did = get_dir_io_id_impl_by_fun ((unloc sf).fun_id) funs in
+    (fun sfid (sf : id) ->
+           let did = get_dir_io_id_impl_by_fun (unloc sf) funs in
            getb_inter_id_paths sfid did dir_ios)
     (sub_funs_of_fun_body_tyd ur_f) in
   let internal_pm =
     IdMap.mapi
     (fun pid p -> 
-           let did = unloc (unloc (fst p)) in
+           let did = unloc (fst p) in
            getb_inter_id_paths pid did dir_ios)
     (params_of_fun_body_tyd ur_f) in
   let internal_m =
@@ -1233,7 +1234,7 @@ let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
          (QidMap.singleton pfx (urf) ::
           IdMap.fold
           (fun sfid sfd l ->
-                 (get_sc funs (unloc sfd).fun_id (pfx @ [sfid])) :: l)
+                 (get_sc funs (unloc sfd) (pfx @ [sfid])) :: l)
           (sub_funs_of_fun_body_tyd urf) [])
     else failure
          ("Impossible! We already checked that all referenced " ^
@@ -1253,11 +1254,12 @@ let get_component_inter_id_paths (adv_ios : inter_tyd IdMap.t)
 let invert_dir (dir : msg_dir) = 
   match dir with In -> Out | Out -> In
 
-let invert_mdf (mdf : message_def_body) : message_def_body = 
+let invert_mdf (mdf : message_def_body_tyd) : message_def_body_tyd = 
   {direction = (invert_dir mdf.direction);
    content = mdf.content; port_label = mdf.port_label}
 
-let invert_md_fl (mdfl : message_def_body located) : message_def_body located = 
+let invert_md_fl (mdfl : message_def_body_tyd located) :
+      message_def_body_tyd located = 
   let l = loc mdfl in
   let mdf = unloc mdfl in
   let mdf' = invert_mdf mdf in
