@@ -400,7 +400,7 @@ let check_fun_decl
          dir_ios adv_ios;
          ps) in
       mk_loc (loc r_fun.id)
-      (FunBodyReal
+      (FunBodyRealTyd
        {params = params; id_dir_io = id_dir_io; id_adv_io = id_adv_io;
         sub_funs = sub_funs; parties = parties})
   | FunBodyIdeal state_defs ->
@@ -415,7 +415,7 @@ let check_fun_decl
             (check_exists_i2_sio adv_ios id;
              check_states r_fun.id state_defs) in
       mk_loc (loc r_fun.id)
-      (FunBodyIdeal
+      (FunBodyIdealTyd
        {id_dir_io = id_dir_io; id_adv_io = Option.get id_adv_io;
         states = states})
 
@@ -423,15 +423,15 @@ let get_dir_io_id_impl_by_fun (fid : string) (funs : fun_tyd IdMap.t) :
                                 string = 
   let func = IdMap.find fid funs in
   match unloc func with
-  | FunBodyReal fbr -> fbr.id_dir_io
-  | FunBodyIdeal fbi -> fbi.id_dir_io
+  | FunBodyRealTyd fbr -> fbr.id_dir_io
+  | FunBodyIdealTyd fbi -> fbi.id_dir_io
 
 let get_param_dir_io_ids (r_funs : fun_tyd IdMap.t) (rfid : string) :
                            string list = 
   let func = IdMap.find rfid r_funs in
   match unloc func with
-  | FunBodyReal fbr -> unlocs (unlocs (to_list fbr.params))
-  | FunBodyIdeal _  -> []
+  | FunBodyRealTyd fbr -> unlocs (unlocs (to_list fbr.params))
+  | FunBodyIdealTyd _  -> []
 
 type state_vars =
   {flags : string list; internal_ports : QidSet.t; consts : typ IdMap.t;
@@ -1127,7 +1127,7 @@ let check_party_code dir_ios adv_ios funs =
   IdMap.map 
   (fun r_f -> 
      match unloc r_f with
-     | FunBodyReal ur_f ->
+     | FunBodyRealTyd ur_f ->
          let parties = ur_f.parties in
          let parties' =
            IdMap.map 
@@ -1140,29 +1140,29 @@ let check_party_code dir_ios adv_ios funs =
               mk_loc (loc p) {serves = up.serves; states = states'})
            parties in
          mk_loc (loc r_f)
-         (FunBodyReal
+         (FunBodyRealTyd
           {params = ur_f.params; id_dir_io = ur_f.id_dir_io;
            id_adv_io = ur_f.id_adv_io; sub_funs = ur_f.sub_funs;
            parties = parties'})
-     | FunBodyIdeal ur_f ->
+     | FunBodyIdealTyd ur_f ->
          let states = ur_f.states in
          let bps = get_fb_inter_id_paths dir_ios adv_ios r_f in
          let states' = IdMap.map (check_state (unloc r_f) states bps) states in
          mk_loc (loc r_f)
-         (FunBodyIdeal
+         (FunBodyIdealTyd
           {id_dir_io = ur_f.id_dir_io; id_adv_io = ur_f.id_adv_io;
            states = states'}))
   funs
 
 let get_sf_refs_to_f_in_rf (funs : fun_tyd IdMap.t) (fid : string) : IdSet.t = 
   match unloc (IdMap.find fid funs) with
-  | FunBodyReal fbr ->
+  | FunBodyRealTyd fbr ->
       let sfrf =
         IdMap.filter
         (fun _ r -> exists_id funs (unloc r).fun_id)
         fbr.sub_funs in
   IdMap.fold (fun _ r set -> IdSet.add (unloc r).fun_id set) sfrf IdSet.empty
-  | FunBodyIdeal _  -> IdSet.empty
+  | FunBodyIdealTyd _  -> IdSet.empty
 
 let check_circ_refs_in_r_funs (rfs : fun_tyd IdMap.t) =
   check_circ_refs get_sf_refs_to_f_in_rf rfs
@@ -1385,11 +1385,11 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
        (fun pid ->
               let f = unloc (IdMap.find (unloc pid) funs) in
               match f with
-              | FunBodyReal _ ->
+              | FunBodyRealTyd _ ->
                   type_error (loc pid)
                   ("the argument to simulated functionality must " ^
                    "be an ideal functionality")
-              | FunBodyIdeal _  ->
+              | FunBodyIdealTyd _  ->
                   (* we know the ideal functionality implements a basic
                      adversarial interface *)
                   ())

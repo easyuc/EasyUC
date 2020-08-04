@@ -62,43 +62,43 @@ type ideal_fun_body =
    states    : state_tyd IdMap.t}
 
 type fun_body_tyd =
-  | FunBodyReal of real_fun_body
-  | FunBodyIdeal of ideal_fun_body
+  | FunBodyRealTyd of real_fun_body
+  | FunBodyIdealTyd of ideal_fun_body
 
 let is_real_fun_body_tyd fb =
   match fb with
-  | FunBodyReal _  -> true
-  | FunBodyIdeal _ -> false
+  | FunBodyRealTyd _  -> true
+  | FunBodyIdealTyd _ -> false
 
 let params_of_fun_body_tyd f =
   match f with
-  | FunBodyReal fbr -> fbr.params
-  | FunBodyIdeal _  -> IdMap.empty
+  | FunBodyRealTyd fbr -> fbr.params
+  | FunBodyIdealTyd _  -> IdMap.empty
 
 let id_dir_io_of_fun_body_tyd f =
   match f with
-  | FunBodyReal fbr  -> fbr.id_dir_io
-  | FunBodyIdeal fbi -> fbi.id_dir_io
+  | FunBodyRealTyd fbr  -> fbr.id_dir_io
+  | FunBodyIdealTyd fbi -> fbi.id_dir_io
 
 let id_adv_io_of_fun_body_tyd f =
   match f with
-  | FunBodyReal fbr  -> fbr.id_adv_io
-  | FunBodyIdeal fbi -> Some fbi.id_adv_io
+  | FunBodyRealTyd fbr  -> fbr.id_adv_io
+  | FunBodyIdealTyd fbi -> Some fbi.id_adv_io
 
 let sub_funs_of_fun_body_tyd f =
   match f with
-  | FunBodyReal fbr -> fbr.sub_funs
-  | FunBodyIdeal _  -> IdMap.empty
+  | FunBodyRealTyd fbr -> fbr.sub_funs
+  | FunBodyIdealTyd _  -> IdMap.empty
 
 let parties_of_fun_body_tyd f =
   match f with
-  | FunBodyReal fbr -> fbr.parties
-  | FunBodyIdeal _  -> IdMap.empty
+  | FunBodyRealTyd fbr -> fbr.parties
+  | FunBodyIdealTyd _  -> IdMap.empty
 
 let states_of_fun_body_tyd f =
   match f with
-  | FunBodyReal _    -> IdMap.empty
-  | FunBodyIdeal fbi -> fbi.states
+  | FunBodyRealTyd _    -> IdMap.empty
+  | FunBodyIdealTyd fbi -> fbi.states
 
 type fun_tyd = fun_body_tyd located
 
