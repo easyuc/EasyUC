@@ -110,8 +110,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token SEND
 %token ANDTXT
 %token TRANSITION
-%token REQUIRES
-%token IMPORT
+%token UC_REQUIRES
+%token EC_REQUIRES
 %token SUBFUN
 %token UNDERSCORE
 
@@ -187,28 +187,26 @@ spec :
       { {externals = ext; definitions = defs} }
         
 preamble : 
-  | reqs = option(reqs); imps = option(imps)
-      { {ec_requirements = reqs |? [];
-         dl_imports      = imps |? []} }
+  | ec_reqs = option(ec_requires); uc_reqs = option(uc_requires)
+      { {ec_requires = ec_reqs |? [];
+         uc_requires = uc_reqs |? []} }
 
-(* import is supposed to load content from other .uc files - not yet
-   implemented *)
+(* require .uc files - not yet implemented *)
 
-imps: 
-  | IMPORT imps = nonempty_list(id_l) DOT
-      { imps }
+uc_requires : 
+  | UC_REQUIRES uc_reqs = nonempty_list(id_l) DOT
+      { uc_reqs }
 
-(* requires does a "require import" of an EasyCrypt theory, making its
-   types and operators available for use in the UC DSL specification *)
+(* require import .ec files, making types and operators available
+   for use in UC DSL specification *)
 
-reqs : 
-  | REQUIRES reqs = nonempty_list(id_l) DOT
-      { reqs }
+ec_requires : 
+  | EC_REQUIRES ec_reqs = nonempty_list(id_l) DOT
+      { ec_reqs }
 
 (* a definition is either a definition of an interface, a
-   functionality or a simulator.  All of the names must be distinct
-   (checked by check_defs in UcTypecheck, tested by
-   testDuplicateIdInIODefinitions, testRealFunIdSameAsIOid,) *)
+   functionality or a simulator.  All of the names must be
+   distinct. *)
 
 def : 
   | ind = inter_def

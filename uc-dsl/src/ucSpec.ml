@@ -138,6 +138,6 @@ type def =
   | FunDef   of fun_def
   | SimDef   of sim_def
 
-type externals = {ec_requirements : id list; dl_imports : id list}
+type externals = {ec_requires : id list; uc_requires : id list}
 
 type spec = {externals : externals; definitions : def list}

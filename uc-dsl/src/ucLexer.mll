@@ -15,6 +15,8 @@
     raise (LexerError (L.of_lexbuf lexbuf, msg))
 
   let _keywords = [                     
+    "ec_requires"     , EC_REQUIRES ;
+    "uc_requires"     , UC_REQUIRES ;
     "direct"          , DIRECT      ;
     "adversarial"     , ADVERSARIAL ;
     "in"              , IN          ;
@@ -33,7 +35,6 @@
     "send"            , SEND        ;
     "and"             , ANDTXT      ;
     "transition"      , TRANSITION  ;
-    "requires"        , REQUIRES    ;
     "var"             , VAR         ;
     "subfun"          , SUBFUN      ;
     "if"              , IF          ;

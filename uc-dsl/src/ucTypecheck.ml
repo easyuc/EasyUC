@@ -1442,9 +1442,6 @@ let check_defs def_l =
   { direct_ios = dir_ios; adversarial_ios = adv_ios;
     functionalities = funs; simulators = sims }
 
-(* TODO : redundant code? *)
-let load_uc_imports _ : def list = []
-
 let load_ec_reqs reqs = 
   let reqimp idl = 
     try UcEcInterface.require_import (unloc idl) with
@@ -1455,6 +1452,5 @@ let load_ec_reqs reqs =
 
 let typecheck spec = 
   let () = UcEcInterface.init() in
-  let () = load_ec_reqs spec.externals.ec_requirements in
-  let ext_defs = load_uc_imports spec.externals.dl_imports in
-  check_defs (ext_defs @ spec.definitions)
+  let () = load_ec_reqs spec.externals.ec_requires in
+  check_defs spec.definitions

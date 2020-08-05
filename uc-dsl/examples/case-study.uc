@@ -1,8 +1,8 @@
 (* SMC Case Study Expressed in UC DSL *)
 
-(* load EasyCrypt theory defining exp, key, text *)
+(* require and import EasyCrypt theory defining exp, key, text *)
 
-requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts.
 
 (* forwarding *)
 
