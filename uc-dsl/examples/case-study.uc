@@ -201,7 +201,7 @@ functionality KEIdeal implements KEDir KEI2S {
   }
 }
 
-simulator KESim uses KEI2S simulates KEReal() {
+simulator KESim uses KEI2S simulates KEReal {
   initial state WaitReq1 {
     var q1 : exp;
     match message with 

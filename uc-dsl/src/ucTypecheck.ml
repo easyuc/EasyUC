@@ -92,10 +92,10 @@ let check_diradv_ios (errmsgpref : string) (da_io_map : named_inter IdMap.t) =
   let da_ios = IdMap.map check_adio_def da_io_map in
   (check_composites_ref_basics da_ios; da_ios)
 
-let check_dir_ios (dir_io_map : named_inter IdMap.t) =
+let check_dir_inters (dir_io_map : named_inter IdMap.t) =
   check_diradv_ios "direct_io" dir_io_map
 
-let check_adv_ios (adv_io_map : named_inter IdMap.t) =
+let check_adv_inters (adv_io_map : named_inter IdMap.t) =
   check_diradv_ios "adversarial_io" adv_io_map
                 
 (* Real Functionality checks *)
@@ -1373,9 +1373,9 @@ let check_sim_decl (_ : inter_tyd IdMap.t) (i2s_ios : inter_tyd IdMap.t)
   mk_loc (loc sd.id)
   {uses = uses; sims = sims; sims_arg_ids = sims_param_ids; states = body}
 
-let check_simulators (sim_map : sim_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
-                     (adv_ios : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t) :
-                       sim_def_tyd IdMap.t = 
+let check_sims (sim_map : sim_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
+               (adv_ios : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t) :
+                 sim_def_tyd IdMap.t = 
   let sims = IdMap.map (check_sim_decl dir_ios adv_ios funs) sim_map in
   IdMap.map (check_sim_code dir_ios adv_ios funs) sims
 
@@ -1435,11 +1435,11 @@ let check_defs def_l =
            | SimDef sd -> Some sd
            | _ -> None)
     def_map in
-  let dir_ios = check_dir_ios dir_io_map in
-  let adv_ios = check_adv_ios adv_io_map in
-  let funs = check_funs fun_map dir_ios adv_ios in
-  let sims = check_simulators sim_map dir_ios adv_ios funs in
-  { direct_ios = dir_ios; adversarial_ios = adv_ios;
+  let dir_inters = check_dir_inters dir_io_map in
+  let adv_inters = check_adv_inters adv_io_map in
+  let funs = check_funs fun_map dir_inters adv_inters in
+  let sims = check_sims sim_map dir_inters adv_inters funs in
+  { direct_inters = dir_inters; adversarial_inters = adv_inters;
     functionalities = funs; simulators = sims }
 
 let load_ec_reqs reqs = 
