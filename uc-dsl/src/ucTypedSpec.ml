@@ -56,7 +56,7 @@ type ideal_fun_body_tyd =
    states    : state_tyd IdMap.t}
 
 type fun_body_tyd =
-  | FunBodyRealTyd of real_fun_body_tyd
+  | FunBodyRealTyd  of real_fun_body_tyd
   | FunBodyIdealTyd of ideal_fun_body_tyd
 
 let is_real_fun_body_tyd fb =

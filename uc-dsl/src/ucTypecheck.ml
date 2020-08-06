@@ -11,7 +11,8 @@ open UcTypedSpec
 open UcUtils
 open UcMessage
 
-(* Convert a list from dl_parse_tree to IdMap *)
+(* convert a named list into an id map, checking for uniqueness
+   of names; get_id returns the name of a list element *)
 
 let check_unique_id (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t = 
   let id_map = IdMap.empty in
@@ -25,11 +26,11 @@ let check_unique_id (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t =
 
 (* EC type checks *)
 
-let check_params (n_tl : type_binding list) : typ_tyd IdMap.t = 
-  let nt_map = check_unique_id n_tl (fun nt -> nt.id) in
+let check_params (ntl : type_binding list) : typ_tyd IdMap.t = 
+  let nt_map = check_unique_id ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
-     mk_loc (loc nt.id) ((check_type nt.ty), (index_of_ex nt n_tl)))
+     mk_loc (loc nt.id) (check_type nt.ty, index_of_ex nt ntl))
   nt_map
 
 (* interface checks *)
@@ -93,10 +94,10 @@ let check_diradv_ios (errmsgpref : string) (da_io_map : named_inter IdMap.t) =
   (check_composites_ref_basics da_ios; da_ios)
 
 let check_dir_inters (dir_io_map : named_inter IdMap.t) =
-  check_diradv_ios "direct_io" dir_io_map
+  check_diradv_ios "direct interface" dir_io_map
 
 let check_adv_inters (adv_io_map : named_inter IdMap.t) =
-  check_diradv_ios "adversarial_io" adv_io_map
+  check_diradv_ios "adversarial interface" adv_io_map
                 
 (* Real Functionality checks *)
 
@@ -1379,7 +1380,7 @@ let check_sims (sim_map : sim_def IdMap.t) (dir_ios : inter_tyd IdMap.t)
   let sims = IdMap.map (check_sim_decl dir_ios adv_ios funs) sim_map in
   IdMap.map (check_sim_code dir_ios adv_ios funs) sims
 
-(* DL prog checks *)
+(* UC Spec Checks *)
 
 let get_io_id io_def = match io_def with
   | AdversarialInter io -> io.id
@@ -1404,6 +1405,12 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
          | Some x -> x
          | None   -> failure "!impossible!")
   flt
+
+type maps_tyd =
+  {dir_inter_map : inter_tyd IdMap.t;
+   adv_inter_map : inter_tyd IdMap.t;
+   sim_map       : sim_def_tyd IdMap.t;
+   fun_map       : fun_tyd IdMap.t}
 
 let check_defs def_l = 
   let def_map = check_unique_id def_l get_def_id in
