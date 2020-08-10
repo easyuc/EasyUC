@@ -112,12 +112,11 @@ type state_def =
 type party_def =
   {id : id; serves : qid list; states : state_def list}
 
-type sub_item =
-  | SubFunDecl of sub_fun_decl
-  | PartyDef   of party_def
+type fun_body_real =
+  {sub_fun_decls : sub_fun_decl list; party_defs : party_def list}
 
 type fun_body =
-  | FunBodyReal  of sub_item list
+  | FunBodyReal  of fun_body_real
   | FunBodyIdeal of state_def list
 
 let is_real_fun_body fb =

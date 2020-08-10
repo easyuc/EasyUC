@@ -282,22 +282,29 @@ comp_item :
 (* Functionalities *)
 
 (* A functionality has a name, parameter list, an implementation
-   specification, and a body. Parameters are composite direct
-   interfaces. Parameter lists may be empty, in which case the "()"
-   may be omitted.  A functionality always implements a composite
-   direct interface (listed first), and optionally implements an
-   adversarial interface (listed second). The body of the
-   functionality has a different form depending upon whether the
-   functionality is real or ideal. A real functionality may have a
+   specification, and a body.
+
+   Parameters are functionalities that implement the specified
+   composite direct interfaces. Parameter lists may be empty, in which
+   case the "()" may be omitted. A real functionality may have a
    non-zero number of parameters, but an ideal functionality must have
-   no parameters. An ideal functionality must implement a basic
+   no parameters.
+
+   A functionality always implements a composite direct interface
+   (listed first), and optionally implements an adversarial interface
+   (listed second).  A real functionality either implements no
+   adversarial interface, or implements a composite adversarial
+   interface. An ideal functionality must implement a basic
    adversarial interface.
 
-   The body of a real functionality consists of a nonempty list of
-   fun_body_items: subfunctionalities, which are instances of ideal
-   functionalities; and party definitions. Their names must be unique
-   and different from the names of the parameters.  The body of an
-   ideal functionality is a state machine. *)
+   The body of the functionality has a different form depending upon
+   whether the functionality is real or ideal. The body of a real
+   functionality consists of: an optional list of subfunctionality
+   declarations, whose names must be distinct from the functionality's
+   parameters, and which represent instances of ideal functionalities;
+   followed by a nonempty list of party definitions.
+
+   The body of an ideal functionality is a state machine. *)
 
 fun_def :        
   | FUNCT; name = id_l; params = option(fun_params);
@@ -328,18 +335,12 @@ fun_body :
       { FunBodyIdeal ifb }
 
 real_fun_body : 
-  | LBRACE; fbis = nonempty_list(fun_body_item); RBRACE
-      { fbis }
+  | LBRACE; sfs = list(sub_fun_decl); pdfs = list(party_def); RBRACE
+      { {sub_fun_decls = sfs; party_defs = pdfs} : fun_body_real }
 
 ideal_fun_body :
   | sm = state_machine
       { sm }
-
-fun_body_item : 
-  | sfd = sub_fun_decl
-      { SubFunDecl sfd }
-  | pd = party_def
-      { PartyDef pd }
 
 (* a subfunctionality declaration declares a new instance
    of an ideal functionality *)

@@ -54,16 +54,16 @@ type party_def_body_tyd =
 type party_def_tyd = party_def_body_tyd located
 
 type real_fun_body_tyd =
-  {params    : (id * int) IdMap.t;
-   id_dir_io : string;
-   id_adv_io : string option;
-   sub_funs  : id IdMap.t;  (* names of ideal functionalities *)
-   parties   : party_def_tyd IdMap.t}
+  {params       : (id * int) IdMap.t;
+   id_dir_inter : string;
+   id_adv_inter : string option;
+   sub_funs     : id IdMap.t;  (* names of ideal functionalities *)
+   parties      : party_def_tyd IdMap.t}
 
 type ideal_fun_body_tyd =
-  {id_dir_io : string;
-   id_adv_io : string;
-   states    : state_tyd IdMap.t}
+  {id_dir_inter : string;
+   id_adv_inter : string;
+   states       : state_tyd IdMap.t}
 
 type fun_body_tyd =
   | FunBodyRealTyd  of real_fun_body_tyd
@@ -81,13 +81,13 @@ let params_of_fun_body_tyd f =
 
 let id_dir_io_of_fun_body_tyd f =
   match f with
-  | FunBodyRealTyd fbr  -> fbr.id_dir_io
-  | FunBodyIdealTyd fbi -> fbi.id_dir_io
+  | FunBodyRealTyd fbr  -> fbr.id_dir_inter
+  | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
 let id_adv_io_of_fun_body_tyd f =
   match f with
-  | FunBodyRealTyd fbr  -> fbr.id_adv_io
-  | FunBodyIdealTyd fbi -> Some fbi.id_adv_io
+  | FunBodyRealTyd fbr  -> fbr.id_adv_inter
+  | FunBodyIdealTyd fbi -> Some fbi.id_adv_inter
 
 let sub_funs_of_fun_body_tyd f =
   match f with
