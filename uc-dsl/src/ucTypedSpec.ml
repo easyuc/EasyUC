@@ -22,13 +22,23 @@ let exists_id (id_map : 'a IdMap.t) (id : string) : bool =
 type typ_tyd = (typ * int) located
 
 type message_def_body_tyd =
-  {direction : msg_dir; content : typ_tyd IdMap.t; port_label : id option}
+  {dir : msg_dir; params_map : typ_tyd IdMap.t; port : id option}
 
 type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
   | CompositeTyd of id IdMap.t
+
+let is_basic_tyd ibt =
+  match ibt with
+  | BasicTyd _     -> true
+  | CompositeTyd _ -> false
+
+let is_composite_tyd ibt =
+  match ibt with
+  | BasicTyd _     -> false
+  | CompositeTyd _ -> true
 
 type inter_tyd = inter_body_tyd located
 
