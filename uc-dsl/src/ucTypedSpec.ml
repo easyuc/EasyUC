@@ -13,8 +13,8 @@ module SL =
     type t = string list
     let compare = Pervasives.compare
   end
-module QidSet = Set.Make(SL)
 module QidMap = Map.Make(SL)
+module QidSet = Set.Make(SL)
 
 let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
   IdMap.exists (fun key _ -> key = id) id_map

@@ -26,20 +26,22 @@ let exists_id_maps_tyd (maps : maps_tyd) (uid : string) =
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
-let check_unique_ids (al : 'a list) (get_id : 'a -> id) : 'a IdMap.t = 
+let check_unique_ids (msg : string) (al : 'a list) (get_id : 'a -> id)
+                       : 'a IdMap.t = 
   let id_map = IdMap.empty in
   List.fold_left 
   (fun id_map a -> 
      let id_l = get_id a in 
      if exists_id id_map (unloc id_l) then 
-       type_error (loc id_l)  ("duplicate identifier: " ^ unloc id_l)
+       type_error (loc id_l) (msg ^ unloc id_l)
      else IdMap.add (unloc id_l) a id_map)
   id_map al
 
 (* EC type checks *)
 
-let check_params (ntl : type_binding list) : typ_tyd IdMap.t = 
-  let nt_map = check_unique_ids ntl (fun nt -> nt.id) in
+let check_type_bindings (msg : string) (ntl : type_binding list)
+      : typ_tyd IdMap.t = 
+  let nt_map = check_unique_ids msg ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
      mk_loc (loc nt.id) (check_type nt.ty, index_of_ex nt ntl))
@@ -73,18 +75,24 @@ let check_comp_item (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
       else mk_loc (loc ci.sub_id) (unloc ci.inter_id)
 
 let check_basic_inter (mds : message_def list) : inter_body_tyd = 
-  let msg_map = check_unique_ids mds (fun md -> md.id) in
+  let msg_map =
+    check_unique_ids "duplicate message name: " mds (fun md -> md.id) in
   BasicTyd
   (IdMap.map
    (fun (md : message_def) ->
       mk_loc
       (loc md.id)
-      {dir = md.dir; params_map = check_params md.params; port = md.port})
+      {dir = md.dir;
+       params_map =
+         check_type_bindings "duplicate message parameter name: " md.params;
+       port = md.port})
   msg_map)
 
 let check_comp_inter (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
                      (cis : comp_item list) : inter_body_tyd = 
-  let comp_item_map = check_unique_ids cis (fun ci -> ci.sub_id) in
+  let comp_item_map =
+    check_unique_ids "duplicate sub-interface name: "
+    cis (fun ci -> ci.sub_id) in
   CompositeTyd (IdMap.map (check_comp_item ik inter_map) comp_item_map)
 
 let check_inter (e_maps : string -> bool) (ik : inter_kind)
@@ -93,7 +101,7 @@ let check_inter (e_maps : string -> bool) (ik : inter_kind)
   let () =
     if e_maps uid
     then type_error (loc ni.id)
-         ("identifier already declared: " ^ uid) in
+         ("identifier already declared at top-level: " ^ uid) in
   let ibt =
     match ni.inter with
     | Basic mds     -> check_basic_inter mds
@@ -113,7 +121,7 @@ let check_inter_def (maps : maps_tyd) interd : maps_tyd =
          adv_inter_map =
            check_inter e_maps AdversarialInterKind maps.adv_inter_map ni}
 
-(* Real Functionality checks *)
+(* real functionality checks *)
 
 let check_is_composite (ios : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
@@ -135,7 +143,9 @@ let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
     else (check_is_composite dir_ios param.id_dir;
           (mk_loc (loc param.id) (unloc param.id_dir),
            index_of_ex param params)) in
-  let param_map = check_unique_ids params (fun p -> p.id) in
+  let param_map =
+    check_unique_ids "duplicate functionality parameter name: " params
+    (fun p -> p.id) in
   IdMap.map (check_real_fun_param dir_ios) param_map
 
 let check_exactly_one_initial_state (id : id) (sds : state_def list) : id = 
@@ -157,12 +167,12 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
 
 let check_state_decl (init_id : id) (s : state) : state_tyd = 
   let is_initial = (init_id = s.id) in
-  let params = check_params s.params in
+  let params = check_type_bindings "duplicate parameter name: " s.params in
   let vars =
         IdMap.map
         (fun tip ->
            mk_loc (loc tip) (fst (unloc tip)))
-        (check_params s.code.vars) in
+        (check_type_bindings "duplicate variable name: " s.code.vars) in
   let dup = IdMap.find_first_opt (fun id -> IdMap.mem id vars) params in
   match dup with
   | None        ->
@@ -181,7 +191,8 @@ let drop_state_ctor (sd : state_def) : state =
 let check_states (id : id) (code : state_def list) : state_tyd IdMap.t = 
   let init_id = check_exactly_one_initial_state id code in
   let states = List.map (fun sd -> drop_state_ctor sd) code in
-  let code_map = check_unique_ids states (fun s -> s.id) in
+  let code_map =
+    check_unique_ids "duplicate state name: " states (fun s -> s.id) in
   IdMap.map (check_state_decl init_id) code_map 
 
 type b_inter_id_path = (string list) * basic_inter_body_tyd
@@ -560,7 +571,8 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
   let ucid = unloc cid in
   let pvs = get_declared_const_vars sv in
   if (IdMap.mem ucid pvs)
-  then type_error (loc cid) (ucid ^ " is already used")
+  then type_error (loc cid)
+       ("duplicate occurrence of variable in pattern: " ^ ucid)
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
         initialized_vs = sv.initialized_vs}
@@ -1061,7 +1073,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
   let () =
     if exists_id_maps_tyd maps uid
     then type_error (loc fund.id)
-         ("identifier already declared: " ^ uid) in
+         ("identifier already declared at top-level: " ^ uid) in
   let () = check_exists_dir_io maps.dir_inter_map fund.id_dir in
   let () = check_is_composite maps.dir_inter_map fund.id_dir in
   let id_dir_inter = unloc fund.id_dir in 
@@ -1077,9 +1089,11 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
   | FunBodyReal fbr ->
       let params = check_real_fun_params maps.dir_inter_map fund.params in 
       let sub_fun_decls =
-        check_unique_ids fbr.sub_fun_decls (fun x -> x.id) in
+        check_unique_ids "duplicate subfunctionality name: "
+        fbr.sub_fun_decls (fun x -> x.id) in
       let party_defs =
-        check_unique_ids fbr.party_defs (fun x -> x.id) in
+        check_unique_ids "duplicate party name: " fbr.party_defs
+        (fun x -> x.id) in
       let () =
         let dup_ids =
           IdMap.filter (fun id _ -> IdMap.mem id params) sub_fun_decls in
@@ -1173,7 +1187,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
               states = states'}))
            maps.fun_map}
 
-(* Simulator checks *)
+(* simulator checks *)
 
 let check_msg_code_sim (fbps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                        (mmc : msg_match_clause) (sv : state_vars) :
@@ -1412,23 +1426,14 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
   let () =
     if exists_id_maps_tyd maps uid
     then type_error (loc simd.id)
-         ("identifier already declared: " ^ uid) in
+         ("identifier already declared at top-level: " ^ uid) in
   let sdt =
     check_sim_decl maps.dir_inter_map maps.adv_inter_map maps.fun_map simd in
   let sdt =
     check_sim_code maps.dir_inter_map maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
-(* UC Spec Checks *)
-
-let get_io_id io_def = match io_def with
-  | AdversarialInter io -> io.id
-  | DirectInter io      -> io.id
-
-let get_def_id (def : def) = match def with
-  | InterDef iod -> get_io_id iod
-  | FunDef fd -> fd.id
-  | SimDef sd -> sd.id
+(* definition checks *)
 
 let check_defs defs = 
   let empty_maps =
@@ -1446,6 +1451,8 @@ let check_defs defs =
    adversarial_inters = maps.adv_inter_map;
    functionalities    = maps.fun_map;
    simulators         = maps.sim_map }
+
+(* specification checks *)
 
 let load_ec_reqs reqs = 
   let reqimp idl = 
