@@ -39,7 +39,7 @@ let check_unique_ids (msg : string) (al : 'a list) (get_id : 'a -> id)
 
 (* EasyCrypt type checks *)
 
-let check_type_bindings (msg : string) (ntl : type_binding list)
+let check_name_type_bindings (msg : string) (ntl : type_binding list)
       : typ_tyd IdMap.t = 
   let nt_map = check_unique_ids msg ntl (fun nt -> nt.id) in
   IdMap.map
@@ -84,7 +84,8 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
       (loc md.id)
       {dir = md.dir;
        params_map =
-         check_type_bindings "duplicate message parameter name: " md.params;
+         check_name_type_bindings
+         "duplicate message parameter name: " md.params;
        port = md.port})
   msg_map)
 
@@ -121,38 +122,36 @@ let check_inter_def (maps : maps_tyd) interd : maps_tyd =
          adv_inter_map =
            check_inter e_maps AdversarialInterKind maps.adv_inter_map ni}
 
-let check_exists_dir_inter (dir_inter : inter_tyd IdMap.t) (id : id) = 
+let check_exists_inter (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
+                       (id : id) = 
   let uid = unloc id in
-  if exists_id dir_inter uid then () 
-  else type_error (loc id) ("direct interface isn't defined: " ^ uid)
+  if exists_id inter_map uid then () 
+  else type_error (loc id)
+       (inter_kind_to_str false ik ^ " interface does not exist: " ^ uid)
 
-let check_is_composite (inter : inter_tyd IdMap.t) (id : id) : unit = 
+let check_is_composite (inter_map : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
-  match unloc (IdMap.find uid inter) with
+  match unloc (IdMap.find uid inter_map) with
   | BasicTyd _ ->
       type_error (loc id)
       ("the interface must be composite (even if it has only one " ^
-       "component): " ^ uid)
+       "sub-interface): " ^ uid)
   | CompositeTyd _ -> ()
 
 (* real functionality checks *)
 
-let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
+let check_real_fun_params (dir_inter_map : inter_tyd IdMap.t)
                           (params : fun_param list) :
       (id * int) IdMap.t = 
-  let check_real_fun_param (dir_ios : inter_tyd IdMap.t) (param : fun_param) :
-        (id * int) = 
-    let dir_i_oid = unloc param.id_dir in
-    if not (exists_id dir_ios dir_i_oid)
-    then type_error (loc param.id_dir)
-                    ("direct interface isn't defined: " ^ dir_i_oid)
-    else (check_is_composite dir_ios param.id_dir;
-          (mk_loc (loc param.id) (unloc param.id_dir),
-           index_of_ex param params)) in
+  let check_real_fun_param (param : fun_param) : (id * int) = 
+    let () = check_exists_inter DirectInterKind dir_inter_map param.id_dir in
+    (check_is_composite dir_inter_map param.id_dir;
+     (mk_loc (loc param.id) (unloc param.id_dir),
+      index_of_ex param params)) in
   let param_map =
     check_unique_ids "duplicate functionality parameter name: " params
     (fun p -> p.id) in
-  IdMap.map (check_real_fun_param dir_ios) param_map
+  IdMap.map check_real_fun_param param_map
 
 let check_exactly_one_initial_state (id : id) (sds : state_def list) : id = 
   let inits =
@@ -173,12 +172,12 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
 
 let check_state_decl (init_id : id) (s : state) : state_tyd = 
   let is_initial = (init_id = s.id) in
-  let params = check_type_bindings "duplicate parameter name: " s.params in
+  let params = check_name_type_bindings "duplicate parameter name: " s.params in
   let vars =
         IdMap.map
         (fun tip ->
            mk_loc (loc tip) (fst (unloc tip)))
-        (check_type_bindings "duplicate variable name: " s.code.vars) in
+        (check_name_type_bindings "duplicate variable name: " s.code.vars) in
   let dup = IdMap.find_first_opt (fun id -> IdMap.mem id vars) params in
   match dup with
   | None        ->
@@ -330,7 +329,7 @@ let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) =
            type_error (loc id_i2_sio)
            "this adversarial interface cannot be composite"
         else type_error (loc id_i2_sio)
-             ("adversarial interface " ^ uid_i2_sio ^ " isn't defined")
+             ("adversarial interface isn't defined: " ^ uid_i2_sio)
 
 let get_dir_io_id_impl_by_fun (fid : string) (funs : fun_tyd IdMap.t) :
                                 string = 
@@ -1074,17 +1073,17 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
     if exists_id_maps_tyd maps uid
     then type_error (loc fund.id)
          ("identifier already declared at top-level: " ^ uid) in
-  let () = check_exists_dir_inter maps.dir_inter_map fund.id_dir in
+  let () = check_exists_inter DirectInterKind maps.dir_inter_map fund.id_dir in
   let () = check_is_composite maps.dir_inter_map fund.id_dir in
-  let id_dir_inter = unloc fund.id_dir in 
-  let id_adv_inter =
+  let uid_dir_inter = unloc fund.id_dir in 
+  let uid_adv_inter =
     match fund.id_adv with
     | None    -> None
     | Some id -> 
-        (let uid = unloc id in
-         if exists_id maps.adv_inter_map uid then Some uid
-         else type_error (loc id)
-              ("adversarial interface " ^ uid ^ " isn't defined")) in
+        let uid = unloc id in
+        if exists_id maps.adv_inter_map uid then Some uid
+        else type_error (loc id)
+             ("adversarial interface isn't defined: " ^ uid) in
   match fund.fun_body with
   | FunBodyReal fbr ->
       let params = check_real_fun_params maps.dir_inter_map fund.params in 
@@ -1123,17 +1122,17 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
           | _       -> () in
         let ps =
           IdMap.map
-          (check_party_decl id_dir_inter id_adv_inter
+          (check_party_decl uid_dir_inter uid_adv_inter
            maps.dir_inter_map maps.adv_inter_map)
           party_defs in
-        (check_parties_serve_direct_sum ps id_dir_inter id_adv_inter
+        (check_parties_serve_direct_sum ps uid_dir_inter uid_adv_inter
          maps.dir_inter_map maps.adv_inter_map;
          ps) in
       let ft =
         mk_loc (loc fund.id)
         (FunBodyRealTyd
-         {params = params; id_dir_inter = id_dir_inter;
-          id_adv_inter = id_adv_inter; sub_funs = sub_funs;
+         {params = params; id_dir_inter = uid_dir_inter;
+          id_adv_inter = uid_adv_inter; sub_funs = sub_funs;
           parties = parties}) in
       let parties' =
         IdMap.map 
@@ -1152,8 +1151,8 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
            IdMap.add uid
            (mk_loc (loc fund.id)
             (FunBodyRealTyd
-             {params = params; id_dir_inter = id_dir_inter;
-              id_adv_inter = id_adv_inter; sub_funs = sub_funs;
+             {params = params; id_dir_inter = uid_dir_inter;
+              id_adv_inter = uid_adv_inter; sub_funs = sub_funs;
               parties = parties'}))
            maps.fun_map}
   | FunBodyIdeal state_defs ->
@@ -1167,7 +1166,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
             (check_exists_i2_sio maps.adv_inter_map id;
              check_states fund.id state_defs) in
       let ifbt =
-        {id_dir_inter = id_dir_inter; id_adv_inter = Option.get id_adv_inter;
+        {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
          states = states} in
       let ft =
         mk_loc (loc fund.id) (FunBodyIdealTyd ifbt) in
@@ -1182,8 +1181,8 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
            IdMap.add uid
            (mk_loc (loc fund.id)
             (FunBodyIdealTyd
-             {id_dir_inter = id_dir_inter;
-              id_adv_inter = Option.get id_adv_inter;
+             {id_dir_inter = uid_dir_inter;
+              id_adv_inter = Option.get uid_adv_inter;
               states = states'}))
            maps.fun_map}
 
@@ -1362,7 +1361,7 @@ let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
 let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
   if exists_id funs urf then ()
-  else type_error (loc rf) ("functionality " ^ urf ^ " isn't defined")
+  else type_error (loc rf) ("functionality isn't defined: " ^ urf)
 
 let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let () = check_exists_f funs rf in
