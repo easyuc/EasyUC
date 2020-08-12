@@ -37,7 +37,7 @@ let check_unique_ids (msg : string) (al : 'a list) (get_id : 'a -> id)
      else IdMap.add (unloc id_l) a id_map)
   id_map al
 
-(* EC type checks *)
+(* EasyCrypt type checks *)
 
 let check_type_bindings (msg : string) (ntl : type_binding list)
       : typ_tyd IdMap.t = 
@@ -121,15 +121,21 @@ let check_inter_def (maps : maps_tyd) interd : maps_tyd =
          adv_inter_map =
            check_inter e_maps AdversarialInterKind maps.adv_inter_map ni}
 
-(* real functionality checks *)
-
-let check_is_composite (ios : inter_tyd IdMap.t) (id : id) : unit = 
+let check_exists_dir_inter (dir_inter : inter_tyd IdMap.t) (id : id) = 
   let uid = unloc id in
-  match unloc (IdMap.find uid ios) with
+  if exists_id dir_inter uid then () 
+  else type_error (loc id) ("direct interface isn't defined: " ^ uid)
+
+let check_is_composite (inter : inter_tyd IdMap.t) (id : id) : unit = 
+  let uid = unloc id in
+  match unloc (IdMap.find uid inter) with
   | BasicTyd _ ->
       type_error (loc id)
-      ("the interface must be composite (even if it has only one component)")
+      ("the interface must be composite (even if it has only one " ^
+       "component): " ^ uid)
   | CompositeTyd _ -> ()
+
+(* real functionality checks *)
 
 let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
                           (params : fun_param list) :
@@ -139,7 +145,7 @@ let check_real_fun_params (dir_ios : inter_tyd IdMap.t)
     let dir_i_oid = unloc param.id_dir in
     if not (exists_id dir_ios dir_i_oid)
     then type_error (loc param.id_dir)
-                    ("direct_io " ^ dir_i_oid ^ " isn't defined")
+                    ("direct interface isn't defined: " ^ dir_i_oid)
     else (check_is_composite dir_ios param.id_dir;
           (mk_loc (loc param.id) (unloc param.id_dir),
            index_of_ex param params)) in
@@ -314,12 +320,6 @@ let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
         IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
   let () = check_ios_unique served_ps in
   check_ios_cover id_dir_io id_adv_io dir_ios adv_ios served_ps
-
-let check_exists_dir_io (dir_ios : inter_tyd IdMap.t) (id_dir_io : id) = 
-  let uid_dir_io = unloc id_dir_io in
-  if exists_id dir_ios uid_dir_io then () 
-  else type_error (loc id_dir_io)
-       ("direct_io " ^ uid_dir_io ^ " isn't defined")
 
 let check_exists_i2_sio (i2s_ios : inter_tyd IdMap.t) (id_i2_sio : id) = 
   let uid_i2_sio = unloc id_i2_sio in
@@ -587,8 +587,8 @@ let check_port_var_binding (bps : r_fb_inter_id_paths) (mp : string list)
   if not (d && not i && not a)
   then type_error (loc vid)
        ("the message " ^ string_of_i_opath mp ^
-        " maybe isn't an incoming message of a direct_io served by the " ^
-        "party and cannot bind the source port to a variable")
+        " maybe isn't an incoming message of a direct interface served by " ^
+        "the party and cannot bind the source port to a variable")
   else check_add_const vid port_type port_type sv
 
 let check_item_type_add_binding (sv : state_vars) (mi : pat)
@@ -1074,7 +1074,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
     if exists_id_maps_tyd maps uid
     then type_error (loc fund.id)
          ("identifier already declared at top-level: " ^ uid) in
-  let () = check_exists_dir_io maps.dir_inter_map fund.id_dir in
+  let () = check_exists_dir_inter maps.dir_inter_map fund.id_dir in
   let () = check_is_composite maps.dir_inter_map fund.id_dir in
   let id_dir_inter = unloc fund.id_dir in 
   let id_adv_inter =

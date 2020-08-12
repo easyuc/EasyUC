@@ -230,7 +230,7 @@ def :
    ports (but may not have destination ports), whereas output messages
    must have destination ports (but may not have source ports). In
    adversarial interfaces, neither input nor output messages may have
-   source or target ports.  The names of message parameters as well as
+   source or target ports. The names of message parameters as well as
    the names of source and destination ports should be considered
    documentation *)
 
@@ -243,8 +243,12 @@ inter_def :
         AdversarialInter ni }
 
 named_inter : 
-  | inter_id = id_l; LBRACE; inter = inter; RBRACE
-      { {id = inter_id; inter = inter} : named_inter }
+  | inter_id = id_l; LBRACE; inter = option(inter); RBRACE
+      { match inter with
+        | None       ->
+            parse_error (loc inter_id) "interfaces may not be empty"
+        | Some inter ->
+            {id = inter_id; inter = inter} : named_inter }
 
 inter : 
   | msgs = nonempty_list(message_def)
