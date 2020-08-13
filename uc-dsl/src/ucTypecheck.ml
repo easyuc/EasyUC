@@ -47,7 +47,7 @@ let check_name_type_bindings (msg : string) (ntl : type_binding list)
      mk_loc (loc nt.id) (check_type nt.ty, index_of_ex nt ntl))
   nt_map
 
-(* interface checks *)
+(****************************** interface checks ******************************)
 
 type inter_kind =
   | DirectInterKind
@@ -138,7 +138,7 @@ let check_is_composite (inter_map : inter_tyd IdMap.t) (id : id) : unit =
        "sub-interface): " ^ uid)
   | CompositeTyd _ -> ()
 
-(* real functionality checks *)
+(************************* real functionality checks **************************)
 
 let check_real_fun_params (dir_inter_map : inter_tyd IdMap.t)
                           (params : fun_param list) :
@@ -177,20 +177,22 @@ let check_state_decl (init_id : id) (s : state) : state_tyd =
     IdMap.map
     (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
     (check_name_type_bindings "duplicate variable name: " s.code.vars) in
-  let dup = IdMap.find_first_opt (fun id -> IdMap.mem id params) vars in
+  let dup = IdMap.find_first_opt (fun uid -> IdMap.mem uid params) vars in
   match dup with
   | None        ->
       mk_loc (loc s.id)
       {is_initial = is_initial; params = params; vars = vars;
        mmclauses = s.code.mmclauses}
-  | Some (id, t) ->
-      type_error (loc t)
-      ("variable name " ^ id ^ " is the same as one of the state's parameters")
+  | Some (uid, typ) ->
+      type_error (loc typ)
+      ("variable name " ^ uid ^ " is the same as one of the state's parameters")
                         
 let drop_state_ctor (sd : state_def) : state = 
   match sd with 
   | InitialState s   -> s
   | FollowingState s -> s
+
+(* only checking above the level of message matching clauses: *)
 
 let check_states (id : id) (code : state_def list) : state_tyd IdMap.t = 
   let init_id = check_exactly_one_initial_state id code in
@@ -1185,7 +1187,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
               states = states'}))
            maps.fun_map}
 
-(* simulator checks *)
+(****************************** simulator checks ******************************)
 
 let check_msg_code_sim (fbps : r_fb_inter_id_paths) (ss : state_sig IdMap.t)
                        (mmc : msg_match_clause) (sv : state_vars) :
@@ -1431,7 +1433,7 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
     check_sim_code maps.dir_inter_map maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
-(* definition checks *)
+(***************************** definition checks ******************************)
 
 let check_defs defs = 
   let empty_maps =
@@ -1450,7 +1452,7 @@ let check_defs defs =
    functionalities    = maps.fun_map;
    simulators         = maps.sim_map }
 
-(* specification checks *)
+(**************************** specification checks ****************************)
 
 let load_ec_reqs reqs = 
   let reqimp id = 
