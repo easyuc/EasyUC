@@ -19,10 +19,10 @@ module QidSet = Set.Make(SL)
 let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
   IdMap.exists (fun key _ -> key = id) id_map
 
-type typ_tyd = (typ * int) located
+type typ_index = (typ * int) located
 
 type message_def_body_tyd =
-  {dir : msg_dir; params_map : typ_tyd IdMap.t; port : id option}
+  {dir : msg_dir; params_map : typ_index IdMap.t; port : id option}
 
 type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
 
@@ -43,7 +43,7 @@ let is_composite_tyd ibt =
 type inter_tyd = inter_body_tyd located
 
 type state_body_tyd =
-  {is_initial : bool; params : typ_tyd IdMap.t; vars : typ located IdMap.t;
+  {is_initial : bool; params : typ_index IdMap.t; vars : typ located IdMap.t;
    mmclauses : msg_match_clause list}
 
 type state_tyd = state_body_tyd located

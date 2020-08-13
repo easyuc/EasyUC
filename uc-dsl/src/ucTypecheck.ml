@@ -40,7 +40,7 @@ let check_unique_ids (msg : string) (al : 'a list) (get_id : 'a -> id)
 (* EasyCrypt type checks *)
 
 let check_name_type_bindings (msg : string) (ntl : type_binding list)
-      : typ_tyd IdMap.t = 
+      : typ_index IdMap.t = 
   let nt_map = check_unique_ids msg ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
@@ -174,19 +174,18 @@ let check_state_decl (init_id : id) (s : state) : state_tyd =
   let is_initial = (init_id = s.id) in
   let params = check_name_type_bindings "duplicate parameter name: " s.params in
   let vars =
-        IdMap.map
-        (fun tip ->
-           mk_loc (loc tip) (fst (unloc tip)))
-        (check_name_type_bindings "duplicate variable name: " s.code.vars) in
+    IdMap.map
+    (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
+    (check_name_type_bindings "duplicate variable name: " s.code.vars) in
   let dup = IdMap.find_first_opt (fun id -> IdMap.mem id vars) params in
   match dup with
   | None        ->
       mk_loc (loc s.id)
       {is_initial = is_initial; params = params; vars = vars;
        mmclauses = s.code.mmclauses}
-  | Some (id,t) ->
+  | Some (id, t) ->
       type_error (loc t)
-      ("variable name " ^ id ^ " is the same as one of the states parameters")
+      ("variable name " ^ id ^ " is the same as one of the state's parameters")
                         
 let drop_state_ctor (sd : state_def) : state = 
   match sd with 
@@ -714,7 +713,7 @@ let check_transition (si : state_expr) (ss : state_sig IdMap.t)
               else ())
        te
 
-let check_msg_content_values (es : expression_l list) (mc : typ_tyd IdMap.t)
+let check_msg_content_values (es : expression_l list) (mc : typ_index IdMap.t)
                              (sv : state_vars) : unit = 
   let sg = to_list (unlocm mc) in
   let esl = mergelocs es in
@@ -726,7 +725,7 @@ let check_msg_content_values (es : expression_l list) (mc : typ_tyd IdMap.t)
               then type_error (loc ex) ("parameter type mismatch"))
        es sg
 
-let check_send_direct (msg : msg_expr) (mc : typ_tyd IdMap.t)
+let check_send_direct (msg : msg_expr) (mc : typ_index IdMap.t)
                       (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -737,7 +736,7 @@ let check_send_direct (msg : msg_expr) (mc : typ_tyd IdMap.t)
     | None   -> type_error l ("missing destination port") in
   check_msg_content_values msg.args mc sv
 
-let check_send_adversarial (msg : msg_expr) (mc : typ_tyd IdMap.t)
+let check_send_adversarial (msg : msg_expr) (mc : typ_index IdMap.t)
                            (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -747,7 +746,7 @@ let check_send_adversarial (msg : msg_expr) (mc : typ_tyd IdMap.t)
     | None   -> () in
   check_msg_content_values msg.args mc sv
 
-let check_send_internal (msg : msg_expr) (mc : typ_tyd IdMap.t)
+let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
                         (sv : state_vars) : unit = 
   let l = msg_loc msg.path in
   let () =
@@ -1454,11 +1453,17 @@ let check_defs defs =
 (* specification checks *)
 
 let load_ec_reqs reqs = 
-  let reqimp idl = 
-    try UcEcInterface.require_import (unloc idl) with
+  let reqimp id = 
+    let uid = unloc id in
+    let () =
+      if not (Char.is_uppercase uid.[0])
+      then type_error (loc id)
+           ("EasyCrypt theory to be imported must begin with uppercase " ^
+            "letter: " ^ uid) in
+    try UcEcInterface.require_import (unloc id) with
     Failure f ->
-      type_error (loc idl)
-      ("error when importing EasyCrypt theory " ^ unloc idl ^ ":\n" ^ f) in
+      type_error (loc id)
+      ("error when importing EasyCrypt theory " ^ unloc id ^ ":\n" ^ f) in
   List.iter reqimp reqs
 
 let typecheck spec = 

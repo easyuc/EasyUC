@@ -131,7 +131,7 @@ rule read = parse
     }
   | eof   { EOF        }
   | _     { let s = String.escaped (Lexing.lexeme lexbuf) in
-            lex_error lexbuf (Printf.sprintf "invalid character: \"%s\"" s) }
+            lex_error lexbuf (Printf.sprintf "unexpected character: \"%s\"" s) }
 
 and operator buf = parse
   | opchar* as x { Buffer.add_string buf x; buf }
