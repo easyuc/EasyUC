@@ -177,7 +177,7 @@ let check_state_decl (init_id : id) (s : state) : state_tyd =
     IdMap.map
     (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
     (check_name_type_bindings "duplicate variable name: " s.code.vars) in
-  let dup = IdMap.find_first_opt (fun id -> IdMap.mem id vars) params in
+  let dup = IdMap.find_first_opt (fun id -> IdMap.mem id params) vars in
   match dup with
   | None        ->
       mk_loc (loc s.id)
