@@ -151,6 +151,8 @@ let check_is_composite (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
 
 (************************* real functionality checks **************************)
 
+(* functionality parameter checking *)
+
 let check_real_fun_params (dir_inter_map : inter_tyd IdMap.t)
                           (params : fun_param list) :
       (id * int) IdMap.t = 
@@ -163,6 +165,10 @@ let check_real_fun_params (dir_inter_map : inter_tyd IdMap.t)
     check_unique_ids "duplicate functionality parameter name: " params
     (fun p -> p.id) in
   IdMap.map check_real_fun_param param_map
+
+(* checking the top-level only of a state machine
+
+   does not descend into the message-matching clauses *)
 
 let check_exactly_one_initial_state (id : id) (sds : state_def list) : id = 
   let inits =
@@ -181,19 +187,20 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
            UcMessage.failure "impossible, list contains only InitialState")
   | _ -> type_error (loc id) (unloc id ^ " has more than one initial state")
 
-let check_state_decl (init_id : id) (s : state) : state_tyd = 
-  let is_initial = (init_id = s.id) in
-  let params = check_name_type_bindings "duplicate parameter name: " s.params in
+let check_toplevel_state (init_id : id) (st : state) : state_tyd = 
+  let is_initial = (init_id = st.id) in
+  let params =
+    check_name_type_bindings "duplicate parameter name: " st.params in
   let vars =
     IdMap.map
     (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
-    (check_name_type_bindings "duplicate variable name: " s.code.vars) in
+    (check_name_type_bindings "duplicate variable name: " st.code.vars) in
   let dup = IdMap.find_first_opt (fun uid -> IdMap.mem uid params) vars in
   match dup with
   | None        ->
-      mk_loc (loc s.id)
+      mk_loc (loc st.id)
       {is_initial = is_initial; params = params; vars = vars;
-       mmclauses = s.code.mmclauses}
+       mmclauses = st.code.mmclauses}
   | Some (uid, typ) ->
       type_error (loc typ)
       ("variable name " ^ uid ^ " is the same as one of the state's parameters")
@@ -203,33 +210,34 @@ let drop_state_ctor (sd : state_def) : state =
   | InitialState s   -> s
   | FollowingState s -> s
 
-(* only checking above the level of message matching clauses: *)
+(* id is name of party (in case of real functionality), ideal functionality,
+   or simulator - only used for error messages *)
 
-let check_states (id : id) (code : state_def list) : state_tyd IdMap.t = 
-  let init_id = check_exactly_one_initial_state id code in
-  let states = List.map (fun sd -> drop_state_ctor sd) code in
-  let code_map =
+let check_toplevel_states (id : id) (states : state_def list)
+                            : state_tyd IdMap.t = 
+  let init_id = check_exactly_one_initial_state id states in
+  let states = List.map (fun sd -> drop_state_ctor sd) states in
+  let state_map =
     check_unique_ids "duplicate state name: " states (fun s -> s.id) in
-  IdMap.map (check_state_decl init_id) code_map 
+  IdMap.map (check_toplevel_state init_id) state_map 
 
-type b_inter_id_path = (string list) * basic_inter_body_tyd
+type b_inter_id_path = string list * basic_inter_body_tyd
 
 type r_fb_inter_id_paths =
   {direct : b_inter_id_path list; adversarial : b_inter_id_path list;
    internal : b_inter_id_path list}
 
 let getb_inter_id_paths (root : string) (ioid : string)
-                        (ios : inter_tyd IdMap.t) :
-                  b_inter_id_path list = 
+                        (inter_map : inter_tyd IdMap.t) :
+                          b_inter_id_path list = 
   let getb_body (id : string) : basic_inter_body_tyd = 
-    let io = IdMap.find id ios in
+    let io = IdMap.find id inter_map in
     match (unloc io) with
     | BasicTyd b -> b
     | _       ->
         failure
-        ("Cannot happen, this function is called only on Basic " ^
-         "interfaces") in
-  let io = IdMap.find ioid ios in
+        ("cannot happen, this function is called only on basic interfaces") in
+  let io = IdMap.find ioid inter_map in
   match (unloc io) with
   | BasicTyd b       -> [([root],b)]
   | CompositeTyd cio ->
@@ -302,8 +310,8 @@ let check_ios_unique (iops : string list located list) : unit =
    [] iops)
 
 let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
-                     (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
-                     (served_ps : string list located list) : unit = 
+                    (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
+                    (served_ps : string list located list) : unit = 
   let serps = unlocs served_ps in
   let ps = get_fun_inter_id_paths id_dir_io id_adv_io dir_ios adv_ios in
   let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
@@ -313,16 +321,20 @@ let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
        ("these interfaces are not served by any party: " ^
         (string_of_i_opaths unserved))
 
-let check_party_decl (id_dir_io : string) (id_adv_io : string option)
-                     (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
-                     (p : party_def) : party_def_tyd = 
+(* check a party definition at the top-level (not below the level of
+   message-matching clauses of states) only *)
+
+let check_toplevel_party_def
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (pd : party_def) : party_def_tyd = 
   let serves =
         List.map
-        (check_i_opath id_dir_io id_adv_io dir_ios adv_ios)
-        p.serves in
-  let () = check_served_paths serves id_dir_io p.id in
-  let code = check_states p.id p.states in
-  mk_loc (loc p.id) {serves = serves; states = code}
+        (check_i_opath id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
+        pd.serves in
+  let () = check_served_paths serves id_dir_inter pd.id in
+  let code = check_toplevel_states pd.id pd.states in
+  mk_loc (loc pd.id) {serves = serves; states = code}
 
 let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
       (id_dir_io : string) (id_adv_io : string option)
@@ -1090,7 +1102,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
       let parties =
         let ps =
           IdMap.map
-          (check_party_decl uid_dir_inter uid_adv_inter
+          (check_toplevel_party_def uid_dir_inter uid_adv_inter
            maps.dir_inter_map maps.adv_inter_map)
           party_defs in
         (check_parties_serve_direct_sum ps uid_dir_inter uid_adv_inter
@@ -1133,7 +1145,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         | Some id ->
             (check_exists_inter AdversarialInterKind maps.adv_inter_map id;
              check_is_basic AdversarialInterKind maps.adv_inter_map id;
-             check_states fund.id state_defs) in
+             check_toplevel_states fund.id state_defs) in
       let ifbt =
         {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
          states = states} in
@@ -1379,7 +1391,7 @@ let check_sim_decl (adv_inter_map : inter_tyd IdMap.t)
   let () = List.iter (check_exists_f fun_map) sd.sims_arg_ids in
   let () = check_sim_fun_params fun_map adv_inter_map sd.sims sd.sims_arg_ids in
   let sims_param_ids = unlocs sd.sims_arg_ids in
-  let body = check_states sd.id sd.states in
+  let body = check_toplevel_states sd.id sd.states in
   mk_loc (loc sd.id)
   {uses = uses; sims = sims; sims_arg_ids = sims_param_ids; states = body}
 
