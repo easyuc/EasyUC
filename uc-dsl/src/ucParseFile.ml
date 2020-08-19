@@ -21,7 +21,7 @@ let parse_file file =
   let ch =
     try open_in file with
       Sys_error _ ->
-        non_loc_error_message "unable to open file" in
+        non_loc_error_message ("unable to open file: " ^ file) in
   let lexbuf = lexbuf_from_channel file ch in
   try UcParser.spec read lexbuf with
   | UcParser.Error ->

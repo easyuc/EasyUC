@@ -60,4 +60,6 @@ let () =
      (Printf.sprintf "file lacks \".uc\" suffix: %s" file))
   else ()
 
-let () = ignore (parse_and_typecheck_file file)
+let () =
+  (ignore (parse_and_typecheck_file file);
+   exit 0)
