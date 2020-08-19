@@ -250,43 +250,46 @@ let get_basic_inter_paths
          ([root; subid], getb_body (unloc inter_id)) :: l)
       cimap []
 
-let get_basic_inter_paths_same
+let get_basic_inter_paths_from_inter_id
     (inter_id : string) (inter_map : inter_tyd IdMap.t)
       : basic_inter_path list =
   get_basic_inter_paths inter_id inter_id inter_map
 
-let get_inter_id_paths_same_lhs
+let get_inter_id_paths_from_inter_id
     (inter_id : string) (inter_map : inter_tyd IdMap.t) : string list list = 
-  List.map fst (get_basic_inter_paths_same inter_id inter_map)
+  List.map fst (get_basic_inter_paths_from_inter_id inter_id inter_map)
 
-let get_fun_inter_id_paths (id_dir_io : string) (id_adv_io : string option)
-                           (dir_ios : inter_tyd IdMap.t)
-                           (adv_ios : inter_tyd IdMap.t) :
+let get_fun_inter_id_paths
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t) :
       string list list = 
-  let dir = get_inter_id_paths_same_lhs id_dir_io dir_ios in
+  let dir = get_inter_id_paths_from_inter_id id_dir_inter dir_inter_map in
   let adv =
-        match id_adv_io with
-        | Some id -> get_inter_id_paths_same_lhs id adv_ios
+        match id_adv_inter with
+        | Some id -> get_inter_id_paths_from_inter_id id adv_inter_map
         | None    -> [] in
   dir @ adv
 
-let check_i_opath (id_dir_io : string) (id_adv_io : string option)
-                  (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
-                  (iop : id list) : string list located = 
-  let uiop = unlocs iop in
-  let loc = mergelocs iop in
-  let ps = get_fun_inter_id_paths id_dir_io id_adv_io dir_ios adv_ios in
-  if (List.mem uiop ps) then mk_loc loc uiop
-  else let psf = List.filter (fun p -> (List.tl p) = uiop) ps in
-       match (List.length psf) with
+let check_id_path (id_dir_inter : string) (id_adv_inter : string option)
+                  (dir_inter_map : inter_tyd IdMap.t)
+                  (adv_inter_map : inter_tyd IdMap.t)
+                  (idp : id list) : string list located = 
+  let uidp = unlocs idp in
+  let loc = mergelocs idp in
+  let ps =
+    get_fun_inter_id_paths id_dir_inter id_adv_inter
+    dir_inter_map adv_inter_map in
+  if List.mem uidp ps then mk_loc loc uidp
+  else let psf = List.filter (fun p -> List.tl p = uidp) ps in
+       match List.length psf with
        | 0 ->
            type_error loc
-           (string_of_i_opath uiop ^
+           (string_of_id_path uidp ^
             " is not a part of the interfaces implemented by functionality")
        | 1 -> mk_loc loc (List.hd psf)
        | _ ->
            type_error loc
-           (string_of_i_opath uiop ^
+           (string_of_id_path uidp ^
             " is ambiguous, it is in both direct and adversarial interfaces " ^
             "implemented by functionality")
 
@@ -327,7 +330,7 @@ let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
   else type_error
        (mergelocs served_ps)
        ("these interfaces are not served by any party: " ^
-        (string_of_i_opaths unserved))
+        (string_of_id_paths unserved))
 
 (* check a party definition at the top-level (not below the level of
    message-matching clauses of states) only *)
@@ -338,7 +341,7 @@ let check_toplevel_party_def
     (pd : party_def) : party_def_tyd = 
   let serves =
         List.map
-        (check_i_opath id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
+        (check_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
         pd.serves in
   let () = check_served_paths serves id_dir_inter pd.id in
   let code = check_toplevel_states pd.id pd.states in
@@ -390,7 +393,7 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
   IdMap.map (fun s -> get_state_sig (unloc s) ) states
 
 let string_of_msg_path (mp : msg_path) : string = 
-  let siop = string_of_i_opath (unlocs mp.inter_id_path) in
+  let siop = string_of_id_path (unlocs mp.inter_id_path) in
   match mp.msg_or_other with 
   | MsgPathId id -> siop ^ "." ^ (unloc id)
   | MsgPathOtherMsg _ -> siop ^ ".othermsg"
@@ -606,7 +609,7 @@ let check_port_var_binding (bps : all_basic_inter_paths) (mp : string list)
     List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.adversarial in
   if not (d && not i && not a)
   then type_error (loc vid)
-       ("the message " ^ string_of_i_opath mp ^
+       ("the message " ^ string_of_id_path mp ^
         " maybe isn't an incoming message of a direct interface served by " ^
         "the party and cannot bind the source port to a variable")
   else check_add_const vid port_type port_type sv
@@ -1009,10 +1012,10 @@ let get_fb_inter_id_paths (dir_ios : inter_tyd IdMap.t)
                           (f : fun_tyd) : all_basic_inter_paths = 
   let uf = unloc f in
   let iddir = id_dir_io_of_fun_body_tyd uf in
-  let direct = get_basic_inter_paths_same iddir dir_ios in
+  let direct = get_basic_inter_paths_from_inter_id iddir dir_ios in
   let adversarial = 
     match id_adv_io_of_fun_body_tyd uf with
-    | Some id -> get_basic_inter_paths_same id adv_ios
+    | Some id -> get_basic_inter_paths_from_inter_id id adv_ios
     | None -> [] in
   {direct = direct; adversarial = adversarial; internal = []}
 
@@ -1197,7 +1200,7 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
        let invalid_dest() =
          type_error l
          ("not a valid destination, these destinations are " ^
-          "valid: " ^ string_of_i_opaths iops) in
+          "valid: " ^ string_of_id_paths iops) in
        let umpiop = (unlocs mp.inter_id_path) in
        match mp.msg_or_other with
        | MsgPathId mt ->
@@ -1211,7 +1214,7 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
              then ()
            else type_error (loc mt)
                 (unloc mt ^ " is not an incoming message of " ^
-                 string_of_i_opath umpiop)
+                 string_of_id_path umpiop)
        | MsgPathOtherMsg _ ->
            if List.exists
               (fun p -> sl1_starts_with_sl2 p umpiop)
@@ -1277,7 +1280,7 @@ let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
 let get_component_inter_id_paths (adv_ios : inter_tyd IdMap.t)
                                  (f : fun_body_tyd) : basic_inter_path list = 
   match id_adv_io_of_fun_body_tyd f with
-  | Some id -> get_basic_inter_paths_same id adv_ios 
+  | Some id -> get_basic_inter_paths_from_inter_id id adv_ios 
   | None    -> []
 
 let invert_dir (dir : msg_dir) = 
@@ -1310,7 +1313,7 @@ let get_simb_inter_id_paths (adv_ios : inter_tyd IdMap.t) (uses : string)
     []
     (List.map
      (fun bp -> invert_msg_dirs bp)
-     (get_basic_inter_paths_same uses adv_ios))
+     (get_basic_inter_paths_from_inter_id uses adv_ios))
     sbps in
   QidMap.fold
   (fun q bpl l ->

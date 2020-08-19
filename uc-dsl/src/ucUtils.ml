@@ -35,18 +35,17 @@ let filter_map (fm : 'a-> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
 
-let mergelocs (l : 'a located list) : EcLocation.t =
-  mergeall(List.map (fun e -> loc e) l)
+let mergelocs (l : 'a located list) : EcLocation.t = mergeall(List.map loc l)
 
 let dummyloc (o : 'a) : 'a located = mk_loc _dummy o
 
 let dummylocl (l : 'a list) : 'a located list = List.map (fun i -> dummyloc i) l
 
-let string_of_i_opath (iop : string list) : string =
+let string_of_id_path (iop : string list) : string =
   List.fold_left (fun p i -> if p <> "" then p ^ "." ^ i else i) "" iop
 
-let string_of_i_opaths (iops : string list list) : string =
-  List.fold_left (fun s p -> s ^ "\n" ^ (string_of_i_opath p)) "" iops
+let string_of_id_paths (iops : string list list) : string =
+  List.fold_left (fun s p -> s ^ "\n" ^ string_of_id_path p) "" iops
 
 let string_of_stringl (sl : string list) : string =
   List.fold_left (fun sout s -> sout ^ "\n" ^ s) "" sl
