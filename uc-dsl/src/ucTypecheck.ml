@@ -419,36 +419,38 @@ let get_state_sig (s : state_body_tyd) : state_sig =
        (fst (List.split tord))
 
 let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
-  IdMap.map (fun s -> get_state_sig (unloc s) ) states
+  IdMap.map (fun s -> get_state_sig (unloc s)) states
 
 let string_of_msg_path (mp : msg_path) : string = 
   let siop = string_of_id_path (unlocs mp.inter_id_path) in
   match mp.msg_or_other with 
-  | MsgPathId id -> siop ^ "." ^ (unloc id)
+  | MsgPathId id      -> siop ^ "." ^ unloc id
   | MsgPathOtherMsg _ -> siop ^ ".othermsg"
 
 let string_of_msg_pathl (mpl : msg_path list) : string = 
   string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
 
-let filterb_io_ps (dir : msg_dir) (biops : basic_inter_path list) :
-                    basic_inter_path list = 
+let filter_dir_basic_inter_paths
+    (dir : msg_dir) (bips : basic_inter_path list) : basic_inter_path list = 
   List.map
-  (fun biop ->
-         (fst biop,
-          IdMap.filter
-          (fun _ md -> (unloc md).dir = dir)
-          (snd biop)))
-  biops
+  (fun bip ->
+     (fst bip,
+      IdMap.filter
+      (fun _ md -> (unloc md).dir = dir)
+      (snd bip)))
+  bips
 
-let get_incoming_msg_paths (bps : all_basic_inter_paths) : all_basic_inter_paths = 
-  { direct = filterb_io_ps In bps.direct;
-    adversarial = filterb_io_ps In bps.adversarial;
-    internal = filterb_io_ps Out bps.internal }
+let get_incoming_msg_paths (abip : all_basic_inter_paths)
+      : all_basic_inter_paths = 
+  {direct      = filter_dir_basic_inter_paths In abip.direct;
+   adversarial = filter_dir_basic_inter_paths In abip.adversarial;
+   internal    = filter_dir_basic_inter_paths Out abip.internal}
 
-let get_outgoing_msg_paths (bps : all_basic_inter_paths) : all_basic_inter_paths = 
-  { direct = filterb_io_ps Out bps.direct;
-    adversarial = filterb_io_ps Out bps.adversarial;
-    internal = filterb_io_ps In bps.internal }
+let get_outgoing_msg_paths (abip : all_basic_inter_paths)
+      : all_basic_inter_paths = 
+  {direct      = filter_dir_basic_inter_paths Out abip.direct;
+   adversarial = filter_dir_basic_inter_paths Out abip.adversarial;
+   internal    = filter_dir_basic_inter_paths In abip.internal}
 
 let msg_loc (mp : msg_path) : EcLocation.t = 
   match mp.msg_or_other with
@@ -465,15 +467,15 @@ let msg_paths_of_b_inter_id_path (bp : basic_inter_path) : msg_path list =
 let mp_of_bpl (bpl : basic_inter_path list) : msg_path list = 
   List.flatten (List.map (fun bp -> msg_paths_of_b_inter_id_path bp) bpl)
 
-let flatten_all_basic_inter_paths (bps : all_basic_inter_paths) : basic_inter_path list = 
-  bps.direct @ bps.adversarial @ bps.internal
+let flatten_all_basic_inter_paths (abip : all_basic_inter_paths) : basic_inter_path list = 
+  abip.direct @ abip.adversarial @ abip.internal
 
-let msg_paths_of_all_basic_inter_paths (bps : all_basic_inter_paths) : msg_path list = 
-  mp_of_bpl (flatten_all_basic_inter_paths bps)
+let msg_paths_of_all_basic_inter_paths (abip : all_basic_inter_paths) : msg_path list = 
+  mp_of_bpl (flatten_all_basic_inter_paths abip)
 
-let check_msg_path (bps : all_basic_inter_paths) (mp : msg_path) : msg_path = 
-  let ips = mp_of_bpl bps.internal in
-  let allps = msg_paths_of_all_basic_inter_paths bps in       
+let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path = 
+  let ips = mp_of_bpl abip.internal in
+  let allps = msg_paths_of_all_basic_inter_paths abip in       
   let filter_by_msg_type (mt : id) (mpl : msg_path list) : msg_path list = 
     List.filter
     (fun p ->
@@ -549,25 +551,25 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path) :
        ("this match is covered by previous matches and would never execute")
   else rem
 
-let msg_paths_of_all_basic_inter_paths_w_othermsg (bps : all_basic_inter_paths) :
+let msg_paths_of_all_basic_inter_paths_w_othermsg (abip : all_basic_inter_paths) :
                                             msg_path list = 
-  let mps = msg_paths_of_all_basic_inter_paths bps in
+  let mps = msg_paths_of_all_basic_inter_paths abip in
   let omps =
         List.map
         (fun bp ->
              { inter_id_path = dummylocl (fst bp);
                msg_or_other = MsgPathOtherMsg _dummy })
-        (flatten_all_basic_inter_paths bps) in
+        (flatten_all_basic_inter_paths abip) in
   mps @ omps
 
-let check_mm_ds_non_empty (bps : all_basic_inter_paths) (mpl : msg_path list) :
+let check_mm_ds_non_empty (abip : all_basic_inter_paths) (mpl : msg_path list) :
                             msg_path list = 
-  let mps = msg_paths_of_all_basic_inter_paths_w_othermsg bps in
+  let mps = msg_paths_of_all_basic_inter_paths_w_othermsg abip in
   List.fold_left (fun mps mp -> remove_covered_paths mps mp) mps mpl
 
-let check_msg_match_deltas (rfbps : all_basic_inter_paths) (mml : msg_pat list) :
+let check_msg_match_deltas (abip : all_basic_inter_paths) (mml : msg_pat list) :
                              unit = 
-  let mps = get_incoming_msg_paths rfbps in
+  let mps = get_incoming_msg_paths abip in
   let r =
         check_mm_ds_non_empty
         mps (List.map (fun (mm : msg_pat) -> mm.path) mml) in
@@ -629,13 +631,13 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
         consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
         initialized_vs = sv.initialized_vs}
 
-let check_port_var_binding (bps : all_basic_inter_paths) (mp : string list)
+let check_port_var_binding (abip : all_basic_inter_paths) (mp : string list)
                            (vid : id) (sv : state_vars) : state_vars = 
-  let d = List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.direct in
+  let d = List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.direct in
   let i =
-    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.internal in
+    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.internal in
   let a =
-    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) bps.adversarial in
+    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.adversarial in
   if not (d && not i && not a)
   then type_error (loc vid)
        ("the message " ^ string_of_id_path mp ^
@@ -675,7 +677,7 @@ let check_msg_content_bindings
         "of message parameters")
   else List.fold_left2 check_item_type_add_binding sv tm mt
 
-let check_pat_args (bps : basic_inter_path list) (mm : msg_pat)
+let check_pat_args (bips : basic_inter_path list) (mm : msg_pat)
                    (sv : state_vars) : state_vars = 
   match mm.pat_args with
   | None     -> sv
@@ -686,16 +688,16 @@ let check_pat_args (bps : basic_inter_path list) (mm : msg_pat)
           ("othermsg cannot have value bindings. do you have " ^
            "redundant parenthesis?")
       | MsgPathId id      ->
-          check_msg_content_bindings bps
+          check_msg_content_bindings bips
           ((unlocs mm.path.inter_id_path),(unloc id)) mil sv
 
-let check_match_bindings (bps : all_basic_inter_paths) (mm : msg_pat)
+let check_match_bindings (abip : all_basic_inter_paths) (mm : msg_pat)
                          (sv : state_vars) : state_vars = 
   let sv' =        
     match mm.port_id with
-    | Some id -> check_port_var_binding bps (unlocs mm.path.inter_id_path) id sv
+    | Some id -> check_port_var_binding abip (unlocs mm.path.inter_id_path) id sv
     | None    -> sv in
-  let ps = bps.direct@bps.adversarial@bps.internal in
+  let ps = abip.direct @ abip.adversarial @ abip.internal in
   check_pat_args ps mm sv'
 
 let get_var_type (sv : state_vars) (id : id) : typ = 
@@ -812,8 +814,8 @@ let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
     | None -> () in
   check_msg_content_values msg.args mc sv
 
-let is_msg_path_inb_inter_id_paths (mp : msg_path) (bps : basic_inter_path list) : bool = 
-  let bpo = List.find_opt (fun bp -> fst bp = unlocs mp.inter_id_path) bps in
+let is_msg_path_inb_inter_id_paths (mp : msg_path) (abip : basic_inter_path list) : bool = 
+  let bpo = List.find_opt (fun bp -> fst bp = unlocs mp.inter_id_path) abip in
   match bpo with
   | Some _ -> true
   | None   -> false
@@ -830,9 +832,9 @@ let get_msg_def_for_msg_path (mp : msg_path) (bs : basic_inter_path list) :
   let mdb = IdMap.find mt (snd bio) in
   unloc mdb
 
-let check_send_msg_path (msg : msg_expr) (bps : all_basic_inter_paths)
+let check_send_msg_path (msg : msg_expr) (abip : all_basic_inter_paths)
                         (sv : state_vars) : msg_expr = 
-  let ps = get_outgoing_msg_paths bps in
+  let ps = get_outgoing_msg_paths abip in
   let path' = check_msg_path ps msg.path in
   let msg' =
     {path = path'; args = msg.args;
@@ -845,18 +847,18 @@ let check_send_msg_path (msg : msg_expr) (bps : all_basic_inter_paths)
     else () in
   msg'
 
-let check_send (msg : msg_expr) (bps : all_basic_inter_paths)
+let check_send (msg : msg_expr) (abip : all_basic_inter_paths)
                (sv : state_vars) : msg_expr = 
-  let msg' = check_send_msg_path msg bps sv in
-  let bs = bps.direct@bps.adversarial@bps.internal in
+  let msg' = check_send_msg_path msg abip sv in
+  let bs = abip.direct @ abip.adversarial @ abip.internal in
   let mdbc = (get_msg_def_for_msg_path msg'.path bs).params_map in
   let () =
     match msg'.path with
-    | ( _ as p) when is_msg_path_inb_inter_id_paths p bps.direct ->
+    | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.direct ->
         check_send_direct msg' mdbc sv
-    | ( _ as p) when is_msg_path_inb_inter_id_paths p bps.adversarial ->
+    | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.adversarial ->
         check_send_adversarial msg' mdbc sv
-    | ( _ as p) when is_msg_path_inb_inter_id_paths p bps.internal ->
+    | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.internal ->
         check_send_internal msg' mdbc sv
     | _ ->
         failure
@@ -864,10 +866,10 @@ let check_send (msg : msg_expr) (bps : all_basic_inter_paths)
          "adversarial|internal") in
   msg'
 
-let check_send_and_transition (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let check_send_and_transition (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                               (sat : send_and_transition) (sv : state_vars) :
                                 instruction = 
-  let msg' = check_send sat.msg_expr bps sv in
+  let msg' = check_send sat.msg_expr abip sv in
   let () = check_transition sat.state_expr ss sv in
   SendAndTransition {msg_expr = msg'; state_expr = sat.state_expr}
 
@@ -876,31 +878,31 @@ let merge_state_vars (sv1 : state_vars) (sv2 : state_vars) : state_vars =
    consts = sv1.consts; vars = sv1.vars;
    initialized_vs = IdSet.inter sv1.initialized_vs sv2.initialized_vs}
 
-let rec check_ite (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let rec check_ite (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                   (sv : state_vars) (ex : expression_l)
                   (tins : instruction_l list)
                   (eins : instruction_l list option) :
                     instruction*state_vars = 
   if check_expression sv ex <> bool_type
   then type_error (loc ex) "the condition must be a boolean expression"
-  else let (tins_c, eins_c, sv') = check_branches bps ss sv tins eins in
+  else let (tins_c, eins_c, sv') = check_branches abip ss sv tins eins in
        (ITE (ex, tins_c, eins_c), sv')
 
-and check_branches (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+and check_branches (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                    (sv : state_vars) (tins : instruction_l list)
                    (eins : instruction_l list option) :
                      instruction_l list * instruction_l list option *
                      state_vars = 
-  let (tins_c,tsv) = check_instructions bps ss sv tins in
+  let (tins_c,tsv) = check_instructions abip ss sv tins in
   let (eins_c,esv) =
     match eins with                         
     | Some is ->
-        let (is',esv) = check_instructions bps ss sv is in (Some is',esv)
+        let (is',esv) = check_instructions abip ss sv is in (Some is',esv)
     | None    -> (None, sv) in
   let sv' = merge_state_vars tsv esv in
   (tins_c, eins_c, sv')
 
-and check_decode (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+and check_decode (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                  (sv : state_vars) (ex : expression_l) (ty : ty)
                  (m_is : pat list) (okins : instruction_l list)
                  (erins : instruction_l list) : instruction * state_vars = 
@@ -920,11 +922,11 @@ and check_decode (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
              "decoded type")
        else let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
             let (okins_c, erins_c, sv'') =
-              check_branches bps ss sv' okins (Some erins) in
+              check_branches abip ss sv' okins (Some erins) in
             ((Decode (ex, ty, m_is, okins_c, Option.get erins_c)), sv'')
 
-and check_instruction (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
-                      (insv : instruction_l list*state_vars)
+and check_instruction (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+                      (insv : instruction_l list * state_vars)
                       (i : instruction_l) : instruction_l list * state_vars = 
   let ins = fst insv in
   let sv = snd insv in
@@ -932,19 +934,19 @@ and check_instruction (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
   | Assign (vid, ex)      -> (ins @ [i], check_val_assign sv vid ex)
   | Sample (vid, ex)      -> (ins @ [i], check_sampl_assign sv vid ex)
   | ITE (ex, tins, eins)  ->
-      let (ite_c, sv') = check_ite bps ss sv ex tins eins in
+      let (ite_c, sv') = check_ite abip ss sv ex tins eins in
       (ins @ [mk_loc (loc i) ite_c], sv')
   | Decode (ex, ty, m_is, okins, erins) ->
-      let (match_c,sv') = check_decode bps ss sv ex ty m_is okins erins in
+      let (match_c,sv') = check_decode abip ss sv ex ty m_is okins erins in
       (ins @ [mk_loc (loc i) match_c], sv')
   | SendAndTransition sat ->
-      (ins @ [mk_loc (loc i) (check_send_and_transition bps ss sat sv)]), sv
+      (ins @ [mk_loc (loc i) (check_send_and_transition abip ss sat sv)]), sv
   | Fail                  -> (ins @ [i], sv)
 
-and check_instructions (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+and check_instructions (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                        (sv : state_vars) (is : instruction_l list) :
                          (instruction_l list * state_vars) = 
-  List.fold_left (check_instruction bps ss) ([],sv) is
+  List.fold_left (check_instruction abip ss) ([],sv) is
 
 let contains_sa_tor_f (is : instruction_l list) : bool = 
   List.exists
@@ -988,35 +990,35 @@ let rec check_ends_are_sa_tor_f (is : instruction_l list) : unit =
        "transition or fail command")
   | _ :: tl -> check_ends_are_sa_tor_f tl
 
-let check_msg_code (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let check_msg_code (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                    (sv : state_vars) (is : instruction_l list) :
                      instruction_l list = 
-  let is_tyd = fst (check_instructions bps ss sv is) in
+  let is_tyd = fst (check_instructions abip ss sv is) in
   let () = check_ends_are_sa_tor_f is_tyd in
   is_tyd
 
-let check_message_path (bps : all_basic_inter_paths) (mmc : msg_match_clause) :
+let check_message_path (abip : all_basic_inter_paths) (mmc : msg_match_clause) :
                          msg_match_clause = 
   let path' =
-    check_msg_path (get_incoming_msg_paths bps) mmc.msg_pat.path in
+    check_msg_path (get_incoming_msg_paths abip) mmc.msg_pat.path in
   {msg_pat =
      {port_id = mmc.msg_pat.port_id;
       path = path'; pat_args = mmc.msg_pat.pat_args};
    code = mmc.code}
 
-let check_m_mcode (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let check_m_mcode (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                   (sv : state_vars) (mmc : msg_match_clause) : msg_match_clause = 
-  let mmc' = check_message_path bps mmc in 
-  let sv' = check_match_bindings bps mmc'.msg_pat sv in
-  let code' = check_msg_code bps ss sv' mmc'.code in
+  let mmc' = check_message_path abip mmc in 
+  let sv' = check_match_bindings abip mmc'.msg_pat sv in
+  let code' = check_msg_code abip ss sv' mmc'.code in
   {msg_pat = mmc'.msg_pat; code = code'}
 
-let check_state_code (bps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let check_state_code (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                      (sv : state_vars) (mmclauses : msg_match_clause list) :
                        msg_match_clause list = 
-  let mmclauses' = List.map (fun mmc -> check_m_mcode bps ss sv mmc) mmclauses in
+  let mmclauses' = List.map (fun mmc -> check_m_mcode abip ss sv mmc) mmclauses in
   let () =
-    check_msg_match_deltas bps
+    check_msg_match_deltas abip
     (List.map (fun mmc -> mmc.msg_pat) mmclauses') in
   mmclauses'
 
@@ -1030,11 +1032,11 @@ let get_internal_ports (r_f : fun_body_tyd) : QidSet.t =
   (QidSet.union (get_keys (params_of_fun_body_tyd r_f))
                 (get_keys (sub_funs_of_fun_body_tyd r_f)))
 
-let filterb_inter_id_paths (bps : basic_inter_path list) (pfxs : string list located list) :
+let filterb_inter_id_paths (abip : basic_inter_path list) (pfxs : string list located list) :
                        basic_inter_path list = 
   List.filter
   (fun bp -> List.exists (fun pfx -> unloc pfx = fst bp) pfxs)
-  bps
+  abip
 
 let get_fb_inter_id_paths (dir_inter_map : inter_tyd IdMap.t)
                           (adv_inter_map : inter_tyd IdMap.t)
@@ -1076,15 +1078,15 @@ let get_all_basic_inter_paths (dir_inter_map : inter_tyd IdMap.t)
        ("Impossible, we already checked params and " ^
         "subfuns have different ids"))
     internal_sfm internal_pm in
-  let internal = IdMap.fold (fun _ bps l -> l @ bps) internal_m [] in
+  let internal = IdMap.fold (fun _ abip l -> l @ abip) internal_m [] in
   {direct = direct; adversarial = adversarial; internal = internal}
 
 let check_state (ur_f : fun_body_tyd) (states : state_tyd IdMap.t)
-                (bps : all_basic_inter_paths) (s : state_tyd) : state_tyd = 
+                (abip : all_basic_inter_paths) (s : state_tyd) : state_tyd = 
   let us = unloc s in
   let sv = init_state_vars (unloc s) (get_internal_ports ur_f) [] in
   let ss = get_state_sigs states in
-  let mmclauses' = check_state_code bps ss sv us.mmclauses in
+  let mmclauses' = check_state_code abip ss sv us.mmclauses in
   mk_loc (loc s)
          {is_initial = us.is_initial; params = us.params; vars = us.vars;
           mmclauses = mmclauses'}
@@ -1158,12 +1160,12 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         IdMap.map 
         (fun p -> 
            let up = unloc p in
-           let bps =
+           let abip =
              get_all_basic_inter_paths
              maps.dir_inter_map maps.adv_inter_map maps.fun_map ft p in
            let states = up.states in
            let states' =
-             IdMap.map (check_state (unloc ft) states bps) states  in
+             IdMap.map (check_state (unloc ft) states abip) states  in
            mk_loc (loc p) {serves = up.serves; states = states'})
         parties in
       {maps with
@@ -1192,10 +1194,10 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
       let ft = mk_loc (loc fund.id) (FunBodyIdealTyd ifbt) in
       let states' =
         let states = ifbt.states in
-        let bps =
+        let abip =
           get_fb_inter_id_paths maps.dir_inter_map maps.adv_inter_map
           ft in
-        IdMap.map (check_state (unloc ft) states bps) states in
+        IdMap.map (check_state (unloc ft) states abip) states in
       {maps with
          fun_map =
            IdMap.add uid
@@ -1208,24 +1210,24 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
 
 (****************************** simulator checks ******************************)
 
-let check_msg_code_sim (fbps : all_basic_inter_paths) (ss : state_sig IdMap.t)
+let check_msg_code_sim (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                        (mmc : msg_match_clause) (sv : state_vars) :
                          msg_match_clause = 
-  let code' = check_msg_code fbps ss sv mmc.code in
+  let code' = check_msg_code abip ss sv mmc.code in
   {msg_pat = mmc.msg_pat; code = code'}
 
-let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
+let check_message_path_sim (abip : basic_inter_path list) (isini : bool)
                            (mmc : msg_match_clause) : unit = 
-  let bps = filterb_io_ps In bps in
+  let abip = filter_dir_basic_inter_paths In abip in
   let mp = mmc.msg_pat.path in
   let l = msg_loc mp in
-  let id = fst (List.find (fun p -> (List.length (fst p)) = 1) bps) in
+  let id = fst (List.find (fun p -> (List.length (fst p)) = 1) abip) in
   if isini && unlocs mp.inter_id_path <> id
   then type_error l
        ("initial state can handle only messages comming " ^
         "from ideal functionality. did you omit prefix " ^
         List.hd id ^ ".?")
-  else let iops = fst (List.split bps) in
+  else let iops = fst (List.split abip) in
        let invalid_dest () =
          type_error l
          ("not a valid destination, these destinations are " ^
@@ -1239,7 +1241,7 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
                    (fun bp ->
                           fst bp = umpiop &&
                           IdMap.mem (unloc mt) (snd bp))
-                   bps
+                   abip
              then ()
            else type_error (loc mt)
                 (unloc mt ^ " is not an incoming message of " ^
@@ -1251,14 +1253,14 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
            then ()
            else invalid_dest ()
 
-let check_match_bindings_sim (bps : basic_inter_path list) (sv : state_vars)
+let check_match_bindings_sim (abip : basic_inter_path list) (sv : state_vars)
                              (mmc : msg_match_clause) : state_vars = 
   let mm = mmc.msg_pat in
-  check_pat_args bps mm sv
+  check_pat_args abip mm sv
 
-let check_msg_match_deltas_sim (rfbps : all_basic_inter_paths)
+let check_msg_match_deltas_sim (abip : all_basic_inter_paths)
                                (mmclauses : msg_match_clause list) : unit = 
-  let mps = get_incoming_msg_paths rfbps in
+  let mps = get_incoming_msg_paths abip in
   ignore
   (check_mm_ds_non_empty mps
    (List.map
@@ -1267,15 +1269,15 @@ let check_msg_match_deltas_sim (rfbps : all_basic_inter_paths)
            msg_or_other = mmc.msg_pat.path.msg_or_other})
     mmclauses))
 
-let check_sim_state_code (bps : basic_inter_path list) (ss : state_sig IdMap.t)
+let check_sim_state_code (bips : basic_inter_path list) (ss : state_sig IdMap.t)
                          (sv : state_vars) (isini : bool)
                          (mmclauses : msg_match_clause list) :
                            msg_match_clause list = 
-  let () = List.iter (check_message_path_sim bps isini) mmclauses in
-  let svs = List.map (check_match_bindings_sim bps sv) mmclauses in
-  let fbps = {direct = []; adversarial = bps; internal = []} in
-  let ret = List.map2 (check_msg_code_sim fbps ss) mmclauses svs in
-  let () = check_msg_match_deltas_sim fbps ret in
+  let () = List.iter (check_message_path_sim bips isini) mmclauses in
+  let svs = List.map (check_match_bindings_sim bips sv) mmclauses in
+  let abip = {direct = []; adversarial = bips; internal = []} in
+  let ret = List.map2 (check_msg_code_sim abip ss) mmclauses svs in
+  let () = check_msg_match_deltas_sim abip ret in
   ret
 
 (* TODO : fix this *)
