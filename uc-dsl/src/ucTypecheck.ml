@@ -221,6 +221,21 @@ let check_toplevel_states (id : id) (states : state_def list)
     check_unique_ids "duplicate state name: " states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id) state_map 
 
+(* a basic_inter_path will have the form ([id1; id2], b) where
+
+   id1 is the name of a composite interface, id2 is the name of one of
+   that composite interface's sub-interfaces, and b is the basic
+   interface (direct iff the composite interface is direct)
+   corresponding to the functionality name that id2 is associated with
+   in the composite interface; or
+
+   id1 is the name of a subfunctionality of a real functionality,
+   where the ideal functionality that id1 is an instance of implements
+   a direct interface that is a composite interface, and id2 is the
+   name of one of that composite interface's sub-interfaces, and b is
+   the basic, direct interface corresponding to the functionality name
+   that id2 is associated with in the composite interface *)
+
 type basic_inter_path = string list * basic_inter_body_tyd
 
 (* three kinds of basic_inter_path's - ones of a direct interface,
@@ -270,23 +285,25 @@ let get_fun_inter_id_paths
         | None    -> [] in
   dir @ adv
 
-let check_id_path (id_dir_inter : string) (id_adv_inter : string option)
-                  (dir_inter_map : inter_tyd IdMap.t)
-                  (adv_inter_map : inter_tyd IdMap.t)
-                  (idp : id list) : string list located = 
+let check_id_path
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (dir_inter_map : inter_tyd IdMap.t)
+    (adv_inter_map : inter_tyd IdMap.t)
+    (idp : id list) : string list located = 
   let uidp = unlocs idp in
   let loc = mergelocs idp in
   let ps =
     get_fun_inter_id_paths id_dir_inter id_adv_inter
     dir_inter_map adv_inter_map in
-  if List.mem uidp ps then mk_loc loc uidp
+  if List.mem uidp ps
+  then mk_loc loc uidp
   else let psf = List.filter (fun p -> List.tl p = uidp) ps in
        match List.length psf with
        | 0 ->
            type_error loc
            (string_of_id_path uidp ^
             " is not a part of the interfaces implemented by functionality")
-       | 1 -> mk_loc loc (List.hd psf)
+       | 1 -> mk_loc loc (List.hd psf)  (* unambiguous *)
        | _ ->
            type_error loc
            (string_of_id_path uidp ^
@@ -294,43 +311,23 @@ let check_id_path (id_dir_inter : string) (id_adv_inter : string option)
             "implemented by functionality")
 
 let check_served_paths (serves : string list located list)
-                       (id_dir_io : string) (pid : id) : unit = 
+                       (id_dir_inter : string) (party_id : id) : unit = 
   let er =
-        ("A party can serve at most one basic direct interface and one " ^
-         "basic adversarial interface.") in
-  let erone = "A party must serve one basic direct interface." in
-  match (List.length serves) with
-  | 0 -> type_error (loc pid)  erone
+    ("a party can serve at most one basic direct interface and one " ^
+     "basic adversarial interface") in
+  let erone = "a party must serve one basic direct interface." in
+  match List.length serves with
+  | 0 -> type_error (loc party_id) erone
   | 1 ->
-      if (List.hd (unloc (List.nth serves 0))) = id_dir_io then ()
+      if List.hd (unloc (List.nth serves 0)) = id_dir_inter
+      then ()
       else type_error (loc (List.nth serves 0)) erone
   | 2 ->
       if List.hd (unloc (List.nth serves 0)) <>
-         List.hd (unloc (List.nth serves 1)) then ()
+         List.hd (unloc (List.nth serves 1))
+      then ()
       else type_error (loc (List.nth serves 1)) er
   | _ -> type_error (mergelocs serves) er
-                
-let check_ios_unique (iops : string list located list) : unit = 
-  ignore
-  (List.fold_left
-   (fun l iop -> 
-      let uiop = unloc iop in
-      if List.mem uiop l
-      then type_error (loc iop) ("parties must serve distinct interfaces")
-      else uiop :: l)
-   [] iops)
-
-let check_ios_cover (id_dir_io : string) (id_adv_io : string option)
-                    (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
-                    (served_ps : string list located list) : unit = 
-  let serps = unlocs served_ps in
-  let ps = get_fun_inter_id_paths id_dir_io id_adv_io dir_ios adv_ios in
-  let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
-  if (List.length unserved) = 0 then ()
-  else type_error
-       (mergelocs served_ps)
-       ("these interfaces are not served by any party: " ^
-        (string_of_id_paths unserved))
 
 (* check a party definition at the top-level (not below the level of
    message-matching clauses of states) only *)
@@ -340,20 +337,46 @@ let check_toplevel_party_def
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
     (pd : party_def) : party_def_tyd = 
   let serves =
-        List.map
-        (check_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
-        pd.serves in
+    List.map
+    (check_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
+    pd.serves in
   let () = check_served_paths serves id_dir_inter pd.id in
   let code = check_toplevel_states pd.id pd.states in
   mk_loc (loc pd.id) {serves = serves; states = code}
+               
+let check_id_paths_unique (idps : string list located list) : unit = 
+  ignore
+  (List.fold_left
+   (fun l idp -> 
+      let uidp = unloc idp in
+      if List.mem uidp l
+      then type_error (loc idp) ("parties must serve distinct interfaces")
+      else uidp :: l)
+   [] idps)
+
+let check_id_paths_cover
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (served_ps : string list located list) : unit = 
+  let serps = unlocs served_ps in
+  let ps =
+    get_fun_inter_id_paths id_dir_inter id_adv_inter
+    dir_inter_map adv_inter_map in
+  let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
+  if List.length unserved = 0
+  then ()
+  else type_error
+       (mergelocs served_ps)
+       ("these interfaces are not served by any party: " ^
+        string_of_id_paths unserved)
 
 let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
       (id_dir_io : string) (id_adv_io : string option)
       (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t) : unit = 
   let served_ps =
         IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
-  let () = check_ios_unique served_ps in
-  check_ios_cover id_dir_io id_adv_io dir_ios adv_ios served_ps
+  let () = check_id_paths_unique served_ps in
+  check_id_paths_cover id_dir_io id_adv_io dir_ios adv_ios served_ps
 
 let get_dir_io_id_impl_by_fun (fid : string) (funs : fun_tyd IdMap.t) :
                                 string = 
@@ -1196,8 +1219,8 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
        ("initial state can handle only messages comming " ^
         "from ideal functionality. did you omit prefix " ^
         List.hd id ^ ".?")
-  else let iops = fst(List.split bps) in
-       let invalid_dest() =
+  else let iops = fst (List.split bps) in
+       let invalid_dest () =
          type_error l
          ("not a valid destination, these destinations are " ^
           "valid: " ^ string_of_id_paths iops) in
@@ -1205,7 +1228,7 @@ let check_message_path_sim (bps : basic_inter_path list) (isini : bool)
        match mp.msg_or_other with
        | MsgPathId mt ->
            if not(List.mem umpiop iops)
-             then invalid_dest()
+             then invalid_dest ()
            else if List.exists
                    (fun bp ->
                           fst bp = umpiop &&
