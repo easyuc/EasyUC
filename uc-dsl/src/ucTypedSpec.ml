@@ -79,12 +79,12 @@ let params_of_fun_body_tyd f =
   | FunBodyRealTyd fbr -> fbr.params
   | FunBodyIdealTyd _  -> IdMap.empty
 
-let id_dir_io_of_fun_body_tyd f =
+let id_dir_inter_of_fun_body_tyd f =
   match f with
   | FunBodyRealTyd fbr  -> fbr.id_dir_inter
   | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
-let id_adv_io_of_fun_body_tyd f =
+let id_adv_inter_of_fun_body_tyd f =
   match f with
   | FunBodyRealTyd fbr  -> fbr.id_adv_inter
   | FunBodyIdealTyd fbi -> Some fbi.id_adv_inter

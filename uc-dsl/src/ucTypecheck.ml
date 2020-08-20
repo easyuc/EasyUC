@@ -285,6 +285,17 @@ let get_fun_inter_id_paths
         | None    -> [] in
   dir @ adv
 
+let check_id_paths_unique
+    (msg : string) (idps : string list located list) : unit = 
+  ignore
+  (List.fold_left
+   (fun l idp -> 
+      let uidp = unloc idp in
+      if List.mem uidp l
+      then type_error (loc idp) msg
+      else uidp :: l)
+   [] idps)
+
 let check_id_path
     (id_dir_inter : string) (id_adv_inter : string option)
     (dir_inter_map : inter_tyd IdMap.t)
@@ -315,7 +326,7 @@ let check_served_paths (serves : string list located list)
   let er =
     ("a party can serve at most one basic direct interface and one " ^
      "basic adversarial interface") in
-  let erone = "a party must serve one basic direct interface." in
+  let erone = "a party must serve one basic direct interface" in
   match List.length serves with
   | 0 -> type_error (loc party_id) erone
   | 1 ->
@@ -344,16 +355,6 @@ let check_toplevel_party_def
   let code = check_toplevel_states pd.id pd.states in
   mk_loc (loc pd.id) {serves = serves; states = code}
                
-let check_id_paths_unique (idps : string list located list) : unit = 
-  ignore
-  (List.fold_left
-   (fun l idp -> 
-      let uidp = unloc idp in
-      if List.mem uidp l
-      then type_error (loc idp) ("parties must serve distinct interfaces")
-      else uidp :: l)
-   [] idps)
-
 let check_id_paths_cover
     (id_dir_inter : string) (id_adv_inter : string option)
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
@@ -370,24 +371,29 @@ let check_id_paths_cover
        ("these interfaces are not served by any party: " ^
         string_of_id_paths unserved)
 
-let check_parties_serve_direct_sum (parties : party_def_tyd IdMap.t)
-      (id_dir_io : string) (id_adv_io : string option)
-      (dir_ios : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t) : unit = 
+let check_parties_serve_distinct_cover
+    (parties : party_def_tyd IdMap.t)
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+      : unit = 
   let served_ps =
-        IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
-  let () = check_id_paths_unique served_ps in
-  check_id_paths_cover id_dir_io id_adv_io dir_ios adv_ios served_ps
+    IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
+  let () =
+    check_id_paths_unique "parties must serve distinct interfaces"
+    served_ps in
+  check_id_paths_cover id_dir_inter id_adv_inter
+  dir_inter_map adv_inter_map served_ps
 
-let get_dir_io_id_impl_by_fun (fid : string) (funs : fun_tyd IdMap.t) :
-                                string = 
-  let func = IdMap.find fid funs in
+let get_dir_inter_id_impl_by_fun
+    (funid : string) (fun_map : fun_tyd IdMap.t) : string = 
+  let func = IdMap.find funid fun_map in
   match unloc func with
   | FunBodyRealTyd fbr -> fbr.id_dir_inter
   | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
-let get_param_dir_io_ids (r_funs : fun_tyd IdMap.t) (rfid : string) :
-                           string list = 
-  let func = IdMap.find rfid r_funs in
+let get_param_dir_inter_ids
+    (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
+  let func = IdMap.find funid fun_map in
   match unloc func with
   | FunBodyRealTyd fbr -> unlocs (to_list fbr.params)
   | FunBodyIdealTyd _  -> []
@@ -1030,23 +1036,23 @@ let filterb_inter_id_paths (bps : basic_inter_path list) (pfxs : string list loc
   (fun bp -> List.exists (fun pfx -> unloc pfx = fst bp) pfxs)
   bps
 
-let get_fb_inter_id_paths (dir_ios : inter_tyd IdMap.t)
-                          (adv_ios : inter_tyd IdMap.t)
+let get_fb_inter_id_paths (dir_inter_map : inter_tyd IdMap.t)
+                          (adv_inter_map : inter_tyd IdMap.t)
                           (f : fun_tyd) : all_basic_inter_paths = 
   let uf = unloc f in
-  let iddir = id_dir_io_of_fun_body_tyd uf in
-  let direct = get_basic_inter_paths_from_inter_id iddir dir_ios in
+  let iddir = id_dir_inter_of_fun_body_tyd uf in
+  let direct = get_basic_inter_paths_from_inter_id iddir dir_inter_map in
   let adversarial = 
-    match id_adv_io_of_fun_body_tyd uf with
-    | Some id -> get_basic_inter_paths_from_inter_id id adv_ios
+    match id_adv_inter_of_fun_body_tyd uf with
+    | Some id -> get_basic_inter_paths_from_inter_id id adv_inter_map
     | None -> [] in
   {direct = direct; adversarial = adversarial; internal = []}
 
-let get_all_basic_inter_paths (dir_ios : inter_tyd IdMap.t)
-                      (adv_ios : inter_tyd IdMap.t)
+let get_all_basic_inter_paths (dir_inter_map : inter_tyd IdMap.t)
+                      (adv_inter_map : inter_tyd IdMap.t)
                       (funs : fun_tyd IdMap.t) (r_f : fun_tyd)
                       (p : party_def_tyd) : all_basic_inter_paths = 
-  let all = get_fb_inter_id_paths dir_ios adv_ios r_f in
+  let all = get_fb_inter_id_paths dir_inter_map adv_inter_map r_f in
   let ur_f = unloc r_f in
   let filt = (unloc p).serves in
   let direct =  filterb_inter_id_paths all.direct filt in
@@ -1054,14 +1060,14 @@ let get_all_basic_inter_paths (dir_ios : inter_tyd IdMap.t)
   let internal_sfm =
     IdMap.mapi
     (fun sfid (sf : id) ->
-           let did = get_dir_io_id_impl_by_fun (unloc sf) funs in
-           get_basic_inter_paths sfid did dir_ios)
+           let did = get_dir_inter_id_impl_by_fun (unloc sf) funs in
+           get_basic_inter_paths sfid did dir_inter_map)
     (sub_funs_of_fun_body_tyd ur_f) in
   let internal_pm =
     IdMap.mapi
     (fun pid p -> 
            let did = unloc (fst p) in
-           get_basic_inter_paths pid did dir_ios)
+           get_basic_inter_paths pid did dir_inter_map)
     (params_of_fun_body_tyd ur_f) in
   let internal_m =
     IdMap.union
@@ -1139,7 +1145,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
           (check_toplevel_party_def uid_dir_inter uid_adv_inter
            maps.dir_inter_map maps.adv_inter_map)
           party_defs in
-        (check_parties_serve_direct_sum ps uid_dir_inter uid_adv_inter
+        (check_parties_serve_distinct_cover ps uid_dir_inter uid_adv_inter
          maps.dir_inter_map maps.adv_inter_map;
          ps) in
       let ft =
@@ -1300,10 +1306,10 @@ let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
   let qpids = List.map (fun pid -> r_f :: [pid]) pids in
   disj_union(get_sc funs r_f [r_f] :: List.map2 (get_sc funs) ps qpids)
                 
-let get_component_inter_id_paths (adv_ios : inter_tyd IdMap.t)
+let get_component_inter_id_paths (adv_inter_map : inter_tyd IdMap.t)
                                  (f : fun_body_tyd) : basic_inter_path list = 
-  match id_adv_io_of_fun_body_tyd f with
-  | Some id -> get_basic_inter_paths_from_inter_id id adv_ios 
+  match id_adv_inter_of_fun_body_tyd f with
+  | Some id -> get_basic_inter_paths_from_inter_id id adv_inter_map 
   | None    -> []
 
 let invert_dir (dir : msg_dir) = 
@@ -1328,15 +1334,15 @@ let invert_msg_dirs (bp : basic_inter_path) : basic_inter_path =
   let bio' = invertb_i_ob_tyd bio in
   (fst bp, bio')
 
-let get_simb_inter_id_paths (adv_ios : inter_tyd IdMap.t) (uses : string)
+let get_simb_inter_id_paths (adv_inter_map : inter_tyd IdMap.t) (uses : string)
                       (cs : fun_body_tyd QidMap.t) : basic_inter_path list = 
-  let sbps = QidMap.map (get_component_inter_id_paths adv_ios) cs in        
+  let sbps = QidMap.map (get_component_inter_id_paths adv_inter_map) cs in        
   let bps =
     QidMap.add
     []
     (List.map
      (fun bp -> invert_msg_dirs bp)
-     (get_basic_inter_paths_from_inter_id uses adv_ios))
+     (get_basic_inter_paths_from_inter_id uses adv_inter_map))
     sbps in
   QidMap.fold
   (fun q bpl l ->
@@ -1349,13 +1355,13 @@ let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t =
     QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q@ip) ips) rcsips in
   QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
         
-let check_sim_code (_ : inter_tyd IdMap.t) (adv_ios : inter_tyd IdMap.t)
+let check_sim_code (_ : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
                    (funs : fun_tyd IdMap.t) (sim : sim_def_tyd) : sim_def_tyd = 
   let usim = unloc sim in
   let states = usim.states in
   let ss = get_state_sigs states in
   let cs = get_sim_components funs usim.sims usim.sims_arg_ids in
-  let bps = get_simb_inter_id_paths adv_ios usim.uses cs in
+  let bps = get_simb_inter_id_paths adv_inter_map usim.uses cs in
   let states' =
     IdMap.map 
     (fun s -> 
@@ -1386,10 +1392,10 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
 
 let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
                          (rf : id) (params : id list) = 
-  let d_ios = get_param_dir_io_ids funs (unloc rf) in
+  let d_ios = get_param_dir_inter_ids funs (unloc rf) in
   let d_ios' =
     List.map
-    (fun id -> get_dir_io_id_impl_by_fun id funs) (unlocs params) in
+    (fun id -> get_dir_inter_id_impl_by_fun id funs) (unlocs params) in
   if List.length d_ios <> List.length d_ios'
   then type_error (loc rf)
        ("wrong number of arguments for functionality")
