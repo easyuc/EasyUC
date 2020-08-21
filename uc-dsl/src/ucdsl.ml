@@ -24,10 +24,10 @@ let raw_msg_arg () =
   (raw_msg_ref := true; ())
 
 let arg_specs =
-  [("-I", String include_arg, "<dir> add directory to include search path");
+  [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
-    "<dir> add directory to include search path");
-   ("-raw-msg", Unit raw_msg_arg, "issue raw messages")]
+    "<dir> Add directory to include search path");
+   ("-raw-msg", Unit raw_msg_arg, "Issue raw messages")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
