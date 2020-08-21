@@ -58,7 +58,7 @@ type msg_path_item =
 
 type qid = id list
 
-type msg_path = {inter_id_path: qid; msg_or_other : msg_path_item}
+type msg_path = {inter_id_path : qid; msg_or_other : msg_path_item}
 
 type pat =
   | PatId of id
