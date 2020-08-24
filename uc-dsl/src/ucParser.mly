@@ -381,7 +381,7 @@ state_machine :
    and there must be exactly one initial state. That initial state
    must take no paramters. A state's code declares local variables,
    and describes how incoming messages should be matched and
-   processed. *)
+   processed via a nonempty list of message matching clauses *)
 
 state_def : 
   | INITIAL; st = state
@@ -397,7 +397,10 @@ state_def :
 state : 
   | STATE; id = id_l; params = option(state_params); code = state_code
       { let params = params |? [] in
-        {id = id; params = params; code = code} : state }
+        if List.is_empty code.mmclauses
+        then parse_error (loc id)
+             "state must have at least one message matching clause"
+        else {id = id; params = params; code = code} : state }
 
 state_params :
   LPAREN; params = type_bindings; RPAREN
@@ -451,7 +454,7 @@ local_var_decl :
 
    will be a valid message path.
 
-   Message patterns look like message paths, except that:
+   Message path patterns look like message paths, except that:
 
    (1) they may end with the token "othermsg" to match any completion
        of the given path;
@@ -483,7 +486,10 @@ local_var_decl :
 
    will match a fw_req message, and in the process pt will be bound
    to its source port, and pt' and u' will be bound to the message
-   arguments. *)
+   arguments.
+
+   Finally, a message matching clause consists of a message pattern
+   followed by the code to run on a matching message. *)
 
 message_matching : 
   | MATCH; MESSAGE; WITH; PIPE?

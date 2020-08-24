@@ -380,7 +380,6 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
         send SMCReal.KE.KEI2S.ke_sim_req1(SMCReal.Pt1, SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
       }
-    | SMC2Sim.othermsg => { fail. }
     end
   }
 

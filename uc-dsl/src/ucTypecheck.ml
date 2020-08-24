@@ -221,20 +221,27 @@ let check_toplevel_states (id : id) (states : state_def list)
     check_unique_ids "duplicate state name: " states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id) state_map 
 
-(* a basic_inter_path will have the form ([id1; id2], b) where
+(* a basic_inter_path will have the form (ids, b) where
 
-   id1 is the name of a composite interface, id2 is the name of one of
-   that composite interface's sub-interfaces, and b is the basic
-   interface (direct iff the composite interface is direct)
-   corresponding to the functionality name that id2 is associated with
-   in the composite interface; or
+   ids = [id2], and id2 is the name of an adversarial basic interface,
+   and b is that basic interface (possibly filtered to have only
+   incoming or outgoing messages); or
 
-   id1 is the name of a subfunctionality of a real functionality,
-   where the ideal functionality that id1 is an instance of implements
-   a direct interface that is a composite interface, and id2 is the
-   name of one of that composite interface's sub-interfaces, and b is
-   the basic, direct interface corresponding to the functionality name
-   that id2 is associated with in the composite interface *)
+   ids = [id1; id2], and id1 is the name of a composite interface, id2
+   is the name of one of that composite interface's sub-interfaces,
+   and b is the basic interface (direct iff the composite interface is
+   direct) corresponding to the interface name that id2 is associated
+   with in the composite interface (possibly filtered to have only
+   incoming or outgoing messages); or
+
+   ids = [id1; id2], and id1 is the name of a subfunctionality of a
+   real functionality, where the ideal functionality that id1 is an
+   instance of implements a direct interface that is a composite
+   interface, and id2 is the name of one of that composite interface's
+   sub-interfaces, and b is the basic, direct interface corresponding
+   to the interface name that id2 is associated with in the composite
+   interface (possibly filtered to have only incoming or outgoing
+   messages) *)
 
 type basic_inter_path = string list * basic_inter_body_tyd
 
@@ -245,6 +252,10 @@ type basic_inter_path = string list * basic_inter_body_tyd
 type all_basic_inter_paths =
   {direct : basic_inter_path list; adversarial : basic_inter_path list;
    internal : basic_inter_path list}
+
+let flatten_all_basic_inter_paths (abip : all_basic_inter_paths)
+      : basic_inter_path list = 
+  abip.direct @ abip.adversarial @ abip.internal
 
 let get_basic_inter_paths
     (root : string) (inter_id : string) (inter_map : inter_tyd IdMap.t)
@@ -384,19 +395,19 @@ let check_parties_serve_distinct_cover
   check_id_paths_cover id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
 
-let get_dir_inter_id_impl_by_fun
+let get_dir_inter_id_impl_by_fun_id
     (funid : string) (fun_map : fun_tyd IdMap.t) : string = 
   let func = IdMap.find funid fun_map in
   match unloc func with
-  | FunBodyRealTyd fbr -> fbr.id_dir_inter
+  | FunBodyRealTyd fbr  -> fbr.id_dir_inter
   | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
-let get_param_dir_inter_ids
+let get_params_of_real_fun_id
     (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
   let func = IdMap.find funid fun_map in
   match unloc func with
   | FunBodyRealTyd fbr -> unlocs (to_list fbr.params)
-  | FunBodyIdealTyd _  -> []
+  | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
 
 type state_vars =
   {flags : string list; internal_ports : QidSet.t; consts : typ IdMap.t;
@@ -427,7 +438,7 @@ let string_of_msg_path (mp : msg_path) : string =
   | MsgPathId id      -> siop ^ "." ^ unloc id
   | MsgPathOtherMsg _ -> siop ^ ".othermsg"
 
-let string_of_msg_pathl (mpl : msg_path list) : string = 
+let string_of_msg_pathl (mpl : msg_path list) : string =
   string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
 
 let filter_dir_basic_inter_paths
@@ -466,10 +477,6 @@ let msg_paths_of_basic_inter_paths
     (bpl : basic_inter_path list) : msg_path list = 
   List.flatten (List.map (fun bp -> msg_paths_of_basic_inter_path bp) bpl)
 
-let flatten_all_basic_inter_paths (abip : all_basic_inter_paths)
-      : basic_inter_path list = 
-  abip.direct @ abip.adversarial @ abip.internal
-
 let msg_paths_of_all_basic_inter_paths (abip : all_basic_inter_paths)
       : msg_path list = 
   msg_paths_of_basic_inter_paths (flatten_all_basic_inter_paths abip)
@@ -484,11 +491,11 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
        | MsgPathId mt' -> unloc mt' = unloc mt
        | _             -> false)
     mpl in
-  let filter_by_port_name_msg_type
-      (pt : id) (mt : id)(mpl : msg_path list) : msg_path list = 
+  let filter_by_basic_inter_name_msg_type
+      (bi : id) (mt : id)(mpl : msg_path list) : msg_path list = 
     filter_by_msg_type mt
     (List.filter
-     (fun p -> unloc (List.hd (List.rev p.inter_id_path)) = unloc pt)
+     (fun p -> unloc (List.last p.inter_id_path) = unloc bi)
      mpl) in
   let unexpected () = 
     type_error (msg_loc mp)
@@ -511,7 +518,7 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
                   ret.inter_id_path;
                 msg_or_other = mp.msg_or_other }
         else type_error l
-             ("internal messages must have full paths. " ^
+             ("internal messages must have full paths; " ^
               "did you mean " ^ string_of_msg_path (List.hd mtch) ^ " ?")
     | _ -> ambiguous mtch in
   match mp.msg_or_other with
@@ -528,7 +535,8 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
                 filtered mtch imtch
             | 1 ->
                 let filter =
-                  filter_by_port_name_msg_type (List.hd mp.inter_id_path) mt in
+                  filter_by_basic_inter_name_msg_type
+                  (List.hd mp.inter_id_path) mt in
                 let mtch = filter allps in
                 let imtch = filter ips in
                 filtered mtch imtch
@@ -552,6 +560,7 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path)
        "this match is covered by previous matches and would never execute"
   else rem
 
+(*
 let msg_paths_of_all_basic_inter_paths_w_othermsg
     (abip : all_basic_inter_paths) : msg_path list = 
   let mps = msg_paths_of_all_basic_inter_paths abip in
@@ -562,20 +571,20 @@ let msg_paths_of_all_basic_inter_paths_w_othermsg
         msg_or_other = MsgPathOtherMsg _dummy})
     (flatten_all_basic_inter_paths abip) in
   mps @ omps
+*)
 
-let check_mm_ds_non_empty (abip : all_basic_inter_paths) (mpl : msg_path list) :
+let msg_match_deltas (abip : all_basic_inter_paths) (mpl : msg_path list) :
                             msg_path list = 
-  let mps = msg_paths_of_all_basic_inter_paths_w_othermsg abip in
+  let mps = msg_paths_of_all_basic_inter_paths abip in
   List.fold_left (fun mps mp -> remove_covered_paths mps mp) mps mpl
 
 let check_msg_match_deltas (abip : all_basic_inter_paths) (mml : msg_pat list) :
                              unit = 
   let mps = incoming_abip abip in
   let r =
-        check_mm_ds_non_empty
-        mps (List.map (fun (mm : msg_pat) -> mm.path) mml) in
-  if r<>[]
-  then let l = msg_loc ((List.hd (List.rev mml)).path)
+    msg_match_deltas mps (List.map (fun (mm : msg_pat) -> mm.path) mml) in
+  if r <> []
+  then let l = msg_loc (List.last mml).path
        in type_error l
           ("message match is not exhaustive, these " ^
            "messages are not matched: " ^ string_of_msg_pathl r)
@@ -1063,7 +1072,7 @@ let get_all_basic_inter_paths (dir_inter_map : inter_tyd IdMap.t)
   let internal_sfm =
     IdMap.mapi
     (fun sfid (sf : id) ->
-           let did = get_dir_inter_id_impl_by_fun (unloc sf) funs in
+           let did = get_dir_inter_id_impl_by_fun_id (unloc sf) funs in
            get_basic_inter_paths sfid did dir_inter_map)
     (sub_funs_of_fun_body_tyd ur_f) in
   let internal_pm =
@@ -1263,7 +1272,7 @@ let check_msg_match_deltas_sim (abip : all_basic_inter_paths)
                                (mmclauses : msg_match_clause list) : unit = 
   let mps = incoming_abip abip in
   ignore
-  (check_mm_ds_non_empty mps
+  (msg_match_deltas mps
    (List.map
     (fun mmc ->
           {inter_id_path = mmc.msg_pat.path.inter_id_path;
@@ -1395,10 +1404,10 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
 
 let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
                          (rf : id) (params : id list) = 
-  let d_ios = get_param_dir_inter_ids funs (unloc rf) in
+  let d_ios = get_params_of_real_fun_id funs (unloc rf) in
   let d_ios' =
     List.map
-    (fun id -> get_dir_inter_id_impl_by_fun id funs) (unlocs params) in
+    (fun id -> get_dir_inter_id_impl_by_fun_id id funs) (unlocs params) in
   if List.length d_ios <> List.length d_ios'
   then type_error (loc rf)
        ("wrong number of arguments for functionality")
