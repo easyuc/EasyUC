@@ -481,9 +481,18 @@ let msg_paths_of_all_basic_inter_paths (abip : all_basic_inter_paths)
       : msg_path list = 
   msg_paths_of_basic_inter_paths (flatten_all_basic_inter_paths abip)
 
+(* if mp does not end with othermsg, then the returned msg_path will
+   be be turned into the full message path that mp unambiguously
+   matches; all the subsequent functions will be working with
+   these un-abbreviated message paths *)
+
 let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path = 
   let ips = msg_paths_of_basic_inter_paths abip.internal in
   let allps = msg_paths_of_all_basic_inter_paths abip in       
+  let consistent_id_path : bool =
+    List.exists
+    (fun p -> qid1_starts_with_qid2 p.inter_id_path mp.inter_id_path)
+    allps in
   let filter_by_msg_type (mt : id) (mpl : msg_path list) : msg_path list = 
     List.filter
     (fun p ->
@@ -497,14 +506,20 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
     (List.filter
      (fun p -> unloc (List.last p.inter_id_path) = unloc bi)
      mpl) in
+  let inconsistent_msg_path () =
+    type_error (mergelocs mp.inter_id_path)
+    ("message pattern's path is inconsistent with the paths of possible\n" ^
+     "incoming messages\n\nthese messages are expected:\n" ^
+     string_of_msg_pathl allps) in
   let unexpected () = 
-    type_error (msg_loc mp)
-    ("the message is unexpected; these messages are expected: " ^
+    type_error (merge (mergelocs mp.inter_id_path) (msg_loc mp))
+    ("message pattern is inconsistent with the paths of possible\n" ^
+     "incoming messages\n\nthese messages are expected:\n" ^
      string_of_msg_pathl allps) in
   let ambiguous (mpl : msg_path list) = 
     type_error (msg_loc mp)
-    ("the message is ambiguous; there are multiple messages " ^
-     "that match the description: " ^ string_of_msg_pathl mpl) in
+    ("message pattern is ambiguous\n\nthere are multiple messages " ^
+     "that match the pattern:\n" ^ string_of_msg_pathl mpl) in
   let filtered (mtch : msg_path list) (imtch : msg_path list) : msg_path = 
     match List.length mtch with
     | 0 -> unexpected ()
@@ -516,9 +531,9 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
                   List.map
                   (fun id -> mk_loc l (unloc id))
                   ret.inter_id_path;
-                msg_or_other = mp.msg_or_other }
+                msg_or_other = mp.msg_or_other}
         else type_error l
-             ("internal messages must have full paths; " ^
+             ("patterns for internal messages must have full paths; " ^
               "did you mean " ^ string_of_msg_path (List.hd mtch) ^ " ?")
     | _ -> ambiguous mtch in
   match mp.msg_or_other with
@@ -540,12 +555,16 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
                 let mtch = filter allps in
                 let imtch = filter ips in
                 filtered mtch imtch
-            | _ ->  unexpected ())
+            | 2 ->
+                if consistent_id_path
+                then unexpected ()
+                else inconsistent_msg_path ()
+            | _ -> inconsistent_msg_path ())
   | MsgPathOtherMsg _ ->
       if (List.exists
           (fun p -> qid1_starts_with_qid2 p.inter_id_path mp.inter_id_path)
           allps)
-      then mp else unexpected ()
+      then mp else inconsistent_msg_path ()
 
 let remove_covered_paths (mps : msg_path list) (mp : msg_path)
       : msg_path list = 
@@ -560,19 +579,6 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path)
        "this match is covered by previous matches and would never execute"
   else rem
 
-(*
-let msg_paths_of_all_basic_inter_paths_w_othermsg
-    (abip : all_basic_inter_paths) : msg_path list = 
-  let mps = msg_paths_of_all_basic_inter_paths abip in
-  let omps =
-    List.map
-    (fun bp ->
-       {inter_id_path = dummylocl (fst bp);
-        msg_or_other = MsgPathOtherMsg _dummy})
-    (flatten_all_basic_inter_paths abip) in
-  mps @ omps
-*)
-
 let msg_match_deltas (abip : all_basic_inter_paths) (mpl : msg_path list) :
                             msg_path list = 
   let mps = msg_paths_of_all_basic_inter_paths abip in
@@ -586,8 +592,8 @@ let check_msg_match_deltas (abip : all_basic_inter_paths) (mml : msg_pat list) :
   if r <> []
   then let l = msg_loc (List.last mml).path
        in type_error l
-          ("message match is not exhaustive, these " ^
-           "messages are not matched: " ^ string_of_msg_pathl r)
+          ("message match is not exhaustive\n\nthese " ^
+           "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 
 let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
@@ -601,7 +607,7 @@ let get_declared_const_vars (sv : state_vars) =
   IdMap.union
   (fun _ _ _ ->
      failure
-     ("Impossible, we already checked params and local " ^
+     ("impossible, we already checked params and local " ^
       "vars have different ids"))
   sv.consts sv.vars
 
@@ -622,7 +628,7 @@ let check_add_binding (vid : id) (sv : state_vars) : state_vars =
        (uvid ^ " is not a local variable and values cannot be bound to it")
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = sv.consts; vars = sv.vars;
-        initialized_vs = (IdSet.add uvid sv.initialized_vs)}
+        initialized_vs = IdSet.add uvid sv.initialized_vs}
 
 let check_type_add_binding (vid : id) (typ : typ) (sv : state_vars) :
                              state_vars = 
@@ -634,9 +640,10 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
   let () = check_types_compatible cid ct valt in
   let ucid = unloc cid in
   let pvs = get_declared_const_vars sv in
-  if (IdMap.mem ucid pvs)
+  if IdMap.mem ucid pvs
   then type_error (loc cid)
-       ("duplicate occurrence of variable in pattern: " ^ ucid)
+       ("pattern variable already bound as parameter, variable or " ^
+        "pattern variable: " ^ ucid)
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
         initialized_vs = sv.initialized_vs}
@@ -658,9 +665,9 @@ let check_port_var_binding (abip : all_basic_inter_paths) (mp : string list)
 let check_item_type_add_binding (sv : state_vars) (mi : pat)
                                 (typ : typ) : state_vars = 
   match mi with
-  | PatWildcard _   -> sv
-  | PatId id     -> check_add_const id typ typ sv
-  | PatIdType nt -> check_add_const nt.id (check_type nt.ty) typ sv
+  | PatWildcard _ -> sv
+  | PatId id      -> check_add_const id typ typ sv
+  | PatIdType nt  -> check_add_const nt.id (check_type nt.ty) typ sv
 
 let rec get_loc_ty (ty : ty) : EcLocation.t = 
   match ty with
@@ -669,46 +676,46 @@ let rec get_loc_ty (ty : ty) : EcLocation.t =
 
 let get_loc_match_item (m_i : pat) : EcLocation.t = 
   match m_i with
-  | PatWildcard l   -> l
-  | PatId id     -> loc id
-  | PatIdType nt -> merge (loc nt.id) (get_loc_ty nt.ty)
+  | PatWildcard l -> l
+  | PatId id      -> loc id
+  | PatIdType nt  -> merge (loc nt.id) (get_loc_ty nt.ty)
 
 let get_loc_match_item_list (tm : pat list) : EcLocation.t =
   mergeall (List.map (fun mi -> get_loc_match_item mi) tm)
 
 let check_msg_content_bindings
-    (ps : basic_inter_path list) (mp : string list*string)
+    (bips : basic_inter_path list) (mp : string list * string)
     (tm : pat list) (sv : state_vars) : state_vars = 
-  let p = List.find (fun p -> (fst p) = (fst mp)) ps in
-  let mt = to_list (unlocm((unloc(IdMap.find (snd mp) (snd p))).params_map)) in
+  let bip = List.find (fun p -> fst p = fst mp) bips in
+  let mt =
+    to_list (unlocm((unloc(IdMap.find (snd mp) (snd bip))).params_map)) in
   if List.length mt <> List.length tm
   then type_error (get_loc_match_item_list tm)
-       ("the number of bindings is different then the number " ^
+       ("the number of argument patterns the number " ^
         "of message parameters")
   else List.fold_left2 check_item_type_add_binding sv tm mt
 
-let check_pat_args (bips : basic_inter_path list) (mm : msg_pat)
+let check_pat_args (bips : basic_inter_path list) (msg_pat : msg_pat)
                    (sv : state_vars) : state_vars = 
-  match mm.pat_args with
-  | None     -> sv
-  | Some mil -> 
-      match mm.path.msg_or_other with
+  match msg_pat.pat_args with
+  | None      -> sv
+  | Some pats -> 
+      match msg_pat.path.msg_or_other with
       | MsgPathOtherMsg l ->
-          type_error l
-          ("othermsg cannot have value bindings. do you have " ^
-           "redundant parenthesis?")
+          type_error l "othermsg cannot have argument pattern"
       | MsgPathId id      ->
           check_msg_content_bindings bips
-          ((unlocs mm.path.inter_id_path),(unloc id)) mil sv
+          (unlocs msg_pat.path.inter_id_path, unloc id) pats sv
 
-let check_match_bindings (abip : all_basic_inter_paths) (mm : msg_pat)
+let check_match_bindings (abip : all_basic_inter_paths) (msg_pat : msg_pat)
                          (sv : state_vars) : state_vars = 
   let sv' =        
-    match mm.port_id with
-    | Some id -> check_port_var_binding abip (unlocs mm.path.inter_id_path) id sv
+    match msg_pat.port_id with
+    | Some id ->
+        check_port_var_binding abip (unlocs msg_pat.path.inter_id_path) id sv
     | None    -> sv in
-  let ps = abip.direct @ abip.adversarial @ abip.internal in
-  check_pat_args ps mm sv'
+  let ps = flatten_all_basic_inter_paths abip in
+  check_pat_args ps msg_pat sv'
 
 let get_var_type (sv : state_vars) (id : id) : typ = 
   let vs =
@@ -1000,33 +1007,37 @@ let rec check_ends_are_sa_tor_f (is : instruction_l list) : unit =
        "transition or fail command")
   | _ :: tl -> check_ends_are_sa_tor_f tl
 
-let check_msg_code (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-                   (sv : state_vars) (is : instruction_l list) :
-                     instruction_l list = 
+let check_msg_path_of_clause
+    (abip : all_basic_inter_paths) (mmc : msg_match_clause)
+      : msg_match_clause = 
+  let path' = check_msg_path (incoming_abip abip) mmc.msg_pat.path in
+  {msg_pat =
+     {port_id = mmc.msg_pat.port_id; path = path';
+      pat_args = mmc.msg_pat.pat_args};
+   code = mmc.code}
+
+let check_msg_match_code
+    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+    (sv : state_vars) (is : instruction_l list)
+      : instruction_l list = 
   let is_tyd = fst (check_instructions abip ss sv is) in
   let () = check_ends_are_sa_tor_f is_tyd in
   is_tyd
 
-let check_message_path (abip : all_basic_inter_paths) (mmc : msg_match_clause) :
-                         msg_match_clause = 
-  let path' =
-    check_msg_path (incoming_abip abip) mmc.msg_pat.path in
-  {msg_pat =
-     {port_id = mmc.msg_pat.port_id;
-      path = path'; pat_args = mmc.msg_pat.pat_args};
-   code = mmc.code}
-
-let check_m_mcode (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-                  (sv : state_vars) (mmc : msg_match_clause) : msg_match_clause = 
-  let mmc' = check_message_path abip mmc in 
+let check_msg_match_clause
+    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+    (sv : state_vars) (mmc : msg_match_clause) : msg_match_clause = 
+  let mmc' = check_msg_path_of_clause abip mmc in 
   let sv' = check_match_bindings abip mmc'.msg_pat sv in
-  let code' = check_msg_code abip ss sv' mmc'.code in
+  let code' = check_msg_match_code abip ss sv' mmc'.code in
   {msg_pat = mmc'.msg_pat; code = code'}
 
-let check_state_code (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-                     (sv : state_vars) (mmclauses : msg_match_clause list) :
-                       msg_match_clause list = 
-  let mmclauses' = List.map (fun mmc -> check_m_mcode abip ss sv mmc) mmclauses in
+let check_state_code
+    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+    (sv : state_vars) (mmclauses : msg_match_clause list)
+      : msg_match_clause list = 
+  let mmclauses' =
+    List.map (fun mmc -> check_msg_match_clause abip ss sv mmc) mmclauses in
   let () =
     check_msg_match_deltas abip
     (List.map (fun mmc -> mmc.msg_pat) mmclauses') in
@@ -1223,7 +1234,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
 let check_msg_code_sim (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
                        (mmc : msg_match_clause) (sv : state_vars) :
                          msg_match_clause = 
-  let code' = check_msg_code abip ss sv mmc.code in
+  let code' = check_msg_match_code abip ss sv mmc.code in
   {msg_pat = mmc.msg_pat; code = code'}
 
 let check_message_path_sim (abip : basic_inter_path list) (isini : bool)

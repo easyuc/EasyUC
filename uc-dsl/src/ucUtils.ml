@@ -48,7 +48,12 @@ let string_of_id_paths (iops : string list list) : string =
   List.fold_left (fun s p -> s ^ "\n" ^ string_of_id_path p) "" iops
 
 let string_of_stringl (sl : string list) : string =
-  List.fold_left (fun sout s -> sout ^ "\n" ^ s) "" sl
+  List.fold_left
+  (fun sout s ->
+     if sout = ""
+     then "  " ^ s
+     else sout ^ "\n  " ^ s)
+  "" sl
 
 let qid1_starts_with_qid2 (q1 : qid) (q2 : qid) : bool =
   List.for_all
