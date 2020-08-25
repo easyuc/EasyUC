@@ -466,6 +466,11 @@ let msg_loc (mp : msg_path) : EcLocation.t =
   | MsgPathId id      -> loc id
   | MsgPathOtherMsg l -> l
 
+let mergelocs_msg_path mp =
+  if List.is_empty mp.inter_id_path
+  then (msg_loc mp)
+  else merge (mergelocs mp.inter_id_path) (msg_loc mp)
+
 let msg_paths_of_basic_inter_path (bp : basic_inter_path) : msg_path list =   
   IdMap.fold
   (fun id _ l ->
@@ -512,12 +517,12 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
      "incoming messages\n\nthese messages are expected:\n" ^
      string_of_msg_pathl allps) in
   let unexpected () = 
-    type_error (merge (mergelocs mp.inter_id_path) (msg_loc mp))
+    type_error (mergelocs_msg_path mp)
     ("message pattern is inconsistent with the paths of possible\n" ^
      "incoming messages\n\nthese messages are expected:\n" ^
      string_of_msg_pathl allps) in
   let ambiguous (mpl : msg_path list) = 
-    type_error (msg_loc mp)
+    type_error (mergelocs_msg_path mp)
     ("message pattern is ambiguous\n\nthere are multiple messages " ^
      "that match the pattern:\n" ^ string_of_msg_pathl mpl) in
   let filtered (mtch : msg_path list) (imtch : msg_path list) : msg_path = 
@@ -579,21 +584,22 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path)
        "this match is covered by previous matches and would never execute"
   else rem
 
-let msg_match_deltas (abip : all_basic_inter_paths) (mpl : msg_path list) :
-                            msg_path list = 
+let msg_match_deltas
+    (abip : all_basic_inter_paths) (mpl : msg_path list)
+      : msg_path list = 
   let mps = msg_paths_of_all_basic_inter_paths abip in
   List.fold_left (fun mps mp -> remove_covered_paths mps mp) mps mpl
 
-let check_msg_match_deltas (abip : all_basic_inter_paths) (mml : msg_pat list) :
-                             unit = 
+let check_msg_match_deltas
+    (abip : all_basic_inter_paths) (mml : msg_pat list) : unit = 
   let mps = incoming_abip abip in
   let r =
     msg_match_deltas mps (List.map (fun (mm : msg_pat) -> mm.path) mml) in
   if r <> []
-  then let l = msg_loc (List.last mml).path
-       in type_error l
-          ("message match is not exhaustive\n\nthese " ^
-           "messages are not matched:\n" ^ string_of_msg_pathl r)
+  then let l = msg_loc (List.last mml).path in
+       type_error l
+       ("message match is not exhaustive\n\nthese " ^
+        "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 
 let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
@@ -1246,7 +1252,7 @@ let check_message_path_sim (abip : basic_inter_path list) (isini : bool)
   if isini && unlocs mp.inter_id_path <> id
   then type_error l
        ("initial state can handle only messages comming " ^
-        "from ideal functionality. did you omit prefix " ^
+        "from ideal functionality\n\ndid you omit prefix " ^
         List.hd id ^ ".?")
   else let iops = fst (List.split abip) in
        let invalid_dest () =
@@ -1279,26 +1285,41 @@ let check_match_bindings_sim (abip : basic_inter_path list) (sv : state_vars)
   let mm = mmc.msg_pat in
   check_pat_args abip mm sv
 
-let check_msg_match_deltas_sim (abip : all_basic_inter_paths)
-                               (mmclauses : msg_match_clause list) : unit = 
-  let mps = incoming_abip abip in
-  ignore
-  (msg_match_deltas mps
-   (List.map
-    (fun mmc ->
-          {inter_id_path = mmc.msg_pat.path.inter_id_path;
-           msg_or_other = mmc.msg_pat.path.msg_or_other})
-    mmclauses))
+let check_msg_match_deltas_sim
+    (abip : all_basic_inter_paths) (isini : bool) (uid_uses : string)
+    (mmclauses : msg_match_clause list)
+      : unit = 
+  let abip = incoming_abip abip in
+  let r =
+    msg_match_deltas abip
+    (List.map
+     (fun mmc ->
+        {inter_id_path = mmc.msg_pat.path.inter_id_path;
+         msg_or_other = mmc.msg_pat.path.msg_or_other})
+    mmclauses) in
+  let r =
+    if isini
+    then List.filter
+         (fun mp -> unloc (List.hd mp.inter_id_path) = uid_uses)
+         r
+    else r in
+  if r <> []
+  then let l = msg_loc (List.last mmclauses).msg_pat.path in
+       type_error l
+       ("message match is not exhaustive\n\nthese " ^
+        "messages are not matched:\n" ^ string_of_msg_pathl r)
+  else ()
 
-let check_sim_state_code (bips : basic_inter_path list) (ss : state_sig IdMap.t)
-                         (sv : state_vars) (isini : bool)
-                         (mmclauses : msg_match_clause list) :
-                           msg_match_clause list = 
+let check_sim_state_code
+    (bips : basic_inter_path list) (ss : state_sig IdMap.t)
+    (sv : state_vars) (isini : bool) (uid_uses : string)
+    (mmclauses : msg_match_clause list)
+      : msg_match_clause list = 
   let () = List.iter (check_message_path_sim bips isini) mmclauses in
   let svs = List.map (check_match_bindings_sim bips sv) mmclauses in
   let abip = {direct = []; adversarial = bips; internal = []} in
   let ret = List.map2 (check_msg_code_sim abip ss) mmclauses svs in
-  let () = check_msg_match_deltas_sim abip ret in
+  let () = check_msg_match_deltas_sim abip isini uid_uses ret in
   ret
 
 (* TODO : fix this *)
@@ -1378,8 +1399,9 @@ let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t =
     QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q@ip) ips) rcsips in
   QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
         
-let check_sim_code (_ : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-                   (funs : fun_tyd IdMap.t) (sim : sim_def_tyd) : sim_def_tyd = 
+let check_sim_code
+    (adv_inter_map : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t)
+    (sim : sim_def_tyd) : sim_def_tyd = 
   let usim = unloc sim in
   let states = usim.states in
   let ss = get_state_sigs states in
@@ -1388,18 +1410,18 @@ let check_sim_code (_ : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
   let states' =
     IdMap.map 
     (fun s -> 
-           let us = unloc s in
-           let sv =
-             init_state_vars us (get_sim_internal_ports cs) ["simulator"] in
-           let mmclauses' =
-             check_sim_state_code bps ss sv us.is_initial us.mmclauses in
-           mk_loc (loc s)
-                  {is_initial = us.is_initial; params = us.params;
-                   vars = us.vars; mmclauses = mmclauses'})
+       let us = unloc s in
+       let sv =
+         init_state_vars us (get_sim_internal_ports cs) ["simulator"] in
+       let mmclauses' =
+         check_sim_state_code bps ss sv us.is_initial usim.uses us.mmclauses in
+       mk_loc (loc s)
+      {is_initial = us.is_initial; params = us.params;
+       vars = us.vars; mmclauses = mmclauses'})
     states in
   mk_loc (loc sim)
-         {uses = usim.uses; sims = usim.sims;
-          sims_arg_ids = usim.sims_arg_ids; states = states'}
+  {uses = usim.uses; sims = usim.sims;
+   sims_arg_ids = usim.sims_arg_ids; states = states'}
 
 let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
@@ -1467,7 +1489,7 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
   let sdt =
     check_sim_decl maps.adv_inter_map maps.fun_map simd in
   let sdt =
-    check_sim_code maps.dir_inter_map maps.adv_inter_map maps.fun_map sdt in
+    check_sim_code  maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
 (***************************** definition checks ******************************)
