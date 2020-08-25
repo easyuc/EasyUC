@@ -497,7 +497,7 @@ message_matching :
      { mm }
 
 msg_match_clause : 
-  | msg_pat = msg_pat; ARROW; code = inst_block
+  | msg_pat = msg_pat; ARROW; code = loc(inst_block)
       { {msg_pat = msg_pat; code = code } }
 
 msg_pat : 
@@ -606,7 +606,7 @@ message_matching_sim :
       { mmcs }
 
 msg_match_clause_sim : 
-  | msg_pat = msg_pat_sim; ARROW; code = inst_block
+  | msg_pat = msg_pat_sim; ARROW; code = loc(inst_block)
       { {msg_pat = msg_pat; code = code } }
 
 (* no source port binding: *)
@@ -618,7 +618,7 @@ msg_pat_sim :
 (* Instructions *)
 
 inst_block : 
-  | LBRACE; is = nonempty_list(instruction); RBRACE
+  | LBRACE; is = list(instruction); RBRACE
       { is }
 
 %inline instruction :
@@ -632,7 +632,7 @@ instruction_u :
       { i }
   | i = decode
       { i }
-  | i = terminal
+  | i = control_transfer
       { i }
 
 (* There are two instructions for assigning a value to the variable:
@@ -648,23 +648,24 @@ assignment :
 (* Conditional (if-then-else) instructions *)
 
 ifthenelse : 
-  | IF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+  | IF LPAREN; c = expression; RPAREN; tins = loc(inst_block); ift = iftail
       { ITE (c, tins, ift) }
 
 iftail : 
   | /* empty */
       { None }
-  | ELSE; eins = inst_block
+  | ELSE; eins = loc(inst_block)
       { Some eins }
   | elif = elifthenelse
-      { Some [elif] }
+      { let l = loc elif in
+        Some (mk_loc l [elif]) }
 
 %inline elifthenelse :
   | x = loc(elifthenelse_u)
       { x }
 
 elifthenelse_u : 
-  | ELIF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+  | ELIF LPAREN; c = expression; RPAREN; tins = loc(inst_block); ift = iftail
       { ITE (c, tins, ift) }
 
 (* A decode command attempts to decode a value of type univ as some
@@ -673,8 +674,8 @@ elifthenelse_u :
 
 decode : 
   | DECODE; ex = expression; AS; ty = ty; WITH;
-    PIPE? OK; args_pat = dec_pat; ARROW; code1 = inst_block;
-    PIPE; ERROR; ARROW; code2 = inst_block; END;
+    PIPE? OK; args_pat = dec_pat; ARROW; code1 = loc(inst_block);
+    PIPE; ERROR; ARROW; code2 = loc(inst_block); END;
       { Decode (ex, ty, args_pat, code1, code2) }
 
 dec_pat : 
@@ -683,9 +684,9 @@ dec_pat :
   | pat = pat
       { [pat] }
 
-(* Terminal instructions *)
+(* Control transfer instructions *)
 
-terminal : 
+control_transfer : 
   | sat = send_and_transition; DOT
       { SendAndTransition sat }
   | FAIL; DOT

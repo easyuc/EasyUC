@@ -90,16 +90,17 @@ type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 type instruction =
   | Assign of id * expression_l
   | Sample of id * expression_l
-  | ITE of expression_l * instruction_l list * instruction_l list option
+  | ITE of expression_l * instruction_l list located *
+           instruction_l list located option
   | Decode of
-      expression_l * ty * pat list * instruction_l list *
-      instruction_l list
+      expression_l * ty * pat list * instruction_l list located *
+      instruction_l list located
   | SendAndTransition of send_and_transition
   | Fail
 
 and instruction_l = instruction located
 
-type msg_match_clause = {msg_pat : msg_pat; code : instruction_l list}
+type msg_match_clause = {msg_pat : msg_pat; code : instruction_l list located}
 
 type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 

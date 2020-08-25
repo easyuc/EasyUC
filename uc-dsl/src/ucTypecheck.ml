@@ -906,8 +906,8 @@ let merge_state_vars (sv1 : state_vars) (sv2 : state_vars) : state_vars =
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sv : state_vars)
-    (ex : expression_l) (tins : instruction_l list)
-    (eins : instruction_l list option)
+    (ex : expression_l) (tins : instruction_l list located)
+    (eins : instruction_l list located option)
       : instruction * state_vars = 
   if check_expression sv ex <> bool_type
   then type_error (loc ex) "the condition must be a boolean expression"
@@ -916,9 +916,10 @@ let rec check_ite
 
 and check_branches
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (tins : instruction_l list)
-    (eins : instruction_l list option)
-      : instruction_l list * instruction_l list option * state_vars = 
+    (sv : state_vars) (tins : instruction_l list located)
+    (eins : instruction_l list located option)
+      : instruction_l list located * instruction_l list located option *
+        state_vars = 
   let (tins_c, tsv) = check_instructions abip ss sv tins in
   let (eins_c, esv) =
     match eins with                         
@@ -931,8 +932,8 @@ and check_branches
 and check_decode
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sv : state_vars) (ex : expression_l) (ty : ty)
-    (m_is : pat list) (okins : instruction_l list)
-    (erins : instruction_l list)
+    (m_is : pat list) (okins : instruction_l list located)
+    (erins : instruction_l list located)
       : instruction * state_vars = 
   if check_expression sv ex <> univ_type
   then type_error (loc ex) "only expressions of univ type can be decoded"
@@ -960,65 +961,83 @@ and check_instruction
   let ins = fst insv in
   let sv = snd insv in
   match unloc i with
-  | Assign (vid, ex)      -> (ins @ [i], check_val_assign sv vid ex)
-  | Sample (vid, ex)      -> (ins @ [i], check_sampl_assign sv vid ex)
+  | Assign (vid, ex)      ->
+      ((ins @ [i]), check_val_assign sv vid ex)
+  | Sample (vid, ex)      ->
+      ((ins @ [i]), check_sampl_assign sv vid ex)
   | ITE (ex, tins, eins)  ->
       let (ite_c, sv') = check_ite abip ss sv ex tins eins in
-      (ins @ [mk_loc (loc i) ite_c], sv')
+      ((ins @ [mk_loc (loc i) ite_c]), sv')
   | Decode (ex, ty, m_is, okins, erins) ->
       let (match_c,sv') = check_decode abip ss sv ex ty m_is okins erins in
-      (ins @ [mk_loc (loc i) match_c], sv')
+      ((ins @ [mk_loc (loc i) match_c]), sv')
   | SendAndTransition sat ->
-      (ins @ [mk_loc (loc i) (check_send_and_transition abip ss sat sv)]), sv
-  | Fail                  -> (ins @ [i], sv)
+      (ins @ [mk_loc (loc i) (check_send_and_transition abip ss sat sv)], sv)
+  | Fail                  ->
+      (ins @ [i], sv)
 
 and check_instructions
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (is : instruction_l list)
-      : (instruction_l list * state_vars) = 
-  List.fold_left (check_instruction abip ss) ([], sv) is
+    (sv : state_vars) (is : instruction_l list located)
+      : (instruction_l list located * state_vars) = 
+  let uis = unloc is in
+  let (is', sv') = List.fold_left (check_instruction abip ss) ([], sv) uis in
+  (mk_loc (loc is) is', sv')
 
-let contains_sa_tor_f (is : instruction_l list) : bool = 
-  List.exists
-  (fun i ->
-         match (unloc i) with
-         | Fail                -> true
-         | SendAndTransition _ -> true
-         | _                   -> false)
-  is
+let illegal_control_transfer (l : EcLocation.t) =
+  type_error l
+  ("control transfer by \"fail\" or \"send-and-transition\" instruction " ^
+   "is only\nallowed at very end of message match clause's code")   
 
-let rec check_ends_are_sa_tor_f (is : instruction_l list) : unit = 
-  match is with
-  | [] -> failure "the instruction list cannot be empty"
-  | {pl_loc = _; pl_desc = (SendAndTransition _)} :: [] -> ()
-  | {pl_loc = l; pl_desc = (SendAndTransition _)} :: _ :: _ ->
-      type_error l
-      ("the instructions after send and transition will " ^
-       "not be executed")
-  | {pl_loc = _; pl_desc = Fail} :: [] -> ()
-  | {pl_loc = l; pl_desc = Fail} :: _ :: _ ->
-      type_error l ("the instructions after fail will not be executed")
-  | {pl_loc = _; pl_desc = (ITE (_,tins,Some eins))} :: [] ->
-      (check_ends_are_sa_tor_f tins; check_ends_are_sa_tor_f eins)
-  | {pl_loc = _; pl_desc = (ITE (_,tins,Some eins))} :: ins :: _
-      when (contains_sa_tor_f tins)&&(contains_sa_tor_f eins) ->
-      type_error (loc ins)
-      ("the instructions after if-then-else will not be " ^
-       " executed since both branches contain send and " ^
-       "transition or fail commands")
-  | {pl_loc = _; pl_desc = (Decode (_,_,_,okins,erins))} :: [] ->
-      check_ends_are_sa_tor_f okins; check_ends_are_sa_tor_f erins
-  | {pl_loc = _; pl_desc = (Decode (_,_,_,okins,erins))} :: ins :: _
-      when contains_sa_tor_f okins && contains_sa_tor_f erins ->
-      type_error (loc ins)
-      ("the instructions after decode will not be executed " ^
-       "since both branches contain send and transition or " ^
-       "fail commands")
-  | ins :: [] ->
-      type_error (loc ins)
-      ("every branch of execution must end with send and " ^
-       "transition or fail command")
-  | _ :: tl -> check_ends_are_sa_tor_f tl
+let failure_to_transfer_control (l : EcLocation.t) =
+  type_error l
+  ("message match clause must end with control transfer via " ^
+   "\"fail\" or\n\"send-and-transition\" instruction")
+
+let rec check_instrs_transfer_at_end (is : instruction_l list located) : unit =
+  let uis = unloc is in
+  match uis with
+  | [] -> failure_to_transfer_control (loc is)
+  | is ->
+      let xs = List.take (List.length is - 1) is in
+      (List.iter check_instr_not_transfer xs;
+       check_instr_end_in_transfer (List.last is))
+
+and check_instrs_not_transfer (is : instruction_l list located) : unit =
+  let uis = unloc is in
+  List.iter check_instr_not_transfer uis
+
+and check_instr_end_in_transfer (instr : instruction_l) : unit =
+  let uinstr = unloc instr in
+  match uinstr with
+  | Assign _                    -> failure_to_transfer_control (loc instr)
+  | Sample _                    -> failure_to_transfer_control (loc instr)
+  | SendAndTransition _         -> ()
+  | Fail                        -> ()
+  | ITE (_, thens, elses)       ->
+      (check_instrs_transfer_at_end thens;
+       match elses with
+       | None       -> failure_to_transfer_control (loc instr)
+       | Some elses -> check_instrs_transfer_at_end elses)
+  | Decode (_, _, _, oks, nots) ->
+      (check_instrs_transfer_at_end oks;
+       check_instrs_transfer_at_end nots)
+
+and check_instr_not_transfer (instr : instruction_l) : unit =
+  let uinstr = unloc instr in
+  match uinstr with
+  | Assign _                    -> ()
+  | Sample _                    -> ()
+  | SendAndTransition _         -> illegal_control_transfer (loc instr)
+  | Fail                        -> illegal_control_transfer (loc instr)
+  | ITE (_, thens, elses)       ->
+      (check_instrs_not_transfer thens;
+       match elses with
+       | None       -> ()
+       | Some elses -> check_instrs_not_transfer elses)
+  | Decode (_, _, _, oks, nots) ->
+      (check_instrs_not_transfer oks;
+       check_instrs_not_transfer nots)
 
 let check_msg_path_of_clause
     (abip : all_basic_inter_paths) (mmc : msg_match_clause)
@@ -1031,10 +1050,10 @@ let check_msg_path_of_clause
 
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (is : instruction_l list)
-      : instruction_l list = 
+    (sv : state_vars) (is : instruction_l list located)
+      : instruction_l list located = 
   let is_tyd = fst (check_instructions abip ss sv is) in
-  let () = check_ends_are_sa_tor_f is_tyd in
+  let () = check_instrs_transfer_at_end is_tyd in
   is_tyd
 
 let check_msg_match_clause
@@ -1123,8 +1142,8 @@ let check_state (ur_f : fun_body_tyd) (states : state_tyd IdMap.t)
   let ss = get_state_sigs states in
   let mmclauses' = check_state_code abip ss sv us.mmclauses in
   mk_loc (loc s)
-         {is_initial = us.is_initial; params = us.params; vars = us.vars;
-          mmclauses = mmclauses'}
+  {is_initial = us.is_initial; params = us.params; vars = us.vars;
+   mmclauses = mmclauses'}
 
 let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
   let uid = unloc fund.id in
