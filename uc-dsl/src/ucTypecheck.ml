@@ -581,7 +581,7 @@ let remove_covered_paths (mps : msg_path list) (mp : msg_path)
   let rem = List.filter (fun mp' -> not (covered mp' mp)) mps in
   if List.length mps = List.length rem
   then type_error (msg_loc mp)
-       "this match is covered by previous matches and would never execute"
+       "this match is covered by previous patterns and would never match"
   else rem
 
 let msg_match_deltas
@@ -598,7 +598,7 @@ let check_msg_match_deltas
   if r <> []
   then let l = msg_loc (List.last mml).path in
        type_error l
-       ("message match is not exhaustive\n\nthese " ^
+       ("message patterns are not exhaustive\n\nthese " ^
         "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 
@@ -1306,7 +1306,7 @@ let check_msg_match_deltas_sim
   if r <> []
   then let l = msg_loc (List.last mmclauses).msg_pat.path in
        type_error l
-       ("message match is not exhaustive\n\nthese " ^
+       ("message patterns are not exhaustive\n\nthese " ^
         "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 

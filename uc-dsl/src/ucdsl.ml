@@ -45,7 +45,7 @@ let () = UcState.set_include_dirs (! include_dirs_ref)
 let file =
   let files = ! anony_arg_ref in
   match files with
-    [file] -> file
+  | [file] -> file
   | _      ->
       (usage arg_specs "Usage: ucdsl [options] file";
        exit 1)
