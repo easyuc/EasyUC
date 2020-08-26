@@ -987,7 +987,7 @@ and check_instructions
 let illegal_control_transfer (l : EcLocation.t) =
   type_error l
   ("control transfer by \"fail\" or \"send-and-transition\" instruction " ^
-   "is only\nallowed at very end of message match clause's code")   
+   "is only\nallowed at end of message match clause")   
 
 let failure_to_transfer_control (l : EcLocation.t) =
   type_error l
