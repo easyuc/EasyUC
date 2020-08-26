@@ -490,11 +490,11 @@ local_var_decl :
 
 message_matching : 
   | MATCH; MESSAGE; WITH; PIPE?
-    mm = loc(separated_list(PIPE, msg_match_clause)); END
-     { if List.is_empty (unloc mm)
-       then parse_error (loc mm)
+    mmcs = loc(separated_list(PIPE, msg_match_clause)); END
+     { if List.is_empty (unloc mmcs)
+       then parse_error (loc mmcs)
             "at least one message matching clause is required";
-       unloc mm }
+       unloc mmcs }
 
 msg_match_clause : 
   | msg_pat = msg_pat; ARROW; code = inst_block
@@ -602,8 +602,11 @@ state_code_sim :
 
 message_matching_sim : 
   | MATCH; MESSAGE; WITH; PIPE?
-    mmcs = separated_list(PIPE, msg_match_clause_sim); END
-      { mmcs }
+    mmcs = loc(separated_list(PIPE, msg_match_clause_sim)); END
+      { if List.is_empty (unloc mmcs)
+        then parse_error (loc mmcs)
+             "at least one message matching clause is required";
+        unloc mmcs }
 
 msg_match_clause_sim : 
   | msg_pat = msg_pat_sim; ARROW; code = inst_block
