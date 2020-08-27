@@ -354,10 +354,10 @@ sub_fun_decl :
       { {id = id; fun_id = fun_id} : sub_fun_decl }
 
 (* A functionality party serves exactly one basic direct interface,
-   which must be a component of the composite direct interface
+   which must be a sub-interface of the composite direct interface
    implemented by the functionality; the party serves at most one
-   basic adversarial direct interface, which must be a component of
-   the composite adversarial interface implemented by the
+   basic adversarial direct interface, which must be a sub-interface
+   of the composite adversarial interface implemented by the
    functionality. Different parties can't serve the same basic
    interfaces, and the union of the basic interfaces served by the
    parties must sum up to the composite interfaces implemented by the

@@ -223,6 +223,8 @@ let check_toplevel_states (id : id) (states : state_def list)
 
 (* a basic_inter_path will have the form (ids, b) where
 
+   *** for functionalities ***
+
    ids = [id2], and id2 is the name of an adversarial basic interface,
    and b is that basic interface (possibly filtered to have only
    incoming or outgoing messages); or
@@ -234,14 +236,48 @@ let check_toplevel_states (id : id) (states : state_def list)
    with in the composite interface (possibly filtered to have only
    incoming or outgoing messages); or
 
-   ids = [id1; id2], and id1 is the name of a subfunctionality of a
-   real functionality, where the ideal functionality that id1 is an
-   instance of implements a direct interface that is a composite
-   interface, and id2 is the name of one of that composite interface's
-   sub-interfaces, and b is the basic, direct interface corresponding
-   to the interface name that id2 is associated with in the composite
+   ids = [id1; id2], and id1 is the name of a parameter or
+   subfunctionality of a real functionality, id2 is the name of one of
+   the sub-interfaces of the composite direct interface implemented by
+   the parameter or subfunctionality (in the case of a
+   subfunctionality, the direct interface implemented by the ideal
+   functionality the subfunctionality is an instance of), and b is the
+   basic, direct interface corresponding to the interface name that
+   id2 is associated with in the composite interface (possibly
+   filtered to have only incoming or outgoing messages)
+
+   *** for simulators ***
+
+   ids = [id2], and id2 is the name of the adversarial basic interface
+   the simulator uses, and b is that basic interface, where the
+   directions of the messages have been inverted (possibly filtered to
+   have only incoming or outgoing messages); or
+
+   ids = [id1, id2, id3], and id1 is the name of the real
+   functionality the simulator is simulating, id2 is the name of the
+   composite adversarial interface that real functionality implements
+   (this may not exist), id3 is the name of one of the sub-interfaces
+   of id2, and b is the basic, adversarial interface corresponding to
+   the interface name that id3 is associated with in the composite
    interface (possibly filtered to have only incoming or outgoing
-   messages) *)
+   messages); or
+
+   ids = [id1, id2, id3], and id1 is the name of the real
+   functionality the simulator is simulating, id2 is the name of one
+   of its subfunctionalities, id3 is the name of the adversarial basic
+   interface of the ideal functionality that id2 is an instance of,
+   and b is that basic interface (possibly filtered to have only
+   incoming or outgoing message); or
+
+   ids = [id1, id2, id3], and id1 is the name of the real
+   functionality the simulator is simulating, id2 is the name of one
+   of its parameters, id3 is the name of the adversarial basic
+   interface implemented by the ideal functionality that is the
+   corresponding argument to which id1 is applied in the "simulates"
+   clause, and and b is that basic interface (possibly filtered to
+   have only incoming or outgoing message) *)
+
+(* *)
 
 type basic_inter_path = string list * basic_inter_body_tyd
 
@@ -291,9 +327,9 @@ let get_fun_inter_id_paths
       string list list = 
   let dir = get_inter_id_paths_from_inter_id id_dir_inter dir_inter_map in
   let adv =
-        match id_adv_inter with
-        | Some id -> get_inter_id_paths_from_inter_id id adv_inter_map
-        | None    -> [] in
+    match id_adv_inter with
+    | Some id -> get_inter_id_paths_from_inter_id id adv_inter_map
+    | None    -> [] in
   dir @ adv
 
 let check_id_paths_unique
@@ -324,19 +360,21 @@ let check_id_path
        | 0 ->
            type_error loc
            (string_of_id_path uidp ^
-            " is not a part of the interfaces implemented by functionality")
+            " is not one of the sub-interfaces of an interface implemented\n" ^
+            "by functionality")
        | 1 -> mk_loc loc (List.hd psf)  (* unambiguous *)
        | _ ->
            type_error loc
            (string_of_id_path uidp ^
-            " is ambiguous, it is in both direct and adversarial interfaces " ^
+            " is ambiguous, it is in both direct and adversarial interfaces\n" ^
             "implemented by functionality")
 
-let check_served_paths (serves : string list located list)
-                       (id_dir_inter : string) (party_id : id) : unit = 
+let check_served_paths
+    (serves : string list located list)
+    (id_dir_inter : string) (party_id : id) : unit = 
   let er =
-    ("a party can serve at most one basic direct interface and one " ^
-     "basic adversarial interface") in
+    ("a party must serve one basic direct interface, and may optionally " ^
+     "serve one\nbasic adversarial interface") in
   let erone = "a party must serve one basic direct interface" in
   match List.length serves with
   | 0 -> type_error (loc party_id) erone
@@ -1407,7 +1445,7 @@ let invert_msg_dirs (bp : basic_inter_path) : basic_inter_path =
 
 let get_simb_inter_id_paths (adv_inter_map : inter_tyd IdMap.t) (uses : string)
                       (cs : fun_body_tyd QidMap.t) : basic_inter_path list = 
-  let sbps = QidMap.map (get_component_inter_id_paths adv_inter_map) cs in        
+  let sbps = QidMap.map (get_component_inter_id_paths adv_inter_map) cs in
   let bps =
     QidMap.add
     []
@@ -1417,7 +1455,7 @@ let get_simb_inter_id_paths (adv_inter_map : inter_tyd IdMap.t) (uses : string)
     sbps in
   QidMap.fold
   (fun q bpl l ->
-         l @ List.map (fun bp -> (q @ fst bp, snd bp)) bpl)
+     l @ List.map (fun bp -> (q @ fst bp, snd bp)) bpl)
   bps []
 
 let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t = 
