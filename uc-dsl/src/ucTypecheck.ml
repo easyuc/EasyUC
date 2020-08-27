@@ -277,8 +277,6 @@ let check_toplevel_states (id : id) (states : state_def list)
    clause, and and b is that basic interface (possibly filtered to
    have only incoming or outgoing message) *)
 
-(* *)
-
 type basic_inter_path = string list * basic_inter_body_tyd
 
 (* three kinds of basic_inter_path's - ones of a direct interface,
