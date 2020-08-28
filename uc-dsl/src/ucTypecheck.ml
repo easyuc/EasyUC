@@ -574,7 +574,7 @@ let check_msg_path (abip : all_basic_inter_paths) (mp : msg_path) : msg_path =
                   ret.inter_id_path;
                 msg_or_other = mp.msg_or_other}
         else type_error l
-             ("patterns for internal messages must have full paths; " ^
+             ("internal messages must have full paths\n" ^
               "did you mean " ^ string_of_msg_path (List.hd mtch) ^ " ?")
     | _ -> ambiguous mtch in
   match mp.msg_or_other with
