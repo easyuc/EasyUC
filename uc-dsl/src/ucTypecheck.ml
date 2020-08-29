@@ -415,7 +415,7 @@ let check_id_paths_cover
   then ()
   else type_error
        (mergelocs served_ps)
-       ("these interfaces are not served by any party: " ^
+       ("these interfaces are not served by any party:\n" ^
         string_of_id_paths unserved)
 
 let check_parties_serve_distinct_cover

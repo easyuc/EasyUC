@@ -339,8 +339,11 @@ fun_body :
       { FunBodyIdeal ifb }
 
 real_fun_body : 
-  | LBRACE; sfs = list(sub_fun_decl); pdfs = list(party_def); RBRACE
-      { {sub_fun_decls = sfs; party_defs = pdfs} : fun_body_real }
+  | LBRACE; sfs = list(sub_fun_decl); pdfs = loc(list(party_def)); RBRACE
+      { if List.is_empty (unloc pdfs)
+        then parse_error (loc pdfs)
+             "there must be at least one party definition";
+        {sub_fun_decls = sfs; party_defs = unloc pdfs} : fun_body_real }
 
 ideal_fun_body :
   | sm = state_machine

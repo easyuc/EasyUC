@@ -45,7 +45,12 @@ let string_of_id_path (iop : string list) : string =
   List.fold_left (fun p i -> if p <> "" then p ^ "." ^ i else i) "" iop
 
 let string_of_id_paths (iops : string list list) : string =
-  List.fold_left (fun s p -> s ^ "\n" ^ string_of_id_path p) "" iops
+  List.fold_left
+  (fun sout p ->
+     if sout = ""
+     then "  " ^ string_of_id_path p
+     else sout ^ "\n  " ^ string_of_id_path p)
+  "" iops
 
 let string_of_stringl (sl : string list) : string =
   List.fold_left
