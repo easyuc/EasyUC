@@ -21,28 +21,28 @@ adversarial FwAdv {
 functionality Forw implements FwDir FwAdv {
   initial state Init {
     match message with
-    | pt1@fw_req(pt2, u) => {
+    | pt1@FwDir.D.fw_req(pt2, u) => {
         (* check that pt1 and pt2 don't point into forwarder or
            adversary *)
         if (envport(pt1) /\ envport(pt2)) {
-          send fw_obs(pt1, pt2, u) and transition Wait(pt1, pt2, u).
+          send FwAdv.fw_obs(pt1, pt2, u) and transition Wait(pt1, pt2, u).
         }
         else { fail. }
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
-    | fw_ok => { send fw_rsp(pt1, u)@pt2 and transition Final. }
-    | othermsg => { fail. }
+    | FwAdv.fw_ok => { send FwDir.D.fw_rsp(pt1, u)@pt2 and transition Final. }
+    | * => { fail. }
     end
   } 
 
   state Final {
     match message with
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 }
@@ -72,7 +72,7 @@ functionality KEReal implements KEDir {
     initial state WaitReq1 {
       var q1 : exp;
       match message with
-      | pt1@ke_req1(pt2) => {
+      | pt1@KEDir.Pt1.ke_req1(pt2) => {
           if (envport(pt1) /\ envport(pt2)) {
             q1 <$ dexp;
             send Fw1.D.fw_req(Pt2, encode (pt1, pt2, g ^ q1))
@@ -80,7 +80,7 @@ functionality KEReal implements KEDir {
           }
           else { fail. }
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
@@ -89,18 +89,18 @@ functionality KEReal implements KEDir {
       | Fw2.D.fw_rsp(_, u) => {
           decode u as key with
           | ok k2 => {
-              send ke_rsp2(k2 ^ q1)@pt1 and transition Final.
+              send KEDir.Pt1.ke_rsp2(k2 ^ q1)@pt1 and transition Final.
             }
           | error => { fail. }
           end
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
   
     state Final {
       match message with
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
   }
@@ -113,31 +113,31 @@ functionality KEReal implements KEDir {
           decode u as port * port * key with
           | ok (pt1, pt2, k1) => {
               q2 <$ dexp;
-              send ke_rsp1(pt1, k1 ^ q2)@pt2
+              send KEDir.Pt2.ke_rsp1(pt1, k1 ^ q2)@pt2
               and transition WaitReq2(pt1, pt2, q2).
             }
           | error => { fail. }  (* cannot happen *)
           end
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
     state WaitReq2(pt1 : port, pt2 : port, q2 : exp) {
       match message with
-      | pt2'@ke_req2 => { 
+      | pt2'@KEDir.Pt2.ke_req2 => { 
           if (pt2' = pt2) {
             send Fw2.D.fw_req(Pt1, encode (g ^ q2)) and transition Final.
           }
           else { fail. }
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
     state Final {
       match message with
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
   }
@@ -152,51 +152,52 @@ adversarial KEI2S {
 functionality KEIdeal implements KEDir KEI2S {
   initial state WaitReq1 {
     match message with
-    | pt1@ke_req1(pt2) => {
+    | pt1@KEDir.Pt1.ke_req1(pt2) => {
         if (envport(pt1) /\ envport(pt2)) {
-          send ke_sim_req1(pt1, pt2) and transition WaitSim1(pt1, pt2).
+          send KEI2S.ke_sim_req1(pt1, pt2) and transition WaitSim1(pt1, pt2).
         }
         else { fail. }
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state WaitSim1(pt1 : port, pt2 : port) {
     var q : exp;
     match message with
-    | ke_sim_rsp => {
+    | KEI2S.ke_sim_rsp => {
         q <$ dexp;
-        send ke_rsp1(pt1, g ^ q)@pt2 and transition WaitReq2(pt1, pt2, q).
+        send KEDir.Pt2.ke_rsp1(pt1, g ^ q)@pt2
+        and transition WaitReq2(pt1, pt2, q).
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state WaitReq2(pt1 : port, pt2 : port, q : exp) {
     match message with
-    | pt2'@ke_req2 => {
+    | pt2'@KEDir.Pt2.ke_req2 => {
         if (pt2' = pt2) {
-          send ke_sim_req2 and transition WaitSim2(pt1, pt2, q).
+          send KEI2S.ke_sim_req2 and transition WaitSim2(pt1, pt2, q).
         }
         else { fail. }
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state WaitSim2(pt1 : port, pt2 : port, q : exp) {
     match message with
-    | ke_sim_rsp => {
-        send ke_rsp2(g ^ q)@pt1 and transition Final.
+    | KEI2S.ke_sim_rsp => {
+        send KEDir.Pt1.ke_rsp2(g ^ q)@pt1 and transition Final.
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state Final {
     match message with
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 }
@@ -212,7 +213,7 @@ simulator KESim uses KEI2S simulates KEReal {
              (KEReal.Pt1, KEReal.Pt2, encode (pt1, pt2, g ^ q1))
         and transition WaitAdv1(q1).
       }    
-    | KEI2S.othermsg => { fail. }  (* catches ke_sim_req2 *)
+    | KEI2S.* => { fail. }  (* catches ke_sim_req2 *)
     (* messages from adversary to real functionality will go to
        ideal functionality *)
     end
@@ -227,7 +228,7 @@ simulator KESim uses KEI2S simulates KEReal {
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
@@ -237,7 +238,7 @@ simulator KESim uses KEI2S simulates KEReal {
         send KEReal.Fw2.FwAdv.fw_obs(KEReal.Pt2, KEReal.Pt1, encode (g ^ q2))
         and transition WaitAdv2(q1, q2).
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
@@ -246,13 +247,13 @@ simulator KESim uses KEI2S simulates KEReal {
     | KEReal.Fw2.FwAdv.fw_ok => {
         send KEI2S.ke_sim_rsp and transition Final.
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
    }
 
   state Final {
     match message with
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 }
@@ -278,13 +279,13 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
   party Pt1 serves SMCDir.Pt1 {
     initial state WaitReq {
       match message with 
-      | pt1@smc_req(pt2, t) => {
+      | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
           if (envport(pt1) /\ envport(pt2)) {
             send KE.Pt1.ke_req1(Pt2) and transition WaitKE2(pt1, pt2, t).
           }
           else { fail. }
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
@@ -294,13 +295,13 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
           send Fwd.D.fw_req(Pt2, encode (pt1, pt2, inj t ^^ k))
           and transition Final.
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
     state Final {
       match message with 
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
   }
@@ -311,7 +312,7 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       | KE.Pt2.ke_rsp1 (_, k) => {
           send KE.Pt2.ke_req2 and transition WaitFwd(k).
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
@@ -320,19 +321,19 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       | Fwd.D.fw_rsp(_, u) => {
           decode u as port * port * key with
           | ok (pt1, pt2, x) => {
-              send smc_rsp(pt1, projFudge(x ^^ kinv k))@pt2
+              send SMCDir.Pt2.smc_rsp(pt1, projFudge(x ^^ kinv k))@pt2
               and transition Final.
             }
           | error => { fail. }
           end
         }
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
 
     state Final {
       match message with 
-      | othermsg => { fail. }
+      | * => { fail. }
       end
     }
   }
@@ -346,28 +347,28 @@ adversarial SMC2Sim {
 functionality SMCIdeal implements SMCDir SMC2Sim {
   initial state WaitReq {
     match message with 
-    | pt1@smc_req(pt2, t) => {
+    | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
         if (envport(pt1) /\ envport(pt2)) {
-          send sim_req(pt1, pt2) and transition WaitSim(pt1, pt2, t).
+          send SMC2Sim.sim_req(pt1, pt2) and transition WaitSim(pt1, pt2, t).
         }
         else { fail. }
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state WaitSim(pt1 : port, pt2 : port, t : text) {
     match message with 
-    | sim_rsp => {
-        send smc_rsp(pt1, t)@pt2 and transition Final.
+    | SMC2Sim.sim_rsp => {
+        send SMCDir.Pt2.smc_rsp(pt1, t)@pt2 and transition Final.
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state Final {
     match message with 
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 }
@@ -393,7 +394,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
@@ -404,7 +405,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
              (SMCReal.Pt1, SMCReal.Pt2, encode (pt1, pt2,g ^ q))
         and transition WaitAdv3(pt1, pt2, q).
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
@@ -413,13 +414,13 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     | SMCReal.Fwd.FwAdv.fw_ok => {
         send SMC2Sim.sim_rsp and transition Final.
       }
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 
   state Final {
     match message with
-    | othermsg => { fail. }
+    | * => { fail. }
     end
   }
 }

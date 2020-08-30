@@ -30,7 +30,6 @@
     "initial"         , INITIAL     ;
     "state"           , STATE       ;
     "match"           , MATCH       ;
-    "othermsg"        , OTHERMSG    ;
     "fail"            , FAIL        ;
     "send"            , SEND        ;
     "and"             , ANDTXT      ;

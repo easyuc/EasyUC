@@ -52,25 +52,24 @@ type fun_param = {id : id; id_dir : id}
 
 type sub_fun_decl = {id : id; fun_id : id}
 
-type msg_path_item =
-  | MsgPathId       of id
-  | MsgPathOtherMsg of EcLocation.t
+type msg_or_star =
+  | MsgOrStarMsg  of id
+  | MsgOrStarStar of EcLocation.t
 
 type qid = id list
 
-type msg_path = {inter_id_path : qid; msg_or_other : msg_path_item}
+type msg_path_pat = {inter_id_path : qid; msg_or_star : msg_or_star}
 
 type pat =
-  | PatId of id
-  | PatIdType of type_binding
-  (*| Tuple of match_item list located*)
+  | PatId       of id
+  | PatIdType   of type_binding
   | PatWildcard of EcLocation.t
 
 type msg_pat =
-  {port_id : id option; path : msg_path; pat_args : pat list option}
+  {port_id : id option; msg_path_pat : msg_path_pat; pat_args : pat list option}
 
 type msg_pat_body =
-  {path : msg_path; pat_args : pat list option}
+  {msg_path_pat : msg_path_pat; pat_args : pat list option}
 
 type expression =
   | Id    of qid
@@ -79,6 +78,8 @@ type expression =
   | Enc   of expression_l
 
 and expression_l = expression located
+
+type msg_path = {inter_id_path : qid; msg : id}
 
 type msg_expr =
   {path : msg_path; args : expression_l list; port_id : id option}

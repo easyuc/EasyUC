@@ -7,25 +7,42 @@ open EcLocation
 open UcSpec
 open UcMessage
 
-let to_id (mpi : msg_path_item) =
+(* auxiliary definitions for msg_path_pat and msg_path *)
+
+type msg_path_pat_item =
+  | MsgPathPatItemId   of id
+  | MsgPathPatItemStar of EcLocation.t
+
+let to_msg_or_star (mpi : msg_path_pat_item) : msg_or_star =
   match mpi with
-  | MsgPathId id      -> id
-  | MsgPathOtherMsg l ->
-      parse_error l "othermsg keyword cannot be followed by \".\""
+  | MsgPathPatItemId id  -> MsgOrStarMsg id
+  | MsgPathPatItemStar l -> MsgOrStarStar l
 
-let rec to_msg_path (mpis : msg_path_item list) (mp : msg_path) =
-  match mpis with
-  | []       ->
-      failure "cannot happen: empty list when converting mpis to msg_path"
-  | [x]      -> {inter_id_path = mp.inter_id_path; msg_or_other = x}
+let to_id (mpi : msg_path_pat_item) : id =
+  match mpi with
+  | MsgPathPatItemId id  -> id
+  | MsgPathPatItemStar l -> parse_error l "* cannot be followed by \".\""
+
+let rec to_msg_path_pat (mppis : msg_path_pat_item list) (mp : msg_path_pat) =
+  match mppis with
+  | []       -> failure "should never be empty"
+  | [x]      ->
+      {inter_id_path = mp.inter_id_path;
+       msg_or_star   = to_msg_or_star x}
   | hd :: tl ->
-      to_msg_path tl
+      to_msg_path_pat tl
       {inter_id_path = mp.inter_id_path @ [to_id hd];
-       msg_or_other = mp.msg_or_other}
+       msg_or_star   = mp.msg_or_star}
 
-let msg_path_items_to_msg_path (mpis : msg_path_item list) =
-  to_msg_path mpis
-  {inter_id_path = []; msg_or_other = MsgPathOtherMsg _dummy}
+let msg_path_pat_items_to_msg_path_pat
+    (mppis : msg_path_pat_item list) : msg_path_pat =
+  to_msg_path_pat mppis
+  {inter_id_path = []; msg_or_star = MsgOrStarStar _dummy}
+
+let qid_to_msg_path (ids : qid) : msg_path =
+  let iid = List.take (List.length ids - 1) ids in
+  let msg = List.last ids in 
+  {inter_id_path = iid; msg = msg}
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -104,7 +121,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token END
 %token PIPE
 %token AT
-%token OTHERMSG
 %token ARROW
 %token FAIL
 %token SEND
@@ -372,7 +388,7 @@ party_def :
      { {id = id; serves = serves; states = sm} }
 
 serves : 
-  | SERVES; serves = separated_list(COMMA, qid)
+  | SERVES; serves = list(qid)
       { serves }
 
 state_machine : 
@@ -383,8 +399,8 @@ state_machine :
    parameterized by typed values. The states must have unique names,
    and there must be exactly one initial state. That initial state
    must take no paramters. A state's code declares local variables,
-   and describes how incoming messages should be matched and
-   processed via a nonempty list of message matching clauses *)
+   and describes how incoming messages should be matched and processed
+   via a nonempty list of message matching clauses *)
 
 state_def : 
   | INITIAL; st = state
@@ -418,19 +434,41 @@ local_var_decl :
   | VAR; lvs = nonempty_list (id_l); COLON; t = ty SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
-(* Message matching specifies how incoming messages should be
-   processed, resulting in a state transition or failure.
+(* Message matching specifies how incoming messages of a functionality
+   should be processed, resulting in a state transition or
+   failure. (The situation is similar for simulators, but see below.)
 
    A message path is a "."-separated sequence of identifiers, taking
-   us from the name of a composite interface, to the name of one of
-   its components, to one of the input messages of the component's
-   basic interface.
+   us - in the simplest case, starting from a functionality's direct
+   composite interface - from the name of a composite interface, to
+   the name of one of its components, to one of the messages of
+   the component's basic interface.
 
-   The possible message paths are determined by the direct and
-   adversarial interfaces implemented by the functionality (restricted
-   to the basic interfaces served by the party, in the case of a real
-   functionality), plus the direct interfaces of the party's
-   subfunctionalities.
+   The situation is analogous for the composite adversarial interface
+   of a real functionality (when it exists). In the case of the basic
+   adversarial interface of an ideal functionality, the path takes us
+   from the name of that basic interface to one of the messages of
+   that interface.
+
+   In the case of a subfunctionality of a real functionality, the path
+   takes us from the name of the subfunctionality, to one of the
+   subinterfaces of the direct composite interface implemented by the
+   ideal functionality that subfunctionality is an instance of, to one
+   of the messages of the basic direct interface of that
+   subinterface.
+
+   In the case of the parameter of a real functionality, the path
+   takes us from the name of the parameter, to one of the
+   subinterfaces of the the direct composite interface corresponding
+   to the parameter, to one of the messages of the basic direct
+   interface of that subinterface.
+
+   An incoming message path is one that terminates with an incoming
+   message, wheres an outcoming message path is one that terminates
+   with an outgoing message. This is from the point of view of
+   the functionality, though, so that outgoing messages in the case
+   of subfunctionalities and parameters are incoming messages from
+   the functionality's point of view, and vice versa.
 
    For example, suppose the functionality implements FwDir (and, in
    the case of a real functionality, that the party serves fwDir):
@@ -442,8 +480,8 @@ local_var_decl :
 
      direct FwDir {D : fwDir}
 
-   Then FwDir.D.fwDir is the only valid message path. If there is
-   a subfunctionality
+   Then FwDir.D.fwDir is the only valid incoming message path. If
+   there is a subfunctionality
 
      subfun Fw1 = Forw
 
@@ -454,39 +492,25 @@ local_var_decl :
 
    will be a valid message path.
 
-   Message path patterns look like message paths, except that:
-
-   (1) they may end with the token "othermsg" to match any completion
-       of the given path;
-
-   (2) message paths for direct interfaces are prefaced with a
-       an identifer id followed by the token "@" - id will become
-       bound to the source port of the message being matched;
-
-   (3) when there is no ambiguity, a prefix of a path may be omitted.
+   Message path patterns look like message paths, except that they may
+   end with "*" to match any completion of the given path.
 
    E.g.,
 
-     pt@fw_req
-     pt@D.fw_req
-     pt@FwDir.D.fw_req
+     FwDir.D.fw_req
+     * - matches any incoming message path
+     FwDir.* - matches any incoming message path beginning with FwDir
+     FwDir.D.* - matches any incoming message path beginning with FwDir.D
 
-     othermsg
-     D.othermsg
-     FwDir.D.othermsg
+   A message pattern is then an incoming message path pattern followed by
+   an optional tuple of argument patterns, and preceded - in the
+   case of nonadversarial messages - by a source port variable. E.g.,
 
-   are valid path patterns given the above definitions.
-
-   A message pattern is then a message path pattern followed by
-   an optional tuple of argument patterns. E.g.,
-
-     pt@fw_req(pt' : port, u' : univ)
-     pt@D.fw_req(pt' : port, u' : univ)
      pt@FwDir.D.fw_req(pt' : port, u' : univ)
 
-   will match a fw_req message, and in the process pt will be bound
-   to its source port, and pt' and u' will be bound to the message
-   arguments.
+   will match a FwDir.D.fw_req message, and in the process pt will be
+   bound to its source port, and pt' and u' will be bound to the
+   message arguments.
 
    Finally, a message matching clause consists of a message pattern
    followed by the code to run on a matching message. *)
@@ -505,15 +529,16 @@ msg_match_clause :
 
 msg_pat : 
   | port_id = id_l; AT; mmb = msg_pat_body
-      { {port_id = Some port_id; path = (mmb : msg_pat_body).path;
+      { {port_id = Some port_id;
+         msg_path_pat = (mmb : msg_pat_body).msg_path_pat;
          pat_args = mmb.pat_args} }
   | mmb = msg_pat_body
-      { {port_id = None; path = (mmb : msg_pat_body).path;
+      { {port_id = None; msg_path_pat = (mmb : msg_pat_body).msg_path_pat;
          pat_args = mmb.pat_args} }
 
 msg_pat_body : 
-  | path = msg_path; pat_args = option(pat_args)
-      { {path = path; pat_args = pat_args} : msg_pat_body }
+  | msg_path_pat = msg_path_pat; pat_args = option(pat_args)
+      { {msg_path_pat = msg_path_pat; pat_args = pat_args} : msg_pat_body }
 
 pat_args :
   | LPAREN; pa = separated_list(COMMA, pat); RPAREN
@@ -527,16 +552,16 @@ pat :
   | l = loc(UNDERSCORE)
       { PatWildcard (loc l) }
 
-msg_path : 
-  | mpis = separated_nonempty_list(DOT, msg_path_item)
-      { (* OTHERMSG, if it appears, must be at end *)
-        msg_path_items_to_msg_path mpis }
+msg_path_pat : 
+  | mpis = separated_nonempty_list(DOT, msg_path_pat_item)
+      { (* STAR, if it appears, must be at end *)
+        msg_path_pat_items_to_msg_path_pat mpis }
 
-msg_path_item : 
+msg_path_pat_item : 
   | id = id_l
-      { MsgPathId id }
-  | l = loc(OTHERMSG)
-      { MsgPathOtherMsg (loc l) }
+      { MsgPathPatItemId id }
+  | l = loc(STAR)
+      { MsgPathPatItemStar (loc l) }
 
 (* Simulators *)
 
@@ -618,8 +643,8 @@ msg_match_clause_sim :
 (* no source port binding: *)
 
 msg_pat_sim : 
-  | msg = msg_path; pat_args = option(pat_args)
-      { {port_id = None; path = msg; pat_args = pat_args} }
+  | msg_path_pat = msg_path_pat; pat_args = option(pat_args)
+      { {port_id = None; msg_path_pat = msg_path_pat; pat_args = pat_args} }
 
 (* Instructions *)
 
@@ -711,6 +736,10 @@ control_transfer :
 send_and_transition : 
   | SEND; msg = msg_expr; ANDTXT; TRANSITION; state = state_expr
       { {msg_expr = msg; state_expr = state} }
+
+msg_path :
+  | qid = qid
+      { qid_to_msg_path qid }
 
 msg_expr : 
   | path = msg_path; args = option(args); port_id = option(dest)
