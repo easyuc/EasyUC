@@ -76,9 +76,9 @@
         (modify-syntax-entry ?_ "w" synTable)
         (modify-syntax-entry ?' "w" synTable)
         ;; nexted comments (* ... *)
-        (modify-syntax-entry ?\( ". 1n" synTable)
-        (modify-syntax-entry ?\) ". 4n" synTable)
-        (modify-syntax-entry ?* ". 23n" synTable)
+        (modify-syntax-entry ?\( "() 1n" synTable)
+        (modify-syntax-entry ?\) ")( 4n" synTable)
+        (modify-syntax-entry ?* "_ 23n" synTable)
         synTable))
 
 ;; say how to parse error messages from ucdsl command, after
