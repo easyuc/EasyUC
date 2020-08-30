@@ -190,7 +190,7 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
 let check_toplevel_state (init_id : id) (st : state) : state_tyd = 
   let is_initial = (init_id = st.id) in
   let params =
-    check_name_type_bindings "duplicate parameter name: " st.params in
+    check_name_type_bindings "duplicate parameter name: " (unloc st.params) in
   let vars =
     IdMap.map
     (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
@@ -433,7 +433,7 @@ let get_params_of_real_fun_id
     (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
   let func = IdMap.find funid fun_map in
   match unloc func with
-  | FunBodyRealTyd fbr -> unlocs (to_list fbr.params)
+  | FunBodyRealTyd fbr -> unlocs (indexed_map_to_list fbr.params)
   | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
 
 type state_vars =
@@ -683,7 +683,8 @@ let check_msg_content_bindings
     (tm : pat list) (sv : state_vars) : state_vars = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mt =
-    to_list (unlocm((unloc(IdMap.find (snd mp) (snd bip))).params_map)) in
+    indexed_map_to_list
+    (unlocm((unloc(IdMap.find (snd mp) (snd bip))).params_map)) in
   if List.length mt <> List.length tm
   then type_error (get_loc_match_item_list tm)
        ("the number of argument patterns the number " ^
@@ -768,33 +769,37 @@ let check_transition (si : state_expr) (ss : state_sig IdMap.t)
     | Not_found ->
         type_error (loc si.id) ("non-existing state: " ^ unloc si.id) in
   let sp = ssig and args = si.args in
-  if List.length sp <> List.length args
-  then type_error (loc si.id) "wrong number of state arguments"
-  else let te = List.combine sp args in
+  if List.length sp <> List.length (unloc args)
+  then type_error (loc args) "wrong number of state arguments"
+  else let te = List.combine sp (unloc args) in
        List.iteri
        (fun i (sigt, sip) -> 
           let et = check_expression sv sip in
           if sigt <> et && sigt <> univ_type
           then type_error (loc sip)
-               ("parameter " ^ string_of_int (i+1) ^ " of state " ^
+               ("parameter " ^ string_of_int (i + 1) ^ " of state " ^
                 unloc si.id ^ " has type " ^ string_of_typ sigt ^
-                ", which is incompatible with type\n" ^
+                ",\nwhich is incompatible with type" ^
                 string_of_typ et ^ " of corresponding argument")
           else ())
        te
 
 let check_msg_arguments
-    (es : expression_l list) (mc : typ_index IdMap.t)
+    (mp : msg_path) (es : expression_l list located) (mc : typ_index IdMap.t)
     (sv : state_vars) : unit = 
-  let sg = to_list (unlocm mc) in
-  let esl = mergelocs es in
-  if List.length es <> List.length sg
-  then type_error esl "wrong number of message arguments"
-  else List.iter2
-       (fun ex typ ->
-          if not (check_expression sv ex = typ)
-          then type_error (loc ex) ("message argument type mismatch"))
-       es sg
+  let sg = indexed_map_to_list (unlocm mc) in
+  if List.length (unloc es) <> List.length sg
+  then type_error (loc es) "wrong number of message arguments"
+  else List.iter2i
+       (fun i ex typ ->
+          let tex = check_expression sv ex in
+          if not (tex = typ)
+          then type_error (loc ex)
+               ("parameter " ^ string_of_int (i + 1) ^ " of message " ^
+                string_of_msg_path mp ^ " has type " ^ string_of_typ typ ^
+                ",\nwhich is incompatible with type " ^
+                string_of_typ tex ^ " of corresponding argument"))
+       (unloc es) sg
 
 let check_send_direct (msg : msg_expr) (mc : typ_index IdMap.t)
                       (sv : state_vars) : unit = 
@@ -805,7 +810,7 @@ let check_send_direct (msg : msg_expr) (mc : typ_index IdMap.t)
         (check_exists_and_has_compatible_type p port_type sv;
          check_initialized sv p)
     | None   -> type_error l ("missing destination port") in
-  check_msg_arguments msg.args mc sv
+  check_msg_arguments msg.path msg.args mc sv
 
 let check_send_adversarial (msg : msg_expr) (mc : typ_index IdMap.t)
                            (sv : state_vars) : unit = 
@@ -815,7 +820,7 @@ let check_send_adversarial (msg : msg_expr) (mc : typ_index IdMap.t)
     | Some _ ->
         type_error l "only direct messages can have destination port"
     | None   -> () in
-  check_msg_arguments msg.args mc sv
+  check_msg_arguments msg.path msg.args mc sv
 
 let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
                         (sv : state_vars) : unit = 
@@ -827,7 +832,7 @@ let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
         ("messages to subfunctionalities cannot have " ^
          "destination port")
     | None -> () in
-  check_msg_arguments msg.args mc sv
+  check_msg_arguments msg.path msg.args mc sv
 
 let is_msg_path_inb_inter_id_paths
     (mp : msg_path) (abip : basic_inter_path list) : bool = 
@@ -1443,23 +1448,27 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
   then type_error (loc rf)
        ("the simulated functionality must be a real functionality")
 
-let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
-                         (rf : id) (params : id list) = 
+let check_sim_fun_params
+    (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
+    (rf : id) (params : id list located) = 
   let d_ios = get_params_of_real_fun_id funs (unloc rf) in
   let d_ios' =
     List.map
-    (fun id -> get_dir_inter_id_impl_by_fun_id id funs) (unlocs params) in
+    (fun id ->
+       get_dir_inter_id_impl_by_fun_id id funs) (unlocs (unloc params)) in
   if List.length d_ios <> List.length d_ios'
-  then type_error (loc rf)
-       ("wrong number of arguments for functionality")
+  then type_error (loc params)
+       "wrong number of arguments for functionality"
   else let () =
          List.iteri
          (fun i pid ->
           if List.nth d_ios i <> List.nth d_ios' i
           then type_error (loc pid)
-               ("argument implements different direct interface than " ^
-                "required by functionality"))
-         params in
+               ("argument " ^ string_of_int (i + 1) ^
+                " implements composite direct interface " ^
+                List.nth d_ios' i ^ "\nwhereas it should implement " ^
+                List.nth d_ios i))
+         (unloc params) in
        List.iter
        (fun pid ->
               let f = unloc (IdMap.find (unloc pid) funs) in
@@ -1472,7 +1481,7 @@ let check_sim_fun_params (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
                   (* we know the ideal functionality implements a basic
                      adversarial interface *)
                   ())
-       params
+       (unloc params)
 
 let check_sim_decl (adv_inter_map : inter_tyd IdMap.t)
                    (fun_map : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
@@ -1481,9 +1490,10 @@ let check_sim_decl (adv_inter_map : inter_tyd IdMap.t)
   let uses = unloc sd.uses in
   let () = check_is_real_f fun_map sd.sims in
   let sims = unloc sd.sims in
-  let () = List.iter (check_exists_f fun_map) sd.sims_arg_ids in
-  let () = check_sim_fun_params fun_map adv_inter_map sd.sims sd.sims_arg_ids in
-  let sims_param_ids = unlocs sd.sims_arg_ids in
+  let () = List.iter (check_exists_f fun_map) (unloc sd.sims_arg_ids) in
+  let () =
+    check_sim_fun_params fun_map adv_inter_map sd.sims sd.sims_arg_ids in
+  let sims_param_ids = unlocs (unloc sd.sims_arg_ids) in
   let body = check_toplevel_states sd.id sd.states in
   mk_loc (loc sd.id)
   {uses = uses; sims = sims; sims_arg_ids = sims_param_ids; states = body}

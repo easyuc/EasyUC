@@ -12,8 +12,8 @@ let index_of_ex x xs =
   | None   -> raise Not_found
   | Some i -> i
 
-let to_list (mapord : ('o * int) IdMap.t) : 'o list =
-  let l = IdMap.fold (fun _ v l -> v :: l ) mapord [] in
+let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
+  let l = IdMap.fold (fun _ v l -> v :: l ) mapind [] in
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
   List.map (fun a -> fst a) lord
 

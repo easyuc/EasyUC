@@ -327,16 +327,16 @@ comp_item :
    The body of an ideal functionality is a state machine. *)
 
 fun_def :        
-  | FUNCT; name = id_l; params = option(fun_params);
+  | FUNCT; name = id_l; params = loc(option(fun_params));
     IMPLEM; dir_id = id_l; adv_id = option(id_l);
     fun_body = fun_body
-      { let params = params |? [] in
+      { let uparams = unloc params |? [] in
         let () =
-          if not (is_real_fun_body fun_body) && not (List.is_empty params)
-          then parse_error (loc name)
+          if not (is_real_fun_body fun_body) && not (List.is_empty uparams)
+          then parse_error (loc params)
                "ideal functionalities may not have parameters"
           else () in
-        {id = name; params = params;
+        {id = name; params = uparams;
          id_dir = dir_id; id_adv = adv_id;
          fun_body = fun_body} }
 
@@ -404,19 +404,21 @@ state_machine :
 
 state_def : 
   | INITIAL; st = state
-      { let l = loc((st : state).id) in
-        let params = st.params in
+      { let params = unloc st.params in
         if not (List.is_empty params)
-        then parse_error l "an initial state may not have parameters"
-        else InitialState {id = st.id; params = []; code = st.code} }
+        then parse_error (loc st.params)
+             "an initial state may not have parameters"
+        else InitialState {id = st.id; params = st.params; code = st.code} }
   | st = state
       { FollowingState
         {id = (st : state).id; params = st.params; code = st.code} }
 
 state : 
-  | STATE; id = id_l; params = option(state_params); code = state_code
-      { let params = params |? [] in
-        {id = id; params = params; code = code} : state }
+  | STATE; id = id_l; params = loc(option(state_params)); code = state_code
+      { let uparams = unloc params |? [] in
+        {id = id;
+         params = mk_loc (loc params) uparams;
+         code = code} : state }
 
 state_params :
   LPAREN; params = type_bindings; RPAREN
@@ -591,14 +593,11 @@ msg_path_pat_item :
 
 sim_def : 
   | SIM; name = id_l; USES uses = id_l;
-    SIMS sims = id_l; args = option(fun_args);
+    SIMS sims = id_l; args = loc(option(fun_args));
     sms = state_machine_sim
-      { let args =
-          match args with
-          | None      -> []
-          | Some args -> args in
-        {id = name; uses = uses; sims = sims; sims_arg_ids = args;
-         states = sms } }
+      { let uargs = unloc args |? [] in
+        {id = name; uses = uses; sims = sims;
+         sims_arg_ids = mk_loc (loc args) uargs; states = sms} }
 
 fun_args : 
   | LPAREN; args = separated_list(COMMA, id_l); RPAREN
@@ -610,19 +609,19 @@ state_machine_sim :
 
 state_def_sim : 
   | INITIAL; st = state_sim
-      { let l = loc((st : state).id) in
-        let params = st.params in
+      { let params = unloc st.params in
         if not (List.is_empty params)
-        then parse_error l "an initial state may not have parameters"
-        else InitialState {id = st.id; params = []; code = st.code} }
+        then parse_error (loc st.params)
+             "an initial state may not have parameters"
+        else InitialState {id = st.id; params = st.params; code = st.code} }
   | st = state_sim
       { FollowingState
         {id = (st : state).id; params = st.params; code = st.code} }
 
 state_sim : 
-  | STATE; id = id_l; params = option(state_params); code = state_code_sim
-      { let params = params |? [] in
-        {id = id; params = params; code = code} : state }
+  | STATE; id = id_l; params = loc(option(state_params)); code = state_code_sim
+      { let uparams = unloc params |? [] in
+        {id = id; params = mk_loc (loc params) uparams; code = code} : state }
 
 state_code_sim : 
   | LBRACE; vars = local_var_decls; mm = message_matching_sim; RBRACE
@@ -742,18 +741,18 @@ msg_path :
       { qid_to_msg_path qid }
 
 msg_expr : 
-  | path = msg_path; args = option(args); port_id = option(dest)
-      { let args = args |? [] in
-        {path = path; args = args; port_id = port_id} }
+  | path = msg_path; args = loc(option(args)); port_id = option(dest)
+      { let uargs = unloc args |? [] in
+        {path = path; args = mk_loc (loc args) uargs; port_id = port_id} }
 
 dest :
   | AT; pv = id_l
       { pv }
 
 state_expr : 
-  | id = id_l; args = option(args)
-      { let args = args |? [] in
-        {id = id; args = args} }
+  | id = id_l; args = loc(option(args))
+      { let uargs = unloc args |? [] in
+        {id = id; args = mk_loc (loc args) uargs} }
 
 (* Types *)
 

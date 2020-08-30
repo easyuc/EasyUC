@@ -82,9 +82,9 @@ and expression_l = expression located
 type msg_path = {inter_id_path : qid; msg : id}
 
 type msg_expr =
-  {path : msg_path; args : expression_l list; port_id : id option}
+  {path : msg_path; args : expression_l list located; port_id : id option}
 
-type state_expr = {id : id; args : expression_l list}
+type state_expr = {id : id; args : expression_l list located}
 
 type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 
@@ -105,7 +105,7 @@ type msg_match_clause = {msg_pat : msg_pat; code : instruction_l list located}
 
 type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 
-type state = {id : id; params : type_binding list; code : state_code}
+type state = {id : id; params : type_binding list located; code : state_code}
                 
 type state_def =
   | InitialState of state
@@ -131,7 +131,7 @@ type fun_def =
    fun_body : fun_body}
 
 type sim_def =
-  {id : id; uses : id; sims : id; sims_arg_ids : id list;
+  {id : id; uses : id; sims : id; sims_arg_ids : id list located;
    states : state_def list }
 
 type def =
