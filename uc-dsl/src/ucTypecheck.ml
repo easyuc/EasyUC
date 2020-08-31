@@ -23,6 +23,11 @@ let exists_id_maps_tyd (maps : maps_tyd) (uid : string) =
   exists_id maps.fun_map uid ||
   exists_id maps.sim_map uid
 
+let exists_id_inter_maps
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (uid : string) : bool =
+  exists_id dir_inter_map uid || exists_id adv_inter_map uid
+
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -153,14 +158,19 @@ let check_is_composite (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
 
 (* functionality parameter checking *)
 
-let check_real_fun_params (dir_inter_map : inter_tyd IdMap.t)
-                          (params : fun_param list) :
-      (id * int) IdMap.t = 
-  let check_real_fun_param (param : fun_param) : (id * int) = 
+let check_real_fun_params
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (params : fun_param list) : (id * int) IdMap.t = 
+  let check_real_fun_param (param : fun_param) : id * int = 
     let () = check_exists_inter DirectInterKind dir_inter_map param.id_dir in
-    (check_is_composite DirectInterKind dir_inter_map param.id_dir;
+    let () = check_is_composite DirectInterKind dir_inter_map param.id_dir in
+    let () =
+      if exists_id_inter_maps dir_inter_map adv_inter_map (unloc param.id)
+      then type_error (loc param.id)
+           ("functionality parameter name may not be same as top-level " ^
+            "interface name") in
      (mk_loc (loc param.id) (unloc param.id_dir),
-      index_of_ex param params)) in
+      index_of_ex param params) in
   let param_map =
     check_unique_ids "duplicate functionality parameter name: " params
     (fun p -> p.id) in
@@ -1162,7 +1172,9 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         | None    -> ()
         | Some id ->
             check_is_composite AdversarialInterKind maps.adv_inter_map id in
-      let params = check_real_fun_params maps.dir_inter_map fund.params in 
+      let params =
+        check_real_fun_params maps.dir_inter_map maps.adv_inter_map
+        fund.params in 
       let sub_fun_decls =
         check_unique_ids "duplicate subfunctionality name: "
         fbr.sub_fun_decls (fun x -> x.id) in
@@ -1175,17 +1187,23 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
              ("the name " ^ id ^
               " is the same name as one of the functionality's parameters") in
       let check_sub_fun_decl (sf : sub_fun_decl) : id =
-        let fun_id = unloc sf.fun_id in
-        match IdMap.find_opt fun_id maps.fun_map with
+        let uid = unloc sf.id in
+        let ufun_id = unloc sf.fun_id in
+        match IdMap.find_opt ufun_id maps.fun_map with
         | None    ->
             type_error (loc sf.fun_id)
-            ("nonexisting functionality: " ^ fun_id)
+            ("nonexisting functionality: " ^ ufun_id)
         | Some ft ->
             let fbt = unloc ft in
-            if is_real_fun_body_tyd fbt
-            then type_error (loc sf.fun_id)
-                 (fun_id ^ " is not an ideal functionality")
-            else mk_loc (loc sf.id) fun_id in
+            if exists_id_inter_maps maps.dir_inter_map maps.adv_inter_map
+               uid
+              then type_error (loc sf.id)
+                   ("subfunctionality name may not be same as top-level " ^
+                    "interface name")
+            else if is_real_fun_body_tyd fbt
+              then type_error (loc sf.fun_id)
+                   (ufun_id ^ " is not an ideal functionality")
+            else mk_loc (loc sf.id) ufun_id in
       let sub_funs = IdMap.map check_sub_fun_decl sub_fun_decls in
       let party_defs =
         check_unique_ids "duplicate party name: " fbr.party_defs
