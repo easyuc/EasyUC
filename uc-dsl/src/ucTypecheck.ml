@@ -355,7 +355,7 @@ let check_id_path
   then mk_loc loc uidp
   else type_error loc
        (string_of_id_path uidp ^
-        " is not one of the sub-interfaces of an interface implemented\n" ^
+        " is not the path of a component of an interface implemented\n" ^
         "by functionality")
 
 let check_served_paths
