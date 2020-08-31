@@ -259,10 +259,10 @@ inter_def :
         AdversarialInter ni }
 
 named_inter : 
-  | inter_id = id_l; LBRACE; inter = option(inter); RBRACE
-      { match inter with
+  | inter_id = id_l; LBRACE; inter = loc(option(inter)); RBRACE
+      { match unloc inter with
         | None       ->
-            parse_error (loc inter_id) "interfaces may not be empty"
+            parse_error (loc inter) "interfaces may not be empty"
         | Some inter ->
             {id = inter_id; inter = inter} : named_inter }
 

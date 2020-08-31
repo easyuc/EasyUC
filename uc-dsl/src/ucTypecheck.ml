@@ -406,7 +406,7 @@ let check_id_paths_cover
   then ()
   else type_error
        (mergelocs served_ps)
-       ("these interfaces are not served by any party:\n" ^
+       ("these sub-interfaces are not served by any party:\n" ^
         string_of_id_paths unserved)
 
 let check_parties_serve_distinct_cover
@@ -417,7 +417,7 @@ let check_parties_serve_distinct_cover
   let served_ps =
     IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
   let () =
-    check_id_paths_unique "parties must serve distinct interfaces"
+    check_id_paths_unique "parties must serve distinct sub-interfaces"
     served_ps in
   check_id_paths_cover id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
@@ -459,17 +459,26 @@ let get_state_sig (s : state_body_tyd) : state_sig =
 let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
   IdMap.map (fun s -> get_state_sig (unloc s)) states
 
+(* mp.inter_id_path should never be empty *)
+
+let string_of_msg_path (mp : msg_path) : string = 
+  let siop = string_of_id_path (unlocs mp.inter_id_path) in
+  let () = if siop = "" then failure "inter id path should never be empty" in
+  siop ^ "." ^ unloc mp.msg
+
+(* mpp.inter_id_path should never be empty *)
+
 let string_of_msg_path_pat (mpp : msg_path_pat) : string = 
   let siop = string_of_id_path (unlocs mpp.inter_id_path) in
+  let () = if siop = "" then failure "inter id path should never be empty" in
   match mpp.msg_or_star with 
   | MsgOrStarMsg id -> siop ^ "." ^ unloc id
   | MsgOrStarStar _ -> siop ^ ".*"
 
-let string_of_msg_path (mp : msg_path) : string = 
-  let siop = string_of_id_path (unlocs mp.inter_id_path) in
-  siop ^ "." ^ unloc mp.msg
+(* all elements mp of mpl should have the property that mp.inter_id_path
+   is nonempty *)
 
-let string_of_msg_path_patl (mpl : msg_path list) : string =
+let string_of_msg_pathl (mpl : msg_path list) : string =
   string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
 
 let filter_dir_basic_inter_paths
@@ -527,9 +536,9 @@ let check_msg_path
   let allps = msg_paths_of_all_basic_inter_paths abip in       
   let unexpected () = 
     type_error (msg_path_loc mp)
-    ("message path is inconsistent with the paths of possible\n" ^
+    ("message path is inconsistent with the paths of possible " ^
      "outgoing messages\n\nthese messages are possible:\n" ^
-     string_of_msg_path_patl allps) in
+     string_of_msg_pathl allps) in
   if List.exists
      (fun p -> string_of_msg_path p = string_of_msg_path mp)
      allps
@@ -543,7 +552,7 @@ let check_msg_path_pat
     type_error (msg_path_pat_loc mpp)
     ("message path pattern is inconsistent with the paths of " ^
      "possible\nincoming messages\n\nthese messages are expected:\n" ^
-     string_of_msg_path_patl allps) in
+     string_of_msg_pathl allps) in
   match mpp.msg_or_star with
   | MsgOrStarMsg _      -> 
       if List.exists
@@ -569,7 +578,7 @@ let remove_covered_paths (mps : msg_path list) (mpp : msg_path_pat)
   let rem = List.filter (fun mp' -> not (covered mp' mpp)) mps in
   if List.length mps = List.length rem
   then type_error (msg_path_pat_loc mpp)
-       "this match is covered by previous patterns and would never match"
+       "this pattern is covered by previous patterns and would never match"
   else rem
 
 let msg_match_deltas
@@ -588,7 +597,7 @@ let check_msg_match_deltas
   then let l = msg_path_pat_loc (List.last mml).msg_path_pat in
        type_error l
        ("message patterns are not exhaustive\n\nthese " ^
-        "messages are not matched:\n" ^ string_of_msg_path_patl r)
+        "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 
 let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
@@ -1320,7 +1329,7 @@ let check_msg_match_deltas_sim
   then let l = msg_path_pat_loc (List.last mmclauses).msg_pat.msg_path_pat in
        type_error l
        ("message patterns are not exhaustive\n\nthese " ^
-        "messages are not matched:\n" ^ string_of_msg_path_patl r)
+        "messages are not matched:\n" ^ string_of_msg_pathl r)
   else ()
 
 let check_sim_state_code
