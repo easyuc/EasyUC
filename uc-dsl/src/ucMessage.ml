@@ -1,7 +1,5 @@
 (* UcMessage module *)
 
-open Batteries
-
 type message_type =
   | WarningMessage
   | ErrorMessage

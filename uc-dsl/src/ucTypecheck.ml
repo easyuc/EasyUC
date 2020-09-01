@@ -1277,28 +1277,30 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
 
 (****************************** simulator checks ******************************)
 
-let check_msg_code_sim (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-                       (mmc : msg_match_clause) (sv : state_vars) :
-                         msg_match_clause = 
+let check_msg_code_sim
+    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+    (mmc : msg_match_clause) (sv : state_vars)
+      : msg_match_clause = 
   let code' = check_msg_match_code abip ss sv mmc.code in
   {msg_pat = mmc.msg_pat; code = code'}
 
-let check_message_path_sim (abip : basic_inter_path list) (isini : bool)
-                           (mmc : msg_match_clause) : unit = 
-  let abip = filter_dir_basic_inter_paths In abip in
+let check_message_path_sim
+    (bip : basic_inter_path list) (isini : bool)
+    (mmc : msg_match_clause) : unit = 
+  let bip = filter_dir_basic_inter_paths In bip in
   let mpp = mmc.msg_pat.msg_path_pat in
   let l = msg_path_pat_loc mpp in
-  let id = fst (List.find (fun p -> (List.length (fst p)) = 1) abip) in
+  let id = fst (List.find (fun p -> List.length (fst p) = 1) bip) in
   if isini && unlocs mpp.inter_id_path <> id
   then type_error l
        ("initial state can handle only messages comming " ^
         "from ideal functionality\n\ndid you omit prefix " ^
         List.hd id ^ ".?")
-  else let iops = fst (List.split abip) in
+  else let iops = fst (List.split bip) in
        let invalid_dest () =
          type_error l
-         ("not a valid destination, these destinations are " ^
-          "valid: " ^ string_of_id_paths iops) in
+         ("not a valid message interface path, these paths are " ^
+          "valid:\n" ^ string_of_id_paths iops) in
        let umpiop = (unlocs mpp.inter_id_path) in
        match mpp.msg_or_star with
        | MsgOrStarMsg mt ->
@@ -1308,7 +1310,7 @@ let check_message_path_sim (abip : basic_inter_path list) (isini : bool)
                    (fun bp ->
                           fst bp = umpiop &&
                           IdMap.mem (unloc mt) (snd bp))
-                   abip
+                   bip
              then ()
            else type_error (loc mt)
                 (unloc mt ^ " is not an incoming message of " ^
@@ -1362,36 +1364,31 @@ let check_sim_state_code
   let () = check_msg_match_deltas_sim abip isini uid_uses ret in
   ret
 
-(* TODO : fix this *)
-let disj (_ : 'key) (_ : 'a) (_ : 'a) = 
-  failure "Not disjoint!"
-
-let disj_union (qml : 'a QidMap.t list) : 'a QidMap.t = 
-  List.fold_left (fun qm1 qm2 -> QidMap.union disj qm1 qm2) QidMap.empty qml
-
-let get_sim_components (funs : fun_tyd IdMap.t) (r_f : string)
-                       (ps : string list) : fun_body_tyd QidMap.t = 
-  let rec get_sc (funs : fun_tyd IdMap.t) (fid : string) (pfx : SL.t) :
-                   fun_body_tyd QidMap.t = 
-    if IdMap.mem fid funs
-    then let urf = unloc(IdMap.find fid funs) in
-         disj_union
-         (QidMap.singleton pfx (urf) ::
-          IdMap.fold
-          (fun sfid sfd l ->
-                 (get_sc funs (unloc sfd) (pfx @ [sfid])) :: l)
-          (sub_funs_of_fun_body_tyd urf) [])
-    else failure
-         ("Impossible! We already checked that all referenced " ^
-          "functionalities exist") in
-  let urf = unloc(IdMap.find r_f funs) in
-  let pids =
-    IdMap.fold (fun pid _ l -> pid :: l) (params_of_fun_body_tyd urf) [] in
-  let qpids = List.map (fun pid -> r_f :: [pid]) pids in
-  disj_union(get_sc funs r_f [r_f] :: List.map2 (get_sc funs) ps qpids)
+let get_sim_components
+    (fun_map : fun_tyd IdMap.t) (r_f : string)
+    (args : string list) : fun_body_tyd QidMap.t = 
+  let urf = unloc (IdMap.find r_f fun_map) in
+  let qidmap_fun = QidMap.singleton [r_f] urf in
+  let qidmap_params =
+    let pids =
+      IdMap.fold (fun pid _ l -> pid :: l) (params_of_fun_body_tyd urf) [] in
+    List.fold_left2
+    (fun mp pid fid ->
+       let fbt = unloc (IdMap.find fid fun_map) in
+       QidMap.add [r_f; pid] fbt mp)
+    QidMap.empty pids args in
+  let qidmap_subfuns =
+    IdMap.fold
+    (fun sfid sfd mp ->
+       let sfd_fbt = unloc (IdMap.find (unloc sfd) fun_map) in
+       QidMap.add [r_f; sfid] sfd_fbt mp)
+    (sub_funs_of_fun_body_tyd urf) QidMap.empty in
+  let disj = (fun _ _ _ -> failure "cannot happen") in
+  QidMap.union disj qidmap_fun (QidMap.union disj qidmap_params qidmap_subfuns)
                 
-let get_component_inter_id_paths (adv_inter_map : inter_tyd IdMap.t)
-                                 (f : fun_body_tyd) : basic_inter_path list = 
+let get_component_adv_inter_id_paths
+    (adv_inter_map : inter_tyd IdMap.t) (f : fun_body_tyd)
+      : basic_inter_path list = 
   match id_adv_inter_of_fun_body_tyd f with
   | Some id -> get_basic_inter_paths_from_inter_id id adv_inter_map 
   | None    -> []
@@ -1400,7 +1397,7 @@ let invert_dir (dir : msg_dir) =
   match dir with In -> Out | Out -> In
 
 let invert_mdf (mdf : message_def_body_tyd) : message_def_body_tyd = 
-  {dir = (invert_dir mdf.dir);
+  {dir = invert_dir mdf.dir;
    params_map = mdf.params_map; port = mdf.port}
 
 let invert_md_fl (mdfl : message_def_body_tyd located) :
@@ -1418,25 +1415,24 @@ let invert_msg_dirs (bp : basic_inter_path) : basic_inter_path =
   let bio' = invertb_i_ob_tyd bio in
   (fst bp, bio')
 
-let get_simb_inter_id_paths (adv_inter_map : inter_tyd IdMap.t) (uses : string)
-                      (cs : fun_body_tyd QidMap.t) : basic_inter_path list = 
-  let sbps = QidMap.map (get_component_inter_id_paths adv_inter_map) cs in
+let get_sim_basic_inter_id_paths
+    (adv_inter_map : inter_tyd IdMap.t) (uses : string)
+    (cs : fun_body_tyd QidMap.t) : basic_inter_path list = 
+  let sbps = QidMap.map (get_component_adv_inter_id_paths adv_inter_map) cs in
   let bps =
     QidMap.add
     []
-    (List.map
-     (fun bp -> invert_msg_dirs bp)
+    (List.map invert_msg_dirs
      (get_basic_inter_paths_from_inter_id uses adv_inter_map))
     sbps in
   QidMap.fold
-  (fun q bpl l ->
-     l @ List.map (fun bp -> (q @ fst bp, snd bp)) bpl)
+  (fun q bpl l -> l @ List.map (fun bp -> (q @ fst bp, snd bp)) bpl)
   bps []
 
 let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t = 
   let rcsips = QidMap.map (fun fb -> get_internal_ports fb) cs in
   let rcsqips =
-    QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q@ip) ips) rcsips in
+    QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q @ ip) ips) rcsips in
   QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
         
 let check_sim_code
@@ -1446,7 +1442,7 @@ let check_sim_code
   let states = usim.states in
   let ss = get_state_sigs states in
   let cs = get_sim_components funs usim.sims usim.sims_arg_ids in
-  let bps = get_simb_inter_id_paths adv_inter_map usim.uses cs in
+  let bps = get_sim_basic_inter_id_paths adv_inter_map usim.uses cs in
   let states' =
     IdMap.map 
     (fun s -> 
@@ -1475,7 +1471,7 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
   then type_error (loc rf)
        ("the simulated functionality must be a real functionality")
 
-let check_sim_fun_params
+let check_sim_fun_args
     (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
     (rf : id) (params : id list located) = 
   let d_ios = get_params_of_real_fun_id funs (unloc rf) in
@@ -1510,8 +1506,9 @@ let check_sim_fun_params
                   ())
        (unloc params)
 
-let check_sim_decl (adv_inter_map : inter_tyd IdMap.t)
-                   (fun_map : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
+let check_sim_decl
+    (adv_inter_map : inter_tyd IdMap.t)
+    (fun_map : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
   let () = check_exists_inter AdversarialInterKind adv_inter_map sd.uses in
   let () = check_is_basic AdversarialInterKind adv_inter_map sd.uses in
   let uses = unloc sd.uses in
@@ -1519,11 +1516,11 @@ let check_sim_decl (adv_inter_map : inter_tyd IdMap.t)
   let sims = unloc sd.sims in
   let () = List.iter (check_exists_f fun_map) (unloc sd.sims_arg_ids) in
   let () =
-    check_sim_fun_params fun_map adv_inter_map sd.sims sd.sims_arg_ids in
-  let sims_param_ids = unlocs (unloc sd.sims_arg_ids) in
+    check_sim_fun_args fun_map adv_inter_map sd.sims sd.sims_arg_ids in
+  let sims_arg_ids = unlocs (unloc sd.sims_arg_ids) in
   let body = check_toplevel_states sd.id sd.states in
   mk_loc (loc sd.id)
-  {uses = uses; sims = sims; sims_arg_ids = sims_param_ids; states = body}
+  {uses = uses; sims = sims; sims_arg_ids = sims_arg_ids; states = body}
 
 let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
   let uid = unloc simd.id in
@@ -1531,10 +1528,8 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
     if exists_id_maps_tyd maps uid
     then type_error (loc simd.id)
          ("identifier already declared at top-level: " ^ uid) in
-  let sdt =
-    check_sim_decl maps.adv_inter_map maps.fun_map simd in
-  let sdt =
-    check_sim_code  maps.adv_inter_map maps.fun_map sdt in
+  let sdt = check_sim_decl maps.adv_inter_map maps.fun_map simd in
+  let sdt = check_sim_code  maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
 (***************************** definition checks ******************************)
