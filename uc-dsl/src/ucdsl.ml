@@ -23,11 +23,18 @@ let raw_msg_ref : bool ref = ref false
 let raw_msg_arg () =
   (raw_msg_ref := true; ())
 
+let margin_ref : int ref = ref 78
+
+let margin_arg n =
+  (margin_ref := n; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
     "<dir> Add directory to include search path");
-   ("-raw-msg", Unit raw_msg_arg, "Issue raw messages")]
+   ("-raw-msg", Unit raw_msg_arg, "Issue raw messages");
+   ("-margin", Int margin_arg,
+    "<n> Set pretty printing margin (default is 78)")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
@@ -35,9 +42,10 @@ let () =
   List.iter
   (fun x ->
      if (not (Sys.file_exists x) || not (Sys.is_directory x))
-     then (non_loc_error_message
-           (Printf.sprintf "does not exist or is not a directory: %s" x))
-     else())
+     then non_loc_error_message
+          (fun ppf ->
+             Format.fprintf ppf
+             "@[does not exist or is not a directory: %s@]" x))
   (! include_dirs_ref)
 
 let () = UcState.set_include_dirs (! include_dirs_ref)
@@ -51,13 +59,25 @@ let file =
        exit 1)
 
 let () =
-  if ! raw_msg_ref then UcState.set_raw_messages() else ()
+  if ! raw_msg_ref then UcState.set_raw_messages()
+
+let () =
+  let n = ! margin_ref in
+  if n < 3
+  then non_loc_error_message
+       (fun ppf ->
+          Format.fprintf ppf
+          "@[invalid pretty printer margin: %d@]" n)
+  else (Format.pp_set_margin Format.std_formatter n;
+        Format.pp_set_margin Format.err_formatter n)
 
 let () =
   let len = String.length file in
   if len < 4 || String.sub file (len - 3) 3 <> ".uc" then
     (non_loc_error_message
-     (Printf.sprintf "file lacks \".uc\" suffix: %s" file))
+     (fun ppf ->
+        Format.fprintf ppf
+        "@[file lacks \".uc\" suffix: %s@]" file))
   else ()
 
 let () =

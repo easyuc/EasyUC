@@ -1,5 +1,6 @@
 (* UcExpressions module *)
 
+open Format
 open UcTypes
 open UcSpec
 open UcTypedSpec
@@ -13,14 +14,18 @@ let get_op_sig (id : id) : typ * typ list =
   if IdMap.mem op builtin_operators
     then IdMap.find op builtin_operators
   else if not (UcEcInterface.exists_operator op)
-    then type_error (loc id)  "nonexisting operator or function."
+    then type_error (loc id)
+         (fun ppf -> fprintf ppf "@[nonexisting@ operator@ or@ function@]")
   else UcEcInterface.get_operator_sig op
 
 let check_nullary_op (id : id) : typ =
   let opsig = get_op_sig id in
   if snd opsig <> []
   then type_error (loc id)
-       ("nullary operator expected, operator " ^ unloc id ^ " has arguments.")
+       (fun ppf ->
+          fprintf ppf
+          "@[nullary@ operator@ expected:@ operator@ %s@ has@ arguments@]"
+          (unloc id))
   else fst opsig
 
 let check_expr_id (sv : qid -> typ) (qid : qid) : typ =
@@ -31,8 +36,10 @@ let check_expr_id (sv : qid -> typ) (qid : qid) : typ =
             | _        -> raise Not_found) with
        | Not_found ->
            type_error (mergelocs qid)
-           ("Nonexisting variable or constant: " ^
-            string_of_id_path (unlocs qid)))
+           (fun ppf ->
+              fprintf ppf
+              "@[nonexisting@ variable@ or@ constant:@ %s@]"
+              (string_of_id_path (unlocs qid))))
 
 let rec check_expression (sv : qid -> typ) (expr : expression_l) : typ =
   match unloc expr with
@@ -52,8 +59,10 @@ and check_sig sv fid el =
   let arno = List.length el in
   if farno <> arno
   then type_error (loc fid)
-       (op ^ " expects " ^ string_of_int farno ^ " arguments, " ^
-        string_of_int arno ^ " arguments provided")
+       (fun ppf ->
+          fprintf ppf
+          "@[%s@ expects@ %d@ arguments,@ but@ %d@ arguments@ provided@]"
+          op farno arno)
   else check_sig_types fid sv tl el; fst opsig
 
 and check_sig_types (_ : id) (sv : qid -> typ) (tl : typ list)
@@ -75,10 +84,11 @@ and check_sig_types (_ : id) (sv : qid -> typ) (tl : typ list)
        let et = check_expression sv e in
        if t <> et
        then type_error (loc e)
-            ("type mismatch for " ^ string_of_int i ^
-             ". argument. Expected type:" ^ string_of_typ t ^
-             ". Provided type:" ^ string_of_typ et ^ ".")
-       else ())
+            (fun ppf ->
+               fprintf ppf
+               ("@[type@ mismatch@ for@ argument@ %d:@ expected@ type@ was@ " ^^
+                "%a@ whereas@ provided@ type@ was@ %a@]")
+               i format_typ t format_typ et))
     telic in
   let teliv =
     List.filter
@@ -94,9 +104,11 @@ and check_sig_types (_ : id) (sv : qid -> typ) (tl : typ list)
      (fun ((_, e'), i') ->
         if te <> check_expression sv e'
         then type_error (loc e')
-             ("type mismatch, " ^ string_of_int i ^ ". and " ^
-              string_of_int i' ^ ". argument must have the same type.")
-        else ())
+             (fun ppf ->
+                fprintf ppf
+                ("@[type@ mismatch:@ arguments@ %d@ and@ %d@ must@ have@ " ^^
+                 "same@ type@]")
+                i i'))
      telivt)
   teliv
 

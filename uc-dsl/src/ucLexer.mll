@@ -7,12 +7,12 @@
 {
   open Batteries
   open EcUtils
-  open UcSpec
   open UcParser
+
   module L = EcLocation
 
-  let lex_error lexbuf msg =
-    raise (LexerError (L.of_lexbuf lexbuf, msg))
+  let lex_error lexbuf =
+    UcMessage.error_message (L.of_lexbuf lexbuf)
 
   let _keywords = [                     
     "ec_requires"     , EC_REQUIRES ;
@@ -105,7 +105,10 @@ rule read = parse
   | blank+       { read lexbuf }
   | ident as id  { try Hashtbl.find keywords id with Not_found -> ID (id) }
   | "(*" { comment lexbuf; read lexbuf }
-  | "*)" { lex_error lexbuf "cannot end comment that was not begun" }
+  | "*)" { lex_error lexbuf
+           (fun ppf ->
+              Format.fprintf ppf
+              "@[cannot@ end@ comment@ that@ was@ not@ begun@]") }
   (* punctuation *)
   | '('   { LPAREN     }
   | ')'   { RPAREN     }
@@ -130,14 +133,20 @@ rule read = parse
     }
   | eof   { EOF        }
   | _     { let s = String.escaped (Lexing.lexeme lexbuf) in
-            lex_error lexbuf (Printf.sprintf "unexpected character: \"%s\"" s) }
+            lex_error lexbuf
+            (fun ppf ->
+               Format.fprintf ppf
+               "@[unexpected@ character:@ \"%s\"@]" s) }
 
 and operator buf = parse
   | opchar* as x { Buffer.add_string buf x; buf }
 
 and comment = parse
-  | "*)"        { () }
-  | "(*"        { comment lexbuf; comment lexbuf }
-  | newline     { Lexing.new_line lexbuf; comment lexbuf }
-  | eof         { lex_error lexbuf "unterminated comment at end-of-file" }
-  | _           { comment lexbuf }
+  | "*)"    { () }
+  | "(*"    { comment lexbuf; comment lexbuf }
+  | newline { Lexing.new_line lexbuf; comment lexbuf }
+  | eof     { lex_error lexbuf
+              (fun ppf ->
+                 Format.fprintf ppf
+                 "@[unterminated@ comment@ at@ end-of-file@]") }
+  | _       { comment lexbuf }

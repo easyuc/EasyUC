@@ -2,6 +2,7 @@
 
 %{
 
+open Format
 open EcUtils
 open EcLocation
 open UcSpec
@@ -21,7 +22,9 @@ let to_msg_or_star (mpi : msg_path_pat_item) : msg_or_star =
 let to_id (mpi : msg_path_pat_item) : id =
   match mpi with
   | MsgPathPatItemId id  -> id
-  | MsgPathPatItemStar l -> parse_error l "* cannot be followed by \".\""
+  | MsgPathPatItemStar l ->
+      parse_error l
+      (fun ppf -> fprintf ppf "@[*@ cannot@ be@ followed@ by@ \".\"@]")
 
 let rec to_msg_path_pat (mppis : msg_path_pat_item list) (mp : msg_path_pat) =
   match mppis with
@@ -58,10 +61,11 @@ let check_parsing_direct_inter (ni : named_inter) =
           | Out -> false in
         parse_error
         (loc msg.id)
-        ((if is_in then "input" else "output") ^
-         " messages of direct interfaces must have " ^
-         (if is_in then "source" else "destination") ^
-         " ports")
+        (fun ppf ->
+           fprintf ppf
+           "@[%s@ messages@ of@ direct@ interfaces@ must@ have@ %s@ ports@]"
+           (if is_in then "input" else "output")
+           (if is_in then "source" else "destination"))
     | Some _ -> () in
   match ni.inter with
   | Basic msgs -> List.iter check_msg msgs
@@ -78,12 +82,13 @@ let check_parsing_adversarial_inter (ni : named_inter) =
           match msg.dir with
           | In  -> true
           | Out -> false in
-        parse_error
-        (loc id)
-        ((if is_in then "input" else "output") ^
-         " messages of adversarial interfaces cannot have " ^
-         (if is_in then "source" else "destination") ^
-         " ports") in
+        parse_error (loc id)
+        (fun ppf ->
+           fprintf ppf
+           ("@[%s@ messages@ of@ adversarial@ interfaces@ cannot@ " ^^
+            "have@ %s@ ports@]")
+           (if is_in then "input" else "output")
+           (if is_in then "source" else "destination")) in
   match ni.inter with
   | Basic msgs -> List.iter check_msg msgs
   | Composite _ ->
@@ -262,7 +267,8 @@ named_inter :
   | inter_id = id_l; LBRACE; inter = loc(option(inter)); RBRACE
       { match unloc inter with
         | None       ->
-            parse_error (loc inter) "interfaces may not be empty"
+            parse_error (loc inter)
+            (fun ppf -> fprintf ppf "@[interfaces@ may@ not@ be@ empty@]")
         | Some inter ->
             {id = inter_id; inter = inter} : named_inter }
 
@@ -334,7 +340,9 @@ fun_def :
         let () =
           if not (is_real_fun_body fun_body) && not (List.is_empty uparams)
           then parse_error (loc params)
-               "ideal functionalities may not have parameters"
+               (fun ppf ->
+                  fprintf ppf
+                  "@[ideal@ functionalities@ may@ not@ have@ parameters@]")
           else () in
         {id = name; params = uparams;
          id_dir = dir_id; id_adv = adv_id;
@@ -358,7 +366,9 @@ real_fun_body :
   | LBRACE; sfs = list(sub_fun_decl); pdfs = loc(list(party_def)); RBRACE
       { if List.is_empty (unloc pdfs)
         then parse_error (loc pdfs)
-             "there must be at least one party definition";
+             (fun ppf ->
+                fprintf ppf
+                "@[there@ must@ be@ at@ least@ one@ party@ definition@]");
         {sub_fun_decls = sfs; party_defs = unloc pdfs} : fun_body_real }
 
 ideal_fun_body :
@@ -407,7 +417,9 @@ state_def :
       { let params = unloc st.params in
         if not (List.is_empty params)
         then parse_error (loc st.params)
-             "an initial state may not have parameters"
+             (fun ppf ->
+                fprintf ppf
+                "@[an@ initial@ state@ may@ not@ have@ parameters@]")
         else InitialState {id = st.id; params = st.params; code = st.code} }
   | st = state
       { FollowingState
@@ -522,7 +534,9 @@ message_matching :
     mmcs = loc(separated_list(PIPE, msg_match_clause)); END
      { if List.is_empty (unloc mmcs)
        then parse_error (loc mmcs)
-            "at least one message matching clause is required";
+            (fun ppf ->
+               fprintf ppf
+               "@[at@ least@ one@ message@ matching@ clause@ is@ required@]");
        unloc mmcs }
 
 msg_match_clause : 
@@ -612,7 +626,9 @@ state_def_sim :
       { let params = unloc st.params in
         if not (List.is_empty params)
         then parse_error (loc st.params)
-             "an initial state may not have parameters"
+             (fun ppf ->
+                fprintf ppf
+                "@[an@ initial@ state@ may@ not@ have@ parameters@]")
         else InitialState {id = st.id; params = st.params; code = st.code} }
   | st = state_sim
       { FollowingState
@@ -632,7 +648,9 @@ message_matching_sim :
     mmcs = loc(separated_list(PIPE, msg_match_clause_sim)); END
       { if List.is_empty (unloc mmcs)
         then parse_error (loc mmcs)
-             "at least one message matching clause is required";
+             (fun ppf ->
+                fprintf ppf
+                 "@[at@ least@ one@ message@ matching@ clause@ is@ required@]");
         unloc mmcs }
 
 msg_match_clause_sim : 

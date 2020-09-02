@@ -3,18 +3,11 @@
 (* Specification Parse Trees *)
 
 open EcLocation
+open UcMessage
 
-exception LexerError of EcLocation.t * string
+let parse_error = error_message
 
-exception ParseError of EcLocation.t * string
-
-exception TypeError of EcLocation.t * string
-
-let parse_error loc msg =
-  raise (ParseError (loc, msg))
-
-let type_error loc msg =
-  raise (TypeError (loc, msg))
+let type_error = error_message
 
 type string_l = string located
 

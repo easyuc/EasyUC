@@ -3,6 +3,7 @@
 (* Typecheck a specification *)
 
 open Batteries
+open Format
 open EcLocation
 open UcEcTypes
 open UcTypes
@@ -31,22 +32,25 @@ let exists_id_inter_maps
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
-let check_unique_ids (msg : string) (al : 'a list) (get_id : 'a -> id)
-                       : 'a IdMap.t = 
+let check_unique_ids
+    (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> id)
+      : 'a IdMap.t = 
   let id_map = IdMap.empty in
   List.fold_left 
   (fun id_map a -> 
      let id_l = get_id a in 
      if exists_id id_map (unloc id_l) then 
-       type_error (loc id_l) (msg ^ unloc id_l)
+       type_error (loc id_l)
+       (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
      else IdMap.add (unloc id_l) a id_map)
   id_map al
 
 (* EasyCrypt type checks *)
 
-let check_name_type_bindings (msg : string) (ntl : type_binding list)
+let check_name_type_bindings
+    (msgf : formatter -> unit) (ntl : type_binding list)
       : typ_index IdMap.t = 
-  let nt_map = check_unique_ids msg ntl (fun nt -> nt.id) in
+  let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
      mk_loc (loc nt.id) (check_type nt.ty, index_of_ex nt ntl))
@@ -72,16 +76,23 @@ let check_comp_item (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
   | None    -> 
       type_error
       (loc ci.inter_id)
-      (uid ^ " isn't " ^ inter_kind_to_str true ik ^ " interface name")
+      (fun ppf ->
+         fprintf ppf
+         "@[%s isn't %s interface name@]" uid (inter_kind_to_str true ik))
   | Some it ->
       let ibt = unloc it in
       if is_composite_tyd ibt
-      then type_error (loc ci.inter_id) (uid ^ " isn't a basic interface")
+      then type_error (loc ci.inter_id)
+           (fun ppf ->
+              fprintf ppf
+              "@[%s isn't a basic interface@]" uid)
       else mk_loc (loc ci.sub_id) (unloc ci.inter_id)
 
 let check_basic_inter (mds : message_def list) : inter_body_tyd = 
   let msg_map =
-    check_unique_ids "duplicate message name: " mds (fun md -> md.id) in
+    check_unique_ids
+    (fun ppf -> fprintf ppf "@[duplicate@ message@ name@]")
+    mds (fun md -> md.id) in
   BasicTyd
   (IdMap.map
    (fun (md : message_def) ->
@@ -90,24 +101,29 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
       {dir = md.dir;
        params_map =
          check_name_type_bindings
-         "duplicate message parameter name: " md.params;
+         (fun ppf -> fprintf ppf "@[duplicate message parameter name:@]")
+         md.params;
        port = md.port})
   msg_map)
 
 let check_comp_inter (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
                      (cis : comp_item list) : inter_body_tyd = 
   let comp_item_map =
-    check_unique_ids "duplicate sub-interface name: "
+    check_unique_ids
+    (fun ppf -> fprintf ppf "@[duplicate@ sub-interface@ name@]")
     cis (fun ci -> ci.sub_id) in
   CompositeTyd (IdMap.map (check_comp_item ik inter_map) comp_item_map)
 
-let check_inter (e_maps : string -> bool) (ik : inter_kind)
-                (inter_map : inter_tyd IdMap.t) (ni : named_inter) = 
+let check_inter
+    (e_maps : string -> bool) (ik : inter_kind)
+    (inter_map : inter_tyd IdMap.t) (ni : named_inter) = 
   let uid = unloc ni.id in
   let () =
     if e_maps uid
     then type_error (loc ni.id)
-         ("identifier already declared at top-level: " ^ uid) in
+         (fun ppf ->
+            fprintf ppf
+            "@[identifier@ already@ declared@ at top-level:@ %s@]" uid) in
   let ibt =
     match ni.inter with
     | Basic mds     -> check_basic_inter mds
@@ -127,12 +143,15 @@ let check_inter_def (maps : maps_tyd) interd : maps_tyd =
          adv_inter_map =
            check_inter e_maps AdversarialInterKind maps.adv_inter_map ni}
 
-let check_exists_inter (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
-                       (id : id) : unit = 
+let check_exists_inter
+    (ik : inter_kind) (inter_map : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
   if exists_id inter_map uid then () 
   else type_error (loc id)
-       (inter_kind_to_str false ik ^ " interface does not exist: " ^ uid)
+       (fun ppf ->
+          fprintf ppf
+          "@[%s interface does not exist: %s@]"
+          (inter_kind_to_str false ik) uid)
 
 (* the following two functions assume id exists in inter_map *)
 
@@ -143,15 +162,21 @@ let check_is_basic (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
   | BasicTyd _     -> ()
   | CompositeTyd _ ->
       type_error (loc id)
-      (inter_kind_to_str false ik ^ " interface must be basic: " ^ uid)
+      (fun ppf ->
+         fprintf ppf
+         "@[%s@ interface@ must@ be@ basic:@ %s@]"
+         (inter_kind_to_str false ik) uid)
 
-let check_is_composite (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
-                       (id : id) : unit = 
+let check_is_composite
+    (ik : inter_kind) (inter_map : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
   match unloc (IdMap.find uid inter_map) with
   | BasicTyd _     ->
       type_error (loc id)
-      (inter_kind_to_str false ik ^ " interface must be composite: " ^ uid)
+      (fun ppf ->
+         fprintf ppf
+         "@[%s@ interface@ must@ be@ composite:@ %s@]"
+         (inter_kind_to_str false ik) uid)
   | CompositeTyd _ -> ()
 
 (************************* real functionality checks **************************)
@@ -167,13 +192,16 @@ let check_real_fun_params
     let () =
       if exists_id_inter_maps dir_inter_map adv_inter_map (unloc param.id)
       then type_error (loc param.id)
-           ("functionality parameter name may not be same as top-level " ^
-            "interface name") in
+           (fun ppf ->
+              fprintf ppf
+              ("@[functionality@ parameter@ name@ may@ not@ be@ same@ " ^^
+               "as@ top-level@ interface@ name@]")) in
      (mk_loc (loc param.id) (unloc param.id_dir),
       index_of_ex param params) in
   let param_map =
-    check_unique_ids "duplicate functionality parameter name: " params
-    (fun p -> p.id) in
+    check_unique_ids
+    (fun ppf -> fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
+    params (fun p -> p.id) in
   IdMap.map check_real_fun_param param_map
 
 (* checking the top-level only of a state machine
@@ -189,22 +217,32 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
            | _              -> false)
         sds in
   match List.length inits with
-  | 0 -> type_error (loc id) (unloc id ^ " doesn't have initial state")
+  | 0 ->
+      type_error (loc id)
+      (fun ppf ->
+         fprintf ppf "@[%s@ doesn't@ have@ initial@ state@]" (unloc id))
   | 1 ->
       (match List.hd inits with
        | InitialState s   -> s.id
        | FollowingState _ ->
-           UcMessage.failure "impossible, list contains only InitialState")
-  | _ -> type_error (loc id) (unloc id ^ " has more than one initial state")
-
+           failure "impossible, list contains only InitialState")
+  | _ ->
+      type_error (loc id)
+      (fun ppf ->
+         fprintf ppf
+         "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
 let check_toplevel_state (init_id : id) (st : state) : state_tyd = 
   let is_initial = (init_id = st.id) in
   let params =
-    check_name_type_bindings "duplicate parameter name: " (unloc st.params) in
+    check_name_type_bindings
+    (fun ppf -> fprintf ppf "@[duplicate@ parameter@ name@]")
+    (unloc st.params) in
   let vars =
     IdMap.map
     (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
-    (check_name_type_bindings "duplicate variable name: " st.code.vars) in
+    (check_name_type_bindings
+     (fun ppf -> fprintf ppf "@[duplicate@ variable@ name@]")
+     st.code.vars) in
   let dup = IdMap.find_first_opt (fun uid -> IdMap.mem uid params) vars in
   match dup with
   | None        ->
@@ -213,7 +251,11 @@ let check_toplevel_state (init_id : id) (st : state) : state_tyd =
        mmclauses = st.code.mmclauses}
   | Some (uid, typ) ->
       type_error (loc typ)
-      ("variable name " ^ uid ^ " is the same as one of the state's parameters")
+      (fun ppf ->
+         fprintf ppf
+         ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+          "state's@ parameters@]")
+         uid)
                         
 let drop_state_ctor (sd : state_def) : state = 
   match sd with 
@@ -228,7 +270,9 @@ let check_toplevel_states (id : id) (states : state_def list)
   let init_id = check_exactly_one_initial_state id states in
   let states = List.map (fun sd -> drop_state_ctor sd) states in
   let state_map =
-    check_unique_ids "duplicate state name: " states (fun s -> s.id) in
+    check_unique_ids
+    (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
+    states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id) state_map 
 
 (* a basic_inter_path will have the form (ids, b) where
@@ -341,13 +385,13 @@ let get_fun_inter_id_paths
   dir @ adv
 
 let check_id_paths_unique
-    (msg : string) (idps : string list located list) : unit = 
+    (msgf : formatter -> unit) (idps : string list located list) : unit = 
   ignore
   (List.fold_left
    (fun l idp -> 
       let uidp = unloc idp in
       if List.mem uidp l
-      then type_error (loc idp) msg
+      then type_error (loc idp) msgf
       else uidp :: l)
    [] idps)
 
@@ -364,17 +408,22 @@ let check_id_path
   if List.mem uidp ps
   then mk_loc loc uidp
   else type_error loc
-       (string_of_id_path uidp ^
-        " is not the path of a component of an interface implemented\n" ^
-        "by functionality")
+       (fun ppf ->
+          fprintf ppf
+          ("@[%s@ is@ not@ the@ path@ of@ a@ component@ of@ an@ interface@ " ^^
+           "implemented@ by@ functionality@]")
+          (string_of_id_path uidp))
 
 let check_served_paths
     (serves : string list located list)
     (id_dir_inter : string) (party_id : id) : unit = 
-  let er =
-    ("a party must serve one basic direct interface, and may optionally " ^
-     "serve one\nbasic adversarial interface") in
-  let erone = "a party must serve one basic direct interface" in
+  let er ppf =
+    fprintf ppf
+    ("@[a@ party@ must@ serve@ one@ basic@ direct@ interface,@ and@ may " ^^
+     "optionally@ serve@ one@ basic@ adversarial@ interface@]") in
+  let erone ppf =
+    fprintf ppf
+    "@[a@ party@ must@ serve@ one@ basic@ direct@ interface@]" in
   match List.length serves with
   | 0 -> type_error (loc party_id) erone
   | 1 ->
@@ -414,10 +463,12 @@ let check_id_paths_cover
   let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
   if List.length unserved = 0
   then ()
-  else type_error
-       (mergelocs served_ps)
-       ("these sub-interfaces are not served by any party:\n" ^
-        string_of_id_paths unserved)
+  else type_error (mergelocs served_ps)
+       (fun ppf ->
+          fprintf ppf
+          ("@[these@ sub-interfaces@ are@ not@ served@ by@ any@ " ^^
+           "party:@;<1 2>%a@]")
+          format_id_paths_comma unserved)
 
 let check_parties_serve_distinct_cover
     (parties : party_def_tyd IdMap.t)
@@ -427,7 +478,10 @@ let check_parties_serve_distinct_cover
   let served_ps =
     IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
   let () =
-    check_id_paths_unique "parties must serve distinct sub-interfaces"
+    check_id_paths_unique
+    (fun ppf ->
+       fprintf ppf
+       "@[parties@ must@ serve@ distinct@ sub-interfaces@]")
     served_ps in
   check_id_paths_cover id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
@@ -485,11 +539,12 @@ let string_of_msg_path_pat (mpp : msg_path_pat) : string =
   | MsgOrStarMsg id -> siop ^ "." ^ unloc id
   | MsgOrStarStar _ -> siop ^ ".*"
 
-(* all elements mp of mpl should have the property that mp.inter_id_path
+(* all elements mp of mps should have the property that mp.inter_id_path
    is nonempty *)
 
-let string_of_msg_pathl (mpl : msg_path list) : string =
-  string_of_stringl (List.map (fun mp -> string_of_msg_path mp) mpl)
+let format_msg_path_list
+    (ppf : formatter) (mps : msg_path list) : unit =
+  format_strings_comma ppf (List.map string_of_msg_path mps)
 
 let filter_dir_basic_inter_paths
     (dir : msg_dir) (bips : basic_inter_path list) : basic_inter_path list = 
@@ -546,9 +601,11 @@ let check_msg_path
   let allps = msg_paths_of_all_basic_inter_paths abip in       
   let unexpected () = 
     type_error (msg_path_loc mp)
-    ("message path is inconsistent with the paths of possible " ^
-     "outgoing messages\n\nthese messages are possible:\n" ^
-     string_of_msg_pathl allps) in
+    (fun ppf ->
+       fprintf ppf
+       ("@[message@ path@ is@ inconsistent@ with@ the@ paths@ of@ possible@ " ^^
+        "outgoing@ messages;@ these@ messages@ are@ possible:@;<1 2>%a@]")
+       format_msg_path_list allps) in
   if List.exists
      (fun p -> string_of_msg_path p = string_of_msg_path mp)
      allps
@@ -560,9 +617,12 @@ let check_msg_path_pat
   let allps = msg_paths_of_all_basic_inter_paths abip in       
   let inconsistent () =
     type_error (msg_path_pat_loc mpp)
-    ("message path pattern is inconsistent with the paths of " ^
-     "possible\nincoming messages\n\nthese messages are expected:\n" ^
-     string_of_msg_pathl allps) in
+    (fun ppf ->
+       fprintf ppf
+       ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ paths@ of@ " ^^
+        "possible@ incoming@ messages;@ these@ messages@ are@ " ^^
+        "expected:@;<1 2>%a@]")
+       format_msg_path_list allps) in
   match mpp.msg_or_star with
   | MsgOrStarMsg _      -> 
       if List.exists
@@ -588,7 +648,10 @@ let remove_covered_paths (mps : msg_path list) (mpp : msg_path_pat)
   let rem = List.filter (fun mp' -> not (covered mp' mpp)) mps in
   if List.length mps = List.length rem
   then type_error (msg_path_pat_loc mpp)
-       "this pattern is covered by previous patterns and would never match"
+       (fun ppf ->
+          fprintf ppf
+          ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
+           "would@ never@ match@]"))
   else rem
 
 let msg_match_deltas
@@ -606,23 +669,26 @@ let check_msg_match_deltas
   if r <> []
   then let l = msg_path_pat_loc (List.last mml).msg_path_pat in
        type_error l
-       ("message patterns are not exhaustive\n\nthese " ^
-        "messages are not matched:\n" ^ string_of_msg_pathl r)
-  else ()
+       (fun ppf ->
+          fprintf ppf
+          ("@[message@ patterns@ are@ not@ exhaustive;@ these@ " ^^
+           "messages@ are@ not@ matched:@;<1 2>%a@]")
+          format_msg_path_list r)
 
 let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
   if not (vt = typ)
   then type_error (loc vid)
-       (unloc vid ^
-        " doesn't have type compatible with " ^
-        string_of_typ typ)
+       (fun ppf ->
+          fprintf ppf
+          "@[%s@ doesn't@ have@ type@ compatible@ with@ %a@]"
+          (unloc vid) format_typ typ)
 
 let get_declared_const_vars (sv : state_vars) = 
   IdMap.union
   (fun _ _ _ ->
      failure
-     ("impossible, we already checked params and local " ^
-      "vars have different ids"))
+     ("@[impossible, we already checked params and local " ^
+      "vars have different ids@]"))
   sv.consts sv.vars
 
 let check_exists_and_has_compatible_type (vid : id) (typ : typ)
@@ -631,7 +697,10 @@ let check_exists_and_has_compatible_type (vid : id) (typ : typ)
   let pvs = get_declared_const_vars sv in
   if not (IdMap.mem uvid pvs)
   then type_error (loc vid)
-       (uvid ^ " is neither a local variable nor a state parameter")
+       (fun ppf ->
+          fprintf ppf
+          "@[%s@ is@ neither@ a@ local@ variable@ nor@ a@ state@ parameter@]"
+          uvid)
   else let vt = IdMap.find uvid pvs in
        check_types_compatible vid vt typ
         
@@ -639,7 +708,11 @@ let check_add_binding (vid : id) (sv : state_vars) : state_vars =
   let uvid = unloc vid in
   if not (IdMap.mem uvid sv.vars)
   then type_error (loc vid)
-       (uvid ^ " is not a local variable and values cannot be bound to it")
+       (fun ppf ->
+          fprintf ppf
+          ("@[%s@ is@ not@ a@ local@ variable@ and@ values@ cannot@ be@ " ^^
+           "bound@ to@ it@]")
+          uvid)
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = sv.consts; vars = sv.vars;
         initialized_vs = IdSet.add uvid sv.initialized_vs}
@@ -656,28 +729,31 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
   let pvs = get_declared_const_vars sv in
   if IdMap.mem ucid pvs
   then type_error (loc cid)
-       ("pattern variable already bound as parameter, variable or " ^
-        "pattern variable: " ^ ucid)
+       (fun ppf ->
+          fprintf ppf
+          ("@[pattern@ variable@ already@ bound@ as@ parameter,@ " ^^
+           "variable@ or pattern@ variable:@ %s@]")
+          ucid)
   else {flags = sv.flags; internal_ports = sv.internal_ports;
         consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
         initialized_vs = sv.initialized_vs}
 
-let check_port_var_binding (abip : all_basic_inter_paths) (mp : string list)
-                           (vid : id) (sv : state_vars) : state_vars = 
+let check_port_var_binding
+    (abip : all_basic_inter_paths) (mp : string list)
+    (vid : id) (sv : state_vars) : state_vars = 
   let d = List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.direct in
-  let i =
-    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.internal in
-  let a =
-    List.exists (fun bp -> sl1_starts_with_sl2 (fst bp) mp) abip.adversarial in
-  if not (d && not i && not a)
+  if not d
   then type_error (loc vid)
-       ("the message " ^ string_of_id_path mp ^
-        " maybe isn't an incoming message of a direct interface served by " ^
-        "the party and cannot bind the source port to a variable")
+       (fun ppf ->
+          fprintf ppf
+          ("@[message@ %s@ isn't@ an@ incoming@ message@ of@ a@ " ^^
+           "direct@ interface@ served@ by@ the@ party@ and@ so@ cannot@ " ^^
+           "bind@ the@ source@ port@ to@ a@ variable@]")
+          (string_of_id_path mp))
   else check_add_const vid port_type port_type sv
 
-let check_item_type_add_binding (sv : state_vars) (mi : pat)
-                                (typ : typ) : state_vars = 
+let check_item_type_add_binding
+    (sv : state_vars) (mi : pat) (typ : typ) : state_vars = 
   match mi with
   | PatWildcard _ -> sv
   | PatId id      -> check_add_const id typ typ sv
@@ -706,24 +782,29 @@ let check_msg_content_bindings
     (unlocm((unloc(IdMap.find (snd mp) (snd bip))).params_map)) in
   if List.length mt <> List.length tm
   then type_error (get_loc_match_item_list tm)
-       ("the number of argument patterns the number " ^
-        "of message parameters")
+       (fun ppf ->
+          fprintf ppf
+          ("@[the@ number@ of@ argument@ patterns@ the@ number@ " ^^
+           "of@ message@ parameters@]"))
   else List.fold_left2 check_item_type_add_binding sv tm mt
 
-let check_pat_args (bips : basic_inter_path list) (msg_pat : msg_pat)
-                   (sv : state_vars) : state_vars = 
+let check_pat_args
+    (bips : basic_inter_path list) (msg_pat : msg_pat)
+    (sv : state_vars) : state_vars = 
   match msg_pat.pat_args with
   | None      -> sv
   | Some pats -> 
       match msg_pat.msg_path_pat.msg_or_star with
       | MsgOrStarStar l ->
-          type_error l "* cannot have argument pattern"
+          type_error l
+          (fun ppf -> fprintf ppf "@[*@ cannot@ have@ argument@ pattern@]")
       | MsgOrStarMsg id ->
           check_msg_content_bindings bips
           (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) pats sv
 
-let check_match_bindings (abip : all_basic_inter_paths) (msg_pat : msg_pat)
-                         (sv : state_vars) : state_vars = 
+let check_match_bindings
+    (abip : all_basic_inter_paths) (msg_pat : msg_pat)
+    (sv : state_vars) : state_vars = 
   let sv' =        
     match msg_pat.port_id with
     | Some id ->
@@ -746,7 +827,8 @@ let get_var_type (sv : state_vars) (id : id) : typ =
 let check_initialized (sv : state_vars) (id : id) : unit = 
   let uid = unloc id in
   if IdMap.mem uid sv.consts || IdSet.mem uid sv.initialized_vs then ()
-  else type_error (loc id) (uid ^ " is not initialized")
+  else type_error (loc id)
+       (fun ppf -> fprintf ppf "@[%s@ is@ not@ initialized@]" uid)
 
 let check_expr_var (sv : state_vars) (id : id) : typ = 
   let r = get_var_type sv id in
@@ -777,7 +859,10 @@ let check_sampl_assign (sv : state_vars) (vid : id) (ex : expression_l) :
                          state_vars = 
   let etyp = check_expression sv ex in
   if not (UcExpressions.is_distribution etyp)
-  then type_error (loc ex) ("you can sample only from distributions")
+  then type_error (loc ex)
+       (fun ppf ->
+          fprintf ppf
+          "@[you@ can@ sample@ only@ from@ distributions@]")
   else let dtyp = UcExpressions.get_distribution_typ etyp in 
        check_type_add_binding vid dtyp sv
 
@@ -786,21 +871,25 @@ let check_transition (si : state_expr) (ss : state_sig IdMap.t)
   let ssig = 
     try IdMap.find (unloc(si.id)) ss with
     | Not_found ->
-        type_error (loc si.id) ("non-existing state: " ^ unloc si.id) in
+        type_error (loc si.id)
+        (fun ppf ->
+           fprintf ppf "@[non-existing@ state:@ %s@]" (unloc si.id)) in
   let sp = ssig and args = si.args in
   if List.length sp <> List.length (unloc args)
-  then type_error (loc args) "wrong number of state arguments"
+  then type_error (loc args)
+       (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else let te = List.combine sp (unloc args) in
        List.iteri
        (fun i (sigt, sip) -> 
           let et = check_expression sv sip in
           if sigt <> et && sigt <> univ_type
           then type_error (loc sip)
-               ("parameter " ^ string_of_int (i + 1) ^ " of state " ^
-                unloc si.id ^ " has type " ^ string_of_typ sigt ^
-                ",\nwhich is incompatible with type" ^
-                string_of_typ et ^ " of corresponding argument")
-          else ())
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[parameter@ %d@ of@ state@ %s@ has@ type@ %a,@ " ^^
+                   "which@ is@ incompatible@ with@ type@ %a@ " ^^
+                   "of@ corresponding@ argument@]")
+                   (i + 1) (unloc si.id) format_typ sigt format_typ et))
        te
 
 let check_msg_arguments
@@ -808,36 +897,48 @@ let check_msg_arguments
     (sv : state_vars) : unit = 
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
-  then type_error (loc es) "wrong number of message arguments"
+  then type_error (loc es)
+       (fun ppf ->
+          fprintf ppf "@[wrong@ number@ of@ message@ arguments@]")
   else List.iter2i
        (fun i ex typ ->
           let tex = check_expression sv ex in
           if not (tex = typ)
           then type_error (loc ex)
-               ("parameter " ^ string_of_int (i + 1) ^ " of message " ^
-                string_of_msg_path mp ^ " has type " ^ string_of_typ typ ^
-                ",\nwhich is incompatible with type " ^
-                string_of_typ tex ^ " of corresponding argument"))
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[parameter@ %d@ of@ message@ %s@ has@ type@ %a,@ " ^^
+                   "which@ is@ incompatible@ with@ type@ %a@ " ^^
+                   "of@ corresponding@ argument@]")
+                  (i + 1) (string_of_msg_path mp) format_typ typ
+                  format_typ tex))
        (unloc es) sg
 
-let check_send_direct (msg : msg_expr) (mc : typ_index IdMap.t)
-                      (sv : state_vars) : unit = 
+let check_send_direct
+    (msg : msg_expr) (mc : typ_index IdMap.t) (sv : state_vars) : unit = 
   let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
     | Some p ->
         (check_exists_and_has_compatible_type p port_type sv;
          check_initialized sv p)
-    | None   -> type_error l ("missing destination port") in
+    | None   ->
+        type_error l
+        (fun ppf ->
+           fprintf ppf "@[missing@ destination@ port@]") in
   check_msg_arguments msg.path msg.args mc sv
 
-let check_send_adversarial (msg : msg_expr) (mc : typ_index IdMap.t)
-                           (sv : state_vars) : unit = 
+let check_send_adversarial
+    (msg : msg_expr) (mc : typ_index IdMap.t)
+    (sv : state_vars) : unit = 
   let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
     | Some _ ->
-        type_error l "only direct messages can have destination port"
+        type_error l
+        (fun ppf ->
+           fprintf ppf
+           "@[only@ direct@ messages@ can@ have@ destination@ ports@]")
     | None   -> () in
   check_msg_arguments msg.path msg.args mc sv
 
@@ -848,8 +949,10 @@ let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
     match msg.port_id with
     | Some _ ->
         type_error l
-        ("messages to subfunctionalities cannot have " ^
-         "destination port")
+        (fun ppf ->
+           fprintf ppf
+           ("@[messages@ to@ subfunctionalities@ cannot@ have@ " ^^
+            "destination@ ports@]"))
     | None -> () in
   check_msg_arguments msg.path msg.args mc sv
 
@@ -876,9 +979,11 @@ let check_send_msg_path
   let () =
     if List.mem "simulator" sv.flags && msg.path <> msg.path
     then type_error (msg_path_loc msg.path)
-         ("messages sent by simulator must have complete path\n\n" ^
-          "did you mean " ^ string_of_msg_path msg.path ^ " ?")
-    else () in
+         (fun ppf ->
+            fprintf ppf
+            ("@[messages sent by simulator must have complete paths; " ^^
+             "did you mean %s?@]")
+            (string_of_msg_path msg.path)) in
   msg
 
 let check_send (msg : msg_expr) (abip : all_basic_inter_paths)
@@ -920,7 +1025,10 @@ let rec check_ite
     (eins : instruction_l list located option)
       : instruction * state_vars = 
   if check_expression sv ex <> bool_type
-  then type_error (loc ex) "the condition must be a boolean expression"
+  then type_error (loc ex)
+       (fun ppf ->
+          fprintf ppf
+          "@[the@ condition@ must@ be@ a@ boolean expression@]")
   else let (tins_c, eins_c, sv') = check_branches abip ss sv tins eins in
        (ITE (ex, tins_c, eins_c), sv')
 
@@ -946,7 +1054,9 @@ and check_decode
     (erins : instruction_l list located)
       : instruction * state_vars = 
   if check_expression sv ex <> univ_type
-  then type_error (loc ex) "only expressions of univ type can be decoded"
+  then type_error (loc ex)
+       (fun ppf ->
+          fprintf ppf "@[only@ expressions@ of@ univ@ type@ can@ be@ decoded@]")
   else let dt =
          match check_type ty with
          | Tconstr (x, y) -> [Tconstr (x,y)]
@@ -956,8 +1066,10 @@ and check_decode
              "check_type is supposed to return only Tconstr or Ttuple." in
        if List.length m_is <> List.length dt
        then type_error (get_loc_match_item_list m_is)
-            ("the number of bindings is different from the arity of " ^
-             "decoded type")
+            (fun ppf ->
+               fprintf ppf
+               ("@[the@ number@ of@ bindings@ is@ different@ from@ the@ " ^^
+                "arity@ of@ decoded@ type@]"))
        else let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
             let (okins_c, erins_c, sv'') =
               check_branches abip ss sv' okins (Some erins) in
@@ -996,13 +1108,17 @@ and check_instructions
 
 let illegal_control_transfer (l : EcLocation.t) =
   type_error l
-  ("control transfer by \"fail\" or \"send-and-transition\" instruction " ^
-   "is only\nallowed at end of message match clause")   
+  (fun ppf ->
+     fprintf ppf
+     ("@[control@ transfer@ by@ \"fail\"@ or@ \"send-and-transition\"@ " ^^
+      "instruction@ is@ only@ allowed@ at@ end@ of@ message@ match@ clause@]"))
 
 let failure_to_transfer_control (l : EcLocation.t) =
   type_error l
-  ("message match clause must end with control transfer via " ^
-   "\"fail\" or\n\"send-and-transition\" instruction")
+  (fun ppf ->
+     fprintf ppf
+     ("@[message@ match@ clause@ must@ end@ with@ control@ transfer@ via@ " ^^
+      "\"fail\"@ or@ \"send-and-transition\"@ instruction@]"))
 
 let rec check_instrs_transfer_at_end (is : instruction_l list located) : unit =
   let uis = unloc is in
@@ -1155,7 +1271,9 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
   let () =
     if exists_id_maps_tyd maps uid
     then type_error (loc fund.id)
-         ("identifier already declared at top-level: " ^ uid) in
+         (fun ppf ->
+            fprintf ppf
+            "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
   let () = check_exists_inter DirectInterKind maps.dir_inter_map fund.id_dir in
   let () = check_is_composite DirectInterKind  maps.dir_inter_map fund.id_dir in
   let uid_dir_inter = unloc fund.id_dir in 
@@ -1176,7 +1294,8 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         check_real_fun_params maps.dir_inter_map maps.adv_inter_map
         fund.params in 
       let sub_fun_decls =
-        check_unique_ids "duplicate subfunctionality name: "
+        check_unique_ids
+        (fun ppf -> fprintf ppf "@[duplicate@ subfunctionality@ name@]")
         fbr.sub_fun_decls (fun x -> x.id) in
       let () =
         let dup_ids =
@@ -1184,29 +1303,40 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         if IdMap.is_empty dup_ids then ()
         else let id, dup = IdMap.choose dup_ids in
              type_error (loc dup.id)
-             ("the name " ^ id ^
-              " is the same name as one of the functionality's parameters") in
+             (fun ppf ->
+                fprintf ppf
+                ("@[the@ name@ %s@ is@ the@ same@ name@ as@ one@ of@ the@ " ^^
+                 "functionality's@ parameters@]")
+                id) in
       let check_sub_fun_decl (sf : sub_fun_decl) : id =
         let uid = unloc sf.id in
         let ufun_id = unloc sf.fun_id in
         match IdMap.find_opt ufun_id maps.fun_map with
         | None    ->
             type_error (loc sf.fun_id)
-            ("nonexisting functionality: " ^ ufun_id)
+            (fun ppf ->
+               fprintf ppf
+               "@[nonexisting@ functionality:@ %s@]" ufun_id)
         | Some ft ->
             let fbt = unloc ft in
             if exists_id_inter_maps maps.dir_inter_map maps.adv_inter_map
                uid
               then type_error (loc sf.id)
-                   ("subfunctionality name may not be same as top-level " ^
-                    "interface name")
+                   (fun ppf ->
+                      fprintf ppf
+                      ("@[subfunctionality@ name@ may@ not@ be@ same@ as@ " ^^
+                       "top-level@ interface@ name@]"))
             else if is_real_fun_body_tyd fbt
               then type_error (loc sf.fun_id)
-                   (ufun_id ^ " is not an ideal functionality")
+                   (fun ppf ->
+                      fprintf ppf
+                      "@[%s@ is@ not@ an@ ideal@ functionality@]" ufun_id)
             else mk_loc (loc sf.id) ufun_id in
       let sub_funs = IdMap.map check_sub_fun_decl sub_fun_decls in
       let party_defs =
-        check_unique_ids "duplicate party name: " fbr.party_defs
+        check_unique_ids
+        (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
+        fbr.party_defs
         (fun x -> x.id) in
       let parties =
         let ps =
@@ -1249,8 +1379,10 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         match fund.id_adv with
         | None ->
             type_error (loc fund.id)
-            ("an ideal functionality must implement a basic adversarial " ^
-             "interface")
+            (fun ppf ->
+               fprintf ppf
+               ("@[an@ ideal@ functionality@ must@ implement@ a@ basic@ " ^^
+                "adversarial@ interface@]"))
         | Some id ->
             (check_exists_inter AdversarialInterKind maps.adv_inter_map id;
              check_is_basic AdversarialInterKind maps.adv_inter_map id;
@@ -1293,14 +1425,19 @@ let check_message_path_sim
   let id = fst (List.find (fun p -> List.length (fst p) = 1) bip) in
   if isini && unlocs mpp.inter_id_path <> id
   then type_error l
-       ("initial state can handle only messages comming " ^
-        "from ideal functionality\n\ndid you omit prefix " ^
-        List.hd id ^ ".?")
+       (fun ppf ->
+          fprintf ppf
+          ("@[initial@ state@ can@ handle@ only@ messages@ comming@ " ^^
+           "from@ ideal@ functionality;@ did@ you@ omit@ prefix@ %s?@]")
+          (List.hd id))
   else let iops = fst (List.split bip) in
        let invalid_dest () =
          type_error l
-         ("not a valid message interface path, these paths are " ^
-          "valid:\n" ^ string_of_id_paths iops) in
+         (fun ppf ->
+            fprintf ppf
+            ("@[not@ a@ valid@ message@ interface@ path;@ these@ paths@ " ^^
+             "are@ valid:@;<1 2>%a@]")
+            format_id_paths_comma iops) in
        let umpiop = (unlocs mpp.inter_id_path) in
        match mpp.msg_or_star with
        | MsgOrStarMsg mt ->
@@ -1313,8 +1450,10 @@ let check_message_path_sim
                    bip
              then ()
            else type_error (loc mt)
-                (unloc mt ^ " is not an incoming message of " ^
-                 string_of_id_path umpiop)
+                (fun ppf ->
+                   fprintf ppf
+                   "@[%s@ is@ not@ an@ incoming@ message@ of@ %s@]"
+                   (unloc mt) (string_of_id_path umpiop))
        | MsgOrStarStar _ ->
            if List.exists
               (fun p -> sl1_starts_with_sl2 p umpiop)
@@ -1322,8 +1461,9 @@ let check_message_path_sim
            then ()
            else invalid_dest ()
 
-let check_match_bindings_sim (abip : basic_inter_path list) (sv : state_vars)
-                             (mmc : msg_match_clause) : state_vars = 
+let check_match_bindings_sim
+    (abip : basic_inter_path list) (sv : state_vars)
+    (mmc : msg_match_clause) : state_vars = 
   let mm = mmc.msg_pat in
   check_pat_args abip mm sv
 
@@ -1348,9 +1488,11 @@ let check_msg_match_deltas_sim
   if r <> []
   then let l = msg_path_pat_loc (List.last mmclauses).msg_pat.msg_path_pat in
        type_error l
-       ("message patterns are not exhaustive\n\nthese " ^
-        "messages are not matched:\n" ^ string_of_msg_pathl r)
-  else ()
+       (fun ppf ->
+          fprintf ppf
+          ("@[message patterns are not exhaustive; these " ^^
+           "messages are not matched:@;<1 2>%a@]")
+          format_msg_path_list r)
 
 let check_sim_state_code
     (bips : basic_inter_path list) (ss : state_sig IdMap.t)
@@ -1462,14 +1604,17 @@ let check_sim_code
 let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
   if exists_id funs urf then ()
-  else type_error (loc rf) ("functionality isn't defined: " ^ urf)
+  else type_error (loc rf)
+       (fun ppf -> fprintf ppf "@[functionality@ isn't@ defined:@ %s@]" urf)
 
 let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) = 
   let () = check_exists_f funs rf in
   let f = unloc (IdMap.find (unloc rf) funs) in
   if not (is_real_fun_body_tyd f)
   then type_error (loc rf)
-       ("the simulated functionality must be a real functionality")
+       (fun ppf ->
+          fprintf ppf
+          "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
 
 let check_sim_fun_args
     (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
@@ -1481,16 +1626,19 @@ let check_sim_fun_args
        get_dir_inter_id_impl_by_fun_id id funs) (unlocs (unloc params)) in
   if List.length d_ios <> List.length d_ios'
   then type_error (loc params)
-       "wrong number of arguments for functionality"
+       (fun ppf ->
+          fprintf ppf
+          "@[wrong@ number@ of@ arguments@ for@ functionality@]")
   else let () =
          List.iteri
          (fun i pid ->
           if List.nth d_ios i <> List.nth d_ios' i
           then type_error (loc pid)
-               ("argument " ^ string_of_int (i + 1) ^
-                " implements composite direct interface " ^
-                List.nth d_ios' i ^ "\nwhereas it should implement " ^
-                List.nth d_ios i))
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[argument@ %d@ implements@ composite@ direct@ " ^^
+                   "interface@ %s,@ whereas@ it@ should@ implement@ %s@]")
+                  (i + 1) (List.nth d_ios' i) (List.nth d_ios i)))
          (unloc params) in
        List.iter
        (fun pid ->
@@ -1498,8 +1646,10 @@ let check_sim_fun_args
               match f with
               | FunBodyRealTyd _ ->
                   type_error (loc pid)
-                  ("the argument to simulated functionality must " ^
-                   "be an ideal functionality")
+                  (fun ppf ->
+                     fprintf ppf
+                     ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
+                      "be@ an@ ideal@ functionality@]"))
               | FunBodyIdealTyd _  ->
                   (* we know the ideal functionality implements a basic
                      adversarial interface *)
@@ -1527,7 +1677,9 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
   let () =
     if exists_id_maps_tyd maps uid
     then type_error (loc simd.id)
-         ("identifier already declared at top-level: " ^ uid) in
+         (fun ppf ->
+            fprintf ppf
+            "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
   let sdt = check_sim_decl maps.adv_inter_map maps.fun_map simd in
   let sdt = check_sim_code  maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
@@ -1559,12 +1711,18 @@ let load_ec_reqs reqs =
     let () =
       if not (Char.is_uppercase uid.[0])
       then type_error (loc id)
-           ("EasyCrypt theory to be imported must begin with uppercase " ^
-            "letter: " ^ uid) in
+           (fun ppf ->
+              fprintf ppf
+              ("@[EasyCrypt@ theory@ to@ be@ imported@ must@ begin@ with@ " ^^
+               "uppercase@ letter:@ %s@]")
+              uid) in
     try UcEcInterface.require_import (unloc id) with
     Failure f ->
       type_error (loc id)
-      ("error when importing EasyCrypt theory " ^ unloc id ^ ":\n" ^ f) in
+      (fun ppf ->
+         fprintf ppf
+         "@[error@ when@ importing@ EasyCrypt@ theory@ %s:@ \"%s\"@]"
+         (unloc id) f) in
   List.iter reqimp reqs
 
 let typecheck spec = 

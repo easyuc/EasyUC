@@ -17,7 +17,7 @@ let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
   List.map (fun a -> fst a) lord
 
-let filter_map (fm : 'a-> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
+let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
   let flt =
     IdMap.filter
     (fun _ def ->
@@ -44,21 +44,22 @@ let dummylocl (l : 'a list) : 'a located list = List.map (fun i -> dummyloc i) l
 let string_of_id_path (iop : string list) : string =
   List.fold_left (fun p i -> if p <> "" then p ^ "." ^ i else i) "" iop
 
-let string_of_id_paths (iops : string list list) : string =
-  List.fold_left
-  (fun sout p ->
-     if sout = ""
-     then "  " ^ string_of_id_path p
-     else sout ^ "\n  " ^ string_of_id_path p)
-  "" iops
+let format_strings
+    (ppf : Format.formatter) (sepc : char) (xs : string list) : unit =
+  let rec fs (ppf : Format.formatter) (xs : string list) : unit =
+    match xs with
+    | []      -> ()
+    | [x]     -> Format.fprintf ppf "%s" x
+    | x :: xs -> Format.fprintf ppf "%s%c@ %a" x sepc fs xs in
+  Format.fprintf ppf "@[<v>%a@]" fs xs
 
-let string_of_stringl (sl : string list) : string =
-  List.fold_left
-  (fun sout s ->
-     if sout = ""
-     then "  " ^ s
-     else sout ^ "\n  " ^ s)
-  "" sl
+let format_strings_comma
+    (ppf : Format.formatter) (xs : string list) : unit =
+  format_strings ppf ',' xs
+
+let format_id_paths_comma
+    (ppf : Format.formatter) (iops : string list list) : unit =
+  format_strings ppf ',' (List.map string_of_id_path iops)
 
 let qid1_starts_with_qid2 (q1 : qid) (q2 : qid) : bool =
   List.for_all

@@ -1,9 +1,11 @@
 (* UcMessage module interface *)
 
-val error_message : EcLocation.t -> string -> 'a
+open Format
 
-val warning_message : EcLocation.t -> string -> unit
+val error_message : EcLocation.t -> (formatter -> unit) -> 'a
 
-val non_loc_error_message : string -> 'a
+val warning_message : EcLocation.t -> (formatter -> unit) -> unit
+
+val non_loc_error_message : (formatter -> unit) -> 'a
 
 val failure : string -> 'a
