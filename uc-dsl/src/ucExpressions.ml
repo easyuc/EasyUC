@@ -15,7 +15,7 @@ let get_op_sig (id : id) : typ * typ list =
     then IdMap.find op builtin_operators
   else if not (UcEcInterface.exists_operator op)
     then type_error (loc id)
-         (fun ppf -> fprintf ppf "@[nonexisting@ operator@ or@ function@]")
+         (fun ppf -> fprintf ppf "@[nonexisting@ operator@]")
   else UcEcInterface.get_operator_sig op
 
 let check_nullary_op (id : id) : typ =

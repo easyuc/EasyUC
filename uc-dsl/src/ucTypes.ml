@@ -29,6 +29,8 @@ let univ_type = Tconstr ("univ", None)
 
 let bool_type = Tconstr ("bool", None)
 
+let compatible_types t1 t2 = t1 = t2
+
 (* can a type be formatted in any context with no parentheses *)
 
 let is_basic (typ : typ) =

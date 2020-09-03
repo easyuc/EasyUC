@@ -55,7 +55,6 @@ type msg_path_pat = {inter_id_path : qid; msg_or_star : msg_or_star}
 
 type pat =
   | PatId       of id
-  | PatIdType   of type_binding
   | PatWildcard of EcLocation.t
 
 type msg_pat =

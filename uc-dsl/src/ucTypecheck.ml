@@ -500,30 +500,6 @@ let get_params_of_real_fun_id
   | FunBodyRealTyd fbr -> unlocs (indexed_map_to_list fbr.params)
   | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
 
-type state_vars =
-  {flags : string list; internal_ports : QidSet.t; consts : typ IdMap.t;
-   vars : typ IdMap.t; initialized_vs : IdSet.t}
-
-let init_state_vars
-    (s : state_body_tyd) (ports : QidSet.t)
-    (flags : string list) : state_vars = 
-  let consts = IdMap.map (fun p -> fst (unloc p)) s.params in
-  let vars = IdMap.map (fun v -> unloc v) s.vars in
-  {flags = flags; internal_ports = ports; consts = consts;
-   vars = vars; initialized_vs = IdSet.empty}
-
-type state_sig = typ list
-
-let get_state_sig (s : state_body_tyd) : state_sig = 
-  if s.is_initial then []
-  else let ps = IdMap.bindings s.params in
-       let ts = unlocs (snd (List.split ps)) in
-       let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       (fst (List.split tord))
-
-let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
-  IdMap.map (fun s -> get_state_sig (unloc s)) states
-
 let string_of_msg_path (mp : msg_path) : string = 
   let siop = string_of_id_path (unlocs mp.inter_id_path) in
   if siop = ""
@@ -671,58 +647,70 @@ let check_msg_match_deltas
            "messages@ are@ not@ matched:@;<1 2>%a@]")
           format_msg_path_list r)
 
-let check_types_compatible (vid : id) (vt : typ) (typ : typ) : unit = 
-  if not (vt = typ)
-  then type_error (loc vid)
-       (fun ppf ->
-          fprintf ppf
-          "@[%s@ doesn't@ have@ type@ compatible@ with@ %a@]"
-          (unloc vid) format_typ typ)
+type state_info =
+  {flags : string list;
+   internal_ports : QidSet.t;
+   consts : typ IdMap.t;
+   vars : typ IdMap.t;
+   initialized_vs : IdSet.t}
 
-let get_declared_const_vars (sv : state_vars) = 
+let init_state_info
+    (s : state_body_tyd) (ports : QidSet.t)
+    (flags : string list) : state_info = 
+  let consts = IdMap.map (fun p -> fst (unloc p)) s.params in
+  let vars = IdMap.map (fun v -> unloc v) s.vars in
+  {flags = flags; internal_ports = ports; consts = consts;
+   vars = vars; initialized_vs = IdSet.empty}
+
+type state_sig = typ list
+
+let get_state_sig (s : state_body_tyd) : state_sig = 
+  if s.is_initial then []
+  else let ps = IdMap.bindings s.params in
+       let ts = unlocs (snd (List.split ps)) in
+       let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
+       (fst (List.split tord))
+
+let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
+  IdMap.map (fun s -> get_state_sig (unloc s)) states
+
+let get_declared (si : state_info) = 
   IdMap.union
   (fun _ _ _ ->
      failure
      ("@[impossible, we already checked params and local " ^
       "vars have different ids@]"))
-  sv.consts sv.vars
+  si.consts si.vars
 
-let check_exists_and_has_compatible_type
-    (vid : id) (typ : typ) (sv : state_vars) : unit = 
+let check_declared_with_compatible_type
+    (id : id) (typ : typ) (si : state_info) : unit = 
+  let uid = unloc id in
+  let decs = get_declared si in
+  if not (IdMap.mem uid decs)
+  then type_error (loc id)
+       (fun ppf -> fprintf ppf "@[%s@ is@ not@ declared@]" uid)
+  else let idt = IdMap.find uid decs in
+       if not (compatible_types idt typ)
+       then type_error (loc id)
+            (fun ppf ->
+               fprintf ppf
+               "@[type@ %a@ of@ %s@ is@ not@ compatible@ with@ type@ %a@]"
+               format_typ idt (unloc id) format_typ typ)
+
+let check_assign_core
+    (vid : id) (typ : typ) (si : state_info) : state_info = 
   let uvid = unloc vid in
-  let pvs = get_declared_const_vars sv in
-  if not (IdMap.mem uvid pvs)
+  if not (IdMap.mem uvid si.vars)
   then type_error (loc vid)
-       (fun ppf ->
-          fprintf ppf
-          "@[%s@ is@ neither@ a@ local@ variable@ nor@ a@ state@ parameter@]"
-          uvid)
-  else let vt = IdMap.find uvid pvs in
-       check_types_compatible vid vt typ
-        
-let check_add_binding (vid : id) (sv : state_vars) : state_vars = 
-  let uvid = unloc vid in
-  if not (IdMap.mem uvid sv.vars)
-  then type_error (loc vid)
-       (fun ppf ->
-          fprintf ppf
-          ("@[%s@ is@ not@ a@ local@ variable@ and@ values@ cannot@ be@ " ^^
-           "bound@ to@ it@]")
-          uvid)
-  else {flags = sv.flags; internal_ports = sv.internal_ports;
-        consts = sv.consts; vars = sv.vars;
-        initialized_vs = IdSet.add uvid sv.initialized_vs}
+       (fun ppf -> fprintf ppf ("@[%s@ is@ not@ a@ declared variable@]") uvid)
+  else (check_declared_with_compatible_type vid typ si;
+        {si with
+           initialized_vs = IdSet.add uvid si.initialized_vs})
 
-let check_type_add_binding (vid : id) (typ : typ) (sv : state_vars) :
-                             state_vars = 
-  (check_exists_and_has_compatible_type vid typ sv;
-   check_add_binding vid sv)
-
-let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
-                      state_vars = 
-  let () = check_types_compatible cid ct valt in
+let check_add_const
+    (cid : id) (ct : typ) (si : state_info) : state_info = 
   let ucid = unloc cid in
-  let pvs = get_declared_const_vars sv in
+  let pvs = get_declared si in
   if IdMap.mem ucid pvs
   then type_error (loc cid)
        (fun ppf ->
@@ -730,15 +718,15 @@ let check_add_const (cid : id) (ct : typ) (valt : typ) (sv : state_vars) :
           ("@[pattern@ variable@ already@ bound@ as@ parameter,@ " ^^
            "variable@ or pattern@ variable:@ %s@]")
           ucid)
-  else {flags = sv.flags; internal_ports = sv.internal_ports;
-        consts = IdMap.add ucid ct sv.consts; vars = sv.vars;
-        initialized_vs = sv.initialized_vs}
+  else {flags = si.flags; internal_ports = si.internal_ports;
+        consts = IdMap.add ucid ct si.consts; vars = si.vars;
+        initialized_vs = si.initialized_vs}
 
 let check_port_var_binding
     (abip : all_basic_inter_paths) (mp : string list)
-    (vid : id) (sv : state_vars) : state_vars = 
+    (vid : id) (si : state_info) : state_info = 
   let d = List.exists (fun bp -> fst bp = mp) abip.direct in
-  let is_sim = List.mem "simulator" sv.flags in
+  let is_sim = List.mem "simulator" si.flags in
   if not d
   then type_error (loc vid)
        (fun ppf ->
@@ -749,7 +737,7 @@ let check_port_var_binding
            else ("@[message@ patterns@ matching@ adversarial@ and@ " ^^
                  "internal@ messages@ may@ not@ bind@ source@ ports@ " ^^
                  "to@ variables@]")))
-  else check_add_const vid port_type port_type sv
+  else check_add_const vid port_type si
 
 let check_non_port_var_binding
     (abip : all_basic_inter_paths) (mp : string list) (mppl : EcLocation.t)
@@ -765,11 +753,10 @@ let check_non_port_var_binding
   else ()
 
 let check_item_type_add_binding
-    (sv : state_vars) (mi : pat) (typ : typ) : state_vars = 
+    (si : state_info) (mi : pat) (typ : typ) : state_info = 
   match mi with
-  | PatWildcard _ -> sv
-  | PatId id      -> check_add_const id typ typ sv
-  | PatIdType nt  -> check_add_const nt.id (check_type nt.ty) typ sv
+  | PatWildcard _ -> si
+  | PatId id      -> check_add_const id typ si
 
 let rec get_loc_ty (ty : ty) : EcLocation.t = 
   match ty with
@@ -780,14 +767,13 @@ let get_loc_match_item (m_i : pat) : EcLocation.t =
   match m_i with
   | PatWildcard l -> l
   | PatId id      -> loc id
-  | PatIdType nt  -> merge (loc nt.id) (get_loc_ty nt.ty)
 
 let get_loc_match_item_list (tm : pat list) : EcLocation.t =
   mergeall (List.map (fun mi -> get_loc_match_item mi) tm)
 
 let check_msg_content_bindings
     (bips : basic_inter_path list) (mp : string list * string)
-    (tm : pat list) (sv : state_vars) : state_vars = 
+    (tm : pat list) (si : state_info) : state_info = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mt =
     indexed_map_to_list
@@ -796,108 +782,108 @@ let check_msg_content_bindings
   then type_error (get_loc_match_item_list tm)
        (fun ppf ->
           fprintf ppf
-          ("@[the@ number@ of@ argument@ patterns@ the@ number@ " ^^
-           "of@ message@ parameters@]"))
-  else List.fold_left2 check_item_type_add_binding sv tm mt
+          ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
+           "from@ the@ number@ of@ message@ parameters@]"))
+  else List.fold_left2 check_item_type_add_binding si tm mt
 
 let check_pat_args
     (bips : basic_inter_path list) (msg_pat : msg_pat)
-    (sv : state_vars) : state_vars = 
+    (si : state_info) : state_info = 
   match msg_pat.pat_args with
-  | None      -> sv
+  | None      -> si
   | Some pats -> 
       match msg_pat.msg_path_pat.msg_or_star with
       | MsgOrStarStar _ -> failure "cannot happen - check in parser"
       | MsgOrStarMsg id ->
           check_msg_content_bindings bips
-          (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) pats sv
+          (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) pats si
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : msg_pat)
-    (sv : state_vars) : state_vars = 
+    (si : state_info) : state_info = 
   let abip = incoming_abip abip in
   let () = check_msg_path_pat abip msg_pat.msg_path_pat in
   let sv' =        
     match msg_pat.port_id with
     | Some id ->
         check_port_var_binding abip
-        (unlocs msg_pat.msg_path_pat.inter_id_path) id sv
+        (unlocs msg_pat.msg_path_pat.inter_id_path) id si
     | None    ->
         let mppl = msg_path_pat_loc msg_pat.msg_path_pat in
         (check_non_port_var_binding abip 
          (unlocs msg_pat.msg_path_pat.inter_id_path) mppl;
-         sv) in
+         si) in
   let bips = flatten_all_basic_inter_paths abip in
   check_pat_args bips msg_pat sv'
 
-let get_var_type (sv : state_vars) (id : id) : typ = 
+let get_var_type (si : state_info) (id : id) : typ = 
   let vs =
     IdMap.union
     (fun _ _ ->
        failure
        ("Impossible! we already checked that params and " ^
         "vars have different names"))
-    sv.consts sv.vars in
+    si.consts si.vars in
   IdMap.find (unloc id) vs
 
-let check_initialized (sv : state_vars) (id : id) : unit = 
+let check_initialized (si : state_info) (id : id) : unit = 
   let uid = unloc id in
-  if IdMap.mem uid sv.consts || IdSet.mem uid sv.initialized_vs then ()
+  if IdMap.mem uid si.consts || IdSet.mem uid si.initialized_vs then ()
   else type_error (loc id)
        (fun ppf -> fprintf ppf "@[%s@ may@ not@ be@ initialized@]" uid)
 
-let check_expr_var (sv : state_vars) (id : id) : typ = 
-  let r = get_var_type sv id in
-  let () = check_initialized sv id in
+let check_expr_var (si : state_info) (id : id) : typ = 
+  let r = get_var_type si id in
+  let () = check_initialized si id in
   r
 
-let check_is_internal_port (sv : state_vars) (qid : qid) : bool =
-  QidSet.mem (unlocs qid) sv.internal_ports
+let check_is_internal_port (si : state_info) (qid : qid) : bool =
+  QidSet.mem (unlocs qid) si.internal_ports
 
-let check_qid_type (sv : state_vars) (qid : qid) : typ = 
+let check_qid_type (si : state_info) (qid : qid) : typ = 
   try
     (match qid with
-     | id :: [] -> check_expr_var sv id
+     | id :: [] -> check_expr_var si id
      | _        -> raise Not_found)
   with
   | Not_found -> 
-      if check_is_internal_port sv qid then port_type else raise Not_found
+      if check_is_internal_port si qid then port_type else raise Not_found
 
-let check_expression (sv : state_vars) (expr : expression_l) : typ = 
-  UcExpressions.check_expression (check_qid_type sv) expr
+let check_expression (si : state_info) (expr : expression_l) : typ = 
+  UcExpressions.check_expression (check_qid_type si) expr
 
-let check_val_assign (sv : state_vars) (vid : id) (ex : expression_l) :
-                       state_vars = 
-  let etyp = check_expression sv ex in
-  check_type_add_binding vid etyp sv
+let check_val_assign
+    (si : state_info) (vid : id) (ex : expression_l) : state_info = 
+  let etyp = check_expression si ex in
+  check_assign_core vid etyp si
 
-let check_sampl_assign (sv : state_vars) (vid : id) (ex : expression_l) :
-                         state_vars = 
-  let etyp = check_expression sv ex in
+let check_sampl_assign
+    (si : state_info) (vid : id) (ex : expression_l) : state_info = 
+  let etyp = check_expression si ex in
   if not (UcExpressions.is_distribution etyp)
   then type_error (loc ex)
        (fun ppf ->
           fprintf ppf
           "@[you@ can@ sample@ only@ from@ distributions@]")
   else let dtyp = UcExpressions.get_distribution_typ etyp in 
-       check_type_add_binding vid dtyp sv
+       check_assign_core vid dtyp si
 
-let check_transition (si : state_expr) (ss : state_sig IdMap.t)
-                     (sv : state_vars) : unit = 
+let check_transition (se : state_expr) (ss : state_sig IdMap.t)
+                     (si : state_info) : unit = 
   let ssig = 
-    try IdMap.find (unloc(si.id)) ss with
+    try IdMap.find (unloc(se.id)) ss with
     | Not_found ->
-        type_error (loc si.id)
+        type_error (loc se.id)
         (fun ppf ->
-           fprintf ppf "@[non-existing@ state:@ %s@]" (unloc si.id)) in
-  let sp = ssig and args = si.args in
+           fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
+  let sp = ssig and args = se.args in
   if List.length sp <> List.length (unloc args)
   then type_error (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else let te = List.combine sp (unloc args) in
        List.iteri
        (fun i (sigt, sip) -> 
-          let et = check_expression sv sip in
+          let et = check_expression si sip in
           if sigt <> et && sigt <> univ_type
           then type_error (loc sip)
                (fun ppf ->
@@ -905,12 +891,12 @@ let check_transition (si : state_expr) (ss : state_sig IdMap.t)
                   ("@[parameter@ %d@ of@ state@ %s@ has@ type@ %a,@ " ^^
                    "which@ is@ incompatible@ with@ type@ %a@ " ^^
                    "of@ corresponding@ argument@]")
-                   (i + 1) (unloc si.id) format_typ sigt format_typ et))
+                   (i + 1) (unloc se.id) format_typ sigt format_typ et))
        te
 
 let check_msg_arguments
     (mp : msg_path) (es : expression_l list located) (mc : typ_index IdMap.t)
-    (sv : state_vars) : unit = 
+    (si : state_info) : unit = 
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
   then type_error (loc es)
@@ -918,7 +904,7 @@ let check_msg_arguments
           fprintf ppf "@[wrong@ number@ of@ message@ arguments@]")
   else List.iter2i
        (fun i ex typ ->
-          let tex = check_expression sv ex in
+          let tex = check_expression si ex in
           if not (tex = typ)
           then type_error (loc ex)
                (fun ppf ->
@@ -931,22 +917,21 @@ let check_msg_arguments
        (unloc es) sg
 
 let check_send_direct
-    (msg : msg_expr) (mc : typ_index IdMap.t) (sv : state_vars) : unit = 
+    (msg : msg_expr) (mc : typ_index IdMap.t) (si : state_info) : unit = 
   let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
     | Some p ->
-        (check_exists_and_has_compatible_type p port_type sv;
-         check_initialized sv p)
+        (check_declared_with_compatible_type p port_type si;
+         check_initialized si p)
     | None   ->
         type_error l
         (fun ppf ->
            fprintf ppf "@[missing@ destination@ port@]") in
-  check_msg_arguments msg.path msg.args mc sv
+  check_msg_arguments msg.path msg.args mc si
 
 let check_send_adversarial
-    (msg : msg_expr) (mc : typ_index IdMap.t)
-    (sv : state_vars) : unit = 
+    (msg : msg_expr) (mc : typ_index IdMap.t) (si : state_info) : unit = 
   let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
@@ -956,10 +941,10 @@ let check_send_adversarial
            fprintf ppf
            "@[only@ direct@ messages@ can@ have@ destination@ ports@]")
     | None   -> () in
-  check_msg_arguments msg.path msg.args mc sv
+  check_msg_arguments msg.path msg.args mc si
 
 let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
-                        (sv : state_vars) : unit = 
+                        (si : state_info) : unit = 
   let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
@@ -970,7 +955,7 @@ let check_send_internal (msg : msg_expr) (mc : typ_index IdMap.t)
            ("@[messages@ to@ subfunctionalities@ cannot@ have@ " ^^
             "destination@ ports@]"))
     | None -> () in
-  check_msg_arguments msg.path msg.args mc sv
+  check_msg_arguments msg.path msg.args mc si
 
 let is_msg_path_inb_inter_id_paths
     (mp : msg_path) (abip : basic_inter_path list) : bool = 
@@ -993,17 +978,17 @@ let check_send_msg_path
   check_outgoing_msg_path abip msg.path
 
 let check_send (msg : msg_expr) (abip : all_basic_inter_paths)
-               (sv : state_vars) : unit = 
+               (si : state_info) : unit = 
   let () = check_send_msg_path msg abip in
   let bs = abip.direct @ abip.adversarial @ abip.internal in
   let mdbc = (get_msg_def_for_msg_path msg.path bs).params_map in
   match msg.path with
   | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.direct ->
-      check_send_direct msg mdbc sv
+      check_send_direct msg mdbc si
   | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.adversarial ->
-      check_send_adversarial msg mdbc sv
+      check_send_adversarial msg mdbc si
   | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.internal ->
-      check_send_internal msg mdbc sv
+      check_send_internal msg mdbc si
   | _ ->
       failure
       ("impossible - the path is always in one of direct|" ^
@@ -1011,48 +996,48 @@ let check_send (msg : msg_expr) (abip : all_basic_inter_paths)
 
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sat : send_and_transition) (sv : state_vars)
+    (sat : send_and_transition) (si : state_info)
       : unit = 
-  let () = check_send sat.msg_expr abip sv in
-  check_transition sat.state_expr ss sv
+  let () = check_send sat.msg_expr abip si in
+  check_transition sat.state_expr ss si
 
-let merge_state_vars (sv1 : state_vars) (sv2 : state_vars) : state_vars = 
+let merge_state_info (sv1 : state_info) (sv2 : state_info) : state_info = 
   {flags = sv1.flags; internal_ports = sv1.internal_ports;
    consts = sv1.consts; vars = sv1.vars;
    initialized_vs = IdSet.inter sv1.initialized_vs sv2.initialized_vs}
 
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars)
+    (si : state_info)
     (ex : expression_l) (tins : instruction_l list located)
     (eins : instruction_l list located option)
-      : state_vars = 
-  if check_expression sv ex <> bool_type
+      : state_info = 
+  if check_expression si ex <> bool_type
   then type_error (loc ex)
        (fun ppf ->
           fprintf ppf
           "@[the@ condition@ must@ be@ a@ boolean expression@]")
-  else check_branches abip ss sv tins eins
+  else check_branches abip ss si tins eins
 
 and check_branches
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (tins : instruction_l list located)
+    (si : state_info) (tins : instruction_l list located)
     (eins : instruction_l list located option)
-      : state_vars = 
-  let tsv = check_instructions abip ss sv tins in
+      : state_info = 
+  let tsv = check_instructions abip ss si tins in
   let esv =
     match eins with                         
-    | Some is -> check_instructions abip ss sv is
-    | None    -> sv in
-  merge_state_vars tsv esv
+    | Some is -> check_instructions abip ss si is
+    | None    -> si in
+  merge_state_info tsv esv
 
 and check_decode
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (ex : expression_l) (ty : ty)
+    (si : state_info) (ex : expression_l) (ty : ty)
     (m_is : pat list) (okins : instruction_l list located)
     (erins : instruction_l list located)
-      : state_vars = 
-  if check_expression sv ex <> univ_type
+      : state_info = 
+  if check_expression si ex <> univ_type
   then type_error (loc ex)
        (fun ppf ->
           fprintf ppf "@[only@ expressions@ of@ univ@ type@ can@ be@ decoded@]")
@@ -1069,29 +1054,29 @@ and check_decode
                fprintf ppf
                ("@[the@ number@ of@ bindings@ is@ different@ from@ the@ " ^^
                 "arity@ of@ decoded@ type@]"))
-       else let sv' = List.fold_left2 check_item_type_add_binding sv m_is dt in
+       else let sv' = List.fold_left2 check_item_type_add_binding si m_is dt in
             check_branches abip ss sv' okins (Some erins)
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (i : instruction_l)
-      : state_vars = 
+    (si : state_info) (i : instruction_l)
+      : state_info = 
   match unloc i with
-  | Assign (vid, ex)                    -> check_val_assign sv vid ex
-  | Sample (vid, ex)                    -> check_sampl_assign sv vid ex
-  | ITE (ex, tins, eins)                -> check_ite abip ss sv ex tins eins
+  | Assign (vid, ex)                    -> check_val_assign si vid ex
+  | Sample (vid, ex)                    -> check_sampl_assign si vid ex
+  | ITE (ex, tins, eins)                -> check_ite abip ss si ex tins eins
   | Decode (ex, ty, m_is, okins, erins) ->
-      check_decode abip ss sv ex ty m_is okins erins
+      check_decode abip ss si ex ty m_is okins erins
   | SendAndTransition sat               ->
-      (check_send_and_transition abip ss sat sv; sv)
-  | Fail                                -> sv
+      (check_send_and_transition abip ss sat si; si)
+  | Fail                                -> si
 
 and check_instructions
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (is : instruction_l list located)
-      : state_vars = 
+    (si : state_info) (is : instruction_l list located)
+      : state_info = 
   let uis = unloc is in
-  List.fold_left (check_instruction abip ss) sv uis
+  List.fold_left (check_instruction abip ss) si uis
 
 let illegal_control_transfer (l : EcLocation.t) =
   type_error l
@@ -1154,23 +1139,23 @@ and check_instr_not_transfer (instr : instruction_l) : unit =
 
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (is : instruction_l list located)
+    (si : state_info) (is : instruction_l list located)
       : unit = 
-  let () = ignore (check_instructions abip ss sv is) in
+  let () = ignore (check_instructions abip ss si is) in
   check_instrs_transfer_at_end is
 
 let check_msg_match_clause
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (mmc : msg_match_clause) : unit = 
-  let sv' = check_msg_pat abip mmc.msg_pat sv in
+    (si : state_info) (mmc : msg_match_clause) : unit = 
+  let sv' = check_msg_pat abip mmc.msg_pat si in
   check_msg_match_code abip ss sv' mmc.code
 
 let check_state_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sv : state_vars) (mmclauses : msg_match_clause list)
+    (si : state_info) (mmclauses : msg_match_clause list)
       : unit =
   let () =
-    List.iter (fun mmc -> check_msg_match_clause abip ss sv mmc) mmclauses in
+    List.iter (fun mmc -> check_msg_match_clause abip ss si mmc) mmclauses in
   check_msg_match_deltas abip
   (List.map (fun mmc -> mmc.msg_pat) mmclauses)
 
@@ -1238,7 +1223,7 @@ let check_state
     (ur_f : fun_body_tyd) (states : state_tyd IdMap.t)
     (abip : all_basic_inter_paths) (s : state_tyd) : unit = 
   let us = unloc s in
-  let sv = init_state_vars (unloc s) (get_internal_ports ur_f) [] in
+  let sv = init_state_info (unloc s) (get_internal_ports ur_f) [] in
   let ss = get_state_sigs states in
   check_state_code abip ss sv us.mmclauses
 
@@ -1379,9 +1364,9 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
 
 let check_msg_code_sim
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (mmc : msg_match_clause) (sv : state_vars)
+    (mmc : msg_match_clause) (si : state_info)
       : unit = 
-  check_msg_match_code abip ss sv mmc.code
+  check_msg_match_code abip ss si mmc.code
 
 let check_message_path_sim
     (bip : basic_inter_path list) (isini : bool)
@@ -1429,10 +1414,10 @@ let check_message_path_sim
            else invalid_dest ()
 
 let check_match_bindings_sim
-    (abip : basic_inter_path list) (sv : state_vars)
-    (mmc : msg_match_clause) : state_vars = 
+    (abip : basic_inter_path list) (si : state_info)
+    (mmc : msg_match_clause) : state_info = 
   let mm = mmc.msg_pat in
-  check_pat_args abip mm sv
+  check_pat_args abip mm si
 
 let check_msg_match_deltas_sim
     (abip : all_basic_inter_paths) (isini : bool) (uid_uses : string)
@@ -1463,11 +1448,11 @@ let check_msg_match_deltas_sim
 
 let check_sim_state_code
     (bips : basic_inter_path list) (ss : state_sig IdMap.t)
-    (sv : state_vars) (isini : bool) (uid_uses : string)
+    (si : state_info) (isini : bool) (uid_uses : string)
     (mmclauses : msg_match_clause list)
       : unit = 
   let () = List.iter (check_message_path_sim bips isini) mmclauses in
-  let svs = List.map (check_match_bindings_sim bips sv) mmclauses in
+  let svs = List.map (check_match_bindings_sim bips si) mmclauses in
   let abip = {direct = []; adversarial = bips; internal = []} in
   let () = List.iter2 (check_msg_code_sim abip ss) mmclauses svs in
   check_msg_match_deltas_sim abip isini uid_uses mmclauses
@@ -1555,7 +1540,7 @@ let check_sim_code
   (fun _ s -> 
      let us = unloc s in
      let sv =
-       init_state_vars us (get_sim_internal_ports cs) ["simulator"] in
+       init_state_info us (get_sim_internal_ports cs) ["simulator"] in
      check_sim_state_code bps ss sv us.is_initial usim.uses us.mmclauses)
   states
 

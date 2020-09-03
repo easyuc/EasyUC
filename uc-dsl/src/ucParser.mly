@@ -580,8 +580,6 @@ pat_args :
 pat : 
   | id = id_l
       { PatId id }
-  | nt = type_binding
-      { PatIdType nt }
   | l = loc(UNDERSCORE)
       { PatWildcard (loc l) }
 
