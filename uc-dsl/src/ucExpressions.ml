@@ -7,7 +7,7 @@ open UcTypedSpec
 open EcLocation
 open UcUtils
 
-let builtin_operators = IdMap.add "envport" (bool_type,[port_type]) IdMap.empty
+let builtin_operators = IdMap.add "envport" (bool_type, [port_type]) IdMap.empty
 
 let get_op_sig (id : id) : typ * typ list =
   let op = unloc id in

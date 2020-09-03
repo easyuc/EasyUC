@@ -2,6 +2,7 @@
 
 %{
 
+open Batteries
 open Format
 open EcUtils
 open EcLocation
@@ -529,7 +530,7 @@ local_var_decl :
    Finally, a message matching clause consists of a message pattern
    followed by the code to run on a matching message. *)
 
-message_matching : 
+message_matching :
   | MATCH; MESSAGE; WITH; PIPE?
     mmcs = loc(separated_list(PIPE, msg_match_clause)); END
      { if List.is_empty (unloc mmcs)
@@ -539,11 +540,20 @@ message_matching :
                "@[at@ least@ one@ message@ matching@ clause@ is@ required@]");
        unloc mmcs }
 
-msg_match_clause : 
+msg_match_clause :
   | msg_pat = msg_pat; ARROW; code = inst_block
-      { {msg_pat = msg_pat; code = code } }
+      { (match msg_pat.msg_path_pat.msg_or_star with
+         | MsgOrStarMsg _ -> ()
+         | MsgOrStarStar l ->
+             if Option.is_some msg_pat.pat_args
+             then parse_error l
+                  (fun ppf ->
+                     fprintf ppf
+                     ("message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
+                      "may@ not@ have@ pattern@ arguments")));
+        {msg_pat = msg_pat; code = code } }
 
-msg_pat : 
+msg_pat :
   | port_id = id_l; AT; mmb = msg_pat_body
       { match (mmb : msg_pat_body).msg_path_pat.msg_or_star with
         | MsgOrStarMsg _ ->
@@ -553,7 +563,7 @@ msg_pat :
             parse_error (loc port_id)
             (fun ppf ->
                fprintf ppf
-               ("message@ pattern@ whose@ message@ path@ pattern@ ends@ " ^^
+               ("message@ pattern@ whose@ path@ ends@ " ^^
                 "in@ \"*\"@ may@ not@ bind@ source@ port")) }
   | mmb = msg_pat_body
       { {port_id = None; msg_path_pat = (mmb : msg_pat_body).msg_path_pat;
@@ -615,7 +625,7 @@ msg_path_pat_item :
 sim_def : 
   | SIM; name = id_l; USES uses = id_l;
     SIMS sims = id_l; args = loc(option(fun_args));
-    sms = state_machine_sim
+    sms = state_machine
       { let uargs = unloc args |? [] in
         {id = name; uses = uses; sims = sims;
          sims_arg_ids = mk_loc (loc args) uargs; states = sms} }
@@ -623,52 +633,6 @@ sim_def :
 fun_args : 
   | LPAREN; args = separated_list(COMMA, id_l); RPAREN
       { args }
-
-state_machine_sim : 
-  | LBRACE; sds = list(state_def_sim) RBRACE
-      { sds }
-
-state_def_sim : 
-  | INITIAL; st = state_sim
-      { let params = unloc st.params in
-        if not (List.is_empty params)
-        then parse_error (loc st.params)
-             (fun ppf ->
-                fprintf ppf
-                "@[an@ initial@ state@ may@ not@ have@ parameters@]")
-        else InitialState {id = st.id; params = st.params; code = st.code} }
-  | st = state_sim
-      { FollowingState
-        {id = (st : state).id; params = st.params; code = st.code} }
-
-state_sim : 
-  | STATE; id = id_l; params = loc(option(state_params)); code = state_code_sim
-      { let uparams = unloc params |? [] in
-        {id = id; params = mk_loc (loc params) uparams; code = code} : state }
-
-state_code_sim : 
-  | LBRACE; vars = local_var_decls; mm = message_matching_sim; RBRACE
-      { {vars = vars; mmclauses = mm} }
-
-message_matching_sim : 
-  | MATCH; MESSAGE; WITH; PIPE?
-    mmcs = loc(separated_list(PIPE, msg_match_clause_sim)); END
-      { if List.is_empty (unloc mmcs)
-        then parse_error (loc mmcs)
-             (fun ppf ->
-                fprintf ppf
-                 "@[at@ least@ one@ message@ matching@ clause@ is@ required@]");
-        unloc mmcs }
-
-msg_match_clause_sim : 
-  | msg_pat = msg_pat_sim; ARROW; code = inst_block
-      { {msg_pat = msg_pat; code = code } }
-
-(* no source port binding: *)
-
-msg_pat_sim : 
-  | msg_path_pat = msg_path_pat; pat_args = option(pat_args)
-      { {port_id = None; msg_path_pat = msg_path_pat; pat_args = pat_args} }
 
 (* Instructions *)
 

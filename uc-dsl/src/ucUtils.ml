@@ -51,7 +51,7 @@ let format_strings
     | []      -> ()
     | [x]     -> Format.fprintf ppf "%s" x
     | x :: xs -> Format.fprintf ppf "%s%c@ %a" x sepc fs xs in
-  Format.fprintf ppf "@[<v>%a@]" fs xs
+  Format.fprintf ppf "@[<hv>%a@]" fs xs
 
 let format_strings_comma
     (ppf : Format.formatter) (xs : string list) : unit =
