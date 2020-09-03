@@ -647,12 +647,17 @@ let check_msg_match_deltas
            "messages@ are@ not@ matched:@;<1 2>%a@]")
           format_msg_path_list r)
 
+(* information maintained when typechecking a state
+
+   constants and local variables are disjoint *)
+
 type state_info =
   {flags : string list;
    internal_ports : QidSet.t;
-   consts : typ IdMap.t;
-   vars : typ IdMap.t;
-   initialized_vs : IdSet.t}
+   consts : typ IdMap.t;  (* constants: state parameters and bound in
+                             patterns *)
+   vars : typ IdMap.t;  (* local variables *)
+   initialized_vs : IdSet.t}  (* initialized variables *)
 
 let init_state_info
     (s : state_body_tyd) (ports : QidSet.t)
@@ -707,25 +712,23 @@ let check_assign_core
         {si with
            initialized_vs = IdSet.add uvid si.initialized_vs})
 
-let check_add_const
-    (cid : id) (ct : typ) (si : state_info) : state_info = 
-  let ucid = unloc cid in
-  let pvs = get_declared si in
-  if IdMap.mem ucid pvs
-  then type_error (loc cid)
+(* constants can be rebound, in new scopes; but they may not eclipse
+   variables *)
+
+let check_add_const (id : id) (typ : typ) (si : state_info) : state_info = 
+  let uid = unloc id in
+  if IdMap.mem uid si.vars
+  then type_error (loc id)
        (fun ppf ->
           fprintf ppf
-          ("@[pattern@ variable@ already@ bound@ as@ parameter,@ " ^^
-           "variable@ or pattern@ variable:@ %s@]")
-          ucid)
-  else {flags = si.flags; internal_ports = si.internal_ports;
-        consts = IdMap.add ucid ct si.consts; vars = si.vars;
-        initialized_vs = si.initialized_vs}
+          "@[cannot@ rebind@ variable@ name@ in pattern@]")
+  else {si with
+          consts = IdMap.add uid typ si.consts}
 
 let check_port_var_binding
-    (abip : all_basic_inter_paths) (mp : string list)
+    (abip : all_basic_inter_paths) (idp : string list)
     (vid : id) (si : state_info) : state_info = 
-  let d = List.exists (fun bp -> fst bp = mp) abip.direct in
+  let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   let is_sim = List.mem "simulator" si.flags in
   if not d
   then type_error (loc vid)
@@ -740,9 +743,9 @@ let check_port_var_binding
   else check_add_const vid port_type si
 
 let check_non_port_var_binding
-    (abip : all_basic_inter_paths) (mp : string list) (mppl : EcLocation.t)
+    (abip : all_basic_inter_paths) (idp : string list) (mppl : EcLocation.t)
       : unit = 
-  let d = List.exists (fun bp -> fst bp = mp) abip.direct in
+  let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   if d
   then type_error mppl
        (fun ppf ->
@@ -752,9 +755,9 @@ let check_non_port_var_binding
            "source@ ports@ to@ variables@]"))
   else ()
 
-let check_item_type_add_binding
-    (si : state_info) (mi : pat) (typ : typ) : state_info = 
-  match mi with
+let check_pat_add_const
+    (si : state_info) (pat : pat) (typ : typ) : state_info = 
+  match pat with
   | PatWildcard _ -> si
   | PatId id      -> check_add_const id typ si
 
@@ -763,40 +766,89 @@ let rec get_loc_ty (ty : ty) : EcLocation.t =
   | NamedTy id -> loc id
   | TupleTy tl -> mergeall (List.map (fun t -> get_loc_ty t) tl)
 
-let get_loc_match_item (m_i : pat) : EcLocation.t = 
-  match m_i with
+let get_loc_pat (pat : pat) : EcLocation.t = 
+  match pat with
   | PatWildcard l -> l
   | PatId id      -> loc id
 
-let get_loc_match_item_list (tm : pat list) : EcLocation.t =
-  mergeall (List.map (fun mi -> get_loc_match_item mi) tm)
+let get_loc_pat_list (tm : pat list) : EcLocation.t =
+  mergeall (List.map (fun mi -> get_loc_pat mi) tm)
 
-let check_msg_content_bindings
+let ids_of_pat (pat : pat) : IdSet.t =
+  match pat with
+  | PatWildcard _ -> IdSet.empty
+  | PatId id      -> IdSet.singleton (unloc id)
+
+let ids_of_pats (pats : pat list) : IdSet.t =
+  List.fold_left
+  (fun uids pat -> IdSet.union uids (ids_of_pat pat))
+  IdSet.empty pats
+
+(* TODO: once we have tuple patterns, need to check for disjointness
+   of identifer binding *)
+
+let check_disjoint_bindings (pats : pat list) : unit =
+  ignore
+  (List.fold_left
+   (fun uids pat ->
+      let pat_uids = ids_of_pat pat in
+      let com_uids = IdSet.inter uids pat_uids in
+      if IdSet.is_empty com_uids
+      then IdSet.union uids pat_uids
+      else let ex_com = IdSet.choose com_uids in
+           type_error (get_loc_pat_list pats)
+           (fun ppf ->
+              fprintf ppf "@[pattern binds %s more than once@]" ex_com))
+   IdSet.empty pats)
+
+let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : string list * string)
-    (tm : pat list) (si : state_info) : state_info = 
+    (pats : pat list) (si : state_info) : state_info = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
-  let mt =
+  let mtyp =
     indexed_map_to_list
-    (unlocm((unloc(IdMap.find (snd mp) (snd bip))).params_map)) in
-  if List.length mt <> List.length tm
-  then type_error (get_loc_match_item_list tm)
-       (fun ppf ->
-          fprintf ppf
-          ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
-           "from@ the@ number@ of@ message@ parameters@]"))
-  else List.fold_left2 check_item_type_add_binding si tm mt
+    (unlocm ((unloc (IdMap.find (snd mp) (snd bip))).params_map)) in
+  let () =
+    if List.length mtyp <> List.length pats
+    then type_error (get_loc_pat_list pats)
+         (fun ppf ->
+            fprintf ppf
+            ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
+             "from@ the@ number@ of@ message@ parameters@]")) in
+  let () = check_disjoint_bindings pats in
+  List.fold_left2 check_pat_add_const si pats mtyp
+
+let check_missing_pat_args_with_msg_type
+    (bips : basic_inter_path list) (mp : string list * string)
+    (l : EcLocation.t) : unit = 
+  let bip = List.find (fun p -> fst p = fst mp) bips in
+  let mtyp =
+    indexed_map_to_list
+    (unlocm ((unloc (IdMap.find (snd mp) (snd bip))).params_map)) in
+  if List.length mtyp <> 0
+  then type_error l
+         (fun ppf ->
+            fprintf ppf
+            ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
+             "from@ the@ number@ of@ message@ parameters@]"))
 
 let check_pat_args
     (bips : basic_inter_path list) (msg_pat : msg_pat)
     (si : state_info) : state_info = 
   match msg_pat.pat_args with
-  | None      -> si
+  | None      ->
+      (match msg_pat.msg_path_pat.msg_or_star with
+       | MsgOrStarStar _ -> si
+       | MsgOrStarMsg id ->
+           (check_missing_pat_args_with_msg_type bips
+            (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) (loc id);
+            si))
   | Some pats -> 
-      match msg_pat.msg_path_pat.msg_or_star with
-      | MsgOrStarStar _ -> failure "cannot happen - check in parser"
-      | MsgOrStarMsg id ->
-          check_msg_content_bindings bips
-          (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) pats si
+      (match msg_pat.msg_path_pat.msg_or_star with
+       | MsgOrStarStar _ -> failure "cannot happen - check in parser"
+       | MsgOrStarMsg id ->
+           check_pat_args_with_msg_type bips
+           (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) pats si)
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : msg_pat)
@@ -806,6 +858,14 @@ let check_msg_pat
   let sv' =        
     match msg_pat.port_id with
     | Some id ->
+        let () =
+          let uids_pat_args = ids_of_pats (msg_pat.pat_args |? []) in
+          if IdSet.mem (unloc id) uids_pat_args
+          then type_error (loc id)
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[source port of message pattern is also bound in " ^^
+                   "message argument patterns@]")) in
         check_port_var_binding abip
         (unlocs msg_pat.msg_path_pat.inter_id_path) id si
     | None    ->
@@ -1034,28 +1094,32 @@ and check_branches
 and check_decode
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (si : state_info) (ex : expression_l) (ty : ty)
-    (m_is : pat list) (okins : instruction_l list located)
+    (pats : pat list) (okins : instruction_l list located)
     (erins : instruction_l list located)
       : state_info = 
-  if check_expression si ex <> univ_type
-  then type_error (loc ex)
-       (fun ppf ->
-          fprintf ppf "@[only@ expressions@ of@ univ@ type@ can@ be@ decoded@]")
-  else let dt =
-         match check_type ty with
-         | Tconstr (x, y) -> [Tconstr (x,y)]
-         | Ttuple  t      -> t
-         | _              ->
-             failure
-             "check_type is supposed to return only Tconstr or Ttuple." in
-       if List.length m_is <> List.length dt
-       then type_error (get_loc_match_item_list m_is)
-            (fun ppf ->
-               fprintf ppf
-               ("@[the@ number@ of@ bindings@ is@ different@ from@ the@ " ^^
-                "arity@ of@ decoded@ type@]"))
-       else let sv' = List.fold_left2 check_item_type_add_binding si m_is dt in
-            check_branches abip ss sv' okins (Some erins)
+  let () =
+    if check_expression si ex <> univ_type
+    then type_error (loc ex)
+         (fun ppf ->
+            fprintf ppf
+            "@[only@ expressions@ of@ univ@ type@ can@ be@ decoded@]") in
+  let dt =
+    match check_type ty with
+    | Tconstr (x, y) -> [Tconstr (x, y)]
+    | Ttuple  t      -> t
+    | _              ->
+        failure
+        "check_type is supposed to return only Tconstr or Ttuple." in
+  let () =
+    if List.length pats <> List.length dt
+    then type_error (get_loc_pat_list pats)
+         (fun ppf ->
+            fprintf ppf
+            ("@[the@ number@ of@ bindings@ is@ different@ from@ the@ " ^^
+             "arity@ of@ decoded@ type@]")) in
+  let () = check_disjoint_bindings pats in
+  let sv' = List.fold_left2 check_pat_add_const si pats dt in
+  check_branches abip ss sv' okins (Some erins)
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
