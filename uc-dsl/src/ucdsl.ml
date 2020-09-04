@@ -73,11 +73,16 @@ let () =
 
 let () =
   let len = String.length file in
-  if len < 4 || String.sub file (len - 3) 3 <> ".uc" then
-    (non_loc_error_message
-     (fun ppf ->
-        Format.fprintf ppf
-        "@[file lacks \".uc\" suffix: %s@]" file))
+  if len < 4 || String.sub file (len - 3) 3 <> ".uc"
+    then non_loc_error_message
+         (fun ppf ->
+            Format.fprintf ppf
+            "@[file lacks \".uc\" suffix: %s@]" file)
+  else if not (Sys.file_exists file)
+    then non_loc_error_message
+         (fun ppf ->
+            Format.fprintf ppf
+            "@[file does not exist: %s@]" file)
   else ()
 
 let () =
