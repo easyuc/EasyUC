@@ -410,9 +410,10 @@ let check_id_path
   else type_error loc
        (fun ppf ->
           fprintf ppf
-          ("@[%s@ is@ not@ the@ path@ of@ a@ component@ of@ an@ interface@ " ^^
-           "implemented@ by@ functionality@]")
-          (string_of_id_path uidp))
+          ("@[the@ party@ must@ serve@ sub-interfaces@ of@ the@ " ^^
+           "composite@ interfaces@ implemented@ by@ the@ " ^^
+           "functionality:@;<1 2>%a@]")
+          format_id_paths_comma ps)
 
 let check_served_paths
     (serves : string list located list)
@@ -579,7 +580,7 @@ let check_outgoing_msg_path
        (fun ppf ->
           fprintf ppf
           ("@[message@ path@ is@ not@ one@ of@ the@ possible@ outgoing@ " ^^
-           "messages:@;<1 2>%a@]")
+           "message@ paths:@;<1 2>%a@]")
        format_msg_path_list allps)
 
 let check_msg_path_pat
@@ -595,7 +596,7 @@ let check_msg_path_pat
            (fun ppf ->
               fprintf ppf
               ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
-               "incoming@ messages:@;<1 2>%a@]")
+               "incoming@ message@ paths:@;<1 2>%a@]")
               format_msg_path_list allps)
   | MsgOrStarStar _ ->
       if (List.exists
@@ -1001,7 +1002,9 @@ let check_send_direct
     | None   ->
         type_error l
         (fun ppf ->
-           fprintf ppf "@[missing@ destination@ port@]") in
+           fprintf ppf
+           ("@[outgoing@ messages@ to@ sub-interfaces@ of@ composite@ " ^^
+            "direct@ interfaces@ must@ have@ destination@ ports@]")) in
   check_msg_arguments msg.path msg.args mc sc sa
 
 let check_send_adversarial
@@ -1014,7 +1017,7 @@ let check_send_adversarial
         type_error l
         (fun ppf ->
            fprintf ppf
-           "@[only@ direct@ messages@ can@ have@ destination@ ports@]")
+           "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
     | None   -> () in
   check_msg_arguments msg.path msg.args mc sc sa
 
@@ -1033,7 +1036,7 @@ let check_send_internal
     | None -> () in
   check_msg_arguments msg.path msg.args mc sc sa
 
-let is_msg_path_inb_inter_id_paths
+let is_msg_path_in_basic_inter_paths
     (mp : msg_path) (abip : basic_inter_path list) : bool = 
   let bpo = List.find_opt (fun bp -> fst bp = unlocs mp.inter_id_path) abip in
   Option.is_some bpo
@@ -1058,11 +1061,11 @@ let check_send
   let bs = abip.direct @ abip.adversarial @ abip.internal in
   let mdbc = (get_msg_def_for_msg_path msg.path bs).params_map in
   match msg.path with
-  | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.direct ->
+  | ( _ as p) when is_msg_path_in_basic_inter_paths p abip.direct ->
       check_send_direct msg mdbc sc sa
-  | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.adversarial ->
+  | ( _ as p) when is_msg_path_in_basic_inter_paths p abip.adversarial ->
       check_send_adversarial msg mdbc sc sa
-  | ( _ as p) when is_msg_path_inb_inter_id_paths p abip.internal ->
+  | ( _ as p) when is_msg_path_in_basic_inter_paths p abip.internal ->
       check_send_internal msg mdbc sc sa
   | _ ->
       failure

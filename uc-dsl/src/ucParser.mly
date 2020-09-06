@@ -246,15 +246,15 @@ def :
    from or output to the adversary (or a simulator)). They have almost
    the same form. Both have two forms: basic, consisting of a nonempty
    sequence of input and output messages; or composite, consisting of
-   a nonempty sequence of named subinterfaces. Mesages have typed
-   parameters; when the list of parameters is empty, the "()" may be
-   omitted.  In direct interfaces, input messages must have source
-   ports (but may not have destination ports), whereas output messages
-   must have destination ports (but may not have source ports). In
-   adversarial interfaces, neither input nor output messages may have
-   source or target ports. The names of message parameters as well as
-   the names of source and destination ports should be considered
-   documentation *)
+   a nonempty sequence of named sub-interfaces, which are defined to be
+   basic interfaces. Messages have typed parameters; when the list of
+   parameters is empty, the "()" may be omitted.  In direct
+   interfaces, input messages must have source ports (but may not have
+   destination ports), whereas output messages must have destination
+   ports (but may not have source ports). In adversarial interfaces,
+   neither input nor output messages may have source or target
+   ports. The names of message parameters as well as the names of
+   source and destination ports should be considered documentation *)
 
 inter_def : 
   | DIRECT; ni = named_inter
@@ -315,7 +315,8 @@ comp_item :
    composite direct interfaces. Parameter lists may be empty, in which
    case the "()" may be omitted. A real functionality may have a
    non-zero number of parameters, but an ideal functionality must have
-   no parameters.
+   no parameters. Functionality parameters must be distinct from the
+   names of top-level functionality interfaces.
 
    A functionality always implements a composite direct interface
    (listed first), and optionally implements an adversarial interface
@@ -328,7 +329,8 @@ comp_item :
    whether the functionality is real or ideal. The body of a real
    functionality consists of: an optional list of subfunctionality
    declarations, whose names must be distinct from the functionality's
-   parameters, and which represent instances of ideal functionalities;
+   parameters, as well as distinct from the names of top-level
+   interfaces, and which represent instances of ideal functionalities;
    followed by a nonempty list of party definitions.
 
    The body of an ideal functionality is a state machine. *)
@@ -392,7 +394,11 @@ sub_fun_decl :
    interfaces, and the union of the basic interfaces served by the
    parties must sum up to the composite interfaces implemented by the
    functionality. The actions of a party are determined by a state
-   machine. *)
+   machine.
+
+   Basic direct interfaces are named by interface identifer paths, or
+   inter id paths, consisting of the name of a composite interface,
+   followed by the name of one of its sub-interfaces. *)
 
 party_def : 
   | PARTY; id = id_l; serves = serves; sm = state_machine
@@ -409,7 +415,7 @@ state_machine :
 (* A state machine consists of a list of named states, which are
    parameterized by typed values. The states must have unique names,
    and there must be exactly one initial state. That initial state
-   must take no paramters. A state's code declares local variables,
+   must take no parameters. A state's code declares local variables,
    and describes how incoming messages should be matched and processed
    via a nonempty list of message matching clauses *)
 
@@ -456,27 +462,29 @@ local_var_decl :
    A message path is a "."-separated sequence of identifiers, taking
    us - in the simplest case, starting from a functionality's direct
    composite interface - from the name of a composite interface, to
-   the name of one of its components, to one of the messages of
-   the component's basic interface.
+   the name of one of its sub-interfaces, to the name of one of the
+   messages of the sub-interface's basic interface.
+
+   The part of a message path excluding the message name is called
+   an interface identifer path - or inter id path.
 
    The situation is analogous for the composite adversarial interface
    of a real functionality (when it exists). In the case of the basic
    adversarial interface of an ideal functionality, the path takes us
-   from the name of that basic interface to one of the messages of
-   that interface.
+   from the name of that basic interface to the name of one of the
+   messages of that interface.
 
    In the case of a subfunctionality of a real functionality, the path
    takes us from the name of the subfunctionality, to one of the
-   subinterfaces of the direct composite interface implemented by the
+   sub-interfaces of the direct composite interface implemented by the
    ideal functionality that subfunctionality is an instance of, to one
-   of the messages of the basic direct interface of that
-   subinterface.
+   of the messages of the basic direct interface of that sub-interface.
 
    In the case of the parameter of a real functionality, the path
    takes us from the name of the parameter, to one of the
-   subinterfaces of the the direct composite interface corresponding
+   sub-interfaces of the the direct composite interface corresponding
    to the parameter, to one of the messages of the basic direct
-   interface of that subinterface.
+   interface of that sub-interface.
 
    An incoming message path is one that terminates with an incoming
    message, wheres an outcoming message path is one that terminates
@@ -495,20 +503,20 @@ local_var_decl :
 
      direct FwDir {D : fwDir}
 
-   Then FwDir.D.fwDir is the only valid incoming message path. If
+   Then FwDir.D.fw_req is the only valid incoming message path. If
    there is a subfunctionality
 
      subfun Fw1 = Forw
 
-   where the ideal functionality Forw has FwDir as its direct interface,
-   then
+   of a real functionality, where the ideal functionality Forw has
+   FwDir as its direct interface, then
 
      Fw1.D.fw_req
 
-   will be a valid message path.
+   will be a valid incoming message path.
 
    Message path patterns look like message paths, except that they may
-   end with "*" to match any completion of the given path.
+   end with "*" to match any completion of the given incoming message path.
 
    E.g.,
 
@@ -517,15 +525,22 @@ local_var_decl :
      FwDir.* - matches any incoming message path beginning with FwDir
      FwDir.D.* - matches any incoming message path beginning with FwDir.D
 
-   A message pattern is then an incoming message path pattern followed by
-   an optional tuple of argument patterns, and preceded - in the
-   case of nonadversarial messages - by a source port variable. E.g.,
+   A message pattern is then an incoming message path pattern followed
+   by an optional tuple of argument patterns, and optionally preceded
+   by a source port variable. E.g.,
 
      pt@FwDir.D.fw_req(pt' : port, u' : univ)
 
    will match a FwDir.D.fw_req message, and in the process pt will be
    bound to its source port, and pt' and u' will be bound to the
    message arguments.
+
+   Source port variables are mandatory when matching incoming messages
+   from direct composite interfaces implemented by the functionality,
+   but must be omitted when matching incoming messages from an
+   adversarial interface implemented by the functionality (if any), as
+   well as when matching direct messages originating from the
+   subfunctionalities of real functionalities.
 
    Finally, a message matching clause consists of a message pattern
    followed by the code to run on a matching message. *)
@@ -602,23 +617,20 @@ msg_path_pat_item :
    parameterized).
 
    A simulator's state machine is the same as an ordinary state
-   machine, except that the source port isn't bound in a message
-   pattern, since for simulators the sender is always known (it is
-   either adversary or ideal functionality).
+   machine, except that the source ports of incoming messages may not
+   be bound in message patterns, since for simulators the sender is
+   always known (it is either the adversary or the ideal
+   functionality).
 
    The initial state of the simulator can match only messages received
    on the interface it uses (interface to ideal functionality). Messages
    from the adversary will flow through the simulator.
 
-   The message paths of the matched messages must be fully qualified,
-   and only output messages from the adversarial interface of the
-   ideal functionality, or incoming adversarial messages to one of the
-   components of the simulator real functionality can be matched (and
-   the latter only in non-initial states).
-
-   Unlike the functionality, the simulator's message match doesn't
-   have to cover all of the possible messages, but it still cannot
-   match a mesage that was covered by a previous match. *)
+   Only output messages from the adversarial interface of the ideal
+   functionality, or incoming adversarial messages to the real
+   functionality being simulated, or to one of the parameters or
+   subfunctionalities of that real functionality, can be matched (and
+   the latter only in non-initial states). *)
 
 sim_def : 
   | SIM; name = id_l; USES uses = id_l;
@@ -710,14 +722,24 @@ control_transfer :
       { Fail }
 
 (* The send_and_transition command consists of two parts, the send
-   part which sends a message, and the transition part designates the
-   state to which control should later return to the functionality or
-   simulator. Direct messages must have a destination port specified;
-   adversarial and internal messages cannot have a port specified. In
-   a functionality, the message paths for direct and adversarial
-   messages do not need to be fully qualified when there is no
-   ambiguity. But message paths for simulators do need to be fully
-   qualified. *)
+   part which sends a message, and the transition part which
+   designates the state to which control should later return to in the
+   functionality or simulator. The send part consists of a message
+   expression, whereas the transition part consists of a state
+   expression.
+
+   A message expression consists of an outgoing message path, followed
+   by an optional list of arguments, of the types expected by the
+   message.  Direct messages to sub-interfaces of the composite direct
+   interface implemented by a real functionality must have destination
+   ports specified. Direct messages to sub-functionalities of real
+   functionalities must not have destination ports specified, and this
+   is also true for all adversarial messages in functionalities and
+   simulators.
+
+   State expressions consist of a state name of the same state
+   machine, followed by an optional list of arguments of the types
+   expected by that state. *)
 
 send_and_transition : 
   | SEND; msg = msg_expr; ANDTXT; TRANSITION; state = state_expr
