@@ -53,6 +53,11 @@ type qid = id list
 
 type msg_path_pat = {inter_id_path : qid; msg_or_star : msg_or_star}
 
+let msg_path_pat_ends_star mpp =
+  match mpp.msg_or_star with
+  | MsgOrStarMsg  _ -> false
+  | MsgOrStarStar _ -> true
+
 type pat =
   | PatId       of id
   | PatWildcard of EcLocation.t

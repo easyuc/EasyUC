@@ -745,7 +745,7 @@ let check_non_port_var_binding
   then type_error mppl
        (fun ppf ->
           fprintf ppf
-          ("@[message@ patterns@ matching@ messages@ of@ direct@ " ^^
+          ("@[non-\"*\"@ message@ patterns@ matching@ messages@ of@ direct@ " ^^
            "interfaces@ implemented@ by@ functionalities@ must@ bind@ " ^^
            "source@ ports@ to@ variables@]"))
   else ()
@@ -853,6 +853,7 @@ let check_msg_pat
   let sv' =        
     match msg_pat.port_id with
     | Some id ->
+        (* we know msg_pat.msg_path_pat does not end in * *)
         let () =
           let uids_pat_args = ids_of_pats (msg_pat.pat_args |? []) in
           if IdSet.mem (unloc id) uids_pat_args
@@ -864,10 +865,12 @@ let check_msg_pat
         check_port_var_binding abip
         (unlocs msg_pat.msg_path_pat.inter_id_path) id sc
     | None    ->
-        let mppl = msg_path_pat_loc msg_pat.msg_path_pat in
-        (check_non_port_var_binding abip 
-         (unlocs msg_pat.msg_path_pat.inter_id_path) mppl;
-         sc) in
+        if msg_path_pat_ends_star msg_pat.msg_path_pat
+        then sc
+        else let mppl = msg_path_pat_loc msg_pat.msg_path_pat in
+             (check_non_port_var_binding abip 
+              (unlocs msg_pat.msg_path_pat.inter_id_path) mppl;
+              sc) in
   let bips = flatten_all_basic_inter_paths abip in
   check_pat_args bips msg_pat sv'
 
