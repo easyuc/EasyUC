@@ -179,6 +179,21 @@ let check_is_composite
          (inter_kind_to_str false ik) uid)
   | CompositeTyd _ -> ()
 
+let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
+  {mdbt with
+     dir = invert_dir mdbt.dir}
+
+let invert_msg_dir_loc (mdbtl : message_def_body_tyd located) :
+      message_def_body_tyd located = 
+  let l = loc mdbtl in
+  let mdbt = unloc mdbtl in
+  let mdbt_inv = invert_msg_dir mdbt in
+  mk_loc l mdbt_inv
+
+let invert_basic_inter_body_tyd
+    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
+  IdMap.map invert_msg_dir_loc bibt
+
 (************************* real functionality checks **************************)
 
 (* functionality parameter checking *)
@@ -333,6 +348,11 @@ let check_toplevel_states (id : id) (states : state_def list)
 
 type basic_inter_path = string list * basic_inter_body_tyd
 
+let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path = 
+  let bibt = snd bip in
+  let bibt_inv = invert_basic_inter_body_tyd bibt in
+  (fst bip, bibt_inv)
+
 (* three kinds of basic_inter_path's - ones of a direct interface,
    ones of an adversarial interface, and internal ones (coming from a
    real functionality's subfunctionalities' direct interfaces) *)
@@ -383,6 +403,29 @@ let get_fun_inter_id_paths
     | Some id -> get_inter_id_paths_from_inter_id id adv_inter_map
     | None    -> [] in
   dir @ adv
+
+
+let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
+  {mdbt with
+     dir = invert_dir mdbt.dir}
+
+let invert_msg_dir_loc (mdbtl : message_def_body_tyd located) :
+      message_def_body_tyd located = 
+  let l = loc mdbtl in
+  let mdbt = unloc mdbtl in
+  let mdbt_inv = invert_msg_dir mdbt in
+  mk_loc l mdbt_inv
+
+let invert_basic_inter_body_tyd
+    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
+  IdMap.map invert_msg_dir_loc bibt
+
+let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path = 
+  let bibt = snd bip in
+  let bibt_inv = invert_basic_inter_body_tyd bibt in
+  (fst bip, bibt_inv)
+
+
 
 let check_id_paths_unique
     (msgf : formatter -> unit) (idps : string list located list) : unit = 
@@ -1235,14 +1278,14 @@ let check_state_code
   check_msg_match_deltas abip
   (List.map (fun mmc -> mmc.msg_pat) mmclauses)
 
-let get_dir_inter_id_impl_by_fun_uid
+let get_dir_inter_id_impl_by_fun_id
     (funid : string) (fun_map : fun_tyd IdMap.t) : string = 
   let func = IdMap.find funid fun_map in
   match unloc func with
   | FunBodyRealTyd fbr  -> fbr.id_dir_inter
   | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
-let get_params_of_real_fun_uid
+let get_params_of_real_fun_id
     (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
   let func = IdMap.find funid fun_map in
   match unloc func with
@@ -1253,8 +1296,8 @@ let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
-let get_internal_ports (real_fun : fun_body_tyd) : QidSet.t = 
-  get_keys_as_sing_qids (parties_of_fun_body_tyd real_fun)
+let get_internal_ports (real_fun_body : fun_body_tyd) : QidSet.t = 
+  get_keys_as_sing_qids (parties_of_fun_body_tyd real_fun_body)
 
 let filter_basic_inter_paths_by_serves
     (bips : basic_inter_path list) (serves : string list located list)
@@ -1288,7 +1331,7 @@ let get_all_basic_inter_paths_of_real_fun_party
   let sub_fun_bips_map =
     IdMap.mapi
     (fun sfid (sf : id) ->
-       let dirid = get_dir_inter_id_impl_by_fun_uid (unloc sf) funs in
+       let dirid = get_dir_inter_id_impl_by_fun_id (unloc sf) funs in
        get_basic_inter_paths sfid dirid dir_inter_map)
     (sub_funs_of_fun_body_tyd real_funb) in
   let param_bips_map =
@@ -1470,7 +1513,7 @@ let check_message_path_sim
        let umpiop = (unlocs mpp.inter_id_path) in
        match mpp.msg_or_star with
        | MsgOrStarMsg mt ->
-           if not(List.mem umpiop iops)
+           if not (List.mem umpiop iops)
              then invalid_dest ()
            else if List.exists
                    (fun bp ->
@@ -1533,7 +1576,7 @@ let check_msg_match_deltas_sim
           format_msg_path_list r)
 
 let check_sim_state_code
-    (bips : basic_inter_path list) (ss : state_sig IdMap.t)
+    (bips : basic_inter_path list) (states : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
     (isini : bool) (uid_uses : string) (mmclauses : msg_match_clause list)
       : unit = 
@@ -1544,106 +1587,90 @@ let check_sim_state_code
     List.map (fun (mmc : msg_match_clause) -> mmc.code) mmclauses in
   let () =
     List.iter2
-    (fun sc -> check_msg_match_code abip ss sc sa)
+    (fun sc -> check_msg_match_code abip states sc sa)
     scs codes in
   check_msg_match_deltas_sim abip isini uid_uses mmclauses
 
 let get_sim_components
-    (fun_map : fun_tyd IdMap.t) (r_f : string)
-    (args : string list) : fun_body_tyd QidMap.t = 
-  let urf = unloc (IdMap.find r_f fun_map) in
-  let qidmap_fun = QidMap.singleton [r_f] urf in
+    (fun_map : fun_tyd IdMap.t) (sim_real_fun_id : string)
+    (sim_real_fun_arg_uids : string list) : fun_body_tyd QidMap.t = 
+  let srf_body = unloc (IdMap.find sim_real_fun_id fun_map) in
+  let qidmap_fun = QidMap.singleton [sim_real_fun_id] srf_body in
   let qidmap_params =
     let pids =
-      IdMap.fold (fun pid _ l -> pid :: l) (params_of_fun_body_tyd urf) [] in
+      IdMap.fold
+      (fun pid _ l -> pid :: l)
+      (params_of_fun_body_tyd srf_body) [] in
     List.fold_left2
-    (fun mp pid fid ->
-       let fbt = unloc (IdMap.find fid fun_map) in
-       QidMap.add [r_f; pid] fbt mp)
-    QidMap.empty pids args in
+    (fun mp pid aid ->
+       let a_body = unloc (IdMap.find aid fun_map) in
+       QidMap.add [sim_real_fun_id; pid] a_body mp)
+    QidMap.empty pids sim_real_fun_arg_uids in
   let qidmap_subfuns =
     IdMap.fold
-    (fun sfid sfd mp ->
-       let sfd_fbt = unloc (IdMap.find (unloc sfd) fun_map) in
-       QidMap.add [r_f; sfid] sfd_fbt mp)
-    (sub_funs_of_fun_body_tyd urf) QidMap.empty in
+    (fun sfid ideal_fun_id mp ->
+       let ideal_body = unloc (IdMap.find (unloc ideal_fun_id) fun_map) in
+       QidMap.add [sim_real_fun_id; sfid] ideal_body mp)
+    (sub_funs_of_fun_body_tyd srf_body) QidMap.empty in
   let disj = (fun _ _ _ -> failure "cannot happen") in
   QidMap.union disj qidmap_fun (QidMap.union disj qidmap_params qidmap_subfuns)
                 
-let get_component_adv_inter_id_paths
-    (adv_inter_map : inter_tyd IdMap.t) (f : fun_body_tyd)
+let get_fun_adv_basic_inter_paths
+    (adv_inter_map : inter_tyd IdMap.t) (fun_body : fun_body_tyd)
       : basic_inter_path list = 
-  match id_adv_inter_of_fun_body_tyd f with
+  match id_adv_inter_of_fun_body_tyd fun_body with
   | Some id -> get_basic_inter_paths_from_inter_id id adv_inter_map 
   | None    -> []
 
-let invert_dir (dir : msg_dir) = 
-  match dir with In -> Out | Out -> In
-
-let invert_mdf (mdf : message_def_body_tyd) : message_def_body_tyd = 
-  {dir = invert_dir mdf.dir;
-   params_map = mdf.params_map; port = mdf.port}
-
-let invert_md_fl (mdfl : message_def_body_tyd located) :
-      message_def_body_tyd located = 
-  let l = loc mdfl in
-  let mdf = unloc mdfl in
-  let mdf' = invert_mdf mdf in
-  mk_loc l mdf'
-
-let invertb_i_ob_tyd (bio : basic_inter_body_tyd) : basic_inter_body_tyd = 
-  IdMap.map invert_md_fl bio
-
-let invert_msg_dirs (bp : basic_inter_path) : basic_inter_path = 
-  let bio = snd bp in
-  let bio' = invertb_i_ob_tyd bio in
-  (fst bp, bio')
-
 let get_sim_basic_inter_id_paths
     (adv_inter_map : inter_tyd IdMap.t) (uses : string)
-    (cs : fun_body_tyd QidMap.t) : basic_inter_path list = 
-  let sbps = QidMap.map (get_component_adv_inter_id_paths adv_inter_map) cs in
-  let bps =
+    (comps : fun_body_tyd QidMap.t) : basic_inter_path list = 
+  let bips_comps_map =
+    QidMap.map (get_fun_adv_basic_inter_paths adv_inter_map) comps in
+  let bips_map =
     QidMap.add
     []
-    (List.map invert_msg_dirs
+    (List.map invert_basic_inter_path
      (get_basic_inter_paths_from_inter_id uses adv_inter_map))
-    sbps in
+    bips_comps_map in
   QidMap.fold
-  (fun q bpl l -> l @ List.map (fun bp -> (q @ fst bp, snd bp)) bpl)
-  bps []
+  (fun qid bips_of_qid bips ->
+     bips @ List.map (fun bip -> (qid @ fst bip, snd bip)) bips_of_qid)
+  bips_map []
 
-let get_sim_internal_ports (cs : fun_body_tyd QidMap.t) : QidSet.t = 
-  let rcsips = QidMap.map (fun fb -> get_internal_ports fb) cs in
-  let rcsqips =
-    QidMap.mapi (fun q ips -> QidSet.map (fun ip -> q @ ip) ips) rcsips in
-  QidMap.fold (fun _ qips sip -> QidSet.union qips sip) rcsqips QidSet.empty
+let get_sim_internal_ports
+    (comps : fun_body_tyd QidMap.t) (sim_real_fun_id : string) : QidSet.t = 
+  let sim_real_fun_body = QidMap.find [sim_real_fun_id] comps in
+  let int_ports = get_internal_ports sim_real_fun_body in
+  QidSet.map (fun qid -> sim_real_fun_id :: qid) int_ports
         
 let check_sim_code
     (adv_inter_map : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t)
     (sim : sim_def_tyd) : unit = 
   let usim = unloc sim in
   let states = usim.states in
-  let ss = get_state_sigs states in
-  let cs = get_sim_components funs usim.sims usim.sims_arg_ids in
-  let bps = get_sim_basic_inter_id_paths adv_inter_map usim.uses cs in
+  let state_sigs = get_state_sigs states in
+  let comps = get_sim_components funs usim.sims usim.sims_arg_ids in
+  let bips = get_sim_basic_inter_id_paths adv_inter_map usim.uses comps in
   IdMap.iter
   (fun _ s -> 
      let us = unloc s in
      let sc =
-       init_state_context us (get_sim_internal_ports cs) ["simulator"] in
+       init_state_context us
+       (get_sim_internal_ports comps usim.sims) ["simulator"] in
      let sa = init_state_analysis in
-     check_sim_state_code bps ss sc sa us.is_initial usim.uses us.mmclauses)
+     check_sim_state_code bips state_sigs sc sa us.is_initial
+     usim.uses us.mmclauses)
   states
 
-let check_exists_f (funs : fun_tyd IdMap.t) (rf : id) = 
+let check_exists_fun (funs : fun_tyd IdMap.t) (rf : id) = 
   let urf = unloc rf in
   if exists_id funs urf then ()
   else type_error (loc rf)
        (fun ppf -> fprintf ppf "@[functionality@ isn't@ defined:@ %s@]" urf)
 
-let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) = 
-  let () = check_exists_f funs rf in
+let check_exists_and_is_real_fun (funs : fun_tyd IdMap.t) (rf : id) = 
+  let () = check_exists_fun funs rf in
   let f = unloc (IdMap.find (unloc rf) funs) in
   if not (is_real_fun_body_tyd f)
   then type_error (loc rf)
@@ -1652,56 +1679,56 @@ let check_is_real_f (funs : fun_tyd IdMap.t) (rf : id) =
           "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
 
 let check_sim_fun_args
-    (funs : fun_tyd IdMap.t) (_ : inter_tyd IdMap.t)
-    (rf : id) (params : id list located) = 
-  let d_ios = get_params_of_real_fun_uid funs (unloc rf) in
-  let d_ios' =
+    (funs : fun_tyd IdMap.t) (real_fun_id : id)
+    (args : id list located) : unit =
+  let dir_id_params = get_params_of_real_fun_id funs (unloc real_fun_id) in
+  let dir_id_args =
     List.map
-    (fun id ->
-       get_dir_inter_id_impl_by_fun_uid id funs) (unlocs (unloc params)) in
-  if List.length d_ios <> List.length d_ios'
-  then type_error (loc params)
-       (fun ppf ->
-          fprintf ppf
-          "@[wrong@ number@ of@ arguments@ for@ functionality@]")
-  else let () =
-         List.iteri
+    (fun id -> get_dir_inter_id_impl_by_fun_id id funs)
+    (unlocs (unloc args)) in
+  let () =
+    if List.length dir_id_params <> List.length dir_id_args
+    then type_error (loc args)
+         (fun ppf ->
+            fprintf ppf
+            "@[wrong@ number@ of@ arguments@ for@ functionality@]")
+    else List.iteri
          (fun i pid ->
-          if List.nth d_ios i <> List.nth d_ios' i
-          then type_error (loc pid)
-               (fun ppf ->
-                  fprintf ppf
-                  ("@[argument@ %d@ implements@ composite@ direct@ " ^^
-                   "interface@ %s,@ whereas@ it@ should@ implement@ %s@]")
-                  (i + 1) (List.nth d_ios' i) (List.nth d_ios i)))
-         (unloc params) in
-       List.iter
-       (fun pid ->
-              let f = unloc (IdMap.find (unloc pid) funs) in
-              match f with
-              | FunBodyRealTyd _ ->
-                  type_error (loc pid)
-                  (fun ppf ->
-                     fprintf ppf
-                     ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
-                      "be@ an@ ideal@ functionality@]"))
-              | FunBodyIdealTyd _  ->
-                  (* we know the ideal functionality implements a basic
-                     adversarial interface *)
-                  ())
-       (unloc params)
+            if List.nth dir_id_params i <> List.nth dir_id_args i
+            then type_error (loc pid)
+                 (fun ppf ->
+                    fprintf ppf
+                    ("@[argument@ %d@ implements@ composite@ direct@ " ^^
+                     "interface@ %s,@ whereas@ it@ should@ implement@ %s@]")
+                    (i + 1) (List.nth dir_id_args i)
+                    (List.nth dir_id_params i)))
+         (unloc args) in
+  List.iter
+  (fun pid ->
+     let funb = unloc (IdMap.find (unloc pid) funs) in
+     match funb with
+     | FunBodyRealTyd _ ->
+         type_error (loc pid)
+         (fun ppf ->
+            fprintf ppf
+            ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
+             "be@ an@ ideal@ functionality@]"))
+     | FunBodyIdealTyd _  ->
+         (* we know the ideal functionality implements a basic
+            adversarial interface *)
+         ())
+  (unloc args)
 
-let check_sim_decl
+let check_sim_toplevel
     (adv_inter_map : inter_tyd IdMap.t)
     (fun_map : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
   let () = check_exists_inter AdversarialInterKind adv_inter_map sd.uses in
   let () = check_is_basic AdversarialInterKind adv_inter_map sd.uses in
   let uses = unloc sd.uses in
-  let () = check_is_real_f fun_map sd.sims in
+  let () = check_exists_and_is_real_fun fun_map sd.sims in
   let sims = unloc sd.sims in
-  let () = List.iter (check_exists_f fun_map) (unloc sd.sims_arg_ids) in
-  let () =
-    check_sim_fun_args fun_map adv_inter_map sd.sims sd.sims_arg_ids in
+  let () = List.iter (check_exists_fun fun_map) (unloc sd.sims_arg_ids) in
+  let () = check_sim_fun_args fun_map sd.sims sd.sims_arg_ids in
   let sims_arg_ids = unlocs (unloc sd.sims_arg_ids) in
   let body = check_toplevel_states sd.id sd.states in
   mk_loc (loc sd.id)
@@ -1715,8 +1742,8 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let sdt = check_sim_decl maps.adv_inter_map maps.fun_map simd in
-  let () = check_sim_code  maps.adv_inter_map maps.fun_map sdt in
+  let sdt = check_sim_toplevel maps.adv_inter_map maps.fun_map simd in
+  let () = check_sim_code maps.adv_inter_map maps.fun_map sdt in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
 (***************************** definition checks ******************************)

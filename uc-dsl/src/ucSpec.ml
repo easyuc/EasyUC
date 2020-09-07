@@ -17,6 +17,9 @@ type msg_dir =
   | In
   | Out
 
+let invert_dir (dir : msg_dir) = 
+  match dir with In -> Out | Out -> In
+
 type ty =
   | NamedTy of id
   | TupleTy of ty list
