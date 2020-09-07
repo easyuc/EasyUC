@@ -527,7 +527,7 @@ local_var_decl :
 
    A message pattern is then an incoming message path pattern followed
    by an optional tuple of argument patterns, and optionally preceded
-   by a source port variable. E.g.,
+   by a source port identifier. E.g.,
 
      pt@FwDir.D.fw_req(pt' : port, u' : univ)
 
@@ -535,7 +535,7 @@ local_var_decl :
    bound to its source port, and pt' and u' will be bound to the
    message arguments.
 
-   Source port variables are mandatory when matching incoming messages
+   Source port identifiers are mandatory when matching incoming messages
    from direct composite interfaces implemented by the functionality,
    but must be omitted when matching incoming messages from an
    adversarial interface implemented by the functionality (if any), as
@@ -698,7 +698,7 @@ elifthenelse_u :
       { ITE (c, tins, ift) }
 
 (* A decode command attempts to decode a value of type univ as some
-   other type. If this succeeds, the variables in the pattern are
+   other type. If this succeeds, the identifiers in the pattern are
    bound. Otherwise the error branch is executed. *)
 
 decode : 

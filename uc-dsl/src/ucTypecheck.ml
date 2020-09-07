@@ -730,11 +730,11 @@ let check_port_var_binding
        (fun ppf ->
           fprintf ppf
           (if is_sim
-           then ("@[message@ patterns@ of@ simulator@ may@ not@ bind@ " ^^
-                 "source@ ports@ of@ variables@]")
+           then ("@[message@ patterns@ matching@ adversarial@ messages@ " ^^
+                 "may@ not@ bind@ source@ ports@ to@ identifiers")
            else ("@[message@ patterns@ matching@ adversarial@ and@ " ^^
                  "internal@ messages@ may@ not@ bind@ source@ ports@ " ^^
-                 "to@ variables@]")))
+                 "to@ identifiers@]")))
   else check_add_const vid port_type sc
 
 let check_non_port_var_binding
@@ -747,7 +747,7 @@ let check_non_port_var_binding
           fprintf ppf
           ("@[non-\"*\"@ message@ patterns@ matching@ messages@ of@ direct@ " ^^
            "interfaces@ implemented@ by@ functionalities@ must@ bind@ " ^^
-           "source@ ports@ to@ variables@]"))
+           "source@ ports@ to@ identifiers@]"))
   else ()
 
 let check_pat_add_const
@@ -832,12 +832,13 @@ let check_pat_args
     (sc : state_context) : state_context = 
   match msg_pat.pat_args with
   | None      ->
-      (match msg_pat.msg_path_pat.msg_or_star with
-       | MsgOrStarStar _ -> sc
-       | MsgOrStarMsg id ->
-           (check_missing_pat_args_with_msg_type bips
-            (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) (loc id);
-            sc))
+      let () =
+        match msg_pat.msg_path_pat.msg_or_star with
+        | MsgOrStarStar _ -> ()
+        | MsgOrStarMsg id ->
+            check_missing_pat_args_with_msg_type bips
+            (unlocs msg_pat.msg_path_pat.inter_id_path, unloc id) (loc id) in
+      sc
   | Some pats -> 
       (match msg_pat.msg_path_pat.msg_or_star with
        | MsgOrStarStar _ -> failure "cannot happen - check in parser"
@@ -1001,30 +1002,28 @@ let check_send_direct
 let check_send_adversarial
     (msg : msg_expr) (param_tis : typ_index IdMap.t) (sc : state_context)
     (sa : state_analysis) : unit = 
-  let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
-    | Some _ ->
-        type_error l
+    | Some pid ->
+        type_error (loc pid)
         (fun ppf ->
            fprintf ppf
            "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
-    | None   -> () in
+    | None     -> () in
   check_msg_arguments msg.path msg.args param_tis sc sa
 
 let check_send_internal
     (msg : msg_expr) (param_tis : typ_index IdMap.t)
     (sc : state_context) (sa : state_analysis) : unit = 
-  let l = msg_path_loc msg.path in
   let () =
     match msg.port_id with
-    | Some _ ->
-        type_error l
+    | Some pid ->
+        type_error (loc pid)
         (fun ppf ->
            fprintf ppf
-           ("@[messages@ to@ subfunctionalities@ cannot@ have@ " ^^
+           ("@[messages@ to@ subfunctionalities@ must@ not@ have@ " ^^
             "destination@ ports@]"))
-    | None   -> () in
+    | None     -> () in
   check_msg_arguments msg.path msg.args param_tis sc sa
 
 let is_msg_path_in_basic_inter_paths
@@ -1446,12 +1445,6 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
 
 (****************************** simulator checks ******************************)
 
-let check_msg_code_sim
-    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (mmc : msg_match_clause) (sc : state_context) (sa : state_analysis)
-      : unit = 
-  check_msg_match_code abip ss sc sa mmc.code
-
 let check_message_path_sim
     (bip : basic_inter_path list) (isini : bool)
     (mmc : msg_match_clause) : unit = 
@@ -1500,8 +1493,17 @@ let check_message_path_sim
 let check_match_bindings_sim
     (abip : basic_inter_path list) (sc : state_context)
     (mmc : msg_match_clause) : state_context = 
-  let mm = mmc.msg_pat in
-  check_pat_args abip mm sc
+  let msg_pat = mmc.msg_pat in
+  let () =
+    match msg_pat.port_id with
+    | None     -> ()
+    | Some pid ->
+        type_error (loc pid)
+        (fun ppf ->
+           fprintf ppf
+           ("@[message@ patterns@ matching@ adversarial@ messages@ " ^^
+            "may@ not@ bind@ source@ ports@ to@ identifiers")) in
+  check_pat_args abip msg_pat sc
 
 let check_msg_match_deltas_sim
     (abip : all_basic_inter_paths) (isini : bool) (uid_uses : string)
@@ -1538,10 +1540,12 @@ let check_sim_state_code
   let () = List.iter (check_message_path_sim bips isini) mmclauses in
   let scs = List.map (check_match_bindings_sim bips sc) mmclauses in
   let abip = {direct = []; adversarial = bips; internal = []} in
+  let codes =
+    List.map (fun (mmc : msg_match_clause) -> mmc.code) mmclauses in
   let () =
     List.iter2
-    (fun mmc sc -> check_msg_code_sim abip ss mmc sc sa)
-    mmclauses scs in
+    (fun sc -> check_msg_match_code abip ss sc sa)
+    scs codes in
   check_msg_match_deltas_sim abip isini uid_uses mmclauses
 
 let get_sim_components
