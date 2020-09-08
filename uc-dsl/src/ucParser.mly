@@ -167,8 +167,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %right    AND
 %nonassoc NOT
 %nonassoc EQ 
-%left   HAT
-%right ROP4
+%left     HAT
+%right    ROP4
 
 %nonassoc ENCODE
 
@@ -614,7 +614,8 @@ msg_path_pat_item :
 (* A simulator uses a basic adversarial interface, to communicate with
    an ideal functionality. It simulates a real functionality, applied
    to ideal functionalities (in the case the real functionality is
-   parameterized).
+   parameterized). The simulation consists of interacting with the
+   adversary approximately as the real functionality would.
 
    A simulator's state machine is the same as an ordinary state
    machine, except that the source ports of incoming messages may not
@@ -624,13 +625,44 @@ msg_path_pat_item :
 
    The initial state of the simulator can match only messages received
    on the interface it uses (interface to ideal functionality). Messages
-   from the adversary will flow through the simulator.
+   from the adversary will flow through the simulator. (Before the initial
+   message arrives from the ideal functionality, the simulator doesn't
+   know the address of the ideal (and thus real) functionality.
 
-   Only output messages from the adversarial interface of the ideal
-   functionality, or incoming adversarial messages to the real
-   functionality being simulated, or to one of the parameters or
-   subfunctionalities of that real functionality, can be matched (and
-   the latter only in non-initial states). *)
+   Message paths for simulators look like the following, where: USES
+   is the basic adversarial interface the simulator uses to
+   communicate with the ideal functionality; and SIMS is the real
+   functionality the simulator simulates.
+
+     USES.msg
+
+       from the simulator's point of view: "in" messages are outgoing,
+       and so can be pattern matched by the simulator; and "out"
+       message are incoming ones, and so can be output by the
+       simulator
+
+     SIMS.RFAdv.BasicAdv.msg
+
+       where RFAdv is the composite adversarial interface (if any)
+       that SIMS implements
+
+     SIMS.SubFun.BasicAdv.msg
+
+       where SubFun is a subfunctionality of SIMS, BasicAdv is the
+       basic adversarial interface of the ideal functionality that
+       SubFun is an instance of, and msg is one of BasicAdv's messages
+
+     SIMS.Param.BasicAdv.msg
+
+       where Param is a parameter name of SIMS, BasicAdv is the basic
+       adversarial interface the corresponding argument (an ideal
+       functionality) implements, and msg is one of BasicAdv's
+       messages
+
+   Expressions in simulators may used qualified identifers of the form
+   SIMS.Party, where Party is the name of one of SIMS's parties, which
+   have type port and stand for the internal port of the given party
+   *)
 
 sim_def : 
   | SIM; name = id; USES uses = id;
@@ -767,7 +799,9 @@ state_expr :
 
 (* The typ type is a simplified version of ty type from EcTypes, for
    more info on what was removed from ec_types look at documentation
-   in UcTypes. *)
+   in UcTypes.
+
+   port and univ are special types, introduced by the DSL *)
 
 type_binding : 
   | name = id; COLON; t = ty; { {id = name; ty = t} : type_binding }
@@ -795,7 +829,15 @@ args :
     { args }
 
 (* The syntax for expressions and operators is a simplified version of
-   syntax from EcParser of EasyCrypt. *)
+   the syntax from EcParser of EasyCrypt.
+
+   In real functionalities, the names of parties can be used as
+   values of type port in expressions. They stand for the internal
+   ports of those parties.
+
+   In a simulator that simulates a real functionality SIMS, SIMS.Party,
+   where Party is one of SIMS's parties, can be used in expressions
+   with type port with the same meaning. *)
 
 %inline uniop : 
   | NOT
