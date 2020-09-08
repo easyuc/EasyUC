@@ -9,9 +9,7 @@ let parse_error = error_message
 
 let type_error = error_message
 
-type string_l = string located
-
-type id = string_l
+type id = string located
 
 type msg_dir =
   | In
@@ -71,37 +69,37 @@ type msg_pat =
 type msg_pat_body =
   {msg_path_pat : msg_path_pat; pat_args : pat list option}
 
-type expression =
+type expression_u =
   | Id    of qid
-  | Tuple of expression_l list
-  | App   of id * expression_l list
-  | Enc   of expression_l
+  | Tuple of expression list
+  | App   of id * expression list
+  | Enc   of expression
 
-and expression_l = expression located
+and expression = expression_u located
 
 type msg_path = {inter_id_path : qid; msg : id}
 
 type msg_expr =
-  {path : msg_path; args : expression_l list located; port_id : id option}
+  {path : msg_path; args : expression list located; port_id : id option}
 
-type state_expr = {id : id; args : expression_l list located}
+type state_expr = {id : id; args : expression list located}
 
 type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 
-type instruction =
-  | Assign of id * expression_l
-  | Sample of id * expression_l
-  | ITE of expression_l * instruction_l list located *
-           instruction_l list located option
+type instruction_u =
+  | Assign of id * expression
+  | Sample of id * expression
+  | ITE of expression * instruction list located *  (* if-then-else *)
+           instruction list located option
   | Decode of
-      expression_l * ty * pat list * instruction_l list located *
-      instruction_l list located
+      expression * ty * pat list * instruction list located *
+      instruction list located
   | SendAndTransition of send_and_transition
   | Fail
 
-and instruction_l = instruction located
+and instruction = instruction_u located
 
-type msg_match_clause = {msg_pat : msg_pat; code : instruction_l list located}
+type msg_match_clause = {msg_pat : msg_pat; code : instruction list located}
 
 type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 

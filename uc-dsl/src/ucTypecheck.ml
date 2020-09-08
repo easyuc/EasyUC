@@ -980,18 +980,18 @@ let check_qid_type
       if check_is_internal_port sc qid then port_type else raise Not_found
 
 let check_expression
-    (sc : state_context) (sa : state_analysis) (expr : expression_l) : typ = 
+    (sc : state_context) (sa : state_analysis) (expr : expression) : typ = 
   UcExpressions.check_expression (check_qid_type sc sa) expr
 
 let check_val_assign
     (sc : state_context) (sa : state_analysis)
-    (vid : id) (ex : expression_l) : state_analysis = 
+    (vid : id) (ex : expression) : state_analysis = 
   let etyp = check_expression sc sa ex in
   check_assign_core vid etyp sc sa
 
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis)
-    (vid : id) (ex : expression_l) : state_analysis =
+    (vid : id) (ex : expression) : state_analysis =
   let etyp = check_expression sc sa ex in
   if not (UcExpressions.is_distribution etyp)
   then type_error (loc ex)
@@ -1029,7 +1029,7 @@ let check_state_expr
        te
 
 let check_msg_arguments
-    (mp : msg_path) (es : expression_l list located) (mc : typ_index IdMap.t)
+    (mp : msg_path) (es : expression list located) (mc : typ_index IdMap.t)
     (sc : state_context) (sa : state_analysis) : unit = 
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
@@ -1141,8 +1141,8 @@ let merge_state_analysis (sa1 : state_analysis) (sa2 : state_analysis)
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
-    (ex : expression_l) (tins : instruction_l list located)
-    (eins : instruction_l list located option)
+    (ex : expression) (tins : instruction list located)
+    (eins : instruction list located option)
       : state_analysis = 
   if check_expression sc sa ex <> bool_type
   then type_error (loc ex)
@@ -1154,8 +1154,8 @@ let rec check_ite
 and check_branches
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc1 : state_context) (sc2 : state_context) (sa : state_analysis)
-    (ins1 : instruction_l list located)
-    (ins2 : instruction_l list located option)
+    (ins1 : instruction list located)
+    (ins2 : instruction list located option)
       : state_analysis = 
   let sa1 = check_instructions abip ss sc1 sa ins1 in
   let sa2 =
@@ -1167,9 +1167,9 @@ and check_branches
 and check_decode
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
-    (ex : expression_l) (ty : ty)
-    (pats : pat list) (okins : instruction_l list located)
-    (erins : instruction_l list located)
+    (ex : expression) (ty : ty)
+    (pats : pat list) (okins : instruction list located)
+    (erins : instruction list located)
       : state_analysis = 
   let () =
     if check_expression sc sa ex <> univ_type
@@ -1197,7 +1197,7 @@ and check_decode
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sc : state_context) (sa : state_analysis) (i : instruction_l)
+    (sc : state_context) (sa : state_analysis) (i : instruction)
       : state_analysis = 
   match unloc i with
   | Assign (vid, ex)                    -> check_val_assign sc sa vid ex
@@ -1212,7 +1212,7 @@ and check_instruction
 and check_instructions
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
-    (is : instruction_l list located)
+    (is : instruction list located)
       : state_analysis = 
   let uis = unloc is in
   List.fold_left (check_instruction abip ss sc) sa uis
@@ -1231,7 +1231,7 @@ let failure_to_transfer_control (l : EcLocation.t) =
      ("@[message@ match@ clause@ must@ end@ with@ control@ transfer@ via@ " ^^
       "\"fail\"@ or@ \"send-and-transition\"@ instruction@]"))
 
-let rec check_instrs_transfer_at_end (is : instruction_l list located) : unit =
+let rec check_instrs_transfer_at_end (is : instruction list located) : unit =
   let uis = unloc is in
   match uis with
   | [] -> failure_to_transfer_control (loc is)
@@ -1240,11 +1240,11 @@ let rec check_instrs_transfer_at_end (is : instruction_l list located) : unit =
       (List.iter check_instr_not_transfer xs;
        check_instr_end_in_transfer (List.last is))
 
-and check_instrs_not_transfer (is : instruction_l list located) : unit =
+and check_instrs_not_transfer (is : instruction list located) : unit =
   let uis = unloc is in
   List.iter check_instr_not_transfer uis
 
-and check_instr_end_in_transfer (instr : instruction_l) : unit =
+and check_instr_end_in_transfer (instr : instruction) : unit =
   let uinstr = unloc instr in
   match uinstr with
   | Assign _                    -> failure_to_transfer_control (loc instr)
@@ -1260,7 +1260,7 @@ and check_instr_end_in_transfer (instr : instruction_l) : unit =
       (check_instrs_transfer_at_end oks;
        check_instrs_transfer_at_end nots)
 
-and check_instr_not_transfer (instr : instruction_l) : unit =
+and check_instr_not_transfer (instr : instruction) : unit =
   let uinstr = unloc instr in
   match uinstr with
   | Assign _                    -> ()
@@ -1279,7 +1279,7 @@ and check_instr_not_transfer (instr : instruction_l) : unit =
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
-    (is : instruction_l list located)
+    (is : instruction list located)
       : unit = 
   let () = ignore (check_instructions abip ss sc sa is) in
   check_instrs_transfer_at_end is

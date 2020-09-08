@@ -192,12 +192,12 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
      }
    }
 
-%inline id_l : 
-  | id_l = loc(ID)
-      { id_l }
+%inline id : 
+  | id = loc(ID)
+      { id }
 
 %inline qid : 
-  | qid = separated_nonempty_list(DOT, id_l)
+  | qid = separated_nonempty_list(DOT, id)
       { qid }
 
 (* a UC DSL specification consists of a preamble which references
@@ -216,14 +216,14 @@ preamble :
 (* require .uc files - not yet implemented *)
 
 uc_requires : 
-  | UC_REQUIRES uc_reqs = nonempty_list(id_l) DOT
+  | UC_REQUIRES uc_reqs = nonempty_list(id) DOT
       { uc_reqs }
 
 (* require import .ec files, making types and operators available
    for use in UC DSL specification *)
 
 ec_requires : 
-  | EC_REQUIRES ec_reqs = nonempty_list(id_l) DOT
+  | EC_REQUIRES ec_reqs = nonempty_list(id) DOT
       { ec_reqs }
 
 (* a definition is either a definition of an interface, a
@@ -265,7 +265,7 @@ inter_def :
         AdversarialInter ni }
 
 named_inter : 
-  | inter_id = id_l; LBRACE; inter = loc(option(inter)); RBRACE
+  | inter_id = id; LBRACE; inter = loc(option(inter)); RBRACE
       { match unloc inter with
         | None       ->
             parse_error (loc inter)
@@ -283,18 +283,18 @@ message_def :
   | IN; mb = message_body
       { {dir = In; id = (mb : message_body).id; params = mb.params;
          port = None} : message_def }
-  | IN; pt = id_l; AT; mb = message_body
+  | IN; pt = id; AT; mb = message_body
       { {dir = In; id = (mb : message_body).id; params = mb.params;
          port = Some pt} }
   | OUT; mb = message_body
       { {dir = Out; id = (mb : message_body).id; params = mb.params;
          port = None} }
-  | OUT; mb = message_body; AT; pt = id_l
+  | OUT; mb = message_body; AT; pt = id
       { {dir = Out; id = (mb : message_body).id; params = mb.params;
          port = Some pt} }
 
 message_body :
-  | msg_id = id_l; params = option(message_params)
+  | msg_id = id; params = option(message_params)
       { let params = params |? [] in
         {id = msg_id; params = params} : message_body }
 
@@ -303,7 +303,7 @@ message_params :
     { params }
 
 comp_item :
-  | sub_id = id_l; COLON; inter_id = id_l
+  | sub_id = id; COLON; inter_id = id
       { {sub_id = sub_id; inter_id = inter_id} }
 
 (* Functionalities *)
@@ -336,8 +336,8 @@ comp_item :
    The body of an ideal functionality is a state machine. *)
 
 fun_def :        
-  | FUNCT; name = id_l; params = loc(option(fun_params));
-    IMPLEM; dir_id = id_l; adv_id = option(id_l);
+  | FUNCT; name = id; params = loc(option(fun_params));
+    IMPLEM; dir_id = id; adv_id = option(id);
     fun_body = fun_body
       { let uparams = unloc params |? [] in
         let () =
@@ -356,7 +356,7 @@ fun_params :
       { fps }
 
 fun_param : 
-  | name = id_l; COLON; id_dir = id_l
+  | name = id; COLON; id_dir = id
       { {id = name; id_dir = id_dir} : fun_param }
 
 fun_body :
@@ -382,7 +382,7 @@ ideal_fun_body :
    of an ideal functionality *)
 
 sub_fun_decl : 
-  | SUBFUN; id = id_l; EQ; fun_id = id_l;
+  | SUBFUN; id = id; EQ; fun_id = id;
       { {id = id; fun_id = fun_id} : sub_fun_decl }
 
 (* A functionality party serves exactly one basic direct interface,
@@ -401,7 +401,7 @@ sub_fun_decl :
    followed by the name of one of its sub-interfaces. *)
 
 party_def : 
-  | PARTY; id = id_l; serves = serves; sm = state_machine
+  | PARTY; id = id; serves = serves; sm = state_machine
      { {id = id; serves = serves; states = sm} }
 
 serves : 
@@ -433,7 +433,7 @@ state_def :
         {id = (st : state).id; params = st.params; code = st.code} }
 
 state : 
-  | STATE; id = id_l; params = loc(option(state_params)); code = state_code
+  | STATE; id = id; params = loc(option(state_params)); code = state_code
       { let uparams = unloc params |? [] in
         {id = id;
          params = mk_loc (loc params) uparams;
@@ -452,7 +452,7 @@ local_var_decls :
       { List.flatten lvds }
 
 local_var_decl : 
-  | VAR; lvs = nonempty_list (id_l); COLON; t = ty SEMICOLON
+  | VAR; lvs = nonempty_list (id); COLON; t = ty SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
 (* Message matching specifies how incoming messages of a functionality
@@ -569,7 +569,7 @@ msg_match_clause :
         {msg_pat = msg_pat; code = code } }
 
 msg_pat :
-  | port_id = id_l; AT; mmb = msg_pat_body
+  | port_id = id; AT; mmb = msg_pat_body
       { match (mmb : msg_pat_body).msg_path_pat.msg_or_star with
         | MsgOrStarMsg _ ->
             {port_id = Some port_id; msg_path_pat = mmb.msg_path_pat;
@@ -593,7 +593,7 @@ pat_args :
       { pa }
 
 pat : 
-  | id = id_l
+  | id = id
       { PatId id }
   | l = loc(UNDERSCORE)
       { PatWildcard (loc l) }
@@ -604,7 +604,7 @@ msg_path_pat :
         msg_path_pat_items_to_msg_path_pat mpis }
 
 msg_path_pat_item : 
-  | id = id_l
+  | id = id
       { MsgPathPatItemId id }
   | l = loc(STAR)
       { MsgPathPatItemStar (loc l) }
@@ -633,15 +633,15 @@ msg_path_pat_item :
    the latter only in non-initial states). *)
 
 sim_def : 
-  | SIM; name = id_l; USES uses = id_l;
-    SIMS sims = id_l; args = loc(option(fun_args));
+  | SIM; name = id; USES uses = id;
+    SIMS sims = id; args = loc(option(fun_args));
     sms = state_machine
       { let uargs = unloc args |? [] in
         {id = name; uses = uses; sims = sims;
          sims_arg_ids = mk_loc (loc args) uargs; states = sms} }
 
 fun_args : 
-  | LPAREN; args = separated_list(COMMA, id_l); RPAREN
+  | LPAREN; args = separated_list(COMMA, id); RPAREN
       { args }
 
 (* Instructions *)
@@ -669,9 +669,9 @@ instruction_u :
    type). *)
 
 assignment : 
-  | vid = id_l; ASGVAL; e = expression; SEMICOLON
+  | vid = id; ASGVAL; e = expression; SEMICOLON
       { Assign (vid, e) }
-  | vid = id_l; ASGSAMPLE; e = expression; SEMICOLON
+  | vid = id; ASGSAMPLE; e = expression; SEMICOLON
       { Sample (vid, e) }
 
 (* Conditional (if-then-else) instructions *)
@@ -755,11 +755,11 @@ msg_expr :
         {path = path; args = mk_loc (loc args) uargs; port_id = port_id} }
 
 dest :
-  | AT; pv = id_l
+  | AT; pv = id
       { pv }
 
 state_expr : 
-  | id = id_l; args = loc(option(args))
+  | id = id; args = loc(option(args))
       { let uargs = unloc args |? [] in
         {id = id; args = mk_loc (loc args) uargs} }
 
@@ -770,19 +770,19 @@ state_expr :
    in UcTypes. *)
 
 type_binding : 
-  | name = id_l; COLON; t = ty; { {id = name; ty = t} : type_binding }
+  | name = id; COLON; t = ty; { {id = name; ty = t} : type_binding }
 
 type_bindings : 
   | ps = separated_list(COMMA, type_binding) { ps }
 
 ty : 
-  | name = id_l
+  | name = id
       { NamedTy name }
   | tuphd = ty_br; STAR; tuptl = separated_nonempty_list(STAR, ty_br)
       { TupleTy (tuphd :: tuptl) }
 
 ty_br : 
-  | name = id_l
+  | name = id
       { NamedTy name }
   | LPAREN; tuphd = ty_br; STAR;
     tuptl = separated_nonempty_list(STAR, ty_br); RPAREN
@@ -824,7 +824,7 @@ args :
 expression_u : 
   | e = s_expression_u
      { e }
-  | f = id_l; args = s_expression+
+  | f = id; args = s_expression+
      { App (f, args) }
   | e1 = expression; op = loc(binop); e2 = expression
      { App (op,[e1; e2]) }

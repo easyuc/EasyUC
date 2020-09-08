@@ -41,7 +41,7 @@ let check_expr_id (sv : qid -> typ) (qid : qid) : typ =
               "@[nonexisting@ variable@ or@ constant:@ %s@]"
               (string_of_id_path (unlocs qid))))
 
-let rec check_expression (sv : qid -> typ) (expr : expression_l) : typ =
+let rec check_expression (sv : qid -> typ) (expr : expression) : typ =
   match unloc expr with
   | Id id         -> check_expr_id sv id
   | Tuple el      ->
@@ -66,7 +66,7 @@ and check_sig sv fid el =
   else check_sig_types fid sv tl el; fst opsig
 
 and check_sig_types (_ : id) (sv : qid -> typ) (tl : typ list)
-                    (el : expression_l list) : unit =
+                    (el : expression list) : unit =
   let tel = List.combine tl el in
   let teli =
     fst (List.fold_left
