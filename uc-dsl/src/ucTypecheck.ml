@@ -230,7 +230,8 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
          fprintf ppf
          "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
 
-let check_toplevel_state (init_id : id) (st : state) : state_tyd = 
+let check_toplevel_state
+    (init_id : id) (internal_ports : QidSet.t) (st : state) : state_tyd = 
   let is_initial = (init_id = st.id) in
   let params =
     check_name_type_bindings
@@ -242,19 +243,47 @@ let check_toplevel_state (init_id : id) (st : state) : state_tyd =
     (check_name_type_bindings
      (fun ppf -> fprintf ppf "@[duplicate@ variable@ name@]")
      st.code.vars) in
-  let dup = IdMap.find_first_opt (fun uid -> IdMap.mem uid params) vars in
-  match dup with
-  | None        ->
-      mk_loc (loc st.id)
-      {is_initial = is_initial; params = params; vars = vars;
-       mmclauses = st.code.mmclauses}
-  | Some (uid, typ) ->
-      type_error (loc typ)
-      (fun ppf ->
-         fprintf ppf
-         ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
-          "state's@ parameters@]")
-         uid)
+  let () =
+    let dup =
+      IdMap.find_first_opt
+      (fun param -> QidSet.mem [param] internal_ports)
+      params in
+    match dup with
+    | None              -> ()
+    | Some (param, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[parameter@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "functionality's@ internal@ ports@ (party@ names)@]")
+           param) in
+  let () =
+    let dup =
+      IdMap.find_first_opt (fun var -> IdMap.mem var params) vars in
+    match dup with
+    | None            -> ()
+    | Some (var, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "state's@ parameters@]")
+           var) in
+  let () =
+    let dup =
+      IdMap.find_first_opt (fun var -> QidSet.mem [var] internal_ports) vars in
+    match dup with
+    | None              -> ()
+    | Some (param, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "functionality's@ internal@ ports@ (party@ names)@]")
+           param) in
+  mk_loc (loc st.id)
+  {is_initial = is_initial; params = params; vars = vars;
+   mmclauses = st.code.mmclauses}
                         
 let drop_state_construct (sd : state_def) : state = 
   match sd with 
@@ -265,18 +294,30 @@ let drop_state_construct (sd : state_def) : state =
    or simulator - only used for error messages *)
 
 let check_toplevel_states
-    (id : id) (states : state_def list) : state_tyd IdMap.t = 
+    (id : id) (states : state_def list) (internal_ports : QidSet.t)
+      : state_tyd IdMap.t = 
   let init_id = check_exactly_one_initial_state id states in
   let states = List.map (fun sd -> drop_state_construct sd) states in
   let state_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
     states (fun s -> s.id) in
-  IdMap.map (check_toplevel_state init_id) state_map 
+  IdMap.map (check_toplevel_state init_id internal_ports) state_map 
 
 (* typechecking context for states
 
-   constants and local variables are disjoint *)
+   constants and local variables are disjoint
+
+   in real functionalities, internal ports have the form [Party], were
+   Party is the name of one of the functionality's parties; in this
+   case Party is not a constant or local variable
+
+   in simulators, when internal ports have length 2, and begin with
+   the name of the real functionality that is being simulated, there
+   is no chance of overlap with constants and local variables
+
+   consequently, when constants, local variables and internal port
+   names are used in expressions, there is no ambiguity *)
 
 type state_context =
   {initial : bool;             (* initial state? *)
@@ -518,13 +559,13 @@ let check_served_inter_id_paths
 let check_toplevel_party_def
     (id_dir_inter : string) (id_adv_inter : string option)
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (pd : party_def) : party_def_tyd = 
+    (internal_ports : QidSet.t) (pd : party_def) : party_def_tyd = 
   let serves =
     List.map
     (check_inter_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
     pd.serves in
   let () = check_served_inter_id_paths serves id_dir_inter pd.id in
-  let code = check_toplevel_states pd.id pd.states in
+  let code = check_toplevel_states pd.id pd.states internal_ports in
   mk_loc (loc pd.id) {serves = serves; states = code}
                
 let check_inter_id_paths_coverage
@@ -775,16 +816,22 @@ let check_assign_core
            initialized_vs = IdSet.add uvid sa.initialized_vs})
 
 (* constants can be rebound, in new scopes; but they may not eclipse
-   variables *)
+   variables or internal port names *)
 
 let check_add_const (id : id) (typ : typ) (sc : state_context)
       : state_context = 
   let uid = unloc id in
   if IdMap.mem uid sc.vars
+    then type_error (loc id)
+         (fun ppf ->
+            fprintf ppf
+            "@[cannot@ rebind@ variable@ name@ in@ pattern@]")
+  else if QidSet.mem [uid] sc.internal_ports
   then type_error (loc id)
        (fun ppf ->
           fprintf ppf
-          "@[cannot@ rebind@ variable@ name@ in pattern@]")
+          ("@[cannot@ rebind@ port@ name@ (party@ name@ of@ " ^^
+           "functionality)@ in@ pattern@]"))
   else {sc with
           consts = IdMap.add uid typ sc.consts}
 
@@ -1474,11 +1521,12 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         check_unique_ids
         (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
         fbr.party_defs (fun x -> x.id) in
+      let internal_ports = get_keys_as_sing_qids party_defs in
       let parties =
         let ps =
           IdMap.map
           (check_toplevel_party_def uid_dir_inter uid_adv_inter
-           maps.dir_inter_map maps.adv_inter_map)
+           maps.dir_inter_map maps.adv_inter_map internal_ports)
           party_defs in
         (check_parties_serve_coverage_and_distinct ps
          uid_dir_inter uid_adv_inter
@@ -1517,7 +1565,7 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         | Some id ->
             (check_exists_inter AdversarialInterKind maps.adv_inter_map id;
              check_is_basic AdversarialInterKind maps.adv_inter_map id;
-             check_toplevel_states fund.id state_defs) in
+             check_toplevel_states fund.id state_defs QidSet.empty) in
       let ifbt =
         {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
          states = states} in
@@ -1680,7 +1728,7 @@ let check_sim_toplevel
   let () = List.iter (check_exists_fun fun_map) (unloc sd.sims_arg_ids) in
   let () = check_sim_fun_args fun_map sd.sims sd.sims_arg_ids in
   let sims_arg_ids = unlocs (unloc sd.sims_arg_ids) in
-  let body = check_toplevel_states sd.id sd.states in
+  let body = check_toplevel_states sd.id sd.states QidSet.empty in
   mk_loc (loc sd.id)
   {uses = uses; sims = sims; sims_arg_ids = sims_arg_ids; states = body}
 
