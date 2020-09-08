@@ -213,7 +213,7 @@ simulator KESim uses KEI2S simulates KEReal {
              (KEReal.Pt1, KEReal.Pt2, encode (pt1, pt2, g ^ q1))
         and transition WaitAdv1(q1).
       }    
-    | KEI2S.* => { fail. }  (* catches ke_sim_req2 *)
+    | * => { fail. }  (* only catches KEI2S.ke_sim_req2 *)
     (* messages from adversary to real functionality will go to
        ideal functionality *)
     end
