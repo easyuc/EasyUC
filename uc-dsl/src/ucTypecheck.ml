@@ -186,123 +186,7 @@ let check_is_composite
          (inter_kind_to_str false ik) uid)
   | CompositeTyd _ -> ()
 
-let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
-  {mdbt with
-     dir = invert_dir mdbt.dir}
-
-let invert_msg_dir_loc
-    (mdbtl : message_def_body_tyd located) : message_def_body_tyd located = 
-  let l = loc mdbtl in
-  let mdbt = unloc mdbtl in
-  let mdbt_inv = invert_msg_dir mdbt in
-  mk_loc l mdbt_inv
-
-let invert_basic_inter_body_tyd
-    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
-  IdMap.map invert_msg_dir_loc bibt
-
-(************************* real functionality checks **************************)
-
-(* checking the top-level only of a state machine; does not descend
-   into the message-matching clauses *)
-
-let check_exactly_one_initial_state (id : id) (sds : state_def list) : id = 
-  let inits =
-    List.filter
-    (fun sd ->
-       match sd with
-       | InitialState _ -> true
-       | _              -> false)
-    sds in
-  match List.length inits with
-  | 0 ->
-      type_error (loc id)
-      (fun ppf ->
-         fprintf ppf "@[%s@ doesn't@ have@ initial@ state@]" (unloc id))
-  | 1 ->
-      (match List.hd inits with
-       | InitialState s   -> s.id
-       | FollowingState _ ->
-           failure "impossible, list contains only InitialState")
-  | _ ->
-      type_error (loc id)
-      (fun ppf ->
-         fprintf ppf
-         "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
-
-let check_toplevel_state
-    (init_id : id) (internal_ports : QidSet.t) (st : state) : state_tyd = 
-  let is_initial = (init_id = st.id) in
-  let params =
-    check_name_type_bindings
-    (fun ppf -> fprintf ppf "@[duplicate@ parameter@ name@]")
-    (unloc st.params) in
-  let vars =
-    IdMap.map
-    (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
-    (check_name_type_bindings
-     (fun ppf -> fprintf ppf "@[duplicate@ variable@ name@]")
-     st.code.vars) in
-  let () =
-    let dup =
-      IdMap.find_first_opt
-      (fun param -> QidSet.mem [param] internal_ports)
-      params in
-    match dup with
-    | None              -> ()
-    | Some (param, typ) ->
-        type_error (loc typ)
-        (fun ppf ->
-           fprintf ppf
-           ("@[parameter@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
-            "functionality's@ internal@ ports@ (party@ names)@]")
-           param) in
-  let () =
-    let dup =
-      IdMap.find_first_opt (fun var -> IdMap.mem var params) vars in
-    match dup with
-    | None            -> ()
-    | Some (var, typ) ->
-        type_error (loc typ)
-        (fun ppf ->
-           fprintf ppf
-           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
-            "state's@ parameters@]")
-           var) in
-  let () =
-    let dup =
-      IdMap.find_first_opt (fun var -> QidSet.mem [var] internal_ports) vars in
-    match dup with
-    | None              -> ()
-    | Some (param, typ) ->
-        type_error (loc typ)
-        (fun ppf ->
-           fprintf ppf
-           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
-            "functionality's@ internal@ ports@ (party@ names)@]")
-           param) in
-  mk_loc (loc st.id)
-  {is_initial = is_initial; params = params; vars = vars;
-   mmclauses = st.code.mmclauses}
-                        
-let drop_state_construct (sd : state_def) : state = 
-  match sd with 
-  | InitialState s   -> s
-  | FollowingState s -> s
-
-(* id is name of party (in case of real functionality), ideal functionality,
-   or simulator - only used for error messages *)
-
-let check_toplevel_states
-    (id : id) (states : state_def list) (internal_ports : QidSet.t)
-      : state_tyd IdMap.t = 
-  let init_id = check_exactly_one_initial_state id states in
-  let states = List.map (fun sd -> drop_state_construct sd) states in
-  let state_map =
-    check_unique_ids
-    (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
-    states (fun s -> s.id) in
-  IdMap.map (check_toplevel_state init_id internal_ports) state_map 
+(**************************** state machine checks ****************************)
 
 (* typechecking context for states
 
@@ -342,6 +226,20 @@ let init_state_context
 
 let init_state_analysis : state_analysis =
   {initialized_vs = IdSet.empty}
+
+(* state signatures - lists of the types of each state's parameters *)
+
+type state_sig = typ list
+
+let get_state_sig (s : state_body_tyd) : state_sig = 
+  if s.is_initial then []
+  else let ps = IdMap.bindings s.params in
+       let ts = unlocs (snd (List.split ps)) in
+       let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
+       (fst (List.split tord))
+
+let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
+  IdMap.map (fun s -> get_state_sig (unloc s)) states
 
 (* a basic_inter_path will have the form (ids, b), where we call ids
    an inter id path:
@@ -440,6 +338,9 @@ let outgoing_abip (abip : all_basic_inter_paths) : all_basic_inter_paths =
    adversarial = filter_dir_basic_inter_paths Out abip.adversarial;
    internal    = filter_dir_basic_inter_paths In abip.internal}
 
+(* root can be the same as inter_id, but it can also be the name of
+   a functionality parameter or subfunctionality *)
+
 let get_basic_inter_paths
     (root : string) (inter_id : string) (inter_map : inter_tyd IdMap.t)
       : basic_inter_path list =
@@ -468,7 +369,7 @@ let get_inter_id_paths_from_inter_id
     (inter_id : string) (inter_map : inter_tyd IdMap.t) : string list list = 
   List.map fst (get_basic_inter_paths_from_inter_id inter_id inter_map)
 
-let get_fun_inter_id_paths
+let get_external_inter_id_paths
     (id_dir_inter : string) (id_adv_inter : string option)
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t) :
       string list list = 
@@ -478,21 +379,6 @@ let get_fun_inter_id_paths
     | Some id -> get_inter_id_paths_from_inter_id id adv_inter_map
     | None    -> [] in
   dir @ adv
-
-let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
-  {mdbt with
-     dir = invert_dir mdbt.dir}
-
-let invert_msg_dir_loc (mdbtl : message_def_body_tyd located) :
-      message_def_body_tyd located = 
-  let l = loc mdbtl in
-  let mdbt = unloc mdbtl in
-  let mdbt_inv = invert_msg_dir mdbt in
-  mk_loc l mdbt_inv
-
-let invert_basic_inter_body_tyd
-    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
-  IdMap.map invert_msg_dir_loc bibt
 
 let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path = 
   let bibt = snd bip in
@@ -512,13 +398,12 @@ let check_inter_id_paths_unique
 
 let check_inter_id_path
     (id_dir_inter : string) (id_adv_inter : string option)
-    (dir_inter_map : inter_tyd IdMap.t)
-    (adv_inter_map : inter_tyd IdMap.t)
-    (idp : id list) : string list located = 
-  let uidp = unlocs idp in
-  let loc = mergelocs idp in
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (iidp : id list) : string list located = 
+  let uidp = unlocs iidp in
+  let loc = mergelocs iidp in
   let ps =
-    get_fun_inter_id_paths id_dir_inter id_adv_inter
+    get_external_inter_id_paths id_dir_inter id_adv_inter
     dir_inter_map adv_inter_map in
   if List.mem uidp ps
   then mk_loc loc uidp
@@ -553,28 +438,13 @@ let check_served_inter_id_paths
       else type_error (loc (List.nth serves 1)) er
   | _ -> type_error (mergelocs serves) er
 
-(* check a party definition at the top-level (not below the level of
-   message-matching clauses of states) only *)
-
-let check_toplevel_party_def
-    (id_dir_inter : string) (id_adv_inter : string option)
-    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (internal_ports : QidSet.t) (pd : party_def) : party_def_tyd = 
-  let serves =
-    List.map
-    (check_inter_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
-    pd.serves in
-  let () = check_served_inter_id_paths serves id_dir_inter pd.id in
-  let code = check_toplevel_states pd.id pd.states internal_ports in
-  mk_loc (loc pd.id) {serves = serves; states = code}
-               
 let check_inter_id_paths_coverage
     (id_dir_inter : string) (id_adv_inter : string option)
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
     (served_ps : string list located list) : unit = 
   let serps = unlocs served_ps in
   let ps =
-    get_fun_inter_id_paths id_dir_inter id_adv_inter
+    get_external_inter_id_paths id_dir_inter id_adv_inter
     dir_inter_map adv_inter_map in
   let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
   if List.length unserved = 0
@@ -767,19 +637,7 @@ let check_coverage_msg_path_pats
            "messages@ are@ not@ matched:@;<1 2>%a@]")
           format_msg_path_list r)
 
-(* state signatures - lists of the types of each state's parameters *)
-
-type state_sig = typ list
-
-let get_state_sig (s : state_body_tyd) : state_sig = 
-  if s.is_initial then []
-  else let ps = IdMap.bindings s.params in
-       let ts = unlocs (snd (List.split ps)) in
-       let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       (fst (List.split tord))
-
-let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t = 
-  IdMap.map (fun s -> get_state_sig (unloc s)) states
+(* working with variables and constants *)
 
 let get_declared (sc : state_context) = 
   IdMap.union
@@ -834,6 +692,8 @@ let check_add_const (id : id) (typ : typ) (sc : state_context)
            "functionality)@ in@ pattern@]"))
   else {sc with
           consts = IdMap.add uid typ sc.consts}
+
+(* pattern matching *)
 
 let check_port_var_binding
     (abip : all_basic_inter_paths) (idp : string list)
@@ -989,6 +849,8 @@ let check_msg_pat
               sc) in
   let bips = flatten_all_basic_inter_paths abip in
   check_pat_args bips msg_pat sv'
+
+(* checking instructions *)
 
 let get_var_type (sc : state_context) (id : id) : typ = 
   let vs =
@@ -1264,6 +1126,9 @@ and check_instructions
   let uis = unloc is in
   List.fold_left (check_instruction abip ss sc) sa uis
 
+(* checking where control transfer instructions (send-and-transition and
+   fail) may appear *)
+
 let illegal_control_transfer (l : EcLocation.t) =
   type_error l
   (fun ppf ->
@@ -1323,6 +1188,8 @@ and check_instr_not_transfer (instr : instruction) : unit =
       (check_instrs_not_transfer oks;
        check_instrs_not_transfer nots)
 
+(* checking message match clauses *)
+
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
@@ -1338,6 +1205,8 @@ let check_msg_match_clause
   let sc' = check_msg_pat abip mmc.msg_pat sc in
   check_msg_match_code abip ss sc' sa mmc.code
 
+(* checking states *)
+
 let check_state_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
@@ -1350,26 +1219,129 @@ let check_state_code
   check_coverage_msg_path_pats abip sc
   (List.map (fun mmc -> mmc.msg_pat) mmclauses)
 
-let get_dir_inter_id_impl_by_fun_id
-    (funid : string) (fun_map : fun_tyd IdMap.t) : string = 
-  let func = IdMap.find funid fun_map in
-  match unloc func with
-  | FunBodyRealTyd fbr  -> fbr.id_dir_inter
-  | FunBodyIdealTyd fbi -> fbi.id_dir_inter
+let check_exactly_one_initial_state (id : id) (sds : state_def list) : id = 
+  let inits =
+    List.filter
+    (fun sd ->
+       match sd with
+       | InitialState _ -> true
+       | _              -> false)
+    sds in
+  match List.length inits with
+  | 0 ->
+      type_error (loc id)
+      (fun ppf ->
+         fprintf ppf "@[%s@ doesn't@ have@ initial@ state@]" (unloc id))
+  | 1 ->
+      (match List.hd inits with
+       | InitialState s   -> s.id
+       | FollowingState _ ->
+           failure "impossible, list contains only InitialState")
+  | _ ->
+      type_error (loc id)
+      (fun ppf ->
+         fprintf ppf
+         "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
 
-let get_params_of_real_fun_id
-    (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
-  let func = IdMap.find funid fun_map in
-  match unloc func with
-  | FunBodyRealTyd fbr -> unlocs (indexed_map_to_list fbr.params)
-  | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
+let check_toplevel_state
+    (init_id : id) (internal_ports : QidSet.t) (st : state) : state_tyd = 
+  let is_initial = (init_id = st.id) in
+  let params =
+    check_name_type_bindings
+    (fun ppf -> fprintf ppf "@[duplicate@ parameter@ name@]")
+    (unloc st.params) in
+  let vars =
+    IdMap.map
+    (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
+    (check_name_type_bindings
+     (fun ppf -> fprintf ppf "@[duplicate@ variable@ name@]")
+     st.code.vars) in
+  let () =
+    let dup =
+      IdMap.find_first_opt
+      (fun param -> QidSet.mem [param] internal_ports)
+      params in
+    match dup with
+    | None              -> ()
+    | Some (param, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[parameter@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "functionality's@ internal@ ports@ (party@ names)@]")
+           param) in
+  let () =
+    let dup =
+      IdMap.find_first_opt (fun var -> IdMap.mem var params) vars in
+    match dup with
+    | None            -> ()
+    | Some (var, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "state's@ parameters@]")
+           var) in
+  let () =
+    let dup =
+      IdMap.find_first_opt (fun var -> QidSet.mem [var] internal_ports) vars in
+    match dup with
+    | None              -> ()
+    | Some (param, typ) ->
+        type_error (loc typ)
+        (fun ppf ->
+           fprintf ppf
+           ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
+            "functionality's@ internal@ ports@ (party@ names)@]")
+           param) in
+  mk_loc (loc st.id)
+  {is_initial = is_initial; params = params; vars = vars;
+   mmclauses = st.code.mmclauses}
+                        
+let drop_state_construct (sd : state_def) : state = 
+  match sd with 
+  | InitialState s   -> s
+  | FollowingState s -> s
 
-let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
-  let ids = fst (List.split (IdMap.bindings m)) in
-  QidSet.of_list (List.map (fun id -> [id]) ids)
+(* id is name of party (in case of real functionality), ideal
+   functionality, or simulator - only used for error messages *)
 
-let get_internal_ports (real_fun_body : fun_body_tyd) : QidSet.t = 
-  get_keys_as_sing_qids (parties_of_fun_body_tyd real_fun_body)
+let check_toplevel_states
+    (id : id) (states : state_def list) (internal_ports : QidSet.t)
+      : state_tyd IdMap.t = 
+  let init_id = check_exactly_one_initial_state id states in
+  let states = List.map (fun sd -> drop_state_construct sd) states in
+  let state_map =
+    check_unique_ids
+    (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
+    states (fun s -> s.id) in
+  IdMap.map (check_toplevel_state init_id internal_ports) state_map 
+
+let check_state
+    (internal_ports : QidSet.t) (flags : string list)
+    (states : state_tyd IdMap.t) (abip : all_basic_inter_paths)
+    (state : state_tyd) : unit = 
+  let us = unloc state in
+  let sc = init_state_context (unloc state) internal_ports flags in
+  let sa = init_state_analysis in
+  let ss = get_state_sigs states in
+  check_state_code abip ss sc sa us.mmclauses
+
+(* id is name of party (in case of real functionality), ideal
+   functionality, or simulator - only used for error messages *)
+
+let check_states
+    (id : id) (abip : all_basic_inter_paths) (flags : string list)
+    (internal_ports : QidSet.t) (state_defs : state_def list)
+      : state_tyd IdMap.t = 
+  let states = check_toplevel_states id state_defs internal_ports in
+  let () =
+    IdMap.iter
+    (fun _ -> check_state internal_ports flags states abip)
+    states
+  in states
+
+(**************************** functionality checks ****************************)
 
 let filter_basic_inter_paths_by_serves
     (bips : basic_inter_path list) (serves : string list located list)
@@ -1378,56 +1350,94 @@ let filter_basic_inter_paths_by_serves
   (fun bip -> List.exists (fun serv -> unloc serv = fst bip) serves)
   bips
 
-let get_all_external_basic_inter_paths_of_fun
+let get_all_external_basic_inter_paths
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (funb : fun_body_tyd) : all_basic_inter_paths = 
-  let iddir = id_dir_inter_of_fun_body_tyd funb in
-  let direct = get_basic_inter_paths_from_inter_id iddir dir_inter_map in
+    (dirid : string) (advid : string option)
+      : all_basic_inter_paths = 
+  let direct = get_basic_inter_paths_from_inter_id dirid dir_inter_map in
   let adversarial = 
-    match id_adv_inter_of_fun_body_tyd funb with
+    match advid with
     | Some id -> get_basic_inter_paths_from_inter_id id adv_inter_map
     | None    -> [] in
   {direct = direct; adversarial = adversarial; internal = []}
 
+let get_dir_inter_id_impl_by_fun_id
+    (funid : string) (fun_map : fun_tyd IdMap.t) : string = 
+  let func = IdMap.find funid fun_map in
+  match unloc func with
+  | FunBodyRealTyd fbr  -> fbr.id_dir_inter
+  | FunBodyIdealTyd fbi -> fbi.id_dir_inter
+
+(* does *not* take a real_fun_body_tyd or fun_body_tyd as a parameter,
+   because we need to call function before these are constructed; but
+   *does* take some components of real_fun_body_tyd *)
+
 let get_all_basic_inter_paths_of_real_fun_party
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (funs : fun_tyd IdMap.t) (real_funb : fun_body_tyd)
-    (party : party_def_tyd) : all_basic_inter_paths = 
+    (fun_map : fun_tyd IdMap.t) (dirid : string) (advid : string option)
+    (params : (id * int) IdMap.t) (sub_funs : id IdMap.t)
+    (serves : string list located list) : all_basic_inter_paths = 
   let abips =
-    get_all_external_basic_inter_paths_of_fun
-    dir_inter_map adv_inter_map real_funb in
-  let serves = (unloc party).serves in
+    get_all_external_basic_inter_paths
+    dir_inter_map adv_inter_map dirid advid in
   let dir_bips =
     filter_basic_inter_paths_by_serves abips.direct serves in
   let adv_bips =
     filter_basic_inter_paths_by_serves abips.adversarial serves in
-  let sub_fun_bips_map =
-    IdMap.mapi
-    (fun sfid (sf : id) ->
-       let dirid = get_dir_inter_id_impl_by_fun_id (unloc sf) funs in
-       get_basic_inter_paths sfid dirid dir_inter_map)
-    (sub_funs_of_fun_body_tyd real_funb) in
   let param_bips_map =
     IdMap.mapi
     (fun pid p -> 
        let dirid = unloc (fst p) in
        get_basic_inter_paths pid dirid dir_inter_map)
-    (params_of_fun_body_tyd real_funb) in
+    params in
+  let sub_fun_bips_map =
+    IdMap.mapi
+    (fun sfid (sf : id) ->
+       let dirid = get_dir_inter_id_impl_by_fun_id (unloc sf) fun_map in
+       get_basic_inter_paths sfid dirid dir_inter_map)
+    sub_funs in
   let internal_bips_map =
     IdMap.union
     (fun _ _ _ -> failure "impossible - params and subfuns disjoint")
-    sub_fun_bips_map param_bips_map in
+    param_bips_map sub_fun_bips_map in
   let internal = IdMap.fold (fun _ bips l -> l @ bips) internal_bips_map [] in
   {direct = dir_bips; adversarial = adv_bips; internal = internal}
 
-let check_state
-    (funbody : fun_body_tyd) (states : state_tyd IdMap.t)
-    (abip : all_basic_inter_paths) (state : state_tyd) : unit = 
-  let us = unloc state in
-  let sc = init_state_context (unloc state) (get_internal_ports funbody) [] in
-  let sa = init_state_analysis in
-  let ss = get_state_sigs states in
-  check_state_code abip ss sc sa us.mmclauses
+let check_party
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (fun_map : fun_tyd IdMap.t) (id_dir_inter : string)
+    (id_adv_inter : string option) (internal_ports : QidSet.t)
+    (params : (id * int) IdMap.t) (sub_funs : id IdMap.t)
+    (pd : party_def) : party_def_tyd = 
+  let serves =
+    List.map
+    (check_inter_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
+    pd.serves in
+  let () = check_served_inter_id_paths serves id_dir_inter pd.id in
+  let abip =
+    get_all_basic_inter_paths_of_real_fun_party
+    dir_inter_map adv_inter_map fun_map id_dir_inter id_adv_inter
+    params sub_funs serves in
+  let states =
+    check_states pd.id abip [] internal_ports pd.states in
+  mk_loc (loc pd.id) {serves = serves; states = states}
+
+let check_parties
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (fun_map : fun_tyd IdMap.t) (id_dir_inter : string)
+    (id_adv_inter : string option) (params : (id * int) IdMap.t)
+    (sub_funs : id IdMap.t) (party_defs : party_def IdMap.t)
+      : party_def_tyd IdMap.t = 
+  let internal_ports = get_keys_as_sing_qids party_defs in
+  let parties =
+    IdMap.map
+    (check_party dir_inter_map adv_inter_map fun_map
+     id_dir_inter id_adv_inter internal_ports params sub_funs)
+    party_defs in
+  let () =
+    check_parties_serve_coverage_and_distinct parties id_dir_inter id_adv_inter
+    dir_inter_map adv_inter_map in
+  parties
 
 let check_real_fun_params
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
@@ -1450,14 +1460,7 @@ let check_real_fun_params
     params (fun p -> p.id) in
   IdMap.map check_real_fun_param param_map
 
-let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
-  let uid = unloc fund.id in
-  let () =
-    if exists_id_maps_tyd maps uid
-    then type_error (loc fund.id)
-         (fun ppf ->
-            fprintf ppf
-            "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
+let check_fun (maps : maps_tyd) (fund : fun_def) : fun_tyd =
   let () = check_exists_inter DirectInterKind maps.dir_inter_map fund.id_dir in
   let () = check_is_composite DirectInterKind maps.dir_inter_map fund.id_dir in
   let uid_dir_inter = unloc fund.id_dir in 
@@ -1521,40 +1524,17 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
         check_unique_ids
         (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
         fbr.party_defs (fun x -> x.id) in
-      let internal_ports = get_keys_as_sing_qids party_defs in
       let parties =
-        let ps =
-          IdMap.map
-          (check_toplevel_party_def uid_dir_inter uid_adv_inter
-           maps.dir_inter_map maps.adv_inter_map internal_ports)
-          party_defs in
-        (check_parties_serve_coverage_and_distinct ps
-         uid_dir_inter uid_adv_inter
-         maps.dir_inter_map maps.adv_inter_map;
-         ps) in
-      let funbody =
-        (FunBodyRealTyd
-         {params = params; id_dir_inter = uid_dir_inter;
-          id_adv_inter = uid_adv_inter; sub_funs = sub_funs;
-          parties = parties}) in
-      let () =
-        IdMap.iter
-        (fun _ p -> 
-           let up = unloc p in
-           let abip =
-             get_all_basic_inter_paths_of_real_fun_party
-             maps.dir_inter_map maps.adv_inter_map maps.fun_map funbody p in
-           let states = up.states in
-           IdMap.iter
-           (fun _ -> check_state funbody states abip)
-           states)
-        parties in
-      let funt = mk_loc (loc fund.id) funbody in
-      {maps with
-         fun_map =
-           IdMap.add uid funt maps.fun_map}
+        check_parties maps.dir_inter_map maps.adv_inter_map maps.fun_map
+        uid_dir_inter uid_adv_inter params sub_funs party_defs in
+      let fbrt =
+        {params = params; id_dir_inter = uid_dir_inter;
+         id_adv_inter = uid_adv_inter; sub_funs = sub_funs;
+         parties = parties} in
+      let funbody = FunBodyRealTyd fbrt in
+      mk_loc (loc fund.id) funbody
   | FunBodyIdeal state_defs ->
-      let states =
+      let () =
         match fund.id_adv with
         | None ->
             type_error (loc fund.id)
@@ -1564,48 +1544,52 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : maps_tyd =
                 "adversarial@ interface@]"))
         | Some id ->
             (check_exists_inter AdversarialInterKind maps.adv_inter_map id;
-             check_is_basic AdversarialInterKind maps.adv_inter_map id;
-             check_toplevel_states fund.id state_defs QidSet.empty) in
+             check_is_basic AdversarialInterKind maps.adv_inter_map id) in
+      let abip =
+        get_all_external_basic_inter_paths maps.dir_inter_map maps.adv_inter_map
+        uid_dir_inter uid_adv_inter in
+      let states = check_states fund.id abip [] QidSet.empty state_defs in
       let ifbt =
         {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
          states = states} in
       let funbody = FunBodyIdealTyd ifbt in
-      let () =
-        let states = ifbt.states in
-        let abip =
-          get_all_external_basic_inter_paths_of_fun
-          maps.dir_inter_map maps.adv_inter_map
-          funbody in
-        IdMap.iter
-        (fun _ -> check_state funbody states abip)
-        states in
-      let funt = mk_loc (loc fund.id) funbody in
-      {maps with
-         fun_map = IdMap.add uid funt maps.fun_map}
+      mk_loc (loc fund.id) funbody
+
+let check_fun_def (maps : maps_tyd) (fund : fun_def) : maps_tyd =
+  let uid = unloc fund.id in
+  let () =
+    if exists_id_maps_tyd maps uid
+    then type_error (loc fund.id)
+         (fun ppf ->
+            fprintf ppf
+            "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
+  let funt = check_fun maps fund in
+  {maps with
+     fun_map = IdMap.add uid funt maps.fun_map}
 
 (****************************** simulator checks ******************************)
 
 let get_sim_components
-    (fun_map : fun_tyd IdMap.t) (sim_real_fun_id : string)
+    (fun_map : fun_tyd IdMap.t) (sims : string)
     (sim_real_fun_arg_uids : string list) : fun_body_tyd QidMap.t = 
-  let srf_body = unloc (IdMap.find sim_real_fun_id fun_map) in
-  let qidmap_fun = QidMap.singleton [sim_real_fun_id] srf_body in
+  let sims_body = unloc (IdMap.find sims fun_map) in
+  let qidmap_fun = QidMap.singleton [sims] sims_body in
   let qidmap_params =
     let pids =
       IdMap.fold
-      (fun pid _ l -> pid :: l)
-      (params_of_fun_body_tyd srf_body) [] in
+      (fun pid _ pids -> pid :: pids)
+      (real_fun_body_tyd_of sims_body).params [] in
     List.fold_left2
     (fun mp pid aid ->
        let a_body = unloc (IdMap.find aid fun_map) in
-       QidMap.add [sim_real_fun_id; pid] a_body mp)
+       QidMap.add [sims; pid] a_body mp)
     QidMap.empty pids sim_real_fun_arg_uids in
   let qidmap_subfuns =
     IdMap.fold
     (fun sfid ideal_fun_id mp ->
        let ideal_body = unloc (IdMap.find (unloc ideal_fun_id) fun_map) in
-       QidMap.add [sim_real_fun_id; sfid] ideal_body mp)
-    (sub_funs_of_fun_body_tyd srf_body) QidMap.empty in
+       QidMap.add [sims; sfid] ideal_body mp)
+    (real_fun_body_tyd_of sims_body).sub_funs QidMap.empty in
   let disj = (fun _ _ _ -> failure "cannot happen") in
   QidMap.union disj qidmap_fun (QidMap.union disj qidmap_params qidmap_subfuns)
                 
@@ -1632,35 +1616,15 @@ let get_sim_basic_inter_id_paths
      bips @ List.map (fun bip -> (qid @ fst bip, snd bip)) bips_of_qid)
   bips_map []
 
+let get_internal_ports (real_fun_body : real_fun_body_tyd) : QidSet.t = 
+  get_keys_as_sing_qids real_fun_body.parties
+
 let get_sim_internal_ports
-    (comps : fun_body_tyd QidMap.t) (sim_real_fun_id : string) : QidSet.t = 
-  let sim_real_fun_body = QidMap.find [sim_real_fun_id] comps in
-  let int_ports = get_internal_ports sim_real_fun_body in
-  QidSet.map (fun qid -> sim_real_fun_id :: qid) int_ports
+    (fun_map : fun_tyd IdMap.t) (sims : string) : QidSet.t = 
+  let sims_fbt = real_fun_body_tyd_of (unloc (IdMap.find sims fun_map)) in
+  let int_ports = get_internal_ports sims_fbt in
+  QidSet.map (fun qid -> sims :: qid) int_ports
         
-let check_sim_state 
-    comps sims (states : state_tyd IdMap.t)
-    (abip : all_basic_inter_paths) (state : state_tyd) : unit = 
-  let us = unloc state in
-  let sc =
-    init_state_context us
-    (get_sim_internal_ports comps sims) ["simulator"] in
-  let sa = init_state_analysis in
-  let ss = get_state_sigs states in
-  check_state_code abip ss sc sa us.mmclauses
-
-let check_sim_code
-    (adv_inter_map : inter_tyd IdMap.t) (funs : fun_tyd IdMap.t)
-    (sim : sim_def_tyd) : unit = 
-  let usim = unloc sim in
-  let states = usim.states in
-  let comps = get_sim_components funs usim.sims usim.sims_arg_ids in
-  let bips = get_sim_basic_inter_id_paths adv_inter_map usim.uses comps in
-  let abip = {direct = []; adversarial = bips; internal = []} in
-  IdMap.iter
-  (fun _ -> check_sim_state comps usim.sims states abip)
-  states
-
 let check_exists_fun (funs : fun_tyd IdMap.t) (funid : id) = 
   let ufid = unloc funid in
   if exists_id funs ufid then ()
@@ -1675,6 +1639,13 @@ let check_exists_and_is_real_fun (funs : fun_tyd IdMap.t) (funid : id) =
        (fun ppf ->
           fprintf ppf
           "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
+
+let get_params_of_real_fun_id
+    (fun_map : fun_tyd IdMap.t) (funid : string) : string list = 
+  let func = IdMap.find funid fun_map in
+  match unloc func with
+  | FunBodyRealTyd fbr -> unlocs (indexed_map_to_list fbr.params)
+  | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
 
 let check_sim_fun_args
     (funs : fun_tyd IdMap.t) (real_fun_id : id)
@@ -1717,9 +1688,9 @@ let check_sim_fun_args
          ())
   (unloc args)
 
-let check_sim_toplevel
-    (adv_inter_map : inter_tyd IdMap.t)
-    (fun_map : fun_tyd IdMap.t) (sd : sim_def) : sim_def_tyd = 
+let check_sim
+    (adv_inter_map : inter_tyd IdMap.t) (fun_map : fun_tyd IdMap.t)
+    (sd : sim_def) : sim_def_tyd = 
   let () = check_exists_inter AdversarialInterKind adv_inter_map sd.uses in
   let () = check_is_basic AdversarialInterKind adv_inter_map sd.uses in
   let uses = unloc sd.uses in
@@ -1728,11 +1699,16 @@ let check_sim_toplevel
   let () = List.iter (check_exists_fun fun_map) (unloc sd.sims_arg_ids) in
   let () = check_sim_fun_args fun_map sd.sims sd.sims_arg_ids in
   let sims_arg_ids = unlocs (unloc sd.sims_arg_ids) in
-  let body = check_toplevel_states sd.id sd.states QidSet.empty in
-  mk_loc (loc sd.id)
-  {uses = uses; sims = sims; sims_arg_ids = sims_arg_ids; states = body}
+  let internal_ports = get_sim_internal_ports fun_map sims in
+  let comps = get_sim_components fun_map sims sims_arg_ids in
+  let bips = get_sim_basic_inter_id_paths adv_inter_map uses comps in
+  let abip = {direct = []; adversarial = bips; internal = []} in
+  let states = check_states sd.id abip ["simulator"] internal_ports sd.states in
+  let sbt =
+    {uses = uses; sims = sims; sims_arg_ids = sims_arg_ids; states = states} in
+  mk_loc (loc sd.id) sbt
 
-let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
+let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
   let uid = unloc simd.id in
   let () =
     if exists_id_maps_tyd maps uid
@@ -1740,8 +1716,7 @@ let check_sim (maps : maps_tyd) (simd : sim_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let sdt = check_sim_toplevel maps.adv_inter_map maps.fun_map simd in
-  let () = check_sim_code maps.adv_inter_map maps.fun_map sdt in
+  let sdt = check_sim maps.adv_inter_map maps.fun_map simd in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
 (***************************** definition checks ******************************)
@@ -1755,8 +1730,8 @@ let check_defs defs =
   let check_def maps def =
     match def with
     | InterDef interd -> check_inter_def maps interd
-    | FunDef fund     -> check_fun maps fund
-    | SimDef simd     -> check_sim maps simd in
+    | FunDef fund     -> check_fun_def maps fund
+    | SimDef simd     -> check_sim_def maps simd in
   let maps = List.fold_left check_def empty_maps defs in
   {direct_inters      = maps.dir_inter_map;
    adversarial_inters = maps.adv_inter_map;

@@ -38,7 +38,7 @@ let check_expr_id (sv : qid -> typ) (qid : qid) : typ =
            type_error (mergelocs qid)
            (fun ppf ->
               fprintf ppf
-              "@[nonexisting@ variable@ or@ constant:@ %s@]"
+              "@[nonexisting@ variable,@ constant@ or@ internal@ port:@ %s@]"
               (string_of_id_path (unlocs qid))))
 
 let rec check_expression (sv : qid -> typ) (expr : expression) : typ =

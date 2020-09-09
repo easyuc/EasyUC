@@ -7,6 +7,10 @@ open UcTypes
 open UcSpec
 
 module IdMap = Map.Make(String)
+
+let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
+  IdMap.exists (fun key _ -> key = id) id_map
+
 module IdSet = Set.Make(String)
 
 module SL = 
@@ -17,8 +21,9 @@ module SL =
 module QidMap = Map.Make(SL)
 module QidSet = Set.Make(SL)
 
-let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
-  IdMap.exists (fun key _ -> key = id) id_map
+let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
+  let ids = fst (List.split (IdMap.bindings m)) in
+  QidSet.of_list (List.map (fun id -> [id]) ids)
 
 type typ_index = (typ * int) located
 
@@ -26,6 +31,23 @@ type message_def_body_tyd =
   {dir : msg_dir; params_map : typ_index IdMap.t; port : id option}
 
 type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
+
+(* inversion of direction *)
+
+let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
+  {mdbt with
+     dir = invert_dir mdbt.dir}
+
+let invert_msg_dir_loc
+    (mdbtl : message_def_body_tyd located) : message_def_body_tyd located = 
+  let l = loc mdbtl in
+  let mdbt = unloc mdbtl in
+  let mdbt_inv = invert_msg_dir mdbt in
+  mk_loc l mdbt_inv
+
+let invert_basic_inter_body_tyd
+    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
+  IdMap.map invert_msg_dir_loc bibt
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
@@ -70,15 +92,20 @@ type fun_body_tyd =
   | FunBodyRealTyd  of real_fun_body_tyd
   | FunBodyIdealTyd of ideal_fun_body_tyd
 
+let real_fun_body_tyd_of fbt =
+  match fbt with
+  | FunBodyRealTyd rfbt -> rfbt
+  | FunBodyIdealTyd _   -> UcMessage.failure "cannot happen"
+
+let ideal_fun_body_tyd_of fbt =
+  match fbt with
+  | FunBodyRealTyd _     ->  UcMessage.failure "cannot happen" 
+  | FunBodyIdealTyd ifbt -> ifbt
+
 let is_real_fun_body_tyd fb =
   match fb with
   | FunBodyRealTyd _  -> true
   | FunBodyIdealTyd _ -> false
-
-let params_of_fun_body_tyd f =
-  match f with
-  | FunBodyRealTyd fbr -> fbr.params
-  | FunBodyIdealTyd _  -> IdMap.empty
 
 let id_dir_inter_of_fun_body_tyd f =
   match f with
@@ -89,21 +116,6 @@ let id_adv_inter_of_fun_body_tyd f =
   match f with
   | FunBodyRealTyd fbr  -> fbr.id_adv_inter
   | FunBodyIdealTyd fbi -> Some fbi.id_adv_inter
-
-let sub_funs_of_fun_body_tyd f =
-  match f with
-  | FunBodyRealTyd fbr -> fbr.sub_funs
-  | FunBodyIdealTyd _  -> IdMap.empty
-
-let parties_of_fun_body_tyd f =
-  match f with
-  | FunBodyRealTyd fbr -> fbr.parties
-  | FunBodyIdealTyd _  -> IdMap.empty
-
-let states_of_fun_body_tyd f =
-  match f with
-  | FunBodyRealTyd _    -> IdMap.empty
-  | FunBodyIdealTyd fbi -> fbi.states
 
 type fun_tyd = fun_body_tyd located
 
