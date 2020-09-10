@@ -435,7 +435,7 @@ let check_served_inter_id_paths
       if List.hd (unloc (List.nth serves 0)) <>
          List.hd (unloc (List.nth serves 1))
       then ()
-      else type_error (loc (List.nth serves 1)) er
+      else type_error (mergelocs serves) er
   | _ -> type_error (mergelocs serves) er
 
 let check_inter_id_paths_coverage
@@ -1243,6 +1243,8 @@ let check_exactly_one_initial_state (id : id) (sds : state_def list) : id =
          fprintf ppf
          "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
 
+(* check the top-level of a state_def *)
+
 let check_toplevel_state
     (init_id : id) (internal_ports : QidSet.t) (st : state) : state_tyd = 
   let is_initial = (init_id = st.id) in
@@ -1303,23 +1305,27 @@ let drop_state_construct (sd : state_def) : state =
   | InitialState s   -> s
   | FollowingState s -> s
 
-(* id is name of party (in case of real functionality), ideal
+(* check the top-level of a state machine
+
+   id is name of party (in case of real functionality), ideal
    functionality, or simulator - only used for error messages *)
 
 let check_toplevel_states
-    (id : id) (states : state_def list) (internal_ports : QidSet.t)
+    (id : id) (internal_ports : QidSet.t) (state_defs : state_def list)
       : state_tyd IdMap.t = 
-  let init_id = check_exactly_one_initial_state id states in
-  let states = List.map (fun sd -> drop_state_construct sd) states in
+  let init_id = check_exactly_one_initial_state id state_defs in
+  let states = List.map (fun sd -> drop_state_construct sd) state_defs in
   let state_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
     states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id internal_ports) state_map 
 
-let check_state
-    (internal_ports : QidSet.t) (flags : string list)
-    (states : state_tyd IdMap.t) (abip : all_basic_inter_paths)
+(* check the lower-level of an individual state_tyd *)
+
+let check_lowlevel_state
+    (abip : all_basic_inter_paths) (flags : string list)
+    (internal_ports : QidSet.t) (states : state_tyd IdMap.t) 
     (state : state_tyd) : unit = 
   let us = unloc state in
   let sc = init_state_context (unloc state) internal_ports flags in
@@ -1327,19 +1333,27 @@ let check_state
   let ss = get_state_sigs states in
   check_state_code abip ss sc sa us.mmclauses
 
-(* id is name of party (in case of real functionality), ideal
-   functionality, or simulator - only used for error messages *)
+(* check the lower-level of a state_tyd IdMap.t state machine *)
+
+let check_lowlevel_states
+    (abip : all_basic_inter_paths) (flags : string list)
+    (internal_ports : QidSet.t) (states : state_tyd IdMap.t)
+      : unit = 
+  IdMap.iter
+  (fun _ -> check_lowlevel_state abip flags internal_ports states)
+  states
+
+(* this is for use in checking ideal functionalities and simulators;
+   not used when checking parties of real functionalities *)
 
 let check_states
     (id : id) (abip : all_basic_inter_paths) (flags : string list)
     (internal_ports : QidSet.t) (state_defs : state_def list)
-      : state_tyd IdMap.t = 
-  let states = check_toplevel_states id state_defs internal_ports in
+      : state_tyd IdMap.t =
+  let states = check_toplevel_states id internal_ports state_defs in
   let () =
-    IdMap.iter
-    (fun _ -> check_state internal_ports flags states abip)
-    states
-  in states
+    check_lowlevel_states abip flags internal_ports states in
+  states
 
 (**************************** functionality checks ****************************)
 
@@ -1403,24 +1417,46 @@ let get_all_basic_inter_paths_of_real_fun_party
   let internal = IdMap.fold (fun _ bips l -> l @ bips) internal_bips_map [] in
   {direct = dir_bips; adversarial = adv_bips; internal = internal}
 
-let check_party
+let check_toplevel_party
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (fun_map : fun_tyd IdMap.t) (id_dir_inter : string)
-    (id_adv_inter : string option) (internal_ports : QidSet.t)
-    (params : (id * int) IdMap.t) (sub_funs : id IdMap.t)
-    (pd : party_def) : party_def_tyd = 
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (internal_ports : QidSet.t) (pd : party_def) : party_def_tyd = 
   let serves =
     List.map
     (check_inter_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
     pd.serves in
   let () = check_served_inter_id_paths serves id_dir_inter pd.id in
+  let states =
+    check_toplevel_states pd.id internal_ports pd.states in
+  mk_loc (loc pd.id) {serves = serves; states = states}
+
+let check_toplevel_parties
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (id_dir_inter : string) (id_adv_inter : string option)
+    (internal_ports : QidSet.t) (party_defs : party_def IdMap.t)
+      : party_def_tyd IdMap.t =
+  let parties =
+    IdMap.map
+    (check_toplevel_party dir_inter_map adv_inter_map id_dir_inter id_adv_inter
+     internal_ports)
+    party_defs in
+  let () =
+    check_parties_serve_coverage_and_distinct parties id_dir_inter id_adv_inter
+    dir_inter_map adv_inter_map in
+  parties
+
+let check_lowlevel_party
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (fun_map : fun_tyd IdMap.t) (id_dir_inter : string)
+    (id_adv_inter : string option) (internal_ports : QidSet.t)
+    (params : (id * int) IdMap.t) (sub_funs : id IdMap.t)
+    (pdt : party_def_tyd) : unit = 
+  let updt = unloc pdt in
   let abip =
     get_all_basic_inter_paths_of_real_fun_party
     dir_inter_map adv_inter_map fun_map id_dir_inter id_adv_inter
-    params sub_funs serves in
-  let states =
-    check_states pd.id abip [] internal_ports pd.states in
-  mk_loc (loc pd.id) {serves = serves; states = states}
+    params sub_funs updt.serves in
+  check_lowlevel_states abip [] internal_ports updt.states
 
 let check_parties
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
@@ -1430,13 +1466,14 @@ let check_parties
       : party_def_tyd IdMap.t = 
   let internal_ports = get_keys_as_sing_qids party_defs in
   let parties =
-    IdMap.map
-    (check_party dir_inter_map adv_inter_map fun_map
-     id_dir_inter id_adv_inter internal_ports params sub_funs)
-    party_defs in
+    check_toplevel_parties dir_inter_map adv_inter_map id_dir_inter id_adv_inter
+    internal_ports party_defs in
   let () =
-    check_parties_serve_coverage_and_distinct parties id_dir_inter id_adv_inter
-    dir_inter_map adv_inter_map in
+    IdMap.iter
+    (fun _ ->
+       check_lowlevel_party dir_inter_map adv_inter_map fun_map
+       id_dir_inter id_adv_inter internal_ports params sub_funs)
+    parties in
   parties
 
 let check_real_fun_params
