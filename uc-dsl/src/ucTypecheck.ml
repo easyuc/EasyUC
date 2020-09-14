@@ -927,7 +927,7 @@ let check_state_expr
        List.iteri
        (fun i (sigt, sip) -> 
           let et = check_expression sc sa sip in
-          if sigt <> et && sigt <> univ_type
+          if sigt <> et
           then type_error (loc sip)
                (fun ppf ->
                   fprintf ppf
