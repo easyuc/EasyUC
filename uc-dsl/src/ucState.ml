@@ -8,6 +8,10 @@ let get_include_dirs () = ! include_dirs_ref
 
 let set_include_dirs x = include_dirs_ref := x
 
+let add_to_include_dirs x =
+  if not (List.mem x (! include_dirs_ref))
+  then include_dirs_ref := ! include_dirs_ref @ [x]
+
 let raw_messages : bool ref = ref false
 
 let set_raw_messages () = raw_messages := true

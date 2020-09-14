@@ -84,6 +84,8 @@ let () =
          (fun ppf ->
             Format.fprintf ppf
             "@[file@ does@ not@ exist:@ %s@]" file)
+  else let dir = Filename.dirname file in
+       UcState.add_to_include_dirs dir
 
 let () =
   (ignore (parse_and_typecheck_file_or_id (FOIDFile file));
