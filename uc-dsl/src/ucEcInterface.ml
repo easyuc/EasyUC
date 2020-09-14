@@ -70,7 +70,7 @@ let exists_operator (op : string) : bool =
 
 (* We flatten the Tfun tree to (return typ, list of arg typ).  For
    nullary ops the list is empty.  We use only op_ty from the operator
-   declaration - type parameters are not used, and we're not intrested
+   declaration - type parameters are not used, and we're not interested
    in op body, just signature. *)
 
 let get_operator_sig (op : string) : typ * typ list =

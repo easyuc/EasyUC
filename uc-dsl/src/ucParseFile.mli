@@ -4,4 +4,8 @@
 
 open UcSpec
 
-val parse_file : string -> spec
+type file_or_id =
+  | FOIDFile of string
+  | FOIDId   of id
+
+val parse_file_or_id : file_or_id -> spec

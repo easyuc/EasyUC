@@ -209,11 +209,11 @@ spec :
       { {externals = ext; definitions = defs} }
         
 preamble : 
-  | ec_reqs = option(ec_requires); uc_reqs = option(uc_requires)
-      { {ec_requires = ec_reqs |? [];
-         uc_requires = uc_reqs |? []} }
+  | uc_reqs = option(uc_requires); ec_reqs = option(ec_requires)
+      { {uc_requires = uc_reqs |? [];
+         ec_requires = ec_reqs |? []} }
 
-(* require .uc files - not yet implemented *)
+(* require .uc files *)
 
 uc_requires : 
   | UC_REQUIRES uc_reqs = nonempty_list(id) DOT

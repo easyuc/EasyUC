@@ -5,6 +5,6 @@
 open UcParseFile
 open UcTypecheck
 
-let parse_and_typecheck_file file =
-  let spec = parse_file file in
+let parse_and_typecheck_file_or_id foid =
+  let spec = parse_file_or_id foid in
   typecheck spec

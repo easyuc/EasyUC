@@ -80,3 +80,24 @@ let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
       | Some s1 -> s1=s2
       | None    -> false)
    sl2)
+
+let find_file base suffix dirs =
+  let full     = base ^ suffix in
+  let full_cap = String.capitalize full in
+  if Sys.file_exists full
+    then Some full
+  else if Sys.file_exists full_cap
+    then Some full_cap
+  else List.fold_left
+       (fun opt_res dir ->
+          match opt_res with
+          | None   ->
+              let qualified     = dir ^ "/" ^ full in
+              let qualified_cap = dir ^ "/" ^ full_cap in
+              if Sys.file_exists qualified
+                then Some qualified
+              else if Sys.file_exists qualified_cap
+                then Some qualified_cap
+              else None
+          | Some _ -> opt_res)
+       None dirs

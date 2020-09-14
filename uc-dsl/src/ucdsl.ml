@@ -3,6 +3,7 @@
 (* UC DSL Tool main file *)
 
 open Arg
+open Batteries
 open UcMessage
 open UcParseAndTypecheckFile
 
@@ -45,7 +46,7 @@ let () =
      then non_loc_error_message
           (fun ppf ->
              Format.fprintf ppf
-             "@[does not exist or is not a directory: %s@]" x))
+             "@[does@ not@ exist@ or@ is@ not@ a@ directory:@ %s@]" x))
   (! include_dirs_ref)
 
 let () = UcState.set_include_dirs (! include_dirs_ref)
@@ -67,7 +68,7 @@ let () =
   then non_loc_error_message
        (fun ppf ->
           Format.fprintf ppf
-          "@[invalid pretty printer margin: %d@]" n)
+          "@[invalid@ pretty@ printer@ margin:@ %d@]" n)
   else (Format.pp_set_margin Format.std_formatter n;
         Format.pp_set_margin Format.err_formatter n)
 
@@ -77,14 +78,13 @@ let () =
     then non_loc_error_message
          (fun ppf ->
             Format.fprintf ppf
-            "@[file lacks \".uc\" suffix: %s@]" file)
+            "@[file@ lacks@ \".uc\"@ suffix:@ %s@]" file)
   else if not (Sys.file_exists file)
     then non_loc_error_message
          (fun ppf ->
             Format.fprintf ppf
-            "@[file does not exist: %s@]" file)
-  else ()
+            "@[file@ does@ not@ exist:@ %s@]" file)
 
 let () =
-  (ignore (parse_and_typecheck_file file);
+  (ignore (parse_and_typecheck_file_or_id (FOIDFile file));
    exit 0)
