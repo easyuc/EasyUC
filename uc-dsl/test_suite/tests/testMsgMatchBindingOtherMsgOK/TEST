@@ -1,0 +1,7 @@
+description
+This test fixes the test testMsgMatchBindingOtherMsg by removing ()
+from line 23
+.
+args: testMsgMatchBindingOtherMsgOK.uc
+outcome: success
+.

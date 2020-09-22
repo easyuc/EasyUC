@@ -1,0 +1,9 @@
+description
+This test fails because A.Bio2 is not served by any party
+.
+args: testPartiesDontServeEntireAdvIO.uc
+outcome:  failure
+[error: testPartiesDontServeEntireAdvIO.uc: from line 18 column 18 to line 27 column 22]
+
+these sub-interfaces are not served by any party: A.Bio2
+.

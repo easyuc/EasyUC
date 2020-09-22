@@ -1,0 +1,10 @@
+description
+This test fails due to an instruction after fail.
+.
+args: testEndsWSaTorFInstAfterITE.uc
+outcome:  failure
+[error: testEndsWSaTorFInstAfterITE.uc: from line 16 columns 26 to 31]
+
+control transfer by "fail" or "send-and-transition" instruction is only
+allowed at end of message match clause
+.

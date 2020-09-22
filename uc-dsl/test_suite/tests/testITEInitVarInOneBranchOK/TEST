@@ -1,0 +1,6 @@
+description
+This test will pass since k is initialized in both if and else cases 
+.
+args: testITEInitVarInOneBranchOK.uc
+outcome:  failure
+.

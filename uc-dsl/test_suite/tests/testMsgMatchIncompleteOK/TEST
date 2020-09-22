@@ -1,0 +1,7 @@
+description 
+This test corrects testMsgMatchIncomplete by adding the line
+| * => {fail.} in the pattern matching
+.
+args: testMsgMatchIncompleteOK.uc
+outcome: success
+.

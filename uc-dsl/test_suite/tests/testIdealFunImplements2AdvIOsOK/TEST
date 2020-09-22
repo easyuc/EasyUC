@@ -1,0 +1,6 @@
+description
+This test fixes the issue in the test testIdealFunImplements2AdvIOsOK
+.
+args: testIdealFunImplements2AdvIOsOK.uc
+outcome:  success
+.

@@ -1,0 +1,9 @@
+description
+This test fails because parties P1 and P2 serve the same sub-interface
+.
+args: testPartiesServeSameIO.uc
+outcome:  failure
+[error: testPartiesServeSameIO.uc: from line 20 columns 18 to 24]
+
+parties must serve distinct sub-interfaces
+.

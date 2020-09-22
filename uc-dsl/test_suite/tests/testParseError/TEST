@@ -1,0 +1,10 @@
+description
+This test fails because identifier is not a keyword or
+an undefined variable.
+.
+args: testParseError.uc
+outcome:  failure
+[error: testParseError.uc: from line 3 columns 1 to 11]
+
+parse error
+.

@@ -1,0 +1,9 @@
+description 
+This test fails for using same identifier again to define another interface
+.
+args: testDuplicateIdInIODefinitions.uc
+outcome: failure
+[error: testDuplicateIdInIODefinitions.uc: from line 5 columns 13 to 14]
+
+identifier already declared at top-level: A
+.

@@ -1,0 +1,6 @@
+description
+This test demonstrates a correct way of constructing a composite direct interface.
+.
+args: testCompositeDirIOreferencingNonDirIOOK.uc
+outcome: success
+.

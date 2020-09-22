@@ -1,0 +1,9 @@
+description
+This test fails because an adversarial interface named bli does not exist.
+.
+args: testNonExistingAdvIoIdInCompositeBody.uc
+outcome:  failure
+[error: testNonExistingAdvIoIdInCompositeBody.uc: from line 2 columns 5 to 8]
+
+bli isn't an adversarial interface name
+.

@@ -1,0 +1,9 @@
+description
+This test fails because mint is not an existing type
+.
+args: testDirectIOTupleNonexistingType.uc
+outcome: failure
+[error: testDirectIOTupleNonexistingType.uc: from line 1 columns 37 to 41]
+
+Non-existing type: mint
+.

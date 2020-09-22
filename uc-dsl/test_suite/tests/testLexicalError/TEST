@@ -1,0 +1,9 @@
+description 
+This test fails because interfaces names should start with a letter
+.
+args: testLexicalError.uc
+outcome: failure
+[error: testLexicalError.uc: from line 2 columns 13 to 14]
+
+parse error
+.

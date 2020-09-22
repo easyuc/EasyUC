@@ -1,0 +1,10 @@
+description 
+This test fails because bla has no path of the interface
+.
+args: testMsgMatchAmbiguous.uc
+outcome: failure
+[error: testMsgMatchAmbiguous.uc: from line 32 columns 6 to 9]
+
+message path is not one of the possible incoming message paths:
+  D.D.bla, A.A.bla, X.D.bli, f.D.bli
+.

@@ -1,0 +1,4 @@
+tests/*/CONFLICT
+log
+tests_alley
+_build

@@ -1,0 +1,10 @@
+description
+This test fails because the line 14 has to have full path
+.
+args: testMsgMatchInternalNotFQ.uc
+outcome: failure
+[error: testMsgMatchInternalNotFQ.uc: from line 14 columns 6 to 11]
+
+message path is not one of the possible incoming message paths:
+  D.D.bla, P.D.bli
+.

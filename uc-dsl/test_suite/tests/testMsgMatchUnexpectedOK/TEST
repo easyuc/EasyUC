@@ -1,0 +1,6 @@
+description
+This test fixes the mistake in the test testMsgMatchUnexpected
+.
+args: testMsgMatchUnexpectedOK.uc
+outcome: success
+.

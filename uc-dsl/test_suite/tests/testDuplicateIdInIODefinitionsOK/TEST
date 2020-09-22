@@ -1,0 +1,6 @@
+description 
+This test will demonstrates a correct way to define adversarial interfaces.
+.
+args: testDuplicateIdInIODefinitionsOK.uc
+outcome: success
+.

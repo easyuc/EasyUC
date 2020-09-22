@@ -1,0 +1,6 @@
+description
+This test demonstrates how to decode Non univ correctly.
+.
+args: testDecodeNonunivOK.uc
+outcome: success
+.

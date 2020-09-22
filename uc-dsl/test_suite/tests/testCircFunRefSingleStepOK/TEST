@@ -1,0 +1,12 @@
+description
+This test should fail since the fucntionality F() is not an ideal functionality since it contains
+party definitions where are ideal functionality only contains state definitions. Here we can see
+that the Functionality F is not ideal since it contains party definitions list.
+.
+(* Line 21 changed from subfun SF=F() to subfun SF=F *)
+args: testCircFunRefSingleStepOK.uc
+outcome: failure
+[error: testCircFunRefSingleStepOK.uc: from line 21 columns 11 to 12]
+
+F is not an ideal functionality
+.

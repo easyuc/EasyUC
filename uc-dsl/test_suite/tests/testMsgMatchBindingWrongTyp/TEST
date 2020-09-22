@@ -1,0 +1,9 @@
+description
+This test fails because declaring a new variable e:exp is no longer supported
+.
+args: testMsgMatchBindingWrongTyp.uc
+outcome: failure
+[error: testMsgMatchBindingWrongTyp.uc: from line 25 columns 15 to 16]
+
+parse error
+.

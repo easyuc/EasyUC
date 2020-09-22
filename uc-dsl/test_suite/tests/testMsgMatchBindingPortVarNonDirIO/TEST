@@ -1,0 +1,10 @@
+description
+This test fails because adversarial message binds to a port in line 21
+.
+args: testMsgMatchBindingPortVarNonDirIO.uc
+outcome: failure
+[error: testMsgMatchBindingPortVarNonDirIO.uc: from line 21 columns 6 to 7]
+
+message patterns matching adversarial and internal messages may not bind
+source ports to identifiers
+.

@@ -1,0 +1,6 @@
+description 
+This test demonstrates how to use send and transition with arguments
+.
+args: testExprNaryOpUsedAsNullaryOpOK.uc
+outcome: success
+.

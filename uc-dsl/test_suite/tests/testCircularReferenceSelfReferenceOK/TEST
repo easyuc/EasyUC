@@ -1,0 +1,6 @@
+description 
+This test serves as example of correct delcaration of a composite adversarial interface.
+.
+args: testCircularReferenceSelfReferenceOK.uc
+outcome: success
+.

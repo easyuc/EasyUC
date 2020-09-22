@@ -1,0 +1,9 @@
+description 
+This test fails because we use x with out initializing.
+.
+args: testExprUsesUnassignedVar.uc
+outcome: failure
+[error: testExprUsesUnassignedVar.uc: from line 17 columns 16 to 17]
+
+x may not be initialized
+.

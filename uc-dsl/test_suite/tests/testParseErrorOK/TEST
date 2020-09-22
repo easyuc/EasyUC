@@ -1,0 +1,6 @@
+description
+This test passes because there is nothing in the file
+.
+args: testParseErrorOK.uc
+outcome:  success
+.

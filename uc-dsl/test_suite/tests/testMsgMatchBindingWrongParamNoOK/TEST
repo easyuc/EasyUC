@@ -1,0 +1,6 @@
+description
+This test fixes wrong number of arguments test in A.A.bla()
+.
+args: testMsgMatchBindingWrongParamNoOK.uc
+outcome:  success
+.

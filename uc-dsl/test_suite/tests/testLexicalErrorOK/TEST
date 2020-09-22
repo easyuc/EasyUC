@@ -1,0 +1,6 @@
+description
+This test will pass because A7 is a valid interface name
+.
+args: testLexicalErrorOK.uc
+outcome:  success
+.

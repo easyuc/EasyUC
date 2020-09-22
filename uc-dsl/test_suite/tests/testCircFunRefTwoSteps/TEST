@@ -1,0 +1,10 @@
+description
+This test will fail due to forward referencing, there are also other issues
+for example, subfunctionalities which are real.
+.
+args: testCircFunRefTwoSteps.uc
+outcome:  failure
+[error: testCircFunRefTwoSteps.uc: from line 9 columns 11 to 12]
+
+nonexisting functionality: Q
+.

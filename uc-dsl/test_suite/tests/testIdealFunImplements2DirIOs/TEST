@@ -1,0 +1,12 @@
+description
+A functionality always implements a composite direct interface
+(listed first), and optionally implements an adversarial interface
+(listed second). This test fails because I is not an adversarial
+interface
+.
+args: testIdealFunImplements2DirIOs.uc
+outcome:  failure
+[error: testIdealFunImplements2DirIOs.uc: from line 13 columns 32 to 33]
+
+adversarial interface does not exist: I
+.

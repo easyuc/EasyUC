@@ -1,0 +1,6 @@
+description
+This test gives a fix of testExprNonExistingVarOp
+.
+args: testExprNonExistingVarOpOK.uc
+outcome: success
+.

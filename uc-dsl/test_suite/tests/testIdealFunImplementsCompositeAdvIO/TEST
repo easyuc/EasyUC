@@ -1,0 +1,12 @@
+description 
+This test fails becuase a real functionality implements a composite
+direct interface (first) and an optional basic adversarial interface
+(given second). Here A is composite interface of a basic adversarial
+interface I
+.
+args: testIdealFunImplementsCompositeAdvIO.uc
+outcome: failure
+[error: testIdealFunImplementsCompositeAdvIO.uc: from line 18 columns 32 to 33]
+
+adversarial interface must be basic: A
+.

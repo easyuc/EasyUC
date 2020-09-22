@@ -1,0 +1,9 @@
+description
+This test fails due to circular reference of the interface A
+.
+args: testCircularReferenceSelfReference.uc
+outcome: failure
+[error: testCircularReferenceSelfReference.uc: from line 2 columns 3 to 4]
+
+A isn't an adversarial interface name
+.

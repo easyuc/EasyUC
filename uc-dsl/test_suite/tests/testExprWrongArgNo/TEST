@@ -1,0 +1,10 @@
+description 
+This test fails due to incorrect number of arguments for gen.
+gen only expects one variable.
+.
+args: testExprWrongArgNo.uc
+outcome: failure
+[error: testExprWrongArgNo.uc: from line 16 columns 66 to 69]
+
+gen expects 1 arguments, but 2 arguments provided
+.

@@ -1,0 +1,6 @@
+description
+This test gives a way to fix the test testMsgMatchBindingWrongTyp
+.
+args: testMsgMatchBindingWrongTypOK.uc
+outcome: success
+.

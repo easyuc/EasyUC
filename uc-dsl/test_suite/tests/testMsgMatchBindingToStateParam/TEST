@@ -1,0 +1,10 @@
+description 
+This test fails because  a given identifier may not occur
+twice in a pattern or message pattern or decoding pattern
+.
+args: testMsgMatchBindingToStateParam.uc
+outcome: success
+[error: testMsgMatchBindingToStateParam.uc: from line 30 columns 6 to 7]
+
+source port of message pattern is also bound in message argument patterns
+.

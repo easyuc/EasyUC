@@ -1,0 +1,10 @@
+description 
+This test fails because the patters D.D.* on line 19 is already covered
+in the line 18 and hence never matches
+.
+args: testIdealFunMsgMatchIncomplete.uc
+outcome: failure
+[error: testIdealFunMsgMatchIncomplete.uc: from line 19 columns 6 to 11]
+
+this pattern is covered by previous patterns and would never match
+.
