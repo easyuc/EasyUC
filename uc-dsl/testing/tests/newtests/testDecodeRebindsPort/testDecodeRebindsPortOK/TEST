@@ -1,0 +1,6 @@
+description
+Cannot rebind port name in decode pattern - fixed, it now rebinds a const
+.
+args: testDecodeRebindsPortOK.uc
+outcome:  success
+.

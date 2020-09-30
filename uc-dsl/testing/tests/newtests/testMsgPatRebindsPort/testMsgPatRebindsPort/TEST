@@ -1,0 +1,9 @@
+description
+Cannot rebind port name in message pattern
+.
+args: testMsgPatRebindsPort.uc
+outcome:  failure
+[error: testMsgPatRebindsPort.uc: from line 14 columns 5 to 6]
+
+cannot rebind port name (party name of functionality) in pattern
+.

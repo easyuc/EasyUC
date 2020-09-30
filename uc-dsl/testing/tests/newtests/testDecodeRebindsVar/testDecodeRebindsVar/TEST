@@ -1,0 +1,9 @@
+description
+Cannot rebind variable name in decode pattern
+.
+args: testDecodeRebindsVar.uc
+outcome:  failure
+[error: testDecodeRebindsVar.uc: from line 19 columns 16 to 17]
+
+cannot rebind variable name in pattern
+.

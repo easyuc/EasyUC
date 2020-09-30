@@ -1,0 +1,6 @@
+description
+Cannot rebind variable name in decode pattern - fixed
+.
+args: testDecodeRebindsVarOK.uc
+outcome:  success
+.
