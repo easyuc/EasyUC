@@ -1,0 +1,6 @@
+description
+Source port and message argument are bound to the same const in message pattern - fixed
+.
+args: testMsgPatBindsPortAndArgOK.uc
+outcome:  success
+.
