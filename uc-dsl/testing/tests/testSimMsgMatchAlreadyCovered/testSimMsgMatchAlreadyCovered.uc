@@ -12,10 +12,10 @@ out bli()
 
 functionality R(F:D) implements D {
 
- party P serves D {
+ party P serves D.D {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
  }
 }
@@ -23,7 +23,7 @@ functionality R(F:D) implements D {
 functionality I() implements D iio {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
 }
 
@@ -31,7 +31,7 @@ simulator S uses iio simulates R(I) {
 
   initial state In {
   match message with 
-    iio.othermsg => {fail.}
+    iio.* => {fail.}
   | iio.bli() => {fail.}
   end
   }

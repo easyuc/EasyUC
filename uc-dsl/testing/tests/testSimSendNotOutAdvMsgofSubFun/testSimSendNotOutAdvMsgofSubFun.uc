@@ -31,24 +31,21 @@ in  i2sbla()
 out i2sbli()
 }
 
-functionality Q() implements D2 A2 {
-
- party P serves D2, A2 {
+functionality Q() implements D2 a2 {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
- }
 }
 
 functionality R(F:D) implements D A {
 
- subfun SFQ=Q()
- 
- party P serves D, A {
+ subfun SFQ=Q
+
+ party P serves D.D A.A {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
  }
 }
@@ -56,14 +53,14 @@ functionality R(F:D) implements D A {
 functionality I() implements D iio {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
 }
 
 simulator S uses iio simulates R(I) {
 
  initial state In {
-  match message with iio.othermsg => { send R.SFQ.A2.A2.abla2() and transition In.} end
+ match message with iio.othermsg => { send R.SFQ.A2.A2.abla2() and transition In.} end
  }
 
 }
