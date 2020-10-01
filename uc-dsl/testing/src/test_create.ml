@@ -1,4 +1,12 @@
 (*test_create.ml *)
+
+(* This module creates a separate folder with TEST file 
+(with empty description) for each .uc file. This also copies the original 
+.uc file and all dependent .uc and .ec files provided they are in the
+same folder as the original .uc file
+
+This module is no longer supported as 25 Sep 2020 *)
+
 open Test_main
 open Test_types   
 open Test_log
@@ -7,7 +15,6 @@ let parse_req (file_name : string) =
   let _ = print_endline file_name in
   let s = read_file(file_name) in
   let lexbuf = Lexing.from_string s in
-  (*let _ = Printf.printf "Input string is @%s\n" (Bytes.to_string (lexbuf.lex_buffer)) in*)
   let ctr = 
     try  Test_parser.prog Req_lexer.my_lexer lexbuf
     with Parsing.Parse_error ->
@@ -28,9 +35,10 @@ let rec match_req lst req_list =
   match lst with
     |[] -> req_list
     |e::l -> let r = match_req_expr e in
-             if r = "" then (print_endline "we are at match_req"; match_req l req_list)
+             if r = "" then  match_req l req_list
              else match_req l ([r]@req_list)
   
+(* This function as name suggests creates TEST file *)
              
 let create_test file_to_parse (folder:string) (file:string)  =
   let file_a = Array.append [|"ucdsl"|] [|file|] in 
@@ -39,7 +47,8 @@ let create_test file_to_parse (folder:string) (file:string)  =
     match list_of_req with
     |[] -> str_to_return
     |e::l -> let stat, s_out = run "."  [|"cp"; dir^"/"^e; folder |] in
-             let str2 = if (stat = Some 0) then (str_to_return^e^" copied to "^folder^"\n")
+             let str2 = if (stat = Some 0) then (str_to_return^e^
+                                                   " copied to "^folder^"\n")
                         else  (print_endline s_out;s_out)
              in cp_requires_files l (str_to_return^str2)
   in
@@ -64,7 +73,8 @@ let create_test file_to_parse (folder:string) (file:string)  =
   let test_str  =
     try
       (* Write message to file *)
-      let oc = open_out (folder^"/TEST") in    (* create or truncate file, return channel *)
+      let oc = open_out (folder^"/TEST") in
+      (* create or truncate file, return channel *)
       Printf.fprintf oc "%s" (desc^args^"\n"^o_come);   (* write something *)   
       close_out oc;""
     with
@@ -88,8 +98,7 @@ let create_dir file folder =
       if stat_mkdir = Some 0 then 
         (let ic = Str.split (Str.regexp "/") file in
          let file_to_write  = List.nth ic ((List.length ic)-1) in
-         let stat, s_out = (*print_endline ("cp "^file^" "^ folder^"/"^file_to_write);*)
-           run "."  [|"cp"; file; folder^"/" |] in
+         let stat, s_out = run "."  [|"cp"; file; folder^"/" |] in
          let str2 = if (stat = Some 0) then ""
                     else ((*print_endline (s_out);*) s_out)
          in
@@ -106,7 +115,8 @@ let create_dir file folder =
         )
     end
   
-      
+(* This fucntion as name suggests creates dir with .uc file name *)
+  
 let make_dir file  =
   let folder = String.sub file 0 (String.length file -3) in
   let (b: bool)  = 
@@ -116,7 +126,8 @@ let make_dir file  =
     |Sys_error e ->  false
   in
   if (b) then (
-    let str = "abort: " ^ folder ^ " already exists, I cannot work with leftover files \n"
+    let str = "abort: " ^ folder ^
+                " already exists, I cannot work with leftover files \n"
     in write_log "log" str;
        print_endline str;
        exit 1)
@@ -130,18 +141,21 @@ let pre_walk dir  =
     |[] -> if str = "" then
              (print_endline "Task is Success \n"; exit 0)
            else
-             (print_endline "Completed with the following issues"; print_endline str; exit 1)
+             (print_endline "Completed with the following issues";
+              print_endline str;
+              exit 1)
     |e::l -> let _ =  make_dir e in one_file l str
   in
   try
-    let (file_list, str) =  walk_directory_tree dir ".*uc$" in
+    let (file_list, str) =  walk_directory_tree_create dir ".*uc$" in
     if List.length file_list = 0 then
       (print_endline "list is empty"; print_endline str; exit 1)
     else one_file file_list str
   with
   |Sys_error e -> print_endline e; exit 1
 
-(* pre_create pretty much checks whether given input is for form /../dir or dir *)
+(* pre_create pretty much checks whether given input is 
+for form /../dir or dir *)
 
 let pre_create dir  =
   try
