@@ -1,4 +1,4 @@
-requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct d {
 in  x@bla()
@@ -16,12 +16,12 @@ adversarial A {A:a}
 
 functionality F() implements D A {
 
- party P serves A, D {
+ party P serves A.A D.D {
 
   initial state I {
    match message with
-     sender@D.othermsg => {send A.bli() and transition I.}
-   | othermsg => {fail.}
+     D.D.* => {send A.A.bli() and transition I.}
+   | * => {fail.}
    end
   }
  }

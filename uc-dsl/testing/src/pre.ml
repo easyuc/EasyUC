@@ -7,7 +7,7 @@ open Test_log
 let verbose = ref false
 let debug = ref false
 let quiet = ref false
-let create = ref false
+
 
 let log_str = ref ""
 let sec_str = ref ""
@@ -78,7 +78,7 @@ let rec match_expr expression f_name out_come1 out_come2 number =
   |[] -> if f_name = [| |] then failwith " Empty args "
          else
            if out_come1 = Empty then
-             failwith "Outcome has to be success or failure"
+             failwith "Outcome has to be succes or failure"
            else (f_name, out_come1, out_come2)
   |e::l -> match e with
            |Args o -> let f_array = last_element [| |] o in
@@ -207,12 +207,11 @@ let pre_verbose dir  =
     match fil_list with
     |[] -> if (exit_code = 0) then
              (let _ = log_str  := !log_str^
-         "Test suite completed sucessfully all tests are success\nlog file is "
-                                    ^dir^"log" in
+         "Test suite completed sucessfully all tests passed" in
              log_fun(); exit 0)
            else (
              let _ = log_str := !log_str^ "Total " ^string_of_int exit_code ^
-                          " errors found, see  log file for details" in
+                          " errors found, see log file for details" in
              log_fun();
              exit 1)
     |e::l -> let _ = log_str := !log_str^e^"\n" in

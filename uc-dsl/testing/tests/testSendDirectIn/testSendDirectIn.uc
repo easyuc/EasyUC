@@ -1,4 +1,4 @@
-requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct a {
 in  x@bla()
@@ -9,11 +9,11 @@ direct A {A:a}
 
 functionality F() implements A {
 
- party P serves A {
+ party P serves A.A {
 
   initial state I {
    match message with
-    x@othermsg => {send bla()@x and transition I.}
+    x@A.A.bla => {send A.A.bla()@x and transition I.}
    end
   }
  }

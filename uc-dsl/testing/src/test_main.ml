@@ -76,13 +76,15 @@ let parse (file_name : string) =
   ctr
   
 (* The acceptable content of a director are
-	 | TEST file + contents + optional sub directories
-	 | If a TEST file is found, subfolders will be ignored
-	| Files with names starting with readme ONLY + optional sub directories
-	 | Only sub folders will be searched for TEST files/tests
+	| TEST file + contents + optional sub directories
+	| If a TEST file is found, subfolders will be ignored
+	| Files with names starting with "readme" only + optional sub directories
+                (readme is case insenstive)
+	| Only sub folders will be searched for TEST files/tests
 	| No files but sub directories
-	 | All subdirectories will be searched for TEST files/tests
+	| All subdirectories will be searched for TEST files/tests
 	| Any others will be ignored
+        | log file
 	
  *)
   
@@ -108,7 +110,10 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
       ((List.length files = 0 && List.length dirs <> 0) ||
 	 (List.for_all
 	    (fun x ->
-              (String.lowercase_ascii (String.sub x 0 6) = "readme")) files))
+              (if (String.length(x) >= 6) then
+                 (String.lowercase_ascii (String.sub x 0 6) = "readme")
+               else
+                 (x = "log"))) files ))
     then
       (let rec walk_folders f_list t_list e_string =
 	 match f_list with
@@ -120,42 +125,14 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
        walk_folders dirs test_list er_string)
     else
       (test_list,(er_string^"\n"^
-	            "Error:Unexpected files found in the directory "
+	            "Error:Unexpected files found in the directory:"
 	            ^dir
-	            ^" Directory ignored, please clean files\n"))
+	            ^"\nDirectory ignored, please clean files\n"))
   with
   |Sys_error e -> ( test_list , er_string^"\nError: "^ e)
   |Unix_error (_,_,e) -> (test_list , er_string^"\nError:"^ e)
-  |_ -> (test_list , er_string^"\nSomeunknown error occured")
+  |_ -> (test_list , er_string^"\nSome unknown error occured")
       
-      
-      
-let walk_directory_tree_create dir pattern =
-  let re = Str.regexp pattern in
-  (* pre-compile the regexp *)
-  let select str = Str.string_match re str 0 in
-  let rec walk acc er_string = function
-    | [] -> (acc, er_string )
-    | dir::tail ->
-       try
-	 let contents = Array.to_list (Sys.readdir dir) in
-	 let contents = List.rev_map (Filename.concat dir) contents in
-	 let dirs, files =
-	   List.fold_left (fun (dirs,files) f ->
-	       match (stat f).st_kind with
-	       | S_REG -> (dirs, f::files) (* Regular file *)
-	       | S_DIR -> (f::dirs, files) (* Directory *)
-	       | _ -> (dirs, files)
-	     ) ([],[]) contents 
-	 in
-	 let matched = List.filter (select) files in
-	 walk ( matched @ acc) er_string (dirs @ tail)
-       with
-       |Sys_error e -> walk (acc) (er_string^"\n"^ e) (tail)
-       |Unix_error (_,_,e) -> walk (acc) (er_string^"\n"^ e) (tail)
-       |_ -> walk (acc) (er_string^"\nsomeunknown error occured") (tail)
-  in
-  walk [] "" [dir]
   
 (* The below code is originally written by Alley slightly modified here, 
 	which executes a command together with a list of options and return
