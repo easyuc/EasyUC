@@ -1,4 +1,4 @@
-requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct a {
 in  x@bla()
@@ -13,13 +13,13 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    sender@othermsg => {send bli()@sender and transition II.}
+    sender@* => {send bli()@sender and transition II.}
    end
   }
  
   state II(k:key) {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }

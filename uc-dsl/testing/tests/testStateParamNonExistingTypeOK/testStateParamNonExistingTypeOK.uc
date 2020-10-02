@@ -1,4 +1,4 @@
-requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct a {
 in x@bla()
