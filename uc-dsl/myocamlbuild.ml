@@ -1,11 +1,13 @@
 (* ocamlbuild customization program, borrowed from EasyCrypt source *)
 
 open Ocamlbuild_plugin
+ 
 
 let _ = dispatch begin function
    | After_options ->
        Options.ocamlc   := S[!Options.ocamlc  ; A"-rectypes"];
        Options.ocamlopt := S[!Options.ocamlopt; A"-rectypes"];
+       Bisect_ppx_plugin.handle_coverage ();
 
    | After_rules ->
        (* Numerical warnings *)
@@ -39,14 +41,14 @@ let _ = dispatch begin function
        flag ["ocaml"; "pkg_threads"; "compile"] (S[A "-thread"]);
        flag ["ocaml"; "pkg_threads"; "link"] (S[A "-thread"]);
 
-       (* Bisect *)
+       (* Bisect 
        flag ["ocaml"; "compile" ;  "bisect"] & S[A"-package"; A"bisect"];
        flag ["ocaml"; "compile" ;  "bisect"] & S[A"-syntax" ; A"camlp4o"];
        flag ["ocaml"; "compile" ;  "bisect"] & S[A"-syntax" ; A"bisect_pp"];
        flag ["ocaml"; "ocamldep";  "bisect"] & S[A"-package"; A"bisect"];
        flag ["ocaml"; "ocamldep";  "bisect"] & S[A"-syntax" ; A"camlp4o"];
        flag ["ocaml"; "ocamldep";  "bisect"] & S[A"-syntax" ; A"bisect_pp"];
-       flag ["ocaml"; "link"    ;  "bisect"] & S[A"-package"; A"bisect"];
+       flag ["ocaml"; "link"    ;  "bisect"] & S[A"-package"; A"bisect"];*)
 
    | _ -> ()
 end
