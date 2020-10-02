@@ -19,10 +19,10 @@ adversarial A {A:a}
 
 functionality R(F:D) implements D A {
 
- party P serves D, A {
+ party P serves D.D A.A {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
  }
 }
@@ -30,18 +30,21 @@ functionality R(F:D) implements D A {
 functionality I() implements D iio {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
 }
 
 simulator S uses iio simulates R(I) {
 
  initial state In {
-  match message with iio.othermsg => {fail.} end
+  match message with iio.* => {fail.} end
  }
 
  state II() {
-  match message with R.A.A.abla() => {fail.} end
+  match message with
+  R.A.A.abla() => {fail.}
+  |* => {fail.}
+  end
  }
 
 }

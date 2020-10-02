@@ -7,10 +7,10 @@ direct D {D:d}
 
 functionality R() implements D {
 
- party P serves D {
+ party P serves D.D {
 
   initial state I {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
  }
 }
@@ -18,7 +18,7 @@ functionality R() implements D {
 simulator S uses D simulates R() {
 
   initial state I {
-  match message with D.othermsg => {fail.} end
+  match message with D.D.* => {fail.} end
   }
 
 }

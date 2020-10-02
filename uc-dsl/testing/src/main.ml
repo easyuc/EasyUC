@@ -1,5 +1,4 @@
 (* main.ml *)
-open Test_create  
 open Pre
 open Test_log
 open Test_main
@@ -62,12 +61,7 @@ begin
                               if Sys.file_exists x then pre_debug x
                               else if (Sys.file_exists ("./"^x)) then pre_debug ("./"^x)
                               else  print_endline (x^" not found"); exit 1)
-                 , "Prints debug information of a TEST file");
-("-create", Arg.Rest
-                             (fun x -> let _ = check_dirs x in
-                              if Sys.file_exists x then pre_create x
-                              else if (Sys.file_exists ("./"^x)) then pre_create ("./"^x)
-                              else  print_endline (x^" not found"); exit 1), "Create TEST files mode");
+                 , "Prints debug information of a TEST file")
                ]
 in
 Arg.parse speclist (fun anon -> let r = check_dirs anon in

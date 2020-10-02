@@ -31,24 +31,21 @@ out abli2()
 
 adversarial A2 {A2:a2}
 
-functionality Q() implements D2 A2 {
-
- party P serves D2, A2 {
+functionality Q() implements D2 a2 {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with *  => {fail.} end
   }
- }
 }
 
 functionality R(F:D) implements D A {
 
- subfun SFQ=Q()
+ subfun SFQ=Q
  
- party P serves D, A {
+ party P serves D.D A.A {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
  }
 }
@@ -56,14 +53,14 @@ functionality R(F:D) implements D A {
 functionality I() implements D iio {
 
   initial state In {
-  match message with othermsg => {fail.} end
+  match message with * => {fail.} end
   }
 }
 
 simulator S uses iio simulates R(I) {
 
  initial state In {
-  match message with iio.othermsg => {fail.} end
+  match message with iio.* => {fail.} end
  }
 
  state II() {
