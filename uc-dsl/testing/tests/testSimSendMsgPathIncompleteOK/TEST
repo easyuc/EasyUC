@@ -1,7 +1,0 @@
-description
-This test fixes testSimSendMsgPathIncomplete by giving complete
-path iio.i2sbla()
-.
-args: testSimSendMsgPathIncompleteOK.uc
-outcome: success
-.
