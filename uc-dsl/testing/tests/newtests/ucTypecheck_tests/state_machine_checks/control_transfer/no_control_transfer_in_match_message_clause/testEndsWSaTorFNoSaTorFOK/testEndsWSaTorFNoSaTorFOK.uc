@@ -14,7 +14,7 @@ functionality F(G:D) implements D {
   initial state I {
    var k:key;
    match message with
-     D.D.* => {fail.}
+     D.D.* => {k<-g; fail.}
    | * => {fail.}
    end
   }
