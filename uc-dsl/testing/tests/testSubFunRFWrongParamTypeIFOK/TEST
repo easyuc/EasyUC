@@ -1,6 +1,0 @@
-description
-This test gives an example of a correct way of defining subfunctionalities
-.
-args: testSubFunRFWrongParamTypeIFOK.uc
-outcome: success
-.

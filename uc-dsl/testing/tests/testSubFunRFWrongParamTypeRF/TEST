@@ -1,9 +1,0 @@
-description
-This test is redundant after new changes this test is no longer useful
-.
-args: testSubFunRFWrongParamTypeRF.uc
-outcome: failure
-[error: testSubFunRFWrongParamTypeRF.uc: from line 40 columns 12 to 13]
-
-parse error
-.

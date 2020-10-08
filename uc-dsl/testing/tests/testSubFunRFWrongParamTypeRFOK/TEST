@@ -1,6 +1,0 @@
-description
-This test is redundant.
-.
-args: testSubFunRFWrongParamTypeRFOK.uc
-outcome: success
-.
