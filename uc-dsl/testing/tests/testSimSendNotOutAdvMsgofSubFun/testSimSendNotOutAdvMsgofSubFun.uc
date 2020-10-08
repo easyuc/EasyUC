@@ -60,7 +60,7 @@ functionality I() implements D iio {
 simulator S uses iio simulates R(I) {
 
  initial state In {
- match message with iio.othermsg => { send R.SFQ.A2.A2.abla2() and transition In.} end
+ match message with iio.* => { send R.SFQ.A2.A2.abla2() and transition In.} end
  }
 
 }

@@ -19,32 +19,30 @@ functionality I() implements A C {
   initial state Is
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
 }
 
-functionality S(X:D) implements A {
- party P serves a {
+functionality S(X:D) implements A C{
   initial state Isus 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
- }
 }
 
 functionality R() implements A {
 
- subfun Q=I()
+ subfun Q=I
  subfun SF=S(Q)
 
- party P serves a {
+ party P serves A.a {
   initial state Isus 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }

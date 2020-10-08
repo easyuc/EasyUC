@@ -4,26 +4,28 @@ in x@bla()
 
 direct A {a:a}
 
-functionality Q() implements A {
- party P serves a {
+adversarial d {
+in bli()
+}
+
+functionality Q() implements A d{
   initial state Isus 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
- }
 }
 
 functionality R(F:A) implements A {
 
- subfun SF=Q()
+ subfun SF=Q
 
- party P serves a {
+ party P serves A.a {
   initial state Isus 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }

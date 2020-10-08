@@ -9,12 +9,12 @@ direct A {A:a}
 
 functionality F(G:A) implements A {
 
- party P serves A {
+ party P serves A.A {
 
   initial state I {
-   var x : port;
+   var x : exp;
    match message with
-    othermsg => { x<-G; fail. }
+    *  => { x<-e; fail. }
    end
   }
  }
