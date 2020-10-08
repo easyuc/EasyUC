@@ -1,7 +1,0 @@
-description
-This test pass beacuse R.F.iio.i2sbli() is a possible outgoing
-message path
-.
-args: testSimSendNotIOofParamFunOK.uc
-outcome: success
-.

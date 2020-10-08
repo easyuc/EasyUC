@@ -25,6 +25,25 @@ true : use_menhir, menhir_explain, menhir_table
 
 <src/*> : package(batteries,menhirLib,pcre,why3,inifiles,zarith,yojson)
 
+# bisect_ppx instrumentation
+<src/ucTypecheck.ml> : coverage
+<src/ucConfig.ml> : coverage
+<src/ucdsl.ml> : coverage
+<src/ucEcInterface.ml> : coverage
+<src/ucEcTypes.ml> : coverage
+<src/ucExpressions.ml> : coverage
+<src/ucMessage.ml> : coverage
+<src/ucParseAndTypecheckFile.ml> : coverage
+<src/ucParseFile.ml> : coverage
+<src/ucSpec.ml> : coverage
+<src/ucState.ml> : coverage
+<src/ucTypedSpec.ml> : coverage
+<src/ucTypes.ml> : coverage
+<src/ucUtils.ml> : coverage
+
+# bisect_ppx linking
+<src/ucdsl.native> : coverage
+
 # we are using modules from the EasyCrypt src directory, and these
 # rules are taken from there
 

@@ -1,7 +1,0 @@
-description
-This test fixes testSimSendNotI2SorRealFun by giving full path
-iio.i2sbla
-.
-args: testSimSendNotI2SorRealFunOK.uc
-outcome: success
-.

@@ -1,4 +1,6 @@
 tests/*/CONFLICT
+*.coverage
+_coverage/
 log
 tests_alley
 _build
