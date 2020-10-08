@@ -11,12 +11,12 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    bla(k) => {	decode k as int * int with
+    pt@A.A.bla(k) => {	
+                decode k as int * int with
                   ok x =>{fail.}
 		| error=>{fail.}
 		end
 	      }
-   |othermsg => {fail.}
    end
   }
  }

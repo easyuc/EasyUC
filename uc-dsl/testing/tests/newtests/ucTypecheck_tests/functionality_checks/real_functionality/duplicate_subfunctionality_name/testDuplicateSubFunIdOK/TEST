@@ -1,0 +1,6 @@
+description 
+sub-functionalities have same name - fixed
+.
+args: testDuplicateSubFunIdOK.uc
+outcome: success
+.

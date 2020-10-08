@@ -1,7 +1,7 @@
 ec_requires KeysExponentsAndPlainTexts.
 
 direct a {
-in  x@bla(k:key)
+in  x@bla(u:univ)
 out bli()@x
 }
 
@@ -13,12 +13,12 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    pt@A.a.bla(k) => {
-    		decode k as key with
-		  ok x =>{fail.}
-		| error=>{fail.}
-		end
-	      }
+    pt@A.a.bla(k) => { 
+                decode k as key with
+                  ok x =>{fail.}
+                | error=>{fail.}
+                end
+              }
    end
   }
  }
