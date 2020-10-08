@@ -4,8 +4,8 @@ And we cannot send a message which is not of type out
 .
 args: testSendAdversIn.uc
 outcome: failure
-[error: testSendAdversIn.uc: from line 23 columns 6 to 13]
+[error: testSendAdversIn.uc: from line 23 columns 21 to 28]
 
-message path is not one of the possible incoming message paths:
-  D.D.bla, A.A.bla
+message path is not one of the possible outgoing message paths:
+  D.D.bli, A.A.bli
 .

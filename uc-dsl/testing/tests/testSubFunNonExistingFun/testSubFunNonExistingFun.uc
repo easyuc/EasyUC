@@ -6,13 +6,13 @@ direct A {a:a}
 
 functionality R() implements A {
 
- subfun SF=Q()
+ subfun SF=Q
 
- party P serves a {
+ party P serves A.a {
   initial state Isus 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }

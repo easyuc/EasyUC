@@ -9,11 +9,10 @@ direct A {A:a}
 
 functionality F() implements A {
 
- party P serves A {
-
+ party P serves A.A {
   initial state I {
    match message with
-    sender@* => {send bli()@sender and transition II.}
+    sender@A.A.bla() => {send A.A.bli()@sender and transition II.}
    end
   }
  

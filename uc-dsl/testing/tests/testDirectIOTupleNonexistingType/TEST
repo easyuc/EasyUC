@@ -5,5 +5,5 @@ args: testDirectIOTupleNonexistingType.uc
 outcome: failure
 [error: testDirectIOTupleNonexistingType.uc: from line 1 columns 37 to 41]
 
-Non-existing type: mint
+non-existing type: mint
 .
