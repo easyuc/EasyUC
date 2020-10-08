@@ -1,6 +1,6 @@
 description
 This test fixes the mistake in the test testMsgMatchInternalNotFQ
 .
-args: testMsgMatchInternalNotFQOK.uc
+args: testMsgMatchInternalNotFQ.uc
 outcome: success
 .
