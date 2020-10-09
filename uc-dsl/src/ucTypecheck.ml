@@ -86,7 +86,7 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
       {dir = md.dir;
        params_map =
          check_name_type_bindings
-         (fun ppf -> fprintf ppf "@[duplicate message parameter name:@]")
+         (fun ppf -> fprintf ppf "@[duplicate message parameter name@]")
          md.params;
        port = md.port})
   msg_map)
