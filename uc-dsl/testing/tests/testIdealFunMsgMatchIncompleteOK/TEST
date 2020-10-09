@@ -1,7 +1,0 @@
-description 
-This test provides us with an example of a correct
-implementation of pattern matching
-.
-args: testIdealFunMsgMatchIncompleteOK.uc
-outcome: success
-.

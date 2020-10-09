@@ -1,9 +1,9 @@
 description
-This test fails because the line 14 has to have full path
+Only direct out messages can be matched from internal ports
 .
 args: testMsgMatchInternalNotFQ.uc
 outcome: failure
-[error: testMsgMatchInternalNotFQ.uc: from line 14 columns 6 to 11]
+[error: testMsgMatchInternalNotFQ.uc: from line 14 columns 6 to 13]
 
 message path is not one of the possible incoming message paths:
   D.D.bla, P.D.bli

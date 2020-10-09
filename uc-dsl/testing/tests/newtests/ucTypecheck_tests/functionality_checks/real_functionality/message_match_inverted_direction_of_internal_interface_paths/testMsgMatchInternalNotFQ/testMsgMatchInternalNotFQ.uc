@@ -5,20 +5,17 @@ out bli()@x
 
 direct D {D:d}
 
-adversarial I {
-in  bla()
-out bli()
-}
+functionality F(P:D) implements D {
 
-functionality S() implements D I {
-
+party Y serves D.D {
   initial state Is 
   {
    match message with
-   | D.D.* => {fail.}
-   | I.* => {fail.}
+     P.D.bla => {fail.}
+   | * => {fail.}
    end
   }
+}
  
 }
 

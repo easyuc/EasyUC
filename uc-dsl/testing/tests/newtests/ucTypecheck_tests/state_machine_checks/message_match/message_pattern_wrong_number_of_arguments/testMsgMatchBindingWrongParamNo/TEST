@@ -6,5 +6,5 @@ outcome: failure
 [error: testMsgMatchBindingWrongParamNo.uc: from line 23 columns 14 to 15]
 
 the number of argument patterns is different from the number of message
-parameters.
+parameters
 .
