@@ -1,7 +1,6 @@
 (* test_main.ml *)
 
 open Test_types
-open Test_log
 open Str
 open Printf
 open Unix
@@ -11,7 +10,6 @@ open Unix
    
 let print_expr (e:expr) =
   match e with
-  |Requires r -> print_string ("Requires\n"^ r ^ "\nEnd of Requires\n")
   |Desc d -> print_string ("Description\n"^ d ^"\nEnd of description\n")
   |Args o -> print_endline "ARGS";
 	     List.iter print_endline o ;
@@ -60,6 +58,12 @@ let read_file filename =
   let s = really_input_string file (in_channel_length file) in
   close_in file;
   s 
+
+(* I am not sure where I learned this code from
+parse takes a file, and uses above read_file to convert it into
+a string s, now we use Lexing to convert it into lexbuf and we use
+our test_parser and test_lexer to generate token and then parse the
+file *)  
   
 let parse (file_name : string) =
   let s = read_file(file_name) in
@@ -134,7 +138,7 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
   |_ -> (test_list , er_string^"\nSome unknown error occured")
       
   
-(* The below code is originally written by Alley slightly modified here, 
+(* The below code is originally written by Alley and slightly modified here, 
 	which executes a command together with a list of options and return
 	output or error *)
   

@@ -3,7 +3,6 @@
 %}
 
 %token EOF
-%token <string> REQ
 %token <string> DESC
 %token <string list> ARGS
 %token  <Test_types.outcome * string> OUT
@@ -12,19 +11,23 @@
 
 %%
 
+(* The lexer returns token of form stmt; EOF 
+stmt is a list of expressions, hence each statement looks like
+expressions :: statement
+expressions are of 3 types as defined below *)
+
 prog:
-  | e = stmt ; EOF { e (* let _ = print_string "I am in parse prog line e = stmt " in e *)}
+  | e = stmt ; EOF {e }
   ;
 
 stmt:
-  |e1 = expr {[e1] (*  let _ = print_string "I am in parse stmt line 1 \n" in [e1] *) }
-  |e1 = expr ; l = stmt {(* let _ = print_string "I am in parse stmt line 2 \n" in*) e1 :: l }
+  |e1 = expr {[e1] }
+  |e1 = expr ; l = stmt { e1 :: l }
 
 expr:
-  | d = DESC   {(*print_string "\n We are at DESC Level in Parser\n";*) Desc d}
-  | o = ARGS  {(*print_string "\n We are at OPT level in Parser \n";*) Args o}
-  | o = OUT {(*print_string "\n We are at Outcome level in Parser \n"; *)Outcome (fst o, snd o)}
-  | r = REQ {Requires r}
+  | d = DESC   { Desc d}
+  | o = ARGS  {Args o}
+  | o = OUT {Outcome (fst o, snd o)}
   ;
 
 

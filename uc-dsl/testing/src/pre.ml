@@ -8,6 +8,8 @@ let verbose = ref false
 let debug = ref false
 let quiet = ref false
 
+(* The above 3 variables refer to the options as their name suggests *)
+
 
 let log_str = ref ""
 let sec_str = ref ""
@@ -106,6 +108,12 @@ let create_conflict file outcome1 outcome2 =
   let _ = write_log file_name s2 in
   log_str := !log_str^"\n"^file_name^" created"
       
+(* in the above code write_log comes from the file Test_log.ml *)
+(* below function parse_file comes into the picture while executing 
+a test, we take a TEST file, parse using parse function from Test_main.ml
+then get the tokens, match and use the function run from Test_main.ml
+which gives us exit code together with an error message if any
+use that information to determine whether a test failed or passed *)
   
 let rec parse_file file code =
 try
@@ -171,7 +179,7 @@ try
         log_str := !log_str ^log_err; (code+1)
                                               
 (* log_fun is log function which write the log and prints the log checking 
-the verbosity *)
+the verbosity and write_log comes from Test_log.ml*)
                                               
 let log_fun () =
   let _ = 
@@ -187,7 +195,12 @@ let log_fun () =
      log_str := "";
      sec_str := "";
      desc_str := ""
-  
+
+(* We take a directory and find all TEST files in the directory,
+file_list contains all that information and error_string 
+contains any errors happened during searching the directory dir
+for TEST files, for example permission denied to read a directory
+etc *)     
                                                    
 let pre_verbose dir  =
   let file_list, error_string  =  walk_directory_tree dir [] "" in
@@ -233,7 +246,9 @@ let pre_verbose dir  =
                 parse_list l code)
   in parse_list file_list 0
        
-
+(* For every test all the error messages are stored in string log_str, once
+a test ran, depending on verbosity option we choose to display it or not but 
+in all times we write it to log *)
                   
   
   

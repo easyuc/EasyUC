@@ -3,10 +3,11 @@ open Pre
 open Test_log
 open Test_main
    
-   
-   
+      
 let dirs_list = ref []
 
+(* Checks whether the input a valid directory or not *)
+             
               
 let check_dirs anon =
 (*  let _ = print_endline anon in *)
@@ -24,13 +25,20 @@ let verify_dir dir =
                 |Sys_error e -> (print_endline e;
                                  print_endline (dir^" is not a valid directory \n"); exit 1)
 (* needs to be logged? *)
-
+(* this function pre_debug comes into the picture when debug option is used
+we take a file, parse it using parse function from Test_main.ml and 
+print it using print_list function from the same file *)
+                              
 let pre_debug file =
     try
       print_list (parse file); exit 0
     with
       e -> print_endline (Printexc.to_string e); exit 1
 
+(* call_dir_test is the sanity check for options
+and creates log file if it doesn't exist 
+create_log function is at Test_log.ml  *)
+           
 let call_dir_test dir_list_local =
     let _ = if (List.length dir_list_local <> 1) then
     (print_string "No directory given \n"; exit 1)
