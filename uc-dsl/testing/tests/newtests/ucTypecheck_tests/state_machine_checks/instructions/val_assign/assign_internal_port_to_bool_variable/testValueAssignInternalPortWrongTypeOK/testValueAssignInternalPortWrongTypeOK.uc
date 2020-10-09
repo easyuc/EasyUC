@@ -1,5 +1,3 @@
-ec_requires KeysExponentsAndPlainTexts.
-
 direct a {
 in  x@bla()
 out bli()@x
@@ -12,9 +10,9 @@ functionality F(G:A) implements A {
  party P serves A.A {
 
   initial state I {
-   var x : exp;
+   var x : port;
    match message with
-    * => { x<-g; fail. }
+    *  => { x<-P; fail. }
    end
   }
  }
