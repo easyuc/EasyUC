@@ -5,18 +5,18 @@ in x@bla()
 direct A {A:a}
 
 functionality F() implements A {
- party P serves A {
+ party P serves A.A {
   initial state S
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
 
-  state T() 
+  state S() 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
 
