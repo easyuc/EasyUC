@@ -1,0 +1,9 @@
+description
+Type variables on both sides of equality must be the same
+.
+args: testExprWrongArgTypeVar.uc
+outcome: failure
+[error: testExprWrongArgTypeVar.uc: from line 16 columns 66 to 67]
+
+type mismatch: arguments 2 and 1 must have same type
+.

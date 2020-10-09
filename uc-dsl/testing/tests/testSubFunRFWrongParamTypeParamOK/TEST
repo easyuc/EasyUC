@@ -1,7 +1,0 @@
-description
-This test was already covered.
-This test after modification serves no purpose
-.
-args: testSubFunRFWrongParamTypeParamOK.uc
-outcome: success
-.

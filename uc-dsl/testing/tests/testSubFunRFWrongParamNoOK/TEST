@@ -1,6 +1,0 @@
-description
-This test will pass because the subfunctionaly takes no arguments
-.
-args: testSubFunRFWrongParamNoOK.uc
-outcome: success
-.

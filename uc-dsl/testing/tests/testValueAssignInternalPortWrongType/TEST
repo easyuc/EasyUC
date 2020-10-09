@@ -1,9 +1,0 @@
-description
-This test checks the compatability of types in an assignment operation
-.
-args: testValueAssignInternalPortWrongType.uc
-outcome:  failure
-[error: testValueAssignInternalPortWrongType.uc: from line 17 columns 12 to 13]
-
-type exp of x is not compatible with type key
-.

@@ -1,9 +1,0 @@
-description
-This test fails because kye is a non-existing type
-.
-args: testStateParamNonExistingType.uc
-outcome:  failure
-[error: testStateParamNonExistingType.uc: from line 19 columns 14 to 17]
-
-non-existing type: kye
-.

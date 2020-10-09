@@ -1,0 +1,11 @@
+description
+This test fixes testMsgMatchInternalNotFQ
+.
+args: testMsgMatchInternalNotFQOK.uc
+outcome: success
+<<<<<<< HEAD:uc-dsl/testing/tests/testMsgMatchInternalNotFQOK/TEST
+
+.
+=======
+.
+>>>>>>> e506892fbd32b585eac6559794a1dc1d13f4d779:uc-dsl/testing/tests/newtests/ucTypecheck_tests/functionality_checks/real_functionality/message_match/message_match_inverted_direction_of_internal_interface_paths/testMsgMatchInternalNotFQOK/TEST

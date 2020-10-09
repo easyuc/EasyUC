@@ -1,9 +1,0 @@
-description
-This test fails because c is non-existing type
-.
-args: testStateVarNonExistingType.uc
-outcome:  failure
-[error: testStateVarNonExistingType.uc: from line 15 columns 14 to 15]
-
-non-existing type: c
-.

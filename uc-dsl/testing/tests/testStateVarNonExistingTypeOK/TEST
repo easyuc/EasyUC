@@ -1,6 +1,0 @@
-description
-This test will pass because univ is a well defined type
-.
-args: testStateVarNonExistingTypeOK.uc
-outcome: success
-.

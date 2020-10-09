@@ -1,0 +1,6 @@
+description
+Type variables on both sides of equality must be the same - fixed
+.
+args: testExprWrongArgTypeVarOK.uc
+outcome: success
+.

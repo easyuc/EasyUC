@@ -1,6 +1,0 @@
-description
-This test fixes the error in testMsgMatchAmbiguous and should pass
-.
-args: testMsgMatchAmbiguousOK.uc
-outcome: success
-.

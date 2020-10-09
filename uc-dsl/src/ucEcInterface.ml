@@ -59,10 +59,10 @@ let require_import (th : string) =
   try execute_command ("require import " ^ th ^ ".") with
   | EcScope.HiScopeError (_, msg) ->
       raise (Failure msg)
-  | EcScope.ImportError(_, th, _) ->
-      raise (Failure ("import error: " ^ th))
+  | EcScope.ImportError(_, th, ex) ->
+      raise (Failure ("import error: " ^ th ^ " " ^ Printexc.to_string ex))
   | _                             ->
-      raise (Failure "unknown error")
+      raise (Failure "unknown error") 
 
 let env () = EcScope.env (EcCommands.current())
 

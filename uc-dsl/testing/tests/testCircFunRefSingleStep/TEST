@@ -1,9 +1,0 @@
-description
-This test fails because the sub functionality in the line 9 has circular reference.
-.
-args: testCircFunRefSingleStep.uc
-outcome: failure
-[error: testCircFunRefSingleStep.uc: from line 9 columns 12 to 13]
-
-parse error
-.

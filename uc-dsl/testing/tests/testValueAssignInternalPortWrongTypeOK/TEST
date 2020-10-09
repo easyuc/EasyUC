@@ -1,5 +1,0 @@
-description
-This test checks type comtability in an assignement opeation.
-args: testValueAssignInternalPortWrongTypeOK.uc
-outcome: success
-.

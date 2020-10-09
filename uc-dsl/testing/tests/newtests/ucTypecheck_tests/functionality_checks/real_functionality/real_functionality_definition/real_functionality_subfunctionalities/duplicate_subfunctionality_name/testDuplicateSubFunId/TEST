@@ -1,0 +1,9 @@
+description 
+sub-functionalities have same name 
+.
+args: testDuplicateSubFunId.uc
+outcome: failure
+[error: testDuplicateSubFunId.uc: from line 25 columns 8 to 10]
+
+duplicate subfunctionality name: SF
+.

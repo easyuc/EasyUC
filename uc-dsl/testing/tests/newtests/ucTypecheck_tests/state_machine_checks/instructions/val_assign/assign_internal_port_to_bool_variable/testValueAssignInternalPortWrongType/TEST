@@ -1,0 +1,9 @@
+description
+This test checks the compatability of types in an assignment operation
+.
+args: testValueAssignInternalPortWrongType.uc
+outcome:  failure
+[error: testValueAssignInternalPortWrongType.uc: from line 15 columns 13 to 14]
+
+type bool of x is not compatible with type port
+.
