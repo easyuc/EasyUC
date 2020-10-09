@@ -1,10 +1,14 @@
+adversarial B {
+in bla()
+}
+
 adversarial A {
 subio:B
 
 }
 
-adversarial B {
-in bla()
+direct E{
+in x@bla()
 }
 
 direct D {
@@ -13,25 +17,21 @@ subio2:E
 subio3:E
 }
 
-direct E{
-in x@bla()
-}
-
 functionality S() implements D A {
- party P1 serves D.subio,A.subio {
+ party P1 serves D.subio A.subio {
   initial state Is 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }
 
- party P2 serves D.subio2,D.subio3 {
+ party P2 serves D.subio2 D.subio3 {
   initial state Is 
   {
    match message with
-    othermsg => {fail.}
+    * => {fail.}
    end
   }
  }
