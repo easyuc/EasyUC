@@ -1,6 +1,0 @@
-description
-This test will pass because type kye is changed to key
-.
-args: testStateParamNonExistingTypeOK.uc
-outcome: success
-.
