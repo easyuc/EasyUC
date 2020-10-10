@@ -86,7 +86,7 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
       {dir = md.dir;
        params_map =
          check_name_type_bindings
-         (fun ppf -> fprintf ppf "@[duplicate message parameter name@]")
+         (fun ppf -> fprintf ppf "@[duplicate@ message@ parameter@ name@]")
          md.params;
        port = md.port})
   msg_map)
@@ -101,14 +101,14 @@ let check_comp_item
       (loc ci.inter_id)
       (fun ppf ->
          fprintf ppf
-         "@[%s isn't %s interface name@]" uid (inter_kind_to_str true ik))
+         "@[%s@ isn't@ %s@ interface@ name@]" uid (inter_kind_to_str true ik))
   | Some it ->
       let ibt = unloc it in
       if is_composite_tyd ibt
       then type_error (loc ci.inter_id)
            (fun ppf ->
               fprintf ppf
-              "@[%s isn't a basic interface@]" uid)
+              "@[%s@ isn't@ a@ basic@ interface@]" uid)
       else mk_loc (loc ci.sub_id) (unloc ci.inter_id)
 
 let check_comp_inter
@@ -129,7 +129,7 @@ let check_inter
     then type_error (loc ni.id)
          (fun ppf ->
             fprintf ppf
-            "@[identifier@ already@ declared@ at top-level:@ %s@]" uid) in
+            "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
   let ibt =
     match ni.inter with
     | Basic mds     -> check_basic_inter mds
@@ -156,7 +156,7 @@ let check_exists_inter
   else type_error (loc id)
        (fun ppf ->
           fprintf ppf
-          "@[%s interface does not exist: %s@]"
+          "@[%s@ interface@ does@ not@ exist:@ %s@]"
           (inter_kind_to_str false ik) uid)
 
 (* the following two functions assume id exists in inter_map *)
@@ -420,7 +420,7 @@ let check_served_inter_id_paths
     (id_dir_inter : string) (party_id : id) : unit = 
   let er ppf =
     fprintf ppf
-    ("@[a@ party@ must@ serve@ one@ basic@ direct@ interface,@ and@ may " ^^
+    ("@[a@ party@ must@ serve@ one@ basic@ direct@ interface,@ and@ may@ " ^^
      "optionally@ serve@ one@ basic@ adversarial@ interface@]") in
   let erone ppf =
     fprintf ppf
@@ -643,8 +643,8 @@ let get_declared (sc : state_context) =
   IdMap.union
   (fun _ _ _ ->
      failure
-     ("@[impossible, we already checked params and local " ^
-      "vars have different ids@]"))
+     ("@[impossible,@ we@ already@ checked@ params@ and@ local@ " ^
+      "vars@ have@ different@ ids@]"))
   sc.consts sc.vars
 
 let check_declared_with_compatible_type
@@ -668,7 +668,7 @@ let check_assign_core
   let uvid = unloc vid in
   if not (IdMap.mem uvid sc.vars)
   then type_error (loc vid)
-       (fun ppf -> fprintf ppf ("@[%s@ is@ not@ a@ declared variable@]") uvid)
+       (fun ppf -> fprintf ppf ("@[%s@ is@ not@ a@ declared@ variable@]") uvid)
   else (check_declared_with_compatible_type vid typ sc;
         {sa with
            initialized_vs = IdSet.add uvid sa.initialized_vs})
@@ -768,7 +768,7 @@ let check_disjoint_bindings (pats : pat list) : unit =
       else let ex_com = IdSet.choose com_uids in
            type_error (get_loc_pat_list pats)
            (fun ppf ->
-              fprintf ppf "@[pattern binds %s more than once@]" ex_com))
+              fprintf ppf "@[pattern@ binds@ %s@ more@ than@ once@]" ex_com))
    IdSet.empty pats)
 
 let check_pat_args_with_msg_type
@@ -836,8 +836,8 @@ let check_msg_pat
           then type_error (loc id)
                (fun ppf ->
                   fprintf ppf
-                  ("@[source port of message pattern is also bound in " ^^
-                   "message argument patterns@]")) in
+                  ("@[source@ port@ of@ message@ pattern@ is@ also@ bound@ " ^^
+                   "in@ message@ argument@ patterns@]")) in
         check_port_var_binding abip
         (unlocs msg_pat.msg_path_pat.inter_id_path) id sc
     | None    ->
