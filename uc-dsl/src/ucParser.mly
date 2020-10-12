@@ -564,8 +564,8 @@ msg_match_clause :
              then parse_error l
                   (fun ppf ->
                      fprintf ppf
-                     ("message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
-                      "may@ not@ have@ pattern@ arguments")));
+                     ("@[message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
+                      "may@ not@ have@ pattern@ arguments@]")));
         {msg_pat = msg_pat; code = code } }
 
 msg_pat :
