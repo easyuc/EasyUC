@@ -1,9 +1,0 @@
-description
-This test seems redundant
-.
-args: testTransitionInitialWithParams.uc
-outcome: failure
-[error: testTransitionInitialWithParams.uc: from line 15 columns 12 to 15]
-
-message path is not one of the possible incoming message paths: A.A.bla
-.

@@ -1,6 +1,0 @@
-description
-This test seems redundant
-.
-args: testTransitionInitialWithParamsOK.uc
-outcome: success
-.

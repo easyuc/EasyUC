@@ -1,0 +1,9 @@
+description
+This test fails because bla is not an outgoing message
+.
+args: testSendDirectIn.uc
+outcome: failure
+[error: testSendDirectIn.uc: from line 14 columns 24 to 31]
+
+message path is not one of the possible outgoing message paths: A.A.bli
+.

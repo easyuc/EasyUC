@@ -1,0 +1,10 @@
+description
+This test will fail because an out message has no destination port.
+.
+args: testSendDirectNoPort.uc
+outcome: failure
+[error: testSendDirectNoPort.uc: from line 14 columns 21 to 28]
+
+outgoing messages to sub-interfaces of composite direct interfaces must have
+destination ports
+.
