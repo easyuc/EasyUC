@@ -300,11 +300,6 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
 
 type basic_inter_path = string list * basic_inter_body_tyd
 
-let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path = 
-  let bibt = snd bip in
-  let bibt_inv = invert_basic_inter_body_tyd bibt in
-  (fst bip, bibt_inv)
-
 (* three kinds of basic_inter_path's - ones of a direct interface,
    ones of an adversarial interface, and internal ones (coming from a
    real functionality's parameters' and subfunctionalities' direct

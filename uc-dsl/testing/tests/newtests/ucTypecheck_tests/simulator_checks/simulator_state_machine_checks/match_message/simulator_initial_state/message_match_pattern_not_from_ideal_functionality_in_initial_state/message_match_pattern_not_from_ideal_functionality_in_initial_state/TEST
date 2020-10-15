@@ -1,0 +1,10 @@
+description
+
+.
+args: message_match_pattern_not_from_ideal_functionality_in_initial_state.uc
+outcome:failure
+[error: message_match_pattern_not_from_ideal_functionality_in_initial_state.uc: from line 40 columns 22 to 29]
+
+message path pattern is inconsistent with the paths of possible incoming
+messages for initial state of simulator: iio.i2sbli
+.

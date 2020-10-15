@@ -1,0 +1,9 @@
+description
+This test demonstrates a correct way of constructing tuples from an existing type.
+.
+args: lowercase_letter_ec_theory.uc
+outcome:failure
+[error: lowercase_letter_ec_theory.uc: from line 1 columns 13 to 18]
+
+EasyCrypt theory to be imported must begin with uppercase letter: empty
+.

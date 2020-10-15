@@ -1,0 +1,6 @@
+description
+This test gives an example of fixing testMsgMatchBindingPortVarNonDirIO 
+.
+args: pattern_not_binding_port_direct_messageOK.uc
+outcome: success
+.

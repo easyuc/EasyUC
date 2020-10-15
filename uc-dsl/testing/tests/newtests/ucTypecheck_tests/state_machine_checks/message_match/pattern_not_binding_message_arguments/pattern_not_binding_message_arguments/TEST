@@ -1,0 +1,10 @@
+description
+
+.
+args: pattern_not_binding_message_arguments.uc
+outcome:  failure
+[error: pattern_not_binding_message_arguments.uc: from line 14 columns 12 to 15]
+
+the number of argument patterns is different from the number of message
+parameters
+.

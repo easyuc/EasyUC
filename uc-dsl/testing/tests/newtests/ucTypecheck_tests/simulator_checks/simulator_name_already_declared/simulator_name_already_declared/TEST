@@ -1,0 +1,9 @@
+description
+
+.
+args: simulator_name_already_declared.uc
+outcome:failure
+[error: simulator_name_already_declared.uc: from line 23 columns 11 to 12]
+
+identifier already declared at top-level: R
+.
