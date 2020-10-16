@@ -32,8 +32,9 @@ Building the UC DSL Tool
 
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
-[`opam`](https://opam.ocaml.org), and
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt).
+[`opam`](https://opam.ocaml.org),
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and Bisect_ppx plugin for Ocamlbuild
+[Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild)
 
 Note: if you have already installed the EasyCrypt tool itself (as
 opposed to the tools it uses, such as SMT solvers) via opam, you
@@ -58,6 +59,15 @@ Next, run
 ```
 
 to build the tool and copy the binary to `bin/ucdsl`.
+
+Alternatively, run
+
+```
+./build-coverage
+```
+
+to build the tool with code coverage instrumentation turned on
+and copy the binary to `bin/ucdsl`.
 
 To clean up the build state, you can run
 
