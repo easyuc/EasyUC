@@ -1,6 +1,10 @@
-# UCDSL Testsuite
+# UC DSL Unit Testing Framework
 
-UCDSL Testsuite is a software for dealing with UCDSL tests
+This directory contains the implementation of a framework for carrying
+out unit tests of the UC DSL tool, as well as a comprehensive suite of
+unit tests.
+
+(The following description is in flux.)
 
 ## Installation
 

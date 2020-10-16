@@ -102,6 +102,14 @@ The major mode provides simple syntax highlighting. To run the
 (bound to ``C-x` ``) takes you to the next error in the `*compilation*`
 buffer, showing you the location of the error in your source file.
 
+Unit Testing
+--------------------------------------------------------------------
+
+The subdirectory [`testing`](testing) contains a unit testing
+framework, including a suite of test cases. This suite can
+be used to check code coverage (see the above instructions for
+building the `ucdsl` with code coverage instrumentation turned on).
+
 Files
 --------------------------------------------------------------------
 
