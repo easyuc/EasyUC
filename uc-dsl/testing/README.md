@@ -29,7 +29,7 @@ dsl-test -debug file
 ## Running the test suite
 
 ```
-dsl-test-suite
+./dsl-test-suite
 ```
 
 Runs all of the tests in the tests/ directory,
