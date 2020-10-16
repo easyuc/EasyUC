@@ -1,0 +1,11 @@
+description
+This test fails because bla expects key as an argument
+but here sender is of type port
+.
+args: testSendWrongParamType.uc
+outcome: failure
+[error: testSendWrongParamType.uc: from line 16 columns 41 to 47]
+
+parameter 1 of message G.D.bla has type key, which is incompatible with type
+port of corresponding argument
+.

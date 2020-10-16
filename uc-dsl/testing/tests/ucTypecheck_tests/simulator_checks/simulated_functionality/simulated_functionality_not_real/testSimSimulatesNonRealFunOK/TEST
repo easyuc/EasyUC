@@ -1,0 +1,6 @@
+description
+This test pass because we are similating a real functionality
+.
+args: testSimSimulatesNonRealFunOK.uc
+outcome:  success
+.

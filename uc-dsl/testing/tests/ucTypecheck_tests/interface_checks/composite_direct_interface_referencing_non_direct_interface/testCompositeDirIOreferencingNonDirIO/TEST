@@ -1,0 +1,10 @@
+description
+This test fails because only direct interfaces should be used for
+constructing composite direct interfaces.
+.
+args: testCompositeDirIOreferencingNonDirIO.uc
+outcome: failure
+[error: testCompositeDirIOreferencingNonDirIO.uc: from line 5 columns 13 to 14]
+
+A isn't a direct interface name
+.

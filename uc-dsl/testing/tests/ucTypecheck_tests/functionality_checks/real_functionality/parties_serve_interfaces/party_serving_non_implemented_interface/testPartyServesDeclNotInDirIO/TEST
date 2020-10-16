@@ -1,0 +1,10 @@
+description 
+
+.
+args: testPartyServesDeclNotInDirIO.uc
+outcome: failure
+[error: testPartyServesDeclNotInDirIO.uc: from line 14 columns 17 to 22]
+
+the party must serve sub-interfaces of the composite interfaces implemented
+by the functionality: A.Bio
+.

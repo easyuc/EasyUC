@@ -1,0 +1,7 @@
+description
+This test gives a fix to the test testSimSendNotAdvIOofSubFunOK
+by giving a full valid outgoing message path
+.
+args: testSimSendNotAdvIOofSubFunOK.uc
+outcome: success
+.

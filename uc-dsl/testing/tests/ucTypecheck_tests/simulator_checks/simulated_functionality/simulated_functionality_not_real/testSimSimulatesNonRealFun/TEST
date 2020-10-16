@@ -1,0 +1,10 @@
+description
+This test fails because similated functionality is an
+ideal functionality, it has to be a real functionality
+.
+args: testSimSimulatesNonRealFun.uc
+outcome: failure
+[error: testSimSimulatesNonRealFun.uc: from line 20 columns 32 to 33]
+
+the simulated functionality must be a real functionality
+.

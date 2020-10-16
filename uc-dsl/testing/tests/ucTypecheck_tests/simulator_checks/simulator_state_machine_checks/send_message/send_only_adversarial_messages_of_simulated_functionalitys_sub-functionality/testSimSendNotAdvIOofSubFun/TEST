@@ -1,0 +1,11 @@
+description
+This test fails because R.SFQ.D.abli() is not a valid
+outgoing message path
+.
+args: testSimSendNotAdvIOofSubFun.uc
+outcome: failure
+[error: testSimSendNotAdvIOofSubFun.uc: from line 63 columns 38 to 50]
+
+message path is not one of the possible outgoing message paths:
+  iio.i2sbla, R.A.A.abli, R.F.iio.i2sbli, R.SFQ.a2.abli2
+.

@@ -1,0 +1,10 @@
+description
+This test tests whether using an non existing adversarial interface
+will be caught or not
+.
+args: testRealFunImplements2DirIOs.uc
+outcome:  failure
+[error: testRealFunImplements2DirIOs.uc: from line 13 columns 32 to 33]
+
+adversarial interface does not exist: B
+.

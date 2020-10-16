@@ -1,0 +1,9 @@
+description
+Cannot rebind port name in decode pattern
+.
+args: testDecodeRebindsPort.uc
+outcome:  failure
+[error: testDecodeRebindsPort.uc: from line 16 columns 16 to 17]
+
+cannot rebind port name (party name of functionality) in pattern
+.

@@ -1,0 +1,7 @@
+description
+This test will pass because R.F.iio.bla() is a possible incoming
+message path
+.
+args: testSimMsgMatchParamFunDirIOOK.uc
+outcome: success
+.

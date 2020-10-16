@@ -1,0 +1,9 @@
+description
+This test fails because k is not a user defined variable
+.
+args: testValueAssignConst.uc
+outcome: failure
+[error: testValueAssignConst.uc: from line 17 columns 28 to 29]
+
+k is not a declared variable
+.

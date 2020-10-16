@@ -1,0 +1,9 @@
+description 
+
+.
+args: testPartyServesDeclNoDirIO.uc
+outcome: failure
+[error: testPartyServesDeclNoDirIO.uc: from line 28 columns 18 to 25]
+
+a party must serve one basic direct interface
+.

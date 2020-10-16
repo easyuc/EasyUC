@@ -1,0 +1,7 @@
+description
+This test will pass because the type of x and the type of distribution
+it is sampled from the same type of distribution
+.
+args: testSampleAssignWrongTypeOK.uc
+outcome: success
+.

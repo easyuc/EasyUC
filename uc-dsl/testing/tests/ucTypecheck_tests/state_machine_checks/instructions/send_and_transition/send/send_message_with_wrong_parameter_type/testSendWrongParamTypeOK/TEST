@@ -1,0 +1,6 @@
+description
+This test will pass, we are giving a valid argument to bla
+.
+args: testSendWrongParamTypeOK.uc
+outcome: success
+.

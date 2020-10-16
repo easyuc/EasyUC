@@ -1,0 +1,7 @@
+description
+This test passbecause the functionality I() correctly implemets
+a simple direct interface.
+.
+args: testSimWrongParamDirIOForSimFunOK.uc
+outcome: success
+.

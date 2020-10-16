@@ -1,0 +1,6 @@
+description
+This test fixes testExprWrongArgType
+.
+args: testExprWrongArgTypeOK.uc
+outcome: success
+.

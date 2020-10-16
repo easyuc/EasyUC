@@ -1,0 +1,7 @@
+description
+This test gives a fix of testSimParamForSimFunNotIdealFun
+by chaninging R(R) to R(I)
+.
+args: testSimParamForSimFunNotIdealFunOK.uc
+outcome:  success
+.

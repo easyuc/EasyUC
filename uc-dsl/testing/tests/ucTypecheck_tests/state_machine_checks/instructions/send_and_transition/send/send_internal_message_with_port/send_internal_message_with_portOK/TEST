@@ -1,0 +1,6 @@
+description
+This test will pass D.D.bli() has a port
+.
+args: testSendInternWithPortOK.uc
+outcome: success
+.

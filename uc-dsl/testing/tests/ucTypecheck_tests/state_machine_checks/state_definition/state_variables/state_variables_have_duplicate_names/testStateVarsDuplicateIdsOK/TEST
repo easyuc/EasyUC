@@ -1,0 +1,6 @@
+description
+This test will pass becase p is no longer defined twice in state T()
+.
+args: testStateVarsDuplicateIdsOK.uc
+outcome:  success
+.

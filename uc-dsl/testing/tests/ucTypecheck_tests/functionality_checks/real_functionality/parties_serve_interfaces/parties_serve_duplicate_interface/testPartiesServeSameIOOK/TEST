@@ -1,0 +1,6 @@
+description
+This test pass because P1 and P2 serves differen sub-interfaces
+.
+args: testPartiesServeSameIOOK.uc
+outcome: success
+.

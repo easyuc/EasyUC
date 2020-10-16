@@ -1,0 +1,7 @@
+description
+This test passes since gen expects one variable and one variable
+is given
+.
+args: testExprWrongArgNoOK.uc
+outcome: success
+.

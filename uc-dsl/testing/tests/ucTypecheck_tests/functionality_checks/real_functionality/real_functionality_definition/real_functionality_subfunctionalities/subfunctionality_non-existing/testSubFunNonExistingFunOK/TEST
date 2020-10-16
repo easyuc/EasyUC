@@ -1,0 +1,6 @@
+description
+This test pass because it correctly defines functionality Q
+.
+args: testSubFunNonExistingFunOK.uc
+outcome: success
+.

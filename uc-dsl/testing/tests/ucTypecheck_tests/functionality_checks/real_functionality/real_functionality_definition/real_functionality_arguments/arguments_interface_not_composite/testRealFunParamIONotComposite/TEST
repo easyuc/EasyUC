@@ -1,0 +1,10 @@
+description
+This test whether real functionality can have an adversarial
+interface which is not composite
+.
+args: testRealFunParamIONotComposite.uc
+outcome:  failure
+[error: testRealFunParamIONotComposite.uc: from line 7 columns 19 to 20]
+
+direct interface must be composite: D
+.

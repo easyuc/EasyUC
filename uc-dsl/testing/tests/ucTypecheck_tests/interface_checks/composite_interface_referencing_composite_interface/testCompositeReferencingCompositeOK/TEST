@@ -1,0 +1,7 @@
+description 
+This test demostrates a correct way of constructing composite interface
+from basic interface.
+.
+args: testCompositeReferencingCompositeOK.uc
+outcome: success
+.

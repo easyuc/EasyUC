@@ -1,0 +1,14 @@
+description
+A functionality always implements a composite direct interface. 
+But here the fucntionality doesn't implement any composite
+direct interfrace. Hence the test fails.
+This test passes if for example D is a compsitie direct interface.
+This test also fails if I is a composite direct interface and
+D is not.
+.
+args: testIdealFunImplements2AdvIOs.uc
+outcome:  failure
+[error: testIdealFunImplements2AdvIOs.uc: from line 11 columns 30 to 31]
+
+direct interface does not exist: D
+.

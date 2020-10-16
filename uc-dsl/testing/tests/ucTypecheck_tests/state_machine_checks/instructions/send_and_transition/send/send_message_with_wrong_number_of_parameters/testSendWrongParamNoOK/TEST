@@ -1,0 +1,6 @@
+description
+This test will pass because bla has no arguments 
+.
+args: testSendWrongParamNoOK.uc
+outcome: success
+.

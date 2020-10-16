@@ -1,0 +1,9 @@
+description
+
+.
+args: testPartyInitialStateWithParams.uc
+outcome: failure
+[error: testPartyInitialStateWithParams.uc: from line 9 columns 18 to 26]
+
+an initial state may not have parameters
+.

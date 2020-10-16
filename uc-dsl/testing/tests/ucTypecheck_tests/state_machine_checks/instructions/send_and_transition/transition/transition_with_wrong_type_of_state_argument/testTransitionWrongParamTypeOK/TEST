@@ -1,0 +1,7 @@
+description
+This test pass because the transition state has correct
+argument type
+.
+args: testTransitionWrongParamTypeOK.uc
+outcome: success
+.

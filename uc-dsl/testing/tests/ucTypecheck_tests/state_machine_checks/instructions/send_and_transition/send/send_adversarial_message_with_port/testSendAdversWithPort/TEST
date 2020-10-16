@@ -1,0 +1,10 @@
+description
+This test fails because we are trying to send a adversarial
+message with a destination port.
+.
+args: testSendAdversWithPort.uc
+outcome: failure
+[error: testSendAdversWithPort.uc: from line 21 columns 32 to 38]
+
+adversarial messages must not have destination ports
+.

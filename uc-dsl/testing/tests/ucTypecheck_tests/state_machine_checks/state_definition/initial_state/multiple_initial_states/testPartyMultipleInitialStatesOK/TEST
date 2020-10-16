@@ -1,0 +1,6 @@
+description
+This test tests whether a party can have more than one state.
+.
+args: testPartyMultipleInitialStatesOK.uc
+outcome: success
+.

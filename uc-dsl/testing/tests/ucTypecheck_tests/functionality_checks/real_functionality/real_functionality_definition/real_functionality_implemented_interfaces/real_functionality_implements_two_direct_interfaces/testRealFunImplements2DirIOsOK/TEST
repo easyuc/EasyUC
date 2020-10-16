@@ -1,0 +1,6 @@
+description
+This test fixes testRealFunImplements2DirIOs
+.
+args:  testRealFunImplements2DirIOsOK.uc
+outcome:  success
+.

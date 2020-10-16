@@ -1,0 +1,7 @@
+description
+This test pass because R takes no arguments in the definition
+of the simulator S
+.
+args: testSimWrongParamNumForSimFunOK.uc
+outcome:  success
+.

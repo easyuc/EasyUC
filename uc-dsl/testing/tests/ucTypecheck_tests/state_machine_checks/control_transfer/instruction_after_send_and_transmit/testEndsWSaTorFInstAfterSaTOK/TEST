@@ -1,0 +1,6 @@
+description
+This test demonstrates a correct usage of send and transition.
+.
+args: testEndsWSaTorFInstAfterSaTOK.uc
+outcome: success
+.

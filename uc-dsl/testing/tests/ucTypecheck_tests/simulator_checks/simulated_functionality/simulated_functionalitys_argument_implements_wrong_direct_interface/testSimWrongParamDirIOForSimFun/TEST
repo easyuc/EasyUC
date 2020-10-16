@@ -1,0 +1,11 @@
+description
+This test fails beacuse fucntionality I implements a composite
+direct interface instead of simple direct interface.
+.
+args: testSimWrongParamDirIOForSimFun.uc
+outcome:  failure
+[error: testSimWrongParamDirIOForSimFun.uc: from line 37 columns 34 to 35]
+
+argument 1 implements composite direct interface D2, whereas it should
+implement D
+.

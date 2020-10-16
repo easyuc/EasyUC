@@ -1,0 +1,10 @@
+description
+This test fails because we the control will be passed after fail and the statement "k <- g" is not permitted.
+.
+args: testEndsWSaTorFInstAfterF.uc
+outcome: failure
+[error: testEndsWSaTorFInstAfterF.uc: from line 17 columns 16 to 21]
+
+control transfer by "fail" or "send-and-transition" instruction is only
+allowed at end of message match clause
+.

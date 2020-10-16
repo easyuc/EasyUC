@@ -1,0 +1,9 @@
+description 
+
+.
+args: ideal_functionality_not_implementing_adversarial_basic_interface.uc
+outcome:failure
+[error: ideal_functionality_not_implementing_adversarial_basic_interface.uc: from line 13 columns 15 to 16]
+
+an ideal functionality must implement a basic adversarial interface
+.

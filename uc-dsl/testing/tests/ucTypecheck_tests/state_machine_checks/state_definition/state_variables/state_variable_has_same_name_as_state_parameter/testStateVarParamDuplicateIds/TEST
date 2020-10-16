@@ -1,0 +1,10 @@
+description
+This test fails because variable p is used as state parameter and also
+defined as a variable of type port in the same state
+.
+args: testStateVarParamDuplicateIds.uc
+outcome:  failure
+[error: testStateVarParamDuplicateIds.uc: from line 18 columns 8 to 9]
+
+variable name p is the same as one of the state's parameters
+.

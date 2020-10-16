@@ -1,0 +1,9 @@
+description
+This test fails because a direct interface named A does not defined
+.
+args: testNonExistingDirIoIdInCompositeBody.uc
+outcome:  failure
+[error: testNonExistingDirIoIdInCompositeBody.uc: from line 3 columns 13 to 14]
+
+A isn't a direct interface name
+.

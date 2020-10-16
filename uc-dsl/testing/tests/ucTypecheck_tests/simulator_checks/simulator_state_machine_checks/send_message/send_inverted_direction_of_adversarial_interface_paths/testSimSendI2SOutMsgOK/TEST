@@ -1,0 +1,6 @@
+description
+This test gives fix of the test testSimSendI2SOutMsg
+.
+args: testSimSendI2SOutMsgOK.uc
+outcome: success
+.

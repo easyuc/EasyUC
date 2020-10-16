@@ -1,0 +1,7 @@
+description
+Here we are correctly simulating R using an adversarial interface
+iio. Hence the test pass.
+.
+args: testSimUsesNonI2SIOOK.uc
+outcome: success
+.

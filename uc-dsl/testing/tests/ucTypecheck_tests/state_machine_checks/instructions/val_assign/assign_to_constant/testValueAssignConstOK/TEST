@@ -1,0 +1,6 @@
+description
+This test gives a fix to the test testValueAssignConstOK
+.
+args: testValueAssignConstOK.uc
+outcome: success
+.

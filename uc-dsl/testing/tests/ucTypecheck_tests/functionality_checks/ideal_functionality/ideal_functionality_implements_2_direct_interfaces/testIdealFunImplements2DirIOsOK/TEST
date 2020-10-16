@@ -1,0 +1,7 @@
+description
+This test passes because the fucntionality correctly implements a
+composite direct interface and an adversarial interface
+.
+args: testIdealFunImplements2DirIOsOK.uc
+outcome: success
+.

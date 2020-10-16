@@ -1,0 +1,10 @@
+description
+This test fails because x is variable of type key but sampled form
+a distribution of exponents
+.
+args: testSampleAssignWrongType.uc
+outcome: failure
+[error: testSampleAssignWrongType.uc: from line 17 columns 11 to 12]
+
+type key of x is not compatible with type exp
+.

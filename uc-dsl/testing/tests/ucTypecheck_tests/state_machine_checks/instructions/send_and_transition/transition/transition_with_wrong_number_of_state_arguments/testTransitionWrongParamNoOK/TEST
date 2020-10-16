@@ -1,0 +1,7 @@
+description
+This test pass because the transition state takes correct number
+of arguments
+.
+args: testTransitionWrongParamNoOK.uc
+outcome: success
+.

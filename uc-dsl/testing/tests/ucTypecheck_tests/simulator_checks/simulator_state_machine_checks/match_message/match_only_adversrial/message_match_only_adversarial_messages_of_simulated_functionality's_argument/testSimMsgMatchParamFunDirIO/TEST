@@ -1,0 +1,11 @@
+description
+This test fails because R.F.D.D.bla() is not a possible incoming
+message path
+.
+args: testSimMsgMatchParamFunDirIO.uc
+outcome:  failure
+[error: testSimMsgMatchParamFunDirIO.uc: from line 66 columns 22 to 33]
+
+message path is not one of the possible incoming message paths:
+  iio.bli, R.A.A.abla, R.F.iio.bla, R.SFQ.a2.abla2
+.

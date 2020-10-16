@@ -1,0 +1,7 @@
+description
+This test passes because we are sending an adversarial
+message with out a destination port
+.
+args: testSendAdversWithPortOK.uc
+outcome: success
+.

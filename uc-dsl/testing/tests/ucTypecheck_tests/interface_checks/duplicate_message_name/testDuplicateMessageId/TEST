@@ -1,0 +1,9 @@
+description
+This test fails due to reuse of the same identifier
+.
+args: testDuplicateMessageId.uc
+outcome: failure
+[error: testDuplicateMessageId.uc: from line 3 columns 5 to 6]
+
+duplicate message name: M
+.

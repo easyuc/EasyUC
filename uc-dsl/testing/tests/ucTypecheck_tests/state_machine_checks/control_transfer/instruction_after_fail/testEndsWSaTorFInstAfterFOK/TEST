@@ -1,0 +1,6 @@
+description
+This test shows a way to fix testEndsWSaTorFInstAfterF.uc
+.
+args: testEndsWSaTorFInstAfterFOK.uc
+outcome: success
+.

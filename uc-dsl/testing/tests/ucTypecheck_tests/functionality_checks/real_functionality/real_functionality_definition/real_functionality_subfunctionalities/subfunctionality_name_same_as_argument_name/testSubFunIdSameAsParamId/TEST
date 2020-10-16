@@ -1,0 +1,10 @@
+description
+This test checks using same name for a subfunctionality
+and functionality parameters
+.
+args: testSubFunIdSameAsParamId.uc
+outcome: failure
+[error: testSubFunIdSameAsParamId.uc: from line 26 columns 9 to 10]
+
+the name Q is the same name as one of the functionality's parameters
+.

@@ -1,0 +1,7 @@
+description
+This test pass because R.SFQ.a2.abla2() is a possible incoming
+path
+.
+args: testSimMsgMatchSubFunDirIOOK.uc
+outcome: success
+.

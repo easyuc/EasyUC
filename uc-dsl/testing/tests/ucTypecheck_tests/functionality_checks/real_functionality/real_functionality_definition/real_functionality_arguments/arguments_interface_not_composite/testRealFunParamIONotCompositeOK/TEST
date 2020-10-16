@@ -1,0 +1,6 @@
+description
+This test fixes testRealFunParamIONotComposite
+.
+args: testRealFunParamIONotCompositeOK.uc
+outcome:  success
+.

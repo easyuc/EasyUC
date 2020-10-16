@@ -1,0 +1,9 @@
+description
+This test checks transitioning to a non-existing state
+.
+args: testTransitionNonExistingState.uc
+outcome: failure
+[error: testTransitionNonExistingState.uc: from line 16 columns 63 to 66]
+
+non-existing state: III
+.

@@ -1,0 +1,10 @@
+description
+This test checks the assignment operation with a non-existing
+varaibale
+.
+args: testValueAssignNonexistingVar.uc
+outcome: failure
+[error: testValueAssignNonexistingVar.uc: from line 17 columns 12 to 13]
+
+y is not a declared variable
+.

@@ -1,0 +1,6 @@
+description
+Fixes error from testVarNameIsInternalPort.uc
+.
+args: testVarNameIsInternalPortOK.uc
+outcome: success
+.

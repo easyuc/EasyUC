@@ -1,0 +1,9 @@
+description
+
+.
+args: argument_name_same_as_interface.uc
+outcome:failure
+[error: argument_name_same_as_interface.uc: from line 7 columns 17 to 18]
+
+functionality parameter name may not be same as top-level interface name
+.

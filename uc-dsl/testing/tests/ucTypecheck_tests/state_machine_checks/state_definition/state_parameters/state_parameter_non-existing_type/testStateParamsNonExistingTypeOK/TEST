@@ -1,0 +1,6 @@
+description
+This test will pass because port is well defined type
+.
+args: testStateParamsNonExistingTypeOK.uc
+outcome:  success
+.

@@ -1,0 +1,6 @@
+description
+This test pass because trasition is to a existing state
+.
+args: testTransitionNonExistingStateOK.uc
+outcome: success
+.

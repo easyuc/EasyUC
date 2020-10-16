@@ -1,0 +1,6 @@
+description
+This test gives another example of correct way of constructions a composite adversarial interface
+.
+args: testCompositeAdvIOreferencingNonAdvIOOK.uc
+outcome: success
+.

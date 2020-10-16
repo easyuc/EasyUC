@@ -1,0 +1,11 @@
+description
+This test fails because R.D.D.bli() is not a possible
+out going message path
+.
+args: testSimSendRFDirIO.uc
+outcome: failure
+[error: testSimSendRFDirIO.uc: from line 64 columns 37 to 46]
+
+message path is not one of the possible outgoing message paths:
+  iio.i2sbla, R.A.A.abli, R.F.iio.i2sbli, R.SFQ.a2.abli2
+.

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+cd src
+
+ecdir=$(ls -l ECdir | sed 's/^.*-> //')
+ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
+
+if [ ! -r ECsrc/ecVersion.ml ];
+then echo "trying to prepare $ecdir"
+     echo "  for building of UC DSL tool";
+     if [ ! -r ECsrc/ecVersion.ml.in ];
+     then echo Bad EasyCrypt source directory;
+          echo exiting...;
+          exit;
+     else cp ECsrc/ecVersion.ml.in ECsrc/ecVersion.ml >& /dev/null;
+          if [[ $? == 0 ]];
+          then echo preparation suceeded;
+          else echo -n "failure due to file permissions in ";
+               echo $ecdir
+               echo exiting...;
+               exit;
+          fi;
+     fi;
+fi
+
+# the following depends on $ectheories not including apostrophes
+# see configure
+sed -e "s'ECtheories'$ectheories'" \
+    -e '1i\
+      (* file automatically generated from ucConfig.ml.in  - do not edit *)\
+      \ ' \
+    ucConfig.ml.in > ucConfig.ml
+if [[ $? != 0 ]];
+then echo failure;
+     echo exiting...
+     exit;
+fi;
+
+cd ..
+
+BISECT_COVERAGE=YES ocamlbuild -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' ucdsl.native
+
+if [ -e ucdsl.native ];
+then mkdir -p bin;
+     cp -f ucdsl.native bin/ucdsl;
+fi

@@ -1,0 +1,6 @@
+description
+This test gives an example of fixing testMsgMatchBindingPortVarNonDirIO 
+.
+args: testMsgMatchBindingPortVarNonDirIOOK.uc
+outcome: success
+.

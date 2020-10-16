@@ -1,0 +1,7 @@
+description
+This test fixes testSimMsgMatchOutMsg by using possible incoming
+message
+.
+args: testSimMsgMatchOutMsgOK.uc
+outcome: success
+.

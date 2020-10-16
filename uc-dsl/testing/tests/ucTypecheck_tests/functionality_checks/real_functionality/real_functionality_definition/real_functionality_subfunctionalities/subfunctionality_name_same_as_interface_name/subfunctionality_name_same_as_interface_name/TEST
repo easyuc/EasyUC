@@ -1,0 +1,9 @@
+description
+
+.
+args: subfunctionality_name_same_as_interface_name.uc
+outcome: failure
+[error: subfunctionality_name_same_as_interface_name.uc: from line 26 columns 9 to 10]
+
+subfunctionality name may not be same as top-level interface name
+.

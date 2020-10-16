@@ -1,0 +1,7 @@
+description
+This test fixes reusing same variable name for functionality paramters
+and subfunctionality name
+.
+args: testSubFunIdSameAsParamIdOK.uc
+outcome: success
+.

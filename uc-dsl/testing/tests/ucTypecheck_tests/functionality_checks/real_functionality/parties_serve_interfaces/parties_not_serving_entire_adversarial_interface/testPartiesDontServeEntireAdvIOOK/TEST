@@ -1,0 +1,6 @@
+description
+This test will pass because Bio2 is now serves by party P2
+.
+args: testPartiesDontServeEntireAdvIOOK.uc
+outcome: success
+.

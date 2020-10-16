@@ -1,0 +1,6 @@
+description
+This test a way of correcting the error in the test testNonExistingAdvIoIdInCompositeBodyOK
+.
+args: testNonExistingAdvIoIdInCompositeBodyOK.uc
+outcome:  success
+.

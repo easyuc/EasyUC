@@ -1,0 +1,6 @@
+description
+This test gives an example of correct delcaration of a sub functionality F in the functionality R
+.
+args: testSubFunDecOK.uc
+outcome: success
+.

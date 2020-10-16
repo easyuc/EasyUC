@@ -1,0 +1,8 @@
+description 
+This test will pass since the functionality S implements
+a composite direct itnerface D and a basic adversarial interface
+I
+.
+args: testIdealFunImplementsCompositeAdvIOOK.uc
+outcome: success
+.

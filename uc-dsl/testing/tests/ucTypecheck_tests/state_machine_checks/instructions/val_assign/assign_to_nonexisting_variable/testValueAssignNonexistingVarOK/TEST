@@ -1,0 +1,6 @@
+description
+This test checks assignment operation with a valid existing variable
+.
+args: testValueAssignNonexistingVarOK.uc
+outcome: success
+.

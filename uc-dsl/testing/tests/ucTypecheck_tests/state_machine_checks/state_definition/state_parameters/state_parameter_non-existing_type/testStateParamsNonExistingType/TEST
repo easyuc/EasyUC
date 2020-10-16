@@ -1,0 +1,9 @@
+description
+This test fails because qort is a non-exsting type
+.
+args: testStateParamsNonExistingType.uc
+outcome:  failure
+[error: testStateParamsNonExistingType.uc: from line 16 columns 21 to 25]
+
+non-existing type: qort
+.

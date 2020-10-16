@@ -1,0 +1,9 @@
+description
+
+.
+args: testSubFunDec.uc
+outcome: failure
+[error: testSubFunDec.uc: from line 28 columns 11 to 12]
+
+F is not an ideal functionality
+.

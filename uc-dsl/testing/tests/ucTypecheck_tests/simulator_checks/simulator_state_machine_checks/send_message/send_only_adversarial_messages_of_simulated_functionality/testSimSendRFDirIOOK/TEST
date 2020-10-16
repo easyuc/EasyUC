@@ -1,0 +1,7 @@
+description
+This test pass since R.A.A.abli() is a possible outgoing message
+path
+.
+args: testSimSendRFDirIOOK.uc
+outcome: success
+.

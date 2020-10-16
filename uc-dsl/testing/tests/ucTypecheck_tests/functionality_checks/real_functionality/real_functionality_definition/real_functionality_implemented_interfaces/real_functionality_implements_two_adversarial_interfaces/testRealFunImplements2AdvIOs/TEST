@@ -1,0 +1,9 @@
+description
+This tests refering non existing interface
+.
+args: testRealFunImplements2AdvIOs.uc
+outcome:  failure
+[error: testRealFunImplements2AdvIOs.uc: from line 13 columns 30 to 31]
+
+direct interface does not exist: A
+.

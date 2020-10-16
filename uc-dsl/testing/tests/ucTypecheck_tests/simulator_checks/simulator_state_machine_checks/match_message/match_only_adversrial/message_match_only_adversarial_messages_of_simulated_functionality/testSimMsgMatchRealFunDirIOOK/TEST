@@ -1,0 +1,7 @@
+description
+This test gives a fix of the test testSimMsgMatchRealFunDirIO
+
+.
+args: testSimMsgMatchRealFunDirIOOK.uc
+outcome: success
+.

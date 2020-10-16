@@ -1,0 +1,6 @@
+description
+Fixes error from testStateParamNameIsInternalPort.uc
+.
+args: testStateParamNameIsInternalPortOK.uc
+outcome: success
+.

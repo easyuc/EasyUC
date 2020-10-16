@@ -1,0 +1,6 @@
+description
+This test gives an example of how to encode to a univ
+.
+args: testExprEncodeOK.uc
+outcome:  success
+.

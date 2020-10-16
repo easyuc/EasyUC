@@ -1,0 +1,11 @@
+description
+This test fails becuse R.F.iio.i2sbla() is not a possible message
+path
+.
+args: testSimSendNotOutMsgOfParamFun.uc
+outcome:  failure
+[error: testSimSendNotOutMsgOfParamFun.uc: from line 63 columns 38 to 52]
+
+message path is not one of the possible outgoing message paths:
+  iio.i2sbla, R.A.A.abli, R.F.iio.i2sbli, R.SFQ.a2.abli2
+.

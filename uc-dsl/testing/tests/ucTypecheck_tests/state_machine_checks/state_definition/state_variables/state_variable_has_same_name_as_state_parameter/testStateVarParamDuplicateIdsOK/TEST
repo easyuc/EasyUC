@@ -1,0 +1,7 @@
+description
+This test will pass because p is no longer defined again inside
+state T
+.
+args: testStateVarParamDuplicateIdsOK.uc
+outcome: success
+.

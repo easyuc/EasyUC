@@ -1,0 +1,10 @@
+description
+ 
+.
+args: pattern_not_binding_port_direct_message.uc
+outcome: failure
+[error: pattern_not_binding_port_direct_message.uc: from line 14 columns 6 to 13]
+
+non-"*" message patterns matching messages of direct interfaces implemented
+by functionalities must bind source ports to identifiers
+.

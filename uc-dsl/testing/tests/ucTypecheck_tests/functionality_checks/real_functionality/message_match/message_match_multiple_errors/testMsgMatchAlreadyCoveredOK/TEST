@@ -1,0 +1,6 @@
+description
+This test tests pattern matching. This test will pass
+.
+args: testMsgMatchAlreadyCoveredOK.uc
+outcome: success
+.

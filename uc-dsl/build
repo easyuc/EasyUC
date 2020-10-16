@@ -38,7 +38,7 @@ fi;
 
 cd ..
 
-ocamlbuild -use-ocamlfind ucdsl.native
+ocamlbuild -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' ucdsl.native
 
 if [ -e ucdsl.native ];
 then mkdir -p bin;

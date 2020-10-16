@@ -1,0 +1,6 @@
+description
+This test pass because the assignment is between comptible types
+.
+args: testValueAssignWrongTypeOK.uc
+outcome: success
+.

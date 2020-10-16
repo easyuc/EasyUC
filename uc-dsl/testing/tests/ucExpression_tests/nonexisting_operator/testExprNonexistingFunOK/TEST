@@ -1,0 +1,6 @@
+description
+This test fixes testExprNonexistingFun
+.
+args: testExprNonexistingFunOK.uc
+outcome: success
+.

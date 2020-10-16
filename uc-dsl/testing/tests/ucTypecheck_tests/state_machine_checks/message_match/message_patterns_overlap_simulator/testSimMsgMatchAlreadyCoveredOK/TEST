@@ -1,0 +1,6 @@
+description
+This test fixes match message error from testSimMsgMatchAlreadyCovered
+.
+args: testSimMsgMatchAlreadyCoveredOK.uc
+outcome:  success
+.

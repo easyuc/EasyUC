@@ -1,0 +1,10 @@
+description
+This test fails because composite interfaces cannot be used for constructing
+composite interfaces.
+.
+args: testCompositeReferencingComposite.uc
+outcome: failure
+[error: testCompositeReferencingComposite.uc: from line 10 columns 3 to 5]
+
+A1 isn't a basic interface
+.

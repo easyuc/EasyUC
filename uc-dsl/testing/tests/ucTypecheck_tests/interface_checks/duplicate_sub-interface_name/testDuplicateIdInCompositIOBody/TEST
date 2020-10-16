@@ -1,0 +1,9 @@
+description
+This test fails because of using a variable with the same name to define a sub-interface
+.
+args: testDuplicateIdInCompositIOBody.uc
+outcome: failure
+[error: testDuplicateIdInCompositIOBody.uc: from line 7 columns 1 to 2]
+
+duplicate sub-interface name: a
+.

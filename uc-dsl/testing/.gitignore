@@ -1,0 +1,6 @@
+tests/*/CONFLICT
+*.coverage
+_coverage/
+log
+_build
+dsl-test

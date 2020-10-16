@@ -1,0 +1,7 @@
+description
+This test will pass because the last match message matches mesage from
+iio
+.
+args: testSimInitStateNonI2SMsgMatchOK.uc
+outcome:  success
+.

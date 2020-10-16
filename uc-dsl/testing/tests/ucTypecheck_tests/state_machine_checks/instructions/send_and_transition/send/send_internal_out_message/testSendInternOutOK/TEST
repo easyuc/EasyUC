@@ -1,0 +1,6 @@
+description
+This test will pass because G.D.bla is a valid send message
+.
+args: testSendInternOutOK.uc
+outcome: success
+.

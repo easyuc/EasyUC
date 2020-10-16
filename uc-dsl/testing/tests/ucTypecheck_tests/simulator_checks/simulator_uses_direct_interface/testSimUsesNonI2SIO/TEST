@@ -1,0 +1,9 @@
+description
+Here D is a direct interface not adversarial hence the test fails
+.
+args: testSimUsesNonI2SIO.uc
+outcome:  failure
+[error: testSimUsesNonI2SIO.uc: from line 18 columns 18 to 19]
+
+adversarial interface does not exist: D
+.

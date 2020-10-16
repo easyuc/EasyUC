@@ -1,0 +1,6 @@
+description
+This test will pass since p,q are different variables
+.
+args: testStateParamsDuplicateIdsOK.uc
+outcome:  success
+.

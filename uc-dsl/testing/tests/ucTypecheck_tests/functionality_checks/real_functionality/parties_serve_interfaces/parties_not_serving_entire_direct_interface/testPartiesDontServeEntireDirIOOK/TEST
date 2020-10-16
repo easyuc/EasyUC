@@ -1,0 +1,6 @@
+description
+This test will pass since all sub-interfaces are served by some party
+.
+args: testPartiesDontServeEntireDirIOOK.uc
+outcome: success
+.

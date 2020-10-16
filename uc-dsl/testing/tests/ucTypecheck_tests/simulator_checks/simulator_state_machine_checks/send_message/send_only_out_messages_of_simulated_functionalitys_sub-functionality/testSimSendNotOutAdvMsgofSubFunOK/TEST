@@ -1,0 +1,7 @@
+description
+This test passs because  R.SFQ.a2.abli2 is a possible
+outgoing message path
+.
+args: testSimSendNotOutAdvMsgofSubFunOK.uc
+outcome: success
+.

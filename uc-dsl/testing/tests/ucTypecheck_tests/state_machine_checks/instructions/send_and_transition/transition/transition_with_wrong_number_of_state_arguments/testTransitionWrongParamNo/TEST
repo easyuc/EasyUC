@@ -1,0 +1,10 @@
+description
+This test checks whether the transition state takes correct number of
+arguments or not
+.
+args: testTransitionWrongParamNo.uc
+outcome: failure
+[error: testTransitionWrongParamNo.uc: from line 16 columns 65 to 74]
+
+wrong number of state arguments
+.

@@ -1,0 +1,9 @@
+description
+Source port and message argument are bound to the same const in message pattern
+.
+args: testMsgPatBindsPortAndArg.uc
+outcome:  failure
+[error: testMsgPatBindsPortAndArg.uc: from line 14 columns 5 to 6]
+
+source port of message pattern is also bound in message argument patterns
+.

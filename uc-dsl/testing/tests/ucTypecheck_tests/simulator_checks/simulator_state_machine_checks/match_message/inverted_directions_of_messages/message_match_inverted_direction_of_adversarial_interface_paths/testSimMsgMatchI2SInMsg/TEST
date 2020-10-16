@@ -1,0 +1,9 @@
+description
+This test fails because i2bla is not a possible income path
+.
+args: testSimMsgMatchI2SInMsg.uc
+outcome:  failure
+[error: testSimMsgMatchI2SInMsg.uc: from line 33 columns 22 to 32]
+
+message path is not one of the possible incoming message paths: iio.i2sbli
+.
