@@ -33,8 +33,11 @@ Building the UC DSL Tool
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
 [`opam`](https://opam.ocaml.org),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and Bisect_ppx plugin for Ocamlbuild
-[Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild)
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and `Bisect_ppx`
+plugin for Ocamlbuild
+[Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
+(Bisect_ppx can be installed using `opam`: `opam install
+bisect_ppx-ocamlbuild`.)
 
 Note: if you have already installed the EasyCrypt tool itself (as
 opposed to the tools it uses, such as SMT solvers) via opam, you
@@ -108,7 +111,7 @@ Unit Testing
 The subdirectory [`testing`](testing) contains a unit testing
 framework, including a suite of test cases. This suite can
 be used to check code coverage (see the above instructions for
-building the `ucdsl` with code coverage instrumentation turned on).
+building `ucdsl` with code coverage instrumentation turned on).
 
 Files
 --------------------------------------------------------------------
