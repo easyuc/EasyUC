@@ -63,7 +63,4 @@ let non_loc_error_message = non_loc_message (fun () -> exit 1) ErrorMessage
 
 let non_loc_warning_message = non_loc_message (fun () -> ()) WarningMessage
 
-(* called to indicate that reaching a given code branch should
-   be impossible *)
-
 let failure msg = raise (Failure msg)

@@ -1793,6 +1793,5 @@ let load_ec_reqs reqs =
   List.iter reqimp reqs
 
 let typecheck spec = 
-  let () = UcEcInterface.init() in
   let () = load_ec_reqs spec.externals.ec_requires in
   check_defs spec.definitions

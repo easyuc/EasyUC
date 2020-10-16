@@ -88,5 +88,6 @@ let () =
        UcState.add_to_include_dirs dir
 
 let () =
-  (ignore (parse_and_typecheck_file_or_id (FOIDFile file));
-   exit 0)
+  UcEcInterface.init ();
+  ignore (parse_and_typecheck_file_or_id (FOIDFile file));
+  exit 0
