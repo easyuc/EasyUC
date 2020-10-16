@@ -1788,13 +1788,13 @@ let load_ec_reqs reqs =
               ("@[EasyCrypt@ theory@ to@ be@ imported@ must@ begin@ with@ " ^^
                "uppercase@ letter:@ %s@]")
               uid) in
-    try UcEcInterface.require_import (unloc id) with
-    Failure f ->
-      type_error (loc id)
-      (fun ppf ->
-         fprintf ppf
-         "@[error@ when@ importing@ EasyCrypt@ theory@ %s:@ \"%s\"@]"
-         (unloc id) f) in
+    try UcEcInterface.require id (Some `Import) with
+    |  Failure f ->
+        type_error (loc id)
+        (fun ppf ->
+           fprintf ppf
+           "@[error@ when@ importing@ EasyCrypt@ theory@ %s:@ \"%s\"@]"
+           (unloc id) f) in
   List.iter reqimp reqs
 
 let typecheck spec = 

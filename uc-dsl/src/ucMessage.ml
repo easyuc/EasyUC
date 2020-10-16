@@ -46,17 +46,22 @@ let error_message = message (fun () -> exit 1) ErrorMessage
 
 let warning_message = message (fun () -> ()) WarningMessage
 
-let non_loc_error_message msgf =
+let non_loc_message res mt msgf =
+  let mt_str = message_type_str mt in
   let raw = UcState.get_raw_messages () in
   if raw
-  then (Printf.eprintf "error: \n\n";
+  then (Printf.eprintf "%s: \n\n" mt_str;
         msgf Format.err_formatter;
         Format.pp_print_newline Format.err_formatter ();
-        exit 1)
-  else (Printf.eprintf "[error:]\n\n";
+        res ())
+  else (Printf.eprintf "[%s:]\n\n" mt_str;
         msgf Format.err_formatter;
         Format.pp_print_newline Format.err_formatter ();
-        exit 1)
+        res ())
+
+let non_loc_error_message = non_loc_message (fun () -> exit 1) ErrorMessage
+
+let non_loc_warning_message = non_loc_message (fun () -> ()) WarningMessage
 
 (* called to indicate that reaching a given code branch should
    be impossible *)
