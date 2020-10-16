@@ -32,9 +32,9 @@ dsl-test -debug file
 ./dsl-test-suite
 ```
 
-Runs all of the tests in the tests/ directory,
+Runs all of the tests in the `tests/` directory,
 and, if the ucdsl binary was compiled with code coverage instrumenation,
-creates code coverage report in _coverage/ directory.
+creates code coverage report in `_coverage/` directory.
 
 
 ## Requirements
