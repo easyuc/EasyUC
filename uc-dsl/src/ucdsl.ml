@@ -5,7 +5,9 @@
 open Arg
 open Batteries
 open UcMessage
+(* FIXME
 open UcParseAndTypecheckFile
+*)
 
 let () = Printexc.record_backtrace true
 
@@ -88,6 +90,9 @@ let () =
        UcState.add_to_include_dirs dir
 
 let () =
+(* FIXME
   UcEcInterface.init ();
   ignore (parse_and_typecheck_file_or_id (FOID_File file));
+*)
+  ignore (UcParseFile.parse_file_or_id (UcParseFile.FOID_File file));
   exit 0
