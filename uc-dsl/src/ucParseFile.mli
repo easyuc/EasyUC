@@ -5,7 +5,12 @@
 open UcSpec
 
 type file_or_id =
-  | FOIDFile of string
-  | FOIDId   of id
+  | FOID_File of string  (* file name, interpreted relative to working
+                            directory, if not fully qualified *)
+  | FOID_Id   of id      (* root name of .uc file, matching ident from
+                            lexer (and so without ".uc" and without "/"s *)
 
-val parse_file_or_id : file_or_id -> spec
+(* second component of result will be the filename of the locations
+   of the spec *)
+
+val parse_file_or_id : file_or_id -> spec * string

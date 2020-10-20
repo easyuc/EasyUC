@@ -77,6 +77,9 @@ val ucdsl_addnotifier : notifier -> unit
 (* current scope *)
 val ucdsl_current : unit -> UcEcScope.scope
 
+(* update current scope *)
+val ucdsl_update : UcEcScope.scope -> unit
+
 (* require a theory *)
 val ucdsl_require :
   string EcLocation.located option *

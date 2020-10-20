@@ -89,5 +89,5 @@ let () =
 
 let () =
   UcEcInterface.init ();
-  ignore (parse_and_typecheck_file_or_id (FOIDFile file));
+  ignore (parse_and_typecheck_file_or_id (FOID_File file));
   exit 0

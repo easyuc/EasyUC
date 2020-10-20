@@ -1,0 +1,9 @@
+description
+Illegal recursion in UC DSL requires back to initial file.
+.
+args: Who.uc
+outcome: failure
+[error: Foo.uc: from line 1 columns 13 to 16]
+
+illegal recursion in UC requires: Who, Goo, Foo, Who
+.

@@ -1,0 +1,9 @@
+description
+Test what happens when a uc_required file has an error.
+.
+args: Goo.uc
+outcome: failure
+[error: Foo.uc: from line 2 columns 18 to 19]
+
+non-existing type: t
+.

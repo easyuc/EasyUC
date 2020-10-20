@@ -1,0 +1,6 @@
+description
+OK version: illegal recursion in UC requires not back to initial file.
+.
+args: Who.uc
+outcome: success
+.

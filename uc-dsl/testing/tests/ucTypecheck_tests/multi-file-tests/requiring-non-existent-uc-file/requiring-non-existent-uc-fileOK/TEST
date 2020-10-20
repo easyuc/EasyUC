@@ -1,0 +1,6 @@
+description
+test of what happens when UC requiring a non-existent file.
+.
+args: Goo.uc
+outcome: success
+.

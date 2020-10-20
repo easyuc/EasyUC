@@ -1,0 +1,9 @@
+description
+test of uc_requires when name doesn't begin with uppercase letter.
+.
+args: Goo.uc
+outcome: failure
+[error: Goo.uc: from line 1 columns 13 to 16]
+
+UC (.uc) file to be required must begin with uppercase letter: foo
+.

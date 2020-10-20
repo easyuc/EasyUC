@@ -1,0 +1,10 @@
+description
+test that a subsequent UC require does not have EC definitions
+ec_required by previous UC require.
+.
+args: Who.uc
+outcome: failure
+[error: Goo.uc: from line 2 columns 18 to 19]
+
+non-existing type: t
+.

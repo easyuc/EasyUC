@@ -1,0 +1,6 @@
+description
+OK Version: Test what happens when a uc_required file has an error.
+.
+args: Goo.uc
+outcome: success
+.

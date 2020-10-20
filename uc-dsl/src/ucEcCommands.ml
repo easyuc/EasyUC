@@ -910,6 +910,11 @@ let ucdsl_current () =
   assert (not (List.is_empty (! ucdsl_context)));
   List.hd (! ucdsl_context)
 
+let ucdsl_update scope =
+  assert (not (List.is_empty (! ucdsl_context)));
+  let rest = List.tl (! ucdsl_context) in
+  ucdsl_context := scope :: rest
+
 let ucdsl_require threq =
   assert (not (List.is_empty (! ucdsl_context)));
   let top_sc = List.hd (! ucdsl_context) in

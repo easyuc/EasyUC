@@ -12,27 +12,6 @@ open UcTypedSpec
 open UcUtils
 open UcMessage
 
-(* four identifier (technically, unlocated identifier) maps are
-   maintained at the top-level, for direct and adversarial interfaces,
-   functionalities and simulators; their domains are disjoint *)
-
-type maps_tyd =
-  {dir_inter_map : inter_tyd IdMap.t;
-   adv_inter_map : inter_tyd IdMap.t;
-   fun_map       : fun_tyd IdMap.t;
-   sim_map       : sim_def_tyd IdMap.t}
-
-let exists_id_maps_tyd (maps : maps_tyd) (uid : string) =
-  exists_id maps.dir_inter_map uid ||
-  exists_id maps.adv_inter_map uid ||
-  exists_id maps.fun_map uid ||
-  exists_id maps.sim_map uid
-
-let exists_id_inter_maps
-    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
-    (uid : string) : bool =
-  exists_id dir_inter_map uid || exists_id adv_inter_map uid
-
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -1753,24 +1732,105 @@ let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
 
 (***************************** definition checks ******************************)
 
-let check_defs defs = 
-  let empty_maps =
-    {dir_inter_map = IdMap.empty;
-     adv_inter_map = IdMap.empty;
-     fun_map       = IdMap.empty;
-     sim_map       = IdMap.empty} in
+let partition_maps qual_file maps =
+  let part_dir_inter_map =
+    IdMap.partition 
+    (fun _ v -> filename_of_loc (loc v) = qual_file)
+    maps.dir_inter_map in
+  let part_adv_inter_map =
+    IdMap.partition 
+    (fun _ v -> filename_of_loc (loc v) = qual_file)
+    maps.adv_inter_map in
+  let part_fun_map =
+    IdMap.partition 
+    (fun _ v -> filename_of_loc (loc v) = qual_file)
+    maps.fun_map in
+  let part_sim_map =
+    IdMap.partition 
+    (fun _ v -> filename_of_loc (loc v) = qual_file)
+    maps.sim_map in
+  {required_maps =
+     {dir_inter_map = snd part_dir_inter_map;
+      adv_inter_map = snd part_adv_inter_map;
+      fun_map       = snd part_fun_map;
+      sim_map       = snd part_sim_map};
+   current_maps  =
+     {dir_inter_map = fst part_dir_inter_map;
+      adv_inter_map = fst part_adv_inter_map;
+      fun_map       = fst part_fun_map;
+      sim_map       = fst part_sim_map}}
+
+let check_defs qual_file maps defs = 
   let check_def maps def =
     match def with
     | InterDef interd -> check_inter_def maps interd
     | FunDef fund     -> check_fun_def maps fund
     | SimDef simd     -> check_sim_def maps simd in
-  let maps = List.fold_left check_def empty_maps defs in
-  {direct_inters      = maps.dir_inter_map;
-   adversarial_inters = maps.adv_inter_map;
-   functionalities    = maps.fun_map;
-   simulators         = maps.sim_map }
+  let maps = List.fold_left check_def maps defs in
+  partition_maps qual_file maps
 
 (**************************** specification checks ****************************)
+
+let union_maps id map_old map_new =
+  let conflict l file uid =
+    type_error l
+    (fun ppf ->
+       fprintf ppf
+       ("@[when@ requiring@ UC@ file@ %s,@ definition@ of@ %s@ " ^^
+        "conflicts@ with@ definition@ from@ previous@ require@]")
+       file uid) in
+  let check_same_loc k l1 l2 =
+    if l1 <> l2
+    then conflict (loc id) (unloc id) k in
+  let check_disjoint_maps maps =
+    let ks =
+      List.map fst
+      (IdMap.bindings (IdMap.mapi (fun k _ -> k) maps.dir_inter_map) @
+       IdMap.bindings (IdMap.mapi (fun k _ -> k) maps.adv_inter_map) @
+       IdMap.bindings (IdMap.mapi (fun k _ -> k) maps.fun_map) @
+       IdMap.bindings (IdMap.mapi (fun k _ -> k) maps.sim_map)) in
+    match find_dup ks with
+    | None   -> ()
+    | Some k -> conflict (loc id) (unloc id) k in
+  let maps =
+    {dir_inter_map =
+       IdMap.union
+       (fun k v1 v2 -> check_same_loc k (loc v1) (loc v2); Some v1)
+       map_old.dir_inter_map map_new.dir_inter_map;
+     adv_inter_map =
+       IdMap.union
+       (fun k v1 v2 -> check_same_loc k (loc v1) (loc v2); Some v1)
+       map_old.adv_inter_map map_new.adv_inter_map;
+     fun_map =
+       IdMap.union
+       (fun k v1 v2 -> check_same_loc k (loc v1) (loc v2); Some v1)
+       map_old.fun_map map_new.fun_map;
+     sim_map =
+       IdMap.union
+       (fun k v1 v2 -> check_same_loc k (loc v1) (loc v2); Some v1)
+       map_old.sim_map map_new.sim_map} in
+  let () = check_disjoint_maps maps in
+  maps
+
+let load_uc_req check_id maps id =
+  let uid = unloc id in
+  if not (Char.is_uppercase uid.[0])
+  then type_error (loc id)
+       (fun ppf ->
+          fprintf ppf
+          ("@[UC@ (.uc)@ file@ to@ be@ required@ must@ begin@ " ^^
+           "with@ uppercase@ letter:@ %s@]")
+          uid)
+  else let () = UcEcCommands.ucdsl_new () in
+       let tyspec = check_id id in
+       let maps' =
+         union_maps id tyspec.required_maps tyspec.current_maps in
+       let maps = union_maps id maps maps' in
+       let () = UcEcCommands.ucdsl_end () in
+       maps
+
+let load_uc_reqs check_id maps reqs = 
+  List.fold_left (load_uc_req check_id) maps reqs
 
 let load_ec_reqs reqs = 
   let reqimp id = 
@@ -1792,6 +1852,12 @@ let load_ec_reqs reqs =
            (unloc id) f) in
   List.iter reqimp reqs
 
-let typecheck spec = 
+let typecheck qual_file check_id spec = 
+  let empty_maps =
+    {dir_inter_map = IdMap.empty;
+     adv_inter_map = IdMap.empty;
+     fun_map       = IdMap.empty;
+     sim_map       = IdMap.empty} in
+  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
-  check_defs spec.definitions
+  check_defs qual_file maps spec.definitions

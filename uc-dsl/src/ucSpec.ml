@@ -2,6 +2,7 @@
 
 (* Specification Parse Trees *)
 
+open Batteries
 open EcLocation
 open UcMessage
 
@@ -51,6 +52,16 @@ type msg_or_star =
   | MsgOrStarStar of EcLocation.t
 
 type qid = id list
+
+let qid1_starts_with_qid2 (q1 : qid) (q2 : qid) : bool =
+  List.for_all
+  identity
+  (List.mapi
+   (fun i id2 -> 
+      match List.nth_opt q1 i with
+      | Some id1 -> unloc id1 = unloc id2
+      | None     -> false)
+   q2)
 
 type msg_path_pat = {inter_id_path : qid; msg_or_star : msg_or_star}
 

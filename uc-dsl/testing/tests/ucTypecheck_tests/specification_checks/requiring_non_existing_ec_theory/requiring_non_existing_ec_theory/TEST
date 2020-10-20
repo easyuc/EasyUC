@@ -1,0 +1,9 @@
+description
+Testing what happens when a non-existing .ec file is required.
+.
+args: requiring_non_existing_ec_theory.uc
+outcome:failure
+[error: requiring_non_existing_ec_theory.uc: from line 1 columns 13 to 18]
+
+EasyCrypt: error require importing theory: cannot locate theory `Enpty'
+.
