@@ -1,0 +1,6 @@
+description
+
+.
+args: simulator_name_already_declaredOK.uc
+outcome: success
+.

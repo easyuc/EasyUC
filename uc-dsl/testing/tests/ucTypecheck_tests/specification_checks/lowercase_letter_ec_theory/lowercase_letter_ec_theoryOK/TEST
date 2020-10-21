@@ -1,0 +1,6 @@
+description
+This test demonstrates a correct way of constructing tuples from an existing type.
+.
+args: lowercase_letter_ec_theoryOK.uc
+outcome: success
+.

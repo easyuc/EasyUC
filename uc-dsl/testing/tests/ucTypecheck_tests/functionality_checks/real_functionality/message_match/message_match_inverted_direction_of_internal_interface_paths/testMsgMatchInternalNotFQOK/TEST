@@ -1,0 +1,7 @@
+description
+This test fixes testMsgMatchInternalNotFQ
+.
+args: testMsgMatchInternalNotFQOK.uc
+outcome: success
+.
+

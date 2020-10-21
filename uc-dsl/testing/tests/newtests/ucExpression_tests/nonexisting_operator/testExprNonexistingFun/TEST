@@ -1,9 +1,0 @@
-description
-This test fails becuase hen is unkown operator
-.
-
-outcome:  failure
-[error: testExprNonexistingFun.uc: from line 17 columns 14 to 17]
-
-nonexisting operator
-.

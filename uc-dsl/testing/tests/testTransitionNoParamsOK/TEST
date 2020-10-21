@@ -1,6 +1,0 @@
-description
-This test will pass because II takes g as argument
-.
-args: testTransitionNoParamsOK.uc
-outcome: success
-.

@@ -1,0 +1,9 @@
+description
+
+.
+args: simulated_functionality_doesnt_exist.uc
+outcome:failure
+[error: simulated_functionality_doesnt_exist.uc: from line 21 columns 32 to 33]
+
+functionality isn't defined: J
+.

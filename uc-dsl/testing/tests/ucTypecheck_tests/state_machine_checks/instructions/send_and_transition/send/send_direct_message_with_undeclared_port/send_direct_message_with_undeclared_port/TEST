@@ -1,0 +1,9 @@
+description
+
+.
+args: send_direct_message_with_undeclared_port.uc
+outcome: failure
+[error: send_direct_message_with_undeclared_port.uc: from line 14 columns 37 to 38]
+
+y is not declared
+.

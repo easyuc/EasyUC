@@ -1,9 +1,0 @@
-description
-This test fails because the variable x is sampled from a nondistribution.
-.
-args: testSampleAssignNotFromDistr.uc
-outcome: failure
-[error: testSampleAssignNotFromDistr.uc: from line 17 columns 16 to 17]
-
-you can sample only from distributions
-.

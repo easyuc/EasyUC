@@ -1,0 +1,6 @@
+description
+This test demonstrates a correct way of constructing tuples from an existing type.
+.
+args: requireing_non-existing_ec_theoryOK.uc
+outcome: success
+.

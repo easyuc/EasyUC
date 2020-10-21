@@ -1,0 +1,7 @@
+description
+This test gives a fix of the test testSimMsgMatchRealFunDirIO
+
+.
+args: message_match_adversarial_binding_portOK.uc
+outcome: success
+.

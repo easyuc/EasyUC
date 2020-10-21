@@ -1,0 +1,9 @@
+description
+This test demonstrates a correct way of constructing tuples from an existing type.
+.
+args: requireing_non-existing_ec_theory.uc
+outcome:failure
+[error: requireing_non-existing_ec_theory.uc: from line 1 columns 13 to 18]
+
+error when importing EasyCrypt theory Enpty: "cannot locate theory `Enpty'"
+.

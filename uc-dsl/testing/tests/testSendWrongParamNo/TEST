@@ -1,9 +1,0 @@
-description
-This test fails because bla takes no arguments
-.
-args: testSendWrongParamNo.uc
-outcome: failure
-[error: testSendWrongParamNo.uc: from line 16 columns 39 to 47]
-
-wrong number of message arguments
-.

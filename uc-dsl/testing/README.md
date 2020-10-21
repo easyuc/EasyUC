@@ -1,6 +1,10 @@
-# UCDSL Testsuite
+# UC DSL Unit Testing Framework
 
-UCDSL Testsuite is a software for dealing with UCDSL tests
+This directory contains the implementation of a framework for carrying
+out unit tests of the UC DSL tool, as well as a comprehensive suite of
+unit tests.
+
+(The following description is in flux.)
 
 ## Installation
 
@@ -25,6 +29,17 @@ dsl-test -debug file
   --help  Display this list of options
 
 ```
+
+## Running the test suite
+
+```
+./dsl-test-suite
+```
+
+Runs all of the tests in the `tests/` directory,
+and, if the ucdsl binary was compiled with code coverage instrumenation,
+creates code coverage report in `_coverage/` directory.
+
 
 ## Requirements
 

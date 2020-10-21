@@ -4,6 +4,6 @@ main: main.native
 
 %.native: 
 	ocamlbuild -use-ocamlfind $@
-	mv $@ $ dsl-test
+	mv $@ dsl-test
 
 .PHONY: default
