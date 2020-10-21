@@ -85,7 +85,7 @@ let () =
             Format.fprintf ppf
             "@[file@ does@ not@ exist:@ %s@]" file)
   else let dir = Filename.dirname file in
-       UcState.add_to_include_dirs dir
+       UcState.add_before_include_dirs dir
 
 let () =
   UcEcInterface.init ();
