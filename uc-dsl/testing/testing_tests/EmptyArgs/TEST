@@ -1,0 +1,5 @@
+description
+This file contains empty args the test suite should print a warning
+args:
+outcome: success
+.

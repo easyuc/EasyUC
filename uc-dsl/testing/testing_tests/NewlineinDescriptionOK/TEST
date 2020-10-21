@@ -1,0 +1,7 @@
+description
+This test is to determine whether new line
+is processed correctly in descrption
+.
+args : test.uc
+outcome: success
+.

@@ -1,6 +1,6 @@
-(* pre.ml *)
+(* test_run_tests.ml *)
 open Test_types
-open Test_main
+open Test_common_module
 open Test_log
    
    
@@ -78,10 +78,13 @@ let rec last_element y list =
 let rec match_expr expression f_name out_come1 out_come2 number =
   match expression with
   |[] -> if f_name = [| |] then failwith " Empty args "
+         else if number = 0 then failwith " Outcome missing "
          else
            if out_come1 = Empty then
              failwith "Outcome has to be succes or failure"
            else (f_name, out_come1, out_come2)
+(* outcome can be Empty in addition to success and failure
+this has been instroduced for programming convinience *)
   |e::l -> match e with
            |Args o -> let f_array = last_element [| |] o in
                       match_expr l f_array out_come1 out_come2 number

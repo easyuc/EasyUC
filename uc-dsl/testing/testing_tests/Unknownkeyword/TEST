@@ -1,0 +1,7 @@
+description
+This files contains an unknown keyword the test_suite should
+output the correct error
+.
+ars : test.uc
+outcome: success
+.
