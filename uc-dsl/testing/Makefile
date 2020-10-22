@@ -1,6 +1,6 @@
-default: main
+default: test_main
 
-main: main.native
+test_main: test_main.native
 
 %.native: 
 	ocamlbuild -use-ocamlfind $@

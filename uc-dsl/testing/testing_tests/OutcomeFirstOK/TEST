@@ -1,0 +1,7 @@
+outcome:success
+.
+args: test.uc
+description
+This test is to study the test_suite when TEST file contains
+outcome field first
+.

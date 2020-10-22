@@ -1,0 +1,8 @@
+description
+This test is to check the behaviour of test suite
+immediately after success/failure in the outcome
+section
+.
+args: test.uc
+outcome: success test
+.

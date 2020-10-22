@@ -1,0 +1,7 @@
+(* COMMENTS COMMENTS *)
+description
+This test is to see what happens when we start a file with comments
+.
+args: test.uc
+outcome: success
+.

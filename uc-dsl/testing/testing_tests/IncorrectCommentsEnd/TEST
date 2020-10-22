@@ -1,0 +1,9 @@
+description
+This test is to test the behaviour of test_suite when end of comments miss
+'*)'
+(* This is not a comment *)
+.
+(* This is a comment missing a * and a )
+args: test.uc
+outcome: success.
+.

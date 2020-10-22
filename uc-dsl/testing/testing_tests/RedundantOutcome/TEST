@@ -1,0 +1,7 @@
+description
+This test checks the behaviour of redundant outcomes in
+the outcome section
+.
+args: test.uc
+outcome: success failure
+.
