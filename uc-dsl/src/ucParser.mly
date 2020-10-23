@@ -104,7 +104,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token LBRACE
 %token RBRACE
 %token COMMA
-%token COLON
 %token DIRECT
 %token ADVERSARIAL
 %token IN
@@ -115,7 +114,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token SIM
 %token SIMS
 %token IMPLEM
-%token EQ
 %token PARTY
 %token SERVES
 %token USES
@@ -125,9 +123,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token MATCH
 %token WITH
 %token END
-%token PIPE
 %token AT
-%token ARROW
 %token FAIL
 %token SEND
 %token ANDTXT
@@ -138,30 +134,32 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token UNDERSCORE
 
 %token VAR
-%token ASGVAL
-%token ASGSAMPLE
 %token SEMICOLON
 %token IF
 %token ELIF
 %token ELSE
 
 %token ENCODE
+
+%nonassoc ENCODE
+
 %token DECODE
 %token AS
 %token OK
 %token ERROR
 
+%token LESAMPLE
 (* operators and their associativity are copied from EcParser of
    EasyCrypt project. UcLexer contains code for recognizing
    operators. The operators and code are currently a small subset of
    what can be found in EasyCrypt. *)
 
 %token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4 NUMOP
-%token (*COLON*) SHARP SHARPPIPE SLASHSLASH SLASHSLASHSHARP SLASHEQ
+%token COLON SHARP SHARPPIPE SLASHSLASH SLASHSLASHSHARP SLASHEQ
 %token SLASHSHARP SLASHSLASHEQ SLASHGT PIPEGT SLASHSLASHGT PIPEPIPEGT
-%token IMPL (*PIPE*) CEQ SLASH LARROW RARROW LLARROW RRARROW NOT HAT AMP 
+%token IMPL PIPE CEQ SLASH LARROW RARROW LLARROW RRARROW NOT HAT AMP 
 %token ANDA AND ORA OR IFF PCENT PLUS MINUS STAR BACKS FWDS LTCOLON
-%token LONGARROW (*EQ*) NE GT LT GE LE LTSTARGT LTLTSTARGT LTSTARGTGT
+%token LONGARROW EQ NE GT LT GE LE LTSTARGT LTLTSTARGT LTSTARGTGT
 
 %right    IMPL 
 %right    ORA  OR
@@ -179,8 +177,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %right ROP3
 %left  LOP4 AT AMP HAT
 %right ROP4
-
-%nonassoc ENCODE
 
 (* the input for the UcParser is a list of tokens produced by UcLexer
    from the UC DSL file.  This list is parsed by UcParser, starting
@@ -566,7 +562,7 @@ message_matching :
        unloc mmcs }
 
 msg_match_clause :
-  | msg_pat = msg_pat; ARROW; code = inst_block
+  | msg_pat = msg_pat; IMPL; code = inst_block
       { (match msg_pat.msg_path_pat.msg_or_star with
          | MsgOrStarMsg _ -> ()
          | MsgOrStarStar l ->
@@ -711,9 +707,9 @@ instruction_u :
    type). *)
 
 assignment : 
-  | vid = id; ASGVAL; e = expression; SEMICOLON
+  | vid = id; LARROW; e = expression; SEMICOLON
       { Assign (vid, e) }
-  | vid = id; ASGSAMPLE; e = expression; SEMICOLON
+  | vid = id; LESAMPLE; e = expression; SEMICOLON
       { Sample (vid, e) }
 
 (* Conditional (if-then-else) instructions *)
@@ -745,8 +741,8 @@ elifthenelse_u :
 
 decode : 
   | DECODE; ex = expression; AS; ty = ty; WITH;
-    PIPE? OK; args_pat = dec_pat; ARROW; code1 = inst_block;
-    PIPE; ERROR; ARROW; code2 = inst_block; END;
+    PIPE? OK; args_pat = dec_pat; IMPL; code1 = inst_block;
+    PIPE; ERROR; IMPL; code2 = inst_block; END;
       { Decode (ex, ty, args_pat, code1, code2) }
 
 dec_pat : 

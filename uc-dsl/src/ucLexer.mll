@@ -208,10 +208,10 @@ rule read = parse
   | '.'   { [DOT]        }
   | '|'   { [PIPE]       }
   | '@'   { [AT]         }
-  | "=>"  { [ARROW]      } (*clash with EC operator IMPL*)
+  | "=>"  { [IMPL]       }
   | "!"   { [NOT]        }
-  | "<$"  { [ASGSAMPLE]  }
-  | "<-"  { [ASGVAL]     } (*clash with EC operator LARROW*)
+  | "<$"  { [LESAMPLE]   }
+  | "<-"  { [LARROW]     }
   | "_"   { [UNDERSCORE] }
 
 (*ecLexer operator code BEGIN*)
