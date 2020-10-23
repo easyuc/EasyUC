@@ -113,8 +113,9 @@ let create_conflict file outcome1 outcome2 =
       
 (* in the above code write_log comes from the file Test_log.ml *)
 (* below function parse_file comes into the picture while executing 
-a test, we take a TEST file, parse using parse function from Test_main.ml
-then get the tokens, match and use the function run from Test_main.ml
+a test, we take a TEST file, parse using parse function from 
+Test_common_module.ml then get the tokens, match and use the function 
+run from Test_common_module.ml
 which gives us exit code together with an error message if any
 use that information to determine whether a test failed or passed *)
   

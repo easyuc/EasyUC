@@ -61,7 +61,7 @@ and desc_comments = parse
     |"(*"  		{comments 0 lexbuf; desc_comments lexbuf }
     |eof		{error_raise ("description did not end correctly"
     			 ^"reached end of file looking"
-    			 ^" end of description") lexbuf }
+    			 ^"@\n end of description") lexbuf }
     |_ 	{error_raise "text should start in a new line after 'description'" lexbuf}
 
 (* Once we encounter \n after the keyword descrption and any comments we
@@ -79,7 +79,7 @@ and desc s = parse
     |".\n"	{new_line lexbuf; s }
     |line	{next_line lexbuf; desc (s ^ (Lexing.lexeme lexbuf)) lexbuf}
     |eof	{error_raise ("Reached the end of file looking for '\n.\n'"
-    		 ^ " description/outcome did not end correctly") lexbuf }
+    		 ^" description/outcome did not end correctly") lexbuf }
     |_		{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
     		 if (s = ".") then
     		 (error_raise ("description/outcome did not end correctly expecting '.\n'"

@@ -26,7 +26,7 @@ let verify_dir dir =
                                  print_endline (dir^" is not a valid directory \n"); exit 1)
 (* needs to be logged? *)
 (* this function pre_debug comes into the picture when debug option is used
-we take a file, parse it using parse function from Test_main.ml and 
+we take a file, parse it using parse function from Test_common_module.ml and 
 print it using print_list function from the same file *)
                               
 let pre_debug file =

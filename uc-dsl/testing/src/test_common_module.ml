@@ -67,8 +67,7 @@ our test_parser and test_lexer to generate token and then parse the
 file *)  
   
 let parse (file_name : string) =
-  let s = read_file(file_name) in
-  let lexbuf = Lexing.from_string s in
+  let lexbuf = Lexing.from_channel (open_in file_name) in
   let ctr = 
     try Test_parser.prog Test_lexer.my_lexer lexbuf
     with Parsing.Parse_error ->
@@ -129,14 +128,22 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
        in
        walk_folders dirs test_list er_string)
     else
+      (let dir_content  = List.filter (fun x -> (x <> "TEST" && x <> "log") ||
+                  (String.lowercase_ascii (String.sub x 0 6) = "readme")) files
+       in
+       let file_list = match dir_content with
+         |[] -> ""
+         |e::l -> e
+       in
       (test_list,(er_string^"\n"^
 	            "Error:Unexpected files found in the directory:"
-	            ^dir
-	            ^"\nDirectory ignored, please clean files\n"))
+	            ^dir^"\nFor example:\n"^dir^file_list
+	            ^"\nDirectory ignored, please clean files\n")))
   with
-  |Sys_error e -> ( test_list , er_string^"\nError: "^ e)
+  |Sys_error e -> ( test_list , er_string^"\nError:"^ e)
   |Unix_error (_,_,e) -> (test_list , er_string^"\nError:"^ e)
-  |_ -> (test_list , er_string^"\nSome unknown error occured")
+  |_ -> (test_list , er_string^"\nSome unknown error occured"^
+        "please report this as a bug")
       
   
 (* The below code is originally written by Alley and slightly modified here, 
