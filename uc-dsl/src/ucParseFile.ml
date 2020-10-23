@@ -29,6 +29,18 @@ let foid_to_str foid =
   | FOID_File s  -> s
   | FOID_Id   id -> unloc id
 
+let cache = ref []
+
+let read_cache (lexbuf : Lexing.lexbuf) : UcParser.token =
+    match !cache with
+    | x::xs -> cache := xs; x
+    | []    -> match read lexbuf with
+               | []    -> non_loc_error_message
+                          (fun ppf ->
+                            Format.fprintf ppf
+                            "@[the@ lex@ buffer@ is@ empty@]")
+               | x::xs -> cache := xs; x
+
 let parse_file_or_id foid =
   let inc_dirs = UcState.get_include_dirs () in
   let (ch, file) =
@@ -55,8 +67,8 @@ let parse_file_or_id foid =
                   (fun ppf ->
                      Format.fprintf ppf
                      "@[unable@ to@ open@ file:@ %s@]" qual_file))) in
-  let lexbuf = lexbuf_from_channel file ch in
-  try (UcParser.spec read lexbuf, file) with
+  let lexbuf = lexbuf_from_channel file ch in  
+  try (UcParser.spec read_cache lexbuf, file) with
   | UcParser.Error ->
       (error_message
        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)

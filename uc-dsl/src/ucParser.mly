@@ -151,24 +151,34 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token OK
 %token ERROR
 
-%token AND
-%token OR
-%token HAT
-%token NOT
-%token STAR
-%token <string>  ROP4
-
 (* operators and their associativity are copied from EcParser of
    EasyCrypt project. UcLexer contains code for recognizing
    operators. The operators and code are currently a small subset of
    what can be found in EasyCrypt. *)
 
-%right    OR
-%right    AND
+%token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4 NUMOP
+%token (*COLON*) SHARP SHARPPIPE SLASHSLASH SLASHSLASHSHARP SLASHEQ
+%token SLASHSHARP SLASHSLASHEQ SLASHGT PIPEGT SLASHSLASHGT PIPEPIPEGT
+%token IMPL (*PIPE*) CEQ SLASH LARROW RARROW LLARROW RRARROW NOT HAT AMP 
+%token ANDA AND ORA OR IFF PCENT PLUS MINUS STAR BACKS FWDS LTCOLON
+%token LONGARROW (*EQ*) NE GT LT GE LE LTSTARGT LTLTSTARGT LTSTARGTGT
+
+%right    IMPL 
+%right    ORA  OR
+%right    ANDA AND
 %nonassoc NOT
-%nonassoc EQ 
-%left     HAT
-%right    ROP4
+%nonassoc EQ NE
+%left  NOP
+%left  GT LT GE LE
+%left  LOP1
+%right ROP1
+%left  LOP2 MINUS PLUS
+%right ROP2
+%right RARROW
+%left  LOP3 STAR SLASH
+%right ROP3
+%left  LOP4 AT AMP HAT
+%right ROP4
 
 %nonassoc ENCODE
 
