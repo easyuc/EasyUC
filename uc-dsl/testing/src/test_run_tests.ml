@@ -227,8 +227,9 @@ let pre_verbose dir  =
          "Test suite completed sucessfully all tests passed" in
              log_fun(); exit 0)
            else (
-             let _ = log_str := !log_str^ "Total " ^string_of_int exit_code ^
-                          " errors found, see log file for details" in
+             let _ = log_str := !log_str^ "A total of"
+                                ^string_of_int exit_code ^
+                          " errors found. log file created." in
              log_fun();
              exit 1)
     |e::l -> let _ = log_str := !log_str^e^"\n" in
