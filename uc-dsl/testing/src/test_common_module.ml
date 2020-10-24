@@ -40,8 +40,19 @@ let print_list lst =
        print_endline "Error: Outcome missing"
      else if er_num > 1 then
        print_endline "Error: Multiple outcomes"
-        
-      
+
+(* check_ec_standard checkes .uc anc .ec files for naming standard.
+The file name shoudl start with a letter and can contain numbers and a '_' *)
+   
+     
+let check_ec_standard file  =
+  let id = Str.regexp
+             "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$" in
+ if (Str.string_match id file 0 = false) then
+   "Warning: "^file ^ " file doesn't match EC naming standard \n"
+ else ""
+
+ 
 (* get_desc is used in verbose mode to get desc of the TEST file *)
       
 let get_desc lst =
@@ -82,7 +93,8 @@ let parse (file_name : string) =
 (* The acceptable content of a director are
 	| TEST file + contents + optional sub directories
 	| If a TEST file is found, subfolders will be ignored
-	| Files with names starting with "readme" only + optional sub directories
+	| Files with names starting with "readme" only + 
+                                    optional sub directories
                 (readme is case insenstive)
 	| Only sub folders will be searched for TEST files/tests
 	| No files but sub directories

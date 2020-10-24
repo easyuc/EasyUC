@@ -23,17 +23,24 @@ let verify_dir dir =
                   let _ = Sys.is_directory("./"^dir) in ("./"^dir)
                 with
                 |Sys_error e -> (print_endline e;
-                                 print_endline (dir^" is not a valid directory \n"); exit 1)
+                             print_endline (dir^" is not a valid directory \n");
+                                 exit 1)
 (* needs to be logged? *)
 (* this function pre_debug comes into the picture when debug option is used
 we take a file, parse it using parse function from Test_common_module.ml and 
 print it using print_list function from the same file *)
                               
 let pre_debug file =
-    try
+  try
       print_list (parse file); exit 0
     with
-      e -> print_endline (Printexc.to_string e); exit 1
+    |Sys_error e -> (if (e="Is a directory") then
+                       (print_endline (file^" "^e);
+                        print_endline "debug expects a 'TEST' file";
+                        exit 1)
+                     else
+                       (print_endline e;exit 1))
+    |e -> print_endline (Printexc.to_string e); exit 1
 
 (* call_dir_test is the sanity check for options
 and creates log file if it doesn't exist 
@@ -54,20 +61,23 @@ let main =
 begin
   let rec speclist = [("-verbose", Arg.Rest (fun x -> let r =  check_dirs x in
                                                  if r = 0 then verbose := true
-                                                 else (print_endline "Only one option is allowed";
-                                                       Arg.usage speclist usage_msg;
+                                                 else (
+                                  print_endline "Only one option is allowed";
+                                  Arg.usage speclist usage_msg;
                                                        exit 1)
                                  ), "Verbosity option: enables verbose mode");
                 ("-quiet", Arg.Rest (fun x -> let r = check_dirs x in
                                               if r = 0 then quiet := true
-                                              else (print_endline "Only one option is allowed";
-                                                    Arg.usage speclist usage_msg;
+                                              else (
+                                   print_endline "Only one option is allowed";
+                                   Arg.usage speclist usage_msg;
                                                     exit 1)
                              ), "Verbosity option: enables quiet mode");
                 ("-debug", Arg.Rest
                              (fun x -> let _ = check_dirs x in
                               if Sys.file_exists x then pre_debug x
-                              else if (Sys.file_exists ("./"^x)) then pre_debug ("./"^x)
+                              else if (Sys.file_exists ("./"^x)) then
+                                pre_debug ("./"^x)
                               else  print_endline (x^" not found"); exit 1)
                  , "Prints debug information of a TEST file")
                ]

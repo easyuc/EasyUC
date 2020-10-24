@@ -16,14 +16,6 @@ let log_str = ref ""
 let sec_str = ref ""
 let desc_str = ref ""
             
-(* check_ec_standard checkes .uc anc .ec files for naming standard.
-The file name shoudl start with a letter and can contain numbers and a '_' *)
-   
-let check_ec_standard file  =
-  let id = Str.regexp
-             "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$" in
- if (Str.string_match id file 0 = false) then
-   log_str := "Warning: "^file ^ " file doesn't match EC naming standard \n"
 
   
 (* check_name contents sees if there any .ec or .uc files in the directory 
@@ -37,7 +29,7 @@ let check_name contents  =
              let _ = if ((len >= 4) &&
                              ( String.sub e (len -3) 3 = ".uc" ||
                                  String.sub e (len -3) 3 =  ".ec"))
-                        then check_ec_standard e
+                        then log_str := !log_str^(check_ec_standard e)
                  in check l
   in check contents
    
@@ -48,26 +40,6 @@ let dir_name file =
   let dir = Filename.dirname file in
   let contents = Array.to_list (Sys.readdir dir) in
   check_name contents
-      
-let read_file filename =
-  let file = open_in filename in
-  let s = really_input_string file (in_channel_length file) in
-  close_in file; (*;printf "I am at read file";*)
-  s 
-
-let parse (file_name : string) =
-  let s = read_file(file_name) in
-  let lexbuf = Lexing.from_string s in
-  let ctr = 
-    try  Test_parser.prog Test_lexer.my_lexer lexbuf
-    with Parsing.Parse_error ->
-      let p = Lexing.lexeme_start_p lexbuf in
-      Printf.eprintf "\nParse error at line %d character %d near %s \n"
-	p.Lexing.pos_lnum
-	(p.Lexing.pos_cnum - p.Lexing.pos_bol)
-	(Lexing.lexeme lexbuf);
-      failwith "Syntax erroor" in
-  ctr
 
 let rec last_element y list = 
   match list with 
@@ -92,7 +64,7 @@ this has been instroduced for programming convinience *)
            |Outcome (o1, o2) -> if number = 0 then
                                   match_expr l f_name o1 o2 (number+1)
                                 else
-                                  failwith "Multiple outcomes are not allowed"
+                                  raise (Error "Multiple outcomes are not allowed")
            |_ -> match_expr l f_name out_come1 out_come2 number
 
 (* create_conflict has 3 arguments file - this is the TEST file of the current 
