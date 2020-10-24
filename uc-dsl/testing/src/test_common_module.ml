@@ -34,7 +34,7 @@ let print_list lst =
   let (arg_list, er_num) = print_elements 0 [] lst in
   let _ =
     match arg_list with
-    |[] -> print_endline "Warning: Empty arguments"
+    |[] -> print_endline "Error: Empty arguments"
     |_ -> ()
   in if er_num = 0 then
        print_endline "Error: Outcome missing"
