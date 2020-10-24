@@ -149,7 +149,7 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
        in
       (test_list,(er_string^"\n"^
 	            "Error:Unexpected files found in the directory:"
-	            ^dir^"\nFor example:\n"^dir^file_list
+	            ^dir^"\nFor example:\n"^dir^"/"^file_list
 	            ^"\nDirectory ignored, please clean files\n")))
   with
   |Sys_error e -> ( test_list , er_string^"\nError:"^ e)
