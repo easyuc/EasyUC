@@ -69,15 +69,15 @@ file *)
 let parse (file_name : string) =
   let lexbuf = Lexing.from_channel (open_in file_name) in
   let ctr = 
-    try Test_parser.prog Test_lexer.my_lexer lexbuf
-    with Parsing.Parse_error ->
+    Test_parser.prog Test_lexer.my_lexer lexbuf
+(*    with Parsing.Parse_error ->
       let p = Lexing.lexeme_start_p lexbuf in
       Printf.eprintf "\nParse error at line %d character %d near %s \n"
 	p.Lexing.pos_lnum
 	(p.Lexing.pos_cnum - p.Lexing.pos_bol)
-	(Lexing.lexeme lexbuf);
-      failwith "Syntax error" in
-  ctr
+	(Lexing.lexeme lexbuf); *)
+       in
+       ctr    
   
 (* The acceptable content of a director are
 	| TEST file + contents + optional sub directories

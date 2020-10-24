@@ -178,9 +178,11 @@ try
                          ^"exit code is "^string_of_int n;
               create_conflict file "unknown" s_out;code+1)
                   end
-  with
-  |e -> let log_err = Printexc.to_string e in
-        log_str := !log_str ^log_err; (code+1)
+with
+|Test_lexer.Syntax_error e ->let log_err = e in
+                  log_str := !log_str ^log_err; (code+1) 
+|e -> let log_err = Printexc.to_string e in
+      log_str := !log_str ^log_err; (code+1)
                                               
 (* log_fun is log function which write the log and prints the log checking 
 the verbosity and write_log comes from Test_log.ml*)
@@ -227,7 +229,7 @@ let pre_verbose dir  =
          "Test suite completed sucessfully all tests passed" in
              log_fun(); exit 0)
            else (
-             let _ = log_str := !log_str^ "A total of"
+             let _ = log_str := !log_str^ "A total of "
                                 ^string_of_int exit_code ^
                           " errors found. log file created." in
              log_fun();

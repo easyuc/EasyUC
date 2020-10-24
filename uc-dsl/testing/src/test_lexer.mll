@@ -4,7 +4,7 @@ open Test_types
 open Str
 open Lexing
 
-exception SyntaxError of string
+exception Syntax_error of string
 
 let next_line lexbuf = let pos = lexbuf.lex_curr_p in
     	      	       lexbuf.lex_curr_p <- {
@@ -16,8 +16,9 @@ let next_line lexbuf = let pos = lexbuf.lex_curr_p in
 let error_raise s1 lexbuf=
     let p = Lexing.lexeme_start_p lexbuf in
     let line_num = p.Lexing.pos_lnum in
-    raise (SyntaxError("Line "^string_of_int(line_num)
-    ^": "^s1))
+    let e = ("Syntax Error: Line "^string_of_int(line_num)
+    ^": "^s1) in
+    raise (Syntax_error e)
 }
 
 let line = [^ '\n']* ['\n']
@@ -53,7 +54,7 @@ and comments level = parse
     			 ^"reached end of file looking '*)'") lexbuf }
     |_ 			{comments level lexbuf }
 (*desc_comments process comments after the keyword description and before
-a new line for example description (* comment here*) \n description text *)
+a new line for example description (* comment here*) \\n description text *)
 
 and desc_comments = parse
     |[' ' '\t' '\r']+	{desc_comments lexbuf }
@@ -61,7 +62,7 @@ and desc_comments = parse
     |"(*"  		{comments 0 lexbuf; desc_comments lexbuf }
     |eof		{error_raise ("description did not end correctly"
     			 ^"reached end of file looking"
-    			 ^"@\n end of description") lexbuf }
+    			 ^"end of description") lexbuf }
     |_ 	{error_raise "text should start in a new line after 'description'" lexbuf}
 
 (* Once we encounter \n after the keyword descrption and any comments we
@@ -78,14 +79,14 @@ Now we read description as description text and ignore the rest
 and desc s = parse
     |".\n"	{new_line lexbuf; s }
     |line	{next_line lexbuf; desc (s ^ (Lexing.lexeme lexbuf)) lexbuf}
-    |eof	{error_raise ("Reached the end of file looking for '\n.\n'"
+    |eof	{error_raise ("Reached the end of file looking for '\\n.\\n'"
     		 ^" description/outcome did not end correctly") lexbuf }
     |_		{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
     		 if (s = ".") then
-    		 (error_raise ("description/outcome did not end correctly expecting '.\n'"
-		 ^" but found '"^s^"' did you forgot '\n' after '.'") lexbuf)
+    		 (error_raise ("description/outcome did not end correctly expecting '.\\n'"
+		 ^" but found '"^s^"' did you forgot '\\n' after '.'") lexbuf)
 		 else
-		 (error_raise "'\n.\n' expected description/outcome did not end correctly"
+		 (error_raise "'\\n.\\n' expected description/outcome did not end correctly"
 		  lexbuf) }
  
 (* the syntax for args is args (*optional comments *): command *)
@@ -132,7 +133,7 @@ and error_string str = parse
 (* we expect either 'success' or 'failure' and only once followed by a new line
 then in case of failure an exact error message that ucdsl outputs
 the error message has to be exact output or else test fails.
-like description this ends with ".\n" so the outcome looks like
+like description this ends with ".\\n" so the outcome looks like
 outcome: success
 .
 
