@@ -63,8 +63,8 @@ this has been instroduced for programming convinience *)
                       match_expr l f_array out_come1 out_come2 number
            |Outcome (o1, o2) -> if number = 0 then
                                   match_expr l f_name o1 o2 (number+1)
-                                else
-                                  raise (Error "Multiple outcomes are not allowed")
+                              else
+                               raise (Error "Multiple outcomes are not allowed")
            |_ -> match_expr l f_name out_come1 out_come2 number
 
 (* create_conflict has 3 arguments file - this is the TEST file of the current 
