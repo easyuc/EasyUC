@@ -22,9 +22,8 @@ let verify_dir dir =
   |Sys_error e -> try
                   let _ = Sys.is_directory("./"^dir) in ("./"^dir)
                 with
-                |Sys_error e -> (print_endline e;
-                             print_endline (dir^" is not a valid directory \n");
-                                 exit 1)
+                |Sys_error e -> (print_endline e; exit 1)
+                             
 (* needs to be logged? *)
 (* this function pre_debug comes into the picture when debug option is used
 we take a file, parse it using parse function from Test_common_module.ml and 
@@ -48,7 +47,7 @@ create_log function is at Test_log.ml  *)
            
 let call_dir_test dir_list_local =
     let _ = if (List.length dir_list_local <> 1) then
-    (print_string "No directory given \n"; exit 1)
+    (print_string "Directory is expected; none provided\n"; exit 1)
     in
     let _ = if !debug then ( pre_debug (List.nth dir_list_local 0))
     in 
