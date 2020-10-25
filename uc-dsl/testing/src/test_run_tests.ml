@@ -24,14 +24,16 @@ if yes then their names will be passed onto check_ec_standard *)
 let check_name contents  =
   let rec check file_list  =
     match file_list with
-    |[] -> ()
-    |e::l -> let len = String.length e in
-             let _ = if ((len >= 4) &&
-                             ( String.sub e (len -3) 3 = ".uc" ||
-                                 String.sub e (len -3) 3 =  ".ec"))
-                        then log_str := !log_str^(check_ec_standard e)
-                 in check l
-  in check contents
+    | []     -> ()
+    | e :: l ->
+        let len = String.length e in
+        let _ =
+          if len >= 4 &&
+             (String.sub e (len - 3) 3 = ".uc" ||
+              String.sub e (len - 3) 3 =  ".ec")
+          then log_str := !log_str ^ check_ec_standard e in
+        check l in
+  check contents
    
 (* dir_name takes a file, gets it's directory by using 
 Filename.dirname so that the contents can be examined by check_name function *)
@@ -74,15 +76,16 @@ the current TEST file and appends outcome and outcome description it recived *)
                
 let create_conflict file outcome1 outcome2 =
   let dir = Filename.dirname file in
-  let file_name = dir^"/"^"CONFLICT" in
+  let file_name = dir ^ "/" ^ "CONFLICT" in
   let s = read_file file in
-  let s2 = s^"\n\n(*above lines are copied from existing TEST file below"
-           ^" content is the outcome of running above args with ucdsl."
-           ^"\nThis file needs to be deleted for the ucdsl test suite"
-    ^"to run this test*)\noutcome:"
-           ^outcome1^"\n"^outcome2^".\n" in
+  let s2 =
+    s ^ "\n\n(*above lines are copied from existing TEST file below"
+      ^ " content is the outcome of running above args with ucdsl."
+      ^ "\nThis file needs to be deleted for the ucdsl test suite"
+      ^ "to run this test*)\noutcome:"
+      ^ outcome1 ^ "\n" ^ outcome2 ^ ".\n" in
   let _ = write_log file_name s2 in
-  log_str := !log_str^"\n"^file_name^" created"
+  log_str := !log_str ^ "\n" ^ file_name ^ " created"
       
 (* in the above code write_log comes from the file Test_log.ml *)
 (* below function parse_file comes into the picture while executing 
