@@ -70,26 +70,16 @@ let read_file filename =
   let s = really_input_string file (in_channel_length file) in
   close_in file;
   s 
-
-(* I am not sure where I learned this code from
-parse takes a file, and uses above read_file to convert it into
-a string s, now we use Lexing to convert it into lexbuf and we use
-our test_parser and test_lexer to generate token and then parse the
-file *)  
   
 let parse (file_name : string) =
-  let lexbuf = Lexing.from_channel (open_in file_name) in
-  let ctr = 
-    Test_parser.prog Test_lexer.my_lexer lexbuf
-(*    with Parsing.Parse_error ->
-      let p = Lexing.lexeme_start_p lexbuf in
-      Printf.eprintf "\nParse error at line %d character %d near %s \n"
-	p.Lexing.pos_lnum
-	(p.Lexing.pos_cnum - p.Lexing.pos_bol)
-	(Lexing.lexeme lexbuf); *)
-       in
-       ctr    
-  
+    let ch = open_in file_name in
+    let lexbuf = Lexing.from_channel ch in
+    let ctr = 
+      Test_parser.prog Test_lexer.my_lexer lexbuf in
+    let _ = close_in ch 
+    in
+    ctr    
+    
 (* The acceptable content of a director are
 	| TEST file + contents + optional sub directories
 	| If a TEST file is found, subfolders will be ignored
@@ -167,7 +157,7 @@ let () = Printexc.record_backtrace true
 let read_to_eof ch =
   let rec reads xs =
     match try Some (input_line ch) with
-	    End_of_file -> None with
+	    End_of_file -> close_in  ch ;None with
       None -> String.concat "" (List.rev xs)
     | Some x -> reads ((x ^ "\n") :: xs)
   in reads []

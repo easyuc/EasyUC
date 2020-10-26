@@ -24,7 +24,8 @@ let create_log () =
     in
     let oc = open_out (folder^"/"^file_name) in
     close_out oc            
-  with e ->  print_endline (Printexc.to_string e); exit 1
+  with e ->  print_endline ("Error with create log"^(Printexc.to_string e));
+             exit 1
 
 let write_log file str =
   try
@@ -33,5 +34,6 @@ let write_log file str =
       (Sys.getcwd()^"/"^file) in
        output_string out str;
        close_out out
-  with e ->  print_endline (Printexc.to_string e); exit 1
+  with e ->  print_endline ("Error with write log"^(Printexc.to_string e));
+             exit 1
              

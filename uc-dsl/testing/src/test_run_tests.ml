@@ -155,11 +155,13 @@ try
               create_conflict file "unknown" s_out;code+1)
                   end
 with
-|Test_lexer.Syntax_error e ->let log_err = e in
+|Test_lexer.Syntax_error e -> let () = close_in (open_in file) in
+                              let log_err = e in
                   log_str := !log_str ^log_err; (code+1) 
-|Error e -> let log_err = e in
+|Error e -> let () = close_in (open_in file) in
+            let log_err = e in
                   log_str := !log_str ^log_err; (code+1)
-|e -> let log_err = Printexc.to_string e in
+|e -> let () = close_in (open_in file) in let log_err = Printexc.to_string e in
       log_str := !log_str ^log_err; (code+1)
                                               
 (* log_fun is log function which write the log and prints the log checking 
