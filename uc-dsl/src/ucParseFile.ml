@@ -56,8 +56,9 @@ let parse_file_or_id foid =
                      Format.fprintf ppf
                      "@[unable@ to@ open@ file:@ %s@]" qual_file))) in
   let lexbuf = lexbuf_from_channel file ch in
-  try (UcParser.spec read lexbuf, file) with
+  try (let res = (UcParser.spec read lexbuf, file) in
+       close_in ch; res) with
   | UcParser.Error ->
-      (error_message
+      (error_message  (* no need to close channel *)
        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)
        (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
