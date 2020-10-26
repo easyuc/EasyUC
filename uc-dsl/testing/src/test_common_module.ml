@@ -76,7 +76,7 @@ let parse (file_name : string) =
     let lexbuf = Lexing.from_channel ch in
     let ctr = 
       Test_parser.prog Test_lexer.my_lexer lexbuf in
-    let _ = close_in ch 
+    let _ = close_in ch
     in
     ctr    
     
