@@ -79,6 +79,7 @@ file *)
   
 let parse (file_name : string) =
   let lexbuf = Lexing.from_channel (open_in file_name) in
+  let _ = close_in in
   let ctr = 
     Test_parser.prog Test_lexer.my_lexer lexbuf
 (*    with Parsing.Parse_error ->
