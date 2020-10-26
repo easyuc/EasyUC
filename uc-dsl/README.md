@@ -19,9 +19,10 @@ translated into EasyCrypt's procedural programming language,
 message-routing boilerplate will be automatically generated.
 
 Some examples are in the [`examples`](examples) subdirectory,
-including the file [`SMCCaseStudy.uc`](examples/SMCCaseStudy.uc), which
-contains the definitions of the functionalities and simulators of our
-SMC (secure message transmission) case study.
+including the files in the subdirectory
+[`smc-case-study`](examples/smc-case-study), which contains the
+definitions of the functionalities and simulators of our SMC (secure
+message transmission) case study.
 
 The OCaml code for a lexer and parser of the DSL can be found in the
 subdirectory [`src`](src). The software is still under development.  A

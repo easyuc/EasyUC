@@ -5,4 +5,9 @@
 open UcSpec
 open UcTypedSpec
 
-val typecheck : spec -> typed_spec
+(* the first argument is the filename (qualified relative to the current
+   directory) of the locations of the spec
+
+   the second argument is used for typechecking uc_requires *)
+
+val typecheck : string -> (id -> typed_spec) -> spec -> typed_spec

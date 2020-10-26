@@ -1,0 +1,11 @@
+description
+Test when a subsequent UC file being uc_required defines an identifier
+of a different kind as a previous one.
+.
+args: Who.uc
+outcome: failure
+[error: Who.uc: from line 1 columns 17 to 20]
+
+when requiring UC file Goo, definition of Blah conflicts with definition from
+previous require
+.

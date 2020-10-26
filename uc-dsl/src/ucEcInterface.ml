@@ -1,70 +1,85 @@
 (* UcEcInterface module *)
 
-(* Interface with EasyCrypt tool *)
+(* Interface with EasyCrypt *)
 
 open Batteries
+open Format
 open EcUtils
 open EcDecl
 open EcTypes
 open EcPath
-module EP = EcParsetree
+open UcMessage
 
 open UcTypes
 open UcConfig
 
-let checkmode = {
-    EcCommands.cm_checkall  = false; 
-    EcCommands.cm_timeout   = 3; 
-    EcCommands.cm_cpufactor = 1; 
-    EcCommands.cm_nprovers  = 4;
-    EcCommands.cm_provers   = None;
-    EcCommands.cm_profile   = false;
-    EcCommands.cm_iterate   = false;
-  }
+(* EasyCrypt critical errors cause termination with an error message,
+   but EasyCrypt warnings are collected in a list, which may be retrieved
+   or reset *)
+
+let ec_warnings = ref []
+
+let get_ec_warnings () = ! ec_warnings
+
+let reset_ec_warnings () = ec_warnings := []
 
 let notifier (lvl : EcGState.loglevel) (lazy msg) =
   match lvl with
-  | `Critical -> raise (Failure ("EasyCrypt critical error:" ^ msg))
-  | _         -> print_string ("EasyCrypt notification:" ^ msg)
+  | `Debug    -> ()  (* won't happen, given default log level *)
+  | `Info     -> ()  (* discard *)
+  | `Warning  -> ec_warnings := ! ec_warnings @ [msg]
+  | `Critical ->
+      non_loc_error_message
+      (fun ppf -> fprintf ppf "@[EasyCrypt@ critical@ error:@;<1 2>%s@]" msg)
 
 let initialized = ref false
 
 let init () =
  if not (!initialized) then
    (initialized := true;
-    EcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
-    EcCommands.addidir ~namespace:`System ~recursive:false
+    UcEcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
+    UcEcCommands.addidir ~namespace:`System ~recursive:false
     Filename.current_dir_name;
     (let include_dirs = UcState.get_include_dirs() in
      List.iter
      (fun x ->
-      EcCommands.addidir ~namespace:`System ~recursive:false x)
+      UcEcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
-    EcCommands.initialize ~restart:false ~undo:false ~boot:false ~checkmode;
-    EcCommands.addnotifier notifier;
+    UcEcCommands.ucdsl_init ();    
+    UcEcCommands.ucdsl_addnotifier notifier;
+    reset_ec_warnings ();
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
   else ()
 
-let execute_command (c : string) =
-  match EcLocation.unloc (EcIo.parse (EcIo.from_string c)) with
-  | EP.P_Prog (commands, _) ->
-      List.iter
-      (fun p -> ignore (EcCommands.process ~timed:p.EP.gl_timed p.EP.gl_action))
-      commands
-  | EP.P_Undo _ ->
-      raise (Failure "usage of internal keyword undo is unacceptable, sorry")
+let env () = UcEcScope.env (UcEcCommands.ucdsl_current ())
 
-let require_import (th : string) =
-  try execute_command ("require import " ^ th ^ ".") with
-  | EcScope.HiScopeError (_, msg) ->
-      raise (Failure msg)
-  | EcScope.ImportError(_, th, ex) ->
-      raise (Failure ("import error: " ^ th ^ " " ^ Printexc.to_string ex))
-  | _                             ->
-      raise (Failure "unknown error") 
-
-let env () = EcScope.env (EcCommands.current())
+let require id io =
+  try UcEcCommands.ucdsl_require (None, (id, None), io) with
+  | UcEcScope.HiScopeError (_, msg)         ->
+      error_message (EcLocation.loc id) 
+      (fun ppf ->
+         fprintf ppf
+         ("@[EasyCrypt:@ error@ require@ importing@ " ^^
+          "theory:@;<1 2>%s@]")
+         msg)
+  | UcEcScope.ImportError (None, name, e)   ->
+      error_message (EcLocation.loc id)
+      (fun ppf ->
+         fprintf ppf
+         "@[EasyCrypt:@ In@ external@ theory@ %s@;<1 2>%a@]"
+         name EcPException.exn_printer e)
+  | UcEcScope.ImportError (Some l, name, e) ->
+      let l = {l with loc_fname = (EcLocation.unloc id) ^ ".ec"} in
+      error_message (EcLocation.loc id)
+      (fun ppf ->
+         fprintf ppf
+         "@[EasyCrypt:@ In@ external@ theory@ %s@ [%s]:@;<1 2>%a@]"
+         name (EcLocation.tostring l) EcPException.exn_printer e)
+  | _                                       ->
+      error_message (EcLocation.loc id)
+      (fun ppf ->
+         fprintf ppf "@[EasyCrypt:@ error@ require@ importing@ theory@]")
 
 let exists_type (ty : string) : bool =
   Option.is_some (EcEnv.Ty.lookup_opt ([] , ty) (env ()))

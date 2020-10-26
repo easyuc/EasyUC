@@ -6,6 +6,8 @@ open EcLocation
 open UcTypes
 open UcSpec
 
+(* id maps and sets *)
+
 module IdMap = Map.Make(String)
 
 let exists_id (id_map : 'a IdMap.t) (id : string) : bool = 
@@ -24,6 +26,29 @@ module QidSet = Set.Make(SL)
 let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
+
+let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
+  let l = IdMap.fold (fun _ v l -> v :: l ) mapind [] in
+  let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
+  List.map (fun a -> fst a) lord
+
+let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
+  let flt =
+    IdMap.filter
+    (fun _ def ->
+       match fm def with
+       | Some _ -> true
+       | None   -> false)
+    m in
+  IdMap.map
+  (fun def ->
+     match fm def with
+     | Some x -> x
+     | None -> raise (Failure "!impossible!"))
+  flt
+
+let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
+  IdMap.map (fun al -> unloc al) lm
 
 type typ_index = (typ * int) located
 
@@ -125,9 +150,27 @@ type sim_body_tyd =
 
 type sim_def_tyd = sim_body_tyd located
 
+(* four identifier (technically, unlocated identifier) maps for direct
+   and adversarial interfaces, functionalities and simulators; their
+   domains are disjoint *)
+
+type maps_tyd =
+  {dir_inter_map : inter_tyd IdMap.t;
+   adv_inter_map : inter_tyd IdMap.t;
+   fun_map       : fun_tyd IdMap.t;
+   sim_map       : sim_def_tyd IdMap.t}
+
+let exists_id_maps_tyd (maps : maps_tyd) (uid : string) =
+  exists_id maps.dir_inter_map uid ||
+  exists_id maps.adv_inter_map uid ||
+  exists_id maps.fun_map uid ||
+  exists_id maps.sim_map uid
+
+let exists_id_inter_maps
+    (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
+    (uid : string) : bool =
+  exists_id dir_inter_map uid || exists_id adv_inter_map uid
+
 type typed_spec =
-  { direct_inters      : inter_tyd IdMap.t;
-    adversarial_inters : inter_tyd IdMap.t;
-    functionalities    : fun_tyd IdMap.t;
-    simulators         : sim_def_tyd IdMap.t;
-  }
+  {required_maps : maps_tyd;  (* from uc_requires *)
+   current_maps  : maps_tyd}  (* from current file *)

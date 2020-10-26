@@ -1,0 +1,7 @@
+description
+OK version: Test when a subsequent UC file being uc_required defines
+an identifier of a different kind as a previous one.
+.
+args: Who.uc
+outcome: success
+.

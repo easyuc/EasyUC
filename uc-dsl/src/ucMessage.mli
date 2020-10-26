@@ -8,4 +8,6 @@ val warning_message : EcLocation.t -> (formatter -> unit) -> unit
 
 val non_loc_error_message : (formatter -> unit) -> 'a
 
+val non_loc_warning_message : (formatter -> unit) -> unit
+
 val failure : string -> 'a

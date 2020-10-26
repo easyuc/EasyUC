@@ -1,0 +1,6 @@
+description
+test of uc_requires when name doesn't begin with uppercase letter.
+.
+args: Goo.uc
+outcome: success
+.

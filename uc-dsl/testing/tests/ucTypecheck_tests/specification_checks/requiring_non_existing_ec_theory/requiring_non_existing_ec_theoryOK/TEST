@@ -1,0 +1,6 @@
+description
+OK Version: Testing what happens when a non-existing .ec file is required.
+.
+args: requiring_non_existing_ec_theoryOK.uc
+outcome: success
+.

@@ -1,0 +1,10 @@
+description
+test of whether the EasyCrypt definitions ec_required by UC files
+are imported when those UC files are uc_required.
+.
+args: Goo.uc
+outcome: failure
+[error: Goo.uc: from line 4 columns 18 to 19]
+
+non-existing type: t
+.
