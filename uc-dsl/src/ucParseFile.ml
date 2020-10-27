@@ -7,6 +7,7 @@ open UcMessage
 open UcLexer
 module L = Lexing
 open UcSpec
+open UcParser
 
 let lexbuf_from_channel file ch =
   let lexbuf = Lexing.from_channel ch in
@@ -29,17 +30,17 @@ let foid_to_str foid =
   | FOID_File s  -> s
   | FOID_Id   id -> unloc id
 
-let cache = ref []
-
-let read_cache (lexbuf : Lexing.lexbuf) : UcParser.token =
-    match !cache with
-    | x::xs -> cache := xs; x
-    | []    -> match read lexbuf with
-               | []    -> non_loc_error_message
-                          (fun ppf ->
-                            Format.fprintf ppf
-                            "@[the@ lex@ buffer@ is@ empty@]")
-               | x::xs -> cache := xs; x
+let read_lex_cache (cache : token list ref) (lexbuf : L.lexbuf) : token =
+  match !cache with
+  | x :: xs -> cache := xs; x
+  | []      ->
+      match read lexbuf with
+      | []      ->
+          non_loc_error_message
+          (fun ppf ->
+             Format.fprintf ppf
+             "@[the@ lex@ buffer@ is@ empty@]")
+      | x :: xs -> cache := xs; x
 
 let parse_file_or_id foid =
   let inc_dirs = UcState.get_include_dirs () in
@@ -67,9 +68,11 @@ let parse_file_or_id foid =
                   (fun ppf ->
                      Format.fprintf ppf
                      "@[unable@ to@ open@ file:@ %s@]" qual_file))) in
+  let cache : token list ref = ref [] in
   let lexbuf = lexbuf_from_channel file ch in  
-  try (UcParser.spec read_cache lexbuf, file) with
+  try (let res = (UcParser.spec (read_lex_cache cache) lexbuf, file) in
+       close_in ch; res) with
   | UcParser.Error ->
-      (error_message
+      (error_message  (* no need to close channel *)
        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)
        (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
