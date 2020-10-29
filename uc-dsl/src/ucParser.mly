@@ -1,5 +1,17 @@
 (* Menhir Specification for UC DSL Parser (UcParser module) *)
 
+(* indicated portions of this file are adapted from the EasyCrypt
+   lexer, src/ucParser.mly, which is subject to the following copyright
+   and license: *)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2012--2016 - IMDEA Software Institute
+ * Copyright (c) - 2012--2018 - Inria
+ * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 %{
 
 open Batteries
@@ -98,85 +110,121 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 %}
 
-%token <string> ID
-%token LPAREN
-%token RPAREN
-%token LBRACE
-%token RBRACE
-%token COMMA
-%token DIRECT
-%token ADVERSARIAL
-%token IN
-%token OUT
-%token MESSAGE
-%token EOF
-%token FUNCT
-%token SIM
-%token SIMS
-%token IMPLEM
-%token PARTY
-%token SERVES
-%token USES
-%token DOT
-%token INITIAL
-%token STATE
-%token MATCH
-%token WITH
-%token END
-%token AT
-%token FAIL
-%token SEND
-%token ANDTXT
-%token TRANSITION
-%token UC_REQUIRES
-%token EC_REQUIRES
-%token SUBFUN
-%token UNDERSCORE
+%token EOF  (* end-of-file *)
 
-%token VAR
-%token SEMICOLON
-%token IF
+%token <string> ID  (* identifier *)
+%token <string> TID  (* type identifer (variable) *)
+%token <string> PUNIOP  (* parenthesized unary operator *)
+%token <string> PBINOP  (* parenthesized binary operator *)
+%token <string> PNUMOP  (* parenthesized numeric operator *)
+%token <EcBigInt.zint> UINT  (* unsigned integer constant *)
+%token <EcBigInt.zint * (int * EcBigInt.zint)> DECIMAL  (* decimal constant *)
+%token <string> STRING  (* string *)
+
+(* keywords *)
+
+%token ADVERSARIAL
+%token ANDTXT
+%token AS
+%token DECODE
+%token DIRECT
+%token EC_REQUIRES
 %token ELIF
 %token ELSE
-
 %token ENCODE
+%token END
+%token ERROR
+%token FAIL
+%token FUNCT
+%token IF
+%token IMPLEM
+%token IN
+%token INITIAL
+%token MATCH
+%token MESSAGE
+%token OK
+%token OUT
+%token PARTY
+%token SEND
+%token SERVES
+%token SIM
+%token SIMS
+%token STATE
+%token SUBFUN
+%token TRANSITION
+%token UC_REQUIRES
+%token USES
+%token VAR
+%token WITH
+
+(* fixed length *)
+
+%token AT
+%token COLON
+%token COMMA
+%token DLBRACKET
+%token DOT
+%token DOTDOT
+%token DOTTICK
+%token LARROW
+%token LBRACE
+%token LESAMPLE
+%token LPAREN
+%token PCENT
+%token PIPE
+%token QUESTION
+%token RBOOL
+%token RBRACE
+%token RPAREN
+%token SEMICOLON
+%token UNDERSCORE
+
+(* type and expression operators, some used for other purposes too *)
+
+%token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4 NUMOP
+%token IMPL   (* other uses *)
+%token SLASH
+%token NOT
+%token AMP
+%token HAT
+%token ANDA
+%token AND
+%token ORA
+%token OR
+%token IFF
+%token PLUS
+%token MINUS
+%token STAR   (* other uses *) 
+%token EQ     (* other uses *)
+%token NE
+%token GT
+%token LT
+%token GE
+%token LE
+%token RARROW
 
 %nonassoc ENCODE
 
-%token DECODE
-%token AS
-%token OK
-%token ERROR
-
-%token LESAMPLE
-(* operators and their associativity are copied from EcParser of
-   EasyCrypt project. UcLexer contains code for recognizing
-   operators. The operators and code are currently a small subset of
-   what can be found in EasyCrypt. *)
-
-%token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4 NUMOP
-%token COLON SHARP SHARPPIPE SLASHSLASH SLASHSLASHSHARP SLASHEQ
-%token SLASHSHARP SLASHSLASHEQ SLASHGT PIPEGT SLASHSLASHGT PIPEPIPEGT
-%token IMPL PIPE CEQ SLASH LARROW RARROW LLARROW RRARROW NOT HAT AMP 
-%token ANDA AND ORA OR IFF PCENT PLUS MINUS STAR BACKS FWDS LTCOLON
-%token LONGARROW EQ NE GT LT GE LE LTSTARGT LTLTSTARGT LTSTARGTGT
-
 %right    IMPL 
+%nonassoc IFF
 %right    ORA  OR
 %right    ANDA AND
 %nonassoc NOT
+
 %nonassoc EQ NE
-%left  NOP
-%left  GT LT GE LE
-%left  LOP1
-%right ROP1
-%left  LOP2 MINUS PLUS
-%right ROP2
-%right RARROW
-%left  LOP3 STAR SLASH
-%right ROP3
-%left  LOP4 AT AMP HAT
-%right ROP4
+
+%left     NOP
+%left     GT LT GE LE
+%left     LOP1
+%right    ROP1
+%right    QUESTION
+%left     LOP2 MINUS PLUS
+%right    ROP2
+%right    RARROW
+%left     LOP3 STAR SLASH
+%right    ROP3
+%left     LOP4 AT AMP HAT
+%right    ROP4
 
 (* the input for the UcParser is a list of tokens produced by UcLexer
    from the UC DSL file.  This list is parsed by UcParser, starting
