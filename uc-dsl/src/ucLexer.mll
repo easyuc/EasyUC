@@ -75,12 +75,13 @@
   (* these are EasyCrypt's "delimiters": *)
 
   let ec_delimiters =
-    [":";  "/"; "=>";  (* legal UC DSL tokens - see read below *)
+    [(* the lexer read rule (below) explicitly handles these tokens *)
+     ":"; "|"; "/"; "<-"; "->"; "=>";
      (* none of the following are legal UC DSL tokens *)
      "#"; "#|"; "//"; "//#"; "/="; "/#"; "//="; "/>"; "|>";
-     "//>"; "||>";  "|"; ":=";  "<-"; "->"; "<<-"; "->>"]
+     "//>"; "||>";  ":="; "<<-"; "->>"]
 
-  (* regular expression that's the disjunction of the delimiters *)
+  (* regular expression that is the disjunction of the delimiters *)
 
   let ec_delimiters_re =
     let ops = String.join "|" (List.map EcRegexp.quote ec_delimiters) in
@@ -105,8 +106,8 @@
     | _                     -> LOP4 (name |> odfl op)
 
   (* lex_infix_op will called on a nonempty string of opchar's (see
-     below); it will not be called on ":", "/", "->" and "=>" - see
-     read below
+     below); it will not be called on ":", "|", "/", "->", "<-" and
+     "=>" - see read below
 
      lex_infix_op op will return a token with constructor LOP? or ROP4
      and value op
