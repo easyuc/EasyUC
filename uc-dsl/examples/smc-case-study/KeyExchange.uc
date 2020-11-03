@@ -5,12 +5,12 @@ uc_requires Forwarding.
 ec_requires KeysExponentsAndPlainTexts.
 
 direct KEDirPt1 {
-  in pt1@ke_req1(pt2 : port)
+  in  pt1@ke_req1(pt2 : port)
   out ke_rsp2(k : key)@pt1
 }
 
 direct KEDirPt2 {
-  in pt2@ke_req2
+  in  pt2@ke_req2
   out ke_rsp1(pt1 : port, k : key)@pt2
 }
 
@@ -28,28 +28,29 @@ functionality KEReal implements KEDir {
       var q1 : exp;
       match message with
       | pt1@KEDir.Pt1.ke_req1(pt2) => {
-          if (envport(pt1) /\ envport(pt2)) {
+          if (envport pt1 /\ envport pt2) {
             q1 <$ dexp;
-            send Fw1.D.fw_req(Pt2, encode (pt1, pt2, g ^ q1))
+            send Fw1.D.fw_req
+                 (Pt2, epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
             and transition WaitFwd2(pt1, pt2, q1).
           }
           else { fail. }
         }
-      | * => { fail. }
+      | *                          => { fail. }
       end
     }
 
     state WaitFwd2(pt1 : port, pt2 : port, q1 : exp) {
       match message with
       | Fw2.D.fw_rsp(_, u) => {
-          decode u as key with
-          | ok k2 => {
+          match epdp_key_univ.`dec u with
+          | Some k2 => {
               send KEDir.Pt1.ke_rsp2(k2 ^ q1)@pt1 and transition Final.
             }
-          | error => { fail. }
+          | None    => { fail. }
           end
         }
-      | * => { fail. }
+      | *                  => { fail. }
       end
     }
   
@@ -62,19 +63,20 @@ functionality KEReal implements KEDir {
 
   party Pt2 serves KEDir.Pt2 {
     initial state WaitFwd1 {
-      var q2 : exp;
+      var q2 : exp; var pt1, pt2 : port; var k1 : key;
       match message with
       | Fw1.D.fw_rsp(_, u) => {
-          decode u as port * port * key with
-          | ok (pt1, pt2, k1) => {
+          match epdp_port_port_key_univ.`dec u with
+          | Some tr => {
+              (pt1, pt2, k1) <- tr;
               q2 <$ dexp;
               send KEDir.Pt2.ke_rsp1(pt1, k1 ^ q2)@pt2
               and transition WaitReq2(pt1, pt2, q2).
             }
-          | error => { fail. }  (* cannot happen *)
+          | None   => { fail. }  (* cannot happen *)
           end
         }
-      | * => { fail. }
+      | *                  => { fail. }
       end
     }
 
@@ -82,11 +84,12 @@ functionality KEReal implements KEDir {
       match message with
       | pt2'@KEDir.Pt2.ke_req2 => { 
           if (pt2' = pt2) {
-            send Fw2.D.fw_req(Pt1, encode (g ^ q2)) and transition Final.
+            send Fw2.D.fw_req(Pt1, epdp_key_univ.`enc (g ^ q2))
+            and transition Final.
           }
           else { fail. }
         }
-      | * => { fail. }
+      | *                      => { fail. }
       end
     }
 
@@ -100,7 +103,7 @@ functionality KEReal implements KEDir {
 
 adversarial KEI2S {
   out ke_sim_req1(pt1 : port, pt2 : port)
-  in ke_sim_rsp
+  in  ke_sim_rsp
   out ke_sim_req2
 }
 
@@ -108,12 +111,12 @@ functionality KEIdeal implements KEDir KEI2S {
   initial state WaitReq1 {
     match message with
     | pt1@KEDir.Pt1.ke_req1(pt2) => {
-        if (envport(pt1) /\ envport(pt2)) {
+        if (envport pt1 /\ envport pt2) {
           send KEI2S.ke_sim_req1(pt1, pt2) and transition WaitSim1(pt1, pt2).
         }
         else { fail. }
       }
-    | * => { fail. }
+    | *                          => { fail. }
     end
   }
 
@@ -125,7 +128,7 @@ functionality KEIdeal implements KEDir KEI2S {
         send KEDir.Pt2.ke_rsp1(pt1, g ^ q)@pt2
         and transition WaitReq2(pt1, pt2, q).
       }
-    | * => { fail. }
+    | *                => { fail. }
     end
   }
 
@@ -137,7 +140,7 @@ functionality KEIdeal implements KEDir KEI2S {
         }
         else { fail. }
       }
-    | * => { fail. }
+    | *                      => { fail. }
     end
   }
 
@@ -146,7 +149,7 @@ functionality KEIdeal implements KEDir KEI2S {
     | KEI2S.ke_sim_rsp => {
         send KEDir.Pt1.ke_rsp2(g ^ q)@pt1 and transition Final.
       }
-    | * => { fail. }
+    | *                => { fail. }
     end
   }
 
@@ -165,12 +168,13 @@ simulator KESim uses KEI2S simulates KEReal {
         (* simulator implicitly learns address of ideal functionality *)
         q1 <$ dexp;
         send KEReal.Fw1.FwAdv.fw_obs
-             (KEReal.Pt1, KEReal.Pt2, encode (pt1, pt2, g ^ q1))
+             (KEReal.Pt1, KEReal.Pt2,
+              epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
         and transition WaitAdv1(q1).
       }    
-    | * => { fail. }  (* only catches KEI2S.ke_sim_req2 *)
-    (* messages from adversary to real functionality will go to
-       ideal functionality *)
+    | *                           => { fail. }
+    (* only catches KEI2S.ke_sim_req2; messages from adversary to
+       real functionality will go to ideal functionality *)
     end
   }
 
@@ -190,10 +194,11 @@ simulator KESim uses KEI2S simulates KEReal {
   state WaitReq2(q1 : exp, q2 : exp) {
     match message with 
     | KEI2S.ke_sim_req2 => {
-        send KEReal.Fw2.FwAdv.fw_obs(KEReal.Pt2, KEReal.Pt1, encode (g ^ q2))
+        send KEReal.Fw2.FwAdv.fw_obs
+             (KEReal.Pt2, KEReal.Pt1, epdp_key.`enc (g ^ q2))
         and transition WaitAdv2(q1, q2).
       }
-    | * => { fail. }
+    | *                 => { fail. }
     end
   }
 
@@ -202,7 +207,7 @@ simulator KESim uses KEI2S simulates KEReal {
     | KEReal.Fw2.FwAdv.fw_ok => {
         send KEI2S.ke_sim_rsp and transition Final.
       }
-    | * => { fail. }
+    | *                      => { fail. }
     end
    }
 

@@ -10,7 +10,7 @@ direct fwDir {
 direct FwDir {D : fwDir}
 
 adversarial FwAdv {
-  in fw_ok
+  in  fw_ok
   out fw_obs(pt1 : port, pt2 : port, u : univ)
 }
 
@@ -20,19 +20,19 @@ functionality Forw implements FwDir FwAdv {
     | pt1@FwDir.D.fw_req(pt2, u) => {
         (* check that pt1 and pt2 don't point into forwarder or
            adversary *)
-        if (envport(pt1) /\ envport(pt2)) {
+        if (envport pt1 /\ envport pt2) {
           send FwAdv.fw_obs(pt1, pt2, u) and transition Wait(pt1, pt2, u).
         }
         else { fail. }
       }
-    | * => { fail. }
+    | *                          => { fail. }
     end
   }
 
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
     | FwAdv.fw_ok => { send FwDir.D.fw_rsp(pt1, u)@pt2 and transition Final. }
-    | * => { fail. }
+    | *           => { fail. }
     end
   } 
 

@@ -14,18 +14,23 @@ type univ = bool list.  (* universe values are lists of bits *)
    all types being encoded must be countable *)
 
 op epdp_unit_univ : (unit, univ) epdp.  (* unit *)
+
 axiom valid_epdp_unit_univ : valid_epdp epdp_unit_univ.
 
 op epdp_bool_univ : (bool, univ) epdp.  (* bool *)
+
 axiom valid_epdp_bool_univ : valid_epdp epdp_bool_univ.
 
 op epdp_int_univ : (int, univ) epdp.  (* int *)
+
 axiom valid_epdp_int_univ : valid_epdp epdp_int_univ.
 
 op epdp_univ_pair_univ : (univ * univ, univ) epdp.  (* univ * univ *)
+
 axiom valid_epdp_univ_pair_univ : valid_epdp epdp_univ_pair_univ.
 
 op epdp_univ_list_univ : (univ list, univ) epdp.  (* univ list *)
+
 axiom valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
 
 (* now we can build on these axiomatized encoding/partial decoding

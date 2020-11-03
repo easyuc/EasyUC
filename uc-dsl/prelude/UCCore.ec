@@ -3,7 +3,7 @@
    a stripped-down and more abstract version of the real UCCore.ec
 
    will be automatically ec_required last when processing UC DSL
-   files *)
+   files, so port will be in the top-level environment *)
 
 (* defines encoding and partial decoding pairs (EPDPs) *)
 
@@ -20,4 +20,5 @@ type port.  (* we don't expose the structure of ports *)
    concrete defintion, with a lemma rather than an axiom *)
 
 op epdp_port_univ : (port, univ) epdp.  (* port *)
+
 axiom valid_epdp_port_univ : valid_epdp epdp_port_univ.

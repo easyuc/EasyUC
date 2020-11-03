@@ -1,10 +1,10 @@
 (* Encoding.ec *)
 
-(* Encoding and Partial Decoding *)
+(* Encoding and Partial Decoding Pairs *)
 
 require import AllCore.
 
-(* encoding/partial decoding pair *)
+(* encoding/partial decoding pair (EPDP) *)
 
 type ('a, 'b) epdp = {enc: 'a -> 'b; dec : 'b -> 'a option}.
 
@@ -12,11 +12,25 @@ op nosmt valid_epdp (epdp : ('a, 'b) epdp) : bool =
   (forall (x : 'a), epdp.`dec (epdp.`enc x) = Some x) /\
   (forall (y : 'b, x : 'a), epdp.`dec y = Some x => epdp.`enc x = y).
 
+(* encoding functions of EPDPs are injective: *)
+
 lemma epdp_injective (epdp : ('a, 'b) epdp) :
   valid_epdp epdp => injective epdp.`enc.
 proof.
 rewrite /valid_epdp => [[enc_dec _]].
 by rewrite (pcan_inj epdp.`enc epdp.`dec).
+qed.
+
+(* if a value of an EPDP fails to decode, then nothing will encode to
+   it: *)
+
+lemma epdp_dec_fail (epdp : ('a, 'b) epdp, x : 'a, y : 'b) :
+  valid_epdp epdp => epdp.`dec y = None => epdp.`enc x <> y.
+proof.
+move => [valid_epdp_1 valid_epdp_2] dec_y_bad.
+case (epdp.`enc x = y) => [enc_x_eq_y | //].
+move : dec_y_bad.
+by rewrite -enc_x_eq_y valid_epdp_1.
 qed.
 
 op is_valid (epdp : ('a, 'b) epdp, y : 'b) : bool =
