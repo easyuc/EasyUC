@@ -1,0 +1,9 @@
+description
+This test is to check duplicate description in a TEST file
+.
+args: test.uc
+outcome: success
+.
+description
+DESC-2
+.

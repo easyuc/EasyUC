@@ -1,0 +1,7 @@
+description
+This test is to check multiple args in a TEST file
+.
+args: test1.uc
+args: test2.uc
+outcome: success
+.
