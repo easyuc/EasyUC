@@ -9,6 +9,7 @@ open Unix
 val print_expr : expr -> unit
 val print_list : expr list -> unit
 val check_ec_standard : string -> string
+val check_fields : expr list -> string * string
 val get_desc : expr list -> string
 val read_file : string -> string
 val parse : string -> expr list
