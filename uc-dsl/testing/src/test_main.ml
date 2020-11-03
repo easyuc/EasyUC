@@ -31,7 +31,12 @@ print it using print_list function from the same file *)
                               
 let pre_debug file =
   try
-      print_list (parse file); exit 0
+    let list = parse file in
+    let _ = print_list list in
+    let (s1, s2) = check_fields list in
+    print_string (s1^s2);
+    print_endline "___END___";
+    exit 0
     with
     |Sys_error e -> (if (e="Is a directory") then
                        (print_endline (file^" "^e);

@@ -4,7 +4,7 @@ open Test_types
 open Str
 open Printf
 open Unix
-   
+
 (* print_expr together with print_list displays the content of a TEST file.
 	This comes into the picture with DEBUG option *)
    
@@ -20,41 +20,50 @@ let print_expr (e:expr) =
 	                      else print_endline "Unknown"
 	              in let _ = print_endline "__outcome description__" in
 	                 print_string o2;
-	                 print_endline "____end of outcome description____"
+	                 print_endline "__end of outcome description__"
 	                 
 let print_list lst =
-  let rec print_elements er args = function
-    |[] ->  (args, er)
-    |e::l -> match e with
-	     |Args o -> print_expr e; print_elements er (o@args) l
-	     |Outcome (o1, o2) -> print_expr e;
-                                  print_elements (er+1) args l
-	     |_ -> print_expr e; print_elements er args l
+  let rec print_elements = function
+    |[] -> ()
+    |e::l -> (print_expr e; print_elements l)
   in
-  let (arg_list, er_num) = print_elements 0 [] lst in
-  let _ =
-    match arg_list with
-    |[] -> print_endline "Error: Empty arguments"
-    |_ -> ()
-  in if er_num = 0 then
-       print_endline "Error: Outcome missing"
-     else if er_num > 1 then
-       print_endline "Error: Multiple outcomes"
+  print_elements lst
 
+let check_fields lst = 
+    let rec check arg desc out = function
+      |[] -> (arg, desc, out)
+      |e::l -> match e with
+               |Args o -> check (arg+1) desc out l
+               |Desc d -> check arg (desc+1) out l
+               |Outcome (o1,o2) -> check arg desc (out+1) l
+    in
+    let (arg_1, desc_1, out_1) = check 0 0 0 lst in
+    if arg_1 <> 1 then
+      (if arg_1 = 0 then ("Error: Empty Args\n", "")
+       else ("Error: Multiple Args\n", ""))
+    else if desc_1 <> 1 then
+      (if desc_1 > 1 then ("" , "Warning: Multiple Descriptions\n")
+      else ("",""))
+    else if out_1 <> 1 then
+      (if out_1 = 0 then ("Error: Outcome is missing\n", "")
+       else ("Error: Multiple Outcomes\n", ""))
+    else
+      ("", "")
+                       
 (* check_ec_standard checkes .uc anc .ec files for naming standard.
 The file name shoudl start with a letter and can contain numbers and a '_' *)
-   
+     
      
 let check_ec_standard file  =
-  let id = Str.regexp
-             "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$" in
- if (Str.string_match id file 0 = false) then
-   "Warning: "^file ^ " file doesn't match EC naming standard \n"
- else ""
+  let id =
+    Str.regexp "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$" in
+  if (Str.string_match id file 0 = false) then
+    "Warning: "^file ^ " file doesn't match EC naming standard \n"
+  else ""
 
- 
+  
 (* get_desc is used in verbose mode to get desc of the TEST file *)
-      
+  
 let get_desc lst =
   let rec desc lst_d str =
     match lst_d with
@@ -72,14 +81,16 @@ let read_file filename =
   s 
   
 let parse (file_name : string) =
-    let ch = open_in file_name in
-    let lexbuf = Lexing.from_channel ch in
+  let ch = open_in file_name in
+  let lexbuf = Lexing.from_channel ch in
+  try
     let ctr = 
       Test_parser.prog Test_lexer.my_lexer lexbuf in
-    let _ = close_in ch
-    in
-    ctr    
-    
+    close_in ch;
+    ctr
+  with
+  |e -> close_in ch; raise e    
+  
 (* The acceptable content of a director are
 	| TEST file + contents + optional sub directories
 	| If a TEST file is found, subfolders will be ignored
@@ -130,34 +141,36 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
        in
        walk_folders dirs test_list er_string)
     else
-      (let dir_content  = List.filter (fun x -> (x <> "TEST" && x <> "log") ||
-                  (String.lowercase_ascii (String.sub x 0 6) = "readme")) files
+      (let dir_content  =
+         List.filter (fun x -> (x <> "TEST" && x <> "log") ||
+                                 (String.lowercase_ascii
+                                    (String.sub x 0 6) = "readme")) files
        in
        let file_list = match dir_content with
          |[] -> ""
          |e::l -> e
        in
-      (test_list,(er_string^"\n"^
-	            "Error:Unexpected files found in the directory:"
-	            ^dir^"\nFor example:\n"^dir^"/"^file_list
-	            ^"\nDirectory ignored, please clean files\n")))
+       (test_list,(er_string^"\n"^
+	             "Error:Unexpected files found in the directory:"
+	             ^dir^"\nFor example:\n"^dir^"/"^file_list
+	             ^"\nDirectory ignored, please clean files\n")))
   with
   |Sys_error e -> ( test_list , er_string^"\nError:"^ e)
   |Unix_error (_,_,e) -> (test_list , er_string^"\nError:"^ e)
   |_ -> (test_list , er_string^"\nSome unknown error occured"^
-        "please report this as a bug")
+                       "please report this as a bug")
       
-  
+      
 (* The below code is originally written by Alley and slightly modified here, 
 	which executes a command together with a list of options and return
 	output or error *)
-  
+      
 let () = Printexc.record_backtrace true
        
 let read_to_eof ch =
   let rec reads xs =
     match try Some (input_line ch) with
-	    End_of_file -> close_in  ch ;None with
+	    End_of_file -> None with
       None -> String.concat "" (List.rev xs)
     | Some x -> reads ((x ^ "\n") :: xs)
   in reads []
