@@ -15,3 +15,9 @@ require export Encoding.
 require export Univ.
 
 type port.  (* we don't expose the structure of ports *)
+
+(* axiomatized EPDP for ports - in the real UCCore.ec, this is given a
+   concrete defintion, with a lemma rather than an axiom *)
+
+op epdp_port_univ : (port, univ) epdp.  (* port *)
+axiom valid_epdp_port_univ : valid_epdp epdp_port_univ.
