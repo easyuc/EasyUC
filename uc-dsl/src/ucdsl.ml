@@ -90,8 +90,8 @@ let () =
        UcState.add_to_include_dirs dir
 
 let () =
-(* FIXME
   UcEcInterface.init ();
+(* FIXME
   ignore (parse_and_typecheck_file_or_id (FOID_File file));
 *)
   ignore (UcParseFile.parse_file_or_id (UcParseFile.FOID_File file));

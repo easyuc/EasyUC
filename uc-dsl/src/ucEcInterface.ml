@@ -39,6 +39,8 @@ let init () =
    (initialized := true;
     UcEcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
     UcEcCommands.addidir ~namespace:`System ~recursive:false
+    UcConfig.uc_prelude_dir;
+    UcEcCommands.addidir ~namespace:`System ~recursive:false
     Filename.current_dir_name;
     (let include_dirs = UcState.get_include_dirs() in
      List.iter

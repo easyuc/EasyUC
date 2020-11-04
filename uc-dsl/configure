@@ -1,5 +1,17 @@
 #!/bin/bash
 
+pwd=$(pwd)
+
+if [[ $pwd = *\'* ]];
+  then echo ""
+       echo "pathname to UC DSL directory cannot contain apostrophes"
+       exit;
+elif [[ $pwd = *\ * ]];
+  then echo ""
+       echo "pathname to UC DSL directory cannot contain spaces"
+       exit;
+fi
+
 cd src
 
 if [ -L ECsrc ];

@@ -56,10 +56,19 @@ let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
 let capitalized_root_of_filename_with_extension file =
   String.capitalize (Filename.chop_extension (Filename.basename file))
 
-let find_file root ext dirs =
+(* we first look in the prelude, then in the current directory, and
+   finally in the include dirs *)
+
+let find_file root ext prelude_dir include_dirs =
   let full     = root ^ ext in
   let full_cap = String.capitalize full in
-  if Sys.file_exists full
+  let prelude_full = prelude_dir ^ "/" ^ full in
+  let prelude_full_cap = prelude_dir ^ "/" ^ full_cap in
+  if Sys.file_exists prelude_full
+    then Some prelude_full
+  else if Sys.file_exists prelude_full_cap
+    then Some prelude_full_cap
+  else if Sys.file_exists full
     then Some full
   else if Sys.file_exists full_cap
     then Some full_cap
@@ -75,4 +84,4 @@ let find_file root ext dirs =
                 then Some qualified_cap
               else None
           | Some _ -> opt_res)
-       None dirs
+       None include_dirs

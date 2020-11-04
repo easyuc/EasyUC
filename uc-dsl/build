@@ -4,6 +4,7 @@ cd src
 
 ecdir=$(ls -l ECdir | sed 's/^.*-> //')
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
+ucprelude=$(pwd)/prelude
 
 if [ ! -r ECsrc/ecVersion.ml ];
 then echo "trying to prepare $ecdir"
@@ -26,6 +27,7 @@ fi
 # the following depends on $ectheories not including apostrophes
 # see configure
 sed -e "s'ECtheories'$ectheories'" \
+    -e "s'UCprelude'$ucprelude'" \
     -e '1i\
       (* file automatically generated from ucConfig.ml.in  - do not edit *)\
       \ ' \

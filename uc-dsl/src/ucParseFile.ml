@@ -30,6 +30,7 @@ let foid_to_str foid =
   | FOID_Id   id -> unloc id
 
 let parse_file_or_id foid =
+  let prelude_dir = UcConfig.uc_prelude_dir in
   let inc_dirs = UcState.get_include_dirs () in
   let (ch, file) =
     match foid with
@@ -42,7 +43,7 @@ let parse_file_or_id foid =
                 "@[unable@ to@ open@ file:@ %s@]" file))
     | FOID_Id id     ->
         let uid = unloc id in
-        (match UcUtils.find_file uid ".uc" inc_dirs with
+        (match UcUtils.find_file uid ".uc" prelude_dir inc_dirs with
          | None           ->
              error_message (loc id)
              (fun ppf ->
