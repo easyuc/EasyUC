@@ -7,12 +7,12 @@
 
 (* defines encoding and partial decoding pairs (EPDPs) *)
 
-require export Encoding.
+require export UCEncoding.
 
 (* defines type univ = bool list, plus a number of EPDP and EPDP
    combinators with target univ *)
 
-require export Univ.
+require export UCUniv.
 
 type port.  (* we don't expose the structure of ports *)
 

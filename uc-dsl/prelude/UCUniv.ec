@@ -1,6 +1,6 @@
 (* Univ.ec *)
 
-require import AllCore Encoding List.
+require import AllCore List UCEncoding.
 
 (* universe *)
 
