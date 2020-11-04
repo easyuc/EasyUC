@@ -37,14 +37,19 @@ let initialized = ref false
 let init () =
  if not (!initialized) then
    (initialized := true;
+    (* lowest precedence *)
     UcEcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
-    UcEcCommands.addidir ~namespace:`System ~recursive:false
-    Filename.current_dir_name;
-    (let include_dirs = UcState.get_include_dirs() in
+    (* medium precedence; we have to reverse the include dirs
+       list because we keep it in order from highest precedence to
+       lowest *)
+    (let include_dirs = List.rev (UcState.get_include_dirs()) in
      List.iter
      (fun x ->
       UcEcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
+    (* highest precedence *)
+    UcEcCommands.addidir ~namespace:`System ~recursive:false
+    Filename.current_dir_name;
     UcEcCommands.ucdsl_init ();    
     UcEcCommands.ucdsl_addnotifier notifier;
     reset_ec_warnings ();
