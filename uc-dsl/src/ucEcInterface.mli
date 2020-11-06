@@ -1,9 +1,9 @@
 (* UcEcInterface module interface *)
 
 (* Interface with EasyCrypt *)
-
+(*
 open UcTypes
-
+*)
 (* initialize EasyCrypt *)
 
 val init : unit -> unit
@@ -28,5 +28,6 @@ val require :
 val exists_type : string -> bool
 
 val exists_operator : string -> bool
-
+(*
 val get_operator_sig : string -> typ * typ list
+*)

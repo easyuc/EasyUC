@@ -5,12 +5,15 @@
 open Batteries
 open Format
 open EcUtils
+(*
 open EcDecl
 open EcTypes
 open EcPath
+*)
 open UcMessage
-
+(*
 open UcTypes
+*)
 open UcConfig
 
 (* EasyCrypt critical errors cause termination with an error message,
@@ -102,7 +105,7 @@ let exists_operator (op : string) : bool =
    nullary ops the list is empty.  We use only op_ty from the operator
    declaration - type parameters are not used, and we're not interested
    in op body, just signature. *)
-
+(*
 let get_operator_sig (op : string) : typ * typ list =
   let ecsig = (snd (EcEnv.Op.lookup ([], op) (env ()))).op_ty.ty_node in
 
@@ -140,3 +143,4 @@ let get_operator_sig (op : string) : typ * typ list =
       let typs = get_typs (t1, t2) [] in
       (List.hd typs, List.rev (List.tl typs))
   | _                     -> raise (Failure "unexpected EcType")
+  *)
