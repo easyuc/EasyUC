@@ -282,6 +282,11 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token LE
 %token RARROW
 
+
+%nonassoc COMMA ELSE
+
+%nonassoc IN
+
 %right    IMPL 
 %nonassoc IFF
 %right    ORA  OR
