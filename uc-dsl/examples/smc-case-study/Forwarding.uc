@@ -2,12 +2,12 @@
 
 ec_requires KeysExponentsAndPlainTexts.
 
-direct fwDir {
+direct FwDir_ {
   in pt1@fw_req(pt2 : port, u : univ)
   out fw_rsp(pt1 : port, u : univ)@pt2
 }
 
-direct FwDir {D : fwDir}
+direct FwDir {D : FwDir_}
 
 adversarial FwAdv {
   in  fw_ok

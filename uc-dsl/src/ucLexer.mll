@@ -26,27 +26,26 @@
   let lex_error lexbuf =
     UcMessage.error_message (L.of_lexbuf lexbuf)
 
-  let _keywords = [                     
+  let _keywords = [
+    "forall"          , FORALL      ;
+    "exist"           , EXIST       ;
+    "fun"             , FUN         ;
     "adversarial"     , ADVERSARIAL ;
     "and"             , ANDTXT      ;
-    "as"              , AS          ;
-    "decode"          , DECODE      ;
     "direct"          , DIRECT      ;
     "ec_requires"     , EC_REQUIRES ;
     "elif"            , ELIF        ;
     "else"            , ELSE        ;
-    "encode"          , ENCODE      ;
     "end"             , END         ;
-    "error"           , ERROR       ;
     "fail"            , FAIL        ;
     "functionality"   , FUNCT       ;
     "if"              , IF          ;
     "implements"      , IMPLEM      ;
     "in"              , IN          ;
     "initial"         , INITIAL     ;
+    "let"             , LET         ;
     "match"           , MATCH       ;
     "message"         , MESSAGE     ;
-    "ok"              , OK          ;
     "out"             , OUT         ;
     "party"           , PARTY       ;
     "send"            , SEND        ;
@@ -55,6 +54,8 @@
     "simulator"       , SIM         ;
     "state"           , STATE       ;
     "subfun"          , SUBFUN      ;
+    "then"            , THEN        ;
+    "top"             , TOP         ;
     "transition"      , TRANSITION  ;
     "uc_requires"     , UC_REQUIRES ;
     "uses"            , USES        ;
@@ -185,8 +186,11 @@ let letter  = upper | lower
 let digit   = ['0'-'9']
 
 let uint   = digit+
+
 let ichar  = letter | digit | '_' | '\''
-let ident  = (lower ichar*) | ('_' ichar+) | upper ichar*
+let lident = (lower ichar*) | ('_' ichar+)
+let uident = upper ichar*
+let ident  = lident | uident
 let tident = '\'' ident
 
 let _opchar = ['=' '<' '>' '+' '-' '/' '\\' '%' '&' '^' '|' ':' '#' '$']
@@ -233,6 +237,8 @@ rule read = parse
   | ')'     { RPAREN     }
   | '{'     { LBRACE     }
   | '}'     { RBRACE     }
+  | '['     { LBRACKET   }
+  | ']'     { RBRACKET   }
   | ','     { COMMA      }
   | ':'     { COLON      }
   | ";"     { SEMICOLON  }
@@ -242,12 +248,18 @@ rule read = parse
   | '.'     { DOT        }
   | '|'     { PIPE       }
   | '@'     { AT         }
+  | "~"     { TILD       }
   | "<$"    { LESAMPLE   }
   | "<-"    { LARROW     }
   | "{0,1}" { RBOOL      }
   | ".."    { DOTDOT     }
   | ".["    { DLBRACKET  }
   | ".`"    { DOTTICK    }
+  | "<:"    { LTCOLON    }
+  | "{|"    { LPBRACE    }
+  | "|}"    { RPBRACE    }
+  | "`|"    { TICKPIPE   }
+  | ":~"    { COLONTILD  }
 
   (* fixed length used as operators for types and/or expressions, but
      sometimes other uses *)
@@ -273,16 +285,18 @@ rule read = parse
   | "=>"    { IMPL       }  (* other uses *)
   | "<=>"   { IFF        }
 
-  (* identifers, type identifiers (variables) and numeric constants *)
+  (* lower and upper identifers, type identifiers (variables) and
+     numeric constants *)
 
-  | ident as id   { try Hashtbl.find keywords id with Not_found -> ID id }
+  | lident as id  { try Hashtbl.find keywords id with Not_found -> LIDENT id }
+  | uident as id  { try Hashtbl.find keywords id with Not_found -> UIDENT id }
   | tident as tid { if Char.is_uppercase (tid.[1])
                     then lex_error lexbuf
                          (fun ppf ->
                             Format.fprintf ppf
                             ("@[second character of type variable must " ^^
                              "be lowercase letter@]"))
-                    else TID tid }
+                    else TIDENT tid }
   | uint          { UINT (EcBigInt.of_string (Lexing.lexeme lexbuf)) }
   | (digit+ as n) '.' (digit+ as f) {
       let nv, fv = EcBigInt.of_string n, EcBigInt.of_string f in
