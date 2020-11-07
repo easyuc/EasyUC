@@ -18,9 +18,14 @@ let print_expr (e:expr) =
 	              let _ = if o1=Success then print_endline "success"
 	                      else if o1=Failure then print_endline "failure"
 	                      else print_endline "Unknown"
-	              in let _ = print_endline "__outcome description__" in
-	                 print_string o2;
-	                 print_endline "__end of outcome description__"
+	              in
+                           if o2 <>"" then
+                             (print_endline "__outcome description__";
+                              print_string o2;
+                              print_endline "__end of outcome description__")
+                           else
+                             print_endline "Warning: description missing"
+                           
 	                 
 let print_list lst =
   let rec print_elements = function
@@ -39,14 +44,14 @@ let check_fields lst =
     in
     let (arg_1, desc_1, out_1) = check 0 0 0 lst in
     if arg_1 <> 1 then
-      (if arg_1 = 0 then ("Error: Empty Args\n", "")
-       else ("Error: Multiple Args\n", ""))
+      (if arg_1 = 0 then ("Error: Missing Args", "")
+       else ("Error: Multiple Args", ""))
     else if desc_1 <> 1 then
       (if desc_1 > 1 then ("" , "Warning: Multiple Descriptions\n")
-      else ("",""))
+      else ("","Warning: Description missing\n"))
     else if out_1 <> 1 then
-      (if out_1 = 0 then ("Error: Outcome is missing\n", "")
-       else ("Error: Multiple Outcomes\n", ""))
+      (if out_1 = 0 then ("Error: Outcome is missing", "")
+       else ("Error: Multiple Outcomes", ""))
     else
       ("", "")
                        

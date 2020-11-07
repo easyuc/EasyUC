@@ -40,7 +40,8 @@ rule my_lexer = parse
     |"args"		{args lexbuf }
     |"outcome"		{outcome lexbuf }
     |_ 			{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
-			    error_raise ("'"^s^"' not a valid keyword") lexbuf }
+			    error_raise ("'"^String.escaped s
+			    ^"' not a valid keyword") lexbuf }
 
 (* This level is to process nested comments *)
 
@@ -50,9 +51,10 @@ and comments level = parse
 			}
     |"(*"  		{comments (level+1) lexbuf	}
     |'\n'		{next_line lexbuf; comments level lexbuf}
-    |eof		{error_raise ("comments did not end correctly"
+    |eof		{error_raise ("comment did not end correctly, "
     			 ^"reached end of file looking '*)'") lexbuf }
     |_ 			{comments level lexbuf }
+    
 (*desc_comments process comments after the keyword description and before
 a new line for example description (* comment here*) \\n description text *)
 
@@ -83,8 +85,10 @@ and desc s = parse
     		 ^" description/outcome did not end correctly") lexbuf }
     |_		{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
     		 if (s = ".") then
-    		 (error_raise ("description/outcome did not end correctly expecting '.\\n'"
-		 ^" but found '"^s^"' did you forgot '\\n' after '.'") lexbuf)
+    		 (error_raise (
+		 "description/outcome did not end correctly expecting '.\\n'"
+		 ^" but found '"^(String.escaped s)
+		 ^"' did you forget '\\n' after '.'") lexbuf)
 		 else
 		 (error_raise "'\\n.\\n' expected description/outcome did not end correctly"
 		  lexbuf) }
@@ -97,8 +101,8 @@ and args = parse
     |"(*"		{comments 0 lexbuf; args lexbuf}
     |":"		{args_parse [] lexbuf}
     |_			{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
-			     error_raise (" ':' expected after 'args' but found '"
-			     ^s^"'")  lexbuf }
+			     error_raise ("':' expected after 'args' but found '"
+			     ^(String.escaped s)^"'")  lexbuf }
 
 (* we split the line after args: at white space and insert into a list *)
 
@@ -113,18 +117,21 @@ and args_parse s1 = parse
     				 "abrupt end of args, args should end with a newline "
 				 lexbuf}
     |_     		        {let s = error_string (Lexing.lexeme lexbuf) lexbuf in
-			    	   error_raise ("'"^s^"' is not allowed in args ")  lexbuf}
+			    	   error_raise ("'"^(String.escaped s)
+				   ^"' is not allowed in args ")  lexbuf}
 
 (* same as args: *)
 
 and outcome = parse
     |[' ' '\t']		{outcome lexbuf }
-    |['\n']		{next_line lexbuf; outcome lexbuf}
+    |['\n']		{error_raise ("'\n' is not allowed after ':' before"
+    			 ^ "'success/failure'") lexbuf}
     |"(*"		{comments 0 lexbuf; outcome lexbuf}
     |":"		{out_parse Success false lexbuf}
     |_			{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
-			     error_raise (" ':' expected after 'outcome' but found '"
-			     ^s^"'")  lexbuf }			
+			     error_raise (
+			     "':' expected after 'outcome' but found '"
+			     ^(String.escaped s)^"'")  lexbuf }			
 and error_string str = parse
     |[^' ' '\t' '\r' '\n']+ as s1	{str^s1}
     |eof   	     	       		{str}
@@ -147,26 +154,34 @@ UCDSL error message
 and out_parse o1 bool = parse
     |[' ' '\t' '\r']+		{out_parse o1 bool lexbuf}
     |['\n']			{ if bool = false
-				then error_raise "success/failure expected"  lexbuf
+				then error_raise
+				"success/failure expected"  lexbuf
 				else next_line lexbuf ; OUT (o1, desc "" lexbuf)}
     |"(*" 			{comments 0 lexbuf; out_parse o1 bool lexbuf }
     |"success" 			{ if bool = false then
 			     	let o1 = Success in out_parse o1 true lexbuf
 			     	else
-			     	error_raise ((Lexing.lexeme lexbuf) ^ " is redundant") lexbuf
+			     	error_raise (
+				(Lexing.lexeme lexbuf) ^ " is redundant") lexbuf
 			    	}
     |"failure"			{if bool = false then
 			      	   let o1= Failure in out_parse o1 true lexbuf
 			     	 else
-			      	   error_raise ((Lexing.lexeme lexbuf)^" is redundant") lexbuf }
-    |eof			  {error_raise ("Reached end of file but 'success'"
+			      	   error_raise (
+				   (Lexing.lexeme lexbuf)
+				   ^" is redundant") lexbuf }
+    |eof			  {error_raise (
+    				  "Reached end of file but 'success'"
     				  ^"'failure' expected") lexbuf }
     |_			{let s = error_string (Lexing.lexeme lexbuf) lexbuf in
     			if bool = true then
-    			error_raise ("'"^s^
-			"' is unexpected. Outcome description should start in a new line") lexbuf
+    			error_raise (
+			"'"^(String.escaped s)^"' is unexpected."
+			^" Outcome description should start in a new line")
+			lexbuf
 			else
-			error_raise ("succes/failure expected instead found '"^s^"'") lexbuf}
+			error_raise ("success/failure expected instead found '"
+			^(String.escaped s)^"'") lexbuf}
 			 
 			 
 
