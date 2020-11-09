@@ -18,10 +18,8 @@ open Batteries
 open Format
 open EcUtils
 open EcLocation
-open EcSymbols
 open EcParsetree
 open UcSpec
-open UcMessage
 
 module BI = EcBigInt
 
@@ -31,40 +29,17 @@ let pqsymb_of_psymb (x : psymbol) : pqsymbol =
 let pqsymb_of_symb loc x : pqsymbol =
   mk_loc loc ([], x)
 
-let lqident_of_fident (nm, name) =
-  let module E = struct exception Invalid end in
-
-  let nm =
-    let for1 (x, args) =
-      if args <> None then raise E.Invalid else unloc x
-    in
-      List.map for1 nm
-  in
-    try Some (nm, unloc name) with E.Invalid -> None
-
 let mk_peid_symb loc s ti =
   mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
-
-let mk_pfid_symb loc s ti =
-  mk_loc loc (PFident (pqsymb_of_symb loc s, ti))
 
 let peapp_symb loc s ti es =
   PEapp (mk_peid_symb loc s ti, es)
 
 let peget loc ti e1 e2    =
-  peapp_symb loc EcCoreLib.s_get ti [e1;e2]
+  peapp_symb loc EcCoreLib.s_get ti [e1; e2]
 
 let peset loc ti e1 e2 e3 =
-  peapp_symb loc EcCoreLib.s_set ti [e1;e2;e3]
-
-let pfapp_symb loc s ti es =
-  PFapp(mk_pfid_symb loc s ti, es)
-
-let pfget loc ti e1 e2    =
-  pfapp_symb loc EcCoreLib.s_get ti [e1;e2]
-
-let pfset loc ti e1 e2 e3 =
-  pfapp_symb loc EcCoreLib.s_set ti [e1;e2;e3]
+  peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
 
 let pe_nil loc ti =
   mk_peid_symb loc EcCoreLib.s_nil ti
@@ -74,60 +49,6 @@ let pe_cons loc ti e1 e2 =
 
 let pelist loc ti (es : pexpr list) : pexpr =
   List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
-
-(* auxiliary definitions for msg_path_pat and msg_path *)
-
-type msg_path_pat_item =
-  | MsgPathPatItemId   of psymbol
-  | MsgPathPatItemStar of EcLocation.t
-
-let to_msg_or_star (mpi : msg_path_pat_item) : msg_or_star =
-  match mpi with
-  | MsgPathPatItemId id  ->
-      if not (Char.is_lowercase ((unloc id).[0]))
-      then parse_error (loc id)
-           (fun ppf ->
-              Format.fprintf ppf
-              "@[must@ be@ lowercase@ identifier@]");
-      MsgOrStarMsg (unloc id)
-  | MsgPathPatItemStar _ -> MsgOrStarStar
-
-let to_id (mpi : msg_path_pat_item) : symbol =
-  match mpi with
-  | MsgPathPatItemId id  ->
-      if not (Char.is_uppercase ((unloc id).[0]))
-      then parse_error (loc id)
-           (fun ppf ->
-              Format.fprintf ppf
-              "@[must@ be@ uppercase@ identifier@]");
-      unloc id
-  | MsgPathPatItemStar l ->
-      parse_error l
-      (fun ppf -> fprintf ppf "@[*@ cannot@ be@ followed@ by@ \".\"@]")
-
-let rec to_msg_path_pat
-    (mppis : msg_path_pat_item list) (mp : msg_path_pat_u) =
-  match mppis with
-  | []       -> failure "should never be empty"
-  | [x]      ->
-      {inter_id_path = mp.inter_id_path;
-       msg_or_star   = to_msg_or_star x}
-  | hd :: tl ->
-      to_msg_path_pat tl
-      {inter_id_path = mp.inter_id_path @ [to_id hd];
-       msg_or_star   = mp.msg_or_star}
-
-let msg_path_pat_items_to_msg_path_pat
-    (mppis : msg_path_pat_item list located) : msg_path_pat =
-  let l = loc mppis in
-  let mpp =
-    to_msg_path_pat (unloc mppis)
-    {inter_id_path = []; msg_or_star = MsgOrStarStar} in
-  mk_loc l mpp
-
-let pqsymbol_to_msg_path (pqsym : pqsymbol) : msg_path =
-  let l = loc pqsym in
-  mk_loc l {inter_id_path = fst (unloc pqsym); msg = snd (unloc pqsym)}
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -282,6 +203,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token LE
 %token RARROW
 
+(* precedence and associativity *)
 
 %nonassoc COMMA ELSE
 
@@ -724,15 +646,16 @@ pat :
       { PatWildcard (loc l) }
 
 msg_path_pat : 
-  | mpis = loc(separated_nonempty_list(DOT, msg_path_pat_item))
-      { (* STAR, if it appears, must be at end *)
-        msg_path_pat_items_to_msg_path_pat mpis }
+  | mppqid = genqident(msg_path_end)
+      { let l = loc mppqid in
+        let (iip, msg_or_star) = unloc mppqid in
+        mk_loc l {inter_id_path = iip; msg_or_star = msg_or_star} }
 
-msg_path_pat_item : 
-  | id = ident
-      { MsgPathPatItemId id }
-  | l = loc(STAR)
-      { MsgPathPatItemStar (loc l) }
+msg_path_end : 
+  | id = lident
+      { MsgOrStarMsg (unloc id) }
+  | STAR
+      { MsgOrStarStar }
 
 (* Simulators *)
 
@@ -816,24 +739,31 @@ instruction_u :
       { i }
   | i = ifthenelse
       { i }
-(* TODO replace this with match
-  | i = decode
+  | i = match_in
       { i }
-*)
   | i = control_transfer
       { i }
 
-(* There are two instructions for assigning a value to the variable:
+(* Assignments
+
+   There are two instructions for assigning a value to the variable:
    ordinary assignment and random asssignment (from a distribution
-   type). *)
+   type). Both take a left-hand-side that is either a single variable
+   or a tuple of variables with at least two elements. *)
+
+assign_lhs :
+  | id = lident
+      { LHSSimp id }
+  | LPAREN; ids = plist2(lident, COMMA); RPAREN
+      { LHSTuple ids }
 
 assignment : 
-  | vid = lident; LARROW; e = expr; SEMICOLON
-      { Assign (vid, e) }
-  | vid = lident; LESAMPLE; e = expr; SEMICOLON
-      { Sample (vid, e) }
+  | lhs = assign_lhs; LARROW; e = expr; SEMICOLON
+      { Assign (lhs, e) }
+  | lhs = assign_lhs; LESAMPLE; e = expr; SEMICOLON
+      { Sample (lhs, e) }
 
-(* Conditional (if-then-else) instructions *)
+(* Conditional (if-then-else) Instructions *)
 
 ifthenelse : 
   | IF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
@@ -856,7 +786,22 @@ elifthenelse_u :
   | ELIF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
-(* Control transfer instructions *)
+(* Match Instructions *)
+
+match_in :
+  | MATCH; e = expr; WITH;
+    PIPE?;
+    lcs = loc(plist0(pat = mcptn(sbinop); IMPL; ins = inst_block { (pat, ins) },
+                    PIPE));
+    END
+      { if List.is_empty (unloc lcs)
+        then parse_error (loc lcs)
+             (fun ppf ->
+                Format.fprintf ppf
+                "@[at@ least@ one@ matching@ clause@ is@ required@]");
+        Match (e, unloc lcs) }
+
+(* Control Transfer Instructions *)
 
 control_transfer : 
   | sat = send_and_transition; DOT
@@ -889,8 +834,10 @@ send_and_transition :
       { {msg_expr = msg; state_expr = state} }
 
 msg_path :
-  | qid = lqident
-      { pqsymbol_to_msg_path qid }
+  | lqid = lqident
+      { let l   = loc lqid in
+        let qid = unloc lqid in
+        mk_loc l {inter_id_path = fst qid; msg = snd qid} }
 
 msg_expr : 
   | path = msg_path; args = loc(option(args)); port_id = option(dest)
@@ -1083,14 +1030,14 @@ type_exp :
 (* Expressions *)
 
 tyvar_byname1:
-| x=tident; EQ; ty=loc(type_exp) { (x, ty) }
+| x = tident; EQ; ty = loc(type_exp) { (x, ty) }
 
 tyvar_annot:
 | lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
 | lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
 
 %inline tvars_app:
-| LTCOLON k=loc(tyvar_annot) GT { k }
+| LTCOLON k = loc(tyvar_annot) GT { k }
 
 %inline sexpr: x = loc(sexpr_u) { x }
 %inline  expr: x = loc( expr_u) { x }

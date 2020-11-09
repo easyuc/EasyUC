@@ -47,18 +47,6 @@ type msg_or_star =
   | MsgOrStarMsg of symbol
   | MsgOrStarStar
 
-(* TODO - fix or remove
-let qid1_starts_with_qid2 (q1 : qid) (q2 : qid) : bool =
-  List.for_all
-  identity
-  (List.mapi
-   (fun i id2 -> 
-      match List.nth_opt q1 i with
-      | Some id1 -> unloc id1 = unloc id2
-      | None     -> false)
-   q2)
-*)
-
 type msg_path_pat_u = {inter_id_path : symbol list; msg_or_star : msg_or_star}
 
 type msg_path_pat = msg_path_pat_u located
@@ -90,11 +78,16 @@ type state_expr = {id : psymbol; args : pexpr list located}
 
 type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 
+type lhs =
+  | LHSSimp  of psymbol
+  | LHSTuple of psymbol list
+
 type instruction_u =
-  | Assign of psymbol * pexpr
-  | Sample of psymbol * pexpr
+  | Assign of lhs * pexpr
+  | Sample of lhs * pexpr
   | ITE of pexpr * instruction list located *  (* if-then-else *)
            instruction list located option
+  | Match of pexpr * (ppattern * instruction list located) list
   | SendAndTransition of send_and_transition
   | Fail
 
