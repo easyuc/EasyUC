@@ -18,36 +18,39 @@ open Batteries
 open Format
 open EcUtils
 open EcLocation
+open EcSymbols
 open EcParsetree
 open UcSpec
 
 module BI = EcBigInt
 
+(* auxiliary functions for symbols and expressions *)
+
 let pqsymb_of_psymb (x : psymbol) : pqsymbol =
   mk_loc x.pl_loc ([], x.pl_desc)
 
-let pqsymb_of_symb loc x : pqsymbol =
+let pqsymb_of_symb loc (x : symbol) : pqsymbol =
   mk_loc loc ([], x)
 
-let mk_peid_symb loc s ti =
+let mk_peid_symb loc (s : symbol) (ti : ptyannot option) : pexpr =
   mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
 
-let peapp_symb loc s ti es =
+let peapp_symb loc (s : symbol) (ti : ptyannot option) (es : pexpr list) =
   PEapp (mk_peid_symb loc s ti, es)
 
-let peget loc ti e1 e2    =
+let peget loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
   peapp_symb loc EcCoreLib.s_get ti [e1; e2]
 
-let peset loc ti e1 e2 e3 =
+let peset loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
   peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
 
-let pe_nil loc ti =
+let pe_nil loc (ti : ptyannot option) =
   mk_peid_symb loc EcCoreLib.s_nil ti
 
-let pe_cons loc ti e1 e2 =
+let pe_cons loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
   mk_loc loc (peapp_symb loc EcCoreLib.s_cons ti [e1; e2])
 
-let pelist loc ti (es : pexpr list) : pexpr =
+let pelist loc (ti : ptyannot option) (es : pexpr list) : pexpr =
   List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
 
 (* check for parse errors in messages of direct or adversarial
@@ -542,12 +545,12 @@ local_var_decl :
    For example, suppose the functionality implements FwDir (and, in
    the case of a real functionality, that the party serves fwDir):
 
-     direct fwDir {
+     direct FwDir_ {
        in pt1@fw_req(pt2 : port, u : univ)
        out fw_rsp(pt1 : port, u : univ)@pt2
      }
 
-     direct FwDir {D : fwDir}
+     direct FwDir {D : FwDir_}
 
    Then FwDir.D.fw_req is the only valid incoming message path. If
    there is a subfunctionality
@@ -791,8 +794,10 @@ elifthenelse_u :
 match_in :
   | MATCH; e = expr; WITH;
     PIPE?;
-    lcs = loc(plist0(pat = mcptn(sbinop); IMPL; ins = inst_block { (pat, ins) },
-                    PIPE));
+    lcs = loc
+          (plist0
+           (pat = mcptn(sbinop); IMPL; ins = inst_block { (pat, ins) },
+            PIPE));
     END
       { if List.is_empty (unloc lcs)
         then parse_error (loc lcs)
@@ -865,7 +870,9 @@ args :
   LPAREN; args = separated_list(COMMA, expr); RPAREN
     { args }
 
-(* Identifiers, Words and Operators - borrowed from EasyCrypt parser *)
+(* Identifiers, Words and Operators
+
+   everything below borrowed from EasyCrypt parser *)
 
 %inline _lident :
   | x = LIDENT { x }
@@ -1243,7 +1250,7 @@ ptybindings :
      }
    }
 
-(* Parser Definitions - borrowed from EasyCrypt's parser *)
+(* Parser Definitions *)
 
 %inline plist0(X, S) :
   | aout = separated_list(S, X) { aout }
