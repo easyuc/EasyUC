@@ -5,13 +5,13 @@
 open Batteries
 open Format
 open EcLocation
-open UcEcTypes
-open UcTypes
+open EcParsetree
 open UcSpec
 open UcTypedSpec
 open UcUtils
 open UcMessage
 
+(*
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -1861,3 +1861,8 @@ let typecheck qual_file check_id spec =
   let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
   check_defs qual_file maps spec.definitions
+*)
+
+let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
+              (spec : spec) : typed_spec =
+  failure "disconnected!"

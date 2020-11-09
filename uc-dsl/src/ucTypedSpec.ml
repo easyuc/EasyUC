@@ -3,7 +3,8 @@
 (* Typed Specifications *)
 
 open EcLocation
-open UcTypes
+open EcSymbols
+open EcTypes
 open UcSpec
 
 (* id maps and sets *)
@@ -50,10 +51,10 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
 
-type typ_index = (typ * int) located
+type ty_index = (ty * int) located
 
 type message_def_body_tyd =
-  {dir : msg_dir; params_map : typ_index IdMap.t; port : id option}
+  {dir : msg_dir; params_map : ty_index IdMap.t; port : symbol option}
 
 type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
 
@@ -76,7 +77,7 @@ let invert_basic_inter_body_tyd
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
-  | CompositeTyd of id IdMap.t
+  | CompositeTyd of symbol IdMap.t
 
 let is_basic_tyd ibt =
   match ibt with
@@ -91,7 +92,7 @@ let is_composite_tyd ibt =
 type inter_tyd = inter_body_tyd located
 
 type state_body_tyd =
-  {is_initial : bool; params : typ_index IdMap.t; vars : typ located IdMap.t;
+  {is_initial : bool; params : ty_index IdMap.t; vars : ty located IdMap.t;
    mmclauses : msg_match_clause list}
 
 type state_tyd = state_body_tyd located
@@ -102,10 +103,10 @@ type party_def_body_tyd =
 type party_def_tyd = party_def_body_tyd located
 
 type real_fun_body_tyd =
-  {params       : (id * int) IdMap.t;
+  {params       : (symbol * int) IdMap.t;
    id_dir_inter : string;
    id_adv_inter : string option;
-   sub_funs     : id IdMap.t;  (* names of ideal functionalities *)
+   sub_funs     : symbol IdMap.t;  (* names of ideal functionalities *)
    parties      : party_def_tyd IdMap.t}
 
 type ideal_fun_body_tyd =
