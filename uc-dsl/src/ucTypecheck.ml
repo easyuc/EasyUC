@@ -32,9 +32,8 @@ let check_unique_ids
 
 let env () = UcEcInterface.env ()
 
-let ue = EcUnify.UniEnv.create None
-
 let check_type (pty : pty) : EcTypes.ty =
+  let ue = EcUnify.UniEnv.create None in
   EcTyping.transty EcTyping.tp_tydecl (env ()) ue pty
   
 let check_name_type_bindings

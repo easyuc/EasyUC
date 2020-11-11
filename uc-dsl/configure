@@ -2,21 +2,19 @@
 
 pwd=$(pwd)
 
-if [[ $pwd = *\'* ]];
+if [[ "$pwd" = *\'* ]];
   then echo ""
        echo "pathname to UC DSL directory cannot contain apostrophes"
        exit;
-elif [[ $pwd = *\ * ]];
+elif [[ "$pwd" = *\ * ]];
   then echo ""
        echo "pathname to UC DSL directory cannot contain spaces"
        exit;
 fi
 
-cd src
-
-if [ -L ECsrc ];
-then echo "symbolic link to EasyCrypt installation directory already set"
-     echo "ECdir ->" $(ls -l ECdir | sed 's/^.*-> //')
+if [ -L src/ECtheories ];
+then echo "symbolic link to EasyCrypt theories directory already set"
+     echo "ECtheories ->" $(ls -l src/ECtheories | sed 's/^.*-> //')
      echo ""
      read -p 'Do you want to change the symbolic link? [yes/no] ' change
      if [ $change == yes ];
@@ -26,34 +24,37 @@ then echo "symbolic link to EasyCrypt installation directory already set"
      fi;
 fi
 
-rm -f ECdir ECsrc ECtheories
+rm -f src/ECtheories
 
 echo "you need to enter the fully qualified pathname of the Easyrypt "
-echo "installation directory (filename completion will be enabled)"
+echo "theories directory (filename completion will be enabled)"
 echo ""
-read -e -p "EasyCrypt installation directory pathname? " ecdir
-if [[ $ecdir = *\'* ]];
+read -e -p "EasyCrypt theories directory pathname? " ectheories
+if [[ "$ectheories" = *\'* ]];
   then echo ""
        echo "pathname cannot contain apostrophes"
        echo symbolic link not created
        exit;
-elif [[ $ecdir = *\ * ]];
+elif [[ "$ectheories" = *\ * ]];
   then echo ""
        echo "pathname cannot contain spaces"
        echo symbolic link not created
        exit;
-elif [ ! -d $ecdir ];
+elif [[ ! $ectheories = /* ]];
+  then echo ""
+       echo "pathname is not fully qualified"
+       echo symbolic link not created
+       exit;
+elif [ ! -d $ectheories ];
   then echo ""
        echo "pathname is not a directory";
        echo symbolic link not created
        exit;
-elif [ ! -e $ecdir/src/ecVersion.ml.in ];
+elif [ ! -e $ectheories/prelude/Pervasive.ec ];
   then echo ""
-       echo "pathname is not the pathname of EasyCrypt installation directory"
+       echo "pathname is not the pathname of EasyCrypt theories directory"
        echo symbolic link not created
        exit;
 fi
 
-ln -s $ecdir ECdir
-ln -s $ecdir/src ECsrc
-ln -s $ecdir/theories ECtheories
+ln -s $ectheories src/ECtheories

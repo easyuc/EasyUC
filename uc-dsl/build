@@ -4,12 +4,11 @@ ucprelude=$(pwd)/prelude
 
 cd src
 
-ecdir=$(ls -l ECdir | sed 's/^.*-> //')
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
 
 if [ ! -r ECsrc/ecVersion.ml ];
-then echo "trying to prepare $ecdir"
-     echo "  for building of UC DSL tool";
+then echo -n "trying to prepare copy of EasyCrypt src directory";
+     echo " for building UC DSL tool";
      if [ ! -r ECsrc/ecVersion.ml.in ];
      then echo Bad EasyCrypt source directory;
           echo exiting...;
