@@ -1,10 +1,11 @@
 #!/bin/bash
 
+ucprelude=$(pwd)/prelude
+
 cd src
 
 ecdir=$(ls -l ECdir | sed 's/^.*-> //')
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
-ucprelude=$(pwd)/prelude
 
 if [ ! -r ECsrc/ecVersion.ml ];
 then echo "trying to prepare $ecdir"

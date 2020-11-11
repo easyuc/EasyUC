@@ -1832,6 +1832,19 @@ let load_uc_req check_id maps id =
 let load_uc_reqs check_id maps reqs = 
   List.fold_left (load_uc_req check_id) maps reqs
 
+
+*)
+
+(*let typecheck qual_file check_id spec = 
+  let empty_maps =
+    {dir_inter_map = IdMap.empty;
+     adv_inter_map = IdMap.empty;
+     fun_map       = IdMap.empty;
+     sim_map       = IdMap.empty} in
+  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
+  let () = load_ec_reqs spec.externals.ec_requires in
+  check_defs qual_file maps spec.definitions
+*)
 let load_ec_reqs reqs = 
   let reqimp id = 
     let uid = unloc id in
@@ -1851,18 +1864,13 @@ let load_ec_reqs reqs =
            "@[error@ when@ importing@ EasyCrypt@ theory@ %s:@ \"%s\"@]"
            (unloc id) f) in
   List.iter reqimp reqs
-
-let typecheck qual_file check_id spec = 
+  
+let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
+              (spec : spec) : typed_spec =
   let empty_maps =
     {dir_inter_map = IdMap.empty;
      adv_inter_map = IdMap.empty;
      fun_map       = IdMap.empty;
      sim_map       = IdMap.empty} in
-  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
-  let () = load_ec_reqs spec.externals.ec_requires in
-  check_defs qual_file maps spec.definitions
-*)
-
-let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
-              (spec : spec) : typed_spec =
+  let () = load_ec_reqs spec.externals.ec_requires in   
   failure "disconnected!"
