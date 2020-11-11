@@ -11,6 +11,9 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
+
+module EcScope = UcEcScope  (* UC DSL *)
+
 open EcLocation
 
 (* -------------------------------------------------------------------- *)
@@ -40,7 +43,7 @@ val initialize  :
   -> checkmode:checkmode
   -> unit
 
-val current     : unit -> UcEcScope.scope
+val current     : unit -> EcScope.scope
 val addnotifier : notifier -> unit
 
 (* -------------------------------------------------------------------- *)
@@ -60,7 +63,7 @@ val pp_maybe_current_goal : Format.formatter -> unit
 (* -------------------------------------------------------------------- *)
 val pragma_verbose : bool -> unit
 val pragma_g_prall : bool -> unit
-val pragma_check   : UcEcScope.Ax.mode -> unit
+val pragma_check   : EcScope.Ax.mode -> unit
 
 exception InvalidPragma of string
 
@@ -75,10 +78,10 @@ val ucdsl_init : unit -> unit
 val ucdsl_addnotifier : notifier -> unit
 
 (* current scope *)
-val ucdsl_current : unit -> UcEcScope.scope
+val ucdsl_current : unit -> EcScope.scope
 
 (* update current scope *)
-val ucdsl_update : UcEcScope.scope -> unit
+val ucdsl_update : EcScope.scope -> unit
 
 (* require a theory *)
 val ucdsl_require :

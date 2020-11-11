@@ -11,6 +11,9 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
+
+module EcScope = UcEcScope  (* UC DSL *)
+
 open EcUtils
 open EcLocation
 open EcParsetree
@@ -202,7 +205,7 @@ end
 
 (* -------------------------------------------------------------------- *)
 let process_search scope qs =
-  UcEcScope.Search.search scope qs
+  EcScope.Search.search scope qs
 
 (* -------------------------------------------------------------------- *)
 module HiPrinting = struct
@@ -231,23 +234,23 @@ module HiPrinting = struct
 
 
   let pr_goal fmt scope n =
-    match UcEcScope.xgoal scope with
-    | None | Some { UcEcScope.puc_active = None} ->
-        UcEcScope.hierror "no active proof"
+    match EcScope.xgoal scope with
+    | None | Some { EcScope.puc_active = None} ->
+        EcScope.hierror "no active proof"
 
-    | Some { UcEcScope.puc_active = Some (puc, _) } -> begin
-        match puc.UcEcScope.puc_jdg with
-        | UcEcScope.PSNoCheck -> ()
+    | Some { EcScope.puc_active = Some (puc, _) } -> begin
+        match puc.EcScope.puc_jdg with
+        | EcScope.PSNoCheck -> ()
 
-        | UcEcScope.PSCheck pf -> begin
+        | EcScope.PSCheck pf -> begin
             let hds = EcCoreGoal.all_hd_opened pf in
             let sz  = List.length hds in
-            let ppe = EcPrinting.PPEnv.ofenv (UcEcScope.env scope) in
+            let ppe = EcPrinting.PPEnv.ofenv (EcScope.env scope) in
 
             if n > sz then
-              UcEcScope.hierror "only %n goal(s) remaining" sz;
+              EcScope.hierror "only %n goal(s) remaining" sz;
             if n <= 0 then
-              UcEcScope.hierror "goal ID must be positive";
+              EcScope.hierror "goal ID must be positive";
             let penv = EcCoreGoal.proofenv_of_proof pf in
             let goal = List.nth hds (n-1) in
             let goal = EcCoreGoal.FApi.get_pregoal_by_id goal penv in
@@ -263,7 +266,7 @@ end
 
 (* -------------------------------------------------------------------- *)
 let process_pr fmt scope p =
-  let env = UcEcScope.env scope in
+  let env = EcScope.env scope in
 
   match p with
   | Pr_ty   qs -> EcPrinting.ObjectInfo.pr_ty   fmt env   (unloc qs)
@@ -285,12 +288,12 @@ let process_pr fmt scope p =
   | Pr_goal n  -> HiPrinting.pr_goal fmt scope n
 
 (* -------------------------------------------------------------------- *)
-let check_opname_validity (scope : UcEcScope.scope) (x : string) =
+let check_opname_validity (scope : EcScope.scope) (x : string) =
   if EcIo.is_binop x = `Invalid then
-    UcEcScope.notify scope `Warning
+    EcScope.notify scope `Warning
       "operator `%s' cannot be used in prefix mode" x;
   if EcIo.is_uniop x = `Invalid then
-    UcEcScope.notify scope `Warning
+    EcScope.notify scope `Warning
       "operator `%s' cannot be used in infix mode" x
 
 (* -------------------------------------------------------------------- *)
@@ -301,127 +304,127 @@ let process_print scope p =
 exception Pragma of [`Reset | `Restart]
 
 (* -------------------------------------------------------------------- *)
-let rec process_type (scope : UcEcScope.scope) (tyd : ptydecl located) =
-  UcEcScope.check_state `InTop "type" scope;
+let rec process_type (scope : EcScope.scope) (tyd : ptydecl located) =
+  EcScope.check_state `InTop "type" scope;
 
   let tyname = (tyd.pl_desc.pty_tyvars, tyd.pl_desc.pty_name) in
   let scope =
     match tyd.pl_desc.pty_body with
-    | PTYD_Abstract bd -> UcEcScope.Ty.add          scope (mk_loc tyd.pl_loc tyname) bd
-    | PTYD_Alias    bd -> UcEcScope.Ty.define       scope (mk_loc tyd.pl_loc tyname) bd
-    | PTYD_Datatype bd -> UcEcScope.Ty.add_datatype scope (mk_loc tyd.pl_loc tyname) bd
-    | PTYD_Record   bd -> UcEcScope.Ty.add_record   scope (mk_loc tyd.pl_loc tyname) bd
+    | PTYD_Abstract bd -> EcScope.Ty.add          scope (mk_loc tyd.pl_loc tyname) bd
+    | PTYD_Alias    bd -> EcScope.Ty.define       scope (mk_loc tyd.pl_loc tyname) bd
+    | PTYD_Datatype bd -> EcScope.Ty.add_datatype scope (mk_loc tyd.pl_loc tyname) bd
+    | PTYD_Record   bd -> EcScope.Ty.add_record   scope (mk_loc tyd.pl_loc tyname) bd
   in
-    UcEcScope.notify scope `Info "added type: `%s'" (unloc tyd.pl_desc.pty_name);
+    EcScope.notify scope `Info "added type: `%s'" (unloc tyd.pl_desc.pty_name);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_types (scope : UcEcScope.scope) tyds =
+and process_types (scope : EcScope.scope) tyds =
   List.fold_left process_type scope tyds
 
 (* -------------------------------------------------------------------- *)
-and process_typeclass (scope : UcEcScope.scope) (tcd : ptypeclass located) =
-  UcEcScope.check_state `InTop "type class" scope;
-  let scope = UcEcScope.Ty.add_class scope tcd in
-    UcEcScope.notify scope `Info "added type class: `%s'" (unloc tcd.pl_desc.ptc_name);
+and process_typeclass (scope : EcScope.scope) (tcd : ptypeclass located) =
+  EcScope.check_state `InTop "type class" scope;
+  let scope = EcScope.Ty.add_class scope tcd in
+    EcScope.notify scope `Info "added type class: `%s'" (unloc tcd.pl_desc.ptc_name);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_tycinst (scope : UcEcScope.scope) (tci : ptycinstance located) =
-  UcEcScope.check_state `InTop "type class instance" scope;
-  UcEcScope.Ty.add_instance scope (Pragma.get ()).pm_check tci
+and process_tycinst (scope : EcScope.scope) (tci : ptycinstance located) =
+  EcScope.check_state `InTop "type class instance" scope;
+  EcScope.Ty.add_instance scope (Pragma.get ()).pm_check tci
 
 (* -------------------------------------------------------------------- *)
-and process_module (scope : UcEcScope.scope) m =
-  UcEcScope.check_state `InTop "module" scope;
-  UcEcScope.Mod.add scope m
+and process_module (scope : EcScope.scope) m =
+  EcScope.check_state `InTop "module" scope;
+  EcScope.Mod.add scope m
 
 (* -------------------------------------------------------------------- *)
-and process_declare (scope : UcEcScope.scope) x =
+and process_declare (scope : EcScope.scope) x =
   match x with
   | PDCL_Module m -> begin
-      UcEcScope.check_state `InTop "module" scope;
-      UcEcScope.Mod.declare scope m
+      EcScope.check_state `InTop "module" scope;
+      EcScope.Mod.declare scope m
   end
 
 (* -------------------------------------------------------------------- *)
-and process_interface (scope : UcEcScope.scope) (x, i) =
-  UcEcScope.check_state `InTop "interface" scope;
-  UcEcScope.ModType.add scope x.pl_desc i
+and process_interface (scope : EcScope.scope) (x, i) =
+  EcScope.check_state `InTop "interface" scope;
+  EcScope.ModType.add scope x.pl_desc i
 
 (* -------------------------------------------------------------------- *)
-and process_operator (scope : UcEcScope.scope) (pop : poperator located) =
-  UcEcScope.check_state `InTop "operator" scope;
-  let op, scope = UcEcScope.Op.add scope pop in
-  let ppe = EcPrinting.PPEnv.ofenv (UcEcScope.env scope) in
+and process_operator (scope : EcScope.scope) (pop : poperator located) =
+  EcScope.check_state `InTop "operator" scope;
+  let op, scope = EcScope.Op.add scope pop in
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env scope) in
   List.iter
     (fun { pl_desc = name } ->
-      UcEcScope.notify scope `Info "added operator %s %a"
+      EcScope.notify scope `Info "added operator %s %a"
         name (EcPrinting.pp_added_op ppe) op;
         check_opname_validity scope name)
       (pop.pl_desc.po_name :: pop.pl_desc.po_aliases);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_predicate (scope : UcEcScope.scope) (p : ppredicate located) =
-  UcEcScope.check_state `InTop "predicate" scope;
-  let op, scope = UcEcScope.Pred.add scope p in
-  let ppe = EcPrinting.PPEnv.ofenv (UcEcScope.env scope) in
-  UcEcScope.notify scope `Info "added predicate %s %a"
+and process_predicate (scope : EcScope.scope) (p : ppredicate located) =
+  EcScope.check_state `InTop "predicate" scope;
+  let op, scope = EcScope.Pred.add scope p in
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env scope) in
+  EcScope.notify scope `Info "added predicate %s %a"
     (unloc p.pl_desc.pp_name) (EcPrinting.pp_added_op ppe) op;
   check_opname_validity scope (unloc p.pl_desc.pp_name);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_notation (scope : UcEcScope.scope) (n : pnotation located) =
-  UcEcScope.check_state `InTop "notation" scope;
-  let scope = UcEcScope.Notations.add scope n in
-    UcEcScope.notify scope `Info "added notation: `%s'"
+and process_notation (scope : EcScope.scope) (n : pnotation located) =
+  EcScope.check_state `InTop "notation" scope;
+  let scope = EcScope.Notations.add scope n in
+    EcScope.notify scope `Info "added notation: `%s'"
       (unloc n.pl_desc.nt_name);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_abbrev (scope : UcEcScope.scope) (a : pabbrev located) =
-  UcEcScope.check_state `InTop "abbreviation" scope;
-  let scope = UcEcScope.Notations.add_abbrev scope a in
-    UcEcScope.notify scope `Info "added abbrev.: `%s'"
+and process_abbrev (scope : EcScope.scope) (a : pabbrev located) =
+  EcScope.check_state `InTop "abbreviation" scope;
+  let scope = EcScope.Notations.add_abbrev scope a in
+    EcScope.notify scope `Info "added abbrev.: `%s'"
       (unloc a.pl_desc.ab_name);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_axiom (scope : UcEcScope.scope) (ax : paxiom located) =
-  UcEcScope.check_state `InTop "axiom" scope;
-  let (name, scope) = UcEcScope.Ax.add scope (Pragma.get ()).pm_check ax in
+and process_axiom (scope : EcScope.scope) (ax : paxiom located) =
+  EcScope.check_state `InTop "axiom" scope;
+  let (name, scope) = EcScope.Ax.add scope (Pragma.get ()).pm_check ax in
     name |> EcUtils.oiter
       (fun x ->
          match (unloc ax).pa_kind with
-         | PAxiom _ -> UcEcScope.notify scope `Info "added axiom: `%s'" x
-         | _        -> UcEcScope.notify scope `Info "added lemma: `%s'" x);
+         | PAxiom _ -> EcScope.notify scope `Info "added axiom: `%s'" x
+         | _        -> EcScope.notify scope `Info "added lemma: `%s'" x);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_th_open (scope : UcEcScope.scope) (abs, name) =
-  UcEcScope.check_state `InTop "theory" scope;
-  UcEcScope.Theory.enter scope (if abs then `Abstract else `Concrete) name
+and process_th_open (scope : EcScope.scope) (abs, name) =
+  EcScope.check_state `InTop "theory" scope;
+  EcScope.Theory.enter scope (if abs then `Abstract else `Concrete) name
 
 (* -------------------------------------------------------------------- *)
-and process_th_close (scope : UcEcScope.scope) (clears, name) =
+and process_th_close (scope : EcScope.scope) (clears, name) =
   let name = unloc name in
-  UcEcScope.check_state `InTop "theory closing" scope;
-  if (fst (UcEcScope.name scope)) <> name then
-    UcEcScope.hierror
+  EcScope.check_state `InTop "theory closing" scope;
+  if (fst (EcScope.name scope)) <> name then
+    EcScope.hierror
       "active theory has name `%s', not `%s'"
-      (fst (UcEcScope.name scope)) name;
-  snd (UcEcScope.Theory.exit ~clears scope)
+      (fst (EcScope.name scope)) name;
+  snd (EcScope.Theory.exit ~clears scope)
 
 (* -------------------------------------------------------------------- *)
-and process_th_clear (scope : UcEcScope.scope) clears =
-  UcEcScope.check_state `InTop "theory clear" scope;
-  UcEcScope.Theory.add_clears clears scope
+and process_th_clear (scope : EcScope.scope) clears =
+  EcScope.check_state `InTop "theory clear" scope;
+  EcScope.Theory.add_clears clears scope
 
 (* -------------------------------------------------------------------- *)
 and process_th_require1 ld scope (nm, (sysname, thname), io) =
-  UcEcScope.check_state `InTop "theory require" scope;
+  EcScope.check_state `InTop "theory require" scope;
 
   let sysname, thname = (unloc sysname, omap unloc thname) in
   let thname = odfl sysname thname in
@@ -434,11 +437,11 @@ and process_th_require1 ld scope (nm, (sysname, thname), io) =
 
   match Loader.locate ~namespaces:nm sysname ld with
   | None ->
-      UcEcScope.hierror "cannot locate theory `%s'" sysname
+      EcScope.hierror "cannot locate theory `%s'" sysname
 
   | Some (fnm, filename, kind) ->
       if Loader.incontext filename ld then
-        UcEcScope.hierror "circular requires involving `%s'" sysname;
+        EcScope.hierror "circular requires involving `%s'" sysname;
 
       let dirname = Filename.dirname filename in
       let subld   = Loader.dup ?namespace:fnm ld in
@@ -446,7 +449,7 @@ and process_th_require1 ld scope (nm, (sysname, thname), io) =
       Loader.push    filename subld;
       Loader.addidir ?namespace:fnm dirname subld;
 
-      let name = UcEcScope.{
+      let name = EcScope.{
         rqd_name      = thname;
         rqd_kind      = kind;
         rqd_namespace = fnm;
@@ -465,11 +468,11 @@ and process_th_require1 ld scope (nm, (sysname, thname), io) =
 
       let kind = match kind with `Ec -> `Concrete | `EcA -> `Abstract in
 
-      let scope = UcEcScope.Theory.require scope (name, kind) loader in
+      let scope = EcScope.Theory.require scope (name, kind) loader in
           match io with
           | None         -> scope
-          | Some `Export -> UcEcScope.Theory.export scope ([], name.rqd_name)
-          | Some `Import -> UcEcScope.Theory.import scope ([], name.rqd_name)
+          | Some `Export -> EcScope.Theory.export scope ([], name.rqd_name)
+          | Some `Import -> EcScope.Theory.import scope ([], name.rqd_name)
 
 (* -------------------------------------------------------------------- *)
 and process_th_require ld scope (nm, xs, io) =
@@ -478,73 +481,73 @@ and process_th_require ld scope (nm, xs, io) =
     scope xs
 
 (* -------------------------------------------------------------------- *)
-and process_th_import (scope : UcEcScope.scope) (names : pqsymbol list) =
-  UcEcScope.check_state `InTop "theory import" scope;
-  List.fold_left UcEcScope.Theory.import scope (List.map unloc names)
+and process_th_import (scope : EcScope.scope) (names : pqsymbol list) =
+  EcScope.check_state `InTop "theory import" scope;
+  List.fold_left EcScope.Theory.import scope (List.map unloc names)
 
 (* -------------------------------------------------------------------- *)
-and process_th_export (scope : UcEcScope.scope) (names : pqsymbol list) =
-  UcEcScope.check_state `InTop "theory export" scope;
-  List.fold_left UcEcScope.Theory.export scope (List.map unloc names)
+and process_th_export (scope : EcScope.scope) (names : pqsymbol list) =
+  EcScope.check_state `InTop "theory export" scope;
+  List.fold_left EcScope.Theory.export scope (List.map unloc names)
 
 (* -------------------------------------------------------------------- *)
-and process_th_clone (scope : UcEcScope.scope) thcl =
-  UcEcScope.check_state `InTop "theory cloning" scope;
-  UcEcScope.Cloning.clone scope (Pragma.get ()).pm_check thcl
+and process_th_clone (scope : EcScope.scope) thcl =
+  EcScope.check_state `InTop "theory cloning" scope;
+  EcScope.Cloning.clone scope (Pragma.get ()).pm_check thcl
 
 (* -------------------------------------------------------------------- *)
-and process_mod_import (scope : UcEcScope.scope) mods =
-  UcEcScope.check_state `InTop "module var import" scope;
-  List.fold_left UcEcScope.Mod.import scope mods
+and process_mod_import (scope : EcScope.scope) mods =
+  EcScope.check_state `InTop "module var import" scope;
+  List.fold_left EcScope.Mod.import scope mods
 
 (* -------------------------------------------------------------------- *)
-and process_sct_open (scope : UcEcScope.scope) name =
-  UcEcScope.check_state `InTop "section opening" scope;
-  UcEcScope.Section.enter scope name
+and process_sct_open (scope : EcScope.scope) name =
+  EcScope.check_state `InTop "section opening" scope;
+  EcScope.Section.enter scope name
 
 (* -------------------------------------------------------------------- *)
-and process_sct_close (scope : UcEcScope.scope) name =
-  UcEcScope.check_state `InTop "section closing" scope;
-  UcEcScope.Section.exit scope name
+and process_sct_close (scope : EcScope.scope) name =
+  EcScope.check_state `InTop "section closing" scope;
+  EcScope.Section.exit scope name
 
 (* -------------------------------------------------------------------- *)
-and process_tactics (scope : UcEcScope.scope) t =
+and process_tactics (scope : EcScope.scope) t =
   let mode = (Pragma.get ()).pm_check in
   match t with
-  | `Actual t  -> snd (UcEcScope.Tactics.process scope mode t)
-  | `Proof  pm -> UcEcScope.Tactics.proof   scope mode pm.pm_strict
+  | `Actual t  -> snd (EcScope.Tactics.process scope mode t)
+  | `Proof  pm -> EcScope.Tactics.proof   scope mode pm.pm_strict
 
 (* -------------------------------------------------------------------- *)
-and process_save (scope : UcEcScope.scope) ed =
+and process_save (scope : EcScope.scope) ed =
   let (oname, scope) =
     match unloc ed with
-    | `Qed   -> UcEcScope.Ax.save  scope
-    | `Admit -> UcEcScope.Ax.admit scope
-    | `Abort -> (None, UcEcScope.Ax.abort scope)
+    | `Qed   -> EcScope.Ax.save  scope
+    | `Admit -> EcScope.Ax.admit scope
+    | `Abort -> (None, EcScope.Ax.abort scope)
   in
     oname |> EcUtils.oiter
-      (fun x -> UcEcScope.notify scope `Info "added lemma: `%s'" x);
+      (fun x -> EcScope.notify scope `Info "added lemma: `%s'" x);
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_realize (scope : UcEcScope.scope) pr =
+and process_realize (scope : EcScope.scope) pr =
   let mode = (Pragma.get ()).pm_check in
-  let (name, scope) = UcEcScope.Ax.realize scope mode pr in
+  let (name, scope) = EcScope.Ax.realize scope mode pr in
     name |> EcUtils.oiter
-      (fun x -> UcEcScope.notify scope `Info "added lemma: `%s'" x);
+      (fun x -> EcScope.notify scope `Info "added lemma: `%s'" x);
     scope
 
 (* -------------------------------------------------------------------- *)
 and process_proverinfo scope pi =
-  let scope = UcEcScope.Prover.process scope pi in
+  let scope = EcScope.Prover.process scope pi in
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_pragma (scope : UcEcScope.scope) opt =
+and process_pragma (scope : EcScope.scope) opt =
   let pragma_check mode =
-    match UcEcScope.goal scope with
-    | Some { UcEcScope.puc_mode = Some false } ->
-        UcEcScope.hierror "pragma [Proofs:*] in non-strict proof script";
+    match EcScope.goal scope with
+    | Some { EcScope.puc_mode = Some false } ->
+        EcScope.hierror "pragma [Proofs:*] in non-strict proof script";
     | _ -> pragma_check mode
   in
 
@@ -561,36 +564,36 @@ and process_pragma (scope : UcEcScope.scope) opt =
   | x ->
       try  apply_pragma x
       with InvalidPragma _ ->
-        UcEcScope.notify scope `Warning "unknown pragma: `%s'" x
+        EcScope.notify scope `Warning "unknown pragma: `%s'" x
 
 (* -------------------------------------------------------------------- *)
-and process_option (scope : UcEcScope.scope) (name, value) =
+and process_option (scope : EcScope.scope) (name, value) =
   match value with
   | `Bool value -> begin
-      try  UcEcScope.Options.set scope (unloc name) value
-      with UcEcScope.UnknownFlag _ ->
-        UcEcScope.hierror "unknown option: %s" (unloc name)
+      try  EcScope.Options.set scope (unloc name) value
+      with EcScope.UnknownFlag _ ->
+        EcScope.hierror "unknown option: %s" (unloc name)
     end
 
   | (`Int _) as value ->
-      let gs = EcEnv.gstate (UcEcScope.env scope) in
+      let gs = EcEnv.gstate (EcScope.env scope) in
       EcGState.setvalue (unloc name) value gs; scope
 
 (* -------------------------------------------------------------------- *)
 and process_addrw scope (local, base, names) =
-  UcEcScope.Auto.add_rw scope ~local ~base names
+  EcScope.Auto.add_rw scope ~local ~base names
 
 (* -------------------------------------------------------------------- *)
 and process_reduction scope name =
-  UcEcScope.Reduction.add_reduction scope name
+  EcScope.Reduction.add_reduction scope name
 
 (* -------------------------------------------------------------------- *)
 and process_hint scope hint =
-  UcEcScope.Auto.add_hint scope hint
+  EcScope.Auto.add_hint scope hint
 
 (* -------------------------------------------------------------------- *)
 and process_dump_why3 scope filename =
-  UcEcScope.dump_why3 scope filename; scope
+  EcScope.dump_why3 scope filename; scope
 
 (* -------------------------------------------------------------------- *)
 and process_dump scope (source, tc) =
@@ -600,11 +603,11 @@ and process_dump scope (source, tc) =
 
   let goals, scope  =
     let mode = (Pragma.get ()).pm_check in
-     UcEcScope.Tactics.process scope mode tc
+     EcScope.Tactics.process scope mode tc
   in
 
   let wrerror fname =
-    UcEcScope.notify scope `Warning "cannot write `%s'" fname in
+    EcScope.notify scope `Warning "cannot write `%s'" fname in
 
   let tactic =
     try  File.read_from_file ~offset:p1 ~length:(p2-p1) input
@@ -645,7 +648,7 @@ and process_dump scope (source, tc) =
   scope
 
 (* -------------------------------------------------------------------- *)
-and process (ld : Loader.loader) (scope : UcEcScope.scope) g =
+and process (ld : Loader.loader) (scope : EcScope.scope) g =
   let loc = g.pl_loc in
 
   let scope =
@@ -694,7 +697,7 @@ and process (ld : Loader.loader) (scope : UcEcScope.scope) g =
 (* -------------------------------------------------------------------- *)
 and process_internal ld scope g =
   try  odfl scope (process ld scope g.gl_action)
-  with e -> raise (UcEcScope.toperror_of_exn ~gloc:(loc g.gl_action) e)
+  with e -> raise (EcScope.toperror_of_exn ~gloc:(loc g.gl_action) e)
 
 (* -------------------------------------------------------------------- *)
 let loader = Loader.create ()
@@ -719,12 +722,12 @@ type checkmode = {
 let initial ~checkmode ~boot =
   let checkall  = checkmode.cm_checkall  in
   let profile   = checkmode.cm_profile   in
-  let poptions  = { UcEcScope.Prover.empty_options with
-    UcEcScope.Prover.po_timeout   = Some checkmode.cm_timeout;
-    UcEcScope.Prover.po_cpufactor = Some checkmode.cm_cpufactor;
-    UcEcScope.Prover.po_nprovers  = Some checkmode.cm_nprovers;
-    UcEcScope.Prover.po_provers   = (checkmode.cm_provers, []);
-    UcEcScope.Prover.pl_iterate   = Some (checkmode.cm_iterate);
+  let poptions  = { EcScope.Prover.empty_options with
+    EcScope.Prover.po_timeout   = Some checkmode.cm_timeout;
+    EcScope.Prover.po_cpufactor = Some checkmode.cm_cpufactor;
+    EcScope.Prover.po_nprovers  = Some checkmode.cm_nprovers;
+    EcScope.Prover.po_provers   = (checkmode.cm_provers, []);
+    EcScope.Prover.pl_iterate   = Some (checkmode.cm_iterate);
   } in
 
   let perv    = (None, (mk_loc _dummy EcCoreLib.i_Pervasive, None), Some `Export) in
@@ -732,28 +735,28 @@ let initial ~checkmode ~boot =
   let prelude = (None, (mk_loc _dummy "Logic", None), Some `Export) in
   let loader  = Loader.forsys loader in
   let gstate  = EcGState.from_flags [("profile", profile)] in
-  let scope   = UcEcScope.empty gstate in
+  let scope   = EcScope.empty gstate in
   let scope   = process_th_require1 loader scope perv in
   let scope   = if boot then scope else
                   List.fold_left (process_th_require1 loader)
                                  scope [tactics; prelude] in
 
-  let scope = UcEcScope.Prover.set_default scope poptions in
-  let scope = if checkall then UcEcScope.Prover.full_check scope else scope in
+  let scope = EcScope.Prover.set_default scope poptions in
+  let scope = if checkall then EcScope.Prover.full_check scope else scope in
 
-  UcEcScope.freeze scope
+  EcScope.freeze scope
 
 (* -------------------------------------------------------------------- *)
 type context = {
   ct_level   : int;
-  ct_current : UcEcScope.scope;
-  ct_root    : UcEcScope.scope;
-  ct_stack   : (UcEcScope.scope list) option;
+  ct_current : EcScope.scope;
+  ct_root    : EcScope.scope;
+  ct_stack   : (EcScope.scope list) option;
 }
 
 let context = ref (None : context option)
 
-let rootctxt ?(undo = true) (scope : UcEcScope.scope) =
+let rootctxt ?(undo = true) (scope : EcScope.scope) =
   { ct_level   = 0;
     ct_current = scope;
     ct_root    = scope;
@@ -762,7 +765,7 @@ let rootctxt ?(undo = true) (scope : UcEcScope.scope) =
 (* -------------------------------------------------------------------- *)
 let pop_context context =
   match context.ct_stack with
-  | None -> UcEcScope.hierror "undo stack disabled"
+  | None -> EcScope.hierror "undo stack disabled"
   | Some stack ->
       assert (not (List.is_empty stack));
       { ct_level   = context.ct_level - 1;
@@ -789,7 +792,7 @@ type notifier = EcGState.loglevel -> string Lazy.t -> unit
 
 let addnotifier (notifier : notifier) =
   assert (EcUtils.is_some !context);
-  let gstate = UcEcScope.gstate (oget !context).ct_root in
+  let gstate = EcScope.gstate (oget !context).ct_root in
   ignore (EcGState.add_notifier notifier gstate)
 
 (* -------------------------------------------------------------------- *)
@@ -827,7 +830,7 @@ let process ?(timed = false) (g : global_action located) : float option =
     let (tdelta, oscope) = EcUtils.timed (process loader scope) g in
     oscope |> oiter (fun scope -> context := Some (push_context scope current));
     if timed then
-      UcEcScope.notify scope `Info "time: %f" tdelta;
+      EcScope.notify scope `Info "time: %f" tdelta;
     Some tdelta
   with
   | Pragma `Reset   -> reset (); None
@@ -838,7 +841,7 @@ let check_eco =
   EcEco.check_eco (fun name -> Loader.locate name loader)
 
 (* -------------------------------------------------------------------- *)
-module S = UcEcScope
+module S = EcScope
 module L = EcBaseLogic
 
 let pp_current_goal ?(all = false) stream =
@@ -901,7 +904,7 @@ let checkmode = {
     cm_iterate   = false;
   }
 
-let ucdsl_context : UcEcScope.scope list ref = ref []
+let ucdsl_context : EcScope.scope list ref = ref []
 
 let ucdsl_init () =
   let scope = initial ~checkmode:checkmode ~boot:false in
@@ -909,7 +912,7 @@ let ucdsl_init () =
 
 let ucdsl_addnotifier (notifier : notifier) =
   assert (not (List.is_empty (! ucdsl_context)));
-  let gstate = UcEcScope.gstate (List.hd (! ucdsl_context)) in
+  let gstate = EcScope.gstate (List.hd (! ucdsl_context)) in
   ignore (EcGState.add_notifier notifier gstate)
 
 let ucdsl_current () =
@@ -930,7 +933,7 @@ let ucdsl_require threq =
 
 let ucdsl_new () =
   assert (not (List.is_empty (! ucdsl_context)));
-  let new_sc = UcEcScope.for_loading (List.hd (! ucdsl_context)) in
+  let new_sc = EcScope.for_loading (List.hd (! ucdsl_context)) in
   ucdsl_context := new_sc :: ! ucdsl_context
 
 let ucdsl_end () =
@@ -938,5 +941,5 @@ let ucdsl_end () =
   let top_sc = List.hd (! ucdsl_context) in
   let prev_sc = List.hd (List.tl (! ucdsl_context)) in
   let rest = List.drop 2 (! ucdsl_context) in
-  let new_sc = UcEcScope.Theory.update_with_required prev_sc top_sc in
+  let new_sc = EcScope.Theory.update_with_required prev_sc top_sc in
   ucdsl_context := new_sc :: rest

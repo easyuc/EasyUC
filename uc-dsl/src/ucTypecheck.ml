@@ -11,7 +11,6 @@ open UcTypedSpec
 open UcUtils
 open UcMessage
 
-
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -34,7 +33,7 @@ let env () = UcEcInterface.env ()
 
 let check_type (pty : pty) : EcTypes.ty =
   let ue = EcUnify.UniEnv.create None in
-  EcTyping.transty EcTyping.tp_tydecl (env ()) ue pty
+  UcEcTyping.transty UcEcTyping.tp_nothing (env ()) ue pty
   
 let check_name_type_bindings
     (msgf : formatter -> unit) (ntl : type_binding list)
