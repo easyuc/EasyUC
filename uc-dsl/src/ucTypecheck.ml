@@ -11,12 +11,12 @@ open UcTypedSpec
 open UcUtils
 open UcMessage
 
-(*
+
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
 let check_unique_ids
-    (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> id)
+    (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> psymbol)
       : 'a IdMap.t = 
   let id_map = IdMap.empty in
   List.fold_left 
@@ -30,9 +30,16 @@ let check_unique_ids
 
 (* EasyCrypt type checks *)
 
+let env () = UcEcInterface.env ()
+
+let ue = EcUnify.UniEnv.create None
+
+let check_type (pty : pty) : EcTypes.ty =
+  EcTyping.transty EcTyping.tp_tydecl (env ()) ue pty
+  
 let check_name_type_bindings
     (msgf : formatter -> unit) (ntl : type_binding list)
-      : typ_index IdMap.t = 
+      : ty_index IdMap.t = 
   let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
@@ -67,12 +74,14 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
          check_name_type_bindings
          (fun ppf -> fprintf ppf "@[duplicate@ message@ parameter@ name@]")
          md.params;
-       port = md.port})
+       port = match md.port with
+              | Some p -> Some (unloc p)
+              | None   -> None          })
   msg_map)
 
 let check_comp_item
     (ik : inter_kind) (inter_map : inter_tyd IdMap.t)
-    (ci : comp_item) : id = 
+    (ci : comp_item) : psymbol = 
   let uid = unloc ci.inter_id in
   match IdMap.find_opt uid inter_map with
   | None    -> 
@@ -127,7 +136,7 @@ let check_inter_def (maps : maps_tyd) (interd : inter_def) : maps_tyd =
       {maps with
          adv_inter_map =
            check_inter e_maps AdversarialInterKind maps.adv_inter_map ni}
-
+(*
 let check_exists_inter
     (ik : inter_kind) (inter_map : inter_tyd IdMap.t) (id : id) : unit = 
   let uid = unloc id in
@@ -1729,7 +1738,7 @@ let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
   let sdt = check_sim maps.adv_inter_map maps.fun_map simd in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
-
+*)
 (***************************** definition checks ******************************)
 
 let partition_maps qual_file maps =
@@ -1764,8 +1773,9 @@ let check_defs qual_file maps defs =
   let check_def maps def =
     match def with
     | InterDef interd -> check_inter_def maps interd
-    | FunDef fund     -> check_fun_def maps fund
-    | SimDef simd     -> check_sim_def maps simd in
+    | _ -> maps
+ (*   | FunDef fund     -> check_fun_def maps fund
+    | SimDef simd     -> check_sim_def maps simd *)in
   let maps = List.fold_left check_def maps defs in
   partition_maps qual_file maps
 
@@ -1832,19 +1842,6 @@ let load_uc_req check_id maps id =
 let load_uc_reqs check_id maps reqs = 
   List.fold_left (load_uc_req check_id) maps reqs
 
-
-*)
-
-(*let typecheck qual_file check_id spec = 
-  let empty_maps =
-    {dir_inter_map = IdMap.empty;
-     adv_inter_map = IdMap.empty;
-     fun_map       = IdMap.empty;
-     sim_map       = IdMap.empty} in
-  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
-  let () = load_ec_reqs spec.externals.ec_requires in
-  check_defs qual_file maps spec.definitions
-*)
 let load_ec_reqs reqs = 
   let reqimp id = 
     let uid = unloc id in
@@ -1864,7 +1861,7 @@ let load_ec_reqs reqs =
            "@[error@ when@ importing@ EasyCrypt@ theory@ %s:@ \"%s\"@]"
            (unloc id) f) in
   List.iter reqimp reqs
-  
+
 let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
               (spec : spec) : typed_spec =
   let empty_maps =
@@ -1872,5 +1869,7 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
      adv_inter_map = IdMap.empty;
      fun_map       = IdMap.empty;
      sim_map       = IdMap.empty} in
-  let () = load_ec_reqs spec.externals.ec_requires in   
+  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
+  let () = load_ec_reqs spec.externals.ec_requires in
+  check_defs qual_file maps spec.definitions;  
   failure "disconnected!"

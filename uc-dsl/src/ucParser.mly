@@ -501,7 +501,7 @@ local_var_decls :
 
 local_var_decl : 
   | VAR; lvs = separated_nonempty_list(COMMA, lident); COLON;
-    t = type_exp SEMICOLON
+    t = loc(type_exp) SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
 (* Message matching specifies how incoming messages of a functionality
@@ -861,7 +861,7 @@ state_expr :
 (* Type Bindings and Arguments *)
 
 type_binding : 
-  | name = lident; COLON; t = type_exp; { {id = name; ty = t} : type_binding }
+  | name = lident; COLON; t = loc(type_exp); { {id = name; ty = t} : type_binding }
 
 type_bindings : 
   | ps = separated_list(COMMA, type_binding) { ps }

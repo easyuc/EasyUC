@@ -18,7 +18,7 @@ type msg_dir =
 let invert_dir (dir : msg_dir) = 
   match dir with In -> Out | Out -> In
 
-type type_binding = {id : psymbol; ty : pty_r}
+type type_binding = {id : psymbol; ty : pty}
 
 type message_body =
   {id : psymbol; params : type_binding list}
