@@ -2,7 +2,7 @@
 
 uc_requires Forwarding KeyExchange.
 
-ec_requires KeysExponentsAndPlainTexts.
+ec_requires KeysExponentsAndPlainTexts UCCore.
 
 direct SMCPt1 {
   in pt1@smc_req(pt2 : port, t : text)

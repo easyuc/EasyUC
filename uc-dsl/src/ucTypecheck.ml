@@ -1874,4 +1874,8 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
      sim_map       = IdMap.empty} in
   let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
-  check_defs qual_file maps spec.definitions
+  try check_defs qual_file maps spec.definitions
+  with
+  | EcTyping.TyError (l, env, tyerr) ->
+      type_error l
+      (fun ppf -> UcEcUserMessages.TypingError.pp_tyerror env ppf tyerr)
