@@ -12,8 +12,6 @@
 
 (* -------------------------------------------------------------------- *)
 
-module EcScope = UcEcScope  (* UC DSL *)
-
 open EcUtils
 open EcLocation
 open EcParsetree

@@ -1,6 +1,11 @@
 This directory contains a copy of the EasyCrypt src directory.
-
 Below was the git status/log when this copy was made.
+
+The subdirectory modified-for-ucdsl has a few EasyCrypt source files
+that have been modified for use in the UC DSL implementation. The
+modified files are in the parent directory.
+
+- - - - -
 
 $ git status
 On branch 1.0-preview

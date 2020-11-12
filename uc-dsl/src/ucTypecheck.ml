@@ -33,7 +33,7 @@ let env () = UcEcInterface.env ()
 
 let check_type (pty : pty) : EcTypes.ty =
   let ue = EcUnify.UniEnv.create None in
-  UcEcTyping.transty UcEcTyping.tp_nothing (env ()) ue pty
+  EcTyping.transty EcTyping.tp_nothing (env ()) ue pty
   
 let check_name_type_bindings
     (msgf : formatter -> unit) (ntl : type_binding list)
@@ -1829,12 +1829,12 @@ let load_uc_req check_id maps id =
           ("@[UC@ (.uc)@ file@ to@ be@ required@ must@ begin@ " ^^
            "with@ uppercase@ letter:@ %s@]")
           uid)
-  else let () = UcEcCommands.ucdsl_new () in
+  else let () = EcCommands.ucdsl_new () in
        let tyspec = check_id id in
        let maps' =
          union_maps id tyspec.required_maps tyspec.current_maps in
        let maps = union_maps id maps maps' in
-       let () = UcEcCommands.ucdsl_end () in
+       let () = EcCommands.ucdsl_end () in
        maps
 
 let load_uc_reqs check_id maps reqs = 
@@ -1852,7 +1852,7 @@ let load_ec_reqs reqs =
                "uppercase@ letter:@ %s@]")
               uid) in
     try UcEcInterface.require id (Some `Import) with
-    |  Failure f ->
+    | Failure f ->
         type_error (loc id)
         (fun ppf ->
            fprintf ppf
@@ -1869,5 +1869,8 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
      sim_map       = IdMap.empty} in
   let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
-  check_defs qual_file maps spec.definitions;  
-  failure "disconnected!"
+  try ignore (check_defs qual_file maps spec.definitions);
+      failure "disconnected!" with
+  | EcTyping.TyError (l, env, tyerr) ->
+      type_error l
+      (fun ppf -> UcEcUserMessages.TypingError.pp_tyerror env ppf tyerr)

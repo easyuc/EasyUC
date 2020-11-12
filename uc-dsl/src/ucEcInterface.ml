@@ -43,47 +43,47 @@ let init () =
 
     (* include path setup *)
     (* lowest precedence *)
-    UcEcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
+    EcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
     (* medium precedence; we have to reverse the include dirs
        list because we keep it in order from highest precedence to
        lowest *)
     (let include_dirs = List.rev (UcState.get_include_dirs()) in
      List.iter
      (fun x ->
-      UcEcCommands.addidir ~namespace:`System ~recursive:false x)
+      EcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
     (* medium high precedence *)
-    UcEcCommands.addidir ~namespace:`System ~recursive:false
+    EcCommands.addidir ~namespace:`System ~recursive:false
     Filename.current_dir_name;
     (* highest precedence *)
-    UcEcCommands.addidir ~namespace:`System ~recursive:false
+    EcCommands.addidir ~namespace:`System ~recursive:false
     UcConfig.uc_prelude_dir;
 
-    UcEcCommands.ucdsl_init ();    
-    UcEcCommands.ucdsl_addnotifier notifier;
+    EcCommands.ucdsl_init ();    
+    EcCommands.ucdsl_addnotifier notifier;
     reset_ec_warnings ();
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
   else ()
 
-let env () = UcEcScope.env (UcEcCommands.ucdsl_current ())
+let env () = EcScope.env (EcCommands.ucdsl_current ())
 
 let require id io =
-  try UcEcCommands.ucdsl_require (None, (id, None), io) with
-  | UcEcScope.HiScopeError (_, msg)         ->
+  try EcCommands.ucdsl_require (None, (id, None), io) with
+  | EcScope.HiScopeError (_, msg)         ->
       error_message (EcLocation.loc id) 
       (fun ppf ->
          fprintf ppf
          ("@[EasyCrypt:@ error@ require@ importing@ " ^^
           "theory:@;<1 2>%s@]")
          msg)
-  | UcEcScope.ImportError (None, name, e)   ->
+  | EcScope.ImportError (None, name, e)   ->
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf
          "@[EasyCrypt:@ In@ external@ theory@ %s@;<1 2>%a@]"
          name EcPException.exn_printer e)
-  | UcEcScope.ImportError (Some l, name, e) ->
+  | EcScope.ImportError (Some l, name, e) ->
       let l = {l with loc_fname = (EcLocation.unloc id) ^ ".ec"} in
       error_message (EcLocation.loc id)
       (fun ppf ->
