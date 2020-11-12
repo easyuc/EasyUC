@@ -44,6 +44,10 @@ let check_name_type_bindings
      mk_loc (loc nt.id) (check_type nt.ty, index_of_ex nt ntl))
   nt_map
 
+let pp_ty env ppf ty =
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  EcPrinting.pp_type ppe ppf ty
+
 (****************************** interface checks ******************************)
 
 type inter_kind =
