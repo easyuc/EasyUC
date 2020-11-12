@@ -76,9 +76,7 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
          check_name_type_bindings
          (fun ppf -> fprintf ppf "@[duplicate@ message@ parameter@ name@]")
          md.params;
-       port = match md.port with
-              | Some p -> Some (unloc p)
-              | None   -> None          })
+       port = md.port })
   msg_map)
 
 let check_comp_item

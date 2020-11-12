@@ -53,8 +53,10 @@ let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
 
 type ty_index = (ty * int) located
 
+type lsymbol = symbol located
+
 type message_def_body_tyd =
-  {dir : msg_dir; params_map : ty_index IdMap.t; port : symbol option}
+  {dir : msg_dir; params_map : ty_index IdMap.t; port : lsymbol option}
 
 type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
 
@@ -77,7 +79,7 @@ let invert_basic_inter_body_tyd
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
-  | CompositeTyd of symbol IdMap.t
+  | CompositeTyd of lsymbol IdMap.t
 
 let is_basic_tyd ibt =
   match ibt with
@@ -103,10 +105,10 @@ type party_def_body_tyd =
 type party_def_tyd = party_def_body_tyd located
 
 type real_fun_body_tyd =
-  {params       : (symbol * int) IdMap.t;
+  {params       : (lsymbol * int) IdMap.t;
    id_dir_inter : string;
    id_adv_inter : string option;
-   sub_funs     : symbol IdMap.t;  (* names of ideal functionalities *)
+   sub_funs     : lsymbol IdMap.t;  (* names of ideal functionalities *)
    parties      : party_def_tyd IdMap.t}
 
 type ideal_fun_body_tyd =
