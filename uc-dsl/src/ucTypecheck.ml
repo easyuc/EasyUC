@@ -1846,6 +1846,8 @@ let load_uc_reqs check_id maps reqs =
   List.fold_left (load_uc_req check_id) maps reqs
 
 let load_ec_reqs reqs = 
+  (* last require import will be prelude/UCCore.ec *)
+  let reqs = reqs @ [mk_loc _dummy "UCCore"] in
   let reqimp id = 
     let uid = unloc id in
     let () =

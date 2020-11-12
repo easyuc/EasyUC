@@ -1,6 +1,6 @@
 (* Forwarding *)
 
-ec_requires KeysExponentsAndPlainTexts UCCore.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct FwDir_ {
   in pt1@fw_req(pt2 : port, u : univ)

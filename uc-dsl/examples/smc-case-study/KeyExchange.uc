@@ -2,7 +2,7 @@
 
 uc_requires Forwarding.
 
-ec_requires KeysExponentsAndPlainTexts UCCore.
+ec_requires KeysExponentsAndPlainTexts.
 
 direct KEDirPt1 {
   in  pt1@ke_req1(pt2 : port)
