@@ -199,12 +199,12 @@ let log_fun () =
   let _ = 
     if !verbose then
       (write_log "log" (!desc_str);
-       print_endline (!desc_str ^ !log_str ^ !sec_str))
+       print_endline (!desc_str ^ !log_str ^"\n"^ !sec_str))
     else if not !quiet then
-      print_endline (!log_str)
+      print_endline (!log_str^"\n")
     
   in
-  write_log "log" (!log_str ^ !sec_str);
+  write_log "log" (!log_str ^"\n"^ !sec_str);
   log_str := "";
   sec_str := "";
   desc_str := ""
@@ -224,10 +224,10 @@ let pre_verbose dir  =
   in
   let s = List.length file_list in
   let _ = if (s = 0) then
-            (let _ = log_str := "\nFound 0 files \n" in log_fun(); exit 0)
+            (let _ = log_str := "\nFound 0 files" in log_fun(); exit 0)
           else
             let _ = log_str :=
-                      "\nFound "^(string_of_int s) ^" files\n" in
+                      "\nFound "^(string_of_int s) ^" files" in
             let _ = sec_str := "\n" in log_fun()
   in
   let rec parse_list fil_list exit_code =
@@ -246,7 +246,7 @@ let pre_verbose dir  =
                  ^ " errors found. log file created.\n" in
              log_fun();
              exit 1)
-    |e::l -> let _ = log_str := !log_str^e^"\n" in
+    |e::l -> let _ = log_str := !log_str^e in
              let _ = dir_name e in
              let _ = log_str := !log_str in
              let dir_f = Filename.dirname e in
