@@ -455,6 +455,7 @@ let check_parties_serve_coverage_and_distinct
   check_inter_id_paths_coverage id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
 
+(* START HERE *)
 (* message paths and message path patterns *)
 
 (*
