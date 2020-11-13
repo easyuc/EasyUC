@@ -1182,14 +1182,15 @@ let check_msg_match_code
       : unit = 
   let () = ignore (check_instructions abip ss sc sa is) in
   check_instrs_transfer_at_end is
-
+*)
 let check_msg_match_clause
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis)
-    (mmc : msg_match_clause) : unit = 
+    (mmc : msg_match_clause) : unit = () 
+(*DISCONNECT
   let sc' = check_msg_pat abip mmc.msg_pat sc in
   check_msg_match_code abip ss sc' sa mmc.code
-
+*)
 (* checking states *)
 
 let check_state_code
@@ -1203,7 +1204,7 @@ let check_state_code
     mmclauses in
   check_coverage_msg_path_pats abip sc
   (List.map (fun mmc -> mmc.msg_pat) mmclauses)
-*)
+
 let check_exactly_one_initial_state
     (id : psymbol) (sds : state_def list) : psymbol = 
   let inits =
@@ -1312,14 +1313,13 @@ let check_toplevel_states
 let check_lowlevel_state
     (abip : all_basic_inter_paths) (flags : string list)
     (internal_ports : QidSet.t) (states : state_tyd IdMap.t) 
-    (state : state_tyd) : unit = () 
-(*DISCONNECT
+    (state : state_tyd) : unit =
   let us = unloc state in
-  let sc = init_state_context (unloc state) internal_ports flags in
+  let sc = make_state_context (unloc state) internal_ports flags in
   let sa = init_state_analysis in
   let ss = get_state_sigs states in
   check_state_code abip ss sc sa us.mmclauses
-*)
+
 (* check the lower-level of a state_tyd IdMap.t state machine *)
 
 let check_lowlevel_states
