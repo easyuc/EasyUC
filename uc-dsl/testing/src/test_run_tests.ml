@@ -3,7 +3,6 @@ open Test_types
 open Test_common_module
 open Test_log
 
-exception Error of string
                  
 let verbose = ref false
 let debug = ref false
@@ -190,9 +189,9 @@ let log_fun () =
   let _ = 
     if !verbose then
       (write_log "log" (!desc_str);
-       print_string (!desc_str ^ !log_str ^ !sec_str))
+       print_endline (!desc_str ^ !log_str ^ !sec_str))
     else if not !quiet then
-      print_string (!log_str)
+      print_endline (!log_str)
     
   in
   write_log "log" (!log_str ^ !sec_str);

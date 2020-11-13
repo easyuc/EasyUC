@@ -5,6 +5,8 @@ open Str
 open Printf
 open Unix
 
+exception Error of string
+                 
 (* print_expr together with print_list displays the content of a TEST file.
 	This comes into the picture with DEBUG option *)
    
@@ -17,7 +19,6 @@ let print_expr (e:expr) =
   |Outcome (o1,o2) -> let _ = print_endline "__outcome__" in
 	              let _ = if o1=Success then print_endline "success"
 	                      else if o1=Failure then print_endline "failure"
-	                      else print_endline "Unknown"
 	              in
                            if o2 <>"" then
                              (print_endline "__outcome description__";
