@@ -455,48 +455,33 @@ let check_parties_serve_coverage_and_distinct
   check_inter_id_paths_coverage id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
 
-(* START HERE *)
 (* message paths and message path patterns *)
 
-(*
-let string_of_msg_path (mp : msg_path) : string = 
-  let siop = string_of_id_path (unlocs mp.inter_id_path) in
-  if siop = ""
-  then unloc mp.msg
-  else siop ^ "." ^ unloc mp.msg
 
-let string_of_msg_path_pat (mpp : msg_path_pat) : string = 
-  let siop = string_of_id_path (unlocs mpp.inter_id_path) in
+let string_of_msg_path (mp : msg_path) : string = 
+  let ump = unloc mp in
+  let siop = string_of_id_path ump.inter_id_path in
+  if siop = ""
+  then ump.msg
+  else siop ^ "." ^ ump.msg
+
+let string_of_msg_path_pat (mpp : msg_path_pat) : string =
+  let umpp = unloc mpp in
+  let siop = string_of_id_path umpp.inter_id_path in
   let msg_or_star =
-    match mpp.msg_or_star with 
-    | MsgOrStarMsg id -> unloc id
-    | MsgOrStarStar _ -> "*" in
+    match umpp.msg_or_star with 
+    | MsgOrStarMsg id -> id
+    | MsgOrStarStar   -> "*" in
   if siop = "" then msg_or_star else siop ^ "." ^ msg_or_star
 
 let format_msg_path_list
     (ppf : formatter) (mps : msg_path list) : unit =
   format_strings_comma ppf (List.map string_of_msg_path mps)
 
-let msg_path_loc (mp : msg_path) : EcLocation.t = 
-  let ml = loc mp.msg in
-  if List.is_empty mp.inter_id_path
-  then ml
-  else merge (mergelocs mp.inter_id_path) ml
-
-let msg_path_pat_loc (mpp : msg_path_pat) : EcLocation.t = 
-  let ml =
-    match mpp.msg_or_star with
-    | MsgOrStarMsg id -> loc id
-    | MsgOrStarStar l -> l in
-  if List.is_empty mpp.inter_id_path
-  then ml
-  else merge (mergelocs mpp.inter_id_path) ml
-
 let msg_paths_of_basic_inter_path (bp : basic_inter_path) : msg_path list =   
   IdMap.fold
   (fun id _ l ->
-     {inter_id_path = dummylocl (fst bp);
-      msg           = dummyloc id} :: l)
+     dummyloc {inter_id_path = fst bp; msg = id} :: l)
   (snd bp) []
 
 let msg_paths_of_basic_inter_paths
@@ -514,12 +499,23 @@ let check_outgoing_msg_path
      (fun p -> string_of_msg_path p = string_of_msg_path mp)
      allps
   then ()
-  else type_error (msg_path_loc mp)
+  else type_error (loc mp)
        (fun ppf ->
           fprintf ppf
           ("@[message@ path@ is@ not@ one@ of@ the@ possible@ outgoing@ " ^^
            "message@ paths:@;<1 2>%a@]")
        format_msg_path_list allps)
+
+let iidp1_starts_with_iidp2 
+  (iidp1 : symbol list) (iidp2 : symbol list) : bool =
+  List.for_all
+  identity
+  (List.mapi
+   (fun i id2 -> 
+      match List.nth_opt iidp1 i with
+      | Some id1 -> id1 = id2
+      | None     -> false)
+   iidp2)
 
 let check_msg_path_pat
     (abip : all_basic_inter_paths) (sc : state_context)
@@ -529,10 +525,10 @@ let check_msg_path_pat
   let restrmps =
     if init_and_sim
     then List.filter
-         (fun mps -> List.length mps.inter_id_path = 1)
+         (fun mps -> List.length (unloc mps).inter_id_path = 1)
          allmps
     else allmps in
-  match mpp.msg_or_star with
+  match (unloc mpp).msg_or_star with
   | MsgOrStarMsg _  -> 
       if List.exists
          (fun mp -> string_of_msg_path mp = string_of_msg_path_pat mpp)
@@ -541,36 +537,38 @@ let check_msg_path_pat
       else if List.exists  (* will be initial state of simulator *)
               (fun mp -> string_of_msg_path mp = string_of_msg_path_pat mpp)
               allmps
-        then type_error (msg_path_pat_loc mpp)
+        then type_error (loc mpp)
              (fun ppf ->
                 fprintf ppf
                 ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
                  "incoming@ message@ paths@ for@ initial@ state@ " ^^
                  "of@ simulator:@;<1 2>%a@]")
                 format_msg_path_list restrmps)        
-      else type_error (msg_path_pat_loc mpp)
+      else type_error (loc mpp)
            (fun ppf ->
               fprintf ppf
               ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
                "incoming@ message@ paths:@;<1 2>%a@]")
               format_msg_path_list restrmps)
-  | MsgOrStarStar _ ->
+  | MsgOrStarStar   ->
       if (List.exists
-          (fun mp -> qid1_starts_with_qid2 mp.inter_id_path mpp.inter_id_path)
+          (fun mp -> iidp1_starts_with_iidp2 
+          (unloc mp).inter_id_path (unloc mpp).inter_id_path)
           restrmps)
         then ()
       else if (List.exists  (* will be initial state of simulator *)
               (fun mp ->
-                 qid1_starts_with_qid2 mp.inter_id_path mpp.inter_id_path)
+                 iidp1_starts_with_iidp2 
+                 (unloc mp).inter_id_path (unloc mpp).inter_id_path)
               allmps)
-        then type_error (msg_path_pat_loc mpp)
+        then type_error (loc mpp)
              (fun ppf ->
                 fprintf ppf
                 ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ " ^^
                  "paths@ of@ possible@ incoming@ messages@ for@ initial@ " ^^
                  "state@ of@ simulator:@;<1 2>%a@]")
                  format_msg_path_list restrmps)
-      else type_error (msg_path_pat_loc mpp)
+      else type_error (loc mpp)
            (fun ppf ->
               fprintf ppf
               ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ " ^^
@@ -580,14 +578,15 @@ let check_msg_path_pat
 let remove_covered_paths (mps : msg_path list) (mpp : msg_path_pat)
       : msg_path list = 
   let covered mp1 mpp2 = 
-    match mpp2.msg_or_star with
+    match (unloc mpp2).msg_or_star with
     | MsgOrStarMsg _  ->
         string_of_msg_path mp1 = string_of_msg_path_pat mpp2
-    | MsgOrStarStar _ ->
-        qid1_starts_with_qid2 mp1.inter_id_path mpp2.inter_id_path in
+    | MsgOrStarStar   ->
+        iidp1_starts_with_iidp2 
+        (unloc mp1).inter_id_path (unloc mpp2).inter_id_path in
   let rem = List.filter (fun mp' -> not (covered mp' mpp)) mps in
   if List.length mps = List.length rem
-  then type_error (msg_path_pat_loc mpp)
+  then type_error (loc mpp)
        (fun ppf ->
           fprintf ppf
           ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
@@ -601,7 +600,7 @@ let coverage_msg_path_pats
   let allmps =
     if sc.initial && List.mem "simulator" sc.flags
     then List.filter
-         (fun mps -> List.length mps.inter_id_path = 1)
+         (fun mps -> List.length (unloc mps).inter_id_path = 1)
          allmps
     else allmps in
   List.fold_left (fun mps mp -> remove_covered_paths mps mp) allmps mpps
@@ -614,7 +613,7 @@ let check_coverage_msg_path_pats
     coverage_msg_path_pats abip sc
     (List.map (fun (mm : msg_pat) -> mm.msg_path_pat) mml) in
   if r <> []
-  then let l = msg_path_pat_loc (List.last mml).msg_path_pat in
+  then let l = loc (List.last mml).msg_path_pat in
        type_error l
        (fun ppf ->
           fprintf ppf
@@ -622,8 +621,9 @@ let check_coverage_msg_path_pats
            "messages@ are@ not@ matched:@;<1 2>%a@]")
           format_msg_path_list r)
 
+(* START HERE *)
 (* working with variables and constants *)
-
+(*
 let get_declared (sc : state_context) = 
   IdMap.union
   (fun _ _ _ ->
@@ -828,7 +828,7 @@ let check_msg_pat
     | None    ->
         if msg_path_pat_ends_star msg_pat.msg_path_pat
         then sc
-        else let mppl = msg_path_pat_loc msg_pat.msg_path_pat in
+        else let mppl = loc msg_pat.msg_path_pat in
              (check_non_port_var_binding abip 
               (unlocs msg_pat.msg_path_pat.inter_id_path) mppl;
               sc) in
@@ -947,7 +947,7 @@ let check_msg_arguments
 let check_send_direct
     (msg : msg_expr) (param_tis : typ_index IdMap.t) (sc : state_context)
     (sa : state_analysis) : unit = 
-  let l = msg_path_loc msg.path in
+  let l = loc msg.path in
   let () =
     match msg.port_id with
     | Some pid ->
