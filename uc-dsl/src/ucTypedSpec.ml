@@ -56,7 +56,7 @@ type ty_index = (ty * int) located
 type message_def_body_tyd =
   {dir : msg_dir; params_map : ty_index IdMap.t; port : symbol option}
 
-type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
+type basic_inter_body_tyd = message_def_body_tyd IdMap.t
 
 (* inversion of direction *)
 
@@ -64,16 +64,18 @@ let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd =
   {mdbt with
      dir = invert_dir mdbt.dir}
 
+(* TODO - do we need?
 let invert_msg_dir_loc
     (mdbtl : message_def_body_tyd located) : message_def_body_tyd located = 
   let l = loc mdbtl in
   let mdbt = unloc mdbtl in
   let mdbt_inv = invert_msg_dir mdbt in
   mk_loc l mdbt_inv
+*)
 
 let invert_basic_inter_body_tyd
     (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
-  IdMap.map invert_msg_dir_loc bibt
+  IdMap.map invert_msg_dir bibt
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
@@ -156,7 +158,9 @@ type sim_def_tyd = sim_body_tyd located
 
 (* four identifier (technically, unlocated identifier) maps for direct
    and adversarial interfaces, functionalities and simulators; their
-   domains are disjoint *)
+   domains are disjoint
+
+   it is necessary that type arguments to IdMap.t be located types *)
 
 type maps_tyd =
   {dir_inter_map : inter_tyd IdMap.t;

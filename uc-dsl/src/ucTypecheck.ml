@@ -33,10 +33,12 @@ let check_unique_ids
 
 let env () = UcEcInterface.env ()
 
+let unif_env () = EcUnify.UniEnv.create None
+
 (* check type in top-level environment, rejecting type variables *)
 
-let check_type (pty : pty) : EcTypes.ty =
-  let ue = EcUnify.UniEnv.create None in
+let check_type (pty : pty) : ty =
+  let ue = unif_env () in
   EcTyping.transty EcTyping.tp_nothing (env ()) ue pty
   
 let check_name_type_bindings
@@ -73,8 +75,6 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
   BasicTyd
   (IdMap.map
    (fun (md : message_def) ->
-      mk_loc
-      (loc md.id)
       {dir = md.dir;
        params_map =
          check_name_type_bindings
@@ -179,28 +179,26 @@ let check_is_composite
   | CompositeTyd _ -> ()
 
 (**************************** state machine checks ****************************)
-(*
+
 (* typechecking context for states
 
-   constants and local variables are disjoint
+   state parameters and local variables are disjoint, and are
+   lower identifiers
 
    in real functionalities, internal ports have the form [Party], were
    Party is the name of one of the functionality's parties; in this
-   case Party is not a constant or local variable
+   case Party cannot be a state parameter or local variable, because
+   Party is an upper identifer
 
    in simulators, when internal ports have length 2, and begin with
    the name of the real functionality that is being simulated, there
-   is no chance of overlap with constants and local variables
-
-   consequently, when constants, local variables and internal port
-   names are used in expressions, there is no ambiguity *)
+   is no chance of overlap with state parameters and local variables *)
 
 type state_context =
   {initial : bool;             (* initial state? *)
    flags : string list;        (* flags used to customize checking *)
    internal_ports : QidSet.t;  (* internal port names - names of parties *)
-   consts : ty IdMap.t;        (* constants: state parameters and bound in
-                                  patterns *)
+   state_params : ty IdMap.t;  (* state parameters *)
    vars : ty IdMap.t}          (* local variables *)
 
 (* static analysis information for states *)
@@ -208,20 +206,20 @@ type state_context =
 type state_analysis =
   {initialized_vs : IdSet.t}  (* definitely initialized variables *)
 
-let init_state_context
+let make_state_context
     (s : state_body_tyd) (ports : QidSet.t)
     (flags : string list) : state_context = 
-  let consts = IdMap.map (fun p -> fst (unloc p)) s.params in
+  let state_params = IdMap.map (fun p -> fst (unloc p)) s.params in
   let vars = IdMap.map (fun v -> unloc v) s.vars in
   {initial = s.is_initial; flags = flags; internal_ports = ports;
-   consts = consts; vars = vars}
+   state_params = state_params; vars = vars}
 
 let init_state_analysis : state_analysis =
   {initialized_vs = IdSet.empty}
 
 (* state signatures - lists of the types of each state's parameters *)
 
-type state_sig = typ list
+type state_sig = ty list
 
 let get_state_sig (s : state_body_tyd) : state_sig = 
   if s.is_initial then []
@@ -289,7 +287,7 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
    corresponding argument to which id1 is applied in the "simulates"
    clause, and and b is that basic interface (possibly filtered to
    have only incoming or outgoing message) *)
-*)
+
 type basic_inter_path = string list * basic_inter_body_tyd
 
 (* three kinds of basic_inter_path's - ones of a direct interface,
@@ -311,7 +309,7 @@ let filter_dir_basic_inter_paths
   (fun bip ->
      (fst bip,
       IdMap.filter
-      (fun _ md -> (unloc md).dir = dir)
+      (fun _ md -> md.dir = dir)
       (snd bip)))
   bips
 
@@ -456,9 +454,10 @@ let check_parties_serve_coverage_and_distinct
     served_ps in
   check_inter_id_paths_coverage id_dir_inter id_adv_inter
   dir_inter_map adv_inter_map served_ps
-(*
+
 (* message paths and message path patterns *)
 
+(*
 let string_of_msg_path (mp : msg_path) : string = 
   let siop = string_of_id_path (unlocs mp.inter_id_path) in
   if siop = ""
