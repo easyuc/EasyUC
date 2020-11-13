@@ -44,17 +44,23 @@ let check_fields lst =
                |Outcome (o1,o2) -> check arg desc (out+1) l
     in
     let (arg_1, desc_1, out_1) = check 0 0 0 lst in
+    let s1 = 
     if arg_1 <> 1 then
-      (if arg_1 = 0 then ("Error: Missing Args", "")
-       else ("Error: Multiple Args", ""))
-    else if desc_1 <> 1 then
-      (if desc_1 > 1 then ("" , "Warning: Multiple Descriptions\n")
-      else ("","Warning: Description missing\n"))
-    else if out_1 <> 1 then
-      (if out_1 = 0 then ("Error: Outcome is missing", "")
-       else ("Error: Multiple Outcomes", ""))
-    else
-      ("", "")
+      (if arg_1 = 0 then "Error: Missing Args"
+       else "Error: Multiple Args")
+    else ""
+    in let s2 = 
+     if desc_1 <> 1 then
+      (if desc_1 > 1 then "Warning: Multiple Descriptions"
+       else "Warning: Description missing")
+     else ""
+     in let s3 = 
+    if out_1 <> 1 then
+      (if out_1 = 0 then "Error: Outcome is missing"
+       else "Error: Multiple Outcomes")
+    else ""
+        in if s3 <> "" then (s1^"\n"^s3 , s2)
+           else (s1, s2)
                        
 (* check_ec_standard checkes .uc anc .ec files for naming standard.
 The file name shoudl start with a letter and can contain numbers and a '_' *)

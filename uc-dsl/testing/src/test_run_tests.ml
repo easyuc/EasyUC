@@ -98,9 +98,12 @@ let rec parse_file file code =
                           ^"-----End of description-----\n"
     in
     let s1,s2 = check_fields parse_list in
-    if s1 <> "" then raise (Error s1)
+    if s1 <> "" then
+      (if s2 <> "" then
+        raise (Error (s1^"\n"^s2))
+       else raise (Error s1))                 
     else
-      let _ = log_str := !log_str^s2 in
+      let _ = log_str := !log_str^s2^"\n" in
       let f_name, out_come1, out_come2 = match_expr parse_list [| |] Empty ""
       in  let (stat, s_out) =
             run (String.sub file 0 (String.length file -5))
@@ -111,13 +114,20 @@ let rec parse_file file code =
                        if s_out = out_come2 then
                          (log_str := !log_str
                                      ^ "**Test passed - Outcome is success " 
-                                     ^"and exit code is 0\n"; code)
+                                     ^"and exit code is 0"; code)
                        else
                          (log_str :=
                             !log_str
-                            ^ "->Test failed - *ucdsl message is different"
+                            ^ "->Test failed - *ucdsl message is different "
                             ^ "from* outcome description*"
-                            ^ "\nOutcome is sucess and exit code is 0\n";
+                            ^ "\nOutcome is sucess and exit code is 0";
+                          sec_str :=
+                            "\n"^"-------"
+                            ^"ucdsl returned:-------\n"
+                            ^s_out
+                            ^"------Outcome description is"
+                            ^":------\n"
+                            ^out_come2;
                           create_conflict file "unknown" s_out;
                           code+1)
                      |Failure -> (log_str :=
@@ -127,12 +137,12 @@ let rec parse_file file code =
                                     ^ s_out^"\n"; code+1)
                      |_ -> (log_str :=
                               !log_str
-                              ^ "Test failed - Exit code 0 unknown outcome\n";
+                              ^ "Test failed - Exit code 0 unknown outcome";
                             create_conflict file "unknown" s_out; code+1)
                      end
           |None -> (let _ = log_str :=
                              !log_str
-                             ^"->Test failed - *ucdsl did not exit normally*\n"
+                             ^"->Test failed - *ucdsl did not exit normally*"
                     in create_conflict file "unknown" s_out;(code+1))
           |Some n -> begin match out_come1 with
                      |Failure -> (if s_out = out_come2 then
@@ -140,7 +150,7 @@ let rec parse_file file code =
                                        !log_str
                                        ^ "**Test passed - Outcome is failure"
                                        ^" and exit code is "
-                                       ^string_of_int n^"\n";
+                                       ^string_of_int n;
                                      code)
                                   else
                                     (log_str :=
@@ -155,22 +165,22 @@ let rec parse_file file code =
                                       "\n"^"-------"
                                       ^"ucdsl returned:-------\n"
                                       ^s_out
-                                      ^"\n------Outcome description is"
+                                      ^"------Outcome description is"
                                       ^":------\n"
-                                       ^out_come2^"\n";
+                                       ^out_come2;
                                      code+1))
                      |Success ->  (log_str :=
                                      !log_str
                                      ^"->Test failed - Exit code *0 "
                                      ^"expected* but exit code is "
                                      ^string_of_int n^"\n";
-                                   sec_str := "\nucdsl returned:\n"^s_out^"\n";
+                                   sec_str := "\nucdsl returned:\n"^s_out;
                                    create_conflict file "failure" s_out;
                                    code+1)
                      |_ -> (log_str :=
                               !log_str
                               ^"->Test failed - *unexpected outcome*;\n" 
-                              ^"exit code is "^string_of_int n^"\n";
+                              ^"exit code is "^string_of_int n;
                             create_conflict file "unknown" s_out;
                             code+1)
                      end
@@ -217,7 +227,8 @@ let pre_verbose dir  =
             (let _ = log_str := "\nFound 0 files \n" in log_fun(); exit 0)
           else
             let _ = log_str :=
-                      "\nFound "^(string_of_int s) ^" files\n\n" in log_fun()
+                      "\nFound "^(string_of_int s) ^" files\n" in
+            let _ = sec_str := "\n" in log_fun()
   in
   let rec parse_list fil_list exit_code =
     match fil_list with
@@ -244,12 +255,12 @@ let pre_verbose dir  =
                (let _ =
                   log_str := !log_str^"Test skipped\nError: "
                              ^ file_name
-                             ^ " exists\n"
+                             ^ " exists"
                 in
                 let _ =
                   sec_str :=
                     !sec_str
-                    ^"\n.._______________________________..\n" in
+                    ^".._______________________________..\n" in
                 let _ =
                   log_fun() in
                 parse_list l (exit_code+1))
@@ -257,7 +268,7 @@ let pre_verbose dir  =
                (let code = parse_file e exit_code in
                 sec_str :=
                   !sec_str
-                  ^"\n.._______________________________..\n";
+                  ^".._______________________________..\n";
                 log_fun ();
                 parse_list l code)
   in parse_list file_list 0
