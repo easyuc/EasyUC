@@ -30,7 +30,7 @@ let check_name contents  =
          if len >= 4 &&
               (String.sub e (len - 3) 3 = ".uc" ||
                  String.sub e (len - 3) 3 =  ".ec")
-         then log_str := !log_str ^ check_ec_standard e in
+         then log_str := !log_str ^  check_ec_standard e in
        check l in
   check contents
   
@@ -95,7 +95,7 @@ let rec parse_file file code =
     let str_desc = get_desc parse_list in
     let _ = if str_desc <> "" then
               desc_str := !log_str ^ (get_desc parse_list)
-                          ^"-----End of description-----\n"
+                          ^"-----End of description-----"
     in
     let s1,s2 = check_fields parse_list in
     if s1 <> "" then
@@ -114,7 +114,8 @@ let rec parse_file file code =
                        if s_out = out_come2 then
                          (log_str := !log_str
                                      ^ "**Test passed - Outcome is success " 
-                                     ^"and exit code is 0"; code)
+                                     ^"and exit code is 0";
+                          code)
                        else
                          (log_str :=
                             !log_str
@@ -134,7 +135,7 @@ let rec parse_file file code =
                                     !log_str
                                     ^ "->Test failed - *Exit code is 0 "
                                     ^ "but outcome is Failure*"
-                                    ^ s_out^"\n"; code+1)
+                                    ^ s_out; code+1)
                      |_ -> (log_str :=
                               !log_str
                               ^ "Test failed - Exit code 0 unknown outcome";
@@ -199,12 +200,12 @@ let log_fun () =
   let _ = 
     if !verbose then
       (write_log "log" (!desc_str);
-       print_endline (!desc_str ^ !log_str ^"\n"^ !sec_str))
+       print_endline (!desc_str ^ !log_str ^ !sec_str))
     else if not !quiet then
-      print_endline (!log_str^"\n")
+      print_endline (!log_str)
     
   in
-  write_log "log" (!log_str ^"\n"^ !sec_str);
+  write_log "log" (!log_str ^ !sec_str ^"\n");
   log_str := "";
   sec_str := "";
   desc_str := ""
@@ -215,7 +216,7 @@ contains any errors happened during searching the directory dir
 for TEST files, for example permission denied to read a directory
 etc *)     
   
-let pre_verbose dir  =
+let pre_run dir  =
   let file_list, error_string  =  walk_directory_tree dir [] "" in
   (* get TEST files list *)
   let _ = if (error_string <> "") then
@@ -228,8 +229,8 @@ let pre_verbose dir  =
           else
             let _ = log_str :=
                       "\nFound "^(string_of_int s) ^" files" in
-            let _ = sec_str := "\n" in log_fun()
-  in
+            let _ = desc_str := "" in log_fun()
+                                                              in
   let rec parse_list fil_list exit_code =
     match fil_list with
     |[] -> if (exit_code = 0) then
@@ -246,29 +247,28 @@ let pre_verbose dir  =
                  ^ " errors found. log file created.\n" in
              log_fun();
              exit 1)
-    |e::l -> let _ = log_str := !log_str^e in
+    |e::l -> let _ = log_str := !log_str^"\n"^e in
              let _ = dir_name e in
-             let _ = log_str := !log_str in
-             let dir_f = Filename.dirname e in
-             let file_name = dir_f^"/"^"CONFLICT" in
+             (* Here dir_name tests EasyCrypt file standard for .uc/.ec files in
+the directory 'e'*)
+             let file_name  = (Filename.dirname e)^"/"^"CONFLICT" in
              if Sys.file_exists(file_name) then
                (let _ =
-                  log_str := !log_str^"Test skipped\nError: "
+                  log_str := !log_str^"\nError: "
                              ^ file_name
-                             ^ " exists"
+                             ^ " exists. \nTest skipped."
                 in
                 let _ =
                   sec_str :=
                     !sec_str
-                    ^".._______________________________..\n" in
-                let _ =
-                  log_fun() in
+                    ^"\n.._______________________________.." in
+                log_fun();
                 parse_list l (exit_code+1))
              else 
                (let code = parse_file e exit_code in
                 sec_str :=
                   !sec_str
-                  ^".._______________________________..\n";
+                  ^"\n.._______________________________..";
                 log_fun ();
                 parse_list l code)
   in parse_list file_list 0

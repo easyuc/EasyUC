@@ -70,7 +70,7 @@ let check_ec_standard file  =
   let id =
     Str.regexp "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$" in
   if (Str.string_match id file 0 = false) then
-    "Warning: "^file ^ " file doesn't match EC naming standard \n"
+    "\nWarning: "^file ^ " file doesn't match EC naming standard"
   else ""
 
   

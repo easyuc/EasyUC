@@ -5,7 +5,7 @@ val quiet : bool ref
 (* verbose, debug, quiet are flag which will be set to true
 if corresponding option is used *)
   
-val pre_verbose : string -> 'a
+val pre_run : string -> 'a
 
 (* pre_verbose takes a directory as input and gets a list of all
 TEST files in that directory using walk_directory_tree.

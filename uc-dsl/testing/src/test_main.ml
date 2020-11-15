@@ -58,7 +58,7 @@ let call_dir_test dir_list_local =
     in 
     let b = verify_dir (List.nth dir_list_local 0) in
     let _ = create_log () in
-    pre_verbose b
+    pre_run b
 let usage_msg = "Usage: dsl-test [verbosity option] dir\ndsl-test -debug file"
 
 let main =
