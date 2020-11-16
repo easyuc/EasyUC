@@ -124,6 +124,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token ELIF
 %token ELSE
 %token END
+%token ENVPORT
 %token EXIST
 %token FAIL
 %token FORALL
@@ -1074,6 +1075,9 @@ sexpr_u :
 
   | d = DECIMAL
       { PEdecimal d }
+
+  | x = loc(ENVPORT); ti = tvars_app?
+      { PEident (mk_loc (loc x) ([], "envport"), ti) }
 
   | x = qoident; ti = tvars_app?
       { PEident (x, ti) }

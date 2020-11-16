@@ -27,9 +27,7 @@
     UcMessage.error_message (L.of_lexbuf lexbuf)
 
   let _keywords = [
-    "forall"          , FORALL      ;
-    "exist"           , EXIST       ;
-    "fun"             , FUN         ;
+    "Top"             , TOP         ;
     "adversarial"     , ADVERSARIAL ;
     "and"             , ANDTXT      ;
     "direct"          , DIRECT      ;
@@ -37,7 +35,11 @@
     "elif"            , ELIF        ;
     "else"            , ELSE        ;
     "end"             , END         ;
+    "envport"         , ENVPORT     ;
+    "exists"          , EXIST       ;
     "fail"            , FAIL        ;
+    "forall"          , FORALL      ;
+    "fun"             , FUN         ;
     "functionality"   , FUNCT       ;
     "if"              , IF          ;
     "implements"      , IMPLEM      ;
@@ -55,7 +57,6 @@
     "state"           , STATE       ;
     "subfun"          , SUBFUN      ;
     "then"            , THEN        ;
-    "top"             , TOP         ;
     "transition"      , TRANSITION  ;
     "uc_requires"     , UC_REQUIRES ;
     "uses"            , USES        ;
@@ -66,6 +67,44 @@
   let keywords =
     let table = Hashtbl.create 0 in
     List.iter (curry (Hashtbl.add table)) _keywords; table
+
+  (* we avoid identifers not allowed by EasyCrypt, because we'll be
+     generating EasyCrypt code *)
+
+  let _bad_ec_idents =
+    ["Pr"; "abbrev"; "abstract"; "admit"; "algebra"; "alias"; "apply";
+    "as"; "assert"; "assumption"; "auto"; "axiom"; "axiomatized";
+    "beta"; "by"; "byequiv"; "byphoare"; "bypr"; "call"; "case"; "cbv";
+    "cfold"; "change"; "class"; "clear"; "clone"; "congr"; "conseq";
+    "const"; "cut"; "debug"; "declare"; "delta"; "do"; "done"; "eager";
+    "elim"; "equiv"; "eta"; "exact"; "exfalso"; "export"; "fel";
+    "fission"; "for"; "for"; "fusion"; "glob"; "goal"; "have"; "hint";
+    "hoare"; "idtac"; "import"; "include"; "inductive"; "inline";
+    "instance"; "iota"; "is"; "islossless"; "kill"; "lemma"; "local";
+    "logic"; "modpath"; "module"; "move"; "nosmt"; "notation"; "of";
+    "op"; "phoare"; "pose"; "pr"; "pragma"; "pred"; "print"; "proc";
+    "progress"; "proof"; "prover"; "qed"; "rcondf"; "rcondt"; "realize";
+    "reflexivity"; "remove"; "rename"; "replace"; "require"; "res";
+    "return"; "rewrite"; "rnd"; "rwnormal"; "search"; "section"; "seq";
+    "sim"; "simplify"; "skip"; "smt"; "sp"; "split"; "splitwhile";
+    "subst"; "suff"; "swap"; "symmetry"; "theory"; "time"; "timeout";
+    "transitivity"; "trivial"; "try"; "type"; "undo"; "unroll"; "while";
+    "why3"; "wp"; "zeta"]
+
+  let bad_ec_idents =
+    let table = Hashtbl.create 0 in
+    List.iter (curry (Hashtbl.add table))
+    (List.map (fun x -> (x, ())) _bad_ec_idents);
+    table
+
+  let check_bad_ec_ident l id =
+    match Hashtbl.find_option bad_ec_idents id with
+    | None   -> ()
+    | Some _ ->
+        lex_error l
+        (fun ppf ->
+           Format.fprintf ppf
+           "@[illegal@ identifer,@ because@ EasyCrypt@ forbids@ it@]")
 
   (* handling EasyCrypt's operators *)
 
@@ -288,8 +327,12 @@ rule read = parse
   (* lower and upper identifers, type identifiers (variables) and
      numeric constants *)
 
-  | lident as id  { try Hashtbl.find keywords id with Not_found -> LIDENT id }
-  | uident as id  { try Hashtbl.find keywords id with Not_found -> UIDENT id }
+  | lident as id { try Hashtbl.find keywords id with
+                   | Not_found ->
+                       check_bad_ec_ident lexbuf id; LIDENT id }
+  | uident as id { try Hashtbl.find keywords id with
+                   | Not_found ->
+                       check_bad_ec_ident lexbuf id; UIDENT id }
   | tident as tid { if Char.is_uppercase (tid.[1])
                     then lex_error lexbuf
                          (fun ppf ->
