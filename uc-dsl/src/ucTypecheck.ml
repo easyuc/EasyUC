@@ -185,17 +185,23 @@ let check_is_composite
 (* typechecking context for states
 
    state parameters and local variables are disjoint, and are lower
-   identifiers; the are distinct from "envport"
+   identifiers; they are distinct from "envport"
 
-   in real functionalities, internal ports have the form [Party], were
-   Party is the name of one of the functionality's parties; in this
-   case Party cannot be a state parameter or local variable or
-   envport, because Party is an upper identifer
+   in real functionalities, internal ports have the form [Party],
+   where Party is the name of one of the functionality's parties; in
+   simulators, internal ports have the form [RealFun; Party], where
+   RealFun is the real functionality being simulated, and Party is one
+   of its parties
 
-   in simulators, when internal ports have length 2, and begin with
-   the name of the real functionality that is being simulated, there
-   is no chance of overlap with state parameters, local variables or
-   envport *)
+   in the concrete syntax [Party] is written "intport Party", and
+   [RealFun; Party] is written "intport RealFun.Party"; these are
+   turned by the parser into PEident's, whose arguments are
+   localizations of ([], "intport:Party") and ([],
+   "intport:RealFun.Party")
+
+   when internal ports are locally bound in environments, [Party] is
+   turned into "intport:Party", and [RealFun; Party] is turned into
+   "intport:RealFun.Party] *)
 
 type state_context =
   {initial : bool;             (* initial state? *)
