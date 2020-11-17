@@ -31,7 +31,7 @@ functionality KEReal implements KEDir {
           if (envport pt1 /\ envport pt2) {
             q1 <$ dexp;
             send Fw1.D.fw_req
-                 (Pt2, epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
+                 (intport Pt2, epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
             and transition WaitFwd2(pt1, pt2, q1).
           }
           else { fail. }
@@ -84,7 +84,7 @@ functionality KEReal implements KEDir {
       match message with
       | pt2'@KEDir.Pt2.ke_req2 => { 
           if (pt2' = pt2) {
-            send Fw2.D.fw_req(Pt1, epdp_key_univ.`enc (g ^ q2))
+            send Fw2.D.fw_req(intport Pt1, epdp_key_univ.`enc (g ^ q2))
             and transition Final.
           }
           else { fail. }
@@ -168,7 +168,7 @@ simulator KESim uses KEI2S simulates KEReal {
         (* simulator implicitly learns address of ideal functionality *)
         q1 <$ dexp;
         send KEReal.Fw1.FwAdv.fw_obs
-             (KEReal.Pt1, KEReal.Pt2,
+             (intport KEReal.Pt1, intport KEReal.Pt2,
               epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
         and transition WaitAdv1(q1).
       }    
@@ -195,7 +195,7 @@ simulator KESim uses KEI2S simulates KEReal {
     match message with 
     | KEI2S.ke_sim_req2 => {
         send KEReal.Fw2.FwAdv.fw_obs
-             (KEReal.Pt2, KEReal.Pt1, epdp_key.`enc (g ^ q2))
+             (intport KEReal.Pt2, intport KEReal.Pt1, epdp_key.`enc (g ^ q2))
         and transition WaitAdv2(q1, q2).
       }
     | *                 => { fail. }

@@ -24,6 +24,13 @@ module SL =
 module QidMap = Map.Make(SL)
 module QidSet = Set.Make(SL)
 
+let nonempty_qid_to_qsymbol (xs : SL.t) : qsymbol =
+  let len = List.length xs in
+  (Batteries.List.take (len - 1) xs, Batteries.List.last xs)
+
+let nonempty_qid_to_string (xs : SL.t) : string =
+  List.fold_left (fun s x -> if s <> "" then s ^ "." ^ x else x) "" xs
+
 let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
@@ -63,15 +70,6 @@ type basic_inter_body_tyd = message_def_body_tyd IdMap.t
 let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
   {mdbt with
      dir = invert_dir mdbt.dir}
-
-(* TODO - do we need?
-let invert_msg_dir_loc
-    (mdbtl : message_def_body_tyd located) : message_def_body_tyd located = 
-  let l = loc mdbtl in
-  let mdbt = unloc mdbtl in
-  let mdbt_inv = invert_msg_dir mdbt in
-  mk_loc l mdbt_inv
-*)
 
 let invert_basic_inter_body_tyd
     (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 

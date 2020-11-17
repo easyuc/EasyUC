@@ -25,7 +25,8 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       match message with 
       | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
           if (envport pt1 /\ envport pt2) {
-            send KE.Pt1.ke_req1(Pt2) and transition WaitKE2(pt1, pt2, t).
+            send KE.Pt1.ke_req1(intport Pt2)
+            and transition WaitKE2(pt1, pt2, t).
           }
           else { fail. }
         }
@@ -37,7 +38,7 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       match message with 
       | KE.Pt1.ke_rsp2(k) => {
           send Fwd.D.fw_req
-               (Pt2,
+               (intport Pt2,
                 epdp_port_port_key_univ.`enc
                 (pt1, pt2, epdp_text_key.`enc t ^^ k))
           and transition Final.
@@ -132,7 +133,8 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
         (* simulator learns address of ideal functionality *)
-        send SMCReal.KE.KEI2S.ke_sim_req1(SMCReal.Pt1, SMCReal.Pt2)
+        send SMCReal.KE.KEI2S.ke_sim_req1
+             (intport SMCReal.Pt1, intport SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
       }
     end
@@ -156,7 +158,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     match message with 
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
         send SMCReal.Fwd.FwAdv.fw_obs
-             (SMCReal.Pt1, SMCReal.Pt2,
+             (intport SMCReal.Pt1, intport SMCReal.Pt2,
               epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q))
         and transition WaitAdv3(pt1, pt2, q).
       }

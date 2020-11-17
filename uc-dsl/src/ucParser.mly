@@ -134,6 +134,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token IMPLEM
 %token IN
 %token INITIAL
+%token INTPORT
 %token LET
 %token MATCH
 %token MESSAGE
@@ -1076,8 +1077,18 @@ sexpr_u :
   | d = DECIMAL
       { PEdecimal d }
 
-  | x = loc(ENVPORT); ti = tvars_app?
-      { PEident (mk_loc (loc x) ([], "envport"), ti) }
+  (* begin UC DSL *)
+
+  | x = loc(ENVPORT)  (* envport function *)
+      { PEident (mk_loc (loc x) ([], "envport"), None) }
+
+  | y = loc(INTPORT); x = uqident  (* internal port names *)
+      { PEident
+        (mk_loc (merge (loc y) (loc x))
+         ([], "intport:" ^ string_of_qsymbol (unloc x)),
+         None) }
+
+  (* end UC DSL *)
 
   | x = qoident; ti = tvars_app?
       { PEident (x, ti) }

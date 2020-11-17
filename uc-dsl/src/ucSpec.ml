@@ -60,6 +60,14 @@ type pat =
   | PatId       of psymbol
   | PatWildcard of EcLocation.t
 
+let get_loc_pat (pat : pat) : EcLocation.t = 
+  match pat with
+  | PatWildcard l -> l
+  | PatId id      -> loc id
+
+let get_loc_pat_list (tm : pat list) : EcLocation.t =
+  mergeall (List.map (fun mi -> get_loc_pat mi) tm)
+
 type msg_pat =
   {port_id : psymbol option; msg_path_pat : msg_path_pat;
    pat_args : pat list option}

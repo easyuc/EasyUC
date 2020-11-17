@@ -45,6 +45,7 @@
     "implements"      , IMPLEM      ;
     "in"              , IN          ;
     "initial"         , INITIAL     ;
+    "intport"         , INTPORT     ;
     "let"             , LET         ;
     "match"           , MATCH       ;
     "message"         , MESSAGE     ;
