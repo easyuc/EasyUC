@@ -37,6 +37,7 @@
                "implements"
                "in"
                "initial"
+               "intport"
                "let"
                "match"
                "message"
