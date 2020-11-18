@@ -10,6 +10,7 @@ open EcParsetree
 open EcTypes
 open EcUnify
 open EcEnv
+open EcTyping
 open UcSpec
 open UcTypedSpec
 open UcUtils
@@ -41,7 +42,7 @@ let unif_env () = EcUnify.UniEnv.create None
 
 let check_type_top (pty : pty) : ty =
   let ue = unif_env () in
-  EcTyping.transty EcTyping.tp_nothing (top_env ()) ue pty
+  transty tp_nothing (top_env ()) ue pty
   
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)
@@ -234,6 +235,12 @@ let refine_state_analysis (sa : state_analysis) (id : symbol) =
 let merge_state_analysis (sa1 : state_analysis) (sa2 : state_analysis)
       : state_analysis = 
   {uninit_vs = IdSet.union sa1.uninit_vs sa2.uninit_vs}
+
+let merge_state_analyses (sas : state_analysis list) : state_analysis =
+  match sas with
+  | []        -> failure "cannot happen"
+  | [sa]      -> sa
+  | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
 let uc_qsym_prefix = ["Top"; "UCCore"]
 
@@ -809,12 +816,12 @@ let check_msg_pat
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
     (pexpr : pexpr) (expct_ty_opt : ty option) : ty =
-  let (exp, ty) = EcTyping.transexp env `InOp ue pexpr in
+  let (exp, ty) = transexp env `InOp ue pexpr in
   let () =
     match expct_ty_opt with
     | None          -> ()
     | Some expct_ty ->
-        EcTyping.unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
+        unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
   let () =
     let fv = e_fv exp in
     EcIdent.Mid.iter
@@ -845,16 +852,23 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
   match lhs with
   | LHSSimp id   -> check_lhs_var sc sa id
   | LHSTuple ids ->
-      let ids =
-        check_unique_ids
-        (fun ppf -> fprintf ppf "@[duplicate@ identifer@ in@ left-hand-side@]")
-        ids identity in
+      let () =
+        match find_dup_cmp
+              (fun id1 id2 -> compare (unloc id1) (unloc id2))
+              ids with
+        | None    -> ()
+        | Some id ->
+            type_error (loc id)
+            (fun ppf ->
+               Format.fprintf ppf
+               ("@[duplicate@ identifer@ in@ left-hand-side@ of@ " ^^
+                "assignment@]")) in
       let (sa, tys) =
-        IdMap.fold
-        (fun _ id p ->
+        List.fold_left
+        (fun p id ->
            let (sa, ty) = check_lhs_var sc (fst p) id in
            (sa, snd p @ [ty]))
-        ids (sa, []) in
+        (sa, []) ids in
       (sa, ttuple tys) 
 
 let check_val_assign
@@ -982,6 +996,56 @@ let check_send_and_transition
   let () = check_msg_expr abip sa env ue sat.msg_expr in
   check_state_expr ss sa env ue sat.state_expr
 
+let check_toplevel_match_clause
+    (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
+    (clause : match_clause)
+      : EcSymbols.symbol *
+        ((EcIdent.t * EcTypes.ty) list * instruction list located) =
+  let filter = fun op -> EcDecl.is_ctor op in
+  let PPApp ((cname, tvi), cargs) = fst clause in
+  let tvi = tvi |> EcUtils.omap (transtvi env ue) in
+  let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue [] in
+  match cts with
+  | []                          ->
+      tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
+  | _ :: _ :: _                 ->
+      tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
+  | [(cp, tvi), opty, subue, _] ->
+      let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
+      let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
+      let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
+      let ind = (EcUtils.oget (EcDecl.tydecl_as_datatype indty)).tydt_ctors in
+      let ctorsym, ctorty = List.nth ind ctoridx in
+      let args_exp = List.length ctorty in
+      let args_got = List.length cargs in
+
+      if args_exp <> args_got
+      then tyerror cname.pl_loc env
+           (InvalidMatch
+            (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
+
+      let cargs_lin =
+        List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
+      if not (has_no_dups cargs_lin)
+      then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
+
+      EcUnify.UniEnv.restore ~src:subue ~dst:ue;
+
+      let ctorty =
+        let tvi = Some (EcUnify.TVIunamed tvi) in
+          fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
+      let pty = EcUnify.UniEnv.fresh ue in
+
+      (try  EcUnify.unify env ue (toarrow ctorty pty) opty with
+       | EcUnify.UnificationFailure _ -> assert false);
+      unify_or_fail env ue l pty gindty;
+
+      let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
+      let pvars = List.map (fun x -> create (unloc x)) cargs in
+      let pvars = List.combine pvars ctorty in
+
+      (ctorsym, (pvars, snd clause))
+
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
@@ -996,6 +1060,50 @@ let rec check_ite
     | Some eins -> check_instructions abip ss sc sa env ue eins in
   merge_state_analysis sa1 sa2
 
+and check_match
+    (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
+    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
+    (ex : pexpr) (clauses : match_clause list located)
+      : state_analysis =
+  let ex_loc = loc ex in
+  let ty = check_expr sa env ue ex None in
+  let inddecl =
+    match (EcEnv.ty_hnorm ty env).ty_node with
+    | Tconstr (indp, _) -> begin
+        match EcEnv.Ty.by_path indp env with
+        | { tyd_type = `Datatype dt } -> Some (indp, dt)
+        | _                           -> None
+      end
+    | _                 -> None in
+  let (_, inddecl) =
+    match inddecl with
+    | None   -> tyerror ex.pl_loc env NotAnInductive
+    | Some x -> x in
+  let top_results =
+    List.map (check_toplevel_match_clause ex_loc env ue ty) (unloc clauses) in
+  let () =
+    if not
+       (UcUtils.has_no_dups_cmp
+        (fun x y -> compare (fst x) (fst y))
+        top_results)
+    then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
+  let top_results =
+    if List.length top_results < List.length inddecl.tydt_ctors
+    then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial);
+    if List.length top_results > List.length inddecl.tydt_ctors
+    then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches);
+    let results = Msym.of_list top_results in
+      List.map
+      (fun (x, _) -> EcUtils.oget (Msym.find_opt x results))
+      inddecl.tydt_ctors in
+  let results =
+    List.map
+    (fun (bndgs, body) ->
+       let env = Var.bind_locals bndgs env in
+       check_instructions abip ss sc sa env ue body)
+    top_results in
+  merge_state_analyses results
+
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (env : env) (ue : unienv)
@@ -1007,7 +1115,8 @@ and check_instruction
       check_sampl_assign sc sa env ue lhs ex
   | ITE (ex, tins, eins)                ->
       check_ite abip ss sc sa env ue ex tins eins
-  | Match _                             -> sa
+  | Match(ex, clauses)                  ->
+      check_match abip ss sc sa env ue ex clauses
   | SendAndTransition sat               ->
       check_send_and_transition abip ss sa env ue sat; sa
   | Fail                                -> sa
@@ -1061,7 +1170,7 @@ and check_instr_end_in_transfer (instr : instruction) : unit =
        | None       -> failure_to_transfer_control (loc instr)
        | Some elses -> check_instrs_transfer_at_end elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, is) -> check_instrs_transfer_at_end is) clauses
+      List.iter (fun (_, is) -> check_instrs_transfer_at_end is) (unloc clauses)
   | SendAndTransition _         -> ()
   | Fail                        -> ()
 
@@ -1076,7 +1185,7 @@ and check_instr_not_transfer (instr : instruction) : unit =
        | None       -> ()
        | Some elses -> check_instrs_not_transfer elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, is) -> check_instrs_not_transfer is) clauses
+      List.iter (fun (_, is) -> check_instrs_not_transfer is) (unloc clauses)
   | SendAndTransition _         -> illegal_control_transfer (loc instr)
   | Fail                        -> illegal_control_transfer (loc instr)
 
@@ -1759,6 +1868,6 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
   let () = load_ec_reqs spec.externals.ec_requires in
   try check_defs qual_file maps spec.definitions
   with
-  | EcTyping.TyError (l, env, tyerr) ->
+  | TyError (l, env, tyerr) ->
       type_error l
       (fun ppf -> UcEcUserMessages.TypingError.pp_tyerror env ppf tyerr)

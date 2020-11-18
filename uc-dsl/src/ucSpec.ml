@@ -95,11 +95,13 @@ type instruction_u =
   | Sample of lhs * pexpr
   | ITE of pexpr * instruction list located *  (* if-then-else *)
            instruction list located option
-  | Match of pexpr * (ppattern * instruction list located) list
+  | Match of pexpr * match_clause list located
   | SendAndTransition of send_and_transition
   | Fail
 
 and instruction = instruction_u located
+
+and match_clause = ppattern * instruction list located
 
 type msg_match_clause = {msg_pat : msg_pat; code : instruction list located}
 

@@ -73,7 +73,7 @@ functionality KEReal implements KEDir {
               send KEDir.Pt2.ke_rsp1(pt1, k1 ^ q2)@pt2
               and transition WaitReq2(pt1, pt2, q2).
             }
-          | None   => { fail. }  (* cannot happen *)
+          | None    => { fail. }  (* cannot happen *)
           end
         }
       | *                  => { fail. }

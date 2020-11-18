@@ -806,7 +806,7 @@ match_in :
              (fun ppf ->
                 Format.fprintf ppf
                 "@[at@ least@ one@ matching@ clause@ is@ required@]");
-        Match (e, unloc lcs) }
+        Match (e, lcs) }
 
 (* Control Transfer Instructions *)
 
