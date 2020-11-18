@@ -80,7 +80,7 @@ type msg_path_u = {inter_id_path : symbol list; msg : symbol}
 type msg_path = msg_path_u located
 
 type msg_expr =
-  {path : msg_path; args : pexpr list located; port_id : psymbol option}
+  {path : msg_path; args : pexpr list located; port_expr : pexpr option}
 
 type state_expr = {id : psymbol; args : pexpr list located}
 

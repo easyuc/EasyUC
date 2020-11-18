@@ -195,7 +195,8 @@ simulator KESim uses KEI2S simulates KEReal {
     match message with 
     | KEI2S.ke_sim_req2 => {
         send KEReal.Fw2.FwAdv.fw_obs
-             (intport KEReal.Pt2, intport KEReal.Pt1, epdp_key.`enc (g ^ q2))
+             (intport KEReal.Pt2, intport KEReal.Pt1,
+              epdp_key_univ.`enc (g ^ q2))
         and transition WaitAdv2(q1, q2).
       }
     | *                 => { fail. }

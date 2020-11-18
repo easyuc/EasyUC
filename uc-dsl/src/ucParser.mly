@@ -847,13 +847,13 @@ msg_path :
         mk_loc l {inter_id_path = fst qid; msg = snd qid} }
 
 msg_expr : 
-  | path = msg_path; args = loc(option(args)); port_id = option(dest)
+  | path = msg_path; args = loc(option(args)); port_expr = option(dest)
       { let uargs = unloc args |? [] in
-        {path = path; args = mk_loc (loc args) uargs; port_id = port_id} }
+        {path = path; args = mk_loc (loc args) uargs; port_expr = port_expr} }
 
 dest :
-  | AT; pv = lident
-      { pv }
+  | AT; port_expr = expr
+      { port_expr }
 
 state_expr : 
   | id = uident; args = loc(option(args))
