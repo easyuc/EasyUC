@@ -122,7 +122,7 @@ end = struct
 
     match error with
     | FXE_EmptyMatch ->
-        msg "this pattern matching has no branches"
+        msg "this pattern matching has no clauses"
 
     | FXE_MatchParamsMixed ->
         msg "this pattern matching matches on different parameters"
@@ -137,10 +137,10 @@ end = struct
         msg "this pattern is non-linear"
 
     | FXE_MatchDupBranches ->
-        msg "this pattern matching contains duplicated branches"
+        msg "redundant clauses"
 
     | FXE_MatchPartial ->
-        msg "this pattern matching is non-exhaustive"
+        msg "non-exhaustive clauses"
 
     | FXE_CtorUnk ->
         msg "unknown constructor name"
