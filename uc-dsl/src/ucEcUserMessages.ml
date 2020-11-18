@@ -263,7 +263,15 @@ end = struct
           (EcPrinting.pp_mem env) mem pp_qsymbol p
 
     | UnknownVarOrOp (name, []) ->
-        msg "unknown variable or constant: `%a'" pp_qsymbol name
+        (match name with
+         | ([], symbol) ->
+             if String.starts_with symbol "intport:"
+             then msg "invalid internal port name: `%a'"
+                  pp_symbol (String.lchop ~n:(String.length "intport:") symbol)
+             else msg "unknown identifer: `%a'"
+                  pp_symbol symbol
+         | _            ->
+           msg "unknown qualified identifier: `%a'" pp_qsymbol name)
 
     | UnknownVarOrOp (name, tys) ->
         msg "no matching operator, named `%a', " pp_qsymbol name;
