@@ -40,7 +40,6 @@ let initialized = ref false
 let init () =
  if not (!initialized) then
    (initialized := true;
-
     (* include path setup *)
     (* lowest precedence *)
     EcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
@@ -52,6 +51,7 @@ let init () =
      (fun x ->
       EcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
+
     (* medium high precedence *)
     EcCommands.addidir ~namespace:`System ~recursive:false
     Filename.current_dir_name;
@@ -61,6 +61,7 @@ let init () =
 
     EcCommands.ucdsl_init ();    
     EcCommands.ucdsl_addnotifier notifier;
+
     reset_ec_warnings ();
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
