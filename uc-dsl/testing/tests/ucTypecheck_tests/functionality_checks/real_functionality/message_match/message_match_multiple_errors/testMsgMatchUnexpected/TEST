@@ -6,5 +6,5 @@ outcome:  failure
 [error: testMsgMatchUnexpected.uc: from line 40 columns 6 to 13]
 
 message path is not one of the possible incoming message paths:
-  D.D.blb, D.D.bla, A.A.blb, A.A.bla, X.D.blj, X.D.bli, f.D.blj, f.D.bli
+  D.D.blb, D.D.bla, A.A.blb, A.A.bla, F.D.blj, F.D.bli, X.D.blj, X.D.bli
 .

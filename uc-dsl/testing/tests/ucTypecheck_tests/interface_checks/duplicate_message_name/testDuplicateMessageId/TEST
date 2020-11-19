@@ -5,5 +5,5 @@ args: testDuplicateMessageId.uc
 outcome: failure
 [error: testDuplicateMessageId.uc: from line 3 columns 5 to 6]
 
-duplicate message name: M
+duplicate message name: m
 .

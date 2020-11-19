@@ -1,9 +1,9 @@
-adversarial bli {
+adversarial Bli {
 in bla()
 }
 
-adversarial adio{
-bla:bli
+adversarial Adio{
+Bla:Bli
 }
 
 

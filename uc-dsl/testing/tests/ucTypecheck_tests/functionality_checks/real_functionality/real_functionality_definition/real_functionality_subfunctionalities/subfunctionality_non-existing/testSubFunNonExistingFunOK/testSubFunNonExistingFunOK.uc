@@ -1,14 +1,14 @@
-direct a {
+direct A_ {
 in x@bla()
 }
 
-adversarial d {
+adversarial D {
 in bli()
 }
 
-direct A {a:a}
+direct A {A:A_}
 
-functionality Q implements A d{
+functionality Q implements A D{
 
 initial state Isus 
   {
@@ -22,7 +22,7 @@ functionality R() implements A {
 
  subfun SF=Q
 
- party P serves A.a {
+ party P serves A.A {
   initial state Isus 
   {
    match message with

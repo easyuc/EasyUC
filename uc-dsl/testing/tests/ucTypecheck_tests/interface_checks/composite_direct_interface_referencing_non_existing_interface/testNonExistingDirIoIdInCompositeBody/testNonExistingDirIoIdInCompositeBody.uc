@@ -1,5 +1,5 @@
 
 
-direct B {a:A}
+direct B {A:A}
 
 

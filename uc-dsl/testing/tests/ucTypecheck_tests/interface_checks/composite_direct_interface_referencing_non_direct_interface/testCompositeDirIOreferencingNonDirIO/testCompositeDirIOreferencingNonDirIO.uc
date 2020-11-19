@@ -2,6 +2,6 @@ adversarial A {
 in bla()
 }
 
-direct B {a:A}
+direct B {A:A}
 
 

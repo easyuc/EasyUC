@@ -3,6 +3,6 @@ in bla()
 }
 
 adversarial A2{
-a:A1
-a:A1
+A:A1
+A:A1
 }

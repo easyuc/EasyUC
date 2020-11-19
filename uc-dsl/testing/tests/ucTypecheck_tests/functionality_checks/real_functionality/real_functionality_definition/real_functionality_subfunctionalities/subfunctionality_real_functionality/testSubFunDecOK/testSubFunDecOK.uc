@@ -1,17 +1,17 @@
-adversarial adv {
+adversarial Adv_ {
 in bla()
 }
 
-adversarial Adv {adv:adv}
+adversarial Adv {Adv:Adv_}
 
-direct d {
+direct D_ {
 
 in x@bla()
 }
 
-direct D {d:d}
+direct D {D:D_}
 
-functionality F implements D adv {
+functionality F implements D Adv_ {
 
   initial state Is
   {
@@ -25,7 +25,7 @@ functionality R() implements D{
 
 subfun SF=F
 
- party P serves D.d {
+ party P serves D.D {
   initial state Is
   {
    match message with
