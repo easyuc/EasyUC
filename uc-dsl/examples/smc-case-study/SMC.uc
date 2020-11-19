@@ -24,22 +24,26 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
     initial state WaitReq {
       match message with 
       | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
-          if (envport(pt1) /\ envport(pt2)) {
-            send KE.Pt1.ke_req1(Pt2) and transition WaitKE2(pt1, pt2, t).
+          if (envport pt1 /\ envport pt2) {
+            send KE.Pt1.ke_req1(intport Pt2)
+            and transition WaitKE2(pt1, pt2, t).
           }
           else { fail. }
         }
-      | * => { fail. }
+      | *                              => { fail. }
       end
     }
 
     state WaitKE2(pt1 : port, pt2 : port, t : text) {
       match message with 
       | KE.Pt1.ke_rsp2(k) => {
-          send Fwd.D.fw_req(Pt2, encode (pt1, pt2, inj t ^^ k))
+          send Fwd.D.fw_req
+               (intport Pt2,
+                epdp_port_port_key_univ.`enc
+                (pt1, pt2, epdp_text_key.`enc t ^^ k))
           and transition Final.
         }
-      | * => { fail. }
+      | *                 => { fail. }
       end
     }
 
@@ -56,22 +60,29 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
       | KE.Pt2.ke_rsp1 (_, k) => {
           send KE.Pt2.ke_req2 and transition WaitFwd(k).
         }
-      | * => { fail. }
+      | *                     => { fail. }
       end
     }
 
     state WaitFwd(k : key) {
+      var pt1, pt2 : port; var x : key;
       match message with 
       | Fwd.D.fw_rsp(_, u) => {
-          decode u as port * port * key with
-          | ok (pt1, pt2, x) => {
-              send SMCDir.Pt2.smc_rsp(pt1, projFudge(x ^^ kinv k))@pt2
-              and transition Final.
+          match epdp_port_port_key_univ.`dec u with
+          | Some tr => {
+              (pt1, pt2, x) <- tr;
+              match epdp_text_key.`dec (x ^^ kinv k) with
+              | Some t => {
+                  send SMCDir.Pt2.smc_rsp(pt1, t)@pt2
+                  and transition Final.
+                }
+              | None   => { fail. }  (* cannot happen *)
+              end
             }
-          | error => { fail. }
+          | None    => { fail. }  (* cannot happen *)
           end
         }
-      | * => { fail. }
+      | *                  => { fail. }
       end
     }
 
@@ -85,19 +96,19 @@ functionality SMCReal(KE : KEDir) implements SMCDir {
 
 adversarial SMC2Sim {
   out sim_req(pt1 : port, pt2 : port)
-  in sim_rsp
+  in  sim_rsp
 }
 
 functionality SMCIdeal implements SMCDir SMC2Sim {
   initial state WaitReq {
     match message with 
     | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
-        if (envport(pt1) /\ envport(pt2)) {
+        if (envport pt1 /\ envport pt2) {
           send SMC2Sim.sim_req(pt1, pt2) and transition WaitSim(pt1, pt2, t).
         }
         else { fail. }
       }
-    | * => { fail. }
+    | *                              => { fail. }
     end
   }
 
@@ -106,7 +117,7 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
     | SMC2Sim.sim_rsp => {
         send SMCDir.Pt2.smc_rsp(pt1, t)@pt2 and transition Final.
       }
-    | * => { fail. }
+    | *               => { fail. }
     end
   }
 
@@ -122,7 +133,8 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
         (* simulator learns address of ideal functionality *)
-        send SMCReal.KE.KEI2S.ke_sim_req1(SMCReal.Pt1, SMCReal.Pt2)
+        send SMCReal.KE.KEI2S.ke_sim_req1
+             (intport SMCReal.Pt1, intport SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
       }
     end
@@ -138,7 +150,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
-    | * => { fail. }
+    | *                           => { fail. }
     end
   }
 
@@ -146,10 +158,11 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     match message with 
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
         send SMCReal.Fwd.FwAdv.fw_obs
-             (SMCReal.Pt1, SMCReal.Pt2, encode (pt1, pt2,g ^ q))
+             (intport SMCReal.Pt1, intport SMCReal.Pt2,
+              epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q))
         and transition WaitAdv3(pt1, pt2, q).
       }
-    | * => { fail. }
+    | *                           => { fail. }
     end
   }
 
@@ -158,7 +171,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
     | SMCReal.Fwd.FwAdv.fw_ok => {
         send SMC2Sim.sim_rsp and transition Final.
       }
-    | * => { fail. }
+    | *                       => { fail. }
     end
   }
 

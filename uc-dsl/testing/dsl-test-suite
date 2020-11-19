@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# remove old .coverage and CONFLICT files
+
+find . -name "*.coverage" -type f -delete
+find . -name CONFLICT -type f -delete
+
+# run test suite
+
+./dsl-test tests/
+
+# generate bisect coverage report
+
+bisect-ppx-report html --coverage-path=./ --source-path=../ > bisect.log
+echo bisect log is in bisect.log

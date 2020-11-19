@@ -5,12 +5,15 @@
 open Batteries
 open Format
 open EcUtils
+(*
 open EcDecl
 open EcTypes
 open EcPath
+*)
 open UcMessage
-
+(*
 open UcTypes
+*)
 open UcConfig
 
 (* EasyCrypt critical errors cause termination with an error message,
@@ -37,39 +40,51 @@ let initialized = ref false
 let init () =
  if not (!initialized) then
    (initialized := true;
-    UcEcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
-    UcEcCommands.addidir ~namespace:`System ~recursive:false
-    Filename.current_dir_name;
-    (let include_dirs = UcState.get_include_dirs() in
+
+    (* include path setup *)
+    (* lowest precedence *)
+    EcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
+    (* medium precedence; we have to reverse the include dirs
+       list because we keep it in order from highest precedence to
+       lowest *)
+    (let include_dirs = List.rev (UcState.get_include_dirs()) in
      List.iter
      (fun x ->
-      UcEcCommands.addidir ~namespace:`System ~recursive:false x)
+      EcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
-    UcEcCommands.ucdsl_init ();    
-    UcEcCommands.ucdsl_addnotifier notifier;
+    (* medium high precedence *)
+    EcCommands.addidir ~namespace:`System ~recursive:false
+    Filename.current_dir_name;
+    (* highest precedence *)
+    EcCommands.addidir ~namespace:`System ~recursive:false
+    UcConfig.uc_prelude_dir;
+
+    EcCommands.ucdsl_init ();    
+    EcCommands.ucdsl_addnotifier notifier;
+
     reset_ec_warnings ();
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
   else ()
 
-let env () = UcEcScope.env (UcEcCommands.ucdsl_current ())
+let env () = EcScope.env (EcCommands.ucdsl_current ())
 
 let require id io =
-  try UcEcCommands.ucdsl_require (None, (id, None), io) with
-  | UcEcScope.HiScopeError (_, msg)         ->
+  try EcCommands.ucdsl_require (None, (id, None), io) with
+  | EcScope.HiScopeError (_, msg)         ->
       error_message (EcLocation.loc id) 
       (fun ppf ->
          fprintf ppf
          ("@[EasyCrypt:@ error@ require@ importing@ " ^^
           "theory:@;<1 2>%s@]")
          msg)
-  | UcEcScope.ImportError (None, name, e)   ->
+  | EcScope.ImportError (None, name, e)   ->
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf
          "@[EasyCrypt:@ In@ external@ theory@ %s@;<1 2>%a@]"
          name EcPException.exn_printer e)
-  | UcEcScope.ImportError (Some l, name, e) ->
+  | EcScope.ImportError (Some l, name, e) ->
       let l = {l with loc_fname = (EcLocation.unloc id) ^ ".ec"} in
       error_message (EcLocation.loc id)
       (fun ppf ->
@@ -91,7 +106,7 @@ let exists_operator (op : string) : bool =
    nullary ops the list is empty.  We use only op_ty from the operator
    declaration - type parameters are not used, and we're not interested
    in op body, just signature. *)
-
+(*
 let get_operator_sig (op : string) : typ * typ list =
   let ecsig = (snd (EcEnv.Op.lookup ([], op) (env ()))).op_ty.ty_node in
 
@@ -129,3 +144,4 @@ let get_operator_sig (op : string) : typ * typ list =
       let typs = get_typs (t1, t2) [] in
       (List.hd typs, List.rev (List.tl typs))
   | _                     -> raise (Failure "unexpected EcType")
+  *)

@@ -38,14 +38,8 @@ The following instructions assume you have already installed
 plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
 (Bisect_ppx can be installed using `opam`: `opam install
-bisect_ppx-ocamlbuild`.)
-
-Note: if you have already installed the EasyCrypt tool itself (as
-opposed to the tools it uses, such as SMT solvers) via opam, you
-should also clone the [EasyCrypt GitHub
-repository](https://github.com/EasyCrypt/easycrypt), so as to obtain
-the full EasyCrypt distribution (including the `src` subdirectory of
-the EasyCrypt source files).
+bisect_ppx-ocamlbuild`.) EasyCrypt can be installed via `opam` or
+by building from the source.
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
@@ -53,8 +47,7 @@ To build the UC DSL tool `ucdsl`, first configure the tool by running
 ./configure
 ```
 
-telling it the full pathname of the EasyCrypt distribution (where you
-cloned it).
+telling it the full pathname of the EasyCrypt `theories` directory.
 
 Next, run
 

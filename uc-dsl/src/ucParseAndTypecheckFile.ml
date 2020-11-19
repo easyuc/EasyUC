@@ -14,7 +14,7 @@ open UcTypecheck
 
    (+) caching of results, to avoid recomputation (the cache) *)
 
-type cache = typed_spec * UcEcScope.scope
+type cache = typed_spec * EcScope.scope
 
 let parse_and_typecheck_file_or_id foid =
   let stack : string list ref = ref [] in
@@ -41,12 +41,11 @@ let parse_and_typecheck_file_or_id foid =
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
         let () = stack := List.tl (!stack) in
-        let cur_scope = UcEcCommands.ucdsl_current () in
+        let cur_scope = EcCommands.ucdsl_current () in
         let () = cache := IdMap.add uc_root (tyspec, cur_scope) (!cache) in
         tyspec
     | Some (tyspec, saved_scope) ->
         let () = stack := List.tl (!stack) in
-        let () = UcEcCommands.ucdsl_update saved_scope in
-        tyspec
- in
+        let () = EcCommands.ucdsl_update saved_scope in
+        tyspec in
   parse_and_typecheck foid

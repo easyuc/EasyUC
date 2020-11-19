@@ -3,7 +3,7 @@ in bla()
 }
 
 adversarial A {
-subio:B
+Subio:B
 
 }
 
@@ -12,13 +12,13 @@ in x@bla()
 }
 
 direct D {
-subio:E
-subio2:E
-subio3:E
+Subio:E
+Subio2:E
+Subio3:E
 }
 
 functionality S() implements D A {
- party P1 serves D.subio A.subio {
+ party P1 serves D.Subio A.Subio {
   initial state Is 
   {
    match message with
@@ -27,7 +27,7 @@ functionality S() implements D A {
   }
  }
 
- party P2 serves D.subio2 {
+ party P2 serves D.Subio2 {
   initial state Is 
   {
    match message with
@@ -36,7 +36,7 @@ functionality S() implements D A {
   }
  }
 
- party P3 serves D.subio3 {
+ party P3 serves D.Subio3 {
   initial state Is 
   {
    match message with

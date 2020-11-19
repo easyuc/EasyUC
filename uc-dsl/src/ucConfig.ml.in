@@ -1,6 +1,13 @@
 (* source of UcConfig module *)
 
-(* configuration module: build script substitutes for ECtheories the
-   fully qualified pathname of EasyCrypt theories directory *)
+(* configuration module: build script substitutes
+
+   (+) for ECtheories, the fully qualified pathname of EasyCrypt
+   theories directory
+
+   (+) for UCprelude, the fully qualified pathname of the UC DSL
+   prelude directory *)
 
 let ec_theories_dir = "ECtheories"
+
+let uc_prelude_dir = "UCprelude"

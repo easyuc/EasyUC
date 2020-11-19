@@ -1,4 +1,4 @@
 adversarial A {
-in  M()
-out N()
+in  m()
+out n()
 }

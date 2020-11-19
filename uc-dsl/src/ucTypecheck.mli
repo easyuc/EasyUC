@@ -2,6 +2,7 @@
 
 (* Typecheck a specification *)
 
+open EcParsetree
 open UcSpec
 open UcTypedSpec
 
@@ -10,4 +11,4 @@ open UcTypedSpec
 
    the second argument is used for typechecking uc_requires *)
 
-val typecheck : string -> (id -> typed_spec) -> spec -> typed_spec
+val typecheck : string -> (psymbol -> typed_spec) -> spec -> typed_spec

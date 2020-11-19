@@ -3,7 +3,8 @@
 (* Typed Specifications *)
 
 open EcLocation
-open UcTypes
+open EcSymbols
+open EcTypes
 open UcSpec
 
 (* id maps and sets *)
@@ -22,6 +23,13 @@ module SL =
   end
 module QidMap = Map.Make(SL)
 module QidSet = Set.Make(SL)
+
+let nonempty_qid_to_qsymbol (xs : SL.t) : qsymbol =
+  let len = List.length xs in
+  (Batteries.List.take (len - 1) xs, Batteries.List.last xs)
+
+let nonempty_qid_to_string (xs : SL.t) : string =
+  List.fold_left (fun s x -> if s <> "" then s ^ "." ^ x else x) "" xs
 
 let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
   let ids = fst (List.split (IdMap.bindings m)) in
@@ -50,12 +58,12 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
 
-type typ_index = (typ * int) located
+type ty_index = (ty * int) located
 
 type message_def_body_tyd =
-  {dir : msg_dir; params_map : typ_index IdMap.t; port : id option}
+  {dir : msg_dir; params_map : ty_index IdMap.t; port : symbol option}
 
-type basic_inter_body_tyd = (message_def_body_tyd located) IdMap.t
+type basic_inter_body_tyd = message_def_body_tyd IdMap.t
 
 (* inversion of direction *)
 
@@ -63,20 +71,13 @@ let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd =
   {mdbt with
      dir = invert_dir mdbt.dir}
 
-let invert_msg_dir_loc
-    (mdbtl : message_def_body_tyd located) : message_def_body_tyd located = 
-  let l = loc mdbtl in
-  let mdbt = unloc mdbtl in
-  let mdbt_inv = invert_msg_dir mdbt in
-  mk_loc l mdbt_inv
-
 let invert_basic_inter_body_tyd
     (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
-  IdMap.map invert_msg_dir_loc bibt
+  IdMap.map invert_msg_dir bibt
 
 type inter_body_tyd = 
   | BasicTyd     of basic_inter_body_tyd
-  | CompositeTyd of id IdMap.t
+  | CompositeTyd of symbol IdMap.t
 
 let is_basic_tyd ibt =
   match ibt with
@@ -91,7 +92,7 @@ let is_composite_tyd ibt =
 type inter_tyd = inter_body_tyd located
 
 type state_body_tyd =
-  {is_initial : bool; params : typ_index IdMap.t; vars : typ located IdMap.t;
+  {is_initial : bool; params : ty_index IdMap.t; vars : ty located IdMap.t;
    mmclauses : msg_match_clause list}
 
 type state_tyd = state_body_tyd located
@@ -102,15 +103,18 @@ type party_def_body_tyd =
 type party_def_tyd = party_def_body_tyd located
 
 type real_fun_body_tyd =
-  {params       : (id * int) IdMap.t;
-   id_dir_inter : string;
-   id_adv_inter : string option;
-   sub_funs     : id IdMap.t;  (* names of ideal functionalities *)
+  {params       : (symbol * int) IdMap.t;  (* names of composite direct
+                                              interfaces *)
+   id_dir_inter : string;                  (* name of composite direct
+                                              interface *)
+   id_adv_inter : string option;           (* optional name of composite
+                                              adversarial interface *)
+   sub_funs     : symbol IdMap.t;          (* names of ideal functionalities *)
    parties      : party_def_tyd IdMap.t}
 
 type ideal_fun_body_tyd =
-  {id_dir_inter : string;
-   id_adv_inter : string;
+  {id_dir_inter : string;  (* name of composite direct interface *)
+   id_adv_inter : string;  (* name of basic adversarial interface *)
    states       : state_tyd IdMap.t}
 
 type fun_body_tyd =
@@ -152,7 +156,9 @@ type sim_def_tyd = sim_body_tyd located
 
 (* four identifier (technically, unlocated identifier) maps for direct
    and adversarial interfaces, functionalities and simulators; their
-   domains are disjoint *)
+   domains are disjoint
+
+   it is necessary that type arguments to IdMap.t be located types *)
 
 type maps_tyd =
   {dir_inter_map : inter_tyd IdMap.t;

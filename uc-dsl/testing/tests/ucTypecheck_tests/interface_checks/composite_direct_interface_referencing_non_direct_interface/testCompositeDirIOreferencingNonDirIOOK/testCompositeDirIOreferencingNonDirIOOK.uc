@@ -2,6 +2,6 @@ direct A {
 in x@bla()
 }
 
-direct B {a:A}
+direct B {A:A}
 
 

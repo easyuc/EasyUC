@@ -4,3 +4,4 @@ _coverage/
 log
 _build
 dsl-test
+bisect.log

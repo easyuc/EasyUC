@@ -2,16 +2,16 @@ direct D {
 in x@bla()
 }
 
-direct A{d:D}
+direct A{D:D}
 
-adversarial a {
+adversarial A_ {
 in bla()
 }
 
-adversarial X{a:a}
+adversarial X{A:A_}
 
 functionality R(F:X) implements A {
 
-party P serves A.d { initial state I {match message with * => {fail.}end} }
+party P serves A.D { initial state I {match message with * => {fail.}end} }
 
 }

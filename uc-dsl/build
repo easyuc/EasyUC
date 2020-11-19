@@ -1,13 +1,21 @@
 #!/bin/bash
 
+# determine whether we should build ucdsl with coverage instrumentation
+coverage_mode=NO
+if [[ $# -eq 1 && $1 == 'coverage' ]];
+then coverage_mode=YES;
+else coverage_mode=NO;
+fi;
+
+ucprelude=$(pwd)/prelude
+
 cd src
 
-ecdir=$(ls -l ECdir | sed 's/^.*-> //')
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
 
 if [ ! -r ECsrc/ecVersion.ml ];
-then echo "trying to prepare $ecdir"
-     echo "  for building of UC DSL tool";
+then echo -n "trying to prepare copy of EasyCrypt src directory";
+     echo " for building UC DSL tool";
      if [ ! -r ECsrc/ecVersion.ml.in ];
      then echo Bad EasyCrypt source directory;
           echo exiting...;
@@ -26,6 +34,7 @@ fi
 # the following depends on $ectheories not including apostrophes
 # see configure
 sed -e "s'ECtheories'$ectheories'" \
+    -e "s'UCprelude'$ucprelude'" \
     -e '1i\
       (* file automatically generated from ucConfig.ml.in  - do not edit *)\
       \ ' \
@@ -38,7 +47,7 @@ fi;
 
 cd ..
 
-ocamlbuild -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' ucdsl.native
+BISECT_COVERAGE=$coverage_mode ocamlbuild -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' ucdsl.native
 
 if [ -e ucdsl.native ];
 then mkdir -p bin;

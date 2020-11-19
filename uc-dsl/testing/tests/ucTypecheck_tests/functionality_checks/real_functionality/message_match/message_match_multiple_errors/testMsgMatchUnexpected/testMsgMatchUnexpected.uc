@@ -1,21 +1,21 @@
-direct d {
+direct D_ {
 in x@bla()
 in x@blb()
 out bli()@x
 out blj()@x
 }
 
-direct D {D:d}
+direct D {D:D_}
 
-adversarial a {
+adversarial A_ {
 in  bla()
 in  blb()
 out bli()
 }
 
-adversarial A {A:a}
+adversarial A {A:A_}
 
-functionality F() implements D a{
+functionality F() implements D A_{
 
   initial state Is 
   {
@@ -27,7 +27,7 @@ functionality F() implements D a{
 
 functionality S(X:D) implements D A {
 
- subfun f=F
+ subfun F=F
 
  party P serves D.D A.A {
   initial state Is 
@@ -37,8 +37,8 @@ functionality S(X:D) implements D A {
    | D.D.* => {fail.}
    | X.D.bli => {fail.}
    | X.D.* => {fail.}
-   | f.D.bla => {fail.}
-   | f.* => {fail.}
+   | F.D.bla => {fail.}
+   | F.* => {fail.}
    | A.bla => {fail.}
    | A.* => {fail.}
    end

@@ -2,15 +2,14 @@
 
 (* Specification Parse Trees *)
 
-open Batteries
 open EcLocation
+open EcSymbols
+open EcParsetree
 open UcMessage
 
 let parse_error = error_message
 
 let type_error = error_message
-
-type id = string located
 
 type msg_dir =
   | In
@@ -19,109 +18,104 @@ type msg_dir =
 let invert_dir (dir : msg_dir) = 
   match dir with In -> Out | Out -> In
 
-type ty =
-  | NamedTy of id
-  | TupleTy of ty list
-
-type type_binding = {id : id; ty : ty}
+type type_binding = {id : psymbol; ty : pty}
 
 type message_body =
-  {id : id; params : type_binding list}
+  {id : psymbol; params : type_binding list}
 
 type message_def =
-  {dir : msg_dir; id : id; params : type_binding list; port : id option}
+  {dir : msg_dir; id : psymbol; params : type_binding list;
+   port : psymbol option}
 
-type comp_item = {sub_id : id; inter_id : id}
+type comp_item = {sub_id : psymbol; inter_id : psymbol}
 
 type inter =
   | Basic     of message_def list
   | Composite of comp_item list
 
-type named_inter = {id : id; inter : inter}
+type named_inter = {id : psymbol; inter : inter}
 
 type inter_def =
   | DirectInter      of named_inter
   | AdversarialInter of named_inter
 
-type fun_param = {id : id; id_dir : id}
+type fun_param = {id : psymbol; id_dir : psymbol}
 
-type sub_fun_decl = {id : id; fun_id : id}
+type sub_fun_decl = {id : psymbol; fun_id : psymbol}
 
 type msg_or_star =
-  | MsgOrStarMsg  of id
-  | MsgOrStarStar of EcLocation.t
+  | MsgOrStarMsg of symbol
+  | MsgOrStarStar
 
-type qid = id list
+type msg_path_pat_u = {inter_id_path : symbol list; msg_or_star : msg_or_star}
 
-let qid1_starts_with_qid2 (q1 : qid) (q2 : qid) : bool =
-  List.for_all
-  identity
-  (List.mapi
-   (fun i id2 -> 
-      match List.nth_opt q1 i with
-      | Some id1 -> unloc id1 = unloc id2
-      | None     -> false)
-   q2)
-
-type msg_path_pat = {inter_id_path : qid; msg_or_star : msg_or_star}
+type msg_path_pat = msg_path_pat_u located
 
 let msg_path_pat_ends_star mpp =
-  match mpp.msg_or_star with
+  match (unloc mpp).msg_or_star with
   | MsgOrStarMsg  _ -> false
-  | MsgOrStarStar _ -> true
+  | MsgOrStarStar   -> true
 
 type pat =
-  | PatId       of id
+  | PatId       of psymbol
   | PatWildcard of EcLocation.t
 
+let get_loc_pat (pat : pat) : EcLocation.t = 
+  match pat with
+  | PatWildcard l -> l
+  | PatId id      -> loc id
+
+let get_loc_pat_list (tm : pat list) : EcLocation.t =
+  mergeall (List.map (fun mi -> get_loc_pat mi) tm)
+
 type msg_pat =
-  {port_id : id option; msg_path_pat : msg_path_pat; pat_args : pat list option}
+  {port_id : psymbol option; msg_path_pat : msg_path_pat;
+   pat_args : pat list option}
 
 type msg_pat_body =
   {msg_path_pat : msg_path_pat; pat_args : pat list option}
 
-type expression_u =
-  | Id    of qid
-  | Tuple of expression list
-  | App   of id * expression list
-  | Enc   of expression
+type msg_path_u = {inter_id_path : symbol list; msg : symbol}
 
-and expression = expression_u located
-
-type msg_path = {inter_id_path : qid; msg : id}
+type msg_path = msg_path_u located
 
 type msg_expr =
-  {path : msg_path; args : expression list located; port_id : id option}
+  {path : msg_path; args : pexpr list located; port_expr : pexpr option}
 
-type state_expr = {id : id; args : expression list located}
+type state_expr = {id : psymbol; args : pexpr list located}
 
 type send_and_transition = {msg_expr : msg_expr; state_expr : state_expr}
 
+type lhs =
+  | LHSSimp  of psymbol
+  | LHSTuple of psymbol list
+
 type instruction_u =
-  | Assign of id * expression
-  | Sample of id * expression
-  | ITE of expression * instruction list located *  (* if-then-else *)
+  | Assign of lhs * pexpr
+  | Sample of lhs * pexpr
+  | ITE of pexpr * instruction list located *  (* if-then-else *)
            instruction list located option
-  | Decode of
-      expression * ty * pat list * instruction list located *
-      instruction list located
+  | Match of pexpr * match_clause list located
   | SendAndTransition of send_and_transition
   | Fail
 
 and instruction = instruction_u located
 
+and match_clause = ppattern * instruction list located
+
 type msg_match_clause = {msg_pat : msg_pat; code : instruction list located}
 
 type state_code = {vars : type_binding list; mmclauses : msg_match_clause list}
 
-type state = {id : id; params : type_binding list located; code : state_code}
+type state =
+  {id : psymbol; params : type_binding list located; code : state_code}
                 
 type state_def =
   | InitialState of state
   | FollowingState of state 
 
 type party_def =
-  {id : id; serves : qid list; states : state_def list}
+  {id : psymbol; serves : pqsymbol list; states : state_def list}
 
 type fun_body_real =
   {sub_fun_decls : sub_fun_decl list; party_defs : party_def list}
@@ -136,18 +130,18 @@ let is_real_fun_body fb =
   | FunBodyIdeal _ -> false
 
 type fun_def =
-  {id : id; params : fun_param list; id_dir : id; id_adv : id option;
-   fun_body : fun_body}
+  {id : psymbol; params : fun_param list; id_dir : psymbol;
+   id_adv : psymbol option; fun_body : fun_body}
 
 type sim_def =
-  {id : id; uses : id; sims : id; sims_arg_ids : id list located;
-   states : state_def list }
+  {id : psymbol; uses : psymbol; sims : psymbol;
+   sims_arg_ids : psymbol list located; states : state_def list }
 
 type def =
   | InterDef of inter_def
   | FunDef   of fun_def
   | SimDef   of sim_def
 
-type externals = {uc_requires : id list; ec_requires : id list}
+type externals = {uc_requires : psymbol list; ec_requires : psymbol list}
 
 type spec = {externals : externals; definitions : def list}

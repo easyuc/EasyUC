@@ -9,10 +9,12 @@ open UcParseAndTypecheckFile
 
 let () = Printexc.record_backtrace true
 
+(* order is *opposite* to the order of the -I options *)
+
 let include_dirs_ref : string list ref = ref []
 
 let include_arg (s : string) =
-  (include_dirs_ref := (! include_dirs_ref) @ [s]; ())
+  (include_dirs_ref := s :: (! include_dirs_ref); ())
 
 let anony_arg_ref : string list ref = ref []
 
@@ -85,7 +87,7 @@ let () =
             Format.fprintf ppf
             "@[file@ does@ not@ exist:@ %s@]" file)
   else let dir = Filename.dirname file in
-       UcState.add_before_include_dirs dir
+       UcState.add_highest_include_dirs dir
 
 let () =
   UcEcInterface.init ();

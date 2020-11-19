@@ -1,9 +1,9 @@
-direct d {
+direct D {
 in x@m()
 }
 
 adversarial Ref{
-br:d
+Br:D
 }
 
 
