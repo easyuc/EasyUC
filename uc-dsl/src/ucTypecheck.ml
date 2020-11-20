@@ -853,8 +853,8 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
   | LHSSimp id   -> check_lhs_var sc sa id
   | LHSTuple ids ->
       let () =
-        match find_dup_cmp
-              (fun id1 id2 -> compare (unloc id1) (unloc id2))
+        match find_dup
+              ~cmp:(fun id1 id2 -> compare (unloc id1) (unloc id2))
               ids with
         | None    -> ()
         | Some id ->
@@ -1026,7 +1026,7 @@ let check_toplevel_match_clause
 
       let cargs_lin =
         List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
-      if not (has_no_dups cargs_lin)
+      if has_dup cargs_lin
       then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
 
       EcUnify.UniEnv.restore ~src:subue ~dst:ue;
@@ -1081,24 +1081,19 @@ and check_match
     | Some x -> x in
   let top_results =
     List.map (check_toplevel_match_clause ex_loc env ue ty) (unloc clauses) in
+  (* the left-hand-sides of top_results are a subset of the left-hand sides
+     of inddecl.tydt_ctors (with the order perhaps different) *)
   let () =
-    if not
-       (UcUtils.has_no_dups_cmp
-        (fun x y -> compare (fst x) (fst y))
-        top_results)
-    then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
-  let top_results =
     if List.length top_results < List.length inddecl.tydt_ctors
-    then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial);
-    if List.length top_results > List.length inddecl.tydt_ctors
-    then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches);
-    let results = Msym.of_list top_results in
-      List.map
-      (fun (x, _) -> EcUtils.oget (Msym.find_opt x results))
-      inddecl.tydt_ctors in
+      then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial)
+    else if UcUtils.has_dup ~cmp:(fun x y -> compare (fst x) (fst y))
+            top_results
+      then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
+  (* the left-hand-sides of top_results are exactly the left-hand sides
+     of inddecl.tydt_ctors (with the order perhaps different) *)
   let results =
     List.map
-    (fun (bndgs, body) ->
+    (fun (_, (bndgs, body)) ->
        let env = Var.bind_locals bndgs env in
        check_instructions abip ss sc sa env ue body)
     top_results in
