@@ -7,5 +7,5 @@ outcome: failure
 [error: testSimMsgMatchRealFunDirIO.uc: from line 44 columns 22 to 31]
 
 message path is not one of the possible incoming message paths:
-  iio.bli, R.A.A.abla, R.F.iio.bla
+  Iio.bli, R.A.A.abla, R.F.Iio.bla
 .
