@@ -1,5 +1,5 @@
 direct A {in x@x()}
 
-direct B {a:A}
+direct B {A:A}
 
 

@@ -1,14 +1,14 @@
-direct d {
+direct D_ {
 in x@bla()
 }
 
-direct D {D:d}
+direct D {D:D_}
 
-adversarial a {
+adversarial A {
 in bla()
 }
 
-functionality Q implements D a {
+functionality Q implements D A {
 
   initial state Is 
   {

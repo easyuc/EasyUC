@@ -3,6 +3,7 @@
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import AllCore Distr.
+require import UCCore.  (* from the UC DSL prelude *)
 
 (********************** Keys, Exponents and Plain texts ***********************)
 
@@ -26,6 +27,10 @@ axiom kinv_l (x : key) : kinv x ^^ x = kid.
 
 axiom kinv_r (x : key) : x ^^ kinv x = kid.
 
+op epdp_key_univ : (key, univ) epdp.  (* EPDP from key to univ *)
+
+axiom valid_epdp_key_univ : valid_epdp epdp_key_univ.
+
 (* commutative semigroup of exponents *)
 
 type exp.
@@ -37,6 +42,10 @@ op ( * ) : exp -> exp -> exp.  (* multiplication *)
 axiom mulC (q r : exp) : q * r = r * q.
 
 axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
+op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
+
+axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
@@ -66,20 +75,29 @@ axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
 
 axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 
-(* plain texts, with injection into keys, and partial projection back *)
+(* plain texts, with an EPDP to key *)
 
 type text.
 
-op inj  : text -> key.  (* injection *)
-op proj : key -> text option.  (* partial projection *)
+op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 
-op projFudge : key -> text. (*To be removed...*)
+axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
-axiom inj_inj (t s : text) : inj t = inj s => t = s.
+op epdp_text_univ : (text, univ) epdp.  (* EPDP from text to univ *)
 
-axiom proj_inj_out (x : key, t : text) : proj x = None => inj t <> x.
+axiom valid_epdp_text_univ : valid_epdp epdp_text_univ.
 
-axiom proj_inj_in (x : key, t : text) : proj x = Some t => inj t = x.
+(* EPDP between port * port * key and univ *)
+
+op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
+  epdp_triple_univ epdp_port_univ epdp_port_univ epdp_key_univ.
+
+lemma valid_epdp_port_port_key_univ :
+  valid_epdp epdp_port_port_key_univ.
+proof.
+rewrite valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_port_univ
+        valid_epdp_key_univ.
+qed.
 
 (* consequences of axioms *)
 
@@ -114,14 +132,3 @@ have -> : x = g ^ log x.
   by rewrite -/(gen (log x)) log_gen.
 by rewrite !double_exp_gen mulA.
 qed.
-
-lemma proj_injK (t : text) : proj (inj t) = Some t.
-proof.
-case (proj (inj t) = None).
-by have := (proj_inj_out (inj t) t).
-move => /some_oget /proj_inj_in /inj_inj {2}<-.
-have inj_proj_t_ne_none : proj (inj t) <> None
-  by have := (proj_inj_out (inj t) t).
-by rewrite -some_oget.
-qed.
-

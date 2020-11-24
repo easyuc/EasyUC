@@ -7,5 +7,5 @@ args: testCompositeAdvIOreferencingNonAdvIO.uc
 outcome: failure
 [error: testCompositeAdvIOreferencingNonAdvIO.uc: from line 6 columns 4 to 5]
 
-d isn't an adversarial interface name
+D isn't an adversarial interface name
 .

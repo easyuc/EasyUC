@@ -1,52 +1,57 @@
 (* Menhir Specification for UC DSL Parser (UcParser module) *)
 
+(* indicated portions of this file are adapted from the EasyCrypt
+   lexer, src/ucParser.mly, which is subject to the following copyright
+   and license: *)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2012--2016 - IMDEA Software Institute
+ * Copyright (c) - 2012--2018 - Inria
+ * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 %{
 
 open Batteries
 open Format
 open EcUtils
 open EcLocation
+open EcSymbols
+open EcParsetree
 open UcSpec
-open UcMessage
 
-(* auxiliary definitions for msg_path_pat and msg_path *)
+module BI = EcBigInt
 
-type msg_path_pat_item =
-  | MsgPathPatItemId   of id
-  | MsgPathPatItemStar of EcLocation.t
+(* auxiliary functions for symbols and expressions *)
 
-let to_msg_or_star (mpi : msg_path_pat_item) : msg_or_star =
-  match mpi with
-  | MsgPathPatItemId id  -> MsgOrStarMsg id
-  | MsgPathPatItemStar l -> MsgOrStarStar l
+let pqsymb_of_psymb (x : psymbol) : pqsymbol =
+  mk_loc x.pl_loc ([], x.pl_desc)
 
-let to_id (mpi : msg_path_pat_item) : id =
-  match mpi with
-  | MsgPathPatItemId id  -> id
-  | MsgPathPatItemStar l ->
-      parse_error l
-      (fun ppf -> fprintf ppf "@[*@ cannot@ be@ followed@ by@ \".\"@]")
+let pqsymb_of_symb loc (x : symbol) : pqsymbol =
+  mk_loc loc ([], x)
 
-let rec to_msg_path_pat (mppis : msg_path_pat_item list) (mp : msg_path_pat) =
-  match mppis with
-  | []       -> failure "should never be empty"
-  | [x]      ->
-      {inter_id_path = mp.inter_id_path;
-       msg_or_star   = to_msg_or_star x}
-  | hd :: tl ->
-      to_msg_path_pat tl
-      {inter_id_path = mp.inter_id_path @ [to_id hd];
-       msg_or_star   = mp.msg_or_star}
+let mk_peid_symb loc (s : symbol) (ti : ptyannot option) : pexpr =
+  mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
 
-let msg_path_pat_items_to_msg_path_pat
-    (mppis : msg_path_pat_item list) : msg_path_pat =
-  to_msg_path_pat mppis
-  {inter_id_path = []; msg_or_star = MsgOrStarStar _dummy}
+let peapp_symb loc (s : symbol) (ti : ptyannot option) (es : pexpr list) =
+  PEapp (mk_peid_symb loc s ti, es)
 
-let qid_to_msg_path (ids : qid) : msg_path =
-  let iid = List.take (List.length ids - 1) ids in
-  let msg = List.last ids in 
-  {inter_id_path = iid; msg = msg}
+let peget loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
+  peapp_symb loc EcCoreLib.s_get ti [e1; e2]
+
+let peset loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
+  peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
+
+let pe_nil loc (ti : ptyannot option) =
+  mk_peid_symb loc EcCoreLib.s_nil ti
+
+let pe_cons loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
+  mk_loc loc (peapp_symb loc EcCoreLib.s_cons ti [e1; e2])
+
+let pelist loc (ti : ptyannot option) (es : pexpr list) : pexpr =
+  List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -98,79 +103,139 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 %}
 
-%token <string> ID
-%token LPAREN
-%token RPAREN
-%token LBRACE
-%token RBRACE
-%token COMMA
-%token COLON
-%token DIRECT
-%token ADVERSARIAL
-%token IN
-%token OUT
-%token MESSAGE
-%token EOF
-%token FUNCT
-%token SIM
-%token SIMS
-%token IMPLEM
-%token EQ
-%token PARTY
-%token SERVES
-%token USES
-%token DOT
-%token INITIAL
-%token STATE
-%token MATCH
-%token WITH
-%token END
-%token PIPE
-%token AT
-%token ARROW
-%token FAIL
-%token SEND
-%token ANDTXT
-%token TRANSITION
-%token UC_REQUIRES
-%token EC_REQUIRES
-%token SUBFUN
-%token UNDERSCORE
+%token EOF  (* end-of-file *)
 
-%token VAR
-%token ASGVAL
-%token ASGSAMPLE
-%token SEMICOLON
-%token IF
+%token <EcSymbols.symbol> LIDENT  (* lower identifier *)
+%token <EcSymbols.symbol> UIDENT  (* upper identifier *)
+%token <EcSymbols.symbol> TIDENT  (* type identifier (variable) *)
+%token <EcSymbols.symbol> PUNIOP  (* parenthesized unary operator *)
+%token <EcSymbols.symbol> PBINOP  (* parenthesized binary operator *)
+%token <EcSymbols.symbol> PNUMOP  (* parenthesized numeric operator *)
+%token <EcBigInt.zint> UINT       (* unsigned integer constant *)
+%token <EcBigInt.zint * (int * EcBigInt.zint)> DECIMAL  (* decimal constant *)
+%token <string> STRING  (* string *)
+
+(* keywords *)
+
+%token ADVERSARIAL
+%token ANDTXT
+%token DIRECT
+%token EC_REQUIRES
 %token ELIF
 %token ELSE
+%token END
+%token ENVPORT
+%token EXIST
+%token FAIL
+%token FORALL
+%token FUN
+%token FUNCT
+%token IF
+%token IMPLEM
+%token IN
+%token INITIAL
+%token INTPORT
+%token LET
+%token MATCH
+%token MESSAGE
+%token OUT
+%token PARTY
+%token SEND
+%token SERVES
+%token SIM
+%token SIMS
+%token STATE
+%token SUBFUN
+%token THEN
+%token TOP
+%token TRANSITION
+%token UC_REQUIRES
+%token USES
+%token VAR
+%token WITH
 
-%token ENCODE
-%token DECODE
-%token AS
-%token OK
-%token ERROR
+(* fixed length *)
 
-%token AND
-%token OR
-%token HAT
+%token AT
+%token COLON
+%token COLONTILD
+%token COMMA
+%token DLBRACKET
+%token DOT
+%token DOTDOT
+%token DOTTICK
+%token LARROW
+%token LBRACE
+%token LBRACKET
+%token LESAMPLE
+%token LPAREN
+%token LPBRACE
+%token LTCOLON
+%token PCENT
+%token PIPE
+%token QUESTION
+%token RBOOL
+%token RBRACE
+%token RBRACKET
+%token RPAREN
+%token RPBRACE
+%token SEMICOLON
+%token TICKPIPE
+%token TILD
+%token UNDERSCORE
+
+(* type and expression operators, some used for other purposes too *)
+
+%token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4 NUMOP
+%token IMPL   (* other uses *)
+%token SLASH
 %token NOT
-%token STAR
-%token <string>  ROP4
+%token AMP
+%token HAT
+%token ANDA
+%token AND
+%token ORA
+%token OR
+%token IFF
+%token PLUS
+%token MINUS
+%token STAR   (* other uses *) 
+%token EQ     (* other uses *)
+%token NE
+%token GT
+%token LT
+%token GE
+%token LE
+%token RARROW
 
-(* operators and their associativity are copied from EcParser of
-   EasyCrypt project. UcLexer contains code for recognizing
-   operators. The operators and code are currently a small subset of
-   what can be found in EasyCrypt. *)
+(* precedence and associativity *)
 
-%right    OR
-%right    AND
+%nonassoc COMMA ELSE
+
+%nonassoc IN
+
+%right    IMPL 
+%nonassoc IFF
+%right    ORA  OR
+%right    ANDA AND
 %nonassoc NOT
-%nonassoc EQ 
-%left     HAT
-%right    ROP4
 
-%nonassoc ENCODE
+%nonassoc EQ NE
+
+%nonassoc prec_below_order
+
+%left     NOP
+%left     GT LT GE LE
+%left     LOP1
+%right    ROP1
+%right    QUESTION
+%left     LOP2 MINUS PLUS
+%right    ROP2
+%right    RARROW
+%left     LOP3 STAR SLASH
+%right    ROP3
+%left     LOP4 AT AMP HAT
+%right    ROP4
 
 (* the input for the UcParser is a list of tokens produced by UcLexer
    from the UC DSL file.  This list is parsed by UcParser, starting
@@ -184,21 +249,6 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 %start <UcSpec.spec> spec
 
 %%
-
-%inline loc(X) : 
-  | x = X {
-      { pl_desc = x;
-        pl_loc  = EcLocation.make $startpos $endpos;
-     }
-   }
-
-%inline id : 
-  | id = loc(ID)
-      { id }
-
-%inline qid : 
-  | qid = separated_nonempty_list(DOT, id)
-      { qid }
 
 (* a UC DSL specification consists of a preamble which references
   other .ec and .uc files, and a list of definitions of direct and
@@ -216,14 +266,14 @@ preamble :
 (* require .uc files *)
 
 uc_requires : 
-  | UC_REQUIRES uc_reqs = nonempty_list(id) DOT
+  | UC_REQUIRES uc_reqs = nonempty_list(ident) DOT
       { uc_reqs }
 
 (* require import .ec files, making types and operators available
    for use in UC DSL specification *)
 
 ec_requires : 
-  | EC_REQUIRES ec_reqs = nonempty_list(id) DOT
+  | EC_REQUIRES ec_reqs = nonempty_list(ident) DOT
       { ec_reqs }
 
 (* a definition is either a definition of an interface, a
@@ -265,7 +315,7 @@ inter_def :
         AdversarialInter ni }
 
 named_inter : 
-  | inter_id = id; LBRACE; inter = loc(option(inter)); RBRACE
+  | inter_id = uident; LBRACE; inter = loc(option(inter)); RBRACE
       { match unloc inter with
         | None       ->
             parse_error (loc inter)
@@ -283,18 +333,18 @@ message_def :
   | IN; mb = message_body
       { {dir = In; id = (mb : message_body).id; params = mb.params;
          port = None} : message_def }
-  | IN; pt = id; AT; mb = message_body
+  | IN; pt = lident; AT; mb = message_body
       { {dir = In; id = (mb : message_body).id; params = mb.params;
          port = Some pt} }
   | OUT; mb = message_body
       { {dir = Out; id = (mb : message_body).id; params = mb.params;
          port = None} }
-  | OUT; mb = message_body; AT; pt = id
+  | OUT; mb = message_body; AT; pt = lident
       { {dir = Out; id = (mb : message_body).id; params = mb.params;
          port = Some pt} }
 
 message_body :
-  | msg_id = id; params = option(message_params)
+  | msg_id = lident; params = option(message_params)
       { let params = params |? [] in
         {id = msg_id; params = params} : message_body }
 
@@ -303,7 +353,7 @@ message_params :
     { params }
 
 comp_item :
-  | sub_id = id; COLON; inter_id = id
+  | sub_id = uident; COLON; inter_id = uident
       { {sub_id = sub_id; inter_id = inter_id} }
 
 (* Functionalities *)
@@ -336,8 +386,8 @@ comp_item :
    The body of an ideal functionality is a state machine. *)
 
 fun_def :        
-  | FUNCT; name = id; params = loc(option(fun_params));
-    IMPLEM; dir_id = id; adv_id = option(id);
+  | FUNCT; name = uident; params = loc(option(fun_params));
+    IMPLEM; dir_id = uident; adv_id = option(uident);
     fun_body = fun_body
       { let uparams = unloc params |? [] in
         let () =
@@ -356,7 +406,7 @@ fun_params :
       { fps }
 
 fun_param : 
-  | name = id; COLON; id_dir = id
+  | name = uident; COLON; id_dir = uident
       { {id = name; id_dir = id_dir} : fun_param }
 
 fun_body :
@@ -382,7 +432,7 @@ ideal_fun_body :
    of an ideal functionality *)
 
 sub_fun_decl : 
-  | SUBFUN; id = id; EQ; fun_id = id;
+  | SUBFUN; id = uident; EQ; fun_id = uident;
       { {id = id; fun_id = fun_id} : sub_fun_decl }
 
 (* A functionality party serves exactly one basic direct interface,
@@ -401,11 +451,11 @@ sub_fun_decl :
    followed by the name of one of its sub-interfaces. *)
 
 party_def : 
-  | PARTY; id = id; serves = serves; sm = state_machine
+  | PARTY; id = uident; serves = serves; sm = state_machine
      { {id = id; serves = serves; states = sm} }
 
 serves : 
-  | SERVES; serves = list(qid)
+  | SERVES; serves = list(uqident)
       { serves }
 
 state_machine : 
@@ -433,7 +483,7 @@ state_def :
         {id = (st : state).id; params = st.params; code = st.code} }
 
 state : 
-  | STATE; id = id; params = loc(option(state_params)); code = state_code
+  | STATE; id = uident; params = loc(option(state_params)); code = state_code
       { let uparams = unloc params |? [] in
         {id = id;
          params = mk_loc (loc params) uparams;
@@ -452,7 +502,8 @@ local_var_decls :
       { List.flatten lvds }
 
 local_var_decl : 
-  | VAR; lvs = nonempty_list (id); COLON; t = ty SEMICOLON
+  | VAR; lvs = separated_nonempty_list(COMMA, lident); COLON;
+    t = loc(type_exp) SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
 (* Message matching specifies how incoming messages of a functionality
@@ -496,12 +547,12 @@ local_var_decl :
    For example, suppose the functionality implements FwDir (and, in
    the case of a real functionality, that the party serves fwDir):
 
-     direct fwDir {
+     direct FwDir_ {
        in pt1@fw_req(pt2 : port, u : univ)
        out fw_rsp(pt1 : port, u : univ)@pt2
      }
 
-     direct FwDir {D : fwDir}
+     direct FwDir {D : FwDir_}
 
    Then FwDir.D.fw_req is the only valid incoming message path. If
    there is a subfunctionality
@@ -556,12 +607,13 @@ message_matching :
        unloc mmcs }
 
 msg_match_clause :
-  | msg_pat = msg_pat; ARROW; code = inst_block
-      { (match msg_pat.msg_path_pat.msg_or_star with
+  | msg_pat = msg_pat; IMPL; code = inst_block
+      { (let mp = msg_pat.msg_path_pat in
+         match (unloc mp).msg_or_star with
          | MsgOrStarMsg _ -> ()
-         | MsgOrStarStar l ->
+         | MsgOrStarStar  ->
              if Option.is_some msg_pat.pat_args
-             then parse_error l
+             then parse_error (loc mp)
                   (fun ppf ->
                      fprintf ppf
                      ("@[message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
@@ -569,12 +621,12 @@ msg_match_clause :
         {msg_pat = msg_pat; code = code } }
 
 msg_pat :
-  | port_id = id; AT; mmb = msg_pat_body
-      { match (mmb : msg_pat_body).msg_path_pat.msg_or_star with
+  | port_id = lident; AT; mmb = msg_pat_body
+      { match (unloc ((mmb : msg_pat_body).msg_path_pat)).msg_or_star with
         | MsgOrStarMsg _ ->
             {port_id = Some port_id; msg_path_pat = mmb.msg_path_pat;
              pat_args = mmb.pat_args}
-        | MsgOrStarStar _ ->
+        | MsgOrStarStar  ->
             parse_error (loc port_id)
             (fun ppf ->
                fprintf ppf
@@ -593,21 +645,22 @@ pat_args :
       { pa }
 
 pat : 
-  | id = id
+  | id = lident
       { PatId id }
   | l = loc(UNDERSCORE)
       { PatWildcard (loc l) }
 
 msg_path_pat : 
-  | mpis = separated_nonempty_list(DOT, msg_path_pat_item)
-      { (* STAR, if it appears, must be at end *)
-        msg_path_pat_items_to_msg_path_pat mpis }
+  | mppqid = genqident(msg_path_end)
+      { let l = loc mppqid in
+        let (iip, msg_or_star) = unloc mppqid in
+        mk_loc l {inter_id_path = iip; msg_or_star = msg_or_star} }
 
-msg_path_pat_item : 
-  | id = id
-      { MsgPathPatItemId id }
-  | l = loc(STAR)
-      { MsgPathPatItemStar (loc l) }
+msg_path_end : 
+  | id = lident
+      { MsgOrStarMsg (unloc id) }
+  | STAR
+      { MsgOrStarStar }
 
 (* Simulators *)
 
@@ -665,15 +718,15 @@ msg_path_pat_item :
    *)
 
 sim_def : 
-  | SIM; name = id; USES uses = id;
-    SIMS sims = id; args = loc(option(fun_args));
+  | SIM; name = uident; USES uses = uident;
+    SIMS sims = uident; args = loc(option(fun_args));
     sms = state_machine
       { let uargs = unloc args |? [] in
         {id = name; uses = uses; sims = sims;
          sims_arg_ids = mk_loc (loc args) uargs; states = sms} }
 
 fun_args : 
-  | LPAREN; args = separated_list(COMMA, id); RPAREN
+  | LPAREN; args = separated_list(COMMA, uident); RPAREN
       { args }
 
 (* Instructions *)
@@ -691,25 +744,34 @@ instruction_u :
       { i }
   | i = ifthenelse
       { i }
-  | i = decode
+  | i = match_in
       { i }
   | i = control_transfer
       { i }
 
-(* There are two instructions for assigning a value to the variable:
+(* Assignments
+
+   There are two instructions for assigning a value to the variable:
    ordinary assignment and random asssignment (from a distribution
-   type). *)
+   type). Both take a left-hand-side that is either a single variable
+   or a tuple of variables with at least two elements. *)
+
+assign_lhs :
+  | id = lident
+      { LHSSimp id }
+  | LPAREN; ids = plist2(lident, COMMA); RPAREN
+      { LHSTuple ids }
 
 assignment : 
-  | vid = id; ASGVAL; e = expression; SEMICOLON
-      { Assign (vid, e) }
-  | vid = id; ASGSAMPLE; e = expression; SEMICOLON
-      { Sample (vid, e) }
+  | lhs = assign_lhs; LARROW; e = expr; SEMICOLON
+      { Assign (lhs, e) }
+  | lhs = assign_lhs; LESAMPLE; e = expr; SEMICOLON
+      { Sample (lhs, e) }
 
-(* Conditional (if-then-else) instructions *)
+(* Conditional (if-then-else) Instructions *)
 
 ifthenelse : 
-  | IF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+  | IF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
 iftail : 
@@ -726,26 +788,27 @@ iftail :
       { x }
 
 elifthenelse_u : 
-  | ELIF LPAREN; c = expression; RPAREN; tins = inst_block; ift = iftail
+  | ELIF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
-(* A decode command attempts to decode a value of type univ as some
-   other type. If this succeeds, the identifiers in the pattern are
-   bound. Otherwise the error branch is executed. *)
+(* Match Instructions *)
 
-decode : 
-  | DECODE; ex = expression; AS; ty = ty; WITH;
-    PIPE? OK; args_pat = dec_pat; ARROW; code1 = inst_block;
-    PIPE; ERROR; ARROW; code2 = inst_block; END;
-      { Decode (ex, ty, args_pat, code1, code2) }
+match_in :
+  | MATCH; e = expr; WITH;
+    PIPE?;
+    lcs = loc
+          (plist0
+           (pat = mcptn(sbinop); IMPL; ins = inst_block { (pat, ins) },
+            PIPE));
+    END
+      { if List.is_empty (unloc lcs)
+        then parse_error (loc lcs)
+             (fun ppf ->
+                Format.fprintf ppf
+                "@[at@ least@ one@ matching@ clause@ is@ required@]");
+        Match (e, lcs) }
 
-dec_pat : 
-  | pat_args = pat_args
-      { pat_args }
-  | pat = pat
-      { [pat] }
-
-(* Control transfer instructions *)
+(* Control Transfer Instructions *)
 
 control_transfer : 
   | sat = send_and_transition; DOT
@@ -778,109 +841,492 @@ send_and_transition :
       { {msg_expr = msg; state_expr = state} }
 
 msg_path :
-  | qid = qid
-      { qid_to_msg_path qid }
+  | lqid = lqident
+      { let l   = loc lqid in
+        let qid = unloc lqid in
+        mk_loc l {inter_id_path = fst qid; msg = snd qid} }
 
 msg_expr : 
-  | path = msg_path; args = loc(option(args)); port_id = option(dest)
+  | path = msg_path; args = loc(option(args)); port_expr = option(dest)
       { let uargs = unloc args |? [] in
-        {path = path; args = mk_loc (loc args) uargs; port_id = port_id} }
+        {path = path; args = mk_loc (loc args) uargs; port_expr = port_expr} }
 
 dest :
-  | AT; pv = id
-      { pv }
+  | AT; port_expr = expr
+      { port_expr }
 
 state_expr : 
-  | id = id; args = loc(option(args))
+  | id = uident; args = loc(option(args))
       { let uargs = unloc args |? [] in
         {id = id; args = mk_loc (loc args) uargs} }
 
-(* Types *)
-
-(* The typ type is a simplified version of ty type from EcTypes, for
-   more info on what was removed from ec_types look at documentation
-   in UcTypes.
-
-   port and univ are special types, introduced by the DSL *)
+(* Type Bindings and Arguments *)
 
 type_binding : 
-  | name = id; COLON; t = ty; { {id = name; ty = t} : type_binding }
+  | name = lident; COLON; t = loc(type_exp); { {id = name; ty = t} : type_binding }
 
 type_bindings : 
   | ps = separated_list(COMMA, type_binding) { ps }
 
-ty : 
-  | name = id
-      { NamedTy name }
-  | tuphd = ty_br; STAR; tuptl = separated_nonempty_list(STAR, ty_br)
-      { TupleTy (tuphd :: tuptl) }
+args :
+  LPAREN; args = separated_list(COMMA, expr); RPAREN
+    { args }
 
-ty_br : 
-  | name = id
-      { NamedTy name }
-  | LPAREN; tuphd = ty_br; STAR;
-    tuptl = separated_nonempty_list(STAR, ty_br); RPAREN
-      { TupleTy (tuphd :: tuptl) }
+(* Identifiers, Words and Operators
+
+   everything below borrowed from EasyCrypt parser *)
+
+%inline _lident :
+  | x = LIDENT { x }
+
+%inline _uident :
+  | x = UIDENT { x }
+
+%inline _tident :
+  | x = TIDENT { x }
+
+%inline lident: x = loc(_lident) { x }
+%inline uident: x = loc(_uident) { x }
+%inline tident: x = loc(_tident) { x }
+
+%inline _ident :
+  | x = _lident { x }
+  | x = _uident { x }
+
+%inline ident :
+  | x = loc(_ident) { x }
+
+%inline uint : n = UINT { n }
+
+%inline word :
+  | n = loc(UINT) {
+      try BI.to_int (unloc n) with
+      | BI.Overflow ->
+          parse_error (loc n)
+          (fun ppf -> Format.fprintf ppf "@[literal@ is@ too@ large@]") }
+
+%inline namespace :
+  | nm = rlist1(UIDENT, DOT)
+      { nm }
+
+  | TOP; nm = rlist0(prefix(DOT, UIDENT), empty)
+      { EcCoreLib.i_top :: nm }
+
+_genqident(X) :
+  | x = X { ([], x) }
+  | xs = namespace; DOT; x = X { (xs, x) }
+
+genqident(X) :
+  | x = loc(_genqident(X)) { x }
+
+%inline  qident : x = genqident(_ident ) { x }
+%inline uqident : x = genqident(_uident) { x }
+%inline lqident : x = genqident(_lident) { x }
+
+%inline _boident :
+  | x = _lident { x }
+  | x = _uident { x }
+  | x = PUNIOP  { x }
+  | x = PBINOP  { x }
+  | x = PNUMOP  { x }
+
+  | x = loc(STRING)   {
+      if not (EcCoreLib.is_mixfix_op (unloc x)) then
+        parse_error x.pl_loc
+        (fun ppf -> fprintf ppf "@[invalid@ mixfix@ operator@]");
+    unloc x
+  }
+
+%inline _oident :
+  | x = _boident      { x }
+  | x = paren(PUNIOP) { x }
+
+%inline boident: x = loc(_boident) { x }
+%inline  oident: x = loc( _oident) { x }
+
+qoident :
+  | x = boident
+      { pqsymb_of_psymb x }
+
+  | xs = namespace; DOT; x = oident
+  | xs = namespace; DOT; x = loc(NOP) {
+    { pl_desc = (xs, unloc x);
+      pl_loc  = EcLocation.make $startpos $endpos;
+    }
+  }
+
+%inline ordering_op :
+  | GT { ">"  }
+  | LT { "<"  }
+  | GE { ">=" }
+  | LE { "<=" }
+
+%inline uniop :
+  | x = NOP { Printf.sprintf "[%s]" x }
+  | NOT   { "[!]" }
+  | PLUS  { "[+]" }
+  | MINUS { "[-]" }
+
+%inline sbinop :
+  | EQ    { "="   }
+  | PLUS  { "+"   }
+  | MINUS { "-"   }
+  | STAR  { "*"   }
+  | SLASH { "/"   }
+  | AT    { "@"   }
+  | OR    { "\\/" }
+  | ORA   { "||"  }
+  | AND   { "/\\" }
+  | ANDA  { "&&"  }
+  | AMP   { "&"   }
+  | HAT   { "^"   }
+
+  | x = LOP1 | x = LOP2 | x = LOP3 | x = LOP4
+  | x = ROP1 | x = ROP2 | x = ROP3 | x = ROP4
+  | x = NOP
+      { x }
+
+%inline binop :
+  | op = sbinop { op    }
+  | IMPL        { "=>"  }
+  | IFF         { "<=>" }
+
+%inline numop :
+  | op = NUMOP { op }
+
+(* Patterns *)
+
+bdident_ :
+  | x = ident  { Some x }
+  | UNDERSCORE { None }
+
+%inline bdident :
+  | x = loc(bdident_) { x }
+
+lpattern_u :
+  | x = ident
+      { LPSymbol x }
+
+  | LPAREN p = plist2(bdident, COMMA) RPAREN
+      { LPTuple p }
+
+  | LPBRACE fs = rlist1(lp_field, SEMICOLON) SEMICOLON? RPBRACE
+      { LPRecord fs }
+
+lp_field :
+  | f = qident EQ x = ident { (f, x) }
+
+%inline lpattern :
+  | x = loc(lpattern_u) { x }
+
+(* Types *)
+
+simpl_type_exp :
+  | x = qident                    { PTnamed x      }
+  | x = tident                    { PTvar x        }
+  | tya = type_args; x = qident   { PTapp (x, tya) }
+  | LPAREN; ty = type_exp; RPAREN { ty             }
+
+type_args :
+  | ty = loc(simpl_type_exp)                          { [ty] }
+  | LPAREN tys = plist2(loc(type_exp), COMMA) RPAREN  { tys  }
+
+type_exp :
+  | ty = simpl_type_exp                            { ty }
+  | ty = plist2(loc(simpl_type_exp), STAR)         { PTtuple ty }
+  | ty1 = loc(type_exp); RARROW; ty2=loc(type_exp) { PTfun(ty1, ty2) }
 
 (* Expressions *)
 
-args :
-  LPAREN; args = separated_list(COMMA, expression); RPAREN
-    { args }
+tyvar_byname1:
+| x = tident; EQ; ty = loc(type_exp) { (x, ty) }
 
-(* The syntax for expressions and operators is a simplified version of
-   the syntax from EcParser of EasyCrypt.
+tyvar_annot:
+| lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
+| lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
 
-   In real functionalities, the names of parties can be used as
-   values of type port in expressions. They stand for the internal
-   ports of those parties.
+%inline tvars_app:
+| LTCOLON k = loc(tyvar_annot) GT { k }
 
-   In a simulator that simulates a real functionality SIMS, SIMS.Party,
-   where Party is one of SIMS's parties, can be used in expressions
-   with type port with the same meaning. *)
+%inline sexpr: x = loc(sexpr_u) { x }
+%inline  expr: x = loc( expr_u) { x }
 
-%inline uniop : 
-  | NOT
-      { "[!]" }
+sexpr_u :
+  | e = sexpr; PCENT; p = uqident
+      { PEscope (p, e) }
 
-%inline sbinop : 
-  | EQ
-      { "=" }
-  | OR
-      { "\\/" }
-  | AND
-      { "/\\" }
-  | HAT
-      { "^" }
-  | x = ROP4
-      {  x }
+  | e = sexpr; p = loc(prefix(PCENT, lident))
+      { let { pl_loc = lc; pl_desc = p; } = p in
+        if unloc p = "r" then
+          let id =
+            PEident (mk_loc lc EcCoreLib.s_real_of_int, None)
+          in PEapp (mk_loc lc id, [e])
+        else begin
+          if unloc p <> "top" then
+            parse_error p.pl_loc
+            (fun ppf -> Format.fprintf ppf "@[invalid@ scope@ name@]");
+          PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
+        end }
 
-%inline binop : 
-  | op = sbinop
-      { op }
+  | LPAREN; e = expr; COLONTILD; ty = loc(type_exp); RPAREN
+      { PEcast (e, ty) }
 
-%inline expression :
-  | x = loc(expression_u)
-      { x }
+  | n = uint
+      { PEint n }
 
-expression_u : 
-  | e = s_expression_u
-     { e }
-  | f = id; args = s_expression+
-     { App (f, args) }
-  | e1 = expression; op = loc(binop); e2 = expression
-     { App (op,[e1; e2]) }
-  | op = loc(uniop); e = expression
-     { App (op,[e]) }
-  | ENCODE; e = expression
-     { Enc e }
+  | d = DECIMAL
+      { PEdecimal d }
 
-%inline s_expression :
-  | x = loc(s_expression_u)
-      { x }
+  (* begin UC DSL *)
 
-s_expression_u : 
-  | qid = qid
-      { Id qid }
-  | LPAREN; es = separated_list(COMMA, expression); RPAREN
-      { Tuple es }
+  | x = loc(ENVPORT)  (* envport function *)
+      { PEident (mk_loc (loc x) ([], "envport"), None) }
+
+  | y = loc(INTPORT); x = uqident  (* internal port names *)
+      { PEident
+        (mk_loc (merge (loc y) (loc x))
+         ([], "intport:" ^ string_of_qsymbol (unloc x)),
+         None) }
+
+  (* end UC DSL *)
+
+  | x = qoident; ti = tvars_app?
+      { PEident (x, ti) }
+
+  | op = loc(numop); ti = tvars_app?
+       { peapp_symb op.pl_loc op.pl_desc ti [] }
+
+  | se = sexpr; DLBRACKET; ti = tvars_app?; e = loc(plist1(expr, COMMA));
+    RBRACKET
+      { let e = List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e) (unloc e) in
+        peget (EcLocation.make $startpos $endpos) ti se e }
+
+  | se = sexpr; DLBRACKET; ti = tvars_app?; e1=loc(plist1(expr, COMMA));
+    LARROW e2=expr RBRACKET
+      { let e1 =
+          List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e1) (unloc e1) in
+        peset (EcLocation.make $startpos $endpos) ti se e1 e2 }
+
+  | TICKPIPE; ti = tvars_app?; e = expr; PIPE
+      { peapp_symb e.pl_loc EcCoreLib.s_abs ti [e] }
+
+  | LBRACKET; ti = tvars_app?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
+      { unloc (pelist es.pl_loc ti es.pl_desc) }
+
+  | LBRACKET; ti = tvars_app?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
+      { let id =
+          PEident (mk_loc op.pl_loc EcCoreLib.s_dinter, ti)
+        in PEapp(mk_loc op.pl_loc id, [e1; e2]) }
+
+  | LPAREN; es = plist0(expr, COMMA); RPAREN
+      { PEtuple es }
+
+  | r = loc(RBOOL)
+      { PEident (mk_loc r.pl_loc EcCoreLib.s_dbool, None) }
+
+  | LPBRACE; fields = rlist1(expr_field, SEMICOLON); SEMICOLON?; RPBRACE
+      { PErecord (None, fields) }
+
+  | LPBRACE; b = sexpr; WITH; fields = rlist1(expr_field, SEMICOLON);
+    SEMICOLON? RPBRACE
+      { PErecord (Some b, fields) }
+
+  | e = sexpr DOTTICK x = qident
+      { PEproj (e, x) }
+
+  | e = sexpr DOTTICK n = loc(word)
+      { if n.pl_desc = 0 then
+          parse_error n.pl_loc
+          (fun ppf ->
+             Format.fprintf ppf "@[tuple@ projections@ start@ at@ 1@]");
+        PEproji(e,n.pl_desc - 1) }
+
+expr_u :
+  | e = sexpr_u { e }
+
+  | e = sexpr; args = sexpr+
+       { PEapp (e, args) }
+
+  | op = loc(uniop); ti = tvars_app?; e = expr
+       { peapp_symb op.pl_loc op.pl_desc ti [e] }
+
+  | e = expr_chained_orderings %prec prec_below_order
+       { fst e }
+
+  | e1 = expr; op = loc(NE); ti = tvars_app?; e2=expr
+       { peapp_symb op.pl_loc "[!]" None
+         [ mk_loc op.pl_loc (peapp_symb op.pl_loc "=" ti [e1; e2])] }
+
+  | e1 = expr; op = loc(binop); ti = tvars_app?; e2=expr
+       { peapp_symb op.pl_loc op.pl_desc ti [e1; e2] }
+
+  | c = expr; QUESTION; e1 = expr; COLON; e2 = expr; %prec LOP2
+      { PEif (c, e1, e2) }
+
+  | IF; c = expr; THEN; e1 = expr; ELSE; e2 = expr
+      { PEif (c, e1, e2) }
+
+  | MATCH; e = expr; WITH;
+    PIPE?; bs = plist0(p = mcptn(sbinop); IMPL; be = expr { (p, be) }, PIPE);
+    END
+      { PEmatch (e, bs) }
+
+  | LET; p = lpattern; EQ; e1 = expr; IN; e2 = expr
+      { PElet (p, (e1, None), e2) }
+
+  | LET; p = lpattern; COLON; ty = loc(type_exp); EQ; e1 = expr; IN; e2 = expr
+      { PElet (p, (e1, Some ty), e2) }
+
+  | r = loc(RBOOL); TILD; e = sexpr
+       { let id  = PEident(mk_loc r.pl_loc EcCoreLib.s_dbitstring, None) in
+         let loc = EcLocation.make $startpos $endpos in
+         PEapp (mk_loc loc id, [e]) }
+
+  | FUN; pd = ptybindings; IMPL; e = expr
+  | FUN; pd = ptybindings; COMMA; e = expr { PElambda (pd, e) }
+
+  | FORALL; pd = ptybindings; COMMA; e = expr { PEforall (pd, e) }
+  | EXIST; pd = ptybindings; COMMA; e = expr { PEexists (pd, e) }
+
+mcptn(BOP):
+  | c = qoident; tvi = tvars_app?; ps = bdident*
+      { PPApp ((c, tvi), ps) }
+
+  | LBRACKET; tvi = tvars_app?; RBRACKET {
+      let loc = EcLocation.make $startpos $endpos in
+      PPApp ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
+    }
+
+  | op = loc(uniop); tvi = tvars_app?
+      { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), []) }
+
+  | op = loc(uniop); tvi = tvars_app? x = bdident
+      { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
+
+  | x1 = bdident; op = loc(NE); tvi = tvars_app?; x2 = bdident
+      { PPApp ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
+
+  | x1 = bdident; op = loc(BOP); tvi = tvars_app?; x2 = bdident
+      { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
+
+  | x1 = bdident; op = loc(ordering_op); tvi = tvars_app?; x2 = bdident
+      { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
+
+expr_field :
+  | x = qident; EQ; e = expr
+      { { rf_name = x ; rf_tvi = None; rf_value = e; } }
+
+expr_ordering :
+  | e1 = expr; op = loc(ordering_op); ti = tvars_app?; e2=expr
+      { (op, ti, e1, e2) }
+
+expr_chained_orderings :
+  | e = expr_ordering
+      { let (op, ti, e1, e2) = e in
+        (peapp_symb op.pl_loc (unloc op) ti [e1; e2], e2) }
+
+  | e1 = loc(expr_chained_orderings); op = loc(ordering_op);
+    ti = tvars_app?; e2 = expr
+      { let (lce1, (e1, le)) = (e1.pl_loc, unloc e1) in
+        let loc = EcLocation.make $startpos $endpos in
+        (peapp_symb loc "&&" None
+         [EcLocation.mk_loc lce1 e1;
+          EcLocation.mk_loc loc
+          (peapp_symb op.pl_loc (unloc op) ti [le; e2])],
+         e2) }
+
+pty_varty :
+  | x = loc(bdident+)
+      { (unloc x, mk_loc (loc x) PTunivar) }
+
+  | x = bdident+ COLON ty = loc(type_exp)
+      { (x, ty) }
+
+%inline ptybinding1 :
+  | LPAREN; bds = plist1(pty_varty, COMMA); RPAREN
+      { bds }
+
+  | x = loc(bdident)
+      { [[unloc x], mk_loc (loc x) PTunivar] }
+
+ptybindings :
+  | x = ptybinding1+
+      { List.flatten x }
+
+  | x = bdident+; COLON; ty = loc(type_exp)
+      { [x, ty] }
+
+(* Localization *)
+
+%inline loc(X)  :
+  | x = X {
+     { pl_desc = x;
+       pl_loc  = EcLocation.make $startpos $endpos;
+     }
+   }
+
+(* Parser Definitions *)
+
+%inline plist0(X, S) :
+  | aout = separated_list(S, X) { aout }
+
+iplist1_r(X, S) :
+  | x = X { [x] }
+  | xs = iplist1_r(X, S); S; x = X { x :: xs }
+
+%inline iplist1(X, S) :
+  | xs = iplist1_r(X, S) { List.rev xs }
+
+%inline plist1(X, S) :
+  | aout = separated_nonempty_list(S, X) { aout }
+
+%inline plist2(X, S) :
+  | x = X; S; xs = plist1(X, S) { x :: xs }
+
+%inline list2(X) :
+  | x = X; xs = X+ { x :: xs }
+
+%inline empty :
+  | /**/ { () }
+
+(* -------------------------------------------------------------------- *)
+__rlist1(X, S):                         (* left-recursive *)
+  | x = X { [x] }
+  | xs = __rlist1(X, S); S; x = X { x :: xs }
+
+%inline rlist0(X, S) :
+  | /* empty */     { [] }
+  | xs = rlist1(X, S) { xs }
+
+%inline rlist1(X, S) :
+  | xs = __rlist1(X, S) { List.rev xs }
+
+%inline rlist2(X, S) :
+  | xs = __rlist1(X, S); S; x = X { List.rev (x :: xs) }
+
+(* -------------------------------------------------------------------- *)
+%inline paren(X) :
+  | LPAREN; x = X; RPAREN { x }
+
+%inline brace(X) :
+  | LBRACE; x = X; RBRACE { x }
+
+%inline bracket(X) :
+  | LBRACKET; x = X; RBRACKET { x }
+
+(* -------------------------------------------------------------------- *)
+%inline seq(X, Y) :
+  | x = X; y = Y { (x, y) }
+
+%inline prefix(S, X) :
+  | S; x = X { x }
+
+%inline postfix(X, S) :
+  | x = X; S { x }
+
+%inline sep(S1, X, S2) :
+  | x = S1; X; y = S2 { (x, y) }
+
+%inline either(X, Y) :
+  | X {}
+  | Y {}

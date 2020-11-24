@@ -3,10 +3,10 @@
 (* parse a DSL Specification *)
 
 open EcLocation
+open EcParsetree
 open UcMessage
 open UcLexer
 module L = Lexing
-open UcSpec
 
 let lexbuf_from_channel file ch =
   let lexbuf = Lexing.from_channel ch in
@@ -21,7 +21,7 @@ let lexbuf_from_channel file ch =
 type file_or_id =
   | FOID_File of string  (* file name, interpreted relative to working
                             directory, if not fully qualified *)
-  | FOID_Id   of id      (* root name of .uc file, matching ident from
+  | FOID_Id   of psymbol (* root name of .uc file, matching ident from
                             lexer (and so without ".uc" and without "/"s *)
 
 let foid_to_str foid =
@@ -30,6 +30,7 @@ let foid_to_str foid =
   | FOID_Id   id -> unloc id
 
 let parse_file_or_id foid =
+  let prelude_dir = UcConfig.uc_prelude_dir in
   let inc_dirs = UcState.get_include_dirs () in
   let (ch, file) =
     match foid with
@@ -42,7 +43,7 @@ let parse_file_or_id foid =
                 "@[unable@ to@ open@ file:@ %s@]" file))
     | FOID_Id id     ->
         let uid = unloc id in
-        (match UcUtils.find_file uid ".uc" inc_dirs with
+        (match UcUtils.find_file uid ".uc" prelude_dir inc_dirs with
          | None           ->
              error_message (loc id)
              (fun ppf ->
@@ -55,7 +56,7 @@ let parse_file_or_id foid =
                   (fun ppf ->
                      Format.fprintf ppf
                      "@[unable@ to@ open@ file:@ %s@]" qual_file))) in
-  let lexbuf = lexbuf_from_channel file ch in
+  let lexbuf = lexbuf_from_channel file ch in  
   try (let res = (UcParser.spec read lexbuf, file) in
        close_in ch; res) with
   | UcParser.Error ->

@@ -3,9 +3,9 @@ in bla()
 }
 
 adversarial A1{
-a:A
+A:A
 }
 
 adversarial A2{
-a:A
+A:A
 }

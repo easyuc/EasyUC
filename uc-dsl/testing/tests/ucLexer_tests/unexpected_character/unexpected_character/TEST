@@ -1,0 +1,9 @@
+description
+
+.
+args: unexpected_character.uc
+outcome: failure
+[error: unexpected_character.uc: from line 1 columns 20 to 21]
+
+unexpected character: "\194"
+.

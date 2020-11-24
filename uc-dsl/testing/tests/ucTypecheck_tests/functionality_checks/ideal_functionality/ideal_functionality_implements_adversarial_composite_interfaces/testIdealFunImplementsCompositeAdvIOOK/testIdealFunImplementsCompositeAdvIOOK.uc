@@ -1,9 +1,9 @@
-direct d {
+direct D_ {
 in  x@bla()
 out bli()@x
 }
 
-direct D {d:d}
+direct D {D:D_}
 
 adversarial I {
 in  bla()
@@ -11,8 +11,8 @@ out bli()
 }
 
 adversarial A {
-i1 : I
-i2 : I
+I1 : I
+I2 : I
 }
 
 functionality S() implements D I {

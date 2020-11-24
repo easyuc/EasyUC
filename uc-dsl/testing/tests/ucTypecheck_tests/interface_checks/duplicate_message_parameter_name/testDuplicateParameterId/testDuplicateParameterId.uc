@@ -1,4 +1,4 @@
 adversarial A {
-in M(p:int,p:port)
+in m(p:int,p:port)
 
 }

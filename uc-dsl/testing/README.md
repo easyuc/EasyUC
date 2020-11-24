@@ -1,5 +1,9 @@
 # UC DSL Unit Testing Framework
 
+**** Due to the recent integration of EasyCrypt types and expressions
+as well as some other changes, the test suite will have to be updated
+****
+
 This directory contains the implementation of a framework for carrying
 out unit tests of the UC DSL tool, as well as a comprehensive suite of
 unit tests.

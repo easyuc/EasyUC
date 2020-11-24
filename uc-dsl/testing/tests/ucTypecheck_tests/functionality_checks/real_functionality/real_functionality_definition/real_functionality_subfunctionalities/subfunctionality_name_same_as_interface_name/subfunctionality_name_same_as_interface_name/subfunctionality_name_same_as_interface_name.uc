@@ -1,16 +1,16 @@
-direct a {
+direct A_ {
 in x@bla()
 }
 
-direct A {A:a}
+direct A {A:A_}
 
-adversarial d {
+adversarial D {
 in bli()
 }
 
 
 
-functionality S() implements A d{
+functionality S() implements A D{
 
   initial state Isus 
   {

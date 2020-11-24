@@ -1,9 +1,9 @@
-adversarial d {
+adversarial D {
 in m()
 }
 
 adversarial Ref{
-br:d
+Br:D
 }
 
 
