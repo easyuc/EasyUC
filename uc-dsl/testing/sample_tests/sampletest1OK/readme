@@ -1,0 +1,3 @@
+This test pass since test.uc being empty still a valid .uc file
+Hence ucdsl returns an exit code 0, as long as our outcome matches this
+the test will pass.

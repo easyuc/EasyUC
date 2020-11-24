@@ -1,0 +1,11 @@
+This test fails because test.uc is valid and correct .uc file
+and ucdsl returns exit code 0 and no warning or error message.
+But our outcome descrption has a warning 'sample'.
+
+As ucdsl outcome is different from the TEST outcome description
+after the initial run a CONFLICT file is created.
+
+For this test to pass, outcome description of the TEST file should
+be deleted as well as the CONFLICT file.
+
+As long as the CONFLICT file exits, this test will be skipped

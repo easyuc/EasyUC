@@ -1,0 +1,4 @@
+This test pass because test.uc has parse error
+ucdsl return an exit code 1 and also an error message
+which matches outcome and outcome description in the
+TEST file.

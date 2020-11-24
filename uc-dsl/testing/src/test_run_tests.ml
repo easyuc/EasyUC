@@ -73,13 +73,13 @@ let create_conflict file outcome1 outcome2 =
   let file_name = dir ^ "/" ^ "CONFLICT" in
   let s = read_file file in
   let s2 =
-    s ^ "\n\n(*The above lines were copied from the existing TEST file."
-    ^ " Below, you will find the actual output of ucdsl."
-    ^ " Once the conflict is reconciled,"
-    ^ " you must delete this file before rerunning dsl-test.*)\noutcome:"
+    s ^ "\n(*\nThe above lines were copied from the existing TEST file."
+    ^ "\nBelow, you will find the actual output of ucdsl."
+    ^ "\nOnce the conflict is reconciled,"
+    ^ "\nyou must delete this file before rerunning dsl-test.\n*)\noutcome:"
     ^ outcome1 ^ "\n" ^ outcome2 ^ ".\n" in
   let _ = write_log file_name s2 in
-  log_str := !log_str ^ "\n" ^ file_name ^ " created\n"
+  log_str := !log_str ^ "\n" ^ file_name ^ " created"
   
 (* in the above code write_log comes from the file Test_log.ml *)
 (* below function parse_file comes into the picture while executing 
@@ -129,7 +129,7 @@ let rec parse_file file code =
                             ^"------Outcome description is"
                             ^":------\n"
                             ^out_come2;
-                          create_conflict file "unknown" s_out;
+                          create_conflict file "success" s_out;
                           code+1)
                      |Failure -> (log_str :=
                                     !log_str
@@ -236,14 +236,14 @@ let pre_run dir  =
     |[] -> if (exit_code = 0) then
              (let _ = log_str  :=
                         !log_str 
-                        ^"Test suite completed sucessfully all tests passed \n"
+                        ^"\nTest suite completed sucessfully all tests passed \n"
               in
               log_fun();
               exit 0)
            else (
              let _ =
                log_str :=
-                 !log_str^ "A total of " ^string_of_int exit_code
+                 !log_str^ "\nA total of " ^string_of_int exit_code
                  ^ " errors found. log file created.\n" in
              log_fun();
              exit 1)
