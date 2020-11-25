@@ -48,7 +48,7 @@ Spaces and tabs may be freely inserted in `TEST` files. Newline
 characters may be freely inserted as well, with a few exceptions
 detailed below.  Comments may be freely inserted (with a few
 exceptions, detailed below), and are equivalent to spaces (' ').
-'`(\*`' marks the beginning of a comment, and '`\*)`' marks the comment's
+`(\*` marks the beginning of a comment, and `\*)` marks the comment's
 end.  Nested comments are allowed.
 
 ### Description
