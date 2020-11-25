@@ -24,7 +24,7 @@ command-line arguments (see below). It will also generate a log file,
   `log` are also ignored.
 
 * Levels of the directory hierarchy above the unit testing directories
-  may only contain `log`, `README` files, and subdirectories. A
+  may only contain `log` and `README` files, and subdirectories. A
   directory containing other files will be ignored (and flagged as an
   error).
 
