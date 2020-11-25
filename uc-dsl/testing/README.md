@@ -113,12 +113,12 @@ messages...
 .
 ```
 
-where `<status>` is `success` (meaning `ucdsl` is expected to exit with
+where &lt;status&gt; is `success` (meaning `ucdsl` is expected to exit with
 status 0) or `failure` (meaning `ucdsl` is expected to exit with a
 nonzero status).
 
 As with the description field, what comes after the
-newline following `<status>` up to the newline preceding the line
+newline following &lt;status&gt; up to the newline preceding the line
 consisting of only '`.`' is the text of the field. It should exactly
 match (including occurrences of whitespace characters) the error and
 warning messages output by `ucdsl`.
