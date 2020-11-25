@@ -1,5 +1,11 @@
 (* source of UcConfig module *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 (* configuration module: build script substitutes
 
    (+) for ECtheories, the fully qualified pathname of EasyCrypt

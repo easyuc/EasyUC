@@ -19,7 +19,6 @@ open Format
 open EcUtils
 open EcLocation
 open EcSymbols
-open EcParsetree
 open UcSpec
 
 module BI = EcBigInt
@@ -874,7 +873,7 @@ args :
 
 (* Identifiers, Words and Operators
 
-   everything below borrowed from EasyCrypt parser *)
+   everything below adapted from EasyCrypt parser *)
 
 %inline _lident :
   | x = LIDENT { x }

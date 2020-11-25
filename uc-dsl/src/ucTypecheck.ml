@@ -2,19 +2,26 @@
 
 (* Typecheck a specification *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open Batteries
 open Format
+
 open EcLocation
 open EcSymbols
-open EcParsetree
 open EcTypes
 open EcUnify
 open EcEnv
-open EcTyping
-open UcSpec
-open UcTypedSpec
+
 open UcUtils
 open UcMessage
+open UcSpec
+open UcTypedSpec
+open UcTypecheckTypesExprs
 
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
@@ -853,8 +860,8 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
   | LHSSimp id   -> check_lhs_var sc sa id
   | LHSTuple ids ->
       let () =
-        match find_dup_cmp
-              (fun id1 id2 -> compare (unloc id1) (unloc id2))
+        match find_dup
+              ~cmp:(fun id1 id2 -> compare (unloc id1) (unloc id2))
               ids with
         | None    -> ()
         | Some id ->
@@ -1026,7 +1033,7 @@ let check_toplevel_match_clause
 
       let cargs_lin =
         List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
-      if not (has_no_dups cargs_lin)
+      if has_dup cargs_lin
       then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
 
       EcUnify.UniEnv.restore ~src:subue ~dst:ue;
@@ -1082,10 +1089,7 @@ and check_match
   let top_results =
     List.map (check_toplevel_match_clause ex_loc env ue ty) (unloc clauses) in
   let () =
-    if not
-       (UcUtils.has_no_dups_cmp
-        (fun x y -> compare (fst x) (fst y))
-        top_results)
+    if has_dup ~cmp:(fun x y -> compare (fst x) (fst y)) top_results
     then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
   let top_results =
     if List.length top_results < List.length inddecl.tydt_ctors
@@ -1870,4 +1874,4 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
   with
   | TyError (l, env, tyerr) ->
       type_error l
-      (fun ppf -> UcEcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+      (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)

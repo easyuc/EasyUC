@@ -2,6 +2,12 @@
 
 (* Typed Specifications *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open EcLocation
 open EcSymbols
 open EcTypes
@@ -58,7 +64,11 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
 
+(* located type along with an index *)
+
 type ty_index = (ty * int) located
+
+(* typed messages and functionality interfaces *)
 
 type message_def_body_tyd =
   {dir : msg_dir; params_map : ty_index IdMap.t; port : symbol option}
@@ -90,6 +100,8 @@ let is_composite_tyd ibt =
   | CompositeTyd _ -> true
 
 type inter_tyd = inter_body_tyd located
+
+(* typed functionalities and simulators *)
 
 type state_body_tyd =
   {is_initial : bool; params : ty_index IdMap.t; vars : ty located IdMap.t;
@@ -176,6 +188,8 @@ let exists_id_inter_maps
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
     (uid : string) : bool =
   exists_id dir_inter_map uid || exists_id adv_inter_map uid
+
+(* typed top-level specifications *)
 
 type typed_spec =
   {required_maps : maps_tyd;  (* from uc_requires *)

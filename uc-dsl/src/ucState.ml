@@ -2,6 +2,12 @@
 
 (* Global state of UC DSL tool *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open Batteries
 
 let include_dirs_ref : string list ref = ref []

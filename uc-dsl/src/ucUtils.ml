@@ -2,24 +2,23 @@
 
 (* UC DSL Utilities *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open Batteries
 open EcLocation
 
-let rec find_dup (xs : 'a list) =
-  match xs with
-  | []      -> None
-  | x :: xs -> if List.mem x xs then Some x else find_dup xs
-
-let has_no_dups (xs : 'a list) = Option.is_none (find_dup xs)
-
-let rec find_dup_cmp (cmp : 'a -> 'a -> int) (xs : 'a list ) =
+let rec find_dup ?(cmp = Pervasives.compare) (xs : 'a list ) =
   match xs with
   | []      -> None
   | x :: xs ->
-      if List.mem_cmp cmp x xs then Some x else find_dup_cmp cmp xs
+      if BatList.mem_cmp cmp x xs then Some x else find_dup ~cmp xs
 
-let has_no_dups_cmp (cmp : 'a -> 'a -> int) (xs : 'a list) =
-  Option.is_none (find_dup_cmp cmp xs)
+let has_dup ?(cmp = Pervasives.compare) (xs : 'a list) =
+  Option.is_some (find_dup ~cmp xs)
 
 let index_of_ex x xs =
   match List.index_of x xs with
@@ -66,10 +65,6 @@ let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
 
 let capitalized_root_of_filename_with_extension file =
   String.capitalize (Filename.chop_extension (Filename.basename file))
-
-(* we first look in the prelude, then in the current directory, and
-   finally in the include dirs (from front (highest precedence) to
-   back (lowest precedence)) *)
 
 let find_file root ext prelude_dir include_dirs =
   let full     = root ^ ext in
