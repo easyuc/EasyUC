@@ -5,22 +5,22 @@ This directory contains the implementation of a framework for carrying
 out unit tests of the UC DSL tool, as well as a comprehensive suite of
 unit tests.
 
-The testing tool, `dsl-test` is invoked with the name of a directory
+The testing tool, `dsl-test`, is invoked with the name of a directory
 containing unit tests. This directory hierarchy (the directory, its
 subdirectories, their subdirectories, etc.) will be searched for unit
-tests, which are then executed. When `dsl-test` is invoked, it
-described its actions with with levels of verbosity controlled by the
-command-line arguments (see below), also producing a log file, `log`
-in the current directory.
+tests, which are then executed. When `dsl-test` is invoked, it will
+describe its actions with levels of verbosity controlled by
+command-line arguments (see below). It will also generate a log file,
+`log`, in the current directory.
 
-* Unit tests are directories containing a file `TEST` (see
-  below for its structure). The unit test directory may also contain
-  supporting `.uc` and `.ec` files, as well as subdirectories, which
+* Unit tests are directories containing a file `TEST` (see below for
+  its structure). The unit test directory may also contain supporting
+  `.uc` and `.ec` files, as well as subdirectories, all of which
   `dsl-test` ignores.
 
 * `README` files in the directory hierarchy are ignored by
-  `dsl-test`. These files begin with six characters `README`, in any
-  case (even a mixture of lower- and uppercase). Occurrences of
+  `dsl-test`. These files begin with six characters of `README`, in
+  any case (even a mixture of lower- and uppercase). Occurrences of
   `log` are also ignored.
 
 * Levels of the directory hierarchy above the unit testing directories
@@ -39,13 +39,13 @@ A unit test directory contains a file `TEST`, along with supporting
 * the arguments that should be supplied to the `ucdsl` executable when
 the test is run;
 
-* the expected outcome of running `ucdsl`.
+* the expected outcome of running `ucdsl` with those arguments.
 
 Every `TEST` file has three fields: `description`, `args` and
 `outcome`, which may come in any order.
 
 Spaces and tabs may be freely inserted in `TEST` files. Newline
-characters may be freely inserted as well, with two exceptions
+characters may be freely inserted as well, with a few exceptions
 detailed below.  Comments may be freely inserted (with a few
 exceptions, detailed below), and are equivalent to spaces (' ').
 '(\*' marks the beginning of a comment, and '\*)' marks the comment's
@@ -55,20 +55,25 @@ end.  Nested comments are allowed.
 
 As the name suggests, description should contain an information
 explanation of the purpose of the test.  This will be output and
-logged by `dsl-test` in verbose mode only.  The syntax for description
-is as follows:
+logged by `dsl-test` in verbose mode only.  The syntax of the
+description field is as follows:
 
 ```
 description
-The description of the test goes here, the symbols (*, *) and any text
-between these symbols will be considered as a part of the description.
-description ends with a line consisting of only '.'  ('\n.\n').
+The description of the test goes here, the symbols '(*', '*)' have no
+special significance, here.  The description field ends with a line
+consisting of only '.'  ('.\n').
 .
 ```
 
+The text of the description field begins *after* the newline
+terminating the line containing `description` (possibly surrounded by
+spaces or tabs) and runs up to and including the newline that precedes
+the terminating '.' (the text does not include that '.').
+
 ### Args
 
-The args field gives the arguments that should be supplied to `ucdsl`
+The args field gives the arguments that will be supplied to `ucdsl`
 when it is invoked. Its syntax is
 
 ```
@@ -87,6 +92,7 @@ args : -I foo goo.uc
 
 says to run the command
 
+
 ```
 ucdsl -I foo goo.ec
 ```
@@ -101,15 +107,17 @@ the test. Its syntax is
 
 ```
 outcome : <status>
-...
-error or warning messages
-...
+...error...
+or... warning...
+messages...
 .
 ```
 
 where <status> is `success` (meaning `ucdsl` is expected to exit with
 status 0) or `failure` (meaning `ucdsl` is expected to exit with a
-nonzero status). As with the description field, what comes after the
+nonzero status).
+
+As with the description field, what comes after the
 newline following <status> up to the newline preceding the line
 consisting of only '.' is the text of the field. It should exactly
 match (including occurrences of whitespace characters) the error and
@@ -145,12 +153,15 @@ You may want to add `/pathto/dsl-test` to your shell's search path.
 Running the Testing Tool
 --------------------------------------------------------------------
 
+Before running `dsl-test`, you should ensure that `ucdsl` is on your
+shell's search path.
+
 The expected arguments to `dsl-test` are indicated by the following
 usage message:
 
 ```
 Usage: dsl-test [verbosity option] dir
-dsl-test -debug file
+       dsl-test -debug file
   -verbose Verbosity option: enables verbose mode
   -quiet Verbosity option: enables quiet mode
   -debug Prints debug information of a TEST file
@@ -167,27 +178,27 @@ dsl-test -quiet <dir-name>
 dsl-test -verbose <dir-name>
 ```
 
-The `-quiet` option still generates the log, `log`, in the current
-directory, but is otherwise silent. The `-verbose` option outputs
-the test descriptions both on the standard output and in
-the log. The exit status of `dsl-test` tells you whether
-all tests passed and no other error were encountered (an exit status
-of 0 means yes, and a non-zero exit status means no).
+The `-quiet` option generates the log, `log`, in the current
+directory, but is otherwise silent. The `-verbose` option outputs the
+test descriptions both on the standard output and in the log. The exit
+status of `dsl-test` tells you whether all tests passed and no other
+error were encountered (an exit status of 0 means yes, and a non-zero
+exit status means no).
 
 ### Conflict files
 
 When a unit test fails, a `CONFLICT` file is created in the test's
 directory. Consult the `CONFLICT` file to see what the problem was.
 When `ucdsl` issues messages that didn't match the text of the
-test's outcome field, those messages are contained in the `CONFLICT`
+test's outcome field, those messages are listed in the `CONFLICT`
 file.
 
 Resolving the conflict may involve updating the `TEST` file or
 supporting `.uc` and `.ec` files, and/or changing `ucdsl` to fix a
-bug. Once the conflict has been resolved, you must remove the `CONFLICT`
-file. When `dsl-test` encounters a unit test directory with
-a `CONFLICT` file, it issues an error message but otherwise ignores
-the unit test.
+bug. Once the conflict has been resolved, you must remove the
+`CONFLICT` file (but see `dsl-test-suite`, below). When `dsl-test`
+encounters a unit test directory with a `CONFLICT` file, it issues an
+error message but otherwise ignores the unit test.
 
 ### To debug the syntax of a `TEST` file, you may use the `-debug`
 option:
@@ -228,10 +239,12 @@ To run `dsl-test` on the test suite, run one of
 ./dsl-test-suite -verbose
 ```
 
-depending upon what verbosity level you want `dsl-test` to employ. If
-`ucdsl` was built with code coverage instrumentation, you can find
-the code coverage report in the subdirectory `_coverage`; open
-`index.html` with your web browser.
+depending upon what verbosity level you want `dsl-test` to employ.
+`dsl-test-suite` removes all `log`, `.coverage` and `CONFLICT` files
+before running `dsl-test`. When `dsl-test-suite` finishes, if `ucdsl`
+was built with code coverage instrumentation, you can find the code
+coverage report in the subdirectory `_coverage`; open `index.html`
+with your web browser.
 
 To remove all the `log`, `CONFLICT` and `.coverage` (generated
 when `ucdsl` was built with code coverage instrumentation) files,
