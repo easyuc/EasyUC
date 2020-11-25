@@ -67,10 +67,9 @@ consisting of only '.' ('.\n').
 ```
 
 The text of the description field begins *after* (not including) the
-newline terminating the line containing `description` (possibly
-surrounded by spaces or tabs) and runs up to and including the newline
-that precedes the terminating '`.`' (the text does not include that
-'`.`').
+newline terminating the line containing `description` and runs up to
+and including the newline that precedes the terminating '`.`' (the
+text does not include that '`.`').
 
 ### Args
 
