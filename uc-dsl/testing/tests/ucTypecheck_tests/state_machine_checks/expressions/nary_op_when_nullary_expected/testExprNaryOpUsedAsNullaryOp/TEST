@@ -5,5 +5,9 @@ args: testExprNaryOpUsedAsNullaryOp.uc
 outcome: failure
 [error: testExprNaryOpUsedAsNullaryOp.uc: from line 16 columns 66 to 69]
 
-nullary operator expected: operator inj has arguments
+This expression has type
+   text -> key
+
+but is expected to have type
+   key
 .

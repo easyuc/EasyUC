@@ -3,7 +3,7 @@ The test fails because k.k is not defined.
 .
 args: testExprNonExistingVarOp.uc
 outcome:  failure
-[error: testExprNonExistingVarOp.uc: from line 16 columns 66 to 69]
+[error: testExprNonExistingVarOp.uc: from line 16 columns 66 to 67]
 
-nonexisting variable, constant or internal port: k.k
+unknown identifer: `k'
 .

@@ -3,8 +3,10 @@ This test fails since II expects key as argument.
 .
 args: testExprWrongArgType.uc
 outcome: failure
-[error: testExprWrongArgType.uc: from line 16 columns 68 to 69]
+[error: testExprWrongArgType.uc: from line 16 columns 67 to 68]
 
-type mismatch for argument 2: expected type was exp whereas provided type was
-key
+no matching operator, named `^', for the following parameters' type:
+  [1]: exp
+  [2]: key
+
 .
