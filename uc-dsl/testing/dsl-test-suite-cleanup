@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# remove old .coverage and CONFLICT files
+# remove old log, .coverage and CONFLICT files
 
 find . -name "*.coverage" -type f -delete
 find . -name CONFLICT -type f -delete
+find . -name log -type f -delete
