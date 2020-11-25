@@ -178,7 +178,7 @@ Usage: dsl-test [verbosity option] dir
   --help  Display this list of options
 ```
 
-To run `dsl-test` on `<dir-name>`, one executes one of the following
+To run `dsl-test` on &lt;dir-name&gt;, one executes one of the following
 commands, depending on the desired degree of verbosity:
 
 ```
