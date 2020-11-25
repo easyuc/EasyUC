@@ -14,13 +14,13 @@ command-line arguments (see below). It will also generate a log file,
 `log`, in the current directory.
 
 * Unit tests are directories containing a file `TEST` (see below for
-  its structure). The unit test directory may also contain supporting
+  its structure). A unit test directory may also contain supporting
   `.uc` and `.ec` files, as well as subdirectories, all of which
   `dsl-test` ignores.
 
 * `README` files in the directory hierarchy are ignored by
-  `dsl-test`. These files begin with six characters of `README`, in
-  any case (even a mixture of lower- and uppercase). Occurrences of
+  `dsl-test`. These files begin with the six characters of `README`,
+  in any case (even a mixture of lower- and uppercase). Occurrences of
   `log` are also ignored.
 
 * Levels of the directory hierarchy above the unit testing directories
@@ -48,28 +48,29 @@ Spaces and tabs may be freely inserted in `TEST` files. Newline
 characters may be freely inserted as well, with a few exceptions
 detailed below.  Comments may be freely inserted (with a few
 exceptions, detailed below), and are equivalent to spaces (' ').
-'(\*' marks the beginning of a comment, and '\*)' marks the comment's
+'`(\*`' marks the beginning of a comment, and '`\*)`' marks the comment's
 end.  Nested comments are allowed.
 
 ### Description
 
-As the name suggests, description should contain an information
+As the name suggests, description should contain an informal
 explanation of the purpose of the test.  This will be output and
 logged by `dsl-test` in verbose mode only.  The syntax of the
 description field is as follows:
 
 ```
 description
-The description of the test goes here, the symbols '(*', '*)' have no
+The description of the test goes here, the symbols '`(*`', '`*)`' have no
 special significance, here.  The description field ends with a line
-consisting of only '.'  ('.\n').
+consisting of only '`.`'  ('`.`\n').
 .
 ```
 
-The text of the description field begins *after* the newline
-terminating the line containing `description` (possibly surrounded by
-spaces or tabs) and runs up to and including the newline that precedes
-the terminating '.' (the text does not include that '.').
+The text of the description field begins *after* (not including) the
+newline terminating the line containing `description` (possibly
+surrounded by spaces or tabs) and runs up to and including the newline
+that precedes the terminating '`.`' (the text does not include that
+'`.`').
 
 ### Args
 
@@ -80,7 +81,7 @@ when it is invoked. Its syntax is
 args : <args>
 ```
 
-where <args> consists of a sequence of words (nonempty sequences of
+where `<args>` consists of a sequence of words (nonempty sequences of
 non-whitespace characters), separated by spaces or tabs. The args
 field is terminated with a newline character.
 
@@ -113,13 +114,13 @@ messages...
 .
 ```
 
-where <status> is `success` (meaning `ucdsl` is expected to exit with
+where `<status>` is `success` (meaning `ucdsl` is expected to exit with
 status 0) or `failure` (meaning `ucdsl` is expected to exit with a
 nonzero status).
 
 As with the description field, what comes after the
-newline following <status> up to the newline preceding the line
-consisting of only '.' is the text of the field. It should exactly
+newline following `<status>` up to the newline preceding the line
+consisting of only '`.`' is the text of the field. It should exactly
 match (including occurrences of whitespace characters) the error and
 warning messages output by `ucdsl`.
 
@@ -131,6 +132,15 @@ outcome: failure
 
 duplicate message name: m
 .
+```
+
+This says that `ucdsl` is expected to exit with nonzero status, and
+to issue the error message
+
+```
+[error: testDuplicateMessageId.uc: from line 3 columns 5 to 6]
+
+duplicate message name: m
 ```
 
 A test *passes* if and only if the exit status of `ucdsl` matches
@@ -169,7 +179,7 @@ Usage: dsl-test [verbosity option] dir
   --help  Display this list of options
 ```
 
-To run `dsl-test` on <dir-name>, one executes one of the following
+To run `dsl-test` on `<dir-name>`, one executes one of the following
 commands, depending on the desired degree of verbosity:
 
 ```
@@ -180,12 +190,12 @@ dsl-test -verbose <dir-name>
 
 The `-quiet` option generates the log, `log`, in the current
 directory, but is otherwise silent. The `-verbose` option outputs the
-test descriptions both on the standard output and in the log. The exit
-status of `dsl-test` tells you whether all tests passed and no other
-error were encountered (an exit status of 0 means yes, and a non-zero
-exit status means no).
+test descriptions provided by the `TEST` files both on the standard
+output and in the log. The exit status of `dsl-test` tells you whether
+all tests passed and no other error were encountered (an exit status
+of 0 means yes, and a non-zero exit status means no).
 
-### Conflict files
+### Conflict Files
 
 When a unit test fails, a `CONFLICT` file is created in the test's
 directory. Consult the `CONFLICT` file to see what the problem was.
@@ -200,7 +210,9 @@ bug. Once the conflict has been resolved, you must remove the
 encounters a unit test directory with a `CONFLICT` file, it issues an
 error message but otherwise ignores the unit test.
 
-### To debug the syntax of a `TEST` file, you may use the `-debug`
+### Debug Option
+
+To debug the syntax of a `TEST` file, you may use the `-debug`
 option:
 
 ```
@@ -221,7 +233,7 @@ dsl-test -quiet sample_tests
 dsl-test -verbose sample_tests
 ```
 
-In all the cases, a log file with name 'log' is created in the current
+In all the cases, a log file with name `log` is created in the current
 working directory.
 
 The subdirectory `testing_tests` contains unit tests for `dsl-test`
@@ -231,7 +243,7 @@ Unit Test Suite
 --------------------------------------------------------------------
 
 The unit test suite for `ucdsl` is in the subdirectory [`tests`](tests).
-To run `dsl-test` on the test suite, run one of
+To run `dsl-test` on the test suite, execute one of
 
 ```
 ./dsl-test-suite
@@ -246,9 +258,8 @@ was built with code coverage instrumentation, you can find the code
 coverage report in the subdirectory `_coverage`; open `index.html`
 with your web browser.
 
-To remove all the `log`, `CONFLICT` and `.coverage` (generated
-when `ucdsl` was built with code coverage instrumentation) files,
-run the command
+To remove all the `log`, `CONFLICT` and `.coverage` files, run the
+command
 
 ```
 ./dsl-test-suite-cleanup
@@ -258,5 +269,4 @@ Feedback
 --------------------------------------------------------------------
 
 Please contact Alley Stoughton (stough@bu.edu) or Gollamudi Tarakaram
-(gtr@brandeis.edu) with any feedback, e.g., with feature requests or
-to report bugs.
+(gtr@brandeis.edu) with feature requests, bug report or other feedback.
