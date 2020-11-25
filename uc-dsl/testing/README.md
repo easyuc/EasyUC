@@ -12,18 +12,17 @@ unit tests.
 
 ## Installation
 
-Use the Makefile that comes with the testsuite
+Use the Makefile that comes with the test suite
 To build the test suite use go to directory with Makefile and use
 the following command.
 
 ```bash
-make
+$make
 ```
 
 ## Usage
 
 ```bash
-
 Usage: dsl-test [verbosity option] dir
 dsl-test -debug file
   -verbose Verbosity option: enables verbose mode
@@ -31,33 +30,30 @@ dsl-test -debug file
   -debug Prints debug information of a TEST file
   -help  Display this list of options
   --help  Display this list of options
-
 ```
 
 ## Running the test suite
-
+```bash
+$./dsl-test-suite <dir-name>
 ```
-./dsl-test-suite
-```
 
-Runs all of the tests in the `tests/` directory,
-and, if the ucdsl binary was compiled with code coverage instrumenation,
+Runs all of the tests in the directory <dir-name>,
+and, if the ucdsl binary was compiled with code coverage instrumentation,
 creates code coverage report in `_coverage/` directory.
 
 
 ## Requirements
-
 For the debug option there are pretty much no restrictions.
-However for running the tests there are cetain conditions.
+However for running the tests there are certain conditions.
 
-## 1. TEST File
-Each test should be accompanaid by a 'TEST' file. Here TEST
+## 1. 'TEST' file
+Each test should be accompanied by a 'TEST' file. Here TEST
 refers to the name of the file, which should be in the same directory
 as the test together with all the required files appropriately placed.
 
-### Contents of TEST
+### Contents of 'TEST'
 Every TEST file can have 3 fields. description, args, outcome and comments.
-'(*' marks the begining of the comments and '*)' marks the end of the comments.
+'(\*' marks the beginning of the comments and '\*)' marks the end of the comments.
 Nested comments are allowed.
 
 However there are certain conditions on where comments can appear.
@@ -70,55 +66,85 @@ The syntax for description is as follows
 
 ```
 description (* optional comments *)
-The description of the test goes here, (*, *) and any text between these
-symbols will be considered as the part of the description.
+The description of the test goes here, the symbols (*, *) and 
+any text between these symbols will be considered as a part of the description.
+description ends with '\n.\n'
 .
-
 ```
 
 To explain a bit, the description of the test starts in a new line after
 the keyword description and any comments. These comments can span multiple lines
 but the actual description of the test should start in a new line.
 
-A ".\n" marks the end of the description.
+A "\n.\n" marks the end of the description.
 
 
 #### args
 args syntax
 ```
-
-args (*comments *): options filename.uc
-
+args : options filename.uc
 ```
 
-Comments are not allowed after ":"
+Comments are allowed before and after ":"
 
-####outcome
+#### outcome
 
 ```
-
-outcome (*comments *): success/failure
+outcome : success/failure
 Error message incase of failure
 .
-
 ```
 
 Like description the outcome description(or error message) should start in
 a new line after success/failure. The error message has to be exact replica
-of the error message UCDSL outputs. Like in the case of args, no comments are
-allowed after ":"
+of the error message UCDSL outputs. No comments are allowed after ":"
+
+### CONFLICT file
+
+A CONFLICT file is created in the same directory as TEST when 
+a. UCDSL message and outcome description are different.
+b. UCDSL outcome does not match with outcome
+c. UCDSL fails to exit normally
+
+#### Resolving Conflicts
+The test suite ignores the test when a CONFLICT file is detected in the
+same directory of a TEST file. Hence the conflict has to be resolved and the CONFLICT
+file needs to be deleted from the directory before the test suite can run the test again.
 
 ### Directory structure
 
-The acceptable content of a director are                                                                                                                                                                 
-  | TEST file + contents + optional sub directories                                                                                                                                                  
-   | If a TEST file is found, subfolders will be ignored                                                                                                                                              
-  | Files with names starting with readme ONLY + optional sub directories                                                                                                                             
-   | Only sub folders will be searched for TEST files/tests                                                                                                                                           
-  | No files but sub directories                                                                                                                                                                      
-   | All subdirectories will be searched for TEST files/tests                                                                                                                                         
-  | Any others will be ignored and an error message will be logged. 
+The acceptable contents of a directory in-addition to a log file are
+  | TEST file + .uc or .ec files + optional sub directories            
+  &nbsp; &nbsp; &nbsp;| If a TEST file is found, subfolders will be ignored
+  | Files with names starting with readme ONLY + optional sub directories
+   &nbsp; &nbsp; &nbsp;| Only sub folders will be searched for TEST files/tests        
+  | Only sub directories               
+   &nbsp;&nbsp;&nbsp;| All subdirectories will be searched for TEST files/tests
+   
+  Any others will be ignored and an error message will be logged. 
+  log file is a file with name "log" usually generated by dsl-test
 
+### Examples
+
+The directory Sample_tests contains a few tests. To run these tests simply use
+
+```bash
+$./dsl-test-suite sample_tests
+```
+
+For quiet mode 
+```bash
+$./dsl-test-suite -quiet sample_tests
+```
+and for verbose mode
+```bash
+$./dsl-test-suite -verbose sample_tests
+```
+In all the cases a log file with name 'log' is created in the current
+working directory.
+
+Please contact Alley Stoughton (alleystoughton.us) or Gollamudi Tarakaram (gtr@brandeis.edu)
+for feature requests or to report bugs.
 
 
 

@@ -1,0 +1,4 @@
+description
+This file fails to end description with (* \n.\n *)
+The error message should say that description did not end correctly.
+args: test.uc

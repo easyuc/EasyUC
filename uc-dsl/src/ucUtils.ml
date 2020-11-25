@@ -2,6 +2,12 @@
 
 (* UC DSL Utilities *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open Batteries
 open EcLocation
 
@@ -59,10 +65,6 @@ let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
 
 let capitalized_root_of_filename_with_extension file =
   String.capitalize (Filename.chop_extension (Filename.basename file))
-
-(* we first look in the prelude, then in the current directory, and
-   finally in the include dirs (from front (highest precedence) to
-   back (lowest precedence)) *)
 
 let find_file root ext prelude_dir include_dirs =
   let full     = root ^ ext in

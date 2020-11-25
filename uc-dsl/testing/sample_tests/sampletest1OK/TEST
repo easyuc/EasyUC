@@ -1,0 +1,7 @@
+description
+This test will pass since ucdsl returns an exit code 0
+and the outcome of this file is success
+.
+args: test.uc
+outcome: success
+.

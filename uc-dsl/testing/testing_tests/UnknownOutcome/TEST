@@ -1,0 +1,8 @@
+description
+This test is to observe the behaviour of the test tool
+when an unknown outcome was given.
+.
+
+args: test.uc
+outcome: Unkown
+.

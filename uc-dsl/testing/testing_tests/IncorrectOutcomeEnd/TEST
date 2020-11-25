@@ -1,0 +1,8 @@
+description
+This test is to test incorrect end of the section
+outcome. This test fails because there no '\n'
+after '.' in the outcome section.
+.
+args: test.uc
+outcome: success
+.

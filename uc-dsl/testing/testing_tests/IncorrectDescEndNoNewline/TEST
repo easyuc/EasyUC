@@ -1,0 +1,3 @@
+description
+This test is to check the behaviour of test_suite
+when a line ends without a '\n'

@@ -1,0 +1,7 @@
+description
+This test checks the behaviour of dsl test suite when outcome is omitted.
+This test is expected to pass since we added outcome field
+.
+args: test.uc
+outcome: success
+.

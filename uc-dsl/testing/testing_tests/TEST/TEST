@@ -1,0 +1,12 @@
+description(*
+
+This should be ignored
+
+*)
+This should be displayed.
+.
+args: test.uc
+outcome
+: success
+.
+

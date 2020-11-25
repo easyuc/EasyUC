@@ -1,0 +1,1 @@
+(* This is a valid .uc file, ucdsl returns exit code 0 *)

@@ -1,0 +1,4 @@
+description
+This file has an missing outcome, the test suite should print a warning
+.
+args: test.uc

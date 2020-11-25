@@ -1,0 +1,12 @@
+description
+This test will pass since outcome is failure
+and outcome descrption is the error returned by
+ucdsl
+.
+args: test.uc
+outcome: failure
+[error: test.uc: from line 2 columns 22 to 22]
+
+unterminated comment at end-of-file
+.
+

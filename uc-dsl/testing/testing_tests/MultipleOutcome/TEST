@@ -1,0 +1,9 @@
+description
+This test gives us the behaviour of the test_suite when multiple
+outcomes appear in a TEST file.
+.
+args :test.uc
+outcome: success
+.
+outcome: success
+.

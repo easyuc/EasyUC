@@ -1,0 +1,9 @@
+description
+This test fails because ucdsl returns exit 0 with
+no warning/error message but our outcome description
+has a warning/error which creates a conflict
+.
+args: test.uc
+outcome: success
+sample.
+.

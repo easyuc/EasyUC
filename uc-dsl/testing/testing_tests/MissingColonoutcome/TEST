@@ -1,0 +1,7 @@
+description
+This test is to test the behaviour of test_suite
+if ':' is missing after outcome
+.
+args: test.uc
+outcome success.
+.

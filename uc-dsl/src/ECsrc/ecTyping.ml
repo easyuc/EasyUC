@@ -1,7 +1,3 @@
-(* A modification of src/ecTyping.ml of the EasyCrypt distribution
-
-   See "UC DSL" for changes *)
-
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2018 - Inria
@@ -1136,12 +1132,16 @@ let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
 (* -------------------------------------------------------------------- *)
 let trans_match ~loc env ue (gindty, gind) pbs =
   let pbs = List.map (trans_branch ~loc env ue gindty) pbs in
+  (* the left-hand-sides of pbs are a subset of the left hand sides
+     of gind.tydt_ctors (with the order perhaps different) *)
 
   if List.length pbs < List.length gind.tydt_ctors then
     tyerror loc env (InvalidMatch FXE_MatchPartial);
 
-  if List.length pbs > List.length gind.tydt_ctors then
+  if List.has_dup ~cmp:(fun x y -> compare (fst x) (fst y)) pbs then
     tyerror loc env (InvalidMatch FXE_MatchDupBranches);
+  (* the left-hand-sides of pbs are exactly the left-hand sides
+     of gind.tydt_ctors (with the order perhaps different) *)
 
   let pbs = Msym.of_list pbs in
 
@@ -1296,6 +1296,7 @@ let transexp (env : EcEnv.env) mode ue e =
 
     | PEmatch (pce, pb) ->
         let ce, ety = transexp env pce in
+        let ety = Tuni.offun (EcUnify.UniEnv.assubst ue) ety in
         let inddecl =
           match (EcEnv.ty_hnorm ety env).ty_node with
           | Tconstr (indp, _) -> begin

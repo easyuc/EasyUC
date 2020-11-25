@@ -2,19 +2,26 @@
 
 (* Typecheck a specification *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open Batteries
 open Format
+
 open EcLocation
 open EcSymbols
-open EcParsetree
 open EcTypes
 open EcUnify
 open EcEnv
-open EcTyping
-open UcSpec
-open UcTypedSpec
+
 open UcUtils
 open UcMessage
+open UcSpec
+open UcTypedSpec
+open UcTypecheckTypesExprs
 
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
@@ -1086,7 +1093,7 @@ and check_match
   let () =
     if List.length top_results < List.length inddecl.tydt_ctors
       then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial)
-    else if UcUtils.has_dup ~cmp:(fun x y -> compare (fst x) (fst y))
+    else if has_dup ~cmp:(fun x y -> compare (fst x) (fst y))
             top_results
       then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
   (* the left-hand-sides of top_results are exactly the left-hand sides
@@ -1865,4 +1872,4 @@ let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
   with
   | TyError (l, env, tyerr) ->
       type_error l
-      (fun ppf -> UcEcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+      (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
