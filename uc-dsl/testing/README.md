@@ -60,9 +60,9 @@ description field is as follows:
 
 ```
 description
-The description of the test goes here, the symbols '(*', '*)' have no
-special significance, here.  The description field ends with a line
-consisting of only '.'  ('.\n').
+The description of the test goes here. The symbols '(*', '*)' have no
+special significance.  The description field ends with a line
+consisting of only '.' ('.\n').
 .
 ```
 
