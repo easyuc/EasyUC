@@ -80,7 +80,7 @@ when it is invoked. Its syntax is
 args : <args>
 ```
 
-where `<args>` consists of a sequence of words (nonempty sequences of
+where &lt;args&gt; consists of a sequence of words (nonempty sequences of
 non-whitespace characters), separated by spaces or tabs. The args
 field is terminated with a newline character.
 
