@@ -5,5 +5,7 @@ args: testExprNonexistingFun.uc
 outcome:  failure
 [error: testExprNonexistingFun.uc: from line 17 columns 14 to 17]
 
-nonexisting operator
+no matching operator, named `hen', for the following parameters' type:
+  [1]: exp
+
 .

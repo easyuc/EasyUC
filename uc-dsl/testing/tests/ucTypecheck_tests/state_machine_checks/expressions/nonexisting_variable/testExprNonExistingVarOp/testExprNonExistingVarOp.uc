@@ -1,11 +1,11 @@
 ec_requires KeysExponentsAndPlainTexts.
 
-direct a {
+direct A_ {
 in  x@bla()
 out bli()@x
 }
 
-direct A {A:a}
+direct A {A:A_}
 
 functionality F() implements A {
 
@@ -13,7 +13,7 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    sender@A.A.bla() => {send A.A.bli()@sender and transition II(k.k).}
+    sender@A.A.bla() => {send A.A.bli()@sender and transition II(k).}
    end
   }
  
