@@ -1,6 +1,0 @@
-description
-Cannot rebind port name in message pattern - fixed
-.
-args: testMsgPatRebindsPortOK.uc
-outcome:  success
-.

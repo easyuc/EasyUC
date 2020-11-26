@@ -4,7 +4,11 @@ Since sender is a port where as pp is port*port
 .
 args: testExprTupleWrongArity.uc
 outcome: failure
-[error: testExprTupleWrongArity.uc: from line 17 columns 26 to 28]
+[error: testExprTupleWrongArity.uc: from line 17 columns 30 to 36]
 
-type port * port of pp is not compatible with type port
+This expression has type
+   port
+
+but is expected to have type
+   port * port
 .

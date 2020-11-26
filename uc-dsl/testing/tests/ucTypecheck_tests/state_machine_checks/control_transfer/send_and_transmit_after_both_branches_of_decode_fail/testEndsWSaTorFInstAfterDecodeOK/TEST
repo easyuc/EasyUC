@@ -1,6 +1,0 @@
-description
-This test demonstrates a correct wayof control trnasfer using fail
-.
-args: testEndsWSaTorFInstAfterDecodeOK.uc
-outcome: success
-.

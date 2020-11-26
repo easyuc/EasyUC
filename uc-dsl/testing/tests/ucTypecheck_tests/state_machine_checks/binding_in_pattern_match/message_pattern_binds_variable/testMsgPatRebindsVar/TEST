@@ -1,9 +1,0 @@
-description
-Cannot rebind variable name in message pattern
-.
-args: testMsgPatRebindsVar.uc
-outcome:  failure
-[error: testMsgPatRebindsVar.uc: from line 17 columns 11 to 12]
-
-cannot rebind variable name in pattern
-.

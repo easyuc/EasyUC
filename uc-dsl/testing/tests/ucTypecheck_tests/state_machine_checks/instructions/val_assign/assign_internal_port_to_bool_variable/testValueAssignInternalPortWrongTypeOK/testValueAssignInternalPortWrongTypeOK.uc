@@ -1,9 +1,9 @@
-direct a {
+direct A_ {
 in  x@bla()
 out bli()@x
 }
 
-direct A {A:a}
+direct A {A:A_}
 
 functionality F(G:A) implements A {
 
@@ -12,7 +12,7 @@ functionality F(G:A) implements A {
   initial state I {
    var x : port;
    match message with
-    *  => { x<-P; fail. }
+    *  => { x<-intport P; fail. }
    end
   }
  }

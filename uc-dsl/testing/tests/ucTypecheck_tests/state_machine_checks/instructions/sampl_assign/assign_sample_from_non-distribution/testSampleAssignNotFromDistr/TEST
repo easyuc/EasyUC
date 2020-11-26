@@ -5,6 +5,10 @@ args: testSampleAssignNotFromDistr.uc
 outcome: failure
 [error: testSampleAssignNotFromDistr.uc: from line 17 columns 16 to 17]
 
-you can sample only from distributions
+This expression has type
+   exp
+
+but is expected to have type
+   exp distr
 .
 

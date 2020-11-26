@@ -5,5 +5,9 @@ args: testITEcondNotBoolean.uc
 outcome:  failure
 [error: testITEcondNotBoolean.uc: from line 14 columns 31 to 37]
 
-the condition must be a boolean expression
+This expression has type
+   port
+
+but is expected to have type
+   bool
 .

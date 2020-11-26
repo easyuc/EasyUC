@@ -1,9 +1,0 @@
-description
-Binding multiple arguments to same const in decode pattern
-.
-args: testDecodeMultipleBinds.uc
-outcome:  failure
-[error: testDecodeMultipleBinds.uc: from line 18 columns 17 to 20]
-
-pattern binds b more than once
-.

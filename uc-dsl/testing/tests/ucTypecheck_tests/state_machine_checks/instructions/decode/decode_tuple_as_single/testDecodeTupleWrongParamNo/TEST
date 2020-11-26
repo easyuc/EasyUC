@@ -1,9 +1,0 @@
-description 
-decoding a pair as a single value fails 
-.
-args: testDecodeTupleWrongParamNo.uc
-outcome:  failure
-[error: testDecodeTupleWrongParamNo.uc: from line 16 columns 22 to 23]
-
-the number of bindings is different from the arity of decoded type
-.

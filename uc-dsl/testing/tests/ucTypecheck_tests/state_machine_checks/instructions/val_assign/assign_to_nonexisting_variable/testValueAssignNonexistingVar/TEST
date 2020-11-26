@@ -6,5 +6,5 @@ args: testValueAssignNonexistingVar.uc
 outcome: failure
 [error: testValueAssignNonexistingVar.uc: from line 17 columns 12 to 13]
 
-y is not a declared variable
+identifer is not a local variable
 .

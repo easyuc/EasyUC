@@ -5,5 +5,5 @@ args: testITEInitVarInOneBranch.uc
 outcome:  failure
 [error: testITEInitVarInOneBranch.uc: from line 17 columns 59 to 60]
 
-k may not be initialized
+expression uses possibly uninitialzed variable: k
 .
