@@ -1,13 +1,26 @@
 #!/bin/bash
 
-# remove old .coverage and CONFLICT files
+# check if option is good to supply to dsl-test, otherwise exit
 
+if [[ $# -eq 1 ]];
+then if [[ $1 != -quiet && $1 != -verbose ]];
+     then echo optional argument must be -quiet or -verbose;
+          exit 1;
+     fi;
+elif [[ $# -ne 0 ]];
+  then echo illegal number of arguments;
+       exit 1;
+fi;
+
+# remove old log, .coverage and CONFLICT files
+
+find . -name log -type f -delete
 find . -name "*.coverage" -type f -delete
 find . -name CONFLICT -type f -delete
 
 # run test suite
 
-./dsl-test tests/
+./dsl-test $* tests
 
 # generate bisect coverage report
 
