@@ -24,8 +24,8 @@ find . -name CONFLICT -type f -delete
 
 # generate bisect coverage report if there are some .coverage files
 
-if [ $(find . -name '*.coverage' | wc -l) -eq 0 ];
+if [[ $(find . -name '*.coverage' | wc -l) -eq 0 ]];
 then echo no coverage files generated;
 else bisect-ppx-report html --coverage-path=./ --source-path=../ > bisect.log;
-     echo bisect log is in bisect.log
+     echo bisect log is in bisect.log;
 fi
