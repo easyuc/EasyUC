@@ -20,7 +20,7 @@ find . -name CONFLICT -type f -delete
 
 # run test suite
 
-#./dsl-test $* tests
+./dsl-test $* tests
 
 # generate bisect coverage report if there are some .coverage files
 
