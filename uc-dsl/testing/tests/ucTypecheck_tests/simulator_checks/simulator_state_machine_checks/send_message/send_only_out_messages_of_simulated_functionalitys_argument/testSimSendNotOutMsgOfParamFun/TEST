@@ -4,8 +4,8 @@ path
 .
 args: testSimSendNotOutMsgOfParamFun.uc
 outcome:  failure
-[error: testSimSendNotOutMsgOfParamFun.uc: from line 63 columns 38 to 52]
+[error: testSimSendNotOutMsgOfParamFun.uc: from line 62 columns 38 to 52]
 
 message path is not one of the possible outgoing message paths:
-  iio.i2sbla, R.A.A.abli, R.F.iio.i2sbli, R.SFQ.a2.abli2
+  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli, R.SFQ.A2_.abli2
 .
