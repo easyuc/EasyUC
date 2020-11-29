@@ -1534,8 +1534,8 @@ by rewrite inc_nle_r.
 rcondt{1} 7; first auto; progress.
 by rewrite /Fwd1.fw_obs /= inc_nle_l.
 rcondf{1} 8; first auto.
-auto; progress;
-  first 3 by rewrite Fwd1.enc_dec_fw_req.
+auto; progress.
+by rewrite Fwd1.enc_dec_fw_req.
 rewrite Fwd1.enc_dec_fw_req
         (RealSimpRel1 _ pt10{2} pt20{2} q1{2})
         /real_simp_rel1 /= /#.
@@ -2860,7 +2860,7 @@ inline{1} (1) RH.NonOptHashing.hash.
 rcondf{1} 2; first auto; smt().
 auto => &1 &2 |> <-.
 progress.
-clear H8 H7 H6 H5; smt(log_gen).
+congr; clear H8 H7 H6 H5; smt(log_gen).
 by rewrite (RealSimpHashDDH1Rel1 _ pt10{2} pt20{2})
            /real_simp_hash_ddh1_rel1 /= H.
 auto.
