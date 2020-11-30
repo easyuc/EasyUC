@@ -8,10 +8,10 @@ The files in this directory beginning with `ec` are EasyCrypt source
 files that have been modified from the originals. The original
 files can be found in `ECsrc/modified-for-ucdsl`.
 
-Directory Contents
+Program Structure
 --------------------------------------------------------------------------------
 
-* `ucdsl.ml` - the main file for the UC DSL
+* `ucdsl.ml` - UC DSL's main file
 
 * `ucConfig.ml.in` - source for configuration module, which `build` script
   turns into configuration module by making substitutions
