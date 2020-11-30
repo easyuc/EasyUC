@@ -17,8 +17,6 @@ Program Structure
   module, which `build` script turns into configuration module by
   making substitutions
   
-* `UcConfig` ([`ucConfig.ml`](ucConfig.ml)) - configuration module
-
 * `UcUtils` ([`ucUtils.mli`](ucUtils.mli),
   [`ucUtils.ml`](ucUtils.ml)) - module with utility defintions
 
