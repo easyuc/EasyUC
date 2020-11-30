@@ -1,6 +1,7 @@
 (* A modification of src/ecCommands.ml of the EasyCrypt distribution
 
-   See "UC DSL" for changes *)
+   See "UC DSL" for changes
+ *)
 
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute

@@ -1,6 +1,6 @@
 (* UcState module *)
 
-(* Global state of UC DSL tool *)
+(* Global State of UC DSL tool *)
 
 (* --------------------------------------------------------------------
  * Copyright (c) - 2020 - Boston University

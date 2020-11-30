@@ -27,11 +27,9 @@ let index_of_ex x xs =
 
 let filename_of_loc l = l.loc_fname
 
-let mergelocs (l : 'a located list) : EcLocation.t = mergeall(List.map loc l)
+let mergelocs (l : 'a located list) : EcLocation.t = mergeall (List.map loc l)
 
 let dummyloc (o : 'a) : 'a located = mk_loc _dummy o
-
-let dummylocl (l : 'a list) : 'a located list = List.map (fun i -> dummyloc i) l
 
 let string_of_id_path (iop : string list) : string =
   List.fold_left (fun p i -> if p <> "" then p ^ "." ^ i else i) "" iop

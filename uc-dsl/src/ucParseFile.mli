@@ -20,7 +20,9 @@ type file_or_id =
      ".uc" and without "/"s, normally located in file that was lexed *)
   | FOID_Id   of symbol located
 
-(* second component of result will be the filename of the locations
-   of the spec *)
+(* parse and then typecheck a file_or_id describing a .uc file
+
+   second component of result will be the filename of the locations of
+   the spec *)
 
 val parse_file_or_id : file_or_id -> spec * string

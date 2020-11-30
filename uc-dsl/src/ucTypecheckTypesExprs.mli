@@ -1,5 +1,7 @@
 (* UcTypecheckTypesExpr module interface *)
 
+(* Typecheck a type or expression *)
+
 (* Adapted from src/ecTyping.mli of the EasyCrypt distribution, which
    has the following copyright: *)
 
@@ -145,10 +147,10 @@ val unify_or_fail :
 
 type typolicy
 
-val tp_tydecl : typolicy
-val tp_relax  : typolicy
+val tp_tydecl  : typolicy
+val tp_relax   : typolicy
 val tp_nothing : typolicy  (* UC DSL *)
-val tp_uni : typolicy  (* UC DSL *)
+val tp_uni     : typolicy  (* UC DSL *)
 
 val transtyvars :
   env -> (EcLocation.t * ptyparams option) -> EcUnify.unienv

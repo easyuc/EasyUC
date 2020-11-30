@@ -93,9 +93,3 @@ let require id io =
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf "@[EasyCrypt:@ error@ require@ importing@ theory@]")
-
-let exists_type (ty : string) : bool =
-  Option.is_some (EcEnv.Ty.lookup_opt ([] , ty) (env ()))
-
-let exists_operator (op : string) : bool = 
-  Option.is_some (EcEnv.Op.lookup_opt ([], op) (env ()))

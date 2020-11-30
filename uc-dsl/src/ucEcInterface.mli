@@ -27,8 +27,7 @@ val env : unit -> EcEnv.env
 (* require an EasyCrypt theory *)
 
 val require :
-  string EcLocation.located -> [ `Export | `Import ] option -> unit
-
-val exists_type : string -> bool
-
-val exists_operator : string -> bool
+  string EcLocation.located    ->  (* theory *)
+  [ `Export | `Import ] option ->  (* should we export/import the theory's
+                                      definitions *)
+  unit
