@@ -28,12 +28,12 @@ Program Structure
   [`ucState.ml`](ucState.ml)) - module for the UC DSL global state
 
 * `EcScope` ([`ecScope.mli`](ecScope.mli),
-  [`ecScope.ml`](ecScope.ml)) - modification of EasyCrypt's scope
+  [`ecScope.ml`](ecScope.ml)) - modification of EasyCrypt's `EcScope`
   module
 
 * `EcCommands` ([`ecCommands.mli`](ecCommands.mli),
   [`ecCommands.ml`](ecCommands.ml)) - modification of EasyCrypt's
-  commands module
+  `EcCommands` module
 
 * `UcEcInterface` ([`ucEcInterface.mli`](ucEcInterface.mli),
   [`ucEcInterface.ml`](ucEcInterface.ml)) - module providing
