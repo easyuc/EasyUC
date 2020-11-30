@@ -50,11 +50,11 @@ and pty = pty_r located
 
 (* type variable instantiations *)
 
-type ptyannot_r =
+type ptyinstan_r =
   | TVIunamed of pty list
   | TVInamed  of (psymbol * pty) list
 
-and ptyannot  = ptyannot_r located
+and ptyinstan  = ptyinstan_r located
 
 (* expressions *)
 
@@ -66,7 +66,7 @@ type plpattern_r =
 and plpattern = plpattern_r located
 
 type ppattern =
-  | PPApp of (pqsymbol * ptyannot option) * osymbol list
+  | PPApp of (pqsymbol * ptyinstan option) * osymbol list
 
 type ptybinding  = osymbol list * pty
 and  ptybindings = ptybinding list
@@ -75,7 +75,7 @@ and pexpr_r =
   | PEcast   of pexpr * pty                       (* type cast          *)
   | PEint    of zint                              (* int. literal       *)
   | PEdecimal of (zint * (int * zint))             (* dec. literal       *)
-  | PEident  of pqsymbol * ptyannot option        (* symbol             *)
+  | PEident  of pqsymbol * ptyinstan option        (* symbol             *)
   | PEapp    of pexpr * pexpr list                (* op. application    *)
   | PElet    of plpattern * pexpr_wty * pexpr     (* let binding        *)
   | PEtuple  of pexpr list                        (* tuple constructor  *)
@@ -94,7 +94,7 @@ and pexpr_wty = pexpr * pty option
 
 and 'a rfield = {
   rf_name  : pqsymbol;
-  rf_tvi   : ptyannot option;
+  rf_tvi   : ptyinstan option;
   rf_value : 'a;
 }
 

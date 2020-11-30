@@ -106,7 +106,7 @@ val transtys : typolicy -> env -> EcUnify.unienv -> pty list -> ty list
 (* given an environment and unification environment, translate instantiation
    of type variables (modifying the unification environment) *)
 
-val transtvi : env -> EcUnify.unienv -> ptyannot -> EcUnify.tvar_inst
+val transtvi : env -> EcUnify.unienv -> ptyinstan -> EcUnify.tvar_inst
 
 (* given an environment and unification environment, translate an
    expression from concrete to abstract syntax, yielding an abstract
