@@ -1,4 +1,7 @@
-(* Module UcTypecheckTypesExpr *)
+(* Module UcTransTypesExpr *)
+
+(* Translating (and checking) types and expressions from concrete to
+   abstract syntax *)
 
 (* Adapted from src/ecTyping.ml of the EasyCrypt distribution, which
    has the following copyright: *)
@@ -23,17 +26,12 @@ open EcMaps
 open EcSymbols
 open EcLocation
 open EcTypes
-open EcModules
 open EcDecl
-open EcFol
 open UcSpec
 
-module MMsym = EcSymbols.MMsym
-module Sid   = EcIdent.Sid
-module Mid   = EcIdent.Mid
+module Mid = EcIdent.Mid
 
-module EqTest = EcReduction.EqTest
-module NormMp = EcEnv.NormMp
+(* type errors *)
 
 type opmatch = [
   | `Op   of EcPath.path * EcTypes.ty list
@@ -41,39 +39,6 @@ type opmatch = [
   | `Var  of EcTypes.prog_var
   | `Proj of EcTypes.prog_var * EcTypes.ty * (int * int)
 ]
-
-type mismatch_funsig =
-  | MF_targs of ty * ty (* expected, got *)
-  | MF_tres  of ty * ty (* expected, got *)
-  | MF_restr of EcEnv.env * [`Eq of Sx.t * Sx.t | `Sub of Sx.t ]
-
-type tymod_cnv_failure =
-  | E_TyModCnv_ParamCountMismatch
-  | E_TyModCnv_ParamTypeMismatch of EcIdent.t
-  | E_TyModCnv_MissingComp       of symbol
-  | E_TyModCnv_MismatchFunSig    of symbol * mismatch_funsig
-  | E_TyModCnv_SubTypeArg        of
-      EcIdent.t * module_type * module_type * tymod_cnv_failure
-
-type modapp_error =
-  | MAE_WrongArgCount       of int * int  (* expected, got *)
-  | MAE_InvalidArgType      of EcPath.mpath * tymod_cnv_failure
-  | MAE_AccesSubModFunctor
-
-type modtyp_error =
-  | MTE_IncludeFunctor
-  | MTE_InnerFunctor
-  | MTE_DupProcName of symbol
-
-type modsig_error =
-  | MTS_DupProcName of symbol
-  | MTS_DupArgName  of symbol * symbol
-
-type funapp_error =
-  | FAE_WrongArgCount
-
-type mem_error =
-  | MAE_IsConcrete
 
 type fxerror =
   | FXE_EmptyMatch
@@ -87,22 +52,13 @@ type fxerror =
   | FXE_CtorAmbiguous
   | FXE_CtorInvalidArity of (symbol * int * int)
 
-type filter_error =
-  | FE_InvalidIndex of int
-  | FE_NoMatch
-
 type tyerror =
   | UniVarNotAllowed
-  | FreeTypeVariables
   | TypeVarNotAllowed
-  | OnlyMonoTypeAllowed    of symbol option
   | UnboundTypeParameter   of symbol
   | UnknownTypeName        of qsymbol
   | UnknownTypeClass       of qsymbol
   | UnknownRecFieldName    of qsymbol
-  | UnknownInstrMetaVar    of symbol
-  | UnknownMetaVar         of symbol
-  | UnknownProgVar         of qsymbol * EcMemory.memory
   | DuplicatedRecFieldName of symbol
   | MissingRecField        of symbol
   | MixingRecFields        of EcPath.path tuple2
@@ -111,61 +67,24 @@ type tyerror =
   | AmbiguousProji         of int * ty
   | InvalidTypeAppl        of qsymbol * int * int
   | DuplicatedTyVar
-  | DuplicatedLocal        of symbol
   | DuplicatedField        of symbol
   | NonLinearPattern
-  | LvNonLinear
-  | NonUnitFunWithoutReturn
   | TypeMismatch           of (ty * ty) * (ty * ty)
   | TypeClassMismatch
-  | TypeModMismatch        of mpath * module_type * tymod_cnv_failure
   | NotAFunction
   | NotAnInductive
-  | AbbrevLowArgs
   | UnknownVarOrOp         of qsymbol * ty list
   | MultipleOpMatch        of qsymbol * ty list *
                               (opmatch * EcUnify.unienv) list
-  | UnknownModName         of qsymbol
-  | UnknownTyModName       of qsymbol
-  | UnknownFunName         of qsymbol
-  | UnknownModVar          of qsymbol
-  | UnknownMemName         of symbol
-  | InvalidFunAppl         of funapp_error
-  | InvalidModAppl         of modapp_error
-  | InvalidModType         of modtyp_error
-  | InvalidModSig          of modsig_error
-  | InvalidMem             of symbol * mem_error
   | InvalidMatch           of fxerror
-  | InvalidFilter          of filter_error
-  | FunNotInModParam       of qsymbol
-  | NoActiveMemory
   | PatternNotAllowed
-  | MemNotAllowed
   | UnknownScope           of qsymbol
-  | NoWP
-  | FilterMatchFailure
-  | LvMapOnNonAssign
 
 exception TyError of EcLocation.t * EcEnv.env * tyerror
 
 let tyerror loc env e = raise (TyError (loc, env, e))
 
-type restriction_who =
-  | RW_mod of EcPath.mpath
-  | RW_fun of EcPath.xpath
-
-type restriction_err =
-  | RE_UseVariable          of EcPath.xpath
-  | RE_UseVariableViaModule of EcPath.xpath * EcPath.mpath
-  | RE_UseModule            of EcPath.mpath
-  | RE_VMissingRestriction  of EcPath.xpath * EcPath.mpath pair
-  | RE_MMissingRestriction  of EcPath.mpath * EcPath.mpath pair
-
-type restriction_error = restriction_who * restriction_err
-
-exception RestrictionError of EcEnv.env * restriction_error
-
-let ident_of_osymbol x =
+let ident_of_osymbol (x : psymbol option) : EcIdent.t =
   omap unloc x |> odfl "_" |> EcIdent.create
 
 module UE = EcUnify.UniEnv
@@ -180,6 +99,8 @@ let unify_or_fail (env : EcEnv.env) ue loc ~expct:ty1 ty2 =
                                          (tyinst  t1, tyinst  t2)))
     | `TcCtt _ ->
         tyerror loc env TypeClassMismatch
+
+(* selection *)
 
 let select_local env (qs,s) =
   if   qs = []
@@ -322,37 +243,18 @@ let lookup_scope env popsc =
     | Some opsc -> fst opsc
   end
 
+(* types *)
+
 type typolicy = {
   tp_uni  : bool;   (* "_" (Tuniar) allowed  *)
   tp_tvar : bool;   (* type variable allowed *)
 }
 
-let tp_tydecl  = { tp_uni = false; tp_tvar = true ; } (* type decl. *)
-let tp_relax   = { tp_uni = true ; tp_tvar = true ; } (* ops/forms/preds *)
-let tp_nothing = { tp_uni = false; tp_tvar = false; } (* module type annot. *)
-let tp_uni     = { tp_uni = true ; tp_tvar = false; } (* params/local vars. *)
+(* allows both "_" and type variables *)
+let tp_relax   = { tp_uni = true ; tp_tvar = true ; }
 
-type ismap = (instr list) Mstr.t
-
-let transtcs (env : EcEnv.env) tcs =
-  let for1 tc =
-    match EcEnv.TypeClass.lookup_opt (unloc tc) env with
-    | None -> tyerror tc.pl_loc env (UnknownTypeClass (unloc tc))
-    | Some (p, _) -> p                  (* FIXME: TC HOOK *)
-  in
-    Sp.of_list (List.map for1 tcs)
-
-let transtyvars (env : EcEnv.env) (loc, tparams) =
-  let tparams = tparams |> omap
-    (fun tparams ->
-        let for1 ({ pl_desc = x }, tc) = (EcIdent.create x, transtcs env tc) in
-          if not (List.is_unique (List.map (unloc |- fst) tparams)) then
-            tyerror loc env DuplicatedTyVar;
-          List.map for1 tparams)
-  in
-    EcUnify.UniEnv.create tparams
-
-(* Types *)
+(* allows neither "_" nor type variables *)
+let tp_nothing = { tp_uni = false; tp_tvar = false; }
 
 let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
   match ty.pl_desc with
@@ -405,10 +307,6 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
 
 and transtys tp (env : EcEnv.env) ue tys =
   List.map (transty tp env ue) tys
-
-let transty_for_decl env ty =
-  let ue = UE.create (Some []) in
-    transty tp_nothing env ue ty
 
 (* Patterns *)
 
@@ -512,6 +410,8 @@ let transpattern env ue (p : plpattern) =
       in
         (EcEnv.Var.bind_locals xs env, p, ty)
 
+(* Type Variable Instantiations *)
+
 let transtvi env ue tvi =
   match tvi.pl_desc with
   | TVIunamed lt ->
@@ -526,6 +426,8 @@ let transtvi env ue tvi =
 
       let lst = List.fold_left add [] lst in
         EcUnify.TVInamed (List.rev_map (fun (s,t) -> unloc s, t) lst)
+
+(* Expressions *)
 
 let rec destr_tfun env ue tf =
   match tf.ty_node with
@@ -930,37 +832,10 @@ let transexp (env : EcEnv.env) ue e =
     | PEproj (sube, x) -> begin
       let sube, ety = transexp env sube in
       match select_proj env osc (unloc x) ue None ety with
-      | [] ->
-        let ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ety in
-        let me = EcFol.mhr in
-        let mp =
-          match ty.ty_node with
-          | Tglob mp -> mp
-          | _ -> tyerror x.pl_loc env (UnknownProj (unloc x)) in
-        let f = NormMp.norm_glob env me mp in
-        let lf =
-          match f.f_node with
-          | Ftuple l -> l
-          | _ -> tyerror x.pl_loc env (UnknownProj (unloc x)) in
-        let vx,ty =
-          match EcEnv.Var.lookup_progvar_opt ~side:me (unloc x) env with
-          | None -> tyerror x.pl_loc env (UnknownVarOrOp (unloc x, []))
-          | Some (x1, ty) ->
-              match x1 with
-              | `Var x -> NormMp.norm_pvar env x, ty
-              | _ -> tyerror x.pl_loc env (UnknownVarOrOp (unloc x, [])) in
-        let find f1 =
-           match f1.f_node with
-            | Fpvar (x1, _) -> EcTypes.pv_equal vx (NormMp.norm_pvar env x1)
-            | _ -> false in
-        let i =
-          match List.oindex find lf with
-          | None -> tyerror x.pl_loc env (UnknownProj (unloc x))
-          | Some i -> i in
-        e_proj sube i ty, ty
+      | []                      ->
+          tyerror x.pl_loc env (UnknownProj (unloc x))
 
-
-      | _::_::_ ->
+      | _ :: _ :: _             ->
          tyerror x.pl_loc env (AmbiguousProj (unloc x))
 
       | [(op, tvi), pty, subue] ->

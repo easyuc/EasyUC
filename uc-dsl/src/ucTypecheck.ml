@@ -21,7 +21,7 @@ open UcUtils
 open UcMessage
 open UcSpec
 open UcTypedSpec
-open UcTypecheckTypesExprs
+open UcTransTypesExprs
 
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)

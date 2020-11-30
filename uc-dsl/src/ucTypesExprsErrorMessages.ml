@@ -1,5 +1,8 @@
 (* UcTypesExprsErrorMessages module *)
 
+(* Formatting error messages issued when translating types and
+   expressions *)
+
 (* adapted from ecUserMessages.ml of EasyCrypt distribution *)
 
 (* --------------------------------------------------------------------
@@ -18,88 +21,9 @@
 
 open EcSymbols
 open EcUid
-open EcPath
 open EcUtils
 open EcTypes
-open UcTypecheckTypesExprs
-
-let pp_mismatch_funsig env fmt error =
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let msg x = Format.fprintf fmt x in
-  let pp_type fmt ty = EcPrinting.pp_type ppe fmt ty in
-
-  match error with
-  | MF_targs (ex, got) ->
-      msg "its argument has type %a instead of %a"
-        pp_type got pp_type ex
-
-  | MF_tres (ex, got) ->
-      msg "its return type is %a instead of %a"
-        pp_type got pp_type ex
-
-  | MF_restr (env, `Sub sx) ->
-      let ppe = EcPrinting.PPEnv.ofenv env in
-      msg "the function is not allowed to use %a"
-        (EcPrinting.pp_list " or@ " (EcPrinting.pp_funname ppe))
-        (Sx.ntr_elements sx)
-
-  | MF_restr (env, `Eq (ex, got)) ->
-      let ppe = EcPrinting.PPEnv.ofenv env in
-      let allowed = Sx.diff ex got in
-      let has_allowed = not (Sx.is_empty allowed) in
-      let notallowed  = Sx.diff got ex in
-
-      if has_allowed then
-        msg "the function should be allowed to use %a"
-          (EcPrinting.pp_list " or@ " (EcPrinting.pp_funname ppe))
-          (Sx.ntr_elements allowed);
-      if not (Sx.is_empty notallowed) then
-        msg "%sthe function is not allowed to use %a"
-          (if has_allowed then ",@ " else "")
-          (EcPrinting.pp_list " or@ " (EcPrinting.pp_funname ppe))
-          (Sx.ntr_elements notallowed)
-
-let rec pp_cnv_failure env fmt error =
-  let msg x = Format.fprintf fmt x in
-
-  match error with
-  | E_TyModCnv_ParamCountMismatch ->
-      msg "not the same number of module arguments"
-
-  | E_TyModCnv_ParamTypeMismatch x ->
-      msg "the module argument `%s' does not have the expected type"
-        (EcIdent.name x)
-
-  | E_TyModCnv_MissingComp x ->
-      msg "procedure `%s' is missing" x
-
- | E_TyModCnv_MismatchFunSig (x,err) ->
-      msg "procedure `%s' is not compatible: %a"
-        x (pp_mismatch_funsig env) err
-
-  | E_TyModCnv_SubTypeArg(x,t1,t2,err) ->
-    let ppe = EcPrinting.PPEnv.ofenv env in
-    msg "@[<v>for argument %s:@   %a is not a subtype of %a because@   %a@]"
-      (EcIdent.name x)
-      (EcPrinting.pp_modtype1 ppe) t1
-      (EcPrinting.pp_modtype1 ppe) t2
-      (pp_cnv_failure env) err
-
-let pp_modappl_error env fmt error =
-  let msg x = Format.fprintf fmt x in
-
-  match error with
-  | MAE_WrongArgCount (ex,got)->
-      msg "wrong number of arguments (expected %i, got %i)" ex got
-
-  | MAE_InvalidArgType (mp,error) ->
-      let ppe = EcPrinting.PPEnv.ofenv env in
-      msg "argument %a does not match required interface, %a"
-        (EcPrinting.pp_topmod ppe) mp
-        (pp_cnv_failure env) error
-
-  | MAE_AccesSubModFunctor ->
-      msg "cannot access a sub-module of a partially applied functor"
+open UcTransTypesExprs
 
 let pp_fxerror _env fmt error =
   let msg x = Format.fprintf fmt x in
@@ -146,17 +70,8 @@ let pp_tyerror env1 fmt error =
   | UniVarNotAllowed ->
       msg "type place holders not allowed"
 
-  | FreeTypeVariables ->
-      msg "this expression contains free type variables"
-
   | TypeVarNotAllowed ->
       msg "type variables not allowed"
-
-  | OnlyMonoTypeAllowed s ->
-      msg "%s, %s%a"
-        "only monomorphic types are allowed"
-        "you may have to add type annotations"
-        (fun fmt -> oiter (Format.fprintf fmt " on %s")) s
 
   | UnboundTypeParameter x ->
       msg "unbound type parameter: %s" x
@@ -169,12 +84,6 @@ let pp_tyerror env1 fmt error =
 
   | UnknownRecFieldName qs ->
       msg "unknown (record) field name: %a" pp_qsymbol qs
-
-  | UnknownInstrMetaVar x ->
-      msg "unkown instruction meta-variable: %a" pp_symbol x
-
-  | UnknownMetaVar x ->
-      msg "unknown meta-variable: %a" pp_symbol x
 
   | DuplicatedRecFieldName qs ->
       msg "duplicated (record) field name: %s" qs
@@ -203,20 +112,11 @@ let pp_tyerror env1 fmt error =
   | DuplicatedTyVar ->
       msg "a type variable appear at least twice"
 
-  | DuplicatedLocal name ->
-      msg "duplicated local/parameters name: `%s'" name
-
   | DuplicatedField name ->
       msg "duplicated field name: `%s'" name
 
   | NonLinearPattern ->
       msg "non-linear pattern matching"
-
-  | LvNonLinear ->
-      msg "This left-value is contains twice the same variable"
-
-  | NonUnitFunWithoutReturn ->
-      msg "This function must return a value"
 
   | TypeMismatch ((ty1, ty2), _) ->
       msg "This expression has type@\n";
@@ -227,24 +127,11 @@ let pp_tyerror env1 fmt error =
   | TypeClassMismatch ->
       msg "Type-class unification failure"
 
-  | TypeModMismatch(mp, mt, err) ->
-      msg "the module %a does not have the module type %a:@\n"
-        (EcPrinting.pp_topmod env) mp
-        (EcPrinting.pp_modtype1 env) mt;
-      msg "  @[<hov 2>%t@]" (fun fmt -> pp_cnv_failure env1 fmt err)
-
   | NotAFunction ->
       msg "the expression is not a function, it can not be applied"
 
   | NotAnInductive ->
       msg "the expression does not have an inductive type"
-
-  | AbbrevLowArgs ->
-      msg "this abbreviation is not applied enough"
-
-  | UnknownProgVar (p, mem) ->
-      msg "unknown program variable (in %a): `%a'"
-        (EcPrinting.pp_mem env) mem pp_qsymbol p
 
   | UnknownVarOrOp (name, []) ->
       (match name with
@@ -331,75 +218,11 @@ let pp_tyerror env1 fmt error =
         in msg "  [%s]: %a@\n" title pp x) matches
   end
 
-  | UnknownModName name ->
-      msg "unknown module: %a" pp_qsymbol name
-
-  | UnknownTyModName name ->
-      msg "unknown type name: %a" pp_qsymbol name
-
-  | UnknownFunName name ->
-      msg "unknown function: %a" pp_qsymbol name
-
-  | UnknownModVar x ->
-      msg "unknown module-level variable: %a" pp_qsymbol x
-
-  | UnknownMemName m ->
-      msg "unknown memory: %s" m
-
-  | InvalidFunAppl FAE_WrongArgCount ->
-      msg "invalid function application: wrong number of arguments"
-
-  | InvalidModAppl err ->
-      msg "invalid module application:@ %a" (pp_modappl_error env1) err
-
-  | InvalidModType MTE_IncludeFunctor ->
-      msg "cannot include functors"
-
-  | InvalidModType MTE_InnerFunctor ->
-      msg "functors must be top-level modules"
-
-  | InvalidModType (MTE_DupProcName x) ->
-      msg "duplicated var/proc name in module expression: `%s'" x
-
-  | InvalidModSig (MTS_DupProcName x) ->
-      msg "duplicated proc. name in signature: `%s'" x
-
-  | InvalidModSig (MTS_DupArgName (f, x)) ->
-      msg "duplicated proc. arg. name in signature: `%s.%s'" f x
-
-  | InvalidMem (name, MAE_IsConcrete) ->
-      msg "the memory %s must be abstract" name
-
   | InvalidMatch fxerror ->
       pp_fxerror env1 fmt fxerror
-
-  | InvalidFilter (FE_InvalidIndex i) ->
-      msg "invalid filter index: %d" i
-
-  | InvalidFilter FE_NoMatch ->
-      msg "invalid filter pattern (no match)"
-
-  | FunNotInModParam name ->
-      msg "the function %a is not provided by a module parameter"
-          pp_qsymbol name
-
-  | NoActiveMemory ->
-      msg "no active memory at this point"
 
   | PatternNotAllowed ->
       msg "pattern not allowed here"
 
-  | MemNotAllowed ->
-      msg "memory not allowed here"
-
   | UnknownScope sc ->
       msg "unknown scope: `%a'" pp_qsymbol sc
-
-  | NoWP ->
-      msg "cannot compute weakest precondition"
-
-  | FilterMatchFailure ->
-      msg "filter pattern does not match"
-
-  | LvMapOnNonAssign ->
-      msg "map-style left-value cannot be used with assignments"
