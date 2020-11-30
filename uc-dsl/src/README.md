@@ -14,8 +14,8 @@ Program Structure
 * [`ucdsl.ml`](ucdsl.ml) - UC DSL's main file
 
 * [`ucConfig.ml.in`](ucConfig.ml.in) - source for configuration
-  module, which `build` script turns into configuration module by
-  making substitutions
+  module, which `build` script turns into configuration module
+  (`ucConfig.ml`) by making substitutions
   
 * `UcUtils` ([`ucUtils.mli`](ucUtils.mli),
   [`ucUtils.ml`](ucUtils.ml)) - module with utility defintions
