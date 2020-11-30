@@ -772,7 +772,8 @@ let expr_of_opselect
 
   in (e_app op args codom, codom)
 
-let transexp (env : EcEnv.env) mode ue e =
+let transexp (env : EcEnv.env) ue e =
+  let mode = `InOp in
   let rec transexp_r (osc : EcPath.path option) (env : EcEnv.env) (e : pexpr) =
     let loc = e.pl_loc in
     let transexp = transexp_r osc in
@@ -983,11 +984,6 @@ let transexp (env : EcEnv.env) mode ue e =
   in
     transexp_r None env e
 
-let transexpcast (env : EcEnv.env) mode ue t e =
-  let (e', t') = transexp env mode ue e in
+let transexpcast (env : EcEnv.env) ue t e =
+  let (e', t') = transexp env ue e in
     unify_or_fail env ue e.pl_loc ~expct:t t'; e'
-
-let transexpcast_opt (env : EcEnv.env) mode ue oty e =
-  match oty with
-  | None   -> fst (transexp env mode ue e)
-  | Some t -> transexpcast env mode ue t e

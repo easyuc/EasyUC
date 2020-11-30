@@ -823,7 +823,7 @@ let check_msg_pat
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
     (pexpr : pexpr) (expct_ty_opt : ty option) : ty =
-  let (exp, ty) = transexp env `InOp ue pexpr in
+  let (exp, ty) = transexp env ue pexpr in
   let () =
     match expct_ty_opt with
     | None          -> ()

@@ -2,6 +2,9 @@
 
 (* adapted from ecUserMessages.mli of EasyCrypt distribution *)
 
+(* Formatting error messages issued when typechecking types and
+   expressions *)
+
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2018 - Inria
