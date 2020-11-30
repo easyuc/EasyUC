@@ -32,7 +32,7 @@ Program Structure
 
 * `UcSpec` - module defining specification parse trees
 
-* `ucTypedSpec` - module definining typed specifications
+* `UcTypedSpec` - module definining typed specifications
 
 * `ucLexer.mll` - UC DSL lexer, turned into `UcLexer` module by
   `mllex`
