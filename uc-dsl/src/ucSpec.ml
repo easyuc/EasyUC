@@ -48,11 +48,7 @@ type pty_r =
   | PTfun   of pty * pty
 and pty = pty_r located
 
-(* type parameters *)
-
-type ptyparams = (psymbol * pqsymbol list) list
-
-(* type annotations *)
+(* type variable instantiations *)
 
 type ptyannot_r =
   | TVIunamed of pty list
