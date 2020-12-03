@@ -1,9 +1,0 @@
-description
-This test demonstrates a wrong usage of decoding non univ.
-.
-args: testDecodeNonuniv.uc
-outcome: failure
-[error: testDecodeNonuniv.uc: from line 17 columns 14 to 15]
-
-only expressions of univ type can be decoded
-.

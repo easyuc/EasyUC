@@ -1,8 +1,16 @@
 (* UcState module interface *)
 
-(* Global state of UC DSL tool *)
+(* Global State of UC DSL tool *)
 
-(* the precedence of include dirs is from the beginning of the list
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
+(* include dirs list
+
+   the precedence of include dirs is from the beginning of the list
    (highest) to the end of the list (lowest)
 
    this is the *opposite* of the order of the -I options to ucdsl *)
@@ -20,6 +28,11 @@ val add_highest_include_dirs : string -> unit
    the list at the end) *)
 
 val add_lowest_include_dirs : string -> unit
+
+(* boolean saying whether messages should be issued in raw format,
+   for consumption, e.g., by Emacs major mode for UC DSL
+
+   default is non-raw messages, intended to be read by humans *)
 
 val set_raw_messages : unit -> unit
 

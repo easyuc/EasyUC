@@ -1,18 +1,18 @@
-direct d {
+direct D_ {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:d}
+direct D {D:D_}
 
-direct d2 {
+direct D2_ {
 in  x@bla()
 out bli()@x
 }
 
-direct D2 {D2:d2}
+direct D2 {D2:D2_}
 
-adversarial iio {
+adversarial Iio {
 in  bla()
 out bli()
 }
@@ -27,17 +27,17 @@ functionality R(F:D) implements D {
  }
 }
 
-functionality I() implements D2 iio {
+functionality I() implements D2 Iio {
 
   initial state In {
   match message with * => {fail.} end
   }
 }
 
-simulator S uses iio simulates R(I) {
+simulator S uses Iio simulates R(I) {
 
   initial state In {
-  match message with iio.* => {fail.} end
+  match message with Iio.* => {fail.} end
   }
 
 }

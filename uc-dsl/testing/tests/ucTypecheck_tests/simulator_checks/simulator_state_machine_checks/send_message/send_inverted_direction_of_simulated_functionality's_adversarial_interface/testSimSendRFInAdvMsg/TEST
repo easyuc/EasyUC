@@ -7,5 +7,5 @@ outcome: failure
 [error: testSimSendRFInAdvMsg.uc: from line 63 columns 37 to 47]
 
 message path is not one of the possible outgoing message paths:
-  iio.i2sbla, R.A.A.abli, R.F.iio.i2sbli, R.SFQ.a2.abli2
+  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli, R.SFQ.A2_.abli2
 .

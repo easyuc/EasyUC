@@ -6,5 +6,5 @@ args: testStateVarsNonExistingType.uc
 outcome:  failure
 [error: testStateVarsNonExistingType.uc: from line 18 columns 22 to 26]
 
-non-existing type: qort
+unknown type name: qort
 .

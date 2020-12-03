@@ -5,5 +5,5 @@ args: testValueAssignConst.uc
 outcome: failure
 [error: testValueAssignConst.uc: from line 17 columns 28 to 29]
 
-k is not a declared variable
+identifer is not a local variable
 .

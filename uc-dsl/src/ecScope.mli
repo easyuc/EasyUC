@@ -1,11 +1,23 @@
 (* A modification of src/ecScope.mli of the EasyCrypt distribution
 
-   See "UC DSL" for changes *)
+   See "UC DSL" for changes
+
+   Manipulation of scopes, which includes the current environment
+   (from EcEnv), information about what theories are loaded and
+   required, information about the current proof state (if any), the
+   current options, and information about the current section (if any)
+   *)
 
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2018 - Inria
  * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -81,7 +93,8 @@ val xgoal  : scope -> proof_uc option
 
 (* creates a scope that's like the supplied one except that
    the environment and required theories are the ones from the
-   prelude *)
+   prelude - we're simply exposing the function that was already
+   defined *)
 val for_loading : scope -> scope  (* UC DSL *)
 
 type topmode = [`InProof | `InActiveProof | `InTop]

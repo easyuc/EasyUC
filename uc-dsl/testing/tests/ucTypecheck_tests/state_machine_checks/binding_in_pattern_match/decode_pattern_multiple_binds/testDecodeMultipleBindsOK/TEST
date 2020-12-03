@@ -1,6 +1,0 @@
-description
-Binding multiple arguments to same const in decode pattern - fixed
-.
-args: testDecodeMultipleBindsOK.uc
-outcome:  success
-.

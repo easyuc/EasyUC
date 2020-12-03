@@ -1,11 +1,23 @@
 (* A modification of src/ecCommands.mli of the EasyCrypt distribution
 
-   See "UC DSL" for changes *)
+   See "UC DSL" for changes
+
+   Imperative processing of global actions (from EcParsetree), where
+   the scopes (from EcScope) are stored in a context
+
+   For UC DSL, we have an alternative API, with its own kind of
+   context *)
 
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2018 - Inria
  * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -69,7 +81,7 @@ val apply_pragma : string -> unit
 
 (* UC DSL interface *)
 
-(* initialization *)
+(* initialization stack of scopes to initial scope *)
 val ucdsl_init : unit -> unit
 
 (* add a notifier *)
@@ -81,16 +93,19 @@ val ucdsl_current : unit -> EcScope.scope
 (* update current scope *)
 val ucdsl_update : EcScope.scope -> unit
 
-(* require a theory *)
+(* require a theory in the current scope, updating the current scope *)
 val ucdsl_require :
-  string EcLocation.located option *
-  (string EcLocation.located * string EcLocation.located option) *
-  [ `Export | `Import ] option ->
+  string EcLocation.located option *    (* optional namespace *)
+  (string EcLocation.located *          (* theory to require *)
+   string EcLocation.located option) *  (* optional alternative name
+                                           for result of requiring *)
+  [ `Export | `Import ] option ->       (* do we export or import the
+                                           theory's definitions? *)
   unit
 
-(* begin scope with only prelude required, saving old scope *)
+(* begin scope with only prelude required, saving old scope on stack *)
 val ucdsl_new : unit -> unit
 
-(* end scope, reverting to saved one, which is updated to
+(* end scope, reverting to saved one from stack, which is updated to
    include required theories of ended scope *)
 val ucdsl_end : unit -> unit

@@ -5,5 +5,5 @@ args: testSimMsgMatchI2SInMsg.uc
 outcome:  failure
 [error: testSimMsgMatchI2SInMsg.uc: from line 33 columns 22 to 32]
 
-message path is not one of the possible incoming message paths: iio.i2sbli
+message path is not one of the possible incoming message paths: Iio.i2sbli
 .

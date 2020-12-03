@@ -1,8 +1,8 @@
-direct a {
+direct A_ {
 in x@bla()
 }
 
-direct A {A:a}
+direct A {A:A_}
 
 functionality F() implements A {
  party P serves A.A {

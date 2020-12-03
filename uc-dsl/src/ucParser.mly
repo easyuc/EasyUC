@@ -19,7 +19,6 @@ open Format
 open EcUtils
 open EcLocation
 open EcSymbols
-open EcParsetree
 open UcSpec
 
 module BI = EcBigInt
@@ -32,25 +31,25 @@ let pqsymb_of_psymb (x : psymbol) : pqsymbol =
 let pqsymb_of_symb loc (x : symbol) : pqsymbol =
   mk_loc loc ([], x)
 
-let mk_peid_symb loc (s : symbol) (ti : ptyannot option) : pexpr =
+let mk_peid_symb loc (s : symbol) (ti : ptyinstan option) : pexpr =
   mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
 
-let peapp_symb loc (s : symbol) (ti : ptyannot option) (es : pexpr list) =
+let peapp_symb loc (s : symbol) (ti : ptyinstan option) (es : pexpr list) =
   PEapp (mk_peid_symb loc s ti, es)
 
-let peget loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
+let peget loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
   peapp_symb loc EcCoreLib.s_get ti [e1; e2]
 
-let peset loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
+let peset loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
   peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
 
-let pe_nil loc (ti : ptyannot option) =
+let pe_nil loc (ti : ptyinstan option) =
   mk_peid_symb loc EcCoreLib.s_nil ti
 
-let pe_cons loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
+let pe_cons loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
   mk_loc loc (peapp_symb loc EcCoreLib.s_cons ti [e1; e2])
 
-let pelist loc (ti : ptyannot option) (es : pexpr list) : pexpr =
+let pelist loc (ti : ptyinstan option) (es : pexpr list) : pexpr =
   List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
 
 (* check for parse errors in messages of direct or adversarial
@@ -874,7 +873,7 @@ args :
 
 (* Identifiers, Words and Operators
 
-   everything below borrowed from EasyCrypt parser *)
+   everything below adapted from EasyCrypt parser *)
 
 %inline _lident :
   | x = LIDENT { x }
@@ -1041,12 +1040,12 @@ type_exp :
 tyvar_byname1:
 | x = tident; EQ; ty = loc(type_exp) { (x, ty) }
 
-tyvar_annot:
+tyvar_instan:
 | lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
 | lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
 
-%inline tvars_app:
-| LTCOLON k = loc(tyvar_annot) GT { k }
+%inline tvars_instan:
+| LTCOLON k = loc(tyvar_instan) GT { k }
 
 %inline sexpr: x = loc(sexpr_u) { x }
 %inline  expr: x = loc( expr_u) { x }
@@ -1090,30 +1089,30 @@ sexpr_u :
 
   (* end UC DSL *)
 
-  | x = qoident; ti = tvars_app?
+  | x = qoident; ti = tvars_instan?
       { PEident (x, ti) }
 
-  | op = loc(numop); ti = tvars_app?
+  | op = loc(numop); ti = tvars_instan?
        { peapp_symb op.pl_loc op.pl_desc ti [] }
 
-  | se = sexpr; DLBRACKET; ti = tvars_app?; e = loc(plist1(expr, COMMA));
+  | se = sexpr; DLBRACKET; ti = tvars_instan?; e = loc(plist1(expr, COMMA));
     RBRACKET
       { let e = List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e) (unloc e) in
         peget (EcLocation.make $startpos $endpos) ti se e }
 
-  | se = sexpr; DLBRACKET; ti = tvars_app?; e1=loc(plist1(expr, COMMA));
+  | se = sexpr; DLBRACKET; ti = tvars_instan?; e1=loc(plist1(expr, COMMA));
     LARROW e2=expr RBRACKET
       { let e1 =
           List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e1) (unloc e1) in
         peset (EcLocation.make $startpos $endpos) ti se e1 e2 }
 
-  | TICKPIPE; ti = tvars_app?; e = expr; PIPE
+  | TICKPIPE; ti = tvars_instan?; e = expr; PIPE
       { peapp_symb e.pl_loc EcCoreLib.s_abs ti [e] }
 
-  | LBRACKET; ti = tvars_app?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
+  | LBRACKET; ti = tvars_instan?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
       { unloc (pelist es.pl_loc ti es.pl_desc) }
 
-  | LBRACKET; ti = tvars_app?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
+  | LBRACKET; ti = tvars_instan?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
       { let id =
           PEident (mk_loc op.pl_loc EcCoreLib.s_dinter, ti)
         in PEapp(mk_loc op.pl_loc id, [e1; e2]) }
@@ -1147,17 +1146,17 @@ expr_u :
   | e = sexpr; args = sexpr+
        { PEapp (e, args) }
 
-  | op = loc(uniop); ti = tvars_app?; e = expr
+  | op = loc(uniop); ti = tvars_instan?; e = expr
        { peapp_symb op.pl_loc op.pl_desc ti [e] }
 
   | e = expr_chained_orderings %prec prec_below_order
        { fst e }
 
-  | e1 = expr; op = loc(NE); ti = tvars_app?; e2=expr
+  | e1 = expr; op = loc(NE); ti = tvars_instan?; e2=expr
        { peapp_symb op.pl_loc "[!]" None
          [ mk_loc op.pl_loc (peapp_symb op.pl_loc "=" ti [e1; e2])] }
 
-  | e1 = expr; op = loc(binop); ti = tvars_app?; e2=expr
+  | e1 = expr; op = loc(binop); ti = tvars_instan?; e2=expr
        { peapp_symb op.pl_loc op.pl_desc ti [e1; e2] }
 
   | c = expr; QUESTION; e1 = expr; COLON; e2 = expr; %prec LOP2
@@ -1189,27 +1188,27 @@ expr_u :
   | EXIST; pd = ptybindings; COMMA; e = expr { PEexists (pd, e) }
 
 mcptn(BOP):
-  | c = qoident; tvi = tvars_app?; ps = bdident*
+  | c = qoident; tvi = tvars_instan?; ps = bdident*
       { PPApp ((c, tvi), ps) }
 
-  | LBRACKET; tvi = tvars_app?; RBRACKET {
+  | LBRACKET; tvi = tvars_instan?; RBRACKET {
       let loc = EcLocation.make $startpos $endpos in
       PPApp ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
     }
 
-  | op = loc(uniop); tvi = tvars_app?
+  | op = loc(uniop); tvi = tvars_instan?
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), []) }
 
-  | op = loc(uniop); tvi = tvars_app? x = bdident
+  | op = loc(uniop); tvi = tvars_instan? x = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
 
-  | x1 = bdident; op = loc(NE); tvi = tvars_app?; x2 = bdident
+  | x1 = bdident; op = loc(NE); tvi = tvars_instan?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
 
-  | x1 = bdident; op = loc(BOP); tvi = tvars_app?; x2 = bdident
+  | x1 = bdident; op = loc(BOP); tvi = tvars_instan?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
-  | x1 = bdident; op = loc(ordering_op); tvi = tvars_app?; x2 = bdident
+  | x1 = bdident; op = loc(ordering_op); tvi = tvars_instan?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
 expr_field :
@@ -1217,7 +1216,7 @@ expr_field :
       { { rf_name = x ; rf_tvi = None; rf_value = e; } }
 
 expr_ordering :
-  | e1 = expr; op = loc(ordering_op); ti = tvars_app?; e2=expr
+  | e1 = expr; op = loc(ordering_op); ti = tvars_instan?; e2=expr
       { (op, ti, e1, e2) }
 
 expr_chained_orderings :
@@ -1226,7 +1225,7 @@ expr_chained_orderings :
         (peapp_symb op.pl_loc (unloc op) ti [e1; e2], e2) }
 
   | e1 = loc(expr_chained_orderings); op = loc(ordering_op);
-    ti = tvars_app?; e2 = expr
+    ti = tvars_instan?; e2 = expr
       { let (lce1, (e1, le)) = (e1.pl_loc, unloc e1) in
         let loc = EcLocation.make $startpos $endpos in
         (peapp_symb loc "&&" None

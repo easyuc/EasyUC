@@ -1,17 +1,17 @@
-direct a {
+direct A_ {
 in x@bla(p:port)
 }
 
-direct A {a:a}
+direct A {A:A_}
 
 functionality F implements A {
 
- party P serves A.a {
+ party P serves A.A {
 
   initial state Is 
   {
    match message with
-    p@A.a.bla(p) => {fail.}
+    p@A.A.bla(p) => {fail.}
    end
   }
 

@@ -1,0 +1,12 @@
+description 
+This test fails since II expects key as argument.
+.
+args: testExprWrongArgType.uc
+outcome: failure
+[error: testExprWrongArgType.uc: from line 16 columns 67 to 68]
+
+no matching operator, named `^', for the following parameters' type:
+  [1]: exp
+  [2]: key
+
+.

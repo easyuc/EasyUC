@@ -13,9 +13,8 @@ Your branch is up to date with 'origin/1.0-preview'.
 
 nothing to commit, working tree clean
 $ git log
-commit 6c677e118c229b3c0832288fda373ef671669b4b (HEAD -> 1.0-preview, origin/1.0-preview)
-Merge: b6ad2d51 4ef42866
-Author: Pierre-Yves Strub <pierre-yves@strub.nu>
-Date:   Wed Oct 21 10:49:57 2020 +0200
+commit bf76f88065b9abe1f1ab0417cbdd6f63447bb232 (HEAD -> 1.0-preview, origin/deploy-fix-17390, origin/1.0-preview, deploy-fix-17390)
+Author: Alley Stoughton <alley.stoughton@icloud.com>
+Date:   Tue Nov 24 11:20:22 2020 -0500
 
-    Merge branch '1.0' into 1.0-preview
+    [fix #17390]

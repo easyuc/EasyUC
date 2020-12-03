@@ -1,9 +1,13 @@
 (* UcEcInterface module interface *)
 
 (* Interface with EasyCrypt *)
-(*
-open UcTypes
-*)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 (* initialize EasyCrypt *)
 
 val init : unit -> unit
@@ -23,11 +27,7 @@ val env : unit -> EcEnv.env
 (* require an EasyCrypt theory *)
 
 val require :
-  string EcLocation.located -> [ `Export | `Import ] option -> unit
-
-val exists_type : string -> bool
-
-val exists_operator : string -> bool
-(*
-val get_operator_sig : string -> typ * typ list
-*)
+  string EcLocation.located    ->  (* theory *)
+  [ `Export | `Import ] option ->  (* should we export/import the theory's
+                                      definitions *)
+  unit

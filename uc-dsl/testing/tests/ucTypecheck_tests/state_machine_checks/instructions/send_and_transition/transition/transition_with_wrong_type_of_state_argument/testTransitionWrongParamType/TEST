@@ -6,6 +6,9 @@ args: testTransitionWrongParamType.uc
 outcome: failure
 [error: testTransitionWrongParamType.uc: from line 16 columns 66 to 67]
 
-parameter 1 of state II has type key, which is incompatible with type exp of
-corresponding argument
+This expression has type
+   exp
+
+but is expected to have type
+   key
 .

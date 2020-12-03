@@ -1,9 +1,9 @@
-direct a {
+direct A_ {
 in  x@bla()
 out bli()@x
 }
 
-direct A {A:a}
+direct A {A:A_}
 
 functionality F() implements A {
 

@@ -6,5 +6,5 @@ args: Goo.uc
 outcome: failure
 [error: Goo.uc: from line 4 columns 18 to 19]
 
-non-existing type: t
+unknown type name: t
 .

@@ -11,7 +11,7 @@ is created.
 Until this conflict is resolved and CONFLICT file is removed
 this test will be skipped.
 
-Each three directories contains
+Each of the three directories contains
 
 1. TEST file
 2. test.uc

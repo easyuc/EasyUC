@@ -10692,9 +10692,10 @@ auto =>
   out_pt2'_func out_pt1'_adv out_pt2'_adv -> -> -> /negb_or
   [#] _ /not_dir -> _ _ _ //.
 split => [| _ //].
-do 4!congr;
-  by rewrite /pad_iso_l -/(gen q') -/(gen (log (inj t' ^^ gen q')))
-     log_gen.
+congr; congr; first 5 smt().
+congr; congr.
+by rewrite /pad_iso_l -/(gen q') -/(gen (log (inj t' ^^ gen q')))
+           log_gen.
 if => //.
 rcondf{1} 2; first auto.
 rcondf{2} 2; first auto.

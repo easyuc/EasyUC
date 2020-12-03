@@ -6,6 +6,9 @@ args: testSendWrongParamType.uc
 outcome: failure
 [error: testSendWrongParamType.uc: from line 16 columns 41 to 47]
 
-parameter 1 of message G.D.bla has type key, which is incompatible with type
-port of corresponding argument
+This expression has type
+   port
+
+but is expected to have type
+   key
 .

@@ -4,7 +4,11 @@ a distribution of exponents
 .
 args: testSampleAssignWrongType.uc
 outcome: failure
-[error: testSampleAssignWrongType.uc: from line 17 columns 11 to 12]
+[error: testSampleAssignWrongType.uc: from line 17 columns 16 to 20]
 
-type key of x is not compatible with type exp
+This expression has type
+   exp Distr.distr
+
+but is expected to have type
+   key distr
 .

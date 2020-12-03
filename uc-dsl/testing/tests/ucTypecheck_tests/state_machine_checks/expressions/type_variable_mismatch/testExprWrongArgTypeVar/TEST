@@ -1,0 +1,12 @@
+description
+Type variables on both sides of equality must be the same
+.
+args: testExprWrongArgTypeVar.uc
+outcome: failure
+[error: testExprWrongArgTypeVar.uc: from line 16 columns 67 to 68]
+
+no matching operator, named `=', for the following parameters' type:
+  [1]: exp
+  [2]: key
+
+.

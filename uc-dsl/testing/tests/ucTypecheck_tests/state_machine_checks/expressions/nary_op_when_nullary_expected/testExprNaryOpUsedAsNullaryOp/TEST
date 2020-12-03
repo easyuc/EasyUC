@@ -1,0 +1,13 @@
+description 
+This test fails because the operator inj expects an argument but none was given.
+.
+args: testExprNaryOpUsedAsNullaryOp.uc
+outcome: failure
+[error: testExprNaryOpUsedAsNullaryOp.uc: from line 16 columns 66 to 69]
+
+This expression has type
+   text -> key
+
+but is expected to have type
+   key
+.

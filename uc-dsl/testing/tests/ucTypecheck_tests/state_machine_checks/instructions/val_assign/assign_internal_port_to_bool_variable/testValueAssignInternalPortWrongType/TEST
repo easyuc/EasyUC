@@ -3,7 +3,11 @@ This test checks the compatability of types in an assignment operation
 .
 args: testValueAssignInternalPortWrongType.uc
 outcome:  failure
-[error: testValueAssignInternalPortWrongType.uc: from line 15 columns 13 to 14]
+[error: testValueAssignInternalPortWrongType.uc: from line 15 columns 16 to 25]
 
-type bool of x is not compatible with type port
+This expression has type
+   port
+
+but is expected to have type
+   bool
 .

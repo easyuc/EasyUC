@@ -6,5 +6,5 @@ outcome: failure
 [error: testSimInitStateNonI2SMsgMatch.uc: from line 33 columns 22 to 29]
 
 message path pattern is inconsistent with the paths of possible incoming
-messages: iio.bli
+messages: Iio.bli
 .

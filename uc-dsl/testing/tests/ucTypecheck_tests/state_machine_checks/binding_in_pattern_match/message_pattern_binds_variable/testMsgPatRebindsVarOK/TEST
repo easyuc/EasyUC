@@ -1,6 +1,0 @@
-description
-Cannot rebind variable name in message pattern - fixed
-.
-args: testMsgPatRebindsVarOK.uc
-outcome:  success
-.

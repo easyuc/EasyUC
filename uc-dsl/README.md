@@ -24,9 +24,11 @@ including the files in the subdirectory
 definitions of the functionalities and simulators of our SMC (secure
 message transmission) case study.
 
-The OCaml code for a lexer and parser of the DSL can be found in the
-subdirectory [`src`](src). The software is still under development.  A
-translator into EasyCrypt is yet to be written.
+The OCaml code for a lexer, parser and typechecker for the DSL can be
+found in the subdirectory [`src`](src). It builds upon the EasyCrypt
+implementation, and is distributed under the same software license.
+The software is still under development.  A translator into EasyCrypt
+is yet to be written.
 
 Building the UC DSL Tool
 --------------------------------------------------------------------
