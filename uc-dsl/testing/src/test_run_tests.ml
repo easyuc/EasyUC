@@ -210,7 +210,7 @@ let log_fail () =
   |false ->
     begin
     match !conflict_str = "" with
-    |false -> log_str := !fail_str
+    |false -> log_str := "Failed tests:\n" ^ !fail_str
                          ^ "\nSkipped tests\n"^ !conflict_str
     |true -> log_str := !fail_str
     end
@@ -251,7 +251,7 @@ let pre_run dir  =
            else (
              let _ =
                log_str :=
-                 !log_str^ "\nThe followng tests are either failed or skipped\n"
+                 !log_str^ "\nTest suite found issues with the followng tests\n"
              in
              log_fun();
              log_fail();
