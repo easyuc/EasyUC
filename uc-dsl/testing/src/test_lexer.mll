@@ -155,7 +155,7 @@ and out_parse o1 bool = parse
     |[' ' '\t' '\r']+		{out_parse o1 bool lexbuf}
     |['\n']			{ if bool = false
 				then error_raise
-				"success/failure expected"  lexbuf
+				"success/failure expected in the same line as 'outcome' and ':'"  lexbuf
 				else next_line lexbuf ; OUT (o1, desc "" lexbuf)}
     |"(*" 			{comments 0 lexbuf; out_parse o1 bool lexbuf }
     |"success" 			{ if bool = false then

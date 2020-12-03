@@ -14,8 +14,9 @@ let quiet = ref false
 let log_str = ref ""
 let sec_str = ref ""
 let desc_str = ref ""
+let conflict_str = ref ""
+let fail_str = ref ""
              
-
              
 (* check_name contents sees if there any .ec or .uc files in the directory 
 if yes then their names will be passed onto check_ec_standard *)
@@ -80,7 +81,13 @@ let create_conflict file outcome1 outcome2 =
     ^ outcome1 ^ "\n" ^ outcome2 ^ ".\n" in
   let _ = write_log file_name s2 in
   log_str := !log_str ^ "\n" ^ file_name ^ " created"
-  
+
+let match_stat stat =
+  match stat with
+  |Some 0 -> "0"
+  |Some n -> string_of_int n
+  |_ ->      "Unknown"
+   
 (* in the above code write_log comes from the file Test_log.ml *)
 (* below function parse_file comes into the picture while executing 
 a test, we take a TEST file, parse using parse function from 
@@ -88,7 +95,7 @@ Test_common_module.ml then get the tokens, match and use the function
 run from Test_common_module.ml
 which gives us exit code together with an error message if any
 use that information to determine whether a test failed or passed *)
-  
+           
 let rec parse_file file code =
   try
     let parse_list = parse file in
@@ -100,99 +107,87 @@ let rec parse_file file code =
     let s1,s2 = check_fields parse_list in
     if s1 <> "" then
       (if s2 <> "" then
-        raise (Error (s1^"\n"^s2))
+         raise (Error (s1^"\n"^s2))
        else raise (Error s1))                 
     else
-      let _ = log_str := !log_str^s2^"\n" in
-      let f_name, out_come1, out_come2 = match_expr parse_list [| |] Empty ""
-      in  let (stat, s_out) =
-            run (String.sub file 0 (String.length file -5))
-              (Array.append [|"ucdsl"|] f_name) in
-          match stat with
-          |Some 0 -> begin match out_come1 with
-                     |Success ->
-                       if s_out = out_come2 then
-                         (log_str := !log_str
-                                     ^ "**Test passed - Outcome is success " 
-                                     ^"and exit code is 0";
-                          code)
-                       else
-                         (log_str :=
-                            !log_str
-                            ^ "->Test failed - *ucdsl message is different "
-                            ^ "from* outcome description*"
-                            ^ "\nOutcome is sucess and exit code is 0";
-                          sec_str :=
-                            "\n"^"-------"
-                            ^"ucdsl returned:-------\n"
-                            ^s_out
-                            ^"------Outcome description is"
-                            ^":------\n"
-                            ^out_come2;
-                          create_conflict file "success" s_out;
-                          code+1)
-                     |Failure -> (log_str :=
-                                    !log_str
-                                    ^ "->Test failed - *Exit code is 0 "
-                                    ^ "but outcome is Failure*"
-                                    ^ s_out; code+1)
-                     |_ -> (log_str :=
-                              !log_str
-                              ^ "Test failed - Exit code 0 unknown outcome";
-                            create_conflict file "unknown" s_out; code+1)
-                     end
-          |None -> (let _ = log_str :=
-                             !log_str
-                             ^"->Test failed - *ucdsl did not exit normally*"
-                    in create_conflict file "unknown" s_out;(code+1))
-          |Some n -> begin match out_come1 with
-                     |Failure -> (if s_out = out_come2 then
-                                    (log_str :=
-                                       !log_str
-                                       ^ "**Test passed - Outcome is failure"
-                                       ^" and exit code is "
-                                       ^string_of_int n;
-                                     code)
-                                  else
-                                    (log_str :=
-                                       !log_str
-                                       ^"->Test failed - *ucdsl message is "
-                                       ^"different from* outcome description"
-                                       ^"\nOutcome is failure and "
-                                       ^"exit code is "
-                                       ^ string_of_int n;
-                                     create_conflict file "failure" s_out;
-                                     sec_str :=
-                                      "\n"^"-------"
-                                      ^"ucdsl returned:-------\n"
-                                      ^s_out
-                                      ^"------Outcome description is"
-                                      ^":------\n"
-                                       ^out_come2;
-                                     code+1))
-                     |Success ->  (log_str :=
-                                     !log_str
-                                     ^"->Test failed - Exit code *0 "
-                                     ^"expected* but exit code is "
-                                     ^string_of_int n^"\n";
-                                   sec_str := "\nucdsl returned:\n"^s_out;
-                                   create_conflict file "failure" s_out;
-                                   code+1)
-                     |_ -> (log_str :=
-                              !log_str
-                              ^"->Test failed - *unexpected outcome*;\n" 
-                              ^"exit code is "^string_of_int n;
-                            create_conflict file "unknown" s_out;
-                            code+1)
-                     end
+      let _ = log_str := !log_str^"\n"^s2 in
+      let f_name, out_come1, out_come2 = match_expr parse_list [| |] Empty "" in
+      let out_code, out_text =
+        if out_come1 = Success then "0", "success"
+        else "1", "failure"
+      in
+      let (stat, s_out) =
+        run (String.sub file 0 (String.length file -5))
+          (Array.append [|"ucdsl"|] f_name) in
+      let run_op =  match_stat stat in
+      match run_op = out_code with
+      |true ->
+        begin
+          match s_out = out_come2 with
+          |true ->  (log_str := !log_str
+                                ^ "** Test passed outcome is "^ out_text
+                                ^" and exit code is "^ run_op ^ " **";
+                     code)
+          |_ -> (log_str := !log_str
+                            ^ "-> Test failed - UCDSL output differs with " 
+                            ^ "outcome description.\noutcome description is:\n"
+                            ^ out_come2 ^ "UCDSL message is: \n" ^ s_out;
+                 create_conflict file out_text s_out;
+                 fail_str := !fail_str ^ file ^ "\n";
+                 code+1)
+        end
+             
+      |_ ->
+        begin
+          match s_out = out_come2  with
+          |false ->
+            begin
+              match s_out = "" with
+              |true -> (log_str :=
+                         !log_str
+                         ^ "-> Test failed - Outcome differes with UCDSL output"
+                         ^ "\noutcome is "^ out_text ^ " but exit code is "
+                         ^run_op ^"\noutcome description is:\n" ^ out_come2
+                         ^ "UCDSL message is empty";
+                        create_conflict file
+                          (if run_op = "0" then "success" else "failure") s_out;
+                        fail_str := !fail_str ^ file ^ "\n";
+                        code+1)
+              |_ -> (log_str :=
+                       !log_str
+                       ^ "-> Test failed - Outcome differes with UCDSL output"
+                       ^ "\noutcome is "^ out_text ^ " but exit code is "
+                       ^run_op ^"\noutcome description is:\n" ^ out_come2
+                       ^ "UCDSL message is:" ^ s_out;
+                     create_conflict file
+                       (if run_op = "0" then "success" else "failure") s_out;
+                     fail_str := !fail_str ^ file ^ "\n";
+                     code+1)
+            end
+          |_ ->
+            (log_str := !log_str
+                        ^ "-> Test failed - Exit code differs with outcome\n"
+                        ^ "outcome is "^ out_text ^ " but exit code is "
+                        ^run_op;
+             create_conflict file
+               (if run_op = "0" then "success" else "failure") s_out;
+             fail_str := !fail_str ^ file ^ "\n";
+             code+1)
+        end
   with
   |Test_lexer.Syntax_error e -> let log_err = e in
-                                log_str := !log_str ^log_err^"\n"; (code+1) 
+                                log_str := !log_str^ "\n"^ log_err;
+                                fail_str := !fail_str ^ file ^ "\n";
+                                (code+1) 
   |Error e ->                   let log_err = e in
-                                log_str := !log_str ^log_err^"\n"; (code+1)
+                                log_str := !log_str^ "\n"^ log_err;
+                                fail_str := !fail_str ^ file ^ "\n";
+                                (code+1)
   |e ->                         let log_err = Printexc.to_string e in
-                                log_str := !log_str ^log_err^"\n"; (code+1)
-                              
+                                log_str := !log_str^ "\n"^ log_err;
+                                fail_str := !fail_str ^ file ^ "\n";
+                                (code+1)
+                                    
 (* log_fun is log function which write the log and prints the log checking 
 the verbosity and write_log comes from Test_log.ml*)
                                             
@@ -210,6 +205,18 @@ let log_fun () =
   sec_str := "";
   desc_str := ""
 
+let log_fail () =
+  match !fail_str = "" with
+  |false ->
+    begin
+    match !conflict_str = "" with
+    |false -> log_str := !fail_str
+                         ^ "\nSkipped tests\n"^ !conflict_str
+    |true -> log_str := !fail_str
+    end
+  |true -> log_str := "Skipped tests\n"^ !conflict_str
+
+  
 (* We take a directory and find all TEST files in the directory,
 file_list contains all that information and error_string 
 contains any errors happened during searching the directory dir
@@ -234,17 +241,22 @@ let pre_run dir  =
   let rec parse_list fil_list exit_code =
     match fil_list with
     |[] -> if (exit_code = 0) then
-             (let _ = log_str  :=
-                        !log_str 
-                        ^"\nTest suite completed sucessfully all tests passed \n"
+             (let _ =
+                log_str :=
+                  !log_str 
+                  ^"\nTest suite completed sucessfully all tests passed \n"
               in
               log_fun();
               exit 0)
            else (
              let _ =
                log_str :=
-                 !log_str^ "\nA total of " ^string_of_int exit_code
-                 ^ " errors found. log file created.\n" in
+                 !log_str^ "\nThe followng tests are either failed or skipped\n"
+             in
+             log_fun();
+             log_fail();
+             log_str := !log_str ^
+                          "\n" ^string_of_int exit_code ^" errors found.\n";
              log_fun();
              exit 1)
     |e::l -> let _ = log_str := !log_str^"\n"^e in
@@ -256,7 +268,8 @@ the directory 'e'*)
                (let _ =
                   log_str := !log_str^"\nError: "
                              ^ file_name
-                             ^ " exists. \nTest skipped."
+                             ^ " exists. \nTest skipped.";
+                  conflict_str := !conflict_str ^ file_name ^ "\n"
                 in
                 let _ =
                   sec_str :=
