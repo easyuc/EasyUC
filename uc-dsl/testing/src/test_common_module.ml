@@ -64,7 +64,6 @@ let check_fields lst =
           (if s1 <> "" then (s1^"\n"^s3 , s2)
            else (s3, s2))
         else (s1, s2)
-        
                        
 (* check_ec_standard checkes .uc anc .ec files for naming standard.
 The file name shoudl start with a letter and can contain numbers and a '_' *)
