@@ -1,5 +1,9 @@
 (* Univ.ec *)
 
+(* Universe of Values Plus EPDPs *)
+
+prover [""].  (* no use of SMT provers *)
+
 require import AllCore List UCEncoding.
 
 (* universe *)
@@ -81,7 +85,8 @@ qed.
 (* quadruple univ encoding: *)
 
 op nosmt enc_univ_quadruple (t : univ * univ * univ * univ) : univ =
-  epdp_univ_pair_univ.`enc (t.`1, (epdp_univ_triple_univ.`enc (t.`2, t.`3, t.`4))).
+  epdp_univ_pair_univ.`enc
+  (t.`1, (epdp_univ_triple_univ.`enc (t.`2, t.`3, t.`4))).
 
 op nosmt dec_univ_quadruple (u : univ) : (univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
@@ -183,7 +188,8 @@ qed.
 op nosmt enc_triple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp, epdp3 : ('c, univ) epdp,
       p : 'a * 'b * 'c) : univ =
-  epdp_univ_triple_univ.`enc (epdp1.`enc p.`1, epdp2.`enc p.`2, epdp3.`enc p.`3).
+  epdp_univ_triple_univ.`enc
+  (epdp1.`enc p.`1, epdp2.`enc p.`2, epdp3.`enc p.`3).
   
 op nosmt dec_triple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
@@ -212,7 +218,8 @@ op nosmt epdp_triple_univ
     dec = dec_triple_univ epdp1 epdp2 epdp3|}.
 
 lemma valid_epdp_triple_univ
-      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp, epdp3 : ('c, univ) epdp) :
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('c, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp (epdp_triple_univ epdp1 epdp2 epdp3).
 proof.  
@@ -298,7 +305,8 @@ op nosmt epdp_quadruple_univ
 lemma valid_epdp_quadruple_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp) :
-  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 => valid_epdp epdp4 =>
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 =>
   valid_epdp (epdp_quadruple_univ epdp1 epdp2 epdp3 epdp4).
 proof.  
 move => valid1 valid2 valid3 valid4.
@@ -357,10 +365,11 @@ qed.
 
 (* encoding of 'a list *)
 
-op nosmt epdp_enc_list_univ (epdp : ('a, univ) epdp, xs : 'a list) : univ =
+op nosmt enc_list_univ (epdp : ('a, univ) epdp, xs : 'a list) : univ =
   epdp_univ_list_univ.`enc (map epdp.`enc xs).
 
-op nosmt epdp_dec_list_univ (epdp : ('a, univ) epdp, u : univ) : 'a list option =
+op nosmt dec_list_univ
+     (epdp : ('a, univ) epdp, u : univ) : 'a list option =
   match epdp_univ_list_univ.`dec u with
     None    => None
   | Some vs =>
@@ -371,14 +380,14 @@ op nosmt epdp_dec_list_univ (epdp : ('a, univ) epdp, u : univ) : 'a list option 
   end.
 
 op nosmt epdp_list_univ (epdp : ('a, univ) epdp) : ('a list, univ) epdp =
-  {|enc = epdp_enc_list_univ epdp; dec = epdp_dec_list_univ epdp|}.
+  {|enc = enc_list_univ epdp; dec = dec_list_univ epdp|}.
 
 lemma valid_epdp_list_univ (epdp : ('a, univ) epdp) :
   valid_epdp epdp => valid_epdp (epdp_list_univ epdp).
 proof.  
 move => valid.
 apply epdp_intro => [xs | y xs].
-rewrite /epdp_list_univ /epdp_enc_list_univ /epdp_dec_list_univ /=.
+rewrite /epdp_list_univ /enc_list_univ /dec_list_univ /=.
 rewrite epdp_enc_dec 1:valid_epdp_univ_list_univ /=.
 have -> : map epdp.`dec (map epdp.`enc xs) = map Some xs.
   elim xs => [// | y ys /=].
@@ -386,7 +395,7 @@ have -> : map epdp.`dec (map epdp.`enc xs) = map Some xs.
 have -> /= : all is_some (map Some xs) = true.
   elim xs => [// | y ys //].
 elim xs => [// | y ys //].
-rewrite /epdp_list_univ /epdp_enc_list_univ /epdp_dec_list_univ /= =>
+rewrite /epdp_list_univ /enc_list_univ /dec_list_univ /= =>
   match_dec_y_eq_some.
 have val_u : epdp_univ_list_univ.`dec y = Some (map epdp.`enc xs).
   move : match_dec_y_eq_some.

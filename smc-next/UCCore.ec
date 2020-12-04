@@ -1,10 +1,23 @@
-(* UCCore.eca *)
-
-prover ["Z3" "Alt-Ergo"].
+(* UCCore.ec *)
 
 (* Core UC Definitions and Lemmas *)
 
-require import AllCore List FSet ListPO Encoding.
+prover quorum=2 ["Z3" "Alt-Ergo"].
+
+require import AllCore List FSet.
+
+(* prefix ordering on lists *)
+
+require import ListPO.
+
+(* defines encoding and partial decoding pairs (EPDPs) *)
+
+require export UCEncoding.
+
+(* defines type univ = bool list, plus a number of EPDP and EPDP
+   combinators with target univ *)
+
+require export UCUniv.
 
 (* real protocols and ideal functionalities (collectively,
    "functionalities") have hierarchical addresses
@@ -14,12 +27,19 @@ require import AllCore List FSet ListPO Encoding.
    partial ordering of ListPO)
 
    adversaries are also modeled as functionalities - but with no
-   subaddresses/sub-functionalties; simulators are functionalities
+   sub-addresses/sub-functionalties; simulators are functionalities
    parameterized by adversaries
 
    [] is the root address of the environment *)
 
 type addr = int list.
+
+op epdp_addr_univ : (addr, univ) epdp = epdp_list_univ epdp_int_univ.
+
+lemma valid_epdp_addr_univ : valid_epdp epdp_addr_univ.
+proof.
+rewrite valid_epdp_list_univ valid_epdp_int_univ.
+qed.
 
 (* ports - pairs of functionality addresses and port indices
 
@@ -33,6 +53,14 @@ type addr = int list.
    ([], 0) is the root port of the environment *)
 
 type port = addr * int.
+
+op epdp_port_univ : (port, univ) epdp =
+  epdp_pair_univ epdp_addr_univ epdp_int_univ.
+
+lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
+proof.
+rewrite valid_epdp_pair_univ 1:valid_epdp_addr_univ valid_epdp_int_univ.
+qed.
 
 (* messages have modes:
 
@@ -57,289 +85,6 @@ lemma not_adv (mod : mode) :
   mod <> Adv <=> mod = Dir.
 proof. by case mod. qed.
 
-(* universe *)
-
-type univ = bool list.  (* universe values are lists of bits *)
-
-(* we axiomatize the existence of encoding/partial decoding operators
-   on the following types
-
-   we could provide concrete definitions, but we won't rely on
-   the details, and so we prefer to keep things abstract; of course
-   all types being encoded must be countable *)
-
-clone EPDP as EPDP_Univ_Unit with  (* unit *)
-  type orig <- unit, type enc <- univ.
-
-clone EPDP as EPDP_Univ_Bool with  (* bool *)
-  type orig <- bool, type enc <- univ.
-
-clone EPDP as EPDP_Univ_Int with  (* int *)
-  type orig <- int, type enc <- univ.
-
-clone EPDP as EPDP_Univ_UnivPair with  (* univ * univ *)
-  type orig <- univ * univ, type enc <- univ.
-
-clone EPDP as EPDP_Univ_UnivList with  (* univ list *)
-  type orig <- univ list, type enc <- univ.
-
-(* now we can build on these axiomatized encoding/partial decoding
-   operators *)
-
-(* triple encoding: *)
-
-op nosmt enc_univ_triple (t : univ * univ * univ) : univ =
-  EPDP_Univ_UnivPair.enc (t.`1, (EPDP_Univ_UnivPair.enc (t.`2, t.`3))).
-
-op nosmt dec_univ_triple (u : univ) : (univ * univ * univ) option =
-  match EPDP_Univ_UnivPair.dec u with
-    None   => None
-  | Some p =>
-      match EPDP_Univ_UnivPair.dec p.`2 with
-        None   => None
-      | Some q => Some (p.`1, q.`1, q.`2)
-      end
-  end.
-
-clone EPDP as EPDP_Univ_UnivTriple with (* univ * univ * univ *)
-  type orig <- univ * univ * univ, type enc <- univ,
-  op enc = enc_univ_triple, op dec = dec_univ_triple
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_univ_triple /dec_univ_triple /=.
-by case x.
-rewrite /enc /dec /enc_univ_triple /dec_univ_triple => match_dec_u_eq_some.
-have val_u :
-  EPDP_Univ_UnivPair.dec u =
-  Some (x.`1, EPDP_Univ_UnivPair.enc (x.`2, x.`3)).
-  move : match_dec_u_eq_some.
-  case (EPDP_Univ_UnivPair.dec u) => // [[]] x1 q /=.
-  move => match_dec_q_eq_some.
-  have val_y2 :
-    EPDP_Univ_UnivPair.dec q = Some (x.`2, x.`3).
-    move : match_dec_q_eq_some.
-    case (EPDP_Univ_UnivPair.dec q) => // [[]] x2 x3 /= <- //.
-  move : match_dec_q_eq_some.
-  rewrite val_y2 /= => <- /=.
-  by rewrite (EPDP_Univ_UnivPair.dec_enc _ q).
-by rewrite (EPDP_Univ_UnivPair.dec_enc _ u).
-qed.
-
-(* address encoding: *)
-
-op nosmt enc_addr (x : addr) : univ =
-  EPDP_Univ_UnivList.enc (map EPDP_Univ_Int.enc x).
-
-op nosmt dec_addr (u : univ) : addr option =
-  match EPDP_Univ_UnivList.dec u with
-    None    => None
-  | Some vs =>
-      let ys = map EPDP_Univ_Int.dec vs
-      in if all is_some ys
-         then Some (map oget ys)
-         else None
-  end.
-
-clone EPDP as EPDP_Univ_Addr with (* addr *)
-  type orig <- addr, type enc <- univ,
-  op enc = enc_addr, op dec = dec_addr
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_addr /dec_addr /=.
-have -> :
-  map EPDP_Univ_Int.dec (map EPDP_Univ_Int.enc x) = map Some x by elim x.
-have -> /= : all is_some (map Some x) = true by elim x.
-by elim x.
-rewrite /enc /dec /enc_addr /dec_addr => match_dec_u_eq_some.
-have val_u : 
-  EPDP_Univ_UnivList.dec u = Some (map EPDP_Univ_Int.enc x).
-  move : match_dec_u_eq_some.
-  case (EPDP_Univ_UnivList.dec u) => // z /=.
-  case (all is_some (map EPDP_Univ_Int.dec z)) =>
-    // all_is_some_map_dec_z /= <-.
-  move : all_is_some_map_dec_z.
-  elim z => [// | v zs IH /= [#] val_v all_is_some_map_dec_zs].
-  split; first smt(EPDP_Univ_Int.dec_enc).
-  by apply IH.
-by rewrite (EPDP_Univ_UnivList.dec_enc _ u).
-qed.
-
-(* port encoding: *)
-
-op nosmt enc_port (pt : port) : univ =
-  EPDP_Univ_UnivPair.enc (EPDP_Univ_Addr.enc pt.`1, EPDP_Univ_Int.enc pt.`2).
-
-op nosmt dec_port (u : univ) : port option =
-  match EPDP_Univ_UnivPair.dec u with
-    None   => None
-  | Some p =>
-      match EPDP_Univ_Addr.dec p.`1 with
-        None   => None
-      | Some x =>
-          match EPDP_Univ_Int.dec p.`2 with
-            None   => None
-          | Some n => Some (x, n)
-          end
-      end
-  end.
-
-clone EPDP as EPDP_Univ_Port with (* port *)
-  type orig <- port, type enc <- univ,
-  op enc = enc_port, op dec = dec_port
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_port /dec_port /=.
-by case x.
-rewrite /enc /dec /enc_port /dec_port => match_eq_some.
-have val_u :
-  EPDP_Univ_UnivPair.dec u =
-  Some (EPDP_Univ_Addr.enc x.`1, EPDP_Univ_Int.enc x.`2).
-  move : match_eq_some.
-  case (EPDP_Univ_UnivPair.dec u) => // p /= match_eq_some.
-  have val_p_fst : EPDP_Univ_Addr.dec p.`1 = Some x.`1.
-    move : match_eq_some.
-    case (EPDP_Univ_Addr.dec p.`1) => // ys /=.
-    by case (EPDP_Univ_Int.dec p.`2).
-  move : match_eq_some.
-  rewrite val_p_fst /= => match_eq_some.
-  have val_p_snd : EPDP_Univ_Int.dec p.`2 = Some x.`2.
-    move : match_eq_some.
-    case (EPDP_Univ_Int.dec p.`2) => // x0 /= <- //.
-  move : match_eq_some.
-  rewrite val_p_snd /= => <- /=.
-  move : val_p_fst val_p_snd.
-  case p => p1 p2 /= val_p_fst val_p_snd.
-  split.
-  by rewrite (EPDP_Univ_Addr.dec_enc x.`1 p1).
-  by rewrite (EPDP_Univ_Int.dec_enc x.`2 p2).
-by rewrite (EPDP_Univ_UnivPair.dec_enc _ u).
-qed.
-
-(* port * univ encoding: *)
-
-op nosmt enc_port_univ (x : port * univ) : univ =
-  EPDP_Univ_UnivPair.enc (EPDP_Univ_Port.enc x.`1, x.`2).
-
-op nosmt dec_port_univ (u : univ) : (port * univ) option =
-  match EPDP_Univ_UnivPair.dec u with
-    None   => None
-  | Some p =>
-      match EPDP_Univ_Port.dec p.`1 with
-        None    => None
-      | Some pt => Some (pt, p.`2)
-      end
-  end.
-
-clone EPDP as EPDP_Univ_PortUniv with (* port * univ *)
-  type orig <- port * univ, type enc <- univ,
-  op enc = enc_port_univ, op dec = dec_port_univ
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_port_univ /dec_port_univ /=.
-by case x.
-rewrite /enc /dec /enc_port_univ /dec_port_univ => match_dec_u_eq_some.
-rewrite (EPDP_Univ_UnivPair.dec_enc _ u) //.
-move : match_dec_u_eq_some.
-case (EPDP_Univ_UnivPair.dec u) => // [[]] x1 x2 /=.
-move => match_dec_x1_eq_some.
-have val_dec_x1 : EPDP_Univ_Port.dec x1 = Some x.`1 by smt().
-move : match_dec_x1_eq_some.
-rewrite val_dec_x1 /= => <- /=.
-by rewrite (EPDP_Univ_Port.dec_enc _ x1).
-qed.
-
-(* port * port * univ encoding: *)
-
-op nosmt enc_port_port_univ (x : port * port * univ) : univ =
-  EPDP_Univ_UnivTriple.enc
-  (EPDP_Univ_Port.enc x.`1, EPDP_Univ_Port.enc x.`2, x.`3).
-
-op nosmt dec_port_port_univ (u : univ) : (port * port * univ) option =
-  match EPDP_Univ_UnivTriple.dec u with
-    None   => None
-  | Some t =>
-      match EPDP_Univ_Port.dec t.`1 with
-        None     => None
-      | Some pt1 =>
-          match EPDP_Univ_Port.dec t.`2 with
-            None     => None
-          | Some pt2 => Some (pt1, pt2, t.`3)
-          end
-      end
-  end.
-
-clone EPDP as EPDP_Univ_PortPortUniv with (* port * port * univ *)
-  type orig <- port * port * univ, type enc <- univ,
-  op enc = enc_port_port_univ, op dec = dec_port_port_univ
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_port_port_univ /dec_port_port_univ /=.
-by case x.
-rewrite /enc /dec /enc_port_port_univ /dec_port_port_univ =>
-  match_dec_u_eq_some.
-rewrite (EPDP_Univ_UnivTriple.dec_enc _ u) //.
-move : match_dec_u_eq_some.
-case (EPDP_Univ_UnivTriple.dec u) => // [[]] x1 x2 x3 /=.
-move => match_dec_x1_eq_some.
-have val_dec_x1 : EPDP_Univ_Port.dec x1 = Some x.`1 by smt().
-move : match_dec_x1_eq_some.
-rewrite val_dec_x1 /=.
-move => match_dec_x2_eq_some.
-have val_dec_x2 : EPDP_Univ_Port.dec x2 = Some x.`2 by smt().
-split; first by rewrite (EPDP_Univ_Port.dec_enc _ x1).
-split; first by rewrite (EPDP_Univ_Port.dec_enc _ x2).
-smt().
-qed.
-
-(* port * int * univ encoding: *)
-
-op nosmt enc_port_int_univ (x : port * int * univ) : univ =
-  EPDP_Univ_UnivTriple.enc
-  (EPDP_Univ_Port.enc x.`1, EPDP_Univ_Int.enc x.`2, x.`3).
-
-op nosmt dec_port_int_univ (u : univ) : (port * int * univ) option =
-  match EPDP_Univ_UnivTriple.dec u with
-    None   => None
-  | Some t =>
-      match EPDP_Univ_Port.dec t.`1 with
-        None    => None
-      | Some pt =>
-          match EPDP_Univ_Int.dec t.`2 with
-            None   => None
-          | Some n => Some (pt, n, t.`3)
-          end
-      end
-  end.
-
-clone EPDP as EPDP_Univ_PortIntUniv with (* port * int * univ *)
-  type orig <- port * int * univ, type enc <- univ,
-  op enc = enc_port_int_univ, op dec = dec_port_int_univ
-proof *.
-realize epdp.
-apply epdp_intro => [x | u x].
-rewrite /enc /dec /enc_port_int_univ /dec_port_int_univ /=.
-by case x.
-rewrite /enc /dec /enc_port_int_univ /dec_port_int_univ =>
-  match_dec_u_eq_some.
-rewrite (EPDP_Univ_UnivTriple.dec_enc _ u) //.
-move : match_dec_u_eq_some.
-case (EPDP_Univ_UnivTriple.dec u) => // [[]] x1 x2 x3 /=.
-move => match_dec_x1_eq_some.
-have val_dec_x1 : EPDP_Univ_Port.dec x1 = Some x.`1 by smt().
-move : match_dec_x1_eq_some.
-rewrite val_dec_x1 /=.
-move => match_dec_x2_eq_some.
-have val_dec_x2 : EPDP_Univ_Int.dec x2 = Some x.`2 by smt().
-split; first by rewrite (EPDP_Univ_Port.dec_enc _ x1).
-split; first by rewrite (EPDP_Univ_Int.dec_enc _ x2).
-smt().
-qed.
-
 (* a message has the form (mod, pt1, pt2, u), for a mode mod, a
    destination port pt1, a source port pt2, and a universe
    value u *)
@@ -351,15 +96,15 @@ type msg = mode * port * port * univ.
 op opt_msg_guard :
      (mode -> addr -> int -> addr -> int -> univ -> bool) ->
      msg option -> msg option =
-     fun f : mode -> addr -> int -> addr -> int -> univ -> bool =>
-     fun m_opt : msg option =>
-       match m_opt with
-         None   => None
-       | Some m =>
-           if f m.`1 m.`2.`1 m.`2.`2 m.`3.`1 m.`3.`2 m.`4
-           then m_opt
-           else None
-       end.
+  fun f : mode -> addr -> int -> addr -> int -> univ -> bool =>
+  fun m_opt : msg option =>
+    match m_opt with
+    | None   => None
+    | Some m =>
+        if f m.`1 m.`2.`1 m.`2.`2 m.`3.`1 m.`3.`2 m.`4
+        then m_opt
+        else None
+    end.
 
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities"), as well as adversaries and
@@ -588,7 +333,8 @@ lemma mi_loop_invar_not_done_imp_dest
   mi_loop_invar func adv in_guard m r true =>
   func <= m.`2.`1 \/ adv = m.`2.`1.
 proof.
-smt().
+rewrite /mi_loop_invar; progress.
+elim H0 => [[#] _ -> // | [] [#] _ -> //].
 qed.
 
 (* guard for invoke procedure of interface *)
@@ -702,7 +448,15 @@ lemma MI_after_func_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
    inter_init_pre MI.func MI.adv ==>
    mi_loop_invar MI.func MI.adv MI.in_guard res.`2 res.`1 res.`3].
 proof.
-proc; auto; smt().
+proc; sp 2.
+if; first auto.
+sp 1.
+if; first auto.
+if; first sp 1.
+auto; smt().
+if; first auto.
+auto => /> &hr pre r_not_none.
+by rewrite !negb_or /= not_dir => [#] -> -> -> /= [#] -> ->.
 qed.
 
 lemma MI_after_adv_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
@@ -711,7 +465,19 @@ lemma MI_after_adv_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
    inter_init_pre MI.func MI.adv ==>
    mi_loop_invar MI.func MI.adv MI.in_guard res.`2 res.`1 res.`3].
 proof.
-proc; auto; smt().
+proc; sp 2.
+if; first auto.
+sp 1.
+if; first auto.
+if.
+if; first auto.
+auto => /> &hr pre _.
+by rewrite !negb_or /= not_dir => [#] -> /= _ -> -> ->.
+sp 1.
+if; first auto.
+auto => /> &hr pre -> /=.
+rewrite /envport0 !negb_or not_dir => [#] -> -> /= -> -> //.
+by rewrite -!eq_iff => ->.
 qed.
 
 lemma MI_invoke_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
@@ -732,11 +498,11 @@ wp; sp.
 while (mi_loop_invar MI.func MI.adv MI.in_guard m0 r0 not_done).
 if.
 seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
-call (_ : true); first auto; smt().
+call (_ : true); first auto => />.
 call (MI_after_func_hoare Func Adv).
 auto.
 seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
-call (_ : true); first auto; smt().
+call (_ : true); first auto => />.
 call (MI_after_adv_hoare Func Adv).
 auto.
 auto; smt().
@@ -768,7 +534,10 @@ lemma after_func_disj (func adv : addr, r : msg option) :
   after_func_to_adv func adv r \/
   after_func_error func adv r.
 proof.
-smt().
+rewrite /after_func_to_env /after_func_to_adv /after_func_error
+        /envport /envport0.
+case (r = None) => // _ /=.
+case ((oget r).`1) => // /=; smt().
 qed.
 
 lemma MI_after_func_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
@@ -779,7 +548,7 @@ lemma MI_after_func_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
    after_func_to_env MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
-proc; auto; smt().
+proc; auto; smt(some_oget).
 qed.
 
 lemma MI_after_func_to_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
@@ -790,7 +559,7 @@ lemma MI_after_func_to_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
    after_func_to_adv MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
-proc; auto; smt().
+proc; auto; smt(inc_nle_l some_oget).
 qed.
 
 lemma MI_after_func_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
@@ -827,6 +596,10 @@ lemma after_adv_disj (func adv : addr, r : msg option) :
   after_adv_to_func func adv r \/
   after_adv_error func adv r.
 proof.
+rewrite /after_adv_to_env /after_adv_to_func /after_adv_error
+        /envport /envport0.
+case (r = None) => // _ /=.
+case ((oget r).`1) => // /=.
 smt().
 qed.
 
@@ -838,7 +611,7 @@ lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
    after_adv_to_func MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
-proc; auto; smt(inc_le1_not_rl).
+proc; auto; smt(oget_some some_oget inc_le1_not_rl).
 qed.
 
 lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
@@ -849,7 +622,7 @@ lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
    after_adv_to_env MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
-proc; auto; smt().
+proc; auto; smt(some_oget).
 qed.
 
 lemma MI_after_adv_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
@@ -881,28 +654,67 @@ type da_from_env =
    dfe_u  : univ}.  (* value of message to be sent by DA *)
 
 op da_from_env (x : da_from_env) : msg =
-     (Adv, (x.`dfe_da, 0), ([], 0),
-      EPDP_Univ_PortIntUniv.enc (x.`dfe_pt, x.`dfe_n, x.`dfe_u)).
+  (Adv, (x.`dfe_da, 0), ([], 0),
+   (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
+    (x.`dfe_pt, x.`dfe_n, x.`dfe_u)).
 
 op nosmt dec_da_from_env (m : msg) : da_from_env option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/
-         ! EPDP_Univ_PortIntUniv.valid v) ?
-        None :
-        let (pt, n, u) = oget (EPDP_Univ_PortIntUniv.dec v)
-        in Some {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_u = u|}.
+  let (mod, pt1, pt2, v) = m
+  in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0)) ?
+     None :
+     match (epdp_triple_univ
+            epdp_port_univ epdp_int_univ epdp_id).`dec v with
+     | None   => None
+     | Some t =>
+         let (pt, n, u) = t
+         in Some {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_u = u|}
+     end.
 
-lemma epdp_da_from_env : epdp da_from_env dec_da_from_env.
+op nosmt epdp_da_from_env_msg =
+  {|enc = da_from_env; dec = dec_da_from_env|}.
+
+lemma epdp_da_from_env : valid_epdp epdp_da_from_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /da_from_env /dec_da_from_env /= EPDP_Univ_PortIntUniv.valid_enc /=.
+rewrite /epdp_da_from_env_msg /= /dec_da_from_env /da_from_env /=
+        (epdp_enc_dec (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id))
+        1:valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_int_univ
+        1:valid_epdp_id.
 by case x.
 move => [mod pt1 pt2 u] v.
-rewrite /da_from_env /dec_da_from_env /=.
-case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/
-      ! (EPDP_Univ_PortIntUniv.valid u)) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 -> val_u.
+rewrite /epdp_da_from_env_msg /dec_da_from_env /da_from_env /=.
+case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0)) => //.
+rewrite !negb_or /= not_dir => [#] -> pt1_2 -> => val_u /=.
+have foo :
+  (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u =
+  Some (v.`dfe_pt, v.`dfe_n, v.`dfe_u).
+  move : val_u.
+  case ((epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u) => //.
+  case => x1 x2 x3 /=.
+smt.
+
+
+
+move : val_u.
+rewrite foo /= => H.
+split.
+rewrite -H /=.
+smt().
+ rewrite (epdp_dec_enc _ _ u)
+ 1:valid_epdp_triple_univ
+        1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id
+        1:foo //.
+qed.
+
+
+
+
+
+
+
+
+ val_u.
 have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
   exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
 move => /EPDP_Univ_PortIntUniv.dec_enc <- /= /#.

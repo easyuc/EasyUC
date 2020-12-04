@@ -1,9 +1,9 @@
 (* KeysExponentsAndPlainTexts.ec *)
 
-prover quorum=2 ["Alt-Ergo" "Z3"].
+prover [""].  (* no use of SMT provers *)
 
 require import AllCore Distr.
-require import UCCore.  (* from the UC DSL prelude *)
+require import UCCore.
 
 (********************** Keys, Exponents and Plain texts ***********************)
 
@@ -26,10 +26,6 @@ axiom kid_r (x : key) : x ^^ kid = x.
 axiom kinv_l (x : key) : kinv x ^^ x = kid.
 
 axiom kinv_r (x : key) : x ^^ kinv x = kid.
-
-op epdp_key_univ : (key, univ) epdp.  (* EPDP from key to univ *)
-
-axiom valid_epdp_key_univ : valid_epdp epdp_key_univ.
 
 (* commutative semigroup of exponents *)
 
@@ -55,9 +51,9 @@ axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
 op dexp : exp distr.
 
-axiom dexp_fu : is_full dexp.
+axiom dexp_fu  : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
-axiom dexp_ll : is_lossless dexp.
+axiom dexp_ll  : is_lossless dexp.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
@@ -82,22 +78,6 @@ type text.
 op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
-
-op epdp_text_univ : (text, univ) epdp.  (* EPDP from text to univ *)
-
-axiom valid_epdp_text_univ : valid_epdp epdp_text_univ.
-
-(* EPDP between port * port * key and univ *)
-
-op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
-  epdp_triple_univ epdp_port_univ epdp_port_univ epdp_key_univ.
-
-lemma valid_epdp_port_port_key_univ :
-  valid_epdp epdp_port_port_key_univ.
-proof.
-rewrite valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_port_univ
-        valid_epdp_key_univ.
-qed.
 
 (* consequences of axioms *)
 
@@ -131,4 +111,38 @@ proof.
 have -> : x = g ^ log x.
   by rewrite -/(gen (log x)) log_gen.
 by rewrite !double_exp_gen mulA.
+qed.
+
+(* EPDP from key to univ *)
+
+op epdp_key_univ : (key, univ) epdp =
+  epdp_comp epdp_exp_univ (epdp_bijection log gen).
+
+lemma valid_epdp_key_univ : valid_epdp epdp_key_univ.
+proof.
+rewrite /epdp_key_univ valid_epdp_comp 1:valid_epdp_exp_univ
+        valid_epdp_bijection 1:log_gen gen_log.
+qed.
+
+(* EPDP from text to univ *)
+
+op epdp_text_univ : (text, univ) epdp =
+  epdp_comp epdp_key_univ epdp_text_key.
+
+lemma valid_epdp_text_univ : valid_epdp epdp_text_univ.
+proof.
+rewrite /epdp_text_univ valid_epdp_comp 1:valid_epdp_key_univ
+        valid_epdp_text_key.
+qed.
+
+(* EPDP between port * port * key and univ *)
+
+op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
+  epdp_triple_univ epdp_port_univ epdp_port_univ epdp_key_univ.
+
+lemma valid_epdp_port_port_key_univ :
+  valid_epdp epdp_port_port_key_univ.
+proof.
+rewrite valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_port_univ
+        valid_epdp_key_univ.
 qed.
