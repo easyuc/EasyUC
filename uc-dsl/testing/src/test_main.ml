@@ -10,7 +10,6 @@ let dirs_list = ref []
              
               
 let check_dirs anon =
-(*  let _ = print_endline anon in *)
   if (List.length !dirs_list <> 0) then 1
   else
      (dirs_list := (!dirs_list) @ [anon]; 0)
@@ -59,20 +58,19 @@ let call_dir_test dir_list_local =
     let b = verify_dir (List.nth dir_list_local 0) in
     let _ = create_log () in
     pre_run b
-let usage_msg =
-  "Usage: dsl-test [verbosity option] dir\n       dsl-test -debug file"
+let usage_msg = "Usage: dsl-test [verbosity option] dir\ndsl-test -debug file"
 
 let main =
 begin
-  let rec speclist = [("-verbose", Arg.Rest (fun x -> let r =  check_dirs x in
-                                                 if r = 0 then verbose := true
+  let rec speclist = [("-verbose", Arg.Rest (fun x -> let _ =  check_dirs x in
+                                                      if  (List.length !dirs_list = 0)  then verbose := true
                                                  else (
                                   print_endline "Only one option is allowed";
                                   Arg.usage speclist usage_msg;
                                                        exit 1)
                                  ), "Verbosity option: enables verbose mode");
-                ("-quiet", Arg.Rest (fun x -> let r = check_dirs x in
-                                              if r = 0 then quiet := true
+                ("-quiet", Arg.Rest (fun x -> let _ = check_dirs x in
+                                              if (List.length !dirs_list = 0) then quiet := true
                                               else (
                                    print_endline "Only one option is allowed";
                                    Arg.usage speclist usage_msg;
@@ -88,6 +86,7 @@ begin
                ]
 in
 Arg.parse speclist (fun anon -> let r = check_dirs anon in
+                                print_endline "We are at arg parse\n";
                                 if r <> 0 then
                                   (print_endline "Only one option is allowed";
                                    Arg.usage speclist usage_msg;
