@@ -8,7 +8,7 @@ require import AllCore List FSet.
 
 (* prefix ordering on lists *)
 
-require import ListPO.
+require export UCListPO.
 
 (* defines encoding and partial decoding pairs (EPDPs) *)
 

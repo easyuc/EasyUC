@@ -1,4 +1,4 @@
-(* ListAux.ec *)
+(* UCListAux.ec *)
 
 (* Auxiliary Lemmas on Lists *)
 
