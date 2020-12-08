@@ -41,6 +41,9 @@ proof.
 rewrite valid_epdp_list_univ valid_epdp_int_univ.
 qed.
 
+hint simplify [eqtrue] valid_epdp_addr_univ.
+hint rewrite epdp : valid_epdp_addr_univ.
+
 (* ports - pairs of functionality addresses and port indices
 
    a functionality's ports are used/interpreted however the
@@ -59,8 +62,11 @@ op epdp_port_univ : (port, univ) epdp =
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
 proof.
-rewrite valid_epdp_pair_univ 1:valid_epdp_addr_univ valid_epdp_int_univ.
+rewrite epdp_sub epdp.
 qed.
+
+hint simplify [eqtrue] valid_epdp_port_univ.
+hint rewrite epdp : valid_epdp_port_univ.
 
 (* messages have modes:
 
@@ -670,99 +676,59 @@ op nosmt dec_da_from_env (m : msg) : da_from_env option =
          in Some {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_u = u|}
      end.
 
-op nosmt epdp_da_from_env_msg =
+op epdp_da_from_env_msg =
   {|enc = da_from_env; dec = dec_da_from_env|}.
 
-lemma epdp_da_from_env : valid_epdp epdp_da_from_env_msg.
+lemma valid_epdp_da_from_env_msg : valid_epdp epdp_da_from_env_msg.
 proof.
 apply epdp_intro.
 move => x.
 rewrite /epdp_da_from_env_msg /= /dec_da_from_env /da_from_env /=
-        (epdp_enc_dec (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id))
-        1:valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_int_univ
-        1:valid_epdp_id.
+        !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /da_from_env /=.
 case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0)) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 -> => val_u /=.
-have foo :
+rewrite !negb_or /= not_dir => [#] -> pt1_2 -> => match_eq_some /=.
+have val_u :
   (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u =
   Some (v.`dfe_pt, v.`dfe_n, v.`dfe_u).
-  move : val_u.
+  move : match_eq_some.
   case ((epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u) => //.
-  case => x1 x2 x3 /=.
-smt.
-
-
-
-move : val_u.
-rewrite foo /= => H.
-split.
-rewrite -H /=.
-smt().
- rewrite (epdp_dec_enc _ _ u)
- 1:valid_epdp_triple_univ
-        1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id
-        1:foo //.
+  by case.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt1_2; by case pt1.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ
+           1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id.
 qed.
 
-
-
-
-
-
-
-
- val_u.
-have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
-  exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
-move => /EPDP_Univ_PortIntUniv.dec_enc <- /= /#.
-qed.
-
-lemma da_from_env_enc_dec (x : da_from_env) :
-  dec_da_from_env (da_from_env x) = Some x.
-proof.
-apply (epdp_enc_dec _ _ _ epdp_da_from_env).
-qed.
-
-hint simplify da_from_env_enc_dec.
+hint simplify [eqtrue] valid_epdp_da_from_env_msg.
+hint rewrite epdp : valid_epdp_da_from_env_msg.
 
 op nosmt dec_da_from_env_check (m : msg, da : addr) : da_from_env option =
-  match dec_da_from_env m with
+  match epdp_da_from_env_msg.`dec m with
     None   => None
   | Some x => (x.`dfe_da = da) ? Some x : None
   end.
 
-lemma mode_valid_da_from_env (m : msg) :
-  dec2valid dec_da_from_env m => m.`1 = Adv.
+lemma eq_of_valid_da_from_env (m : msg) :
+  is_valid epdp_da_from_env_msg m =>
+  m =
+  let x = oget (epdp_da_from_env_msg.`dec m) in
+  (Adv,
+   (x.`dfe_da, 0),
+   ([], 0),
+   (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
+    (x.`dfe_pt, x.`dfe_n, x.`dfe_u)).
 proof.
+rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : da_from_env), dec_da_from_env m = Some x.
+have [] x : exists (x : da_from_env), epdp_da_from_env_msg.`dec m = Some x.
   exists (oget (dec_da_from_env m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) <- //.
-qed.
-
-lemma dest_valid_da_from_env (m : msg) :
-  dec2valid dec_da_from_env m =>
-  m.`2.`1 = (oget (dec_da_from_env m)).`dfe_da /\ m.`2.`2 = 0.
-proof.
-move => val_m.
-have [] x : exists (x : da_from_env), dec_da_from_env m = Some x.
-  exists (oget (dec_da_from_env m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) <- //.
-qed.
-
-lemma source_valid_da_from_env (m : msg) :
-  dec2valid dec_da_from_env m => m.`3 = ([], 0).
-proof.
-move => val_m.
-have [] x : exists (x : da_from_env), dec_da_from_env m = Some x.
-  exists (oget (dec_da_from_env m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_from_env) => <- //.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <-.
+by rewrite !epdp.
 qed.
 
 (* message from port (dte_da, 0) of dummy adversary to port ([], 0) of
@@ -778,64 +744,69 @@ type da_to_env =
    dte_u  : univ}.  (* value of message sent to DA *)
 
 op da_to_env (x : da_to_env) : msg =
-     (Adv, ([], 0), (x.`dte_da, 0), 
-      EPDP_Univ_PortIntUniv.enc(x.`dte_pt, x.`dte_n, x.`dte_u)).
+  (Adv, ([], 0), (x.`dte_da, 0), 
+   (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
+    (x.`dte_pt, x.`dte_n, x.`dte_u)).
 
 op nosmt dec_da_to_env (m : msg) : da_to_env option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/
-         ! EPDP_Univ_PortIntUniv.valid v) ?
-        None :
-        let (pt, n, u) = oget (EPDP_Univ_PortIntUniv.dec v)
-        in Some {|dte_da = pt2.`1; dte_pt = pt; dte_n = n; dte_u = u|}.
+  let (mod, pt1, pt2, v) = m
+  in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0) ?
+     None :
+     match (epdp_triple_univ
+            epdp_port_univ epdp_int_univ epdp_id).`dec v with
+     | None   => None
+     | Some t =>
+         let (pt, n, u) = t
+        in Some {|dte_da = pt2.`1; dte_pt = pt; dte_n = n; dte_u = u|}
+     end.
 
-lemma epdp_da_to_env : epdp da_to_env dec_da_to_env.
+op epdp_da_to_env_msg =
+  {|enc = da_to_env; dec = dec_da_to_env|}.
+
+lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /da_to_env /dec_da_to_env /= EPDP_Univ_PortIntUniv.valid_enc /=.
+rewrite /epdp_da_to_env_msg /= /dec_da_to_env /da_to_env /=
+        !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 u] v.
-rewrite /da_to_env /dec_da_to_env /=.
-case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/
-      ! (EPDP_Univ_PortIntUniv.valid u)) => //.
-rewrite !negb_or /= not_dir => [#] -> -> pt2_2 val_u.
-have [] t : exists (t : port * int * univ), EPDP_Univ_PortIntUniv.dec u = Some t.
-  exists (oget (EPDP_Univ_PortIntUniv.dec u)); by rewrite -some_oget.
-move => /EPDP_Univ_PortIntUniv.dec_enc <-.
-rewrite EPDP_Univ_PortIntUniv.enc_dec oget_some /#.
+rewrite /epdp_da_to_env_msg /dec_da_to_env /da_to_env /=.
+case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0) => //.
+rewrite !negb_or /= not_dir => [#] -> -> pt2_2 => match_eq_some /=.
+have val_u :
+  (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u =
+  Some (v.`dte_pt, v.`dte_n, v.`dte_u).
+  move : match_eq_some.
+  case ((epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`dec u) => //.
+  by case.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt2_2; by case pt2.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ
+           1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id.
 qed.
 
-lemma mode_valid_da_to_env (m : msg) :
-  dec2valid dec_da_to_env m => m.`1 = Adv.
-proof.
-move => val_m.
-have [] x : exists (x : da_to_env), dec_da_to_env m = Some x.
-  exists (oget (dec_da_to_env m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_to_env) <- //.
-qed.
+hint simplify [eqtrue] valid_epdp_da_to_env_msg.
+hint rewrite epdp : valid_epdp_da_to_env_msg.
 
-lemma dest_valid_da_to_env (m : msg) :
-  dec2valid dec_da_to_env m => m.`2 = ([], 0).
+lemma eq_of_valid_da_to_env (m : msg) :
+  is_valid epdp_da_to_env_msg m =>
+  m =
+  let x = oget (epdp_da_to_env_msg.`dec m) in
+  (Adv,
+   ([], 0),
+   (x.`dte_da, 0),
+   (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
+    (x.`dte_pt, x.`dte_n, x.`dte_u)).
 proof.
+rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : da_to_env), dec_da_to_env m = Some x.
+have [] x : exists (x : da_to_env), epdp_da_to_env_msg.`dec m = Some x.
   exists (oget (dec_da_to_env m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_to_env) => <- //.
-qed.
-
-lemma source_valid_da_to_env (m : msg) :
-  dec2valid dec_da_to_env m =>
-  m.`3.`1 = (oget (dec_da_to_env m)).`dte_da /\ m.`3.`2 = 0.
-proof.
-move => val_m.
-have [] x : exists (x : da_to_env), dec_da_to_env m = Some x.
-  exists (oget (dec_da_to_env m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ _ epdp_da_to_env) <-.
-by rewrite (epdp_enc_dec _ _ _ epdp_da_to_env).
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
+by rewrite !epdp.
 qed.
 
 module DummyAdv : FUNC = {

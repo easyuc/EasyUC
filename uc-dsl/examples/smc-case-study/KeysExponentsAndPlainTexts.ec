@@ -43,6 +43,9 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
+hint simplify [eqtrue] valid_epdp_exp_univ.
+hint rewrite epdp : valid_epdp_exp_univ. 
+
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
    weights is 1%r) distribution over exp
@@ -78,6 +81,9 @@ type text.
 op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
+
+hint simplify [eqtrue] valid_epdp_text_key.
+hint rewrite epdp : valid_epdp_text_key.
 
 (* consequences of axioms *)
 
@@ -120,9 +126,11 @@ op epdp_key_univ : (key, univ) epdp =
 
 lemma valid_epdp_key_univ : valid_epdp epdp_key_univ.
 proof.
-rewrite /epdp_key_univ valid_epdp_comp 1:valid_epdp_exp_univ
-        valid_epdp_bijection 1:log_gen gen_log.
+rewrite /epdp_key_univ !(epdp, epdp_sub) 1:log_gen gen_log.
 qed.
+
+hint simplify [eqtrue] valid_epdp_key_univ.
+hint rewrite epdp : valid_epdp_key_univ.
 
 (* EPDP from text to univ *)
 
@@ -131,8 +139,7 @@ op epdp_text_univ : (text, univ) epdp =
 
 lemma valid_epdp_text_univ : valid_epdp epdp_text_univ.
 proof.
-rewrite /epdp_text_univ valid_epdp_comp 1:valid_epdp_key_univ
-        valid_epdp_text_key.
+rewrite /epdp_text_univ epdp_sub epdp.
 qed.
 
 (* EPDP between port * port * key and univ *)
@@ -143,6 +150,5 @@ op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
 lemma valid_epdp_port_port_key_univ :
   valid_epdp epdp_port_port_key_univ.
 proof.
-rewrite valid_epdp_triple_univ 1:valid_epdp_port_univ 1:valid_epdp_port_univ
-        valid_epdp_key_univ.
+rewrite epdp_sub epdp.
 qed.

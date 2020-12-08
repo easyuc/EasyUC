@@ -22,3 +22,6 @@ type port.  (* we don't expose the structure of ports *)
 op epdp_port_univ : (port, univ) epdp.  (* port *)
 
 axiom valid_epdp_port_univ : valid_epdp epdp_port_univ.
+
+hint simplify [eqtrue] valid_epdp_port_univ.
+hint rewrite epdp : valid_epdp_port_univ.
