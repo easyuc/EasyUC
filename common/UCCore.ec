@@ -24,7 +24,7 @@ require export UCUniv.
 
    if a functionality has address alpha, it is also responsible for all
    sub-functionalities with addresses beta >= alpha (in the prefix
-   partial ordering of ListPO)
+   partial ordering of UCListPO)
 
    adversaries are also modeled as functionalities - but with no
    sub-addresses/sub-functionalties; simulators are functionalities
@@ -46,9 +46,7 @@ hint rewrite epdp : valid_epdp_addr_univ.
 
 (* ports - pairs of functionality addresses and port indices
 
-   a functionality's ports are used/interpreted however the
-   functionality chooses, but typically they are divided into
-   different parties
+   a functionality's ports are divided between its different parties
 
    adversaries can handle multiple port indices, and each simulator
    has a single, distinct port index
@@ -116,7 +114,8 @@ op opt_msg_guard :
    (collectively, "functionalities"), as well as adversaries and
    simulators *)
 
-(* precondition: *)
+(* precondition for ordinary (non-adversary/simulator)
+   functionalities: *)
 
 pred func_init_pre (self adv : addr) = inc self adv.
 
@@ -134,15 +133,15 @@ op envport (self adv : addr, pt : port) : bool =
   envport0 self adv pt /\ pt <> ([], 0).
 
 module type FUNC = {
-  (* initialize functionality (or adversary), telling it its address
-     (self) and the address of its adversary (adv)
+  (* initialize functionality (or adversary, simulator), telling it
+     its address (self) and the address of its adversary (adv)
 
-     in the case of the adversary, the second argument will be [], the
-     root address of the environment (so the adversary's "adversary" is
-     the environment)
+     in the case of the adversary/simulator, the second argument will
+     be [], the root address of the environment (so the
+     adversary/simulator's "adversary" is the environment)
 
-     precondition for ordinary (non-adversary) functionalties:
-     func_init_pre self adv *)
+     precondition for ordinary (non-adversary/simulator)
+     functionalties: func_init_pre self adv *)
 
   proc init(self adv : addr) : unit
 
@@ -150,18 +149,20 @@ module type FUNC = {
      outgoing message (None means error)
 
      messages to a functionality should have addresses that are >=
-     self (in the case of an adversary, = self)
+     self (in the case of an adversary/simulator, = self)
 
      if Some m' is returned, then the destination address of m' should
      not be >= self, and the source address of m' should be >= self
-     (in the case of an adversary, the source address should be =
-     self) *)
+     (in the case of an adversary/simulator, the source address should
+     be = self) *)
 
   proc invoke(m : msg) : msg option
 }.
 
 (* module type of interfaces (to environment): consists of
    a functionality part and an adversary part *)
+
+(* precondition: *)
 
 pred inter_init_pre (func adv : addr) = inc func adv.
 
@@ -184,8 +185,8 @@ module type INTER = {
 
   proc init(func adv : addr, in_guard : int fset) : unit
 
-  (* respond to an incoming message, producing an optional
-     outgoing message (None means error)
+  (* respond to an incoming message from the environment, producing an
+     optional outgoing message (None means error)
 
      messages whose destination addresses aren't either >= the
      interface's functionality part's address, func, or *equal* to the
@@ -207,9 +208,9 @@ module type INTER = {
      returns a message with source address <> adv, then None should be
      returned
 
-     all outgoing messages with mode Dir come from the interface's
-     functionality part; all outgoing messages with mode Adv come from
-     the interface's adversary part
+     outgoing messages (back to the environment) from the interface's
+     functionality part must have mode Dir; outgoing messages from the
+     interface's adversary part must have mode Adv
 
      the standard (Adv mode) channel between the environment and the
      interface's adversary part consists of messages between port
@@ -225,6 +226,10 @@ module type INTER = {
      when the interface's adversary part sends a message to a port of
      the environment other than ([], 0), the message may not originate
      from (adv, 0)
+
+     messages from the environment to the interface's functionality part
+     may not originate from ([], 0); messages from the interface's
+     functionality part may not be addressed to ([], 0)
 
      if the interface's functionality part sends a message to the
      interface's adversary port (destination address must be = adv),
@@ -252,16 +257,6 @@ module type ENV (Inter : INTER) = {
        * func is the address of interface's functionality part
 
        * adv is the address of interface's adversary part
-
-     the standard (Adv mode) channel between the environment and the
-     interface's adversary part consists of messages between port
-     ([], 0) (in the environment) and port (adv, 0) (in the
-     interface's adversary part)
-
-     the environment may communicate with other ports of the
-     interface's adversary part, except that such a communication will
-     result in an error if its destination port isn't of the form
-     (adv, n) for some n in in_guard
 
      precondition : env_pre func adv *)
 
@@ -317,14 +312,13 @@ pred mi_loop_invar
       m : msg, r : msg option, not_done : bool) =
   inter_init_pre func adv /\
   (not_done =>
-   (m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3 /\
-    m.`3 <> ([], 0)) \/
+   (m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3) \/
    (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ m.`3.`2 <> 0) \/
    (m.`1 = Adv /\ m.`2.`1 = adv /\
     ((func <= m.`3.`1 /\ m.`2.`2 <> 0) \/
      (m.`3 = ([], 0) /\ m.`2.`2 = 0) \/
      (envport func adv m.`3 /\ m.`2.`2 <> 0 /\
-     m.`2.`2 \in in_guard)))) /\
+      m.`2.`2 \in in_guard)))) /\
   (! not_done =>
    r = None \/
    (envport0 func adv (oget r).`2 /\
@@ -339,8 +333,7 @@ lemma mi_loop_invar_not_done_imp_dest
   mi_loop_invar func adv in_guard m r true =>
   func <= m.`2.`1 \/ adv = m.`2.`1.
 proof.
-rewrite /mi_loop_invar; progress.
-elim H0 => [[#] _ -> // | [] [#] _ -> //].
+rewrite /mi_loop_invar; smt().
 qed.
 
 (* guard for invoke procedure of interface *)
@@ -609,17 +602,6 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
-      (r' : msg option) :
-  phoare
-  [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' /\
-   after_adv_to_func MI.func MI.adv r ==>
-   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
-proof.
-proc; auto; smt(oget_some some_oget inc_le1_not_rl).
-qed.
-
 lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
       (r' : msg option) :
   phoare
@@ -629,6 +611,17 @@ lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt(some_oget).
+qed.
+
+lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+      (r' : msg option) :
+  phoare
+  [MI(Func, Adv).after_adv :
+   inter_init_pre MI.func MI.adv /\ r = r' /\
+   after_adv_to_func MI.func MI.adv r ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc; auto; smt(oget_some some_oget inc_le1_not_rl).
 qed.
 
 lemma MI_after_adv_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
@@ -648,9 +641,9 @@ abstract theory DummyAdversary.
 
 (* message from port ([], 0) of environment to port (dfe_da, 0) of
    dummy adversary, instructing dummy adversary to send message (Adv,
-   dfe_pt, (dfe_da, dfe_n), dfe_u); MI will reject the message if
-   dfe_n is 0 (unless dfe_pt is ([], 0)), or if the address of dfe_pt
-   is >= dfe_da, or if dfe_pt is ([], 0) (unless dfe_n is 0) *)
+   dfe_pt, (dfe_da, dfe_n), dfe_u); this instruction will only be
+   obeyed if dfe_n <> 0 and dfe_pt <> ([], 0) and dfe_pt.`1 is not >=
+   dfe_da *)
 
 type da_from_env =
   {dfe_da : addr;   (* address of dummy adversary *)
@@ -659,7 +652,7 @@ type da_from_env =
    dfe_n  : int;    (* source port index of message to be sent by DA *)
    dfe_u  : univ}.  (* value of message to be sent by DA *)
 
-op da_from_env (x : da_from_env) : msg =
+op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
   (Adv, (x.`dfe_da, 0), ([], 0),
    (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
     (x.`dfe_pt, x.`dfe_n, x.`dfe_u)).
@@ -676,18 +669,18 @@ op nosmt dec_da_from_env (m : msg) : da_from_env option =
          in Some {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_u = u|}
      end.
 
-op epdp_da_from_env_msg =
-  {|enc = da_from_env; dec = dec_da_from_env|}.
+op epdp_da_from_env_msg =  (* let SMT provers inspect *)
+  {|enc = enc_da_from_env; dec = dec_da_from_env|}.
 
 lemma valid_epdp_da_from_env_msg : valid_epdp epdp_da_from_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_from_env_msg /= /dec_da_from_env /da_from_env /=
+rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 u] v.
-rewrite /epdp_da_from_env_msg /dec_da_from_env /da_from_env /=.
+rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
 case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0)) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 -> => match_eq_some /=.
 have val_u :
@@ -708,7 +701,7 @@ hint rewrite epdp : valid_epdp_da_from_env_msg.
 
 op nosmt dec_da_from_env_check (m : msg, da : addr) : da_from_env option =
   match epdp_da_from_env_msg.`dec m with
-    None   => None
+  | None   => None
   | Some x => (x.`dfe_da = da) ? Some x : None
   end.
 
@@ -740,10 +733,10 @@ type da_to_env =
    (* data: *)
    dte_pt : port;   (* source port of message sent to DA *)
    dte_n : int;     (* destination port index of message; the port's
-                       address will be dte_da (enforced by MI) *)
+                       address will be dte_da (enforced by interface) *)
    dte_u  : univ}.  (* value of message sent to DA *)
 
-op da_to_env (x : da_to_env) : msg =
+op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
   (Adv, ([], 0), (x.`dte_da, 0), 
    (epdp_triple_univ epdp_port_univ epdp_int_univ epdp_id).`enc
     (x.`dte_pt, x.`dte_n, x.`dte_u)).
@@ -760,18 +753,18 @@ op nosmt dec_da_to_env (m : msg) : da_to_env option =
         in Some {|dte_da = pt2.`1; dte_pt = pt; dte_n = n; dte_u = u|}
      end.
 
-op epdp_da_to_env_msg =
-  {|enc = da_to_env; dec = dec_da_to_env|}.
+op epdp_da_to_env_msg =  (* let SMT provers inspect *)
+  {|enc = enc_da_to_env; dec = dec_da_to_env|}.
 
 lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_to_env_msg /= /dec_da_to_env /da_to_env /=
+rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 u] v.
-rewrite /epdp_da_to_env_msg /dec_da_to_env /da_to_env /=.
+rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
 case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> -> pt2_2 => match_eq_some /=.
 have val_u :
@@ -821,23 +814,24 @@ module DummyAdv : FUNC = {
 
     match (dec_da_from_env_check m self) with
       Some x => {  (* message from ([], 0) to (self, 0) *)
-        if (x.`dfe_n <> 0 /\ x.`dfe_pt.`1 <> [] /\
+        if (x.`dfe_n <> 0 /\ x.`dfe_pt <> ([], 0) /\
             !self <= x.`dfe_pt.`1 ) {
           r <- Some (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_u);
         }
       }
     | None   => {
-        (* message from functionality or environment; MI will enforce
-           that m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1
+        (* message from functionality or environment; interface will
+           enforce that m.`1 = Adv /\ m.`2.`1 = self /\ ! self <=
+           m.`3.`1
 
-           if m has come from functionality, then MI will have enforced
-           that m.`2.`2 <> 0
+           if m has come from functionality, then interface will have
+           enforced that m.`2.`2 <> 0
 
            if m has come from environment, then m.`2.`2 <> 0 iff
            m.`3 <> ([], 0) *)
         r <-
           Some
-          (da_to_env
+          (enc_da_to_env
            {|dte_da = self; dte_pt = m.`3; dte_n = m.`2.`2; dte_u = m.`4|});
       }
     end;
