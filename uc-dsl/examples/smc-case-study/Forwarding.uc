@@ -18,9 +18,8 @@ functionality Forw implements FwDir FwAdv {
   initial state Init {
     match message with
     | pt1@FwDir.D.fw_req(pt2, u) => {
-        (* check that pt1 and pt2 don't point into forwarder or
-           adversary *)
-        if (envport pt1 /\ envport pt2) {
+        (* check that pt2 doesn't point into forwarder or adversary *)
+        if (envport pt2) {
           send FwAdv.fw_obs(pt1, pt2, u) and transition Wait(pt1, pt2, u).
         }
         else { fail. }

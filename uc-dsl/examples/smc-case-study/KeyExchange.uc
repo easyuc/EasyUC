@@ -28,7 +28,7 @@ functionality KEReal implements KEDir {
       var q1 : exp;
       match message with
       | pt1@KEDir.Pt1.ke_req1(pt2) => {
-          if (envport pt1 /\ envport pt2) {
+          if (envport pt2) {
             q1 <$ dexp;
             send Fw1.D.fw_req
                  (intport Pt2, epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
@@ -111,7 +111,7 @@ functionality KEIdeal implements KEDir KEI2S {
   initial state WaitReq1 {
     match message with
     | pt1@KEDir.Pt1.ke_req1(pt2) => {
-        if (envport pt1 /\ envport pt2) {
+        if (envport pt2) {
           send KEI2S.ke_sim_req1(pt1, pt2) and transition WaitSim1(pt1, pt2).
         }
         else { fail. }

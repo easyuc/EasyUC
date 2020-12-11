@@ -1,6 +1,6 @@
 (* Forward.ec *)
 
-(* Forwarding Functionality *)
+(* Ideal Forwarding Functionality *)
 
 (* This functionality implements authenticated forwarding (Fauth),
    where the adversary is asked to approve the forwarding of a value,
@@ -20,7 +20,9 @@ axiom fwd_pi_uniq : uniq [adv_pi; 0].
 
 (* end theory parameters *)
 
-theory FwDir_.  (* basic direct interface *)
+(* basic direct interface for the single party, with port index 1 *)
+
+theory FwDir_.
 
 (* input message: request sent to port index 1 of forwarding
    functionality: pt1 is asking to forward u to pt2 *)
@@ -34,12 +36,13 @@ type fw_req =
 
 op enc_fw_req (x : fw_req) : msg =
   (Dir, (x.`fw_req_func, 1), x.`fw_req_pt1,
+   0,  (* no messages from which this must be distinct *)
    (epdp_pair_univ epdp_port_univ epdp_id).`enc
     (x.`fw_req_pt2, x.`fw_req_u)).
 
 op nosmt dec_fw_req (m : msg) : fw_req option =
-  let (mod, pt1, pt2, v) = m
-  in (mod = Adv \/ pt1.`2 <> 1) ?
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> 1 \/ tag <> 0) ?
      None :
      match (epdp_pair_univ epdp_port_univ epdp_id).`dec v with
      | None   => None
@@ -59,10 +62,10 @@ move => x.
 rewrite /epdp_fw_req_msg /= /dec_fw_req /enc_fw_req /=
         !(epdp, epdp_sub) /=.
 by case x.
-move => [mod pt1 pt2 u] v.
+move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_req_msg /dec_fw_req /enc_fw_req /=.
-case (mod = Adv \/ pt1.`2 <> 1) => //.
-rewrite !negb_or /= not_adv => [#] -> pt1_2 => match_eq_some /=.
+case (mod = Adv \/ pt1.`2 <> 1 \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
 have val_u :
   (epdp_pair_univ epdp_port_univ epdp_id).`dec u =
   Some (v.`fw_req_pt2, v.`fw_req_u).
@@ -85,6 +88,7 @@ lemma eq_of_valid_fw_req (m : msg) :
   (Dir,
    (x.`fw_req_func, 1),
    x.`fw_req_pt1,
+   0,
    (epdp_pair_univ epdp_port_univ epdp_id).`enc
     (x.`fw_req_pt2, x.`fw_req_u)).
 proof.
@@ -110,11 +114,12 @@ type fw_rsp =
 
 op enc_fw_rsp (x : fw_rsp) : msg =
   (Dir, x.`fw_rsp_pt2, (x.`fw_rsp_func, 1),
+   0,  (* no messages from which this must be distinct *)
    (epdp_pair_univ epdp_port_univ epdp_id).`enc (x.`fw_rsp_pt1, x.`fw_rsp_u)).
 
 op nosmt dec_fw_rsp (m : msg) : fw_rsp option =
-  let (mod, pt1, pt2, v) = m
-  in (mod = Adv \/ pt2.`2 <> 1) ?
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> 1 \/ tag <> 0) ?
      None :
      match (epdp_pair_univ epdp_port_univ epdp_id).`dec v with
      | None   => None
@@ -134,10 +139,10 @@ move => x.
 rewrite /epdp_fw_rsp_msg /= /dec_fw_rsp /enc_fw_rsp /=
         !(epdp, epdp_sub) /=.
 by case x.
-move => [mod pt1 pt2 u] v.
+move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_rsp_msg /dec_fw_rsp /enc_fw_rsp /=.
-case (mod = Adv \/ pt2.`2 <> 1) => //.
-rewrite !negb_or /= not_adv => [#] -> pt2_2 => match_eq_some /=.
+case (mod = Adv \/ pt2.`2 <> 1 \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 -> match_eq_some /=.
 have val_u :
   (epdp_pair_univ epdp_port_univ epdp_id).`dec u =
   Some (v.`fw_rsp_pt1, v.`fw_rsp_u).
@@ -160,6 +165,7 @@ lemma eq_of_valid_fw_rsp (m : msg) :
   (Dir,
    x.`fw_rsp_pt2,
    (x.`fw_rsp_func, 1),
+   0,
    (epdp_pair_univ epdp_port_univ epdp_id).`enc
     (x.`fw_rsp_pt1, x.`fw_rsp_u)).
 proof.
@@ -180,7 +186,10 @@ clone FwDir_ as D.
 
 end FwDir.
 
-theory FwAdv.  (* basic adversarial interface *)
+(* basic adversarial interface, with port index 2 (number of parties +
+   1) *)
+
+theory FwAdv.
 
 (* message from forwarding functionality to adversary, letting it
    observe that the functionality is proposing to forward u to
@@ -195,13 +204,14 @@ type fw_obs =
    fw_obs_u    : univ}.  (* universe value to be forwarded *)
 
 op enc_fw_obs (x : fw_obs) : msg =
-  (Adv, (x.`fw_obs_adv, adv_pi), (x.`fw_obs_func, 1),
+  (Adv, (x.`fw_obs_adv, adv_pi), (x.`fw_obs_func, 2),
+   0,  (* no messages from which this must be distinct *)
    (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
     (x.`fw_obs_pt1, x.`fw_obs_pt2, x.`fw_obs_u)).
 
 op nosmt dec_fw_obs (m : msg) : fw_obs option =
-  let (mod, pt1, pt2, v) = m
-  in (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1) ?
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 2 \/ tag <> 0) ?
      None :
      match (epdp_triple_univ epdp_port_univ epdp_port_univ
             epdp_id).`dec v with
@@ -222,10 +232,10 @@ move => x.
 rewrite /epdp_fw_obs_msg /= /dec_fw_obs /enc_fw_obs /=
         !(epdp, epdp_sub) /=.
 by case x.
-move => [mod pt1 pt2 u] v.
+move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_obs_msg /dec_fw_obs /enc_fw_obs /=.
-case (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 1) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 => match_eq_some /=.
+case (mod = Dir \/ pt1.`2 <> adv_pi \/ pt2.`2 <> 2 \/ tag <> 0) => //.
+rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 -> match_eq_some /=.
 have val_u :
   (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`dec u =
   Some (v.`fw_obs_pt1, v.`fw_obs_pt2, v.`fw_obs_u).
@@ -248,7 +258,8 @@ lemma eq_of_valid_fw_obs (m : msg) :
   let x = oget (epdp_fw_obs_msg.`dec m) in
   (Adv,
    (x.`fw_obs_adv, adv_pi),
-   (x.`fw_obs_func, 1),
+   (x.`fw_obs_func, 2),
+   0,
    (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
     (x.`fw_obs_pt1, x.`fw_obs_pt2, x.`fw_obs_u)).
 proof.
@@ -271,12 +282,13 @@ type fw_ok =
   }.
 
 op enc_fw_ok (x : fw_ok) : msg =
-  (Adv, (x.`fw_ok_func, 1), (x.`fw_ok_adv, adv_pi),
+  (Adv, (x.`fw_ok_func, 2), (x.`fw_ok_adv, adv_pi),
+   0,  (* no messages from which this must be distinct *)
    epdp_unit_univ.`enc ()).
 
 op nosmt dec_fw_ok (m : msg) : fw_ok option =
-  let (mod, pt1, pt2, v) = m
-  in (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi) ?
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> 2 \/ pt2.`2 <> adv_pi \/ tag <> 0) ?
      None :
      match epdp_unit_univ.`dec v with
      | None   => None
@@ -292,10 +304,10 @@ move => x.
 rewrite /epdp_fw_ok_msg /= /dec_fw_ok /enc_fw_ok /=
         !(epdp, epdp_sub) /=.
 by case x.
-move => [mod pt1 pt2 u] v.
+move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_ok_msg /dec_fw_ok /enc_fw_ok /=.
-case (mod = Dir \/ pt1.`2 <> 1 \/ pt2.`2 <> adv_pi) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 => match_eq_some /=.
+case (mod = Dir \/ pt1.`2 <> 2 \/ pt2.`2 <> adv_pi \/ tag <> 0) => //.
+rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 -> match_eq_some /=.
 have val_u : epdp_unit_univ.`dec u = Some ().
   move : match_eq_some.
   case (epdp_unit_univ.`dec u) => //.
@@ -314,8 +326,9 @@ lemma eq_of_valid_fw_ok (m : msg) :
   m =
   let x = oget (epdp_fw_ok_msg.`dec m) in
   (Adv,
-   (x.`fw_ok_func, 1),
+   (x.`fw_ok_func, 2),
    (x.`fw_ok_adv, adv_pi),
+   0,
    epdp_unit_univ.`enc ()).
 proof.
 rewrite /is_valid.
@@ -330,7 +343,7 @@ qed.
 end FwAdv.
 
 type fw_state = [
-    FwStateInit
+  | FwStateInit
   | FwStateWait of port & port & univ
   | FwStateFinal
 ].
@@ -349,9 +362,9 @@ module Forw : FUNC = {
       FwStateInit => {
         match FwDir.D.epdp_fw_req_msg.`dec m with
           Some x => {
-            (* envport self adv x.`FwDir.D.fw_req_pt1 *)
-            if (x.`FwDir.D.fw_req_func = self /\
-                envport self adv x.`FwDir.D.fw_req_pt2) {
+            (* x.`FwDir.D.fw_req_func = self /\
+               envport self adv x.`FwDir.D.fw_req_pt1 *)
+            if (envport self adv x.`FwDir.D.fw_req_pt2) {
               r <-
                 Some
                 (FwAdv.epdp_fw_obs_msg.`enc
@@ -370,14 +383,13 @@ module Forw : FUNC = {
     | FwStateWait pt1 pt2 u => {
         match FwAdv.epdp_fw_ok_msg.`dec m with
           Some x => {
-            if (x.`FwAdv.fw_ok_func = self /\ x.`FwAdv.fw_ok_adv = adv) {
-              r <-
-                Some
-                (FwDir.D.epdp_fw_rsp_msg.`enc
-                 {|FwDir.D.fw_rsp_func = self; FwDir.D.fw_rsp_pt1 = pt1;
-                   FwDir.D.fw_rsp_pt2 = pt2; FwDir.D.fw_rsp_u = u|});
-              st <- FwStateFinal;
-            }
+            (* x.`FwAdv.fw_ok_func = self /\ x.`FwAdv.fw_ok_adv = adv *)
+            r <-
+              Some
+              (FwDir.D.epdp_fw_rsp_msg.`enc
+               {|FwDir.D.fw_rsp_func = self; FwDir.D.fw_rsp_pt1 = pt1;
+                 FwDir.D.fw_rsp_pt2 = pt2; FwDir.D.fw_rsp_u = u|});
+            st <- FwStateFinal;
           }
         | None => { }
         end;
@@ -389,9 +401,10 @@ module Forw : FUNC = {
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    (* we can assume (envport self adv m.`3) *)
-    if ((m.`1 = Dir /\ m.`2.`1 = self /\ m.`2.`2 = 1) \/
-        (m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 = 1)) {
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\ m.`2.`2 = 1 /\
+         envport self adv m.`3) \/
+        (m.`1 = Adv /\ m.`2.`1 = self /\ m.`2.`2 = 2 /\
+         m.`3.`1 = adv)) {
       r <@ parties(m);
     }
     return r;
@@ -463,8 +476,6 @@ move => pt1 pt2 u pt1' pt2' u'.
 match => //.
 auto.
 move => x x'.
-if; first smt().
-auto.
 auto.
 auto.
 qed.
@@ -472,8 +483,9 @@ qed.
 (* phoare lemmas for invoke *)
 
 pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
-  FwDir.D.epdp_fw_req_msg.`dec m <> None /\
+  is_valid FwDir.D.epdp_fw_req_msg m /\
   (oget (FwDir.D.epdp_fw_req_msg.`dec m)).`FwDir.D.fw_req_func = self /\
+  envport self adv (oget (FwDir.D.dec_fw_req m)).`FwDir.D.fw_req_pt1 /\
   envport self adv (oget (FwDir.D.dec_fw_req m)).`FwDir.D.fw_req_pt2.
 
 lemma Forw_invoke_init_fw_req (m' : msg) :
@@ -524,13 +536,13 @@ case (FwDir.D.epdp_fw_req_msg.`dec m0 = None).
 match None 1; first auto.
 auto.
 match Some 1; first auto; smt().
-rcondf 1; first auto; progress; smt().
+rcondf 1; first auto; smt(FwDir.D.eq_of_valid_fw_req).
 auto.
 auto.
 qed.
 
 pred forw_invoke_wait_fw_ok (self adv : addr, m : msg) =
-  FwAdv.epdp_fw_ok_msg.`dec m <> None /\
+  is_valid FwAdv.epdp_fw_ok_msg m /\
   (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_func = self /\
   (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_adv = adv.
 
@@ -558,9 +570,7 @@ rewrite /get_as_FwStateWait.
 case (Forw.st{hr}) => // pt1 pt2 u /= _.
 by exists pt1 pt2 u.
 match Some 1; first auto; smt().
-if.
 auto; by rewrite /get_as_FwStateWait.
-auto; smt(some_oget).
 qed.
 
 lemma Forw_invoke_wait_bad (st' : fw_state) :
@@ -585,9 +595,7 @@ match None 1; first auto.
 auto.
 match Some 1.
 auto; smt().
-rcondf 1.
-auto; first smt().
-auto.
+exfalso; smt(FwAdv.eq_of_valid_fw_ok).
 auto.
 qed.
 
