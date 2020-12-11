@@ -692,18 +692,11 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt1_2; by case pt1.
-by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ
-           1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ 1:epdp_sub.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_from_env_msg.
 hint rewrite epdp : valid_epdp_da_from_env_msg.
-
-op nosmt dec_da_from_env_check (m : msg, da : addr) : da_from_env option =
-  match epdp_da_from_env_msg.`dec m with
-  | None   => None
-  | Some x => (x.`dfe_da = da) ? Some x : None
-  end.
 
 lemma eq_of_valid_da_from_env (m : msg) :
   is_valid epdp_da_from_env_msg m =>
@@ -776,8 +769,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
-by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ
-           1:valid_epdp_port_univ 1:valid_epdp_int_univ 1:valid_epdp_id.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_triple_univ 1:epdp_sub.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_to_env_msg.
@@ -812,8 +804,8 @@ module DummyAdv : FUNC = {
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
 
-    match (dec_da_from_env_check m self) with
-      Some x => {  (* message from ([], 0) to (self, 0) *)
+    match (epdp_da_from_env_msg.`dec m) with
+      Some x => { (* from interface, we know x.`dfe_da = self *)
         if (x.`dfe_n <> 0 /\ x.`dfe_pt <> ([], 0) /\
             !self <= x.`dfe_pt.`1 ) {
           r <- Some (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_u);
