@@ -28,8 +28,8 @@ theory FwDir_.
    functionality: pt1 is asking to forward u to pt2 *)
 
 type fw_req =
-  {fw_req_func : addr;   (* address of functionality *)
-   fw_req_pt1  : port;   (* source = port requesting forwarding *)
+  {fw_req_func : addr;   (* address of functionality - destination address *)
+   fw_req_pt1  : port;   (* port requesting forwarding - source address *)
    (* data: *)
    fw_req_pt2  : port;   (* port being forwarded to *)
    fw_req_u    : univ}.  (* universe value to be forwarded *)
@@ -106,8 +106,8 @@ qed.
    requested by pt1 *)
 
 type fw_rsp =
-  {fw_rsp_func : addr;   (* address of functionality *)
-   fw_rsp_pt2  : port;   (* destination = port being forwarded to *)
+  {fw_rsp_func : addr;   (* address of functionality - source address *)
+   fw_rsp_pt2  : port;   (* port being forwarded to - destination address *)
    (* data: *)
    fw_rsp_pt1  : port;   (* port requesting forwarding *)
    fw_rsp_u    : univ}.  (* universe value to be forwarded *)
@@ -196,8 +196,8 @@ theory FwAdv.
    pt2 on behalf of pt1 *)
 
 type fw_obs =
-  {fw_obs_func : addr;   (* address of functionality *)
-   fw_obs_adv  : addr;   (* address of adversary *)
+  {fw_obs_func : addr;   (* address of functionality - source address *)
+   fw_obs_adv  : addr;   (* address of adversary - destination address *)
    (* data: *)
    fw_obs_pt1  : port;   (* port requesting forwarding *)
    fw_obs_pt2  : port;   (* port being forwarded to *)
@@ -276,8 +276,8 @@ qed.
    proceed with forwarding *)
 
 type fw_ok =
-  {fw_ok_func : addr;   (* address of functionality *)
-   fw_ok_adv  : addr    (* address of adversary *)
+  {fw_ok_func : addr;   (* address of functionality - destination address *)
+   fw_ok_adv  : addr    (* address of adversary - source address *)
    (* data: (none) *)
   }.
 
@@ -356,6 +356,10 @@ module Forw : FUNC = {
     self <- self_; adv <- adv_; st <- FwStateInit;
   }
 
+  (* we insert sufficient checks for target and source addresses
+     of sent messages to be valid; depending upon the invariants
+     maintained, some of them will be redundant *)
+
   proc parties(m : msg) : msg option = {
     var r : msg option <- None;
     match st with
@@ -367,11 +371,13 @@ module Forw : FUNC = {
             if (envport self adv x.`FwDir.D.fw_req_pt2) {
               r <-
                 Some
-                (FwAdv.epdp_fw_obs_msg.`enc
-                 {|FwAdv.fw_obs_func = self; FwAdv.fw_obs_adv = adv;
-                   FwAdv.fw_obs_pt1 = x.`FwDir.D.fw_req_pt1;
-                   FwAdv.fw_obs_pt2 = x.`FwDir.D.fw_req_pt2;
-                   FwAdv.fw_obs_u = x.`FwDir.D.fw_req_u|});
+                (FwAdv.epdp_fw_obs_msg.`enc   (* adversarial message *)
+                 {|FwAdv.fw_obs_func = self;  (* source address *)
+                   FwAdv.fw_obs_adv  = adv;   (* destination address *)
+                   (* data: *)
+                   FwAdv.fw_obs_pt1  = x.`FwDir.D.fw_req_pt1;
+                   FwAdv.fw_obs_pt2  = x.`FwDir.D.fw_req_pt2;
+                   FwAdv.fw_obs_u    = x.`FwDir.D.fw_req_u|});
               st <-
                 FwStateWait x.`FwDir.D.fw_req_pt1 x.`FwDir.D.fw_req_pt2
                 x.`FwDir.D.fw_req_u;
@@ -383,13 +389,20 @@ module Forw : FUNC = {
     | FwStateWait pt1 pt2 u => {
         match FwAdv.epdp_fw_ok_msg.`dec m with
           Some x => {
-            (* x.`FwAdv.fw_ok_func = self /\ x.`FwAdv.fw_ok_adv = adv *)
-            r <-
-              Some
-              (FwDir.D.epdp_fw_rsp_msg.`enc
-               {|FwDir.D.fw_rsp_func = self; FwDir.D.fw_rsp_pt1 = pt1;
-                 FwDir.D.fw_rsp_pt2 = pt2; FwDir.D.fw_rsp_u = u|});
-            st <- FwStateFinal;
+            (* x.`FwAdv.fw_ok_func = self /\ x.`FwAdv.fw_ok_adv = adv;
+               if the invariant from FwInitState is preserved, the
+               following test is redudant: *)
+            if (envport self adv pt2) {
+              r <-
+                Some
+                (FwDir.D.epdp_fw_rsp_msg.`enc   (* direct message *)
+                 {|FwDir.D.fw_rsp_func = self;  (* source address *)
+                   FwDir.D.fw_rsp_pt2  = pt2;   (* destination address *)
+                   (* data: *)
+                   FwDir.D.fw_rsp_pt1  = pt1;
+                   FwDir.D.fw_rsp_u    = u|});
+              st <- FwStateFinal;
+            }
           }
         | None => { }
         end;
@@ -476,6 +489,8 @@ move => pt1 pt2 u pt1' pt2' u'.
 match => //.
 auto.
 move => x x'.
+if => //.
+auto.
 auto.
 auto.
 qed.
@@ -504,7 +519,8 @@ lemma Forw_invoke_init_fw_req (m' : msg) :
       FwAdv.fw_obs_u    = fwr.`FwDir.D.fw_req_u|}) /\
    Forw.st =
      FwStateWait fwr.`FwDir.D.fw_req_pt1 fwr.`FwDir.D.fw_req_pt2
-     fwr.`FwDir.D.fw_req_u] = 1%r.
+     fwr.`FwDir.D.fw_req_u /\
+   envport Forw.self Forw.adv fwr.`FwDir.D.fw_req_pt2] = 1%r.
 proof.
 proc.
 sp 1.
@@ -541,16 +557,19 @@ auto.
 auto.
 qed.
 
-pred forw_invoke_wait_fw_ok (self adv : addr, m : msg) =
+pred forw_invoke_wait_fw_ok (self adv : addr, pt2 : port, m : msg) =
   is_valid FwAdv.epdp_fw_ok_msg m /\
   (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_func = self /\
-  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_adv = adv.
+  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_adv = adv /\
+  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_func = self /\
+  envport self adv pt2.
 
 lemma Forw_invoke_wait_fw_ok (st' : fw_state, m' : msg) :
   phoare
   [Forw.invoke :
    st' = Forw.st /\ m' = m /\ get_as_FwStateWait Forw.st <> None /\
-   forw_invoke_wait_fw_ok Forw.self Forw.adv m ==>
+   forw_invoke_wait_fw_ok Forw.self Forw.adv
+   (oget (get_as_FwStateWait Forw.st)).`2 m ==>
    let wait = oget (get_as_FwStateWait st') in
    res =
    Some
@@ -565,11 +584,14 @@ rcondt 1; first auto; smt(FwAdv.eq_of_valid_fw_ok).
 inline Forw.parties.
 sp 2.
 match FwStateWait 1.
-auto => /> &hr.
+auto => |> &hr.
 rewrite /get_as_FwStateWait.
 case (Forw.st{hr}) => // pt1 pt2 u /= _.
 by exists pt1 pt2 u.
-match Some 1; first auto; smt().
+match Some 1; first auto => |> &hr.
+rewrite /get_as_FwStateWait /= /#.
+rcondt 1; first auto => |> &hr _ _.
+by rewrite /forw_invoke_wait_fw_ok /get_as_FwStateWait.
 auto; by rewrite /get_as_FwStateWait.
 qed.
 
@@ -577,7 +599,8 @@ lemma Forw_invoke_wait_bad (st' : fw_state) :
   phoare
   [Forw.invoke :
    st' = Forw.st /\ get_as_FwStateWait Forw.st <> None /\
-   ! forw_invoke_wait_fw_ok Forw.self Forw.adv m ==>
+   ! forw_invoke_wait_fw_ok Forw.self Forw.adv
+     (oget (get_as_FwStateWait Forw.st)).`2 m ==>
    res = None /\ Forw.st = st'] = 1%r.
 proof.
 proc.
@@ -594,8 +617,12 @@ case (FwAdv.epdp_fw_ok_msg.`dec m0 = None).
 match None 1; first auto.
 auto.
 match Some 1.
-auto; smt().
-exfalso; smt(FwAdv.eq_of_valid_fw_ok).
+auto; progress.
+exists (oget (FwAdv.epdp_fw_ok_msg.`dec m{hr})).
+by apply some_oget.
+if.
+exfalso; smt(oget_some FwAdv.eq_of_valid_fw_ok).
+auto.
 auto.
 qed.
 
