@@ -8,5 +8,5 @@ and `.uc` files.
 The files `UCEncoding.ec` and `UCUniv.ec` are symbolic links to those files
 in `../Common`.
 
-The file `UCCore.ec` is a stripped-down and more abstract version of
-`../common/UCCore.ec`, in which `port` is an abstract type.
+The file `UCBasicTypes.ec` is a more abstract version of
+`../common/UCBasicTypes.ec`, in which `port` is an abstract type.

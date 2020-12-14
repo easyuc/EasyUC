@@ -3,7 +3,7 @@
 prover [""].  (* no use of SMT provers *)
 
 require import AllCore Distr.
-require import UCCore.
+require import UCBasicTypes.
 
 (********************** Keys, Exponents and Plain texts ***********************)
 

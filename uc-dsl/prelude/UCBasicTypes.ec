@@ -1,6 +1,6 @@
-(* UCCore.ec
+(* UCBasicTypes.ec
 
-   a stripped-down and more abstract version of the real UCCore.ec
+   a more abstract version of the real UCBasicTypes.ec
 
    will be automatically ec_required last when processing UC DSL
    files, so port will be in the top-level environment *)
@@ -16,8 +16,8 @@ require export UCUniv.
 
 type port.  (* we don't expose the structure of ports *)
 
-(* axiomatized EPDP for ports - in the real UCCore.ec, this is given a
-   concrete defintion, with a lemma rather than an axiom *)
+(* axiomatized EPDP for ports - in the real UCBasicTypes.ec, this is
+   given a concrete definition, with a lemma rather than an axiom *)
 
 op epdp_port_univ : (port, univ) epdp.  (* port *)
 

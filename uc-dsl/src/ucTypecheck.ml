@@ -45,6 +45,15 @@ let top_env () = UcEcInterface.env ()
 
 let unif_env () = EcUnify.UniEnv.create None
 
+let is_ec_theory_name s =
+  Option.is_some (EcEnv.Theory.lookup_opt ([], s) (top_env ()))
+
+let check_not_ec_theory_name id_l =
+  if is_ec_theory_name (unloc id_l)
+  then type_error (loc id_l)
+       (fun ppf ->
+          fprintf ppf "@[identifer@ is@ name@ of@ EasyCrypt@ theory@]")
+
 (* check type in top-level environment, rejecting type variables *)
 
 let check_type_top (pty : pty) : ty =
@@ -132,6 +141,7 @@ let check_inter
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
+  let () = check_not_ec_theory_name ni.id in
   let ibt =
     match ni.inter with
     | Basic mds     -> check_basic_inter mds
@@ -249,7 +259,7 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
   | [sa]      -> sa
   | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
-let uc_qsym_prefix = ["Top"; "UCCore"]
+let uc_qsym_prefix = ["Top"; "UCBasicTypes"]
 
 let port_ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "port")) []
@@ -1398,9 +1408,10 @@ let check_toplevel_party
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
     (id_dir_inter : string) (id_adv_inter : string option)
     (pd : party_def) : party_def_tyd =
+  let () = check_not_ec_theory_name pd.id in
   let pqsymbol2sll (pqs : pqsymbol) : string list located =
     let qs = unloc pqs in
-    mk_loc (loc pqs) ((fst qs)@[snd qs]) in
+    mk_loc (loc pqs) (fst qs @ [snd qs]) in
   let serves = List.map pqsymbol2sll pd.serves in
   let () = List.iter
     (check_inter_id_path id_dir_inter id_adv_inter dir_inter_map adv_inter_map)
@@ -1578,6 +1589,7 @@ let check_fun_def (maps : maps_tyd) (fund : fun_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
+  let () = check_not_ec_theory_name fund.id in
   let funt = check_fun maps fund in
   {maps with
      fun_map = IdMap.add uid funt maps.fun_map}
@@ -1732,6 +1744,7 @@ let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
+  let () = check_not_ec_theory_name simd.id in
   let sdt = check_sim maps.adv_inter_map maps.fun_map simd in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
@@ -1838,8 +1851,8 @@ let load_uc_reqs check_id maps reqs =
   List.fold_left (load_uc_req check_id) maps reqs
 
 let load_ec_reqs reqs = 
-  (* last require import will be prelude/UCCore.ec *)
-  let reqs = reqs @ [mk_loc _dummy "UCCore"] in
+  (* last require import will be prelude/UCBasicTypes.ec *)
+  let reqs = reqs @ [mk_loc _dummy "UCBasicTypes"] in
   let reqimp id = 
     let uid = unloc id in
     let () =
