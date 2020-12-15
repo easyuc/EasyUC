@@ -88,7 +88,7 @@ qed.
 
 pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
   is_valid FwDir.D.epdp_fw_req_msg m /\
-  (oget (FwDir.D.epdp_fw_req_msg.`dec m)).`FwDir.D.fw_req_func = self /\
+  (oget (FwDir.D.epdp_fw_req_msg.`dec m)).`FwDir.D.fw_req__func = self /\
   envport self adv (oget (FwDir.D.dec_fw_req m)).`FwDir.D.fw_req_pt1 /\
   envport self adv (oget (FwDir.D.dec_fw_req m)).`FwDir.D.fw_req_pt2.
 
@@ -102,11 +102,11 @@ lemma Forw_invoke_init_fw_req (m' : msg) :
    res =
    Some
    (FwAdv.enc_fw_obs
-    {|FwAdv.fw_obs_func = fwr.`FwDir.D.fw_req_func;
-      FwAdv.fw_obs_adv  = Forw._adv;
-      FwAdv.fw_obs_pt1  = fwr.`FwDir.D.fw_req_pt1;
-      FwAdv.fw_obs_pt2  = fwr.`FwDir.D.fw_req_pt2;
-      FwAdv.fw_obs_u    = fwr.`FwDir.D.fw_req_u|}) /\
+    {|FwAdv.fw_obs__func = fwr.`FwDir.D.fw_req__func;
+      FwAdv.fw_obs__adv  = Forw._adv;
+      FwAdv.fw_obs_pt1   = fwr.`FwDir.D.fw_req_pt1;
+      FwAdv.fw_obs_pt2   = fwr.`FwDir.D.fw_req_pt2;
+      FwAdv.fw_obs_u     = fwr.`FwDir.D.fw_req_u|}) /\
    Forw._st =
      _FwStateWait fwr.`FwDir.D.fw_req_pt1 fwr.`FwDir.D.fw_req_pt2
      fwr.`FwDir.D.fw_req_u /\
@@ -149,9 +149,9 @@ qed.
 
 pred forw_invoke_wait_fw_ok (self adv : addr, pt2 : port, m : msg) =
   is_valid FwAdv.epdp_fw_ok_msg m /\
-  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_func = self /\
-  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_adv = adv /\
-  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok_func = self /\
+  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok__func = self /\
+  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok__adv = adv /\
+  (oget (FwAdv.epdp_fw_ok_msg.`dec m)).`FwAdv.fw_ok__func = self /\
   envport self adv pt2.
 
 lemma Forw_invoke_wait_fw_ok (st' : _fw_state, m' : msg) :
@@ -164,7 +164,7 @@ lemma Forw_invoke_wait_fw_ok (st' : _fw_state, m' : msg) :
    res =
    Some
    (FwDir.D.epdp_fw_rsp_msg.`enc
-    {|FwDir.D.fw_rsp_func = Forw._self; FwDir.D.fw_rsp_pt1 = wait.`1;
+    {|FwDir.D.fw_rsp__func = Forw._self; FwDir.D.fw_rsp_pt1 = wait.`1;
       FwDir.D.fw_rsp_pt2 = wait.`2; FwDir.D.fw_rsp_u = wait.`3|}) /\
    Forw._st = _FwStateFinal] = 1%r.
 proof.
