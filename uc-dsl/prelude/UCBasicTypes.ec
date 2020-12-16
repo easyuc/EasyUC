@@ -5,6 +5,10 @@
    will be automatically ec_required last when processing UC DSL
    files, so port will be in the top-level environment *)
 
+(* standard theories *)
+
+require export AllCore List FSet Distr DBool.
+
 (* defines encoding and partial decoding pairs (EPDPs) *)
 
 require export UCEncoding.

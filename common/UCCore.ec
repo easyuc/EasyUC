@@ -4,16 +4,15 @@
 
 prover quorum=2 ["Z3" "Alt-Ergo"].
 
-require import AllCore List FSet.
+(* standard theories, encoding and partial decoding pairs (EPDPs), the
+   type univ plus a number of EPDPs with target univ, addresses, ports
+   and messages *)
+
+require export UCBasicTypes.
 
 (* prefix ordering on lists *)
 
 require export UCListPO.
-
-(* encoding and partial decoding pairs (EPDPs), the type univ plus a
-   number of EPDPs with target univ, addresses, ports and messages *)
-
-require export UCBasicTypes.
 
 (* guard an optional message using predicate *)
 
@@ -177,6 +176,8 @@ module type ENV (Inter : INTER) = {
   proc main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
 
+abstract theory Experiment.
+
 (* carry out experiment in which the environment is allowed to
    interact with, and issue a final boolean judgment about, an
    interface, which is first initialized *)
@@ -215,9 +216,11 @@ module Exper (Inter : INTER, Env : ENV) = {
   }    
 }.
 
-(* make interface out of functionality and adversary parts *)
+end Experiment.
 
 abstract theory MakeInterface.
+
+(* make interface out of functionality and adversary parts *)
 
 (* loop invariant for interface's while loop *)
 
@@ -549,9 +552,9 @@ qed.
 
 end MakeInterface.
 
-(* dummy adversary (DA) - completely controlled by environment *)
-
 abstract theory DummyAdversary.
+
+(* dummy adversary (DA) - completely controlled by environment *)
 
 (* message from port ([], 0) of environment to port (dfe_da, 0) of
    dummy adversary, instructing dummy adversary to send message (Adv,

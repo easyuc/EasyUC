@@ -1,14 +1,17 @@
 (* UCBasicTypes.ec *)
 
-(* Defines encoding and partial decoding pairs (EPDPs), the type
-   univ plus a number of EPDPs with target univ, addresses,
-   ports and messages *)
+(* Exports standard theories, encoding and partial decoding pairs
+   (EPDPs), the type univ plus a number of EPDPs with target univ;
+   defines addresses, ports and messages *)
 
-require import AllCore List.
+(* standard theories *)
+
+require export AllCore List FSet Distr DBool.
 
 (* prefix ordering on lists *)
 
-require import UCListPO.  (* only needed to define envport, below *)
+require import UCListPO.  (* only needed to define envport, below;
+                             we require export in UCCore.ec *)
 
 (* defines encoding and partial decoding pairs (EPDPs) *)
 

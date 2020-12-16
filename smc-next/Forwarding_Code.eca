@@ -3,7 +3,7 @@
 (* Model for the machine-generated code for the Forwarding ideal
    functionality *)
 
-require import AllCore List UCBasicTypes.
+require import UCBasicTypes.
 
 (* begin theory parameters *)
 

@@ -8,7 +8,7 @@
 
 prover quorum=2 ["Alt-Ergo" "Z3"].
 
-require import AllCore List UCCore.
+require import UCCore.
 
 require Forwarding_Code.  (* code for ideal functionality *)
 clone import Forwarding_Code as FC.
