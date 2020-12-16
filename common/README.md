@@ -10,7 +10,7 @@ indirectly):
 * `UCUniv.ec` - universe of values (lists of booleans), plus EPDPs
 
 * `UCBasicTypes.ec` - `require export`s `UCEncoding.ec` and `UCUniv.ec`,
-  and defines types of addresses and ports
+  and defines types of addresses, ports and messages
 
 * `UCListPO.ec` - prefix ordering on lists
 

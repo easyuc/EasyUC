@@ -3,7 +3,7 @@
 (* Model for the machine-generated code for the Forwarding ideal
    functionality *)
 
-require import AllCore List UCCore.
+require import AllCore List UCBasicTypes.
 
 (* begin theory parameters *)
 
@@ -287,8 +287,8 @@ qed.
    avoid legal UC DSL identifers *)
 
 type fw_ok =
-  {fw_ok__func : addr;   (* address of functionality - destination address *)
-   fw_ok__adv  : addr    (* address of adversary - source address *)
+  {fw_ok__func : addr;  (* address of functionality - destination address *)
+   fw_ok__adv  : addr   (* address of adversary - source address *)
    (* data: (none) *)
   }.
 
@@ -359,7 +359,7 @@ type _fw_state = [
   | _FwStateFinal
 ].
 
-module Forw : FUNC = {
+module Forw = {  (* has module type UCCore.FUNC - but not in scope *)
   var _self, _adv : addr
   var _st : _fw_state
 

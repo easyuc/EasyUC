@@ -48,11 +48,48 @@ let unif_env () = EcUnify.UniEnv.create None
 let is_ec_theory_name s =
   Option.is_some (EcEnv.Theory.lookup_opt ([], s) (top_env ()))
 
+let is_ec_type_name s =
+  Option.is_some (EcEnv.Ty.lookup_opt ([], s) (top_env ()))
+
+let is_ec_op_name s =
+  Option.is_some (EcEnv.Op.lookup_opt ([], s) (top_env ()))
+
 let check_not_ec_theory_name id_l =
   if is_ec_theory_name (unloc id_l)
   then type_error (loc id_l)
        (fun ppf ->
-          fprintf ppf "@[identifer@ is@ name@ of@ EasyCrypt@ theory@]")
+          fprintf ppf
+          ("@[identifer@ is@ name@ of@ EasyCrypt@ theory@]"))
+
+let warning_theory_name s qual_file =
+  if is_ec_theory_name s
+  then non_loc_warning_message
+       (fun ppf ->
+          fprintf ppf
+          ("@[in@ UC@ file@ \"%s\",@ EasyCrypt@ theory@ \"%s\"@ " ^^
+           "may@ have@ different@ definition@ in@ generated@ " ^^
+           "EasyCrypt@ code@]")
+          qual_file s)
+
+let warning_type_name s qual_file =
+  if is_ec_type_name s
+  then non_loc_warning_message
+       (fun ppf ->
+          fprintf ppf
+          ("@[in@ UC@ file@ \"%s\",@ EasyCrypt@ type@ name@ " ^^
+           "\"%s\"@ may@ have@ different@ definition@ in@ " ^^
+           "generated@ EasyCrypt@ code@]")
+          qual_file s)
+
+let warning_op_name s qual_file =
+  if is_ec_op_name s
+  then non_loc_warning_message
+       (fun ppf ->
+          fprintf ppf
+          ("@[in@ UC@ file@ \"%s\",@ EasyCrypt@ operator@ or@ " ^^
+           "constructor@ name@ \"%s\"@ may@ have@ different@ " ^^
+           "definition@ in@ generated@ EasyCrypt@ code@]")
+          qual_file s)
 
 (* check type in top-level environment, rejecting type variables *)
 
@@ -1872,15 +1909,26 @@ let load_ec_reqs reqs =
            (unloc id) f) in
   List.iter reqimp reqs
 
-let typecheck (qual_file : string) (check_id : psymbol -> typed_spec)
-              (spec : spec) : typed_spec =
+let typecheck
+    (qual_file : string) (check_id : psymbol -> typed_spec)
+    (spec : spec) : typed_spec =
   let empty_maps =
     {dir_inter_map = IdMap.empty;
      adv_inter_map = IdMap.empty;
      fun_map       = IdMap.empty;
      sim_map       = IdMap.empty} in
-  let maps = load_uc_reqs check_id empty_maps spec.externals.uc_requires in
+  let maps =
+    load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
+  (* issue warnings if extra definitions that the real UCBasicTypes.ec
+     will provide are already defined in the current scope's environment *)
+  let () = warning_theory_name "UCListPO"       qual_file in
+  let () = warning_type_name   "addr"           qual_file in
+  let () = warning_type_name   "mode"           qual_file in
+  let () = warning_type_name   "msg"            qual_file in
+  let () = warning_op_name     "epdp_addr_univ" qual_file in
+  let () = warning_op_name     "Dir"            qual_file in
+  let () = warning_op_name     "Adv"            qual_file in
   try check_defs qual_file maps spec.definitions
   with
   | TyError (l, env, tyerr) ->

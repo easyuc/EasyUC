@@ -28,6 +28,8 @@ let parse_error = error_message
 
 let type_error = error_message
 
+let type_warning = warning_message
+
 (* symbols *)
 
 let qsymb_of_symb (x : symbol) : qsymbol = ([], x)
@@ -249,7 +251,8 @@ type def =
 
 (* UC and EasyCrypt requires *)
 
-type externals = {uc_requires : psymbol list; ec_requires : psymbol list}
+type externals =
+  {uc_requires : psymbol list; ec_requires : psymbol list}
 
 (* overall UC specifications *)
 

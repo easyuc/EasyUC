@@ -1,1 +1,1 @@
-../uc-dsl/examples/smc-case-study/KeysExponentsAndPlainTexts.ec
+../uc-dsl/examples/smc-case-study/KeysExponentsAndPlaintexts.ec

@@ -11,41 +11,9 @@ require import AllCore List FSet.
 require export UCListPO.
 
 (* encoding and partial decoding pairs (EPDPs), the type univ plus a
-   number of EPDPs with target univ, addresses and ports *)
+   number of EPDPs with target univ, addresses, ports and messages *)
 
 require export UCBasicTypes.
-
-type addr = _addr.  (* synonym, as this theory won't be required
-                       by UC DSL files *)
-
-(* messages have modes:
-
-     * direct - supplying functionality inputs, consuming their
-         outputs
-
-     * adversarial - communication between functionalties and
-         adversaries/simulators, communication between different
-         adversaries/simulators, and communication between
-         environments and adversaries/simulators *)
-
-type mode = [
-  | Dir  (* direct *)
-  | Adv  (* adversarial *)
-].
-
-lemma not_dir (mod : mode) :
-  mod <> Dir <=> mod = Adv.
-proof. by case mod. qed.
-
-lemma not_adv (mod : mode) :
-  mod <> Adv <=> mod = Dir.
-proof. by case mod. qed.
-
-(* a message has the form (mod, pt1, pt2, tag, u), for a mode mod, a
-   destination port pt1, a source port pt2, an integer tag (used to
-   ensure certain messages are distinct), and a universe value u *)
-
-type msg = mode * port * port * int * univ.
 
 (* guard an optional message using predicate *)
 
@@ -77,12 +45,6 @@ pred func_init_pre (self adv : addr) = inc self adv.
 
 op envport0 (self adv : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1.
-
-(* envport self adv pt says that pt is part of the
-   environment and is not the root port *)
-
-op envport (self adv : addr, pt : port) : bool =
-  envport0 self adv pt /\ pt <> ([], 0).
 
 module type FUNC = {
   (* initialize functionality (or adversary, simulator), telling it
@@ -651,7 +613,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt1_2; by case pt1.
-by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_quadruple_univ 1:epdp_sub.
+rewrite (epdp_dec_enc _ _ u) // 1:valid_epdp_quadruple_univ epdp.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_from_env_msg.
@@ -738,8 +700,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
-by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_quadruple_univ
-   1:epdp 1:epdp_sub.
+by rewrite (epdp_dec_enc _ _ u) // epdp_sub.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_to_env_msg.

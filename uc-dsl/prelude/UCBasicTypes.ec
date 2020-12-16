@@ -1,6 +1,6 @@
 (* UCBasicTypes.ec
 
-   a more abstract version of the real UCBasicTypes.ec
+   a stripped-down, more abstract version of the real UCBasicTypes.ec
 
    will be automatically ec_required last when processing UC DSL
    files, so port will be in the top-level environment *)
