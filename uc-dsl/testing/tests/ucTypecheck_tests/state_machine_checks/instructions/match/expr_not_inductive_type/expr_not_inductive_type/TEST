@@ -1,0 +1,9 @@
+description
+
+.
+args: expr_not_inductive_type.uc
+outcome: failure
+[error: expr_not_inductive_type.uc: from line 15 columns 9 to 10]
+
+the expression does not have an inductive type
+.

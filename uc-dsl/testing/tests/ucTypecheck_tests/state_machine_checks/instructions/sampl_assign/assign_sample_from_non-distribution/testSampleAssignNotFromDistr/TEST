@@ -9,6 +9,6 @@ This expression has type
    exp
 
 but is expected to have type
-   exp distr
+   exp Pervasive.distr
 .
 

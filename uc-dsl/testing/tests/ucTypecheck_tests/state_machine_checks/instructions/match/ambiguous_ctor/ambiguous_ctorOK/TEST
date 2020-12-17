@@ -1,0 +1,6 @@
+description
+
+.
+args: ambiguous_ctorOK.uc
+outcome: success
+.

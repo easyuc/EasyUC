@@ -1,0 +1,9 @@
+description
+
+.
+args: duplicate_match.uc
+outcome: failure
+[error: duplicate_match.uc: from line 18 column 5 to line 19 column 19]
+
+redundant clauses
+.

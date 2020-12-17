@@ -1,0 +1,9 @@
+description
+
+.
+args: nonexhaustive_match.uc
+outcome: failure
+[error: nonexhaustive_match.uc: from line 18 columns 5 to 19]
+
+non-exhaustive clauses
+.

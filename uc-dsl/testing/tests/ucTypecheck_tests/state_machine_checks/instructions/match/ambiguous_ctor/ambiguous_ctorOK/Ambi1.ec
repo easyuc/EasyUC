@@ -1,0 +1,1 @@
+type ambi = [Ambi].
