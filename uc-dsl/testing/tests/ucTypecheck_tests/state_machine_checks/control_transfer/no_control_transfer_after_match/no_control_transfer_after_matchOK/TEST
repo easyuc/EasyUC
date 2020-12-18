@@ -1,0 +1,6 @@
+description 
+This test demonstrates an example of control transfer after match message
+.
+args: no_control_transfer_after_matchOK.uc
+outcome: success
+.
