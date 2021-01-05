@@ -1,4 +1,4 @@
-(* KeyExchange.ec *)
+(* UC_KeyExchange.ec *)
 
 (* Diffie-Hellman Key Exchange *)
 

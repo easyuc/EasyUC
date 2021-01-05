@@ -178,7 +178,6 @@ let check_inter
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let () = check_not_ec_theory_name ni.id in
   let ibt =
     match ni.inter with
     | Basic mds     -> check_basic_inter mds
@@ -1445,7 +1444,6 @@ let check_toplevel_party
     (dir_inter_map : inter_tyd IdMap.t) (adv_inter_map : inter_tyd IdMap.t)
     (id_dir_inter : string) (id_adv_inter : string option)
     (pd : party_def) : party_def_tyd =
-  let () = check_not_ec_theory_name pd.id in
   let pqsymbol2sll (pqs : pqsymbol) : string list located =
     let qs = unloc pqs in
     mk_loc (loc pqs) (fst qs @ [snd qs]) in
@@ -1569,7 +1567,13 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : fun_tyd =
                "@[nonexisting@ functionality:@ %s@]" ufun_id)
         | Some ft ->
             let fbt = unloc ft in
-            if exists_id_inter_maps maps.dir_inter_map maps.adv_inter_map
+            if uid = unloc fund.id
+              then type_error (loc sf.id)
+                   (fun ppf ->
+                      fprintf ppf
+                      ("@[subfunctionality@ name@ may@ be@ different@ " ^^
+                       "from@ real@ functionality@]"))
+            else if exists_id_inter_maps maps.dir_inter_map maps.adv_inter_map
                uid
               then type_error (loc sf.id)
                    (fun ppf ->
@@ -1581,6 +1585,12 @@ let check_fun (maps : maps_tyd) (fund : fun_def) : fun_tyd =
                    (fun ppf ->
                       fprintf ppf
                       "@[%s@ is@ not@ an@ ideal@ functionality@]" ufun_id)
+            else if uid = ufun_id
+              then type_error (loc sf.id)
+                   (fun ppf ->
+                      fprintf ppf
+                      ("@[subfunctionality@ name@ must@ be@ different@ " ^^
+                       "from@ ideal@ functionality@]"))
             else ufun_id in
       let sub_funs = IdMap.map check_sub_fun_decl sub_fun_decls in
       let party_defs =
@@ -1626,7 +1636,6 @@ let check_fun_def (maps : maps_tyd) (fund : fun_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let () = check_not_ec_theory_name fund.id in
   let funt = check_fun maps fund in
   {maps with
      fun_map = IdMap.add uid funt maps.fun_map}
@@ -1781,7 +1790,6 @@ let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let () = check_not_ec_theory_name simd.id in
   let sdt = check_sim maps.adv_inter_map maps.fun_map simd in
   {maps with sim_map = IdMap.add uid sdt maps.sim_map}
 
@@ -1789,19 +1797,19 @@ let check_sim_def (maps : maps_tyd) (simd : sim_def) : maps_tyd =
 
 let partition_maps qual_file maps =
   let part_dir_inter_map =
-    IdMap.partition 
+    IdMap.partition
     (fun _ v -> filename_of_loc (loc v) = qual_file)
     maps.dir_inter_map in
   let part_adv_inter_map =
-    IdMap.partition 
+    IdMap.partition
     (fun _ v -> filename_of_loc (loc v) = qual_file)
     maps.adv_inter_map in
   let part_fun_map =
-    IdMap.partition 
+    IdMap.partition
     (fun _ v -> filename_of_loc (loc v) = qual_file)
     maps.fun_map in
   let part_sim_map =
-    IdMap.partition 
+    IdMap.partition
     (fun _ v -> filename_of_loc (loc v) = qual_file)
     maps.sim_map in
   {required_maps =
@@ -1929,8 +1937,7 @@ let typecheck
   let () = warning_op_name     "epdp_addr_univ" qual_file in
   let () = warning_op_name     "Dir"            qual_file in
   let () = warning_op_name     "Adv"            qual_file in
-  try check_defs qual_file maps spec.definitions
-  with
+  try check_defs qual_file maps spec.definitions with
   | TyError (l, env, tyerr) ->
       type_error l
       (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)

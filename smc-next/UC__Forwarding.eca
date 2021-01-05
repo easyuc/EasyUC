@@ -1,23 +1,28 @@
-(* Forwarding_Code.eca *)
+(* UC__Forwarding.eca *)
 
 (* Model for the machine-generated code for the Forwarding ideal
-   functionality *)
+   functionality
+
+   Should be required and clone included in UC_Forwarding.eca, which
+   the user writes *)
 
 require import UCBasicTypes.
 
 (* begin theory parameters *)
 
-(* port index of adversary that functionality communicates with *)
+(* port index of adversary/simulator that functionality communicates
+   with; an ideal functionality with no corresponding real
+   functionaity or simulator has a single such port index *)
 
 op _adv_pi : int.
 
-axiom fwd_pi_uniq : uniq [_adv_pi; 0].
+axiom adv_pi_gt0 : 0 < _adv_pi.
 
 (* end theory parameters *)
 
 (* basic direct interface for the single party, with port index 1 *)
 
-theory FwDir_.
+theory UC_FwDir_.
 
 (* input message: request sent to port index 1 of forwarding
    functionality: pt1 is asking to forward u to pt2
@@ -181,18 +186,18 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_fw_rsp_msg) <-.
 by rewrite !epdp.
 qed.
 
-end FwDir_.
+end UC_FwDir_.
 
-theory FwDir.  (* composite direct interface *)
+theory UC_FwDir.  (* composite direct interface *)
 
-clone FwDir_ as D.
+clone UC_FwDir_ as D.
 
-end FwDir.
+end UC_FwDir.
 
 (* basic adversarial interface, with port index 2 (number of parties +
    1) *)
 
-theory FwAdv.
+theory UC_FwAdv.
 
 (* message from forwarding functionality to adversary, letting it
    observe that the functionality is proposing to forward u to
@@ -351,7 +356,7 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_fw_ok_msg) <-.
 by rewrite !epdp.
 qed.
 
-end FwAdv.
+end UC_FwAdv.
 
 type _fw_state = [
   | _FwStateInit
@@ -359,7 +364,7 @@ type _fw_state = [
   | _FwStateFinal
 ].
 
-module Forw = {  (* has module type UCCore.FUNC - but not in scope *)
+module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
   var _self, _adv : addr
   var _st : _fw_state
 
@@ -375,43 +380,43 @@ module Forw = {  (* has module type UCCore.FUNC - but not in scope *)
     var _r : msg option <- None;
     match _st with
       _FwStateInit => {
-        match FwDir.D.epdp_fw_req_msg.`dec _m with
+        match UC_FwDir.D.epdp_fw_req_msg.`dec _m with
           Some x => {
-            (* x.`FwDir.D.fw_req__func = _self /\
-               envport _self _adv x.`FwDir.D.fw_req_pt1 *)
-            if (envport _self _adv x.`FwDir.D.fw_req_pt2) {
+            (* x.`UC_FwDir.D.fw_req__func = _self /\
+               envport _self _adv x.`UC_FwDir.D.fw_req_pt1 *)
+            if (envport _self _adv x.`UC_FwDir.D.fw_req_pt2) {
               _r <-
                 Some
-                (FwAdv.epdp_fw_obs_msg.`enc     (* adversarial message *)
-                 {|FwAdv.fw_obs__func = _self;  (* source address *)
-                   FwAdv.fw_obs__adv  = _adv;   (* destination address *)
+                (UC_FwAdv.epdp_fw_obs_msg.`enc     (* adversarial message *)
+                 {|UC_FwAdv.fw_obs__func = _self;  (* source address *)
+                   UC_FwAdv.fw_obs__adv  = _adv;   (* destination address *)
                    (* data: *)
-                   FwAdv.fw_obs_pt1   = x.`FwDir.D.fw_req_pt1;
-                   FwAdv.fw_obs_pt2   = x.`FwDir.D.fw_req_pt2;
-                   FwAdv.fw_obs_u     = x.`FwDir.D.fw_req_u|});
+                   UC_FwAdv.fw_obs_pt1   = x.`UC_FwDir.D.fw_req_pt1;
+                   UC_FwAdv.fw_obs_pt2   = x.`UC_FwDir.D.fw_req_pt2;
+                   UC_FwAdv.fw_obs_u     = x.`UC_FwDir.D.fw_req_u|});
               _st <-
-                _FwStateWait x.`FwDir.D.fw_req_pt1 x.`FwDir.D.fw_req_pt2
-                x.`FwDir.D.fw_req_u;
+                _FwStateWait x.`UC_FwDir.D.fw_req_pt1 x.`UC_FwDir.D.fw_req_pt2
+                x.`UC_FwDir.D.fw_req_u;
             }
           }
         | None => { }
         end;
       }
     | _FwStateWait pt1 pt2 u => {
-        match FwAdv.epdp_fw_ok_msg.`dec _m with
+        match UC_FwAdv.epdp_fw_ok_msg.`dec _m with
           Some x => {
-            (* x.`FwAdv.fw_ok__func = self /\ x.`FwAdv.fw_ok__adv = adv;
+            (* x.`UC_FwAdv.fw_ok__func = self /\ x.`UC_FwAdv.fw_ok__adv = adv;
                if the invariant from FwInitState is preserved, the
                following test is redudant: *)
             if (envport _self _adv pt2) {
               _r <-
                 Some
-                (FwDir.D.epdp_fw_rsp_msg.`enc     (* direct message *)
-                 {|FwDir.D.fw_rsp__func = _self;  (* source address *)
-                   FwDir.D.fw_rsp_pt2   = pt2;    (* destination address *)
+                (UC_FwDir.D.epdp_fw_rsp_msg.`enc     (* direct message *)
+                 {|UC_FwDir.D.fw_rsp__func = _self;  (* source address *)
+                   UC_FwDir.D.fw_rsp_pt2   = pt2;    (* destination address *)
                    (* data: *)
-                   FwDir.D.fw_rsp_pt1   = pt1;
-                   FwDir.D.fw_rsp_u     = u|});
+                   UC_FwDir.D.fw_rsp_pt1   = pt1;
+                   UC_FwDir.D.fw_rsp_u     = u|});
               _st <- _FwStateFinal;
             }
           }

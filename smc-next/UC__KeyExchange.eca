@@ -1,26 +1,56 @@
-(* KeyExchange_Code.eca *)
+(* UC__KeyExchange.eca *)
 
 (* Model for the machine-generated code for the KeyExchange real
    and ideal functionalities and simulator, which need to be
-   cloned as a unit *)
+   cloned as a unit
 
-require import AllCore List UCBasicTypes.
+   Should be required and clone included in UC_KeyExchange.eca, which
+   the user writes *)
+
+require UC_Forwarding.  (* from uc_requires *)
+
+require import KeysExponentsAndPlaintexts.  (* from ec_requires *)
+
+require import UCBasicTypes.  (* always last *)
+
+(* the port indices of the adversary the real functionality or its
+   subfunctionalities communicate with, as well as the port index of
+   the simulator the ideal functionality communicates with, are in the
+   range _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num - 1 *)
+
+op _adv_pi_num : int = 3.
 
 (* begin theory parameters *)
+
+op _adv_pi_begin : int.
+
+axiom adv_pi_gt0 : 0 < _adv_pi_begin.
+
+(* end theory parameters *)
 
 (* port indices of adversary that the two forwarding functionalities
    cloned by the real functionality use *)
 
-op adv_fw1_pi : int.
-op adv_fw2_pi : int.
+op _adv_fw1_pi : int = _adv_pi_begin + 0.
+op _adv_fw2_pi : int = _adv_pi_begin + 1.
 
 (* port index of key exchange simulator *)
 
-op ke_sim_pi : int.
+op _ke_sim_pi : int = _adv_pi_begin + 2.
 
-axiom ke_pi_uniq : uniq [ke_sim_pi; adv_fw1_pi; adv_fw2_pi; 0].
+theory UC__RF.
 
-(* end theory parameters *)
+clone UC_Forwarding as UC_Fw1 with
+  op _adv_pi <- _adv_fw1_pi
+proof *.
+realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+
+clone UC_Forwarding as UC_Fw2 with
+  op _adv_pi <- _adv_fw2_pi
+proof *.
+realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+
+end UC__RF.
 
 (* basic direct interface for Party 1, with external port index 1 *)
 
@@ -119,14 +149,12 @@ op dec_ke_req2 (m : msg) : ke_req2 option =
 
 (* Real Functionality *)
 
-require Forwarding.
-
-clone Forwarding as Fwd1 with
+clone Forwarding as Fw1 with
   op adv_pi <- adv_fw1_pi
 proof *.
 realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
 
-clone Forwarding as Fwd2 with
+clone Forwarding as Fw2 with
   op adv_pi <- adv_fw2_pi
 proof *.
 realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
@@ -135,14 +163,14 @@ realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
 
 type ke_real_p1_state = [
     KERealP1StateWaitReq1
-  | KERealP1StateWaitFwd2 of port & exp
+  | KERealP1StateWaitFw2 of port & exp
   | KERealP1StateFinal
 ].
 
 (* state for Party 2 *)
 
 type ke_real_p2_state = [
-    KERealP2StateWaitFwd1
+    KERealP2StateWaitFw1
   | KERealP2StateWaitReq2 of port & exp
   | KERealP2StateFinal
 ].
@@ -158,13 +186,13 @@ module KEReal : FUNC = {
      Party 2 (P2) manages ports (self, 2) and (self, 4);
      (self, 2) is external, (self, 4) is internal
 
-     First forwarder (Fwd1) is at address self ++ [1]
-     Second forwarder (Fwd2) is at address self ++ [2] *)
+     First forwarder (Fw1) is at address self ++ [1]
+     Second forwarder (Fw2) is at address self ++ [2] *)
 
   proc init(self_ adv_ : addr) : unit = {
     self <- self_; adv <- adv_;
-    Fwd1.Forw.init(self ++ [1], adv); Fwd2.Forw.init(self ++ [2], adv);
-    st1 <- KERealP1StateWaitReq1; st2 <- KERealP2StateWaitFwd1;
+    Fw1.Forw.init(self ++ [1], adv); Fw2.Forw.init(self ++ [2], adv);
+    st1 <- KERealP1StateWaitReq1; st2 <- KERealP2StateWaitFw1;
   }
 
   proc party1(m : msg) : msg option = {
@@ -179,25 +207,25 @@ module KEReal : FUNC = {
               q1 <$ dexp;
               r <-
                 Some
-                (Fwd1.fw_req
-                 {|Fwd1.fw_req_func = (self ++ [1]);
-                   Fwd1.fw_req_pt1  = (self, 3);
-                   Fwd1.fw_req_pt2  = (self, 4);
-                   Fwd1.fw_req_u    =
+                (Fw1.fw_req
+                 {|Fw1.fw_req_func = (self ++ [1]);
+                   Fw1.fw_req_pt1  = (self, 3);
+                   Fw1.fw_req_pt2  = (self, 4);
+                   Fw1.fw_req_u    =
                      EPDP_Univ_PortPortKey.enc
                      (x.`ke_req1_pt1, x.`ke_req1_pt2, g ^ q1)|});
-              st1 <- KERealP1StateWaitFwd2 x.`ke_req1_pt1 q1;
+              st1 <- KERealP1StateWaitFw2 x.`ke_req1_pt1 q1;
             }
           }
         | None   => { }
         end;
       }
-    | KERealP1StateWaitFwd2 pt1 q1 => {
-        match Fwd2.dec_fw_rsp m with
+    | KERealP1StateWaitFw2 pt1 q1 => {
+        match Fw2.dec_fw_rsp m with
           Some x => {
-              if (x.`Fwd2.fw_rsp_pt2 = (self, 3)) {
+              if (x.`Fw2.fw_rsp_pt2 = (self, 3)) {
                 (* destination of m is (self, 3) *)
-                k2 <- oget (EPDP_Univ_Key.dec x.`Fwd2.fw_rsp_u);
+                k2 <- oget (EPDP_Univ_Key.dec x.`Fw2.fw_rsp_u);
                 r <-
                   Some
                   (ke_rsp2
@@ -218,13 +246,13 @@ module KEReal : FUNC = {
     var pt1, pt2 : port; var q2 : exp; var k1 : key;
     var r : msg option <- None;
     match st2 with
-      KERealP2StateWaitFwd1 => {
-        match Fwd1.dec_fw_rsp m with
+      KERealP2StateWaitFw1 => {
+        match Fw1.dec_fw_rsp m with
           Some x => {
-              if (x.`Fwd1.fw_rsp_pt2 = (self, 4)) {
+              if (x.`Fw1.fw_rsp_pt2 = (self, 4)) {
                 (* destination of m is (self, 4) *)
                 (pt1, pt2, k1) <-
-                  oget (EPDP_Univ_PortPortKey.dec x.`Fwd1.fw_rsp_u);
+                  oget (EPDP_Univ_PortPortKey.dec x.`Fw1.fw_rsp_u);
                 q2 <$ dexp;
                 r <-
                   Some
@@ -244,11 +272,11 @@ module KEReal : FUNC = {
             if (x.`ke_req2_pt2 = pt2) {
               r <-
                 Some
-                (Fwd2.fw_req
-                 {|Fwd2.fw_req_func = (self ++ [2]);
-                   Fwd2.fw_req_pt1  = (self, 4);
-                   Fwd2.fw_req_pt2  = (self, 3);
-                   Fwd2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
+                (Fw2.fw_req
+                 {|Fw2.fw_req_func = (self ++ [2]);
+                   Fw2.fw_req_pt1  = (self, 4);
+                   Fw2.fw_req_pt2  = (self, 3);
+                   Fw2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
               st2 <- KERealP2StateFinal;
             }
           }
@@ -286,13 +314,13 @@ module KEReal : FUNC = {
         r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
       }
       elif (self ++ [1] <= m.`2.`1) {
-        r <@ Fwd1.Forw.invoke(m);
+        r <@ Fw1.Forw.invoke(m);
         r <-
           opt_msg_guard
           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw1_pi) r;
       }
       elif (self ++ [2] <= m.`2.`1) {
-        r <@ Fwd2.Forw.invoke(m);
+        r <@ Fw2.Forw.invoke(m);
         r <-
           opt_msg_guard
           (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw2_pi) r;
