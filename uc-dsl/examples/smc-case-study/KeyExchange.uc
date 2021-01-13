@@ -2,7 +2,7 @@
 
 uc_requires Forwarding.
 
-ec_requires KeysExponentsAndPlaintexts.
+ec_requires +KeysExponentsAndPlaintexts.
 
 direct KEDirPt1 {
   in  pt1@ke_req1(pt2 : port)
@@ -20,8 +20,8 @@ direct KEDir {
 }
 
 functionality KEReal implements KEDir {
-  subfun Fw1 = Forw
-  subfun Fw2 = Forw
+  subfun Fw1 = Forwarding.Forw
+  subfun Fw2 = Forwarding.Forw
 
   party Pt1 serves KEDir.Pt1 {
     initial state WaitReq1 {

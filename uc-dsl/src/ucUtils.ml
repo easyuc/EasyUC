@@ -3,7 +3,7 @@
 (* UC DSL Utilities *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -26,6 +26,13 @@ let index_of_ex x xs =
   | Some i -> i
 
 let filename_of_loc l = l.loc_fname
+
+let begin_of_file_pos (file : string) : Lexing.position =
+  {pos_fname = file; pos_lnum = 0; pos_bol = 0; pos_cnum = 0}
+
+let begin_of_file_loc (file : string) : EcLocation.t =
+  let pos = begin_of_file_pos file in
+  EcLocation.make pos pos
 
 let mergelocs (l : 'a located list) : EcLocation.t = mergeall (List.map loc l)
 

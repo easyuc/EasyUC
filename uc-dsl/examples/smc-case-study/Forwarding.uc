@@ -1,7 +1,5 @@
 (* Forwarding *)
 
-ec_requires KeysExponentsAndPlaintexts.
-
 direct FwDir_ {
   in pt1@fw_req(pt2 : port, u : univ)
   out fw_rsp(pt1 : port, u : univ)@pt2

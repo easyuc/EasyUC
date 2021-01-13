@@ -3,7 +3,7 @@
 (* Global State of UC DSL tool *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -29,3 +29,9 @@ let raw_messages : bool ref = ref false
 let set_raw_messages () = raw_messages := true
 
 let get_raw_messages () = ! raw_messages
+
+let units : bool ref = ref false
+
+let set_units () = units := true
+
+let get_units () = ! units

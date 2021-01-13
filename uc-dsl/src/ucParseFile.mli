@@ -3,7 +3,7 @@
 (* Parse a DSL specification *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -22,7 +22,7 @@ type file_or_id =
 
 (* parse and then typecheck a file_or_id describing a .uc file
 
-   second component of result will be the filename of the locations of
-   the spec *)
+   second component of result will be the qualified name of the .uc
+   file *)
 
 val parse_file_or_id : file_or_id -> spec * string

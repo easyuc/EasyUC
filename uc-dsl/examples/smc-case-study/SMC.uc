@@ -2,7 +2,7 @@
 
 uc_requires Forwarding KeyExchange.
 
-ec_requires KeysExponentsAndPlaintexts.
+ec_requires +KeysExponentsAndPlaintexts.
 
 direct SMCPt1 {
   in pt1@smc_req(pt2 : port, t : text)
@@ -17,8 +17,8 @@ direct SMCDir {
   Pt2 : SMCPt2
 }
 
-functionality SMCReal(KE : KEDir) implements SMCDir {
-  subfun Fwd = Forw
+functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
+  subfun Fwd = Forwarding.Forw
 
   party Pt1 serves SMCDir.Pt1 {
     initial state WaitReq {
@@ -128,7 +128,7 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
   }
 }
 
-simulator SMCSim uses SMC2Sim simulates SMCReal(KEIdeal) {
+simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
   initial state WaitReq {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
