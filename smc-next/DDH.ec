@@ -6,7 +6,7 @@ prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import AllCore Distr.
 
-require import KeysExponentsAndPlainTexts.
+require import KeysExponentsAndPlaintexts.
 
 (* DDH Adversary *)
 

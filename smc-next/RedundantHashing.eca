@@ -27,7 +27,7 @@ require IterProc.
 
 (***************************** Auxiliary Theories *****************************)
 
-require import ListAux.
+require import UCListAux.
 require import FSetAux.
 
 (***************************** Theory Parameters ******************************)
