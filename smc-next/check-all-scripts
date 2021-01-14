@@ -25,24 +25,20 @@ echo "********** Auxiliary Theories **********"
 echo ""
 
 check FSetAux.ec
-check ListAux.ec
 
 echo "********** Supporting Theories **********"
 echo ""
 
-check ListPO.ec
 check RedundantHashing.eca
 
 echo "********** DDH **********"
 echo ""
 
-check KeysExponentsAndPlainTexts.ec
+check KeysExponentsAndPlaintexts.ec
+check DDH.ec
 
-#check DDH.ec
-#
-#echo "********** Main SMC **********"
-#echo ""
-#
-#check Forward.ec
-#check KeyExchange.ec
-#check SMC.ec
+echo "********** Main SMC **********"
+echo ""
+
+check UC__Forwarding.eca
+check UC_Forwarding.eca

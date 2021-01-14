@@ -305,7 +305,7 @@ have val_y :
   have val_x1 : epdp1.`dec x1 = Some x.`1.
     move : match_dec_x1_eq_some.
     case (epdp1.`dec x1) => // x1' /=.
-    case (epdp2.`dec x2) => // _ /=.
+    case (epdp2.`dec x2) => // x0 /=.
     case (epdp3.`dec x3) => // _ /=.
   rewrite (epdp_dec_enc _ _ x1) 1:valid1 //=.
   move : match_dec_x1_eq_some.
@@ -313,7 +313,7 @@ have val_y :
   have val_x2 : epdp2.`dec x2 = Some x.`2.
     move : match_dec_x2_eq_some.
     case (epdp2.`dec x2) => // x2' /=.
-    by case (epdp3.`dec x3) => // _ /= <-.
+    by case (epdp3.`dec x3) => // x0 /= <-.
   rewrite (epdp_dec_enc _ _ x2) 1:valid2 //=.
   move : match_dec_x2_eq_some.
   rewrite val_x2 /= => match_dec_x3_eq_some.
@@ -393,27 +393,27 @@ have val_y :
     have val_x2 : epdp2.`dec x2 = Some x.`2.
       move : match_dec_x2_eq_some.
       case (epdp2.`dec x2) => // x2' /=.
-      case (epdp3.`dec x3) => // _ /=.
+      case (epdp3.`dec x3) => // x0 /=.
       case (epdp4.`dec x4) => // _ /=.
     move : match_dec_x2_eq_some.
     rewrite val_x2 /=.
-    case (epdp3.`dec x3) => // _ /=.
-    by case (epdp4.`dec x4) => // _ /= <-.
+    case (epdp3.`dec x3) => // x0 /=.
+    by case (epdp4.`dec x4) => // x5 /= <-.
   move : match_dec_x1_eq_some.
   rewrite val_x1 => /= match_dec_x2_eq_some.
   rewrite (epdp_dec_enc _ _ x1) //=.
   have val_x2 : epdp2.`dec x2 = Some x.`2. 
     move : match_dec_x2_eq_some.
     case (epdp2.`dec x2) => // x2' /=.
-    case (epdp3.`dec x3) => // _ /=.
-    by case (epdp4.`dec x4) => // _ /= <-.
+    case (epdp3.`dec x3) => // x0 /=.
+    by case (epdp4.`dec x4) => // x5 /= <-.
   rewrite (epdp_dec_enc _ _ x2) //=.
   move : match_dec_x2_eq_some.
   rewrite val_x2 /= => match_dec_x3_eq_some.
   have val_x3 : epdp3.`dec x3 = Some x.`3.
     move : match_dec_x3_eq_some.
     case (epdp3.`dec x3) => // x3' /=.
-    by case (epdp4.`dec x4) => // _ /= <-.
+    by case (epdp4.`dec x4) => // x0 /= <-.
   rewrite (epdp_dec_enc _ _ x3) //=.
   move : match_dec_x3_eq_some.
   rewrite val_x3 /= => match_dec_x4_eq_some.
@@ -503,38 +503,38 @@ have val_y :
     have val_x2 : epdp2.`dec x2 = Some x.`2.
       move : match_dec_x2_eq_some.
       case (epdp2.`dec x2) => // x2' /=.
-      case (epdp3.`dec x3) => // _ /=.
-      case (epdp4.`dec x4) => // _ /=.
+      case (epdp3.`dec x3) => // x0 /=.
+      case (epdp4.`dec x4) => // x6 /=.
       case (epdp5.`dec x5) => // _ /=.
     move : match_dec_x2_eq_some.
     rewrite val_x2 /=.
-    case (epdp3.`dec x3) => // _ /=.
-    case (epdp4.`dec x4) => // _ /=.
-    by case (epdp5.`dec x5) => // _ /= <-.
+    case (epdp3.`dec x3) => // x0 /=.
+    case (epdp4.`dec x4) => // x6 /=.
+    by case (epdp5.`dec x5) => // x7 /= <-.
   move : match_dec_x1_eq_some.
   rewrite val_x1 => /= match_dec_x2_eq_some.
   rewrite (epdp_dec_enc _ _ x1) //=.
   have val_x2 : epdp2.`dec x2 = Some x.`2. 
     move : match_dec_x2_eq_some.
     case (epdp2.`dec x2) => // x2' /=.
-    case (epdp3.`dec x3) => // _ /=.
-    case (epdp4.`dec x4) => // _ /=.
-    by case (epdp5.`dec x5) => // _ /= <-.
+    case (epdp3.`dec x3) => // x0 /=.
+    case (epdp4.`dec x4) => // x6 /=.
+    by case (epdp5.`dec x5) => // x7 /= <-.
   rewrite (epdp_dec_enc _ _ x2) //=.
   move : match_dec_x2_eq_some.
   rewrite val_x2 /= => match_dec_x3_eq_some.
   have val_x3 : epdp3.`dec x3 = Some x.`3.
     move : match_dec_x3_eq_some.
     case (epdp3.`dec x3) => // x3' /=.
-    case (epdp4.`dec x4) => // _ /=.
-    by case (epdp5.`dec x5) => // _ /= <-.
+    case (epdp4.`dec x4) => // x0 /=.
+    by case (epdp5.`dec x5) => // x6 /= <-.
   rewrite (epdp_dec_enc _ _ x3) //=.
   move : match_dec_x3_eq_some.
   rewrite val_x3 /= => match_dec_x4_eq_some.
   have val_x4 : epdp4.`dec x4 = Some x.`4.
     move : match_dec_x4_eq_some.
     case (epdp4.`dec x4) => // x4' /=.
-    by case (epdp5.`dec x5) => // _ /= <-.
+    by case (epdp5.`dec x5) => // x0 /= <-.
   rewrite (epdp_dec_enc _ _ x4) //=.
   move : match_dec_x4_eq_some.
   rewrite val_x4 /= => match_dec_x5_eq_some.
