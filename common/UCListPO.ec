@@ -90,7 +90,7 @@ proof.
 split.
 move : ys; elim xs.
 case => // x xs _.
-apply (LTS [] (x :: xs) (x :: xs)).
+by apply (LTS [] (x :: xs) (x :: xs)).
 move => x xs IH [] // y ys.
 case (x = y) => [-> /= lt | /= -> //].
 have [] us us_ne_nil <- := (IH ys lt).
@@ -106,7 +106,7 @@ proof.
 split.
 move : xs; elim ys.
 case => // y ys _.
-apply (LTS [] (y :: ys) (y :: ys)).
+by apply (LTS [] (y :: ys) (y :: ys)).
 move => y ys IH [] // x xs.
 case (x = y) => [-> /= gt | /= -> //].
 have [] us us_ne_nil <- := (IH xs gt).

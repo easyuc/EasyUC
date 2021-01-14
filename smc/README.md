@@ -1,6 +1,17 @@
 Secure Message Communication
 ====================================================================
 
+*Note: this EasyCrypt development no longer checks with the current
+version of EasyCrypt. Unfortunately, to go back to a version of
+EasyCrypt for which the proof checks, one would also have to go back
+to an earlier version of Why3. It seems changes in how introduction
+patterns are handled is at least part of the problem. At this point,
+it doesn't seem worthwhile to update the proof.  Instead we are
+working toward a better UC in EasyCrypt methodology, as the original
+proof was too laborious to scale up anyway. This new methodology will
+involve translation from the UC DSL, and you can see work-in-progress
+in smc-next.*
+
 We formalized the proof of the UC security of secure message
 communication (SMC) using a one-time pad that's agreed using
 Diffie-Hellman key exchange.
