@@ -3,7 +3,7 @@
 (* Global State of UC DSL tool *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -37,3 +37,12 @@ val add_lowest_include_dirs : string -> unit
 val set_raw_messages : unit -> unit
 
 val get_raw_messages : unit -> bool
+
+(* boolean saying whether top-level defintions should be required to
+   be grouped into units
+
+   default is that grouping into units is not required *)
+
+val set_units : unit -> unit
+
+val get_units : unit -> bool

@@ -1,0 +1,9 @@
+description
+
+.
+args: assign_to_tuple_with_duplicate_names.uc
+outcome: failure
+[error: assign_to_tuple_with_duplicate_names.uc: from line 17 columns 27 to 30]
+
+duplicate identifer in left-hand-side of assignment
+.

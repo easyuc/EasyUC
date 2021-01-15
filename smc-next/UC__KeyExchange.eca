@@ -1,0 +1,355 @@
+(* UC__KeyExchange.eca *)
+
+(* Model for the machine-generated code for the KeyExchange real
+   and ideal functionalities and simulator, which need to be
+   cloned as a unit
+
+   Should be required and clone included in UC_KeyExchange.eca, which
+   the user writes *)
+
+require UC_Forwarding.  (* from uc_requires *)
+
+require import KeysExponentsAndPlaintexts.  (* from ec_requires *)
+
+require import UCBasicTypes.  (* always last *)
+
+(* the port indices of the adversary the real functionality or its
+   subfunctionalities communicate with, as well as the port index of
+   the simulator the ideal functionality communicates with, are in the
+   range _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num - 1 *)
+
+op _adv_pi_num : int = 3.
+
+(* begin theory parameters *)
+
+op _adv_pi_begin : int.
+
+axiom adv_pi_gt0 : 0 < _adv_pi_begin.
+
+(* end theory parameters *)
+
+(* port indices of adversary that the two forwarding functionalities
+   cloned by the real functionality use *)
+
+op _adv_fw1_pi : int = _adv_pi_begin + 0.
+op _adv_fw2_pi : int = _adv_pi_begin + 1.
+
+(* port index of key exchange simulator *)
+
+op _ke_sim_pi : int = _adv_pi_begin + 2.
+
+theory UC__RF.
+
+clone UC_Forwarding as UC_Fw1 with
+  op _adv_pi <- _adv_fw1_pi
+proof *.
+realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+
+clone UC_Forwarding as UC_Fw2 with
+  op _adv_pi <- _adv_fw2_pi
+proof *.
+realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+
+end UC__RF.
+
+(* basic direct interface for Party 1, with external port index 1 *)
+
+theory KEDirPt1.
+
+(* request sent to Party 1: pt1 wants to exchange a key with pt2
+
+   pt1 and pt2 are the names used in the UC DSL declaration of
+   ke_req1 *)
+
+type ke_req1 =
+  {ke_req1__func : addr;  (* address of functionality *)
+   ke_req1_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_req1_pt2  : port}.  (* port to exchange key with *)
+
+op ke_req1 (x : ke_req1) : msg =
+     (Dir, (x.`ke_req1__func, 1), x.`ke_req1_pt1,
+      EPDP_Univ_Port.enc x.`ke_req1_pt2).
+
+op dec_ke_req1 (m : msg) : ke_req1 option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Adv \/ pt1.`2 <> 1 \/ ! EPDP_Univ_Port.valid v) ?
+        None :
+        let pt2' = oget (EPDP_Univ_Port.dec v)
+        in Some {|ke_req1__func = pt1.`1; ke_req1_pt1 = pt2;
+                  ke_req1_pt2 = pt2'|}.
+
+(* response sent from port index 1 of key exchange functionality to
+   pt1, completing second phase of key exchange with pt2 initiated by
+   itself *)
+
+type ke_rsp2 =
+  {ke_rsp2_func : addr;   (* address of functionality *)
+   ke_rsp2_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_rsp2_key  : key}.   (* exchanged key *)
+
+op ke_rsp2 (x : ke_rsp2) : msg =
+     (Dir, x.`ke_rsp2_pt1, (x.`ke_rsp2_func, 1),
+      EPDP_Univ_Key.enc x.`ke_rsp2_key).
+
+op dec_ke_rsp2 (m : msg) : ke_rsp2 option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Adv \/ pt2.`2 <> 1 \/ ! EPDP_Univ_Key.valid v) ?
+        None :
+        let k = oget (EPDP_Univ_Key.dec v)
+        in Some {|ke_rsp2_func = pt2.`1; ke_rsp2_pt1 = pt1;
+                  ke_rsp2_key = k|}.
+
+end KEDirPt1.
+
+(* basic direct interface for Party 2, with external port index 2 *)
+
+theory KEDirPt2.
+
+(* response sent from port index 2 of key exchange functionality to
+   pt2, completing first phase of key exchange initiated by pt1 *)
+
+type ke_rsp1 =
+  {ke_rsp1_func : addr;   (* address of functionality *)
+   ke_rsp1_pt1  : port;   (* port requesting key exchange *)
+   (* data: *)
+   ke_rsp1_pt2  : port;   (* port to exchange key with *)
+   ke_rsp1_key  : key}.   (* exchanged key *)
+
+op ke_rsp1 (x : ke_rsp1) : msg =
+     (Dir, x.`ke_rsp1_pt2, (x.`ke_rsp1_func, 2),
+      EPDP_Univ_PortKey.enc (x.`ke_rsp1_pt1, x.`ke_rsp1_key)).
+
+op dec_ke_rsp1 (m : msg) : ke_rsp1 option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Adv \/ pt2.`2 <> 2 \/ ! EPDP_Univ_PortKey.valid v) ?
+        None :
+        let (pt1', k) = oget (EPDP_Univ_PortKey.dec v)
+        in Some {|ke_rsp1_func = pt2.`1; ke_rsp1_pt1 = pt1';
+                  ke_rsp1_pt2 = pt1; ke_rsp1_key = k|}.
+
+(* request sent to port index 2 of key exchange functionality by pt2 to
+   initiate phase 2 of key exchange with pt1 *)
+
+type ke_req2 =
+  {ke_req2_func : addr;  (* address of functionality *)
+   ke_req2_pt2  : port   (* port to exchange key with *)
+   (* data: (none) *)
+  }.
+
+op ke_req2 (x : ke_req2) : msg =
+     (Dir, (x.`ke_req2_func, 2), x.`ke_req2_pt2, EPDP_Univ_Unit.enc ()).
+
+op dec_ke_req2 (m : msg) : ke_req2 option =
+     let (mod, pt1, pt2, v) = m
+     in (mod = Adv \/ pt1.`2 <> 2 \/ ! EPDP_Univ_Unit.valid v) ?
+        None :
+        Some {|ke_req2_func = pt1.`1; ke_req2_pt2 = pt2|}.
+
+(* Real Functionality *)
+
+clone Forwarding as Fw1 with
+  op adv_pi <- adv_fw1_pi
+proof *.
+realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
+
+clone Forwarding as Fw2 with
+  op adv_pi <- adv_fw2_pi
+proof *.
+realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
+
+(* state for Party 1 *)
+
+type ke_real_p1_state = [
+    KERealP1StateWaitReq1
+  | KERealP1StateWaitFw2 of port & exp
+  | KERealP1StateFinal
+].
+
+(* state for Party 2 *)
+
+type ke_real_p2_state = [
+    KERealP2StateWaitFw1
+  | KERealP2StateWaitReq2 of port & exp
+  | KERealP2StateFinal
+].
+
+module KEReal : FUNC = {
+  var self, adv : addr
+  var st1 : ke_real_p1_state
+  var st2 : ke_real_p2_state
+
+  (* Party 1 (P1) manages ports (self, 1) and (self, 3);
+     (self, 1) is external, (self, 3) is internal
+
+     Party 2 (P2) manages ports (self, 2) and (self, 4);
+     (self, 2) is external, (self, 4) is internal
+
+     First forwarder (Fw1) is at address self ++ [1]
+     Second forwarder (Fw2) is at address self ++ [2] *)
+
+  proc init(self_ adv_ : addr) : unit = {
+    self <- self_; adv <- adv_;
+    Fw1.Forw.init(self ++ [1], adv); Fw2.Forw.init(self ++ [2], adv);
+    st1 <- KERealP1StateWaitReq1; st2 <- KERealP2StateWaitFw1;
+  }
+
+  proc party1(m : msg) : msg option = {
+    var q1 : exp; var k2 : key;
+    var r : msg option <- None;
+    match st1 with
+      KERealP1StateWaitReq1 => {
+        match dec_ke_req1 m with
+          Some x => {
+            (* destination of m is (self, 1) *)
+            if (! self <= x.`ke_req1_pt2.`1 /\ ! adv <= x.`ke_req1_pt2.`1) {
+              q1 <$ dexp;
+              r <-
+                Some
+                (Fw1.fw_req
+                 {|Fw1.fw_req_func = (self ++ [1]);
+                   Fw1.fw_req_pt1  = (self, 3);
+                   Fw1.fw_req_pt2  = (self, 4);
+                   Fw1.fw_req_u    =
+                     EPDP_Univ_PortPortKey.enc
+                     (x.`ke_req1_pt1, x.`ke_req1_pt2, g ^ q1)|});
+              st1 <- KERealP1StateWaitFw2 x.`ke_req1_pt1 q1;
+            }
+          }
+        | None   => { }
+        end;
+      }
+    | KERealP1StateWaitFw2 pt1 q1 => {
+        match Fw2.dec_fw_rsp m with
+          Some x => {
+              if (x.`Fw2.fw_rsp_pt2 = (self, 3)) {
+                (* destination of m is (self, 3) *)
+                k2 <- oget (EPDP_Univ_Key.dec x.`Fw2.fw_rsp_u);
+                r <-
+                  Some
+                  (ke_rsp2
+                   ({|ke_rsp2_func = self; ke_rsp2_pt1 = pt1;
+                      ke_rsp2_key  = (k2 ^ q1)|}));
+                st1 <- KERealP1StateFinal;
+              }
+          }
+        | None   => { }
+        end;
+      }
+    | KERealP1StateFinal => { }
+    end;
+    return r;
+  }
+
+  proc party2(m : msg) : msg option = {
+    var pt1, pt2 : port; var q2 : exp; var k1 : key;
+    var r : msg option <- None;
+    match st2 with
+      KERealP2StateWaitFw1 => {
+        match Fw1.dec_fw_rsp m with
+          Some x => {
+              if (x.`Fw1.fw_rsp_pt2 = (self, 4)) {
+                (* destination of m is (self, 4) *)
+                (pt1, pt2, k1) <-
+                  oget (EPDP_Univ_PortPortKey.dec x.`Fw1.fw_rsp_u);
+                q2 <$ dexp;
+                r <-
+                  Some
+                  (ke_rsp1
+                   ({|ke_rsp1_func = self; ke_rsp1_pt1 = pt1;
+                      ke_rsp1_pt2 = pt2; ke_rsp1_key = k1 ^ q2|}));
+                st2 <- KERealP2StateWaitReq2 pt2 q2;
+              }
+          }
+        | None   => { }
+        end;
+      }
+    | KERealP2StateWaitReq2 pt2 q2 => {
+        match dec_ke_req2 m with
+          Some x => {
+            (* destination of m is (self, 2) *)
+            if (x.`ke_req2_pt2 = pt2) {
+              r <-
+                Some
+                (Fw2.fw_req
+                 {|Fw2.fw_req_func = (self ++ [2]);
+                   Fw2.fw_req_pt1  = (self, 4);
+                   Fw2.fw_req_pt2  = (self, 3);
+                   Fw2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
+              st2 <- KERealP2StateFinal;
+            }
+          }
+        | None   => { }
+        end;
+      }
+    | KERealP2StateFinal => { }
+    end;
+    return r;
+  }
+
+  proc loop(m : msg) : msg option = {
+    var r : msg option <- None;
+    var not_done : bool <- true;
+
+    (* if the parties and sub-functionalities are well-behaved,
+       this loop invariant holds:
+
+         not_done =>
+         m.`1 = Dir /\ m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2 \/ m.`2.`2 = 3 \/ m.`2.`2 = 4) \/
+         self ++ [1] <= m.`2.`1 \/
+         self ++ [2] <= m.`2.`1
+
+       we guard the calls to the parties and sub-functionalities so
+       that we can do some proofs treating them as black boxes *)
+
+    while (not_done) {
+      if (m.`2.`1 = self /\ (m.`2.`2 = 1 \/ m.`2.`2 = 3)) {
+        r <@ party1(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
+      }
+      elif (m.`2.`1 = self /\ (m.`2.`2 = 2 \/ m.`2.`2 = 4)) {
+        r <@ party2(m);
+        r <- opt_msg_guard (fun mod _ _ _ _ _ => mod <> Adv) r;
+      }
+      elif (self ++ [1] <= m.`2.`1) {
+        r <@ Fw1.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw1_pi) r;
+      }
+      elif (self ++ [2] <= m.`2.`1) {
+        r <@ Fw2.Forw.invoke(m);
+        r <-
+          opt_msg_guard
+          (fun mod _ n1 _ _ _ => mod = Adv => n1 = adv_fw2_pi) r;
+      }
+      else {
+        (* can't happen, assuming parties and sub-functionalities
+           are well behaved *)
+        r <- None;
+      }
+
+      if (r = None \/ ! self <= (oget r).`2.`1) {
+        not_done <- false;
+      }
+      else {
+        m <- oget r;
+      }
+    }
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    (* we can assume m.`3.`1 is not >= self and not >= adv *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\
+         (m.`2.`2 = 1 \/ m.`2.`2 = 2)) \/
+        (m.`1 = Adv /\
+         (self ++ [1] <= m.`2.`1 \/ self ++ [2] <= m.`2.`1))) {
+      r <@ loop(m);
+    }
+    return r;
+  }
+}.

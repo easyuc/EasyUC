@@ -3,7 +3,7 @@
 (* UC DSL Utilities *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -40,6 +40,16 @@ val filename_of_loc : EcLocation.t -> string
 
 (* merge the locations of a list of located values, returning the
    dummy location when the list is empty *)
+
+(* turn a filename into a Lexing.position that points to the beginning
+   of the file *)
+
+val begin_of_file_pos : string -> Lexing.position
+
+(* turn a filename into a zero length range at the beginning
+   of the file *)
+
+val begin_of_file_loc : string -> EcLocation.t
 
 val mergelocs : 'a located list -> EcLocation.t
 

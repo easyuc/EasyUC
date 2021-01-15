@@ -1,6 +1,6 @@
 description
-This test fixes reusing same variable name for functionality paramters
-and subfunctionality name
+Test resolving conflict between subfunctionality name and parameter
+name of real functionality.
 .
 args: testSubFunIdSameAsParamIdOK.uc
 outcome: success

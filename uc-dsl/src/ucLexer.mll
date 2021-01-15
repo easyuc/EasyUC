@@ -13,7 +13,7 @@
  * -------------------------------------------------------------------- *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -104,9 +104,17 @@
     (List.map (fun x -> (x, ())) _bad_ec_idents);
     table
 
-  let check_bad_ec_ident l id =
+  let check_bad_ident l id =
     match Hashtbl.find_option bad_ec_idents id with
-    | None   -> ()
+    | None   ->
+        if String.starts_with id "_"   ||
+           String.starts_with id "uc_" ||
+           String.starts_with id "UC_"
+        then lex_error l
+             (fun ppf ->
+                Format.fprintf ppf
+                ("@[an@ identifer@ may@ not@ begin@ with@ an@ underscore@ " ^^
+                 "or@ \"uc_\"@ or@ \"UC_\"@]"))
     | Some _ ->
         lex_error l
         (fun ppf ->
@@ -336,10 +344,10 @@ rule read = parse
 
   | lident as id { try Hashtbl.find keywords id with
                    | Not_found ->
-                       check_bad_ec_ident lexbuf id; LIDENT id }
+                       check_bad_ident lexbuf id; LIDENT id }
   | uident as id { try Hashtbl.find keywords id with
                    | Not_found ->
-                       check_bad_ec_ident lexbuf id; UIDENT id }
+                       check_bad_ident lexbuf id; UIDENT id }
   | tident as tid { if Char.is_uppercase (tid.[1])
                     then lex_error lexbuf
                          (fun ppf ->

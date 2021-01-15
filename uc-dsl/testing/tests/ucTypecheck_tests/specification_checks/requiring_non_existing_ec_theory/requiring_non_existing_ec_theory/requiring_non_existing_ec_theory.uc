@@ -1,1 +1,1 @@
-ec_requires Enpty.
+ec_requires +Enpty.

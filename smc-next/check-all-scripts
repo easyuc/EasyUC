@@ -8,7 +8,7 @@ timeout=2
 
 check() {
   echo checking $1;
-  if easycrypt -timeout $timeout $1;
+  if easycrypt -timeout $timeout -I ../common $1;
   then echo passed: $1;
        echo "";
   else echo failed: $1;
@@ -25,28 +25,20 @@ echo "********** Auxiliary Theories **********"
 echo ""
 
 check FSetAux.ec
-check ListAux.ec
 
 echo "********** Supporting Theories **********"
 echo ""
 
-check ListPO.ec
 check RedundantHashing.eca
-
-echo "********** UC Core **********"
-echo ""
-
-check UCCore.eca
 
 echo "********** DDH **********"
 echo ""
 
+check KeysExponentsAndPlaintexts.ec
 check DDH.ec
-check UCCoreDiffieHellman.ec
 
 echo "********** Main SMC **********"
 echo ""
 
-check Forward.ec
-check KeyExchange.ec
-check SMC.ec
+check UC__Forwarding.eca
+check UC_Forwarding.eca

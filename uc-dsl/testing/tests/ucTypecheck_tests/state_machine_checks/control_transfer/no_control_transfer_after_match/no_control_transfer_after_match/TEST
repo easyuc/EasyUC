@@ -1,0 +1,10 @@
+description
+
+.
+args: no_control_transfer_after_match.uc
+outcome:  failure
+[error: no_control_transfer_after_match.uc: from line 16 columns 25 to 25]
+
+message match clause must end with control transfer via "fail" or
+"send-and-transition" instruction
+.

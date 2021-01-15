@@ -1,0 +1,9 @@
+description
+
+.
+args: unknown_ctor.uc
+outcome: failure
+[error: unknown_ctor.uc: from line 16 columns 5 to 9]
+
+unknown constructor name
+.

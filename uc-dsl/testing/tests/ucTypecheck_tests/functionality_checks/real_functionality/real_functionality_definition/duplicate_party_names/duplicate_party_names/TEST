@@ -1,0 +1,9 @@
+description
+
+.
+args: duplicate_party_names.uc
+outcome: failure
+[error: duplicate_party_names.uc: from line 11 columns 8 to 9]
+
+duplicate party name: P
+.

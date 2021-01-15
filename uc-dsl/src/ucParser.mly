@@ -12,6 +12,12 @@
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020-2021 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 %{
 
 open Batteries
@@ -265,15 +271,21 @@ preamble :
 (* require .uc files *)
 
 uc_requires : 
-  | UC_REQUIRES uc_reqs = nonempty_list(ident) DOT
+  | UC_REQUIRES; uc_reqs = nonempty_list(ident); DOT
       { uc_reqs }
 
-(* require import .ec files, making types and operators available
-   for use in UC DSL specification *)
+(* require .ec files, making types and operators available for use in
+   UC DSL specification
+
+   +id means also do an import, id means no import *)
 
 ec_requires : 
-  | EC_REQUIRES ec_reqs = nonempty_list(ident) DOT
+  | EC_REQUIRES; ec_reqs = nonempty_list(require); DOT
       { ec_reqs }
+
+require :
+  | x = option(PLUS); id = ident
+      { (id, Option.is_some x) }
 
 (* a definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be
@@ -397,7 +409,7 @@ fun_def :
                   "@[ideal@ functionalities@ may@ not@ have@ parameters@]")
           else () in
         {id = name; params = uparams;
-         id_dir = dir_id; id_adv = adv_id;
+         dir_id = dir_id; adv_id = adv_id;
          fun_body = fun_body} }
 
 fun_params : 
@@ -405,8 +417,8 @@ fun_params :
       { fps }
 
 fun_param : 
-  | name = uident; COLON; id_dir = uident
-      { {id = name; id_dir = id_dir} : fun_param }
+  | name = uident; COLON; dir_qid = uqident
+      { {id = name; dir_qid = dir_qid} : fun_param }
 
 fun_body :
   | rfb = real_fun_body
@@ -431,8 +443,8 @@ ideal_fun_body :
    of an ideal functionality *)
 
 sub_fun_decl : 
-  | SUBFUN; id = uident; EQ; fun_id = uident;
-      { {id = id; fun_id = fun_id} : sub_fun_decl }
+  | SUBFUN; id = uident; EQ; fun_qid = uqident;
+      { {id = id; fun_qid = fun_qid} : sub_fun_decl }
 
 (* A functionality party serves exactly one basic direct interface,
    which must be a sub-interface of the composite direct interface
@@ -718,14 +730,14 @@ msg_path_end :
 
 sim_def : 
   | SIM; name = uident; USES uses = uident;
-    SIMS sims = uident; args = loc(option(fun_args));
+    SIMS sims = uident; args = loc(option(sim_fun_args));
     sms = state_machine
       { let uargs = unloc args |? [] in
         {id = name; uses = uses; sims = sims;
-         sims_arg_ids = mk_loc (loc args) uargs; states = sms} }
+         sims_arg_qids = mk_loc (loc args) uargs; states = sms} }
 
-fun_args : 
-  | LPAREN; args = separated_list(COMMA, uident); RPAREN
+sim_fun_args : 
+  | LPAREN; args = separated_list(COMMA, uqident); RPAREN
       { args }
 
 (* Instructions *)

@@ -3,7 +3,7 @@
 (* Parse and then typecheck a DSL specification *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -30,7 +30,7 @@ let parse_and_typecheck_file_or_id foid =
       match foid with
       | FOID_File file ->
           (UcUtils.capitalized_root_of_filename_with_extension file, None)
-      | FOID_Id id  -> (unloc id, Some(loc id)) in
+      | FOID_Id id  -> (unloc id, Some (loc id)) in
     let () =
       if List.mem uc_root (!stack)
       then type_error (Option.get loc_opt)  (* will always be non-None *)

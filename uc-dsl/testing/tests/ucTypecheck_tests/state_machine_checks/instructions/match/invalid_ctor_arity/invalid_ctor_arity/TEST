@@ -1,0 +1,9 @@
+description
+
+.
+args: invalid_ctor_arity.uc
+outcome: failure
+[error: invalid_ctor_arity.uc: from line 16 columns 5 to 9]
+
+the constructor Some expects 1 argument(s) (2 argument(s) given)
+.

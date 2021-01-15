@@ -1,0 +1,9 @@
+description
+
+.
+args: duplicate_in_pattern.uc
+outcome: failure
+[error: duplicate_in_pattern.uc: from line 18 columns 5 to 12]
+
+this pattern is non-linear
+.

@@ -3,7 +3,7 @@
 (* Parse a DSL Specification *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -43,7 +43,7 @@ let parse_file_or_id foid =
   let (ch, file) =
     match foid with
     | FOID_File file ->
-        (try open_in file, file with
+        (try (open_in file, file) with
          | Sys_error _ ->
              non_loc_error_message
              (fun ppf ->
@@ -58,7 +58,7 @@ let parse_file_or_id foid =
                 Format.fprintf ppf
                 "@[unable@ to@ find@ .uc@ file:@ %s@]" uid)
          | Some qual_file ->
-             (try open_in qual_file, qual_file with
+             (try (open_in qual_file, qual_file) with
               | Sys_error _ ->
                   error_message (loc id)
                   (fun ppf ->

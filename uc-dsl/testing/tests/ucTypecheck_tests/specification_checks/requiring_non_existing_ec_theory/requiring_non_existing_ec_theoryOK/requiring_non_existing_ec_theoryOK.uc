@@ -1,1 +1,1 @@
-ec_requires Empty.
+ec_requires +Empty.

@@ -3,7 +3,7 @@
 (* UC DSL Tool main file *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020 - Boston University
+ * Copyright (c) - 2020-2021 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -32,6 +32,11 @@ let raw_msg_ref : bool ref = ref false
 let raw_msg_arg () =
   (raw_msg_ref := true; ())
 
+let units_ref : bool ref = ref false
+
+let units_arg () =
+  (units_ref := true; ())
+
 let margin_ref : int ref = ref 78
 
 let margin_arg n =
@@ -42,6 +47,7 @@ let arg_specs =
    ("-include", String include_arg,
     "<dir> Add directory to include search path");
    ("-raw-msg", Unit raw_msg_arg, "Issue raw messages");
+   ("-units", Unit units_arg, "Require grouping definitions into units");
    ("-margin", Int margin_arg,
     "<n> Set pretty printing margin (default is 78)")]
 
@@ -69,6 +75,9 @@ let file =
 
 let () =
   if ! raw_msg_ref then UcState.set_raw_messages()
+
+let () =
+  if ! units_ref then UcState.set_units()
 
 let () =
   let n = ! margin_ref in

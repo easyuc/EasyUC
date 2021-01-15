@@ -1,0 +1,7 @@
+description
+Test showing the multiple uc_requires can define same top-level
+names.
+.
+args: Who.uc
+outcome: success
+.
