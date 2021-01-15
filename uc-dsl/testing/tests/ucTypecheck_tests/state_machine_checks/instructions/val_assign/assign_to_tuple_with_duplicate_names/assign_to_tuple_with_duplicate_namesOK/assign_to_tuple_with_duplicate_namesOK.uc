@@ -1,4 +1,4 @@
-ec_requires IntInt.
+ec_requires +IntInt.
 
 direct A_ {
 in  x@bla()

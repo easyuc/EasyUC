@@ -255,7 +255,7 @@ let check_exists_inter_qid
            (fun ppf ->
               fprintf ppf
               "@[%s@ interface@ does@ not@ exist:@ %a@]"
-              (inter_kind_to_str false ik) pp_qsymbol uqid)
+              (inter_kind_to_str false ik) (pp_qsymbol_abbrev root) uqid)
   | _           ->
       type_error l
       (fun ppf ->
@@ -263,7 +263,7 @@ let check_exists_inter_qid
          "@[invalid@ form@ for@ interface@ name:@ %a@]" pp_qsymbol uqid)
 
 let check_is_basic_id_pair
-    (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
+    (root : symbol) (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
     (idp : symb_pair located) : unit = 
   let uidp = unloc idp in
   let l = loc idp in
@@ -274,10 +274,10 @@ let check_is_basic_id_pair
       (fun ppf ->
          fprintf ppf
          "@[%s@ interface@ must@ be@ basic:@ %a@]"
-         (inter_kind_to_str false ik) pp_id_pair uidp)
+         (inter_kind_to_str false ik) (pp_id_pair_abbrev root) uidp)
 
 let check_is_composite_id_pair
-    (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
+    (root : symbol) (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
     (idp : symb_pair located) : unit = 
   let uidp = unloc idp in
   let l = loc idp in
@@ -286,8 +286,8 @@ let check_is_composite_id_pair
       type_error l
       (fun ppf ->
          fprintf ppf
-         "@[%s@ interface@ must@ be@ basic:@ %a@]"
-         (inter_kind_to_str false ik) pp_id_pair uidp)
+         "@[%s@ interface@ must@ be@ composite:@ %a@]"
+         (inter_kind_to_str false ik) (pp_id_pair_abbrev root) uidp)
   | CompositeTyd _ -> ()
 
 (********************* functionality and simulator checks *********************)
@@ -1579,7 +1579,7 @@ let check_real_fun_params
       check_exists_inter_qid DirectInterKind root
       dir_inter_map param.dir_qid in
     let () =
-      check_is_composite_id_pair DirectInterKind dir_inter_map pid in
+      check_is_composite_id_pair root DirectInterKind dir_inter_map pid in
     let () =
       if exists_id_pair_inter_maps dir_inter_map adv_inter_map
          (root, unloc param.id)
@@ -1683,7 +1683,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
                (fun ppf ->
                   fprintf ppf
                   "@[%a@ is@ not@ an@ ideal@ functionality@]"
-                  pp_id_pair (unloc fun_pid))
+                  (pp_id_pair_abbrev root) (unloc fun_pid))
         else unloc fun_pid in
       let sub_funs = IdMap.map check_sub_fun_decl sub_fun_decls in
       let party_defs =
@@ -1832,37 +1832,38 @@ let check_sims_fun_args
        (fst pair_id, get_dir_inter_id_impl_by_fun_pair_id pair_id fun_map))
     (unlocs (unloc sims_args)) in
   let () =
+    List.iter
+    (fun pid ->
+       let funb = unloc (IdPairMap.find (unloc pid) fun_map) in
+       match funb with
+       | FunBodyRealTyd _ ->
+           type_error (loc pid)
+           (fun ppf ->
+              fprintf ppf
+              ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
+               "be@ an@ ideal@ functionality@]"))
+       | FunBodyIdealTyd _  ->
+           (* we know the ideal functionality implements a basic
+              adversarial interface *)
+           ())
+    (unloc sims_args) in
+  let () =
     if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
     then type_error (loc sims_args)
          (fun ppf ->
             fprintf ppf
-            "@[wrong@ number@ of@ arguments@ for@ functionality@]")
-    else List.iteri
-         (fun i pair_id ->
-            if List.nth params_dir_pair_ids i <> List.nth args_dir_pair_ids i
-            then type_error (loc pair_id)
-                 (fun ppf ->
-                    fprintf ppf
-                    ("@[argument@ %d@ implements@ composite@ direct@ " ^^
-                     "interface@ %a,@ whereas@ it@ should@ implement@ %a@]")
-                    (i + 1)
-                    pp_id_pair (List.nth args_dir_pair_ids i)
-                    pp_id_pair (List.nth params_dir_pair_ids i)))
-         (unloc sims_args) in
-  List.iter
-  (fun pid ->
-     let funb = unloc (IdPairMap.find (unloc pid) fun_map) in
-     match funb with
-     | FunBodyRealTyd _ ->
-         type_error (loc pid)
-         (fun ppf ->
-            fprintf ppf
-            ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
-             "be@ an@ ideal@ functionality@]"))
-     | FunBodyIdealTyd _  ->
-         (* we know the ideal functionality implements a basic
-            adversarial interface *)
-         ())
+            "@[wrong@ number@ of@ arguments@ for@ functionality@]") in
+  List.iteri
+  (fun i pair_id ->
+     if List.nth params_dir_pair_ids i <> List.nth args_dir_pair_ids i
+     then type_error (loc pair_id)
+          (fun ppf ->
+             fprintf ppf
+             ("@[argument@ %d@ implements@ composite@ direct@ " ^^
+              "interface@ %a,@ whereas@ it@ should@ implement@ %a@]")
+             (i + 1)
+             (pp_id_pair_abbrev root) (List.nth args_dir_pair_ids i)
+             (pp_id_pair_abbrev root) (List.nth params_dir_pair_ids i)))
   (unloc sims_args)
 
 let check_sim

@@ -1,4 +1,4 @@
-ec_requires Ambi1 Ambi2.
+ec_requires +Ambi1 +Ambi2.
 
 direct D_ {
 in  x@bla()

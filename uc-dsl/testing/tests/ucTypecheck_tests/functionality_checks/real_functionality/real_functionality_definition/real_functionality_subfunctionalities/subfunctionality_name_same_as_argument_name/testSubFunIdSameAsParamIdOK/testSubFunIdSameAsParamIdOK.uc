@@ -23,7 +23,7 @@ functionality S() implements A D {
 
 functionality R(Q:A) implements A {
 
- subfun R=S
+ subfun U=S
 
  party P serves A.A {
   initial state Isus 

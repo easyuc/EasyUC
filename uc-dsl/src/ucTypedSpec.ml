@@ -70,10 +70,20 @@ let exists_id_pair
 let id_pair_map_domain (map : 'a IdPairMap.t) : IdPairSet.t =
   IdPairSet.of_list (List.map fst (IdPairMap.bindings map))
 
-let id_pair_to_qsymbol (x, y) = ([x], y)
+let pp_qsymbol_abbrev
+    (root : symbol) (ppf : Format.formatter) ((xs, y) : qsymbol) : unit =
+  if xs = [root]
+  then pp_symbol ppf y
+  else pp_qsymbol ppf (xs, y)
 
-let pp_id_pair ppf id_pair =
+let id_pair_to_qsymbol ((x, y) : symb_pair) : qsymbol = ([x], y)
+
+let pp_id_pair (ppf : Format.formatter) (id_pair : symb_pair) =
   pp_qsymbol ppf (id_pair_to_qsymbol id_pair)
+
+let pp_id_pair_abbrev
+    (root : symbol) (ppf : Format.formatter) (id_pair : symb_pair) : unit =
+  pp_qsymbol_abbrev root ppf (id_pair_to_qsymbol id_pair)
 
 let nonempty_qid_to_qsymbol (xs : SL.t) : qsymbol =
   let len = List.length xs in

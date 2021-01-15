@@ -1,4 +1,4 @@
-ec_requires IntPair.
+ec_requires +IntPair.
 
 direct D_ {
 in  x@bla()

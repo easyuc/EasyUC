@@ -1,4 +1,4 @@
-ec_requires OneTwo.
+ec_requires +OneTwo.
 
 direct D_ {
 in  x@bla()

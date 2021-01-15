@@ -1,1 +1,1 @@
-ec_requires Foo.
+ec_requires +Foo.

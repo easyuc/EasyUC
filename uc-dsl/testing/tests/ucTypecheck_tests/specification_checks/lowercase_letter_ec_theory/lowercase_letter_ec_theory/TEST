@@ -3,7 +3,7 @@ This test demonstrates a correct way of constructing tuples from an existing typ
 .
 args: lowercase_letter_ec_theory.uc
 outcome:failure
-[error: lowercase_letter_ec_theory.uc: from line 1 columns 13 to 18]
+[error: lowercase_letter_ec_theory.uc: from line 1 columns 14 to 19]
 
 EasyCrypt theory to be imported must begin with uppercase letter: empty
 .
