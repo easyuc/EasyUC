@@ -13,7 +13,7 @@ joint work between Boston University faculty
 
 with the assistance of research students
 
-* Tarakaram Gollamudi (Brandeis University, gtr@brandeis.edu)
+* Gollamudi Tarakaram (Brandeis University, gtr@brandeis.edu)
 * Tomislav Petrovic (tomislav@bu.edu)
 
 In our architecture, functionalities (real protocols, or ideal

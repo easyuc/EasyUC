@@ -176,7 +176,7 @@ sp 2.
 match _FwStateWait 1.
 auto => |> &hr.
 rewrite /get_as__FwStateWait.
-case (UC_Forw._st{hr}) => // pt1 pt2 u /= _.
+case st' => // pt1 pt2 u /= _.
 by exists pt1 pt2 u.
 match Some 1; first auto => |> &hr.
 rewrite /get_as__FwStateWait /= /#.
@@ -201,7 +201,7 @@ sp 2.
 match _FwStateWait 1.
 auto => /> &hr.
 rewrite /get_as__FwStateWait.
-case (UC_Forw._st{hr}) => // pt1 pt2 u /= _ _.
+case st' => // pt1 pt2 u /= _ _.
 by exists pt1 pt2 u.
 case (UC_FwAdv.epdp_fw_ok_msg.`dec _m = None).
 match None 1; first auto.
