@@ -8,7 +8,7 @@ using the UC DSL:
 
 * [`KeysExponentsAndPlaintexts.ec` - supporting EasyCrypt definitions
    of keys, exponents and plaintexts](KeysExponentsAndPlaintexts.ec)
-* [`Forwarding.uc` - Forwarding ideal functionality](Forwarding.ec)
+* [`Forwarding.uc` - Forwarding ideal functionality](Forwarding.uc)
 * [`KeyExchange.uc` - Real and ideal functionalities plus a simulator
    for Diffie-Hellman key-exchange](KeyExchange.uc)
 * [`SMC.uc` - Real and ideal functionalities plus a simulator for
