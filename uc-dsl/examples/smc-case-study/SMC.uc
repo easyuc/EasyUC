@@ -1,21 +1,42 @@
 (* Secure Message Communication *)
 
+(* Real and ideal functionalities, and a simulator, for Secure Message
+   Communication via encryption using a one-time pad agreed using a
+   key exchange parameter to the real functionality. *)
+
 uc_requires Forwarding KeyExchange.
 
 ec_requires +KeysExponentsAndPlaintexts.
 
-direct SMCPt1 {
-  in pt1@smc_req(pt2 : port, t : text)
+(* The composite direct interface has two components, corresponding
+   to the two parties of the real functionality. *)
+
+direct SMCPt1 {  (* Party 1 *)
+  in pt1@smc_req(pt2 : port, t : text)  (* pt1 requests that text t
+    be securely transmitted to pt2 *)
 }
 
-direct SMCPt2 {
-  out smc_rsp(pt1 : port, t : text)@pt2
+direct SMCPt2 {  (* Party 2 *)
+  out smc_rsp(pt1 : port, t : text)@pt2  (* message sending t to pt2,
+    along with the information that it was pt1 who initiated the
+    communication *)
 }
 
 direct SMCDir {
-  Pt1 : SMCPt1
-  Pt2 : SMCPt2
+  Pt1 : SMCPt1  (* Party 1 *)
+  Pt2 : SMCPt2  (* Party 2 *)
 }
+
+(* The real functionality implements the composite direct interface
+   SMCDir, and (in this case) no composite adversarial interface. It
+   is parameterized by a key exchange functionality, KE, implementing
+   the direct composite interface KeyExchange.KEDir, which could be
+   KeyExchange.KEReal or KeyExchange.KEIdeal. Note that KEDir must be
+   qualified by KeyExchange.
+
+   The parties of SMCReal can send messages to, and receive messages
+   from KE, just as they can with the forwarding subfunctionality
+   Fwd. *)
 
 functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
   subfun Fwd = Forwarding.Forw
@@ -94,9 +115,14 @@ functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
   }
 }
 
+(* basic adversarial interface between ideal functionality and
+   simulator *)
+
 adversarial SMC2Sim {
-  out sim_req(pt1 : port, pt2 : port)
-  in  sim_rsp
+  out sim_req(pt1 : port, pt2 : port)  (* initiate the simulation,
+    telling the simulator the ports involved *)
+
+  in  sim_rsp  (* give control back to the ideal functionality *)
 }
 
 functionality SMCIdeal implements SMCDir SMC2Sim {
@@ -128,21 +154,37 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
   }
 }
 
+(* Because the real functionality SMCReal is parameterized by a key
+   exchange functionality implementing the composite direct interface
+   KeyExchange.KEDir, when saying what SMCSim "simulates", we must
+   indicate the ideal functionality that implements that composite
+   direct interface. *)
+
 simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
   initial state WaitReq {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
         (* simulator learns address of ideal functionality *)
+        (* here we are pretending to be the instance of
+           KeyExchange.KEIdeal corresponding to parameter KE, sending
+           its message to the simulator (which here will go the the
+           adversary), initiating simulation of key exchange between
+           the internal ports of the two parties of SMCReal *)
         send SMCReal.KE.KEI2S.ke_sim_req1
              (intport SMCReal.Pt1, intport SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
       }
     end
+    (* no messages from the adversary can be matched in the initial
+       state; they automatically flow through the simulator *)
   }
 
   state WaitAdv1(pt1 : port, pt2 : port) {
     var q : exp;
     match message with 
+    (* here we receive a message intended for the instance of
+       KeyExchange.KEIdeal corresponding to parameter KE of
+       SMCReal *)
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
         q <$ dexp;
         send SMCReal.KE.KEI2S.ke_sim_req2

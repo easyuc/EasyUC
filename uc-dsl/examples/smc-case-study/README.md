@@ -26,3 +26,6 @@ This development is split into *units*, and can thus be checked using the
   simulator uses the ideal functionality's adversarial (basic)
   interface (the above implies that the simulator simulates the real
   functionality).
+
+There are extensive comments in the above files, which provide a
+good example-based introduction to the meaning and usage of the UC DSL.
