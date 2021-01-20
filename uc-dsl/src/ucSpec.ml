@@ -134,7 +134,7 @@ type message_def =
 type comp_item =
   {sub_id   : psymbol;  (* name of component *)
    inter_id : psymbol}  (* name of basic interface - interpreted
-                           in the same root *)
+                           in the same root (of .uc file) *)
 
 type inter =
   | Basic     of message_def list  (* basic interface *)
@@ -160,7 +160,7 @@ type msg_path_pat_u =
 
 type msg_path_pat = msg_path_pat_u located
 
-let msg_path_pat_ends_star mpp =
+let msg_path_pat_ends_star (mpp : msg_path_pat) : bool =
   match (unloc mpp).msg_or_star with
   | MsgOrStarMsg  _ -> false
   | MsgOrStarStar   -> true
@@ -254,8 +254,8 @@ type party_def =
    serves : pqsymbol list;   (* interfaces served *)
    states : state_def list}  (* state machine *)
 
-type sub_fun_decl =
-  {id      : psymbol;   (* name of functionality *)
+type sub_fun_decl =     (* subfunctionality definition *)
+  {id      : psymbol;   (* name of subfunctionality *)
    fun_qid : pqsymbol}  (* qualified name of ideal functionality *)
 
 type fun_body_real =                   (* real functionality body *)
@@ -266,7 +266,7 @@ type fun_body =                     (* functionality body *)
   | FunBodyReal  of fun_body_real   (* real functionality *)
   | FunBodyIdeal of state_def list  (* ideal funcitonality *)
 
-let is_real_fun_body fb =
+let is_real_fun_body (fb : fun_body) : bool =
   match fb with
   | FunBodyReal _  -> true
   | FunBodyIdeal _ -> false
@@ -284,7 +284,7 @@ type fun_def =                 (* functionality definition *)
                                   interpreted in same root *)
    fun_body : fun_body}        (* functionality body *)
 
-type sim_def =                             (* simulator *)
+type sim_def =                             (* simulator definition *)
   {id            : psymbol;                (* name of simulator *)
    uses          : psymbol;                (* name of basic adversarial
                                               interface (from ideal

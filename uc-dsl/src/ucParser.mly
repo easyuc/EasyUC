@@ -255,9 +255,9 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
 %%
 
-(* a UC DSL specification consists of a preamble which references
-  other .ec and .uc files, and a list of definitions of direct and
-  adversarial interfaces, functionalities and simlators. *)
+(* a UC DSL specification consists of a preamble which requires
+  other .ec and .uc files, followed by a list of definitions of direct and
+  adversarial interfaces, functionalities and simlators *)
 
 spec : 
   | ext = preamble; defs = list(def); EOF
@@ -287,7 +287,7 @@ require :
   | x = option(PLUS); id = ident
       { (id, Option.is_some x) }
 
-(* a definition is either a definition of an interface, a
+(* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be
    distinct. *)
 
@@ -417,7 +417,8 @@ fun_params :
       { fps }
 
 fun_param : 
-  | name = uident; COLON; dir_qid = uqident
+  | name = uident; COLON; dir_qid = uqident  (* qualified, allowing different
+                                                root *)
       { {id = name; dir_qid = dir_qid} : fun_param }
 
 fun_body :
@@ -443,7 +444,8 @@ ideal_fun_body :
    of an ideal functionality *)
 
 sub_fun_decl : 
-  | SUBFUN; id = uident; EQ; fun_qid = uqident;
+  | SUBFUN; id = uident; EQ; fun_qid = uqident;  (* qualified, allowing
+                                                    different root *)
       { {id = id; fun_qid = fun_qid} : sub_fun_decl }
 
 (* A functionality party serves exactly one basic direct interface,
@@ -544,7 +546,7 @@ local_var_decl :
 
    In the case of the parameter of a real functionality, the path
    takes us from the name of the parameter, to one of the
-   sub-interfaces of the the direct composite interface corresponding
+   sub-interfaces of the direct composite interface corresponding
    to the parameter, to one of the messages of the basic direct
    interface of that sub-interface.
 
@@ -556,7 +558,7 @@ local_var_decl :
    the functionality's point of view, and vice versa.
 
    For example, suppose the functionality implements FwDir (and, in
-   the case of a real functionality, that the party serves fwDir):
+   the case of a real functionality, that the party serves fwDir.D):
 
      direct FwDir_ {
        in pt1@fw_req(pt2 : port, u : univ)
@@ -568,21 +570,22 @@ local_var_decl :
    Then FwDir.D.fw_req is the only valid incoming message path. If
    there is a subfunctionality
 
-     subfun Fw1 = Forw
+     subfun Fw1 = Forwarding.Forw
 
-   of a real functionality, where the ideal functionality Forw has
-   FwDir as its direct interface, then
+   of a real functionality, where the ideal functionality
+   Fowarding.Forw has FwDir as its direct interface, then
 
-     Fw1.D.fw_req
+     Fw1.D.fw_rsp
 
    will be a valid incoming message path.
 
    Message path patterns look like message paths, except that they may
-   end with "*" to match any completion of the given incoming message path.
+   end with "*" to match any completion of the given incoming message
+   path.
 
    E.g.,
 
-     FwDir.D.fw_req
+     FwDir.D.fw_rsp
      * - matches any incoming message path
      FwDir.* - matches any incoming message path beginning with FwDir
      FwDir.D.* - matches any incoming message path beginning with FwDir.D
@@ -591,9 +594,9 @@ local_var_decl :
    by an optional tuple of argument patterns, and optionally preceded
    by a source port identifier. E.g.,
 
-     pt@FwDir.D.fw_req(pt' : port, u' : univ)
+     pt@FwDir.D.fw_rsp(pt' : port, u' : univ)
 
-   will match a FwDir.D.fw_req message, and in the process pt will be
+   will match a FwDir.D.fw_rsp message, and in the process pt will be
    bound to its source port, and pt' and u' will be bound to the
    message arguments.
 
@@ -602,7 +605,7 @@ local_var_decl :
    but must be omitted when matching incoming messages from an
    adversarial interface implemented by the functionality (if any), as
    well as when matching direct messages originating from the
-   subfunctionalities of real functionalities.
+   subfunctionalities or parameters of real functionalities.
 
    Finally, a message matching clause consists of a message pattern
    followed by the code to run on a matching message. *)
@@ -691,7 +694,7 @@ msg_path_end :
    on the interface it uses (interface to ideal functionality). Messages
    from the adversary will flow through the simulator. (Before the initial
    message arrives from the ideal functionality, the simulator doesn't
-   know the address of the ideal (and thus real) functionality.
+   know the address of the ideal (and thus real) functionality.)
 
    Message paths for simulators look like the following, where: USES
    is the basic adversarial interface the simulator uses to
@@ -700,15 +703,15 @@ msg_path_end :
 
      USES.msg
 
-       from the simulator's point of view: "in" messages are outgoing,
-       and so can be pattern matched by the simulator; and "out"
-       message are incoming ones, and so can be output by the
+       from the simulator's point of view: "out" messages are
+       incoming, and so can be pattern matched by the simulator; and
+       "in" message are outgoing ones, and so can be output by the
        simulator
 
-     SIMS.RFAdv.BasicAdv.msg
+     SIMS.RFAdv.SI.msg
 
        where RFAdv is the composite adversarial interface (if any)
-       that SIMS implements
+       that SIMS implements, and SI is one of its sub-interfaces
 
      SIMS.SubFun.BasicAdv.msg
 
@@ -874,7 +877,8 @@ state_expr :
 (* Type Bindings and Arguments *)
 
 type_binding : 
-  | name = lident; COLON; t = loc(type_exp); { {id = name; ty = t} : type_binding }
+  | name = lident; COLON; t = loc(type_exp)
+      { {id = name; ty = t} : type_binding }
 
 type_bindings : 
   | ps = separated_list(COMMA, type_binding) { ps }

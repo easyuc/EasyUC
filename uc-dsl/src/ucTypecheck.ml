@@ -389,18 +389,15 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
 (* a basic_inter_path will have the form (ids, b), where we call ids
    an inter id path:
 
-   *** for functionalities ***
+   *** for real functionalities ***
 
-   ids = [id2], and id2 is the name of an adversarial basic interface,
-   and b is that basic interface (possibly filtered to have only
-   incoming or outgoing messages); or
-
-   ids = [id1; id2], and id1 is the name of a composite interface, id2
-   is the name of one of that composite interface's sub-interfaces,
-   and b is the basic interface (direct iff the composite interface is
-   direct) corresponding to the interface name that id2 is associated
-   with in the composite interface (possibly filtered to have only
-   incoming or outgoing messages); or
+   ids = [id1; id2], and id1 is the name of a composite interface the
+   functionality implements, id2 is the name of one of that composite
+   interface's sub-interfaces, and b is the basic interface (direct
+   iff the composite interface is direct) corresponding to the
+   interface name that id2 is associated with in the composite
+   interface (possibly filtered to have only incoming or outgoing
+   messages); or
 
    ids = [id1; id2], and id1 is the name of a parameter or
    subfunctionality of a real functionality, id2 is the name of one of
@@ -408,9 +405,23 @@ let get_state_sigs (states : state_tyd IdMap.t) : state_sig IdMap.t =
    the parameter or subfunctionality (in the case of a
    subfunctionality, the direct interface implemented by the ideal
    functionality the subfunctionality is an instance of), and b is the
-   basic, direct interface corresponding to the interface name that
-   id2 is associated with in the composite interface (possibly
+   result of inverting the message directions (in -> out; out -> in)
+   of the basic, direct interface corresponding to the interface name
+   that id2 is associated with in the composite interface (possibly
    filtered to have only incoming or outgoing messages)
+
+   *** for ideal functionalities ***
+
+   ids = [id2], and id2 is the name of the adversarial basic interface
+   the functionality implements, and b is that basic interface
+   (possibly filtered to have only incoming or outgoing messages); or
+
+   ids = [id1; id2], and id1 is the name of the composite direct
+   interface the functionality implements, id2 is the name of one of
+   that composite interface's sub-interfaces, and b is the basic
+   direct interface corresponding to the interface name that id2 is
+   associated with in the composite interface (possibly filtered to
+   have only incoming or outgoing messages)
 
    *** for simulators ***
 
@@ -598,7 +609,7 @@ let check_inter_id_paths_coverage
           format_id_paths_comma unserved)
 
 let check_parties_serve_coverage_and_distinct
-    (root : symbol) (parties : party_def_tyd IdMap.t)
+    (root : symbol) (parties : party_tyd IdMap.t)
     (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t) : unit = 
@@ -1076,7 +1087,7 @@ let is_msg_path_in_basic_inter_paths
   Option.is_some bipo
 
 let get_msg_def_for_msg_path
-    (mp : msg_path) (bips : basic_inter_path list) : message_def_body_tyd = 
+    (mp : msg_path) (bips : basic_inter_path list) : message_body_tyd = 
   let iip = (unloc mp).inter_id_path in
   let msg = (unloc mp).msg in
   let bip = List.find (fun bip -> fst bip = iip) bips in
@@ -1507,7 +1518,7 @@ let get_all_basic_inter_paths_of_real_fun_party
 let check_toplevel_party
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t) (id_dir_inter : symbol)
-    (id_adv_inter : symbol option) (pd : party_def) : party_def_tyd =
+    (id_adv_inter : symbol option) (pd : party_def) : party_tyd =
   let pqsymbol2sll (pqs : pqsymbol) : symbol list located =
     let qs = unloc pqs in
     mk_loc (loc pqs) (fst qs @ [snd qs]) in
@@ -1526,7 +1537,7 @@ let check_toplevel_parties
     (adv_inter_map : inter_tyd IdPairMap.t)
     (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (party_defs : party_def IdMap.t)
-      : party_def_tyd IdMap.t =
+      : party_tyd IdMap.t =
   let parties =
     IdMap.map
     (check_toplevel_party root dir_inter_map adv_inter_map id_dir_inter
@@ -1543,7 +1554,7 @@ let check_lowlevel_party
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
     (id_adv_inter : symbol option) (internal_ports : QidSet.t)
     (params : (symb_pair * int) IdMap.t)
-    (sub_funs : symb_pair IdMap.t) (pdt : party_def_tyd) : unit = 
+    (sub_funs : symb_pair IdMap.t) (pdt : party_tyd) : unit = 
   let updt = unloc pdt in
   let abip =
     get_all_basic_inter_paths_of_real_fun_party root
@@ -1557,7 +1568,7 @@ let check_parties
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
     (id_adv_inter : symbol option) (params : (symb_pair * int) IdMap.t)
     (sub_funs : symb_pair IdMap.t) (party_defs : party_def IdMap.t)
-      : party_def_tyd IdMap.t = 
+      : party_tyd IdMap.t = 
   let internal_ports = get_keys_as_sing_qids party_defs in
   let parties =
     check_toplevel_parties root dir_inter_map adv_inter_map id_dir_inter
@@ -1914,6 +1925,9 @@ let check_defs root maps defs =
   List.fold_left check_def maps defs
 
 (**************************** specification checks ****************************)
+
+(* when merging maps, there will never be disagreement in cases when
+   an id pair is in the domain of both maps *)
 
 let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
   {dir_inter_map =

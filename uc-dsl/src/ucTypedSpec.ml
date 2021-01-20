@@ -57,9 +57,9 @@ module SP =  (* domain: string * string = symb_pair *)
 module IdPairMap = Map.Make(SP)
 module IdPairSet = Set.Make(SP)
 
-(* we often refer to elements of symb_pair as id_pairs
+(* we often refer to elements of symb_pair as id pairs
 
-   for an id_pair (x, y), x is the capitalized root name of a .uc
+   for an id pair (x, y), x is the capitalized root name of a .uc
    file, and y is the capitalized name of an interface, functionality
    or simulator from that file *)
 
@@ -119,23 +119,24 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
 
-(* located type plus an index *)
+(* located type plus an index, starting from 0 *)
 
 type ty_index = (ty * int) located
 
 (* typed messages and functionality interfaces *)
 
-type message_def_body_tyd =
-  {dir : msg_dir;                  (* direction of message *)
-   params_map : ty_index IdMap.t;  (* message parameters *)
-   port : symbol option}           (* optional port name - used in generating
+type message_body_tyd =
+  {dir        : msg_dir;           (* direction of message *)
+   params_map : ty_index IdMap.t;  (* message parameters: index is
+                                      parameter number *)
+   port       : symbol option}     (* optional port name - used in generating
                                       EasyCrypt code *)
 
-type basic_inter_body_tyd = message_def_body_tyd IdMap.t
+type basic_inter_body_tyd = message_body_tyd IdMap.t
 
 (* inversion of direction *)
 
-let invert_msg_dir (mdbt : message_def_body_tyd) : message_def_body_tyd = 
+let invert_msg_dir (mdbt : message_body_tyd) : message_body_tyd = 
   {mdbt with
      dir = invert_dir mdbt.dir}
 
@@ -144,8 +145,9 @@ let invert_basic_inter_body_tyd
   IdMap.map invert_msg_dir bibt
 
 type inter_body_tyd = 
-  | BasicTyd     of basic_inter_body_tyd
-  | CompositeTyd of symbol IdMap.t        (* name of basic interface -
+  | BasicTyd     of basic_inter_body_tyd  (* basic interface *)
+  | CompositeTyd of symbol IdMap.t        (* composite interface; symbol is
+                                             name of basic interface -
                                              with same root *)
 
 let is_basic_tyd ibt =
@@ -158,27 +160,29 @@ let is_composite_tyd ibt =
   | BasicTyd _     -> false
   | CompositeTyd _ -> true
 
-type inter_tyd = inter_body_tyd located
+type inter_tyd = inter_body_tyd located  (* typed interface *)
 
 (* state machines, typed functionalities and simulators *)
 
 type state_body_tyd =
-  {is_initial : bool;                  (* the initial state? *)
-   params : ty_index IdMap.t;          (* typed parameters *)
-   vars : ty located IdMap.t;          (* local variables *)
-   mmclauses : msg_match_clause list}  (* message match clauses *)
+  {is_initial : bool;                   (* the initial state? *)
+   params     : ty_index IdMap.t;       (* typed parameters, index is
+                                           parameter number *)
+   vars       : ty located IdMap.t;     (* local variables *)
+   mmclauses  : msg_match_clause list}  (* message match clauses *)
 
-type state_tyd = state_body_tyd located
+type state_tyd = state_body_tyd located  (* typed state *)
 
-type party_def_body_tyd =
-  {serves : symbol list located list;  (* what served by party *)
+type party_body_tyd =
+  {serves : symbol list located list;  (* what interfaces served by party *)
    states : state_tyd IdMap.t}         (* state machine *)
 
-type party_def_tyd = party_def_body_tyd located
+type party_tyd = party_body_tyd located  (* typed party *)
 
 type real_fun_body_tyd =
   {params       : (symb_pair * int) IdMap.t;  (* names of composite direct
-                                                 interfaces *)
+                                                 interfaces; index is
+                                                 parameter number *)
    id_dir_inter : symbol;                     (* name of composite direct
                                                  interface - with same
                                                  root *)
@@ -188,45 +192,45 @@ type real_fun_body_tyd =
    sub_funs     : symb_pair IdMap.t;          (* names of ideal
                                                  functionalities - pair
                                                  is (root, id) *)
-   parties      : party_def_tyd IdMap.t}
+   parties      : party_tyd IdMap.t}          (* parties *)
 
 type ideal_fun_body_tyd =
-  {id_dir_inter : symbol;  (* name of composite direct interface - with
-                              same root *)
-   id_adv_inter : symbol;  (* name of basic adversarial interface - with
-                              same root *)
-   states       : state_tyd IdMap.t}
+  {id_dir_inter : symbol;             (* name of composite direct interface -
+                                         with same root *)
+   id_adv_inter : symbol;             (* name of basic adversarial interface -
+                                         with same root *)
+   states       : state_tyd IdMap.t}  (* state machine *)
 
 type fun_body_tyd =
   | FunBodyRealTyd  of real_fun_body_tyd
   | FunBodyIdealTyd of ideal_fun_body_tyd
 
-let real_fun_body_tyd_of fbt =
+let real_fun_body_tyd_of (fbt : fun_body_tyd) : real_fun_body_tyd =
   match fbt with
   | FunBodyRealTyd rfbt -> rfbt
   | FunBodyIdealTyd _   -> UcMessage.failure "cannot happen"
 
-let ideal_fun_body_tyd_of fbt =
+let ideal_fun_body_tyd_of (fbt : fun_body_tyd) : ideal_fun_body_tyd =
   match fbt with
   | FunBodyRealTyd _     ->  UcMessage.failure "cannot happen" 
   | FunBodyIdealTyd ifbt -> ifbt
 
-let is_real_fun_body_tyd fb =
-  match fb with
+let is_real_fun_body_tyd (fbt : fun_body_tyd) : bool =
+  match fbt with
   | FunBodyRealTyd _  -> true
   | FunBodyIdealTyd _ -> false
 
-let id_dir_inter_of_fun_body_tyd f =
-  match f with
+let id_dir_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol =
+  match fbt with
   | FunBodyRealTyd fbr  -> fbr.id_dir_inter
   | FunBodyIdealTyd fbi -> fbi.id_dir_inter
 
-let id_adv_inter_of_fun_body_tyd f =
-  match f with
+let id_adv_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol option =
+  match fbt with
   | FunBodyRealTyd fbr  -> fbr.id_adv_inter
   | FunBodyIdealTyd fbi -> Some fbi.id_adv_inter
 
-type fun_tyd = fun_body_tyd located
+type fun_tyd = fun_body_tyd located  (* functionality *)
 
 type sim_body_tyd =
   {uses : symbol;                       (* basic adversarial interface
@@ -240,22 +244,22 @@ type sim_body_tyd =
                                            functionalities *)
    states : state_tyd IdMap.t}          (* state machine *)
 
-type sim_tyd = sim_body_tyd located
+type sim_tyd = sim_body_tyd located  (* simulator *)
 
 (* four identifer pair (more precisely, pairs of symbols) maps for
    direct and adversarial interfaces, functionalities and simulators;
    their domains are disjoint
 
-   type arguments to IdMap.t should be located types *)
+   type arguments to IdPairMap.t are all located types *)
 
 type maps_tyd =
-  {dir_inter_map : inter_tyd IdPairMap.t;
-   adv_inter_map : inter_tyd IdPairMap.t;
-   fun_map       : fun_tyd IdPairMap.t;
-   sim_map       : sim_tyd IdPairMap.t}
+  {dir_inter_map : inter_tyd IdPairMap.t;  (* direct interfaces *)
+   adv_inter_map : inter_tyd IdPairMap.t;  (* adversarial interfaces *)
+   fun_map       : fun_tyd IdPairMap.t;    (* functionalities *)
+   sim_map       : sim_tyd IdPairMap.t}    (* simulators *)
 
 let exists_id_pair_maps_tyd
-    (maps : maps_tyd) (id_pair : symb_pair) =
+    (maps : maps_tyd) (id_pair : symb_pair) : bool =
   exists_id_pair maps.dir_inter_map id_pair ||
   exists_id_pair maps.adv_inter_map id_pair ||
   exists_id_pair maps.fun_map id_pair       ||
@@ -306,11 +310,13 @@ let sim_names (root : symbol) (maps : maps_tyd) : IdSet.t =
       else None)
    (IdPairMap.bindings maps.sim_map))
 
+(* interface names that are reachable from an interface *)
+
 let inter_names_reach_inter
     (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
   let reach (map : inter_tyd IdPairMap.t) : IdSet.t =
     match IdPairMap.find_opt (root, id) map with
-    | None   -> IdSet.empty
+    | None    -> IdSet.empty
     | Some it ->
         match unloc it with
         | BasicTyd _      -> IdSet.empty
@@ -321,6 +327,8 @@ let inter_names_reach_inter
   (IdSet.union
    (reach maps.dir_inter_map)  (* only one will be non-empty *)
    (reach maps.adv_inter_map))
+
+(* interface names that are reachable from a functionality *)
 
 let inter_names_reach_fun
     (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
@@ -335,6 +343,8 @@ let inter_names_reach_fun
       IdSet.union
       (inter_names_reach_inter root maps ifbt.id_dir_inter)
       (IdSet.singleton ifbt.id_adv_inter)  (* will be basic *)
+
+(* interface names that are reachable from a simulator *)
 
 let inter_names_reach_sim
     (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
