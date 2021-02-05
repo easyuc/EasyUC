@@ -1,0 +1,6 @@
+description
+Test resolving subfunctionality name being the same as an interface.
+.
+args: subfunctionality_required_non-existingOK.uc
+outcome: success
+.

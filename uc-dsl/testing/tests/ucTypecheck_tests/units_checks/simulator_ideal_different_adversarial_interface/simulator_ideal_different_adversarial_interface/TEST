@@ -1,0 +1,10 @@
+description
+
+.
+args:-units simulator_ideal_different_adversarial_interface.uc
+outcome:failure
+[error: simulator_ideal_different_adversarial_interface.uc: from line 0 columns 1 to 1]
+
+for file with root Simulator_ideal_different_adversarial_interface to be a
+unit, ideal functionality's adversarial interface must be used by simulator
+.

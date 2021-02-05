@@ -1,0 +1,10 @@
+description
+
+.
+args:-units extraneous_interface.uc
+outcome:failure
+[error: extraneous_interface.uc: from line 0 columns 1 to 1]
+
+file with root Extraneous_interface is not a valid unit because interface
+Extra is extraneous
+.

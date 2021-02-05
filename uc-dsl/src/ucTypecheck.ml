@@ -54,6 +54,7 @@ let is_ec_type_name s =
 let is_ec_op_name s =
   Option.is_some (EcEnv.Op.lookup_opt ([], s) (top_env ()))
 
+(* this function nowhere gets called !!! *)
 let check_not_ec_theory_name id_l =
   if is_ec_theory_name (unloc id_l)
   then type_error (loc id_l)
@@ -262,6 +263,7 @@ let check_exists_inter_qid
          fprintf ppf
          "@[invalid@ form@ for@ interface@ name:@ %a@]" pp_qsymbol uqid)
 
+(* this function is nowhere called !!! *)
 let check_is_basic_id_pair
     (root : symbol) (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
     (idp : symb_pair located) : unit = 
@@ -1983,6 +1985,7 @@ let load_ec_reqs (reqs : (string located * bool) list) =
                "uppercase@ letter:@ %s@]")
               uid) in
     try UcEcInterface.require id (if imp then Some `Import else None) with
+    (*Never executes since UcEcInterface.require already catches all exceptions and exits with an error message !!!*)
     | Failure f ->
         type_error (loc id)
         (fun ppf ->

@@ -1,0 +1,12 @@
+description
+
+.
+args:-units two_ideal_functionalities.uc
+outcome:failure
+[error: two_ideal_functionalities.uc: from line 0 columns 1 to 1]
+
+for file with root Two_ideal_functionalities to be a valid unit, either there
+must be: a single ideal functionality and no real functionalities or
+simulators; or exactly one real functionality, ideal functionality, and
+simulator
+.

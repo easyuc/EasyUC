@@ -1,0 +1,9 @@
+description 
+
+.
+args: real_functionality_implements_basic_direct_interface.uc
+outcome:failure
+[error: real_functionality_implements_basic_direct_interface.uc: from line 7 columns 30 to 31]
+
+direct interface must be composite: D
+.

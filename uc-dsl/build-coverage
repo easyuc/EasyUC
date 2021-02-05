@@ -2,4 +2,4 @@
 
 # build ucdsl with coverge instrumentation
 
-build coverage
+./build coverage

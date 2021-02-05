@@ -1,4 +1,4 @@
-(* A modification of src/ecCommands.ml of the EasyCrypt distribution
+	(* A modification of src/ecCommands.ml of the EasyCrypt distribution
 
    See "UC DSL" for changes
  *)
