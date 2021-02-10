@@ -35,7 +35,7 @@ op term_metric (g : glob UC_Forw) : int =
 lemma ge0_term_metric (g : glob UC_Forw) : 0 <= term_metric g.
 proof.
 rewrite /term_metric.
-case g => x1 x2 x3 /= /#.
+smt().
 qed.
 
 lemma init :
@@ -72,8 +72,8 @@ match => //.
 match => //.
 auto.
 move => x x'.
-if; first move => /> &2 -> /= -> />.
-auto; first move => /> &2 -> /= -> />.
+if; first smt().
+auto; first smt().
 auto.
 move => pt1 pt2 u pt1' pt2' u'.
 match => //.
@@ -209,7 +209,7 @@ auto.
 match Some 1.
 auto; progress.
 exists (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m{hr})).
-by apply some_oget.
+smt(some_oget).
 if.
 exfalso; smt(oget_some UC_FwAdv.eq_of_valid_fw_ok).
 auto.
