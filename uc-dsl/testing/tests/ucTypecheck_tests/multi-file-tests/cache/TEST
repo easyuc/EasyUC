@@ -1,0 +1,6 @@
+description
+test that uses chache.
+.
+args: C.uc
+outcome: success
+.
