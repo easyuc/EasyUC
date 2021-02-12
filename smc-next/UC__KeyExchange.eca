@@ -15,8 +15,9 @@ require import UCBasicTypes.  (* always last *)
 
 (* the port indices of the adversary the real functionality or its
    subfunctionalities communicate with, as well as the port index of
-   the simulator the ideal functionality communicates with, are in the
-   range _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num - 1 *)
+   the simulator the ideal functionality communicates with, are all
+   distinct and in the range _adv_pi_begin, ..., _adv_pi_begin +
+   _adv_pi_num - 1 *)
 
 op _adv_pi_num : int = 3.
 
@@ -52,112 +53,345 @@ realize adv_pi_gt0. smt(adv_pi_gt0). qed.
 
 end UC__RF.
 
-(* basic direct interface for Party 1, with external port index 1 *)
+(* basic direct interface for Party 1 *)
 
-theory KEDirPt1.
+theory UC_KEDirPt1.
 
-(* request sent to Party 1: pt1 wants to exchange a key with pt2
+(* begin theory parameters *)
+
+op pi : int.
+
+(* end theory parameters *)
+
+(* input message: request from pt1, initiating the first round of
+   key-exchange, asking to agree a key with pt2
 
    pt1 and pt2 are the names used in the UC DSL declaration of
-   ke_req1 *)
+   ke_req1; note the extra "_" in ke_req1__func, to avoid a possible
+   conflict with legal UC DSL identifers *)
 
 type ke_req1 =
-  {ke_req1__func : addr;  (* address of functionality *)
-   ke_req1_pt1  : port;   (* port requesting key exchange *)
+  {ke_req1__func : addr;   (* address of functionality - destination address *)
+   ke_req1_pt1   : port;   (* port requesting key exchange - source port *)
    (* data: *)
-   ke_req1_pt2  : port}.  (* port to exchange key with *)
+   ke_req1_pt2   : port}.  (* port to agree a key with *)
 
-op ke_req1 (x : ke_req1) : msg =
-     (Dir, (x.`ke_req1__func, 1), x.`ke_req1_pt1,
-      EPDP_Univ_Port.enc x.`ke_req1_pt2).
+op enc_ke_req1 (x : ke_req1) : msg =
+  (Dir, (x.`ke_req1__func, pi), x.`ke_req1_pt1,
+   0,  (* no messages from which this must be distinct *)
+   epdp_port_univ.`enc x.`ke_req1_pt2).
 
-op dec_ke_req1 (m : msg) : ke_req1 option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt1.`2 <> 1 \/ ! EPDP_Univ_Port.valid v) ?
-        None :
-        let pt2' = oget (EPDP_Univ_Port.dec v)
-        in Some {|ke_req1__func = pt1.`1; ke_req1_pt1 = pt2;
-                  ke_req1_pt2 = pt2'|}.
+op nosmt dec_ke_req1 (m : msg) : ke_req1 option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) ?
+     None :
+     match epdp_port_univ.`dec v with
+     | None      => None
+     | Some pt2' =>
+         Some
+         {|ke_req1__func = pt1.`1; ke_req1_pt1 = pt2;
+           ke_req1_pt2 = pt2'|}
+     end.
 
-(* response sent from port index 1 of key exchange functionality to
-   pt1, completing second phase of key exchange with pt2 initiated by
-   itself *)
+op epdp_ke_req1_msg = {|enc = enc_ke_req1; dec = dec_ke_req1|}.
+
+lemma valid_epdp_ke_req1_msg : valid_epdp epdp_ke_req1_msg.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp_ke_req1_msg /= /dec_ke_req1 /enc_ke_req1 /=
+        !(epdp, epdp_sub) /=.
+by case x.
+move => [mod pt1 pt2 tag u] v.
+rewrite /epdp_ke_req1_msg /dec_ke_req1 /enc_ke_req1 /=.
+case (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
+have val_u :
+  epdp_port_univ.`dec u = Some (v.`ke_req1_pt2).
+  move : match_eq_some.
+  case (epdp_port_univ.`dec u) => //.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt1_2; by case pt1.
+by rewrite (epdp_dec_enc _ _ u).
+qed.
+
+hint simplify [eqtrue] valid_epdp_ke_req1_msg.
+hint rewrite epdp : valid_epdp_ke_req1_msg.
+
+lemma eq_of_valid_ke_req1 (m : msg) :
+  is_valid epdp_ke_req1_msg m =>
+  m =
+  let x = oget (epdp_ke_req1_msg.`dec m) in
+  (Dir,
+   (x.`ke_req1__func, pi),
+   x.`ke_req1_pt1,
+   0,
+   epdp_port_univ.`enc x.`ke_req1_pt2).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : ke_req1), epdp_ke_req1_msg.`dec m = Some x.
+  exists (oget (dec_ke_req1 m)); by rewrite -some_oget.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req1_msg) <-.
+by rewrite !epdp.
+qed.
+
+(* output message: response to pt1, ending the second round of
+   key-exchange
+
+   pt1 and pt2 are the names used in the UC DSL declaration of
+   fw_req; note the extra "_" in fw_req__func, to avoid a possible
+   conflict with legal UC DSL identifers *)
 
 type ke_rsp2 =
-  {ke_rsp2_func : addr;   (* address of functionality *)
-   ke_rsp2_pt1  : port;   (* port requesting key exchange *)
+  {ke_rsp2__func : addr;   (* address of functionality - source address *)
+   ke_rsp2_pt1   : port;   (* port requesting key exchange - destination port *)
    (* data: *)
-   ke_rsp2_key  : key}.   (* exchanged key *)
+   ke_rsp2_pt2   : port}.  (* port to agree a key with *)
 
-op ke_rsp2 (x : ke_rsp2) : msg =
-     (Dir, x.`ke_rsp2_pt1, (x.`ke_rsp2_func, 1),
-      EPDP_Univ_Key.enc x.`ke_rsp2_key).
+op enc_ke_rsp2 (x : ke_rsp2) : msg =
+  (Dir, x.`ke_rsp2_pt1, (x.`ke_rsp2__func, pi),
+   0,  (* no messages from which this must be distinct *)
+   epdp_port_univ.`enc x.`ke_rsp2_pt2).
 
-op dec_ke_rsp2 (m : msg) : ke_rsp2 option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt2.`2 <> 1 \/ ! EPDP_Univ_Key.valid v) ?
-        None :
-        let k = oget (EPDP_Univ_Key.dec v)
-        in Some {|ke_rsp2_func = pt2.`1; ke_rsp2_pt1 = pt1;
-                  ke_rsp2_key = k|}.
+op nosmt dec_ke_rsp2 (m : msg) : ke_rsp2 option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) ?
+     None :
+     match epdp_port_univ.`dec v with
+     | None      => None
+     | Some pt2' =>
+         Some
+         {|ke_rsp2__func = pt2.`1; ke_rsp2_pt1 = pt1;
+           ke_rsp2_pt2 = pt2'|}
+     end.
 
-end KEDirPt1.
+op epdp_ke_rsp2_msg = {|enc = enc_ke_rsp2; dec = dec_ke_rsp2|}.
 
-(* basic direct interface for Party 2, with external port index 2 *)
+lemma valid_epdp_ke_rsp2_msg : valid_epdp epdp_ke_rsp2_msg.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp_ke_rsp2_msg /= /dec_ke_rsp2 /enc_ke_rsp2 /=
+        !(epdp, epdp_sub) /=.
+by case x.
+move => [mod pt1 pt2 tag u] v.
+rewrite /epdp_ke_rsp2_msg /dec_ke_rsp2 /enc_ke_rsp2 /=.
+case (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 -> match_eq_some /=.
+have val_u :
+  epdp_port_univ.`dec u = Some (v.`ke_rsp2_pt2).
+  move : match_eq_some.
+  case (epdp_port_univ.`dec u) => //.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt2_2; by case pt2.
+by rewrite (epdp_dec_enc _ _ u).
+qed.
 
-theory KEDirPt2.
+hint simplify [eqtrue] valid_epdp_ke_rsp2_msg.
+hint rewrite epdp : valid_epdp_ke_rsp2_msg.
 
-(* response sent from port index 2 of key exchange functionality to
-   pt2, completing first phase of key exchange initiated by pt1 *)
+lemma eq_of_valid_ke_rsp2 (m : msg) :
+  is_valid epdp_ke_rsp2_msg m =>
+  m =
+  let x = oget (epdp_ke_rsp2_msg.`dec m) in
+  (Dir,
+   x.`ke_rsp2_pt1,
+   (x.`ke_rsp2__func, pi),
+   0,
+   epdp_port_univ.`enc x.`ke_rsp2_pt2).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : ke_rsp2), epdp_ke_rsp2_msg.`dec m = Some x.
+  exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp2_msg) <-.
+by rewrite !epdp.
+qed.
 
-type ke_rsp1 =
-  {ke_rsp1_func : addr;   (* address of functionality *)
-   ke_rsp1_pt1  : port;   (* port requesting key exchange *)
-   (* data: *)
-   ke_rsp1_pt2  : port;   (* port to exchange key with *)
-   ke_rsp1_key  : key}.   (* exchanged key *)
+end UC_KEDirPt1.
 
-op ke_rsp1 (x : ke_rsp1) : msg =
-     (Dir, x.`ke_rsp1_pt2, (x.`ke_rsp1_func, 2),
-      EPDP_Univ_PortKey.enc (x.`ke_rsp1_pt1, x.`ke_rsp1_key)).
+(* basic direct interface for Party 1 *)
 
-op dec_ke_rsp1 (m : msg) : ke_rsp1 option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt2.`2 <> 2 \/ ! EPDP_Univ_PortKey.valid v) ?
-        None :
-        let (pt1', k) = oget (EPDP_Univ_PortKey.dec v)
-        in Some {|ke_rsp1_func = pt2.`1; ke_rsp1_pt1 = pt1';
-                  ke_rsp1_pt2 = pt1; ke_rsp1_key = k|}.
+theory UC_KEDirPt2.
 
-(* request sent to port index 2 of key exchange functionality by pt2 to
-   initiate phase 2 of key exchange with pt1 *)
+(* begin theory parameters *)
+
+op pi : int.
+
+(* end theory parameters *)
+
+(* input message: request from pt2, initiating the second round of
+   key-exchange
+
+   pt2 is the name used in the UC DSL declaration of ke_req1; note
+   the extra "_" in ke_req1__func, to avoid a possible conflict with
+   legal UC DSL identifers *)
 
 type ke_req2 =
-  {ke_req2_func : addr;  (* address of functionality *)
-   ke_req2_pt2  : port   (* port to exchange key with *)
-   (* data: (none) *)
-  }.
+  {ke_req2__func : addr;   (* address of functionality - destination address *)
+   ke_req2_pt2   : port}.  (* port requesting key exchange - source port *)
+   (* data: none *)
 
-op ke_req2 (x : ke_req2) : msg =
-     (Dir, (x.`ke_req2_func, 2), x.`ke_req2_pt2, EPDP_Univ_Unit.enc ()).
+op enc_ke_req2 (x : ke_req2) : msg =
+  (Dir, (x.`ke_req2__func, pi), x.`ke_req2_pt2,
+   0,  (* no messages from which this must be distinct *)
+   epdp_unit_univ.`enc ()).
 
-op dec_ke_req2 (m : msg) : ke_req2 option =
-     let (mod, pt1, pt2, v) = m
-     in (mod = Adv \/ pt1.`2 <> 2 \/ ! EPDP_Univ_Unit.valid v) ?
-        None :
-        Some {|ke_req2_func = pt1.`1; ke_req2_pt2 = pt2|}.
+op nosmt dec_ke_req2 (m : msg) : ke_req2 option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) ?
+     None :
+     match epdp_unit_univ.`dec v with
+     | None   => None
+     | Some _ =>
+         Some {|ke_req2__func = pt1.`1; ke_req2_pt2 = pt2|}
+     end.
 
-(* Real Functionality *)
+op epdp_ke_req2_msg = {|enc = enc_ke_req2; dec = dec_ke_req2|}.
 
-clone Forwarding as Fw1 with
-  op adv_pi <- adv_fw1_pi
+lemma valid_epdp_ke_req2_msg : valid_epdp epdp_ke_req2_msg.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp_ke_req2_msg /= /dec_ke_req2 /enc_ke_req2 /=
+        !(epdp, epdp_sub) /=.
+by case x.
+move => [mod pt1 pt2 tag u] v.
+rewrite /epdp_ke_req2_msg /dec_ke_req2 /enc_ke_req2 /=.
+case (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
+have val_u :
+  epdp_unit_univ.`dec u = Some ().
+  move : match_eq_some.
+  case (epdp_unit_univ.`dec u) => //.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt1_2; by case pt1.
+by rewrite (epdp_dec_enc _ _ u).
+qed.
+
+hint simplify [eqtrue] valid_epdp_ke_req2_msg.
+hint rewrite epdp : valid_epdp_ke_req2_msg.
+
+lemma eq_of_valid_ke_req2 (m : msg) :
+  is_valid epdp_ke_req2_msg m =>
+  m =
+  let x = oget (epdp_ke_req2_msg.`dec m) in
+  (Dir,
+   (x.`ke_req2__func, pi),
+   x.`ke_req2_pt2,
+   0,
+   epdp_unit_univ.`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : ke_req2), epdp_ke_req2_msg.`dec m = Some x.
+  exists (oget (dec_ke_req2 m)); by rewrite -some_oget.
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req2_msg) <-.
+by rewrite !epdp.
+qed.
+
+(* output message: response to pt2, ending the first round of
+   key-exchange
+
+   pt1, pt2 and k are the names used in the UC DSL declaration of
+   fw_req; note the extra "_" in fw_req__func, to avoid a possible
+   conflict with legal UC DSL identifers *)
+
+type ke_rsp1 =
+  {ke_rsp1__func : addr;   (* address of functionality - source address *)
+   ke_rsp1_pt2   : port;   (* port key exchanged with - destination port *)
+   (* data: *)
+   ke_rsp1_pt1   : port;   (* port requesting key exchange *)
+   ke_rsp1_k     : key}.   (* key being exchanged *)
+
+op enc_ke_rsp1 (x : ke_rsp1) : msg =
+  (Dir, x.`ke_rsp1_pt2, (x.`ke_rsp1__func, pi),
+   0,  (* no messages from which this must be distinct *)
+   (epdp_pair_univ epdp_port_univ epdp_key_univ).`enc
+    (x.`ke_rsp1_pt1, x.`ke_rsp1_k)).
+
+op nosmt dec_ke_rsp1 (m : msg) : ke_rsp1 option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) ?
+     None :
+     match (epdp_pair_univ epdp_port_univ epdp_key_univ).`dec v with
+     | None      => None
+     | Some p =>
+         Some
+         {|ke_rsp1__func = pt2.`1; ke_rsp1_pt2 = pt1;
+           ke_rsp1_pt1 = p.`1; ke_rsp1_k = p.`2|}
+     end.
+
+op epdp_ke_rsp1_msg = {|enc = enc_ke_rsp1; dec = dec_ke_rsp1|}.
+
+lemma valid_epdp_ke_rsp1_msg : valid_epdp epdp_ke_rsp1_msg.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp_ke_rsp1_msg /= /dec_ke_rsp1 /enc_ke_rsp1 /=
+        !(epdp, epdp_sub) /=.
+by case x.
+move => [mod pt1 pt2 tag u] v.
+rewrite /epdp_ke_rsp1_msg /dec_ke_rsp1 /enc_ke_rsp1 /=.
+case (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) => //.
+rewrite !negb_or /= not_adv => [#] -> pt2_2 -> match_eq_some /=.
+have val_u :
+  (epdp_pair_univ epdp_port_univ epdp_key_univ).`dec u =
+  Some (v.`ke_rsp1_pt1, v.`ke_rsp1_k).
+  move : match_eq_some.
+  case ((epdp_pair_univ epdp_port_univ epdp_key_univ).`dec u) => //.
+  by case.
+move : match_eq_some.
+rewrite val_u /= => <- /=.
+split; first move : pt2_2; by case pt2.
+by rewrite (epdp_dec_enc _ _ u) 1:!(epdp, epdp_sub).
+qed.
+
+hint simplify [eqtrue] valid_epdp_ke_rsp1_msg.
+hint rewrite epdp : valid_epdp_ke_rsp1_msg.
+
+lemma eq_of_valid_ke_rsp1 (m : msg) :
+  is_valid epdp_ke_rsp1_msg m =>
+  m =
+  let x = oget (epdp_ke_rsp1_msg.`dec m) in
+  (Dir,
+   x.`ke_rsp1_pt2,
+   (x.`ke_rsp1__func, pi),
+   0,
+   (epdp_pair_univ epdp_port_univ epdp_key_univ).`enc
+    (x.`ke_rsp1_pt1, x.`ke_rsp1_k)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : ke_rsp1), epdp_ke_rsp1_msg.`dec m = Some x.
+  exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp1_msg) <-.
+by rewrite !epdp.
+qed.
+
+end UC_KEDirPt2.
+
+theory UC_KEDir.  (* composite direct interface *)
+
+clone UC_KEDirPt1 as Pt1 with
+  op pi = 1
 proof *.
-realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
 
-clone Forwarding as Fw2 with
-  op adv_pi <- adv_fw2_pi
+clone UC_KEDirPt2 as Pt2 with
+  op pi = 2
 proof *.
-realize fwd_pi_uniq. smt(ke_pi_uniq). qed.
+
+end UC_KEDir.
+
+(* TODO - start here! *)
 
 (* state for Party 1 *)
 
