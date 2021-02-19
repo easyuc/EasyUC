@@ -12,6 +12,7 @@ open EcLocation
 open EcSymbols
 open EcTypes
 open UcSpec
+open UcInstructionSpecTyped
 
 (* maps and sets *)
 
@@ -164,12 +165,18 @@ type inter_tyd = inter_body_tyd located  (* typed interface *)
 
 (* state machines, typed functionalities and simulators *)
 
+type pattern = symbol * ((EcIdent.t * EcTypes.ty) list)
+
+type msg_match_clause_tyd =                          (* message match clause *)
+  {msg_pat : msg_pat;                                (* message pattern *)
+   code    : (expr,pattern) instruction list located}  (* code of clause *)
+
 type state_body_tyd =
   {is_initial : bool;                   (* the initial state? *)
    params     : ty_index IdMap.t;       (* typed parameters, index is
                                            parameter number *)
    vars       : ty located IdMap.t;     (* local variables *)
-   mmclauses  : msg_match_clause list}  (* message match clauses *)
+   mmclauses  : msg_match_clause_tyd list}  (* message match clauses *)
 
 type state_tyd = state_body_tyd located  (* typed state *)
 

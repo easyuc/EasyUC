@@ -27,7 +27,7 @@ open EcSymbols
 open EcLocation
 open EcTypes
 open EcDecl
-open UcSpec
+open UcEcSpec
 
 module Mid = EcIdent.Mid
 
