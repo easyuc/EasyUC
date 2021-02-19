@@ -5,5 +5,5 @@ args: subfunctionality_name_same_as_real_functionality.uc
 outcome:failure
 [error: subfunctionality_name_same_as_real_functionality.uc: from line 26 columns 9 to 10]
 
-subfunctionality name may be different from real functionality
+subfunctionality name may not be same as real functionality name
 .

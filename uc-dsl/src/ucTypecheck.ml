@@ -1680,8 +1680,8 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
           then type_error (loc sf.id)
                (fun ppf ->
                   fprintf ppf
-                  ("@[subfunctionality@ name@ may@ be@ different@ " ^^
-                   "from@ real@ functionality@]"))
+                  ("@[subfunctionality@ name@ may@ not@ be@ same@ " ^^
+                   "as@ real@ functionality@ name@]"))
         else if exists_id_pair_inter_maps maps.dir_inter_map
                 maps.adv_inter_map (root, uid)
           then type_error (loc sf.id)

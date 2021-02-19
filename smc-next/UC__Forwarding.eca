@@ -8,18 +8,30 @@
 
 require import UCBasicTypes.
 
+(* the port indices of the adversary/simulator that the unit
+   communicates with: _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num
+   - 1; the last of these is used for communication between the ideal
+   functionality and the adversary/simulator; the preceding ones are
+   used for communication between the parties and subfunctionalities
+   (in that order) of the real functionality (if the unit has one) and
+   the adversary *)
+
+op _adv_pi_num : int = 1.
+
 (* begin theory parameters *)
 
-(* port index of adversary/simulator that functionality communicates
-   with; a specification unit with just an ideal functionality (no
-   corresponding real functionaity or simulator) has a single such
-   port index *)
+op _adv_pi_begin : int.
 
-op _adv_pi : int.
-
-axiom adv_pi_gt0 : 0 < _adv_pi.
+axiom adv_pi_gt0 : 0 < _adv_pi_begin.
 
 (* end theory parameters *)
+
+(* port index of adversary/simulator that ideal functionality
+   communicates with; a specification unit with just an ideal
+   functionality (no corresponding real functionaity or simulator) has
+   a single such port index *)
+
+op _adv_if_pi : int = _adv_pi_begin.
 
 theory UC_FwDir_.
 
@@ -225,14 +237,14 @@ type fw_obs =
    fw_obs_u     : univ}.  (* universe value to be forwarded *)
 
 op enc_fw_obs (x : fw_obs) : msg =
-  (Adv, (x.`fw_obs__adv, _adv_pi), (x.`fw_obs__func, pi),
+  (Adv, (x.`fw_obs__adv, _adv_if_pi), (x.`fw_obs__func, pi),
    0,  (* no messages from which this must be distinct *)
    (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
     (x.`fw_obs_pt1, x.`fw_obs_pt2, x.`fw_obs_u)).
 
 op nosmt dec_fw_obs (m : msg) : fw_obs option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> _adv_pi \/ pt2.`2 <> pi \/ tag <> 0) ?
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <> 0) ?
      None :
      match (epdp_triple_univ epdp_port_univ epdp_port_univ
             epdp_id).`dec v with
@@ -255,7 +267,7 @@ rewrite /epdp_fw_obs_msg /= /dec_fw_obs /enc_fw_obs /=
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_obs_msg /dec_fw_obs /enc_fw_obs /=.
-case (mod = Dir \/ pt1.`2 <> _adv_pi \/ pt2.`2 <> pi \/ tag <> 0) => //.
+case (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 -> match_eq_some /=.
 have val_u :
   (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`dec u =
@@ -278,7 +290,7 @@ lemma eq_of_valid_fw_obs (m : msg) :
   m =
   let x = oget (epdp_fw_obs_msg.`dec m) in
   (Adv,
-   (x.`fw_obs__adv, _adv_pi),
+   (x.`fw_obs__adv, _adv_if_pi),
    (x.`fw_obs__func, pi),
    0,
    (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
@@ -307,13 +319,13 @@ type fw_ok =
   }.
 
 op enc_fw_ok (x : fw_ok) : msg =
-  (Adv, (x.`fw_ok__func, pi), (x.`fw_ok__adv, _adv_pi),
+  (Adv, (x.`fw_ok__func, pi), (x.`fw_ok__adv, _adv_if_pi),
    0,  (* no messages from which this must be distinct *)
    epdp_unit_univ.`enc ()).
 
 op nosmt dec_fw_ok (m : msg) : fw_ok option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> pi \/ pt2.`2 <> _adv_pi \/ tag <> 0) ?
+  in (mod = Dir \/ pt1.`2 <> pi \/ pt2.`2 <> _adv_if_pi \/ tag <> 0) ?
      None :
      match epdp_unit_univ.`dec v with
      | None   => None
@@ -331,7 +343,7 @@ rewrite /epdp_fw_ok_msg /= /dec_fw_ok /enc_fw_ok /=
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_fw_ok_msg /dec_fw_ok /enc_fw_ok /=.
-case (mod = Dir \/ pt1.`2 <> pi \/ pt2.`2 <> _adv_pi \/ tag <> 0) => //.
+case (mod = Dir \/ pt1.`2 <> pi \/ pt2.`2 <> _adv_if_pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 -> match_eq_some /=.
 have val_u : epdp_unit_univ.`dec u = Some ().
   move : match_eq_some.
@@ -352,7 +364,7 @@ lemma eq_of_valid_fw_ok (m : msg) :
   let x = oget (epdp_fw_ok_msg.`dec m) in
   (Adv,
    (x.`fw_ok__func, pi),
-   (x.`fw_ok__adv, _adv_pi),
+   (x.`fw_ok__adv, _adv_if_pi),
    0,
    epdp_unit_univ.`enc ()).
 proof.
@@ -367,18 +379,20 @@ qed.
 
 end UC_FwAdv.
 
-type _fw_state = [
-  | _FwStateInit
-  | _FwStateWait of port & port & univ
-  | _FwStateFinal
+theory UC__IF.  (* ideal functionality *)
+
+type _state = [
+  | _StateInit
+  | _StateWait of port & port & univ
+  | _StateFinal
 ].
 
 module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
   var _self, _adv : addr
-  var _st : _fw_state
+  var _st : _state
 
   proc init(self_ adv_ : addr) : unit = {
-    _self <- self_; _adv <- adv_; _st <- _FwStateInit;
+    _self <- self_; _adv <- adv_; _st <- _StateInit;
   }
 
   (* we insert sufficient checks for target and source ports
@@ -388,7 +402,7 @@ module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
   proc parties(_m : msg) : msg option = {
     var _r : msg option <- None;
     match _st with
-      _FwStateInit => {
+      _StateInit => {
         match UC_FwDir.D.epdp_fw_req_msg.`dec _m with
           Some _x => {
             (* _x.`UC_FwDir.D.fw_req__func = _self /\
@@ -404,14 +418,14 @@ module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
                    UC_FwAdv.fw_obs_pt2   = _x.`UC_FwDir.D.fw_req_pt2;
                    UC_FwAdv.fw_obs_u     = _x.`UC_FwDir.D.fw_req_u|});
               _st <-
-                _FwStateWait _x.`UC_FwDir.D.fw_req_pt1 _x.`UC_FwDir.D.fw_req_pt2
+                _StateWait _x.`UC_FwDir.D.fw_req_pt1 _x.`UC_FwDir.D.fw_req_pt2
                 _x.`UC_FwDir.D.fw_req_u;
             }
           }
         | None => { }
         end;
       }
-    | _FwStateWait pt1 pt2 u => {
+    | _StateWait pt1 pt2 u => {
         match UC_FwAdv.epdp_fw_ok_msg.`dec _m with
           Some _x => {
             (* _x.`UC_FwAdv.fw_ok__func = self /\ _x.`UC_FwAdv.fw_ok__adv = adv;
@@ -426,13 +440,13 @@ module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
                    (* data: *)
                    UC_FwDir.D.fw_rsp_pt1   = pt1;
                    UC_FwDir.D.fw_rsp_u     = u|});
-              _st <- _FwStateFinal;
+              _st <- _StateFinal;
             }
           }
         | None => { }
         end;
       }
-    | _FwStateFinal => { }
+    | _StateFinal => { }
     end;
     return _r;
   }
@@ -459,3 +473,5 @@ module UC_Forw = {  (* has module type UCCore.FUNC - but not in scope *)
     return r;
   }
 }.
+
+end UC__IF.

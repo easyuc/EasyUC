@@ -13,6 +13,8 @@ require import UCCore.
 require UC__Forwarding.  (* code for ideal functionality *)
 clone include UC__Forwarding.
 
+import UC__IF.
+
 (* termination metric and proof *)
 
 op term_metric_max : int = 2.
@@ -21,15 +23,15 @@ op term_metric_max : int = 2.
 
    print glob UC_Forw:
 
-   1: UC_Forw._st   : _fw_state
+   1: UC_Forw._st   : _state
    2: UC_Forw._adv  : addr
    3: UC_Forw._self : addr *)
 
 op term_metric (g : glob UC_Forw) : int =
      match g.`1 with
-     | _FwStateInit       => 2
-     | _FwStateWait _ _ _ => 1
-     | _FwStateFinal      => 0
+     | _StateInit       => 2
+     | _StateWait _ _ _ => 1
+     | _StateFinal      => 0
      end.
 
 lemma ge0_term_metric (g : glob UC_Forw) : 0 <= term_metric g.
@@ -96,7 +98,7 @@ pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
 lemma UC_Forw_invoke_init_fw_req (m' : msg) :
   phoare
   [UC_Forw.invoke :
-   m' = m /\ UC_Forw._st = _FwStateInit /\
+   m' = m /\ UC_Forw._st = _StateInit /\
    forw_invoke_init_fw_req UC_Forw._self UC_Forw._adv m ==>
    let fwr = oget (UC_FwDir.D.dec_fw_req m') in
    res =
@@ -108,7 +110,7 @@ lemma UC_Forw_invoke_init_fw_req (m' : msg) :
       UC_FwAdv.fw_obs_pt2   = fwr.`UC_FwDir.D.fw_req_pt2;
       UC_FwAdv.fw_obs_u     = fwr.`UC_FwDir.D.fw_req_u|}) /\
    UC_Forw._st =
-     _FwStateWait fwr.`UC_FwDir.D.fw_req_pt1 fwr.`UC_FwDir.D.fw_req_pt2
+     _StateWait fwr.`UC_FwDir.D.fw_req_pt1 fwr.`UC_FwDir.D.fw_req_pt2
      fwr.`UC_FwDir.D.fw_req_u /\
    envport UC_Forw._self UC_Forw._adv fwr.`UC_FwDir.D.fw_req_pt2] = 1%r.
 proof.
@@ -117,7 +119,7 @@ sp 1.
 rcondt 1; first auto; smt(UC_FwDir.D.eq_of_valid_fw_req).
 inline UC_Forw.parties.
 sp 2.
-match _FwStateInit 1; first auto; smt().
+match _StateInit 1; first auto; smt().
 match Some 1.
 auto; smt(some_oget).
 rcondt 1; first auto; progress; smt().
@@ -128,16 +130,16 @@ qed.
 lemma UC_Forw_invoke_init_bad :
   phoare
   [UC_Forw.invoke :
-   UC_Forw._st = _FwStateInit /\
+   UC_Forw._st = _StateInit /\
    ! forw_invoke_init_fw_req UC_Forw._self UC_Forw._adv m ==>
-   res = None /\ UC_Forw._st = _FwStateInit] = 1%r.
+   res = None /\ UC_Forw._st = _StateInit] = 1%r.
 proof.
 proc.
 sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _FwStateInit 1; first auto; smt().
+match _StateInit 1; first auto; smt().
 case (UC_FwDir.D.epdp_fw_req_msg.`dec _m = None).
 match None 1; first auto.
 auto.
@@ -154,43 +156,43 @@ pred forw_invoke_wait_fw_ok (self adv : addr, pt2 : port, m : msg) =
   (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m)).`UC_FwAdv.fw_ok__func = self /\
   envport self adv pt2.
 
-lemma UC_Forw_invoke_wait_fw_ok (st' : _fw_state, m' : msg) :
+lemma UC_Forw_invoke_wait_fw_ok (st' : _state, m' : msg) :
   phoare
   [UC_Forw.invoke :
-   st' = UC_Forw._st /\ m' = m /\ get_as__FwStateWait UC_Forw._st <> None /\
+   st' = UC_Forw._st /\ m' = m /\ get_as__StateWait UC_Forw._st <> None /\
    forw_invoke_wait_fw_ok UC_Forw._self UC_Forw._adv
-   (oget (get_as__FwStateWait UC_Forw._st)).`2 m ==>
-   let wait = oget (get_as__FwStateWait st') in
+   (oget (get_as__StateWait UC_Forw._st)).`2 m ==>
+   let wait = oget (get_as__StateWait st') in
    res =
    Some
    (UC_FwDir.D.epdp_fw_rsp_msg.`enc
     {|UC_FwDir.D.fw_rsp__func = UC_Forw._self; UC_FwDir.D.fw_rsp_pt1 = wait.`1;
       UC_FwDir.D.fw_rsp_pt2 = wait.`2; UC_FwDir.D.fw_rsp_u = wait.`3|}) /\
-   UC_Forw._st = _FwStateFinal] = 1%r.
+   UC_Forw._st = _StateFinal] = 1%r.
 proof.
 proc.
 sp 1.
 rcondt 1; first auto; smt(UC_FwAdv.eq_of_valid_fw_ok).
 inline UC_Forw.parties.
 sp 2.
-match _FwStateWait 1.
+match _StateWait 1.
 auto => |> &hr.
-rewrite /get_as__FwStateWait.
+rewrite /get_as__StateWait.
 case st' => // pt1 pt2 u /= _.
 by exists pt1 pt2 u.
 match Some 1; first auto => |> &hr.
-rewrite /get_as__FwStateWait /= /#.
+rewrite /get_as__StateWait /= /#.
 rcondt 1; first auto => |> &hr _ _.
-by rewrite /forw_invoke_wait_fw_ok /get_as__FwStateWait.
-auto; by rewrite /get_as__FwStateWait.
+by rewrite /forw_invoke_wait_fw_ok /get_as__StateWait.
+auto; by rewrite /get_as__StateWait.
 qed.
 
-lemma UC_Forw_invoke_wait_bad (st' : _fw_state) :
+lemma UC_Forw_invoke_wait_bad (st' : _state) :
   phoare
   [UC_Forw.invoke :
-   st' = UC_Forw._st /\ get_as__FwStateWait UC_Forw._st <> None /\
+   st' = UC_Forw._st /\ get_as__StateWait UC_Forw._st <> None /\
    ! forw_invoke_wait_fw_ok UC_Forw._self UC_Forw._adv
-     (oget (get_as__FwStateWait UC_Forw._st)).`2 m ==>
+     (oget (get_as__StateWait UC_Forw._st)).`2 m ==>
    res = None /\ UC_Forw._st = st'] = 1%r.
 proof.
 proc.
@@ -198,9 +200,9 @@ sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _FwStateWait 1.
+match _StateWait 1.
 auto => /> &hr.
-rewrite /get_as__FwStateWait.
+rewrite /get_as__StateWait.
 case st' => // pt1 pt2 u /= _ _.
 by exists pt1 pt2 u.
 case (UC_FwAdv.epdp_fw_ok_msg.`dec _m = None).
@@ -219,15 +221,15 @@ qed.
 lemma UC_Forw_invoke_final :
   phoare
   [UC_Forw.invoke :
-   UC_Forw._st = _FwStateFinal ==>
-   res = None /\ UC_Forw._st = _FwStateFinal] = 1%r.
+   UC_Forw._st = _StateFinal ==>
+   res = None /\ UC_Forw._st = _StateFinal] = 1%r.
 proof.
 proc.
 sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _FwStateFinal 1; first auto; smt().
+match _StateFinal 1; first auto; smt().
 auto.
 auto.
 qed.

@@ -21,6 +21,6 @@ check() {
 check UCListAux.ec
 check UCListPO.ec
 check UCEncoding.ec
+check UCUniv.ec
 check UCBasicTypes.ec
 check UCCore.ec
-check UCUniv.ec
