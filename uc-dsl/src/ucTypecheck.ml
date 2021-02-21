@@ -20,8 +20,7 @@ open EcEnv
 open UcUtils
 open UcMessage
 open UcSpec
-open UcEcSpec
-open UcInstructionSpecTyped
+open UcSpecTypedSpecCommon
 open UcTypedSpec
 open UcTransTypesExprs
 
@@ -1020,7 +1019,7 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
 let check_val_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (lhs : lhs) (ex : pexpr) 
-    : ((expr,pattern) instruction_u) * state_analysis = 
+    : instruction_tyd_u * state_analysis = 
   let (sa', ty) = check_lhs sc sa lhs in
   let exp,_ = check_expr sa env ue ex (Some ty) in
   Assign (lhs,exp), sa'
@@ -1028,14 +1027,14 @@ let check_val_assign
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (lhs : lhs) (ex : pexpr) 
-    : ((expr,pattern) instruction_u) * state_analysis = 
+    : instruction_tyd_u * state_analysis = 
   let (sa', ty) = check_lhs sc sa lhs in
   let exp,_ = check_expr sa env ue ex (Some (tdistr ty)) in
   Sample (lhs,exp), sa'
 
 let check_state_expr
     (ss : state_sig IdMap.t) (sa : state_analysis)
-    (env : env) (ue : unienv) (se : pexpr state_expr) : expr state_expr = 
+    (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd = 
   let ssig = 
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
@@ -1070,7 +1069,7 @@ let check_msg_arguments
 
 let check_send_direct
     (sa : state_analysis) (env : env) (ue : unienv)
-    (msg : pexpr msg_expr) (param_tis : ty_index IdMap.t) : expr msg_expr = 
+    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd = 
   let l = loc msg.path in
   let port_exp =
     match msg.port_expr with
@@ -1087,13 +1086,19 @@ let check_send_direct
 
 let check_send_adversarial
     (sa : state_analysis) (env : env) (ue : unienv)
-    (msg : pexpr msg_expr) (param_tis : ty_index IdMap.t) : expr msg_expr = 
+    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd = 
   let () =
     match msg.port_expr with
     | Some port_exp ->
         type_error (loc port_exp)
         (fun ppf ->
            fprintf ppf
+     
+     
+     
+     
+     
+     
            "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
     | None          -> () in
   let args = check_msg_arguments sa env ue msg.args param_tis in
@@ -1101,7 +1106,7 @@ let check_send_adversarial
 
 let check_send_internal
     (sa : state_analysis) (env : env) (ue : unienv)
-    (msg : pexpr msg_expr) (param_tis : ty_index IdMap.t) : expr msg_expr =
+    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd =
   let () =
     match msg.port_expr with
     | Some port_exp ->
@@ -1128,13 +1133,13 @@ let get_msg_def_for_msg_path
   IdMap.find msg (snd bip)
 
 let check_send_msg_path
-    (msg : pexpr msg_expr) (abip : all_basic_inter_paths) : unit =
+    (msg : msg_expr) (abip : all_basic_inter_paths) : unit =
   let abip = outgoing_abip abip in
   check_outgoing_msg_path abip msg.path
 
 let check_msg_expr
     (abip : all_basic_inter_paths) (sa : state_analysis)
-    (env : env) (ue : unienv) (msg : pexpr msg_expr) : expr msg_expr = 
+    (env : env) (ue : unienv) (msg : msg_expr) : msg_expr_tyd = 
   let () = check_send_msg_path msg abip in
   let bips = abip.direct @ abip.adversarial @ abip.internal in
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
@@ -1149,15 +1154,15 @@ let check_msg_expr
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sa : state_analysis) (env : env) (ue : unienv)
-    (sat : pexpr send_and_transition) : (expr,pattern) instruction_u = 
+    (sat : send_and_transition) : instruction_tyd_u = 
   let msg_exp = check_msg_expr abip sa env ue sat.msg_expr in
   let state_exp = check_state_expr ss sa env ue sat.state_expr in
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
     (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
-    (clause : (pexpr,ppattern) match_clause)
-      : pattern * (pexpr,ppattern) instruction list located =
+    (clause : match_clause)
+      : symbol * (bindings * instruction list located) =
   let filter = fun op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
   let tvi = tvi |> EcUtils.omap (transtvi env ue) in
@@ -1201,14 +1206,14 @@ let check_toplevel_match_clause
       let pvars = List.map (fun x -> create (unloc x)) cargs in
       let pvars = List.combine pvars ctorty in
 
-      (ctorsym, pvars) , snd clause
+      ctorsym, (pvars , snd clause)
 
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (ex : pexpr) (tins : (pexpr,ppattern) instruction list located)
-    (eins_opt : (pexpr,ppattern) instruction list located option)
-      : ((expr,pattern) instruction_u) * state_analysis = 
+    (ex : pexpr) (tins : instruction list located)
+    (eins_opt : instruction list located option)
+    : instruction_tyd_u * state_analysis = 
   let ex,_ = check_expr sa env ue ex (Some tbool) in
   let sa1 = check_instructions abip ss sc sa env ue tins in
   let sa2 =
@@ -1222,8 +1227,8 @@ let rec check_ite
 and check_match
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (ex : pexpr) (clauses : (pexpr,ppattern) match_clause list located)
-      : ((expr,pattern) instruction_u) * state_analysis =
+    (ex : pexpr) (clauses : match_clause list located)
+      : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
   let exp,ty = check_expr sa env ue ex None in
   let inddecl =
@@ -1252,20 +1257,20 @@ and check_match
      of inddecl.tydt_ctors (with the order perhaps different) *)
   let results =
     List.map
-    (fun ((cons,bndgs), body) ->
+    (fun (cons,(bndgs, body)) ->
        let env = Var.bind_locals bndgs env in
-       (cons,bndgs), check_instructions abip ss sc sa env ue body)
+       cons,(bndgs, check_instructions abip ss sc sa env ue body))
     top_results in
-  let cls_u = List.map (fun (pat, (cl,_))-> pat, cl) results in
+  let cls_u = List.map (fun (cons, (bndngs,(ins,_)))-> cons, (bndngs,ins)) results in
   let cls = mk_loc (loc clauses) cls_u in
-  let sas = List.map (fun (_, (_,sa))-> sa) results in
+  let sas = List.map (fun (_, (_,(_,sa)))-> sa) results in
   Match(exp,cls), merge_state_analyses sas
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (env : env) (ue : unienv)
-    (sa : state_analysis) (i : (pexpr,ppattern) instruction) 
-    : ((expr,pattern) instruction) * state_analysis =
+    (sa : state_analysis) (i : instruction) 
+    : instruction_tyd * state_analysis =
   let uinstr,sa = 
   match unloc i with
   | Assign (lhs, ex)                    ->
@@ -1285,8 +1290,8 @@ and check_instruction
 and check_instructions
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (is : (pexpr,ppattern) instruction list located)
-      : ((expr,pattern) instruction list located) * state_analysis = 
+    (is : instruction list located)
+      : instruction_tyd list located * state_analysis = 
   let uis = unloc is in
   let uis',sa' = List.fold_left ( fun (il,sa) i ->
     let i',sa' = check_instruction abip ss sc env ue sa i in
@@ -1310,7 +1315,7 @@ let failure_to_transfer_control (l : EcLocation.t) =
      ("@[message@ match@ clause@ must@ end@ with@ control@ transfer@ via@ " ^^
       "\"fail\"@ or@ \"send-and-transition\"@ instruction@]"))
 
-let rec check_instrs_transfer_at_end (is : (expr,pattern) instruction list located) : unit =
+let rec check_instrs_transfer_at_end (is : instruction_tyd list located) : unit =
   let uis = unloc is in
   match uis with
   | [] -> failure_to_transfer_control (loc is)
@@ -1319,11 +1324,11 @@ let rec check_instrs_transfer_at_end (is : (expr,pattern) instruction list locat
       (List.iter check_instr_not_transfer xs;
        check_instr_end_in_transfer (List.last is))
 
-and check_instrs_not_transfer (is : (expr,pattern) instruction list located) : unit =
+and check_instrs_not_transfer (is : instruction_tyd list located) : unit =
   let uis = unloc is in
   List.iter check_instr_not_transfer uis
 
-and check_instr_end_in_transfer (instr : (expr,pattern) instruction) : unit =
+and check_instr_end_in_transfer (instr : instruction_tyd) : unit =
   let uinstr = unloc instr in
   match uinstr with
   | Assign _                    -> failure_to_transfer_control (loc instr)
@@ -1334,11 +1339,12 @@ and check_instr_end_in_transfer (instr : (expr,pattern) instruction) : unit =
        | None       -> failure_to_transfer_control (loc instr)
        | Some elses -> check_instrs_transfer_at_end elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, is) -> check_instrs_transfer_at_end is) (unloc clauses)
+      List.iter (fun (_, (_,is)) -> check_instrs_transfer_at_end is)
+        (unloc clauses)
   | SendAndTransition _         -> ()
   | Fail                        -> ()
 
-and check_instr_not_transfer (instr : (expr,pattern) instruction) : unit =
+and check_instr_not_transfer (instr : instruction_tyd) : unit =
   let uinstr = unloc instr in
   match uinstr with
   | Assign _                    -> ()
@@ -1349,7 +1355,7 @@ and check_instr_not_transfer (instr : (expr,pattern) instruction) : unit =
        | None       -> ()
        | Some elses -> check_instrs_not_transfer elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, is) -> check_instrs_not_transfer is) (unloc clauses)
+      List.iter (fun (_, (_,is)) -> check_instrs_not_transfer is) (unloc clauses)
   | SendAndTransition _         -> illegal_control_transfer (loc instr)
   | Fail                        -> illegal_control_transfer (loc instr)
 
@@ -1358,8 +1364,7 @@ and check_instr_not_transfer (instr : (expr,pattern) instruction) : unit =
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (is : (pexpr, ppattern) instruction list located)
-      : (expr, pattern) instruction list located = 
+    (is : instruction list located) : instruction_tyd list located = 
   let is' = fst (check_instructions abip ss sc sa env ue is) in
   check_instrs_transfer_at_end is';
   is'

@@ -24,7 +24,7 @@ open EcUtils
 open EcSymbols
 open EcEnv
 open EcTypes
-open UcEcSpec
+open UcSpec
 
 type opmatch = [
   | `Op   of EcPath.path * EcTypes.ty list
