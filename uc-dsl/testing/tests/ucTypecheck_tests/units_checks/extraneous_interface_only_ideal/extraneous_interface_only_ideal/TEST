@@ -1,5 +1,6 @@
 description
-
+Test when a unit with only ideal functionality has an extraneous
+interface.
 .
 args:-units extraneous_interface_only_ideal.uc
 outcome:failure

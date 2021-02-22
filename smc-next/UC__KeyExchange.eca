@@ -1,8 +1,7 @@
 (* UC__KeyExchange.eca *)
 
-(* Model for the machine-generated code for the KeyExchange real
-   and ideal functionalities and simulator, which need to be
-   cloned as a unit
+(* Model for the machine-generated code for the triple unit consisting
+   of the KeyExchange real and ideal functionalities and simulator
 
    Should be required and clone included in UC_KeyExchange.eca, which
    the user writes *)
@@ -27,7 +26,7 @@ op _adv_pi_num : int = 3.
 
 op _adv_pi_begin : int.
 
-axiom adv_pi_gt0 : 0 < _adv_pi_begin.
+axiom _adv_pi_begin_gt0 : 0 < _adv_pi_begin.
 
 (* end theory parameters *)
 
@@ -386,14 +385,14 @@ end UC_KEDir.
 theory UC__RF.  (* real functionality *)
 
 clone UC_Forwarding as UC_Fw1 with
-  op _adv_pi_begin <- _adv_sf_pi_Fw1
+  op _adv_if_pi <- _adv_sf_pi_Fw1
 proof *.
-realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
 
 clone UC_Forwarding as UC_Fw2 with
-  op _adv_pi_begin <- _adv_sf_pi_Fw2
+  op _adv_if_pi <- _adv_sf_pi_Fw2
 proof *.
-realize adv_pi_gt0. smt(adv_pi_gt0). qed.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
 
 (* state for Party 1 (Pt1) *)
 

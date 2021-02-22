@@ -2,7 +2,8 @@
 
 (* Ideal Forwarding Functionality *)
 
-(* This functionality implements authenticated forwarding (Fauth),
+(* This is a singleton unit, consisting of an ideal forwarding
+   functionality. It implements authenticated forwarding (Fauth),
    where the adversary is asked to approve the forwarding of a value,
    but may not corrupt either the value or its destination/source *)
 
@@ -10,7 +11,11 @@ prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import UCCore.
 
-require UC__Forwarding.  (* code for ideal functionality *)
+(* see UC__Forwarding for theory parameters that should be instantiated
+   when UC_Forwarding is cloned *)
+
+require UC__Forwarding.  (* code for singleton unit consisting of
+                            ideal functionality *)
 clone include UC__Forwarding.
 
 import UC__IF.

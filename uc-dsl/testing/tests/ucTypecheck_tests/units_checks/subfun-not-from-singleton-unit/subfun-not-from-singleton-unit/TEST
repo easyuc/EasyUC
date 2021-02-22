@@ -1,0 +1,11 @@
+description
+test when subfunctionality is not from a singleton unit
+.
+args: -units Base.uc
+outcome: failure
+[error: Base.uc: from line 24 columns 15 to 17]
+
+subfunctionality Foo of real functionality must be ideal functionality of
+unit with only ideal functionality and associated interfaces, but Sub.IF is
+not such an ideal functionality
+.

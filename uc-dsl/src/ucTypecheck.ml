@@ -1985,13 +1985,37 @@ let load_ec_reqs (reqs : (string located * bool) list) =
     UcEcInterface.require id (if imp then Some `Import else None) in
   List.iter reqimp reqs
 
+let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
+  let check_units_subfun sfid (root', ifid) =
+    (* root' will already have been checked to be a valid unit,
+       unless it's the current file, in which case all but the
+       subfunctionality check will have been completed (and
+       we'll know it's not a singleton unit) *)
+    let rf_names    = real_fun_names root' maps in
+    let if_names    = ideal_fun_names root' maps in
+    let sim_names   = sim_names root' maps in
+    if not (IdSet.cardinal rf_names  = 0  &&
+            IdSet.cardinal if_names  = 1  &&
+            IdSet.cardinal sim_names = 0)
+    then type_error (loc rf)
+         (fun ppf ->
+            fprintf ppf
+            ("@[subfunctionality@ %s@ of@ real@ functionality@ must@ " ^^
+             "be@ ideal@ functionality@ of@ unit@ with@ only@ ideal@ " ^^
+             "functionality@ and@ associated@ interfaces,@ but@ " ^^
+             "%a@ is@ not@ such@ an@ ideal functionality@]")
+            sfid (pp_id_pair_abbrev root) (root', ifid)) in
+  let rfbt = real_fun_body_tyd_of (unloc rf) in
+  let sub_funs = rfbt.sub_funs in
+   IdMap.iter check_units_subfun sub_funs
+
 let check_units
     (root : symbol) (qual_file : string) (maps : maps_tyd) : unit =
   let inter_names = inter_names root maps in
   let rf_names    = real_fun_names root maps in
   let if_names    = ideal_fun_names root maps in
   let sim_names   = sim_names root maps in
-  if IdSet.cardinal rf_names  = 0  &&
+  if IdSet.cardinal rf_names  = 0  &&  (* singleton unit *)
      IdSet.cardinal if_names  = 1  &&
      IdSet.cardinal sim_names = 0
     then let inter_names_reach =
@@ -2006,25 +2030,25 @@ let check_units
                 ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                  "because@ interface@ %s@ is@ extraneous@]")
                 root ex_id)
-  else if IdSet.cardinal rf_names  = 1  &&
+  else if IdSet.cardinal rf_names  = 1  &&  (* triple unit *)
           IdSet.cardinal if_names  = 1  &&
           IdSet.cardinal sim_names = 1
-    then let r_f_name = IdSet.min_elt rf_names in
-         let r_f = IdPairMap.find (root, r_f_name) maps.fun_map in
-         let i_f_name = IdSet.min_elt if_names in
-         let i_f = IdPairMap.find (root, i_f_name) maps.fun_map in
+    then let rf_name = IdSet.min_elt rf_names in
+         let rf = IdPairMap.find (root, rf_name) maps.fun_map in
+         let if_name = IdSet.min_elt if_names in
+         let i_f = IdPairMap.find (root, if_name) maps.fun_map in
          let sim_name = IdSet.min_elt sim_names in
          let sim = IdPairMap.find (root, sim_name) maps.sim_map in
          let inter_names_reach =
            IdSet.union
-           (inter_names_reach_fun root maps (IdSet.min_elt rf_names))
+           (inter_names_reach_fun root maps rf_name)
            (IdSet.union
-            (inter_names_reach_fun root maps (IdSet.min_elt if_names))
-            (inter_names_reach_sim root maps (IdSet.min_elt sim_names))) in
+            (inter_names_reach_fun root maps if_name)
+            (inter_names_reach_sim root maps sim_name)) in
          let extra_inter = IdSet.diff inter_names inter_names_reach in
-         (* from above we know that: (unloc sim).sims = r_f_name,
+         (* from above we know that: (unloc sim).sims = rf_name,
             as otherwise there wouldn't be a single real functionality *)
-         if id_dir_inter_of_fun_body_tyd (unloc r_f) <>
+         if id_dir_inter_of_fun_body_tyd (unloc rf) <>
             id_dir_inter_of_fun_body_tyd (unloc i_f)
            then type_error (begin_of_file_loc qual_file)
                 (fun ppf ->
@@ -2042,15 +2066,17 @@ let check_units
                     "ideal@ functionality's@ adversarial@ interface@ " ^^
                     "must@ be@ used@ by@ simulator@]")
                    root)
-         else match IdSet.min_elt_opt extra_inter with
-              | None       -> ()
-              | Some ex_id ->
-                  type_error (begin_of_file_loc qual_file)
-                  (fun ppf ->
-                     fprintf ppf
-                     ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
-                      "because@ interface@ %s@ is@ extraneous@]")
-                     root ex_id)
+         else let () =
+                match IdSet.min_elt_opt extra_inter with
+                | None       -> ()
+                | Some ex_id ->
+                    type_error (begin_of_file_loc qual_file)
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
+                        "because@ interface@ %s@ is@ extraneous@]")
+                       root ex_id) in
+              check_units_subfuns root maps rf
   else type_error (begin_of_file_loc qual_file)
        (fun ppf ->
           fprintf ppf

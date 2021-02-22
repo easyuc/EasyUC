@@ -1,7 +1,7 @@
 (* Key Exchange *)
 
-(* Real and ideal functionalities, and a simulator, for Diffie-Hellman
-   key exchange. *)
+(* Triple unit consisting of real and ideal functionalities, and a
+   simulator, for Diffie-Hellman key exchange. *)
 
 (* Requiring a .uc file makes the definitions of that file, plus those
    of all the EasyCrypt theories and .uc files required (directly, or

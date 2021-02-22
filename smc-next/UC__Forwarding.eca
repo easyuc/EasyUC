@@ -1,37 +1,24 @@
 (* UC__Forwarding.eca *)
 
-(* Model for the machine-generated code for the Forwarding ideal
-   functionality, generated from Forwarding.uc
+(* Model for the machine-generated code for the singleton unit
+   consisting of the Forwarding ideal functionality, generated from
+   Forwarding.uc
 
    Should be required and clone included in UC_Forwarding.eca, which
    the user writes *)
 
 require import UCBasicTypes.
 
-(* the port indices of the adversary/simulator that the unit
-   communicates with: _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num
-   - 1; the last of these is used for communication between the ideal
-   functionality and the adversary/simulator; the preceding ones are
-   used for communication between the parties and subfunctionalities
-   (in that order) of the real functionality (if the unit has one) and
-   the adversary *)
-
-op _adv_pi_num : int = 1.
-
 (* begin theory parameters *)
 
-op _adv_pi_begin : int.
+op _adv_if_pi : int.  (* port index of adversary that ideal functionality
+                         communicates with *)
 
-axiom adv_pi_gt0 : 0 < _adv_pi_begin.
+axiom _adv_if_pi_gt0 : 0 < _adv_if_pi.
 
 (* end theory parameters *)
 
-(* port index of adversary/simulator that ideal functionality
-   communicates with; a specification unit with just an ideal
-   functionality (no corresponding real functionaity or simulator) has
-   a single such port index *)
-
-op _adv_if_pi : int = _adv_pi_begin.
+(* basic direct interface *)
 
 theory UC_FwDir_.
 

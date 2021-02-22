@@ -1,0 +1,6 @@
+description
+Resolution of test when a unit has two real simulators.
+.
+args:-units two-simulatorsOK.uc
+outcome: success
+.

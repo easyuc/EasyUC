@@ -1,5 +1,6 @@
 description
-
+Resolution of test when real and ideal functionalities of unit
+implement different composite direct interfaces.
 .
 args:-units real_ideal_different_direct_interfaceOK.uc
 outcome: success

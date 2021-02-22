@@ -1,5 +1,6 @@
 description
-
+Resolution of test when ideal functionality and simulator have implement/use
+different adversarial interfaces.
 .
 args:-units simulator_ideal_different_adversarial_interfaceOK.uc
 outcome: success

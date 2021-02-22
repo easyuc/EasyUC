@@ -1,7 +1,7 @@
 (* Forwarding *)
 
-(* Unit consisting of a forwarding ideal functionality. The adversary
-   is allowed to delay but not alter message forwarding. *)
+(* Singleton unit consisting of a forwarding ideal functionality. The
+   adversary is allowed to delay but not alter message forwarding. *)
 
 (* In the basic direct interface, the identifiers in "pt1@" and "@pt2"
    are used to help in name choice in the generation of EasyCrypt
