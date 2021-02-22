@@ -108,6 +108,16 @@ let check_name_type_bindings_top
 let pp_ty env ppf ty =
   let ppe = EcPrinting.PPEnv.ofenv env in
   EcPrinting.pp_type ppe ppf ty
+  
+let pp_expr env ppf expr =
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  EcPrinting.pp_expr ppe ppf expr
+  
+let print_ex env ex =
+	Printf.eprintf "(* expression *)\n";
+        (fun ppf-> pp_expr env ppf ex) Format.err_formatter;
+        Format.pp_print_newline Format.err_formatter ();
+        Format.pp_print_newline Format.err_formatter ()
 
 (****************************** interface checks ******************************)
 
@@ -929,23 +939,11 @@ let check_msg_pat
   check_pat_args bips msg_pat env
 
 (* checking instructions *)
-let pp_expr env ppf expr =
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  EcPrinting.pp_expr ppe ppf expr
-  
-let print_ex env ex =
-	Printf.eprintf "(* expression *)\n";
-        (fun ppf-> pp_expr env ppf ex) Format.err_formatter;
-        Format.pp_print_newline Format.err_formatter ();
-        Format.pp_print_newline Format.err_formatter ()
- (* non_loc_warning_message (fun ppf-> pp_expr env ppf ex) *)
   
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
     (pexpr : pexpr) (expct_ty_opt : ty option) : expr * ty =
   let (exp, ty) = transexp env ue pexpr in
-  let () =
-    print_ex env exp in
   let () =
     match expct_ty_opt with
     | None          -> ()
