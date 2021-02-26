@@ -70,7 +70,7 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
             send Fw1.D.fw_req
                  (intport Pt2,  (* internal port of Pt2 *)
                   epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
-            and transition WaitFwd2(pt1, pt2, q1).
+            and transition WaitFwd2(pt1, q1).
           }
           else { fail. }
         }
@@ -78,7 +78,7 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
       end
     }
 
-    state WaitFwd2(pt1 : port, pt2 : port, q1 : exp) {
+    state WaitFwd2(pt1 : port, q1 : exp) {
       match message with
       (* We can only respond to a response message from forwarder Fw2,
          which arrives on the internal port of Pt1, giving us the
@@ -130,7 +130,7 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
               (pt1, pt2, k1) <- tr;
               q2 <$ dexp;
               send KEDir.Pt2.ke_rsp1(pt1, k1 ^ q2)@pt2
-              and transition WaitReq2(pt1, pt2, q2).
+              and transition WaitReq2(pt2, q2).
             }
           | None    => { fail. }  (* cannot happen *)
           end
@@ -139,7 +139,7 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
       end
     }
 
-    state WaitReq2(pt1 : port, pt2 : port, q2 : exp) {
+    state WaitReq2(pt2 : port, q2 : exp) {
       match message with
       | pt2'@KEDir.Pt2.ke_req2 => { 
           if (pt2' = pt2) {

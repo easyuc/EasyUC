@@ -11,12 +11,21 @@ prover quorum=2 ["Alt-Ergo" "Z3"].
 
 require import UCCore.
 
-(* see UC__Forwarding for theory parameters that should be instantiated
-   when UC_Forwarding is cloned *)
+(* begin theory parameters *)
+
+op _adv_if_pi : int.  (* port index of adversary that ideal functionality
+                         communicates with *)
+
+axiom _adv_if_pi_gt0 : 0 < _adv_if_pi.
+
+(* end theory parameters *)
 
 require UC__Forwarding.  (* code for singleton unit consisting of
                             ideal functionality *)
-clone include UC__Forwarding.
+clone import UC__Forwarding as UC__Code with
+  op _adv_if_pi <- _adv_if_pi
+proof *.
+realize _adv_if_pi_gt0. smt(_adv_if_pi_gt0). qed.
 
 import UC__IF.
 
@@ -34,9 +43,9 @@ op term_metric_max : int = 2.
 
 op term_metric (g : glob UC_Forw) : int =
      match g.`1 with
-     | _StateInit       => 2
-     | _StateWait _ _ _ => 1
-     | _StateFinal      => 0
+     | _State_Init       => 2
+     | _State_Wait _ _ _ => 1
+     | _State_Final      => 0
      end.
 
 lemma ge0_term_metric (g : glob UC_Forw) : 0 <= term_metric g.
@@ -95,15 +104,15 @@ qed.
 (* phoare lemmas for invoke *)
 
 pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
-  is_valid UC_FwDir.D.epdp_fw_req_msg m /\
-  (oget (UC_FwDir.D.epdp_fw_req_msg.`dec m)).`UC_FwDir.D.fw_req__func = self /\
+  is_valid UC_FwDir.D.epdp_fw_req m /\
+  (oget (UC_FwDir.D.epdp_fw_req.`dec m)).`UC_FwDir.D.fw_req__func = self /\
   envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req_pt1 /\
   envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req_pt2.
 
 lemma UC_Forw_invoke_init_fw_req (m' : msg) :
   phoare
   [UC_Forw.invoke :
-   m' = m /\ UC_Forw._st = _StateInit /\
+   m' = m /\ UC_Forw._st = _State_Init /\
    forw_invoke_init_fw_req UC_Forw._self UC_Forw._adv m ==>
    let fwr = oget (UC_FwDir.D.dec_fw_req m') in
    res =
@@ -115,7 +124,7 @@ lemma UC_Forw_invoke_init_fw_req (m' : msg) :
       UC_FwAdv.fw_obs_pt2   = fwr.`UC_FwDir.D.fw_req_pt2;
       UC_FwAdv.fw_obs_u     = fwr.`UC_FwDir.D.fw_req_u|}) /\
    UC_Forw._st =
-     _StateWait fwr.`UC_FwDir.D.fw_req_pt1 fwr.`UC_FwDir.D.fw_req_pt2
+     _State_Wait fwr.`UC_FwDir.D.fw_req_pt1 fwr.`UC_FwDir.D.fw_req_pt2
      fwr.`UC_FwDir.D.fw_req_u /\
    envport UC_Forw._self UC_Forw._adv fwr.`UC_FwDir.D.fw_req_pt2] = 1%r.
 proof.
@@ -124,7 +133,7 @@ sp 1.
 rcondt 1; first auto; smt(UC_FwDir.D.eq_of_valid_fw_req).
 inline UC_Forw.parties.
 sp 2.
-match _StateInit 1; first auto; smt().
+match _State_Init 1; first auto; smt().
 match Some 1.
 auto; smt(some_oget).
 rcondt 1; first auto; progress; smt().
@@ -135,17 +144,17 @@ qed.
 lemma UC_Forw_invoke_init_bad :
   phoare
   [UC_Forw.invoke :
-   UC_Forw._st = _StateInit /\
+   UC_Forw._st = _State_Init /\
    ! forw_invoke_init_fw_req UC_Forw._self UC_Forw._adv m ==>
-   res = None /\ UC_Forw._st = _StateInit] = 1%r.
+   res = None /\ UC_Forw._st = _State_Init] = 1%r.
 proof.
 proc.
 sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _StateInit 1; first auto; smt().
-case (UC_FwDir.D.epdp_fw_req_msg.`dec _m = None).
+match _State_Init 1; first auto; smt().
+case (UC_FwDir.D.epdp_fw_req.`dec _m = None).
 match None 1; first auto.
 auto.
 match Some 1; first auto; smt().
@@ -155,49 +164,49 @@ auto.
 qed.
 
 pred forw_invoke_wait_fw_ok (self adv : addr, pt2 : port, m : msg) =
-  is_valid UC_FwAdv.epdp_fw_ok_msg m /\
-  (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m)).`UC_FwAdv.fw_ok__func = self /\
-  (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m)).`UC_FwAdv.fw_ok__adv = adv /\
-  (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m)).`UC_FwAdv.fw_ok__func = self /\
+  is_valid UC_FwAdv.epdp_fw_ok m /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__func = self /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__adv = adv /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__func = self /\
   envport self adv pt2.
 
 lemma UC_Forw_invoke_wait_fw_ok (st' : _state, m' : msg) :
   phoare
   [UC_Forw.invoke :
-   st' = UC_Forw._st /\ m' = m /\ get_as__StateWait UC_Forw._st <> None /\
+   st' = UC_Forw._st /\ m' = m /\ get_as__State_Wait UC_Forw._st <> None /\
    forw_invoke_wait_fw_ok UC_Forw._self UC_Forw._adv
-   (oget (get_as__StateWait UC_Forw._st)).`2 m ==>
-   let wait = oget (get_as__StateWait st') in
+   (oget (get_as__State_Wait UC_Forw._st)).`2 m ==>
+   let wait = oget (get_as__State_Wait st') in
    res =
    Some
-   (UC_FwDir.D.epdp_fw_rsp_msg.`enc
+   (UC_FwDir.D.epdp_fw_rsp.`enc
     {|UC_FwDir.D.fw_rsp__func = UC_Forw._self; UC_FwDir.D.fw_rsp_pt1 = wait.`1;
       UC_FwDir.D.fw_rsp_pt2 = wait.`2; UC_FwDir.D.fw_rsp_u = wait.`3|}) /\
-   UC_Forw._st = _StateFinal] = 1%r.
+   UC_Forw._st = _State_Final] = 1%r.
 proof.
 proc.
 sp 1.
 rcondt 1; first auto; smt(UC_FwAdv.eq_of_valid_fw_ok).
 inline UC_Forw.parties.
 sp 2.
-match _StateWait 1.
+match _State_Wait 1.
 auto => |> &hr.
-rewrite /get_as__StateWait.
+rewrite /get_as__State_Wait.
 case st' => // pt1 pt2 u /= _.
 by exists pt1 pt2 u.
 match Some 1; first auto => |> &hr.
-rewrite /get_as__StateWait /= /#.
+rewrite /get_as__State_Wait /= /#.
 rcondt 1; first auto => |> &hr _ _.
-by rewrite /forw_invoke_wait_fw_ok /get_as__StateWait.
-auto; by rewrite /get_as__StateWait.
+by rewrite /forw_invoke_wait_fw_ok /get_as__State_Wait.
+auto; by rewrite /get_as__State_Wait.
 qed.
 
 lemma UC_Forw_invoke_wait_bad (st' : _state) :
   phoare
   [UC_Forw.invoke :
-   st' = UC_Forw._st /\ get_as__StateWait UC_Forw._st <> None /\
+   st' = UC_Forw._st /\ get_as__State_Wait UC_Forw._st <> None /\
    ! forw_invoke_wait_fw_ok UC_Forw._self UC_Forw._adv
-     (oget (get_as__StateWait UC_Forw._st)).`2 m ==>
+     (oget (get_as__State_Wait UC_Forw._st)).`2 m ==>
    res = None /\ UC_Forw._st = st'] = 1%r.
 proof.
 proc.
@@ -205,17 +214,17 @@ sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _StateWait 1.
+match _State_Wait 1.
 auto => /> &hr.
-rewrite /get_as__StateWait.
+rewrite /get_as__State_Wait.
 case st' => // pt1 pt2 u /= _ _.
 by exists pt1 pt2 u.
-case (UC_FwAdv.epdp_fw_ok_msg.`dec _m = None).
+case (UC_FwAdv.epdp_fw_ok.`dec _m = None).
 match None 1; first auto.
 auto.
 match Some 1.
 auto; progress.
-exists (oget (UC_FwAdv.epdp_fw_ok_msg.`dec m{hr})).
+exists (oget (UC_FwAdv.epdp_fw_ok.`dec m{hr})).
 smt(some_oget).
 if.
 exfalso; smt(oget_some UC_FwAdv.eq_of_valid_fw_ok).
@@ -226,15 +235,15 @@ qed.
 lemma UC_Forw_invoke_final :
   phoare
   [UC_Forw.invoke :
-   UC_Forw._st = _StateFinal ==>
-   res = None /\ UC_Forw._st = _StateFinal] = 1%r.
+   UC_Forw._st = _State_Final ==>
+   res = None /\ UC_Forw._st = _State_Final] = 1%r.
 proof.
 proc.
 sp 1.
 if.
 inline UC_Forw.parties.
 sp 2.
-match _StateFinal 1; first auto; smt().
+match _State_Final 1; first auto; smt().
 auto.
 auto.
 qed.
