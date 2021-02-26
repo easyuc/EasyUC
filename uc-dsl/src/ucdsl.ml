@@ -12,6 +12,7 @@ open Arg
 open Batteries
 open UcMessage
 open UcParseAndTypecheckFile
+open UcGenerateEcFile
 
 let () = Printexc.record_backtrace true
 
@@ -106,5 +107,6 @@ let () =
 
 let () =
   UcEcInterface.init ();
-  ignore (parse_and_typecheck_file_or_id (FOID_File file));
+  let ts = (parse_and_typecheck_file_or_id (FOID_File file))
+  in generate_ec ts;
   exit 0
