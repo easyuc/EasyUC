@@ -398,47 +398,79 @@ realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
 
 (* state for Party 1 (Pt1) *)
 
-type _Pt1_state = [
-  | _Pt1_State_WaitReq1
-  | _Pt1_State_WaitFw2 of port & exp
-  | _Pt1_State_Final
+type _state_Pt1 = [
+  | _State_Pt1__WaitReq1
+  | _State_Pt1__WaitFw2 of port & exp
+  | _State_Pt1__Final
 ].
 
 (* state for Party 2 (Pt2) *)
 
-type _Pt2_state = [
-  | _Pt2_State_WaitFw1
-  | _Pt2_State_WaitReq2 of port & exp
-  | _Pt2_State_Final
+type _state_Pt2 = [
+  | _State_Pt2__WaitFw1
+  | _State_Pt2__WaitReq2 of port & exp
+  | _State_Pt2__Final
 ].
 
 op _addr_Fw1 (self : addr) : addr = self ++ [1].
 op _addr_Fw2 (self : addr) : addr = self ++ [2].
 
-op _ext_port_Pt1 (self : addr) : port = (self, 1).
-op _ext_port_Pt2 (self : addr) : port = (self, 2).
+op _extport_Pt1 (self : addr) : port = (self, 1).
+op _extport_Pt2 (self : addr) : port = (self, 2).
 
-op _int_port_Pt1 (self : addr) : port = (self, 3).
-op _int_port_Pt2 (self : addr) : port = (self, 4).
+op _intport_Pt1 (self : addr) : port = (self, 3).
+op _intport_Pt2 (self : addr) : port = (self, 4).
 
+type _match_Pt1__WaitReq1 = [
+  | _Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 of UC_KEDir.Pt1.ke_req1
+  | _Match_other_Pt1__WaitReq1
+].
+
+op _match_Pt1__WaitReq1 (self : addr, m : msg) : _match_Pt1__WaitReq1 =
+  let a =
+    match UC_KEDir.Pt1.epdp_ke_req1.`dec m with
+    | Some x =>
+        (* will have x.`UC_KEDir.Pt1.ke_req1___fun = self *)
+        Some (_Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 x)
+    | None => None
+    end in
+  ((a = None) ? _Match_other_Pt1__WaitReq1 : oget a).
+
+type _match_Pt1__WaitFw2 = [
+  | _Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp
+      of UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp
+  | _Match_other_Pt1__WaitFw2
+].
+
+op _match_Pt1__WaitFw2 (self : addr, m : msg) : _match_Pt1__WaitFw2 =
+  let a =
+    match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec m with
+    | Some x =>
+        if x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp___func = _addr_Fw2 self /\
+           x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt2 self
+        then Some (_Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp x)
+        else None
+    | None => None
+    end in
+  ((a = None) ? _Match_other_Pt1__WaitFw2 : oget a).
 
 module UC_KEReal = {
   var _self, _adv : addr
-  var _st_Pt1 : _Pt1_state
-  var _st_Pt2 : _Pt2_state
+  var _st1_Pt1 : _state_Pt1
+  var _st2_Pt2 : _state_Pt2
 
   proc init(self_ adv_ : addr) : unit = {
     _self <- self_; _adv <- adv_;
     UC_Fw1.UC__Code.UC__IF.UC_Forw.init(_addr_Fw1 _self, _adv);
     UC_Fw2.UC__Code.UC__IF.UC_Forw.init(_addr_Fw2 _self, _adv);
-    _st_Pt1 <- _Pt1_State_WaitReq1; _st_Pt2 <- _Pt2_State_WaitFw1;
+    _st1_Pt1 <- _State_Pt1__WaitReq1; _st2_Pt2 <- _State_Pt2__WaitFw1;
   }
 
   proc party_Pt1(_m : msg) : msg option = {
     var _r : msg option <- None;
     var q1 : exp;
-    match _st_Pt1 with
-    | _Pt1_State_WaitReq1 => {
+    match _st1_Pt1 with
+    | _State_Pt1__WaitReq1 => {
         match UC_KEDir.Pt1.epdp_ke_req1.`dec _m with
         | Some _x => {
             (* _x.`UC_KEDir.Pt1.ke_req1__func = _self /\
@@ -451,22 +483,22 @@ module UC_KEReal = {
                  {|UC_Fw1.UC__Code.UC_FwDir.D.fw_req__func =  (* destination *)
                      _addr_Fw1 _self;
                    UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt1   =  (* source *)
-                     _int_port_Pt1 _self;
+                     _intport_Pt1 _self;
                    (* data: *)
                    UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt2   =
-                     _int_port_Pt2 _self;
+                     _intport_Pt2 _self;
                    UC_Fw1.UC__Code.UC_FwDir.D.fw_req_u     =
                      epdp_port_port_key_univ.`enc
                      (_x.`UC_KEDir.Pt1.ke_req1_pt1,
                       _x.`UC_KEDir.Pt1.ke_req1_pt2,
                       g ^ q1)|});
-              _st_Pt1 <- _Pt1_State_WaitFw2 _x.`UC_KEDir.Pt1.ke_req1_pt1 q1;
+              _st1_Pt1 <- _State_Pt1__WaitFw2 _x.`UC_KEDir.Pt1.ke_req1_pt1 q1;
             }
           }
         | None => { }
         end;
       }
-    | _Pt1_State_WaitFw2 pt1 q1 => {
+    | _State_Pt1__WaitFw2 pt1 q1 => {
         match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec _m with
         | Some _x => {
             match epdp_key_univ.`dec
@@ -480,10 +512,10 @@ module UC_KEReal = {
                     (UC_KEDir.Pt1.epdp_ke_rsp2.`enc
                      {|UC_KEDir.Pt1.ke_rsp2__func = _self;  (* source *)
                        UC_KEDir.Pt1.ke_rsp2_pt1   =  (* destination *)
-                         _ext_port_Pt1 _self;
+                         _extport_Pt1 _self;
                        (* data: *)
                        UC_KEDir.Pt1.ke_rsp2_k   = k2 ^ q1|});
-                    _st_Pt1 <- _Pt1_State_Final;
+                    _st1_Pt1 <- _State_Pt1__Final;
                 }
               }
             | None => { }
@@ -492,7 +524,7 @@ module UC_KEReal = {
         | None => { }
         end;
       }
-    | _Pt1_State_Final => { }
+    | _State_Pt1__Final => { }
     end;
     return _r;
   }
@@ -504,7 +536,7 @@ TODO starting here...
     var pt1, pt2 : port; var q2 : exp; var k1 : key;
     var r : msg option <- None;
     match st2 with
-      _Pt2_State_WaitFw1 => {
+      _State_Pt2__WaitFw1 => {
         match Fw1.dec_fw_rsp m with
           Some x => {
               if (x.`Fw1.fw_rsp_pt2 = (self, 4)) {
@@ -517,13 +549,13 @@ TODO starting here...
                   (ke_rsp1
                    ({|ke_rsp1_func = self; ke_rsp1_pt1 = pt1;
                       ke_rsp1_pt2 = pt2; ke_rsp1_key = k1 ^ q2|}));
-                st2 <- _Pt2_State_WaitReq2 pt2 q2;
+                st2 <- _State_Pt2__WaitReq2 pt2 q2;
               }
           }
         | None   => { }
         end;
       }
-    | _Pt2_State_WaitReq2 pt2 q2 => {
+    | _State_Pt2__WaitReq2 pt2 q2 => {
         match dec_ke_req2 m with
           Some x => {
             (* destination of m is (self, 2) *)
@@ -535,13 +567,13 @@ TODO starting here...
                    Fw2.fw_req_pt1  = (self, 4);
                    Fw2.fw_req_pt2  = (self, 3);
                    Fw2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
-              st2 <- _Pt2_State_Final;
+              st2 <- _State_Pt2__Final;
             }
           }
         | None   => { }
         end;
       }
-    | _Pt2_State_Final => { }
+    | _State_Pt2__Final => { }
     end;
     return r;
   }

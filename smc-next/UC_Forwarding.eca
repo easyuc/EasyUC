@@ -105,9 +105,9 @@ qed.
 
 pred forw_invoke_init_fw_req (self adv : addr, m : msg) =
   is_valid UC_FwDir.D.epdp_fw_req m /\
-  (oget (UC_FwDir.D.epdp_fw_req.`dec m)).`UC_FwDir.D.fw_req__func = self /\
-  envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req_pt1 /\
-  envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req_pt2.
+  (oget (UC_FwDir.D.epdp_fw_req.`dec m)).`UC_FwDir.D.fw_req___func = self /\
+  envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req__pt1 /\
+  envport self adv (oget (UC_FwDir.D.dec_fw_req m)).`UC_FwDir.D.fw_req__pt2.
 
 lemma UC_Forw_invoke_init_fw_req (m' : msg) :
   phoare
@@ -118,15 +118,15 @@ lemma UC_Forw_invoke_init_fw_req (m' : msg) :
    res =
    Some
    (UC_FwAdv.enc_fw_obs
-    {|UC_FwAdv.fw_obs__func = fwr.`UC_FwDir.D.fw_req__func;
-      UC_FwAdv.fw_obs__adv  = UC_Forw._adv;
-      UC_FwAdv.fw_obs_pt1   = fwr.`UC_FwDir.D.fw_req_pt1;
-      UC_FwAdv.fw_obs_pt2   = fwr.`UC_FwDir.D.fw_req_pt2;
-      UC_FwAdv.fw_obs_u     = fwr.`UC_FwDir.D.fw_req_u|}) /\
+    {|UC_FwAdv.fw_obs___func = fwr.`UC_FwDir.D.fw_req___func;
+      UC_FwAdv.fw_obs___adv  = UC_Forw._adv;
+      UC_FwAdv.fw_obs__pt1   = fwr.`UC_FwDir.D.fw_req__pt1;
+      UC_FwAdv.fw_obs__pt2   = fwr.`UC_FwDir.D.fw_req__pt2;
+      UC_FwAdv.fw_obs__u     = fwr.`UC_FwDir.D.fw_req__u|}) /\
    UC_Forw._st =
-     _State_Wait fwr.`UC_FwDir.D.fw_req_pt1 fwr.`UC_FwDir.D.fw_req_pt2
-     fwr.`UC_FwDir.D.fw_req_u /\
-   envport UC_Forw._self UC_Forw._adv fwr.`UC_FwDir.D.fw_req_pt2] = 1%r.
+     _State_Wait fwr.`UC_FwDir.D.fw_req__pt1 fwr.`UC_FwDir.D.fw_req__pt2
+     fwr.`UC_FwDir.D.fw_req__u /\
+   envport UC_Forw._self UC_Forw._adv fwr.`UC_FwDir.D.fw_req__pt2] = 1%r.
 proof.
 proc.
 sp 1.
@@ -165,9 +165,9 @@ qed.
 
 pred forw_invoke_wait_fw_ok (self adv : addr, pt2 : port, m : msg) =
   is_valid UC_FwAdv.epdp_fw_ok m /\
-  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__func = self /\
-  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__adv = adv /\
-  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok__func = self /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok___func = self /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok___adv = adv /\
+  (oget (UC_FwAdv.epdp_fw_ok.`dec m)).`UC_FwAdv.fw_ok___func = self /\
   envport self adv pt2.
 
 lemma UC_Forw_invoke_wait_fw_ok (st' : _state, m' : msg) :
@@ -180,8 +180,8 @@ lemma UC_Forw_invoke_wait_fw_ok (st' : _state, m' : msg) :
    res =
    Some
    (UC_FwDir.D.epdp_fw_rsp.`enc
-    {|UC_FwDir.D.fw_rsp__func = UC_Forw._self; UC_FwDir.D.fw_rsp_pt1 = wait.`1;
-      UC_FwDir.D.fw_rsp_pt2 = wait.`2; UC_FwDir.D.fw_rsp_u = wait.`3|}) /\
+    {|UC_FwDir.D.fw_rsp___func = UC_Forw._self; UC_FwDir.D.fw_rsp__pt1 = wait.`1;
+      UC_FwDir.D.fw_rsp__pt2 = wait.`2; UC_FwDir.D.fw_rsp__u = wait.`3|}) /\
    UC_Forw._st = _State_Final] = 1%r.
 proof.
 proc.
