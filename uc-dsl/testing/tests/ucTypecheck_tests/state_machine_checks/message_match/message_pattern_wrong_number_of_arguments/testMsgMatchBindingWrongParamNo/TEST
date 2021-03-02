@@ -3,7 +3,7 @@ This test fails because A.A.bla() expects no arguments
 .
 args: testMsgMatchBindingWrongParamNo.uc
 outcome: failure
-[error: testMsgMatchBindingWrongParamNo.uc: from line 23 columns 14 to 15]
+[error: testMsgMatchBindingWrongParamNo.uc: from line 21 columns 14 to 15]
 
 the number of argument patterns is different from the number of message
 parameters

@@ -1,11 +1,11 @@
 uc_requires Sub.
 
-direct D_ {
+direct D' {
   in x@bla()
   out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 adversarial I {
   in  bla()

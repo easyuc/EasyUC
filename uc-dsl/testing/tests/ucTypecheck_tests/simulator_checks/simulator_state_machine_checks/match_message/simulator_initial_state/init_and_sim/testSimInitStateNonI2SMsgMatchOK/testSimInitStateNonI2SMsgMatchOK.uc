@@ -1,9 +1,9 @@
-direct D_ {
+direct D' {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 adversarial Iio {
 in  bla()

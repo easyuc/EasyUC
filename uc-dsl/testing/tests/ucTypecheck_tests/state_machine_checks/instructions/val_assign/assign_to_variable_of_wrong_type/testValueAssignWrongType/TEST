@@ -3,7 +3,7 @@ This test checks assignment operation between incompatible types
 .
 args: testValueAssignWrongType.uc
 outcome: failure
-[error: testValueAssignWrongType.uc: from line 17 columns 15 to 18]
+[error: testValueAssignWrongType.uc: from line 17 columns 23 to 26]
 
 This expression has type
    key

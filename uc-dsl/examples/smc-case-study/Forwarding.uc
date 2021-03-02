@@ -8,7 +8,7 @@
    code. But see below how they are used in message pattern matching
    and send and transition instructions. *)
 
-direct FwDir_ {
+direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send
     u to pt2 *)
 
@@ -20,7 +20,7 @@ direct FwDir_ {
    a corresponding real functionality, it would thus have a single
    protocol party. *)
 
-direct FwDir {D : FwDir_}
+direct FwDir {D : FwDir'}
 
 (* An ideal functionality must have a basic adversarial interface: *)
 

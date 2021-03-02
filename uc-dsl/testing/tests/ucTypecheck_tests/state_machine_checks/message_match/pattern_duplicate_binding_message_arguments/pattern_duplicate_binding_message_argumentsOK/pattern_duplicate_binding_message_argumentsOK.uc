@@ -1,9 +1,9 @@
-direct D_ {
+direct D' {
 in x@bla(b1:bool, b2:bool)
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 functionality S() implements D {
 

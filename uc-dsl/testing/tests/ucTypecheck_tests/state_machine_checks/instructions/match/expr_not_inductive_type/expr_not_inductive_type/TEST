@@ -1,5 +1,5 @@
 description
-
+Test where match instruction matches on non-inductive type.
 .
 args: expr_not_inductive_type.uc
 outcome: failure

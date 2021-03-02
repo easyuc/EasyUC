@@ -3,7 +3,7 @@ This test fails becuase hen is unkown operator
 .
 args: testExprNonexistingFun.uc
 outcome:  failure
-[error: testExprNonexistingFun.uc: from line 17 columns 14 to 17]
+[error: testExprNonexistingFun.uc: from line 17 columns 22 to 25]
 
 no matching operator, named `hen', for the following parameters' type:
   [1]: exp

@@ -1,9 +1,9 @@
-direct A_ {
+direct A' {
 in  x@bla()
 out bli()@x
 }
 
-direct A {A:A_}
+direct A {A:A'}
 
 functionality F() implements A {
 
@@ -11,7 +11,7 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    A.A.*  => {send A.A.bli() and transition I.}
+    x@A.A.bla  => {send A.A.bli() and transition I.}
    end
   }
  }

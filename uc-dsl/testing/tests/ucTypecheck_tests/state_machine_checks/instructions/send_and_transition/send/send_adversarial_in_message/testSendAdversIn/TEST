@@ -4,7 +4,7 @@ And we cannot send a message which is not of type out
 .
 args: testSendAdversIn.uc
 outcome: failure
-[error: testSendAdversIn.uc: from line 21 columns 21 to 28]
+[error: testSendAdversIn.uc: from line 21 columns 25 to 32]
 
 message path is not one of the possible outgoing message paths:
   D.D.bli, A.A.bli

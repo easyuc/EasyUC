@@ -1,5 +1,5 @@
 description
-
+Test where clauses of match instruction are non-exhaustive.
 .
 args: nonexhaustive_matchOK.uc
 outcome: success

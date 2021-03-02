@@ -228,6 +228,14 @@ and instruction = instruction_u located
 
 and match_clause = ppattern * instruction list located
 
+let isUnconditionalFailure (ill : instruction list located) =
+  match (unloc ill) with
+  | [instr] ->
+      (match (unloc instr) with
+       | Fail -> true
+       | _    -> false)
+  | _       -> false
+
 (* state machines *)
 
 type msg_match_clause =                 (* message match clause *)

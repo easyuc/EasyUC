@@ -1,5 +1,6 @@
 description
-
+Resolution of test of match instruction where pattern uses same
+identifier twice.
 .
 args: duplicate_in_patternOK.uc
 outcome: success

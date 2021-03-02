@@ -4,7 +4,7 @@ D.D.bli
 .
 args: testSendInternOut.uc
 outcome: failure
-[error: testSendInternOut.uc: from line 14 columns 21 to 28]
+[error: testSendInternOut.uc: from line 14 columns 25 to 32]
 
 message path is not one of the possible outgoing message paths:
   D.D.bli, G.D.bla

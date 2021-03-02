@@ -1,16 +1,16 @@
-direct D_ {
+direct D' {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
-adversarial A_ {
+adversarial A' {
 in  abla()
 out abli()
 }
 
-adversarial A {A:A_}
+adversarial A {A:A'}
 
 adversarial Iio {
 in  i2sbla()

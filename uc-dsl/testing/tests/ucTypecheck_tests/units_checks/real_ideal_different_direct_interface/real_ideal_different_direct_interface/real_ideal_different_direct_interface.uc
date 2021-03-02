@@ -1,11 +1,11 @@
-direct D_ {
+direct D' {
 in x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
-direct Di {D:D_}
+direct Di {D:D'}
 
 adversarial I {
 in  bla()

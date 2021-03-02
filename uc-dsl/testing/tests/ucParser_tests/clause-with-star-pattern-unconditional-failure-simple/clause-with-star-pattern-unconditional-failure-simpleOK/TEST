@@ -1,0 +1,7 @@
+description
+Test that message matching clause with simple * pattern must
+have instruction block consisting of { fail. }
+.
+args: good.uc
+outcome: success
+.

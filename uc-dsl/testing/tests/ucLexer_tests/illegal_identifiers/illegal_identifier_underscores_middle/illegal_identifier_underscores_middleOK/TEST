@@ -1,0 +1,6 @@
+description
+Test of illegal identifer because has "__" in middle.
+.
+args: good.uc
+outcome: success
+.

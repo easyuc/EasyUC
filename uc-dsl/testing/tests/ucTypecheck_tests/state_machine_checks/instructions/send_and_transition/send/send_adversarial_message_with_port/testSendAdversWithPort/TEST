@@ -4,7 +4,7 @@ message with a destination port.
 .
 args: testSendAdversWithPort.uc
 outcome: failure
-[error: testSendAdversWithPort.uc: from line 21 columns 32 to 38]
+[error: testSendAdversWithPort.uc: from line 21 columns 35 to 41]
 
 adversarial messages must not have destination ports
 .

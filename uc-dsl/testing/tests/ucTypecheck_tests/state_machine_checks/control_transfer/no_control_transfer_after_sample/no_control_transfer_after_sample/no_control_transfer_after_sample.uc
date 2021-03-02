@@ -1,11 +1,11 @@
 ec_requires +KeysExponentsAndPlainTexts.
 
-direct D_ {
+direct D' {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 functionality F implements D {
 
@@ -14,7 +14,7 @@ functionality F implements D {
   initial state I {
    var x : exp;
    match message with
-    * => {x <$ dexp; }
+    y@D.D.bla => {x <$ dexp; }
    end
   }
  }

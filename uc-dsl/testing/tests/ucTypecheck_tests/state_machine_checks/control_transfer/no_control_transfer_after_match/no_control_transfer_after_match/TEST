@@ -1,5 +1,5 @@
 description
-
+Test when match instruction is not followed with control transfer.
 .
 args: no_control_transfer_after_match.uc
 outcome:  failure

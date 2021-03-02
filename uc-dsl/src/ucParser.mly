@@ -626,12 +626,20 @@ msg_match_clause :
          match (unloc mp).msg_or_star with
          | MsgOrStarMsg _ -> ()
          | MsgOrStarStar  ->
-             if Option.is_some msg_pat.pat_args
-             then parse_error (loc mp)
-                  (fun ppf ->
-                     fprintf ppf
-                     ("@[message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
-                      "may@ not@ have@ pattern@ arguments@]")));
+             if not (isUnconditionalFailure code)
+               then parse_error (loc code)
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[message@ match@ clause@ whose@ message@ " ^^
+                        "pattern@ has@ path@ ending@ in@ a@ \"*\"@ " ^^
+                        "must@ have@ instruction@ block@ that@ is@ " ^^
+                        "unconditional@ failure@]"))
+             else if Option.is_some msg_pat.pat_args
+               then parse_error (loc mp)
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
+                        "may@ not@ have@ pattern@ arguments@]")));
         {msg_pat = msg_pat; code = code } }
 
 msg_pat :
