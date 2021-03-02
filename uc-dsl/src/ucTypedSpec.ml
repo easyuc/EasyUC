@@ -11,7 +11,7 @@
 open EcLocation
 open EcSymbols
 open EcTypes
-open UcSpec
+open UcSpecTypedSpecCommon
 
 (* maps and sets *)
 
@@ -164,12 +164,48 @@ type inter_tyd = inter_body_tyd located  (* typed interface *)
 
 (* state machines, typed functionalities and simulators *)
 
+(* message and state expressions *)
+
+type msg_expr_tyd =
+  {path      : msg_path;           (* message path *)
+   args      : expr list located;  (* message arguments *)
+   port_expr : expr option}        (* message destination - port expr *)
+
+type state_expr_tyd =
+  {id   : psymbol;            (* state to transition to *)
+   args : expr list located}  (* arguments of new state *)
+
+(* instructions *)
+
+type send_and_transition_tyd =
+  {msg_expr   : msg_expr_tyd;    (* message to send *)
+   state_expr : state_expr_tyd}  (* state to transition to *)
+
+type bindings = ((EcIdent.t * EcTypes.ty) list)
+
+type instruction_tyd_u =
+  | Assign of lhs * expr                           (* ordinary assignment *)
+  | Sample of lhs * expr                           (* sampling assignment *)
+  | ITE of expr * instruction_tyd list located *   (* if-then-else *)
+           instruction_tyd list located option
+  | Match of expr * match_clause_tyd list located  (* match instruction *)
+  | SendAndTransition of send_and_transition_tyd   (* send and transition *)
+  | Fail                                           (* failure *)
+
+and instruction_tyd = instruction_tyd_u located
+
+and match_clause_tyd = symbol * (bindings * instruction_tyd list located)
+
+type msg_match_clause_tyd =                 (* message match clause *)
+  {msg_pat : msg_pat;                       (* message pattern *)
+   code    : instruction_tyd list located}  (* code of clause *)
+
 type state_body_tyd =
-  {is_initial : bool;                   (* the initial state? *)
-   params     : ty_index IdMap.t;       (* typed parameters, index is
-                                           parameter number *)
-   vars       : ty located IdMap.t;     (* local variables *)
-   mmclauses  : msg_match_clause list}  (* message match clauses *)
+  {is_initial : bool;                       (* the initial state? *)
+   params     : ty_index IdMap.t;           (* typed parameters, index is
+                                               parameter number *)
+   vars       : ty located IdMap.t;         (* local variables *)
+   mmclauses  : msg_match_clause_tyd list}  (* message match clauses *)
 
 type state_tyd = state_body_tyd located  (* typed state *)
 

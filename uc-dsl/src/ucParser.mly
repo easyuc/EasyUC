@@ -26,6 +26,7 @@ open EcUtils
 open EcLocation
 open EcSymbols
 open UcSpec
+open UcSpecTypedSpecCommon
 
 module BI = EcBigInt
 

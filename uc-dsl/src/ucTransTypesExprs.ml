@@ -28,6 +28,7 @@ open EcLocation
 open EcTypes
 open EcDecl
 open UcSpec
+open UcSpecTypedSpecCommon
 
 module Mid = EcIdent.Mid
 
