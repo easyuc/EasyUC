@@ -1,0 +1,6 @@
+description
+Test exceeding maximum number of message parameters in interface.
+.
+args: good.uc
+outcome: success
+.

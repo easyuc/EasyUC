@@ -13,6 +13,10 @@ open EcLocation
 open UcSpec
 open UcTypedSpec
 
+(* maximum number of message parameters allowed *)
+
+val max_msg_params : int
+
 (* typecheck a specification
 
    the first argument is the qualified name of the .uc file from which

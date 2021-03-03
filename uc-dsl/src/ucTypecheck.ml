@@ -24,6 +24,11 @@ open UcSpecTypedSpecCommon
 open UcTypedSpec
 open UcTransTypesExprs
 
+(* the current maximum number of allowed parameters to a message;
+   changing this will require updates to the EasyCrypt code generation *)
+
+let max_msg_params = 5
+
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -140,12 +145,20 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
   BasicTyd
   (IdMap.map
    (fun (md : message_def) ->
-      {dir = md.dir;
-       params_map =
-         check_name_type_bindings_top
-         (fun ppf -> fprintf ppf "@[duplicate@ message@ parameter@ name@]")
-         md.params;
-       port = Option.map unloc md.port})
+      if List.length md.params > max_msg_params
+      then type_error (loc md.id)
+           (fun ppf ->
+              fprintf ppf
+              ("@[more@ than@ the@ allowed@ maximum@ number@ (%d)@ of@ " ^^
+               "parameters@]")
+              max_msg_params)
+      else {dir = md.dir;
+            params_map =
+              check_name_type_bindings_top
+              (fun ppf ->
+                 fprintf ppf "@[duplicate@ message@ parameter@ name@]")
+              md.params;
+            port = Option.map unloc md.port})
    msg_map)
 
 let check_comp_item
