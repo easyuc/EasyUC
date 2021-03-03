@@ -1203,15 +1203,17 @@ let rec check_ite
     (ex : pexpr) (tins : instruction list located)
     (eins_opt : instruction list located option)
     : instruction_tyd_u * state_analysis = 
-  let ex,_ = check_expr sa env ue ex (Some tbool) in
+  let ex, _ = check_expr sa env ue ex (Some tbool) in
   let sa1 = check_instructions abip ss sc sa env ue tins in
   let sa2 =
     match eins_opt with
-    | None      -> (None,sa)
-    | Some eins -> match check_instructions abip ss sc sa env ue eins with
-    		   | (ins,sa) -> (Some ins,sa) 
-    in
-  ITE(ex,(fst sa1),(fst sa2)) , merge_state_analysis (snd sa1) (snd sa2)
+    | None      -> (None, sa)
+    | Some eins ->
+        (let (ins, sa) =
+           check_instructions abip ss sc sa env ue eins in
+         (Some ins, sa)) in
+  ITE (ex, fst sa1, fst sa2),
+  merge_state_analysis (snd sa1) (snd sa2)
 
 and check_match
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -1219,7 +1221,7 @@ and check_match
     (ex : pexpr) (clauses : match_clause list located)
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
-  let exp,ty = check_expr sa env ue ex None in
+  let exp, ty = check_expr sa env ue ex None in
   let inddecl =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
@@ -1248,9 +1250,13 @@ and check_match
     List.map
     (fun (cons,(bndgs, body)) ->
        let env = Var.bind_locals bndgs env in
-       cons,(bndgs, check_instructions abip ss sc sa env ue body))
+       cons, (bndgs, check_instructions abip ss sc sa env ue body))
     top_results in
-  let cls_u = List.map (fun (cons, (bndngs,(ins,_)))-> cons, (bndngs,ins)) results in
+  let cls_u =
+    List.map
+    (fun (cons, (bndngs, (ins, _))) ->
+       cons, (bndngs, ins))
+    results in
   let cls = mk_loc (loc clauses) cls_u in
   let sas = List.map (fun (_, (_,(_,sa)))-> sa) results in
   Match(exp,cls), merge_state_analyses sas
@@ -1259,21 +1265,20 @@ and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (env : env) (ue : unienv)
     (sa : state_analysis) (i : instruction) 
-    : instruction_tyd * state_analysis =
-  let uinstr,sa = 
-  match unloc i with
-  | Assign (lhs, ex)                    ->
-      check_val_assign sc sa env ue lhs ex
-  | Sample (lhs, ex)                    ->
-      check_sampl_assign sc sa env ue lhs ex
-  | ITE (ex, tins, eins)                ->
-      check_ite abip ss sc sa env ue ex tins eins
-  | Match(ex, clauses)                  ->
-      check_match abip ss sc sa env ue ex clauses
-  | SendAndTransition sat               ->
-      check_send_and_transition abip ss sa env ue sat, sa
-  | Fail                                -> Fail,sa
-  in
+      : instruction_tyd * state_analysis =
+  let uinstr, sa = 
+    match unloc i with
+    | Assign (lhs, ex)                    ->
+        check_val_assign sc sa env ue lhs ex
+    | Sample (lhs, ex)                    ->
+        check_sampl_assign sc sa env ue lhs ex
+    | ITE (ex, tins, eins)                ->
+        check_ite abip ss sc sa env ue ex tins eins
+    | Match(ex, clauses)                  ->
+        check_match abip ss sc sa env ue ex clauses
+    | SendAndTransition sat               ->
+        check_send_and_transition abip ss sa env ue sat, sa
+    | Fail                                -> Fail, sa in
   (mk_loc (loc i) uinstr), sa
 
 and check_instructions
@@ -1282,9 +1287,11 @@ and check_instructions
     (is : instruction list located)
       : instruction_tyd list located * state_analysis = 
   let uis = unloc is in
-  let uis',sa' = List.fold_left ( fun (il,sa) i ->
-    let i',sa' = check_instruction abip ss sc env ue sa i in
-    ((il @ [i']), sa') ) ([],sa) uis in
+  let uis', sa' =
+    List.fold_left
+    (fun (il,sa) i ->
+       let i', sa' = check_instruction abip ss sc env ue sa i in
+       ((il @ [i']), sa') ) ([], sa) uis in
   (mk_loc (loc is) uis'), sa'
 
 (* checking where control transfer instructions (send-and-transition and
@@ -1304,7 +1311,8 @@ let failure_to_transfer_control (l : EcLocation.t) =
      ("@[message@ match@ clause@ must@ end@ with@ control@ transfer@ via@ " ^^
       "\"fail\"@ or@ \"send-and-transition\"@ instruction@]"))
 
-let rec check_instrs_transfer_at_end (is : instruction_tyd list located) : unit =
+let rec check_instrs_transfer_at_end (is : instruction_tyd list located)
+          : unit =
   let uis = unloc is in
   match uis with
   | [] -> failure_to_transfer_control (loc is)
@@ -1328,8 +1336,9 @@ and check_instr_end_in_transfer (instr : instruction_tyd) : unit =
        | None       -> failure_to_transfer_control (loc instr)
        | Some elses -> check_instrs_transfer_at_end elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, (_,is)) -> check_instrs_transfer_at_end is)
-        (unloc clauses)
+      List.iter
+      (fun (_, (_, is)) -> check_instrs_transfer_at_end is)
+      (unloc clauses)
   | SendAndTransition _         -> ()
   | Fail                        -> ()
 
@@ -1344,7 +1353,9 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
        | None       -> ()
        | Some elses -> check_instrs_not_transfer elses)
   | Match (_, clauses)          ->
-      List.iter (fun (_, (_,is)) -> check_instrs_not_transfer is) (unloc clauses)
+      List.iter
+      (fun (_, (_,is)) -> check_instrs_not_transfer is)
+      (unloc clauses)
   | SendAndTransition _         -> illegal_control_transfer (loc instr)
   | Fail                        -> illegal_control_transfer (loc instr)
 

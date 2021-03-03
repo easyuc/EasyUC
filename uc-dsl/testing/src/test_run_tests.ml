@@ -159,13 +159,13 @@ let rec parse_file file code =
           |true ->
             (log_str :=
                !log_str
-               ^ "** Test passed outcome is "^ out_text
-               ^" and exit code is "^ run_op ^ " **";
+               ^ "** Test passed - outcome is " ^ out_text
+               ^ " and exit code is " ^ run_op ^ " **";
              code)
           |_ ->
             (log_str :=
                !log_str
-               ^ "-> Test failed - UCDSL output differs with " 
+               ^ "-> Test failed - UCDSL output differs from " 
                ^ "outcome description.\noutcome description is:\n"
                ^ out_come2 ^ "UCDSL message is: \n" ^ s_out;
              create_conflict file out_text s_out;
@@ -186,9 +186,9 @@ let rec parse_file file code =
               |true ->
                 (log_str :=
                    !log_str
-                   ^ "-> Test failed - Outcome differes with UCDSL output"
-                   ^ "\noutcome is "^ out_text ^ " but exit code is "
-                   ^run_op ^"\noutcome description is:\n" ^ out_come2
+                   ^ "-> Test failed - Outcome differs from UCDSL output"
+                   ^ "\noutcome is " ^ out_text ^ " but exit code is "
+                   ^run_op ^ "\noutcome description is:\n" ^ out_come2
                    ^ "UCDSL message is empty";
                  create_conflict file
                    (if run_op = "0" then
@@ -200,8 +200,8 @@ let rec parse_file file code =
                  code+1)
               |_ -> (log_str :=
                        !log_str
-                       ^ "-> Test failed - Outcome differes with UCDSL output"
-                       ^ "\noutcome is "^ out_text ^ " but exit code is "
+                       ^ "-> Test failed - Outcome differs from UCDSL output"
+                       ^ "\noutcome is " ^ out_text ^ " but exit code is "
                        ^run_op ^"\noutcome description is:\n" ^ out_come2
                        ^ "UCDSL message is:" ^ s_out;
                      create_conflict file
@@ -215,9 +215,9 @@ let rec parse_file file code =
           |_ ->
             (log_str :=
                !log_str
-               ^ "-> Test failed - Exit code differs with outcome\n"
-               ^ "outcome is "^ out_text ^ " but exit code is "
-               ^run_op;
+               ^ "-> Test failed - Exit code differs from outcome\n"
+               ^ "outcome is " ^ out_text ^ " but exit code is "
+               ^ run_op;
              create_conflict file
                (if run_op = "0" then
                   "success"
