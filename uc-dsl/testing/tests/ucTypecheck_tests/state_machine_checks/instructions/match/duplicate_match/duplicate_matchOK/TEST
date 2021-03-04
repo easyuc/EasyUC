@@ -1,5 +1,5 @@
 description
-
+Resolution of test of match instruction with redundant clauses.
 .
 args: duplicate_matchOK.uc
 outcome: success

@@ -1,30 +1,30 @@
-direct D_ {
+direct D' {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
-direct D2_ {
+direct D2' {
 in  x@bla2()
 out bli2()@x
 }
 
-direct D2 {D2:D2_}
+direct D2 {D2:D2'}
 
-adversarial A_ {
+adversarial A' {
 in  abla()
 out abli()
 }
 
-adversarial A {A:A_}
+adversarial A {A:A'}
 
-adversarial A2_ {
+adversarial A2' {
 in  abla2()
 out abli2()
 }
 
-adversarial A2 {A2:A2_}
+adversarial A2 {A2:A2'}
 
 adversarial Iio {
 in  i2sbla()
@@ -36,7 +36,7 @@ in  i2sbla()
 out i2sbli()
 }
 
-functionality Q() implements D2 A2_ {
+functionality Q() implements D2 A2' {
 
   initial state In {
   match message with * => {fail.} end
@@ -65,7 +65,7 @@ functionality I() implements D Iio2 {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with Iio.* => { send Iio.i2sbli() and transition In.} end
+  match message with Iio.i2sbli => { send Iio.i2sbli() and transition In.} end
  }
 
 }

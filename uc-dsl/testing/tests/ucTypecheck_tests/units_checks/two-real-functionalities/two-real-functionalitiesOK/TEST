@@ -1,0 +1,6 @@
+description
+Resolution of test when a unit has two real functionalities.
+.
+args:-units two-real-functionalitiesOK.uc
+outcome: success
+.

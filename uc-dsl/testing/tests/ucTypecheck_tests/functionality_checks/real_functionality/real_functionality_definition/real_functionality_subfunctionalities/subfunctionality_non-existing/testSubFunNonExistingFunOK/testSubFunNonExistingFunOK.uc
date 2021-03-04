@@ -1,4 +1,4 @@
-direct A_ {
+direct A' {
 in x@bla()
 }
 
@@ -6,7 +6,7 @@ adversarial D {
 in bli()
 }
 
-direct A {A:A_}
+direct A {A:A'}
 
 functionality Q implements A D{
 

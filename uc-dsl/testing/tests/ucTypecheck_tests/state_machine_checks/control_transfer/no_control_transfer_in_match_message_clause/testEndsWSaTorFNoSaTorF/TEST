@@ -3,7 +3,7 @@ This test fails because there is no transfer of control after message match on l
 .
 args: testEndsWSaTorFNoSaTorF.uc
 outcome:  failure
-[error: testEndsWSaTorFNoSaTorF.uc: from line 17 columns 16 to 21]
+[error: testEndsWSaTorFNoSaTorF.uc: from line 17 columns 24 to 29]
 
 message match clause must end with control transfer via "fail" or
 "send-and-transition" instruction

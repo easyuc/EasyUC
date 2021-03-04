@@ -1,0 +1,11 @@
+description
+Test that message matching clause with simple * pattern must
+have instruction block consisting of { fail. }
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 18 columns 14 to 27]
+
+message match clause whose message pattern has path ending in a "*" must have
+instruction block that is unconditional failure
+.

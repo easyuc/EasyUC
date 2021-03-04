@@ -1,8 +1,7 @@
 (* UC__KeyExchange.eca *)
 
-(* Model for the machine-generated code for the KeyExchange real
-   and ideal functionalities and simulator, which need to be
-   cloned as a unit
+(* Model for the machine-generated code for the triple unit consisting
+   of the KeyExchange real and ideal functionalities and simulator
 
    Should be required and clone included in UC_KeyExchange.eca, which
    the user writes *)
@@ -13,45 +12,40 @@ require import KeysExponentsAndPlaintexts.  (* from ec_requires *)
 
 require import UCBasicTypes.  (* always last *)
 
-(* the port indices of the adversary the real functionality or its
-   subfunctionalities communicate with, as well as the port index of
-   the simulator the ideal functionality communicates with, are all
-   distinct and in the range _adv_pi_begin, ..., _adv_pi_begin +
-   _adv_pi_num - 1 *)
+(* the port indices of the adversary/simulator that the unit
+   communicates with: _adv_pi_begin, ..., _adv_pi_begin + _adv_pi_num
+   - 1; the last of these is used for communication between the ideal
+   functionality and the adversary/simulator; the preceding ones are
+   used for communication between the parties and subfunctionalities
+   (in that order) of the real functionality (if the unit has one) and
+   the adversary *)
 
-op _adv_pi_num : int = 3.
+op _adv_pi_num : int = 3.  (* 0 for parties (as real functionality has
+                              no adversarial interface); 2 for the
+                              real functionality's subfunctionalities,
+                              one for ideal functionality *)
 
 (* begin theory parameters *)
 
 op _adv_pi_begin : int.
 
-axiom adv_pi_gt0 : 0 < _adv_pi_begin.
+axiom _adv_pi_begin_gt0 : 0 < _adv_pi_begin.
 
 (* end theory parameters *)
 
-(* port indices of adversary that the two forwarding functionalities
-   cloned by the real functionality use *)
+(* port indices of adversary that real functionality's parties use
+   to communicate with adversary would come next *)
 
-op _adv_fw1_pi : int = _adv_pi_begin + 0.
-op _adv_fw2_pi : int = _adv_pi_begin + 1.
+(* port indices of adversary that the two subfunctionalities cloned by
+   the real functionality use *)
 
-(* port index of key exchange simulator *)
+op _adv_sf_pi_Fw1 : int = _adv_pi_begin + 0.
+op _adv_sf_pi_Fw2 : int = _adv_pi_begin + 1.
 
-op _ke_sim_pi : int = _adv_pi_begin + 2.
+(* port index of adversary/simulator the ideal functionality
+   communicates with *)
 
-theory UC__RF.
-
-clone UC_Forwarding as UC_Fw1 with
-  op _adv_pi <- _adv_fw1_pi
-proof *.
-realize adv_pi_gt0. smt(adv_pi_gt0). qed.
-
-clone UC_Forwarding as UC_Fw2 with
-  op _adv_pi <- _adv_fw2_pi
-proof *.
-realize adv_pi_gt0. smt(adv_pi_gt0). qed.
-
-end UC__RF.
+op _adv_if_pi : int = _adv_pi_begin + 2.
 
 (* basic direct interface for Party 1 *)
 
@@ -93,17 +87,17 @@ op nosmt dec_ke_req1 (m : msg) : ke_req1 option =
            ke_req1_pt2 = pt2'|}
      end.
 
-op epdp_ke_req1_msg = {|enc = enc_ke_req1; dec = dec_ke_req1|}.
+op epdp_ke_req1 = {|enc = enc_ke_req1; dec = dec_ke_req1|}.
 
-lemma valid_epdp_ke_req1_msg : valid_epdp epdp_ke_req1_msg.
+lemma valid_epdp_ke_req1 : valid_epdp epdp_ke_req1.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_ke_req1_msg /= /dec_ke_req1 /enc_ke_req1 /=
+rewrite /epdp_ke_req1 /= /dec_ke_req1 /enc_ke_req1 /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_ke_req1_msg /dec_ke_req1 /enc_ke_req1 /=.
+rewrite /epdp_ke_req1 /dec_ke_req1 /enc_ke_req1 /=.
 case (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
 have val_u :
@@ -116,13 +110,13 @@ split; first move : pt1_2; by case pt1.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
-hint simplify [eqtrue] valid_epdp_ke_req1_msg.
-hint rewrite epdp : valid_epdp_ke_req1_msg.
+hint simplify [eqtrue] valid_epdp_ke_req1.
+hint rewrite epdp : valid_epdp_ke_req1.
 
 lemma eq_of_valid_ke_req1 (m : msg) :
-  is_valid epdp_ke_req1_msg m =>
+  is_valid epdp_ke_req1 m =>
   m =
-  let x = oget (epdp_ke_req1_msg.`dec m) in
+  let x = oget (epdp_ke_req1.`dec m) in
   (Dir,
    (x.`ke_req1__func, pi),
    x.`ke_req1_pt1,
@@ -131,10 +125,10 @@ lemma eq_of_valid_ke_req1 (m : msg) :
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : ke_req1), epdp_ke_req1_msg.`dec m = Some x.
+have [] x : exists (x : ke_req1), epdp_ke_req1.`dec m = Some x.
   exists (oget (dec_ke_req1 m)); by rewrite -some_oget.
 case x => x1 x2 x3.
-move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req1_msg) <-.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req1) <-.
 by rewrite !epdp.
 qed.
 
@@ -149,67 +143,66 @@ type ke_rsp2 =
   {ke_rsp2__func : addr;   (* address of functionality - source address *)
    ke_rsp2_pt1   : port;   (* port requesting key exchange - destination port *)
    (* data: *)
-   ke_rsp2_pt2   : port}.  (* port to agree a key with *)
+   ke_rsp2_k     : key}.   (* agreed upon key *)
 
 op enc_ke_rsp2 (x : ke_rsp2) : msg =
   (Dir, x.`ke_rsp2_pt1, (x.`ke_rsp2__func, pi),
    0,  (* no messages from which this must be distinct *)
-   epdp_port_univ.`enc x.`ke_rsp2_pt2).
+   epdp_key_univ.`enc x.`ke_rsp2_k).
 
 op nosmt dec_ke_rsp2 (m : msg) : ke_rsp2 option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) ?
      None :
-     match epdp_port_univ.`dec v with
-     | None      => None
-     | Some pt2' =>
+     match epdp_key_univ.`dec v with
+     | None   => None
+     | Some k =>
          Some
-         {|ke_rsp2__func = pt2.`1; ke_rsp2_pt1 = pt1;
-           ke_rsp2_pt2 = pt2'|}
+         {|ke_rsp2__func = pt2.`1; ke_rsp2_pt1 = pt1; ke_rsp2_k = k|}
      end.
 
-op epdp_ke_rsp2_msg = {|enc = enc_ke_rsp2; dec = dec_ke_rsp2|}.
+op epdp_ke_rsp2 = {|enc = enc_ke_rsp2; dec = dec_ke_rsp2|}.
 
-lemma valid_epdp_ke_rsp2_msg : valid_epdp epdp_ke_rsp2_msg.
+lemma valid_epdp_ke_rsp2 : valid_epdp epdp_ke_rsp2.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_ke_rsp2_msg /= /dec_ke_rsp2 /enc_ke_rsp2 /=
+rewrite /epdp_ke_rsp2 /= /dec_ke_rsp2 /enc_ke_rsp2 /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_ke_rsp2_msg /dec_ke_rsp2 /enc_ke_rsp2 /=.
+rewrite /epdp_ke_rsp2 /dec_ke_rsp2 /enc_ke_rsp2 /=.
 case (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_adv => [#] -> pt2_2 -> match_eq_some /=.
 have val_u :
-  epdp_port_univ.`dec u = Some (v.`ke_rsp2_pt2).
+  epdp_key_univ.`dec u = Some (v.`ke_rsp2_k).
   move : match_eq_some.
-  case (epdp_port_univ.`dec u) => //.
+  case (epdp_key_univ.`dec u) => //.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
-hint simplify [eqtrue] valid_epdp_ke_rsp2_msg.
-hint rewrite epdp : valid_epdp_ke_rsp2_msg.
+hint simplify [eqtrue] valid_epdp_ke_rsp2.
+hint rewrite epdp : valid_epdp_ke_rsp2.
 
 lemma eq_of_valid_ke_rsp2 (m : msg) :
-  is_valid epdp_ke_rsp2_msg m =>
+  is_valid epdp_ke_rsp2 m =>
   m =
-  let x = oget (epdp_ke_rsp2_msg.`dec m) in
+  let x = oget (epdp_ke_rsp2.`dec m) in
   (Dir,
    x.`ke_rsp2_pt1,
    (x.`ke_rsp2__func, pi),
    0,
-   epdp_port_univ.`enc x.`ke_rsp2_pt2).
+   epdp_key_univ.`enc x.`ke_rsp2_k).
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : ke_rsp2), epdp_ke_rsp2_msg.`dec m = Some x.
+have [] x : exists (x : ke_rsp2), epdp_ke_rsp2.`dec m = Some x.
   exists (oget (dec_ke_rsp2 m)); by rewrite -some_oget.
 case x => x1 x2 x3.
-move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp2_msg) <-.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp2) <-.
 by rewrite !epdp.
 qed.
 
@@ -252,17 +245,17 @@ op nosmt dec_ke_req2 (m : msg) : ke_req2 option =
          Some {|ke_req2__func = pt1.`1; ke_req2_pt2 = pt2|}
      end.
 
-op epdp_ke_req2_msg = {|enc = enc_ke_req2; dec = dec_ke_req2|}.
+op epdp_ke_req2 = {|enc = enc_ke_req2; dec = dec_ke_req2|}.
 
-lemma valid_epdp_ke_req2_msg : valid_epdp epdp_ke_req2_msg.
+lemma valid_epdp_ke_req2 : valid_epdp epdp_ke_req2.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_ke_req2_msg /= /dec_ke_req2 /enc_ke_req2 /=
+rewrite /epdp_ke_req2 /= /dec_ke_req2 /enc_ke_req2 /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_ke_req2_msg /dec_ke_req2 /enc_ke_req2 /=.
+rewrite /epdp_ke_req2 /dec_ke_req2 /enc_ke_req2 /=.
 case (mod = Adv \/ pt1.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
 have val_u :
@@ -275,13 +268,13 @@ split; first move : pt1_2; by case pt1.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
-hint simplify [eqtrue] valid_epdp_ke_req2_msg.
-hint rewrite epdp : valid_epdp_ke_req2_msg.
+hint simplify [eqtrue] valid_epdp_ke_req2.
+hint rewrite epdp : valid_epdp_ke_req2.
 
 lemma eq_of_valid_ke_req2 (m : msg) :
-  is_valid epdp_ke_req2_msg m =>
+  is_valid epdp_ke_req2 m =>
   m =
-  let x = oget (epdp_ke_req2_msg.`dec m) in
+  let x = oget (epdp_ke_req2.`dec m) in
   (Dir,
    (x.`ke_req2__func, pi),
    x.`ke_req2_pt2,
@@ -290,10 +283,10 @@ lemma eq_of_valid_ke_req2 (m : msg) :
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : ke_req2), epdp_ke_req2_msg.`dec m = Some x.
+have [] x : exists (x : ke_req2), epdp_ke_req2.`dec m = Some x.
   exists (oget (dec_ke_req2 m)); by rewrite -some_oget.
 case x => x1 x2.
-move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req2_msg) <-.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_req2) <-.
 by rewrite !epdp.
 qed.
 
@@ -329,17 +322,17 @@ op nosmt dec_ke_rsp1 (m : msg) : ke_rsp1 option =
            ke_rsp1_pt1 = p.`1; ke_rsp1_k = p.`2|}
      end.
 
-op epdp_ke_rsp1_msg = {|enc = enc_ke_rsp1; dec = dec_ke_rsp1|}.
+op epdp_ke_rsp1 = {|enc = enc_ke_rsp1; dec = dec_ke_rsp1|}.
 
-lemma valid_epdp_ke_rsp1_msg : valid_epdp epdp_ke_rsp1_msg.
+lemma valid_epdp_ke_rsp1 : valid_epdp epdp_ke_rsp1.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_ke_rsp1_msg /= /dec_ke_rsp1 /enc_ke_rsp1 /=
+rewrite /epdp_ke_rsp1 /= /dec_ke_rsp1 /enc_ke_rsp1 /=
         !(epdp, epdp_sub) /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_ke_rsp1_msg /dec_ke_rsp1 /enc_ke_rsp1 /=.
+rewrite /epdp_ke_rsp1 /dec_ke_rsp1 /enc_ke_rsp1 /=.
 case (mod = Adv \/ pt2.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_adv => [#] -> pt2_2 -> match_eq_some /=.
 have val_u :
@@ -354,13 +347,13 @@ split; first move : pt2_2; by case pt2.
 by rewrite (epdp_dec_enc _ _ u) 1:!(epdp, epdp_sub).
 qed.
 
-hint simplify [eqtrue] valid_epdp_ke_rsp1_msg.
-hint rewrite epdp : valid_epdp_ke_rsp1_msg.
+hint simplify [eqtrue] valid_epdp_ke_rsp1.
+hint rewrite epdp : valid_epdp_ke_rsp1.
 
 lemma eq_of_valid_ke_rsp1 (m : msg) :
-  is_valid epdp_ke_rsp1_msg m =>
+  is_valid epdp_ke_rsp1 m =>
   m =
-  let x = oget (epdp_ke_rsp1_msg.`dec m) in
+  let x = oget (epdp_ke_rsp1.`dec m) in
   (Dir,
    x.`ke_rsp1_pt2,
    (x.`ke_rsp1__func, pi),
@@ -370,10 +363,10 @@ lemma eq_of_valid_ke_rsp1 (m : msg) :
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : ke_rsp1), epdp_ke_rsp1_msg.`dec m = Some x.
+have [] x : exists (x : ke_rsp1), epdp_ke_rsp1.`dec m = Some x.
   exists (oget (dec_ke_rsp1 m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4.
-move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp1_msg) <-.
+move => /(epdp_dec_enc _ _ _ valid_epdp_ke_rsp1) <-.
 by rewrite !epdp.
 qed.
 
@@ -391,96 +384,159 @@ proof *.
 
 end UC_KEDir.
 
-(* TODO - start here! *)
+theory UC__RF.  (* real functionality *)
 
-(* state for Party 1 *)
+clone UC_Forwarding as UC_Fw1 with  (* singleton unit *)
+  op _adv_if_pi <- _adv_sf_pi_Fw1
+proof *.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
 
-type ke_real_p1_state = [
-    KERealP1StateWaitReq1
-  | KERealP1StateWaitFw2 of port & exp
-  | KERealP1StateFinal
+clone UC_Forwarding as UC_Fw2 with  (* singleton unit *)
+  op _adv_if_pi <- _adv_sf_pi_Fw2
+proof *.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
+
+(* state for Party 1 (Pt1) *)
+
+type _state_Pt1 = [
+  | _State_Pt1__WaitReq1
+  | _State_Pt1__WaitFw2 of port & exp
+  | _State_Pt1__Final
 ].
 
-(* state for Party 2 *)
+(* state for Party 2 (Pt2) *)
 
-type ke_real_p2_state = [
-    KERealP2StateWaitFw1
-  | KERealP2StateWaitReq2 of port & exp
-  | KERealP2StateFinal
+type _state_Pt2 = [
+  | _State_Pt2__WaitFw1
+  | _State_Pt2__WaitReq2 of port & exp
+  | _State_Pt2__Final
 ].
 
-module KEReal : FUNC = {
-  var self, adv : addr
-  var st1 : ke_real_p1_state
-  var st2 : ke_real_p2_state
+op _addr_Fw1 (self : addr) : addr = self ++ [1].
+op _addr_Fw2 (self : addr) : addr = self ++ [2].
 
-  (* Party 1 (P1) manages ports (self, 1) and (self, 3);
-     (self, 1) is external, (self, 3) is internal
+op _extport_Pt1 (self : addr) : port = (self, 1).
+op _extport_Pt2 (self : addr) : port = (self, 2).
 
-     Party 2 (P2) manages ports (self, 2) and (self, 4);
-     (self, 2) is external, (self, 4) is internal
+op _intport_Pt1 (self : addr) : port = (self, 3).
+op _intport_Pt2 (self : addr) : port = (self, 4).
 
-     First forwarder (Fw1) is at address self ++ [1]
-     Second forwarder (Fw2) is at address self ++ [2] *)
+type _match_Pt1__WaitReq1 = [
+  | _Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 of UC_KEDir.Pt1.ke_req1
+  | _Match_other_Pt1__WaitReq1
+].
+
+op _match_Pt1__WaitReq1 (self : addr, m : msg) : _match_Pt1__WaitReq1 =
+  let a =
+    match UC_KEDir.Pt1.epdp_ke_req1.`dec m with
+    | Some x =>
+        (* will have x.`UC_KEDir.Pt1.ke_req1___fun = self *)
+        Some (_Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 x)
+    | None => None
+    end in
+  ((a = None) ? _Match_other_Pt1__WaitReq1 : oget a).
+
+type _match_Pt1__WaitFw2 = [
+  | _Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp
+      of UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp
+  | _Match_other_Pt1__WaitFw2
+].
+
+op _match_Pt1__WaitFw2 (self : addr, m : msg) : _match_Pt1__WaitFw2 =
+  let a =
+    match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec m with
+    | Some x =>
+        if x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp___func = _addr_Fw2 self /\
+           x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt2 self
+        then Some (_Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp x)
+        else None
+    | None => None
+    end in
+  ((a = None) ? _Match_other_Pt1__WaitFw2 : oget a).
+
+module UC_KEReal = {
+  var _self, _adv : addr
+  var _st1_Pt1 : _state_Pt1
+  var _st2_Pt2 : _state_Pt2
 
   proc init(self_ adv_ : addr) : unit = {
-    self <- self_; adv <- adv_;
-    Fw1.Forw.init(self ++ [1], adv); Fw2.Forw.init(self ++ [2], adv);
-    st1 <- KERealP1StateWaitReq1; st2 <- KERealP2StateWaitFw1;
+    _self <- self_; _adv <- adv_;
+    UC_Fw1.UC__Code.UC__IF.UC_Forw.init(_addr_Fw1 _self, _adv);
+    UC_Fw2.UC__Code.UC__IF.UC_Forw.init(_addr_Fw2 _self, _adv);
+    _st1_Pt1 <- _State_Pt1__WaitReq1; _st2_Pt2 <- _State_Pt2__WaitFw1;
   }
 
-  proc party1(m : msg) : msg option = {
-    var q1 : exp; var k2 : key;
-    var r : msg option <- None;
-    match st1 with
-      KERealP1StateWaitReq1 => {
-        match dec_ke_req1 m with
-          Some x => {
-            (* destination of m is (self, 1) *)
-            if (! self <= x.`ke_req1_pt2.`1 /\ ! adv <= x.`ke_req1_pt2.`1) {
+  proc party_Pt1(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    var q1 : exp;
+    match _st1_Pt1 with
+    | _State_Pt1__WaitReq1 => {
+        match UC_KEDir.Pt1.epdp_ke_req1.`dec _m with
+        | Some _x => {
+            (* _x.`UC_KEDir.Pt1.ke_req1__func = _self /\
+               envport _self _adv _x.`UC_KeDir.Pt1.ke_req1_pt1 *)
+            if (envport _self _adv _x.`UC_KEDir.Pt1.ke_req1_pt2) {
               q1 <$ dexp;
-              r <-
+              _r <-
                 Some
-                (Fw1.fw_req
-                 {|Fw1.fw_req_func = (self ++ [1]);
-                   Fw1.fw_req_pt1  = (self, 3);
-                   Fw1.fw_req_pt2  = (self, 4);
-                   Fw1.fw_req_u    =
-                     EPDP_Univ_PortPortKey.enc
-                     (x.`ke_req1_pt1, x.`ke_req1_pt2, g ^ q1)|});
-              st1 <- KERealP1StateWaitFw2 x.`ke_req1_pt1 q1;
+                (UC_Fw1.UC__Code.UC_FwDir.D.epdp_fw_req.`enc  (* direct *)
+                 {|UC_Fw1.UC__Code.UC_FwDir.D.fw_req__func =  (* destination *)
+                     _addr_Fw1 _self;
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt1   =  (* source *)
+                     _intport_Pt1 _self;
+                   (* data: *)
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt2   =
+                     _intport_Pt2 _self;
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_u     =
+                     epdp_port_port_key_univ.`enc
+                     (_x.`UC_KEDir.Pt1.ke_req1_pt1,
+                      _x.`UC_KEDir.Pt1.ke_req1_pt2,
+                      g ^ q1)|});
+              _st1_Pt1 <- _State_Pt1__WaitFw2 _x.`UC_KEDir.Pt1.ke_req1_pt1 q1;
             }
           }
-        | None   => { }
+        | None => { }
         end;
       }
-    | KERealP1StateWaitFw2 pt1 q1 => {
-        match Fw2.dec_fw_rsp m with
-          Some x => {
-              if (x.`Fw2.fw_rsp_pt2 = (self, 3)) {
-                (* destination of m is (self, 3) *)
-                k2 <- oget (EPDP_Univ_Key.dec x.`Fw2.fw_rsp_u);
-                r <-
-                  Some
-                  (ke_rsp2
-                   ({|ke_rsp2_func = self; ke_rsp2_pt1 = pt1;
-                      ke_rsp2_key  = (k2 ^ q1)|}));
-                st1 <- KERealP1StateFinal;
+    | _State_Pt1__WaitFw2 pt1 q1 => {
+        match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec _m with
+        | Some _x => {
+            match epdp_key_univ.`dec
+                  _x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp_u with
+            | Some k2 => {
+                (* if the invariant from WaitReq1 is preserved, the following
+                   test is redundant *)
+                if (envport _self _adv pt1) {
+                  _r <-
+                    Some
+                    (UC_KEDir.Pt1.epdp_ke_rsp2.`enc
+                     {|UC_KEDir.Pt1.ke_rsp2__func = _self;  (* source *)
+                       UC_KEDir.Pt1.ke_rsp2_pt1   =  (* destination *)
+                         _extport_Pt1 _self;
+                       (* data: *)
+                       UC_KEDir.Pt1.ke_rsp2_k   = k2 ^ q1|});
+                    _st1_Pt1 <- _State_Pt1__Final;
+                }
               }
+            | None => { }
+            end;
           }
-        | None   => { }
+        | None => { }
         end;
       }
-    | KERealP1StateFinal => { }
+    | _State_Pt1__Final => { }
     end;
-    return r;
+    return _r;
   }
+(*
+TODO starting here...
 
-  proc party2(m : msg) : msg option = {
+
+  proc party_Pt2(m : msg) : msg option = {
     var pt1, pt2 : port; var q2 : exp; var k1 : key;
     var r : msg option <- None;
     match st2 with
-      KERealP2StateWaitFw1 => {
+      _State_Pt2__WaitFw1 => {
         match Fw1.dec_fw_rsp m with
           Some x => {
               if (x.`Fw1.fw_rsp_pt2 = (self, 4)) {
@@ -493,13 +549,13 @@ module KEReal : FUNC = {
                   (ke_rsp1
                    ({|ke_rsp1_func = self; ke_rsp1_pt1 = pt1;
                       ke_rsp1_pt2 = pt2; ke_rsp1_key = k1 ^ q2|}));
-                st2 <- KERealP2StateWaitReq2 pt2 q2;
+                st2 <- _State_Pt2__WaitReq2 pt2 q2;
               }
           }
         | None   => { }
         end;
       }
-    | KERealP2StateWaitReq2 pt2 q2 => {
+    | _State_Pt2__WaitReq2 pt2 q2 => {
         match dec_ke_req2 m with
           Some x => {
             (* destination of m is (self, 2) *)
@@ -511,13 +567,13 @@ module KEReal : FUNC = {
                    Fw2.fw_req_pt1  = (self, 4);
                    Fw2.fw_req_pt2  = (self, 3);
                    Fw2.fw_req_u    = EPDP_Univ_Key.enc (g ^ q2)|});
-              st2 <- KERealP2StateFinal;
+              st2 <- _State_Pt2__Final;
             }
           }
         | None   => { }
         end;
       }
-    | KERealP2StateFinal => { }
+    | _State_Pt2__Final => { }
     end;
     return r;
   }
@@ -586,4 +642,7 @@ module KEReal : FUNC = {
     }
     return r;
   }
+*)
 }.
+
+end UC__RF.

@@ -1,0 +1,10 @@
+description
+Test of illegal identifer because beginning with "_".
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 2 columns 8 to 12]
+
+an identifer may not begin or end with an underscore; it may not have "__" as
+a substring; it may not begin with "uc_" or "UC_"
+.

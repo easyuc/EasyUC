@@ -1,5 +1,5 @@
 description
-
+Resolution of test of bad message path pattern for initial state of simulator.
 .
 args: message_match_pattern_not_from_ideal_functionality_in_initial_stateOK.uc
 outcome:success

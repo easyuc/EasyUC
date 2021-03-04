@@ -1,17 +1,17 @@
-adversarial Adv_ {
+adversarial Adv' {
 in bla()
 }
 
-adversarial Adv {Adv:Adv_}
+adversarial Adv {Adv:Adv'}
 
-direct D_ {
+direct D' {
 
 in x@bla()
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
-functionality F implements D Adv_ {
+functionality F implements D Adv' {
 
   initial state Is
   {

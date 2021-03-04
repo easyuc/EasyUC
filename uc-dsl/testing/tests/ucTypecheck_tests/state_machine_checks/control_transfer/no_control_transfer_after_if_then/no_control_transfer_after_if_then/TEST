@@ -1,5 +1,6 @@
 description
-
+Test where branch of conditional doesn't terminate with
+control transfer.
 .
 args: no_control_transfer_after_if_then.uc
 outcome:  failure

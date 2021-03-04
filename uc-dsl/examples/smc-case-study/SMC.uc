@@ -1,8 +1,9 @@
 (* Secure Message Communication *)
 
-(* Real and ideal functionalities, and a simulator, for Secure Message
-   Communication via encryption using a one-time pad agreed using a
-   key exchange parameter to the real functionality. *)
+(* Triple unit consisting of real and ideal functionalities, and a
+   simulator, for Secure Message Communication via encryption using a
+   one-time pad agreed using a key exchange parameter to the real
+   functionality. *)
 
 uc_requires Forwarding KeyExchange.
 

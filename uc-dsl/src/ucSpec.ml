@@ -101,7 +101,6 @@ and 'a rfield = {
   rf_value : 'a;
 }
 
-
 (* type bindings *)
 
 type type_binding =
@@ -164,20 +163,30 @@ type send_and_transition =
    state_expr : state_expr}  (* state to transition to *)
 
 type instruction_u =
-  | Assign of lhs * pexpr                             (* ordinary assignment *)
-  | Sample of lhs * pexpr                             (* sampling assignment *)
-  | ITE of pexpr * instruction list located *         (* if-then-else *)
+  | Assign of lhs * pexpr                       (* ordinary assignment *)
+  | Sample of lhs * pexpr                       (* sampling assignment *)
+  | ITE of pexpr * instruction list located *   (* if-then-else *)
            instruction list located option
-  | Match of pexpr * match_clause list located        (* match instruction *)
+  | Match of pexpr * match_clause list located  (* match instruction *)
   | SendAndTransition of send_and_transition    (* send and transition *)
-  | Fail                                              (* failure *)
+  | Fail                                        (* failure *)
 
 and instruction = instruction_u located
 
 and match_clause = ppattern * instruction list located
 
-type msg_match_clause =                                (* message match clause *)
-  {msg_pat : msg_pat;                                  (* message pattern *)
+let isUnconditionalFailure (ill : instruction list located) =
+  match (unloc ill) with
+  | [instr] ->
+      (match (unloc instr) with
+       | Fail -> true
+       | _    -> false)
+  | _       -> false
+
+(* state machines *)
+
+type msg_match_clause =                 (* message match clause *)
+  {msg_pat : msg_pat;                   (* message pattern *)
    code    : instruction list located}  (* code of clause *)
 
 type state_code =

@@ -1,5 +1,6 @@
 description
-
+Resolution of test when a unit with only ideal functionality has an extraneous
+interface.
 .
 args:-units extraneous_interface_only_idealOK.uc
 outcome: success

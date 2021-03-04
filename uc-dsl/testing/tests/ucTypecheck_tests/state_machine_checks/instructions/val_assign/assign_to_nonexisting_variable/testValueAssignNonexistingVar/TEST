@@ -4,7 +4,7 @@ varaibale
 .
 args: testValueAssignNonexistingVar.uc
 outcome: failure
-[error: testValueAssignNonexistingVar.uc: from line 17 columns 12 to 13]
+[error: testValueAssignNonexistingVar.uc: from line 17 columns 20 to 21]
 
 identifer is not a local variable
 .

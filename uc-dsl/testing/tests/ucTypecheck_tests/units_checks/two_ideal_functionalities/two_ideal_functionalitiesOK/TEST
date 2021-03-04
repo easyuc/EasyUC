@@ -1,5 +1,5 @@
 description
-
+Resolution of test when a unit has two ideal functionalities.
 .
 args:-units two_ideal_functionalitiesOK.uc
 outcome: success

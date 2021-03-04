@@ -167,12 +167,12 @@ type inter_tyd = inter_body_tyd located  (* typed interface *)
 (* message and state expressions *)
 
 type msg_expr_tyd =
-  {path      : msg_path;            (* message path *)
+  {path      : msg_path;           (* message path *)
    args      : expr list located;  (* message arguments *)
    port_expr : expr option}        (* message destination - port expr *)
 
 type state_expr_tyd =
-  {id   : psymbol;             (* state to transition to *)
+  {id   : psymbol;            (* state to transition to *)
    args : expr list located}  (* arguments of new state *)
 
 (* instructions *)
@@ -186,7 +186,7 @@ type bindings = ((EcIdent.t * EcTypes.ty) list)
 type instruction_tyd_u =
   | Assign of lhs * expr                           (* ordinary assignment *)
   | Sample of lhs * expr                           (* sampling assignment *)
-  | ITE of expr * instruction_tyd list located *       (* if-then-else *)
+  | ITE of expr * instruction_tyd list located *   (* if-then-else *)
            instruction_tyd list located option
   | Match of expr * match_clause_tyd list located  (* match instruction *)
   | SendAndTransition of send_and_transition_tyd   (* send and transition *)
@@ -201,10 +201,10 @@ type msg_match_clause_tyd =                 (* message match clause *)
    code    : instruction_tyd list located}  (* code of clause *)
 
 type state_body_tyd =
-  {is_initial : bool;                   (* the initial state? *)
-   params     : ty_index IdMap.t;       (* typed parameters, index is
-                                           parameter number *)
-   vars       : ty located IdMap.t;     (* local variables *)
+  {is_initial : bool;                       (* the initial state? *)
+   params     : ty_index IdMap.t;           (* typed parameters, index is
+                                               parameter number *)
+   vars       : ty located IdMap.t;         (* local variables *)
    mmclauses  : msg_match_clause_tyd list}  (* message match clauses *)
 
 type state_tyd = state_body_tyd located  (* typed state *)

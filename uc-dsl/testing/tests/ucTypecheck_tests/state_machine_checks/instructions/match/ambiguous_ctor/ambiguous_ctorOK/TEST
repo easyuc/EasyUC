@@ -1,5 +1,6 @@
 description
-
+Resolution of test where constructor of clause of match instruction is
+ambiguous.
 .
 args: ambiguous_ctorOK.uc
 outcome: success

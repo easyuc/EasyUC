@@ -1,8 +1,8 @@
-direct A_ {
+direct A' {
 in x@bla()
 }
 
-direct A {A:A_}
+direct A {A:A'}
 
 adversarial D {
 in bli()

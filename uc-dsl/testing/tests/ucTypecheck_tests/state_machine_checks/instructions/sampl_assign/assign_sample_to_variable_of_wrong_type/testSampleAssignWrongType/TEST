@@ -4,7 +4,7 @@ a distribution of exponents
 .
 args: testSampleAssignWrongType.uc
 outcome: failure
-[error: testSampleAssignWrongType.uc: from line 17 columns 16 to 20]
+[error: testSampleAssignWrongType.uc: from line 17 columns 24 to 28]
 
 This expression has type
    exp distr

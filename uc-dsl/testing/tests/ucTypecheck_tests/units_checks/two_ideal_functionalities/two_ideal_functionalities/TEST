@@ -1,5 +1,5 @@
 description
-
+Test when a unit has two ideal functionalities.
 .
 args:-units two_ideal_functionalities.uc
 outcome:failure

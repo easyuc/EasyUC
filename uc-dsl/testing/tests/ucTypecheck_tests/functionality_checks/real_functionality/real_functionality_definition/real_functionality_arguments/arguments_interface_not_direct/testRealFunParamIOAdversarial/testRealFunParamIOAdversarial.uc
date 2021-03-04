@@ -4,11 +4,11 @@ in x@bla()
 
 direct A{D:D}
 
-adversarial A_ {
+adversarial A' {
 in bla()
 }
 
-adversarial X{A:A_}
+adversarial X{A:A'}
 
 functionality R(F:X) implements A {
 

@@ -1,21 +1,21 @@
-direct D_ {
+direct D' {
 in  x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 adversarial Iio {
 in  bla()
 out bli()
 }
 
-adversarial A_ {
+adversarial A' {
 in  abla()
 out abli()
 }
 
-adversarial A {A:A_}
+adversarial A {A:A'}
 
 functionality R(F:D) implements D A {
 

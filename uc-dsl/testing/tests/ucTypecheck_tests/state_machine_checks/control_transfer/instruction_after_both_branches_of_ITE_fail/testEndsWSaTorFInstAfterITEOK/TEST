@@ -1,4 +1,6 @@
 description
+Resolution of test about instruction after ITE that does control
+transfer.
 .
 args: testEndsWSaTorFInstAfterITEOK.uc
 outcome: success

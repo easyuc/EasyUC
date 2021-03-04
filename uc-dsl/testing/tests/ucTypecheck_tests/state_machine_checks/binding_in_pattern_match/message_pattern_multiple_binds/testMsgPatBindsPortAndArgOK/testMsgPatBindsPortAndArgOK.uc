@@ -1,8 +1,8 @@
-direct A_ {
+direct A' {
 in x@bla(p:port)
 }
 
-direct A {A:A_}
+direct A {A:A'}
 
 functionality F implements A {
 

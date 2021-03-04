@@ -1,5 +1,5 @@
 description
-
+Test where constructor of clause of match instruction is ambiguous.
 .
 args: ambiguous_ctor.uc
 outcome: failure

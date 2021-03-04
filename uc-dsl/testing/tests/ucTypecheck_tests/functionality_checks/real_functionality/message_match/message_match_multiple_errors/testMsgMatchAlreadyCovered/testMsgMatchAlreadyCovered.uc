@@ -1,18 +1,18 @@
-direct D_ {
+direct D' {
 in x@bla()
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
-adversarial A_ {
+adversarial A' {
 in  bla()
 out bli()
 }
 
-adversarial A {A:A_}
+adversarial A {A:A'}
 
-functionality F implements D A_ {
+functionality F implements D A' {
   initial state Is 
   {
    match message with

@@ -4,8 +4,8 @@ path
 .
 args: testSimSendI2SOutMsg.uc
 outcome: failure
-[error: testSimSendI2SOutMsg.uc: from line 68 columns 38 to 48]
+[error: testSimSendI2SOutMsg.uc: from line 68 columns 43 to 53]
 
 message path is not one of the possible outgoing message paths:
-  Iio.i2sbla, R.A.A.abli, R.F.Iio2.i2sbli, R.SFQ.A2_.abli2
+  Iio.i2sbla, R.A.A.abli, R.F.Iio2.i2sbli, R.SFQ.A2'.abli2
 .

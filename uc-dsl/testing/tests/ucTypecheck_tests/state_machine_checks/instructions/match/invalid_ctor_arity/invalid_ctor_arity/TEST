@@ -1,5 +1,6 @@
 description
-
+Test of match instruction where arity of constructor
+in clause is wrong.
 .
 args: invalid_ctor_arity.uc
 outcome: failure

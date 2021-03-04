@@ -1,7 +1,20 @@
+(* UcSpecTypedSpecCommon module *)
+
+(* Common definitions used by UcSpec (specification parse trees) and
+   UcTypedSpec (typed specifications) *)
+
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2020-2021 - Boston University
+ *
+ * Distributed under the terms of the CeCILL-C-V1 license
+ * -------------------------------------------------------------------- *)
+
 open EcLocation
 open EcSymbols
 
-type psymbol   = symbol located
+type psymbol = symbol located
+
+(* message direction *)
 
 type msg_dir =
   | In   (* input message *)
@@ -43,7 +56,6 @@ type msg_pat_body =  (* body of a msg_pat *)
   {msg_path_pat : msg_path_pat;
    pat_args : pat list option}
 
-
 type msg_pat =
   {port_id      : psymbol option;   (* source port of message is bound
                                        to this identifier *)
@@ -57,6 +69,7 @@ type msg_path_u =
 
 type msg_path = msg_path_u located  (* message path *)
 
+(* left-hand sides of assignment *)
 
 type lhs =  (* left-hand sides *)
   | LHSSimp  of psymbol       (* assign to variable *)

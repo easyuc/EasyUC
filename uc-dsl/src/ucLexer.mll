@@ -108,13 +108,17 @@
     match Hashtbl.find_option bad_ec_idents id with
     | None   ->
         if String.starts_with id "_"   ||
+           String.ends_with id "_"     ||
+           String.exists id "__"       ||
            String.starts_with id "uc_" ||
            String.starts_with id "UC_"
         then lex_error l
              (fun ppf ->
                 Format.fprintf ppf
-                ("@[an@ identifer@ may@ not@ begin@ with@ an@ underscore@ " ^^
-                 "or@ \"uc_\"@ or@ \"UC_\"@]"))
+                ("@[an@ identifer@ may@ not@ begin@ or@ end@ with@ " ^^
+                 "an@ underscore;@ it@ may@ not@ have@ \"__\"@ as@ " ^^
+                 "a@ substring;@ it@ may@ not@ begin@ with@ "        ^^
+                 "\"uc_\"@ or@ \"UC_\"@]"))
     | Some _ ->
         lex_error l
         (fun ppf ->

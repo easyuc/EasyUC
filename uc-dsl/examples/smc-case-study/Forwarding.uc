@@ -1,14 +1,14 @@
 (* Forwarding *)
 
-(* Unit consisting of a forwarding ideal functionality. The adversary
-   is allowed to delay but not alter message forwarding. *)
+(* Singleton unit consisting of a forwarding ideal functionality. The
+   adversary is allowed to delay but not alter message forwarding. *)
 
 (* In the basic direct interface, the identifiers in "pt1@" and "@pt2"
    are used to help in name choice in the generation of EasyCrypt
    code. But see below how they are used in message pattern matching
    and send and transition instructions. *)
 
-direct FwDir_ {
+direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send
     u to pt2 *)
 
@@ -20,7 +20,7 @@ direct FwDir_ {
    a corresponding real functionality, it would thus have a single
    protocol party. *)
 
-direct FwDir {D : FwDir_}
+direct FwDir {D : FwDir'}
 
 (* An ideal functionality must have a basic adversarial interface: *)
 

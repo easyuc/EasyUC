@@ -4,8 +4,8 @@ message path
 .
 args: testSimSendNotOutAdvMsgofSubFun.uc
 outcome:  failure
-[error: testSimSendNotOutAdvMsgofSubFun.uc: from line 62 columns 37 to 52]
+[error: testSimSendNotOutAdvMsgofSubFun.uc: from line 62 columns 42 to 57]
 
 message path is not one of the possible outgoing message paths:
-  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli, R.SFQ.A2_.abli2
+  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli, R.SFQ.A2'.abli2
 .

@@ -1,11 +1,11 @@
 ec_requires +KeysExponentsAndPlainTexts.
 
-direct D_ {
+direct D' {
 in  x@bla(k:key)
 out bli()@x
 }
 
-direct D {D:D_}
+direct D {D:D'}
 
 functionality F(G:D) implements D {
 
@@ -13,7 +13,7 @@ functionality F(G:D) implements D {
 
   initial state I {
    match message with
-     D.D.* => {send G.D.bla(g) and transition I.}
+     x@D.D.bla(k) => {send G.D.bla(g) and transition I.}
    | * => {fail.}
    end
   }

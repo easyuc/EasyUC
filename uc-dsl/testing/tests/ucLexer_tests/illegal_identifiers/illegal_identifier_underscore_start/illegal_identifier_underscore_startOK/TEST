@@ -1,0 +1,6 @@
+description
+Test of illegal identifer because beginning with "_".
+.
+args: good.uc
+outcome: success
+.

@@ -1,5 +1,5 @@
 description
-
+Resolution of test where match instruction matches on non-inductive type.
 .
 args: expr_not_inductive_typeOK.uc
 outcome: success

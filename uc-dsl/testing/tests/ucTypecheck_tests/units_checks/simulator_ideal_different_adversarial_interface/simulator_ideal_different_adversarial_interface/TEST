@@ -1,5 +1,6 @@
 description
-
+Test when ideal functionality and simulator have implement/use
+different adversarial interfaces.
 .
 args:-units simulator_ideal_different_adversarial_interface.uc
 outcome:failure

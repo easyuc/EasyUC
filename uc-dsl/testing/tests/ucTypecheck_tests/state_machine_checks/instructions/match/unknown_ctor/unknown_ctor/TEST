@@ -1,5 +1,5 @@
 description
-
+Test with match instruction where constructor in clause is bad.
 .
 args: unknown_ctor.uc
 outcome: failure

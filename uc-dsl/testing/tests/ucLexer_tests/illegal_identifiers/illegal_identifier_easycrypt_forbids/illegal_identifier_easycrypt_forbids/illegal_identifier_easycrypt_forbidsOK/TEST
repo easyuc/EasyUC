@@ -1,0 +1,6 @@
+description
+Test of illegal identifer because EasyCrypt forbids it.
+.
+args: good.uc
+outcome: success
+.
