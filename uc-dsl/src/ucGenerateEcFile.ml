@@ -15,13 +15,21 @@ let pp_tydecl ppf ptd =
   let ppe = EcPrinting.PPEnv.ofenv env in
   EcPrinting.pp_typedecl ppe Format.std_formatter ptd;
   EcPrinting.pp_typedecl ppe ppf ptd
-
+  
+let pp_theory ppf pth =
+  let env = UcEcInterface.env () in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  EcPrinting.pp_theory ppe Format.std_formatter pth;
+  EcPrinting.pp_theory ppe ppf pth
+  
+let pqname_of_string (id:string) =
+  let env = UcEcInterface.env () in
+  EcPath.pqname (EcEnv.root env) id
 (*using ecScope.add_record as a starting point and copying parts of code from
 ecScope.add_record, ecHiInductive.trans_record 
 *)  
 let ec_tydecl_from_msg (id:string) (mb:message_body_tyd) : EcPath.path * EcDecl.tydecl =
-  let env = UcEcInterface.env () in
-  let tpath = EcPath.pqname (EcEnv.root env) id in
+  let tpath = pqname_of_string id in
   let fields = IdMap.bindings 
     (IdMap.map (fun til -> let ty,_ = unloc til in ty) mb.params_map) in
   let record = 
@@ -34,16 +42,29 @@ let ec_tydecl_from_msg (id:string) (mb:message_body_tyd) : EcPath.path * EcDecl.
   
 
 let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
-  let msgtys = match unloc it with
-               | BasicTyd b -> IdMap.mapi ec_tydecl_from_msg b
-               | _ -> IdMap.empty in
-  IdMap.iter (fun _ tydecl -> pp_tydecl ppf tydecl) msgtys
+  let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
+  let clears = [] in
+  let ctho = EcEnv.Theory.close ~clears env in
+  match ctho with
+  | Some cth ->
+    let msgtys = match unloc it with
+                 | BasicTyd b -> IdMap.mapi ec_tydecl_from_msg b
+                 | _ -> IdMap.empty 
+    in
+    let cths = IdMap.fold 
+      (fun id (_,tydecl) cths -> cths @ [EcTheory.CTh_type (id,tydecl)] ) 
+      msgtys cth.cth_struct in
+    let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cths }
+    in
+    let pth = ((pqname_of_string id),(cth',`Concrete)) in
+    pp_theory ppf pth;
+  | None -> print_string "nooooo"
  
 let gen_dirs (f:string) (dim: inter_tyd IdMap.t) : unit =
   let fo = open_out (f^".ec") in
   let ppf = Format.formatter_of_out_channel fo in
   IdMap.iter (pp_interface ppf) dim;
-  flush fo;
+  Format.pp_print_flush ppf ();
   close_out fo
   
 let generate_ec (ts:typed_spec) : unit =
