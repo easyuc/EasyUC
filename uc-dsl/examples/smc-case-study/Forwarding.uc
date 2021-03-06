@@ -3,9 +3,9 @@
 (* Singleton unit consisting of a forwarding ideal functionality. The
    adversary is allowed to delay but not alter message forwarding. *)
 
-(* The basic direct interface for the single protocol party (because
+(* The basic direct interface for the single functionality party (because
    we won't have a real functionality, there is no reason not to use a
-   single protocol party, to which forwarding requests come and from
+   single functionality party, to which forwarding requests come and from
    which forwarding responses originate).
 
    the identifiers in "pt1@" and "@pt2" are used to help in name
@@ -22,7 +22,7 @@ direct FwDir' {
 }
 
 (* The composite direct interface has a single component, corresponding to
-   the single protocol party. *)
+   the single functionality party. *)
 
 direct FwDir {D : FwDir'}
 
