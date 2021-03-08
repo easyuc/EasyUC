@@ -30,7 +30,6 @@ adversarial Iio {
 in  i2sbla()
 out i2sbli()
 }
-
 functionality Q() implements D2 A2' {
 
   initial state In {
@@ -60,7 +59,7 @@ functionality I() implements D Iio {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with Iio.i2sbli => { send R.SFQ.D.abli() and transition Fin.} end
+  match message with Iio.i2sbli => { send R.F.Iio.i2sbli() and transition Fin.} end
  }
 
  state Fin {

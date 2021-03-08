@@ -405,16 +405,17 @@ let augment_env_with_state_context
      (IdMap.bindings sc.vars))
     env
 
-(* state signatures - lists of the types of each state's parameters *)
+(* state signatures - boolean saying if initial state or not, plus
+   list of the types of each parameter of state *)
 
-type state_sig = ty list
+type state_sig = bool * ty list
 
 let get_state_sig (s : state_body_mid) : state_sig = 
-  if s.is_initial then []
+  if s.is_initial then (true, [])
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
        let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       (fst (List.split tord))
+       (false, (fst (List.split tord)))
 
 let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t = 
   IdMap.map (fun s -> get_state_sig (unloc s)) states
@@ -1028,25 +1029,32 @@ let check_sampl_assign
   Sample (lhs,exp), sa'
 
 let check_state_expr
-    (ss : state_sig IdMap.t) (sa : state_analysis)
+    (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
     (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd = 
-  let ssig = 
+  let is_sim = List.mem "simulator" sc.flags in
+  let (is_init, tys) = 
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
         type_error (loc se.id)
         (fun ppf ->
            fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
+  let () =
+    if is_sim && is_init
+    then type_error (loc se.id)
+         (fun ppf ->
+            fprintf ppf
+            ("@[in@ simulator,@ cannot@ transition@ back@ " ^^
+             "to@ initial@ state@]")) in
   let args = se.args in
-  if List.length ssig <> List.length (unloc args)
+  if List.length tys <> List.length (unloc args)
   then type_error (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else 
     let argz_u = List.map2
        (fun sigt sip -> fst (check_expr sa env ue sip (Some sigt)))
-       ssig (unloc args) in
+       tys (unloc args) in
     let argz = mk_loc (loc args) argz_u in
     {id = se.id; args = argz }
-    
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1142,10 +1150,10 @@ let check_msg_expr
 
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sa : state_analysis) (env : env) (ue : unienv)
+    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (sat : send_and_transition) : instruction_tyd_u = 
   let msg_exp = check_msg_expr abip sa env ue sat.msg_expr in
-  let state_exp = check_state_expr ss sa env ue sat.state_expr in
+  let state_exp = check_state_expr ss sc sa env ue sat.state_expr in
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
@@ -1277,7 +1285,7 @@ and check_instruction
     | Match(ex, clauses)                  ->
         check_match abip ss sc sa env ue ex clauses
     | SendAndTransition sat               ->
-        check_send_and_transition abip ss sa env ue sat, sa
+        check_send_and_transition abip ss sc sa env ue sat, sa
     | Fail                                -> Fail, sa in
   (mk_loc (loc i) uinstr), sa
 
@@ -1481,10 +1489,10 @@ let check_lowlevel_state
   let ue = unif_env () in
   let code = check_state_code abip ss sc sa env ue us.mmclauses in
   let us' : state_body_tyd = 
-    { is_initial = us.is_initial; 
-      params = us.params;
-      vars = us.vars;
-      mmclauses = code }  in
+    {is_initial = us.is_initial; 
+     params     = us.params;
+     vars       = us.vars;
+     mmclauses  = code } in
   mk_loc (loc state) us'
 
 (* check the lower-level of a state_tyd IdMap.t state machine *)
