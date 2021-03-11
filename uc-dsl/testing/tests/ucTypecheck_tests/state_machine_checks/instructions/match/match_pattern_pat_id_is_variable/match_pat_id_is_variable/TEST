@@ -1,0 +1,9 @@
+description 
+Test when id of match pattern conflicts with a program variable.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 25 columns 15 to 16]
+
+bound identifier may not be program variable: x
+.

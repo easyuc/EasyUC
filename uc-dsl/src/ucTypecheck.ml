@@ -405,6 +405,17 @@ let augment_env_with_state_context
      (IdMap.bindings sc.vars))
     env
 
+let bind_local_avoid_var
+    (env : EcEnv.env) (sc : state_context) (ident : EcIdent.t) (ty : ty)
+    (l : EcLocation.t) : EcEnv.env =
+  if IdMap.mem (EcIdent.name ident) sc.vars
+  then type_error l
+       (fun ppf ->
+          fprintf ppf
+          "@[bound@ identifier@ may@ not@ be@ program@ variable:@ %s@]"
+          (EcIdent.name ident))
+  else Var.bind_local ident ty env
+
 (* state signatures - boolean saying if initial state or not, plus
    list of the types of each parameter of state *)
 
@@ -825,7 +836,8 @@ let check_port_id_binding
            else ("@[message@ patterns@ matching@ adversarial@ and@ " ^^
                  "internal@ messages@ may@ not@ bind@ source@ ports@ " ^^
                  "to@ identifiers@]")))
-  else Var.bind_local (EcIdent.create (unloc id)) port_ty env
+  else bind_local_avoid_var env sc (EcIdent.create (unloc id)) port_ty
+       (loc id)
 
 let check_non_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list) (mppl : EcLocation.t)
@@ -840,10 +852,12 @@ let check_non_port_id_binding
            "source@ ports@ to@ identifiers@]"))
   else ()
 
-let check_pat_add_id (env : env) (pat : pat) (ty : ty) : env = 
+let check_pat_add_id
+    (sc : state_context) (env : env) (pat : pat) (ty : ty) : env = 
   match pat with
   | PatWildcard _ -> env
-  | PatId id      -> Var.bind_local (EcIdent.create (unloc id)) ty env
+  | PatId id      ->
+      bind_local_avoid_var env sc (EcIdent.create (unloc id)) ty (loc id)
 
 let ids_of_pat (pat : pat) : IdSet.t =
   match pat with
@@ -871,7 +885,7 @@ let check_disjoint_bindings (pats : pat list) : unit =
 
 let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
-    (pats : pat list) (env : env) : env = 
+    (pats : pat list) (env : env) (sc : state_context) : env = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -884,7 +898,7 @@ let check_pat_args_with_msg_type
             ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
              "from@ the@ number@ of@ message@ parameters@]")) in
   let () = check_disjoint_bindings pats in
-  List.fold_left2 check_pat_add_id env pats mtyp
+  List.fold_left2 (check_pat_add_id sc) env pats mtyp
 
 let check_missing_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
@@ -901,7 +915,8 @@ let check_missing_pat_args_with_msg_type
              "from@ the@ number@ of@ message@ parameters@]"))
 
 let check_pat_args
-    (bips : basic_inter_path list) (msg_pat : msg_pat) (env : env) : env =
+    (bips : basic_inter_path list) (msg_pat : msg_pat) (env : env)
+    (sc : state_context) : env =
   match msg_pat.pat_args with
   | None      ->
       let () =
@@ -921,7 +936,7 @@ let check_pat_args
        | MsgOrStarStar   -> failure "cannot happen - check in parser"
        | MsgOrStarMsg id ->
            check_pat_args_with_msg_type bips
-           (mpp_u.inter_id_path, id) pats env
+           (mpp_u.inter_id_path, id) pats env sc
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : msg_pat)
@@ -950,7 +965,7 @@ let check_msg_pat
               ((unloc msg_pat.msg_path_pat).inter_id_path) mppl;
               env) in
   let bips = flatten_all_basic_inter_paths abip in
-  check_pat_args bips msg_pat env
+  check_pat_args bips msg_pat env sc
 
 (* checking instructions *)
   
@@ -977,7 +992,7 @@ let check_expr
     fv in
   (* update result type to take account of unification *)
   let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
-  (exp,res_ty)
+  (exp, res_ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty = 
@@ -1157,8 +1172,8 @@ let check_send_and_transition
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
-    (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
-    (clause : match_clause)
+    (l : EcLocation.t) (sc : state_context) (env : env) (ue : unienv)
+    (gindty : ty) (clause : match_clause)
       : symbol * (bindings * instruction list located) =
   let filter = fun op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
@@ -1182,6 +1197,21 @@ let check_toplevel_match_clause
       then tyerror cname.pl_loc env
            (InvalidMatch
             (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
+
+      let () =
+        List.iter
+        (fun carg ->
+           match unloc carg with
+           | None    -> ()
+           | Some id ->
+               if IdMap.mem (unloc id) sc.vars
+               then type_error (loc id)
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[bound@ identifier@ may@ not@ be@ program@ " ^^
+                        "variable:@ %s@]")
+                       (unloc id)))
+        cargs in
 
       let cargs_lin =
         List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
@@ -1243,7 +1273,9 @@ and check_match
     | None   -> tyerror ex.pl_loc env NotAnInductive
     | Some x -> x in
   let top_results =
-    List.map (check_toplevel_match_clause ex_loc env ue ty) (unloc clauses) in
+    List.map
+    (check_toplevel_match_clause ex_loc sc env ue ty)
+    (unloc clauses) in
   (* the left-hand-sides of top_results are a subset of the left-hand sides
      of inddecl.tydt_ctors (with the order perhaps different) *)
   let () =
@@ -1256,7 +1288,7 @@ and check_match
      of inddecl.tydt_ctors (with the order perhaps different) *)
   let results =
     List.map
-    (fun (cons,(bndgs, body)) ->
+    (fun (cons, (bndgs, body)) ->
        let env = Var.bind_locals bndgs env in
        cons, (bndgs, check_instructions abip ss sc sa env ue body))
     top_results in

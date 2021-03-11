@@ -1,0 +1,6 @@
+description 
+Test when id of match pattern conflicts with a program variable.
+.
+args: good.uc
+outcome: success
+.

@@ -72,9 +72,10 @@ functionality Forw implements FwDir FwAdv {
 
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
-    | FwAdv.fw_ok =>  (* no source port bound, because from adversary *)
-        { send FwDir.D.fw_rsp(pt1, u)@pt2
-          and transition Final. }
+    | FwAdv.fw_ok => {  (* no source port bound, because from adversary *)
+        send FwDir.D.fw_rsp(pt1, u)@pt2
+        and transition Final.
+      }
     | *           => { fail. }
     end
   } 
