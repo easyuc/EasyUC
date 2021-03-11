@@ -1,0 +1,9 @@
+description 
+Test when id of message pattern conflicts with a program variable.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 22 columns 16 to 17]
+
+bound identifier may not be program variable: x
+.

@@ -32,10 +32,11 @@ op pi : int.
    functionality: pt1 is asking to forward u to pt2
 
    pt1, pt2 and u are the names used in the UC DSL declaration of
-   fw_req; because __ is not legal in UC DSL identifiers, we use it as
-   a separator of UC DSL identifers in the generated code; note the
-   extra "_" in fw_req___func, to avoid a possible conflict with legal
-   UC DSL identifers *)
+   fw_req; because __ is not legal in UC DSL identifiers, and UC DSL
+   identifiers may not begin or end with "_", we use it as a separator
+   of UC DSL identifers in the generated code; note the extra "_" in
+   fw_req___func, to avoid a possible conflict with legal UC DSL
+   identifers *)
 
 type fw_req =
   {fw_req___func : addr;   (* address of functionality - destination address *)

@@ -14,7 +14,7 @@ functionality F() implements A {
   initial state I {
    var x : key;
    match message with
-    x@A.A.bla => {x <$ dexp; fail.}
+    y@A.A.bla => {x <$ dexp; fail.}
    end
   }
  }

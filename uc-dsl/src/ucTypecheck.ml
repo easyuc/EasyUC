@@ -405,16 +405,28 @@ let augment_env_with_state_context
      (IdMap.bindings sc.vars))
     env
 
-(* state signatures - lists of the types of each state's parameters *)
+let bind_local_avoid_var
+    (env : EcEnv.env) (sc : state_context) (ident : EcIdent.t) (ty : ty)
+    (l : EcLocation.t) : EcEnv.env =
+  if IdMap.mem (EcIdent.name ident) sc.vars
+  then type_error l
+       (fun ppf ->
+          fprintf ppf
+          "@[bound@ identifier@ may@ not@ be@ program@ variable:@ %s@]"
+          (EcIdent.name ident))
+  else Var.bind_local ident ty env
 
-type state_sig = ty list
+(* state signatures - boolean saying if initial state or not, plus
+   list of the types of each parameter of state *)
+
+type state_sig = bool * ty list
 
 let get_state_sig (s : state_body_mid) : state_sig = 
-  if s.is_initial then []
+  if s.is_initial then (true, [])
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
        let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       (fst (List.split tord))
+       (false, (fst (List.split tord)))
 
 let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t = 
   IdMap.map (fun s -> get_state_sig (unloc s)) states
@@ -824,7 +836,8 @@ let check_port_id_binding
            else ("@[message@ patterns@ matching@ adversarial@ and@ " ^^
                  "internal@ messages@ may@ not@ bind@ source@ ports@ " ^^
                  "to@ identifiers@]")))
-  else Var.bind_local (EcIdent.create (unloc id)) port_ty env
+  else bind_local_avoid_var env sc (EcIdent.create (unloc id)) port_ty
+       (loc id)
 
 let check_non_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list) (mppl : EcLocation.t)
@@ -839,10 +852,12 @@ let check_non_port_id_binding
            "source@ ports@ to@ identifiers@]"))
   else ()
 
-let check_pat_add_id (env : env) (pat : pat) (ty : ty) : env = 
+let check_pat_add_id
+    (sc : state_context) (env : env) (pat : pat) (ty : ty) : env = 
   match pat with
   | PatWildcard _ -> env
-  | PatId id      -> Var.bind_local (EcIdent.create (unloc id)) ty env
+  | PatId id      ->
+      bind_local_avoid_var env sc (EcIdent.create (unloc id)) ty (loc id)
 
 let ids_of_pat (pat : pat) : IdSet.t =
   match pat with
@@ -870,7 +885,7 @@ let check_disjoint_bindings (pats : pat list) : unit =
 
 let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
-    (pats : pat list) (env : env) : env = 
+    (pats : pat list) (env : env) (sc : state_context) : env = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -883,7 +898,7 @@ let check_pat_args_with_msg_type
             ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
              "from@ the@ number@ of@ message@ parameters@]")) in
   let () = check_disjoint_bindings pats in
-  List.fold_left2 check_pat_add_id env pats mtyp
+  List.fold_left2 (check_pat_add_id sc) env pats mtyp
 
 let check_missing_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
@@ -900,7 +915,8 @@ let check_missing_pat_args_with_msg_type
              "from@ the@ number@ of@ message@ parameters@]"))
 
 let check_pat_args
-    (bips : basic_inter_path list) (msg_pat : msg_pat) (env : env) : env =
+    (bips : basic_inter_path list) (msg_pat : msg_pat) (env : env)
+    (sc : state_context) : env =
   match msg_pat.pat_args with
   | None      ->
       let () =
@@ -920,7 +936,7 @@ let check_pat_args
        | MsgOrStarStar   -> failure "cannot happen - check in parser"
        | MsgOrStarMsg id ->
            check_pat_args_with_msg_type bips
-           (mpp_u.inter_id_path, id) pats env
+           (mpp_u.inter_id_path, id) pats env sc
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : msg_pat)
@@ -949,7 +965,7 @@ let check_msg_pat
               ((unloc msg_pat.msg_path_pat).inter_id_path) mppl;
               env) in
   let bips = flatten_all_basic_inter_paths abip in
-  check_pat_args bips msg_pat env
+  check_pat_args bips msg_pat env sc
 
 (* checking instructions *)
   
@@ -976,7 +992,7 @@ let check_expr
     fv in
   (* update result type to take account of unification *)
   let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
-  (exp,res_ty)
+  (exp, res_ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty = 
@@ -1028,25 +1044,32 @@ let check_sampl_assign
   Sample (lhs,exp), sa'
 
 let check_state_expr
-    (ss : state_sig IdMap.t) (sa : state_analysis)
+    (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
     (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd = 
-  let ssig = 
+  let is_sim = List.mem "simulator" sc.flags in
+  let (is_init, tys) = 
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
         type_error (loc se.id)
         (fun ppf ->
            fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
+  let () =
+    if is_sim && is_init
+    then type_error (loc se.id)
+         (fun ppf ->
+            fprintf ppf
+            ("@[in@ simulator,@ cannot@ transition@ back@ " ^^
+             "to@ initial@ state@]")) in
   let args = se.args in
-  if List.length ssig <> List.length (unloc args)
+  if List.length tys <> List.length (unloc args)
   then type_error (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else 
     let argz_u = List.map2
        (fun sigt sip -> fst (check_expr sa env ue sip (Some sigt)))
-       ssig (unloc args) in
+       tys (unloc args) in
     let argz = mk_loc (loc args) argz_u in
     {id = se.id; args = argz }
-    
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1142,15 +1165,15 @@ let check_msg_expr
 
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sa : state_analysis) (env : env) (ue : unienv)
+    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (sat : send_and_transition) : instruction_tyd_u = 
   let msg_exp = check_msg_expr abip sa env ue sat.msg_expr in
-  let state_exp = check_state_expr ss sa env ue sat.state_expr in
+  let state_exp = check_state_expr ss sc sa env ue sat.state_expr in
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
-    (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
-    (clause : match_clause)
+    (l : EcLocation.t) (sc : state_context) (env : env) (ue : unienv)
+    (gindty : ty) (clause : match_clause)
       : symbol * (bindings * instruction list located) =
   let filter = fun op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
@@ -1174,6 +1197,21 @@ let check_toplevel_match_clause
       then tyerror cname.pl_loc env
            (InvalidMatch
             (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
+
+      let () =
+        List.iter
+        (fun carg ->
+           match unloc carg with
+           | None    -> ()
+           | Some id ->
+               if IdMap.mem (unloc id) sc.vars
+               then type_error (loc id)
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[bound@ identifier@ may@ not@ be@ program@ " ^^
+                        "variable:@ %s@]")
+                       (unloc id)))
+        cargs in
 
       let cargs_lin =
         List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
@@ -1235,7 +1273,9 @@ and check_match
     | None   -> tyerror ex.pl_loc env NotAnInductive
     | Some x -> x in
   let top_results =
-    List.map (check_toplevel_match_clause ex_loc env ue ty) (unloc clauses) in
+    List.map
+    (check_toplevel_match_clause ex_loc sc env ue ty)
+    (unloc clauses) in
   (* the left-hand-sides of top_results are a subset of the left-hand sides
      of inddecl.tydt_ctors (with the order perhaps different) *)
   let () =
@@ -1248,7 +1288,7 @@ and check_match
      of inddecl.tydt_ctors (with the order perhaps different) *)
   let results =
     List.map
-    (fun (cons,(bndgs, body)) ->
+    (fun (cons, (bndgs, body)) ->
        let env = Var.bind_locals bndgs env in
        cons, (bndgs, check_instructions abip ss sc sa env ue body))
     top_results in
@@ -1277,7 +1317,7 @@ and check_instruction
     | Match(ex, clauses)                  ->
         check_match abip ss sc sa env ue ex clauses
     | SendAndTransition sat               ->
-        check_send_and_transition abip ss sa env ue sat, sa
+        check_send_and_transition abip ss sc sa env ue sat, sa
     | Fail                                -> Fail, sa in
   (mk_loc (loc i) uinstr), sa
 
@@ -1481,10 +1521,10 @@ let check_lowlevel_state
   let ue = unif_env () in
   let code = check_state_code abip ss sc sa env ue us.mmclauses in
   let us' : state_body_tyd = 
-    { is_initial = us.is_initial; 
-      params = us.params;
-      vars = us.vars;
-      mmclauses = code }  in
+    {is_initial = us.is_initial; 
+     params     = us.params;
+     vars       = us.vars;
+     mmclauses  = code } in
   mk_loc (loc state) us'
 
 (* check the lower-level of a state_tyd IdMap.t state machine *)

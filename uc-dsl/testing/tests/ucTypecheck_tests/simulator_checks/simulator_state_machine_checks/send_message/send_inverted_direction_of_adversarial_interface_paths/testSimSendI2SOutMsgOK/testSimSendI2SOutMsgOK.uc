@@ -63,7 +63,10 @@ functionality I() implements D Iio2 {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with Iio.i2sbli => { send Iio.i2sbla() and transition In.} end
+  match message with Iio.i2sbli => { send Iio.i2sbla() and transition Fin.} end
  }
 
+ state Fin {
+   match message with * => { fail. } end
+ }
 }

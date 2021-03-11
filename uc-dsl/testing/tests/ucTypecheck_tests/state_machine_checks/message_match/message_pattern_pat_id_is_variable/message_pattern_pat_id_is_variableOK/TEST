@@ -1,0 +1,6 @@
+description 
+Test when id of message pattern conflicts with a program variable.
+.
+args: good.uc
+outcome: success
+.

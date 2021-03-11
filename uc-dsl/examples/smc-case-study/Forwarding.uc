@@ -3,10 +3,15 @@
 (* Singleton unit consisting of a forwarding ideal functionality. The
    adversary is allowed to delay but not alter message forwarding. *)
 
-(* In the basic direct interface, the identifiers in "pt1@" and "@pt2"
-   are used to help in name choice in the generation of EasyCrypt
-   code. But see below how they are used in message pattern matching
-   and send and transition instructions. *)
+(* The basic direct interface for the single functionality party (because
+   we won't have a real functionality, there is no reason not to use a
+   single functionality party, to which forwarding requests come and from
+   which forwarding responses originate).
+
+   the identifiers in "pt1@" and "@pt2" are used to help in name
+   choice in the generation of EasyCrypt code. But see below how they
+   are used in message pattern matching and send and transition
+   instructions. *)
 
 direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send
@@ -16,9 +21,8 @@ direct FwDir' {
     sent u to it *)
 }
 
-(* The composite direct interface has a single component. If there was
-   a corresponding real functionality, it would thus have a single
-   protocol party. *)
+(* The composite direct interface has a single component, corresponding to
+   the single functionality party. *)
 
 direct FwDir {D : FwDir'}
 
@@ -68,9 +72,10 @@ functionality Forw implements FwDir FwAdv {
 
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
-    | FwAdv.fw_ok =>  (* no source port bound, because from adversary *)
-        { send FwDir.D.fw_rsp(pt1, u)@pt2
-          and transition Final. }
+    | FwAdv.fw_ok => {  (* no source port bound, because from adversary *)
+        send FwDir.D.fw_rsp(pt1, u)@pt2
+        and transition Final.
+      }
     | *           => { fail. }
     end
   } 
