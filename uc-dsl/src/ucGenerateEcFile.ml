@@ -39,7 +39,21 @@ let ec_tydecl_from_msg (id:string) (mb:message_body_tyd) : EcPath.path * EcDecl.
   {
     tyd_params = record.EI.rc_tparams;
     tyd_type   = `Record (scheme, record.EI.rc_fields); }
+
+let nullary_int_op =
+  EcDecl.mk_op [] EcTypes.tint None
   
+let op_pi_th_item (id:string) : EcTheory.ctheory_item =
+  EcTheory.CTh_operator (id,nullary_int_op)
+
+let lemma_th_item : EcTheory.ctheory_item =
+  EcTheory.CTh_axiom
+  ("tru",
+  { ax_tparams = [];
+    ax_spec    = EcCoreFol.f_true;
+    ax_kind    = `Lemma;
+    ax_nosmt   = false 
+  })
 
 let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
   let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
@@ -51,10 +65,12 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
                  | BasicTyd b -> IdMap.mapi ec_tydecl_from_msg b
                  | _ -> IdMap.empty 
     in
-    let cths = IdMap.fold 
-      (fun id (_,tydecl) cths -> cths @ [EcTheory.CTh_type (id,tydecl)] ) 
+    let cth_items = IdMap.fold 
+      (fun id (_,tydecl) cth_its -> cth_its @ [EcTheory.CTh_type (id,tydecl)] ) 
       msgtys cth.cth_struct in
-    let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cths }
+    let cth_items = (op_pi_th_item "pi") :: cth_items in
+    let cth_items = cth_items @ [lemma_th_item] in
+    let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
     in
     let pth = ((pqname_of_string id),(cth',`Concrete)) in
     pp_theory ppf pth;
