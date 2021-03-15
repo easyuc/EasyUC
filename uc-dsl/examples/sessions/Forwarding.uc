@@ -11,12 +11,12 @@ direct FwDir' {
   (* request by instance ins1 of port pt1, asking to send u to
      iport ipt2 *)
 
-  in pt1@fw_req(ins1 : univ, ipt2 : iport, u : univ)
+  in pt1@fw_req(ins1 : inst, ipt2 : iport, u : univ)
 
   (* response from functionality to instance ins2 of port pt2, saying
-     instance iport ipt1 sent it u *)
+     iport ipt1 sent it u *)
 
-  out fw_rsp(ipt1 : iport, ins2 : univ, u : univ)@pt2
+  out fw_rsp(ipt1 : iport, ins2 : inst, u : univ)@pt2
 }
 
 direct FwDir {D : FwDir'}
@@ -63,16 +63,14 @@ functionality Forw implements FwDir FwAdv {
         else { fail. }
       }
     | FwAdv.fw_ok(ssn) => {
-        (ipt1', ipt2', u') <- oget ssns.[ssn];
         if (dom ssns ssn) {
+          (ipt1', ipt2', u') <- oget ssns.[ssn];
           send
             FwDir.D.fw_rsp(ipt1', ipt2'.`2, u')@ipt2'.`1
           and transition
             Main(next, rem ssns ssn).
-        }
-        else {
-          fail.
-        }
+          }
+        else { fail. }
       }
     end
   } 
