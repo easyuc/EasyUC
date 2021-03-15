@@ -3,7 +3,7 @@
 (* Singleton unit consisting of a forwarding ideal functionality
    supporting multiple sessions *)
 
-ec_requires +Forwarding.  (* defines sessions map type *)
+ec_requires +Forwarding.  (* defines needed types *)
 
 (* direct interface *)
 
@@ -46,7 +46,7 @@ functionality Forw implements FwDir FwAdv {
         }
         else { fail. }
       }
-    | *                          => { fail. }
+    | *                                 => { fail. }
     end
   }
 
