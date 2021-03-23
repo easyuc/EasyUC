@@ -1,9 +1,9 @@
-(* Forwarding *)
+(* Forwarding.uc *)
 
 (* Singleton unit consisting of a forwarding ideal functionality
    supporting multiple sessions *)
 
-ec_requires +Forwarding.  (* defines needed types *)
+ec_requires +Forwarding.
 
 (* direct interface *)
 
@@ -11,12 +11,12 @@ direct FwDir' {
   (* request by instance ins1 of port pt1, asking to send u to
      iport ipt2 *)
 
-  in pt1@fw_req(ins1 : inst, ipt2 : iport, u : univ)
+  in pt1@fw_req(ins1 : ins, ipt2 : iport, u : univ)
 
   (* response from functionality to instance ins2 of port pt2, saying
      iport ipt1 sent it u *)
 
-  out fw_rsp(ipt1 : iport, ins2 : inst, u : univ)@pt2
+  out fw_rsp(ipt1 : iport, ins2 : ins, u : univ)@pt2
 }
 
 direct FwDir {D : FwDir'}
@@ -50,7 +50,7 @@ functionality Forw implements FwDir FwAdv {
     end
   }
 
-  state Main(next : int, ssns : sessions) {
+  state Main(next : int, ssns : (iport * iport * univ) sessions) {
     var ipt1', ipt2' : iport; var u' : univ;
     match message with
     | pt1@FwDir.D.fw_req(ins1, ipt2, u) => {

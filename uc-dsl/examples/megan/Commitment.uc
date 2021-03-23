@@ -4,15 +4,15 @@
 
 (* Direct interfaces, which are between ideal functionality and environment *)
 direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
-  in  pt1@comm_commit_req(pt2 : port, u : univ)  (* request from pt1, asking to send the initial commitment to pt2 *)
+  in  pt1@comm_commit_req(pt2 : port, u : bool)  (* request from pt1, asking to send the initial commitment to pt2 *)
 
-  in pt1@comm_open_req(pt2 : port)  (* message to pt2, asking to send the opening of the commitment to pt2 *)
+  in pt1@comm_open_req()  (* message to pt2, asking to send the opening of the commitment to pt2 *)
 }
 
 direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
   out comm_commit_rsp(pt1 : port)@pt2  (* message to pt2, saying that pt1 has committed a message u *)
 
-  out comm_open_rsp(pt1 : port, u : univ)@pt2  (* message to pt2, saying that pt1
+  out comm_open_rsp(pt1 : port, u : bool)@pt2  (* message to pt2, saying that pt1
     sent u to it *)
 }
 
@@ -30,7 +30,7 @@ adversarial CommI2S {
   in comm_sim_commit_rsp (* response from simulator to ideal functionality,
     conveying no additional information *)
 
-  out comm_sim_open_req(pt1 : port, pt2 : port) (* open message from ideal functionality to simulator,
+  out comm_sim_open_req(u : bool) (* open message from ideal functionality to simulator,
     conveying no additional information *)
 
   in comm_sim_open_rsp (* response from simulator to ideal functionality,
@@ -53,7 +53,7 @@ functionality CommIdeal implements CommDir CommI2S{
     end
   }
 
-  state WaitCommitSim(pt1 : port, pt2 : port, u : univ) {
+  state WaitCommitSim(pt1 : port, pt2 : port, u : bool) {
     match message with
     | CommI2S.comm_sim_commit_rsp => {
         send CommDir.Pt2.comm_commit_rsp(pt1)@pt2
@@ -63,17 +63,22 @@ functionality CommIdeal implements CommDir CommI2S{
     end
   }
 
-  state WaitOpenReq(pt1 : port, pt2 : port, u: univ) {
+  state WaitOpenReq(pt1 : port, pt2 : port, u: bool) {
     match message with
-    | pt1@CommDir.Pt1.comm_open_req(pt2) => {
-        send CommI2S.comm_sim_open_req(pt1, pt2)
-	and transition WaitOpenSim(pt1, pt2, u).
+    | pt1'@CommDir.Pt1.comm_open_req() => {
+        if (pt1' = pt1) {
+          send CommI2S.comm_sim_open_req(u)
+     	  and transition WaitOpenSim(pt1, pt2, u).
+        }
+        else {
+          fail.
+        }
       }
     | *                => { fail. }
     end
   }
 
-  state WaitOpenSim(pt1 : port, pt2 : port, u : univ) {
+  state WaitOpenSim(pt1 : port, pt2 : port, u : bool) {
     match message with
     | CommI2S.comm_sim_open_rsp => {
         send CommDir.Pt2.comm_open_rsp(pt1, u)@pt2
