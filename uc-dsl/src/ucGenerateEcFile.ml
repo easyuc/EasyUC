@@ -82,9 +82,24 @@ let dec_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let op_name = dec_op_name mt_id in
   op_th_item op_name op_decl
 
+let enc_dec_typs (mt_id:string) =
+  [mk_ty_from_s mt_id; msg_ty]
+
+let epdp_mt_ty (mt_id:string) env =
+  let epdp_p , _ = EcEnv.Ty.lookup ([],"epdp") env in
+  let tyl = enc_dec_typs mt_id in
+  EcTypes.tconstr epdp_p tyl
+  
+let epdp_ty env =
+  let epdp_p , _ = EcEnv.Ty.lookup ([],"epdp") env in
+  EcTypes.tconstr epdp_p []
+  
+let epdp_mt_op_name mt_id =
+  "epdp_"^mt_id
+
 let epdp_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let env = UcEcInterface.env () in
-  let epdp_p , _ = EcEnv.Ty.lookup ([],"epdp") env in
+  
   (*let epdp_p , epdp_tydecl = EcEnv.Ty.lookup ([],"epdp") env in
   print_string (EcPath.tostring epdp_p);
   let epdp_ty = EcEnv.Ty.unfold epdp_p [mk_ty_from_s mt_id; msg_ty] env in
@@ -94,26 +109,42 @@ let epdp_op_th_item (mt_id:string) : EcTheory.ctheory_item =
                 in 
   let epdp_ty = EcDecl.ty_instanciate epdp_tydecl.tyd_params [mk_ty_from_s mt_id; msg_ty] in
   let epdp_op = EcEnv.Op.by_path epdp_p env in *)
-  let tyl = [mk_ty_from_s mt_id; msg_ty] in
-  let epdp_mt_ty = EcTypes.tconstr epdp_p tyl in
+  
+  let epdp_mt_ty = epdp_mt_ty mt_id env in
   let mk_epdp_p , _ = EcEnv.Op.lookup ([],"mk_epdp") env in
-  let epdp_mt_op_ex = EcTypes.e_op mk_epdp_p tyl epdp_mt_ty in
+  let epdp_mt_op_ex = EcTypes.e_op mk_epdp_p (enc_dec_typs mt_id) epdp_mt_ty in
   let enc_mt_op_ex = EcTypes.e_op (pqname_of_string (enc_op_name mt_id)) [] (enc_op_ty mt_id) in
   let dec_mt_op_ex = EcTypes.e_op (pqname_of_string (dec_op_name mt_id)) [] (dec_op_ty mt_id) in
   let epdp_mt_ex = EcTypes.e_app  epdp_mt_op_ex [enc_mt_op_ex;dec_mt_op_ex] epdp_mt_ty in
   let epdp_mt_body = EcDecl.OP_Plain (epdp_mt_ex,true) in
   let op_decl = (EcDecl.mk_op [] epdp_mt_ty (Some epdp_mt_body)) in
-  let op_name = "epdp_"^mt_id in
+  let op_name = epdp_mt_op_name mt_id in
   op_th_item op_name op_decl
   
-let lemma_th_item : EcTheory.ctheory_item =
+let lemma_th_item (name : string) (f:EcCoreFol.form): EcTheory.ctheory_item =
   EcTheory.CTh_axiom
-  ("tru",
+  (name,
   { ax_tparams = [];
-    ax_spec    = EcCoreFol.f_true;
+    ax_spec    = f;
     ax_kind    = `Lemma;
     ax_nosmt   = false 
   })
+
+let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
+  let env = UcEcInterface.env () in
+  let epdp_ty = epdp_ty env in
+  (*let valid_epdp_op_p , _ = EcEnv.Op.lookup ([],"valid_epdp") env in !!! the path is Top.UCEncoding.valid_epdp which gets printed out*)
+  let valid_epdp_op_p = pqname_of_string "valid_epdp" in
+  let valid_epdp_op_ty = EcTypes.toarrow [epdp_ty] EcTypes.tbool in
+  let valid_epdp_op_f = EcCoreFol.f_op valid_epdp_op_p [] valid_epdp_op_ty in
+  let epdp_mt_ty = epdp_mt_ty mt_id env in
+  let epdp_mt_op_p = pqname_of_string (epdp_mt_op_name mt_id) in
+  let epdp_mt_op_f = EcCoreFol.f_op epdp_mt_op_p [] epdp_mt_ty in
+  EcCoreFol.f_app valid_epdp_op_f [epdp_mt_op_f] EcTypes.tbool
+
+  
+let lemma_valid_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
+  lemma_th_item ("valid_epdp_"^mt_id) (valid_epdp_mt_f mt_id)
 
 let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
   let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
@@ -130,10 +161,10 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
         @ [EcTheory.CTh_type (id,tydecl)] 
         @ [enc_op_th_item id]
         @ [dec_op_th_item id]
-        @ [epdp_op_th_item id]) 
+        @ [epdp_op_th_item id]
+        @ [lemma_valid_epdp_th_item id]) 
       msgtys cth.cth_struct in
     let cth_items = (op_pi_th_item "pi") :: cth_items in
-    let cth_items = cth_items @ [lemma_th_item] in
     let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
     in
     let pth = ((pqname_of_string id),(cth',`Concrete)) in
