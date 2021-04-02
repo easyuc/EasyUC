@@ -22,9 +22,11 @@ let pp_theory ppf pth =
   EcPrinting.pp_theory ppe Format.std_formatter pth;
   EcPrinting.pp_theory ppe ppf pth
   
-let pqname_of_string (id:string) =
+(*let pqname_of_string (id:string) =
   let env = UcEcInterface.env () in
-  EcPath.pqname (EcEnv.root env) id
+  EcPath.pqname (EcEnv.root env) id*)
+let pqname_of_string (id:string) =
+  EcPath.fromqsymbol ([],id)
 (*using ecScope.add_record as a starting point and copying parts of code from
 ecScope.add_record, ecHiInductive.trans_record 
 *)  
@@ -54,35 +56,55 @@ let mk_ty_from_s (s:string) : EcTypes.ty =
 
 let msg_ty = mk_ty_from_s "msg"
 
-let enc_op (mt_id : string) : EcDecl.operator =
-  EcDecl.mk_op [] (EcTypes.tfun (mk_ty_from_s mt_id) msg_ty) None
+let enc_op_ty (mt_id : string) =
+  EcTypes.tfun (mk_ty_from_s mt_id) msg_ty
 
+let enc_op (mt_id : string) : EcDecl.operator =
+  EcDecl.mk_op [] (enc_op_ty mt_id) None
+
+let dec_op_ty (mt_id : string) =
+  EcTypes.tfun msg_ty (mk_ty_from_s mt_id)
+  
 let dec_op (mt_id : string) : EcDecl.operator =
-  EcDecl.mk_op [] (EcTypes.tfun msg_ty (mk_ty_from_s mt_id)) None
+  EcDecl.mk_op [] (dec_op_ty mt_id) None
+
+let enc_op_name mt_id = "enc_"^mt_id
+
+let dec_op_name mt_id = "dec_"^mt_id
 
 let enc_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let op_decl = enc_op mt_id in
-  let op_name = "enc_"^mt_id in
+  let op_name = enc_op_name mt_id in
   op_th_item op_name op_decl
   
 let dec_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let op_decl = dec_op mt_id in
-  let op_name = "dec_"^mt_id in
+  let op_name = dec_op_name mt_id in
   op_th_item op_name op_decl
 
-(*let epdp_op_th_item (mt_id:string) : EcTheory.ctheory_item =
+let epdp_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let env = UcEcInterface.env () in
-  let epdp_p , epdp_tydecl = EcEnv.Ty.lookup ([],"epdp") env in
+  let epdp_p , _ = EcEnv.Ty.lookup ([],"epdp") env in
+  (*let epdp_p , epdp_tydecl = EcEnv.Ty.lookup ([],"epdp") env in
   print_string (EcPath.tostring epdp_p);
-  (*let epdp_ty = EcEnv.Ty.unfold epdp_p [mk_ty_from_s mt_id; msg_ty] env in*)
+  let epdp_ty = EcEnv.Ty.unfold epdp_p [mk_ty_from_s mt_id; msg_ty] env in
   let epdp_rcrd = match epdp_tydecl with
                 | ({ tyd_type = `Record rcrd }) -> rcrd
                 | _ -> UcMessage.failure "noooo oooo"
                 in 
-  let epdp_ty = EcDecl.ty_instanciate epdp_tydecl.tyd_params [mk_ty_from_s mt_id; msg_ty] 
-  let op_decl = (EcDecl.mk_op [] epdp_ty None) in
+  let epdp_ty = EcDecl.ty_instanciate epdp_tydecl.tyd_params [mk_ty_from_s mt_id; msg_ty] in
+  let epdp_op = EcEnv.Op.by_path epdp_p env in *)
+  let tyl = [mk_ty_from_s mt_id; msg_ty] in
+  let epdp_mt_ty = EcTypes.tconstr epdp_p tyl in
+  let mk_epdp_p , _ = EcEnv.Op.lookup ([],"mk_epdp") env in
+  let epdp_mt_op_ex = EcTypes.e_op mk_epdp_p tyl epdp_mt_ty in
+  let enc_mt_op_ex = EcTypes.e_op (pqname_of_string (enc_op_name mt_id)) [] (enc_op_ty mt_id) in
+  let dec_mt_op_ex = EcTypes.e_op (pqname_of_string (dec_op_name mt_id)) [] (dec_op_ty mt_id) in
+  let epdp_mt_ex = EcTypes.e_app  epdp_mt_op_ex [enc_mt_op_ex;dec_mt_op_ex] epdp_mt_ty in
+  let epdp_mt_body = EcDecl.OP_Plain (epdp_mt_ex,true) in
+  let op_decl = (EcDecl.mk_op [] epdp_mt_ty (Some epdp_mt_body)) in
   let op_name = "epdp_"^mt_id in
-  op_th_item op_name op_decl*)
+  op_th_item op_name op_decl
   
 let lemma_th_item : EcTheory.ctheory_item =
   EcTheory.CTh_axiom
@@ -108,7 +130,7 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
         @ [EcTheory.CTh_type (id,tydecl)] 
         @ [enc_op_th_item id]
         @ [dec_op_th_item id]
-        (*@ [epdp_op_th_item id]*)) 
+        @ [epdp_op_th_item id]) 
       msgtys cth.cth_struct in
     let cth_items = (op_pi_th_item "pi") :: cth_items in
     let cth_items = cth_items @ [lemma_th_item] in
