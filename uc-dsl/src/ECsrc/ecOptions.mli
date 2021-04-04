@@ -24,6 +24,7 @@ and cmp_option = {
   cmpo_provers : prv_options;
   cmpo_gcstats : bool;
   cmpo_tstats  : string option;
+  cmpo_noeco   : bool;
 }
 
 and cli_option = {
@@ -44,7 +45,7 @@ and prv_options = {
 }
 
 and ldr_options = {
-  ldro_idirs : (string option * string) list;
+  ldro_idirs : (string option * string * bool) list;
   ldro_boot  : bool;
 }
 

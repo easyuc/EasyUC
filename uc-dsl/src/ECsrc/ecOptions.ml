@@ -28,6 +28,7 @@ and cmp_option = {
   cmpo_provers : prv_options;
   cmpo_gcstats : bool;
   cmpo_tstats  : string option;
+  cmpo_noeco   : bool;
 }
 
 and cli_option = {
@@ -48,7 +49,7 @@ and prv_options = {
 }
 
 and ldr_options = {
-  ldro_idirs : (string option * string) list;
+  ldro_idirs : (string option * string * bool) list;
   ldro_boot  : bool;
 }
 
@@ -234,7 +235,8 @@ let specs = {
       `Group "loader";
       `Group "provers";
       `Spec  ("gcstats", `Flag, "Display GC statistics");
-      `Spec  ("tstats", `String, "Save timing statistics to <file>")]);
+      `Spec  ("tstats", `String, "Save timing statistics to <file>");
+      `Spec  ("no-eco", `Flag, "Do not cache verification results")]);
 
     ("cli", "Run EasyCrypt top-level", [
       `Group "loader";
@@ -316,8 +318,15 @@ let ldr_options_of_values ?ini values =
   if get_flag "boot" values then
     { ldro_idirs = []; ldro_boot = true; }
   else
-    let idirs = omap_dfl (fun x -> x.ini_idirs) [] ini in
-    { ldro_idirs = idirs @ List.map parse_idir (get_strings "I" values);
+    let add_rec (fl : bool) ((nm, x) : string option * string) =
+      (nm, x, fl) in
+
+    let idirs   = omap_dfl (fun x -> x.ini_idirs) [] ini in
+    let idirs   = List.map (add_rec false) idirs in
+    let idirs_I = List.map (add_rec false) (List.map parse_idir (get_strings "I" values)) in
+    let idirs_R = List.map (add_rec true)  (List.map parse_idir (get_strings "R" values)) in
+
+    { ldro_idirs = idirs @ idirs_I @ idirs_R;
       ldro_boot  = false; }
 
 let glb_options_of_values ?ini values =
@@ -363,7 +372,8 @@ let cmp_options_of_values ?ini values input =
   { cmpo_input   = input;
     cmpo_provers = prv_options_of_values ?ini values;
     cmpo_gcstats = get_flag "gcstats" values;
-    cmpo_tstats  = get_string "tstats" values; }
+    cmpo_tstats  = get_string "tstats" values;
+    cmpo_noeco   = get_flag "no-eco" values; }
 
 (* -------------------------------------------------------------------- *)
 let parse ?ini argv =

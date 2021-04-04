@@ -694,7 +694,8 @@ type pprover_infos = {
   plem_iterate    : bool option;
   plem_wanted     : pdbhint option;
   plem_unwanted   : pdbhint option;
-  plem_selected   : bool option
+  plem_selected   : bool option;
+  psmt_debug      : bool option;
 }
 
 let empty_pprover = {
@@ -711,6 +712,7 @@ let empty_pprover = {
   plem_wanted     = None;
   plem_unwanted   = None;
   plem_selected   = None;
+  psmt_debug      = None;
 }
 
 (* -------------------------------------------------------------------- *)
@@ -863,7 +865,6 @@ and ptactic_core_r =
   | Psubgoal    of ptactic_chain
   | Pnstrict    of ptactic_core
   | Padmit
-  | Pdebug
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core = ptactic_core_r located
@@ -1133,7 +1134,7 @@ type global_action =
 
 type global = {
   gl_action : global_action located;
-  gl_timed  : bool;
+  gl_debug  : [`Timed | `Break] option;
 }
 
 type prog_r =

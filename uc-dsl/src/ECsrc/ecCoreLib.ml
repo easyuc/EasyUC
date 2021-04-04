@@ -33,6 +33,10 @@ module CI_Unit = struct
   let p_tt    = _Pervasive "tt"
 end
 
+module CI_Witness = struct
+  let p_witness = _Pervasive "witness"
+end
+
 (*-------------------------------------------------------------------- *)
 module CI_Bool = struct
   let i_Bool = "Bool"
@@ -192,6 +196,7 @@ module CI_Logic = struct
   let p_eq_ind        = _Logic "eq_ind"
   let p_eq_sym        = _Logic "eq_sym"
   let p_eq_sym_imp    = _Logic "eq_sym_imp"
+  let p_eq_iff_imp    = _Logic "eq_iff_imp"
   let p_negbTE        = _Logic "negbTE"
   let p_negeqF        = _Logic "negeqF"
 

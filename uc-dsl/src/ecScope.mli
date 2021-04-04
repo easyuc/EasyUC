@@ -117,7 +117,7 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Op : sig
-  val add : scope -> poperator located -> EcDecl.operator * scope
+  val add : scope -> poperator located -> EcDecl.operator * string list * scope
 end
 
 (* -------------------------------------------------------------------- *)
@@ -233,6 +233,7 @@ module Prover : sig
     pl_wanted     : EcProvers.hints option;
     pl_unwanted   : EcProvers.hints option;
     pl_selected   : bool option;
+    gn_debug      : bool option;
   }
 
   val empty_options : smt_options

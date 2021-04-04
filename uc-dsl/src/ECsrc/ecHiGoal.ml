@@ -94,7 +94,7 @@ let process_reflexivity (tc : tcenv1) =
 (* -------------------------------------------------------------------- *)
 let process_change fp (tc : tcenv1) =
   let fp = TTC.tc1_process_formula tc fp in
-  FApi.tcenv_of_tcenv1 (t_change fp tc)
+  t_change fp tc
 
 (* -------------------------------------------------------------------- *)
 let process_simplify_info ri (tc : tcenv1) =
@@ -115,8 +115,8 @@ let process_simplify_info ri (tc : tcenv1) =
   let delta_p, delta_h =
     ri.pdelta
       |> omap (List.fold_left do1 (Sp.empty, Sid.empty))
-      |> omap (fun (x, y) -> (Sp.mem^~ x, Sid.mem^~ y))
-      |> odfl (predT, predT)
+      |> omap (fun (x, y) -> (fun p -> if Sp.mem p x then `Force else `No), (Sid.mem^~ y))
+      |> odfl ((fun _ -> `Yes), predT)
   in
 
   {
@@ -376,7 +376,7 @@ let process_solve ?bases ?depth (tc : tcenv1) =
 
 (* -------------------------------------------------------------------- *)
 let process_trivial (tc : tcenv1) =
-  EcPhlAuto.t_pl_trivial tc
+  EcPhlAuto.t_pl_trivial ~conv:`Conv tc
 
 (* -------------------------------------------------------------------- *)
 let process_crushmode d =
@@ -512,15 +512,15 @@ let process_delta ?target (s, o, p) tc =
   | PFident ({ pl_desc = ([], x) }, None)
       when s = `LtoR && EcUtils.is_none o ->
 
-    let check_op = fun p -> sym_equal (EcPath.basename p) x in
+    let check_op = fun p -> if sym_equal (EcPath.basename p) x then `Force else `No in
     let check_id = fun y -> sym_equal (EcIdent.name y) x in
-    let target = EcReduction.simplify
+    let ri =
       { EcReduction.no_red with
           EcReduction.delta_p = check_op;
-          EcReduction.delta_h = check_id; }
-      hyps target
+          EcReduction.delta_h = check_id; } in
+    let target = EcReduction.simplify ri hyps target in
 
-    in FApi.tcenv_of_tcenv1 (t_change ?target:idtg target tc)
+    t_change ~ri ?target:idtg target tc
 
   | _ ->
 
@@ -531,31 +531,33 @@ let process_delta ?target (s, o, p) tc =
       (ptenv !!tc hyps (ue, ev), p)
   in
 
-  let (tvi, tparams, body, args) =
+  let (tvi, tparams, body, args, dp) =
     match sform_of_form p with
     | SFop (p, args) -> begin
         let op = EcEnv.Op.by_path (fst p) env in
 
         match op.EcDecl.op_kind with
         | EcDecl.OB_oper (Some (EcDecl.OP_Plain (e, _))) ->
-            (snd p, op.EcDecl.op_tparams, form_of_expr EcFol.mhr e, args)
+            (snd p, op.EcDecl.op_tparams, form_of_expr EcFol.mhr e, args, Some (fst p))
         | EcDecl.OB_pred (Some (EcDecl.PR_Plain f)) ->
-            (snd p, op.EcDecl.op_tparams, f, args)
+            (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
         | _ ->
             tc_error !!tc "the operator cannot be unfolded"
     end
 
     | SFlocal x when LDecl.can_unfold x hyps ->
-        ([], [], LDecl.unfold x hyps, [])
+        ([], [], LDecl.unfold x hyps, [], None)
 
     | SFother { f_node = Fapp ({ f_node = Flocal x }, args) }
         when LDecl.can_unfold x hyps ->
-        ([], [], LDecl.unfold x hyps, args)
+        ([], [], LDecl.unfold x hyps, args, None)
 
     | _ -> tc_error !!tc "not headed by an operator/predicate"
 
   in
 
+  let ri = { EcReduction.full_red with
+               delta_p = (fun p -> if Some p = dp then `Force else `Yes)} in
   let na = List.length args in
 
   match s with
@@ -610,7 +612,7 @@ let process_delta ?target (s, o, p) tc =
             | _ -> assert false)
           target
       in
-        FApi.tcenv_of_tcenv1 (t_change ?target:idtg target tc)
+        t_change ~ri ?target:idtg target tc
     end else t_id tc
   end
 
@@ -639,7 +641,7 @@ let process_delta ?target (s, o, p) tc =
       in
 
       let target = FPosition.map cpos (fun _ -> p) target in
-        FApi.tcenv_of_tcenv1 (t_change ?target:idtg target tc)
+      t_change ~ri ?target:idtg target tc
     end else t_id tc
 
 (* -------------------------------------------------------------------- *)
@@ -1390,7 +1392,7 @@ let rec process_mintros_1 ?(cf = true) ttenv pis gs =
   and intro1_subst (_ : ST.state) d (tc : tcenv1) =
     try
       t_intros_i_seq ~clear:true [EcIdent.create "_"]
-        (EcLowGoal.t_subst ~clear:false ~tside:(d :> tside))
+        (EcLowGoal.t_subst ~clear:true ~tside:(d :> tside))
         tc
     with InvalidGoalShape ->
       tc_error !!tc "nothing to substitute"
@@ -1682,7 +1684,9 @@ let process_pose xsym bds o p (tc : tcenv1) =
   in
 
   let dopat =
-    try  ignore (PT.pf_find_occurence ptenv ~ptn:p concl); true
+    try
+      ignore (PT.pf_find_occurence ~occmode:PT.om_rigid ptenv ~ptn:p concl);
+      true
     with PT.FindOccFailure _ ->
       if not (PT.can_concretize ptenv) then
         if not (EcMatching.MEV.filled !(ptenv.PT.pte_ev)) then
@@ -1702,7 +1706,7 @@ let process_pose xsym bds o p (tc : tcenv1) =
     | false -> (EcIdent.create (unloc xsym), concl)
     | true  -> begin
         let cpos =
-          try  FPosition.select_form hyps o p concl
+          try  FPosition.select_form ~xconv:`AlphaEq hyps o p concl
           with InvalidOccurence -> tacuerror "invalid occurence selector"
         in
           FPosition.topattern ~x:(EcIdent.create (unloc xsym)) cpos concl
@@ -1712,7 +1716,7 @@ let process_pose xsym bds o p (tc : tcenv1) =
   let letin = EcFol.f_let1 x p letin in
 
   FApi.t_seq
-    (fun tc -> tcenv_of_tcenv1 (t_change letin tc))
+    (t_change letin)
     (t_intros [Tagged (x, Some xsym.pl_loc)]) tc
 
 (* -------------------------------------------------------------------- *)
@@ -1923,36 +1927,40 @@ let process_congr tc =
     then (EcFol.destr_eq  concl, true )
     else (EcFol.destr_iff concl, false) in
 
+  let t_ensure_eq =
+    if iseq then t_id
+    else
+      (fun tc ->
+        let hyps = FApi.tc1_hyps tc in
+        EcLowGoal.Apply.t_apply_bwd_r
+          (PT.pt_of_uglobal !!tc hyps LG.p_eq_iff) tc) in
+
+  let t_subgoal = t_ors [t_reflex ~mode:`Alpha; t_assumption `Alpha; t_id] in
+
   match f1.f_node, f2.f_node with
+  | _, _ when EcReduction.is_alpha_eq hyps f1 f2 ->
+      FApi.t_seq t_ensure_eq EcLowGoal.t_reflex tc
+
   | Fapp (o1, a1), Fapp (o2, a2)
       when    EcReduction.is_alpha_eq hyps o1 o2
            && List.length a1 = List.length a2 ->
 
-      let tt0 = if iseq then t_id else (fun tc ->
-        let hyps = FApi.tc1_hyps tc in
-        EcLowGoal.Apply.t_apply_bwd_r
-          (PT.pt_of_uglobal !!tc hyps LG.p_eq_iff) tc) in
       let tt1 = t_congr (o1, o2) ((List.combine a1 a2), f1.f_ty) in
-      let tt2 = t_logic_trivial in
-
-      FApi.t_seqs [tt0; tt1; tt2] tc
+      FApi.t_seqs [t_ensure_eq; tt1; t_subgoal] tc
 
   | Fif (_, { f_ty = cty }, _), Fif _ ->
      let tt0 tc =
        let hyps = FApi.tc1_hyps tc in
        EcLowGoal.Apply.t_apply_bwd_r
          (PT.pt_of_global !!tc hyps LG.p_if_congr [cty]) tc
-     in FApi.t_seqs [tt0; t_logic_trivial] tc
+     in FApi.t_seqs [tt0; t_subgoal] tc
 
   | Ftuple _, Ftuple _ when iseq ->
-      FApi.t_seqs [t_split; t_logic_trivial] tc
+      FApi.t_seqs [t_split; t_subgoal] tc
 
   | Fproj (f1, i1), Fproj (f2, i2)
       when i1 = i2 && EcReduction.EqTest.for_type env f1.f_ty f2.f_ty
     -> EcCoreGoal.FApi.xmutate1 tc `CongrProj [f_eq f1 f2]
-
-  | _, _ when iseq && EcReduction.is_alpha_eq hyps f1 f2 ->
-      EcLowGoal.t_reflex tc
 
   | _, _ -> tacuerror "not a congruence"
 

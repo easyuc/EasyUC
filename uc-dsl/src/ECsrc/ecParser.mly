@@ -171,6 +171,7 @@
     | `VERBOSE        of int option
     | `VERSION        of [ `Full | `Lazy ]
     | `SELECTED
+    | `DEBUG
   ]
 
   module SMT : sig
@@ -204,7 +205,8 @@
            "lazy"          ;
            "full"          ;
            "iterate"       ;
-           "selected"      ]
+           "selected"      ;
+           "debug"         ]
 
     let as_int = function
       | None          -> `None
@@ -263,6 +265,7 @@
       | "all"            -> get_as_none s o; (`ALL)
       | "iterate"        -> get_as_none s o; (`ITERATE)
       | "selected"       -> get_as_none s o; (`SELECTED)
+      | "debug"          -> get_as_none s o; (`DEBUG)
       | _                ->  assert false
 
     let mk_smt_option (os : smt list) =
@@ -278,6 +281,7 @@
       let version  = ref None in
       let iterate  = ref None in
       let selected = ref None in
+      let debug    = ref None in
 
       let is_universal p = unloc p = "" || unloc p = "!" in
 
@@ -321,6 +325,7 @@
         | `ITERATE          -> iterate  := Some true
         | `PROVER         p -> List.iter add_prover p
         | `SELECTED         -> selected := Some true
+        | `DEBUG            -> debug    := Some true
       in
 
       List.iter do1 os;
@@ -342,6 +347,7 @@
         plem_wanted     = !wanted;
         plem_unwanted   = !unwanted;
         plem_selected   = !selected;
+        psmt_debug      = !debug;
       }
   end
 %}
@@ -405,7 +411,6 @@
 %token CONGR
 %token CONSEQ
 %token CONST
-%token CUT
 %token DEBUG
 %token DECLARE
 %token DELTA
@@ -635,6 +640,7 @@ _lident:
 | ABORT      { "abort"      }
 | ADMITTED   { "admitted"   }
 | ASYNC      { "async"      }
+| DEBUG      { "debug"      }
 | DUMP       { "dump"       }
 | EXPECT     { "expect"     }
 | FIRST      { "first"      }
@@ -2606,7 +2612,7 @@ revert:
   { { pr_clear = odfl [] cl; pr_genp = gp; } }
 
 %inline have_or_suff:
-| HAVE | CUT { `Have }
+| HAVE { `Have }
 | SUFF { `Suff }
 
 logtactic:
@@ -2718,7 +2724,7 @@ logtactic:
 | m=have_or_suff ip=loc(intro_pattern)* COLON p=form BY t=loc(tactics)
    { Pcut (m, ip, p, Some t) }
 
-| ior_(CUT, HAVE) ip=loc(intro_pattern)* CEQ fp=pcutdef
+| HAVE ip=loc(intro_pattern)* CEQ fp=pcutdef
    { Pcutdef (ip, fp) }
 
 | POSE o=rwocc? x=ident xs=ptybindings? CEQ p=form_h %prec prec_below_IMPL
@@ -3199,10 +3205,6 @@ tactic_core_r:
 | x=phltactic
    { PPhl x }
 
-(* DEBUG *)
-| DEBUG
-    { Pdebug }
-
 %inline tactic_core:
 | x=loc(tactic_core_r) { x }
 
@@ -3618,7 +3620,7 @@ user_red_info:
 | x=qident i=prefix(AT, word)?
     { ([x], i) }
 
-| xs=paren(plist1(qident, COMMA)) i=prefix(AT, sword)?
+| xs=paren(plist1(qident, COMMA)) i=prefix(AT, word)?
     { (xs, i) }
 
 user_red_option:
@@ -3693,8 +3695,12 @@ stop:
 | DROP DOT { }
 
 global:
-| tm=boption(TIME) g=loc(global_action) FINAL
-  { { gl_action = g; gl_timed = tm; } }
+| db=debug_global? g=loc(global_action) FINAL
+  { { gl_action = g; gl_debug = db; } }
+
+debug_global:
+| TIME  { `Timed }
+| DEBUG { `Break }
 
 prog_r:
 | g=global { P_Prog ([g], false) }

@@ -1,4 +1,4 @@
-	(* A modification of src/ecCommands.ml of the EasyCrypt distribution
+(* A modification of src/ecCommands.ml of the EasyCrypt distribution
 
    See "UC DSL" for changes
  *)
@@ -18,7 +18,6 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-
 open EcUtils
 open EcLocation
 open EcParsetree
@@ -360,7 +359,7 @@ and process_interface (scope : EcScope.scope) (x, i) =
 (* -------------------------------------------------------------------- *)
 and process_operator (scope : EcScope.scope) (pop : poperator located) =
   EcScope.check_state `InTop "operator" scope;
-  let op, scope = EcScope.Op.add scope pop in
+  let op, axs, scope = EcScope.Op.add scope pop in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env scope) in
   List.iter
     (fun { pl_desc = name } ->
@@ -368,7 +367,8 @@ and process_operator (scope : EcScope.scope) (pop : poperator located) =
         name (EcPrinting.pp_added_op ppe) op;
         check_opname_validity scope name)
       (pop.pl_desc.po_name :: pop.pl_desc.po_aliases);
-    scope
+  List.iter (fun s -> EcScope.notify scope `Info "added axiom: `%s'" s) axs;
+  scope
 
 (* -------------------------------------------------------------------- *)
 and process_predicate (scope : EcScope.scope) (p : ppredicate located) =
@@ -827,7 +827,9 @@ let reset () =
   context := Some (rootctxt (oget !context).ct_root)
 
 (* -------------------------------------------------------------------- *)
-let process ?(timed = false) (g : global_action located) : float option =
+let process ?(timed = false) ?(break = false) (g : global_action located) : float option =
+  ignore break;
+
   let current = oget !context in
   let scope   = current.ct_current in
 
