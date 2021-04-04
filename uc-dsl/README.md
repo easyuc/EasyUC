@@ -36,7 +36,7 @@ Building the UC DSL Tool
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
 [`opam`](https://opam.ocaml.org),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and `Bisect_ppx`
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and the `Bisect_ppx`
 plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
 (Bisect_ppx can be installed using `opam`: `opam install
