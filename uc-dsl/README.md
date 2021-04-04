@@ -88,9 +88,9 @@ To edit the source in Emacs, you'll want to install the following
 `opam` packages:
 
 ```
-  opam install batteries
-  opam install tuareg
-  opam install merlin
+opam install batteries
+opam install tuareg
+opam install merlin
 ```
 
 You'll also want to install these Emacs packages, using the Emacs
@@ -98,9 +98,9 @@ package manager, [MELPA](https://melpa.org/#/).  If you haven't
 already added
 
 ```
-  (require 'package)
-  (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-  (package-initialize)
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
 ```
 
 to your `.emacs` customization file, you should do so. In Emacs, run
