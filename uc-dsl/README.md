@@ -41,7 +41,11 @@ plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
 (Bisect_ppx can be installed using `opam`: `opam install
 bisect_ppx-ocamlbuild`.) EasyCrypt can be installed via `opam` or
-by building from the source.
+by building from the source; see the
+[instructions](https://github.com/EasyCrypt/easycrypt).
+
+The UC DSL source is compatible with `why3` (installed as part
+of the EasyCrypt installation) version 1.4.0.
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
@@ -79,6 +83,40 @@ To clean up the build state, you can run
 
 You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
 `ucdsl -help` for information about how to invoke the tool.
+
+To edit the source in Emacs, you'll want to install the following
+`opam` packages:
+
+```
+  opam install batteries
+  opam install tuareg
+  opam install merlin
+```
+
+You'll also want to install these Emacs packages, using the Emacs
+package manager, [MELPA](https://melpa.org/#/).  If you haven't
+already added
+
+```
+  (require 'package)
+  (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+  (package-initialize)
+```
+
+to your `.emacs` customization file, you should do so. In Emacs, run
+`package-refresh-contents`, and then use `package-install` to install
+`tuareg`, `autocomplete` and `merlin`.
+
+Finally, add
+
+```
+(require 'merlin)
+
+(autoload 'merlin-mode "merlin" nil t nil)
+(add-hook 'tuareg-mode-hook 'merlin-mode t)
+```
+
+to your `.emacs` file.
 
 Emacs Major Mode for Editing UC DSL Files
 --------------------------------------------------------------------
