@@ -93,7 +93,7 @@ opam install tuareg
 opam install merlin
 ```
 
-You'll also want to install these Emacs packages, using the Emacs
+You'll also want to install the following Emacs packages, using the Emacs
 package manager, [MELPA](https://melpa.org/#/).  If you haven't
 already added
 
