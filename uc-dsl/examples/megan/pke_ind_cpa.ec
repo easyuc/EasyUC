@@ -19,22 +19,15 @@ axiom drand_ll  : is_lossless drand.
 
 op ciph_def : ciphertext.  (* default ciphertext *)
 
-module type ENC = {
-  proc keygen() : pkey * skey
-  proc enc(pk:pkey, m:plaintext, r:rand)  : ciphertext
-  proc dec(sk:skey, c:ciphertext) : plaintext
-}.
+(* Encryption scheme algorithms *)
+op keygen : (pkey * skey) distr.
+axiom keygen_ll: is_lossless keygen.
+op enc(pk:pkey, m:plaintext, r:rand) : ciphertext.
+op dec(sk:skey, c:ciphertext) : plaintext.
 
 (* For checking correctness of encryption scheme *)
-module Correctness (Enc : ENC) = {
-  proc main(x : plaintext) : bool = {
-    var pk : pkey; var sk : skey; var c : ciphertext; var y : plaintext; var r : rand;
-    (pk, sk) <@ Enc.keygen();
-    c <@ Enc.enc(pk, x, r);
-    y <@ Enc.dec(sk, c);
-    return x = y;
-  }
-}.
+axiom correctness (pk: pkey, sk: skey, m: plaintext, r : rand):
+  dec sk (enc pk m r) = m.
 
 module type ADV_INDCPA = {
   (* choose a pair of plaintexts *)
@@ -45,20 +38,19 @@ module type ADV_INDCPA = {
 }.
 
 (* IND-CPA Security Game, parametrized by an encryption scheme Enc and ind-cpa adversary *)
-module INDCPA (Enc : ENC, Adv : ADV_INDCPA) = {
+module INDCPA (Adv : ADV_INDCPA) = {
   proc main() : bool = {
     var b, b' : bool; 
     var x1, x2 : plaintext; 
     var c : ciphertext; 
     var r : rand; 
-    var pk : pkey;
-    var sk : skey;
+    var pk : pkey; var sk : skey;
 
-    (pk, sk) <@ Enc.keygen();  (* generate keys for PKE *)
+    (pk, sk) <$ keygen;        (* generate keys for PKE *)
     r <$ drand;                (* select randomness used in PKE *)
     (x1, x2) <@ Adv.choose();  (* A chooses plaintexts x1/x2 *)
     b <$ {0,1};                (* choose boolean b *)
-    c <@ Enc.enc(pk, b ? x1 : x2, r); (* encrypt x1 if b = true, x2 if b = false *)
+    c <@ enc pk (b ? x1 : x2) r; (* encrypt x1 if b = true, x2 if b = false *)
     b' <@ Adv.guess(c);        (* give ciphertext to A, which returns guess *)
     return b = b';             (* see if A guessed correctly, winning game *)
   }

@@ -7,7 +7,7 @@ require import Distr.
 (* Keys *)
 type fkey, bkey. (* forward key, backward key *)
 (* domain over which the permutation functions operate *)
-type D.
+type D. (* Note: maybe switch this over to group*)
 
 (* CPFTP algorithms *)
 (* for this to be a permutation, need that forward/backward are bijections *)
@@ -32,6 +32,6 @@ module CFP(Cf: ClawFinder) = {
 
     (fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
     (x0, x1) <@ Cf.find_claw(fk);  (* Find any claw for the CFPTP *)
-    return (forw fk x0 false = forw fk x1 true); (* Cf succeeds with this happens *)
+    return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
   }
 }.
