@@ -13,12 +13,16 @@ type D. (* Note: maybe switch this over to group*)
 (* for this to be a permutation, need that forward/backward are bijections *)
 op keygen: (fkey * bkey) distr.         (* Generate forward and backward keys *)
 axiom keygen_ll: is_lossless keygen.
+(* what other axioms? do they guarantee D being finite? *)
+
 pred valid_keys (keys: fkey * bkey) = support keygen keys.
 op forw(fk : fkey, x : D, b : bool): D. (* Forward permutation algorithm *)
 op back(bk : bkey, y : D, b : bool): D. (* Backward permutation algorithm *)
 
 axiom correctness (fk : fkey, bk : bkey, b : bool, x : D) :
-  valid_keys (fk, bk) => back bk (forw fk x b) b = x.
+  valid_keys (fk, bk) =>
+  back bk (forw fk x b) b = x /\
+  forw fk (back bk x b) b = x.  (* or make use of D being finite? *)
 
 (* Claw-free pair security guarantee: Given f0, f1, the hardness of finding x0, x1 such that f0(x0) = f1(x1) *)
 module type ClawFinder = {
