@@ -36,7 +36,7 @@ Building the UC DSL Tool
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
 [`opam`](https://opam.ocaml.org),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and `Bisect_ppx`
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and the `Bisect_ppx`
 plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
 (Bisect_ppx can be installed using `opam`: `opam install
@@ -88,19 +88,19 @@ To edit the source in Emacs, you'll want to install the following
 `opam` packages:
 
 ```
-  opam install batteries
-  opam install tuareg
-  opam install merlin
+opam install batteries
+opam install tuareg
+opam install merlin
 ```
 
-You'll also want to install these Emacs packages, using the Emacs
+You'll also want to install the following Emacs packages, using the Emacs
 package manager, [MELPA](https://melpa.org/#/).  If you haven't
 already added
 
 ```
-  (require 'package)
-  (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-  (package-initialize)
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
 ```
 
 to your `.emacs` customization file, you should do so. In Emacs, run
