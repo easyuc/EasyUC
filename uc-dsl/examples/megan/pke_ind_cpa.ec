@@ -59,3 +59,7 @@ module INDCPA (Adv : ADV_INDCPA) = {
     return b = b';               (* see if A guessed correctly, winning game *)
   }
 }.
+
+(* choose above so that small:
+`|Pr[INDCPA(ConstrAdv(...)).main() @ &m : res] - 1%r/2%r|
+*)

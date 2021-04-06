@@ -39,3 +39,7 @@ module CFP(Cf: ClawFinder) = {
     return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
   }
 }.
+
+(* choose above so this is small:
+Pr[CFP(ConstrClawFinder(....)).main() @ &m : res]
+*)
