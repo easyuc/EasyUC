@@ -4,32 +4,239 @@
 
 prover [""].  (* no use of SMT provers *)
 
-require import AllCore List UCEncoding.
+require import AllCore List StdOrder IntDiv BitEncoding UCEncoding.
+import IntOrder BS2Int.
 
 (* universe *)
 
 type univ = bool list.  (* universe values are lists of bits *)
 
-(* we axiomatize the existence of encoding/partial decoding operators
-   on the following types
+(* integer logarithms for use below (EasyCrypt now provides these via
+   log on reals, but we prefer to work directly with ints) *)
 
-   we could provide concrete definitions, but we won't rely on
-   the details, and so we prefer to keep things abstract; of course
-   all types being encoded must be countable *)
+lemma exists_int_log (b n : int) :
+  2 <= b => 1 <= n =>
+  exists (k : int), 0 <= k /\ b ^ k <= n < b ^ (k + 1).
+proof.
+move => ge2_b ge1_n.
+have gt1_b : 1 < b by rewrite ltzE.
+have gt0_b : 0 < b by rewrite (ltr_trans 1).
+have ge0_b : 0 <= b by rewrite ltrW.
+have H :
+  forall n,
+  0 <= n => 1 <= n =>
+  exists (k : int), 0 <= k /\ b ^ k <= n < b ^ (k + 1).
+  apply sintind => i ge0_i IH /= ge1_i.
+  case (i < b) => [lt_i_b | ge_b_i].
+  exists 0; by rewrite /= expr0 ge1_i /= expr1.
+  rewrite -lerNgt in ge_b_i.
+  have [ge1_i_div_b i_div_b_lt_i] : 1 <= i %/ b < i.
+    split => [| _].
+    by rewrite lez_divRL 1:gt0_b.
+    by rewrite ltz_divLR 1:gt0_b -divr1 mulzA 1:ltr_pmul2l ltzE.
+  have /= [k [#] ge0_k b_exp_k_le_i_div_b i_div_b_lt_b_tim_b_exp_k]
+       := IH (i %/ b) _ _.
+    split; [by rewrite (lez_trans 1) | trivial].
+    trivial.
+  rewrite exprS // in i_div_b_lt_b_tim_b_exp_k.
+  exists (k + 1).
+  split; first by rewrite ler_paddl.
+  rewrite exprS // mulzC exprS 1:ler_paddr // exprS //.
+  split => [| _].
+  rewrite (lez_trans ((i %/ b) * b)).
+  by rewrite ler_wpmul2r 1:(lez_trans 2).
+  by rewrite leq_trunc_div 1:(lez_trans 1).
+  rewrite ltz_divLR // in i_div_b_lt_b_tim_b_exp_k.
+  by rewrite mulzC.
+by rewrite H (lez_trans 1).
+qed.
 
-op epdp_unit_univ : (unit, univ) epdp.  (* unit *)
+lemma int_log_uniq (b n k1 k2 : int) :
+  2 <= b =>
+  0 <= k1 => b ^ k1 <= n => n < b ^ (k1 + 1) =>
+  0 <= k2 => b ^ k2 <= n => n < b ^ (k2 + 1) =>
+  k1 = k2.
+proof.
+move => ge2_b ge0_k1 b2k1_le_n n_lt_b2k1p1 ge0_k2 b2k2_le_n n_lt_b2k2p1.
+have ge1_b : 1 <= b.
+  by rewrite (lez_trans 2).
+case (k1 = k2) => [// | /ltr_total [lt_k1_k2 | lt_k2_k1]].
+rewrite ltzE in lt_k1_k2.
+have b2k1p1_le_b2k2 : b ^ (k1 + 1) <= b ^ k2.
+  by rewrite ler_weexpn2l // lt_k1_k2 /= addr_ge0.
+have // : n < n.
+  by rewrite (ltr_le_trans (b ^ (k1 + 1))) // (lez_trans (b ^ k2)).
+rewrite ltzE in lt_k2_k1.
+have b2k2p1_le_b2k1 : b ^ (k2 + 1) <= b ^ k1.
+  by rewrite ler_weexpn2l // lt_k2_k1 /= addr_ge0.
+have // : n < n.
+  by rewrite (ltr_le_trans (b ^ (k2 + 1))) // (lez_trans (b ^ k1)).
+qed.
 
-axiom valid_epdp_unit_univ : valid_epdp epdp_unit_univ.
+op int_log (b n : int) : int = (* integer logarithm *)
+  choiceb
+  (fun (k : int) => 0 <= k /\ b ^ k <= n < b ^ (k + 1))
+  0.
+
+lemma int_logP (b n : int) :
+  2 <= b => 1 <= n =>
+  0 <= int_log b n /\ b ^ (int_log b n) <= n < b ^ (int_log b n + 1).
+proof.
+move => ge2_b ge1_n.
+have // := choicebP (fun k => 0 <= k /\ b ^ k <= n < b ^ (k + 1)) 0 _.
+  by rewrite /= exists_int_log.
+qed.
+
+lemma int_logPuniq (b n l : int) :
+  2 <= b =>
+  0 <= l => b ^ l <= n < b ^ (l + 1) =>
+  l = int_log b n.
+proof.
+move => ge2_b ge0_n [b2l_le_n n_lt_b2lp1].
+have ge1_n : 1 <= n.
+  by rewrite (lez_trans (b ^ l)) // exprn_ege1 // (lez_trans 2).
+have := int_logP b n _ _ => // [#] ge0_il b2il_le_n n_lt_b2ilp1.
+by apply (int_log_uniq b n).
+qed.
+
+(* unit encoding: *)
+
+op enc_unit (x : unit) : univ = [].
+
+op dec_unit (u : univ) : unit option =
+  if u = [] then Some () else None.
+
+op nosmt epdp_unit_univ : (unit, univ) epdp =
+  {|enc = enc_unit; dec = dec_unit|}.
+
+lemma valid_epdp_unit_univ : valid_epdp epdp_unit_univ.
+apply epdp_intro => [x | u x].
+by rewrite /epdp_unit_univ /= /enc_unit /dec_unit.
+rewrite /epdp_unit_univ /= /enc_unit /dec_unit.
+by case u.
+qed.
 
 hint simplify [eqtrue] valid_epdp_unit_univ.
 hint rewrite epdp : valid_epdp_unit_univ.
 
-op epdp_bool_univ : (bool, univ) epdp.  (* bool *)
+(* bool encoding: *)
 
-axiom valid_epdp_bool_univ : valid_epdp epdp_bool_univ.
+op enc_bool (b : bool) : univ = [b].
+
+op dec_bool (u : univ) : bool option =
+  if size u = 1 then Some (head true u) else None.
+
+op nosmt epdp_bool_univ : (bool, univ) epdp =
+  {|enc = enc_bool; dec = dec_bool|}.
+
+lemma valid_epdp_bool_univ : valid_epdp epdp_bool_univ.
+apply epdp_intro => [x | u x].
+by rewrite /epdp_bool_univ /= /enc_bool /dec_bool.
+rewrite /epdp_bool_univ /= /enc_bool /dec_bool.
+case u => [// | y ys /=].
+case (1 + size ys = 1) => [size_eq /= -> /=| //].
+have /= /size_eq0 -> // : (1 + size ys) - 1 = 1 - 1.
+  by rewrite size_eq.
+qed.
 
 hint simplify [eqtrue] valid_epdp_bool_univ.
 hint rewrite epdp : valid_epdp_bool_univ.
+
+(* int encoding: *)
+
+op enc_int (n : int) : univ =
+  if n = 0
+  then []
+  else if 0 < n
+       then true  :: int2bs (int_log 2 n    + 1) n
+       else false :: int2bs (int_log 2 (-n) + 1) (-n).
+
+op dec_int (u : univ) : int option =
+  match u with
+  | []      => Some 0
+  | b :: bs =>
+      if b
+      then if bs = []
+           then None
+           else Some (bs2int bs)
+      else if bs = []
+           then None
+           else Some (-(bs2int bs))
+  end.
+
+op nosmt epdp_int_univ : (int, univ) epdp =
+  {|enc = enc_int; dec = dec_int|}.
+
+lemma valid_epdp_int_univ : valid_epdp epdp_int_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_int_univ /= /enc_int /dec_int /=.
+case (x = 0) => [-> // | ne0_x].
+have H :
+  forall (x : int),
+  0 < x =>
+  (if int2bs (int_log 2 x + 1) x = [] then None
+   else Some (bs2int (int2bs (int_log 2 x + 1) x))) =
+  Some x.
+  pose bs := int2bs (int_log 2 x + 1) x.
+  have [#] ge0_il two2il_le_x x_lt_two2ilp1 := int_logP 2 x _ _ => //.
+    by rewrite -add0z -ltzE.
+  have -> /= : bs <> [].
+    admit.
+  rewrite int2bsK 1:ler_paddr //.
+  split => [| //].
+  by rewrite ltzW.
+
+
+
+
+case (0 < x) => [gt0_x | not_ge0_x].
+
+
+
+pose bs := int2bs (int_log 2 x + 1) x.
+have [#] ge0_il two2il_le_x x_lt_two2ilp1 := int_logP 2 x _ _ => //.
+  by rewrite -add0z -ltzE.
+have -> /= : bs <> [].
+  admit.
+rewrite int2bsK 1:ler_paddr //.
+split => [| //].
+by rewrite ltzW.
+have ge0_negx : 0 < -x.
+  rewrite -lerNgt -oppz_ge0 in not_ge0_x.
+  by rewrite ltr_def not_ge0_x /= oppr_eq0.
+
+
+
+
+
+
+search [!] (=) [-].
+
+
+
+  by rewrite oppz_ge0 lerNgt.
+pose bs := int2bs (int_log 2 (-x) + 1) (-x).
+have [#] ge0_il two2il_le_negx negx_lt_two2ilp1 := int_logP 2 (-x) _ _ => //.
+  rewrite -add0z.
+  rewrite -ltzE.
+
+  by rewrite -add0z -ltzE.
+have -> /= : bs <> [].
+  admit.
+rewrite int2bsK 1:ler_paddr //.
+split => [| //].
+by rewrite ltzW.
+
+
+
+
+
+
+qed.
+
+hint simplify [eqtrue] valid_epdp_int_univ.
+hint rewrite epdp : valid_epdp_int_univ.
+
 
 op epdp_int_univ : (int, univ) epdp.  (* int *)
 
