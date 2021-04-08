@@ -2,6 +2,7 @@ open UcTypedSpec
 open EcLocation
 module EI = EcInductive
 
+
 let fileMap (x : 'a IdPairMap.t) : ('a IdMap.t) IdMap.t =
   IdPairMap.fold 
     (fun (f,s) a fm -> if (IdMap.mem f fm)
@@ -146,6 +147,44 @@ let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
 let lemma_valid_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
   lemma_th_item ("valid_epdp_"^mt_id) (valid_epdp_mt_f mt_id)
 
+let varpath (mt_id:string) : EcPath.xpath = 
+ EcPath.xpath (EcPath.mpath (`Concrete ((EcPath.psymbol mt_id), None)) []) (EcPath.psymbol "i")
+  
+let ms_body (mt_id:string) : EcModules.module_item list =
+  [ MI_Variable { v_name = "i";
+                  v_type = EcTypes.tint; 
+                };
+                  
+    MI_Function { f_name = "f_b";
+    
+                  f_sig  = { fs_name   = "f_b";
+                             fs_arg    = EcTypes.tunit;
+                             fs_anames = None;
+                             fs_ret    = EcTypes.tunit; 
+                           };
+                           
+                  f_def  = FBdef { f_locals = [];
+                                   f_body   = EcModules.s_asgn ( LvVar ( EcTypes.pv (varpath mt_id) PVloc,
+                                                                         EcTypes.tint
+                                                                       ),
+                                                                   EcTypes.e_int EcBigInt.one
+                                                                 );
+                                   f_ret    = None;
+                                   f_uses   = EcModules.mk_uses [] EcPath.Sx.empty EcPath.Sx.empty;
+                                 }; 
+                }
+  ]
+
+let module_th_item (mt_id:string) : EcTheory.ctheory_item =
+  let me : EcModules.module_expr = {
+    me_name  = mt_id;
+    me_body  = ME_Structure { ms_body = ms_body mt_id; };
+    me_comps = [];
+    me_sig   = { mis_params = [];
+                 mis_body   = []; };
+  } in
+  EcTheory.CTh_module me
+
 let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
   let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
   let clears = [] in
@@ -162,7 +201,8 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
         @ [enc_op_th_item id]
         @ [dec_op_th_item id]
         @ [epdp_op_th_item id]
-        @ [lemma_valid_epdp_th_item id]) 
+        @ [lemma_valid_epdp_th_item id]
+        @ [module_th_item id]) 
       msgtys cth.cth_struct in
     let cth_items = (op_pi_th_item "pi") :: cth_items in
     let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
