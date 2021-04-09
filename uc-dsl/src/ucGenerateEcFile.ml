@@ -1,7 +1,10 @@
 open UcTypedSpec
 open EcLocation
+open EcSymbols
+open UcMessage
 module EI = EcInductive
 
+(* messy *)
 
 let fileMap (x : 'a IdPairMap.t) : ('a IdMap.t) IdMap.t =
   IdPairMap.fold 
@@ -217,8 +220,95 @@ let gen_dirs (f:string) (dim: inter_tyd IdMap.t) : unit =
   IdMap.iter (pp_interface ppf) dim;
   Format.pp_print_flush ppf ();
   close_out fo
+
+(* clean *)
+
+let ec_filename (f : string) : string = f^".ec"
+
+let open_formatter (f : string) : out_channel * Format.formatter =
+  let fo = open_out_gen [Open_append; Open_creat] 0o666 (ec_filename f) in
+  let ppf = Format.formatter_of_out_channel fo in
+  (fo,ppf)
+
+let close_formatter ((fo,ppf) : out_channel * Format.formatter) : unit =
+  Format.pp_print_flush ppf ();
+  close_out fo
   
+let write_theory (f : string) pth : unit =
+  let (fo,ppf) = open_formatter f in
+  pp_theory ppf pth;
+  close_formatter (fo,ppf)
+
+(*---------------------------------------------------------------------------*)
+
+let make_theory (id : string) : EcTheory.ctheory =
+  let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
+  let clears = [] in
+  let ctho = EcEnv.Theory.close ~clears env in
+  match ctho with
+  | Some cth -> cth
+  | None -> failure ("we should be able to make a theory "^id)
+  
+let make_record (id : string) (fields : symbol * EcTypes.ty list)
+: EcPath.path * EcDecl.tydecl =
+  let tpath = pqname_of_string id in
+  let record = 
+    { EI.rc_path = tpath; EI.rc_tparams = []; EI.rc_fields = fields; } in
+  let scheme  = EI.indsc_of_record record in
+  tpath,
+  {
+    tyd_params = record.EI.rc_tparams;
+    tyd_type   = `Record (scheme, record.EI.rc_fields); }
+
+let add_dir_msg id msg cth = cth (*to be continued*)
+
+let pp_theory_param s cth = ((pqname_of_string s),(cth,`Concrete))
+
+let gen_ec_basic_dir_inter (f : string) (s : symbol) (b : basic_inter_body_tyd)
+: unit =
+  let cth = make_theory s in
+  let cth = IdMap.fold (fun id msg -> add_dir_msg id msg) b cth in
+  let pth = pp_theory_param s cth in
+  write_theory f pth
+
+let gen_ec_compo_dir_inter (f : string) (s : symbol) (c : symbol IdMap.t)
+: unit = ()
+
+let gen_ec_dir_inter (dir_inter_map : inter_tyd IdPairMap.t) : unit =
+  IdPairMap.iter (fun (f,s) it ->
+    match unloc it with
+    | BasicTyd b     -> gen_ec_basic_dir_inter f s b
+    | CompositeTyd c -> gen_ec_compo_dir_inter f s c
+  ) dir_inter_map
+
+let gen_ec_adv_inter (adv_inter_map : inter_tyd IdPairMap.t) : unit = ()
+
+let gen_ec_fun (fun_map : fun_tyd IdPairMap.t) : unit = ()
+
+let gen_ec_sim (sim_map : sim_tyd IdPairMap.t) : unit = ()
+
+(*---------------------------------------------------------------------------*)
+
+let del_all (x : 'a IdPairMap.t) : unit =
+  IdPairMap.iter (
+    fun (f,_) _ -> 
+    let fn = ec_filename f in
+    if Sys.file_exists fn 
+      then Sys.remove fn 
+      else ()
+    ) x
+  
+let delete_all_files (ts:typed_spec) : unit =
+  del_all ts.dir_inter_map;
+  del_all ts.adv_inter_map;
+  del_all ts.fun_map;
+  del_all ts.sim_map
+
 let generate_ec (ts:typed_spec) : unit =
-  (*UcEcInterface.require (UcUtils.dummyloc "UCEncoding") (Some `Import);*)
+  delete_all_files ts;
+  gen_ec_dir_inter ts.dir_inter_map;
+  gen_ec_adv_inter ts.adv_inter_map;
+  gen_ec_fun ts.fun_map;
+  gen_ec_sim ts.sim_map ;
   let fdim = fileMap ts.dir_inter_map in
   IdMap.iter (fun f dim -> gen_dirs f dim) fdim
