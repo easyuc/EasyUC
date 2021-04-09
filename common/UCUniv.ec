@@ -89,13 +89,6 @@ have // := choicebP (fun k => 0 <= k /\ b ^ k <= n < b ^ (k + 1)) 0 _.
   by rewrite /= exists_int_log.
 qed.
 
-lemma ge0_int_log (b n : int) :
-  2 <= b => 1 <= n => 0 <= int_log b n.
-proof.
-move => ge2_b ge1_n.
-have := int_logP b n _ _ => //.
-qed.
-
 lemma int_logPuniq (b n l : int) :
   2 <= b =>
   0 <= l => b ^ l <= n < b ^ (l + 1) =>
@@ -108,6 +101,13 @@ have := int_logP b n _ _ => // [#] ge0_il b2il_le_n n_lt_b2ilp1.
 by apply (int_log_uniq b n).
 qed.
 
+lemma ge0_int_log (b n : int) :
+  2 <= b => 1 <= n => 0 <= int_log b n.
+proof.
+move => ge2_b ge1_n.
+have := int_logP b n _ _ => //.
+qed.
+
 (* int2bs, for 1 <= n, with minimum number of bits: *)
 
 op int2bs_min (n : int) : bool list = int2bs (int_log 2 n + 1) n.
@@ -117,6 +117,18 @@ lemma div_self (n : int) :
 proof.
 move => ne0_n.
 by rewrite divzz /b2i ne0_n.
+qed.
+
+lemma int2bs_min_nonempty (n : int) :
+  1 <= n => int2bs_min n <> [].
+proof.
+move => ge1_n.
+rewrite /int2bs_min.
+have [#] := int_logP 2 n _ _ => //.
+pose N := int_log 2 n.
+move => ge0_N two2N_le_n n_lt_two2Np1.
+by rewrite -size_eq0 size_int2bs // ler_maxr 1:ler_paddr //
+           gtr_eqF 1:ltzS.
 qed.
 
 (* most significant (which is last) element of int2bs_min n
@@ -145,6 +157,53 @@ have ndivtwo2N_le_1 : n %/ 2 ^ N <= 1.
   rewrite exprS // in n_lt_two2Np1.
   by rewrite ltz_divLR 1:expr_gt0.
 by rewrite eqr_le.
+qed.
+
+lemma last_false_nonempty (bs : bool list) :
+  last false bs => bs <> [].
+proof.
+by case bs.
+qed.
+
+lemma gt0_bs2int (bs : bool list) :
+  last false bs => 0 < bs2int bs.
+proof.
+case bs => [| z zs /= last_z_zs].
+by rewrite bs2int_nil.
+by rewrite lastI bs2int_rcons last_z_zs /b2i /= ltr_paddl
+           1:bs2int_ge0 expr_gt0.
+qed.
+
+lemma size_int_log2 (bs : bool list) :
+  last false bs =>
+  size bs = int_log 2 (bs2int bs) + 1.
+proof.
+case bs => [// | z zs /= last_z_zs].
+rewrite addzC.
+congr.
+rewrite lastI bs2int_rcons last_z_zs /b2i /=
+        size_belast.
+have : 0 <= bs2int (belast z zs) < 2 ^ (size zs).
+  split => [| _].
+  rewrite bs2int_ge0.
+  have -> : size zs = size (belast z zs).
+    by rewrite size_belast.
+  rewrite bs2int_le2Xs.
+pose n := bs2int (belast z zs).
+move => [ge0_n n_lt_two2size_zs].
+apply int_logPuniq => //.
+rewrite size_ge0.
+split => [| _].
+by rewrite ler_addr.
+by rewrite exprS 1:size_ge0 mulzC -intmulz mulr2z ltr_le_add.
+qed.
+
+lemma bs2intK_min (bs : bool list) :
+  last false bs => int2bs_min (bs2int bs) = bs.
+proof.
+move => last_false_bs.
+rewrite /int2bs_min.
+by rewrite -size_int_log2 // bs2intK.
 qed.
 
 (* universe *)
@@ -227,55 +286,52 @@ case (0 < x) => [gt0_x | not_ge0_x].
 pose bs := int2bs_min x.
 have [#] ge0_il two2il_le_x x_lt_two2ilp1 := int_logP 2 x _ _ => //.
   by rewrite -add0z -ltzE.
-have bs_ne_nil : bs <> [] by rewrite int2bs_ne_nil 1:ler_paddl.
-rewrite bs_ne_nil /=.
-
-
-
+have -> /= : bs <> [].
+  rewrite int2bs_min_nonempty //.
+  rewrite ltzE // in gt0_x.
+have -> /= : last false bs.
+  rewrite int2bs_min_last.
+  rewrite ltzE // in gt0_x.
 rewrite int2bsK 1:ler_paddr //.
 split => [| //].
 by rewrite ltzW.
-have ge0_negx : 0 < -x.
+have gt0_negx : 0 < -x.
   rewrite -lerNgt -oppz_ge0 in not_ge0_x.
   by rewrite ltr_def not_ge0_x /= oppr_eq0.
-have [#] ge0_il two2il_le_negx negx_lt_two2ilp1 := int_logP 2 (-x) _ _ => //.
+pose bs := int2bs_min (-x).
+have [#] ge0_il two2il_le_negx negx_lt_two2ilp1
+     := int_logP 2 (-x) _ _ => //.
   by rewrite -add0z -ltzE.
-pose bs := int2bs (int_log 2 (-x) + 1) (-x).
-have -> /= : bs <> [] by rewrite int2bs_ne_nil 1:ler_paddl.
+have -> /= : bs <> [].
+  rewrite int2bs_min_nonempty //.
+  rewrite ltzE // in gt0_negx.
+have -> /= : last false bs.
+  rewrite int2bs_min_last.
+  rewrite ltzE // in gt0_negx.
 rewrite int2bsK 1:ler_paddr //.
 split => [| //].
 by rewrite ltzW.
 rewrite /epdp_int_univ /= /enc_int /dec_int.
 case u => [/= <- // | z zs /=].
 case z => _.
-case (zs = []) => [// | zs_ne_nil /= <-].
-have bs2int_zs_ne0 : bs2int zs <> 0.
-  admit.
-rewrite bs2int_zs_ne0 /=.
+case (zs = [] \/ ! last false zs) => [// |].
+rewrite negb_or => [/= [zs_ne_nil last_is_true_zs]] <-.
+have -> /= : bs2int zs <> 0.
+  by rewrite gtr_eqF // gt0_bs2int.
 case (0 < bs2int zs) => [gt0_bs2int_zs | not_ge0_bs2int_zs].
 congr.
-have -> : int_log 2 (bs2int zs) + 1 = size zs.
-
-search int2bs size.
-search int2bs.
-
-int_log 2 (bs2int zs) + 1 = size zs
-int_log 2 (bs2int [10]) + 1 = size [10]
-
-
-
-by rewrite bs2intK.
-admit.
-case (zs = []) => [// | zs_ne_nil /= <-].
-have bs2int_zs_ne0 : - bs2int zs <> 0.
-  admit.
-rewrite bs2int_zs_ne0 /=.
-case (0 < - bs2int zs) => [gt0_bs2int_zs | not_ge0_bs2int_zs].
-admit.
+by rewrite bs2intK_min.
+rewrite gt0_bs2int // in not_ge0_bs2int_zs.
+case (zs = [] \/ ! last false zs) => [// |].
+rewrite negb_or => [/= [zs_ne_nil last_is_true_zs]] <-.
+have -> /= : - bs2int zs <> 0.
+  by rewrite eq_sym gtr_eqF // oppr_lt0 gt0_bs2int.
+case (0 < - bs2int zs) => [gt0_negbs2int_zs | not_ge0_negbs2int_zs].
+rewrite oppz_gt0 in gt0_negbs2int_zs.
+have gt0_bs2int_zs := gt0_bs2int zs _ => //.
+have // : 0 < 0 by rewrite (ltr_trans (bs2int zs)).
 congr.
-have -> : int_log 2 (bs2int zs) + 1 = size zs.
-  admit.
-by rewrite bs2intK.
+by rewrite bs2intK_min.
 qed.
 
 hint simplify [eqtrue] valid_epdp_int_univ.
