@@ -206,15 +206,99 @@ rewrite /int2bs_min.
 by rewrite -size_int_log2 // bs2intK.
 qed.
 
+(* alternation and de-alternation *)
+
+op alt (y : 'a, xs : 'a list) : 'a list =
+  with xs = []      => []
+  with xs = z :: zs => y :: z :: alt y zs.
+
+op de_alt_aux (y : 'a, b : bool, ws xs : 'a list)
+     : ('a list * 'a list) option =
+  with xs = []      =>
+    if b then Some (ws, []) else None
+  with xs = x :: xs =>
+    if b
+    then if x = y
+         then de_alt_aux y false ws xs
+         else Some (ws, x :: xs)
+    else de_alt_aux y true (rcons ws x) xs.
+
+op de_alt (y : 'a, xs : 'a list) : ('a list * 'a list) option =
+  de_alt_aux y true [] xs.
+
+lemma alt_size (y : 'a, xs : 'a list) :
+  size (alt y xs) = 2 * size xs.
+proof.
+elim xs => [// | z zs IH /=].
+by rewrite IH mulrDr.
+qed.
+
+lemma alt_de_alt_aux (y : 'a, b : bool, xs zs : 'a list) :
+  head y zs <> y =>
+  (forall (ws : 'a list),
+   de_alt_aux y true ws (alt y xs ++ zs) = Some (ws ++ xs, zs)).
+proof.
+case zs => [// | z zs]; rewrite /= => head_ne_y.
+elim xs => [ws /= | x xs IH ws /=].
+by rewrite head_ne_y /= cats0.
+rewrite IH.
+congr; by rewrite cat_rcons.
+qed.
+
+lemma alt_de_alt (y : 'a, xs zs : 'a list) :
+  head y zs <> y =>
+  de_alt y (alt y xs ++ zs) = Some (xs, zs).
+proof.
+move => head_ne_y.
+by apply (alt_de_alt_aux y true).
+qed.
+
+lemma de_alt_aux_alt (y : 'a, us : 'a list) :
+  (forall (xs, ws, zs : 'a list),
+   de_alt_aux y true ws us = Some (xs, zs) =>
+   (zs = [] \/ head y zs <> y) /\
+   exists (cs ds : 'a list),
+   us = cs ++ zs /\ xs = ws ++ ds /\ alt y ds = cs) /\
+  (forall (xs, ws, zs : 'a list),
+   de_alt_aux y false ws us = Some (xs, zs) =>
+   (zs = [] \/ head y zs <> y) /\
+   exists (b : 'a, cs ds : 'a list),
+   us = b :: cs ++ zs /\ xs = ws ++ [b] ++ ds /\
+   alt y ds = cs).
+proof.
+elim us => [| u us [IH1 IH2]].
+split => [xs ws zs /= [<- <-] | xs ws zs //].
+exists [] []; by rewrite /= cats0.
+split => [xs ws zs /= | xs ws zs /= /IH1 [-> [cs ds [#] -> -> <-]] /=].
+case (u = y) =>
+  [-> /IH2 [-> /= [b cs ds] [#] -> -> <-] | ne_u_y /= [-> <-] /=].
+exists (alt y ([b] ++ ds)) ([b] ++ ds).
+by rewrite /= -!catA cat1s.
+rewrite ne_u_y /=.
+exists (alt y []) [].
+by rewrite /= cats0.
+exists u (alt y ds) ds.
+by rewrite /= cat_rcons -cat1s catA.
+qed.
+
+lemma de_alt_alt (y : 'a, us xs zs : 'a list) :
+  de_alt y us = Some (xs, zs) =>
+  (zs = [] \/ head y zs <> y) /\ us = alt y xs ++ zs.
+proof.
+rewrite /de_alt.
+have [H _] := de_alt_aux_alt y us.
+move => /H [-> [cs ds [#] -> -> <-]] //.
+qed.
+
 (* universe *)
 
 type univ = bool list.  (* universe values are lists of bits *)
 
 (* unit encoding: *)
 
-op enc_unit (x : unit) : univ = [].
+op nosmt enc_unit (x : unit) : univ = [].
 
-op dec_unit (u : univ) : unit option =
+op nosmt dec_unit (u : univ) : unit option =
   if u = [] then Some () else None.
 
 op nosmt epdp_unit_univ : (unit, univ) epdp =
@@ -232,9 +316,9 @@ hint rewrite epdp : valid_epdp_unit_univ.
 
 (* bool encoding: *)
 
-op enc_bool (b : bool) : univ = [b].
+op nosmt enc_bool (b : bool) : univ = [b].
 
-op dec_bool (u : univ) : bool option =
+op nosmt dec_bool (u : univ) : bool option =
   if size u = 1 then Some (head true u) else None.
 
 op nosmt epdp_bool_univ : (bool, univ) epdp =
@@ -255,14 +339,14 @@ hint rewrite epdp : valid_epdp_bool_univ.
 
 (* int encoding: *)
 
-op enc_int (n : int) : univ =
+op nosmt enc_int (n : int) : univ =
   if n = 0
   then []
   else if 0 < n
        then true  :: int2bs_min n
        else false :: int2bs_min (-n).
 
-op dec_int (u : univ) : int option =
+op nosmt dec_int (u : univ) : int option =
   match u with
   | []      => Some 0
   | b :: bs =>
@@ -337,9 +421,37 @@ qed.
 hint simplify [eqtrue] valid_epdp_int_univ.
 hint rewrite epdp : valid_epdp_int_univ.
 
-op epdp_univ_pair_univ : (univ * univ, univ) epdp.  (* univ * univ *)
+(* univ pair encoding: *)
 
-axiom valid_epdp_univ_pair_univ : valid_epdp epdp_univ_pair_univ.
+op nosmt enc_univ_pair (p : univ * univ) : univ =
+  alt true p.`1 ++ [false] ++ p.`2.
+
+op nosmt dec_univ_pair (u : univ) : (univ * univ) option =
+  match de_alt true u with
+  | None   => None
+  | Some p =>
+      if p.`2 = [] then None else Some (p.`1, behead p.`2)
+  end.
+
+op nosmt epdp_univ_pair_univ : (univ * univ, univ) epdp =
+  {|enc = enc_univ_pair; dec = dec_univ_pair|}.
+
+lemma valid_epdp_univ_pair_univ : valid_epdp epdp_univ_pair_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair /dec_univ_pair.
+rewrite -catA alt_de_alt //=.
+by case x.
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair /dec_univ_pair
+  => match_eq_some.
+have [b val_u] : exists b, de_alt true u = Some (x.`1, [b] ++ x.`2).
+  move : match_eq_some.
+  case (de_alt true u) => [// | [xs ys] /=].
+  case (ys = []) => [// | ys_ne_nil /= <- /=].
+  exists (head true ys); by rewrite head_behead.
+have := de_alt_alt true u x.`1 ([b] ++ x.`2) _ => //=.
+rewrite eqT => [[-> ->]].
+by rewrite -!catA cat1s.
+qed.
 
 hint simplify [eqtrue] valid_epdp_univ_pair_univ.
 hint rewrite epdp : valid_epdp_univ_pair_univ.
