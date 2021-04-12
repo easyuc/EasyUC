@@ -8,7 +8,7 @@ prover [""].  (* no use of SMT provers *)
 
 prover ["Z3" "Alt-Ergo"].  (* TODO - remove! *)
 
-require import AllCore List StdOrder IntDiv BitEncoding UCEncoding.
+require import AllCore List StdOrder IntDiv BitEncoding UCEncoding WF.
 import IntOrder BS2Int.
 
 (* auxiliary definitions and lemmas *)
@@ -456,25 +456,89 @@ qed.
 hint simplify [eqtrue] valid_epdp_univ_pair_univ.
 hint rewrite epdp : valid_epdp_univ_pair_univ.
 
-lemma dec_univ_pair_size_lt (u x y : univ) :
-  dec_univ_pair u = Some (x, y) =>
-  size x < size u /\ size y < size u.
+lemma enc_univ_pair_size_lt1 (x y : univ) :
+  size x < size (epdp_univ_pair_univ.`enc (x, y)).
 proof.
-move => dup_u_some.
-have @/valid_epdp [_ dec_enc] := valid_epdp_univ_pair_univ.
-have : epdp_univ_pair_univ.`enc (x, y) = u by apply dec_enc.
-rewrite /epdp_univ_pair_univ /= /enc_univ_pair => <-.
-rewrite /= !size_cat /= alt_size.
-split.
-rewrite mulzC -intmulz mulr2z -!addrA ltr_addl ltr_spaddr //
-        1:ltr_spaddl // 2!size_ge0.
-rewrite mulzC -intmulz mulr2z ltr_spaddl // ltr_spaddr //
-        addr_ge0 2!size_ge0 size_ge0 lerr.
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair !size_cat /=.
+rewrite alt_size mulzC -intmulz mulr2z -!addrA ltr_addl.
+rewrite ltr_spaddr 1:ltr_spaddl // !size_ge0.
+qed.
+  
+lemma enc_univ_pair_size_lt2 (x y : univ) :
+  size y < size (epdp_univ_pair_univ.`enc (x, y)).
+proof.
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair !size_cat /=.
+rewrite alt_size mulzC -intmulz mulr2z addzC.
+rewrite ltr_addl ltr_spaddr // ler_paddr !size_ge0.
 qed.
 
-op epdp_univ_list_univ : (univ list, univ) epdp.  (* univ list *)
+lemma enc_univ_pair_nonnil (x y : univ) :
+  epdp_univ_pair_univ.`enc (x, y) <> [].
+proof.
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair.
+case (alt true (x, y).`1 ++ [false] ++ (x, y).`2 = []) =>
+  [contrad | //].
+have size_contrad :
+  size (alt true (x, y).`1 ++ [false] ++ (x, y).`2) = 0.
+  by rewrite contrad.
+rewrite !size_cat paddr_eq0 1:ler_paddr //
+        1:size_ge0 1:size_ge0 in size_contrad.
+rewrite paddr_eq0 1:size_ge0 1:size_ge0 // in size_contrad.
+qed.
 
-axiom valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
+(* univ list encoding: *)
+
+op nosmt enc_univ_list (us : univ list) : univ =
+  with us = []      => []
+  with us = v :: vs => epdp_univ_pair_univ.`enc (v, enc_univ_list vs).
+
+(* we need to use well-founded recursion on the size of lists when
+   doing decoding *)
+
+op lt_list_size : 'a list rel = wf_pre size lt_nat.
+
+lemma wf_list_size ['a] : wf lt_list_size<:'a>.
+proof.
+rewrite wf_pre wf_lt_nat.
+qed.
+
+op dec_univ_list_wf_rec_def
+   (u : univ, f : univ -> univ list option) : univ list option =
+  if u = []
+  then Some []
+  else match epdp_univ_pair_univ.`dec u with
+       | None   => None
+       | Some p =>
+           match f p.`2 with
+           | None    => None
+           | Some vs => Some (p.`1 :: vs)
+           end
+       end.
+
+op dec_univ_list : univ -> univ list option =
+  wf_recur lt_list_size None dec_univ_list_wf_rec_def.
+
+op nosmt epdp_univ_list_univ : (univ list, univ) epdp =
+  {|enc = enc_univ_list; dec = dec_univ_list|}.
+
+lemma valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
+proof.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_list_univ /= /enc_univ_list /dec_univ_list.
+elim x => [| x xs IH].
+by rewrite wf_recur 1:wf_list_size /= /dec_univ_list_wf_rec_def.
+rewrite wf_recur 1:wf_list_size /= {1}/dec_univ_list_wf_rec_def
+        enc_univ_pair_nonnil /=
+        epdp_enc_dec 1:valid_epdp_univ_pair_univ /=.
+have -> /= :
+  predecs lt_list_size
+  (epdp_univ_pair_univ.`enc (x, enc_univ_list xs))
+  (enc_univ_list xs).
+  rewrite /predecs /lt_list_size /wf_pre /lt_nat size_ge0 /=
+          enc_univ_pair_size_lt2.
+by rewrite IH.
+admit.
+qed.
 
 hint simplify [eqtrue] valid_epdp_univ_list_univ.
 hint rewrite epdp : valid_epdp_univ_list_univ.
