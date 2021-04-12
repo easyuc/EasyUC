@@ -456,15 +456,28 @@ qed.
 hint simplify [eqtrue] valid_epdp_univ_pair_univ.
 hint rewrite epdp : valid_epdp_univ_pair_univ.
 
+lemma dec_univ_pair_size_lt (u x y : univ) :
+  dec_univ_pair u = Some (x, y) =>
+  size x < size u /\ size y < size u.
+proof.
+move => dup_u_some.
+have @/valid_epdp [_ dec_enc] := valid_epdp_univ_pair_univ.
+have : epdp_univ_pair_univ.`enc (x, y) = u by apply dec_enc.
+rewrite /epdp_univ_pair_univ /= /enc_univ_pair => <-.
+rewrite /= !size_cat /= alt_size.
+split.
+rewrite mulzC -intmulz mulr2z -!addrA ltr_addl ltr_spaddr //
+        1:ltr_spaddl // 2!size_ge0.
+rewrite mulzC -intmulz mulr2z ltr_spaddl // ltr_spaddr //
+        addr_ge0 2!size_ge0 size_ge0 lerr.
+qed.
+
 op epdp_univ_list_univ : (univ list, univ) epdp.  (* univ list *)
 
 axiom valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
 
 hint simplify [eqtrue] valid_epdp_univ_list_univ.
 hint rewrite epdp : valid_epdp_univ_list_univ.
-
-(* now we can build on these axiomatized encoding/partial decoding
-   operators *)
 
 (* triple univ encoding: *)
 
