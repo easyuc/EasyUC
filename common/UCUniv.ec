@@ -7,10 +7,10 @@ prover [""].  (* no use of SMT provers *)
 require import AllCore List StdOrder IntDiv BitEncoding UCEncoding WF.
 import IntOrder BS2Int.
 
-(* auxiliary definitions and lemmas
-
-   scan for "universe" for the definition of the type univ
+(* search for "universe" for the definition of the type univ
    followed by the EPDPs on univ *)
+
+(* auxiliary definitions and lemmas *)
 
 (* integer logarithms for use below (EasyCrypt now provides these via
    log on reals, but we prefer to work directly with ints, using a
@@ -772,7 +772,106 @@ qed.
 hint simplify [eqtrue] valid_epdp_univ_sextuple_univ.
 hint rewrite epdp : valid_epdp_univ_sextuple_univ.
 
-(* encoding of 'a * 'b *)
+(* septuple univ encoding: *)
+
+op nosmt enc_univ_septuple
+     (t : univ * univ * univ * univ * univ * univ * univ) : univ =
+  epdp_univ_pair_univ.`enc
+  (t.`1, (epdp_univ_sextuple_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7))).
+
+op nosmt dec_univ_septuple (u : univ) :
+    (univ * univ * univ * univ * univ * univ * univ) option =
+  match epdp_univ_pair_univ.`dec u with
+  | None   => None
+  | Some p =>
+      match epdp_univ_sextuple_univ.`dec p.`2 with
+        None   => None
+      | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4, q.`5, q.`6)
+      end
+  end.
+
+op nosmt epdp_univ_septuple_univ :
+    (univ * univ * univ * univ * univ * univ * univ, univ) epdp =
+  {|enc = enc_univ_septuple; dec = dec_univ_septuple|}.
+
+lemma valid_epdp_univ_septuple_univ : valid_epdp epdp_univ_septuple_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_septuple_univ /= /enc_univ_septuple
+        /dec_univ_septuple /=.
+rewrite !epdp /= !epdp /=.
+by case x.
+rewrite /epdp_univ_septuple_univ /= /enc_univ_septuple
+        /dec_univ_septuple => match_dec_u_eq_some.
+have val_u :
+  epdp_univ_pair_univ.`dec u =
+  Some (x.`1, epdp_univ_sextuple_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7)).
+  move : match_dec_u_eq_some.
+  case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
+  move => match_dec_q_eq_some.
+  have val_y2 :
+    epdp_univ_sextuple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7).
+    move : match_dec_q_eq_some.
+    case (epdp_univ_sextuple_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 /= <- //.
+  move : match_dec_q_eq_some.
+  rewrite val_y2 /= => <- /=.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_sextuple_univ //.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_septuple_univ.
+hint rewrite epdp : valid_epdp_univ_septuple_univ.
+
+(* octuple univ encoding: *)
+
+op nosmt enc_univ_octuple
+     (t : univ * univ * univ * univ * univ * univ * univ * univ) : univ =
+  epdp_univ_pair_univ.`enc
+  (t.`1, (epdp_univ_septuple_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7, t.`8))).
+
+op nosmt dec_univ_octuple (u : univ) :
+    (univ * univ * univ * univ * univ * univ * univ * univ) option =
+  match epdp_univ_pair_univ.`dec u with
+  | None   => None
+  | Some p =>
+      match epdp_univ_septuple_univ.`dec p.`2 with
+        None   => None
+      | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4, q.`5, q.`6, q.`7)
+      end
+  end.
+
+op nosmt epdp_univ_octuple_univ :
+    (univ * univ * univ * univ * univ * univ * univ * univ, univ) epdp =
+  {|enc = enc_univ_octuple; dec = dec_univ_octuple|}.
+
+lemma valid_epdp_univ_octuple_univ : valid_epdp epdp_univ_octuple_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_octuple_univ /= /enc_univ_octuple
+        /dec_univ_octuple /=.
+rewrite !epdp /= !epdp /=.
+by case x.
+rewrite /epdp_univ_octuple_univ /= /enc_univ_octuple
+        /dec_univ_octuple => match_dec_u_eq_some.
+have val_u :
+  epdp_univ_pair_univ.`dec u =
+  Some
+  (x.`1, epdp_univ_septuple_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8)).
+  move : match_dec_u_eq_some.
+  case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
+  move => match_dec_q_eq_some.
+  have val_y2 :
+    epdp_univ_septuple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8).
+    move : match_dec_q_eq_some.
+    case (epdp_univ_septuple_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 x8 /= <- //.
+  move : match_dec_q_eq_some.
+  rewrite val_y2 /= => <- /=.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_septuple_univ //.
+by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_octuple_univ.
+hint rewrite epdp : valid_epdp_univ_octuple_univ.
+
+(* encoding of pair 'a * 'b *)
 
 op nosmt enc_pair_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp, p : 'a * 'b) : univ =
@@ -829,7 +928,7 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_pair_univ.
 
-(* encoding of 'a * 'b * 'c *)
+(* encoding of triple 'a * 'b * 'c *)
 
 op nosmt enc_triple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp, epdp3 : ('c, univ) epdp,
@@ -906,7 +1005,7 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_triple_univ.
 
-(* encoding of 'a * 'b * 'c * 'd *)
+(* encoding of quadruple 'a * 'b * 'c * 'd *)
 
 op nosmt enc_quadruple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
@@ -1006,7 +1105,7 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_quadruple_univ.
 
-(* encoding of 'a * 'b * 'c * 'd * 'e *)
+(* encoding of quintuple 'a * 'b * 'c * 'd * 'e *)
 
 op nosmt enc_quintuple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
@@ -1127,7 +1226,7 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_quintuple_univ.
 
-(* encoding of 'a * 'b * 'c * 'd * 'e * 'f *)
+(* encoding of sextuple 'a * 'b * 'c * 'd * 'e * 'f *)
 
 op nosmt enc_sextuple_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
@@ -1263,6 +1362,346 @@ by rewrite (epdp_dec_enc _ _ y) 1:valid_epdp_univ_sextuple_univ.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_sextuple_univ.
+
+(* encoding of septuple 'a * 'b * 'c * 'd * 'e * 'f * 'g *)
+
+op nosmt enc_septuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp,
+      p : 'a * 'b * 'c * 'd * 'e * 'f * 'g) : univ =
+  epdp_univ_septuple_univ.`enc
+  (epdp1.`enc p.`1, epdp2.`enc p.`2, epdp3.`enc p.`3,
+   epdp4.`enc p.`4, epdp5.`enc p.`5, epdp6.`enc p.`6,
+   epdp7.`enc p.`7).
+  
+op nosmt dec_septuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp,
+      u : univ) : ('a * 'b * 'c * 'd * 'e * 'f * 'g) option =
+  match epdp_univ_septuple_univ.`dec u with
+  | None   => None
+  | Some p =>
+      match epdp1.`dec p.`1 with
+      | None    => None
+      | Some x1 =>
+          match epdp2.`dec p.`2 with
+          | None    => None
+          | Some x2 =>
+              match epdp3.`dec p.`3 with
+              | None    => None
+              | Some x3 =>
+                  match epdp4.`dec p.`4 with
+                  | None    => None
+                  | Some x4 =>
+                      match epdp5.`dec p.`5 with
+                      | None    => None
+                      | Some x5 =>
+                          match epdp6.`dec p.`6 with
+                          | None    => None
+                          | Some x6 =>
+                              match epdp7.`dec p.`7 with
+                              | None    => None
+                              | Some x7 => Some (x1, x2, x3, x4, x5, x6, x7)
+                              end
+                          end
+                      end
+                  end
+              end
+          end
+      end
+  end.
+
+op nosmt epdp_septuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp)
+       : ('a * 'b * 'c * 'd * 'e * 'f * 'g, univ) epdp =
+  {|enc = enc_septuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7;
+    dec = dec_septuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7|}.
+
+lemma valid_epdp_septuple_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+       epdp7 : ('g, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 =>
+  valid_epdp (epdp_septuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7.
+apply epdp_intro => [x | y x].
+rewrite /epdp_septuple_univ /= /dec_septuple_univ /enc_septuple_univ.
+rewrite !epdp /= !epdp //=.
+by case x.  
+rewrite /epdp_septuple_univ /= /dec_septuple_univ /enc_septuple_univ =>
+  match_dec_y_eq_some.
+have val_y :
+  epdp_univ_septuple_univ.`dec y =
+  Some (epdp1.`enc x.`1, epdp2.`enc x.`2, epdp3.`enc x.`3,
+        epdp4.`enc x.`4, epdp5.`enc x.`5, epdp6.`enc x.`6,
+        epdp7.`enc x.`7).
+  move : match_dec_y_eq_some.
+  case (epdp_univ_septuple_univ.`dec y) => // [[]] x1 x2 x3 x4 x5 x6 x7 /=.
+  move => match_dec_x1_eq_some.
+  have val_x1 : epdp1.`dec x1 = Some x.`1.
+    move : match_dec_x1_eq_some.
+    case (epdp1.`dec x1) => // x1' /= match_dec_x2_eq_some.
+    have val_x2 : epdp2.`dec x2 = Some x.`2.
+      move : match_dec_x2_eq_some.
+      case (epdp2.`dec x2) => // x2' /=.
+      case (epdp3.`dec x3) => // x3' /=.
+      case (epdp4.`dec x4) => // x4' /=.
+      case (epdp5.`dec x5) => // x5' /=.
+      case (epdp6.`dec x6) => // x6' /=.
+      case (epdp7.`dec x7) => // _ /=.
+    move : match_dec_x2_eq_some.
+    rewrite val_x2 /=.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  move : match_dec_x1_eq_some.
+  rewrite val_x1 => /= match_dec_x2_eq_some.
+  rewrite (epdp_dec_enc _ _ x1) //=.
+  have val_x2 : epdp2.`dec x2 = Some x.`2. 
+    move : match_dec_x2_eq_some.
+    case (epdp2.`dec x2) => // x2' /=.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  rewrite (epdp_dec_enc _ _ x2) //=.
+  move : match_dec_x2_eq_some.
+  rewrite val_x2 /= => match_dec_x3_eq_some.
+  have val_x3 : epdp3.`dec x3 = Some x.`3.
+    move : match_dec_x3_eq_some.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  rewrite (epdp_dec_enc _ _ x3) //=.
+  move : match_dec_x3_eq_some.
+  rewrite val_x3 /= => match_dec_x4_eq_some.
+  have val_x4 : epdp4.`dec x4 = Some x.`4.
+    move : match_dec_x4_eq_some.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  rewrite (epdp_dec_enc _ _ x4) //=.
+  move : match_dec_x4_eq_some.
+  rewrite val_x4 /= => match_dec_x5_eq_some.
+  have val_x5 : epdp5.`dec x5 = Some x.`5.
+    move : match_dec_x5_eq_some.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  rewrite (epdp_dec_enc _ _ x5) //=.
+  move : match_dec_x5_eq_some.
+  rewrite val_x5 /= => match_dec_x6_eq_some.
+  have val_x6 : epdp6.`dec x6 = Some x.`6.
+    move : match_dec_x6_eq_some.
+    case (epdp6.`dec x6) => // x6' /=.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  rewrite (epdp_dec_enc _ _ x6) //=.
+  move : match_dec_x6_eq_some.
+  rewrite val_x6 /= => match_dec_x7_eq_some.
+  have val_x7 : epdp7.`dec x7 = Some x.`7.
+    move : match_dec_x7_eq_some.
+    by case (epdp7.`dec x7) => // x7' /= <-.
+  by rewrite (epdp_dec_enc _ _ x7).
+by rewrite (epdp_dec_enc _ _ y) 1:valid_epdp_univ_septuple_univ.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_septuple_univ.
+
+(* encoding of octuple 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h *)
+
+op nosmt enc_octuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp,
+      p : 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h) : univ =
+  epdp_univ_octuple_univ.`enc
+  (epdp1.`enc p.`1, epdp2.`enc p.`2, epdp3.`enc p.`3,
+   epdp4.`enc p.`4, epdp5.`enc p.`5, epdp6.`enc p.`6,
+   epdp7.`enc p.`7, epdp8.`enc p.`8).
+  
+op nosmt dec_octuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp,
+      u : univ) : ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h) option =
+  match epdp_univ_octuple_univ.`dec u with
+  | None   => None
+  | Some p =>
+      match epdp1.`dec p.`1 with
+      | None    => None
+      | Some x1 =>
+          match epdp2.`dec p.`2 with
+          | None    => None
+          | Some x2 =>
+              match epdp3.`dec p.`3 with
+              | None    => None
+              | Some x3 =>
+                  match epdp4.`dec p.`4 with
+                  | None    => None
+                  | Some x4 =>
+                      match epdp5.`dec p.`5 with
+                      | None    => None
+                      | Some x5 =>
+                          match epdp6.`dec p.`6 with
+                          | None    => None
+                          | Some x6 =>
+                              match epdp7.`dec p.`7 with
+                              | None    => None
+                              | Some x7 =>
+                                  match epdp8.`dec p.`8 with
+                                  | None    => None
+                                  | Some x8 => Some (x1, x2, x3, x4, x5, x6, x7, x8)
+                                  end
+                              end
+                          end
+                      end
+                  end
+              end
+          end
+      end
+  end.
+
+op nosmt epdp_octuple_univ
+     (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+      epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+      epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+      epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp)
+       : ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h, univ) epdp =
+  {|enc = enc_octuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8;
+    dec = dec_octuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8|}.
+
+lemma valid_epdp_octuple_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+       epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 => valid_epdp epdp8 =>
+  valid_epdp (epdp_octuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7 valid8.
+apply epdp_intro => [x | y x].
+rewrite /epdp_octuple_univ /= /dec_octuple_univ /enc_octuple_univ.
+rewrite !epdp /= !epdp //=.
+by case x.  
+rewrite /epdp_octuple_univ /= /dec_octuple_univ /enc_octuple_univ =>
+  match_dec_y_eq_some.
+have val_y :
+  epdp_univ_octuple_univ.`dec y =
+  Some (epdp1.`enc x.`1, epdp2.`enc x.`2, epdp3.`enc x.`3,
+        epdp4.`enc x.`4, epdp5.`enc x.`5, epdp6.`enc x.`6,
+        epdp7.`enc x.`7, epdp8.`enc x.`8).
+  move : match_dec_y_eq_some.
+  case (epdp_univ_octuple_univ.`dec y) => // [[]] x1 x2 x3 x4 x5 x6 x7 x8 /=.
+  move => match_dec_x1_eq_some.
+  have val_x1 : epdp1.`dec x1 = Some x.`1.
+    move : match_dec_x1_eq_some.
+    case (epdp1.`dec x1) => // x1' /= match_dec_x2_eq_some.
+    have val_x2 : epdp2.`dec x2 = Some x.`2.
+      move : match_dec_x2_eq_some.
+      case (epdp2.`dec x2) => // x2' /=.
+      case (epdp3.`dec x3) => // x3' /=.
+      case (epdp4.`dec x4) => // x4' /=.
+      case (epdp5.`dec x5) => // x5' /=.
+      case (epdp6.`dec x6) => // x6' /=.
+      case (epdp7.`dec x7) => // x7' /=.
+      case (epdp8.`dec x8) => // _ /=.
+    move : match_dec_x2_eq_some.
+    rewrite val_x2 /=.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  move : match_dec_x1_eq_some.
+  rewrite val_x1 => /= match_dec_x2_eq_some.
+  rewrite (epdp_dec_enc _ _ x1) //=.
+  have val_x2 : epdp2.`dec x2 = Some x.`2. 
+    move : match_dec_x2_eq_some.
+    case (epdp2.`dec x2) => // x2' /=.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x2) //=.
+  move : match_dec_x2_eq_some.
+  rewrite val_x2 /= => match_dec_x3_eq_some.
+  have val_x3 : epdp3.`dec x3 = Some x.`3.
+    move : match_dec_x3_eq_some.
+    case (epdp3.`dec x3) => // x3' /=.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x3) //=.
+  move : match_dec_x3_eq_some.
+  rewrite val_x3 /= => match_dec_x4_eq_some.
+  have val_x4 : epdp4.`dec x4 = Some x.`4.
+    move : match_dec_x4_eq_some.
+    case (epdp4.`dec x4) => // x4' /=.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x4) //=.
+  move : match_dec_x4_eq_some.
+  rewrite val_x4 /= => match_dec_x5_eq_some.
+  have val_x5 : epdp5.`dec x5 = Some x.`5.
+    move : match_dec_x5_eq_some.
+    case (epdp5.`dec x5) => // x5' /=.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x5) //=.
+  move : match_dec_x5_eq_some.
+  rewrite val_x5 /= => match_dec_x6_eq_some.
+  have val_x6 : epdp6.`dec x6 = Some x.`6.
+    move : match_dec_x6_eq_some.
+    case (epdp6.`dec x6) => // x6' /=.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x6) //=.
+  move : match_dec_x6_eq_some.
+  rewrite val_x6 /= => match_dec_x7_eq_some.
+  have val_x7 : epdp7.`dec x7 = Some x.`7.
+    move : match_dec_x7_eq_some.
+    case (epdp7.`dec x7) => // x7' /=.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  rewrite (epdp_dec_enc _ _ x7) //=.
+  move : match_dec_x7_eq_some.
+  rewrite val_x7 /= => match_dec_x8_eq_some.
+  have val_x8 : epdp8.`dec x8 = Some x.`8.
+    move : match_dec_x8_eq_some.
+    by case (epdp8.`dec x8) => // x8' /= <-.
+  by rewrite (epdp_dec_enc _ _ x8).
+by rewrite (epdp_dec_enc _ _ y) 1:valid_epdp_univ_octuple_univ.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_octuple_univ.
 
 (* encoding of 'a list *)
 
