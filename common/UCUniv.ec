@@ -1,20 +1,20 @@
 (* Univ.ec *)
 
-(* Universe of Values Plus EPDPs *)
+(* Universe of Values Plus EPDPs on Universe *)
 
-(* TODO
 prover [""].  (* no use of SMT provers *)
-*)
-
-prover ["Z3" "Alt-Ergo"].  (* TODO - remove! *)
 
 require import AllCore List StdOrder IntDiv BitEncoding UCEncoding WF.
 import IntOrder BS2Int.
 
-(* auxiliary definitions and lemmas *)
+(* auxiliary definitions and lemmas
+
+   scan for "universe" for the definition of the type univ
+   followed by the EPDPs on univ *)
 
 (* integer logarithms for use below (EasyCrypt now provides these via
-   log on reals, but we prefer to work directly with ints) *)
+   log on reals, but we prefer to work directly with ints, using a
+   strong induction that could be turned into recursive definition) *)
 
 lemma exists_int_log (b n : int) :
   2 <= b => 1 <= n =>
@@ -108,16 +108,10 @@ move => ge2_b ge1_n.
 have := int_logP b n _ _ => //.
 qed.
 
-(* int2bs, for 1 <= n, with minimum number of bits: *)
+(* int2bs (see BitEncoding), for 1 <= n, with minimum number of
+   bits: *)
 
 op int2bs_min (n : int) : bool list = int2bs (int_log 2 n + 1) n.
-
-lemma div_self (n : int) :
-  n <> 0 => n %/ n = 1.
-proof.
-move => ne0_n.
-by rewrite divzz /b2i ne0_n.
-qed.
 
 lemma int2bs_min_nonempty (n : int) :
   1 <= n => int2bs_min n <> [].
@@ -129,6 +123,13 @@ pose N := int_log 2 n.
 move => ge0_N two2N_le_n n_lt_two2Np1.
 by rewrite -size_eq0 size_int2bs // ler_maxr 1:ler_paddr //
            gtr_eqF 1:ltzS.
+qed.
+
+lemma div_self (n : int) :
+  n <> 0 => n %/ n = 1.
+proof.
+move => ne0_n.
+by rewrite divzz /b2i ne0_n.
 qed.
 
 (* most significant (which is last) element of int2bs_min n
@@ -497,9 +498,15 @@ op nosmt enc_univ_list (us : univ list) : univ =
 
 op lt_list_size : 'a list rel = wf_pre size lt_nat.
 
-lemma wf_list_size ['a] : wf lt_list_size<:'a>.
+lemma wf_lt_list_size ['a] : wf lt_list_size<:'a>.
 proof.
 rewrite wf_pre wf_lt_nat.
+qed.
+
+lemma lt_list_sizeP (xs ys : 'a list) :
+  lt_list_size xs ys <=> size xs < size ys.
+proof.
+by rewrite /lt_list_size /wf_pre /lt_nat size_ge0.
 qed.
 
 op dec_univ_list_wf_rec_def
@@ -523,21 +530,57 @@ op nosmt epdp_univ_list_univ : (univ list, univ) epdp =
 
 lemma valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
 proof.
-apply epdp_intro => [x | u x].
+apply epdp_intro => [x |].
 rewrite /epdp_univ_list_univ /= /enc_univ_list /dec_univ_list.
 elim x => [| x xs IH].
-by rewrite wf_recur 1:wf_list_size /= /dec_univ_list_wf_rec_def.
-rewrite wf_recur 1:wf_list_size /= {1}/dec_univ_list_wf_rec_def
-        enc_univ_pair_nonnil /=
-        epdp_enc_dec 1:valid_epdp_univ_pair_univ /=.
+by rewrite wf_recur 1:wf_lt_list_size /= /dec_univ_list_wf_rec_def.
+rewrite wf_recur 1:wf_lt_list_size /= {1}/dec_univ_list_wf_rec_def
+        enc_univ_pair_nonnil /= epdp_enc_dec
+        1:valid_epdp_univ_pair_univ /=.
 have -> /= :
   predecs lt_list_size
   (epdp_univ_pair_univ.`enc (x, enc_univ_list xs))
   (enc_univ_list xs).
-  rewrite /predecs /lt_list_size /wf_pre /lt_nat size_ge0 /=
-          enc_univ_pair_size_lt2.
+  rewrite /predecs lt_list_sizeP enc_univ_pair_size_lt2.
 by rewrite IH.
-admit.
+apply (wf_ind lt_list_size _).
+rewrite wf_lt_list_size.
+(* dec part *)
+rewrite /epdp_univ_list_univ /=.
+move => u IH xs.
+rewrite /dec_univ_list wf_recur 1:wf_lt_list_size.
+rewrite {1}/dec_univ_list_wf_rec_def.
+case (u = []) => [-> /= <- // | nonemp_u].
+move => match_some.
+have val_u :
+  epdp_univ_pair_univ.`dec u =
+  Some (head witness xs, enc_univ_list (behead xs)).
+  move : match_some.
+  case (epdp_univ_pair_univ.`dec u) => [// | [x y] /=].
+  case (predecs lt_list_size u y) => [predecs_u_y | //].
+  rewrite /predecs in predecs_u_y.
+  case
+    (wf_recur lt_list_size None
+     dec_univ_list_wf_rec_def y = None) =>
+      [-> // | /some_oget recur_y_eq].
+  rewrite recur_y_eq /= => <- /=.
+  rewrite /dec_univ_list in IH.
+  by rewrite (IH y).
+move : match_some.
+rewrite val_u /=.
+have <- :
+  epdp_univ_pair_univ.`enc
+  (head witness xs, enc_univ_list (behead xs)) = u.
+  by apply epdp_dec_enc.
+have -> /= :
+  predecs lt_list_size
+  (epdp_univ_pair_univ.`enc
+   (head witness xs, enc_univ_list (behead xs)))
+  (enc_univ_list (behead xs)).
+  rewrite /predecs lt_list_sizeP enc_univ_pair_size_lt2.
+case (wf_recur lt_list_size None dec_univ_list_wf_rec_def
+      (enc_univ_list (behead xs)) = None) =>
+       [-> // | /some_oget -> /= <- //].
 qed.
 
 hint simplify [eqtrue] valid_epdp_univ_list_univ.
