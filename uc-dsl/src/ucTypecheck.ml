@@ -27,7 +27,7 @@ open UcTransTypesExprs
 (* the current maximum number of allowed parameters to a message;
    changing this will require updates to the EasyCrypt code generation *)
 
-let max_msg_params = 6
+let max_msg_params = 8
 
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
