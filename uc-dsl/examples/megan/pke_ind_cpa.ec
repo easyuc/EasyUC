@@ -33,6 +33,11 @@ axiom correctness (pk: pkey, sk: skey, m: plaintext, r : rand):
   valid_keys (pk, sk) =>
   dec sk (enc pk m r) = m.
 
+module type PKE_Scheme = {
+  proc key_gen() : pkey * skey
+...
+
+
 module type ADV_INDCPA = {
   (* choose a pair of plaintexts *)
   proc choose(pk : pkey): plaintext * plaintext
