@@ -136,11 +136,11 @@ functionality CommIdeal implements CommDir CommI2S {
   state WaitCommitReq(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool) {
     match message with
     (* Pt1 attempts to send a commitment of u to pt2. Message is adversarially delayed, i.e. forwarded to Sim, who oks delivery. *)
-    | pt1'@CommDir.Pt1.comm_commit_req(pt2', u) => {
-        if (pt1' = pt1 /\ pt2' = pt2) { (* Megan: this is the furthest I've edited *)
+    | pt1'@CommDir.Pt1.comm_commit_req(pt2', u) => { (* Megan: Check that u = b? I'm unsure how the information flow changes given that IF has already forwarded b to Simulator. *)
+        if (pt1' = pt1 /\ pt2' = pt2) {
         (*if (envport pt2) {*)
           send CommI2S.comm_sim_commit_req(pt1, pt2)  (* Ask simulator whether to deliver pt1's commit message to pt2 *)
-	  and transition WaitCommitSim(pt1, pt2, u).  (* Transition to waiting for simulator's response *)
+	  and transition WaitCommitSim(b, pt1, pt2, pt1_corrupted, pt2_corrupted, u).  (* Transition to waiting for simulator's response *)
         }
         else { fail. }
       }
@@ -148,24 +148,24 @@ functionality CommIdeal implements CommDir CommI2S {
     end
   }
 
-  state WaitCommitSim(pt1 : port, pt2 : port, u : bool) {
+  state WaitCommitSim(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
     match message with
     (* Simulator oks delivery of pt1's commitment message to pt2. *)
     | CommI2S.comm_sim_commit_rsp => {
         send CommDir.Pt2.comm_commit_rsp(pt1)@pt2  (* Deliver pt1's commitment message to pt2, which excludes u *)
-	and transition WaitOpenReq(pt1, pt2, u).   (* Transition to waiting for pt1's open message *)
+	and transition WaitOpenReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted, u).   (* Transition to waiting for pt1's open message *)
       }
     | *                => { fail. }
     end
   }
 
-  state WaitOpenReq(pt1 : port, pt2 : port, u: bool) {
+  state WaitOpenReq(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
     match message with
     (* Pt1 attempts to send an open message to pt2. Message is adversarially delayed, i.e. forwarded to Sim, who oks delivery. *)
-    | pt1'@CommDir.Pt1.comm_open_req() => {
+    | pt1'@CommDir.Pt1.comm_open_req => {
         if (pt1' = pt1) {
           send CommI2S.comm_sim_open_req(u)        (* Ask simulator whether to deliver pt1's open message to pt2 *)
-     	  and transition WaitOpenSim(pt1, pt2, u). (* Transition to waiting for simulator's response *)
+     	  and transition WaitOpenSim(b, pt1, pt2, pt1_corrupted, pt2_corrupted, u). (* Transition to waiting for simulator's response *)
         }
         else {
           fail.
@@ -175,7 +175,7 @@ functionality CommIdeal implements CommDir CommI2S {
     end
   }
 
-  state WaitOpenSim(pt1 : port, pt2 : port, u : bool) {
+  state WaitOpenSim(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
     match message with
     (* Simulator oks delivery of pt1's open message, which includes u, to pt2. *)
     | CommI2S.comm_sim_open_rsp => {
