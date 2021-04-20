@@ -37,10 +37,9 @@ adversarial CommI2S {
   in sim_commit_rsp (* simulator OKs sending a commit message to pt2, conveying no additional information *)
 
   (* Open Phase *)
-  out open_req(u : bool) (* open message from ideal functionality to simulator,
-    conveying no additional information *)
+  out open_req (* open message request from ideal functionality to simulator, conveying no additional information *)
 
-  in sim_open_rsp (* simulator OKs sending a open message to pt2, conveying no additional information *)
+  in sim_open_rsp(u' : bool option) (* simulator OKs sending a open message to pt2, conveying no additional information. If the verifier is corrupted, it could send a new bit b' to pt2. Otherwise, send None. *)
 
 }
 
@@ -51,7 +50,7 @@ functionality CommIdeal implements CommDir CommI2S {
   (* States for the static corruption interface *)
   (* *)
 
-  initial state WaitCommitReq { (* Megan: editted up to here *)
+  initial state WaitCommitReq {
     match message with
     (* Pt1 (committer) requests to send a commit message to pt2 (receiver) *)
     | pt1@CommDir.Pt1.commit_req(pt2, b) => {
@@ -65,39 +64,14 @@ functionality CommIdeal implements CommDir CommI2S {
   state WaitCorruptions(b : bool, pt1 : port, pt2 : port) {
     match message with
     (* Simulator responds to ideal functionality saying whether pt1 is corrupted *)
-    | CommI2S.pt1_corrupted(pt1_corrupted) => {
+    | CommI2S.sim_party_corruptions(pt1_corrupted, pt2_corrupted) => {
         if (pt1_corrupted) {
-          send CommI2S.pt1_corrupted_input(Some b)  (* If pt1 is corrupted, send its input to the simulator *)
-          and transition WaitPt2Init(b, pt1, pt1_corrupted).        	(* Transition to waiting to learn whether Pt2 is corrupted *)
+          send CommI2S.pt1_corrupted_input(Some b) (* If pt1 is corrupted, send its input to the simulator *)
+          and transition WaitCommitRsp(b, pt1, pt2, pt1_corrupted, pt2_corrupted). (* Transition to whether Sim OKs pt1's commit request *)
         }
         else {
-          send CommI2S.pt1_corrupted_input(None)  (* If pt2 is not corrupted, send None to the simulator *)
-	  and transition WaitPt2Init(b, pt1, pt1_corrupted).          (* Transition to waiting to learn whether Pt2 is corrupted *)
-        }
-      }
-    | *                => { fail. }
-    end
-  }
-
-  state WaitPt2Init(b : bool, pt1 : port, pt1_corrupted : bool) {
-    match message with
-    (* Get init message from environment for pt2 *)
-    | pt2@CommDir.Pt2.party_init() => {
-        send CommI2S.pt2_init(pt2)				      (* Send the committer (pt2)'s port address to the simulator *)
-        and transition WaitPt2Corruption(b, pt1, pt2, pt1_corrupted). (* Transition to waiting for simulator's decision to corrupt pt2 *)
-      }
-    | *                => { fail. }
-    end
-  }
-
-  state WaitPt2Corruption(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool) {
-    match message with
-    (* Simulator responds to ideal functionality saying whether pt2 is corrupted *)
-    | CommI2S.pt2_corrupted(pt2_corrupted) => {
-        if (pt1_corrupted = true /\ pt2_corrupted = true) { fail. }  (* If both parties are corrupted, fail. *)
-        else {
-	  send CommI2S.setup_done						  (* Tell simulator that the static corruption setup is done *)
-     	  and transition WaitCommitReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted).(* Transition to waiting for the 1st commit message *)
+          send CommI2S.pt1_corrupted_input(None) (* If pt1 is not corrupted, send None to the simulator *)
+	  and transition WaitCommitRsp(b, pt1, pt2, pt1_corrupted, pt2_corrupted). (* Transition to whether Sim OKs pt1's commit request *)
         }
       }
     | *                => { fail. }
@@ -108,24 +82,24 @@ functionality CommIdeal implements CommDir CommI2S {
   (* States pertaining to commitment protocol *)
   (* *)
 
-  state WaitCommitSim(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
+  state WaitCommitRsp(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool) {
     match message with
     (* Simulator oks delivery of pt1's commitment message to pt2. *)
     | CommI2S.sim_commit_rsp => {
-        send CommDir.Pt2.commit_rsp(pt1)@pt2  (* Deliver pt1's commitment message to pt2, which excludes u *)
-	and transition WaitOpenReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted, u).   (* Transition to waiting for pt1's open message *)
+        send CommDir.Pt2.commit_rsp(pt1)@pt2  (* Deliver pt1's commitment message to pt2, which excludes the commited value u *)
+	and transition WaitOpenReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted).   (* Transition to waiting for pt1's open message *)
       }
     | *                => { fail. }
     end
   }
 
-  state WaitOpenReq(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
+  state WaitOpenReq(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool) {
     match message with
     (* Pt1 attempts to send an open message to pt2. Message is adversarially delayed, i.e. forwarded to Sim, who oks delivery. *)
     | pt1'@CommDir.Pt1.open_req => {
         if (pt1' = pt1) {
-          send CommI2S.sim_open_req(u)        (* Ask simulator whether to deliver pt1's open message to pt2 *)
-     	  and transition WaitOpenSim(b, pt1, pt2, pt1_corrupted, pt2_corrupted, u). (* Transition to waiting for simulator's response *)
+          send CommI2S.open_req  (* Ask simulator whether to deliver pt1's open message to pt2 *)
+     	  and transition WaitOpenRsp(b, pt1, pt2, pt1_corrupted, pt2_corrupted). (* Transition to waiting for simulator's response *)
         }
         else {
           fail.
@@ -135,12 +109,20 @@ functionality CommIdeal implements CommDir CommI2S {
     end
   }
 
-  state WaitOpenSim(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool, u : bool) {
+  state WaitOpenRsp(b : bool, pt1 : port, pt2 : port, pt1_corrupted : bool, pt2_corrupted : bool) {
     match message with
-    (* Simulator oks delivery of pt1's open message, which includes u, to pt2. *)
-    | CommI2S.sim_open_rsp => {
-        send CommDir.Pt2.open_rsp(pt1, u)@pt2 (* Deliver pt1's open message to pt2, which includes u *)
-	and transition Final.                      (* Transition to final state *)
+    (* Simulator oks delivery of pt1's open message, which includes b, to pt2. *)
+    | CommI2S.sim_open_rsp(b') => {
+        match b' with
+          | Some b' => {
+	      send CommDir.Pt2.open_rsp(b')@pt2
+	      and transition Final.
+	    }
+	  | None => {
+	      send CommDir.Pt2.open_rsp(b)@pt2
+	      and transition Final.
+	    }
+	  end
       }
     | *                => { fail. }
     end
