@@ -134,21 +134,44 @@ let lemma_th_item (name : string) (f:EcCoreFol.form): EcTheory.ctheory_item =
     ax_nosmt   = false 
   })
 
-let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
+let valid_epdp_op_p = pqname_of_string "valid_epdp"
+  
+let valid_epdp_op_f : EcCoreFol.form =
   let env = UcEcInterface.env () in
   let epdp_ty = epdp_ty env in
-  (*let valid_epdp_op_p , _ = EcEnv.Op.lookup ([],"valid_epdp") env in !!! the path is Top.UCEncoding.valid_epdp which gets printed out*)
-  let valid_epdp_op_p = pqname_of_string "valid_epdp" in
   let valid_epdp_op_ty = EcTypes.toarrow [epdp_ty] EcTypes.tbool in
-  let valid_epdp_op_f = EcCoreFol.f_op valid_epdp_op_p [] valid_epdp_op_ty in
+  EcCoreFol.f_op valid_epdp_op_p [] valid_epdp_op_ty
+
+let epdp_mt_op_p mt_id = pqname_of_string (epdp_mt_op_name mt_id)
+
+let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
+  let env = UcEcInterface.env () in
+  (*let valid_epdp_op_p , _ = EcEnv.Op.lookup ([],"valid_epdp") env in !!! the path is Top.UCEncoding.valid_epdp which gets printed out*)
   let epdp_mt_ty = epdp_mt_ty mt_id env in
-  let epdp_mt_op_p = pqname_of_string (epdp_mt_op_name mt_id) in
-  let epdp_mt_op_f = EcCoreFol.f_op epdp_mt_op_p [] epdp_mt_ty in
+  let epdp_mt_op_f = EcCoreFol.f_op (epdp_mt_op_p mt_id) [] epdp_mt_ty in
   EcCoreFol.f_app valid_epdp_op_f [epdp_mt_op_f] EcTypes.tbool
 
+let valid_epdp_mt_lemma_name (mt_id:string) =
+  "valid_epdp_"^mt_id
   
 let lemma_valid_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
-  lemma_th_item ("valid_epdp_"^mt_id) (valid_epdp_mt_f mt_id)
+  lemma_th_item (valid_epdp_mt_lemma_name mt_id) (valid_epdp_mt_f mt_id)
+  
+let hint_simplify_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
+  let n1 = valid_epdp_op_p in
+  let n2 = epdp_mt_op_p mt_id in
+  EcTheory.CTh_reduction [(
+    pqname_of_string (valid_epdp_mt_lemma_name mt_id),
+    { ur_delta = false; ur_eqtrue = true; },
+    Some EcTheory.{ 
+      rl_tyd  = [];
+      rl_vars = [];
+      rl_cond = [];
+      rl_ptn  = (EcTheory.Rule (`Op (n1,[]), [EcTheory.Rule (`Op (n2,[]),[])]));
+      rl_tg   = EcCoreFol.f_true;
+      rl_prio = 1; 
+    }
+    )]
 
 let varpath (mt_id:string) : EcPath.xpath = 
  EcPath.xpath (EcPath.mpath (`Concrete ((EcPath.psymbol mt_id), None)) []) (EcPath.psymbol "i")
@@ -205,7 +228,8 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
         @ [dec_op_th_item id]
         @ [epdp_op_th_item id]
         @ [lemma_valid_epdp_th_item id]
-        @ [module_th_item id]) 
+        @ [hint_simplify_epdp_th_item id]
+        (*@ [hint_rewrite_epdp_th_item id]*)        @ [module_th_item id]) 
       msgtys cth.cth_struct in
     let cth_items = (op_pi_th_item "pi") :: cth_items in
     let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
@@ -249,7 +273,7 @@ let make_theory (id : string) : EcTheory.ctheory =
   | Some cth -> cth
   | None -> failure ("we should be able to make a theory "^id)
   
-let make_record (id : string) (fields : symbol * EcTypes.ty list)
+let make_record (id : string) (fields : (symbol * EcTypes.ty) list)
 : EcPath.path * EcDecl.tydecl =
   let tpath = pqname_of_string id in
   let record = 
