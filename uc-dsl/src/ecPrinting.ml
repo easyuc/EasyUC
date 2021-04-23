@@ -3045,6 +3045,21 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, (cth, mode)) =
   | EcTheory.CTh_addrw (p, l) ->
       Format.fprintf fmt "hint rewrite %a : @[<hov 2>%a@]."
         (pp_rwname ppe) p (pp_list "@ " (pp_axname ppe)) l
+  
+  | EcTheory.CTh_reduction [(
+    path,
+    { ur_delta = false; ur_eqtrue = true; },
+    Some EcTheory.{ 
+      rl_tyd  = [];
+      rl_vars = [];
+      rl_cond = [];
+      rl_ptn  = _;
+      rl_tg   = tg;
+      rl_prio = _;
+    }
+    )] when tg = EcCoreFol.f_true ->
+      Format.fprintf fmt "hint simplify [eqtrue] %a."
+        (pp_axname ppe) path
 
   | EcTheory.CTh_reduction _ ->
       Format.fprintf fmt "hint simplify."
