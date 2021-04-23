@@ -5,11 +5,16 @@
 (* Import required easycrypt files. *)
 (* ec_requires +Commitment. *)
 
-(* Direct interfaces, which are between ideal functionality and environment, from ideal functionality's perspective *)
+(* Direct interfaces, which are between ideal functionality and environment, from ideal functionality's perspective. Note that the ideal functionality emulates parties. *)
 direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
   in pt1@commit_req(pt2 : port, u : bool)  (* request from pt1, asking to send the initial commitment of a value u to pt2 *)
 
   in pt1@open_req()  (* message to pt2, asking to send the opening of the commitment to pt2 *)
+
+  (* Corruption status messages *)
+  in corrupted (* Environment's backdoor query asking whether this party is corrupted *) (* Megan: this generates an error. How do I say that this message comes from the environment's port? *)
+
+  out is_corrupted( is_corrupted : bool ) (* responds whether this party is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *) (* How do I say that this message needs to be sent to the environment's port? *)
 }
 
 direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
