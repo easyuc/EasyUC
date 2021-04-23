@@ -136,8 +136,7 @@ let lemma_th_item (name : string) (f:EcCoreFol.form): EcTheory.ctheory_item =
 
 let valid_epdp_op_p = pqname_of_string "valid_epdp"
   
-let valid_epdp_op_f : EcCoreFol.form =
-  let env = UcEcInterface.env () in
+let valid_epdp_op_f env : EcCoreFol.form =
   let epdp_ty = epdp_ty env in
   let valid_epdp_op_ty = EcTypes.toarrow [epdp_ty] EcTypes.tbool in
   EcCoreFol.f_op valid_epdp_op_p [] valid_epdp_op_ty
@@ -149,7 +148,7 @@ let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
   (*let valid_epdp_op_p , _ = EcEnv.Op.lookup ([],"valid_epdp") env in !!! the path is Top.UCEncoding.valid_epdp which gets printed out*)
   let epdp_mt_ty = epdp_mt_ty mt_id env in
   let epdp_mt_op_f = EcCoreFol.f_op (epdp_mt_op_p mt_id) [] epdp_mt_ty in
-  EcCoreFol.f_app valid_epdp_op_f [epdp_mt_op_f] EcTypes.tbool
+  EcCoreFol.f_app (valid_epdp_op_f env) [epdp_mt_op_f] EcTypes.tbool
 
 let valid_epdp_mt_lemma_name (mt_id:string) =
   "valid_epdp_"^mt_id
@@ -173,6 +172,11 @@ let hint_simplify_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
     }
     )]
 
+let hint_rewrite_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
+  let epdp = pqname_of_string "epdp" in
+  let lemma = pqname_of_string (valid_epdp_mt_lemma_name mt_id) in
+  EcTheory.CTh_addrw (epdp,[lemma])
+  
 let varpath (mt_id:string) : EcPath.xpath = 
  EcPath.xpath (EcPath.mpath (`Concrete ((EcPath.psymbol mt_id), None)) []) (EcPath.psymbol "i")
   
@@ -229,7 +233,8 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
         @ [epdp_op_th_item id]
         @ [lemma_valid_epdp_th_item id]
         @ [hint_simplify_epdp_th_item id]
-        (*@ [hint_rewrite_epdp_th_item id]*)        @ [module_th_item id]) 
+        @ [hint_rewrite_epdp_th_item id]
+        @ [module_th_item id]) 
       msgtys cth.cth_struct in
     let cth_items = (op_pi_th_item "pi") :: cth_items in
     let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
