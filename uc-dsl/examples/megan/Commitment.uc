@@ -12,15 +12,20 @@ direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
   in pt1@open_req()  (* message to pt2, asking to send the opening of the commitment to pt2 *)
 
   (* Corruption status messages *)
-  in corrupted (* Environment's backdoor query asking whether this party is corrupted *) (* Megan: this generates an error. How do I say that this message comes from the environment's port? *)
+  in pt1@corrupted (* pt1 forwards environment's backdoor query asking whether this party is corrupted *)
 
-  out is_corrupted( is_corrupted : bool ) (* responds whether this party is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *) (* How do I say that this message needs to be sent to the environment's port? *)
+  out is_corrupted( is_corrupted : bool )@pt1 (* tells pt1 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. This will be forwarded to the environment. *)
 }
 
 direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
   out commit_rsp(pt1 : port)@pt2  (* message to pt2, saying that pt1 has committed a message u *)
 
   out open_rsp(u : bool)@pt2  (* message to pt2, saying that pt1 sent u to it *)
+
+  (* Corruption status messages *)
+  in pt2@corrupted (* pt2 forwards environment's backdoor query asking whether this party is corrupted *)
+
+  out is_corrupted( is_corrupted : bool )@pt2 (* tells pt2 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. This will be forwarded to the environment. *)
 }
 
 direct CommDir {
