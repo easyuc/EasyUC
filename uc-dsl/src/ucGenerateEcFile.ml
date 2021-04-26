@@ -249,10 +249,103 @@ let gen_dirs (f:string) (dim: inter_tyd IdMap.t) : unit =
   IdMap.iter (pp_interface ppf) dim;
   Format.pp_print_flush ppf ();
   close_out fo
+  
+let generate_ec (ts:typed_spec) : unit =
+  let fdim = fileMap ts.dir_inter_map in
+  IdMap.iter (fun f dim -> gen_dirs f dim) fdim 
 
 (* clean *)
 
-let ec_filename (f : string) : string = f^".ec"
+
+  
+(*---------------------------------------------------------------------------*)
+type preamble = [] (* TODO, require/import commands, pi axioms and operators *)
+
+type clone = [] (* TODO, theory cloning info *)
+
+type theory =
+  | Clone of clone
+  | ECCTh of (EcPath.path * (EcTheory.ctheory * EcTheory.thmode))
+ 
+type eca = { preamble : preamble; theories : theory list}
+
+let make_theory (id : string) : EcTheory.ctheory =
+  let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
+  let clears : EcPath.path list = [] in
+  let ctho = EcEnv.Theory.close ~clears env in
+  match ctho with
+  | Some cth -> cth
+  | None -> failure ("we should be able to make a theory "^id)
+  
+let make_record (id : string) (fields : (symbol * EcTypes.ty) list) 
+: EcDecl.tydecl =
+  let tpath = pqname_of_string id in
+  let record = 
+    { EI.rc_path = tpath; EI.rc_tparams = []; EI.rc_fields = fields; } in
+  let scheme  = EI.indsc_of_record record in
+  {
+    tyd_params = record.EI.rc_tparams;
+    tyd_type   = `Record (scheme, record.EI.rc_fields); }
+
+let ec_tydecl_from_mb (id : string) (mb : message_body_tyd) : EcDecl.tydecl =
+  let fields = IdMap.bindings 
+    (IdMap.map (fun til -> let ty,_ = unloc til in ty) mb.params_map) in
+  make_record id fields
+  
+let msg_tyd_th_item (id : string) (mb : message_body_tyd) =
+  EcTheory.CTh_type (id, (ec_tydecl_from_mb id mb))
+
+let add_dir_msg (id : string) (mb : message_body_tyd) (cth : EcTheory.ctheory)
+: EcTheory.ctheory =
+  { cth_desc = cth.cth_desc;
+    cth_struct = cth.cth_struct @
+      [ msg_tyd_th_item id mb; 
+        enc_op_th_item id;
+        dec_op_th_item id;
+        epdp_op_th_item id;
+        lemma_valid_epdp_th_item id;
+        hint_simplify_epdp_th_item id;
+        hint_rewrite_epdp_th_item id
+      ]
+  }
+
+let trans_basic_dir_inter (s : symbol) (b : basic_inter_body_tyd)
+: theory =
+  let cth = make_theory s in
+  let cth = IdMap.fold (fun id mb -> add_dir_msg id mb) b cth in
+  ECCTh ((pqname_of_string s) , (cth, `Concrete))
+
+let trans_dir_inter (s : string) (it : inter_tyd) : theory =
+    match unloc it with
+    | BasicTyd b     -> trans_basic_dir_inter s b
+    | CompositeTyd _ -> Clone [] (*TODO*)
+
+
+let add_dir_inter ((f,n) : string * string) (it : inter_tyd) (em : eca IdMap.t) 
+  : eca IdMap.t =
+  IdMap.update f 
+    (fun eca_opt ->
+      let ec_it = trans_dir_inter n it in
+      match eca_opt with
+      | None -> Some { preamble = []; theories = [ec_it] }
+      | Some { preamble = p; theories = t } -> 
+        Some { preamble = p; theories = t @ [ec_it] }
+    ) em
+
+let translate (ts:typed_spec) : eca IdMap.t =
+  let eca_map = IdPairMap.fold add_dir_inter ts.dir_inter_map IdMap.empty in
+  eca_map
+(*---------------------------------------------------------------------------*)
+  
+let write_eca (ppf : Format.formatter) (eca : eca) : unit =
+  List.iter (
+    fun th ->
+      match th with
+      | Clone _ -> ()
+      | ECCTh pth -> pp_theory ppf pth
+    ) eca.theories
+
+let ec_filename (f : string) : string = f^".eca"
 
 let open_formatter (f : string) : out_channel * Format.formatter =
   let fo = open_out_gen [Open_append; Open_creat] 0o666 (ec_filename f) in
@@ -262,60 +355,20 @@ let open_formatter (f : string) : out_channel * Format.formatter =
 let close_formatter ((fo,ppf) : out_channel * Format.formatter) : unit =
   Format.pp_print_flush ppf ();
   close_out fo
-  
-let write_theory (f : string) pth : unit =
-  let (fo,ppf) = open_formatter f in
-  pp_theory ppf pth;
-  close_formatter (fo,ppf)
 
-(*---------------------------------------------------------------------------*)
-
-let make_theory (id : string) : EcTheory.ctheory =
-  let env = EcEnv.Theory.enter id (UcEcInterface.env ()) in
-  let clears = [] in
-  let ctho = EcEnv.Theory.close ~clears env in
-  match ctho with
-  | Some cth -> cth
-  | None -> failure ("we should be able to make a theory "^id)
-  
-let make_record (id : string) (fields : (symbol * EcTypes.ty) list)
-: EcPath.path * EcDecl.tydecl =
-  let tpath = pqname_of_string id in
-  let record = 
-    { EI.rc_path = tpath; EI.rc_tparams = []; EI.rc_fields = fields; } in
-  let scheme  = EI.indsc_of_record record in
-  tpath,
-  {
-    tyd_params = record.EI.rc_tparams;
-    tyd_type   = `Record (scheme, record.EI.rc_fields); }
-
-let add_dir_msg id msg cth = cth (*to be continued*)
-
-let pp_theory_param s cth = ((pqname_of_string s),(cth,`Concrete))
-
-let gen_ec_basic_dir_inter (f : string) (s : symbol) (b : basic_inter_body_tyd)
-: unit =
-  let cth = make_theory s in
-  let cth = IdMap.fold (fun id msg -> add_dir_msg id msg) b cth in
-  let pth = pp_theory_param s cth in
-  write_theory f pth
-
-let gen_ec_compo_dir_inter (f : string) (s : symbol) (c : symbol IdMap.t)
-: unit = ()
-
-let gen_ec_dir_inter (dir_inter_map : inter_tyd IdPairMap.t) : unit =
-  IdPairMap.iter (fun (f,s) it ->
-    match unloc it with
-    | BasicTyd b     -> gen_ec_basic_dir_inter f s b
-    | CompositeTyd c -> gen_ec_compo_dir_inter f s c
-  ) dir_inter_map
-
-let gen_ec_adv_inter (adv_inter_map : inter_tyd IdPairMap.t) : unit = ()
-
-let gen_ec_fun (fun_map : fun_tyd IdPairMap.t) : unit = ()
-
-let gen_ec_sim (sim_map : sim_tyd IdPairMap.t) : unit = ()
-
+let gen_ec (eca_map : eca IdMap.t) : unit =
+  let remove_file fn =
+    if Sys.file_exists fn 
+      then Sys.remove fn 
+      else () in
+  IdMap.iter (
+    fun f eca ->
+      let fn = ec_filename f in
+      remove_file fn;
+      let (fo,ppf) = open_formatter f in
+      write_eca ppf eca;
+      close_formatter (fo,ppf)
+    ) eca_map
 (*---------------------------------------------------------------------------*)
 
 let del_all (x : 'a IdPairMap.t) : unit =
@@ -335,9 +388,11 @@ let delete_all_files (ts:typed_spec) : unit =
 
 let generate_ec (ts:typed_spec) : unit =
   delete_all_files ts;
-  gen_ec_dir_inter ts.dir_inter_map;
+  let ts_ec = translate ts in
+  gen_ec ts_ec
+  (*gen_ec_dir_inter ts.dir_inter_map;
   gen_ec_adv_inter ts.adv_inter_map;
   gen_ec_fun ts.fun_map;
   gen_ec_sim ts.sim_map ;
   let fdim = fileMap ts.dir_inter_map in
-  IdMap.iter (fun f dim -> gen_dirs f dim) fdim
+  IdMap.iter (fun f dim -> gen_dirs f dim) fdim*)
