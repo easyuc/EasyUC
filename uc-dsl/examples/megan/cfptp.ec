@@ -1,4 +1,4 @@
-(* cfptp.ec *)
+(* Cfptp.ec *)
 
 (* Models a claw-free pair of trapdoor permutations *)
 
@@ -7,7 +7,7 @@ require import Distr.
 (* Keys *)
 type fkey, bkey. (* forward key, backward key *)
 (* domain over which the permutation functions operate *)
-type D. (* Note: maybe switch this over to group*)
+type D. (* Note: maybe switch this over to finite group *)
 
 (* CPFTP algorithms *)
 (* for this to be a permutation, need that forward/backward are bijections *)
