@@ -538,10 +538,10 @@ rewrite wf_recur 1:wf_lt_list_size /= {1}/dec_univ_list_wf_rec_def
         enc_univ_pair_nonnil /= epdp_enc_dec
         1:valid_epdp_univ_pair_univ /=.
 have -> /= :
-  predecs lt_list_size
-  (epdp_univ_pair_univ.`enc (x, enc_univ_list xs))
-  (enc_univ_list xs).
-  rewrite /predecs lt_list_sizeP enc_univ_pair_size_lt2.
+  lt_list_size
+  (enc_univ_list xs)
+  (epdp_univ_pair_univ.`enc (x, enc_univ_list xs)).
+  rewrite lt_list_sizeP enc_univ_pair_size_lt2.
 by rewrite IH.
 apply (wf_ind lt_list_size _).
 rewrite wf_lt_list_size.
@@ -557,8 +557,7 @@ have val_u :
   Some (head witness xs, enc_univ_list (behead xs)).
   move : match_some.
   case (epdp_univ_pair_univ.`dec u) => [// | [x y] /=].
-  case (predecs lt_list_size u y) => [predecs_u_y | //].
-  rewrite /predecs in predecs_u_y.
+  case (lt_list_size y u) => [lt_list_size_y_u | //]. 
   case
     (wf_recur lt_list_size None
      dec_univ_list_wf_rec_def y = None) =>
@@ -573,11 +572,11 @@ have <- :
   (head witness xs, enc_univ_list (behead xs)) = u.
   by apply epdp_dec_enc.
 have -> /= :
-  predecs lt_list_size
+  lt_list_size
+  (enc_univ_list (behead xs))
   (epdp_univ_pair_univ.`enc
-   (head witness xs, enc_univ_list (behead xs)))
-  (enc_univ_list (behead xs)).
-  rewrite /predecs lt_list_sizeP enc_univ_pair_size_lt2.
+   (head witness xs, enc_univ_list (behead xs))).
+  rewrite lt_list_sizeP enc_univ_pair_size_lt2.
 case (wf_recur lt_list_size None dec_univ_list_wf_rec_def
       (enc_univ_list (behead xs)) = None) =>
        [-> // | /some_oget -> /= <- //].

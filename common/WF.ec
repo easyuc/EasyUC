@@ -607,7 +607,7 @@ lemma wf_recur
   wf_recur wfr def wfrd x =
   wfrd x
        (fun y =>
-          if predecs wfr x y
+          if wfr y x
           then wf_recur wfr def wfrd y
           else def).
 proof.
@@ -619,13 +619,13 @@ have least_result := wfc_least_result wfr def wfrd x _.
   trivial.
 have -> :
   (fun (y : 'a) =>
-   if predecs wfr x y then choiceb (wfc_least wfr def wfrd y) def
+   if wfr y x then choiceb (wfc_least wfr def wfrd y) def
    else def) =
   (grel_to_fun def (grel_restr (wfc_least wfr def wfrd) (predecs wfr x))).
   rewrite /grel_to_fun.
   apply fun_ext => y.
-  case (predecs wfr x y) => [predecs_wfr_x_y | not_predecs_wfr_x_y].
-  by rewrite /grel_restr predecs_wfr_x_y.
-  by rewrite eq_sym choiceb_dfl /grel_restr 1:not_predecs_wfr_x_y.
+  case (wfr y x) => [wfr_y_x | not_wfr_y_x].
+  by rewrite /grel_restr /predecs wfr_y_x.
+  by rewrite eq_sym choiceb_dfl /grel_restr /predecs 1:not_wfr_y_x.
 rewrite least_result.
 qed.
