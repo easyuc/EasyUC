@@ -273,7 +273,7 @@ functionality CommReal implements CommDir {
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
 	       (pt2,
-	       (y, c_b, c_nb))  (* TODO: Encode this to a univ *)
+	       (pt1, pt2, y, c_b, c_nb))  (* TODO: Encode this to a univ *)
 	  and transition WaitFwd1Rsp(pt1, pt2, b, x, b ? r1 : r0). (* For now, only save the stuff that will be "opened" to V *)
 	}
       | *                => { fail. }
@@ -285,7 +285,7 @@ functionality CommReal implements CommDir {
       | pt1@CommDir.Pt1.open_req => {
       	  send Fwd2.D.fw_req
 	       (pt2,
-	       (b, x, rb))  (* TODO: Encode this to a univ *)
+	       (pt1, pt2, b, x, rb))  (* TODO: Encode this to a univ *)
           and transition Final.
         }
       | *                => { fail. }
