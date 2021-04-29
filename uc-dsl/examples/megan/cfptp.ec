@@ -2,12 +2,12 @@
 
 (* Models a claw-free pair of trapdoor permutations *)
 
-require import Distr.
+require import Distr Pke_indcpa.
 
 (* Keys *)
 type fkey, bkey. (* forward key, backward key *)
 (* domain over which the permutation functions operate *)
-type D. (* Note: maybe switch this over to finite group *)
+type D =  Pke_indcpa.plaintext. (* Note: maybe switch this over to finite group *)
 
 (* CPFTP algorithms *)
 (* for this to be a permutation, need that forward/backward are bijections *)

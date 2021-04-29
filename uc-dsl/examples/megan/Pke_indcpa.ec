@@ -11,6 +11,9 @@ type skey.
 type plaintext.
 type ciphertext.
 
+(* sample a random plaintext *)
+op dplaintext : plaintext distr.
+
 (* randomness *)
 type rand.
 op drand : rand distr.

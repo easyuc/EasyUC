@@ -2,6 +2,8 @@
 
 (* This contains a two party UC F_com ideal functionality, as described in Figure 2 of Canetti Fischlin 01 (https://eprint.iacr.org/2001/055.pdf). This is a unit only containing one ideal functionality, no real functionalities (i.e. real protocol descriptions) and no simulators, and no extraneous interfaces *)
 
+(* Author: Megan Chen *)
+
 (* Import required .uc files *)
 uc_requires Forwarding.
 
@@ -224,4 +226,148 @@ functionality CommIdeal implements CommDir CommI2S {
     | * => { fail. }
     end
   }
+}
+
+(* Real Protocol *)
+functionality CommReal implements CommDir {
+  subfun Fwd1 = Forwarding.Forw (* For commit phase *)
+  subfun Fwd2 = Forwarding.Forw (* For open phase *)
+  subfun Crs = CRSIdeal
+
+  party Committer serves CommDir.Pt1 {
+
+    initial state WaitCommReq {
+      match message with
+      | pt1@CommDir.Pt1.commit_req(pt2, b) => {
+          (* get CRS *)
+          send Crs.Pt.crs_req
+	  and transition WaitCrs(pt1, pt2, b).
+	}
+      | *                => { fail. }
+      end
+    }
+
+    state WaitCrs(pt1 : port, pt2 : port, b : bool) {
+      (* var x : Pke_indcpa.plaintext; *)
+      var x : Cfptp.D;
+      var r0, r1 : Pke_indcpa.rand;
+      var y : Cfptp.D;
+      var c_b, c_nb : Pke_indcpa.ciphertext;
+      var fk : Cfptp.fkey;
+      var pk : Pke_indcpa.pkey;
+
+      match message with
+      | Crs.Pt.crs_rsp(crs) => {
+      	  (* parse crs *)
+	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
+          
+	  (* generate commit message *)
+	  x <$ Pke_indcpa.dplaintext; (* Megan: how to reconcile that this also needs to be interpreted as type Cfptp.D? *)
+	  r0 <$ Pke_indcpa.drand;
+	  r1 <$ Pke_indcpa.drand;
+
+	  y <- Cfptp.forw fk x b; (* compute f_b(x), where f_b is a cfptp. *)
+	  c_b <- Pke_indcpa.enc pk x (b ? r1 : r0); (* ciphertext c_b. Encrypt x using r1 if b = true, r0 if b = false *)
+	  c_nb <- Pke_indcpa.enc pk x (b ? r0 : r1); (* ciphertext c_{1-b}. Encrypt 0 using r0 if b = true, r1 if b = false *)
+
+	  (* send commit message to verifier *)
+	  send Fwd1.D.fw_req
+	       (pt2,
+	       (y, c_b, c_nb))  (* TODO: Encode this to a univ *)
+	  and transition WaitFwd1Rsp(pt1, pt2, b, x, b ? r1 : r0). (* For now, only save the stuff that will be "opened" to V *)
+	}
+      | *                => { fail. }
+      end
+    }
+
+    state WaitOpenReq(pt1 : port, pt2 : port, b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
+      match message with 
+      | pt1@CommDir.Pt1.open_req => {
+      	  send Fwd2.D.fw_req
+	       (pt2,
+	       (b, x, rb))  (* TODO: Encode this to a univ *)
+          and transition Final.
+        }
+      | *                => { fail. }
+      end
+    }
+
+    state Final {
+      match message with 
+      | * => { fail. }
+      end
+    }
+  }
+
+  party Verifier serves CommDir.Pt2 {
+    initial state WaitCommit {
+      var pt1, pt2 : port;
+      var y : Cfptp.D;
+      var c_b, c_nb : Pke_indcpa.ciphertext;
+      match message with 
+      | Fwd1.Pt.fw_rsp(_, u) => {
+          match epdp_port_port_key_univ.`dec u with
+          | Some tr => {
+              (pt1, pt2, y, c_b, c_nb) <- tr;
+              send CommDir.Pt2.commit_rsp(pt1)@pt2
+	      and transition WaitOpen(pt1, pt2, y, c_b, c_nb).
+            }
+          | None    => { fail. }  (* cannot happen *)
+          end
+        }
+      | *                  => { fail. }
+      end
+    }
+
+    state WaitOpen(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext) {
+      var b : bool;
+      var x : Cfptp.D;
+      var rb : Pke_indcpa.rand;
+
+      match message with 
+      | Fwd2.Pt.fw_rsp(_, u) => {
+          match epdp_port_port_key_univ.`dec u with
+          | Some tr => {
+              (pt1, pt2, b, x, rb) <- tr;
+              send Crs.Pt.crs_req
+	      and transition WaitOpen(pt1, pt2, y, c_b, c_nb, b, x, rb).
+            }
+          | None    => { fail. }  (* cannot happen *)
+          end
+        }
+      | *                  => { fail. }
+      end
+    }
+
+    state WaitCRS(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext, 
+b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
+      var y' : Cfptp.D;
+      var c_b' : Pke_indcpa.ciphertext;
+      match message with
+      | Crs.Pt.crs_rsp(crs) => {
+      	  (* parse crs *)
+	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
+
+	  (* Do verification checks *)
+	  y' <- Cfptp.forw fk x rb;
+	  c_b' <- Pke_indcpa.enc pk x rb;
+
+	  if (y' = y /\ c_b = c_b') {
+	    send CommDir.Pt2.open_rsp(b)@pt2
+	    and transition Final.
+	  }
+	  else { fail. }
+        }
+      | *                  => { fail. }
+      end
+    }
+
+
+    state Final {
+      match message with 
+      | * => { fail. }
+      end
+    }
+  }
+
 }
