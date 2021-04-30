@@ -8,7 +8,7 @@
 uc_requires Forwarding.
 
 (* Import required easycrypt files. *)
-ec_requires Cfptp Pke_indcpa.
+ec_requires Cfptp Pke_indcpa Encodings.
 
 (* Direct interfaces, which are between ideal functionality and environment, from ideal functionality's perspective. Note that the ideal functionality emulates parties. *)
 direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
@@ -17,9 +17,9 @@ direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
   in pt1@open_req()  (* message to pt2, asking to send the opening of the commitment to pt2 *)
 
   (* Corruption status messages *)
-  in pt1@corrupted (* pt1 asks whether this party is corrupted *)
+  in pt1@committer_corrupted (* pt1 asks whether this party is corrupted *)
 
-  out is_corrupted( is_corrupted : bool )@pt1 (* tells pt1 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
+  out is_committer_corrupted( is_corrupted : bool )@pt1 (* tells pt1 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
 }
 
 direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
@@ -28,9 +28,9 @@ direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
   out open_rsp(u : bool)@pt2  (* message to pt2, saying that pt1 sent u to it *)
 
   (* Corruption status messages *)
-  in pt2@corrupted (* pt2 asks whether this party is corrupted *)
+  in pt2@verifier_corrupted (* pt2 asks whether this party is corrupted *)
 
-  out is_corrupted( is_corrupted : bool )@pt2 (* tells pt2 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
+  out is_verifier_corrupted( is_corrupted : bool )@pt2 (* tells pt2 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
 }
 
 direct CommDir {
@@ -158,14 +158,16 @@ functionality CommIdeal implements CommDir CommI2S {
         send CommDir.Pt2.commit_rsp(pt1)@pt2  (* Deliver pt1's commitment message to pt2, which excludes the commited value u *)
 	and transition WaitOpenReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted, b').   (* Transition to waiting for pt1's open message *)
       }
-    | pt1@CommDir.Pt1.corrupted => { (* pt1 asks if it is corrupted *)
-        send CommDir.Pt1.is_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
+    | pt1@CommDir.Pt1.committer_corrupted => { (* pt1 asks if it is corrupted *)
+        send CommDir.Pt1.is_committer_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
 	and transition WaitCommitRsp(b, pt1, pt2, pt1_corrupted, pt2_corrupted). (* return to this same state *)
       }
-    | pt2@CommDir.Pt2.corrupted => { (* pt2 asks if it is corrupted *)
-        send CommDir.Pt2.is_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
+    (* Can't query pt2 for verifier's corruption status until V client has been activated.
+    | pt2@CommDir.Pt2.verifier_corrupted => { (* pt2 asks if it is corrupted *)
+        send CommDir.Pt2.is_verifier_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
 	and transition WaitCommitRsp(b, pt2, pt2, pt2_corrupted, pt2_corrupted). (* return to this same state *)
       }
+    *)
     | *                => { fail. }
     end
   }
@@ -182,12 +184,12 @@ functionality CommIdeal implements CommDir CommI2S {
           fail.
         }
       }
-    | pt1@CommDir.Pt1.corrupted => { (* pt1 asks if it is corrupted *)
-        send CommDir.Pt1.is_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
+    | pt1@CommDir.Pt1.committer_corrupted => { (* pt1 asks if it is corrupted *)
+        send CommDir.Pt1.is_committer_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
 	and transition WaitOpenReq(b, pt1, pt2, pt1_corrupted, pt2_corrupted, b'). (* return to this same state *)
       }
-    | pt2@CommDir.Pt2.corrupted => { (* pt2 asks if it is corrupted *)
-        send CommDir.Pt2.is_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
+    | pt2@CommDir.Pt2.verifier_corrupted => { (* pt2 asks if it is corrupted *)
+        send CommDir.Pt2.is_verifier_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
 	and transition WaitOpenReq(b, pt2, pt2, pt2_corrupted, pt2_corrupted, b'). (* return to this same state *)
       }
     | *                => { fail. }
@@ -209,12 +211,12 @@ functionality CommIdeal implements CommDir CommI2S {
 	    }
 	  end
       }
-    | pt1@CommDir.Pt1.corrupted => { (* pt1 asks if it is corrupted *)
-        send CommDir.Pt1.is_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
+    | pt1@CommDir.Pt1.committer_corrupted => { (* pt1 asks if it is corrupted *)
+        send CommDir.Pt1.is_committer_corrupted( pt1_corrupted )@pt1 (* send pt1's corruption status *)
 	and transition WaitOpenRsp(b, pt1, pt2, pt1_corrupted, pt2_corrupted, b'). (* return to this same state *)
       }
-    | pt2@CommDir.Pt2.corrupted => { (* pt2 asks if it is corrupted *)
-        send CommDir.Pt2.is_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
+    | pt2@CommDir.Pt2.verifier_corrupted => { (* pt2 asks if it is corrupted *)
+        send CommDir.Pt2.is_verifier_corrupted( pt2_corrupted )@pt2 (* send pt2's corruption status *)
 	and transition WaitOpenRsp(b, pt2, pt2, pt2_corrupted, pt2_corrupted, b'). (* return to this same state *)
       }
     | *                => { fail. }
@@ -260,7 +262,7 @@ functionality CommReal implements CommDir {
       | Crs.Pt.crs_rsp(crs) => {
       	  (* parse crs *)
 	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
-          
+
 	  (* generate commit message *)
 	  x <$ Pke_indcpa.dplaintext; (* Megan: how to reconcile that this also needs to be interpreted as type Cfptp.D? *)
 	  r0 <$ Pke_indcpa.drand;
@@ -273,19 +275,21 @@ functionality CommReal implements CommDir {
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
 	       (pt2,
-	       (pt1, pt2, y, c_b, c_nb))  (* TODO: Encode this to a univ *)
-	  and transition WaitFwd1Rsp(pt1, pt2, b, x, b ? r1 : r0). (* For now, only save the stuff that will be "opened" to V *)
+	       Encodings.epdp_commit_univ.`enc
+	       (pt1, pt2, y, c_b, c_nb))
+	  and transition WaitOpenReq(pt1, pt2, b, x, b ? r1 : r0). (* For now, only save the stuff that will be "opened" to V *)
 	}
       | *                => { fail. }
       end
     }
 
     state WaitOpenReq(pt1 : port, pt2 : port, b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
-      match message with 
+      match message with
       | pt1@CommDir.Pt1.open_req => {
       	  send Fwd2.D.fw_req
 	       (pt2,
-	       (pt1, pt2, b, x, rb))  (* TODO: Encode this to a univ *)
+	       Encodings.epdp_open_univ.`enc
+	       (pt1, pt2, b, x, rb))
           and transition Final.
         }
       | *                => { fail. }
@@ -293,20 +297,21 @@ functionality CommReal implements CommDir {
     }
 
     state Final {
-      match message with 
+      match message with
       | * => { fail. }
       end
     }
   }
 
   party Verifier serves CommDir.Pt2 {
+
     initial state WaitCommit {
       var pt1, pt2 : port;
       var y : Cfptp.D;
       var c_b, c_nb : Pke_indcpa.ciphertext;
-      match message with 
-      | Fwd1.Pt.fw_rsp(_, u) => {
-          match epdp_port_port_key_univ.`dec u with
+      match message with
+      | Fwd2.D.fw_rsp(_, u) => {
+          match Encodings.epdp_commit_univ.`dec u with
           | Some tr => {
               (pt1, pt2, y, c_b, c_nb) <- tr;
               send CommDir.Pt2.commit_rsp(pt1)@pt2
@@ -323,14 +328,14 @@ functionality CommReal implements CommDir {
       var b : bool;
       var x : Cfptp.D;
       var rb : Pke_indcpa.rand;
-
-      match message with 
-      | Fwd2.Pt.fw_rsp(_, u) => {
-          match epdp_port_port_key_univ.`dec u with
+      var pt1, pt2 : port;
+      match message with
+      | Fwd2.D.fw_rsp(_, u) => {
+          match Encodings.epdp_open_univ.`dec u with
           | Some tr => {
               (pt1, pt2, b, x, rb) <- tr;
               send Crs.Pt.crs_req
-	      and transition WaitOpen(pt1, pt2, y, c_b, c_nb, b, x, rb).
+	      and transition WaitCRS(pt1, pt2, y, c_b, c_nb, b, x, rb).
             }
           | None    => { fail. }  (* cannot happen *)
           end
@@ -339,17 +344,19 @@ functionality CommReal implements CommDir {
       end
     }
 
-    state WaitCRS(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext, 
+    state WaitCRS(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext,
 b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
       var y' : Cfptp.D;
       var c_b' : Pke_indcpa.ciphertext;
+      var fk : Cfptp.fkey;
+      var pk : Pke_indcpa.pkey;
       match message with
       | Crs.Pt.crs_rsp(crs) => {
       	  (* parse crs *)
 	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
 
 	  (* Do verification checks *)
-	  y' <- Cfptp.forw fk x rb;
+	  y' <- Cfptp.forw fk x b;
 	  c_b' <- Pke_indcpa.enc pk x rb;
 
 	  if (y' = y /\ c_b = c_b') {
@@ -364,7 +371,7 @@ b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
 
 
     state Final {
-      match message with 
+      match message with
       | * => { fail. }
       end
     }
