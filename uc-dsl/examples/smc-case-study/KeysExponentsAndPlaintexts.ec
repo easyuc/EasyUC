@@ -126,7 +126,7 @@ op epdp_key_univ : (key, univ) epdp =
 
 lemma valid_epdp_key_univ : valid_epdp epdp_key_univ.
 proof.
-rewrite /epdp_key_univ !(epdp, epdp_sub) 1:log_gen gen_log.
+rewrite valid_epdp_comp !(epdp, epdp_sub) 1:log_gen gen_log.
 qed.
 
 hint simplify [eqtrue] valid_epdp_key_univ.
@@ -139,7 +139,7 @@ op epdp_text_univ : (text, univ) epdp =
 
 lemma valid_epdp_text_univ : valid_epdp epdp_text_univ.
 proof.
-rewrite /epdp_text_univ epdp_sub epdp.
+rewrite valid_epdp_comp epdp.
 qed.
 
 (* EPDP between port * port * key and univ *)
@@ -150,5 +150,5 @@ op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
 lemma valid_epdp_port_port_key_univ :
   valid_epdp epdp_port_port_key_univ.
 proof.
-rewrite epdp_sub epdp.
+rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.

@@ -598,8 +598,8 @@ lemma valid_epdp_da_from_env_msg : valid_epdp epdp_da_from_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=
-        !(epdp, epdp_sub) /=.
+rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=.
+rewrite epdp_enc_dec 1:valid_epdp_quadruple_univ 1:epdp 1:epdp 1:epdp //.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
