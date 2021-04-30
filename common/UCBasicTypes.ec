@@ -41,7 +41,7 @@ op epdp_addr_univ : (addr, univ) epdp = epdp_list_univ epdp_int_univ.
 
 lemma valid_epdp_addr_univ : valid_epdp epdp_addr_univ.
 proof.
-rewrite epdp_sub epdp.
+rewrite valid_epdp_list_univ valid_epdp_int_univ.
 qed.
 
 hint simplify [eqtrue] valid_epdp_addr_univ.
@@ -63,7 +63,7 @@ op epdp_port_univ : (port, univ) epdp =
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
 proof.
-rewrite !epdp_sub epdp.
+rewrite valid_epdp_pair_univ 1:valid_epdp_list_univ valid_epdp_int_univ.
 qed.
 
 hint simplify [eqtrue] valid_epdp_port_univ.
