@@ -964,7 +964,7 @@ lemma valid_epdp_triple_univ
   valid_epdp (epdp_triple_univ epdp1 epdp2 epdp3).
 proof.  
 move => valid1 valid2 valid3.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_triple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_triple_univ.
@@ -985,7 +985,7 @@ lemma valid_epdp_quadruple_univ
   valid_epdp (epdp_quadruple_univ epdp1 epdp2 epdp3 epdp4).
 proof.  
 move => valid1 valid2 valid3 valid4.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_quadruple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_quadruple_univ.
@@ -1009,7 +1009,7 @@ lemma valid_epdp_quintuple_univ
   valid_epdp (epdp_quintuple_univ epdp1 epdp2 epdp3 epdp4 epdp5).
 proof.  
 move => valid1 valid2 valid3 valid valid5.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_quintuple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_quintuple_univ.
@@ -1033,7 +1033,7 @@ lemma valid_epdp_sextuple_univ
   valid_epdp (epdp_sextuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_sextuple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_sextuple_univ.
@@ -1060,7 +1060,7 @@ lemma valid_epdp_septuple_univ
   valid_epdp (epdp_septuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6 valid7.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_septuple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_septuple_univ.
@@ -1088,7 +1088,7 @@ lemma valid_epdp_octuple_univ
   (epdp_octuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6 valid7 valid8.
-by rewrite valid_epdp_comp 1:epdp valid_epdp_octuple.
+by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_octuple_univ.
