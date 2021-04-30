@@ -29,13 +29,13 @@ let pp_theory ppf pth =
 (*let pqname_of_string (id:string) =
   let env = UcEcInterface.env () in
   EcPath.pqname (EcEnv.root env) id*)
-let pqname_of_string (id:string) =
+let path_of_string (id:string) : EcPath.path =
   EcPath.fromqsymbol ([],id)
 (*using ecScope.add_record as a starting point and copying parts of code from
 ecScope.add_record, ecHiInductive.trans_record 
 *)  
 let ec_tydecl_from_msg (id:string) (mb:message_body_tyd) : EcPath.path * EcDecl.tydecl =
-  let tpath = pqname_of_string id in
+  let tpath = path_of_string id in
   let fields = IdMap.bindings 
     (IdMap.map (fun til -> let ty,_ = unloc til in ty) mb.params_map) in
   let record = 
@@ -117,8 +117,8 @@ let epdp_op_th_item (mt_id:string) : EcTheory.ctheory_item =
   let epdp_mt_ty = epdp_mt_ty mt_id env in
   let mk_epdp_p , _ = EcEnv.Op.lookup ([],"mk_epdp") env in
   let epdp_mt_op_ex = EcTypes.e_op mk_epdp_p (enc_dec_typs mt_id) epdp_mt_ty in
-  let enc_mt_op_ex = EcTypes.e_op (pqname_of_string (enc_op_name mt_id)) [] (enc_op_ty mt_id) in
-  let dec_mt_op_ex = EcTypes.e_op (pqname_of_string (dec_op_name mt_id)) [] (dec_op_ty mt_id) in
+  let enc_mt_op_ex = EcTypes.e_op (path_of_string (enc_op_name mt_id)) [] (enc_op_ty mt_id) in
+  let dec_mt_op_ex = EcTypes.e_op (path_of_string (dec_op_name mt_id)) [] (dec_op_ty mt_id) in
   let epdp_mt_ex = EcTypes.e_app  epdp_mt_op_ex [enc_mt_op_ex;dec_mt_op_ex] epdp_mt_ty in
   let epdp_mt_body = EcDecl.OP_Plain (epdp_mt_ex,true) in
   let op_decl = (EcDecl.mk_op [] epdp_mt_ty (Some epdp_mt_body)) in
@@ -134,14 +134,14 @@ let lemma_th_item (name : string) (f:EcCoreFol.form): EcTheory.ctheory_item =
     ax_nosmt   = false 
   })
 
-let valid_epdp_op_p = pqname_of_string "valid_epdp"
+let valid_epdp_op_p = path_of_string "valid_epdp"
   
 let valid_epdp_op_f env : EcCoreFol.form =
   let epdp_ty = epdp_ty env in
   let valid_epdp_op_ty = EcTypes.toarrow [epdp_ty] EcTypes.tbool in
   EcCoreFol.f_op valid_epdp_op_p [] valid_epdp_op_ty
 
-let epdp_mt_op_p mt_id = pqname_of_string (epdp_mt_op_name mt_id)
+let epdp_mt_op_p mt_id = path_of_string (epdp_mt_op_name mt_id)
 
 let valid_epdp_mt_f (mt_id:string) : EcCoreFol.form =
   let env = UcEcInterface.env () in
@@ -160,7 +160,7 @@ let hint_simplify_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
   let n1 = valid_epdp_op_p in
   let n2 = epdp_mt_op_p mt_id in
   EcTheory.CTh_reduction [(
-    pqname_of_string (valid_epdp_mt_lemma_name mt_id),
+    path_of_string (valid_epdp_mt_lemma_name mt_id),
     { ur_delta = false; ur_eqtrue = true; },
     Some EcTheory.{ 
       rl_tyd  = [];
@@ -173,8 +173,8 @@ let hint_simplify_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
     )]
 
 let hint_rewrite_epdp_th_item (mt_id:string) : EcTheory.ctheory_item =
-  let epdp = pqname_of_string "epdp" in
-  let lemma = pqname_of_string (valid_epdp_mt_lemma_name mt_id) in
+  let epdp = path_of_string "epdp" in
+  let lemma = path_of_string (valid_epdp_mt_lemma_name mt_id) in
   EcTheory.CTh_addrw (epdp,[lemma])
   
 let varpath (mt_id:string) : EcPath.xpath = 
@@ -239,7 +239,7 @@ let pp_interface (ppf:Format.formatter) (id:string) (it: inter_tyd) : unit =
     let cth_items = (op_pi_th_item "pi") :: cth_items in
     let cth':EcTheory.ctheory = { cth_desc = cth.cth_desc; cth_struct = cth_items }
     in
-    let pth = ((pqname_of_string id),(cth',`Concrete)) in
+    let pth = ((path_of_string id),(cth',`Concrete)) in
     pp_theory ppf pth;
   | None -> print_string "nooooo"
  
@@ -279,29 +279,249 @@ let make_theory (id : string) : EcTheory.ctheory =
   
 let make_record (id : string) (fields : (symbol * EcTypes.ty) list) 
 : EcDecl.tydecl =
-  let tpath = pqname_of_string id in
+  let tpath = path_of_string id in
   let record = 
     { EI.rc_path = tpath; EI.rc_tparams = []; EI.rc_fields = fields; } in
   let scheme  = EI.indsc_of_record record in
   {
     tyd_params = record.EI.rc_tparams;
     tyd_type   = `Record (scheme, record.EI.rc_fields); }
+    
+let make_ty (s:string) : EcTypes.ty =
+  EcTypes.tconstr (EcPath.psymbol s) []
 
-let ec_tydecl_from_mb (id : string) (mb : message_body_tyd) : EcDecl.tydecl =
+let addr_ty = make_ty "addr"
+
+let port_ty = make_ty "port"
+
+let ec_tydecl_from_direct_mb (id : string) (mb : message_body_tyd) : EcDecl.tydecl =
   let fields = IdMap.bindings 
     (IdMap.map (fun til -> let ty,_ = unloc til in ty) mb.params_map) in
+  let fields = List.map (fun (n,t) -> (id^"__"^n,t)) fields in
+  let port = match mb.port with
+             | Some p -> p
+             | None -> failure ("messages in direct interfaces have port name")
+  in         
+  let fields = ((id^"__"^port),port_ty)::fields in
+  let fields = ((id^"___func"),addr_ty)::fields in
   make_record id fields
-  
-let msg_tyd_th_item (id : string) (mb : message_body_tyd) =
-  EcTheory.CTh_type (id, (ec_tydecl_from_mb id mb))
 
-let add_dir_msg (id : string) (mb : message_body_tyd) (cth : EcTheory.ctheory)
+let dir_msg_tyd_th_item (id : string) (mb : message_body_tyd) =
+  EcTheory.CTh_type (id, (ec_tydecl_from_direct_mb id mb))
+    
+let msg_ty = make_ty "msg"
+
+let enc_op_ty (id : string) =
+  EcTypes.tfun (make_ty  id) msg_ty
+
+let int_ty = EcTypes.tint
+
+let op_pi_name = "pi"
+
+let op_pi_path = path_of_string op_pi_name
+
+let op_pi = EcTypes.e_op op_pi_path [] int_ty
+
+let mode_ty = make_ty "mode"
+
+let univ_ty = make_ty "univ"
+  
+let zero_ex = EcTypes.e_int EcBigInt.zero
+
+let bool_ty = EcTypes.tbool
+
+let and_ex = EcTypes.e_op (path_of_string "/\\") [bool_ty;bool_ty] bool_ty
+
+let and_app b1 b2 = EcTypes.e_app and_ex [b1; b2] bool_ty
+
+let or_ex  = EcTypes.e_op (path_of_string "\\/") [bool_ty;bool_ty] bool_ty
+
+let or_app b1 b2 = EcTypes.e_app or_ex [b1; b2] bool_ty
+
+let not_ex = EcTypes.e_op (path_of_string "[!]") [bool_ty] bool_ty
+
+let not_app b = EcTypes.e_app not_ex [b] bool_ty
+
+let bool_eq_ex  = EcTypes.e_op (path_of_string "=") [bool_ty;bool_ty] bool_ty
+
+let bool_eq_app b1 b2 = EcTypes.e_app bool_eq_ex [b1; b2] bool_ty
+
+let int_eq_ex  = EcTypes.e_op (path_of_string "=") [int_ty;int_ty] bool_ty
+
+let int_eq_app b1 b2 = EcTypes.e_app int_eq_ex [b1; b2] bool_ty
+
+let epdp_ex epdp_name =
+  let env = UcEcInterface.env () in
+  let _, epdp_t = EcEnv.Op.lookup ([],epdp_name) env in
+  let epdp_p = path_of_string epdp_name in
+  EcTypes.e_op epdp_p [] epdp_t.op_ty
+  
+let epdp_enc (epdp_ex : EcTypes.expr) : EcTypes.expr =
+  EcTypes.e_proj epdp_ex 0 univ_ty
+
+
+let epdp_tuple_univ_ex (epdp_ops : EcTypes.expr list) : EcTypes.expr =
+  let name =
+    match List.length epdp_ops with
+    | 2 -> "epdp_pair_univ"
+    | 3 -> "epdp_triple_univ"
+    | 4 -> "epdp_quadruple_univ"
+    | 5 -> "epdp_quintuple_univ"
+    | 6 -> "epdp_sextuple_univ"
+    | 7 -> "epdp_septuple_univ"
+    | 8 -> "epdp_octuple_univ"
+    | _ -> failure "epdp_tuples must have size between 2 and 8"
+    in
+  let env = UcEcInterface.env () in
+  let _, epdp_t = EcEnv.Op.lookup (["UCUniv"],name) env in
+  let epdp_p = path_of_string name in
+  let tys = List.map (fun ex -> EcTypes.e_ty ex) epdp_ops in
+  let epdp_tuple_univ_op_ex = EcTypes.e_op epdp_p tys epdp_t.op_ty in
+  EcTypes.e_app epdp_tuple_univ_op_ex epdp_ops epdp_t.op_ty
+  
+let epdp_tyname_univ (ty : EcTypes.ty) : EcTypes.expr =
+  let ty_p =
+    match ty.ty_node with
+    | Tconstr (p,_) -> p
+    | _ -> failure ("did not expect "^ (EcTypes.dump_ty ty) )
+    in
+  print_string ((EcTypes.dump_ty ty)^"\n");
+  let epdp_name =
+    match EcPath.basename ty_p with
+    | "unit" -> "epdp_unit_univ"
+    | "bool" -> "epdp_bool_univ"
+    | "int"  -> "epdp_int_univ"
+    | "addr" -> "epdp_addr_univ"
+    | "port" -> "epdp_port_univ"
+    | "univ" -> "epdp_id"
+    | basename -> failure ("yet unsupported epdp for "^basename
+      ^", "^(EcPath.tostring ty_p))
+    in
+  epdp_ex epdp_name
+
+let get_tys (params_map : ty_index IdMap.t) : EcTypes.ty list =
+  let params = snd(List.split (IdMap.bindings params_map)) in
+  let params = 
+    List.sort (fun a b -> compare (snd(unloc a)) (snd(unloc b))) params in
+  List.map (fun a -> fst(unloc a)) params
+
+let epdp_data_ex (params_map : ty_index IdMap.t) : EcTypes.expr =
+  let tys = get_tys params_map in
+  let epdp_ops = List.map epdp_tyname_univ tys in
+  match List.length epdp_ops with
+  | 0 -> epdp_ex "epdp_unit_univ"
+  | 1 -> List.hd epdp_ops
+  | _ -> epdp_tuple_univ_ex epdp_ops
+
+  
+let enc_direct_op_expr (id:string) (mb : message_body_tyd) : EcTypes.expr =
+  let mode = EcTypes.e_op (path_of_string "Dir") [] mode_ty in
+  let (iden,t) = ((EcIdent.create "x"),(make_ty id)) in
+  let x = EcTypes.e_local iden t in
+  let xport = EcTypes.e_proj x 1 port_ty in
+  let xaddr = EcTypes.e_proj x 0 addr_ty in
+  let funport = EcTypes.e_tuple [xaddr;op_pi] in
+  let encex = epdp_enc (epdp_data_ex mb.params_map) in
+  let tuple =
+    match mb.dir with
+    | In  -> [mode;funport;xport;zero_ex;encex]
+    | Out -> [mode;xport;funport;zero_ex;encex]
+    in
+  EcTypes.e_quantif `ELambda [(iden,t)] (EcTypes.e_tuple tuple)
+
+let enc_direct_op_body (id:string) (mb : message_body_tyd) = 
+  EcDecl.OP_Plain ((enc_direct_op_expr id mb),false)
+  
+let enc_direct_op (id : string) (mb : message_body_tyd) : EcDecl.operator =
+  EcDecl.mk_op [] (enc_op_ty id) (Some (enc_direct_op_body id mb))
+
+let dec_direct_op_expr (id:string) (mb : message_body_tyd) : EcTypes.expr =
+  let mod_= EcIdent.create "mod" in
+  let pt1 = EcIdent.create "pt1" in
+  let pt2 = EcIdent.create "pt2" in
+  let tag = EcIdent.create "tag" in
+  let v   = EcIdent.create "v" in
+  let lpattern = EcTypes.LTuple  
+    [ (mod_, mode_ty);
+      (pt1 , port_ty);
+      (pt2 , port_ty); 
+      (tag , int_ty ); 
+      (v   , univ_ty)
+    ]
+  in
+  
+  let m = EcIdent.create "m" in
+  let m_ex = EcTypes.e_local m msg_ty in
+  
+  let mode_Adv = EcTypes.e_op (path_of_string "Adv") [] mode_ty in
+  let mod_ex = EcTypes.e_local mod_ mode_ty in
+  let c1 = bool_eq_app mod_ex mode_Adv in
+  
+  let ptproj2 = 
+    let pt =
+      match mb.dir with
+      | In  -> pt1
+      | Out -> pt2
+      in 
+    let pt_ex = EcTypes.e_local pt port_ty in
+    EcTypes.e_proj pt_ex 1 int_ty
+  in
+  let c2 = not_app (int_eq_app ptproj2 op_pi) in
+  
+  let tag_ex = EcTypes.e_local tag int_ty in
+  let c3 = not_app (int_eq_app tag_ex zero_ex) in
+  
+  let cond = or_app (or_app c1 c2) c3 in
+  
+  let dec_msg_ty = make_ty id in
+  let then_br = EcTypes.e_none dec_msg_ty in
+  
+  (* continue here
+  let mt = (EcTypes.e_proj 1 (epdp_data_ex mb.params_map) 
+  let else_br = EcTypes.e_match mt [br_none;br_some] 
+    (EcTypes.toption dec_msg_ty) in
+  *)
+  let decode = EcTypes.e_if cond then_br then_br in
+  EcTypes.e_let lpattern m_ex decode
+
+let dec_direct_op_body (id:string) (mb : message_body_tyd) = 
+  EcDecl.OP_Plain ((dec_direct_op_expr id mb),true)  
+  
+let dec_direct_op (id : string) (mb : message_body_tyd) : EcDecl.operator =
+  EcDecl.mk_op [] (dec_op_ty id) (Some (dec_direct_op_body id mb))
+
+let dec_op_ty (id : string) =
+  EcTypes.tfun msg_ty (make_ty id)
+  
+let enc_op_name id = "enc_"^id
+
+let dec_op_name id = "dec_"^id
+
+let enc_direct_op_th_item (id:string) (mb : message_body_tyd) 
+: EcTheory.ctheory_item =
+  let op_decl = enc_direct_op id mb in
+  let op_name = enc_op_name id in
+  op_th_item op_name op_decl
+  
+let dec_direct_op_th_item (id:string) (mb : message_body_tyd) 
+: EcTheory.ctheory_item =
+  let op_decl = dec_direct_op id mb in
+  let op_name = dec_op_name id in
+  op_th_item op_name op_decl
+
+let nullary_int_op =
+  EcDecl.mk_op [] int_ty None
+  
+let op_th_item (id:string) (op:EcDecl.operator) : EcTheory.ctheory_item =
+  EcTheory.CTh_operator (id,op)
+
+let add_direct_msg (id : string) (mb : message_body_tyd) (cth : EcTheory.ctheory)
 : EcTheory.ctheory =
   { cth_desc = cth.cth_desc;
     cth_struct = cth.cth_struct @
-      [ msg_tyd_th_item id mb; 
-        enc_op_th_item id;
-        dec_op_th_item id;
+      [ dir_msg_tyd_th_item id mb; 
+        enc_direct_op_th_item id mb;
+        dec_direct_op_th_item id mb;
         epdp_op_th_item id;
         lemma_valid_epdp_th_item id;
         hint_simplify_epdp_th_item id;
@@ -309,11 +529,23 @@ let add_dir_msg (id : string) (mb : message_body_tyd) (cth : EcTheory.ctheory)
       ]
   }
 
+let pi_op_th_item : EcTheory.ctheory_item =
+  op_th_item op_pi_name nullary_int_op
+
+let add_pi_op (cth : EcTheory.ctheory) : EcTheory.ctheory =
+  { cth_desc = cth.cth_desc;
+    cth_struct = pi_op_th_item :: cth.cth_struct
+  }
+
+let inter_th_name (s : symbol) = "UC_"^s
+
 let trans_basic_dir_inter (s : symbol) (b : basic_inter_body_tyd)
 : theory =
-  let cth = make_theory s in
-  let cth = IdMap.fold (fun id mb -> add_dir_msg id mb) b cth in
-  ECCTh ((pqname_of_string s) , (cth, `Concrete))
+  let th_name = inter_th_name s in
+  let cth = make_theory  th_name in
+  let cth = add_pi_op cth in
+  let cth = IdMap.fold (fun id mb -> add_direct_msg id mb) b cth in
+  ECCTh ((path_of_string th_name) , (cth, `Concrete))
 
 let trans_dir_inter (s : string) (it : inter_tyd) : theory =
     match unloc it with
@@ -371,28 +603,6 @@ let gen_ec (eca_map : eca IdMap.t) : unit =
     ) eca_map
 (*---------------------------------------------------------------------------*)
 
-let del_all (x : 'a IdPairMap.t) : unit =
-  IdPairMap.iter (
-    fun (f,_) _ -> 
-    let fn = ec_filename f in
-    if Sys.file_exists fn 
-      then Sys.remove fn 
-      else ()
-    ) x
-  
-let delete_all_files (ts:typed_spec) : unit =
-  del_all ts.dir_inter_map;
-  del_all ts.adv_inter_map;
-  del_all ts.fun_map;
-  del_all ts.sim_map
-
 let generate_ec (ts:typed_spec) : unit =
-  delete_all_files ts;
-  let ts_ec = translate ts in
-  gen_ec ts_ec
-  (*gen_ec_dir_inter ts.dir_inter_map;
-  gen_ec_adv_inter ts.adv_inter_map;
-  gen_ec_fun ts.fun_map;
-  gen_ec_sim ts.sim_map ;
-  let fdim = fileMap ts.dir_inter_map in
-  IdMap.iter (fun f dim -> gen_dirs f dim) fdim*)
+  gen_ec (translate ts)
+  
