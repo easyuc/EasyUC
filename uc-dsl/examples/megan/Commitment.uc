@@ -22,7 +22,7 @@ direct CommDirPt1 {  (* Party 1, i.e. the Committer *)
   out is_committer_corrupted( is_corrupted : bool )@pt1 (* tells pt1 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
 }
 
-direct CommDirPt2 {  (* Party 2, i.e. the Receiver *)
+direct CommDirPt2 {  (* Party 2, i.e. the Verifier *)
   out commit_rsp(pt1 : port)@pt2  (* message to pt2, saying that pt1 has committed a message u *)
 
   out open_rsp(u : bool)@pt2  (* message to pt2, saying that pt1 sent u to it *)
@@ -46,7 +46,7 @@ direct CommDir {
 adversarial CommI2S {
 
   (* Commit Phase *)
-  out commit_req(pt1 : port, pt2 : port) (* Send both parties' port addresses to the simulator, where pt1 is the committer and pt2 is the receiver. *)
+  out commit_req(pt1 : port, pt2 : port) (* Send both parties' port addresses to the simulator, where pt1 is the committer and pt2 is the verifier. *)
 
   in sim_committer_corruption(pt1_corrupted : bool(*, pt2_corrupted : bool*)) (* Receive from simulator whether each port pt is corrupted. True = corrupted. False = honest. *)
 
@@ -129,7 +129,7 @@ functionality CommIdeal implements CommDir CommI2S {
   (* *)
   initial state WaitCommitReq {
     match message with
-    (* Pt1 (committer) requests to send a commit message to pt2 (receiver) *)
+    (* Pt1 (committer) requests to send a commit message to pt2 (verifier) *)
     | pt1@CommDir.Pt1.commit_req(pt2, b) => {
         send CommI2S.commit_req(pt1, pt2) (* Send the committer pt1 and pt2's port address to the simulator *)
         and transition WaitCorruptions(b, pt1, pt2). (* Transition to waiting for simulator's decision to corrupt pt1 *)
