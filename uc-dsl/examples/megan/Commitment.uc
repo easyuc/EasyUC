@@ -236,27 +236,92 @@ functionality CommIdeal implements CommDir CommI2S {
   }
 }
 
+(* Adversarial interfaces between a real party and the adversary, from the perspective of the real party *)
+adversarial Pt1Adv {
+
+  (* Corruption sequence *)
+  out committer_corrupted (* Ask adversary if the committer is corrupted *)
+
+  in committer_corruption_status( corrupted : bool ) (* corrupted = true if corrupted. corrupted = false if the party is honest *)
+
+  out committer_corruption_data(opt : (port * port * bool) option) (* sends None if committer is not corrupted. Sends all known data if committer is corrupted.*)
+
+  in continue (* Adv response message that returns control to committer *)
+
+  (* Post-corruption messages with the adversary *)
+  out adv_gen_commit_msg(fk : Cfptp.fkey, pk : Pke_indcpa.pkey) (* Forward received information to the adversary *)
+
+  in adv_commit_msg(y': Cfptp.D, c_b': Pke_indcpa.ciphertext, c_nb': Pke_indcpa.ciphertext) (* Adv responds with the y, c_b, c_bn values it wants to send to the verifier *)
+
+  out adv_gen_open_msg (* Ask adv for the open message *)
+
+  in adv_open_msg(b' : bool, x' : Cfptp.D, rb' : Pke_indcpa.rand)
+}
+
+adversarial Pt2Adv {
+
+  (* Corruption sequence *)
+  out verifier_corrupted (* Ask adversary if the verifier is corrupted *)
+
+  in verifier_corruption_status( corrupted : bool ) (* corrupted = true if corrupted. corrupted = false if the party is honest *)
+}
+
+(* Composite adversarial interface between parties and adversary *)
+adversarial CommDirAdv {
+  Pt1 : Pt1Adv (* Adversary that talking to Pt1 *)
+  Pt2 : Pt2Adv (* Adversary that talking to Pt2 *)
+}
+
 (* Real Protocol *)
-functionality CommReal implements CommDir {
+functionality CommReal implements CommDir CommDirAdv{
   subfun Fwd1 = Forwarding.Forw (* For commit phase *)
   subfun Fwd2 = Forwarding.Forw (* For open phase *)
   subfun Crs = CRSIdeal
 
-  party Committer serves CommDir.Pt1 {
+  party Committer serves CommDir.Pt1 CommDirAdv.Pt1 {
 
     initial state WaitCommReq {
       match message with
       | pt1@CommDir.Pt1.commit_req(pt2, b) => {
-          (* get CRS *)
-          send Crs.Pt.crs_req
-	  and transition WaitCrs(pt1, pt2, b).
+          (* get committer's corruption status *)
+	  send CommDirAdv.Pt1.committer_corrupted
+	  and transition WaitCorruptionStatus(pt1, pt2, b).
 	}
       | *                => { fail. }
       end
     }
 
-    state WaitCrs(pt1 : port, pt2 : port, b : bool) {
-      (* var x : Pke_indcpa.plaintext; *)
+    state WaitCorruptionStatus(pt1 : port, pt2 : port, b : bool) {
+      match message with
+      | CommDirAdv.Pt1.committer_corruption_status( corrupted ) => {
+          send CommDirAdv.Pt1.committer_corruption_data( corrupted ? Some(pt1, pt2, b) : None)
+	  and transition WaitContinue(pt1, pt2, b, corrupted).
+	}
+      | *                => { fail. }
+      end
+    }
+
+    state WaitContinue(pt1 : port, pt2 : port, b : bool, corrupted : bool) {
+      match message with
+      | CommDirAdv.Pt1.continue => {
+      	  if (corrupted) {
+	    send Crs.Pt.crs_req
+	    and transition WaitCrsCorrupted(pt1, pt2, b, corrupted). (* Go to states modelling corrupted committer *)
+	  }
+	  else {
+            (* get CRS *)
+	    send Crs.Pt.crs_req
+	    and transition WaitCrs(pt1, pt2, b, corrupted). (* Go to states modelling honest committer *)
+	  }
+	}
+      | *                => { fail. }
+      end
+    }
+
+    (* --- --- --- --- --- ---  *)
+    (* States for when the committer is HONEST *)
+    (* --- --- --- --- --- ---  *)
+    state WaitCrs(pt1 : port, pt2 : port, b : bool, corrupted : bool) {
       var x : Cfptp.D;
       var r0, r1 : Pke_indcpa.rand;
       var y : Cfptp.D;
@@ -283,19 +348,75 @@ functionality CommReal implements CommDir {
 	       (pt2,
 	       Encodings.epdp_commit_univ.`enc
 	       (pt1, pt2, y, c_b, c_nb))
-	  and transition WaitOpenReq(pt1, pt2, b, x, b ? r1 : r0). (* For now, only save the stuff that will be "opened" to V *)
+	  and transition WaitOpenReq(pt1, pt2, b, x, b ? r1 : r0, corrupted). (* For now, save the stuff that will be "opened" to V *)
 	}
       | *                => { fail. }
       end
     }
 
-    state WaitOpenReq(pt1 : port, pt2 : port, b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
+    state WaitOpenReq(pt1 : port, pt2 : port, b : bool, x : Cfptp.D, rb : Pke_indcpa.rand, corrupted : bool) {
       match message with
       | pt1@CommDir.Pt1.open_req => {
       	  send Fwd2.D.fw_req
 	       (pt2,
 	       Encodings.epdp_open_univ.`enc
 	       (pt1, pt2, b, x, rb))
+          and transition Final.
+        }
+      | *                => { fail. }
+      end
+    }
+
+    (* --- --- --- --- --- ---  *)
+    (* States for when the committer is CORRUPTED *)
+    (* --- --- --- --- --- ---  *)
+    state WaitCrsCorrupted(pt1 : port, pt2 : port, b : bool, corrupted : bool) {
+      var fk : Cfptp.fkey;
+      var pk : Pke_indcpa.pkey;
+
+      match message with
+      | Crs.Pt.crs_rsp(crs) => {
+      	  (* parse crs *)
+	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
+	  (* Ask the adversary for y, c_b, c_nb *)
+	  send CommDirAdv.Pt1.adv_gen_commit_msg(fk, pk)
+	  and transition WaitAdvCommit(pt1, pt2, b, corrupted, fk, pk).
+	}
+      | *                => { fail. }
+      end
+    }
+    
+    state WaitAdvCommit(pt1 : port, pt2 : port, b : bool, corrupted: bool, fk : Cfptp.fkey, pk : Pke_indcpa.pkey) {
+      match message with
+      | CommDirAdv.Pt1.adv_commit_msg(y', c_b', c_nb') => {
+          send Fwd1.D.fw_req
+	       (pt2,
+	       Encodings.epdp_commit_univ.`enc
+	       (pt1, pt2, y', c_b', c_nb'))
+	  and transition WaitOpenReqCorrupted(pt1, pt2, b, corrupted, y', c_b', c_nb'). (* For now, save everything. *)
+      }
+      | *                => { fail. }
+      end
+    }
+
+    state WaitOpenReqCorrupted(pt1 : port, pt2 : port, b : bool, corrupted : bool, y': Cfptp.D, c_b': Pke_indcpa.ciphertext, c_nb': Pke_indcpa.ciphertext) {
+      match message with
+      | pt1@CommDir.Pt1.open_req => {
+      	  (* Ask the adversary for y, c_b, c_nb *)
+	  send CommDirAdv.Pt1.adv_gen_open_msg
+	  and transition WaitAdvOpen(pt1, pt2, b, corrupted, y', c_b', c_nb').
+        }
+      | *                => { fail. }
+      end
+    }
+
+    state WaitAdvOpen(pt1 : port, pt2 : port, b : bool, corrupted : bool, y': Cfptp.D, c_b': Pke_indcpa.ciphertext, c_nb': Pke_indcpa.ciphertext) {
+      match message with
+      | CommDirAdv.Pt1.adv_open_msg(b', x', rb') => {
+      	  send Fwd2.D.fw_req
+	       (pt2,
+	       Encodings.epdp_open_univ.`enc
+	       (pt1, pt2, b', x', rb'))
           and transition Final.
         }
       | *                => { fail. }
@@ -309,19 +430,19 @@ functionality CommReal implements CommDir {
     }
   }
 
-  party Verifier serves CommDir.Pt2 {
+  party Verifier serves CommDir.Pt2 CommDirAdv.Pt2 {
 
     initial state WaitCommit {
       var pt1, pt2 : port;
       var y : Cfptp.D;
       var c_b, c_nb : Pke_indcpa.ciphertext;
       match message with
-      | Fwd2.D.fw_rsp(_, u) => {
+      | Fwd1.D.fw_rsp(_, u) => { (* Verifier is activated after receiving a commit message *)
           match Encodings.epdp_commit_univ.`dec u with
           | Some tr => {
               (pt1, pt2, y, c_b, c_nb) <- tr;
-              send CommDir.Pt2.commit_rsp(pt1)@pt2
-	      and transition WaitOpen(pt1, pt2, y, c_b, c_nb).
+              send CommDirAdv.Pt2.verifier_corrupted
+	      and transition WaitCorruptionStatus(pt1, pt2, y, c_b, c_nb).
             }
           | None    => { fail. }  (* cannot happen *)
           end
@@ -330,7 +451,17 @@ functionality CommReal implements CommDir {
       end
     }
 
-    state WaitOpen(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext) {
+    state WaitCorruptionStatus(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext) {
+      match message with
+      | CommDirAdv.Pt2.verifier_corruption_status( corrupted ) => { (* After receiving corruption status, do nothing (update later to allow V to send arbitrary messages to C *)
+          send CommDir.Pt2.commit_rsp(pt1)@pt2
+	  and transition WaitOpen(pt1, pt2, y, c_b, c_nb, corrupted).
+	}
+      | *                => { fail. }
+      end
+    }
+
+    state WaitOpen(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext, corrupted : bool) {
       var b : bool;
       var x : Cfptp.D;
       var rb : Pke_indcpa.rand;
@@ -341,7 +472,7 @@ functionality CommReal implements CommDir {
           | Some tr => {
               (pt1, pt2, b, x, rb) <- tr;
               send Crs.Pt.crs_req
-	      and transition WaitCRS(pt1, pt2, y, c_b, c_nb, b, x, rb).
+	      and transition WaitCRS(pt1, pt2, y, c_b, c_nb, corrupted, b, x, rb).
             }
           | None    => { fail. }  (* cannot happen *)
           end
@@ -350,7 +481,7 @@ functionality CommReal implements CommDir {
       end
     }
 
-    state WaitCRS(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext,
+    state WaitCRS(pt1 : port, pt2 : port, y : Cfptp.D, c_b : Pke_indcpa.ciphertext, c_nb : Pke_indcpa.ciphertext, corrupted: bool,
 b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
       var y' : Cfptp.D;
       var c_b' : Pke_indcpa.ciphertext;
@@ -374,7 +505,6 @@ b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
       | *                  => { fail. }
       end
     }
-
 
     state Final {
       match message with
