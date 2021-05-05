@@ -345,7 +345,7 @@ functionality CommReal implements CommDir CommDirAdv{
 
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
-	       (pt2,
+	       (intport Verifier, (* Send this to Verifier *)
 	       Encodings.epdp_commit_univ.`enc
 	       (pt1, pt2, y, c_b, c_nb))
 	  and transition WaitOpenReq(pt1, pt2, b, x, b ? r1 : r0, corrupted). (* For now, save the stuff that will be "opened" to V *)
@@ -356,12 +356,14 @@ functionality CommReal implements CommDir CommDirAdv{
 
     state WaitOpenReq(pt1 : port, pt2 : port, b : bool, x : Cfptp.D, rb : Pke_indcpa.rand, corrupted : bool) {
       match message with
-      | pt1@CommDir.Pt1.open_req => {
-      	  send Fwd2.D.fw_req
-	       (pt2,
+      | pt1'@CommDir.Pt1.open_req => {
+      	  if (pt1 = pt1') {
+	    send Fwd2.D.fw_req
+	       (intport Verifier,
 	       Encodings.epdp_open_univ.`enc
-	       (pt1, pt2, b, x, rb))
-          and transition Final.
+	       (pt1, pt2, b, x, rb)) (* TODO: drop pt1, pt2 *)
+            and transition Final.
+	  } else { fail. }
         }
       | *                => { fail. }
       end
@@ -390,7 +392,7 @@ functionality CommReal implements CommDir CommDirAdv{
       match message with
       | CommDirAdv.Pt1.adv_commit_msg(y', c_b', c_nb') => {
           send Fwd1.D.fw_req
-	       (pt2,
+	       (intport Verifier,
 	       Encodings.epdp_commit_univ.`enc
 	       (pt1, pt2, y', c_b', c_nb'))
 	  and transition WaitOpenReqCorrupted(pt1, pt2, b, corrupted, y', c_b', c_nb'). (* For now, save everything. *)
