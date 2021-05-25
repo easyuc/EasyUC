@@ -8,6 +8,7 @@ require import Distr Pke_indcpa.
 type fkey, bkey. (* forward key, backward key *)
 (* domain over which the permutation functions operate *)
 type D =  Pke_indcpa.plaintext. (* Note: maybe switch this over to finite group *)
+op dD: D distr.
 
 (* CPFTP algorithms *)
 (* for this to be a permutation, need that forward/backward are bijections *)

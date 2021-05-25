@@ -15,7 +15,7 @@ proof.
 admit.
 qed.
 
-op epdp_open_univ : (port * port * bool * Pke_indcpa.plaintext * Pke_indcpa.rand, univ) epdp.
+op epdp_open_univ : (bool * Pke_indcpa.plaintext * Pke_indcpa.rand, univ) epdp.
 
 lemma valid_epdp_open_univ :
   valid_epdp epdp_open_univ.
