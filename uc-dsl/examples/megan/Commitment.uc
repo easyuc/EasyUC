@@ -55,7 +55,7 @@ adversarial CommI2S {
   in sim_commit_rsp(u' : bool option) (* Simulator OKs sending a commit message to pt2, conveying no additional information. It also has the option of detecting u' and returning it. *)
 
   (* Open Phase *)
-  out open_req (* open message request from ideal functionality to simulator, conveying no additional information *)
+  out open_req(b' : bool option) (* open message request from ideal functionality to simulator. If it knows the bit b' to be opened, return it. *)
 
   in sim_open_rsp (* simulator OKs sending a open message to pt2, conveying no additional information. Otherwise, send None. *)
 
@@ -179,7 +179,7 @@ functionality CommIdeal implements CommDir CommI2S {
     (* Pt1 attempts to send an open message to pt2. Message is adversarially delayed, i.e. forwarded to Sim, who oks delivery. *)
     | pt1'@CommDir.Pt1.open_req => {
         if (pt1' = pt1) {
-          send CommI2S.open_req  (* Ask simulator whether to deliver pt1's open message to pt2 *)
+          send CommI2S.open_req(b')  (* Ask simulator whether to deliver pt1's open message to pt2 *)
      	  and transition WaitOpenRsp(b, pt1, pt2, pt1_corrupted, b'). (* Transition to waiting for simulator's response *)
         }
         else {
@@ -387,7 +387,7 @@ functionality CommReal implements CommDir CommDirAdv{
       | *                => { fail. }
       end
     }
-    
+
     state WaitAdvCommit(pt1 : port, pt2 : port, b : bool, corrupted: bool, fk : Cfptp.fkey, pk : Pke_indcpa.pkey) {
       match message with
       | CommDirAdv.Pt1.adv_commit_msg(y', c_b', c_nb') => {
@@ -516,11 +516,11 @@ b : bool, x : Cfptp.D, rb : Pke_indcpa.rand) {
 
 }
 
-(* Simulator (for the Committer) *)
+(* Simulator *)
 simulator CommSimCommitter uses CommI2S simulates CommReal {
-  
+
   initial state WaitCommitReq {
-    match message with 
+    match message with
     | CommI2S.commit_req(pt1, pt2) => { (* Committer asks commitment request *)
         send CommReal.CommDirAdv.Pt1.committer_corrupted  (* Ask adversary if Committer is corrupted *)
 	and transition WaitCommitterCorruption(pt1, pt2). (* Wait to see if committer is corrupted *)
@@ -530,11 +530,11 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
   }
 
   state WaitCommitterCorruption(pt1 : port, pt2 : port) {
-    match message with 
+    match message with
     | CommReal.CommDirAdv.Pt1.committer_corruption_status( pt1_corrupted ) => {
 	send CommI2S.sim_committer_corruption(pt1_corrupted)
 	and transition WaitIFCommitterCorruptMsg(pt1, pt2, pt1_corrupted).
-	
+
       }
     | *                => { fail. }
     end
@@ -542,13 +542,13 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
 
   state WaitIFCommitterCorruptMsg(pt1 : port, pt2 : port, pt1_corrupted : bool) {
     var data : port * port * bool;
-    match message with 
+    match message with
     | CommI2S.pt1_corrupted_input(u) => {
 	match u with
 	| Some b => { (* Receive corrupted committer's bit b *)
 	    data <- (pt1, pt2, b);
 	    send CommReal.CommDirAdv.Pt1.committer_corruption_data(Some data) (* Forward data to adversary *)
-	    and transition WaitContinueCommitterCorrupt(pt1, pt2, pt1_corrupted).
+	    and transition WaitContinue(pt1, pt2, pt1_corrupted).
 	  }
 	| None => { (* For an honest committer, forward None to the adversary *)
 	    send CommReal.CommDirAdv.Pt1.committer_corruption_data(None)
@@ -560,10 +560,6 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
     end
   }
 
-  (* --- --- --- --- --- ---  *)
-  (* States for when the committer is HONEST *)
-  (* --- --- --- --- --- ---  *)
-
   state WaitContinue(pt1: port, pt2: port, pt1_corrupted : bool) {
     var fk : Cfptp.fkey;
     var bk : Cfptp.bkey;
@@ -572,16 +568,27 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
     var crs : Cfptp.fkey * Pke_indcpa.pkey;
     match message with
     | CommReal.CommDirAdv.Pt1.continue => {
-        (* Simulate generating the CRS *)
+        (* Simulate the CRS ideal functionality *)
         (fk, bk) <$ Cfptp.keygen;
         (pk, sk) <$ Pke_indcpa.dkeygen;
 	crs <- (fk, pk);
-	send CommReal.Crs.CRS2Sim.crs_req(pt1, crs) (* Ask CRS's simulator to send crs to pt1 *)
-	and transition WaitCRSOk(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
+
+	if (pt1_corrupted) {
+	  send CommReal.Crs.CRS2Sim.crs_req(pt1, crs) (* Ask CRS's simulator to send crs to pt1 *)
+	  and transition WaitCRSOkCommitterCorrupted(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
+	}
+	else {
+	  send CommReal.Crs.CRS2Sim.crs_req(pt1, crs) (* Ask CRS's simulator to send crs to pt1 *)
+	  and transition WaitCRSOk(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
+	}
     }
     | *                => { fail. }
     end
   }
+
+  (* --- --- --- --- --- ---  *)
+  (* States for when the committer is HONEST *)
+  (* --- --- --- --- --- ---  *)
 
   state WaitCRSOk(pt1: port, pt2 : port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke_indcpa.pkey, sk : Pke_indcpa.skey) {
     var y, x0, x1 : Cfptp.D;
@@ -596,57 +603,71 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
       r1 <$ Pke_indcpa.drand;
       c0 <- Pke_indcpa.enc pk x0 r0;
       c1 <- Pke_indcpa.enc pk x1 r1;
-      
+
       (* send (pt1, pt2, y, c0, c1) to the adversary, who OKs forwarding to the verifier *)
       send CommReal.Fwd1.FwAdv.fw_obs
       	   (pt1, (* Sender is the Committer client pt1 *)
 	   pt2,   (* Receiver is the Verifier client pt2*)
 	   Encodings.epdp_commit_univ.`enc
 	   (pt1, pt2, y, c0, c1))
-      and transition WaitFwd1Ok(pt1, pt2, x0, x1, r0, r1). (* For less typing, I'm only remembering the state arguments required for open. *)
+      and transition WaitFwd1Ok(pt1, pt2, fk, pk, x0, x1, r0, r1). (* For less typing, I'm only remembering the state arguments required for open. *)
     }
     | *                => { fail. }
-    end 
+    end
   }
 
-  state WaitFwd1Ok(pt1 : port, pt2: port, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
+  state WaitFwd1Ok(pt1 : port, pt2: port, fk : Cfptp.fkey, pk : Pke_indcpa.pkey, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
     match message with
     | CommReal.Fwd1.FwAdv.fw_ok => {
       send CommI2S.sim_commit_rsp(None) (* Tells ideal functionality commit message is OK'd by Forwarder. *)
-      and transition WaitOpen(pt1, pt2, x0, x1, r0, r1).
+      and transition WaitOpen(pt1, pt2, fk, pk, x0, x1, r0, r1).
     }
     | *                => { fail. }
-    end 
+    end
   }
 
-  state WaitOpen(pt1 : port, pt2: port, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
+  state WaitOpen(pt1 : port, pt2: port, fk : Cfptp.fkey, pk : Pke_indcpa.pkey, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
     var b : bool;
     match message with
-    | CommI2S.open_req => {
-      (* TODO: how do we know what b is? For now, just select one randomly *)
-      (* IF knows this bit. Add argument to open_request or introduce a message asking for the bit only for the honest case. *)
-      b <$ {0,1};
-
-      (* send (b, xb, rb) to the adversary, who OKs forwarding to the verifier *)
-      send CommReal.Fwd2.FwAdv.fw_obs
-      	   (pt1, (* Sender is the Committer client pt1 *)
+    | CommI2S.open_req(u) => {
+      match u with
+      | Some b' => {
+          (* send (b', xb, rb) to the adversary, who OKs forwarding to the verifier *)
+          send CommReal.Fwd2.FwAdv.fw_obs
+      	  (pt1, (* Sender is the Committer client pt1 *)
 	   pt2,   (* Recevier is the Verifier client pt2*)
 	   Encodings.epdp_open_univ.`enc
-	   (b, b ? x1 : x0, b ? r1 : r0))
-      and transition WaitFwd2Ok(pt1, pt2, x0, x1, r0, r1).
+	   (b', b' ? x1 : x0, b' ? r1 : r0))
+      	  and transition WaitFwd2Ok(pt1, pt2, fk, pk, x0, x1, r0, r1).
+      }
+      | None => {
+         (* If ideal functionality doesn't know this bit, sample a random one *)
+	   b <$ {0,1};
+
+      	   (* send (b, xb, rb) to the adversary, who OKs forwarding to the verifier *)
+      	   send CommReal.Fwd2.FwAdv.fw_obs
+      	   (pt1, (* Sender is the Committer client pt1 *)
+	    pt2,   (* Recevier is the Verifier client pt2*)
+	    Encodings.epdp_open_univ.`enc
+	    (b, b ? x1 : x0, b ? r1 : r0))
+     	   and transition WaitFwd2Ok(pt1, pt2, fk, pk, x0, x1, r0, r1).
+      }
+      end
     }
     | *                => { fail. }
-    end 
+    end
   }
 
-  state WaitFwd2Ok(pt1 : port, pt2: port, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
+  state WaitFwd2Ok(pt1 : port, pt2: port, fk : Cfptp.fkey, pk : Pke_indcpa.pkey, x0 : Cfptp.D, x1 : Cfptp.D, r0 : Pke_indcpa.rand, r1 : Pke_indcpa.rand) {
+    var crs : Cfptp.fkey * Pke_indcpa.pkey;
     match message with
     | CommReal.Fwd2.FwAdv.fw_ok => {
-      send CommI2S.sim_open_rsp (* Tells ideal functionality that the open message is OK'd by Forwarder. *)
-      and transition Final.
+        crs <- (fk, pk);
+        send CommReal.Crs.CRS2Sim.crs_req(pt1, crs)
+	and transition WaitVerifierCRSOk.
     }
     | *                => { fail. }
-    end 
+    end
   }
 
 
@@ -654,27 +675,17 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
   (* States for when the committer is CORRUPTED *)
   (* --- --- --- --- --- ---  *)
 
-  state WaitContinueCommitterCorrupt(pt1: port, pt2: port, pt1_corrupted : bool) {
-    var fk : Cfptp.fkey;
-    var bk : Cfptp.bkey;
-    var pk : Pke_indcpa.pkey;
-    var sk : Pke_indcpa.skey;
-    var crs : Cfptp.fkey * Pke_indcpa.pkey;
+  state WaitCRSOkCommitterCorrupted(pt1: port, pt2 : port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke_indcpa.pkey, sk : Pke_indcpa.skey) {
     match message with
-    | CommReal.CommDirAdv.Pt1.continue => {
-      (* Emulating the CRS *)
-      (fk, bk) <$ Cfptp.keygen;
-      (pk, sk) <$ Pke_indcpa.dkeygen;
-
+    | CommReal.Crs.CRS2Sim.crs_rsp => {
       (* Give the adversary the CRS string and ask it to generate the corrupted commit message *)
-      
       send CommReal.CommDirAdv.Pt1.adv_gen_commit_msg(fk, pk)
       and transition WaitAdvCommit(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
     }
     | *                => { fail. }
-    end 
+    end
   }
-  
+
   state WaitAdvCommit(pt1: port, pt2: port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke_indcpa.pkey, sk : Pke_indcpa.skey) {
     var x0, x1 : Pke_indcpa.plaintext;
     var x0', x1' : Cfptp.D;
@@ -697,18 +708,18 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
 	else {
 	  send CommI2S.sim_commit_rsp(None) (* The adversary sent a message that doesn't correspond to committing either 0 or 1 *)
 	  and transition WaitOpenCommitterCorrupted(pt1, pt2, pt1_corrupted, fk, bk, pk, sk, None, y', c0', c1').
-	} (* TODO: send None to ideal functionality. Won't know if this info is good until open round. *)
+	}
     }
     | *                => { fail. }
-    end 
+    end
   }
 
   state WaitOpenCommitterCorrupted(pt1: port, pt2: port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke_indcpa.pkey, sk : Pke_indcpa.skey, committed_b : bool option, y' : Cfptp.D, c0' : Pke_indcpa.ciphertext, c1' : Pke_indcpa.ciphertext) {
       match message with
-      | CommI2S.open_req => {
+      | CommI2S.open_req(b') => {
           (* Ask adversary for the committer's open message *)
           send CommReal.CommDirAdv.Pt1.adv_gen_open_msg
-	  and transition WaitAdvOpen(pt1, pt2, pt1_corrupted, fk, bk, pk, sk, committed_b, y', c0', c1'). 
+	  and transition WaitAdvOpen(pt1, pt2, pt1_corrupted, fk, bk, pk, sk, committed_b, y', c0', c1').
       }
       | *                => { fail. }
       end
@@ -717,29 +728,45 @@ simulator CommSimCommitter uses CommI2S simulates CommReal {
   state WaitAdvOpen(pt1: port, pt2: port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke_indcpa.pkey, sk : Pke_indcpa.skey, committed_b : bool option, y' : Cfptp.D, c0' : Pke_indcpa.ciphertext, c1' : Pke_indcpa.ciphertext) {
       var x' : Cfptp.D;
       var ct : Pke_indcpa.ciphertext;
+      var crs : Cfptp.fkey * Pke_indcpa.pkey;
       match message with
       | CommReal.CommDirAdv.Pt1.adv_open_msg(b', x, r) => {
           x' <- Cfptp.back bk y' b';
 	  ct <- Pke_indcpa.enc pk x r;
 
+	  crs <- (fk, pk);
 	  if (x = x' /\ (b' ? c1' : c0') = ct) {
 	    match committed_b with
 	    | Some b => {
 	        if (b' = b) {
-	      	  send CommI2S.sim_open_rsp
-	     	  and transition Final.
+	      	  send CommReal.Crs.CRS2Sim.crs_req(pt1, crs)
+	     	  and transition WaitVerifierCRSOk.
 	        }
 	    	else { fail. }
 	    }
 	    | None => { fail. }
 	    end
-	  } 
+	  }
 	  else { fail. }
       }
       | *                => { fail. }
       end
   }
-  
+
+  (* --- --- --- --- --- ---  *)
+  (* End states - are the same regardless of if committer is corrupted or not *)
+  (* --- --- --- --- --- ---  *)
+
+  state WaitVerifierCRSOk { (* Emulate the verifier's call to the CRS ideal functionality *)
+    match message with
+    | CommReal.Crs.CRS2Sim.crs_rsp => {
+        send CommI2S.sim_open_rsp (* Tells ideal functionality that Forwarder OKs the open message. *)
+	and transition Final.
+    }
+    | *                => { fail. }
+    end
+  }
+
   state Final {
     match message with
     | * => { fail. }
