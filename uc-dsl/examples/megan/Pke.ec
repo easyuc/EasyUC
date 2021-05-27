@@ -1,6 +1,6 @@
-(* Pke_ind_cpa.ec *)
+(* Pke.ec *)
 
-(* This captures in the IND-CPA security of a public key encryption scheme. *)
+(* This describes a public key encryption scheme, capturing notion of IND-CPA security. *)
 
 (* Author: Megan Chen *)
 
@@ -13,6 +13,7 @@ type ciphertext.
 
 (* sample a random plaintext *)
 op dplaintext : plaintext distr.
+op zero : plaintext.
 
 (* randomness *)
 type rand.
