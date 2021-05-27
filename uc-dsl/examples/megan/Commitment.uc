@@ -1,11 +1,11 @@
 (* Commitment.uc *)
 
-(* This contains a two party UC F_com ideal functionality, as described in Figure 2 of Canetti Fischlin 01 (https://eprint.iacr.org/2001/055.pdf). This is a unit only containing one ideal functionality, no real functionalities (i.e. real protocol descriptions) and no simulators, and no extraneous interfaces *)
+(* This contains a two party UC F_com ideal functionality, as described in Figure 2 of Canetti Fischlin 01 (https://eprint.iacr.org/2001/055.pdf). This is a unit containing an ideal functionality, a real functionality (i.e. real protocol description), and a simulator. *)
 
 (* Author: Megan Chen *)
 
 (* Import required .uc files *)
-uc_requires Forwarding.
+uc_requires Forwarding Crs.
 
 (* Import required easycrypt files. *)
 ec_requires Cfptp Pke Encodings.
@@ -60,72 +60,6 @@ adversarial I2S {
   in open_ok (* simulator OKs sending a open message to pt2, conveying no additional information. Otherwise, send None. *)
 
 }
-
-(* ---- CRS ---- *)
-
-(* Direct interface between CRS's ideal functionality and the environment *)
-direct CrsDirPt {
-  in pt@crs_req  (* request from pt, for the CRS *)
-
-  out crs_rsp( crs : Cfptp.fkey * Pke.pkey )@pt (* CRS is the forward key of claw-free pair of trapdoor permutations and the public key of the PKE scheme *)
-}
-
-direct CrsDir {
-  Pt : CrsDirPt
-}
-
-(* basic adversarial interface between ideal functionality and simulator *)
-adversarial CrsI2S {
-  out crs_send_req(pt : port, crs : Cfptp.fkey * Pke.pkey ) (* Request to send the CRS string to party at pt *)
-
-  in crs_send_ok (* Simulator OKs and returns control to the CRS ideal functionality*)
-}
-
-(* TODO:
-Make multiple session version of CRS.
-Sample CRS. Use multisessions to take care of talking to different ports.
-Look at multisession forwarder in sessions directory.
-Initial state - respond to either the env or adv. multisession occurs after.
-*)
-functionality CrsIdeal implements CrsDir CrsI2S {
-  initial state WaitCrsInitReq {
-    var fk : Cfptp.fkey; var bk : Cfptp.bkey;
-    var pk : Pke.pkey; var sk : Pke.skey;
-    var crs : Cfptp.fkey * Pke.pkey;
-    match message with
-    | pt@CrsDir.Pt.crs_req => {
-        (* Sample values associated with CRS *)
- 	(fk, bk) <$ Cfptp.keygen;
-	(pk, sk) <$ Pke.dkeygen;
-	crs <- (fk, pk);
-        send CrsI2S.crs_send_req(pt, crs)
-	and transition WaitCrsRsp(pt, crs).
-      }
-    | * => { fail. }
-    end
-  }
-
-  state WaitCrsRsp(pt: port, crs : Cfptp.fkey * Pke.pkey) {
-    match message with
-    | CrsI2S.crs_send_ok => {
-        send CrsDir.Pt.crs_rsp(crs)@pt
-	and transition WaitCrsReq(crs). (* Forget port pt after sending it the CRS *)
-      }
-    | * => { fail. }
-    end
-  }
-
-  state WaitCrsReq(crs : Cfptp.fkey * Pke.pkey) {
-    match message with
-    | pt@CrsDir.Pt.crs_req => {
-        send CrsI2S.crs_send_req(pt, crs)
-	and transition WaitCrsRsp(pt, crs).
-      }
-    | * => { fail. }
-    end
-  }
-}
-(* ---- ---- *)
 
 (* Ideal Functionality *)
 functionality Ideal implements Dir I2S {
@@ -287,7 +221,7 @@ adversarial Adv {
 functionality Real implements Dir Adv {
   subfun Fwd1 = Forwarding.Forw (* For commit phase *)
   subfun Fwd2 = Forwarding.Forw (* For open phase *)
-  subfun Crs = CrsIdeal
+  subfun Crs = Crs.Ideal
 
   party Committer serves Dir.Pt1 Adv.Pt1 {
 
@@ -615,11 +549,11 @@ simulator Sim uses I2S simulates Real {
 	crs <- (fk, pk);
 
 	if (pt1_corrupted) {
-	  send Real.Crs.CrsI2S.crs_send_req(intport Real.Committer, crs) (* Ask adversary to send crs to the Committer *)
+	  send Real.Crs.I2S.crs_send_req(intport Real.Committer, crs) (* Ask adversary to send crs to the Committer *)
 	  and transition WaitCrsOkCommitterCorrupted(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
 	}
 	else {
-	  send Real.Crs.CrsI2S.crs_send_req(intport Real.Committer, crs) (* Ask adversary to send crs to the Committer *)
+	  send Real.Crs.I2S.crs_send_req(intport Real.Committer, crs) (* Ask adversary to send crs to the Committer *)
 	  and transition WaitCrsOk(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
 	}
     }
@@ -636,7 +570,7 @@ simulator Sim uses I2S simulates Real {
     var r0, r1 : Pke.rand;
     var c0, c1 : Pke.ciphertext;
     match message with
-    | Real.Crs.CrsI2S.crs_send_ok => {
+    | Real.Crs.I2S.crs_send_ok => {
       y <$ Cfptp.dD;
       x0 <- Cfptp.back bk y false;
       x1 <- Cfptp.back bk y true;
@@ -688,7 +622,7 @@ simulator Sim uses I2S simulates Real {
     match message with
     | Real.Fwd2.FwAdv.fw_ok => {
         crs <- (fk, pk);
-        send Real.Crs.CrsI2S.crs_send_req(intport Real.Verifier, crs)
+        send Real.Crs.I2S.crs_send_req(intport Real.Verifier, crs)
 	and transition WaitVerifierCrsOk.
     }
     | * => { fail. }
@@ -702,7 +636,7 @@ simulator Sim uses I2S simulates Real {
 
   state WaitCrsOkCommitterCorrupted(pt1: port, pt2 : port, pt1_corrupted : bool, fk : Cfptp.fkey, bk : Cfptp.bkey, pk : Pke.pkey, sk : Pke.skey) {
     match message with
-    | Real.Crs.CrsI2S.crs_send_ok => {
+    | Real.Crs.I2S.crs_send_ok => {
       (* Give the adversary the CRS string and ask it to generate the corrupted commit message *)
       send Real.Adv.Pt1.commit_msg_req(fk, pk)
       and transition WaitAdvCommit(pt1, pt2, pt1_corrupted, fk, bk, pk, sk).
@@ -792,7 +726,7 @@ simulator Sim uses I2S simulates Real {
 	  match committed_b with
 	  | Some b => {
 	      if (b' = b) {
-	        send Real.Crs.CrsI2S.crs_send_req(intport Real.Verifier, crs)
+	        send Real.Crs.I2S.crs_send_req(intport Real.Verifier, crs)
 	     	and transition WaitVerifierCrsOk.
 	      }
 	      else { fail. }
@@ -812,7 +746,7 @@ simulator Sim uses I2S simulates Real {
 
   state WaitVerifierCrsOk { (* Emulate the verifier's call to the CRS ideal functionality *)
     match message with
-    | Real.Crs.CrsI2S.crs_send_ok => {
+    | Real.Crs.I2S.crs_send_ok => {
         send I2S.open_ok (* Tells ideal functionality that Forwarder OKs the open message. *)
 	and transition Final.
     }
