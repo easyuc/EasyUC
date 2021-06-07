@@ -37,39 +37,45 @@ axiom correctness (pk: pkey, sk: skey, m: plaintext, r : rand):
   valid_keys (pk, sk) =>
   dec sk (enc pk m r) = m.
 
-(*
-module type PKE_Scheme = {
-  proc key_gen() : pkey * skey
-...
-*)
-
 module type ADV_INDCPA = {
-  (* choose a pair of plaintexts *)
-  proc choose(pk : pkey): plaintext * plaintext
-
-  (* guess which plaintext was encrypted *)
-  proc guess(c : ciphertext): bool
+  proc choose(pk : pkey) : plaintext * plaintext
+  proc main(pk : pkey, c : ciphertext) : bool
 }.
 
-(* IND-CPA Security Game, parametrized by an encryption scheme Enc and ind-cpa adversary *)
-module INDCPA (Adv : ADV_INDCPA) = {
+module INDCPA_0(Adv : ADV_INDCPA) = { (* Always encrypts x0 *)
   proc main() : bool = {
-    var b, b' : bool;
-    var x1, x2 : plaintext;
-    var c : ciphertext;
-    var r : rand;
     var pk : pkey; var sk : skey;
-
-    (pk, sk) <$ dkeygen;         (* generate keys for PKE *)
-    r <$ drand;                  (* select randomness used in PKE *)
-    (x1, x2) <@ Adv.choose(pk);  (* A chooses plaintexts x1/x2 *)
-    b <$ {0,1};                  (* choose boolean b *)
-    c <- enc pk (b ? x1 : x2) r; (* encrypt x1 if b = true, x2 if b = false *)
-    b' <@ Adv.guess(c);          (* give ciphertext to A, which returns guess *)
-    return b = b';               (* see if A guessed correctly, winning game *)
+    var r : rand;
+    var x0, x1 : plaintext;
+    var b : bool;
+    var c : ciphertext;
+    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
+    r <$ drand;                  (* Select randomness used in PKE *)
+    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
+    c <- enc pk x0 r;            (* Encrypt x0 *)
+    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypte *)
+    return b;
   }
 }.
 
-(* choose above so that small:
-`|Pr[INDCPA(ConstrAdv(...)).main() @ &m : res] - 1%r/2%r|
+module INDCPA_1(Adv : ADV_INDCPA) = { (* Always encrypts x1*)
+  proc main() : bool = {
+    var pk : pkey; var sk : skey;
+    var r : rand;
+    var x0, x1 : plaintext;
+    var b : bool;
+    var c : ciphertext;
+    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
+    r <$ drand;                  (* Select randomness used in PKE *)
+    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
+    c <- enc pk x1 r;            (* Encrypt x1 *)
+    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypte *)
+    return b;
+  }
+}.
+
+(* The *advantage* of an IND-CPA adversary Adv is
+
+   `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|
+
 *)
