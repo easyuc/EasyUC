@@ -1,0 +1,159 @@
+\def\IsDraft{} % set for draft version
+
+\documentclass{article}[11pt]
+
+% == Import Packages ==
+\usepackage[margin=1in]{geometry} % Page dimensions
+\usepackage{amsmath} % Math formulas
+\usepackage{xcolor} % Colors
+\usepackage{cleveref} % Clever References
+
+% == Inline comments ==
+\ifdefined\IsDraft
+\newcommand{\authnote}[2]{[{\color{red}\textbf{#1:}}~{\color{blue} #2}]}
+\else
+\newcommand{\authnote}[2]{}
+\fi
+
+\newcommand{\megan}[1]{\authnote{Megan}{#1}}
+
+% == Code snippets ==
+\usepackage{listings} % Docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
+
+\lstset{ % general command to set parameter(s)
+	basicstyle=\small, 								% print whole listing small
+	keywordstyle=\color{black}\bfseries\underbar,	% underlined bold black keywords
+	identifierstyle=, 								% nothing happens
+	commentstyle=\color{white}, 					% white comments
+	stringstyle=\ttfamily, 							% typewriter type for strings
+	showstringspaces=false,							% no special string spaces
+	tabsize=2,										% tabs typeset as 2 spaces
+	frame=lines										% lines above and below code snippets
+}
+
+% == Proof ==
+% Entities
+\newcommand{\Sim}{{\mathsf{Sim}}} % Simulator
+\newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
+\newcommand{\Environment}{{\mathcal{Z}}} % Environment
+\newcommand{\CFPTPAdversary}{{\mathcal{D}}}
+% Hybrids
+\newcommand{\Ideal}{{\mathsf{Ideal}}}
+\newcommand{\Hyb}{{\mathsf{Hyb}}}
+\newcommand{\Real}{{\mathsf{Real}}}
+
+
+% == Messages ==
+\newcommand{\OpenMsg}{\mathsf{Open}}
+\newcommand{\CommitMsg}{\mathsf{Commit}}
+
+% PKE
+\newcommand{\PKE}{\mathsf{PKE}}
+\newcommand{\Gen}{\mathsf{Gen}}
+\newcommand{\Enc}{\mathsf{Enc}}
+\newcommand{\Dec}{\mathsf{Dec}}
+
+% CFPTP
+\newcommand{\CFPTP}{\mathsf{CFPTP}}
+\newcommand{\Forw}{\mathsf{Forw}}
+\newcommand{\Back}{\mathsf{Back}}
+\newcommand{\ForwKey}{fk}
+\newcommand{\BackKey}{bk}
+\newcommand{\Domain}{D}
+
+\begin{document}
+
+\section{Preliminaries}
+
+\section{Proof Strategy}
+The proof proceeed via a sequence of games.
+
+\subsection{Sequence of Hybrids}
+Define $\Hyb$ to work exactly as the $\Ideal$ game, except that if the committer is \underline{not} corrupted, the simulator $\Sim_{\Hyb}$ learns the real committed bit $b$ and sends the actual commit string $(y, c_0, c_1)$.
+\begin{enumerate}
+	\item\label{hyb:1} $\Real \approx \Hyb$ - reduction to claw-free pair of trapdoor permutations (CFPTP).
+	\item\label{hyb:2} $\Hyb \approx \Ideal$ - reduction to IND-CPA security of PKE
+\end{enumerate}
+
+The overall goal is the show that
+\begin{lstlisting}
+lemma real_ideal &m :
+`|Pr[REAL().main() @ &m : res] - Pr[Ideal().main() @ &m : res]|
+<= Pr[CFP(CFAdv).main() @ &m : res]
++ `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
+\end{lstlisting}
+
+\section{Hybrid \ref{hyb:1}}
+
+\subsection{Overview}
+We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real$ and $\Hyb$. In particular, the only difference in $\Environment$'s view between $\Real$ and $\Hyb$ is when $\Sim_\Hyb$ aborts. In detail, $\Sim_\Hyb$ aborts when it receives a $\CommitMsg$ message $(y, c_0, c_1)$ and an $\OpenMsg$ message $(b', x', r)$ such that
+\begin{itemize}
+	\item $x' = \CFPTP.\Back_{b'}(y)$
+	\item $c_{b'} = \PKE.\Enc(x)$
+	\item $b' \ne b$ where $b$ is the real committed bit.
+\end{itemize}
+
+This is a ``bad event'' because $\Sim_\Hyb$ found a claw for the pair of trapdoor permutations. Recall that in $\Hyb$, the $y$ in the $\CommitMsg$ message is $y = \CFPTP.\Forw_{b}(x)$, so the claw is $x, x'$.
+
+Hence, to we upper-bound $\Adversary$'s distinguishing advantage via defining an adversary $\CFPTPAdversary$ that finds claws for a given CFPTP.
+
+Given a CFPTP forward key $\ForwKey$, $\Adversary_{\Hyb}$ with input $y$ (from the permutation domain $\Domain$) works as follows:
+\begin{itemize}
+	\item Act as the simulator $\Sim_\Hyb$.
+	\item If $\Sim_\Hyb$ aborts, output $x, x'$.
+\end{itemize}
+This succeeds with the same probability $\Sim_\Hyb$ aborts.
+
+\subsection{Easycrypt Script}
+
+In Hybrid \ref{hyb:1}, our goal is to show the following lemma:
+\begin{lstlisting}
+lemma real_hyb &m :
+`|Pr[REAL().main() @ &m : res] - Pr[HYB().main() @ &m : res]|
+<= Pr[CFP(CFAdv).main() @ &m : res].
+\end{lstlisting}
+
+To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
+\begin{lstlisting}
+module CFP(Cf: ClawFinder) = {
+	proc main(): bool ={
+		var fk: fkey; var bk: bkey;
+    	var x0, x1 : D;
+
+    	(fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
+    	(x0, x1) <@ Cf.find_claw(fk);   (* Find any claw for the CFPTP *)
+    	return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
+  	}
+}.
+\end{lstlisting}
+
+Now, define the claw-finding module type:
+\begin{lstlisting}
+module type ClawFinder = {
+  proc find_claw(fk: fkey) : (D * D)
+}.
+\end{lstlisting}
+
+Next, define a claw-finding adversary which simulates $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
+\begin{lstlisting}
+module CFAdv : ClawFinder = {
+	var Sim.x, Sim.x' : D;
+	proc find_claw(fk : fkey) : D * D = {
+		(* Simulate the simulator's interaction with the environment in Hyb *)
+
+		if ( (* Sim aborts *) ) {
+			return (Sim.x, Sim.x'); (* Return these values from Sim's memory *)
+		}
+		else {
+			return (Sim.y, Sim.y); (* Failure to find claw *)
+		}
+	}
+}.
+\end{lstlisting}
+
+{\small{
+\bibliographystyle{alpha}
+\bibliography{refs}
+}}
+
+\end{document}

@@ -36,7 +36,7 @@ module CFP(Cf: ClawFinder) = {
     var x0, x1 : D;
 
     (fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
-    (x0, x1) <@ Cf.find_claw(fk);  (* Find any claw for the CFPTP *)
+    (x0, x1) <@ Cf.find_claw(fk);   (* Find any claw for the CFPTP *)
     return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
   }
 }.
