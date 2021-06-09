@@ -30,7 +30,7 @@ module type ClawFinder = {
   proc find_claw(fk: fkey) : D * D
 }.
 
-module CFP(Cf: ClawFinder) = {
+module CFP_Game(Cf: ClawFinder) = {
   proc main(): bool ={
     var fk: fkey; var bk: bkey;
     var x0, x1 : D;

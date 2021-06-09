@@ -6,6 +6,7 @@
 \usepackage[margin=1in]{geometry} % Page dimensions
 \usepackage{amsmath} % Math formulas
 \usepackage{xcolor} % Colors
+\usepackage{hyperref} % Hyperlinks
 \usepackage{cleveref} % Clever References
 
 % == Inline comments ==
@@ -18,17 +19,25 @@
 \newcommand{\megan}[1]{\authnote{Megan}{#1}}
 
 % == Code snippets ==
-\usepackage{listings} % Docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
+% Docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
+\usepackage{listings}
 
-\lstset{ % general command to set parameter(s)
-	basicstyle=\small, 								% print whole listing small
-	keywordstyle=\color{black}\bfseries\underbar,	% underlined bold black keywords
-	identifierstyle=, 								% nothing happens
-	commentstyle=\color{white}, 					% white comments
-	stringstyle=\ttfamily, 							% typewriter type for strings
-	showstringspaces=false,							% no special string spaces
-	tabsize=2,										% tabs typeset as 2 spaces
-	frame=lines										% lines above and below code snippets
+\lstdefinelanguage{easycrypt}{
+	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local}
+}
+\lstset{ % Set inline code parameter(s)
+	basicstyle=\small,						% print whole listing small
+	keywordstyle=\color{black}\bfseries,	% bold black keywords
+	identifierstyle=, 						% nothing happens
+	commentstyle=\color{gray}, 			% white comments
+	stringstyle=\ttfamily, 					% typewriter type for strings
+	showstringspaces=false,					% no special string spaces
+	tabsize=2,								% tabs typeset as 2 spaces
+	frame=single,							% lines above and below code snippets
+	breaklines=true,						% break lines when there's overflow
+	language=easycrypt,
+	morecomment=[n]{(*}{*)},				% define comment delimiters
+	literate={~} {$\sim$}{1},				% prettier tilde
 }
 
 % == Proof ==
@@ -61,7 +70,14 @@
 \newcommand{\BackKey}{bk}
 \newcommand{\Domain}{D}
 
+% Document title
+\title{Proof sketch for \cite{CanettiF01}'s static protocol}
+\author{Megan Chen}
+\date{\today}
+
 \begin{document}
+\maketitle
+\tableofcontents
 
 \section{Preliminaries}
 
@@ -79,7 +95,7 @@ The overall goal is the show that
 \begin{lstlisting}
 lemma real_ideal &m :
 `|Pr[REAL().main() @ &m : res] - Pr[Ideal().main() @ &m : res]|
-<= Pr[CFP(CFAdv).main() @ &m : res]
+<= Pr[CFP_Game(CFAdv).main() @ &m : res]
 + `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
 \end{lstlisting}
 
@@ -104,19 +120,27 @@ Given a CFPTP forward key $\ForwKey$, $\Adversary_{\Hyb}$ with input $y$ (from t
 \end{itemize}
 This succeeds with the same probability $\Sim_\Hyb$ aborts.
 
-\subsection{Easycrypt Script}
-
-In Hybrid \ref{hyb:1}, our goal is to show the following lemma:
+\subsection{Easycrypt Proof}
+Since $\Environment$'s view is identical between $\Real$ and $\Hyb$ except when $\Sim_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Sim_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
 \begin{lstlisting}
-lemma real_hyb &m :
-`|Pr[REAL().main() @ &m : res] - Pr[HYB().main() @ &m : res]|
-<= Pr[CFP(CFAdv).main() @ &m : res].
+lemma REAL_HYB &m :
+`|Pr[REAL.main() @ &m : res] - Pr[HYB.main() @ &m : res]|
+<= Pr[CFP_Game(CFAdv).main() @ &m : res].
+\end{lstlisting}
+
+We also need the following helper lemmas:
+\begin{lstlisting}
+lemma REAL_HYB_main &m :
+equiv[REAL.main ~ HYB.main : true => (* If Sim_Hyb didn't abort, then programs are equivalent. *)].
+
+lemma HYB_main_abort_ub &m :
+Pr[HYB.main() @ &m : (* Sim_Hyb aborts *)] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{lstlisting}
 
 To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
 \begin{lstlisting}
-module CFP(Cf: ClawFinder) = {
-	proc main(): bool ={
+module CFP_Game(Cf: ClawFinder) = {
+	proc main(): bool = {
 		var fk: fkey; var bk: bkey;
     	var x0, x1 : D;
 
@@ -136,13 +160,15 @@ module type ClawFinder = {
 
 Next, define a claw-finding adversary which simulates $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
 \begin{lstlisting}
-module CFAdv : ClawFinder = {
+module CFAdv : ClawFinder ( (* has access to Sim_Hyb *) ) = {
 	var Sim.x, Sim.x' : D;
 	proc find_claw(fk : fkey) : D * D = {
-		(* Simulate the simulator's interaction with the environment in Hyb *)
 
-		if ( (* Sim aborts *) ) {
-			return (Sim.x, Sim.x'); (* Return these values from Sim's memory *)
+		(* Simulate running Sim_Hyb interacting with an adversary when fk is in the CRS. *)
+
+		if ( (* Sim_Hyb aborts *) ) {
+			(* Finding a claw means: forw fk x false = forw fk x true = y *)
+			return (Sim.x, Sim.x'); (* Get and return the claw from Sim's memory. *)
 		}
 		else {
 			return (Sim.y, Sim.y); (* Failure to find claw *)
