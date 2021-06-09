@@ -1,6 +1,6 @@
 \def\IsDraft{} % set for draft version
 
-\documentclass{article}[11pt]
+\documentclass{article}[12pt]
 
 % == Import Packages ==
 \usepackage[margin=1in]{geometry} % Page dimensions
@@ -25,20 +25,28 @@
 \lstdefinelanguage{easycrypt}{
 	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local}
 }
-\lstset{ % Set inline code parameter(s)
-	basicstyle=\small,						% print whole listing small
-	keywordstyle=\color{black}\bfseries,	% bold black keywords
-	identifierstyle=, 						% nothing happens
-	commentstyle=\color{gray}, 			% white comments
-	stringstyle=\ttfamily, 					% typewriter type for strings
-	showstringspaces=false,					% no special string spaces
-	tabsize=2,								% tabs typeset as 2 spaces
-	frame=single,							% lines above and below code snippets
-	breaklines=true,						% break lines when there's overflow
-	language=easycrypt,
-	morecomment=[n]{(*}{*)},				% define comment delimiters
-	literate={~} {$\sim$}{1},				% prettier tilde
-}
+
+% Define easycrypt environment
+\lstnewenvironment{easycrypt}[1][]
+{
+	\noindent
+	\minipage{\linewidth}
+	\vspace{0.5\baselineskip}
+	\lstset{ % Set inline code parameter(s)
+	  basicstyle=\small,						% print whole listing small
+	  keywordstyle=\color{black}\bfseries,	% bold black keywords
+	  identifierstyle=, 						% nothing happens
+	  commentstyle=\color{gray}, 			% white comments
+	  stringstyle=\ttfamily, 					% typewriter type for strings
+	  showstringspaces=false,					% no special string spaces
+	  tabsize=2,								% tabs typeset as 2 spaces
+	  frame=single,							% lines above and below code snippets
+	  breaklines=true,						% break lines when there's overflow
+	  language=easycrypt,
+	  morecomment=[n]{(*}{*)},				% define comment delimiters
+	  literate={~} {$\sim$}{1},				% prettier tilde
+	}
+}{\endminipage}
 
 % == Proof ==
 % Entities
@@ -92,12 +100,13 @@ Define $\Hyb$ to work exactly as the $\Ideal$ game, except that if the committer
 \end{enumerate}
 
 The overall goal is the show that
-\begin{lstlisting}
-lemma real_ideal &m :
+
+\begin{easycrypt}
+lemma REAL_IDEAL &m :
 `|Pr[REAL().main() @ &m : res] - Pr[Ideal().main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res]
-+ `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
-\end{lstlisting}
+   + `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
+\end{easycrypt}
 
 \section{Hybrid \ref{hyb:1}}
 
@@ -122,44 +131,49 @@ This succeeds with the same probability $\Sim_\Hyb$ aborts.
 
 \subsection{Easycrypt Proof}
 Since $\Environment$'s view is identical between $\Real$ and $\Hyb$ except when $\Sim_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Sim_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
-\begin{lstlisting}
+
+\begin{easycrypt}
 lemma REAL_HYB &m :
 `|Pr[REAL.main() @ &m : res] - Pr[HYB.main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res].
-\end{lstlisting}
+\end{easycrypt}
 
 We also need the following helper lemmas:
-\begin{lstlisting}
+
+\begin{easycrypt}
 lemma REAL_HYB_main &m :
 equiv[REAL.main ~ HYB.main : true => (* If Sim_Hyb didn't abort, then programs are equivalent. *)].
 
 lemma HYB_main_abort_ub &m :
 Pr[HYB.main() @ &m : (* Sim_Hyb aborts *)] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
-\end{lstlisting}
+\end{easycrypt}
 
 To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
-\begin{lstlisting}
+
+\begin{easycrypt}
 module CFP_Game(Cf: ClawFinder) = {
 	proc main(): bool = {
 		var fk: fkey; var bk: bkey;
-    	var x0, x1 : D;
+		var x0, x1 : D;
 
-    	(fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
-    	(x0, x1) <@ Cf.find_claw(fk);   (* Find any claw for the CFPTP *)
-    	return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
-  	}
+		(fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
+		(x0, x1) <@ Cf.find_claw(fk);   (* Find any claw for the CFPTP *)
+		return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
+	}
 }.
-\end{lstlisting}
+\end{easycrypt}
 
 Now, define the claw-finding module type:
-\begin{lstlisting}
+
+\begin{easycrypt}
 module type ClawFinder = {
   proc find_claw(fk: fkey) : (D * D)
 }.
-\end{lstlisting}
+\end{easycrypt}
 
 Next, define a claw-finding adversary which simulates $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
-\begin{lstlisting}
+
+\begin{easycrypt}
 module CFAdv : ClawFinder ( (* has access to Sim_Hyb *) ) = {
 	var Sim.x, Sim.x' : D;
 	proc find_claw(fk : fkey) : D * D = {
@@ -175,7 +189,7 @@ module CFAdv : ClawFinder ( (* has access to Sim_Hyb *) ) = {
 		}
 	}
 }.
-\end{lstlisting}
+\end{easycrypt}
 
 {\small{
 \bibliographystyle{alpha}
