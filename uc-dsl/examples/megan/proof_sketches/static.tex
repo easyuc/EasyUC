@@ -16,7 +16,10 @@
 \newcommand{\authnote}[2]{}
 \fi
 
+\newcommand{\alley}[1]{\authnote{Alley}{#1}}
 \newcommand{\megan}[1]{\authnote{Megan}{#1}}
+\newcommand{\mayank}[1]{\authnote{Mayank}{#1}}
+\newcommand{\ran}[1]{\authnote{Ran}{#1}}
 
 % == Code snippets ==
 % Docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
@@ -48,17 +51,7 @@
 	}
 }{\endminipage}
 
-% == Proof ==
-% Entities
-\newcommand{\Sim}{{\mathsf{Sim}}} % Simulator
-\newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
-\newcommand{\Environment}{{\mathcal{Z}}} % Environment
-\newcommand{\CFPTPAdversary}{{\mathcal{D}}}
-% Hybrids
-\newcommand{\Ideal}{{\mathsf{Ideal}}}
-\newcommand{\Hyb}{{\mathsf{Hyb}}}
-\newcommand{\Real}{{\mathsf{Real}}}
-
+\newcommand{\code}[1]{\texttt{#1}}%inline code
 
 % == Messages ==
 \newcommand{\OpenMsg}{\mathsf{Open}}
@@ -69,6 +62,8 @@
 \newcommand{\Gen}{\mathsf{Gen}}
 \newcommand{\Enc}{\mathsf{Enc}}
 \newcommand{\Dec}{\mathsf{Dec}}
+\newcommand{\Indcpa}{\mathsf{INDCPA}}
+\newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
 
 % CFPTP
 \newcommand{\CFPTP}{\mathsf{CFPTP}}
@@ -78,7 +73,22 @@
 \newcommand{\BackKey}{bk}
 \newcommand{\Domain}{D}
 
-% Document title
+
+% == Proof ==
+% Entities
+\newcommand{\Sim}{{\mathsf{Sim}}} % Simulator
+\newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
+\newcommand{\Environment}{{\mathcal{Z}}} % Environment
+\newcommand{\CFPTPAdversary}{{\Adversary_\CFPTP}}
+\newcommand{\IndcpaAdversary}{{\Adversary_\Indcpa}}
+
+% Hybrids
+\newcommand{\Ideal}{{\mathsf{Ideal}}}
+\newcommand{\Hyb}{{\mathsf{Hyb}}}
+\newcommand{\Real}{{\mathsf{Real}}}
+
+
+% == Document title ==
 \title{Proof sketch for \cite{CanettiF01}'s static protocol}
 \author{Megan Chen}
 \date{\today}
@@ -108,13 +118,13 @@ lemma REAL_IDEAL &m :
    + `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
 \end{easycrypt}
 
-\section{Hybrid \ref{hyb:1}}
+\section{Hybrid \ref{hyb:1}: Showing $\Real \approx \Hyb$}
 
 \subsection{Overview}
 We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real$ and $\Hyb$. In particular, the only difference in $\Environment$'s view between $\Real$ and $\Hyb$ is when $\Sim_\Hyb$ aborts. In detail, $\Sim_\Hyb$ aborts when it receives a $\CommitMsg$ message $(y, c_0, c_1)$ and an $\OpenMsg$ message $(b', x', r)$ such that
 \begin{itemize}
 	\item $x' = \CFPTP.\Back_{b'}(y)$
-	\item $c_{b'} = \PKE.\Enc(x)$
+	\item $c_{b'} = \PKE.\Enc_{pk}(x)$
 	\item $b' \ne b$ where $b$ is the real committed bit.
 \end{itemize}
 
@@ -156,7 +166,7 @@ module CFP_Game(Cf: ClawFinder) = {
 		var fk: fkey; var bk: bkey;
 		var x0, x1 : D;
 
-		(fk, bk) <$ keygen;             (* Generates keys for CFPTP *)
+		(fk, bk) <$ keygen;             (* Generates keys for CFPTP. $*)
 		(x0, x1) <@ Cf.find_claw(fk);   (* Find any claw for the CFPTP *)
 		return (forw fk x0 false = forw fk x1 true); (* Cf succeeds when this happens *)
 	}
@@ -187,6 +197,121 @@ module CFAdv : ClawFinder ( (* has access to Sim_Hyb *) ) = {
 		else {
 			return (Sim.y, Sim.y); (* Failure to find claw *)
 		}
+	}
+}.
+\end{easycrypt}
+
+\section{Hybrid \ref{hyb:2}: Showing $\Hyb \approx \Ideal$}
+
+\subsection{Overview} \label{sec:indcpa_red_overview}
+IND-CPA (i.e. semantic) security in a PKE scheme captures the property that the scheme's ciphertexts reveal only a negligible amount of information about their underlying plaintexts. We show that any adversary that distinguishes between $\Hyb$ and $\Ideal$ can be used to win the IND-CPA game (as described in \cref{sec:indcpa}) via a cryptographic reduction.
+
+The outline for the reduction works as follows: Let $p$ be the probability of distinguishing ciphertexts in some IND-CPA PKE scheme. Assume (for a contradiction) that there exists an $\Environment$ distinguishing between $\Hyb$ and $\Ideal$ with probability $> p$. Next, construct an adversary $\IndcpaAdversary$ that wins the IND-CPA security game with a probability that is too high, contradicting the IND-CPA security of the PKE scheme. Thus, we conclude that $\Environment$'s distinguishing advantage is $\leq p$.
+
+First, we describe the difference between $\Hyb$ and $\Ideal$. \megan{Add: argue that apart from $c_{1-b}$, Hyb and Ideal give the same view.}
+In $\Hyb$, observe that the $\CommitMsg$ message $(y, c_0, c_1)$ is
+\begin{itemize}
+	\item $y = \CFPTP.\Forw_{b}(x)$
+	\item $c_b = \PKE.\Enc_{pk}(x; r_b)$
+	\item $c_{1-b} = \PKE.\Enc_{pk}(0; r_{1-b})$.
+\end{itemize}
+where $x, r_0, r_1$ are uniformly sampled.
+
+In $\Ideal$, the $\CommitMsg$ message $(y, c_0, c_1)$ is:
+\begin{itemize}
+	\item $y = \CFPTP.\Forw_{b}(x_b)$
+	\item $c_b = \PKE.\Enc_{pk}(x_b; r_b)$
+	\item $c_{1-b} = \PKE.\Enc_{pk}(x_{1-b}; r_{1-b})$
+\end{itemize}
+where $x_0, x_1, r_0, r_1$ are uniformly sampled.
+
+The difference between $\Hyb$ and $\Ideal$ is the encrypted plaintext for $c_{1-b}$. In essence, distinguishing $\Hyb$ and $\Ideal$, means distinguishing between whether $c_{1-b}$ is an encryption of $0$ or $x_{1-b}$.
+
+Hence, given an environment $\Environment$ that distinuguishes between $\Hyb$ and $\Ideal$ with non-negligible probability $>p$, we can construct an adversary $\IndcpaAdversary$ that breaks IND-CPA security. On input the committed bit $b$, $\IndcpaAdversary$ interacts with to a challenger $\IndcpaGM$ and does the following:
+\begin{enumerate}
+	\item Sample $x_0, x_1, r_0, r_1$ uniformly.
+	\item Honestly compute $y = \CFPTP.\Forw_b(x_b)$ and $c_b = \PKE.\Enc_{pk}(x_b; r_b)$.
+	\item Send $(0, x_{1-b})$ to $\IndcpaGM$, and receive an encryption $c^*$ of either $0$ or $x_{1-b}$.
+	\item Set $c_{1-b} = c^*$.
+	\item \megan{Generate the rest of $\Environment$'s view (incl. $\OpenMsg$ message)}.
+	\item Send $(y, c_b, c_{1-b})$ to $\Environment$, which outputs a bit indicating ``$\Hyb$'' or ``$\Ideal$''.
+	\item If $\Environment$ outputs ``$\Hyb$'' output 0. If $\Environment$ outputs ``$\Ideal$'' output 1.
+\end{enumerate}
+
+Here, if $\Environment$ sees that $c_{1-b} = \PKE.\Enc_{pk}(0; r_{1-b})$, it will output $\Hyb$. When $\Environment$ sees that $c_{1-b} = \PKE.\Enc_{pk}(x_{1-b}; r_{1-b})$, it will output $\Ideal$. Hence, $\IndcpaAdversary$ outputs the correct bit with exactly the same probability that $\IndcpaAdversary$ distinguishies between $\Hyb$ and $\Real$. Then since $p$ is non-negligible, this is a contradiction.
+
+\subsection{Easycrypt Proof}
+Following the logic from \cref{sec:indcpa_red_overview}, our goal is to show that the $\Environment$'s distinguishing advantange between $\Hyb$ and $\Ideal$ is:
+
+\begin{easycrypt}
+lemma HYB_IDEAL &m :
+`|Pr[HYB.main() @ &m : res] - Pr[IDEAL.main() @ &m : res]|
+<= `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
+\end{easycrypt}
+
+\subsubsection{IND-CPA Game}\label{sec:indcpa}
+The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that resspectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
+
+\begin{easycrypt}
+	module INDCPA_0(Adv : ADV_INDCPA) = { (* Always encrypts x0 *)
+	  proc main() : bool = {
+	    var pk : pkey; var sk : skey;
+	    var r : rand;
+	    var x0, x1 : plaintext;
+	    var b : bool;
+	    var c : ciphertext;
+	    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
+	    r <$ drand;                  (* Select randomness used in PKE *)
+	    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
+	    c <- enc pk x0 r;            (* Encrypt x0 *)
+	    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
+	    return b;
+	  }
+	}.
+
+	module INDCPA_1(Adv : ADV_INDCPA) = { (* Always encrypts x1*)
+	  proc main() : bool = {
+	    var pk : pkey; var sk : skey;
+	    var r : rand;
+	    var x0, x1 : plaintext;
+	    var b : bool;
+	    var c : ciphertext;
+	    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
+	    r <$ drand;                  (* Select randomness used in PKE *)
+	    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
+	    c <- enc pk x1 r;            (* Encrypt x1 *)
+	    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
+	    return b;
+	  }
+	}.
+\end{easycrypt}
+
+Then, an IND-CPA adversary wins if it correctly guesses which module (\code{INDCPA\_0}, \code{INDCPA\_1}) it is in. We formalize this idea as the adversary's ``advantage'', which is captured as:
+
+\begin{easycrypt}
+	`|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|
+\end{easycrypt}
+
+Next, we build a module for the INDCPA adversary \code{Adv}:
+
+\begin{easycrypt}
+module Adv : ADV_INDCPA ( (* has access to the Environment for Hyb vs Ideal game *) ) = {
+	var c : plaintext;
+	proc choose(pk : pkey) : plaintext * plaintext = {
+		x <$ dplaintext;	(* Sample a random plaintext $*)
+		return (zero, x)	(* Return two plaintexts: 0 and the one sampled above. *)
+	}
+
+	proc main(pk : pkey, c : ciphertext) : bool = {
+		(* Query the Hyb / Ideal distinguishing Environment with c. Receive Environment's output guessing whether it's in Hyb or Ideal *)
+
+		if ( (* Environment outputs ``Hyb'' *) ) {
+			return 0;	(* Guess that c is an encryption of 0 *)
+		}
+		else ( (* Environment outputs ``Ideal'' *) ) {
+			return 1;	(* Guess that c is an encryption of some plaintext x *)
+		}
+
 	}
 }.
 \end{easycrypt}
