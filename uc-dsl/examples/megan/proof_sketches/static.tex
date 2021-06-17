@@ -103,7 +103,7 @@
 The proof proceeed via a sequence of games.
 
 \subsection{Sequence of Hybrids}
-Define $\Hyb$ to work exactly as the $\Ideal$ game, except that if the committer is \underline{not} corrupted, the simulator $\Sim_{\Hyb}$ learns the real committed bit $b$ and sends the actual commit string $(y, c_0, c_1)$.
+Define $\Hyb$ to work exactly as the $\Ideal$ game, except that if the committer is \underline{not} corrupted, the simulator $\Sim_{\Hyb}$ learns the real committed bit $b$ and sends the actual commit string $(y, c_0, c_1)$. \megan{expand $\Hyb$ description}
 \begin{enumerate}
 	\item\label{hyb:1} $\Real \approx \Hyb$ - reduction to claw-free pair of trapdoor permutations (CFPTP).
 	\item\label{hyb:2} $\Hyb \approx \Ideal$ - reduction to IND-CPA security of PKE
@@ -115,7 +115,7 @@ The overall goal is the show that
 lemma REAL_IDEAL &m :
 `|Pr[REAL().main() @ &m : res] - Pr[Ideal().main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res]
-   + `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
+   + `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
 \section{Hybrid \ref{hyb:1}: Showing $\Real \approx \Hyb$}
@@ -125,7 +125,7 @@ We use up to bad reasoning to show an upper bound on the environment $\Environme
 \begin{itemize}
 	\item $x' = \CFPTP.\Back_{b'}(y)$
 	\item $c_{b'} = \PKE.\Enc_{pk}(x)$
-	\item $b' \ne b$ where $b$ is the real committed bit.
+	\item $b' \ne b$, where $b$ is the bit $\Sim_\Hyb$ detects from the $\CommitMsg$ message.
 \end{itemize}
 
 This is a ``bad event'' because $\Sim_\Hyb$ found a claw for the pair of trapdoor permutations. Recall that in $\Hyb$, the $y$ in the $\CommitMsg$ message is $y = \CFPTP.\Forw_{b}(x)$, so the claw is $x, x'$.
@@ -148,15 +148,24 @@ lemma REAL_HYB &m :
 <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{easycrypt}
 
+\megan{\code{HYB} is not currently written anywhere. It can be expressed either using the DSL or done directly in the generated easycrypt code.}
+
 We also need the following helper lemmas:
 
 \begin{easycrypt}
 lemma REAL_HYB_main &m :
 equiv[REAL.main ~ HYB.main : true => (* If Sim_Hyb didn't abort, then programs are equivalent. *)].
+\end{easycrypt}
 
+\megan{capture $\Sim_\Hyb$ aborting with a top-level variable.}
+\megan{maybe add a diagram to show that the programs stay the same, except when bad event happens}
+
+\begin{easycrypt}
 lemma HYB_main_abort_ub &m :
 Pr[HYB.main() @ &m : (* Sim_Hyb aborts *)] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{easycrypt}
+
+\megan{Add intermediate step for eager sampling}
 
 To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
 
@@ -177,25 +186,25 @@ Now, define the claw-finding module type:
 
 \begin{easycrypt}
 module type ClawFinder = {
-  proc find_claw(fk: fkey) : (D * D)
+	proc find_claw(fk: fkey) : (D * D)
 }.
 \end{easycrypt}
 
-Next, define a claw-finding adversary which simulates $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
+Next, define a claw-finding adversary which runs $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
 
 \begin{easycrypt}
-module CFAdv : ClawFinder ( (* has access to Sim_Hyb *) ) = {
+module CFAdv : ClawFinder ( (* has access to Environment for Sim vs Hyb game *) ) = {
 	var Sim.x, Sim.x' : D;
 	proc find_claw(fk : fkey) : D * D = {
 
-		(* Simulate running Sim_Hyb interacting with an adversary when fk is in the CRS. *)
+		(* Run environment for Sim vs Hyb game, with fk in the CRS. *)
 
-		if ( (* Sim_Hyb aborts *) ) {
+		if ( (* Environment sees that Sim_Hyb aborts *) ) {
 			(* Finding a claw means: forw fk x false = forw fk x true = y *)
 			return (Sim.x, Sim.x'); (* Get and return the claw from Sim's memory. *)
 		}
 		else {
-			return (Sim.y, Sim.y); (* Failure to find claw *)
+			return (Sim.y, Sim.y); (* Failure to find claw. Equivalent to randomly guessing two elements. *)
 		}
 	}
 }.
@@ -246,56 +255,56 @@ Following the logic from \cref{sec:indcpa_red_overview}, our goal is to show tha
 \begin{easycrypt}
 lemma HYB_IDEAL &m :
 `|Pr[HYB.main() @ &m : res] - Pr[IDEAL.main() @ &m : res]|
-<= `|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|.
+<= `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
 \subsubsection{IND-CPA Game}\label{sec:indcpa}
 The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that resspectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
 
 \begin{easycrypt}
-	module INDCPA_0(Adv : ADV_INDCPA) = { (* Always encrypts x0 *)
-	  proc main() : bool = {
-	    var pk : pkey; var sk : skey;
-	    var r : rand;
-	    var x0, x1 : plaintext;
-	    var b : bool;
-	    var c : ciphertext;
-	    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
-	    r <$ drand;                  (* Select randomness used in PKE *)
-	    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
-	    c <- enc pk x0 r;            (* Encrypt x0 *)
-	    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
-	    return b;
-	  }
-	}.
+module INDCPA_0(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x0 *)
+	proc main() : bool = {
+		var pk : pkey; var sk : skey;
+		var r : rand;
+		var x0, x1 : plaintext;
+		var b : bool;
+		var c : ciphertext;
+		(pk, sk) <$ dkeygen;         		(* Generate keys for PKE *)
+		r <$ drand;                  		(* Select randomness used in PKE *)
+		(x0, x1) <@ INDCPAAdv.choose(pk);	(* Adv chooses plaintexts x0, x1 *)
+		c <- enc pk x0 r;            		(* Encrypt x0 *)
+		b <@ INDCPAAdv.main(pk, c);			(* Adv guesses which ciphertext was encrypted *)
+		return b;
+	}
+}.
 
-	module INDCPA_1(Adv : ADV_INDCPA) = { (* Always encrypts x1*)
-	  proc main() : bool = {
-	    var pk : pkey; var sk : skey;
-	    var r : rand;
-	    var x0, x1 : plaintext;
-	    var b : bool;
-	    var c : ciphertext;
-	    (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
-	    r <$ drand;                  (* Select randomness used in PKE *)
-	    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
-	    c <- enc pk x1 r;            (* Encrypt x1 *)
-	    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
-	    return b;
-	  }
-	}.
+module INDCPA_1(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x1*)
+	proc main() : bool = {
+		var pk : pkey; var sk : skey;
+		var r : rand;
+		var x0, x1 : plaintext;
+		var b : bool;
+		var c : ciphertext;
+		(pk, sk) <$ dkeygen;         		(* Generate keys for PKE *)
+		r <$ drand;                  		(* Select randomness used in PKE *)
+		(x0, x1) <@ INDCPAAdv.choose(pk);	(* Adv chooses plaintexts x0, x1 *)
+		c <- enc pk x1 r;            		(* Encrypt x1 *)
+		b <@ INDCPAAdv.main(pk, c);			(* Adv guesses which ciphertext was encrypted *)
+		return b;
+	}
+}.
 \end{easycrypt}
 
 Then, an IND-CPA adversary wins if it correctly guesses which module (\code{INDCPA\_0}, \code{INDCPA\_1}) it is in. We formalize this idea as the adversary's ``advantage'', which is captured as:
 
 \begin{easycrypt}
-	`|Pr[INDCPA_0(Adv).main() @ &m : res] - Pr[INDCPA_1(Adv).main() @ &m : res]|
+`|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|
 \end{easycrypt}
 
-Next, we build a module for the INDCPA adversary \code{Adv}:
+Next, we build a module for the INDCPA adversary \code{INDCPAAdv}:
 
 \begin{easycrypt}
-module Adv : ADV_INDCPA ( (* has access to the Environment for Hyb vs Ideal game *) ) = {
+module INDCPAAdv : ADV_INDCPA ( (* has access to the Environment for Hyb vs Ideal game *) ) = {
 	var c : plaintext;
 	proc choose(pk : pkey) : plaintext * plaintext = {
 		x <$ dplaintext;	(* Sample a random plaintext $*)
