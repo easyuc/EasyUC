@@ -7,7 +7,10 @@
 \usepackage{amsmath} % Math formulas
 \usepackage{xcolor} % Colors
 \usepackage{hyperref} % Hyperlinks
-\usepackage{cleveref} % Clever References
+\usepackage[capitalise]{cleveref} % Clever References
+
+% == Formatting ==
+\newcommand{\parhead}[1]{\textbf{#1}~}
 
 % == Inline comments ==
 \ifdefined\IsDraft
@@ -29,6 +32,8 @@
 	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local}
 }
 
+\renewcommand*{\lstlistingname}{Code Example}
+
 % Define easycrypt environment
 \lstnewenvironment{easycrypt}[1][]
 {
@@ -36,22 +41,28 @@
 	\minipage{\linewidth}
 	\vspace{0.5\baselineskip}
 	\lstset{ % Set inline code parameter(s)
-	  basicstyle=\small,						% print whole listing small
+	  basicstyle=\small,					% print whole listing small
 	  keywordstyle=\color{black}\bfseries,	% bold black keywords
-	  identifierstyle=, 						% nothing happens
+	  identifierstyle=, 					% nothing happens
 	  commentstyle=\color{gray}, 			% white comments
-	  stringstyle=\ttfamily, 					% typewriter type for strings
-	  showstringspaces=false,					% no special string spaces
-	  tabsize=2,								% tabs typeset as 2 spaces
+	  stringstyle=\ttfamily, 				% typewriter type for strings
+	  showstringspaces=false,				% no special string spaces
+	  tabsize=2,							% tabs typeset as 2 spaces
 	  frame=single,							% lines above and below code snippets
 	  breaklines=true,						% break lines when there's overflow
 	  language=easycrypt,
 	  morecomment=[n]{(*}{*)},				% define comment delimiters
 	  literate={~} {$\sim$}{1},				% prettier tilde
+	  captionpos=b,							% caption position is bottom
+	  #1									% other custom parameters
 	}
 }{\endminipage}
 
-\newcommand{\code}[1]{\texttt{#1}}%inline code
+% help cref
+\crefname{lstlisting}{Code example}{Code examples} % upper case only by personal preference
+\Crefname{lstlisting}{Code example}{Code examples}
+
+\newcommand{\code}[1]{\texttt{#1}} % inline code
 
 % == Messages ==
 \newcommand{\OpenMsg}{\mathsf{Open}}
@@ -64,32 +75,36 @@
 \newcommand{\Dec}{\mathsf{Dec}}
 \newcommand{\Indcpa}{\mathsf{INDCPA}}
 \newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
+\newcommand{\EncKey}{{pk}}
+\newcommand{\DecKey}{{sk}}
 
 % CFPTP
 \newcommand{\CFPTP}{\mathsf{CFPTP}}
 \newcommand{\Forw}{\mathsf{Forw}}
 \newcommand{\Back}{\mathsf{Back}}
-\newcommand{\ForwKey}{fk}
-\newcommand{\BackKey}{bk}
+\newcommand{\ForwKey}{{fk}}
+\newcommand{\BackKey}{{bk}}
 \newcommand{\Domain}{D}
 
 
 % == Proof ==
 % Entities
-\newcommand{\Sim}{{\mathsf{Sim}}} % Simulator
+\newcommand{\Simulator}{{\mathsf{Sim}}} % Simulator
 \newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
 \newcommand{\Environment}{{\mathcal{Z}}} % Environment
 \newcommand{\CFPTPAdversary}{{\Adversary_\CFPTP}}
 \newcommand{\IndcpaAdversary}{{\Adversary_\Indcpa}}
 
 % Hybrids
-\newcommand{\Ideal}{{\mathsf{Ideal}}}
-\newcommand{\Hyb}{{\mathsf{Hyb}}}
-\newcommand{\Real}{{\mathsf{Real}}}
+\newcommand{\Ideal}{{\mathsf{IDEAL}}}
+\newcommand{\Hyb}{{\mathsf{HYB}}}
+\newcommand{\Real}{{\mathsf{REAL}}}
+\newcommand{\bad}{{\mathsf{bad}}}
+\newcommand{\True}{1}
 
 
 % == Document title ==
-\title{Proof sketch for \cite{CanettiF01}'s static protocol}
+\title{Sketch for the \cite{CanettiF01} static protocol's formal proof}
 \author{Megan Chen}
 \date{\today}
 
@@ -99,19 +114,43 @@
 
 \section{Preliminaries}
 
+\subsection{Claw-free pair of trapdoor permutations (CFPTP)}
+\megan{definition, algs}
+
+\subsection{Public key encryption (PKE)}
+\megan{definition, algs}
+
 \section{Proof Strategy}
-The proof proceeed via a sequence of games.
+
+\subsection{Defining the hybrid execution: $\Hyb$}
+First, we define a hybrid $\Hyb$ that is works as an intermediate step between $\Real$ and $\Ideal$. $\Hyb$ works as follows:
+
+$\Hyb$ to works exactly like the $\Ideal$ execution except for the following case: If the committer is \underline{not} corrupted, the simulator $\Simulator_{\Hyb}$ learns the real committed bit $b$. This is because, like in $\Ideal$, $\Simulator_{\Hyb}$ generates the CRS string using both the CFPTP and PKE's key generation algorithms. Hence, $\Simulator_{\Hyb}$ has access to the CFPTP's backward key $\BackKey$ and the PKE scheme's secret (or decryption) key $\DecKey$. Thus, upon seeing the committer's message $\CommitMsg = (y, c_0, c_1)$, $\Simulator_{\Hyb}$ can recover $b$ because it can decrypt and run the permutation backwards.
+
+We detail the difference between how $(y, c_0, c_1)$ is computed in $\Hyb$ and in $\Ideal$. In $\Hyb$, the committer's $\CommitMsg$ message will be the string $(y, c_0, c_1)$ that is generated as in the real protocol, i.e. choose a random $x \in D$, then compute $y = \CFPTP.\Forw_{b, \ForwKey}(x)$, $c_b = \PKE.\Enc_\EncKey(x; r_b)$, and $c_{1-b} = \PKE.\Enc_\EncKey(0; r_{1-b})$ such that $r_0, r_1$ are uniformly sampled from the randomness distribution.
+
+Contrastingly in the $\Ideal$ when the committer is honest, $\Simulator$'s $\CommitMsg$ message is $(y, c_0, c_1)$ where $y$ is first selected from $\Domain$, then its preimages are computed: $x_0 = \CFPTP.\Back_{0, \BackKey}(y)$ and $x_1 = \CFPTP.\Back_{1, \BackKey}(y)$. Subsequently, the ciphertexts are computed: $c_0 = \Enc_\EncKey(x_0; r_0)$ and $c_1 = \Enc_\EncKey(x_1; r_1)$ such that $r_0, r_1$ are uniformly sampled from the randomness distribution.
+
+\parhead{$\Hyb$'s bad event.}
+Due to $\Hyb$'s definition, the environment $\Environment$'s view between $\Real$ and $\Hyb$ differs when $\Hyb$'s simulator $\Simulator_\Hyb$ aborts. Specifically, $\Simulator_\Hyb$ aborts when it receives a $\CommitMsg$ message $(y, c_0, c_1)$ and an $\OpenMsg$ message $(b', x', r)$ such that
+\begin{itemize}
+	\item $x' = \CFPTP.\Back_{b', \BackKey}(y)$
+	\item $c_{b'} = \PKE.\Enc_\EncKey(x; r)$
+	\item $b' \ne b$, where $b$ is the bit $\Simulator_\Hyb$ detects from the $\CommitMsg$ message.
+\end{itemize}
+
+This is a ``bad event'' because $\Simulator_\Hyb$ found a claw for the pair of trapdoor permutations. Recall that in $\Hyb$, if $b$ is the bit that $\Simulator_\Hyb$ detects from the $\CommitMsg$ message, then $\CFPTP.\Back_{b, \BackKey}(y) = x$. Hence, the claw is $x, x'$.
 
 \subsection{Sequence of Hybrids}
-Define $\Hyb$ to work exactly as the $\Ideal$ game, except that if the committer is \underline{not} corrupted, the simulator $\Sim_{\Hyb}$ learns the real committed bit $b$ and sends the actual commit string $(y, c_0, c_1)$. \megan{expand $\Hyb$ description}
+The proof proceeed via a sequence of hybrids. The two main hybrids are:
 \begin{enumerate}
-	\item\label{hyb:1} $\Real \approx \Hyb$ - reduction to claw-free pair of trapdoor permutations (CFPTP).
-	\item\label{hyb:2} $\Hyb \approx \Ideal$ - reduction to IND-CPA security of PKE
+	\item\label{hyb:1} $\Real \approx \Hyb$ - This is proved via a reduction to the claw-free property of the CFPTP scheme.
+	\item\label{hyb:2} $\Hyb \approx \Ideal$ - This is proved via a reduction to the IND-CPA security of the PKE scheme.
 \end{enumerate}
 
 The overall goal is the show that
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:lem_real_ideal, caption=Main lemma for indistinguishability between $\Real$ and $\Ideal$ views]
 lemma REAL_IDEAL &m :
 `|Pr[REAL().main() @ &m : res] - Pr[Ideal().main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res]
@@ -120,31 +159,55 @@ lemma REAL_IDEAL &m :
 
 \section{Hybrid \ref{hyb:1}: Showing $\Real \approx \Hyb$}
 
-\subsection{Overview}
-We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real$ and $\Hyb$. In particular, the only difference in $\Environment$'s view between $\Real$ and $\Hyb$ is when $\Sim_\Hyb$ aborts. In detail, $\Sim_\Hyb$ aborts when it receives a $\CommitMsg$ message $(y, c_0, c_1)$ and an $\OpenMsg$ message $(b', x', r)$ such that
+\subsection{Mini Hybrids}
+To accomplish the reduction to claw-free property of the CFPTP scheme, we require the following hybrid steps:
+\begin{enumerate}
+	\item\label{hyb:1.1} $\Real \approx \Real'$ - Update $\Real$ to include the definition of a bad event, which occurs if and only if the bad event in $\Hyb$ occurs. Call this updated execution $\Real'$. In $\Real'$, we add a global variable \code{REAL'.bad}, initialize it to false, and flip it to true when the bad event occurs.
+
+	The use of easycrypt's ``up to bad reasoning'' step motivates this switch; typically, doing ``up to bad reasoning'' requires a bad event to occur in both programs, whereas the bad event doesn't occur in $\Real$ because $\Simulator$ cannot detect it. This ensures
+
+	Ultimately, easycrypt's \code{byequiv} tactic will require proving
+
+\begin{easycrypt}[label=code:real'_equiv_hyb, caption=Claim required to utilize ``up to bad reasoning'']
+equiv [REAL'.main ~ HYB.main : true ==> (REAL'.bad{1} <=> HYB.bad{2}) /\ (! HYB.bad{2} => ={res})]
+\end{easycrypt}
+
+	where \code{REAL'.bad} and \code{HYB.bad} are global Boolean variables initialized to false and set to true when \code{REAL'} and \code{HYB}'s respective bad events occur. In other words, the proof requires showing that after running the two programs, \code{REAL'.bad} and \code{HYB.bad} take the same value in \code{REAL'} and \code{HYB}'s respective memories. Also if \code{HYB.bad} (thus also \code{REAL'.bad}) is false, then the two program executions are equal.
+
+	To properly detect the bad event, $\Real'$'s simulator needs access to the CFPTP's backward key $\BackKey$ and the PKE's decryption key $\DecKey$, which are not part of $\Real$'s CRS string. To make $\BackKey, \DecKey$ accessible, we add them to the CRS string and save the new CRS as a global variable, so all parties (committer, simulator, verifier) may access it.
+
+	Also, note that we move the CRS generation step to be at the beginning of $\Real'$, so the committer can access it. This shift doesn't affect $\Real'$'s output, since the CRS is still sampled the same way using the CFPTP and PKE key generation algorithms. \megan{This can be a separate hybrid step, or keep it as part of $\Real'$.}
+
+	$\Real'$'s executions works as follows: when the committer learns that it's corrupted, it does what $\Hyb$'s simulator does with $(y, c_0, c_1)$, using $\CFPTP.\Back_0, \CFPTP.\Back_1$ and $\PKE.\Dec$ to figure out what $b$ is. The simulator stores this $b$, but does nothing else with it. When the verifier is given $(b', x, r)$, it does the verification step like $\Real$ does.
+
+	If the verifier accepts but $b'$ is not equal to the $b$ that the committer saved, then the verifier sets \code{REAL'.bad} to true. This corresponds with the simulator in $\Hyb$ setting \code{HYB.bad} to true and aborting.
+
+	Note that in $\Real'$, the $\OpenMsg$ message is still sent to \code{pt2} as usual. This is crucial for retaining the program equivalence of $\Real$ and $\Real'$.
+
+	\item\label{hyb:1.2} $\Real' \approx \Hyb$ - Use ``up to bad reasoning'' to show the reduction to breaking the CFPTP scheme. That is, distinguishing $\Real'$ and $\Hyb$ implies building an adversary that can find a claw in the CFPTP scheme. The details are in \cref{sec:cfptp_overview,sec:cfptp_easycrypt}.
+
+\end{enumerate}
+
+\subsection{Overview}\label{sec:cfptp_overview}
+We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real$ and $\Hyb$.
+
+\megan{elaborate about up to bad reasoning exaplanation}
+
+Hence, we upper-bound $\Environment$'s distinguishing advantage via defining an adversary $\CFPTPAdversary$ that finds claws for a CFPTP.
+
+Given a CFPTP forward key $\ForwKey$ and input $y$ (from the permutation domain $\Domain$), $\Adversary_{\Hyb}$ works as follows:
 \begin{itemize}
-	\item $x' = \CFPTP.\Back_{b'}(y)$
-	\item $c_{b'} = \PKE.\Enc_{pk}(x)$
-	\item $b' \ne b$, where $b$ is the bit $\Sim_\Hyb$ detects from the $\CommitMsg$ message.
+	\item Run the environment that distinguishes $\Real', \Hyb$.
+	\item If $\Environment$ observes $\Simulator_\Hyb$ aborting, output $x, x'$. Otherwise, output two random elements in $\Domain$.
 \end{itemize}
+This succeeds with (at least) the probability $\Simulator_\Hyb$ aborts.
 
-This is a ``bad event'' because $\Sim_\Hyb$ found a claw for the pair of trapdoor permutations. Recall that in $\Hyb$, the $y$ in the $\CommitMsg$ message is $y = \CFPTP.\Forw_{b}(x)$, so the claw is $x, x'$.
+\subsection{Easycrypt Proof}\label{sec:cfptp_easycrypt}
+Since $\Environment$'s view is identical between $\Real$ and $\Hyb$ except when $\Simulator_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Simulator_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
 
-Hence, to we upper-bound $\Adversary$'s distinguishing advantage via defining an adversary $\CFPTPAdversary$ that finds claws for a given CFPTP.
-
-Given a CFPTP forward key $\ForwKey$, $\Adversary_{\Hyb}$ with input $y$ (from the permutation domain $\Domain$) works as follows:
-\begin{itemize}
-	\item Act as the simulator $\Sim_\Hyb$.
-	\item If $\Sim_\Hyb$ aborts, output $x, x'$.
-\end{itemize}
-This succeeds with the same probability $\Sim_\Hyb$ aborts.
-
-\subsection{Easycrypt Proof}
-Since $\Environment$'s view is identical between $\Real$ and $\Hyb$ except when $\Sim_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Sim_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
-
-\begin{easycrypt}
-lemma REAL_HYB &m :
-`|Pr[REAL.main() @ &m : res] - Pr[HYB.main() @ &m : res]|
+\begin{easycrypt}[label=code:lem_real'_equiv_hyb, caption=Lemma for indistinguishability between $\Real'$ and $\Hyb$ views.]
+lemma REAL'_HYB &m :
+`|Pr[REAL'.main() @ &m : res] - Pr[HYB.main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{easycrypt}
 
@@ -152,24 +215,21 @@ lemma REAL_HYB &m :
 
 We also need the following helper lemmas:
 
-\begin{easycrypt}
-lemma REAL_HYB_main &m :
-equiv[REAL.main ~ HYB.main : true => (* If Sim_Hyb didn't abort, then programs are equivalent. *)].
+\begin{easycrypt}[label=code:lem_real'_equiv_hyb_main, caption={Lemma stating that if between $\Real'$ and $\Hyb$ are indistinguishable, then if $\Hyb$ doesn't abort, the results of $\Real'$ and $\Hyb$ are the same. This helps to prove \cref{code:real'_equiv_hyb}.}]
+lemma REAL'_HYB_main &m :
+equiv[REAL'.main ~ HYB.main : true => ! HYB.bad{2} => ={ res } ].
 \end{easycrypt}
 
-\megan{capture $\Sim_\Hyb$ aborting with a top-level variable.}
 \megan{maybe add a diagram to show that the programs stay the same, except when bad event happens}
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:lem_hyb_main_abort_ub, caption={Lemma stating that the probability the bad event occurs in $\Hyb$ is less than or equal to the probability some claw-finding adversary wins the claw-finding game (\cref{code:mod_cfgame}).}]
 lemma HYB_main_abort_ub &m :
-Pr[HYB.main() @ &m : (* Sim_Hyb aborts *)] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
+Pr[HYB.main() @ &m : HYB.bad == true] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{easycrypt}
-
-\megan{Add intermediate step for eager sampling}
 
 To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:mod_cfgame, caption={Module representing the claw-finding game.}]
 module CFP_Game(Cf: ClawFinder) = {
 	proc main(): bool = {
 		var fk: fkey; var bk: bkey;
@@ -184,20 +244,20 @@ module CFP_Game(Cf: ClawFinder) = {
 
 Now, define the claw-finding module type:
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:mod_type_cfadv, caption={Module type for a claw-finding adversary.}]
 module type ClawFinder = {
 	proc find_claw(fk: fkey) : (D * D)
 }.
 \end{easycrypt}
 
-Next, define a claw-finding adversary which runs $\Sim_\Hyb$'s execution and outputs a claw if $\Sim_\Hyb$ aborts.
+Next, define a claw-finding adversary which runs $\Simulator_\Hyb$'s execution and outputs a claw if $\Simulator_\Hyb$ aborts.
 
-\begin{easycrypt}
-module CFAdv : ClawFinder ( (* has access to Environment for Sim vs Hyb game *) ) = {
+\begin{easycrypt}[label=code:mod_cfadv, caption={Module instantiating a claw-finding adversary using access to an environment distinguishing $\Real'$ and $\Hyb$.}]
+module CFAdv : ClawFinder ( (* has access to Environment for Real' vs Hyb game *) ) = {
 	var Sim.x, Sim.x' : D;
 	proc find_claw(fk : fkey) : D * D = {
 
-		(* Run environment for Sim vs Hyb game, with fk in the CRS. *)
+		(* Run environment for Real' vs Hyb game, with fk in the CRS. *)
 
 		if ( (* Environment sees that Sim_Hyb aborts *) ) {
 			(* Finding a claw means: forw fk x false = forw fk x true = y *)
@@ -212,7 +272,18 @@ module CFAdv : ClawFinder ( (* has access to Environment for Sim vs Hyb game *) 
 
 \section{Hybrid \ref{hyb:2}: Showing $\Hyb \approx \Ideal$}
 
-\subsection{Overview} \label{sec:indcpa_red_overview}
+\subsection{Mini Hybrids}
+To accomplish the reduction to claw-free property of the CFPTP scheme, we require the following hybrid steps:
+\begin{enumerate}
+	\item\label{hyb:2.1} $\Hyb \approx \Hyb'$ - In $\Hyb'$, switch to generating $y$ then working backward to get $x_0,x_1$, but only using $x_b$. Then, $c_{1-b}$ is computed as an encryption of $0$.
+	Also, we need to prove that sampling $y$, and generating $x_b = \CFPTP.\Back_b(y)$ is equivalent to sampling $x$, and generating $y = \CFPTP.\Forw_b(x_b)$ $b$, i.e. we can conclude $=\{y, x_b\}$.
+
+	\item\label{hyb:2.2} $\Hyb' \approx \Hyb''$ - Use INDCPA to generate $c_{1-b}$ as the encryption of $x_{1-b}$, not $0$. To fit with the INDCPA adversary, we still need to know what $b$ is, as $c_b$ is generated ourself. This discussion is in \cref{sec:indcpa_overview,sec:indcpa_easycrypt}.
+
+	\item\label{hyb:2.3} $\Hyb'' \approx \Ideal$ - The final step to $\Ideal$ now works uniformly, without knowing what $b$ is.
+\end{enumerate}
+
+\subsection{Overview}\label{sec:indcpa_overview}
 IND-CPA (i.e. semantic) security in a PKE scheme captures the property that the scheme's ciphertexts reveal only a negligible amount of information about their underlying plaintexts. We show that any adversary that distinguishes between $\Hyb$ and $\Ideal$ can be used to win the IND-CPA game (as described in \cref{sec:indcpa}) via a cryptographic reduction.
 
 The outline for the reduction works as follows: Let $p$ be the probability of distinguishing ciphertexts in some IND-CPA PKE scheme. Assume (for a contradiction) that there exists an $\Environment$ distinguishing between $\Hyb$ and $\Ideal$ with probability $> p$. Next, construct an adversary $\IndcpaAdversary$ that wins the IND-CPA security game with a probability that is too high, contradicting the IND-CPA security of the PKE scheme. Thus, we conclude that $\Environment$'s distinguishing advantage is $\leq p$.
@@ -220,26 +291,26 @@ The outline for the reduction works as follows: Let $p$ be the probability of di
 First, we describe the difference between $\Hyb$ and $\Ideal$. \megan{Add: argue that apart from $c_{1-b}$, Hyb and Ideal give the same view.}
 In $\Hyb$, observe that the $\CommitMsg$ message $(y, c_0, c_1)$ is
 \begin{itemize}
-	\item $y = \CFPTP.\Forw_{b}(x)$
-	\item $c_b = \PKE.\Enc_{pk}(x; r_b)$
-	\item $c_{1-b} = \PKE.\Enc_{pk}(0; r_{1-b})$.
+	\item $y = \CFPTP.\Forw_{b, \ForwKey}(x)$
+	\item $c_b = \PKE.\Enc_\EncKey(x; r_b)$
+	\item $c_{1-b} = \PKE.\Enc_\EncKey(0; r_{1-b})$.
 \end{itemize}
 where $x, r_0, r_1$ are uniformly sampled.
 
 In $\Ideal$, the $\CommitMsg$ message $(y, c_0, c_1)$ is:
 \begin{itemize}
-	\item $y = \CFPTP.\Forw_{b}(x_b)$
-	\item $c_b = \PKE.\Enc_{pk}(x_b; r_b)$
-	\item $c_{1-b} = \PKE.\Enc_{pk}(x_{1-b}; r_{1-b})$
+	\item $y = \CFPTP.\Forw_{b, \ForwKey}(x_b)$
+	\item $c_b = \PKE.\Enc_\EncKey(x_b; r_b)$
+	\item $c_{1-b} = \PKE.\Enc_\EncKey(x_{1-b}; r_{1-b})$
 \end{itemize}
-where $x_0, x_1, r_0, r_1$ are uniformly sampled.
+where $r_0, r_1$ are uniformly sampled and $x_b = \CFPTP.\Back_{b, \BackKey}(y)$.
 
 The difference between $\Hyb$ and $\Ideal$ is the encrypted plaintext for $c_{1-b}$. In essence, distinguishing $\Hyb$ and $\Ideal$, means distinguishing between whether $c_{1-b}$ is an encryption of $0$ or $x_{1-b}$.
 
 Hence, given an environment $\Environment$ that distinuguishes between $\Hyb$ and $\Ideal$ with non-negligible probability $>p$, we can construct an adversary $\IndcpaAdversary$ that breaks IND-CPA security. On input the committed bit $b$, $\IndcpaAdversary$ interacts with to a challenger $\IndcpaGM$ and does the following:
 \begin{enumerate}
 	\item Sample $x_0, x_1, r_0, r_1$ uniformly.
-	\item Honestly compute $y = \CFPTP.\Forw_b(x_b)$ and $c_b = \PKE.\Enc_{pk}(x_b; r_b)$.
+	\item Honestly compute $y = \CFPTP.\Forw_{b, \ForwKey}(x_b)$ and $c_b = \PKE.\Enc_\EncKey(x_b; r_b)$.
 	\item Send $(0, x_{1-b})$ to $\IndcpaGM$, and receive an encryption $c^*$ of either $0$ or $x_{1-b}$.
 	\item Set $c_{1-b} = c^*$.
 	\item \megan{Generate the rest of $\Environment$'s view (incl. $\OpenMsg$ message)}.
@@ -247,9 +318,9 @@ Hence, given an environment $\Environment$ that distinuguishes between $\Hyb$ an
 	\item If $\Environment$ outputs ``$\Hyb$'' output 0. If $\Environment$ outputs ``$\Ideal$'' output 1.
 \end{enumerate}
 
-Here, if $\Environment$ sees that $c_{1-b} = \PKE.\Enc_{pk}(0; r_{1-b})$, it will output $\Hyb$. When $\Environment$ sees that $c_{1-b} = \PKE.\Enc_{pk}(x_{1-b}; r_{1-b})$, it will output $\Ideal$. Hence, $\IndcpaAdversary$ outputs the correct bit with exactly the same probability that $\IndcpaAdversary$ distinguishies between $\Hyb$ and $\Real$. Then since $p$ is non-negligible, this is a contradiction.
+Here, if $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(0; r_{1-b})$, it will output $\Hyb$. When $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(x_{1-b}; r_{1-b})$, it will output $\Ideal$. Hence, $\IndcpaAdversary$ outputs the correct bit with exactly the same probability that $\IndcpaAdversary$ distinguishies between $\Hyb$ and $\Real$. Then since $p$ is non-negligible, this is a contradiction.
 
-\subsection{Easycrypt Proof}
+\subsection{Easycrypt Proof}\label{sec:indcpa_easycrypt}
 Following the logic from \cref{sec:indcpa_red_overview}, our goal is to show that the $\Environment$'s distinguishing advantange between $\Hyb$ and $\Ideal$ is:
 
 \begin{easycrypt}
@@ -258,7 +329,7 @@ lemma HYB_IDEAL &m :
 <= `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
-\subsubsection{IND-CPA Game}\label{sec:indcpa}
+\parhead{IND-CPA Game.}
 The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that resspectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
 
 \begin{easycrypt}
