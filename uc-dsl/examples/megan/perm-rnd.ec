@@ -1,4 +1,4 @@
-(* random sampling lemma for permuations *)
+(* random sampling lemma for permutations *)
 
 require import AllCore Distr.
 

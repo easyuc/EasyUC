@@ -135,7 +135,7 @@ Contrastingly in the $\Ideal$ when the committer is honest, $\Simulator$'s $\Com
 Due to $\Hyb$'s definition, the environment $\Environment$'s view between $\Real$ and $\Hyb$ differs when $\Hyb$'s simulator $\Simulator_\Hyb$ aborts. Specifically, $\Simulator_\Hyb$ aborts when it receives a $\CommitMsg$ message $(y, c_0, c_1)$ and an $\OpenMsg$ message $(b', x', r)$ such that
 \begin{itemize}
 	\item $x' = \CFPTP.\Back_{b', \BackKey}(y)$
-	\item $c_{b'} = \PKE.\Enc_\EncKey(x; r)$
+	\item $c_{b'} = \PKE.\Enc_\EncKey(x'; r)$
 	\item $b' \ne b$, where $b$ is the bit $\Simulator_\Hyb$ detects from the $\CommitMsg$ message.
 \end{itemize}
 
@@ -189,16 +189,14 @@ equiv [REAL'.main ~ HYB.main : true ==> (REAL'.bad{1} <=> HYB.bad{2}) /\ (! HYB.
 \end{enumerate}
 
 \subsection{Overview}\label{sec:cfptp_overview}
-We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real$ and $\Hyb$.
+We use up to bad reasoning to show an upper bound on the environment $\Environment$'s ability to distinguish between $\Real'$ and $\Hyb$.
 
-\megan{elaborate about up to bad reasoning exaplanation}
-
-Hence, we upper-bound $\Environment$'s distinguishing advantage via defining an adversary $\CFPTPAdversary$ that finds claws for a CFPTP.
+Hence, we upper-bound $\Environment$'s distinguishing advantage via defining an adversary $\CFPTPAdversary$ that finds claws for a CFPTP, i.e. the bad event has occurred. $\CFPTPAdversary$'s probability of finding a claw upper bounds $\Environment$'s distinguishing advantage.
 
 Given a CFPTP forward key $\ForwKey$ and input $y$ (from the permutation domain $\Domain$), $\Adversary_{\Hyb}$ works as follows:
 \begin{itemize}
 	\item Run the environment that distinguishes $\Real', \Hyb$.
-	\item If $\Environment$ observes $\Simulator_\Hyb$ aborting, output $x, x'$. Otherwise, output two random elements in $\Domain$.
+	\item If $\Environment$ observes $\Simulator_\Hyb$ aborting, output $x, x'$, where $x$ is recovered from the $\CommitMsg$ message $(y, c_0, c_1)$, i.e. $x = \PKE.\Dec_{\DecKey}(c_b) = \CFPTP.\Back_{b, \BackKey}(y)$. Meanwhile $x'$ is recovered from the $\OpenMsg$ message $(b', x', r)$, i.e. $x' = \CFPTP.\Back_{b', \BackKey}(y)$, $c_b' = \PKE.\Enc_{\EncKey}(x'; r)$ and $b\ne b'$. Otherwise, output two random elements in $\Domain$.
 \end{itemize}
 This succeeds with (at least) the probability $\Simulator_\Hyb$ aborts.
 
@@ -259,7 +257,7 @@ module CFAdv : ClawFinder ( (* has access to Environment for Real' vs Hyb game *
 
 		(* Run environment for Real' vs Hyb game, with fk in the CRS. *)
 
-		if ( (* Environment sees that Sim_Hyb aborts *) ) {
+		if ( (* Environment sees that Hyb.bad == true *) ) {
 			(* Finding a claw means: forw fk x false = forw fk x true = y *)
 			return (Sim.x, Sim.x'); (* Get and return the claw from Sim's memory. *)
 		}
@@ -272,24 +270,12 @@ module CFAdv : ClawFinder ( (* has access to Environment for Real' vs Hyb game *
 
 \section{Hybrid \ref{hyb:2}: Showing $\Hyb \approx \Ideal$}
 
-\subsection{Mini Hybrids}
-To accomplish the reduction to claw-free property of the CFPTP scheme, we require the following hybrid steps:
-\begin{enumerate}
-	\item\label{hyb:2.1} $\Hyb \approx \Hyb'$ - In $\Hyb'$, switch to generating $y$ then working backward to get $x_0,x_1$, but only using $x_b$. Then, $c_{1-b}$ is computed as an encryption of $0$.
-	Also, we need to prove that sampling $y$, and generating $x_b = \CFPTP.\Back_b(y)$ is equivalent to sampling $x$, and generating $y = \CFPTP.\Forw_b(x_b)$ $b$, i.e. we can conclude $=\{y, x_b\}$.
-
-	\item\label{hyb:2.2} $\Hyb' \approx \Hyb''$ - Use INDCPA to generate $c_{1-b}$ as the encryption of $x_{1-b}$, not $0$. To fit with the INDCPA adversary, we still need to know what $b$ is, as $c_b$ is generated ourself. This discussion is in \cref{sec:indcpa_overview,sec:indcpa_easycrypt}.
-
-	\item\label{hyb:2.3} $\Hyb'' \approx \Ideal$ - The final step to $\Ideal$ now works uniformly, without knowing what $b$ is.
-\end{enumerate}
-
 \subsection{Overview}\label{sec:indcpa_overview}
-IND-CPA (i.e. semantic) security in a PKE scheme captures the property that the scheme's ciphertexts reveal only a negligible amount of information about their underlying plaintexts. We show that any adversary that distinguishes between $\Hyb$ and $\Ideal$ can be used to win the IND-CPA game (as described in \cref{sec:indcpa}) via a cryptographic reduction.
+IND-CPA (i.e. semantic) security in a PKE scheme captures the property that the scheme's ciphertexts reveal only a negligible amount of information about their underlying plaintexts. We show that any adversary that distinguishes between $\Hyb$ and $\Ideal$ can be used to win the IND-CPA game (as described in \cref{sec:indcpa_easycrypt}) via a cryptographic reduction.
 
-The outline for the reduction works as follows: Let $p$ be the probability of distinguishing ciphertexts in some IND-CPA PKE scheme. Assume (for a contradiction) that there exists an $\Environment$ distinguishing between $\Hyb$ and $\Ideal$ with probability $> p$. Next, construct an adversary $\IndcpaAdversary$ that wins the IND-CPA security game with a probability that is too high, contradicting the IND-CPA security of the PKE scheme. Thus, we conclude that $\Environment$'s distinguishing advantage is $\leq p$.
+The outline for the reduction works as follows: Assume that there exists an $\Environment$ that distinguishes between $\Hyb$ and $\Ideal$ with probability $p$. Next, construct an adversary $\IndcpaAdversary$ that wins the IND-CPA security game with the same probability.
 
-First, we describe the difference between $\Hyb$ and $\Ideal$. \megan{Add: argue that apart from $c_{1-b}$, Hyb and Ideal give the same view.}
-In $\Hyb$, observe that the $\CommitMsg$ message $(y, c_0, c_1)$ is
+First, we describe the difference between $\Hyb$ and $\Ideal$. In $\Hyb$, observe that the $\CommitMsg$ message $(y, c_0, c_1)$, given the committed bit $b$, is
 \begin{itemize}
 	\item $y = \CFPTP.\Forw_{b, \ForwKey}(x)$
 	\item $c_b = \PKE.\Enc_\EncKey(x; r_b)$
@@ -299,40 +285,54 @@ where $x, r_0, r_1$ are uniformly sampled.
 
 In $\Ideal$, the $\CommitMsg$ message $(y, c_0, c_1)$ is:
 \begin{itemize}
-	\item $y = \CFPTP.\Forw_{b, \ForwKey}(x_b)$
-	\item $c_b = \PKE.\Enc_\EncKey(x_b; r_b)$
-	\item $c_{1-b} = \PKE.\Enc_\EncKey(x_{1-b}; r_{1-b})$
+	\item $y$ sampled uniformly in $\Domain$
+	\item $c_0 = \PKE.\Enc_\EncKey(x_0; r_0)$ such that $x_0 = \CFPTP.\Back_{0, \BackKey}(y)$
+	\item $c_1 = \PKE.\Enc_\EncKey(x_1; r_1)$ such that $x_1 = \CFPTP.\Back_{1, \BackKey}(y)$
 \end{itemize}
-where $r_0, r_1$ are uniformly sampled and $x_b = \CFPTP.\Back_{b, \BackKey}(y)$.
+where $r_0, r_1$ are uniformly sampled and the committed bit $b$ is unknown.
 
 The difference between $\Hyb$ and $\Ideal$ is the encrypted plaintext for $c_{1-b}$. In essence, distinguishing $\Hyb$ and $\Ideal$, means distinguishing between whether $c_{1-b}$ is an encryption of $0$ or $x_{1-b}$.
 
-Hence, given an environment $\Environment$ that distinuguishes between $\Hyb$ and $\Ideal$ with non-negligible probability $>p$, we can construct an adversary $\IndcpaAdversary$ that breaks IND-CPA security. On input the committed bit $b$, $\IndcpaAdversary$ interacts with to a challenger $\IndcpaGM$ and does the following:
+Hence, given an environment $\Environment$ that distinguishes between $\Hyb$ and $\Ideal$ with probability $p$, we can construct an adversary $\IndcpaAdversary$ that breaks IND-CPA security with at least the same probability. On input the committed bit $b$, $\IndcpaAdversary$ interacts with to a challenger $\IndcpaGM$ and does the following:
 \begin{enumerate}
-	\item Sample $x_0, x_1, r_0, r_1$ uniformly.
-	\item Honestly compute $y = \CFPTP.\Forw_{b, \ForwKey}(x_b)$ and $c_b = \PKE.\Enc_\EncKey(x_b; r_b)$.
+	\item Sample $y \gets \Domain$ and $r_0, r_1$ uniformly from the randomness distribution.
+	\item Compute $x_0 = \CFPTP.\Back_{0, \BackKey}(y)$ and $x_1 = \CFPTP.\Back_{1, \BackKey}(y)$.
+	\item Compute $c_b = \PKE.\Enc_{\EncKey}(x_b; r_b)$.
 	\item Send $(0, x_{1-b})$ to $\IndcpaGM$, and receive an encryption $c^*$ of either $0$ or $x_{1-b}$.
 	\item Set $c_{1-b} = c^*$.
-	\item \megan{Generate the rest of $\Environment$'s view (incl. $\OpenMsg$ message)}.
-	\item Send $(y, c_b, c_{1-b})$ to $\Environment$, which outputs a bit indicating ``$\Hyb$'' or ``$\Ideal$''.
-	\item If $\Environment$ outputs ``$\Hyb$'' output 0. If $\Environment$ outputs ``$\Ideal$'' output 1.
+	\item Continue the rest of $\Hyb'$'s execution to generate the rest of $\Environment$'s view. (The view generated by $\Ideal'$ will be exactly the same.)
+	\item Send the view generated by $\Hyb'$ to $\Environment$, which outputs a bit indicating ``$\Hyb'$'' or ``$\Ideal'$''.
+	\item Output $\Environment$'s bit.
 \end{enumerate}
 
-Here, if $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(0; r_{1-b})$, it will output $\Hyb$. When $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(x_{1-b}; r_{1-b})$, it will output $\Ideal$. Hence, $\IndcpaAdversary$ outputs the correct bit with exactly the same probability that $\IndcpaAdversary$ distinguishies between $\Hyb$ and $\Real$. Then since $p$ is non-negligible, this is a contradiction.
+Here, if $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(0; r_{1-b})$, it will output $\Hyb$. When $\Environment$ sees that $c_{1-b} = \PKE.\Enc_\EncKey(x_{1-b}; r_{1-b})$, it will output $\Ideal$. Hence, $\IndcpaAdversary$ outputs the correct bit with exactly the same probability that $\IndcpaAdversary$ distinguishes between $\Hyb$ and $\Real$.
+
+\subsection{Mini Hybrids}
+To accomplish the reduction to claw-free property of the CFPTP scheme, we require the following hybrid steps:
+\begin{enumerate}
+	\item\label{hyb:2.1} $\Hyb \approx \Hyb'$ - In $\Hyb'$, switch from sampling $x\gets \Domain$ then running $\CFPTP.\Forw_b$ to get $y$ to sampling $y \gets \Domain$ then running $\CFPTP.\Back$ to get $x_0,x_1$. Next, use $x_b$ to compute the encryption $c_b$ (and discard $x_{1-b}$). Compute $c_{1-b}$ as an encryption of $0$.
+	Also, we need to prove that sampling $y$ then generating $x_b = \CFPTP.\Back_b(y)$ is equivalent to sampling $x$ then generating $y = \CFPTP.\Forw_b(x_b)$. In other words, we can conclude ${=\{y, x_b\}}$ in easycrypt. \megan{Relevant tactics are in \code{perm-rnd.ec}.}
+
+	Further, we need to eagerly sample the CRS at the beginning of $\Hyb'$'s execution such that $\ForwKey, \BackKey, \EncKey, \DecKey$ are saved in global variables. Thus, the committer can access $\BackKey$. This shift doesn't affect $\Hyb'$'s output, since the CRS is still sampled the same way using the CFPTP and PKE key generation algorithms.
+
+	\item\label{hyb:2.2} $\Hyb' \approx \Ideal'$ - Using the IND-CPA security of the PKE scheme, compute $c_{1-b}$ as the encryption of $x_{1-b}$, not $0$. To fit with the IND-CPA adversary, the bit $b$ is still known, as the ciphertext $c_b$ is still $\PKE.\Enc_{\EncKey}(x_b; r_b)$. Discussion about expressing this in easycrypt is in \cref{sec:indcpa_easycrypt}.
+
+	\item\label{hyb:2.3} $\Ideal' \approx \Ideal$ - The final step to $\Ideal$ now works uniformly, i.e. without knowing the value of $b$. \megan{The $\Ideal$ view can be generated by a $\Simulator$ who doesn't know the bit $b$}. \megan{The ciphertexts $c_b, c_{1-b}$ are uniform in the ciphertext distribution?}
+\end{enumerate}
 
 \subsection{Easycrypt Proof}\label{sec:indcpa_easycrypt}
-Following the logic from \cref{sec:indcpa_red_overview}, our goal is to show that the $\Environment$'s distinguishing advantange between $\Hyb$ and $\Ideal$ is:
+Following the logic from \cref{sec:indcpa_overview}, our goal is to show that the $\Environment$'s distinguishing advantange between $\Hyb'$ and $\Ideal'$ is:
 
-\begin{easycrypt}
-lemma HYB_IDEAL &m :
-`|Pr[HYB.main() @ &m : res] - Pr[IDEAL.main() @ &m : res]|
+\begin{easycrypt}[label=code:lem_hyb'_ideal', caption={Lemma for indistinguishability between the HYB' and IDEAL' views, relying on the IND-CPA security of the PKE scheme.}]
+lemma HYB'_IDEAL' &m :
+`|Pr[HYB'.main() @ &m : res] - Pr[IDEAL'.main() @ &m : res]|
 <= `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
 \parhead{IND-CPA Game.}
-The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that resspectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
+The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that respectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:indcpa_mods, caption={Modules that capture the IND-CPA adversary's task: guess whether ciphertext 0 or 1 was encrypted.}]
 module INDCPA_0(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x0 *)
 	proc main() : bool = {
 		var pk : pkey; var sk : skey;
@@ -368,33 +368,53 @@ module INDCPA_1(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x1*)
 
 Then, an IND-CPA adversary wins if it correctly guesses which module (\code{INDCPA\_0}, \code{INDCPA\_1}) it is in. We formalize this idea as the adversary's ``advantage'', which is captured as:
 
-\begin{easycrypt}
+\begin{easycrypt}[label=code:indcpa_adv, caption={Given an initial memory \code{m}, captures the distance between a) the probability \code{INDCPA\_0.main()} running with the \code{INDCPAAdv} returns true and b) the probability \code{INDCPA\_1.main()} running with the \code{INDCPAAdv} returns true. }]
 `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|
 \end{easycrypt}
 
-Next, we build a module for the INDCPA adversary \code{INDCPAAdv}:
+Next, we build a module for the IND-CPA adversary \code{INDCPAAdv}:
 
-\begin{easycrypt}
-module INDCPAAdv : ADV_INDCPA ( (* has access to the Environment for Hyb vs Ideal game *) ) = {
+\begin{easycrypt}[label=code:mod_indcpaadv, caption={Module representing an IND-CPA adversary constructed using an environment that distinguishes the views of $\Hyb'$ and $\Ideal'$}]
+module INDCPAAdv : ADV_INDCPA ( (* has access to the environment distinguishing HYB' vs IDEAL' *) ) = {
 	var c : plaintext;
 	proc choose(pk : pkey) : plaintext * plaintext = {
-		x <$ dplaintext;	(* Sample a random plaintext $*)
+		(* Receive the desired committed bit b *)
+
+		(* Generate the view of the protocol up to computing c_{1-b}. This is invariant in HYB' and IDEAL'. *)
+
+			(* Sample CRS *)
+			(fk, bk) <- Cfptp.keygen;
+			(pk, sk) <- Pke.dkeygen;
+
+			(* Start computing the commit message *)
+			y <$ Perm-rnd.d;	(* Sample a random element from permutation domain. $*)
+			x <- Cfptp.back(bk, y, b); (* b is known *)
+			cb <- Pke.enc(pk, x, r);
+
+		(* Pause view generation. Now, use ask the INDCPA game to choose a plaintext for the other ciphertext *)
+
 		return (zero, x)	(* Return two plaintexts: 0 and the one sampled above. *)
 	}
 
-	proc main(pk : pkey, c : ciphertext) : bool = {
-		(* Query the Hyb / Ideal distinguishing Environment with c. Receive Environment's output guessing whether it's in Hyb or Ideal *)
+	proc main(pk : pkey, c : ciphertext) : bool = { (* c is a ciphertext encrypting either zero or x *)
 
-		if ( (* Environment outputs ``Hyb'' *) ) {
+		(* Resume view generation; run the protocol until completion. This is invariant in HYB' and IDEAL'. Get the completed view. *)
+
+		(* With the generated view, query the environment distinguishing HYB' and IDEAL'. Receive the environment's bit guessing whether the view is from HYB' or IDEAL' *)
+
+		if ( (* Environment outputs 0 *) ) {
 			return 0;	(* Guess that c is an encryption of 0 *)
 		}
-		else ( (* Environment outputs ``Ideal'' *) ) {
-			return 1;	(* Guess that c is an encryption of some plaintext x *)
+		else ( (* Environment outputs 1 *) ) {
+			return 1;	(* Guess that c is an encryption of plaintext x *)
 		}
 
 	}
 }.
 \end{easycrypt}
+
+\megan{todo: write how to actually accomplish the \code{choose} procedure of the constructed INDCPA adversary INDCPAAdv}
+
 
 {\small{
 \bibliographystyle{alpha}
