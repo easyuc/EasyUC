@@ -6,11 +6,13 @@
 \usepackage[margin=1in]{geometry} % Page dimensions
 \usepackage{amsmath} % Math formulas
 \usepackage{xcolor} % Colors
+\usepackage{listings} % Listings, for code snippets
 \usepackage{hyperref} % Hyperlinks
-\usepackage[capitalise]{cleveref} % Clever References
+\usepackage[capitalise]{cleveref} % Clever References, must be loaded AFTER all other packages
 
 % == Formatting ==
 \newcommand{\parhead}[1]{\textbf{#1}~}
+\renewcommand{\emph}[1]{\textbf{#1}~}
 
 % == Inline comments ==
 \ifdefined\IsDraft
@@ -25,11 +27,10 @@
 \newcommand{\ran}[1]{\authnote{Ran}{#1}}
 
 % == Code snippets ==
-% Docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
-\usepackage{listings}
+% Listings package docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
 
 \lstdefinelanguage{easycrypt}{
-	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local}
+	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local, match, with}
 }
 
 \renewcommand*{\lstlistingname}{Code Example}
@@ -41,26 +42,27 @@
 	\minipage{\linewidth}
 	\vspace{0.5\baselineskip}
 	\lstset{ % Set inline code parameter(s)
-	  basicstyle=\small,					% print whole listing small
-	  keywordstyle=\color{black}\bfseries,	% bold black keywords
-	  identifierstyle=, 					% nothing happens
-	  commentstyle=\color{gray}, 			% white comments
-	  stringstyle=\ttfamily, 				% typewriter type for strings
-	  showstringspaces=false,				% no special string spaces
-	  tabsize=2,							% tabs typeset as 2 spaces
-	  frame=single,							% lines above and below code snippets
-	  breaklines=true,						% break lines when there's overflow
+	  basicstyle=\small,						% print whole listing small
+	  keywordstyle=\color{black}\bfseries,		% bold black keywords
+	  identifierstyle=, 						% nothing happens
+	  stringstyle=\ttfamily, 					% typewriter type for strings
+	  showstringspaces=false,					% no special string spaces
+	  tabsize=2,								% tabs typeset as 2 spaces
+	  frame=single,								% lines above and below code snippets
+	  breaklines=true,							% break lines when there's overflow
 	  language=easycrypt,
-	  morecomment=[n]{(*}{*)},				% define comment delimiters
-	  literate={~} {$\sim$}{1},				% prettier tilde
-	  captionpos=b,							% caption position is bottom
-	  #1									% other custom parameters
+	  morecomment=[n][\color{gray}]{(*}{*)},	% define normal comment delimiters, prints gray
+	  escapeinside={/*}{*/},					% special delimiters for referencing line numbers
+	  literate={~} {$\sim$}{1},					% prettier tilde
+	  captionpos=b,								% caption position is bottom
+	  numbers=left,								% print line numbers on the left
+	  #1										% other custom parameters
 	}
 }{\endminipage}
 
-% help cref
-\crefname{lstlisting}{Code example}{Code examples} % upper case only by personal preference
-\Crefname{lstlisting}{Code example}{Code examples}
+% % help cref
+\crefname{listing}{Code example}{Code examples} % upper case, personal preference
+\Crefname{listing}{Code example}{Code examples}
 
 \newcommand{\code}[1]{\texttt{#1}} % inline code
 
@@ -75,15 +77,15 @@
 \newcommand{\Dec}{\mathsf{Dec}}
 \newcommand{\Indcpa}{\mathsf{INDCPA}}
 \newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
-\newcommand{\EncKey}{{pk}}
-\newcommand{\DecKey}{{sk}}
+\newcommand{\EncKey}{\mathsf{pk}}
+\newcommand{\DecKey}{\mathsf{sk}}
 
 % CFPTP
 \newcommand{\CFPTP}{\mathsf{CFPTP}}
 \newcommand{\Forw}{\mathsf{Forw}}
 \newcommand{\Back}{\mathsf{Back}}
-\newcommand{\ForwKey}{{fk}}
-\newcommand{\BackKey}{{bk}}
+\newcommand{\ForwKey}{\mathsf{fk}}
+\newcommand{\BackKey}{\mathsf{bk}}
 \newcommand{\Domain}{D}
 
 
@@ -101,6 +103,7 @@
 \newcommand{\Real}{{\mathsf{REAL}}}
 \newcommand{\bad}{{\mathsf{bad}}}
 \newcommand{\True}{1}
+\newcommand{\G}{\mathsf{G}}
 
 
 % == Document title ==
@@ -116,14 +119,17 @@
 
 \subsection{Claw-free pair of trapdoor permutations (CFPTP)}
 \megan{definition, algs}
+Let $\ForwKey$ be the scheme's forward key and $\BackKey$ be the scheme's backward key.
 
 \subsection{Public key encryption (PKE)}
 \megan{definition, algs}
+Let $\EncKey$ be the scheme's encryption key and $\DecKey$ be the scheme's decryption key.
 
-\section{Proof Strategy}
+\section{Proof strategy overview}
+
+The proof of indistinguishability between the $\Real$ and $\Ideal$ executions proceeds via a sequence of hybrid games. First, we define the hybrid execution $\Hyb$, which is an intermediate step between $\Real$ and $\Ideal$.
 
 \subsection{Defining the hybrid execution: $\Hyb$}
-First, we define a hybrid $\Hyb$ that is works as an intermediate step between $\Real$ and $\Ideal$. $\Hyb$ works as follows:
 
 $\Hyb$ to works exactly like the $\Ideal$ execution except for the following case: If the committer is \underline{not} corrupted, the simulator $\Simulator_{\Hyb}$ learns the real committed bit $b$. This is because, like in $\Ideal$, $\Simulator_{\Hyb}$ generates the CRS string using both the CFPTP and PKE's key generation algorithms. Hence, $\Simulator_{\Hyb}$ has access to the CFPTP's backward key $\BackKey$ and the PKE scheme's secret (or decryption) key $\DecKey$. Thus, upon seeing the committer's message $\CommitMsg = (y, c_0, c_1)$, $\Simulator_{\Hyb}$ can recover $b$ because it can decrypt and run the permutation backwards.
 
@@ -144,11 +150,12 @@ This is a ``bad event'' because $\Simulator_\Hyb$ found a claw for the pair of t
 \subsection{Sequence of Hybrids}
 The proof proceeed via a sequence of hybrids. The two main hybrids are:
 \begin{enumerate}
-	\item\label{hyb:1} $\Real \approx \Hyb$ - This is proved via a reduction to the claw-free property of the CFPTP scheme.
-	\item\label{hyb:2} $\Hyb \approx \Ideal$ - This is proved via a reduction to the IND-CPA security of the PKE scheme.
+	\item\label{hyb:1} $\Real \approx \Hyb$ - This is proved via a reduction to the claw-free property of the CFPTP scheme. \cref{sec:hyb1} explains the formal proof.
+	\item\label{hyb:2} $\Hyb \approx \Ideal$ - This is proved via a reduction to the IND-CPA security of the PKE scheme. \cref{sec:hyb1} explains the formal proof.
 \end{enumerate}
 
-The overall goal is the show that
+\subsection{The proof's goal lemma}
+The overall goal is the show that the ability to distinguish between $\Real$ and $\Hyb$ is bounded by the probability of finding a claw in the CFPTP scheme, summed with the probability of distinguishing ciphertexts in the PKE scheme.
 
 \begin{easycrypt}[label=code:lem_real_ideal, caption=Main lemma for indistinguishability between $\Real$ and $\Ideal$ views]
 lemma REAL_IDEAL &m :
@@ -157,7 +164,7 @@ lemma REAL_IDEAL &m :
    + `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
-\section{Hybrid \ref{hyb:1}: Showing $\Real \approx \Hyb$}
+\section{Hybrid \ref{hyb:1}: Showing $\Real \approx \Hyb$}\label{sec:hyb1}
 
 \subsection{Mini Hybrids}
 To accomplish the reduction to claw-free property of the CFPTP scheme, we require the following hybrid steps:
@@ -168,7 +175,7 @@ To accomplish the reduction to claw-free property of the CFPTP scheme, we requir
 
 	Ultimately, easycrypt's \code{byequiv} tactic will require proving
 
-\begin{easycrypt}[label=code:real'_equiv_hyb, caption=Claim required to utilize ``up to bad reasoning'']
+\begin{easycrypt}[label=code:up_to_bad_claim, caption=Claim required to utilize ``up to bad reasoning'']
 equiv [REAL'.main ~ HYB.main : true ==> (REAL'.bad{1} <=> HYB.bad{2}) /\ (! HYB.bad{2} => ={res})]
 \end{easycrypt}
 
@@ -200,10 +207,10 @@ Given a CFPTP forward key $\ForwKey$ and input $y$ (from the permutation domain 
 \end{itemize}
 This succeeds with (at least) the probability $\Simulator_\Hyb$ aborts.
 
-\subsection{Easycrypt Proof}\label{sec:cfptp_easycrypt}
-Since $\Environment$'s view is identical between $\Real$ and $\Hyb$ except when $\Simulator_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Simulator_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
+\subsection{Easycrypt Proof for showing $\Real' \approx \Hyb$}\label{sec:cfptp_easycrypt}
+Since $\Environment$'s view is identical between $\Real'$ and $\Hyb$ except when $\Simulator_\Hyb$ aborts, most of the easycrypt proof should be a series of rewritings and transformations that do not give $\Environment$ any distinguishing advantage. Then, we can upper bound $\Environment$'s distinguishing advantage by the probability of the ``bad event'', i.e. when $\Simulator_\Hyb$ finds a claw for the pair of trapdoor permutations. We can express this via the following lemma:
 
-\begin{easycrypt}[label=code:lem_real'_equiv_hyb, caption=Lemma for indistinguishability between $\Real'$ and $\Hyb$ views.]
+\begin{easycrypt}[label=code:lem_real_prime_equiv_hyb, caption=Lemma for indistinguishability between $\Real'$ and $\Hyb$ views.]
 lemma REAL'_HYB &m :
 `|Pr[REAL'.main() @ &m : res] - Pr[HYB.main() @ &m : res]|
 <= Pr[CFP_Game(CFAdv).main() @ &m : res].
@@ -213,7 +220,7 @@ lemma REAL'_HYB &m :
 
 We also need the following helper lemmas:
 
-\begin{easycrypt}[label=code:lem_real'_equiv_hyb_main, caption={Lemma stating that if between $\Real'$ and $\Hyb$ are indistinguishable, then if $\Hyb$ doesn't abort, the results of $\Real'$ and $\Hyb$ are the same. This helps to prove \cref{code:real'_equiv_hyb}.}]
+\begin{easycrypt}[label=code:lem_real_prime_equiv_hyb_main, caption={Lemma stating that if between $\Real'$ and $\Hyb$ are indistinguishable, then if $\Hyb$ doesn't abort, the results of $\Real'$ and $\Hyb$ are the same. This helps to prove \cref{code:up_to_bad_claim}.}]
 lemma REAL'_HYB_main &m :
 equiv[REAL'.main ~ HYB.main : true => ! HYB.bad{2} => ={ res } ].
 \end{easycrypt}
@@ -225,7 +232,11 @@ lemma HYB_main_abort_ub &m :
 Pr[HYB.main() @ &m : HYB.bad == true] <= Pr[CFP_Game(CFAdv).main() @ &m : res].
 \end{easycrypt}
 
-To prove this, we define a claw-finding adversary. First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
+To prove this, we need to instantiate a claw-finding adversary.
+
+\subsubsection{Claw-free pair game}
+
+First, in ${\sf Cfptp.ec}$, we defined the claw-free pair game is defined as
 
 \begin{easycrypt}[label=code:mod_cfgame, caption={Module representing the claw-finding game.}]
 module CFP_Game(Cf: ClawFinder) = {
@@ -239,6 +250,8 @@ module CFP_Game(Cf: ClawFinder) = {
 	}
 }.
 \end{easycrypt}
+
+\subsubsection{Defining a claw-finding adversary}
 
 Now, define the claw-finding module type:
 
@@ -268,7 +281,7 @@ module CFAdv : ClawFinder ( (* has access to Environment for Real' vs Hyb game *
 }.
 \end{easycrypt}
 
-\section{Hybrid \ref{hyb:2}: Showing $\Hyb \approx \Ideal$}
+\section{Hybrid \ref{hyb:2}: Showing $\Hyb \approx \Ideal$}\label{sec:hyb2}
 
 \subsection{Overview}\label{sec:indcpa_overview}
 IND-CPA (i.e. semantic) security in a PKE scheme captures the property that the scheme's ciphertexts reveal only a negligible amount of information about their underlying plaintexts. We show that any adversary that distinguishes between $\Hyb$ and $\Ideal$ can be used to win the IND-CPA game (as described in \cref{sec:indcpa_easycrypt}) via a cryptographic reduction.
@@ -313,24 +326,26 @@ To accomplish the reduction to claw-free property of the CFPTP scheme, we requir
 	\item\label{hyb:2.1} $\Hyb \approx \Hyb'$ - In $\Hyb'$, switch from sampling $x\gets \Domain$ then running $\CFPTP.\Forw_b$ to get $y$ to sampling $y \gets \Domain$ then running $\CFPTP.\Back$ to get $x_0,x_1$. Next, use $x_b$ to compute the encryption $c_b$ (and discard $x_{1-b}$). Compute $c_{1-b}$ as an encryption of $0$.
 	Also, we need to prove that sampling $y$ then generating $x_b = \CFPTP.\Back_b(y)$ is equivalent to sampling $x$ then generating $y = \CFPTP.\Forw_b(x_b)$. In other words, we can conclude ${=\{y, x_b\}}$ in easycrypt. \megan{Relevant tactics are in \code{perm-rnd.ec}.}
 
-	Further, we need to eagerly sample the CRS at the beginning of $\Hyb'$'s execution such that $\ForwKey, \BackKey, \EncKey, \DecKey$ are saved in global variables. Thus, the committer can access $\BackKey$. This shift doesn't affect $\Hyb'$'s output, since the CRS is still sampled the same way using the CFPTP and PKE key generation algorithms.
+	Further, we need to eagerly sample the CRS at the beginning of $\Hyb'$'s execution such that $\ForwKey, \BackKey, \EncKey, \DecKey$ are saved in global variables. Thus, the committer can access $\BackKey$. This shift doesn't affect $\Hyb'$'s output, since the CRS is still sampled the same way using the CFPTP and PKE key generation algorithms. Additionally, we need to eagerly one of the encryption randomness values,specifically $r_{1-b}$ from $\Hyb$, to match how sampling occurs in the IND-CPA game (\cref{line:eager_r0,line:eager_r1} in \cref{code:indcpa_mods}).
 
 	\item\label{hyb:2.2} $\Hyb' \approx \Ideal'$ - Using the IND-CPA security of the PKE scheme, compute $c_{1-b}$ as the encryption of $x_{1-b}$, not $0$. To fit with the IND-CPA adversary, the bit $b$ is still known, as the ciphertext $c_b$ is still $\PKE.\Enc_{\EncKey}(x_b; r_b)$. Discussion about expressing this in easycrypt is in \cref{sec:indcpa_easycrypt}.
 
-	\item\label{hyb:2.3} $\Ideal' \approx \Ideal$ - The final step to $\Ideal$ now works uniformly, i.e. without knowing the value of $b$. \megan{The $\Ideal$ view can be generated by a $\Simulator$ who doesn't know the bit $b$}. \megan{The ciphertexts $c_b, c_{1-b}$ are uniform in the ciphertext distribution?}
+	\item\label{hyb:2.3} $\Ideal' \approx \Ideal$ - The final step to $\Ideal$ now works uniformly, i.e. without knowing the value of $b$. In other words, we argue that an $\Ideal$ view indistinguishable from $\Ideal'$ can be generated by a $\Simulator$ who doesn't know the bit $b$. This requires arguing that $\Ideal'$'s ciphertexts $c_b, c_{1-b}$ are uniform in the ciphertext distribution (\cref{sec:ideal_prime_equiv_ideal}).
 \end{enumerate}
 
-\subsection{Easycrypt Proof}\label{sec:indcpa_easycrypt}
+\subsection{Easycrypt Proof for showing $\Hyb' \approx \Ideal'$}\label{sec:indcpa_easycrypt}
 Following the logic from \cref{sec:indcpa_overview}, our goal is to show that the $\Environment$'s distinguishing advantange between $\Hyb'$ and $\Ideal'$ is:
 
-\begin{easycrypt}[label=code:lem_hyb'_ideal', caption={Lemma for indistinguishability between the HYB' and IDEAL' views, relying on the IND-CPA security of the PKE scheme.}]
+\begin{easycrypt}[label=code:lem_hyb_prime_ideal_prime, caption={Lemma for indistinguishability between the HYB' and IDEAL' views, relying on the IND-CPA security of the PKE scheme.}]
 lemma HYB'_IDEAL' &m :
 `|Pr[HYB'.main() @ &m : res] - Pr[IDEAL'.main() @ &m : res]|
 <= `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|.
 \end{easycrypt}
 
-\parhead{IND-CPA Game.}
-The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that respectively encrypt two adversarially chosen plaintexts $x_0, x_1$:
+\subsubsection{Formalizing the IND-CPA Game}
+The IND-CPA game is formalized in ${\sf Pke.ec}$ via defining two modules \code{INDCPA\_0}, \code{INDCPA\_1} that respectively encrypt two adversarially chosen plaintexts $x_0, x_1$.
+
+The proof will ultimately show that $\Hyb'$ is equivalent to \code{INDCPA\_0(INDCPAAdv)} and \code{INDCPA\_1(INDCPAAdv)} is equivalent to $\Ideal'$.
 
 \begin{easycrypt}[label=code:indcpa_mods, caption={Modules that capture the IND-CPA adversary's task: guess whether ciphertext 0 or 1 was encrypted.}]
 module INDCPA_0(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x0 *)
@@ -341,7 +356,7 @@ module INDCPA_0(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x0 *)
 		var b : bool;
 		var c : ciphertext;
 		(pk, sk) <$ dkeygen;         		(* Generate keys for PKE *)
-		r <$ drand;                  		(* Select randomness used in PKE *)
+		r <$ drand;                  		(* Select randomness used in PKE *)/*\label{line:eager_r0}*/
 		(x0, x1) <@ INDCPAAdv.choose(pk);	(* Adv chooses plaintexts x0, x1 *)
 		c <- enc pk x0 r;            		(* Encrypt x0 *)
 		b <@ INDCPAAdv.main(pk, c);			(* Adv guesses which ciphertext was encrypted *)
@@ -357,7 +372,7 @@ module INDCPA_1(INDCPAAdv : ADV_INDCPA) = { (* Always encrypts x1*)
 		var b : bool;
 		var c : ciphertext;
 		(pk, sk) <$ dkeygen;         		(* Generate keys for PKE *)
-		r <$ drand;                  		(* Select randomness used in PKE *)
+		r <$ drand;                  		(* Select randomness used in PKE *)/*\label{line:eager_r1}*/
 		(x0, x1) <@ INDCPAAdv.choose(pk);	(* Adv chooses plaintexts x0, x1 *)
 		c <- enc pk x1 r;            		(* Encrypt x1 *)
 		b <@ INDCPAAdv.main(pk, c);			(* Adv guesses which ciphertext was encrypted *)
@@ -372,49 +387,80 @@ Then, an IND-CPA adversary wins if it correctly guesses which module (\code{INDC
 `|Pr[INDCPA_0(INDCPAAdv).main() @ &m : res] - Pr[INDCPA_1(INDCPAAdv).main() @ &m : res]|
 \end{easycrypt}
 
-Next, we build a module for the IND-CPA adversary \code{INDCPAAdv}:
+\subsubsection{The game $\G$}
+To appropriately model an IND-CPA adversary, we need the ability to suspend and resume a protocol execution. In particular, we need to instantiate a game $\G$ that works as follows:
 
-\begin{easycrypt}[label=code:mod_indcpaadv, caption={Module representing an IND-CPA adversary constructed using an environment that distinguishes the views of $\Hyb'$ and $\Ideal'$}]
-module INDCPAAdv : ADV_INDCPA ( (* has access to the environment distinguishing HYB' vs IDEAL' *) ) = {
-	var c : plaintext;
+\parhead{$\G$:}
+\begin{enumerate}
+	\item $\G$ is parameterized by the UC $\Environment$ (and $\Adversary$) for distinguishing $\Hyb'$ vs $\Ideal'$. $\G$ works as follows:
+	\begin{itemize}
+		\item If $\Adversary$ corrupts the committer (or if $\Environment$ gets or has control and simply decides to return its Boolean result early), run the protocol execution to completion and output $\Environment$'s final Boolean judgment that guesses whether the execution is $\Hyb'$ or $\Ideal'$.
+		\item If the committer is honest, run the protocol execution up until the computation $c_{1-b} = \PKE.\Enc_{\EncKey}(0; r_{1-b})$. Rather than computing $c_{1-b}$, $\G$ \emph{suspends} the protocol's execution and returns $x_{1-b}$ as a global variable.
+
+		Additionally, $\G$ needs the ability to \emph{resume} the protocol's execution after suspension, upon receiving an input that is the encryption of either $0$ or $x_{1-b}$ and setting $c_{1-b}$ to be this input. Then, the protocol runs to completion and produces $\Environment$'s final Boolean judgment that guesses whether the execution is $\Hyb'$ or $\Ideal'$.
+
+	\end{itemize}
+\end{enumerate}
+
+\subsubsection{The IND-CPA adversary \code{INDCPAAdv}}
+Using $\G$, we build a module for the IND-CPA adversary \code{INDCPAAdv} that works as follows:
+
+\begin{easycrypt}[label=code:indcpaadv, caption={Module representing an IND-CPA adversary constructed using the game $\G$.}]
+type g_out = [		(* Type for G.start()'s possible outputs *)
+	| bool			(* G.start() output a bool indicating HYB' or IDEAL'*)
+	| plaintext		(* G.start() output a x_{1-b} *)
+].
+
+module INDCPAAdv : ADV_INDCPA ( (* Environment distinguishing HYB' vs IDEAL' *) ) = {
+	module G = G( (* Environment distinguishing HYB' vs IDEAL' *) )
+
+	(* Global vars *)
+	var res : bool option; (* Environment's guess, which is returned by G *)
+
 	proc choose(pk : pkey) : plaintext * plaintext = {
-		(* Receive the desired committed bit b *)
+		var result : g_out;
+		(* Start G's execution. If the committer is corrupted, return the Environment's bool guess of HYB' vs IDEAL'. If the committer is honest, generate the view of the protocol up to computing c_{1-b} and output a plaintext x_{1-b}. *)
+		result <@ G.start();
 
-		(* Generate the view of the protocol up to computing c_{1-b}. This is invariant in HYB' and IDEAL'. *)
+		match result with
+		| bool b -> { /*\label{line:unif_ptxts_start}*/
+			(* If result is a bool, save b globally. *)
+			res <- b;
 
-			(* Sample CRS *)
-			(fk, bk) <- Cfptp.keygen;
-			(pk, sk) <- Pke.dkeygen;
-
-			(* Start computing the commit message *)
-			y <$ Perm-rnd.d;	(* Sample a random element from permutation domain. $*)
-			x <- Cfptp.back(bk, y, b); (* b is known *)
-			cb <- Pke.enc(pk, x, r);
-
-		(* Pause view generation. Now, use ask the INDCPA game to choose a plaintext for the other ciphertext *)
-
-		return (zero, x)	(* Return two plaintexts: 0 and the one sampled above. *)
+			(* Then, sample and return two random plaintexts. *)
+			p0 <$ dplaintext;
+			p1 <$ dplaintext;
+			return (p0, p1);
+		} /*\label{line:unif_ptxts_end}*/
+		| Pke.plaintext x -> {
+			(* If result is a plaintext, then note that G suspended. Then, we need to resume the computation in main. *)
+			return (zero, x);
+		}
 	}
 
 	proc main(pk : pkey, c : ciphertext) : bool = { (* c is a ciphertext encrypting either zero or x *)
-
-		(* Resume view generation; run the protocol until completion. This is invariant in HYB' and IDEAL'. Get the completed view. *)
-
-		(* With the generated view, query the environment distinguishing HYB' and IDEAL'. Receive the environment's bit guessing whether the view is from HYB' or IDEAL' *)
-
-		if ( (* Environment outputs 0 *) ) {
-			return 0;	(* Guess that c is an encryption of 0 *)
+		match res with
+		| Some guess -> {
+			(* Environment in G has already guessed HYB' or IDEAL' *)
+			return guess;
 		}
-		else ( (* Environment outputs 1 *) ) {
-			return 1;	(* Guess that c is an encryption of plaintext x *)
-		}
+		| None -> {
+			(* Resume the protocol execution until it completes completion. Save the environment's bool guess for HYB' vs IDEAL'. *)
+			guess <- G.resume(c);
 
+			if ( guess = 0 ) {
+				return 0;	(* Guess that c is an encryption of 0 *)
+			}
+			else ( guess = 1 ) {
+				return 1;	(* Guess that c is an encryption of plaintext x *)
+			}
+		}
 	}
 }.
 \end{easycrypt}
 
-\megan{todo: write how to actually accomplish the \code{choose} procedure of the constructed INDCPA adversary INDCPAAdv}
-
+\subsubsection{Note about $\Ideal' \approx \Ideal$}\label{sec:ideal_prime_equiv_ideal}
+To see that $\Ideal' \approx \Ideal$, note that \code{INDCPA\_1(INDCPAAdv)} knows $b$ (assuming we get to that point of the computation), but the way it computes the ciphertexts $c_0, c_1$ is uniform in $b$. The underlying plaintexts $x_b, x_{1-b}$ are sampled uniformly (see \cref{line:unif_ptxts_start} to \cref{line:unif_ptxts_end} in \cref{code:indcpaadv}). Also, the encryption randomness $r_b, r_{1-b}$ are sampled uniformly. Consequently, the encryptions of $x_b, x_{1-b}$ are uniform values in the ciphertext distribution. This allows us to argue that $\Ideal' \approx \Ideal$ when $\Ideal$ doesn't know the committed bit $b$.
 
 {\small{
 \bibliographystyle{alpha}
