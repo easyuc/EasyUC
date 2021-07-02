@@ -70,6 +70,7 @@
 \newcommand{\OpenMsg}{\mathsf{Open}}
 \newcommand{\CommitMsg}{\mathsf{Commit}}
 
+\newcommand{\SecParam}{\lambda}
 % PKE
 \newcommand{\PKE}{\mathsf{PKE}}
 \newcommand{\Gen}{\mathsf{Gen}}
@@ -118,12 +119,24 @@
 \section{Preliminaries}
 
 \subsection{Claw-free pair of trapdoor permutations (CFPTP)}
-\megan{definition, algs}
-Let $\ForwKey$ be the scheme's forward key and $\BackKey$ be the scheme's backward key.
+A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as $\CFPTP = (\Gen, \Forw, \Back, \Dec)$, such that:
+\begin{itemize}
+	\item $\Gen(1^\SecParam)$: Outputs a forward key $\ForwKey$ and backward key $\BackKey$.
+	\item $\Forw_{b, \ForwKey}(x)$: Outputs the result $y\in \Domain$ of running permutation $b$ forwards.
+	\item $\Back_{b, \BackKey}(y)$: Outputs the result $x\in \Domain$ of running permutation $b$ backwards.
+\end{itemize}
+We require that $\CFPTP$ is claw-free: given only $\ForwKey$, it is hard to find $x_0, x_1$ such that $\Forw_{b, \ForwKey}(x_0) = \Forw_{b, \ForwKey}(x_1)$
+
 
 \subsection{Public key encryption (PKE)}
-\megan{definition, algs}
-Let $\EncKey$ be the scheme's encryption key and $\DecKey$ be the scheme's decryption key.
+
+A \emph{public key encryption scheme} $\PKE = (\Gen, \Enc, \Dec)$ works as follows:
+\begin{itemize}
+	\item $\Gen(1^\SecParam)$: Outputs an encryption key $\EncKey$ and decryption key $\DecKey$.
+	\item $\Enc_{\EncKey}(m)$: Outputs an encryption of message $m$.
+	\item $\Dec_{\DecKey}(c)$: Outputs the decrypton of a ciphertext $c$.
+\end{itemize}
+We require that $\PKE$ is IND-CPA (i.e. semantically) secure.
 
 \section{Proof strategy overview}
 
