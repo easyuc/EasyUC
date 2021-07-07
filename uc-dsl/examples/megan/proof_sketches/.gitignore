@@ -6,9 +6,10 @@
 *.toc
 *.snm
 *.out
-*.nav 
+*.nav
 *.dvi
 *.lb
 *.fdb_latexmk
 *.fls
 *.ps
+*.lol
