@@ -30,8 +30,6 @@ axiom keygen_ll: is_lossless dkeygen.
 pred valid_keys (keys: pkey * skey) = support dkeygen keys.
 
 op enc(pk:pkey, m:plaintext, r:rand) : ciphertext.
-op oblivenc(pk:pkey, r:rand) : ciphertext.
-op oblivenc_inv(pk:pkey, c: ciphertext) : rand. (* Can also include sk : skey, depending on scheme *)
 op dec(sk:skey, c:ciphertext) : plaintext.
 
 (* For checking correctness of encryption scheme *)
@@ -39,14 +37,6 @@ axiom correctness (pk: pkey, sk: skey, m: plaintext, r : rand):
   valid_keys (pk, sk) =>
   dec sk (enc pk m r) = m.
 
-(* Oblivenc is a bijection *)
-axiom oblivenc_bij (pk : pkey, r : rand):
-  oblivenc_inv pk (oblivenc pk r) = r.
-
-axiom oblivenc_inv_bij (pk : pkey, c : ciphertext):
-  oblivenc pk (oblivenc_inv pk c) = c.
-
-(* TODO: update indcpa to use oblivenc *)
 module type ADV_INDCPA = {
   proc choose(pk : pkey) : plaintext * plaintext
   proc main(pk : pkey, c : ciphertext) : bool

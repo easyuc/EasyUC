@@ -285,7 +285,7 @@ functionality Real implements Dir Adv {
 
 	  y <- Cfptp.forw fk x b; (* compute f_b(x), where f_b is a cfptp. *)
 	  c_b <- Pke.enc pk x (b ? r_true : r_false); (* ciphertext c_b. Encrypt x using r_true if b = true, r_false if b = false *)
-	  c_nb <- Pke.oblivenc pk (b ? r_false : r_true); (* ciphertext c_{1-b}. Obliviously encrypt to generate a ciphertext using randomness r_false if b = true, r_true if b = false *)
+	  c_nb <- Pke.enc pk Pke.zero (b ? r_false : r_true); (* ciphertext c_{1-b}. Encrypt 0 using r_false if b = true, r_true if b = false *)
 
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
