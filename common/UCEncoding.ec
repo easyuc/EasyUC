@@ -188,246 +188,246 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_pair.
 
-(* triple EPDPs *)
+(* tuple3 EPDPs *)
 
-op triple_decon (x : 'a * 'b * 'c) : 'a * ('b * 'c) =
+op tuple3_decon (x : 'a * 'b * 'c) : 'a * ('b * 'c) =
   (x.`1, (x.`2, x.`3)).
 
-op triple_con (x : 'a * ('b * 'c)) : 'a * 'b * 'c =
+op tuple3_con (x : 'a * ('b * 'c)) : 'a * 'b * 'c =
   (x.`1, x.`2.`1, x.`2.`2).
 
-lemma triple_deconK (x : 'a * 'b * 'c) :
-  triple_con (triple_decon x) = x.
+lemma tuple3_deconK (x : 'a * 'b * 'c) :
+  tuple3_con (tuple3_decon x) = x.
 proof.
-rewrite /triple_con /triple_decon.
+rewrite /tuple3_con /tuple3_decon.
 by case x.
 qed.
 
-lemma triple_conK (x : 'a * ('b * 'c)) :
-  triple_decon (triple_con x) = x.
+lemma tuple3_conK (x : 'a * ('b * 'c)) :
+  tuple3_decon (tuple3_con x) = x.
 proof.
-rewrite /triple_con /triple_decon.
+rewrite /tuple3_con /tuple3_decon.
 case x => /= [[x1 x2] //].
 qed.
 
-op nosmt epdp_triple
+op nosmt epdp_tuple3
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp) :
        ('a * 'b * 'c, 'a' * 'b' * 'c') epdp =
   epdp_comp
-  (epdp_bijection triple_con triple_decon)
+  (epdp_bijection tuple3_con tuple3_decon)
   (epdp_comp
    (epdp_pair epdp1 (epdp_pair epdp2 epdp3))
-   (epdp_bijection triple_decon triple_con)).
+   (epdp_bijection tuple3_decon tuple3_con)).
 
-lemma valid_epdp_triple
+lemma valid_epdp_tuple3
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
-  valid_epdp (epdp_triple epdp1 epdp2 epdp3).
+  valid_epdp (epdp_tuple3 epdp1 epdp2 epdp3).
 proof.
 move => valid1 valid2 valid3.
 rewrite valid_epdp_comp 1:epdp_sub.
-move => x; by rewrite triple_conK.
-move => x; by rewrite triple_deconK.
+move => x; by rewrite tuple3_conK.
+move => x; by rewrite tuple3_deconK.
 rewrite valid_epdp_comp epdp_sub // 1:epdp_sub //.
-move => x; by rewrite triple_deconK.
-move => x; by rewrite triple_conK.
+move => x; by rewrite tuple3_deconK.
+move => x; by rewrite tuple3_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_triple.
+hint rewrite epdp_sub : valid_epdp_tuple3.
 
-(* quadruple EPDPs *)
+(* tuple4 EPDPs *)
 
-op quadruple_decon (x : 'a * 'b * 'c * 'd) : 'a * ('b * 'c * 'd) =
+op tuple4_decon (x : 'a * 'b * 'c * 'd) : 'a * ('b * 'c * 'd) =
   (x.`1, (x.`2, x.`3, x.`4)).
 
-op quadruple_con (x : 'a * ('b * 'c * 'd)) : 'a * 'b * 'c * 'd =
+op tuple4_con (x : 'a * ('b * 'c * 'd)) : 'a * 'b * 'c * 'd =
   (x.`1, x.`2.`1, x.`2.`2, x.`2.`3).
 
-lemma quadruple_deconK (x : 'a * 'b * 'c * 'd) :
-  quadruple_con (quadruple_decon x) = x.
+lemma tuple4_deconK (x : 'a * 'b * 'c * 'd) :
+  tuple4_con (tuple4_decon x) = x.
 proof.
-rewrite /quadruple_con /quadruple_decon.
+rewrite /tuple4_con /tuple4_decon.
 by case x.
 qed.
 
-lemma quadruple_conK (x : 'a * ('b * 'c * 'd)) :
-  quadruple_decon (quadruple_con x) = x.
+lemma tuple4_conK (x : 'a * ('b * 'c * 'd)) :
+  tuple4_decon (tuple4_con x) = x.
 proof.
-rewrite /quadruple_con /quadruple_decon.
+rewrite /tuple4_con /tuple4_decon.
 case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_quadruple
+op nosmt epdp_tuple4
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
        ('a * 'b * 'c * 'd, 'a' * 'b' * 'c' * 'd') epdp =
   epdp_comp
-  (epdp_bijection quadruple_con quadruple_decon)
+  (epdp_bijection tuple4_con tuple4_decon)
   (epdp_comp
-   (epdp_pair epdp1 (epdp_triple epdp2 epdp3 epdp4))
-   (epdp_bijection quadruple_decon quadruple_con)).
+   (epdp_pair epdp1 (epdp_tuple3 epdp2 epdp3 epdp4))
+   (epdp_bijection tuple4_decon tuple4_con)).
 
-lemma valid_epdp_quadruple
+lemma valid_epdp_tuple4
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 =>
-  valid_epdp (epdp_quadruple epdp1 epdp2 epdp3 epdp4).
+  valid_epdp (epdp_tuple4 epdp1 epdp2 epdp3 epdp4).
 proof.
 move => valid1 valid2 valid3 valid4.
 rewrite valid_epdp_comp 1:valid_epdp_bijection.
-move => x; by rewrite quadruple_conK.
-move => x; by rewrite quadruple_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_triple //.
+move => x; by rewrite tuple4_conK.
+move => x; by rewrite tuple4_deconK.
+rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple3 //.
 rewrite valid_epdp_bijection.
-move => x; by rewrite quadruple_deconK.
-move => x; by rewrite quadruple_conK.
+move => x; by rewrite tuple4_deconK.
+move => x; by rewrite tuple4_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_quadruple.
+hint rewrite epdp_sub : valid_epdp_tuple4.
 
-(* quintuple EPDPs *)
+(* tuple5 EPDPs *)
 
-op quintuple_decon (x : 'a * 'b * 'c * 'd * 'e) : 'a * ('b * 'c * 'd * 'e) =
+op tuple5_decon (x : 'a * 'b * 'c * 'd * 'e) : 'a * ('b * 'c * 'd * 'e) =
   (x.`1, (x.`2, x.`3, x.`4, x.`5)).
 
-op quintuple_con (x : 'a * ('b * 'c * 'd * 'e)) : 'a * 'b * 'c * 'd * 'e =
+op tuple5_con (x : 'a * ('b * 'c * 'd * 'e)) : 'a * 'b * 'c * 'd * 'e =
   (x.`1, x.`2.`1, x.`2.`2, x.`2.`3, x.`2.`4).
 
-lemma quintuple_deconK (x : 'a * 'b * 'c * 'd * 'e) :
-  quintuple_con (quintuple_decon x) = x.
+lemma tuple5_deconK (x : 'a * 'b * 'c * 'd * 'e) :
+  tuple5_con (tuple5_decon x) = x.
 proof.
-rewrite /quintuple_con /quintuple_decon.
+rewrite /tuple5_con /tuple5_decon.
 by case x.
 qed.
 
-lemma quintuple_conK (x : 'a * ('b * 'c * 'd * 'e)) :
-  quintuple_decon (quintuple_con x) = x.
+lemma tuple5_conK (x : 'a * ('b * 'c * 'd * 'e)) :
+  tuple5_decon (tuple5_con x) = x.
 proof.
-rewrite /quintuple_con /quintuple_decon.
+rewrite /tuple5_con /tuple5_decon.
 case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_quintuple
+op nosmt epdp_tuple5
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp) :
        ('a * 'b * 'c * 'd * 'e, 'a' * 'b' * 'c' * 'd' * 'e') epdp =
   epdp_comp
-  (epdp_bijection quintuple_con quintuple_decon)
+  (epdp_bijection tuple5_con tuple5_decon)
   (epdp_comp
-   (epdp_pair epdp1 (epdp_quadruple epdp2 epdp3 epdp4 epdp5))
-   (epdp_bijection quintuple_decon quintuple_con)).
+   (epdp_pair epdp1 (epdp_tuple4 epdp2 epdp3 epdp4 epdp5))
+   (epdp_bijection tuple5_decon tuple5_con)).
 
-lemma valid_epdp_quintuple
+lemma valid_epdp_tuple5
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
        epdp5 : ('e, 'e') epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 =>
-  valid_epdp (epdp_quintuple epdp1 epdp2 epdp3 epdp4 epdp5).
+  valid_epdp (epdp_tuple5 epdp1 epdp2 epdp3 epdp4 epdp5).
 proof.
 move => valid1 valid2 valid3 valid4 valid5.
 rewrite valid_epdp_comp 1:valid_epdp_bijection.
-move => x; by rewrite quintuple_conK.
-move => x; by rewrite quintuple_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_quadruple //.
+move => x; by rewrite tuple5_conK.
+move => x; by rewrite tuple5_deconK.
+rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple4 //.
 rewrite valid_epdp_bijection.
-move => x; by rewrite quintuple_deconK.
-move => x; by rewrite quintuple_conK.
+move => x; by rewrite tuple5_deconK.
+move => x; by rewrite tuple5_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_quintuple.
+hint rewrite epdp_sub : valid_epdp_tuple5.
 
-(* sextuple EPDPs *)
+(* tuple6 EPDPs *)
 
-op sextuple_decon
+op tuple6_decon
    (x : 'a * 'b * 'c * 'd * 'e * 'f) : 'a * ('b * 'c * 'd * 'e * 'f) =
   (x.`1, (x.`2, x.`3, x.`4, x.`5, x.`6)).
 
-op sextuple_con
+op tuple6_con
    (x : 'a * ('b * 'c * 'd * 'e * 'f)) : 'a * 'b * 'c * 'd * 'e * 'f =
   (x.`1, x.`2.`1, x.`2.`2, x.`2.`3, x.`2.`4, x.`2.`5).
 
-lemma sextuple_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f) :
-  sextuple_con (sextuple_decon x) = x.
+lemma tuple6_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f) :
+  tuple6_con (tuple6_decon x) = x.
 proof.
-rewrite /sextuple_con /sextuple_decon.
+rewrite /tuple6_con /tuple6_decon.
 by case x.
 qed.
 
-lemma sextuple_conK (x : 'a * ('b * 'c * 'd * 'e * 'f)) :
-  sextuple_decon (sextuple_con x) = x.
+lemma tuple6_conK (x : 'a * ('b * 'c * 'd * 'e * 'f)) :
+  tuple6_decon (tuple6_con x) = x.
 proof.
-rewrite /sextuple_con /sextuple_decon.
+rewrite /tuple6_con /tuple6_decon.
 case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_sextuple
+op nosmt epdp_tuple6
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
        ('a * 'b * 'c * 'd * 'e * 'f,
         'a' * 'b' * 'c' * 'd' * 'e' * 'f') epdp =
   epdp_comp
-  (epdp_bijection sextuple_con sextuple_decon)
+  (epdp_bijection tuple6_con tuple6_decon)
   (epdp_comp
-   (epdp_pair epdp1 (epdp_quintuple epdp2 epdp3 epdp4 epdp5 epdp6))
-   (epdp_bijection sextuple_decon sextuple_con)).
+   (epdp_pair epdp1 (epdp_tuple5 epdp2 epdp3 epdp4 epdp5 epdp6))
+   (epdp_bijection tuple6_decon tuple6_con)).
 
-lemma valid_epdp_sextuple
+lemma valid_epdp_tuple6
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
        epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
-  valid_epdp (epdp_sextuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+  valid_epdp (epdp_tuple6 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6.
 rewrite valid_epdp_comp 1:valid_epdp_bijection.
-move => x; by rewrite sextuple_conK.
-move => x; by rewrite sextuple_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_quintuple //.
+move => x; by rewrite tuple6_conK.
+move => x; by rewrite tuple6_deconK.
+rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple5 //.
 rewrite valid_epdp_bijection.
-move => x; by rewrite sextuple_deconK.
-move => x; by rewrite sextuple_conK.
+move => x; by rewrite tuple6_deconK.
+move => x; by rewrite tuple6_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_sextuple.
+hint rewrite epdp_sub : valid_epdp_tuple6.
 
-(* septuple EPDPs *)
+(* tuple7 EPDPs *)
 
-op septuple_decon
+op tuple7_decon
    (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g)
      : 'a * ('b * 'c * 'd * 'e * 'f * 'g) =
   (x.`1, (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7)).
 
-op septuple_con
+op tuple7_con
    (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g))
      : 'a * 'b * 'c * 'd * 'e * 'f * 'g =
   (x.`1, x.`2.`1, x.`2.`2, x.`2.`3, x.`2.`4, x.`2.`5, x.`2.`6).
 
-lemma septuple_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g) :
-  septuple_con (septuple_decon x) = x.
+lemma tuple7_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g) :
+  tuple7_con (tuple7_decon x) = x.
 proof.
-rewrite /septuple_con /septuple_decon.
+rewrite /tuple7_con /tuple7_decon.
 by case x.
 qed.
 
-lemma septuple_conK (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g)) :
-  septuple_decon (septuple_con x) = x.
+lemma tuple7_conK (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g)) :
+  tuple7_decon (tuple7_con x) = x.
 proof.
-rewrite /septuple_con /septuple_decon.
+rewrite /tuple7_con /tuple7_decon.
 case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_septuple
+op nosmt epdp_tuple7
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -435,12 +435,12 @@ op nosmt epdp_septuple
        ('a * 'b * 'c * 'd * 'e * 'f * 'g,
         'a' * 'b' * 'c' * 'd' * 'e' * 'f' * 'g') epdp =
   epdp_comp
-  (epdp_bijection septuple_con septuple_decon)
+  (epdp_bijection tuple7_con tuple7_decon)
   (epdp_comp
-   (epdp_pair epdp1 (epdp_sextuple epdp2 epdp3 epdp4 epdp5 epdp6 epdp7))
-   (epdp_bijection septuple_decon septuple_con)).
+   (epdp_pair epdp1 (epdp_tuple6 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7))
+   (epdp_bijection tuple7_decon tuple7_con)).
 
-lemma valid_epdp_septuple
+lemma valid_epdp_tuple7
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
        epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -448,48 +448,48 @@ lemma valid_epdp_septuple
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
   valid_epdp epdp7 =>
-  valid_epdp (epdp_septuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+  valid_epdp (epdp_tuple7 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6 valid7.
 rewrite valid_epdp_comp 1:valid_epdp_bijection.
-move => x; by rewrite septuple_conK.
-move => x; by rewrite septuple_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_sextuple //.
+move => x; by rewrite tuple7_conK.
+move => x; by rewrite tuple7_deconK.
+rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple6 //.
 rewrite valid_epdp_bijection.
-move => x; by rewrite septuple_deconK.
-move => x; by rewrite septuple_conK.
+move => x; by rewrite tuple7_deconK.
+move => x; by rewrite tuple7_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_septuple.
+hint rewrite epdp_sub : valid_epdp_tuple7.
 
-(* octuple EPDPs *)
+(* tuple8 EPDPs *)
 
-op octuple_decon
+op tuple8_decon
    (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h)
      : 'a * ('b * 'c * 'd * 'e * 'f * 'g * 'h) =
   (x.`1, (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8)).
 
-op octuple_con
+op tuple8_con
    (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g * 'h))
      : 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h =
   (x.`1, x.`2.`1, x.`2.`2, x.`2.`3, x.`2.`4, x.`2.`5, x.`2.`6, x.`2.`7).
 
-lemma octuple_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h) :
-  octuple_con (octuple_decon x) = x.
+lemma tuple8_deconK (x : 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h) :
+  tuple8_con (tuple8_decon x) = x.
 proof.
-rewrite /octuple_con /octuple_decon.
+rewrite /tuple8_con /tuple8_decon.
 by case x.
 qed.
 
-lemma octuple_conK (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g * 'h)) :
-  octuple_decon (octuple_con x) = x.
+lemma tuple8_conK (x : 'a * ('b * 'c * 'd * 'e * 'f * 'g * 'h)) :
+  tuple8_decon (tuple8_con x) = x.
 proof.
-rewrite /octuple_con /octuple_decon.
+rewrite /tuple8_con /tuple8_decon.
 case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_octuple
+op nosmt epdp_tuple8
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -497,12 +497,12 @@ op nosmt epdp_octuple
        ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h,
         'a' * 'b' * 'c' * 'd' * 'e' * 'f' * 'g' * 'h') epdp =
   epdp_comp
-  (epdp_bijection octuple_con octuple_decon)
+  (epdp_bijection tuple8_con tuple8_decon)
   (epdp_comp
-   (epdp_pair epdp1 (epdp_septuple epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8))
-   (epdp_bijection octuple_decon octuple_con)).
+   (epdp_pair epdp1 (epdp_tuple7 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8))
+   (epdp_bijection tuple8_decon tuple8_con)).
 
-lemma valid_epdp_octuple
+lemma valid_epdp_tuple8
       (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
        epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
        epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -510,19 +510,19 @@ lemma valid_epdp_octuple
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
   valid_epdp epdp7 => valid_epdp epdp8 =>
-  valid_epdp (epdp_octuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+  valid_epdp (epdp_tuple8 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6 valid7 valid8.
 rewrite valid_epdp_comp 1:valid_epdp_bijection.
-move => x; by rewrite octuple_conK.
-move => x; by rewrite octuple_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_septuple //.
+move => x; by rewrite tuple8_conK.
+move => x; by rewrite tuple8_deconK.
+rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple7 //.
 rewrite valid_epdp_bijection.
-move => x; by rewrite octuple_deconK.
-move => x; by rewrite octuple_conK.
+move => x; by rewrite tuple8_deconK.
+move => x; by rewrite tuple8_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_octuple.
+hint rewrite epdp_sub : valid_epdp_tuple8.
 
 (* choice EPDPs *)
 
@@ -532,16 +532,16 @@ type ('a, 'b) choice = [
 ].
 
 op nosmt epdp_choice_enc
-     (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
-      ch : ('a, 'b) choice) : ('c, 'd) choice =
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      ch : ('a, 'b) choice) : ('a', 'b') choice =
   match ch with
   | ChoiceLeft x  => ChoiceLeft (epdp1.`enc x)
   | ChoiceRight x => ChoiceRight (epdp2.`enc x)
   end.
 
 op nosmt epdp_choice_dec
-     (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
-      ch : ('c, 'd) choice) : ('a, 'b) choice option =
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      ch : ('a', 'b') choice) : ('a, 'b) choice option =
   match ch with
   | ChoiceLeft x  =>
       match epdp1.`dec x with
@@ -556,12 +556,13 @@ op nosmt epdp_choice_dec
   end.
 
 op nosmt epdp_choice
-     (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp) :
-     (('a, 'b) choice, ('c, 'd) choice) epdp =
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp) :
+     (('a, 'b) choice, ('a', 'b') choice) epdp =
   {|enc = epdp_choice_enc epdp1 epdp2;
     dec = epdp_choice_dec epdp1 epdp2|}.
 
-lemma valid_epdp_choice (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp) :
+lemma valid_epdp_choice
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 =>
   valid_epdp (epdp_choice epdp1 epdp2).
 proof.
@@ -588,6 +589,897 @@ by rewrite (epdp_dec_enc _ _ x).
 qed.
 
 hint rewrite epdp_sub : valid_epdp_choice.
+
+(* choice3 EPDPs *)
+
+type ('a, 'b, 'c) choice3 = [
+  | Choice3_1 of 'a
+  | Choice3_2 of 'b
+  | Choice3_3 of 'c
+].
+
+op nosmt epdp_choice3_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp,
+      ch : ('a, 'b, 'c) choice3) : ('a', 'b', 'c') choice3 =
+  match ch with
+  | Choice3_1 x => Choice3_1 (epdp1.`enc x)
+  | Choice3_2 x => Choice3_2 (epdp2.`enc x)
+  | Choice3_3 x => Choice3_3 (epdp3.`enc x)
+  end.
+
+op nosmt epdp_choice3_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp,
+      ch : ('a', 'b', 'c') choice3) : ('a, 'b, 'c) choice3 option =
+  match ch with
+  | Choice3_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice3_1 y)
+      end
+  | Choice3_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice3_2 y)
+      end
+  | Choice3_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice3_3 y)
+      end
+  end.
+
+op nosmt epdp_choice3
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp) :
+     (('a, 'b, 'c) choice3, ('a', 'b', 'c') choice3) epdp =
+  {|enc = epdp_choice3_enc epdp1 epdp2 epdp3;
+    dec = epdp_choice3_dec epdp1 epdp2 epdp3|}.
+
+lemma valid_epdp_choice3
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp (epdp_choice3 epdp1 epdp2 epdp3).
+proof.
+move => valid1 valid2 valid3.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice3 /epdp_choice3_enc /epdp_choice3_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice3 /epdp_choice3_enc /epdp_choice3_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice3.
+
+(* choice4 EPDPs *)
+
+type ('a, 'b, 'c, 'd) choice4 = [
+  | Choice4_1 of 'a
+  | Choice4_2 of 'b
+  | Choice4_3 of 'c
+  | Choice4_4 of 'd
+].
+
+op nosmt epdp_choice4_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      ch : ('a, 'b, 'c, 'd) choice4) : ('a', 'b', 'c', 'd') choice4 =
+  match ch with
+  | Choice4_1 x => Choice4_1 (epdp1.`enc x)
+  | Choice4_2 x => Choice4_2 (epdp2.`enc x)
+  | Choice4_3 x => Choice4_3 (epdp3.`enc x)
+  | Choice4_4 x => Choice4_4 (epdp4.`enc x)
+  end.
+
+op nosmt epdp_choice4_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      ch : ('a', 'b', 'c', 'd') choice4)
+       : ('a, 'b, 'c, 'd) choice4 option =
+  match ch with
+  | Choice4_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice4_1 y)
+      end
+  | Choice4_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice4_2 y)
+      end
+  | Choice4_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice4_3 y)
+      end
+  | Choice4_4 x  =>
+      match epdp4.`dec x with
+      | None   => None
+      | Some y => Some (Choice4_4 y)
+      end
+  end.
+
+op nosmt epdp_choice4
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
+     (('a, 'b, 'c, 'd) choice4, ('a', 'b', 'c', 'd') choice4) epdp =
+  {|enc = epdp_choice4_enc epdp1 epdp2 epdp3 epdp4;
+    dec = epdp_choice4_dec epdp1 epdp2 epdp3 epdp4|}.
+
+lemma valid_epdp_choice4
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 =>
+  valid_epdp (epdp_choice4 epdp1 epdp2 epdp3 epdp4).
+proof.
+move => valid1 valid2 valid3 valid4.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice4 /epdp_choice4_enc /epdp_choice4_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice4 /epdp_choice4_enc /epdp_choice4_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp3.`dec x).
+case b => y /=.
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+move => match_eq_some.
+have val_x : epdp4.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp4.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice4.
+
+(* choice5 EPDPs *)
+
+type ('a, 'b, 'c, 'd, 'e) choice5 = [
+  | Choice5_1 of 'a
+  | Choice5_2 of 'b
+  | Choice5_3 of 'c
+  | Choice5_4 of 'd
+  | Choice5_5 of 'e
+].
+
+op nosmt epdp_choice5_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp,
+      ch : ('a, 'b, 'c, 'd, 'e) choice5)
+       : ('a', 'b', 'c', 'd', 'e') choice5 =
+  match ch with
+  | Choice5_1 x => Choice5_1 (epdp1.`enc x)
+  | Choice5_2 x => Choice5_2 (epdp2.`enc x)
+  | Choice5_3 x => Choice5_3 (epdp3.`enc x)
+  | Choice5_4 x => Choice5_4 (epdp4.`enc x)
+  | Choice5_5 x => Choice5_5 (epdp5.`enc x)
+  end.
+
+op nosmt epdp_choice5_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp,
+      ch : ('a', 'b', 'c', 'd', 'e') choice5)
+       : ('a, 'b, 'c, 'd, 'e) choice5 option =
+  match ch with
+  | Choice5_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice5_1 y)
+      end
+  | Choice5_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice5_2 y)
+      end
+  | Choice5_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice5_3 y)
+      end
+  | Choice5_4 x  =>
+      match epdp4.`dec x with
+      | None   => None
+      | Some y => Some (Choice5_4 y)
+      end
+  | Choice5_5 x  =>
+      match epdp5.`dec x with
+      | None   => None
+      | Some y => Some (Choice5_5 y)
+      end
+  end.
+
+op nosmt epdp_choice5
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp) :
+     (('a, 'b, 'c, 'd, 'e) choice5,
+      ('a', 'b', 'c', 'd', 'e') choice5) epdp =
+  {|enc = epdp_choice5_enc epdp1 epdp2 epdp3 epdp4 epdp5;
+    dec = epdp_choice5_dec epdp1 epdp2 epdp3 epdp4 epdp5|}.
+
+lemma valid_epdp_choice5
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+       epdp5 : ('e, 'e') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 =>
+  valid_epdp (epdp_choice5 epdp1 epdp2 epdp3 epdp4 epdp5).
+proof.
+move => valid1 valid2 valid3 valid4 valid5.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice5 /epdp_choice5_enc /epdp_choice5_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice5 /epdp_choice5_enc /epdp_choice5_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+case b => y /=.
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+move => match_eq_some.
+have val_x : epdp4.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp4.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp4.`dec x).
+case b => y /=.
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+move => match_eq_some.
+have val_x : epdp5.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp5.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice5.
+
+(* choice6 EPDPs *)
+
+type ('a, 'b, 'c, 'd, 'e, 'f) choice6 = [
+  | Choice6_1 of 'a
+  | Choice6_2 of 'b
+  | Choice6_3 of 'c
+  | Choice6_4 of 'd
+  | Choice6_5 of 'e
+  | Choice6_6 of 'f
+].
+
+op nosmt epdp_choice6_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      ch : ('a, 'b, 'c, 'd, 'e, 'f) choice6)
+       : ('a', 'b', 'c', 'd', 'e', 'f') choice6 =
+  match ch with
+  | Choice6_1 x => Choice6_1 (epdp1.`enc x)
+  | Choice6_2 x => Choice6_2 (epdp2.`enc x)
+  | Choice6_3 x => Choice6_3 (epdp3.`enc x)
+  | Choice6_4 x => Choice6_4 (epdp4.`enc x)
+  | Choice6_5 x => Choice6_5 (epdp5.`enc x)
+  | Choice6_6 x => Choice6_6 (epdp6.`enc x)
+  end.
+
+op nosmt epdp_choice6_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      ch : ('a', 'b', 'c', 'd', 'e', 'f') choice6)
+       : ('a, 'b, 'c, 'd, 'e, 'f) choice6 option =
+  match ch with
+  | Choice6_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_1 y)
+      end
+  | Choice6_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_2 y)
+      end
+  | Choice6_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_3 y)
+      end
+  | Choice6_4 x  =>
+      match epdp4.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_4 y)
+      end
+  | Choice6_5 x  =>
+      match epdp5.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_5 y)
+      end
+  | Choice6_6 x  =>
+      match epdp6.`dec x with
+      | None   => None
+      | Some y => Some (Choice6_6 y)
+      end
+  end.
+
+op nosmt epdp_choice6
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
+     (('a, 'b, 'c, 'd, 'e, 'f) choice6,
+      ('a', 'b', 'c', 'd', 'e', 'f') choice6) epdp =
+  {|enc = epdp_choice6_enc epdp1 epdp2 epdp3 epdp4 epdp5 epdp6;
+    dec = epdp_choice6_dec epdp1 epdp2 epdp3 epdp4 epdp5 epdp6|}.
+
+lemma valid_epdp_choice6
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp (epdp_choice6 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+proof.
+move => valid1 valid2 valid3 valid4 valid5 valid6.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice6 /epdp_choice6_enc /epdp_choice6_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice6 /epdp_choice6_enc /epdp_choice6_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+case b => y /=.
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+move => match_eq_some.
+have val_x : epdp4.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp4.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+case b => y /=.
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+move => match_eq_some.
+have val_x : epdp5.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp5.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp5.`dec x).
+case b => y /=.
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+move => match_eq_some.
+have val_x : epdp6.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp6.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice6.
+
+(* choice7 EPDPs *)
+
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 = [
+  | Choice7_1 of 'a
+  | Choice7_2 of 'b
+  | Choice7_3 of 'c
+  | Choice7_4 of 'd
+  | Choice7_5 of 'e
+  | Choice7_6 of 'f
+  | Choice7_7 of 'g
+].
+
+op nosmt epdp_choice7_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp,
+      ch : ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7)
+       : ('a', 'b', 'c', 'd', 'e', 'f', 'g') choice7 =
+  match ch with
+  | Choice7_1 x => Choice7_1 (epdp1.`enc x)
+  | Choice7_2 x => Choice7_2 (epdp2.`enc x)
+  | Choice7_3 x => Choice7_3 (epdp3.`enc x)
+  | Choice7_4 x => Choice7_4 (epdp4.`enc x)
+  | Choice7_5 x => Choice7_5 (epdp5.`enc x)
+  | Choice7_6 x => Choice7_6 (epdp6.`enc x)
+  | Choice7_7 x => Choice7_7 (epdp7.`enc x)
+  end.
+
+op nosmt epdp_choice7_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp,
+      ch : ('a', 'b', 'c', 'd', 'e', 'f', 'g') choice7)
+       : ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 option =
+  match ch with
+  | Choice7_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_1 y)
+      end
+  | Choice7_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_2 y)
+      end
+  | Choice7_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_3 y)
+      end
+  | Choice7_4 x  =>
+      match epdp4.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_4 y)
+      end
+  | Choice7_5 x  =>
+      match epdp5.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_5 y)
+      end
+  | Choice7_6 x  =>
+      match epdp6.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_6 y)
+      end
+  | Choice7_7 x  =>
+      match epdp7.`dec x with
+      | None   => None
+      | Some y => Some (Choice7_7 y)
+      end
+  end.
+
+op nosmt epdp_choice7
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp) :
+     (('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7,
+      ('a', 'b', 'c', 'd', 'e', 'f', 'g') choice7) epdp =
+  {|enc = epdp_choice7_enc epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7;
+    dec = epdp_choice7_dec epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7|}.
+
+lemma valid_epdp_choice7
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+       epdp7 : ('g, 'g') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 =>
+  valid_epdp (epdp_choice7 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+proof.
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice7 /epdp_choice7_enc /epdp_choice7_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice7 /epdp_choice7_enc /epdp_choice7_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+case b => y /=.
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+move => match_eq_some.
+have val_x : epdp4.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp4.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+case b => y /=.
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+move => match_eq_some.
+have val_x : epdp5.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp5.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+case b => y /=.
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+move => match_eq_some.
+have val_x : epdp6.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp6.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp6.`dec x).
+case b => y /=.
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+move => match_eq_some.
+have val_x : epdp7.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp7.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice7.
+
+(* choice8 EPDPs *)
+
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 = [
+  | Choice8_1 of 'a
+  | Choice8_2 of 'b
+  | Choice8_3 of 'c
+  | Choice8_4 of 'd
+  | Choice8_5 of 'e
+  | Choice8_6 of 'f
+  | Choice8_7 of 'g
+  | Choice8_8 of 'h
+].
+
+op nosmt epdp_choice8_enc
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp, epdp8 : ('h, 'h') epdp,
+      ch : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8)
+       : ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h') choice8 =
+  match ch with
+  | Choice8_1 x => Choice8_1 (epdp1.`enc x)
+  | Choice8_2 x => Choice8_2 (epdp2.`enc x)
+  | Choice8_3 x => Choice8_3 (epdp3.`enc x)
+  | Choice8_4 x => Choice8_4 (epdp4.`enc x)
+  | Choice8_5 x => Choice8_5 (epdp5.`enc x)
+  | Choice8_6 x => Choice8_6 (epdp6.`enc x)
+  | Choice8_7 x => Choice8_7 (epdp7.`enc x)
+  | Choice8_8 x => Choice8_8 (epdp8.`enc x)
+  end.
+
+op nosmt epdp_choice8_dec
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp, epdp8 : ('h, 'h') epdp,
+      ch : ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h') choice8)
+       : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 option =
+  match ch with
+  | Choice8_1 x  =>
+      match epdp1.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_1 y)
+      end
+  | Choice8_2 x  =>
+      match epdp2.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_2 y)
+      end
+  | Choice8_3 x  =>
+      match epdp3.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_3 y)
+      end
+  | Choice8_4 x  =>
+      match epdp4.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_4 y)
+      end
+  | Choice8_5 x  =>
+      match epdp5.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_5 y)
+      end
+  | Choice8_6 x  =>
+      match epdp6.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_6 y)
+      end
+  | Choice8_7 x  =>
+      match epdp7.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_7 y)
+      end
+  | Choice8_8 x  =>
+      match epdp8.`dec x with
+      | None   => None
+      | Some y => Some (Choice8_8 y)
+      end
+  end.
+
+op nosmt epdp_choice8
+     (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+      epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+      epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+      epdp7 : ('g, 'g') epdp, epdp8 : ('h, 'h') epdp) :
+     (('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8,
+      ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h') choice8) epdp =
+  {|enc = epdp_choice8_enc epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8;
+    dec = epdp_choice8_dec epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8|}.
+
+lemma valid_epdp_choice8
+      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
+       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
+       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
+       epdp7 : ('g, 'g') epdp, epdp8 : ('h, 'h') epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 => valid_epdp epdp8 =>
+  valid_epdp (epdp_choice8 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+proof.
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7 valid8.
+rewrite epdp_intro => [x | a b].
+rewrite /epdp_choice8 /epdp_choice8_enc /epdp_choice8_dec /=.
+case x => y /=; by rewrite epdp_enc_dec.
+rewrite /epdp_choice8 /epdp_choice8_enc /epdp_choice8_dec /=.
+case a => x /=.
+case b => y /=.
+move => match_eq_some.
+have val_x : epdp1.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp1.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+by case (epdp1.`dec x).
+case b => y /=.
+by case (epdp2.`dec x).
+move => match_eq_some.
+have val_x : epdp2.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp2.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+by case (epdp2.`dec x).
+case b => y /=.
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+move => match_eq_some.
+have val_x : epdp3.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp3.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+by case (epdp3.`dec x).
+case b => y /=.
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+move => match_eq_some.
+have val_x : epdp4.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp4.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+by case (epdp4.`dec x).
+case b => y /=.
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+move => match_eq_some.
+have val_x : epdp5.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp5.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+by case (epdp5.`dec x).
+case b => y /=.
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+move => match_eq_some.
+have val_x : epdp6.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp6.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp6.`dec x).
+by case (epdp6.`dec x).
+case b => y /=.
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+by case (epdp7.`dec x).
+move => match_eq_some.
+have val_x : epdp7.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp7.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+by case (epdp7.`dec x).
+case b => y /=.
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+by case (epdp8.`dec x).
+move => match_eq_some.
+have val_x : epdp8.`dec x = Some y.
+  move : match_eq_some.
+  by case (epdp8.`dec x).
+by rewrite (epdp_dec_enc _ _ x).
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice8.
 
 (* option EPDPs *)
 

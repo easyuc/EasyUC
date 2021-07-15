@@ -517,6 +517,671 @@ qed.
 hint simplify [eqtrue] valid_epdp_univ_choice_univ.
 hint rewrite epdp : valid_epdp_univ_choice_univ.
 
+(* univ choice3 encoding: *)
+
+op choice3_tag_size = 2.
+op choice3_tag_1    = [false; false].
+op choice3_tag_2    = [false; true].
+op choice3_tag_3    = [true;  false].
+
+op nosmt enc_univ_choice3 (c : (univ, univ, univ) choice3) : univ =
+  match c with
+  | Choice3_1 u => choice3_tag_1 ++ u
+  | Choice3_2 u => choice3_tag_2 ++ u
+  | Choice3_3 u => choice3_tag_3 ++ u
+  end.
+
+op nosmt dec_univ_choice3 (u : univ) : (univ, univ, univ) choice3 option =
+  if size u < choice3_tag_size
+  then None
+  else let tag  = take 2 u in
+       let rest = drop 2 u in
+       if tag = choice3_tag_1
+         then Some (Choice3_1 rest)
+       else if tag = choice3_tag_2
+         then Some (Choice3_2 rest)
+       else if tag = choice3_tag_3
+         then Some (Choice3_3 rest)
+       else None.
+
+op nosmt epdp_univ_choice3_univ : ((univ, univ, univ) choice3, univ) epdp =
+  {|enc = enc_univ_choice3; dec = dec_univ_choice3|}.
+
+lemma valid_epdp_univ_choice3_univ : valid_epdp epdp_univ_choice3_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice3_univ /= /enc_univ_choice3 /dec_univ_choice3.
+case x => /= x.
+rewrite /choice3_tag_1 /choice3_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice3_tag_2 /choice3_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice3_tag_3 /choice3_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice3_univ /= /enc_univ_choice3 /dec_univ_choice3.
+case (size u < choice3_tag_size) => [// |].
+rewrite -lerNgt /choice3_tag_size => ge2_size_u /=.
+case x => x.
+case (take 2 u = choice3_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 2 u = choice3_tag_2) => [// | _].
+by case (take 2 u = choice3_tag_3).
+case (take 2 u = choice3_tag_1) => [// | _].
+case (take 2 u = choice3_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 2 u = choice3_tag_3).
+case (take 2 u = choice3_tag_1) => [// | _].
+case (take 2 u = choice3_tag_2) => [// | _].
+case (take 2 u = choice3_tag_3) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice3_univ.
+hint rewrite epdp : valid_epdp_univ_choice3_univ.
+
+(* univ choice4 encoding: *)
+
+op choice4_tag_size = 2.
+op choice4_tag_1    = [false; false].
+op choice4_tag_2    = [false; true].
+op choice4_tag_3    = [true;  false].
+op choice4_tag_4    = [true;  true].
+
+op nosmt enc_univ_choice4 (c : (univ, univ, univ, univ) choice4) : univ =
+  match c with
+  | Choice4_1 u => choice4_tag_1 ++ u
+  | Choice4_2 u => choice4_tag_2 ++ u
+  | Choice4_3 u => choice4_tag_3 ++ u
+  | Choice4_4 u => choice4_tag_4 ++ u
+  end.
+
+op nosmt dec_univ_choice4 (u : univ)
+     : (univ, univ, univ, univ) choice4 option =
+  if size u < choice4_tag_size
+  then None
+  else let tag  = take 2 u in
+       let rest = drop 2 u in
+       if tag = choice4_tag_1
+         then Some (Choice4_1 rest)
+       else if tag = choice4_tag_2
+         then Some (Choice4_2 rest)
+       else if tag = choice4_tag_3
+         then Some (Choice4_3 rest)
+       else if tag = choice4_tag_4
+         then Some (Choice4_4 rest)
+       else None.
+
+op nosmt epdp_univ_choice4_univ
+     : ((univ, univ, univ, univ) choice4, univ) epdp =
+  {|enc = enc_univ_choice4; dec = dec_univ_choice4|}.
+
+lemma valid_epdp_univ_choice4_univ : valid_epdp epdp_univ_choice4_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice4_univ /= /enc_univ_choice4 /dec_univ_choice4.
+case x => /= x.
+rewrite /choice4_tag_1 /choice4_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice4_tag_2 /choice4_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice4_tag_3 /choice4_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice4_tag_4 /choice4_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice4_univ /= /enc_univ_choice4 /dec_univ_choice4.
+case (size u < choice4_tag_size) => [// |].
+rewrite -lerNgt /choice4_tag_size => ge2_size_u /=.
+case x => x.
+case (take 2 u = choice4_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 2 u = choice4_tag_2) => [// | _].
+case (take 2 u = choice4_tag_3) => [// | _].
+by case (take 2 u = choice4_tag_4).
+case (take 2 u = choice4_tag_1) => [// | _].
+case (take 2 u = choice4_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 2 u = choice4_tag_3) => [// | _].
+by case (take 2 u = choice4_tag_4).
+case (take 2 u = choice4_tag_1) => [// | _].
+case (take 2 u = choice4_tag_2) => [// | _].
+case (take 2 u = choice4_tag_3) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 2 u = choice4_tag_4).
+case (take 2 u = choice4_tag_1) => [// | _].
+case (take 2 u = choice4_tag_2) => [// | _].
+case (take 2 u = choice4_tag_3) => [// | _].
+case (take 2 u = choice4_tag_4) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice4_univ.
+hint rewrite epdp : valid_epdp_univ_choice4_univ.
+
+(* univ choice5 encoding: *)
+
+op choice5_tag_size = 3.
+op choice5_tag_1    = [false; false; false].
+op choice5_tag_2    = [false; false; true].
+op choice5_tag_3    = [false; true;  false].
+op choice5_tag_4    = [false; true;  true].
+op choice5_tag_5    = [true;  false; false].
+
+op nosmt enc_univ_choice5
+         (c : (univ, univ, univ, univ, univ) choice5) : univ =
+  match c with
+  | Choice5_1 u => choice5_tag_1 ++ u
+  | Choice5_2 u => choice5_tag_2 ++ u
+  | Choice5_3 u => choice5_tag_3 ++ u
+  | Choice5_4 u => choice5_tag_4 ++ u
+  | Choice5_5 u => choice5_tag_5 ++ u
+  end.
+
+op nosmt dec_univ_choice5 (u : univ)
+     : (univ, univ, univ, univ, univ) choice5 option =
+  if size u < choice5_tag_size
+  then None
+  else let tag  = take 3 u in
+       let rest = drop 3 u in
+       if tag = choice5_tag_1
+         then Some (Choice5_1 rest)
+       else if tag = choice5_tag_2
+         then Some (Choice5_2 rest)
+       else if tag = choice5_tag_3
+         then Some (Choice5_3 rest)
+       else if tag = choice5_tag_4
+         then Some (Choice5_4 rest)
+       else if tag = choice5_tag_5
+         then Some (Choice5_5 rest)
+       else None.
+
+op nosmt epdp_univ_choice5_univ
+     : ((univ, univ, univ, univ, univ) choice5, univ) epdp =
+  {|enc = enc_univ_choice5; dec = dec_univ_choice5|}.
+
+lemma valid_epdp_univ_choice5_univ : valid_epdp epdp_univ_choice5_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice5_univ /= /enc_univ_choice5 /dec_univ_choice5.
+case x => /= x.
+rewrite /choice5_tag_1 /choice5_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice5_tag_2 /choice5_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice5_tag_3 /choice5_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice5_tag_4 /choice5_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice5_tag_5 /choice5_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice5_univ /= /enc_univ_choice5 /dec_univ_choice5.
+case (size u < choice5_tag_size) => [// |].
+rewrite -lerNgt /choice5_tag_size => ge2_size_u /=.
+case x => x.
+case (take 3 u = choice5_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice5_tag_2) => [// | _].
+case (take 3 u = choice5_tag_3) => [// | _].
+case (take 3 u = choice5_tag_4) => [// | _].
+by case (take 3 u = choice5_tag_5).
+case (take 3 u = choice5_tag_1) => [// | _].
+case (take 3 u = choice5_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice5_tag_3) => [// | _].
+case (take 3 u = choice5_tag_4) => [// | _].
+by case (take 3 u = choice5_tag_5).
+case (take 3 u = choice5_tag_1) => [// | _].
+case (take 3 u = choice5_tag_2) => [// | _].
+case (take 3 u = choice5_tag_3) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice5_tag_4) => [// | _].
+by case (take 3 u = choice5_tag_5).
+case (take 3 u = choice5_tag_1) => [// | _].
+case (take 3 u = choice5_tag_2) => [// | _].
+case (take 3 u = choice5_tag_3) => [// | _].
+case (take 3 u = choice5_tag_4) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 3 u = choice5_tag_5).
+case (take 3 u = choice5_tag_1) => [// | _].
+case (take 3 u = choice5_tag_2) => [// | _].
+case (take 3 u = choice5_tag_3) => [// | _].
+case (take 3 u = choice5_tag_4) => [// | _].
+case (take 3 u = choice5_tag_5) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice5_univ.
+hint rewrite epdp : valid_epdp_univ_choice5_univ.
+
+(* univ choice6 encoding: *)
+
+op choice6_tag_size = 3.
+op choice6_tag_1    = [false; false; false].
+op choice6_tag_2    = [false; false; true].
+op choice6_tag_3    = [false; true;  false].
+op choice6_tag_4    = [false; true;  true].
+op choice6_tag_5    = [true;  false; false].
+op choice6_tag_6    = [true;  false; true].
+
+op nosmt enc_univ_choice6
+         (c : (univ, univ, univ, univ, univ, univ) choice6) : univ =
+  match c with
+  | Choice6_1 u => choice6_tag_1 ++ u
+  | Choice6_2 u => choice6_tag_2 ++ u
+  | Choice6_3 u => choice6_tag_3 ++ u
+  | Choice6_4 u => choice6_tag_4 ++ u
+  | Choice6_5 u => choice6_tag_5 ++ u
+  | Choice6_6 u => choice6_tag_6 ++ u
+  end.
+
+op nosmt dec_univ_choice6 (u : univ)
+     : (univ, univ, univ, univ, univ, univ) choice6 option =
+  if size u < choice6_tag_size
+  then None
+  else let tag  = take 3 u in
+       let rest = drop 3 u in
+       if tag = choice6_tag_1
+         then Some (Choice6_1 rest)
+       else if tag = choice6_tag_2
+         then Some (Choice6_2 rest)
+       else if tag = choice6_tag_3
+         then Some (Choice6_3 rest)
+       else if tag = choice6_tag_4
+         then Some (Choice6_4 rest)
+       else if tag = choice6_tag_5
+         then Some (Choice6_5 rest)
+       else if tag = choice6_tag_6
+         then Some (Choice6_6 rest)
+       else None.
+
+op nosmt epdp_univ_choice6_univ
+     : ((univ, univ, univ, univ, univ, univ) choice6, univ) epdp =
+  {|enc = enc_univ_choice6; dec = dec_univ_choice6|}.
+
+lemma valid_epdp_univ_choice6_univ : valid_epdp epdp_univ_choice6_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice6_univ /= /enc_univ_choice6 /dec_univ_choice6.
+case x => /= x.
+rewrite /choice6_tag_1 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice6_tag_2 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice6_tag_3 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice6_tag_4 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice6_tag_5 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice6_tag_6 /choice6_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice6_univ /= /enc_univ_choice6 /dec_univ_choice6.
+case (size u < choice6_tag_size) => [// |].
+rewrite -lerNgt /choice6_tag_size => ge2_size_u /=.
+case x => x.
+case (take 3 u = choice6_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice6_tag_2) => [// | _].
+case (take 3 u = choice6_tag_3) => [// | _].
+case (take 3 u = choice6_tag_4) => [// | _].
+case (take 3 u = choice6_tag_5) => [// | _].
+by case (take 3 u = choice6_tag_6).
+case (take 3 u = choice6_tag_1) => [// | _].
+case (take 3 u = choice6_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice6_tag_3) => [// | _].
+case (take 3 u = choice6_tag_4) => [// | _].
+case (take 3 u = choice6_tag_5) => [// | _].
+by case (take 3 u = choice6_tag_6).
+case (take 3 u = choice6_tag_1) => [// | _].
+case (take 3 u = choice6_tag_2) => [// | _].
+case (take 3 u = choice6_tag_3) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice6_tag_4) => [// | _].
+case (take 3 u = choice6_tag_5) => [// | _].
+by case (take 3 u = choice6_tag_6).
+case (take 3 u = choice6_tag_1) => [// | _].
+case (take 3 u = choice6_tag_2) => [// | _].
+case (take 3 u = choice6_tag_3) => [// | _].
+case (take 3 u = choice6_tag_4) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice6_tag_5) => [// | _].
+by case (take 3 u = choice6_tag_6).
+case (take 3 u = choice6_tag_1) => [// | _].
+case (take 3 u = choice6_tag_2) => [// | _].
+case (take 3 u = choice6_tag_3) => [// | _].
+case (take 3 u = choice6_tag_4) => [// | _].
+case (take 3 u = choice6_tag_5) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 3 u = choice6_tag_6).
+case (take 3 u = choice6_tag_1) => [// | _].
+case (take 3 u = choice6_tag_2) => [// | _].
+case (take 3 u = choice6_tag_3) => [// | _].
+case (take 3 u = choice6_tag_4) => [// | _].
+case (take 3 u = choice6_tag_5) => [// | _].
+case (take 3 u = choice6_tag_6) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice6_univ.
+hint rewrite epdp : valid_epdp_univ_choice6_univ.
+
+(* univ choice7 encoding: *)
+
+op choice7_tag_size = 3.
+op choice7_tag_1    = [false; false; false].
+op choice7_tag_2    = [false; false; true].
+op choice7_tag_3    = [false; true;  false].
+op choice7_tag_4    = [false; true;  true].
+op choice7_tag_5    = [true;  false; false].
+op choice7_tag_6    = [true;  false; true].
+op choice7_tag_7    = [true;  true;  false].
+
+op nosmt enc_univ_choice7
+         (c : (univ, univ, univ, univ, univ, univ, univ) choice7) : univ =
+  match c with
+  | Choice7_1 u => choice7_tag_1 ++ u
+  | Choice7_2 u => choice7_tag_2 ++ u
+  | Choice7_3 u => choice7_tag_3 ++ u
+  | Choice7_4 u => choice7_tag_4 ++ u
+  | Choice7_5 u => choice7_tag_5 ++ u
+  | Choice7_6 u => choice7_tag_6 ++ u
+  | Choice7_7 u => choice7_tag_7 ++ u
+  end.
+
+op nosmt dec_univ_choice7 (u : univ)
+     : (univ, univ, univ, univ, univ, univ, univ) choice7 option =
+  if size u < choice7_tag_size
+  then None
+  else let tag  = take 3 u in
+       let rest = drop 3 u in
+       if tag = choice7_tag_1
+         then Some (Choice7_1 rest)
+       else if tag = choice7_tag_2
+         then Some (Choice7_2 rest)
+       else if tag = choice7_tag_3
+         then Some (Choice7_3 rest)
+       else if tag = choice7_tag_4
+         then Some (Choice7_4 rest)
+       else if tag = choice7_tag_5
+         then Some (Choice7_5 rest)
+       else if tag = choice7_tag_6
+         then Some (Choice7_6 rest)
+       else if tag = choice7_tag_7
+         then Some (Choice7_7 rest)
+       else None.
+
+op nosmt epdp_univ_choice7_univ
+     : ((univ, univ, univ, univ, univ, univ, univ) choice7, univ) epdp =
+  {|enc = enc_univ_choice7; dec = dec_univ_choice7|}.
+
+lemma valid_epdp_univ_choice7_univ : valid_epdp epdp_univ_choice7_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice7_univ /= /enc_univ_choice7 /dec_univ_choice7.
+case x => /= x.
+rewrite /choice7_tag_1 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_2 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_3 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_4 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_5 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_6 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice7_tag_7 /choice7_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice7_univ /= /enc_univ_choice7 /dec_univ_choice7.
+case (size u < choice7_tag_size) => [// |].
+rewrite -lerNgt /choice7_tag_size => ge2_size_u /=.
+case x => x.
+case (take 3 u = choice7_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [// | _].
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [// | _].
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [// | _].
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [// | _].
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice7_tag_6) => [// | _].
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 3 u = choice7_tag_7).
+case (take 3 u = choice7_tag_1) => [// | _].
+case (take 3 u = choice7_tag_2) => [// | _].
+case (take 3 u = choice7_tag_3) => [// | _].
+case (take 3 u = choice7_tag_4) => [// | _].
+case (take 3 u = choice7_tag_5) => [// | _].
+case (take 3 u = choice7_tag_6) => [// | _].
+case (take 3 u = choice7_tag_7) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice7_univ.
+hint rewrite epdp : valid_epdp_univ_choice7_univ.
+
+(* univ choice8 encoding: *)
+
+op choice8_tag_size = 3.
+op choice8_tag_1    = [false; false; false].
+op choice8_tag_2    = [false; false; true].
+op choice8_tag_3    = [false; true;  false].
+op choice8_tag_4    = [false; true;  true].
+op choice8_tag_5    = [true;  false; false].
+op choice8_tag_6    = [true;  false; true].
+op choice8_tag_7    = [true;  true;  false].
+op choice8_tag_8    = [true;  true;  true].
+
+op nosmt enc_univ_choice8
+         (c : (univ, univ, univ, univ, univ, univ, univ, univ)
+              choice8) : univ =
+  match c with
+  | Choice8_1 u => choice8_tag_1 ++ u
+  | Choice8_2 u => choice8_tag_2 ++ u
+  | Choice8_3 u => choice8_tag_3 ++ u
+  | Choice8_4 u => choice8_tag_4 ++ u
+  | Choice8_5 u => choice8_tag_5 ++ u
+  | Choice8_6 u => choice8_tag_6 ++ u
+  | Choice8_7 u => choice8_tag_7 ++ u
+  | Choice8_8 u => choice8_tag_8 ++ u
+  end.
+
+op nosmt dec_univ_choice8 (u : univ)
+     : (univ, univ, univ, univ, univ, univ, univ, univ) choice8 option =
+  if size u < choice8_tag_size
+  then None
+  else let tag  = take 3 u in
+       let rest = drop 3 u in
+       if tag = choice8_tag_1
+         then Some (Choice8_1 rest)
+       else if tag = choice8_tag_2
+         then Some (Choice8_2 rest)
+       else if tag = choice8_tag_3
+         then Some (Choice8_3 rest)
+       else if tag = choice8_tag_4
+         then Some (Choice8_4 rest)
+       else if tag = choice8_tag_5
+         then Some (Choice8_5 rest)
+       else if tag = choice8_tag_6
+         then Some (Choice8_6 rest)
+       else if tag = choice8_tag_7
+         then Some (Choice8_7 rest)
+       else if tag = choice8_tag_8
+         then Some (Choice8_8 rest)
+       else None.
+
+op nosmt epdp_univ_choice8_univ
+     : ((univ, univ, univ, univ, univ, univ, univ, univ) choice8, univ)
+       epdp =
+  {|enc = enc_univ_choice8; dec = dec_univ_choice8|}.
+
+lemma valid_epdp_univ_choice8_univ : valid_epdp epdp_univ_choice8_univ.
+apply epdp_intro => [x | u x].
+rewrite /epdp_univ_choice8_univ /= /enc_univ_choice8 /dec_univ_choice8.
+case x => /= x.
+rewrite /choice8_tag_1 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_2 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_3 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_4 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_5 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_6 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_7 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /choice8_tag_8 /choice8_tag_size size_cat /= gtr_addl.
+have -> /= : ! size x < 0 by rewrite -lerNgt size_ge0.
+by rewrite take0 /= drop0.
+rewrite /epdp_univ_choice8_univ /= /enc_univ_choice8 /dec_univ_choice8.
+case (size u < choice8_tag_size) => [// |].
+rewrite -lerNgt /choice8_tag_size => ge2_size_u /=.
+case x => x.
+case (take 3 u = choice8_tag_1) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [<- /= <- | _].
+by rewrite cat_take_drop.
+case (take 3 u = choice8_tag_7) => [// | _].
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [<- /= <- | _].
+by rewrite cat_take_drop.
+by case (take 3 u = choice8_tag_8).
+case (take 3 u = choice8_tag_1) => [// | _].
+case (take 3 u = choice8_tag_2) => [// | _].
+case (take 3 u = choice8_tag_3) => [// | _].
+case (take 3 u = choice8_tag_4) => [// | _].
+case (take 3 u = choice8_tag_5) => [// | _].
+case (take 3 u = choice8_tag_6) => [// | _].
+case (take 3 u = choice8_tag_7) => [// | _].
+case (take 3 u = choice8_tag_8) => [<- /= <- | //].
+by rewrite cat_take_drop.
+qed.
+
+hint simplify [eqtrue] valid_epdp_univ_choice8_univ.
+hint rewrite epdp : valid_epdp_univ_choice8_univ.
+
 (* univ option encoding: *)
 
 op nosmt enc_univ_option (u_opt : univ option) : univ =
@@ -648,12 +1313,12 @@ qed.
 hint simplify [eqtrue] valid_epdp_univ_list_univ.
 hint rewrite epdp : valid_epdp_univ_list_univ.
 
-(* triple univ encoding: *)
+(* tuple3 univ encoding: *)
 
-op nosmt enc_univ_triple (t : univ * univ * univ) : univ =
+op nosmt enc_univ_tuple3 (t : univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc (t.`1, (epdp_univ_pair_univ.`enc (t.`2, t.`3))).
 
-op nosmt dec_univ_triple (u : univ) : (univ * univ * univ) option =
+op nosmt dec_univ_tuple3 (u : univ) : (univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
@@ -663,15 +1328,15 @@ op nosmt dec_univ_triple (u : univ) : (univ * univ * univ) option =
       end
   end.
 
-op nosmt epdp_univ_triple_univ : (univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_triple; dec = dec_univ_triple|}.
+op nosmt epdp_univ_tuple3_univ : (univ * univ * univ, univ) epdp =
+  {|enc = enc_univ_tuple3; dec = dec_univ_tuple3|}.
 
-lemma valid_epdp_univ_triple_univ : valid_epdp epdp_univ_triple_univ.
+lemma valid_epdp_univ_tuple3_univ : valid_epdp epdp_univ_tuple3_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_triple_univ /= /enc_univ_triple /dec_univ_triple.
+rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_triple_univ /= /enc_univ_triple /dec_univ_triple =>
+rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3 =>
   match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
@@ -689,249 +1354,249 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_triple_univ.
-hint rewrite epdp : valid_epdp_univ_triple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple3_univ.
+hint rewrite epdp : valid_epdp_univ_tuple3_univ.
 
-(* quadruple univ encoding: *)
+(* tuple4 univ encoding: *)
 
-op nosmt enc_univ_quadruple (t : univ * univ * univ * univ) : univ =
+op nosmt enc_univ_tuple4 (t : univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
-  (t.`1, (epdp_univ_triple_univ.`enc (t.`2, t.`3, t.`4))).
+  (t.`1, (epdp_univ_tuple3_univ.`enc (t.`2, t.`3, t.`4))).
 
-op nosmt dec_univ_quadruple (u : univ) : (univ * univ * univ * univ) option =
+op nosmt dec_univ_tuple4 (u : univ) : (univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
-      match epdp_univ_triple_univ.`dec p.`2 with
+      match epdp_univ_tuple3_univ.`dec p.`2 with
         None   => None
       | Some q => Some (p.`1, q.`1, q.`2, q.`3)
       end
   end.
 
-op nosmt epdp_univ_quadruple_univ : (univ * univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_quadruple; dec = dec_univ_quadruple|}.
+op nosmt epdp_univ_tuple4_univ : (univ * univ * univ * univ, univ) epdp =
+  {|enc = enc_univ_tuple4; dec = dec_univ_tuple4|}.
 
-lemma valid_epdp_univ_quadruple_univ : valid_epdp epdp_univ_quadruple_univ.
+lemma valid_epdp_univ_tuple4_univ : valid_epdp epdp_univ_tuple4_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_quadruple_univ /= /enc_univ_quadruple /dec_univ_quadruple /=.
+rewrite /epdp_univ_tuple4_univ /= /enc_univ_tuple4 /dec_univ_tuple4 /=.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_quadruple_univ /= /enc_univ_quadruple /dec_univ_quadruple =>
+rewrite /epdp_univ_tuple4_univ /= /enc_univ_tuple4 /dec_univ_tuple4 =>
   match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
-  Some (x.`1, epdp_univ_triple_univ.`enc (x.`2, x.`3, x.`4)).
+  Some (x.`1, epdp_univ_tuple3_univ.`enc (x.`2, x.`3, x.`4)).
   move : match_dec_u_eq_some.
   case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
   move => match_dec_q_eq_some.
   have val_y2 :
-    epdp_univ_triple_univ.`dec q = Some (x.`2, x.`3, x.`4).
+    epdp_univ_tuple3_univ.`dec q = Some (x.`2, x.`3, x.`4).
     move : match_dec_q_eq_some.
-    case (epdp_univ_triple_univ.`dec q) => // [[]] x2 x3 x4 /= <- //.
+    case (epdp_univ_tuple3_univ.`dec q) => // [[]] x2 x3 x4 /= <- //.
   move : match_dec_q_eq_some.
   rewrite val_y2 /= => <- /=.
-  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_triple_univ //.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_tuple3_univ //.
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_quadruple_univ.
-hint rewrite epdp : valid_epdp_univ_quadruple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple4_univ.
+hint rewrite epdp : valid_epdp_univ_tuple4_univ.
 
-(* quintuple univ encoding: *)
+(* tuple5 univ encoding: *)
 
-op nosmt enc_univ_quintuple (t : univ * univ * univ * univ * univ) : univ =
+op nosmt enc_univ_tuple5 (t : univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
-  (t.`1, (epdp_univ_quadruple_univ.`enc (t.`2, t.`3, t.`4, t.`5))).
+  (t.`1, (epdp_univ_tuple4_univ.`enc (t.`2, t.`3, t.`4, t.`5))).
 
-op nosmt dec_univ_quintuple (u : univ) :
+op nosmt dec_univ_tuple5 (u : univ) :
     (univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
-      match epdp_univ_quadruple_univ.`dec p.`2 with
+      match epdp_univ_tuple4_univ.`dec p.`2 with
         None   => None
       | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4)
       end
   end.
 
-op nosmt epdp_univ_quintuple_univ :
+op nosmt epdp_univ_tuple5_univ :
     (univ * univ * univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_quintuple; dec = dec_univ_quintuple|}.
+  {|enc = enc_univ_tuple5; dec = dec_univ_tuple5|}.
 
-lemma valid_epdp_univ_quintuple_univ : valid_epdp epdp_univ_quintuple_univ.
+lemma valid_epdp_univ_tuple5_univ : valid_epdp epdp_univ_tuple5_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_quintuple_univ /= /enc_univ_quintuple
-        /dec_univ_quintuple /=.
+rewrite /epdp_univ_tuple5_univ /= /enc_univ_tuple5
+        /dec_univ_tuple5 /=.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_quintuple_univ /= /enc_univ_quintuple
-        /dec_univ_quintuple => match_dec_u_eq_some.
+rewrite /epdp_univ_tuple5_univ /= /enc_univ_tuple5
+        /dec_univ_tuple5 => match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
-  Some (x.`1, epdp_univ_quadruple_univ.`enc (x.`2, x.`3, x.`4, x.`5)).
+  Some (x.`1, epdp_univ_tuple4_univ.`enc (x.`2, x.`3, x.`4, x.`5)).
   move : match_dec_u_eq_some.
   case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
   move => match_dec_q_eq_some.
   have val_y2 :
-    epdp_univ_quadruple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5).
+    epdp_univ_tuple4_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5).
     move : match_dec_q_eq_some.
-    case (epdp_univ_quadruple_univ.`dec q) => // [[]] x2 x3 x4 x5 /= <- //.
+    case (epdp_univ_tuple4_univ.`dec q) => // [[]] x2 x3 x4 x5 /= <- //.
   move : match_dec_q_eq_some.
   rewrite val_y2 /= => <- /=.
-  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_quadruple_univ //.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_tuple4_univ //.
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_quintuple_univ.
-hint rewrite epdp : valid_epdp_univ_quintuple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple5_univ.
+hint rewrite epdp : valid_epdp_univ_tuple5_univ.
 
-(* sextuple univ encoding: *)
+(* tuple6 univ encoding: *)
 
-op nosmt enc_univ_sextuple
+op nosmt enc_univ_tuple6
      (t : univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
-  (t.`1, (epdp_univ_quintuple_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6))).
+  (t.`1, (epdp_univ_tuple5_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6))).
 
-op nosmt dec_univ_sextuple (u : univ) :
+op nosmt dec_univ_tuple6 (u : univ) :
     (univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
-      match epdp_univ_quintuple_univ.`dec p.`2 with
+      match epdp_univ_tuple5_univ.`dec p.`2 with
         None   => None
       | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4, q.`5)
       end
   end.
 
-op nosmt epdp_univ_sextuple_univ :
+op nosmt epdp_univ_tuple6_univ :
     (univ * univ * univ * univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_sextuple; dec = dec_univ_sextuple|}.
+  {|enc = enc_univ_tuple6; dec = dec_univ_tuple6|}.
 
-lemma valid_epdp_univ_sextuple_univ : valid_epdp epdp_univ_sextuple_univ.
+lemma valid_epdp_univ_tuple6_univ : valid_epdp epdp_univ_tuple6_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_sextuple_univ /= /enc_univ_sextuple
-        /dec_univ_sextuple /=.
+rewrite /epdp_univ_tuple6_univ /= /enc_univ_tuple6
+        /dec_univ_tuple6 /=.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_sextuple_univ /= /enc_univ_sextuple
-        /dec_univ_sextuple => match_dec_u_eq_some.
+rewrite /epdp_univ_tuple6_univ /= /enc_univ_tuple6
+        /dec_univ_tuple6 => match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
-  Some (x.`1, epdp_univ_quintuple_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6)).
+  Some (x.`1, epdp_univ_tuple5_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6)).
   move : match_dec_u_eq_some.
   case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
   move => match_dec_q_eq_some.
   have val_y2 :
-    epdp_univ_quintuple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6).
+    epdp_univ_tuple5_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6).
     move : match_dec_q_eq_some.
-    case (epdp_univ_quintuple_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 /= <- //.
+    case (epdp_univ_tuple5_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 /= <- //.
   move : match_dec_q_eq_some.
   rewrite val_y2 /= => <- /=.
-  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_quintuple_univ //.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_tuple5_univ //.
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_sextuple_univ.
-hint rewrite epdp : valid_epdp_univ_sextuple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple6_univ.
+hint rewrite epdp : valid_epdp_univ_tuple6_univ.
 
-(* septuple univ encoding: *)
+(* tuple7 univ encoding: *)
 
-op nosmt enc_univ_septuple
+op nosmt enc_univ_tuple7
      (t : univ * univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
-  (t.`1, (epdp_univ_sextuple_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7))).
+  (t.`1, (epdp_univ_tuple6_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7))).
 
-op nosmt dec_univ_septuple (u : univ) :
+op nosmt dec_univ_tuple7 (u : univ) :
     (univ * univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
-      match epdp_univ_sextuple_univ.`dec p.`2 with
+      match epdp_univ_tuple6_univ.`dec p.`2 with
         None   => None
       | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4, q.`5, q.`6)
       end
   end.
 
-op nosmt epdp_univ_septuple_univ :
+op nosmt epdp_univ_tuple7_univ :
     (univ * univ * univ * univ * univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_septuple; dec = dec_univ_septuple|}.
+  {|enc = enc_univ_tuple7; dec = dec_univ_tuple7|}.
 
-lemma valid_epdp_univ_septuple_univ : valid_epdp epdp_univ_septuple_univ.
+lemma valid_epdp_univ_tuple7_univ : valid_epdp epdp_univ_tuple7_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_septuple_univ /= /enc_univ_septuple
-        /dec_univ_septuple /=.
+rewrite /epdp_univ_tuple7_univ /= /enc_univ_tuple7
+        /dec_univ_tuple7 /=.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_septuple_univ /= /enc_univ_septuple
-        /dec_univ_septuple => match_dec_u_eq_some.
+rewrite /epdp_univ_tuple7_univ /= /enc_univ_tuple7
+        /dec_univ_tuple7 => match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
-  Some (x.`1, epdp_univ_sextuple_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7)).
+  Some (x.`1, epdp_univ_tuple6_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7)).
   move : match_dec_u_eq_some.
   case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
   move => match_dec_q_eq_some.
   have val_y2 :
-    epdp_univ_sextuple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7).
+    epdp_univ_tuple6_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7).
     move : match_dec_q_eq_some.
-    case (epdp_univ_sextuple_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 /= <- //.
+    case (epdp_univ_tuple6_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 /= <- //.
   move : match_dec_q_eq_some.
   rewrite val_y2 /= => <- /=.
-  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_sextuple_univ //.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_tuple6_univ //.
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_septuple_univ.
-hint rewrite epdp : valid_epdp_univ_septuple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple7_univ.
+hint rewrite epdp : valid_epdp_univ_tuple7_univ.
 
-(* octuple univ encoding: *)
+(* tuple8 univ encoding: *)
 
-op nosmt enc_univ_octuple
+op nosmt enc_univ_tuple8
      (t : univ * univ * univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
-  (t.`1, (epdp_univ_septuple_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7, t.`8))).
+  (t.`1, (epdp_univ_tuple7_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7, t.`8))).
 
-op nosmt dec_univ_octuple (u : univ) :
+op nosmt dec_univ_tuple8 (u : univ) :
     (univ * univ * univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
-      match epdp_univ_septuple_univ.`dec p.`2 with
+      match epdp_univ_tuple7_univ.`dec p.`2 with
         None   => None
       | Some q => Some (p.`1, q.`1, q.`2, q.`3, q.`4, q.`5, q.`6, q.`7)
       end
   end.
 
-op nosmt epdp_univ_octuple_univ :
+op nosmt epdp_univ_tuple8_univ :
     (univ * univ * univ * univ * univ * univ * univ * univ, univ) epdp =
-  {|enc = enc_univ_octuple; dec = dec_univ_octuple|}.
+  {|enc = enc_univ_tuple8; dec = dec_univ_tuple8|}.
 
-lemma valid_epdp_univ_octuple_univ : valid_epdp epdp_univ_octuple_univ.
+lemma valid_epdp_univ_tuple8_univ : valid_epdp epdp_univ_tuple8_univ.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_octuple_univ /= /enc_univ_octuple
-        /dec_univ_octuple /=.
+rewrite /epdp_univ_tuple8_univ /= /enc_univ_tuple8
+        /dec_univ_tuple8 /=.
 rewrite !epdp /= !epdp /=.
 by case x.
-rewrite /epdp_univ_octuple_univ /= /enc_univ_octuple
-        /dec_univ_octuple => match_dec_u_eq_some.
+rewrite /epdp_univ_tuple8_univ /= /enc_univ_tuple8
+        /dec_univ_tuple8 => match_dec_u_eq_some.
 have val_u :
   epdp_univ_pair_univ.`dec u =
   Some
-  (x.`1, epdp_univ_septuple_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8)).
+  (x.`1, epdp_univ_tuple7_univ.`enc (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8)).
   move : match_dec_u_eq_some.
   case (epdp_univ_pair_univ.`dec u) => // [[]] x1 q /=.
   move => match_dec_q_eq_some.
   have val_y2 :
-    epdp_univ_septuple_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8).
+    epdp_univ_tuple7_univ.`dec q = Some (x.`2, x.`3, x.`4, x.`5, x.`6, x.`7, x.`8).
     move : match_dec_q_eq_some.
-    case (epdp_univ_septuple_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 x8 /= <- //.
+    case (epdp_univ_tuple7_univ.`dec q) => // [[]] x2 x3 x4 x5 x6 x7 x8 /= <- //.
   move : match_dec_q_eq_some.
   rewrite val_y2 /= => <- /=.
-  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_septuple_univ //.
+  rewrite (epdp_dec_enc _ _ q) 1:valid_epdp_univ_tuple7_univ //.
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_octuple_univ.
-hint rewrite epdp : valid_epdp_univ_octuple_univ.
+hint simplify [eqtrue] valid_epdp_univ_tuple8_univ.
+hint rewrite epdp : valid_epdp_univ_tuple8_univ.
 
 (* encoding of pair 'a * 'b *)
 
@@ -949,107 +1614,107 @@ qed.
 
 hint rewrite epdp_sub : valid_epdp_pair_univ.
 
-(* encoding of triple 'a * 'b * 'c *)
+(* encoding of tuple3 'a * 'b * 'c *)
 
-op nosmt epdp_triple_univ
+op nosmt epdp_tuple3_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp)
            : ('a * 'b * 'c, univ) epdp =
-  epdp_comp epdp_univ_triple_univ (epdp_triple epdp1 epdp2 epdp3).
+  epdp_comp epdp_univ_tuple3_univ (epdp_tuple3 epdp1 epdp2 epdp3).
 
-lemma valid_epdp_triple_univ
+lemma valid_epdp_tuple3_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('a, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
-  valid_epdp (epdp_triple_univ epdp1 epdp2 epdp3).
+  valid_epdp (epdp_tuple3_univ epdp1 epdp2 epdp3).
 proof.  
 move => valid1 valid2 valid3.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_triple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple3_univ.
 
-(* encoding of quadruple 'a * 'b * 'c * 'd *)
+(* encoding of tuple4 'a * 'b * 'c * 'd *)
 
-op nosmt epdp_quadruple_univ
+op nosmt epdp_tuple4_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp)
            : ('a * 'b * 'c * 'd, univ) epdp =
-  epdp_comp epdp_univ_quadruple_univ (epdp_quadruple epdp1 epdp2 epdp3 epdp4).
+  epdp_comp epdp_univ_tuple4_univ (epdp_tuple4 epdp1 epdp2 epdp3 epdp4).
 
-lemma valid_epdp_quadruple_univ
+lemma valid_epdp_tuple4_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 =>
-  valid_epdp (epdp_quadruple_univ epdp1 epdp2 epdp3 epdp4).
+  valid_epdp (epdp_tuple4_univ epdp1 epdp2 epdp3 epdp4).
 proof.  
 move => valid1 valid2 valid3 valid4.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_quadruple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple4_univ.
 
-(* encoding of quintuple 'a * 'b * 'c * 'd * 'e *)
+(* encoding of tuple5 'a * 'b * 'c * 'd * 'e *)
 
-op nosmt epdp_quintuple_univ
+op nosmt epdp_tuple5_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
           epdp5 : ('e, univ) epdp)
            : ('a * 'b * 'c * 'd * 'e, univ) epdp =
-  epdp_comp epdp_univ_quintuple_univ
-  (epdp_quintuple epdp1 epdp2 epdp3 epdp4 epdp5).
+  epdp_comp epdp_univ_tuple5_univ
+  (epdp_tuple5 epdp1 epdp2 epdp3 epdp4 epdp5).
 
-lemma valid_epdp_quintuple_univ
+lemma valid_epdp_tuple5_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
        epdp5 : ('e, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 =>
-  valid_epdp (epdp_quintuple_univ epdp1 epdp2 epdp3 epdp4 epdp5).
+  valid_epdp (epdp_tuple5_univ epdp1 epdp2 epdp3 epdp4 epdp5).
 proof.  
 move => valid1 valid2 valid3 valid valid5.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_quintuple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple5_univ.
 
-(* encoding of sextuple 'a * 'b * 'c * 'd * 'e * 'f *)
+(* encoding of tuple6 'a * 'b * 'c * 'd * 'e * 'f *)
 
-op nosmt epdp_sextuple_univ
+op nosmt epdp_tuple6_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
           epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp)
            : ('a * 'b * 'c * 'd * 'e * 'f, univ) epdp =
-  epdp_comp epdp_univ_sextuple_univ
-  (epdp_sextuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+  epdp_comp epdp_univ_tuple6_univ
+  (epdp_tuple6 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
 
-lemma valid_epdp_sextuple_univ
+lemma valid_epdp_tuple6_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
        epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
-  valid_epdp (epdp_sextuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+  valid_epdp (epdp_tuple6_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_sextuple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple6_univ.
 
-(* encoding of septuple 'a * 'b * 'c * 'd * 'e * 'f * 'g *)
+(* encoding of tuple7 'a * 'b * 'c * 'd * 'e * 'f * 'g *)
 
-op nosmt epdp_septuple_univ
+op nosmt epdp_tuple7_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
           epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
           epdp7 : ('g, univ) epdp)
            : ('a * 'b * 'c * 'd * 'e * 'f * 'g, univ) epdp =
-  epdp_comp epdp_univ_septuple_univ
-  (epdp_septuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+  epdp_comp epdp_univ_tuple7_univ
+  (epdp_tuple7 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
 
-lemma valid_epdp_septuple_univ
+lemma valid_epdp_tuple7_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
        epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1057,26 +1722,26 @@ lemma valid_epdp_septuple_univ
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
   valid_epdp epdp7 =>
-  valid_epdp (epdp_septuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+  valid_epdp (epdp_tuple7_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6 valid7.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_septuple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple7_univ.
 
-(* encoding of octuple 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h *)
+(* encoding of tuple8 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h *)
 
-op nosmt epdp_octuple_univ
+op nosmt epdp_tuple8_univ
          (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
           epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
           epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
           epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp)
            : ('a * 'b * 'c * 'd * 'e * 'f * 'g * 'h, univ) epdp =
-  epdp_comp epdp_univ_octuple_univ
-  (epdp_octuple epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+  epdp_comp epdp_univ_tuple8_univ
+  (epdp_tuple8 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
 
-lemma valid_epdp_octuple_univ
+lemma valid_epdp_tuple8_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
        epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
        epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1085,13 +1750,13 @@ lemma valid_epdp_octuple_univ
   valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
   valid_epdp epdp7 => valid_epdp epdp8 =>
   valid_epdp
-  (epdp_octuple_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+  (epdp_tuple8_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
 proof.  
 move => valid1 valid2 valid3 valid valid5 valid6 valid7 valid8.
 by rewrite valid_epdp_comp 1:epdp epdp_sub.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_octuple_univ.
+hint rewrite epdp_sub : valid_epdp_tuple8_univ.
 
 (* encoding of ('a, 'b) choice *)
 
@@ -1110,6 +1775,150 @@ by rewrite valid_epdp_comp // valid_epdp_choice.
 qed.
 
 hint rewrite epdp_sub : valid_epdp_choice_univ.
+
+(* encoding of ('a, 'b, 'c) choice3 *)
+
+op nosmt epdp_choice3_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp)
+           : (('a, 'b, 'c) choice3, univ) epdp =
+  epdp_comp epdp_univ_choice3_univ (epdp_choice3 epdp1 epdp2 epdp3).
+
+lemma valid_epdp_choice3_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp (epdp_choice3_univ epdp1 epdp2 epdp3).
+proof.  
+move => valid1 valid2 valid3.
+by rewrite valid_epdp_comp // valid_epdp_choice3.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice3_univ.
+
+(* encoding of ('a, 'b, 'c, 'd) choice4 *)
+
+op nosmt epdp_choice4_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp)
+           : (('a, 'b, 'c, 'd) choice4, univ) epdp =
+  epdp_comp epdp_univ_choice4_univ (epdp_choice4 epdp1 epdp2 epdp3 epdp4).
+
+lemma valid_epdp_choice4_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp, epdp4 : ('d, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 =>
+  valid_epdp (epdp_choice4_univ epdp1 epdp2 epdp3 epdp4).
+proof.  
+move => valid1 valid2 valid3 valid4.
+by rewrite valid_epdp_comp // valid_epdp_choice4.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice4_univ.
+
+(* encoding of ('a, 'b, 'c, 'd, 'e) choice5 *)
+
+op nosmt epdp_choice5_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+          epdp5 : ('e, univ) epdp)
+           : (('a, 'b, 'c, 'd, 'e) choice5, univ) epdp =
+  epdp_comp epdp_univ_choice5_univ
+  (epdp_choice5 epdp1 epdp2 epdp3 epdp4 epdp5).
+
+lemma valid_epdp_choice5_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 =>
+  valid_epdp (epdp_choice5_univ epdp1 epdp2 epdp3 epdp4 epdp5).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5.
+by rewrite valid_epdp_comp // valid_epdp_choice5.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice5_univ.
+
+(* encoding of ('a, 'b, 'c, 'd, 'e, 'f) choice6 *)
+
+op nosmt epdp_choice6_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+          epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp)
+           : (('a, 'b, 'c, 'd, 'e, 'f) choice6, univ) epdp =
+  epdp_comp epdp_univ_choice6_univ
+  (epdp_choice6 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+
+lemma valid_epdp_choice6_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp (epdp_choice6_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5 valid6.
+by rewrite valid_epdp_comp // valid_epdp_choice6.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice6_univ.
+
+(* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 *)
+
+op nosmt epdp_choice7_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+          epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+          epdp7 : ('g, univ) epdp)
+           : (('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7, univ) epdp =
+  epdp_comp epdp_univ_choice7_univ
+  (epdp_choice7 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+
+lemma valid_epdp_choice7_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+       epdp7 : ('g, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 =>
+  valid_epdp (epdp_choice7_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7.
+by rewrite valid_epdp_comp // valid_epdp_choice7.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice7_univ.
+
+(* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 *)
+
+op nosmt epdp_choice8_univ
+         (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+          epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
+          epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+          epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp)
+           : (('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8, univ) epdp =
+  epdp_comp epdp_univ_choice8_univ
+  (epdp_choice8 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+
+lemma valid_epdp_choice8_univ
+      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
+       epdp3 : ('b, univ) epdp, epdp4 : ('d, univ) epdp,
+       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
+       epdp7 : ('g, univ) epdp, epdp8 : ('h, univ) epdp) :
+  valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
+  valid_epdp epdp4 => valid_epdp epdp5 => valid_epdp epdp6 =>
+  valid_epdp epdp7 => valid_epdp epdp8 =>
+  valid_epdp
+  (epdp_choice8_univ epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
+proof.  
+move => valid1 valid2 valid3 valid4 valid5 valid6 valid7 valid8.
+by rewrite valid_epdp_comp // valid_epdp_choice8.
+qed.
+
+hint rewrite epdp_sub : valid_epdp_choice8_univ.
 
 (* encoding of 'a option *)
 
