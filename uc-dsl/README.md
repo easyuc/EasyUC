@@ -35,13 +35,15 @@ Building the UC DSL Tool
 
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
-[`opam`](https://opam.ocaml.org),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and the `Bisect_ppx`
-plugin for Ocamlbuild
+[`opam`](https://opam.ocaml.org), [OCaml
+Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and the
+`Bisect_ppx` plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
-(Bisect_ppx can be installed using `opam`: `opam install
-bisect_ppx-ocamlbuild`.) EasyCrypt can be installed via `opam` or
-by building from the source; see the
+(OCaml Batteries can be installed using `opam`: `opam install
+batteries`.  Bisect_ppx can be installed using `opam`: `opam install
+bisect_ppx-ocamlbuild`.) EasyCrypt can be installed via `opam` or by
+building from the source; see the
 [instructions](https://github.com/EasyCrypt/easycrypt).
 
 The UC DSL source is compatible with `why3` (installed as part
@@ -88,7 +90,6 @@ To edit the source in Emacs, you'll want to install the following
 `opam` packages:
 
 ```
-opam install batteries
 opam install tuareg
 opam install merlin
 ```
