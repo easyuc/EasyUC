@@ -37,7 +37,7 @@ The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
 [`opam`](https://opam.ocaml.org), [OCaml
 Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt), and the
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt) and the
 `Bisect_ppx` plugin for Ocamlbuild
 [Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
 (OCaml Batteries can be installed using `opam`: `opam install
