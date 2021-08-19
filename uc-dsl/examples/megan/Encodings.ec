@@ -1,7 +1,6 @@
 (* Encodings.ec *)
 
-(* For encoding messages to univ and decoding messages from univ *)
-
+(* For encoding messages to univ and decoding messages from univ. *)
 (* Author: Megan Chen *)
 
 require import AllCore Distr UCBasicTypes.

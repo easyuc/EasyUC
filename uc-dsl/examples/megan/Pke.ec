@@ -1,3 +1,4 @@
+
 (* Pke.ec *)
 
 (* This describes a public key encryption scheme, capturing notion of IND-CPA security. *)
@@ -48,7 +49,7 @@ axiom oblivenc_inv_bij (pk : pkey, c : ciphertext):
 
 (* TODO: update indcpa to use oblivenc *)
 module type ADV_INDCPA = {
-  proc choose(pk : pkey) : plaintext * plaintext
+  proc choose(pk : pkey) : plaintext
   proc main(pk : pkey, c : ciphertext) : bool
 }.
 
@@ -56,14 +57,14 @@ module INDCPA_0(Adv : ADV_INDCPA) = { (* Always encrypts x0 *)
   proc main() : bool = {
     var pk : pkey; var sk : skey;
     var r : rand;
-    var x0, x1 : plaintext;
+    var x : plaintext;
     var b : bool;
     var c : ciphertext;
     (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
     r <$ drand;                  (* Select randomness used in PKE *)
-    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
-    c <- enc pk x0 r;            (* Encrypt x0 *)
-    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypte *)
+    x <@ Adv.choose(pk);  	 (* Adv chooses a plaintext x *)
+    c <- enc pk x r;             (* Always output an encryption of x *)
+    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
     return b;
   }
 }.
@@ -72,14 +73,14 @@ module INDCPA_1(Adv : ADV_INDCPA) = { (* Always encrypts x1*)
   proc main() : bool = {
     var pk : pkey; var sk : skey;
     var r : rand;
-    var x0, x1 : plaintext;
+    var x : plaintext;
     var b : bool;
     var c : ciphertext;
     (pk, sk) <$ dkeygen;         (* Generate keys for PKE *)
     r <$ drand;                  (* Select randomness used in PKE *)
-    (x0, x1) <@ Adv.choose(pk);  (* Adv chooses plaintexts x0, x1 *)
-    c <- enc pk x1 r;            (* Encrypt x1 *)
-    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypte *)
+    x <@ Adv.choose(pk);  	 (* Adv chooses plaintexts x *)
+    c <- oblivenc pk r;          (* Always obliviously sample c *)
+    b <@ Adv.main(pk, c);        (* Adv guesses which ciphertext was encrypted *)
     return b;
   }
 }.
