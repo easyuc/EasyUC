@@ -12,16 +12,18 @@ lemma hybrid (p : real) (m : int) (M <: T) &m :
   (forall (i : int) &m,
    1 <= i < m => 
    `|Pr[M.main(i) @ &m : res] - Pr[M.main(i + 1) @ &m : res]| <= p) =>
-  `|Pr[M.main(1) @ &m : res] - Pr[M.main(m) @ &m : res]| <= m%r * p.
+  `|Pr[M.main(1) @ &m : res] - Pr[M.main(m) @ &m : res]| <= (m - 1)%r * p.
 proof.
 move => ge0_p ge1_m step.
 have H :
   forall (i : int),
   0 <= i => 1 <= i <= m =>
-  `|Pr[M.main(1) @ &m : res] - Pr[M.main(i) @ &m : res]| <= i%r * p.
+  `|Pr[M.main(1) @ &m : res] - Pr[M.main(i) @ &m : res]| <= (i - 1)%r * p.
   elim => [// | i ge0_i IH [_ i_plus1_le_m]].
   case (i = 0) => [-> /= | ne0_i].
   rewrite ger0_norm // ge0_p.
+  rewrite /=.
+  have -> : i%r = ((i - 1) + 1)%r by smt().
   rewrite fromintD Domain.mulrDl /=.
   rewrite (ler_trans
            (`|Pr[M.main(1) @ &m : res] - Pr[M.main(i) @ &m : res]| +
@@ -85,7 +87,7 @@ module GIdeal = {
 
 lemma GReal_GIdeal &m :
   `|Pr[GReal.main() @ &m : res] - Pr[GIdeal.main() @ &m : res]| <=
-  m%r * (1%r / (2 ^ n)%r).
+  (m - 1)%r * (1%r / (2 ^ n)%r).
 *)
 
 module GHybrid = {
@@ -231,7 +233,7 @@ qed.
 
 lemma GHybrid_1_m &m :
   `|Pr[GHybrid.main(1) @ &m : res] - Pr[GHybrid.main(m) @ &m : res]| <=
-  m%r * (1%r / (2 ^ n)%r).
+  (m - 1)%r * (1%r / (2 ^ n)%r).
 proof.
 rewrite (hybrid _ _ GHybrid).
 by rewrite divr_ge0 // le_fromint IntOrder.expr_ge0.
@@ -241,7 +243,7 @@ qed.
 
 lemma GReal_GIdeal &m :
   `|Pr[GReal.main() @ &m : res] - Pr[GIdeal.main() @ &m : res]| <=
-  m%r * (1%r / (2 ^ n)%r).
+  (m - 1)%r * (1%r / (2 ^ n)%r).
 proof.
 rewrite (GReal_GHybrid_1 &m) -(GHybrid_m &m) (GHybrid_1_m &m).
 qed.
