@@ -1,4 +1,3 @@
-
 (* Pke.ec *)
 
 (* This describes a public key encryption scheme, capturing notion of IND-CPA security. *)
