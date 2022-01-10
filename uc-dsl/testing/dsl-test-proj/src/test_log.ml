@@ -1,8 +1,8 @@
 (* test_log.ml *)
 
-(* get1char reads a character without pressing enter.
- Source: Jeffrey Scofield, however this doesn't work in Windows; 
-since tcgetattr is not implemented yet in windows *)
+(* get1char reads a character without pressing enter.  Source: Jeffrey
+   Scofield, however this doesn't work in Windows; since tcgetattr is
+   not implemented yet in windows *)
 
 let get1char () =
   let termio =
@@ -33,7 +33,7 @@ let create_log () =
     in
     let oc =
       open_out (folder^"/"^file_name) in
-    close_out oc            
+    close_out oc
   with e ->
     print_endline ("Error with create log"^(Printexc.to_string e));
     exit 1
@@ -53,4 +53,4 @@ let write_log file str =
   with e ->
     print_endline ("Error with write log"^(Printexc.to_string e));
     exit 1
-      
+

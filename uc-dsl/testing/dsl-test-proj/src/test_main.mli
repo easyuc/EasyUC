@@ -1,3 +1,3 @@
-(* test_main *)
+(* test_main.mli *)
 
-(*this is where the test suite's main file *)
+(* This is the test suite's main file *)

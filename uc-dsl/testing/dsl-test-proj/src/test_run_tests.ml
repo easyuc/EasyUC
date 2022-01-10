@@ -3,7 +3,7 @@
 open Test_types
 open Test_common_module
 open Test_log
-   
+
 let verbose = ref false
 let debug = ref false
 let quiet = ref false
@@ -15,10 +15,10 @@ let sec_str = ref ""
 let desc_str = ref ""
 let conflict_str = ref ""
 let fail_str = ref ""
-             
-(* check_name contents sees if there any .ec or .uc files in the directory 
-if yes then their names will be passed onto check_ec_standard *)
-             
+
+(* check_name contents sees if there any .ec or .uc files in the directory
+   if yes then their names will be passed onto check_ec_standard *)
+
 let check_name contents  =
   let rec check file_list  =
     match file_list with
@@ -33,11 +33,11 @@ let check_name contents  =
          then log_str := !log_str ^  check_ec_standard e in
        check l in
   check contents
-  
-(* dir_name takes a file, gets it's directory by using 
-Filename.dirname so that the contents can be examined by 
-check_name function *)
-  
+
+(* dir_name takes a file, gets it's directory by using
+   Filename.dirname so that the contents can be examined by check_name
+   function *)
+
 let dir_name file =
   let dir =
     Filename.dirname file in
@@ -45,8 +45,8 @@ let dir_name file =
     Array.to_list (Sys.readdir dir) in
   check_name contents
 
-let rec last_element y list = 
-  match list with 
+let rec last_element y list =
+  match list with
   | [] ->
      raise (Error  "List is empty")
   | [x] ->
@@ -58,7 +58,7 @@ let rec last_element y list =
      let z =
        Array.append y [|first_el|] in
      last_element z rest_of_list
-     
+
 let rec match_expr expression f_name out_come1 out_come2 =
   match expression with
   |[] ->
@@ -74,15 +74,12 @@ let rec match_expr expression f_name out_come1 out_come2 =
     |_ ->
       match_expr l f_name out_come1 out_come2
 
-(* create_conflict has 3 arguments file - 
-the TEST file of the current test, 
-outcome and 
-outcome description obtained my running that TEST. 
-With this information this function creates 
-a CONFLICT by copying contests of 
-the current TEST file and appends outcome and 
-outcome description it recived *)
-     
+(* create_conflict has 3 arguments file - the TEST file of the current
+   test, outcome and outcome description obtained my running that
+   TEST.  With this information this function creates a CONFLICT by
+   copying contests of the current TEST file and appends outcome and
+   outcome description it recived *)
+
 let create_conflict file outcome1 outcome2 =
   let dir =
     Filename.dirname file in
@@ -106,7 +103,7 @@ let match_stat stat =
   |Some 0 -> "0"
   |Some n -> string_of_int n
   |_ ->      "Unknown"
-           
+
 (* in the above code write_log comes from the file Test_log.ml *)
 
 (* below function parse_file comes into the picture while executing a
@@ -115,7 +112,7 @@ let match_stat stat =
    function run from Test_common_module.ml which gives us exit code
    together with an error message if any use that information to
    determine whether a test failed or passed *)
-           
+
 let parse_file file code =
   try
     let parse_list =
@@ -135,7 +132,7 @@ let parse_file file code =
     if s1 <> "" then
       (if s2 <> "" then
          raise (Error (s1^"\n"^s2))
-       else raise (Error s1))                 
+       else raise (Error s1))
     else
       let _ =
         log_str := !log_str^"\n"^s2 in
@@ -164,7 +161,7 @@ let parse_file file code =
           |_ ->
             (log_str :=
                !log_str
-               ^ "-> Test failed - UCDSL output differs from " 
+               ^ "-> Test failed - UCDSL output differs from "
                ^ "outcome description.\noutcome description is:\n"
                ^ out_come2 ^ "UCDSL message is: \n" ^ s_out;
              create_conflict file out_text s_out;
@@ -174,7 +171,7 @@ let parse_file file code =
                ^ "\n";
              code+1)
         end
-       
+
       |_ ->
         begin
           match s_out =
@@ -233,7 +230,7 @@ let parse_file file code =
       !log_str^ "\n"^ e;
     fail_str :=
       !fail_str ^ file ^ "\n";
-    (code+1) 
+    (code+1)
   |Error e ->
     let log_err =
       e in
@@ -250,18 +247,18 @@ let parse_file file code =
     fail_str :=
       !fail_str ^ file ^ "\n";
     (code+1)
-    
-(* log_fun is log function which write the log and prints the log checking 
-the verbosity and write_log comes from Test_log.ml*)
-                                            
+
+(* log_fun is log function which write the log and prints the log
+   checking the verbosity and write_log comes from Test_log.ml*)
+
 let log_fun () =
-  let _ = 
+  let _ =
     if !verbose then
       (write_log "log" (!desc_str);
        print_endline (!desc_str ^ !log_str ^ !sec_str))
     else if not !quiet then
       print_endline (!log_str)
-    
+
   in
   write_log "log" (!log_str ^ !sec_str ^"\n");
   log_str := "";
@@ -285,13 +282,11 @@ let log_fail () =
     log_str :=
       "Skipped tests\n"^ !conflict_str
 
-   
 (* We take a directory and find all TEST files in the directory,
-file_list contains all that information and error_string 
-contains any errors happened during searching the directory dir
-for TEST files, for example permission denied to read a directory
-etc *)     
-   
+   file_list contains all that information and error_string contains
+   any errors happened during searching the directory dir for TEST
+   files, for example permission denied to read a directory etc *)
+
 let pre_run dir  =
   let file_list, error_string  =
     walk_directory_tree dir [] "" in
@@ -302,7 +297,7 @@ let pre_run dir  =
          write_log "log" (error_string^"\n") in
        if not !quiet then
          print_endline error_string)
-  in 
+  in
   let s =
     List.length file_list in
   let _ =
@@ -327,7 +322,7 @@ let pre_run dir  =
       if (exit_code = 0) then
         (let _ =
            log_str :=
-             !log_str 
+             !log_str
              ^"\nTest suite completed sucessfully all tests passed \n"
          in
          log_fun();
@@ -350,7 +345,7 @@ let pre_run dir  =
              let _ =
                dir_name e in
 (* Here dir_name tests EasyCrypt file standard for .uc/.ec files in
-the directory 'e'*)
+   the directory 'e'*)
              let file_name  =
                (Filename.dirname e)^"/"^"CONFLICT" in
              if Sys.file_exists(file_name) then
@@ -368,7 +363,7 @@ the directory 'e'*)
                     ^"\n.._______________________________.." in
                 log_fun();
                 parse_list l (exit_code+1))
-             else 
+             else
                (let code =
                   parse_file e exit_code in
                 sec_str :=
@@ -377,11 +372,7 @@ the directory 'e'*)
                 log_fun ();
                 parse_list l code)
   in parse_list file_list 0
-       
-(* For every test all the error messages are stored in string log_str, once
-a test ran, depending on verbosity option we choose to display it or not but 
-in all times we write it to log *)
-       
-       
-       
-       
+
+(* For every test all the error messages are stored in string log_str,
+   once a test ran, depending on verbosity option we choose to display
+   it or not but in all times we write it to log *)

@@ -1,3 +1,5 @@
+(* test_parser.mly *)
+
 %{
     open Test_types
 %}
@@ -11,10 +13,9 @@
 
 %%
 
-(* The lexer returns token of form stmt; EOF 
-stmt is a list of expressions, hence each statement looks like
-expressions :: statement
-expressions are of 3 types as defined below *)
+(* The lexer returns token of form stmt; EOF stmt is a list of
+   expressions, hence each statement looks like expressions ::
+   statement expressions are of 3 types as defined below *)
 
 prog:
   | e = stmt ; EOF {e }
@@ -29,6 +30,3 @@ expr:
   | o = ARGS  {Args o}
   | o = OUT {Outcome (fst o, snd o)}
   ;
-
-
-

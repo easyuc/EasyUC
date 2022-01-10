@@ -3,15 +3,15 @@
 open Test_run_tests
 open Test_log
 open Test_common_module
-      
+
 let dirs_list = ref []
 
 (* Checks whether the input a valid directory or not *)
-             
+
 let insert_dirs x =
   (* print_endline x;*)
-  dirs_list := !dirs_list @ [x] 
-  
+  dirs_list := !dirs_list @ [x]
+
 let verify_dir dir =
   try
     let _ =
@@ -25,12 +25,14 @@ let verify_dir dir =
     with
     |Sys_error e ->
       (print_endline e; exit 1)
-     
+
 (* needs to be logged? *)
-(* this function pre_debug comes into the picture when debug option is used
-we take a file, parse it using parse function from Test_common_module.ml and 
-print it using print_list function from the same file *)
-                              
+
+(* this function pre_debug comes into the picture when debug option is
+   used we take a file, parse it using parse function from
+   Test_common_module.ml and print it using print_list function from
+   the same file *)
+
 let pre_debug file =
   try
     let list = parse file in
@@ -57,10 +59,9 @@ let pre_debug file =
     print_endline (Printexc.to_string e);
     exit 1
 
-(* call_dir_test is the sanity check for options
-and creates log file if it doesn't exist 
-create_log function is at Test_log.ml  *)
-           
+(* call_dir_test is the sanity check for options and creates log file
+   if it doesn't exist create_log function is at Test_log.ml *)
+
 let call_dir_test () =
   let _ =
     if not (!verbose || !quiet || !debug)
@@ -140,15 +141,7 @@ let main =
         "Prints debug information of a TEST file");
       ]
     in
-    Arg.parse speclist
-      (fun x ->
-(*        if not (!verbose || !quiet || !debug) && then
-          (print_endline ("Unknown option "^ x);
-           Arg.usage speclist usage_msg;
-           exit 1)
-        else *)
-        insert_dirs x)
-      usage_msg;
+    Arg.parse speclist insert_dirs usage_msg;
     call_dir_test;
   end
 
