@@ -1,8 +1,8 @@
 (* test_run_tests.ml *)
+
 open Test_types
 open Test_common_module
 open Test_log
-
    
 let verbose = ref false
 let debug = ref false
@@ -10,13 +10,11 @@ let quiet = ref false
 
 (* The above 3 variables refer to the options as their name suggests *)
 
-
 let log_str = ref ""
 let sec_str = ref ""
 let desc_str = ref ""
 let conflict_str = ref ""
 let fail_str = ref ""
-             
              
 (* check_name contents sees if there any .ec or .uc files in the directory 
 if yes then their names will be passed onto check_ec_standard *)
@@ -110,14 +108,15 @@ let match_stat stat =
   |_ ->      "Unknown"
            
 (* in the above code write_log comes from the file Test_log.ml *)
-(* below function parse_file comes into the picture while executing 
-a test, we take a TEST file, parse using parse function from 
-Test_common_module.ml then get the tokens, match and use the function 
-run from Test_common_module.ml
-which gives us exit code together with an error message if any
-use that information to determine whether a test failed or passed *)
+
+(* below function parse_file comes into the picture while executing a
+   test, we take a TEST file, parse using parse function from
+   Test_common_module.ml then get the tokens, match and use the
+   function run from Test_common_module.ml which gives us exit code
+   together with an error message if any use that information to
+   determine whether a test failed or passed *)
            
-let rec parse_file file code =
+let parse_file file code =
   try
     let parse_list =
       parse file in

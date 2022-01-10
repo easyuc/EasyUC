@@ -1,8 +1,6 @@
 (* test_common_module.ml *)
 
 open Test_types
-open Str
-open Printf
 open Unix
 
 exception Error of string
@@ -51,11 +49,11 @@ let check_fields lst =
       (arg, desc, out)
     |e::l ->
       match e with
-      |Args o ->
+      |Args _ ->
         check (arg+1) desc out l
-      |Desc d ->
+      |Desc _ ->
         check arg (desc+1) out l
-      |Outcome (o1,o2) ->
+      |Outcome _ ->
         check arg desc (out+1) l
   in
   let (arg_1, desc_1, out_1) =
@@ -205,7 +203,7 @@ let rec walk_directory_tree dir (test_list:string list) (er_string:string) =
        let file_list =
          match dir_content with
          |[] -> ""
-         |e::l -> e
+         |e::_ -> e
        in
        (test_list,(er_string^"\n"^
 	             "Error:Unexpected files found in the directory:"

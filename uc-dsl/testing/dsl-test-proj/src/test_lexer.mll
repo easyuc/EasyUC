@@ -1,7 +1,6 @@
 {
 open Test_parser
 open Test_types
-open Str
 open Lexing
 
 exception Syntax_error of string
@@ -11,8 +10,8 @@ let next_line lexbuf = let pos = lexbuf.lex_curr_p in
 		       	pos with pos_bol = lexbuf.lex_curr_pos;
 			pos_lnum = pos.pos_lnum + 1
 			}
-(* error_raise takes an error statement and the character which caused that error,
- and we compute the line number and raise a Syntax error *)
+(* error_raise takes an error statement and the character which caused that
+   error, and we compute the line number and raise a Syntax error *)
 let error_raise s1 lexbuf=
     let p = Lexing.lexeme_start_p lexbuf in
     let line_num = p.Lexing.pos_lnum in

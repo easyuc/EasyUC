@@ -1,8 +1,8 @@
 (* test_main.ml *)
+
 open Test_run_tests
 open Test_log
 open Test_common_module
-   
       
 let dirs_list = ref []
 
@@ -17,7 +17,7 @@ let verify_dir dir =
     let _ =
       Sys.is_directory(dir) in dir
   with
-  |Sys_error e ->
+  |Sys_error _ ->
     try
       let _ =
         Sys.is_directory("./"^dir) in
