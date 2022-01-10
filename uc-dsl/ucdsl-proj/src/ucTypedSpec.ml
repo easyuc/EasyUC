@@ -31,7 +31,7 @@ let id_map_domain (map : 'a IdMap.t) : IdSet.t =
 module SL =  (* domain: string list = symbol list *)
   struct
     type t = string list
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end
 
 (* we often refer to elements of type symbol list as "qualified ids";
@@ -51,7 +51,7 @@ type symb_pair = symbol * symbol
 module SP =  (* domain: string * string = symb_pair *)
   struct
     type t = string * string
-    let compare = Pervasives.compare
+    let compare = Stdlib.compare
   end
 
 module IdPairMap = Map.Make(SP)

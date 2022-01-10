@@ -25,25 +25,26 @@ definitions of the functionalities and simulators of our SMC (secure
 message transmission) case study.
 
 The OCaml code for a lexer, parser and typechecker for the DSL can be
-found in the subdirectory [`src`](src). It builds upon the EasyCrypt
-implementation, and is distributed under the same software license.
-The software is still under development.  A translator into EasyCrypt
-is yet to be written.
+found in the subdirectory [`ucdsl-proj`](ucdsl-proj). It builds upon
+the EasyCrypt implementation, and is distributed under the same
+software license.  The software is still under development.  A
+translator into EasyCrypt is yet to be written.
 
 Building the UC DSL Tool
 --------------------------------------------------------------------
 
 The following instructions assume you have already installed
 [OCaml](https://ocaml.org), the OCaml Package Manager
-[`opam`](https://opam.ocaml.org), [OCaml
+[opam](https://opam.ocaml.org), [OCaml
 Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt) and the
-`Bisect_ppx` plugin for Ocamlbuild
-[Bisect_ppx](https://github.com/aantron/bisect_ppx-ocamlbuild).
-(OCaml Batteries can be installed using `opam`: `opam install
-batteries`.  Bisect_ppx can be installed using `opam`: `opam install
-bisect_ppx-ocamlbuild`.) EasyCrypt can be installed via `opam` or by
-building from the source; see the
+[Dune](https://dune.build),
+[Bisect_ppx](https://github.com/aantron/bisect_ppx) and
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt).
+(OCaml Batteries
+can be installed using `opam`: `opam install batteries`. Dune can be
+installed using `opam`: `opam install dune`.  Bisect_ppx can be
+installed using `opam`: `opam install bisect_ppx`.) EasyCrypt can be
+installed via `opam` or by building from the source; see the
 [instructions](https://github.com/EasyCrypt/easycrypt).
 
 The UC DSL source is compatible with `why3` (installed as part
@@ -79,9 +80,6 @@ To clean up the build state, you can run
 ```
 ./build-cleanup
 ```
-
-(If you get to a state where `ocamlbuild` is complaining, running
-`./build-cleanup` and then `./build` often fixes the problem.)
 
 You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
 `ucdsl -help` for information about how to invoke the tool.
@@ -148,18 +146,10 @@ framework, including a suite of test cases. This suite can
 be used to check code coverage (see the above instructions for
 building `ucdsl` with code coverage instrumentation turned on).
 
-Files
+UC DSL Prelude
 --------------------------------------------------------------------
 
-The file:
-
-* `.merlin` contains the configuration file for
-  [Merlin](https://github.com/ocaml/merlin), a plugin to `emacs` and
-  `vim` for assisting in the editing of OCaml code (e.g., learning the
-  types of expressions).
-
-* `_tags` contains the `ocamlbuild` tags for the project (`ocamlbuild`
-  is used by the `build` script).
-
-* `myocamlbuild.ml` is the project's `ocamlbuild` plugin, customizing
-  its behavior.
+The subdirectory [`prelude`](prelude) constains the files of the UC
+DSL Prelude, which are first on the search path when `ucdsl` runs.
+The file `UCBasicTypes.ec` is automatically `ec_required` last
+when processing UC DSL files.

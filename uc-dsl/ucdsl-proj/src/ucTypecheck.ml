@@ -1227,8 +1227,7 @@ let check_toplevel_match_clause
 
       (try  EcUnify.unify env ue (toarrow ctorty pty) opty with
        | EcUnify.UnificationFailure _ -> assert false);
-      unify_or_fail env ue l pty gindty;
-
+      unify_or_fail env ue l ~expct:pty gindty;
       let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
       let pvars = List.map (fun x -> create (unloc x)) cargs in
       let pvars = List.combine pvars ctorty in

@@ -603,7 +603,7 @@ let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
 
       (try  EcUnify.unify env ue (toarrow ctorty pty) opty
        with EcUnify.UnificationFailure _ -> assert false);
-      unify_or_fail env ue loc pty gindty;
+      unify_or_fail env ue loc ~expct:pty gindty;
 
       let create o = EcIdent.create (omap_dfl unloc "_" o) in
       let pvars = List.map (create |- unloc) cargs in

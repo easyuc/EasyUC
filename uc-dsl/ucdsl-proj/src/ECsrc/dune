@@ -1,0 +1,7 @@
+(dirs phl system)
+
+(ocamllex ecLexer)
+
+(menhir
+ (modules ecParser)
+ (flags --table))

@@ -21,10 +21,7 @@ module License = struct
   let stdlib = "Distributed under the terms of the CeCILL-B license"
 end
 
-(*
 let hash =
-  match Build_info.V1.version () None with
+  match Build_info.V1.version () with
   | None   -> "n/a"
   | Some v -> Build_info.V1.Version.to_string v
-*)
-let hash = "n/a"
