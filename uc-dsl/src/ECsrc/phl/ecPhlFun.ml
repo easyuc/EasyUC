@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -39,12 +39,12 @@ let check_concrete pf env f =
     tc_error_lazy pf (fun fmt ->
       let ppe = EcPrinting.PPEnv.ofenv env in
       Format.fprintf fmt
-        "The function %a is abstract, it should be concrete"
+        "The function %a is abstract. Provide an invariant to the [proc] tactic"
         (EcPrinting.pp_funname ppe) f)
 
 (* -------------------------------------------------------------------- *)
 let lossless_hyps env top sub =
-  let sig_ = (EcEnv.Mod.by_mpath top env).me_sig in
+  let sig_ = (fst (EcEnv.Mod.by_mpath top env)).me_sig in
   let bd =
     List.map
       (fun (id, mt) -> (id, GTmodty (mt, (Sx.empty, Sm.singleton top))))

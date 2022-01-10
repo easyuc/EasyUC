@@ -10,14 +10,14 @@
 
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
+ * Copyright (c) - 2020-2022 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -109,3 +109,4 @@ val ucdsl_new : unit -> unit
 (* end scope, reverting to saved one from stack, which is updated to
    include required theories of ended scope *)
 val ucdsl_end : unit -> unit
+

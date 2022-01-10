@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -191,7 +191,7 @@ val trans_prop     : env -> ?mv:metavs -> EcUnify.unienv -> pformula -> EcFol.fo
 val trans_pattern  : env -> ptnmap -> EcUnify.unienv -> pformula -> EcFol.form
 
 (* -------------------------------------------------------------------- *)
-val transmodsig  : env -> symbol -> pmodule_sig  -> module_sig
+val transmodsig  : env -> pinterface -> top_module_sig
 val transmodtype : env -> pmodule_type -> module_type * module_sig
 val transmod     : attop:bool -> env -> pmodule_def -> module_expr
 

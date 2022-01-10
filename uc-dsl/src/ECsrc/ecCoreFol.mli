@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -36,6 +36,7 @@ val as_mem   : gty -> EcMemory.memtype
 
 val gty_equal : gty  -> gty -> bool
 val gty_fv    : gty -> int Mid.t
+val gty_fv_and_tvar : gty -> int Mid.t
 
 type quantif =
   | Lforall

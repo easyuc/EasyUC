@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -360,7 +360,6 @@ end = struct
   type i_match    = EcTypes.expr * ((EcIdent.t * ty) list * stmt) list
   type i_assert   = EcTypes.expr
   type i_abstract = EcIdent.t
-  type s_stmt     = instr list
 
   let lv_var (lv, pvt) pvt' =
     if pvt == pvt' then lv else LvVar pvt'
@@ -575,6 +574,10 @@ type module_sig = {
   mis_body   : module_sig_body;
 }
 
+type top_module_sig = {
+  tms_sig : module_sig;
+  tms_loca : is_local;
+}
 (* -------------------------------------------------------------------- *)
 type uses = {
   us_calls  : xpath list;
@@ -642,6 +645,11 @@ and module_item =
 and module_comps = module_comps_item list
 
 and module_comps_item = module_item
+
+type top_module_expr = {
+  tme_expr : module_expr;
+  tme_loca : locality;
+}
 
 (* -------------------------------------------------------------------- *)
 let vd_equal vd1 vd2 =

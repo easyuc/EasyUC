@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -345,8 +345,8 @@ let gen_select_op
 
   let ue_filter =
     match mode with
-    | `Expr _ -> fun op -> not (EcDecl.is_pred op)
-    | `Form   -> fun _  -> true
+    | `Expr _ -> fun _ op -> not (EcDecl.is_pred op)
+    | `Form   -> fun _ _  -> true
   in
 
   let by_scope opsc ((p, _), _, _, _) =
@@ -399,7 +399,7 @@ let select_form_op env opsc name ue tvi psig =
 
 (* -------------------------------------------------------------------- *)
 let select_proj env opsc name ue tvi recty =
-  let filter = (fun op -> EcDecl.is_proj op) in
+  let filter = (fun _ op -> EcDecl.is_proj op) in
   let ops = EcUnify.select_op ~filter tvi env name ue [recty] in
   let ops = List.map (fun (p, ty, ue, _) -> (p, ty, ue)) ops in
 
@@ -487,7 +487,7 @@ let rec check_sig_cnv mode (env:EcEnv.env) (sin:module_sig) (sout:module_sig) =
               (E_TyModCnv_SubTypeArg(xin, tyout, tyin, err))
         end;
         EcSubst.add_module subst xout (EcPath.mident xin))
-      EcSubst.empty sin.mis_params sout.mis_params
+      (EcSubst.empty ()) sin.mis_params sout.mis_params
   in
   (* Check for body inclusion (w.r.t the parameters names substitution).
    * This includes:
@@ -689,7 +689,7 @@ let rec trans_msymbol (env : EcEnv.env) (msymb : pmsymbol located) =
     match EcEnv.Mod.sp_lookup_opt top_qname.pl_desc env with
     | None ->
         tyerror top_qname.pl_loc env (UnknownModName top_qname.pl_desc)
-    | Some me -> me
+    | Some (mp, me, _) -> (mp, me)
   in
 
   let (params, istop) =
@@ -742,7 +742,7 @@ let rec trans_msymbol (env : EcEnv.env) (msymb : pmsymbol located) =
       let subst =
           List.fold_left2
             (fun s (x,_) a -> EcSubst.add_module s x a)
-            EcSubst.empty params args
+            (EcSubst.empty ()) params args
       in
 
       let keepcall =
@@ -853,7 +853,7 @@ let transpattern1 env ue (p : EcParsetree.plpattern) =
 
       let fields =
         let for1 (name, v) =
-          let filter = fun op -> EcDecl.is_proj op in
+          let filter = fun _ op -> EcDecl.is_proj op in
           let fds    = EcUnify.select_op ~filter None env (unloc name) ue [] in
             match List.ohead fds with
             | None ->
@@ -992,7 +992,7 @@ let trans_binding env ue bd =
 let trans_record env ue (subtt, proj) (loc, b, fields) =
   let fields =
     let for1 rf =
-      let filter = fun op -> EcDecl.is_proj op in
+      let filter = fun _ op -> EcDecl.is_proj op in
       let tvi    = rf.rf_tvi |> omap (transtvi env ue) in
       let fds    = EcUnify.select_op ~filter tvi env (unloc rf.rf_name) ue [] in
         match List.ohead fds with
@@ -1080,7 +1080,7 @@ let trans_record env ue (subtt, proj) (loc, b, fields) =
 
 (* -------------------------------------------------------------------- *)
 let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
-  let filter = fun op -> EcDecl.is_ctor op in
+  let filter = fun _ op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = pb in
   let tvi = tvi |> omap (transtvi env ue) in
   let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue [] in
@@ -1121,7 +1121,7 @@ let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
 
       (try  EcUnify.unify env ue (toarrow ctorty pty) opty
        with EcUnify.UnificationFailure _ -> assert false);
-      unify_or_fail env ue loc pty gindty;
+      unify_or_fail env ue loc ~expct:pty gindty;
 
       let create o = EcIdent.create (omap_dfl unloc "_" o) in
       let pvars = List.map (create |- unloc) cargs in
@@ -1434,13 +1434,8 @@ let lookup_fun env name =
 
 (* -------------------------------------------------------------------- *)
 let transmodtype (env : EcEnv.env) (modty : pmodule_type) =
-  let (p, sig_) = lookup_module_type env modty in
-  let modty = {                         (* eta-normal form *)
-    mt_params = sig_.mis_params;
-    mt_name   = p;
-    mt_args   = List.map (EcPath.mident -| fst) sig_.mis_params;
-  } in
-    (modty, sig_)
+  let (p, { tms_sig = sig_ }) = lookup_module_type env modty in
+  EcEnv.ModTy.modtype p env, sig_
 
 let transcall transexp env ue loc fsig args =
   let targ = fsig.fs_arg in
@@ -1497,24 +1492,7 @@ let trans_gamepath (env : EcEnv.env) gp =
         EcPath.xpath_fun mpath funsymb
 
 (* -------------------------------------------------------------------- *)
-let rec transmodsig (env : EcEnv.env) (name : symbol) (modty : pmodule_sig) =
-  let Pmty_struct modty = modty in
-
-  let margs =
-    List.map (fun (x, i) ->
-      (EcIdent.create (unloc x), fst (transmodtype env i)))
-      modty.pmsig_params
-  in
-  let sa =
-    List.fold_left (fun sa (x,_) -> Sm.add (EcPath.mident x) sa) Sm.empty margs
-  in
-  let env  = EcEnv.Mod.enter name margs env in
-  let body = transmodsig_body env sa modty.pmsig_body in
-  { mis_params = margs;
-    mis_body   = body; }
-
-(* -------------------------------------------------------------------- *)
-and transmodsig_body
+let transmodsig_body
   (env : EcEnv.env) (sa : Sm.t) (is : pmodule_sig_struct_body)
 =
 
@@ -1523,7 +1501,7 @@ and transmodsig_body
   let mk_calls = function
     | None ->
       let do_one mp calls =
-        let sig_ = (EcEnv.Mod.by_mpath mp env).me_sig in
+        let sig_ = (fst (EcEnv.Mod.by_mpath mp env)).me_sig in
         if sig_.mis_params <> [] then calls
         else
           let fs = List.map (fun (Tys_function (fsig, _)) ->
@@ -1617,6 +1595,26 @@ and transmodsig_body
   Msym.odup unloc names |> oiter (fun (_, x) ->
     tyerror (loc x) env (InvalidModSig (MTS_DupProcName (unloc x))));
   items
+
+(* -------------------------------------------------------------------- *)
+let transmodsig (env : EcEnv.env) (intf : pinterface) =
+  let Pmty_struct modty = intf.pi_sig in
+
+  let margs =
+    List.map (fun (x, i) ->
+      (EcIdent.create (unloc x), fst (transmodtype env i)))
+      modty.pmsig_params
+  in
+  let sa =
+    List.fold_left (fun sa (x,_) -> Sm.add (EcPath.mident x) sa) Sm.empty margs
+  in
+  let env  = EcEnv.Mod.enter (unloc intf.pi_name) margs env in
+  let body = transmodsig_body env sa modty.pmsig_body in
+  let mis =
+    { mis_params = margs;
+      mis_body   = body; } in
+  { tms_sig = mis; tms_loca = intf.pi_locality }
+
 (* -------------------------------------------------------------------- *)
 
 (* LvMap (op, x, e, ty)
@@ -1706,7 +1704,7 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
     if allparams <> [] && not attop then
       tyerror me.pl_loc env
         (InvalidModAppl (MAE_WrongArgCount(0,List.length allparams)));
-    let me = EcEnv.Mod.by_mpath mp env in
+    let me, _ = EcEnv.Mod.by_mpath mp env in
     let arity = List.length stparams in
     let me =
       { me with
@@ -1791,9 +1789,8 @@ and transstruct1 (env : EcEnv.env) (st : pstructure_item located) =
   match unloc st with
   | Pst_mod  (x,cast, me) ->
     let pe = {
-      ptm_header = if List.is_empty cast then Pmh_ident x else Pmh_cast(Pmh_ident x, cast);
-      ptm_body   = me;
-      ptm_local  = true } in
+      ptm_header   = if List.is_empty cast then Pmh_ident x else Pmh_cast(Pmh_ident x, cast);
+      ptm_body     = me; } in
 
     let me = transmod ~attop:false env pe in
     [], [me.me_name, MI_Module me]
@@ -2451,7 +2448,7 @@ let rec trans_form_or_pattern env ?mv ?ps ue pf tt =
                     `Range (i, j)
               with
               | `Single k        -> [List.nth fs k]
-              | `Range  (k1, k2) -> List.take (k2 - k1) (List.drop k1 fs) in
+              | `Range  (k1, k2) -> List.take (k2 + 1 - k1) (List.drop k1 fs) in
 
             let filter f pf =
               match pf with

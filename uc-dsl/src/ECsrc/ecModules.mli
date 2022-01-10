@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
+ * Copyright (c) - 2012--2021 - Inria
+ * Copyright (c) - 2012--2021 - Ecole Polytechnique
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -147,6 +147,10 @@ type module_sig = {
   mis_body   : module_sig_body;
 }
 
+type top_module_sig = {
+  tms_sig : module_sig;
+  tms_loca : is_local;
+}
 (* -------------------------------------------------------------------- *)
 type uses = private {
   us_calls  : xpath list;
@@ -219,6 +223,11 @@ and module_item =
 and module_comps = module_comps_item list
 
 and module_comps_item = module_item
+
+type top_module_expr = {
+  tme_expr : module_expr;
+  tme_loca : locality;
+}
 
 (* -------------------------------------------------------------------- *)
 val fd_equal : function_def -> function_def -> bool

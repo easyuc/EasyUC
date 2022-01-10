@@ -5,7 +5,7 @@ read -e -p "EasyCrypt src directory pathname? " ecsrc
 if [ ! -d $ecsrc ];
   then echo "pathname is not a directory";
        exit;
-elif [ ! -e $ecsrc/ecVersion.ml.in ];
+elif [ ! -e $ecsrc/ecVersion.ml ];
   then echo "not the EasyCrypt src directory!"
        exit;
 fi

@@ -145,7 +145,7 @@ qed.
 (* EPDP between port * port * key and univ *)
 
 op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
-  epdp_triple_univ epdp_port_univ epdp_port_univ epdp_key_univ.
+  epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_key_univ.
 
 lemma valid_epdp_port_port_key_univ :
   valid_epdp epdp_port_port_key_univ.

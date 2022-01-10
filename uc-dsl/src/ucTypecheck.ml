@@ -1175,7 +1175,7 @@ let check_toplevel_match_clause
     (l : EcLocation.t) (sc : state_context) (env : env) (ue : unienv)
     (gindty : ty) (clause : match_clause)
       : symbol * (bindings * instruction list located) =
-  let filter = fun op -> EcDecl.is_ctor op in
+  let filter = fun _ op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
   let tvi = tvi |> EcUtils.omap (transtvi env ue) in
   let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue [] in
