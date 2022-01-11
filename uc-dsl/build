@@ -1,8 +1,11 @@
 #!/bin/bash
 
 if [ ! -e COPYRIGHT.txt ];
-then echo must be run from the uc-dsl directory!;
-     exit 1;
+  then echo must be run from the uc-dsl directory!;
+       exit 1;
+elif [ ! -e ucdsl-proj/ECtheories ];
+  then echo you must run "'"configure"'" first;
+       exit 1;
 fi
 
 # determine whether we should build ucdsl with coverage instrumentation
