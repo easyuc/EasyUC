@@ -34,7 +34,7 @@ type verifier_elem = [
   | V_corrupted of bool (* Whether the verifier is corrupted *)
   | V_omsg_b of bool (* Open msg - bit b *)
   | V_omsg_x of Cfptp.D (* Open msg - value in permutation domain *)
-  | V_omsg_rbool of Pke.rand (* Open msg - encryption randomness *)
+  | V_omsg_r of Pke.rand (* Open msg - encryption randomness *)
   | V_crs_fk of Cfptp.fkey (* CRS *)
   | V_crs_pk of Pke.pkey (* CRS *)
 ].
