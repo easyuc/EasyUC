@@ -15,6 +15,7 @@ type committer_elem = [
   | C_crs_pk of Pke.pkey  (* public key, received from CRS *)
   | C_cmsg_x of Cfptp.D	(* Commit msg - random plaintext *)
   | C_cmsg_r of Pke.rand (* Commit msg - encryption randomness r *)
+  | C_cmsg_rsample of Pke.rand (* Commit msg - randomness for oblivious encryption *)
   | C_cmsg_y of Cfptp.D (* Commit msg - result of sending x forward through CFPTP *)
   | C_cmsg_cb of Pke.ciphertext (* Commit msg - ciphertext c_b *)
   | C_cmsg_cnb of Pke.ciphertext (* Commit msg - ciphertext c_nb *)
@@ -34,7 +35,8 @@ type verifier_elem = [
   | V_corrupted of bool (* Whether the verifier is corrupted *)
   | V_omsg_b of bool (* Open msg - bit b *)
   | V_omsg_x of Cfptp.D (* Open msg - value in permutation domain *)
-  | V_omsg_r of Pke.rand (* Open msg - encryption randomness *)
+  | V_omsg_rb of Pke.rand (* Open msg - encryption randomness *)
+  | V_omsg_rnb of Pke.rand (* Open msg - (unused) encryption randomness *)
   | V_crs_fk of Cfptp.fkey (* CRS *)
   | V_crs_pk of Pke.pkey (* CRS *)
 ].

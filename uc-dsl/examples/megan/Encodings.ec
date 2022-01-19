@@ -14,7 +14,7 @@ proof.
 admit.
 qed.
 
-op epdp_open_univ : (bool * Pke.plaintext * Pke.rand, univ) epdp.
+op epdp_open_univ : (bool * Pke.plaintext * Pke.rand * Pke.rand, univ) epdp.
 
 lemma valid_epdp_open_univ :
   valid_epdp epdp_open_univ.

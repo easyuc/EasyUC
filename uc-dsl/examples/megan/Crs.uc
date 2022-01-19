@@ -20,7 +20,7 @@ direct Dir {
 }
 
 (* basic adversarial interface between ideal functionality and simulator *)
-adversarial I2S {
+adversarial Adv {
   out crs_send_req(pt : port, crs : Cfptp.fkey * Pke.pkey ) (* Request to send the CRS string to party at pt *)
 
   in crs_send_ok (* Simulator OKs and returns control to the CRS ideal functionality*)
@@ -32,7 +32,7 @@ Sample CRS. Use multisessions to take care of talking to different ports.
 Look at multisession forwarder in sessions directory.
 Initial state - respond to either the env or adv. multisession occurs after.
 *)
-functionality Ideal implements Dir I2S {
+functionality Ideal implements Dir Adv {
   initial state WaitInitReq {
     var fk : Cfptp.fkey; var bk : Cfptp.bkey;
     var pk : Pke.pkey; var sk : Pke.skey;
@@ -43,7 +43,7 @@ functionality Ideal implements Dir I2S {
  	(fk, bk) <$ Cfptp.keygen;
 	(pk, sk) <$ Pke.dkeygen;
 	crs <- (fk, pk);
-        send I2S.crs_send_req(pt, crs)
+        send Adv.crs_send_req(pt, crs)
 	and transition WaitRsp(pt, crs).
       }
     | * => { fail. }
@@ -52,7 +52,7 @@ functionality Ideal implements Dir I2S {
 
   state WaitRsp(pt: port, crs : Cfptp.fkey * Pke.pkey) {
     match message with
-    | I2S.crs_send_ok => {
+    | Adv.crs_send_ok => {
         send Dir.Pt.crs_rsp(crs)@pt
 	and transition WaitReq(crs). (* Forget port pt after sending it the CRS *)
       }
@@ -63,7 +63,7 @@ functionality Ideal implements Dir I2S {
   state WaitReq(crs : Cfptp.fkey * Pke.pkey) {
     match message with
     | pt@Dir.Pt.crs_req => {
-        send I2S.crs_send_req(pt, crs)
+        send Adv.crs_send_req(pt, crs)
 	and transition WaitRsp(pt, crs).
       }
     | * => { fail. }
