@@ -573,7 +573,7 @@ type da_from_env =
 op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
   (Adv, (x.`dfe_da, 0), ([], 0),
    0,  (* no messages from which this must be distinct *)
-   (epdp_quadruple_univ epdp_port_univ epdp_int_univ
+   (epdp_tuple4_univ epdp_port_univ epdp_int_univ
     epdp_int_univ epdp_id).`enc
     (x.`dfe_pt, x.`dfe_n, x.`dfe_tag, x.`dfe_u)).
 
@@ -581,7 +581,7 @@ op nosmt dec_da_from_env (m : msg) : da_from_env option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/ tag <> 0) ?
      None :
-     match (epdp_quadruple_univ
+     match (epdp_tuple4_univ
             epdp_port_univ epdp_int_univ epdp_int_univ epdp_id).`dec v with
      | None   => None
      | Some x =>
@@ -599,24 +599,24 @@ proof.
 apply epdp_intro.
 move => x.
 rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=.
-rewrite epdp_enc_dec 1:valid_epdp_quadruple_univ 1:epdp 1:epdp 1:epdp //.
+rewrite epdp_enc_dec 1:valid_epdp_tuple4_univ 1:epdp 1:epdp 1:epdp //.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
 case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/ tag <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 -> -> match_eq_some /=.
 have val_u :
-  (epdp_quadruple_univ epdp_port_univ epdp_int_univ
+  (epdp_tuple4_univ epdp_port_univ epdp_int_univ
    epdp_int_univ epdp_id).`dec u =
   Some (v.`dfe_pt, v.`dfe_n, v.`dfe_tag, v.`dfe_u).
   move : match_eq_some.
-  case ((epdp_quadruple_univ epdp_port_univ epdp_int_univ
+  case ((epdp_tuple4_univ epdp_port_univ epdp_int_univ
          epdp_int_univ epdp_id).`dec u) => //.
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt1_2; by case pt1.
-rewrite (epdp_dec_enc _ _ u) // 1:valid_epdp_quadruple_univ epdp.
+rewrite (epdp_dec_enc _ _ u) // 1:valid_epdp_tuple4_univ epdp.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_from_env_msg.
@@ -630,7 +630,7 @@ lemma eq_of_valid_da_from_env (m : msg) :
    (x.`dfe_da, 0),
    ([], 0),
    0,
-   (epdp_quadruple_univ epdp_port_univ epdp_int_univ epdp_int_univ epdp_id).`enc
+   (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_int_univ epdp_id).`enc
     (x.`dfe_pt, x.`dfe_n, x.`dfe_tag, x.`dfe_u)).
 proof.
 rewrite /is_valid.
@@ -659,7 +659,7 @@ type da_to_env =
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
   (Adv, ([], 0), (x.`dte_da, 0), 
    0,  (* no messages from which this needs to be distinct *)
-   (epdp_quadruple_univ epdp_int_univ epdp_port_univ
+   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_int_univ epdp_id).`enc
     (x.`dte_n, x.`dte_pt, x.`dte_tag, x.`dte_u)).
 
@@ -667,7 +667,7 @@ op nosmt dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> 0) ?
      None :
-     match (epdp_quadruple_univ
+     match (epdp_tuple4_univ
             epdp_int_univ epdp_port_univ epdp_int_univ
             epdp_id).`dec v with
      | None   => None
@@ -693,11 +693,11 @@ rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
 case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> -> pt2_2 -> match_eq_some /=.
 have val_u :
-  (epdp_quadruple_univ epdp_int_univ epdp_port_univ
+  (epdp_tuple4_univ epdp_int_univ epdp_port_univ
    epdp_int_univ epdp_id).`dec u =
   Some (v.`dte_n, v.`dte_pt, v.`dte_tag, v.`dte_u).
   move : match_eq_some.
-  case ((epdp_quadruple_univ epdp_int_univ epdp_port_univ
+  case ((epdp_tuple4_univ epdp_int_univ epdp_port_univ
          epdp_int_univ epdp_id).`dec u) => //.
   by case.
 move : match_eq_some.
@@ -717,7 +717,7 @@ lemma eq_of_valid_da_to_env (m : msg) :
    ([], 0),
    (x.`dte_da, 0),
    0,
-   (epdp_quadruple_univ epdp_int_univ epdp_port_univ
+   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_int_univ epdp_id).`enc
     (x.`dte_n, x.`dte_pt, x.`dte_tag, x.`dte_u)).
 proof.

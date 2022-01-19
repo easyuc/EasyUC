@@ -193,7 +193,6 @@ have : 0 <= bs2int (belast z zs) < 2 ^ (size zs).
 pose n := bs2int (belast z zs).
 move => [ge0_n n_lt_two2size_zs].
 apply int_logPuniq => //.
-rewrite size_ge0.
 split => [| _].
 by rewrite ler_addr.
 by rewrite exprS 1:size_ge0 mulzC -intmulz mulr2z ltr_le_add.
@@ -479,12 +478,9 @@ proof.
 rewrite /epdp_univ_pair_univ /= /enc_univ_pair.
 case (alt true (x, y).`1 ++ [false] ++ (x, y).`2 = []) =>
   [contrad | //].
-have size_contrad :
-  size (alt true (x, y).`1 ++ [false] ++ (x, y).`2) = 0.
-  by rewrite contrad.
-rewrite !size_cat paddr_eq0 1:ler_paddr //
-        1:size_ge0 1:size_ge0 in size_contrad.
-rewrite paddr_eq0 1:size_ge0 1:size_ge0 // in size_contrad.
+have size_contrad : size (alt true x ++ [false] ++ y) = 0 by rewrite contrad.
+rewrite !size_cat /= paddr_eq0 1:ler_paddr //
+        paddr_eq0 1:size_ge0 // in size_contrad.
 qed.
 
 (* univ choice encoding: *)
