@@ -1620,7 +1620,7 @@ op nosmt epdp_tuple3_univ
 
 lemma valid_epdp_tuple3_univ
       (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
-       epdp3 : ('a, univ) epdp) :
+       epdp3 : ('c, univ) epdp) :
   valid_epdp epdp1 => valid_epdp epdp2 => valid_epdp epdp3 =>
   valid_epdp (epdp_tuple3_univ epdp1 epdp2 epdp3).
 proof.  

@@ -227,14 +227,14 @@ type fw_obs =
 op enc_fw_obs (x : fw_obs) : msg =
   (Adv, (x.`fw_obs___adv, _adv_if_pi), (x.`fw_obs___func, pi),
    0,  (* no messages from which this must be distinct *)
-   (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
+   (epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_id).`enc
     (x.`fw_obs__pt1, x.`fw_obs__pt2, x.`fw_obs__u)).
 
 op nosmt dec_fw_obs (m : msg) : fw_obs option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <> 0) ?
      None :
-     match (epdp_triple_univ epdp_port_univ epdp_port_univ
+     match (epdp_tuple3_univ epdp_port_univ epdp_port_univ
             epdp_id).`dec v with
      | None   => None
      | Some t =>
@@ -258,10 +258,10 @@ rewrite /epdp_fw_obs /dec_fw_obs /enc_fw_obs /=.
 case (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <> 0) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 pt2_2 -> match_eq_some /=.
 have val_u :
-  (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`dec u =
+  (epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_id).`dec u =
   Some (v.`fw_obs__pt1, v.`fw_obs__pt2, v.`fw_obs__u).
   move : match_eq_some.
-  case ((epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`dec u) => //.
+  case ((epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_id).`dec u) => //.
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
@@ -281,7 +281,7 @@ lemma eq_of_valid_fw_obs (m : msg) :
    (x.`fw_obs___adv, _adv_if_pi),
    (x.`fw_obs___func, pi),
    0,
-   (epdp_triple_univ epdp_port_univ epdp_port_univ epdp_id).`enc
+   (epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_id).`enc
     (x.`fw_obs__pt1, x.`fw_obs__pt2, x.`fw_obs__u)).
 proof.
 rewrite /is_valid.
