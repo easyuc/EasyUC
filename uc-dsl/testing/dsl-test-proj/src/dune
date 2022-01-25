@@ -1,0 +1,8 @@
+(executable
+ (name test_main)
+ (libraries str unix))
+
+(ocamllex test_lexer)
+
+(menhir
+ (modules test_parser))

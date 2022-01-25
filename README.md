@@ -7,12 +7,12 @@ Composable (UC) Security using the
 joint work between Boston University faculty
 
 * Ran Canetti (canetti@bu.edu)
-* Assaf Kfoury (kfoury@bu.edu)
 * [Alley Stoughton](http://alleystoughton.us) (stough@bu.edu)
 * Mayank Varia (varia@bu.edu)
 
 with the assistance of research students
 
+* Megan Chen (megchen@bu.edu)
 * Gollamudi Tarakaram (Brandeis University, gtr@brandeis.edu)
 * Tomislav Petrovic (tomislav@bu.edu)
 

@@ -150,11 +150,12 @@ the status of the outcome field *and* the messages issued by
 Building the Testing Tool
 --------------------------------------------------------------------
 
-To build `dsl-test` using the supplied `Makefile`, simply issue
-the command:
+The source for the testing tool is in the subdirectory
+`dsl-test-proj`.  To build `dsl-test` using the supplied `build` shell
+script, simply issue the command:
 
 ```
-make
+build
 ```
 
 You may want to add `/pathto/dsl-test` to your shell's search path.

@@ -1,0 +1,49 @@
+#!/bin/bash
+
+read -e -p "EasyCrypt src directory pathname? " ecsrc
+
+if [ ! -d $ecsrc ];
+  then echo "pathname is not a directory";
+       exit;
+elif [ ! -e $ecsrc/ecVersion.ml ];
+  then echo "not the EasyCrypt src directory!"
+       exit;
+fi
+
+cd ECsrc
+
+echo ""
+echo comparing files that should be unchanged
+echo ""
+
+for file in *.ml* phl/*.ml* system/*.ml*;
+do if [ ! -e $ecsrc/$file ];
+   then echo $ecsrc/$file no longer exists;
+   else cmp -s $file $ecsrc/$file;
+        if [[ $? != 0 && $file != ecVersion.ml ]];
+        then echo $file has changed;
+        fi;
+   fi;
+done
+
+cd ..
+
+echo ""
+echo diffing files that have been modified for UC DSL
+echo ""
+
+for file in ec*.mli ec*.ml;
+do echo "- - - - -";
+   echo considering $file;
+   echo "- - - - -";
+   if [ ! -e $ecsrc/$file ];
+     then echo $ecsrc/$file no longer exists;
+   elif [ ! -e ECsrc/modified-for-ucdsl/$file ];
+     then echo ECsrc/modified-for-ucdsl/$file should exist;
+   else cmp -s ECsrc/modified-for-ucdsl/$file $ecsrc/$file;
+        if [[ $? != 0 ]];
+        then echo $ecsrc/$file is different from ECsrc/modified-for-ucdsl/$file;
+        else diff $file $ecsrc/$file;
+        fi;
+   fi;
+done

@@ -1,3 +1,4 @@
 #!/bin/bash
 
-rm -rf _build
+cd ucdsl-proj
+dune clean

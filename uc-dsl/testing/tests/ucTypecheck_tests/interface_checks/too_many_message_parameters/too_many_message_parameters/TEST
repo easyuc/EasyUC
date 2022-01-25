@@ -5,5 +5,5 @@ args: bad.uc
 outcome: failure
 [error: bad.uc: from line 2 columns 9 to 12]
 
-more than the allowed maximum number (5) of parameters
+more than the allowed maximum number (8) of parameters
 .

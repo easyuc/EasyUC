@@ -1,0 +1,17 @@
+(dirs ECsrc)
+(include_subdirs unqualified)
+
+(env
+ (dev     (flags :standard -rectypes -warn-error -a+31 -w +28+33-9-23-32-58))
+ (release (flags :standard -rectypes -warn-error -a+31 -w +28+33-9-23-32-58)
+          (ocamlopt_flags -O3 -unbox-closures)))
+
+(executable
+ (name ucdsl)
+ (libraries batteries dune-build-info dune-site inifiles why3 yojson zarith)
+ (instrumentation (backend bisect_ppx --bisect-silent yes)))
+
+(ocamllex ucLexer)
+
+(menhir
+ (modules ucParser))

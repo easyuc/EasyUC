@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# ucdsl-merge OLD NEW
+
+# when ucdsl turns a .uc file into a .ec file, if there is already an
+# OLD version of that file, we will use this script (possibly via
+# system calls instead of literally using this script) to merge that
+# OLD version with the NEWly generated one
+#
+# this is because the OLD .ec file will typically have a lot of
+# *hand-generated code* that we don't want to lose; the user will have
+# to go through the merged file, taking the old hand-generated code as
+# a starting point, but discarding the superceded code
+
+if [ $# -ne 2 ];
+then echo 'usage: ucdsl-merge OLD NEW'
+     exit 1;
+fi
+
+/usr/bin/diff --old-group-format='<<<<< old text <<<<<
+%<==== end of old ====
+' \
+--new-group-format='>>>>> new text >>>>>
+%>==== end of new ====
+' \
+--unchanged-group-format='%=' \
+--changed-group-format='<<<<< old text <<<<<
+%<>>>>> new text >>>>>
+%>== end of old new ==
+' $1 $2

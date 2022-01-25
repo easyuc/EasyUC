@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cd dsl-test-proj
+build
+cd ..
+ln -sf dsl-test-proj/dsl-test .

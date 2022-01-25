@@ -1,10 +1,12 @@
 (* Forwarding.ec *)
 
-(* Definition of the Sessions Type for Forwarding.uc *)
+(* Definitions Supporting Forwarding.uc *)
 
 require import AllCore UCBasicTypes.
-require export SmtMap.
+require export Sessions.
 
-type sessions = (int, port * port * univ) SmtMap.fmap.
+(* limit on number of sessions *)
 
-op init : sessions = SmtMap.empty.
+op maxssn : int.
+
+axiom ge0_maxssn : 0 < maxssn.  (* at least one session is allowed *)

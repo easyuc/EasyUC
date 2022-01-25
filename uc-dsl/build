@@ -1,35 +1,27 @@
 #!/bin/bash
 
+if [ ! -e COPYRIGHT.txt ];
+  then echo must be run from the uc-dsl directory!;
+       exit 1;
+elif [ ! -e ucdsl-proj/ECtheories ];
+  then echo you must run "'"configure"'" first;
+       exit 1;
+fi
+
 # determine whether we should build ucdsl with coverage instrumentation
 coverage_mode=NO
-if [[ $# -eq 1 && $1 == 'coverage' ]];
+if [[ $# -eq 1 && $1 == coverage ]];
 then coverage_mode=YES;
 else coverage_mode=NO;
-fi;
+fi
 
 ucprelude=$(pwd)/prelude
 
-cd src
+cd ucdsl-proj
 
 ectheories=$(ls -l ECtheories | sed 's/^.*-> //')
 
-if [ ! -r ECsrc/ecVersion.ml ];
-then echo -n "trying to prepare copy of EasyCrypt src directory";
-     echo " for building UC DSL tool";
-     if [ ! -r ECsrc/ecVersion.ml.in ];
-     then echo Bad EasyCrypt source directory;
-          echo exiting...;
-          exit;
-     else cp ECsrc/ecVersion.ml.in ECsrc/ecVersion.ml >& /dev/null;
-          if [[ $? == 0 ]];
-          then echo preparation suceeded;
-          else echo -n "failure due to file permissions in ";
-               echo $ecdir
-               echo exiting...;
-               exit;
-          fi;
-     fi;
-fi
+cd src
 
 # the following depends on $ectheories not including apostrophes
 # see configure
@@ -43,13 +35,18 @@ if [[ $? != 0 ]];
 then echo failure;
      echo exiting...
      exit;
-fi;
+fi
 
 cd ..
 
-BISECT_COVERAGE=$coverage_mode ocamlbuild -use-ocamlfind -plugin-tag 'package(bisect_ppx-ocamlbuild)' ucdsl.native
+if [[ $coverage_mode == NO ]];
+then dune build;
+else dune build --instrument-with bisect_ppx;
+fi
 
-if [ -e ucdsl.native ];
-then mkdir -p bin;
-     cp -f ucdsl.native bin/ucdsl;
+ucdsl_exec=_build/default/src/ucdsl.exe
+
+if [ -e $ucdsl_exec ];
+then mkdir -p ../bin;
+     cp -f $ucdsl_exec ../bin/ucdsl;
 fi

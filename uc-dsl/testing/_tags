@@ -1,4 +1,0 @@
-<src/**>: include
-true: use_menhir
-true: use_str
-true: use_unix

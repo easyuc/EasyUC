@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dune build
+rm -f dsl-test
+cp _build/default/src/test_main.exe dsl-test

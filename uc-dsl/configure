@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ ! -e COPYRIGHT.txt ];
+then echo must be run from the uc-dsl directory!;
+     exit 1;
+fi
+
 pwd=$(pwd)
 
 if [[ "$pwd" = *\'* ]];
@@ -24,7 +29,7 @@ then echo "symbolic link to EasyCrypt theories directory already set"
      fi;
 fi
 
-rm -f src/ECtheories
+rm -f ucdsl-proj/ECtheories
 
 echo "you need to enter the fully qualified pathname of the Easyrypt "
 echo "theories directory (filename completion will be enabled)"
@@ -57,4 +62,4 @@ elif [ ! -e $ectheories/prelude/Pervasive.ec ];
        exit;
 fi
 
-ln -s $ectheories src/ECtheories
+ln -s $ectheories ucdsl-proj/ECtheories
