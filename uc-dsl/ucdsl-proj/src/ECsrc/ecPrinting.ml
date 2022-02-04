@@ -3088,7 +3088,7 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
         (pp_rwname ppe) p (pp_list "@ " (pp_axname ppe)) l
         
   (* UC DSL *)
-  | EcTheory.CTh_reduction [(
+  | EcTheory.Th_reduction [(
     path,
     { ur_delta = false; ur_eqtrue = true; },
     Some EcTheory.{ 

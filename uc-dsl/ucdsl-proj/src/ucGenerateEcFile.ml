@@ -326,15 +326,28 @@ let addr_ty = make_ty "addr"
 
 let port_ty = make_ty "port"
 
+let msg_fieldname (id : string) (name : string) : string =
+  id^"__"^name
+
+let msg_func_fieldname (id : string) : string =
+  id^"___func"
+
+let id_ty_pairs (params_map : ty_index IdMap.t) : (symbol * EcTypes.ty) list =
+  let params = IdMap.bindings params_map in
+  let params = List.map (fun (id,lty_idx) -> (id, unloc lty_idx)) params in
+  let params = List.sort (fun a b -> compare (snd(snd a)) (snd(snd b))) params in
+  List.map (fun (id,(ty,_)) -> (id,ty)) params
+
+let mb_fields_from_direct_mb (id : string) (mb : message_body_tyd) =
+  List.map (fun (n,t) -> (msg_fieldname id n,t)) (id_ty_pairs mb.params_map)
+
 let ec_tydecl_from_direct_mb (id : string) (mb : message_body_tyd) : EcDecl.tydecl =
-  let fields = IdMap.bindings 
-    (IdMap.map (fun til -> let ty,_ = unloc til in ty) mb.params_map) in
-  let fields = List.map (fun (n,t) -> (id^"__"^n,t)) fields in
+  let fields = mb_fields_from_direct_mb id mb in
   let port = match mb.port with
              | Some p -> p
              | None -> failure ("messages in direct interfaces have port name")
   in         
-  let fields = ((id^"__"^port),port_ty)::fields in
+  let fields = ((msg_fieldname id port),port_ty)::fields in
   let fields = ((id^"___func"),addr_ty)::fields in
   make_record id fields
 
@@ -432,11 +445,8 @@ let epdp_tyname_univ (ty : EcTypes.ty) : EcTypes.expr =
   epdp_ex epdp_name
 
 let get_tys (params_map : ty_index IdMap.t) : EcTypes.ty list =
-  let params = snd(List.split (IdMap.bindings params_map)) in
-  let params = 
-    List.sort (fun a b -> compare (snd(unloc a)) (snd(unloc b))) params in
-  List.map (fun a -> fst(unloc a)) params
-
+  snd(List.split (id_ty_pairs params_map))
+  
 let epdp_data_ex (params_map : ty_index IdMap.t) : EcTypes.expr =
   let tys = get_tys params_map in
   let epdp_ops = List.map epdp_tyname_univ tys in
@@ -444,7 +454,26 @@ let epdp_data_ex (params_map : ty_index IdMap.t) : EcTypes.expr =
   | 0 -> epdp_ex "epdp_unit_univ"
   | 1 -> List.hd epdp_ops
   | _ -> epdp_tuple_univ_ex epdp_ops
+  
+let epdp_dec_return_dataty (params_map : ty_index IdMap.t) : EcTypes.ty =
+  let tys = get_tys params_map in
+  let retty =
+    match List.length tys with
+    | 0 -> EcTypes.tunit
+    | 1 -> List.hd tys
+    | _ -> EcTypes.ttuple tys
+    in
+  EcTypes.toption retty
+ 
+let epdp_dec_return_pattern (params_map : ty_index IdMap.t) : EcTypes.lpattern =
+  let params = id_ty_pairs params_map in
+  match params with
+  | [] -> failure "no pattern for messages without data"
+  | [(id,ty)] -> EcTypes.LSymbol (EcIdent.create id,ty)
+  | _ -> EcTypes.LTuple (List.map (fun (id,ty) -> (EcIdent.create id,ty)) params)
 
+let epdp_dec_make_record_ex (id:string) (params_map : ty_index IdMap.t) : EcTypes.expr =
+  EcTypes.e_none (make_ty id)
   
 let enc_direct_op_expr (id:string) (mb : message_body_tyd) : EcTypes.expr =
   let mode = EcTypes.e_op (path_of_string "Dir") [] mode_ty in
@@ -459,7 +488,7 @@ let enc_direct_op_expr (id:string) (mb : message_body_tyd) : EcTypes.expr =
     | In  -> [mode;funport;xport;zero_ex;encex]
     | Out -> [mode;xport;funport;zero_ex;encex]
     in
-  EcTypes.e_quantif `ELambda [(iden,t)] (EcTypes.e_tuple tuple)
+  EcTypes.e_lam [(iden,t)] (EcTypes.e_tuple tuple)
 
 let enc_direct_op_body (id:string) (mb : message_body_tyd) = 
   EcDecl.OP_Plain ((enc_direct_op_expr id mb),false)
@@ -508,12 +537,27 @@ let dec_direct_op_expr (id:string) (mb : message_body_tyd) : EcTypes.expr =
   let dec_msg_ty = make_ty id in
   let then_br = EcTypes.e_none dec_msg_ty in
   
-  (* continue here
-  let mt = (EcTypes.e_proj 1 (epdp_data_ex mb.params_map) 
-  let else_br = EcTypes.e_match mt [br_none;br_some] 
+  let dec_retty = epdp_dec_return_dataty mb.params_map in
+  let dec_ty = EcTypes.tfun univ_ty dec_retty in
+  let decex = (EcTypes.e_proj (epdp_data_ex mb.params_map) 1 dec_ty) in
+  let v_ex = EcTypes.e_local v univ_ty in
+  let mt = EcTypes.e_app decex [v_ex] dec_retty in
+  let br_none_body = then_br in
+  let br_none = EcTypes.e_lam [] br_none_body in
+  
+  let p = EcIdent.create "p" in
+  let p_ex = EcTypes.e_local p dec_retty in
+  let ret_msg_ex = epdp_dec_make_record_ex id mb.params_map in
+  let br_some_body = if IdMap.is_empty mb.params_map
+    then ret_msg_ex
+    else 
+      let decpat = epdp_dec_return_pattern mb.params_map in
+      EcTypes.e_let decpat p_ex ret_msg_ex
+  in
+  let br_some = EcTypes.e_lam [(p,dec_retty)] br_some_body in
+  let else_br = EcTypes.e_match mt [br_none; br_some] 
     (EcTypes.toption dec_msg_ty) in
-  *)
-  let decode = EcTypes.e_if cond then_br then_br in
+  let decode = EcTypes.e_if cond then_br else_br in
   EcTypes.e_let lpattern m_ex decode
 
 let dec_direct_op_body (id:string) (mb : message_body_tyd) = 
