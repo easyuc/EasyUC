@@ -109,10 +109,6 @@ type type_binding =
 
 (* messages *)
 
-type message_body =
-  {id     : psymbol;            (* name of message *)
-   params : type_binding list}  (* typed parameters *)
-
 type message_def =
   {dir    : msg_dir;            (* message direction *)
    id     : psymbol;            (* name of message *)

@@ -343,22 +343,22 @@ inter :
 
 message_def :
   | IN; mb = message_body
-      { {dir = In; id = (mb : message_body).id; params = mb.params;
+      { {dir = In; id = fst(mb); params = snd(mb);
          port = None} : message_def }
   | IN; pt = lident; AT; mb = message_body
-      { {dir = In; id = (mb : message_body).id; params = mb.params;
+      { {dir = In; id = fst(mb); params = snd(mb);
          port = Some pt} }
   | OUT; mb = message_body
-      { {dir = Out; id = (mb : message_body).id; params = mb.params;
+      { {dir = Out; id = fst(mb); params = snd(mb);
          port = None} }
   | OUT; mb = message_body; AT; pt = lident
-      { {dir = Out; id = (mb : message_body).id; params = mb.params;
+      { {dir = Out; id = fst(mb); params = snd(mb);
          port = Some pt} }
 
 message_body :
   | msg_id = lident; params = option(message_params)
       { let params = params |? [] in
-        {id = msg_id; params = params} : message_body }
+        (msg_id, params) }
 
 message_params :
   LPAREN; params = type_bindings; RPAREN
