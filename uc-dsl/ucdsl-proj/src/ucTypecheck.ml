@@ -971,7 +971,7 @@ let check_msg_pat
   
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
-    (pexpr : pexpr) (expct_ty_opt : ty option) : expr * ty =
+    (pexpr : pexpr) (expct_ty_opt : ty option) : ty =
   let (exp, ty) = transexp env ue pexpr in
   let () =
     match expct_ty_opt with
@@ -991,8 +991,7 @@ let check_expr
                id))
     fv in
   (* update result type to take account of unification *)
-  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
-  (exp, res_ty)
+  Tuni.offun (EcUnify.UniEnv.assubst ue) ty
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty = 
@@ -1032,16 +1031,16 @@ let check_val_assign
     (lhs : lhs) (ex : pexpr) 
     : instruction_tyd_u * state_analysis = 
   let (sa', ty) = check_lhs sc sa lhs in
-  let exp,_ = check_expr sa env ue ex (Some ty) in
-  Assign (lhs,exp), sa'
+  ignore (check_expr sa env ue ex (Some ty));
+  Assign (lhs,ex), sa'
 
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (lhs : lhs) (ex : pexpr) 
     : instruction_tyd_u * state_analysis = 
   let (sa', ty) = check_lhs sc sa lhs in
-  let exp,_ = check_expr sa env ue ex (Some (tdistr ty)) in
-  Sample (lhs,exp), sa'
+  ignore (check_expr sa env ue ex (Some (tdistr ty)));
+  Sample (lhs,ex), sa'
 
 let check_state_expr
     (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
@@ -1065,42 +1064,41 @@ let check_state_expr
   then type_error (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else 
-    let argz_u = List.map2
-       (fun sigt sip -> fst (check_expr sa env ue sip (Some sigt)))
-       tys (unloc args) in
-    let argz = mk_loc (loc args) argz_u in
-    {id = se.id; args = argz }
+    List.iter2
+       (fun sigt sip -> ignore (check_expr sa env ue sip (Some sigt)))
+       tys (unloc args) ;
+    {id = se.id; args = se.args }
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
-    (es : pexpr list located) (mc : ty_index IdMap.t) : expr list located = 
+    (es : pexpr list located) (mc : ty_index IdMap.t) : unit = 
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
   then type_error (loc es)
        (fun ppf ->
           fprintf ppf "@[wrong@ number@ of@ message@ arguments@]")
   else 
-    let exps = List.map2
-       (fun ex typ -> fst (check_expr sa env ue ex (Some typ)))
-       (unloc es) sg in
-    mk_loc (loc es) exps
+    List.iter2
+       (fun ex typ -> ignore (check_expr sa env ue ex (Some typ)))
+       (unloc es) sg
 
 let check_send_direct
     (sa : state_analysis) (env : env) (ue : unienv)
     (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd = 
   let l = loc msg.path in
-  let port_exp =
+  (
     match msg.port_expr with
     | Some port_exp ->
-        Some (fst (check_expr sa env ue port_exp (Some port_ty)))
+       ignore (check_expr sa env ue port_exp (Some port_ty))
     | None          ->
         type_error l
         (fun ppf ->
            fprintf ppf
            ("@[outgoing@ messages@ to@ sub-interfaces@ of@ composite@ " ^^
-            "direct@ interfaces@ must@ have@ destination@ ports@]")) in
-  let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = port_exp}
+            "direct@ interfaces@ must@ have@ destination@ ports@]"))
+  );
+  check_msg_arguments sa env ue msg.args param_tis;
+  { path = msg.path; args = msg.args; port_expr = msg.port_expr}
 
 let check_send_adversarial
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1113,8 +1111,8 @@ let check_send_adversarial
            fprintf ppf
            "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
     | None          -> () in
-  let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = None }
+  check_msg_arguments sa env ue msg.args param_tis;
+  { path = msg.path; args = msg.args; port_expr = None }
 
 let check_send_internal
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1128,8 +1126,8 @@ let check_send_internal
            ("@[messages@ to@ subfunctionalities@ must@ not@ have@ " ^^
             "destination@ ports@]"))
     | None          -> () in
-  let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = None}
+  check_msg_arguments sa env ue msg.args param_tis;
+  { path = msg.path; args = msg.args; port_expr = None}
 
 let is_msg_path_in_basic_inter_paths
     (mp : msg_path) (bips : basic_inter_path list) : bool = 
@@ -1240,7 +1238,7 @@ let rec check_ite
     (ex : pexpr) (tins : instruction list located)
     (eins_opt : instruction list located option)
     : instruction_tyd_u * state_analysis = 
-  let ex, _ = check_expr sa env ue ex (Some tbool) in
+  ignore (check_expr sa env ue ex (Some tbool));
   let sa1 = check_instructions abip ss sc sa env ue tins in
   let sa2 =
     match eins_opt with
@@ -1258,7 +1256,7 @@ and check_match
     (ex : pexpr) (clauses : match_clause list located)
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
-  let exp, ty = check_expr sa env ue ex None in
+  let ty = check_expr sa env ue ex None in
   let inddecl =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
@@ -1298,7 +1296,7 @@ and check_match
     results in
   let cls = mk_loc (loc clauses) cls_u in
   let sas = List.map (fun (_, (_,(_,sa)))-> sa) results in
-  Match(exp,cls), merge_state_analyses sas
+  Match(ex,cls), merge_state_analyses sas
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)

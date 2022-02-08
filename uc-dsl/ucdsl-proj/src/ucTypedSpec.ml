@@ -168,12 +168,12 @@ type inter_tyd = inter_body_tyd located  (* typed interface *)
 
 type msg_expr_tyd =
   {path      : msg_path;           (* message path *)
-   args      : expr list located;  (* message arguments *)
-   port_expr : expr option}        (* message destination - port expr *)
+   args      : pexpr list located;  (* message arguments *)
+   port_expr : pexpr option}        (* message destination - port expr *)
 
 type state_expr_tyd =
   {id   : psymbol;            (* state to transition to *)
-   args : expr list located}  (* arguments of new state *)
+   args : pexpr list located}  (* arguments of new state *)
 
 (* instructions *)
 
@@ -184,11 +184,11 @@ type send_and_transition_tyd =
 type bindings = ((EcIdent.t * EcTypes.ty) list)
 
 type instruction_tyd_u =
-  | Assign of lhs * expr                           (* ordinary assignment *)
-  | Sample of lhs * expr                           (* sampling assignment *)
-  | ITE of expr * instruction_tyd list located *   (* if-then-else *)
+  | Assign of lhs * pexpr                           (* ordinary assignment *)
+  | Sample of lhs * pexpr                           (* sampling assignment *)
+  | ITE of pexpr * instruction_tyd list located *   (* if-then-else *)
            instruction_tyd list located option
-  | Match of expr * match_clause_tyd list located  (* match instruction *)
+  | Match of pexpr * match_clause_tyd list located  (* match instruction *)
   | SendAndTransition of send_and_transition_tyd   (* send and transition *)
   | Fail                                           (* failure *)
 
