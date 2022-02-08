@@ -121,7 +121,7 @@ let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
 
 (* located type plus an index, starting from 0 *)
 
-type ty_index = (ty * int) located
+type ty_index = ((ty * pty) * int) located
 
 (* typed messages and functionality interfaces *)
 
@@ -204,7 +204,7 @@ type state_body_tyd =
   {is_initial : bool;                       (* the initial state? *)
    params     : ty_index IdMap.t;           (* typed parameters, index is
                                                parameter number *)
-   vars       : ty located IdMap.t;         (* local variables *)
+   vars       : ty_index IdMap.t;         (* local variables *)
    mmclauses  : msg_match_clause_tyd list}  (* message match clauses *)
 
 type state_tyd = state_body_tyd located  (* typed state *)

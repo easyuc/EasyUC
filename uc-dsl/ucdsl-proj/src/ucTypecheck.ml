@@ -107,7 +107,7 @@ let check_name_type_bindings_top
   let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) -> 
-     mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
+     mk_loc (loc nt.id) ((check_type_top nt.ty, nt.ty), index_of_ex nt ntl))
   nt_map
 
 let pp_ty env ppf ty =
@@ -348,7 +348,7 @@ type state_body_mid =
   {is_initial : bool;                   (* the initial state? *)
    params     : ty_index IdMap.t;       (* typed parameters, index is
                                            parameter number *)
-   vars       : ty located IdMap.t;     (* local variables *)
+   vars       : ty_index IdMap.t;     (* local variables *)
    mmclauses  : msg_match_clause list}  (* message match clauses *)
 
 type state_mid = state_body_mid located
@@ -356,8 +356,8 @@ type state_mid = state_body_mid located
 let make_state_context
     (s : state_body_mid) (ports : QidSet.t)
     (flags : string list) : state_context = 
-  let state_params = IdMap.map (fun p -> fst (unloc p)) s.params in
-  let vars = IdMap.map (fun v -> unloc v) s.vars in
+  let state_params = IdMap.map (fun p -> fst (fst (unloc p))) s.params in
+  let vars = IdMap.map (fun v -> fst (fst (unloc v))) s.vars in
   {initial = s.is_initial; flags = flags; internal_ports = ports;
    state_params = state_params; vars = vars}
 
@@ -426,7 +426,7 @@ let get_state_sig (s : state_body_mid) : state_sig =
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
        let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
-       (false, (fst (List.split tord)))
+       (false, (List.map (fun ((t,_),_)->t) tord))
 
 let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t = 
   IdMap.map (fun s -> get_state_sig (unloc s)) states
@@ -888,8 +888,8 @@ let check_pat_args_with_msg_type
     (pats : pat list) (env : env) (sc : state_context) : env = 
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
-    indexed_map_to_list
-    (unlocm (IdMap.find (snd mp) (snd bip)).params_map) in
+    fst (List.split (indexed_map_to_list
+    (unlocm (IdMap.find (snd mp) (snd bip)).params_map))) in
   let () =
     if List.length mtyp <> List.length pats
     then type_error (get_loc_pat_list pats)
@@ -1072,7 +1072,7 @@ let check_state_expr
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
     (es : pexpr list located) (mc : ty_index IdMap.t) : unit = 
-  let sg = indexed_map_to_list (unlocm mc) in
+  let sg = fst (List.split (indexed_map_to_list (unlocm mc))) in
   if List.length (unloc es) <> List.length sg
   then type_error (loc es)
        (fun ppf ->
@@ -1462,12 +1462,9 @@ let check_toplevel_state (init_id : psymbol) (st : state) : state_mid =
     check_name_type_bindings_top
     (fun ppf -> fprintf ppf "@[duplicate@ parameter@ name@]")
     (unloc st.params) in
-  let vars =
-    IdMap.map
-    (fun ti -> mk_loc (loc ti) (fst (unloc ti)))
-    (check_name_type_bindings_top
+  let vars = check_name_type_bindings_top
      (fun ppf -> fprintf ppf "@[duplicate@ variable@ name@]")
-     st.code.vars) in
+     st.code.vars in
   let () =
     let dup =
       IdMap.find_first_opt (fun var -> IdMap.mem var params) vars in
