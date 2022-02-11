@@ -8,6 +8,9 @@ let open_theory (name : string) : unit =
   
 let close_theory (name : string) : unit =
   UcEcInterface.process (GthClose ([], dl name))
+
+let operator (pop : poperator) : unit =
+  UcEcInterface.process (Goperator pop)
   
 let print_theory (ppf : Format.formatter) (name : string) : unit = 
   let env = UcEcInterface.env () in
@@ -16,8 +19,26 @@ let print_theory (ppf : Format.formatter) (name : string) : unit =
   EcPrinting.pp_theory ppe Format.std_formatter pth;
   EcPrinting.pp_theory ppe ppf pth
   
+let pi_op : poperator =
+  let pq_int = ([],"int") in
+  let pty_int = PTnamed (dl pq_int) in
+  let podef = PO_abstr (dl pty_int) in
+  {
+    po_kind     = `Op;
+    po_name     = dl "pi";
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  }
+  
 let write_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
   open_theory name;
+  operator pi_op;
   close_theory name;
   print_theory ppf name
 
