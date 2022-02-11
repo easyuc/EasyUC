@@ -56,8 +56,8 @@ val current     : unit -> EcScope.scope
 val addnotifier : notifier -> unit
 
 (* -------------------------------------------------------------------- *)
-val process : ?timed:bool -> ?break:bool ->
-  EcParsetree.global_action located -> float option
+(*val process : ?timed:bool -> ?break:bool ->
+  EcParsetree.global_action located -> float option*)
 
 val undo  : int  -> unit
 val reset : unit -> unit
@@ -109,4 +109,7 @@ val ucdsl_new : unit -> unit
 (* end scope, reverting to saved one from stack, which is updated to
    include required theories of ended scope *)
 val ucdsl_end : unit -> unit
+
+(**)
+val ucdsl_process : EcParsetree.global_action located -> unit
 

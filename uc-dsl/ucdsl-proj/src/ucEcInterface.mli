@@ -31,3 +31,5 @@ val require :
   [ `Export | `Import ] option ->  (* should we export/import the theory's
                                       definitions *)
   unit
+
+val process : EcParsetree.global_action -> unit

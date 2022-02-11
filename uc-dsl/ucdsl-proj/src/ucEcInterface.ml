@@ -93,3 +93,14 @@ let require id io =
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf "@[EasyCrypt:@ error@ require@ importing@ theory@]")
+ 
+ let process (g : EcParsetree.global_action) : unit =
+   let gdl = UcUtils.dummyloc g in
+   try 
+     EcCommands.ucdsl_process gdl 
+   with
+   | EcCommands.InvalidPragma "`Reset" -> non_loc_error_message
+       (fun ppf -> fprintf ppf "@[EasyCrypt@ reset@ when@ processing@]")
+   | EcCommands.Restart -> non_loc_error_message
+       (fun ppf -> fprintf ppf "@[EasyCrypt@ restart@ when@ processing@]")
+     

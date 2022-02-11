@@ -815,7 +815,7 @@ let undo (olduuid : int) =
 let reset () =
   context := Some (rootctxt (oget !context).ct_root)
 
-(* -------------------------------------------------------------------- *)
+(* -------------------------------------------------------------------- 
 let process ?(timed = false) ?(break = false) (g : global_action located) : float option =
   ignore break;
 
@@ -832,7 +832,7 @@ let process ?(timed = false) ?(break = false) (g : global_action located) : floa
   | Pragma `Reset   -> reset (); None
   | Pragma `Restart -> raise Restart
 
-(* -------------------------------------------------------------------- *)
+ -------------------------------------------------------------------- *)
 let check_eco =
   EcEco.check_eco (fun name -> Loader.locate name loader)
 
@@ -939,3 +939,13 @@ let ucdsl_end () =
   let rest = List.drop 2 (! ucdsl_context) in
   let new_sc = EcScope.Theory.update_with_required prev_sc top_sc in
   ucdsl_context := new_sc :: rest
+  
+let ucdsl_process (g : global_action located) : unit =
+  let scope = ucdsl_current () in
+  try
+    let oscope = process loader scope g in
+    oiter ucdsl_update oscope;
+  with
+  | Pragma `Reset   -> reset (); raise (InvalidPragma "`Reset")
+  | Pragma `Restart -> raise Restart
+

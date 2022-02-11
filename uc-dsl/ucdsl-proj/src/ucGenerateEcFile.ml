@@ -1,20 +1,27 @@
 open UcTypedSpec
+open EcParsetree
+
+let dl = UcUtils.dummyloc
+
+let open_theory (name : string) : unit =
+  UcEcInterface.process (GthOpen (`Global, false, dl name))
   
-(*---------------------------------------------------------------------------*)
-type preamble = string list(* TODO, require/import commands, pi axioms and operators *)
-
-type clone = string list(* TODO, theory cloning info *)
-
-type theory =
-  | Clone of clone
-  | ECCTh of (EcPath.path * EcTheory.ctheory)
- 
-type eca = { preamble : preamble; theories : theory list}
-
-let translate (ts:typed_spec) : eca IdMap.t = IdMap.empty
-(*---------------------------------------------------------------------------*)
+let close_theory (name : string) : unit =
+  UcEcInterface.process (GthClose ([], dl name))
   
-let write_eca (ppf : Format.formatter) (eca : eca) : unit = ()
+let print_theory (ppf : Format.formatter) (name : string) : unit = 
+  let env = UcEcInterface.env () in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let pth = EcEnv.Theory.lookup ([], name) env in
+  EcPrinting.pp_theory ppe Format.std_formatter pth;
+  EcPrinting.pp_theory ppe ppf pth
+  
+let write_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
+  open_theory name;
+  close_theory name;
+  print_theory ppf name
+
+(*---------------------------------------------------------------------------*)
 
 let ec_filename (f : string) : string = f^".eca"
 
@@ -27,21 +34,18 @@ let close_formatter ((fo,ppf) : out_channel * Format.formatter) : unit =
   Format.pp_print_flush ppf ();
   close_out fo
 
-let gen_ec (eca_map : eca IdMap.t) : unit =
-  let remove_file fn =
-    if Sys.file_exists fn 
-      then Sys.remove fn 
-      else () in
-  IdMap.iter (
-    fun f eca ->
-      let fn = ec_filename f in
-      remove_file fn;
-      let (fo,ppf) = open_formatter f in
-      write_eca ppf eca;
-      close_formatter (fo,ppf)
-    ) eca_map
+let remove_file (fn : string) : unit =
+  if Sys.file_exists fn 
+  then Sys.remove fn 
+  else () 
+
 (*---------------------------------------------------------------------------*)
 
 let generate_ec (ts:typed_spec) : unit =
-  gen_ec (translate ts)
+  let ((fn, n), di) = IdPairMap.min_binding ts.dir_inter_map in
+  let fn = ec_filename fn in
+  remove_file fn;
+  let (fo,ppf) = open_formatter fn in
+  write_dir_int ppf n di;
+  close_formatter (fo,ppf)
   
