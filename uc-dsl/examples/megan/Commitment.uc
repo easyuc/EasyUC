@@ -8,7 +8,7 @@
 uc_requires Forwarding Crs.
 
 (* Import required easycrypt files. *)
-ec_requires Cfptp Pke Encodings View.
+ec_requires Cfptp Pke ForwardingEncodings View.
 
 (* Direct interfaces, which are between ideal functionality and environment, from ideal functionality's perspective. Note that the ideal functionality emulates parties. *)
 direct DirPt1 {  (* Party 1, i.e. the Committer *)
@@ -322,7 +322,7 @@ functionality Real implements Dir Adv {
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
 	       (intport Verifier, (* Send this to Verifier *)
-	        Encodings.epdp_commit_univ.`enc
+	        ForwardingEncodings.epdp_commit_univ.`enc
 	        ( b ? (pt1, pt2, y, c_nb, c_b) : (pt1, pt2, y, c_b, c_nb) )
 	       )
 	  and transition WaitOpenReq(new_view, pt1, pt2, b, corrupted, x, r, r_sample).
@@ -343,7 +343,7 @@ functionality Real implements Dir Adv {
 	    new_view <- view ++ [View.C_open_c_env_port pt1'];
 	    send Fwd2.D.fw_req
 	       (intport Verifier,
-	       Encodings.epdp_open_univ.`enc
+	       ForwardingEncodings.epdp_open_univ.`enc
 	       (b, x, r, r_sample))
             and transition Final(new_view, corrupted).
 	  } else { fail. }
@@ -389,7 +389,7 @@ functionality Real implements Dir Adv {
       | Adv.Pt1.commit_msg_rsp(y', c_false', c_true') => {
           send Fwd1.D.fw_req
 	       (intport Verifier,
-	       Encodings.epdp_commit_univ.`enc
+	       ForwardingEncodings.epdp_commit_univ.`enc
 	       (pt1, pt2, y', c_false', c_true'))
 	  and transition WaitOpenReq_Corrupted(view, pt1, pt2, b, corrupted).
       }
@@ -423,7 +423,7 @@ functionality Real implements Dir Adv {
       | Adv.Pt1.open_msg_rsp(b', x', r_b', r_nb') => {
       	  send Fwd2.D.fw_req
 	       (intport Verifier,
-	       Encodings.epdp_open_univ.`enc
+	       ForwardingEncodings.epdp_open_univ.`enc
 	       (b', x', r_b', r_nb'))
           and transition Final(view, corrupted).
         }
@@ -455,7 +455,7 @@ functionality Real implements Dir Adv {
       var c_false, c_true : Pke.ciphertext;
       match message with
       | Fwd1.D.fw_rsp(_, u) => { (* Verifier is activated after receiving a commit message *)
-          match Encodings.epdp_commit_univ.`dec u with
+          match ForwardingEncodings.epdp_commit_univ.`dec u with
           | Some tr => {
               (pt1, pt2, y, c_false, c_true) <- tr;
 	      view <- [View.V_c_env_port pt1; View.V_v_env_port pt2]
@@ -489,7 +489,7 @@ functionality Real implements Dir Adv {
       var r_b, r_nb : Pke.rand;
       match message with
       | Fwd2.D.fw_rsp(_, u) => {
-          match Encodings.epdp_open_univ.`dec u with
+          match ForwardingEncodings.epdp_open_univ.`dec u with
           | Some tr => {
               (b, x, r_b, r_nb) <- tr;
 	      new_view <- view ++ [View.V_omsg_b b; View.V_omsg_x x; View.V_omsg_rb r_b; View.V_omsg_rnb r_nb];
@@ -655,7 +655,7 @@ simulator Sim uses I2S simulates Real {
       send Real.Fwd1.FwAdv.fw_obs
       	   (intport Real.Committer, (* Sender is the Committer *)
 	    intport Real.Verifier,   (* Receiver is the Verifier *)
-	    Encodings.epdp_commit_univ.`enc
+	    ForwardingEncodings.epdp_commit_univ.`enc
 	    (pt1, pt2, y, c0, c1))
       and transition WaitFwd1Ok(new_view, pt1, pt2, pt1_corrupted, fk, bk, pk, sk, y, x0, r, c0, c1).
     }
@@ -728,7 +728,7 @@ simulator Sim uses I2S simulates Real {
         send Real.Fwd2.FwAdv.fw_obs
       	(intport Real.Committer, (* Sender is the Committer *)
 	 intport Real.Verifier,   (* Receiver is the Verifier *)
-	 Encodings.epdp_open_univ.`enc
+	 ForwardingEncodings.epdp_open_univ.`enc
 	 (b', x, r, r_fake))
       	and transition WaitFwd2Ok(view, pt1, pt2, pt1_corrupted, fk, bk, pk, sk, y, x, r, c0, c1, commit_msg_status).
     }
@@ -808,7 +808,7 @@ simulator Sim uses I2S simulates Real {
         send Real.Fwd1.FwAdv.fw_obs
 	    (intport Real.Committer, (* Sender is the Committer *)
 	     intport Real.Verifier,   (* Receiver is the Verifier *)
-	     Encodings.epdp_commit_univ.`enc
+	     ForwardingEncodings.epdp_commit_univ.`enc
 	     (pt1, pt2, y', c_false', c_true'))
         and transition WaitFwd1OkCommitter_Corrupted(pt1, pt2, pt1_corrupted, fk, bk, pk, sk, y', c_false', c_true', committed_b, commit_msg_status).
       }
@@ -892,7 +892,7 @@ simulator Sim uses I2S simulates Real {
 	      send Real.Fwd2.FwAdv.fw_obs
               (intport Real.Committer, (* Sender is the Committer *)
 	       intport Real.Verifier,   (* Recevier is the Verifier *)
-	       Encodings.epdp_open_univ.`enc
+	       ForwardingEncodings.epdp_open_univ.`enc
 	       (b', x', r_b', r_nb'))
       	      and transition WaitFwd2OkCommitter_Corrupted(pt1, pt2, fk, bk, pk, committed_b, y', c_false', c_true', b', x', r_b').
 	    }
@@ -903,7 +903,7 @@ simulator Sim uses I2S simulates Real {
         send Real.Fwd2.FwAdv.fw_obs
         (intport Real.Committer, (* Sender is the Committer *)
 	 intport Real.Verifier,   (* Recevier is the Verifier *)
-	 Encodings.epdp_open_univ.`enc
+	 ForwardingEncodings.epdp_open_univ.`enc
 	 (b', x', r' ))
       	and transition WaitFwd2OkCommitter_Corrupted(pt1, pt2, fk, bk, pk, committed_b, y', c_false', c_true', b', x', r').
 	*)

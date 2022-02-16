@@ -5,7 +5,7 @@
 (* Author: Megan Chen *)
 
 (* Import required easycrypt files. *)
-ec_requires Cfptp Pke Encodings.
+ec_requires Cfptp Pke ForwardingEncodings.
 
 
 (* Direct interface between CRS's ideal functionality and the environment *)
