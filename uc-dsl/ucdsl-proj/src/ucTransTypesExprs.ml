@@ -27,7 +27,6 @@ open EcSymbols
 open EcLocation
 open EcTypes
 open EcDecl
-open UcSpec
 open UcSpecTypedSpecCommon
 
 module Mid = EcIdent.Mid
@@ -56,6 +55,7 @@ type fxerror =
 type tyerror =
   | UniVarNotAllowed
   | TypeVarNotAllowed
+  | GlobVarNotAllowed
   | UnboundTypeParameter   of symbol
   | UnknownTypeName        of qsymbol
   | UnknownTypeClass       of qsymbol
@@ -305,6 +305,7 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
       let tyargs = transtys tp env ue tyargs in
       tconstr p tyargs
     end
+  | PTglob _ -> tyerror ty.pl_loc env GlobVarNotAllowed
 
 and transtys tp (env : EcEnv.env) ue tys =
   List.map (transty tp env ue) tys

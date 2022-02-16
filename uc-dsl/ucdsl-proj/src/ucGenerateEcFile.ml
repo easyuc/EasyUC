@@ -17,6 +17,9 @@ let decl_operator (pop : poperator) : unit =
 let decl_axiom (pax : paxiom) : unit =
   UcEcInterface.process (Gaxiom pax)
   
+let decl_type (ptds : ptydecl list) : unit =
+  UcEcInterface.process (Gtype ptds)
+  
 let print_newline (ppf : Format.formatter) : unit =
   Format.fprintf stf "@."; (*REMOVE*)
   Format.fprintf ppf "@."
@@ -44,6 +47,11 @@ let print_axiom (ppf : Format.formatter) (name : string) : unit =
   EcPrinting.pp_axiom ppe stf ax; (*REMOVE*)
   EcPrinting.pp_axiom ppe ppf ax;
   print_newline ppf
+
+let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
+  let env = UcEcInterface.env () in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  EcEnv.Ty.lookup ([], name) env
   
 let abs_oper_int (name : string) : poperator =  
   let pq_int = ([],"int") in
@@ -82,15 +90,44 @@ let axiom_adv_if_pi_gt0 : paxiom =
     pa_nosmt    = false;
     pa_locality = `Global;
   }
+
+let name_record_func (msg_name : string) : string = msg_name^"___func"
+
+let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
+
+let addr_pty = dl (PTnamed (dl ([], "addr")))
+
+let port_pty = dl (PTnamed (dl ([], "port")))
+
+let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
+  let bpm = IdMap.bindings pm in
+  let bpm = List.map (fun (s,ti) -> (s, EcLocation.unloc ti)) bpm in
+  let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
+  List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
+
+let decl_dir_msg_type (ppf : Format.formatter) (name : string) (mb : message_body_tyd) : unit =
+  let msg_data = List.map (fun (s,t) -> (dl (name^"__"^s), t)) 
+    (params_map_to_list mb.params_map) in
+  let func_addr = (dl (name_record_func name), addr_pty) in
+  let dir_port = (dl (name_record name (EcUtils.oget mb.port)), port_pty) in
+  let body = PTYD_Record (func_addr :: dir_port :: msg_data) in
+  let pty = {
+    pty_name   = dl name;
+    pty_tyvars = [];
+    pty_body   = body;
+    pty_locality = `Global;
+  } in
+  decl_type [pty]
   
-let write_message (name : string) (mb : message_body_tyd) : unit = ()
+let decl_dir_message (ppf : Format.formatter) (name : string) (mb : message_body_tyd) : unit =
+  decl_dir_msg_type ppf name mb
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
   decl_operator pi_op;
-  IdMap.iter (fun n mb -> write_message n mb) bibt;
+  IdMap.iter (fun n mb -> decl_dir_message ppf n mb) bibt;
   close_theory name;
-  print_theory ppf name
+  print_theory ppf name (*TODO print theory part by part*)
   
 let write_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
   let ibt = EcLocation.unloc dir_int in

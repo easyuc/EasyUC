@@ -38,25 +38,25 @@ let pqsymb_of_psymb (x : psymbol) : pqsymbol =
 let pqsymb_of_symb loc (x : symbol) : pqsymbol =
   mk_loc loc ([], x)
 
-let mk_peid_symb loc (s : symbol) (ti : ptyinstan option) : pexpr =
+let mk_peid_symb loc (s : symbol) (ti : ptyannot option) : pexpr =
   mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
 
-let peapp_symb loc (s : symbol) (ti : ptyinstan option) (es : pexpr list) =
+let peapp_symb loc (s : symbol) (ti : ptyannot option) (es : pexpr list) =
   PEapp (mk_peid_symb loc s ti, es)
 
-let peget loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
+let peget loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
   peapp_symb loc EcCoreLib.s_get ti [e1; e2]
 
-let peset loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
+let peset loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
   peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
 
-let pe_nil loc (ti : ptyinstan option) =
+let pe_nil loc (ti : ptyannot option) =
   mk_peid_symb loc EcCoreLib.s_nil ti
 
-let pe_cons loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
+let pe_cons loc (ti : ptyannot option) (e1 : pexpr) (e2 : pexpr) =
   mk_loc loc (peapp_symb loc EcCoreLib.s_cons ti [e1; e2])
 
-let pelist loc (ti : ptyinstan option) (es : pexpr list) : pexpr =
+let pelist loc (ti : ptyannot option) (es : pexpr list) : pexpr =
   List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
 
 (* check for parse errors in messages of direct or adversarial
