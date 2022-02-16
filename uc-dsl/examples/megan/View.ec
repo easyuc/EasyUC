@@ -2,7 +2,7 @@
 
 (* EasyCrypt definitions for tracking parties' view during a protocol *)
 require import AllCore Distr UCBasicTypes.
-require import Pke Cfptp.
+require import Pke Cfptp Types.
 
 (* Committer's view *)
 
@@ -11,8 +11,7 @@ type committer_elem = [
   | C_v_env_port of port  (* Verifier's client port in the environment *)
   | C_env_b of bool       (* Bit received from the environment *)
   | C_corrupted of bool   (* Whether the committer is corrupted *)
-  | C_crs_fk of Cfptp.fkey (* forward key, received from CRS *)
-  | C_crs_pk of Pke.pkey  (* public key, received from CRS *)
+  | C_crs of Types.crs (* CRS: Cfptp.fkey * Pke.pkey *)
   | C_cmsg_x of Cfptp.D	(* Commit msg - random plaintext *)
   | C_cmsg_r of Pke.rand (* Commit msg - encryption randomness r *)
   | C_cmsg_rsample of Pke.rand (* Commit msg - randomness for oblivious encryption *)
@@ -37,8 +36,7 @@ type verifier_elem = [
   | V_omsg_x of Cfptp.D (* Open msg - value in permutation domain *)
   | V_omsg_rb of Pke.rand (* Open msg - encryption randomness *)
   | V_omsg_rnb of Pke.rand (* Open msg - (unused) encryption randomness *)
-  | V_crs_fk of Cfptp.fkey (* CRS *)
-  | V_crs_pk of Pke.pkey (* CRS *)
+  | V_crs of Types.crs (* CRS: Cfptp.fkey * Pke.pkey *)
 ].
 
 type verifier = verifier_elem list.
