@@ -15,7 +15,7 @@ then coverage_mode=YES;
 else coverage_mode=NO;
 fi
 
-ucprelude=$(pwd)/prelude
+ucprelude=$(pwd)/../common
 
 cd ucdsl-proj
 

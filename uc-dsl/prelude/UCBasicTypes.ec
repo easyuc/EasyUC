@@ -19,7 +19,7 @@ require export UCEncoding.
 require export UCUniv.
 
 type port.  (* we don't expose the structure of ports *)
-type addr.
+
 (* axiomatized EPDP for ports - in the real UCBasicTypes.ec, this is
    given a concrete definition, with a lemma rather than an axiom *)
 

@@ -1,9 +1,14 @@
 open UcTypedSpec
 open EcParsetree
+open UcMessage
 
 let stf = Format.std_formatter (*REMOVE*)
 
 let dl = UcUtils.dummyloc
+
+let qs = qsymb_of_symb
+
+let ul = EcLocation.unloc
 
 let open_theory (name : string) : unit =
   UcEcInterface.process (GthOpen (`Global, false, dl name))
@@ -27,7 +32,7 @@ let print_newline (ppf : Format.formatter) : unit =
 let print_theory (ppf : Format.formatter) (name : string) : unit = 
   let env = UcEcInterface.env () in
   let ppe = EcPrinting.PPEnv.ofenv env in
-  let pth = EcEnv.Theory.lookup ([], name) env in
+  let pth = EcEnv.Theory.lookup (qs name) env in
   EcPrinting.pp_theory ppe stf pth; (*REMOVE*)
   EcPrinting.pp_theory ppe ppf pth;
   print_newline ppf
@@ -35,7 +40,7 @@ let print_theory (ppf : Format.formatter) (name : string) : unit =
 let print_operator (ppf : Format.formatter) (name : string) : unit = 
   let env = UcEcInterface.env () in
   let ppe = EcPrinting.PPEnv.ofenv env in
-  let op = EcEnv.Op.lookup ([], name) env in
+  let op = EcEnv.Op.lookup (qs name) env in
   EcPrinting.pp_opdecl ppe stf op; (*REMOVE*)
   EcPrinting.pp_opdecl ppe ppf op;
   print_newline ppf
@@ -43,18 +48,17 @@ let print_operator (ppf : Format.formatter) (name : string) : unit =
 let print_axiom (ppf : Format.formatter) (name : string) : unit = 
   let env = UcEcInterface.env () in
   let ppe = EcPrinting.PPEnv.ofenv env in
-  let ax = EcEnv.Ax.lookup ([], name) env in
+  let ax = EcEnv.Ax.lookup (qs name) env in
   EcPrinting.pp_axiom ppe stf ax; (*REMOVE*)
   EcPrinting.pp_axiom ppe ppf ax;
   print_newline ppf
 
 let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
   let env = UcEcInterface.env () in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  EcEnv.Ty.lookup ([], name) env
+  EcEnv.Ty.lookup (qs name) env
   
 let abs_oper_int (name : string) : poperator =  
-  let pq_int = ([],"int") in
+  let pq_int = (qs "int") in
   let pty_int = PTnamed (dl pq_int) in
   let podef = PO_abstr (dl pty_int) in
   {
@@ -69,17 +73,19 @@ let abs_oper_int (name : string) : poperator =
     po_nosmt    = false;
     po_locality = `Global;
   }
+
+let opname_pi = "pi"
   
-let pi_op : poperator = abs_oper_int "pi"
+let pi_op : poperator = abs_oper_int opname_pi
 
 let opname_adv_if_pi = "_adv_if_pi"
 
 let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
 
 let axiom_adv_if_pi_gt0 : paxiom =
-  let f_le = dl (PFident (dl ([], "<"), None)) in
+  let f_le = dl (PFident (dl (qs "<"), None)) in
   let f_int = dl (PFint EcBigInt.zero) in
-  let f_ax = dl (PFident (dl ([], opname_adv_if_pi), None)) in 
+  let f_ax = dl (PFident (dl (qs opname_adv_if_pi), None)) in 
   let pfrm = dl (PFapp (f_le,[f_int; f_ax])) in 
   {
     pa_name     = dl axname_adv_if_pi_gt0;
@@ -95,21 +101,28 @@ let name_record_func (msg_name : string) : string = msg_name^"___func"
 
 let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
 
-let addr_pty = dl (PTnamed (dl ([], "addr")))
+let named_pty (name : string) = dl (PTnamed (dl (qs name)))
 
-let port_pty = dl (PTnamed (dl ([], "port")))
+let addr_pty = named_pty "addr"
 
+let port_pty = named_pty "port"
+
+let msg_pty = named_pty "msg"
+
+let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
+  name_record name (EcUtils.oget mb.port)
+ 
 let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
   let bpm = IdMap.bindings pm in
-  let bpm = List.map (fun (s,ti) -> (s, EcLocation.unloc ti)) bpm in
+  let bpm = List.map (fun (s,ti) -> (s, ul ti)) bpm in
   let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
   List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
 
-let decl_dir_msg_type (ppf : Format.formatter) (name : string) (mb : message_body_tyd) : unit =
-  let msg_data = List.map (fun (s,t) -> (dl (name^"__"^s), t)) 
+let decl_dir_msg_type (name : string) (mb : message_body_tyd) : unit =
+  let msg_data = List.map (fun (s,t) -> (dl (name_record name s), t)) 
     (params_map_to_list mb.params_map) in
   let func_addr = (dl (name_record_func name), addr_pty) in
-  let dir_port = (dl (name_record name (EcUtils.oget mb.port)), port_pty) in
+  let dir_port = (dl (name_record_dir_port name mb), port_pty) in
   let body = PTYD_Record (func_addr :: dir_port :: msg_data) in
   let pty = {
     pty_name   = dl name;
@@ -118,19 +131,109 @@ let decl_dir_msg_type (ppf : Format.formatter) (name : string) (mb : message_bod
     pty_locality = `Global;
   } in
   decl_type [pty]
+
+let enc_op_name (name : string) : string = "enc_"^name
+
+let pex_ident (name : string) : pexpr = dl (PEident ((dl (qs name)), None))
+
+let pex_Dir = pex_ident "Dir"
+
+let pex_tuple (pexs : pexpr list) : pexpr = dl (PEtuple pexs)
+
+let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, dl (qs name)))
+
+let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
+  dl (PEapp (ex,args))
+
+let epdp_name_univ (name : string) : pexpr =
+  match name with
+  | "unit" -> pex_ident "epdp_unit_univ"
+  | "bool" -> pex_ident "epdp_bool_univ"
+  | "int"  -> pex_ident "epdp_int_univ"
+  | "addr" -> pex_ident "epdp_addr_univ"
+  | "port" -> pex_ident "epdp_port_univ"
+  | "univ" -> pex_ident "epdp_id"
+  | _ -> failure ("yet unsupported epdp for "^name)
+
+let rec epdp_pty_univ (t : pty) : pexpr =
+  match ul t with
+  | PTtuple  ptys -> epdp_tuple_univ ptys
+  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ name
+  | _ -> failure ("Only tuples and named types supported." )
+
+and epdp_tuple_univ (ptys : pty list) : pexpr =
+  let ret (epdp_name : string) : pexpr =
+    pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
+  in
+  match List.length ptys with
+  | 2 -> ret "epdp_pair_univ"
+  | 3 -> ret "epdp_tuple3_univ"
+  | 4 -> ret "epdp_tuple4_univ"
+  | 5 -> ret "epdp_tuple5_univ"
+  | 6 -> ret "epdp_tuple6_univ"
+  | 7 -> ret "epdp_tuple7_univ"
+  | 8 -> ret "epdp_tuple8_univ"
+  | _ -> failure "epdp_tuples must have size between 2 and 8"
+
+let epdp_data_univ (params_map : ty_index IdMap.t) : pexpr =
+  let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
+  match ptys with
+  | [] -> pex_ident "epdp_unit_univ"
+  | [t] -> epdp_pty_univ t
+  | _ -> epdp_tuple_univ ptys
+
+let pex_unit = pex_tuple []
   
-let decl_dir_message (ppf : Format.formatter) (name : string) (mb : message_body_tyd) : unit =
-  decl_dir_msg_type ppf name mb
+let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pexpr =
+  let pns = fst (List.split (params_map_to_list params_map)) in
+  if pns = []
+  then pex_unit
+  else pex_tuple (List.map (fun pn -> pex_proj (pex_ident var_name) (name_record msg_name pn)) pns)
+
+let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pexpr =
+  let ex = pex_proj (epdp_data_univ params_map) "enc" in
+  let args = enc_args var_name msg_name params_map in
+  pex_app ex [args]
+
+let decl_enc_op (msg_name : string) (mb : message_body_tyd) : unit =
+  let var_name = "x" in
+  let u = enc_u var_name msg_name mb.params_map in
+  let tag = dl (PEint EcBigInt.zero) in
+  let pt2 = pex_proj (pex_ident var_name) (name_record_dir_port msg_name mb) in
+  let pt1 = pex_tuple [
+    pex_proj (pex_ident var_name) (name_record_func msg_name); 
+    pex_ident opname_pi ] in
+  let encex = pex_tuple [pex_Dir; pt1; pt2; tag; u] in
+  let args = [([dl(Some (dl var_name))], named_pty msg_name) ] in
+  let def = PO_concr (msg_pty, encex) in
+  let penc =
+  {
+    po_kind     = `Op;
+    po_name     = dl (enc_op_name msg_name);
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = args;
+    po_def      = def;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  } in
+  decl_operator penc
+  
+let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
+  decl_dir_msg_type name mb;
+  decl_enc_op name mb
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
   decl_operator pi_op;
-  IdMap.iter (fun n mb -> decl_dir_message ppf n mb) bibt;
+  IdMap.iter (fun n mb -> decl_dir_message n mb) bibt;
   close_theory name;
   print_theory ppf name (*TODO print theory part by part*)
   
 let write_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
-  let ibt = EcLocation.unloc dir_int in
+  let ibt = ul dir_int in
   match ibt with
   | BasicTyd  bibt -> write_basic_dir_int ppf name bibt
   | CompositeTyd _ -> print_string "TODO\n"
@@ -145,11 +248,12 @@ type singlefile_typed_spec = {
 let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
   let threq = 
     (None,
-     [(dl "UCBasicTypes", None)],
+     [(dl "UCBasicTypes", None)], (*FIX*)
      Some `Import) in
   UcEcInterface.process (GthRequire threq);
   Format.fprintf stf "@[require import UCBasicTypes.@]@."; (*REMOVE*)
-  Format.fprintf ppf "@[require import UCBasicTypes.@]@."
+  Format.fprintf ppf "@[require import UCBasicTypes.@]@.";
+  UcEcInterface.process (Gprint (Pr_any (dl(qs "UCBasicTypes"))))
   
 let write_op_adv_if_pi (ppf : Format.formatter) : unit =
   decl_operator (abs_oper_int opname_adv_if_pi);
