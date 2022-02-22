@@ -8,6 +8,8 @@ let dl = UcUtils.dummyloc
 
 let qs = qsymb_of_symb
 
+let pqs (name : string) = dl (qs name)
+
 let ul = EcLocation.unloc
 
 let open_theory (name : string) : unit =
@@ -56,11 +58,21 @@ let print_axiom (ppf : Format.formatter) (name : string) : unit =
 let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
   let env = UcEcInterface.env () in
   EcEnv.Ty.lookup (qs name) env
+
+let named_pty (name : string) = dl (PTnamed (pqs name))
+
+let option_of_pty (name : string) = dl (PTapp (pqs "option",[named_pty name]))
+
+let addr_pty = named_pty "addr"
+
+let port_pty = named_pty "port"
+
+let msg_pty = named_pty "msg"
+
+let int_pty = named_pty "int"
   
 let abs_oper_int (name : string) : poperator =  
-  let pq_int = (qs "int") in
-  let pty_int = PTnamed (dl pq_int) in
-  let podef = PO_abstr (dl pty_int) in
+  let podef = PO_abstr (int_pty) in
   {
     po_kind     = `Op;
     po_name     = dl name;
@@ -83,9 +95,9 @@ let opname_adv_if_pi = "_adv_if_pi"
 let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
 
 let axiom_adv_if_pi_gt0 : paxiom =
-  let f_le = dl (PFident (dl (qs "<"), None)) in
+  let f_le = dl (PFident (pqs "<", None)) in
   let f_int = dl (PFint EcBigInt.zero) in
-  let f_ax = dl (PFident (dl (qs opname_adv_if_pi), None)) in 
+  let f_ax = dl (PFident (pqs opname_adv_if_pi, None)) in 
   let pfrm = dl (PFapp (f_le,[f_int; f_ax])) in 
   {
     pa_name     = dl axname_adv_if_pi_gt0;
@@ -100,14 +112,6 @@ let axiom_adv_if_pi_gt0 : paxiom =
 let name_record_func (msg_name : string) : string = msg_name^"___func"
 
 let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
-
-let named_pty (name : string) = dl (PTnamed (dl (qs name)))
-
-let addr_pty = named_pty "addr"
-
-let port_pty = named_pty "port"
-
-let msg_pty = named_pty "msg"
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
   name_record name (EcUtils.oget mb.port)
@@ -134,13 +138,15 @@ let decl_dir_msg_type (name : string) (mb : message_body_tyd) : unit =
 
 let enc_op_name (name : string) : string = "enc_"^name
 
-let pex_ident (name : string) : pexpr = dl (PEident ((dl (qs name)), None))
+let pex_ident (name : string) : pexpr = dl (PEident (pqs name, None))
 
 let pex_Dir = pex_ident "Dir"
 
+let pex_Adv = pex_ident "Adv"
+
 let pex_tuple (pexs : pexpr list) : pexpr = dl (PEtuple pexs)
 
-let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, dl (qs name)))
+let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
 
 let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
   dl (PEapp (ex,args))
@@ -195,21 +201,23 @@ let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t
   let args = enc_args var_name msg_name params_map in
   pex_app ex [args]
 
-let decl_enc_op (msg_name : string) (mb : message_body_tyd) : unit =
+let pex_int_0 = dl (PEint EcBigInt.zero)
+
+let decl_enc_op (mty_name : string) (mb : message_body_tyd) : unit =
   let var_name = "x" in
-  let u = enc_u var_name msg_name mb.params_map in
-  let tag = dl (PEint EcBigInt.zero) in
-  let pt2 = pex_proj (pex_ident var_name) (name_record_dir_port msg_name mb) in
+  let u = enc_u var_name mty_name mb.params_map in
+  let tag = pex_int_0 in
+  let pt2 = pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) in
   let pt1 = pex_tuple [
-    pex_proj (pex_ident var_name) (name_record_func msg_name); 
+    pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
   let encex = pex_tuple [pex_Dir; pt1; pt2; tag; u] in
-  let args = [([dl(Some (dl var_name))], named_pty msg_name) ] in
+  let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (msg_pty, encex) in
   let penc =
   {
     po_kind     = `Op;
-    po_name     = dl (enc_op_name msg_name);
+    po_name     = dl (enc_op_name mty_name);
     po_aliases  = [];
     po_tags     = [];
     po_tyvars   = None;
@@ -220,10 +228,81 @@ let decl_enc_op (msg_name : string) (mb : message_body_tyd) : unit =
     po_locality = `Global;
   } in
   decl_operator penc
+
+let dec_op_name (name : string) : string = "dec_"^name
+
+let pex_let (pat : plpattern) (wty : pexpr_wty) (pex : pexpr) : pexpr =
+  dl (PElet (pat,wty,pex))
+ 
+let pex_if (cond : pexpr) (then_br : pexpr) (else_br : pexpr) : pexpr =
+  dl (PEif (cond, then_br, else_br))
+
+let pex_proji (pex : pexpr) (i : int) : pexpr =
+  dl (PEproji (pex,i))
+  
+let pex_match (pex : pexpr) (clauses : (ppattern * pexpr) list) : pexpr =
+  dl (PEmatch (pex,clauses))
+
+let pex_Or = pex_ident "\\/"
+
+let pex_Eq = pex_ident "="
+
+let pex_Not = pex_ident "[!]"
+
+let pex_None = pex_ident "None"
+
+let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
+  let var_name = "m" in
+  let mode = "mod" in
+  let pt1 = "pt1" in
+  let pt2 = "pt2" in
+  let tag = "tag" in
+  let v = "v" in
+  let osym (name : string) = dl (Some (dl name)) in
+  let pat = dl (LPTuple [osym mode; osym pt1; osym pt2; osym tag; osym v]) in
+  
+  let wty = (pex_ident var_name, None) in
+  
+  let if1 = pex_app pex_Eq [pex_ident mode; pex_Adv] in
+  let no1 = pex_app pex_Eq [pex_proji (pex_ident pt1) 1; pex_ident opname_pi] in
+  let no2 = pex_app pex_Eq [pex_ident tag; pex_int_0] in
+  let if2 = pex_app pex_Or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
+  let if_cond = pex_tuple [pex_app pex_Or [if1; if2]] in
+  
+  let pat1 = PPApp ((pqs "None", None), []) in
+  let mtch1 = (pat1, pex_None) in
+  let p = "p" in
+  let pat2 = PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
+  let ex2 = pex_None in (*continue here*)
+  let mtch2 = (pat2, ex2) in
+  let dd = pex_proj (epdp_data_univ mb.params_map) "dec" in
+  let pmex = pex_app dd [pex_ident v] in
+  let else_br = pex_match pmex [mtch1; mtch2] in
+  let pif = pex_if if_cond pex_None else_br in
+  
+  let decex = pex_let pat wty pif in
+  let args = [([dl(Some (dl var_name))], msg_pty) ] in
+  let ret_pty = option_of_pty mty_name in
+  let def = PO_concr (ret_pty, decex) in
+  let pdec =
+  {
+    po_kind     = `Op;
+    po_name     = dl (dec_op_name mty_name);
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = args;
+    po_def      = def;
+    po_ax       = None;
+    po_nosmt    = true;
+    po_locality = `Global;
+  } in
+  decl_operator pdec
   
 let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_dir_msg_type name mb;
-  decl_enc_op name mb
+  decl_enc_op name mb;
+  decl_dec_op name mb
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
