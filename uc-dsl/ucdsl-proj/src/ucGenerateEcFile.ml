@@ -329,11 +329,35 @@ let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
     po_locality = `Global;
   } in
   decl_operator pdec
+
+let name_epdp_op (mty_name : string) : string = "epdp_"^mty_name
+
+let decl_epdp_op (mty_name : string) : unit =
+  let enc = pexrfield "enc" (pex_ident (enc_op_name mty_name)) in
+  let dec = pexrfield "dec" (pex_ident (dec_op_name mty_name)) in
+  let epdp = pex_record None [enc; dec] in
+  let def = PO_concr (dl PTunivar, epdp) in
+  let pdec =
+  {
+    po_kind     = `Op;
+    po_name     = dl (name_epdp_op mty_name);
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = def;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  } in
+  decl_operator pdec
+
   
 let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_dir_msg_type name mb;
   decl_enc_op name mb;
-  decl_dec_op name mb
+  decl_dec_op name mb;
+  decl_epdp_op name
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
