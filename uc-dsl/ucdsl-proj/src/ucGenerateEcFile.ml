@@ -242,6 +242,9 @@ let pex_proji (pex : pexpr) (i : int) : pexpr =
   
 let pex_match (pex : pexpr) (clauses : (ppattern * pexpr) list) : pexpr =
   dl (PEmatch (pex,clauses))
+  
+let pex_record (opex : pexpr option) (rcrds : pexpr rfield list) : pexpr =
+ dl (PErecord (opex, rcrds))
 
 let pex_Or = pex_ident "\\/"
 
@@ -250,6 +253,15 @@ let pex_Eq = pex_ident "="
 let pex_Not = pex_ident "[!]"
 
 let pex_None = pex_ident "None"
+
+let pex_Some = pex_ident "Some"
+
+let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
+  {
+    rf_name  = pqs name;
+    rf_tvi   = None;
+    rf_value = pex;
+  }
 
 let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
   let var_name = "m" in
@@ -269,20 +281,39 @@ let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
   let if2 = pex_app pex_Or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
   let if_cond = pex_tuple [pex_app pex_Or [if1; if2]] in
   
+  let p = "p" in
+  let n' (pn : string) : string = pn^"'" in
+  let pns = fst (List.split (params_map_to_list mb.params_map)) in
+  let patm = dl (LPTuple (List.map (fun pn -> osym (n' pn)) pns)) in
+  let wtym = (pex_ident p, None) in
+  let funcfld = pexrfield (name_record_func mty_name) (pex_proji (pex_ident pt1) 0) in
+  let pt1fld = pexrfield (name_record_dir_port mty_name mb) (pex_ident pt2) in
+  let dataflds = List.map 
+    (fun pn -> pexrfield (name_record mty_name pn) (pex_ident (n' pn)) ) 
+    pns in
+  let msg = pex_record None (funcfld::pt1fld::dataflds) in
+  let omsg = pex_app pex_Some [msg] in
+
+  let ex2 = 
+    if pns = [] 
+    then omsg
+    else pex_let patm wtym omsg  in
+  let pat2 = PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
+  let mtch2 = (pat2, ex2) in
+
   let pat1 = PPApp ((pqs "None", None), []) in
   let mtch1 = (pat1, pex_None) in
-  let p = "p" in
-  let pat2 = PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
-  let ex2 = pex_None in (*continue here*)
-  let mtch2 = (pat2, ex2) in
+
   let dd = pex_proj (epdp_data_univ mb.params_map) "dec" in
   let pmex = pex_app dd [pex_ident v] in
   let else_br = pex_match pmex [mtch1; mtch2] in
+
   let pif = pex_if if_cond pex_None else_br in
   
   let decex = pex_let pat wty pif in
   let args = [([dl(Some (dl var_name))], msg_pty) ] in
   let ret_pty = option_of_pty mty_name in
+
   let def = PO_concr (ret_pty, decex) in
   let pdec =
   {
