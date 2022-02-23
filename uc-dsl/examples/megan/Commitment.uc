@@ -302,6 +302,7 @@ functionality Real implements Dir Adv {
       var c_b, c_nb : Pke.ciphertext;
       var fk : Cfptp.fkey;
       var pk : Pke.pkey;
+      var c_vals : Types.commit_vals;
       match message with
       | Crs.Pt.crs_rsp(crs) => {
       	  (* parse crs *)
@@ -314,11 +315,12 @@ functionality Real implements Dir Adv {
 	  y <- Cfptp.forw fk x b; (* compute f_b(x), where f_b is a cfptp. *)
 	  c_b <- Pke.enc pk x r; (* ciphertext c_b. Encrypt x using r *)
 	  c_nb <- Pke.oblivenc pk r_sample; (* ciphertext c_{1-b}. Obliviously encrypt to generate a ciphertext using randomness r *)
+	  c_vals <- b ? (y, c_nb, c_b) : (y, c_b, c_nb); (* record (y, c0, c1) *)
 
 	  (* Add everything to the committer's view *)
 	  new_view <- view ++ [View.C_crs crs] (* CRS *)
-	  	      	   ++ [View.C_cmsg_x x; View.C_cmsg_r r; View.C_cmsg_rsample r_sample]
-			   ++ [View.C_cmsg_y y; View.C_cmsg_cb c_b; View.C_cmsg_cnb c_nb];
+	  	      	   ++ [View.C_omsg_x x; View.C_omsg_r r; View.C_omsg_rsample r_sample]
+			   ++ [View.C_cmsg c_vals];
 	  (* send commit message to verifier *)
 	  send Fwd1.D.fw_req
 	       (intport Verifier, (* Send this to Verifier *)
@@ -644,6 +646,7 @@ simulator Sim uses I2S simulates Real {
     var bk : Cfptp.bkey;
     var pk : Pke.pkey;
     var sk : Pke.skey;
+    var c_vals : Types.commit_vals;
     match message with
     | Real.Crs.Adv.crs_send_ok => {
 
@@ -656,8 +659,10 @@ simulator Sim uses I2S simulates Real {
       c0 <- Pke.enc pk x0 r;
       c1 <- Pke.enc pk x1 r;
 
-      new_view <- view ++ [View.C_cmsg_x x0; View.C_cmsg_r r]
-	              ++ [View.C_cmsg_y y; View.C_cmsg_cb c0; View.C_cmsg_cnb c1];
+      c_vals <- (y, c0, c1);
+
+      new_view <- view ++ [View.C_omsg_x x0; View.C_omsg_r r]
+	              ++ [View.C_cmsg c_vals];
       (* send (pt1, pt2, y, c0, c1) to the adversary, who OKs forwarding to the verifier *)
       send Real.Fwd1.FwAdv.fw_obs
       	   (intport Real.Committer, (* Sender is the Committer *)

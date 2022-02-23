@@ -12,12 +12,10 @@ type committer_elem = [
   | C_env_b of bool       (* Bit received from the environment *)
   | C_corrupted of bool   (* Whether the committer is corrupted *)
   | C_crs of Types.crs (* CRS: Cfptp.fkey * Pke.pkey *)
-  | C_cmsg_x of Cfptp.D	(* Commit msg - random plaintext *)
-  | C_cmsg_r of Pke.rand (* Commit msg - encryption randomness r *)
-  | C_cmsg_rsample of Pke.rand (* Commit msg - randomness for oblivious encryption *)
-  | C_cmsg_y of Cfptp.D (* Commit msg - result of sending x forward through CFPTP *)
-  | C_cmsg_cb of Pke.ciphertext (* Commit msg - ciphertext c_b *)
-  | C_cmsg_cnb of Pke.ciphertext (* Commit msg - ciphertext c_nb *)
+  | C_omsg_x of Cfptp.D	(* Open msg - random plaintext *)
+  | C_omsg_r of Pke.rand (* Open msg - encryption randomness r *)
+  | C_omsg_rsample of Pke.rand (* Open msg - randomness for oblivious encryption *)
+  | C_cmsg of Types.commit_vals (* Cfptp.D * Pke.ciphertext * Pke.ciphertext *)
   | C_open_c_env_port of port (* Client port in environment requesting an open message *)
 ].
 
