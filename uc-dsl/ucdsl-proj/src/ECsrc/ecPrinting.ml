@@ -3076,6 +3076,21 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
       Format.fprintf fmt "%ahint rewrite %a : @[<hov 2>%a@]."
         pp_locality lc
         (pp_rwname ppe) p (pp_list "@ " (pp_axname ppe)) l
+  (*Print correctly simplify hint for valid_epdp*)
+  | EcTheory.Th_reduction [(
+    path,
+    { ur_delta = false; ur_eqtrue = true; },
+    Some EcTheory.{ 
+      rl_tyd  = [];
+      rl_vars = [];
+      rl_cond = [];
+      rl_ptn  = _;
+      rl_tg   = tg;
+      rl_prio = _;
+    }
+    )] when tg = EcCoreFol.f_true ->
+      Format.fprintf fmt "hint simplify [eqtrue] %a."
+        (pp_axname ppe) path
 
   | EcTheory.Th_reduction _ ->
       (* FIXME: section we should add the lemma in the reduction *)
