@@ -72,6 +72,9 @@ let pp_tyerror env1 fmt error =
 
   | TypeVarNotAllowed ->
       msg "type variables not allowed"
+      
+  | GlobVarNotAllowed ->
+      msg "global variables not allowed"
 
   | UnboundTypeParameter x ->
       msg "unbound type parameter: %s" x

@@ -337,7 +337,7 @@ let decl_epdp_op (mty_name : string) : unit =
   let dec = pexrfield "dec" (pex_ident (dec_op_name mty_name)) in
   let epdp = pex_record None [enc; dec] in
   let def = PO_concr (dl PTunivar, epdp) in
-  let pdec =
+  let pepdp =
   {
     po_kind     = `Op;
     po_name     = dl (name_epdp_op mty_name);
@@ -350,14 +350,53 @@ let decl_epdp_op (mty_name : string) : unit =
     po_nosmt    = false;
     po_locality = `Global;
   } in
-  decl_operator pdec
+  decl_operator pepdp
 
+let name_lemma_epdp_valid (name : string) : string =
+  "valid_epdp_"^name
+
+let decl_lemma_epdp (name : string) : unit =
+  let f_ve = dl (PFident (pqs "valid_epdp", None)) in
+  let f_e = dl (PFident (pqs (name_epdp_op name), None)) in
+  let pfrm = dl (PFapp (f_ve, [f_e])) in 
+  let lem =
+  {
+    pa_name     = dl (name_lemma_epdp_valid name);
+    pa_tyvars   = None;
+    pa_vars     = None;
+    pa_formula  = pfrm;
+    pa_kind     = PLemma None;
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  } in
+  decl_axiom lem
+
+let proof () : unit =
+  UcEcInterface.process (Gtactics (`Proof {pm_strict = true}))
+
+let admit () : unit =
+  let ptac = 
+  {
+    pt_core = dl Padmit;
+    pt_intros = []
+  } in
+  UcEcInterface.process (Gtactics (`Actual [ptac]))
   
+let qed () : unit =
+  UcEcInterface.process (Gsave (dl `Qed))
+ 
+let proof_admit_qed () : unit =
+  proof ();
+  admit ();
+  qed ()
+
 let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_dir_msg_type name mb;
   decl_enc_op name mb;
   decl_dec_op name mb;
-  decl_epdp_op name
+  decl_epdp_op name;
+  decl_lemma_epdp name;
+  proof_admit_qed ()
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
