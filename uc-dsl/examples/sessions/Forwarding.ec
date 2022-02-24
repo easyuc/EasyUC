@@ -3,10 +3,12 @@
 (* Definitions Supporting Forwarding.uc *)
 
 require import AllCore UCBasicTypes.
-require export Sessions.
 
-(* limit on number of sessions *)
+type subs = univ.  (* subsession *)
 
-op maxssn : int.
+type session = subs * port * port.  (* session *)
 
-axiom ge0_maxssn : 0 < maxssn.  (* at least one session is allowed *)
+type fwd_state = [
+  | Wait  of univ  (* value to be forwarded *)
+  | Final of bool  (* corruption status *)
+].

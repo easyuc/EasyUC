@@ -1,22 +1,26 @@
 (* Forwarding.uc *)
 
 (* Singleton unit consisting of a forwarding ideal functionality
-   supporting multiple sessions *)
+   supporting multiple subss *)
 
-ec_requires +Forwarding.
+ec_requires +SmtMap +Forwarding.
 
 (* direct interface *)
 
 direct FwDir' {
-  (* request by instance ins1 of port pt1, asking to send u to
-     iport ipt2 *)
+  (* pt1 starts new forwarding session subs to forward u to pt2 *)
+  in pt1@req(subs : subs, pt2 : port, u : univ)
 
-  in pt1@fw_req(ins1 : ins, ipt2 : iport, u : univ)
+  (* pt1 asks whether session subs with pt2 is corrupted *)
+  in pt1@is_corrupted_req(subs : subs, pt2 : port)
 
-  (* response from functionality to instance ins2 of port pt2, saying
-     iport ipt1 sent it u *)
+  (* message to pt2 giving it value u and saying it was forwarded
+     from pt1 *)
+  out rsp(subs : subs, pt1 : port, u : univ)@pt2
 
-  out fw_rsp(ipt1 : iport, ins2 : ins, u : univ)@pt2
+  (* response to pt1 communicating corruption status of session
+     sub with pt2 *)
+  out is_corrupted_rsp(subs : subs, pt2 : port, b : bool)@pt1
 }
 
 direct FwDir {D : FwDir'}
@@ -24,52 +28,93 @@ direct FwDir {D : FwDir'}
 (* adversarial interface *)
 
 adversarial FwAdv {
-  (* tell adversary that, in forwarding session ssn, iport ipt1
-     is trying to forward u to iport ipt2 *)
+  (* observation message telling adversary that pt1 has
+     started a forwarding session subs with pt2 asking to
+     forward value u *)
+  out obs(subs : subs, pt1 : port, pt2 : port, u : univ)
 
-  out fw_obs(ssn : int, ipt1 : iport, ipt2 : iport, u : univ)
+  (* message from adversary approving the forwarding of
+     session subs between pt1 and pt2 *)
+  in ok(subs : subs, pt1 : port, pt2 : port)
 
-  (* adversary approves the forwarding of session ssn *)
-
-  in fw_ok(ssn : int)
+  (* message from adversary saying that the forwarding session subs
+     between pt1 and pt2 should be corrupted, and instead value u_new
+     should be sent to pt_new *)
+  in corrupt(subs : subs, pt1 : port, pt2 : port, pt2' : port, u' : univ)
 }
 
 functionality Forw implements FwDir FwAdv {
   initial state Init {
     match message with
-    | pt1@FwDir.D.fw_req(ins1, ipt2, u) => {
-        if (envport ipt2.`1) {
+    | pt1@FwDir.D.req(subs, pt2, u) => {
+        if (envport pt2) {
           send
-            FwAdv.fw_obs(0, (pt1, ins1), ipt2, u)
+            FwAdv.obs(subs, pt1, pt2, u)
           and transition
-            Main(1, init.[0 <- ((pt1, ins1), ipt2, u)]).
+            Main(empty.[(subs, pt1, pt2) <- Wait u]).
         }
         else { fail. }
       }
-    | *                                 => { fail. }
+    | *                             => { fail. }
     end
   }
 
-  state Main(next : int, ssns : (iport * iport * univ) sessions) {
-    var ipt1', ipt2' : iport; var u' : univ;
+  state Main(subs_map : (session, fwd_state) fmap) {
     match message with
-    | pt1@FwDir.D.fw_req(ins1, ipt2, u) => {
-        if (envport ipt2.`1) {
+    | pt1@FwDir.D.req(subs, pt2, u) => {
+        if (envport pt2 /\ ! dom subs_map (subs, pt1, pt2)) {
           send
-            FwAdv.fw_obs(next, (pt1, ins1), ipt2, u)
+            FwAdv.obs(subs, pt1, pt2, u)
           and transition
-            Main(next + 1, ssns.[next <- ((pt1, ins1), ipt2, u)]).
+            Main(subs_map.[(subs, pt1, pt2) <- Wait u]).
         }
         else { fail. }
       }
-    | FwAdv.fw_ok(ssn) => {
-        if (dom ssns ssn) {
-          (ipt1', ipt2', u') <- oget ssns.[ssn];
-          send
-            FwDir.D.fw_rsp(ipt1', ipt2'.`2, u')@ipt2'.`1
-          and transition
-            Main(next, rem ssns ssn).
-          }
+    | pt1@FwDir.D.is_corrupted_req(subs, pt2) => {
+        if (dom subs_map (subs, pt1, pt2)) {
+          match oget subs_map.[(subs, pt1, pt2)] with
+          | Wait _    => {
+              send
+                FwDir.D.is_corrupted_rsp(subs, pt2, false)@pt1
+              and transition
+                Main(subs_map).
+            }
+          | Final cor => {
+              send
+                FwDir.D.is_corrupted_rsp(subs, pt2, cor)@pt1
+              and transition
+                Main(subs_map).
+            }
+          end
+        }
+        else { fail. }
+      }
+    | FwAdv.ok(subs, pt1, pt2) => {
+        if (dom subs_map (subs, pt1, pt2)) {
+          match oget subs_map.[(subs, pt1, pt2)] with
+          | Wait u  => {
+              send
+                FwDir.D.rsp(subs, pt1, u)@pt2
+              and transition
+                Main(subs_map.[(subs, pt1, pt2) <- Final false]).
+            }
+          | Final _ => { fail. }
+          end
+        }
+        else { fail. }
+      }
+    | FwAdv.corrupt(subs, pt1, pt2, pt2', u') => {
+        if (dom subs_map (subs, pt1, pt2)) {
+          match oget subs_map.[(subs, pt1, pt2)] with
+          | Wait _  => {
+              send
+                FwDir.D.rsp(subs, pt1, u')@pt2'
+              and transition
+                Main(subs_map.[(subs, pt1, pt2) <- Final true]).
+            }
+          | Final _ => { fail. }
+          end
+        }
         else { fail. }
       }
     end
