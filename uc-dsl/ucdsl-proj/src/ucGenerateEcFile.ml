@@ -394,6 +394,10 @@ let hint_simplify_epdp (name : string) : unit =
   UcEcInterface.process (Greduction 
     ([`EqTrue], [([pqs (name_lemma_epdp_valid name)], None)]))
 
+let hint_rewrite_epdp (name : string) : unit =
+  UcEcInterface.process (Gaddrw
+    (`Global, pqs "epdp", [pqs (name_lemma_epdp_valid name)]))
+
 let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_dir_msg_type name mb;
   decl_enc_op name mb;
@@ -401,7 +405,8 @@ let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_epdp_op name;
   decl_lemma_epdp name;
   proof_admit_qed ();
-  hint_simplify_epdp name
+  hint_simplify_epdp name;
+  hint_rewrite_epdp name
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
