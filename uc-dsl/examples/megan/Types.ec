@@ -15,4 +15,5 @@ type sim_crs = Cfptp.fkey * Cfptp.bkey * Pke.pkey * Pke.skey. (* The simulated's
 type commit_vals = Cfptp.D * Pke.ciphertext * Pke.ciphertext.
 
 (* Open - b, x, rb, rnb *)
-type open_vals = bool * Cfptp.D * Pke.rand * Pke.rand.
+type open_vals = Cfptp.D * Pke.rand.
+type open_rfake = Pke.rand.
