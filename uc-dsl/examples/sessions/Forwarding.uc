@@ -59,44 +59,44 @@ functionality Forw implements FwDir FwAdv {
     end
   }
 
-  state Main(subs_map : (session, fwd_state) fmap) {
+  state Main(session_map : (session, fwd_state) fmap) {
     match message with
     | pt1@FwDir.D.req(subs, pt2, u) => {
-        if (envport pt2 /\ ! dom subs_map (subs, pt1, pt2)) {
+        if (envport pt2 /\ ! dom session_map (subs, pt1, pt2)) {
           send
             FwAdv.obs(subs, pt1, pt2, u)
           and transition
-            Main(subs_map.[(subs, pt1, pt2) <- Wait u]).
+            Main(session_map.[(subs, pt1, pt2) <- Wait u]).
         }
         else { fail. }
       }
-    | pt1@FwDir.D.is_corrupted_req(subs, pt2) => {
-        if (dom subs_map (subs, pt1, pt2)) {
-          match oget subs_map.[(subs, pt1, pt2)] with
+    | pt1@FwDir.D.is_corrupted_req(subs, pt2') => {
+        if (dom session_map (subs, pt1, pt2)) {
+          match oget session_map.[(subs, pt1, pt2)] with
           | Wait _    => {
               send
                 FwDir.D.is_corrupted_rsp(subs, pt2, false)@pt1
               and transition
-                Main(subs_map).
+                Main(session_map).
             }
           | Final cor => {
               send
                 FwDir.D.is_corrupted_rsp(subs, pt2, cor)@pt1
               and transition
-                Main(subs_map).
+                Main(session_map).
             }
           end
         }
         else { fail. }
       }
     | FwAdv.ok(subs, pt1, pt2) => {
-        if (dom subs_map (subs, pt1, pt2)) {
-          match oget subs_map.[(subs, pt1, pt2)] with
+        if (dom session_map (subs, pt1, pt2)) {
+          match oget session_map.[(subs, pt1, pt2)] with
           | Wait u  => {
               send
                 FwDir.D.rsp(subs, pt1, u)@pt2
               and transition
-                Main(subs_map.[(subs, pt1, pt2) <- Final false]).
+                Main(session_map.[(subs, pt1, pt2) <- Final false]).
             }
           | Final _ => { fail. }
           end
@@ -104,13 +104,13 @@ functionality Forw implements FwDir FwAdv {
         else { fail. }
       }
     | FwAdv.corrupt(subs, pt1, pt2, pt2', u') => {
-        if (dom subs_map (subs, pt1, pt2)) {
-          match oget subs_map.[(subs, pt1, pt2)] with
+        if (dom session_map (subs, pt1, pt2)) {
+          match oget session_map.[(subs, pt1, pt2)] with
           | Wait _  => {
               send
                 FwDir.D.rsp(subs, pt1, u')@pt2'
               and transition
-                Main(subs_map.[(subs, pt1, pt2) <- Final true]).
+                Main(session_map.[(subs, pt1, pt2) <- Final true]).
             }
           | Final _ => { fail. }
           end
