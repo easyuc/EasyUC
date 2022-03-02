@@ -454,15 +454,16 @@ functionality Real implements Dir Adv {
       var pt1, pt2 : port;
       var y : Cfptp.D;
       var c_false, c_true : Pke.ciphertext;
+      var c_vals : Types.commit_vals;
       match message with
       | Fwd1.D.fw_rsp(_, u) => { (* Verifier is activated after receiving a commit message *)
           match ForwardingEncodings.epdp_commit_univ.`dec u with
           | Some tr => {
               (pt1, pt2, y, c_false, c_true) <- tr;
-	      view <- [View.V_c_env_port pt1; View.V_v_env_port pt2]
-	      	      ++ [View.V_cmsg_y y; View.V_cmsg_cfalse c_false; View.V_cmsg_ctrue c_true];
+	      c_vals <- (y, c_false, c_true);
+	      view <- [View.V_c_env_port pt1; View.V_v_env_port pt2; View.V_cmsg c_vals];
               send Adv.Pt2.verifier_corruption_status_req
-	      and transition WaitCorruptionStatus(view, pt1, pt2, y, c_false, c_true).
+	      and transition WaitCorruptionStatus(view, pt1, pt2, c_vals).
             }
           | None => { fail. }  (* cannot happen *)
           end
@@ -471,19 +472,19 @@ functionality Real implements Dir Adv {
       end
     }
 
-    state WaitCorruptionStatus(view : View.verifier, pt1 : port, pt2 : port, y : Cfptp.D, c_false : Pke.ciphertext, c_true : Pke.ciphertext) {
+    state WaitCorruptionStatus(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals) {
       var new_view : View.verifier;
       match message with
       | Adv.Pt2.verifier_corruption_status_rsp( corrupted ) => { (* After receiving corruption status, do nothing (update later to allow V to send arbitrary messages to C *)
       	  new_view <- view ++ [View.V_corrupted corrupted];
           send Dir.Pt2.commit(pt1)@pt2
-	  and transition WaitOpen(new_view, pt1, pt2, y, c_false, c_true, corrupted).
+	  and transition WaitOpen(new_view, pt1, pt2, c_vals, corrupted).
 	}
       | * => { fail. }
       end
     }
 
-    state WaitOpen(view : View.verifier, pt1 : port, pt2 : port, y : Cfptp.D, c_false : Pke.ciphertext, c_true : Pke.ciphertext, corrupted : bool) {
+    state WaitOpen(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted : bool) {
       var new_view : View.verifier;
       var b : bool;
       var x : Cfptp.D;
@@ -495,7 +496,7 @@ functionality Real implements Dir Adv {
               (b, x, r_b, r_nb) <- tr;
 	      new_view <- view ++ [View.V_omsg_b b; View.V_omsg_x x; View.V_omsg_rb r_b; View.V_omsg_rnb r_nb];
               send Crs.Pt.crs_req
-	      and transition WaitCrs(new_view, pt1, pt2, y, c_false, c_true, corrupted, b, x, r_b).
+	      and transition WaitCrs(new_view, pt1, pt2, c_vals, corrupted, b, x, r_b).
             }
           | None => { fail. }  (* cannot happen *)
           end
@@ -504,17 +505,21 @@ functionality Real implements Dir Adv {
       end
     }
 
-    state WaitCrs(view : View.verifier, pt1 : port, pt2 : port, y : Cfptp.D, c_false : Pke.ciphertext, c_true : Pke.ciphertext, corrupted: bool, b : bool, x : Cfptp.D, r : Pke.rand) {
+    state WaitCrs(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted: bool, b : bool, x : Cfptp.D, r : Pke.rand) {
       var new_view : View.verifier;
       var y' : Cfptp.D;
       var c' : Pke.ciphertext;
       var fk : Cfptp.fkey;
       var pk : Pke.pkey;
+      var y : Cfptp.D; var c_false, c_true : Pke.ciphertext; (* Commit msg *)
       match message with
       | Crs.Pt.crs_rsp(crs) => {
       	  (* parse crs *)
 	  (fk, pk) <- crs; (* fk is forward key for Cfptp. pk is public key for public key encryption *)
 	  new_view <- view ++ [View.V_crs crs];
+
+	  (* recover commit message *)
+	  (y, c_false, c_true) <- c_vals;
 	  (* Do verification checks *)
 	  y' <- Cfptp.forw fk x b;
 	  c' <- Pke.enc pk x r;
