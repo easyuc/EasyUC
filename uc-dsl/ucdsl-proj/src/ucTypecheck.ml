@@ -2175,7 +2175,7 @@ let check_units
                    fprintf ppf
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
                     "real@ and@ ideal@ functionalities@ must@ have@ " ^^
-                    "the@ same@ direct@ interfaces@]")
+                    "the@ same@ composite@ direct@ interfaces@]")
                    root)
          else if id_adv_inter_of_fun_body_tyd (unloc i_f) <>
                  Some (unloc sim).uses
@@ -2183,8 +2183,19 @@ let check_units
                 (fun ppf ->
                    fprintf ppf
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
-                    "ideal@ functionality's@ adversarial@ interface@ " ^^
+                    "ideal@ functionality's@ basic@ adversarial@ interface@ " ^^
                     "must@ be@ used@ by@ simulator@]")
+                   root)
+         else if IdSet.mem
+                 (Option.get (id_adv_inter_of_fun_body_tyd (unloc i_f)))
+                 (basic_direct_inter_names_of_real_fun root maps rf_name)
+           then type_error (begin_of_file_loc qual_file)
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
+                    "ideal@ functionality's@ basic@ adversarial@ interface@ " ^^
+                    "may@ not@ be@ component@ of@ composite@ adversarial@ " ^^
+                    "interface@ of@ real@ functionality@]")
                    root)
          else let () =
                 match IdSet.min_elt_opt extra_inter with

@@ -7,5 +7,5 @@ outcome:failure
 [error: real_ideal_different_direct_interface.uc: from line 0 columns 1 to 1]
 
 for file with root Real_ideal_different_direct_interface to be a unit, real
-and ideal functionalities must have the same direct interfaces
+and ideal functionalities must have the same composite direct interfaces
 .

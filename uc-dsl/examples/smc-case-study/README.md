@@ -15,17 +15,18 @@ using the UC DSL:
    secure message communication](SMC.uc)
    
 This development is split into *units*, and can thus be checked using the
-`-units` command line option to `ucdsl`. A *unit* either
+`-units` command line option to `ucdsl`. A *unit* either:
 
 * has one ideal functionality, no real functionalities and no
   simulators, and has no extraneous interfaces; or
 
 * has one real functionality, one ideal functionality, one simulator,
   and no extraneous interfaces, where the real and ideal
-  functionalities share the same (composite) direct interface, and the
-  simulator uses the ideal functionality's adversarial (basic)
-  interface (the above implies that the simulator simulates the real
-  functionality).
+  functionalities share the same composite direct interface, the
+  simulator uses the ideal functionality's basic adversarial interface
+  (which is not allowed to be a component of the real functionality's
+  composite adversarial interface (if any)); the above implies that the
+  simulator simulates the real functionality.
 
 There are extensive comments in the above files, which provide a
 good example-based introduction to the meaning and usage of the UC DSL.

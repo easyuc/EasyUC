@@ -389,6 +389,19 @@ let inter_names_reach_sim
   (IdSet.singleton sbt.uses)  (* will be basic *)
   (inter_names_reach_fun root maps sbt.sims)
 
+let basic_direct_inter_names_of_real_fun
+    (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
+  match unloc (IdPairMap.find (root, id) maps.fun_map) with
+  | FunBodyRealTyd rfbt  ->
+      (match rfbt.id_adv_inter with
+       | None        -> IdSet.empty
+       | Some adv_id ->
+           match unloc (IdPairMap.find (root, adv_id) maps.adv_inter_map) with
+           | BasicTyd _      -> UcMessage.failure "cannot happen"
+           | CompositeTyd mp ->
+               (IdSet.of_list (List.map snd (IdMap.bindings mp))))
+  | FunBodyIdealTyd _    -> UcMessage.failure "cannot happen"
+
 (* typed top-level specifications *)
 
 type typed_spec = maps_tyd

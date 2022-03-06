@@ -1,0 +1,14 @@
+description
+
+A file is not a unit if ideal functionality's basic adversarial
+interface is one of the components of the real functionality's
+composite adversarial interface.
+.
+args:-units ideal_adversarial_component_of_real_adversarial.uc
+outcome:failure
+[error: ideal_adversarial_component_of_real_adversarial.uc: from line 0 columns 1 to 1]
+
+for file with root Ideal_adversarial_component_of_real_adversarial to be a
+unit, ideal functionality's basic adversarial interface may not be component
+of composite adversarial interface of real functionality
+.
