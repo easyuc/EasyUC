@@ -94,11 +94,15 @@ let opname_adv_if_pi = "_adv_if_pi"
 
 let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
 
+let pform_ident (name : string) : pformula =
+  dl (PFident (pqs name, None))
+
+let pf_0 = dl (PFint EcBigInt.zero)
+
 let axiom_adv_if_pi_gt0 : paxiom =
-  let f_le = dl (PFident (pqs "<", None)) in
-  let f_int = dl (PFint EcBigInt.zero) in
-  let f_ax = dl (PFident (pqs opname_adv_if_pi, None)) in 
-  let pfrm = dl (PFapp (f_le,[f_int; f_ax])) in 
+  let f_le = pform_ident "<" in
+  let f_ax = pform_ident opname_adv_if_pi in 
+  let pfrm = dl (PFapp (f_le,[pf_0; f_ax])) in 
   {
     pa_name     = dl axname_adv_if_pi_gt0;
     pa_tyvars   = None;
@@ -151,35 +155,38 @@ let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
 let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
   dl (PEapp (ex,args))
 
+let epdp_ty_univ_name (ty_name : string) : string =
+  match ty_name with
+  | "unit" -> "epdp_unit_univ"
+  | "bool" -> "epdp_bool_univ"
+  | "int"  -> "epdp_int_univ"
+  | "addr" -> "epdp_addr_univ"
+  | "port" -> "epdp_port_univ"
+  | "univ" -> "epdp_id"
+  | _ -> failure ("yet unsupported epdp for "^ty_name)
+
 let epdp_name_univ (name : string) : pexpr =
-  match name with
-  | "unit" -> pex_ident "epdp_unit_univ"
-  | "bool" -> pex_ident "epdp_bool_univ"
-  | "int"  -> pex_ident "epdp_int_univ"
-  | "addr" -> pex_ident "epdp_addr_univ"
-  | "port" -> pex_ident "epdp_port_univ"
-  | "univ" -> pex_ident "epdp_id"
-  | _ -> failure ("yet unsupported epdp for "^name)
+  pex_ident (epdp_ty_univ_name name)
+
+let epdp_tuple_name (arity : int) : string =
+  match arity with
+  | 2 -> "epdp_pair_univ"
+  | 3 -> "epdp_tuple3_univ"
+  | 4 -> "epdp_tuple4_univ"
+  | 5 -> "epdp_tuple5_univ"
+  | 6 -> "epdp_tuple6_univ"
+  | 7 -> "epdp_tuple7_univ"
+  | 8 -> "epdp_tuple8_univ"
+  | _ -> failure "epdp_tuples must have size between 2 and 8"
 
 let rec epdp_pty_univ (t : pty) : pexpr =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ ptys
   | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ name
   | _ -> failure ("Only tuples and named types supported." )
-
 and epdp_tuple_univ (ptys : pty list) : pexpr =
-  let ret (epdp_name : string) : pexpr =
-    pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
-  in
-  match List.length ptys with
-  | 2 -> ret "epdp_pair_univ"
-  | 3 -> ret "epdp_tuple3_univ"
-  | 4 -> ret "epdp_tuple4_univ"
-  | 5 -> ret "epdp_tuple5_univ"
-  | 6 -> ret "epdp_tuple6_univ"
-  | 7 -> ret "epdp_tuple7_univ"
-  | 8 -> ret "epdp_tuple8_univ"
-  | _ -> failure "epdp_tuples must have size between 2 and 8"
+  let epdp_name = epdp_tuple_name (List.length ptys) in
+  pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
 
 let epdp_data_univ (params_map : ty_index IdMap.t) : pexpr =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
@@ -356,8 +363,8 @@ let name_lemma_epdp_valid (name : string) : string =
   "valid_epdp_"^name
 
 let decl_lemma_epdp (name : string) : unit =
-  let f_ve = dl (PFident (pqs "valid_epdp", None)) in
-  let f_e = dl (PFident (pqs (name_epdp_op name), None)) in
+  let f_ve = pform_ident "valid_epdp" in
+  let f_e = pform_ident (name_epdp_op name) in
   let pfrm = dl (PFapp (f_ve, [f_e])) in 
   let lem =
   {
@@ -398,6 +405,90 @@ let hint_rewrite_epdp (name : string) : unit =
   UcEcInterface.process (Gaddrw
     (`Global, pqs "epdp", [pqs (name_lemma_epdp_valid name)]))
 
+let epdp_name_univ_form (name : string) : pformula =
+  pform_ident (epdp_ty_univ_name name)
+
+  
+let pform_tuple (pfs : pformula list) : pformula =
+  dl (PFtuple pfs)
+
+let pform_unit = pform_tuple []
+
+let pform_proj (f : pformula) (name : string) : pformula =
+  dl (PFproj (f, pqs name))
+  
+let pform_app (f : pformula) (args : pformula list) : pformula =
+  dl (PFapp (f,args))
+    
+let rec epdp_pty_univ_form (t : pty) : pformula =
+  match ul t with
+  | PTtuple  ptys -> epdp_tuple_univ_form ptys
+  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ_form name
+  | _ -> failure ("Only tuples and named types supported." )
+and epdp_tuple_univ_form (ptys : pty list) : pformula =
+  let epdp_name = epdp_tuple_name (List.length ptys) in
+  pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
+
+let epdp_data_univ_form (params_map : ty_index IdMap.t) : pformula =
+  let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
+  match ptys with
+  | [] -> pform_ident "epdp_unit_univ"
+  | [t] -> epdp_pty_univ_form t
+  | _ -> epdp_tuple_univ_form ptys
+  
+let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
+  let pns = fst (List.split (params_map_to_list params_map)) in
+  if pns = []
+  then pform_unit
+  else pform_tuple (List.map (fun pn -> pform_proj (pform_ident var_name) (name_record msg_name pn)) pns)
+
+let enc_u_form (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pformula =
+  let f = pform_proj (epdp_data_univ_form params_map) "enc" in
+  let args = enc_args_form var_name msg_name params_map in
+  pform_app f [args]
+
+let name_lemma_eq_of_valid (name : string) : string =
+  "eq_of_valid_"^name
+
+let pform_true = pform_ident "true"
+
+let decl_lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : unit =
+  let m = "m" in
+  let vars = Some [([dl (Some (dl m))], PGTY_Type msg_pty)] in
+  
+  let fepdp = pform_ident (name_epdp_op mty_name) in
+  let fm = pform_ident m in
+  let f_l = dl (PFapp (pform_ident "is_valid", [fepdp; fm])) in
+  let f_eq = pform_ident "=" in
+  let fdec = dl (PFtuple [dl (PFapp (dl (PFproj (fepdp, pqs "dec" )),[fm]))]) in 
+  let foget = dl (PFapp (pform_ident "oget",[fdec])) in
+  
+  let x = "x" in
+  let fx = pform_ident x in
+  let fdir = pform_ident "Dir" in
+  let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
+  let fsport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
+  let fdport = dl (PFproj (fx, pqs (name_record_dir_port mty_name mb))) in
+  let fdata = enc_u_form x mty_name mb.params_map in
+  let fmsg = dl (PFtuple [fdir; fsport; fdport; pf_0; fdata] ) in
+  
+  let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
+  let f_r = pform_app f_eq [fm; flet] in
+  let f_imp = pform_ident "=>" in
+  let pfrm = pform_app f_imp [f_l; f_r] in 
+  
+  let lem =
+  {
+    pa_name     = dl (name_lemma_eq_of_valid mty_name);
+    pa_tyvars   = None;
+    pa_vars     = vars;
+    pa_formula  = pfrm;
+    pa_kind     = PLemma None;
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  } in
+  decl_axiom lem
+
 let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_dir_msg_type name mb;
   decl_enc_op name mb;
@@ -406,7 +497,9 @@ let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   decl_lemma_epdp name;
   proof_admit_qed ();
   hint_simplify_epdp name;
-  hint_rewrite_epdp name
+  hint_rewrite_epdp name;
+  decl_lemma_eq_of_valid name mb;
+  proof_admit_qed ()
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
   open_theory name;
