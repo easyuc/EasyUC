@@ -12,10 +12,10 @@ let pqs (name : string) = dl (qs name)
 
 let ul = EcLocation.unloc
 
-let open_theory (name : string) : unit =
+let decl_open_theory (name : string) : unit =
   UcEcInterface.process (GthOpen (`Global, false, dl name))
   
-let close_theory (name : string) : unit =
+let decl_close_theory (name : string) : unit =
   UcEcInterface.process (GthClose ([], dl name))
 
 let decl_operator (pop : poperator) : unit =
@@ -502,17 +502,76 @@ let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
   proof_admit_qed ()
   
 let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
-  open_theory name;
+  decl_open_theory name;
   decl_operator pi_op;
   IdMap.iter (fun n mb -> decl_dir_message n mb) bibt;
-  close_theory name;
+  decl_close_theory name;
   print_theory ppf name (*TODO print theory part by part*)
   
-let write_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
+let write_b_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
   let ibt = ul dir_int in
   match ibt with
-  | BasicTyd  bibt -> write_basic_dir_int ppf name bibt
-  | CompositeTyd _ -> print_string "TODO\n"
+  | BasicTyd  b -> write_basic_dir_int ppf name b
+  | _ -> ()
+
+let clone (tc : theory_cloning) : unit =
+  UcEcInterface.process (GthClone tc)
+
+let counter = ref 0
+
+let next_pi () : int =
+  counter := !counter + 1;
+  !counter
+
+let pex_of_int (i : int) : pexpr =
+  dl (PEint (EcBigInt.of_int i))
+
+let decl_clone (name : string) (bi : string) (pindx : int): unit =
+  let thov = PTHO_Op (`BySyntax {
+    opov_nosmt  = false; 
+    opov_tyvars = None; opov_args = [];
+    opov_retty  = dl PTunivar;
+    opov_body   = pex_of_int pindx
+    }, `Alias) in
+  let cl = {
+    pthc_base   = pqs bi;
+    pthc_name   = Some (dl name);
+    pthc_ext    = [(pqs opname_pi, thov)];
+    pthc_prf    = [{pthp_mode = `All (None, []); pthp_tactic = None}];
+    pthc_rnm    = [];
+    pthc_opts   = [];
+    pthc_clears = [];
+    pthc_local  = `Global;
+    pthc_import = None;
+  } in
+  clone cl
+  
+let write_clone (ppf : Format.formatter) (name : string) (bi : string) : unit =
+  let pindx = next_pi () in
+  decl_clone name bi pindx;
+  Format.fprintf stf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx; (*REMOVE*)
+  Format.fprintf ppf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx
+
+let write_open_theory (ppf : Format.formatter) (name : string) : unit =
+  decl_open_theory name;
+  Format.fprintf stf "@.@[theory %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@.@[theory %s.@]@." name
+  
+let write_close_theory (ppf : Format.formatter) (name : string) : unit =
+  decl_close_theory name;
+  Format.fprintf stf "@.@[end %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@.@[end %s.@]@." name
+  
+let write_composite_dir_int (ppf : Format.formatter) (name : string) (nt : string IdMap.t) : unit =
+  write_open_theory ppf name;
+  IdMap.iter (fun n t -> write_clone ppf n t) nt;
+  write_close_theory ppf name
+  
+let write_c_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
+  let ibt = ul dir_int in
+  match ibt with
+  | CompositeTyd c -> write_composite_dir_int ppf name c
+  | _ -> ()
 
 type singlefile_typed_spec = {
   dir_inter_map : inter_tyd IdMap.t;
@@ -529,7 +588,7 @@ let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
   UcEcInterface.process (GthRequire threq);
   Format.fprintf stf "@[require import UCBasicTypes.@]@."; (*REMOVE*)
   Format.fprintf ppf "@[require import UCBasicTypes.@]@.";
-  UcEcInterface.process (Gprint (Pr_any (dl(qs "UCBasicTypes"))))
+  UcEcInterface.process (Gprint (Pr_any (dl(qs "UCBasicTypes")))) (*REMOVE*)
   
 let write_op_adv_if_pi (ppf : Format.formatter) : unit =
   decl_operator (abs_oper_int opname_adv_if_pi);
@@ -538,12 +597,14 @@ let write_op_adv_if_pi (ppf : Format.formatter) : unit =
 let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   decl_axiom (axiom_adv_if_pi_gt0);
   print_axiom ppf axname_adv_if_pi_gt0
-     
+  
 let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   write_require_import_UCBasicTypes ppf;
   write_op_adv_if_pi ppf;
   write_ax_adv_if_pi_gt0 ppf;
-  IdMap.iter (fun n d -> write_dir_int ppf n d) sts.dir_inter_map
+  IdMap.iter (fun n d -> write_b_dir_int ppf n d) sts.dir_inter_map;
+  IdMap.iter (fun n d -> write_c_dir_int ppf n d) sts.dir_inter_map
+  
 
 (*---------------------------------------------------------------------------*)
 
