@@ -214,11 +214,13 @@ let decl_enc_op (mty_name : string) (mb : message_body_tyd) : unit =
   let var_name = "x" in
   let u = enc_u var_name mty_name mb.params_map in
   let tag = pex_int_0 in
-  let pt2 = pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) in
-  let pt1 = pex_tuple [
+  let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
-  let encex = pex_tuple [pex_Dir; pt1; pt2; tag; u] in
+  let otherport = pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) in
+  let ptsource = if mb.dir = In then otherport else selfport in
+  let ptdest = if mb.dir = In then selfport else otherport in
+  let encex = pex_tuple [pex_Dir; ptsource; ptdest; tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (msg_pty, encex) in
   let penc =
@@ -275,6 +277,8 @@ let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
   let mode = "mod" in
   let pt1 = "pt1" in
   let pt2 = "pt2" in
+  let funcport = if mb.dir = In then pt1 else pt2 in
+  let otherport = if mb.dir = In then pt2 else pt1 in 
   let tag = "tag" in
   let v = "v" in
   let osym (name : string) = dl (Some (dl name)) in
@@ -293,8 +297,8 @@ let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
   let pns = fst (List.split (params_map_to_list mb.params_map)) in
   let patm = dl (LPTuple (List.map (fun pn -> osym (n' pn)) pns)) in
   let wtym = (pex_ident p, None) in
-  let funcfld = pexrfield (name_record_func mty_name) (pex_proji (pex_ident pt1) 0) in
-  let pt1fld = pexrfield (name_record_dir_port mty_name mb) (pex_ident pt2) in
+  let funcfld = pexrfield (name_record_func mty_name) (pex_proji (pex_ident funcport) 0) in
+  let pt1fld = pexrfield (name_record_dir_port mty_name mb) (pex_ident otherport) in
   let dataflds = List.map 
     (fun pn -> pexrfield (name_record mty_name pn) (pex_ident (n' pn)) ) 
     pns in
@@ -467,10 +471,12 @@ let decl_lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : unit =
   let fx = pform_ident x in
   let fdir = pform_ident "Dir" in
   let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
-  let fsport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
-  let fdport = dl (PFproj (fx, pqs (name_record_dir_port mty_name mb))) in
+  let funcport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
+  let otherport = dl (PFproj (fx, pqs (name_record_dir_port mty_name mb))) in
+  let fdport = if mb.dir = In then funcport else otherport in
+  let fsport = if mb.dir = In then otherport else funcport in
   let fdata = enc_u_form x mty_name mb.params_map in
-  let fmsg = dl (PFtuple [fdir; fsport; fdport; pf_0; fdata] ) in
+  let fmsg = dl (PFtuple [fdir; fdport; fsport; pf_0; fdata] ) in
   
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
   let f_r = pform_app f_eq [fm; flet] in
