@@ -27,12 +27,11 @@ direct DirPt2 {  (* Party 2, i.e. the Verifier *)
 
   out open(u : bool)@pt2  (* message to pt2, saying that pt1 sent u to it *)
 
-  (*
   (* Corruption status messages *)
   in pt2@verifier_corruption_status_req (* pt2 asks whether this party is corrupted *)
 
-  out verifier_corruption_status_rsp( is_corrupted : bool )@pt2 (* tells pt2 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
-  *)
+  out verifier_corruption_status_rsp( corrupted : bool )@pt2 (* tells pt2 whether it is corrupted, based on what the ideal functionality has recorded. is_corrupted = true if corrupted and false if not corrupted. *)
+
 }
 
 direct Dir {
@@ -64,6 +63,10 @@ adversarial I2S {
   in corrupt_committer (* Simulator tells ideal functionality that committer has become corrupted *)
 
   out corrupt_committer_ack(b : bool) (* If pt1 becomes corrupted, send the committed bit b to the simulator *)
+
+  in corrupt_verifier (* Simulator tells ideal functionality that verifier has become corrupted *)
+
+  out corrupt_verifier_ack (* IF acks that verifier is corrupted *)
 
 }
 
@@ -198,7 +201,7 @@ adversarial Pt1Adv {
   in continue (* Adv response message that returns control to committer *)
 
   (* Post-corruption messages with the adversary *)
-  out commit_msg_req(view: View.committer) (* Forward updated view (including CRS to the adversary *)
+  out commit_msg_req(view: View.committer) (* Forward updated view (including CRS) to the adversary *)
 
   in commit_msg_rsp(y': Cfptp.D, c_b': Pke.ciphertext, c_nb': Pke.ciphertext) (* Adv responds with the y, c_b, c_bn values it wants to send to the verifier *)
 
@@ -214,10 +217,17 @@ adversarial Pt2Adv {
 
   in verifier_corruption_status_rsp( corrupted : bool ) (* corrupted = true if corrupted. corrupted = false if the party is honest *)
 
+  in continue (* Adv response message that returns control to verifier *)
+
   (* Adversary corruptions after initial *)
   in corrupt (* adversary tells Pt1 it is corrupted *)
 
-  out send_state (view : View.verifier) (* send the committer's view thus far to the adversary *)
+  out send_view (view : (View.verifier) option) (* send the committer's view thus far to the adversary *)
+
+  (* Post-corruption messages with the adversary *)
+  out output_bit_req(view: View.verifier) (* Forward updated view to the adversary *)
+
+  in output_bit_rsp(b : bool) (* Adv responds with output bit b *)
 }
 
 (* Composite adversarial interface between parties and adversary *)
@@ -486,9 +496,37 @@ functionality Real implements Dir Adv {
       match message with
       | Adv.Pt2.verifier_corruption_status_rsp( corrupted ) => { (* After receiving corruption status, do nothing (update later to allow V to send arbitrary messages to C *)
       	  new_view <- view ++ [View.V_corrupted corrupted];
-          send Dir.Pt2.commit(pt1)@pt2
-	  and transition WaitOpen(new_view, pt1, pt2, c_vals, corrupted).
+	  send Adv.Pt2.send_view( corrupted ? Some(new_view) : None)
+	  and transition WaitContinue(new_view, pt1, pt2, c_vals, corrupted).
 	}
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( false )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitCorruptionStatus(view, pt1, pt2, c_vals). (* return to this same state *)
+      }
+      | * => { fail. }
+      end
+    }
+
+    state WaitContinue(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted : bool) {
+      match message with
+      | Adv.Pt2.continue => {
+      	if (corrupted) {
+	  send Dir.Pt2.commit(pt1)@pt2
+	  and transition WaitOpen_Corrupted(view, pt1, pt2, c_vals, corrupted).
+	}
+	else {
+          send Dir.Pt2.commit(pt1)@pt2
+	  and transition WaitOpen(view, pt1, pt2, c_vals, corrupted).
+	}
+      }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitContinue(view, pt1, pt2, c_vals, corrupted). (* return to this same state *)
+      }
+      | Adv.Pt2.corrupt => {
+      	  send Adv.Pt2.send_view(Some view)
+	  and transition WaitContinue(view, pt1, pt2, c_vals, true). (* updated corrupted bit to true *)
+      }
       | * => { fail. }
       end
     }
@@ -514,6 +552,14 @@ functionality Real implements Dir Adv {
           | None => { fail. }  (* cannot happen *)
           end
         }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitOpen(view, pt1, pt2, c_vals, corrupted). (* return to this same state *)
+      }
+      | Adv.Pt2.corrupt => {
+      	  send Adv.Pt2.send_view(Some view)
+	  and transition WaitOpen_Corrupted(view, pt1, pt2, c_vals, true). (* updated corrupted bit to true *)
+      }
       | * => { fail. }
       end
     }
@@ -545,6 +591,97 @@ functionality Real implements Dir Adv {
 	  }
 	  else { fail. }
         }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitCrs(view, pt1, pt2, c_vals, corrupted, b, o_vals). (* return to this same state *)
+      }
+      | Adv.Pt2.corrupt => {
+      	  send Adv.Pt2.send_view(Some view)
+	  and transition WaitCrs_Corrupted(view, pt1, pt2, c_vals, true, b, o_vals). (* updated corrupted bit to true *)
+      }
+      | * => { fail. }
+      end
+    }
+
+    (* --- --- --- --- --- ---  *)
+    (* States for when the verifier is CORRUPTED *)
+    (* --- --- --- --- --- ---  *)
+
+    state WaitOpen_Corrupted(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted : bool) {
+      var new_view : View.verifier;
+      var b : bool;
+      var x : Cfptp.D;
+      var r_b, r_nb : Pke.rand;
+      var o_vals : Types.open_vals;
+      var r_fake : Types.open_rfake;
+      match message with
+      | Fwd2.D.fw_rsp(_, u) => {
+        match ForwardingEncodings.epdp_open_univ.`dec u with
+          | Some tr => {
+              (b, x, r_b, r_nb) <- tr;
+	      o_vals <- (x, r_b);
+	      r_fake  <- r_nb;
+	      new_view <- view ++ [View.V_omsg_b b; View.V_omsg o_vals; View.V_omsg_rfake r_fake];
+              send Adv.Pt2.send_view(Some(new_view))
+	      and transition WaitAdvContinue(view, pt1, pt2, c_vals, true, b, o_vals).
+            }
+          | None => { fail. }  (* cannot happen *)
+          end
+      }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitOpen_Corrupted(view, pt1, pt2, c_vals, corrupted). (* return to this same state *)
+      }
+      | * => { fail. }
+      end
+    }
+
+    state WaitAdvContinue(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted: bool, b : bool, o_vals : Types.open_vals) {
+      match message with
+      | Adv.Pt2.continue => {
+          send Crs.Pt.crs_req
+	  and transition WaitCrs_Corrupted(view, pt1, pt2, c_vals, corrupted, b, o_vals).
+      }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitAdvContinue(view, pt1, pt2, c_vals, corrupted, b, o_vals). (* return to this same state *)
+      }
+      | * => { fail. }
+      end
+    }
+
+    state WaitCrs_Corrupted(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted: bool, b : bool, o_vals : Types.open_vals) {
+      var new_view : View.verifier;
+      var y' : Cfptp.D;
+      var c' : Pke.ciphertext;
+      var fk : Cfptp.fkey;
+      var pk : Pke.pkey;
+      var y : Cfptp.D; var c_false, c_true : Pke.ciphertext; (* Commit msg *)
+      var x : Cfptp.D; var r : Pke.rand;
+      match message with
+      | Crs.Pt.crs_rsp(crs) => {
+          new_view <- view ++ [View.V_crs crs];
+	  send Adv.Pt2.output_bit_req(new_view)
+	  and transition WaitAdvOutputBit(new_view, pt1, pt2, c_vals, corrupted, b, o_vals).
+      }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitCrs_Corrupted(view, pt1, pt2, c_vals, corrupted, b, o_vals). (* return to this same state *)
+      }
+      | * => { fail. }
+      end
+    }
+
+    state WaitAdvOutputBit(view : View.verifier, pt1 : port, pt2 : port, c_vals : Types.commit_vals, corrupted: bool, b : bool, o_vals : Types.open_vals) {
+      match message with
+      | Adv.Pt2.output_bit_rsp(b) => {
+          send Dir.Pt2.open(b)@pt2
+	  and transition Final(view).
+      }
+      | pt2@Dir.Pt2.verifier_corruption_status_req => { (* pt2 asks if it is corrupted *)
+          send Dir.Pt2.verifier_corruption_status_rsp( corrupted )@pt2 (* send pt2's corruption status *)
+  	  and transition WaitAdvOutputBit(view, pt1, pt2, c_vals, corrupted, b, o_vals). (* return to this same state *)
+      }
       | * => { fail. }
       end
     }
@@ -1016,4 +1153,5 @@ simulator Sim uses I2S simulates Real {
     | * => { fail. }
     end
   }
+  (* TODO: update simulation when verifier is allowed to be corrupted? *)
 }
