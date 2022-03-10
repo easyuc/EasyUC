@@ -126,7 +126,7 @@ let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
   let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
   List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
 
-let decl_dir_msg_type (name : string) (mb : message_body_tyd) : unit =
+let decl_msg_type (name : string) (mb : message_body_tyd) : unit =
   let msg_data = List.map (fun (s,t) -> (dl (name_record name s), t)) 
     (params_map_to_list mb.params_map) in
   let func_addr = (dl (name_record_func name), addr_pty) in
@@ -210,7 +210,7 @@ let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t
 
 let pex_int_0 = dl (PEint EcBigInt.zero)
 
-let decl_enc_op (mty_name : string) (mb : message_body_tyd) : unit =
+let decl_enc_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : unit =
   let var_name = "x" in
   let u = enc_u var_name mty_name mb.params_map in
   let tag = pex_int_0 in
@@ -220,7 +220,8 @@ let decl_enc_op (mty_name : string) (mb : message_body_tyd) : unit =
   let otherport = pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) in
   let ptsource = if mb.dir = In then otherport else selfport in
   let ptdest = if mb.dir = In then selfport else otherport in
-  let encex = pex_tuple [pex_Dir; ptsource; ptdest; tag; u] in
+  let mode = if isdirect then pex_Dir else pex_Adv in
+  let encex = pex_tuple [mode; ptsource; ptdest; tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (msg_pty, encex) in
   let penc =
@@ -272,7 +273,7 @@ let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
     rf_value = pex;
   }
 
-let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
+let decl_dec_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : unit =
   let var_name = "m" in
   let mode = "mod" in
   let pt1 = "pt1" in
@@ -286,7 +287,8 @@ let decl_dec_op (mty_name : string) (mb : message_body_tyd) : unit =
   
   let wty = (pex_ident var_name, None) in
   
-  let if1 = pex_app pex_Eq [pex_ident mode; pex_Adv] in
+  let notmode = if isdirect then pex_Adv else pex_Dir in
+  let if1 = pex_app pex_Eq [pex_ident mode; notmode] in
   let no1 = pex_app pex_Eq [pex_proji (pex_ident pt1) 1; pex_ident opname_pi] in
   let no2 = pex_app pex_Eq [pex_ident tag; pex_int_0] in
   let if2 = pex_app pex_Or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
@@ -456,7 +458,11 @@ let name_lemma_eq_of_valid (name : string) : string =
 
 let pform_true = pform_ident "true"
 
-let decl_lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : unit =
+let pform_Dir = pform_ident "Dir"
+
+let pform_Adv = pform_ident "Adv"
+
+let decl_lemma_eq_of_valid (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : unit =
   let m = "m" in
   let vars = Some [([dl (Some (dl m))], PGTY_Type msg_pty)] in
   
@@ -469,14 +475,14 @@ let decl_lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : unit =
   
   let x = "x" in
   let fx = pform_ident x in
-  let fdir = pform_ident "Dir" in
+  let fmode = if isdirect then pform_Dir else pform_Adv in
   let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
   let funcport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
   let otherport = dl (PFproj (fx, pqs (name_record_dir_port mty_name mb))) in
   let fdport = if mb.dir = In then funcport else otherport in
   let fsport = if mb.dir = In then otherport else funcport in
   let fdata = enc_u_form x mty_name mb.params_map in
-  let fmsg = dl (PFtuple [fdir; fdport; fsport; pf_0; fdata] ) in
+  let fmsg = dl (PFtuple [fmode; fdport; fsport; pf_0; fdata] ) in
   
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
   let f_r = pform_app f_eq [fm; flet] in
@@ -495,39 +501,33 @@ let decl_lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : unit =
   } in
   decl_axiom lem
 
-let decl_dir_message (name : string) (mb : message_body_tyd) : unit =
-  decl_dir_msg_type name mb;
-  decl_enc_op name mb;
-  decl_dec_op name mb;
+let decl_message (isdirect : bool) (name : string) (mb : message_body_tyd) : unit =
+  decl_msg_type name mb;
+  decl_enc_op isdirect name mb;
+  decl_dec_op isdirect name mb;
   decl_epdp_op name;
   decl_lemma_epdp name;
   proof_admit_qed ();
   hint_simplify_epdp name;
   hint_rewrite_epdp name;
-  decl_lemma_eq_of_valid name mb;
+  decl_lemma_eq_of_valid isdirect name mb;
   proof_admit_qed ()
   
-let write_basic_dir_int (ppf : Format.formatter) (name : string) (bibt : basic_inter_body_tyd) : unit =
+let write_basic_int (ppf : Format.formatter) (isdirect : bool) (name : string) (bibt : basic_inter_body_tyd) : unit =
   decl_open_theory name;
   decl_operator pi_op;
-  IdMap.iter (fun n mb -> decl_dir_message n mb) bibt;
+  IdMap.iter (fun n mb -> decl_message isdirect n mb) bibt;
   decl_close_theory name;
   print_theory ppf name (*TODO print theory part by part*)
   
-let write_b_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
+let write_basic_inter (ppf : Format.formatter) (isdirect : bool) (name : string) (dir_int : inter_tyd) : unit =
   let ibt = ul dir_int in
   match ibt with
-  | BasicTyd  b -> write_basic_dir_int ppf name b
+  | BasicTyd  b -> write_basic_int ppf isdirect name b
   | _ -> ()
 
 let clone (tc : theory_cloning) : unit =
   UcEcInterface.process (GthClone tc)
-
-let counter = ref 0
-
-let next_pi () : int =
-  counter := !counter + 1;
-  !counter
 
 let pex_of_int (i : int) : pexpr =
   dl (PEint (EcBigInt.of_int i))
@@ -552,8 +552,7 @@ let decl_clone (name : string) (bi : string) (pindx : int): unit =
   } in
   clone cl
   
-let write_clone (ppf : Format.formatter) (name : string) (bi : string) : unit =
-  let pindx = next_pi () in
+let write_clone (ppf : Format.formatter) (name : string) (bi : string) (pindx : int) : unit =
   decl_clone name bi pindx;
   Format.fprintf stf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx; (*REMOVE*)
   Format.fprintf ppf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx
@@ -568,15 +567,17 @@ let write_close_theory (ppf : Format.formatter) (name : string) : unit =
   Format.fprintf stf "@.@[end %s.@]@." name; (*REMOVE*)
   Format.fprintf ppf "@.@[end %s.@]@." name
   
-let write_composite_dir_int (ppf : Format.formatter) (name : string) (nt : string IdMap.t) : unit =
+let write_com_int (ppf : Format.formatter) (isdirect : bool) (name : string) (nt : string IdMap.t) : unit =
   write_open_theory ppf name;
-  IdMap.iter (fun n t -> write_clone ppf n t) nt;
+  let nt = IdMap.to_seq nt in
+  let i = if isdirect then ref 1 else ref 2 in
+  Seq.iter (fun (n,t) -> write_clone ppf n t !i; i:=!i+2) nt;
   write_close_theory ppf name
   
-let write_c_dir_int (ppf : Format.formatter) (name : string) (dir_int : inter_tyd) : unit =
+let write_composite_inter (ppf : Format.formatter) (isdirect : bool) (name : string) (dir_int : inter_tyd) : unit =
   let ibt = ul dir_int in
   match ibt with
-  | CompositeTyd c -> write_composite_dir_int ppf name c
+  | CompositeTyd c -> write_com_int ppf isdirect name c
   | _ -> ()
 
 type singlefile_typed_spec = {
@@ -608,8 +609,8 @@ let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   write_require_import_UCBasicTypes ppf;
   write_op_adv_if_pi ppf;
   write_ax_adv_if_pi_gt0 ppf;
-  IdMap.iter (fun n d -> write_b_dir_int ppf n d) sts.dir_inter_map;
-  IdMap.iter (fun n d -> write_c_dir_int ppf n d) sts.dir_inter_map
+  IdMap.iter (fun n d -> write_basic_inter     ppf true n d) sts.dir_inter_map;
+  IdMap.iter (fun n d -> write_composite_inter ppf true n d) sts.dir_inter_map
   
 
 (*---------------------------------------------------------------------------*)
