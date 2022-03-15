@@ -512,25 +512,45 @@ let decl_message (isdirect : bool) (name : string) (mb : message_body_tyd) : uni
   hint_rewrite_epdp name;
   decl_lemma_eq_of_valid isdirect name mb;
   proof_admit_qed ()
-  
-let write_basic_int (ppf : Format.formatter) (isdirect : bool) (name : string) (bibt : basic_inter_body_tyd) : unit =
-  decl_open_theory name;
-  decl_operator pi_op;
-  IdMap.iter (fun n mb -> decl_message isdirect n mb) bibt;
-  decl_close_theory name;
-  print_theory ppf name (*TODO print theory part by part*)
-  
-let write_basic_inter (ppf : Format.formatter) (isdirect : bool) (name : string) (dir_int : inter_tyd) : unit =
-  let ibt = ul dir_int in
-  match ibt with
-  | BasicTyd  b -> write_basic_int ppf isdirect name b
-  | _ -> ()
-
-let clone (tc : theory_cloning) : unit =
-  UcEcInterface.process (GthClone tc)
 
 let pex_of_int (i : int) : pexpr =
   dl (PEint (EcBigInt.of_int i))
+  
+let oper_int (name : string) (value : int) : poperator =  
+  let podef = PO_concr (dl PTunivar, pex_of_int value) in
+  {
+    po_kind     = `Op;
+    po_name     = dl name;
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  }
+  
+let pi_op2 = oper_int opname_pi 2
+  
+let write_basic_int 
+  (ppf : Format.formatter) 
+  (isdirect : bool) 
+  (is4ideal : bool) 
+  (name : string) 
+  (bibt : basic_inter_body_tyd) 
+  : unit =
+  decl_open_theory name;
+  if (isdirect || (not is4ideal))
+  then decl_operator pi_op
+  else decl_operator pi_op
+  ;
+  IdMap.iter (fun n mb -> decl_message isdirect n mb) bibt;
+  decl_close_theory name;
+  print_theory ppf name (*TODO print theory part by part*)
+
+let clone (tc : theory_cloning) : unit =
+  UcEcInterface.process (GthClone tc)
 
 let decl_clone (name : string) (bi : string) (pindx : int): unit =
   let thov = PTHO_Op (`BySyntax {
@@ -573,12 +593,6 @@ let write_com_int (ppf : Format.formatter) (isdirect : bool) (name : string) (nt
   let i = if isdirect then ref 1 else ref 2 in
   Seq.iter (fun (n,t) -> write_clone ppf n t !i; i:=!i+2) nt;
   write_close_theory ppf name
-  
-let write_composite_inter (ppf : Format.formatter) (isdirect : bool) (name : string) (dir_int : inter_tyd) : unit =
-  let ibt = ul dir_int in
-  match ibt with
-  | CompositeTyd c -> write_com_int ppf isdirect name c
-  | _ -> ()
 
 type singlefile_typed_spec = {
   dir_inter_map : inter_tyd IdMap.t;
@@ -606,11 +620,45 @@ let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   print_axiom ppf axname_adv_if_pi_gt0
   
 let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
+  let basfilt i = 
+    let ibt = ul i in
+    match ibt with
+    | BasicTyd  b -> Some b
+    | _ -> None
+  in
+
+  let compfilt i = 
+    let ibt = ul i in
+    match ibt with
+    | CompositeTyd c -> Some c
+    | _ -> None
+  in
+  
+  let idealfilt f =
+    let fbt = ul f in
+    match fbt with
+    | FunBodyIdealTyd fbi -> Some fbi
+    | _ -> None
+  in
+    
+  let ideal_funs = filter_map idealfilt sts.fun_map in
+  let aiif_names = IdMap.map (fun fbi -> fbi.id_adv_inter) ideal_funs in
+  let aiif_names = snd (List.split (IdMap.bindings aiif_names)) in
+  let basdir = filter_map basfilt sts.dir_inter_map in
+  let comdir = filter_map compfilt sts.dir_inter_map in
+  let basadv = filter_map basfilt sts.adv_inter_map in
+  let basadv_ideal = IdMap.filter (fun n _ -> List.mem n aiif_names) basadv in
+  let basadv_real = IdMap.filter (fun n _ -> not (List.mem n aiif_names)) basadv in
+  let comadv = filter_map compfilt sts.adv_inter_map in
+  
   write_require_import_UCBasicTypes ppf;
   write_op_adv_if_pi ppf;
   write_ax_adv_if_pi_gt0 ppf;
-  IdMap.iter (fun n d -> write_basic_inter     ppf true n d) sts.dir_inter_map;
-  IdMap.iter (fun n d -> write_composite_inter ppf true n d) sts.dir_inter_map
+  IdMap.iter (fun n i -> write_basic_int ppf true false n i) basdir;
+  IdMap.iter (fun n i -> write_com_int ppf true n i) comdir;
+  IdMap.iter (fun n i -> write_basic_int ppf false true n i) basadv_ideal;
+  IdMap.iter (fun n i -> write_basic_int ppf false false n i) basadv_real;
+  IdMap.iter (fun n i -> write_com_int ppf false n i) comadv 
   
 
 (*---------------------------------------------------------------------------*)
