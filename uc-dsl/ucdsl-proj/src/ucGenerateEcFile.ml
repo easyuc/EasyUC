@@ -115,6 +115,8 @@ let axiom_adv_if_pi_gt0 : paxiom =
 
 let name_record_func (msg_name : string) : string = msg_name^"___func"
 
+let name_record_adv (msg_name : string) : string = msg_name^"___adv"
+
 let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
@@ -126,12 +128,16 @@ let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
   let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
   List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
 
-let decl_msg_type (name : string) (mb : message_body_tyd) : unit =
+let decl_msg_type (isdirect : bool) (name : string) (mb : message_body_tyd) : unit =
   let msg_data = List.map (fun (s,t) -> (dl (name_record name s), t)) 
     (params_map_to_list mb.params_map) in
-  let func_addr = (dl (name_record_func name), addr_pty) in
-  let dir_port = (dl (name_record_dir_port name mb), port_pty) in
-  let body = PTYD_Record (func_addr :: dir_port :: msg_data) in
+  let self_addr = (dl (name_record_func name), addr_pty) in
+  let other_port =
+    if isdirect 
+    then (dl (name_record_dir_port name mb), port_pty)
+    else (dl (name_record_adv name), addr_pty)
+    in
+  let body = PTYD_Record (self_addr :: other_port :: msg_data) in
   let pty = {
     pty_name   = dl name;
     pty_tyvars = [];
@@ -217,7 +223,13 @@ let decl_enc_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
   let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
-  let otherport = pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) in
+  let otherport = 
+    if isdirect
+    then pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) 
+    else pex_tuple [
+      pex_proj (pex_ident var_name) (name_record_adv mty_name); 
+      pex_ident opname_adv_if_pi ]
+    in
   let ptsource = if mb.dir = In then otherport else selfport in
   let ptdest = if mb.dir = In then selfport else otherport in
   let mode = if isdirect then pex_Dir else pex_Adv in
@@ -300,7 +312,11 @@ let decl_dec_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
   let patm = dl (LPTuple (List.map (fun pn -> osym (n' pn)) pns)) in
   let wtym = (pex_ident p, None) in
   let funcfld = pexrfield (name_record_func mty_name) (pex_proji (pex_ident funcport) 0) in
-  let pt1fld = pexrfield (name_record_dir_port mty_name mb) (pex_ident otherport) in
+  let pt1fld = 
+    if isdirect
+    then pexrfield (name_record_dir_port mty_name mb) (pex_ident otherport) 
+    else pexrfield (name_record_adv mty_name) (pex_proji (pex_ident funcport) 0)
+    in
   let dataflds = List.map 
     (fun pn -> pexrfield (name_record mty_name pn) (pex_ident (n' pn)) ) 
     pns in
@@ -478,7 +494,12 @@ let decl_lemma_eq_of_valid (isdirect : bool) (mty_name : string) (mb : message_b
   let fmode = if isdirect then pform_Dir else pform_Adv in
   let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
   let funcport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
-  let otherport = dl (PFproj (fx, pqs (name_record_dir_port mty_name mb))) in
+  let otherport = 
+    if isdirect
+    then dl (PFproj (fx, pqs (name_record_dir_port mty_name mb)))
+    else let fsadv = dl (PFproj (fx, pqs (name_record_adv mty_name))) in
+      dl (PFtuple [fsadv; pform_ident opname_adv_if_pi])
+    in
   let fdport = if mb.dir = In then funcport else otherport in
   let fsport = if mb.dir = In then otherport else funcport in
   let fdata = enc_u_form x mty_name mb.params_map in
@@ -502,7 +523,7 @@ let decl_lemma_eq_of_valid (isdirect : bool) (mty_name : string) (mb : message_b
   decl_axiom lem
 
 let decl_message (isdirect : bool) (name : string) (mb : message_body_tyd) : unit =
-  decl_msg_type name mb;
+  decl_msg_type isdirect name mb;
   decl_enc_op isdirect name mb;
   decl_dec_op isdirect name mb;
   decl_epdp_op name;
