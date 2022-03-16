@@ -564,11 +564,34 @@ let write_basic_int
   decl_open_theory name;
   if (isdirect || (not is4ideal))
   then decl_operator pi_op
-  else decl_operator pi_op
+  else decl_operator pi_op2
   ;
   IdMap.iter (fun n mb -> decl_message isdirect n mb) bibt;
   decl_close_theory name;
   print_theory ppf name (*TODO print theory part by part*)
+
+let state_type_name = "_state"
+
+let state_name (name : string) : string = "_State_"^name
+
+let decl_state_type (states : state_tyd IdMap.t) : unit =
+  let s2e (sname, sbod : string * state_tyd) : (psymbol * pty list) =
+    let sptys = snd (List.split (params_map_to_list (ul sbod).params)) in
+    (dl (state_name sname), sptys)
+  in
+  let ste = List.map s2e (IdMap.bindings states) in
+  let state_type =
+  [{pty_name = dl state_type_name;
+    pty_tyvars = [];
+    pty_body = PTYD_Datatype ste;
+    pty_locality = `Global}] in
+  decl_type state_type
+  
+let write_ideal_fun (ppf : Format.formatter) (name : string) (fbi : ideal_fun_body_tyd) : unit =
+  decl_open_theory name;
+  decl_state_type fbi.states;
+  decl_close_theory name;
+  print_theory ppf name
 
 let clone (tc : theory_cloning) : unit =
   UcEcInterface.process (GthClone tc)
@@ -679,7 +702,8 @@ let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   IdMap.iter (fun n i -> write_com_int ppf true n i) comdir;
   IdMap.iter (fun n i -> write_basic_int ppf false true n i) basadv_ideal;
   IdMap.iter (fun n i -> write_basic_int ppf false false n i) basadv_real;
-  IdMap.iter (fun n i -> write_com_int ppf false n i) comadv 
+  IdMap.iter (fun n i -> write_com_int ppf false n i) comadv;
+  IdMap.iter (fun n f -> write_ideal_fun ppf n f) ideal_funs
   
 
 (*---------------------------------------------------------------------------*)
