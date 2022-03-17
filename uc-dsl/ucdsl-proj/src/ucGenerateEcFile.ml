@@ -26,6 +26,9 @@ let decl_axiom (pax : paxiom) : unit =
   
 let decl_type (ptds : ptydecl list) : unit =
   UcEcInterface.process (Gtype ptds)
+
+let decl_module (pmod : pmodule_def_or_decl) : unit =
+  UcEcInterface.process (Gmodule pmod)
   
 let print_newline (ppf : Format.formatter) : unit =
   Format.fprintf stf "@."; (*REMOVE*)
@@ -586,10 +589,30 @@ let decl_state_type (states : state_tyd IdMap.t) : unit =
     pty_body = PTYD_Datatype ste;
     pty_locality = `Global}] in
   decl_type state_type
+
+let _self = "_self"
+let _adv = "_adv"
+let _st = "_st"
+  
+let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
+  let items = [
+    dl (Pst_var ([dl _self; dl _adv], addr_pty));
+    dl (Pst_var ([dl _st], named_pty state_type_name));
+  ] in
+  let def = {
+    ptm_header = Pmh_ident (dl name);
+    ptm_body   = dl (Pm_struct items);
+  } in
+  let pmod = {
+    ptm_locality = `Global;
+    ptm_def      = `Concrete def
+  } in
+  decl_module pmod
   
 let write_ideal_fun (ppf : Format.formatter) (name : string) (fbi : ideal_fun_body_tyd) : unit =
   decl_open_theory name;
   decl_state_type fbi.states;
+  decl_ideal_module name fbi;
   decl_close_theory name;
   print_theory ppf name
 
