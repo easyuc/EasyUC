@@ -64,7 +64,9 @@ let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
 
 let named_pty (name : string) = dl (PTnamed (pqs name))
 
-let option_of_pty (name : string) = dl (PTapp (pqs "option",[named_pty name]))
+let option_of_pty (pty : pty) = dl (PTapp (pqs "option",[pty]))
+
+let option_of_pty_name (name : string) = option_of_pty (named_pty name)
 
 let addr_pty = named_pty "addr"
 
@@ -158,6 +160,8 @@ let pex_ident (name : string) : pexpr = dl (PEident (pqs name, None))
 let pex_Dir = pex_ident "Dir"
 
 let pex_Adv = pex_ident "Adv"
+
+let pex_true = pex_ident "true"
 
 let pex_tuple (pexs : pexpr list) : pexpr = dl (PEtuple pexs)
 
@@ -346,7 +350,7 @@ let decl_dec_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
   
   let decex = pex_let pat wty pif in
   let args = [([dl(Some (dl var_name))], msg_pty) ] in
-  let ret_pty = option_of_pty mty_name in
+  let ret_pty = option_of_pty_name mty_name in
 
   let def = PO_concr (ret_pty, decex) in
   let pdec =
@@ -598,6 +602,17 @@ let _st = "_st"
 let init = "init"
 let self_ = "self_"
 let adv_ = "adv_"
+let invoke = "invoke"
+let m = "m"
+let _m = "_m"
+let r = "r"
+let parties = "parties"
+
+let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
+  dl (PSif ((ifc,ths),[],[]))
+
+let ps_assign (a : string) (b : string) : pinstr =
+  dl (PSasgn (dl (PLvSymbol (pqs a)), pex_ident b))
 
 let init_name (states : state_tyd IdMap.t) : string =
   let init_state = IdMap.filter (fun _ s -> (ul s).is_initial) states in
@@ -616,16 +631,57 @@ let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
   let pinit_body = {
     pfb_locals = [];
     pfb_body   = [
-      dl (PSasgn (dl (PLvSymbol (pqs _self)), pex_ident self_));
-      dl (PSasgn (dl (PLvSymbol (pqs _adv)), pex_ident adv_));
-      dl (PSasgn (dl (PLvSymbol (pqs _st)), pex_ident (state_name (init_name fbi.states))));
+      ps_assign _self self_;
+      ps_assign _adv adv_;
+      ps_assign _st (state_name (init_name fbi.states));
     ];
     pfb_return = None;
+  } in
+  
+  let pparties_decl = {
+    pfd_name     = dl parties;
+    pfd_tyargs   = Fparams_exp [(dl _m, msg_pty)];
+    pfd_tyresult = option_of_pty msg_pty;
+    pfd_uses     = (true, None);
+  } in
+  let pparties_body ={
+    pfb_locals = [
+    { 
+      pfl_names = dl (`Single, [dl r]);
+      pfl_type  = Some (option_of_pty msg_pty);
+      pfl_init  = Some pex_None
+    }];
+    pfb_body   = [];
+    pfb_return = Some (pex_ident r);
+  } in
+  
+  let pinvoke_decl = {
+    pfd_name     = dl invoke;
+    pfd_tyargs   = Fparams_exp [(dl m, msg_pty)];
+    pfd_tyresult = option_of_pty msg_pty;
+    pfd_uses     = (true, None);
+  } in
+  let guard = pex_true in
+  let call_parties = dl (PScall (
+    Some (dl (PLvSymbol (pqs r))),
+    dl ([], dl parties),
+    dl [pex_ident m]   )) in
+  let pinvoke_body = {
+    pfb_locals = [
+    { 
+      pfl_names = dl (`Single, [dl r]);
+      pfl_type  = Some (option_of_pty msg_pty);
+      pfl_init  = Some pex_None
+    }];
+    pfb_body   = [ps_if_then guard [call_parties]];
+    pfb_return = Some (pex_ident r);
   } in
   let items = [
     dl (Pst_var ([dl _self; dl _adv], addr_pty));
     dl (Pst_var ([dl _st], named_pty state_type_name));
-    dl (Pst_fun (pinit_decl, pinit_body))
+    dl (Pst_fun (pinit_decl, pinit_body));
+    dl (Pst_fun (pparties_decl, pparties_body));
+    dl (Pst_fun (pinvoke_decl, pinvoke_body));
   ] in
   let def = {
     ptm_header = Pmh_ident (dl name);
