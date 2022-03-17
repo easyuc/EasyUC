@@ -73,6 +73,8 @@ let port_pty = named_pty "port"
 let msg_pty = named_pty "msg"
 
 let int_pty = named_pty "int"
+
+let unit_pty = named_pty "unit"
   
 let abs_oper_int (name : string) : poperator =  
   let podef = PO_abstr (int_pty) in
@@ -593,11 +595,37 @@ let decl_state_type (states : state_tyd IdMap.t) : unit =
 let _self = "_self"
 let _adv = "_adv"
 let _st = "_st"
+let init = "init"
+let self_ = "self_"
+let adv_ = "adv_"
+
+let init_name (states : state_tyd IdMap.t) : string =
+  let init_state = IdMap.filter (fun _ s -> (ul s).is_initial) states in
+  fst (IdMap.choose init_state)
   
 let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
+  let pinit_decl = {
+    pfd_name     = dl init;
+    pfd_tyargs   = Fparams_exp [
+      (dl self_, addr_pty);
+      (dl adv_ , addr_pty)
+    ];
+    pfd_tyresult = unit_pty;
+    pfd_uses     = (true, None);
+  } in
+  let pinit_body = {
+    pfb_locals = [];
+    pfb_body   = [
+      dl (PSasgn (dl (PLvSymbol (pqs _self)), pex_ident self_));
+      dl (PSasgn (dl (PLvSymbol (pqs _adv)), pex_ident adv_));
+      dl (PSasgn (dl (PLvSymbol (pqs _st)), pex_ident (state_name (init_name fbi.states))));
+    ];
+    pfb_return = None;
+  } in
   let items = [
     dl (Pst_var ([dl _self; dl _adv], addr_pty));
     dl (Pst_var ([dl _st], named_pty state_type_name));
+    dl (Pst_fun (pinit_decl, pinit_body))
   ] in
   let def = {
     ptm_header = Pmh_ident (dl name);
