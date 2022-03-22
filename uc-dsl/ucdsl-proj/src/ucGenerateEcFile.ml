@@ -277,7 +277,7 @@ let pex_match (pex : pexpr) (clauses : (ppattern * pexpr) list) : pexpr =
 let pex_record (opex : pexpr option) (rcrds : pexpr rfield list) : pexpr =
  dl (PErecord (opex, rcrds))
 
-let pex_Or = pex_ident "\\/"
+let pex_or = pex_ident "\\/"
 
 let pex_Eq = pex_ident "="
 
@@ -312,8 +312,8 @@ let decl_dec_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
   let if1 = pex_app pex_Eq [pex_ident mode; notmode] in
   let no1 = pex_app pex_Eq [pex_proji (pex_ident pt1) 1; pex_ident opname_pi] in
   let no2 = pex_app pex_Eq [pex_ident tag; pex_int_0] in
-  let if2 = pex_app pex_Or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
-  let if_cond = pex_tuple [pex_app pex_Or [if1; if2]] in
+  let if2 = pex_app pex_or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
+  let if_cond = pex_tuple [pex_app pex_or [if1; if2]] in
   
   let p = "p" in
   let n' (pn : string) : string = pn^"'" in
@@ -608,6 +608,29 @@ let _m = "_m"
 let r = "r"
 let parties = "parties"
 
+let pex_and = pex_ident "/\\"
+
+let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
+  match List.length exs with
+  | 0 -> failure "Cascade at least one  expression"
+  | 1 -> List.hd exs
+  | _ ->
+    let exs = List.rev exs in
+    let last = List.hd exs in
+    let rest = List.rev (List.tl exs) in
+    List.fold_right ( 
+      fun ex1 ex2 -> pex_app ex [ex1; ex2]
+    ) rest last
+
+
+let pex_And (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_and exs
+  
+let pex_Or (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_or exs
+
+let pex_envport = pex_ident "envport"
+  
 let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
   dl (PSif ((ifc,ths),[],[]))
 
@@ -617,8 +640,15 @@ let ps_assign (a : string) (b : string) : pinstr =
 let init_name (states : state_tyd IdMap.t) : string =
   let init_state = IdMap.filter (fun _ s -> (ul s).is_initial) states in
   fst (IdMap.choose init_state)
-  
-let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
+    
+let decl_ideal_module 
+  (name : string) 
+  (fbi : ideal_fun_body_tyd)   
+  (di_name : string)
+  (di : string IdMap.t)
+  (ai_name : string) 
+  (ai : basic_inter_body_tyd) : unit 
+  =
   let pinit_decl = {
     pfd_name     = dl init;
     pfd_tyargs   = Fparams_exp [
@@ -661,7 +691,58 @@ let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
     pfd_tyresult = option_of_pty msg_pty;
     pfd_uses     = (true, None);
   } in
-  let guard = pex_true in
+  let dir_msg_guard (piex : pexpr) : pexpr =
+    pex_tuple [ pex_And [
+      pex_app pex_Eq [
+        pex_proji  (pex_ident m) 0;
+        pex_Dir
+      ];
+      pex_app pex_Eq [
+        pex_proji (pex_proji  (pex_ident m) 1) 0;
+        pex_ident _self
+      ];
+      pex_app pex_Eq [
+        pex_proji (pex_proji  (pex_ident m) 1) 1;
+        piex
+      ];
+      pex_app pex_envport [
+        pex_ident _self;
+        pex_ident _adv;
+        pex_proji (pex_ident m) 2
+      ];
+    ]]
+  in
+  let comp_piex di_name di_mem =
+    dl (PEident (dl ([di_name; di_mem],opname_pi), None))
+  in
+  let di_mem_names = fst (List.split (IdMap.bindings di)) in
+  let dir_guards = List.map (fun n -> dir_msg_guard (comp_piex di_name n)) 
+    di_mem_names in
+  let adv_msg_guard(piex : pexpr) : pexpr =
+    pex_tuple [ pex_And [
+      pex_app pex_Eq [
+        pex_proji  (pex_ident m) 0;
+        pex_Adv
+      ];
+      pex_app pex_Eq [
+        pex_proji (pex_proji  (pex_ident m) 1) 0;
+        pex_ident _self
+      ];
+      pex_app pex_Eq [
+        pex_proji (pex_proji  (pex_ident m) 1) 1;
+        piex
+      ];
+      pex_app pex_Eq [
+        pex_proji (pex_proji  (pex_ident m) 2) 0;
+        pex_ident _adv
+      ];
+    ]]
+  in
+  let basic_piex bi_name =
+    dl (PEident (dl ([bi_name],opname_pi), None))
+  in
+  let adv_guard = adv_msg_guard (basic_piex ai_name) in
+  let guard = pex_Or (dir_guards@[adv_guard]) in
   let call_parties = dl (PScall (
     Some (dl (PLvSymbol (pqs r))),
     dl ([], dl parties),
@@ -693,10 +774,18 @@ let decl_ideal_module (name : string) (fbi : ideal_fun_body_tyd) : unit =
   } in
   decl_module pmod
   
-let write_ideal_fun (ppf : Format.formatter) (name : string) (fbi : ideal_fun_body_tyd) : unit =
+let write_ideal_fun 
+  (ppf : Format.formatter) 
+  (name : string) 
+  (fbi : ideal_fun_body_tyd)
+  (di_name : string)
+  (di : string IdMap.t)
+  (ai_name : string) 
+  (ai : basic_inter_body_tyd) : unit 
+  =
   decl_open_theory name;
   decl_state_type fbi.states;
-  decl_ideal_module name fbi;
+  decl_ideal_module name fbi di_name di ai_name ai;
   decl_close_theory name;
   print_theory ppf name
 
@@ -810,7 +899,11 @@ let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   IdMap.iter (fun n i -> write_basic_int ppf false true n i) basadv_ideal;
   IdMap.iter (fun n i -> write_basic_int ppf false false n i) basadv_real;
   IdMap.iter (fun n i -> write_com_int ppf false n i) comadv;
-  IdMap.iter (fun n f -> write_ideal_fun ppf n f) ideal_funs
+  IdMap.iter (fun n f -> write_ideal_fun ppf n f 
+                        f.id_dir_inter
+                        (IdMap.find f.id_dir_inter comdir)
+                        f.id_adv_inter
+                        (IdMap.find f.id_adv_inter basadv_ideal)) ideal_funs
   
 
 (*---------------------------------------------------------------------------*)
