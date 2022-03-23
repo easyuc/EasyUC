@@ -949,7 +949,7 @@ simulator Sim uses I2S simulates Real {
     | * => { fail. }
     end
   }
-  
+
   state WaitOpen_IFAckVerifierCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, commit_msg_status : bool, vview : View.verifier) {
     var new_cview : View.committer;
     match message with
@@ -1211,4 +1211,5 @@ simulator Sim uses I2S simulates Real {
 
   (* TODO: what is the correct behavior if both pt1 and pt2 are corrupted? *)
   (* TODO: Forward the verifier's state to the adversary every time the verifier receives a message. *)
+  (* TODO: Double check simulation: make sure generating real values for both b=0,1, later after learning b's value, oblviously sammple 1-b's randomness (03-23). *)
 }
