@@ -674,6 +674,19 @@ let decl_ideal_module
     pfd_tyresult = option_of_pty msg_pty;
     pfd_uses     = (true, None);
   } in
+  let state2matchbranch (stname, state : string * state_tyd) : ppattern * pstmt =
+    let state = ul state in
+    let ppat = PPApp (
+      (pqs (state_name stname), None),
+      List.map (fun (n, _) -> dl (Some (dl n))) (params_map_to_list state.params)
+    ) in
+    let pstm = [] in
+    (ppat, pstm)
+  in
+  let party_match = dl (PSmatch (
+    pex_ident _st,
+    `Full (List.map state2matchbranch (IdMap.bindings fbi.states))
+  )) in
   let pparties_body ={
     pfb_locals = [
     { 
@@ -681,7 +694,7 @@ let decl_ideal_module
       pfl_type  = Some (option_of_pty msg_pty);
       pfl_init  = Some pex_None
     }];
-    pfb_body   = [];
+    pfb_body   = [party_match];
     pfb_return = Some (pex_ident r);
   } in
   
