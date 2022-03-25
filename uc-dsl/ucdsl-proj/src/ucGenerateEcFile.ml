@@ -1,3 +1,4 @@
+open UcSpecTypedSpecCommon
 open UcTypedSpec
 open EcParsetree
 open UcMessage
@@ -607,6 +608,8 @@ let m = "m"
 let _m = "_m"
 let r = "r"
 let parties = "parties"
+let dec = "dec"
+let _x = "_x"
 
 let pex_and = pex_ident "/\\"
 
@@ -680,7 +683,30 @@ let decl_ideal_module
       (pqs (state_name stname), None),
       List.map (fun (n, _) -> dl (Some (dl n))) (params_map_to_list state.params)
     ) in
-    let pstm = [] in
+    let mmc2matchinstr (mmc : msg_match_clause_tyd) : pinstr = 
+      let mpp = ul mmc.msg_pat.msg_path_pat in
+      let msgtyname = 
+        match mpp.msg_or_star with
+        | MsgOrStarMsg n -> n
+        | MsgOrStarStar -> failure "impossible, we checked it is not star!" in 
+      let epdp_path = (mpp.inter_id_path, name_epdp_op msgtyname) in
+      List.iter (fun s -> print_string (s^".")) (fst epdp_path);
+      print_string (snd epdp_path);
+      print_string "\n";
+      let decmsg = pex_app 
+        (pex_proj (dl (PEident (dl (epdp_path), None))) dec)
+        [pex_ident _m] in
+      let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl _x))]), []) in
+      let nonebr = (PPApp ((pqs "None", None), []), []) in
+      dl (PSmatch (
+        decmsg,
+        `Full [somebr; nonebr]
+      ))
+    in    (*TODO star pattern*)
+    let pstm = List.map mmc2matchinstr 
+      (List.filter 
+        (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
+      state.mmclauses) in
     (ppat, pstm)
   in
   let party_match = dl (PSmatch (
@@ -693,7 +719,7 @@ let decl_ideal_module
       pfl_names = dl (`Single, [dl r]);
       pfl_type  = Some (option_of_pty msg_pty);
       pfl_init  = Some pex_None
-    }];
+    }];(*TODO add all state variables here, with unique names*)
     pfb_body   = [party_match];
     pfb_return = Some (pex_ident r);
   } in
@@ -972,4 +998,3 @@ let generate_ec (ts:typed_spec) : unit =
   let (fo,ppf) = open_formatter fn in
   write_file ppf sts;
   close_formatter (fo,ppf)
-  
