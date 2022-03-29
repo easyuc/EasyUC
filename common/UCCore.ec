@@ -36,7 +36,7 @@ op opt_msg_guard :
 (* precondition for ordinary (non-adversary/simulator)
    functionalities: *)
 
-pred func_init_pre (self adv : addr) = inc self adv.
+op func_init_pre (self adv : addr) : bool = inc self adv.
 
 (* envport0 self adv pt says that pt is part of the environment, not
    the functionality or adversary; it's allowed to be the root port,
@@ -77,7 +77,7 @@ module type FUNC = {
 
 (* precondition: *)
 
-pred inter_init_pre (func adv : addr) = inc func adv.
+op inter_init_pre (func adv : addr) : bool = inc func adv.
 
 module type INTER = {
   (* initialize interface, telling it:
@@ -182,7 +182,7 @@ abstract theory Experiment.
    interact with, and issue a final boolean judgment about, an
    interface, which is first initialized *)
 
-pred exper_pre (func adv : addr) = inter_init_pre func adv.
+op exper_pre (func adv : addr) : bool = inter_init_pre func adv.
 
 lemma exper_pre_ext1 (func adv ext : addr) :
   exper_pre func adv => exper_pre (func ++ ext) adv.
@@ -224,9 +224,9 @@ abstract theory MakeInterface.
 
 (* loop invariant for interface's while loop *)
 
-pred mi_loop_invar
+op mi_loop_invar
      (func adv : addr, in_guard : int fset,
-      m : msg, r : msg option, not_done : bool) =
+      m : msg, r : msg option, not_done : bool) : bool =
   inter_init_pre func adv /\
   (not_done =>
    (m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3) \/
@@ -358,7 +358,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
 
 (* check that invariant is actually preserved: *)
 
-lemma MI_after_func_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func MI.adv ==>
@@ -375,7 +375,7 @@ auto => /> &hr pre r_not_none.
 by rewrite !negb_or /= not_dir => [#] -> -> -> /= [#] -> ->.
 qed.
 
-lemma MI_after_adv_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func MI.adv ==>
@@ -396,7 +396,7 @@ rewrite /envport0 !negb_or not_dir => [#] -> -> /= -> -> //.
 by rewrite -!eq_iff => ->.
 qed.
 
-lemma MI_invoke_hoare (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   hoare
   [MI(Func, Adv).invoke :
    inter_init_pre MI.func MI.adv ==>
@@ -421,23 +421,23 @@ seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
 call (_ : true); first auto => />.
 call (MI_after_adv_hoare Func Adv).
 auto.
+auto => |> /#.
 auto; smt().
-auto.
 qed.
 
 (* phoare lemmas for after_func and after_adv: *)
 
-pred after_func_to_env (func adv : addr, r : msg option) =
+op after_func_to_env (func adv : addr, r : msg option) : bool =
   r <> None /\
   (oget r).`1 = Dir /\ envport func adv (oget r).`2 /\
   func <= (oget r).`3.`1.
 
-pred after_func_to_adv (func adv : addr, r : msg option) =
+op after_func_to_adv (func adv : addr, r : msg option) : bool =
   r <> None /\
   (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ (oget r).`2.`2 <> 0 /\
   func <= (oget r).`3.`1.
 
-pred after_func_error (func adv : addr, r : msg option) =
+op after_func_error (func adv : addr, r : msg option) : bool =
    (r = None \/
     func <= (oget r).`2.`1 \/
     ! func <= (oget r).`3.`1 \/
@@ -456,7 +456,7 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => // /=; smt().
 qed.
 
-lemma MI_after_func_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -467,7 +467,7 @@ proof.
 proc; auto; smt(some_oget).
 qed.
 
-lemma MI_after_func_to_adv (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -478,7 +478,7 @@ proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-lemma MI_after_func_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func MI.adv /\ after_func_error MI.func MI.adv r ==>
@@ -519,7 +519,7 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_env (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -530,7 +530,7 @@ proof.
 proc; auto; smt(some_oget).
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI})
+lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -541,7 +541,7 @@ proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl).
 qed.
 
-lemma MI_after_adv_error (Func <: FUNC{MI}) (Adv <: FUNC{Func, MI}) :
+lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func MI.adv /\ after_adv_error MI.func MI.adv r ==>

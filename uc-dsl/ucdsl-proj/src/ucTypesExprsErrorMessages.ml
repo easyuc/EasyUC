@@ -149,74 +149,73 @@ let pp_tyerror env1 fmt error =
       msg "for the following parameters' type:@\n";
       List.iteri (fun i ty -> msg "  [%d]: @[%a@]@\n" (i+1) pp_type ty) tys
 
-  | MultipleOpMatch (name, tys, matches) -> begin
-      let uvars = List.map EcTypes.Tuni.univars tys in
-      let uvars = List.fold_left Suid.union Suid.empty uvars in
+    | MultipleOpMatch (name, tys, matches) -> begin
+        let uvars = List.map EcTypes.Tuni.univars tys in
+        let uvars = List.fold_left Suid.union Suid.empty uvars in
 
-      begin match tys with
-      | [] ->
-          msg
-            "more that one variable or constant matches `%a'@\n"
-            pp_qsymbol name
-
-      | _  ->
-          let pp_argty i ty = msg "  [%d]: @[%a@]@\n" (i+1) pp_type ty in
-          msg "more than one operator, named `%a', matches.@\n@\n"
-          pp_qsymbol name;
-          msg "operator parameters' type were:@\n";
-          List.iteri pp_argty tys
-      end;
-      msg "@\n";
-
-      let pp_op fmt ((op, inst), subue) =
-        let inst = Tuni.offun_dom (EcUnify.UniEnv.assubst subue) inst in
-
-        begin match inst with
+        begin match tys with
         | [] ->
-            Format.fprintf fmt "%a"
-              EcPrinting.pp_path op
+            msg
+              "more that one variable or constant matches `%a'@\n"
+              pp_qsymbol name
+
         | _  ->
-          Format.fprintf fmt "%a <%a>"
-            EcPrinting.pp_path op
-            (EcPrinting.pp_list ",@ " pp_type) inst
+            let pp_argty i ty = msg "  [%d]: @[%a@]@\n" (i+1) pp_type ty in
+            msg "more than one operator, named `%a', matches.@\n@\n" pp_qsymbol name;
+            msg "operator parameters' type were:@\n";
+            List.iteri pp_argty tys
         end;
+        msg "@\n";
 
-        let myuvars = List.map EcTypes.Tuni.univars inst in
-        let myuvars = List.fold_left Suid.union uvars myuvars in
-        let myuvars = Suid.elements myuvars in
+        let pp_op fmt ((op, inst), subue) =
+          let inst = Tuni.offun_dom (EcUnify.UniEnv.assubst subue) inst in
 
-        let tysubst = Tuni.offun (EcUnify.UniEnv.assubst subue) in
-        let myuvars = List.pmap
-          (fun uid ->
-            match tysubst (tuni uid) with
-            | { ty_node = Tunivar uid' } when uid = uid' -> None
-            | ty -> Some (uid, ty))
-          myuvars
+          begin match inst with
+          | [] ->
+              Format.fprintf fmt "%a"
+                EcPrinting.pp_path op
+          | _  ->
+            Format.fprintf fmt "%a <%a>"
+              EcPrinting.pp_path op
+              (EcPrinting.pp_list ",@ " pp_type) inst
+          end;
+
+          let myuvars = List.map EcTypes.Tuni.univars inst in
+          let myuvars = List.fold_left Suid.union uvars myuvars in
+          let myuvars = Suid.elements myuvars in
+
+          let tysubst = Tuni.offun (EcUnify.UniEnv.assubst subue) in
+          let myuvars = List.pmap
+            (fun uid ->
+              match tysubst (tuni uid) with
+              | { ty_node = Tunivar uid' } when uid = uid' -> None
+              | ty -> Some (uid, ty))
+            myuvars
+          in
+
+          if not (List.is_empty myuvars) then begin
+            Format.fprintf fmt "@\n    where@\n";
+            List.iter (fun (uid, uidty) ->
+              Format.fprintf fmt "      %a = %a@\n"
+                (EcPrinting.pp_tyunivar env) uid pp_type uidty)
+              myuvars
+          end
         in
 
-        if not (List.is_empty myuvars) then begin
-          Format.fprintf fmt "@\n    where@\n";
-          List.iter (fun (uid, uidty) ->
-            Format.fprintf fmt "      %a = %a@\n"
-              (EcPrinting.pp_tyunivar env) uid pp_type uidty)
-            myuvars
-        end
-      in
-
-      msg "the list of matching objects follows:@\n";
-      List.iter (fun (m, ue) ->
-        let (title, Cb (x, pp)) =
-          match m with
-          | `Var pv ->
-             ("prog. variable", Cb (pv, EcPrinting.pp_pv env))
-          | `Lc id ->
-             ("local variable", Cb (id, EcPrinting.pp_local env))
-          | `Proj (pv, _, _) ->
-             ("variable proj.", Cb (pv, EcPrinting.pp_pv env))
-          | `Op op ->
-             ("operator", Cb ((op, ue), pp_op))
-        in msg "  [%s]: %a@\n" title pp x) matches
-  end
+        msg "the list of matching objects follows:@\n";
+        List.iter (fun (m, ue) ->
+          let (title, Cb (x, pp)) =
+            match m with
+            | `Var pv ->
+               ("prog. variable", Cb (pv, EcPrinting.pp_pv env))
+            | `Lc id ->
+               ("local variable", Cb (id, EcPrinting.pp_local env))
+            | `Proj (pv, _) ->
+               ("variable proj.", Cb (pv, EcPrinting.pp_pv env))
+            | `Op op ->
+               ("operator", Cb ((op, ue), pp_op))
+          in msg "  [%s]: %a@\n" title pp x) matches
+    end
 
   | InvalidMatch fxerror ->
       pp_fxerror env1 fmt fxerror

@@ -109,4 +109,3 @@ val ucdsl_new : unit -> unit
 (* end scope, reverting to saved one from stack, which is updated to
    include required theories of ended scope *)
 val ucdsl_end : unit -> unit
-

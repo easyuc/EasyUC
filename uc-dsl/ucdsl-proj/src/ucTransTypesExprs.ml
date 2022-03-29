@@ -15,7 +15,7 @@
  * -------------------------------------------------------------------- *)
 
 (* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
+ * Copyright (c) - 2020-2022 - Boston University
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -27,6 +27,7 @@ open EcSymbols
 open EcLocation
 open EcTypes
 open EcDecl
+open EcMemory
 open UcSpec
 open UcSpecTypedSpecCommon
 
@@ -38,7 +39,7 @@ type opmatch = [
   | `Op   of EcPath.path * EcTypes.ty list
   | `Lc   of EcIdent.t
   | `Var  of EcTypes.prog_var
-  | `Proj of EcTypes.prog_var * EcTypes.ty * (int * int)
+  | `Proj of EcTypes.prog_var * EcMemory.proj_arg
 ]
 
 type fxerror =
@@ -127,7 +128,7 @@ let select_pv env side name ue tvi psig =
 
 module OpSelect = struct
   type pvsel = [
-    | `Proj of EcTypes.prog_var * EcTypes.ty * (int * int)
+    | `Proj of EcTypes.prog_var * EcMemory.proj_arg
     | `Var  of EcTypes.prog_var
   ]
 
@@ -154,7 +155,8 @@ let gen_select_op
     (ue       : EcUnify.unienv)
     (psig     : EcTypes.dom)
 
-    : OpSelect.gopsel list =
+    : OpSelect.gopsel list
+=
 
   let fpv me (pv, ty, ue) =
     (`Pv (me, pv), ty, ue, (pv :> opmatch))
@@ -170,7 +172,7 @@ let gen_select_op
   let ue_filter =
     match mode with
     | `Expr _ -> fun _ op -> not (EcDecl.is_pred op)
-    | `Form   -> fun _ _ -> true
+    | `Form   -> fun _ _  -> true
   in
 
   let by_scope opsc ((p, _), _, _, _) =
@@ -193,10 +195,8 @@ let gen_select_op
   | None ->
       let ops () =
         let ops = EcUnify.select_op ~filter:ue_filter tvi env name ue psig in
-        let ops =
-          opsc |> ofold (fun opsc -> List.mbfilter (by_scope opsc)) ops in
-        let ops =
-          match List.mbfilter by_current ops with [] -> ops | ops -> ops in
+        let ops = opsc |> ofold (fun opsc -> List.mbfilter (by_scope opsc)) ops in
+        let ops = match List.mbfilter by_current ops with [] -> ops | ops -> ops in
         let ops = match List.mbfilter by_tc ops with [] -> ops | ops -> ops in
         (List.map fop ops)
 
@@ -636,8 +636,14 @@ let trans_if_match ~loc env ue (gindty, gind) (c, b1, b2) =
       else (List.map (fun ty -> (EcIdent.create "_", ty)) xargs), b2)
     gind.tydt_ctors
 
+let var_or_proj fvar fproj pv ty =
+  match pv with
+  | `Var pv -> fvar pv ty
+  | `Proj(pv, ap) -> fproj (fvar pv ap.arg_ty) ap.arg_pos ty
+
 let expr_of_opselect
-  (env, ue) loc ((sel, ty, subue, _) : OpSelect.gopsel) args =
+  (env, ue) loc ((sel, ty, subue, _) : OpSelect.gopsel) args
+=
   EcUnify.UniEnv.restore ~src:subue ~dst:ue;
 
   let esig  = List.map (lmap snd) args in
@@ -667,10 +673,7 @@ let expr_of_opselect
       | `Op (p, tys) -> e_op p tys ty
       | `Lc id       -> e_local id ty
 
-      | `Pv (_me, `Var   pv)               -> e_var pv ty
-      | `Pv (_me, `Proj (pv, _  , (0, 1))) -> e_var pv ty
-      | `Pv (_me, `Proj (pv, ty', (i, _))) -> e_proj (e_var pv ty') i ty
-
+      | `Pv (_me, pv) -> var_or_proj e_var e_proj pv ty
     in (op, args)
 
   in (e_app op args codom, codom)
