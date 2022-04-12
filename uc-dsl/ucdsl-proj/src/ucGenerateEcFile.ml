@@ -597,21 +597,37 @@ let decl_state_type (states : state_tyd IdMap.t) : unit =
     pty_locality = `Global}] in
   decl_type state_type
 
-let _self = "_self"
-let _adv = "_adv"
-let _st = "_st"
-let init = "init"
-let self_ = "self_"
-let adv_ = "adv_"
-let invoke = "invoke"
-let m = "m"
-let _m = "_m"
-let r = "r"
-let parties = "parties"
-let dec = "dec"
-let _x = "_x"
+let __self = "_self"
+let __adv = "_adv"
+let __st = "_st"
+let _init = "init"
+let _self_ = "self_"
+let _adv_ = "adv_"
+let _invoke = "invoke"
+let _m = "m"
+let __m = "_m"
+let _r = "r"
+let _parties = "parties"
+let _dec = "dec"
+let __x = "_x"
 
 let pex_and = pex_ident "/\\"
+
+let pex_m = pex_ident _m
+
+let pex__self = pex_ident __self
+
+let pex__adv = pex_ident __adv
+
+let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
+    ptm_locality = `Global;
+    ptm_def      = `Concrete def
+  }
+  
+let pmodule_def (name : string) (items : pstructure): pmodule_def = {
+    ptm_header = Pmh_ident (dl name);
+    ptm_body   = dl (Pm_struct items);
+  }
 
 let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
   match List.length exs with
@@ -639,44 +655,47 @@ let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
 
 let ps_assign (a : string) (b : string) : pinstr =
   dl (PSasgn (dl (PLvSymbol (pqs a)), pex_ident b))
+  
+(* ideal functionality module ************************************************)
+
+(* vars **********************************************************************)
+let var__self = dl (Pst_var ([dl __self], addr_pty))
+let var__adv = dl (Pst_var ([dl __adv], addr_pty))
+let var__st = dl (Pst_var ([dl __st], named_pty state_type_name))
+(*****************************************************************************)
+
+(* proc init *****************************************************************)
+let pinit_decl = {
+  pfd_name     = dl _init;
+  pfd_tyargs   = Fparams_exp [
+    (dl _self_, addr_pty);
+    (dl _adv_ , addr_pty)
+  ];
+  pfd_tyresult = unit_pty;
+  pfd_uses     = (true, None);
+}
 
 let init_name (states : state_tyd IdMap.t) : string =
   let init_state = IdMap.filter (fun _ s -> (ul s).is_initial) states in
   fst (IdMap.choose init_state)
-    
-let decl_ideal_module 
-  (name : string) 
-  (fbi : ideal_fun_body_tyd)   
-  (di_name : string)
-  (di : string IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd) : unit 
-  =
-  let pinit_decl = {
-    pfd_name     = dl init;
-    pfd_tyargs   = Fparams_exp [
-      (dl self_, addr_pty);
-      (dl adv_ , addr_pty)
-    ];
-    pfd_tyresult = unit_pty;
-    pfd_uses     = (true, None);
-  } in
-  let pinit_body = {
-    pfb_locals = [];
-    pfb_body   = [
-      ps_assign _self self_;
-      ps_assign _adv adv_;
-      ps_assign _st (state_name (init_name fbi.states));
-    ];
-    pfb_return = None;
-  } in
-  
-  let pparties_decl = {
-    pfd_name     = dl parties;
-    pfd_tyargs   = Fparams_exp [(dl _m, msg_pty)];
-    pfd_tyresult = option_of_pty msg_pty;
-    pfd_uses     = (true, None);
-  } in
+
+let pinit_body (states : state_tyd IdMap.t) = {
+  pfb_locals = [];
+  pfb_body   = [
+    ps_assign __self _self_;
+    ps_assign __adv _adv_;
+    ps_assign __st (state_name (init_name states));
+  ];
+  pfb_return = None;
+}
+
+let proc_init (states : state_tyd IdMap.t) =
+  let body = pinit_body states in
+  dl (Pst_fun (pinit_decl, body))
+(*****************************************************************************)    
+
+(* proc parties **************************************************************)
+let party_match (states : state_tyd IdMap.t) : pinstr = 
   let state2matchbranch (stname, state : string * state_tyd) : ppattern * pstmt =
     let state = ul state in
     let ppat = PPApp (
@@ -694,9 +713,9 @@ let decl_ideal_module
       print_string (snd epdp_path);
       print_string "\n";
       let decmsg = pex_app 
-        (pex_proj (dl (PEident (dl (epdp_path), None))) dec)
-        [pex_ident _m] in
-      let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl _x))]), []) in
+        (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
+        [pex_ident __m] in
+      let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), []) in
       let nonebr = (PPApp ((pqs "None", None), []), []) in
       dl (PSmatch (
         decmsg,
@@ -709,109 +728,138 @@ let decl_ideal_module
       state.mmclauses) in
     (ppat, pstm)
   in
-  let party_match = dl (PSmatch (
-    pex_ident _st,
-    `Full (List.map state2matchbranch (IdMap.bindings fbi.states))
-  )) in
-  let pparties_body ={
-    pfb_locals = [
-    { 
-      pfl_names = dl (`Single, [dl r]);
-      pfl_type  = Some (option_of_pty msg_pty);
-      pfl_init  = Some pex_None
-    }];(*TODO add all state variables here, with unique names*)
-    pfb_body   = [party_match];
-    pfb_return = Some (pex_ident r);
-  } in
+  dl (PSmatch (
+    pex_ident __st,
+  `  Full (List.map state2matchbranch (IdMap.bindings states))
+  ))
   
-  let pinvoke_decl = {
-    pfd_name     = dl invoke;
-    pfd_tyargs   = Fparams_exp [(dl m, msg_pty)];
-    pfd_tyresult = option_of_pty msg_pty;
-    pfd_uses     = (true, None);
-  } in
-  let dir_msg_guard (piex : pexpr) : pexpr =
-    pex_tuple [ pex_And [
-      pex_app pex_Eq [
-        pex_proji  (pex_ident m) 0;
-        pex_Dir
-      ];
-      pex_app pex_Eq [
-        pex_proji (pex_proji  (pex_ident m) 1) 0;
-        pex_ident _self
-      ];
-      pex_app pex_Eq [
-        pex_proji (pex_proji  (pex_ident m) 1) 1;
-        piex
-      ];
-      pex_app pex_envport [
-        pex_ident _self;
-        pex_ident _adv;
-        pex_proji (pex_ident m) 2
-      ];
-    ]]
-  in
-  let comp_piex di_name di_mem =
-    dl (PEident (dl ([di_name; di_mem],opname_pi), None))
-  in
+let pparties_decl = {
+  pfd_name     = dl _parties;
+  pfd_tyargs   = Fparams_exp [(dl __m, msg_pty)];
+  pfd_tyresult = option_of_pty msg_pty;
+  pfd_uses     = (true, None);
+}
+
+let pparties_body (states : state_tyd IdMap.t) =
+  let party_match = party_match states in
+{
+
+  pfb_locals = [
+  { 
+    pfl_names = dl (`Single, [dl _r]);
+    pfl_type  = Some (option_of_pty msg_pty);
+    pfl_init  = Some pex_None
+  }];(*TODO add all state variables here, with unique names*)
+  pfb_body   = [party_match];
+  pfb_return = Some (pex_ident _r);
+}
+
+let proc_parties (states : state_tyd IdMap.t) =
+  let body = pparties_body states in
+  dl (Pst_fun (pparties_decl, body))
+(*****************************************************************************)
+
+(* proc invoke ***************************************************************) 
+let pinvoke_decl : pfunction_decl = {
+  pfd_name     = dl _invoke;
+  pfd_tyargs   = Fparams_exp [(dl _m, msg_pty)];
+  pfd_tyresult = option_of_pty msg_pty;
+  pfd_uses     = (true, None);
+}
+
+let call_parties = dl (PScall (
+    Some (dl (PLvSymbol (pqs _r))),
+    dl ([], dl _parties),
+    dl [pex_m]   ))
+    
+let adv_msg_guard (piex : pexpr) : pexpr =
+  pex_tuple [ pex_And [
+    pex_app pex_Eq [
+      pex_proji  (pex_m) 0;
+      pex_Adv
+    ];
+    pex_app pex_Eq [
+      pex_proji (pex_proji  (pex_m) 1) 0;
+      pex__self
+    ];
+    pex_app pex_Eq [
+      pex_proji (pex_proji  (pex_m) 1) 1;
+      piex
+    ];
+    pex_app pex_Eq [
+      pex_proji (pex_proji  (pex_m) 2) 0;
+      pex__adv
+    ];
+  ]]
+    
+let pinvoke_body (guard : pexpr) : pfunction_body = 
+{
+  pfb_locals = [
+  { 
+    pfl_names = dl (`Single, [dl _r]);
+    pfl_type  = Some (option_of_pty msg_pty);
+    pfl_init  = Some pex_None
+  }];
+  pfb_body   = [ps_if_then guard [call_parties]];
+  pfb_return = Some (pex_ident _r);
+}
+
+let basic_piex (bi_name : string) : pexpr =
+  dl (PEident (dl ([bi_name],opname_pi), None))
+  
+let comp_piex (di_name : string) (di_mem : string) : pexpr =
+  dl (PEident (dl ([di_name; di_mem],opname_pi), None))
+  
+let dir_msg_guard (piex : pexpr) : pexpr =
+  pex_tuple [ pex_And [
+    pex_app pex_Eq [
+      pex_proji  (pex_m) 0;
+      pex_Dir
+    ];
+    pex_app pex_Eq [
+      pex_proji (pex_proji  (pex_m) 1) 0;
+      pex__self
+    ];
+    pex_app pex_Eq [
+      pex_proji (pex_proji  (pex_m) 1) 1;
+      piex
+    ];
+    pex_app pex_envport [
+      pex__self;
+      pex__adv;
+      pex_proji (pex_m) 2
+    ];
+  ]]
+
+let proc_invoke (di_name : string) (di : string IdMap.t) (ai_name : string) =
   let di_mem_names = fst (List.split (IdMap.bindings di)) in
   let dir_guards = List.map (fun n -> dir_msg_guard (comp_piex di_name n)) 
     di_mem_names in
-  let adv_msg_guard(piex : pexpr) : pexpr =
-    pex_tuple [ pex_And [
-      pex_app pex_Eq [
-        pex_proji  (pex_ident m) 0;
-        pex_Adv
-      ];
-      pex_app pex_Eq [
-        pex_proji (pex_proji  (pex_ident m) 1) 0;
-        pex_ident _self
-      ];
-      pex_app pex_Eq [
-        pex_proji (pex_proji  (pex_ident m) 1) 1;
-        piex
-      ];
-      pex_app pex_Eq [
-        pex_proji (pex_proji  (pex_ident m) 2) 0;
-        pex_ident _adv
-      ];
-    ]]
-  in
-  let basic_piex bi_name =
-    dl (PEident (dl ([bi_name],opname_pi), None))
-  in
   let adv_guard = adv_msg_guard (basic_piex ai_name) in
   let guard = pex_Or (dir_guards@[adv_guard]) in
-  let call_parties = dl (PScall (
-    Some (dl (PLvSymbol (pqs r))),
-    dl ([], dl parties),
-    dl [pex_ident m]   )) in
-  let pinvoke_body = {
-    pfb_locals = [
-    { 
-      pfl_names = dl (`Single, [dl r]);
-      pfl_type  = Some (option_of_pty msg_pty);
-      pfl_init  = Some pex_None
-    }];
-    pfb_body   = [ps_if_then guard [call_parties]];
-    pfb_return = Some (pex_ident r);
-  } in
+  let body = pinvoke_body guard in
+  dl (Pst_fun (pinvoke_decl, body))
+(*****************************************************************************)
+
+let decl_ideal_module 
+  (name : string) 
+  (fbi : ideal_fun_body_tyd)   
+  (di_name : string)
+  (di : string IdMap.t)
+  (ai_name : string) 
+  (ai : basic_inter_body_tyd) : unit 
+  =
   let items = [
-    dl (Pst_var ([dl _self; dl _adv], addr_pty));
-    dl (Pst_var ([dl _st], named_pty state_type_name));
-    dl (Pst_fun (pinit_decl, pinit_body));
-    dl (Pst_fun (pparties_decl, pparties_body));
-    dl (Pst_fun (pinvoke_decl, pinvoke_body));
+    var__self;
+    var__adv;
+    var__st;
+    proc_init fbi.states;
+    proc_parties fbi.states;
+    proc_invoke di_name di ai_name;
   ] in
-  let def = {
-    ptm_header = Pmh_ident (dl name);
-    ptm_body   = dl (Pm_struct items);
-  } in
-  let pmod = {
-    ptm_locality = `Global;
-    ptm_def      = `Concrete def
-  } in
-  decl_module pmod
+  let pmodule_def = pmodule_def name items in
+  let pmodule     = pmodule pmodule_def in
+  decl_module pmodule
   
 let write_ideal_fun 
   (ppf : Format.formatter) 
@@ -827,6 +875,7 @@ let write_ideal_fun
   decl_ideal_module name fbi di_name di ai_name ai;
   decl_close_theory name;
   print_theory ppf name
+(*****************************************************************************)
 
 let clone (tc : theory_cloning) : unit =
   UcEcInterface.process (GthClone tc)
