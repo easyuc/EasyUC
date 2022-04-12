@@ -649,12 +649,30 @@ let pex_Or (exs : pexpr list) : pexpr =
   pexpr_cascade pex_or exs
 
 let pex_envport = pex_ident "envport"
-  
+
+(* ec instructions ***********************************************************)  
 let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
   dl (PSif ((ifc,ths),[],[]))
 
+let ps_if_then_else (ifc : pexpr) (ths : pstmt) (els : pstmt) : pinstr =
+  dl (PSif ((ifc,ths),[],els))
+
 let ps_assign (a : string) (b : string) : pinstr =
   dl (PSasgn (dl (PLvSymbol (pqs a)), pex_ident b))
+(*****************************************************************************)
+
+(* uc instructions ***********************************************************)
+let uc2ec_instr (inst : instruction_tyd) : pstmt =
+  match ul inst with
+  | Assign (lhs, pexpr) -> []
+  | Sample (lhs, pexpr) -> []
+  | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) -> []
+  | Match (pexpr, match_clause_tyd_ll) -> []
+  | SendAndTransition send_and_transition_tyd -> []
+  | Fail -> []              
+  
+  
+(*****************************************************************************)
   
 (* ideal functionality module ************************************************)
 
@@ -696,7 +714,8 @@ let proc_init (states : state_tyd IdMap.t) =
 
 (* proc parties **************************************************************)
 let party_match (states : state_tyd IdMap.t) : pinstr = 
-  let state2matchbranch (stname, state : string * state_tyd) : ppattern * pstmt =
+  let state2matchbranch 
+    (stname, state : string * state_tyd) : ppattern * pstmt =
     let state = ul state in
     let ppat = PPApp (
       (pqs (state_name stname), None),
@@ -715,6 +734,7 @@ let party_match (states : state_tyd IdMap.t) : pinstr =
       let decmsg = pex_app 
         (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
         [pex_ident __m] in
+      
       let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), []) in
       let nonebr = (PPApp ((pqs "None", None), []), []) in
       dl (PSmatch (
