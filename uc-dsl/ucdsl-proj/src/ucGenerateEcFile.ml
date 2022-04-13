@@ -597,6 +597,7 @@ let decl_state_type (states : state_tyd IdMap.t) : unit =
     pty_locality = `Global}] in
   decl_type state_type
 
+(* strings *******************************************************************)
 let __self = "_self"
 let __adv = "_adv"
 let __st = "_st"
@@ -610,24 +611,18 @@ let _r = "r"
 let _parties = "parties"
 let _dec = "dec"
 let __x = "_x"
+let _envport = "envport"
+let _and = "/\\"
+(*****************************************************************************)
 
-let pex_and = pex_ident "/\\"
+(* ec parsetree expressions **************************************************)
+let pex_and = pex_ident _and
 
 let pex_m = pex_ident _m
 
 let pex__self = pex_ident __self
 
 let pex__adv = pex_ident __adv
-
-let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
-    ptm_locality = `Global;
-    ptm_def      = `Concrete def
-  }
-  
-let pmodule_def (name : string) (items : pstructure): pmodule_def = {
-    ptm_header = Pmh_ident (dl name);
-    ptm_body   = dl (Pm_struct items);
-  }
 
 let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
   match List.length exs with
@@ -648,9 +643,29 @@ let pex_And (exs : pexpr list) : pexpr =
 let pex_Or (exs : pexpr list) : pexpr =
   pexpr_cascade pex_or exs
 
-let pex_envport = pex_ident "envport"
+let pex_envport = pex_ident _envport
 
-(* ec instructions ***********************************************************)  
+let pex_app_envport (arg : pexpr) : pexpr =
+  pex_app pex_envport [
+    pex__self;
+    pex__adv;
+    arg;
+  ]
+(*****************************************************************************)
+
+(* ec parsetree declarations *************************************************)
+let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
+    ptm_locality = `Global;
+    ptm_def      = `Concrete def
+  }
+  
+let pmodule_def (name : string) (items : pstructure): pmodule_def = {
+    ptm_header = Pmh_ident (dl name);
+    ptm_body   = dl (Pm_struct items);
+  }
+(*****************************************************************************)
+
+(* ec parsetree instructions *************************************************)  
 let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
   dl (PSif ((ifc,ths),[],[]))
 
@@ -659,18 +674,83 @@ let ps_if_then_else (ifc : pexpr) (ths : pstmt) (els : pstmt) : pinstr =
 
 let ps_assign (a : string) (b : string) : pinstr =
   dl (PSasgn (dl (PLvSymbol (pqs a)), pex_ident b))
+  
+let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
+  dl (PSmatch (mtch_ex, `Full branches))
 (*****************************************************************************)
 
-(* uc instructions ***********************************************************)
-let uc2ec_instr (inst : instruction_tyd) : pstmt =
+(* uc instruction to ec statement translation ********************************)
+type locals = { vals : pexpr IdMap.t }
+
+let rec ec_expr (uc_ec_expr : pexpr) : pexpr =
+  match uc_ec_expr with
+  | {
+      pl_loc  = _;
+      pl_desc = PEapp (
+        {
+          pl_loc  = _;
+          pl_desc = PEident (
+              {
+                pl_loc  = _;
+                pl_desc = ([], _envport);
+              },
+              None
+            );
+        },
+        [arg]
+      );
+    } -> pex_app_envport (uc_ec_expr arg)
+  | PEcast (pexpr, pty) -> 
+    dl (PEcast (uc_ec_expr pexpr, pty))
+  | PEint    zint -> 
+    dl (PEint zint)
+  | PEdecimal (zint, (i, zint)) -> 
+    dl (PEdecimal (zint, (i, zint)))
+  | PEident  of pqsymbol * ptyannot option        (* symbol             *)
+  | PEapp (pexpr, pexprl) -> 
+    dl (PEapp (uc_ec_expr pexpr, List.map uc_ec_expr pexprl))
+  | PElet (plpattern, (pexw, ptyo), pexpr) -> 
+    dl (PElet (plpattern, (uc_ec_expr pexw, ptyo), uc_ec_expr pexpr))
+  | PEtuple  pexprl ->
+    dl (PEtuple (List.map uc_ec_expr pexprl))
+  | PEif (uc_ec_expr pexc, uc_ec_expr pexif, uc_ec_expr pexel) ->
+    dl (pexc, pexif, pexel)
+  | PEmatch (pexpr, patexl) ->
+    dl (PEmatch (
+      uc_ec_expr pexpr, 
+      List.map (fun (pat,ex) -> (pat, uc_ec_expr ex)) patexl))
+  | PEforall (ptybindings, pexpr) ->
+    dl (PEforall (ptybindings, uc_ec_expr pexpr))
+  | PEexists of ptybindings * pexpr               (* exists quant.      *)
+  | PElambda of ptybindings * pexpr               (* lambda abstraction *)
+  | PErecord of pexpr option * pexpr rfield list  (* record             *)
+  | PEproj   of pexpr * pqsymbol                  (* projection         *)
+  | PEproji  of pexpr * int                       (* tuple projection   *)
+  | PEscope  of pqsymbol * pexpr                  (* scope selection    *)
+
+  
+
+
+let rec uc2ec_stmt (inst : instruction_tyd) : pstmt =
   match ul inst with
   | Assign (lhs, pexpr) -> []
   | Sample (lhs, pexpr) -> []
-  | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) -> []
+  | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) ->
+    let cond = ec_expr pexpr in
+    let if_br = uc_inst_list2ec_stmt instruction_tyd_ll in
+    begin match instruction_tyd_llo with
+    | Some itll ->
+      let else_br = uc_inst_list2ec_stmt itll in
+      [ps_if_then_else cond if_br else_br]
+    | None ->
+      [ps_if_then cond if_br]
+    end
   | Match (pexpr, match_clause_tyd_ll) -> []
   | SendAndTransition send_and_transition_tyd -> []
   | Fail -> []              
-  
+and uc_inst_list2ec_stmt (uc_instll : instruction_tyd list EcLocation.located) 
+  : pstmt =
+  List.concat (List.map uc2ec_stmt (ul uc_instll))
   
 (*****************************************************************************)
   
@@ -734,13 +814,10 @@ let party_match (states : state_tyd IdMap.t) : pinstr =
       let decmsg = pex_app 
         (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
         [pex_ident __m] in
-      
-      let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), []) in
+      let stmt = uc_inst_list2ec_stmt mmc.code in
+      let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
       let nonebr = (PPApp ((pqs "None", None), []), []) in
-      dl (PSmatch (
-        decmsg,
-        `Full [somebr; nonebr]
-      ))
+      ps_match decmsg [somebr; nonebr]
     in    (*TODO star pattern*)
     let pstm = List.map mmc2matchinstr 
       (List.filter 
@@ -748,10 +825,10 @@ let party_match (states : state_tyd IdMap.t) : pinstr =
       state.mmclauses) in
     (ppat, pstm)
   in
-  dl (PSmatch (
-    pex_ident __st,
-  `  Full (List.map state2matchbranch (IdMap.bindings states))
-  ))
+  let mtch_ex = pex_ident __st in
+  let branches = List.map state2matchbranch (IdMap.bindings states) in
+  ps_match mtch_ex branches
+
   
 let pparties_decl = {
   pfd_name     = dl _parties;
@@ -844,11 +921,7 @@ let dir_msg_guard (piex : pexpr) : pexpr =
       pex_proji (pex_proji  (pex_m) 1) 1;
       piex
     ];
-    pex_app pex_envport [
-      pex__self;
-      pex__adv;
-      pex_proji (pex_m) 2
-    ];
+    pex_app_envport (pex_proji (pex_m) 2);
   ]]
 
 let proc_invoke (di_name : string) (di : string IdMap.t) (ai_name : string) =
