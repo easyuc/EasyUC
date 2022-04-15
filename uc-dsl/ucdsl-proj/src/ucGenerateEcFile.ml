@@ -141,7 +141,7 @@ let decl_msg_type (isdirect : bool) (name : string) (mb : message_body_tyd) : un
     (params_map_to_list mb.params_map) in
   let self_addr = (dl (name_record_func name), addr_pty) in
   let other_port =
-    if isdirect 
+    if isdirect (*TODO get rid of isdirect, we can deduce from mb.port_id*)
     then (dl (name_record_dir_port name mb), port_pty)
     else (dl (name_record_adv name), addr_pty)
     in
@@ -234,7 +234,7 @@ let decl_enc_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
   let otherport = 
-    if isdirect
+    if isdirect (*TODO from mb.port_id*)
     then pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) 
     else pex_tuple [
       pex_proj (pex_ident var_name) (name_record_adv mty_name); 
@@ -309,7 +309,7 @@ let decl_dec_op (isdirect : bool) (mty_name : string) (mb : message_body_tyd) : 
   
   let wty = (pex_ident var_name, None) in
   
-  let notmode = if isdirect then pex_Adv else pex_Dir in
+  let notmode = if isdirect then pex_Adv else pex_Dir in (*TODO isdirect from mb.port_id*)
   let if1 = pex_app pex_Eq [pex_ident mode; notmode] in
   let no1 = pex_app pex_Eq [pex_proji (pex_ident pt1) 1; pex_ident opname_pi] in
   let no2 = pex_app pex_Eq [pex_ident tag; pex_int_0] in
@@ -501,7 +501,7 @@ let decl_lemma_eq_of_valid (isdirect : bool) (mty_name : string) (mb : message_b
   
   let x = "x" in
   let fx = pform_ident x in
-  let fmode = if isdirect then pform_Dir else pform_Adv in
+  let fmode = if isdirect then pform_Dir else pform_Adv in (*TODO isdirect from mb*)
   let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
   let funcport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
   let otherport = 
@@ -533,7 +533,7 @@ let decl_lemma_eq_of_valid (isdirect : bool) (mty_name : string) (mb : message_b
   decl_axiom lem
 
 let decl_message (isdirect : bool) (name : string) (mb : message_body_tyd) : unit =
-  decl_msg_type isdirect name mb;
+  decl_msg_type isdirect name mb; (*TODO rem isdirect*)
   decl_enc_op isdirect name mb;
   decl_dec_op isdirect name mb;
   decl_epdp_op name;
@@ -608,8 +608,10 @@ let _invoke = "invoke"
 let _m = "m"
 let __m = "_m"
 let _r = "r"
+let __r = "_r"
 let _parties = "parties"
 let _dec = "dec"
+let _enc = "enc"
 let __x = "_x"
 let _envport = "envport"
 let _and = "/\\"
@@ -654,6 +656,15 @@ let pex_app_envport (arg : pexpr) : pexpr =
     pex__adv;
     arg;
   ]
+
+(*TODO merge code with pexrfield *)  
+let pexrfieldq (path : string list) (name : string) (pex : pexpr) 
+  : pexpr rfield =
+  {
+    rf_name  = dl (path, name);
+    rf_tvi   = None;
+    rf_value = pex;
+  }
 (*****************************************************************************)
 
 (* ec parsetree declarations *************************************************)
@@ -675,8 +686,11 @@ let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
 let ps_if_then_else (ifc : pexpr) (ths : pstmt) (els : pstmt) : pinstr =
   dl (PSif ((ifc,ths),[],els))
 
-let ps_assign (a : string) (b : string) : pinstr =
-  dl (PSasgn (dl (PLvSymbol (pqs a)), pex_ident b))
+let ps_assign (a : string) (ex : pexpr) : pinstr =
+  dl (PSasgn (dl (PLvSymbol (pqs a)), ex))
+
+let ps_assign_id (a : string) (id : string) : pinstr =
+  ps_assign a (pex_ident id)
   
 let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
   dl (PSmatch (mtch_ex, `Full branches))
@@ -684,6 +698,50 @@ let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
 
 (* uc instruction to ec statement translation ********************************)
 type locals = { vals : pexpr IdMap.t }
+
+type interfaces = {
+  di_name : string;
+  di      : basic_inter_body_tyd IdMap.t;
+  ai_name : string;
+  ai      : basic_inter_body_tyd;
+}
+
+let get_message_body 
+  (interfaces : interfaces) 
+  (inter_id_path : string list) 
+  (msgtyname : string) 
+  : message_body_tyd =
+  match inter_id_path with
+  | [name; bin] when name = interfaces.di_name -> 
+      IdMap.find msgtyname (IdMap.find bin interfaces.di)
+  | [name] when name = interfaces.ai_name -> 
+      IdMap.find msgtyname interfaces.ai
+  | _ -> failure "impossible, ideal fun cannot have other inter_id_path"
+
+(*TODO merge code with dec op*)
+let mk_message_record_ex
+  (inter_id_path : string list) 
+  (msgtyname : string)
+  (mb : message_body_tyd)
+  (port : pexpr option)
+  (data : pexpr list)
+  : pexpr =
+  let pexrfield_iip = pexrfieldq inter_id_path in
+  let funcfld = pexrfield_iip (name_record_func msgtyname) (pex_ident __self) in  
+  let otherfld = 
+    match (mb.port, port) with
+    | (None, None) ->
+      pexrfield_iip (name_record_adv msgtyname) (pex_ident __adv)
+    | (Some mp, Some p) ->
+      pexrfield_iip (name_record_dir_port msgtyname mb) p
+    | _ -> 
+      failure "mb.port and port should either both be None or both Some" in
+  let pns = fst (List.split (params_map_to_list mb.params_map)) in
+  let dataflds = List.map2
+    (fun pn ex -> pexrfield_iip (name_record msgtyname pn) ex) 
+    pns data in
+  pex_record None (funcfld::otherfld::dataflds)
+
 
 let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   let uc_ec_expr = uc2ec_expr locals in
@@ -701,17 +759,17 @@ let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
       },
       [arg]) -> 
     pex_app_envport (uc_ec_expr arg)
+  | PEident (pqsymbol, ptyannoto) ->
+    begin match ((ul pqsymbol), ptyannoto) with
+    | (([],s), None) when IdMap.mem s locals.vals -> IdMap.find s locals.vals      
+    | _ -> dl (PEident (pqsymbol, ptyannoto))
+    end
   | PEcast (pexpr, pty) -> 
     dl (PEcast (uc_ec_expr pexpr, pty))
   | PEint    zint -> 
     dl (PEint zint)
   | PEdecimal (zint, (i, zint2)) -> 
     dl (PEdecimal (zint, (i, zint2)))
-  | PEident (pqsymbol, ptyannoto) ->
-    begin match ((ul pqsymbol), ptyannoto) with
-    | (([],s), None) when IdMap.mem s locals.vals -> IdMap.find s locals.vals      
-    | _ -> dl (PEident (pqsymbol, ptyannoto))
-    end
   | PEapp (pexpr, pexprl) -> 
     dl (PEapp (uc_ec_expr pexpr, List.map uc_ec_expr pexprl))
   | PElet (plpattern, (pexw, ptyo), pexpr) -> 
@@ -746,28 +804,64 @@ let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   | PEscope (pqsymbol, pexpr) ->
     dl (PEscope (pqsymbol, uc_ec_expr pexpr))
 
-let rec uc2ec_stmt (locals : locals) (inst : instruction_tyd) : pstmt =
+let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instruction_tyd) : pstmt =
   match ul inst with
   | Assign (lhs, pexpr) -> []
   | Sample (lhs, pexpr) -> []
   | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) ->
-    let cond = uc2ec_expr locals pexpr in
-    let if_br = uc_inst_list2ec_stmt locals instruction_tyd_ll in
-    begin match instruction_tyd_llo with
-    | Some itll ->
-      let else_br = uc_inst_list2ec_stmt locals itll in
-      [ps_if_then_else cond if_br else_br]
-    | None ->
-      [ps_if_then cond if_br]
-    end
+     ucITE2ec_stmt locals interfaces pexpr instruction_tyd_ll instruction_tyd_llo
   | Match (pexpr, match_clause_tyd_ll) -> []
-  | SendAndTransition send_and_transition_tyd -> []
-  | Fail -> []              
+  | SendAndTransition send_and_transition_tyd ->
+     ucSandT2ec_stmt locals interfaces send_and_transition_tyd
+  | Fail -> []
+                
 and uc_inst_list2ec_stmt 
   (locals : locals)
+  (interfaces : interfaces)
   (uc_instll : instruction_tyd list EcLocation.located) 
   : pstmt =
-  List.concat (List.map (uc2ec_stmt locals) (ul uc_instll))
+  List.concat (List.map (uc2ec_stmt locals interfaces) (ul uc_instll))
+  
+and ucITE2ec_stmt (locals : locals) (interfaces : interfaces)
+  (cond : pexpr) 
+  (if_br : instruction_tyd list EcLocation.located) 
+  (else_bro : instruction_tyd list EcLocation.located option)
+  : pstmt =
+  let cond = uc2ec_expr locals cond in
+  let if_br = uc_inst_list2ec_stmt locals interfaces if_br in
+  match else_bro with
+  | Some else_br ->
+    let else_br = uc_inst_list2ec_stmt locals interfaces else_br in
+    [ps_if_then_else cond if_br else_br]
+  | None ->
+    [ps_if_then cond if_br]
+    
+and ucSandT2ec_stmt 
+  (locals : locals)
+  (interfaces : interfaces)
+  (s_and_t : send_and_transition_tyd) 
+  : pstmt =
+  let send locals interfaces (msg_ex : msg_expr_tyd) : pinstr =
+    let iip = (ul msg_ex.path).inter_id_path in
+    let mtn = (ul msg_ex.path).msg in
+    let mb = get_message_body interfaces iip mtn in
+    let porto =
+      match msg_ex.port_expr with
+      | None -> None
+      | Some p -> Some (uc2ec_expr locals p) in
+    let args = List.map (fun ex -> uc2ec_expr locals ex) (ul msg_ex.args) in
+    let msg = mk_message_record_ex iip mtn mb porto args in
+    let epdp_path = (iip, name_epdp_op mtn) in
+    let encmsg = (*TODO merge with mminstr code *)
+      pex_app (pex_proj (dl (PEident (dl (epdp_path), None))) _enc) [msg] in
+    let msgo = pex_app pex_Some [encmsg] in
+    ps_assign __r msgo
+  in
+(*  let transition (st_ex : state_expr_tyd ) : pinstr =*)
+  [ 
+    send locals interfaces s_and_t.msg_expr;
+    (*transition locals s_and_t.state_expr;*)
+  ]
   
 (*****************************************************************************)
   
@@ -797,9 +891,9 @@ let init_name (states : state_tyd IdMap.t) : string =
 let pinit_body (states : state_tyd IdMap.t) = {
   pfb_locals = [];
   pfb_body   = [
-    ps_assign __self _self_;
-    ps_assign __adv _adv_;
-    ps_assign __st (state_name (init_name states));
+    ps_assign_id __self _self_;
+    ps_assign_id __adv _adv_;
+    ps_assign_id __st (state_name (init_name states));
   ];
   pfb_return = None;
 }
@@ -847,10 +941,7 @@ let add_pat_vals
     
 let mmc2matchinstr 
   (locals : locals)
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd) 
+  (interfaces : interfaces) 
   (mmc : msg_match_clause_tyd) 
   : pinstr = 
   let mpp = ul mmc.msg_pat.msg_path_pat in
@@ -862,24 +953,16 @@ let mmc2matchinstr
   let decmsg = pex_app 
     (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
     [pex_ident __m] in
-  let mb =
-    begin match mpp.inter_id_path with
-    | [di_name; bin] -> IdMap.find msgtyname (IdMap.find bin di)
-    | [ai_name] -> IdMap.find msgtyname ai
-    | _ -> failure "impossible, ideal fun cannot have other inter_id_path"
-    end in
+  let mb = get_message_body interfaces mpp.inter_id_path msgtyname in
   let locals' = add_pat_vals mpp.inter_id_path msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
-  let stmt = uc_inst_list2ec_stmt locals' mmc.code in
+  let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
   let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
   let nonebr = (PPApp ((pqs "None", None), []), []) in
   ps_match decmsg [somebr; nonebr]
 
 let state2matchbranch 
   (locals : locals)
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd) 
+  (interfaces : interfaces)
   (stname, state : string * state_tyd) 
   : ppattern * pstmt =
   let state = ul state in
@@ -887,21 +970,18 @@ let state2matchbranch
     (pqs (state_name stname), None),
     List.map (fun (n, _) -> dl (Some (dl n))) (params_map_to_list state.params)
   ) in
-  let pstm = List.map (mmc2matchinstr locals di_name di ai_name ai) 
+  let pstm = List.map (mmc2matchinstr locals interfaces) 
     (List.filter 
       (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
     state.mmclauses) in
   (ppat, pstm)
 
 let party_match 
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd) 
+  (interfaces : interfaces)
   (states : state_tyd IdMap.t) : pinstr = 
   let mtch_ex = pex_ident __st in
   let locals = { vals = IdMap.empty } in
-  let branches = List.map (state2matchbranch locals di_name di ai_name ai) (IdMap.bindings states) in
+  let branches = List.map (state2matchbranch locals interfaces) (IdMap.bindings states) in
   ps_match mtch_ex branches
 
 let pparties_decl = {
@@ -912,30 +992,24 @@ let pparties_decl = {
 }
 
 let pparties_body  
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd)
+  (interfaces : interfaces)
   (states : state_tyd IdMap.t) =
-  let party_match = party_match di_name di ai_name ai states in
+  let party_match = party_match interfaces states in
   {
     pfb_locals = [
     { 
-      pfl_names = dl (`Single, [dl _r]);
+      pfl_names = dl (`Single, [dl __r]);
       pfl_type  = Some (option_of_pty msg_pty);
       pfl_init  = Some pex_None
     }];(*TODO add all state variables here, with unique names*)
     pfb_body   = [party_match];
-    pfb_return = Some (pex_ident _r);
+    pfb_return = Some (pex_ident __r);
   }
 
 let proc_parties
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd)
+  (interfaces : interfaces)
   (states : state_tyd IdMap.t) =
-  let body = pparties_body di_name di ai_name ai states in
+  let body = pparties_body interfaces states in
   dl (Pst_fun (pparties_decl, body))
 (*****************************************************************************)
 
@@ -1022,19 +1096,16 @@ let proc_invoke
 let decl_ideal_module 
   (name : string) 
   (fbi : ideal_fun_body_tyd)   
-  (di_name : string)
-  (di : basic_inter_body_tyd IdMap.t)
-  (ai_name : string) 
-  (ai : basic_inter_body_tyd) : unit 
+  (interfaces : interfaces) : unit 
   =
-  let di_mem_names = fst (List.split (IdMap.bindings di)) in
+  let di_mem_names = fst (List.split (IdMap.bindings interfaces.di)) in
   let items = [
     var__self;
     var__adv;
     var__st;
     proc_init fbi.states;
-    proc_parties di_name di ai_name ai fbi.states;
-    proc_invoke di_name di_mem_names ai_name;
+    proc_parties interfaces fbi.states;
+    proc_invoke interfaces.di_name di_mem_names interfaces.ai_name;
   ] in
   let pmodule_def = pmodule_def name items in
   let pmodule     = pmodule pmodule_def in
@@ -1051,7 +1122,13 @@ let write_ideal_fun
   =
   decl_open_theory name;
   decl_state_type fbi.states;
-  decl_ideal_module name fbi di_name di ai_name ai;
+  let interfaces = {
+    di_name = di_name;
+    di      = di;
+    ai_name = ai_name;
+    ai      = ai
+  } in
+  decl_ideal_module name fbi interfaces;
   decl_close_theory name;
   print_theory ppf name
 (*****************************************************************************)
