@@ -16,4 +16,5 @@ type commit_vals = Cfptp.D * Pke.ciphertext * Pke.ciphertext.
 
 (* Open - b, x, rb, rnb *)
 type open_vals = Cfptp.D * Pke.rand.
+type open_vals_sim = Cfptp.D * Cfptp.D * Pke.rand * Pke.rand.
 type open_rfake = Pke.rand.

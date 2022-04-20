@@ -798,7 +798,7 @@ simulator Sim uses I2S simulates Real {
 
   state WaitCrsOk(cview : View.committer, pt1: port, pt2 : port, pt1_corrupted : bool, sim_crs : Types.sim_crs) {
     var y, x0, x1 : Cfptp.D;
-    var r : Pke.rand;
+    var r0, r1 : Pke.rand;
     var c0, c1 : Pke.ciphertext;
     var new_cview : View.committer;
     var pt1_corrupted' : bool;
@@ -807,31 +807,36 @@ simulator Sim uses I2S simulates Real {
     var pk : Pke.pkey;
     var sk : Pke.skey;
     var c_vals : Types.commit_vals;
-    var o_vals : Types.open_vals;
+    var o_vals_sim : Types.open_vals_sim;
     match message with
     | Real.Crs.Adv.crs_send_ok => {
 
       (fk, bk, pk, sk) <- sim_crs;
-      x0 <$ Cfptp.dD;
-      y <- Cfptp.forw fk x0 false;
+      y <$ Cfptp.dD;
+      x0 <- Cfptp.back bk y false;
       x1 <- Cfptp.back bk y true;
 
-      r <$ Pke.drand;
-      c0 <- Pke.enc pk x0 r;
-      c1 <- Pke.enc pk x1 r;
+      r0 <$ Pke.drand;
+      r1 <$ Pke.drand;
+      c0 <- Pke.enc pk x0 r0;
+      c1 <- Pke.enc pk x1 r1;
+      
+      (* this is r_false below
+      r0' <- oblivenc_inv pk c0;
+      r1' <- oblivenc_inv pk c1;
+      *)
 
       c_vals <- (y, c0, c1);
-      o_vals <- (x0, r);
+      o_vals_sim <- (x0, x1, r0, r1);
 
-      new_cview <- cview ++ [View.C_omsg o_vals]
-	              ++ [View.C_cmsg c_vals];
+      new_cview <- cview ++ [View.C_cmsg c_vals];
       (* send (pt1, pt2, y, c0, c1) to the adversary, who OKs forwarding to the verifier *)
       send Real.Fwd1.FwAdv.fw_obs
       	   (intport Real.Committer, (* Sender is the Committer *)
 	    intport Real.Verifier,   (* Receiver is the Verifier *)
 	    ForwardingEncodings.epdp_commit_univ.`enc
 	    (pt1, pt2, y, c0, c1))
-      and transition WaitFwd1Ok(new_cview, pt1, pt2, pt1_corrupted, sim_crs, c_vals, o_vals).
+      and transition WaitFwd1Ok(new_cview, pt1, pt2, pt1_corrupted, sim_crs, c_vals, o_vals_sim).
     }
     | Real.Adv.Pt1.corrupt => { (* Adversary corrupts the committer *)
         pt1_corrupted' <- true;
@@ -856,7 +861,7 @@ simulator Sim uses I2S simulates Real {
     end
   }
 
-  state WaitFwd1Ok(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals) {
+  state WaitFwd1Ok(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim) {
     var commit_msg_status : bool; (* whether or not we send an honest commit message *)
     var pt1_corrupted' : bool;
     var pt2_corrupted : bool;
@@ -868,19 +873,19 @@ simulator Sim uses I2S simulates Real {
       vview <- [] ++ [View.V_c_env_port pt1; View.V_v_env_port pt2; View.V_cmsg c_vals]; (* Verifier's view. Note that verifier is 1st activated here, after receiving the commit message. *)
       pt2_corrupted <- false;
       send I2S.commit_ok(None) (* Tells ideal functionality commit message is OK'd by Forwarder, and the simulator doesn't know the committed bit. *)
-      and transition WaitOpen(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals, commit_msg_status, vview).
+      and transition WaitOpen(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals_sim, commit_msg_status, vview).
     }
     | Real.Adv.Pt1.corrupt => { (* Adversary can corrupt here and modify the commit message *)
         pt1_corrupted' <- true;
 	new_cview <- cview ++ [View.C_corrupted pt1_corrupted];
 	send I2S.corrupt_committer
-	and transition WaitFwd1Ok_IFAckCommitterCorrupted(new_cview, pt1, pt2, pt1_corrupted', sim_crs, c_vals, o_vals).
+	and transition WaitFwd1Ok_IFAckCommitterCorrupted(new_cview, pt1, pt2, pt1_corrupted', sim_crs, c_vals, o_vals_sim).
       }
     | * => { fail. }
     end
   }
 
-  state WaitFwd1Ok_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals) {
+  state WaitFwd1Ok_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim) {
     var new_cview : View.committer;
     match message with
     | I2S.corrupt_committer_ack(b) => {
@@ -892,20 +897,21 @@ simulator Sim uses I2S simulates Real {
     end
   }
 
-  state WaitOpen(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, commit_msg_status : bool, vview : View.verifier) {
+  state WaitOpen(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim, commit_msg_status : bool, vview : View.verifier) {
     var r_fake : Pke.rand;
     var pt1_corrupted' : bool;
     var fk : Cfptp.fkey; var bk : Cfptp.bkey; var pk : Pke.pkey; var sk : Pke.skey; (* Simulated CRS *)
     var y : Cfptp.D; var c0, c1 : Pke.ciphertext; (* Commit msg *)
-    var x : Cfptp.D; var r : Pke.rand; (* Open msg values *)
+    var x0, x1 : Cfptp.D; var r0, r1 : Pke.rand; (* Open msg values *)
     var new_cview : View.committer;
     var new_vview : View.verifier;
+    var o_vals : Types.open_vals;
     match message with
     | I2S.open_req(b') => {
         (* Parse *)
         (fk, bk, pk, sk) <- sim_crs;
 	(y, c0, c1) <- c_vals;
-	(x, r) <- o_vals;
+	(x0, x1, r0, r1) <- o_vals_sim;
 
         (* compute randomness associated with c_nb *)
 	if (b' = true) {
@@ -915,30 +921,34 @@ simulator Sim uses I2S simulates Real {
 	  r_fake <- Pke.oblivenc_inv pk c1;
 	}
 
+	o_vals <- ((b' ? x1 : x0), (b' ? r1 : r0));
+	new_cview <- cview ++ [View.C_omsg o_vals];
+
         (* send (b', xb, r_bool, r_fake) to the adversary, who OKs forwarding to the verifier *)
         send Real.Fwd2.FwAdv.fw_obs
       	(intport Real.Committer, (* Sender is the Committer *)
 	 intport Real.Verifier,   (* Receiver is the Verifier *)
 	 ForwardingEncodings.epdp_open_univ.`enc
-	 (b', x, r, r_fake))
-      	and transition WaitFwd2Ok(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals, r_fake, commit_msg_status, vview).
+	 (b', (b' ? x1 : x0), (b' ? r1 : r0), r_fake)
+	)
+      	and transition WaitFwd2Ok(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals_sim, r_fake, commit_msg_status, vview, b').
     }
     | Real.Adv.Pt1.corrupt => { (* Adversary can corrupt when control returns to environment (and prior to receiving open_req *)
         pt1_corrupted' <- true;
 	new_cview <- cview ++ [View.C_corrupted true];
 	send I2S.corrupt_committer
-	and transition WaitOpen_IFAckCommitterCorrupted(new_cview, pt1, pt2, pt1_corrupted', pt2_corrupted, sim_crs, c_vals, o_vals, commit_msg_status, vview).
+	and transition WaitOpen_IFAckCommitterCorrupted(new_cview, pt1, pt2, pt1_corrupted', pt2_corrupted, sim_crs, c_vals, o_vals_sim, commit_msg_status, vview).
       }
     | Real.Adv.Pt2.corrupt => { (* Adversary can corrupt when control returns to environment (and prior to receiving open_req *)
         new_vview <- vview ++ [View.V_corrupted true];
 	send I2S.corrupt_verifier
-	and transition WaitOpen_IFAckVerifierCorrupted(cview, pt1, pt2, pt1_corrupted, true, sim_crs, c_vals, o_vals, commit_msg_status, vview).
+	and transition WaitOpen_IFAckVerifierCorrupted(cview, pt1, pt2, pt1_corrupted, true, sim_crs, c_vals, o_vals_sim, commit_msg_status, vview).
       }
     | * => { fail. }
     end
   }
 
-  state WaitOpen_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, commit_msg_status : bool, vview : View.verifier) {
+  state WaitOpen_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim, commit_msg_status : bool, vview : View.verifier) {
     var new_cview : View.committer;
     match message with
     | I2S.corrupt_committer_ack(b) => {
@@ -950,27 +960,31 @@ simulator Sim uses I2S simulates Real {
     end
   }
 
-  state WaitOpen_IFAckVerifierCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, commit_msg_status : bool, vview : View.verifier) {
+  state WaitOpen_IFAckVerifierCorrupted(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim, commit_msg_status : bool, vview : View.verifier) {
     var new_cview : View.committer;
     match message with
     | I2S.corrupt_verifier_ack => {
         send Real.Adv.Pt2.send_view(Some vview)
-	and transition WaitOpen(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals, commit_msg_status, vview).
+	and transition WaitOpen(cview, pt1, pt2, pt1_corrupted, pt2_corrupted, sim_crs, c_vals, o_vals_sim, commit_msg_status, vview).
     }
     | * => { fail. }
     end
   }
 
-  state WaitFwd2Ok(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, o_rfake : Types.open_rfake, commit_msg_status : bool, vview : View.verifier) {
+  state WaitFwd2Ok(cview : View.committer, pt1 : port, pt2: port, pt1_corrupted : bool, pt2_corrupted : bool, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim, o_rfake : Types.open_rfake, commit_msg_status : bool, vview : View.verifier, opened_bit : bool) {
     var crs : Cfptp.fkey * Pke.pkey;
     var pt1_corrupted' : bool;
     var fk : Cfptp.fkey; var bk : Cfptp.bkey; var pk : Pke.pkey; var sk : Pke.skey; (* Simulated CRS *)
+    var x0, x1 : Cfptp.D; var r0, r1 : Pke.rand; (* Open msg values *)
+    var o_vals : Types.open_vals;
     var new_vview : View.verifier;
     match message with
     | Real.Fwd2.FwAdv.fw_ok => {
         (* Instead of immediately sending "open_ok" to ideal functionality, first simulate the verifier's CRS request message, which is seen by the adversary. *)
 	(fk, bk, pk, sk) <- sim_crs;
         crs <- (fk, pk);
+	(x0, x1, r0, r1) <- o_vals_sim;
+	o_vals <- ((opened_bit ? x1 : x0), (opened_bit ? r1 : r0)); 
 	new_vview <- vview ++ [View.V_omsg o_vals];
         send Real.Crs.Adv.crs_send_req(intport Real.Verifier, crs)
 	and transition WaitVerifierCrsOk(pt2_corrupted, crs, new_vview).
@@ -978,13 +992,13 @@ simulator Sim uses I2S simulates Real {
     | Real.Adv.Pt1.corrupt => { (* Adversary corrupts the committer *)
         pt1_corrupted' <- true;
       	send I2S.corrupt_committer
-	and transition WaitFwd2Ok_IFAckCommitterCorrupted(cview, pt1, pt2, sim_crs, c_vals, o_vals, commit_msg_status, vview).
+	and transition WaitFwd2Ok_IFAckCommitterCorrupted(cview, pt1, pt2, sim_crs, c_vals, o_vals_sim, commit_msg_status, vview).
       }
     | * => { fail. }
     end
   }
 
-  state WaitFwd2Ok_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals : Types.open_vals, commit_msg_status : bool, vview : View.verifier) {
+  state WaitFwd2Ok_IFAckCommitterCorrupted(cview : View.committer, pt1 : port, pt2: port, sim_crs : Types.sim_crs, c_vals : Types.commit_vals, o_vals_sim : Types.open_vals_sim, commit_msg_status : bool, vview : View.verifier) {
     var new_cview : View.committer;
     match message with
     | I2S.corrupt_committer_ack(b) => {
