@@ -83,10 +83,6 @@ functionality Ideal implements Dir I2S {
         send I2S.commit_req(pt1, pt2) (* Send the committer pt1 and pt2's port address to the simulator *)
         and transition WaitCorruptions(b, pt1, pt2). (* Transition to waiting for simulator's decision to corrupt pt1 *)
       }
-    | pt1@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
-        send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
-  	and transition WaitCommitReq. (* return to this same state *)
-      }
     | * => { fail. }
     end
   }
@@ -98,9 +94,14 @@ functionality Ideal implements Dir I2S {
         send I2S.committer_bit( pt1_corrupted ? (Some b) : (None) ) (* If pt1 is corrupted, send its input to the simulator. Otherwise send None. *)
         and transition WaitCommitRsp(b, pt1, pt2, pt1_corrupted). (* Transition to whether Sim OKs pt1's commit request *)
       }
-    | pt1@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
-        send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
-  	and transition WaitCorruptions(b, pt1, pt2). (* return to this same state *)
+    | pt1'@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
+        if (pt1' = pt1) {
+          send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
+    	  and transition WaitCorruptions(b, pt1, pt2). (* return to this same state *)
+        }
+        else {
+          fail.
+        }
       }
     | * => { fail. }
     end
@@ -252,10 +253,6 @@ functionality Real implements Dir Adv {
 	  send Adv.Pt1.committer_corruption_status_req (* Ask adversary about committer's corruption status *)
 	  and transition WaitCorruptionStatus(cview, pt1, pt2, b).
 	}
-      | pt1@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
-          send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
-  	  and transition WaitCommReq. (* return to this same state *)
-        }
       | * => { fail. }
       end
     }
@@ -268,9 +265,14 @@ functionality Real implements Dir Adv {
           send Adv.Pt1.send_view( corrupted ? Some(new_cview) : None)
 	  and transition WaitContinue(new_cview, pt1, pt2, b, corrupted).
 	}
-      | pt1@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
-          send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
-  	  and transition WaitCorruptionStatus(cview, pt1, pt2, b). (* return to this same state *)
+      | pt1'@Dir.Pt1.committer_corruption_status_req => { (* pt1 asks if it is corrupted *)
+          if (pt1' = pt1) {
+            send Dir.Pt1.committer_corruption_status_rsp( false )@pt1 (* send pt1's corruption status *)
+    	    and transition WaitCorruptionStatus(cview, pt1, pt2, b). (* return to this same state *)
+          }
+          else {
+            fail.
+          }
       }
       | * => { fail. }
       end
@@ -702,7 +704,7 @@ simulator Sim uses I2S simulates Real {
     var cview : View.committer;
     match message with
     | I2S.commit_req(pt1, pt2) => { (* Committer asks commitment request *)
-        cview <- [] ++ [View.C_c_env_port pt1; View.C_v_env_port pt2];
+        cview <- [View.C_c_env_port pt1; View.C_v_env_port pt2];
         send Real.Adv.Pt1.committer_corruption_status_req  (* Ask adversary if Committer is corrupted *)
 	and transition WaitCommitterCorruption(cview, pt1, pt2). (* Wait to see if committer is corrupted *)
       }
