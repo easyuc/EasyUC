@@ -7,7 +7,7 @@ require import Pke Cfptp Types.
 (* Committer's view *)
 
 type committer_elem = [
-  C_c_env_port of port    (* Committer's client port in the environment *)
+  | C_c_env_port of port    (* Committer's client port in the environment *)
   | C_v_env_port of port  (* Verifier's client port in the environment *)
   | C_env_b of bool       (* Bit received from the environment *)
   | C_corrupted of bool   (* Whether the committer is corrupted *)
@@ -23,7 +23,7 @@ type committer = committer_elem list.
 (* Verifier's view *)
 
 type verifier_elem = [
-  V_c_env_port of port    (* Committer's client port in the environment *)
+  | V_c_env_port of port    (* Committer's client port in the environment *)
   | V_v_env_port of port  (* Verifier's client port in the environment *)
   | V_cmsg of Types.commit_vals (* Commit msg: Cfptp.D * Pke.ciphertext * Pke.ciphertext *)
   | V_corrupted of bool (* Whether the verifier is corrupted *)

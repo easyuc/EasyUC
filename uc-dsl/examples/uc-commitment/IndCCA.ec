@@ -51,7 +51,7 @@ op dec(sk : skey, c : ciphertext) : plaintext.
 
 (* correctness of encryption scheme *)
 
-axiom correctness (pk: pkey, sk: skey, m: plaintext, r : rand):
+axiom correctness (pk : pkey, sk : skey, m : plaintext, r : rand):
   valid_keys (pk, sk) => dec sk (enc pk m r) = m.
 
 (* oblivious encryption of randomness, plus inverse *)
@@ -66,6 +66,13 @@ axiom obliv_enc_bij (pk : pkey, r : rand):
   obliv_enc_inv pk (obliv_enc pk r) = r.
 axiom obliv_enc_inv_bij (pk : pkey, c : ciphertext):
   obliv_enc pk (obliv_enc_inv pk c) = c.
+
+(* for the same public key, but possibly different randomness,
+   ordinary encryption and oblivious encryption can never
+   produce the same ciphertext *)
+
+axiom enc_disjoint (pk : pkey, r r' : rand, x : plaintext) :
+  enc pk x r <> obliv_enc pk r'.
 
 (* IND-CCA oracle *)
 
@@ -93,7 +100,7 @@ module OrIndCCA1 : OR_INDCCA = {
   var cs : ciphertext fset
 
   proc init(keys : pkey * skey) : unit = {
-    pk <- keys.`1; sk <- keys.`2;
+    pk <- keys.`1; sk <- keys.`2; cs <- fset0;
   }
 
   proc enc(m : plaintext) : ciphertext = {
@@ -122,7 +129,7 @@ module OrIndCCA2 : OR_INDCCA = {
   var cs : ciphertext fset
 
   proc init(pk_ : pkey, sk_ : skey) : unit = {
-    pk <- pk_; sk <- sk_;
+    pk <- pk_; sk <- sk_; cs <- fset0;
   }
 
   proc enc(m : plaintext) : ciphertext = {
