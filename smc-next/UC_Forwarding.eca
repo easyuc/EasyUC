@@ -88,8 +88,8 @@ match => //.
 match => //.
 auto.
 move => x x'.
-if; first smt().
-auto; first smt().
+if; first move => /> /#.
+auto => /> /#.
 auto.
 move => pt1 pt2 u pt1' pt2' u'.
 match => //.
@@ -135,10 +135,10 @@ inline UC_Forw.parties.
 sp 2.
 match _State_Init 1; first auto; smt().
 match Some 1.
-auto; smt(some_oget).
+auto => />; smt(some_oget).
 rcondt 1; first auto; progress; smt().
 auto.
-auto; smt(oget_some).
+auto => />; smt(oget_some).
 qed.
 
 lemma UC_Forw_invoke_init_bad :
@@ -158,7 +158,7 @@ case (UC_FwDir.D.epdp_fw_req.`dec _m = None).
 match None 1; first auto.
 auto.
 match Some 1; first auto; smt().
-rcondf 1; first auto; smt(UC_FwDir.D.eq_of_valid_fw_req).
+rcondf 1; first auto => />; smt(UC_FwDir.D.eq_of_valid_fw_req).
 auto.
 auto.
 qed.
@@ -227,7 +227,8 @@ auto; progress.
 exists (oget (UC_FwAdv.epdp_fw_ok.`dec m{hr})).
 smt(some_oget).
 if.
-exfalso; smt(oget_some UC_FwAdv.eq_of_valid_fw_ok).
+exfalso => &hr [#].
+smt(oget_some UC_FwAdv.eq_of_valid_fw_ok).
 auto.
 auto.
 qed.

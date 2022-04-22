@@ -421,39 +421,6 @@ op _extport_Pt2 (self : addr) : port = (self, 2).
 op _intport_Pt1 (self : addr) : port = (self, 3).
 op _intport_Pt2 (self : addr) : port = (self, 4).
 
-type _match_Pt1__WaitReq1 = [
-  | _Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 of UC_KEDir.Pt1.ke_req1
-  | _Match_other_Pt1__WaitReq1
-].
-
-op _match_Pt1__WaitReq1 (self : addr, m : msg) : _match_Pt1__WaitReq1 =
-  let a =
-    match UC_KEDir.Pt1.epdp_ke_req1.`dec m with
-    | Some x =>
-        (* will have x.`UC_KEDir.Pt1.ke_req1___fun = self *)
-        Some (_Match_good_Pt1__WaitReq1__KEDir__Pt1__ke_req1 x)
-    | None => None
-    end in
-  ((a = None) ? _Match_other_Pt1__WaitReq1 : oget a).
-
-type _match_Pt1__WaitFw2 = [
-  | _Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp
-      of UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp
-  | _Match_other_Pt1__WaitFw2
-].
-
-op _match_Pt1__WaitFw2 (self : addr, m : msg) : _match_Pt1__WaitFw2 =
-  let a =
-    match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec m with
-    | Some x =>
-        if x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp___func = _addr_Fw2 self /\
-           x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt2 self
-        then Some (_Match_good_Pt1__WaitFw2__Fw2__FwDir__D__fw_rsp x)
-        else None
-    | None => None
-    end in
-  ((a = None) ? _Match_other_Pt1__WaitFw2 : oget a).
-
 module UC_KEReal = {
   var _self, _adv : addr
   var _st1_Pt1 : _state_Pt1
@@ -473,21 +440,21 @@ module UC_KEReal = {
     | _State_Pt1__WaitReq1 => {
         match UC_KEDir.Pt1.epdp_ke_req1.`dec _m with
         | Some _x => {
-            (* _x.`UC_KEDir.Pt1.ke_req1__func = _self /\
+            (* _x.`UC_KEDir.Pt1.ke_req1___func = _self /\
                envport _self _adv _x.`UC_KeDir.Pt1.ke_req1_pt1 *)
             if (envport _self _adv _x.`UC_KEDir.Pt1.ke_req1_pt2) {
               q1 <$ dexp;
               _r <-
                 Some
                 (UC_Fw1.UC__Code.UC_FwDir.D.epdp_fw_req.`enc  (* direct *)
-                 {|UC_Fw1.UC__Code.UC_FwDir.D.fw_req__func =  (* destination *)
+                 {|UC_Fw1.UC__Code.UC_FwDir.D.fw_req___func =  (* destination *)
                      _addr_Fw1 _self;
-                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt1   =  (* source *)
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req__pt1   =  (* source *)
                      _intport_Pt1 _self;
                    (* data: *)
-                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_pt2   =
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req__pt2   =
                      _intport_Pt2 _self;
-                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req_u     =
+                   UC_Fw1.UC__Code.UC_FwDir.D.fw_req__u     =
                      epdp_port_port_key_univ.`enc
                      (_x.`UC_KEDir.Pt1.ke_req1_pt1,
                       _x.`UC_KEDir.Pt1.ke_req1_pt2,
@@ -502,7 +469,7 @@ module UC_KEReal = {
         match UC_Fw2.UC__Code.UC_FwDir.D.epdp_fw_rsp.`dec _m with
         | Some _x => {
             match epdp_key_univ.`dec
-                  _x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp_u with
+                  _x.`UC_Fw2.UC__Code.UC_FwDir.D.fw_rsp__u with
             | Some k2 => {
                 (* if the invariant from WaitReq1 is preserved, the following
                    test is redundant *)

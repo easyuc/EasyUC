@@ -20,7 +20,7 @@ axiom _adv_if_pi_gt0 : 0 < _adv_if_pi.
 
 (* basic direct interface *)
 
-theory UC_FwDir_.
+theory UC_FwDir'.
 
 (* begin theory parameters *)
 
@@ -192,11 +192,11 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_fw_rsp) <-.
 by rewrite !epdp.
 qed.
 
-end UC_FwDir_.
+end UC_FwDir'.
 
 theory UC_FwDir.  (* composite direct interface *)
 
-clone UC_FwDir_ as D with
+clone UC_FwDir' as D with
   op pi = 1
 proof *.  (* nothing to prove *)
 
