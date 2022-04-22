@@ -22,16 +22,18 @@ let decl_open_theory (name : string) : unit =
 
 let write_open_theory (ppf : Format.formatter) (name : string) : unit =
   decl_open_theory name;
-  Format.fprintf stf "@.@[theory %s.@]@." name; (*REMOVE*)
-  Format.fprintf ppf "@.@[theory %s.@]@." name  
+  Format.fprintf stf "@[theory %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@[theory %s.@]@." name;
+  print_newline ppf
 
 let decl_close_theory (name : string) : unit =
   UcEcInterface.process (GthClose ([], dl name))
   
 let write_close_theory (ppf : Format.formatter) (name : string) : unit =
   decl_close_theory name;
-  Format.fprintf stf "@.@[end %s.@]@." name; (*REMOVE*)
-  Format.fprintf ppf "@.@[end %s.@]@." name
+  Format.fprintf stf "@[end %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@[end %s.@]@." name;
+  print_newline ppf
 
 let decl_operator (pop : poperator) : unit =
   UcEcInterface.process (Goperator pop)
@@ -43,6 +45,7 @@ let print_operator (ppf : Format.formatter) (pop : poperator) : unit =
   let op = EcEnv.Op.lookup (qs name) env in
   EcPrinting.pp_opdecl ppe stf op; (*REMOVE*)
   EcPrinting.pp_opdecl ppe ppf op;
+  print_newline ppf;
   print_newline ppf
 
 let write_operator (ppf : Format.formatter) (pop : poperator) : unit =
@@ -196,7 +199,8 @@ let msg_type (name : string) (mb : message_body_tyd) : ptydecl =
 let write_type (ppf : Format.formatter) (ptyd : ptydecl) : unit =
   let name = ul ptyd.pty_name in
   decl_type ptyd;
-  print_type ppf name
+  print_type ppf name;
+  print_newline ppf
 
 let enc_op_name (name : string) : string = "enc_"^name
 
@@ -288,7 +292,7 @@ let enc_op (mty_name : string) (mb : message_body_tyd) : poperator =
   let ptsource = if mb.dir = In then otherport else selfport in
   let ptdest = if mb.dir = In then selfport else otherport in
   let mode = if isdirect then pex_Dir else pex_Adv in
-  let encex = pex_tuple [mode; ptsource; ptdest; tag; u] in
+  let encex = pex_tuple [mode; ptdest; ptsource; tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (msg_pty, encex) in
   {
@@ -338,6 +342,77 @@ let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
     rf_value = pex;
   }
 
+(* strings *******************************************************************)
+let __self = "_self"
+let __adv = "_adv"
+let __st = "_st"
+let _init = "init"
+let _self_ = "self_"
+let _adv_ = "adv_"
+let _invoke = "invoke"
+let _m = "m"
+let __m = "_m"
+let _r = "r"
+let __r = "_r"
+let _parties = "parties"
+let _dec = "dec"
+let _enc = "enc"
+let __x = "_x"
+let _envport = "envport"
+let _and = "/\\"
+let _UC__IF = "UC__IF"
+(*****************************************************************************)
+
+(* ec parsetree expressions **************************************************)
+let pex_and = pex_ident _and
+
+let pex_m = pex_ident _m
+
+let pex__self = pex_ident __self
+
+let pex__adv = pex_ident __adv
+
+let pex_projq (pex : pexpr) (qname : EcSymbols.qsymbol) = 
+  dl (PEproj (pex, dl qname))
+
+let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
+  match List.length exs with
+  | 0 -> failure "Cascade at least one  expression"
+  | 1 -> List.hd exs
+  | _ ->
+    let exs = List.rev exs in
+    let last = List.hd exs in
+    let rest = List.rev (List.tl exs) in
+    List.fold_right ( 
+      fun ex1 ex2 -> pex_app ex [ex1; ex2]
+    ) rest last
+
+
+let pex_And (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_and exs
+  
+let pex_Or (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_or exs
+
+let pex_envport = pex_ident _envport
+
+let pex_app_envport (arg : pexpr) : pexpr =
+  pex_app pex_envport [
+    pex__self;
+    pex__adv;
+    arg;
+  ]
+
+(*TODO merge code with pexrfield *)  
+let pexrfieldq (path : string list) (name : string) (pex : pexpr) 
+  : pexpr rfield =
+  {
+    rf_name  = dl (path, name);
+    rf_tvi   = None;
+    rf_value = pex;
+  }
+(*****************************************************************************)
+
 let dec_op (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "m" in
   let mode = "mod" in
@@ -354,10 +429,15 @@ let dec_op (mty_name : string) (mb : message_body_tyd) : poperator =
   let isdirect = isdirect mb in
   let notmode = if isdirect then pex_Adv else pex_Dir in
   let if1 = pex_app pex_Eq [pex_ident mode; notmode] in
-  let no1 = pex_app pex_Eq [pex_proji (pex_ident pt1) 1; pex_ident opname_pi] in
-  let no2 = pex_app pex_Eq [pex_ident tag; pex_int_0] in
-  let if2 = pex_app pex_or [pex_app pex_Not [no1]; pex_app pex_Not [no2]] in
-  let if_cond = pex_tuple [pex_app pex_or [if1; if2]] in
+  let no0 = pex_app pex_Not 
+    [pex_app pex_Eq [pex_proji (pex_ident otherport) 1; pex_ident opname_adv_if_pi]] in
+  let no1 = pex_app pex_Not 
+    [pex_app pex_Eq [pex_proji (pex_ident funcport) 1; pex_ident opname_pi]] in
+  let no2 = pex_app pex_Not [pex_app pex_Eq [pex_ident tag; pex_int_0]] in
+  let if_cond = 
+    if isdirect
+    then pex_tuple [pex_Or [if1; no1; no2]] 
+    else pex_tuple [pex_Or [if1; no0; no1; no2]] in
   
   let p = "p" in
   let n' (pn : string) : string = pn^"'" in
@@ -365,22 +445,25 @@ let dec_op (mty_name : string) (mb : message_body_tyd) : poperator =
   let patm = dl (LPTuple (List.map (fun pn -> osym (n' pn)) pns)) in
   let wtym = (pex_ident p, None) in
   let funcfld = pexrfield (name_record_func mty_name) (pex_proji (pex_ident funcport) 0) in
-  let pt1fld = 
+  let otherfld = 
     if isdirect
     then pexrfield (name_record_dir_port mty_name mb) (pex_ident otherport) 
-    else pexrfield (name_record_adv mty_name) (pex_proji (pex_ident funcport) 0)
+    else pexrfield (name_record_adv mty_name) (pex_proji (pex_ident otherport) 0)
     in
   let dataflds = List.map 
     (fun pn -> pexrfield (name_record mty_name pn) (pex_ident (n' pn)) ) 
     pns in
-  let msg = pex_record None (funcfld::pt1fld::dataflds) in
+  let msg = pex_record None (funcfld::otherfld::dataflds) in
   let omsg = pex_app pex_Some [msg] in
 
   let ex2 = 
     if pns = [] 
     then omsg
     else pex_let patm wtym omsg  in
-  let pat2 = PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
+  let pat2 = 
+    if pns = []
+    then PPApp ((pqs "Some", None), [dl None])
+    else PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
   let mtch2 = (pat2, ex2) in
 
   let pat1 = PPApp ((pqs "None", None), []) in
@@ -465,27 +548,33 @@ let proof_admit_qed () : unit =
   proof ();
   admit ();
   qed ()
+  
+let print_proof_admit_qed (ppf : Format.formatter) : unit =
+  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
+  Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
 
 let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
   let name = ul lemma.pa_name in
   decl_axiom lemma;
   proof_admit_qed ();
-  print_axiom ppf name
+  print_axiom ppf name;
+  print_proof_admit_qed ppf;
+  print_newline ppf
     
 let write_hint_simplify_epdp (ppf : Format.formatter) (name : string) : unit =
   let lname = name_lemma_epdp_valid name in
   let red = ([`EqTrue], [([pqs lname], None)]) in
   UcEcInterface.process (Greduction red);
-  Format.fprintf stf "hint simplify [eqtrue] %s." lname; (*REMOVE*)
-  Format.fprintf ppf "hint simplify [eqtrue] %s." lname;
+  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
+  Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
   print_newline ppf
   
 let write_hint_rewrite_epdp (ppf : Format.formatter) (name : string) : unit =
   let lname = name_lemma_epdp_valid name in
   let rw = (`Global, pqs "epdp", [pqs lname]) in
   UcEcInterface.process (Gaddrw rw);
-  Format.fprintf stf "hint rewrite epdp : %s." lname; (*REMOVE*)
-  Format.fprintf ppf "hint rewrite epdp : %s." lname;
+  Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
+  Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
   print_newline ppf
 
 let epdp_name_univ_form (name : string) : pformula =
@@ -610,6 +699,9 @@ let oper_int (name : string) (value : int) : poperator =
   }
   
 let pi_op2 = oper_int opname_pi 2
+
+let uc_name (name : string) : string =
+  "UC_"^name
   
 let write_basic_int 
   (ppf : Format.formatter) 
@@ -618,6 +710,7 @@ let write_basic_int
   (name : string) 
   (bibt : basic_inter_body_tyd) 
   : unit =
+  let name = uc_name name in
   write_open_theory ppf name;
   if (isdirect || (not is4ideal))
   then write_operator ppf pi_op
@@ -643,75 +736,6 @@ let state_type (states : state_tyd IdMap.t) : ptydecl =
     pty_locality = `Global
   }
 
-(* strings *******************************************************************)
-let __self = "_self"
-let __adv = "_adv"
-let __st = "_st"
-let _init = "init"
-let _self_ = "self_"
-let _adv_ = "adv_"
-let _invoke = "invoke"
-let _m = "m"
-let __m = "_m"
-let _r = "r"
-let __r = "_r"
-let _parties = "parties"
-let _dec = "dec"
-let _enc = "enc"
-let __x = "_x"
-let _envport = "envport"
-let _and = "/\\"
-(*****************************************************************************)
-
-(* ec parsetree expressions **************************************************)
-let pex_and = pex_ident _and
-
-let pex_m = pex_ident _m
-
-let pex__self = pex_ident __self
-
-let pex__adv = pex_ident __adv
-
-let pex_projq (pex : pexpr) (qname : EcSymbols.qsymbol) = 
-  dl (PEproj (pex, dl qname))
-
-let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
-  match List.length exs with
-  | 0 -> failure "Cascade at least one  expression"
-  | 1 -> List.hd exs
-  | _ ->
-    let exs = List.rev exs in
-    let last = List.hd exs in
-    let rest = List.rev (List.tl exs) in
-    List.fold_right ( 
-      fun ex1 ex2 -> pex_app ex [ex1; ex2]
-    ) rest last
-
-
-let pex_And (exs : pexpr list) : pexpr =
-  pexpr_cascade pex_and exs
-  
-let pex_Or (exs : pexpr list) : pexpr =
-  pexpr_cascade pex_or exs
-
-let pex_envport = pex_ident _envport
-
-let pex_app_envport (arg : pexpr) : pexpr =
-  pex_app pex_envport [
-    pex__self;
-    pex__adv;
-    arg;
-  ]
-
-(*TODO merge code with pexrfield *)  
-let pexrfieldq (path : string list) (name : string) (pex : pexpr) 
-  : pexpr rfield =
-  {
-    rf_name  = dl (path, name);
-    rf_tvi   = None;
-    rf_value = pex;
-  }
-(*****************************************************************************)
 
 (* ec parsetree declarations *************************************************)
 let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
@@ -850,6 +874,13 @@ let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   | PEscope (pqsymbol, pexpr) ->
     dl (PEscope (pqsymbol, uc_ec_expr pexpr))
 
+let uc_inter_path (path : string list) : string list =
+ if path = [] then []
+ else 
+   let hd = uc_name (List.hd path) in
+   let tl = List.tl path in
+   hd::tl 
+
 let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instruction_tyd) : pstmt =
   match ul inst with
   | Assign (lhs, pexpr) -> []
@@ -888,7 +919,7 @@ and ucSandT2ec_stmt
   (s_and_t : send_and_transition_tyd) 
   : pstmt =
   let send locals interfaces (msg_ex : msg_expr_tyd) : pinstr =
-    let iip = (ul msg_ex.path).inter_id_path in
+    let iip = uc_inter_path (ul msg_ex.path).inter_id_path in
     let mtn = (ul msg_ex.path).msg in
     let mb = get_message_body interfaces iip mtn in
     let porto =
@@ -903,10 +934,18 @@ and ucSandT2ec_stmt
     let msgo = pex_app pex_Some [encmsg] in
     ps_assign __r msgo
   in
-(*  let transition (st_ex : state_expr_tyd ) : pinstr =*)
+  let transition (locals : locals) (st_ex : state_expr_tyd ) : pinstr =
+    let args = List.map (fun ex -> uc2ec_expr locals ex) (ul st_ex.args) in
+    let st_id = state_name (ul st_ex.id) in
+    let st = 
+      if args = []
+      then pex_ident st_id
+      else pex_app (pex_ident st_id) args in
+    ps_assign __st st
+  in
   [ 
     send locals interfaces s_and_t.msg_expr;
-    (*transition locals s_and_t.state_expr;*)
+    transition locals s_and_t.state_expr;
   ]
   
 (*****************************************************************************)
@@ -995,12 +1034,13 @@ let mmc2matchinstr
     match mpp.msg_or_star with
     | MsgOrStarMsg n -> n
     | MsgOrStarStar -> failure "impossible, we checked it is not star!" in
-  let epdp_path = (mpp.inter_id_path, name_epdp_op msgtyname) in
+  let iip = uc_inter_path mpp.inter_id_path in
+  let epdp_path = (iip, name_epdp_op msgtyname) in
   let decmsg = pex_app 
     (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
     [pex_ident __m] in
-  let mb = get_message_body interfaces mpp.inter_id_path msgtyname in
-  let locals' = add_pat_vals mpp.inter_id_path msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
+  let mb = get_message_body interfaces iip msgtyname in
+  let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
   let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
   let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
   let nonebr = (PPApp ((pqs "None", None), []), []) in
@@ -1040,15 +1080,16 @@ let pparties_decl = {
 let pparties_body  
   (interfaces : interfaces)
   (states : state_tyd IdMap.t) =
+  let assign__r = ps_assign __r pex_None in
   let party_match = party_match interfaces states in
   {
     pfb_locals = [
     { 
       pfl_names = dl (`Single, [dl __r]);
       pfl_type  = Some (option_of_pty msg_pty);
-      pfl_init  = Some pex_None
+      pfl_init  = None
     }];(*TODO add all state variables here, with unique names*)
-    pfb_body   = [party_match];
+    pfb_body   = [assign__r; party_match];
     pfb_return = Some (pex_ident __r);
   }
 
@@ -1105,9 +1146,11 @@ let pinvoke_body (guard : pexpr) : pfunction_body =
 }
 
 let basic_piex (bi_name : string) : pexpr =
+print_string ("\n"^bi_name^"\n");
   dl (PEident (dl ([bi_name],opname_pi), None))
   
 let comp_piex (di_name : string) (di_mem : string) : pexpr =
+print_string ("\n"^di_name^"."^di_mem^"\n");
   dl (PEident (dl ([di_name; di_mem],opname_pi), None))
   
 let dir_msg_guard (piex : pexpr) : pexpr =
@@ -1165,16 +1208,17 @@ let write_ideal_fun
   (ai_name : string) 
   (ai : basic_inter_body_tyd) : unit 
   =
-  write_open_theory ppf name;
+  write_open_theory ppf _UC__IF;
   write_type ppf (state_type fbi.states);
   let interfaces = {
-    di_name = di_name;
+    di_name = uc_name di_name;
     di      = di;
-    ai_name = ai_name;
+    ai_name = uc_name ai_name;
     ai      = ai
   } in
+  let name = uc_name name in
   write_module ppf name (ideal_module name fbi interfaces);
-  write_close_theory ppf name
+  write_close_theory ppf _UC__IF
 (*****************************************************************************)
 
 let clone (tc : theory_cloning) : unit =
@@ -1202,14 +1246,16 @@ let decl_clone (name : string) (bi : string) (pindx : int): unit =
   
 let write_clone (ppf : Format.formatter) (name : string) (bi : string) (pindx : int) : unit =
   decl_clone name bi pindx;
-  Format.fprintf stf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx; (*REMOVE*)
-  Format.fprintf ppf "@.@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx
+  Format.fprintf stf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx; (*REMOVE*)
+  Format.fprintf ppf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx;
+  print_newline ppf
   
 let write_com_int (ppf : Format.formatter) (isdirect : bool) (name : string) (nt : string IdMap.t) : unit =
+  let name = uc_name name in
   write_open_theory ppf name;
   let nt = IdMap.to_seq nt in
   let i = if isdirect then ref 1 else ref 2 in
-  Seq.iter (fun (n,t) -> write_clone ppf n t !i; i:=!i+2) nt;
+  Seq.iter (fun (n,t) -> write_clone ppf n (uc_name t) !i; i:=!i+2) nt;
   write_close_theory ppf name
 
 type singlefile_typed_spec = {
@@ -1227,6 +1273,7 @@ let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
   UcEcInterface.process (GthRequire threq);
   Format.fprintf stf "@[require import UCBasicTypes.@]@."; (*REMOVE*)
   Format.fprintf ppf "@[require import UCBasicTypes.@]@.";
+  print_newline ppf;
   UcEcInterface.process (Gprint (Pr_any (dl(qs "UCBasicTypes")))) (*REMOVE*)
   
 let write_op_adv_if_pi (ppf : Format.formatter) : unit =
@@ -1234,7 +1281,8 @@ let write_op_adv_if_pi (ppf : Format.formatter) : unit =
 
 let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   decl_axiom (axiom_adv_if_pi_gt0);
-  print_axiom ppf axname_adv_if_pi_gt0
+  print_axiom ppf axname_adv_if_pi_gt0;
+  print_newline ppf
   
 let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   let basfilt i = 
@@ -1287,7 +1335,7 @@ let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
 
 (*---------------------------------------------------------------------------*)
 
-let ec_filename (f : string) : string = f^".eca"
+let ec_filename (f : string) : string = "UC__"^f^".eca"
 
 let open_formatter (f : string) : out_channel * Format.formatter =
   let fo = open_out_gen [Open_append; Open_creat] 0o666 f in
