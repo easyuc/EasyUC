@@ -143,6 +143,9 @@ let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
 let pform_ident (name : string) : pformula =
   dl (PFident (pqs name, None))
 
+let pf_of_int (i : int) : pformula = 
+  dl (PFint (EcBigInt.of_int i))
+
 let pf_0 = dl (PFint EcBigInt.zero)
 
 let axiom_adv_if_pi_gt0 : paxiom =
@@ -289,12 +292,12 @@ let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t
   let args = enc_args var_name msg_name params_map in
   pex_app ex [args]
 
-let pex_int_0 = dl (PEint EcBigInt.zero)
+let pex_of_int (i : int) : pexpr =
+  dl (PEint (EcBigInt.of_int i))
 
-let enc_op (mty_name : string) (mb : message_body_tyd) : poperator =
+let enc_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "x" in
   let u = enc_u var_name mty_name mb.params_map in
-  let tag = pex_int_0 in
   let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
@@ -309,7 +312,7 @@ let enc_op (mty_name : string) (mb : message_body_tyd) : poperator =
   let ptsource = if mb.dir = In then otherport else selfport in
   let ptdest = if mb.dir = In then selfport else otherport in
   let mode = if isdirect then pex_Dir else pex_Adv in
-  let encex = pex_tuple [mode; ptdest; ptsource; tag; u] in
+  let encex = pex_tuple [mode; ptdest; ptsource; pex_of_int tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (msg_pty, encex) in
   {
@@ -430,17 +433,17 @@ let pexrfieldq (path : string list) (name : string) (pex : pexpr)
   }
 (*****************************************************************************)
 
-let dec_op (mty_name : string) (mb : message_body_tyd) : poperator =
+let dec_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "m" in
   let mode = "mod" in
   let pt1 = "pt1" in
   let pt2 = "pt2" in
   let funcport = if mb.dir = In then pt1 else pt2 in
   let otherport = if mb.dir = In then pt2 else pt1 in 
-  let tag = "tag" in
+  let _tag = "tag" in
   let v = "v" in
   let osym (name : string) = dl (Some (dl name)) in
-  let pat = dl (LPTuple [osym mode; osym pt1; osym pt2; osym tag; osym v]) in
+  let pat = dl (LPTuple [osym mode; osym pt1; osym pt2; osym _tag; osym v]) in
   
   let wty = (pex_ident var_name, None) in
   let isdirect = isdirect mb in
@@ -450,7 +453,7 @@ let dec_op (mty_name : string) (mb : message_body_tyd) : poperator =
     [pex_app pex_Eq [pex_proji (pex_ident otherport) 1; pex_ident opname_adv_if_pi]] in
   let no1 = pex_app pex_Not 
     [pex_app pex_Eq [pex_proji (pex_ident funcport) 1; pex_ident opname_pi]] in
-  let no2 = pex_app pex_Not [pex_app pex_Eq [pex_ident tag; pex_int_0]] in
+  let no2 = pex_app pex_Not [pex_app pex_Eq [pex_ident _tag; pex_of_int tag]] in
   let if_cond = 
     if isdirect
     then pex_tuple [pex_Or [if1; no1; no2]] 
@@ -649,7 +652,7 @@ let pform_Dir = pform_ident "Dir"
 
 let pform_Adv = pform_ident "Adv"
 
-let lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : paxiom =
+let lemma_eq_of_valid (tag : int) (mty_name : string) (mb : message_body_tyd) : paxiom =
   let m = "m" in
   let vars = Some [([dl (Some (dl m))], PGTY_Type msg_pty)] in
   
@@ -675,7 +678,7 @@ let lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : paxiom =
   let fdport = if mb.dir = In then funcport else otherport in
   let fsport = if mb.dir = In then otherport else funcport in
   let fdata = enc_u_form x mty_name mb.params_map in
-  let fmsg = dl (PFtuple [fmode; fdport; fsport; pf_0; fdata] ) in
+  let fmsg = dl (PFtuple [fmode; fdport; fsport; pf_of_int tag; fdata] ) in
   
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
   let f_r = pform_app f_eq [fm; flet] in
@@ -691,18 +694,15 @@ let lemma_eq_of_valid (mty_name : string) (mb : message_body_tyd) : paxiom =
     pa_locality = `Global;
   }
 
-let write_message (ppf : Format.formatter) (name : string) (mb : message_body_tyd) : unit =
+let write_message (ppf : Format.formatter) (tag : int) (name : string) (mb : message_body_tyd) : unit =
   write_type ppf (msg_type name mb);
-  write_operator ppf (enc_op name mb);
-  write_operator ppf (dec_op name mb);
+  write_operator ppf (enc_op tag name mb);
+  write_operator ppf (dec_op tag name mb);
   write_operator ppf (epdp_op name);
   write_lemma ppf (lemma_epdp name);
   write_hint_simplify_epdp ppf name;
   write_hint_rewrite_epdp ppf name;
-  write_lemma ppf (lemma_eq_of_valid name mb)
-
-let pex_of_int (i : int) : pexpr =
-  dl (PEint (EcBigInt.of_int i))
+  write_lemma ppf (lemma_eq_of_valid tag name mb)
   
 let oper_int (name : string) (value : int) : poperator =  
   let podef = PO_concr (dl PTunivar, pex_of_int value) in
@@ -737,7 +737,8 @@ let write_basic_int
   then write_operator ppf pi_op
   else write_operator ppf pi_op2
   ;
-  IdMap.iter (fun n mb -> write_message ppf n mb) bibt;
+  let bibtl = IdMap.bindings bibt in
+  List.iteri (fun i (n, mb) -> write_message ppf i n mb) bibtl;
   write_close_theory ppf name
 
 let state_type_name = "_state"
