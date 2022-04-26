@@ -243,13 +243,30 @@ let epdp_tuple_name (arity : int) : string =
   | 8 -> "epdp_tuple8_univ"
   | _ -> failure "epdp_tuples must have size between 2 and 8"
 
+let epdp_app_name (name : string) : string =
+  match name with
+  | "choice" -> "epdp_choice_univ"
+  | "choice3" -> "epdp_choice3_univ"
+  | "choice4" -> "epdp_choice4_univ"
+  | "choice5" -> "epdp_choice5_univ"
+  | "choice6" -> "epdp_choice6_univ"
+  | "choice7" -> "epdp_choice7_univ"
+  | "choice8" -> "epdp_choice8_univ"
+  | "option"  -> "epdp_option_univ"
+  | "list"    -> "epdp_list_univ"
+  | _ -> failure "supported parametric types are: choice,..., choice8, option, list"
+
 let rec epdp_pty_univ (t : pty) : pexpr =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ ptys
   | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ name
-  | _ -> failure ("Only tuples and named types supported." )
+  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ name ptys 
+  | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 and epdp_tuple_univ (ptys : pty list) : pexpr =
   let epdp_name = epdp_tuple_name (List.length ptys) in
+  pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
+and epdp_app_univ (name : string) (ptys : pty list) : pexpr =
+  let epdp_name = epdp_app_name name in
   pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
 
 let epdp_data_univ (params_map : ty_index IdMap.t) : pexpr =
@@ -596,9 +613,13 @@ let rec epdp_pty_univ_form (t : pty) : pformula =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ_form ptys
   | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ_form name
-  | _ -> failure ("Only tuples and named types supported." )
+  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form name ptys 
+  | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 and epdp_tuple_univ_form (ptys : pty list) : pformula =
   let epdp_name = epdp_tuple_name (List.length ptys) in
+  pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
+and epdp_app_univ_form (name : string) (ptys : pty list) : pformula =
+  let epdp_name = epdp_app_name name in
   pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
 
 let epdp_data_univ_form (params_map : ty_index IdMap.t) : pformula =
