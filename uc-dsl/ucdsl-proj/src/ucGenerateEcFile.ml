@@ -784,12 +784,26 @@ let ps_assign (a : string) (ex : pexpr) : pinstr =
 let ps_assign_id (a : string) (id : string) : pinstr =
   ps_assign a (pex_ident id)
   
+let ps_assignl ( sl : string list) (ex : pexpr) : pinstr =
+  let pqssl = List.map (fun s -> pqs s) sl in
+  dl (PSasgn (dl (PLvTuple pqssl), ex))
+  
 let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
   dl (PSmatch (mtch_ex, `Full branches))
+  
+let pf_var (name : string) (pty : pty) : pfunction_local =
+  { 
+    pfl_names = dl (`Single, [dl name]);
+    pfl_type  = Some pty;
+    pfl_init  = None
+  }
+
 (*****************************************************************************)
 
 (* uc instruction to ec statement translation ********************************)
-type locals = { vals : pexpr IdMap.t }
+type locals = { 
+  vals  : pexpr IdMap.t
+}
 
 type interfaces = {
   di_name : string;
@@ -895,6 +909,12 @@ let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
     dl (PEproji (uc_ec_expr pexpr, i))
   | PEscope (pqsymbol, pexpr) ->
     dl (PEscope (pqsymbol, uc_ec_expr pexpr))
+    
+let uc2ec_ps_assign (locals : locals) (lhs : lhs) (rhs : pexpr) : pinstr =
+  let ec_rhs = uc2ec_expr locals rhs in
+  match lhs with
+  | LHSSimp  ps  -> ps_assign (ul ps) ec_rhs
+  | LHSTuple psl -> ps_assignl (List.map (fun ps -> ul ps) psl) ec_rhs
 
 let uc_inter_path (path : string list) : string list =
  if path = [] then []
@@ -905,7 +925,7 @@ let uc_inter_path (path : string list) : string list =
 
 let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instruction_tyd) : pstmt =
   match ul inst with
-  | Assign (lhs, pexpr) -> []
+  | Assign (lhs, pexpr) -> [uc2ec_ps_assign locals lhs pexpr]
   | Sample (lhs, pexpr) -> []
   | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) ->
      ucITE2ec_stmt locals interfaces pexpr instruction_tyd_ll instruction_tyd_llo
@@ -1087,7 +1107,7 @@ let state2matchbranch
     state.mmclauses) in
   (ppat, pstm)
 
-let party_match 
+let party_match
   (interfaces : interfaces)
   (states : state_tyd IdMap.t) : pinstr = 
   let mtch_ex = pex_ident __st in
@@ -1102,18 +1122,21 @@ let pparties_decl = {
   pfd_uses     = (true, None);
 }
 
+let get_vars (states : state_tyd IdMap.t) : pfunction_local list =
+  IdMap.fold ( fun _ state pfll ->
+    let state = ul state in
+    let vars = params_map_to_list state.vars in
+    pfll @ (List.map (fun (n,t) -> pf_var n t) vars)
+  ) states []
+
 let pparties_body  
   (interfaces : interfaces)
   (states : state_tyd IdMap.t) =
   let assign__r = ps_assign __r pex_None in
+  let local_vars = get_vars states in (*TODO give unique names*)
   let party_match = party_match interfaces states in
   {
-    pfb_locals = [
-    { 
-      pfl_names = dl (`Single, [dl __r]);
-      pfl_type  = Some (option_of_pty msg_pty);
-      pfl_init  = None
-    }];(*TODO add all state variables here, with unique names*)
+    pfb_locals = [pf_var __r  (option_of_pty msg_pty)] @ local_vars;
     pfb_body   = [assign__r; party_match];
     pfb_return = Some (pex_ident __r);
   }
@@ -1160,12 +1183,7 @@ let adv_msg_guard (piex : pexpr) : pexpr =
     
 let pinvoke_body (guard : pexpr) : pfunction_body = 
 {
-  pfb_locals = [
-  { 
-    pfl_names = dl (`Single, [dl _r]);
-    pfl_type  = Some (option_of_pty msg_pty);
-    pfl_init  = Some pex_None
-  }];
+  pfb_locals = [pf_var _r (option_of_pty msg_pty)];
   pfb_body   = [ps_if_then guard [call_parties]];
   pfb_return = Some (pex_ident _r);
 }
