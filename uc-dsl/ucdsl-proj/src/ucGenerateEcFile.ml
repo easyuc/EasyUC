@@ -788,6 +788,13 @@ let ps_assignl ( sl : string list) (ex : pexpr) : pinstr =
   let pqssl = List.map (fun s -> pqs s) sl in
   dl (PSasgn (dl (PLvTuple pqssl), ex))
   
+let ps_rnd (a : string) (ex : pexpr) : pinstr =
+  dl (PSrnd (dl (PLvSymbol (pqs a)), ex))
+  
+let ps_rndl ( sl : string list) (ex : pexpr) : pinstr =
+  let pqssl = List.map (fun s -> pqs s) sl in
+  dl (PSrnd (dl (PLvTuple pqssl), ex))
+  
 let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
   dl (PSmatch (mtch_ex, `Full branches))
   
@@ -915,6 +922,12 @@ let uc2ec_ps_assign (locals : locals) (lhs : lhs) (rhs : pexpr) : pinstr =
   match lhs with
   | LHSSimp  ps  -> ps_assign (ul ps) ec_rhs
   | LHSTuple psl -> ps_assignl (List.map (fun ps -> ul ps) psl) ec_rhs
+  
+let uc2ec_ps_sample (locals : locals) (lhs : lhs) (rhs : pexpr) : pinstr =
+  let ec_rhs = uc2ec_expr locals rhs in
+  match lhs with
+  | LHSSimp  ps  -> ps_rnd (ul ps) ec_rhs
+  | LHSTuple psl -> ps_rndl (List.map (fun ps -> ul ps) psl) ec_rhs
 
 let uc_inter_path (path : string list) : string list =
  if path = [] then []
@@ -926,7 +939,7 @@ let uc_inter_path (path : string list) : string list =
 let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instruction_tyd) : pstmt =
   match ul inst with
   | Assign (lhs, pexpr) -> [uc2ec_ps_assign locals lhs pexpr]
-  | Sample (lhs, pexpr) -> []
+  | Sample (lhs, pexpr) -> [uc2ec_ps_sample locals lhs pexpr]
   | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) ->
      ucITE2ec_stmt locals interfaces pexpr instruction_tyd_ll instruction_tyd_llo
   | Match (pexpr, match_clause_tyd_ll) -> []
