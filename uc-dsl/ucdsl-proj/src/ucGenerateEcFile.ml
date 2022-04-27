@@ -1046,27 +1046,31 @@ let add_pat_vals
       )
       locals patl (fst (List.split (params_map_to_list mb.params_map)))
     
-let mmc2matchinstr 
+let rec mmcl2matchinstr 
   (locals : locals)
   (interfaces : interfaces) 
-  (mmc : msg_match_clause_tyd) 
-  : pinstr = 
-  let mpp = ul mmc.msg_pat.msg_path_pat in
-  let msgtyname = 
-    match mpp.msg_or_star with
-    | MsgOrStarMsg n -> n
-    | MsgOrStarStar -> failure "impossible, we checked it is not star!" in
-  let iip = uc_inter_path mpp.inter_id_path in
-  let epdp_path = (iip, name_epdp_op msgtyname) in
-  let decmsg = pex_app 
-    (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
-    [pex_ident __m] in
-  let mb = get_message_body interfaces iip msgtyname in
-  let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
-  let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
-  let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
-  let nonebr = (PPApp ((pqs "None", None), []), []) in
-  ps_match decmsg [somebr; nonebr]
+  (mmcl : msg_match_clause_tyd list)
+  : pstmt =
+  match mmcl with
+  | [] -> []
+  | mmc :: mmcl' ->
+    let mpp = ul mmc.msg_pat.msg_path_pat in
+    let msgtyname = 
+      match mpp.msg_or_star with
+      | MsgOrStarMsg n -> n
+      | MsgOrStarStar -> failure "impossible, we checked it is not star!" in
+    let iip = uc_inter_path mpp.inter_id_path in
+    let epdp_path = (iip, name_epdp_op msgtyname) in
+    let decmsg = pex_app 
+      (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
+      [pex_ident __m] in
+    let mb = get_message_body interfaces iip msgtyname in
+    let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
+    let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
+    let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
+    let recur = mmcl2matchinstr locals interfaces mmcl' in
+    let nonebr = (PPApp ((pqs "None", None), []), recur) in
+    [ps_match decmsg [somebr; nonebr]]
 
 let state2matchbranch 
   (locals : locals)
@@ -1078,8 +1082,7 @@ let state2matchbranch
     (pqs (state_name stname), None),
     List.map (fun (n, _) -> dl (Some (dl n))) (params_map_to_list state.params)
   ) in
-  let pstm = List.map (mmc2matchinstr locals interfaces) 
-    (List.filter 
+  let pstm = mmcl2matchinstr locals interfaces (List.filter 
       (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
     state.mmclauses) in
   (ppat, pstm)
