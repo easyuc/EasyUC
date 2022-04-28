@@ -942,7 +942,8 @@ let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instructi
   | Sample (lhs, pexpr) -> [uc2ec_ps_sample locals lhs pexpr]
   | ITE (pexpr, instruction_tyd_ll, instruction_tyd_llo) ->
      ucITE2ec_stmt locals interfaces pexpr instruction_tyd_ll instruction_tyd_llo
-  | Match (pexpr, match_clause_tyd_ll) -> []
+  | Match (pexpr, match_clause_tyd_ll) ->
+    ucMatch2ec_stmt locals interfaces pexpr match_clause_tyd_ll
   | SendAndTransition send_and_transition_tyd ->
      ucSandT2ec_stmt locals interfaces send_and_transition_tyd
   | Fail -> []
@@ -967,6 +968,28 @@ and ucITE2ec_stmt (locals : locals) (interfaces : interfaces)
     [ps_if_then_else cond if_br else_br]
   | None ->
     [ps_if_then cond if_br]
+    
+and ucMatch2ec_stmt (locals : locals) (interfaces : interfaces)
+  (value : pexpr) (clauses : match_clause_tyd list EcLocation.located) : pstmt =
+  let value = uc2ec_expr locals value in
+  let clauses = ul clauses in
+  let uc_clause2ec (clause : match_clause_tyd) : ppattern * pstmt =
+    let (s, (bs, is)) = clause in
+    print_string ("\n"^s^":");
+    let osl = (
+      List.map (fun (ecid, _) -> 
+        let id = EcIdent.name ecid in
+        print_string (id^";");
+        if id = "_"
+        then dl None
+        else dl (Some (dl id))
+      ) bs
+    ) in 
+    let stmt = uc_inst_list2ec_stmt locals interfaces is in
+    (PPApp (((pqs s), None), osl), stmt)
+  in
+  let ec_clauses = List.map uc_clause2ec clauses in
+  [ps_match value ec_clauses]
     
 and ucSandT2ec_stmt 
   (locals : locals)
