@@ -97,15 +97,22 @@ let print_axiom (ppf : Format.formatter) (name : string) : unit =
   EcPrinting.pp_axiom ppe ppf ax;
   print_newline ppf
 
-let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
+let ty_lookup_opt (name : string) : (EcPath.path * EcDecl.tydecl) option =
   let env = UcEcInterface.env () in
-  EcEnv.Ty.lookup (qs name) env
+  EcEnv.Ty.lookup_opt (qs name) env
+  
+  
+let op_lookup_opt (name : string) : (EcPath.path * EcDecl.operator) option =
+  let env = UcEcInterface.env () in
+  EcEnv.Op.lookup_opt (qs name) env
+  
+let qnamed_pty (qname : EcSymbols.qsymbol) : pty = dl (PTnamed (dl qname))
 
-let named_pty (name : string) = dl (PTnamed (pqs name))
+let named_pty (name : string) = qnamed_pty (qs name)
 
-let option_of_pty (pty : pty) = dl (PTapp (pqs "option",[pty]))
+let _option = "option"
 
-let option_of_pty_name (name : string) = option_of_pty (named_pty name)
+let option_of_pty (pty : pty) = dl (PTapp (pqs _option,[pty]))
 
 let addr_pty = named_pty "addr"
 
@@ -162,11 +169,11 @@ let axiom_adv_if_pi_gt0 : paxiom =
     pa_locality = `Global;
   }
 
-let name_record_func (msg_name : string) : string = msg_name^"___func"
+let name_record_func (msg_name : string) : string = msg_name^"__func"
 
-let name_record_adv (msg_name : string) : string = msg_name^"___adv"
+let name_record_adv (msg_name : string) : string = msg_name^"__adv"
 
-let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
+let name_record (msg_name : string) (param_name : string) : string = msg_name^"_"^param_name
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
   name_record name (EcUtils.oget mb.port)
@@ -182,14 +189,38 @@ let isdirect (mb : message_body_tyd) : bool =
   | None -> false
   | Some _ -> true
 
-let msg_type (name : string) (mb : message_body_tyd) : ptydecl =
-  let msg_data = List.map (fun (s,t) -> (dl (name_record name s), t)) 
+type shadowed = {
+  types     : pqsymbol IdMap.t;
+  operators : pqsymbol IdMap.t;
+}
+
+let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
+  match ul pqs with
+  | ([],s) when IdMap.mem s alt -> IdMap.find s alt
+  | _ -> pqs
+
+let rec qualify_ty (sh : shadowed) (pty : pty) : pty =
+  let qtyl (ptyl : pty list) =
+    List.map (fun p -> qualify_ty sh p) ptyl
+  in
+  match ul pty with
+  | PTnamed pqs ->
+    dl (PTnamed (maybe_swap pqs sh.types)) 
+  | PTtuple  ptyl ->
+    dl (PTtuple (qtyl ptyl))
+  | PTapp (pqs, ptyl) ->
+    dl (PTapp ((maybe_swap pqs sh.types), (qtyl ptyl)))
+  | _ -> 
+    failure "Impossible, only named types, tuples and type applications can show up in message declarations"
+
+let msg_type (sh : shadowed) (name : string) (mb : message_body_tyd) : ptydecl =
+  let msg_data = List.map (fun (s,t) -> (dl (name_record name s), (qualify_ty sh t)))
     (params_map_to_list mb.params_map) in
-  let self_addr = (dl (name_record_func name), addr_pty) in
+  let self_addr = (dl (name_record_func name), (qualify_ty sh addr_pty)) in
   let other_port =
     if (isdirect mb)
-    then (dl (name_record_dir_port name mb), port_pty)
-    else (dl (name_record_adv name), addr_pty)
+    then (dl (name_record_dir_port name mb), (qualify_ty sh port_pty))
+    else (dl (name_record_adv name), (qualify_ty sh addr_pty))
     in
   let body = PTYD_Record (self_addr :: other_port :: msg_data) in
   {
@@ -229,14 +260,14 @@ let epdp_ty_univ_name (ty_name : string) : string =
   | "int"  -> "epdp_int_univ"
   | "addr" -> "epdp_addr_univ"
   | "port" -> "epdp_port_univ"
-  | "univ" -> "epdp_id"
+  | "univ" -> "epdp_univ_univ"
   | _ -> failure ("yet unsupported epdp for "^ty_name)
 
 let epdp_name_univ (name : string) : pexpr =
-  pex_ident (epdp_ty_univ_name name)
+  pex_ident (epdp_ty_univ_name name) (*potential name clash with some generated epdp op*)
 
 let epdp_tuple_name (arity : int) : string =
-  match arity with
+  match arity with (*potential name clash with some generated epdp op*)
   | 2 -> "epdp_pair_univ"
   | 3 -> "epdp_tuple3_univ"
   | 4 -> "epdp_tuple4_univ"
@@ -247,7 +278,7 @@ let epdp_tuple_name (arity : int) : string =
   | _ -> failure "epdp_tuples must have size between 2 and 8"
 
 let epdp_app_name (name : string) : string =
-  match name with
+  match name with (*potential name clash with some generated epdp op*)
   | "choice" -> "epdp_choice_univ"
   | "choice3" -> "epdp_choice3_univ"
   | "choice4" -> "epdp_choice4_univ"
@@ -266,16 +297,16 @@ let rec epdp_pty_univ (t : pty) : pexpr =
   | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 and epdp_tuple_univ (ptys : pty list) : pexpr =
-  let epdp_name = epdp_tuple_name (List.length ptys) in
+  let epdp_name = epdp_tuple_name (List.length ptys) in (*potential name clash with some generated epdp op*)
   pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
 and epdp_app_univ (name : string) (ptys : pty list) : pexpr =
-  let epdp_name = epdp_app_name name in
+  let epdp_name = epdp_app_name name in (*potential name clash with some generated epdp op*)
   pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
 
 let epdp_data_univ (params_map : ty_index IdMap.t) : pexpr =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> pex_ident "epdp_unit_univ"
+  | [] -> pex_ident "epdp_unit_univ" (*potential name clash with some generated epdp op*)
   | [t] -> epdp_pty_univ t
   | _ -> epdp_tuple_univ ptys
 
@@ -295,7 +326,7 @@ let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t
 let pex_of_int (i : int) : pexpr =
   dl (PEint (EcBigInt.of_int i))
 
-let enc_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
+let enc_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "x" in
   let u = enc_u var_name mty_name mb.params_map in
   let selfport = pex_tuple [
@@ -314,7 +345,7 @@ let enc_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let mode = if isdirect then pex_Dir else pex_Adv in
   let encex = pex_tuple [mode; ptdest; ptsource; pex_of_int tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
-  let def = PO_concr (msg_pty, encex) in
+  let def = PO_concr (qualify_ty sh msg_pty, encex) in
   {
     po_kind     = `Op;
     po_name     = dl (enc_op_name mty_name);
@@ -433,7 +464,13 @@ let pexrfieldq (path : string list) (name : string) (pex : pexpr)
   }
 (*****************************************************************************)
 
-let dec_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
+let option_of_msgty (sh : shadowed) (name : string) =
+  let msgty = named_pty name in
+  if IdMap.mem _option sh.types 
+  then dl (PTapp (IdMap.find _option sh.types,[msgty]))
+  else option_of_pty (named_pty name)
+
+let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "m" in
   let mode = "mod" in
   let pt1 = "pt1" in
@@ -496,8 +533,8 @@ let dec_op (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let pif = pex_if if_cond pex_None else_br in
   
   let decex = pex_let pat wty pif in
-  let args = [([dl(Some (dl var_name))], msg_pty) ] in
-  let ret_pty = option_of_pty_name mty_name in
+  let args = [([dl(Some (dl var_name))], qualify_ty sh msg_pty) ] in
+  let ret_pty = option_of_msgty sh mty_name in
 
   let def = PO_concr (ret_pty, decex) in
   {
@@ -619,16 +656,16 @@ let rec epdp_pty_univ_form (t : pty) : pformula =
   | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 and epdp_tuple_univ_form (ptys : pty list) : pformula =
-  let epdp_name = epdp_tuple_name (List.length ptys) in
+  let epdp_name = epdp_tuple_name (List.length ptys) in (*potential name clash with some generated epdp op*)
   pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
 and epdp_app_univ_form (name : string) (ptys : pty list) : pformula =
-  let epdp_name = epdp_app_name name in
+  let epdp_name = epdp_app_name name in (*potential name clash with some generated epdp op*)
   pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
 
 let epdp_data_univ_form (params_map : ty_index IdMap.t) : pformula =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> pform_ident "epdp_unit_univ"
+  | [] -> pform_ident "epdp_unit_univ" (*potential name clash with some generated epdp op*)
   | [t] -> epdp_pty_univ_form t
   | _ -> epdp_tuple_univ_form ptys
   
@@ -652,9 +689,9 @@ let pform_Dir = pform_ident "Dir"
 
 let pform_Adv = pform_ident "Adv"
 
-let lemma_eq_of_valid (tag : int) (mty_name : string) (mb : message_body_tyd) : paxiom =
+let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : paxiom =
   let m = "m" in
-  let vars = Some [([dl (Some (dl m))], PGTY_Type msg_pty)] in
+  let vars = Some [([dl (Some (dl m))], PGTY_Type (qualify_ty sh msg_pty))] in
   
   let fepdp = pform_ident (name_epdp_op mty_name) in
   let fm = pform_ident m in
@@ -694,15 +731,16 @@ let lemma_eq_of_valid (tag : int) (mty_name : string) (mb : message_body_tyd) : 
     pa_locality = `Global;
   }
 
-let write_message (ppf : Format.formatter) (tag : int) (name : string) (mb : message_body_tyd) : unit =
-  write_type ppf (msg_type name mb);
-  write_operator ppf (enc_op tag name mb);
-  write_operator ppf (dec_op tag name mb);
+let write_message (ppf : Format.formatter) (sh : shadowed) 
+  (tag : int) (name : string) (mb : message_body_tyd) : unit =
+  write_type ppf (msg_type sh name mb);
+  write_operator ppf (enc_op sh tag name mb);
+  write_operator ppf (dec_op sh tag name mb);
   write_operator ppf (epdp_op name);
   write_lemma ppf (lemma_epdp name);
   write_hint_simplify_epdp ppf name;
   write_hint_rewrite_epdp ppf name;
-  write_lemma ppf (lemma_eq_of_valid tag name mb)
+  write_lemma ppf (lemma_eq_of_valid sh tag name mb)
   
 let oper_int (name : string) (value : int) : poperator =  
   let podef = PO_concr (dl PTunivar, pex_of_int value) in
@@ -723,6 +761,35 @@ let pi_op2 = oper_int opname_pi 2
 
 let uc_name (name : string) : string =
   "UC_"^name
+
+let init_shadowed : shadowed = 
+  {
+    types = IdMap.empty;
+    operators = IdMap.empty
+  }
+
+let add_ty_name (sh : shadowed) (name : string) : shadowed =
+  match ty_lookup_opt name with
+  | None -> sh
+  | Some (path, _) ->
+    {
+      types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
+      operators = sh.operators;
+    }
+
+let add_op_name (sh : shadowed) (name : string) : shadowed =
+  match op_lookup_opt name with
+  | None -> sh
+  | Some (path, _) ->
+    {
+      types = sh.types;
+      operators = IdMap.add name (dl (EcPath.toqsymbol path)) sh.operators;
+    }
+
+let add_shadowing_decls (sh : shadowed) (name : string) : shadowed =
+  let sh = add_ty_name sh name in
+  let sh = add_op_name sh (name_epdp_op name) in
+  sh
   
 let write_basic_int 
   (ppf : Format.formatter) 
@@ -738,7 +805,11 @@ let write_basic_int
   else write_operator ppf pi_op2
   ;
   let bibtl = IdMap.bindings bibt in
-  List.iteri (fun i (n, mb) -> write_message ppf i n mb) bibtl;
+  let _ = List.fold_left ( fun (i,sh) (n, mb) -> 
+    let sh = add_shadowing_decls sh n in
+    write_message ppf sh i n mb;
+    (i+1, sh)
+  ) (0,init_shadowed) bibtl in
   write_close_theory ppf name
 
 let state_type_name = "_state"
