@@ -147,8 +147,11 @@ let opname_adv_if_pi = "_adv_if_pi"
 
 let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
 
+let pform_pqident (pqname : pqsymbol) : pformula =
+  dl (PFident (pqname, None))
+  
 let pform_ident (name : string) : pformula =
-  dl (PFident (pqs name, None))
+  pform_pqident (pqs name)
 
 let pf_of_int (i : int) : pformula = 
   dl (PFint (EcBigInt.of_int i))
@@ -213,6 +216,11 @@ let rec qualify_ty (sh : shadowed) (pty : pty) : pty =
   | _ -> 
     failure "Impossible, only named types, tuples and type applications can show up in message declarations"
 
+let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
+  if IdMap.mem name sh.operators
+  then IdMap.find name sh.operators
+  else pqs name
+
 let msg_type (sh : shadowed) (name : string) (mb : message_body_tyd) : ptydecl =
   let msg_data = List.map (fun (s,t) -> (dl (name_record name s), (qualify_ty sh t)))
     (params_map_to_list mb.params_map) in
@@ -238,7 +246,10 @@ let write_type (ppf : Format.formatter) (ptyd : ptydecl) : unit =
 
 let enc_op_name (name : string) : string = "enc_"^name
 
-let pex_ident (name : string) : pexpr = dl (PEident (pqs name, None))
+let pex_pqident (pqname : pqsymbol) : pexpr =
+  dl (PEident (pqname, None))
+
+let pex_ident (name : string) : pexpr = pex_pqident (pqs name)
 
 let pex_Dir = pex_ident "Dir"
 
@@ -253,21 +264,21 @@ let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
 let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
   dl (PEapp (ex,args))
 
-let epdp_ty_univ_name (ty_name : string) : string =
-  match ty_name with
+let epdp_tyname_univ (tyname : string) : string =
+  match tyname with
   | "unit" -> "epdp_unit_univ"
   | "bool" -> "epdp_bool_univ"
   | "int"  -> "epdp_int_univ"
   | "addr" -> "epdp_addr_univ"
   | "port" -> "epdp_port_univ"
-  | "univ" -> "epdp_univ_univ"
-  | _ -> failure ("yet unsupported epdp for "^ty_name)
+  | "univ" -> "epdp_id"
+  | _ -> failure ("yet unsupported epdp for "^tyname) (*or stub*)
 
-let epdp_name_univ (name : string) : pexpr =
-  pex_ident (epdp_ty_univ_name name) (*potential name clash with some generated epdp op*)
+let epdp_name_univ (sh : shadowed) (name : string) : pexpr =
+  pex_pqident (qualify_opname sh (epdp_tyname_univ name))
 
 let epdp_tuple_name (arity : int) : string =
-  match arity with (*potential name clash with some generated epdp op*)
+  match arity with
   | 2 -> "epdp_pair_univ"
   | 3 -> "epdp_tuple3_univ"
   | 4 -> "epdp_tuple4_univ"
@@ -275,10 +286,10 @@ let epdp_tuple_name (arity : int) : string =
   | 6 -> "epdp_tuple6_univ"
   | 7 -> "epdp_tuple7_univ"
   | 8 -> "epdp_tuple8_univ"
-  | _ -> failure "epdp_tuples must have size between 2 and 8"
+  | _ -> failure "epdp_tuples must have size between 2 and 8" (*or stub*)
 
 let epdp_app_name (name : string) : string =
-  match name with (*potential name clash with some generated epdp op*)
+  match name with
   | "choice" -> "epdp_choice_univ"
   | "choice3" -> "epdp_choice3_univ"
   | "choice4" -> "epdp_choice4_univ"
@@ -288,27 +299,29 @@ let epdp_app_name (name : string) : string =
   | "choice8" -> "epdp_choice8_univ"
   | "option"  -> "epdp_option_univ"
   | "list"    -> "epdp_list_univ"
-  | _ -> failure "supported parametric types are: choice,..., choice8, option, list"
+  | _ -> failure "supported parametric types are: choice,..., choice8, option, list" (*or stub*)
 
-let rec epdp_pty_univ (t : pty) : pexpr =
+let rec epdp_pty_univ (sh : shadowed) (t : pty) : pexpr =
   match ul t with
-  | PTtuple  ptys -> epdp_tuple_univ ptys
-  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ name
-  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ name ptys 
+  | PTtuple  ptys -> epdp_tuple_univ sh ptys
+  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ sh name
+  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ sh name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
-and epdp_tuple_univ (ptys : pty list) : pexpr =
-  let epdp_name = epdp_tuple_name (List.length ptys) in (*potential name clash with some generated epdp op*)
-  pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
-and epdp_app_univ (name : string) (ptys : pty list) : pexpr =
-  let epdp_name = epdp_app_name name in (*potential name clash with some generated epdp op*)
-  pex_app (pex_ident epdp_name) (List.map (fun t -> epdp_pty_univ t) ptys)
+  
+and epdp_tuple_univ (sh : shadowed) (ptys : pty list) : pexpr =
+  let epdp_name = qualify_opname sh (epdp_tuple_name (List.length ptys)) in
+  pex_app (pex_pqident epdp_name) (List.map (fun t -> epdp_pty_univ sh t) ptys)
 
-let epdp_data_univ (params_map : ty_index IdMap.t) : pexpr =
+and epdp_app_univ (sh : shadowed) (name : string) (ptys : pty list) : pexpr =
+  let epdp_name = qualify_opname sh (epdp_app_name name) in
+  pex_app (pex_pqident epdp_name) (List.map (fun t -> epdp_pty_univ sh t) ptys)
+
+let epdp_data_univ (sh : shadowed) (params_map : ty_index IdMap.t) : pexpr =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> pex_ident "epdp_unit_univ" (*potential name clash with some generated epdp op*)
-  | [t] -> epdp_pty_univ t
-  | _ -> epdp_tuple_univ ptys
+  | [] -> pex_pqident (qualify_opname sh "epdp_unit_univ")
+  | [t] -> epdp_pty_univ sh t
+  | _ -> epdp_tuple_univ sh ptys
 
 let pex_unit = pex_tuple []
   
@@ -318,8 +331,8 @@ let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdM
   then pex_unit
   else pex_tuple (List.map (fun pn -> pex_proj (pex_ident var_name) (name_record msg_name pn)) pns)
 
-let enc_u (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pexpr =
-  let ex = pex_proj (epdp_data_univ params_map) "enc" in
+let enc_u (sh : shadowed) (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pexpr =
+  let ex = pex_proj (epdp_data_univ sh params_map) "enc" in
   let args = enc_args var_name msg_name params_map in
   pex_app ex [args]
 
@@ -328,7 +341,7 @@ let pex_of_int (i : int) : pexpr =
 
 let enc_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "x" in
-  let u = enc_u var_name mty_name mb.params_map in
+  let u = enc_u sh var_name mty_name mb.params_map in
   let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
@@ -526,7 +539,7 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let pat1 = PPApp ((pqs "None", None), []) in
   let mtch1 = (pat1, pex_None) in
 
-  let dd = pex_proj (epdp_data_univ mb.params_map) "dec" in
+  let dd = pex_proj (epdp_data_univ sh mb.params_map) "dec" in
   let pmex = pex_app dd [pex_ident v] in
   let else_br = pex_match pmex [mtch1; mtch2] in
 
@@ -634,8 +647,8 @@ let write_hint_rewrite_epdp (ppf : Format.formatter) (name : string) : unit =
   Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
   print_newline ppf
 
-let epdp_name_univ_form (name : string) : pformula =
-  pform_ident (epdp_ty_univ_name name)
+let epdp_name_univ_form (sh : shadowed) (name : string) : pformula =
+  pform_pqident (qualify_opname sh (epdp_tyname_univ name))
 
   
 let pform_tuple (pfs : pformula list) : pformula =
@@ -649,25 +662,27 @@ let pform_proj (f : pformula) (name : string) : pformula =
 let pform_app (f : pformula) (args : pformula list) : pformula =
   dl (PFapp (f,args))
     
-let rec epdp_pty_univ_form (t : pty) : pformula =
+let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
   match ul t with
-  | PTtuple  ptys -> epdp_tuple_univ_form ptys
-  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ_form name
-  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form name ptys 
+  | PTtuple  ptys -> epdp_tuple_univ_form sh ptys
+  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ_form sh name
+  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form sh name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
-and epdp_tuple_univ_form (ptys : pty list) : pformula =
-  let epdp_name = epdp_tuple_name (List.length ptys) in (*potential name clash with some generated epdp op*)
-  pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
-and epdp_app_univ_form (name : string) (ptys : pty list) : pformula =
-  let epdp_name = epdp_app_name name in (*potential name clash with some generated epdp op*)
-  pform_app (pform_ident epdp_name) (List.map (fun t -> epdp_pty_univ_form t) ptys)
+  
+and epdp_tuple_univ_form (sh : shadowed) (ptys : pty list) : pformula =
+  let epdp_name = qualify_opname sh (epdp_tuple_name (List.length ptys)) in
+  pform_app (pform_pqident epdp_name) (List.map (fun t -> epdp_pty_univ_form sh t) ptys)
 
-let epdp_data_univ_form (params_map : ty_index IdMap.t) : pformula =
+and epdp_app_univ_form (sh : shadowed) (name : string) (ptys : pty list) : pformula =
+  let epdp_name = qualify_opname sh (epdp_app_name name) in
+  pform_app (pform_pqident epdp_name) (List.map (fun t -> epdp_pty_univ_form sh t) ptys)
+
+let epdp_data_univ_form (sh : shadowed) (params_map : ty_index IdMap.t) : pformula =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> pform_ident "epdp_unit_univ" (*potential name clash with some generated epdp op*)
-  | [t] -> epdp_pty_univ_form t
-  | _ -> epdp_tuple_univ_form ptys
+  | [] -> pform_pqident (qualify_opname sh "epdp_unit_univ")
+  | [t] -> epdp_pty_univ_form sh t
+  | _ -> epdp_tuple_univ_form sh ptys
   
 let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
   let pns = fst (List.split (params_map_to_list params_map)) in
@@ -675,8 +690,8 @@ let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_inde
   then pform_unit
   else pform_tuple (List.map (fun pn -> pform_proj (pform_ident var_name) (name_record msg_name pn)) pns)
 
-let enc_u_form (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pformula =
-  let f = pform_proj (epdp_data_univ_form params_map) "enc" in
+let enc_u_form (sh : shadowed) (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pformula =
+  let f = pform_proj (epdp_data_univ_form sh params_map) "enc" in
   let args = enc_args_form var_name msg_name params_map in
   pform_app f [args]
 
@@ -714,7 +729,7 @@ let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : mess
     in
   let fdport = if mb.dir = In then funcport else otherport in
   let fsport = if mb.dir = In then otherport else funcport in
-  let fdata = enc_u_form x mty_name mb.params_map in
+  let fdata = enc_u_form sh x mty_name mb.params_map in
   let fmsg = dl (PFtuple [fmode; fdport; fsport; pf_of_int tag; fdata] ) in
   
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
@@ -1173,8 +1188,7 @@ let add_pat_vals
       )
       locals patl (fst (List.split (params_map_to_list mb.params_map)))
     
-let rec mmcl2matchinstr 
-  (locals : locals)
+let rec mmcl2matchinstr
   (interfaces : interfaces) 
   (mmcl : msg_match_clause_tyd list)
   : pstmt =
@@ -1192,66 +1206,92 @@ let rec mmcl2matchinstr
       (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
       [pex_ident __m] in
     let mb = get_message_body interfaces iip msgtyname in
+    let locals = { vals = IdMap.empty } in
     let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
     let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
     let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
-    let recur = mmcl2matchinstr locals interfaces mmcl' in
+    let recur = mmcl2matchinstr interfaces mmcl' in
     let nonebr = (PPApp ((pqs "None", None), []), recur) in
     [ps_match decmsg [somebr; nonebr]]
 
-let state2matchbranch 
-  (locals : locals)
-  (interfaces : interfaces)
+let proc_state_name (stname : string) : string = "proc"^stname
+
+let proc_state_decl (stname : string) (state : state_body_tyd) : pfunction_decl = 
+  let pl = params_map_to_list state.params in
+  let params = List.map (fun (name, pty) -> (dl name,pty)) pl in
+  {
+    pfd_name     = dl (proc_state_name stname);
+    pfd_tyargs   = Fparams_exp ((dl __m, msg_pty)::params);
+    pfd_tyresult = option_of_pty msg_pty;
+    pfd_uses     = (true, None);
+  }
+
+let get_vars (state : state_body_tyd) : pfunction_local list =
+    let vars = params_map_to_list state.vars in
+    List.map (fun (n,t) -> pf_var n t) vars
+
+let proc_state_body (interfaces : interfaces) (state : state_body_tyd) =
+  let assign__r = ps_assign __r pex_None in
+  let state_match = mmcl2matchinstr interfaces (List.filter 
+      (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
+    state.mmclauses) in
+  {
+    pfb_locals = (get_vars state)@[pf_var __r  (option_of_pty msg_pty)];
+    pfb_body   = assign__r :: state_match;
+    pfb_return = Some (pex_ident __r);
+  }
+  
+
+let proc_state (interfaces : interfaces) (stname, state : string * state_tyd) =
+  let state = ul state in
+  let pdecl = proc_state_decl stname state in
+  let pbody = proc_state_body interfaces state in
+  dl (Pst_fun (pdecl, pbody))
+  
+let call_state stname param_names =
+    let param_exl = List.map (fun n -> pex_ident n) param_names in
+    dl (PScall (
+    Some (dl (PLvSymbol (pqs __r))),
+    dl ([], dl (proc_state_name stname)),
+    dl (pex_ident __m::param_exl)   ))
+
+let state2matchbranch
   (stname, state : string * state_tyd) 
   : ppattern * pstmt =
   let state = ul state in
+  let param_names = fst (List.split (params_map_to_list state.params)) in
   let ppat = PPApp (
     (pqs (state_name stname), None),
-    List.map (fun (n, _) -> dl (Some (dl n))) (params_map_to_list state.params)
+    List.map (fun n -> dl (Some (dl n))) param_names
   ) in
-  let pstm = mmcl2matchinstr locals interfaces (List.filter 
-      (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
-    state.mmclauses) in
-  (ppat, pstm)
+  let pstmt = [call_state stname param_names] in (*TODO call proc_state, assign result to _r*)
+  (ppat, pstmt)
 
 let party_match
-  (interfaces : interfaces)
   (states : state_tyd IdMap.t) : pinstr = 
   let mtch_ex = pex_ident __st in
-  let locals = { vals = IdMap.empty } in
-  let branches = List.map (state2matchbranch locals interfaces) (IdMap.bindings states) in
+  let branches = List.map state2matchbranch (IdMap.bindings states) in
   ps_match mtch_ex branches
 
-let pparties_decl = {
+let pparties_decl : pfunction_decl = {
   pfd_name     = dl _parties;
   pfd_tyargs   = Fparams_exp [(dl __m, msg_pty)];
   pfd_tyresult = option_of_pty msg_pty;
   pfd_uses     = (true, None);
 }
 
-let get_vars (states : state_tyd IdMap.t) : pfunction_local list =
-  IdMap.fold ( fun _ state pfll ->
-    let state = ul state in
-    let vars = params_map_to_list state.vars in
-    pfll @ (List.map (fun (n,t) -> pf_var n t) vars)
-  ) states []
-
-let pparties_body  
-  (interfaces : interfaces)
+let pparties_body
   (states : state_tyd IdMap.t) =
-  let assign__r = ps_assign __r pex_None in
-  let local_vars = get_vars states in (*TODO give unique names*)
-  let party_match = party_match interfaces states in
+  let party_match = party_match states in
   {
-    pfb_locals = [pf_var __r  (option_of_pty msg_pty)] @ local_vars;
-    pfb_body   = [assign__r; party_match];
+    pfb_locals = [pf_var __r  (option_of_pty msg_pty)];
+    pfb_body   = [party_match];
     pfb_return = Some (pex_ident __r);
   }
 
 let proc_parties
-  (interfaces : interfaces)
   (states : state_tyd IdMap.t) =
-  let body = pparties_body interfaces states in
+  let body = pparties_body states in
   dl (Pst_fun (pparties_decl, body))
 (*****************************************************************************)
 
@@ -1343,7 +1383,10 @@ let ideal_module
     var__adv;
     var__st;
     proc_init fbi.states;
-    proc_parties interfaces fbi.states;
+  ]@
+  (List.map (proc_state interfaces) (IdMap.bindings fbi.states))@ 
+  [
+    proc_parties fbi.states;
     proc_invoke interfaces.di_name di_mem_names interfaces.ai_name;
   ] in
   let pmodule_def = pmodule_def name items in
