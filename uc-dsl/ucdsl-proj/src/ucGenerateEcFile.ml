@@ -7,6 +7,8 @@ let stf = Format.std_formatter (*REMOVE*)
 
 let dl = UcUtils.dummyloc
 
+type qsymbol = EcSymbols.qsymbol 
+
 let qs = qsymb_of_symb
 
 let pqs (name : string) = dl (qs name)
@@ -112,6 +114,10 @@ let named_pty (name : string) = qnamed_pty (qs name)
 
 let _option = "option"
 
+let _epdp = "epdp"
+
+let _univ = "univ"
+
 let option_of_pty (pty : pty) = dl (PTapp (pqs _option,[pty]))
 
 let addr_pty = named_pty "addr"
@@ -123,6 +129,8 @@ let msg_pty = named_pty "msg"
 let int_pty = named_pty "int"
 
 let unit_pty = named_pty "unit"
+
+let univ_pty = named_pty _univ
   
 let abs_oper_int (name : string) : poperator =  
   let podef = PO_abstr (int_pty) in
@@ -192,9 +200,18 @@ let isdirect (mb : message_body_tyd) : bool =
   | None -> false
   | Some _ -> true
 
+module Qs =  (* domain: string list = symbol list *)
+  struct
+    type t = EcSymbols.qsymbol
+    let compare = Stdlib.compare
+  end
+  
+module QsMap = Map.Make(Qs)
+
 type shadowed = {
   types     : pqsymbol IdMap.t;
   operators : pqsymbol IdMap.t;
+  nonUCepdp_named : pqsymbol QsMap.t;
 }
 
 let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
@@ -244,6 +261,51 @@ let write_type (ppf : Format.formatter) (ptyd : ptydecl) : unit =
   print_type ppf name;
   print_newline ppf
 
+let proof () : unit =
+  UcEcInterface.process (Gtactics (`Proof {pm_strict = true}))
+
+let admit () : unit =
+  let ptac = 
+  {
+    pt_core = dl Padmit;
+    pt_intros = []
+  } in
+  UcEcInterface.process (Gtactics (`Actual [ptac]))
+  
+let qed () : unit =
+  UcEcInterface.process (Gsave (dl `Qed))
+ 
+let proof_admit_qed () : unit =
+  proof ();
+  admit ();
+  qed ()
+  
+let print_proof_admit_qed (ppf : Format.formatter) : unit =
+  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
+  Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
+  
+let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
+  let name = ul lemma.pa_name in
+  decl_axiom lemma;
+  proof_admit_qed ();
+  print_axiom ppf name;
+  print_proof_admit_qed ppf;
+  print_newline ppf
+
+let write_hint_simplify (ppf : Format.formatter) (lname : string) : unit =
+  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
+  let red = ([`EqTrue], [([pqs lname], None)]) in
+  UcEcInterface.process (Greduction red);
+  Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
+  print_newline ppf
+
+let write_hint_rewrite (ppf : Format.formatter) (lname : string) : unit =
+  let rw = (`Global, pqs _epdp, [pqs lname]) in
+  UcEcInterface.process (Gaddrw rw);
+  Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
+  Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
+  print_newline ppf
+
 let enc_op_name (name : string) : string = "enc_"^name
 
 let pex_pqident (pqname : pqsymbol) : pexpr =
@@ -264,18 +326,103 @@ let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
 let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
   dl (PEapp (ex,args))
 
-let epdp_tyname_univ (tyname : string) : string =
-  match tyname with
-  | "unit" -> "epdp_unit_univ"
-  | "bool" -> "epdp_bool_univ"
-  | "int"  -> "epdp_int_univ"
-  | "addr" -> "epdp_addr_univ"
-  | "port" -> "epdp_port_univ"
-  | "univ" -> "epdp_id"
-  | _ -> failure ("yet unsupported epdp for "^tyname) (*or stub*)
+let epdp_basicUCty_univ (tyname : qsymbol) : string option =
+  let epdp_name (name : string) : string option =
+    match name with
+    | "unit" -> Some "epdp_unit_univ"
+    | "bool" -> Some "epdp_bool_univ"
+    | "int"  -> Some "epdp_int_univ"
+    | "addr" -> Some "epdp_addr_univ"
+    | "port" -> Some "epdp_port_univ"
+    | _univ  -> Some "epdp_id"
+    | _ -> None
+  in
+  let qual,name = tyname in
+  match qual with
+  | ["UCBasicTypes"] -> epdp_name name
+  | [] -> epdp_name name
+  | _ -> None
+  
+let stub_no = ref 0
 
-let epdp_name_univ (sh : shadowed) (name : string) : pexpr =
-  pex_pqident (qualify_opname sh (epdp_tyname_univ name))
+let epdp_namedty_stub_name (name : string) : string =
+  stub_no := !stub_no+1;
+  "UC_epdp_stub"^(string_of_int !stub_no) ^"_"^name
+  
+let epdp_namedty_op (name : string) : poperator =  
+  let opty = PTapp (pqs _epdp, [named_pty name; univ_pty]) in
+  let podef = PO_abstr (dl opty) in
+  {
+    po_kind     = `Op;
+    po_name     = dl (epdp_namedty_stub_name name);
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  }
+  
+let name_lemma_epdp_valid (name : string) : string =
+  "valid_"^name
+
+let lemma_epdp (opname : string) : paxiom =
+  let f_ve = pform_ident "valid_epdp" in
+  let f_e = pform_ident opname in
+  let pfrm = dl (PFapp (f_ve, [f_e])) in 
+  {
+    pa_name     = dl (name_lemma_epdp_valid opname);
+    pa_tyvars   = None;
+    pa_vars     = None;
+    pa_formula  = pfrm;
+    pa_kind     = PLemma None;
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  }
+
+
+let write_epdp_namedty_stub (ppf : Format.formatter) (name : string) : string =
+  let op = epdp_namedty_op name in
+  write_operator ppf op;
+  let opname = ul op.po_name in
+  let le = lemma_epdp opname in
+  write_lemma ppf le;
+  let lename = ul le.pa_name in
+  write_hint_simplify ppf lename;
+  write_hint_rewrite ppf lename;
+  opname
+  
+let add_nonUCepdp_namedty (ppf : Format.formatter) (sh : shadowed) 
+(name : qsymbol) : shadowed =
+  let _, n = name in
+  let opname = write_epdp_namedty_stub ppf n in
+  {
+    types = sh.types;
+    operators = sh.operators;
+    nonUCepdp_named = QsMap.add name (pqs opname) sh.nonUCepdp_named;  
+  }
+
+let epdp_named_non_UC_type (ppf : Format.formatter option) (sh : shadowed) 
+(name : qsymbol) : shadowed * pqsymbol =
+  let sh = if (QsMap.mem name sh.nonUCepdp_named) then sh else
+    add_nonUCepdp_namedty (EcUtils.oget ppf) sh name in
+  let epdp_op_pqname = QsMap.find name sh.nonUCepdp_named in
+  sh, epdp_op_pqname
+
+let epdp_namedty_univ (ppf : Format.formatter option) (sh : shadowed)
+(name : qsymbol) : shadowed * pqsymbol  =
+  let eno = epdp_basicUCty_univ name in
+  match eno with
+  | Some en -> sh, (qualify_opname sh en)
+  | None -> epdp_named_non_UC_type ppf sh name
+
+let pex_epdp_namedty_univ (ppf : Format.formatter) (sh : shadowed) 
+(name : qsymbol) : shadowed * pexpr =
+  let sh, pqopname = epdp_namedty_univ (Some ppf) sh name in
+  sh, pex_pqident pqopname
+    
 
 let epdp_tuple_name (arity : int) : string =
   match arity with
@@ -301,27 +448,40 @@ let epdp_app_name (name : string) : string =
   | "list"    -> "epdp_list_univ"
   | _ -> failure "supported parametric types are: choice,..., choice8, option, list" (*or stub*)
 
-let rec epdp_pty_univ (sh : shadowed) (t : pty) : pexpr =
+let rec epdp_pty_univ (ppf : Format.formatter) (sh : shadowed) 
+(t : pty) : shadowed * pexpr =
   match ul t with
-  | PTtuple  ptys -> epdp_tuple_univ sh ptys
-  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ sh name
-  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ sh name ptys 
+  | PTtuple  ptys -> epdp_tuple_univ ppf sh ptys
+  | PTnamed  pqs  -> pex_epdp_namedty_univ ppf sh (ul pqs)
+  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ ppf sh name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
+
+and epdp_ptyl (ppf : Format.formatter) (sh : shadowed) 
+(tl : pty list) : shadowed * (pexpr list) =
+  List.fold_left ( fun (sh, exl) t ->
+    let sh', ex = epdp_pty_univ ppf sh t in
+    sh', exl@[ex]
+  ) (sh,[]) tl
   
-and epdp_tuple_univ (sh : shadowed) (ptys : pty list) : pexpr =
+and epdp_tuple_univ (ppf : Format.formatter) (sh : shadowed) 
+(ptys : pty list) : shadowed * pexpr =
   let epdp_name = qualify_opname sh (epdp_tuple_name (List.length ptys)) in
-  pex_app (pex_pqident epdp_name) (List.map (fun t -> epdp_pty_univ sh t) ptys)
+  let sh', exl = epdp_ptyl ppf sh ptys in
+  sh', pex_app (pex_pqident epdp_name) exl
 
-and epdp_app_univ (sh : shadowed) (name : string) (ptys : pty list) : pexpr =
+and epdp_app_univ (ppf : Format.formatter) (sh : shadowed) 
+(name : string) (ptys : pty list) : shadowed * pexpr =
   let epdp_name = qualify_opname sh (epdp_app_name name) in
-  pex_app (pex_pqident epdp_name) (List.map (fun t -> epdp_pty_univ sh t) ptys)
+  let sh', exl = epdp_ptyl ppf sh ptys in
+  sh', pex_app (pex_pqident epdp_name) exl
 
-let epdp_data_univ (sh : shadowed) (params_map : ty_index IdMap.t) : pexpr =
+let epdp_data_univ (ppf : Format.formatter) (sh : shadowed) 
+(params_map : ty_index IdMap.t) : shadowed * pexpr =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> pex_pqident (qualify_opname sh "epdp_unit_univ")
-  | [t] -> epdp_pty_univ sh t
-  | _ -> epdp_tuple_univ sh ptys
+  | [] -> sh, pex_pqident (qualify_opname sh "epdp_unit_univ")
+  | [t] -> epdp_pty_univ ppf sh t
+  | _ -> epdp_tuple_univ ppf sh ptys
 
 let pex_unit = pex_tuple []
   
@@ -331,17 +491,21 @@ let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdM
   then pex_unit
   else pex_tuple (List.map (fun pn -> pex_proj (pex_ident var_name) (name_record msg_name pn)) pns)
 
-let enc_u (sh : shadowed) (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pexpr =
-  let ex = pex_proj (epdp_data_univ sh params_map) "enc" in
+let enc_u (ppf : Format.formatter) (sh : shadowed) 
+(var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) 
+: shadowed * pexpr =
+  let sh', ex = epdp_data_univ ppf sh params_map in
+  let ex = pex_proj ex "enc" in
   let args = enc_args var_name msg_name params_map in
-  pex_app ex [args]
+  sh', pex_app ex [args]
 
 let pex_of_int (i : int) : pexpr =
   dl (PEint (EcBigInt.of_int i))
 
-let enc_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
+let enc_op (ppf : Format.formatter) (sh : shadowed) 
+(tag : int) (mty_name : string) (mb : message_body_tyd) : shadowed * poperator =
   let var_name = "x" in
-  let u = enc_u sh var_name mty_name mb.params_map in
+  let sh, u = enc_u ppf sh var_name mty_name mb.params_map in
   let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
     pex_ident opname_pi ] in
@@ -359,6 +523,7 @@ let enc_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let encex = pex_tuple [mode; ptdest; ptsource; pex_of_int tag; u] in
   let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
   let def = PO_concr (qualify_ty sh msg_pty, encex) in
+  sh,
   {
     po_kind     = `Op;
     po_name     = dl (enc_op_name mty_name);
@@ -539,7 +704,9 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let pat1 = PPApp ((pqs "None", None), []) in
   let mtch1 = (pat1, pex_None) in
 
-  let dd = pex_proj (epdp_data_univ sh mb.params_map) "dec" in
+  let ppf = Format.std_formatter in (*dummy formatter, it will never be used, TODO replace with formatter option,  = None*)
+  let _ , epdp_op = epdp_data_univ ppf sh mb.params_map in
+  let dd = pex_proj epdp_op "dec" in
   let pmex = pex_app dd [pex_ident v] in
   let else_br = pex_match pmex [mtch1; mtch2] in
 
@@ -583,72 +750,9 @@ let epdp_op (mty_name : string) : poperator =
     po_locality = `Global;
   }
 
-let name_lemma_epdp_valid (name : string) : string =
-  "valid_epdp_"^name
-
-let lemma_epdp (name : string) : paxiom =
-  let f_ve = pform_ident "valid_epdp" in
-  let f_e = pform_ident (name_epdp_op name) in
-  let pfrm = dl (PFapp (f_ve, [f_e])) in 
-  {
-    pa_name     = dl (name_lemma_epdp_valid name);
-    pa_tyvars   = None;
-    pa_vars     = None;
-    pa_formula  = pfrm;
-    pa_kind     = PLemma None;
-    pa_nosmt    = false;
-    pa_locality = `Global;
-  }
-
-let proof () : unit =
-  UcEcInterface.process (Gtactics (`Proof {pm_strict = true}))
-
-let admit () : unit =
-  let ptac = 
-  {
-    pt_core = dl Padmit;
-    pt_intros = []
-  } in
-  UcEcInterface.process (Gtactics (`Actual [ptac]))
-  
-let qed () : unit =
-  UcEcInterface.process (Gsave (dl `Qed))
- 
-let proof_admit_qed () : unit =
-  proof ();
-  admit ();
-  qed ()
-  
-let print_proof_admit_qed (ppf : Format.formatter) : unit =
-  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
-  Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
-
-let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
-  let name = ul lemma.pa_name in
-  decl_axiom lemma;
-  proof_admit_qed ();
-  print_axiom ppf name;
-  print_proof_admit_qed ppf;
-  print_newline ppf
-    
-let write_hint_simplify_epdp (ppf : Format.formatter) (name : string) : unit =
-  let lname = name_lemma_epdp_valid name in
-  let red = ([`EqTrue], [([pqs lname], None)]) in
-  UcEcInterface.process (Greduction red);
-  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
-  Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
-  print_newline ppf
-  
-let write_hint_rewrite_epdp (ppf : Format.formatter) (name : string) : unit =
-  let lname = name_lemma_epdp_valid name in
-  let rw = (`Global, pqs "epdp", [pqs lname]) in
-  UcEcInterface.process (Gaddrw rw);
-  Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
-  Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
-  print_newline ppf
-
-let epdp_name_univ_form (sh : shadowed) (name : string) : pformula =
-  pform_pqident (qualify_opname sh (epdp_tyname_univ name))
+let pform_epdp_namedty_univ (sh : shadowed) (name : qsymbol) : pformula =
+  let _, pqs = epdp_namedty_univ None sh name in
+  pform_pqident pqs
 
   
 let pform_tuple (pfs : pformula list) : pformula =
@@ -665,7 +769,7 @@ let pform_app (f : pformula) (args : pformula list) : pformula =
 let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ_form sh ptys
-  | PTnamed  pqs  -> let (_, name) = ul pqs in epdp_name_univ_form sh name
+  | PTnamed  pqs  -> pform_epdp_namedty_univ sh (ul pqs)
   | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form sh name ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
   
@@ -747,15 +851,20 @@ let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : mess
   }
 
 let write_message (ppf : Format.formatter) (sh : shadowed) 
-  (tag : int) (name : string) (mb : message_body_tyd) : unit =
+  (tag : int) (name : string) (mb : message_body_tyd) : shadowed =
   write_type ppf (msg_type sh name mb);
-  write_operator ppf (enc_op sh tag name mb);
+  let sh, op = enc_op ppf sh tag name mb in
+  write_operator ppf op;
   write_operator ppf (dec_op sh tag name mb);
-  write_operator ppf (epdp_op name);
-  write_lemma ppf (lemma_epdp name);
-  write_hint_simplify_epdp ppf name;
-  write_hint_rewrite_epdp ppf name;
-  write_lemma ppf (lemma_eq_of_valid sh tag name mb)
+  let epdpop = epdp_op name in
+  write_operator ppf epdpop;
+  let epdplem = lemma_epdp (ul epdpop.po_name) in
+  write_lemma ppf epdplem;
+  let lename = ul epdplem.pa_name in
+  write_hint_simplify ppf lename;
+  write_hint_rewrite ppf lename;
+  write_lemma ppf (lemma_eq_of_valid sh tag name mb);
+  sh
   
 let oper_int (name : string) (value : int) : poperator =  
   let podef = PO_concr (dl PTunivar, pex_of_int value) in
@@ -780,7 +889,8 @@ let uc_name (name : string) : string =
 let init_shadowed : shadowed = 
   {
     types = IdMap.empty;
-    operators = IdMap.empty
+    operators = IdMap.empty;
+    nonUCepdp_named = QsMap.empty;
   }
 
 let add_ty_name (sh : shadowed) (name : string) : shadowed =
@@ -790,6 +900,7 @@ let add_ty_name (sh : shadowed) (name : string) : shadowed =
     {
       types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
       operators = sh.operators;
+      nonUCepdp_named = sh.nonUCepdp_named;
     }
 
 let add_op_name (sh : shadowed) (name : string) : shadowed =
@@ -799,6 +910,7 @@ let add_op_name (sh : shadowed) (name : string) : shadowed =
     {
       types = sh.types;
       operators = IdMap.add name (dl (EcPath.toqsymbol path)) sh.operators;
+      nonUCepdp_named = sh.nonUCepdp_named;
     }
 
 let add_shadowing_decls (sh : shadowed) (name : string) : shadowed =
@@ -822,7 +934,7 @@ let write_basic_int
   let bibtl = IdMap.bindings bibt in
   let _ = List.fold_left ( fun (i,sh) (n, mb) -> 
     let sh = add_shadowing_decls sh n in
-    write_message ppf sh i n mb;
+    let sh = write_message ppf sh i n mb in
     (i+1, sh)
   ) (0,init_shadowed) bibtl in
   write_close_theory ppf name
@@ -940,7 +1052,6 @@ let mk_message_record_ex
     (fun pn ex -> pexrfield_iip (name_record msgtyname pn) ex) 
     pns data in
   pex_record None (funcfld::otherfld::dataflds)
-
 
 let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   let uc_ec_expr = uc2ec_expr locals in
@@ -1152,7 +1263,7 @@ let proc_init (states : state_tyd IdMap.t) =
   dl (Pst_fun (pinit_decl, body))
 (*****************************************************************************)    
 
-(* proc parties **************************************************************)
+(* proc state ****************************************************************)
 let add_pat_vals
   (inter_id_path : string list)
   (msgtyname : string)
@@ -1247,7 +1358,9 @@ let proc_state (interfaces : interfaces) (stname, state : string * state_tyd) =
   let pdecl = proc_state_decl stname state in
   let pbody = proc_state_body interfaces state in
   dl (Pst_fun (pdecl, pbody))
-  
+(*****************************************************************************)
+
+(* proc parties **************************************************************)
 let call_state stname param_names =
     let param_exl = List.map (fun n -> pex_ident n) param_names in
     dl (PScall (
