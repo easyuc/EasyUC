@@ -216,11 +216,20 @@ module Tyl =  (* domain: string list = symbol list *)
   
 module TylMap = Map.Make(Tyl)
 
+module App =  (* domain: string list = symbol list *)
+  struct
+    type t = qsymbol * pty_r list
+    let compare = Stdlib.compare
+  end
+  
+module AppMap = Map.Make(App)
+
 type shadowed = {
   types     : pqsymbol IdMap.t;
   operators : pqsymbol IdMap.t;
   nonUCepdp_named : pqsymbol QsMap.t;
-  nonUCepdp_tuple : pqsymbol TylMap.t
+  nonUCepdp_tuple : pqsymbol TylMap.t;
+  nonUCepdp_appty : pqsymbol AppMap.t;
 }
 
 let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
@@ -413,6 +422,7 @@ let add_nonUCepdp_namedty (ppf : Format.formatter) (sh : shadowed)
     operators = sh.operators;
     nonUCepdp_named = QsMap.add name (pqs opname) sh.nonUCepdp_named;
     nonUCepdp_tuple = sh.nonUCepdp_tuple;
+    nonUCepdp_appty = sh.nonUCepdp_appty;
   }
 
 let epdp_named_non_UC_type (ppf : Format.formatter option) (sh : shadowed) 
@@ -477,7 +487,8 @@ let add_nonUCepdp_tuple (ppf : Format.formatter) (sh : shadowed)
     types = sh.types;
     operators = sh.operators;
     nonUCepdp_named = sh.nonUCepdp_named;
-    nonUCepdp_tuple = TylMap.add tyl (pqs opname) sh.nonUCepdp_tuple;  
+    nonUCepdp_tuple = TylMap.add tyl (pqs opname) sh.nonUCepdp_tuple;
+    nonUCepdp_appty = sh.nonUCepdp_appty;  
   }
 
 let epdp_non_UC_tuple (ppf : Format.formatter option) (sh : shadowed)
@@ -487,31 +498,81 @@ let epdp_non_UC_tuple (ppf : Format.formatter option) (sh : shadowed)
   let epdp_op_pqname = TylMap.find tyl sh'.nonUCepdp_tuple in
   sh', epdp_op_pqname
 
-let epdp_app_name (name : string) : string =
+let epdp_basicUCappty_name (tyname : qsymbol) : string option =
+  let epdp_name (name : string) : string option =
   match name with
-  | "choice" -> "epdp_choice_univ"
-  | "choice3" -> "epdp_choice3_univ"
-  | "choice4" -> "epdp_choice4_univ"
-  | "choice5" -> "epdp_choice5_univ"
-  | "choice6" -> "epdp_choice6_univ"
-  | "choice7" -> "epdp_choice7_univ"
-  | "choice8" -> "epdp_choice8_univ"
-  | "option"  -> "epdp_option_univ"
-  | "list"    -> "epdp_list_univ"
-  | _ -> failure "supported parametric types are: choice,..., choice8, option, list" (*or stub*)
+    | "choice"  -> Some "epdp_choice_univ"
+    | "choice3" -> Some "epdp_choice3_univ"
+    | "choice4" -> Some "epdp_choice4_univ"
+    | "choice5" -> Some "epdp_choice5_univ"
+    | "choice6" -> Some "epdp_choice6_univ"
+    | "choice7" -> Some "epdp_choice7_univ"
+    | "choice8" -> Some "epdp_choice8_univ"
+    | "option"  -> Some "epdp_option_univ"
+    | "list"    -> Some "epdp_list_univ"
+    | _ -> None
+  in
+  let qual,name = tyname in
+  match qual with
+  | ["UCBasicTypes"] -> epdp_name name
+  | [] -> epdp_name name
+  | _ -> None
+
+let epdp_appty_stub_name (app : qsymbol) : string =
+  (epdp_stub_prefix ())^"_app_"^(EcSymbols.string_of_qsymbol app)
+
+let epdp_appty_op (app : qsymbol) (tyl : pty_r list) : poperator =
+  let name = epdp_appty_stub_name app in
+  let epdp_app_ty (pty : pty) =
+    dl (PTapp (pqs _epdp, [pty; univ_pty]))
+  in
+  let app = dl (PTapp ( dl app , (List.map (fun t-> (dl t)) tyl) )) in
+  let opty = epdp_app_ty app in
+  let podef = PO_abstr opty in
+  {
+    po_kind     = `Op;
+    po_name     = dl name;
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;				
+    po_locality = `Global;
+  }
+
+let add_nonUCepdp_appty (ppf : Format.formatter) (sh : shadowed)
+(app : qsymbol) (tyl : pty_r list) : shadowed =
+  let opname = write_epdp_stub ppf (epdp_appty_op app tyl) in
+  {
+    types = sh.types;
+    operators = sh.operators;
+    nonUCepdp_named = sh.nonUCepdp_named;
+    nonUCepdp_tuple = sh.nonUCepdp_tuple;
+    nonUCepdp_appty = AppMap.add (app,tyl) (pqs opname) sh.nonUCepdp_appty;  
+  }
+
+let epdp_non_UC_appty (ppf : Format.formatter option) (sh : shadowed)
+(app : qsymbol) (tyl : pty_r list): shadowed * pqsymbol  =
+  let sh' = if (AppMap.mem (app,tyl) sh.nonUCepdp_appty) then sh else
+    add_nonUCepdp_appty (EcUtils.oget ppf) sh app tyl in
+  let epdp_op_pqname = AppMap.find (app,tyl) sh'.nonUCepdp_appty in
+  sh', epdp_op_pqname
 
 let rec epdp_pty_univ (ppf : Format.formatter option) (sh : shadowed) 
 (t : pty) : shadowed * pexpr =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ ppf sh ptys
   | PTnamed  pqs  -> pex_epdp_namedty_univ ppf sh (ul pqs)
-  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ ppf sh name ptys
+  | PTapp (pqs, ptys) -> epdp_app_univ ppf sh (ul pqs) ptys
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 
 and epdp_ptyl (ppf : Format.formatter option) (sh : shadowed) 
 (tl : pty list) : shadowed * (pexpr list) =
   List.fold_left ( fun (sh, l) t ->
-    let sh', e = epdp_pty_univ ppf sh t in
+    let qt = qualify_ty sh t in
+    let sh', e = epdp_pty_univ ppf sh qt in
     sh', l@[e]
   ) (sh,[]) tl
   
@@ -530,10 +591,17 @@ and epdp_tuple_univ (ppf : Format.formatter option) (sh : shadowed)
     sh', pex_pqident epdp_name
 
 and epdp_app_univ (ppf : Format.formatter option) (sh : shadowed) 
-(name : string) (ptys : pty list) : shadowed * pexpr =
-  let epdp_name = qualify_opname sh (epdp_app_name name) in
-  let sh', exl = epdp_ptyl ppf sh ptys in
-  sh', pex_app (pex_pqident epdp_name) exl
+(app : qsymbol) (ptys : pty list) : shadowed * pexpr =
+  let tyl = EcLocation.unlocs ptys in
+  let eno = epdp_basicUCappty_name app in
+  match eno with
+  | Some en ->
+    let sh', exl = epdp_ptyl ppf sh ptys in
+    let epdp_name = qualify_opname sh en in
+    sh', pex_app (pex_pqident epdp_name) exl
+  | None -> 
+    let sh', epdp_name = epdp_non_UC_appty ppf sh app tyl in
+    sh', pex_pqident epdp_name
 
 let epdp_data_univ (ppf : Format.formatter option) (sh : shadowed) 
 (params_map : ty_index IdMap.t) : shadowed * pexpr =
@@ -831,13 +899,14 @@ let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ_form sh ptys
   | PTnamed  pqs  -> pform_epdp_namedty_univ sh (ul pqs)
-  | PTapp (pqs, ptys) -> let (_, name) = ul pqs in epdp_app_univ_form sh name ptys 
+  | PTapp (pqs, ptys) -> epdp_app_univ_form sh (ul pqs) ptys 
   | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
 
 and epdp_ptyl_form (sh : shadowed) 
 (tl : pty list) : pformula list =
   List.fold_left ( fun l t ->
-    let e = epdp_pty_univ_form sh t in
+    let qt = qualify_ty sh t in
+    let e = epdp_pty_univ_form sh qt in
     l@[e]
   ) [] tl
   
@@ -854,10 +923,18 @@ and epdp_tuple_univ_form (sh : shadowed) (ptys : pty list) : pformula =
     let _, epdp_name = epdp_non_UC_tuple None sh tyl in
     pform_pqident epdp_name
 
-and epdp_app_univ_form (sh : shadowed) (name : string) (ptys : pty list) : pformula =
-  let epdp_name = qualify_opname sh (epdp_app_name name) in
-  pform_app (pform_pqident epdp_name) (List.map (fun t -> epdp_pty_univ_form sh t) ptys)
-
+and epdp_app_univ_form (sh : shadowed) (app : qsymbol) (ptys : pty list) : pformula =
+  let tyl = EcLocation.unlocs ptys in
+  let eno = epdp_basicUCappty_name app in
+  match eno with
+  | Some en ->
+    let fl = epdp_ptyl_form sh ptys in
+    let epdp_name = qualify_opname sh en in
+    pform_app (pform_pqident epdp_name) fl
+  | None -> 
+    let _, epdp_name = epdp_non_UC_appty None sh app tyl in
+    pform_pqident epdp_name
+    
 let epdp_data_univ_form (sh : shadowed) (params_map : ty_index IdMap.t) : pformula =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
@@ -969,6 +1046,7 @@ let init_shadowed : shadowed =
     operators = IdMap.empty;
     nonUCepdp_named = QsMap.empty;
     nonUCepdp_tuple = TylMap.empty;
+    nonUCepdp_appty = AppMap.empty;
   }
 
 let add_ty_name (sh : shadowed) (name : string) : shadowed =
@@ -980,6 +1058,7 @@ let add_ty_name (sh : shadowed) (name : string) : shadowed =
       operators = sh.operators;
       nonUCepdp_named = sh.nonUCepdp_named;
       nonUCepdp_tuple = sh.nonUCepdp_tuple;
+      nonUCepdp_appty = sh.nonUCepdp_appty;
     }
 
 let add_op_name (sh : shadowed) (name : string) : shadowed =
@@ -991,6 +1070,7 @@ let add_op_name (sh : shadowed) (name : string) : shadowed =
       operators = IdMap.add name (dl (EcPath.toqsymbol path)) sh.operators;
       nonUCepdp_named = sh.nonUCepdp_named;
       nonUCepdp_tuple = sh.nonUCepdp_tuple;
+      nonUCepdp_appty = sh.nonUCepdp_appty;
     }
 
 let add_shadowing_decls (sh : shadowed) (name : string) : shadowed =
