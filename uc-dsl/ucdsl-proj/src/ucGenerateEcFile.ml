@@ -224,12 +224,21 @@ module App =  (* domain: string list = symbol list *)
   
 module AppMap = Map.Make(App)
 
+module Fun =  (* domain: string list = symbol list *)
+  struct
+    type t = pty_r * pty_r
+    let compare = Stdlib.compare
+  end
+  
+module FunMap = Map.Make(Fun)
+
 type shadowed = {
   types     : pqsymbol IdMap.t;
   operators : pqsymbol IdMap.t;
   nonUCepdp_named : pqsymbol QsMap.t;
   nonUCepdp_tuple : pqsymbol TylMap.t;
   nonUCepdp_appty : pqsymbol AppMap.t;
+  nonUCepdp_funty : pqsymbol FunMap.t;
 }
 
 let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
@@ -248,8 +257,10 @@ let rec qualify_ty (sh : shadowed) (pty : pty) : pty =
     dl (PTtuple (qtyl ptyl))
   | PTapp (pqs, ptyl) ->
     dl (PTapp ((maybe_swap pqs sh.types), (qtyl ptyl)))
+  | PTfun (pty1,pty2) ->
+    dl (PTfun (qualify_ty sh pty1, qualify_ty sh pty2))
   | _ -> 
-    failure "Impossible, only named types, tuples and type applications can show up in message declarations"
+    failure "Impossible, only named types, tuples, type applications and functions can show up in message declarations"
 
 let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
   if IdMap.mem name sh.operators
@@ -423,6 +434,7 @@ let add_nonUCepdp_namedty (ppf : Format.formatter) (sh : shadowed)
     nonUCepdp_named = QsMap.add name (pqs opname) sh.nonUCepdp_named;
     nonUCepdp_tuple = sh.nonUCepdp_tuple;
     nonUCepdp_appty = sh.nonUCepdp_appty;
+    nonUCepdp_funty = sh.nonUCepdp_funty;
   }
 
 let epdp_named_non_UC_type (ppf : Format.formatter option) (sh : shadowed) 
@@ -488,7 +500,8 @@ let add_nonUCepdp_tuple (ppf : Format.formatter) (sh : shadowed)
     operators = sh.operators;
     nonUCepdp_named = sh.nonUCepdp_named;
     nonUCepdp_tuple = TylMap.add tyl (pqs opname) sh.nonUCepdp_tuple;
-    nonUCepdp_appty = sh.nonUCepdp_appty;  
+    nonUCepdp_appty = sh.nonUCepdp_appty;
+    nonUCepdp_funty = sh.nonUCepdp_funty;
   }
 
 let epdp_non_UC_tuple (ppf : Format.formatter option) (sh : shadowed)
@@ -550,7 +563,8 @@ let add_nonUCepdp_appty (ppf : Format.formatter) (sh : shadowed)
     operators = sh.operators;
     nonUCepdp_named = sh.nonUCepdp_named;
     nonUCepdp_tuple = sh.nonUCepdp_tuple;
-    nonUCepdp_appty = AppMap.add (app,tyl) (pqs opname) sh.nonUCepdp_appty;  
+    nonUCepdp_appty = AppMap.add (app,tyl) (pqs opname) sh.nonUCepdp_appty;
+    nonUCepdp_funty = sh.nonUCepdp_funty; 
   }
 
 let epdp_non_UC_appty (ppf : Format.formatter option) (sh : shadowed)
@@ -560,13 +574,63 @@ let epdp_non_UC_appty (ppf : Format.formatter option) (sh : shadowed)
   let epdp_op_pqname = AppMap.find (app,tyl) sh'.nonUCepdp_appty in
   sh', epdp_op_pqname
 
+let epdp_funty_stub_name () : string =
+  (epdp_stub_prefix ())^"_fun"
+
+let epdp_funty_op (pty1 : pty_r) (pty2 : pty_r) : poperator =
+  let name = epdp_funty_stub_name() in
+  let epdp_app_ty (pty : pty) =
+    dl (PTapp (pqs _epdp, [pty; univ_pty]))
+  in
+  let funty = dl (PTfun (dl pty1 , dl pty2)) in
+  let opty = epdp_app_ty funty in
+  let podef = PO_abstr opty in
+  {
+    po_kind     = `Op;
+    po_name     = dl name;
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;				
+    po_locality = `Global;
+  }
+
+let add_nonUCepdp_funty (ppf : Format.formatter) (sh : shadowed)
+(pty1 : pty_r) (pty2 : pty_r) : shadowed =
+  let opname = write_epdp_stub ppf (epdp_funty_op pty1 pty2) in
+  {
+    types = sh.types;
+    operators = sh.operators;
+    nonUCepdp_named = sh.nonUCepdp_named;
+    nonUCepdp_tuple = sh.nonUCepdp_tuple;
+    nonUCepdp_appty = sh.nonUCepdp_appty;
+    nonUCepdp_funty = FunMap.add (pty1,pty2) (pqs opname) sh.nonUCepdp_funty;  
+  }
+
+let epdp_non_UC_funty (ppf : Format.formatter option) (sh : shadowed)
+(pty1 : pty_r) (pty2 : pty_r) : shadowed * pqsymbol  =
+  let sh' = if (FunMap.mem (pty1,pty2) sh.nonUCepdp_funty) then sh else
+    add_nonUCepdp_funty (EcUtils.oget ppf) sh pty1 pty2 in
+  let epdp_op_pqname = FunMap.find (pty1,pty2) sh'.nonUCepdp_funty in
+  sh', epdp_op_pqname
+
+let pex_epdp_fun_univ (ppf : Format.formatter option) (sh : shadowed) 
+(pty1 : pty_r) (pty2 : pty_r) : shadowed * pexpr =
+  let sh', epdp_name = epdp_non_UC_funty ppf sh pty1 pty2 in
+  sh', pex_pqident epdp_name
+
+
 let rec epdp_pty_univ (ppf : Format.formatter option) (sh : shadowed) 
 (t : pty) : shadowed * pexpr =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ ppf sh ptys
   | PTnamed  pqs  -> pex_epdp_namedty_univ ppf sh (ul pqs)
   | PTapp (pqs, ptys) -> epdp_app_univ ppf sh (ul pqs) ptys
-  | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
+  | PTfun (pty1, pty2) -> pex_epdp_fun_univ ppf sh (ul pty1) (ul pty2)
+  | _ -> failure ("Only tuples, named types, parametric types and functions are supported." )
 
 and epdp_ptyl (ppf : Format.formatter option) (sh : shadowed) 
 (tl : pty list) : shadowed * (pexpr list) =
@@ -602,7 +666,7 @@ and epdp_app_univ (ppf : Format.formatter option) (sh : shadowed)
   | None -> 
     let sh', epdp_name = epdp_non_UC_appty ppf sh app tyl in
     sh', pex_pqident epdp_name
-
+    
 let epdp_data_univ (ppf : Format.formatter option) (sh : shadowed) 
 (params_map : ty_index IdMap.t) : shadowed * pexpr =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
@@ -882,6 +946,10 @@ let pform_epdp_namedty_univ (sh : shadowed) (name : qsymbol) : pformula =
   let _, pqs = epdp_namedty_univ None sh name in
   pform_pqident pqs
 
+let pform_epdp_fun_univ (sh : shadowed) 
+(pty1 : pty_r) (pty2 : pty_r) : pformula =
+  let _, epdp_name = epdp_non_UC_funty None sh pty1 pty2 in
+  pform_pqident epdp_name
   
 let pform_tuple (pfs : pformula list) : pformula =
   dl (PFtuple pfs)
@@ -899,8 +967,9 @@ let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
   match ul t with
   | PTtuple  ptys -> epdp_tuple_univ_form sh ptys
   | PTnamed  pqs  -> pform_epdp_namedty_univ sh (ul pqs)
-  | PTapp (pqs, ptys) -> epdp_app_univ_form sh (ul pqs) ptys 
-  | _ -> failure ("Only tuples, named types, and parametric types choice,..., choice8, option, list  are supported." )
+  | PTapp (pqs, ptys) -> epdp_app_univ_form sh (ul pqs) ptys
+  | PTfun (pty1, pty2) -> pform_epdp_fun_univ sh (ul pty1) (ul pty2)
+  | _ -> failure ("Only tuples, named types, parametric types and functions are supported." )
 
 and epdp_ptyl_form (sh : shadowed) 
 (tl : pty list) : pformula list =
@@ -1047,6 +1116,7 @@ let init_shadowed : shadowed =
     nonUCepdp_named = QsMap.empty;
     nonUCepdp_tuple = TylMap.empty;
     nonUCepdp_appty = AppMap.empty;
+    nonUCepdp_funty = FunMap.empty;
   }
 
 let add_ty_name (sh : shadowed) (name : string) : shadowed =
@@ -1059,6 +1129,7 @@ let add_ty_name (sh : shadowed) (name : string) : shadowed =
       nonUCepdp_named = sh.nonUCepdp_named;
       nonUCepdp_tuple = sh.nonUCepdp_tuple;
       nonUCepdp_appty = sh.nonUCepdp_appty;
+      nonUCepdp_funty = sh.nonUCepdp_funty;
     }
 
 let add_op_name (sh : shadowed) (name : string) : shadowed =
@@ -1071,6 +1142,7 @@ let add_op_name (sh : shadowed) (name : string) : shadowed =
       nonUCepdp_named = sh.nonUCepdp_named;
       nonUCepdp_tuple = sh.nonUCepdp_tuple;
       nonUCepdp_appty = sh.nonUCepdp_appty;
+      nonUCepdp_funty = sh.nonUCepdp_funty;
     }
 
 let add_shadowing_decls (sh : shadowed) (name : string) : shadowed =
