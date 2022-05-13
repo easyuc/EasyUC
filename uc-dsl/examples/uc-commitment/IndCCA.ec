@@ -67,13 +67,6 @@ axiom obliv_enc_bij (pk : pkey, r : rand):
 axiom obliv_enc_inv_bij (pk : pkey, c : ciphertext):
   obliv_enc pk (obliv_enc_inv pk c) = c.
 
-(* for the same public key, but possibly different randomness,
-   ordinary encryption and oblivious encryption can never
-   produce the same ciphertext *)
-
-axiom enc_disjoint (pk : pkey, r r' : rand, x : plaintext) :
-  enc pk x r <> obliv_enc pk r'.
-
 (* IND-CCA oracle *)
 
 module type OR_INDCCA = {
