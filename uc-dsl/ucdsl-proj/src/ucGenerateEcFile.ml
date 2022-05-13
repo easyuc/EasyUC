@@ -3,137 +3,268 @@ open UcTypedSpec
 open EcParsetree
 open UcMessage
 
+(* shorthands ****************************************************************)
 let stf = Format.std_formatter (*REMOVE*)
 
 let dl = UcUtils.dummyloc
 
-type qsymbol = EcSymbols.qsymbol 
+type qsymbol = EcSymbols.qsymbol
 
 let qs = qsymb_of_symb
 
 let pqs (name : string) = dl (qs name)
 
 let ul = EcLocation.unloc
-  
-let print_newline (ppf : Format.formatter) : unit =
-  Format.fprintf stf "@."; (*REMOVE*)
-  Format.fprintf ppf "@."
 
+(*****************************************************************************)
+
+(* strings *******************************************************************)
+let __self = "_self"
+let __adv = "_adv"
+let __st = "_st"
+let _init = "init"
+let _self_ = "self_"
+let _adv_ = "adv_"
+let _invoke = "invoke"
+let _m = "m"
+let __m = "_m"
+let _r = "r"
+let __r = "_r"
+let _parties = "parties"
+let _dec = "dec"
+let _enc = "enc"
+let __x = "_x"
+let _envport = "envport"
+let _and = "/\\"
+let _UC__IF = "UC__IF"
+let _option = "option"
+let _epdp = "epdp"
+let _univ = "univ"
+let _addr = "addr"
+let _port = "port"
+let _msg = "msg"
+let _int = "int"
+let _unit = "unit"
+let _pi = "pi"
+let __adv_if_pi = "_adv_if_pi"
+let __adv_if_pi_gt0 = "_adv_if_pi_gt0"
+let _Dir = "Dir"
+let _Adv = "Adv"
+
+(*****************************************************************************)
+
+(* UcEcInterface calls *******************************************************)  
 let decl_open_theory (name : string) : unit =
   UcEcInterface.process (GthOpen (`Global, false, dl name))
-
-let write_open_theory (ppf : Format.formatter) (name : string) : unit =
-  decl_open_theory name;
-  Format.fprintf stf "@[theory %s.@]@." name; (*REMOVE*)
-  Format.fprintf ppf "@[theory %s.@]@." name;
-  print_newline ppf
 
 let decl_close_theory (name : string) : unit =
   UcEcInterface.process (GthClose ([], dl name))
   
-let write_close_theory (ppf : Format.formatter) (name : string) : unit =
-  decl_close_theory name;
-  Format.fprintf stf "@[end %s.@]@." name; (*REMOVE*)
-  Format.fprintf ppf "@[end %s.@]@." name;
-  print_newline ppf
-
 let decl_operator (pop : poperator) : unit =
   UcEcInterface.process (Goperator pop)
-
-let print_operator (ppf : Format.formatter) (pop : poperator) : unit =
-  let name = ul pop.po_name in
-  let env = UcEcInterface.env () in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let op = EcEnv.Op.lookup (qs name) env in
-  EcPrinting.pp_opdecl ppe stf op; (*REMOVE*)
-  EcPrinting.pp_opdecl ppe ppf op;
-  print_newline ppf;
-  print_newline ppf
-
-let write_operator (ppf : Format.formatter) (pop : poperator) : unit =
-  decl_operator pop;
-  print_operator ppf pop
 
 let decl_axiom (pax : paxiom) : unit =
   UcEcInterface.process (Gaxiom pax)
   
 let decl_type (ptd : ptydecl) : unit =
   UcEcInterface.process (Gtype [ptd])
-  
-let print_type (ppf : Format.formatter) (name : string) : unit =
-  let env = UcEcInterface.env () in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let ptd = EcEnv.Ty.lookup (qs name) env in
-  EcPrinting.pp_typedecl ppe stf ptd; (*REMOVE*)
-  EcPrinting.pp_typedecl ppe ppf ptd;
-  print_newline ppf
 
 let decl_module (pmod : pmodule_def_or_decl) : unit =
   UcEcInterface.process (Gmodule pmod)
 
+let env () = UcEcInterface.env ()
+  
+let clone (tc : theory_cloning) : unit =
+  UcEcInterface.process (GthClone tc)
+  
+let proof () : unit =
+  UcEcInterface.process (Gtactics (`Proof {pm_strict = true}))
+
+let admit () : unit =
+  let ptac = 
+  {
+    pt_core = dl Padmit;
+    pt_intros = []
+  } in
+  UcEcInterface.process (Gtactics (`Actual [ptac]))
+  
+let qed () : unit =
+  UcEcInterface.process (Gsave (dl `Qed))
+
+let proof_admit_qed () : unit =
+  proof ();
+  admit ();
+  qed ()
+    
+let decl_reduction (red : puserred) : unit =
+  UcEcInterface.process (Greduction red)
+  
+let decl_rewrite (rw : is_local * pqsymbol * pqsymbol list) : unit =
+  UcEcInterface.process (Gaddrw rw)
+  
+let decl_require (threq : threquire) : unit =
+  UcEcInterface.process (GthRequire threq)
+(*****************************************************************************)
+
+(* EcEnv lookups *************************************************************)
+let ty_lookup_opt (name : string) : (EcPath.path * EcDecl.tydecl) option =
+  let env = env () in
+  EcEnv.Ty.lookup_opt (qs name) env
+  
+let op_lookup_opt (name : string) : (EcPath.path * EcDecl.operator) option =
+  let env = env () in
+  EcEnv.Op.lookup_opt (qs name) env
+  
+let ty_lookup (name : string) : (EcPath.path * EcDecl.tydecl) =
+  let env = env () in
+  EcEnv.Ty.lookup (qs name) env
+  
+let op_lookup (name : string) : (EcPath.path * EcDecl.operator) =
+  let env = env () in
+  EcEnv.Op.lookup (qs name) env
+  
+let mod_lookup (name : string) : 
+(EcPath.mpath * (EcModules.module_expr * locality option)) =
+  let env = env () in
+  EcEnv.Mod.lookup (qs name) env
+  
+let ax_lookup (name : string) : (EcPath.path * EcDecl.axiom)=
+  let env = env () in
+  EcEnv.Ax.lookup (qs name) env
+(*****************************************************************************)
+
+(* printing ******************************************************************)
+
+let ppe () = EcPrinting.PPEnv.ofenv (env ())
+
+let print_newline (ppf : Format.formatter) : unit =
+  Format.fprintf stf "@."; (*REMOVE*)
+  Format.fprintf ppf "@."
+  
+let print_open_theory (ppf : Format.formatter) (name : string) : unit =
+  Format.fprintf stf "@[theory %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@[theory %s.@]@." name;
+  print_newline ppf
+
+let print_close_theory (ppf : Format.formatter) (name : string) : unit =
+  Format.fprintf stf "@[end %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@[end %s.@]@." name;
+  print_newline ppf
+  
+let print_operator (ppf : Format.formatter) (pop : poperator) : unit =
+  let name = ul pop.po_name in
+  let op = op_lookup name in
+  let ppe = ppe () in
+  EcPrinting.pp_opdecl ppe stf op; (*REMOVE*)
+  EcPrinting.pp_opdecl ppe ppf op;
+  print_newline ppf;
+  print_newline ppf
+
+let print_type (ppf : Format.formatter) (name : string) : unit =
+  let ppe = ppe() in
+  let ptd = ty_lookup name in
+  EcPrinting.pp_typedecl ppe stf ptd; (*REMOVE*)
+  EcPrinting.pp_typedecl ppe ppf ptd;
+  print_newline ppf
+
 let print_module (ppf : Format.formatter) (name : string) : unit = 
-  let env = UcEcInterface.env () in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let (mpt, (mex, _))  = EcEnv.Mod.lookup (qs name) env in
+  let ppe = ppe () in
+  let (mpt, (mex, _))  = mod_lookup name in
   EcPrinting.pp_modexp ppe stf (mpt,mex); (*REMOVE*)
   EcPrinting.pp_modexp ppe ppf (mpt,mex);
   print_newline ppf
   
-let write_module (ppf : Format.formatter) (name : string) (pmod : pmodule_def_or_decl) : unit =
-  decl_module pmod;
-  print_module ppf name
-  
-let print_theory (ppf : Format.formatter) (name : string) : unit = 
-  let env = UcEcInterface.env () in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let pth = EcEnv.Theory.lookup (qs name) env in
-  EcPrinting.pp_theory ppe stf pth; (*REMOVE*)
-  EcPrinting.pp_theory ppe ppf pth;
-  print_newline ppf
-
 let print_axiom (ppf : Format.formatter) (name : string) : unit = 
-  let env = UcEcInterface.env () in
+  let env = env () in
   let ppe = EcPrinting.PPEnv.ofenv env in
-  let ax = EcEnv.Ax.lookup (qs name) env in
+  let ax = ax_lookup name in
   EcPrinting.pp_axiom ppe stf ax; (*REMOVE*)
   EcPrinting.pp_axiom ppe ppf ax;
   print_newline ppf
+  
+let print_proof_admit_qed (ppf : Format.formatter) : unit =
+  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
+  Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
 
-let ty_lookup_opt (name : string) : (EcPath.path * EcDecl.tydecl) option =
-  let env = UcEcInterface.env () in
-  EcEnv.Ty.lookup_opt (qs name) env
+(*****************************************************************************)
+
+(* writing = declaring + printing ********************************************)
+let write_open_theory (ppf : Format.formatter) (name : string) : unit =
+  decl_open_theory name;
+  print_open_theory ppf name
+
+let write_close_theory (ppf : Format.formatter) (name : string) : unit =
+  decl_close_theory name;
+  print_close_theory ppf name
+
+let write_operator (ppf : Format.formatter) (pop : poperator) : unit =
+  decl_operator pop;
+  print_operator ppf pop
   
+let write_module (ppf : Format.formatter) (name : string) (pmod : pmodule_def_or_decl) : unit =
+  decl_module pmod;
+  print_module ppf name
+
+let write_type (ppf : Format.formatter) (ptyd : ptydecl) : unit =
+  let name = ul ptyd.pty_name in
+  decl_type ptyd;
+  print_type ppf name;
+  print_newline ppf
+
+let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
+  let name = ul lemma.pa_name in
+  decl_axiom lemma;
+  proof_admit_qed ();
+  print_axiom ppf name;
+  print_proof_admit_qed ppf;
+  print_newline ppf
   
-let op_lookup_opt (name : string) : (EcPath.path * EcDecl.operator) option =
-  let env = UcEcInterface.env () in
-  EcEnv.Op.lookup_opt (qs name) env
-  
+let write_hint_simplify (ppf : Format.formatter) (lname : string) : unit =
+  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
+  let red = ([`EqTrue], [([pqs lname], None)]) in
+  decl_reduction red;
+  Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
+  print_newline ppf
+
+let write_hint_rewrite (ppf : Format.formatter) (lname : string) : unit =
+  let rw = (`Global, pqs _epdp, [pqs lname]) in
+  decl_rewrite rw;
+  Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
+  Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
+  print_newline ppf
+    
+(*****************************************************************************)
+
+(* construction of common EcParsetree objects ********************************) 
+let record_decl (name : string) (record_fields : precord) : ptydecl =
+  let body = PTYD_Record record_fields in
+  {
+    pty_name   = dl name;
+    pty_tyvars = [];
+    pty_body   = body;
+    pty_locality = `Global;
+  }
+
 let qnamed_pty (qname : EcSymbols.qsymbol) : pty = dl (PTnamed (dl qname))
 
-let named_pty (name : string) = qnamed_pty (qs name)
+let named_pty (name : string) : pty = qnamed_pty (qs name)
 
-let _option = "option"
+let option_of_pty (pty : pty) : pty = dl (PTapp (pqs _option,[pty]))
 
-let _epdp = "epdp"
+let addr_pty : pty = named_pty _addr
 
-let _univ = "univ"
+let port_pty : pty = named_pty _port
 
-let option_of_pty (pty : pty) = dl (PTapp (pqs _option,[pty]))
+let msg_pty : pty = named_pty _msg
 
-let addr_pty = named_pty "addr"
+let int_pty : pty = named_pty _int
 
-let port_pty = named_pty "port"
+let unit_pty : pty = named_pty _unit
 
-let msg_pty = named_pty "msg"
+let univ_pty : pty = named_pty _univ
 
-let int_pty = named_pty "int"
-
-let unit_pty = named_pty "unit"
-
-let univ_pty = named_pty _univ
-  
-let abs_oper_int (name : string) : poperator =  
-  let podef = PO_abstr (int_pty) in
+let abs_oper_pty (name : string) (pty : pty) : poperator =
+  let podef = PO_abstr (pty) in
   {
     po_kind     = `Op;
     po_name     = dl name;
@@ -146,15 +277,25 @@ let abs_oper_int (name : string) : poperator =
     po_nosmt    = false;
     po_locality = `Global;
   }
+ 
+let abs_oper_int (name : string) : poperator =  
+  abs_oper_pty name int_pty
 
-let opname_pi = "pi"
-  
-let pi_op : poperator = abs_oper_int opname_pi
+let pex_pqident (pqname : pqsymbol) : pexpr =
+  dl (PEident (pqname, None))
 
-let opname_adv_if_pi = "_adv_if_pi"
+let pex_ident (name : string) : pexpr = pex_pqident (pqs name)
 
-let axname_adv_if_pi_gt0 = "_adv_if_pi_gt0"
+let pex_Dir = pex_ident _Dir
 
+let pex_Adv = pex_ident _Adv
+
+let pex_tuple (pexs : pexpr list) : pexpr = dl (PEtuple pexs)
+
+let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
+
+let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
+  dl (PEapp (ex,args))
 let pform_pqident (pqname : pqsymbol) : pformula =
   dl (PFident (pqname, None))
   
@@ -166,41 +307,22 @@ let pf_of_int (i : int) : pformula =
 
 let pf_0 = dl (PFint EcBigInt.zero)
 
-let axiom_adv_if_pi_gt0 : paxiom =
-  let f_le = pform_ident "<" in
-  let f_ax = pform_ident opname_adv_if_pi in 
-  let pfrm = dl (PFapp (f_le,[pf_0; f_ax])) in 
-  {
-    pa_name     = dl axname_adv_if_pi_gt0;
-    pa_tyvars   = None;
-    pa_vars     = None;
-    pa_formula  = pfrm;
-    pa_kind     = PAxiom [];
-    pa_nosmt    = false;
-    pa_locality = `Global;
-  }
+let pform_tuple (pfs : pformula list) : pformula =
+  dl (PFtuple pfs)
 
-let name_record_func (msg_name : string) : string = msg_name^"__func"
+let pform_unit = pform_tuple []
 
-let name_record_adv (msg_name : string) : string = msg_name^"__adv"
-
-let name_record (msg_name : string) (param_name : string) : string = msg_name^"_"^param_name
-
-let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
-  name_record name (EcUtils.oget mb.port)
- 
-let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
-  let bpm = IdMap.bindings pm in
-  let bpm = List.map (fun (s,ti) -> (s, ul ti)) bpm in
-  let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
-  List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
+let pform_proj (f : pformula) (name : string) : pformula =
+  dl (PFproj (f, pqs name))
   
-let isdirect (mb : message_body_tyd) : bool =
-  match mb.port with
-  | None -> false
-  | Some _ -> true
+let pform_app (f : pformula) (args : pformula list) : pformula =
+  dl (PFapp (f,args))
 
-module Qs =  (* domain: string list = symbol list *)
+(*****************************************************************************)
+
+(*generated message types and epdp operators can shadow already existing types
+  and operators with same names. We use shadowed record to handle these ******)
+module Qs =
   struct
     type t = EcSymbols.qsymbol
     let compare = Stdlib.compare
@@ -208,7 +330,7 @@ module Qs =  (* domain: string list = symbol list *)
   
 module QsMap = Map.Make(Qs)
 
-module Tyl =  (* domain: string list = symbol list *)
+module Tyl =
   struct
     type t = pty_r list
     let compare = Stdlib.compare
@@ -216,7 +338,7 @@ module Tyl =  (* domain: string list = symbol list *)
   
 module TylMap = Map.Make(Tyl)
 
-module App =  (* domain: string list = symbol list *)
+module App =
   struct
     type t = qsymbol * pty_r list
     let compare = Stdlib.compare
@@ -224,7 +346,7 @@ module App =  (* domain: string list = symbol list *)
   
 module AppMap = Map.Make(App)
 
-module Fun =  (* domain: string list = symbol list *)
+module Fun =
   struct
     type t = pty_r * pty_r
     let compare = Stdlib.compare
@@ -266,7 +388,51 @@ let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
   if IdMap.mem name sh.operators
   then IdMap.find name sh.operators
   else pqs name
+(*****************************************************************************)
 
+
+let pi_op : poperator = abs_oper_int _pi
+
+let axiom_adv_if_pi_gt0 : paxiom =
+  let f_le = pform_ident "<" in
+  let f_ax = pform_ident __adv_if_pi in 
+  let pfrm = pform_app f_le [pf_0; f_ax] in 
+  {
+    pa_name     = dl __adv_if_pi_gt0;
+    pa_tyvars   = None;
+    pa_vars     = None;
+    pa_formula  = pfrm;
+    pa_kind     = PAxiom [];
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  }
+  
+(* construction of message theory ********************************************)
+
+(**)
+let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
+  let bpm = IdMap.bindings pm in
+  let bpm = List.map (fun (s,ti) -> (s, ul ti)) bpm in
+  let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
+  List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
+
+(**)  
+let isdirect (mb : message_body_tyd) : bool =
+  match mb.port with
+  | None -> false
+  | Some _ -> true
+
+(* message record field names *)
+let name_record_func (msg_name : string) : string = msg_name^"__func"
+
+let name_record_adv (msg_name : string) : string = msg_name^"__adv"
+
+let name_record (msg_name : string) (param_name : string) : string = msg_name^"_"^param_name
+
+let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
+  name_record name (EcUtils.oget mb.port)
+
+(* message type declaration *) 
 let msg_type (sh : shadowed) (name : string) (mb : message_body_tyd) : ptydecl =
   let msg_data = List.map (fun (s,t) -> (dl (name_record name s), (qualify_ty sh t)))
     (params_map_to_list mb.params_map) in
@@ -274,104 +440,10 @@ let msg_type (sh : shadowed) (name : string) (mb : message_body_tyd) : ptydecl =
   let other_port =
     if (isdirect mb)
     then (dl (name_record_dir_port name mb), (qualify_ty sh port_pty))
-    else (dl (name_record_adv name), (qualify_ty sh addr_pty))
-    in
-  let body = PTYD_Record (self_addr :: other_port :: msg_data) in
-  {
-    pty_name   = dl name;
-    pty_tyvars = [];
-    pty_body   = body;
-    pty_locality = `Global;
-  }
+    else (dl (name_record_adv name), (qualify_ty sh addr_pty)) in
+  record_decl name (self_addr :: other_port :: msg_data)
   
-let write_type (ppf : Format.formatter) (ptyd : ptydecl) : unit =
-  let name = ul ptyd.pty_name in
-  decl_type ptyd;
-  print_type ppf name;
-  print_newline ppf
-
-let proof () : unit =
-  UcEcInterface.process (Gtactics (`Proof {pm_strict = true}))
-
-let admit () : unit =
-  let ptac = 
-  {
-    pt_core = dl Padmit;
-    pt_intros = []
-  } in
-  UcEcInterface.process (Gtactics (`Actual [ptac]))
-  
-let qed () : unit =
-  UcEcInterface.process (Gsave (dl `Qed))
- 
-let proof_admit_qed () : unit =
-  proof ();
-  admit ();
-  qed ()
-  
-let print_proof_admit_qed (ppf : Format.formatter) : unit =
-  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
-  Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
-  
-let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
-  let name = ul lemma.pa_name in
-  decl_axiom lemma;
-  proof_admit_qed ();
-  print_axiom ppf name;
-  print_proof_admit_qed ppf;
-  print_newline ppf
-
-let write_hint_simplify (ppf : Format.formatter) (lname : string) : unit =
-  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
-  let red = ([`EqTrue], [([pqs lname], None)]) in
-  UcEcInterface.process (Greduction red);
-  Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
-  print_newline ppf
-
-let write_hint_rewrite (ppf : Format.formatter) (lname : string) : unit =
-  let rw = (`Global, pqs _epdp, [pqs lname]) in
-  UcEcInterface.process (Gaddrw rw);
-  Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
-  Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
-  print_newline ppf
-
-let enc_op_name (name : string) : string = "enc_"^name
-
-let pex_pqident (pqname : pqsymbol) : pexpr =
-  dl (PEident (pqname, None))
-
-let pex_ident (name : string) : pexpr = pex_pqident (pqs name)
-
-let pex_Dir = pex_ident "Dir"
-
-let pex_Adv = pex_ident "Adv"
-
-let pex_true = pex_ident "true"
-
-let pex_tuple (pexs : pexpr list) : pexpr = dl (PEtuple pexs)
-
-let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
-
-let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
-  dl (PEapp (ex,args))
-
-let epdp_basicUCty_univ (tyname : qsymbol) : string option =
-  let epdp_name (name : string) : string option =
-    match name with
-    | "unit" -> Some "epdp_unit_univ"
-    | "bool" -> Some "epdp_bool_univ"
-    | "int"  -> Some "epdp_int_univ"
-    | "addr" -> Some "epdp_addr_univ"
-    | "port" -> Some "epdp_port_univ"
-    | _univ  -> Some "epdp_id"
-    | _ -> None
-  in
-  let qual,name = tyname in
-  match qual with
-  | ["UCBasicTypes"] -> epdp_name name
-  | [] -> epdp_name name
-  | _ -> None
-  
+(* epdp stubs for types that are not in UCBasic types *)  
 let stub_no = ref 0
 
 let epdp_stub_prefix() : string =
@@ -383,19 +455,7 @@ let epdp_namedty_stub_name (name : string) : string =
   
 let epdp_namedty_op (name : string) : poperator =  
   let opty = PTapp (pqs _epdp, [named_pty name; univ_pty]) in
-  let podef = PO_abstr (dl opty) in
-  {
-    po_kind     = `Op;
-    po_name     = dl (epdp_namedty_stub_name name);
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
+  abs_oper_pty name (dl opty)
   
 let name_lemma_epdp_valid (name : string) : string =
   "valid_"^name
@@ -403,7 +463,7 @@ let name_lemma_epdp_valid (name : string) : string =
 let lemma_epdp (opname : string) : paxiom =
   let f_ve = pform_ident "valid_epdp" in
   let f_e = pform_ident opname in
-  let pfrm = dl (PFapp (f_ve, [f_e])) in 
+  let pfrm = pform_app f_ve [f_e] in 
   {
     pa_name     = dl (name_lemma_epdp_valid opname);
     pa_tyvars   = None;
@@ -423,6 +483,28 @@ let write_epdp_stub (ppf : Format.formatter) (op : poperator) : string =
   write_hint_simplify ppf lename;
   write_hint_rewrite ppf lename;
   opname
+
+(* TODO CONTINUE HERE *)
+
+let enc_op_name (name : string) : string = "enc_"^name
+
+let epdp_basicUCty_univ (tyname : qsymbol) : string option =
+  let epdp_name (name : string) : string option =
+    match name with
+    | "unit" -> Some "epdp_unit_univ"
+    | "bool" -> Some "epdp_bool_univ"
+    | "int"  -> Some "epdp_int_univ"
+    | "addr" -> Some "epdp_addr_univ"
+    | "port" -> Some "epdp_port_univ"
+    | _univ  -> Some "epdp_id"
+    | _ -> None
+  in
+  let qual,name = tyname in
+  match qual with
+  | ["UCBasicTypes"] -> epdp_name name
+  | [] -> epdp_name name
+  | _ -> None
+  
  
 let add_nonUCepdp_namedty (ppf : Format.formatter) (sh : shadowed) 
 (name : qsymbol) : shadowed =
@@ -478,19 +560,7 @@ let epdp_tuple_op (tyl : pty_r list) : poperator =
   in
   let tuplety = dl (PTtuple (List.map (fun t-> (dl t)) tyl)) in
   let opty = epdp_app_ty tuplety in
-  let podef = PO_abstr opty in
-  {
-    po_kind     = `Op;
-    po_name     = dl name;
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
+  abs_oper_pty name opty
 
 let add_nonUCepdp_tuple (ppf : Format.formatter) (sh : shadowed)
 (tyl : pty_r list) : shadowed =
@@ -541,19 +611,7 @@ let epdp_appty_op (app : qsymbol) (tyl : pty_r list) : poperator =
   in
   let app = dl (PTapp ( dl app , (List.map (fun t-> (dl t)) tyl) )) in
   let opty = epdp_app_ty app in
-  let podef = PO_abstr opty in
-  {
-    po_kind     = `Op;
-    po_name     = dl name;
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;				
-    po_locality = `Global;
-  }
+  abs_oper_pty name opty
 
 let add_nonUCepdp_appty (ppf : Format.formatter) (sh : shadowed)
 (app : qsymbol) (tyl : pty_r list) : shadowed =
@@ -584,19 +642,7 @@ let epdp_funty_op (pty1 : pty_r) (pty2 : pty_r) : poperator =
   in
   let funty = dl (PTfun (dl pty1 , dl pty2)) in
   let opty = epdp_app_ty funty in
-  let podef = PO_abstr opty in
-  {
-    po_kind     = `Op;
-    po_name     = dl name;
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;				
-    po_locality = `Global;
-  }
+  abs_oper_pty name opty
 
 let add_nonUCepdp_funty (ppf : Format.formatter) (sh : shadowed)
 (pty1 : pty_r) (pty2 : pty_r) : shadowed =
@@ -700,14 +746,14 @@ let enc_op (ppf : Format.formatter) (sh : shadowed)
   let sh, u = enc_u (Some ppf) sh var_name mty_name mb.params_map in
   let selfport = pex_tuple [
     pex_proj (pex_ident var_name) (name_record_func mty_name); 
-    pex_ident opname_pi ] in
+    pex_ident _pi ] in
   let isdirect = isdirect mb in
   let otherport = 
     if isdirect
     then pex_proj (pex_ident var_name) (name_record_dir_port mty_name mb) 
     else pex_tuple [
       pex_proj (pex_ident var_name) (name_record_adv mty_name); 
-      pex_ident opname_adv_if_pi ]
+      pex_ident __adv_if_pi ]
     in
   let ptsource = if mb.dir = In then otherport else selfport in
   let ptdest = if mb.dir = In then selfport else otherport in
@@ -762,27 +808,6 @@ let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
     rf_tvi   = None;
     rf_value = pex;
   }
-
-(* strings *******************************************************************)
-let __self = "_self"
-let __adv = "_adv"
-let __st = "_st"
-let _init = "init"
-let _self_ = "self_"
-let _adv_ = "adv_"
-let _invoke = "invoke"
-let _m = "m"
-let __m = "_m"
-let _r = "r"
-let __r = "_r"
-let _parties = "parties"
-let _dec = "dec"
-let _enc = "enc"
-let __x = "_x"
-let _envport = "envport"
-let _and = "/\\"
-let _UC__IF = "UC__IF"
-(*****************************************************************************)
 
 (* ec parsetree expressions **************************************************)
 let pex_and = pex_ident _and
@@ -857,9 +882,9 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let notmode = if isdirect then pex_Adv else pex_Dir in
   let if1 = pex_app pex_Eq [pex_ident mode; notmode] in
   let no0 = pex_app pex_Not 
-    [pex_app pex_Eq [pex_proji (pex_ident otherport) 1; pex_ident opname_adv_if_pi]] in
+    [pex_app pex_Eq [pex_proji (pex_ident otherport) 1; pex_ident __adv_if_pi]] in
   let no1 = pex_app pex_Not 
-    [pex_app pex_Eq [pex_proji (pex_ident funcport) 1; pex_ident opname_pi]] in
+    [pex_app pex_Eq [pex_proji (pex_ident funcport) 1; pex_ident _pi]] in
   let no2 = pex_app pex_Not [pex_app pex_Eq [pex_ident _tag; pex_of_int tag]] in
   let if_cond = 
     if isdirect
@@ -896,7 +921,6 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let pat1 = PPApp ((pqs "None", None), []) in
   let mtch1 = (pat1, pex_None) in
 
-  let ppf = Format.std_formatter in (*dummy formatter, it will never be used, TODO replace with formatter option,  = None*)
   let _ , epdp_op = epdp_data_univ None sh mb.params_map in
   let dd = pex_proj epdp_op "dec" in
   let pmex = pex_app dd [pex_ident v] in
@@ -950,18 +974,7 @@ let pform_epdp_fun_univ (sh : shadowed)
 (pty1 : pty_r) (pty2 : pty_r) : pformula =
   let _, epdp_name = epdp_non_UC_funty None sh pty1 pty2 in
   pform_pqident epdp_name
-  
-let pform_tuple (pfs : pformula list) : pformula =
-  dl (PFtuple pfs)
-
-let pform_unit = pform_tuple []
-
-let pform_proj (f : pformula) (name : string) : pformula =
-  dl (PFproj (f, pqs name))
-  
-let pform_app (f : pformula) (args : pformula list) : pformula =
-  dl (PFapp (f,args))
-  
+    
 (*TODO merge with expr code*)    
 let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
   match ul t with
@@ -1025,8 +1038,6 @@ let enc_u_form (sh : shadowed) (var_name : string) (msg_name : string) (params_m
 let name_lemma_eq_of_valid (name : string) : string =
   "eq_of_valid_"^name
 
-let pform_true = pform_ident "true"
-
 let pform_Dir = pform_ident "Dir"
 
 let pform_Adv = pform_ident "Adv"
@@ -1037,27 +1048,27 @@ let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : mess
   
   let fepdp = pform_ident (name_epdp_op mty_name) in
   let fm = pform_ident m in
-  let f_l = dl (PFapp (pform_ident "is_valid", [fepdp; fm])) in
+  let f_l = pform_app (pform_ident "is_valid") [fepdp; fm] in
   let f_eq = pform_ident "=" in
-  let fdec = dl (PFtuple [dl (PFapp (dl (PFproj (fepdp, pqs "dec" )),[fm]))]) in 
-  let foget = dl (PFapp (pform_ident "oget",[fdec])) in
+  let fdec = pform_tuple [pform_app (pform_proj fepdp _dec) [fm]] in 
+  let foget = pform_app (pform_ident "oget") [fdec] in
   
   let x = "x" in
   let fx = pform_ident x in
   let isdirect = isdirect mb in
-  let fmode = if isdirect then pform_Dir else pform_Adv in (*TODO isdirect from mb*)
-  let fsadd = dl (PFproj (fx, pqs (name_record_func mty_name))) in
-  let funcport = dl (PFtuple [fsadd; pform_ident opname_pi]) in
+  let fmode = if isdirect then pform_Dir else pform_Adv in
+  let fsadd = pform_proj fx (name_record_func mty_name) in
+  let funcport = pform_tuple [fsadd; pform_ident _pi] in
   let otherport = 
     if isdirect
-    then dl (PFproj (fx, pqs (name_record_dir_port mty_name mb)))
-    else let fsadv = dl (PFproj (fx, pqs (name_record_adv mty_name))) in
-      dl (PFtuple [fsadv; pform_ident opname_adv_if_pi])
+    then pform_proj fx (name_record_dir_port mty_name mb)
+    else let fsadv = pform_proj fx (name_record_adv mty_name) in
+      pform_tuple [fsadv; pform_ident __adv_if_pi]
     in
   let fdport = if mb.dir = In then funcport else otherport in
   let fsport = if mb.dir = In then otherport else funcport in
   let fdata = enc_u_form sh x mty_name mb.params_map in
-  let fmsg = dl (PFtuple [fmode; fdport; fsport; pf_of_int tag; fdata] ) in
+  let fmsg = pform_tuple [fmode; fdport; fsport; pf_of_int tag; fdata] in
   
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
   let f_r = pform_app f_eq [fm; flet] in
@@ -1104,7 +1115,7 @@ let oper_int (name : string) (value : int) : poperator =
     po_locality = `Global;
   }
   
-let pi_op2 = oper_int opname_pi 2
+let pi_op2 = oper_int _pi 2
 
 let uc_name (name : string) : string =
   "UC_"^name
@@ -1682,11 +1693,11 @@ let pinvoke_body (guard : pexpr) : pfunction_body =
 
 let basic_piex (bi_name : string) : pexpr =
 print_string ("\n"^bi_name^"\n");
-  dl (PEident (dl ([bi_name],opname_pi), None))
+  dl (PEident (dl ([bi_name],_pi), None))
   
 let comp_piex (di_name : string) (di_mem : string) : pexpr =
 print_string ("\n"^di_name^"."^di_mem^"\n");
-  dl (PEident (dl ([di_name; di_mem],opname_pi), None))
+  dl (PEident (dl ([di_name; di_mem],_pi), None))
   
 let dir_msg_guard (piex : pexpr) : pexpr =
   pex_tuple [ pex_And [
@@ -1759,8 +1770,7 @@ let write_ideal_fun
   write_close_theory ppf _UC__IF
 (*****************************************************************************)
 
-let clone (tc : theory_cloning) : unit =
-  UcEcInterface.process (GthClone tc)
+
 
 let decl_clone (name : string) (bi : string) (pindx : int): unit =
   let thov = PTHO_Op (`BySyntax {
@@ -1772,7 +1782,7 @@ let decl_clone (name : string) (bi : string) (pindx : int): unit =
   let cl = {
     pthc_base   = pqs bi;
     pthc_name   = Some (dl name);
-    pthc_ext    = [(pqs opname_pi, thov)];
+    pthc_ext    = [(pqs _pi, thov)];
     pthc_prf    = [{pthp_mode = `All (None, []); pthp_tactic = None}];
     pthc_rnm    = [];
     pthc_opts   = [];
@@ -1808,18 +1818,17 @@ let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
     (None,
      [(dl "UCBasicTypes", None)], (*FIX*)
      Some `Import) in
-  UcEcInterface.process (GthRequire threq);
+  decl_require threq;
   Format.fprintf stf "@[require import UCBasicTypes.@]@."; (*REMOVE*)
   Format.fprintf ppf "@[require import UCBasicTypes.@]@.";
-  print_newline ppf;
-  UcEcInterface.process (Gprint (Pr_any (dl(qs "UCBasicTypes")))) (*REMOVE*)
+  print_newline ppf
   
 let write_op_adv_if_pi (ppf : Format.formatter) : unit =
-  write_operator ppf (abs_oper_int opname_adv_if_pi)
+  write_operator ppf (abs_oper_int __adv_if_pi)
 
 let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   decl_axiom (axiom_adv_if_pi_gt0);
-  print_axiom ppf axname_adv_if_pi_gt0;
+  print_axiom ppf __adv_if_pi_gt0;
   print_newline ppf
   
 let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
