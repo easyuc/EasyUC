@@ -50,7 +50,11 @@ let __adv_if_pi = "_adv_if_pi"
 let __adv_if_pi_gt0 = "_adv_if_pi_gt0"
 let _Dir = "Dir"
 let _Adv = "Adv"
-
+let sym_or = "\\/"
+let sym_eq = "="
+let sym_not = "[!]"
+let _None = "None"
+let _Some = "Some"
 (*****************************************************************************)
 
 (* UcEcInterface calls *******************************************************)  
@@ -263,24 +267,6 @@ let unit_pty : pty = named_pty _unit
 
 let univ_pty : pty = named_pty _univ
 
-let abs_oper_pty (name : string) (pty : pty) : poperator =
-  let podef = PO_abstr (pty) in
-  {
-    po_kind     = `Op;
-    po_name     = dl name;
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
- 
-let abs_oper_int (name : string) : poperator =  
-  abs_oper_pty name int_pty
-
 let pex_pqident (pqname : pqsymbol) : pexpr =
   dl (PEident (pqname, None))
 
@@ -296,6 +282,87 @@ let pex_proj (pex : pexpr) (name : string) = dl (PEproj (pex, pqs name))
 
 let pex_app (ex : pexpr)  (args : pexpr list) : pexpr =
   dl (PEapp (ex,args))
+  
+let pex_let (pat : plpattern) (wty : pexpr_wty) (pex : pexpr) : pexpr =
+  dl (PElet (pat,wty,pex))
+ 
+let pex_if (cond : pexpr) (then_br : pexpr) (else_br : pexpr) : pexpr =
+  dl (PEif (cond, then_br, else_br))
+
+let pex_proji (pex : pexpr) (i : int) : pexpr =
+  dl (PEproji (pex,i))
+  
+let pex_match (pex : pexpr) (clauses : (ppattern * pexpr) list) : pexpr =
+  dl (PEmatch (pex,clauses))
+  
+let pex_record (opex : pexpr option) (rcrds : pexpr rfield list) : pexpr =
+ dl (PErecord (opex, rcrds))
+
+let pex_or = pex_ident sym_or
+
+let pex_Eq = pex_ident sym_eq
+
+let pex_Not = pex_ident sym_not
+
+let pex_None = pex_ident _None
+
+let pex_Some = pex_ident _Some
+  
+let pex_and = pex_ident _and
+
+let pex_m = pex_ident _m
+
+let pex__self = pex_ident __self
+
+let pex__adv = pex_ident __adv
+
+let pex_unit = pex_tuple []
+
+let pex_of_int (i : int) : pexpr =
+  dl (PEint (EcBigInt.of_int i))
+  
+let pex_projq (pex : pexpr) (qname : EcSymbols.qsymbol) = 
+  dl (PEproj (pex, dl qname))
+
+let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
+  match List.length exs with
+  | 0 -> failure "Cascade at least one  expression"
+  | 1 -> List.hd exs
+  | _ ->
+    let exs = List.rev exs in
+    let last = List.hd exs in
+    let rest = List.rev (List.tl exs) in
+    List.fold_right ( 
+      fun ex1 ex2 -> pex_app ex [ex1; ex2]
+    ) rest last
+
+
+let pex_And (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_and exs
+  
+let pex_Or (exs : pexpr list) : pexpr =
+  pexpr_cascade pex_or exs
+
+let pex_envport = pex_ident _envport
+
+let pex_app_envport (arg : pexpr) : pexpr =
+  pex_app pex_envport [
+    pex__self;
+    pex__adv;
+    arg;
+  ]
+
+let pexrfieldq (path : string list) (name : string) (pex : pexpr) 
+  : pexpr rfield =
+  {
+    rf_name  = dl (path, name);
+    rf_tvi   = None;
+    rf_value = pex;
+  }
+  
+let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
+  pexrfieldq [] name pex
+
 let pform_pqident (pqname : pqsymbol) : pformula =
   dl (PFident (pqname, None))
   
@@ -317,6 +384,90 @@ let pform_proj (f : pformula) (name : string) : pformula =
   
 let pform_app (f : pformula) (args : pformula list) : pformula =
   dl (PFapp (f,args))
+
+
+let pform_Dir = pform_ident _Dir
+
+let pform_Adv = pform_ident _Adv
+
+let abs_oper_pty (name : string) (pty : pty) : poperator =
+  let podef = PO_abstr (pty) in
+  {
+    po_kind     = `Op;
+    po_name     = dl name;
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  }
+ 
+let abs_oper_int (name : string) : poperator =  
+  abs_oper_pty name int_pty
+  
+let oper_int (name : string) (value : int) : poperator =  
+  let podef = PO_concr (dl PTunivar, pex_of_int value) in
+  {
+    po_kind     = `Op;
+    po_name     = dl name;
+    po_aliases  = [];
+    po_tags     = [];
+    po_tyvars   = None;
+    po_args     = [];
+    po_def      = podef;
+    po_ax       = None;
+    po_nosmt    = false;
+    po_locality = `Global;
+  }
+  
+
+(* ec parsetree declarations *************************************************)
+let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
+    ptm_locality = `Global;
+    ptm_def      = `Concrete def
+  }
+  
+let pmodule_def (name : string) (items : pstructure): pmodule_def = {
+    ptm_header = Pmh_ident (dl name);
+    ptm_body   = dl (Pm_struct items);
+  }
+
+(* ec parsetree instructions *)
+let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
+  dl (PSif ((ifc,ths),[],[]))
+
+let ps_if_then_else (ifc : pexpr) (ths : pstmt) (els : pstmt) : pinstr =
+  dl (PSif ((ifc,ths),[],els))
+
+let ps_assign (a : string) (ex : pexpr) : pinstr =
+  dl (PSasgn (dl (PLvSymbol (pqs a)), ex))
+
+let ps_assign_id (a : string) (id : string) : pinstr =
+  ps_assign a (pex_ident id)
+  
+let ps_assignl ( sl : string list) (ex : pexpr) : pinstr =
+  let pqssl = List.map (fun s -> pqs s) sl in
+  dl (PSasgn (dl (PLvTuple pqssl), ex))
+  
+let ps_rnd (a : string) (ex : pexpr) : pinstr =
+  dl (PSrnd (dl (PLvSymbol (pqs a)), ex))
+  
+let ps_rndl ( sl : string list) (ex : pexpr) : pinstr =
+  let pqssl = List.map (fun s -> pqs s) sl in
+  dl (PSrnd (dl (PLvTuple pqssl), ex))
+  
+let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
+  dl (PSmatch (mtch_ex, `Full branches))
+  
+let pf_var (name : string) (pty : pty) : pfunction_local =
+  { 
+    pfl_names = dl (`Single, [dl name]);
+    pfl_type  = Some pty;
+    pfl_init  = None
+  }
 
 (*****************************************************************************)
 
@@ -388,24 +539,50 @@ let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
   if IdMap.mem name sh.operators
   then IdMap.find name sh.operators
   else pqs name
-(*****************************************************************************)
 
-
-let pi_op : poperator = abs_oper_int _pi
-
-let axiom_adv_if_pi_gt0 : paxiom =
-  let f_le = pform_ident "<" in
-  let f_ax = pform_ident __adv_if_pi in 
-  let pfrm = pform_app f_le [pf_0; f_ax] in 
+let option_of_msgty (sh : shadowed) (name : string) =
+  let msgty = named_pty name in
+  if IdMap.mem _option sh.types 
+  then dl (PTapp (IdMap.find _option sh.types,[msgty]))
+  else option_of_pty (named_pty name)
+  
+let init_shadowed : shadowed = 
   {
-    pa_name     = dl __adv_if_pi_gt0;
-    pa_tyvars   = None;
-    pa_vars     = None;
-    pa_formula  = pfrm;
-    pa_kind     = PAxiom [];
-    pa_nosmt    = false;
-    pa_locality = `Global;
+    types = IdMap.empty;
+    operators = IdMap.empty;
+    nonUCepdp_named = QsMap.empty;
+    nonUCepdp_tuple = TylMap.empty;
+    nonUCepdp_appty = AppMap.empty;
+    nonUCepdp_funty = FunMap.empty;
   }
+
+let add_ty_name (sh : shadowed) (name : string) : shadowed =
+  match ty_lookup_opt name with
+  | None -> sh
+  | Some (path, _) ->
+    {
+      types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
+      operators = sh.operators;
+      nonUCepdp_named = sh.nonUCepdp_named;
+      nonUCepdp_tuple = sh.nonUCepdp_tuple;
+      nonUCepdp_appty = sh.nonUCepdp_appty;
+      nonUCepdp_funty = sh.nonUCepdp_funty;
+    }
+
+let add_op_name (sh : shadowed) (name : string) : shadowed =
+  match op_lookup_opt name with
+  | None -> sh
+  | Some (path, _) ->
+    {
+      types = sh.types;
+      operators = IdMap.add name (dl (EcPath.toqsymbol path)) sh.operators;
+      nonUCepdp_named = sh.nonUCepdp_named;
+      nonUCepdp_tuple = sh.nonUCepdp_tuple;
+      nonUCepdp_appty = sh.nonUCepdp_appty;
+      nonUCepdp_funty = sh.nonUCepdp_funty;
+    }
+
+(*****************************************************************************)
   
 (* construction of message theory ********************************************)
 
@@ -484,11 +661,10 @@ let write_epdp_stub (ppf : Format.formatter) (op : poperator) : string =
   write_hint_rewrite ppf lename;
   opname
 
-(* TODO CONTINUE HERE *)
+(* construction of epdp for message data*)
 
-let enc_op_name (name : string) : string = "enc_"^name
-
-let epdp_basicUCty_univ (tyname : qsymbol) : string option =
+(* epdp for named types*)
+let epdp_basicUCnamedty_univ (tyname : qsymbol) : string option =
   let epdp_name (name : string) : string option =
     match name with
     | "unit" -> Some "epdp_unit_univ"
@@ -528,17 +704,12 @@ let epdp_named_non_UC_type (ppf : Format.formatter option) (sh : shadowed)
 
 let epdp_namedty_univ (ppf : Format.formatter option) (sh : shadowed)
 (name : qsymbol) : shadowed * pqsymbol  =
-  let eno = epdp_basicUCty_univ name in
+  let eno = epdp_basicUCnamedty_univ name in
   match eno with
   | Some en -> sh, (qualify_opname sh en)
   | None -> epdp_named_non_UC_type ppf sh name
 
-let pex_epdp_namedty_univ (ppf : Format.formatter option) (sh : shadowed) 
-(name : qsymbol) : shadowed * pexpr =
-  let sh, pqopname = epdp_namedty_univ ppf sh name in
-  sh, pex_pqident pqopname
-    
-
+(* epdp for tuples *)
 let epdp_basicUCtuple_name (arity : int) : string option =
   match arity with
   | 2 -> Some "epdp_pair_univ"
@@ -581,6 +752,7 @@ let epdp_non_UC_tuple (ppf : Format.formatter option) (sh : shadowed)
   let epdp_op_pqname = TylMap.find tyl sh'.nonUCepdp_tuple in
   sh', epdp_op_pqname
 
+(* epdp for type applications *)
 let epdp_basicUCappty_name (tyname : qsymbol) : string option =
   let epdp_name (name : string) : string option =
   match name with
@@ -632,6 +804,7 @@ let epdp_non_UC_appty (ppf : Format.formatter option) (sh : shadowed)
   let epdp_op_pqname = AppMap.find (app,tyl) sh'.nonUCepdp_appty in
   sh', epdp_op_pqname
 
+(* epdp for function types *)
 let epdp_funty_stub_name () : string =
   (epdp_stub_prefix ())^"_fun"
 
@@ -663,66 +836,75 @@ let epdp_non_UC_funty (ppf : Format.formatter option) (sh : shadowed)
   let epdp_op_pqname = FunMap.find (pty1,pty2) sh'.nonUCepdp_funty in
   sh', epdp_op_pqname
 
-let pex_epdp_fun_univ (ppf : Format.formatter option) (sh : shadowed) 
-(pty1 : pty_r) (pty2 : pty_r) : shadowed * pexpr =
-  let sh', epdp_name = epdp_non_UC_funty ppf sh pty1 pty2 in
-  sh', pex_pqident epdp_name
-
-
+(* combining epdps to construct epdp for a type  *)
 let rec epdp_pty_univ (ppf : Format.formatter option) (sh : shadowed) 
-(t : pty) : shadowed * pexpr =
+(exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
+(t : pty) : shadowed * 'a =
   match ul t with
-  | PTtuple  ptys -> epdp_tuple_univ ppf sh ptys
-  | PTnamed  pqs  -> pex_epdp_namedty_univ ppf sh (ul pqs)
-  | PTapp (pqs, ptys) -> epdp_app_univ ppf sh (ul pqs) ptys
-  | PTfun (pty1, pty2) -> pex_epdp_fun_univ ppf sh (ul pty1) (ul pty2)
+  | PTtuple  ptys -> epdp_tuple_univ ppf sh exf_name exf_app ptys
+  | PTnamed  pqs  -> epdp_namedty_univ_ ppf sh exf_name (ul pqs)
+  | PTapp (pqs, ptys) -> epdp_app_univ ppf sh exf_name exf_app (ul pqs) ptys
+  | PTfun (pty1, pty2) -> epdp_fun_univ ppf sh exf_name (ul pty1) (ul pty2)
   | _ -> failure ("Only tuples, named types, parametric types and functions are supported." )
 
 and epdp_ptyl (ppf : Format.formatter option) (sh : shadowed) 
-(tl : pty list) : shadowed * (pexpr list) =
+(exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
+(tl : pty list) : shadowed * ('a list) =
   List.fold_left ( fun (sh, l) t ->
     let qt = qualify_ty sh t in
-    let sh', e = epdp_pty_univ ppf sh qt in
+    let sh', e = epdp_pty_univ ppf sh exf_name exf_app qt in
     sh', l@[e]
   ) (sh,[]) tl
   
+and epdp_namedty_univ_ (ppf : Format.formatter option) (sh : shadowed) 
+(exf_name : pqsymbol -> 'a) (name : qsymbol) : shadowed * 'a =
+  let sh, pqopname = epdp_namedty_univ ppf sh name in
+  sh, exf_name pqopname
+  
 and epdp_tuple_univ (ppf : Format.formatter option) (sh : shadowed) 
-(ptys : pty list) : shadowed * pexpr =
+(exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
+(ptys : pty list) : shadowed * 'a =
   let tyl = EcLocation.unlocs ptys in
   let arity = List.length tyl in
   let eno = epdp_basicUCtuple_name arity in
   match eno with
   | Some en ->
-    let sh', exl = epdp_ptyl ppf sh ptys in
+    let sh', exfl = epdp_ptyl ppf sh exf_name exf_app ptys in
     let epdp_name = qualify_opname sh en in
-    sh', pex_app (pex_pqident epdp_name) exl
+    sh', exf_app (exf_name epdp_name) exfl
   | None -> 
     let sh', epdp_name = epdp_non_UC_tuple ppf sh tyl in
-    sh', pex_pqident epdp_name
+    sh', exf_name epdp_name
 
 and epdp_app_univ (ppf : Format.formatter option) (sh : shadowed) 
-(app : qsymbol) (ptys : pty list) : shadowed * pexpr =
+(exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
+(app : qsymbol) (ptys : pty list) : shadowed * 'a =
   let tyl = EcLocation.unlocs ptys in
   let eno = epdp_basicUCappty_name app in
   match eno with
   | Some en ->
-    let sh', exl = epdp_ptyl ppf sh ptys in
+    let sh', exfl = epdp_ptyl ppf sh exf_name exf_app ptys in
     let epdp_name = qualify_opname sh en in
-    sh', pex_app (pex_pqident epdp_name) exl
+    sh', exf_app (exf_name epdp_name) exfl
   | None -> 
     let sh', epdp_name = epdp_non_UC_appty ppf sh app tyl in
-    sh', pex_pqident epdp_name
+    sh', exf_name epdp_name
+
+and epdp_fun_univ (ppf : Format.formatter option) (sh : shadowed) 
+(exf_name : pqsymbol -> 'a) (pty1 : pty_r) (pty2 : pty_r) : shadowed * 'a =
+  let sh', epdp_name = epdp_non_UC_funty ppf sh pty1 pty2 in
+  sh', exf_name epdp_name
     
 let epdp_data_univ (ppf : Format.formatter option) (sh : shadowed) 
-(params_map : ty_index IdMap.t) : shadowed * pexpr =
+(exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
+(params_map : ty_index IdMap.t) : shadowed * 'a =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> sh, pex_pqident (qualify_opname sh "epdp_unit_univ")
-  | [t] -> epdp_pty_univ ppf sh t
-  | _ -> epdp_tuple_univ ppf sh ptys
+  | [] -> sh, exf_name (qualify_opname sh "epdp_unit_univ")
+  | [t] -> epdp_pty_univ ppf sh exf_name exf_app t
+  | _ -> epdp_tuple_univ ppf sh exf_name exf_app ptys
 
-let pex_unit = pex_tuple []
-  
+(* enc operator *)  
 let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pexpr =
   let pns = fst (List.split (params_map_to_list params_map)) in
   if pns = []
@@ -732,13 +914,12 @@ let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdM
 let enc_u (ppf : Format.formatter option) (sh : shadowed) 
 (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) 
 : shadowed * pexpr =
-  let sh', ex = epdp_data_univ ppf sh params_map in
+  let sh', ex = epdp_data_univ ppf sh pex_pqident pex_app params_map in
   let ex = pex_proj ex "enc" in
   let args = enc_args var_name msg_name params_map in
   sh', pex_app ex [args]
-
-let pex_of_int (i : int) : pexpr =
-  dl (PEint (EcBigInt.of_int i))
+  
+let enc_op_name (name : string) : string = "enc_"^name
 
 let enc_op (ppf : Format.formatter) (sh : shadowed) 
 (tag : int) (mty_name : string) (mb : message_body_tyd) : shadowed * poperator =
@@ -775,95 +956,8 @@ let enc_op (ppf : Format.formatter) (sh : shadowed)
     po_locality = `Global;
   }
 
+(* dec operator *)
 let dec_op_name (name : string) : string = "dec_"^name
-
-let pex_let (pat : plpattern) (wty : pexpr_wty) (pex : pexpr) : pexpr =
-  dl (PElet (pat,wty,pex))
- 
-let pex_if (cond : pexpr) (then_br : pexpr) (else_br : pexpr) : pexpr =
-  dl (PEif (cond, then_br, else_br))
-
-let pex_proji (pex : pexpr) (i : int) : pexpr =
-  dl (PEproji (pex,i))
-  
-let pex_match (pex : pexpr) (clauses : (ppattern * pexpr) list) : pexpr =
-  dl (PEmatch (pex,clauses))
-  
-let pex_record (opex : pexpr option) (rcrds : pexpr rfield list) : pexpr =
- dl (PErecord (opex, rcrds))
-
-let pex_or = pex_ident "\\/"
-
-let pex_Eq = pex_ident "="
-
-let pex_Not = pex_ident "[!]"
-
-let pex_None = pex_ident "None"
-
-let pex_Some = pex_ident "Some"
-
-let pexrfield (name : string) (pex : pexpr) : pexpr rfield =
-  {
-    rf_name  = pqs name;
-    rf_tvi   = None;
-    rf_value = pex;
-  }
-
-(* ec parsetree expressions **************************************************)
-let pex_and = pex_ident _and
-
-let pex_m = pex_ident _m
-
-let pex__self = pex_ident __self
-
-let pex__adv = pex_ident __adv
-
-let pex_projq (pex : pexpr) (qname : EcSymbols.qsymbol) = 
-  dl (PEproj (pex, dl qname))
-
-let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
-  match List.length exs with
-  | 0 -> failure "Cascade at least one  expression"
-  | 1 -> List.hd exs
-  | _ ->
-    let exs = List.rev exs in
-    let last = List.hd exs in
-    let rest = List.rev (List.tl exs) in
-    List.fold_right ( 
-      fun ex1 ex2 -> pex_app ex [ex1; ex2]
-    ) rest last
-
-
-let pex_And (exs : pexpr list) : pexpr =
-  pexpr_cascade pex_and exs
-  
-let pex_Or (exs : pexpr list) : pexpr =
-  pexpr_cascade pex_or exs
-
-let pex_envport = pex_ident _envport
-
-let pex_app_envport (arg : pexpr) : pexpr =
-  pex_app pex_envport [
-    pex__self;
-    pex__adv;
-    arg;
-  ]
-
-(*TODO merge code with pexrfield *)  
-let pexrfieldq (path : string list) (name : string) (pex : pexpr) 
-  : pexpr rfield =
-  {
-    rf_name  = dl (path, name);
-    rf_tvi   = None;
-    rf_value = pex;
-  }
-(*****************************************************************************)
-
-let option_of_msgty (sh : shadowed) (name : string) =
-  let msgty = named_pty name in
-  if IdMap.mem _option sh.types 
-  then dl (PTapp (IdMap.find _option sh.types,[msgty]))
-  else option_of_pty (named_pty name)
 
 let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : poperator =
   let var_name = "m" in
@@ -921,7 +1015,7 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let pat1 = PPApp ((pqs "None", None), []) in
   let mtch1 = (pat1, pex_None) in
 
-  let _ , epdp_op = epdp_data_univ None sh mb.params_map in
+  let _ , epdp_op = epdp_data_univ None sh pex_pqident pex_app mb.params_map in
   let dd = pex_proj epdp_op "dec" in
   let pmex = pex_app dd [pex_ident v] in
   let else_br = pex_match pmex [mtch1; mtch2] in
@@ -946,6 +1040,7 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
     po_locality = `Global;
   }
 
+(* epdp operator for message type *)
 let name_epdp_op (mty_name : string) : string = "epdp_"^mty_name
 
 let epdp_op (mty_name : string) : poperator =
@@ -966,81 +1061,23 @@ let epdp_op (mty_name : string) : poperator =
     po_locality = `Global;
   }
 
-let pform_epdp_namedty_univ (sh : shadowed) (name : qsymbol) : pformula =
-  let _, pqs = epdp_namedty_univ None sh name in
-  pform_pqident pqs
-
-let pform_epdp_fun_univ (sh : shadowed) 
-(pty1 : pty_r) (pty2 : pty_r) : pformula =
-  let _, epdp_name = epdp_non_UC_funty None sh pty1 pty2 in
-  pform_pqident epdp_name
-    
-(*TODO merge with expr code*)    
-let rec epdp_pty_univ_form (sh : shadowed) (t : pty) : pformula =
-  match ul t with
-  | PTtuple  ptys -> epdp_tuple_univ_form sh ptys
-  | PTnamed  pqs  -> pform_epdp_namedty_univ sh (ul pqs)
-  | PTapp (pqs, ptys) -> epdp_app_univ_form sh (ul pqs) ptys
-  | PTfun (pty1, pty2) -> pform_epdp_fun_univ sh (ul pty1) (ul pty2)
-  | _ -> failure ("Only tuples, named types, parametric types and functions are supported." )
-
-and epdp_ptyl_form (sh : shadowed) 
-(tl : pty list) : pformula list =
-  List.fold_left ( fun l t ->
-    let qt = qualify_ty sh t in
-    let e = epdp_pty_univ_form sh qt in
-    l@[e]
-  ) [] tl
-  
-and epdp_tuple_univ_form (sh : shadowed) (ptys : pty list) : pformula =
-  let tyl = EcLocation.unlocs ptys in
-  let arity = List.length tyl in
-  let eno = epdp_basicUCtuple_name arity in
-  match eno with
-  | Some en ->
-    let fl = epdp_ptyl_form sh ptys in
-    let epdp_name = qualify_opname sh en in
-    pform_app (pform_pqident epdp_name) fl
-  | None -> 
-    let _, epdp_name = epdp_non_UC_tuple None sh tyl in
-    pform_pqident epdp_name
-
-and epdp_app_univ_form (sh : shadowed) (app : qsymbol) (ptys : pty list) : pformula =
-  let tyl = EcLocation.unlocs ptys in
-  let eno = epdp_basicUCappty_name app in
-  match eno with
-  | Some en ->
-    let fl = epdp_ptyl_form sh ptys in
-    let epdp_name = qualify_opname sh en in
-    pform_app (pform_pqident epdp_name) fl
-  | None -> 
-    let _, epdp_name = epdp_non_UC_appty None sh app tyl in
-    pform_pqident epdp_name
-    
-let epdp_data_univ_form (sh : shadowed) (params_map : ty_index IdMap.t) : pformula =
-  let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
-  match ptys with
-  | [] -> pform_pqident (qualify_opname sh "epdp_unit_univ")
-  | [t] -> epdp_pty_univ_form sh t
-  | _ -> epdp_tuple_univ_form sh ptys
-  
+(* version of enc_args returning formula instead of expression *)  
 let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
   let pns = fst (List.split (params_map_to_list params_map)) in
   if pns = []
   then pform_unit
   else pform_tuple (List.map (fun pn -> pform_proj (pform_ident var_name) (name_record msg_name pn)) pns)
 
+(* version of enc_u returning formula instead of expression *)
 let enc_u_form (sh : shadowed) (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pformula =
-  let f = pform_proj (epdp_data_univ_form sh params_map) "enc" in
+  let _, epdp_data_form = epdp_data_univ None sh pform_pqident pform_app params_map in
+  let f = pform_proj epdp_data_form "enc" in
   let args = enc_args_form var_name msg_name params_map in
   pform_app f [args]
 
+(* lemma eq_of_valid_msgtyname *)
 let name_lemma_eq_of_valid (name : string) : string =
   "eq_of_valid_"^name
-
-let pform_Dir = pform_ident "Dir"
-
-let pform_Adv = pform_ident "Adv"
 
 let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : paxiom =
   let m = "m" in
@@ -1099,62 +1136,13 @@ let write_message (ppf : Format.formatter) (sh : shadowed)
   write_hint_rewrite ppf lename;
   write_lemma ppf (lemma_eq_of_valid sh tag name mb);
   sh
-  
-let oper_int (name : string) (value : int) : poperator =  
-  let podef = PO_concr (dl PTunivar, pex_of_int value) in
-  {
-    po_kind     = `Op;
-    po_name     = dl name;
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = podef;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
+(* basic interface *) 
+let pi_op : poperator = abs_oper_int _pi
   
 let pi_op2 = oper_int _pi 2
 
 let uc_name (name : string) : string =
   "UC_"^name
-
-let init_shadowed : shadowed = 
-  {
-    types = IdMap.empty;
-    operators = IdMap.empty;
-    nonUCepdp_named = QsMap.empty;
-    nonUCepdp_tuple = TylMap.empty;
-    nonUCepdp_appty = AppMap.empty;
-    nonUCepdp_funty = FunMap.empty;
-  }
-
-let add_ty_name (sh : shadowed) (name : string) : shadowed =
-  match ty_lookup_opt name with
-  | None -> sh
-  | Some (path, _) ->
-    {
-      types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
-      operators = sh.operators;
-      nonUCepdp_named = sh.nonUCepdp_named;
-      nonUCepdp_tuple = sh.nonUCepdp_tuple;
-      nonUCepdp_appty = sh.nonUCepdp_appty;
-      nonUCepdp_funty = sh.nonUCepdp_funty;
-    }
-
-let add_op_name (sh : shadowed) (name : string) : shadowed =
-  match op_lookup_opt name with
-  | None -> sh
-  | Some (path, _) ->
-    {
-      types = sh.types;
-      operators = IdMap.add name (dl (EcPath.toqsymbol path)) sh.operators;
-      nonUCepdp_named = sh.nonUCepdp_named;
-      nonUCepdp_tuple = sh.nonUCepdp_tuple;
-      nonUCepdp_appty = sh.nonUCepdp_appty;
-      nonUCepdp_funty = sh.nonUCepdp_funty;
-    }
 
 let add_shadowing_decls (sh : shadowed) (name : string) : shadowed =
   let sh = add_ty_name sh name in
@@ -1182,70 +1170,6 @@ let write_basic_int
   ) (0,init_shadowed) bibtl in
   write_close_theory ppf name
 
-let state_type_name = "_state"
-
-let state_name (name : string) : string = "_State_"^name
-
-let state_type (states : state_tyd IdMap.t) : ptydecl =
-  let s2e (sname, sbod : string * state_tyd) : (psymbol * pty list) =
-    let sptys = snd (List.split (params_map_to_list (ul sbod).params)) in
-    (dl (state_name sname), sptys)
-  in
-  let ste = List.map s2e (IdMap.bindings states) in
-  {
-    pty_name = dl state_type_name;
-    pty_tyvars = [];
-    pty_body = PTYD_Datatype ste;
-    pty_locality = `Global
-  }
-
-
-(* ec parsetree declarations *************************************************)
-let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
-    ptm_locality = `Global;
-    ptm_def      = `Concrete def
-  }
-  
-let pmodule_def (name : string) (items : pstructure): pmodule_def = {
-    ptm_header = Pmh_ident (dl name);
-    ptm_body   = dl (Pm_struct items);
-  }
-(*****************************************************************************)
-
-(* ec parsetree instructions *************************************************)  
-let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
-  dl (PSif ((ifc,ths),[],[]))
-
-let ps_if_then_else (ifc : pexpr) (ths : pstmt) (els : pstmt) : pinstr =
-  dl (PSif ((ifc,ths),[],els))
-
-let ps_assign (a : string) (ex : pexpr) : pinstr =
-  dl (PSasgn (dl (PLvSymbol (pqs a)), ex))
-
-let ps_assign_id (a : string) (id : string) : pinstr =
-  ps_assign a (pex_ident id)
-  
-let ps_assignl ( sl : string list) (ex : pexpr) : pinstr =
-  let pqssl = List.map (fun s -> pqs s) sl in
-  dl (PSasgn (dl (PLvTuple pqssl), ex))
-  
-let ps_rnd (a : string) (ex : pexpr) : pinstr =
-  dl (PSrnd (dl (PLvSymbol (pqs a)), ex))
-  
-let ps_rndl ( sl : string list) (ex : pexpr) : pinstr =
-  let pqssl = List.map (fun s -> pqs s) sl in
-  dl (PSrnd (dl (PLvTuple pqssl), ex))
-  
-let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
-  dl (PSmatch (mtch_ex, `Full branches))
-  
-let pf_var (name : string) (pty : pty) : pfunction_local =
-  { 
-    pfl_names = dl (`Single, [dl name]);
-    pfl_type  = Some pty;
-    pfl_init  = None
-  }
-
 (*****************************************************************************)
 
 (* uc instruction to ec statement translation ********************************)
@@ -1272,7 +1196,6 @@ let get_message_body
       IdMap.find msgtyname interfaces.ai
   | _ -> failure "impossible, ideal fun cannot have other inter_id_path"
 
-(*TODO merge code with dec op*)
 let mk_message_record_ex
   (inter_id_path : string list) 
   (msgtyname : string)
@@ -1295,6 +1218,8 @@ let mk_message_record_ex
     (fun pn ex -> pexrfield_iip (name_record msgtyname pn) ex) 
     pns data in
   pex_record None (funcfld::otherfld::dataflds)
+
+let state_name (name : string) : string = "_State_"^name
 
 let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   let uc_ec_expr = uc2ec_expr locals in
@@ -1467,8 +1392,26 @@ and ucSandT2ec_stmt
   ]
   
 (*****************************************************************************)
+
   
-(* ideal functionality module ************************************************)
+(* ideal functionality theory ************************************************)
+
+(* constructing state type *)
+let state_type_name = "_state"
+
+let state_type (states : state_tyd IdMap.t) : ptydecl =
+  let s2e (sname, sbod : string * state_tyd) : (psymbol * pty list) =
+    let sptys = snd (List.split (params_map_to_list (ul sbod).params)) in
+    (dl (state_name sname), sptys)
+  in
+  let ste = List.map s2e (IdMap.bindings states) in
+  {
+    pty_name = dl state_type_name;
+    pty_tyvars = [];
+    pty_body = PTYD_Datatype ste;
+    pty_locality = `Global
+  }
+
 
 (* vars **********************************************************************)
 let var__self = dl (Pst_var ([dl __self], addr_pty))
@@ -1825,6 +1768,21 @@ let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
   
 let write_op_adv_if_pi (ppf : Format.formatter) : unit =
   write_operator ppf (abs_oper_int __adv_if_pi)
+
+
+let axiom_adv_if_pi_gt0 : paxiom =
+  let f_le = pform_ident "<" in
+  let f_ax = pform_ident __adv_if_pi in 
+  let pfrm = pform_app f_le [pf_0; f_ax] in 
+  {
+    pa_name     = dl __adv_if_pi_gt0;
+    pa_tyvars   = None;
+    pa_vars     = None;
+    pa_formula  = pfrm;
+    pa_kind     = PAxiom [];
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  }
 
 let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   decl_axiom (axiom_adv_if_pi_gt0);
