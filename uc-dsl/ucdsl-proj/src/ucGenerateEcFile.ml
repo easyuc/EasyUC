@@ -8,6 +8,9 @@ let stf = Format.std_formatter (*REMOVE*)
 
 let dl = UcUtils.dummyloc
 
+let dll (l : 'a list) : ('a EcLocation.located) list =
+  List.map (fun a -> dl a) l
+
 type qsymbol = EcSymbols.qsymbol
 
 let qs = qsymb_of_symb
@@ -15,6 +18,8 @@ let qs = qsymb_of_symb
 let pqs (name : string) = dl (qs name)
 
 let ul = EcLocation.unloc
+
+let ull = EcLocation.unlocs
 
 (*****************************************************************************)
 
@@ -55,6 +60,7 @@ let sym_eq = "="
 let sym_not = "[!]"
 let _None = "None"
 let _Some = "Some"
+let _UCBasicTypes = "UCBasicTypes"
 (*****************************************************************************)
 
 (* UcEcInterface calls *******************************************************)  
@@ -108,6 +114,7 @@ let decl_rewrite (rw : is_local * pqsymbol * pqsymbol list) : unit =
   
 let decl_require (threq : threquire) : unit =
   UcEcInterface.process (GthRequire threq)
+  
 (*****************************************************************************)
 
 (* EcEnv lookups *************************************************************)
@@ -236,6 +243,16 @@ let write_hint_rewrite (ppf : Format.formatter) (lname : string) : unit =
   Format.fprintf stf "hint rewrite epdp : %s.@." lname; (*REMOVE*)
   Format.fprintf ppf "hint rewrite epdp : %s.@." lname;
   print_newline ppf
+  
+let write_require_import (ppf : Format.formatter) (name : string) : unit =
+  let threq = 
+    (None,
+     [(dl name, None)], (*FIX*)
+     Some `Import) in
+  decl_require threq;
+  Format.fprintf stf "@[require import %s.@]@." name; (*REMOVE*)
+  Format.fprintf ppf "@[require import %s.@]@." name;
+  print_newline ppf
     
 (*****************************************************************************)
 
@@ -247,6 +264,15 @@ let record_decl (name : string) (record_fields : precord) : ptydecl =
     pty_tyvars = [];
     pty_body   = body;
     pty_locality = `Global;
+  }
+
+let datatype_decl (name : string) (ctors : ( psymbol * pty list) list)
+: ptydecl =
+  {
+    pty_name = dl name;
+    pty_tyvars = [];
+    pty_body = PTYD_Datatype ctors;
+    pty_locality = `Global
   }
 
 let qnamed_pty (qname : EcSymbols.qsymbol) : pty = dl (PTnamed (dl qname))
@@ -324,6 +350,27 @@ let pex_of_int (i : int) : pexpr =
 let pex_projq (pex : pexpr) (qname : EcSymbols.qsymbol) = 
   dl (PEproj (pex, dl qname))
 
+let ppattern (s : string) (sol : (string option) list) : ppattern =
+  PPApp (
+    (pqs s, None), 
+    dll (List.map (
+      (fun so -> 
+        match so with
+        | None -> None
+        | Some s -> Some (dl s)
+      )
+    ) sol)
+  )
+  
+let ppatSome (str : string) : ppattern =
+  ppattern _Some [Some str]
+
+let ppatSome_ : ppattern =
+  ppattern _Some [None]
+  
+let ppatNone : ppattern =
+  ppattern _None []
+  
 let pexpr_cascade (ex : pexpr) (exs : pexpr list) : pexpr =
   match List.length exs with
   | 0 -> failure "Cascade at least one  expression"
@@ -407,24 +454,68 @@ let abs_oper_pty (name : string) (pty : pty) : poperator =
  
 let abs_oper_int (name : string) : poperator =  
   abs_oper_pty name int_pty
-  
-let oper_int (name : string) (value : int) : poperator =  
-  let podef = PO_concr (dl PTunivar, pex_of_int value) in
+
+let op_of_argstyex (name : string) 
+(args : (string * pty) list) (tyex : pty) (ex : pexpr) : poperator =
+  let podef = PO_concr (tyex, ex) in
+  let args = List.map (
+    (fun (s,t) -> ([dl (Some (dl s))], t))
+  ) args in
   {
     po_kind     = `Op;
     po_name     = dl name;
     po_aliases  = [];
     po_tags     = [];
     po_tyvars   = None;
-    po_args     = [];
+    po_args     = args;
     po_def      = podef;
     po_ax       = None;
     po_nosmt    = false;
     po_locality = `Global;
   }
-  
 
-(* ec parsetree declarations *************************************************)
+let op_of_tyex (name : string) (tyex : pty) (ex : pexpr) : poperator =
+  op_of_argstyex name [] tyex ex
+
+let op_of_ex (name : string) (ex : pexpr) : poperator =
+  op_of_tyex name (dl PTunivar) ex
+  
+let oper_int (name : string) (value : int) : poperator =
+  op_of_ex name (pex_of_int value)
+
+let paxiom_lemma_varso (name : string) 
+(vars : pgtybindings option) (pfrm : pformula) : paxiom =
+  {
+    pa_name     = dl name;
+    pa_tyvars   = None;
+    pa_vars     = vars;
+    pa_formula  = pfrm;
+    pa_kind     = PLemma None;
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  }
+
+let paxiom_lemma_vars (name : string) 
+(vars : (string * pty) list) (pfrm : pformula) : paxiom =
+  let vars = List.map (
+    fun (s,t) -> ([dl (Some (dl s))], PGTY_Type t)
+  ) vars in
+  paxiom_lemma_varso name (Some vars) pfrm
+
+let paxiom_lemma (name : string) (pfrm : pformula) : paxiom =
+  paxiom_lemma_varso name None pfrm
+    
+let paxiom_axiom (name : string) (pfrm : pformula) : paxiom =
+  {
+    pa_name     = dl name;
+    pa_tyvars   = None;
+    pa_vars     = None;
+    pa_formula  = pfrm;
+    pa_kind     = PAxiom [];
+    pa_nosmt    = false;
+    pa_locality = `Global;
+  }
+  
 let pmodule (def : pmodule_def ) : pmodule_def_or_decl = {
     ptm_locality = `Global;
     ptm_def      = `Concrete def
@@ -434,7 +525,29 @@ let pmodule_def (name : string) (items : pstructure): pmodule_def = {
     ptm_header = Pmh_ident (dl name);
     ptm_body   = dl (Pm_struct items);
   }
+  
+let pfunction_decl (name : string) (params : (psymbol * pty) list) (resty : pty)
+: pfunction_decl =
+  {
+    pfd_name     = dl name;
+    pfd_tyargs   = Fparams_exp params;
+    pfd_tyresult = resty;
+    pfd_uses     = (true, None);
+  }
 
+let pfunction_body 
+  (locals : pfunction_local list) 
+  (stmt : pstmt)
+  (retval : pexpr option) : pfunction_body =
+  {
+    pfb_locals = locals;
+    pfb_body   = stmt;
+    pfb_return = retval;
+  }
+  
+let fun_def (fdecl : pfunction_decl) (fbody : pfunction_body)
+: pstructure_item EcLocation.located = dl (Pst_fun (fdecl, fbody))
+ 
 (* ec parsetree instructions *)
 let ps_if_then (ifc : pexpr) (ths : pstmt) : pinstr =
   dl (PSif ((ifc,ths),[],[]))
@@ -461,6 +574,13 @@ let ps_rndl ( sl : string list) (ex : pexpr) : pinstr =
   
 let ps_match (mtch_ex : pexpr) (branches : (ppattern * pstmt) list) : pinstr =
   dl (PSmatch (mtch_ex, `Full branches))
+  
+let ps_call (var : string) (proc : string) (args : pexpr list) : pinstr =
+  dl (PScall (
+    Some (dl (PLvSymbol (pqs var))),
+    dl ([], dl proc),
+    dl args 
+  ))
   
 let pf_var (name : string) (pty : pty) : pfunction_local =
   { 
@@ -640,16 +760,8 @@ let name_lemma_epdp_valid (name : string) : string =
 let lemma_epdp (opname : string) : paxiom =
   let f_ve = pform_ident "valid_epdp" in
   let f_e = pform_ident opname in
-  let pfrm = pform_app f_ve [f_e] in 
-  {
-    pa_name     = dl (name_lemma_epdp_valid opname);
-    pa_tyvars   = None;
-    pa_vars     = None;
-    pa_formula  = pfrm;
-    pa_kind     = PLemma None;
-    pa_nosmt    = false;
-    pa_locality = `Global;
-  }
+  let pfrm = pform_app f_ve [f_e] in
+  paxiom_lemma (name_lemma_epdp_valid opname) pfrm 
 
 let write_epdp_stub (ppf : Format.formatter) (op : poperator) : string =
   write_operator ppf op;
@@ -672,7 +784,7 @@ let epdp_basicUCnamedty_univ (tyname : qsymbol) : string option =
     | "int"  -> Some "epdp_int_univ"
     | "addr" -> Some "epdp_addr_univ"
     | "port" -> Some "epdp_port_univ"
-    | _univ  -> Some "epdp_id"
+    | "univ"  -> Some "epdp_id"
     | _ -> None
   in
   let qual,name = tyname in
@@ -864,7 +976,7 @@ and epdp_namedty_univ_ (ppf : Format.formatter option) (sh : shadowed)
 and epdp_tuple_univ (ppf : Format.formatter option) (sh : shadowed) 
 (exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
 (ptys : pty list) : shadowed * 'a =
-  let tyl = EcLocation.unlocs ptys in
+  let tyl = ull ptys in
   let arity = List.length tyl in
   let eno = epdp_basicUCtuple_name arity in
   match eno with
@@ -879,7 +991,7 @@ and epdp_tuple_univ (ppf : Format.formatter option) (sh : shadowed)
 and epdp_app_univ (ppf : Format.formatter option) (sh : shadowed) 
 (exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
 (app : qsymbol) (ptys : pty list) : shadowed * 'a =
-  let tyl = EcLocation.unlocs ptys in
+  let tyl = ull ptys in
   let eno = epdp_basicUCappty_name app in
   match eno with
   | Some en ->
@@ -940,21 +1052,8 @@ let enc_op (ppf : Format.formatter) (sh : shadowed)
   let ptdest = if mb.dir = In then selfport else otherport in
   let mode = if isdirect then pex_Dir else pex_Adv in
   let encex = pex_tuple [mode; ptdest; ptsource; pex_of_int tag; u] in
-  let args = [([dl(Some (dl var_name))], named_pty mty_name) ] in
-  let def = PO_concr (qualify_ty sh msg_pty, encex) in
-  sh,
-  {
-    po_kind     = `Op;
-    po_name     = dl (enc_op_name mty_name);
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = args;
-    po_def      = def;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
+  let args = [(var_name, named_pty mty_name)] in
+  sh, op_of_argstyex (enc_op_name mty_name) args (qualify_ty sh msg_pty) encex
 
 (* dec operator *)
 let dec_op_name (name : string) : string = "dec_"^name
@@ -1008,12 +1107,10 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
     else pex_let patm wtym omsg  in
   let pat2 = 
     if pns = []
-    then PPApp ((pqs "Some", None), [dl None])
-    else PPApp ((pqs "Some", None), [dl(Some (dl p))]) in
+    then ppatSome_
+    else ppatSome p in
   let mtch2 = (pat2, ex2) in
-
-  let pat1 = PPApp ((pqs "None", None), []) in
-  let mtch1 = (pat1, pex_None) in
+  let mtch1 = (ppatNone, pex_None) in
 
   let _ , epdp_op = epdp_data_univ None sh pex_pqident pex_app mb.params_map in
   let dd = pex_proj epdp_op "dec" in
@@ -1023,22 +1120,9 @@ let dec_op (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_ty
   let pif = pex_if if_cond pex_None else_br in
   
   let decex = pex_let pat wty pif in
-  let args = [([dl(Some (dl var_name))], qualify_ty sh msg_pty) ] in
+  let args = [(var_name, qualify_ty sh msg_pty) ] in
   let ret_pty = option_of_msgty sh mty_name in
-
-  let def = PO_concr (ret_pty, decex) in
-  {
-    po_kind     = `Op;
-    po_name     = dl (dec_op_name mty_name);
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = args;
-    po_def      = def;
-    po_ax       = None;
-    po_nosmt    = true;
-    po_locality = `Global;
-  }
+  op_of_argstyex (dec_op_name mty_name) args ret_pty decex
 
 (* epdp operator for message type *)
 let name_epdp_op (mty_name : string) : string = "epdp_"^mty_name
@@ -1047,19 +1131,7 @@ let epdp_op (mty_name : string) : poperator =
   let enc = pexrfield "enc" (pex_ident (enc_op_name mty_name)) in
   let dec = pexrfield "dec" (pex_ident (dec_op_name mty_name)) in
   let epdp = pex_record None [enc; dec] in
-  let def = PO_concr (dl PTunivar, epdp) in
-  {
-    po_kind     = `Op;
-    po_name     = dl (name_epdp_op mty_name);
-    po_aliases  = [];
-    po_tags     = [];
-    po_tyvars   = None;
-    po_args     = [];
-    po_def      = def;
-    po_ax       = None;
-    po_nosmt    = false;
-    po_locality = `Global;
-  }
+  op_of_ex (name_epdp_op mty_name) epdp
 
 (* version of enc_args returning formula instead of expression *)  
 let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
@@ -1081,7 +1153,7 @@ let name_lemma_eq_of_valid (name : string) : string =
 
 let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : message_body_tyd) : paxiom =
   let m = "m" in
-  let vars = Some [([dl (Some (dl m))], PGTY_Type (qualify_ty sh msg_pty))] in
+  let vars = [(m, qualify_ty sh msg_pty)] in
   
   let fepdp = pform_ident (name_epdp_op mty_name) in
   let fm = pform_ident m in
@@ -1110,16 +1182,8 @@ let lemma_eq_of_valid (sh : shadowed) (tag : int) (mty_name : string) (mb : mess
   let flet = dl (PFlet (dl (LPSymbol (dl "x")), (foget, None), fmsg)) in
   let f_r = pform_app f_eq [fm; flet] in
   let f_imp = pform_ident "=>" in
-  let pfrm = pform_app f_imp [f_l; f_r] in 
-  {
-    pa_name     = dl (name_lemma_eq_of_valid mty_name);
-    pa_tyvars   = None;
-    pa_vars     = vars;
-    pa_formula  = pfrm;
-    pa_kind     = PLemma None;
-    pa_nosmt    = false;
-    pa_locality = `Global;
-  }
+  let pfrm = pform_app f_imp [f_l; f_r] in
+  paxiom_lemma_vars (name_lemma_eq_of_valid mty_name) vars pfrm
 
 let write_message (ppf : Format.formatter) (sh : shadowed) 
   (tag : int) (name : string) (mb : message_body_tyd) : shadowed =
@@ -1209,7 +1273,7 @@ let mk_message_record_ex
     match (mb.port, port) with
     | (None, None) ->
       pexrfield_iip (name_record_adv msgtyname) (pex_ident __adv)
-    | (Some mp, Some p) ->
+    | (Some _, Some p) ->
       pexrfield_iip (name_record_dir_port msgtyname mb) p
     | _ -> 
       failure "mb.port and port should either both be None or both Some" in
@@ -1221,6 +1285,7 @@ let mk_message_record_ex
 
 let state_name (name : string) : string = "_State_"^name
 
+(**)
 let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   let uc_ec_expr = uc2ec_expr locals in
   match ul uc_expr with
@@ -1341,17 +1406,16 @@ and ucMatch2ec_stmt (locals : locals) (interfaces : interfaces)
   let uc_clause2ec (clause : match_clause_tyd) : ppattern * pstmt =
     let (s, (bs, is)) = clause in
     print_string ("\n"^s^":");
-    let osl = (
+    let sol = (
       List.map (fun (ecid, _) -> 
         let id = EcIdent.name ecid in
-        print_string (id^";");
         if id = "_"
-        then dl None
-        else dl (Some (dl id))
+        then None
+        else Some id
       ) bs
     ) in 
     let stmt = uc_inst_list2ec_stmt locals interfaces is in
-    (PPApp (((pqs s), None), osl), stmt)
+    (ppattern s sol, stmt)
   in
   let ec_clauses = List.map uc_clause2ec clauses in
   [ps_match value ec_clauses]
@@ -1372,8 +1436,8 @@ and ucSandT2ec_stmt
     let args = List.map (fun ex -> uc2ec_expr locals ex) (ul msg_ex.args) in
     let msg = mk_message_record_ex iip mtn mb porto args in
     let epdp_path = (iip, name_epdp_op mtn) in
-    let encmsg = (*TODO merge with mminstr code *)
-      pex_app (pex_proj (dl (PEident (dl (epdp_path), None))) _enc) [msg] in
+    let encmsg =
+      pex_app (pex_proj (pex_pqident (dl (epdp_path))) _enc) [msg] in
     let msgo = pex_app pex_Some [encmsg] in
     ps_assign __r msgo
   in
@@ -1405,51 +1469,42 @@ let state_type (states : state_tyd IdMap.t) : ptydecl =
     (dl (state_name sname), sptys)
   in
   let ste = List.map s2e (IdMap.bindings states) in
-  {
-    pty_name = dl state_type_name;
-    pty_tyvars = [];
-    pty_body = PTYD_Datatype ste;
-    pty_locality = `Global
-  }
+  datatype_decl state_type_name ste
 
 
-(* vars **********************************************************************)
+
+(* vars *)
 let var__self = dl (Pst_var ([dl __self], addr_pty))
 let var__adv = dl (Pst_var ([dl __adv], addr_pty))
 let var__st = dl (Pst_var ([dl __st], named_pty state_type_name))
-(*****************************************************************************)
 
-(* proc init *****************************************************************)
-let pinit_decl = {
-  pfd_name     = dl _init;
-  pfd_tyargs   = Fparams_exp [
+(* proc init *)
+let pinit_decl = pfunction_decl 
+  _init
+  [
     (dl _self_, addr_pty);
     (dl _adv_ , addr_pty)
-  ];
-  pfd_tyresult = unit_pty;
-  pfd_uses     = (true, None);
-}
+  ]
+  unit_pty
+
 
 let init_name (states : state_tyd IdMap.t) : string =
   let init_state = IdMap.filter (fun _ s -> (ul s).is_initial) states in
   fst (IdMap.choose init_state)
 
-let pinit_body (states : state_tyd IdMap.t) = {
-  pfb_locals = [];
-  pfb_body   = [
+let pinit_body (states : state_tyd IdMap.t) = pfunction_body
+  []
+  [
     ps_assign_id __self _self_;
     ps_assign_id __adv _adv_;
     ps_assign_id __st (state_name (init_name states));
-  ];
-  pfb_return = None;
-}
+  ]
+  None
 
 let proc_init (states : state_tyd IdMap.t) =
-  let body = pinit_body states in
-  dl (Pst_fun (pinit_decl, body))
-(*****************************************************************************)    
+  fun_def pinit_decl (pinit_body states)
 
-(* proc state ****************************************************************)
+(* proc state *)
 let add_pat_vals
   (inter_id_path : string list)
   (msgtyname : string)
@@ -1499,16 +1554,16 @@ let rec mmcl2matchinstr
       | MsgOrStarStar -> failure "impossible, we checked it is not star!" in
     let iip = uc_inter_path mpp.inter_id_path in
     let epdp_path = (iip, name_epdp_op msgtyname) in
-    let decmsg = pex_app 
-      (pex_proj (dl (PEident (dl (epdp_path), None))) _dec)
+    let decmsg = pex_app
+      (pex_proj (pex_pqident (dl (epdp_path))) _dec)
       [pex_ident __m] in
     let mb = get_message_body interfaces iip msgtyname in
     let locals = { vals = IdMap.empty } in
     let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
     let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
-    let somebr = (PPApp ((pqs "Some", None), [dl(Some (dl __x))]), stmt) in
+    let somebr = (ppatSome __x, stmt) in
     let recur = mmcl2matchinstr interfaces mmcl' in
-    let nonebr = (PPApp ((pqs "None", None), []), recur) in
+    let nonebr = (ppatNone, recur) in
     [ps_match decmsg [somebr; nonebr]]
 
 let proc_state_name (stname : string) : string = "proc"^stname
@@ -1516,12 +1571,10 @@ let proc_state_name (stname : string) : string = "proc"^stname
 let proc_state_decl (stname : string) (state : state_body_tyd) : pfunction_decl = 
   let pl = params_map_to_list state.params in
   let params = List.map (fun (name, pty) -> (dl name,pty)) pl in
-  {
-    pfd_name     = dl (proc_state_name stname);
-    pfd_tyargs   = Fparams_exp ((dl __m, msg_pty)::params);
-    pfd_tyresult = option_of_pty msg_pty;
-    pfd_uses     = (true, None);
-  }
+  pfunction_decl
+    (proc_state_name stname)
+    ((dl __m, msg_pty)::params)
+    (option_of_pty msg_pty)
 
 let get_vars (state : state_body_tyd) : pfunction_local list =
     let vars = params_map_to_list state.vars in
@@ -1532,38 +1585,31 @@ let proc_state_body (interfaces : interfaces) (state : state_body_tyd) =
   let state_match = mmcl2matchinstr interfaces (List.filter 
       (fun mmc -> not (msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)) 
     state.mmclauses) in
-  {
-    pfb_locals = (get_vars state)@[pf_var __r  (option_of_pty msg_pty)];
-    pfb_body   = assign__r :: state_match;
-    pfb_return = Some (pex_ident __r);
-  }
-  
+    pfunction_body
+      ((get_vars state)@[pf_var __r  (option_of_pty msg_pty)])
+      (assign__r :: state_match)
+      (Some (pex_ident __r))
 
 let proc_state (interfaces : interfaces) (stname, state : string * state_tyd) =
   let state = ul state in
   let pdecl = proc_state_decl stname state in
   let pbody = proc_state_body interfaces state in
-  dl (Pst_fun (pdecl, pbody))
+  fun_def pdecl pbody
 (*****************************************************************************)
 
 (* proc parties **************************************************************)
 let call_state stname param_names =
     let param_exl = List.map (fun n -> pex_ident n) param_names in
-    dl (PScall (
-    Some (dl (PLvSymbol (pqs __r))),
-    dl ([], dl (proc_state_name stname)),
-    dl (pex_ident __m::param_exl)   ))
+    ps_call __r (proc_state_name stname) (pex_ident __m::param_exl)
 
 let state2matchbranch
   (stname, state : string * state_tyd) 
   : ppattern * pstmt =
   let state = ul state in
   let param_names = fst (List.split (params_map_to_list state.params)) in
-  let ppat = PPApp (
-    (pqs (state_name stname), None),
-    List.map (fun n -> dl (Some (dl n))) param_names
-  ) in
-  let pstmt = [call_state stname param_names] in (*TODO call proc_state, assign result to _r*)
+  let ppat = ppattern (state_name stname) 
+    (List.map (fun n -> Some  n) param_names) in
+  let pstmt = [call_state stname param_names] in
   (ppat, pstmt)
 
 let party_match
@@ -1572,40 +1618,31 @@ let party_match
   let branches = List.map state2matchbranch (IdMap.bindings states) in
   ps_match mtch_ex branches
 
-let pparties_decl : pfunction_decl = {
-  pfd_name     = dl _parties;
-  pfd_tyargs   = Fparams_exp [(dl __m, msg_pty)];
-  pfd_tyresult = option_of_pty msg_pty;
-  pfd_uses     = (true, None);
-}
+let pparties_decl : pfunction_decl = pfunction_decl
+  _parties
+  [(dl __m, msg_pty)]
+  (option_of_pty msg_pty)
 
 let pparties_body
   (states : state_tyd IdMap.t) =
   let party_match = party_match states in
-  {
-    pfb_locals = [pf_var __r  (option_of_pty msg_pty)];
-    pfb_body   = [party_match];
-    pfb_return = Some (pex_ident __r);
-  }
+  pfunction_body
+    [pf_var __r  (option_of_pty msg_pty)]
+    [party_match]
+    (Some (pex_ident __r))
 
 let proc_parties
   (states : state_tyd IdMap.t) =
-  let body = pparties_body states in
-  dl (Pst_fun (pparties_decl, body))
+  fun_def pparties_decl (pparties_body states)
 (*****************************************************************************)
 
 (* proc invoke ***************************************************************) 
-let pinvoke_decl : pfunction_decl = {
-  pfd_name     = dl _invoke;
-  pfd_tyargs   = Fparams_exp [(dl _m, msg_pty)];
-  pfd_tyresult = option_of_pty msg_pty;
-  pfd_uses     = (true, None);
-}
+let pinvoke_decl : pfunction_decl = pfunction_decl
+  _invoke
+  [(dl _m, msg_pty)]
+  (option_of_pty msg_pty)
 
-let call_parties = dl (PScall (
-    Some (dl (PLvSymbol (pqs _r))),
-    dl ([], dl _parties),
-    dl [pex_m]   ))
+let call_parties = ps_call _r _parties [pex_m]
     
 let adv_msg_guard (piex : pexpr) : pexpr =
   pex_tuple [ pex_And [
@@ -1627,20 +1664,16 @@ let adv_msg_guard (piex : pexpr) : pexpr =
     ];
   ]]
     
-let pinvoke_body (guard : pexpr) : pfunction_body = 
-{
-  pfb_locals = [pf_var _r (option_of_pty msg_pty)];
-  pfb_body   = [ps_if_then guard [call_parties]];
-  pfb_return = Some (pex_ident _r);
-}
+let pinvoke_body (guard : pexpr) : pfunction_body = pfunction_body
+  [pf_var _r (option_of_pty msg_pty)]
+  [ps_if_then guard [call_parties]]
+  (Some (pex_ident _r))
 
 let basic_piex (bi_name : string) : pexpr =
-print_string ("\n"^bi_name^"\n");
-  dl (PEident (dl ([bi_name],_pi), None))
+  pex_pqident (dl ([bi_name],_pi))
   
 let comp_piex (di_name : string) (di_mem : string) : pexpr =
-print_string ("\n"^di_name^"."^di_mem^"\n");
-  dl (PEident (dl ([di_name; di_mem],_pi), None))
+  pex_pqident (dl ([di_name; di_mem],_pi))
   
 let dir_msg_guard (piex : pexpr) : pexpr =
   pex_tuple [ pex_And [
@@ -1668,7 +1701,7 @@ let proc_invoke
   let adv_guard = adv_msg_guard (basic_piex ai_name) in
   let guard = pex_Or (dir_guards@[adv_guard]) in
   let body = pinvoke_body guard in
-  dl (Pst_fun (pinvoke_decl, body))
+  fun_def pinvoke_decl body
 (*****************************************************************************)
 
 let ideal_module 
@@ -1713,9 +1746,7 @@ let write_ideal_fun
   write_close_theory ppf _UC__IF
 (*****************************************************************************)
 
-
-
-let decl_clone (name : string) (bi : string) (pindx : int): unit =
+let write_clone (ppf : Format.formatter) (name : string) (bi : string) (pindx : int) : unit =
   let thov = PTHO_Op (`BySyntax {
     opov_nosmt  = false; 
     opov_tyvars = None; opov_args = [];
@@ -1733,14 +1764,11 @@ let decl_clone (name : string) (bi : string) (pindx : int): unit =
     pthc_local  = `Global;
     pthc_import = None;
   } in
-  clone cl
-  
-let write_clone (ppf : Format.formatter) (name : string) (bi : string) (pindx : int) : unit =
-  decl_clone name bi pindx;
+  clone cl;
   Format.fprintf stf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx; (*REMOVE*)
   Format.fprintf ppf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." bi name pindx;
   print_newline ppf
-  
+
 let write_com_int (ppf : Format.formatter) (isdirect : bool) (name : string) (nt : string IdMap.t) : unit =
   let name = uc_name name in
   write_open_theory ppf name;
@@ -1755,34 +1783,12 @@ type singlefile_typed_spec = {
   fun_map       : fun_tyd IdMap.t;
   sim_map       : sim_tyd IdMap.t
 }
-
-let write_require_import_UCBasicTypes (ppf : Format.formatter) : unit =
-  let threq = 
-    (None,
-     [(dl "UCBasicTypes", None)], (*FIX*)
-     Some `Import) in
-  decl_require threq;
-  Format.fprintf stf "@[require import UCBasicTypes.@]@."; (*REMOVE*)
-  Format.fprintf ppf "@[require import UCBasicTypes.@]@.";
-  print_newline ppf
   
-let write_op_adv_if_pi (ppf : Format.formatter) : unit =
-  write_operator ppf (abs_oper_int __adv_if_pi)
-
-
 let axiom_adv_if_pi_gt0 : paxiom =
   let f_le = pform_ident "<" in
   let f_ax = pform_ident __adv_if_pi in 
-  let pfrm = pform_app f_le [pf_0; f_ax] in 
-  {
-    pa_name     = dl __adv_if_pi_gt0;
-    pa_tyvars   = None;
-    pa_vars     = None;
-    pa_formula  = pfrm;
-    pa_kind     = PAxiom [];
-    pa_nosmt    = false;
-    pa_locality = `Global;
-  }
+  let pfrm = pform_app f_le [pf_0; f_ax] in
+  paxiom_axiom __adv_if_pi_gt0 pfrm
 
 let write_ax_adv_if_pi_gt0 (ppf : Format.formatter) : unit =
   decl_axiom (axiom_adv_if_pi_gt0);
@@ -1821,8 +1827,8 @@ let write_file (ppf : Format.formatter) (sts : singlefile_typed_spec) : unit =
   let basadv_real = IdMap.filter (fun n _ -> not (List.mem n aiif_names)) basadv in
   let comadv = filter_map compfilt sts.adv_inter_map in
   
-  write_require_import_UCBasicTypes ppf;
-  write_op_adv_if_pi ppf;
+  write_require_import ppf _UCBasicTypes;
+  write_operator ppf (abs_oper_int __adv_if_pi);
   write_ax_adv_if_pi_gt0 ppf;
   IdMap.iter (fun n i -> write_basic_int ppf true false n i) basdir;
   IdMap.iter (fun n i -> write_com_int ppf true n i) comdir;
