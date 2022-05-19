@@ -254,41 +254,6 @@ let proc_init (states : state_tyd IdMap.t) =
   fun_def pinit_decl (pinit_body states)
 
 (* proc state *)
-
-let add_pat_vals
-  (inter_id_path : string list)
-  (msgtyname : string)
-  (mb : message_body_tyd)
-  (port : psymbol option)
-  (pat_args : pat list option) 
-  (locals : locals) : locals =
-  let pex_projq_x fieldname = 
-    pex_projq (pex_ident __x) (inter_id_path,fieldname) 
-  in
-  let add_val (valname : string) (subst_expr : pexpr) (locals : locals) : locals =
-    { vals = IdMap.add valname subst_expr locals.vals }
-  in
-  let locals =
-    begin match port with
-    | None -> locals
-    | Some psymbol ->
-      let fieldname = name_record_dir_port msgtyname mb in
-      let sourceport = pex_projq_x fieldname in
-      add_val (ul psymbol) sourceport locals
-    end in
-  match pat_args with
-  | None -> locals
-  | Some patl -> 
-    List.fold_left2
-      (fun locals pat_arg memname ->
-        match pat_arg with
-        | PatWildcard _ -> locals
-        | PatId psymbol ->
-          let fieldname = name_record msgtyname memname in
-          let memex = pex_projq_x fieldname in
-          add_val (ul psymbol) memex locals
-      )
-      locals patl (fst (List.split (params_map_to_list mb.params_map)))
     
 let rec mmcl2matchinstr
   (interfaces : interfaces) 
@@ -308,8 +273,7 @@ let rec mmcl2matchinstr
       (pex_proj (pex_pqident (dl (epdp_path))) _dec)
       [pex_ident __m] in
     let mb = get_message_body interfaces iip msgtyname in
-    let locals = { vals = IdMap.empty } in
-    let locals' = add_pat_vals iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args locals in
+    let locals' = add_pat_vals __x iip msgtyname mb mmc.msg_pat.port_id mmc.msg_pat.pat_args init_locals in
     let stmt = uc_inst_list2ec_stmt locals' interfaces mmc.code in
     let somebr = (ppatSome __x, stmt) in
     let recur = mmcl2matchinstr interfaces mmcl' in

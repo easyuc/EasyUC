@@ -5,12 +5,16 @@ open UcMessage
 open UcGenEcInterface
 
 (* utils *********************************************************************)
+
+(* params_map_to_list converts ty_index IdMap.t into a list of
+name, type pairs. The list is ordered according to the index of ty_index *)
 let params_map_to_list (pm : ty_index IdMap.t) : (string * pty) list =
   let bpm = IdMap.bindings pm in
   let bpm = List.map (fun (s,ti) -> (s, ul ti)) bpm in
   let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
   List.map (fun (name,((_,pty),_)) -> (name, pty)) bpm_ord
 
+(* iff ucdsl message declaration has some port, it is a direct message *)
 let isdirect (mb : message_body_tyd) : bool =
   match mb.port with
   | None -> false
@@ -61,9 +65,12 @@ let uc_name (name : string) : string =
   "UC_"^name
 
 let name_epdp_op (mty_name : string) : string = "epdp_"^mty_name
+
+let state_name (name : string) : string = "_State_"^name
 (*****************************************************************************)
 
 (* construction of common ucdsl EcParsetree objects **************************)
+(* types *)
 let addr_pty : pty = named_pty _addr
 
 let port_pty : pty = named_pty _port
@@ -72,6 +79,7 @@ let msg_pty : pty = named_pty _msg
 
 let univ_pty : pty = named_pty _univ
 
+(* expressions *)
 let pex_Dir = pex_ident _Dir
 
 let pex_Adv = pex_ident _Adv
@@ -90,7 +98,8 @@ let pex_app_envport (arg : pexpr) : pexpr =
     pex__adv;
     arg;
   ]
-  
+
+(* formulas *)  
 let pform_Dir = pform_ident _Dir
 
 let pform_Adv = pform_ident _Adv
@@ -98,15 +107,61 @@ let pform_Adv = pform_ident _Adv
 (*****************************************************************************)
 
 (* uc instruction to ec statement translation ********************************)
+
+(* vals maps local identifiers of values to expressions that return their value
+*)
 type locals = { 
   vals  : pexpr IdMap.t
 }
 
+let init_locals : locals = { vals = IdMap.empty }
+
+let add_val (valname : string) (subst_expr : pexpr) (locals : locals) : locals =
+  { vals = IdMap.add valname subst_expr locals.vals }
+
+(* add ucdsl's message pattern to local values*)
+let add_pat_vals
+  (msgid : string) (*identifier of a variable of a message type*)
+  (inter_id_path : string list) (*path of the interface that contains the mesage type*)
+  (msgtyname : string) (*name of the message type*)
+  (mb : message_body_tyd) (* message body declaration*)
+  (port : psymbol option) (* port identifier from the message pattern*)
+  (pat_args : pat list option) (*arguments from the message pattern*)
+  (locals : locals) : locals =
+  let pex_projq_x fieldname = 
+    pex_projq (pex_ident msgid) (inter_id_path,fieldname) 
+  in
+  (* add expression for a port identifier of a (direct) message to locals*)
+  let locals =
+    begin match port with
+    | None -> locals
+    | Some psymbol ->
+      let fieldname = name_record_dir_port msgtyname mb in
+      let sourceport = pex_projq_x fieldname in
+      add_val (ul psymbol) sourceport locals
+    end in
+  (* add expressions for identifiers of data records of a message to locals *)
+  match pat_args with
+  | None -> locals
+  | Some patl -> 
+    List.fold_left2
+      (fun locals pat_arg memname ->
+        match pat_arg with
+        | PatWildcard _ -> locals
+        | PatId psymbol ->
+          let fieldname = name_record msgtyname memname in
+          let memex = pex_projq_x fieldname in
+          add_val (ul psymbol) memex locals
+      )
+      locals patl (fst (List.split (params_map_to_list mb.params_map)))
+
+(* interfaces (of an ideal functionality) *)    
 type interfaces = {
-  di_name : string;
-  di      : basic_inter_body_tyd IdMap.t;
-  ai_name : string;
-  ai      : basic_inter_body_tyd;
+  di_name : string; (*name of the direct (composite) interface*)
+  di      : basic_inter_body_tyd IdMap.t; (*maps name of a basic interface 
+  in the direct interface to the body of the basic interface*)
+  ai_name : string; (*name of the adversarial (basic) interface*)
+  ai      : basic_inter_body_tyd; (*body of the adversarial interface*)
 }
 
 let get_message_body 
@@ -121,6 +176,11 @@ let get_message_body
       IdMap.find msgtyname interfaces.ai
   | _ -> failure "impossible, ideal fun cannot have other inter_id_path"
 
+(* mk_message_record_ex
+   makes an expression that returns a record of a message type.
+   It is used in generation ec code from ucdsl's send and transition instruction
+   The values of record fields are filled from variables _self and _adv
+   of the functionality module and port and data arguments*)
 let mk_message_record_ex
   (inter_id_path : string list) 
   (msgtyname : string)
@@ -128,25 +188,32 @@ let mk_message_record_ex
   (port : pexpr option)
   (data : pexpr list)
   : pexpr =
+  (*the record field names are fully qualified, pexrfield_iip is the prefix*)
   let pexrfield_iip = pexrfieldq inter_id_path in
+  (*__func field gets assigned the port of the functionality itself*)
   let funcfld = pexrfield_iip (name_record_func msgtyname) (pex_ident __self) in  
   let otherfld = 
     match (mb.port, port) with
-    | (None, None) ->
+    | (None, None) -> (*adversarial message has _adv field that gets
+    assigned the value of the functionality's _adv variable*)
       pexrfield_iip (name_record_adv msgtyname) (pex_ident __adv)
-    | (Some _, Some p) ->
+    | (Some _, Some p) -> (*direct message has a port field that gets
+    assigned the value of the port expression*)
       pexrfield_iip (name_record_dir_port msgtyname mb) p
     | _ -> 
       failure "mb.port and port should either both be None or both Some" in
   let pns = fst (List.split (params_map_to_list mb.params_map)) in
+  (* assigning data expressions to data fields*)
   let dataflds = List.map2
     (fun pn ex -> pexrfield_iip (name_record msgtyname pn) ex) 
     pns data in
   pex_record None (funcfld::otherfld::dataflds)
 
-let state_name (name : string) : string = "_State_"^name
-
-(**)
+(* uc2ec_expr converts ucdsl expressions to ec expressions. 
+   The location data is dropped and replaced with a dummy location.
+   envport expression gets _self and _adv parameters added.
+   Identifiers from ucdsl's message patterns
+   are replaced with identifiers in the locals.vals *)
 let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   let uc_ec_expr = uc2ec_expr locals in
   match ul uc_expr with
@@ -208,18 +275,21 @@ let rec uc2ec_expr (locals : locals) (uc_expr : pexpr) : pexpr =
   | PEscope (pqsymbol, pexpr) ->
     dl (PEscope (pqsymbol, uc_ec_expr pexpr))
     
+(* conversion of the assignment instruction *)
 let uc2ec_ps_assign (locals : locals) (lhs : lhs) (rhs : pexpr) : pinstr =
   let ec_rhs = uc2ec_expr locals rhs in
   match lhs with
   | LHSSimp  ps  -> ps_assign (ul ps) ec_rhs
   | LHSTuple psl -> ps_assignl (List.map (fun ps -> ul ps) psl) ec_rhs
-  
+
+(* conversion of the sample instruction *)  
 let uc2ec_ps_sample (locals : locals) (lhs : lhs) (rhs : pexpr) : pinstr =
   let ec_rhs = uc2ec_expr locals rhs in
   match lhs with
   | LHSSimp  ps  -> ps_rnd (ul ps) ec_rhs
   | LHSTuple psl -> ps_rndl (List.map (fun ps -> ul ps) psl) ec_rhs
 
+(* add "UC_" prefix to the first string in the list*)
 let uc_inter_path (path : string list) : string list =
  if path = [] then []
  else 
@@ -227,6 +297,7 @@ let uc_inter_path (path : string list) : string list =
    let tl = List.tl path in
    hd::tl 
 
+(* converts an ucdsl instruction to an ec instruction list *)
 let rec uc2ec_stmt (locals : locals) (interfaces : interfaces) (inst : instruction_tyd) : pstmt =
   match ul inst with
   | Assign (lhs, pexpr) -> [uc2ec_ps_assign locals lhs pexpr]
@@ -266,7 +337,6 @@ and ucMatch2ec_stmt (locals : locals) (interfaces : interfaces)
   let clauses = ul clauses in
   let uc_clause2ec (clause : match_clause_tyd) : ppattern * pstmt =
     let (s, (bs, is)) = clause in
-    print_string ("\n"^s^":");
     let sol = (
       List.map (fun (ecid, _) -> 
         let id = EcIdent.name ecid in
@@ -318,8 +388,12 @@ and ucSandT2ec_stmt
   
 (*****************************************************************************)
 
-(*generated message types and epdp operators can shadow already existing types
-  and operators with same names. We use shadowed record to handle these ******)
+(* generated message types and epdp operators can shadow already existing
+   types and operators with same names. We use shadowed record to handle these.
+******************************************************************************)
+
+(*the keys of QsMap, TylMap, AppMap, FunMap uniquely determine
+named types, tuple types, type applications and function types, respectively*)
 module Qs =
   struct
     type t = EcSymbols.qsymbol
@@ -353,20 +427,56 @@ module Fun =
 module FunMap = Map.Make(Fun)
 
 type shadowed = {
+(*used for fully qualified names of types shadowed by a declared message type*)
   types     : pqsymbol IdMap.t;
+(*used for fully qualified names of operators shadowed 
+by a declared epdp operator for a message type*)
   operators : pqsymbol IdMap.t;
+(*used for fully qualified names of epdp stubs for unknown named types*)  
   nonUCepdp_named : pqsymbol QsMap.t;
+(*used for fully qualified names of epdp stubs for unknown tuple types*)
   nonUCepdp_tuple : pqsymbol TylMap.t;
+(*used for fully qualified names of epdp stubs for unknown type applications*)
   nonUCepdp_appty : pqsymbol AppMap.t;
+(*used for fully qualified names of epdp stubs for (unknown) function types*)
   nonUCepdp_funty : pqsymbol FunMap.t;
 }
+  
+let init_shadowed : shadowed = 
+  {
+    types = IdMap.empty;
+    operators = IdMap.empty;
+    nonUCepdp_named = QsMap.empty;
+    nonUCepdp_tuple = TylMap.empty;
+    nonUCepdp_appty = AppMap.empty;
+    nonUCepdp_funty = FunMap.empty;
+  }
 
-let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
-  match ul pqs with
-  | ([],s) when IdMap.mem s alt -> IdMap.find s alt
-  | _ -> pqs
+(* used when constructing a message type declaration*)
+let add_ty_name (sh : shadowed) (name : string) : shadowed =
+  match ty_lookup_opt name with
+  | None -> sh
+  | Some (path, _) ->
+    {
+      types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
+      operators = sh.operators;
+      nonUCepdp_named = sh.nonUCepdp_named;
+      nonUCepdp_tuple = sh.nonUCepdp_tuple;
+      nonUCepdp_appty = sh.nonUCepdp_appty;
+      nonUCepdp_funty = sh.nonUCepdp_funty;
+    }
 
+(* adding a message type inside a basic interface theory might shadow
+an existing type in the ec environment. If data fields of some message
+are of such type we need to fully qualify the name of the type *)    
 let rec qualify_ty (sh : shadowed) (pty : pty) : pty =
+  let maybe_swap (pqs : pqsymbol) (alt : pqsymbol IdMap.t) : pqsymbol =
+    match ul pqs with
+    | ([],s) when IdMap.mem s alt -> IdMap.find s alt (*if type name 
+    is not qualified we check if it exists in the map, and replace it with the
+    fully qualified name from the map*)
+    | _ -> pqs (*if type was already qualified we don't need to do anything*)
+  in
   let qtyl (ptyl : pty list) =
     List.map (fun p -> qualify_ty sh p) ptyl
   in
@@ -382,40 +492,15 @@ let rec qualify_ty (sh : shadowed) (pty : pty) : pty =
   | _ -> 
     failure "Impossible, only named types, tuples, type applications and functions can show up in message declarations"
 
-let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
-  if IdMap.mem name sh.operators
-  then IdMap.find name sh.operators
-  else pqs name
-
-let option_of_msgty (sh : shadowed) (name : string) =
+(* shorthand for (fully qualified) msg option type.
+   Note that both option and msg are valid names for ucdsl message types *)
+let option_of_msgty (sh : shadowed) (name : string) : pty=
   let msgty = named_pty name in
   if IdMap.mem _option sh.types 
   then dl (PTapp (IdMap.find _option sh.types,[msgty]))
   else option_of_pty (named_pty name)
-  
-let init_shadowed : shadowed = 
-  {
-    types = IdMap.empty;
-    operators = IdMap.empty;
-    nonUCepdp_named = QsMap.empty;
-    nonUCepdp_tuple = TylMap.empty;
-    nonUCepdp_appty = AppMap.empty;
-    nonUCepdp_funty = FunMap.empty;
-  }
 
-let add_ty_name (sh : shadowed) (name : string) : shadowed =
-  match ty_lookup_opt name with
-  | None -> sh
-  | Some (path, _) ->
-    {
-      types = IdMap.add name (dl (EcPath.toqsymbol path)) sh.types;
-      operators = sh.operators;
-      nonUCepdp_named = sh.nonUCepdp_named;
-      nonUCepdp_tuple = sh.nonUCepdp_tuple;
-      nonUCepdp_appty = sh.nonUCepdp_appty;
-      nonUCepdp_funty = sh.nonUCepdp_funty;
-    }
-
+(* used when constructing an epdp operator for a message type*)  
 let add_op_name (sh : shadowed) (name : string) : shadowed =
   match op_lookup_opt name with
   | None -> sh
@@ -428,6 +513,15 @@ let add_op_name (sh : shadowed) (name : string) : shadowed =
       nonUCepdp_appty = sh.nonUCepdp_appty;
       nonUCepdp_funty = sh.nonUCepdp_funty;
     }
+
+(* If an ucdsl message type has the same name as some type from UCBasicTypes,
+the generated epdp for this message will shadow an epdp operator
+for the UC basic type. In this case we need to fully qualify the name of
+the epdp operator for the UC basic type.*)    
+let qualify_opname (sh : shadowed) (name : string) : pqsymbol =
+  if IdMap.mem name sh.operators
+  then IdMap.find name sh.operators
+  else pqs name
     
 let add_nonUCepdp_namedty (sh : shadowed) 
 (opname : string) (name : qsymbol) : shadowed =
@@ -477,9 +571,13 @@ let add_nonUCepdp_funty (sh : shadowed)
 
 (* construction of epdp for message data *************************************)
 
-(* epdp stubs for types that are not in UCBasic types *)  
+(* epdp stubs for types that are not in UCBasicTypes ------------------------*)  
 let stub_no = ref 0
 
+(* Every new epdp stub gets a unique name that is also different from names of
+   epdp's in UCBasicTypes. Furthermore, the names of epdp stubs start with UC_,
+   and since ucdsl identifiers cannot start with UC_, the new name doesn't 
+   shadow any other epdp operator that is used when generating ec code. *)
 let epdp_stub_prefix() : string =
   stub_no := !stub_no+1;
   "UC_epdp_stub"^(string_of_int !stub_no)
@@ -509,9 +607,9 @@ let write_epdp_stub (ppf : Format.formatter) (op : poperator) : string =
   write_hint_simplify ppf lename;
   write_hint_rewrite ppf _epdp lename;
   opname
+(*---------------------------------------------------------------------------*)
 
-
-(* epdp for named types*)
+(* epdp for named types -----------------------------------------------------*)
 let epdp_basicUCnamedty_univ (tyname : qsymbol) : string option =
   let epdp_name (name : string) : string option =
     match name with
@@ -545,7 +643,9 @@ let epdp_namedty_univ (ppf : Format.formatter option) (sh : shadowed)
   | Some en -> sh, (qualify_opname sh en)
   | None -> epdp_named_non_UC_type ppf sh name
 
-(* epdp for tuples *)
+(*---------------------------------------------------------------------------*)
+
+(* epdp for tuples ----------------------------------------------------------*)
 let epdp_basicUCtuple_name (arity : int) : string option =
   match arity with
   | 2 -> Some "epdp_pair_univ"
@@ -576,8 +676,9 @@ let epdp_non_UC_tuple (ppf : Format.formatter option) (sh : shadowed)
     add_nonUCepdp_tuple sh opname tyl in
   let epdp_op_pqname = TylMap.find tyl sh'.nonUCepdp_tuple in
   sh', epdp_op_pqname
+(*---------------------------------------------------------------------------*)
 
-(* epdp for type applications *)
+(* epdp for type applications -----------------------------------------------*)
 let epdp_basicUCappty_name (tyname : qsymbol) : string option =
   let epdp_name (name : string) : string option =
   match name with
@@ -618,8 +719,9 @@ let epdp_non_UC_appty (ppf : Format.formatter option) (sh : shadowed)
   in
   let epdp_op_pqname = AppMap.find (app,tyl) sh'.nonUCepdp_appty in
   sh', epdp_op_pqname
+(*---------------------------------------------------------------------------*)
 
-(* epdp for function types *)
+(* epdp for function types --------------------------------------------------*)
 let epdp_funty_stub_name () : string =
   (epdp_stub_prefix ())^"_fun"
 
@@ -639,8 +741,9 @@ let epdp_non_UC_funty (ppf : Format.formatter option) (sh : shadowed)
     add_nonUCepdp_funty sh opname pty1 pty2 in
   let epdp_op_pqname = FunMap.find (pty1,pty2) sh'.nonUCepdp_funty in
   sh', epdp_op_pqname
+(*---------------------------------------------------------------------------*)
 
-(* combining epdps to construct epdp for a type  *)
+(* combining epdps to construct epdp for a type -----------------------------*)
 let rec epdp_pty_univ (ppf : Format.formatter option) (sh : shadowed) 
 (exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
 (t : pty) : shadowed * 'a =
@@ -698,40 +801,66 @@ and epdp_fun_univ (ppf : Format.formatter option) (sh : shadowed)
 (exf_name : pqsymbol -> 'a) (pty1 : pty_r) (pty2 : pty_r) : shadowed * 'a =
   let sh', epdp_name = epdp_non_UC_funty ppf sh pty1 pty2 in
   sh', exf_name epdp_name
-    
+(*---------------------------------------------------------------------------*)
+
+(* epdp_data_univ creates an epdp for message data.
+   It is called when constructing enc operator for a message type 
+   and lemma eq_of_valid_... for a message type.
+   
+   The enc operator is constructed first, and if some of the message data 
+   has a new type that is not in UCBasicTypes, an epdp stub for this type
+   is constructed. In this case, the identifier for this epdp operator is
+   added to the sh record, and the stub is written to the file using ppf
+   (ppf cannot be None in this case).
+   When the lemma is constructed, all of the epdp operators for 
+   message data are already in the sh record or in UCBasicTypes, 
+   so ppf can be None, and the returned shadowed record is the same as sh.
+   
+   For the construction of enc operator we need an expression that applies
+   enc of the message data epdp to the message parameters, and for the lemma we
+   need a formula. 
+   The exf_name parameter determines the return type of epdp_data_univ.
+   For the enc operator exf_name is a function that maps 
+   epdp identifiers into expressions (pex_pqident), 
+   and for the lemma into formulas (pform_pqident).
+   Similarly, for application of epdp operators to other epdp operators
+   we need exf_app, a function that maps expression/formula applied to a list 
+   of expressions/formulas into an expression/formula when constructing the 
+   enc operator/lemma. *)    
 let epdp_data_univ (ppf : Format.formatter option) (sh : shadowed) 
 (exf_name : pqsymbol -> 'a) (exf_app : 'a -> 'a list -> 'a)
 (params_map : ty_index IdMap.t) : shadowed * 'a =
   let ptys = List.map (fun (_,pty) -> pty) (params_map_to_list params_map) in
   match ptys with
-  | [] -> sh, exf_name (qualify_opname sh "epdp_unit_univ")
+  | [] -> sh, exf_name (qualify_opname sh "epdp_unit_univ") 
   | [t] -> epdp_pty_univ ppf sh exf_name exf_app t
   | _ -> epdp_tuple_univ ppf sh exf_name exf_app ptys
 
-(* enc operator *)  
-let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pexpr =
-  let pns = fst (List.split (params_map_to_list params_map)) in
-  if pns = []
-  then pex_unit
-  else pex_tuple (List.map (fun pn -> pex_proj (pex_ident var_name) (name_record msg_name pn)) pns)
-
+(* enc_u constructs expression that encodes message data, 
+   called when constructing enc operator for the message type. *)  
 let enc_u (ppf : Format.formatter option) (sh : shadowed) 
 (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) 
 : shadowed * pexpr =
+  let enc_args (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pexpr =
+    let pns = fst (List.split (params_map_to_list params_map)) in
+    if pns = []
+    then pex_unit
+    else pex_tuple (List.map (fun pn -> pex_proj (pex_ident var_name) (name_record msg_name pn)) pns)
+  in
   let sh', ex = epdp_data_univ ppf sh pex_pqident pex_app params_map in
   let ex = pex_proj ex "enc" in
   let args = enc_args var_name msg_name params_map in
   sh', pex_app ex [args]
 
-(* version of enc_args returning formula instead of expression *)  
-let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
-  let pns = fst (List.split (params_map_to_list params_map)) in
-  if pns = []
-  then pform_unit
-  else pform_tuple (List.map (fun pn -> pform_proj (pform_ident var_name) (name_record msg_name pn)) pns)
-
-(* version of enc_u returning formula instead of expression *)
+(* enc_u_form constructs formula that encodes message data, 
+   called when constructing lemma eq_of_valid_... for the message type. *)
 let enc_u_form (sh : shadowed) (var_name : string) (msg_name : string) (params_map : ty_index IdMap.t) : pformula =
+  let enc_args_form (var_name : string) (msg_name : string ) (params_map : ty_index IdMap.t) : pformula =
+    let pns = fst (List.split (params_map_to_list params_map)) in
+    if pns = []
+    then pform_unit
+    else pform_tuple (List.map (fun pn -> pform_proj (pform_ident var_name) (name_record msg_name pn)) pns)
+  in
   let _, epdp_data_form = epdp_data_univ None sh pform_pqident pform_app params_map in
   let f = pform_proj epdp_data_form "enc" in
   let args = enc_args_form var_name msg_name params_map in
