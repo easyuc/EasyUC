@@ -1,0 +1,5 @@
+description
+.
+args: testNonUCBasicTypesFunTy.uc
+outcome: success
+.

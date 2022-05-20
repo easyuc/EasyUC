@@ -1,0 +1,5 @@
+description
+.
+args: testShadowing.uc
+outcome: success
+.

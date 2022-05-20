@@ -1,0 +1,5 @@
+description
+.
+args: testMatchInstruction.uc
+outcome: success
+.

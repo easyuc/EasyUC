@@ -581,13 +581,6 @@ let stub_no = ref 0
 let epdp_stub_prefix() : string =
   stub_no := !stub_no+1;
   "UC_epdp_stub"^(string_of_int !stub_no)
-
-let epdp_namedty_stub_name (name : string) : string =
-   (epdp_stub_prefix() )^"_"^name
-  
-let epdp_namedty_op (name : string) : poperator =  
-  let opty = PTapp (pqs _epdp, [named_pty name; univ_pty]) in
-  abs_oper_pty name (dl opty)
   
 let name_lemma_epdp_valid (name : string) : string =
   "valid_"^name
@@ -618,14 +611,22 @@ let epdp_basicUCnamedty_univ (tyname : qsymbol) : string option =
     | "int"  -> Some "epdp_int_univ"
     | "addr" -> Some "epdp_addr_univ"
     | "port" -> Some "epdp_port_univ"
-    | "univ"  -> Some "epdp_id"
+    | "univ" -> Some "epdp_id"
     | _ -> None
   in
   let qual,name = tyname in
   match qual with
+  | ["Top";"UCBasicTypes"] -> epdp_name name
   | ["UCBasicTypes"] -> epdp_name name
   | [] -> epdp_name name
   | _ -> None
+
+let epdp_namedty_stub_name (name : string) : string =
+   (epdp_stub_prefix() )^"_"^name
+  
+let epdp_namedty_op (name : string) : poperator =  
+  let opty = PTapp (pqs _epdp, [named_pty name; univ_pty]) in
+  abs_oper_pty (epdp_namedty_stub_name name) (dl opty)
   
 let epdp_named_non_UC_type (ppf : Format.formatter option) (sh : shadowed) 
 (name : qsymbol) : shadowed * pqsymbol =
@@ -695,6 +696,7 @@ let epdp_basicUCappty_name (tyname : qsymbol) : string option =
   in
   let qual,name = tyname in
   match qual with
+  | ["Top";"UCBasicTypes"] -> epdp_name name
   | ["UCBasicTypes"] -> epdp_name name
   | [] -> epdp_name name
   | _ -> None

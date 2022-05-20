@@ -1,0 +1,5 @@
+description
+.
+args: testValueAssignment.uc
+outcome: success
+.

@@ -463,7 +463,6 @@ let write_ideal_fun
 let write_clone (ppf : Format.formatter)
 (name : string) (base : string) (pindx : int ) : unit =
   clone (theory_cloning name base _pi (pex_of_int pindx));
-  Format.fprintf stf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." base name pindx; (*REMOVE*)
   Format.fprintf ppf "@[clone %s as %s with@.  op pi = %i@.proof *.@]@." base name pindx;
   print_newline ppf
 

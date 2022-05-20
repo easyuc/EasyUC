@@ -5,3 +5,4 @@
 find . -name "*.coverage" -type f -delete
 find . -name CONFLICT -type f -delete
 find . -name log -type f -delete
+find . -name "UC__*.eca" -type f -delete

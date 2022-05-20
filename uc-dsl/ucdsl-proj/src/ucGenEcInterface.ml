@@ -2,8 +2,6 @@ open EcParsetree
 open UcMessage
 
 (* shorthands ****************************************************************)
-let stf = Format.std_formatter (*REMOVE*)
-
 let dl = UcUtils.dummyloc
 
 let dll (l : 'a list) : ('a EcLocation.located) list =
@@ -120,16 +118,13 @@ let ax_lookup (name : string) : (EcPath.path * EcDecl.axiom)=
 let ppe () = EcPrinting.PPEnv.ofenv (env ())
 
 let print_newline (ppf : Format.formatter) : unit =
-  Format.fprintf stf "@."; (*REMOVE*)
   Format.fprintf ppf "@."
   
 let print_open_theory (ppf : Format.formatter) (name : string) : unit =
-  Format.fprintf stf "@[theory %s.@]@." name; (*REMOVE*)
   Format.fprintf ppf "@[theory %s.@]@." name;
   print_newline ppf
 
 let print_close_theory (ppf : Format.formatter) (name : string) : unit =
-  Format.fprintf stf "@[end %s.@]@." name; (*REMOVE*)
   Format.fprintf ppf "@[end %s.@]@." name;
   print_newline ppf
   
@@ -137,7 +132,6 @@ let print_operator (ppf : Format.formatter) (pop : poperator) : unit =
   let name = ul pop.po_name in
   let op = op_lookup name in
   let ppe = ppe () in
-  EcPrinting.pp_opdecl ppe stf op; (*REMOVE*)
   EcPrinting.pp_opdecl ppe ppf op;
   print_newline ppf;
   print_newline ppf
@@ -145,14 +139,12 @@ let print_operator (ppf : Format.formatter) (pop : poperator) : unit =
 let print_type (ppf : Format.formatter) (name : string) : unit =
   let ppe = ppe() in
   let ptd = ty_lookup name in
-  EcPrinting.pp_typedecl ppe stf ptd; (*REMOVE*)
   EcPrinting.pp_typedecl ppe ppf ptd;
   print_newline ppf
 
 let print_module (ppf : Format.formatter) (name : string) : unit = 
   let ppe = ppe () in
   let (mpt, (mex, _))  = mod_lookup name in
-  EcPrinting.pp_modexp ppe stf (mpt,mex); (*REMOVE*)
   EcPrinting.pp_modexp ppe ppf (mpt,mex);
   print_newline ppf
   
@@ -160,12 +152,10 @@ let print_axiom (ppf : Format.formatter) (name : string) : unit =
   let env = env () in
   let ppe = EcPrinting.PPEnv.ofenv env in
   let ax = ax_lookup name in
-  EcPrinting.pp_axiom ppe stf ax; (*REMOVE*)
   EcPrinting.pp_axiom ppe ppf ax;
   print_newline ppf
   
 let print_proof_admit_qed (ppf : Format.formatter) : unit =
-  Format.fprintf stf "@[proof.@.@[admit.@]@.qed.@]@."; (*REMOVE*)
   Format.fprintf ppf "@[proof.@.@[admit.@]@.qed.@]@."
 
 (*****************************************************************************)
@@ -202,7 +192,6 @@ let write_lemma (ppf : Format.formatter) (lemma : paxiom) : unit =
   print_newline ppf
   
 let write_hint_simplify (ppf : Format.formatter) (lname : string) : unit =
-  Format.fprintf stf "hint simplify [eqtrue] %s.@." lname; (*REMOVE*)
   let red = ([`EqTrue], [([pqs lname], None)]) in
   decl_reduction red;
   Format.fprintf ppf "hint simplify [eqtrue] %s.@." lname;
@@ -211,7 +200,6 @@ let write_hint_simplify (ppf : Format.formatter) (lname : string) : unit =
 let write_hint_rewrite (ppf : Format.formatter) (rw : string) (lname : string) : unit =
   let hint = (`Global, pqs rw, [pqs lname]) in
   decl_rewrite hint;
-  Format.fprintf stf "hint rewrite %s : %s.@." rw lname; (*REMOVE*)
   Format.fprintf ppf "hint rewrite %s : %s.@." rw lname;
   print_newline ppf
   
@@ -221,7 +209,6 @@ let write_require_import (ppf : Format.formatter) (name : string) : unit =
      [(dl name, None)], (*FIX*)
      Some `Import) in
   decl_require threq;
-  Format.fprintf stf "@[require import %s.@]@." name; (*REMOVE*)
   Format.fprintf ppf "@[require import %s.@]@." name;
   print_newline ppf
     
