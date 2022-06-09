@@ -8,20 +8,6 @@
    current options, and information about the current section (if any)
    *)
 
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2021 - Inria
- * Copyright (c) - 2012--2021 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2022 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcSymbols
 open EcLocation
@@ -229,6 +215,7 @@ module Prover : sig
     pl_iterate    : bool option;
     pl_wanted     : EcProvers.hints option;
     pl_unwanted   : EcProvers.hints option;
+    pl_dumpin     : string located option;
     pl_selected   : bool option;
     gn_debug      : bool option;
   }

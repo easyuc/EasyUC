@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2021 - Inria
- * Copyright (c) - 2012--2021 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcSymbols
@@ -469,7 +461,7 @@ let on_modsig (cb:cb) (ms:module_sig) =
   List.iter (fun (_,mt) -> on_modty cb mt) ms.mis_params;
   List.iter (fun (Tys_function fs) ->
       on_ty cb fs.fs_arg;
-      oiter (List.iter (fun x -> on_ty cb x.v_type)) fs.fs_anames;
+      List.iter (fun x -> on_ty cb x.ov_type) fs.fs_anames;
       on_ty cb fs.fs_ret;) ms.mis_body
 
 let on_ring cb r =

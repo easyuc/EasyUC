@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcSymbols
@@ -702,9 +694,11 @@ let p_mr_equal a_equal mr1 mr2 =
   && Msym.equal (PreOI.equal a_equal) mr1.mr_oinfos mr2.mr_oinfos
 
 let has_compl_restriction mr =
-  Msym.exists (fun _ oi ->
-      (PreOI.costs oi) <> `Unbounded
-    ) mr.mr_oinfos
+  Msym.exists (fun _ oi -> (PreOI.costs oi) <> `Unbounded) mr.mr_oinfos
+
+let mr_is_empty mr =
+     not (has_compl_restriction mr)
+  && Msym.for_all (fun _ oi -> [] = PreOI.allowed oi && PreOI.is_in oi) mr.mr_oinfos
 
 let mr_xpaths_fv (m : mr_xpaths) : int Mid.t =
   EcPath.Sx.fold
@@ -726,12 +720,12 @@ let mr_mpaths_fv (m : mr_mpaths) : int Mid.t =
 type funsig = {
   fs_name   : symbol;
   fs_arg    : EcTypes.ty;
-  fs_anames : variable list option;
+  fs_anames : ovariable list;
   fs_ret    : EcTypes.ty;
 }
 
 let fs_equal f1 f2 =
-    (EcUtils.opt_equal (List.all2 EcTypes.v_equal) f1.fs_anames f2.fs_anames)
+    List.all2 EcTypes.ov_equal f1.fs_anames f2.fs_anames
     && (EcTypes.ty_equal f1.fs_ret f2.fs_ret)
     && (EcTypes.ty_equal f1.fs_arg f2.fs_arg)
     && (EcSymbols.sym_equal f1.fs_name f2.fs_name)
@@ -913,8 +907,12 @@ let get_uninit_read_of_fun (f : _ p_function_) =
 
   | FBdef fd ->
       let w =
-        let toloc { v_name = x } = x in
-        let w = List.map toloc (f.f_sig.fs_anames |> odfl []) in
+        let toloc ov =
+          (* We don't allow anonymous parameters on concrete procedures *)
+          assert (is_some ov.ov_name);
+          oget ov.ov_name
+        in
+        let w = List.map toloc f.f_sig.fs_anames in
         Ssym.of_list w
       in
 

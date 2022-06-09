@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcBigInt
 open EcMaps
@@ -310,9 +302,7 @@ and pvariable_decl = {
   pvd_type : pty;
 }
 
-and fun_params =
- | Fparams_exp of (psymbol * pty) list
- | Fparams_imp of pty
+and fun_params = (osymbol * pty) list
 
 and pfunction_decl = {
   pfd_name     : psymbol;
@@ -795,6 +785,7 @@ type pprover_infos = {
   plem_iterate    : bool option;
   plem_wanted     : pdbhint option;
   plem_unwanted   : pdbhint option;
+  plem_dumpin     : string located option;
   plem_selected   : bool option;
   psmt_debug      : bool option;
 }
@@ -812,6 +803,7 @@ let empty_pprover = {
   plem_iterate    = None;
   plem_wanted     = None;
   plem_unwanted   = None;
+  plem_dumpin     = None;
   plem_selected   = None;
   psmt_debug      = None;
 }
@@ -1267,6 +1259,7 @@ type global = {
 
 type prog_r =
   | P_Prog of global list * bool
+  | P_Exit
   | P_Undo of int
 
 type prog = prog_r located

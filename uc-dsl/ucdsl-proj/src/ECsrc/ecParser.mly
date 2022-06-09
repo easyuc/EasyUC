@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2021 - Inria
- * Copyright (c) - 2012--2021 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 %{
   open EcUtils
   open EcLocation
@@ -179,6 +171,7 @@
     | `WANTEDLEMMAS   of EcParsetree.pdbhint
     | `VERBOSE        of int option
     | `VERSION        of [ `Full | `Lazy ]
+    | `DUMPIN         of string located
     | `SELECTED
     | `DEBUG
   ]
@@ -214,6 +207,7 @@
            "lazy"          ;
            "full"          ;
            "iterate"       ;
+           "dumpin"        ;
            "selected"      ;
            "debug"         ]
 
@@ -289,6 +283,7 @@
       let verbose  = ref None in
       let version  = ref None in
       let iterate  = ref None in
+      let dumpin   = ref None in
       let selected = ref None in
       let debug    = ref None in
 
@@ -333,6 +328,7 @@
         | `VERSION        v -> version  := Some v
         | `ITERATE          -> iterate  := Some true
         | `PROVER         p -> List.iter add_prover p
+        | `DUMPIN         f -> dumpin   := Some f
         | `SELECTED         -> selected := Some true
         | `DEBUG            -> debug    := Some true
       in
@@ -355,6 +351,7 @@
         plem_iterate    = !iterate;
         plem_wanted     = !wanted;
         plem_unwanted   = !unwanted;
+        plem_dumpin     = !dumpin;
         plem_selected   = !selected;
         psmt_debug      = !debug;
       }
@@ -446,6 +443,7 @@
 %token EXACT
 %token EXFALSO
 %token EXIST
+%token EXIT
 %token EXLIM
 %token EXPECT
 %token EXPORT
@@ -672,6 +670,7 @@ _lident:
 | EXLIM      { "exlim"      }
 | ECALL      { "ecall"      }
 | FROM       { "from"       }
+| EXIT       { "exit"       }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
 | x=FIELD { match x with `Eq -> "fieldeq" | `Raw -> "field" }
@@ -1447,20 +1446,23 @@ type_exp:
 
 (* -------------------------------------------------------------------- *)
 (* Parameter declarations                                              *)
+var_or_anon:
+| x=loc(UNDERSCORE)
+    { mk_loc x.pl_loc None }
 
-typed_vars:
-| xs=ident+ COLON ty=loc(type_exp)
+| x=ident
+    { mk_loc x.pl_loc (Some x) }
+
+typed_vars_or_anons:
+| xs=var_or_anon+ COLON ty=loc(type_exp)
    { List.map (fun v -> (v, ty)) xs }
 
-| xs=ident+
+| xs=var_or_anon+
     { List.map (fun v -> (v, mk_loc v.pl_loc PTunivar)) xs }
 
 param_decl:
-| LPAREN aout=plist0(typed_vars, COMMA) RPAREN
-    { Fparams_exp (List.flatten aout )}
-
-| LPAREN UNDERSCORE COLON ty=loc(type_exp) RPAREN
-    { Fparams_imp ty }
+| LPAREN aout=plist0(typed_vars_or_anons, COMMA) RPAREN
+    { List.flatten aout }
 
 (* -------------------------------------------------------------------- *)
 (* Statements                                                           *)
@@ -1615,12 +1617,8 @@ mod_item:
     { Pst_mod (x, odfl [] c, m) }
 
 | PROC decl=loc(fun_decl) EQ body=fun_def_body {
-    let { pl_loc = loc; pl_desc = decl; } = decl in
-        match decl.pfd_tyargs with
-        | Fparams_imp _ ->
-            let msg = "implicite declaration of parameters not allowed" in
-              parse_error loc (Some msg)
-        | _ -> Pst_fun (decl, body)
+    let { pl_desc = decl; } = decl in
+    Pst_fun (decl, body)
   }
 
 | PROC x=lident EQ f=loc(fident)
@@ -3842,6 +3840,9 @@ smt_info1:
 | PROVER EQ p=prover_kind
     { `PROVER p }
 
+| DUMP IN EQ file=loc(STRING)
+    { `DUMPIN file }
+
 | x=lident po=prefix(EQ, smt_option)?
     { SMT.mk_pi_option x po }
 
@@ -3979,6 +3980,9 @@ prog_r:
 
 | UNDO d=word FINAL
    { P_Undo d }
+
+| EXIT FINAL
+   { P_Exit }
 
 | error
    { parse_error (EcLocation.make $startpos $endpos) None }

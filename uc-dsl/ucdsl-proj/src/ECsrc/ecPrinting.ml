@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2021 - Inria
- * Copyright (c) - 2012--2021 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcMaps
 open EcSymbols
@@ -719,17 +711,20 @@ let pp_mem (ppe : PPEnv.t) fmt x =
 
 let pp_memtype ppe fmt mt =
   match EcMemory.for_printing mt with
-  | None -> ()
+  | None -> Format.fprintf fmt "{}"
   | Some (arg, decl) ->
     match arg with
     | Some arg ->
       let pp_vd fmt v =
-        Format.fprintf fmt "@[%s: %a@]" v.v_name (pp_type ppe) v.v_type in
+        Format.fprintf fmt "@[%s: %a@]"
+          (odfl "_" v.ov_name)
+          (pp_type ppe) v.ov_type
+      in
       Format.fprintf fmt "@[{%s: {@[%a@]}}@]" arg (pp_list ",@ " pp_vd) decl
     | None ->
       let add mty v =
-        let ids = Mty.find_def [] v.v_type mty in
-        Mty.add v.v_type (v.v_name::ids) mty in
+        let ids = Mty.find_def [] v.ov_type mty in
+        Mty.add v.ov_type (odfl "_" v.ov_name::ids) mty in
       let mty = List.fold_left add Mty.empty decl in
       let pp_bind fmt (ty, ids) =
         Format.fprintf fmt "@[%a :@ %a@]"
@@ -910,39 +905,48 @@ let pp_opapp
     let module E = struct exception PrintAsPlain end in
 
     try
-      let (pp, prio) =
+      let (pp, prio, es) =
         match opname, es with
-        | x, [] when x = EcCoreLib.s_nil ->
-            ((fun fmt -> pp_string fmt "[]"), max_op_prec)
+        | x, _ when x = EcCoreLib.s_nil ->
+            ((fun fmt -> pp_string fmt "[]"), max_op_prec, es)
 
-        | x, [e] when x = EcCoreLib.s_abs ->
+        | x, e :: es when x = EcCoreLib.s_abs ->
             let pp fmt =
               Format.fprintf fmt "`|%a|"
                 (pp_sub ppe (inm, (min_op_prec, `NonAssoc))) e
             in
-              (pp, e_app_prio)
+              (pp, e_app_prio, es)
 
-        | x, [e1; e2] when x = EcCoreLib.s_get ->
+        | x, e1 :: e2 :: es when x = EcCoreLib.s_get ->
             let pp fmt =
               Format.fprintf fmt "@[%a.[%a]@]"
                 (pp_sub       ppe (inm, (e_get_prio , `Left    ))) e1
                 (pp_tuple_sub ppe (inm, (min_op_prec, `NonAssoc))) e2
             in
-              (pp, e_get_prio)
+              (pp, e_get_prio, es)
 
-        | x, [e1; e2; e3] when x = EcCoreLib.s_set ->
+        | x, e1 :: e2 :: e3 :: es when x = EcCoreLib.s_set ->
             let pp fmt =
               Format.fprintf fmt "@[<hov 2>%a.[%a <-@ %a]@]"
                 (pp_sub       ppe (inm, (e_get_prio , `Left    ))) e1
                 (pp_tuple_sub ppe (inm, (min_op_prec, `NonAssoc))) e2
                 (pp_sub       ppe (inm, (min_op_prec, `NonAssoc))) e3
             in
-              (pp, e_get_prio)
+              (pp, e_get_prio, es)
 
         | _ ->
             raise E.PrintAsPlain
       in
-        maybe_paren outer (inm, prio) (fun fmt () -> pp fmt) fmt
+      let rec doit fmt args =
+        match args with
+        | [] ->
+           maybe_paren outer (inm, prio) (fun fmt () -> pp fmt) fmt ()
+
+        | a :: args ->
+           Format.fprintf fmt "%a@ %a"
+             doit args (pp_sub ppe (fst outer, (e_app_prio, `IRight))) a
+
+      in fun () -> doit fmt es
 
     with E.PrintAsPlain ->
       fun () ->
@@ -1133,14 +1137,23 @@ let pp_opapp
   and try_pp_proj () =
     let env = ppe.PPEnv.ppe_env in
       match es, EcEnv.Op.by_path_opt op env with
-      | arg :: args, Some op when EcDecl.is_proj op ->
+      | [arg], Some op when EcDecl.is_proj op ->
           let pp fmt () =
+            Format.fprintf fmt "%a.`%a"
+              (pp_sub ppe (fst outer, (max_op_prec, `NonAssoc))) arg
+              pp_opname (nm, opname)
+          in
+            Some pp
+      | arg :: args, Some op when EcDecl.is_proj op ->
+          let pp fmt =
             Format.fprintf fmt "%a.`%a%(%)%a"
               (pp_sub ppe (fst outer, (max_op_prec, `NonAssoc))) arg
               pp_opname (nm, opname)
               (if List.is_empty args then "" else "@ ")
               (pp_list "@ " (pp_sub ppe (fst outer, (max_op_prec, `NonAssoc))))
-              args
+              args in
+          let pp fmt =
+            maybe_paren outer (inm, e_app_prio) (fun fmt () -> pp fmt) fmt
           in
             Some pp
       | _ -> None
@@ -1842,9 +1855,10 @@ and pp_orclinfo ppe fmt (sym, oi) =
     pp_symbol sym
     (pp_orclinfo_bare ppe) oi
 
-and pp_orclinfos ppe fmt ois =
-  Format.fprintf fmt "[@[<hv>%a@]]"
-    (pp_list ",@ " (pp_orclinfo ppe)) (Msym.bindings ois)
+and pp_orclinfos ppe fmt mr =
+  if not (EcModules.mr_is_empty mr) then
+    Format.fprintf fmt "[@[<hv>%a@]]"
+      (pp_list ",@ " (pp_orclinfo ppe)) (Msym.bindings mr.mr_oinfos)
 
 (* -------------------------------------------------------------------- *)
 and pp_mem_restr ppe fmt mr =
@@ -1892,7 +1906,7 @@ and pp_mem_restr ppe fmt mr =
 and pp_restr ppe fmt mr =
   Format.fprintf fmt "%a%a"
     (pp_mem_restr ppe) mr
-    (pp_orclinfos ppe) mr.mr_oinfos
+    (pp_orclinfos ppe) mr
 
 (* -------------------------------------------------------------------- *)
 and pp_modtype (ppe : PPEnv.t) fmt (mty : module_type) =
@@ -3018,21 +3032,17 @@ let pp_goal (ppe : PPEnv.t) (prpo : prpo_display) fmt (g, extra) =
         gs
 
 (* -------------------------------------------------------------------- *)
+let pp_ovdecl ppe fmt ov =
+  Format.fprintf fmt "%s : %a" (odfl "_" ov.ov_name) (pp_type ppe) ov.ov_type
 
 let pp_pvdecl ppe fmt v =
   Format.fprintf fmt "%s : %a" v.v_name (pp_type ppe) v.v_type
 
 let pp_funsig ppe fmt fs =
-  match fs.fs_anames with
-  | None ->
-      Format.fprintf fmt "@[<hov 2>proc %s (%a) :@ %a@]"
-        fs.fs_name (pp_type ppe) fs.fs_arg (pp_type ppe) fs.fs_ret
-
-  | Some params ->
-    Format.fprintf fmt "@[<hov 2>proc %s(%a) :@ %a@]"
-      fs.fs_name
-      (pp_list ", " (pp_pvdecl ppe)) params
-      (pp_type ppe) fs.fs_ret
+  Format.fprintf fmt "@[<hov 2>proc %s(%a) :@ %a@]"
+    fs.fs_name
+    (pp_list ", " (pp_ovdecl ppe)) fs.fs_anames
+    (pp_type ppe) fs.fs_ret
 
 let pp_sigitem moi_opt ppe fmt (Tys_function fs) =
   Format.fprintf fmt "@[<hov 2>%a@ %t@]"

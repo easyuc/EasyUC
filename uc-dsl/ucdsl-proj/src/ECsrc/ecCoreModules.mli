@@ -1,11 +1,3 @@
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* -------------------------------------------------------------------- *)
 open EcSymbols
 open EcPath
@@ -105,7 +97,7 @@ val get_uninit_read : stmt -> Sx.t
 type funsig = {
   fs_name   : symbol;
   fs_arg    : EcTypes.ty;
-  fs_anames : variable list option;
+  fs_anames : ovariable list;
   fs_ret    : EcTypes.ty;
 }
 
@@ -153,7 +145,6 @@ module PreOI : sig
 end
 
 (* -------------------------------------------------------------------- *)
-
 type mr_xpaths = EcPath.Sx.t use_restr
 
 type mr_mpaths = EcPath.Sm.t use_restr
@@ -173,6 +164,8 @@ val p_mr_equal :
 val p_mr_hash : ('a -> int) -> 'a p_mod_restr -> int
 
 val has_compl_restriction : 'a p_mod_restr -> bool
+
+val mr_is_empty : 'a p_mod_restr -> bool
 
 val mr_xpaths_fv : mr_xpaths -> int EcIdent.Mid.t
 val mr_mpaths_fv : mr_mpaths -> int EcIdent.Mid.t

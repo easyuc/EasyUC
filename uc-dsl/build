@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ ! -e COPYRIGHT.txt ];
+if [ ! -e LICENSE ];
   then echo must be run from the uc-dsl directory!;
        exit 1;
 elif [ ! -e ucdsl-proj/ECtheories ];
