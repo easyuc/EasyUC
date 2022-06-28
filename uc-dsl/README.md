@@ -47,8 +47,12 @@ installed using `opam`: `opam install bisect_ppx`.) EasyCrypt can be
 installed via `opam` or by building from the source; see the
 [instructions](https://github.com/EasyCrypt/easycrypt).
 
-The UC DSL source is compatible with `why3` (installed as part
-of the EasyCrypt installation) version 1.5.0.
+The UC DSL source is compatible with `why3` (installed as part of the
+EasyCrypt installation) version 1.5.0. (Note that running `ucdsl`
+doesn't actually run `why3` or even rely on `why3` being
+configured. But because the DSL's implementation is built on that of
+EasyCrypt, the build process may fail if the wrong version of `why3`
+is installed.)
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
