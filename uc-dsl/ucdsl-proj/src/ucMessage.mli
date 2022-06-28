@@ -2,12 +2,6 @@
 
 (* Issue Error and Warning Messages *)
 
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 open Format
 
 (* error/warning messages are issued in raw (intended for consumption

@@ -1,22 +1,7 @@
 (* Menhir Specification for UC DSL Parser (UcParser module) *)
 
 (* indicated portions of this file are adapted from the EasyCrypt
-   lexer, src/ucParser.mly, which is subject to the following copyright
-   and license: *)
-
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
+   lexer, src/ucParser.mly *)
 
 %{
 

@@ -3,22 +3,7 @@
 (* Translating (and checking) types and expressions from concrete to
    abstract syntax *)
 
-(* Adapted from src/ecTyping.ml of the EasyCrypt distribution, which
-   has the following copyright: *)
-
-(* --------------------------------------------------------------------
- * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2018 - Inria
- * Copyright (c) - 2012--2018 - Ecole Polytechnique
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2022 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
+(* Adapted from src/ecTyping.ml of the EasyCrypt distribution *)
 
 open EcUtils
 open EcPath

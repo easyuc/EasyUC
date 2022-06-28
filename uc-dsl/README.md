@@ -48,7 +48,7 @@ installed via `opam` or by building from the source; see the
 [instructions](https://github.com/EasyCrypt/easycrypt).
 
 The UC DSL source is compatible with `why3` (installed as part
-of the EasyCrypt installation) version 1.4.0.
+of the EasyCrypt installation) version 1.5.0.
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 

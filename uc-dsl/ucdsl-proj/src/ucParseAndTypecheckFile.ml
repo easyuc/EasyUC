@@ -2,12 +2,6 @@
 
 (* Parse and then typecheck a DSL specification *)
 
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 open EcLocation
 open UcParseFile
 open UcSpec

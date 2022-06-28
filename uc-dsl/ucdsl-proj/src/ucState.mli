@@ -2,12 +2,6 @@
 
 (* Global State of UC DSL tool *)
 
-(* --------------------------------------------------------------------
- * Copyright (c) - 2020-2021 - Boston University
- *
- * Distributed under the terms of the CeCILL-C-V1 license
- * -------------------------------------------------------------------- *)
-
 (* include dirs list
 
    the precedence of include dirs is from the beginning of the list
