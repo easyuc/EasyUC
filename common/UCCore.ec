@@ -767,3 +767,126 @@ module DummyAdv : FUNC = {
 }.
 
 end DummyAdversary.
+
+abstract theory MakeSimulator.
+
+(* begin theory parameters *)
+
+op core_pi : int.
+
+axiom core_pi_gt0 :
+  0 < core_pi.
+
+(* end theory parameters *)
+
+module MS (Core : FUNC, Adv : FUNC) : FUNC = {
+  var self : addr
+
+  (* address of ideal functionality; only known after first message
+     received with port index core_pi *)
+
+  var if_addr_opt : addr option
+
+  (* adv_ will be [] *)
+
+  proc init(self_ adv_ : addr) : unit = {
+    self <- self_; if_addr_opt <- None;
+    Core.init(self, []);
+    Adv.init(self, []);
+  }
+
+  proc after_core(r : msg option) : msg option * msg * bool = {
+    var m : msg <- witness;
+    var not_done;
+    var if_addr : addr <- oget if_addr_opt;  (* will be non-None *)
+    if (r = None) {
+      not_done <- false;
+    }
+    else {
+      m <- oget r;
+      if (m.`1 = Dir) {
+        r <- None; not_done <- false;
+      }
+      else if (m.`2.`1 = self) {
+        if (0 < m.`2.`2 /\ m.`2.`2 < core_pi /\ if_addr <= m.`3.`1) {
+          not_done <- true;
+        }
+        else {
+          r <- None; not_done <- false;
+        }
+      }
+      else if (m.`2.`1 = if_addr) {
+        if (m.`2.`2 = 0 /\ m.`3 = (self, core_pi)) {
+          not_done <- false;
+        }
+        else {
+          r <- None; not_done <- false;
+        }
+      }
+      else {
+        r <- None; not_done <- false;
+      }        
+    }
+    return (r, m, not_done);
+  }
+
+  proc after_adv(r : msg option) : msg option * msg * bool = {
+    var m : msg <- witness;
+    var not_done;
+    var if_addr : addr;
+    if (r = None) {
+      not_done <- false;
+    }
+    else {
+      m <- oget r;
+      if (m.`1 = Dir \/ m.`2.`1 = self \/ m.`3.`1 <> self \/
+          m.`3.`2 < 0 \/ core_pi <= m.`3.`2) {
+        r <- None; not_done <- false;
+      }
+      else if (if_addr_opt = None) {
+        not_done <- false;
+      }
+      else {
+        if_addr <- oget if_addr_opt;
+        if (if_addr <= m.`2.`1) {
+          if (m.`2.`2 = 0) {
+            r <- None; not_done <- false;
+          }
+          else {
+            not_done <- true;
+          }
+        }
+        else {
+          r <- None; not_done <- false;
+        }
+      }
+    }
+    return (r, m, not_done);
+  }
+
+  (* m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1 *)
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    var not_done : bool <- true;
+    while (not_done) {
+      if (m.`2.`2 = core_pi) {
+        if (if_addr = None) {
+          if_addr_opt <- Some m.`3.`1);  (* m.`3.`2 should be 0 *)
+        }
+        r <@ Core.invoke(m);
+        (r, m, not_done) <@ after_core(r);
+      }
+      else if (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
+        r <@ Core.invoke(m);
+        (r, m, not_done) <@ after_core(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ after_adv(r);
+      }
+    }
+  }
+}.
+
+end MakeSimulator.

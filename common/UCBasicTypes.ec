@@ -59,7 +59,7 @@ hint rewrite epdp : valid_epdp_addr_univ.
 type port = addr * int.
 
 op epdp_port_univ : (port, univ) epdp =
-  epdp_pair_univ (epdp_list_univ epdp_int_univ) epdp_int_univ.
+  epdp_pair_univ epdp_addr_univ epdp_int_univ.
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
 proof.
