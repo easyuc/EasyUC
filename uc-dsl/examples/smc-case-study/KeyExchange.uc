@@ -46,7 +46,9 @@ direct KEDir {
    does not in this case. *)
 
 functionality KEReal implements KEDir {  (* no adversarial interface *)
-  (* subfunctionalities - two forwarding functionalities *)
+  (* subfunctionalities - two forwarding functionalities
+     subfunctionalities must be ideal functionalities *)
+
   subfun Fw1 = Forwarding.Forw  (* must be qualified *)
   subfun Fw2 = Forwarding.Forw
 
