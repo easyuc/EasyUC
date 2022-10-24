@@ -1064,18 +1064,12 @@ sexpr_u :
   | e = sexpr; PCENT; p = uqident
       { PEscope (p, e) }
 
-  | e = sexpr; p = loc(prefix(PCENT, lident))
-      { let { pl_loc = lc; pl_desc = p; } = p in
-        if unloc p = "r" then
-          let id =
-            PEident (mk_loc lc EcCoreLib.s_real_of_int, None)
-          in PEapp (mk_loc lc id, [e])
-        else begin
-          if unloc p <> "top" then
-            parse_error p.pl_loc
-            (fun ppf -> Format.fprintf ppf "@[invalid@ scope@ name@]");
-          PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
-        end }
+| e=sexpr p=loc(prefix(PCENT, _lident))
+   { if unloc p = "top" then
+       PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
+     else
+       let p = lmap (fun x -> "%" ^ x) p in
+       PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
 
   | LPAREN; e = expr; COLONTILD; ty = loc(type_exp); RPAREN
       { PEcast (e, ty) }
