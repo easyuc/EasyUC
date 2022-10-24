@@ -779,11 +779,42 @@ axiom core_pi_gt0 :
 
 (* end theory parameters *)
 
+(* loop invariant for simulator's while loop *)
+
+op ms_loop_invar
+     (self : addr, if_addr_opt : addr option,
+      m : msg, r : msg option, not_done : bool) : bool =
+  self <> [] /\ m.`1 = Adv /\
+  (not_done =>
+   (m.`2 = (self, 0) /\ m.`3 = ([], 0) \/
+
+    m.`2.`1 = self /\ m.`2.`2 = core_pi /\ ! self <= m.`3.`1 /\
+    m.`3.`1 <> [] \/ if_addr_opt = None \/
+
+    m.`2.`1 = self /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
+    oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 0 \/
+
+    m.`2.`1 = self /\ 0 < m.`2.`2 < core_pi /\ ! self <= m.`3.`1 \/
+
+    if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 /\
+    m.`3.`1 = self /\ 0 < m.`3.`2 < core_pi)) /\
+  (! not_done =>
+   r = None \/
+   ((oget r).`1 = Adv /\ (oget r).`3.`1 = self /\ 
+    ((oget r).`2 = ([], 0) /\ (oget r).`3.`2 = 0 \/
+
+     if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
+     (oget r).`3.`2 = core_pi \/
+
+     ! self <= (oget r).`2.`1 /\
+     (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
+     0 < (oget r).`3.`2 < core_pi))).
+
 module MS (Core : FUNC, Adv : FUNC) : FUNC = {
   var self : addr
 
   (* address of ideal functionality; only known after first message
-     received with port index core_pi *)
+     received with destination port index core_pi *)
 
   var if_addr_opt : addr option
 
@@ -796,8 +827,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
   }
 
   proc after_core(r : msg option) : msg option * msg * bool = {
-    var m : msg <- witness;
-    var not_done;
+    var m : msg <- witness; var not_done;
     var if_addr : addr <- oget if_addr_opt;  (* will be non-None *)
     if (r = None) {
       not_done <- false;
@@ -807,7 +837,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
       if (m.`1 = Dir) {
         r <- None; not_done <- false;
       }
-      else if (m.`2.`1 = self) {
+      elif (m.`2.`1 = self) {
         if (0 < m.`2.`2 /\ m.`2.`2 < core_pi /\ if_addr <= m.`3.`1) {
           not_done <- true;
         }
@@ -815,7 +845,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
           r <- None; not_done <- false;
         }
       }
-      else if (m.`2.`1 = if_addr) {
+      elif (m.`2.`1 = if_addr) {
         if (m.`2.`2 = 0 /\ m.`3 = (self, core_pi)) {
           not_done <- false;
         }
@@ -831,8 +861,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
   }
 
   proc after_adv(r : msg option) : msg option * msg * bool = {
-    var m : msg <- witness;
-    var not_done;
+    var m : msg <- witness; var not_done;
     var if_addr : addr;
     if (r = None) {
       not_done <- false;
@@ -843,41 +872,31 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
           m.`3.`2 < 0 \/ core_pi <= m.`3.`2) {
         r <- None; not_done <- false;
       }
-      else if (if_addr_opt = None) {
+      elif (if_addr_opt = None) {
         not_done <- false;
       }
+      elif (oget if_addr_opt <= m.`2.`1) {
+        not_done <- true;
+      }
       else {
-        if_addr <- oget if_addr_opt;
-        if (if_addr <= m.`2.`1) {
-          if (m.`2.`2 = 0) {
-            r <- None; not_done <- false;
-          }
-          else {
-            not_done <- true;
-          }
-        }
-        else {
-          r <- None; not_done <- false;
-        }
+        not_done <- false;
       }
     }
     return (r, m, not_done);
   }
 
-  (* m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1 *)
-
-  proc invoke(m : msg) : msg option = {
+  proc loop(m : msg) : msg option = {
     var r : msg option <- None;
     var not_done : bool <- true;
     while (not_done) {
       if (m.`2.`2 = core_pi) {
-        if (if_addr = None) {
-          if_addr_opt <- Some m.`3.`1);  (* m.`3.`2 should be 0 *)
+        if (if_addr_opt = None) {
+          if_addr_opt <- Some m.`3.`1;  (* m.`3.`2 should be 0 *)
         }
         r <@ Core.invoke(m);
         (r, m, not_done) <@ after_core(r);
       }
-      else if (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
+      elif (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
         r <@ Core.invoke(m);
         (r, m, not_done) <@ after_core(r);
       }
@@ -886,6 +905,17 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
         (r, m, not_done) <@ after_adv(r);
       }
     }
+    return r;
+  }
+
+  (* m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1 *)
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if (0 <= m.`2.`2 <= core_pi) {
+      r <@ loop(m);
+    }
+    return r;
   }
 }.
 
