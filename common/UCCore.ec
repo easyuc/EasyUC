@@ -14,6 +14,10 @@ require export UCBasicTypes.
 
 require export UCListPO.
 
+(* other theories *)
+
+require import StdOrder. import IntOrder.
+
 (* guard an optional message using predicate *)
 
 op opt_msg_guard :
@@ -99,59 +103,7 @@ module type INTER = {
   proc init(func adv : addr, in_guard : int fset) : unit
 
   (* respond to an incoming message from the environment, producing an
-     optional outgoing message (None means error)
-
-     messages whose destination addresses aren't either >= the
-     interface's functionality part's address, func, or *equal* to the
-     interface's adversary part's addresss, adv, should result in None
-     being returned
-
-     all incoming messages with mode Dir must be addressed to the
-     interface's functionality part (else None is returned); all
-     incoming messages with mode Adv must be addressed to the
-     interface's adversary part (else None is returned)
-
-     if the interface's functionality part returns a message with
-     destination address >= func, or if the interface's adversary part
-     returns a message with destination address >= adv, then
-     None should be returned
-
-     if the interface's functionality part returns a message with
-     source address not >= func, or if the interface's adversary part
-     returns a message with source address <> adv, then None should be
-     returned
-
-     outgoing messages (back to the environment) from the interface's
-     functionality part must have mode Dir; outgoing messages from the
-     interface's adversary part must have mode Adv
-
-     the standard (Adv mode) channel between the environment and the
-     interface's adversary part consists of messages between port
-     ([], 0) (in the environment) and port (adv, 0) (in the
-     interface's adversary part)
-
-     the environment may communicate with other port indices of the
-     interface's adversary part, except that such a communication will
-     result in an error if its destination port isn't of the form
-     (adv, n) for some n in in_guard; communication with such other
-     ports must not originate from ([], 0)
-
-     when the interface's adversary part sends a message to a port of
-     the environment other than ([], 0), the message may not originate
-     from (adv, 0)
-
-     messages from the environment to the interface's functionality part
-     may not originate from ([], 0); messages from the interface's
-     functionality part may not be addressed to ([], 0)
-
-     if the interface's functionality part sends a message to the
-     interface's adversary port (destination address must be = adv),
-     this message must have mode Adv, and it may not have destination
-     port (adv, 0)
-
-     if the interface's adversary port sends a message to the
-     interface's functionality part, this message must have mode
-     Adv, and must not come from port (adv, 0) *)
+     optional outgoing message (None means error) *)
 
   proc invoke(m : msg) : msg option
 }.
@@ -226,28 +178,28 @@ abstract theory MakeInterface.
 
 op mi_loop_invar
      (func adv : addr, in_guard : int fset,
-      m : msg, r : msg option, not_done : bool) : bool =
+      r : msg option, m : msg, not_done : bool) : bool =
   inter_init_pre func adv /\
   (not_done =>
    (m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3) \/
-   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ m.`3.`2 <> 0) \/
+   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2) \/
    (m.`1 = Adv /\ m.`2.`1 = adv /\
-    ((func <= m.`3.`1 /\ m.`2.`2 <> 0) \/
-     (m.`3 = ([], 0) /\ m.`2.`2 = 0) \/
-     (envport func adv m.`3 /\ m.`2.`2 <> 0 /\
-      m.`2.`2 \in in_guard)))) /\
+    (func <= m.`3.`1 /\ 0 < m.`2.`2 \/
+     m.`3 = ([], 0) /\ m.`2.`2 = 0 \/
+     envport func adv m.`3 /\ 0 < m.`2.`2 /\
+      m.`2.`2 \in in_guard))) /\
   (! not_done =>
    r = None \/
    (envport0 func adv (oget r).`2 /\
-    (((oget r).`1 = Dir /\ (oget r).`2 <> ([], 0) /\
-      func <= (oget r).`3.`1) \/
-     ((oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\
-      ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0))))).
+    ((oget r).`1 = Dir /\ (oget r).`2 <> ([], 0) /\
+      func <= (oget r).`3.`1 \/
+     (oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
+      ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0)))).
 
 lemma mi_loop_invar_not_done_imp_dest
       (func adv : addr, in_guard : int fset,
        m : msg, r : msg option) :
-  mi_loop_invar func adv in_guard m r true =>
+  mi_loop_invar func adv in_guard r m true =>
   func <= m.`2.`1 \/ adv = m.`2.`1.
 proof.
 rewrite /mi_loop_invar; smt().
@@ -259,7 +211,7 @@ op main_guard (func adv : addr, in_guard : int fset, m : msg) : bool =
   m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3 \/
   m.`1 = Adv /\ m.`2.`1 = adv /\
   (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/
-   m.`2.`2 <> 0 /\ m.`2.`2 \in in_guard /\ envport func adv m.`3).
+   0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func adv m.`3).
 
 module MI (Func : FUNC, Adv : FUNC) : INTER = {
   var func, adv : addr
@@ -291,10 +243,10 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
         (* else: envport func adv m.`2 *)
       }
       (* else: m.`1 = Adv *)
-      elif (m.`2.`1 <> adv \/ m.`2.`2 = 0) {
+      elif (m.`2.`1 <> adv \/ m.`2.`2 <= 0) {
         r <- None; not_done <- false;
       }
-      (* else: m.`2.`1 = adv /\ m.`2.`2 <> 0 *)
+      (* else: m.`2.`1 = adv /\ 0 < m.`2.`2 *)
     }          
     return (r, m, not_done);
   }
@@ -307,15 +259,16 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
     }
     else {
       m <- oget r;  (* next iteration, if any, will use m *)
-      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ adv <> m.`3.`1) {
+      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ adv <> m.`3.`1 \/ m.`3.`2 < 0) {
         r <- None; not_done <- false;
       }
-      (* else: m.`1 = Adv /\ ! adv <= m.`2.`1 /\ adv = m.`3.`1 *)
+      (* else: m.`1 = Adv /\ ! adv <= m.`2.`1 /\ adv = m.`3.`1 /\
+         0 <= m.`3.`2 *)
       elif (func <= m.`2.`1) {
         if (m.`3.`2 = 0) {
           r <- None; not_done <- false;
         }
-        (* else: m.`3.`2 <> 0 *)
+        (* else: 0 < m.`3.`2 *)
       }
       else {  (* envport0 func adv m.`2 *)
         not_done <- false;
@@ -362,7 +315,7 @@ lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func MI.adv ==>
-   mi_loop_invar MI.func MI.adv MI.in_guard res.`2 res.`1 res.`3].
+   mi_loop_invar MI.func MI.adv MI.in_guard res.`1 res.`2 res.`3].
 proof.
 proc; sp 2.
 if; first auto.
@@ -372,14 +325,14 @@ if; first sp 1.
 auto; smt().
 if; first auto.
 auto => /> &hr pre r_not_none.
-by rewrite !negb_or /= not_dir => [#] -> -> -> /= [#] -> ->.
+rewrite !negb_or /= not_dir /#.
 qed.
 
 lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func MI.adv ==>
-   mi_loop_invar MI.func MI.adv MI.in_guard res.`2 res.`1 res.`3].
+   mi_loop_invar MI.func MI.adv MI.in_guard res.`1 res.`2 res.`3].
 proof.
 proc; sp 2.
 if; first auto.
@@ -388,12 +341,13 @@ if; first auto.
 if.
 if; first auto.
 auto => /> &hr pre _.
-by rewrite !negb_or /= not_dir => [#] -> /= _ -> -> ->.
+rewrite !negb_or /= not_dir /#.
 sp 1.
 if; first auto.
 auto => /> &hr pre -> /=.
-rewrite /envport0 !negb_or not_dir => [#] -> -> /= -> -> //.
-by rewrite -!eq_iff => ->.
+rewrite /envport0 !negb_or not_dir => [#] -> -> /= -> H /= ->.
+rewrite -!eq_iff => -> /=.
+by rewrite lerNgt.
 qed.
 
 lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
@@ -402,16 +356,16 @@ lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
    inter_init_pre MI.func MI.adv ==>
    res = None \/
    (envport0 MI.func MI.adv (oget res).`2 /\
-    (((oget res).`1 = Dir /\ (oget res).`2 <> ([], 0) /\
-      MI.func <= (oget res).`3.`1) \/
-     ((oget res).`1 = Adv /\ MI.adv = (oget res).`3.`1 /\
-      ((oget res).`2 = ([], 0) <=> (oget res).`3.`2 = 0))))].
+    ((oget res).`1 = Dir /\ (oget res).`2 <> ([], 0) /\
+      MI.func <= (oget res).`3.`1 \/
+     (oget res).`1 = Adv /\ MI.adv = (oget res).`3.`1 /\ 0 <= (oget res).`3.`2 /\
+      ((oget res).`2 = ([], 0) <=> (oget res).`3.`2 = 0)))].
 proof.
 proc.
 if.
 inline MI(Func, Adv).loop.
 wp; sp.
-while (mi_loop_invar MI.func MI.adv MI.in_guard m0 r0 not_done).
+while (mi_loop_invar MI.func MI.adv MI.in_guard r0 m0 not_done).
 if.
 seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
 call (_ : true); first auto => />.
@@ -434,7 +388,7 @@ op after_func_to_env (func adv : addr, r : msg option) : bool =
 
 op after_func_to_adv (func adv : addr, r : msg option) : bool =
   r <> None /\
-  (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ (oget r).`2.`2 <> 0 /\
+  (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
   func <= (oget r).`3.`1.
 
 op after_func_error (func adv : addr, r : msg option) : bool =
@@ -443,7 +397,7 @@ op after_func_error (func adv : addr, r : msg option) : bool =
     ! func <= (oget r).`3.`1 \/
     ((oget r).`1 = Dir /\
      (adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0))) \/
-    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 = 0))).
+    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 <= 0))).
 
 lemma after_func_disj (func adv : addr, r : msg option) :
   after_func_to_env func adv r \/
@@ -490,19 +444,19 @@ qed.
 pred after_adv_to_env (func adv : addr, r : msg option) =
    r <> None /\
    (oget r).`1 = Adv /\ envport0 func adv (oget r).`2 /\
-   adv = (oget r).`3.`1 /\
+   adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
    ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0).
 
 pred after_adv_to_func (func adv : addr, r : msg option) =
   r <> None /\
   (oget r).`1 = Adv /\ func <= (oget r).`2.`1 /\
-  (oget r).`3.`1 = adv /\ (oget r).`3.`2 <> 0.
+  (oget r).`3.`1 = adv /\ 0 < (oget r).`3.`2.
 
 pred after_adv_error (func adv : addr, r : msg option) =
    (r = None \/
     (oget r).`1 = Dir \/
     adv <= (oget r).`2.`1 \/
-    adv <> (oget r).`3.`1 \/
+    adv <> (oget r).`3.`1 \/ (oget r).`3.`2 < 0 \/
     (func <= (oget r).`2.`1 /\ (oget r).`3.`2 = 0) \/
     (! func <= (oget r).`2.`1 /\
      ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = ([], 0)))).
@@ -538,7 +492,7 @@ lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
    after_adv_to_func MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
-proc; auto; smt(oget_some some_oget inc_le1_not_rl).
+proc; auto; smt(oget_some some_oget inc_le1_not_rl lerNgt).
 qed.
 
 lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
@@ -559,7 +513,7 @@ abstract theory DummyAdversary.
 (* message from port ([], 0) of environment to port (dfe_da, 0) of
    dummy adversary, instructing dummy adversary to send message (Adv,
    dfe_pt, (dfe_da, dfe_n), dfe_tag, dfe_u); this instruction will
-   only be obeyed if dfe_n <> 0 and dfe_pt <> ([], 0) and dfe_pt.`1 is
+   only be obeyed if 0 < dfe_n and dfe_pt <> ([], 0) and dfe_pt.`1 is
    not >= dfe_da *)
 
 type da_from_env =
@@ -644,7 +598,8 @@ qed.
 
 (* message from port (dte_da, 0) of dummy adversary to port ([], 0) of
    environment, telling environment that dummy adversary received
-   message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u) *)
+   message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u), where
+   0 < dtn_n and dte_pt <> ([], 0) *)
 
 type da_to_env =
   {dte_da  : addr;   (* address of dummy adversary *)
@@ -741,9 +696,9 @@ module DummyAdv : FUNC = {
     var r : msg option <- None;
 
     match (epdp_da_from_env_msg.`dec m) with
-      Some x => { (* from interface/simulator, we know x.`dfe_da = self *)
-        if (x.`dfe_n <> 0 /\ x.`dfe_pt <> ([], 0) /\
-            !self <= x.`dfe_pt.`1 ) {
+      Some x => {  (* from interface/simulator, we know x.`dfe_da = self *)
+        if (0 < x.`dfe_n /\ x.`dfe_pt <> ([], 0) /\
+            ! self <= x.`dfe_pt.`1 ) {
           r <-
             Some
             (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
@@ -752,8 +707,9 @@ module DummyAdv : FUNC = {
     | None   => {
         (* message from functionality or environment;
            interface/simulator will enforce that m.`1 = Adv /\ m.`2.`1
-           = self /\ ! self <= m.`3.`1 *)
-        if (m.`2.`2 <> 0 /\ m.`3 <> ([], 0)) {
+           = self /\ 0 <= m.`2.`2 /\ ! self <= m.`3.`1 /\
+           (m.`3 = ([], 0) <=> m.`2.`2 = 0) *)
+        if (0 < m.`2.`2) {
           r <-
             Some
             (enc_da_to_env
@@ -788,9 +744,6 @@ op ms_loop_invar
   (not_done =>
    (m.`2 = (self, 0) /\ m.`3 = ([], 0) \/
 
-    m.`2.`1 = self /\ m.`2.`2 = core_pi /\ ! self <= m.`3.`1 /\
-    m.`3.`1 <> [] \/ if_addr_opt = None \/
-
     m.`2.`1 = self /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
     oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 0 \/
 
@@ -806,7 +759,7 @@ op ms_loop_invar
      if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
      (oget r).`3.`2 = core_pi \/
 
-     ! self <= (oget r).`2.`1 /\
+     ! self <= (oget r).`2.`1 /\ (oget r).`2 <> ([], 0) /\
      (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
      0 < (oget r).`3.`2 < core_pi))).
 
@@ -908,11 +861,28 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     return r;
   }
 
-  (* m.`1 = Adv /\ m.`2.`1 = self /\ ! self <= m.`3.`1 *)
+  (* m.`1 = Adv /\ m.`2.`1 = self /\ 0 <= m.`2.`2 /\
+     ! self <= m.`3.`1 *)
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    if (0 <= m.`2.`2 <= core_pi) {
+    if (m.`2.`2 = core_pi) {
+      if (if_addr_opt = None) {
+        if (m.`3.`2 = 0) {  (* ideal functionality's internal port index *)
+          if_addr_opt <- Some m.`3.`1;
+          r <@ loop(m);
+        }
+      }
+      elif (m.`3 = (oget if_addr_opt, 0)) {
+        r <@ loop(m);
+      }
+    }
+    elif (0 < m.`2.`2) {
+      if (if_addr_opt = None \/ ! oget if_addr_opt <= m.`3.`1) {
+        r <@ loop(m);
+      }
+    }
+    else {
       r <@ loop(m);
     }
     return r;
