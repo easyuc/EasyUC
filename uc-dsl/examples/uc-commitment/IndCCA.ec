@@ -150,7 +150,7 @@ module OrIndCCA2 : OR_INDCCA = {
    is given public key, and returns boolean judgment *)
 
 module type ADV_INDCCA (Or : OR_INDCCA) = {
-  proc main(pk : pkey) : bool
+  proc main(pk : pkey) : bool {Or.enc, Or.dec}
 }.
 
 module IndCCA(Or : OR_INDCCA, Adv : ADV_INDCCA) = {
