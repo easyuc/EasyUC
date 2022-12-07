@@ -2,7 +2,7 @@
 
 BIBS=$(shell ls *.bib)
 DEPENDS=$(shell ls *.tex)
-NAME=static
+NAME=proof
 all: pdflatex
 
 rubber: $(NAME).tex $(DEPENDS) $(BIBS)

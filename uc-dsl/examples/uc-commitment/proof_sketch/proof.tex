@@ -1,0 +1,484 @@
+\def\IsDraft{} % set for draft version
+
+\newif\iffull
+\fulltrue
+%\fullfalse
+
+\documentclass[11pt,letterpaper]{article}
+
+% == Import Packages ==
+\usepackage[draft,notes=true,later=false]{dtrt}
+\usepackage[margin=1in]{geometry} % Page dimensions
+\usepackage{amssymb,amsfonts,amsmath,amsthm} % Math formulas
+\usepackage{xcolor} % Colors
+\usepackage{listings} % Listings, for code snippets
+\usepackage{hyperref} % Hyperlinks
+\usepackage{enumitem}
+\usepackage[capitalise]{cleveref} % Clever References, must be loaded AFTER all other packages
+
+% == Formatting ==
+\renewcommand{\emph}[1]{\textbf{#1}~}
+\newcommand{\doclearpage}{%
+  \iffull\clearpage\else\fi
+}
+
+% == Inline comments ==
+\ifdefined\IsDraft
+\newcommand{\authnote}[2]{[{\color{red}\textbf{#1:}}~{\color{blue} #2}]}
+\else
+\newcommand{\authnote}[2]{}
+\fi
+
+\newcommand{\alley}[1]{\authnote{Alley}{#1}}
+\newcommand{\megan}[1]{\authnote{Megan}{#1}}
+\newcommand{\mayank}[1]{\authnote{Mayank}{#1}}
+\newcommand{\ran}[1]{\authnote{Ran}{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+\theoremstyle{plain} % italics
+\newtheorem{itheorem}{Theorem}%[section]
+\newtheorem{idefinition}{Definition}%[section]
+\newtheorem{icorollary}{Corollary}%[section]
+\newtheorem{ilemma}{Lemma}%[section]
+\iffull
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{definition}[theorem]{Definition}
+\fi
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{assumption}{Assumption}
+\newtheorem{observation}[theorem]{Observation}
+
+\theoremstyle{definition} % not italics
+\newtheorem{construction}[theorem]{Construction}
+\iffull
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark} %
+\newtheorem{case}{Case}
+\fi
+\newtheorem{fact}[theorem]{Fact}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% == Code snippets ==
+% Listings package docs: http://texdoc.net/texmf-dist/doc/latex/listings/listings.pdf
+
+\lstdefinelanguage{easycrypt}{
+	morekeywords={lemma, module, proc, var, return, if, else, require, import, type, op, axiom, pred, section, local, match, with}
+}
+
+\renewcommand*{\lstlistingname}{Code Example}
+
+% Define easycrypt environment
+\lstnewenvironment{easycrypt}[1][]
+{
+	\noindent
+	\minipage{\linewidth}
+	\vspace{0.5\baselineskip}
+	\lstset{ % Set inline code parameter(s)
+	  basicstyle=\small,						% print whole listing small
+	  keywordstyle=\color{black}\bfseries,		% bold black keywords
+	  identifierstyle=, 						% nothing happens
+	  stringstyle=\ttfamily, 					% typewriter type for strings
+	  showstringspaces=false,					% no special string spaces
+	  tabsize=2,								% tabs typeset as 2 spaces
+	  frame=single,								% lines above and below code snippets
+	  breaklines=true,							% break lines when there's overflow
+	  language=easycrypt,
+	  morecomment=[n][\color{gray}]{(*}{*)},	% define normal comment delimiters, prints gray
+	  escapeinside={/*}{*/},					% special delimiters for referencing line numbers
+	  literate={~} {$\sim$}{1},					% prettier tilde
+	  captionpos=b,								% caption position is bottom
+	  numbers=left,								% print line numbers on the left
+	  #1										% other custom parameters
+	}
+}{\endminipage}
+
+% % help cref
+\crefname{listing}{Code example}{Code examples} % upper case, personal preference
+\Crefname{listing}{Code example}{Code examples}
+
+\newcommand{\code}[1]{\texttt{#1}} % inline code
+
+% == Math ==
+% operators
+\newcommand{\Or}{\vee}
+\renewcommand{\And}{\wedge}
+\DeclareMathOperator{\Concat}{\; || \; }
+\newcommand{\Union}{\cup}
+\newcommand{\LDE}[1]{\hat{#1}}
+\newcommand{\RLDE}[1]{\bar{#1}}
+\newcommand{\iseq}{\overset{?}{=}}
+\newcommand{\eqdef}{\ {:=} \ }
+\newcommand{\ip}[2]{\langle #1 , #2 \rangle}
+\newcommand{\Time}[1]{\mathrm{time}(#1)}
+
+
+% == Messages ==
+\newcommand{\OpenMsg}{\mathsf{Open}}
+\newcommand{\CommitMsg}{\mathsf{Commit}}
+\newcommand{\Input}{x}
+
+\newcommand{\SecParam}{\lambda}
+
+% PKE
+\newcommand{\PKE}{\mathsf{PKE}}
+\newcommand{\Gen}{\mathsf{Gen}}
+\newcommand{\Enc}{\mathsf{Enc}}
+\newcommand{\OblivEnc}{\mathsf{OblivEnc}}
+\newcommand{\OblivEncInv}{\mathsf{OblivEncInv}}
+\newcommand{\Dec}{\mathsf{Dec}}
+\newcommand{\Indcpa}{\mathsf{INDCPA}}
+\newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
+\newcommand{\IndcpaAdversary}{{\Adversary_\Indcpa}}
+\newcommand{\EncKey}{\mathsf{pk}}
+\newcommand{\DecKey}{\mathsf{sk}}
+\newcommand{\GuessBit}{b'}
+\newcommand{\ChallengerBit}{b}
+\newcommand{\EncOracle}{\mathsf{EO}}
+\newcommand{\DecOracle}{\mathsf{DO}}
+\newcommand{\Msg}{m}
+\newcommand{\Ciphertext}{c}
+\newcommand{\Rand}{r}
+\newcommand{\FakeRand}{r_{\mathsf{fake}}}
+
+% CFPTP
+\newcommand{\CFPTP}{\mathsf{CFPTP}}
+\newcommand{\Forw}{\mathsf{Forw}}
+\newcommand{\Back}{\mathsf{Back}}
+\newcommand{\ForwKey}{\mathsf{fk}}
+\newcommand{\BackKey}{\mathsf{bk}}
+\newcommand{\Domain}{D}
+\newcommand{\CFPTPAdversary}{{\Adversary_\CFPTP}}
+\newcommand{\CFPTPInput}{\Input}
+\newcommand{\CFPTPOutput}{y}
+\newcommand{\CFPTPBit}{b}
+
+% == Proof ==
+% UC
+\newcommand{\Simulator}{{\mathsf{Sim}}} % Simulator
+\newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
+\newcommand{\AdversaryB}{{\mathsf{B}}} % Adversary
+\newcommand{\Environment}{{\mathcal{Z}}} % Environment
+\newcommand{\IF}{\mathcal{F}} % Ideal functionality
+\newcommand{\sid}{\mathsf{sid}}
+
+% Hybrids
+\newcommand{\Ideal}{{\mathsf{IDEAL}}}
+\newcommand{\Hyb}{{\mathsf{HYB}}}
+\newcommand{\Real}{{\mathsf{REAL}}}
+\newcommand{\bad}{{\mathsf{bad}}}
+\newcommand{\True}{\mathsf{true}}
+\newcommand{\False}{\mathsf{false}}
+\newcommand{\G}{\mathsf{G}}
+
+\newcommand{\pST}{\; \middle| \;}
+\newcommand{\poly}{\mathrm{poly}}
+\newcommand{\negl}{\mathrm{negl}}
+\newcommand{\Bits}{\{0,1\}}
+\newcommand{\Naturals}{\mathbb{N}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Integers}{\mathbb{Z}}
+
+% CRS
+\newcommand{\IFCrs}{\IF_{\mathrm{CRS}}}
+\newcommand{\CrsDistr}{\mathcal{D}}
+
+% Commitment
+\newcommand{\IFCom}{\IF_{\mathrm{COM}}}
+\newcommand{\IFMcom}{\IF_{\mathrm{MCOM}}}
+\newcommand{\Party}{\mathrm{P}}
+\newcommand{\PartyCommitter}{\mathrm{C}}
+\newcommand{\PartyVerifier}{\mathrm{V}}
+\newcommand{\CommittedBit}{b}
+
+% Files
+\newcommand{\File}[1]{\texttt{#1}}
+
+% == Document title ==
+\title{\cite{CanettiF01} adaptive security proof}
+\author{Megan Chen}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\doclearpage
+\section{Preliminaries}
+\label{sec:preliminaries}
+
+\subsection{Claw-free pair of trapdoor permutations (CFPTP)}
+A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as $\CFPTP = (\Gen, \Forw, \Back, \Dec)$, such that:
+\begin{itemize}
+	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs a forward key $\ForwKey$ and backward key $\BackKey$.
+	\item $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\CFPTPOutput \in \Domain$ of running permutation $\CFPTPBit$ forwards.
+	\item $\Back_{\CFPTPBit, \BackKey}(\CFPTPOutput)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\CFPTPOutput \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
+\end{itemize}
+We require that $\CFPTP$ is claw-free: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_0) = \Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_1)$
+
+\subsection{Public key encryption (PKE)}
+
+A \emph{public key encryption scheme} $\PKE = (\Gen, \Enc, \Dec)$ works as follows:
+\begin{itemize}
+	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs an encryption key $\EncKey$ and decryption key $\DecKey$.
+	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$.
+	\item $\Dec_{\DecKey}(\Ciphertext)$: On input a decryption key $\DecKey$ and ciphertext $\Ciphertext$, outputs the decrypton of a ciphertext $\Ciphertext$.
+\end{itemize}
+
+$\PKE$ satisfies the following properties:
+\begin{itemize}
+    \item \emph{Correctness.} For all keys $(\EncKey, \DecKey) \gets \Gen(1^{\SecParam})$ and messages $\Msg$, we have
+    \[ \Pr[ \Dec_{\DecKey} (\Enc_{\EncKey} (\Msg)) = \Msg ] = 1. \]
+
+    \item \emph{Obliviously-sampleable.} There additionally exist algorithms $(\OblivEnc, \OblivEncInv)$ with the following syntax:
+    \begin{itemize}
+    	\item $\OblivEnc(\EncKey,\Rand)$: On input the encryption key $\EncKey$ and randomness $\Rand$, outputs a ciphertext $\Ciphertext$.
+    	\item $\OblivEncInv(\EncKey,\Ciphertext)$: On input the encryption key $\EncKey$ and a ciphertext $\Ciphertext$, outputs randomness $\FakeRand$.
+    \end{itemize}
+
+    Further, the following distributions are negligibly-close in statistical distance:
+    \newcommand{\Distribution}{\mathcal{D}}
+    \begin{align*}
+		&\Distribution_0(\SecParam) \eqdef \left\{
+		\Adversary(\Ciphertext,\Rand)
+		\pST
+		\begin{array}{r}
+            (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
+			\Msg \gets \Adversary(\EncKey)\\
+            \Rand \gets \Bits^{*}\\
+			\Ciphertext \gets \OblivEnc(\EncKey,\vec{0})\\
+		\end{array}
+		\right\} \\
+		&\text{and } \Distribution_1(\SecParam) \eqdef \left\{
+		\Adversary(\Ciphertext,\Rand_1)
+		\pST
+		\begin{array}{r}
+            (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
+            \Msg \gets \Adversary(\EncKey)\\
+            \Rand_0 \gets \Bits^{*}\\
+            \Ciphertext \gets \Enc(\EncKey,\Msg;\Rand_0)\\
+			\Rand_1 \gets \OblivEncInv(\EncKey,\Ciphertext)\\
+		\end{array}
+		\right\} \enspace.
+	\end{align*}
+\end{itemize}
+
+\begin{lemma}
+    Let $\PKE = (\Gen, \Enc, \Dec, \OblivEnc, \OblivEncInv)$ be an obliviously-sampleable CCA-secure public key encryption scheme and $\SecParam\in\Naturals$ be a security parameter. Then for all adversaries $\Adversary$,
+    \begin{equation}
+    \label{eqn:prod-msg-rand}
+        \Pr \left[
+            \Enc(\EncKey,\Msg';\Rand') = \Ciphertext
+        \pST
+        \begin{array}{r}
+            (\EncKey,\DecKey) \gets \Gen(1^{\SecParam})\\
+            \Rand \gets \Bits^*\\
+            \Ciphertext \gets \OblivEnc(\EncKey, \Rand)\\
+            (\Msg',\Rand') \gets \Adversary(\Ciphertext)\\
+        \end{array}
+        \right] = \negl(\SecParam).
+    \end{equation}
+\end{lemma}
+
+\begin{proof}
+    Suppose there exists an adversary $\Adversary$ who satisfies the probability in \Cref{eqn:prod-msg-rand} with probability $\delta$. We argue via reduction that this implies breaking the oblivious-sampleability property of $\PKE$.
+
+    Construct a (stateful) adversary $\AdversaryB$ that breaks the oblivious-sampleabilty of $\PKE$ as follows:
+    \begin{itemize}
+        \item \textbf{Message generation.} $\AdversaryB(\EncKey) \to \Msg$
+        \begin{enumerate}[nolistsep]
+            \item Parse $\EncKey$ as the encryption key.
+            \item Output a random $\Msg$.
+        \end{enumerate}
+        \item \textbf{Message generation.} $\AdversaryB(\Ciphertext,\Rand) \to \GuessBit$
+        \begin{enumerate}[nolistsep]
+            \item Run $(\Msg',\Rand')\gets \Adversary(\Ciphertext)$.
+            \item Output $\GuessBit$.
+        \end{enumerate}
+    \end{itemize}
+    By the correctness of $\Adversary$, we have $\Enc(\EncKey, \Msg'; \Rand') = \Ciphertext$.
+    \megan{I'm unsure how to finish analyzing the reduction. This is because, in $\Distribution_0$ and $\Distribution_1$, either $\Ciphertext$ or $\Rand$ is fake, and it's unclear how to tell the difference using $\Adversary$}
+\end{proof}
+
+\subsection{Adaptive chosen-ciphertext attack security (LR-CCA2)}
+
+\cite{CanettiF01} uses a left-or-right oracle formulation of security against chosen ciphertext attacks. Let $\SecParam\in\Naturals$ be a security parameter. First, define an encryption-decryption oracle pair $(\EncOracle, \DecOracle)$ with respect to a key pair $(\EncKey,\DecKey) \gets \Gen(1^\SecParam)$ as follows:
+\begin{itemize}
+	\item Encryption oracle
+
+	\begin{minipage}{0.9\textwidth}
+	$\EncOracle(\ChallengerBit,\EncKey):$
+	\begin{enumerate}[nolistsep]
+		\item \textbf{Init:} Receive a bit $\ChallengerBit$ and an encryption key $\EncKey$.
+		\item \textbf{Encryption queries:} Upon receiving a message pair $(\Msg_0, \Msg_1)$, output $\Enc(\EncKey,\Msg_{\ChallengerBit})$.
+	\end{enumerate}
+	\end{minipage}
+
+	\item Decryption oracle
+
+	\begin{minipage}{0.9\textwidth}
+	$\DecOracle(\DecKey):$
+	\begin{enumerate}[nolistsep]
+		\item \textbf{Init:} Receive a decryption key $\DecKey$.
+		\item \textbf{Decryption queries:} Upon receiving a ciphertext $\Ciphertext$, output $\Dec_{\DecKey}(\Ciphertext)$.
+	\end{enumerate}
+	\end{minipage}
+\end{itemize}
+
+
+A public key encryption scheme $\PKE$ is secure against left-or-right adaptive chosen ciphertext attacks (LR-CCA2) if for any PPT adversary $\Adversary$:
+
+\begin{align*}
+	\Pr \left[
+	\begin{array}{c}
+		\GuessBit = \ChallengerBit
+	\end{array}
+	\pST
+	\begin{array}{r}
+		(\EncKey, \DecKey) \gets \Gen(1^{\SecParam})\\
+		\ChallengerBit \gets \Bits\\
+		\GuessBit \gets \Adversary^{\EncOracle(\ChallengerBit,\EncKey), \DecOracle(\DecKey)}(\EncKey)\\
+	\end{array}
+	\right] \leq \frac{1}{2} + \frac{1}{\poly(\SecParam)}.
+\end{align*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\doclearpage
+\section{Ideal functionalities}
+\label{sec:ideal-functionalities}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{CRS}
+\label{sec:ideal-func-crs}
+$\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS distribution $\CrsDistr$ is sampled as follows:
+\begin{enumerate}[nolistsep]
+	\item $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+	\item $(\EncKey,\DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+	\item Set the CRS value $d \eqdef (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Single-session commitment, adaptive}
+\label{sec:ideal-func-com}
+
+We define an ideal functionality for single-session commitments that allows adaptive corruptions and mirrors what is in \File{Commitment.uc}.
+\newcommand{\EnvCommitReqMsg}{\mathsf{EnvCommitReq}}
+\newcommand{\IFCommitReqMsg}{\mathsf{IFCommitReq}}
+\newcommand{\SimCommitterCorruptionStatusMsg}{\mathsf{CommitterCorruptionStatus}}
+\newcommand{\CommitterBitMsg}{\mathsf{CommitterBit}}
+\newcommand{\CommitterCorruptedBit}{\mathsf{corrupted}}
+\newcommand{\CommitOkMsg}{\mathsf{CommitOk}}
+
+\begin{center}
+\begin{minipage}{0.9\textwidth}
+$\IFCom:$
+\begin{enumerate}
+	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
+
+	\item \textbf{Initial corruption sequence.} Receive $(\SimCommitterCorruptionStatusMsg, \CommitterCorruptedBit)$ from $\Simulator$.
+	\begin{itemize}
+		\item If $\CommitterCorruptedBit = \True$, send $(\CommitterBitMsg, \CommittedBit)$ to $\Simulator$.
+		\item If $\CommitterCorruptedBit = \False$, send $(\CommitterBitMsg, \bot)$ to $\Simulator$.
+	\end{itemize}
+
+	\item \textbf{Commit.} Receive $(\CommitOkMsg)$ from $\Simulator$ and send $(\CommitMsg, \sid, \PartyCommitter, \PartyVerifier)$ to $\PartyVerifier$.
+
+	\item \textbf{Open.} \megan{TODO}
+
+	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommittedBit)$ to $\Simulator$.
+\end{enumerate}
+\end{minipage}
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\doclearpage
+\section{Scenario}
+\label{sec:scenario}
+
+The $\Environment$/$\Adversary$'s job is to distinguish the real and ideal distributions.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Real Distribution: committer is adaptively corrupted}
+\label{sec:real-distribution}
+
+\begin{minipage}{0.9\textwidth}
+\parhead{Real distribution} The committer does the following:
+\begin{enumerate}[nolistsep]
+	\item \parhead{Commit round}
+
+	\begin{enumerate}[nolistsep]
+		\item Receive $(\CommittedBit,\sid)$ from $\Environment$.
+		\item Send $\IFCrs$
+		\item Sample $\Input_{\CommittedBit}$ from the plaintext space.
+		\item Sample $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$ from the commitment randomness space.
+		\item Compute $\CFPTPOutput = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input_{\CommittedBit})$.
+		\item Compute $\Ciphertext_{\CommittedBit} = \PKE.\Enc_\EncKey(\Input, \sid; \Rand_\CommittedBit)$.
+		\item Compute $\Ciphertext_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$.
+		\item Send $(\CFPTPOutput, \Ciphertext_0, \Ciphertext_1)$ to $\Adversary$.
+	\end{enumerate}
+
+	\item \parhead{Open round}
+
+	\begin{enumerate}[nolistsep]
+		\item tbd
+	\end{enumerate}
+\end{enumerate}
+\end{minipage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Ideal Distribution}
+\label{sec:ideal-distribution}
+
+\begin{minipage}{0.9\textwidth}
+\parhead{Ideal distribution} $\Simulator$ does the following:
+\begin{enumerate}[nolistsep]
+	\item \parhead{Commit round}
+	\begin{enumerate}[nolistsep]
+		\item Receive $\sid$ from $\Environment$
+		\item Sample $\CFPTPOutput$ from the plaintext space.
+		\item Sample $\Rand_{0}$ and $\Rand_{1}$ from the commitment randomness space.
+		\item Compute $\Ciphertext_{0} = \PKE.\Enc(\EncKey,\Input_{0}, \sid; \Rand_{0})$.
+		\item Compute $\Ciphertext_{1} = \PKE.\Enc(\EncKey,\Input_{1}, \sid; \Rand_{1})$.
+		\item Send $(\CFPTPOutput, \Ciphertext_0, \Ciphertext_1)$ to $\Adversary$.
+	\end{enumerate}
+
+	\item \parhead{Open round}
+
+	\begin{enumerate}[nolistsep]
+		\item Receive from $\IF$ that the committed bit is $\CommittedBit$.
+	\end{enumerate}
+
+\end{enumerate}
+\end{minipage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\doclearpage
+{\small{
+\bibliographystyle{alpha}
+\bibliography{refs}
+}}
+
+\end{document}
