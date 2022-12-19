@@ -110,40 +110,18 @@ axiom keygen_ll : is_lossless dkeygen.
 
 op valid_keys (keys : pkey * skey) : bool = support dkeygen keys.
 
-(* encrypt plain text relative to randomness *)
+(* encrypt plaintext relative to randomness *)
 
-op enc (pk : pkey, m : plaintext, r : rand) : ciphertext.
+op enc(pk : pkey, m : plaintext, r : rand) : ciphertext.
 
-(* decrypt cipher text (randomness not needed); returns None
-   when decryption fails, i.e., cipher text is invalid *)
+(* decrypt cipher text (not needed randomness) *)
 
-op dec (sk : skey, c : ciphertext) : plaintext option.
+op dec(sk : skey, c : ciphertext) : plaintext.
 
 (* correctness of encryption scheme *)
 
 axiom correctness (pk : pkey, sk : skey, m : plaintext, r : rand):
-  valid_keys (pk, sk) => dec sk (enc pk m r) = Some m.
-
-(* if a cipher text decrypts to a plain text, that plain text
-   encrypts to the cipher text for some randomness *)
-
-axiom dec_suceeds (pk : pkey, sk : skey, m : plaintext, c : ciphertext) :
-  valid_keys (pk, sk) => dec sk c = Some m =>
-  exists (r : rand), enc pk m r = c.
-
-(* if decrypting a cipher text fails, encryption is incapable
-   of producing the cipher text from any plain text and randomness *)
-
-lemma dec_fails (pk : pkey, sk : skey, c : ciphertext) :
-  valid_keys (pk, sk) => dec sk c = None =>
-  forall (m : plaintext, r : rand), enc pk m r <> c.
-proof.
-move => vk_pk_sk dec_sk_c_eq_None m r.
-case (enc pk m r = c) => [enc_pk_m_r_eq_c | //].
-have dec_sk_c_eq_Some_m : dec sk c = Some m.
-  by rewrite -enc_pk_m_r_eq_c correctness.
-by rewrite dec_sk_c_eq_None in dec_sk_c_eq_Some_m.
-qed.
+  valid_keys (pk, sk) => dec sk (enc pk m r) = m.
 
 (* oblivious encryption of randomness, plus inverse *)
 
@@ -157,45 +135,6 @@ axiom obliv_enc_bij (pk : pkey, r : rand):
   obliv_enc_inv pk (obliv_enc pk r) = r.
 axiom obliv_enc_inv_bij (pk : pkey, c : ciphertext):
   obliv_enc pk (obliv_enc_inv pk c) = c.
-
-
-
-
-lemma eq_ct_siz_rd_siz (pk : pkey, sk : skey) :
-  valid_keys (pk, sk) => dmap drand (obliv_enc pk) = dciphertext.
-proof.
-move => vk_pk_sk.
-rewrite (dmap_bij drand dciphertext (obliv_enc pk) (obliv_enc_inv pk)).
-move => x _; rewrite dciphertext_fu.
-move => x _.
-rewrite dciphertext1E.
-rewrite drand1E.
-
-
-
-
-
-
-rewrite -(in_dmap1E_can drand (obliv_enc pk) (obliv_enc_inv pk)).
-by rewrite obliv_enc_inv_bij.
-move => y _ <-; by rewrite obliv_enc_bij.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 (* IND-CCA oracle *)
 
@@ -217,7 +156,7 @@ module type OR_INDCCA = {
   proc enc(m : plaintext) : ciphertext
 
   (* decrypt a cipher text, yielding optional plaintext that is
-     None if c was previously produced by enc, and is
+     None if c was previously produced by enc, and is Some of
      the decryption using stored secret key, otherwise *)
 
   proc dec(c : ciphertext) : plaintext option
@@ -255,7 +194,7 @@ module OrIndCCA1 : OR_INDCCA = {
       x <- None;
     }
     else {
-      x <- dec sk c;  (* normal decryption *)
+      x <- Some (dec sk c);  (* normal decryption *)
     }
     return x;
   }
@@ -291,7 +230,7 @@ module OrIndCCA2 : OR_INDCCA = {
       x <- None;
     }
     else {
-      x <- dec sk c;  (* normal decryption *)
+      x <- Some (dec sk c);  (* normal decryption *)
     }
     return x;
   }
@@ -342,9 +281,9 @@ module type OR_PI = {
 
   proc obliv() : ciphertext
 
-  (* decrypt a cipher text, yielding optional plaintext that is None
-     if c was previously produced by obliv, and is the decryption
-     using stored secret key, otherwise *)
+  (* decrypt a cipher text, yielding optional plaintext that is
+     None if c was previously produced by obliv, and is Some of
+     the decryption using stored secret key, otherwise *)
 
   proc dec(c : ciphertext) : plaintext option
 
@@ -384,7 +323,7 @@ module OrPI : OR_PI = {
       x <- None;
     }
     else {
-      x <- dec sk c;
+      x <- Some (dec sk c);
     }
     return x;
   }
@@ -416,7 +355,7 @@ module PreImage(Adv : ADV_PI) = {
 op pt_ex : plaintext.
 
 op mu_obliv_enc_dec_exact (pk : pkey, sk : skey, m : plaintext) =
-  mu drand (fun r => dec sk (obliv_enc pk r) = Some m).
+  mu drand (fun r => dec sk (obliv_enc pk r) = m).
 
 op mu_obliv_enc_dec_exact_ub : real.
 
@@ -510,7 +449,7 @@ local module OrPI_bad1 : OR_PI = {
       x <- None;
     }
     else {
-      x <- dec sk c;
+      x <- Some (dec sk c);
     }
     return x;
   }
@@ -586,7 +525,7 @@ local module OrPI_bad2 : OR_PI = {
       x <- None;
     }
     else {
-      x <- dec sk c;
+      x <- Some (dec sk c);
     }
     return x;
   }
@@ -670,7 +609,7 @@ local module PI_bad_ub = {
       if (ctr < runs) {
         r <$ drand;
         c <- obliv_enc pk r;
-        if (dec sk c = Some pt_ex) {
+        if (dec sk c = pt_ex) {
           bad <- true;
         }
         cs <- cs `|` fset1 c;
@@ -688,7 +627,7 @@ local module PI_bad_ub = {
         x <- None;
       }
       else {
-        x <- dec sk c;
+        x <- Some (dec sk c);
       }
       return x;
     }
@@ -733,7 +672,7 @@ call
    ={pk, sk, cs, ctr}(OrPI_bad2, PI_bad_ub.Or) /\
    ! OrPI_bad2.bad{1} /\
    ((exists c, c \in PI_bad_ub.Or.cs{2} /\
-     dec PI_bad_ub.Or.sk{2} c = Some pt_ex) =>
+     dec PI_bad_ub.Or.sk{2} c = pt_ex) =>
     PI_bad_ub.Or.bad{2})).
 proc.
 if => //.
@@ -768,9 +707,7 @@ inline*; auto; smt(ge0_runs).
 proc.
 if.
 wp.
-rnd
-  (fun r =>
-     dec PI_bad_ub.Or.sk (obliv_enc PI_bad_ub.Or.pk r) = Some pt_ex).
+rnd (fun r => dec PI_bad_ub.Or.sk (obliv_enc PI_bad_ub.Or.pk r) = pt_ex).
 skip; progress.
 by apply mu_obliv_enc_dec_exact_ub.
 smt().
@@ -831,7 +768,9 @@ qed.
 local lemma IndCCA1_AdvPI2IndCCAAdv_AdvPI_0 &m :
   Pr[IndCCA1(AdvPI2IndCCAAdv(AdvPI)).main() @ &m : res] = 0%r.
 proof.
-byphoare => //; proc; hoare.
+byphoare => //.
+proc.
+hoare.
 seq 2 :
   (pk = OrIndCCA1.pk /\ sk = OrIndCCA1.sk /\ valid_keys (pk, sk) /\
    OrIndCCA1.cs = fset0 /\ OrIndCCA1.ctr = 0).
@@ -844,13 +783,6 @@ seq 6 :
    pk0 = OrIndCCA1.pk /\ valid_keys (OrIndCCA1.pk, OrIndCCA1.sk) /\
    OrIndCCA1.ctr = 0 /\ OrIndCCA1.cs = fset0).
 auto.
-conseq
-  (_ :
-   _ ==>
-   enc AdvPI2IndCCAAdv.OrPI.pk x r \notin AdvPI2IndCCAAdv.OrPI.cs \/
-   x = pt_ex).
-move => /> &hr _ cs r1 x1.
-by rewrite negb_and.
 call
   (_ :
    AdvPI2IndCCAAdv.OrPI.pk = OrIndCCA1.pk /\
@@ -880,6 +812,7 @@ proc; inline *; auto.
 auto; progress.
 rewrite ge0_runs.
 smt(in_fset0).
+rewrite negb_and /=.
 case (enc OrIndCCA1.pk{hr} result.`1 result.`2 \in cs0) =>
   [/= enc_in_cs0 | //].
 have [r1 enc_eq] :
@@ -887,16 +820,14 @@ have [r1 enc_eq] :
   enc OrIndCCA1.pk{hr} result.`1 result.`2 =
   enc OrIndCCA1.pk{hr} pt_ex r1.
   by apply H6.
-have A :
+have <- :
   dec OrIndCCA1.sk{hr} (enc OrIndCCA1.pk{hr} result.`1 result.`2) =
-  Some result.`1.
+  result.`1.
   by rewrite correctness.
-have B :
-  dec OrIndCCA1.sk{hr} (enc OrIndCCA1.pk{hr} pt_ex r1) = Some pt_ex.
+have <- :
+  dec OrIndCCA1.sk{hr} (enc OrIndCCA1.pk{hr} pt_ex r1) = pt_ex.
   by rewrite correctness.
-rewrite -enc_eq in B.
-rewrite A /= in B.
-by rewrite B.
+by rewrite enc_eq.
 qed.
 
 local lemma PI_bad2_0 &m :
