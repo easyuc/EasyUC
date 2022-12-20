@@ -62,15 +62,16 @@ rewrite in_fset1 => ->.
 rewrite rd_elems.
 qed.
 
-op drand : rand distr.
+(* create a full, uniform and lossless distribution on rand *)
 
-axiom drand1E (x : rand) :
+op drand : rand distr = duniform (elems rd_elems).
+
+lemma drand1E (x : rand) :
   mu1 drand x = 1%r / rd_siz%r.
-
-lemma drand_uni : is_uniform drand.
 proof.
-move => x y _ _.
-by rewrite 2!drand1E.
+rewrite /drand.
+rewrite duniform1E_uniq 1:uniq_elems.
+by rewrite -memE rd_elems /= -cardE.
 qed.
 
 lemma drand_fu : is_full drand.
@@ -82,11 +83,6 @@ qed.
 
 lemma drand_ll : is_lossless drand.
 proof.
-have -> : drand = duniform (elems rd_elems).
-  rewrite eq_distr => x.
-  rewrite drand1E.
-  rewrite duniform1E_uniq 1:uniq_elems -memE rd_elems /=.
-  congr; by rewrite -cardE.
 rewrite duniform_ll.
 case (elems rd_elems = []) => [| //].
 move => /elems_eq_fset0 rd_elems_eq_fset0.
