@@ -69,23 +69,20 @@ op drand : rand distr = duniform (elems rd_elems).
 lemma drand1E (x : rand) :
   mu1 drand x = 1%r / rd_siz%r.
 proof.
-rewrite /drand.
 rewrite duniform1E_uniq 1:uniq_elems.
 by rewrite -memE rd_elems /= -cardE.
 qed.
 
 lemma drand_fu : is_full drand.
 proof.
-move => x.
-rewrite /support drand1E.
-rewrite RField.div1r invr_gt0 lt_fromint gt0_rd_siz.
+rewrite duniform_fu => x.
+rewrite -memE rd_elems.
 qed.
 
 lemma drand_ll : is_lossless drand.
 proof.
 rewrite duniform_ll.
-case (elems rd_elems = []) => [| //].
-move => /elems_eq_fset0 rd_elems_eq_fset0.
+case (elems rd_elems = []) => [/elems_eq_fset0 rd_elems_eq_fset0 | //].
 have : rd_def \in fset0 by rewrite -rd_elems_eq_fset0 rd_elems.
 by rewrite in_fset0.
 qed.
@@ -101,7 +98,10 @@ op ct_def : ciphertext.  (* default cipher text *)
 type pkey.  (* public key *)
 type skey.  (* secret key *)
 
-(* lossless distribution on key pairs *)
+(* lossless distribution on key pairs
+
+   so choosing a keypair will always succeed, but we don't
+   axiomatize anything else about the distribution *)
 
 op dkeygen : (pkey * skey) distr.
 
@@ -178,7 +178,7 @@ qed.
 op mu_obliv_enc_dec_exact (pk : pkey, sk : skey, m : plaintext) =
   mu drand (fun r => dec sk (obliv_enc pk r) = Some m).
 
-(* TODO: can we define this in terms of pt_siz for some IND-CCA
+(* ***TODO***: can we define this in terms of pt_siz for some IND-CCA
    schemes? *)
 
 op mu_obliv_enc_dec_exact_ub : real.
