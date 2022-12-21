@@ -12,7 +12,6 @@ require import AllCore Distr List FSet SmtMap FelTactic.
 require import StdOrder. import RealOrder.
 require import StdBigop. import Bigreal BRA.
 require import StdRing. import RField.
-require import RealSeries.
 
 (* BEGINNING OF THEORY PARAMETERS (plus associated lemmas) *)
 
