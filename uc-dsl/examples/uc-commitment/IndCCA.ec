@@ -106,9 +106,17 @@ op dkeygen : (pkey * skey) distr.
 
 axiom dkeygen_ll : is_lossless dkeygen.
 
-(* test if key pair is in support of dkeygen *)
+(* test if key pair is in support of dkeygen (which should
+   be true iff the key pair is valid according to the
+   encrytion scheme) *)
 
 op valid_keys (keys : pkey * skey) : bool = support dkeygen keys.
+
+op valid_pkey (pk : pkey) : bool =
+  exists (sk : skey), valid_keys (pk, sk).
+
+op valid_skey (sk : skey) : bool =
+  exists (pk : pkey), valid_keys (pk, sk).
 
 (* encrypt plain text relative to randomness *)
 
@@ -151,34 +159,32 @@ op obliv_enc(pk : pkey, r : rand) : ciphertext.
 op obliv_enc_inv(pk : pkey, c : ciphertext) : rand.
 
 axiom obliv_enc_cancel (pk : pkey, r : rand):
+  valid_pkey pk =>
   obliv_enc_inv pk (obliv_enc pk r) = r.
 
+(* the following axiom could be added for some IND-CCA
+   schemes, but we don't need it in our proof
+
+   adding it would mean that for each valid pk, (obliv_enc pk) : rand
+   -> ciphertext and (obliv_enc_inv pk) : ciphertext -> rand are
+   mutual inverses (and so have rand and ciphertext have the same
+   size)
+
+   without it, it's possible that the image of obliv_enc pk is
+   a proper subset of ciphertext
+
 axiom obliv_enc_inv_cancel (pk : pkey, c : ciphertext):
+  valid_pkey pk =>
   obliv_enc pk (obliv_enc_inv pk c) = c.
-
-(* there is a bijection between rand and ciphertext, and so
-   they have the same number of elements *)
-
-lemma rand_ciphertext_bijective :
-  exists (f : rand -> ciphertext), bijective f.
-proof.
-have [[pk sk]] vk_pk_sk : exists (p : pkey * skey), valid_keys p.
-  have gt0_weight_dkeygen : 0%r < mu dkeygen predT by rewrite dkeygen_ll.
-  have [ex_witness _] := witness_support predT dkeygen.
-  have [x] [_ x_in_dkeygen] := ex_witness _; first rewrite gt0_weight_dkeygen.
-  by exists x.
-exists (obliv_enc pk).
-exists (obliv_enc_inv pk).
-split; [apply obliv_enc_cancel | apply obliv_enc_inv_cancel].
-qed.
+*)
 
 (* for use in the security bound of the preimage game *)
 
 op mu_obliv_enc_dec_exact (pk : pkey, sk : skey, m : plaintext) =
   mu drand (fun r => dec sk (obliv_enc pk r) = Some m).
 
-(* ***TODO***: can we define this in terms of pt_siz for some IND-CCA
-   schemes? *)
+(* ***TODO***: define this in terms of pt_siz for some IND-CCA
+   scheme or schemes *)
 
 op mu_obliv_enc_dec_exact_ub : real.
 
@@ -187,7 +193,8 @@ axiom mu_obliv_enc_dec_exact_ub (pk : pkey, sk : skey) :
   mu_obliv_enc_dec_exact pk sk pt_def <= mu_obliv_enc_dec_exact_ub.
 
 (* number of allowed runs of the encryption procedure of the IND-CCA
-   oracle before a default cipher text is returned *)
+   oracle (or the obliv procedure in the preimage oracle) before a
+   default cipher text is returned *)
 
 op runs : int.
 
@@ -202,7 +209,9 @@ module type OR_INDCCA = {
 
   proc init(keys : pkey * skey) : unit
 
-  (* encrypt a plaintext using stored public key and fresh randomness *)
+  (* encrypt a plaintext using stored public key and fresh
+     randomness; returns ct_def if runs of enc have been
+     exhausted *)
 
   proc enc(m : plaintext) : ciphertext
 
@@ -227,7 +236,7 @@ module OrIndCCA1 : OR_INDCCA = {
 
   proc enc(m : plaintext) : ciphertext = {
     var r : rand; var c : ciphertext;
-    if (ctr < runs) {
+    if (ctr < runs) {  (* another run possible? *)
       r <$ drand;
       c <- enc pk m r;  (* normal encryption *)
       cs <- cs `|` fset1 c;
@@ -317,7 +326,8 @@ module IndCCA2 = IndCCA(OrIndCCA2).
 
 (* The *advantage* of an IND-CCA adversary Adv is
 
-   `|Pr[IndCCA1(Adv).main() @ &m : res] - Pr[IndCCA2(Adv).main() @ &m : res]|
+   `|Pr[IndCCA1(Adv).main() @ &m : res] -
+     Pr[IndCCA2(Adv).main() @ &m : res]|
 *)
 
 (* pre-image security *)
@@ -328,7 +338,8 @@ module type OR_PI = {
   proc init(keys : pkey * skey) : unit
 
   (* obliviously generate a cipher text using stored public key
-     and fresh randomness *)
+     and fresh randomness; returns ct_def if runs have been
+     exhausted *)
 
   proc obliv() : ciphertext
 
@@ -868,6 +879,8 @@ split => [| c']; first apply ge0_runs.
 by rewrite in_fset0.
 move => [pt' r'] cs' ctr' _ _ H /=.
 case (enc OrIndCCA1.pk{hr} pt' r' \notin cs') => [// | /= enc_pt'_r'_in_cs'].
+
+
 have [r'' enc_pt'_r'_eq_enc_pt_def_r''] :
   exists (r'' : rand),
   enc OrIndCCA1.pk{hr} pt' r' = enc OrIndCCA1.pk{hr} pt_def r''.
@@ -904,7 +917,8 @@ have -> :
   by rewrite /= ger0_norm 1:Pr [mu_ge0].
 rewrite
   (ler_trans
-   (`|Pr[PreImage(AdvPI).main() @ &m : res] - Pr[PI_bad2.main() @ &m : res] | +
+   (`|Pr[PreImage(AdvPI).main() @ &m : res] -
+      Pr[PI_bad2.main() @ &m : res] | +
     `|Pr[PI_bad2.main() @ &m : res] - 0%r|)).
 rewrite ler_dist_add.
 rewrite ler_add.
