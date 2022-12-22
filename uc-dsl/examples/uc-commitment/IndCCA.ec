@@ -132,6 +132,10 @@ op dec (sk : skey, c : ciphertext) : plaintext option.
 axiom correctness (pk : pkey, sk : skey, m : plaintext, r : rand):
   valid_keys (pk, sk) => dec sk (enc pk m r) = Some m.
 
+(* the following axiom could be added for at least some schemes,
+   and has a nice consequence lemma; but we don't need it for
+   our proofs
+
 (* if a cipher text decrypts to a plain text, that plain text
    encrypts to the cipher text for some randomness *)
 
@@ -152,6 +156,7 @@ have dec_sk_c_eq_Some_m : dec sk c = Some m.
   by rewrite -enc_pk_m_r_eq_c correctness.
 by rewrite dec_sk_c_eq_None in dec_sk_c_eq_Some_m.
 qed.
+*)
 
 (* oblivious encryption from randomness, plus its inverse *)
 
