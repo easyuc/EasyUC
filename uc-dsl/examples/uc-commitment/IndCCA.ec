@@ -162,7 +162,7 @@ axiom obliv_enc_cancel (pk : pkey, r : rand):
   valid_pkey pk =>
   obliv_enc_inv pk (obliv_enc pk r) = r.
 
-(* the following axiom could be added for some IND-CCA
+(* the following axiom could be added for at least some IND-CCA
    schemes, but we don't need it in our proof
 
    adding it would mean that for each valid pk, (obliv_enc pk) : rand
