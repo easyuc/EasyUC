@@ -147,6 +147,7 @@
 \newcommand{\Rand}{r}
 \newcommand{\FakeRand}{r_{\mathsf{fake}}}
 \newcommand{\Distribution}{\mathcal{D}}
+\newcommand{\RandSpace}{\mathcal{R}}
 
 % CFPTP
 \newcommand{\CFPTP}{\mathsf{CFPTP}}
@@ -201,6 +202,22 @@
 % Files
 \newcommand{\File}[1]{\texttt{#1}}
 
+% Cramer-Shoup
+\newcommand{\Group}{\mathsf{G}}
+\newcommand{\GrpOrd}{q}
+\newcommand{\GrpEltC}{c}
+\newcommand{\GrpEltD}{d}
+\newcommand{\GrpEltE}{h}
+\newcommand{\GrpEltH}{h}
+\newcommand{\GrpEltU}{u}
+\newcommand{\GrpEltV}{v}
+\newcommand{\Generator}{g}
+\newcommand{\Hash}{H}
+\newcommand{\ExpX}{x}
+\newcommand{\ExpY}{y}
+\newcommand{\ExpZ}{z}
+\newcommand{\Tag}{\alpha}
+
 % == Document title ==
 \title{\cite{CanettiF01} adaptive security proof}
 \author{Megan Chen}
@@ -247,72 +264,78 @@ $\PKE$ satisfies the following properties:
     	\item $\OblivEncInv(\EncKey,\Ciphertext)$: On input the encryption key $\EncKey$ and a ciphertext $\Ciphertext$, outputs randomness $\FakeRand$.
     \end{itemize}
 
-    Further, the following distributions are negligibly-close in statistical distance:
+    Further, we call the following distinguishing game the \textbf{oblivious Ind-CCA2 game}: for any stateful adversary $\Adversary$, the following distributions are negligibly-close:
     \begin{align*}
 		&\Distribution_0(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext,\Rand)
+		\Adversary(\Ciphertext)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
 			\Msg \gets \Adversary(\EncKey)\\
-            \Rand \gets \Bits^{*}\\
-			\Ciphertext \gets \OblivEnc(\EncKey,\vec{0})\\
+            \Rand \gets \RandSpace\\
+			\Ciphertext \eqdef \Enc(\EncKey,\Msg;\Rand)\\
 		\end{array}
 		\right\} \\
 		&\text{and } \Distribution_1(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext,\Rand_1)
+		\Adversary(\Ciphertext)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
             \Msg \gets \Adversary(\EncKey)\\
-            \Rand_0 \gets \Bits^{*}\\
-            \Ciphertext \gets \Enc(\EncKey,\Msg;\Rand_0)\\
-			\Rand_1 \gets \OblivEncInv(\EncKey,\Ciphertext)\\
+            \Rand \gets \RandSpace\\
+            \Ciphertext \gets \OblivEnc(\EncKey,\Rand)\\
 		\end{array}
 		\right\} \enspace.
 	\end{align*}
-    \megan{todo: update game to reflect the game defined in our PKE code}
 \end{itemize}
 
-\begin{lemma}
-    Let $\PKE = (\Gen, \Enc, \Dec, \OblivEnc, \OblivEncInv)$ be an obliviously-sampleable CCA-secure public key encryption scheme and $\SecParam\in\Naturals$ be a security parameter. Then for all adversaries $\Adversary$,
-    \begin{equation}
-    \label{eqn:prod-msg-rand}
-        \Pr \left[
-            \Enc(\EncKey,\Msg';\Rand') = \Ciphertext
-        \pST
-        \begin{array}{r}
-            (\EncKey,\DecKey) \gets \Gen(1^{\SecParam})\\
-            \Rand \gets \Bits^*\\
-            \Ciphertext \gets \OblivEnc(\EncKey, \Rand)\\
-            (\Msg',\Rand') \gets \Adversary(\Ciphertext)\\
-        \end{array}
-        \right] = \negl(\SecParam).
-    \end{equation}
-\end{lemma}
+% \begin{lemma}
+%     Let $\PKE = (\Gen, \Enc, \Dec, \OblivEnc, \OblivEncInv)$ be an obliviously-sampleable CCA-secure public key encryption scheme and $\SecParam\in\Naturals$ be a security parameter. Then for all adversaries $\Adversary$,
+%     \begin{equation}
+%     \label{eqn:prod-msg-rand}
+%         \Pr \left[
+%             \Enc(\EncKey,\Msg';\Rand') = \Ciphertext
+%         \pST
+%         \begin{array}{r}
+%             (\EncKey,\DecKey) \gets \Gen(1^{\SecParam})\\
+%             \Rand \gets \RandSpace\\
+%             \Ciphertext \gets \OblivEnc(\EncKey, \Rand)\\
+%             (\Msg',\Rand') \gets \Adversary(\Ciphertext)\\
+%         \end{array}
+%         \right] = \negl(\SecParam).
+%     \end{equation}
+% \end{lemma}
+%
+% \begin{proof}
+%     Suppose there exists an adversary $\Adversary$ who satisfies the probability in \Cref{eqn:prod-msg-rand} with probability $\delta$. We argue via reduction that this implies breaking the oblivious-sampleability property of $\PKE$.
+%
+%     Construct a (stateful) adversary $\AdversaryB$ that breaks the oblivious-sampleabilty of $\PKE$ as follows:
+%     \begin{itemize}
+%         \item \textbf{Message generation.} $\AdversaryB(\EncKey) \to \Msg$
+%         \begin{enumerate}[nolistsep]
+%             \item Parse $\EncKey$ as the encryption key.
+%             \item Output a random $\Msg$.
+%         \end{enumerate}
+%         \item \textbf{Message generation.} $\AdversaryB(\Ciphertext) \to \GuessBit$
+%         \begin{enumerate}[nolistsep]
+%             \item Run $(\Msg',\Rand')\gets \Adversary(\Ciphertext)$.
+%             \item If $\Msg = \Msg'$, output $\GuessBit = 0$. Otherwise, output $\GuessBit = 1$.
+%         \end{enumerate}
+%     \end{itemize}
+%     By the correctness of $\Adversary$, we have $\Enc(\EncKey, \Msg'; \Rand') = \Ciphertext$ with probability $\delta$.
+%
+%     \begin{itemize}
+%         \item \textbf{Case 1:} Suppose $\Ciphertext$ is from $\Distribution_0$, i.e. $\Ciphertext \eqdef \Enc(\EncKey,\Msg;\Rand)$.
+%         \item \textbf{Case 2:} Suppose $\Ciphertext$ is from $\Distribution_1$, i.e. $\Ciphertext \eqdef \OblivEnc(\EncKey,\Rand)$ for some $\Rand \gets \RandSpace$.
+%     \end{itemize}
+%
+%     \megan{Note: For a fixed key pair, cannot have $\Msg \ne \Msg'$ st $\Enc(\EncKey, \Msg, \Rand) = \Enc(\EncKey, \Msg', \Rand')$. Otherwise, we would contradict correctness of the decryption oracle.}
+% \end{proof}
 
-\begin{proof}
-    Suppose there exists an adversary $\Adversary$ who satisfies the probability in \Cref{eqn:prod-msg-rand} with probability $\delta$. We argue via reduction that this implies breaking the oblivious-sampleability property of $\PKE$.
-
-    Construct a (stateful) adversary $\AdversaryB$ that breaks the oblivious-sampleabilty of $\PKE$ as follows:
-    \begin{itemize}
-        \item \textbf{Message generation.} $\AdversaryB(\EncKey) \to \Msg$
-        \begin{enumerate}[nolistsep]
-            \item Parse $\EncKey$ as the encryption key.
-            \item Output a random $\Msg$.
-        \end{enumerate}
-        \item \textbf{Message generation.} $\AdversaryB(\Ciphertext,\Rand) \to \GuessBit$
-        \begin{enumerate}[nolistsep]
-            \item Run $(\Msg',\Rand')\gets \Adversary(\Ciphertext)$.
-            \item Output $\GuessBit$.
-        \end{enumerate}
-    \end{itemize}
-    By the correctness of $\Adversary$, we have $\Enc(\EncKey, \Msg'; \Rand') = \Ciphertext$.
-    \megan{I'm unsure how to finish analyzing the reduction. This is because, in $\Distribution_0$ and $\Distribution_1$, either $\Ciphertext$ or $\Rand$ is fake, and it's unclear how to tell the difference using $\Adversary$}
-\end{proof}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Adaptive chosen-ciphertext attack security (LR-CCA2)}
-
+\label{sec:lr-cca2}
 \cite{CanettiF01} uses a left-or-right oracle formulation of security against chosen ciphertext attacks. Let $\SecParam\in\Naturals$ be a security parameter. First, define an encryption-decryption oracle pair $(\EncOracle, \DecOracle)$ with respect to a key pair $(\EncKey,\DecKey) \gets \Gen(1^\SecParam)$ as follows:
 \begin{itemize}
 	\item Encryption oracle
@@ -353,6 +376,129 @@ A public key encryption scheme $\PKE$ is secure against left-or-right adaptive c
 	\right] \leq \frac{1}{2} + \frac{1}{\poly(\SecParam)}.
 \end{align*}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Cramer-Shoup encryption scheme}
+\label{sec:cramer-shoup}
+We recall the Cramer-Shoup encryption scheme \cite{CramerS98} and argue that it satisfies the definition of an obliviously-sampleable IND-CCA encryption scheme, as modelled in \code{IndCCA.ec}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{The scheme}
+\label{sec:cramer-shoup-scheme}
+
+Let $\Group$ be a group of (large) prime order $\GrpOrd > \SecParam$. Let $\Hash \colon \Bits^{*} \to \Bits^{\SecParam}$ be a universal one-way hash function.
+
+\newcommand{\GrpEltG}{g}
+\newcommand{\MultGrpOrd}{p}
+\newcommand{\OrdW}{w}
+\newcommand{\RandStr}{\mu}
+\newcommand{\OblivEltGen}{\mathsf{OblivEltGen}}
+\newcommand{\OblivEltInv}{\mathsf{OblivEltGen}^{-1}}
+We first define two subroutines used for oblivious sampleability.
+First, we describe a method of oblivously sampling an element in the group $\Group$:
+\begin{itemize}
+\item[]$\OblivEltGen(\GrpOrd, \RandStr) \to \GrpEltH$.
+    \begin{enumerate}[nolistsep]
+        \item Select $\OrdW \in \Integers$ such that $\GrpOrd$ does not divide $\OrdW$.
+        \item Set $\MultGrpOrd \eqdef \GrpOrd \OrdW + 1$.
+        \item Sample a string $\RandStr \gets \Bits^{2 \log_2 (\MultGrpOrd)}$ and interpret it as an element of the multiplicative group $\Integers^{*}_{\MultGrpOrd}$.
+        \item Compute the group element as $\GrpEltH \eqdef \RandStr^{\OrdW} \in \Integers^{*}_{\MultGrpOrd}$.\footnote{This procedure is statistically-close to selecting a random element in $\Group$. \megan{add an explanation}}
+        \item Output $\GrpEltH$.
+    \end{enumerate}
+\end{itemize}
+\newcommand{\Inv}[1]{\hat{#1}}
+Second, we describe a method of finding a group element's inverse: given $\GrpEltH\in\Group$, find $\Inv{\GrpEltH}$ such that $\Inv{\GrpEltH}^\OrdW = \GrpEltH\in\Group$:
+\begin{itemize}
+\item[]$\OblivEltInv(\MultGrpOrd,\GrpEltH) \to \Inv{\GrpEltH}$.
+    \begin{enumerate}[nolistsep]
+        \item Pick a generator $\Generator \in \Integers^{*}_{\MultGrpOrd}$.
+        \item Find $x$ such that $x\OrdW \equiv 1 \text{ mod } \GrpOrd$.
+        \item Sample $i \gets \{0, \ldots, \OrdW-1\}$.
+        \item Compute $\Inv{\GrpEltH} \eqdef \GrpEltH^{x}\Generator^{i\GrpOrd} \text{ mod } \MultGrpOrd$. Note that the $\Generator^{i\GrpOrd}$ are the $\OrdW$-th roots of unity.
+        % \item Sample $j \gets \{0, \ldots, \MultGrpOrd-1 \}$, compute $\RandStr \eqdef j\MultGrpOrd \in \Integers$, then cast $\RandStr$ as a bitstring in $\Bits^{2 \log_2 (\MultGrpOrd)}$.
+        \item Output $\Inv{\GrpEltH}$.
+    \end{enumerate}
+\end{itemize}
+
+Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and $\OblivEncInv$ algorithms that make the scheme obliviously-sampleable \cite{CanettiF01}.
+\begin{itemize}[nolistsep]
+    \item \textbf{Key generation:} $\Gen(1^{\SecParam}) \to (\EncKey, \DecKey)$.
+    \begin{enumerate}[nolistsep]
+        \item Pick two generators $\Generator_1, \Generator_2$ of the group $\Group$.
+        \item Pick $\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ \gets \Integers_{\GrpOrd}$.
+        \item Compute the group elements $\GrpEltC \eqdef \Generator_1^{\ExpX_1}\Generator_2^{\ExpX_2}, \GrpEltD \eqdef \Generator_1^{\ExpY_1}\Generator_2^{\ExpY_2}$, and $\GrpEltH \eqdef \Generator_1^{\ExpZ}$.
+        \item Pick randomness $\Rand \gets \Integers_{\GrpOrd}$.
+        \item Output
+        \begin{equation*}
+            \EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)
+            \textrm{ and }
+            \DecKey \eqdef (\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ)
+            \enspace.
+        \end{equation*}
+    \end{enumerate}
+
+    \item \textbf{Encryption:} $\Enc(\EncKey, \Msg, \Rand) \to \Ciphertext$.
+    \begin{enumerate}[nolistsep]
+        \item Parse the encryption key $\EncKey = (\Generator_1 \in \Group, \Generator_2 \in \Group, \GrpEltC\in \Group, \GrpEltD\in \Group, \GrpEltH\in \Group, \Hash \colon \Bits^{*} \to \Bits^{\SecParam})$, the message $\Msg \in \Group$, and randomness $\Rand \in \Integers_{\GrpOrd}$.
+        \item Compute
+        \begin{align*}
+            \GrpEltU_1 &\eqdef \Generator_1^{\Rand}\\
+            \GrpEltU_2 &\eqdef \Generator_2^{\Rand}\\
+            \GrpEltE &\eqdef \GrpEltH^{\Rand}\Msg\\
+            \Tag &\eqdef \Hash(\GrpEltU_1, \GrpEltU_2, \GrpEltE)\\
+            \GrpEltV &\eqdef \GrpEltC^{\Rand}\GrpEltD^{\Rand\Tag}
+            \enspace.
+        \end{align*}
+        \item Output the ciphertext $\Ciphertext \eqdef (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV)$.
+    \end{enumerate}
+
+    \item \textbf{Decryption:} $\Dec(\DecKey, \Ciphertext) \to \Msg$.
+    \begin{enumerate}[nolistsep]
+        \item Parse the decryption key $\DecKey = (\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ) \in \Integers_{\GrpOrd}^5$, and the ciphertext $\Ciphertext = (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV) \in \Group^4$.
+        \item Compute $\Tag = \Hash(\GrpEltU_1, \GrpEltU_2, \GrpEltE)$.
+        \item Check if
+        \begin{equation*}
+            \GrpEltU_1^{\ExpX_1 + \ExpY_1 \Tag} \GrpEltU_2^{\ExpX_2 + \ExpY_2 \Tag}
+            = \GrpEltV
+            \enspace.
+        \end{equation*} If so, output $\Msg = \GrpEltE / \GrpEltU_1^{\ExpZ}$. Otherwise, output $\bot$.
+    \end{enumerate}
+
+    \item \textbf{Obliviously-sampled ciphertext:} $\OblivEnc(\EncKey, \Rand) \to \Ciphertext$.
+    \begin{enumerate}[nolistsep]
+        \item Parse $\Rand = (\RandStr_{\GrpEltU_1}, \RandStr_{\GrpEltU_2}, \RandStr_{\GrpEltE}, \RandStr_{\GrpEltV})$.
+        \item Run
+        \begin{align*}
+            &\GrpEltU_1 \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltU_1})\\
+            &\GrpEltU_2 \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltU_2})\\
+            &\GrpEltE \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltE})\\
+            &\GrpEltV \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltV})
+            \enspace.
+        \end{align*}
+        \item Output $\Ciphertext \eqdef (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
+    \end{enumerate}
+
+    \item \textbf{Obliviously-sampled randomness:} $\OblivEncInv(\EncKey, \Ciphertext) \to \Rand$.
+    \begin{enumerate}[nolistsep]
+        \item Parse $\EncKey$ as the encryption key and $\Ciphertext = (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
+        \item Run
+        \begin{align*}
+            &\Inv{\GrpEltU_1} \gets \OblivEltInv(\MultGrpOrd,\GrpEltU_1)\\
+            &\Inv{\GrpEltU_2} \gets \OblivEltInv(\MultGrpOrd,\GrpEltU_2)\\
+            &\Inv{\GrpEltE} \gets \OblivEltInv(\MultGrpOrd,\GrpEltE)\\
+            &\Inv{\GrpEltV} \gets \OblivEltInv(\MultGrpOrd,\GrpEltV)
+            \enspace.
+        \end{align*}
+        \item Output $\Rand \eqdef (\Inv{\GrpEltU_1}, \Inv{\GrpEltU_2}, \Inv{\GrpEltE}, \Inv{\GrpEltV})$.
+    \end{enumerate}
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{\code{IndCCA.ec} validation}
+\label{sec:indcca-model-validation}
+
+We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme by arguing that Cramer-Shoup satisfies the axioms listed in \code{IndCCA.ec}.
+\megan{todo}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -414,6 +560,7 @@ $\IFCom:$
 \section{Scenario}
 \label{sec:scenario}
 
+\megan{todo: write sequence of hybrids}
 The $\Environment$/$\Adversary$'s job is to distinguish the real and ideal distributions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
