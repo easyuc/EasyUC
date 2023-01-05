@@ -18,6 +18,47 @@ require export UCListPO.
 
 require import StdOrder. import IntOrder.
 
+(* standard theories, encoding and partial decoding pairs (EPDPs), the
+   type univ plus a number of EPDPs with target univ, addresses and
+   ports *)
+
+require export UCBasicTypes.
+
+(* prefix ordering on lists *)
+
+require export UCListPO.
+
+(* messages have modes:
+
+     * direct (corresponding to direct interfaces in the DSL) - used
+       for communication between the environment and functionalities,
+       and between subfunctionalities and parent functionalities
+
+     * adversarial (corresponding to adversarial interfaces in the
+       DSL) - communication between functionalties and
+       adversaries/simulators, communication between different
+       adversaries/simulators, and communication between environments
+       and adversaries/simulators *)
+
+type mode = [
+  | Dir  (* direct *)
+  | Adv  (* adversarial *)
+].
+
+lemma not_dir (mod : mode) :
+  mod <> Dir <=> mod = Adv.
+proof. by case mod. qed.
+
+lemma not_adv (mod : mode) :
+  mod <> Adv <=> mod = Dir.
+proof. by case mod. qed.
+
+(* a message has the form (mod, pt1, pt2, tag, u), for a mode mod, a
+   destination port pt1, a source port pt2, an integer tag (used to
+   ensure certain messages are distinct), and a universe value u *)
+
+type msg = mode * port * port * int * univ.
+
 (* guard an optional message using predicate *)
 
 op opt_msg_guard :
