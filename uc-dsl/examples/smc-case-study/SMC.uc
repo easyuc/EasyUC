@@ -79,7 +79,7 @@ functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
   party Pt2 serves SMCDir.Pt2 {
     initial state WaitKE1 {
       match message with 
-      | KE.Pt2.ke_rsp1 (_, k) => {
+      | KE.Pt2.ke_rsp1(_, k) => {
           send KE.Pt2.ke_req2 and transition WaitFwd(k).
         }
       | *                     => { fail. }
