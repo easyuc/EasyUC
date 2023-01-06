@@ -275,8 +275,7 @@ simulator KESim uses KEI2S simulates KEReal {
     | *                           => { fail. }
     (* only catches KEI2S.ke_sim_req2; messages from adversary to real
        functionality flow through the simulator to the ideal
-       functionality, where they cannot be matched and so
-       automatically result in failure *)
+       functionality, where they result in failure *)
     end
   }
 
