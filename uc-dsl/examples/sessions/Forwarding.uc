@@ -70,7 +70,7 @@ functionality Forw implements FwDir FwAdv {
         }
         else { fail. }
       }
-    | pt1@FwDir.D.is_corrupted_req(subs, pt2') => {
+    | pt1@FwDir.D.is_corrupted_req(subs, pt2) => {
         if (dom session_map (subs, pt1, pt2)) {
           match oget session_map.[(subs, pt1, pt2)] with
           | Wait _    => {
