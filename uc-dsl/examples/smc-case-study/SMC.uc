@@ -177,7 +177,9 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
       }
     end
     (* no messages from the adversary can be matched in the initial
-       state; they automatically flow through the simulator *)
+       state; they automatically flow through the simulator to the
+       ideal functionality, where they cannot be matched and so
+       automatically result in failure *)
   }
 
   state WaitAdv1(pt1 : port, pt2 : port) {

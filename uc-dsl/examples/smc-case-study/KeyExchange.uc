@@ -273,8 +273,10 @@ simulator KESim uses KEI2S simulates KEReal {
         and transition WaitAdv1(q1).
       }    
     | *                           => { fail. }
-    (* only catches KEI2S.ke_sim_req2; messages from adversary to
-       real functionality will go to ideal functionality *)
+    (* only catches KEI2S.ke_sim_req2; messages from adversary to real
+       functionality flow through the simulator to the ideal
+       functionality, where they cannot be matched and so
+       automatically result in failure *)
     end
   }
 
