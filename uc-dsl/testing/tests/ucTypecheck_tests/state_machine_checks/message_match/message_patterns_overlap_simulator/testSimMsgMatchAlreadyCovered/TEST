@@ -6,5 +6,6 @@ args: testSimMsgMatchAlreadyCovered.uc
 outcome:  failure
 [error: testSimMsgMatchAlreadyCovered.uc: from line 35 columns 5 to 12]
 
-this pattern is covered by previous patterns and would never match
+this pattern is covered by previous patterns and would never match, in
+initial state
 .

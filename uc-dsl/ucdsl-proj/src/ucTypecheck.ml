@@ -28,12 +28,12 @@ let max_msg_params = 8
 
 let check_unique_ids
     (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> psymbol)
-      : 'a IdMap.t = 
+      : 'a IdMap.t =
   let id_map = IdMap.empty in
-  List.fold_left 
-  (fun id_map a -> 
-     let id_l = get_id a in 
-     if exists_id id_map (unloc id_l) then 
+  List.fold_left
+  (fun id_map a ->
+     let id_l = get_id a in
+     if exists_id id_map (unloc id_l) then
        type_error (loc id_l)
        (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
      else IdMap.add (unloc id_l) a id_map)
@@ -94,24 +94,24 @@ let warning_op_name s qual_file =
 let check_type_top (pty : pty) : ty =
   let ue = unif_env () in
   transty tp_nothing (top_env ()) ue pty
-  
+
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)
-      : ty_index IdMap.t = 
+      : ty_index IdMap.t =
   let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
   IdMap.map
-  (fun (nt : type_binding) -> 
+  (fun (nt : type_binding) ->
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
   nt_map
 
 let pp_ty env ppf ty =
   let ppe = EcPrinting.PPEnv.ofenv env in
   EcPrinting.pp_type ppe ppf ty
-  
+
 let pp_expr env ppf expr =
   let ppe = EcPrinting.PPEnv.ofenv env in
   EcPrinting.pp_expr ppe ppf expr
-  
+
 let print_ex env ex =
 	Printf.eprintf "(* expression *)\n";
         (fun ppf-> pp_expr env ppf ex) Format.err_formatter;
@@ -131,7 +131,7 @@ let inter_kind_to_str art ik =
   | AdversarialInterKind ->
       (if art then "an " else "") ^ "adversarial"
 
-let check_basic_inter (mds : message_def list) : inter_body_tyd = 
+let check_basic_inter (mds : message_def list) : inter_body_tyd =
   let msg_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ message@ name@]")
@@ -157,10 +157,10 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
 
 let check_comp_item
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (ci : comp_item) : symbol = 
+    (ci : comp_item) : symbol =
   let uid = unloc ci.inter_id in
   match IdPairMap.find_opt (root, uid) inter_map with
-  | None    -> 
+  | None    ->
       type_error
       (loc ci.inter_id)
       (fun ppf ->
@@ -178,7 +178,7 @@ let check_comp_item
 
 let check_comp_inter
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (cis : comp_item list) : inter_body_tyd = 
+    (cis : comp_item list) : inter_body_tyd =
   let comp_item_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ sub-interface@ name@]")
@@ -187,7 +187,7 @@ let check_comp_inter
 
 let check_inter
     (root : symbol) (e_maps : symb_pair -> bool) (ik : inter_kind)
-    (inter_map : inter_tyd IdPairMap.t) (ni : named_inter) = 
+    (inter_map : inter_tyd IdPairMap.t) (ni : named_inter) =
   let uid = unloc ni.id in
   let () =
     if e_maps (root, uid)
@@ -201,7 +201,7 @@ let check_inter
     | Composite cis -> check_comp_inter ik root inter_map cis in
   let it = mk_loc (loc ni.id) ibt in
   IdPairMap.add (root, uid) it inter_map
-                
+
 let check_inter_def
     (root : symbol) (maps : maps_tyd) (interd : inter_def) : maps_tyd =
   let e_maps = exists_id_pair_maps_tyd maps in
@@ -217,9 +217,9 @@ let check_inter_def
 
 let check_exists_inter_id
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (id : psymbol) : unit = 
+    (id : psymbol) : unit =
   let uid = unloc id in
-  if exists_id_pair inter_map (root, uid) then () 
+  if exists_id_pair inter_map (root, uid) then ()
   else type_error (loc id)
        (fun ppf ->
           fprintf ppf
@@ -228,7 +228,7 @@ let check_exists_inter_id
 
 let check_is_basic_id
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (id : psymbol) : unit = 
+    (id : psymbol) : unit =
   let uid = unloc id in
   match unloc (IdPairMap.find (root, uid) inter_map) with
   | BasicTyd _     -> ()
@@ -241,7 +241,7 @@ let check_is_basic_id
 
 let check_is_composite_id
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (id : psymbol) : unit = 
+    (id : psymbol) : unit =
   let uid = unloc id in
   match unloc (IdPairMap.find (root, uid) inter_map) with
   | BasicTyd _     ->
@@ -254,7 +254,7 @@ let check_is_composite_id
 
 let check_exists_inter_qid
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
-    (qid : pqsymbol) : symb_pair located = 
+    (qid : pqsymbol) : symb_pair located =
   let uqid = unloc qid in
   let l = loc qid in
   match uqid with
@@ -282,7 +282,7 @@ let check_exists_inter_qid
 
 let check_is_basic_id_pair  (* currently not used *)
     (root : symbol) (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
-    (idp : symb_pair located) : unit = 
+    (idp : symb_pair located) : unit =
   let uidp = unloc idp in
   let l = loc idp in
   match unloc (IdPairMap.find uidp inter_map) with
@@ -296,7 +296,7 @@ let check_is_basic_id_pair  (* currently not used *)
 
 let check_is_composite_id_pair
     (root : symbol) (ik : inter_kind) (inter_map : inter_tyd IdPairMap.t)
-    (idp : symb_pair located) : unit = 
+    (idp : symb_pair located) : unit =
   let uidp = unloc idp in
   let l = loc idp in
   match unloc (IdPairMap.find uidp inter_map) with
@@ -337,7 +337,7 @@ type state_context =
    internal_ports : QidSet.t;     (* internal port names - names of parties *)
    state_params   : ty IdMap.t;   (* state parameters *)
    vars           : ty IdMap.t}   (* local variables *)
-   
+
 type state_body_mid =
   {is_initial : bool;                   (* the initial state? *)
    params     : ty_index IdMap.t;       (* typed parameters, index is
@@ -349,7 +349,7 @@ type state_mid = state_body_mid located
 
 let make_state_context
     (s : state_body_mid) (ports : QidSet.t)
-    (flags : string list) : state_context = 
+    (flags : string list) : state_context =
   let state_params = IdMap.map (fun p -> fst (unloc p)) s.params in
   let vars = IdMap.map (fun v -> unloc v) s.vars in
   {initial = s.is_initial; flags = flags; internal_ports = ports;
@@ -369,7 +369,7 @@ let refine_state_analysis (sa : state_analysis) (id : symbol) =
      uninit_vs = IdSet.diff sa.uninit_vs (IdSet.singleton id) }
 
 let merge_state_analysis (sa1 : state_analysis) (sa2 : state_analysis)
-      : state_analysis = 
+      : state_analysis =
   {uninit_vs = IdSet.union sa1.uninit_vs sa2.uninit_vs}
 
 let merge_state_analyses (sas : state_analysis list) : state_analysis =
@@ -415,14 +415,14 @@ let bind_local_avoid_var
 
 type state_sig = bool * ty list
 
-let get_state_sig (s : state_body_mid) : state_sig = 
+let get_state_sig (s : state_body_mid) : state_sig =
   if s.is_initial then (true, [])
   else let ps = IdMap.bindings s.params in
        let ts = unlocs (snd (List.split ps)) in
        let tord = List.sort (fun t1 t2 -> snd t1 - snd t2) ts in
        (false, (fst (List.split tord)))
 
-let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t = 
+let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t =
   IdMap.map (fun s -> get_state_sig (unloc s)) states
 
 (* a basic_inter_path will have the form (ids, b), where we call ids
@@ -504,12 +504,16 @@ type all_basic_inter_paths =
   {direct : basic_inter_path list; adversarial : basic_inter_path list;
    internal : basic_inter_path list}
 
+let all_non_adv_basic_inter_paths (abip : all_basic_inter_paths)
+      : all_basic_inter_paths =
+  {direct = abip.direct; adversarial = []; internal = abip.internal}
+
 let flatten_all_basic_inter_paths (abip : all_basic_inter_paths)
-      : basic_inter_path list = 
+      : basic_inter_path list =
   abip.direct @ abip.adversarial @ abip.internal
 
 let filter_dir_basic_inter_paths
-    (dir : msg_dir) (bips : basic_inter_path list) : basic_inter_path list = 
+    (dir : msg_dir) (bips : basic_inter_path list) : basic_inter_path list =
   List.map
   (fun bip ->
      (fst bip,
@@ -518,12 +522,12 @@ let filter_dir_basic_inter_paths
       (snd bip)))
   bips
 
-let incoming_abip (abip : all_basic_inter_paths) : all_basic_inter_paths = 
+let incoming_abip (abip : all_basic_inter_paths) : all_basic_inter_paths =
   {direct      = filter_dir_basic_inter_paths In abip.direct;
    adversarial = filter_dir_basic_inter_paths In abip.adversarial;
    internal    = filter_dir_basic_inter_paths Out abip.internal}
 
-let outgoing_abip (abip : all_basic_inter_paths) : all_basic_inter_paths = 
+let outgoing_abip (abip : all_basic_inter_paths) : all_basic_inter_paths =
   {direct      = filter_dir_basic_inter_paths Out abip.direct;
    adversarial = filter_dir_basic_inter_paths Out abip.adversarial;
    internal    = filter_dir_basic_inter_paths In abip.internal}
@@ -534,7 +538,7 @@ let outgoing_abip (abip : all_basic_inter_paths) : all_basic_inter_paths =
 let get_basic_inter_paths
     (root : symbol) (top : symbol) (inter_id : symbol)
     (inter_map : inter_tyd IdPairMap.t) : basic_inter_path list =
-  let getb_body (inter_id : symbol) : basic_inter_body_tyd = 
+  let getb_body (inter_id : symbol) : basic_inter_body_tyd =
     let inter = IdPairMap.find (root, inter_id) inter_map in
     match unloc inter with
     | BasicTyd b -> b
@@ -557,13 +561,13 @@ let get_basic_inter_paths_from_inter_id
 
 let get_inter_id_paths_from_inter_id
     (root : symbol) (inter_id : symbol) (inter_map : inter_tyd IdPairMap.t)
-      : symbol list list = 
+      : symbol list list =
   List.map fst (get_basic_inter_paths_from_inter_id root inter_id inter_map)
 
 let get_external_inter_id_paths
     (root : symbol) (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (dir_inter_map : inter_tyd IdPairMap.t)
-    (adv_inter_map : inter_tyd IdPairMap.t) : symbol list list = 
+    (adv_inter_map : inter_tyd IdPairMap.t) : symbol list list =
   let dir = get_inter_id_paths_from_inter_id root id_dir_inter dir_inter_map in
   let adv =
     match id_adv_inter with
@@ -571,16 +575,16 @@ let get_external_inter_id_paths
     | None    -> [] in
   dir @ adv
 
-let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path = 
+let invert_basic_inter_path (bip : basic_inter_path) : basic_inter_path =
   let bibt = snd bip in
   let bibt_inv = invert_basic_inter_body_tyd bibt in
   (fst bip, bibt_inv)
 
 let check_inter_id_paths_unique
-    (msgf : formatter -> unit) (idps : symbol list located list) : unit = 
+    (msgf : formatter -> unit) (idps : symbol list located list) : unit =
   ignore
   (List.fold_left
-   (fun l idp -> 
+   (fun l idp ->
       let uidp = unloc idp in
       if List.mem uidp l
       then type_error (loc idp) msgf
@@ -591,7 +595,7 @@ let check_inter_id_path
     (root : symbol) (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
-    (iidp : symbol list located) : unit = 
+    (iidp : symbol list located) : unit =
   let uidp = unloc iidp in
   let ps =
     get_external_inter_id_paths root id_dir_inter id_adv_inter
@@ -607,7 +611,7 @@ let check_inter_id_path
 
 let check_served_inter_id_paths
     (serves : symbol list located list) (id_dir_inter : symbol)
-    (party_id : psymbol) : unit = 
+    (party_id : psymbol) : unit =
   let er ppf =
     fprintf ppf
     ("@[a@ party@ must@ serve@ one@ basic@ direct@ interface,@ and@ may@ " ^^
@@ -632,7 +636,7 @@ let check_inter_id_paths_coverage
     (root : symbol) (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
-    (served_ps : symbol list located list) : unit = 
+    (served_ps : symbol list located list) : unit =
   let serps = unlocs served_ps in
   let ps =
     get_external_inter_id_paths root id_dir_inter id_adv_inter
@@ -649,7 +653,7 @@ let check_inter_id_paths_coverage
 
 (* message paths and message path patterns *)
 
-let string_of_msg_path (mp : msg_path) : string = 
+let string_of_msg_path (mp : msg_path) : string =
   let ump = unloc mp in
   let siop = string_of_id_path ump.inter_id_path in
   if siop = ""
@@ -660,7 +664,7 @@ let string_of_msg_path_pat (mpp : msg_path_pat) : string =
   let umpp = unloc mpp in
   let siop = string_of_id_path umpp.inter_id_path in
   let msg_or_star =
-    match umpp.msg_or_star with 
+    match umpp.msg_or_star with
     | MsgOrStarMsg id -> id
     | MsgOrStarStar   -> "*" in
   if siop = "" then msg_or_star else siop ^ "." ^ msg_or_star
@@ -669,18 +673,18 @@ let format_msg_path_list
     (ppf : formatter) (mps : msg_path list) : unit =
   format_strings_comma ppf (List.map string_of_msg_path mps)
 
-let msg_paths_of_basic_inter_path (bp : basic_inter_path) : msg_path list =   
+let msg_paths_of_basic_inter_path (bp : basic_inter_path) : msg_path list =
   IdMap.fold
   (fun id _ l ->
      dummyloc {inter_id_path = fst bp; msg = id} :: l)
   (snd bp) []
 
 let msg_paths_of_basic_inter_paths
-    (bpl : basic_inter_path list) : msg_path list = 
+    (bpl : basic_inter_path list) : msg_path list =
   List.flatten (List.map (fun bp -> msg_paths_of_basic_inter_path bp) bpl)
 
 let msg_paths_of_all_basic_inter_paths (abip : all_basic_inter_paths)
-      : msg_path list = 
+      : msg_path list =
   msg_paths_of_basic_inter_paths (flatten_all_basic_inter_paths abip)
 
 let iidp1_starts_with_iidp2
@@ -688,15 +692,15 @@ let iidp1_starts_with_iidp2
       List.for_all
       identity
       (List.mapi
-       (fun i id2 -> 
+       (fun i id2 ->
           match List.nth_opt iidp1 i with
           | Some id1 -> id1 = id2
           | None     -> false)
        iidp2)
 
 let check_outgoing_msg_path
-    (abip : all_basic_inter_paths) (mp : msg_path) : unit = 
-  let allps = msg_paths_of_all_basic_inter_paths abip in       
+    (abip : all_basic_inter_paths) (mp : msg_path) : unit =
+  let allps = msg_paths_of_all_basic_inter_paths abip in
   if List.exists
      (fun p -> string_of_msg_path p = string_of_msg_path mp)
      allps
@@ -710,31 +714,34 @@ let check_outgoing_msg_path
 
 let check_msg_path_pat
     (abip : all_basic_inter_paths) (sc : state_context)
-    (mpp : msg_path_pat) : unit = 
+    (mpp : msg_path_pat) : unit =
   let init_and_sim = sc.initial && List.mem "simulator" sc.flags in
-  let allmps = msg_paths_of_all_basic_inter_paths abip in       
+  let init_and_non_sim = sc.initial && not (List.mem "simulator" sc.flags) in
+  let allmps = msg_paths_of_all_basic_inter_paths abip in
   let restrmps =
     if init_and_sim
-    then List.filter
-         (fun mps -> List.length (unloc mps).inter_id_path = 1)
-         allmps
+      then List.filter
+           (fun mps -> List.length (unloc mps).inter_id_path = 1)
+           allmps
+    else if init_and_non_sim
+      then msg_paths_of_all_basic_inter_paths
+           (all_non_adv_basic_inter_paths abip)
     else allmps in
   match (unloc mpp).msg_or_star with
-  | MsgOrStarMsg _  -> 
+  | MsgOrStarMsg _  ->
       if List.exists
          (fun mp -> string_of_msg_path mp = string_of_msg_path_pat mpp)
          restrmps
         then ()
-      else if List.exists  (* will be initial state of simulator *)
+      else if List.exists  (* is initial state *)
               (fun mp -> string_of_msg_path mp = string_of_msg_path_pat mpp)
               allmps
         then type_error (loc mpp)
              (fun ppf ->
                 fprintf ppf
                 ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
-                 "incoming@ message@ paths@ for@ initial@ state@ " ^^
-                 "of@ simulator:@;<1 2>%a@]")
-                format_msg_path_list restrmps)        
+                 "incoming@ message@ paths@ for@ initial@ state:@;<1 2>%a@]")
+                format_msg_path_list restrmps)
       else type_error (loc mpp)
            (fun ppf ->
               fprintf ppf
@@ -748,9 +755,9 @@ let check_msg_path_pat
              (unloc mpp).inter_id_path)
           restrmps)
         then ()
-      else if (List.exists  (* will be initial state of simulator *)
+      else if (List.exists  (* is initial state *)
               (fun mp ->
-                 iidp1_starts_with_iidp2 
+                 iidp1_starts_with_iidp2
                  (unloc mp).inter_id_path (unloc mpp).inter_id_path)
               allmps)
         then type_error (loc mpp)
@@ -758,7 +765,7 @@ let check_msg_path_pat
                 fprintf ppf
                 ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ " ^^
                  "paths@ of@ possible@ incoming@ messages@ for@ initial@ " ^^
-                 "state@ of@ simulator:@;<1 2>%a@]")
+                 "state:@;<1 2>%a@]")
                  format_msg_path_list restrmps)
       else type_error (loc mpp)
            (fun ppf ->
@@ -767,39 +774,48 @@ let check_msg_path_pat
                "paths@ of@ possible@ incoming@ messages:@;<1 2>%a@]")
                format_msg_path_list restrmps)
 
-let remove_covered_paths (mps : msg_path list) (mpp : msg_path_pat)
-      : msg_path list = 
-  let covered mp1 mpp2 = 
+let remove_covered_paths (mps : msg_path list) (mpp : msg_path_pat) (is_init : bool)
+      : msg_path list =
+  let covered mp1 mpp2 =
     match (unloc mpp2).msg_or_star with
     | MsgOrStarMsg _  ->
         string_of_msg_path mp1 = string_of_msg_path_pat mpp2
     | MsgOrStarStar   ->
-        iidp1_starts_with_iidp2 
+        iidp1_starts_with_iidp2
         (unloc mp1).inter_id_path (unloc mpp2).inter_id_path in
   let rem = List.filter (fun mp' -> not (covered mp' mpp)) mps in
   if List.length mps = List.length rem
-  then type_error (loc mpp)
-       (fun ppf ->
-          fprintf ppf
-          ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
-           "would@ never@ match@]"))
+  then if is_init
+       then type_error (loc mpp)
+            (fun ppf ->
+               fprintf ppf
+               ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
+                "would@ never@ match,@ in@ initial@ state@]"))
+       else type_error (loc mpp)
+            (fun ppf ->
+               fprintf ppf
+               ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
+                "would@ never@ match@]"))
   else rem
 
 let coverage_msg_path_pats
     (abip : all_basic_inter_paths) (sc : state_context)
-    (mpps : msg_path_pat list) : msg_path list = 
+    (mpps : msg_path_pat list) : msg_path list =
   let allmps = msg_paths_of_all_basic_inter_paths abip in
-  let allmps =
+  let restrmps =
     if sc.initial && List.mem "simulator" sc.flags
-    then List.filter
-         (fun mps -> List.length (unloc mps).inter_id_path = 1)
-         allmps
+      then List.filter
+           (fun mps -> List.length (unloc mps).inter_id_path = 1)
+           allmps
+    else if sc.initial && not (List.mem "simulator" sc.flags)
+      then msg_paths_of_all_basic_inter_paths
+           (all_non_adv_basic_inter_paths abip)
     else allmps in
-  List.fold_left (fun mps mp -> remove_covered_paths mps mp) allmps mpps
+  List.fold_left (fun mps mp -> remove_covered_paths mps mp sc.initial) restrmps mpps
 
 let check_coverage_msg_path_pats
     (abip : all_basic_inter_paths) (sc : state_context)
-    (mml : msg_pat list) : unit = 
+    (mml : msg_pat list) : unit =
   let abip = incoming_abip abip in
   let r =
     coverage_msg_path_pats abip sc
@@ -817,7 +833,7 @@ let check_coverage_msg_path_pats
 
 let check_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list)
-    (id : psymbol) (sc : state_context) (env : env) : env = 
+    (id : psymbol) (sc : state_context) (env : env) : env =
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   let is_sim = List.mem "simulator" sc.flags in
   if not d
@@ -835,7 +851,7 @@ let check_port_id_binding
 
 let check_non_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list) (mppl : EcLocation.t)
-      : unit = 
+      : unit =
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   if d
   then type_error mppl
@@ -847,7 +863,7 @@ let check_non_port_id_binding
   else ()
 
 let check_pat_add_id
-    (sc : state_context) (env : env) (pat : pat) (ty : ty) : env = 
+    (sc : state_context) (env : env) (pat : pat) (ty : ty) : env =
   match pat with
   | PatWildcard _ -> env
   | PatId id      ->
@@ -879,7 +895,7 @@ let check_disjoint_bindings (pats : pat list) : unit =
 
 let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
-    (pats : pat list) (env : env) (sc : state_context) : env = 
+    (pats : pat list) (env : env) (sc : state_context) : env =
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -896,7 +912,7 @@ let check_pat_args_with_msg_type
 
 let check_missing_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
-    (l : EcLocation.t) : unit = 
+    (l : EcLocation.t) : unit =
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -923,7 +939,7 @@ let check_pat_args
             check_missing_pat_args_with_msg_type bips
             (mpp_u.inter_id_path, id) l in
       env
-  | Some pats -> 
+  | Some pats ->
       let mpp = msg_pat.msg_path_pat in
       let mpp_u = unloc mpp in
        match mpp_u.msg_or_star with
@@ -934,10 +950,10 @@ let check_pat_args
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : msg_pat)
-    (sc : state_context) (env : env) : env = 
+    (sc : state_context) (env : env) : env =
   let abip = incoming_abip abip in
   let () = check_msg_path_pat abip sc msg_pat.msg_path_pat in
-  let env =        
+  let env =
     match msg_pat.port_id with
     | Some id ->
         (* we know msg_pat.msg_path_pat does not end in "*" *)
@@ -955,14 +971,14 @@ let check_msg_pat
         if msg_path_pat_ends_star msg_pat.msg_path_pat
         then env
         else let mppl = loc msg_pat.msg_path_pat in
-             (check_non_port_id_binding abip 
+             (check_non_port_id_binding abip
               ((unloc msg_pat.msg_path_pat).inter_id_path) mppl;
               env) in
   let bips = flatten_all_basic_inter_paths abip in
   check_pat_args bips msg_pat env sc
 
 (* checking instructions *)
-  
+
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
     (pexpr : pexpr) (expct_ty_opt : ty option) : expr * ty =
@@ -989,7 +1005,7 @@ let check_expr
   (exp, res_ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
-      : state_analysis * ty = 
+      : state_analysis * ty =
   match IdMap.find_opt (unloc id) sc.vars with
   | None    ->
       type_error (loc id)
@@ -1019,29 +1035,29 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
            let (sa, ty) = check_lhs_var sc (fst p) id in
            (sa, snd p @ [ty]))
         (sa, []) ids in
-      (sa, ttuple tys) 
+      (sa, ttuple tys)
 
 let check_val_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (lhs : lhs) (ex : pexpr) 
-    : instruction_tyd_u * state_analysis = 
+    (lhs : lhs) (ex : pexpr)
+    : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
   let exp,_ = check_expr sa env ue ex (Some ty) in
   Assign (lhs,exp), sa'
 
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (lhs : lhs) (ex : pexpr) 
-    : instruction_tyd_u * state_analysis = 
+    (lhs : lhs) (ex : pexpr)
+    : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
   let exp,_ = check_expr sa env ue ex (Some (tdistr ty)) in
   Sample (lhs,exp), sa'
 
 let check_state_expr
     (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
-    (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd = 
+    (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd =
   let is_sim = List.mem "simulator" sc.flags in
-  let (is_init, tys) = 
+  let (is_init, tys) =
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
         type_error (loc se.id)
@@ -1058,7 +1074,7 @@ let check_state_expr
   if List.length tys <> List.length (unloc args)
   then type_error (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
-  else 
+  else
     let argz_u = List.map2
        (fun sigt sip -> fst (check_expr sa env ue sip (Some sigt)))
        tys (unloc args) in
@@ -1067,13 +1083,13 @@ let check_state_expr
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
-    (es : pexpr list located) (mc : ty_index IdMap.t) : expr list located = 
+    (es : pexpr list located) (mc : ty_index IdMap.t) : expr list located =
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
   then type_error (loc es)
        (fun ppf ->
           fprintf ppf "@[wrong@ number@ of@ message@ arguments@]")
-  else 
+  else
     let exps = List.map2
        (fun ex typ -> fst (check_expr sa env ue ex (Some typ)))
        (unloc es) sg in
@@ -1081,7 +1097,7 @@ let check_msg_arguments
 
 let check_send_direct
     (sa : state_analysis) (env : env) (ue : unienv)
-    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd = 
+    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd =
   let l = loc msg.path in
   let port_exp =
     match msg.port_expr with
@@ -1098,7 +1114,7 @@ let check_send_direct
 
 let check_send_adversarial
     (sa : state_analysis) (env : env) (ue : unienv)
-    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd = 
+    (msg : msg_expr) (param_tis : ty_index IdMap.t) : msg_expr_tyd =
   let () =
     match msg.port_expr with
     | Some port_exp ->
@@ -1126,13 +1142,13 @@ let check_send_internal
   { path = msg.path; args = args; port_expr = None}
 
 let is_msg_path_in_basic_inter_paths
-    (mp : msg_path) (bips : basic_inter_path list) : bool = 
+    (mp : msg_path) (bips : basic_inter_path list) : bool =
   let bipo =
     List.find_opt (fun bip -> fst bip = (unloc mp).inter_id_path) bips in
   Option.is_some bipo
 
 let get_msg_def_for_msg_path
-    (mp : msg_path) (bips : basic_inter_path list) : message_body_tyd = 
+    (mp : msg_path) (bips : basic_inter_path list) : message_body_tyd =
   let iip = (unloc mp).inter_id_path in
   let msg = (unloc mp).msg in
   let bip = List.find (fun bip -> fst bip = iip) bips in
@@ -1145,7 +1161,7 @@ let check_send_msg_path
 
 let check_msg_expr
     (abip : all_basic_inter_paths) (sa : state_analysis)
-    (env : env) (ue : unienv) (msg : msg_expr) : msg_expr_tyd = 
+    (env : env) (ue : unienv) (msg : msg_expr) : msg_expr_tyd =
   let () = check_send_msg_path msg abip in
   let bips = abip.direct @ abip.adversarial @ abip.internal in
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
@@ -1160,7 +1176,7 @@ let check_msg_expr
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (sat : send_and_transition) : instruction_tyd_u = 
+    (sat : send_and_transition) : instruction_tyd_u =
   let msg_exp = check_msg_expr abip sa env ue sat.msg_expr in
   let state_exp = check_state_expr ss sc sa env ue sat.state_expr in
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
@@ -1233,7 +1249,7 @@ let rec check_ite
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (ex : pexpr) (tins : instruction list located)
     (eins_opt : instruction list located option)
-    : instruction_tyd_u * state_analysis = 
+    : instruction_tyd_u * state_analysis =
   let ex, _ = check_expr sa env ue ex (Some tbool) in
   let sa1 = check_instructions abip ss sc sa env ue tins in
   let sa2 =
@@ -1297,9 +1313,9 @@ and check_match
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (env : env) (ue : unienv)
-    (sa : state_analysis) (i : instruction) 
+    (sa : state_analysis) (i : instruction)
       : instruction_tyd * state_analysis =
-  let uinstr, sa = 
+  let uinstr, sa =
     match unloc i with
     | Assign (lhs, ex)                    ->
         check_val_assign sc sa env ue lhs ex
@@ -1318,7 +1334,7 @@ and check_instructions
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (is : instruction list located)
-      : instruction_tyd list located * state_analysis = 
+      : instruction_tyd list located * state_analysis =
   let uis = unloc is in
   let uis', sa' =
     List.fold_left
@@ -1397,7 +1413,7 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (is : instruction list located) : instruction_tyd list located = 
+    (is : instruction list located) : instruction_tyd list located =
   let is' = fst (check_instructions abip ss sc sa env ue is) in
   check_instrs_transfer_at_end is';
   is'
@@ -1426,7 +1442,7 @@ let check_state_code
   mmclauses'
 
 let check_exactly_one_initial_state
-    (id : psymbol) (sds : state_def list) : psymbol = 
+    (id : psymbol) (sds : state_def list) : psymbol =
   let inits =
     List.filter
     (fun sd ->
@@ -1452,7 +1468,7 @@ let check_exactly_one_initial_state
 
 (* check the top-level of a state_def *)
 
-let check_toplevel_state (init_id : psymbol) (st : state) : state_mid = 
+let check_toplevel_state (init_id : psymbol) (st : state) : state_mid =
   let is_initial = (init_id = st.id) in
   let params =
     check_name_type_bindings_top
@@ -1479,9 +1495,9 @@ let check_toplevel_state (init_id : psymbol) (st : state) : state_mid =
   mk_loc (loc st.id)
   {is_initial = is_initial; params = params; vars = vars;
    mmclauses = st.code.mmclauses}
-                        
-let drop_state_construct (sd : state_def) : state = 
-  match sd with 
+
+let drop_state_construct (sd : state_def) : state =
+  match sd with
   | InitialState s   -> s
   | FollowingState s -> s
 
@@ -1491,20 +1507,20 @@ let drop_state_construct (sd : state_def) : state =
    functionality, or simulator - only used for error messages *)
 
 let check_toplevel_states (id : psymbol) (state_defs : state_def list)
-      : state_mid IdMap.t = 
+      : state_mid IdMap.t =
   let init_id = check_exactly_one_initial_state id state_defs in
   let states = List.map (fun sd -> drop_state_construct sd) state_defs in
   let state_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
     states (fun s -> s.id) in
-  IdMap.map (check_toplevel_state init_id) state_map 
+  IdMap.map (check_toplevel_state init_id) state_map
 
 (* check the lower-level of an individual state_tyd *)
 
 let check_lowlevel_state
     (abip : all_basic_inter_paths) (flags : symbol list)
-    (internal_ports : QidSet.t) (states : state_mid IdMap.t) 
+    (internal_ports : QidSet.t) (states : state_mid IdMap.t)
     (state : state_mid) : state_tyd =
   let us = unloc state in
   let sc = make_state_context (unloc state) internal_ports flags in
@@ -1513,8 +1529,8 @@ let check_lowlevel_state
   let env = augment_env_with_state_context (top_env ()) sc in
   let ue = unif_env () in
   let code = check_state_code abip ss sc sa env ue us.mmclauses in
-  let us' : state_body_tyd = 
-    {is_initial = us.is_initial; 
+  let us' : state_body_tyd =
+    {is_initial = us.is_initial;
      params     = us.params;
      vars       = us.vars;
      mmclauses  = code } in
@@ -1544,7 +1560,7 @@ let check_states
 
 let filter_basic_inter_paths_by_serves
     (bips : basic_inter_path list) (serves : symbol list located list)
-      : basic_inter_path list = 
+      : basic_inter_path list =
   List.filter
   (fun bip -> List.exists (fun serv -> unloc serv = fst bip) serves)
   bips
@@ -1553,9 +1569,9 @@ let get_all_external_basic_inter_paths
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
     (dirid : symbol) (advid : symbol option)
-      : all_basic_inter_paths = 
+      : all_basic_inter_paths =
   let direct = get_basic_inter_paths_from_inter_id root dirid dir_inter_map in
-  let adversarial = 
+  let adversarial =
     match advid with
     | Some id -> get_basic_inter_paths_from_inter_id root id adv_inter_map
     | None    -> [] in
@@ -1578,7 +1594,7 @@ let get_all_basic_inter_paths_of_real_fun_party
     (fun_map : fun_tyd IdPairMap.t) (dirid : symbol) (advid : symbol option)
     (params : (symb_pair * int) IdMap.t)
     (sub_funs : symb_pair IdMap.t) (serves : symbol list located list)
-      : all_basic_inter_paths = 
+      : all_basic_inter_paths =
   let abips =
     get_all_external_basic_inter_paths root dir_inter_map
     adv_inter_map dirid advid in
@@ -1634,7 +1650,7 @@ let check_parties_serve_coverage_and_distinct
     (root : symbol) (parties : party_mid IdMap.t)
     (id_dir_inter : symbol) (id_adv_inter : symbol option)
     (dir_inter_map : inter_tyd IdPairMap.t)
-    (adv_inter_map : inter_tyd IdPairMap.t) : unit = 
+    (adv_inter_map : inter_tyd IdPairMap.t) : unit =
   let served_ps =
     IdMap.fold (fun _ p l -> l @ (unloc p).serves) parties [] in
   let () =
@@ -1668,7 +1684,7 @@ let check_lowlevel_party
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
     (id_adv_inter : symbol option) (internal_ports : QidSet.t)
     (params : (symb_pair * int) IdMap.t)
-    (sub_funs : symb_pair IdMap.t) (pdt : party_mid) : party_tyd = 
+    (sub_funs : symb_pair IdMap.t) (pdt : party_mid) : party_tyd =
   let updt = unloc pdt in
   let abip =
     get_all_basic_inter_paths_of_real_fun_party root
@@ -1685,7 +1701,7 @@ let check_parties
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
     (id_adv_inter : symbol option) (params : (symb_pair * int) IdMap.t)
     (sub_funs : symb_pair IdMap.t) (party_defs : party_def IdMap.t)
-      : party_tyd IdMap.t = 
+      : party_tyd IdMap.t =
   let internal_ports = get_keys_as_sing_qids party_defs in
   let parties_mid =
     check_toplevel_parties root dir_inter_map adv_inter_map id_dir_inter
@@ -1698,8 +1714,8 @@ let check_parties
 let check_real_fun_params
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t) (params : fun_param list)
-      : (symb_pair * int) IdMap.t = 
-  let check_real_fun_param (param : fun_param) : symb_pair * int = 
+      : (symb_pair * int) IdMap.t =
+  let check_real_fun_param (param : fun_param) : symb_pair * int =
     let pid =
       check_exists_inter_qid DirectInterKind root
       dir_inter_map param.dir_qid in
@@ -1722,7 +1738,7 @@ let check_real_fun_params
 
 let check_exists_fun_qid
     (root : symbol) (fun_map : fun_tyd IdPairMap.t)
-    (qid : pqsymbol) : symb_pair located = 
+    (qid : pqsymbol) : symb_pair located =
   let uqid = unloc qid in
   let l = loc qid in
   match uqid with
@@ -1751,11 +1767,11 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
     check_exists_inter_id DirectInterKind root maps.dir_inter_map fund.dir_id in
   let () =
     check_is_composite_id DirectInterKind root maps.dir_inter_map fund.dir_id in
-  let uid_dir_inter = unloc fund.dir_id in 
+  let uid_dir_inter = unloc fund.dir_id in
   let uid_adv_inter =
     match fund.adv_id with
     | None    -> None
-    | Some id -> 
+    | Some id ->
         (check_exists_inter_id AdversarialInterKind root maps.adv_inter_map id;
          Some (unloc id)) in
   match fund.fun_body with
@@ -1768,7 +1784,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
             maps.adv_inter_map id in
       let params =
         check_real_fun_params root maps.dir_inter_map maps.adv_inter_map
-        fund.params in 
+        fund.params in
       let sub_fun_decls =
         check_unique_ids
         (fun ppf -> fprintf ppf "@[duplicate@ subfunctionality@ name@]")
@@ -1862,7 +1878,7 @@ let check_fun_def
 
 let get_sim_components
     (root : symbol) (fun_map : fun_tyd IdPairMap.t) (sims : symbol)
-    (sims_arg_pair_ids : symb_pair list) : (symbol * fun_body_tyd) QidMap.t = 
+    (sims_arg_pair_ids : symb_pair list) : (symbol * fun_body_tyd) QidMap.t =
   let sims_body = unloc (IdPairMap.find (root, sims) fun_map) in
   let qidmap_fun = QidMap.singleton [sims] (root, sims_body) in
   let qidmap_params =
@@ -1884,18 +1900,18 @@ let get_sim_components
   let disj = (fun _ _ _ -> failure "cannot happen") in
   QidMap.union disj qidmap_fun
   (QidMap.union disj qidmap_params qidmap_subfuns)
-                
+
 let get_fun_adv_basic_inter_paths
     (adv_inter_map : inter_tyd IdPairMap.t)
-    (comp : symbol * fun_body_tyd) : basic_inter_path list = 
+    (comp : symbol * fun_body_tyd) : basic_inter_path list =
   match id_adv_inter_of_fun_body_tyd (snd comp) with
   | Some id ->
-      get_basic_inter_paths_from_inter_id (fst comp) id adv_inter_map 
+      get_basic_inter_paths_from_inter_id (fst comp) id adv_inter_map
   | None    -> []
 
 let get_sim_basic_inter_id_paths
     (root : symbol) (adv_inter_map : inter_tyd IdPairMap.t) (uses : symbol)
-    (comps : (symbol * fun_body_tyd) QidMap.t) : basic_inter_path list = 
+    (comps : (symbol * fun_body_tyd) QidMap.t) : basic_inter_path list =
   let bips_comps_map =
     QidMap.map (get_fun_adv_basic_inter_paths adv_inter_map) comps in
   let bips_map =
@@ -1909,26 +1925,26 @@ let get_sim_basic_inter_id_paths
      bips @ List.map (fun bip -> (qid @ fst bip, snd bip)) bips_of_qid)
   bips_map []
 
-let get_internal_ports (real_fun_body : real_fun_body_tyd) : QidSet.t = 
+let get_internal_ports (real_fun_body : real_fun_body_tyd) : QidSet.t =
   get_keys_as_sing_qids real_fun_body.parties
 
 let get_sim_internal_ports
     (root : symbol) (fun_map : fun_tyd IdPairMap.t)
-    (sims : symbol) : QidSet.t = 
+    (sims : symbol) : QidSet.t =
   let sims_rfbt =
     real_fun_body_tyd_of (unloc (IdPairMap.find (root, sims) fun_map)) in
   let int_ports = get_internal_ports sims_rfbt in
   QidSet.map (fun qid -> sims :: qid) int_ports
-        
+
 let check_exists_fun_id
-    (root : symbol) (fun_map : fun_tyd IdPairMap.t) (funid : psymbol) : unit = 
+    (root : symbol) (fun_map : fun_tyd IdPairMap.t) (funid : psymbol) : unit =
   let ufid = unloc funid in
   if exists_id_pair fun_map (root, ufid) then ()
   else type_error (loc funid)
        (fun ppf -> fprintf ppf "@[functionality@ isn't@ defined:@ %s@]" ufid)
 
 let check_exists_and_is_real_fun
-    (root : symbol) (funs : fun_tyd IdPairMap.t) (funid : psymbol) = 
+    (root : symbol) (funs : fun_tyd IdPairMap.t) (funid : psymbol) =
   let () = check_exists_fun_id root funs funid in
   let f = unloc (IdPairMap.find (root, unloc funid) funs) in
   if not (is_real_fun_body_tyd f)
@@ -1938,8 +1954,8 @@ let check_exists_and_is_real_fun
           "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
 
 let get_dir_interface_pair_ids_of_params_of_real_fun_id
-    (root : symbol) (fun_map : fun_tyd IdPairMap.t) 
-    (funid : symbol) : symb_pair list = 
+    (root : symbol) (fun_map : fun_tyd IdPairMap.t)
+    (funid : symbol) : symb_pair list =
   let func = IdPairMap.find (root, funid) fun_map in
   match unloc func with
   | FunBodyRealTyd fbr -> indexed_map_to_list fbr.params
@@ -1993,7 +2009,7 @@ let check_sims_fun_args
 
 let check_sim
     (root : symbol) (adv_inter_map : inter_tyd IdPairMap.t)
-    (fun_map : fun_tyd IdPairMap.t) (sd : sim_def) : sim_tyd = 
+    (fun_map : fun_tyd IdPairMap.t) (sd : sim_def) : sim_tyd =
   let () =
     check_exists_inter_id AdversarialInterKind root adv_inter_map sd.uses in
   let () = check_is_basic_id AdversarialInterKind root adv_inter_map sd.uses in
@@ -2030,7 +2046,7 @@ let check_sim_def
 
 (***************************** definition checks ******************************)
 
-let check_defs root maps defs = 
+let check_defs root maps defs =
   let check_def maps def =
     match def with
     | InterDef interd -> check_inter_def root maps interd
@@ -2080,13 +2096,13 @@ let load_uc_req
 
 let load_uc_reqs
     (check_id : psymbol -> typed_spec) (maps : maps_tyd)
-    (reqs : psymbol list) : maps_tyd = 
+    (reqs : psymbol list) : maps_tyd =
   List.fold_left (load_uc_req check_id) maps reqs
 
-let load_ec_reqs (reqs : (string located * bool) list) = 
+let load_ec_reqs (reqs : (string located * bool) list) =
   (* last require import will be prelude/UCBasicTypes.ec *)
   let reqs = reqs @ [(mk_loc _dummy "UCBasicTypes", true)] in
-  let reqimp (id, imp) = 
+  let reqimp (id, imp) =
     let uid = unloc id in
     let () =
       if not (Char.is_uppercase uid.[0])

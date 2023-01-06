@@ -16,7 +16,6 @@ functionality F implements D E {
     var x : int;
     match message with
     | D.* => { x <- 1; fail. }
-    | * => { fail. }
     end
   }
 }

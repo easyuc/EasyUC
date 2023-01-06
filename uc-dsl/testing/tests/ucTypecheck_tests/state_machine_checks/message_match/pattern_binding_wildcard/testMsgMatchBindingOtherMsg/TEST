@@ -4,7 +4,7 @@ any pattern arguments
 .
 args: testMsgMatchBindingOtherMsg.uc
 outcome: failure
-[error: testMsgMatchBindingOtherMsg.uc: from line 21 columns 6 to 11]
+[error: testMsgMatchBindingOtherMsg.uc: from line 28 columns 6 to 11]
 
 message pattern whose path ends in "*" may not have pattern arguments
 .

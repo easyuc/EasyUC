@@ -1,0 +1,7 @@
+description 
+this test fails because the ideal functionality's initial state
+tried to match on an adversarial message.
+.
+args: good.uc
+outcome: success
+.

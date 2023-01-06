@@ -18,6 +18,12 @@ functionality S() implements D A {
   initial state Is 
   {
    match message with
+     p@D.D.bla => {fail.}
+   end
+  }
+  state Other
+  {
+   match message with
      p@A.A.bla => {fail.}
    | * => {fail.}
    end

@@ -135,7 +135,6 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
         }
         else { fail. }
       }
-    | *                              => { fail. }
     end
   }
 
@@ -175,11 +174,11 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
              (intport SMCReal.Pt1, intport SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
       }
-    end
     (* no messages from the adversary to the real functionality can be
        matched in the initial state; they automatically flow through
        the simulator to the ideal functionality, where they result in
        failure *)
+    end
   }
 
   state WaitAdv1(pt1 : port, pt2 : port) {

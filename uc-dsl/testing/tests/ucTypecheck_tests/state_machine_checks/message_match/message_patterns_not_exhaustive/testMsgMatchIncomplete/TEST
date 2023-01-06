@@ -3,7 +3,7 @@ This test fails because I.blb is not matched
 .
 args: testMsgMatchIncomplete.uc
 outcome: failure
-[error: testMsgMatchIncomplete.uc: from line 20 columns 6 to 11]
+[error: testMsgMatchIncomplete.uc: from line 27 columns 6 to 11]
 
 message patterns are not exhaustive; these messages are not matched: I.blb
 .

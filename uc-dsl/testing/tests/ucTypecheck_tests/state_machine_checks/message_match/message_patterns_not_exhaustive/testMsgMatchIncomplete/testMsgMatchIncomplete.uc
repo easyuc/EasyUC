@@ -13,10 +13,17 @@ out bli()
 
 functionality S() implements D I {
 
-  initial state Is 
+  initial state Ini
+  {
+    match message with
+    | x@D.D.bla => {fail.}
+    end
+  }
+
+  state Other
   {
    match message with
-    p@ D.D.bla => {fail.}
+    p@D.D.bla => {fail.}
    | I.bla => {fail.}
    end
   }

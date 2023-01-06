@@ -39,8 +39,6 @@ functionality S(X:D) implements D A {
    | X.D.*  => {fail.}
    | F.D.bli => {fail.}
    | F.D.* => {fail.}
-   | A.A.bla => {fail.}
-   | A.A.* => {fail.}
    end
   }
  }

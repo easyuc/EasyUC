@@ -1,0 +1,7 @@
+description 
+this test fails because the real functionality's initial state of
+a party tried to match on an adversarial message.
+.
+args: good.uc
+outcome: success
+.

@@ -19,7 +19,6 @@ functionality F() implements D A {
   initial state I {
    match message with
      x@D.D.bla => {send A.A.bli() and transition I.}
-   | * => {fail.}
    end
   }
  }

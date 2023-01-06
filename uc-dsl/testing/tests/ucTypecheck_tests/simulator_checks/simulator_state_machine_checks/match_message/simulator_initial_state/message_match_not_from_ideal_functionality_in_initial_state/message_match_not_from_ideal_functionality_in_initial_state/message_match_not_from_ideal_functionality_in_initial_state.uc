@@ -37,7 +37,9 @@ functionality I() implements D Iio {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with R.A.A.abla() => {fail.} end
+  match message with
+    R.A.A.abla() => {fail.}
+  end
  }
 
 }

@@ -33,12 +33,7 @@ functionality S(X:D) implements D A {
      sender@D.D.bla => {fail.}
    | D.D.* => {fail.}
    | X.D.bli => {fail.}
-   | X.D.* => {fail.}
    | F.D.bli => {fail.}
-   | F.D.* => {fail.}
-   | A.A.bla => {fail.}
-   | A.A.* => {fail.}
-   | * => {fail.}
    end
   }
  }

@@ -20,7 +20,6 @@ functionality S() implements D A {
    var x : int;
    match message with
      y@D.D.bla(x) => {fail.}
-   | *  => {fail.}
    end
   }
  }

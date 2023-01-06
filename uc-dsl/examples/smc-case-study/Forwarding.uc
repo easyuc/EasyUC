@@ -63,8 +63,8 @@ functionality Forw implements FwDir FwAdv {
         else { fail. }  (* failure gives control back to root of environment,
                            without changing the current state *)
       }
-    (* other messages (could only be FwAdv.fw_ok), result in failure *)
-    | *                          => { fail. }
+    (* adversarial messages can't be matched for in initial states,
+       but automatically result in failure *)
     end
   }
 

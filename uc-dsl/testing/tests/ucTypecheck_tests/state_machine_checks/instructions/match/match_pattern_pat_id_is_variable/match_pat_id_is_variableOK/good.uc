@@ -25,7 +25,6 @@ functionality S() implements D A {
        | Some z => { fail. }
        end
      }
-   | *  => {fail.}
    end
   }
  }

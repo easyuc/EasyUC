@@ -1,0 +1,11 @@
+description 
+this test fails because the ideal functionality's initial state
+tried to match on an adversarial message.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 19 columns 7 to 14]
+
+message path is not one of the possible incoming message paths for initial
+state: D.D.msgin
+.
