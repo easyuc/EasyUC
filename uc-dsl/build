@@ -37,17 +37,17 @@ then echo failure;
      exit;
 fi
 
-cd ..
+cd ../..
 
 if [[ $coverage_mode == NO ]];
 then dune build;
 else dune build --instrument-with bisect_ppx;
 fi
 
-ucdsl_exec=_build/default/src/ucdsl.exe
+ucdsl_exec=_build/default/ucdsl-proj/src/ucdsl.exe
 
 if [ -e $ucdsl_exec ];
-then mkdir -p ../bin;
-     rm -f ../bin/ucdsl;  # work around macOS code signing issue
-     cp -f $ucdsl_exec ../bin/ucdsl;
+then mkdir -p bin;
+     rm -f bin/ucdsl;  # work around macOS code signing issue
+     cp -f $ucdsl_exec bin/ucdsl;
 fi
