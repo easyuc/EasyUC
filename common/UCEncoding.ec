@@ -62,7 +62,8 @@ rewrite /valid_epdp => [[enc_dec _]].
 by rewrite enc_dec.
 qed.
 
-(* epdp is used for EPDP rewriting hints that generate no subgoals *)
+(* epdp is used for EPDP rewriting hints that generate no subgoals,
+   except the validity of an epdp *)
 
 hint rewrite epdp : epdp_enc_dec.
 
