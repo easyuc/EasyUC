@@ -87,6 +87,17 @@ hint rewrite epdp : valid_epdp_text_key.
 
 (* consequences of axioms *)
 
+(* common simplifications needed in security proofs suitable
+   for use in automated rewriting: *)
+
+lemma one_time1 (x y : key) :
+  x ^^ y ^^ kinv y = x.
+proof.
+by rewrite kmulA kinv_r kid_r.
+qed.
+
+hint rewrite one_time : one_time1.
+
 (* we can define a bijection between exp and key *)
 
 op gen (q : exp) : key = g ^ q.
