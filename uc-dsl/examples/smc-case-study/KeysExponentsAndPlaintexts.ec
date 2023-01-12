@@ -96,6 +96,7 @@ proof.
 by rewrite kmulA kinv_r kid_r.
 qed.
 
+hint simplify [eqtrue] one_time1.
 hint rewrite one_time : one_time1.
 
 (* we can define a bijection between exp and key *)
