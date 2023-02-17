@@ -8,7 +8,7 @@ require import AllCore List.
 
 (* encoding/partial decoding pair (EPDP) *)
 
-type ('a, 'b) epdp = {enc: 'a -> 'b; dec : 'b -> 'a option}.
+type ('a, 'b) epdp = {enc : 'a -> 'b; dec : 'b -> 'a option}.
 
 op nosmt valid_epdp (epdp : ('a, 'b) epdp) : bool =
   (forall (x : 'a), epdp.`dec (epdp.`enc x) = Some x) /\
