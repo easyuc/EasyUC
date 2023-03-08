@@ -542,8 +542,9 @@ type iname  = [
 type inames = [`Symbol of symbol list | `Ident of EcIdent.t list]
 
 (* -------------------------------------------------------------------- *)
-let t_intros_n (n : int) (tc : tcenv1) =
-  fst (t_intros_x (EcUtils.List.make n (notag None)) tc)
+let t_intros_n ?(clear = false) (n : int) (tc : tcenv1) =
+  let tc, xs = t_intros_x (EcUtils.List.make n (notag None)) tc in
+  if clear then FApi.t_first (t_clears xs) tc else tc
 
 (* -------------------------------------------------------------------- *)
 let t_intro_i_x (id : EcIdent.t option) (tc : tcenv1) =
@@ -2435,24 +2436,25 @@ let t_smt ~(mode:smtmode) pi tc =
   else error ()
 
 (* -------------------------------------------------------------------- *)
-let t_solve ?(canfail = true) ?(bases = [EcEnv.Auto.dname]) ?(depth = 1) (tc : tcenv1) =
+let t_solve ?(canfail = true) ?(bases = [EcEnv.Auto.dname]) ?(mode = fmdelta) ?(depth = 1) (tc : tcenv1) =
   let bases = EcEnv.Auto.getall bases (FApi.tc1_env tc) in
 
   let t_apply1 p tc =
+
     let pt = PT.pt_of_uglobal !!tc (FApi.tc1_hyps tc) p in
     try
-      Apply.t_apply_bwd_r ~mode:fmdelta ~canview:false pt tc
+      Apply.t_apply_bwd_r ~mode ~canview:false pt tc
     with Apply.NoInstance _ -> t_fail tc in
 
-  let rec t_apply ctn p  =
+  let rec t_apply ctn p tc =
     if   ctn > depth
-    then t_fail
-    else t_apply1 p @! t_trivial @! t_solve (ctn + 1) bases
+    then t_fail tc
+    else (t_apply1 p @! t_trivial @! t_solve (ctn + 1) bases) tc
 
-  and t_solve ctn bases =
+  and t_solve ctn bases tc =
     match bases with
-    | [] -> t_abort
-    | p::bases -> FApi.t_or (t_apply ctn p) (t_solve ctn bases) in
+    | [] -> t_abort tc
+    | p::bases -> (FApi.t_or (t_apply ctn p) (t_solve ctn bases)) tc in
 
   let t = t_solve 0 bases in
   let t = if canfail then FApi.t_try t else t in

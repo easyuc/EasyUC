@@ -79,6 +79,13 @@ Alternatively, run
 to build the tool with code coverage instrumentation turned on
 and copy the binary to `bin/ucdsl`.
 
+If you want to install `ucdsl` in the `opam` `bin` directory, you
+can run
+
+```
+./install-opam
+```
+
 To clean up the build state, you can run
 
 ```

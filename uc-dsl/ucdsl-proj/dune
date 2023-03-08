@@ -1,1 +1,5 @@
 (dirs src)
+
+(install
+ (section bin)
+ (files (src/ucdsl.exe as ucdsl)))

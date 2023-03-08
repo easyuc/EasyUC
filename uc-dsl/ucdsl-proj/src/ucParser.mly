@@ -470,7 +470,7 @@ state_machine :
 
 state_def : 
   | INITIAL; st = state
-      { let params = unloc st.params in
+      { let params = unloc (st : state).params in  (* type hint necessary *)
         if not (List.is_empty params)
         then parse_error (loc st.params)
              (fun ppf ->

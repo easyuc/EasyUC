@@ -920,6 +920,7 @@ type apply_info = [
   | `Apply   of ppterm list * [`Apply|`Exact|`Alpha]
   | `Top     of [`Apply|`Exact|`Alpha]
   | `Alpha   of ppterm
+  | `ExactType of pqsymbol
 ]
 
 (* -------------------------------------------------------------------- *)
@@ -953,6 +954,7 @@ type logtactic =
   | Pcbv        of preduction
   | Pchange     of pformula
   | Ppose       of (psymbol * ptybinding list * rwocc * pformula)
+  | Pmemory     of psymbol
   | Pgenhave    of pgenhave
   | Pwlog       of (psymbol list * bool * pformula)
 
