@@ -13,10 +13,11 @@ expression at a much higher level, avoiding all the message-routing
 boilerplate.
 
 DSL type-checking will catch errors like badly formed messages (e.g.,
-ones with bad source addresses) or simulators that interfere with
-communication between environment and adversary. When DSL code is
-translated into EasyCrypt's procedural programming language,
-message-routing boilerplate will be automatically generated.
+ones with bad source addresses), attempts to send two messages in
+sequence (without first getting control back), or simulators that
+interfere with communication between environment and adversary. When
+DSL code is translated into EasyCrypt's procedural programming
+language, message-routing boilerplate will be automatically generated.
 
 Some examples are in the [`examples`](examples) subdirectory,
 including the files in the subdirectory
@@ -28,27 +29,29 @@ The OCaml code for a lexer, parser and typechecker for the DSL can be
 found in the subdirectory [`ucdsl-proj`](ucdsl-proj). It builds upon
 the EasyCrypt implementation, and is distributed under the same
 software license.  The software is still under development.  A
-translator into EasyCrypt is yet to be written.
+debugger is in being written, and the translator into EasyCrypt is yet
+to be written.
 
 Building the UC DSL Tool
 --------------------------------------------------------------------
 
-The following instructions assume you have already installed
-[OCaml](https://ocaml.org), the OCaml Package Manager
-[opam](https://opam.ocaml.org), [OCaml
+The following instructions assume you have already installed the OCaml
+Package Manager [opam](https://opam.ocaml.org),
+[OCaml](https://ocaml.org), [Dune](https://dune.build), [OCaml
 Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
-[Dune](https://dune.build),
 [Bisect_ppx](https://github.com/aantron/bisect_ppx) and
-[EasyCrypt](https://github.com/EasyCrypt/easycrypt).
-(OCaml Batteries
-can be installed using `opam`: `opam install batteries`. Dune can be
-installed using `opam`: `opam install dune`.  Bisect_ppx can be
-installed using `opam`: `opam install bisect_ppx`.) EasyCrypt can be
-installed via `opam` or by building from the source; see the
-[instructions](https://github.com/EasyCrypt/easycrypt).
+[EasyCrypt](https://github.com/EasyCrypt/easycrypt).  The easiest
+approach is to start by installing `opam` and then [installing
+EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then you must
+only install `Bisect_ppx`, via the command `opam`: `opam install
+bisect_ppx`.
+
+Here are some more gentle [instructions for installing EasyCrypt and
+getting the Emacs text editor to work with
+it](https://alleystoughton.us/easycrypt-installation.html).
 
 The UC DSL source is compatible with `why3` (installed as part of the
-EasyCrypt installation) version 1.5.0. (Note that running `ucdsl`
+EasyCrypt installation) version 1.5.1. (Note that running `ucdsl`
 doesn't actually run `why3` or even rely on `why3` being
 configured. But because the DSL's implementation is built on that of
 EasyCrypt, the build process may fail if the wrong version of `why3`
