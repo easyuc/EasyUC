@@ -43,7 +43,7 @@ Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
 [EasyCrypt](https://github.com/EasyCrypt/easycrypt).  The easiest
 approach is to start by installing `opam` and then [installing
 EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then you must
-only install `Bisect_ppx`, via the command `opam`: `opam install
+only install `Bisect_ppx`, via the `opam` command: `opam install
 bisect_ppx`.
 
 Here are some more gentle [instructions for installing EasyCrypt and
