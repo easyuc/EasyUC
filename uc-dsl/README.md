@@ -15,7 +15,7 @@ boilerplate.
 DSL type-checking will catch errors like badly formed messages (e.g.,
 ones with bad source addresses), attempts to send two messages in
 sequence (without first getting control back), or simulators that
-interfere with communication between environment and adversary. When
+interfere with communication between the environment and adversary. When
 DSL code is translated into EasyCrypt's procedural programming
 language, message-routing boilerplate will be automatically generated.
 
