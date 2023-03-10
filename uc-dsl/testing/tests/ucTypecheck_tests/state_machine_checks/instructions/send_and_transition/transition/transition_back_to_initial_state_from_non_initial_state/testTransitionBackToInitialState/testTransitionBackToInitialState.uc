@@ -11,10 +11,14 @@ functionality F() implements A {
 
   initial state I {
    match message with
-    x@A.A.bla => {send A.A.bla()@x and transition J.}
+    sender@A.A.bla() => { fail. }
    end
   }
 
-  state J { match message with * => { fail. } end }
- }
+  state J {
+    match message with
+      sender@A.A.bla() => { send A.A.bli()@sender and transition I. }
+    end
+  }
+}
 }

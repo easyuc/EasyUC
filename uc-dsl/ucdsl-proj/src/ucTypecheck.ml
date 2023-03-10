@@ -331,9 +331,14 @@ let check_is_composite_id_pair
    turned into "intport:Party", and [RealFun; Party] is turned into
    "intport:RealFun.Party]" *)
 
+type kind =    (* kind of entity *)
+  | RealKind   (* real functionality *)
+  | IdealKind  (* ideal functionality *)
+  | SimKind    (* simulator *)
+
 type state_context =
   {initial        : bool;         (* initial state? *)
-   flags          : string list;  (* flags used to customize checking *)
+   kind           : kind;         (* which kind of entity is state part of? *)
    internal_ports : QidSet.t;     (* internal port names - names of parties *)
    state_params   : ty IdMap.t;   (* state parameters *)
    vars           : ty IdMap.t}   (* local variables *)
@@ -348,11 +353,10 @@ type state_body_mid =
 type state_mid = state_body_mid located
 
 let make_state_context
-    (s : state_body_mid) (ports : QidSet.t)
-    (flags : string list) : state_context =
+    (s : state_body_mid) (ports : QidSet.t) (kind : kind) : state_context =
   let state_params = IdMap.map (fun p -> fst (unloc p)) s.params in
   let vars = IdMap.map (fun v -> unloc v) s.vars in
-  {initial = s.is_initial; flags = flags; internal_ports = ports;
+  {initial = s.is_initial; kind = kind; internal_ports = ports;
    state_params = state_params; vars = vars}
 
 (* static analysis information for states *)
@@ -715,8 +719,8 @@ let check_outgoing_msg_path
 let check_msg_path_pat
     (abip : all_basic_inter_paths) (sc : state_context)
     (mpp : msg_path_pat) : unit =
-  let init_and_sim = sc.initial && List.mem "simulator" sc.flags in
-  let init_and_non_sim = sc.initial && not (List.mem "simulator" sc.flags) in
+  let init_and_sim = sc.initial && sc.kind = SimKind in
+  let init_and_non_sim = sc.initial && not (sc.kind = SimKind) in
   let allmps = msg_paths_of_all_basic_inter_paths abip in
   let restrmps =
     if init_and_sim
@@ -803,15 +807,17 @@ let coverage_msg_path_pats
     (mpps : msg_path_pat list) : msg_path list =
   let allmps = msg_paths_of_all_basic_inter_paths abip in
   let restrmps =
-    if sc.initial && List.mem "simulator" sc.flags
+    if sc.initial && sc.kind = SimKind
       then List.filter
            (fun mps -> List.length (unloc mps).inter_id_path = 1)
            allmps
-    else if sc.initial && not (List.mem "simulator" sc.flags)
+    else if sc.initial && sc.kind <> SimKind
       then msg_paths_of_all_basic_inter_paths
            (all_non_adv_basic_inter_paths abip)
     else allmps in
-  List.fold_left (fun mps mp -> remove_covered_paths mps mp sc.initial) restrmps mpps
+  List.fold_left
+  (fun mps mp -> remove_covered_paths mps mp sc.initial)
+  restrmps mpps
 
 let check_coverage_msg_path_pats
     (abip : all_basic_inter_paths) (sc : state_context)
@@ -835,7 +841,7 @@ let check_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list)
     (id : psymbol) (sc : state_context) (env : env) : env =
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
-  let is_sim = List.mem "simulator" sc.flags in
+  let is_sim = sc.kind = SimKind in
   if not d
   then type_error (loc id)
        (fun ppf ->
@@ -1056,7 +1062,6 @@ let check_sampl_assign
 let check_state_expr
     (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
     (env : env) (ue : unienv) (se : state_expr) : state_expr_tyd =
-  let is_sim = List.mem "simulator" sc.flags in
   let (is_init, tys) =
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
@@ -1064,12 +1069,18 @@ let check_state_expr
         (fun ppf ->
            fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
   let () =
-    if is_sim && is_init
-    then type_error (loc se.id)
-         (fun ppf ->
-            fprintf ppf
-            ("@[in@ simulator,@ cannot@ transition@ back@ " ^^
-             "to@ initial@ state@]")) in
+    if is_init && sc.kind = SimKind
+      then type_error (loc se.id)
+           (fun ppf ->
+              fprintf ppf
+              ("@[simulator@ cannot@ transition@ back@ " ^^
+               "to@ initial@ state@]"))
+    else if is_init
+      then type_error (loc se.id)
+           (fun ppf ->
+              fprintf ppf
+              ("@[functionality@ cannot@ transition@ back@ " ^^
+               "to@ initial@ state@]")) in
   let args = se.args in
   if List.length tys <> List.length (unloc args)
   then type_error (loc args)
@@ -1079,7 +1090,7 @@ let check_state_expr
        (fun sigt sip -> fst (check_expr sa env ue sip (Some sigt)))
        tys (unloc args) in
     let argz = mk_loc (loc args) argz_u in
-    {id = se.id; args = argz }
+    {id = se.id; args = argz}
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1160,24 +1171,49 @@ let check_send_msg_path
   check_outgoing_msg_path abip msg.path
 
 let check_msg_expr
-    (abip : all_basic_inter_paths) (sa : state_analysis)
+    (abip : all_basic_inter_paths) (sc : state_context) (sa : state_analysis)
     (env : env) (ue : unienv) (msg : msg_expr) : msg_expr_tyd =
   let () = check_send_msg_path msg abip in
   let bips = abip.direct @ abip.adversarial @ abip.internal in
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
-  if is_msg_path_in_basic_inter_paths msg.path abip.direct
-    then check_send_direct sa env ue msg param_tis
-  else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
-    then check_send_adversarial sa env ue msg param_tis
-  else if is_msg_path_in_basic_inter_paths msg.path abip.internal
-    then check_send_internal sa env ue msg param_tis
-  else failure "impossible - will be one of above"
+  let l = loc msg.path in
+  match sc.kind with
+  | RealKind -> 
+      if is_msg_path_in_basic_inter_paths msg.path abip.direct
+        then check_send_direct sa env ue msg param_tis
+      else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+        then check_send_adversarial sa env ue msg param_tis
+      else if is_msg_path_in_basic_inter_paths msg.path abip.internal
+        then check_send_internal sa env ue msg param_tis
+      else failure "impossible - will be one of above"
+  | IdealKind ->
+      if sc.initial
+      then if is_msg_path_in_basic_inter_paths msg.path abip.direct
+             then type_error l
+                  (fun ppf ->
+                     fprintf ppf
+                     ("@[send@ and@ transition@ of@ initial@ state@ " ^^
+                      "of@ ideal@ functionality@ must@ send@ "        ^^
+                      "adversarial@ message@ (to@ simulator@ if@ "    ^^
+                      "there@ is@ one,@ otherwise@ to@ adversary)@]"))
+           else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+             then check_send_adversarial sa env ue msg param_tis
+           else failure "impossible - will be one of above"
+      else if is_msg_path_in_basic_inter_paths msg.path abip.direct
+             then check_send_direct sa env ue msg param_tis
+           else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+             then check_send_adversarial sa env ue msg param_tis
+           else failure "impossible - will be one of above"
+  | SimKind ->
+      if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+      then check_send_adversarial sa env ue msg param_tis
+      else failure "impossible - will be one of above"
 
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (sat : send_and_transition) : instruction_tyd_u =
-  let msg_exp = check_msg_expr abip sa env ue sat.msg_expr in
+  let msg_exp = check_msg_expr abip sc sa env ue sat.msg_expr in
   let state_exp = check_state_expr ss sc sa env ue sat.state_expr in
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
@@ -1519,11 +1555,11 @@ let check_toplevel_states (id : psymbol) (state_defs : state_def list)
 (* check the lower-level of an individual state_tyd *)
 
 let check_lowlevel_state
-    (abip : all_basic_inter_paths) (flags : symbol list)
+    (abip : all_basic_inter_paths) (kind : kind)
     (internal_ports : QidSet.t) (states : state_mid IdMap.t)
     (state : state_mid) : state_tyd =
   let us = unloc state in
-  let sc = make_state_context (unloc state) internal_ports flags in
+  let sc = make_state_context (unloc state) internal_ports kind in
   let sa = init_state_analysis sc in
   let ss = get_state_sigs states in
   let env = augment_env_with_state_context (top_env ()) sc in
@@ -1536,25 +1572,28 @@ let check_lowlevel_state
      mmclauses  = code } in
   mk_loc (loc state) us'
 
-(* check the lower-level of a state_tyd IdMap.t state machine *)
+(* check the lower-level of a state_tyd IdMap.t state machine;
+   used for states of both real and ideal functionalities, and
+   simulators; kind will be RealKind, IdealKind or SimKind *)
 
 let check_lowlevel_states
-    (abip : all_basic_inter_paths) (flags : symbol list)
+    (abip : all_basic_inter_paths) (kind : kind)
     (internal_ports : QidSet.t) (states : state_mid IdMap.t)
       : state_tyd IdMap.t =
   IdMap.map
-    (check_lowlevel_state abip flags internal_ports states)
+    (check_lowlevel_state abip kind internal_ports states)
   states
 
 (* this is for use in checking ideal functionalities and simulators;
-   not used when checking parties of real functionalities *)
+   not used when checking parties of real functionalities;
+   kind will be IdealKind or SimKind *)
 
 let check_states
-    (id : psymbol) (abip : all_basic_inter_paths) (flags : symbol list)
+    (id : psymbol) (abip : all_basic_inter_paths) (kind : kind)
     (internal_ports : QidSet.t) (state_defs : state_def list)
       : state_tyd IdMap.t =
   let states = check_toplevel_states id state_defs in
-  check_lowlevel_states abip flags internal_ports states
+  check_lowlevel_states abip kind internal_ports states
 
 (**************************** functionality checks ****************************)
 
@@ -1690,7 +1729,8 @@ let check_lowlevel_party
     get_all_basic_inter_paths_of_real_fun_party root
     dir_inter_map adv_inter_map fun_map id_dir_inter id_adv_inter
     params sub_funs updt.serves in
-  let states = check_lowlevel_states abip [] internal_ports updt.states in
+  let states =
+    check_lowlevel_states abip RealKind internal_ports updt.states in
   let serves = updt.serves in
   let ret : party_body_tyd = {serves = serves; states = states} in
   mk_loc (loc pdt) ret
@@ -1854,7 +1894,8 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
       let abip =
         get_all_external_basic_inter_paths root maps.dir_inter_map
         maps.adv_inter_map uid_dir_inter uid_adv_inter in
-      let states = check_states fund.id abip [] QidSet.empty state_defs in
+      let states =
+        check_states fund.id abip IdealKind QidSet.empty state_defs in
       let ifbt =
         {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
          states = states} in
@@ -2025,7 +2066,7 @@ let check_sim
   let comps = get_sim_components root fun_map sims sims_arg_pair_ids in
   let bips = get_sim_basic_inter_id_paths root adv_inter_map uses comps in
   let abip = {direct = []; adversarial = bips; internal = []} in
-  let states = check_states sd.id abip ["simulator"] internal_ports sd.states in
+  let states = check_states sd.id abip SimKind internal_ports sd.states in
   let sbt =
     {uses = uses; sims = sims; sims_arg_pair_ids = sims_arg_pair_ids;
      states = states} in

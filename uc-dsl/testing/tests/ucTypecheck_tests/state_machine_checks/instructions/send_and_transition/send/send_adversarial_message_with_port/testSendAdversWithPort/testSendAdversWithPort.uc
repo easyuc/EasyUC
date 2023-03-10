@@ -21,5 +21,7 @@ functionality F() implements D A {
      x@D.D.bla => {send A.A.bli()@sender and transition I.}
    end
   }
+
+  state J { match message with * => { fail. } end }
  }
 }

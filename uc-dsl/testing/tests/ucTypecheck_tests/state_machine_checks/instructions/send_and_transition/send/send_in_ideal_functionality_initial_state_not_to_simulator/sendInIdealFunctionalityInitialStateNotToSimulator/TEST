@@ -1,0 +1,12 @@
+description
+Tests when send and transition of initial state of ideal functionality
+does not send adversarial message (to simulator, or if there is
+no simulator, to adversary).
+.
+args: testSendInIdealFunctionalityInitialStateNotToSimulator.uc
+outcome: failure
+[error: testSendInIdealFunctionalityInitialStateNotToSimulator.uc: from line 16 columns 25 to 32]
+
+send and transition of initial state of ideal functionality must send
+adversarial message (to simulator if there is one, otherwise to adversary)
+.

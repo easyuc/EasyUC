@@ -18,8 +18,10 @@ functionality F() implements D A {
 
   initial state I {
    match message with
-     x@D.D.bla  => {send A.A.bli() and transition I.}
+     x@D.D.bla  => {send A.A.bli() and transition J.}
    end
   }
+
+  state J { match message with * => { fail. } end }
  }
 }

@@ -1,0 +1,9 @@
+description
+The test checks a functionality transitioning back to an initial state.
+.
+args: testTransitionBackToInitialState.uc
+outcome: failure
+[error: testTransitionBackToInitialState.uc: from line 14 columns 63 to 64]
+
+functionality cannot transition back to initial state
+.

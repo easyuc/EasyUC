@@ -1,0 +1,6 @@
+description
+The test checks a functionality transitioning back to an initial state.
+.
+args: testTransitionBackToInitialStateOK.uc
+outcome: success
+.

@@ -13,9 +13,11 @@ functionality F(G:D) implements D {
 
   initial state I {
    match message with
-     sender@D.D.bla(k) => {send G.D.bla(sender) and transition I.}
+     sender@D.D.bla(k) => {send G.D.bla(sender) and transition J.}
    | * => {fail.}
    end
   }
+
+  state J { match message with * => { fail. } end }
  }
 }

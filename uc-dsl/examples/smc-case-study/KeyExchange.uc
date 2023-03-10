@@ -189,6 +189,15 @@ functionality KEIdeal implements KEDir KEI2S {
     match message with
     | pt1@KEDir.Pt1.ke_req1(pt2) => {
         if (envport pt2) {
+          (* a send-and-transition of the initial state of an ideal
+             functionality with a simulator must be to the simulator,
+             implicitly letting the simulator know the address of
+             the ideal and thus real functionality
+
+             thus when an ideal functionality with a simulator is
+             in a non-initial state, it knows its simulator has
+             been woken up and can catch messages from the adversary
+             destined for the real functionality *)
           send KEI2S.ke_sim_req1(pt1, pt2) and transition WaitSim1(pt1, pt2).
         }
         else { fail. }

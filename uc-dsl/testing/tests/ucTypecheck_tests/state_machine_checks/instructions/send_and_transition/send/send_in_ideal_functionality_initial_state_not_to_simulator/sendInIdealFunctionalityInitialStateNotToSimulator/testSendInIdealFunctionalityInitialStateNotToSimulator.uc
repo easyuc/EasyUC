@@ -5,17 +5,17 @@ out bli()@x
 
 direct D {D:D'}
 
-functionality F(G:D) implements D {
+adversarial A {
+in  bla()
+out bli()
+}
 
- party P serves D.D {
-
+functionality F() implements D A {
   initial state I {
    match message with
-     x@D.D.bla() => {send G.D.bla()@x and transition I.}
-   | * => {fail.}
+     x@D.D.bla => {send D.D.bli@x and transition J.}
    end
   }
 
   state J { match message with * => { fail. } end }
- }
 }

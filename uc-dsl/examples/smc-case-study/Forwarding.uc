@@ -56,7 +56,15 @@ functionality Forw implements FwDir FwAdv {
            case a fw_obs message to the adversary) and notes that if
            control every returns to the functionality, that it should
            continue from the specified state with the given arguments
-           (in this case Wait with data (pt1, pt2, u)) *)
+           (in this case Wait with data (pt1, pt2, u))
+
+           a send-and-transition must never transition back to
+           the initial state (this is true for real and ideal
+           functionalities, and simulators)
+
+           a send-and-transition of the initial state of an
+           ideal functionality must always be an adversarial message,
+           even when there is no simulator *)
           send FwAdv.fw_obs(pt1, pt2, u)     (* no destination port, *)
           and transition Wait(pt1, pt2, u).  (* as going to adversary *)
         }
