@@ -51,7 +51,7 @@ functionality S() implements D A {
   initial state Is 
   {
    match message with
-     SF.X.bye => { fail. }
+     * => { fail. }
    end
   }
  }

@@ -1,0 +1,10 @@
+description
+test where in initial state of simulator, there are
+no incoming messages
+.
+args: error.uc
+outcome: failure
+[error: error.uc: from line 43 columns 7 to 8]
+
+no incoming message paths in this state
+.

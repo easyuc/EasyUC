@@ -613,29 +613,14 @@ let check_inter_id_path
            "functionality:@;<1 2>%a@]")
           format_id_paths_comma ps)
 
-let check_served_inter_id_paths
-    (id_dir_inter : symbol) (party_id : psymbol)
-    (func_has_param_or_subfun : bool) (serves : symbol list located list)
-      : unit =
+let check_served_inter_id_paths (serves : symbol list located list) : unit =
   let er ppf =
     fprintf ppf
     ("@[a@ party@ may@ serve@ at@ most@ one@ basic@ direct@ interface,@ " ^^
      "and@ at@ most@ one@ adversarial@ direct@ interface@]") in
-  let er_no_incoming ppf =
-    fprintf ppf
-    ("@[states@ of@ party@ will@ have@ no@ incoming@ message@ paths@]") in
-  let er_no_incoming_in_init ppf =
-    fprintf ppf
-    ("@[initial@ state@ of@ party@ will@ have@ no@ incoming@ " ^^
-     "message@ paths@]") in
   match List.length serves with
-  | 0 ->
-      if not func_has_param_or_subfun
-      then type_error (loc party_id) er_no_incoming
-  | 1 ->
-      if List.hd (unloc (List.nth serves 0)) <> id_dir_inter &&
-         not func_has_param_or_subfun
-      then type_error (mergelocs serves) er_no_incoming_in_init
+  | 0 -> ()
+  | 1 -> ()
   | 2 ->
       if List.hd (unloc (List.nth serves 0)) <>
          List.hd (unloc (List.nth serves 1))
@@ -738,6 +723,12 @@ let check_msg_path_pat
       then msg_paths_of_all_basic_inter_paths
            (all_non_adv_basic_inter_paths abip)
     else allmps in
+  let () =
+    if List.is_empty restrmps
+    then type_error (loc mpp)
+         (fun ppf ->
+            fprintf ppf
+            "@[no@ incoming@ message@ paths@ in@ this@ state@]") in
   match (unloc mpp).msg_or_star with
   | MsgOrStarMsg _  ->
       if List.exists
@@ -1679,8 +1670,7 @@ type party_mid = party_body_mid located
 let check_toplevel_party
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t) (id_dir_inter : symbol)
-    (id_adv_inter : symbol option) (func_has_param_or_subfun : bool)
-    (pd : party_def) : party_mid =
+    (id_adv_inter : symbol option) (pd : party_def) : party_mid =
   let pqsymbol2sll (pqs : pqsymbol) : symbol list located =
     let qs = unloc pqs in
     mk_loc (loc pqs) (fst qs @ [snd qs]) in
@@ -1690,9 +1680,7 @@ let check_toplevel_party
     (check_inter_id_path root id_dir_inter id_adv_inter
      dir_inter_map adv_inter_map)
     serves in
-  let () =
-    check_served_inter_id_paths id_dir_inter pd.id
-    func_has_param_or_subfun serves in
+  let () = check_served_inter_id_paths serves in
   let states = check_toplevel_states pd.id pd.states in
   mk_loc (loc pd.id) {serves = serves; states = states}
 
@@ -1716,12 +1704,12 @@ let check_toplevel_parties
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
     (id_dir_inter : symbol) (id_adv_inter : symbol option)
-    (func_has_param_or_subfun : bool) (party_defs : party_def IdMap.t)
+    (party_defs : party_def IdMap.t)
       : party_mid IdMap.t =
   let parties =
     IdMap.map
     (check_toplevel_party root dir_inter_map adv_inter_map id_dir_inter
-     id_adv_inter func_has_param_or_subfun)
+     id_adv_inter)
     party_defs in
   let () =
     check_parties_serve_coverage_and_distinct root parties
@@ -1753,12 +1741,10 @@ let check_parties
     (id_adv_inter : symbol option) (params : (symb_pair * int) IdMap.t)
     (sub_funs : symb_pair IdMap.t) (party_defs : party_def IdMap.t)
       : party_tyd IdMap.t =
-  let func_has_param_or_subfun =
-    not (IdMap.is_empty params) || not (IdMap.is_empty sub_funs) in
   let internal_ports = get_keys_as_sing_qids party_defs in
   let parties_mid =
     check_toplevel_parties root dir_inter_map adv_inter_map id_dir_inter
-    id_adv_inter func_has_param_or_subfun party_defs in
+    id_adv_inter party_defs in
   IdMap.map
       (check_lowlevel_party root dir_inter_map adv_inter_map fun_map
       id_dir_inter id_adv_inter internal_ports params sub_funs)

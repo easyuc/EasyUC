@@ -1,0 +1,7 @@
+description
+resolution of test where in initial state of simulator, there are
+no incoming messages
+.
+args: good.uc
+outcome: success
+.

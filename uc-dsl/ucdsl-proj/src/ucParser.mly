@@ -442,10 +442,8 @@ sub_fun_decl :
    functionality. Different parties can't serve the same basic
    interfaces, and the union of the basic interfaces served by the
    parties must sum up to the composite interfaces implemented by the
-   functionality. If a party serves no direct interface, its
-   functionality must have either a parameter or a subfunctionality,
-   so the party has some possible incoming messages.  The actions of a
-   party are determined by a state machine.
+   functionality. The actions of a party are determined by a state
+   machine.
 
    Basic direct interfaces are named by interface identifer paths, or
    inter id paths, consisting of the name of a composite interface,
@@ -597,12 +595,18 @@ local_var_decl :
    well as when matching direct messages originating from the
    subfunctionalities or parameters of real functionalities.
 
-   A message matching clause consists of a message pattern
-   followed by the code to run on a matching message.
+   A message matching clause consists of a message pattern followed by
+   the code to run on a matching message. A message matching instruction
+   consists of a sequence of clauses, which are applied in order.
 
-   Adversarial messages cannot be matched in initial states
-   of ideal functionalities or real functionality parties;
-   they implicitly result in failure. *)
+   Adversarial messages cannot be matched in initial states of ideal
+   functionalities or real functionality parties; they implicitly
+   result in failure.
+
+   At every state, there must be at least one incoming message path.
+   The message matching clauses must be exhaustive - cover all
+   possible paths - and non-redundant. *)
+
 
 message_matching :
   | MATCH; MESSAGE; WITH; PIPE?
@@ -696,7 +700,9 @@ msg_path_end :
    on the interface it uses (interface to ideal functionality). Messages
    from the adversary will flow through the simulator. (Before the initial
    message arrives from the ideal functionality, the simulator doesn't
-   know the address of the ideal (and thus real) functionality.)
+   know the address of the ideal (and thus real) functionality.) As
+   with message matching in functionalities, it is an error if there
+   are no incoming message paths in a given state.
 
    Message paths for simulators look like the following, where: USES
    is the basic adversarial interface the simulator uses to
