@@ -1,0 +1,10 @@
+description
+test where party serves no direct interface but there is no
+internal message either
+.
+args: testPartyServingNoDirectInterfaceButAlsoNoInternal.uc
+outcome: failure
+[error: testPartyServingNoDirectInterfaceButAlsoNoInternal.uc: from line 28 columns 18 to 25]
+
+initial state of party will have no incoming message paths
+.

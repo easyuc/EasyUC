@@ -1,0 +1,7 @@
+description
+resolution of test where party serves no direct interface but there is no
+internal message either
+.
+args: testPartyServingNoDirectInterfaceButAlsoNoInternalOK.uc
+outcome: success
+.

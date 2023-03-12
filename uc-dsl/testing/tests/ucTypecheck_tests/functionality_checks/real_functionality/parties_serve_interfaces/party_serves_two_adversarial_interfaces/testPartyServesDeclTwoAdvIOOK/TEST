@@ -1,0 +1,6 @@
+description
+resolution of test where party serves two adversarial interfaces
+.
+args: testPartyServesDeclTwoAdvIOOK.uc
+outcome: success
+.

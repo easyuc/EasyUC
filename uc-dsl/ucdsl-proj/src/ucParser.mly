@@ -434,7 +434,7 @@ sub_fun_decl :
                                                     different root *)
       { {id = id; fun_qid = fun_qid} : sub_fun_decl }
 
-(* A functionality party serves exactly one basic direct interface,
+(* A functionality party serves at most one basic direct interface,
    which must be a sub-interface of the composite direct interface
    implemented by the functionality; the party serves at most one
    basic adversarial direct interface, which must be a sub-interface
@@ -442,8 +442,10 @@ sub_fun_decl :
    functionality. Different parties can't serve the same basic
    interfaces, and the union of the basic interfaces served by the
    parties must sum up to the composite interfaces implemented by the
-   functionality. The actions of a party are determined by a state
-   machine.
+   functionality. If a party serves no direct interface, its
+   functionality must have either a parameter or a subfunctionality,
+   so the party has some possible incoming messages.  The actions of a
+   party are determined by a state machine.
 
    Basic direct interfaces are named by interface identifer paths, or
    inter id paths, consisting of the name of a composite interface,
@@ -505,14 +507,16 @@ local_var_decl :
     t = loc(type_exp) SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
 
-(* Message matching specifies how incoming messages of a functionality
-   should be processed, resulting in a state transition or
+(* Message matching specifies how incoming messages of an ideal
+   functionality or a party of a real functionality should be
+   processed in a given state, resulting in a state transition or
    failure. (The situation is similar for simulators, but see below.)
 
    A message path is a "."-separated sequence of identifiers, taking
    us - in the simplest case, starting from a functionality's direct
-   composite interface - from the name of a composite interface, to
-   the name of one of its sub-interfaces, to the name of one of the
+   composite interface - from the name of a composite interface
+   (served by the party, in the case of a real functionality), to the
+   name of one of its sub-interfaces, to the name of one of the
    messages of the sub-interface's basic interface.
 
    The part of a message path excluding the message name is called
@@ -593,8 +597,12 @@ local_var_decl :
    well as when matching direct messages originating from the
    subfunctionalities or parameters of real functionalities.
 
-   Finally, a message matching clause consists of a message pattern
-   followed by the code to run on a matching message. *)
+   A message matching clause consists of a message pattern
+   followed by the code to run on a matching message.
+
+   Adversarial messages cannot be matched in initial states
+   of ideal functionalities or real functionality parties;
+   they implicitly result in failure. *)
 
 message_matching :
   | MATCH; MESSAGE; WITH; PIPE?
@@ -842,7 +850,13 @@ control_transfer :
 
    State expressions consist of a state name of the same state
    machine, followed by an optional list of arguments of the types
-   expected by that state. *)
+   expected by that state.
+
+   Transitions back to initial states (of ideal functionalities,
+   parties or real functionalities, or simulators) are not allowed -
+   even originating from the initial state. A send-and-transition in
+   the initial state of an ideal functionality must send an
+   adversarial message (waking up its simulator, when there is one). *)
 
 send_and_transition : 
   | SEND; msg = msg_expr; ANDTXT; TRANSITION; state = state_expr

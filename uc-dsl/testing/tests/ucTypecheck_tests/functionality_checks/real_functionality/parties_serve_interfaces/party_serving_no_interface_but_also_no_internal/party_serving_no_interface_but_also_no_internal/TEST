@@ -1,0 +1,10 @@
+description
+test where party serves no interfaces but there is no
+internal message either
+.
+args: testPartyServingNoInterfaceButAlsoNoInternal.uc
+outcome: failure
+[error: testPartyServingNoInterfaceButAlsoNoInternal.uc: from line 28 columns 8 to 10]
+
+states of party will have no incoming message paths
+.

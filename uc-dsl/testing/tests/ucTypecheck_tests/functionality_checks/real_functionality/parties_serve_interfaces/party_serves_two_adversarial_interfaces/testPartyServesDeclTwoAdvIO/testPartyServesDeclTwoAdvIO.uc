@@ -4,7 +4,7 @@ in bla()
 
 adversarial A {
 Subio:B
-
+Subio2:B
 }
 
 direct E{
@@ -16,7 +16,7 @@ Subio:E
 }
 
 functionality S() implements D A {
- party P1 serves D.Subio A.Subio {
+ party P1 serves A.Subio2 D.Subio A.Subio {
   initial state Is 
   {
    match message with
@@ -24,5 +24,15 @@ functionality S() implements D A {
    end
   }
  }
+
+ party P2 serves D.Subio2 A.Subio {
+  initial state Is 
+  {
+   match message with
+    * => {fail.}
+   end
+  }
+ }
+
 }
 

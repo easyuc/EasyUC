@@ -1,0 +1,10 @@
+description
+test where a party serves two adversarial interfaces
+.
+args: testPartyServesDeclTwoAdvIO.uc
+outcome: failure
+[error: testPartyServesDeclTwoAdvIO.uc: from line 19 columns 18 to 42]
+
+a party may serve at most one basic direct interface, and at most one
+adversarial direct interface
+.
