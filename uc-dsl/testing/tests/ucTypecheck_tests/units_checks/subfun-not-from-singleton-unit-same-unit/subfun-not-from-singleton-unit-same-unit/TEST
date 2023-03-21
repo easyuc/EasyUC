@@ -6,7 +6,6 @@ args: -units Base.uc
 outcome: failure
 [error: Base.uc: from line 22 columns 15 to 17]
 
-subfunctionality Foo of real functionality must be ideal functionality of
-unit with only ideal functionality and associated interfaces, but IF is not
-such an ideal functionality
+subfunctionality Foo of real functionality must come from different unit than
+real functionality, but this is not true for IF
 .

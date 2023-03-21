@@ -340,6 +340,24 @@ let sim_names (root : symbol) (maps : maps_tyd) : IdSet.t =
       else None)
    (IdPairMap.bindings maps.sim_map))
 
+(* for units checking *)
+
+let is_singleton_unit (root : symbol) (maps : maps_tyd) : bool =
+    let rf_names  = real_fun_names root maps in
+    let if_names  = ideal_fun_names root maps in
+    let sim_names = sim_names root maps in
+    IdSet.cardinal rf_names  = 0 &&
+    IdSet.cardinal if_names  = 1 &&
+    IdSet.cardinal sim_names = 0
+
+let is_triple_unit (root : symbol) (maps : maps_tyd) : bool =
+    let rf_names  = real_fun_names root maps in
+    let if_names  = ideal_fun_names root maps in
+    let sim_names = sim_names root maps in
+    IdSet.cardinal rf_names  = 1 &&
+    IdSet.cardinal if_names  = 1 &&
+    IdSet.cardinal sim_names = 1
+
 (* interface names that are reachable from an interface *)
 
 let inter_names_reach_inter
