@@ -2266,7 +2266,7 @@ let check_units
                    root)
          else if IdSet.mem
                  (Option.get (id_adv_inter_of_fun_body_tyd (unloc i_f)))
-                 (basic_direct_inter_names_of_real_fun root maps rf_name)
+                 (basic_adv_inter_names_of_real_fun root maps rf_name)
            then type_error (begin_of_file_loc qual_file)
                 (fun ppf ->
                    fprintf ppf
