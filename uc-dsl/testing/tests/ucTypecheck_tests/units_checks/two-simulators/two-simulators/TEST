@@ -7,5 +7,6 @@ outcome:failure
 
 for file with root Two-simulators to be a valid unit, either there must be: a
 single ideal functionality and no real functionalities or simulators; or
-exactly one real functionality, ideal functionality, and simulator
+exactly one real functionality, ideal functionality, and simulator; instead
+it has 2 real functionalities, 1 ideal functionalities, and 1 simulators
 .

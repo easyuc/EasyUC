@@ -2209,13 +2209,16 @@ let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
 
 let check_units
     (root : symbol) (qual_file : string) (maps : maps_tyd) : unit =
-  let inter_names = inter_names root maps in
-  let rf_names    = real_fun_names root maps in
-  let if_names    = ideal_fun_names root maps in
-  let sim_names   = sim_names root maps in
-  if IdSet.cardinal rf_names  = 0  &&  (* singleton unit *)
-     IdSet.cardinal if_names  = 1  &&
-     IdSet.cardinal sim_names = 0
+  let inter_names   = inter_names root maps in
+  let rf_names      = real_fun_names root maps in
+  let if_names      = ideal_fun_names root maps in
+  let sim_names     = sim_names root maps in
+  let num_rf_names  = IdSet.cardinal rf_names in
+  let num_if_names  = IdSet.cardinal if_names in
+  let num_sim_names = IdSet.cardinal sim_names in
+  if num_rf_names  = 0 &&  (* singleton unit *)
+     num_if_names  = 1 &&
+     num_sim_names = 0
     then let inter_names_reach =
            inter_names_reach_fun root maps (IdSet.min_elt if_names) in
          let extra_inter = IdSet.diff inter_names inter_names_reach in
@@ -2228,9 +2231,9 @@ let check_units
                 ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                  "because@ interface@ %s@ is@ extraneous@]")
                 root ex_id)
-  else if IdSet.cardinal rf_names  = 1  &&  (* triple unit *)
-          IdSet.cardinal if_names  = 1  &&
-          IdSet.cardinal sim_names = 1
+  else if num_rf_names  = 1 &&  (* triple unit *)
+          num_if_names  = 1 &&
+          num_sim_names = 1
     then let rf_name = IdSet.min_elt rf_names in
          let rf = IdPairMap.find (root, rf_name) maps.fun_map in
          let if_name = IdSet.min_elt if_names in
@@ -2294,8 +2297,9 @@ let check_units
            "either@ there@ must@ be:@ a@ single@ ideal@ functionality@ " ^^
            "and@ no@ real@ functionalities@ or@ simulators;@ or@ exactly@ " ^^
            "one@ real@ functionality,@ ideal@ functionality,@ and@ " ^^
-           "simulator@]")
-          root)
+           "simulator; instead@ it@ has@ %d@ real@ functionalities,@ " ^^
+           "%d@ ideal@ functionalities,@ and@ %d@ simulators@]")
+          root num_rf_names num_if_names num_sim_names)
 
 let typecheck
     (qual_file : string) (check_id : psymbol -> typed_spec)
