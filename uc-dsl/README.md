@@ -163,7 +163,7 @@ building `ucdsl` with code coverage instrumentation turned on).
 UC DSL Prelude
 --------------------------------------------------------------------
 
-The subdirectory [`prelude`](prelude) constains the files of the UC
+The subdirectory [`prelude`](prelude) contains the files of the UC
 DSL Prelude, which are first on the search path when `ucdsl` runs.
 The file `UCBasicTypes.ec` is automatically `ec_required` last
 when processing UC DSL files.
