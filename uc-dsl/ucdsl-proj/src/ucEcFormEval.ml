@@ -1,5 +1,5 @@
 open EcParsetree
-open UcGenEcInterface
+(*open UcGenEcInterface*)
 
 type evalConditionResult = 
   | Bool of bool
@@ -7,8 +7,6 @@ type evalConditionResult =
   
 (* ttenv constructed from current scope, maybe replace with concrete values, without accessing scope? *)
 let get_ttenv () =
-  let scope = EcCommands.ucdsl_current () in
-  let scope = EcScope.Prover.process scope EcParsetree.empty_pprover in
   {
     EcHiGoal.tt_provers    = (fun _ -> {
       EcProvers.dft_prover_infos with pr_provers = EcProvers.dft_prover_names
@@ -17,8 +15,10 @@ let get_ttenv () =
     EcHiGoal.tt_implicits  = true;
     EcHiGoal.tt_oldip      = false;
     EcHiGoal.tt_redlogic   = true;
+    EcHiGoal.tt_und_delta  = false;
   }
 
+let dl = UcUtils.dummyloc
 (*move => |>.*)
 let ptac_crush : EcParsetree.ptactic = 
   {
@@ -33,6 +33,16 @@ let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreG
 let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   run_tactic ptac_crush proof
 
+let qs = EcParsetree.qsymb_of_symb
+
+let pqs (name : string) = dl (qs name)
+
+let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
+  dl (EcParsetree.PFident (pqname, None))
+  
+let pform_ident (name : string) : EcParsetree.pformula =
+  pform_pqident (pqs name)
+  
 let ptac_move_hyp_forms_to_concl (hyp_names : string list) : EcParsetree.ptactic =
   let pr_genp = List.map (fun h -> `Form (None, pform_ident h) ) hyp_names in
   {

@@ -6,8 +6,8 @@
  (release (flags :standard -rectypes -warn-error -a+31 -w +28+33-9-23-32-58-67-69)
           (ocamlopt_flags -O3 -unbox-closures)))
 
-(executable
- (name ucdsl)
+(executables
+ (names ucdsl test0_of_UcEcFormEval)
  (libraries batteries camlp-streams dune-build-info inifiles why3 yojson zarith)
  (instrumentation (backend bisect_ppx --bisect-silent yes)))
 
