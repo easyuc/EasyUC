@@ -118,7 +118,7 @@ already added
 
 to your `.emacs` customization file, you should do so. In Emacs, run
 `package-refresh-contents`, and then use `package-install` to install
-`tuareg`, `autocomplete` and `merlin`.
+`tuareg`, `auto-complete` and `merlin`.
 
 Finally, add
 
