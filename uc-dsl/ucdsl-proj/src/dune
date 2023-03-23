@@ -8,6 +8,7 @@
 
 (executables
  (names ucdsl test0_of_UcEcFormEval)
+ (modes byte exe)
  (libraries batteries camlp-streams dune-build-info inifiles why3 yojson zarith)
  (instrumentation (backend bisect_ppx --bisect-silent yes)))
 
