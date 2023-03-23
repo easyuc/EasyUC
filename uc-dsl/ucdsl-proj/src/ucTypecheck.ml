@@ -2159,35 +2159,66 @@ let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   let check_units_subfun sfid (root', ifid) =
     (* root' will already have been checked to be a valid unit,
        unless it's the current file, in which case all but the
-       subfunctionality check will have been completed (and
-       we'll know it's not a singleton unit) *)
-    let rf_names    = real_fun_names root' maps in
-    let if_names    = ideal_fun_names root' maps in
-    let sim_names   = sim_names root' maps in
-    if not (IdSet.cardinal rf_names  = 0  &&
-            IdSet.cardinal if_names  = 1  &&
-            IdSet.cardinal sim_names = 0)
+       subfunctionality and parameter checks will have been completed *)
+    if root' = root
+    then type_error (loc rf)
+         (fun ppf ->
+            fprintf ppf
+            ("@[subfunctionality@ %s@ of@ real@ functionality@ must@ "   ^^
+             "come@ from@ different@ unit@ than@ real@ functionality,@ " ^^
+             "but@ this@ is@ not@ true@ for@ %a@]")
+            sfid (pp_id_pair_abbrev root) (root', ifid));
+    if is_triple_unit root' maps
     then type_error (loc rf)
          (fun ppf ->
             fprintf ppf
             ("@[subfunctionality@ %s@ of@ real@ functionality@ must@ " ^^
              "be@ ideal@ functionality@ of@ unit@ with@ only@ ideal@ " ^^
-             "functionality@ and@ associated@ interfaces,@ but@ " ^^
-             "%a@ is@ not@ such@ an@ ideal functionality@]")
-            sfid (pp_id_pair_abbrev root) (root', ifid)) in
+             "functionality,@ but@ %a@ is@ not@ such@ an@ ideal@ "     ^^
+             "functionality@]")
+            sfid pp_id_pair (root', ifid)) in
   let rfbt = real_fun_body_tyd_of (unloc rf) in
   let sub_funs = rfbt.sub_funs in
-   IdMap.iter check_units_subfun sub_funs
+  IdMap.iter check_units_subfun sub_funs
+
+let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
+  let check_units_param paramid ((root', dirid), _) =
+    (* root' will already have been checked to be a valid unit, unless
+       it's the current file, in which case all but the parameter
+       checks will have been completed *)
+    if root' = root
+    then type_error (loc rf)
+         (fun ppf ->
+            fprintf ppf
+            ("@[composite@ direct@ interface@ %a@ of@ parameter@ %s@ " ^^
+             "of@ real@ functionality@ must@ come@ from@ different@ "  ^^
+             "unit@ than@ real@ functionality@]")
+            (pp_id_pair_abbrev root) (root', dirid) paramid);
+    if is_singleton_unit root' maps
+    then type_error (loc rf)
+         (fun ppf ->
+            fprintf ppf
+            ("@[composite@ direct@ interface@ %a@ of@ parameter@ %s@ " ^^
+             "of@ real@ functionality@ must@ come@ from@ unit@ with@ "     ^^
+             "real@ functionality,@ ideal@ functionality@ and@ "           ^^
+             "simulator@]")
+            (pp_id_pair_abbrev root) (root', dirid) paramid) in
+  let rfbt = real_fun_body_tyd_of (unloc rf) in
+  let params = rfbt.params in
+  IdMap.iter check_units_param params
 
 let check_units
     (root : symbol) (qual_file : string) (maps : maps_tyd) : unit =
-  let inter_names = inter_names root maps in
-  let rf_names    = real_fun_names root maps in
-  let if_names    = ideal_fun_names root maps in
-  let sim_names   = sim_names root maps in
-  if IdSet.cardinal rf_names  = 0  &&  (* singleton unit *)
-     IdSet.cardinal if_names  = 1  &&
-     IdSet.cardinal sim_names = 0
+  let inter_names   = inter_names root maps in
+  let rf_names      = real_fun_names root maps in
+  let if_names      = ideal_fun_names root maps in
+  let sim_names     = sim_names root maps in
+  let num_rf_names  = IdSet.cardinal rf_names in
+  let num_if_names  = IdSet.cardinal if_names in
+  let num_sim_names = IdSet.cardinal sim_names in
+  if num_rf_names  = 0 &&  (* singleton unit *)
+     num_if_names  = 1 &&
+     num_sim_names = 0
     then let inter_names_reach =
            inter_names_reach_fun root maps (IdSet.min_elt if_names) in
          let extra_inter = IdSet.diff inter_names inter_names_reach in
@@ -2200,9 +2231,9 @@ let check_units
                 ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                  "because@ interface@ %s@ is@ extraneous@]")
                 root ex_id)
-  else if IdSet.cardinal rf_names  = 1  &&  (* triple unit *)
-          IdSet.cardinal if_names  = 1  &&
-          IdSet.cardinal sim_names = 1
+  else if num_rf_names  = 1 &&  (* triple unit *)
+          num_if_names  = 1 &&
+          num_sim_names = 1
     then let rf_name = IdSet.min_elt rf_names in
          let rf = IdPairMap.find (root, rf_name) maps.fun_map in
          let if_name = IdSet.min_elt if_names in
@@ -2238,7 +2269,7 @@ let check_units
                    root)
          else if IdSet.mem
                  (Option.get (id_adv_inter_of_fun_body_tyd (unloc i_f)))
-                 (basic_direct_inter_names_of_real_fun root maps rf_name)
+                 (basic_adv_inter_names_of_real_fun root maps rf_name)
            then type_error (begin_of_file_loc qual_file)
                 (fun ppf ->
                    fprintf ppf
@@ -2257,7 +2288,8 @@ let check_units
                        ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                         "because@ interface@ %s@ is@ extraneous@]")
                        root ex_id) in
-              check_units_subfuns root maps rf
+              check_units_subfuns root maps rf;
+              check_units_params root maps rf;
   else type_error (begin_of_file_loc qual_file)
        (fun ppf ->
           fprintf ppf
@@ -2265,8 +2297,9 @@ let check_units
            "either@ there@ must@ be:@ a@ single@ ideal@ functionality@ " ^^
            "and@ no@ real@ functionalities@ or@ simulators;@ or@ exactly@ " ^^
            "one@ real@ functionality,@ ideal@ functionality,@ and@ " ^^
-           "simulator@]")
-          root)
+           "simulator; instead@ it@ has@ %d@ real@ functionalities,@ " ^^
+           "%d@ ideal@ functionalities,@ and@ %d@ simulators@]")
+          root num_rf_names num_if_names num_sim_names)
 
 let typecheck
     (qual_file : string) (check_id : psymbol -> typed_spec)

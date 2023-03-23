@@ -51,7 +51,7 @@ getting the Emacs text editor to work with
 it](https://alleystoughton.us/easycrypt-installation.html).
 
 The UC DSL source is compatible with `why3` (installed as part of the
-EasyCrypt installation) version 1.5.1. (Note that running `ucdsl`
+EasyCrypt installation) version 1.6.0. (Note that running `ucdsl`
 doesn't actually run `why3` or even rely on `why3` being
 configured. But because the DSL's implementation is built on that of
 EasyCrypt, the build process may fail if the wrong version of `why3`

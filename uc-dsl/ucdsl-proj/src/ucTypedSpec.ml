@@ -340,6 +340,24 @@ let sim_names (root : symbol) (maps : maps_tyd) : IdSet.t =
       else None)
    (IdPairMap.bindings maps.sim_map))
 
+(* for units checking *)
+
+let is_singleton_unit (root : symbol) (maps : maps_tyd) : bool =
+    let rf_names  = real_fun_names root maps in
+    let if_names  = ideal_fun_names root maps in
+    let sim_names = sim_names root maps in
+    IdSet.cardinal rf_names  = 0 &&
+    IdSet.cardinal if_names  = 1 &&
+    IdSet.cardinal sim_names = 0
+
+let is_triple_unit (root : symbol) (maps : maps_tyd) : bool =
+    let rf_names  = real_fun_names root maps in
+    let if_names  = ideal_fun_names root maps in
+    let sim_names = sim_names root maps in
+    IdSet.cardinal rf_names  = 1 &&
+    IdSet.cardinal if_names  = 1 &&
+    IdSet.cardinal sim_names = 1
+
 (* interface names that are reachable from an interface *)
 
 let inter_names_reach_inter
@@ -379,11 +397,11 @@ let inter_names_reach_fun
 let inter_names_reach_sim
     (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
   let sbt = unloc (IdPairMap.find (root, id) maps.sim_map) in
-  IdSet.union
-  (IdSet.singleton sbt.uses)  (* will be basic *)
-  (inter_names_reach_fun root maps sbt.sims)
+  IdSet.singleton sbt.uses  (* will be basic *)
+  (* the interfaces reachable from the real functionality it
+     simulates will be collected via that real functionality *)
 
-let basic_direct_inter_names_of_real_fun
+let basic_adv_inter_names_of_real_fun
     (root : symbol) (maps : maps_tyd) (id : symbol) : IdSet.t =
   match unloc (IdPairMap.find (root, id) maps.fun_map) with
   | FunBodyRealTyd rfbt  ->

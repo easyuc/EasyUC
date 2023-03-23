@@ -8,5 +8,6 @@ outcome:failure
 for file with root Two_ideal_functionalities to be a valid unit, either there
 must be: a single ideal functionality and no real functionalities or
 simulators; or exactly one real functionality, ideal functionality, and
-simulator
+simulator; instead it has 1 real functionalities, 2 ideal functionalities,
+and 1 simulators
 .
