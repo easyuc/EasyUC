@@ -1,11 +1,9 @@
 open EcParsetree
-(*open UcGenEcInterface*)
 
 type evalConditionResult = 
   | Bool of bool
   | Undecided
   
-(* ttenv constructed from current scope, maybe replace with concrete values, without accessing scope? *)
 let get_ttenv () =
   {
     EcHiGoal.tt_provers    = (fun _ -> {
@@ -53,20 +51,35 @@ let ptac_move_hyp_forms_to_concl (hyp_names : string list) : EcParsetree.ptactic
     pt_intros = []
   }
   
+let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
+  let goal = EcCoreGoal.opened proof in
+  match goal with
+  | Some (1, pregoal) -> pregoal
+  | _ -> failwith "failed getting the one and only pregoal"
+
+let tac_move_hyp_form_to_concl 
+(h_id : EcIdent.t) 
+(proof : EcCoreGoal.proof) 
+: EcCoreGoal.proof =
+  let tc1 = EcCoreGoal.tcenv1_of_proof proof in
+  let tc = EcLowGoal.t_generalize_hyp ~clear:`Yes h_id tc1 in
+  let proof' = EcCoreGoal.proof_of_tcenv tc in
+  proof'
+  
 let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let hyps = 
     match EcCoreGoal.opened proof with
     | Some (1,pregoal) -> EcEnv.LDecl.tohyps pregoal.g_hyps
     | _ -> failwith "Hmmm...."
   in
-  let hyp_names = List.filter_map ( fun h -> 
+  let hyp_ids = List.filter_map ( fun h -> 
       match h with 
-      | (id, EcBaseLogic.LD_hyp _) -> Some (EcIdent.name id) 
+      | (id, EcBaseLogic.LD_hyp _) -> Some id
       | _ -> None
     ) hyps.h_local
   in
-  let ptac = ptac_move_hyp_forms_to_concl hyp_names in
-  run_tactic ptac proof
+  let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
+  proof'
 
 let pp_tc tc = (* copied from ecLowGoal.ml *)
   let pr = EcCoreGoal.proofenv_of_proof (EcCoreGoal.proof_of_tcenv tc) in
@@ -137,12 +150,6 @@ let rec unique_name (env : EcEnv.env) (hyps : EcBaseLogic.hyps) : string =
  if (check_exists name)
    then unique_name env hyps
    else name
-
-let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
-  let goal = EcCoreGoal.opened proof in
-  match goal with
-  | Some (1, pregoal) -> pregoal
-  | _ -> failwith "failed getting the one and only pregoal"
       
 let unique_name_for_proof (proof : EcCoreGoal.proof) : string = 
   let pregoal = get_only_pregoal proof in
@@ -283,7 +290,7 @@ let ptac_move_down (h_name : string) : EcParsetree.ptactic =
   ptac_move_hyp_forms_to_concl [h_name]
   
 let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic (ptac_move_down (EcIdent.name h_id)) proof
+  tac_move_hyp_form_to_concl h_id proof
   
 let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   if (is_concl_p proof p_id)
