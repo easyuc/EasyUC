@@ -15,68 +15,43 @@ let get_ttenv () =
     EcHiGoal.tt_redlogic   = true;
     EcHiGoal.tt_und_delta  = false;
   }
+  
+let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  let tc1 = EcCoreGoal.tcenv1_of_proof proof in
+  let tc = tac tc1 in
+  let proof' = EcCoreGoal.proof_of_tcenv tc in
+  proof'
 
-let dl = UcUtils.dummyloc
 (*move => |>.*)
-let ptac_crush : EcParsetree.ptactic = 
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [dl (IPCrush {cm_simplify = false; cm_solve = false})]]
-  }
-
-let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let ttenv = get_ttenv () in
-  snd (EcHiTacticals.process ttenv [ptac] proof)
-
 let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic ptac_crush proof
-
-let qs = EcParsetree.qsymb_of_symb
-
-let pqs (name : string) = dl (qs name)
-
-let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
-  dl (EcParsetree.PFident (pqname, None))
-  
-let pform_ident (name : string) : EcParsetree.pformula =
-  pform_pqident (pqs name)
-  
-let ptac_move_hyp_forms_to_concl (hyp_names : string list) : EcParsetree.ptactic =
-  let pr_genp = List.map (fun h -> `Form (None, pform_ident h) ) hyp_names in
-  {
-    pt_core = dl (Plogic (Pmove 
-      {
-        pr_rev = {pr_clear = []; pr_genp = pr_genp}; pr_view = []
-      }));
-    pt_intros = []
-  }
-  
-let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
-  let goal = EcCoreGoal.opened proof in
-  match goal with
-  | Some (1, pregoal) -> pregoal
-  | _ -> failwith "failed getting the one and only pregoal"
+  let intro1_crush =
+    let delta, tsolve = (false , None) in
+    EcCoreGoal.FApi.t_or
+      (EcPhlConseq.t_conseqauto ~delta ?tsolve)
+      (EcLowGoal.t_crush ~delta ?tsolve)
+  in
+  run_tac intro1_crush proof
 
 let tac_move_hyp_form_to_concl 
 (h_id : EcIdent.t) 
 (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
-  let tc1 = EcCoreGoal.tcenv1_of_proof proof in
-  let tc = EcLowGoal.t_generalize_hyp ~clear:`Yes h_id tc1 in
-  let proof' = EcCoreGoal.proof_of_tcenv tc in
-  proof'
+  let generalize_hyp = EcLowGoal.t_generalize_hyp ~clear:`Yes h_id in
+  run_tac generalize_hyp proof
+
+let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
+  let goal = EcCoreGoal.opened proof in
+  match goal with
+  | Some (1, pregoal) -> pregoal
+  | _ -> failwith "failed getting the one and only pregoal"
   
 let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let hyps = 
-    match EcCoreGoal.opened proof with
-    | Some (1,pregoal) -> EcEnv.LDecl.tohyps pregoal.g_hyps
-    | _ -> failwith "Hmmm...."
-  in
+  let hyps = (get_only_pregoal proof).g_hyps  in
   let hyp_ids = List.filter_map ( fun h -> 
       match h with 
       | (id, EcBaseLogic.LD_hyp _) -> Some id
       | _ -> None
-    ) hyps.h_local
+    ) (EcEnv.LDecl.tohyps hyps).h_local
   in
   let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
   proof'
@@ -156,6 +131,22 @@ let unique_name_for_proof (proof : EcCoreGoal.proof) : string =
   let hyps = EcEnv.LDecl.tohyps pregoal.g_hyps in
   let env = EcEnv.LDecl.toenv pregoal.g_hyps in
   unique_name env hyps    
+
+let dl = UcUtils.dummyloc
+
+let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  let ttenv = get_ttenv () in
+  snd (EcHiTacticals.process ttenv [ptac] proof)
+
+let qs = EcParsetree.qsymb_of_symb
+
+let pqs (name : string) = dl (qs name)
+
+let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
+  dl (EcParsetree.PFident (pqname, None))
+  
+let pform_ident (name : string) : EcParsetree.pformula =
+  pform_pqident (pqs name)
 
 (*move => [#].*)         
 let ptac_move_hash : EcParsetree.ptactic =
@@ -285,9 +276,6 @@ let try_move_lr_all (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
       with _ -> None
   in
   progression try_move_lr_step proof 
-  
-let ptac_move_down (h_name : string) : EcParsetree.ptactic =
-  ptac_move_hyp_forms_to_concl [h_name]
   
 let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   tac_move_hyp_form_to_concl h_id proof
