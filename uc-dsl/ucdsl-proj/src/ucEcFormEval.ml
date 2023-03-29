@@ -1,5 +1,3 @@
-open EcParsetree
-
 type evalConditionResult = 
   | Bool of bool
   | Undecided
@@ -56,6 +54,7 @@ let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
   proof'
 
+(* proof pretty printer
 let pp_tc tc = (* copied from ecLowGoal.ml *)
   let pr = EcCoreGoal.proofenv_of_proof (EcCoreGoal.proof_of_tcenv tc) in
   let cl = List.map (fun h -> EcCoreGoal.FApi.get_pregoal_by_id h pr) (EcCoreGoal.FApi.tc_opened tc) in
@@ -69,6 +68,7 @@ let pp_tc tc = (* copied from ecLowGoal.ml *)
 
 let pp_proof (proof : EcCoreGoal.proof) : unit =
   pp_tc (EcCoreGoal.tcenv_of_proof proof)
+*)
 
 let can_prove_smt (proof : EcCoreGoal.proof) : bool =
   let dft_pi = { 
@@ -159,24 +159,6 @@ let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   in
   run_tac intro1_full_case proof
 
-
-let dl = UcUtils.dummyloc
-
-let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let ttenv = get_ttenv () in
-  snd (EcHiTacticals.process ttenv [ptac] proof)
-
-let qs = EcParsetree.qsymb_of_symb
-
-let pqs (name : string) = dl (qs name)
-
-let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
-  dl (EcParsetree.PFident (pqname, None))
-  
-let pform_ident (name : string) : EcParsetree.pformula =
-  pform_pqident (pqs name)
-
-
 (*move => hyp_name.*)    
 let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_core id tc = (*modified from ecHiGoal.ml*)
@@ -186,12 +168,6 @@ let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let h_id_mloc = EcUtils.Tagged (h_id,Some EcLocation._dummy) in
   run_tac (intro1_core h_id_mloc) proof
 
-
-let ptac_move_simplify : EcParsetree.ptactic =
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [ dl (IPSimplify `Default)]]
-  }
 (*move => /=.*)
 let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_simplify tc = (*modified from ecHiGoal.ml*)
@@ -261,25 +237,30 @@ let prelims (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   let proof_c = move_all_hyp_forms_to_concl proof_b in
   proof_c
 
-(*move => ->.*)  
-let ptac_move_right : EcParsetree.ptactic =
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [ dl (IPRw (None, `LtoR, None))]]
-  }
+let intro1_rw s tc = (*modified from ecHiGoal.ml*)
+  let process_rewrite1_core ?(close = true) s pt tc =
+    let tc = EcHiGoal.LowRewrite.t_rewrite_r (s, None, None) pt tc in
+    let cl = fun tc ->
+      if EcFol.f_equal EcFol.f_true (EcCoreGoal.FApi.tc1_goal tc) then
+        EcLowGoal.t_true tc
+      else EcLowGoal.t_id tc
+    in 
+    if close then EcCoreGoal.FApi.t_last cl tc else tc
+  in
+  let h = EcIdent.create "_" in
+  let rwt tc =
+    let pt = EcProofTerm.pt_of_hyp (EcCoreGoal.(!!) tc) (EcCoreGoal.FApi.tc1_hyps tc) h in
+    process_rewrite1_core ~close:false s pt tc
+  in 
+  EcCoreGoal.FApi.t_seqs [EcLowGoal.t_intros_i [h]; rwt; EcLowGoal.t_clear h] tc
 
+(*move => ->.*)  
 let move_right (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic ptac_move_right proof
+  run_tac (intro1_rw `LtoR) proof
 
 (*move => <-.*)
-let ptac_move_left : EcParsetree.ptactic =
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [ dl (IPRw (None, `RtoL, None))]]
-  }
-
 let move_left (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic ptac_move_left proof
+  run_tac (intro1_rw `RtoL) proof
   
 let try_move_lr_all (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   let try_move_lr_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
