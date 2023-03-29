@@ -24,7 +24,7 @@ let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) : EcCore
 
 (*move => |>.*)
 let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let intro1_crush =
+  let intro1_crush = (*modified from ecHiGoal.ml*)
     let delta, tsolve = (false , None) in
     EcCoreGoal.FApi.t_or
       (EcPhlConseq.t_conseqauto ~delta ?tsolve)
@@ -110,53 +110,16 @@ let evalCondition (hyps : EcBaseLogic.hyps) (form : EcCoreFol.form) : evalCondit
           Bool false
         else
           Undecided
-          
-let rec unique_name (env : EcEnv.env) (hyps : EcBaseLogic.hyps) : string =
-  let check_exists_in_env (n : string) : bool =
-    false (*TODO do we need check?*)
-  in
-  let check_exists_in_hyps (n : string) : bool =
-    let hypn = List.map (fun (id,_) -> EcIdent.name id) hyps.h_local in
-    List.exists (fun hn -> hn = n) hypn
-  in
- let check_exists (n : string) : bool =
-    (check_exists_in_env n) || (check_exists_in_hyps n)   in
- let name = EcUid.NameGen.ofint (EcUid.unique ()) in
- if (check_exists name)
-   then unique_name env hyps
-   else name
       
-let unique_name_for_proof (proof : EcCoreGoal.proof) : string = 
+let unique_id_for_proof (proof : EcCoreGoal.proof) : EcIdent.t = 
   let pregoal = get_only_pregoal proof in
-  let hyps = EcEnv.LDecl.tohyps pregoal.g_hyps in
-  let env = EcEnv.LDecl.toenv pregoal.g_hyps in
-  unique_name env hyps    
+  let hyps = pregoal.g_hyps in
+  let name = EcUid.NameGen.ofint (EcUid.unique ()) in
+  EcEnv.LDecl.fresh_id hyps name
 
-let dl = UcUtils.dummyloc
-
-let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let ttenv = get_ttenv () in
-  snd (EcHiTacticals.process ttenv [ptac] proof)
-
-let qs = EcParsetree.qsymb_of_symb
-
-let pqs (name : string) = dl (qs name)
-
-let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
-  dl (EcParsetree.PFident (pqname, None))
-  
-let pform_ident (name : string) : EcParsetree.pformula =
-  pform_pqident (pqs name)
-
-(*move => [#].*)         
-let ptac_move_hash : EcParsetree.ptactic =
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [dl (IPCase (`Full ((false, false), false, None), []))]]
-  }
-
+(*move => [#].*)
 let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let intro1_full_case tc
+  let intro1_full_case tc (*modified from ecHiGoal.ml*)
   =
     let red = `NoDelta in
 
@@ -197,17 +160,36 @@ let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   run_tac intro1_full_case proof
 
 
-(*move => h_name.*)    
+let dl = UcUtils.dummyloc
+
+let run_tactic (ptac : EcParsetree.ptactic) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  let ttenv = get_ttenv () in
+  snd (EcHiTacticals.process ttenv [ptac] proof)
+
+let qs = EcParsetree.qsymb_of_symb
+
+let pqs (name : string) = dl (qs name)
+
+let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
+  dl (EcParsetree.PFident (pqname, None))
+  
+let pform_ident (name : string) : EcParsetree.pformula =
+  pform_pqident (pqs name)
+
 let ptac_move_up (h_name : string) : EcParsetree.ptactic =
   {
     pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
     pt_intros = [`Ip [ dl (IPCore (`Named h_name))]]
   }
 
+(*move => hyp_name.*)    
 let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let h_name = unique_name_for_proof proof in
-  let proof' = run_tactic (ptac_move_up h_name) proof in
-  proof'
+  let intro1_core id tc = (*modified from ecHiGoal.ml*)
+    EcLowGoal.t_intros [id] tc
+  in
+  let h_id = unique_id_for_proof proof in
+  let h_id_mloc = EcUtils.Tagged (h_id,Some EcLocation._dummy) in
+  run_tac (intro1_core h_id_mloc) proof
 
 (*move => /=.*)
 let ptac_move_simplify : EcParsetree.ptactic =
