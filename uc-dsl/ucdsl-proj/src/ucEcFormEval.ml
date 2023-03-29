@@ -176,11 +176,6 @@ let pform_pqident (pqname : EcParsetree.pqsymbol) : EcParsetree.pformula =
 let pform_ident (name : string) : EcParsetree.pformula =
   pform_pqident (pqs name)
 
-let ptac_move_up (h_name : string) : EcParsetree.ptactic =
-  {
-    pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
-    pt_intros = [`Ip [ dl (IPCore (`Named h_name))]]
-  }
 
 (*move => hyp_name.*)    
 let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
@@ -191,15 +186,18 @@ let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let h_id_mloc = EcUtils.Tagged (h_id,Some EcLocation._dummy) in
   run_tac (intro1_core h_id_mloc) proof
 
-(*move => /=.*)
+
 let ptac_move_simplify : EcParsetree.ptactic =
   {
     pt_core = dl (Plogic (Pmove {pr_rev = {pr_clear = []; pr_genp = []}; pr_view = []}));
     pt_intros = [`Ip [ dl (IPSimplify `Default)]]
   }
-
+(*move => /=.*)
 let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic ptac_move_simplify proof
+  let intro1_simplify tc = (*modified from ecHiGoal.ml*)
+    EcLowGoal.t_simplify ~delta:false ~logic:(Some `Full) tc
+  in
+  run_tac intro1_simplify proof
 
 let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   let pregoal = get_only_pregoal proof in
