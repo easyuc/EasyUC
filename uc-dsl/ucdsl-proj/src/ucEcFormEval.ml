@@ -156,7 +156,46 @@ let ptac_move_hash : EcParsetree.ptactic =
   }
 
 let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  run_tactic ptac_move_hash proof
+  let intro1_full_case tc
+  =
+    let red = `NoDelta in
+
+    let t_case =
+      let t_and = fun tc -> ([2]   , EcLowGoal.t_elim_and ~reduce:red tc) in
+      let ts = [t_and] in
+      fun tc -> EcCoreGoal.FApi.t_or_map ts tc
+    in
+
+    let doit tc =
+      let rec aux imax tc =
+        if imax = Some 0 then EcLowGoal.t_id tc else
+
+        try
+          let ntop, tc = t_case tc in
+
+          EcCoreGoal.FApi.t_sublasts
+            (List.map (fun i tc -> aux (EcUtils.omap ((+) (i-1)) imax) tc) ntop)
+            tc
+        with EcCoreGoal.InvalidGoalShape ->
+          try
+            tc |> EcLowGoal.t_intro_sx_seq
+              `Fresh
+              (fun id ->
+                EcCoreGoal.FApi.t_seq
+                  (aux (EcUtils.omap ((+) (-1)) imax))
+                  (EcLowGoal.t_generalize_hyps ~clear:`Yes [id]))
+          with
+          | EcCoreGoal.TcError _ when EcUtils.is_some imax ->
+              EcCoreGoal.tc_error (EcCoreGoal.(!!) tc) "not enough top-assumptions"
+          | EcCoreGoal.TcError _ ->
+              EcLowGoal.t_id tc
+      in
+      aux (Some 1) tc
+    in
+    doit tc
+  in
+  run_tac intro1_full_case proof
+
 
 (*move => h_name.*)    
 let ptac_move_up (h_name : string) : EcParsetree.ptactic =
