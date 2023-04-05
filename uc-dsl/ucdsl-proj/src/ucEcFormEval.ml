@@ -91,13 +91,7 @@ let can_prove (proof : EcCoreGoal.proof) : bool =
     then true
     else can_prove_smt proof
 
-let to_LDecl_hyps (hyps : EcBaseLogic.hyps) : EcEnv.LDecl.hyps =
-  let local_h = List.rev hyps.h_local in
-  let env = UcEcInterface.env () in
-  EcEnv.LDecl.init env ~locals:local_h hyps.h_tvar
-
-let evalCondition (hyps : EcBaseLogic.hyps) (form : EcCoreFol.form) : evalConditionResult =
-  let hyps = to_LDecl_hyps hyps in
+let evalCondition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : evalConditionResult =
   let proof_true = EcCoreGoal.start hyps form in
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
 
@@ -373,16 +367,15 @@ let simplify_by_crushing
   in
   form_s
               
-let simplifyFormula (hyps : EcBaseLogic.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
+let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
   let f_ty = EcCoreFol.f_ty form in
   let p_ty = EcTypes.tcpred f_ty in
   let p_name = EcUid.NameGen.ofint (EcUid.unique ()) in
-  let p_id = EcIdent.create p_name in
+  let p_id = EcEnv.LDecl.fresh_id hyps p_name in
 (*add predicate p to hypotheses*)
   let l_k = EcBaseLogic.LD_var (p_ty, None) in
-  let hyps = {hyps with h_local = hyps.h_local @ [(p_id,l_k)]} in
-  let hyps = to_LDecl_hyps hyps in
+  let hyps = EcEnv.LDecl.add_local p_id l_k hyps in
 (*make concl and start proof*)  
   let fp = EcCoreFol.f_local p_id p_ty in
   let concl = EcCoreFol.f_app fp [form] EcTypes.tbool in

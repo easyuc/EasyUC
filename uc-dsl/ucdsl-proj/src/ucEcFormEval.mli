@@ -7,6 +7,6 @@ type evalConditionResult =
   formulas cannot use types with Tunivar nodes - have to be unified
   the conclusion form must be a predicate (return bool)
 *)  
-val evalCondition  : EcBaseLogic.hyps -> EcCoreFol.form -> evalConditionResult
+val evalCondition  : EcEnv.LDecl.hyps -> EcCoreFol.form -> evalConditionResult
 
-val simplifyFormula :  EcBaseLogic.hyps -> EcCoreFol.form -> EcCoreFol.form
+val simplifyFormula :  EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form

@@ -172,6 +172,11 @@ let sym_eq = "="
 
 let pf_eq = pform_ident sym_eq
 
+let to_LDecl_hyps (hyps : EcBaseLogic.hyps) : EcEnv.LDecl.hyps =
+  let local_h = List.rev hyps.h_local in
+  let env = UcEcInterface.env () in
+  EcEnv.LDecl.init env ~locals:local_h hyps.h_tvar
+
 let testFormEval () : unit =
   let i_ = "i" in
   
@@ -192,28 +197,35 @@ let testFormEval () : unit =
   let form_i_eq_1 = trans_prop env ue pform_i_eq_1 in
   let form_i_eq_0 = trans_prop env ue pform_i_eq_0 in
   
-  let hyps_empty : EcBaseLogic.hyps = {
-    h_tvar = [];
-    h_local = [(i_id, LD_var (i_ty,None))]
-  } in
+  let hyps_empty : EcEnv.LDecl.hyps = 
+    to_LDecl_hyps
+    {
+      h_tvar = [];
+      h_local = [(i_id, LD_var (i_ty,None))]
+    } in
   
-  let hyps_i_eq_0 : EcBaseLogic.hyps = {
-    h_tvar = [];
-    h_local =
-      [
-        (i_id, LD_var (i_ty,None));
-        (EcIdent.create "i_eq_0",LD_hyp form_i_eq_0)
-      ]
-  } in
+  let hyps_i_eq_0 : EcEnv.LDecl.hyps = 
+    to_LDecl_hyps
+    {
+      h_tvar = [];
+      h_local =
+        [
+          (i_id, LD_var (i_ty,None));
+          (EcIdent.create "i_eq_0",LD_hyp form_i_eq_0)
+        ]
+    } in
   
-  let hyps_i_eq_1 : EcBaseLogic.hyps = {
-    h_tvar = [];
-    h_local = 
-      [
-        (i_id, LD_var (i_ty,None));
-        (EcIdent.create "i_eq_1",LD_hyp form_i_eq_1)
-      ]     
-  } in
+  let hyps_i_eq_1 : EcEnv.LDecl.hyps = 
+    to_LDecl_hyps
+    {
+      h_tvar = [];
+      h_local = 
+        [
+          (i_id, LD_var (i_ty,None));
+          (EcIdent.create "i_eq_1",LD_hyp form_i_eq_1)
+        ]     
+    } in
+    
   printEvalResult (UcEcFormEval.evalCondition hyps_empty form_i_eq_0);
   printEvalResult (UcEcFormEval.evalCondition hyps_i_eq_0 form_i_eq_0);
   printEvalResult (UcEcFormEval.evalCondition hyps_i_eq_1 form_i_eq_0);
