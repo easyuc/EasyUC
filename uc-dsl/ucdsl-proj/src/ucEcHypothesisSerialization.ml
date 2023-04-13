@@ -1,17 +1,15 @@
-open Yojson
-open EcTyping
-
 let parse_trans_type (env : EcEnv.env) (ty_str : string) : EcTypes.ty =
-  let pty = EcParser.ty_start ty_str in
-  let policy = UcTransTypesExprs.tp_nothing in
+  let reader = EcIo.from_string_pty ty_str in
+  let pty = EcIo.parse_pty reader in
+  let policy = EcTyping.tp_tydecl in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
-  transty policy env ue pty
+  EcTyping.transty policy env ue pty
 
-let parse_trans_frm (env : EcEnv.env) (frm_str : string) : EcTypes.ty =
-  let pformula = EcParser.form_start frm_str in
-  let policy = UcTransTypesExprs.tp_nothing in
+let parse_trans_frm (env : EcEnv.env) (frm_str : string) : EcCoreFol.form =
+  let reader = EcIo.from_string_pformula frm_str in
+  let pformula = EcIo.parse_pformula reader in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
-  trans_form_opt env ue None pformula
+  EcTyping.trans_form_opt env ue pformula None
 
 let json_hyps2ldecl_hyps (jhyps : string) : EcEnv.LDecl.hyps =
   let env = UcEcInterface.env () in
@@ -40,4 +38,4 @@ let json_hyps2ldecl_hyps (jhyps : string) : EcEnv.LDecl.hyps =
   List.fold_left add_h_to_hyps hyps hs
 
 
-let ldecl_hyps2json_hyps (lhyps : EcEnv.LDecl.hyps) : string =[]
+let ldecl_hyps2json_hyps (lhyps : EcEnv.LDecl.hyps) : string =""

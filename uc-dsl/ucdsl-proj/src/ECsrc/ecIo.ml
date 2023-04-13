@@ -16,8 +16,14 @@ let lexbuf_from_channel = fun name channel ->
     lexbuf
 
 (* -------------------------------------------------------------------- *)
-let parserfun = fun () ->
-    MenhirLib.Convert.Simplified.traditional2revised EcParser.prog
+let parserfun_ecpf ecpf = fun () ->
+    MenhirLib.Convert.Simplified.traditional2revised ecpf
+
+let parserfun = parserfun_ecpf EcParser.prog
+
+let parserfun_pty = parserfun_ecpf EcParser.ty_start
+    
+let parserfun_pformula = parserfun_ecpf EcParser.form_start    
 
 type 'a parser_t =
   (P.token * L.position * L.position, 'a) MenhirLib.Convert.revised
@@ -40,29 +46,38 @@ type 'a ecreader_gr = {
 type 'a ecreader_g = 'a ecreader_gr Disposable.t
 type    ecreader   = EcParsetree.prog ecreader_g
 
+type    ecreader_pty = EcParsetree.pty ecreader_g
+type    ecreader_pformula = EcParsetree.pformula ecreader_g
+
 (* -------------------------------------------------------------------- *)
 let lexbuf (reader : 'a ecreader_g) =
   (Disposable.get reader).ecr_lexbuf
 
 (* -------------------------------------------------------------------- *)
-let from_channel ~name channel =
+let from_channel_pf pf ~name channel =
   let lexbuf = lexbuf_from_channel name channel in
 
     Disposable.create
       { ecr_lexbuf  = lexbuf;
-        ecr_parser  = parserfun ();
+        ecr_parser  = pf ();
         ecr_atstart = true;
         ecr_tokens  = []; }
+        
+let from_channel ~name channel = from_channel_pf parserfun ~name channel
+
+let from_channel_pty ~name channel = from_channel_pf parserfun_pty ~name channel
+
+let from_channel_pformula ~name channel = from_channel_pf parserfun_pformula ~name channel
 
 (* -------------------------------------------------------------------- *)
-let from_file filename =
+let from_file_pf pf filename =
   let channel = open_in filename in
     try
       let lexbuf = lexbuf_from_channel filename channel in
 
         Disposable.create ~cb:(fun _ -> close_in channel)
           { ecr_lexbuf  = lexbuf;
-            ecr_parser  = parserfun ();
+            ecr_parser  = pf ();
             ecr_atstart = true;
             ecr_tokens  = []; }
 
@@ -70,20 +85,36 @@ let from_file filename =
       | e ->
           (try close_in channel with _ -> ());
           raise e
+          
+let from_file filename = from_file_pf parserfun filename
+
+let from_file_pty filename = from_file_pf parserfun_pty filename
+
+let from_file_pformula filename = from_file_pf parserfun_pformula filename
 
 (* -------------------------------------------------------------------- *)
-let from_string data =
+let from_string_pf pf data =
   let lexbuf = Lexing.from_string data in
 
     Disposable.create
       { ecr_lexbuf  = lexbuf;
-        ecr_parser  = parserfun ();
+        ecr_parser  = pf ();
         ecr_atstart = true;
         ecr_tokens  = []; }
+        
+let from_string data = from_string_pf parserfun data
+
+let from_string_pty data = from_string_pf parserfun_pty data
+
+let from_string_pformula data = from_string_pf parserfun_pformula data
 
 (* -------------------------------------------------------------------- *)
 let finalize (ecreader : 'a ecreader_g) =
   Disposable.dispose ecreader
+  
+let finalize_pty = finalize
+
+let finalize_pformula = finalize
 
 (* -------------------------------------------------------------------- *)
 let lexer = fun ecreader ->
@@ -123,6 +154,10 @@ let drain (ecreader : 'a ecreader_g) =
 let parse (ecreader : 'a ecreader_g) =
   let ecreader = Disposable.get ecreader in
     ecreader.ecr_parser (fun () -> lexer ecreader)
+    
+let parse_pty = parse
+
+let parse_pformula = parse
 
 (* -------------------------------------------------------------------- *)
 let parseall (ecreader : 'a ecreader_g) =

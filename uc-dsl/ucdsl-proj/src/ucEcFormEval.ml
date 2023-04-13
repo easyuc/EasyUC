@@ -1,7 +1,7 @@
 type evalConditionResult = 
   | Bool of bool
   | Undecided
-  
+(*  
 let get_ttenv () =
   {
     EcHiGoal.tt_provers    = (fun _ -> {
@@ -13,11 +13,30 @@ let get_ttenv () =
     EcHiGoal.tt_redlogic   = true;
     EcHiGoal.tt_und_delta  = false;
   }
-  
+ *) 
+(* proof pretty printer*)
+let pp_tc tc = (* copied from ecLowGoal.ml *)
+  let pr = EcCoreGoal.proofenv_of_proof (EcCoreGoal.proof_of_tcenv tc) in
+  let cl = List.map (fun h -> EcCoreGoal.FApi.get_pregoal_by_id h pr) (EcCoreGoal.FApi.tc_opened tc) in
+  let cl = List.map (fun (x:EcCoreGoal.pregoal) -> (EcEnv.LDecl.tohyps x.g_hyps, x.g_concl)) cl in
+
+  match cl with [] -> () | hd :: tl ->
+
+  Format.eprintf "%a@."
+    (EcPrinting.pp_goal (EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc_env tc)) {prpo_pr = true; prpo_po = true})
+    (hd, `All tl)
+
+let pp_proof (proof : EcCoreGoal.proof) : unit =
+  pp_tc (EcCoreGoal.tcenv_of_proof proof)
+
+let print_endline _ = ()
+let pp_proof _ = ()
+   
 let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let tc1 = EcCoreGoal.tcenv1_of_proof proof in
   let tc = tac tc1 in
   let proof' = EcCoreGoal.proof_of_tcenv tc in
+  pp_proof proof';
   proof'
 
 (*move => |>.*)
@@ -28,6 +47,7 @@ let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
       (EcPhlConseq.t_conseqauto ~delta ?tsolve)
       (EcLowGoal.t_crush ~delta ?tsolve)
   in
+  print_endline "move => |>.";
   run_tac intro1_crush proof
 
 let tac_move_hyp_form_to_concl 
@@ -35,6 +55,7 @@ let tac_move_hyp_form_to_concl
 (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
   let generalize_hyp = EcLowGoal.t_generalize_hyp ~clear:`Yes h_id in
+  print_endline "move : H.";
   run_tac generalize_hyp proof
 
 let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
@@ -53,22 +74,6 @@ let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   in
   let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
   proof'
-
-(* proof pretty printer
-let pp_tc tc = (* copied from ecLowGoal.ml *)
-  let pr = EcCoreGoal.proofenv_of_proof (EcCoreGoal.proof_of_tcenv tc) in
-  let cl = List.map (fun h -> EcCoreGoal.FApi.get_pregoal_by_id h pr) (EcCoreGoal.FApi.tc_opened tc) in
-  let cl = List.map (fun (x:EcCoreGoal.pregoal) -> (EcEnv.LDecl.tohyps x.g_hyps, x.g_concl)) cl in
-
-  match cl with [] -> () | hd :: tl ->
-
-  Format.eprintf "%a@."
-    (EcPrinting.pp_goal (EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc_env tc)) {prpo_pr = true; prpo_po = true})
-    (hd, `All tl)
-
-let pp_proof (proof : EcCoreGoal.proof) : unit =
-  pp_tc (EcCoreGoal.tcenv_of_proof proof)
-*)
 
 let can_prove_smt (proof : EcCoreGoal.proof) : bool =
   let dft_pi = { 
@@ -151,6 +156,7 @@ let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
     in
     doit tc
   in
+  print_endline "move => [#].";
   run_tac intro1_full_case proof
 
 (*move => hyp_name.*)    
@@ -160,6 +166,7 @@ let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   in
   let h_id = unique_id_for_proof proof in
   let h_id_mloc = EcUtils.Tagged (h_id,Some EcLocation._dummy) in
+  print_endline "move => H.";
   run_tac (intro1_core h_id_mloc) proof
 
 (*move => /=.*)
@@ -167,6 +174,7 @@ let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_simplify tc = (*modified from ecHiGoal.ml*)
     EcLowGoal.t_simplify ~delta:false ~logic:(Some `Full) tc
   in
+  print_endline "move => /=.";
   run_tac intro1_simplify proof
 
 let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
@@ -207,7 +215,7 @@ let progression
     | Some proof_new -> r false proof_new
   in
   r true proof
-  
+(*  
 let move_hash_all (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   let hash_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     if (is_concl_p proof p_id)
@@ -230,7 +238,7 @@ let prelims (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   let proof_b = move_hash_all proof_a p_id in
   let proof_c = move_all_hyp_forms_to_concl proof_b in
   proof_c
-
+*)
 let intro1_rw s tc = (*modified from ecHiGoal.ml*)
   let process_rewrite1_core ?(close = true) s pt tc =
     let tc = EcHiGoal.LowRewrite.t_rewrite_r (s, None, None) pt tc in
@@ -250,30 +258,14 @@ let intro1_rw s tc = (*modified from ecHiGoal.ml*)
 
 (*move => ->.*)  
 let move_right (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  print_endline "move => ->.";
   run_tac (intro1_rw `LtoR) proof
 
 (*move => <-.*)
 let move_left (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  print_endline "move => <-.";
   run_tac (intro1_rw `RtoL) proof
-  
-let try_move_lr_all (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
-  let try_move_lr_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
-    try 
-      let proof_a = move_right proof in
-      let proof_b = move_simplify proof_a in
-      Some proof_b
-    with _ ->
-      try 
-        let proof_a = move_left proof in
-        let proof_b = move_simplify proof_a in
-        Some proof_b
-      with _ -> None
-  in
-  progression try_move_lr_step proof 
-  
-let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  tac_move_hyp_form_to_concl h_id proof
-  
+
 let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   if (is_concl_p proof p_id)
   then 
@@ -283,6 +275,7 @@ let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreG
     move_all_hyps_up proof' p_id
 
 let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
+  print_endline "BEGIN count_hyp_forms";
   let proof' = move_all_hyps_up proof p_id in
   let pregoal = get_only_pregoal proof' in
   let h = (EcEnv.LDecl.tohyps pregoal.g_hyps).h_local in
@@ -294,9 +287,38 @@ let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
         | _ -> false 
     ) h 
   in
+  print_endline "END count_hyp_forms";
   List.length h_forms
+  
+let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t): EcCoreGoal.proof option =
+  let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+    let proof_a = try move_hash proof with _ -> proof in
+    let count = count_hyp_forms proof p_id in
+    let count_a = count_hyp_forms proof_a p_id in
+    if (count <> count_a)
+    then 
+      Some proof_a
+    else
+      try 
+        let proof_a = move_right proof in
+        let proof_b = move_simplify proof_a in
+          Some proof_b
+      with _ ->
+        try 
+          let proof_a = move_left proof in
+          let proof_b = move_simplify proof_a in
+          Some proof_b
+        with _ -> None
+  in
+  progression try_rewriting_step proof
+  
+let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  tac_move_hyp_form_to_concl h_id proof
+  
+
 
 let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
+  print_endline "BEGIN rotate_hyps";
   let proof_a = move_all_hyps_up proof p_id in
   let pregoal = get_only_pregoal proof_a in
   let h = (EcEnv.LDecl.tohyps pregoal.g_hyps).h_local in
@@ -312,9 +334,9 @@ let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof
   | [] -> 
     proof
   | hd :: tl -> 
-    let proof_b = move_down hd proof_a in
-    let proof_c = List.fold_right (fun id pr -> move_down id pr) tl proof_b
-    in 
+    let proof_b = List.fold_left (fun pr id -> move_down id pr) proof_a tl  in
+    let proof_c = move_down hd proof_b in
+    print_endline "END rotate_hyps";
     proof_c
 
 let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
@@ -323,7 +345,7 @@ let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcC
   : EcCoreGoal.proof option 
   = if counter=0 then None
     else
-      match try_move_lr_all proof with
+      match try_rewriting proof p_id with
       | Some pr -> Some pr
       | None -> try_simpcyc_r (counter-1) (rotate_hyps proof p_id) 
   in
@@ -334,12 +356,16 @@ let try_simp (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof op
   progression (try_simplification_cycle p_id) proof 
 
 let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreFol.form =
-  let proof_a = prelims proof p_id in
-  let proof_o = try_simp proof_a p_id in
+  (*let proof_a = prelims proof p_id in*)
+  let proof' = move_all_hyp_forms_to_concl proof in
+  let proof_o = try_simp proof' p_id in
   match proof_o with
   | None -> extract_form proof p_id
-  | Some pr -> extract_form pr p_id
+  | Some pr ->
+    let pr' = move_all_hyps_up pr p_id in 
+    extract_form pr' p_id
 
+(*
 let simplify_by_crushing 
 (proof : EcCoreGoal.proof) 
 (p_id : EcIdent.t) 
@@ -366,6 +392,7 @@ let simplify_by_crushing
     end 
   in
   form_s
+*)
               
 let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
@@ -380,6 +407,7 @@ let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFo
   let fp = EcCoreFol.f_local p_id p_ty in
   let concl = EcCoreFol.f_app fp [form] EcTypes.tbool in
   let proof = EcCoreGoal.start hyps concl in
+  pp_proof proof;
 (*try to simplify form*)  
   (*simplify_by_crushing proof p_id*)
   simplify_heuristic proof p_id
