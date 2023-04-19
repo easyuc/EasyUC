@@ -118,7 +118,7 @@ already added
 
 to your `.emacs` customization file, you should do so. In Emacs, run
 `package-refresh-contents`, and then use `package-install` to install
-`tuareg`, `autocomplete` and `merlin`.
+`tuareg`, `auto-complete` and `merlin`.
 
 Finally, add
 
@@ -163,7 +163,7 @@ building `ucdsl` with code coverage instrumentation turned on).
 UC DSL Prelude
 --------------------------------------------------------------------
 
-The subdirectory [`prelude`](prelude) constains the files of the UC
+The subdirectory [`prelude`](prelude) contains the files of the UC
 DSL Prelude, which are first on the search path when `ucdsl` runs.
 The file `UCBasicTypes.ec` is automatically `ec_required` last
 when processing UC DSL files.
