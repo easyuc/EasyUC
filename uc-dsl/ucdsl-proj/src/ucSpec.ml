@@ -1,6 +1,10 @@
 (* UcSpec module *)
 
-(* Specification Parse Trees *)
+(* Specification Parse Trees
+
+   This includes parse trees for specifications of functionalities,
+   simulators and associated interfaces, but also for user input to
+   the interpreter. *)
 
 (* specification of symbols, types and expressions borrowed from
    src/ecParsetree.ml of EasyCrypt distribution *)
@@ -43,7 +47,6 @@ type ptyinstan_r =
   | TVInamed  of (psymbol * pty) list
 
 and ptyinstan  = ptyinstan_r located
-
 
 (* expressions *)
 
@@ -258,3 +261,18 @@ type externals =
 type spec =
   {externals   : externals;
    definitions : def list}
+
+(* Interpreter User Input *)
+
+(* functionality expression
+
+   when a functionality has "()" as its argument list, we use
+   FunExprArgs (with []), but if it has no argument list, we use
+   FunExprNoArgs
+
+   in typechecking, we will forbid ideal functionalities with an
+   empty argument list, insisting on form FunExprNoArgs *)
+
+type fun_expr =
+  | FunExprNoArgs of pqsymbol
+  | FunExprArgs   of pqsymbol * fun_expr list
