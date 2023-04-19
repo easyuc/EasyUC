@@ -57,123 +57,6 @@ let json3 = {|
   ]
 |}
 
-(*
-(* simplification examples *)
-
-require import AllCore.
-
-(* I think crush is safe for simplification (although as we've seen it
-   can use a contradiction in the hypotheses to close the goal, which
-   is non-uniform). But crush may change, becoming even more powerful
-   (e.g., it could turn a disjunction in an assumption into a
-   conjunction of conclusions), and so I thought it would be better to
-   analyze things in terms of *goal reduction*.
-
-   I wondered if it was the case that, if we can reduce in a linear
-   fashion to a goal of the form `f exp`, whether it is sound to
-   conclude the result of the simplification is `exp`. As the following
-   shows, the answer is no. *)
-
-
-(* instead, we can restrict ourselves to simplifications (including
-   equational rewriting), where each change is an iff in the
-   context of the current hypotheses
-
-   below is the above example done in this style; what we're doing
-   is mimicking part of crush *)
-
-
-(* in the rewritings of hypotheses, we can also rewrite whole
-   hypotheses, in contexts where a boolean is needed *)
-
-lemma l3 (f : int -> bool, p : int -> bool, x y z : int) :
-  x = y + 1 =>
-  p (x + y) =>
-  x * 2 = z =>
-  y = 1 =>
-  f (if p (2 * y + 1)
-     then x + z * 2
-     else 14).
-proof.
-move => H1 H2 H3 H4 /=.
-(* starting point *)
-move : H1 H2 H3 H4.
-move => -> /=.
-(* when we have assumptions that are not either equalities or
-   conjunctions (see below for how we handle the latter), we
-   move them to the end so that rewritings can happen in them *)
-move => H1 H2 H3 /=.
-move : H2 H3 H1.  (* push p (y + 1 + y) to end *)
-move => <- /=.
-move => -> /=.
-move => -> /=.
-abort.
-
-lemma l10 (f : int -> bool, p : int -> bool, x y z : int) :
-  (if p (x + y) \/ p (y * 2) then z = 1 else z = 2) =>
-  p (x + y) =>
-  x = y + 1 =>
-  y = 12 =>
-  f z.
-proof.
-move => H1 H2 H3 H4.
-(* starting point *)
-move : H1 H2 H3 H4.
-move => H1 H2 H3 H4 /=.
-move : H3 H4 H1 H2.
-move => -> /=.
-move => -> /=.
-move => H1 H2.
-move : H2 H1.
-move => -> /=.
-move => -> /=.
-abort.
-
-lemma l11 (f : int -> bool, p : int -> bool, x y z : int) :
-  (if p (x + y) \/ p (y * 2) then z = 1 else z = 2) =>
-  p (x + y) =>
-  x = y + 1 =>
-  y = 12 =>
-  f z.
-proof.
-move => H1 H2 H3 H4.
-(* starting point *)
-move : H1 H2 H3 H4.
-move => H1 H2 H3 H4 /=.
-move : H3 H4 H1 H2.  (* put the two non-equations last *)
-move => -> /=.
-move => -> /=.
-(* pretty printer bug! *)
-(* the head assumption can't be rewritten, so could permute them,
-   or we could just have a non-optimal resulta *)
-move => H1 H2.
-move : H2 H1.
-move => -> /=.
-move => -> /=.
-abort.
-
- lemma l12 (f : int -> bool, p : int -> bool, x y z : int) :
-  (p (x + y) \/ p (y * 2) => z = 1) =>
-  p (x + y) =>
-  x = y + 1 =>
-  y = 12 =>
-  f z.
-proof.
-move => H1 H2 H3 H4.
-(* starting point *)
-move : H1 H2 H3 H4.
-move => H1 H2 H3 H4 /=.
-move : H3 H4 H1 H2.  (* put the two non-equations last *)
-move => -> /=.
-move => -> /=.
-(* the head assumption can't be rewritten, so could permute them *)
-move => H1 H2.
-move : H2 H1.
-move => -> /=.
-move => -> /=.
-abort.
-*)
-
 let () : unit =
   UcEcInterface.init ();
   UcEcInterface.require (UcUtils.dummyloc "AllCore") (Some `Import);
@@ -497,5 +380,83 @@ abort.*)
     ]
   |} in
   let concl = "x1 + x2 + x3 + y1 + y2 + y3" in
-  testSymplify json concl
+  testSymplify json concl;
+  
+(*  
+lemma l3 (f : int -> bool, p : int -> bool, x y z : int) :
+  x = y + 1 =>
+  p (x + y) =>
+  x * 2 = z =>
+  y = 1 =>
+  f (if p (2 * y + 1)
+     then x + z * 2
+     else 14).
+proof.
+move => H1 H2 H3 H4 /=.
+(* starting point *)
+move : H1 H2 H3 H4.
+move => -> /=.
+(* when we have assumptions that are not either equalities or
+   conjunctions (see below for how we handle the latter), we
+   move them to the end so that rewritings can happen in them *)
+move => H1 H2 H3 /=.
+move : H2 H3 H1.  (* push p (y + 1 + y) to end *)
+move => <- /=.
+move => -> /=.
+move => -> /=.
+abort.
+*)
 
+  let json={|
+    [
+      {"x":"int"},
+      {"y":"int"},
+      {"z":"int"},
+      {"p":"int -> bool"},
+      "x = y + 1",
+      "p (x + y)",
+      "x * 2 = z",
+      "y = 1"
+    ]
+  |} in
+  let concl = "if p (2 * y + 1)
+     then x + z * 2
+     else 14" in
+  testSymplify json concl;
+  
+(*
+lemma l10 (f : int -> bool, p : int -> bool, x y z : int) :
+  (if p (x + y) \/ p (y * 2) then z = 1 else z = 2) =>
+  p (x + y) =>
+  x = y + 1 =>
+  y = 12 =>
+  f z.
+proof.
+move => H1 H2 H3 H4.
+(* starting point *)
+move : H1 H2 H3 H4.
+move => H1 H2 H3 H4 /=.
+move : H3 H4 H1 H2.
+move => -> /=.
+move => -> /=.
+move => H1 H2.
+move : H2 H1.
+move => -> /=.
+move => -> /=.
+abort.
+*)
+
+  let json={|
+    [
+      {"x":"int"},
+      {"y":"int"},
+      {"z":"int"},
+      {"p":"int -> bool"},
+      "(if p (x + y) \\/ p (y * 2) then z = 1 else z = 2)",
+      "p (x + y)",
+      "x = y + 1",
+      "y = 12"
+    ]
+  |} in
+  let concl = "z" in
+  testSymplify json concl;
