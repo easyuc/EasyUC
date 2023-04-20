@@ -291,6 +291,31 @@ let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
   List.length h_forms
   
 let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t): EcCoreGoal.proof option =
+  let move_right_simplify proof =
+    let proof_a = move_right proof in
+    let proof_b = move_simplify proof_a in
+    Some proof_b
+  in
+  let move_left_simplify proof =
+    let proof_a = move_left proof in
+    let proof_b = move_simplify proof_a in
+    Some proof_b
+  in
+  let go_left_first proof =
+    let concl = (get_only_pregoal proof).g_concl in
+    begin match EcFol.sform_of_form concl with
+    | SFimp (h,_) ->
+      begin match EcFol.sform_of_form h with
+      | SFeq (_,v) ->
+        begin match EcFol.sform_of_form v with
+        | SFlocal _ -> true
+        | _ -> false
+        end
+      | _ -> false
+      end
+    | _ -> false
+    end
+  in
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     let proof_a = try move_hash proof with _ -> proof in
     let count = count_hyp_forms proof p_id in
@@ -299,16 +324,17 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t): EcCoreGoal.proo
     then 
       Some proof_a
     else
+      let left_first = go_left_first proof in
       try 
-        let proof_a = move_right proof in
-        let proof_b = move_simplify proof_a in
-          Some proof_b
+        if left_first
+        then move_left_simplify proof
+        else move_right_simplify proof
       with _ ->
         try 
-          let proof_a = move_left proof in
-          let proof_b = move_simplify proof_a in
-          Some proof_b
-        with _ -> None
+          if left_first
+          then move_right_simplify proof
+          else move_left_simplify proof
+       with _ -> None
   in
   progression try_rewriting_step proof
   
