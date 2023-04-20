@@ -1,6 +1,6 @@
 (* UcTypecheck module *)
 
-(* Typecheck a specification *)
+(* Typecheck a specification or user input to the interpreter *)
 
 open Batteries
 open Format
@@ -111,12 +111,6 @@ let pp_ty env ppf ty =
 let pp_expr env ppf expr =
   let ppe = EcPrinting.PPEnv.ofenv env in
   EcPrinting.pp_expr ppe ppf expr
-
-let print_ex env ex =
-	Printf.eprintf "(* expression *)\n";
-        (fun ppf-> pp_expr env ppf ex) Format.err_formatter;
-        Format.pp_print_newline Format.err_formatter ();
-        Format.pp_print_newline Format.err_formatter ()
 
 (****************************** interface checks ******************************)
 
@@ -1994,18 +1988,23 @@ let check_exists_and_is_real_fun
           "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
 
 let get_dir_interface_pair_ids_of_params_of_real_fun_id
-    (root : symbol) (fun_map : fun_tyd IdPairMap.t)
-    (funid : symbol) : symb_pair list =
-  let func = IdPairMap.find (root, funid) fun_map in
+    (fun_map : fun_tyd IdPairMap.t) (funid : symb_pair)
+      : symb_pair list =
+  let func = IdPairMap.find funid fun_map in
   match unloc func with
   | FunBodyRealTyd fbr -> indexed_map_to_list fbr.params
   | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
+
+let get_dir_interface_pair_ids_of_params_of_real_fun_id_root
+    (root : symbol) (fun_map : fun_tyd IdPairMap.t)
+    (funid : symbol) : symb_pair list =
+  get_dir_interface_pair_ids_of_params_of_real_fun_id fun_map (root, funid)
 
 let check_sims_fun_args
     (root : symbol) (fun_map : fun_tyd IdPairMap.t) (sims : psymbol)
     (sims_args : symb_pair located list located) : unit =
   let params_dir_pair_ids =
-    get_dir_interface_pair_ids_of_params_of_real_fun_id root fun_map
+    get_dir_interface_pair_ids_of_params_of_real_fun_id_root root fun_map
     (unloc sims) in
   let args_dir_pair_ids =
     List.map
@@ -2331,3 +2330,76 @@ let typecheck
     if UcState.get_units ()
     then check_units root qual_file maps in
   maps
+
+(* Interpreter User Input *)
+
+let rec typecheck_fun_expr
+    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
+  match fe with
+  | FunExprNoArgs pqsym      ->
+      let fun_id_l = check_exists_fun_qid root maps.fun_map pqsym in
+      let fun_id = unloc fun_id_l in
+      let l = loc fun_id_l in
+      (match unloc (IdPairMap.find fun_id maps.fun_map) with
+       | FunBodyRealTyd rfbt ->
+           if IdMap.is_empty (rfbt.params)
+           then FunExprTydReal (mk_loc l (fun_id, []))
+           else type_error l
+                (fun ppf ->
+                   fprintf ppf
+                   "@[real@ functionality@ missing@ arguments@]")
+       | FunBodyIdealTyd _ -> FunExprTydIdeal (mk_loc l fun_id))
+  | FunExprArgs (pqsym, fes) ->
+      let fun_id_l = check_exists_fun_qid root maps.fun_map pqsym in
+      let fun_id = unloc fun_id_l in
+      let l = loc fun_id_l in
+      (match unloc (IdPairMap.find fun_id maps.fun_map) with
+       | FunBodyRealTyd rfbt ->
+           let params_dir_pair_ids =
+             get_dir_interface_pair_ids_of_params_of_real_fun_id
+             maps.fun_map fun_id in
+           let fets =
+             List.map
+             (fun fe -> typecheck_fun_expr root maps fe)
+             fes in
+           let fet_locs = List.map loc_of_fet fets in
+           let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
+           if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
+           then type_error l
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[real@ functionality@ expects@ %d@ arguments,@ " ^^
+                    "but@ was@ applied@ to@ %d@ arguments@]")
+                   (List.length params_dir_pair_ids)
+                   (List.length args_dir_pair_ids))
+           else List.iteri
+                (fun i l ->
+                   if List.nth params_dir_pair_ids i <>
+                      List.nth args_dir_pair_ids i
+                   then type_error l
+                        (fun ppf ->
+                           fprintf ppf
+                           ("@[argument@ %d@ implements@ composite@ "       ^^
+                            "direct@ interface@ %a,@ whereas@ it@ should@ " ^^
+                            "implement@ %a@]")
+                           (i + 1)
+                           pp_id_pair (List.nth args_dir_pair_ids i)
+                           pp_id_pair (List.nth params_dir_pair_ids i)))
+                fet_locs;
+                FunExprTydReal (mk_loc l (fun_id, fets))
+       | FunBodyIdealTyd _ ->
+           type_error l
+           (fun ppf ->
+              fprintf ppf
+              ("@[ideal@ functionality@ cannot@ have@ " ^^
+               "arguments@]")))
+
+let typecheck_real_fun_expr
+    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
+  let fet = typecheck_fun_expr root maps fe in
+  if is_real_at_top_fet fet
+  then fet
+  else type_error (loc_of_fet fet)
+       (fun ppf ->
+          fprintf ppf
+          "@[ideal@ functionality@ cannot@ have@ arguments@]")
