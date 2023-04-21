@@ -276,3 +276,14 @@ type spec =
 type fun_expr =
   | FunExprNoArgs of pqsymbol
   | FunExprArgs   of pqsymbol * fun_expr list
+
+(* expression for message in transit
+
+   origin or destination can be an address, when the port index
+   is implicit from the message path *)
+
+type sent_msg_expr =
+  {in_port_expr  : pexpr;               (* source port or address *)
+   path          : msg_path;            (* message path *)
+   args          : pexpr list located;  (* message arguments *)
+   out_port_expr : pexpr}               (* destination port or address *)

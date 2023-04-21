@@ -2344,7 +2344,7 @@ let rec typecheck_fun_expr
        | FunBodyRealTyd rfbt ->
            if IdMap.is_empty (rfbt.params)
            then FunExprTydReal (mk_loc l (fun_id, []))
-           else type_error l
+           else error_message_record l
                 (fun ppf ->
                    fprintf ppf
                    "@[real@ functionality@ missing@ arguments@]")
@@ -2365,7 +2365,7 @@ let rec typecheck_fun_expr
            let fet_locs = List.map loc_of_fet fets in
            let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
            if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
-           then type_error l
+           then error_message_record l
                 (fun ppf ->
                    fprintf ppf
                    ("@[real@ functionality@ expects@ %d@ arguments,@ " ^^
@@ -2376,7 +2376,7 @@ let rec typecheck_fun_expr
                 (fun i l ->
                    if List.nth params_dir_pair_ids i <>
                       List.nth args_dir_pair_ids i
-                   then type_error l
+                   then error_message_record l
                         (fun ppf ->
                            fprintf ppf
                            ("@[argument@ %d@ implements@ composite@ "       ^^
@@ -2388,7 +2388,7 @@ let rec typecheck_fun_expr
                 fet_locs;
                 FunExprTydReal (mk_loc l (fun_id, fets))
        | FunBodyIdealTyd _ ->
-           type_error l
+           error_message_record l
            (fun ppf ->
               fprintf ppf
               ("@[ideal@ functionality@ cannot@ have@ " ^^
@@ -2399,7 +2399,7 @@ let typecheck_real_fun_expr
   let fet = typecheck_fun_expr root maps fe in
   if is_real_at_top_fet fet
   then fet
-  else type_error (loc_of_fet fet)
+  else error_message_record (loc_of_fet fet)
        (fun ppf ->
           fprintf ppf
           "@[ideal@ functionality@ cannot@ have@ arguments@]")

@@ -473,3 +473,12 @@ let id_adv_inter_of_fet
        match id_adv_inter_of_fun_body_tyd fbt with
        | None    -> None
        | Some id -> Some (fst fun_id, id))
+
+(* typed expression for message in transit *)
+
+type sent_msg_expr_tyd =
+  {in_port_expr  : expr;               (* source port or address *)
+   path          : msg_path;           (* message path *)
+   args          : expr list located;  (* message arguments *)
+   out_port_expr : expr}               (* destination port or address *)
+
