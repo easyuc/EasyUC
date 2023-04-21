@@ -7,7 +7,7 @@
           (ocamlopt_flags -O3 -unbox-closures)))
 
 (executables
- (names ucdsl test0_of_UcEcFormEval test1_of_UcEcFormEval)
+ (names ucdsl test0_of_UcEcFormEval test1_of_UcEcFormEval ucInterpreterClient)
  (modes byte exe)
  (libraries batteries camlp-streams dune-build-info inifiles why3 yojson zarith)
  (instrumentation (backend bisect_ppx --bisect-silent yes)))
