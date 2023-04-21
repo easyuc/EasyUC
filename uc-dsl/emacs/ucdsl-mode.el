@@ -106,15 +106,16 @@
 ]+\\)\\( \\([0-9]+\\) \\([0-9]+\\) \\([0-9]+\\) \\([0-9]+\\)\\)?" 2 (4 . 6) (5 . 7)))
 
 ;; hook for mode setting default compilation command, which the user
-;; may then edit. -raw-msg is so error/warning messages issued by
+;; may then edit. by default, no hard tabs are inserted.
+;; -raw-msg is so error/warning messages issued by
 ;; ucdsl match the format described above
 
 (add-hook 'ucdsl-mode-hook
           (lambda ()
+            (setq indent-tabs-mode nil)
             (set (make-local-variable 'compile-command)
             (concat "ucdsl -raw-msg " buffer-file-name))))
 
-;;;###autoload
 (define-derived-mode ucdsl-mode text-mode "UC DSL mode"
   "Major mode for editing UC DSL code"
 
