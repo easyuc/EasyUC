@@ -428,57 +428,52 @@ type typed_spec = maps_tyd
 
    each functionality is qualified by its root file *)
 
-type fun_expr_tyd =
-  | FunExprTydReal  of (symb_pair * fun_expr_tyd list) located
-  | FunExprTydIdeal of symb_pair located
+type fun_expr_tyd_u =
+  | FunExprTydReal  of symb_pair * fun_expr_tyd list
+  | FunExprTydIdeal of symb_pair
+
+and fun_expr_tyd = fun_expr_tyd_u located
 
 let is_real_at_top_fet (fet : fun_expr_tyd) : bool =
-  match fet with
+  match unloc fet with
   | FunExprTydReal _  -> true
   | FunExprTydIdeal _ -> false
 
 let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
-  match fet with
+  match unloc fet with
   | FunExprTydReal _  -> false
   | FunExprTydIdeal _ -> true
 
-let loc_of_fet (fet : fun_expr_tyd) : EcLocation.t =
-  match fet with
-  | FunExprTydReal x  -> loc x
-  | FunExprTydIdeal x -> loc x
-
 let id_dir_inter_of_fet (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair =
-  match fet with
-  | FunExprTydReal x ->
-      let fun_id = fst (unloc x) in
+  match unloc fet with
+  | FunExprTydReal (fun_id, _) ->
       let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
       (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
-  | FunExprTydIdeal x ->
-      let fun_id = unloc x in
+  | FunExprTydIdeal fun_id ->
       let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
       (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
 
 let id_adv_inter_of_fet
     (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair option =
-  match fet with
-  | FunExprTydReal x ->
-      (let fun_id = fst (unloc x) in
-       let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
+  match unloc fet with
+  | FunExprTydReal (fun_id, _) ->
+      (let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
        match id_adv_inter_of_fun_body_tyd fbt with
        | None    -> None
        | Some id -> Some (fst fun_id, id))
-  | FunExprTydIdeal x ->
-      (let fun_id = unloc x in
-       let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
+  | FunExprTydIdeal fun_id ->
+      (let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
        match id_adv_inter_of_fun_body_tyd fbt with
        | None    -> None
        | Some id -> Some (fst fun_id, id))
 
 (* typed expression for message in transit *)
 
-type sent_msg_expr_tyd =
-  {in_port_expr  : expr;               (* source port or address *)
-   path          : msg_path;           (* message path *)
+type sent_msg_expr_tyd_u =
+  {in_port_expr  : expr located;       (* source port or address *)
+   inter         : symb_pair located;  (* root and id of top interface *)
+   rest          : msg_path;           (* rest of message path *)
    args          : expr list located;  (* message arguments *)
-   out_port_expr : expr}               (* destination port or address *)
+   out_port_expr : expr located}       (* destination port or address *)
 
+type sent_msg_expr_tyd = sent_msg_expr_tyd_u located
