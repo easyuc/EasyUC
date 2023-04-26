@@ -2343,12 +2343,12 @@ let rec typecheck_fun_expr
       (match unloc (IdPairMap.find fun_id maps.fun_map) with
        | FunBodyRealTyd rfbt ->
            if IdMap.is_empty (rfbt.params)
-           then FunExprTydReal (mk_loc l (fun_id, []))
+           then mk_loc l (FunExprTydReal (fun_id, []))
            else error_message_record l
                 (fun ppf ->
                    fprintf ppf
                    "@[real@ functionality@ missing@ arguments@]")
-       | FunBodyIdealTyd _ -> FunExprTydIdeal (mk_loc l fun_id))
+       | FunBodyIdealTyd _ -> mk_loc l (FunExprTydIdeal fun_id))
   | FunExprArgs (pqsym, fes) ->
       let fun_id_l = check_exists_fun_qid root maps.fun_map pqsym in
       let fun_id = unloc fun_id_l in
@@ -2362,7 +2362,7 @@ let rec typecheck_fun_expr
              List.map
              (fun fe -> typecheck_fun_expr root maps fe)
              fes in
-           let fet_locs = List.map loc_of_fet fets in
+           let fet_locs = List.map loc fets in
            let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
            if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
            then error_message_record l
@@ -2386,7 +2386,7 @@ let rec typecheck_fun_expr
                            pp_id_pair (List.nth args_dir_pair_ids i)
                            pp_id_pair (List.nth params_dir_pair_ids i)))
                 fet_locs;
-                FunExprTydReal (mk_loc l (fun_id, fets))
+                mk_loc l (FunExprTydReal (fun_id, fets))
        | FunBodyIdealTyd _ ->
            error_message_record l
            (fun ppf ->
@@ -2399,7 +2399,7 @@ let typecheck_real_fun_expr
   let fet = typecheck_fun_expr root maps fe in
   if is_real_at_top_fet fet
   then fet
-  else error_message_record (loc_of_fet fet)
+  else error_message_record (loc fet)
        (fun ppf ->
           fprintf ppf
           "@[ideal@ functionality@ cannot@ have@ arguments@]")
