@@ -438,7 +438,54 @@ let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFo
   (*simplify_by_crushing proof p_id*)
   simplify_heuristic proof p_id
 
+let get_ty_from_oty (oty : EcTypes.ty) =  
+  match oty.ty_node with
+  | Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
+  | _ -> failwith "type is not an option type"
+    
+let smt_op_form_not_None 
+(hyps : EcEnv.LDecl.hyps) (opf : EcCoreFol.form) (form : EcCoreFol.form) : bool =
+  let _,oty = EcTypes.tyfun_flat (EcCoreFol.f_ty opf) in
+  let ty = get_ty_from_oty oty in
+  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] (EcTypes.toption ty) in
+  let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
+  let er = evalCondition hyps concl in
+  match er with
+  | Bool false -> true
+  | _ -> false
+  
+let mk_oget_op_form
+(opf : EcCoreFol.form) (form : EcCoreFol.form) : EcCoreFol.form =
+  let _,oty = EcTypes.tyfun_flat (EcCoreFol.f_ty opf) in
+  let ty = get_ty_from_oty oty in
+  let as_ty_f = EcCoreFol.f_app opf [form] oty in
+  let ogetf = EcCoreFol.f_op EcCoreLib.CI_Option.p_oget [ty] (EcTypes.tfun (EcTypes.toption ty) ty) in
+  EcCoreFol.f_app ogetf [as_ty_f] ty
 
+let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
+  let ty = EcCoreFol.f_ty form in
+  let env = EcEnv.LDecl.toenv hyps in
+  begin match ty.ty_node with
+  | Tconstr (p,_) ->
+    let tyd = EcEnv.Ty.by_path p env in
+    let ty_dtyo = EcDecl.tydecl_as_datatype tyd in
+    begin match ty_dtyo with
+    | Some ty_dt ->
+      let sopl = EcInductive.datatype_projectors (p, tyd.tyd_params, ty_dt) in
+      let opfl = List.map (
+        fun (s,op) ->
+        let op_arg_tyl, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
+        EcCoreFol.f_op (EcInductive.datatype_proj_path p s) op_arg_tyl op_ret_ty)
+        sopl in
+      let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) opfl in
+      begin match opfo with
+      | Some opf -> mk_oget_op_form opf form
+      | None -> failwith "Couldn't find the operator for deconstruction"
+      end
+    | None -> failwith "Only data types can be deconstructed"
+    end
+  | _ -> failwith "Only constructed types can be deconstructed"
+  end
 
 
 
