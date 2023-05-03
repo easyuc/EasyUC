@@ -2442,9 +2442,10 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
              | CompositeTyd comp_mp ->
                  match rest with
                  | [bas] ->
-                     (match get_inter_tyd maps root bas with
+                     (match IdMap.find_opt bas comp_mp with
                       | None     -> None
-                      | Some ibt ->
+                      | Some bas ->
+                          let ibt = Option.get (get_inter_tyd maps root bas) in
                           match unloc ibt with
                           | BasicTyd bibt  -> Some bibt
                           | CompositeTyd _ -> failure "cannot happen")
