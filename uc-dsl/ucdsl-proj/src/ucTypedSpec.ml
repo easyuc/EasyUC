@@ -306,6 +306,12 @@ let exists_id_pair_inter_maps
   exists_id_pair dir_inter_map id_pair ||
   exists_id_pair adv_inter_map id_pair
 
+let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
+      : inter_tyd option =
+  match IdPairMap.find_opt (root, top) (maps.dir_inter_map) with
+  | None  -> IdPairMap.find_opt (root, top) (maps.adv_inter_map)
+  | itopt -> itopt
+
 let inter_names (root : symbol) (maps : maps_tyd) : IdSet.t =
   let i_n (map : inter_tyd IdPairMap.t) =
     IdSet.of_list
@@ -470,10 +476,9 @@ let id_adv_inter_of_fet
 (* typed expression for message in transit *)
 
 type sent_msg_expr_tyd_u =
-  {in_port_expr  : expr located;       (* source port or address *)
-   inter         : symb_pair located;  (* root and id of top interface *)
-   rest          : msg_path;           (* rest of message path *)
-   args          : expr list located;  (* message arguments *)
-   out_port_expr : expr located}       (* destination port or address *)
+  {in_port_expr  : expr;        (* source port or address *)
+   path          : msg_path_u;  (* message path *)
+   args          : expr list;   (* message arguments *)
+   out_port_expr : expr}        (* destination port or address *)
 
 type sent_msg_expr_tyd = sent_msg_expr_tyd_u located

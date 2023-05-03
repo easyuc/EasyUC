@@ -1264,14 +1264,14 @@ let check_toplevel_match_clause
           fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
       let pty = EcUnify.UniEnv.fresh ue in
 
-      (try  EcUnify.unify env ue (toarrow ctorty pty) opty with
+      (try EcUnify.unify env ue (toarrow ctorty pty) opty with
        | EcUnify.UnificationFailure _ -> assert false);
       unify_or_fail env ue l ~expct:pty gindty;
       let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
       let pvars = List.map (fun x -> create (unloc x)) cargs in
       let pvars = List.combine pvars ctorty in
 
-      ctorsym, (pvars , snd clause)
+      ctorsym, (pvars, snd clause)
 
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -2333,7 +2333,7 @@ let typecheck
 
 (* Interpreter User Input *)
 
-let rec typecheck_fun_expr
+let rec inter_check_fun_expr
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
   match fe with
   | FunExprNoArgs pqsym      ->
@@ -2360,7 +2360,7 @@ let rec typecheck_fun_expr
              maps.fun_map fun_id in
            let fets =
              List.map
-             (fun fe -> typecheck_fun_expr root maps fe)
+             (fun fe -> inter_check_fun_expr root maps fe)
              fes in
            let fet_locs = List.map loc fets in
            let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
@@ -2394,12 +2394,97 @@ let rec typecheck_fun_expr
               ("@[ideal@ functionality@ cannot@ have@ " ^^
                "arguments@]")))
 
-let typecheck_real_fun_expr
+let addr_ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
+
+let inter_check_real_fun_expr
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
-  let fet = typecheck_fun_expr root maps fe in
+  let fet = inter_check_fun_expr root maps fe in
   if is_real_at_top_fet fet
   then fet
   else error_message_record (loc fet)
        (fun ppf ->
           fprintf ppf
-          "@[ideal@ functionality@ cannot@ have@ arguments@]")
+          "@[real@ functionality@ expected@]")
+
+let inter_check_expr
+    (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
+      : expr * ty =
+  let (exp, ty) = transexp env ue pexpr in
+  let () =
+    match expct_ty_opt with
+    | None          -> ()
+    | Some expct_ty ->
+        unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
+  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
+  (exp, res_ty)
+
+let inter_check_expr_port_or_addr
+    (env : env) (ue : unienv) (pexpr : pexpr) : expr * ty =
+  let (exp, ty) = inter_check_expr env ue pexpr None in
+  let () =
+        try EcUnify.unify env ue ty port_ty with
+        | EcUnify.UnificationFailure _ ->
+            unify_or_fail env ue (loc pexpr) ~expct:addr_ty ty in
+  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
+  (exp, res_ty)
+
+let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
+      : (msg_dir * ty list) option =
+  match mp.inter_id_path with
+  | root :: top :: rest ->
+      (let bas_int_opt =
+         match get_inter_tyd maps root top with
+         | None    -> None
+         | Some ti ->
+             match unloc ti with
+             | BasicTyd bibt        -> Some bibt
+             | CompositeTyd comp_mp ->
+                 match rest with
+                 | [bas] ->
+                     (match get_inter_tyd maps root bas with
+                      | None     -> None
+                      | Some ibt ->
+                          match unloc ibt with
+                          | BasicTyd bibt  -> Some bibt
+                          | CompositeTyd _ -> failure "cannot happen")
+                 | _     -> None in
+       match bas_int_opt with
+       | None    -> None
+       | Some bi ->
+           match IdMap.find_opt mp.msg bi with
+           | None     -> None
+           | Some mbt ->
+               Some (mbt.dir, indexed_map_to_list (unlocm mbt.params_map)))
+  | _ -> None
+
+let inter_check_sent_msg_expr
+    (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
+  let ue = unif_env () in
+  let l = merge (loc sme.in_port_expr) (loc sme.out_port_expr) in
+  let (in_expr, _) = inter_check_expr_port_or_addr env ue sme.in_port_expr in
+  let (out_expr, _) = inter_check_expr_port_or_addr env ue sme.out_port_expr in
+  let path = unloc (sme.path) in
+  match inter_check_root_qualified_msg_path maps (unloc sme.path) with
+  | None              ->
+      error_message_record (loc sme.path)
+      (fun ppf ->
+         fprintf ppf
+         "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
+         pp_qsymbol (msg_path_u_to_qsymbol (unloc sme.path)))
+  | Some (_, exp_tys) ->
+      let args = unloc sme.args in
+      if List.length exp_tys <> List.length args
+      then failure "hi"
+      else let exprs =
+             List.mapi
+             (fun i pexpr ->
+                let (ex, ty) =
+                  inter_check_expr env ue pexpr (Some (List.nth exp_tys i)) in
+                ex)
+             args in
+           mk_loc l
+           {in_port_expr  = in_expr;
+            path          = path;
+            args          = exprs;
+            out_port_expr = out_expr}

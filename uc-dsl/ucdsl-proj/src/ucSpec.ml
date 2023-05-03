@@ -280,7 +280,10 @@ type fun_expr =
 (* expression for message in transit
 
    origin or destination can be an address, when the port index
-   is implicit from the message path *)
+   is implicit from the message path
+
+   message path must be qualified by root, as otherwise could
+   be ambiguous *)
 
 type sent_msg_expr =
   {in_port_expr  : pexpr;               (* source port or address *)

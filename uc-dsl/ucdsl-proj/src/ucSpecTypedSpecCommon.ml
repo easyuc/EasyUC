@@ -61,6 +61,9 @@ type msg_path_u =
   {inter_id_path : symbol list;  (* inter id path *)
    msg : symbol}                 (* message name *)
 
+let msg_path_u_to_qsymbol (mpu : msg_path_u) : qsymbol =
+  (mpu.inter_id_path, mpu.msg)
+
 type msg_path = msg_path_u located  (* message path *)
 
 (* left-hand sides of assignment *)
