@@ -121,6 +121,16 @@ let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
 
 type ty_index = (ty * int) located
 
+(* UC DSL types *)
+
+let uc_qsym_prefix = ["Top"; "UCBasicTypes"]
+
+let port_ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "port")) []
+
+let addr_ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
+
 (* typed messages and functionality interfaces *)
 
 type message_body_tyd =
@@ -306,6 +316,25 @@ let exists_id_pair_inter_maps
   exists_id_pair dir_inter_map id_pair ||
   exists_id_pair adv_inter_map id_pair
 
+type msg_mode =  (* message mode *)
+  | Dir
+  | Adv
+
+let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
+      : (msg_mode * inter_tyd) option =
+  match IdPairMap.find_opt (root, top) (maps.dir_inter_map) with
+  | None    ->
+      (match IdPairMap.find_opt (root, top) (maps.adv_inter_map) with
+       | None    -> None
+       | Some it -> Some (Adv, it))
+  | Some it -> Some(Dir, it)
+
+let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
+      : inter_tyd option =
+  match get_inter_tyd_mode maps root top with
+  | None         -> None
+  | Some (_, it) -> Some it
+
 let inter_names (root : symbol) (maps : maps_tyd) : IdSet.t =
   let i_n (map : inter_tyd IdPairMap.t) =
     IdSet.of_list
@@ -470,10 +499,11 @@ let id_adv_inter_of_fet
 (* typed expression for message in transit *)
 
 type sent_msg_expr_tyd_u =
-  {in_port_expr  : expr located;       (* source port or address *)
-   inter         : symb_pair located;  (* root and id of top interface *)
-   rest          : msg_path;           (* rest of message path *)
-   args          : expr list located;  (* message arguments *)
-   out_port_expr : expr located}       (* destination port or address *)
+  {mode         : msg_mode;           (* message mode *)
+   dir          : msg_dir;            (* message direction *)
+   in_poa_expr  : expr port_or_addr;  (* source *)
+   path         : msg_path_u;         (* message path *)
+   args         : expr list;          (* message arguments *)
+   out_poa_expr : expr port_or_addr}  (* destination *)
 
 type sent_msg_expr_tyd = sent_msg_expr_tyd_u located
