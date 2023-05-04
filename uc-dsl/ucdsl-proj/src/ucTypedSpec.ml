@@ -121,6 +121,16 @@ let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
 
 type ty_index = (ty * int) located
 
+(* UC DSL types *)
+
+let uc_qsym_prefix = ["Top"; "UCBasicTypes"]
+
+let port_ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "port")) []
+
+let addr_ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
+
 (* typed messages and functionality interfaces *)
 
 type message_body_tyd =
@@ -306,12 +316,6 @@ let exists_id_pair_inter_maps
   exists_id_pair dir_inter_map id_pair ||
   exists_id_pair adv_inter_map id_pair
 
-let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
-      : inter_tyd option =
-  match IdPairMap.find_opt (root, top) (maps.dir_inter_map) with
-  | None  -> IdPairMap.find_opt (root, top) (maps.adv_inter_map)
-  | itopt -> itopt
-
 type msg_mode =  (* message mode *)
   | Dir
   | Adv
@@ -324,6 +328,12 @@ let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
        | None    -> None
        | Some it -> Some (Adv, it))
   | Some it -> Some(Dir, it)
+
+let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
+      : inter_tyd option =
+  match get_inter_tyd_mode maps root top with
+  | None         -> None
+  | Some (_, it) -> Some it
 
 let inter_names (root : symbol) (maps : maps_tyd) : IdSet.t =
   let i_n (map : inter_tyd IdPairMap.t) =

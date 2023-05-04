@@ -376,11 +376,6 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
   | [sa]      -> sa
   | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
-let uc_qsym_prefix = ["Top"; "UCBasicTypes"]
-
-let port_ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "port")) []
-
 let augment_env_with_state_context
   (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
@@ -2393,9 +2388,6 @@ let rec inter_check_fun_expr
               fprintf ppf
               ("@[ideal@ functionality@ cannot@ have@ " ^^
                "arguments@]")))
-
-let addr_ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
 
 let inter_check_real_fun_expr
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =

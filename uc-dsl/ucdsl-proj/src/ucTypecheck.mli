@@ -5,7 +5,6 @@
 open EcSymbols
 open EcLocation
 open EcEnv
-open EcTypes
 
 open UcSpec
 open UcTypedSpec
@@ -30,11 +29,6 @@ val typecheck :
 
 val inter_check_real_fun_expr :
   symbol -> typed_spec -> fun_expr -> fun_expr_tyd
-
-(* types for port and addr *)
-
-val port_ty : ty
-val addr_ty : ty
 
 (* typecheck a sent message expression in an environment *)
 
