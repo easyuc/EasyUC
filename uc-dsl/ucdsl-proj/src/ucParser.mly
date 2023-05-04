@@ -232,12 +232,14 @@ let check_parsing_adversarial_inter (ni : named_inter) =
    from the UC DSL file.  This list is parsed by UcParser, starting
    with the initial production spec.  The output of UcParser is a
    record of spec type (defined in UcSpec). *)
+%type <UcSpec.spec> spec
+%type <UcSpec.fun_expr> pfun_expr
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start <UcSpec.spec> spec
+%start spec pfun_expr
 
 %%
 
@@ -1278,6 +1280,11 @@ ptybindings :
 
   | x = bdident+; COLON; ty = loc(type_exp)
       { [x, ty] }
+
+(* Interpreter User Input *)
+pfun_expr :
+  | x = uqident { FunExprNoArgs x }
+  | x = uqident; LBRACKET; y = separated_list(COMMA, pfun_expr); RBRACKET; { FunExprArgs (x,y) }
 
 (* Localization *)
 
