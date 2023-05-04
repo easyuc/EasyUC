@@ -513,10 +513,10 @@ let flatten_all_basic_inter_paths (abip : all_basic_inter_paths)
 let filter_dir_basic_inter_paths
     (dir : msg_dir) (bips : basic_inter_path list) : basic_inter_path list =
   List.map
-  (fun bip ->
+  (fun (bip : basic_inter_path) ->
      (fst bip,
       IdMap.filter
-      (fun _ md -> md.dir = dir)
+      (fun _ (mbt : message_body_tyd) -> mbt.dir = dir)
       (snd bip)))
   bips
 
@@ -2420,51 +2420,55 @@ let inter_check_expr
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (pexpr : pexpr) : expr * ty =
-  let (exp, ty) = inter_check_expr env ue pexpr None in
-  let () =
-        try EcUnify.unify env ue ty port_ty with
-        | EcUnify.UnificationFailure _ ->
-            unify_or_fail env ue (loc pexpr) ~expct:addr_ty ty in
-  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
-  (exp, res_ty)
+    (env : env) (ue : unienv) (pexpr_poa : pexpr port_or_addr)
+      : expr port_or_addr =
+  match pexpr_poa with
+  | PoA_Port pexpr ->
+      let (expr, ty) = inter_check_expr env ue pexpr (Some port_ty) in
+      PoA_Port expr
+  | PoA_Addr pexpr ->
+      let (expr, ty) = inter_check_expr env ue pexpr (Some addr_ty) in
+      PoA_Addr expr
 
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
-      : (msg_dir * ty list) option =
+      : (msg_mode * msg_dir * ty list) option =
   match mp.inter_id_path with
   | root :: top :: rest ->
-      (let bas_int_opt =
-         match get_inter_tyd maps root top with
-         | None    -> None
-         | Some ti ->
-             match unloc ti with
-             | BasicTyd bibt        -> Some bibt
+      (let mode_bibt_opt =
+         match get_inter_tyd_mode maps root top with
+         | None               -> None
+         | Some (mode, it) ->
+             match unloc it with
+             | BasicTyd bibt        -> Some (mode, bibt)
              | CompositeTyd comp_mp ->
                  match rest with
                  | [bas] ->
                      (match IdMap.find_opt bas comp_mp with
                       | None     -> None
                       | Some bas ->
-                          let ibt = Option.get (get_inter_tyd maps root bas) in
-                          match unloc ibt with
-                          | BasicTyd bibt  -> Some bibt
+                          let bit = Option.get (get_inter_tyd maps root bas) in
+                          match unloc bit with
+                          | BasicTyd bibt  -> Some (mode, bibt)
                           | CompositeTyd _ -> failure "cannot happen")
                  | _     -> None in
-       match bas_int_opt with
-       | None    -> None
-       | Some bi ->
-           match IdMap.find_opt mp.msg bi with
+       match mode_bibt_opt with
+       | None              -> None
+       | Some (mode, bibt) ->
+           match IdMap.find_opt mp.msg bibt with
            | None     -> None
            | Some mbt ->
-               Some (mbt.dir, indexed_map_to_list (unlocm mbt.params_map)))
+               Some
+               (mode, mbt.dir, indexed_map_to_list (unlocm mbt.params_map)))
   | _ -> None
 
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let ue = unif_env () in
-  let l = merge (loc sme.in_port_expr) (loc sme.out_port_expr) in
-  let (in_expr, _) = inter_check_expr_port_or_addr env ue sme.in_port_expr in
-  let (out_expr, _) = inter_check_expr_port_or_addr env ue sme.out_port_expr in
+  let l = merge (loc sme.in_poa_pexpr) (loc sme.out_poa_pexpr) in
+  let in_poa_expr =
+    inter_check_expr_port_or_addr env ue (unloc sme.in_poa_pexpr) in
+  let out_poa_expr =
+    inter_check_expr_port_or_addr env ue (unloc sme.out_poa_pexpr) in
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps (unloc sme.path) with
   | None              ->
@@ -2473,7 +2477,7 @@ let inter_check_sent_msg_expr
          fprintf ppf
          "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
          pp_qsymbol (msg_path_u_to_qsymbol (unloc sme.path)))
-  | Some (_, exp_tys) ->
+  | Some (mode, dir, exp_tys) ->
       let args = unloc sme.args in
       if List.length exp_tys <> List.length args
       then failure "hi"
@@ -2485,7 +2489,9 @@ let inter_check_sent_msg_expr
                 ex)
              args in
            mk_loc l
-           {in_port_expr  = in_expr;
-            path          = path;
-            args          = exprs;
-            out_port_expr = out_expr}
+           {mode         = mode;
+            dir          = dir;
+            in_poa_expr  = in_poa_expr;
+            path         = path;
+            args         = exprs;
+            out_poa_expr = out_poa_expr}

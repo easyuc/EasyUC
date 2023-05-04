@@ -7,7 +7,6 @@ open EcLocation
 open EcEnv
 open EcTypes
 
-open UcSpecTypedSpecCommon
 open UcSpec
 open UcTypedSpec
 
@@ -31,11 +30,6 @@ val typecheck :
 
 val inter_check_real_fun_expr :
   symbol -> typed_spec -> fun_expr -> fun_expr_tyd
-
-(* typecheck an unlocated root-qualified message path *)
-
-val inter_check_root_qualified_msg_path :
-  typed_spec -> msg_path_u -> (msg_dir * ty list) option
 
 (* types for port and addr *)
 

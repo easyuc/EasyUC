@@ -71,3 +71,9 @@ type msg_path = msg_path_u located  (* message path *)
 type lhs =  (* left-hand sides *)
   | LHSSimp  of psymbol       (* assign to variable *)
   | LHSTuple of psymbol list  (* assign to tuple of variables *)
+
+(* for use in interpreter *)
+
+type 'a port_or_addr =
+  | PoA_Port of 'a
+  | PoA_Addr of 'a

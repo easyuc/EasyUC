@@ -312,6 +312,19 @@ let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
   | None  -> IdPairMap.find_opt (root, top) (maps.adv_inter_map)
   | itopt -> itopt
 
+type msg_mode =  (* message mode *)
+  | Dir
+  | Adv
+
+let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
+      : (msg_mode * inter_tyd) option =
+  match IdPairMap.find_opt (root, top) (maps.dir_inter_map) with
+  | None    ->
+      (match IdPairMap.find_opt (root, top) (maps.adv_inter_map) with
+       | None    -> None
+       | Some it -> Some (Adv, it))
+  | Some it -> Some(Dir, it)
+
 let inter_names (root : symbol) (maps : maps_tyd) : IdSet.t =
   let i_n (map : inter_tyd IdPairMap.t) =
     IdSet.of_list
@@ -476,9 +489,11 @@ let id_adv_inter_of_fet
 (* typed expression for message in transit *)
 
 type sent_msg_expr_tyd_u =
-  {in_port_expr  : expr;        (* source port or address *)
-   path          : msg_path_u;  (* message path *)
-   args          : expr list;   (* message arguments *)
-   out_port_expr : expr}        (* destination port or address *)
+  {mode         : msg_mode;           (* message mode *)
+   dir          : msg_dir;            (* message direction *)
+   in_poa_expr  : expr port_or_addr;  (* source *)
+   path         : msg_path_u;         (* message path *)
+   args         : expr list;          (* message arguments *)
+   out_poa_expr : expr port_or_addr}  (* destination *)
 
 type sent_msg_expr_tyd = sent_msg_expr_tyd_u located
