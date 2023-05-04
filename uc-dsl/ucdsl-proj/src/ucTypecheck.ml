@@ -2471,7 +2471,7 @@ let inter_check_sent_msg_expr
   | Some (mode, dir, exp_tys) ->
       let args = unloc sme.args in
       if List.length exp_tys <> List.length args
-      then error_message_record (loc sme.path)
+      then error_message_record (loc sme.args)
            (fun ppf ->
               fprintf ppf
               ("[@there@ are@ %d@ arguments,@ whereas@ there@ should@ be@ " ^^
