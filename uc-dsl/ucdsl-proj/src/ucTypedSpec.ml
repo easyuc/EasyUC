@@ -498,12 +498,10 @@ let id_adv_inter_of_fet
 
 (* typed expression for message in transit *)
 
-type sent_msg_expr_tyd_u =
+type sent_msg_expr_tyd =
   {mode         : msg_mode;           (* message mode *)
    dir          : msg_dir;            (* message direction *)
    in_poa_expr  : expr port_or_addr;  (* source *)
    path         : msg_path_u;         (* message path *)
    args         : expr list;          (* message arguments *)
    out_poa_expr : expr port_or_addr}  (* destination *)
-
-type sent_msg_expr_tyd = sent_msg_expr_tyd_u located

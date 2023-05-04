@@ -2456,11 +2456,10 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let ue = unif_env () in
-  let l = merge (loc sme.in_poa_pexpr) (loc sme.out_poa_pexpr) in
   let in_poa_expr =
-    inter_check_expr_port_or_addr env ue (unloc sme.in_poa_pexpr) in
+    inter_check_expr_port_or_addr env ue sme.in_poa_pexpr in
   let out_poa_expr =
-    inter_check_expr_port_or_addr env ue (unloc sme.out_poa_pexpr) in
+    inter_check_expr_port_or_addr env ue sme.out_poa_pexpr in
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps (unloc sme.path) with
   | None              ->
@@ -2480,7 +2479,6 @@ let inter_check_sent_msg_expr
                   inter_check_expr env ue pexpr (Some (List.nth exp_tys i)) in
                 ex)
              args in
-           mk_loc l
            {mode         = mode;
             dir          = dir;
             in_poa_expr  = in_poa_expr;

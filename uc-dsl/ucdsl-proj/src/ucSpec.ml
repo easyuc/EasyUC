@@ -286,7 +286,7 @@ type fun_expr =
    be ambiguous *)
 
 type sent_msg_expr =
-  {in_poa_pexpr  : pexpr port_or_addr located;  (* source *)
-   path          : msg_path;                    (* message path *)
-   args          : pexpr list located;          (* message arguments *)
-   out_poa_pexpr : pexpr port_or_addr located}  (* destination *)
+  {in_poa_pexpr  : pexpr port_or_addr;  (* source *)
+   path          : msg_path;            (* message path *)
+   args          : pexpr list located;  (* message arguments *)
+   out_poa_pexpr : pexpr port_or_addr}  (* destination *)
