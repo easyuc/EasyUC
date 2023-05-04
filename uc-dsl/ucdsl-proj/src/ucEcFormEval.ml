@@ -74,17 +74,36 @@ let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   in
   let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
   proof'
+(*  
+let pp_prover_infos (pi : EcProvers.prover_infos) : unit =
+  print_endline "SMT prover_infos BEGIN";
+  print_endline ("pr_maxprocs="^(string_of_int pi.pr_maxprocs));
+  print_endline "pr_provers:";
+  List.iter (fun p -> print_endline p) pi.pr_provers;
+  print_endline ("pr_timelimit="^(string_of_int pi.pr_timelimit));
+  print_endline ("pr_cpufactor="^(string_of_int pi.pr_cpufactor));
+  print_endline ("pr_quorum="^(string_of_int pi.pr_quorum));
+  print_endline ("pr_verbose="^(string_of_int pi.pr_verbose));
+  print_endline ("pr_all="^(string_of_bool pi.pr_all));
+  print_endline ("pr_max="^(string_of_int pi.pr_max));
+  print_endline ("pr_iterate="^(string_of_bool pi.pr_iterate));
+  print_endline "SMT prover_infos END"
+*)
 
 let can_prove_smt (proof : EcCoreGoal.proof) : bool =
+  pp_proof proof;
   let dft_pi = { 
-    EcProvers.dft_prover_infos with pr_provers = EcProvers.dft_prover_names
+    EcProvers.dft_prover_infos with 
+      pr_provers = List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
   } in
-  let goal = EcCoreGoal.opened proof in
+  let pregoal = get_only_pregoal proof in
   try
-    match goal with
-    | Some (1, pregoal) -> EcSmt.check dft_pi pregoal.g_hyps pregoal.g_concl
-    | _ -> false
-  with _ -> false
+    let b = EcSmt.check dft_pi pregoal.g_hyps pregoal.g_concl in
+    print_endline (match b with true -> "SMT true" | false -> "SMT false");
+    b
+  with _ ->
+    print_endline "SMT exception";
+    false
 
 let can_prove_crush (proof : EcCoreGoal.proof) : bool =
   let proof_m = move_all_hyp_forms_to_concl proof in
@@ -442,14 +461,47 @@ let get_ty_from_oty (oty : EcTypes.ty) =
   match oty.ty_node with
   | Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
   | _ -> failwith "type is not an option type"
-    
+
+
+let ppe_ofhyps hyps = 
+  let env = EcEnv.LDecl.toenv hyps in
+  EcPrinting.PPEnv.ofenv env
+
+let pp_ty hyps ty =
+  let ppe = ppe_ofhyps hyps in
+  Format.eprintf "%a@." (EcPrinting.pp_type ppe) ty
+  
+let pp_f hyps f =
+  let ppe = ppe_ofhyps hyps in
+  Format.eprintf "%a@." (EcPrinting.pp_form ppe) f
+  
+let printEvalResult (res : evalConditionResult) : unit =
+  match res with
+  | Bool true  -> print_endline "TRUE"
+  | Bool false -> print_endline "FALSE"
+  | Undecided  -> print_endline "UNDECIDED"
+
+let pp_ty _ _ = ()
+let pp_f _ _ = ()  
+let printEvalResult _ = ()
+   
 let smt_op_form_not_None 
 (hyps : EcEnv.LDecl.hyps) (opf : EcCoreFol.form) (form : EcCoreFol.form) : bool =
+  print_endline "smt_op_form_not_None";
+  pp_f hyps opf;
+  pp_f hyps form;
   let _,oty = EcTypes.tyfun_flat (EcCoreFol.f_ty opf) in
+  pp_ty hyps oty;
   let ty = get_ty_from_oty oty in
-  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] (EcTypes.toption ty) in
+  pp_ty hyps ty;
+  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] oty (*EcTypes.toption ty*) in
+  pp_f hyps f_none;
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
+  pp_f hyps concl;
+  print_endline "let er = evalCondition hyps concl in";
   let er = evalCondition hyps concl in
+  printEvalResult er;
+  print_endline "match er with";
   match er with
   | Bool false -> true
   | _ -> false
@@ -465,19 +517,23 @@ let mk_oget_op_form
 let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in
+  print_endline "begin match ty.ty_node with";
   begin match ty.ty_node with
-  | Tconstr (p,_) ->
+  | Tconstr (p,ty_args) ->
     let tyd = EcEnv.Ty.by_path p env in
     let ty_dtyo = EcDecl.tydecl_as_datatype tyd in
+    print_endline "begin match ty_dtyo with";
     begin match ty_dtyo with
     | Some ty_dt ->
       let sopl = EcInductive.datatype_projectors (p, tyd.tyd_params, ty_dt) in
       let opfl = List.map (
         fun (s,op) ->
-        let op_arg_tyl, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
-        EcCoreFol.f_op (EcInductive.datatype_proj_path p s) op_arg_tyl op_ret_ty)
+        let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
+        EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty)
         sopl in
+      print_endline "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) opfl in";
       let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) opfl in
+      print_endline "begin match opfo with";
       begin match opfo with
       | Some opf -> mk_oget_op_form opf form
       | None -> failwith "Couldn't find the operator for deconstruction"

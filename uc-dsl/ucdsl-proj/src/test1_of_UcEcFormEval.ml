@@ -36,6 +36,12 @@ let testSymplify (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
   printFormula env (UcEcFormEval.simplifyFormula hyps concl)
+  
+let testDeconstructData (json_hyps : string) (concl_str : string) : unit =
+  let hyps, concl = p_t_goal json_hyps concl_str in
+  let env = EcEnv.LDecl.toenv hyps in
+  printFormula env (UcEcFormEval.deconstructData hyps concl)
+  
 
 let json1 = {|
   [
@@ -60,7 +66,8 @@ let json3 = {|
 let () : unit =
   UcEcInterface.init ();
   UcEcInterface.require (UcUtils.dummyloc "AllCore") (Some `Import);
- 
+  UcEcInterface.require (UcUtils.dummyloc "test1_of_UcEcFormEval") (Some `Import);
+
   testEvalCond json1 "i=0";
   testEvalCond json2 "i=0";
   testEvalCond json3 "i=0";
@@ -460,3 +467,11 @@ abort.
   |} in
   let concl = "z" in
   testSymplify json concl;
+  
+  let json={|
+    [
+    ]
+  |} in
+  let concl = "A 7" in
+  testDeconstructData json concl;
+  
