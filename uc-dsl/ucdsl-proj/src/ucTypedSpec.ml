@@ -496,7 +496,9 @@ let id_adv_inter_of_fet
        | None    -> None
        | Some id -> Some (fst fun_id, id))
 
-(* typed expression for message in transit *)
+(* typed expression for message in transit
+
+   the message path must be root-qualified *)
 
 type sent_msg_expr_tyd =
   {mode         : msg_mode;           (* message mode *)

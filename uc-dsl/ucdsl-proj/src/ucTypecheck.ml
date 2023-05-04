@@ -2461,21 +2461,26 @@ let inter_check_sent_msg_expr
   let out_poa_expr =
     inter_check_expr_port_or_addr env ue sme.out_poa_pexpr in
   let path = unloc (sme.path) in
-  match inter_check_root_qualified_msg_path maps (unloc sme.path) with
-  | None              ->
+  match inter_check_root_qualified_msg_path maps path with
+  | None                      ->
       error_message_record (loc sme.path)
       (fun ppf ->
          fprintf ppf
          "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
-         pp_qsymbol (msg_path_u_to_qsymbol (unloc sme.path)))
+         pp_qsymbol (msg_path_u_to_qsymbol path))
   | Some (mode, dir, exp_tys) ->
       let args = unloc sme.args in
       if List.length exp_tys <> List.length args
-      then failure "hi"
+      then error_message_record (loc sme.path)
+           (fun ppf ->
+              fprintf ppf
+              ("[@there@ are@ %d@ arguments,@ whereas@ there@ should@ be@ " ^^
+               "%d@ arguments@]")
+              (List.length args) (List.length exp_tys))
       else let exprs =
              List.mapi
              (fun i pexpr ->
-                let (ex, ty) =
+                let (ex, _) =
                   inter_check_expr env ue pexpr (Some (List.nth exp_tys i)) in
                 ex)
              args in
