@@ -7,9 +7,11 @@
    interpreter. *)
 
 open EcLocation
+open EcUtils
 open EcSymbols
 open EcTypes
 open UcSpecTypedSpecCommon
+open UcMessage
 
 (* maps and sets *)
 
@@ -20,7 +22,7 @@ module IdSet = Set.Make(String)
    located symbol (in which case we may use "uid" to stand for the
    unlocated version) *)
 
-let exists_id (id_map : 'a IdMap.t) (id : symbol) : bool = 
+let exists_id (id_map : 'a IdMap.t) (id : symbol) : bool =
   IdMap.exists (fun key _ -> key = id) id_map
 
 let id_map_domain (map : 'a IdMap.t) : IdSet.t =
@@ -31,6 +33,11 @@ module SL =  (* domain: string list = symbol list *)
     type t = string list
     let compare = Stdlib.compare
   end
+
+let sing_elt_of_id_set (id_set : IdSet.t) : symbol =
+  match IdSet.elements id_set with
+  | [x] -> x
+  | _   -> failure "cannot happen"
 
 (* we often refer to elements of type symbol list as "qualified ids";
    note that qsymbol stands for symbol list * symbol *)
@@ -252,11 +259,11 @@ type fun_body_tyd =
 let real_fun_body_tyd_of (fbt : fun_body_tyd) : real_fun_body_tyd =
   match fbt with
   | FunBodyRealTyd rfbt -> rfbt
-  | FunBodyIdealTyd _   -> UcMessage.failure "cannot happen"
+  | FunBodyIdealTyd _   -> failure "cannot happen"
 
 let ideal_fun_body_tyd_of (fbt : fun_body_tyd) : ideal_fun_body_tyd =
   match fbt with
-  | FunBodyRealTyd _     ->  UcMessage.failure "cannot happen" 
+  | FunBodyRealTyd _     ->  failure "cannot happen" 
   | FunBodyIdealTyd ifbt -> ifbt
 
 let is_real_fun_body_tyd (fbt : fun_body_tyd) : bool =
@@ -442,14 +449,123 @@ let basic_adv_inter_names_of_real_fun
        | None        -> IdSet.empty
        | Some adv_id ->
            match unloc (IdPairMap.find (root, adv_id) maps.adv_inter_map) with
-           | BasicTyd _      -> UcMessage.failure "cannot happen"
+           | BasicTyd _      -> failure "cannot happen"
            | CompositeTyd mp ->
                (IdSet.of_list (List.map snd (IdMap.bindings mp))))
-  | FunBodyIdealTyd _    -> UcMessage.failure "cannot happen"
+  | FunBodyIdealTyd _    -> failure "cannot happen"
 
 (* typed top-level specifications *)
 
 type typed_spec = maps_tyd
+
+(* assuming units checking has been performed *)
+
+let roots_of_map (map : 'a IdPairMap.t) : IdSet.t =
+  IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
+
+let roots_of_maps (maps : maps_tyd) : IdSet.t =
+  IdSet.union (roots_of_map maps.dir_inter_map)
+  (IdSet.union (roots_of_map maps.adv_inter_map)
+   (IdSet.union (roots_of_map maps.fun_map) (roots_of_map maps.sim_map)))
+
+type singleton_info =
+  {si_root      : symbol;
+   si_ideal     : symbol;
+   si_comp_dir  : symbol;
+   si_basic_adv : symbol}
+
+type triple_info =
+  {ti_root                               : symbol;
+   ti_real                               : symbol;
+   ti_ideal                              : symbol;
+   ti_sim                                : symbol;
+   ti_comp_dir                           : symbol;
+   ti_comp_adv_opt                       : symbol option;
+   ti_if_sim_basic_adv                   : symbol;
+   ti_sims                               : symb_pair list;
+   ti_num_adv_pis                        : int;
+   ti_get_adv_pi_of_served_basic_adv_int : int -> symbol -> int;
+   ti_get_adv_pi_of_subfun               : int -> symbol -> int}
+
+type unit_info =
+  | UI_Singleton of singleton_info
+  | UI_Triple    of triple_info
+
+let is_singleton_unit_info (ui : unit_info) : bool =
+  match ui with
+  | UI_Singleton _ -> true
+  | UI_Triple _    -> false
+
+let is_triple_unit_info (ui : unit_info) : bool =
+  match ui with
+  | UI_Singleton _ -> false
+  | UI_Triple _    -> true
+
+let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
+  let rf_names = real_fun_names root maps in
+  let if_names = ideal_fun_names root maps in
+  let sim_names = sim_names root maps in
+  if IdSet.cardinal rf_names = 0
+  then let if_name = sing_elt_of_id_set if_names in
+       let fbt = unloc (IdPairMap.find (root, if_name) maps.fun_map) in
+       let ifbt = ideal_fun_body_tyd_of fbt in
+      UI_Singleton
+      {si_root      = root;
+       si_ideal     = if_name;
+       si_comp_dir  = ifbt.id_dir_inter;
+       si_basic_adv = ifbt.id_adv_inter}
+  else let if_name = sing_elt_of_id_set if_names in
+       let fbt = unloc (IdPairMap.find (root, if_name) maps.fun_map) in
+       let ifbt = ideal_fun_body_tyd_of fbt in
+       let rf_name = sing_elt_of_id_set rf_names in
+       let fbt = unloc (IdPairMap.find (root, rf_name) maps.fun_map) in
+       let rfbt = real_fun_body_tyd_of fbt in
+       let sim_name = sing_elt_of_id_set sim_names in
+       let sbt = unloc (IdPairMap.find (root, sim_name) maps.sim_map) in
+       let num_adv_pis_of_served =
+         match rfbt.id_adv_inter with
+         | None      -> 0
+         | Some comp ->
+             let ibt =
+               unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+             match ibt with
+             | BasicTyd _       -> failure "cannot happen"
+             | CompositeTyd map -> IdMap.cardinal map in
+       let num_adv_pis_of_subfuns = IdMap.cardinal rfbt.sub_funs in
+       let num_adv_pis = 1 + num_adv_pis_of_served + num_adv_pis_of_subfuns in
+       let get_adv_pi_of_served_basic_adv_int base id =
+         match rfbt.id_adv_inter with
+         | None      -> failure "cannot happen"
+         | Some comp ->
+             let ibt =
+               unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+             match ibt with
+             | BasicTyd _       -> failure "cannot happen"
+             | CompositeTyd map ->
+                 base + 1 +
+                 fst
+                 (List.findi
+                  (fun _ (id', _) -> id' = id)
+                  (IdMap.bindings map)) in
+       let get_adv_pi_of_subfun base id =
+         base + 1 + num_adv_pis_of_served +
+         fst
+         (List.findi
+          (fun _ (id', _) -> id' = id)
+          (IdMap.bindings rfbt.sub_funs)) in
+       UI_Triple
+       {ti_root                               = root;
+        ti_real                               = rf_name;
+        ti_ideal                              = if_name;
+        ti_sim                                = sim_name;
+        ti_comp_dir                           = ifbt.id_dir_inter;
+        ti_comp_adv_opt                       = rfbt.id_adv_inter;
+        ti_if_sim_basic_adv                   = ifbt.id_adv_inter;
+        ti_sims                               = sbt.sims_arg_pair_ids;
+        ti_num_adv_pis                        = num_adv_pis;
+        ti_get_adv_pi_of_served_basic_adv_int =
+          get_adv_pi_of_served_basic_adv_int;
+        ti_get_adv_pi_of_subfun               = get_adv_pi_of_subfun}
 
 (* Interpreter User Input *)
 
