@@ -454,10 +454,6 @@ let basic_adv_inter_names_of_real_fun
                (IdSet.of_list (List.map snd (IdMap.bindings mp))))
   | FunBodyIdealTyd _    -> failure "cannot happen"
 
-(* typed top-level specifications *)
-
-type typed_spec = maps_tyd
-
 (* assuming units checking has been performed *)
 
 let roots_of_map (map : 'a IdPairMap.t) : IdSet.t =
@@ -573,44 +569,19 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
 
    each functionality is qualified by its root file *)
 
-type fun_expr_tyd_u =
+type fun_expr_tyd =
   | FunExprTydReal  of symb_pair * fun_expr_tyd list
   | FunExprTydIdeal of symb_pair
 
-and fun_expr_tyd = fun_expr_tyd_u located
-
 let is_real_at_top_fet (fet : fun_expr_tyd) : bool =
-  match unloc fet with
+  match fet with
   | FunExprTydReal _  -> true
   | FunExprTydIdeal _ -> false
 
 let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
-  match unloc fet with
+  match fet with
   | FunExprTydReal _  -> false
   | FunExprTydIdeal _ -> true
-
-let id_dir_inter_of_fet (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair =
-  match unloc fet with
-  | FunExprTydReal (fun_id, _) ->
-      let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
-      (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
-  | FunExprTydIdeal fun_id ->
-      let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
-      (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
-
-let id_adv_inter_of_fet
-    (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair option =
-  match unloc fet with
-  | FunExprTydReal (fun_id, _) ->
-      (let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
-       match id_adv_inter_of_fun_body_tyd fbt with
-       | None    -> None
-       | Some id -> Some (fst fun_id, id))
-  | FunExprTydIdeal fun_id ->
-      (let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
-       match id_adv_inter_of_fun_body_tyd fbt with
-       | None    -> None
-       | Some id -> Some (fst fun_id, id))
 
 (* typed expression for message in transit
 

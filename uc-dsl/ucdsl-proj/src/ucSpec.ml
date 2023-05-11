@@ -277,6 +277,11 @@ type fun_expr =
   | FunExprNoArgs of pqsymbol
   | FunExprArgs   of pqsymbol * fun_expr list
 
+let loc_of_fun_expr (fe : fun_expr) : EcLocation.t =
+  match fe with
+  | FunExprNoArgs pqsym    -> loc pqsym
+  | FunExprArgs (pqsym, _) -> loc pqsym
+
 (* expression for message in transit
 
    origin or destination can be an address, when the port index

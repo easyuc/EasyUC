@@ -14,7 +14,7 @@ open UcTypecheck
 
    (+) caching of results, to avoid recomputation (the cache) *)
 
-type cache = typed_spec * EcScope.scope
+type cache = maps_tyd * EcScope.scope
 
 let parse_and_typecheck_file_or_id foid =
   let stack : string list ref = ref [] in

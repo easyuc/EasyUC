@@ -11,4 +11,4 @@ open UcTypedSpec
 
    * a cache is maintained to avoid recomputation of uc_requires *)
 
-val parse_and_typecheck_file_or_id : file_or_id -> typed_spec
+val parse_and_typecheck_file_or_id : file_or_id -> maps_tyd

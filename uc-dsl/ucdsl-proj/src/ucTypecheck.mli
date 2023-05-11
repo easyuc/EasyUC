@@ -23,14 +23,14 @@ val max_msg_params : int
    normally located in the file it was lexed from *)
 
 val typecheck :
-  symbol -> (symbol located -> typed_spec) -> spec -> typed_spec
+  symbol -> (symbol located -> maps_tyd) -> spec -> maps_tyd
 
 (* typecheck a real functionality expression *)
 
 val inter_check_real_fun_expr :
-  symbol -> typed_spec -> fun_expr -> fun_expr_tyd
+  symbol -> maps_tyd -> fun_expr -> fun_expr_tyd
 
 (* typecheck a sent message expression in an environment *)
 
 val inter_check_sent_msg_expr :
-  typed_spec -> env -> sent_msg_expr -> sent_msg_expr_tyd
+  maps_tyd -> env -> sent_msg_expr -> sent_msg_expr_tyd

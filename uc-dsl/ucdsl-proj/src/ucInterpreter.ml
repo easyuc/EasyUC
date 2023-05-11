@@ -1,17 +1,24 @@
 (* UcInterpreter module *)
 
 open EcSymbols
+open EcUtils
 open EcTypes
+
+open UcMessage
+open UcSpec
 open UcTypedSpec
+open UcTypecheck
 
 (* the (positive) ints in a real_world, are the base adverserial port
    indices for the unit of the given functionality; these will also be
    the adversarial port indices for communication between the unit's
    ideal functionality and simulator *)
 
-type real_world =
-  | RWReal  of symb_pair * int * real_world list
-  | RWIdeal of symb_pair * int
+type real_world = symb_pair * int * real_world_arg list
+
+and real_world_arg =
+  | RWA_Real  of real_world
+  | RWA_Ideal of symb_pair * int
 
 (* the (positive) ints in an ideal_world are the port indices for
    communication between ideal functionalities and simulators *)
@@ -27,3 +34,46 @@ type worlds = {
   worlds_ideal : ideal_world
 }
 
+let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
+  let rec fun_expr_to_worlds_base (fet : fun_expr_tyd) (base : int)
+        : worlds * int =
+    match fet with
+    | FunExprTydReal ((root, fun_id), fets) ->
+        (match unit_info_of_root maps root with
+         | UI_Singleton _ -> failure "cannot happen"
+         | UI_Triple ti   ->
+             let rec iter
+                 (rwas : real_world_arg list) (base : int)
+                 (sims : (symb_pair * int) list) (fets : fun_expr_tyd list)
+                   : real_world_arg list * int * (symb_pair * int) list =
+               match fets with
+               | []          -> (rwas, base, sims)
+               | fet :: fets ->
+                   match fet with
+                   | FunExprTydReal _   ->
+                       let (worlds, base) =
+                         fun_expr_to_worlds_base fet base in
+                       iter (rwas @ [RWA_Real worlds.worlds_real]) base
+                       (worlds.worlds_ideal.iw_main_sim ::
+                        worlds.worlds_ideal.iw_other_sims @ sims)
+                       fets
+                   | FunExprTydIdeal sp ->
+                       iter (rwas @ [RWA_Ideal (sp, base)]) (base + 1)
+                       sims fets in
+             let base' = base + ti.ti_num_adv_pis in
+             let (rwas, base', sims) = iter [] base' [] fets in
+             ({worlds_real  = ((root, fun_id), base, rwas);
+               worlds_ideal =
+                 {iw_ideal_func = ((root, ti.ti_ideal), base);
+                  iw_main_sim   = ((root, ti.ti_sim), base);
+                  iw_other_sims = sims}},
+              base'))
+     | FunExprTydIdeal _                    ->
+         failure "should not be called with ideal functionality expression" in
+  let (wrlds, _) = fun_expr_to_worlds_base fet 1 in
+  wrlds
+
+let fun_expr_to_worlds
+    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : worlds =
+  let fet = inter_check_real_fun_expr root maps fe in
+  fun_expr_tyd_to_worlds maps fet

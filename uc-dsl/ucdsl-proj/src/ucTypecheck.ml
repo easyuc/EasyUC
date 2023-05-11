@@ -2112,7 +2112,7 @@ let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
      oldmap.sim_map newmap.sim_map}
 
 let load_uc_req
-    (check_id : psymbol -> typed_spec) (maps : maps_tyd) (id : psymbol)
+    (check_id : psymbol -> maps_tyd) (maps : maps_tyd) (id : psymbol)
       : maps_tyd =
   let uid = unloc id in
   if not (Char.is_uppercase uid.[0])
@@ -2129,7 +2129,7 @@ let load_uc_req
        maps
 
 let load_uc_reqs
-    (check_id : psymbol -> typed_spec) (maps : maps_tyd)
+    (check_id : psymbol -> maps_tyd) (maps : maps_tyd)
     (reqs : psymbol list) : maps_tyd =
   List.fold_left (load_uc_req check_id) maps reqs
 
@@ -2296,8 +2296,8 @@ let check_units
           root num_rf_names num_if_names num_sim_names)
 
 let typecheck
-    (qual_file : string) (check_id : psymbol -> typed_spec)
-    (spec : spec) : typed_spec =
+    (qual_file : string) (check_id : psymbol -> maps_tyd)
+    (spec : spec) : maps_tyd =
   let root = UcUtils.capitalized_root_of_filename_with_extension qual_file in
   let empty_maps =
     {dir_inter_map = IdPairMap.empty;
@@ -2328,6 +2328,15 @@ let typecheck
 
 (* Interpreter User Input *)
 
+let id_dir_inter_of_fet (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair =
+  match fet with
+  | FunExprTydReal (fun_id, _) ->
+      let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
+      (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
+  | FunExprTydIdeal fun_id ->
+      let fbt = unloc (IdPairMap.find fun_id maps.fun_map) in
+      (fst fun_id, id_dir_inter_of_fun_body_tyd fbt)
+
 let rec inter_check_fun_expr
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
   match fe with
@@ -2338,12 +2347,12 @@ let rec inter_check_fun_expr
       (match unloc (IdPairMap.find fun_id maps.fun_map) with
        | FunBodyRealTyd rfbt ->
            if IdMap.is_empty (rfbt.params)
-           then mk_loc l (FunExprTydReal (fun_id, []))
+           then FunExprTydReal (fun_id, [])
            else error_message_record l
                 (fun ppf ->
                    fprintf ppf
                    "@[real@ functionality@ missing@ arguments@]")
-       | FunBodyIdealTyd _ -> mk_loc l (FunExprTydIdeal fun_id))
+       | FunBodyIdealTyd _ -> FunExprTydIdeal fun_id)
   | FunExprArgs (pqsym, fes) ->
       let fun_id_l = check_exists_fun_qid root maps.fun_map pqsym in
       let fun_id = unloc fun_id_l in
@@ -2357,7 +2366,6 @@ let rec inter_check_fun_expr
              List.map
              (fun fe -> inter_check_fun_expr root maps fe)
              fes in
-           let fet_locs = List.map loc fets in
            let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
            if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
            then error_message_record l
@@ -2380,8 +2388,8 @@ let rec inter_check_fun_expr
                            (i + 1)
                            pp_id_pair (List.nth args_dir_pair_ids i)
                            pp_id_pair (List.nth params_dir_pair_ids i)))
-                fet_locs;
-                mk_loc l (FunExprTydReal (fun_id, fets))
+                (List.map loc_of_fun_expr fes);
+                FunExprTydReal (fun_id, fets)
        | FunBodyIdealTyd _ ->
            error_message_record l
            (fun ppf ->
@@ -2394,7 +2402,7 @@ let inter_check_real_fun_expr
   let fet = inter_check_fun_expr root maps fe in
   if is_real_at_top_fet fet
   then fet
-  else error_message_record (loc fet)
+  else error_message_record (loc_of_fun_expr fe)
        (fun ppf ->
           fprintf ppf
           "@[real@ functionality@ expected@]")
