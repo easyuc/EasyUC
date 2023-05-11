@@ -152,6 +152,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token COLONTILD
 %token COMMA
 %token DLBRACKET
+%token DOLLAR
 %token DOT
 %token DOTDOT
 %token DOTTICK
@@ -233,13 +234,14 @@ let check_parsing_adversarial_inter (ni : named_inter) =
    with the initial production spec.  The output of UcParser is a
    record of spec type (defined in UcSpec). *)
 %type <UcSpec.spec> spec
-%type <UcSpec.fun_expr> pfun_expr
+%type <UcSpec.fun_expr> fun_expr
+%type <UcSpec.sent_msg_expr> sent_msg_expr
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start spec pfun_expr
+%start spec fun_expr sent_msg_expr
 
 %%
 
@@ -1282,9 +1284,25 @@ ptybindings :
       { [x, ty] }
 
 (* Interpreter User Input *)
-pfun_expr :
-  | x = uqident { FunExprNoArgs x }
-  | x = uqident; LBRACKET; y = separated_list(COMMA, pfun_expr); RBRACKET; { FunExprArgs (x,y) }
+fun_expr_r :
+  | x = uqident; { FunExprNoArgs x }
+  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN; { FunExprArgs (x,y) }
+  
+fun_expr :
+  | fe = fun_expr_r; EOF { fe }
+  
+sent_msg_expr :
+  | inpex = expr; in_poa = dollar_or_pipe ; path = msg_path; argsl = loc(args); out_poa = dollar_or_pipe; outpex = expr; EOF
+    {{
+      in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
+      path = path;
+      args = argsl;
+      out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
+    }}
+    
+dollar_or_pipe :
+  | DOLLAR { true  }
+  | PIPE   { false }
 
 (* Localization *)
 

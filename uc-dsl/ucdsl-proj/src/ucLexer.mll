@@ -303,6 +303,7 @@ rule read = parse
   | "|}"    { RPBRACE    }
   | "`|"    { TICKPIPE   }
   | ":~"    { COLONTILD  }
+  | "$"     { DOLLAR     }
 
   (* fixed length used as operators for types and/or expressions, but
      sometimes other uses *)
