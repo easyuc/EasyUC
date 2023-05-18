@@ -1084,6 +1084,12 @@ tyvar_instan:
 %inline sexpr: x = loc(sexpr_u) { x }
 %inline  expr: x = loc( expr_u) { x }
 
+%inline idexpr: x = loc(idexpr_u) { x }
+
+idexpr_u :
+| x = qoident; ti = tvars_instan?
+      { PEident (x, ti) }
+
 sexpr_u :
   | e = sexpr; PCENT; p = uqident
       { PEscope (p, e) }
@@ -1117,8 +1123,7 @@ sexpr_u :
 
   (* end UC DSL *)
 
-  | x = qoident; ti = tvars_instan?
-      { PEident (x, ti) }
+  | x = idexpr_u; { x }
 
   | op = loc(numop); ti = tvars_instan?
        { peapp_symb op.pl_loc op.pl_desc ti [] }
@@ -1292,17 +1297,27 @@ fun_expr :
   | fe = fun_expr_r; EOF { fe }
   
 sent_msg_expr :
-  | inpex = expr; in_poa = dollar_or_pipe ; path = msg_path; argsl = loc(args); out_poa = dollar_or_pipe; outpex = expr; EOF
+  | inpex = in_out_poa_pexpr; 
+    in_poa = dollar_or_at; 
+    path = msg_path; 
+    argsl = loc(args); 
+    out_poa = dollar_or_at; 
+    outpex = in_out_poa_pexpr; 
+    EOF;
     {{
       in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
       path = path;
       args = argsl;
       out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
     }}
-    
-dollar_or_pipe :
+
+in_out_poa_pexpr:
+  | id = idexpr; { id }
+  | LPAREN; ex = expr; RPAREN; { ex }
+  
+dollar_or_at :
   | DOLLAR { true  }
-  | PIPE   { false }
+  | AT     { false }
 
 (* Localization *)
 

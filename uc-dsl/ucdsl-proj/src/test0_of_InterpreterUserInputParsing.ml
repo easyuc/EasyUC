@@ -18,5 +18,6 @@ let () : unit =
   let _ = parse_fun_expr "FunWith0Args()" in
   let _ = parse_fun_expr "FunWith1Arg(FunWithNoArgs)" in
   
-  let _ = parse_sent_msg_expr "7|Bla.Bla.bla(1,2,3)$5" in
+  let _ = parse_sent_msg_expr "(7)@Bla.Bla.bla(1,2,3)$(5)" in
+  let _ = parse_sent_msg_expr "iden_in@Bla.Bla.bla(1,2,3)$iden_out" in
   ()
