@@ -377,7 +377,7 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
   | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
 let augment_env_with_state_context
-  (env : EcEnv.env) (sc : state_context) : EcEnv.env =
+    (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
     ([(EcIdent.create "envport", tfun port_ty tbool)] @
      List.map
@@ -2420,15 +2420,17 @@ let inter_check_expr
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (pexpr_poa : pexpr port_or_addr)
-      : expr port_or_addr =
-  match pexpr_poa with
+    (env : env) (ue : unienv) (poa_pexpr : pexpr port_or_addr_pexpr)
+      : expr =
+  match poa_pexpr with
   | PoA_Port pexpr ->
-      let (expr, ty) = inter_check_expr env ue pexpr (Some port_ty) in
-      PoA_Port expr
+      let (expr, _) = inter_check_expr env ue pexpr (Some port_ty) in
+      expr
   | PoA_Addr pexpr ->
-      let (expr, ty) = inter_check_expr env ue pexpr (Some addr_ty) in
-      PoA_Addr expr
+      let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
+
+
+
 
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
       : (msg_mode * msg_dir * ty list) option =

@@ -588,9 +588,9 @@ let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
    the message path must be root-qualified *)
 
 type sent_msg_expr_tyd =
-  {mode         : msg_mode;           (* message mode *)
-   dir          : msg_dir;            (* message direction *)
-   in_poa_expr  : expr port_or_addr;  (* source *)
-   path         : msg_path_u;         (* message path *)
-   args         : expr list;          (* message arguments *)
-   out_poa_expr : expr port_or_addr}  (* destination *)
+  {mode          : msg_mode;           (* message mode *)
+   dir           : msg_dir;            (* message direction *)
+   in_port_expr  : expr;               (* source *)
+   path          : msg_path_u;         (* message path *)
+   args          : expr list;          (* message arguments *)
+   out_port_expr : expr}               (* destination *)

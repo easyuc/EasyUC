@@ -282,6 +282,12 @@ let loc_of_fun_expr (fe : fun_expr) : EcLocation.t =
   | FunExprNoArgs pqsym    -> loc pqsym
   | FunExprArgs (pqsym, _) -> loc pqsym
 
+(* for use in sent message expr *)
+
+type port_or_addr_pexpr =
+  | PoA_Port of pexpr
+  | PoA_Addr of pexpr
+
 (* expression for message in transit
 
    origin or destination can be an address, when the port index
@@ -291,7 +297,7 @@ let loc_of_fun_expr (fe : fun_expr) : EcLocation.t =
    be ambiguous *)
 
 type sent_msg_expr =
-  {in_poa_pexpr  : pexpr port_or_addr;  (* source *)
+  {in_poa_pexpr  : port_or_addr_pexpr;  (* source *)
    path          : msg_path;            (* message path *)
    args          : pexpr list located;  (* message arguments *)
-   out_poa_pexpr : pexpr port_or_addr}  (* destination *)
+   out_poa_pexpr : port_or_addr_pexpr}  (* destination *)
