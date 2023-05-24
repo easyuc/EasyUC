@@ -2313,15 +2313,6 @@ let typecheck
   let maps =
     load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
-  (* issue warnings if extra definitions that the real UCBasicTypes.ec
-     will provide are already defined in the current scope's environment *)
-  let () = warning_theory_name "UCListPO"       qual_file in
-  let () = warning_type_name   "addr"           qual_file in
-  let () = warning_type_name   "mode"           qual_file in
-  let () = warning_type_name   "msg"            qual_file in
-  let () = warning_op_name     "epdp_addr_univ" qual_file in
-  let () = warning_op_name     "Dir"            qual_file in
-  let () = warning_op_name     "Adv"            qual_file in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
