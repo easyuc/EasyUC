@@ -43,14 +43,13 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
   and pp_real_world_argl (fmt : Format.formatter) (rwal : real_world_arg list) : unit =
     match rwal with
     | [] -> Format.fprintf fmt ""
-    | [rwa] ->
+    | rwa::[] ->
       Format.fprintf fmt "%a" 
         pp_real_world_arg rwa
-    | rwa::tl when tl<>[] ->
+    | rwa::tl ->
       Format.fprintf fmt "%a, %a"
         pp_real_world_arg rwa 
         pp_real_world_argl tl
-    | _ :: _ -> failure "cannot happen?"  (* TODO is this true? *)
   and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
     let sp,i,rwal = rw in
     match rwal with
