@@ -73,12 +73,12 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
         pp_simsl tl
   in
   let pp_ideal_world (fmt : Format.formatter) (iw : ideal_world) : unit =
-    Format.fprintf fmt "@[%a / %a%a@]"
+    Format.fprintf fmt "@[%a@ /@ %a%a@]"
       pp_symb_pair_int iw.iw_ideal_func
       pp_symb_pair_int iw.iw_main_sim
       pp_simsl iw.iw_other_sims
   in
-  Format.fprintf fmt "@[%a ~ %a@]" 
+  Format.fprintf fmt "@[%a@ ~@ %a@]@." 
     pp_real_world w.worlds_real 
     pp_ideal_world w.worlds_ideal
 
