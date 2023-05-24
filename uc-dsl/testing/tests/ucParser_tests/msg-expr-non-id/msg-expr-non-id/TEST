@@ -1,0 +1,10 @@
+description
+  test where send and transition has message expression that is
+  not an identifier but is not parenthesized.
+.
+args: msg-expr-non-id.uc
+outcome: failure
+[error: msg-expr-non-id.uc: from line 13 columns 25 to 27]
+
+parse error
+.

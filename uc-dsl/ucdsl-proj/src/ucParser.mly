@@ -1091,7 +1091,7 @@ tyvar_instan:
 %inline idexpr: x = loc(idexpr_u) { x }
 
 idexpr_u :
-| x = qoident; ti = tvars_instan?
+  | x = qoident; ti = tvars_instan?
       { PEident (x, ti) }
 
 (* end UC DSL *)
@@ -1100,12 +1100,12 @@ sexpr_u :
   | e = sexpr; PCENT; p = uqident
       { PEscope (p, e) }
 
-| e=sexpr p=loc(prefix(PCENT, _lident))
-   { if unloc p = "top" then
-       PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
-     else
-       let p = lmap (fun x -> "%" ^ x) p in
-       PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
+  | e=sexpr p=loc(prefix(PCENT, _lident))
+      { if unloc p = "top" then
+          PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
+        else
+          let p = lmap (fun x -> "%" ^ x) p in
+          PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
 
   | LPAREN; e = expr; COLONTILD; ty = loc(type_exp); RPAREN
       { PEcast (e, ty) }
