@@ -44,12 +44,14 @@ require export UCUniv.
    (collectively, "functionalities") have addresses, which are lists
    of integers
 
-   if a real functionality has address alpha, its parameters will have
-   sub-addresses alpha ++ [1], alpha ++ [2], etc., ordered by
-   parameter number; and its subfunctionalities will have
+   addresses are used for message routing (see below)
+
+   if a real functionality has address alpha, its parameters (if any)
+   will have sub-addresses alpha ++ [1], alpha ++ [2], etc., ordered
+   by parameter number; and its subfunctionalities will have
    sub-addresses alpha ++ [n + 1], alpha ++ [n + 2], etc., ordered by
    the lexicographic ordering of the names of the subfunctionalities,
-   and were n is the number of functionality parameters
+   and where n is the number of functionality parameters
 
    ideal functionalities, adversaries and simulators have addresses,
    but no (proper) sub-addresses
@@ -62,8 +64,10 @@ require export UCUniv.
    which will be incomparable with the address of any functionality
 
    these addresses are assigned at the beginning of an *experiment*,
-   in which the environment experiments with a functionality and
-   adversary/simulators *)
+   in which the environment experiments with either a real
+   functionality and the adversary, or an ideal functionality and a
+   nonempty list of simulators plus the adversary (S1 * S2 * ... * Sn
+   * Adv) *)
 
 type addr = int list.
 
@@ -78,8 +82,8 @@ hint simplify [eqtrue] valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
 (* ports - pairs of functionality addresses and port indices; messages
-   have source and destination ports, and they have modes: direct
-   or adversarial
+   (see type below) have source and destination ports, and they have
+   modes (see type below): direct or adversarial
 
    port indices are used to implement several intra-address naming
    schemes
@@ -89,20 +93,21 @@ hint rewrite epdp : valid_epdp_addr_univ.
    result in failure (which propagates to the environment - this is
    the uniform response to an error) if the address of its destination
    port is not alpha; otherwise, the port index of the destination
-   port says which component of the composite direct interface (a
-   basic direct interface) the message is a member of (these port
-   indices are numbered beginning at 1, and are assigned to the
-   components of the composite interface according to the the
-   lexacographic ordering of their names) -- and this will in turn
-   determine which party of the real functionality handles the message
+   port says which component of the composite direct interface the
+   message is a member of (these port indices are numbered beginning
+   at 1, and are assigned to the components of the composite interface
+   according to the the lexacographic ordering of their names) -- and
+   this will in turn determine which party of the real functionality
+   handles the message (the one that serves the given basic direct
+   interface)
 
    an adversarial message coming to a real functionality with address
    alpha (its source port's address should be the address of the
    adversary, and the sorce port's port index identifies the sending
    simulator or the notional part of the adversary) is handled
-   analogously, but for adversarial interfaces instead of direct ones,
-   if the functionality implements a composite adversarial interface;
-   otherwise this results in failure; but if the address of the
+   analogously, but for adversarial interfaces instead of direct ones
+   (assuming the functionality implements a composite adversarial
+   interface; otherwise it's an error); but if the address of the
    message's destination port is a proper sub-address of alpha, the
    message is routed to the appropriate parameter or subfunctionality
    (and results in failure if the sub-address is bad); thus the same
@@ -115,7 +120,12 @@ hint rewrite epdp : valid_epdp_addr_univ.
    functionality, otherwise failure results; the internal ports have
    the form (alpha, 1), (alpha, 2), etc., numbered according to the
    lexicographic ordering of the names of the parties -- this
-   determines which party will receive the message
+   determines which party will receive the message; the source port of
+   such a message will look like (alpha ++ [n], i), where alpha ++ [n]
+   is the address of the parameter or subfunctionality, and the port
+   index i will identify the component of the direct interface
+   implemented by the parameter or subfunctionality that the message
+   is a member of (using the same numbering as described above)
 
    when an adversarial message propagates out of a parameter or
    subfuctionality of a real functionality with address alpha, its
@@ -124,17 +134,19 @@ hint rewrite epdp : valid_epdp_addr_univ.
    can be passed to the adversary; the port index of the message is
    called an adversarial port index, and says which simulator it
    should be consumed by, with the default being that it goes all the
-   way to the adversary; messages can flow through simulators until
-   they find their home
+   way to the adversary (messages flow through simulators until
+   they find their home); the source port of such a message will
+   have an address that is a sub-address of the address of the
+   parameter or subfuctionality
 
    when a direct message is sent by a party of a real functionality
    with address alpha, only two possibilities are allowed:
 
-     * the address of the destination port must not be a sub-address of
-       alpha or [], and the source port must be (alpha, i), where
-       i is the port index corresponding to the component of the
-       real functionality's composite direct interface that the
-       sending party serves
+     * the address of the destination port is not a sub-address of
+       alpha (or []), and the source port must be (alpha, i), where i
+       is the port index corresponding to the component of the real
+       functionality's composite direct interface that the sending
+       party serves
 
      * the address of the destination port must be the address of
        one of the parameters or subfunctionalities of the real
@@ -144,11 +156,11 @@ hint rewrite epdp : valid_epdp_addr_univ.
        is a member of; in this case, the source port of the message
        will be the internal port of the sending party
 
-   in the UC DSL, two two kind of messages are send using different
+   in the UC DSL, these two kind of messages are sent using different
    syntax; in the first case, the destination port is a value of type
    port, but in the second case parameter/subfunctionality is
-   described by name, and the destination port computed from it by the
-   UC DSL implementation
+   described by name, and the destination port is computed from it by
+   the UC DSL implementation
 
    when an adversarial message is sent by a party of a real
    functionality with address alpha, it must have a destination port
@@ -158,7 +170,9 @@ hint rewrite epdp : valid_epdp_addr_univ.
    in this case, the source port will be (alpha, i), where i is the
    port index corresponding to the component of the real
    functionality's composite adversarial interface that the sending party
-   serves
+   serves (but adversarial messages can also propagate out of
+   real functionalities from their parameters or subfunctionalities,
+   as described above)
 
    an ideal functionality with address alpha handles direct messages
    analogouly to how a real functionality would (although without the
@@ -166,19 +180,44 @@ hint rewrite epdp : valid_epdp_addr_univ.
 
    an ideal functionality with address alpha can send adversarial
    messages to/from to its simulator (if it comes from a triple unit)
-   or the adversay (if it comes from a singleton unit); when sending
-   message, the source port index will be 1; and incoming messages
-   should have 
+   or the adversay (if it comes from a singleton unit); when sending a
+   message, the source port will be (alpha, 1), and incoming messages
+   should have this destination port
 
    a simulator learns the address of its ideal functionality upon
    reception of the first message from it; after that, it responds to
-   messages intended for the real functionality (or one of its
-   parameters or subfunctionalities), responding as would the real
+   adversarial messages intended for the real functionality (or one of
+   its parameters or subfunctionalities), responding as would the real
    functionality, spoofing source addresses
 
    the root port of the environment is ([], 0), and the root port of
    the adversary has port index 0; all simulators allow these ports to
-   communicate freely via adversarial messages *)
+   communicate freely via adversarial messages
+
+   the environment is either experimenting with a real functionality
+   and the adversary (the real world), or an ideal functionality and a
+   nonempty list of simulators followed by the adversary (S1 * S2 *
+   ... * Sn * Adv) (the ideal world); in the latter case, each
+   simulator has a distinct adversarial port index, which its ideal
+   functionality will use to communicate with it; messages from ideal
+   functionalities flow from left to right through the list of
+   simulators, looking for their home, or going all the way to the
+   adversary (messages can also originate from parties of real
+   functionalities, in which case they always go all the way to the
+   adversary); messages going from right to left are handled by the
+   appropriate simulator (pretending to be a real functionality), or
+   go from the first simulator (S1) to the ideal functionality; when a
+   simulator responds to its ideal functionality, this message may
+   actually be handled by a simulator to its left (which is simulating
+   a real functionality one of whose parameters is the ideal
+   functionality)
+
+   an environment could trivially tell the real and ideal worlds apart
+   if it could send adversarial messages to the simulators - as these
+   messages would go to the adversary in the real world; in UCCore.ec,
+   we use *input guards* - sets of adversarial port indices - to
+   limit the destination ports of adversarial messages generated by
+   the environment *)
 
 type port = addr * int.
 
@@ -219,10 +258,11 @@ op envport (self adv : addr, pt : port) : bool =
        and between subfunctionalities and parent functionalities
 
      * adversarial (corresponding to adversarial interfaces in the
-       DSL) - communication between functionalties and
+       DSL, plus extra messages used in environment <-> adversary
+       communication) - communication between functionalties and
        adversaries/simulators, communication between different
        adversaries/simulators, and communication between environments
-       and adversaries/simulators *)
+       and the adversary *)
 
 type mode = [
   | Dir  (* direct *)
@@ -244,10 +284,10 @@ proof. by case mod. qed.
 
    we assign the tags so that all the messages of all components of a
    composite interface have distinct tags; thus the tags can be
-   thought of as message paths, and used to reject a messages whose
+   thought of as message paths, and used to reject any message whose
    destination port index is inconsistent with the tag and the
-   composite interface implemented by the real functionality at
-   the destination port's address - an example is below
+   composite interface implemented by the real functionality at the
+   destination port's address - an example is below
 
    note that the UC DSL typechecker allows message arguments of
    types for which there is no EPDP into univ; such specifications
@@ -270,7 +310,8 @@ direct SMCDir {
   Pt2 : SMCPt2  (* Party 2 *)
 }
 
-So we assign these port indices:
+So we assign these port indices to components of the composite direct
+interface:
 
 Pt1: 1
 Pt2: 2
@@ -296,7 +337,7 @@ pt1@SMCDir.Pt1.smc_req(pt2, t)@(func, 2)
 In the interpreter, the port index of Pt1 is inconsistent with the
 destination port index 2, and so this message would result in failure.
 
-In raw EC, we would have
+In the EasyCrypt translation, we would have
 
 (Dir, pt1, (func, 2), 1, <encoding-of> (pt2, t))
 
