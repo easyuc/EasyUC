@@ -290,11 +290,23 @@ type port_or_addr_pexpr =
 
 (* expression for message in transit
 
+   message path must be qualified by root, as otherwise could
+   be ambiguous
+
    origin or destination can be an address, when the port index
    is implicit from the message path
 
-   message path must be qualified by root, as otherwise could
-   be ambiguous *)
+   when it's the *origin* whose port index is being inferred, this
+   will be true iff the message direction is "out" and either the
+   message path terminates in a component of a composite interface or
+   terminates with the basic adversarial interface of an ideal
+   functionality
+
+   when it's the *destination* whose port index is being inferred,
+   this will be true iff the message direction is "in" and either the
+   message path terminates in a component of a composite interface or
+   terminates with the basic adversarial interface of an ideal
+   functionality *)
 
 type sent_msg_expr =
   {in_poa_pexpr  : port_or_addr_pexpr;  (* source *)

@@ -30,9 +30,7 @@ val typecheck :
 val inter_check_real_fun_expr :
   symbol -> maps_tyd -> fun_expr -> fun_expr_tyd
 
-(*
 (* typecheck a sent message expression in an environment *)
 
 val inter_check_sent_msg_expr :
   maps_tyd -> env -> sent_msg_expr -> sent_msg_expr_tyd
-*)

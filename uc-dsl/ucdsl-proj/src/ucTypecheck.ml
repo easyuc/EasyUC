@@ -2398,8 +2398,6 @@ let inter_check_real_fun_expr
           fprintf ppf
           "@[real@ functionality@ expected@]")
 
-(*
-
 let inter_check_expr
     (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
       : expr * ty =
@@ -2413,26 +2411,39 @@ let inter_check_expr
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (poa_pexpr : pexpr port_or_addr_pexpr)
-      : expr =
+    (env : env) (ue : unienv) (poa_pexpr : port_or_addr_pexpr)
+    (pi_opt : int option) : expr =
   match poa_pexpr with
   | PoA_Port pexpr ->
       let (expr, _) = inter_check_expr env ue pexpr (Some port_ty) in
       expr
   | PoA_Addr pexpr ->
-      let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
-
+      match pi_opt with
+      | None    ->
+          error_message_record (loc pexpr)
+          (fun ppf ->
+             fprintf ppf
+             "[@unable@ to@ infer@ port@ index@ of@ addr]")
+      | Some pi ->
+          let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
+          (e_tuple [expr; e_int (EcBigInt.of_int pi)])
 
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
-      : (msg_mode * msg_dir * ty list) option =
+      : (msg_mode * msg_dir * int * ty list) option =
   match mp.inter_id_path with
   | root :: top :: rest ->
-      (let mode_bibt_opt =
+      (let mode_pi_bibt_opt =
          match get_inter_tyd_mode maps root top with
-         | None               -> None
+         | None            -> None
          | Some (mode, it) ->
              match unloc it with
-             | BasicTyd bibt        -> Some (mode, bibt)
+             | BasicTyd bibt        ->
+                 if List.is_empty rest
+                 then let uior = unit_info_of_root maps root in
+                      if is_basic_adv_of_ideal uior top
+                      then Some (mode, 1, bibt)
+                      else Some (mode, 0, bibt)  (* pi can't be inferred *)
+                 else None
              | CompositeTyd comp_mp ->
                  match rest with
                  | [bas] ->
@@ -2441,35 +2452,39 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
                       | Some bas ->
                           let bit = Option.get (get_inter_tyd maps root bas) in
                           match unloc bit with
-                          | BasicTyd bibt  -> Some (mode, bibt)
+                          | BasicTyd bibt  ->
+                              let pi = id_map_ordinal1_of_sym comp_mp bas in
+                              Some (mode, pi, bibt)
                           | CompositeTyd _ -> failure "cannot happen")
                  | _     -> None in
-       match mode_bibt_opt with
-       | None              -> None
-       | Some (mode, bibt) ->
+       match mode_pi_bibt_opt with
+       | None                  -> None
+       | Some (mode, pi, bibt) ->
            match IdMap.find_opt mp.msg bibt with
            | None     -> None
            | Some mbt ->
                Some
-               (mode, mbt.dir, indexed_map_to_list (unlocm mbt.params_map)))
-  | _ -> None
+               (mode, mbt.dir, pi, indexed_map_to_list (unlocm mbt.params_map)))
+  | _                   -> None
 
-let inter_check_sent_msg_expr
+let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let ue = unif_env () in
-  let in_poa_expr =
-    inter_check_expr_port_or_addr env ue sme.in_poa_pexpr in
-  let out_poa_expr =
-    inter_check_expr_port_or_addr env ue sme.out_poa_pexpr in
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps path with
-  | None                      ->
+  | None                          ->
       error_message_record (loc sme.path)
       (fun ppf ->
          fprintf ppf
          "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
          pp_qsymbol (msg_path_u_to_qsymbol path))
-  | Some (mode, dir, exp_tys) ->
+  | Some (mode, dir, pi, exp_tys) ->
+      let in_port_expr =
+        inter_check_expr_port_or_addr env ue sme.in_poa_pexpr
+        (if pi <> 0 && dir = Out then Some pi else None) in
+      let out_port_expr =
+        inter_check_expr_port_or_addr env ue sme.out_poa_pexpr
+        (if pi <> 0 && dir = In then Some pi else None) in
       let args = unloc sme.args in
       if List.length exp_tys <> List.length args
       then error_message_record (loc sme.args)
@@ -2485,10 +2500,16 @@ let inter_check_sent_msg_expr
                   inter_check_expr env ue pexpr (Some (List.nth exp_tys i)) in
                 ex)
              args in
-           {mode         = mode;
-            dir          = dir;
-            in_poa_expr  = in_poa_expr;
-            path         = path;
-            args         = exprs;
-            out_poa_expr = out_poa_expr}
-*)
+           {mode          = mode;
+            dir           = dir;
+            in_port_expr  = in_port_expr;
+            path          = path;
+            args          = exprs;
+            out_port_expr = out_port_expr}
+
+let inter_check_sent_msg_expr
+    (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
+  try inter_check_sme maps env sme with
+  | TyError (l, env, tyerr) ->
+      error_message_record l
+      (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)

@@ -28,6 +28,29 @@ let exists_id (id_map : 'a IdMap.t) (id : symbol) : bool =
 let id_map_domain (map : 'a IdMap.t) : IdSet.t =
   IdSet.of_list (List.map fst (IdMap.bindings map))
 
+(* map back and forth between the keys of an IdMap and their
+   ordinal numbers, beginning from 0, i.e., their positions
+   in the list of keys sorted in lexicographic order *)
+
+let id_map_ordinal_of_sym (map : 'a IdMap.t) (id : symbol) : int =
+  let bndgs = IdMap.bindings map in
+  fst (List.findi (fun _ (x, _) -> x = id) bndgs)
+
+let id_map_sym_of_ordinal (map : 'a IdMap.t) (i : int) : symbol =
+  let bndgs = IdMap.bindings map in
+  fst (List.nth bndgs i)
+
+(* map back and forth between the keys of an IdMap and their
+   ordinal numbers, beginning from 1, i.e., their positions
+   in the list of keys sorted in lexicographic order *)
+
+let id_map_ordinal1_of_sym (map : 'a IdMap.t) (id : symbol) : int =
+  id_map_ordinal_of_sym map id + 1
+
+let id_map_sym_of_ordinal1 (map : 'a IdMap.t) (i : int) : symbol =
+  let bndgs = IdMap.bindings map in
+  fst (List.nth bndgs (i - 1))
+
 module SL =  (* domain: string list = symbol list *)
   struct
     type t = string list
@@ -563,6 +586,11 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
           get_adv_pi_of_served_basic_adv_int;
         ti_get_adv_pi_of_subfun               = get_adv_pi_of_subfun}
 
+let is_basic_adv_of_ideal (uior : unit_info) (bas : symbol) : bool =
+  match uior with
+  | UI_Singleton si -> si.si_basic_adv = bas
+  | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
+
 (* Interpreter User Input *)
 
 (* typed functionality expression
@@ -588,9 +616,9 @@ let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
    the message path must be root-qualified *)
 
 type sent_msg_expr_tyd =
-  {mode          : msg_mode;           (* message mode *)
-   dir           : msg_dir;            (* message direction *)
-   in_port_expr  : expr;               (* source *)
-   path          : msg_path_u;         (* message path *)
-   args          : expr list;          (* message arguments *)
-   out_port_expr : expr}               (* destination *)
+  {mode          : msg_mode;    (* message mode *)
+   dir           : msg_dir;     (* message direction *)
+   in_port_expr  : expr;        (* source *)
+   path          : msg_path_u;  (* message path *)
+   args          : expr list;   (* message arguments *)
+   out_port_expr : expr}        (* destination *)

@@ -1,7 +1,6 @@
 (* UcInterpreter module *)
 
 open EcSymbols
-open EcTypes
 
 open UcMessage
 open UcSpec
@@ -51,6 +50,7 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
       Format.fprintf fmt "%a, %a"
         pp_real_world_arg rwa 
         pp_real_world_argl tl
+    | _ :: _ -> failure "cannot happen?"  (* TODO is this true? *)
   and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
     let sp,i,rwal = rw in
     match rwal with
