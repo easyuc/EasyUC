@@ -1,7 +1,6 @@
 (* UcInterpreter module *)
 
 open EcSymbols
-open EcUtils
 open EcTypes
 
 open UcMessage

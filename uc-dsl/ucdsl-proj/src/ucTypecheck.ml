@@ -377,7 +377,7 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
   | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
 let augment_env_with_state_context
-  (env : EcEnv.env) (sc : state_context) : EcEnv.env =
+    (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
     ([(EcIdent.create "envport", tfun port_ty tbool)] @
      List.map
@@ -2307,15 +2307,6 @@ let typecheck
   let maps =
     load_uc_reqs check_id empty_maps spec.externals.uc_requires in
   let () = load_ec_reqs spec.externals.ec_requires in
-  (* issue warnings if extra definitions that the real UCBasicTypes.ec
-     will provide are already defined in the current scope's environment *)
-  let () = warning_theory_name "UCListPO"       qual_file in
-  let () = warning_type_name   "addr"           qual_file in
-  let () = warning_type_name   "mode"           qual_file in
-  let () = warning_type_name   "msg"            qual_file in
-  let () = warning_op_name     "epdp_addr_univ" qual_file in
-  let () = warning_op_name     "Dir"            qual_file in
-  let () = warning_op_name     "Adv"            qual_file in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
@@ -2407,6 +2398,8 @@ let inter_check_real_fun_expr
           fprintf ppf
           "@[real@ functionality@ expected@]")
 
+(*
+
 let inter_check_expr
     (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
       : expr * ty =
@@ -2420,15 +2413,15 @@ let inter_check_expr
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (pexpr_poa : pexpr port_or_addr)
-      : expr port_or_addr =
-  match pexpr_poa with
+    (env : env) (ue : unienv) (poa_pexpr : pexpr port_or_addr_pexpr)
+      : expr =
+  match poa_pexpr with
   | PoA_Port pexpr ->
-      let (expr, ty) = inter_check_expr env ue pexpr (Some port_ty) in
-      PoA_Port expr
+      let (expr, _) = inter_check_expr env ue pexpr (Some port_ty) in
+      expr
   | PoA_Addr pexpr ->
-      let (expr, ty) = inter_check_expr env ue pexpr (Some addr_ty) in
-      PoA_Addr expr
+      let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
+
 
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
       : (msg_mode * msg_dir * ty list) option =
@@ -2498,3 +2491,4 @@ let inter_check_sent_msg_expr
             path         = path;
             args         = exprs;
             out_poa_expr = out_poa_expr}
+*)

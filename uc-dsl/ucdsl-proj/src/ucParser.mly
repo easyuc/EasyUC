@@ -884,8 +884,10 @@ msg_expr :
         {path = path; args = mk_loc (loc args) uargs; port_expr = port_expr} }
 
 dest :
-  | AT; port_expr = expr
-      { port_expr }
+  | AT; ex = idexpr
+      { ex }
+  | AT; LPAREN; ex = expr; RPAREN;
+      { ex }
 
 state_expr : 
   | id = uident; args = loc(option(args))
@@ -1084,22 +1086,26 @@ tyvar_instan:
 %inline sexpr: x = loc(sexpr_u) { x }
 %inline  expr: x = loc( expr_u) { x }
 
+(* begin UC DSL *)
+
 %inline idexpr: x = loc(idexpr_u) { x }
 
 idexpr_u :
-| x = qoident; ti = tvars_instan?
+  | x = qoident; ti = tvars_instan?
       { PEident (x, ti) }
+
+(* end UC DSL *)
 
 sexpr_u :
   | e = sexpr; PCENT; p = uqident
       { PEscope (p, e) }
 
-| e=sexpr p=loc(prefix(PCENT, _lident))
-   { if unloc p = "top" then
-       PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
-     else
-       let p = lmap (fun x -> "%" ^ x) p in
-       PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
+  | e=sexpr p=loc(prefix(PCENT, _lident))
+      { if unloc p = "top" then
+          PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
+        else
+          let p = lmap (fun x -> "%" ^ x) p in
+          PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
 
   | LPAREN; e = expr; COLONTILD; ty = loc(type_exp); RPAREN
       { PEcast (e, ty) }
@@ -1110,7 +1116,7 @@ sexpr_u :
   | d = DECIMAL
       { PEdecimal d }
 
-  (* begin UC DSL *)
+(* begin UC DSL *)
 
   | x = loc(ENVPORT)  (* envport function *)
       { PEident (mk_loc (loc x) ([], "envport"), None) }
@@ -1121,9 +1127,9 @@ sexpr_u :
          ([], "intport:" ^ string_of_qsymbol (unloc x)),
          None) }
 
-  (* end UC DSL *)
-
   | x = idexpr_u; { x }
+
+(* end UC DSL *)
 
   | op = loc(numop); ti = tvars_instan?
        { peapp_symb op.pl_loc op.pl_desc ti [] }
@@ -1289,9 +1295,11 @@ ptybindings :
       { [x, ty] }
 
 (* Interpreter User Input *)
+
 fun_expr_r :
   | x = uqident; { FunExprNoArgs x }
-  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN; { FunExprArgs (x,y) }
+  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN;
+      { FunExprArgs (x,y) }
   
 fun_expr :
   | fe = fun_expr_r; EOF { fe }

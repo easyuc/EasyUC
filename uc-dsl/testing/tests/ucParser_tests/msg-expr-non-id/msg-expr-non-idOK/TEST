@@ -1,0 +1,7 @@
+description
+  resolution of test where send and transition has message expression that is
+  not an identifier but is not parenthesized.
+.
+args: msg-expr-non-id.uc
+outcome: success
+.
