@@ -2407,6 +2407,8 @@ let inter_check_real_fun_expr
           fprintf ppf
           "@[real@ functionality@ expected@]")
 
+(*
+
 let inter_check_expr
     (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
       : expr * ty =
@@ -2428,8 +2430,6 @@ let inter_check_expr_port_or_addr
       expr
   | PoA_Addr pexpr ->
       let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
-
-
 
 
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
@@ -2500,3 +2500,4 @@ let inter_check_sent_msg_expr
             path         = path;
             args         = exprs;
             out_poa_expr = out_poa_expr}
+*)
