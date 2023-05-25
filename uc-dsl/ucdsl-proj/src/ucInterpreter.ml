@@ -33,14 +33,17 @@ type worlds = {
 }
 
 let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
-  let pp_symb_pair_int (fmt : Format.formatter) (sp,i : symb_pair * int) : unit =
+  let pp_symb_pair_int (fmt : Format.formatter) (sp,i : symb_pair * int) 
+  : unit =
     Format.fprintf fmt "@[%s.%s:%i@]" (fst sp) (snd sp) i
   in
-  let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg) : unit =
+  let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg) 
+  : unit =
     match rwa with
     | RWA_Real rw -> Format.fprintf fmt "%a" pp_real_world rw
     | RWA_Ideal (sp,i) -> Format.fprintf fmt "%a" pp_symb_pair_int (sp,i)
-  and pp_real_world_argl (fmt : Format.formatter) (rwal : real_world_arg list) : unit =
+  and pp_real_world_argl (fmt : Format.formatter) (rwal : real_world_arg list)
+  : unit =
     match rwal with
     | [] -> Format.fprintf fmt ""
     | rwa::[] ->
@@ -61,7 +64,8 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
         pp_symb_pair_int (sp,i) 
         pp_real_world_argl rwal
   in
-  let rec pp_simsl (fmt : Format.formatter) (spil : (symb_pair * int) list) : unit =
+  let rec pp_simsl (fmt : Format.formatter) (spil : (symb_pair * int) list)
+  : unit =
     match spil with
     | [] -> 
       Format.fprintf fmt ""

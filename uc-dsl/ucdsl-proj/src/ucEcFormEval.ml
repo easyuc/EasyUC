@@ -17,13 +17,16 @@ let get_ttenv () =
 (* proof pretty printer*)
 let pp_tc tc = (* copied from ecLowGoal.ml *)
   let pr = EcCoreGoal.proofenv_of_proof (EcCoreGoal.proof_of_tcenv tc) in
-  let cl = List.map (fun h -> EcCoreGoal.FApi.get_pregoal_by_id h pr) (EcCoreGoal.FApi.tc_opened tc) in
-  let cl = List.map (fun (x:EcCoreGoal.pregoal) -> (EcEnv.LDecl.tohyps x.g_hyps, x.g_concl)) cl in
+  let cl = List.map (fun h -> EcCoreGoal.FApi.get_pregoal_by_id h pr)
+    (EcCoreGoal.FApi.tc_opened tc) in
+  let cl = List.map (fun (x:EcCoreGoal.pregoal) 
+    -> (EcEnv.LDecl.tohyps x.g_hyps, x.g_concl)) cl in
 
   match cl with [] -> () | hd :: tl ->
 
   Format.eprintf "%a@."
-    (EcPrinting.pp_goal (EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc_env tc)) {prpo_pr = true; prpo_po = true})
+    (EcPrinting.pp_goal (EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc_env tc)) 
+    {prpo_pr = true; prpo_po = true})
     (hd, `All tl)
 
 let pp_proof (proof : EcCoreGoal.proof) : unit =
@@ -32,9 +35,10 @@ let pp_proof (proof : EcCoreGoal.proof) : unit =
 let print_endline _ = ()
 let pp_proof _ = ()
    
-let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) 
+: EcCoreGoal.proof =
   let tc1 = EcCoreGoal.tcenv1_of_proof proof in
-  let tc = tac tc1 in
+  le t tc = tac tc1 in
   let proof' = EcCoreGoal.proof_of_tcenv tc in
   pp_proof proof';
   proof'
@@ -94,7 +98,8 @@ let can_prove_smt (proof : EcCoreGoal.proof) : bool =
   pp_proof proof;
   let dft_pi = { 
     EcProvers.dft_prover_infos with 
-      pr_provers = List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
+      pr_provers = 
+      List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
   } in
   let pregoal = get_only_pregoal proof in
   try
@@ -115,7 +120,8 @@ let can_prove (proof : EcCoreGoal.proof) : bool =
     then true
     else can_prove_smt proof
 
-let evalCondition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : evalConditionResult =
+let evalCondition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+: evalConditionResult =
   let proof_true = EcCoreGoal.start hyps form in
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
 
@@ -155,7 +161,7 @@ let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
           let ntop, tc = t_case tc in
 
           EcCoreGoal.FApi.t_sublasts
-            (List.map (fun i tc -> aux (EcUtils.omap ((+) (i-1)) imax) tc) ntop)
+          (List.map (fun i tc -> aux (EcUtils.omap ((+) (i-1)) imax) tc) ntop)
             tc
         with EcCoreGoal.InvalidGoalShape ->
           try
@@ -167,7 +173,8 @@ let move_hash (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
                   (EcLowGoal.t_generalize_hyps ~clear:`Yes [id]))
           with
           | EcCoreGoal.TcError _ when EcUtils.is_some imax ->
-              EcCoreGoal.tc_error (EcCoreGoal.(!!) tc) "not enough top-assumptions"
+              EcCoreGoal.tc_error (EcCoreGoal.(!!) tc) 
+              "not enough top-assumptions"
           | EcCoreGoal.TcError _ ->
               EcLowGoal.t_id tc
       in
@@ -208,7 +215,8 @@ let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   | _ -> false
   end
   
-let extract_form (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreFol.form =
+let extract_form (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreFol.form =
   let pregoal = get_only_pregoal proof in
   let concl = pregoal.g_concl in
   begin match (EcCoreFol.f_node concl) with
@@ -235,7 +243,8 @@ let progression
   in
   r true proof
 (*  
-let move_hash_all (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
+let move_hash_all (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreGoal.proof =
   let hash_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     if (is_concl_p proof p_id)
     then
@@ -270,10 +279,13 @@ let intro1_rw s tc = (*modified from ecHiGoal.ml*)
   in
   let h = EcIdent.create "_" in
   let rwt tc =
-    let pt = EcProofTerm.pt_of_hyp (EcCoreGoal.(!!) tc) (EcCoreGoal.FApi.tc1_hyps tc) h in
+    let pt = 
+    EcProofTerm.pt_of_hyp (EcCoreGoal.(!!) tc) (EcCoreGoal.FApi.tc1_hyps tc) h 
+    in
     process_rewrite1_core ~close:false s pt tc
   in 
-  EcCoreGoal.FApi.t_seqs [EcLowGoal.t_intros_i [h]; rwt; EcLowGoal.t_clear h] tc
+  EcCoreGoal.FApi.t_seqs 
+  [EcLowGoal.t_intros_i [h]; rwt; EcLowGoal.t_clear h] tc
 
 (*move => ->.*)  
 let move_right (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
@@ -285,7 +297,8 @@ let move_left (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => <-.";
   run_tac (intro1_rw `RtoL) proof
 
-let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
+let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreGoal.proof =
   if (is_concl_p proof p_id)
   then 
     proof
@@ -309,7 +322,8 @@ let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
   print_endline "END count_hyp_forms";
   List.length h_forms
   
-let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t): EcCoreGoal.proof option =
+let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
+: EcCoreGoal.proof option =
   let move_right_simplify proof =
     let proof_a = move_right proof in
     let proof_b = move_simplify proof_a in
@@ -357,12 +371,14 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t): EcCoreGoal.proo
   in
   progression try_rewriting_step proof
   
-let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) 
+: EcCoreGoal.proof =
   tac_move_hyp_form_to_concl h_id proof
   
 
 
-let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
+let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreGoal.proof =
   print_endline "BEGIN rotate_hyps";
   let proof_a = move_all_hyps_up proof p_id in
   let pregoal = get_only_pregoal proof_a in
@@ -384,7 +400,8 @@ let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof
     print_endline "END rotate_hyps";
     proof_c
 
-let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) 
+: EcCoreGoal.proof option =
   let rec try_simpcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
@@ -397,10 +414,12 @@ let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) : EcC
   let counter = count_hyp_forms proof p_id in
   try_simpcyc_r counter proof
   
-let try_simp (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof option = 
+let try_simp (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreGoal.proof option = 
   progression (try_simplification_cycle p_id) proof 
 
-let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreFol.form =
+let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+: EcCoreFol.form =
   (*let proof_a = prelims proof p_id in*)
   let proof' = move_all_hyp_forms_to_concl proof in
   let proof_o = try_simp proof' p_id in
@@ -439,7 +458,8 @@ let simplify_by_crushing
   form_s
 *)
               
-let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
+let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+: EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
   let f_ty = EcCoreFol.f_ty form in
   let p_ty = EcTypes.tcpred f_ty in
@@ -486,7 +506,8 @@ let pp_f _ _ = ()
 let printEvalResult _ = ()
    
 let smt_op_form_not_None 
-(hyps : EcEnv.LDecl.hyps) (opf : EcCoreFol.form) (form : EcCoreFol.form) : bool =
+(hyps : EcEnv.LDecl.hyps) (opf : EcCoreFol.form) (form : EcCoreFol.form) 
+: bool =
   print_endline "smt_op_form_not_None";
   pp_f hyps opf;
   pp_f hyps form;
@@ -494,7 +515,8 @@ let smt_op_form_not_None
   pp_ty hyps oty;
   let ty = get_ty_from_oty oty in
   pp_ty hyps ty;
-  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] oty (*EcTypes.toption ty*) in
+  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] oty in
+  (*EcTypes.toption ty*)
   pp_f hyps f_none;
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
   pp_f hyps concl;
@@ -511,10 +533,13 @@ let mk_oget_op_form
   let _,oty = EcTypes.tyfun_flat (EcCoreFol.f_ty opf) in
   let ty = get_ty_from_oty oty in
   let as_ty_f = EcCoreFol.f_app opf [form] oty in
-  let ogetf = EcCoreFol.f_op EcCoreLib.CI_Option.p_oget [ty] (EcTypes.tfun (EcTypes.toption ty) ty) in
+  let ogetf = 
+  EcCoreFol.f_op EcCoreLib.CI_Option.p_oget [ty] 
+  (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
-let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFol.form =
+let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+: EcCoreFol.form =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in
   print_endline "begin match ty.ty_node with";
@@ -531,8 +556,11 @@ let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) : EcCoreFo
         let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
         EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty)
         sopl in
-      print_endline "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) opfl in";
-      let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) opfl in
+      print_endline 
+      "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) 
+      opfl in";
+      let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) 
+      opfl in
       print_endline "begin match opfo with";
       begin match opfo with
       | Some opf -> mk_oget_op_form opf form
