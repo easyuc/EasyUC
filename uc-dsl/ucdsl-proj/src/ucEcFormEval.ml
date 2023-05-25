@@ -38,7 +38,7 @@ let pp_proof _ = ()
 let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
   let tc1 = EcCoreGoal.tcenv1_of_proof proof in
-  le t tc = tac tc1 in
+  let tc = tac tc1 in
   let proof' = EcCoreGoal.proof_of_tcenv tc in
   pp_proof proof';
   proof'
