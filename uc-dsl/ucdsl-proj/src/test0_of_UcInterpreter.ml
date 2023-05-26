@@ -61,6 +61,12 @@ let test_fun_expr_to_worlds_0 (): unit =
   test_fun_expr_to_worlds [smc_dir] smc fe
 
 (*********)
+
+let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
+  let lexbuf = Lexing.from_string sme in
+  try UcParser.sent_msg_expr UcLexer.read lexbuf  with
+  | UcParser.Error -> parse_error_handling lexbuf
+
   
 let () =
   test_worlds_pp_0 ();
