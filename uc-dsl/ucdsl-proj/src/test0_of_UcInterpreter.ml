@@ -60,6 +60,13 @@ let test_fun_expr_to_worlds_0 (): unit =
   let fe = "SMC.SMCReal(KeyExchange.KEReal())" in
   test_fun_expr_to_worlds [smc_dir] smc fe
 
+let smc2_dir = "~/EasyUC/uc-dsl/examples/smc2"
+let smc2 = "SMC2.uc"
+
+let test_fun_expr_to_worlds_1 (): unit =
+  let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
+  test_fun_expr_to_worlds [smc2_dir] smc2 fe
+
 (*********)
 
 let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
@@ -69,8 +76,12 @@ let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
 
   
 let () =
+  let n = Format.get_margin() in
+  Printf.printf "margin: %d\n\n" n;
   test_worlds_pp_0 ();
   print_endline "";
   UcEcInterface.init ();
   test_fun_expr_to_worlds_0 ();
+  print_endline "";
+  test_fun_expr_to_worlds_1 ();
   print_endline ""
