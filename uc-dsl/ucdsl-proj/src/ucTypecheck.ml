@@ -2469,6 +2469,7 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
 
 let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
+  let expr2form = EcFol.form_of_expr EcFol.mhr in
   let ue = unif_env () in
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps path with
@@ -2502,10 +2503,10 @@ let inter_check_sme
              args in
            {mode          = mode;
             dir           = dir;
-            in_port_expr  = in_port_expr;
+            in_port_form  = expr2form in_port_expr;
             path          = path;
-            args          = exprs;
-            out_port_expr = out_port_expr}
+            args          = List.map expr2form exprs;
+            out_port_form = expr2form out_port_expr}
 
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =

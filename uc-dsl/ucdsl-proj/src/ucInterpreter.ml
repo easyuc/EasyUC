@@ -1,7 +1,7 @@
 (* UcInterpreter module *)
 
 open EcSymbols
-open EcTypes
+open EcFol
 
 open UcMessage
 open UcSpec
@@ -86,14 +86,14 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
     pp_real_world w.worlds_real 
     pp_ideal_world w.worlds_ideal
 
-let pp_ex (fmt : Format.formatter) (ex : expr) : unit =
+let pp_form (fmt : Format.formatter) (f : form) : unit =
   let env = UcEcInterface.env() in
   let ppe = EcPrinting.PPEnv.ofenv env in
-  let pp_expr = EcPrinting.pp_expr ppe in
-  pp_expr fmt ex
+  let pp_form = EcPrinting.pp_form ppe in
+  pp_form fmt f
 
 let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd) 
-: unit =
+      : unit =
   let pp_msg_dir (fmt : Format.formatter) (dir : msg_dir) : unit =
     let s = match dir with
       | In   -> "Incoming"
@@ -109,12 +109,12 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
     Format.fprintf fmt "%s message:" s
   in
   let pp_msg (fmt : Format.formatter) 
-  (a : expr * msg_path_u * expr list * expr) : unit =
+      (a : form * msg_path_u * form list * form) : unit =
     let inp,path,args,outp = a in
-    let pp_portex (fmt : Format.formatter) (ex : expr) : unit =
-      if (is_var ex)||(is_local ex)
-      then Format.fprintf fmt "%a" pp_ex ex
-      else Format.fprintf fmt "(%a)" pp_ex ex
+    let pp_portform (fmt : Format.formatter) (f : form) : unit =
+      if (is_pvar f)||(is_local f)
+      then Format.fprintf fmt "%a" pp_form f
+      else Format.fprintf fmt "(%a)" pp_form f
     in
     let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
       let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
@@ -125,22 +125,22 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
       in
       Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg
     in
-    let rec pp_exprl (fmt : Format.formatter) (exprl : expr list) : unit =
-      match exprl with
+    let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
+      match forml with
       | [] -> Format.fprintf fmt ""
-      | ex::[] -> Format.fprintf fmt "%a" pp_ex ex
-      | ex::tl -> Format.fprintf fmt "%a,%a" pp_ex ex pp_exprl tl
+      | ex::[] -> Format.fprintf fmt "%a" pp_form ex
+      | ex::tl -> Format.fprintf fmt "%a,%a" pp_form ex pp_forml tl
     in
     Format.fprintf fmt "%a%a(%a)%a"
-    pp_portex inp
+    pp_portform inp
     pp_mpath path
-    pp_exprl args
-    pp_portex outp
+    pp_forml args
+    pp_portform outp
   in
   Format.fprintf fmt "@[%a %a@ %a@]@."
     pp_msg_dir sme.dir
     pp_msg_mode sme.mode
-    pp_msg (sme.in_port_expr, sme.path, sme.args, sme.out_port_expr)
+    pp_msg (sme.in_port_form, sme.path, sme.args, sme.out_port_form)
 
 let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
   let rec fun_expr_to_worlds_base (fet : fun_expr_tyd) (base : int)

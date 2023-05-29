@@ -10,6 +10,8 @@ open EcLocation
 open EcUtils
 open EcSymbols
 open EcTypes
+open EcFol
+
 open UcSpecTypedSpecCommon
 open UcMessage
 
@@ -618,7 +620,7 @@ let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
 type sent_msg_expr_tyd =
   {mode          : msg_mode;    (* message mode *)
    dir           : msg_dir;     (* message direction *)
-   in_port_expr  : expr;        (* source *)
+   in_port_form  : form;        (* source *)
    path          : msg_path_u;  (* message path *)
-   args          : expr list;   (* message arguments *)
-   out_port_expr : expr}        (* destination *)
+   args          : form list;   (* message arguments *)
+   out_port_form : form}        (* destination *)
