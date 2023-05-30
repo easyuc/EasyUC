@@ -112,7 +112,7 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
       (a : form * msg_path_u * form list * form) : unit =
     let inp,path,args,outp = a in
     let pp_portform (fmt : Format.formatter) (f : form) : unit =
-      if (is_pvar f)||(is_local f)
+      if is_local f
       then Format.fprintf fmt "%a" pp_form f
       else Format.fprintf fmt "(%a)" pp_form f
     in

@@ -43,6 +43,7 @@ let parse_fun_expr (fe : string) : UcSpec.fun_expr =
   | UcParser.Error -> parse_error_handling lexbuf
 
 let test_fun_expr_to_worlds (include_dirs : string list) (file : string) (fun_ex : string) : unit =
+  UcEcInterface.init ();
   UcState.set_units();
   UcState.set_include_dirs include_dirs;
   let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
@@ -74,14 +75,31 @@ let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
   try UcParser.sent_msg_expr UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
 
+let test_sent_msg_expr (include_dirs : string list) (file : string) (msg_ex : string) : unit =
+  UcEcInterface.init ();
+  UcState.set_units();
+  UcState.set_include_dirs include_dirs;
+  let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
+  let env = UcEcInterface.env() in
+  let sme = parse_sent_msg_expr msg_ex in
+  let smet = UcTypecheck.inter_check_sent_msg_expr maps env sme in
+  pp_sent_msg_expr_tyd Format.std_formatter smet
+  
+let test_sent_msg_expr0_neg () : unit=
+  let me = 
+"(7)$SMC2.SMC2Pt1.smc_req(8,testtext)$(7)" in
+  test_sent_msg_expr [smc2_dir] smc2 me
+
+(*********)
   
 let () =
   let n = Format.get_margin() in
   Printf.printf "margin: %d\n\n" n;
   test_worlds_pp_0 ();
   print_endline "";
-  UcEcInterface.init ();
   test_fun_expr_to_worlds_0 ();
   print_endline "";
   test_fun_expr_to_worlds_1 ();
+  print_endline "";
+  test_sent_msg_expr0_neg ();
   print_endline ""
