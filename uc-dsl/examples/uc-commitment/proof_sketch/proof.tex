@@ -207,7 +207,7 @@
 \newcommand{\GrpOrd}{q}
 \newcommand{\GrpEltC}{c}
 \newcommand{\GrpEltD}{d}
-\newcommand{\GrpEltE}{h}
+\newcommand{\GrpEltE}{e}
 \newcommand{\GrpEltH}{h}
 \newcommand{\GrpEltU}{u}
 \newcommand{\GrpEltV}{v}
@@ -267,7 +267,7 @@ $\PKE$ satisfies the following properties:
     Further, we call the following distinguishing game the \textbf{oblivious Ind-CCA2 game}: for any stateful adversary $\Adversary$, the following distributions are negligibly-close:
     \begin{align*}
 		&\Distribution_0(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext)
+		(\Ciphertext,\Rand)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
@@ -277,7 +277,7 @@ $\PKE$ satisfies the following properties:
 		\end{array}
 		\right\} \\
 		&\text{and } \Distribution_1(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext)
+		(\Ciphertext, \Rand)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
