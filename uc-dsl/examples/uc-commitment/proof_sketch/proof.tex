@@ -512,9 +512,11 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
 We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme by arguing that Cramer-Shoup satisfies the axioms listed in \code{IndCCA.ec}.
 
 \begin{itemize}
-    \item The number of possible of obliviously-sampled ciphertexts is $\GrpOrd^4$, since we can view each element of the ciphertext string as u.a.r. in $\Group$.
-    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes a $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\GrpEltU_1, \GrpEltU_2, \GrpEltE)$ outputs a fixed value, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
-    \item Thus, the ratio of real to oblivously-sampled ciphertexts is $\frac{1}{\GrpOrd} = \frac{1}{2^{\SecParam}}$.
+    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes a $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \GrpEltE)$ outputs a fixed value, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
+
+    \item The number of possible of obliviously-sampled ciphertexts is $\GrpOrd^4$, since we can view each element of the ciphertext string as uniformly random in $\Group$.
+
+    \item Thus, the ratio of real to oblivously-sampled ciphertexts is $\frac{1}{\GrpOrd^3} = \frac{1}{2^{3\cdot\SecParam}}$.
 \end{itemize}
 
 \megan{finish}
