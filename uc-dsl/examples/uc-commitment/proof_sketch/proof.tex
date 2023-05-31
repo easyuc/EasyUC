@@ -733,11 +733,12 @@ The simulator $\Simulator$ does the following:
 \end{enumerate}
 
 \item \parhead{Open round}
-
+\newcommand{\fake}{\mathsf{fake}}
 \begin{enumerate}[nolistsep]
     \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
 	\item Query the ideal functionality $\IFCom$ to receive the committed bit $\CommittedBit$.
-    \item Send $(\CommittedBit, \Input_{\CommittedBit}, \Rand_{\CommittedBit})$ to $\IFCom$.
+    \item Compute $\Rand_{\fake} \eqdef \OblivEncInv(\EncKey, \Ct_{1-\CommittedBit})$
+    \item Send $(\CommittedBit, \Input_{\CommittedBit}, \Rand_{\fake})$ to $\IFCom$.
 \end{enumerate}
 
 \end{itemize}
