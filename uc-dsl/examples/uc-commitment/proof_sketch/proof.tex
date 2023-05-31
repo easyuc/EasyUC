@@ -411,23 +411,24 @@ We define two subroutines used for oblivious sampleability.
 First, we describe a method of oblivously sampling an element in the group $\Group$:
 
 \begin{itemize}
-\item[]$\OblivEltGen_{\GrpOrd}(\cdot) \to \GrpEltH$.
+\item[]$\OblivEltGen(\RandStr) \to \GrpEltH$.
     \begin{enumerate}[nolistsep]
-        \item Sample a string $\RandStr \gets \Bits^{2 \log_2 (\MultGrpOrd)}$. Cast $\RandStr$ as an element of the multiplicative group $\MultGrp$.
+        %\item Sample a string $\RandStr \gets \Bits^{2 \log_2 (\MultGrpOrd)}$. Cast $\RandStr$ as an element of the multiplicative group $\MultGrp$. %Megan: Comment bc can take the string as input.
+        \item Parse $\RandStr$ as an element of $\MultGrp$.
         \item Compute the group element as $\GrpEltH \eqdef \RandStr^{\OrdW} \in \Group \subseteq \MultGrp$.\footnote{This procedure is statistically-close to selecting a random element in $\Group$. \megan{why?}}
         \item Output $\GrpEltH$.
     \end{enumerate}
 \end{itemize}
 
-Second, we describe a method of finding a group element's inverse: given $\GrpEltH\in\Group$, find $\Inv{\GrpEltH}$ such that $\left(\Inv{\GrpEltH}\right)^\OrdW = \GrpEltH\in\Group$:
+Second, we describe a method of finding a group element's inverse: given $\GrpEltH\in\Group$, find $\Inv{\GrpEltH}$ such that $\left(\Inv{\GrpEltH}\right)^\OrdW = \GrpEltH\in\Group\subseteq\MultGrp$:
 \begin{itemize}
 \item[]$\OblivEltInv_{\MultGrpOrd}(\GrpEltH) \to \Inv{\GrpEltH}$.
     \begin{enumerate}[nolistsep]
+        \item Parse $\GrpEltH$ as an element of $\MultGrp$.
         \item Pick a generator $\Generator \in \MultGrp$.
         \item Find $x$ such that $x\OrdW \equiv 1 \text{ mod } \GrpOrd$.
         \item Sample $i \gets \{0, \ldots, \OrdW-1\}$.
         \item Compute $\Inv{\GrpEltH} \eqdef \GrpEltH^{x}\Generator^{i\GrpOrd} \text{ mod } \MultGrpOrd$. Note that the $\Generator^{i\GrpOrd}$ are the $\OrdW$-th roots of unity.
-        % \item Sample $j \gets \{0, \ldots, \MultGrpOrd-1 \}$, compute $\RandStr \eqdef j\MultGrpOrd \in \Integers$, then cast $\RandStr$ as a bitstring in $\Bits^{2 \log_2 (\MultGrpOrd)}$.
         \item Output $\Inv{\GrpEltH}$.
     \end{enumerate}
 \end{itemize}
@@ -470,8 +471,7 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
         \item Compute $\Tag = \Hash(\GrpEltU_1, \GrpEltU_2, \GrpEltE)$.
         \item Check if
         \begin{equation*}
-            \GrpEltU_1^{\ExpX_1 + \ExpY_1 \Tag} \GrpEltU_2^{\ExpX_2 + \ExpY_2 \Tag}
-            = \GrpEltV
+            \GrpEltU_1^{\ExpX_1 + \ExpY_1 \Tag} \GrpEltU_2^{\ExpX_2 + \ExpY_2 \Tag} = \GrpEltV
             \enspace.
         \end{equation*} If so, output $\Msg = \GrpEltE / \GrpEltU_1^{\ExpZ}$. Otherwise, output $\bot$.
     \end{enumerate}
@@ -481,10 +481,10 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
         \item Parse $\Rand = (\RandStr_{\GrpEltU_1}, \RandStr_{\GrpEltU_2}, \RandStr_{\GrpEltE}, \RandStr_{\GrpEltV})$.
         \item Run
         \begin{align*}
-            &\GrpEltU_1 \gets \OblivEltGen_{\GrpOrd}( \RandStr_{\GrpEltU_1})\\
-            &\GrpEltU_2 \gets \OblivEltGen_{\GrpOrd}( \RandStr_{\GrpEltU_2})\\
-            &\GrpEltE \gets \OblivEltGen_{\GrpOrd}( \RandStr_{\GrpEltE})\\
-            &\GrpEltV \gets \OblivEltGen_{\GrpOrd}( \RandStr_{\GrpEltV})
+            &\GrpEltU_1 \gets \OblivEltGen( \RandStr_{\GrpEltU_1})\\
+            &\GrpEltU_2 \gets \OblivEltGen( \RandStr_{\GrpEltU_2})\\
+            &\GrpEltE \gets \OblivEltGen( \RandStr_{\GrpEltE})\\
+            &\GrpEltV \gets \OblivEltGen( \RandStr_{\GrpEltV})
             \enspace.
         \end{align*}
         \item Output $\Ct \eqdef (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
@@ -511,12 +511,53 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
 
 We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme by arguing that Cramer-Shoup satisfies the axioms listed in \code{IndCCA.ec}.
 
+\renewcommand{\mod}{\textrm{ mod }}
 \begin{itemize}
-    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes a $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \GrpEltE)$ outputs a fixed value, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
+% \item \textbf{Plaintext space:} $\Group$.
+% \item \textbf{Randomness space:} $\Rand\gets\Integers_{\GrpOrd}$.
+% \item \textbf{Ciphertext space:} $\Group^{4}$.
+\item \textbf{\code{axiom correctness}:} This is the standard correctness property of encryption schemes.
+\item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{.ec} file has a note that this isn't required for our proofs.}
+\item \textbf{\code{lemma dec\_fails}:} \megan{todo}
+\item \textbf{\code{axiom obliv\_enc\_cancel}:}
+
+This axiom is \textbf{false}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
+\begin{itemize}[nolistsep]
+    \item Set $\MultGrpOrd = 7$, $\OrdW = 2$, $\GrpOrd = 3$, and $x = 2$. Notes:
+    \begin{itemize}[nolistsep]
+        \item These parameters correspond to defining the subgroup $\Group \subset \MultGrp$ so that $\Group \eqdef (\{1,2,4\}, \cdot \mod 7)$. %the set $\{1,2,4\}$ with operation multiplication modulo $7$.
+        \item The generators of $\MultGrp$ are $\{3,5\}$.
+    \end{itemize}
+
+    \item Let $\RandStr = 5$. Then $\OblivEltGen(5) = \RandStr^{\OrdW} = 25 \equiv 4 \mod 7$. So $\GrpEltH = 4$.
+    \item Suppose $\OblivEltInv_{7}(\GrpEltH)$ selects the (randomly) the choices $\Generator=3$, $x = 2$, $i = 2$. Then
+    \begin{align*}
+    \OblivEltInv_{7}(\GrpEltH) = \GrpEltH^{x}\Generator^{i\GrpOrd} = 4^2 \cdot 3^{2 \cdot 3} = 16 \cdot 729 \equiv 2 \mod 7
+    \enspace.
+    \end{align*}
+    Thus $\Inv{\GrpEltH} = 2 \ne 5 = \RandStr$. (Still, $2^{\OrdW} = 2^2 = 4 \mod 7$.)
+
+    Moreover, if we combine the above with the definitions of $\OblivEncInv$ and $\OblivEnc$, we get
+    \begin{equation*}
+    \Pr\left[\OblivEncInv(\EncKey, \OblivEnc(\EncKey, \Rand)) = \Rand\right] \ne 1
+    \enspace.
+    \end{equation*}
+    (Note that the encryption key $\EncKey$ does not play a role in either $\OblivEnc$ or $\OblivEncInv$.)
+\end{itemize}
+
+\item \textbf{\code{axiom obliv\_enc\_inv\_cancel}:} \megan{I think this one is true because $\OblivEltInv$ outputs $\Inv{\GrpEltH}$ such that $(\Inv{\GrpEltH})^{\OrdW} = \GrpEltH$.}
+
+\item \textbf{\code{axiom mu\_obliv\_enc\_dec\_exact\_ub}:} \megan{I forgot how to parse this easycrypt, but I think it's related to the ratio computed in the below item.}
+
+\item \textbf{Ratio of real and oblivously-sampled ciphertext space sizes}
+\begin{itemize}[nolistsep]
+    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes an $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \GrpEltE)$ outputs a fixed value, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
 
     \item The number of possible of obliviously-sampled ciphertexts is $\GrpOrd^4$, since we can view each element of the ciphertext string as uniformly random in $\Group$.
 
-    \item Thus, the ratio of real to oblivously-sampled ciphertexts is $\frac{1}{\GrpOrd^3} = \frac{1}{2^{3\cdot\SecParam}}$.
+    \item Thus, the ratio of the number of real ciphertexts to the number of possible oblivously-sampled ciphertexts is $\frac{1}{\GrpOrd^3} = \frac{1}{2^{3\cdot\SecParam}}$.
+\end{itemize}
+
 \end{itemize}
 
 \megan{finish}

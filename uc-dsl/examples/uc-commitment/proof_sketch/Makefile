@@ -3,19 +3,22 @@
 BIBS=$(shell ls *.bib)
 DEPENDS=$(shell ls *.tex)
 NAME=proof
-all: pdflatex
+all: fast
 
-rubber: $(NAME).tex $(DEPENDS) $(BIBS)
-	rubber -vv --pdf $(NAME).tex
-
-pdflatex: $(NAME).tex $(DEPENDS) $(BIBS)
-	pdflatex $(NAME).tex $(DEPENDS)
+debug: $(NAME).tex $(DEPENDS) $(BIBS)
+	pdflatex -draftmode -file-line-error $(NAME).tex $(DEPENDS)
 	bibtex $(NAME)
-	pdflatex $(NAME).tex $(DEPENDS)
-	pdflatex $(NAME).tex $(DEPENDS)
+	pdflatex -draftmode -interaction=batchmode $(NAME).tex $(DEPENDS)
+	pdflatex -interaction=batchmode $(NAME).tex $(DEPENDS)
+
+fast: $(NAME).tex $(DEPENDS) $(BIBS)
+	pdflatex -draftmode -interaction=batchmode $(NAME).tex $(DEPENDS)
+	bibtex $(NAME)
+	pdflatex -draftmode -interaction=batchmode $(NAME).tex $(DEPENDS)
+	pdflatex -interaction=batchmode $(NAME).tex $(DEPENDS)
 
 open:
 	pkill Preview || true && open $(NAME).pdf
 
 clean:
-	rm -rf *.aux *.bbl *.blg *.log *.pdf *.toc *.snm *.out *.nav *.dvi *.lb *.fdb_latexmk *.fls tags auto
+	rm -rf *.aux *.blg *.log *.pdf *.toc *.snm *.out *.nav *.dvi *.lb *.fdb_latexmk *.fls *.bbl tags auto
