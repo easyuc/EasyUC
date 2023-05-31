@@ -74,20 +74,65 @@ let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
   let lexbuf = Lexing.from_string sme in
   try UcParser.sent_msg_expr UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
+ 
+let pp_err_message (fmt : Format.formatter) (err : UcMessage.message) : unit =
+  let pp_mt (fmt : Format.formatter) (mt : UcMessage.message_type) : unit =
+    let s = match mt with
+    | WarningMessage -> "Warning:" 
+    | ErrorMessage   -> "Error:"
+    in 
+    Format.fprintf fmt "%s@ " s
+  in
+  let pp_loc_opt (fmt : Format.formatter) 
+  (loc_opt : UcMessage.loc_data option) : unit =
+    match loc_opt with
+    | Some loc ->
+      let s,i1,i2,i3,i4 = loc in
+      Format.fprintf fmt 
+      "%s@ line:%i,@ column:%i@ to@ line:%i,@ column:%i@ "
+      s i1 i2 i3 i4
+    | None ->
+      Format.fprintf fmt "@,"
+  in
+  let mt,loc_opt,s = err in
+    Format.fprintf fmt "@[%a%a%s@]@."
+    pp_mt mt
+    pp_loc_opt loc_opt
+    s
 
+let rec pp_err_messages (fmt : Format.formatter)
+(msgl : UcMessage.message list) : unit =
+  match msgl with
+  | [] ->  Format.fprintf fmt ""
+  | msg::tl -> Format.fprintf fmt "%a%a" pp_err_message msg pp_err_messages tl
+
+let print_errors () : unit =
+  let msgl = UcMessage.get_messages () in
+  let fmt = Format.std_formatter in
+  pp_err_messages fmt msgl
+  
 let test_sent_msg_expr (include_dirs : string list) (file : string) (msg_ex : string) : unit =
   UcEcInterface.init ();
   UcState.set_units();
   UcState.set_include_dirs include_dirs;
-  let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
-  let env = UcEcInterface.env() in
-  let sme = parse_sent_msg_expr msg_ex in
-  let smet = UcTypecheck.inter_check_sent_msg_expr maps env sme in
-  pp_sent_msg_expr_tyd Format.std_formatter smet
+  try
+    let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
+    let env = UcEcInterface.env() in
+    let sme = parse_sent_msg_expr msg_ex in
+    let smet = UcTypecheck.inter_check_sent_msg_expr maps env sme in
+    pp_sent_msg_expr_tyd Format.std_formatter smet
+  with exn ->
+    print_errors ();
+    raise exn
   
-let test_sent_msg_expr0_neg () : unit=
+let test_sent_msg_expr0_neg () : unit =
   let me = 
-"(7)$SMC2.SMC2Pt1.smc_req(8,testtext)$(7)" in
+"(port_x)@SMC2.SMC2Pt1.smc_req(port_x,testtext)$(addr_x)" in
+  test_sent_msg_expr [smc2_dir] smc2 me
+
+let test_sent_msg_expr0_pos () : unit =
+  let me = 
+"(port_x)@SMC2.SMC2Pt1.smc_req(port_x,testtext)@(port_x)" in
   test_sent_msg_expr [smc2_dir] smc2 me
 
 (*********)
@@ -100,6 +145,8 @@ let () =
   test_fun_expr_to_worlds_0 ();
   print_endline "";
   test_fun_expr_to_worlds_1 ();
+  print_endline "";
+  test_sent_msg_expr0_pos ();
   print_endline "";
   test_sent_msg_expr0_neg ();
   print_endline ""

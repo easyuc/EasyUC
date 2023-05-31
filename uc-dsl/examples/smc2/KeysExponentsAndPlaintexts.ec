@@ -165,3 +165,8 @@ lemma valid_epdp_port_port_key_univ :
 proof.
 rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.
+
+(*added for tests*)
+op addr_x : addr.
+op port_x : port.
+op testtext : text.
