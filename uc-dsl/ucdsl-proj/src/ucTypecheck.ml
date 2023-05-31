@@ -2423,7 +2423,7 @@ let inter_check_expr_port_or_addr
           error_message_record (loc pexpr)
           (fun ppf ->
              fprintf ppf
-             "[@unable@ to@ infer@ port@ index@ of@ addr]")
+             "@[unable@ to@ infer@ port@ index@ of@ addr@]")
       | Some pi ->
           let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
           (e_tuple [expr; e_int (EcBigInt.of_int pi)])
