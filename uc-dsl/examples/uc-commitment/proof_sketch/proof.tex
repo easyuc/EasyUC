@@ -551,7 +551,7 @@ This axiom is \textbf{false}. Below is a counterexample to show that sometimes $
 
 \item \textbf{Ratio of real and oblivously-sampled ciphertext space sizes}
 \begin{itemize}[nolistsep]
-    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes an $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \GrpEltE)$ outputs a fixed value, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
+    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes an $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \Ct_3)$ outputs a fixed value given $(\Ct_1, \Ct_2, \Ct_3)$, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
 
     \item The number of possible of obliviously-sampled ciphertexts is $\GrpOrd^4$, since we can view each element of the ciphertext string as uniformly random in $\Group$.
 
