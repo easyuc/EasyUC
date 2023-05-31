@@ -123,6 +123,8 @@
 % == Messages ==
 \newcommand{\OpenMsg}{\mathsf{Open}}
 \newcommand{\CommitMsg}{\mathsf{Commit}}
+\newcommand{\real}{\mathsf{real}}
+\newcommand{\obliv}{\mathsf{obliv}}
 \newcommand{\Input}{x}
 
 \newcommand{\SecParam}{\lambda}
@@ -137,10 +139,12 @@
 \newcommand{\Indcpa}{\mathsf{INDCPA}}
 \newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
 \newcommand{\IndcpaAdversary}{{\Adversary_\Indcpa}}
-\newcommand{\EncKey}{\mathsf{pk}}
-\newcommand{\DecKey}{\mathsf{sk}}
+\newcommand{\EncKey}{\mathsf{ek}}
+\newcommand{\DecKey}{\mathsf{dk}}
 \newcommand{\GuessBit}{b'}
 \newcommand{\ChallengerBit}{b}
+\newcommand{\ExtBit}{b^*}
+\newcommand{\AdvBit}{\Adv{b}}
 \newcommand{\EncOracle}{\mathsf{EO}}
 \newcommand{\DecOracle}{\mathsf{DO}}
 \newcommand{\Msg}{m}
@@ -159,13 +163,14 @@
 \newcommand{\Domain}{D}
 \newcommand{\CFPTPAdversary}{{\Adversary_\CFPTP}}
 \newcommand{\CFPTPInput}{\Input}
-\newcommand{\CFPTPOutput}{y}
+\newcommand{\Output}{y}
 \newcommand{\CFPTPBit}{b}
 
 % == Proof ==
 % UC
 \newcommand{\Simulator}{{\mathsf{Sim}}} % Simulator
 \newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
+\newcommand{\Adv}[1]{\tilde{#1}} % For adversarially generated values
 \newcommand{\AdversaryB}{{\mathsf{B}}} % Adversary
 \newcommand{\Environment}{{\mathcal{Z}}} % Environment
 \newcommand{\IF}{\mathcal{F}} % Ideal functionality
@@ -191,6 +196,7 @@
 % CRS
 \newcommand{\IFCrs}{\IF_{\mathrm{CRS}}}
 \newcommand{\CrsDistr}{\mathcal{D}}
+\newcommand{\crs}{\mathsf{crs}}
 
 % Commitment
 \newcommand{\IFCom}{\IF_{\mathrm{COM}}}
@@ -240,8 +246,8 @@
 A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as $\CFPTP = (\Gen, \Forw, \Back, \Dec)$, such that:
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs a forward key $\ForwKey$ and backward key $\BackKey$.
-	\item $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\CFPTPOutput \in \Domain$ of running permutation $\CFPTPBit$ forwards.
-	\item $\Back_{\CFPTPBit, \BackKey}(\CFPTPOutput)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\CFPTPOutput \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
+	\item $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\Output \in \Domain$ of running permutation $\CFPTPBit$ forwards.
+	\item $\Back_{\CFPTPBit, \BackKey}(\Output)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\Output \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
 \end{itemize}
 We require that $\CFPTP$ is claw-free: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_0) = \Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_1)$
 
@@ -521,7 +527,7 @@ We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme b
 \item \textbf{\code{lemma dec\_fails}:} \megan{todo}
 \item \textbf{\code{axiom obliv\_enc\_cancel}:}
 
-This axiom is \textbf{false}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
+This axiom is \textbf{\color{red}false}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
 \begin{itemize}[nolistsep]
     \item Set $\MultGrpOrd = 7$, $\OrdW = 2$, $\GrpOrd = 3$, and $x = 2$. Notes:
     \begin{itemize}[nolistsep]
@@ -577,7 +583,7 @@ $\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS dis
 \begin{enumerate}[nolistsep]
 	\item $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
 	\item $(\EncKey,\DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
-	\item Set the CRS value $d \eqdef (\ForwKey, \EncKey)$.
+	\item Set the CRS value $\crs \eqdef (\ForwKey, \EncKey)$.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -585,6 +591,7 @@ $\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS dis
 \subsection{Single-session commitment, adaptive}
 \label{sec:ideal-func-com}
 
+\megan{wip}
 We define an ideal functionality for single-session commitments that allows adaptive corruptions and mirrors what is in \File{Commitment.uc}.
 \newcommand{\EnvCommitReqMsg}{\mathsf{EnvCommitReq}}
 \newcommand{\IFCommitReqMsg}{\mathsf{IFCommitReq}}
@@ -593,8 +600,6 @@ We define an ideal functionality for single-session commitments that allows adap
 \newcommand{\CommitterCorruptedBit}{\mathsf{corrupted}}
 \newcommand{\CommitOkMsg}{\mathsf{CommitOk}}
 
-\begin{center}
-\begin{minipage}{0.9\textwidth}
 $\IFCom:$
 \begin{enumerate}
 	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
@@ -611,75 +616,162 @@ $\IFCom:$
 
 	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommittedBit)$ to $\Simulator$.
 \end{enumerate}
-\end{minipage}
-\end{center}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \doclearpage
-\section{Scenario}
-\label{sec:scenario}
+\section{Hybrids for adaptive security}
+\label{sec:hybrids-adaptive}
 
-\megan{todo: write sequence of hybrids}
-The $\Environment$/$\Adversary$'s job is to distinguish the real and ideal distributions.
-
+\newcommand{\CommitterId}{\mathsf{cid}}
+\newcommand{\ReceiverId}{\mathsf{rid}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Real Distribution: committer is adaptively corrupted}
-\label{sec:real-distribution}
+\subsection{Real}
+\label{sec:real-distr}
 
-\begin{minipage}{0.9\textwidth}
-\parhead{Real distribution} The committer does the following:
+The committer does the following:
+\begin{itemize}
+\item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-	\item \parhead{Commit round}
-
-	\begin{enumerate}[nolistsep]
-		\item Receive $(\CommittedBit,\sid)$ from $\Environment$.
-		\item Send $\IFCrs$
-		\item Sample $\Input_{\CommittedBit}$ from the plaintext space.
-		\item Sample $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$ from the commitment randomness space.
-		\item Compute $\CFPTPOutput = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input_{\CommittedBit})$.
-		\item Compute $\Ct_{\CommittedBit} = \PKE.\Enc_\EncKey(\Input, \sid; \Rand_\CommittedBit)$.
-		\item Compute $\Ct_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$.
-		\item Send $(\CFPTPOutput, \Ct_0, \Ct_1)$ to $\Adversary$.
-	\end{enumerate}
-
-	\item \parhead{Open round}
-
-	\begin{enumerate}[nolistsep]
-		\item tbd
-	\end{enumerate}
+	\item Receive $(\CommitMsg,\sid,\CommitterId,\ReceiverId,\CommittedBit)$ from $\Environment$.
+	\item Query $\IFCrs$ to get the common reference string $\crs = (\ForwKey, \EncKey)$.
+	\item Sample $\Input \gets \Domain$.
+	\item Sample commitment randomness $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input)$.
+	\item Compute $\Ct_{\CommittedBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommittedBit)$.
+	\item Compute $\Ct_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$.
+	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
-\end{minipage}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Ideal Distribution}
-\label{sec:ideal-distribution}
-
-\begin{minipage}{0.9\textwidth}
-\parhead{Ideal distribution} $\Simulator$ does the following:
+\item \parhead{Open round}
 \begin{enumerate}[nolistsep]
-	\item \parhead{Commit round}
-	\begin{enumerate}[nolistsep]
-		\item Receive $\sid$ from $\Environment$
-		\item Sample $\CFPTPOutput$ from the plaintext space.
-		\item Sample $\Rand_{0}$ and $\Rand_{1}$ from the commitment randomness space.
-		\item Compute $\Ct_{0} = \PKE.\Enc(\EncKey,\Input_{0}, \sid; \Rand_{0})$.
-		\item Compute $\Ct_{1} = \PKE.\Enc(\EncKey,\Input_{1}, \sid; \Rand_{1})$.
-		\item Send $(\CFPTPOutput, \Ct_0, \Ct_1)$ to $\Adversary$.
-	\end{enumerate}
-
-	\item \parhead{Open round}
-
-	\begin{enumerate}[nolistsep]
-		\item Receive from $\IF$ that the committed bit is $\CommittedBit$.
-	\end{enumerate}
-
+    \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+    \item Send $(\sid,\CommitterId,\ReceiverId,\CommittedBit, \Input, \Rand_{\CommittedBit})$.
 \end{enumerate}
-\end{minipage}
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Hybrid}
+\label{sec:hyb-distr}
+
+\megan{this section wip}
+\parhead{Case 1: Honest commit message}
+The (hybrid) simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Query $\Environment$ to get the actual committed bit $\CommittedBit$ from $\IFCom$. \megan{check if this is legal}
+	\item Sample $\Input \gets \Domain$.
+	\item Sample commitment randomness $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input)$.
+	\item Compute $\Ct_{\CommittedBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommittedBit)$. Store $(\sid,\Ct_{\CommittedBit},\real)$ in memory.
+	\item Compute $\Ct_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$. Store $(\sid,\Ct_{\CommittedBit},\obliv)$ in memory.
+	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
+\end{enumerate}
+
+\item \parhead{Open round} \megan{todo}
+\begin{enumerate}[nolistsep]
+\item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+\item Send $(\sid,\CommitterId,\ReceiverId,\CommittedBit, \Input, \Rand_{\CommittedBit})$.
+\end{enumerate}
+\end{itemize}
+
+
+\parhead{Case 2: Corrupted commit message}
+\begin{itemize}
+    \item Receive $\Adversary$'s desired commitment string: $(\Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommittedBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}
+    \item If there exists a string $(\sid, \Adv{\Ct_{0}} ,\obliv)$ in memory, set $\ExtBit = 1$.
+    \item If there exists a string $(\sid, \Adv{\Ct_{1}} ,\obliv)$ in memory, set $\ExtBit = 0$. \megan{double check}
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Ideal}
+\label{sec:ideal-distr}
+
+\parhead{Case 1: Honest committer}
+
+The simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+	\item Receive $(\sid, \CommitterId, \ReceiverId)$ from $\Environment$. Note that the committed bit $\CommittedBit$ is NOT received.
+    \item Compute a claw:
+    \begin{enumerate}[nolistsep]
+        \item Sample $\Input_0\gets\Domain$.
+        \item Compute $\Output \eqdef \CFPTP.\Forw_{0,\ForwKey}(\Input_0)$.
+        \item Compute $\Input_1 \eqdef \CFPTP.\Back_{1,\BackKey}(\Output)$.
+    \end{enumerate}
+    \item Compute ciphertexts:
+    \begin{enumerate}[nolistsep]
+        \item Sample commitment randomness $\Rand_{0}$ and $\Rand_{1}$.
+    	\item Compute $\Ct_{0} = \PKE.\Enc(\EncKey,\Input_{0}, \sid; \Rand_{0})$.
+    	\item Compute $\Ct_{1} = \PKE.\Enc(\EncKey,\Input_{1}, \sid; \Rand_{1})$.
+    \end{enumerate}
+	\item Send the commitment $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+
+\begin{enumerate}[nolistsep]
+    \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+	\item Query the ideal functionality $\IFCom$ to receive the committed bit $\CommittedBit$.
+    \item Send $(\CommittedBit, \Input_{\CommittedBit}, \Rand_{\CommittedBit})$ to $\IFCom$.
+\end{enumerate}
+
+\end{itemize}
+
+\parhead{Case 2: Corrupted committer}
+
+The simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired commitment string: $(\Output, \Ct_0, \Ct_1)$. Note that the committed bit $\CommittedBit$ is NOT received.
+    \item Extract the committed bit:
+    \begin{enumerate}[nolistsep]
+        \item Decrypt $\Ct_0$ to get $\tilde{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+        \item If $\tilde{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+    \end{enumerate}
+    \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired opening string: $(\AdvBit, \Input, \Rand)$.
+	\item If $\ExtBit = \AdvBit$, $\Input = \CFPTP.\Back_{\AdvBit}(\BackKey, \Output)$, and $\Ct_{\AdvBit} = \PKE.\Enc(\EncKey, \Input; \Rand)$, send $(\OpenMsg, \CommitterId, \ReceiverId)$ to $\IFCom$. Otherwise, abort.
+\end{enumerate}
+
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
