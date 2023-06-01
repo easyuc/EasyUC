@@ -52,7 +52,7 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
       Format.fprintf fmt "%a" 
         pp_real_world_arg rwa
     | rwa::tl ->
-      Format.fprintf fmt "%a, %a"
+      Format.fprintf fmt "%a,@ %a"
         pp_real_world_arg rwa 
         pp_real_world_argl tl
   and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
@@ -62,7 +62,7 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
       Format.fprintf fmt "@[%a@]" 
         pp_symb_pair_int (sp,i) 
     | _ ->
-      Format.fprintf fmt "@[%a(%a)@]" 
+      Format.fprintf fmt "@[<hv>%a@,(@[%a@])@]" 
         pp_symb_pair_int (sp,i) 
         pp_real_world_argl rwal
   in
@@ -71,18 +71,21 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
     match spil with
     | [] -> 
       Format.fprintf fmt ""
+    | [spi] ->
+      Format.fprintf fmt " *@ %a"
+        pp_symb_pair_int spi
     | spi::tl -> 
-      Format.fprintf fmt " * %a%a"
+      Format.fprintf fmt " *@ %a%a"
         pp_symb_pair_int spi
         pp_simsl tl
   in
   let pp_ideal_world (fmt : Format.formatter) (iw : ideal_world) : unit =
-    Format.fprintf fmt "@[%a@ /@ %a%a@]"
+    Format.fprintf fmt "@[<hv>%a /@ @[%a%a@]@]"
       pp_symb_pair_int iw.iw_ideal_func
       pp_symb_pair_int iw.iw_main_sim
       pp_simsl iw.iw_other_sims
   in
-  Format.fprintf fmt "@[%a@ ~@ %a@]@." 
+  Format.fprintf fmt "@[%a ~@ %a@]@." 
     pp_real_world w.worlds_real 
     pp_ideal_world w.worlds_ideal
 

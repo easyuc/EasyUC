@@ -138,6 +138,7 @@ let test_sent_msg_expr0_pos () : unit =
 (*********)
   
 let () =
+  let () = Format.set_margin 78 in
   let n = Format.get_margin() in
   Printf.printf "margin: %d\n\n" n;
   test_worlds_pp_0 ();
