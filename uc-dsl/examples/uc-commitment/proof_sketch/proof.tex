@@ -204,7 +204,7 @@
 \newcommand{\Party}{\mathrm{P}}
 \newcommand{\PartyCommitter}{\mathrm{C}}
 \newcommand{\PartyVerifier}{\mathrm{V}}
-\newcommand{\CommittedBit}{b}
+\newcommand{\CommBit}{b}
 
 % Files
 \newcommand{\File}[1]{\texttt{#1}}
@@ -602,11 +602,11 @@ We define an ideal functionality for single-session commitments that allows adap
 
 $\IFCom:$
 \begin{enumerate}
-	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
+	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
 
 	\item \textbf{Initial corruption sequence.} Receive $(\SimCommitterCorruptionStatusMsg, \CommitterCorruptedBit)$ from $\Simulator$.
 	\begin{itemize}
-		\item If $\CommitterCorruptedBit = \True$, send $(\CommitterBitMsg, \CommittedBit)$ to $\Simulator$.
+		\item If $\CommitterCorruptedBit = \True$, send $(\CommitterBitMsg, \CommBit)$ to $\Simulator$.
 		\item If $\CommitterCorruptedBit = \False$, send $(\CommitterBitMsg, \bot)$ to $\Simulator$.
 	\end{itemize}
 
@@ -614,7 +614,7 @@ $\IFCom:$
 
 	\item \textbf{Open.} \megan{TODO}
 
-	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommittedBit)$ to $\Simulator$.
+	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommBit)$ to $\Simulator$.
 \end{enumerate}
 
 
@@ -637,20 +637,20 @@ The committer does the following:
 \begin{itemize}
 \item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-	\item Receive $(\CommitMsg,\sid,\CommitterId,\ReceiverId,\CommittedBit)$ from $\Environment$.
+	\item Receive $(\CommitMsg,\sid,\CommitterId,\ReceiverId,\CommBit)$ from $\Environment$.
 	\item Query $\IFCrs$ to get the common reference string $\crs = (\ForwKey, \EncKey)$.
 	\item Sample $\Input \gets \Domain$.
-	\item Sample commitment randomness $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$.
-	\item Compute $\Output = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input)$.
-	\item Compute $\Ct_{\CommittedBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommittedBit)$.
-	\item Compute $\Ct_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$.
+	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit, \ForwKey}(\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommBit)$.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommBit})$.
 	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
 
 \item \parhead{Open round}
 \begin{enumerate}[nolistsep]
     \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
-    \item Send $(\sid,\CommitterId,\ReceiverId,\CommittedBit, \Input, \Rand_{\CommittedBit})$.
+    \item Send $(\sid,\CommitterId,\ReceiverId,\CommBit, \Input, \Rand_{\CommBit})$.
 \end{enumerate}
 \end{itemize}
 
@@ -659,7 +659,6 @@ The committer does the following:
 \subsection{Hybrid}
 \label{sec:hyb-distr}
 
-\megan{this section wip}
 \parhead{Case 1: Honest commit message}
 The (hybrid) simulator $\Simulator$ does the following:
 \begin{itemize}
@@ -673,28 +672,51 @@ The (hybrid) simulator $\Simulator$ does the following:
 
 \item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-    \item Query $\Environment$ to get the actual committed bit $\CommittedBit$ from $\IFCom$. \megan{check if this is legal}
+    \item Query $\IFCom$ to get the actual committed bit $\CommBit$.
 	\item Sample $\Input \gets \Domain$.
-	\item Sample commitment randomness $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$.
-	\item Compute $\Output = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input)$.
-	\item Compute $\Ct_{\CommittedBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommittedBit)$. Store $(\sid,\Ct_{\CommittedBit},\real)$ in memory.
-	\item Compute $\Ct_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$. Store $(\sid,\Ct_{\CommittedBit},\obliv)$ in memory.
+	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit, \ForwKey}(\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommBit)$. Store $(\sid,\Ct_{\CommBit},\real)$ in memory.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommBit})$. Store $(\sid,\Ct_{1-\CommBit},\obliv)$ in memory.
 	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
 
-\item \parhead{Open round} \megan{todo}
+\item \parhead{Open round}
 \begin{enumerate}[nolistsep]
 \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
-\item Send $(\sid,\CommitterId,\ReceiverId,\CommittedBit, \Input, \Rand_{\CommittedBit})$.
+\item Send $(\sid,\CommitterId,\ReceiverId,\CommBit, \Input, \Rand_{\CommBit})$.
 \end{enumerate}
 \end{itemize}
 
 
 \parhead{Case 2: Corrupted commit message}
+
 \begin{itemize}
-    \item Receive $\Adversary$'s desired commitment string: $(\Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommittedBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}
-    \item If there exists a string $(\sid, \Adv{\Ct_{0}} ,\obliv)$ in memory, set $\ExtBit = 1$.
-    \item If there exists a string $(\sid, \Adv{\Ct_{1}} ,\obliv)$ in memory, set $\ExtBit = 0$. \megan{double check}
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired commitment string: $(\Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}
+    \item Extract the committed bit:
+    \begin{enumerate}[nolistsep]
+        \item Check if $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$ were obliviously-sampled by the simulator.
+        \begin{enumerate}[nolistsep]
+            \item If a string $(\sid, \Adv{\Ct_{0}} ,\obliv)$ exists in memory, set $\ExtBit = 1$.
+            \item If a string $(\sid, \Adv{\Ct_{1}} ,\obliv)$ exists in memory, set $\ExtBit = 0$.
+        \end{enumerate}
+        \item Otherwise (if the simulator did not obliviously-sample $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$), extract as follows:
+        \begin{enumerate}[nolistsep]
+            \item Decrypt $\Ct_0$ to get $\tilde{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+            \item If $\tilde{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+        \end{enumerate}
+    \end{enumerate}
+    \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired opening string: $(\AdvBit, \Input, \Rand)$.
+	\item If $\ExtBit = \AdvBit$, $\Input = \CFPTP.\Back_{\AdvBit}(\BackKey, \Output)$, and $\Ct_{\AdvBit} = \PKE.\Enc(\EncKey, \Input; \Rand)$, send $(\OpenMsg, \CommitterId, \ReceiverId)$ to $\IFCom$. Otherwise, abort.
+\end{enumerate}
+
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -716,7 +738,7 @@ The simulator $\Simulator$ does the following:
 
 \item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-	\item Receive $(\sid, \CommitterId, \ReceiverId)$ from $\Environment$. Note that the committed bit $\CommittedBit$ is NOT received.
+	\item Receive $(\sid, \CommitterId, \ReceiverId)$ from $\Environment$. Note that the committed bit $\CommBit$ is NOT received.
     \item Compute a claw:
     \begin{enumerate}[nolistsep]
         \item Sample $\Input_0\gets\Domain$.
@@ -736,9 +758,9 @@ The simulator $\Simulator$ does the following:
 \newcommand{\fake}{\mathsf{fake}}
 \begin{enumerate}[nolistsep]
     \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
-	\item Query the ideal functionality $\IFCom$ to receive the committed bit $\CommittedBit$.
-    \item Compute $\Rand_{\fake} \eqdef \OblivEncInv(\EncKey, \Ct_{1-\CommittedBit})$
-    \item Send $(\CommittedBit, \Input_{\CommittedBit}, \Rand_{\fake})$ to $\IFCom$.
+	\item Query the ideal functionality $\IFCom$ to receive the committed bit $\CommBit$.
+    \item Compute $\Rand_{\fake} \eqdef \OblivEncInv(\EncKey, \Ct_{1-\CommBit})$
+    \item Send $(\CommBit, \Input_{\CommBit}, \Rand_{\fake})$ to $\IFCom$.
 \end{enumerate}
 
 \end{itemize}
@@ -757,7 +779,7 @@ The simulator $\Simulator$ does the following:
 
 \item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-    \item Receive $\Adversary$'s desired commitment string: $(\Output, \Ct_0, \Ct_1)$. Note that the committed bit $\CommittedBit$ is NOT received.
+    \item Receive $\Adversary$'s desired commitment string: $(\Output, \Ct_0, \Ct_1)$. Note that the committed bit $\CommBit$ is NOT received.
     \item Extract the committed bit:
     \begin{enumerate}[nolistsep]
         \item Decrypt $\Ct_0$ to get $\tilde{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
