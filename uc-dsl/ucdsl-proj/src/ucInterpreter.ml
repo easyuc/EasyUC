@@ -131,16 +131,16 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
     let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
       match forml with
       | [] -> Format.fprintf fmt ""
-      | ex::[] -> Format.fprintf fmt "%a" pp_form ex
-      | ex::tl -> Format.fprintf fmt "%a,%a" pp_form ex pp_forml tl
+      | ex::[] -> Format.fprintf fmt "@[%a@]" pp_form ex
+      | ex::tl -> Format.fprintf fmt "@[%a@]@,,%a" pp_form ex pp_forml tl
     in
-    Format.fprintf fmt "%a%a(%a)%a"
+    Format.fprintf fmt "@[%a@,@[<hv>%a@]@,(@[<hv>%a@])@,%a@]"
     pp_portform inp
     pp_mpath path
     pp_forml args
     pp_portform outp
   in
-  Format.fprintf fmt "@[%a %a@ %a@]@."
+  Format.fprintf fmt "@[<hv>%a %a@ %a@]@."
     pp_msg_dir sme.dir
     pp_msg_mode sme.mode
     pp_msg (sme.in_port_form, sme.path, sme.args, sme.out_port_form)
