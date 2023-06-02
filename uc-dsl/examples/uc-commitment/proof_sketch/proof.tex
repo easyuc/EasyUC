@@ -641,7 +641,8 @@ We define an ideal functionality for single-session commitments that allows adap
 \begin{itemize}
 \item \textbf{Initial Activation.}
 \begin{enumerate}[nolistsep]
-\item Receive $(\EnvCommitReqMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Environment$. Record $\CommitterId, \ReceiverId, \CommBit$ in memory.
+\item Receive $(\EnvCommitReqMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Environment$.
+\item Record the committer's ID $\CommitterId$, the receiver's ID $\ReceiverId$, and the environment's bit $\CommBit$ in memory.
 \item Send $(\IFCommitReqMsg, \CommitterId,\ReceiverId)$ to $\Simulator$.
 \end{enumerate}
 
@@ -656,7 +657,8 @@ We define an ideal functionality for single-session commitments that allows adap
 \begin{enumerate}[nolistsep]
 \item Receive $(\CommitReq, \CommitterId, \ReceiverId, \CommBit)$ from the committer $\CommitterId$.
 \item Send $(\CommitReq, \CommitterId, \ReceiverId)$ to the simulator $\Simulator$.
-\item Receive $\CommitOkMsg$ from $\Simulator$.
+\item Receive $(\CommitOkMsg,\CommBit')$ from $\Simulator$.
+\item Set $\CommBit \eqdef \CommBit'$ in memory. (Note that $\CommBit' \in \{0,1,\bot\}$.)
 \item Send $(\CommitMsg, \CommitterId, \ReceiverId)$ to the receiver $\ReceiverId$.
 \end{enumerate}
 
@@ -678,8 +680,12 @@ We define an ideal functionality for single-session commitments that allows adap
 
 \item \textbf{Corruption status.}
 \begin{enumerate}[nolistsep]
-\item Receive $(\CorruptStatusReqMsg)$ from a party $\pid$.
-\item If there exists a string $(\CorruptMsg, \pid)$ in memory, send $(\CorruptAckMsg, \pid, 1)$ to $\pid$. Otherwise, send $(\CorruptAckMsg, \pid, 0)$ to $\pid$.
+\item Receive $(\CorruptStatusReqMsg, \pid)$ from a party $\pid'$.
+\item If $\pid = \pid'$,
+\begin{enumerate}
+    \item Check if there exists a string $(\CorruptMsg, \pid)$ in memory. If yes, send $(\CorruptAckMsg, \pid, 1)$ to $\pid$. Otherwise, send $(\CorruptAckMsg, \pid, 0)$ to $\pid'$.
+\end{enumerate}
+\item Otherwise (if $\pid \ne \pid'$), abort.
 \end{enumerate}
 \end{itemize}
 \end{itemize}
