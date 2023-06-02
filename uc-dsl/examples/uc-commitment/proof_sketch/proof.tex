@@ -14,6 +14,7 @@
 \usepackage{xcolor} % Colors
 \usepackage{listings} % Listings, for code snippets
 \usepackage{hyperref} % Hyperlinks
+\usepackage{paralist}
 \usepackage{enumitem}
 \usepackage[capitalise]{cleveref} % Clever References, must be loaded AFTER all other packages
 
@@ -170,7 +171,7 @@
 % UC
 \newcommand{\Simulator}{{\mathsf{Sim}}} % Simulator
 \newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
-\newcommand{\Adv}[1]{\tilde{#1}} % For adversarially generated values
+\newcommand{\Adv}[1]{\hat{#1}} % For adversarially generated values
 \newcommand{\AdversaryB}{{\mathsf{B}}} % Adversary
 \newcommand{\Environment}{{\mathcal{Z}}} % Environment
 \newcommand{\IF}{\mathcal{F}} % Ideal functionality
@@ -243,13 +244,14 @@
 \label{sec:preliminaries}
 
 \subsection{Claw-free pair of trapdoor permutations (CFPTP)}
-A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as $\CFPTP = (\Gen, \Forw, \Back, \Dec)$, such that:
+A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as a tuple of algorithms $\CFPTP = (\Gen, \Forw_0, \Back_0, \Forw_1, \Back_1)$, such that:
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs a forward key $\ForwKey$ and backward key $\BackKey$.
-	\item $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\Output \in \Domain$ of running permutation $\CFPTPBit$ forwards.
-	\item $\Back_{\CFPTPBit, \BackKey}(\Output)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\Output \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
+	\item $\Forw_{\CFPTPBit}(\ForwKey, \CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\Output \in \Domain$ of running permutation $\CFPTPBit$ forwards.
+	\item $\Back_{\CFPTPBit}(\BackKey, \Output)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\Output \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
 \end{itemize}
-We require that $\CFPTP$ is claw-free: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_0) = \Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_1)$
+
+We require that $\CFPTP$ is \emph{claw-free}: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_0) = \Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_1)$
 
 \subsection{Public key encryption (PKE)}
 
@@ -257,13 +259,13 @@ A \emph{public key encryption scheme} $\PKE = (\Gen, \Enc, \Dec)$ works as follo
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs an encryption key $\EncKey$ and decryption key $\DecKey$.
 	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$.
-	\item $\Dec_{\DecKey}(\Ct)$: On input a decryption key $\DecKey$ and ciphertext $\Ct$, outputs the decrypton of a ciphertext $\Ct$.
+	\item $\Dec(\DecKey,\Ct)$: On input a decryption key $\DecKey$ and ciphertext $\Ct$, outputs the decrypton of a ciphertext $\Ct$.
 \end{itemize}
 
 $\PKE$ satisfies the following properties:
 \begin{itemize}
     \item \emph{Correctness.} For all keys $(\EncKey, \DecKey) \gets \Gen(1^{\SecParam})$ and messages $\Msg$, we have
-    \[ \Pr[ \Dec_{\DecKey} (\Enc_{\EncKey} (\Msg)) = \Msg ] = 1. \]
+    \[ \Pr[\; \Dec(\DecKey, \Enc(\EncKey, \Msg)) = \Msg \;] = 1. \]
 
     \item \emph{Obliviously-sampleable.} There additionally exist algorithms $(\OblivEnc, \OblivEncInv)$ with the following syntax:
     \begin{itemize}
@@ -361,7 +363,7 @@ $\PKE$ satisfies the following properties:
 	$\DecOracle(\DecKey):$
 	\begin{enumerate}[nolistsep]
 		\item \textbf{Init:} Receive a decryption key $\DecKey$.
-		\item \textbf{Decryption queries:} Upon receiving a ciphertext $\Ct$, output $\Dec_{\DecKey}(\Ct)$.
+		\item \textbf{Decryption queries:} Upon receiving a ciphertext $\Ct$, output $\Dec(\DecKey,\Ct)$.
 	\end{enumerate}
 	\end{minipage}
 \end{itemize}
@@ -440,7 +442,7 @@ Second, we describe a method of finding a group element's inverse: given $\GrpEl
 \end{itemize}
 
 Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and $\OblivEncInv$ algorithms that make the scheme obliviously-sampleable \cite{CanettiF01}.
-\begin{itemize}[nolistsep]
+\begin{itemize}
     \item \textbf{Key generation:} $\Gen(1^{\SecParam}) \to (\EncKey, \DecKey)$.
     \begin{enumerate}[nolistsep]
         \item Pick two generators $\Generator_1, \Generator_2$ of the group $\Group$.
@@ -523,11 +525,13 @@ We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme b
 % \item \textbf{Randomness space:} $\Rand\gets\Integers_{\GrpOrd}$.
 % \item \textbf{Ciphertext space:} $\Group^{4}$.
 \item \textbf{\code{axiom correctness}:} This is the standard correctness property of encryption schemes.
-\item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{.ec} file has a note that this isn't required for our proofs.}
+\item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{IndCCA.ec} notes that this isn't required for our proofs.}
+
 \item \textbf{\code{lemma dec\_fails}:} \megan{todo}
+
 \item \textbf{\code{axiom obliv\_enc\_cancel}:}
 
-This axiom is \textbf{\color{red}false}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
+\textbf{\color{red}False}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
 \begin{itemize}[nolistsep]
     \item Set $\MultGrpOrd = 7$, $\OrdW = 2$, $\GrpOrd = 3$, and $x = 2$. Notes:
     \begin{itemize}[nolistsep]
@@ -551,7 +555,16 @@ This axiom is \textbf{\color{red}false}. Below is a counterexample to show that 
     (Note that the encryption key $\EncKey$ does not play a role in either $\OblivEnc$ or $\OblivEncInv$.)
 \end{itemize}
 
-\item \textbf{\code{axiom obliv\_enc\_inv\_cancel}:} \megan{I think this one is true because $\OblivEltInv$ outputs $\Inv{\GrpEltH}$ such that $(\Inv{\GrpEltH})^{\OrdW} = \GrpEltH$.}
+\item \textbf{\code{axiom obliv\_enc\_inv\_cancel}:}
+
+\textbf{True.} The algorithm $\OblivEltInv$ outputs $\Inv{\GrpEltH}$ such that $(\Inv{\GrpEltH})^{\OrdW} = \GrpEltH$. This implies that for all $\Ct = (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV)$, $\OblivEncInv(\EncKey,\Ct)$ outputs $(\Inv{\GrpEltU_1}, \Inv{\GrpEltU_2}, \Inv{\GrpEltE}, \Inv{\GrpEltV})$ such that
+\begin{inparaenum}[(a)]
+\item $(\Inv{\GrpEltU_1})^{\OrdW} = \GrpEltU_1$;
+\item $(\Inv{\GrpEltU_2})^{\OrdW} = \GrpEltU_2$;
+\item $(\Inv{\GrpEltE})^{\OrdW} = \GrpEltE$; and
+\item $(\Inv{\GrpEltV})^{\OrdW} = \GrpEltV$.
+\end{inparaenum}
+Since $\OblivEnc$ samples ciphertexts by running $\OblivEltGen$, the axiom holds.
 
 \item \textbf{\code{axiom mu\_obliv\_enc\_dec\_exact\_ub}:} \megan{I forgot how to parse this easycrypt, but I think it's related to the ratio computed in the below item.}
 
@@ -566,7 +579,6 @@ This axiom is \textbf{\color{red}false}. Below is a counterexample to show that 
 
 \end{itemize}
 
-\megan{finish}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -641,9 +653,9 @@ The committer does the following:
 	\item Query $\IFCrs$ to get the common reference string $\crs = (\ForwKey, \EncKey)$.
 	\item Sample $\Input \gets \Domain$.
 	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
-	\item Compute $\Output = \CFPTP.\Forw_{\CommBit, \ForwKey}(\Input)$.
-	\item Compute $\Ct_{\CommBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommBit)$.
-	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommBit})$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit}(\ForwKey,\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc(\EncKey, (\sid,\Input); \Rand_\CommBit)$.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc(\EncKey, \Rand_{1-\CommBit})$.
 	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
 
@@ -675,9 +687,9 @@ The (hybrid) simulator $\Simulator$ does the following:
     \item Query $\IFCom$ to get the actual committed bit $\CommBit$.
 	\item Sample $\Input \gets \Domain$.
 	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
-	\item Compute $\Output = \CFPTP.\Forw_{\CommBit, \ForwKey}(\Input)$.
-	\item Compute $\Ct_{\CommBit} = \PKE.\Enc_\EncKey(\sid,\Input; \Rand_\CommBit)$. Store $(\sid,\Ct_{\CommBit},\real)$ in memory.
-	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommBit})$. Store $(\sid,\Ct_{1-\CommBit},\obliv)$ in memory.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit}(\ForwKey,\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc(\EncKey, (\sid,\Input); \Rand_\CommBit)$. Store $(\sid,\Ct_{\CommBit},\real)$ in memory.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc(\EncKey, \Rand_{1-\CommBit})$. Store $(\sid,\Ct_{1-\CommBit},\obliv)$ in memory.
 	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
 
@@ -704,8 +716,8 @@ The (hybrid) simulator $\Simulator$ does the following:
         \end{enumerate}
         \item Otherwise (if the simulator did not obliviously-sample $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$), extract as follows:
         \begin{enumerate}[nolistsep]
-            \item Decrypt $\Ct_0$ to get $\tilde{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
-            \item If $\tilde{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+            \item Decrypt $\Ct_0$ to get $\Adv{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+            \item If $\Adv{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
         \end{enumerate}
     \end{enumerate}
     \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
@@ -742,8 +754,8 @@ The simulator $\Simulator$ does the following:
     \item Compute a claw:
     \begin{enumerate}[nolistsep]
         \item Sample $\Input_0\gets\Domain$.
-        \item Compute $\Output \eqdef \CFPTP.\Forw_{0,\ForwKey}(\Input_0)$.
-        \item Compute $\Input_1 \eqdef \CFPTP.\Back_{1,\BackKey}(\Output)$.
+        \item Compute $\Output \eqdef \CFPTP.\Forw_{0}(\ForwKey,\Input_0)$.
+        \item Compute $\Input_1 \eqdef \CFPTP.\Back_{1}(\BackKey,\Output)$.
     \end{enumerate}
     \item Compute ciphertexts:
     \begin{enumerate}[nolistsep]
@@ -782,8 +794,8 @@ The simulator $\Simulator$ does the following:
     \item Receive $\Adversary$'s desired commitment string: $(\Output, \Ct_0, \Ct_1)$. Note that the committed bit $\CommBit$ is NOT received.
     \item Extract the committed bit:
     \begin{enumerate}[nolistsep]
-        \item Decrypt $\Ct_0$ to get $\tilde{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
-        \item If $\tilde{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+        \item Decrypt $\Ct_0$ to get $\Adv{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+        \item If $\Adv{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
     \end{enumerate}
     \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
 \end{enumerate}
