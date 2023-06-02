@@ -122,7 +122,7 @@
 \newcommand{\eqdef}{\ {:=} \ }
 \newcommand{\ip}[2]{\langle #1 , #2 \rangle}
 \newcommand{\Time}[1]{\mathrm{time}(#1)}
-
+\newcommand{\supp}{\textrm{supp}} % support
 
 % == Messages ==
 \newcommand{\OpenMsg}{\mathsf{Open}}
@@ -530,17 +530,29 @@ We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme b
 % \item \textbf{Randomness space:} $\Rand\gets\Integers_{\GrpOrd}$.
 % \item \textbf{Ciphertext space:} $\Group^{4}$.
 \item \textbf{\code{axiom correctness}:} This is the standard correctness property of encryption schemes.
+
 \item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{IndCCA.ec} notes that this isn't required for our proofs.}
 
-\item \textbf{\code{lemma dec\_fails}:} \megan{todo}
+\item \textbf{\code{lemma dec\_fails}:}
+
+English: If $(\EncKey, \DecKey)\in \supp(\PKE.\Gen(1^{\SecParam}))$, then if $\Dec(\DecKey, \Ct) = \bot$, then for all messages $\Msg$ and randomness $\Rand$, we have $\Enc(\EncKey, \Msg; \Rand) \ne \Ct$.
+
+\textbf{True.}
+
+Correctness of $\PKE$ states that given valid keys $(\EncKey, \DecKey)$ and for all $\Msg, \Rand$, if $\Enc(\EncKey, \Msg; \Rand) = \Ct$, we have $\Dec(\DecKey, \Ct) = \Msg$.
+
+The contrapositive of the states that given valid keys $(\EncKey, \DecKey)$ and for all $\Msg, \Rand$, if $\Dec(\DecKey, \Ct)$ fails, then $\Enc(\EncKey, \Msg; \Rand) \ne \Ct$. Since $(\EncKey, \DecKey)$ are valid, $\Dec(\DecKey, \Ct)$ fails only if it outputs $\bot$.
+
 
 \item \textbf{\code{axiom obliv\_enc\_cancel}:}
+
+English: If $(\EncKey, \DecKey)\in \supp(\PKE.\Gen(1^{\SecParam}))$, then $\OblivEncInv(\EncKey, (\OblivEnc(\EncKey, \Rand))) = \Rand$ for all $\Rand$.
 
 \textbf{\color{red}False}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
 \begin{itemize}[nolistsep]
     \item Set $\MultGrpOrd = 7$, $\OrdW = 2$, $\GrpOrd = 3$, and $x = 2$. Notes:
     \begin{itemize}[nolistsep]
-        \item These parameters correspond to defining the subgroup $\Group \subset \MultGrp$ so that $\Group \eqdef (\{1,2,4\}, \cdot \mod 7)$. %the set $\{1,2,4\}$ with operation multiplication modulo $7$.
+        \item These parameters correspond to defining the subgroup $\Group \subset \MultGrp$ so that $\Group \eqdef (\{1,2,4\}, \cdot \mod 7)$.
         \item The generators of $\MultGrp$ are $\{3,5\}$.
     \end{itemize}
 
@@ -571,7 +583,7 @@ We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme b
 \end{inparaenum}
 Since $\OblivEnc$ samples ciphertexts by running $\OblivEltGen$, the axiom holds.
 
-\item \textbf{\code{axiom mu\_obliv\_enc\_dec\_exact\_ub}:} \megan{I forgot how to parse this easycrypt, but I think it's related to the ratio computed in the below item.}
+\item \textbf{\code{axiom mu\_obliv\_enc\_dec\_exact\_ub}:} \megan{I forgot how to parse this easycrypt. I think this axiom is related to the ratio computed next.}
 
 \item \textbf{Ratio of real and oblivously-sampled ciphertext space sizes}
 \begin{itemize}[nolistsep]
