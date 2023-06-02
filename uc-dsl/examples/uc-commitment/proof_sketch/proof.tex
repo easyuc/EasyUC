@@ -16,6 +16,9 @@
 \usepackage{hyperref} % Hyperlinks
 \usepackage{paralist}
 \usepackage{enumitem}
+  \setlist[itemize]{leftmargin=*}
+  \setlist[enumerate]{leftmargin=*}
+\usepackage{mdframed}
 \usepackage[capitalise]{cleveref} % Clever References, must be loaded AFTER all other packages
 
 % == Formatting ==
@@ -176,6 +179,8 @@
 \newcommand{\Environment}{{\mathcal{Z}}} % Environment
 \newcommand{\IF}{\mathcal{F}} % Ideal functionality
 \newcommand{\sid}{\mathsf{sid}}
+\newcommand{\CommitterId}{\mathsf{cid}}
+\newcommand{\ReceiverId}{\mathsf{rid}}
 
 % Hybrids
 \newcommand{\Ideal}{{\mathsf{IDEAL}}}
@@ -603,31 +608,70 @@ $\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS dis
 \subsection{Single-session commitment, adaptive}
 \label{sec:ideal-func-com}
 
-\megan{wip}
 We define an ideal functionality for single-session commitments that allows adaptive corruptions and mirrors what is in \File{Commitment.uc}.
 \newcommand{\EnvCommitReqMsg}{\mathsf{EnvCommitReq}}
 \newcommand{\IFCommitReqMsg}{\mathsf{IFCommitReq}}
-\newcommand{\SimCommitterCorruptionStatusMsg}{\mathsf{CommitterCorruptionStatus}}
-\newcommand{\CommitterBitMsg}{\mathsf{CommitterBit}}
-\newcommand{\CommitterCorruptedBit}{\mathsf{corrupted}}
+\newcommand{\SimCommCorruptionStatusMsg}{\mathsf{CommCorruptionStatus}}
+\newcommand{\CommBitMsg}{\mathsf{CommBit}}
+\newcommand{\CommCorruptedBit}{\mathsf{corrupted}}
+\newcommand{\CommitReq}{\mathsf{CommitReq}}
 \newcommand{\CommitOkMsg}{\mathsf{CommitOk}}
+\newcommand{\OpenReq}{\mathsf{OpenReq}}
+\newcommand{\OpenOkMsg}{\mathsf{OpenOk}}
+\newcommand{\CorruptMsg}{\mathsf{Corrupt}}
+\newcommand{\CorruptAckMsg}{\mathsf{CorruptAck}}
+\newcommand{\CorruptStatusReqMsg}{\mathsf{CorruptStatus}}
+\newcommand{\CorruptStatusRspMsg}{\mathsf{CorruptStatus}}
 
-$\IFCom:$
-\begin{enumerate}
-	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
-
-	\item \textbf{Initial corruption sequence.} Receive $(\SimCommitterCorruptionStatusMsg, \CommitterCorruptedBit)$ from $\Simulator$.
-	\begin{itemize}
-		\item If $\CommitterCorruptedBit = \True$, send $(\CommitterBitMsg, \CommBit)$ to $\Simulator$.
-		\item If $\CommitterCorruptedBit = \False$, send $(\CommitterBitMsg, \bot)$ to $\Simulator$.
-	\end{itemize}
-
-	\item \textbf{Commit.} Receive $(\CommitOkMsg)$ from $\Simulator$ and send $(\CommitMsg, \sid, \PartyCommitter, \PartyVerifier)$ to $\PartyVerifier$.
-
-	\item \textbf{Open.} \megan{TODO}
-
-	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommBit)$ to $\Simulator$.
+\begin{mdframed}
+\begin{itemize}
+\item[]$\IFCom:$
+\begin{itemize}
+\item \textbf{Initial Activation.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\EnvCommitReqMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Environment$. Record $\CommitterId, \ReceiverId, \CommBit$ in memory.
+\item Send $(\IFCommitReqMsg, \CommitterId,\ReceiverId)$ to $\Simulator$.
 \end{enumerate}
+
+\item \textbf{Initial committer corruption sequence.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\SimCommCorruptionStatusMsg, \CommCorruptedBit)$ from $\Simulator$.
+\item If $\CommCorruptedBit = \True$, send $(\CommBitMsg, \CommBit)$ to $\Simulator$.
+\item If $\CommCorruptedBit = \False$, send $(\CommBitMsg, \bot)$ to $\Simulator$.
+\end{enumerate}
+
+\item \textbf{Commit.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CommitReq, \CommitterId, \ReceiverId, \CommBit)$ from the committer $\CommitterId$.
+\item Send $(\CommitReq, \CommitterId, \ReceiverId)$ to the simulator $\Simulator$.
+\item Receive $\CommitOkMsg$ from $\Simulator$.
+\item Send $(\CommitMsg, \CommitterId, \ReceiverId)$ to the receiver $\ReceiverId$.
+\end{enumerate}
+
+\item \textbf{Open.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\OpenReq, \CommitterId', \ReceiverId)$ from a committer $\CommitterId'$.
+\item If $\CommitterId' = \CommitterId$, send $(\OpenReq, \sid, \CommitterId, \ReceiverId, \CommBit)$ to $\Simulator$. Otherwise, abort.
+\item Receive $\OpenOkMsg$ from $\Simulator$.
+\item Send $(\OpenMsg, \CommitterId, \ReceiverId, \CommBit)$ to $\ReceiverId$.
+\end{enumerate}
+
+\item \textbf{Corruption.}
+\newcommand{\pid}{\mathsf{pid}}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CorruptMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Simulator$.
+\item If $\pid \in \{\CommitterId, \ReceiverId\}$, record $(\CorruptMsg, \sid, \pid)$ in memory.
+\item Send $(\CorruptAckMsg, \pid)$ to $\Simulator$.
+\end{enumerate}
+
+\item \textbf{Corruption status.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CorruptStatusReqMsg)$ from a party $\pid$.
+\item If there exists a string $(\CorruptMsg, \pid)$ in memory, send $(\CorruptAckMsg, \pid, 1)$ to $\pid$. Otherwise, send $(\CorruptAckMsg, \pid, 0)$ to $\pid$.
+\end{enumerate}
+\end{itemize}
+\end{itemize}
+\end{mdframed}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -638,8 +682,6 @@ $\IFCom:$
 \section{Hybrids for adaptive security}
 \label{sec:hybrids-adaptive}
 
-\newcommand{\CommitterId}{\mathsf{cid}}
-\newcommand{\ReceiverId}{\mathsf{rid}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Real}
