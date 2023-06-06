@@ -248,6 +248,7 @@
 \section{Preliminaries}
 \label{sec:preliminaries}
 
+\alley{alg in easycrypt has its own random coins. express everything below to explicitly receive randomness.}
 \subsection{Claw-free pair of trapdoor permutations (CFPTP)}
 A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as a tuple of algorithms $\CFPTP = (\Gen, \Forw_0, \Back_0, \Forw_1, \Back_1)$, such that:
 \begin{itemize}
@@ -256,14 +257,22 @@ A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defi
 	\item $\Back_{\CFPTPBit}(\BackKey, \Output)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\Output \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
 \end{itemize}
 
-We require that $\CFPTP$ is \emph{claw-free}: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_0) = \Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_1)$
+Properties:
+\begin{itemize}
+    \item \emph{Claw-free}: Given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{0}(\ForwKey,\CFPTPInput_0) = \Forw_{1}(\ForwKey,\CFPTPInput_1)$.
+
+    \item \emph{Injectivity}: For any $(\ForwKey, \BackKey) \in \supp(\Gen(1^\SecParam))$ and $\CFPTPBit \in \Bits$, if $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_0) = \Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_1)$, then $\CFPTPInput_0 = \CFPTPInput_1$. \megan{don't we want bijectivity? check \code{https://eprint.iacr.org/2017/631.pdf}.}
+
+    \item \emph{Domain recognition}: For any $(\ForwKey, \BackKey) \in \supp(\Gen(1^\SecParam))$, $\CFPTPBit \in \Bits$, and $\CFPTPInput \not\in \Domain$, we have $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput) = \bot$ and $\Back_{\CFPTPBit}(\BackKey,\CFPTPInput) = \bot$.
+\end{itemize}
 
 \subsection{Public key encryption (PKE)}
 
+\megan{type for encryption keys, decryption keys, randomness. key pair is lossless (sum of key pairs is 1). op is easycrypt for function. modules are actual randomized algorithms (games and adversaries).}
 A \emph{public key encryption scheme} $\PKE = (\Gen, \Enc, \Dec)$ works as follows:
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs an encryption key $\EncKey$ and decryption key $\DecKey$.
-	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$.
+	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$. \megan{explicitly take $\Rand$ as input}
 	\item $\Dec(\DecKey,\Ct)$: On input a decryption key $\DecKey$ and ciphertext $\Ct$, outputs the decrypton of a ciphertext $\Ct$.
 \end{itemize}
 
@@ -275,7 +284,7 @@ $\PKE$ satisfies the following properties:
     \item \emph{Obliviously-sampleable.} There additionally exist algorithms $(\OblivEnc, \OblivEncInv)$ with the following syntax:
     \begin{itemize}
     	\item $\OblivEnc(\EncKey,\Rand)$: On input the encryption key $\EncKey$ and randomness $\Rand$, outputs a ciphertext $\Ct$.
-    	\item $\OblivEncInv(\EncKey,\Ct)$: On input the encryption key $\EncKey$ and a ciphertext $\Ct$, outputs randomness $\FakeRand$.
+    	\item $\OblivEncInv(\EncKey,\Ct)$: On input the encryption key $\EncKey$ and a ciphertext $\Ct$, outputs randomness $\FakeRand$. \ran{if it helps then can additionall require that rfake is the same as the original r,  namely there is 1-1 efficiently invertible mapping between r and ct} \megan{we need 1-1. we shoudl write the sampling alg for this}
     \end{itemize}
 
     Further, we call the following distinguishing game the \textbf{oblivious Ind-CCA2 game}: for any stateful adversary $\Adversary$, the following distributions are negligibly-close:
@@ -301,6 +310,8 @@ $\PKE$ satisfies the following properties:
 		\end{array}
 		\right\} \enspace.
 	\end{align*}
+    \megan{this is not true in general. remove $r$. in $\Distribution_1$, $\Adversary$ can just check if $\Enc(\EncKey, \Msg; \Rand) = \Ct$. double check and see if this def is consistent with CF. if not, point this out.}
+    \megan{in $\Distribution_1$, $\Rand$ should be from $\OblivEncInv$}
 \end{itemize}
 
 % \begin{lemma}
@@ -387,7 +398,7 @@ A public key encryption scheme $\PKE$ is secure against left-or-right adaptive c
 		\ChallengerBit \gets \Bits\\
 		\GuessBit \gets \Adversary^{\EncOracle(\ChallengerBit,\EncKey), \DecOracle(\DecKey)}(\EncKey)\\
 	\end{array}
-	\right] \leq \frac{1}{2} + \frac{1}{\poly(\SecParam)}.
+	\right] \leq \frac{1}{2} + \negl(\SecParam).
 \end{align*}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -400,7 +411,7 @@ We recall the Cramer-Shoup encryption scheme \cite{CramerS98} and argue that it 
 \subsubsection{The scheme}
 \label{sec:cramer-shoup-scheme}
 
-Let $\Group$ be a group of (large) prime order $\GrpOrd > 2^{\SecParam}$. Let $\Hash \colon \Bits^{*} \to \Bits^{\SecParam}$ be a universal one-way hash function.
+Let $\Group$ be a group of (large) prime order $\GrpOrd > 2^{\SecParam}$. Let $\Hash \colon \Bits^{*} \to \Bits^{\SecParam}$ be a universal one-way hash function. \ran{universal  hashes  with unbounded domain  is a strange object.... enough to have the domain be $Z_p$, right ?}
 
 
 \newcommand{\GrpEltG}{g}
@@ -453,7 +464,6 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
         \item Pick two generators $\Generator_1, \Generator_2$ of the group $\Group$.
         \item Pick $\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ \gets \Integers_{\GrpOrd}$.
         \item Compute the group elements $\GrpEltC \eqdef \Generator_1^{\ExpX_1}\Generator_2^{\ExpX_2}, \GrpEltD \eqdef \Generator_1^{\ExpY_1}\Generator_2^{\ExpY_2}$, and $\GrpEltH \eqdef \Generator_1^{\ExpZ}$.
-        \item Pick randomness $\Rand \gets \Integers_{\GrpOrd}$.
         \item Output
         \begin{equation*}
             \EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)
@@ -465,7 +475,8 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
 
     \item \textbf{Encryption:} $\Enc(\EncKey, \Msg, \Rand) \to \Ct$.
     \begin{enumerate}[nolistsep]
-        \item Parse the encryption key $\EncKey = (\Generator_1 \in \Group, \Generator_2 \in \Group, \GrpEltC\in \Group, \GrpEltD\in \Group, \GrpEltH\in \Group, \Hash \colon \Bits^{*} \to \Bits^{\SecParam})$, the message $\Msg \in \Group$, and randomness $\Rand \in \Integers_{\GrpOrd}$.
+        \item Parse the encryption key $\EncKey = (\Generator_1 \in \Group, \Generator_2 \in \Group, \GrpEltC\in \Group, \GrpEltD\in \Group, \GrpEltH\in \Group, \Hash \colon \Group^{3} \to \Bits^{\SecParam})$, the message $\Msg \in \Group$, and randomness $\Rand \in \Integers_{\GrpOrd}$.
+        \item Pick randomness $\Rand \gets \Integers_{\GrpOrd}$.
         \item Compute
         \begin{align*}
             \GrpEltU_1 &\eqdef \Generator_1^{\Rand}\\
@@ -531,6 +542,7 @@ We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme b
 % \item \textbf{Ciphertext space:} $\Group^{4}$.
 \item \textbf{\code{axiom correctness}:} This is the standard correctness property of encryption schemes.
 
+\alley{note that dec suceeds / fails are commented out in \code{IndCCA.ec}.}
 \item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{IndCCA.ec} notes that this isn't required for our proofs.}
 
 \item \textbf{\code{lemma dec\_fails}:}
@@ -725,7 +737,7 @@ The committer does the following:
     \item Send $(\sid,\CommitterId,\ReceiverId,\CommBit, \Input, \Rand_{\CommBit})$.
 \end{enumerate}
 \end{itemize}
-
+\ran{should specify the code for a corruption message from adv}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Hybrid}
@@ -760,13 +772,13 @@ The (hybrid) simulator $\Simulator$ does the following:
 \end{enumerate}
 \end{itemize}
 
-
+\ran{should specify also behavior of Sim and F in a corruption event   (also  in the ideal)}
 \parhead{Case 2: Corrupted commit message}
 
 \begin{itemize}
 \item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-    \item Receive $\Adversary$'s desired commitment string: $(\Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}
+    \item Receive $\Adversary$'s desired commitment string: $(\sid, \Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}\megan{propagate ran's comment: is the sid implicit in a commitment string? perhaps can make it explicit}
     \item Extract the committed bit:
     \begin{enumerate}[nolistsep]
         \item Check if $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$ were obliviously-sampled by the simulator.
@@ -868,6 +880,9 @@ The simulator $\Simulator$ does the following:
 
 \end{itemize}
 
+\megan{next step: write reduction}
+\megan{alley says real to hybrid reduction is: find claw or find preimage. massage}
+\megan{simulator needs to simulate forwarders. (ask adversary to forward msgs or not)}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
