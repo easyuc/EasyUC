@@ -145,8 +145,7 @@ op obliv_enc_inv (pk : pkey, c : ciphertext) : rand distr.
    c *)
 
 axiom obliv_enc_inv_support (pk : pkey, c : ciphertext, r : rand) :
-  support (obliv_enc_inv pk c) r <=>
-  obliv_enc pk r = c.
+  support (obliv_enc_inv pk c) r <=> obliv_enc pk r = c.
 
 (* consequently, we have: *)
 
