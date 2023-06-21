@@ -4,7 +4,10 @@ let print_error (e : string) : unit =
 let str_dot (s : string) : string =
   let n = String.length s in
   if n > 0 && s.[n-1] = '.' then
-    String.sub s 0 (n-1)
+    begin
+      let ret = String.sub s 0 (n-1) in
+      if ret = "quit" then exit 0 else ret
+    end
   else
     raise (Failure "does not end with .")
     
@@ -38,10 +41,13 @@ let rec loop () : unit =
   if c="done"
   then ()
   else begin print_state(); loop () end
+
+let rec fileloop () : unit =
+  filenam := get_file_name ();
+  print_state ();
+  loop ();
+  fileloop ()
   
-let () = 
-filenam := get_file_name ();
-print_state ();
-loop ()
+let () = fileloop ()
 
 
