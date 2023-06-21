@@ -1,7 +1,10 @@
 (* UcInterpreter module *)
 
 open EcSymbols
+open EcTypes
 open EcFol
+open EcLocation
+open EcUtils
 
 open UcMessage
 open UcSpec
@@ -188,3 +191,48 @@ let fun_expr_to_worlds
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : worlds =
   let fet = inter_check_real_fun_expr root maps fe in
   fun_expr_tyd_to_worlds maps fet
+
+(* like UcTypedSpec.instruction_tyd and UcTypedSpec.instruction_tyd_u,
+   but includes Pop instruction for popping a frame of local context *)
+
+type instr_interp_u =
+  | Assign of lhs * expr
+  | Sample of lhs * expr
+  | ITE of expr * instr_interp list located *
+           instr_interp list located option
+  | Match of expr * match_clause_interp list located
+  | SendAndTransition of send_and_transition_tyd
+  | Fail
+  | Pop  (* pop frame of local context *)
+
+and instr_interp = instr_interp_u located
+
+and match_clause_interp = symbol * (bindings * instr_interp list located)
+
+let rec create_instr_interp (it : instruction_tyd) : instr_interp =
+  mk_loc (loc it) (create_instr_interp_u (unloc it))
+
+and create_instr_interp_list_loc (its : instruction_tyd list located)
+      : instr_interp list located =
+  mk_loc (loc its) (List.map create_instr_interp (unloc its))
+
+and create_instr_interp_u (itu : instruction_tyd_u) : instr_interp_u =
+  match itu with
+  | UcTypedSpec.Assign (lhs, exp)     -> Assign (lhs, exp)
+  | UcTypedSpec.Sample (lhs, exp)     -> Sample (lhs, exp)
+  | UcTypedSpec.ITE (exp, tins, eins) ->
+      ITE
+      (exp,
+       create_instr_interp_list_loc tins,
+       omap create_instr_interp_list_loc eins)
+  | UcTypedSpec.Match (exp, clauses)  ->
+      Match
+      (exp,
+       mk_loc (loc clauses)
+       (List.map create_match_clause_interp (unloc clauses)))
+  | UcTypedSpec.SendAndTransition sat -> SendAndTransition sat
+  | UcTypedSpec.Fail                  -> Fail
+
+and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
+      : match_clause_interp =
+  (sym, (bndgs, create_instr_interp_list_loc ins))
