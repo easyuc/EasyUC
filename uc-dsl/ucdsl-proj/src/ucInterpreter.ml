@@ -245,7 +245,7 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
    the head of the list is the bottom of the stack, ..., and the last
    element of the list is the top of the stack *)
 
-type local_context = form Mid.t list
+type local_context = form EcIdent.Mid.t list
 
 let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
       : local_context =
