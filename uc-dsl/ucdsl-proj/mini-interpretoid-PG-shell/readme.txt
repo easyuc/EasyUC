@@ -38,7 +38,8 @@ or, if the command is OK, then two things are printed out.
 First, a line that points to the region (a pair of character positions) in the file that was loaded.
 Second, a line that outputs state (an integer).
 After each command, the region is set to be between positions state and 2*state, and the state is incremented by one.
-Once the command "done." is issued, the client exits.
+If the command "done." is issued, the client expects another file to be loaded.
+Once the command "quit." is issued the client exits.
 
 myassistant.el contains elisp code that sets up Proof General to work with this shell client.
 Everything from the first command (load) to last command (done) is considered to be one goal/lemma.

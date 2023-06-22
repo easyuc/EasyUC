@@ -57,7 +57,7 @@ insert contents from a file, mark the positions between character positions"
  proof-shell-start-goals-regexp	 "^state:"
  proof-shell-end-goals-regexp	 ";"
  
- proof-shell-quit-cmd		 "done."
+ proof-shell-quit-cmd		 "quit."
  proof-assistant-home-page	 "http://yes"
  proof-shell-annotated-prompt-regexp "^>"
  proof-shell-error-regexp	 "^Error:"
