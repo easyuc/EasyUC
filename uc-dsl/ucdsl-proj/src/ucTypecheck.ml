@@ -304,10 +304,22 @@ let check_is_composite_id_pair
 
 (********************* functionality and simulator checks *********************)
 
+(* the top-level check for states produces: *)
+
+type state_body_mid =
+  {is_initial : bool;                   (* the initial state? *)
+   params     : ty_index IdMap.t;       (* typed parameters, index is
+                                           parameter number *)
+   vars       : ty located IdMap.t;     (* local variables *)
+   mmclauses  : msg_match_clause list}  (* message match clauses *)
+
+type state_mid = state_body_mid located
+
 (* typechecking context for states
 
    state parameters and local variables are disjoint, and are lower
-   identifiers; they are distinct from "envport"
+   identifiers; they are distinct from "envport", which can only
+   be used in real and ideal functionalities (not simulators)
 
    in real functionalities, internal ports have the form [Party],
    where Party is the name of one of the functionality's parties; in
@@ -331,27 +343,40 @@ type kind =    (* kind of entity *)
   | SimKind    (* simulator *)
 
 type state_context =
-  {initial        : bool;         (* initial state? *)
-   kind           : kind;         (* which kind of entity is state part of? *)
-   internal_ports : QidSet.t;     (* internal port names - names of parties *)
-   state_params   : ty IdMap.t;   (* state parameters *)
-   vars           : ty IdMap.t}   (* local variables *)
-
-type state_body_mid =
-  {is_initial : bool;                   (* the initial state? *)
-   params     : ty_index IdMap.t;       (* typed parameters, index is
-                                           parameter number *)
-   vars       : ty located IdMap.t;     (* local variables *)
-   mmclauses  : msg_match_clause list}  (* message match clauses *)
-
-type state_mid = state_body_mid located
+  {initial        : bool;                (* initial state? *)
+   kind           : kind;                (* which kind of entity *)
+   params         : ty_index Mid.t;      (* state parameters *)
+   vars           :
+     (EcIdent.t * ty) located IdMap.t;   (* map from variables to *)
+                                         (* identifiers and types *)
+   internal_ports : EcIdent.t QidMap.t}  (* map from internal ports
+                                            to their identifiers *)
 
 let make_state_context
     (s : state_body_mid) (ports : QidSet.t) (kind : kind) : state_context =
-  let state_params = IdMap.map (fun p -> fst (unloc p)) s.params in
-  let vars = IdMap.map (fun v -> unloc v) s.vars in
-  {initial = s.is_initial; kind = kind; internal_ports = ports;
-   state_params = state_params; vars = vars}
+  let params =
+    Mid.of_list   
+    (List.map
+     (fun (x, u) ->
+        (EcIdent.create x, u))
+     (IdMap.bindings s.params)) in
+  let vars =
+    IdMap.mapi
+    (fun k u ->
+       mk_loc (loc u) (EcIdent.create k, unloc u))
+    s.vars in
+  let internal_ports =
+    List.fold
+    (fun acc qid ->
+       QidMap.update qid
+       (fun _ ->
+          Some
+          (EcIdent.create ("intport:" ^ nonempty_qid_to_string qid)))
+       acc)
+    QidMap.empty
+    (QidSet.elements ports) in
+  {initial = s.is_initial; kind = kind; internal_ports = internal_ports;
+   params = params; vars = vars}
 
 (* static analysis information for states *)
 
@@ -379,23 +404,18 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
 let augment_env_with_state_context
     (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
-    ([(EcIdent.create "envport", tfun port_ty tbool)] @
+    ([(envport, tfun port_ty tbool)] @
      List.map
-     (fun qid ->
-        (EcIdent.create ("intport:" ^ nonempty_qid_to_string qid), port_ty))
-     (QidSet.elements sc.internal_ports) @
-     List.map
-     (fun (id, ty) -> (EcIdent.create id, ty))
-     (IdMap.bindings sc.state_params) @
-     List.map
-     (fun (id, ty) -> (EcIdent.create id, ty))
-     (IdMap.bindings sc.vars))
+     (fun (_, id) -> (id, port_ty))
+     (QidMap.bindings sc.internal_ports) @
+     List.map (fun (id, u) -> (id, fst(unloc u))) (Mid.bindings sc.params) @
+     List.map (fun (_, u) -> unloc u) (IdMap.bindings sc.vars))
     env
 
 let bind_local_avoid_var
     (env : EcEnv.env) (sc : state_context) (ident : EcIdent.t) (ty : ty)
     (l : EcLocation.t) : EcEnv.env =
-  if IdMap.mem (EcIdent.name ident) sc.vars
+  if IdSet.mem (EcIdent.name ident) (vars_map_to_domain sc.vars)
   then type_error l
        (fun ppf ->
           fprintf ppf
@@ -809,11 +829,11 @@ let coverage_msg_path_pats
 
 let check_coverage_msg_path_pats
     (abip : all_basic_inter_paths) (sc : state_context)
-    (mml : msg_pat list) : unit =
+    (mml : EcIdent.t msg_pat list) : unit =
   let abip = incoming_abip abip in
   let r =
     coverage_msg_path_pats abip sc
-    (List.map (fun (mm : msg_pat) -> mm.msg_path_pat) mml) in
+    (List.map (fun (mm : EcIdent.t msg_pat) -> mm.msg_path_pat) mml) in
   if r <> []
   then let l = loc (List.last mml).msg_path_pat in
        type_error l
@@ -827,11 +847,12 @@ let check_coverage_msg_path_pats
 
 let check_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list)
-    (id : psymbol) (sc : state_context) (env : env) : env =
+    (id : psymbol) (sc : state_context) (env : env) : EcIdent.t located * env =
+  let l = loc id in
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   let is_sim = sc.kind = SimKind in
   if not d
-  then type_error (loc id)
+  then type_error l
        (fun ppf ->
           fprintf ppf
           (if is_sim
@@ -840,8 +861,8 @@ let check_port_id_binding
            else ("@[message@ patterns@ matching@ adversarial@ and@ " ^^
                  "internal@ messages@ may@ not@ bind@ source@ ports@ " ^^
                  "to@ identifiers@]")))
-  else bind_local_avoid_var env sc (EcIdent.create (unloc id)) port_ty
-       (loc id)
+  else let id' = EcIdent.create (unloc id) in
+       (mk_loc l id', bind_local_avoid_var env sc id' port_ty l)
 
 let check_non_port_id_binding
     (abip : all_basic_inter_paths) (idp : symbol list) (mppl : EcLocation.t)
@@ -857,23 +878,26 @@ let check_non_port_id_binding
   else ()
 
 let check_pat_add_id
-    (sc : state_context) (env : env) (pat : pat) (ty : ty) : env =
+    (sc : state_context) (env : env) (pat : symbol pat) (ty : ty)
+      : EcIdent.t pat * env =
   match pat with
-  | PatWildcard _ -> env
+  | PatWildcard l -> (PatWildcard l, env)
   | PatId id      ->
-      bind_local_avoid_var env sc (EcIdent.create (unloc id)) ty (loc id)
+      let l = loc id in
+      let id' = EcIdent.create (unloc id) in
+      (PatId (mk_loc l id'), bind_local_avoid_var env sc id' ty l)
 
-let ids_of_pat (pat : pat) : IdSet.t =
+let ids_of_pat (pat : symbol pat) : IdSet.t =
   match pat with
   | PatWildcard _ -> IdSet.empty
   | PatId id      -> IdSet.singleton (unloc id)
 
-let ids_of_pats (pats : pat list) : IdSet.t =
+let ids_of_pats (pats : symbol pat list) : IdSet.t =
   List.fold_left
   (fun uids pat -> IdSet.union uids (ids_of_pat pat))
   IdSet.empty pats
 
-let check_disjoint_bindings (pats : pat list) : unit =
+let check_disjoint_bindings (pats : symbol pat list) : unit =
   ignore
   (List.fold_left
    (fun uids pat ->
@@ -889,7 +913,8 @@ let check_disjoint_bindings (pats : pat list) : unit =
 
 let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
-    (pats : pat list) (env : env) (sc : state_context) : env =
+    (pats : symbol pat list) (env : env) (sc : state_context)
+      : EcIdent.t pat list * env =
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -902,7 +927,11 @@ let check_pat_args_with_msg_type
             ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
              "from@ the@ number@ of@ message@ parameters@]")) in
   let () = check_disjoint_bindings pats in
-  List.fold_left2 (check_pat_add_id sc) env pats mtyp
+  List.fold_left2
+  (fun (pats, env) pat ty ->
+     let (pat, env) = (check_pat_add_id sc env pat ty) in
+     (pats @ [pat], env))
+  ([], env) pats mtyp
 
 let check_missing_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
@@ -919,8 +948,8 @@ let check_missing_pat_args_with_msg_type
              "from@ the@ number@ of@ message@ parameters@]"))
 
 let check_pat_args
-    (bips : basic_inter_path list) (msg_pat : msg_pat) (env : env)
-    (sc : state_context) : env =
+    (bips : basic_inter_path list) (msg_pat : symbol msg_pat) (env : env)
+    (sc : state_context) : EcIdent.t pat list option * env =
   match msg_pat.pat_args with
   | None      ->
       let () =
@@ -932,22 +961,24 @@ let check_pat_args
         | MsgOrStarMsg id ->
             check_missing_pat_args_with_msg_type bips
             (mpp_u.inter_id_path, id) l in
-      env
+      (None, env)
   | Some pats ->
       let mpp = msg_pat.msg_path_pat in
       let mpp_u = unloc mpp in
        match mpp_u.msg_or_star with
        | MsgOrStarStar   -> failure "cannot happen - check in parser"
        | MsgOrStarMsg id ->
-           check_pat_args_with_msg_type bips
-           (mpp_u.inter_id_path, id) pats env sc
+           let (pats, env) =
+             check_pat_args_with_msg_type bips
+             (mpp_u.inter_id_path, id) pats env sc
+           in (Some pats, env)
 
 let check_msg_pat
-    (abip : all_basic_inter_paths) (msg_pat : msg_pat)
-    (sc : state_context) (env : env) : env =
+    (abip : all_basic_inter_paths) (msg_pat : symbol msg_pat)
+    (sc : state_context) (env : env) : EcIdent.t msg_pat * env =
   let abip = incoming_abip abip in
   let () = check_msg_path_pat abip sc msg_pat.msg_path_pat in
-  let env =
+  let (port_id, env) =
     match msg_pat.port_id with
     | Some id ->
         (* we know msg_pat.msg_path_pat does not end in "*" *)
@@ -959,17 +990,23 @@ let check_msg_pat
                   fprintf ppf
                   ("@[source@ port@ of@ message@ pattern@ is@ also@ bound@ " ^^
                    "in@ message@ argument@ patterns@]")) in
-        check_port_id_binding abip
-        ((unloc msg_pat.msg_path_pat).inter_id_path) id sc env
+        let (id, env) =
+          check_port_id_binding abip
+          ((unloc msg_pat.msg_path_pat).inter_id_path) id sc env
+        in Some id, env
     | None    ->
         if msg_path_pat_ends_star msg_pat.msg_path_pat
-        then env
+        then (None, env)
         else let mppl = loc msg_pat.msg_path_pat in
              (check_non_port_id_binding abip
               ((unloc msg_pat.msg_path_pat).inter_id_path) mppl;
-              env) in
+              (None, env)) in
   let bips = flatten_all_basic_inter_paths abip in
-  check_pat_args bips msg_pat env sc
+  let (pat_args, env) = check_pat_args bips msg_pat env sc in
+  ({port_id      = port_id;
+    msg_path_pat = msg_pat.msg_path_pat;
+    pat_args     = pat_args},
+   env)
 
 (* checking instructions *)
 
@@ -1001,12 +1038,12 @@ let check_expr
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty =
   match IdMap.find_opt (unloc id) sc.vars with
-  | None    ->
+  | None   ->
       type_error (loc id)
       (fun ppf ->
          fprintf ppf
          "@[identifer@ is@ not@ a@ local@ variable@]")
-  | Some ty -> (refine_state_analysis sa (unloc id), ty)
+  | Some u -> (refine_state_analysis sa (unloc id), snd (unloc u))
 
 let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
   match lhs with
@@ -1446,9 +1483,9 @@ let check_msg_match_clause
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (mmc : msg_match_clause) : msg_match_clause_tyd =
-  let env = check_msg_pat abip mmc.msg_pat sc env in
+  let (msg_pat, env) = check_msg_pat abip mmc.msg_pat sc env in
   let code = check_msg_match_code abip ss sc sa env ue mmc.code in
-  {msg_pat = mmc.msg_pat; code = code }
+  {msg_pat = msg_pat; code = code }
 
 (* checking states *)
 
@@ -1554,10 +1591,11 @@ let check_lowlevel_state
   let ue = unif_env () in
   let code = check_state_code abip ss sc sa env ue us.mmclauses in
   let us' : state_body_tyd =
-    {is_initial = us.is_initial;
-     params     = us.params;
-     vars       = us.vars;
-     mmclauses  = code } in
+    {is_initial     = us.is_initial;
+     params         = sc.params;
+     vars           = sc.vars;
+     internal_ports = sc.internal_ports;
+     mmclauses      = code} in
   mk_loc (loc state) us'
 
 (* check the lower-level of a state_tyd IdMap.t state machine;

@@ -15,14 +15,25 @@ open EcFol
 open UcSpecTypedSpecCommon
 open UcMessage
 
+(* the term "id" or "identifier" is used in our code for several
+   related things:
+
+   * sometimes it's a symbol (i.e., a string);
+
+   * sometimes it's a located symbol, in which case we may use "uid" to
+     stand for the unlocated version;
+
+   * sometimes it's a value of type EcIdent.t *)
+
 (* maps and sets *)
+
+(* maps and sets of values of type EcIdent.t *)
+
+module Mid = EcIdent.Mid
+module Sid = EcIdent.Sid
 
 module IdMap = Map.Make(String)  (* domain: string = symbol *)
 module IdSet = Set.Make(String)
-
-(* we sometimes use "id" to stand for a symbol, and sometimes for a
-   located symbol (in which case we may use "uid" to stand for the
-   unlocated version) *)
 
 let exists_id (id_map : 'a IdMap.t) (id : symbol) : bool =
   IdMap.exists (fun key _ -> key = id) id_map
@@ -163,6 +174,10 @@ let port_ty =
 let addr_ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
 
+(* values of type EcIdent.t *)
+
+let envport : EcIdent.t = EcIdent.create "envport"
+
 (* typed messages and functionality interfaces *)
 
 type message_body_tyd =
@@ -221,7 +236,7 @@ type send_and_transition_tyd =
   {msg_expr   : msg_expr_tyd;    (* message to send *)
    state_expr : state_expr_tyd}  (* state to transition to *)
 
-type bindings = ((EcIdent.t * EcTypes.ty) list)
+type bindings = (EcIdent.t * EcTypes.ty) list
 
 type instruction_tyd_u =
   | Assign of lhs * expr                           (* ordinary assignment *)
@@ -237,15 +252,21 @@ and instruction_tyd = instruction_tyd_u located
 and match_clause_tyd = symbol * (bindings * instruction_tyd list located)
 
 type msg_match_clause_tyd =                 (* message match clause *)
-  {msg_pat : msg_pat;                       (* message pattern *)
+  {msg_pat : EcIdent.t msg_pat;             (* message pattern *)
    code    : instruction_tyd list located}  (* code of clause *)
 
 type state_body_tyd =
-  {is_initial : bool;                       (* the initial state? *)
-   params     : ty_index IdMap.t;           (* typed parameters, index is
-                                               parameter number *)
-   vars       : ty located IdMap.t;         (* local variables *)
-   mmclauses  : msg_match_clause_tyd list}  (* message match clauses *)
+  {is_initial     : bool;                       (* the initial state? *)
+   params         : ty_index Mid.t;             (* typed parameters, index is
+                                                   parameter number *)
+   vars           : (EcIdent.t * ty) located    (* map from variables to *)
+                    IdMap.t;                    (* identifiers and types *)
+   internal_ports : EcIdent.t QidMap.t;         (* map from internal ports
+                                                   to their identifiers *)
+   mmclauses      : msg_match_clause_tyd list}  (* message match clauses *)
+
+let vars_map_to_domain (mp : (EcIdent.t * ty) located IdMap.t) : IdSet.t =
+  IdSet.of_list (List.map fst (IdMap.bindings mp))
 
 type state_tyd = state_body_tyd located  (* typed state *)
 

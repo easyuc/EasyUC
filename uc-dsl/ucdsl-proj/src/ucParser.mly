@@ -646,7 +646,8 @@ msg_match_clause :
 
 msg_pat :
   | port_id = lident; AT; mmb = msg_pat_body
-      { match (unloc ((mmb : msg_pat_body).msg_path_pat)).msg_or_star with
+      { match (unloc
+               ((mmb : symbol msg_pat_body).msg_path_pat)).msg_or_star with
         | MsgOrStarMsg _ ->
             {port_id = Some port_id; msg_path_pat = mmb.msg_path_pat;
              pat_args = mmb.pat_args}
@@ -657,12 +658,14 @@ msg_pat :
                ("message@ pattern@ whose@ path@ ends@ " ^^
                 "in@ \"*\"@ may@ not@ bind@ source@ port")) }
   | mmb = msg_pat_body
-      { {port_id = None; msg_path_pat = (mmb : msg_pat_body).msg_path_pat;
+      { {port_id = None;
+         msg_path_pat = (mmb : symbol msg_pat_body).msg_path_pat;
          pat_args = mmb.pat_args} }
 
 msg_pat_body : 
   | msg_path_pat = msg_path_pat; pat_args = option(pat_args)
-      { {msg_path_pat = msg_path_pat; pat_args = pat_args} : msg_pat_body }
+      { {msg_path_pat = msg_path_pat; pat_args = pat_args}
+          : symbol msg_pat_body }
 
 pat_args :
   | LPAREN; pa = separated_list(COMMA, pat); RPAREN

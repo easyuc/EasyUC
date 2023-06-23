@@ -131,7 +131,6 @@ type inter_def =
   | DirectInter      of named_inter  (* direct interface *)
   | AdversarialInter of named_inter  (* adversarial interface *)
 
-
 (* state machines *)
 
 (* message and state expressions *)
@@ -175,7 +174,7 @@ let isUnconditionalFailure (ill : instruction list located) =
 (* state machines *)
 
 type msg_match_clause =                 (* message match clause *)
-  {msg_pat : msg_pat;                   (* message pattern *)
+  {msg_pat : symbol msg_pat;            (* message pattern *)
    code    : instruction list located}  (* code of clause *)
 
 type state_code =
