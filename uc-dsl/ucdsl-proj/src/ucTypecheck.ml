@@ -401,10 +401,12 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
   | [sa]      -> sa
   | sa :: sas -> List.fold_left merge_state_analysis sa sas
 
+(* envport is only defined in real and ideal functionalities: *)
+
 let augment_env_with_state_context
     (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
-    ([(envport, tfun port_ty tbool)] @
+    ((if sc.kind <> SimKind then [(envport, tfun port_ty tbool)] else []) @
      List.map
      (fun (_, id) -> (id, port_ty))
      (QidMap.bindings sc.internal_ports) @
@@ -422,6 +424,13 @@ let bind_local_avoid_var
           "@[bound@ identifier@ may@ not@ be@ program@ variable:@ %s@]"
           (EcIdent.name ident))
   else Var.bind_local ident ty env
+
+let bind_locals_avoid_var
+    (env : EcEnv.env) (sc : state_context) (bndgs : bindings) : EcEnv.env =
+  List.fold_left
+  (fun acc (id, ty) ->
+     bind_local_avoid_var env sc (unloc id) ty (loc id))
+  env bndgs
 
 (* state signatures - boolean saying if initial state or not, plus
    list of the types of each parameter of state *)
@@ -1269,21 +1278,6 @@ let check_toplevel_match_clause
            (InvalidMatch
             (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
 
-      let () =
-        List.iter
-        (fun carg ->
-           match unloc carg with
-           | None    -> ()
-           | Some id ->
-               if IdMap.mem (unloc id) sc.vars
-               then type_error (loc id)
-                    (fun ppf ->
-                       fprintf ppf
-                       ("@[bound@ identifier@ may@ not@ be@ program@ " ^^
-                        "variable:@ %s@]")
-                       (unloc id)))
-        cargs in
-
       let cargs_lin =
         List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
       if has_dup cargs_lin
@@ -1300,7 +1294,10 @@ let check_toplevel_match_clause
        | EcUnify.UnificationFailure _ -> assert false);
       unify_or_fail env ue l ~expct:pty gindty;
       let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
-      let pvars = List.map (fun x -> create (unloc x)) cargs in
+      let pvars =
+        List.map
+        (fun x -> mk_loc (loc x) (create (unloc x)))
+        cargs in
       let pvars = List.combine pvars ctorty in
 
       ctorsym, (pvars, snd clause)
@@ -1359,7 +1356,7 @@ and check_match
   let results =
     List.map
     (fun (cons, (bndgs, body)) ->
-       let env = Var.bind_locals bndgs env in
+       let env = bind_locals_avoid_var env sc bndgs in
        cons, (bndgs, check_instructions abip ss sc sa env ue body))
     top_results in
   let cls_u =

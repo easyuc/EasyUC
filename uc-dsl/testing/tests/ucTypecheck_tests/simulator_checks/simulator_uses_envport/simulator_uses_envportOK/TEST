@@ -1,0 +1,6 @@
+description
+  Test for when simulator uses envport.
+.
+args: simulator_uses_envportOK.uc
+outcome: success
+.

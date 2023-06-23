@@ -236,7 +236,7 @@ type send_and_transition_tyd =
   {msg_expr   : msg_expr_tyd;    (* message to send *)
    state_expr : state_expr_tyd}  (* state to transition to *)
 
-type bindings = (EcIdent.t * EcTypes.ty) list
+type bindings = (EcIdent.t located * EcTypes.ty) list
 
 type instruction_tyd_u =
   | Assign of lhs * expr                           (* ordinary assignment *)

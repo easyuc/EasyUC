@@ -1,0 +1,11 @@
+description
+  Test for when simulator uses envport.
+.
+args: simulator_uses_envport.uc
+outcome:  failure
+[error: simulator_uses_envport.uc: from line 27 columns 13 to 20]
+
+no matching operator, named `envport', for the following parameters' type:
+  [1]: port
+
+.
