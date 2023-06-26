@@ -6,8 +6,9 @@
 
 %token EOF
 %token <string> DESC
+%token <string> EXEC
 %token <string list> ARGS
-%token  <Test_types.outcome * string> OUT
+%token <Test_types.outcome * string> OUT
 
 %start <Test_types.expr list> prog
 
@@ -26,7 +27,8 @@ stmt:
   |e1 = expr ; l = stmt { e1 :: l }
 
 expr:
-  | d = DESC   { Desc d}
-  | o = ARGS  {Args o}
+  | d = DESC {Desc d}
+  | o = EXEC {Exec o}
+  | o = ARGS {Args o}
   | o = OUT {Outcome (fst o, snd o)}
   ;

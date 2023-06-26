@@ -38,6 +38,7 @@ rule my_lexer = parse
     |eof                {EOF }
     |'\n'               {next_line lexbuf;  my_lexer lexbuf }
     |"description"      {desc_comments lexbuf }
+    |"exec"             {exec lexbuf }
     |"args"             {args lexbuf }
     |"outcome"          {outcome lexbuf }
     |_                  {let s = error_string (Lexing.lexeme lexbuf) lexbuf in
@@ -121,7 +122,30 @@ and args_parse s1 = parse
                                    error_raise ("'"^(String.escaped s)
                                    ^"' is not allowed in args ")  lexbuf}
 
+(* exec *)
+and exec = parse 
+    |[' ' '\t' '\r']+   {exec lexbuf }
+    |['\n']             {next_line lexbuf; exec lexbuf} 
+    |"(*"               {comments 0 lexbuf; exec lexbuf}
+    |":" [' ']+         {exec_parse "" lexbuf}
+    |":"                {exec_parse "" lexbuf}
+    |_                  {let s = error_string (Lexing.lexeme lexbuf) lexbuf in
+                             error_raise ("':' expected after 'exec' but found '"
+                             ^(String.escaped s)^"'")  lexbuf }
+
 (* same as args: *)
+
+and exec_parse s1 = parse
+    |[' ' '\t']+                {exec_parse s1 lexbuf}
+    |"(*"                       {comments 0 lexbuf; exec_parse s1 lexbuf}
+    |'\n'                       {next_line lexbuf;  EXEC s1}
+    |alpha alphanum* as str     {exec_parse (s1^str) lexbuf}
+    |eof                        {error_raise
+                                 "abrupt end of exec, exec should end with a newline "
+                                 lexbuf}
+    |_                          {let s = error_string (Lexing.lexeme lexbuf) lexbuf in
+                                   error_raise ("'"^(String.escaped s)
+                                   ^"' is not allowed in exec ")  lexbuf}
 
 and outcome = parse
     |[' ' '\t']         {outcome lexbuf }
