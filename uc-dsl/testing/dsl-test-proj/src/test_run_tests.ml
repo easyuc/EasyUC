@@ -155,7 +155,6 @@ let parse_file file code =
       Printf.printf "%s\n" s_out;
       let run_op =
         match_stat stat in
-      (* match (run_op = out_code) with *)
       match (if (run_op = "0" || run_op = "1") 
                 then run_op = out_code
                 else if run_op != "Unknown"
