@@ -14,10 +14,19 @@ let printFormula env (form : EcCoreFol.form) : unit =
 
 (*copied from UcEcHypothesisSerialization*)
 let parse_trans_frm (env : EcEnv.env) (frm_str : string) : EcCoreFol.form =
-  let reader = EcIo.from_string_pformula frm_str in
-  let pformula = EcIo.parse_pformula reader in
+  let lexbuf = Lexing.from_string frm_str in  
+  let pexpr =
+    try 
+      UcParser.expr_start UcLexer.read lexbuf
+    with
+    | UcParser.Error ->
+      (UcMessage.error_message  (* no need to close channel *)
+       (EcLocation.make lexbuf.Lexing.lex_start_p lexbuf.Lexing.lex_curr_p)
+       (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
+  in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
-  EcTyping.trans_form_opt env ue pformula None
+  let expr,_ = UcTransTypesExprs.transexp env ue pexpr in
+  EcCoreFol.form_of_expr EcFol.mhr expr
 
 let p_t_concl (hyps : EcEnv.LDecl.hyps) (concl : string) : EcCoreFol.form =
   let env = EcEnv.LDecl.toenv hyps in

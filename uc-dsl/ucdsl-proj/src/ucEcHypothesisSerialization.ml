@@ -1,15 +1,31 @@
 let parse_trans_type (env : EcEnv.env) (ty_str : string) : EcTypes.ty =
-  let reader = EcIo.from_string_pty ty_str in
-  let pty = EcIo.parse_pty reader in
-  let policy = EcTyping.tp_tydecl in
+  let lexbuf = Lexing.from_string ty_str in  
+  let pty =
+    try 
+      UcParser.ty_start UcLexer.read lexbuf
+    with
+    | UcParser.Error ->
+      (UcMessage.error_message  (* no need to close channel *)
+       (EcLocation.make lexbuf.Lexing.lex_start_p lexbuf.Lexing.lex_curr_p)
+       (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
+  in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
-  EcTyping.transty policy env ue pty
+  UcTransTypesExprs.transty UcTransTypesExprs.tp_relax env ue pty
 
 let parse_trans_frm (env : EcEnv.env) (frm_str : string) : EcCoreFol.form =
-  let reader = EcIo.from_string_pformula frm_str in
-  let pformula = EcIo.parse_pformula reader in
+  let lexbuf = Lexing.from_string frm_str in  
+  let pexpr =
+    try 
+      UcParser.expr_start UcLexer.read lexbuf
+    with
+    | UcParser.Error ->
+      (UcMessage.error_message  (* no need to close channel *)
+       (EcLocation.make lexbuf.Lexing.lex_start_p lexbuf.Lexing.lex_curr_p)
+       (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
+  in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
-  EcTyping.trans_form_opt env ue pformula None
+  let expr,_ = UcTransTypesExprs.transexp env ue pexpr in
+  EcCoreFol.form_of_expr EcFol.mhr expr
 
 let json_hyps2ldecl_hyps (jhyps : string) : EcEnv.LDecl.hyps =
   let env = UcEcInterface.env () in

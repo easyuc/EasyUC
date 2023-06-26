@@ -236,18 +236,22 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %type <UcSpec.spec> spec
 %type <UcSpec.fun_expr> fun_expr
 %type <UcSpec.sent_msg_expr> sent_msg_expr
+%type <UcSpec.pty> ty_start
+%type <UcSpec.pexpr> expr_start
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start spec fun_expr sent_msg_expr
+%start spec fun_expr sent_msg_expr ty_start expr_start
 
 %%
 
 (* a UC DSL specification consists of a preamble which requires
   other .ec and .uc files, followed by a list of definitions of direct and
   adversarial interfaces, functionalities and simlators *)
+expr_start : x=expr EOF {x}
+ty_start : x=loc(type_exp) EOF {x}
 
 spec : 
   | ext = preamble; defs = list(def); EOF
