@@ -10,10 +10,15 @@
 \usepackage[draft,notes=true,later=false]{dtrt}
 \usepackage[margin=1in]{geometry} % Page dimensions
 \usepackage{amssymb,amsfonts,amsmath,amsthm} % Math formulas
+\usepackage{dsfont}
 \usepackage{xcolor} % Colors
 \usepackage{listings} % Listings, for code snippets
 \usepackage{hyperref} % Hyperlinks
+\usepackage{paralist}
 \usepackage{enumitem}
+  \setlist[itemize]{leftmargin=*}
+  \setlist[enumerate]{leftmargin=*}
+\usepackage{mdframed}
 \usepackage[capitalise]{cleveref} % Clever References, must be loaded AFTER all other packages
 
 % == Formatting ==
@@ -117,11 +122,13 @@
 \newcommand{\eqdef}{\ {:=} \ }
 \newcommand{\ip}[2]{\langle #1 , #2 \rangle}
 \newcommand{\Time}[1]{\mathrm{time}(#1)}
-
+\newcommand{\supp}{\textrm{supp}} % support
 
 % == Messages ==
 \newcommand{\OpenMsg}{\mathsf{Open}}
 \newcommand{\CommitMsg}{\mathsf{Commit}}
+\newcommand{\real}{\mathsf{real}}
+\newcommand{\obliv}{\mathsf{obliv}}
 \newcommand{\Input}{x}
 
 \newcommand{\SecParam}{\lambda}
@@ -136,14 +143,16 @@
 \newcommand{\Indcpa}{\mathsf{INDCPA}}
 \newcommand{\IndcpaGM}{\mathcal{C}} % the game master (i.e. challenger) for the indcpa game.
 \newcommand{\IndcpaAdversary}{{\Adversary_\Indcpa}}
-\newcommand{\EncKey}{\mathsf{pk}}
-\newcommand{\DecKey}{\mathsf{sk}}
+\newcommand{\EncKey}{\mathsf{ek}}
+\newcommand{\DecKey}{\mathsf{dk}}
 \newcommand{\GuessBit}{b'}
 \newcommand{\ChallengerBit}{b}
+\newcommand{\ExtBit}{b^*}
+\newcommand{\AdvBit}{\Adv{b}}
 \newcommand{\EncOracle}{\mathsf{EO}}
 \newcommand{\DecOracle}{\mathsf{DO}}
 \newcommand{\Msg}{m}
-\newcommand{\Ciphertext}{c}
+\newcommand{\Ct}{\mathsf{ct}}
 \newcommand{\Rand}{r}
 \newcommand{\FakeRand}{r_{\mathsf{fake}}}
 \newcommand{\Distribution}{\mathcal{D}}
@@ -158,17 +167,20 @@
 \newcommand{\Domain}{D}
 \newcommand{\CFPTPAdversary}{{\Adversary_\CFPTP}}
 \newcommand{\CFPTPInput}{\Input}
-\newcommand{\CFPTPOutput}{y}
+\newcommand{\Output}{y}
 \newcommand{\CFPTPBit}{b}
 
 % == Proof ==
 % UC
 \newcommand{\Simulator}{{\mathsf{Sim}}} % Simulator
 \newcommand{\Adversary}{{\mathsf{Adv}}} % Adversary
+\newcommand{\Adv}[1]{\hat{#1}} % For adversarially generated values
 \newcommand{\AdversaryB}{{\mathsf{B}}} % Adversary
 \newcommand{\Environment}{{\mathcal{Z}}} % Environment
 \newcommand{\IF}{\mathcal{F}} % Ideal functionality
 \newcommand{\sid}{\mathsf{sid}}
+\newcommand{\CommitterId}{\mathsf{cid}}
+\newcommand{\ReceiverId}{\mathsf{rid}}
 
 % Hybrids
 \newcommand{\Ideal}{{\mathsf{IDEAL}}}
@@ -190,6 +202,7 @@
 % CRS
 \newcommand{\IFCrs}{\IF_{\mathrm{CRS}}}
 \newcommand{\CrsDistr}{\mathcal{D}}
+\newcommand{\crs}{\mathsf{crs}}
 
 % Commitment
 \newcommand{\IFCom}{\IF_{\mathrm{COM}}}
@@ -197,17 +210,17 @@
 \newcommand{\Party}{\mathrm{P}}
 \newcommand{\PartyCommitter}{\mathrm{C}}
 \newcommand{\PartyVerifier}{\mathrm{V}}
-\newcommand{\CommittedBit}{b}
+\newcommand{\CommBit}{b}
 
 % Files
 \newcommand{\File}[1]{\texttt{#1}}
 
 % Cramer-Shoup
-\newcommand{\Group}{\mathsf{G}}
+\newcommand{\Group}{\mathbb{G}}
 \newcommand{\GrpOrd}{q}
 \newcommand{\GrpEltC}{c}
 \newcommand{\GrpEltD}{d}
-\newcommand{\GrpEltE}{h}
+\newcommand{\GrpEltE}{e}
 \newcommand{\GrpEltH}{h}
 \newcommand{\GrpEltU}{u}
 \newcommand{\GrpEltV}{v}
@@ -235,58 +248,70 @@
 \section{Preliminaries}
 \label{sec:preliminaries}
 
+\alley{alg in easycrypt has its own random coins. express everything below to explicitly receive randomness.}
 \subsection{Claw-free pair of trapdoor permutations (CFPTP)}
-A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as $\CFPTP = (\Gen, \Forw, \Back, \Dec)$, such that:
+A \emph{claw-free pair of trapdoor permutations} over a domain $\Domain$ is defined as a tuple of algorithms $\CFPTP = (\Gen, \Forw_0, \Back_0, \Forw_1, \Back_1)$, such that:
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs a forward key $\ForwKey$ and backward key $\BackKey$.
-	\item $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\CFPTPOutput \in \Domain$ of running permutation $\CFPTPBit$ forwards.
-	\item $\Back_{\CFPTPBit, \BackKey}(\CFPTPOutput)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\CFPTPOutput \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
+	\item $\Forw_{\CFPTPBit}(\ForwKey, \CFPTPInput)$: On input a bit $\CFPTPBit$, a forward key $\ForwKey$ and a value $\Input \in \Domain$, outputs the result $\Output \in \Domain$ of running permutation $\CFPTPBit$ forwards.
+	\item $\Back_{\CFPTPBit}(\BackKey, \Output)$: On input a bit $\CFPTPBit$, a backward key $\BackKey$ and a value $\Output \in \Domain$, outputs the result $\Input \in \Domain$ of running permutation $b$ backwards.
 \end{itemize}
-We require that $\CFPTP$ is claw-free: given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_0) = \Forw_{\CFPTPBit, \ForwKey}(\CFPTPInput_1)$
+
+Properties:
+\begin{itemize}
+    \item \emph{Claw-free}: Given only $\ForwKey$, it is hard to find $\CFPTPInput_0, \CFPTPInput_1$ such that $\Forw_{0}(\ForwKey,\CFPTPInput_0) = \Forw_{1}(\ForwKey,\CFPTPInput_1)$.
+
+    \item \emph{Injectivity}: For any $(\ForwKey, \BackKey) \in \supp(\Gen(1^\SecParam))$ and $\CFPTPBit \in \Bits$, if $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_0) = \Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput_1)$, then $\CFPTPInput_0 = \CFPTPInput_1$. \megan{don't we want bijectivity? check \code{https://eprint.iacr.org/2017/631.pdf}.}
+
+    \item \emph{Domain recognition}: For any $(\ForwKey, \BackKey) \in \supp(\Gen(1^\SecParam))$, $\CFPTPBit \in \Bits$, and $\CFPTPInput \not\in \Domain$, we have $\Forw_{\CFPTPBit}(\ForwKey,\CFPTPInput) = \bot$ and $\Back_{\CFPTPBit}(\BackKey,\CFPTPInput) = \bot$.
+\end{itemize}
 
 \subsection{Public key encryption (PKE)}
 
+\megan{type for encryption keys, decryption keys, randomness. key pair is lossless (sum of key pairs is 1). op is easycrypt for function. modules are actual randomized algorithms (games and adversaries).}
 A \emph{public key encryption scheme} $\PKE = (\Gen, \Enc, \Dec)$ works as follows:
 \begin{itemize}
 	\item $\Gen(1^\SecParam)$: On input a security parameter $1^\SecParam$, outputs an encryption key $\EncKey$ and decryption key $\DecKey$.
-	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$.
-	\item $\Dec_{\DecKey}(\Ciphertext)$: On input a decryption key $\DecKey$ and ciphertext $\Ciphertext$, outputs the decrypton of a ciphertext $\Ciphertext$.
+	\item $\Enc(\EncKey,\Msg)$: On input an encryption key $\EncKey$ and message $\Msg$, outputs an encryption of message $\Msg$. \megan{explicitly take $\Rand$ as input}
+	\item $\Dec(\DecKey,\Ct)$: On input a decryption key $\DecKey$ and ciphertext $\Ct$, outputs the decrypton of a ciphertext $\Ct$.
 \end{itemize}
 
 $\PKE$ satisfies the following properties:
 \begin{itemize}
     \item \emph{Correctness.} For all keys $(\EncKey, \DecKey) \gets \Gen(1^{\SecParam})$ and messages $\Msg$, we have
-    \[ \Pr[ \Dec_{\DecKey} (\Enc_{\EncKey} (\Msg)) = \Msg ] = 1. \]
+    \[ \Pr[\; \Dec(\DecKey, \Enc(\EncKey, \Msg)) = \Msg \;] = 1. \]
 
     \item \emph{Obliviously-sampleable.} There additionally exist algorithms $(\OblivEnc, \OblivEncInv)$ with the following syntax:
     \begin{itemize}
-    	\item $\OblivEnc(\EncKey,\Rand)$: On input the encryption key $\EncKey$ and randomness $\Rand$, outputs a ciphertext $\Ciphertext$.
-    	\item $\OblivEncInv(\EncKey,\Ciphertext)$: On input the encryption key $\EncKey$ and a ciphertext $\Ciphertext$, outputs randomness $\FakeRand$.
+    	\item $\OblivEnc(\EncKey,\Rand)$: On input the encryption key $\EncKey$ and randomness $\Rand$, outputs a ciphertext $\Ct$.
+    	\item $\OblivEncInv(\EncKey,\Ct)$: On input the encryption key $\EncKey$ and a ciphertext $\Ct$, outputs randomness $\FakeRand$. \ran{if it helps then can additionall require that rfake is the same as the original r,  namely there is 1-1 efficiently invertible mapping between r and ct} \megan{we need 1-1. we shoudl write the sampling alg for this}
     \end{itemize}
 
     Further, we call the following distinguishing game the \textbf{oblivious Ind-CCA2 game}: for any stateful adversary $\Adversary$, the following distributions are negligibly-close:
     \begin{align*}
 		&\Distribution_0(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext)
+		(\Ct,\Rand)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
 			\Msg \gets \Adversary(\EncKey)\\
             \Rand \gets \RandSpace\\
-			\Ciphertext \eqdef \Enc(\EncKey,\Msg;\Rand)\\
+			\Ct \eqdef \Enc(\EncKey,\Msg;\Rand)\\
 		\end{array}
 		\right\} \\
 		&\text{and } \Distribution_1(\SecParam) \eqdef \left\{
-		\Adversary(\Ciphertext)
+		(\Ct, \Rand)
 		\pST
 		\begin{array}{r}
             (\EncKey,\DecKey)\gets \Gen(1^\SecParam)\\
             \Msg \gets \Adversary(\EncKey)\\
             \Rand \gets \RandSpace\\
-            \Ciphertext \gets \OblivEnc(\EncKey,\Rand)\\
+            \Ct \gets \OblivEnc(\EncKey,\Rand)\\
 		\end{array}
 		\right\} \enspace.
 	\end{align*}
+    \megan{this is not true in general. remove $r$. in $\Distribution_1$, $\Adversary$ can just check if $\Enc(\EncKey, \Msg; \Rand) = \Ct$. double check and see if this def is consistent with CF. if not, point this out.}
+    \megan{in $\Distribution_1$, $\Rand$ should be from $\OblivEncInv$}
 \end{itemize}
 
 % \begin{lemma}
@@ -294,13 +319,13 @@ $\PKE$ satisfies the following properties:
 %     \begin{equation}
 %     \label{eqn:prod-msg-rand}
 %         \Pr \left[
-%             \Enc(\EncKey,\Msg';\Rand') = \Ciphertext
+%             \Enc(\EncKey,\Msg';\Rand') = \Ct
 %         \pST
 %         \begin{array}{r}
 %             (\EncKey,\DecKey) \gets \Gen(1^{\SecParam})\\
 %             \Rand \gets \RandSpace\\
-%             \Ciphertext \gets \OblivEnc(\EncKey, \Rand)\\
-%             (\Msg',\Rand') \gets \Adversary(\Ciphertext)\\
+%             \Ct \gets \OblivEnc(\EncKey, \Rand)\\
+%             (\Msg',\Rand') \gets \Adversary(\Ct)\\
 %         \end{array}
 %         \right] = \negl(\SecParam).
 %     \end{equation}
@@ -316,17 +341,17 @@ $\PKE$ satisfies the following properties:
 %             \item Parse $\EncKey$ as the encryption key.
 %             \item Output a random $\Msg$.
 %         \end{enumerate}
-%         \item \textbf{Message generation.} $\AdversaryB(\Ciphertext) \to \GuessBit$
+%         \item \textbf{Message generation.} $\AdversaryB(\Ct) \to \GuessBit$
 %         \begin{enumerate}[nolistsep]
-%             \item Run $(\Msg',\Rand')\gets \Adversary(\Ciphertext)$.
+%             \item Run $(\Msg',\Rand')\gets \Adversary(\Ct)$.
 %             \item If $\Msg = \Msg'$, output $\GuessBit = 0$. Otherwise, output $\GuessBit = 1$.
 %         \end{enumerate}
 %     \end{itemize}
-%     By the correctness of $\Adversary$, we have $\Enc(\EncKey, \Msg'; \Rand') = \Ciphertext$ with probability $\delta$.
+%     By the correctness of $\Adversary$, we have $\Enc(\EncKey, \Msg'; \Rand') = \Ct$ with probability $\delta$.
 %
 %     \begin{itemize}
-%         \item \textbf{Case 1:} Suppose $\Ciphertext$ is from $\Distribution_0$, i.e. $\Ciphertext \eqdef \Enc(\EncKey,\Msg;\Rand)$.
-%         \item \textbf{Case 2:} Suppose $\Ciphertext$ is from $\Distribution_1$, i.e. $\Ciphertext \eqdef \OblivEnc(\EncKey,\Rand)$ for some $\Rand \gets \RandSpace$.
+%         \item \textbf{Case 1:} Suppose $\Ct$ is from $\Distribution_0$, i.e. $\Ct \eqdef \Enc(\EncKey,\Msg;\Rand)$.
+%         \item \textbf{Case 2:} Suppose $\Ct$ is from $\Distribution_1$, i.e. $\Ct \eqdef \OblivEnc(\EncKey,\Rand)$ for some $\Rand \gets \RandSpace$.
 %     \end{itemize}
 %
 %     \megan{Note: For a fixed key pair, cannot have $\Msg \ne \Msg'$ st $\Enc(\EncKey, \Msg, \Rand) = \Enc(\EncKey, \Msg', \Rand')$. Otherwise, we would contradict correctness of the decryption oracle.}
@@ -354,7 +379,7 @@ $\PKE$ satisfies the following properties:
 	$\DecOracle(\DecKey):$
 	\begin{enumerate}[nolistsep]
 		\item \textbf{Init:} Receive a decryption key $\DecKey$.
-		\item \textbf{Decryption queries:} Upon receiving a ciphertext $\Ciphertext$, output $\Dec_{\DecKey}(\Ciphertext)$.
+		\item \textbf{Decryption queries:} Upon receiving a ciphertext $\Ct$, output $\Dec(\DecKey,\Ct)$.
 	\end{enumerate}
 	\end{minipage}
 \end{itemize}
@@ -373,7 +398,7 @@ A public key encryption scheme $\PKE$ is secure against left-or-right adaptive c
 		\ChallengerBit \gets \Bits\\
 		\GuessBit \gets \Adversary^{\EncOracle(\ChallengerBit,\EncKey), \DecOracle(\DecKey)}(\EncKey)\\
 	\end{array}
-	\right] \leq \frac{1}{2} + \frac{1}{\poly(\SecParam)}.
+	\right] \leq \frac{1}{2} + \negl(\SecParam).
 \end{align*}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -386,48 +411,59 @@ We recall the Cramer-Shoup encryption scheme \cite{CramerS98} and argue that it 
 \subsubsection{The scheme}
 \label{sec:cramer-shoup-scheme}
 
-Let $\Group$ be a group of (large) prime order $\GrpOrd > \SecParam$. Let $\Hash \colon \Bits^{*} \to \Bits^{\SecParam}$ be a universal one-way hash function.
+Let $\Group$ be a group of (large) prime order $\GrpOrd > 2^{\SecParam}$. Let $\Hash \colon \Bits^{*} \to \Bits^{\SecParam}$ be a universal one-way hash function. \ran{universal  hashes  with unbounded domain  is a strange object.... enough to have the domain be $Z_p$, right ?}
+
 
 \newcommand{\GrpEltG}{g}
 \newcommand{\MultGrpOrd}{p}
+\newcommand{\MultGrp}{\Integers^{\times}_{\MultGrpOrd}}
 \newcommand{\OrdW}{w}
 \newcommand{\RandStr}{\mu}
 \newcommand{\OblivEltGen}{\mathsf{OblivEltGen}}
-\newcommand{\OblivEltInv}{\mathsf{OblivEltGen}^{-1}}
-We first define two subroutines used for oblivious sampleability.
-First, we describe a method of oblivously sampling an element in the group $\Group$:
+\newcommand{\Inv}[1]{{#1}^{-1}}
+\newcommand{\OblivEltInv}{\Inv{\mathsf{OblivEltGen}}}
+Set up the following public values:
 \begin{itemize}
-\item[]$\OblivEltGen(\GrpOrd, \RandStr) \to \GrpEltH$.
+\item[] \textbf{Public values:}
+\begin{enumerate}[nolistsep]
+    \item Select a public value $\OrdW \in \Integers$ such that $\GrpOrd$ does not divide $\OrdW$.
+    \item Set $\MultGrpOrd \eqdef \GrpOrd \OrdW + 1$. Note that this implies $\Group \subseteq \MultGrp$ because $\GrpOrd \:|\: \MultGrpOrd - 1$.
+\end{enumerate}
+\end{itemize}
+
+We define two subroutines used for oblivious sampleability.
+First, we describe a method of oblivously sampling an element in the group $\Group$:
+
+\begin{itemize}
+\item[]$\OblivEltGen(\RandStr) \to \GrpEltH$.
     \begin{enumerate}[nolistsep]
-        \item Select $\OrdW \in \Integers$ such that $\GrpOrd$ does not divide $\OrdW$.
-        \item Set $\MultGrpOrd \eqdef \GrpOrd \OrdW + 1$.
-        \item Sample a string $\RandStr \gets \Bits^{2 \log_2 (\MultGrpOrd)}$ and interpret it as an element of the multiplicative group $\Integers^{*}_{\MultGrpOrd}$.
-        \item Compute the group element as $\GrpEltH \eqdef \RandStr^{\OrdW} \in \Integers^{*}_{\MultGrpOrd}$.\footnote{This procedure is statistically-close to selecting a random element in $\Group$. \megan{add an explanation}}
+        %\item Sample a string $\RandStr \gets \Bits^{2 \log_2 (\MultGrpOrd)}$. Cast $\RandStr$ as an element of the multiplicative group $\MultGrp$. %Megan: Comment bc can take the string as input.
+        \item Parse $\RandStr$ as an element of $\MultGrp$.
+        \item Compute the group element as $\GrpEltH \eqdef \RandStr^{\OrdW} \in \Group \subseteq \MultGrp$.\footnote{This procedure is statistically-close to selecting a random element in $\Group$. \megan{why?}}
         \item Output $\GrpEltH$.
     \end{enumerate}
 \end{itemize}
-\newcommand{\Inv}[1]{\hat{#1}}
-Second, we describe a method of finding a group element's inverse: given $\GrpEltH\in\Group$, find $\Inv{\GrpEltH}$ such that $\Inv{\GrpEltH}^\OrdW = \GrpEltH\in\Group$:
+
+Second, we describe a method of finding a group element's inverse: given $\GrpEltH\in\Group$, find $\Inv{\GrpEltH}$ such that $\left(\Inv{\GrpEltH}\right)^\OrdW = \GrpEltH\in\Group\subseteq\MultGrp$:
 \begin{itemize}
-\item[]$\OblivEltInv(\MultGrpOrd,\GrpEltH) \to \Inv{\GrpEltH}$.
+\item[]$\OblivEltInv_{\MultGrpOrd}(\GrpEltH) \to \Inv{\GrpEltH}$.
     \begin{enumerate}[nolistsep]
-        \item Pick a generator $\Generator \in \Integers^{*}_{\MultGrpOrd}$.
+        \item Parse $\GrpEltH$ as an element of $\MultGrp$.
+        \item Pick a generator $\Generator \in \MultGrp$.
         \item Find $x$ such that $x\OrdW \equiv 1 \text{ mod } \GrpOrd$.
         \item Sample $i \gets \{0, \ldots, \OrdW-1\}$.
         \item Compute $\Inv{\GrpEltH} \eqdef \GrpEltH^{x}\Generator^{i\GrpOrd} \text{ mod } \MultGrpOrd$. Note that the $\Generator^{i\GrpOrd}$ are the $\OrdW$-th roots of unity.
-        % \item Sample $j \gets \{0, \ldots, \MultGrpOrd-1 \}$, compute $\RandStr \eqdef j\MultGrpOrd \in \Integers$, then cast $\RandStr$ as a bitstring in $\Bits^{2 \log_2 (\MultGrpOrd)}$.
         \item Output $\Inv{\GrpEltH}$.
     \end{enumerate}
 \end{itemize}
 
 Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and $\OblivEncInv$ algorithms that make the scheme obliviously-sampleable \cite{CanettiF01}.
-\begin{itemize}[nolistsep]
+\begin{itemize}
     \item \textbf{Key generation:} $\Gen(1^{\SecParam}) \to (\EncKey, \DecKey)$.
     \begin{enumerate}[nolistsep]
         \item Pick two generators $\Generator_1, \Generator_2$ of the group $\Group$.
         \item Pick $\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ \gets \Integers_{\GrpOrd}$.
         \item Compute the group elements $\GrpEltC \eqdef \Generator_1^{\ExpX_1}\Generator_2^{\ExpX_2}, \GrpEltD \eqdef \Generator_1^{\ExpY_1}\Generator_2^{\ExpY_2}$, and $\GrpEltH \eqdef \Generator_1^{\ExpZ}$.
-        \item Pick randomness $\Rand \gets \Integers_{\GrpOrd}$.
         \item Output
         \begin{equation*}
             \EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)
@@ -437,9 +473,10 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
         \end{equation*}
     \end{enumerate}
 
-    \item \textbf{Encryption:} $\Enc(\EncKey, \Msg, \Rand) \to \Ciphertext$.
+    \item \textbf{Encryption:} $\Enc(\EncKey, \Msg, \Rand) \to \Ct$.
     \begin{enumerate}[nolistsep]
-        \item Parse the encryption key $\EncKey = (\Generator_1 \in \Group, \Generator_2 \in \Group, \GrpEltC\in \Group, \GrpEltD\in \Group, \GrpEltH\in \Group, \Hash \colon \Bits^{*} \to \Bits^{\SecParam})$, the message $\Msg \in \Group$, and randomness $\Rand \in \Integers_{\GrpOrd}$.
+        \item Parse the encryption key $\EncKey = (\Generator_1 \in \Group, \Generator_2 \in \Group, \GrpEltC\in \Group, \GrpEltD\in \Group, \GrpEltH\in \Group, \Hash \colon \Group^{3} \to \Bits^{\SecParam})$, the message $\Msg \in \Group$, and randomness $\Rand \in \Integers_{\GrpOrd}$.
+        \item Pick randomness $\Rand \gets \Integers_{\GrpOrd}$.
         \item Compute
         \begin{align*}
             \GrpEltU_1 &\eqdef \Generator_1^{\Rand}\\
@@ -449,44 +486,43 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
             \GrpEltV &\eqdef \GrpEltC^{\Rand}\GrpEltD^{\Rand\Tag}
             \enspace.
         \end{align*}
-        \item Output the ciphertext $\Ciphertext \eqdef (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV)$.
+        \item Output the ciphertext $\Ct \eqdef (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV)$.
     \end{enumerate}
 
-    \item \textbf{Decryption:} $\Dec(\DecKey, \Ciphertext) \to \Msg$.
+    \item \textbf{Decryption:} $\Dec(\DecKey, \Ct) \to \Msg$.
     \begin{enumerate}[nolistsep]
-        \item Parse the decryption key $\DecKey = (\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ) \in \Integers_{\GrpOrd}^5$, and the ciphertext $\Ciphertext = (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV) \in \Group^4$.
+        \item Parse the decryption key $\DecKey = (\ExpX_1, \ExpX_2, \ExpY_1, \ExpY_2, \ExpZ) \in \Integers_{\GrpOrd}^5$, and the ciphertext $\Ct = (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV) \in \Group^4$.
         \item Compute $\Tag = \Hash(\GrpEltU_1, \GrpEltU_2, \GrpEltE)$.
         \item Check if
         \begin{equation*}
-            \GrpEltU_1^{\ExpX_1 + \ExpY_1 \Tag} \GrpEltU_2^{\ExpX_2 + \ExpY_2 \Tag}
-            = \GrpEltV
+            \GrpEltU_1^{\ExpX_1 + \ExpY_1 \Tag} \GrpEltU_2^{\ExpX_2 + \ExpY_2 \Tag} = \GrpEltV
             \enspace.
         \end{equation*} If so, output $\Msg = \GrpEltE / \GrpEltU_1^{\ExpZ}$. Otherwise, output $\bot$.
     \end{enumerate}
 
-    \item \textbf{Obliviously-sampled ciphertext:} $\OblivEnc(\EncKey, \Rand) \to \Ciphertext$.
+    \item \textbf{Obliviously-sampled ciphertext:} $\OblivEnc(\EncKey, \Rand) \to \Ct$.
     \begin{enumerate}[nolistsep]
         \item Parse $\Rand = (\RandStr_{\GrpEltU_1}, \RandStr_{\GrpEltU_2}, \RandStr_{\GrpEltE}, \RandStr_{\GrpEltV})$.
         \item Run
         \begin{align*}
-            &\GrpEltU_1 \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltU_1})\\
-            &\GrpEltU_2 \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltU_2})\\
-            &\GrpEltE \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltE})\\
-            &\GrpEltV \gets \OblivEltGen(\GrpOrd, \RandStr_{\GrpEltV})
+            &\GrpEltU_1 \gets \OblivEltGen( \RandStr_{\GrpEltU_1})\\
+            &\GrpEltU_2 \gets \OblivEltGen( \RandStr_{\GrpEltU_2})\\
+            &\GrpEltE \gets \OblivEltGen( \RandStr_{\GrpEltE})\\
+            &\GrpEltV \gets \OblivEltGen( \RandStr_{\GrpEltV})
             \enspace.
         \end{align*}
-        \item Output $\Ciphertext \eqdef (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
+        \item Output $\Ct \eqdef (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
     \end{enumerate}
 
-    \item \textbf{Obliviously-sampled randomness:} $\OblivEncInv(\EncKey, \Ciphertext) \to \Rand$.
+    \item \textbf{Obliviously-sampled randomness:} $\OblivEncInv(\EncKey, \Ct) \to \Rand$.
     \begin{enumerate}[nolistsep]
-        \item Parse $\EncKey$ as the encryption key and $\Ciphertext = (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
+        \item Parse $\EncKey$ as the encryption key and $\Ct = (\GrpEltU_1,\GrpEltU_2,\GrpEltE,\GrpEltV)$.
         \item Run
         \begin{align*}
-            &\Inv{\GrpEltU_1} \gets \OblivEltInv(\MultGrpOrd,\GrpEltU_1)\\
-            &\Inv{\GrpEltU_2} \gets \OblivEltInv(\MultGrpOrd,\GrpEltU_2)\\
-            &\Inv{\GrpEltE} \gets \OblivEltInv(\MultGrpOrd,\GrpEltE)\\
-            &\Inv{\GrpEltV} \gets \OblivEltInv(\MultGrpOrd,\GrpEltV)
+            &\Inv{\GrpEltU_1} \gets \OblivEltInv_{\MultGrpOrd}(\GrpEltU_1)\\
+            &\Inv{\GrpEltU_2} \gets \OblivEltInv_{\MultGrpOrd}(\GrpEltU_2)\\
+            &\Inv{\GrpEltE} \gets \OblivEltInv_{\MultGrpOrd}(\GrpEltE)\\
+            &\Inv{\GrpEltV} \gets \OblivEltInv_{\MultGrpOrd}(\GrpEltV)
             \enspace.
         \end{align*}
         \item Output $\Rand \eqdef (\Inv{\GrpEltU_1}, \Inv{\GrpEltU_2}, \Inv{\GrpEltE}, \Inv{\GrpEltV})$.
@@ -498,7 +534,80 @@ Now, we recall the Cramer-Shoup encryption scheme, including the $\OblivEnc$ and
 \label{sec:indcca-model-validation}
 
 We justify our modeling of an obliviously-sampleable IND-CCA encryption scheme by arguing that Cramer-Shoup satisfies the axioms listed in \code{IndCCA.ec}.
-\megan{todo}
+
+\renewcommand{\mod}{\textrm{ mod }}
+\begin{itemize}
+% \item \textbf{Plaintext space:} $\Group$.
+% \item \textbf{Randomness space:} $\Rand\gets\Integers_{\GrpOrd}$.
+% \item \textbf{Ciphertext space:} $\Group^{4}$.
+\item \textbf{\code{axiom correctness}:} This is the standard correctness property of encryption schemes.
+
+\alley{note that dec suceeds / fails are commented out in \code{IndCCA.ec}.}
+\item \textbf{\code{axiom dec\_suceeds}:} \megan{\code{IndCCA.ec} notes that this isn't required for our proofs.}
+
+\item \textbf{\code{lemma dec\_fails}:}
+
+English: If $(\EncKey, \DecKey)\in \supp(\PKE.\Gen(1^{\SecParam}))$, then if $\Dec(\DecKey, \Ct) = \bot$, then for all messages $\Msg$ and randomness $\Rand$, we have $\Enc(\EncKey, \Msg; \Rand) \ne \Ct$.
+
+\textbf{True.}
+
+Correctness of $\PKE$ states that given valid keys $(\EncKey, \DecKey)$ and for all $\Msg, \Rand$, if $\Enc(\EncKey, \Msg; \Rand) = \Ct$, we have $\Dec(\DecKey, \Ct) = \Msg$.
+
+The contrapositive of the states that given valid keys $(\EncKey, \DecKey)$ and for all $\Msg, \Rand$, if $\Dec(\DecKey, \Ct)$ fails, then $\Enc(\EncKey, \Msg; \Rand) \ne \Ct$. Since $(\EncKey, \DecKey)$ are valid, $\Dec(\DecKey, \Ct)$ fails only if it outputs $\bot$.
+
+
+\item \textbf{\code{axiom obliv\_enc\_cancel}:}
+
+English: If $(\EncKey, \DecKey)\in \supp(\PKE.\Gen(1^{\SecParam}))$, then $\OblivEncInv(\EncKey, (\OblivEnc(\EncKey, \Rand))) = \Rand$ for all $\Rand$.
+
+\textbf{\color{red}False}. Below is a counterexample to show that sometimes $\OblivEltInv_{\MultGrpOrd}(\OblivEltGen(\RandStr)) \ne \RandStr$:
+\begin{itemize}[nolistsep]
+    \item Set $\MultGrpOrd = 7$, $\OrdW = 2$, $\GrpOrd = 3$, and $x = 2$. Notes:
+    \begin{itemize}[nolistsep]
+        \item These parameters correspond to defining the subgroup $\Group \subset \MultGrp$ so that $\Group \eqdef (\{1,2,4\}, \cdot \mod 7)$.
+        \item The generators of $\MultGrp$ are $\{3,5\}$.
+    \end{itemize}
+
+    \item Let $\RandStr = 5$. Then $\OblivEltGen(5) = \RandStr^{\OrdW} = 25 \equiv 4 \mod 7$. So $\GrpEltH = 4$.
+    \item Suppose $\OblivEltInv_{7}(\GrpEltH)$ selects the (randomly) the choices $\Generator=3$, $x = 2$, $i = 2$. Then
+    \begin{align*}
+    \OblivEltInv_{7}(\GrpEltH) = \GrpEltH^{x}\Generator^{i\GrpOrd} = 4^2 \cdot 3^{2 \cdot 3} = 16 \cdot 729 \equiv 2 \mod 7
+    \enspace.
+    \end{align*}
+    Thus $\Inv{\GrpEltH} = 2 \ne 5 = \RandStr$. (Still, $2^{\OrdW} = 2^2 = 4 \mod 7$.)
+
+    Moreover, if we combine the above with the definitions of $\OblivEncInv$ and $\OblivEnc$, we get
+    \begin{equation*}
+    \Pr\left[\OblivEncInv(\EncKey, \OblivEnc(\EncKey, \Rand)) = \Rand\right] \ne 1
+    \enspace.
+    \end{equation*}
+    (Note that the encryption key $\EncKey$ does not play a role in either $\OblivEnc$ or $\OblivEncInv$.)
+\end{itemize}
+
+\item \textbf{\code{axiom obliv\_enc\_inv\_cancel}:}
+
+\textbf{True.} The algorithm $\OblivEltInv$ outputs $\Inv{\GrpEltH}$ such that $(\Inv{\GrpEltH})^{\OrdW} = \GrpEltH$. This implies that for all $\Ct = (\GrpEltU_1, \GrpEltU_2, \GrpEltE, \GrpEltV)$, $\OblivEncInv(\EncKey,\Ct)$ outputs $(\Inv{\GrpEltU_1}, \Inv{\GrpEltU_2}, \Inv{\GrpEltE}, \Inv{\GrpEltV})$ such that
+\begin{inparaenum}[(a)]
+\item $(\Inv{\GrpEltU_1})^{\OrdW} = \GrpEltU_1$;
+\item $(\Inv{\GrpEltU_2})^{\OrdW} = \GrpEltU_2$;
+\item $(\Inv{\GrpEltE})^{\OrdW} = \GrpEltE$; and
+\item $(\Inv{\GrpEltV})^{\OrdW} = \GrpEltV$.
+\end{inparaenum}
+Since $\OblivEnc$ samples ciphertexts by running $\OblivEltGen$, the axiom holds.
+
+\item \textbf{\code{axiom mu\_obliv\_enc\_dec\_exact\_ub}:} \megan{I forgot how to parse this easycrypt. I think this axiom is related to the ratio computed next.}
+
+\item \textbf{Ratio of real and oblivously-sampled ciphertext space sizes}
+\begin{itemize}[nolistsep]
+    \item A real ciphertext is $(\Ct_1,\Ct_2,\Ct_3,\Ct_4) \in \Group^4$. Given $\EncKey \eqdef (\Generator_1, \Generator_2, \GrpEltC, \GrpEltD, \GrpEltH, \Hash)$, there are $q$ choices for $\Ct_1$. Fixing $\Ct_1$ this also fixes an $\Rand \mod \GrpOrd$ such that $\Ct_1 = \Generator_1^r$, $\Ct_2 = \Generator_2^r$, and $\Ct_3 = \GrpEltH^r\cdot \Msg$, where $\Msg$ is the input message. Further $\Tag = \Hash(\Ct_1, \Ct_2, \Ct_3)$ outputs a fixed value given $(\Ct_1, \Ct_2, \Ct_3)$, so the value of $\Ct_4$ is also fixed. Thus there are at most $\GrpOrd$ valid ciphertexts given $\EncKey$ and $\Msg$.
+
+    \item The number of possible of obliviously-sampled ciphertexts is $\GrpOrd^4$, since we can view each element of the ciphertext string as uniformly random in $\Group$.
+
+    \item Thus, the ratio of the number of real ciphertexts to the number of possible oblivously-sampled ciphertexts is $\frac{1}{\GrpOrd^3} = \frac{1}{2^{3\cdot\SecParam}}$.
+\end{itemize}
+
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -515,7 +624,7 @@ $\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS dis
 \begin{enumerate}[nolistsep]
 	\item $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
 	\item $(\EncKey,\DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
-	\item Set the CRS value $d \eqdef (\ForwKey, \EncKey)$.
+	\item Set the CRS value $\crs \eqdef (\ForwKey, \EncKey)$.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -526,99 +635,254 @@ $\IFCrs$ is exactly as in Figure 1 of \cite{CanettiF01}, except that the CRS dis
 We define an ideal functionality for single-session commitments that allows adaptive corruptions and mirrors what is in \File{Commitment.uc}.
 \newcommand{\EnvCommitReqMsg}{\mathsf{EnvCommitReq}}
 \newcommand{\IFCommitReqMsg}{\mathsf{IFCommitReq}}
-\newcommand{\SimCommitterCorruptionStatusMsg}{\mathsf{CommitterCorruptionStatus}}
-\newcommand{\CommitterBitMsg}{\mathsf{CommitterBit}}
-\newcommand{\CommitterCorruptedBit}{\mathsf{corrupted}}
+\newcommand{\SimCommCorruptionStatusMsg}{\mathsf{CommCorruptionStatus}}
+\newcommand{\CommBitMsg}{\mathsf{CommBit}}
+\newcommand{\CommCorruptedBit}{\mathsf{corrupted}}
+\newcommand{\CommitReq}{\mathsf{CommitReq}}
 \newcommand{\CommitOkMsg}{\mathsf{CommitOk}}
+\newcommand{\OpenReq}{\mathsf{OpenReq}}
+\newcommand{\OpenOkMsg}{\mathsf{OpenOk}}
+\newcommand{\CorruptMsg}{\mathsf{Corrupt}}
+\newcommand{\CorruptAckMsg}{\mathsf{CorruptAck}}
+\newcommand{\CorruptStatusReqMsg}{\mathsf{CorruptStatus}}
+\newcommand{\CorruptStatusRspMsg}{\mathsf{CorruptStatus}}
 
-\begin{center}
-\begin{minipage}{0.9\textwidth}
-$\IFCom:$
-\begin{enumerate}
-	\item \textbf{Activation.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$, and send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier)$ to $\Simulator$.
-
-	\item \textbf{Initial corruption sequence.} Receive $(\SimCommitterCorruptionStatusMsg, \CommitterCorruptedBit)$ from $\Simulator$.
-	\begin{itemize}
-		\item If $\CommitterCorruptedBit = \True$, send $(\CommitterBitMsg, \CommittedBit)$ to $\Simulator$.
-		\item If $\CommitterCorruptedBit = \False$, send $(\CommitterBitMsg, \bot)$ to $\Simulator$.
-	\end{itemize}
-
-	\item \textbf{Commit.} Receive $(\CommitOkMsg)$ from $\Simulator$ and send $(\CommitMsg, \sid, \PartyCommitter, \PartyVerifier)$ to $\PartyVerifier$.
-
-	\item \textbf{Open.} \megan{TODO}
-
-	\item \textbf{Corruption.} Receive $(\EnvCommitReqMsg, \sid, \PartyCommitter, \PartyVerifier, \CommittedBit)$ from $\Environment$. Send $(\IFCommitReqMsg, \sid, \PartyCommitter,\PartyVerifier, \CommittedBit)$ to $\Simulator$.
+\begin{mdframed}
+\begin{itemize}
+\item[]$\IFCom:$
+\begin{itemize}
+\item \textbf{Initial Activation.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\EnvCommitReqMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Environment$.
+\item Record the committer's ID $\CommitterId$, the receiver's ID $\ReceiverId$, and the environment's bit $\CommBit$ in memory.
+\item Send $(\IFCommitReqMsg, \CommitterId,\ReceiverId)$ to $\Simulator$.
 \end{enumerate}
-\end{minipage}
-\end{center}
+
+\item \textbf{Initial committer corruption sequence.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\SimCommCorruptionStatusMsg, \CommCorruptedBit)$ from $\Simulator$.
+\item If $\CommCorruptedBit = \True$, send $(\CommBitMsg, \CommBit)$ to $\Simulator$.
+\item If $\CommCorruptedBit = \False$, send $(\CommBitMsg, \bot)$ to $\Simulator$.
+\end{enumerate}
+
+\item \textbf{Commit.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CommitReq, \CommitterId, \ReceiverId, \CommBit)$ from the committer $\CommitterId$.
+\item Send $(\CommitReq, \CommitterId, \ReceiverId)$ to the simulator $\Simulator$.
+\item Receive $(\CommitOkMsg,\CommBit')$ from $\Simulator$.
+\item Set $\CommBit \eqdef \CommBit'$ in memory. (Note that $\CommBit' \in \{0,1,\bot\}$.)
+\item Send $(\CommitMsg, \CommitterId, \ReceiverId)$ to the receiver $\ReceiverId$.
+\end{enumerate}
+
+\item \textbf{Open.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\OpenReq, \CommitterId', \ReceiverId)$ from a committer $\CommitterId'$.
+\item If $\CommitterId' = \CommitterId$, send $(\OpenReq, \sid, \CommitterId, \ReceiverId, \CommBit)$ to $\Simulator$. Otherwise, abort.
+\item Receive $\OpenOkMsg$ from $\Simulator$.
+\item Send $(\OpenMsg, \CommitterId, \ReceiverId, \CommBit)$ to $\ReceiverId$.
+\end{enumerate}
+
+\item \textbf{Corruption.}
+\newcommand{\pid}{\mathsf{pid}}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CorruptMsg, \CommitterId, \ReceiverId, \CommBit)$ from $\Simulator$.
+\item If $\pid \in \{\CommitterId, \ReceiverId\}$, record $(\CorruptMsg, \sid, \pid)$ in memory.
+\item Send $(\CorruptAckMsg, \pid)$ to $\Simulator$.
+\end{enumerate}
+
+\item \textbf{Corruption status.}
+\begin{enumerate}[nolistsep]
+\item Receive $(\CorruptStatusReqMsg, \pid)$ from a party $\pid'$.
+\item If $\pid = \pid'$,
+\begin{enumerate}
+    \item Check if there exists a string $(\CorruptMsg, \pid)$ in memory. If yes, send $(\CorruptAckMsg, \pid, 1)$ to $\pid$. Otherwise, send $(\CorruptAckMsg, \pid, 0)$ to $\pid'$.
+\end{enumerate}
+\item Otherwise (if $\pid \ne \pid'$), abort.
+\end{enumerate}
+\end{itemize}
+\end{itemize}
+\end{mdframed}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \doclearpage
-\section{Scenario}
-\label{sec:scenario}
-
-\megan{todo: write sequence of hybrids}
-The $\Environment$/$\Adversary$'s job is to distinguish the real and ideal distributions.
+\section{Hybrids for adaptive security}
+\label{sec:hybrids-adaptive}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Real Distribution: committer is adaptively corrupted}
-\label{sec:real-distribution}
+\subsection{Real}
+\label{sec:real-distr}
 
-\begin{minipage}{0.9\textwidth}
-\parhead{Real distribution} The committer does the following:
+The committer does the following:
+\begin{itemize}
+\item \parhead{Commit round}
 \begin{enumerate}[nolistsep]
-	\item \parhead{Commit round}
-
-	\begin{enumerate}[nolistsep]
-		\item Receive $(\CommittedBit,\sid)$ from $\Environment$.
-		\item Send $\IFCrs$
-		\item Sample $\Input_{\CommittedBit}$ from the plaintext space.
-		\item Sample $\Rand_{\CommittedBit}$ and $\Rand_{1-\CommittedBit}$ from the commitment randomness space.
-		\item Compute $\CFPTPOutput = \CFPTP.\Forw_{\CommittedBit, \ForwKey}(\Input_{\CommittedBit})$.
-		\item Compute $\Ciphertext_{\CommittedBit} = \PKE.\Enc_\EncKey(\Input, \sid; \Rand_\CommittedBit)$.
-		\item Compute $\Ciphertext_{1-\CommittedBit} = \PKE.\OblivEnc_\EncKey(\Rand_{1-\CommittedBit})$.
-		\item Send $(\CFPTPOutput, \Ciphertext_0, \Ciphertext_1)$ to $\Adversary$.
-	\end{enumerate}
-
-	\item \parhead{Open round}
-
-	\begin{enumerate}[nolistsep]
-		\item tbd
-	\end{enumerate}
+	\item Receive $(\CommitMsg,\sid,\CommitterId,\ReceiverId,\CommBit)$ from $\Environment$.
+	\item Query $\IFCrs$ to get the common reference string $\crs = (\ForwKey, \EncKey)$.
+	\item Sample $\Input \gets \Domain$.
+	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit}(\ForwKey,\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc(\EncKey, (\sid,\Input); \Rand_\CommBit)$.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc(\EncKey, \Rand_{1-\CommBit})$.
+	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
 \end{enumerate}
-\end{minipage}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Ideal Distribution}
-\label{sec:ideal-distribution}
-
-\begin{minipage}{0.9\textwidth}
-\parhead{Ideal distribution} $\Simulator$ does the following:
+\item \parhead{Open round}
 \begin{enumerate}[nolistsep]
-	\item \parhead{Commit round}
-	\begin{enumerate}[nolistsep]
-		\item Receive $\sid$ from $\Environment$
-		\item Sample $\CFPTPOutput$ from the plaintext space.
-		\item Sample $\Rand_{0}$ and $\Rand_{1}$ from the commitment randomness space.
-		\item Compute $\Ciphertext_{0} = \PKE.\Enc(\EncKey,\Input_{0}, \sid; \Rand_{0})$.
-		\item Compute $\Ciphertext_{1} = \PKE.\Enc(\EncKey,\Input_{1}, \sid; \Rand_{1})$.
-		\item Send $(\CFPTPOutput, \Ciphertext_0, \Ciphertext_1)$ to $\Adversary$.
-	\end{enumerate}
-
-	\item \parhead{Open round}
-
-	\begin{enumerate}[nolistsep]
-		\item Receive from $\IF$ that the committed bit is $\CommittedBit$.
-	\end{enumerate}
-
+    \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+    \item Send $(\sid,\CommitterId,\ReceiverId,\CommBit, \Input, \Rand_{\CommBit})$.
 \end{enumerate}
-\end{minipage}
+\end{itemize}
+\ran{should specify the code for a corruption message from adv}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Hybrid}
+\label{sec:hyb-distr}
 
+\parhead{Case 1: Honest commit message}
+The (hybrid) simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Query $\IFCom$ to get the actual committed bit $\CommBit$.
+	\item Sample $\Input \gets \Domain$.
+	\item Sample commitment randomness $\Rand_{\CommBit}$ and $\Rand_{1-\CommBit}$.
+	\item Compute $\Output = \CFPTP.\Forw_{\CommBit}(\ForwKey,\Input)$.
+	\item Compute $\Ct_{\CommBit} = \PKE.\Enc(\EncKey, (\sid,\Input); \Rand_\CommBit)$. Store $(\sid,\Ct_{\CommBit},\real)$ in memory.
+	\item Compute $\Ct_{1-\CommBit} = \PKE.\OblivEnc(\EncKey, \Rand_{1-\CommBit})$. Store $(\sid,\Ct_{1-\CommBit},\obliv)$ in memory.
+	\item Send $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\begin{enumerate}[nolistsep]
+\item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+\item Send $(\sid,\CommitterId,\ReceiverId,\CommBit, \Input, \Rand_{\CommBit})$.
+\end{enumerate}
+\end{itemize}
+
+\ran{should specify also behavior of Sim and F in a corruption event   (also  in the ideal)}
+\parhead{Case 2: Corrupted commit message}
+
+\begin{itemize}
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired commitment string: $(\sid, \Adv{\Output}, \Adv{\Ct_0}, \Adv{\Ct_1})$. \footnote{Note that $\Simulator$ must ``forget'' the environment's committed bit $\CommBit$ and extract a new committed bit $\ExtBit$ because $\Adversary$'s new commitment string may be arbitrary string or adaptively-generated based on the honest committer's original commitment string $(\Output, \Ct_0, \Ct_1)$.}\megan{propagate ran's comment: is the sid implicit in a commitment string? perhaps can make it explicit}
+    \item Extract the committed bit:
+    \begin{enumerate}[nolistsep]
+        \item Check if $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$ were obliviously-sampled by the simulator.
+        \begin{enumerate}[nolistsep]
+            \item If a string $(\sid, \Adv{\Ct_{0}} ,\obliv)$ exists in memory, set $\ExtBit = 1$.
+            \item If a string $(\sid, \Adv{\Ct_{1}} ,\obliv)$ exists in memory, set $\ExtBit = 0$.
+        \end{enumerate}
+        \item Otherwise (if the simulator did not obliviously-sample $\Adv{\Ct_{0}}, \Adv{\Ct_{1}}$), extract as follows:
+        \begin{enumerate}[nolistsep]
+            \item Decrypt $\Ct_0$ to get $\Adv{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+            \item If $\Adv{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+        \end{enumerate}
+    \end{enumerate}
+    \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired opening string: $(\AdvBit, \Input, \Rand)$.
+	\item If $\ExtBit = \AdvBit$, $\Input = \CFPTP.\Back_{\AdvBit}(\BackKey, \Output)$, and $\Ct_{\AdvBit} = \PKE.\Enc(\EncKey, \Input; \Rand)$, send $(\OpenMsg, \CommitterId, \ReceiverId)$ to $\IFCom$. Otherwise, abort.
+\end{enumerate}
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Ideal}
+\label{sec:ideal-distr}
+
+\parhead{Case 1: Honest committer}
+
+The simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+	\item Receive $(\sid, \CommitterId, \ReceiverId)$ from $\Environment$. Note that the committed bit $\CommBit$ is NOT received.
+    \item Compute a claw:
+    \begin{enumerate}[nolistsep]
+        \item Sample $\Input_0\gets\Domain$.
+        \item Compute $\Output \eqdef \CFPTP.\Forw_{0}(\ForwKey,\Input_0)$.
+        \item Compute $\Input_1 \eqdef \CFPTP.\Back_{1}(\BackKey,\Output)$.
+    \end{enumerate}
+    \item Compute ciphertexts:
+    \begin{enumerate}[nolistsep]
+        \item Sample commitment randomness $\Rand_{0}$ and $\Rand_{1}$.
+    	\item Compute $\Ct_{0} = \PKE.\Enc(\EncKey,\Input_{0}, \sid; \Rand_{0})$.
+    	\item Compute $\Ct_{1} = \PKE.\Enc(\EncKey,\Input_{1}, \sid; \Rand_{1})$.
+    \end{enumerate}
+	\item Send the commitment $(\sid,\CommitterId,\ReceiverId,\Output, \Ct_0, \Ct_1)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\newcommand{\fake}{\mathsf{fake}}
+\begin{enumerate}[nolistsep]
+    \item Receive $(\OpenMsg,\sid,\CommitterId,\ReceiverId)$ from $\Environment$.
+	\item Query the ideal functionality $\IFCom$ to receive the committed bit $\CommBit$.
+    \item Compute $\Rand_{\fake} \eqdef \OblivEncInv(\EncKey, \Ct_{1-\CommBit})$
+    \item Send $(\CommBit, \Input_{\CommBit}, \Rand_{\fake})$ to $\IFCom$.
+\end{enumerate}
+
+\end{itemize}
+
+\parhead{Case 2: Corrupted committer}
+
+The simulator $\Simulator$ does the following:
+\begin{itemize}
+\item \parhead{Simulate $\IFCrs$}
+\begin{enumerate}[nolistsep]
+    \item Generate encryption keys: $(\EncKey, \DecKey) \gets \PKE.\Gen(1^{\SecParam})$.
+    \item Generate CFPTP keys: $(\ForwKey,\BackKey) \gets \CFPTP.\Gen(1^{\SecParam})$.
+    \item Define the CRS string $\crs = (\ForwKey, \EncKey)$.
+    \item If $\Simulator$ receives any queries to $\IFCrs$, return the CRS string $\crs = (\ForwKey, \EncKey)$.
+\end{enumerate}
+
+\item \parhead{Commit round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired commitment string: $(\Output, \Ct_0, \Ct_1)$. Note that the committed bit $\CommBit$ is NOT received.
+    \item Extract the committed bit:
+    \begin{enumerate}[nolistsep]
+        \item Decrypt $\Ct_0$ to get $\Adv{\Input} \eqdef \PKE.\Dec(\DecKey, \Ct_0)$.
+        \item If $\Adv{\Input} = \CFPTP.\Back_0(\BackKey, \Output)$, set $\ExtBit = 0$. Otherwise, set $\ExtBit = 1$.
+    \end{enumerate}
+    \item Send $(\CommitMsg, \CommitterId, \ReceiverId, \ExtBit)$ to $\IFCom$.
+\end{enumerate}
+
+\item \parhead{Open round}
+\begin{enumerate}[nolistsep]
+    \item Receive $\Adversary$'s desired opening string: $(\AdvBit, \Input, \Rand)$.
+	\item If $\ExtBit = \AdvBit$, $\Input = \CFPTP.\Back_{\AdvBit}(\BackKey, \Output)$, and $\Ct_{\AdvBit} = \PKE.\Enc(\EncKey, \Input; \Rand)$, send $(\OpenMsg, \CommitterId, \ReceiverId)$ to $\IFCom$. Otherwise, abort.
+\end{enumerate}
+
+\end{itemize}
+
+\megan{next step: write reduction}
+\megan{alley says real to hybrid reduction is: find claw or find preimage. massage}
+\megan{simulator needs to simulate forwarders. (ask adversary to forward msgs or not)}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

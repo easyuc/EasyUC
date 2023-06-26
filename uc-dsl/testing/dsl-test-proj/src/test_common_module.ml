@@ -12,6 +12,8 @@ let print_expr (e:expr) =
   match e with
   |Desc d ->
     print_string ("__description__\n"^ d ^"__end of description__\n")
+  |Exec e ->
+    print_string ("__exec__\n"^ e ^"\n__end of exec__\n")
   |Args o ->
     print_endline "__args__";
     List.iter print_endline o ;
@@ -43,48 +45,56 @@ let print_list lst =
   print_elements lst
 
 let check_fields lst =
-  let rec check arg desc out =
+  let rec check arg exec desc out =
     function
     |[] ->
-      (arg, desc, out)
+      (arg, exec, desc, out)
     |e::l ->
       match e with
       |Args _ ->
-        check (arg+1) desc out l
+        check (arg+1) exec desc out l
+      |Exec _ -> 
+        check arg (exec+1) desc out l
       |Desc _ ->
-        check arg (desc+1) out l
+        check arg exec (desc+1) out l
       |Outcome _ ->
-        check arg desc (out+1) l
+        check arg exec desc (out+1) l
   in
-  let (arg_1, desc_1, out_1) =
-    check 0 0 0 lst in
+  let (arg_1, exec_1, desc_1, out_1) =
+    check 0 0 0 0 lst in
   let s1 =
     if arg_1 <> 1 then
       (if arg_1 = 0 then
-         "Error: Missing Args"
-       else
-         "Error: Multiple Args")
+        "Error: Missing Args"
+      else
+        "Error: Multiple Args")
     else ""
   in let s2 =
-       if desc_1 <> 1 then
-         (if desc_1 > 1 then
-            "Warning: Multiple Descriptions"
-          else
-            "Warning: Description missing")
-       else ""
-     in let s3 =
-          if out_1 <> 1 then
-            (if out_1 = 0 then
-               "Error: Outcome is missing"
-             else
-               "Error: Multiple Outcomes")
-          else ""
-        in
-        if s3 <> "" then
-          (if s1 <> "" then
-             (s1^"\n"^s3 , s2)
-           else (s3, s2))
-        else (s1, s2)
+    if desc_1 <> 1 then
+      (if desc_1 > 1 then
+        "Warning: Multiple Descriptions"
+      else
+        "Warning: Description missing")
+    else ""
+  in let s3 =
+    if out_1 <> 1 then
+      (if out_1 = 0 then
+        "Error: Outcome is missing"
+      else
+        "Error: Multiple Outcomes")
+      else ""
+  in let (fs1, fs2) = 
+    if s3 <> "" then
+      (if s1 <> "" then
+        (s1^"\n"^s3 , s2)
+      else (s3, s2))
+    else (s1, s2)
+  in 
+    if exec_1 > 1 then
+      (if fs1 <> "" then
+        (fs1^"\n"^"Error: Multiple Execs", fs2)
+      else ("Error: Multiple Execs", fs2))
+    else (fs1, fs2)
 
 (* check_ec_standard checkes .uc anc .ec files for naming standard.
    The file name shoudl start with a letter and can contain numbers
