@@ -642,21 +642,16 @@
 
 %nonassoc prec_tactic
 
-%type <EcParsetree.global  > global
-%type <EcParsetree.prog    > prog
-%type <EcParsetree.pformula> form_start
-%type <EcParsetree.pty     > ty_start
-
+%type <EcParsetree.global> global
+%type <EcParsetree.prog  > prog
 
 %type <unit> is_uniop
 %type <unit> is_binop
 %type <unit> is_numop
 
-%start prog global is_uniop is_binop is_numop form_start ty_start
+%start prog global is_uniop is_binop is_numop
 %%
 
-form_start: x=form EOF {x}
-ty_start: x=loc(type_exp) EOF {x}
 (* -------------------------------------------------------------------- *)
 _lident:
 | x=LIDENT   { x }
