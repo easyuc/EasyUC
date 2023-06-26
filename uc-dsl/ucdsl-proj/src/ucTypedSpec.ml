@@ -174,9 +174,15 @@ let port_ty =
 let addr_ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
 
+(* UC DSL operators *)
+
+let envport_op =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix, "envport")) []
+  (tfun addr_ty (tfun addr_ty (tfun port_ty tbool)))
+
 (* values of type EcIdent.t *)
 
-let envport : EcIdent.t = EcIdent.create "envport"
+let envport_id : EcIdent.t = EcIdent.create "envport"
 
 (* typed messages and functionality interfaces *)
 
