@@ -59,20 +59,22 @@ let rec last_element y list =
        Array.append y [|first_el|] in
      last_element z rest_of_list
 
-let rec match_expr expression f_name out_come1 out_come2 =
+let rec match_expr expression exec args out_come1 out_come2 =
   match expression with
   |[] ->
-    f_name, out_come1, out_come2
+    exec, args, out_come1, out_come2
   |e::l ->
     match e with
+    |Exec e -> 
+      match_expr l e args out_come1 out_come2    
     |Args o ->
-      let f_array =
+      let args_array =
         last_element [| |] o in
-      match_expr l f_array out_come1 out_come2
+      match_expr l exec args_array out_come1 out_come2
     |Outcome (o1, o2) ->
-      match_expr l f_name o1 o2
+      match_expr l exec args o1 o2
     |_ ->
-      match_expr l f_name out_come1 out_come2
+      match_expr l exec args out_come1 out_come2
 
 (* create_conflict has 3 arguments file - the TEST file of the current
    test, outcome and outcome description obtained my running that
@@ -136,19 +138,28 @@ let parse_file file code =
     else
       let _ =
         log_str := !log_str^"\n"^s2 in
-      let f_name, out_come1, out_come2 =
-        match_expr parse_list [| |] Empty "" in
+      let exec, f_name, out_come1, out_come2 =
+        match_expr parse_list "" [| |] Empty "" in
       let out_code, out_text =
         if out_come1 = Success then "0", "success"
         else "1", "failure"
       in
       let (stat, s_out) =
-        run (String.sub file 0 (String.length file -5))
-          (Array.append [|"ucdsl"|] f_name) in
+        if exec = "" then
+          run (String.sub file 0 (String.length file -5))
+              (Array.append [|"ucdsl"|] f_name)
+        else
+          run (String.sub file 0 (String.length file -5))
+              (Array.append [|exec|] f_name) 
+        in
+      Printf.printf "%s\n" s_out;
       let run_op =
         match_stat stat in
-      match run_op =
-              out_code with
+      match (if (run_op = "0" || run_op = "1") 
+                then run_op = out_code
+                else if run_op != "Unknown"
+                        then out_code = "1"
+                        else false) with
       |true ->
         begin
           match s_out = out_come2 with
