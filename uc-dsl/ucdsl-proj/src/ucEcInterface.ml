@@ -27,12 +27,28 @@ let notifier (lvl : EcGState.loglevel) (lazy msg) =
       non_loc_error_message
       (fun ppf -> fprintf ppf "@[EasyCrypt@ critical@ error:@;<1 2>%s@]" msg)
 
+let init_smt () =
+    let cp_why3conf ~exists ~mode : string option=
+      let confs =
+        XDG.Config.file
+          ~exists ~mode ~appname:EcVersion.app "why3.conf" in
+      List.nth_opt confs 0
+   in
+   let why3conf = cp_why3conf ~exists:true ~mode:`All
+   and ovrevict = [] in
+   try
+     EcProvers.initialize ~ovrevict ?why3conf ()
+   with _ ->  
+     non_loc_error_message
+     (fun ppf -> fprintf ppf "@[why3@ failed@ to@ initialize]")
+
+
 let initialized = ref false
 
 let init () =
  if not (!initialized) then
    (initialized := true;
-
+    init_smt ();
     (* include path setup *)
     (* lowest precedence *)
     EcCommands.addidir ~namespace:`System ~recursive:true ec_theories_dir;
