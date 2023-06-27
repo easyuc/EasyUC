@@ -461,10 +461,16 @@ let execute_task ?(notify : notify option) (pi : prover_infos) task =
                         Format.fprintf fmt "success: %s%!" prover;
                       Buffer.contents buf)))
                     end;
-                    incr status
+                    if (0 <= !status) then incr status
 
 
-                | CP.Invalid -> status := (-1)
+                | CP.Invalid ->
+                    status := (-1);
+                    notify |> oiter (fun notify -> notify `Warning (lazy (
+                      let buf = Buffer.create 0 in
+                      let fmt = Format.formatter_of_buffer buf in
+                      Format.fprintf fmt "prover %s disproved this goal." prover;
+                    Buffer.contents buf)));
                 | (CP.Failure _ | CP.HighFailure) as answer->
                   notify |> oiter (fun notify -> notify `Warning (lazy (
                     let buf = Buffer.create 0 in
