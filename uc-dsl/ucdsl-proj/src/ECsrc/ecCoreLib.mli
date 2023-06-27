@@ -83,6 +83,7 @@ module CI_Int : sig
   val p_int_lt    : path
   val p_int_pow   : path
   val p_int_edivz : path
+  val p_iteri     : path
 end
 
 (* -------------------------------------------------------------------- *)
@@ -156,6 +157,15 @@ module CI_Distr : sig
   val p_lossless: path
   val p_uniform : path
   val p_full    : path
+  val p_dfold   : path
+end
+
+(* -------------------------------------------------------------------- *)
+module CI_Sum : sig
+  val i_Sum : symbol
+  val p_Sum : path
+
+  val p_sum : path
 end
 
 (* -------------------------------------------------------------------- *)
