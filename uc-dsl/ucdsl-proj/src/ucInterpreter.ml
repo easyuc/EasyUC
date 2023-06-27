@@ -247,19 +247,38 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
 
 type local_context = form EcIdent.Mid.t list
 
+type local_context_base =
+  | LCB_Var     of EcIdent.t * ty
+  | LCB_EnvPort of form * form  (* both of type address *)
+  | LCB_IntPort of EcIdent.t * form  (* of type port *)
+
+let lc_create (lcbs : local_context_base list) : local_context =
+  [EcIdent.Mid.of_list
+   (List.map
+    (fun lcb ->
+       match lcb with
+       | LCB_Var (id, ty)                  ->
+           (id, f_op EcCoreLib.CI_Witness.p_witness [] ty)
+       | LCB_EnvPort (func_form, adv_form) ->
+           (envport_id,
+            f_app (form_of_expr mhr envport_op)
+            [func_form; adv_form] (tfun port_ty tbool))
+       | LCB_IntPort (id, port_form)       -> (id, port_form))
+    lcbs)]
+
 let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
       : local_context =
   EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
 
 let lc_apply (lc : local_context) (e : expr) : form =
- let f = form_of_expr mhr e in
- let map =
-   List.fold_left
-   (fun acc nxt ->
-      EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
-   (List.hd lc) (List.tl lc) in
- let subst =
-   List.fold_left
-   (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
-   Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
- Fsubst.f_subst subst f
+  let f = form_of_expr mhr e in
+  let map =
+    List.fold_left
+    (fun acc nxt ->
+       EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
+    (List.hd lc) (List.tl lc) in
+  let subst =
+    List.fold_left
+    (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
+    Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
+  Fsubst.f_subst subst f

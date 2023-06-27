@@ -406,7 +406,7 @@ let merge_state_analyses (sas : state_analysis list) : state_analysis =
 let augment_env_with_state_context
     (env : EcEnv.env) (sc : state_context) : EcEnv.env =
     Var.bind_locals
-    ((if sc.kind <> SimKind then [(envport, tfun port_ty tbool)] else []) @
+    ((if sc.kind <> SimKind then [(envport_id, tfun port_ty tbool)] else []) @
      List.map
      (fun (_, id) -> (id, port_ty))
      (QidMap.bindings sc.internal_ports) @
