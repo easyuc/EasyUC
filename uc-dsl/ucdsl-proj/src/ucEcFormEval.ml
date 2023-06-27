@@ -32,6 +32,7 @@ let pp_tc tc = (* copied from ecLowGoal.ml *)
 let pp_proof (proof : EcCoreGoal.proof) : unit =
   pp_tc (EcCoreGoal.tcenv_of_proof proof)
 
+(*comment out for printf debugging*)
 let print_endline _ = ()
 let pp_proof _ = ()
    
@@ -501,6 +502,7 @@ let printEvalResult (res : evalConditionResult) : unit =
   | Bool false -> print_endline "FALSE"
   | Undecided  -> print_endline "UNDECIDED"
 
+(*comment out for printf debugging*)
 let pp_ty _ _ = ()
 let pp_f _ _ = ()  
 let printEvalResult _ = ()
