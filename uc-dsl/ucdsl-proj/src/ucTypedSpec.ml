@@ -166,19 +166,32 @@ type ty_index = (ty * int) located
 
 (* UC DSL types *)
 
-let uc_qsym_prefix = ["Top"; "UCBasicTypes"]
+let uc_qsym_prefix_basic_types = ["Top"; "UCBasicTypes"]
+let uc_qsym_prefix_list_po     = ["Top"; "UCListPO"]
 
-let port_ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "port")) []
+let port_ty : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "port")) []
 
-let addr_ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix, "addr")) []
+let addr_ty : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr")) []
 
 (* UC DSL operators *)
 
-let envport_op =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix, "envport")) []
+let envport_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
   (tfun addr_ty (tfun addr_ty (tfun port_ty tbool)))
+
+let inc_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) [tint]
+  (tfun addr_ty (tfun addr_ty tbool))
+
+let le_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) [tint]
+  (tfun addr_ty (tfun addr_ty tbool))
+
+let lt_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
+  (tfun addr_ty (tfun addr_ty tbool))
 
 (* values of type EcIdent.t *)
 

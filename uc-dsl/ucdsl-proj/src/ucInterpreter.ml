@@ -1,10 +1,13 @@
 (* UcInterpreter module *)
 
+open Format
+
 open EcSymbols
-open EcTypes
-open EcFol
 open EcLocation
 open EcUtils
+open EcTypes
+open EcFol
+open EcEnv
 
 open UcMessage
 open UcSpec
@@ -282,3 +285,59 @@ let lc_apply (lc : local_context) (e : expr) : form =
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   Fsubst.f_subst subst f
+
+(* a global context is an EcEnv.LDecl.hyps *)
+
+type global_context = LDecl.hyps
+
+exception GCerror
+
+let func_id         : EcIdent.t = EcIdent.create "func"
+let adv_id          : EcIdent.t = EcIdent.create "adv"
+let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
+
+let gc_create (env : env) : global_context =
+  let locs =
+    [
+      (func_id, EcBaseLogic.LD_var (addr_ty, None));
+      (adv_id,  EcBaseLogic.LD_var (addr_ty, None));
+      (inc_func_adv_id,
+       EcBaseLogic.LD_hyp
+       (form_of_expr mhr
+        (e_app inc_op [e_local func_id addr_ty; e_local adv_id addr_ty]
+         tbool)))
+    ] in
+  LDecl.init env ~locals:(List.rev locs) []
+
+let env_of_gc (gc : global_context) : env = LDecl.toenv gc
+
+(* pretty printer for global contents that separates elements
+   by commas, allowing breaks *)
+
+let pp_gc (ppf : formatter) (gc : global_context) : unit =
+  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
+  let pp_loc ppe (ppf : formatter) (id, lk) : unit =
+    match lk with
+    | EcBaseLogic.LD_var (ty, _) ->
+        fprintf ppf "@[%a :@ %a@]"
+        EcIdent.pp_ident id
+        (EcPrinting.pp_type ppe) ty
+    | EcBaseLogic.LD_hyp form    ->
+        fprintf ppf "@[%a :@ %a@]"
+        EcIdent.pp_ident id
+        (EcPrinting.pp_form ppe) form
+    | _                          -> failure "cannot happen" in
+  let locs = List.rev (LDecl.tohyps gc).h_local in
+  EcPrinting.pp_list "@, " (pp_loc ppe) ppf locs
+
+let gc_add_var (gc : global_context) (q : symbol) (ty : ty) : global_context =
+  if LDecl.var_exists q gc
+  then raise GCerror
+  else LDecl.add_local (EcIdent.create q) (EcBaseLogic.LD_var (ty, None)) gc
+
+let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
+      : global_context =
+  if LDecl.hyp_exists q gc
+  then raise GCerror
+  else LDecl.add_local (EcIdent.create q)
+       (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
