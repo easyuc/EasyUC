@@ -92,6 +92,228 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       (* no parse errors are possible, but there may be type errors *)
       ()
 
+  (* ------------------------------------------------------------------ *)
+  type prover =
+    [ `Exclude | `Include | `Only] * psymbol
+
+  type pi = [
+    | `DBHINT of pdbhint
+    | `INT    of int
+    | `PROVER of prover list
+  ]
+
+  type smt = [
+    | `ALL
+    | `ITERATE
+    | `QUORUM         of int
+    | `MAXLEMMAS      of int option
+    | `MAXPROVERS     of int
+    | `PROVER         of prover list
+    | `TIMEOUT        of int
+    | `UNWANTEDLEMMAS of pdbhint
+    | `WANTEDLEMMAS   of pdbhint
+    | `VERBOSE        of int option
+    | `VERSION        of [ `Full | `Lazy ]
+    | `DUMPIN         of string located
+    | `SELECTED
+    | `DEBUG
+  ]
+
+  module SMT : sig
+    val mk_pi_option  : psymbol -> pi option -> smt
+    val mk_smt_option : smt list -> pprover_infos
+  end = struct
+    let option_matching tomatch =
+      let match_option = String.option_matching tomatch in
+      fun s ->
+        match match_option s.pl_desc with
+        | [m] -> mk_loc s.pl_loc m
+        | []  ->
+            parse_error s.pl_loc
+            (fun ppf ->
+               Format.fprintf ppf "unknown option: %s" (unloc s))
+        | ls  ->
+            parse_error s.pl_loc
+            (fun ppf ->
+               Format.fprintf ppf
+               "option `%s` is ambiguous; matching ones are: `%s`"
+               (unloc s) (String.concat ", " ls))
+
+    let option_matching =
+       option_matching
+         [ "all"            ;
+           "quorum"         ;
+           "timeout"        ;
+           "maxprovers"     ;
+           "maxlemmas"      ;
+           "wantedlemmas"   ;
+           "unwantedlemmas" ;
+           "prover"         ;
+           "verbose"        ;
+           "lazy"           ;
+           "full"           ;
+           "iterate"        ;
+           "dumpin"         ;
+           "selected"       ;
+           "debug"          ]
+
+    let as_int = function
+      | None          -> `None
+      | Some (`INT n) -> `Some n
+      | Some _        -> `Error
+
+    let as_dbhint = function
+      | None             -> `None
+      | Some (`DBHINT d) -> `Some d
+      | Some _           -> `Error
+
+    let as_prover = function
+      | None             -> `None
+      | Some (`PROVER p) -> `Some p
+      | Some _           -> `Error
+
+    let get_error ~optional s name =
+      parse_error s.pl_loc
+      (fun ppf ->
+         Format.fprintf ppf
+          "`%s`: %s`%s` option expected" (unloc s)
+          (if optional then "optional " else "")
+          name)
+
+    let get_as (name, getter) s o =
+      match getter o with
+      | `Some v -> v
+      | `None
+      | `Error  -> get_error ~optional:false s name
+
+    let get_opt_as (name, getter) s o =
+      match getter o with
+      | `Some v -> Some v
+      | `None   -> None
+      | `Error  -> get_error ~optional:true s name
+
+    let get_as_none s o =
+      if EcUtils.is_some o then
+          parse_error s.pl_loc
+          (fun ppf ->
+             Format.fprintf ppf
+             "`%s`: no option expected" (unloc s))
+
+    let mk_pi_option (s : psymbol) (o : pi option) : smt =
+      let s = option_matching s in
+
+      match unloc s with
+      | "timeout"        -> `TIMEOUT        (get_as     ("int"   , as_int) s o)
+      | "quorum"         -> `QUORUM         (get_as     ("int"   , as_int) s o)
+      | "maxprovers"     -> `MAXPROVERS     (get_as     ("int"   , as_int) s o)
+      | "maxlemmas"      -> `MAXLEMMAS      (get_opt_as ("int"   , as_int) s o)
+      | "wantedlemmas"   ->
+          `WANTEDLEMMAS   (get_as ("dbhint", as_dbhint) s o)
+      | "unwantedlemmas" ->
+          `UNWANTEDLEMMAS (get_as ("dbhint", as_dbhint) s o)
+      | "prover"         ->
+          `PROVER         (get_as ("prover", as_prover) s o)
+      | "verbose"        -> `VERBOSE        (get_opt_as ("int"   , as_int) s o)
+      | "lazy"           -> `VERSION        (get_as_none s o; `Lazy)
+      | "full"           -> `VERSION        (get_as_none s o; `Full)
+      | "all"            -> get_as_none s o; (`ALL)
+      | "iterate"        -> get_as_none s o; (`ITERATE)
+      | "selected"       -> get_as_none s o; (`SELECTED)
+      | "debug"          -> get_as_none s o; (`DEBUG)
+      | _                ->  assert false
+
+    let mk_smt_option (os : smt list) =
+      let mprovers = ref None in
+      let timeout  = ref None in
+      let pnames   = ref None in
+      let quorum   = ref None in
+      let all      = ref None in
+      let mlemmas  = ref None in
+      let wanted   = ref None in
+      let unwanted = ref None in
+      let verbose  = ref None in
+      let version  = ref None in
+      let iterate  = ref None in
+      let dumpin   = ref None in
+      let selected = ref None in
+      let debug    = ref None in
+
+      let is_universal p = unloc p = "" || unloc p = "!" in
+
+      let ok_use_only pp p =
+        if pp.pp_add_rm <> [] then
+          parse_error (loc p)
+          (fun ppf ->
+             Format.fprintf ppf
+             "use-only elements must come at beginning")
+        else if pp.pp_use_only <> [] && is_universal p then
+          parse_error (loc p)
+          (fun ppf ->
+             Format.fprintf ppf
+             "cannot add universal to non-empty use-only")
+        else
+          match pp.pp_use_only with
+          | [q] ->
+              if is_universal q then
+                parse_error (loc p)
+                (fun ppf ->
+                   Format.fprintf ppf
+                   "use-only part is already universal")
+          | _ -> () in
+
+      let add_prover (k, p) =
+        let r  = odfl empty_pprover_list !pnames in
+        let pr =
+          match k with
+          | `Only ->
+	            ok_use_only r p; { r with pp_use_only = p :: r.pp_use_only }
+          | `Include -> { r with pp_add_rm = (`Include, p) :: r.pp_add_rm }
+          | `Exclude -> { r with pp_add_rm = (`Exclude, p) :: r.pp_add_rm }
+
+        in pnames := Some pr in
+
+      let do1 o  =
+        match o with
+        | `ALL              -> all      := Some true
+        | `QUORUM         n -> quorum   := Some n
+        | `TIMEOUT        n -> timeout  := Some n
+        | `MAXPROVERS     n -> mprovers := Some n
+        | `MAXLEMMAS      n -> mlemmas  := Some n
+        | `WANTEDLEMMAS   d -> wanted   := Some d
+        | `UNWANTEDLEMMAS d -> unwanted := Some d
+        | `VERBOSE        v -> verbose  := Some v
+        | `VERSION        v -> version  := Some v
+        | `ITERATE          -> iterate  := Some true
+        | `PROVER         p -> List.iter add_prover p
+        | `DUMPIN         f -> dumpin   := Some f
+        | `SELECTED         -> selected := Some true
+        | `DEBUG            -> debug    := Some true
+      in
+
+      List.iter do1 os;
+
+      oiter
+        (fun r -> pnames := Some { r with pp_add_rm = List.rev r.pp_add_rm })
+        !pnames;
+
+      { pprov_max       = !mprovers;
+        pprov_timeout   = !timeout;
+        pprov_cpufactor =  None;
+        pprov_names     = !pnames;
+        pprov_quorum    = !quorum;
+        pprov_verbose   = !verbose;
+        pprov_version   = !version;
+        plem_all        = !all;
+        plem_max        = !mlemmas;
+        plem_iterate    = !iterate;
+        plem_wanted     = !wanted;
+        plem_unwanted   = !unwanted;
+        plem_dumpin     = !dumpin;
+        plem_selected   = !selected;
+        psmt_debug      = !debug;
+      }
+  end
+
 %}
 
 %token EOF  (* end-of-file *)
@@ -131,6 +353,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token MESSAGE
 %token OUT
 %token PARTY
+%token PROVER
 %token SEND
 %token SERVES
 %token SIM
@@ -138,6 +361,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token STATE
 %token SUBFUN
 %token THEN
+%token TIMEOUT
 %token TOP
 %token TRANSITION
 %token UC_REQUIRES
@@ -231,19 +455,21 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 (* the input for the UcParser is a list of tokens produced by UcLexer
    from the UC DSL file.  This list is parsed by UcParser, starting
-   with the initial production spec.  The output of UcParser is a
-   record of spec type (defined in UcSpec). *)
+   from one of the following start productions, producing a value
+   of the corresponding type (defined in UcSpec). *)
+
 %type <UcSpec.spec> spec
 %type <UcSpec.fun_expr> fun_expr
 %type <UcSpec.sent_msg_expr> sent_msg_expr
 %type <UcSpec.pty> ty_start
 %type <UcSpec.pexpr> expr_start
+%type <UcSpec.pprover_infos> prover_cmd
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start spec fun_expr sent_msg_expr ty_start expr_start
+%start spec fun_expr sent_msg_expr ty_start expr_start prover_cmd
 
 %%
 
@@ -1333,6 +1559,61 @@ in_out_poa_pexpr:
 dollar_or_at :
   | DOLLAR { true  }
   | AT     { false }
+
+(* prover command *)
+
+dbmap1:
+  | f = dbmap_flag? x = dbmap_target
+      { { pht_flag    = odfl `Include f;
+          pht_kind    = (fst x);
+          pht_name    = (snd x); } }
+
+%inline dbmap_flag:
+  | PLUS  { `Include }
+  | MINUS { `Exclude }
+
+%inline dbmap_target:
+  | AT x = uqident { (`Theory, x) }
+  | x = qident     { (`Lemma , x) }
+
+dbhint:
+  | m = dbmap1         { [m] }
+  | m = paren(dbmap1*) {  m  }
+
+smt_info:
+  | li = smt_info1* { SMT.mk_smt_option li}
+
+smt_info1:
+  | t = word
+      { `MAXLEMMAS (Some t) }
+
+  | TIMEOUT EQ t = word
+      { `TIMEOUT t }
+
+  | p = prover_kind
+      { `PROVER p }
+
+  | PROVER EQ p = prover_kind
+      { `PROVER p }
+
+  | x = lident po = prefix(EQ, smt_option)?
+      { SMT.mk_pi_option x po }
+
+prover_kind1:
+  | l = loc(STRING)       { `Only   , l }
+  | PLUS  l = loc(STRING) { `Include, l }
+  | MINUS l = loc(STRING) { `Exclude, l }
+
+prover_kind:
+  | LBRACKET lp = prover_kind1* RBRACKET { lp }
+
+%inline smt_option:
+  | n = word        { `INT n    }
+  | d = dbhint      { `DBHINT d }
+  | p = prover_kind { `PROVER p }
+
+prover_cmd:
+  | PROVER x = smt_info EOF { x }
 
 (* Localization *)
 
