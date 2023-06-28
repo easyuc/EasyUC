@@ -316,3 +316,43 @@ type sent_msg_expr =
    path          : msg_path;            (* message path *)
    args          : pexpr list located;  (* message arguments *)
    out_poa_pexpr : port_or_addr_pexpr}  (* destination *)
+
+(* prover command *)
+
+type include_exclude = [ `Include | `Exclude ]
+
+type pdbmap1 = {
+  pht_flag : include_exclude;
+  pht_kind : [ `Theory  | `Lemma   ];
+  pht_name : pqsymbol;
+}
+
+and pdbhint = pdbmap1 list
+
+type pprover_list = {
+  pp_use_only : string located list;
+  pp_add_rm   : (include_exclude * string located) list;
+}
+
+let empty_pprover_list = {
+  pp_use_only = [];
+  pp_add_rm   = [];
+}
+
+type pprover_infos = {
+  pprov_max       : int option;
+  pprov_timeout   : int option;
+  pprov_cpufactor : int option;
+  pprov_names     : pprover_list option;
+  pprov_quorum    : int option;
+  pprov_verbose   : int option option;
+  pprov_version   : [`Lazy | `Full] option;
+  plem_all        : bool option;
+  plem_max        : int option option;
+  plem_iterate    : bool option;
+  plem_wanted     : pdbhint option;
+  plem_unwanted   : pdbhint option;
+  plem_dumpin     : string located option;
+  plem_selected   : bool option;
+  psmt_debug      : bool option;
+}

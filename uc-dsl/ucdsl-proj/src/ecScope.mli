@@ -229,6 +229,11 @@ module Prover : sig
   val set_default : scope -> smt_options -> scope
   val full_check  : scope -> scope
   val check_proof : scope -> bool -> scope
+
+  val pprover_infos_to_prover_infos :
+     EcEnv.env -> EcProvers.prover_infos -> pprover_infos ->
+     EcProvers.prover_infos
+
 end
 
 (* -------------------------------------------------------------------- *)

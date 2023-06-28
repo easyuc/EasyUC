@@ -341,3 +341,6 @@ let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
   then raise GCerror
   else LDecl.add_local (EcIdent.create q)
        (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
+
+(* SMT hints *)
+
