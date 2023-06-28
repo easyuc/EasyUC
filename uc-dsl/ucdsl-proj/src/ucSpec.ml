@@ -263,6 +263,10 @@ type spec =
 
 (* Interpreter User Input *)
 
+type interpreter_command =
+  | Load string
+  | World
+
 (* functionality expression
 
    when a functionality has "()" as its argument list, we use

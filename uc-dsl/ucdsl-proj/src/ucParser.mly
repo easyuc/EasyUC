@@ -246,12 +246,13 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 %start spec fun_expr sent_msg_expr ty_start expr_start
 
 %%
+(*for testing purposes, to be removed*)
+expr_start : x=expr EOF {x}
+ty_start : x=loc(type_exp) EOF {x}
 
 (* a UC DSL specification consists of a preamble which requires
   other .ec and .uc files, followed by a list of definitions of direct and
   adversarial interfaces, functionalities and simlators *)
-expr_start : x=expr EOF {x}
-ty_start : x=loc(type_exp) EOF {x}
 
 spec : 
   | ext = preamble; defs = list(def); EOF
@@ -901,6 +902,62 @@ state_expr :
       { let uargs = unloc args |? [] in
         {id = id; args = mk_loc (loc args) uargs} }
 
+(* Interpreter commands *)
+interpreter_command :
+  | c = icomm; DOT; { c }
+
+icomm :
+  | c = load_uc_file; { c }
+  | c = fun_ex_comm { c }
+  | c = comm_word; { c }
+  | c = send_msg; { c }
+  | c = prover { c }
+
+load_uc_file :
+  | load = lident; file = ident; { }
+
+fun_ex_comm :
+  | FUN; fe = fun_expr { }
+
+comm_word :
+  | cw = lident; { }
+
+send_msg :
+  | SEND; sme = sent_msg_expr; { }
+
+fun_expr_r :
+  | x = uqident; { FunExprNoArgs x }
+  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN;
+      { FunExprArgs (x,y) }
+  
+fun_expr :
+  | fe = fun_expr_r; EOF { fe }
+  
+sent_msg_expr :
+  | inpex = in_out_poa_pexpr; 
+    in_poa = dollar_or_at; 
+    path = msg_path; 
+    argsl = loc(args); 
+    out_poa = dollar_or_at; 
+    outpex = in_out_poa_pexpr; 
+    EOF;
+    {{
+      in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
+      path = path;
+      args = argsl;
+      out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
+    }}
+
+in_out_poa_pexpr:
+  | id = idexpr; { id }
+  | LPAREN; ex = expr; RPAREN; { ex }
+  
+dollar_or_at :
+  | DOLLAR { true  }
+  | AT     { false }
+
+  
+
 (* Type Bindings and Arguments *)
 
 type_binding : 
@@ -1300,39 +1357,6 @@ ptybindings :
 
   | x = bdident+; COLON; ty = loc(type_exp)
       { [x, ty] }
-
-(* Interpreter User Input *)
-
-fun_expr_r :
-  | x = uqident; { FunExprNoArgs x }
-  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN;
-      { FunExprArgs (x,y) }
-  
-fun_expr :
-  | fe = fun_expr_r; EOF { fe }
-  
-sent_msg_expr :
-  | inpex = in_out_poa_pexpr; 
-    in_poa = dollar_or_at; 
-    path = msg_path; 
-    argsl = loc(args); 
-    out_poa = dollar_or_at; 
-    outpex = in_out_poa_pexpr; 
-    EOF;
-    {{
-      in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
-      path = path;
-      args = argsl;
-      out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
-    }}
-
-in_out_poa_pexpr:
-  | id = idexpr; { id }
-  | LPAREN; ex = expr; RPAREN; { ex }
-  
-dollar_or_at :
-  | DOLLAR { true  }
-  | AT     { false }
 
 (* Localization *)
 
