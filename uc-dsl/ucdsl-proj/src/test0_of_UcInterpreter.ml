@@ -39,7 +39,7 @@ let parse_error_handling lexbuf =
 
 let parse_fun_expr (fe : string) : UcSpec.fun_expr =
   let lexbuf = Lexing.from_string fe in
-  try UcParser.fun_expr UcLexer.read lexbuf  with
+  try UcParser.fun_expr_start UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
 
 let test_fun_expr_to_worlds (include_dirs : string list) (file : string) (fun_ex : string) : unit =
@@ -72,7 +72,7 @@ let test_fun_expr_to_worlds_1 (): unit =
 
 let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
   let lexbuf = Lexing.from_string sme in
-  try UcParser.sent_msg_expr UcLexer.read lexbuf  with
+  try UcParser.sent_msg_expr_start UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
  
 let pp_err_message (fmt : Format.formatter) (err : UcMessage.message) : unit =

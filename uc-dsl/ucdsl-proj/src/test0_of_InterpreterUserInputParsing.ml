@@ -5,12 +5,12 @@ let parse_error_handling lexbuf =
 
 let parse_fun_expr (fe : string) : UcSpec.fun_expr =
   let lexbuf = Lexing.from_string fe in
-  try UcParser.fun_expr UcLexer.read lexbuf  with
+  try UcParser.fun_expr_start UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
       
 let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
   let lexbuf = Lexing.from_string sme in
-  try UcParser.sent_msg_expr UcLexer.read lexbuf  with
+  try UcParser.sent_msg_expr_start UcLexer.read lexbuf  with
   | UcParser.Error -> parse_error_handling lexbuf
   
 let () : unit =

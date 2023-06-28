@@ -261,12 +261,6 @@ type spec =
   {externals   : externals;
    definitions : def list}
 
-(* Interpreter User Input *)
-
-type interpreter_command =
-  | Load string
-  | World
-
 (* functionality expression
 
    when a functionality has "()" as its argument list, we use
@@ -356,3 +350,24 @@ type pprover_infos = {
   plem_selected   : bool option;
   psmt_debug      : bool option;
 }
+
+(* Interpreter User Input *)
+
+type world =
+  | Real
+  | Ideal
+
+type interpreter_command_u =
+  | Load of psymbol
+  | Funex of fun_expr
+  | World of world
+  | Send of sent_msg_expr
+  | Run
+  | Step
+  | Addv of type_binding
+  | Addf of psymbol * pexpr
+  | SmtInfo of pprover_infos
+  | Done
+  | Quit
+
+type interpreter_command = interpreter_command_u located

@@ -459,22 +459,24 @@ let check_parsing_adversarial_inter (ni : named_inter) =
    of the corresponding type (defined in UcSpec). *)
 
 %type <UcSpec.spec> spec
-%type <UcSpec.fun_expr> fun_expr
-%type <UcSpec.sent_msg_expr> sent_msg_expr
+%type <UcSpec.fun_expr> fun_expr_start
+%type <UcSpec.sent_msg_expr> sent_msg_expr_start
 %type <UcSpec.pty> ty_start
 %type <UcSpec.pexpr> expr_start
-%type <UcSpec.pprover_infos> prover_cmd
+%type <UcSpec.interpreter_command> interpreter_command
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start spec fun_expr sent_msg_expr ty_start expr_start prover_cmd
+%start spec fun_expr_start sent_msg_expr_start ty_start expr_start interpreter_command
 
 %%
 (*for testing purposes, to be removed*)
 expr_start : x=expr EOF {x}
 ty_start : x=loc(type_exp) EOF {x}
+fun_expr_start : x=fun_expr EOF {x}
+sent_msg_expr_start : x=sent_msg_expr EOF {x}
 
 (* a UC DSL specification consists of a preamble which requires
   other .ec and .uc files, followed by a list of definitions of direct and
@@ -1129,35 +1131,57 @@ state_expr :
         {id = id; args = mk_loc (loc args) uargs} }
 
 (* Interpreter commands *)
+
 interpreter_command :
-  | c = icomm; DOT; { c }
+  | c = loc(icomm); DOT; EOF;{ c }
 
 icomm :
   | c = load_uc_file; { c }
-  | c = fun_ex_comm { c }
+  | c = fun_ex_cmd; { c }
   | c = comm_word; { c }
   | c = send_msg; { c }
-  | c = prover { c }
+  | c = prover_cmd; { c }
 
 load_uc_file :
-  | load = lident; file = ident; { }
+  | load = lident; file = ident; 
+    {
+      if (unloc load) = "load" 
+      then Load file
+      else parse_error (loc load)
+            (fun ppf ->
+               fprintf ppf
+               "Did@ you@ mean@ load@ instead@ of@ %s?" (unloc load))
+    }
 
-fun_ex_comm :
-  | FUN; fe = fun_expr { }
+fun_ex_cmd :
+  | FUN; fe = fun_expr { Funex fe }
 
 comm_word :
-  | cw = lident; { }
+  | cw = lident; 
+    {
+      match (unloc cw) with
+      | "real"  -> World Real
+      | "ideal" -> World Ideal
+      | "run"   -> Run
+      | "step"  -> Step
+      | "done"  -> Done
+      | "quit"  -> Quit
+      | _ -> 
+        parse_error (loc cw)
+        (fun ppf -> fprintf ppf
+"%s@ is@ not@ a@ valid@ one@ word@ command." (unloc cw))
+    }
 
 send_msg :
-  | SEND; sme = sent_msg_expr; { }
+  | SEND; sme = sent_msg_expr; { Send sme }
 
-fun_expr_r :
-  | x = uqident; { FunExprNoArgs x }
-  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr_r); RPAREN;
-      { FunExprArgs (x,y) }
-  
+prover_cmd:
+  | PROVER x = smt_info { SmtInfo x } 
+
 fun_expr :
-  | fe = fun_expr_r; EOF { fe }
+  | x = uqident; { FunExprNoArgs x }
+  | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr); RPAREN;
+      { FunExprArgs (x,y) }
   
 sent_msg_expr :
   | inpex = in_out_poa_pexpr; 
@@ -1166,7 +1190,6 @@ sent_msg_expr :
     argsl = loc(args); 
     out_poa = dollar_or_at; 
     outpex = in_out_poa_pexpr; 
-    EOF;
     {{
       in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
       path = path;
@@ -1234,9 +1257,7 @@ prover_kind:
   | n = word        { `INT n    }
   | d = dbhint      { `DBHINT d }
   | p = prover_kind { `PROVER p }
-
-prover_cmd:
-  | PROVER x = smt_info EOF { x }  
+ 
 
 (* Type Bindings and Arguments *)
 
