@@ -269,6 +269,25 @@ let lc_create (lcbs : local_context_base list) : local_context =
        | LCB_IntPort (id, port_form)       -> (id, port_form))
     lcbs)]
 
+let pp_lc (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
+        : unit =
+    fprintf ppf "@[%a :@ %a@]"
+    EcIdent.pp_ident id
+    (EcPrinting.pp_form ppe) form in
+  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
+    EcPrinting.pp_list "@, " pp_frame_entry ppf
+    (EcIdent.Mid.bindings frame) in
+  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
+        : unit =
+    match frames with
+    | []              -> failure "cannot happen"
+    | [frame]         -> pp_frame ppf frame
+    | frame :: frames ->
+        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
+  fprintf ppf "@[<v>%a@]" pp_frames lc
+
 let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
       : local_context =
   EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
@@ -311,7 +330,7 @@ let gc_create (env : env) : global_context =
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
-(* pretty printer for global contents that separates elements
+(* pretty printer for global contexts: separates elements
    by commas, allowing breaks *)
 
 let pp_gc (ppf : formatter) (gc : global_context) : unit =
@@ -341,6 +360,3 @@ let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
   then raise GCerror
   else LDecl.add_local (EcIdent.create q)
        (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
-
-(* SMT hints *)
-
