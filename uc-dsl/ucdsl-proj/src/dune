@@ -15,4 +15,7 @@
 (ocamllex ucLexer)
 
 (menhir
- (modules ucParser))
+  (modules ucParser)
+  (flags --explain --dump)
+  (infer true)
+)
