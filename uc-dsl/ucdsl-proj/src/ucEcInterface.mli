@@ -6,14 +6,6 @@
 
 val init : unit -> unit
 
-(* EasyCrypt critical errors cause termination with an error message,
-   but EasyCrypt warnings are collected in a list, which may be retrieved
-   or reset *)
-
-val get_ec_warnings : unit -> string list
-
-val reset_ec_warnings : unit -> unit
-
 (* return the environment of the current scope *)
 
 val env : unit -> EcEnv.env

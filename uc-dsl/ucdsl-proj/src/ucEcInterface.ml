@@ -8,21 +8,13 @@ open EcUtils
 open UcMessage
 open UcConfig
 
-(* EasyCrypt critical errors cause termination with an error message,
-   but EasyCrypt warnings are collected in a list, which may be retrieved
-   or reset *)
-
-let ec_warnings = ref []
-
-let get_ec_warnings () = ! ec_warnings
-
-let reset_ec_warnings () = ec_warnings := []
-
 let notifier (lvl : EcGState.loglevel) (lazy msg) =
   match lvl with
   | `Debug    -> ()  (* won't happen, given default log level *)
   | `Info     -> ()  (* discard *)
-  | `Warning  -> ec_warnings := ! ec_warnings @ [msg]
+  | `Warning  ->
+      non_loc_warning_message
+      (fun ppf -> fprintf ppf "@[EasyCrypt@ warning:@;<1 2>%s@]" msg)
   | `Critical ->
       non_loc_error_message
       (fun ppf -> fprintf ppf "@[EasyCrypt@ critical@ error:@;<1 2>%s@]" msg)
@@ -39,9 +31,8 @@ let init_smt () =
    try
      EcProvers.initialize ~ovrevict ?why3conf ()
    with _ ->  
-     non_loc_error_message
+     non_loc_error_message_exit
      (fun ppf -> fprintf ppf "@[why3@ failed@ to@ initialize]")
-
 
 let initialized = ref false
 
@@ -70,7 +61,6 @@ let init () =
     EcCommands.ucdsl_init ();    
     EcCommands.ucdsl_addnotifier notifier;
 
-    reset_ec_warnings ();
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
   else ()

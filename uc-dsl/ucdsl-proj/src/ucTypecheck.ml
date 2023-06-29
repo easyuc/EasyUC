@@ -34,7 +34,7 @@ let check_unique_ids
   (fun id_map a ->
      let id_l = get_id a in
      if exists_id id_map (unloc id_l) then
-       type_error (loc id_l)
+       error_message (loc id_l)
        (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
      else IdMap.add (unloc id_l) a id_map)
   id_map al
@@ -56,7 +56,7 @@ let is_ec_op_name s =
 
 let check_not_ec_theory_name id_l =  (* currently not used *)
   if is_ec_theory_name (unloc id_l)
-  then type_error (loc id_l)
+  then error_message (loc id_l)
        (fun ppf ->
           fprintf ppf
           ("@[identifer@ is@ name@ of@ EasyCrypt@ theory@]"))
@@ -134,7 +134,7 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
   (IdMap.map
    (fun (md : message_def) ->
       if List.length md.params > max_msg_params
-      then type_error (loc md.id)
+      then error_message (loc md.id)
            (fun ppf ->
               fprintf ppf
               ("@[more@ than@ the@ allowed@ maximum@ number@ (%d)@ of@ " ^^
@@ -155,7 +155,7 @@ let check_comp_item
   let uid = unloc ci.inter_id in
   match IdPairMap.find_opt (root, uid) inter_map with
   | None    ->
-      type_error
+      error_message
       (loc ci.inter_id)
       (fun ppf ->
          fprintf ppf
@@ -164,7 +164,7 @@ let check_comp_item
   | Some it ->
       let ibt = unloc it in
       if is_composite_tyd ibt
-      then type_error (loc ci.inter_id)
+      then error_message (loc ci.inter_id)
            (fun ppf ->
               fprintf ppf
               "@[%s@ isn't@ a@ basic@ interface@]" uid)
@@ -185,7 +185,7 @@ let check_inter
   let uid = unloc ni.id in
   let () =
     if e_maps (root, uid)
-    then type_error (loc ni.id)
+    then error_message (loc ni.id)
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
@@ -214,7 +214,7 @@ let check_exists_inter_id
     (id : psymbol) : unit =
   let uid = unloc id in
   if exists_id_pair inter_map (root, uid) then ()
-  else type_error (loc id)
+  else error_message (loc id)
        (fun ppf ->
           fprintf ppf
           "@[%s@ interface@ does@ not@ exist:@ %s@]"
@@ -227,7 +227,7 @@ let check_is_basic_id
   match unloc (IdPairMap.find (root, uid) inter_map) with
   | BasicTyd _     -> ()
   | CompositeTyd _ ->
-      type_error (loc id)
+      error_message (loc id)
       (fun ppf ->
          fprintf ppf
          "@[%s@ interface@ must@ be@ basic:@ %s@]"
@@ -239,7 +239,7 @@ let check_is_composite_id
   let uid = unloc id in
   match unloc (IdPairMap.find (root, uid) inter_map) with
   | BasicTyd _     ->
-      type_error (loc id)
+      error_message (loc id)
       (fun ppf ->
          fprintf ppf
          "@[%s@ interface@ must@ be@ composite:@ %s@]"
@@ -255,7 +255,7 @@ let check_exists_inter_qid
   | ([], uid)   ->
       if exists_id_pair inter_map (root, uid)
       then mk_loc l (root, uid)
-      else type_error l
+      else error_message l
            (fun ppf ->
               fprintf ppf
               "@[%s@ interface@ does@ not@ exist:@ %s@]"
@@ -263,13 +263,13 @@ let check_exists_inter_qid
   | ([rt], uid) ->
       if exists_id_pair inter_map (rt, uid)
       then mk_loc l (rt, uid)
-      else type_error l
+      else error_message l
            (fun ppf ->
               fprintf ppf
               "@[%s@ interface@ does@ not@ exist:@ %a@]"
               (inter_kind_to_str false ik) (pp_qsymbol_abbrev root) uqid)
   | _           ->
-      type_error l
+      error_message l
       (fun ppf ->
          fprintf ppf
          "@[invalid@ form@ for@ interface@ name:@ %a@]" pp_qsymbol uqid)
@@ -282,7 +282,7 @@ let check_is_basic_id_pair  (* currently not used *)
   match unloc (IdPairMap.find uidp inter_map) with
   | BasicTyd _     -> ()
   | CompositeTyd _ ->
-      type_error l
+      error_message l
       (fun ppf ->
          fprintf ppf
          "@[%s@ interface@ must@ be@ basic:@ %a@]"
@@ -295,7 +295,7 @@ let check_is_composite_id_pair
   let l = loc idp in
   match unloc (IdPairMap.find uidp inter_map) with
   | BasicTyd _     ->
-      type_error l
+      error_message l
       (fun ppf ->
          fprintf ppf
          "@[%s@ interface@ must@ be@ composite:@ %a@]"
@@ -418,7 +418,7 @@ let bind_local_avoid_var
     (env : EcEnv.env) (sc : state_context) (ident : EcIdent.t) (ty : ty)
     (l : EcLocation.t) : EcEnv.env =
   if IdSet.mem (EcIdent.name ident) (vars_map_to_domain sc.vars)
-  then type_error l
+  then error_message l
        (fun ppf ->
           fprintf ppf
           "@[bound@ identifier@ may@ not@ be@ program@ variable:@ %s@]"
@@ -609,7 +609,7 @@ let check_inter_id_paths_unique
    (fun l idp ->
       let uidp = unloc idp in
       if List.mem uidp l
-      then type_error (loc idp) msgf
+      then error_message (loc idp) msgf
       else uidp :: l)
    [] idps)
 
@@ -623,7 +623,7 @@ let check_inter_id_path
     get_external_inter_id_paths root id_dir_inter id_adv_inter
     dir_inter_map adv_inter_map in
   if  not (List.mem uidp ps)
-  then type_error (loc iidp)
+  then error_message (loc iidp)
        (fun ppf ->
           fprintf ppf
           ("@[the@ party@ must@ serve@ sub-interfaces@ of@ the@ " ^^
@@ -643,8 +643,8 @@ let check_served_inter_id_paths (serves : symbol list located list) : unit =
       if List.hd (unloc (List.nth serves 0)) <>
          List.hd (unloc (List.nth serves 1))
       then ()
-      else type_error (mergelocs serves) er
-  | _ -> type_error (mergelocs serves) er
+      else error_message (mergelocs serves) er
+  | _ -> error_message (mergelocs serves) er
 
 let check_inter_id_paths_coverage
     (root : symbol) (id_dir_inter : symbol) (id_adv_inter : symbol option)
@@ -658,7 +658,7 @@ let check_inter_id_paths_coverage
   let unserved = List.filter (fun p -> not (List.mem p serps)) ps in
   if List.length unserved = 0
   then ()
-  else type_error (mergelocs served_ps)
+  else error_message (mergelocs served_ps)
        (fun ppf ->
           fprintf ppf
           ("@[these@ sub-interfaces@ are@ not@ served@ by@ any@ " ^^
@@ -719,7 +719,7 @@ let check_outgoing_msg_path
      (fun p -> string_of_msg_path p = string_of_msg_path mp)
      allps
   then ()
-  else type_error (loc mp)
+  else error_message (loc mp)
        (fun ppf ->
           fprintf ppf
           ("@[message@ path@ is@ not@ one@ of@ the@ possible@ outgoing@ " ^^
@@ -743,7 +743,7 @@ let check_msg_path_pat
     else allmps in
   let () =
     if List.is_empty restrmps
-    then type_error (loc mpp)
+    then error_message (loc mpp)
          (fun ppf ->
             fprintf ppf
             "@[no@ incoming@ message@ paths@ in@ this@ state@]") in
@@ -756,13 +756,13 @@ let check_msg_path_pat
       else if List.exists  (* is initial state *)
               (fun mp -> string_of_msg_path mp = string_of_msg_path_pat mpp)
               allmps
-        then type_error (loc mpp)
+        then error_message (loc mpp)
              (fun ppf ->
                 fprintf ppf
                 ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
                  "incoming@ message@ paths@ for@ initial@ state:@;<1 2>%a@]")
                 format_msg_path_list restrmps)
-      else type_error (loc mpp)
+      else error_message (loc mpp)
            (fun ppf ->
               fprintf ppf
               ("@[message@ path@ is@ not@ one@ of@ the@ possible@ " ^^
@@ -780,14 +780,14 @@ let check_msg_path_pat
                  iidp1_starts_with_iidp2
                  (unloc mp).inter_id_path (unloc mpp).inter_id_path)
               allmps)
-        then type_error (loc mpp)
+        then error_message (loc mpp)
              (fun ppf ->
                 fprintf ppf
                 ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ " ^^
                  "paths@ of@ possible@ incoming@ messages@ for@ initial@ " ^^
                  "state:@;<1 2>%a@]")
                  format_msg_path_list restrmps)
-      else type_error (loc mpp)
+      else error_message (loc mpp)
            (fun ppf ->
               fprintf ppf
               ("@[message@ path@ pattern@ is@ inconsistent@ with@ the@ " ^^
@@ -807,12 +807,12 @@ let remove_covered_paths
   let rem = List.filter (fun mp' -> not (covered mp' mpp)) mps in
   if List.length mps = List.length rem
   then if is_init
-       then type_error (loc mpp)
+       then error_message (loc mpp)
             (fun ppf ->
                fprintf ppf
                ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
                 "would@ never@ match,@ in@ initial@ state@]"))
-       else type_error (loc mpp)
+       else error_message (loc mpp)
             (fun ppf ->
                fprintf ppf
                ("@[this@ pattern@ is@ covered@ by@ previous@ patterns@ and@ " ^^
@@ -845,7 +845,7 @@ let check_coverage_msg_path_pats
     (List.map (fun (mm : EcIdent.t msg_pat) -> mm.msg_path_pat) mml) in
   if r <> []
   then let l = loc (List.last mml).msg_path_pat in
-       type_error l
+       error_message l
        (fun ppf ->
           fprintf ppf
           ("@[message@ patterns@ are@ not@ exhaustive;@ these@ " ^^
@@ -861,7 +861,7 @@ let check_port_id_binding
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   let is_sim = sc.kind = SimKind in
   if not d
-  then type_error l
+  then error_message l
        (fun ppf ->
           fprintf ppf
           (if is_sim
@@ -878,7 +878,7 @@ let check_non_port_id_binding
       : unit =
   let d = List.exists (fun bp -> fst bp = idp) abip.direct in
   if d
-  then type_error mppl
+  then error_message mppl
        (fun ppf ->
           fprintf ppf
           ("@[non-\"*\"@ message@ patterns@ matching@ messages@ of@ direct@ " ^^
@@ -915,7 +915,7 @@ let check_disjoint_bindings (pats : symbol pat list) : unit =
       if IdSet.is_empty com_uids
       then IdSet.union uids pat_uids
       else let ex_com = IdSet.choose com_uids in
-           type_error (get_loc_pat_list pats)
+           error_message (get_loc_pat_list pats)
            (fun ppf ->
               fprintf ppf "@[pattern@ binds@ %s@ more@ than@ once@]" ex_com))
    IdSet.empty pats)
@@ -930,7 +930,7 @@ let check_pat_args_with_msg_type
     (unlocm (IdMap.find (snd mp) (snd bip)).params_map) in
   let () =
     if List.length mtyp <> List.length pats
-    then type_error (get_loc_pat_list pats)
+    then error_message (get_loc_pat_list pats)
          (fun ppf ->
             fprintf ppf
             ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
@@ -950,7 +950,7 @@ let check_missing_pat_args_with_msg_type
     indexed_map_to_list
     (unlocm (IdMap.find (snd mp) (snd bip)).params_map) in
   if List.length mtyp <> 0
-  then type_error l
+  then error_message l
          (fun ppf ->
             fprintf ppf
             ("@[the@ number@ of@ argument@ patterns@ is@ different@ " ^^
@@ -994,7 +994,7 @@ let check_msg_pat
         let () =
           let uids_pat_args = ids_of_pats (msg_pat.pat_args |? []) in
           if IdSet.mem (unloc id) uids_pat_args
-          then type_error (loc id)
+          then error_message (loc id)
                (fun ppf ->
                   fprintf ppf
                   ("@[source@ port@ of@ message@ pattern@ is@ also@ bound@ " ^^
@@ -1034,7 +1034,7 @@ let check_expr
     (fun ident _ ->
        let id = EcIdent.name ident in
        if IdSet.mem id sa.uninit_vs
-       then type_error (loc pexpr)
+       then error_message (loc pexpr)
             (fun ppf ->
                Format.fprintf ppf
                "@[expression@ uses@ possibly@ uninitialzed@ variable:@ %s@]"
@@ -1048,7 +1048,7 @@ let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty =
   match IdMap.find_opt (unloc id) sc.vars with
   | None   ->
-      type_error (loc id)
+      error_message (loc id)
       (fun ppf ->
          fprintf ppf
          "@[identifer@ is@ not@ a@ local@ variable@]")
@@ -1064,7 +1064,7 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
               ids with
         | None    -> ()
         | Some id ->
-            type_error (loc id)
+            error_message (loc id)
             (fun ppf ->
                Format.fprintf ppf
                ("@[duplicate@ identifer@ in@ left-hand-side@ of@ " ^^
@@ -1099,25 +1099,25 @@ let check_state_expr
   let (is_init, tys) =
     try IdMap.find (unloc se.id) ss with
     | Not_found ->
-        type_error (loc se.id)
+        error_message (loc se.id)
         (fun ppf ->
            fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
   let () =
     if is_init && sc.kind = SimKind
-      then type_error (loc se.id)
+      then error_message (loc se.id)
            (fun ppf ->
               fprintf ppf
               ("@[simulator@ cannot@ transition@ back@ " ^^
                "to@ initial@ state@]"))
     else if is_init
-      then type_error (loc se.id)
+      then error_message (loc se.id)
            (fun ppf ->
               fprintf ppf
               ("@[functionality@ cannot@ transition@ back@ " ^^
                "to@ initial@ state@]")) in
   let args = se.args in
   if List.length tys <> List.length (unloc args)
-  then type_error (loc args)
+  then error_message (loc args)
        (fun ppf -> fprintf ppf "@[wrong@ number@ of@ state@ arguments@]")
   else
     let argz_u = List.map2
@@ -1131,7 +1131,7 @@ let check_msg_arguments
     (es : pexpr list located) (mc : ty_index IdMap.t) : expr list located =
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
-  then type_error (loc es)
+  then error_message (loc es)
        (fun ppf ->
           fprintf ppf "@[wrong@ number@ of@ message@ arguments@]")
   else
@@ -1149,7 +1149,7 @@ let check_send_direct
     | Some port_exp ->
         Some (fst (check_expr sa env ue port_exp (Some port_ty)))
     | None          ->
-        type_error l
+        error_message l
         (fun ppf ->
            fprintf ppf
            ("@[outgoing@ messages@ to@ sub-interfaces@ of@ composite@ " ^^
@@ -1163,7 +1163,7 @@ let check_send_adversarial
   let () =
     match msg.port_expr with
     | Some port_exp ->
-        type_error (loc port_exp)
+        error_message (loc port_exp)
         (fun ppf ->
            fprintf ppf
            "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
@@ -1177,7 +1177,7 @@ let check_send_internal
   let () =
     match msg.port_expr with
     | Some port_exp ->
-        type_error (loc port_exp)
+        error_message (loc port_exp)
         (fun ppf ->
            fprintf ppf
            ("@[messages@ to@ subfunctionalities@ must@ not@ have@ " ^^
@@ -1223,7 +1223,7 @@ let check_msg_expr
   | IdealKind ->
       if sc.initial
       then if is_msg_path_in_basic_inter_paths msg.path abip.direct
-             then type_error l
+             then error_message l
                   (fun ppf ->
                      fprintf ppf
                      ("@[send@ and@ transition@ of@ initial@ state@ " ^^
@@ -1405,14 +1405,14 @@ and check_instructions
    fail) may appear *)
 
 let illegal_control_transfer (l : EcLocation.t) =
-  type_error l
+  error_message l
   (fun ppf ->
      fprintf ppf
      ("@[control@ transfer@ by@ \"fail\"@ or@ \"send-and-transition\"@ " ^^
       "instruction@ is@ only@ allowed@ at@ end@ of@ message@ match@ clause@]"))
 
 let failure_to_transfer_control (l : EcLocation.t) =
-  type_error l
+  error_message l
   (fun ppf ->
      fprintf ppf
      ("@[message@ match@ clause@ must@ end@ with@ control@ transfer@ via@ " ^^
@@ -1510,7 +1510,7 @@ let check_exactly_one_initial_state
     sds in
   match List.length inits with
   | 0 ->
-      type_error (loc id)
+      error_message (loc id)
       (fun ppf ->
          fprintf ppf "@[%s@ doesn't@ have@ initial@ state@]" (unloc id))
   | 1 ->
@@ -1519,7 +1519,7 @@ let check_exactly_one_initial_state
        | FollowingState _ ->
            failure "impossible, list contains only InitialState")
   | _ ->
-      type_error (loc id)
+      error_message (loc id)
       (fun ppf ->
          fprintf ppf
          "@[%s@ has@ more@ than@ one@ initial@ state@]" (unloc id))
@@ -1544,7 +1544,7 @@ let check_toplevel_state (init_id : psymbol) (st : state) : state_mid =
     match dup with
     | None            -> ()
     | Some (var, typ) ->
-        type_error (loc typ)
+        error_message (loc typ)
         (fun ppf ->
            fprintf ppf
            ("@[variable@ name@ %s@ is@ the@ same@ as@ one@ of@ the@ " ^^
@@ -1787,7 +1787,7 @@ let check_real_fun_params
     let () =
       if exists_id_pair_inter_maps dir_inter_map adv_inter_map
          (root, unloc param.id)
-      then type_error (loc param.id)
+      then error_message (loc param.id)
            (fun ppf ->
               fprintf ppf
               ("@[functionality@ parameter@ name@ may@ not@ be@ same@ " ^^
@@ -1808,19 +1808,19 @@ let check_exists_fun_qid
   | ([], uid)   ->
       if exists_id_pair fun_map (root, uid)
       then mk_loc l (root, uid)
-      else type_error l
+      else error_message l
            (fun ppf ->
               fprintf ppf
               "@[functionality@ does@ not@ exist:@ %s@]" uid)
   | ([rt], uid) ->
       if exists_id_pair fun_map (rt, uid)
       then mk_loc l (rt, uid)
-      else type_error l
+      else error_message l
            (fun ppf ->
               fprintf ppf
               "@[functionality@ does@ not@ exist:@ %a@]" pp_qsymbol uqid)
   | _           ->
-      type_error l
+      error_message l
       (fun ppf ->
          fprintf ppf
          "@[invalid@ form@ for@ functionality@ name:@ %a@]" pp_qsymbol uqid)
@@ -1857,7 +1857,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
           IdMap.filter (fun id _ -> IdMap.mem id params) sub_fun_decls in
         if IdMap.is_empty dup_ids then ()
         else let id, dup = IdMap.choose dup_ids in
-             type_error (loc dup.id)
+             error_message (loc dup.id)
              (fun ppf ->
                 fprintf ppf
                 ("@[the@ name@ %s@ is@ the@ same@ name@ as@ one@ of@ the@ " ^^
@@ -1870,20 +1870,20 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
         let ft = IdPairMap.find (unloc fun_pid) maps.fun_map in
         let fbt = unloc ft in
         if uid = unloc fund.id
-          then type_error (loc sf.id)
+          then error_message (loc sf.id)
                (fun ppf ->
                   fprintf ppf
                   ("@[subfunctionality@ name@ may@ not@ be@ same@ " ^^
                    "as@ real@ functionality@ name@]"))
         else if exists_id_pair_inter_maps maps.dir_inter_map
                 maps.adv_inter_map (root, uid)
-          then type_error (loc sf.id)
+          then error_message (loc sf.id)
                (fun ppf ->
                   fprintf ppf
                   ("@[subfunctionality@ name@ may@ not@ be@ same@ as@ " ^^
                    "top-level@ interface@ name@]"))
         else if is_real_fun_body_tyd fbt
-          then type_error (loc fun_pid)
+          then error_message (loc fun_pid)
                (fun ppf ->
                   fprintf ppf
                   "@[%a@ is@ not@ an@ ideal@ functionality@]"
@@ -1907,7 +1907,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
       let () =
         match fund.adv_id with
         | None ->
-            type_error (loc fund.id)
+            error_message (loc fund.id)
             (fun ppf ->
                fprintf ppf
                ("@[an@ ideal@ functionality@ must@ implement@ a@ basic@ " ^^
@@ -1930,7 +1930,7 @@ let check_fun_def
   let uid = unloc fund.id in
   let () =
     if exists_id_pair_maps_tyd maps (root, uid)
-    then type_error (loc fund.id)
+    then error_message (loc fund.id)
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
@@ -2004,7 +2004,7 @@ let check_exists_fun_id
     (root : symbol) (fun_map : fun_tyd IdPairMap.t) (funid : psymbol) : unit =
   let ufid = unloc funid in
   if exists_id_pair fun_map (root, ufid) then ()
-  else type_error (loc funid)
+  else error_message (loc funid)
        (fun ppf -> fprintf ppf "@[functionality@ isn't@ defined:@ %s@]" ufid)
 
 let check_exists_and_is_real_fun
@@ -2012,7 +2012,7 @@ let check_exists_and_is_real_fun
   let () = check_exists_fun_id root funs funid in
   let f = unloc (IdPairMap.find (root, unloc funid) funs) in
   if not (is_real_fun_body_tyd f)
-  then type_error (loc funid)
+  then error_message (loc funid)
        (fun ppf ->
           fprintf ppf
           "@[the@ simulated@ functionality@ must@ be@ a@ real@ functionality@]")
@@ -2047,7 +2047,7 @@ let check_sims_fun_args
        let funb = unloc (IdPairMap.find (unloc pid) fun_map) in
        match funb with
        | FunBodyRealTyd _ ->
-           type_error (loc pid)
+           error_message (loc pid)
            (fun ppf ->
               fprintf ppf
               ("@[the@ argument@ to@ simulated@ functionality@ must@ " ^^
@@ -2059,14 +2059,14 @@ let check_sims_fun_args
     (unloc sims_args) in
   let () =
     if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
-    then type_error (loc sims_args)
+    then error_message (loc sims_args)
          (fun ppf ->
             fprintf ppf
             "@[wrong@ number@ of@ arguments@ for@ functionality@]") in
   List.iteri
   (fun i pair_id ->
      if List.nth params_dir_pair_ids i <> List.nth args_dir_pair_ids i
-     then type_error (loc pair_id)
+     then error_message (loc pair_id)
           (fun ppf ->
              fprintf ppf
              ("@[argument@ %d@ implements@ composite@ direct@ " ^^
@@ -2105,7 +2105,7 @@ let check_sim_def
   let uid = unloc simd.id in
   let () =
     if exists_id_pair_maps_tyd maps (root, uid)
-    then type_error (loc simd.id)
+    then error_message (loc simd.id)
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
@@ -2151,7 +2151,7 @@ let load_uc_req
       : maps_tyd =
   let uid = unloc id in
   if not (Char.is_uppercase uid.[0])
-  then type_error (loc id)
+  then error_message (loc id)
        (fun ppf ->
           fprintf ppf
           ("@[UC@ (.uc)@ file@ to@ be@ required@ must@ begin@ " ^^
@@ -2175,7 +2175,7 @@ let load_ec_reqs (reqs : (string located * bool) list) =
     let uid = unloc id in
     let () =
       if not (Char.is_uppercase uid.[0])
-      then type_error (loc id)
+      then error_message (loc id)
            (fun ppf ->
               fprintf ppf
               ("@[EasyCrypt@ theory@ to@ be@ imported@ must@ begin@ with@ " ^^
@@ -2190,7 +2190,7 @@ let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
        unless it's the current file, in which case all but the
        subfunctionality and parameter checks will have been completed *)
     if root' = root
-    then type_error (loc rf)
+    then error_message (loc rf)
          (fun ppf ->
             fprintf ppf
             ("@[subfunctionality@ %s@ of@ real@ functionality@ must@ "   ^^
@@ -2198,7 +2198,7 @@ let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
              "but@ this@ is@ not@ true@ for@ %a@]")
             sfid (pp_id_pair_abbrev root) (root', ifid));
     if is_triple_unit root' maps
-    then type_error (loc rf)
+    then error_message (loc rf)
          (fun ppf ->
             fprintf ppf
             ("@[subfunctionality@ %s@ of@ real@ functionality@ must@ " ^^
@@ -2216,7 +2216,7 @@ let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
        it's the current file, in which case all but the parameter
        checks will have been completed *)
     if root' = root
-    then type_error (loc rf)
+    then error_message (loc rf)
          (fun ppf ->
             fprintf ppf
             ("@[composite@ direct@ interface@ %a@ of@ parameter@ %s@ " ^^
@@ -2224,7 +2224,7 @@ let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
              "unit@ than@ real@ functionality@]")
             (pp_id_pair_abbrev root) (root', dirid) paramid);
     if is_singleton_unit root' maps
-    then type_error (loc rf)
+    then error_message (loc rf)
          (fun ppf ->
             fprintf ppf
             ("@[composite@ direct@ interface@ %a@ of@ parameter@ %s@ " ^^
@@ -2254,7 +2254,7 @@ let check_units
          match IdSet.min_elt_opt extra_inter with
          | None       -> ()
          | Some ex_id ->
-             type_error (begin_of_file_loc qual_file)
+             error_message (begin_of_file_loc qual_file)
              (fun ppf ->
                 fprintf ppf
                 ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
@@ -2280,7 +2280,7 @@ let check_units
             as otherwise there wouldn't be a single real functionality *)
          if id_dir_inter_of_fun_body_tyd (unloc rf) <>
             id_dir_inter_of_fun_body_tyd (unloc i_f)
-           then type_error (begin_of_file_loc qual_file)
+           then error_message (begin_of_file_loc qual_file)
                 (fun ppf ->
                    fprintf ppf
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
@@ -2289,7 +2289,7 @@ let check_units
                    root)
          else if id_adv_inter_of_fun_body_tyd (unloc i_f) <>
                  Some (unloc sim).uses
-           then type_error (begin_of_file_loc qual_file)
+           then error_message (begin_of_file_loc qual_file)
                 (fun ppf ->
                    fprintf ppf
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
@@ -2299,7 +2299,7 @@ let check_units
          else if IdSet.mem
                  (Option.get (id_adv_inter_of_fun_body_tyd (unloc i_f)))
                  (basic_adv_inter_names_of_real_fun root maps rf_name)
-           then type_error (begin_of_file_loc qual_file)
+           then error_message (begin_of_file_loc qual_file)
                 (fun ppf ->
                    fprintf ppf
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
@@ -2311,7 +2311,7 @@ let check_units
                 match IdSet.min_elt_opt extra_inter with
                 | None       -> ()
                 | Some ex_id ->
-                    type_error (begin_of_file_loc qual_file)
+                    error_message (begin_of_file_loc qual_file)
                     (fun ppf ->
                        fprintf ppf
                        ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
@@ -2319,7 +2319,7 @@ let check_units
                        root ex_id) in
               check_units_subfuns root maps rf;
               check_units_params root maps rf;
-  else type_error (begin_of_file_loc qual_file)
+  else error_message (begin_of_file_loc qual_file)
        (fun ppf ->
           fprintf ppf
           ("@[for@ file@ with@ root@ %s@ to@ be@ a@ valid@ unit,@ " ^^
@@ -2345,7 +2345,7 @@ let typecheck
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
-        type_error l
+        error_message l
         (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr) in
   let () =
     if UcState.get_units ()
@@ -2374,7 +2374,7 @@ let rec inter_check_fun_expr
        | FunBodyRealTyd rfbt ->
            if IdMap.is_empty (rfbt.params)
            then FunExprTydReal (fun_id, [])
-           else error_message_record l
+           else error_message l
                 (fun ppf ->
                    fprintf ppf
                    "@[real@ functionality@ missing@ arguments@]")
@@ -2394,7 +2394,7 @@ let rec inter_check_fun_expr
              fes in
            let args_dir_pair_ids = List.map (id_dir_inter_of_fet maps) fets in
            if List.length params_dir_pair_ids <> List.length args_dir_pair_ids
-           then error_message_record l
+           then error_message l
                 (fun ppf ->
                    fprintf ppf
                    ("@[real@ functionality@ expects@ %d@ arguments,@ " ^^
@@ -2405,7 +2405,7 @@ let rec inter_check_fun_expr
                 (fun i l ->
                    if List.nth params_dir_pair_ids i <>
                       List.nth args_dir_pair_ids i
-                   then error_message_record l
+                   then error_message l
                         (fun ppf ->
                            fprintf ppf
                            ("@[argument@ %d@ implements@ composite@ "       ^^
@@ -2417,7 +2417,7 @@ let rec inter_check_fun_expr
                 (List.map loc_of_fun_expr fes);
                 FunExprTydReal (fun_id, fets)
        | FunBodyIdealTyd _ ->
-           error_message_record l
+           error_message l
            (fun ppf ->
               fprintf ppf
               ("@[ideal@ functionality@ cannot@ have@ " ^^
@@ -2428,7 +2428,7 @@ let inter_check_real_fun_expr
   let fet = inter_check_fun_expr root maps fe in
   if is_real_at_top_fet fet
   then fet
-  else error_message_record (loc_of_fun_expr fe)
+  else error_message (loc_of_fun_expr fe)
        (fun ppf ->
           fprintf ppf
           "@[real@ functionality@ expected@]")
@@ -2455,7 +2455,7 @@ let inter_check_expr_port_or_addr
   | PoA_Addr pexpr ->
       match pi_opt with
       | None    ->
-          error_message_record (loc pexpr)
+          error_message (loc pexpr)
           (fun ppf ->
              fprintf ppf
              "@[unable@ to@ infer@ port@ index@ of@ addr@]")
@@ -2509,7 +2509,7 @@ let inter_check_sme
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps path with
   | None                          ->
-      error_message_record (loc sme.path)
+      error_message (loc sme.path)
       (fun ppf ->
          fprintf ppf
          "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
@@ -2523,7 +2523,7 @@ let inter_check_sme
         (if pi <> 0 && dir = In then Some pi else None) in
       let args = unloc sme.args in
       if List.length exp_tys <> List.length args
-      then error_message_record (loc sme.args)
+      then error_message (loc sme.args)
            (fun ppf ->
               fprintf ppf
               ("[@there@ are@ %d@ arguments,@ whereas@ there@ should@ be@ " ^^
@@ -2547,5 +2547,5 @@ let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   try inter_check_sme maps env sme with
   | TyError (l, env, tyerr) ->
-      error_message_record l
+      error_message l
       (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)

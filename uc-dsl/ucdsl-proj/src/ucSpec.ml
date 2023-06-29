@@ -13,13 +13,6 @@ open EcLocation
 open EcSymbols
 open EcBigInt
 open UcSpecTypedSpecCommon
-open UcMessage
-
-let parse_error = error_message
-
-let type_error = error_message
-
-let type_warning = warning_message
 
 (* symbols *)
 
