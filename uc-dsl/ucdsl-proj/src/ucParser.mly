@@ -463,13 +463,15 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %type <UcSpec.sent_msg_expr> sent_msg_expr_start
 %type <UcSpec.pty> ty_start
 %type <UcSpec.pexpr> expr_start
+(*
 %type <UcSpec.interpreter_command> interpreter_command
+*)
 
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
 
-%start spec fun_expr_start sent_msg_expr_start ty_start expr_start interpreter_command
+%start spec fun_expr_start sent_msg_expr_start ty_start expr_start (* interpreter_command *)
 
 %%
 (*for testing purposes, to be removed*)
@@ -1132,6 +1134,7 @@ state_expr :
 
 (* Interpreter commands *)
 
+(*
 interpreter_command :
   | c = loc(icomm); DOT; EOF;{ c }
 
@@ -1178,6 +1181,8 @@ send_msg :
 prover_cmd:
   | PROVER x = smt_info { SmtInfo x } 
 
+*)
+
 fun_expr :
   | x = uqident; { FunExprNoArgs x }
   | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr); RPAREN;
@@ -1205,6 +1210,7 @@ dollar_or_at :
   | DOLLAR { true  }
   | AT     { false }
 
+(*
 
 (* prover command *)
 
@@ -1223,8 +1229,8 @@ dbmap1:
   | x = qident     { (`Lemma , x) }
 
 dbhint:
-  | m = dbmap1         { [m] }
-  | m = paren(dbmap1*) {  m  }
+  | m = dbmap1           { [m] }
+  | m = paren( dbmap1* ) {  m  }
 
 smt_info:
   | li = smt_info1* { SMT.mk_smt_option li}
@@ -1257,7 +1263,7 @@ prover_kind:
   | n = word        { `INT n    }
   | d = dbhint      { `DBHINT d }
   | p = prover_kind { `PROVER p }
- 
+*)
 
 (* Type Bindings and Arguments *)
 
