@@ -16,13 +16,6 @@ exception Error of string
 
 val print_list : expr list -> unit
 
-(* check_ec_standard takes a file_name as input and checks whether the
-   file_name matches EasyCrypt file naming conventions. If the
-   file_name doesn't match EasyCrypt convention, a warning message
-   will be returned *)
-
-val check_ec_standard : string -> string
-
 (* check_fileds takes an expression list and checks whether there
    are any multiple args/outcomes given or args/outcomes is missing and
    returns error in either case which corresponds to the first string

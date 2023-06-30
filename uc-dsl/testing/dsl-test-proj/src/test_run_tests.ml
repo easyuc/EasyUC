@@ -16,35 +16,6 @@ let desc_str = ref ""
 let conflict_str = ref ""
 let fail_str = ref ""
 
-(* check_name contents sees if there any .ec or .uc files in the directory
-   if yes then their names will be passed onto check_ec_standard *)
-
-let check_name contents =
-  let rec check file_list =
-    match file_list with
-    | [] -> ()
-    | e :: l ->
-        let len = String.length e in
-        let _ =
-          if
-            len >= 4
-            && (String.sub e (len - 3) 3 = ".uc"
-               || String.sub e (len - 3) 3 = ".ec")
-          then log_str := !log_str ^ check_ec_standard e
-        in
-        check l
-  in
-  check contents
-
-(* dir_name takes a file, gets it's directory by using
-   Filename.dirname so that the contents can be examined by check_name
-   function *)
-
-let dir_name file =
-  let dir = Filename.dirname file in
-  let contents = Array.to_list (Sys.readdir dir) in
-  check_name contents
-
 let rec last_element y list =
   match list with
   | [] -> raise (Error "List is empty")
@@ -276,9 +247,6 @@ let pre_run dir =
           exit 1
     | e :: l ->
         let _ = log_str := !log_str ^ "\n" ^ e in
-        let _ = dir_name e in
-        (* Here dir_name tests EasyCrypt file standard for .uc/.ec files in
-           the directory 'e'*)
         let file_name = Filename.dirname e ^ "/" ^ "CONFLICT" in
         if Sys.file_exists file_name then (
           let _ =

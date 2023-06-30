@@ -74,18 +74,6 @@ let check_fields lst =
     else ("Error: Multiple Execs", fs2)
   else (fs1, fs2)
 
-(* check_ec_standard checkes .uc anc .ec files for naming standard.
-   The file name shoudl start with a letter and can contain numbers
-   and a '_' *)
-
-let check_ec_standard file =
-  let id =
-    Str.regexp "[a-z A-Z]+[a-z 0-9 A-Z]*_?[a-z 0-9 A-Z]*\\.\\(uc\\|ec\\)$"
-  in
-  if Str.string_match id file 0 = false then
-    "\nWarning: " ^ file ^ " file doesn't match EC naming standard"
-  else ""
-
 (* get_desc is used in verbose mode to get desc of the TEST file *)
 
 let get_desc lst =
