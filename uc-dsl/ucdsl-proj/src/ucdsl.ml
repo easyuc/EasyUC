@@ -51,7 +51,7 @@ let () =
   List.iter
   (fun x ->
      if (not (Sys.file_exists x) || not (Sys.is_directory x))
-     then non_loc_error_message
+     then non_loc_error_message_exit
           (fun ppf ->
              Format.fprintf ppf
              "@[does@ not@ exist@ or@ is@ not@ a@ directory:@ %s@]" x))
@@ -76,7 +76,7 @@ let () =
 let () =
   let n = ! margin_ref in
   if n < 3
-  then non_loc_error_message
+  then non_loc_error_message_exit
        (fun ppf ->
           Format.fprintf ppf
           "@[invalid@ pretty@ printer@ margin:@ %d@]" n)
@@ -86,12 +86,12 @@ let () =
 let () =
   let len = String.length file in
   if len < 4 || String.sub file (len - 3) 3 <> ".uc"
-    then non_loc_error_message
+    then non_loc_error_message_exit
          (fun ppf ->
             Format.fprintf ppf
             "@[file@ lacks@ \".uc\"@ suffix:@ %s@]" file)
   else if not (Sys.file_exists file)
-    then non_loc_error_message
+    then non_loc_error_message_exit
          (fun ppf ->
             Format.fprintf ppf
             "@[file@ does@ not@ exist:@ %s@]" file)
@@ -100,5 +100,7 @@ let () =
 
 let () =
   UcEcInterface.init ();
-  ignore (parse_and_typecheck_file_or_id (FOID_File file));
-  exit 0
+  try
+    ignore (parse_and_typecheck_file_or_id (FOID_File file));
+    exit 0
+  with ErrorMessageExn -> exit 1

@@ -29,6 +29,8 @@ let loc_to_str_raw (l : EcLocation.t) : string =
   (fst l.loc_start) (snd l.loc_start + 1)
   (fst l.loc_end) (snd l.loc_end + 1)
 
+exception ErrorMessageExn
+
 let message res mt loc_opt msgf =
   let mt_str = message_type_str mt in
   let raw    = UcState.get_raw_messages () in
@@ -45,45 +47,18 @@ let message res mt loc_opt msgf =
   Format.pp_print_newline Format.err_formatter ();
   res ()
 
-let error_message loc = message (fun () -> exit 1) ErrorMessage (Some loc)
+let error_message loc =
+  message (fun () -> raise ErrorMessageExn) ErrorMessage (Some loc)
+
+let error_message_exit loc =
+  message (fun () -> exit 1) ErrorMessage (Some loc)
 
 let warning_message loc = message (fun () -> ()) WarningMessage (Some loc)
 
-let non_loc_error_message = message (fun () -> exit 1) ErrorMessage None
+let non_loc_error_message =
+  message (fun () -> raise ErrorMessageExn) ErrorMessage None
+
+let non_loc_error_message_exit =
+  message (fun () -> exit 1) ErrorMessage None
 
 let non_loc_warning_message = message (fun () -> ()) WarningMessage None
-
-type loc_data = string * int * int * int * int
-
-let loc_to_loc_data (l : EcLocation.t) =
-  (l.loc_fname, fst l.loc_start, snd l.loc_start + 1,
-   fst l.loc_end, snd l.loc_end + 1)
-
-type message = message_type * loc_data option * string
-
-exception ErrorMessageExn
-
-let messages_ref : message list ref = ref []
-
-let get_messages () =
-  let xs = ! messages_ref in
-  messages_ref := []; xs
-
-let message_record res mt loc_opt msgf =
-  let raw_opt = Option.map loc_to_loc_data loc_opt in
-  let () = msgf Format.str_formatter in
-  let s = Format.flush_str_formatter () in
-  messages_ref := ! messages_ref @ [(mt, raw_opt, s)];
-  res ()
-
-let error_message_record loc =
-  message_record (fun () -> raise ErrorMessageExn) ErrorMessage (Some loc)
-
-let warning_message_record loc =
-  message_record (fun () -> ()) WarningMessage (Some loc)
-
-let non_loc_error_message_record =
-  message_record (fun () -> raise ErrorMessageExn) ErrorMessage None
-
-let non_loc_warning_message_record =
-  message_record (fun () -> ()) WarningMessage None

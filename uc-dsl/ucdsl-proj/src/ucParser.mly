@@ -7,11 +7,14 @@
 
 open Batteries
 open Format
+
 open EcUtils
 open EcLocation
 open EcSymbols
+
 open UcSpec
 open UcSpecTypedSpecCommon
+open UcMessage
 
 module BI = EcBigInt
 
@@ -56,7 +59,7 @@ let check_parsing_direct_inter (ni : named_inter) =
           match msg.dir with
           | In  -> true
           | Out -> false in
-        parse_error
+        error_message
         (loc msg.id)
         (fun ppf ->
            fprintf ppf
@@ -79,7 +82,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
           match msg.dir with
           | In  -> true
           | Out -> false in
-        parse_error (loc id)
+        error_message (loc id)
         (fun ppf ->
            fprintf ppf
            ("@[%s@ messages@ of@ adversarial@ interfaces@ cannot@ " ^^
@@ -129,11 +132,11 @@ let check_parsing_adversarial_inter (ni : named_inter) =
         match match_option s.pl_desc with
         | [m] -> mk_loc s.pl_loc m
         | []  ->
-            parse_error s.pl_loc
+            error_message s.pl_loc
             (fun ppf ->
                Format.fprintf ppf "unknown option: %s" (unloc s))
         | ls  ->
-            parse_error s.pl_loc
+            error_message s.pl_loc
             (fun ppf ->
                Format.fprintf ppf
                "option `%s` is ambiguous; matching ones are: `%s`"
@@ -173,7 +176,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       | Some _           -> `Error
 
     let get_error ~optional s name =
-      parse_error s.pl_loc
+      error_message s.pl_loc
       (fun ppf ->
          Format.fprintf ppf
           "`%s`: %s`%s` option expected" (unloc s)
@@ -194,7 +197,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
     let get_as_none s o =
       if EcUtils.is_some o then
-          parse_error s.pl_loc
+          error_message s.pl_loc
           (fun ppf ->
              Format.fprintf ppf
              "`%s`: no option expected" (unloc s))
@@ -242,12 +245,12 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
       let ok_use_only pp p =
         if pp.pp_add_rm <> [] then
-          parse_error (loc p)
+          error_message (loc p)
           (fun ppf ->
              Format.fprintf ppf
              "use-only elements must come at beginning")
         else if pp.pp_use_only <> [] && is_universal p then
-          parse_error (loc p)
+          error_message (loc p)
           (fun ppf ->
              Format.fprintf ppf
              "cannot add universal to non-empty use-only")
@@ -255,7 +258,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
           match pp.pp_use_only with
           | [q] ->
               if is_universal q then
-                parse_error (loc p)
+                error_message (loc p)
                 (fun ppf ->
                    Format.fprintf ppf
                    "use-only part is already universal")
@@ -465,6 +468,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %type <UcSpec.pexpr> expr_start
 %type <UcSpec.interpreter_command> interpreter_command
 
+
 (* in the generated ucParser.ml : 
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
@@ -552,7 +556,7 @@ named_inter :
   | inter_id = uident; LBRACE; inter = loc(option(inter)); RBRACE
       { match unloc inter with
         | None       ->
-            parse_error (loc inter)
+            error_message (loc inter)
             (fun ppf -> fprintf ppf "@[interfaces@ may@ not@ be@ empty@]")
         | Some inter ->
             {id = inter_id; inter = inter} : named_inter }
@@ -626,7 +630,7 @@ fun_def :
       { let uparams = unloc params |? [] in
         let () =
           if not (is_real_fun_body fun_body) && not (List.is_empty uparams)
-          then parse_error (loc params)
+          then error_message (loc params)
                (fun ppf ->
                   fprintf ppf
                   "@[ideal@ functionalities@ may@ not@ have@ parameters@]")
@@ -653,7 +657,7 @@ fun_body :
 real_fun_body : 
   | LBRACE; sfs = list(sub_fun_decl); pdfs = loc(list(party_def)); RBRACE
       { if List.is_empty (unloc pdfs)
-        then parse_error (loc pdfs)
+        then error_message (loc pdfs)
              (fun ppf ->
                 fprintf ppf
                 "@[there@ must@ be@ at@ least@ one@ party@ definition@]");
@@ -709,7 +713,7 @@ state_def :
   | INITIAL; st = state
       { let params = unloc (st : state).params in  (* type hint necessary *)
         if not (List.is_empty params)
-        then parse_error (loc st.params)
+        then error_message (loc st.params)
              (fun ppf ->
                 fprintf ppf
                 "@[an@ initial@ state@ may@ not@ have@ parameters@]")
@@ -849,7 +853,7 @@ message_matching :
   | MATCH; MESSAGE; WITH; PIPE?
     mmcs = loc(separated_list(PIPE, msg_match_clause)); END
      { if List.is_empty (unloc mmcs)
-       then parse_error (loc mmcs)
+       then error_message (loc mmcs)
             (fun ppf ->
                fprintf ppf
                "@[at@ least@ one@ message@ matching@ clause@ is@ required@]");
@@ -862,7 +866,7 @@ msg_match_clause :
          | MsgOrStarMsg _ -> ()
          | MsgOrStarStar  ->
              if not (isUnconditionalFailure code)
-               then parse_error (loc code)
+               then error_message (loc code)
                     (fun ppf ->
                        fprintf ppf
                        ("@[message@ match@ clause@ whose@ message@ " ^^
@@ -870,7 +874,7 @@ msg_match_clause :
                         "must@ have@ instruction@ block@ that@ is@ " ^^
                         "unconditional@ failure@]"))
              else if Option.is_some msg_pat.pat_args
-               then parse_error (loc mp)
+               then error_message (loc mp)
                     (fun ppf ->
                        fprintf ppf
                        ("@[message@ pattern@ whose@ path@ ends@ in@ \"*\"@ " ^^
@@ -885,7 +889,7 @@ msg_pat :
             {port_id = Some port_id; msg_path_pat = mmb.msg_path_pat;
              pat_args = mmb.pat_args}
         | MsgOrStarStar  ->
-            parse_error (loc port_id)
+            error_message (loc port_id)
             (fun ppf ->
                fprintf ppf
                ("message@ pattern@ whose@ path@ ends@ " ^^
@@ -1064,7 +1068,7 @@ match_in :
             PIPE));
     END
       { if List.is_empty (unloc lcs)
-        then parse_error (loc lcs)
+        then error_message (loc lcs)
              (fun ppf ->
                 Format.fprintf ppf
                 "@[at@ least@ one@ matching@ clause@ is@ required@]");
@@ -1133,7 +1137,7 @@ state_expr :
 (* Interpreter commands *)
 
 interpreter_command :
-  | c = loc(icomm); DOT; EOF;{ c }
+  | c = loc(icomm); EOF;{ c }
 
 icomm :
   | c = load_uc_file; { c }
@@ -1147,7 +1151,7 @@ load_uc_file :
     {
       if (unloc load) = "load" 
       then Load file
-      else parse_error (loc load)
+      else error_message (loc load)
             (fun ppf ->
                fprintf ppf
                "Did@ you@ mean@ load@ instead@ of@ %s?" (unloc load))
@@ -1167,7 +1171,7 @@ comm_word :
       | "done"  -> Done
       | "quit"  -> Quit
       | _ -> 
-        parse_error (loc cw)
+        error_message (loc cw)
         (fun ppf -> fprintf ppf
 "%s@ is@ not@ a@ valid@ one@ word@ command." (unloc cw))
     }
@@ -1177,6 +1181,7 @@ send_msg :
 
 prover_cmd:
   | PROVER x = smt_info { SmtInfo x } 
+
 
 fun_expr :
   | x = uqident; { FunExprNoArgs x }
@@ -1223,8 +1228,8 @@ dbmap1:
   | x = qident     { (`Lemma , x) }
 
 dbhint:
-  | m = dbmap1         { [m] }
-  | m = paren(dbmap1*) {  m  }
+  | m = dbmap1           { [m] }
+  | m = paren( dbmap1* ) {  m  }
 
 smt_info:
   | li = smt_info1* { SMT.mk_smt_option li}
@@ -1257,7 +1262,6 @@ prover_kind:
   | n = word        { `INT n    }
   | d = dbhint      { `DBHINT d }
   | p = prover_kind { `PROVER p }
- 
 
 (* Type Bindings and Arguments *)
 
@@ -1302,7 +1306,7 @@ args :
   | n = loc(UINT) {
       try BI.to_int (unloc n) with
       | BI.Overflow ->
-          parse_error (loc n)
+          error_message (loc n)
           (fun ppf -> Format.fprintf ppf "@[literal@ is@ too@ large@]") }
 
 %inline namespace :
@@ -1332,7 +1336,7 @@ genqident(X) :
 
   | x = loc(STRING)   {
       if not (EcCoreLib.is_mixfix_op (unloc x)) then
-        parse_error x.pl_loc
+        error_message x.pl_loc
         (fun ppf -> fprintf ppf "@[invalid@ mixfix@ operator@]");
     unloc x
   }
@@ -1539,7 +1543,7 @@ sexpr_u :
 
   | e = sexpr DOTTICK n = loc(word)
       { if n.pl_desc = 0 then
-          parse_error n.pl_loc
+          error_message n.pl_loc
           (fun ppf ->
              Format.fprintf ppf "@[tuple@ projections@ start@ at@ 1@]");
         PEproji(e,n.pl_desc - 1) }
