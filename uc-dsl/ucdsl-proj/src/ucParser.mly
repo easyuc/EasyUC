@@ -1137,7 +1137,7 @@ state_expr :
 (* Interpreter commands *)
 
 interpreter_command :
-  | c = loc(icomm); EOF;{ c }
+  | c = loc(icomm); FINAL;{ c }
 
 icomm :
   | c = load_uc_file; { c }
