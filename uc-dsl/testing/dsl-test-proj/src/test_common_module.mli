@@ -16,7 +16,7 @@ exception Error of string
 
 val print_list : expr list -> unit
 
-(* check_fileds takes an expression list and checks whether there
+(* check_fields takes an expression list and checks whether there
    are any multiple args/outcomes given or args/outcomes is missing and
    returns error in either case which corresponds to the first string
    in the return type string * string
@@ -53,7 +53,7 @@ val parse : string -> expr list
      | TEST file + contents + optional sub directories
      | If a TEST file is found, subfolders will be ignored
      | Files with names starting with "readme" only +
-       optional sub directories (readme is case insenstive)
+     | optional sub directories (readme is case insenstive)
      | Only sub folders will be searched for TEST files/tests
      | No files but sub directories
      | All subdirectories will be searched for TEST files/tests
