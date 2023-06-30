@@ -315,7 +315,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
   end
 
 %}
-
+%token < Lexing.position> FINAL (* end of interpreter command *)
 %token EOF  (* end-of-file *)
 
 %token <EcSymbols.symbol> LIDENT  (* lower identifier *)

@@ -259,6 +259,16 @@ let numop = '\'' digit+
 val read : Lexing.lexbuf -> UcParser.token *)
 
 rule read = parse
+
+  (* end of sentence / stream *)
+  | '.' (eof | blank | newline as r) {
+      if r = "\n" then
+        Lexing.new_line lexbuf;
+      let lc = Lexing.lexeme_start_p lexbuf in
+      let lc = { lc with pos_cnum = lc.pos_cnum + 1; } in
+      FINAL lc
+    }
+
   (* end-of-file *)
 
   | eof { EOF }
