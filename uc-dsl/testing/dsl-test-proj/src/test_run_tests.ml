@@ -98,7 +98,6 @@ let parse_file file code =
             (String.sub file 0 (String.length file - 5))
             (Array.append [| exec |] f_name)
       in
-      Printf.printf "%s\n" s_out;
       let run_op = match_stat stat in
       match
         if run_op = "0" || run_op = "1" then run_op = out_code
