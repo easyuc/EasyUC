@@ -318,7 +318,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
   end
 
 %}
-%token < Lexing.position> FINAL (* end of interpreter command *)
+%token <Lexing.position> FINAL (* a "." followed by whitespace of eof *)
 %token EOF  (* end-of-file *)
 
 %token <EcSymbols.symbol> LIDENT  (* lower identifier *)
@@ -468,12 +468,14 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %type <UcSpec.pexpr> expr_start
 %type <UcSpec.interpreter_command> interpreter_command
 
-
 (* in the generated ucParser.ml : 
 
-val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec *)
+val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
 
-%start spec fun_expr_start sent_msg_expr_start ty_start expr_start interpreter_command
+   and similarly for the other start symbols *)
+
+%start spec fun_expr_start sent_msg_expr_start ty_start expr_start
+       interpreter_command
 
 %%
 (*for testing purposes, to be removed*)
@@ -498,8 +500,12 @@ preamble :
 (* require .uc files *)
 
 uc_requires : 
-  | UC_REQUIRES; uc_reqs = nonempty_list(ident); DOT
+  | UC_REQUIRES; uc_reqs = nonempty_list(ident); final_or_dot
       { uc_reqs }
+
+final_or_dot :
+  | FINAL { }  (* a "." followed by whitespace or end-of_file *)
+  | DOT   { }  (* a "." not so followed *)
 
 (* require .ec files, making types and operators available for use in
    UC DSL specification
@@ -507,7 +513,7 @@ uc_requires :
    +id means also do an import, id means no import *)
 
 ec_requires : 
-  | EC_REQUIRES; ec_reqs = nonempty_list(require); DOT
+  | EC_REQUIRES; ec_reqs = nonempty_list(require); final_or_dot
       { ec_reqs }
 
 require :
@@ -872,7 +878,7 @@ msg_match_clause :
                        ("@[message@ match@ clause@ whose@ message@ " ^^
                         "pattern@ has@ path@ ending@ in@ a@ \"*\"@ " ^^
                         "must@ have@ instruction@ block@ that@ is@ " ^^
-                        "unconditional@ failure@]"))
+                        "simply@ failure@]"))
              else if Option.is_some msg_pat.pat_args
                then error_message (loc mp)
                     (fun ppf ->
@@ -1077,9 +1083,9 @@ match_in :
 (* Control Transfer Instructions *)
 
 control_transfer : 
-  | sat = send_and_transition; DOT
+  | sat = send_and_transition; final_or_dot
       { SendAndTransition sat }
-  | FAIL; DOT
+  | FAIL; final_or_dot
       { Fail }
 
 (* The send_and_transition command consists of two parts, the send

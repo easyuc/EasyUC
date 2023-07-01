@@ -261,6 +261,7 @@ val read : Lexing.lexbuf -> UcParser.token *)
 rule read = parse
 
   (* end of sentence / stream *)
+
   | '.' (eof | blank | newline as r) {
       if r = "\n" then
         Lexing.new_line lexbuf;
