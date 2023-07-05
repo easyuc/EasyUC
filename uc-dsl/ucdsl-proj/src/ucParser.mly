@@ -1186,7 +1186,7 @@ send_msg :
   | SEND; sme = sent_msg_expr; { Send sme }
 
 prover_cmd:
-  | PROVER x = smt_info { SmtInfo x } 
+  | PROVER x = smt_info { Prover x } 
 
 
 fun_expr :

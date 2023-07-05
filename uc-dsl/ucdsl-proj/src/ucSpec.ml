@@ -357,9 +357,10 @@ type interpreter_command_u =
   | Send of sent_msg_expr
   | Run
   | Step
-  | Addv of type_binding
-  | Addf of psymbol * pexpr
-  | SmtInfo of pprover_infos
+  | Addv of type_binding (*TODO add to parser*)
+  | Addf of psymbol * pexpr (*TODO add to parser*)
+  | Prover of pprover_infos (*TODO add to interpreter client*)
+  | Undo of int (*TODO add to parser and interpreter client*)
   | Done
   | Quit
 
