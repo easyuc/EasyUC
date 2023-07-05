@@ -295,6 +295,9 @@ type party_body_tyd =
 
 type party_tyd = party_body_tyd located  (* typed party *)
 
+let state_of_party_tyd (pt : party_tyd) (st : symbol) : state_tyd =
+  IdMap.find st (unloc pt).states
+
 type real_fun_body_tyd =
   {params       : (symb_pair * int) IdMap.t;  (* names of composite direct
                                                  interfaces; index is
@@ -336,17 +339,73 @@ let is_real_fun_body_tyd (fbt : fun_body_tyd) : bool =
   | FunBodyRealTyd _  -> true
   | FunBodyIdealTyd _ -> false
 
+let is_ideal_fun_body_tyd (fbt : fun_body_tyd) : bool =
+  match fbt with
+  | FunBodyRealTyd _  -> false
+  | FunBodyIdealTyd _ -> true
+
 let id_dir_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol =
   match fbt with
-  | FunBodyRealTyd fbr  -> fbr.id_dir_inter
-  | FunBodyIdealTyd fbi -> fbi.id_dir_inter
+  | FunBodyRealTyd rfbt  -> rfbt.id_dir_inter
+  | FunBodyIdealTyd rfbi -> rfbi.id_dir_inter
 
 let id_adv_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol option =
   match fbt with
-  | FunBodyRealTyd fbr  -> fbr.id_adv_inter
-  | FunBodyIdealTyd fbi -> Some fbi.id_adv_inter
+  | FunBodyRealTyd rfbt  -> rfbt.id_adv_inter
+  | FunBodyIdealTyd ifbt -> Some ifbt.id_adv_inter
 
 type fun_tyd = fun_body_tyd located  (* functionality *)
+
+let is_real_fun_tyd (ft : fun_tyd) : bool =
+  is_real_fun_body_tyd (unloc ft)
+
+let is_ideal_fun_tyd (ft : fun_tyd) : bool =
+  is_ideal_fun_body_tyd (unloc ft)
+
+let id_dir_inter_of_fun_tyd (ft : fun_tyd) : symbol =
+  id_dir_inter_of_fun_body_tyd (unloc ft)
+
+let id_adv_inter_of_fun_tyd (ft : fun_tyd) : symbol option =
+  id_adv_inter_of_fun_body_tyd (unloc ft)
+
+let id_adv_inter_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
+  oget (id_adv_inter_of_fun_body_tyd (unloc ft))
+
+let sub_fun_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : symb_pair =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.find subf rfbt.sub_funs
+
+let num_sub_funs_of_real_fun_tyd (ft : fun_tyd) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.cardinal rfbt.sub_funs
+
+let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.sub_funs in
+  fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
+
+let sub_fun_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.sub_funs in
+  fst (List.nth bndgs n)
+
+let party_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : party_tyd =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.find pty rfbt.parties
+
+let num_parties_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.cardinal rfbt.parties
+
+let party_ord_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.parties in
+  fst (List.findi (fun _ (q, _) -> q = pty) bndgs)
+
+let party_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.parties in
+  fst (List.nth bndgs n)
 
 type sim_body_tyd =
   {uses : symbol;                       (* basic adversarial interface
@@ -544,9 +603,7 @@ type triple_info =
    ti_comp_adv_opt                       : symbol option;
    ti_if_sim_basic_adv                   : symbol;
    ti_sims                               : symb_pair list;
-   ti_num_adv_pis                        : int;
-   ti_get_adv_pi_of_served_basic_adv_int : int -> symbol -> int;
-   ti_get_adv_pi_of_subfun               : int -> symbol -> int}
+   ti_num_adv_pis                        : int}
 
 type unit_info =
   | UI_Singleton of singleton_info
@@ -562,76 +619,106 @@ let is_triple_unit_info (ui : unit_info) : bool =
   | UI_Singleton _ -> false
   | UI_Triple _    -> true
 
+let num_adv_pis_of_parties_of_real_fun
+    (maps : maps_tyd) (root : symbol) (ft : fun_tyd) : int =
+  match id_adv_inter_of_fun_tyd ft with
+  | None      -> 0
+  | Some comp ->
+      (let ibt =
+         unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+       match ibt with
+       | BasicTyd _       -> failure "cannot happen"
+       | CompositeTyd map -> IdMap.cardinal map)
+
+let num_adv_pis_of_sub_funs_of_real_fun (ft : fun_tyd) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.cardinal rfbt.sub_funs
+
 let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
   let rf_names = real_fun_names root maps in
   let if_names = ideal_fun_names root maps in
   let sim_names = sim_names root maps in
   if IdSet.cardinal rf_names = 0
   then let if_name = sing_elt_of_id_set if_names in
-       let fbt = unloc (IdPairMap.find (root, if_name) maps.fun_map) in
-       let ifbt = ideal_fun_body_tyd_of fbt in
+       let ift = IdPairMap.find (root, if_name) maps.fun_map in
       UI_Singleton
       {si_root      = root;
        si_ideal     = if_name;
-       si_comp_dir  = ifbt.id_dir_inter;
-       si_basic_adv = ifbt.id_adv_inter}
+       si_comp_dir  = id_dir_inter_of_fun_tyd ift;
+       si_basic_adv = id_adv_inter_of_ideal_fun_tyd ift}
   else let if_name = sing_elt_of_id_set if_names in
-       let fbt = unloc (IdPairMap.find (root, if_name) maps.fun_map) in
-       let ifbt = ideal_fun_body_tyd_of fbt in
+       let ift = IdPairMap.find (root, if_name) maps.fun_map in
        let rf_name = sing_elt_of_id_set rf_names in
-       let fbt = unloc (IdPairMap.find (root, rf_name) maps.fun_map) in
-       let rfbt = real_fun_body_tyd_of fbt in
+       let rft = IdPairMap.find (root, rf_name) maps.fun_map in
        let sim_name = sing_elt_of_id_set sim_names in
        let sbt = unloc (IdPairMap.find (root, sim_name) maps.sim_map) in
-       let num_adv_pis_of_served =
-         match rfbt.id_adv_inter with
-         | None      -> 0
-         | Some comp ->
-             let ibt =
-               unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
-             match ibt with
-             | BasicTyd _       -> failure "cannot happen"
-             | CompositeTyd map -> IdMap.cardinal map in
-       let num_adv_pis_of_subfuns = IdMap.cardinal rfbt.sub_funs in
-       let num_adv_pis = 1 + num_adv_pis_of_served + num_adv_pis_of_subfuns in
-       let get_adv_pi_of_served_basic_adv_int base id =
-         match rfbt.id_adv_inter with
-         | None      -> failure "cannot happen"
-         | Some comp ->
-             let ibt =
-               unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
-             match ibt with
-             | BasicTyd _       -> failure "cannot happen"
-             | CompositeTyd map ->
-                 base + 1 +
-                 fst
-                 (List.findi
-                  (fun _ (id', _) -> id' = id)
-                  (IdMap.bindings map)) in
-       let get_adv_pi_of_subfun base id =
-         base + 1 + num_adv_pis_of_served +
-         fst
-         (List.findi
-          (fun _ (id', _) -> id' = id)
-          (IdMap.bindings rfbt.sub_funs)) in
+       let num_adv_pis_of_parties =
+         num_adv_pis_of_parties_of_real_fun maps root rft in
+       let num_adv_pis_of_sub_funs = num_adv_pis_of_sub_funs_of_real_fun rft in
+       let num_adv_pis =
+         1 + num_adv_pis_of_parties + num_adv_pis_of_sub_funs in
        UI_Triple
-       {ti_root                               = root;
-        ti_real                               = rf_name;
-        ti_ideal                              = if_name;
-        ti_sim                                = sim_name;
-        ti_comp_dir                           = ifbt.id_dir_inter;
-        ti_comp_adv_opt                       = rfbt.id_adv_inter;
-        ti_if_sim_basic_adv                   = ifbt.id_adv_inter;
-        ti_sims                               = sbt.sims_arg_pair_ids;
-        ti_num_adv_pis                        = num_adv_pis;
-        ti_get_adv_pi_of_served_basic_adv_int =
-          get_adv_pi_of_served_basic_adv_int;
-        ti_get_adv_pi_of_subfun               = get_adv_pi_of_subfun}
+       {ti_root             = root;
+        ti_real             = rf_name;
+        ti_ideal            = if_name;
+        ti_sim              = sim_name;
+        ti_comp_dir         = id_dir_inter_of_fun_tyd ift;
+        ti_comp_adv_opt     = id_adv_inter_of_fun_tyd rft;
+        ti_if_sim_basic_adv = id_adv_inter_of_ideal_fun_tyd ift;
+        ti_sims             = sbt.sims_arg_pair_ids;
+        ti_num_adv_pis      = num_adv_pis}
 
 let is_basic_adv_of_ideal (uior : unit_info) (bas : symbol) : bool =
   match uior with
   | UI_Singleton si -> si.si_basic_adv = bas
   | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
+
+(* should only be called if party serves a basic adversarial interface: *)
+
+let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
+      : symbol =
+  let adv = oget (id_adv_inter_of_fun_tyd ft) in
+  let party = unloc (party_of_real_fun_tyd ft pty) in
+  let serves = party.serves in
+  (List.hd |- List.tl |- unloc)
+  (List.find 
+   (fun x -> List.hd (unloc x) = adv)
+   serves)
+
+(* should only be called if party serves a basic adversarial interface;
+   returns (i, j), where i is the port index for adversarial messages
+   to/from the party, and j is the corresponding adversarial port
+   index *)
+
+let get_pi_and_adv_pi_of_party_of_real_fun
+    (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
+    (pty : symbol) : int * int =
+  let bas = get_adv_basic_inter_of_party_of_real_fun ft pty in
+  let comp = oget (id_adv_inter_of_fun_tyd ft) in
+  let ibt =
+    unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+    match ibt with
+    | BasicTyd _       -> failure "cannot happen"
+    | CompositeTyd map ->
+        let n = 
+          fst
+          (List.findi
+           (fun _ (id', _) -> id' = bas)
+           (IdMap.bindings map)) in
+        (n, base + 1 + n)
+
+(* returns pair (i, j), where [i] is the suffix of the address
+   of the subfunctionality, and j is the corresponding adversarial
+   port index *)
+
+let get_child_and_adv_pi_of_sub_fun_of_real_fun
+    (maps : maps_tyd) (root : symbol) (num_params : int) (base : int)
+    (ft : fun_tyd) (sf : symbol) : int * int =
+  let num_adv_pis_of_parties =
+    num_adv_pis_of_parties_of_real_fun maps root ft in
+  let n = sub_fun_ord_of_real_fun_tyd ft sf in
+  (1 + num_params + n,
+   base + 1 + num_adv_pis_of_parties + n)
 
 (* Interpreter User Input *)
 
