@@ -1151,6 +1151,7 @@ icomm :
   | c = comm_word; { c }
   | c = send_msg; { c }
   | c = prover_cmd; { c }
+  | c = undo_cmd; { c }
 
 load_uc_file :
   | load = lident; file = ident; 
@@ -1161,6 +1162,17 @@ load_uc_file :
             (fun ppf ->
                fprintf ppf
                "Did@ you@ mean@ load@ instead@ of@ %s?" (unloc load))
+    }
+
+undo_cmd :
+  | undo = lident; no = uint; 
+    {
+      if (unloc undo) = "undo" 
+      then Undo no
+      else error_message (loc undo)
+            (fun ppf ->
+               fprintf ppf
+               "Did@ you@ mean@ undo@ instead@ of@ %s?" (unloc undo))
     }
 
 fun_ex_cmd :
@@ -1179,7 +1191,7 @@ comm_word :
       | _ -> 
         error_message (loc cw)
         (fun ppf -> fprintf ppf
-"%s@ is@ not@ a@ valid@ one@ word@ command." (unloc cw))
+"%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
     }
 
 send_msg :
