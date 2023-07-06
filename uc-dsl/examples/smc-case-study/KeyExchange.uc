@@ -12,8 +12,10 @@ uc_requires Forwarding.
 
 (* Requiring an EasyCrypt theory makes the definitions of that theory,
    plus those of all the EasyCrypt theories required (directly or
-   indirectly) by that theory, available: *with* qualification, if
-   without a "+"; *without* qualification, if with a "+". *)
+   indirectly) by that theory, available. If a "+" is used, the
+   definitions of the theory itself are also made available *without*
+   qualification; but that does not apply to the definitions of
+   EasyCrypt theories indirectly required by that theory. *)
 
 ec_requires +KeysExponentsAndPlaintexts.
 
