@@ -906,42 +906,47 @@ let checkmode = {
     cm_iterate   = false;
   }
 
-let ucdsl_context : EcScope.scope list ref = ref []
+let ucdsl_scope_stack : EcScope.scope list ref = ref []
 
 let ucdsl_init () =
   let scope = initial ~checkmode:checkmode ~boot:false in
-  ucdsl_context := [scope]  
+  ucdsl_scope_stack := [scope]  
 
 let ucdsl_addnotifier (notifier : notifier) =
-  assert (not (List.is_empty (! ucdsl_context)));
-  let gstate = EcScope.gstate (List.hd (! ucdsl_context)) in
+  assert (not (List.is_empty (! ucdsl_scope_stack)));
+  let gstate = EcScope.gstate (List.hd (! ucdsl_scope_stack)) in
   ignore (EcGState.add_notifier notifier gstate)
 
 let ucdsl_current () =
-  assert (not (List.is_empty (! ucdsl_context)));
-  List.hd (! ucdsl_context)
+  assert (not (List.is_empty (! ucdsl_scope_stack)));
+  List.hd (! ucdsl_scope_stack)
 
 let ucdsl_update scope =
-  assert (not (List.is_empty (! ucdsl_context)));
-  let rest = List.tl (! ucdsl_context) in
-  ucdsl_context := scope :: rest
+  assert (not (List.is_empty (! ucdsl_scope_stack)));
+  let rest = List.tl (! ucdsl_scope_stack) in
+  ucdsl_scope_stack := scope :: rest
 
 let ucdsl_require threq =
-  assert (not (List.is_empty (! ucdsl_context)));
-  let top_sc = List.hd (! ucdsl_context) in
-  let rest = List.tl (! ucdsl_context) in
+  assert (not (List.is_empty (! ucdsl_scope_stack)));
+  let top_sc = List.hd (! ucdsl_scope_stack) in
+  let rest = List.tl (! ucdsl_scope_stack) in
   let new_sc = process_th_require1 loader top_sc threq in
-  ucdsl_context := new_sc :: rest
+  ucdsl_scope_stack := new_sc :: rest
 
 let ucdsl_new () =
-  assert (not (List.is_empty (! ucdsl_context)));
-  let new_sc = EcScope.for_loading (List.hd (! ucdsl_context)) in
-  ucdsl_context := new_sc :: ! ucdsl_context
+  assert (not (List.is_empty (! ucdsl_scope_stack)));
+  let new_sc = EcScope.for_loading (List.hd (! ucdsl_scope_stack)) in
+  ucdsl_scope_stack := new_sc :: ! ucdsl_scope_stack
 
 let ucdsl_end () =
-  assert (List.length (! ucdsl_context) >= 2);
-  let top_sc = List.hd (! ucdsl_context) in
-  let prev_sc = List.hd (List.tl (! ucdsl_context)) in
-  let rest = List.drop 2 (! ucdsl_context) in
+  assert (List.length (! ucdsl_scope_stack) >= 2);
+  let top_sc = List.hd (! ucdsl_scope_stack) in
+  let prev_sc = List.hd (List.tl (! ucdsl_scope_stack)) in
+  let rest = List.drop 2 (! ucdsl_scope_stack) in
   let new_sc = EcScope.Theory.update_with_required prev_sc top_sc in
-  ucdsl_context := new_sc :: rest
+  ucdsl_scope_stack := new_sc :: rest
+
+let ucdsl_end_ignore () =
+  assert (List.length (! ucdsl_scope_stack) >= 2);
+  let rest = List.tl (! ucdsl_scope_stack) in
+  ucdsl_scope_stack := rest

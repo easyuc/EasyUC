@@ -67,13 +67,14 @@ val apply_pragma : string -> unit
 
 (* UC DSL interface *)
 
-(* initialization stack of scopes to initial scope *)
+(* initialization stack of scopes to initial scope; the stack will
+   always be non-empty *)
 val ucdsl_init : unit -> unit
 
 (* add a notifier *)
 val ucdsl_addnotifier : notifier -> unit
 
-(* current scope *)
+(* current scope -- top of stack *)
 val ucdsl_current : unit -> EcScope.scope
 
 (* update current scope *)
@@ -89,9 +90,15 @@ val ucdsl_require :
                                            theory's definitions? *)
   unit
 
-(* begin scope with only prelude required, saving old scope on stack *)
+(* push new scope onto stack, created from the previous one, but
+   reverting the environment and required theories to the ones
+   of the prelude *)
 val ucdsl_new : unit -> unit
 
 (* end scope, reverting to saved one from stack, which is updated to
    include required theories of ended scope *)
 val ucdsl_end : unit -> unit
+
+(* end scope, reverting to saved one from stack, but ignoring the
+   scope being ended *)
+val ucdsl_end_ignore : unit -> unit

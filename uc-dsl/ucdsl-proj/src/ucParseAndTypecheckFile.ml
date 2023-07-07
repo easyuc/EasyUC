@@ -24,7 +24,7 @@ let parse_and_typecheck_file_or_id foid =
       match foid with
       | FOID_File file ->
           (UcUtils.capitalized_root_of_filename_with_extension file, None)
-      | FOID_Id id  -> (unloc id, Some (loc id)) in
+      | FOID_Id id     -> (unloc id, Some (loc id)) in
     let () =
       if List.mem uc_root (!stack)
       then error_message (Option.get loc_opt)  (* will always be non-None *)
@@ -36,16 +36,16 @@ let parse_and_typecheck_file_or_id foid =
     match IdMap.find_opt uc_root (!cache) with
     | None                      ->
         let (spec, qual_file) = parse_file_or_id foid in
-        let tyspec =
+        let maps =
           typecheck qual_file
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
         let () = stack := List.tl (!stack) in
         let cur_scope = EcCommands.ucdsl_current () in
-        let () = cache := IdMap.add uc_root (tyspec, cur_scope) (!cache) in
-        tyspec
-    | Some (tyspec, saved_scope) ->
+        let () = cache := IdMap.add uc_root (maps, cur_scope) (!cache) in
+        maps
+    | Some (maps, saved_scope) ->
         let () = stack := List.tl (!stack) in
         let () = EcCommands.ucdsl_update saved_scope in
-        tyspec in
+        maps in
   parse_and_typecheck foid
