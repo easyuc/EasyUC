@@ -230,7 +230,7 @@ module Prover : sig
   val full_check  : scope -> scope
   val check_proof : scope -> bool -> scope
 
-  val pprover_infos_to_prover_infos :
+  val pprover_infos_to_prover_infos :  (* UC DSL *)
      EcEnv.env -> EcProvers.prover_infos -> pprover_infos ->
      EcProvers.prover_infos
 
