@@ -1153,11 +1153,22 @@ icomm :
   | c = prover_cmd; { c }
   | c = undo_cmd; { c }
 
+%inline filename :
+  | nm = rlist1(_ident, DOT)
+      { nm }
+
+_file :
+  | x = _ident { ([], x) }
+  | xs = filename; DOT; x = _ident { (xs, x) }
+
+file :
+  | x = loc(_file) { x }
+
 load_uc_file :
-  | load = lident; file = ident; 
+  | load = lident; file = file; 
     {
       if (unloc load) = "load" 
-      then Load file
+      then Load  (mk_loc (loc file) (string_of_qsymbol (unloc file)))
       else error_message (loc load)
             (fun ppf ->
                fprintf ppf
