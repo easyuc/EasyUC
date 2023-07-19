@@ -8,15 +8,17 @@ open UcSpecTypedSpecCommon
 module L = Lexing
 
 let reset_pos_rename (lexbuf : L.lexbuf) (name : string) : unit =
-   lexbuf.L.lex_curr_p <- {
+   let init_pos = {
         L.pos_fname = name;
         L.pos_lnum  = 1;
         L.pos_bol   = 0;
         L.pos_cnum  = 0
-      } 
+      }
+   in
+   lexbuf.L.lex_curr_p <- init_pos
 
 let lexbuf_from_channel (name : string) (ch : in_channel) =
-  let lexbuf = L.from_channel ch in
+  let lexbuf = L.from_channel ~with_positions:true ch in
   reset_pos_rename lexbuf name;
   lexbuf
 
@@ -67,11 +69,10 @@ let print_prompt () : unit =
 let cmd_name () =
   "cmd #"^(string_of_int (currs()).cmd_no)
 
-let interpret (lexbuf : L.lexbuf) (repos : L.lexbuf -> string -> unit) =
+let interpret (lexbuf : L.lexbuf) =
 
   let prompt () : unit =
-    print_prompt();
-    repos lexbuf (cmd_name ())
+    print_prompt()
   in
 
   let load (psym : psymbol) : unit =
@@ -284,7 +285,8 @@ let rec load_loop () : unit =
   interpreter_loop()
   
 let stdIOclient =
-  let lexbuf = lexbuf_from_channel "dummy!" stdin  in
-  interpret lexbuf reset_pos_rename
+  UcEcInterface.init ();
+  let lexbuf = lexbuf_from_channel "stdin" stdin  in
+  interpret lexbuf
   
  
