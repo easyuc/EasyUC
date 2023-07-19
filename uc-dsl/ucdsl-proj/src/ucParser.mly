@@ -1165,7 +1165,7 @@ load_uc_file :
     }
 
 undo_cmd :
-  | undo = lident; no = uint; 
+  | undo = lident; no = loc(word); 
     {
       if (unloc undo) = "undo" 
       then Undo no

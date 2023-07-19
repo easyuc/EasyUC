@@ -360,7 +360,7 @@ type interpreter_command_u =
   | Addv of type_binding (*TODO add to parser*)
   | Addf of psymbol * pexpr (*TODO add to parser*)
   | Prover of pprover_infos (*TODO add to interpreter client*)
-  | Undo of zint (*TODO add to interpreter client*)
+  | Undo of int located (*TODO add to interpreter client*)
   | Done
   | Quit
 

@@ -28,33 +28,44 @@ let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)
        (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
 
-let cmd_prompt (cmd_no : EcBigInt.zint) =
-  let cmd_no_str = EcBigInt.to_string cmd_no in
-  "#"^cmd_no_str^">"
-
-let cmd_no = ref EcBigInt.zero
-
-let print_prompt () : unit =
-  print_endline (cmd_prompt !cmd_no)
-
-let inc_cmd_no () : unit =
-  cmd_no := EcBigInt.succ !cmd_no;
-  print_prompt()
-
-let set_cmd_no (no : EcBigInt.zint) : unit =
-  cmd_no := no;
-  print_prompt ()
-
 type interpreter_state = 
   {
-    root : string;
-    maps : maps_tyd;
-    worlds : worlds; 
-    w : world (*replace with contexts etc.*)
+    setup_complete : bool;
+    cmd_no : int;
+    root : string option;
+    maps : maps_tyd option;
+    worlds : worlds option; 
+    w : world option(*replace with contexts etc.*)
   }
 
+let init_state : interpreter_state =
+  {
+    setup_complete = false;
+    cmd_no = 0;
+    root = None;
+    maps = None;
+    worlds =  None; 
+    w = None;
+  }
+
+
+
+let stack : interpreter_state list ref = ref []
+let currs() : interpreter_state =
+  List.hd !stack
+
+let push (is : interpreter_state) : unit =
+  stack := is :: !stack 
+
+let cmd_prompt (cmd_no : int) =
+  let cmd_no_str = string_of_int cmd_no in
+  "#"^cmd_no_str^">"
+
+let print_prompt () : unit =
+  print_endline (cmd_prompt (currs()).cmd_no)
+
 let cmd_name () =
-  "cmd #"^(EcBigInt.to_string !cmd_no)
+  "cmd #"^(string_of_int (currs()).cmd_no)
 
 let interpret (lexbuf : L.lexbuf) (repos : L.lexbuf -> string -> unit) =
 
@@ -63,7 +74,7 @@ let interpret (lexbuf : L.lexbuf) (repos : L.lexbuf -> string -> unit) =
     repos lexbuf (cmd_name ())
   in
 
-  let do_load (psym : psymbol) : string * maps_tyd =
+  let load (psym : psymbol) : unit =
     let file = unloc psym in
     let root =
     try   
@@ -75,117 +86,111 @@ let interpret (lexbuf : L.lexbuf) (repos : L.lexbuf -> string -> unit) =
     in
     let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
     (UcParseFile.FOID_File file) in
-    inc_cmd_no ();
-    root, maps
+    let c = currs() in
+    let news = 
+      { c with
+        cmd_no = c.cmd_no+1;
+        root = Some root;
+        maps = Some maps;
+        worlds = None;
+        w = None;
+      } in
+    push news
   in
 
-  let rec load_loop () : string * maps_tyd =
-    prompt();
-    try 
-      let cmd = next_cmd lexbuf in
-      begin  match (unloc cmd) with
-      | Load psym ->
-        do_load psym
-      | _ ->
-        error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
-      end
-    with _ ->
-      load_loop ()
-  in
-
-  let do_worlds (root : string) (maps : maps_tyd) (fe : fun_expr): worlds =
-    let worlds = fun_expr_to_worlds root maps fe in
+  let worlds (fe : fun_expr): unit =
+    let c = currs() in
+    let worlds = 
+      fun_expr_to_worlds (Option.get c.root) (Option.get c.maps) fe 
+    in
     pp_worlds Format.std_formatter worlds;
-    inc_cmd_no ();
-    worlds
+    let news = 
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        worlds = Some worlds;
+        w = None;
+      } in
+    push news
   in
 
-  let rec funexp_loop (root : string) (maps : maps_tyd) : worlds = 
-    prompt();
-    try 
-      let cmd = next_cmd lexbuf in
-      begin  match (unloc cmd) with
-      | Funex fe -> do_worlds root maps fe
-      | _ ->
-        error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
-      end
-    with _ ->
-      funexp_loop root maps 
-  in
-
-  let do_world (root : string) (maps : maps_tyd) (worlds : worlds) (w : world)
-  : interpreter_state =
-    inc_cmd_no ();
+  let world (w : world) : unit =
+    let c = currs() in
+    let news = 
     {
-      root = root;
-      maps = maps;
-      worlds = worlds;
-      w = w
-    }
+      c with
+      cmd_no = c.cmd_no+1;
+      w = Some w;
+      setup_complete = true;
+    } in
+    push news
   in
 
-  let rec 
-  world_loop 
-  (root : string) (maps : maps_tyd) (worlds : worlds) : interpreter_state =
-    prompt();
-    try
-      let cmd = next_cmd lexbuf in 
-      begin  match (unloc cmd) with
-      | World w -> do_world root maps worlds w
-      | _ ->
-        error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[world@ command@ expected@]")
-      end
-    with _ ->
-      world_loop root maps worlds
+  let inc_cmd_no () : unit =
+    let c = currs() in
+    let news = { c with cmd_no = c.cmd_no+1 } in
+    push news
+  in
+
+  let undo (pi : int located) : unit =
+    let i = unloc pi in
+    let l = List.length !stack in
+    if ((i < l) && (i > 0)) 
+    then
+      stack := BatList.drop i (!stack)
+    else
+      error_message (loc pi)
+        (fun ppf -> Format.fprintf ppf 
+"@[%i@ is@ not@ between@ 0@ and@ %i@]" i l)
+  in
+  
+  let donec () : unit =
+    let c = currs() in
+    let news =  
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        setup_complete = false
+      } in
+    push news
   in
 
   let rec done_loop (): unit =
-    prompt();
     try
       let cmd = next_cmd lexbuf in
       begin  match (unloc cmd) with
-      | Send _  -> inc_cmd_no ();()
-      | Run -> inc_cmd_no ();()
-      | Step -> inc_cmd_no ();()
-      | Addv _ -> inc_cmd_no ();() (*TODO add to parser*)
-      | Addf _ -> inc_cmd_no ();() (*TODO add to parser*)
-      | Prover _ -> inc_cmd_no ();()
-      | Undo z -> set_cmd_no z; ()
-      | Done -> inc_cmd_no ();()
+      | Send _  -> inc_cmd_no()
+      | Run -> inc_cmd_no()
+      | Step -> inc_cmd_no()
+      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
+      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
+      | Prover _ -> inc_cmd_no()
+      | Undo pi -> undo pi
+      | Done -> donec ();()
+      | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
 "@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@,done.@]")
       end
     with _ ->
-      done_loop ()
-  in
-
-  let start (): interpreter_state =
-    let root, maps = load_loop () in
-    let worlds = funexp_loop root maps in
-    world_loop root maps worlds
+      prompt();
+      done_loop()
   in
  
-  let rec restart_loop (ints : interpreter_state) : interpreter_state =
-    let root = ints.root in
-    let maps = ints.maps in
-    let worlds = ints.worlds in
+  let rec restart_loop () : unit =
     try
       let cmd = next_cmd lexbuf in
       begin match (unloc cmd) with
       | Load psym ->
-        let root, maps = do_load psym in
-        let worlds = funexp_loop root maps in
-        world_loop root maps worlds
+        load psym
+        
       | Funex fe ->
-        let worlds = do_worlds root maps fe in
-        world_loop root maps worlds
+        worlds fe
+
       | World w -> 
-        do_world root maps worlds w
+        world w
+        
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -193,17 +198,90 @@ let interpret (lexbuf : L.lexbuf) (repos : L.lexbuf -> string -> unit) =
 "@[one@ of@ following@ commands@ expected:@ load@,functionality@,real@,ideal@,quit.@]")
       end
     with _ ->
-      restart_loop ints
+      prompt();
+      restart_loop()
   in
 
-  let rec interpreter_loop (ints : interpreter_state) : unit =
-    done_loop ();
-    let ints = restart_loop ints in
-    interpreter_loop ints
+let rec load_loop () : unit =
+    try 
+      let cmd = next_cmd lexbuf in
+      begin  match (unloc cmd) with
+      | Load psym ->
+        load psym
+      | Quit -> exit 0
+      | _ ->
+        error_message (loc cmd)
+        (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
+      end
+    with _ ->
+      prompt();
+      load_loop ()
+  in
+
+  let rec funexp_loop () : unit = 
+    try 
+      let cmd = next_cmd lexbuf in
+      begin  match (unloc cmd) with
+      | Funex fe ->
+        worlds fe
+      | Quit -> exit 0
+      | _ ->
+        error_message (loc cmd)
+        (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
+      end
+    with _ ->
+      prompt();
+      funexp_loop() 
+  in
+
+  let rec world_loop () : unit=
+    try
+      let cmd = next_cmd lexbuf in 
+      begin  match (unloc cmd) with
+      | World w ->
+        world w
+      | Quit -> exit 0
+      | _ ->
+        error_message (loc cmd)
+        (fun ppf -> Format.fprintf ppf "@[world@ command@ expected@]")
+      end
+    with _ ->
+      prompt();
+      world_loop()
+  in
+
+  let finish_loop () : unit =
+    let c = currs() in
+    match c.root with
+    | None -> load_loop()
+    | Some _ ->
+      match c.worlds with
+      | None -> funexp_loop()
+      | Some _ -> world_loop()
+  in
+
+  let setup_loop () : unit =
+    match (currs()).w with
+    | Some w ->
+      restart_loop()
+    | None ->
+      finish_loop ()
+  in
+
+  let rec interpreter_loop (): unit =
+    prompt();
+    if (currs()).setup_complete
+    then
+      done_loop()
+    else
+      setup_loop()
+    ;
+    interpreter_loop()
   in
   
-  let ints = start() in
-  interpreter_loop ints
+  stack := [];
+  stack := init_state::!stack;
+  interpreter_loop()
   
 let stdIOclient =
   let lexbuf = lexbuf_from_channel "dummy!" stdin  in
