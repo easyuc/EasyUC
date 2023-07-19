@@ -1176,14 +1176,14 @@ load_uc_file :
     }
 
 undo_cmd :
-  | undo = lident; no = loc(word); 
+  | back = lident; no = loc(word); 
     {
-      if (unloc undo) = "undo" 
-      then Undo no
-      else error_message (loc undo)
+      if (unloc back) = "back" 
+      then Back no
+      else error_message (loc back)
             (fun ppf ->
                fprintf ppf
-               "Did@ you@ mean@ undo@ instead@ of@ %s?" (unloc undo))
+               "Did@ you@ mean@ undo@ instead@ of@ %s?" (unloc back))
     }
 
 fun_ex_cmd :
@@ -1193,12 +1193,12 @@ comm_word :
   | cw = lident; 
     {
       match (unloc cw) with
-      | "real"  -> World Real
-      | "ideal" -> World Ideal
-      | "run"   -> Run
-      | "step"  -> Step
-      | "done"  -> Done
-      | "quit"  -> Quit
+      | "real"   -> World Real
+      | "ideal"  -> World Ideal
+      | "run"    -> Run
+      | "step"   -> Step
+      | "finish" -> Finish
+      | "quit"   -> Quit
       | _ -> 
         error_message (loc cw)
         (fun ppf -> fprintf ppf

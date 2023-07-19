@@ -166,13 +166,13 @@ let interpret (lexbuf : L.lexbuf) =
       | Addv _ -> inc_cmd_no() (*TODO add to parser*)
       | Addf _ -> inc_cmd_no() (*TODO add to parser*)
       | Prover _ -> inc_cmd_no()
-      | Undo pi -> undo pi
-      | Done -> donec ();()
+      | Back pi -> undo pi
+      | Finish -> donec ();()
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@,done.@]")
+"@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@@,back@,finish.@]")
       end
     with _ ->
       prompt();
@@ -251,7 +251,7 @@ let rec load_loop () : unit =
       world_loop()
   in
 
-  let finish_loop () : unit =
+  let complete_loop () : unit =
     let c = currs() in
     match c.root with
     | None -> load_loop()
@@ -266,7 +266,7 @@ let rec load_loop () : unit =
     | Some w ->
       restart_loop()
     | None ->
-      finish_loop ()
+      complete_loop ()
   in
 
   let rec interpreter_loop (): unit =
