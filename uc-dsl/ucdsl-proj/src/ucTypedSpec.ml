@@ -389,6 +389,20 @@ let sub_fun_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.nth bndgs n)
 
+let num_params_of_real_fun_tyd
+    (ft : fun_tyd) (param : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.cardinal rfbt.params
+
+let id_dir_inter_of_param_of_real_fun_tyd
+    (ft : fun_tyd) (param : symbol) : symb_pair =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  fst (IdMap.find param rfbt.params)
+
+let index_of_param_of_real_fun_tyd (ft : fun_tyd) (param : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  snd (IdMap.find param rfbt.params)
+
 let party_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : party_tyd =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.find pty rfbt.parties
@@ -674,14 +688,16 @@ let is_basic_adv_of_ideal (uior : unit_info) (bas : symbol) : bool =
   | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
 
 let get_dir_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
-      : symbol =
-  let dir_comp = id_dir_inter_of_fun_tyd ft in
-  let party = unloc (party_of_real_fun_tyd ft pty) in
-  let serves = party.serves in
-  (List.hd |- List.tl |- unloc)
-  (List.find 
-   (fun x -> List.hd (unloc x) = dir_comp)
-   serves)
+      : symbol option =
+  try
+    let dir_comp = id_dir_inter_of_fun_tyd ft in
+    let party = unloc (party_of_real_fun_tyd ft pty) in
+    let serves = party.serves in
+    (some |- List.hd |- List.tl |- unloc)
+    (List.find 
+     (fun x -> List.hd (unloc x) = dir_comp)
+     serves)
+  with _ -> None
 
 let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
@@ -695,37 +711,44 @@ let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
      serves)
   with _ -> None
 
-(* returns the port index for direct messages to/from a party *)
+(* returns None if the party does not server a basic direct interface;
+   otherwise returns Some (comp, bas, i), where [comp; bas] is the
+   basic direct interface served by the party, and i is the port index
+   for direct messages to/from the party *)
 
 let get_dir_info_of_party_of_real_fun
     (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
-    (pty : symbol) : int =
-  let bas = get_dir_basic_inter_of_party_of_real_fun ft pty in
-  let comp = id_dir_inter_of_fun_tyd ft in
-  let ibt = unloc (IdPairMap.find (root, comp) maps.dir_inter_map) in
-  match ibt with
-  | BasicTyd _       -> failure "cannot happen"
-  | CompositeTyd map -> id_map_ordinal1_of_sym map bas
-
-(* returns None if the party does not serve a basic adversarial
-   interface; otherwise returns Some (i, j), where i is the port index
-   for adversarial messages to/from the party, and j is the
-   corresponding adversarial port index *)
-
-let get_adv_info_of_party_of_real_fun
-    (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
-    (pty : symbol) : (int * int) option =
-  try
-    let bas = oget (get_adv_basic_inter_of_party_of_real_fun ft pty) in
-    let comp = oget (id_adv_inter_of_fun_tyd ft) in
-    let ibt =
-      unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+    (pty : symbol) : (symbol * symbol * int) option =
+  match get_dir_basic_inter_of_party_of_real_fun ft pty with
+  | None     -> None
+  | Some bas -> 
+      let comp = id_dir_inter_of_fun_tyd ft in
+      let ibt = unloc (IdPairMap.find (root, comp) maps.dir_inter_map) in
       match ibt with
       | BasicTyd _       -> failure "cannot happen"
       | CompositeTyd map ->
-          let n = id_map_ordinal_of_sym map bas in
-          Some (1 + n, base + 1 + n)
-  with _ -> None
+        Some (comp, bas, id_map_ordinal1_of_sym map bas)
+
+(* returns None if the party does not serve a basic adversarial
+   interface; otherwise returns Some (comp, bas, i, j), where [comp;
+   bas] is the basic direct interface served by the party, and i is
+   the port index for adversarial messages to/from the party, and j is
+   the corresponding adversarial port index *)
+
+let get_adv_info_of_party_of_real_fun
+    (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
+    (pty : symbol) : (symbol * symbol * int * int) option =
+  match get_adv_basic_inter_of_party_of_real_fun ft pty with
+  | None     -> None
+  | Some bas ->
+      let comp = oget (id_adv_inter_of_fun_tyd ft) in
+      let ibt =
+        unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
+        match ibt with
+        | BasicTyd _       -> failure "cannot happen"
+        | CompositeTyd map ->
+            let n = id_map_ordinal_of_sym map bas in
+            Some (comp, bas, 1 + n, base + 1 + n)
 
 let get_internal_pi_of_party_of_real_fun (ft : fun_tyd) (pty : symbol) : int =
   1 + party_ord_of_real_fun_tyd ft pty
