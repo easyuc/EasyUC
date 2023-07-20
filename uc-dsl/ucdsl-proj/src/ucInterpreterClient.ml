@@ -71,7 +71,22 @@ let cmd_name () =
 
 let interpret (lexbuf : L.lexbuf) =
 
+  let print_state () : unit =
+    let c = currs() in
+    let begpos, endpos = 
+    ((string_of_int c.cmd_no), (string_of_int (2 * c.cmd_no))) in
+    begin match c.root with
+    | Some f ->
+      let filenam = f^".uc" in
+      print_endline ("UC file position: "^(filenam)^" "^begpos^" "^endpos^";")
+    | None -> ()
+    end
+    ;
+    print_endline ("state:"^(string_of_int c.cmd_no)^";")
+  in
+
   let prompt () : unit =
+    print_state();
     print_prompt()
   in
 
