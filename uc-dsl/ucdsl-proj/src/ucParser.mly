@@ -100,7 +100,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
     [ `Exclude | `Include | `Only] * psymbol
 
   type pi = [
-    | `DBHINT of pdbhint
+    | `DBHINT of EcParsetree.pdbhint
     | `INT    of int
     | `PROVER of prover list
   ]
@@ -113,8 +113,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
     | `MAXPROVERS     of int
     | `PROVER         of prover list
     | `TIMEOUT        of int
-    | `UNWANTEDLEMMAS of pdbhint
-    | `WANTEDLEMMAS   of pdbhint
+    | `UNWANTEDLEMMAS of EcParsetree.pdbhint
+    | `WANTEDLEMMAS   of EcParsetree.pdbhint
     | `VERBOSE        of int option
     | `VERSION        of [ `Full | `Lazy ]
     | `DUMPIN         of string located
@@ -124,8 +124,9 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
   module SMT : sig
     val mk_pi_option  : psymbol -> pi option -> smt
-    val mk_smt_option : smt list -> pprover_infos
+    val mk_smt_option : smt list -> EcParsetree.pprover_infos
   end = struct
+    open EcParsetree
     let option_matching tomatch =
       let match_option = String.option_matching tomatch in
       fun s ->
@@ -1239,14 +1240,13 @@ dollar_or_at :
   | DOLLAR { true  }
   | AT     { false }
 
-
 (* prover command *)
 
 dbmap1:
   | f = dbmap_flag? x = dbmap_target
-      { { pht_flag    = odfl `Include f;
-          pht_kind    = (fst x);
-          pht_name    = (snd x); } }
+      { { EcParsetree.pht_flag = odfl `Include f;
+          EcParsetree.pht_kind = (fst x);
+          EcParsetree.pht_name = (snd x); } }
 
 %inline dbmap_flag:
   | PLUS  { `Include }

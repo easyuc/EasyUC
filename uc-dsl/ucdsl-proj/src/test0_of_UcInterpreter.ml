@@ -10,9 +10,9 @@ let rw0 = ((fst rf0),(snd rf0),[(RWA_Real rw1);(RWA_Real rw2)])
 
 let if0 = (("Root1","IF"), 1)
 
-let sim0 = (("Root1","Sim"), 1)
-let sim2 = (("Root3","Sim"), 15)
-let sim1 = (("Root2","Sim"), 10)
+let sim0 = (("Root1","Sim"), 1, [3; 5; 10; 5; 10; 11])
+let sim2 = (("Root3","Sim"), 15, [3; 5])
+let sim1 = (("Root2","Sim"), 10, [4; 10])
 
 let iw =
 {
@@ -68,6 +68,10 @@ let test_fun_expr_to_worlds_1 (): unit =
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
   test_fun_expr_to_worlds [smc2_dir] smc2 fe
 
+let test_fun_expr_to_worlds_2 (): unit =
+  let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEIdeal), SMC.SMCReal(KeyExchange.KEReal))" in
+  test_fun_expr_to_worlds [smc2_dir] smc2 fe
+
 (*********)
 
 let parse_sent_msg_expr (sme : string) : UcSpec.sent_msg_expr =
@@ -106,6 +110,8 @@ let () =
   test_fun_expr_to_worlds_0 ();
   print_endline "";
   test_fun_expr_to_worlds_1 ();
+  print_endline "";
+  test_fun_expr_to_worlds_2 ();
   print_endline "";
   test_sent_msg_expr0_pos ();
   print_endline "";

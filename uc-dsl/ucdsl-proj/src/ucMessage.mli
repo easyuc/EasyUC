@@ -41,21 +41,44 @@ val error_message_exit : EcLocation.t -> (formatter -> unit) -> 'a
 val warning_message : EcLocation.t -> (formatter -> unit) -> unit
 
 (* issue a non-located error message on the standard error output, and
-   then raise ErrorMessageExn; the second argument is used to do
-   formatted outputs to Format.err_formatter to output the body of the
+   then raise ErrorMessageExn; the argument is used to do formatted
+   outputs to Format.err_formatter to output the body of the
    message *)
 
 val non_loc_error_message : (formatter -> unit) -> 'a
 
 (* issue a non-located error message on the standard error output, and
-   then exit with status 1; the second argument is used to do
-   formatted outputs to Format.err_formatter to output the body of the
+   then exit with status 1; the argument is used to do formatted
+   outputs to Format.err_formatter to output the body of the
    message *)
 
 val non_loc_error_message_exit : (formatter -> unit) -> 'a
 
 (* issue a non-located warning message on the standard error output;
-   the second argument is used to do formatted outputs to
+   the argument is used to do formatted outputs to
    Format.err_formatter to output the body of the message *)
 
 val non_loc_warning_message : (formatter -> unit) -> unit
+
+(* issue a possibly located error message on the standard error
+   output, and then raise ErrorMessageExn; the second argument is used
+   to do formatted outputs to Format.err_formatter to output the body
+   of the message *)
+
+val pos_loc_error_message :
+      EcLocation.t option -> (formatter -> unit) -> 'a
+
+(* issue a possibly located error message on the standard error
+   output, and then exit with status 1; the second argument is used to
+   do formatted outputs to Format.err_formatter to output the body of
+   the message *)
+
+val pos_loc_error_message_exit :
+      EcLocation.t option -> (formatter -> unit) -> 'a
+
+(* issue a possibly located warning message on the standard error
+   output; the second argument is used to do formatted outputs to
+   Format.err_formatter to output the body of the message *)
+
+val pos_loc_warning_message :
+      EcLocation.t option -> (formatter -> unit) -> unit

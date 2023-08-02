@@ -15,24 +15,52 @@ open UcTypedSpec
 open UcSpecTypedSpecCommon
 open UcTypecheck
 
-(* the (positive) ints in a real_world, are the base adverserial port
-   indices for the unit of the given functionality; these will also be
-   the adversarial port indices for communication between the unit's
-   ideal functionality and simulator *)
+(* the values of type int in a real world are positive numbers with
+   different interpretations depending upon whether the functionality
+   is real or ideal
+
+   with a real functionality, it is the base adversarial port index of
+   the functionality's unit, which will be the port index of the
+   adversary that the ideal functionality of the unit uses to
+   communicate with its simulator (note that this ideal functionality
+   will be implicit - an argument of the application of the real
+   functionality simulated by the simulator)
+
+   with an ideal functionality, it is the adversarial port index
+   by which it communicates with the adversary (it will have no
+   corresponding simulator) *)
 
 type real_world = symb_pair * int * real_world_arg list
 
 and real_world_arg =
-  | RWA_Real  of real_world
-  | RWA_Ideal of symb_pair * int
+  | RWA_Real  of real_world       (* a real functionality *)
+  | RWA_Ideal of symb_pair * int  (* an ideal functionality *)
 
-(* the (positive) ints in an ideal_world are the port indices for
-   communication between ideal functionalities and simulators *)
+let adv_pi_of_rwa (rwa : real_world_arg) : int =
+  match rwa with
+  | RWA_Real (_, i, _) -> i
+  | RWA_Ideal (_, i)   -> i
+
+(* the ideal functionality is tagged with the adversarial port index
+   of its simulator (the main one) - the second component of the data
+   associated with the main simulator
+
+   the second components of the data of the other simulators are their
+   adversarial port indices - but their corresponding ideal
+   functionalities will be implicit
+
+   the third component of the data associated with a simulator
+   consists of the adversarial port indices used by ideal
+   functionalities that are arguments to the application of the real
+   functionality that the simulator is simulating (used by an ideal
+   functionality to either communicate with its simulator or with the
+   adversary); the are listed in the order of the parameters of the
+   real functionality *)
 
 type ideal_world = {
   iw_ideal_func : symb_pair * int;
-  iw_main_sim   : symb_pair * int;
-  iw_other_sims : (symb_pair * int) list
+  iw_main_sim   : symb_pair * int * int list;
+  iw_other_sims : (symb_pair * int * int list) list
 }
 
 type worlds = {
@@ -41,56 +69,67 @@ type worlds = {
 }
 
 let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
-  let pp_symb_pair_int (fmt : Format.formatter) (sp,i : symb_pair * int) 
-  : unit =
-    Format.fprintf fmt "@[%s.%s:%i@]" (fst sp) (snd sp) i
-  in
+  let pp_int (fmt : Format.formatter) (i : int) : unit =
+    fprintf fmt "%d" i in
+  let pp_paren_int_list (fmt : Format.formatter) (is : int list) : unit =
+    if List.is_empty is
+    then ()
+    else Format.fprintf fmt "(@[%a@])"
+         (EcPrinting.pp_list ",@, " pp_int) is in
+  let pp_symb_pair_int (fmt : Format.formatter) (sp, i : symb_pair * int) 
+        : unit =
+    Format.fprintf fmt "@[%s.%s:%i@]" (fst sp) (snd sp) i in
+  let pp_symb_pair_int_int_list
+      (fmt : Format.formatter) (sp, i, is : symb_pair * int * int list)
+        : unit =
+    Format.fprintf fmt "@[%s.%s:%i@,%a@]" (fst sp) (snd sp) i
+    pp_paren_int_list is in
+
   let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg) 
-  : unit =
+            : unit =
     match rwa with
-    | RWA_Real rw -> Format.fprintf fmt "%a" pp_real_world rw
-    | RWA_Ideal (sp,i) -> Format.fprintf fmt "%a" pp_symb_pair_int (sp,i)
+    | RWA_Real rw      -> Format.fprintf fmt "%a" pp_real_world rw
+    | RWA_Ideal (sp,i) -> Format.fprintf fmt "%a" pp_symb_pair_int (sp, i)
   and pp_real_world_argl (fmt : Format.formatter) (rwal : real_world_arg list)
-  : unit =
+        : unit =
     match rwal with
-    | [] -> Format.fprintf fmt ""
-    | rwa::[] ->
+    | []        -> Format.fprintf fmt ""
+    | rwa :: [] ->
       Format.fprintf fmt "%a" 
         pp_real_world_arg rwa
-    | rwa::tl ->
+    | rwa :: tl ->
       Format.fprintf fmt "%a,@ %a"
         pp_real_world_arg rwa 
         pp_real_world_argl tl
   and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
-    let sp,i,rwal = rw in
+    let sp, i, rwal = rw in
     match rwal with
     | [] ->
       Format.fprintf fmt "@[%a@]" 
-        pp_symb_pair_int (sp,i) 
-    | _ ->
+        pp_symb_pair_int (sp, i) 
+    | _  ->
       Format.fprintf fmt "@[<hv>%a@,(@[%a@])@]" 
-        pp_symb_pair_int (sp,i) 
-        pp_real_world_argl rwal
-  in
-  let rec pp_simsl (fmt : Format.formatter) (spil : (symb_pair * int) list)
-  : unit =
+        pp_symb_pair_int (sp, i) 
+        pp_real_world_argl rwal in
+
+  let rec pp_simsl (fmt : Format.formatter)
+          (spil : (symb_pair * int * int list) list) : unit =
     match spil with
-    | [] -> 
+    | []        -> 
       Format.fprintf fmt ""
-    | [spi] ->
+    | [spi]     ->
       Format.fprintf fmt " *@ %a"
-        pp_symb_pair_int spi
-    | spi::tl -> 
+        pp_symb_pair_int_int_list spi
+    | spi :: tl -> 
       Format.fprintf fmt " *@ %a%a"
-        pp_symb_pair_int spi
-        pp_simsl tl
-  in
+        pp_symb_pair_int_int_list spi
+        pp_simsl tl in
+
   let pp_ideal_world (fmt : Format.formatter) (iw : ideal_world) : unit =
     Format.fprintf fmt "@[<hv>%a /@ @[%a%a@]@]"
       pp_symb_pair_int iw.iw_ideal_func
-      pp_symb_pair_int iw.iw_main_sim
-      pp_simsl iw.iw_other_sims
-  in
+      pp_symb_pair_int_int_list iw.iw_main_sim
+      pp_simsl iw.iw_other_sims in
   Format.fprintf fmt "@[%a ~@ %a@]@." 
     pp_real_world w.worlds_real 
     pp_ideal_world w.worlds_ideal
@@ -106,46 +145,37 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
   let pp_msg_dir (fmt : Format.formatter) (dir : msg_dir) : unit =
     let s = match dir with
       | In   -> "Incoming"
-      | Out  -> "Outgoing"
-    in
-    Format.fprintf fmt "%s" s
-  in
+      | Out  -> "Outgoing" in
+    Format.fprintf fmt "%s" s in
   let pp_msg_mode (fmt : Format.formatter) (mode : msg_mode) : unit =
     let s = match mode with
       | Dir -> "direct"
-      | Adv -> "adversarial"
-    in
-    Format.fprintf fmt "%s message:" s
-  in
+      | Adv -> "adversarial" in
+    Format.fprintf fmt "%s message:" s in
   let pp_msg (fmt : Format.formatter) 
       (a : form * msg_path_u * form list * form) : unit =
-    let inp,path,args,outp = a in
+    let inp, path, args, outp = a in
     let pp_portform (fmt : Format.formatter) (f : form) : unit =
       if is_local f
       then Format.fprintf fmt "%a" pp_form f
-      else Format.fprintf fmt "(%a)" pp_form f
-    in
+      else Format.fprintf fmt "(%a)" pp_form f in
     let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
       let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
         match strl with
-        | [] -> Format.fprintf fmt ""
+        | []    -> Format.fprintf fmt ""
         | s::[] -> Format.fprintf fmt "%s." s
-        | s::tl -> Format.fprintf fmt "%s.%a" s pp_strl tl
-      in
-      Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg
-    in
+        | s::tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
+      Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
     let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
       match forml with
       | [] -> Format.fprintf fmt ""
       | ex::[] -> Format.fprintf fmt "@[%a@]" pp_form ex
-      | ex::tl -> Format.fprintf fmt "@[%a@]@,,%a" pp_form ex pp_forml tl
-    in
+      | ex::tl -> Format.fprintf fmt "@[%a@]@,,%a" pp_form ex pp_forml tl in
     Format.fprintf fmt "@[%a@,@[<hv>%a@]@,(@[<hv>%a@])@,%a@]"
-    pp_portform inp
-    pp_mpath path
-    pp_forml args
-    pp_portform outp
-  in
+      pp_portform inp
+      pp_mpath path
+      pp_forml args
+      pp_portform outp in
   Format.fprintf fmt "@[<hv>%a %a@ %a@]@."
     pp_msg_dir sme.dir
     pp_msg_mode sme.mode
@@ -161,8 +191,10 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
          | UI_Triple ti   ->
              let rec iter
                  (rwas : real_world_arg list) (base : int)
-                 (sims : (symb_pair * int) list) (fets : fun_expr_tyd list)
-                   : real_world_arg list * int * (symb_pair * int) list =
+                 (sims : (symb_pair * int * int list) list)
+                 (fets : fun_expr_tyd list)
+                   : real_world_arg list * int *
+                     (symb_pair * int * int list) list =
                match fets with
                | []          -> (rwas, base, sims)
                | fet :: fets ->
@@ -182,7 +214,9 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
              ({worlds_real  = ((root, fun_id), base, rwas);
                worlds_ideal =
                  {iw_ideal_func = ((root, ti.ti_ideal), base);
-                  iw_main_sim   = ((root, ti.ti_sim), base);
+                  iw_main_sim   =
+                    ((root, ti.ti_sim), base,
+                      List.map adv_pi_of_rwa rwas);
                   iw_other_sims = sims}},
               base'))
      | FunExprTydIdeal _                    ->
@@ -360,3 +394,12 @@ let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
   then raise GCerror
   else LDecl.add_local (EcIdent.create q)
        (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
+
+type prover_infos = EcProvers.prover_infos
+
+let update_prover_infos (env : EcEnv.env) (pis : prover_infos)
+    (ppis : EcParsetree.pprover_infos) : prover_infos =
+  try EcScope.Prover.pprover_infos_to_prover_infos env pis ppis with
+  | EcScope.HiScopeError (lopt, s) ->
+      pos_loc_error_message lopt
+      (fun ppf -> fprintf ppf "prover infos error: %s" s)
