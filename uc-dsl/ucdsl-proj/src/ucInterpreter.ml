@@ -343,11 +343,14 @@ let lc_apply (lc : local_context) (e : expr) : form =
 
 type global_context = LDecl.hyps
 
-exception GCerror
+exception GCError
 
 let func_id         : EcIdent.t = EcIdent.create "func"
 let adv_id          : EcIdent.t = EcIdent.create "adv"
 let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
+
+let func_form : form = f_local func_id addr_ty
+let adv_form  : form = f_local adv_id addr_ty
 
 let gc_create (env : env) : global_context =
   let locs =
@@ -385,21 +388,183 @@ let pp_gc (ppf : formatter) (gc : global_context) : unit =
 
 let gc_add_var (gc : global_context) (q : symbol) (ty : ty) : global_context =
   if LDecl.var_exists q gc
-  then raise GCerror
+  then raise GCError
   else LDecl.add_local (EcIdent.create q) (EcBaseLogic.LD_var (ty, None)) gc
 
 let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
       : global_context =
   if LDecl.hyp_exists q gc
-  then raise GCerror
+  then raise GCError
   else LDecl.add_local (EcIdent.create q)
        (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
 
+(* prover infos *)
+
 type prover_infos = EcProvers.prover_infos
 
-let update_prover_infos (env : EcEnv.env) (pis : prover_infos)
-    (ppis : EcParsetree.pprover_infos) : prover_infos =
-  try EcScope.Prover.pprover_infos_to_prover_infos env pis ppis with
-  | EcScope.HiScopeError (lopt, s) ->
-      pos_loc_error_message lopt
-      (fun ppf -> fprintf ppf "prover infos error: %s" s)
+exception PIError of EcLocation.t option * string
+
+let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
+    (ppi : EcParsetree.pprover_infos) : prover_infos =
+  try EcScope.Prover.pprover_infos_to_prover_infos env pi ppi with
+  | EcScope.HiScopeError (lopt, s) -> raise (PIError (lopt, s))
+
+(* configurations *)
+
+type state = {  (* of ideal functionality, party or simulator *)
+  id   : symbol;    (* name of state *)
+  args : form list  (* arguments of state *)
+}
+
+let state_no_args (id : symbol) = {id = id; args = []}
+
+type real_state = state IdMap.t  (* map from party names to their states *)
+
+type ideal_state = state
+
+type fun_state =
+  | RealState  of real_state
+  | IdealState of ideal_state
+
+module IL =  (* domain: int list *)
+  struct
+    type t = int list
+    let compare = Stdlib.compare
+  end
+
+module ILMap = Map.Make(IL)
+
+(* relative addresses into real worlds are lists of integers, where []
+   is the address of the base of the real world, and at each level we
+   first index the real world arguments in order beginning at 1, and
+   then -- in the case of a real functionality -- index the
+   subfunctionalities in the lexicographic order of their names *)
+
+type real_world_state = fun_state ILMap.t
+
+(* addr will be None iff state is the simulator's initial state;
+   otherwise, it'll be the address (type addr) of the real
+   functionality being simulated *)
+
+type sim_state = {
+  addr  : form option;
+  state : state
+}
+
+type ideal_world_state = {
+  ideal_state       : ideal_state;
+  main_sim_state    : sim_state;
+  other_sims_states : sim_state list
+}
+
+type config =
+  | ConfigGen  of maps_tyd * worlds * env
+  | ConfigReal  of
+      maps_tyd * real_world * global_context * prover_infos *
+      real_world_state
+  | ConfigIdeal of
+      maps_tyd * ideal_world * global_context * prover_infos *
+      ideal_world_state
+
+exception ConfigError
+
+let create_config (maps : maps_tyd) (w : worlds) (env : env) : config =
+  ConfigGen (maps, w, env)
+
+let initial_real_world_state (maps : maps_tyd) (rw : real_world)
+      : real_world_state =    
+  let init_of_parties (pts : party_tyd IdMap.t) (addr : int list)
+        : int list * fun_state =
+    (addr,
+     RealState
+     (IdMap.map
+      (fun (pt : party_tyd) ->
+         state_no_args (initial_state_id_of_party_tyd pt))
+      pts)) in
+  let init_of_subfuns (subs : symb_pair IdMap.t) (nargs : int)
+      (addr : int list) : (int list * fun_state) list =
+    let sps = List.map snd (IdMap.bindings subs) in
+    List.mapi
+    (fun i sp ->
+       (addr @ [1 + nargs + i],
+        IdealState
+         (state_no_args
+          (initial_state_id_of_ideal_fun_tyd
+           (IdPairMap.find sp maps.fun_map)))))
+    sps in
+  let rec init_of_rw ((sp, _, rwas) : real_world) (addr : int list)
+        : (int list * fun_state) list =
+    let rfbt =
+      real_fun_body_tyd_of (unloc (IdPairMap.find sp maps.fun_map)) in
+    [init_of_parties rfbt.parties addr] @
+    init_of_subfuns rfbt.sub_funs (IdMap.cardinal rfbt.params) addr @
+    List.concat
+    (List.mapi (fun i rwa -> init_of_rwa rwa (addr @ [i + 1])) rwas)
+  and init_of_rwa (rwa : real_world_arg) (addr : int list)
+        : (int list * fun_state) list =
+    match rwa with
+    | RWA_Real rw       -> init_of_rw rw addr
+    | RWA_Ideal (sp, _) ->
+        [(addr,
+          IdealState
+          (state_no_args
+           (initial_state_id_of_ideal_fun_tyd
+            (IdPairMap.find sp maps.fun_map))))] in
+  let bindings = init_of_rw rw [] in
+  List.fold_left
+  (fun mp (addr, fs) -> ILMap.add addr fs mp)
+  ILMap.empty bindings
+
+let real_of_init_config (conf : config) (maps : maps_tyd) : config =
+  match conf with
+  | ConfigGen (maps, w, env) ->
+      let gc     = gc_create env in
+      let pi     = EcProvers.dft_prover_infos in
+      let states = initial_real_world_state maps w.worlds_real in
+      ConfigReal (maps, w.worlds_real, gc, pi, states)
+  | _                        -> raise ConfigError
+
+let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
+      : ideal_world_state =
+  let ideal_state =
+    state_no_args
+    (initial_state_id_of_ideal_fun_tyd
+     (IdPairMap.find (fst iw.iw_ideal_func) maps.fun_map)) in
+  let main_sim_state =
+    {addr  = None;
+     state =
+       state_no_args
+       (initial_state_id_of_sim_tyd
+        (IdPairMap.find (proj3_1 iw.iw_main_sim) maps.sim_map))} in
+  let other_sims_states =
+    List.map
+    (fun (sp, _, _) ->
+       {addr  = None;
+        state =
+          state_no_args
+          (initial_state_id_of_sim_tyd
+           (IdPairMap.find sp maps.sim_map))})
+    iw.iw_other_sims in
+  {ideal_state       = ideal_state;
+   main_sim_state    = main_sim_state;
+   other_sims_states = other_sims_states}
+
+let ideal_of_init_config (conf : config) (maps : maps_tyd) : config =
+  match conf with
+  | ConfigGen (maps, w, env) ->
+      let gc = gc_create env in
+      let pi = EcProvers.dft_prover_infos in
+      let iws = initial_ideal_world_state maps w.worlds_ideal in
+      ConfigIdeal (maps, w.worlds_ideal, gc, pi, iws)
+  | _                        -> raise ConfigError
+
+let update_prover_infos_of_real_or_ideal_config (conf : config)
+    (ppi : EcParsetree.pprover_infos) : config =
+  match conf with
+  | ConfigReal (maps, real, gc, pi, rws)   ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigReal (maps, real, gc, pi, rws)
+  | ConfigIdeal (maps, ideal, gc, pi, iws) ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigIdeal (maps, ideal, gc, pi, iws)
+  | _                                      -> raise ConfigError

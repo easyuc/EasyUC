@@ -289,6 +289,12 @@ let vars_map_to_domain (mp : (EcIdent.t * ty) located IdMap.t) : IdSet.t =
 
 type state_tyd = state_body_tyd located  (* typed state *)
 
+let initial_state_id_of_states (states : state_tyd IdMap.t) : symbol =
+  fst
+  (List.hd
+   (IdMap.bindings
+    (IdMap.filter (fun _ state -> (unloc state).is_initial) states)))
+
 type party_body_tyd =
   {serves : symbol list located list;  (* what interfaces served by party *)
    states : state_tyd IdMap.t}         (* state machine *)
@@ -297,6 +303,9 @@ type party_tyd = party_body_tyd located  (* typed party *)
 
 let state_of_party_tyd (pt : party_tyd) (st : symbol) : state_tyd =
   IdMap.find st (unloc pt).states
+
+let initial_state_id_of_party_tyd (pt : party_tyd) : symbol =
+  initial_state_id_of_states ((unloc pt).states)
 
 type real_fun_body_tyd =
   {params       : (symb_pair * int) IdMap.t;  (* names of composite direct
@@ -421,6 +430,10 @@ let party_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let bndgs = IdMap.bindings rfbt.parties in
   fst (List.nth bndgs n)
 
+let initial_state_id_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
+  let states = (ideal_fun_body_tyd_of (unloc ft)).states in
+  initial_state_id_of_states states
+
 type sim_body_tyd =
   {uses : symbol;                       (* basic adversarial interface
                                            from ideal functionality - with
@@ -434,6 +447,10 @@ type sim_body_tyd =
    states : state_tyd IdMap.t}          (* state machine *)
 
 type sim_tyd = sim_body_tyd located  (* simulator *)
+
+let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
+  let states = (unloc st).states in
+  initial_state_id_of_states states
 
 (* four identifer pair (more precisely, pairs of symbols) maps for
    direct and adversarial interfaces, functionalities and simulators;
