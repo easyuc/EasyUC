@@ -76,7 +76,7 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
     then ()
     else Format.fprintf fmt "(@[%a@])"
          (EcPrinting.pp_list ",@, " pp_int) is in
-  let pp_symb_pair_int (fmt : Format.formatter) (sp, i : symb_pair * int) 
+  let pp_symb_pair_int (fmt : Format.formatter) (sp, i : symb_pair * int)
         : unit =
     Format.fprintf fmt "@[%s.%s:%i@]" (fst sp) (snd sp) i in
   let pp_symb_pair_int_int_list
@@ -85,7 +85,7 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
     Format.fprintf fmt "@[%s.%s:%i@,%a@]" (fst sp) (snd sp) i
     pp_paren_int_list is in
 
-  let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg) 
+  let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg)
             : unit =
     match rwa with
     | RWA_Real rw      -> Format.fprintf fmt "%a" pp_real_world rw
@@ -95,32 +95,32 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
     match rwal with
     | []        -> Format.fprintf fmt ""
     | rwa :: [] ->
-      Format.fprintf fmt "%a" 
+      Format.fprintf fmt "%a"
         pp_real_world_arg rwa
     | rwa :: tl ->
       Format.fprintf fmt "%a,@ %a"
-        pp_real_world_arg rwa 
+        pp_real_world_arg rwa
         pp_real_world_argl tl
   and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
     let sp, i, rwal = rw in
     match rwal with
     | [] ->
-      Format.fprintf fmt "@[%a@]" 
-        pp_symb_pair_int (sp, i) 
+      Format.fprintf fmt "@[%a@]"
+        pp_symb_pair_int (sp, i)
     | _  ->
-      Format.fprintf fmt "@[<hv>%a@,(@[%a@])@]" 
-        pp_symb_pair_int (sp, i) 
+      Format.fprintf fmt "@[<hv>%a@,(@[%a@])@]"
+        pp_symb_pair_int (sp, i)
         pp_real_world_argl rwal in
 
   let rec pp_simsl (fmt : Format.formatter)
           (spil : (symb_pair * int * int list) list) : unit =
     match spil with
-    | []        -> 
+    | []        ->
       Format.fprintf fmt ""
     | [spi]     ->
       Format.fprintf fmt " *@ %a"
         pp_symb_pair_int_int_list spi
-    | spi :: tl -> 
+    | spi :: tl ->
       Format.fprintf fmt " *@ %a%a"
         pp_symb_pair_int_int_list spi
         pp_simsl tl in
@@ -130,8 +130,8 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
       pp_symb_pair_int iw.iw_ideal_func
       pp_symb_pair_int_int_list iw.iw_main_sim
       pp_simsl iw.iw_other_sims in
-  Format.fprintf fmt "@[%a ~@ %a@]@." 
-    pp_real_world w.worlds_real 
+  Format.fprintf fmt "@[%a ~@ %a@]@."
+    pp_real_world w.worlds_real
     pp_ideal_world w.worlds_ideal
 
 let pp_form (fmt : Format.formatter) (f : form) : unit =
@@ -140,7 +140,7 @@ let pp_form (fmt : Format.formatter) (f : form) : unit =
   let pp_form = EcPrinting.pp_form ppe in
   pp_form fmt f
 
-let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd) 
+let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
       : unit =
   let pp_msg_dir (fmt : Format.formatter) (dir : msg_dir) : unit =
     let s = match dir with
@@ -152,7 +152,7 @@ let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
       | Dir -> "direct"
       | Adv -> "adversarial" in
     Format.fprintf fmt "%s message:" s in
-  let pp_msg (fmt : Format.formatter) 
+  let pp_msg (fmt : Format.formatter)
       (a : form * msg_path_u * form list * form) : unit =
     let inp, path, args, outp = a in
     let pp_portform (fmt : Format.formatter) (f : form) : unit =
@@ -472,7 +472,7 @@ let create_config (maps : maps_tyd) (w : worlds) (env : env) : config =
   ConfigGen (maps, w, env)
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
-      : real_world_state =    
+      : real_world_state =
   let init_of_parties (pts : party_tyd IdMap.t) (addr : int list)
         : int list * fun_state =
     (addr,
