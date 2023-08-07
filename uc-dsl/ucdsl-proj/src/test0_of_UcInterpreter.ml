@@ -1,5 +1,7 @@
-open UcInterpreter
 
+(* TODO - update this to work with configurations
+
+open UcInterpreter
 let rf0 = (("Root1","RF"), 1)
 let rf1 = (("Root2","RF"), 10)
 let rf2 = (("Root3","RF"), 15)
@@ -117,3 +119,4 @@ let () =
   print_endline "";
   test_sent_msg_expr0_neg ();
   print_endline ""
+*)

@@ -74,6 +74,7 @@ val unify_or_fail :
 type typolicy  (* how should "_" and type variables be treated? *)
 
 val tp_relax   : typolicy  (* allows both "_" and type variables *)
+val tp_tydecl  : typolicy  (* allows only type variables *)
 val tp_nothing : typolicy  (* allows neither "_" nor type variables *)
 
 (* given an environment and type policy, translate a type from

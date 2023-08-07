@@ -815,3 +815,62 @@ type sent_msg_expr_tyd =
    path          : msg_path_u;  (* message path *)
    args          : form list;   (* message arguments *)
    out_port_form : form}        (* destination *)
+
+let pp_form (fmt : Format.formatter) (f : form) : unit =
+  let env = UcEcInterface.env() in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let pp_form = EcPrinting.pp_form ppe in
+  pp_form fmt f
+
+let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
+      : unit =
+  let pp_msg_dir (fmt : Format.formatter) (dir : msg_dir) : unit =
+    let s = match dir with
+      | In   -> "Incoming"
+      | Out  -> "Outgoing" in
+    Format.fprintf fmt "%s" s in
+  let pp_msg_mode (fmt : Format.formatter) (mode : msg_mode) : unit =
+    let s = match mode with
+      | Dir -> "direct"
+      | Adv -> "adversarial" in
+    Format.fprintf fmt "%s message:" s in
+  let pp_msg (fmt : Format.formatter)
+      (a : form * msg_path_u * form list * form) : unit =
+    let inp, path, args, outp = a in
+    let pp_portform (fmt : Format.formatter) (f : form) : unit =
+      if is_local f
+      then Format.fprintf fmt "%a" pp_form f
+      else Format.fprintf fmt "(%a)" pp_form f in
+    let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
+      let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
+        match strl with
+        | []    -> Format.fprintf fmt ""
+        | s::[] -> Format.fprintf fmt "%s." s
+        | s::tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
+      Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
+    let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
+      match forml with
+      | [] -> Format.fprintf fmt ""
+      | ex::[] -> Format.fprintf fmt "@[%a@]" pp_form ex
+      | ex::tl -> Format.fprintf fmt "@[%a@]@,,%a" pp_form ex pp_forml tl in
+    Format.fprintf fmt "@[%a@,@[<hv>%a@]@,(@[<hv>%a@])@,%a@]"
+      pp_portform inp
+      pp_mpath path
+      pp_forml args
+      pp_portform outp in
+  Format.fprintf fmt "@[<hv>%a %a@ %a@]@."
+    pp_msg_dir sme.dir
+    pp_msg_mode sme.mode
+    pp_msg (sme.in_port_form, sme.path, sme.args, sme.out_port_form)
+
+(* check whether the results of pretty printing two sent message
+   expressions are equal strings *)
+
+let send_msg_expr_tyd_pp_equal
+    (sme1 : sent_msg_expr_tyd) (sme2 : sent_msg_expr_tyd) : bool =
+  let _ = Format.flush_str_formatter () in
+  let () = pp_sent_msg_expr_tyd Format.str_formatter sme1 in
+  let s1 = Format.flush_str_formatter () in
+  let () = pp_sent_msg_expr_tyd Format.str_formatter sme2 in
+  let s2 = Format.flush_str_formatter () in
+  s1 = s2

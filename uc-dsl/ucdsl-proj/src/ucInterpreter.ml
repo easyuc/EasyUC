@@ -11,8 +11,8 @@ open EcEnv
 
 open UcMessage
 open UcSpec
-open UcTypedSpec
 open UcSpecTypedSpecCommon
+open UcTypedSpec
 open UcTypecheck
 
 (* the values of type int in a real world are positive numbers with
@@ -133,53 +133,6 @@ let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
   Format.fprintf fmt "@[%a ~@ %a@]@."
     pp_real_world w.worlds_real
     pp_ideal_world w.worlds_ideal
-
-let pp_form (fmt : Format.formatter) (f : form) : unit =
-  let env = UcEcInterface.env() in
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  let pp_form = EcPrinting.pp_form ppe in
-  pp_form fmt f
-
-let pp_sent_msg_expr_tyd (fmt : Format.formatter) (sme : sent_msg_expr_tyd)
-      : unit =
-  let pp_msg_dir (fmt : Format.formatter) (dir : msg_dir) : unit =
-    let s = match dir with
-      | In   -> "Incoming"
-      | Out  -> "Outgoing" in
-    Format.fprintf fmt "%s" s in
-  let pp_msg_mode (fmt : Format.formatter) (mode : msg_mode) : unit =
-    let s = match mode with
-      | Dir -> "direct"
-      | Adv -> "adversarial" in
-    Format.fprintf fmt "%s message:" s in
-  let pp_msg (fmt : Format.formatter)
-      (a : form * msg_path_u * form list * form) : unit =
-    let inp, path, args, outp = a in
-    let pp_portform (fmt : Format.formatter) (f : form) : unit =
-      if is_local f
-      then Format.fprintf fmt "%a" pp_form f
-      else Format.fprintf fmt "(%a)" pp_form f in
-    let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
-      let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
-        match strl with
-        | []    -> Format.fprintf fmt ""
-        | s::[] -> Format.fprintf fmt "%s." s
-        | s::tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
-      Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
-    let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
-      match forml with
-      | [] -> Format.fprintf fmt ""
-      | ex::[] -> Format.fprintf fmt "@[%a@]" pp_form ex
-      | ex::tl -> Format.fprintf fmt "@[%a@]@,,%a" pp_form ex pp_forml tl in
-    Format.fprintf fmt "@[%a@,@[<hv>%a@]@,(@[<hv>%a@])@,%a@]"
-      pp_portform inp
-      pp_mpath path
-      pp_forml args
-      pp_portform outp in
-  Format.fprintf fmt "@[<hv>%a %a@ %a@]@."
-    pp_msg_dir sme.dir
-    pp_msg_mode sme.mode
-    pp_msg (sme.in_port_form, sme.path, sme.args, sme.out_port_form)
 
 let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
   let rec fun_expr_to_worlds_base (fet : fun_expr_tyd) (base : int)
@@ -343,8 +296,6 @@ let lc_apply (lc : local_context) (e : expr) : form =
 
 type global_context = LDecl.hyps
 
-exception GCError
-
 let func_id         : EcIdent.t = EcIdent.create "func"
 let adv_id          : EcIdent.t = EcIdent.create "adv"
 let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
@@ -386,28 +337,61 @@ let pp_gc (ppf : formatter) (gc : global_context) : unit =
   let locs = List.rev (LDecl.tohyps gc).h_local in
   EcPrinting.pp_list "@, " (pp_loc ppe) ppf locs
 
-let gc_add_var (gc : global_context) (q : symbol) (ty : ty) : global_context =
-  if LDecl.var_exists q gc
-  then raise GCError
-  else LDecl.add_local (EcIdent.create q) (EcBaseLogic.LD_var (ty, None)) gc
-
-let gc_add_hyp (gc : global_context) (q : symbol) (expr : expr)
+let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
       : global_context =
-  if LDecl.hyp_exists q gc
-  then raise GCError
-  else LDecl.add_local (EcIdent.create q)
-       (EcBaseLogic.LD_hyp (form_of_expr mhr expr)) gc
+  let l = loc id in
+  let id = unloc id in
+  if LDecl.var_exists id gc
+  then error_message l
+       (fun ppf ->
+          fprintf ppf
+          ("@[identifier@ is@ already@ bound@ in@ global@ " ^^
+           "context:@ %s@]")
+          id)
+  else try
+         let env = LDecl.toenv gc in
+         let ue = EcUnify.UniEnv.create None in
+         let ty =
+           UcTransTypesExprs.transty UcTransTypesExprs.tp_nothing env ue pty in
+         LDecl.add_local (EcIdent.create id)
+         (EcBaseLogic.LD_var (ty, None)) gc
+       with
+       | UcTransTypesExprs.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
+
+let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
+      : global_context =
+  let l = loc id in
+  let id = unloc id in
+  if LDecl.hyp_exists id gc
+  then error_message l
+       (fun ppf ->
+          fprintf ppf
+          ("@[@identifier@ is@ already@ bound@ in@ global@ " ^^
+           "context:@ %s@]")
+          id)
+  else try
+         let env = LDecl.toenv gc in
+         let ue = EcUnify.UniEnv.create None in
+         let (exp, _) = UcTransTypesExprs.transexp env ue pexpr in
+         LDecl.add_local (EcIdent.create id)
+         (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc
+       with
+       | UcTransTypesExprs.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
 
 (* prover infos *)
 
 type prover_infos = EcProvers.prover_infos
 
-exception PIError of EcLocation.t option * string
-
 let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
     (ppi : EcParsetree.pprover_infos) : prover_infos =
   try EcScope.Prover.pprover_infos_to_prover_infos env pi ppi with
-  | EcScope.HiScopeError (lopt, s) -> raise (PIError (lopt, s))
+  | EcScope.HiScopeError (lopt, s) ->
+      opt_loc_error_message lopt
+      (fun ppf -> fprintf ppf "prover infos error: %s" s)
 
 (* configurations *)
 
@@ -458,18 +442,120 @@ type ideal_world_state = {
 }
 
 type config =
-  | ConfigGen  of maps_tyd * worlds * env
-  | ConfigReal  of
-      maps_tyd * real_world * global_context * prover_infos *
+  | ConfigGen          of maps_tyd * global_context * prover_infos * worlds
+  | ConfigReal         of
+      maps_tyd * global_context * prover_infos * real_world *
       real_world_state
-  | ConfigIdeal of
-      maps_tyd * ideal_world * global_context * prover_infos *
+  | ConfigIdeal        of
+      maps_tyd * global_context * prover_infos * ideal_world *
       ideal_world_state
+  | ConfigRealRunning  of
+      maps_tyd * global_context * prover_infos * real_world *
+      real_world_state * local_context * instruction_tyd list located
+  | ConfigIdealRunning of
+      maps_tyd * global_context * prover_infos * ideal_world *
+      ideal_world_state * local_context * instruction_tyd list located
+
+let pp_config (fmt : Format.formatter) (conf : config) : unit =
+  failure "fill in"
 
 exception ConfigError
 
-let create_config (maps : maps_tyd) (w : worlds) (env : env) : config =
-  ConfigGen (maps, w, env)
+let create_config (root : symbol) (maps : maps_tyd) (env : env)
+    (fe : fun_expr) : config =
+  let fet = inter_check_real_fun_expr root maps fe in
+  let w = fun_expr_tyd_to_worlds maps fet in
+  let gc = gc_create env in
+  let pi = EcProvers.dft_prover_infos in
+  ConfigGen (maps, gc, pi, w)
+
+let is_gen_config (conf : config) : bool =
+  match conf with
+  | ConfigGen _ -> true
+  | _           -> false
+
+let is_real_config (conf : config) : bool =
+  match conf with
+  | ConfigReal _ -> true
+  | _            -> false
+
+let is_ideal_config (conf : config) : bool =
+  match conf with
+  | ConfigIdeal _ -> true
+  | _             -> false
+
+let is_real_running_config (conf : config) : bool =
+  match conf with
+  | ConfigRealRunning _ -> true
+  | _                   -> false
+
+let is_ideal_running_config (conf : config) : bool =
+  match conf with
+  | ConfigIdealRunning _ -> true
+  | _                    -> false
+
+let env_of_config (conf : config) : env =
+  match conf with
+  | ConfigGen (_, gc, _, _)                   -> env_of_gc gc
+  | ConfigReal (_, gc, _, _, _)               -> env_of_gc gc
+  | ConfigIdeal (_, gc, _, _, _)              -> env_of_gc gc
+  | ConfigRealRunning (_, gc, _, _, _, _, _)  -> env_of_gc gc
+  | ConfigIdealRunning (_, gc, _, _, _, _, _) -> env_of_gc gc
+
+let update_prover_infos_config (conf : config)
+    (ppi : EcParsetree.pprover_infos) : config =
+  match conf with
+  | ConfigGen (maps, gc, pi, w)                            ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigGen (maps, gc, pi, w)
+  | ConfigReal (maps, gc, pi, rws, real)                   ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigReal (maps, gc, pi, rws, real)
+  | ConfigIdeal (maps, gc, pi, ideal, iws)                 ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigIdeal (maps, gc, pi, ideal, iws)
+  | ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)   ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins) ->
+      let pi = update_prover_infos (env_of_gc gc) pi ppi in
+      ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins)
+
+let add_var_to_config (conf : config) (id : psymbol) (pty : pty) : config =
+  match conf with
+  | ConfigGen (maps, gc, pi, w)                            ->
+      let gc = gc_add_var gc id pty in
+      ConfigGen (maps, gc, pi, w)
+  | ConfigReal (maps, gc, pi, rws, real)                   ->
+      let gc = gc_add_var gc id pty in
+      ConfigReal (maps, gc, pi, rws, real)
+  | ConfigIdeal (maps, gc, pi, ideal, iws)                 ->
+      let gc = gc_add_var gc id pty in
+      ConfigIdeal (maps, gc, pi, ideal, iws)
+  | ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)   ->
+      let gc = gc_add_var gc id pty in
+      ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins) ->
+      let gc = gc_add_var gc id pty in
+      ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins)
+
+let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
+  match conf with
+  | ConfigGen (maps, gc, pi, w)                            ->
+      let gc = gc_add_hyp gc id pexpr in
+      ConfigGen (maps, gc, pi, w)
+  | ConfigReal (maps, gc, pi, rws, real)                   ->
+      let gc = gc_add_hyp gc id pexpr in
+      ConfigReal (maps, gc, pi, rws, real)
+  | ConfigIdeal (maps, gc, pi, ideal, iws)                 ->
+      let gc = gc_add_hyp gc id pexpr in
+      ConfigIdeal (maps, gc, pi, ideal, iws)
+  | ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)   ->
+      let gc = gc_add_hyp gc id pexpr in
+      ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins) ->
+      let gc = gc_add_hyp gc id pexpr in
+      ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins)
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       : real_world_state =
@@ -515,14 +601,12 @@ let initial_real_world_state (maps : maps_tyd) (rw : real_world)
   (fun mp (addr, fs) -> ILMap.add addr fs mp)
   ILMap.empty bindings
 
-let real_of_init_config (conf : config) (maps : maps_tyd) : config =
+let real_of_gen_config (conf : config) (maps : maps_tyd) : config =
   match conf with
-  | ConfigGen (maps, w, env) ->
-      let gc     = gc_create env in
-      let pi     = EcProvers.dft_prover_infos in
+  | ConfigGen (maps, gc, pi, w) ->
       let states = initial_real_world_state maps w.worlds_real in
-      ConfigReal (maps, w.worlds_real, gc, pi, states)
-  | _                        -> raise ConfigError
+      ConfigReal (maps, gc, pi, w.worlds_real, states)
+  | _                           -> raise ConfigError
 
 let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
       : ideal_world_state =
@@ -549,22 +633,50 @@ let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
    main_sim_state    = main_sim_state;
    other_sims_states = other_sims_states}
 
-let ideal_of_init_config (conf : config) (maps : maps_tyd) : config =
+let ideal_of_gen_config (conf : config) (maps : maps_tyd) : config =
   match conf with
-  | ConfigGen (maps, w, env) ->
-      let gc = gc_create env in
+  | ConfigGen (maps, gc, pi, w) ->
       let pi = EcProvers.dft_prover_infos in
       let iws = initial_ideal_world_state maps w.worlds_ideal in
-      ConfigIdeal (maps, w.worlds_ideal, gc, pi, iws)
-  | _                        -> raise ConfigError
+      ConfigIdeal (maps, gc, pi, w.worlds_ideal, iws)
+  | _                           -> raise ConfigError
 
-let update_prover_infos_of_real_or_ideal_config (conf : config)
-    (ppi : EcParsetree.pprover_infos) : config =
+(* sending messages and stepping configurations *)
+
+(* exceptions for when EasyCrypt's proof engine can't solve a needed
+   goal, and consequently configuration is not changed *)
+
+exception BlockedIf                    (* step blocked on boolean expression
+                                          of if-then-else *)
+exception BlockedMatch                 (* step blocked on datatype value
+                                          being matched *)
+exception BlockedPortOrAddrComparison  (* step blocked at comparison of
+                                          port or address *)
+
+type effect =
+  | EffectStep                         (* step succeeded, and new configuration
+                                          is running *)
+  | EffectRand of EcIdent.t            (* step added ident representing
+                                          random choice to global context,
+                                          and new configuration is running *)
+  | EffectMsgOut of sent_msg_expr_tyd  (* a message was output, and new
+                                          configuration is not running *)
+  | EffectFailOut                      (* fail was output, and new
+                                          configuration is not running *)
+
+let send_message_to_real_or_ideal_config
+    (conf : config) (sme : sent_msg_expr_tyd) : config * effect =
   match conf with
-  | ConfigReal (maps, real, gc, pi, rws)   ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigReal (maps, real, gc, pi, rws)
-  | ConfigIdeal (maps, ideal, gc, pi, iws) ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdeal (maps, ideal, gc, pi, iws)
+  | ConfigReal (maps, gc, pi, rws, real)   ->
+      failure "fill in"
+  | ConfigIdeal (maps, gc, pi, ideal, iws) ->
+      failure "fill in"
   | _                                      -> raise ConfigError
+
+let step_running_real_or_ideal_config (conf : config) : config * effect =
+  match conf with
+  | ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)   ->
+      failure "fill in"
+  | ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins) ->
+      failure "fill in"
+  | _                                                      -> raise ConfigError

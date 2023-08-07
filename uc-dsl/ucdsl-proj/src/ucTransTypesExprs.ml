@@ -239,6 +239,9 @@ type typolicy = {
 (* allows both "_" and type variables *)
 let tp_relax   = { tp_uni = true ; tp_tvar = true ; }
 
+(* allows only type variables *)
+let tp_tydecl  = { tp_uni = false; tp_tvar = true ; } (* type decl. *)
+
 (* allows neither "_" nor type variables *)
 let tp_nothing = { tp_uni = false; tp_tvar = false; }
 

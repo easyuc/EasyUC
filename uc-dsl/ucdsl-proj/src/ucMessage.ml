@@ -63,10 +63,10 @@ let non_loc_error_message_exit =
 
 let non_loc_warning_message = message (fun () -> ()) WarningMessage None
 
-let pos_loc_error_message =
+let opt_loc_error_message =
   message (fun () -> raise ErrorMessageExn) ErrorMessage
 
-let pos_loc_error_message_exit =
+let opt_loc_error_message_exit =
   message (fun () -> exit 1) ErrorMessage
 
-let pos_loc_warning_message = message (fun () -> ()) WarningMessage
+let opt_loc_warning_message = message (fun () -> ()) WarningMessage

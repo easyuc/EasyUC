@@ -1,3 +1,7 @@
+(*
+TODO: update this to work with the configuration type and
+functions in ucInterpreter.ml, ucInterpreter.mli
+
 open UcSpec
 open UcLexer
 open UcMessage
@@ -305,3 +309,4 @@ let stdIOclient =
   interpret lexbuf
   
  
+*)
