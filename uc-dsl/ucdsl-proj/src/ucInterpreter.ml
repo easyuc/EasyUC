@@ -641,6 +641,12 @@ let ideal_of_gen_config (conf : config) (maps : maps_tyd) : config =
       ConfigIdeal (maps, gc, pi, w.worlds_ideal, iws)
   | _                           -> raise ConfigError
 
+let loc_of_running_config_next_instr (conf : config) : EcLocation.t =
+  match conf with
+  | ConfigRealRunning (maps, gc, pi, real, rws, lc, ins)   -> loc ins
+  | ConfigIdealRunning (maps, gc, pi, ideal, iws, lc, ins) -> loc ins
+  | _                                                      -> raise ConfigError
+
 (* sending messages and stepping configurations *)
 
 (* exceptions for when EasyCrypt's proof engine can't solve a needed

@@ -32,6 +32,8 @@ val real_of_gen_config : config -> maps_tyd -> config
 
 val ideal_of_gen_config : config -> maps_tyd -> config
 
+val loc_of_running_config_next_instr : config -> EcLocation.t
+
 (* sending messages and stepping configurations *)
 
 (* exceptions for when EasyCrypt's proof engine can't solve a needed
