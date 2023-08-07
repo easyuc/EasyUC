@@ -1,6 +1,7 @@
 (*
 TODO: update this to work with the configuration type and
 functions in ucInterpreter.ml, ucInterpreter.mli
+*)
 
 open UcSpec
 open UcLexer
@@ -36,22 +37,22 @@ let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
 
 type interpreter_state = 
   {
-    setup_complete : bool;
     cmd_no : int;
     root : string option;
     maps : maps_tyd option;
-    worlds : worlds option; 
-    w : world option(*replace with contexts etc.*)
+    fun_expr : fun_expr option; 
+    w : world option;
+    config : config option
   }
 
 let init_state : interpreter_state =
   {
-    setup_complete = false;
     cmd_no = 0;
     root = None;
     maps = None;
-    worlds =  None; 
+    fun_expr =  None; 
     w = None;
+    config = None;
   }
 
 
@@ -104,44 +105,65 @@ let interpret (lexbuf : L.lexbuf) =
       (fun ppf -> Format.fprintf ppf 
       "@[invalid@ filename@ %s,@ filename @ should@ have@ .uc@ suffix.@]" file)
     in
-    let maps = UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
-    (UcParseFile.FOID_File file) in
+    UcEcInterface.init ();
+    let maps =
+    try
+      UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
+      (UcParseFile.FOID_File file) 
+    with _ -> 
+        error_message_exit (loc psym)
+        (fun ppf -> Format.fprintf ppf 
+        "@[fatal@ error@, %s@ does@ not@ parse,@ exiting]" file)
+    in
     let c = currs() in
     let news = 
       { c with
         cmd_no = c.cmd_no+1;
         root = Some root;
         maps = Some maps;
-        worlds = None;
+        fun_expr = None;
         w = None;
+        config = None;
       } in
     push news
   in
 
   let worlds (fe : fun_expr): unit =
     let c = currs() in
-    let worlds = 
+(*    let worlds = 
       fun_expr_to_worlds (Option.get c.root) (Option.get c.maps) fe 
     in
-    pp_worlds Format.std_formatter worlds;
+    pp_worlds Format.std_formatter worlds;*)
     let news = 
       {
         c with
         cmd_no = c.cmd_no+1;
-        worlds = Some worlds;
+        fun_expr = Some fe;
         w = None;
+        config = None;
       } in
     push news
   in
 
   let world (w : world) : unit =
     let c = currs() in
+    let config = create_config 
+      (Option.get c.root)
+      (Option.get c.maps)
+      (UcEcInterface.env ())
+      (Option.get c.fun_expr)
+    in
+    let config =
+      match w with
+      | Real -> real_of_gen_config config (Option.get c.maps)
+      | Ideal -> ideal_of_gen_config config (Option.get c.maps)
+    in
     let news = 
     {
       c with
       cmd_no = c.cmd_no+1;
       w = Some w;
-      setup_complete = true;
+      config = Some config;
     } in
     push news
   in
@@ -170,7 +192,7 @@ let interpret (lexbuf : L.lexbuf) =
       {
         c with
         cmd_no = c.cmd_no+1;
-        setup_complete = false
+        config = None
       } in
     push news
   in
@@ -275,7 +297,7 @@ let rec load_loop () : unit =
     match c.root with
     | None -> load_loop()
     | Some _ ->
-      match c.worlds with
+      match c.fun_expr with
       | None -> funexp_loop()
       | Some _ -> world_loop()
   in
@@ -290,11 +312,9 @@ let rec load_loop () : unit =
 
   let rec interpreter_loop (): unit =
     prompt();
-    if (currs()).setup_complete
-    then
-      done_loop()
-    else
-      setup_loop()
+    match (currs()).config with
+    | Some _ -> done_loop()
+    | None -> setup_loop()
     ;
     interpreter_loop()
   in
@@ -304,9 +324,8 @@ let rec load_loop () : unit =
   interpreter_loop()
   
 let stdIOclient =
-  UcEcInterface.init ();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
   
  
-*)
+(**)
