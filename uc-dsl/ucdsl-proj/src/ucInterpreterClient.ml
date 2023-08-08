@@ -155,8 +155,8 @@ let interpret (lexbuf : L.lexbuf) =
     in
     let config =
       match w with
-      | Real -> real_of_gen_config config (Option.get c.maps)
-      | Ideal -> ideal_of_gen_config config (Option.get c.maps)
+      | Real -> real_of_gen_config config
+      | Ideal -> ideal_of_gen_config config
     in
     let news = 
     {
