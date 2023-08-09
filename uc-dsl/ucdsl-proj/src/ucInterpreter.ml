@@ -63,10 +63,30 @@ type ideal_world = {
   iw_other_sims : (symb_pair * int * int list) list
 }
 
+module Int =  (* domain: int *)
+  struct
+    type t = int
+    let compare = (Stdlib.compare : t -> t -> int)
+  end
+
+module IntSet = Set.Make(Int)
+
 type worlds = {
   worlds_real  : real_world;
   worlds_ideal : ideal_world
 }
+
+(* compute the adversarial port indices of a world that the environment
+   -- when communicating with the adversary / simulators + adversary --
+   may not communicate with *)
+
+let interface_input_guard_of_ideal_world (iw : ideal_world) : IntSet.t =
+  IntSet.union
+  (IntSet.singleton (proj3_2 iw.iw_main_sim))
+  (IntSet.of_list (List.map (fun (_, i, _) -> i) iw.iw_other_sims))
+
+let interface_input_guard_of_worlds (w : worlds) : IntSet.t =
+  interface_input_guard_of_ideal_world w.worlds_ideal
 
 let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
   let pp_int (fmt : Format.formatter) (i : int) : unit =
@@ -467,26 +487,26 @@ exception ConfigError
 
 type config =
   | ConfigGen          of
-      maps_tyd * global_context * prover_infos * worlds
+      maps_tyd * global_context * prover_infos * worlds * IntSet.t
   | ConfigReal         of
-      maps_tyd * global_context * prover_infos * real_world *
+      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
       real_world_state
   | ConfigIdeal        of
-      maps_tyd * global_context * prover_infos * ideal_world *
+      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
       ideal_world_state
   | ConfigRealRunning  of
-      maps_tyd * global_context * prover_infos * real_world *
+      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
       real_world_state * real_world_running_context *
       local_context * instr_interp list located
   | ConfigIdealRunning of
-      maps_tyd * global_context * prover_infos * ideal_world *
+      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
       ideal_world_state * ideal_world_running_context *
       local_context * instr_interp list located
   | ConfigRealSending  of
-      maps_tyd * global_context * prover_infos * real_world *
+      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
       real_world_state * real_world_sending_context * sent_msg_expr_tyd      
   | ConfigIdealSending of
-      maps_tyd * global_context * prover_infos * ideal_world *
+      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
       ideal_world_state * ideal_world_sending_context * sent_msg_expr_tyd      
 
 let pp_config (fmt : Format.formatter) (conf : config) : unit =
@@ -496,9 +516,10 @@ let create_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
   let fet = inter_check_real_fun_expr root maps fe in
   let w = fun_expr_tyd_to_worlds maps fet in
+  let is = interface_input_guard_of_worlds w in
   let gc = gc_create env in
   let pi = EcProvers.dft_prover_infos in
-  ConfigGen (maps, gc, pi, w)
+  ConfigGen (maps, gc, pi, w, is)
 
 let is_gen_config (conf : config) : bool =
   match conf with
@@ -537,86 +558,86 @@ let is_ideal_sending_config (conf : config) : bool =
 
 let env_of_config (conf : config) : env =
   match conf with
-  | ConfigGen (_, gc, _, _)                      -> env_of_gc gc
-  | ConfigReal (_, gc, _, _, _)                  -> env_of_gc gc
-  | ConfigIdeal (_, gc, _, _, _)                 -> env_of_gc gc
-  | ConfigRealRunning (_, gc, _, _, _, _, _, _)  -> env_of_gc gc
-  | ConfigIdealRunning (_, gc, _, _, _, _, _, _) -> env_of_gc gc
-  | ConfigRealSending (_, gc, _, _, _, _, _)     -> env_of_gc gc
-  | ConfigIdealSending (_, gc, _, _, _, _, _)    -> env_of_gc gc
+  | ConfigGen (_, gc, _, _, _)                      -> env_of_gc gc
+  | ConfigReal (_, gc, _, _, _, _)                  -> env_of_gc gc
+  | ConfigIdeal (_, gc, _, _, _, _)                 -> env_of_gc gc
+  | ConfigRealRunning (_, gc, _, _, _, _, _, _, _)  -> env_of_gc gc
+  | ConfigIdealRunning (_, gc, _, _, _, _, _, _, _) -> env_of_gc gc
+  | ConfigRealSending (_, gc, _, _, _, _, _, _)     -> env_of_gc gc
+  | ConfigIdealSending (_, gc, _, _, _, _, _, _)    -> env_of_gc gc
 
 let update_prover_infos_config (conf : config)
     (ppi : EcParsetree.pprover_infos) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w)                                  ->
+  | ConfigGen (maps, gc, pi, w, is)                                  ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigGen (maps, gc, pi, w)
-  | ConfigReal (maps, gc, pi, rws, real)                         ->
+      ConfigGen (maps, gc, pi, w, is)
+  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigReal (maps, gc, pi, rws, real)
-  | ConfigIdeal (maps, gc, pi, ideal, iws)                       ->
+      ConfigReal (maps, gc, pi, real, is, rws)
+  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdeal (maps, gc, pi, ideal, iws)
-  | ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)   ->
+      ConfigIdeal (maps, gc, pi, ideal, is, iws)
+  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins) ->
+      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)       ->
+      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
+  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)     ->
+      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
+  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
       let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)
+      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
 
 let add_var_to_config (conf : config) (id : psymbol) (pty : pty) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w)                                  ->
+  | ConfigGen (maps, gc, pi, w, is)                                  ->
       let gc = gc_add_var gc id pty in
-      ConfigGen (maps, gc, pi, w)
-  | ConfigReal (maps, gc, pi, rws, real)                         ->
+      ConfigGen (maps, gc, pi, w, is)
+  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
       let gc = gc_add_var gc id pty in
-      ConfigReal (maps, gc, pi, rws, real)
-  | ConfigIdeal (maps, gc, pi, ideal, iws)                       ->
+      ConfigReal (maps, gc, pi, real, is, rws)
+  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
       let gc = gc_add_var gc id pty in
-      ConfigIdeal (maps, gc, pi, ideal, iws)
-  | ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)   ->
+      ConfigIdeal (maps, gc, pi, ideal, is, iws)
+  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
       let gc = gc_add_var gc id pty in
-      ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins) ->
+      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
       let gc = gc_add_var gc id pty in
-      ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)       ->
+      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
+  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
       let gc = gc_add_var gc id pty in
-      ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)     ->
+      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
+  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
       let gc = gc_add_var gc id pty in
-      ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)
+      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
 
 let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w)                                  ->
+  | ConfigGen (maps, gc, pi, w, is)                                  ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigGen (maps, gc, pi, w)
-  | ConfigReal (maps, gc, pi, rws, real)                         ->
+      ConfigGen (maps, gc, pi, w, is)
+  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigReal (maps, gc, pi, rws, real)
-  | ConfigIdeal (maps, gc, pi, ideal, iws)                       ->
+      ConfigReal (maps, gc, pi, real, is, rws)
+  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigIdeal (maps, gc, pi, ideal, iws)
-  | ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)   ->
+      ConfigIdeal (maps, gc, pi, ideal, is, iws)
+  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins) ->
+      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
+  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)       ->
+      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
+  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)     ->
+      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
+  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
       let gc = gc_add_hyp gc id pexpr in
-      ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)
+      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       : real_world_state =
@@ -664,10 +685,10 @@ let initial_real_world_state (maps : maps_tyd) (rw : real_world)
 
 let real_of_gen_config (conf : config) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w) ->
+  | ConfigGen (maps, gc, pi, w, is) ->
       let states = initial_real_world_state maps w.worlds_real in
-      ConfigReal (maps, gc, pi, w.worlds_real, states)
-  | _                           -> raise ConfigError
+      ConfigReal (maps, gc, pi, w.worlds_real, is, states)
+  | _                               -> raise ConfigError
 
 let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
       : ideal_world_state =
@@ -696,17 +717,17 @@ let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
 
 let ideal_of_gen_config (conf : config) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w) ->
+  | ConfigGen (maps, gc, pi, w, is) ->
       let pi = EcProvers.dft_prover_infos in
       let iws = initial_ideal_world_state maps w.worlds_ideal in
-      ConfigIdeal (maps, gc, pi, w.worlds_ideal, iws)
-  | _                           -> raise ConfigError
+      ConfigIdeal (maps, gc, pi, w.worlds_ideal, is, iws)
+  | _                               -> raise ConfigError
 
 let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
   match conf with
-  | ConfigRealRunning (_, _, _, _, _, _, _, ins)  -> Some (loc ins)
-  | ConfigIdealRunning (_, _, _, _, _, _, _, ins) -> Some (loc ins)
-  | _                                             -> None
+  | ConfigRealRunning (_, _, _, _, _, _, _, _, ins)  -> Some (loc ins)
+  | ConfigIdealRunning (_, _, _, _, _, _, _, _, ins) -> Some (loc ins)
+  | _                                                -> None
 
 (* sending messages and stepping configurations *)
 
@@ -729,22 +750,22 @@ type effect =
 let send_message_to_real_or_ideal_config
     (conf : config) (sme : sent_msg_expr_tyd) : config * effect =
   match conf with
-  | ConfigReal (maps, gc, pi, rws, real)   ->
+  | ConfigReal (maps, gc, pi, real, is, rws)   ->
       failure "fill in"
-  | ConfigIdeal (maps, gc, pi, ideal, iws) ->
+  | ConfigIdeal (maps, gc, pi, ideal, is, iws) ->
       failure "fill in"
-  | _                                      -> raise ConfigError
+  | _                                          -> raise ConfigError
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =
   match conf with
-  | ConfigRealRunning (maps, gc, pi, real, rws, rwrc, lc, ins)   ->
+  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
       failure "fill in"
-  | ConfigIdealRunning (maps, gc, pi, ideal, iws, iwrc, lc, ins) ->
+  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
       failure "fill in"
-  | ConfigRealSending (maps, gc, pi, real, rws, rwsc, sme)       ->
+  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
       failure "fill in"
-  | ConfigIdealSending (maps, gc, pi, ideal, iws, iwsc, sme)     ->
+  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
       failure "fill in"
-  | _                                                            ->
+  | _                                                                ->
       raise ConfigError
