@@ -93,10 +93,10 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
          If a subfunctionality sends a message whose destination port
          isn't the internal port of one of the real functionality's
          parties, this is an error which results in a "fail", with
-         control going back to the root of the environment (and
-         the state not changing). (This also applies to messages from
-         parameters of the real functionality - of which there are none
-         in this case.) *)
+         control going back to the root of the environment. (This also
+         applies to messages from parameters of the real functionality
+         - of which there are none in this case.) *)
+
       | Fw2.D.fw_rsp(_, u) => {
           (* we must decode u into a key, k2: *)
           match epdp_key_univ.`dec u with
