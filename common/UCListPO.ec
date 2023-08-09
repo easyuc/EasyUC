@@ -24,7 +24,7 @@ type resu = [
 
 (* comparison operator *)
 
-op lpo (xs ys : 'a list) : resu =
+op nosmt lpo (xs ys : 'a list) : resu =
   with xs = []      =>
     ((ys = []) ? Eq : LT)
   with xs = u :: us =>
@@ -217,12 +217,12 @@ qed.
 
 (* abbreviations *)
 
-op (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
+op nosmt (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
 
-op (<=) (xs ys : 'a list) : bool =
+op nosmt (<=) (xs ys : 'a list) : bool =
   let r = lpo xs ys in r = LT \/ r = Eq.
 
-op inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
+op nosmt inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
 lemma leP (xs ys : 'a list) :
   xs <= ys <=> le_spec xs ys.
@@ -457,4 +457,22 @@ proof.
 move => not_le_xs_ys.
 case (xs ++ zs <= ys) => [not_le_xs_conc_zs_ys | //].
 have // : xs <= ys by rewrite (le_trans (xs ++ zs)) 1:le_ext_r.
+qed.
+
+(* predecessors *)
+
+op nosmt predec (xs ys : 'a list) : bool =
+  exists (z : 'a), xs ++ [z] = ys.
+
+lemma predec_lt (xs ys : 'a list) :
+  predec xs ys => xs < ys.
+proof.
+rewrite /predec => [[z]] <-.
+by rewrite lt_ext_nonnil_r.
+qed.
+
+lemma predec_concat_sing (xs : 'a list, z : 'a) :
+  predec xs (xs ++ [z]).
+proof.
+by exists z.
 qed.
