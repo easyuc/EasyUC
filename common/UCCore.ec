@@ -173,18 +173,18 @@ op mi_loop_invar
       r : msg option, m : msg, not_done : bool) : bool =
   inter_init_pre func adv /\
   (not_done =>
-   (m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3) \/
+   (m.`1 = Dir /\ func = m.`2.`1 /\ envport func adv m.`3) \/
    (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2) \/
    (m.`1 = Adv /\ m.`2.`1 = adv /\
     (func <= m.`3.`1 /\ 0 < m.`2.`2 \/
      m.`3 = ([], 0) /\ m.`2.`2 = 0 \/
      envport func adv m.`3 /\ 0 < m.`2.`2 /\
-      m.`2.`2 \in in_guard))) /\
+     m.`2.`2 \in in_guard))) /\
   (! not_done =>
    r = None \/
    (envport0 func adv (oget r).`2 /\
     ((oget r).`1 = Dir /\ (oget r).`2 <> ([], 0) /\
-      func <= (oget r).`3.`1 \/
+      func = (oget r).`3.`1 \/
      (oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
       ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0)))).
 
@@ -192,15 +192,15 @@ lemma mi_loop_invar_not_done_imp_dest
       (func adv : addr, in_guard : int fset,
        m : msg, r : msg option) :
   mi_loop_invar func adv in_guard r m true =>
-  func <= m.`2.`1 \/ adv = m.`2.`1.
+  func <= m.`2.`1 \/ m.`2.`1 = adv.
 proof.
-rewrite /mi_loop_invar; smt().
+rewrite /mi_loop_invar; smt(le_refl).
 qed.
 
 (* guard for invoke procedure of interface *)
 
 op main_guard (func adv : addr, in_guard : int fset, m : msg) : bool =
-  m.`1 = Dir /\ func <= m.`2.`1 /\ envport func adv m.`3 \/
+  m.`1 = Dir /\ func = m.`2.`1 /\ envport func adv m.`3 \/
   m.`1 = Adv /\ m.`2.`1 = adv /\
   (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/
    0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func adv m.`3).
@@ -229,7 +229,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
       (* else: ! func <= m.`2.`1 /\ func <= m.`3.`1 *)
       elif (m.`1 = Dir) {
         not_done <- false;
-        if (adv <= m.`2.`1 \/ m.`2 = ([], 0)) {
+        if (adv <= m.`2.`1 \/ m.`2 = ([], 0) \/ func <> m.`3.`1) {
           r <- None;
         }
         (* else: envport func adv m.`2 *)
@@ -339,7 +339,7 @@ if; first auto.
 auto => /> &hr pre -> /=.
 rewrite /envport0 !negb_or not_dir => [#] -> -> /= -> H /= ->.
 rewrite -!eq_iff => -> /=.
-by rewrite lerNgt.
+by rewrite IntOrder.lerNgt.
 qed.
 
 lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
@@ -349,7 +349,7 @@ lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
    res = None \/
    (envport0 MI.func MI.adv (oget res).`2 /\
     ((oget res).`1 = Dir /\ (oget res).`2 <> ([], 0) /\
-      MI.func <= (oget res).`3.`1 \/
+      MI.func = (oget res).`3.`1 \/
      (oget res).`1 = Adv /\ MI.adv = (oget res).`3.`1 /\ 0 <= (oget res).`3.`2 /\
       ((oget res).`2 = ([], 0) <=> (oget res).`3.`2 = 0)))].
 proof.
@@ -368,7 +368,7 @@ call (_ : true); first auto => />.
 call (MI_after_adv_hoare Func Adv).
 auto.
 auto => |> /#.
-auto; smt().
+auto.
 qed.
 
 (* phoare lemmas for after_func and after_adv: *)
@@ -376,7 +376,7 @@ qed.
 op after_func_to_env (func adv : addr, r : msg option) : bool =
   r <> None /\
   (oget r).`1 = Dir /\ envport func adv (oget r).`2 /\
-  func <= (oget r).`3.`1.
+  func = (oget r).`3.`1.
 
 op after_func_to_adv (func adv : addr, r : msg option) : bool =
   r <> None /\
@@ -384,12 +384,14 @@ op after_func_to_adv (func adv : addr, r : msg option) : bool =
   func <= (oget r).`3.`1.
 
 op after_func_error (func adv : addr, r : msg option) : bool =
-   (r = None \/
-    func <= (oget r).`2.`1 \/
-    ! func <= (oget r).`3.`1 \/
-    ((oget r).`1 = Dir /\
-     (adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0))) \/
-    ((oget r).`1 = Adv /\ ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 <= 0))).
+  r = None \/
+  func <= (oget r).`2.`1 \/
+  (oget r).`1 = Dir /\
+  (adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0) \/
+   (oget r).`3.`1 <> func) \/
+  (oget r).`1 = Adv /\
+  ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 <= 0 \/
+   ! (func <= (oget r).`3.`1)).
 
 lemma after_func_disj (func adv : addr, r : msg option) :
   after_func_to_env func adv r \/
@@ -399,7 +401,7 @@ proof.
 rewrite /after_func_to_env /after_func_to_adv /after_func_error
         /envport /envport0.
 case (r = None) => // _ /=.
-case ((oget r).`1) => // /=; smt().
+case ((oget r).`1) => //=; smt().
 qed.
 
 lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
@@ -410,7 +412,7 @@ lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
    after_func_to_env MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
-proc; auto; smt(some_oget).
+proc; auto; smt(some_oget le_refl).
 qed.
 
 lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
@@ -484,7 +486,7 @@ lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
    after_adv_to_func MI.func MI.adv r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
-proc; auto; smt(oget_some some_oget inc_le1_not_rl lerNgt).
+proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
 lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :

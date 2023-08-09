@@ -25,7 +25,7 @@
 
 (* standard theories *)
 
-require export AllCore List FSet Distr DBool.
+require export AllCore List FSet Distr DBool StdOrder.
 
 (* prefix ordering on lists *)
 
