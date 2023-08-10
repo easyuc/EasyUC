@@ -13,7 +13,7 @@ type config
 
 val pp_config : Format.formatter -> config -> unit
 
-val create_config : symbol -> maps_tyd -> env -> fun_expr -> config
+val create_gen_config : symbol -> maps_tyd -> env -> fun_expr -> config
 
 val is_gen_config           : config -> bool
 val is_real_config          : config -> bool
@@ -26,8 +26,8 @@ val is_ideal_sending_config : config -> bool
 val env_of_config : config -> env
 
 type control =  (* does environment or adversary have control? *)
-  | ExtEnv
-  | ExtAdv
+  | CtrlEnv
+  | CtrlAdv
 
 val control_of_real_or_ideal_config : config -> control
 
