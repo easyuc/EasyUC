@@ -38,20 +38,22 @@ let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
 type interpreter_state = 
   {
     cmd_no : int;
+    ucdsl_new : bool;
+    post_done : bool;
     root : string option;
     maps : maps_tyd option;
-    fun_expr : fun_expr option; 
-    w : world option;
+    config_gen : config option;
     config : config option
   }
 
 let init_state : interpreter_state =
   {
     cmd_no = 0;
+    ucdsl_new = false;
+    post_done = false;
     root = None;
     maps = None;
-    fun_expr =  None; 
-    w = None;
+    config_gen = None;
     config = None;
   }
 
@@ -78,16 +80,32 @@ let interpret (lexbuf : L.lexbuf) =
 
   let print_state () : unit =
     let c = currs() in
-    let begpos, endpos = 
-    ((string_of_int c.cmd_no), (string_of_int (2 * c.cmd_no))) in
-    begin match c.root with
-    | Some f ->
-      let filenam = f^".uc" in
-      print_endline ("UC file position: "^(filenam)^" "^begpos^" "^endpos^";")
+    let loco = 
+      match c.config with
+      | Some config ->
+        if ((is_real_running_config config) || (is_ideal_running_config config))
+        then loc_of_running_config_next_instr config
+        else None
+      | None -> None
+    in
+    begin match loco with
+    | Some l ->
+      let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
+      print_endline ("UC file position: "^(l.loc_fname)^" "^b^" "^s^";")
     | None -> ()
     end
     ;
-    print_endline ("state:"^(string_of_int c.cmd_no)^";")
+    match c.config with
+    | Some config -> pp_config Format.std_formatter config
+    | None ->
+      match c.config_gen with
+      | Some config -> pp_config Format.std_formatter config
+      | None -> 
+        match c.maps with
+        | Some _ -> 
+          print_endline ("state: uc file "^(Option.get c.root)^" loaded;")
+        | None   ->
+          print_endline ("state: uc file not loaded;")
   in
 
   let prompt () : unit =
@@ -105,41 +123,45 @@ let interpret (lexbuf : L.lexbuf) =
       (fun ppf -> Format.fprintf ppf 
       "@[invalid@ filename@ %s,@ filename @ should@ have@ .uc@ suffix.@]" file)
     in
-    UcEcInterface.init ();
+    EcCommands.ucdsl_new();
     let maps =
     try
-      UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
-      (UcParseFile.FOID_File file) 
+      Some
+      ( UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
+        (UcParseFile.FOID_File file)) 
     with _ -> 
-        error_message_exit (loc psym)
-        (fun ppf -> Format.fprintf ppf 
-        "@[fatal@ error@, %s@ does@ not@ parse,@ exiting]" file)
+        EcCommands.ucdsl_end();
+        None
     in
     let c = currs() in
     let news = 
       { c with
         cmd_no = c.cmd_no+1;
+        ucdsl_new = true;
+        post_done = false;
         root = Some root;
-        maps = Some maps;
-        fun_expr = None;
-        w = None;
+        maps = maps;
+        config_gen = None;
         config = None;
       } in
     push news
   in
 
-  let worlds (fe : fun_expr): unit =
+  let funexp (fe : fun_expr): unit =
     let c = currs() in
-(*    let worlds = 
-      fun_expr_to_worlds (Option.get c.root) (Option.get c.maps) fe 
+    let config_gen = create_config 
+      (Option.get c.root)
+      (Option.get c.maps)
+      (UcEcInterface.env ())
+      fe
     in
-    pp_worlds Format.std_formatter worlds;*)
     let news = 
       {
         c with
         cmd_no = c.cmd_no+1;
-        fun_expr = Some fe;
-        w = None;
+        ucdsl_new = false;
+        post_done = false;
+        config_gen = Some config_gen;
         config = None;
       } in
     push news
@@ -147,22 +169,18 @@ let interpret (lexbuf : L.lexbuf) =
 
   let world (w : world) : unit =
     let c = currs() in
-    let config = create_config 
-      (Option.get c.root)
-      (Option.get c.maps)
-      (UcEcInterface.env ())
-      (Option.get c.fun_expr)
-    in
+    let config_gen = Option.get c.config_gen in
     let config =
       match w with
-      | Real -> real_of_gen_config config
-      | Ideal -> ideal_of_gen_config config
+      | Real -> real_of_gen_config config_gen
+      | Ideal -> ideal_of_gen_config config_gen
     in
     let news = 
     {
       c with
       cmd_no = c.cmd_no+1;
-      w = Some w;
+      ucdsl_new = false;
+      post_done = false;
       config = Some config;
     } in
     push news
@@ -170,7 +188,12 @@ let interpret (lexbuf : L.lexbuf) =
 
   let inc_cmd_no () : unit =
     let c = currs() in
-    let news = { c with cmd_no = c.cmd_no+1 } in
+    let news = 
+    { c with 
+      cmd_no = c.cmd_no+1;
+      ucdsl_new = false;
+      post_done = false; 
+    } in
     push news
   in
 
@@ -192,6 +215,8 @@ let interpret (lexbuf : L.lexbuf) =
       {
         c with
         cmd_no = c.cmd_no+1;
+        ucdsl_new = false;
+        post_done = true;
         config = None
       } in
     push news
@@ -219,30 +244,6 @@ let interpret (lexbuf : L.lexbuf) =
       prompt();
       done_loop()
   in
- 
-  let rec restart_loop () : unit =
-    try
-      let cmd = next_cmd lexbuf in
-      begin match (unloc cmd) with
-      | Load psym ->
-        load psym
-        
-      | Funex fe ->
-        worlds fe
-
-      | World w -> 
-        world w
-        
-      | Quit -> exit 0
-      | _ ->
-        error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ load@,functionality@,real@,ideal@,quit.@]")
-      end
-    with _ ->
-      prompt();
-      restart_loop()
-  in
 
 let rec load_loop () : unit =
     try 
@@ -265,7 +266,7 @@ let rec load_loop () : unit =
       let cmd = next_cmd lexbuf in
       begin  match (unloc cmd) with
       | Funex fe ->
-        worlds fe
+        funexp fe
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -280,12 +281,16 @@ let rec load_loop () : unit =
     try
       let cmd = next_cmd lexbuf in 
       begin  match (unloc cmd) with
+      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
+      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
+      | Prover _ -> inc_cmd_no()  
+
       | World w ->
         world w
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[world@ command@ expected@]")
+        (fun ppf -> Format.fprintf ppf "@[addv@,addf@,prover@,@ or@ world@ command@ expected@]")
       end
     with _ ->
       prompt();
@@ -294,20 +299,44 @@ let rec load_loop () : unit =
 
   let complete_loop () : unit =
     let c = currs() in
-    match c.root with
+    match c.maps with
     | None -> load_loop()
     | Some _ ->
-      match c.fun_expr with
+      match c.config_gen with
       | None -> funexp_loop()
       | Some _ -> world_loop()
   in
+ 
+  let rec restart_loop () : unit =
+    try
+      let cmd = next_cmd lexbuf in
+      begin match (unloc cmd) with
+      | Load psym ->
+        load psym
+        
+      | Funex fe ->
+        funexp fe
+
+      | World w -> 
+        world w
+      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
+      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
+      | Prover _ -> inc_cmd_no()  
+      | Quit -> exit 0
+      | _ ->
+        error_message (loc cmd)
+        (fun ppf -> Format.fprintf ppf 
+"@[one@ of@ following@ commands@ expected:@ load@,functionality@,real@,ideal@,addv@,addf@,quit.@]")
+      end
+    with _ ->
+      prompt();
+      restart_loop()
+  in
 
   let setup_loop () : unit =
-    match (currs()).w with
-    | Some w ->
-      restart_loop()
-    | None ->
-      complete_loop ()
+    if (currs()).post_done
+    then restart_loop()
+    else complete_loop ()
   in
 
   let rec interpreter_loop (): unit =
@@ -321,6 +350,7 @@ let rec load_loop () : unit =
   
   stack := [];
   stack := init_state::!stack;
+  UcEcInterface.init();
   interpreter_loop()
   
 let stdIOclient =
