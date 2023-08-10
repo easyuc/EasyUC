@@ -23,11 +23,14 @@ val is_ideal_running_config : config -> bool
 val is_real_sending_config  : config -> bool
 val is_ideal_sending_config : config -> bool
 
-val env_of_config : config -> env
-
 type control =  (* does environment or adversary have control? *)
   | CtrlEnv
   | CtrlAdv
+
+(* return the current env, taking into account bindings added
+   by add_var_to_config and add_hyp_to_config *)
+
+val env_of_config : config -> env
 
 val control_of_real_or_ideal_config : config -> control
 
@@ -48,7 +51,7 @@ val ideal_of_gen_config : config -> config
 type effect =
   | EffectOK                           (* step succeeded (not random
                                           assignment), and new configuration
-                                          is running or internal send *)
+                                          is running or sending *)
   | EffectRand of EcIdent.t            (* step added ident representing
                                           random choice to global context,
                                           and new configuration is
@@ -59,7 +62,7 @@ type effect =
                                           configuration is real or ideal *)
   | EffectBlockedIf                    (* configuration is running *)
   | EffectBlockedMatch                 (* configuration is running *)
-  | EffectBlockedPortOfAddrCompare     (* configuration is sending *)
+  | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
 val send_message_to_real_or_ideal_config :
       config -> sent_msg_expr_tyd -> config * effect

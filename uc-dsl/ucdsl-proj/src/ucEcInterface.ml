@@ -89,7 +89,7 @@ let require id io =
          fprintf ppf
          "@[EasyCrypt:@ In@ external@ theory@ %s@ [%s]:@;<1 2>%a@]"
          name (EcLocation.tostring l) EcPException.exn_printer e)
-  | _                                       ->
+  | _                                     ->
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf "@[EasyCrypt:@ error@ require@ importing@ theory@]")
