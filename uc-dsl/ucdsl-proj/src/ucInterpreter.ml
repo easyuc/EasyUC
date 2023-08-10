@@ -88,71 +88,64 @@ let interface_input_guard_of_ideal_world (iw : ideal_world) : IntSet.t =
 let interface_input_guard_of_worlds (w : worlds) : IntSet.t =
   interface_input_guard_of_ideal_world w.worlds_ideal
 
-let pp_worlds (fmt : Format.formatter) (w : worlds) : unit =
-  let pp_int (fmt : Format.formatter) (i : int) : unit =
-    fprintf fmt "%d" i in
-  let pp_paren_int_list (fmt : Format.formatter) (is : int list) : unit =
-    if List.is_empty is
-    then ()
-    else Format.fprintf fmt "(@[%a@])"
-         (EcPrinting.pp_list ",@, " pp_int) is in
-  let pp_symb_pair_int (fmt : Format.formatter) (sp, i : symb_pair * int)
-        : unit =
-    Format.fprintf fmt "@[%s.%s:%i@]" (fst sp) (snd sp) i in
-  let pp_symb_pair_int_int_list
-      (fmt : Format.formatter) (sp, i, is : symb_pair * int * int list)
-        : unit =
-    Format.fprintf fmt "@[%s.%s:%i@,%a@]" (fst sp) (snd sp) i
-    pp_paren_int_list is in
+let pp_int (ppf : formatter) (i : int) : unit =
+  fprintf ppf "%d" i
 
-  let rec pp_real_world_arg (fmt : Format.formatter) (rwa : real_world_arg)
-            : unit =
-    match rwa with
-    | RWA_Real rw      -> Format.fprintf fmt "%a" pp_real_world rw
-    | RWA_Ideal (sp,i) -> Format.fprintf fmt "%a" pp_symb_pair_int (sp, i)
-  and pp_real_world_argl (fmt : Format.formatter) (rwal : real_world_arg list)
-        : unit =
-    match rwal with
-    | []        -> Format.fprintf fmt ""
-    | rwa :: [] ->
-      Format.fprintf fmt "%a"
-        pp_real_world_arg rwa
-    | rwa :: tl ->
-      Format.fprintf fmt "%a,@ %a"
-        pp_real_world_arg rwa
-        pp_real_world_argl tl
-  and pp_real_world (fmt : Format.formatter) (rw : real_world) : unit =
-    let sp, i, rwal = rw in
-    match rwal with
+let pp_paren_int_list (ppf : formatter) (is : int list) : unit =
+  if List.is_empty is
+  then ()
+  else fprintf ppf "(@[%a@])"
+       (EcPrinting.pp_list ",@ " pp_int) is
+
+let pp_symb_pair_int (ppf : formatter) (sp, i : symb_pair * int)
+      : unit =
+  fprintf ppf "@[%s.%s:%i@]" (fst sp) (snd sp) i
+
+let pp_symb_pair_int_int_list
+    (ppf : formatter) (sp, i, is : symb_pair * int * int list)
+      : unit =
+  fprintf ppf "@[%s.%s:%i@,%a@]" (fst sp) (snd sp) i
+  pp_paren_int_list is
+
+let pp_worlds (ppf : formatter) (w : worlds) : unit =
+  let rec pp_real_world (ppf : formatter) (rw : real_world) : unit =
+    let sp, i, rwas = rw in
+    match rwas with
     | [] ->
-      Format.fprintf fmt "@[%a@]"
-        pp_symb_pair_int (sp, i)
+      fprintf ppf "@[%a@]"
+      pp_symb_pair_int (sp, i)
     | _  ->
-      Format.fprintf fmt "@[<hv>%a@,(@[%a@])@]"
-        pp_symb_pair_int (sp, i)
-        pp_real_world_argl rwal in
+      fprintf ppf "@[%a@,(@[%a@])@]"
+      pp_symb_pair_int (sp, i)
+      (EcPrinting.pp_list ",@ " pp_real_world_arg) rwas
 
-  let rec pp_simsl (fmt : Format.formatter)
-          (spil : (symb_pair * int * int list) list) : unit =
-    match spil with
-    | []        ->
-      Format.fprintf fmt ""
+  and pp_real_world_arg (ppf : formatter) (rwa : real_world_arg)
+        : unit =
+    match rwa with
+    | RWA_Real rw       -> fprintf ppf "%a" pp_real_world rw
+    | RWA_Ideal (sp, i) -> fprintf ppf "%a" pp_symb_pair_int (sp, i) in
+
+  let rec pp_sims (ppf : formatter)
+          (spis : (symb_pair * int * int list) list) : unit =
+    match spis with
+    | []        -> ()
     | [spi]     ->
-      Format.fprintf fmt " *@ %a"
-        pp_symb_pair_int_int_list spi
-    | spi :: tl ->
-      Format.fprintf fmt " *@ %a%a"
-        pp_symb_pair_int_int_list spi
-        pp_simsl tl in
+      fprintf ppf " *@ %a"
+      pp_symb_pair_int_int_list spi
+    | spi :: spis ->
+      fprintf ppf " *@ %a%a"
+      pp_symb_pair_int_int_list spi
+      pp_sims spis in
 
-  let pp_ideal_world (fmt : Format.formatter) (iw : ideal_world) : unit =
-    Format.fprintf fmt "@[<hv>%a /@ @[%a%a@]@]"
-      pp_symb_pair_int iw.iw_ideal_func
-      pp_symb_pair_int_int_list iw.iw_main_sim
-      pp_simsl iw.iw_other_sims in
-  Format.fprintf fmt "@[%a ~@ %a@]@."
-    pp_real_world w.worlds_real
-    pp_ideal_world w.worlds_ideal
+  let pp_ideal_world (ppf : formatter) (iw : ideal_world) : unit =
+    fprintf ppf "@[<hv>%a /@ @[%a%a@]@]"
+    pp_symb_pair_int iw.iw_ideal_func
+    pp_symb_pair_int_int_list iw.iw_main_sim
+    pp_sims iw.iw_other_sims in
+
+  fprintf ppf "@[%a ~@ %a@]@."
+  pp_real_world w.worlds_real
+  pp_ideal_world w.worlds_ideal
 
 let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
   let rec fun_expr_to_worlds_base (fet : fun_expr_tyd) (base : int)
@@ -284,7 +277,7 @@ let pp_lc (env : env) (ppf : formatter) (lc : local_context) : unit =
     EcIdent.pp_ident id
     (EcPrinting.pp_form ppe) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
-    EcPrinting.pp_list "@, " pp_frame_entry ppf
+    EcPrinting.pp_list ",@ " pp_frame_entry ppf
     (EcIdent.Mid.bindings frame) in
   let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
         : unit =
@@ -355,7 +348,7 @@ let pp_gc (ppf : formatter) (gc : global_context) : unit =
         (EcPrinting.pp_form ppe) form
     | _                          -> failure "cannot happen" in
   let locs = List.rev (LDecl.tohyps gc).h_local in
-  EcPrinting.pp_list "@, " (pp_loc ppe) ppf locs
+  EcPrinting.pp_list ",@ " (pp_loc ppe) ppf locs
 
 let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
       : global_context =
@@ -430,6 +423,16 @@ type fun_state =
   | RealState  of real_state
   | IdealState of ideal_state
 
+let real_state_of_fun_state (fs : fun_state) : real_state =
+  match fs with
+  | RealState rs -> rs
+  | IdealState _ -> failure "should not happen"
+
+let ideal_state_of_fun_state (fs : fun_state) : ideal_state =
+  match fs with
+  | RealState _   -> failure "should not happen"
+  | IdealState is -> is
+
 module IL =  (* domain: int list *)
   struct
     type t = int list
@@ -467,9 +470,11 @@ type ideal_world_state = {
 type real_world_running_context =
   | RWRC_IdealFunc of int list
   | RWRC_RealFunc  of int list *
-                        symbol
+                      symbol      (* party name *)
 
-type real_world_sending_context = int list
+type real_world_sending_context =
+  | RWSC_EnvOrAdv              (* starting from the environment or adversary *)
+  | RWSC_FromFunc of int list
 
 type ideal_world_running_context =
   | IWRC_Ideal_Func
@@ -478,39 +483,211 @@ type ideal_world_running_context =
                              simulators *)
 
 type ideal_world_sending_context =
+  | IWSC_EnvOrAdv
   | IWSC_IdealFunc
   | IWSC_MainSim
   | IWSC_OtherSim of int  (* index (beginning at 0) into list of other
                              simulators *)
 
-exception ConfigError
+type control =  (* does environment or adversary have control? *)
+  | ExtEnv
+  | ExtAdv
+
+type config_gen = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  w    : worlds;
+  is   : IntSet.t  (* input guard of interface *)
+}
+
+type config_real = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  rw   : real_world;
+  is   : IntSet.t;
+  rws  : real_world_state;
+  ctrl : control;
+}
+
+type config_ideal = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  iw   : ideal_world;
+  is   : IntSet.t;
+  iws  : ideal_world_state;
+  ctrl : control;
+}
+
+type config_real_running = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  rw   : real_world;
+  is   : IntSet.t;
+  rws  : real_world_state;
+  rwrs : real_world_running_context;
+  lc   : local_context;
+  ins  : instr_interp list located
+}
+
+type config_ideal_running = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  iw   : ideal_world;
+  is   : IntSet.t;
+  iws  : ideal_world_state;
+  iwrc : ideal_world_running_context;
+  lc   : local_context;
+  ins  : instr_interp list located
+}
+
+type config_real_sending = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  rw   : real_world;
+  is   : IntSet.t;
+  rws  : real_world_state;
+  rwsc : real_world_sending_context;
+  sme  : sent_msg_expr_tyd
+}
+
+type config_ideal_sending = {
+  maps : maps_tyd;
+  gc   : global_context;
+  pi   : prover_infos;
+  iw   : ideal_world;
+  is   : IntSet.t;
+  iws  : ideal_world_state;
+  iwsc : ideal_world_sending_context;
+  sme  : sent_msg_expr_tyd
+}
 
 type config =
-  | ConfigGen          of
-      maps_tyd * global_context * prover_infos * worlds * IntSet.t
-  | ConfigReal         of
-      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
-      real_world_state
-  | ConfigIdeal        of
-      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
-      ideal_world_state
-  | ConfigRealRunning  of
-      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
-      real_world_state * real_world_running_context *
-      local_context * instr_interp list located
-  | ConfigIdealRunning of
-      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
-      ideal_world_state * ideal_world_running_context *
-      local_context * instr_interp list located
-  | ConfigRealSending  of
-      maps_tyd * global_context * prover_infos * real_world * IntSet.t *
-      real_world_state * real_world_sending_context * sent_msg_expr_tyd      
-  | ConfigIdealSending of
-      maps_tyd * global_context * prover_infos * ideal_world * IntSet.t *
-      ideal_world_state * ideal_world_sending_context * sent_msg_expr_tyd      
+  | ConfigGen          of config_gen
+  | ConfigReal         of config_real
+  | ConfigIdeal        of config_ideal
+  | ConfigRealRunning  of config_real_running
+  | ConfigIdealRunning of config_ideal_running
+  | ConfigRealSending  of config_real_sending
+  | ConfigIdealSending of config_ideal_sending
 
-let pp_config (fmt : Format.formatter) (conf : config) : unit =
-  failure "fill in"
+(* pretty printer for configurations *)
+
+let party_and_sub_fun_states (maps : maps_tyd) (rws : real_world_state)
+    (addr : int list) (sp : symb_pair) : (symbol * state) list =
+  let rfbt = real_fun_body_tyd_of (unloc (IdPairMap.find sp maps.fun_map)) in
+  let num_args = IdMap.cardinal rfbt.params in
+  let of_parties =
+    IdMap.bindings (real_state_of_fun_state (ILMap.find addr rws)) in
+  let of_sub_funs =
+    List.mapi
+    (fun i id ->
+       (id,
+        ideal_state_of_fun_state
+        (ILMap.find (addr @ [1 + num_args + i]) rws)))
+    (List.map fst (IdMap.bindings rfbt.sub_funs)) in
+  of_parties @ of_sub_funs
+
+let pp_state (gc : global_context) (ppf : formatter)
+    (state : state) : unit =
+  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
+  match state.args with
+  | []   -> fprintf ppf "%s" state.id
+  | args ->
+      fprintf ppf "@[%s@,(@[%a@])@]" state.id
+      (EcPrinting.pp_list ",@ " (EcPrinting.pp_form ppe)) args
+
+let pp_sym_state (gc : global_context) (ppf : formatter)
+    ((id, state) : symbol * state) : unit =
+  fprintf ppf "@[%s:@ %a@]" id (pp_state gc) state
+
+let pp_sym_state_list (gc : global_context) (ppf : formatter)
+    (sym_stat_list : (symbol * state) list) : unit =
+  EcPrinting.pp_list ",@ " (pp_sym_state gc) ppf sym_stat_list
+
+let pp_real_world_states (maps : maps_tyd) (gc : global_context)
+    (rws : real_world_state) (ppf : formatter)
+    (rw : real_world) : unit =
+  let rec pp_real_world (addr : int list) (ppf : formatter)
+      ((sp, i, rwas) : real_world) : unit =
+    let psfs = party_and_sub_fun_states maps rws addr sp in
+    match rwas with
+    | [] ->
+      fprintf ppf "@[%a@,[@[%a@]]@]"
+      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+    | _  ->
+      fprintf ppf "@[%a@,[@[%a@]]@,(@[%a@])@]"
+      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+      (pp_real_world_args 1 addr) rwas
+
+  and pp_real_world_args (i : int) (addr : int list)
+      (ppf : formatter) (rwas : real_world_arg list) : unit =
+    match rwas with
+    | []          -> failure "cannot happen"
+    | [rwa]       ->
+      fprintf ppf "%a"
+      (pp_real_world_arg (addr @ [i])) rwa
+    | rwa :: rwas ->
+      fprintf ppf "%a,@ %a"
+      (pp_real_world_arg (addr @ [i])) rwa
+      (pp_real_world_args (i + 1) addr) rwas
+
+  and pp_real_world_arg (addr : int list) (ppf : formatter)
+      (rwa : real_world_arg) : unit =
+    match rwa with
+    | RWA_Real rw       -> pp_real_world addr ppf rw
+    | RWA_Ideal (sp, i) ->
+        let ideal_st = ideal_state_of_fun_state (ILMap.find addr rws) in
+        fprintf ppf "%a@,[@[%a@]]"
+        pp_symb_pair_int (sp, i)
+        (pp_state gc) ideal_st in
+  pp_real_world [] ppf rw
+
+(* type ideal_world_state = {
+  ideal_state       : ideal_state;
+  main_sim_state    : sim_state;
+  other_sims_states : sim_state list
+}
+*)
+
+let rec pp_sims_states (iws : ideal_world_state) (ppf : formatter)
+        (spis : (symb_pair * int * int list) list) : unit =
+    match spis with
+    | []        -> ()
+    | [spi]     ->
+      fprintf ppf " *@ %a"
+      pp_symb_pair_int_int_list spi
+    | spi :: spis ->
+      fprintf ppf " *@ %a%a"
+      pp_symb_pair_int_int_list spi
+      (pp_sims_states iws) spis
+
+let pp_ideal_world_states (iws : ideal_world_state) (ppf : formatter)
+    (iw : ideal_world) : unit =
+    fprintf ppf "@[<hv>%a /@ @[%a%a@]@]"
+    pp_symb_pair_int iw.iw_ideal_func
+    pp_symb_pair_int_int_list iw.iw_main_sim
+    (pp_sims_states iws) iw.iw_other_sims
+
+let pp_config (ppf : formatter) (conf : config) : unit =
+  match conf with
+  | ConfigGen c          ->
+      fprintf ppf
+      "@[global@ context:@\n@\n%a@\n@\nworlds:@\n@\n%a@]"
+      pp_gc c.gc pp_worlds c.w 
+  | ConfigReal c         -> failure "fill in"
+  | ConfigIdeal c        -> failure "fill in"
+  | ConfigRealRunning c  -> failure "fill in"
+  | ConfigIdealRunning c -> failure "fill in"
+  | ConfigRealSending c  -> failure "fill in"
+  | ConfigIdealSending c -> failure "fill in"
+
+exception ConfigError
 
 let create_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
@@ -519,7 +696,7 @@ let create_config (root : symbol) (maps : maps_tyd) (env : env)
   let is = interface_input_guard_of_worlds w in
   let gc = gc_create env in
   let pi = EcProvers.dft_prover_infos in
-  ConfigGen (maps, gc, pi, w, is)
+  ConfigGen {maps = maps; gc = gc; pi = pi; w = w; is = is}
 
 let is_gen_config (conf : config) : bool =
   match conf with
@@ -558,86 +735,98 @@ let is_ideal_sending_config (conf : config) : bool =
 
 let env_of_config (conf : config) : env =
   match conf with
-  | ConfigGen (_, gc, _, _, _)                      -> env_of_gc gc
-  | ConfigReal (_, gc, _, _, _, _)                  -> env_of_gc gc
-  | ConfigIdeal (_, gc, _, _, _, _)                 -> env_of_gc gc
-  | ConfigRealRunning (_, gc, _, _, _, _, _, _, _)  -> env_of_gc gc
-  | ConfigIdealRunning (_, gc, _, _, _, _, _, _, _) -> env_of_gc gc
-  | ConfigRealSending (_, gc, _, _, _, _, _, _)     -> env_of_gc gc
-  | ConfigIdealSending (_, gc, _, _, _, _, _, _)    -> env_of_gc gc
+  | ConfigGen c          -> env_of_gc c.gc
+  | ConfigReal c         -> env_of_gc c.gc
+  | ConfigIdeal c        -> env_of_gc c.gc
+  | ConfigRealRunning c  -> env_of_gc c.gc
+  | ConfigIdealRunning c -> env_of_gc c.gc
+  | ConfigRealSending c  -> env_of_gc c.gc
+  | ConfigIdealSending c -> env_of_gc c.gc
+
+let control_of_real_or_ideal_config (conf : config) : control =
+  match conf with
+  | ConfigReal c  -> c.ctrl
+  | ConfigIdeal c -> c.ctrl
+  | _             -> raise ConfigError
+
+let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
+  match conf with
+  | ConfigRealRunning c  -> Some (loc c.ins)
+  | ConfigIdealRunning c -> Some (loc c.ins)
+  | _                    -> None
 
 let update_prover_infos_config (conf : config)
     (ppi : EcParsetree.pprover_infos) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w, is)                                  ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigGen (maps, gc, pi, w, is)
-  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigReal (maps, gc, pi, real, is, rws)
-  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdeal (maps, gc, pi, ideal, is, iws)
-  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
-      let pi = update_prover_infos (env_of_gc gc) pi ppi in
-      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
+  | ConfigGen c          ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigGen {c with pi = pi}
+  | ConfigReal c         ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigReal {c with pi = pi}
+  | ConfigIdeal c        ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigIdeal {c with pi = pi}
+  | ConfigRealRunning c  ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigRealRunning {c with pi = pi}
+  | ConfigIdealRunning c ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigIdealRunning {c with pi = pi}
+  | ConfigRealSending c  ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigRealSending {c with pi = pi}
+  | ConfigIdealSending c ->
+      let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
+      ConfigIdealSending {c with pi = pi}
 
 let add_var_to_config (conf : config) (id : psymbol) (pty : pty) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w, is)                                  ->
-      let gc = gc_add_var gc id pty in
-      ConfigGen (maps, gc, pi, w, is)
-  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
-      let gc = gc_add_var gc id pty in
-      ConfigReal (maps, gc, pi, real, is, rws)
-  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
-      let gc = gc_add_var gc id pty in
-      ConfigIdeal (maps, gc, pi, ideal, is, iws)
-  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
-      let gc = gc_add_var gc id pty in
-      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
-      let gc = gc_add_var gc id pty in
-      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
-      let gc = gc_add_var gc id pty in
-      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
-      let gc = gc_add_var gc id pty in
-      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
+  | ConfigGen c          ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigGen {c with gc = gc}
+  | ConfigReal c         ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigReal {c with gc = gc}
+  | ConfigIdeal c        ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigIdeal {c with gc = gc}
+  | ConfigRealRunning c  ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigRealRunning {c with gc = gc}
+  | ConfigIdealRunning c ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigIdealRunning {c with gc = gc}
+  | ConfigRealSending c  ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigRealSending {c with gc = gc}
+  | ConfigIdealSending c ->
+      let gc = gc_add_var c.gc id pty in
+      ConfigIdealSending {c with gc = gc}
 
 let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w, is)                                  ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigGen (maps, gc, pi, w, is)
-  | ConfigReal (maps, gc, pi, real, is, rws)                         ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigReal (maps, gc, pi, real, is, rws)
-  | ConfigIdeal (maps, gc, pi, ideal, is, iws)                       ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigIdeal (maps, gc, pi, ideal, is, iws)
-  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)
-  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins)
-  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)
-  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
-      let gc = gc_add_hyp gc id pexpr in
-      ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)
+  | ConfigGen c          ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigGen {c with gc = gc}
+  | ConfigReal c         ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigReal {c with gc = gc}
+  | ConfigIdeal c        ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigIdeal {c with gc = gc}
+  | ConfigRealRunning c  ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigRealRunning {c with gc = gc}
+  | ConfigIdealRunning c ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigIdealRunning {c with gc = gc}
+  | ConfigRealSending c  ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigRealSending {c with gc = gc}
+  | ConfigIdealSending c ->
+      let gc = gc_add_hyp c.gc id pexpr in
+      ConfigIdealSending {c with gc = gc}
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       : real_world_state =
@@ -685,10 +874,13 @@ let initial_real_world_state (maps : maps_tyd) (rw : real_world)
 
 let real_of_gen_config (conf : config) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w, is) ->
-      let states = initial_real_world_state maps w.worlds_real in
-      ConfigReal (maps, gc, pi, w.worlds_real, is, states)
-  | _                               -> raise ConfigError
+  | ConfigGen c ->
+      let rw = c.w.worlds_real in
+      let rws = initial_real_world_state c.maps rw in
+      ConfigReal
+      {maps = c.maps; gc = c.gc; pi = c.pi; rw = rw; is = c.is;
+       rws = rws; ctrl = ExtEnv}
+  | _           -> raise ConfigError
 
 let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
       : ideal_world_state =
@@ -717,17 +909,13 @@ let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
 
 let ideal_of_gen_config (conf : config) : config =
   match conf with
-  | ConfigGen (maps, gc, pi, w, is) ->
-      let pi = EcProvers.dft_prover_infos in
-      let iws = initial_ideal_world_state maps w.worlds_ideal in
-      ConfigIdeal (maps, gc, pi, w.worlds_ideal, is, iws)
-  | _                               -> raise ConfigError
-
-let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
-  match conf with
-  | ConfigRealRunning (_, _, _, _, _, _, _, _, ins)  -> Some (loc ins)
-  | ConfigIdealRunning (_, _, _, _, _, _, _, _, ins) -> Some (loc ins)
-  | _                                                -> None
+  | ConfigGen c ->
+      let iw = c.w.worlds_ideal in
+      let iws = initial_ideal_world_state c.maps iw in
+      ConfigIdeal
+      {maps = c.maps; gc = c.gc; pi = c.pi; iw = iw; is = c.is;
+       iws = iws; ctrl = ExtEnv}
+  | _           -> raise ConfigError
 
 (* sending messages and stepping configurations *)
 
@@ -750,22 +938,21 @@ type effect =
 let send_message_to_real_or_ideal_config
     (conf : config) (sme : sent_msg_expr_tyd) : config * effect =
   match conf with
-  | ConfigReal (maps, gc, pi, real, is, rws)   ->
+  | ConfigReal c  ->
       failure "fill in"
-  | ConfigIdeal (maps, gc, pi, ideal, is, iws) ->
+  | ConfigIdeal c ->
       failure "fill in"
   | _                                          -> raise ConfigError
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =
   match conf with
-  | ConfigRealRunning (maps, gc, pi, real, is, rws, rwrc, lc, ins)   ->
+  | ConfigRealRunning c  ->
       failure "fill in"
-  | ConfigIdealRunning (maps, gc, pi, ideal, is, iws, iwrc, lc, ins) ->
+  | ConfigIdealRunning c ->
       failure "fill in"
-  | ConfigRealSending (maps, gc, pi, real, is, rws, rwsc, sme)       ->
+  | ConfigRealSending c  ->
       failure "fill in"
-  | ConfigIdealSending (maps, gc, pi, ideal, is, iws, iwsc, sme)     ->
+  | ConfigIdealSending c ->
       failure "fill in"
-  | _                                                                ->
-      raise ConfigError
+  | _                    -> raise ConfigError

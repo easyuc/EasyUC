@@ -25,6 +25,14 @@ val is_ideal_sending_config : config -> bool
 
 val env_of_config : config -> env
 
+type control =  (* does environment or adversary have control? *)
+  | ExtEnv
+  | ExtAdv
+
+val control_of_real_or_ideal_config : config -> control
+
+val loc_of_running_config_next_instr : config -> EcLocation.t option
+
 val update_prover_infos_config :
   config -> EcParsetree.pprover_infos -> config
 
@@ -34,8 +42,6 @@ val add_hyp_to_config : config -> psymbol -> pexpr -> config
 
 val real_of_gen_config  : config -> config
 val ideal_of_gen_config : config -> config
-
-val loc_of_running_config_next_instr : config -> EcLocation.t option
 
 (* sending messages and stepping configurations *)
 

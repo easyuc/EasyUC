@@ -84,8 +84,8 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
 
     state WaitFwd2(pt1 : port, q1 : exp) {
       match message with
-      (* We can only respond to a response message from forwarder Fw2,
-         which arrives on the internal port of Pt1, giving us the
+      (* We only respond to a response message from forwarder Fw2
+         arriving on the internal port of Pt1, giving us the
          value u : univ that came from Pt2. The _ matches the port
          that made the forwarding request, which will be the internal
          port of Pt2.
