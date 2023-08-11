@@ -813,26 +813,26 @@ let pp_config (ppf : formatter) (conf : config) : unit =
   | ConfigGen c          ->
       fprintf ppf
       "%a@\n@\n%a@."
-      pp_global_context_msg c.gc      
+      pp_global_context_msg c.gc
       pp_worlds_msg c.w
   | ConfigReal c         ->
       fprintf ppf
       "%a@\n@\n%a@\n@\n%a@\n%a@."
-      pp_global_context_msg c.gc      
+      pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigIdeal c        ->
       fprintf ppf
       "%a@\n@\n%a@\n@\n%a@\n%a@."
-      pp_global_context_msg c.gc      
+      pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigRealRunning c  ->
       fprintf ppf
       "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
-      pp_global_context_msg c.gc      
+      pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_real_world_running_context c.rwrc
@@ -840,23 +840,23 @@ let pp_config (ppf : formatter) (conf : config) : unit =
   | ConfigIdealRunning c ->
       fprintf ppf
       "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
-      pp_global_context_msg c.gc      
+      pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_ideal_world_running_context c.iwrc
       (pp_local_context (env_of_gc c.gc)) c.lc
   | ConfigRealSending c  ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
-      pp_global_context_msg c.gc      
+      "%a@\n@\n%a@\n@\n%a@\n@\n%a:@\n%a@."
+      pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_real_world_sending_context c.rwsc
       (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
   | ConfigIdealSending c ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
-      pp_global_context_msg c.gc      
+      "%a@\n@\n%a@\n@\n%a@@\n\n%a:@\n%a@."
+      pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_ideal_world_sending_context c.iwsc
@@ -1111,9 +1111,10 @@ type effect =
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
 let send_message_to_real_or_ideal_config
-    (conf : config) (sme : sent_msg_expr_tyd) : config * effect =
+    (conf : config) (sme : sent_msg_expr) : config * effect =
   match conf with
   | ConfigReal c  ->
+      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
       (ConfigRealSending
        {maps = c.maps;
         gc   = c.gc;
@@ -1125,6 +1126,7 @@ let send_message_to_real_or_ideal_config
         sme  = sme},
        EffectOK)
   | ConfigIdeal c ->
+      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
       (ConfigIdealSending
        {maps = c.maps;
         gc   = c.gc;

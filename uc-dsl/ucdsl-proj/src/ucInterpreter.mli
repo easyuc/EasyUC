@@ -27,11 +27,6 @@ type control =  (* does environment or adversary have control? *)
   | CtrlEnv
   | CtrlAdv
 
-(* return the current env, taking into account bindings added
-   by add_var_to_config and add_hyp_to_config *)
-
-val env_of_config : config -> env
-
 val control_of_real_or_ideal_config : config -> control
 
 val loc_of_running_config_next_instr : config -> EcLocation.t option
@@ -65,7 +60,7 @@ type effect =
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
 val send_message_to_real_or_ideal_config :
-      config -> sent_msg_expr_tyd -> config * effect
+      config -> sent_msg_expr -> config * effect
 
 val step_running_or_sending_real_or_ideal_config :
       config -> config * effect

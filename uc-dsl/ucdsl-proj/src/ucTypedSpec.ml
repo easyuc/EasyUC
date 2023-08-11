@@ -489,7 +489,7 @@ let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
       (match IdPairMap.find_opt (root, top) (maps.adv_inter_map) with
        | None    -> None
        | Some it -> Some (Adv, it))
-  | Some it -> Some(Dir, it)
+  | Some it -> Some (Dir, it)
 
 let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
       : inter_tyd option =
@@ -826,10 +826,15 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     (sme : sent_msg_expr_tyd) : unit =
   let inp, path, args, outp =
     sme.in_port_form, sme.path, sme.args, sme.out_port_form in
+  let no_parens (f : form) : bool =
+    not (is_local f) &&
+    match f.f_node with
+    | Fop (_, []) -> true
+    | _           -> false in
   let pp_portform (fmt : Format.formatter) (f : form) : unit =
-    if is_local f
+    if no_parens f
     then Format.fprintf fmt "%a" (pp_form env) f
-    else Format.fprintf fmt "(%a)" (pp_form env) f in
+    else Format.fprintf fmt "(@[%a@])" (pp_form env) f in
   let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
     let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
       match strl with
@@ -837,17 +842,13 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
       | [s]     -> Format.fprintf fmt "%s." s
       | s :: tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
     Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
-  let rec pp_forml (fmt : Format.formatter) (forml : form list) : unit =
-    match forml with
-    | []       -> Format.fprintf fmt ""
-    | [ex]     -> Format.fprintf fmt "@[%a@]" (pp_form env) ex
-    | ex :: tl ->
-        Format.fprintf fmt "@[%a@]@,,%a" (pp_form env) ex pp_forml tl in
-  Format.fprintf fmt "@[%a@,@[<hv>%a@]@,(@[<hv>%a@])@,%a@]"
-    pp_portform inp
-    pp_mpath path
-    pp_forml args
-    pp_portform outp
+  let pp_forml (fmt : Format.formatter) (forml : form list) : unit =
+    EcPrinting.pp_list ",@ " (pp_form env) fmt forml in
+  Format.fprintf fmt "@[%a@@@,%a@,(@[%a@])@,@@%a@]"
+  pp_portform inp
+  pp_mpath path
+  pp_forml args
+  pp_portform outp
 
 (* check whether the results of pretty printing two sent message
    expressions are equal strings *)
