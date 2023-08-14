@@ -455,10 +455,10 @@ let get_state_sigs (states : state_mid IdMap.t) : state_sig IdMap.t =
    ids = [id1; id2], and id1 is the name of a composite interface the
    functionality implements, id2 is the name of one of that composite
    interface's sub-interfaces, and b is the basic interface (direct
-   iff the composite interface is direct) corresponding to the
-   interface name that id2 is associated with in the composite
-   interface (possibly filtered to have only incoming or outgoing
-   messages); or
+   iff the composite interface is direct) corresponding (using the
+   same root) to the interface name that id2 is associated with in the
+   composite interface (possibly filtered to have only incoming or
+   outgoing messages); or
 
    ids = [id1; id2], and id1 is the name of a parameter or
    subfunctionality of a real functionality, id2 is the name of one of
@@ -2352,7 +2352,9 @@ let typecheck
     then check_units root qual_file maps in
   maps
 
-(* Interpreter User Input *)
+(* Interpreter User Input
+
+   units checking assumed to have been completed *)
 
 let id_dir_inter_of_fet (maps : maps_tyd) (fet : fun_expr_tyd) : symb_pair =
   match fet with
@@ -2463,8 +2465,13 @@ let inter_check_expr_port_or_addr
           let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
           (e_tuple [expr; e_int (EcBigInt.of_int pi)])
 
+type msg_path_info =
+  | MPI_Bad
+  | MPI_BasicButPartOfComposite
+  | MPI_Good of msg_mode * msg_dir * int * ty list
+
 let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
-      : (msg_mode * msg_dir * int * ty list) option =
+      : msg_path_info =
   match mp.inter_id_path with
   | root :: top :: rest ->
       (let mode_pi_bibt_opt =
@@ -2477,30 +2484,32 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
                  then let uior = unit_info_of_root maps root in
                       if is_basic_adv_of_ideal uior top
                       then Some (mode, 1, bibt)
-                      else Some (mode, 0, bibt)  (* pi can't be inferred *)
+                      else Some (mode, 0, bibt)  (* part of composite *)
                  else None
              | CompositeTyd comp_mp ->
                  match rest with
-                 | [bas] ->
-                     (match IdMap.find_opt bas comp_mp with
+                 | [sub] ->
+                     (match IdMap.find_opt sub comp_mp with
                       | None     -> None
                       | Some bas ->
-                          let bit = Option.get (get_inter_tyd maps root bas) in
-                          match unloc bit with
+                          let it = Option.get (get_inter_tyd maps root bas) in
+                          match unloc it with
                           | BasicTyd bibt  ->
-                              let pi = id_map_ordinal1_of_sym comp_mp bas in
+                              let pi = id_map_ordinal1_of_sym comp_mp sub in
                               Some (mode, pi, bibt)
                           | CompositeTyd _ -> failure "cannot happen")
                  | _     -> None in
        match mode_pi_bibt_opt with
-       | None                  -> None
+       | None                  -> MPI_Bad
        | Some (mode, pi, bibt) ->
            match IdMap.find_opt mp.msg bibt with
-           | None     -> None
+           | None     -> MPI_Bad
            | Some mbt ->
-               Some
+               if pi = 0
+               then MPI_BasicButPartOfComposite
+               else MPI_Good
                (mode, mbt.dir, pi, indexed_map_to_list (unlocm mbt.params_map)))
-  | _                   -> None
+  | _                   -> MPI_Bad
 
 let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
@@ -2508,13 +2517,21 @@ let inter_check_sme
   let ue = unif_env () in
   let path = unloc (sme.path) in
   match inter_check_root_qualified_msg_path maps path with
-  | None                          ->
+  | MPI_Bad                           ->
       error_message (loc sme.path)
       (fun ppf ->
          fprintf ppf
          "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
          pp_qsymbol (msg_path_u_to_qsymbol path))
-  | Some (mode, dir, pi, exp_tys) ->
+  | MPI_BasicButPartOfComposite       ->
+      error_message (loc sme.path)
+      (fun ppf ->
+         fprintf ppf
+         ("@[message@ path@ %a@ goes@ through@ basic@ interface,@ and@ " ^^
+          "instead@ must@ be@ expressed@ in@ terms@ of@ sub-interface@ " ^^
+          "of@ composite@ interface@]")
+         pp_qsymbol (msg_path_u_to_qsymbol path))
+  | MPI_Good (mode, dir, pi, exp_tys) ->
       let in_port_expr =
         inter_check_expr_port_or_addr env ue sme.in_poa_pexpr
         (if pi <> 0 && dir = Out then Some pi else None) in

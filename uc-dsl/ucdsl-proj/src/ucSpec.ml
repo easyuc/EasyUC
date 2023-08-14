@@ -108,7 +108,7 @@ type message_def =
    ones *)
 
 type comp_item =
-  {sub_id   : psymbol;  (* name of component *)
+  {sub_id   : psymbol;  (* name of sub-interface *)
    inter_id : psymbol}  (* name of basic interface - interpreted
                            in the same root (of .uc file) *)
 

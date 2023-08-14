@@ -152,7 +152,7 @@ let interpret (lexbuf : L.lexbuf) =
 
   let funexp (fe : fun_expr): unit =
     let c = currs() in
-    let config_gen = create_config 
+    let config_gen = create_gen_config 
       (Option.get c.root)
       (Option.get c.maps)
       (UcEcInterface.env ())

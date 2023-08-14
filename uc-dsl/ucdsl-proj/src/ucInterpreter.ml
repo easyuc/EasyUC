@@ -138,7 +138,7 @@ let pp_worlds (ppf : formatter) (w : worlds) : unit =
       pp_sims spis in
 
   let pp_ideal_world (ppf : formatter) (iw : ideal_world) : unit =
-    fprintf ppf "@[<hv>%a /@ @[%a%a@]@]"
+    fprintf ppf "@[%a /@ @[%a%a@]@]"
     pp_symb_pair_int iw.iw_ideal_func
     pp_symb_pair_int_int_list iw.iw_main_sim
     pp_sims iw.iw_other_sims in
@@ -269,7 +269,7 @@ let lc_create (lcbs : local_context_base list) : local_context =
        | LCB_IntPort (id, port_form)       -> (id, port_form))
     lcbs)]
 
-let pp_lc (env : env) (ppf : formatter) (lc : local_context) : unit =
+let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
   let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
@@ -348,7 +348,8 @@ let pp_gc (ppf : formatter) (gc : global_context) : unit =
         (EcPrinting.pp_form ppe) form
     | _                          -> failure "cannot happen" in
   let locs = List.rev (LDecl.tohyps gc).h_local in
-  EcPrinting.pp_list ",@ " (pp_loc ppe) ppf locs
+  fprintf ppf "@[%a@]"
+  (EcPrinting.pp_list ",@ " (pp_loc ppe)) locs
 
 let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
       : global_context =
@@ -459,46 +460,132 @@ type sim_state = {
 }
 
 type ideal_world_state = {
-  ideal_state       : ideal_state;
+  ideal_fun_state   : ideal_state;
   main_sim_state    : sim_state;
   other_sims_states : sim_state list
 }
+
+type control =  (* does environment or adversary have control? *)
+  | CtrlEnv
+  | CtrlAdv
+
+let pp_control (ppf : formatter) (ctrl : control) : unit =
+  match ctrl with
+  | CtrlEnv -> fprintf ppf "environment"
+  | CtrlAdv -> fprintf ppf "adversary"
 
 (* values of type int list are relative addresses into real
    world *)
 
 type real_world_running_context =
-  | RWRC_IdealFunc of int list
-  | RWRC_RealFunc  of int list *
-                      symbol      (* party name *)
+  | RWRC_IdealFunc of int list *
+                      symb_pair    (* functionality *)
+  | RWRC_RealFunc  of int list  *
+                      symb_pair *  (* functionality *)
+                      symbol       (* party name *)
+
+let pp_relative_address (ppf : formatter) (addr : int list) : unit =
+  fprintf ppf "[@[%a@]]"
+  (EcPrinting.pp_list ",@ " pp_int) addr
+
+let pp_symb_pair (ppf : formatter) (sp : symb_pair) : unit =
+  fprintf ppf "%s.%s" (fst sp) (snd sp)
+
+let pp_real_world_running_context (ppf : formatter)
+    (rwrc : real_world_running_context) : unit =
+  match rwrc with
+  | RWRC_IdealFunc (is, sp)       ->
+      fprintf ppf "@[running at %a: %a@]"
+      pp_relative_address is
+      pp_symb_pair sp
+  | RWRC_RealFunc (is, sp, pty) ->
+      fprintf ppf "@[running at %a: %a: %s@]"
+      pp_relative_address is
+      pp_symb_pair sp
+      pty
 
 type real_world_sending_context =
-  | RWSC_EnvOrAdv              (* starting from the environment or adversary *)
-  | RWSC_FromFunc of int list
+  | RWSC_Env                     (* sending from environment *)
+  | RWSC_Adv                     (* sending from adversary *)
+  | RWSC_FromFunc of int list *  (* relative address *)
+                     symb_pair   (* functionality *)
+
+let pp_real_world_sending_context (ppf : formatter)
+    (rwsc : real_world_sending_context) : unit =
+  match rwsc with
+  | RWSC_Env               ->
+      fprintf ppf "@[sending from environment@]"
+  | RWSC_Adv               ->
+      fprintf ppf "@[sending from adversary@]"
+  | RWSC_FromFunc (is, sp) ->
+      fprintf ppf "@[sending from %a: %a@]"
+      pp_relative_address is
+      pp_symb_pair sp
 
 type ideal_world_running_context =
-  | IWRC_Ideal_Func
-  | IWRC_Main_Sim
-  | IWRC_OtherSim of int  (* index (beginning at 0) into list of other
-                             simulators *)
+  | IWRC_Ideal_Func of symb_pair *  (* functionality *)
+                       int          (* adversarial port index *)
+  | IWRC_Main_Sim   of symb_pair *  (* main simulator *)
+                       int          (* adversarial port index *)
+  | IWRC_OtherSim   of symb_pair *  (* other simulator *)
+                       int       *  (* adversarial port index *)
+                       int          (* index (from 0) into list of
+                                       other simulators *)
+
+let pp_ideal_world_running_context (ppf : formatter)
+    (iwrc : ideal_world_running_context) : unit =
+  match iwrc with
+  | IWRC_Ideal_Func (sp, i)  ->
+      fprintf ppf "@[running at %a:%n@]"
+      pp_symb_pair sp
+      i
+  | IWRC_Main_Sim (sp, i)    ->
+      fprintf ppf "@[running at %a:%n@]"
+      pp_symb_pair sp
+      i
+  | IWRC_OtherSim (sp, i, _) ->
+      fprintf ppf "@[running at %a:%n@]"
+      pp_symb_pair sp
+      i
 
 type ideal_world_sending_context =
-  | IWSC_EnvOrAdv
-  | IWSC_IdealFunc
-  | IWSC_MainSim
-  | IWSC_OtherSim of int  (* index (beginning at 0) into list of other
-                             simulators *)
+  | IWSC_Env                        (* sending from environment *)
+  | IWSC_Adv                        (* sending from adversary *)
+  | IWSC_Ideal_Func of symb_pair *  (* functionality *)
+                       int          (* adversarial port index *)
+  | IWSC_Main_Sim   of symb_pair *  (* main simulator *)
+                       int          (* adversarial port index *)
+  | IWSC_OtherSim   of symb_pair *  (* other simulator *)
+                       int       *  (* adversarial port index *)
+                       int          (* index (from 0) into list of
+                                       other simulators *)
 
-type control =  (* does environment or adversary have control? *)
-  | ExtEnv
-  | ExtAdv
+let pp_ideal_world_sending_context (ppf : formatter)
+    (iwrc : ideal_world_sending_context) : unit =
+  match iwrc with
+  | IWSC_Env                 ->
+      fprintf ppf "@[sending from environment@]"
+  | IWSC_Adv                 ->
+      fprintf ppf "@[sending from adversary@]"
+  | IWSC_Ideal_Func (sp, i)  ->
+      fprintf ppf "@[sending from %a:%n@]"
+      pp_symb_pair sp
+      i
+  | IWSC_Main_Sim (sp, i)    ->
+      fprintf ppf "@[sending from %a:%n@]"
+      pp_symb_pair sp
+      i
+  | IWSC_OtherSim (sp, i, _) ->
+      fprintf ppf "@[sending from %a:%n@]"
+      pp_symb_pair sp
+      i
 
 type config_gen = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
   w    : worlds;
-  is   : IntSet.t  (* input guard of interface *)
+  ig   : IntSet.t  (* input guard of interface *)
 }
 
 type config_real = {
@@ -506,7 +593,7 @@ type config_real = {
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   rws  : real_world_state;
   ctrl : control;
 }
@@ -516,7 +603,7 @@ type config_ideal = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   iws  : ideal_world_state;
   ctrl : control;
 }
@@ -526,9 +613,9 @@ type config_real_running = {
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   rws  : real_world_state;
-  rwrs : real_world_running_context;
+  rwrc : real_world_running_context;
   lc   : local_context;
   ins  : instr_interp list located
 }
@@ -538,7 +625,7 @@ type config_ideal_running = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   iws  : ideal_world_state;
   iwrc : ideal_world_running_context;
   lc   : local_context;
@@ -550,7 +637,7 @@ type config_real_sending = {
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   rws  : real_world_state;
   rwsc : real_world_sending_context;
   sme  : sent_msg_expr_tyd
@@ -561,7 +648,7 @@ type config_ideal_sending = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  is   : IntSet.t;
+  ig   : IntSet.t;
   iws  : ideal_world_state;
   iwsc : ideal_world_sending_context;
   sme  : sent_msg_expr_tyd
@@ -610,9 +697,8 @@ let pp_sym_state_list (gc : global_context) (ppf : formatter)
     (sym_stat_list : (symbol * state) list) : unit =
   EcPrinting.pp_list ",@ " (pp_sym_state gc) ppf sym_stat_list
 
-let pp_real_world_states (maps : maps_tyd) (gc : global_context)
-    (rws : real_world_state) (ppf : formatter)
-    (rw : real_world) : unit =
+let pp_real_world_with_states (maps : maps_tyd) (gc : global_context)
+    (rws : real_world_state) (ppf : formatter) (rw : real_world) : unit =
   let rec pp_real_world (addr : int list) (ppf : formatter)
       ((sp, i, rwas) : real_world) : unit =
     let psfs = party_and_sub_fun_states maps rws addr sp in
@@ -648,55 +734,144 @@ let pp_real_world_states (maps : maps_tyd) (gc : global_context)
         (pp_state gc) ideal_st in
   pp_real_world [] ppf rw
 
-(* type ideal_world_state = {
-  ideal_state       : ideal_state;
-  main_sim_state    : sim_state;
-  other_sims_states : sim_state list
-}
-*)
+let pp_sim_state (gc : global_context) (iws : ideal_world_state)
+    (ppf : formatter) (sim_st : sim_state) : unit =
+  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
+  let pp_addr (ppf : formatter) (f_opt : form option) : unit =
+    match f_opt with
+    | None   -> fprintf ppf "uninitialzed"
+    | Some f ->
+        fprintf ppf "@[initialized:@ %a@]"
+        (EcPrinting.pp_form ppe) f in
+  fprintf ppf "@[%a/%a@]"
+  pp_addr sim_st.addr
+  (pp_state gc) sim_st.state
 
-let rec pp_sims_states (iws : ideal_world_state) (ppf : formatter)
-        (spis : (symb_pair * int * int list) list) : unit =
-    match spis with
-    | []        -> ()
-    | [spi]     ->
-      fprintf ppf " *@ %a"
-      pp_symb_pair_int_int_list spi
-    | spi :: spis ->
-      fprintf ppf " *@ %a%a"
-      pp_symb_pair_int_int_list spi
-      (pp_sims_states iws) spis
+let rec pp_sims_with_states (i : int) (gc : global_context)
+    (iws : ideal_world_state) (ppf : formatter)
+    (spis : (symb_pair * int * int list) list) : unit =
+  match spis with
+  | []        -> ()
+  | [spi]     ->
+    fprintf ppf " *@ %a@,[@[%a@]]"
+    pp_symb_pair_int_int_list spi
+    (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
+  | spi :: spis ->
+    fprintf ppf " *@ %a@,[@[%a@]]%a"
+    pp_symb_pair_int_int_list spi
+    (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
+    (pp_sims_with_states (i + 1) gc iws) spis
 
-let pp_ideal_world_states (iws : ideal_world_state) (ppf : formatter)
-    (iw : ideal_world) : unit =
-    fprintf ppf "@[<hv>%a /@ @[%a%a@]@]"
-    pp_symb_pair_int iw.iw_ideal_func
-    pp_symb_pair_int_int_list iw.iw_main_sim
-    (pp_sims_states iws) iw.iw_other_sims
+let pp_ideal_world_with_states (maps : maps_tyd) (gc : global_context)
+    (iws : ideal_world_state) (ppf : formatter) (iw : ideal_world) : unit =
+  fprintf ppf "@[%a@,[@[%a]@] /@ @[%a@,[@[%a@]]%a@]@]"
+  pp_symb_pair_int iw.iw_ideal_func
+  (pp_state gc) iws.ideal_fun_state
+  pp_symb_pair_int_int_list iw.iw_main_sim
+  (pp_sim_state gc iws) iws.main_sim_state
+  (pp_sims_with_states 0 gc iws) iw.iw_other_sims
+
+let pp_int_set (ppf : formatter) (is : IntSet.t) : unit =
+  let is = IntSet.elements is in
+  fprintf ppf "@[%a@]"
+  (EcPrinting.pp_list ",@ " pp_int) is
+
+let pp_global_context_msg (ppf : formatter) (gc : global_context) : unit =
+  fprintf ppf
+  "@[global context:@ %a@]"
+  pp_gc gc
+
+let pp_worlds_msg (ppf : formatter) (w : worlds) : unit =
+  fprintf ppf
+  "@[worlds:@ %a@]"
+  pp_worlds w
+
+let pp_real_world_with_states_msg (maps : maps_tyd) (gc : global_context)
+    (rws : real_world_state) (ppf : formatter) (rw : real_world) : unit =
+  fprintf ppf
+  "@[real world:@ %a@]"
+  (pp_real_world_with_states maps gc rws) rw
+
+let pp_ideal_world_with_states_msg (maps : maps_tyd) (gc : global_context)
+    (iws : ideal_world_state) (ppf : formatter) (iw : ideal_world) : unit =
+  fprintf ppf
+  "@[ideal world:@ %a@]"
+  (pp_ideal_world_with_states maps gc iws) iw
+
+let pp_input_guard_msg (ppf : formatter) (is : IntSet.t) : unit =
+  fprintf ppf
+  "@[input guard:@ %a@]"
+  pp_int_set is
+
+let pp_control_msg (ppf : formatter) (ctrl : control) : unit =
+  fprintf ppf
+  "@[control:@ %a@]"
+  pp_control ctrl
 
 let pp_config (ppf : formatter) (conf : config) : unit =
   match conf with
   | ConfigGen c          ->
       fprintf ppf
-      "@[global@ context:@\n@\n%a@\n@\nworlds:@\n@\n%a@]"
-      pp_gc c.gc pp_worlds c.w 
-  | ConfigReal c         -> failure "fill in"
-  | ConfigIdeal c        -> failure "fill in"
-  | ConfigRealRunning c  -> failure "fill in"
-  | ConfigIdealRunning c -> failure "fill in"
-  | ConfigRealSending c  -> failure "fill in"
-  | ConfigIdealSending c -> failure "fill in"
+      "%a@\n@\n%a@."
+      pp_global_context_msg c.gc
+      pp_worlds_msg c.w
+  | ConfigReal c         ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
+      pp_input_guard_msg c.ig
+      pp_control_msg c.ctrl
+  | ConfigIdeal c        ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      pp_input_guard_msg c.ig
+      pp_control_msg c.ctrl
+  | ConfigRealRunning c  ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
+      pp_input_guard_msg c.ig
+      pp_real_world_running_context c.rwrc
+      (pp_local_context (env_of_gc c.gc)) c.lc
+  | ConfigIdealRunning c ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      pp_input_guard_msg c.ig
+      pp_ideal_world_running_context c.iwrc
+      (pp_local_context (env_of_gc c.gc)) c.lc
+  | ConfigRealSending c  ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@\n@\n%a:@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
+      pp_input_guard_msg c.ig
+      pp_real_world_sending_context c.rwsc
+      (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
+  | ConfigIdealSending c ->
+      fprintf ppf
+      "%a@\n@\n%a@\n@\n%a@@\n\n%a:@\n%a@."
+      pp_global_context_msg c.gc
+      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      pp_input_guard_msg c.ig
+      pp_ideal_world_sending_context c.iwsc
+      (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
 
 exception ConfigError
 
-let create_config (root : symbol) (maps : maps_tyd) (env : env)
+let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
   let fet = inter_check_real_fun_expr root maps fe in
   let w = fun_expr_tyd_to_worlds maps fet in
-  let is = interface_input_guard_of_worlds w in
+  let ig = interface_input_guard_of_worlds w in
   let gc = gc_create env in
   let pi = EcProvers.dft_prover_infos in
-  ConfigGen {maps = maps; gc = gc; pi = pi; w = w; is = is}
+  ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
 
 let is_gen_config (conf : config) : bool =
   match conf with
@@ -878,13 +1053,13 @@ let real_of_gen_config (conf : config) : config =
       let rw = c.w.worlds_real in
       let rws = initial_real_world_state c.maps rw in
       ConfigReal
-      {maps = c.maps; gc = c.gc; pi = c.pi; rw = rw; is = c.is;
-       rws = rws; ctrl = ExtEnv}
+      {maps = c.maps; gc = c.gc; pi = c.pi; rw = rw; ig = c.ig;
+       rws = rws; ctrl = CtrlEnv}
   | _           -> raise ConfigError
 
 let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
       : ideal_world_state =
-  let ideal_state =
+  let ideal_fun_state =
     state_no_args
     (initial_state_id_of_ideal_fun_tyd
      (IdPairMap.find (fst iw.iw_ideal_func) maps.fun_map)) in
@@ -903,7 +1078,7 @@ let initial_ideal_world_state (maps : maps_tyd) (iw : ideal_world)
           (initial_state_id_of_sim_tyd
            (IdPairMap.find sp maps.sim_map))})
     iw.iw_other_sims in
-  {ideal_state       = ideal_state;
+  {ideal_fun_state   = ideal_fun_state;
    main_sim_state    = main_sim_state;
    other_sims_states = other_sims_states}
 
@@ -913,8 +1088,8 @@ let ideal_of_gen_config (conf : config) : config =
       let iw = c.w.worlds_ideal in
       let iws = initial_ideal_world_state c.maps iw in
       ConfigIdeal
-      {maps = c.maps; gc = c.gc; pi = c.pi; iw = iw; is = c.is;
-       iws = iws; ctrl = ExtEnv}
+      {maps = c.maps; gc = c.gc; pi = c.pi; iw = iw; ig = c.ig;
+       iws = iws; ctrl = CtrlEnv}
   | _           -> raise ConfigError
 
 (* sending messages and stepping configurations *)
@@ -922,7 +1097,7 @@ let ideal_of_gen_config (conf : config) : config =
 type effect =
   | EffectOK                           (* step succeeded (not random
                                           assignment), and new configuration
-                                          is running or internal send *)
+                                          is running or sending *)
   | EffectRand of EcIdent.t            (* step added ident representing
                                           random choice to global context,
                                           and new configuration is
@@ -933,16 +1108,36 @@ type effect =
                                           configuration is real or ideal *)
   | EffectBlockedIf                    (* configuration is running *)
   | EffectBlockedMatch                 (* configuration is running *)
-  | EffectBlockedPortOfAddrCompare     (* configuration is sending *)
+  | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
 let send_message_to_real_or_ideal_config
-    (conf : config) (sme : sent_msg_expr_tyd) : config * effect =
+    (conf : config) (sme : sent_msg_expr) : config * effect =
   match conf with
   | ConfigReal c  ->
-      failure "fill in"
+      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
+      (ConfigRealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        rw   = c.rw;
+        ig   = c.ig;
+        rws  = c.rws;
+        rwsc = if c.ctrl = CtrlEnv then RWSC_Env else RWSC_Adv;
+        sme  = sme},
+       EffectOK)
   | ConfigIdeal c ->
-      failure "fill in"
-  | _                                          -> raise ConfigError
+      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
+      (ConfigIdealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        iw   = c.iw;
+        ig   = c.ig;
+        iws  = c.iws;
+        iwsc = if c.ctrl = CtrlEnv then IWSC_Env else IWSC_Adv;
+        sme  = sme},
+       EffectOK)
+  | _             -> raise ConfigError
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =

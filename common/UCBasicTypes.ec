@@ -282,12 +282,9 @@ proof. by case mod. qed.
    universe value u (into which we must encode message arguments,
    using EPDPs into univ)
 
-   we assign the tags so that all the messages of all components of a
-   composite interface have distinct tags; thus the tags can be
-   thought of as message paths, and used to reject any message whose
-   destination port index is inconsistent with the tag and the
-   composite interface implemented by the real functionality at the
-   destination port's address - an example is below
+   when translating from the UC DSL, we assign tags to messages of
+   interfaces so that messages with different message paths are
+   guaranteed to be distinct
 
    note that the UC DSL typechecker allows message arguments of
    types for which there is no EPDP into univ; such specifications

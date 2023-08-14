@@ -20,7 +20,10 @@ val max_msg_params : int
 
    the second argument is used for typechecking uc_requires; the
    located symbol is the (capitalized) root name of the .uc file,
-   normally located in the file it was lexed from *)
+   normally located in the file it was lexed from
+
+   scopes and thus the current environment are manipulated in
+   the background using the ucdsl_ command of ecScope *)
 
 val typecheck :
   symbol -> (symbol located -> maps_tyd) -> spec -> maps_tyd

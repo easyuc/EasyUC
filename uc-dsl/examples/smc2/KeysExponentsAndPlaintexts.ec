@@ -167,6 +167,8 @@ rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.
 
 (*added for tests*)
+theory T.
 op addr_x : addr.
 op port_x : port.
 op testtext : text.
+end T.
