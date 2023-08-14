@@ -289,6 +289,56 @@ let interpret (lexbuf : L.lexbuf) =
       } in
     push news
   in
+  
+
+  let modify_config (modify : config -> config) : unit =
+    let c = currs() in
+    match c.config with
+    | Some cf ->
+      begin try
+        let conf = modify cf in
+        let news =  
+        {
+          c with
+          cmd_no = c.cmd_no+1;
+          ucdsl_new = false;
+          post_done = false;
+          config = Some conf;
+          effect = None;
+        } in
+        push news
+      with _ -> () end
+    | None ->
+      let cf = Option.get c.config_gen in
+      try
+        let conf = modify cf in
+        let news =  
+        {
+          c with
+          cmd_no = c.cmd_no+1;
+          ucdsl_new = false;
+          post_done = false;
+          config_gen = Some conf;
+          effect = None;
+        } in
+        push news
+      with _ -> ()
+  in
+
+  let addv (tb : type_binding) : unit =
+    let mdfy cf = add_var_to_config cf tb.id tb.ty in
+    modify_config mdfy
+  in
+
+  let addf (psy : psymbol) (pex : pexpr) : unit =
+    let mdfy cf = add_hyp_to_config cf psy pex in
+    modify_config mdfy
+  in
+
+  let prover (ppinfo : EcParsetree.pprover_infos) : unit =
+    let mdfy cf = update_prover_infos_config cf ppinfo in
+    modify_config mdfy
+  in
 
   let rec done_loop (): unit =
     try
@@ -297,9 +347,9 @@ let interpret (lexbuf : L.lexbuf) =
       | Send sme  -> send sme
       | Run -> run()
       | Step -> step()
-      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
-      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
-      | Prover _ -> inc_cmd_no()
+      | Addv tb -> addv tb (*TODO add to parser*)
+      | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
+      | Prover ppinfo -> prover ppinfo
       | Back pi -> undo pi
       | Finish -> donec ();()
       | Quit -> exit 0
