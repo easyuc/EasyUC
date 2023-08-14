@@ -64,7 +64,10 @@ let currs() : interpreter_state =
   List.hd !stack
 
 let push (is : interpreter_state) : unit =
-  stack := is :: !stack 
+  stack := is :: !stack
+
+let pop() : unit =
+  stack := List.tl !stack
 
 let cmd_prompt (cmd_no : int) =
   let cmd_no_str = string_of_int cmd_no in
@@ -219,6 +222,23 @@ let interpret (lexbuf : L.lexbuf) =
         post_done = true;
         config = None
       } in
+    (* we pop all interpreter states until the one that preceeds 
+       the start of the experiment *)
+    while ((currs()).config!=None) do pop() done;
+    push news
+  in
+
+  let send (sme : sent_msg_expr) : unit =
+    let c = currs() in
+    let config = Option.get c.config in
+    let news =  
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        ucdsl_new = false;
+        post_done = false;
+        config = send_message_to_real_or_ideal_config config sme
+      } in
     push news
   in
 
@@ -226,7 +246,7 @@ let interpret (lexbuf : L.lexbuf) =
     try
       let cmd = next_cmd lexbuf in
       begin  match (unloc cmd) with
-      | Send _  -> inc_cmd_no()
+      | Send sme  -> inc_cmd_no()
       | Run -> inc_cmd_no()
       | Step -> inc_cmd_no()
       | Addv _ -> inc_cmd_no() (*TODO add to parser*)
