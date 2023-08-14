@@ -43,7 +43,8 @@ type interpreter_state =
     root : string option;
     maps : maps_tyd option;
     config_gen : config option;
-    config : config option
+    config : config option;
+    effect : effect option
   }
 
 let init_state : interpreter_state =
@@ -55,6 +56,7 @@ let init_state : interpreter_state =
     maps = None;
     config_gen = None;
     config = None;
+    effect = None;
   }
 
 
@@ -146,6 +148,7 @@ let interpret (lexbuf : L.lexbuf) =
         maps = maps;
         config_gen = None;
         config = None;
+        effect = None;
       } in
     push news
   in
@@ -166,6 +169,7 @@ let interpret (lexbuf : L.lexbuf) =
         post_done = false;
         config_gen = Some config_gen;
         config = None;
+        effect = None;
       } in
     push news
   in
@@ -185,6 +189,7 @@ let interpret (lexbuf : L.lexbuf) =
       ucdsl_new = false;
       post_done = false;
       config = Some config;
+      effect = None;
     } in
     push news
   in
@@ -220,7 +225,8 @@ let interpret (lexbuf : L.lexbuf) =
         cmd_no = c.cmd_no+1;
         ucdsl_new = false;
         post_done = true;
-        config = None
+        config = None;
+        effect = None;
       } in
     (* we pop all interpreter states until the one that preceeds 
        the start of the experiment *)
@@ -230,14 +236,56 @@ let interpret (lexbuf : L.lexbuf) =
 
   let send (sme : sent_msg_expr) : unit =
     let c = currs() in
-    let config = Option.get c.config in
+    let cconfig = Option.get c.config in
+    let conf, eff = send_message_to_real_or_ideal_config cconfig sme in
     let news =  
       {
         c with
         cmd_no = c.cmd_no+1;
         ucdsl_new = false;
         post_done = false;
-        config = send_message_to_real_or_ideal_config config sme
+        config = Some conf;
+        effect = Some eff;
+      } in
+    push news
+  in
+
+  let step () : unit =
+    let c = currs() in
+    let cconfig = Option.get c.config in
+    let conf, eff = step_running_or_sending_real_or_ideal_config cconfig in
+    let news =  
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        ucdsl_new = false;
+        post_done = false;
+        config = Some conf;
+        effect = Some eff;
+      } in
+    push news
+  in
+
+  let run () : unit =
+
+    let rec runr (conf : config) : config * effect =
+      let conf, eff = step_running_or_sending_real_or_ideal_config conf in
+      if (eff != EffectOK)
+      then conf,eff
+      else runr conf
+    in
+    
+    let c = currs() in
+    let cconfig = Option.get c.config in
+    let conf, eff = runr cconfig in
+    let news =  
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        ucdsl_new = false;
+        post_done = false;
+        config = Some conf;
+        effect = Some eff;
       } in
     push news
   in
@@ -246,9 +294,9 @@ let interpret (lexbuf : L.lexbuf) =
     try
       let cmd = next_cmd lexbuf in
       begin  match (unloc cmd) with
-      | Send sme  -> inc_cmd_no()
-      | Run -> inc_cmd_no()
-      | Step -> inc_cmd_no()
+      | Send sme  -> send sme
+      | Run -> run()
+      | Step -> step()
       | Addv _ -> inc_cmd_no() (*TODO add to parser*)
       | Addf _ -> inc_cmd_no() (*TODO add to parser*)
       | Prover _ -> inc_cmd_no()
