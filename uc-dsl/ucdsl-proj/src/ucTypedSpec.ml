@@ -185,11 +185,11 @@ let inc_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let le_op : expr =
+let addr_le_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let lt_op : expr =
+let addr_lt_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
