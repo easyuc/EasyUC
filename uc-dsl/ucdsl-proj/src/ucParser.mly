@@ -1212,7 +1212,6 @@ send_msg :
 prover_cmd:
   | PROVER x = smt_info { Prover x } 
 
-
 fun_expr :
   | x = uqident; { FunExprNoArgs x }
   | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr); RPAREN;
@@ -1225,12 +1224,21 @@ sent_msg_expr :
     argsl = loc(args); 
     out_poa = dollar_or_at; 
     outpex = in_out_poa_pexpr; 
-    {{
-      in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
-      path = path;
-      args = argsl;
-      out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
-    }}
+      { SME_Ord
+        { in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
+          path = path;
+          args = argsl;
+          out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
+        }
+      }
+  | in_port = in_out_poa_pexpr;
+    AT; UNDERSCORE; AT;
+    out_port = in_out_poa_pexpr;
+      { SME_EnvAdv
+        { in_port_pexpr  = in_port;
+          out_port_pexpr = out_port;
+        }
+      }
 
 in_out_poa_pexpr:
   | id = idexpr; { id }

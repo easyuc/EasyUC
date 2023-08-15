@@ -808,7 +808,7 @@ let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
 
    the message path must be root-qualified *)
 
-type sent_msg_expr_tyd = {
+type sent_msg_expr_ord_tyd = {
   mode          : msg_mode;    (* message mode *)
   dir           : msg_dir;     (* message direction *)
   in_port_form  : form;        (* source *)
@@ -817,6 +817,15 @@ type sent_msg_expr_tyd = {
   out_port_form : form         (* destination *)
 }
 
+type sent_msg_expr_env_adv_tyd = {  (* mode is implicitly Adv *)
+  in_port_form  : form;
+  out_port_form : form
+}
+
+type sent_msg_expr_tyd =
+  | SMET_Ord    of sent_msg_expr_ord_tyd
+  | SMET_EnvAdv of sent_msg_expr_env_adv_tyd
+
 let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
   let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_form = EcPrinting.pp_form ppe in
@@ -824,8 +833,6 @@ let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
 
 let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     (sme : sent_msg_expr_tyd) : unit =
-  let inp, path, args, outp =
-    sme.in_port_form, sme.path, sme.args, sme.out_port_form in
   let no_parens (f : form) : bool =
     not (is_local f) &&
     match f.f_node with
@@ -835,20 +842,28 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     if no_parens f
     then Format.fprintf fmt "%a" (pp_form env) f
     else Format.fprintf fmt "(@[%a@])" (pp_form env) f in
-  let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
-    let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
-      match strl with
-      | []      -> Format.fprintf fmt ""
-      | [s]     -> Format.fprintf fmt "%s." s
-      | s :: tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
-    Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
-  let pp_forml (fmt : Format.formatter) (forml : form list) : unit =
-    EcPrinting.pp_list ",@ " (pp_form env) fmt forml in
-  Format.fprintf fmt "@[%a@@@,%a@,(@[%a@])@,@@%a@]"
-  pp_portform inp
-  pp_mpath path
-  pp_forml args
-  pp_portform outp
+  match sme with
+  | SMET_Ord sme    ->
+      let inp, path, args, outp =
+        sme.in_port_form, sme.path, sme.args, sme.out_port_form in
+      let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
+        let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
+          match strl with
+          | []      -> Format.fprintf fmt ""
+          | [s]     -> Format.fprintf fmt "%s." s
+          | s :: tl -> Format.fprintf fmt "%s.%a" s pp_strl tl in
+        Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
+      let pp_forml (fmt : Format.formatter) (forml : form list) : unit =
+        EcPrinting.pp_list ",@ " (pp_form env) fmt forml in
+      Format.fprintf fmt "@[%a@@@,%a@,(@[%a@])@,@@%a@]"
+      pp_portform inp
+      pp_mpath path
+      pp_forml args
+      pp_portform outp
+  | SMET_EnvAdv sme ->
+      Format.fprintf fmt "@[%a@@_@,@@%a@]"
+      pp_portform sme.in_port_form
+      pp_portform sme.in_port_form
 
 (* check whether the results of pretty printing two sent message
    expressions are equal strings *)
