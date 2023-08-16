@@ -56,7 +56,7 @@ let test_ideal_config (include_dirs : string list) (file : string)
   let config = ideal_of_gen_config config in
   pp_config Format.std_formatter config
 
-let test_sent_real_config (include_dirs : string list) (file : string)
+let test_sent_real_config_1 (include_dirs : string list) (file : string)
     (fun_ex : string) : unit =
   UcEcInterface.init ();
   UcState.set_units();
@@ -71,6 +71,24 @@ let test_sent_real_config (include_dirs : string list) (file : string)
   let sme =
    parse_sent_msg_expr
    "T.port_x@SMC2.SMC2Dir.Pt1.smc_req(T.port_x,T.testtext)$func" in
+  let (config, _) = send_message_to_real_or_ideal_config real_config sme in
+  pp_config Format.std_formatter config
+
+let test_sent_real_config_2 (include_dirs : string list) (file : string)
+    (fun_ex : string) : unit =
+  UcEcInterface.init ();
+  UcState.set_units();
+  UcState.set_include_dirs include_dirs;
+  let maps =
+    UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
+  let root = UcUtils.capitalized_root_of_filename_with_extension file in
+  let env = UcEcInterface.env () in
+  let fun_expr = parse_fun_expr fun_ex in
+  let config = create_gen_config root maps env fun_expr in
+  let real_config = real_of_gen_config config in
+  let sme =
+   parse_sent_msg_expr
+   "T.port_x@_@T.port_x" in
   let (config, _) = send_message_to_real_or_ideal_config real_config sme in
   pp_config Format.std_formatter config
 
@@ -106,8 +124,11 @@ let test_ideal_config_2 (): unit =
 
 let test_sent_real_config_1 (): unit =
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
-  test_sent_real_config [smc2_dir] smc2 fe
+  test_sent_real_config_1 [smc2_dir] smc2 fe
 
+let test_sent_real_config_2 (): unit =
+  let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
+  test_sent_real_config_2 [smc2_dir] smc2 fe
 
 (*********)
 
@@ -151,4 +172,6 @@ let () =
   test_ideal_config_2 ();
   print_newline ();
   test_sent_real_config_1 ();
+  print_endline "";
+  test_sent_real_config_2 ();
   print_endline ""

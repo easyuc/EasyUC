@@ -407,6 +407,76 @@ let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
       opt_loc_error_message lopt
       (fun ppf -> fprintf ppf "prover infos error: %s" s)
 
+(* making formulas involving addresses and port *)
+
+let envport_form (func : form) (adv : form) (pt : form) : form =
+  f_app (form_of_expr mhr envport_op) [func; adv; pt] tbool
+
+let inc_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr inc_op) [addr1; addr2] tbool
+
+let addr_le_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_le_op) [addr1; addr2] tbool
+
+let addr_lt_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
+
+let addr_eq_form (addr1 : form) (addr2 : form) : form =
+  f_app (fop_eq addr_ty) [addr1; addr2] tbool
+
+let port_eq_form (addr1 : form) (addr2 : form) : form =
+  f_app (fop_eq port_ty) [addr1; addr2] tbool
+
+let int_eq_form (n1 : form) (n2 : form) : form =
+  f_app (fop_eq tint) [n1; n2] tbool
+
+let port_to_addr_form (port : form) : form =
+  f_proj port 0 port_ty
+
+let port_to_pi_form (port : form) : form =
+  f_proj port 1 tint
+
+let make_port (addr : form) (pi : form) : form =
+  f_tuple [addr; pi]
+
+(* using SMT to test relationships between addresses and port *)
+
+exception SMT_Test
+
+let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
+    (f : form) : bool =
+  match UcEcFormEval.evalCondition gc f with
+  | UcEcFormEval.Bool b    -> b
+  | UcEcFormEval.Undecided -> raise SMT_Test
+
+let smt_test_envport (gc : global_context) (pi : prover_infos)
+    (func : form) (adv : form) (pt : form) : bool =
+  eval_bool_form_to_bool gc pi (envport_form func adv pt)
+
+let smt_test_int (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (inc_form addr1 addr2)
+
+let smt_test_addr_le (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (addr_le_form addr1 addr2)
+
+let smt_test_addr_lt (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (addr_lt_form addr1 addr2)
+
+let smt_test_addr_eq (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (addr_eq_form addr1 addr2)
+
+let smt_test_port_eq (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (port_eq_form addr1 addr2)
+
+let smt_test_int_eq (gc : global_context) (pi : prover_infos)
+    (addr1 : form) (addr2 : form) : bool =
+  eval_bool_form_to_bool gc pi (int_eq_form addr1 addr2)
+
 (* configurations *)
 
 type state = {  (* of ideal functionality, party or simulator *)

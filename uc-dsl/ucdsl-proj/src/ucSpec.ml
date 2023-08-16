@@ -278,7 +278,12 @@ type port_or_addr_pexpr =
   | PoA_Port of pexpr
   | PoA_Addr of pexpr
 
-(* expression for message in transit
+(* expression for message in transit (sent message expession)
+
+   there are two forms, ordinary and for environment/adversary
+   communication
+
+   -- ordinary --
 
    message path must be qualified by root, as otherwise could
    be ambiguous
@@ -296,13 +301,28 @@ type port_or_addr_pexpr =
    this will be true iff the message direction is "in" and either the
    message path terminates in a component of a composite interface or
    terminates with the basic adversarial interface of an ideal
-   functionality *)
+   functionality
 
-type sent_msg_expr =
+   -- environment/adversary communication --
+
+   this form carries no data, and has both source and destination ports.
+   its function is to model whatever communication the environment
+   and adversary are carrying out (which would pass data) *)
+
+type sent_msg_expr_ord =
   {in_poa_pexpr  : port_or_addr_pexpr;  (* source *)
    path          : msg_path;            (* message path *)
    args          : pexpr list located;  (* message arguments *)
    out_poa_pexpr : port_or_addr_pexpr}  (* destination *)
+
+type sent_msg_expr_env_adv =
+  { in_port_pexpr  : pexpr;
+    out_port_pexpr : pexpr
+  }
+
+type sent_msg_expr =
+  | SME_Ord    of sent_msg_expr_ord
+  | SME_EnvAdv of sent_msg_expr_env_adv
 
 (* Interpreter User Input *)
 

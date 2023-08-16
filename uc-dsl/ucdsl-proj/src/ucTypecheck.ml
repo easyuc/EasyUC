@@ -2515,50 +2515,62 @@ let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let expr2form = EcFol.form_of_expr EcFol.mhr in
   let ue = unif_env () in
-  let path = unloc (sme.path) in
-  match inter_check_root_qualified_msg_path maps path with
-  | MPI_Bad                           ->
-      error_message (loc sme.path)
-      (fun ppf ->
-         fprintf ppf
-         "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
-         pp_qsymbol (msg_path_u_to_qsymbol path))
-  | MPI_BasicButPartOfComposite       ->
-      error_message (loc sme.path)
-      (fun ppf ->
-         fprintf ppf
-         ("@[message@ path@ %a@ goes@ through@ basic@ interface,@ and@ " ^^
-          "instead@ must@ be@ expressed@ in@ terms@ of@ sub-interface@ " ^^
-          "of@ composite@ interface@]")
-         pp_qsymbol (msg_path_u_to_qsymbol path))
-  | MPI_Good (mode, dir, pi, exp_tys) ->
-      let in_port_expr =
-        inter_check_expr_port_or_addr env ue sme.in_poa_pexpr
-        (if pi <> 0 && dir = Out then Some pi else None) in
-      let out_port_expr =
-        inter_check_expr_port_or_addr env ue sme.out_poa_pexpr
-        (if pi <> 0 && dir = In then Some pi else None) in
-      let args = unloc sme.args in
-      if List.length exp_tys <> List.length args
-      then error_message (loc sme.args)
+  match sme with
+  | SME_Ord sme    ->
+      (let path = unloc (sme.path) in
+       match inter_check_root_qualified_msg_path maps path with
+       | MPI_Bad                           ->
+           error_message (loc sme.path)
            (fun ppf ->
               fprintf ppf
-              ("[@there@ are@ %d@ arguments,@ whereas@ there@ should@ be@ " ^^
-               "%d@ arguments@]")
-              (List.length args) (List.length exp_tys))
-      else let exprs =
-             List.mapi
-             (fun i pexpr ->
-                let (ex, _) =
-                  inter_check_expr env ue pexpr (Some (List.nth exp_tys i)) in
-                ex)
-             args in
-           {mode          = mode;
-            dir           = dir;
-            in_port_form  = expr2form in_port_expr;
-            path          = path;
-            args          = List.map expr2form exprs;
-            out_port_form = expr2form out_port_expr}
+              "@[%a@ is@ not@ a@ root-qualified@ message@ path@]"
+              pp_qsymbol (msg_path_u_to_qsymbol path))
+       | MPI_BasicButPartOfComposite       ->
+           error_message (loc sme.path)
+           (fun ppf ->
+              fprintf ppf
+              ("@[message@ path@ %a@ goes@ through@ basic@ interface,@ " ^^
+               "and@ instead@ must@ be@ expressed@ in@ terms@ of@ "      ^^
+               "sub-interface@ of@ composite@ interface@]")
+              pp_qsymbol (msg_path_u_to_qsymbol path))
+       | MPI_Good (mode, dir, pi, exp_tys) ->
+           let in_port_expr =
+             inter_check_expr_port_or_addr env ue sme.in_poa_pexpr
+             (if pi <> 0 && dir = Out then Some pi else None) in
+           let out_port_expr =
+             inter_check_expr_port_or_addr env ue sme.out_poa_pexpr
+             (if pi <> 0 && dir = In then Some pi else None) in
+           let args = unloc sme.args in
+             if List.length exp_tys <> List.length args
+             then error_message (loc sme.args)
+                  (fun ppf ->
+                     fprintf ppf
+                     ("[@there@ are@ %d@ arguments,@ whereas@ there@ " ^^
+                      "should@ be@ %d@ arguments@]")
+                     (List.length args) (List.length exp_tys))
+             else let exprs =
+                    List.mapi
+                    (fun i pexpr ->
+                       let (ex, _) =
+                         inter_check_expr env ue pexpr
+                         (Some (List.nth exp_tys i)) in
+                       ex)
+                    args in
+                  SMET_Ord
+                  {mode          = mode;
+                   dir           = dir;
+                   in_port_form  = expr2form in_port_expr;
+                   path          = path;
+                   args          = List.map expr2form exprs;
+                   out_port_form = expr2form out_port_expr})
+  | SME_EnvAdv sme ->
+      (let (in_port, _) =
+         inter_check_expr env ue sme.in_port_pexpr (Some port_ty) in
+       let (out_port, _) =
+         inter_check_expr env ue sme.out_port_pexpr (Some port_ty) in
+       SMET_EnvAdv
+       {in_port_form = expr2form in_port;
+        out_port_form = expr2form out_port})
 
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
