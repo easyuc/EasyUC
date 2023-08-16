@@ -177,6 +177,12 @@ let to_LDecl_hyps (hyps : EcBaseLogic.hyps) : EcEnv.LDecl.hyps =
   let env = UcEcInterface.env () in
   EcEnv.LDecl.init env ~locals:local_h hyps.h_tvar
 
+let dft_pi = { 
+    EcProvers.dft_prover_infos with 
+      pr_provers = 
+      List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
+  }
+
 let testFormEval () : unit =
   let i_ = "i" in
   
@@ -226,9 +232,9 @@ let testFormEval () : unit =
         ]     
     } in
     
-  printEvalResult (UcEcFormEval.eval_condition hyps_empty form_i_eq_0);
-  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_0 form_i_eq_0);
-  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_1 form_i_eq_0);
+  printEvalResult (UcEcFormEval.eval_condition hyps_empty form_i_eq_0 dft_pi);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_0 form_i_eq_0 dft_pi);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_1 form_i_eq_0 dft_pi);
   
   printFormula env (UcEcFormEval.simplify_formula hyps_empty form_i_eq_0);
   printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_0 form_i_eq_0);

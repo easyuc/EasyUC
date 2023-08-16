@@ -445,7 +445,7 @@ exception SMT_Test
 
 let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     (f : form) : bool =
-  match UcEcFormEval.evalCondition gc f with
+  match UcEcFormEval.eval_condition gc f pi with
   | UcEcFormEval.Bool b    -> b
   | UcEcFormEval.Undecided -> raise SMT_Test
 

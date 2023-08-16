@@ -36,10 +36,16 @@ let p_t_goal (json_hyps : string) (concl_str : string) : EcEnv.LDecl.hyps * EcCo
   let hyps = json_hyps2ldecl_hyps json_hyps in
   let concl = p_t_concl hyps concl_str in
   hyps, concl
+
+let dft_pi = { 
+    EcProvers.dft_prover_infos with 
+      pr_provers = 
+      List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
+  }
     
 let testEvalCond (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
-  printEvalResult (UcEcFormEval.eval_condition hyps concl)
+  printEvalResult (UcEcFormEval.eval_condition hyps concl dft_pi)
   
 let testSymplify (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
@@ -49,7 +55,7 @@ let testSymplify (json_hyps : string) (concl_str : string) : unit =
 let testDeconstructData (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  printFormula env (UcEcFormEval.deconstruct_data hyps concl)
+  printFormula env (UcEcFormEval.deconstruct_data hyps concl dft_pi)
   
 
 let json1 = {|

@@ -95,16 +95,11 @@ let pp_prover_infos (pi : EcProvers.prover_infos) : unit =
   print_endline "SMT prover_infos END"
 *)
 
-let can_prove_smt (proof : EcCoreGoal.proof) : bool =
+let can_prove_smt (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos): bool =
   pp_proof proof;
-  let dft_pi = { 
-    EcProvers.dft_prover_infos with 
-      pr_provers = 
-      List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
-  } in
   let pregoal = get_only_pregoal proof in
   try
-    let b = EcSmt.check dft_pi pregoal.g_hyps pregoal.g_concl in
+    let b = EcSmt.check pi pregoal.g_hyps pregoal.g_concl in
     print_endline (match b with true -> "SMT true" | false -> "SMT false");
     b
   with _ ->
@@ -116,21 +111,24 @@ let can_prove_crush (proof : EcCoreGoal.proof) : bool =
   let proof_c = crush proof_m in
   EcCoreGoal.closed proof_c
 
-let can_prove (proof : EcCoreGoal.proof) : bool =
+let can_prove (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos) : bool =
   if can_prove_crush proof
     then true
-    else can_prove_smt proof
+    else can_prove_smt proof pi
 
-let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+let eval_condition 
+(hyps : EcEnv.LDecl.hyps) 
+(form : EcCoreFol.form)
+(pi : EcProvers.prover_infos)
 : eval_condition_result =
   let proof_true = EcCoreGoal.start hyps form in
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
 
-  if can_prove proof_true
+  if can_prove proof_true pi
     then
       Bool true
     else
-      if can_prove proof_false
+      if can_prove proof_false pi
         then
           Bool false
         else
@@ -508,7 +506,10 @@ let pp_f _ _ = ()
 let printEvalResult _ = ()
    
 let smt_op_form_not_None 
-(hyps : EcEnv.LDecl.hyps) (opf : EcCoreFol.form) (form : EcCoreFol.form) 
+(hyps : EcEnv.LDecl.hyps) 
+(opf : EcCoreFol.form) 
+(form : EcCoreFol.form)
+(pi : EcProvers.prover_infos)
 : bool =
   print_endline "smt_op_form_not_None";
   pp_f hyps opf;
@@ -523,7 +524,7 @@ let smt_op_form_not_None
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
   pp_f hyps concl;
   print_endline "let er = evalCondition hyps concl in";
-  let er = eval_condition hyps concl in
+  let er = eval_condition hyps concl pi in
   printEvalResult er;
   print_endline "match er with";
   match er with
@@ -540,7 +541,10 @@ let mk_oget_op_form
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
-let deconstruct_data (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+let deconstruct_data 
+(hyps : EcEnv.LDecl.hyps) 
+(form : EcCoreFol.form) 
+(pi : EcProvers.prover_infos)
 : EcCoreFol.form =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in
@@ -559,9 +563,10 @@ let deconstruct_data (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
         EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty)
         sopl in
       print_endline 
-      "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) 
+      "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in";
-      let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form) 
+      let opfo = List.find_opt 
+      (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in
       print_endline "begin match opfo with";
       begin match opfo with
