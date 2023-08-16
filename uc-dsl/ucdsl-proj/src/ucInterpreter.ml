@@ -1290,10 +1290,14 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
 
   let from_func () = failure "fill in" in
 
-  match c.rwsc with
-  | RWSC_Env               -> from_env ()
-  | RWSC_Adv               -> from_adv ()
-  | RWSC_FromFunc (is, sp) -> from_func ()
+  try
+    match c.rwsc with
+    | RWSC_Env               -> from_env ()
+    | RWSC_Adv               -> from_adv ()
+    | RWSC_FromFunc (is, sp) -> from_func ()
+  with
+  | SMT_Test ->
+      (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
 let step_ideal_sending_config (rc : config_ideal_sending) : config * effect =
   failure "fill in"

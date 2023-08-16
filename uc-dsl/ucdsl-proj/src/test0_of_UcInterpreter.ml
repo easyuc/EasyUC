@@ -94,9 +94,11 @@ let test_sent_real_config_2 (include_dirs : string list) (file : string)
   let (config, eff) = step_running_or_sending_real_or_ideal_config config in
   let () = pp_config Format.std_formatter config in
   match eff with
-  | EffectMsgOut sme ->
+  | EffectMsgOut sme               ->
       pp_sent_msg_expr_tyd_in_config Format.std_formatter config sme
-  | _                -> Printf.printf "unexpected effect\n"
+  | EffectBlockedPortOrAddrCompare ->
+      Printf.printf "blocked with port/address comparison\n"
+  | _                              -> Printf.printf "unexpected effect\n"
 
 (* include dirs not used when opening file! 
 test has to be run in directory that contains SMC.uc file!*)
