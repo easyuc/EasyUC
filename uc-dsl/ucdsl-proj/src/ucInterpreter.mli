@@ -13,6 +13,12 @@ type config
 
 val pp_config : Format.formatter -> config -> unit
 
+(* pretty print a sent message expression using the environment
+   of a configuration (which is not exported from this module) *)
+
+val pp_sent_msg_expr_tyd_in_config :
+  Format.formatter -> config -> sent_msg_expr_tyd -> unit
+
 val create_gen_config : symbol -> maps_tyd -> env -> fun_expr -> config
 
 val is_gen_config           : config -> bool
@@ -60,7 +66,7 @@ type effect =
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
 val send_message_to_real_or_ideal_config :
-      config -> sent_msg_expr -> config * effect
+      config -> sent_msg_expr -> config
 
 val step_running_or_sending_real_or_ideal_config :
       config -> config * effect

@@ -237,7 +237,7 @@ let interpret (lexbuf : L.lexbuf) =
   let send (sme : sent_msg_expr) : unit =
     let c = currs() in
     let cconfig = Option.get c.config in
-    let conf, eff = send_message_to_real_or_ideal_config cconfig sme in
+    let conf = send_message_to_real_or_ideal_config cconfig sme in
     let news =  
       {
         c with
@@ -245,7 +245,8 @@ let interpret (lexbuf : L.lexbuf) =
         ucdsl_new = false;
         post_done = false;
         config = Some conf;
-        effect = Some eff;
+        effect = Some EffectOK;  (* send_message_to_real_or_ideal_config
+                                    doesn't produce an effect *)
       } in
     push news
   in

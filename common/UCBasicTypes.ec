@@ -81,6 +81,8 @@ qed.
 hint simplify [eqtrue] valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
+op env_root_addr : addr = [].
+
 (* ports - pairs of functionality addresses and port indices; messages
    (see type below) have source and destination ports, and they have
    modes (see type below): direct or adversarial
@@ -231,6 +233,8 @@ qed.
 
 hint simplify [eqtrue] valid_epdp_port_univ.
 hint rewrite epdp : valid_epdp_port_univ.
+
+op env_root_port : port = ([], 0).
 
 (* envport takes in the address, self, of a functionality, the
    address, adv, of the adversary (self and adv should be nonempty and

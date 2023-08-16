@@ -70,8 +70,8 @@ let test_sent_real_config_1 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "T.port_x@SMC2.SMC2Dir.Pt1.smc_req(T.port_x,T.testtext)$func" in
-  let (config, _) = send_message_to_real_or_ideal_config real_config sme in
+   "T.port_x@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)$func" in
+  let config = send_message_to_real_or_ideal_config real_config sme in
   pp_config Format.std_formatter config
 
 let test_sent_real_config_2 (include_dirs : string list) (file : string)
@@ -88,9 +88,15 @@ let test_sent_real_config_2 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "T.port_x@_@T.port_x" in
-  let (config, _) = send_message_to_real_or_ideal_config real_config sme in
-  pp_config Format.std_formatter config
+   "env_root_port@_@((adv, 0))" in
+  let config = send_message_to_real_or_ideal_config real_config sme in
+  let () = pp_config Format.std_formatter config in
+  let (config, eff) = step_running_or_sending_real_or_ideal_config config in
+  let () = pp_config Format.std_formatter config in
+  match eff with
+  | EffectMsgOut sme ->
+      pp_sent_msg_expr_tyd_in_config Format.std_formatter config sme
+  | _                -> Printf.printf "unexpected effect\n"
 
 (* include dirs not used when opening file! 
 test has to be run in directory that contains SMC.uc file!*)

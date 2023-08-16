@@ -407,7 +407,11 @@ let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
       opt_loc_error_message lopt
       (fun ppf -> fprintf ppf "prover infos error: %s" s)
 
-(* making formulas involving addresses and port *)
+(* making formulas for use in SMT applications *)
+
+let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
+
+let env_root_port_form : form = form_of_expr mhr env_root_port_op
 
 let envport_form (func : form) (adv : form) (pt : form) : form =
   f_app (form_of_expr mhr envport_op) [func; adv; pt] tbool
@@ -427,9 +431,6 @@ let addr_eq_form (addr1 : form) (addr2 : form) : form =
 let port_eq_form (addr1 : form) (addr2 : form) : form =
   f_app (fop_eq port_ty) [addr1; addr2] tbool
 
-let int_eq_form (n1 : form) (n2 : form) : form =
-  f_app (fop_eq tint) [n1; n2] tbool
-
 let port_to_addr_form (port : form) : form =
   f_proj port 0 port_ty
 
@@ -439,7 +440,34 @@ let port_to_pi_form (port : form) : form =
 let make_port (addr : form) (pi : form) : form =
   f_tuple [addr; pi]
 
-(* using SMT to test relationships between addresses and port *)
+let int_zero_form : form =
+  form_of_expr mhr int_zero_op
+
+let int_one_form : form =
+  form_of_expr mhr int_one_op
+
+let int_add_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_add_op) [n1; n2] tint
+
+let int_lt_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_lt_op) [n1; n2] tbool
+
+let int_le_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
+
+let int_eq_form (n1 : form) (n2 : form) : form =
+  f_app (fop_eq tint) [n1; n2] tbool
+
+let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
+  IntSet.fold
+  (fun m f ->
+     (f_and
+      (int_eq_form n (f_int (EcBigInt.of_int m)))
+      f))
+  ms
+  f_true
+
+(* SMT applications *)
 
 exception SMT_Test
 
@@ -448,34 +476,6 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
   match UcEcFormEval.eval_condition gc f pi with
   | UcEcFormEval.Bool b    -> b
   | UcEcFormEval.Undecided -> raise SMT_Test
-
-let smt_test_envport (gc : global_context) (pi : prover_infos)
-    (func : form) (adv : form) (pt : form) : bool =
-  eval_bool_form_to_bool gc pi (envport_form func adv pt)
-
-let smt_test_int (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (inc_form addr1 addr2)
-
-let smt_test_addr_le (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (addr_le_form addr1 addr2)
-
-let smt_test_addr_lt (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (addr_lt_form addr1 addr2)
-
-let smt_test_addr_eq (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (addr_eq_form addr1 addr2)
-
-let smt_test_port_eq (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (port_eq_form addr1 addr2)
-
-let smt_test_int_eq (gc : global_context) (pi : prover_infos)
-    (addr1 : form) (addr2 : form) : bool =
-  eval_bool_form_to_bool gc pi (int_eq_form addr1 addr2)
 
 (* configurations *)
 
@@ -733,6 +733,65 @@ type config =
   | ConfigRealSending  of config_real_sending
   | ConfigIdealSending of config_ideal_sending
 
+exception ConfigError
+
+let is_gen_config (conf : config) : bool =
+  match conf with
+  | ConfigGen _ -> true
+  | _           -> false
+
+let is_real_config (conf : config) : bool =
+  match conf with
+  | ConfigReal _ -> true
+  | _            -> false
+
+let is_ideal_config (conf : config) : bool =
+  match conf with
+  | ConfigIdeal _ -> true
+  | _             -> false
+
+let is_real_running_config (conf : config) : bool =
+  match conf with
+  | ConfigRealRunning _ -> true
+  | _                   -> false
+
+let is_ideal_running_config (conf : config) : bool =
+  match conf with
+  | ConfigIdealRunning _ -> true
+  | _                    -> false
+
+let is_real_sending_config (conf : config) : bool =
+  match conf with
+  | ConfigRealSending _ -> true
+  | _                   -> false
+
+let is_ideal_sending_config (conf : config) : bool =
+  match conf with
+  | ConfigIdealSending _ -> true
+  | _                    -> false
+
+let env_of_config (conf : config) : env =
+  match conf with
+  | ConfigGen c          -> env_of_gc c.gc
+  | ConfigReal c         -> env_of_gc c.gc
+  | ConfigIdeal c        -> env_of_gc c.gc
+  | ConfigRealRunning c  -> env_of_gc c.gc
+  | ConfigIdealRunning c -> env_of_gc c.gc
+  | ConfigRealSending c  -> env_of_gc c.gc
+  | ConfigIdealSending c -> env_of_gc c.gc
+
+let control_of_real_or_ideal_config (conf : config) : control =
+  match conf with
+  | ConfigReal c  -> c.ctrl
+  | ConfigIdeal c -> c.ctrl
+  | _             -> raise ConfigError
+
+let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
+  match conf with
+  | ConfigRealRunning c  -> Some (loc c.ins)
+  | ConfigIdealRunning c -> Some (loc c.ins)
+  | _                    -> None
+
 (* pretty printer for configurations *)
 
 let party_and_sub_fun_states (maps : maps_tyd) (rws : real_world_state)
@@ -932,7 +991,9 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       pp_ideal_world_sending_context c.iwsc
       (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
 
-exception ConfigError
+let pp_sent_msg_expr_tyd_in_config (ppf : formatter) (c : config)
+    (sme : sent_msg_expr_tyd) : unit =
+  pp_sent_msg_expr_tyd (env_of_config c) ppf sme
 
 let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
@@ -942,63 +1003,6 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let gc = gc_create env in
   let pi = EcProvers.dft_prover_infos in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
-
-let is_gen_config (conf : config) : bool =
-  match conf with
-  | ConfigGen _ -> true
-  | _           -> false
-
-let is_real_config (conf : config) : bool =
-  match conf with
-  | ConfigReal _ -> true
-  | _            -> false
-
-let is_ideal_config (conf : config) : bool =
-  match conf with
-  | ConfigIdeal _ -> true
-  | _             -> false
-
-let is_real_running_config (conf : config) : bool =
-  match conf with
-  | ConfigRealRunning _ -> true
-  | _                   -> false
-
-let is_ideal_running_config (conf : config) : bool =
-  match conf with
-  | ConfigIdealRunning _ -> true
-  | _                    -> false
-
-let is_real_sending_config (conf : config) : bool =
-  match conf with
-  | ConfigRealSending _ -> true
-  | _                   -> false
-
-let is_ideal_sending_config (conf : config) : bool =
-  match conf with
-  | ConfigIdealSending _ -> true
-  | _                    -> false
-
-let env_of_config (conf : config) : env =
-  match conf with
-  | ConfigGen c          -> env_of_gc c.gc
-  | ConfigReal c         -> env_of_gc c.gc
-  | ConfigIdeal c        -> env_of_gc c.gc
-  | ConfigRealRunning c  -> env_of_gc c.gc
-  | ConfigIdealRunning c -> env_of_gc c.gc
-  | ConfigRealSending c  -> env_of_gc c.gc
-  | ConfigIdealSending c -> env_of_gc c.gc
-
-let control_of_real_or_ideal_config (conf : config) : control =
-  match conf with
-  | ConfigReal c  -> c.ctrl
-  | ConfigIdeal c -> c.ctrl
-  | _             -> raise ConfigError
-
-let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
-  match conf with
-  | ConfigRealRunning c  -> Some (loc c.ins)
-  | ConfigIdealRunning c -> Some (loc c.ins)
-  | _                    -> None
 
 let update_prover_infos_config (conf : config)
     (ppi : EcParsetree.pprover_infos) : config =
@@ -1180,44 +1184,125 @@ type effect =
   | EffectBlockedMatch                 (* configuration is running *)
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
+let fail_out_of_running_or_sending_config (conf : config) : config * effect =
+  match conf with
+  | ConfigRealRunning c  ->
+      (ConfigReal
+       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
+        ctrl = CtrlEnv},
+       EffectFailOut)
+  | ConfigIdealRunning c ->
+      (ConfigIdeal
+       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
+        ctrl = CtrlEnv},
+       EffectFailOut)
+  | ConfigRealSending c  ->
+      (ConfigReal
+       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
+        ctrl = CtrlEnv},
+       EffectFailOut)
+  | ConfigIdealSending c ->
+      (ConfigIdeal
+       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
+        ctrl = CtrlEnv},
+       EffectFailOut)
+  | _                    -> raise ConfigError
+
+let msg_out_of_sending_config (conf : config) (ctrl : control)
+      : config * effect =
+  match conf with
+  | ConfigRealSending c  ->
+      (ConfigReal
+       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
+        ctrl = ctrl},
+       EffectMsgOut c.sme)
+  | ConfigIdealSending c ->
+      (ConfigIdeal
+       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
+        ctrl = ctrl},
+       EffectMsgOut c.sme)
+  | _                    -> raise ConfigError
+
 let send_message_to_real_or_ideal_config
-    (conf : config) (sme : sent_msg_expr) : config * effect =
+    (conf : config) (sme : sent_msg_expr) : config =
   match conf with
   | ConfigReal c  ->
       let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
-      (ConfigRealSending
-       {maps = c.maps;
-        gc   = c.gc;
-        pi   = c.pi;
-        rw   = c.rw;
-        ig   = c.ig;
-        rws  = c.rws;
-        rwsc = if c.ctrl = CtrlEnv then RWSC_Env else RWSC_Adv;
-        sme  = sme},
-       EffectOK)
+      ConfigRealSending
+      {maps = c.maps;
+       gc   = c.gc;
+       pi   = c.pi;
+       rw   = c.rw;
+       ig   = c.ig;
+       rws  = c.rws;
+       rwsc = if c.ctrl = CtrlEnv then RWSC_Env else RWSC_Adv;
+       sme  = sme}
   | ConfigIdeal c ->
       let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
-      (ConfigIdealSending
-       {maps = c.maps;
-        gc   = c.gc;
-        pi   = c.pi;
-        iw   = c.iw;
-        ig   = c.ig;
-        iws  = c.iws;
-        iwsc = if c.ctrl = CtrlEnv then IWSC_Env else IWSC_Adv;
-        sme  = sme},
-       EffectOK)
+      ConfigIdealSending
+      {maps = c.maps;
+       gc   = c.gc;
+       pi   = c.pi;
+       iw   = c.iw;
+       ig   = c.ig;
+       iws  = c.iws;
+       iwsc = if c.ctrl = CtrlEnv then IWSC_Env else IWSC_Adv;
+       sme  = sme}
   | _             -> raise ConfigError
+
+let step_real_running_config (rc : config_real_running) : config * effect =
+  failure "fill in"
+
+let step_ideal_running_config (rc : config_ideal_running) : config * effect =
+  failure "fill in"
+
+let step_real_sending_config (c : config_real_sending) : config * effect =
+  let mode = mode_of_sent_msg_expr_tyd c.sme in
+  let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
+  let dest_addr = port_to_addr_form dest_port in
+  let dest_pi = port_to_pi_form dest_port in
+  let source_port = source_port_of_sent_msg_expr_tyd c.sme in
+
+  let from_env () =
+    if mode = Dir &&
+       eval_bool_form_to_bool c.gc c.pi
+       (f_and
+        (addr_eq_form func_form dest_addr)
+        (envport_form func_form adv_form source_port))
+      then failure "fill in - to func"
+    else if mode = Adv &&
+            eval_bool_form_to_bool c.gc c.pi
+            (f_and
+             (addr_eq_form dest_port adv_form)
+              (f_or
+               (f_and
+                (int_eq_form dest_pi int_zero_form)
+                (port_eq_form source_port env_root_port_form))
+               (f_and
+                (int_lt_form int_zero_form dest_pi)
+                (f_and
+                 (int_memb_of_fset_form dest_pi c.ig)
+                 (envport_form func_form adv_form source_port)))))
+      then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
+    else fail_out_of_running_or_sending_config (ConfigRealSending c) in
+
+  let from_adv () = failure "fill in" in
+
+  let from_func () = failure "fill in" in
+
+  match c.rwsc with
+  | RWSC_Env               -> from_env ()
+  | RWSC_Adv               -> from_adv ()
+  | RWSC_FromFunc (is, sp) -> from_func ()
+
+let step_ideal_sending_config (rc : config_ideal_sending) : config * effect =
+  failure "fill in"
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =
   match conf with
-  | ConfigRealRunning c  ->
-      failure "fill in"
-  | ConfigIdealRunning c ->
-      failure "fill in"
-  | ConfigRealSending c  ->
-      failure "fill in"
-  | ConfigIdealSending c ->
-      failure "fill in"
+  | ConfigRealRunning c  -> step_real_running_config c
+  | ConfigIdealRunning c -> step_ideal_running_config c
+  | ConfigRealSending c  -> step_real_sending_config c
+  | ConfigIdealSending c -> step_ideal_sending_config c
   | _                    -> raise ConfigError
