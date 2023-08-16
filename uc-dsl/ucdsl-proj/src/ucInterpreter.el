@@ -14,6 +14,12 @@
 ;;to the $PATH env variable, e.g. by running in shell:
 ;;export PATH=$PATH:/usr/local/share/easycrypt/EasyUC/uc-dsl/ucdsl-proj/_build/default/src/
 ;;
+;;Also add this path to the exec-path in .emacs file, e.g.:
+;;(setq exec-path
+;;        (append
+;;         '("/usr/local/share/easycrypt/EasyUC/uc-dsl/ucdsl-proj/_build/default/src/")
+;;         exec-path))
+;;
 ;;4.
 ;;run emacs, then
 ;;M-x byte-recompile-directory RET ~/.emacs.d/elpa/
@@ -66,7 +72,7 @@ insert contents from a file, mark the positions between character positions"
 
 (
  proof-easy-config 'ucInterpreter "UCInterpreter"
- proof-prog-name		"ucInterpreterClient"
+ proof-prog-name		"ucInterpreterClient.exe"
  
  proof-terminal-string		".\n"
  
