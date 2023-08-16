@@ -1,4 +1,4 @@
-type evalConditionResult = 
+type eval_condition_result = 
   | Bool of bool
   | Undecided
 (*  
@@ -121,8 +121,8 @@ let can_prove (proof : EcCoreGoal.proof) : bool =
     then true
     else can_prove_smt proof
 
-let evalCondition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
-: evalConditionResult =
+let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+: eval_condition_result =
   let proof_true = EcCoreGoal.start hyps form in
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
 
@@ -459,7 +459,7 @@ let simplify_by_crushing
   form_s
 *)
               
-let simplifyFormula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
 : EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
   let f_ty = EcCoreFol.f_ty form in
@@ -496,7 +496,7 @@ let pp_f hyps f =
   let ppe = ppe_ofhyps hyps in
   Format.eprintf "%a@." (EcPrinting.pp_form ppe) f
   
-let printEvalResult (res : evalConditionResult) : unit =
+let printEvalResult (res : eval_condition_result) : unit =
   match res with
   | Bool true  -> print_endline "TRUE"
   | Bool false -> print_endline "FALSE"
@@ -523,7 +523,7 @@ let smt_op_form_not_None
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
   pp_f hyps concl;
   print_endline "let er = evalCondition hyps concl in";
-  let er = evalCondition hyps concl in
+  let er = eval_condition hyps concl in
   printEvalResult er;
   print_endline "match er with";
   match er with
@@ -540,7 +540,7 @@ let mk_oget_op_form
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
-let deconstructData (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+let deconstruct_data (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
 : EcCoreFol.form =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in

@@ -1,7 +1,7 @@
 open UcEcHypothesisSerialization
 open UcEcFormEval
 
-let printEvalResult (res : UcEcFormEval.evalConditionResult) : unit =
+let printEvalResult (res : UcEcFormEval.eval_condition_result) : unit =
   match res with
   | Bool true  -> print_endline "TRUE"
   | Bool false -> print_endline "FALSE"
@@ -39,17 +39,17 @@ let p_t_goal (json_hyps : string) (concl_str : string) : EcEnv.LDecl.hyps * EcCo
     
 let testEvalCond (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
-  printEvalResult (UcEcFormEval.evalCondition hyps concl)
+  printEvalResult (UcEcFormEval.eval_condition hyps concl)
   
 let testSymplify (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  printFormula env (UcEcFormEval.simplifyFormula hyps concl)
+  printFormula env (UcEcFormEval.simplify_formula hyps concl)
   
 let testDeconstructData (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  printFormula env (UcEcFormEval.deconstructData hyps concl)
+  printFormula env (UcEcFormEval.deconstruct_data hyps concl)
   
 
 let json1 = {|

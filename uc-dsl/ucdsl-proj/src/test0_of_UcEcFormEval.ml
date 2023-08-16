@@ -139,7 +139,7 @@ let lemma_i_eq_one_impl_i_le_one' () : unit =
   let scope = {scope with sc_pr_uc = Some puc} in
   EcCommands.ucdsl_update scope
 *)
-let printEvalResult (res : UcEcFormEval.evalConditionResult) : unit =
+let printEvalResult (res : UcEcFormEval.eval_condition_result) : unit =
   match res with
   | Bool true  -> print_endline "TRUE"
   | Bool false -> print_endline "FALSE"
@@ -226,13 +226,13 @@ let testFormEval () : unit =
         ]     
     } in
     
-  printEvalResult (UcEcFormEval.evalCondition hyps_empty form_i_eq_0);
-  printEvalResult (UcEcFormEval.evalCondition hyps_i_eq_0 form_i_eq_0);
-  printEvalResult (UcEcFormEval.evalCondition hyps_i_eq_1 form_i_eq_0);
+  printEvalResult (UcEcFormEval.eval_condition hyps_empty form_i_eq_0);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_0 form_i_eq_0);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_1 form_i_eq_0);
   
-  printFormula env (UcEcFormEval.simplifyFormula hyps_empty form_i_eq_0);
-  printFormula env (UcEcFormEval.simplifyFormula hyps_i_eq_0 form_i_eq_0);
-  printFormula env (UcEcFormEval.simplifyFormula hyps_i_eq_1 form_i_eq_0)
+  printFormula env (UcEcFormEval.simplify_formula hyps_empty form_i_eq_0);
+  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_0 form_i_eq_0);
+  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_1 form_i_eq_0)
   
 
 let () : unit =

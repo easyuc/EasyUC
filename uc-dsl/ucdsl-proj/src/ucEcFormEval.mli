@@ -1,4 +1,4 @@
-type evalConditionResult = 
+type eval_condition_result = 
   | Bool of bool
   | Undecided
 
@@ -7,8 +7,8 @@ type evalConditionResult =
   formulas cannot use types with Tunivar nodes - have to be unified
   the conclusion form must be a predicate (return bool)
 *)  
-val evalCondition   : EcEnv.LDecl.hyps -> EcCoreFol.form -> evalConditionResult
+val eval_condition : EcEnv.LDecl.hyps -> EcCoreFol.form -> eval_condition_result
 
-val simplifyFormula : EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form
+val simplify_formula : EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form
 
-val deconstructData : EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form
+val deconstruct_data : EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form
