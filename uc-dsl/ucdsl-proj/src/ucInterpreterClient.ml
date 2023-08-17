@@ -138,8 +138,10 @@ let interpret (lexbuf : L.lexbuf) =
         EcCommands.ucdsl_end();
         None
     in
-    let c = currs() in
-    let news = 
+    match maps with
+    | Some _ ->
+      let c = currs() in
+      let news = 
       { c with
         cmd_no = c.cmd_no+1;
         ucdsl_new = true;
@@ -150,7 +152,8 @@ let interpret (lexbuf : L.lexbuf) =
         config = None;
         effect = None;
       } in
-    push news
+      push news
+    | None -> ()
   in
 
   let funexp (fe : fun_expr): unit =
@@ -472,6 +475,7 @@ let rec load_loop () : unit =
   interpreter_loop()
   
 let stdIOclient =
+  UcState.set_raw_messages();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
   

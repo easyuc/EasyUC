@@ -79,8 +79,8 @@ insert contents from a file, mark the positions between character positions"
  proof-script-comment-start	"(*"
  proof-script-comment-end	"*)"
  
- proof-goal-command-regexp	"^load"
- proof-save-command-regexp	"^finish"
+ proof-goal-command-regexp	"load"
+ proof-save-command-regexp	"finish"
 
 
  proof-non-undoables-regexp     "back"
@@ -89,15 +89,17 @@ insert contents from a file, mark the positions between character positions"
  proof-goal-command		"load %s.\n"
  proof-save-command		"finish.\n"
  
- proof-shell-start-goals-regexp	 "^state:"
+ proof-shell-start-goals-regexp	 "state:"
  proof-shell-end-goals-regexp	 ";"
  
  proof-shell-quit-cmd		 "quit.\n"
  proof-assistant-home-page	 "http://yes"
- proof-shell-annotated-prompt-regexp "^#[0-9]*>"
- proof-shell-error-regexp	 "^\[error:"
+ proof-shell-annotated-prompt-regexp "#[0-9]*>"
+ proof-shell-error-regexp	 "^error:"
  
  proof-shell-handle-output-system-specific 'frame-with-uc-file
+
+ ;;proof-general-debug "non-nil thing"
 )
 
 (provide 'ucInterpreter)
