@@ -339,8 +339,8 @@ type interpreter_command_u =
   | Step
   | Addv of type_binding (*TODO add to parser*)
   | Addf of psymbol * pexpr (*TODO add to parser*)
-  | Prover of EcParsetree.pprover_infos (*TODO add to interpreter client*)
-  | Back of int located (*TODO add to interpreter client*)
+  | Prover of EcParsetree.pprover_infos
+  | Back of int located
   | Finish
   | Quit
 

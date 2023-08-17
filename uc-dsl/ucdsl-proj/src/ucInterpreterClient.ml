@@ -197,17 +197,6 @@ let interpret (lexbuf : L.lexbuf) =
     push news
   in
 
-  let inc_cmd_no () : unit =
-    let c = currs() in
-    let news = 
-    { c with 
-      cmd_no = c.cmd_no+1;
-      ucdsl_new = false;
-      post_done = false; 
-    } in
-    push news
-  in
-
   let undo (pi : int located) : unit =
     let i = unloc pi in
     let l = List.length !stack in
@@ -217,7 +206,7 @@ let interpret (lexbuf : L.lexbuf) =
     else
       error_message (loc pi)
         (fun ppf -> Format.fprintf ppf 
-"@[%i@ is@ not@ between@ 0@ and@ %i@]" i l)
+"@[%i@ is@ not@ between@ 1@ and@ %i@]" i (l-1))
   in
   
   let donec () : unit =
@@ -355,7 +344,7 @@ let interpret (lexbuf : L.lexbuf) =
       | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
       | Prover ppinfo -> prover ppinfo
       | Back pi -> undo pi
-      | Finish -> donec ();()
+      | Finish -> donec()
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -373,6 +362,7 @@ let rec load_loop () : unit =
       begin  match (unloc cmd) with
       | Load psym ->
         load psym
+      | Back pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -389,6 +379,7 @@ let rec load_loop () : unit =
       begin  match (unloc cmd) with
       | Funex fe ->
         funexp fe
+      | Back pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -403,16 +394,17 @@ let rec load_loop () : unit =
     try
       let cmd = next_cmd lexbuf in 
       begin  match (unloc cmd) with
-      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
-      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
-      | Prover _ -> inc_cmd_no()  
+      | Addv tb -> addv tb (*TODO add to parser*)
+      | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
+      | Prover ppinfo -> prover ppinfo  
 
       | World w ->
         world w
+      | Back pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[addv@,addf@,prover@,@ or@ world@ command@ expected@]")
+        (fun ppf -> Format.fprintf ppf "@[addv@,@ addf@,@ prover@,@ or@ world@ command@ expected@]")
       end
     with _ ->
       prompt();
@@ -441,14 +433,15 @@ let rec load_loop () : unit =
 
       | World w -> 
         world w
-      | Addv _ -> inc_cmd_no() (*TODO add to parser*)
-      | Addf _ -> inc_cmd_no() (*TODO add to parser*)
-      | Prover _ -> inc_cmd_no()  
+      | Addv tb -> addv tb (*TODO add to parser*)
+      | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
+      | Prover ppinfo -> prover ppinfo
+      | Back pi -> undo pi  
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ load@,functionality@,real@,ideal@,addv@,addf@,quit.@]")
+"@[one@ of@ following@ commands@ expected:@ load@,@ functionality@,@ real@,@ ideal@,@ addv@,@ addf@,@ quit.@]")
       end
     with _ ->
       prompt();
@@ -463,10 +456,11 @@ let rec load_loop () : unit =
 
   let rec interpreter_loop (): unit =
     prompt();
+    begin 
     match (currs()).config with
     | Some _ -> done_loop()
     | None -> setup_loop()
-    ;
+    end;
     interpreter_loop()
   in
   
