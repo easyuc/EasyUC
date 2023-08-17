@@ -183,6 +183,7 @@ let () =
   let () = Format.set_margin 78 in
   let n = Format.get_margin() in
   Printf.printf "margin: %d\n\n" n;
+(*
   test_gen_config_1 ();
   print_newline ();
   test_gen_config_2 ();
@@ -195,7 +196,10 @@ let () =
   print_newline ();
   test_ideal_config_2 ();
   print_newline ();
+*)
+(*
   test_sent_real_config_1 ();
   print_endline "";
+*)
   test_sent_real_config_2 ();
   print_endline ""

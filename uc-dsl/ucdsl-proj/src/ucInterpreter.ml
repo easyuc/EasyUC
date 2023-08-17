@@ -408,6 +408,12 @@ let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
       opt_loc_error_message lopt
       (fun ppf -> fprintf ppf "@[prover infos error: %s@]" s)
 
+let default_prover_infos (env : EcEnv.env) : prover_infos =
+  {EcProvers.dft_prover_infos with
+     pr_provers =
+       List.filter EcProvers.is_prover_known
+       EcProvers.dft_prover_names}
+
 (* making formulas for use in SMT applications *)
 
 let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
@@ -1005,7 +1011,7 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let w = fun_expr_tyd_to_worlds maps fet in
   let ig = interface_input_guard_exclusion_of_worlds w in
   let gc = gc_create env in
-  let pi = EcProvers.dft_prover_infos in
+  let pi = default_prover_infos env in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
 
 let update_prover_infos_config (conf : config)
