@@ -23,6 +23,8 @@
    EasyCrypt theory, that theory will require/import this theory last,
    after the other ec_requires of the unit. *)
 
+prover [""].  (* no use of SMT *)
+
 (* standard theories *)
 
 require export AllCore List FSet Distr DBool StdOrder.
@@ -80,6 +82,8 @@ qed.
 
 hint simplify [eqtrue] valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
+
+op env_root_addr : addr = [].
 
 (* ports - pairs of functionality addresses and port indices; messages
    (see type below) have source and destination ports, and they have
@@ -232,6 +236,8 @@ qed.
 hint simplify [eqtrue] valid_epdp_port_univ.
 hint rewrite epdp : valid_epdp_port_univ.
 
+op env_root_port : port = ([], 0).
+
 (* envport takes in the address, self, of a functionality, the
    address, adv, of the adversary (self and adv should be nonempty and
    incomparable), and a port pt, and tests whether pt's address is
@@ -246,6 +252,19 @@ hint rewrite epdp : valid_epdp_port_univ.
 
 op envport (self adv : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1  /\ pt <> ([], 0).
+
+lemma envport_inc (self adv : addr, i : int) :
+  i <> 0 => inc self adv => envport self adv (env_root_addr, i).
+proof.
+move => ne0_i.
+rewrite /envport /env_root_addr ne0_i /= incP =>
+  [[not_le_self_adv not_le_adv_self]].
+split.
+case (self <= []) => [le_self_nil | //].
+have // : self <= adv by rewrite (le_trans []) // ge_nil.
+case (adv <= []) => [le_adv_nil | //].
+have // : adv <= self by rewrite (le_trans []) // ge_nil.
+qed.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from

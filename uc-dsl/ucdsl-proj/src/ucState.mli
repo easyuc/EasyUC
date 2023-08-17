@@ -30,7 +30,20 @@ val add_lowest_include_dirs : string -> unit
 
 val set_raw_messages : unit -> unit
 
+val unset_raw_messages : unit -> unit
+
 val get_raw_messages : unit -> bool
+
+(* boolean saying whether interpreter debugging output should be
+   generated and printed
+
+   default is no debugging messages *)
+
+val set_debugging : unit -> unit
+
+val unset_debugging : unit -> unit
+
+val get_debugging : unit -> bool
 
 (* boolean saying whether top-level defintions should be required to
    be grouped into units

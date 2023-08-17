@@ -170,5 +170,6 @@ qed.
 theory T.
 op addr_x : addr.
 op port_x : port.
+op port_y : port.
 op testtext : text.
 end T.

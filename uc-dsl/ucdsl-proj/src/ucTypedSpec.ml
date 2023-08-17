@@ -164,10 +164,11 @@ let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
 
 type ty_index = (ty * int) located
 
-(* UC DSL types *)
+(* UC DSL and EasyCrypt types *)
 
 let uc_qsym_prefix_basic_types = ["Top"; "UCBasicTypes"]
 let uc_qsym_prefix_list_po     = ["Top"; "UCListPO"]
+let ec_qsym_prefix_core_int    = ["Top"; "CoreInt"]
 
 let port_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "port")) []
@@ -175,7 +176,15 @@ let port_ty : ty =
 let addr_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr")) []
 
-(* UC DSL operators *)
+(* UC DSL and EasyCrypt operators *)
+
+let env_root_addr_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_addr")) []
+  addr_ty
+
+let env_root_port_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port")) []
+  port_ty
 
 let envport_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
@@ -192,6 +201,18 @@ let addr_le_op : expr =
 let addr_lt_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
+
+let int_add_op : expr =
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
+  (tfun tint (tfun tint tbool))
+
+let int_lt_op : expr =
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "lt")) []
+  (tfun tint (tfun tint tbool))
+
+let int_le_op : expr =
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le")) []
+  (tfun tint (tfun tint tbool))
 
 (* values of type EcIdent.t *)
 
@@ -826,10 +847,26 @@ type sent_msg_expr_tyd =
   | SMET_Ord    of sent_msg_expr_ord_tyd
   | SMET_EnvAdv of sent_msg_expr_env_adv_tyd
 
+let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
+  match sme with
+  | SMET_Ord ord        -> ord.mode
+  | SMET_EnvAdv env_adv -> Adv
+
+let source_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
+  match sme with
+  | SMET_Ord ord        -> ord.in_port_form
+  | SMET_EnvAdv env_adv -> env_adv.in_port_form
+
+let dest_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
+  match sme with
+  | SMET_Ord ord        -> ord.out_port_form
+  | SMET_EnvAdv env_adv -> env_adv.out_port_form
+
 let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
   let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_form = EcPrinting.pp_form ppe in
-  pp_form fmt f
+  Format.fprintf fmt "@[%a@]"
+  pp_form f
 
 let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     (sme : sent_msg_expr_tyd) : unit =
@@ -863,7 +900,7 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
   | SMET_EnvAdv sme ->
       Format.fprintf fmt "@[%a@@_@,@@%a@]"
       pp_portform sme.in_port_form
-      pp_portform sme.in_port_form
+      pp_portform sme.out_port_form
 
 (* check whether the results of pretty printing two sent message
    expressions are equal strings *)

@@ -240,6 +240,12 @@ right; by rewrite lpo_eqP -xs_us_eq_ys nil_us cats0.
 left; by rewrite lpo_ltP (LTS xs ys us).
 qed.
 
+lemma ge_nil (xs : 'a list) :
+  [] <= xs.
+proof.
+by rewrite leP (LES [] xs xs) cat0s.
+qed.
+
 lemma le_drop (xs ys : 'a list) :
   xs <= ys => xs ++ drop (size xs) ys = ys.
 proof.
@@ -332,6 +338,19 @@ lemma inc_nle_r (xs ys : 'a list) :
 proof.
 rewrite inc_sym.
 apply inc_nle_l.
+qed.
+
+lemma inc_non_nil (xs ys : 'a list) :
+  inc xs ys => xs <> [] /\ ys <> [].
+proof.
+move => inc_xs_ys.
+split.
+case (xs = []) => [->> | //].
+have ge_nil_ys : [] <= ys by rewrite ge_nil.
+have // : ! [] <= ys by rewrite inc_nle_l.
+case (ys = []) => [->> | //].
+have ge_nil_xs : [] <= xs by rewrite ge_nil.
+have // : ! [] <= xs by rewrite inc_nle_r.
 qed.
 
 lemma incP (xs ys : 'a list) :

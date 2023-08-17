@@ -61,6 +61,7 @@ let test_sent_real_config_1 (include_dirs : string list) (file : string)
   UcEcInterface.init ();
   UcState.set_units();
   UcState.set_include_dirs include_dirs;
+  UcState.set_debugging ();
   let maps =
     UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
   let root = UcUtils.capitalized_root_of_filename_with_extension file in
@@ -70,15 +71,27 @@ let test_sent_real_config_1 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "T.port_x@SMC2.SMC2Dir.Pt1.smc_req(T.port_x,T.testtext)$func" in
-  let (config, _) = send_message_to_real_or_ideal_config real_config sme in
-  pp_config Format.std_formatter config
+   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)$func" in
+  let config = send_message_to_real_or_ideal_config real_config sme in
+  let () = pp_config Format.std_formatter config in
+  let () = print_newline () in
+  let (config, eff) = step_running_or_sending_real_or_ideal_config config in
+  let () = pp_config Format.std_formatter config in
+  let () = print_newline () in
+  match eff with
+  | EffectMsgOut sme               ->
+      pp_sent_msg_expr_tyd_in_config Format.std_formatter config sme;
+      print_newline ()
+  | EffectBlockedPortOrAddrCompare ->
+      Printf.printf "blocked with port/address comparison\n"
+  | _                              -> Printf.printf "unexpected effect\n"
 
 let test_sent_real_config_2 (include_dirs : string list) (file : string)
     (fun_ex : string) : unit =
   UcEcInterface.init ();
   UcState.set_units();
   UcState.set_include_dirs include_dirs;
+  UcState.set_debugging ();
   let maps =
     UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
   let root = UcUtils.capitalized_root_of_filename_with_extension file in
@@ -88,9 +101,20 @@ let test_sent_real_config_2 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "T.port_x@_@T.port_x" in
-  let (config, _) = send_message_to_real_or_ideal_config real_config sme in
-  pp_config Format.std_formatter config
+   "((env_root_addr, 1))@_@((adv, 22))" in
+  let config = send_message_to_real_or_ideal_config real_config sme in
+  let () = pp_config Format.std_formatter config in
+  let () = print_newline () in
+  let (config, eff) = step_running_or_sending_real_or_ideal_config config in
+  let () = pp_config Format.std_formatter config in
+  let () = print_newline () in
+  match eff with
+  | EffectMsgOut sme               ->
+      pp_sent_msg_expr_tyd_in_config Format.std_formatter config sme;
+      print_newline ()
+  | EffectBlockedPortOrAddrCompare ->
+      Printf.printf "blocked with port/address comparison\n"
+  | _                              -> Printf.printf "unexpected effect\n"
 
 (* include dirs not used when opening file! 
 test has to be run in directory that contains SMC.uc file!*)
