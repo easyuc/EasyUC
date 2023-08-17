@@ -202,14 +202,6 @@ let addr_lt_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let int_zero_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "zero")) []
-  tint
-
-let int_one_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "one")) []
-  tint
-
 let int_add_op : expr =
   e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
   (tfun tint (tfun tint tbool))
@@ -873,7 +865,8 @@ let dest_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
 let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
   let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_form = EcPrinting.pp_form ppe in
-  pp_form fmt f
+  Format.fprintf fmt "@[%a@]"
+  pp_form f
 
 let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     (sme : sent_msg_expr_tyd) : unit =

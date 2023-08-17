@@ -70,3 +70,10 @@ let opt_loc_error_message_exit =
   message (fun () -> exit 1) ErrorMessage
 
 let opt_loc_warning_message = message (fun () -> ()) WarningMessage
+
+let debugging_message msgf =
+  if UcState.get_debugging ()
+  then Printf.eprintf "debugging:\n\n";
+       msgf Format.err_formatter;
+       Format.pp_print_newline Format.err_formatter ();
+       Format.pp_print_newline Format.err_formatter ()

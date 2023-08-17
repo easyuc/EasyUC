@@ -22,7 +22,17 @@ let raw_messages : bool ref = ref false
 
 let set_raw_messages () = raw_messages := true
 
+let unset_raw_messages () = raw_messages := true
+
 let get_raw_messages () = ! raw_messages
+
+let debugging : bool ref = ref false
+
+let set_debugging () = raw_messages := true
+
+let unset_debugging () = raw_messages := false
+
+let get_debugging () = ! raw_messages
 
 let units : bool ref = ref false
 

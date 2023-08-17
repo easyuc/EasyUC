@@ -36,6 +36,11 @@ let margin_ref : int ref = ref 78
 let margin_arg n =
   (margin_ref := n; ())
 
+let debugging_ref : bool ref = ref false
+
+let debugging_arg () =
+  (debugging_ref := true; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -43,7 +48,8 @@ let arg_specs =
    ("-raw-msg", Unit raw_msg_arg, "Issue raw messages");
    ("-units", Unit units_arg, "Require grouping definitions into units");
    ("-margin", Int margin_arg,
-    "<n> Set pretty printing margin (default is 78)")]
+    "<n> Set pretty printing margin (default is 78)");
+   ("-debug", Unit debugging_arg, "Print interpeter debugging messages")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
@@ -68,7 +74,7 @@ let file =
        exit 1)
 
 let () =
-  if ! raw_msg_ref then UcState.set_raw_messages()
+  if ! raw_msg_ref then UcState.set_raw_messages ()
 
 let () =
   if ! units_ref then UcState.set_units()
@@ -82,6 +88,9 @@ let () =
           "@[invalid@ pretty@ printer@ margin:@ %d@]" n)
   else (Format.pp_set_margin Format.std_formatter n;
         Format.pp_set_margin Format.err_formatter n)
+
+let () =
+  if ! debugging_ref then UcState.set_debugging ()
 
 let () =
   let len = String.length file in

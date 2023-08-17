@@ -78,15 +78,16 @@ type worlds = {
 
 (* compute the adversarial port indices of a world that the environment
    -- when communicating with the adversary / simulators + adversary --
-   may not communicate with *)
+   may *not* communicate with *)
 
-let interface_input_guard_of_ideal_world (iw : ideal_world) : IntSet.t =
+let interface_input_guard_exclusion_of_ideal_world (iw : ideal_world)
+      : IntSet.t =
   IntSet.union
   (IntSet.singleton (proj3_2 iw.iw_main_sim))
   (IntSet.of_list (List.map (fun (_, i, _) -> i) iw.iw_other_sims))
 
-let interface_input_guard_of_worlds (w : worlds) : IntSet.t =
-  interface_input_guard_of_ideal_world w.worlds_ideal
+let interface_input_guard_exclusion_of_worlds (w : worlds) : IntSet.t =
+  interface_input_guard_exclusion_of_ideal_world w.worlds_ideal
 
 let pp_int (ppf : formatter) (i : int) : unit =
   fprintf ppf "%d" i
@@ -270,12 +271,11 @@ let lc_create (lcbs : local_context_base list) : local_context =
     lcbs)]
 
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
     fprintf ppf "@[%a :@ %a@]"
     EcIdent.pp_ident id
-    (EcPrinting.pp_form ppe) form in
+    (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
     EcPrinting.pp_list ",@ " pp_frame_entry ppf
     (EcIdent.Mid.bindings frame) in
@@ -335,21 +335,22 @@ let env_of_gc (gc : global_context) : env = LDecl.toenv gc
    by commas, allowing breaks *)
 
 let pp_gc (ppf : formatter) (gc : global_context) : unit =
-  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
-  let pp_loc ppe (ppf : formatter) (id, lk) : unit =
+  let env = env_of_gc gc in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let pp_loc (ppf : formatter) (id, lk) : unit =
     match lk with
     | EcBaseLogic.LD_var (ty, _) ->
-        fprintf ppf "@[%a :@ %a@]"
+        fprintf ppf "@[%a :@ @[%a@]@]"
         EcIdent.pp_ident id
         (EcPrinting.pp_type ppe) ty
     | EcBaseLogic.LD_hyp form    ->
-        fprintf ppf "@[%a :@ %a@]"
+        fprintf ppf "@[%a :@ @[%a@]@]"
         EcIdent.pp_ident id
         (EcPrinting.pp_form ppe) form
     | _                          -> failure "cannot happen" in
   let locs = List.rev (LDecl.tohyps gc).h_local in
   fprintf ppf "@[%a@]"
-  (EcPrinting.pp_list ",@ " (pp_loc ppe)) locs
+  (EcPrinting.pp_list ",@ " pp_loc) locs
 
 let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
       : global_context =
@@ -405,7 +406,7 @@ let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
   try EcScope.Prover.pprover_infos_to_prover_infos env pi ppi with
   | EcScope.HiScopeError (lopt, s) ->
       opt_loc_error_message lopt
-      (fun ppf -> fprintf ppf "prover infos error: %s" s)
+      (fun ppf -> fprintf ppf "@[prover infos error: %s@]" s)
 
 (* making formulas for use in SMT applications *)
 
@@ -425,12 +426,6 @@ let addr_le_form (addr1 : form) (addr2 : form) : form =
 let addr_lt_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
-let addr_eq_form (addr1 : form) (addr2 : form) : form =
-  f_app (fop_eq addr_ty) [addr1; addr2] tbool
-
-let port_eq_form (addr1 : form) (addr2 : form) : form =
-  f_app (fop_eq port_ty) [addr1; addr2] tbool
-
 let port_to_addr_form (port : form) : form =
   f_proj port 0 port_ty
 
@@ -440,11 +435,7 @@ let port_to_pi_form (port : form) : form =
 let make_port (addr : form) (pi : form) : form =
   f_tuple [addr; pi]
 
-let int_zero_form : form =
-  form_of_expr mhr int_zero_op
-
-let int_one_form : form =
-  form_of_expr mhr int_one_op
+let int_form (n : int) : form = f_int (EcBigInt.of_int n)
 
 let int_add_form (n1 : form) (n2 : form) : form =
   f_app (form_of_expr mhr int_add_op) [n1; n2] tint
@@ -455,14 +446,11 @@ let int_lt_form (n1 : form) (n2 : form) : form =
 let int_le_form (n1 : form) (n2 : form) : form =
   f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
 
-let int_eq_form (n1 : form) (n2 : form) : form =
-  f_app (fop_eq tint) [n1; n2] tbool
-
 let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
   IntSet.fold
   (fun m f ->
      (f_and
-      (int_eq_form n (f_int (EcBigInt.of_int m)))
+      (f_eq n (f_int (EcBigInt.of_int m)))
       f))
   ms
   f_true
@@ -473,9 +461,25 @@ exception SMT_Test
 
 let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     (f : form) : bool =
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[using@ SMT@ to@ determine@ truth@ or@ falsity@ of:@,@[%a@]"
+       (pp_form (env_of_gc gc)) f) in
   match UcEcFormEval.eval_condition gc f pi with
-  | UcEcFormEval.Bool b    -> b
-  | UcEcFormEval.Undecided -> raise SMT_Test
+  | UcEcFormEval.Bool b    ->
+      (if b
+       then debugging_message
+            (fun ppf -> fprintf ppf "@[formula@ proved@]")
+       else debugging_message
+            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]"));
+      b
+  | UcEcFormEval.Undecided ->
+      (debugging_message
+       (fun ppf ->
+          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]"));
+      raise SMT_Test
 
 (* configurations *)
 
@@ -811,12 +815,12 @@ let party_and_sub_fun_states (maps : maps_tyd) (rws : real_world_state)
 
 let pp_state (gc : global_context) (ppf : formatter)
     (state : state) : unit =
-  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
+  let env = env_of_gc gc in
   match state.args with
   | []   -> fprintf ppf "%s" state.id
   | args ->
       fprintf ppf "@[%s@,(@[%a@])@]" state.id
-      (EcPrinting.pp_list ",@ " (EcPrinting.pp_form ppe)) args
+      (EcPrinting.pp_list ",@ " (pp_form env)) args
 
 let pp_sym_state (gc : global_context) (ppf : formatter)
     ((id, state) : symbol * state) : unit =
@@ -929,7 +933,7 @@ let pp_ideal_world_with_states_msg (maps : maps_tyd) (gc : global_context)
 
 let pp_input_guard_msg (ppf : formatter) (is : IntSet.t) : unit =
   fprintf ppf
-  "@[input guard:@ %a@]"
+  "@[input guard exclusion:@ %a@]"
   pp_int_set is
 
 let pp_control_msg (ppf : formatter) (ctrl : control) : unit =
@@ -999,7 +1003,7 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
   let fet = inter_check_real_fun_expr root maps fe in
   let w = fun_expr_tyd_to_worlds maps fet in
-  let ig = interface_input_guard_of_worlds w in
+  let ig = interface_input_guard_exclusion_of_worlds w in
   let gc = gc_create env in
   let pi = EcProvers.dft_prover_infos in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
@@ -1267,28 +1271,28 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
     if mode = Dir &&
        eval_bool_form_to_bool c.gc c.pi
        (f_and
-        (addr_eq_form func_form dest_addr)
+        (f_eq func_form dest_addr)
         (envport_form func_form adv_form source_port))
-      then failure "fill in - to func"
+      then failure "to func - fill in"
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
-             (addr_eq_form dest_port adv_form)
+             (f_eq dest_addr adv_form)
               (f_or
                (f_and
-                (int_eq_form dest_pi int_zero_form)
-                (port_eq_form source_port env_root_port_form))
+                (f_eq dest_pi (int_form 0))
+                (f_eq source_port env_root_port_form))
                (f_and
-                (int_lt_form int_zero_form dest_pi)
+                (int_lt_form (int_form 0) dest_pi)
                 (f_and
-                 (int_memb_of_fset_form dest_pi c.ig)
+                 (f_not (int_memb_of_fset_form dest_pi c.ig))
                  (envport_form func_form adv_form source_port)))))
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
-  let from_adv () = failure "fill in" in
+  let from_adv () = failure "fill in from adv" in
 
-  let from_func () = failure "fill in" in
+  let from_func () = failure "fill in from func" in
 
   try
     match c.rwsc with
