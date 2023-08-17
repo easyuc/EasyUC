@@ -412,7 +412,8 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
   {EcProvers.dft_prover_infos with
      pr_provers =
        List.filter EcProvers.is_prover_known
-       EcProvers.dft_prover_names}
+       EcProvers.dft_prover_names;
+     pr_timelimit = 1}
 
 (* making formulas for use in SMT applications *)
 
@@ -455,11 +456,11 @@ let int_le_form (n1 : form) (n2 : form) : form =
 let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
   IntSet.fold
   (fun m f ->
-     (f_and
+     (f_or
       (f_eq n (f_int (EcBigInt.of_int m)))
       f))
   ms
-  f_true
+  f_false
 
 (* SMT applications *)
 
@@ -1194,6 +1195,22 @@ type effect =
   | EffectBlockedMatch                 (* configuration is running *)
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
+let pp_effect (ppf : formatter) (c : config) (e : effect) : unit =
+  let env = env_of_config c in
+  match e with
+  | EffectOK                       -> fprintf ppf "EffectOK"
+  | EffectRand id                  ->
+      fprintf ppf "EffectRand: %a"
+      EcIdent.pp_ident id
+  | EffectMsgOut sme               ->
+      fprintf ppf "EffectMsgOut: %a"
+      (pp_sent_msg_expr_tyd env) sme
+  | EffectFailOut                  -> fprintf ppf "EffectFailOut"
+  | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
+  | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
+  | EffectBlockedPortOrAddrCompare ->
+      fprintf ppf "EffectBlockedPortOrAddrCompare"
+
 let fail_out_of_running_or_sending_config (conf : config) : config * effect =
   match conf with
   | ConfigRealRunning c  ->
@@ -1217,6 +1234,10 @@ let fail_out_of_running_or_sending_config (conf : config) : config * effect =
         ctrl = CtrlEnv},
        EffectFailOut)
   | _                    -> raise ConfigError
+
+let fill_in (str : string) (conf : config) : config * effect =
+  Printf.printf "warning: to be filled in: %s\n\n" str;
+  fail_out_of_running_or_sending_config conf
 
 let msg_out_of_sending_config (conf : config) (ctrl : control)
       : config * effect =
@@ -1261,10 +1282,10 @@ let send_message_to_real_or_ideal_config
   | _             -> raise ConfigError
 
 let step_real_running_config (rc : config_real_running) : config * effect =
-  failure "fill in"
+  fill_in "step_real_running_config" (ConfigRealRunning rc)
 
-let step_ideal_running_config (rc : config_ideal_running) : config * effect =
-  failure "fill in"
+let step_ideal_running_config (c : config_ideal_running) : config * effect =
+  fill_in "step_real_running_config" (ConfigIdealRunning c)
 
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
@@ -1279,7 +1300,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
        (f_and
         (f_eq func_form dest_addr)
         (envport_form func_form adv_form source_port))
-      then failure "to func - fill in"
+      then fill_in "should go to real running" (ConfigRealSending c)
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
@@ -1296,9 +1317,11 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
-  let from_adv () = failure "fill in from adv" in
+  let from_adv () =
+    fill_in "message from adv" (ConfigRealSending c) in
 
-  let from_func () = failure "fill in from func" in
+  let from_func () =
+    fill_in "message from func" (ConfigRealSending c) in
 
   try
     match c.rwsc with
@@ -1309,8 +1332,8 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   | SMT_Test ->
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
-let step_ideal_sending_config (rc : config_ideal_sending) : config * effect =
-  failure "fill in"
+let step_ideal_sending_config (c : config_ideal_sending) : config * effect =
+  fill_in "trying to step ideal sending config" (ConfigIdealSending c)
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =
