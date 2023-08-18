@@ -472,20 +472,21 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[@[using@ SMT@ to@ determine@ truth@ or@ falsity@ of:@]@\n@\n@[%a@]@]"
+       ("@[@[using@ SMT@ to@ determine@ truth@ or@ falsity@ " ^^
+        "of:@]@\n@\n@[%a@]@]@.")
        (pp_form (env_of_gc gc)) f) in
   match UcEcFormEval.eval_condition gc f pi with
   | UcEcFormEval.Bool b    ->
       (if b
        then debugging_message
-            (fun ppf -> fprintf ppf "@[formula@ proved@]")
+            (fun ppf -> fprintf ppf "@[formula@ proved@]@.")
        else debugging_message
-            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]"));
+            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]@."));
       b
   | UcEcFormEval.Undecided ->
       (debugging_message
        (fun ppf ->
-          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]"));
+          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
       raise SMT_Test
 
 (* configurations *)
@@ -952,26 +953,26 @@ let pp_config (ppf : formatter) (conf : config) : unit =
   match conf with
   | ConfigGen c          ->
       fprintf ppf
-      "%a@\n@\n%a@."
+      "@[%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       pp_worlds_msg c.w
   | ConfigReal c         ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigIdeal c        ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigRealRunning c  ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
@@ -979,7 +980,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_local_context (env_of_gc c.gc)) c.lc
   | ConfigIdealRunning c ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
@@ -987,7 +988,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_local_context (env_of_gc c.gc)) c.lc
   | ConfigRealSending c  ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n@\n%a:@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n@[message:@ %a@]@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
@@ -995,7 +996,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
   | ConfigIdealSending c ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@@\n\n%a:@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\nmessage:@ %a@@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
@@ -1236,7 +1237,7 @@ let fail_out_of_running_or_sending_config (conf : config) : config * effect =
   | _                    -> raise ConfigError
 
 let fill_in (str : string) (conf : config) : config * effect =
-  Printf.printf "warning: to be filled in: %s\n\n" str;
+  Printf.eprintf "warning: to be filled in: %s\n\n" str;
   fail_out_of_running_or_sending_config conf
 
 let msg_out_of_sending_config (conf : config) (ctrl : control)

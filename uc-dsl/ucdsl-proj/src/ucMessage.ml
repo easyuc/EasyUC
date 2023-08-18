@@ -75,5 +75,4 @@ let debugging_message msgf =
   if UcState.get_debugging ()
   then Printf.eprintf "debugging:\n\n";
        msgf Format.err_formatter;
-       Format.pp_print_newline Format.err_formatter ();
        Format.pp_print_newline Format.err_formatter ()
