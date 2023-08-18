@@ -121,7 +121,7 @@ let test_sent_real_config_3 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "((env_root_addr, 1))@_@((adv, 9))" in
+   "(([], 1))@_@((adv, 9))" in
   let config = send_message_to_real_or_ideal_config real_config sme in
   let () = pp_config Format.std_formatter config in
   let () = Format.pp_print_newline Format.err_formatter () in
@@ -218,14 +218,15 @@ let () =
 *)
 
 
+(*
   test_sent_real_config_1 ();
   print_endline "";
-
+*)
 (*
   test_sent_real_config_2 ();
   print_endline ""
 *)
-(*
+
   test_sent_real_config_3 ();
   print_endline ""
-*)
+

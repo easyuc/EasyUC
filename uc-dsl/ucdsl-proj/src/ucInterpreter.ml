@@ -434,7 +434,7 @@ let addr_lt_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
 let port_to_addr_form (port : form) : form =
-  f_proj port 0 port_ty
+  f_proj port 0 addr_ty
 
 let port_to_pi_form (port : form) : form =
   f_proj port 1 tint
@@ -472,7 +472,7 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[using@ SMT@ to@ determine@ truth@ or@ falsity@ of:@,@[%a@]"
+       "@[@[using@ SMT@ to@ determine@ truth@ or@ falsity@ of:@]@\n@\n@[%a@]@]"
        (pp_form (env_of_gc gc)) f) in
   match UcEcFormEval.eval_condition gc f pi with
   | UcEcFormEval.Bool b    ->
