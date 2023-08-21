@@ -1154,7 +1154,7 @@ icomm :
   | c = prover_cmd; { c }
   | c = undo_cmd; { c }
   | c = addv_cmd; { c }
-(*  | c = addf_cmd; { c }*)
+  | c = addf_cmd; { c }
 
 %inline filename :
   | nm = rlist1(_ident, DOT)
@@ -1199,18 +1199,18 @@ addv_cmd :
                fprintf ppf
                "Did@ you@ mean@ addv@ instead@ of@ %s?" (unloc w))
     }
-(*
+
 addf_cmd :
-  | w = lident; id = lident; COLON; f = expr; 
+  | w = lident; id =loc(_ident); COLON; COLON; f = expr;  
     {
       if (unloc w) = "addf" 
-      then Addf id f
+      then Addf (id, f)
       else error_message (loc w)
             (fun ppf ->
                fprintf ppf
                "Did@ you@ mean@ addf@ instead@ of@ %s?" (unloc w))
     }
-*)
+
 fun_ex_cmd :
   | FUN; fe = fun_expr { Funex fe }
 
