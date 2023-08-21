@@ -83,8 +83,9 @@ val opt_loc_error_message_exit :
 val opt_loc_warning_message :
       EcLocation.t option -> (formatter -> unit) -> unit
 
-(* issue an interpreter debugging message, if UcState.get_debugging ()
-   returns true; the second argument is used to do formatted outputs
-   to Format.err_formatter to output the body of the message *)
+(* issue an interpreter debugging message on the standard error
+   output, if UcState.get_debugging () returns true; the second
+   argument is used to do formatted outputs to Format.err_formatter to
+   output the body of the message *)
 
 val debugging_message : (formatter -> unit) -> unit

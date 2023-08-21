@@ -65,6 +65,9 @@ type effect =
   | EffectBlockedMatch                 (* configuration is running *)
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
+val pp_effect :
+  Format.formatter -> config -> effect -> unit  (* for debugging *)
+
 val send_message_to_real_or_ideal_config :
       config -> sent_msg_expr -> config
 

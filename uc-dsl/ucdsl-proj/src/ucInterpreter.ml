@@ -412,7 +412,8 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
   {EcProvers.dft_prover_infos with
      pr_provers =
        List.filter EcProvers.is_prover_known
-       EcProvers.dft_prover_names}
+       EcProvers.dft_prover_names;
+     pr_timelimit = 1}
 
 (* making formulas for use in SMT applications *)
 
@@ -433,7 +434,7 @@ let addr_lt_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
 let port_to_addr_form (port : form) : form =
-  f_proj port 0 port_ty
+  f_proj port 0 addr_ty
 
 let port_to_pi_form (port : form) : form =
   f_proj port 1 tint
@@ -455,11 +456,11 @@ let int_le_form (n1 : form) (n2 : form) : form =
 let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
   IntSet.fold
   (fun m f ->
-     (f_and
+     (f_or
       (f_eq n (f_int (EcBigInt.of_int m)))
       f))
   ms
-  f_true
+  f_false
 
 (* SMT applications *)
 
@@ -471,20 +472,21 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[using@ SMT@ to@ determine@ truth@ or@ falsity@ of:@,@[%a@]"
+       ("@[@[using@ SMT@ to@ determine@ truth@ or@ falsity@ " ^^
+        "of:@]@\n@\n@[%a@]@]@.")
        (pp_form (env_of_gc gc)) f) in
   match UcEcFormEval.eval_condition gc f pi with
   | UcEcFormEval.Bool b    ->
       (if b
        then debugging_message
-            (fun ppf -> fprintf ppf "@[formula@ proved@]")
+            (fun ppf -> fprintf ppf "@[formula@ proved@]@.")
        else debugging_message
-            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]"));
+            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]@."));
       b
   | UcEcFormEval.Undecided ->
       (debugging_message
        (fun ppf ->
-          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]"));
+          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
       raise SMT_Test
 
 (* configurations *)
@@ -951,26 +953,26 @@ let pp_config (ppf : formatter) (conf : config) : unit =
   match conf with
   | ConfigGen c          ->
       fprintf ppf
-      "%a@\n@\n%a@."
+      "@[%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       pp_worlds_msg c.w
   | ConfigReal c         ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigIdeal c        ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigRealRunning c  ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
@@ -978,7 +980,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_local_context (env_of_gc c.gc)) c.lc
   | ConfigIdealRunning c ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
@@ -986,7 +988,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_local_context (env_of_gc c.gc)) c.lc
   | ConfigRealSending c  ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@\n@\n%a:@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n@[message:@ %a@]@]"
       pp_global_context_msg c.gc
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
@@ -994,7 +996,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
   | ConfigIdealSending c ->
       fprintf ppf
-      "%a@\n@\n%a@\n@\n%a@@\n\n%a:@\n%a@."
+      "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\nmessage:@ %a@@]"
       pp_global_context_msg c.gc
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
@@ -1194,6 +1196,22 @@ type effect =
   | EffectBlockedMatch                 (* configuration is running *)
   | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
 
+let pp_effect (ppf : formatter) (c : config) (e : effect) : unit =
+  let env = env_of_config c in
+  match e with
+  | EffectOK                       -> fprintf ppf "EffectOK"
+  | EffectRand id                  ->
+      fprintf ppf "EffectRand: %a"
+      EcIdent.pp_ident id
+  | EffectMsgOut sme               ->
+      fprintf ppf "EffectMsgOut: %a"
+      (pp_sent_msg_expr_tyd env) sme
+  | EffectFailOut                  -> fprintf ppf "EffectFailOut"
+  | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
+  | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
+  | EffectBlockedPortOrAddrCompare ->
+      fprintf ppf "EffectBlockedPortOrAddrCompare"
+
 let fail_out_of_running_or_sending_config (conf : config) : config * effect =
   match conf with
   | ConfigRealRunning c  ->
@@ -1217,6 +1235,10 @@ let fail_out_of_running_or_sending_config (conf : config) : config * effect =
         ctrl = CtrlEnv},
        EffectFailOut)
   | _                    -> raise ConfigError
+
+let fill_in (str : string) (conf : config) : config * effect =
+  Printf.eprintf "warning: to be filled in: %s\n\n" str;
+  fail_out_of_running_or_sending_config conf
 
 let msg_out_of_sending_config (conf : config) (ctrl : control)
       : config * effect =
@@ -1261,10 +1283,10 @@ let send_message_to_real_or_ideal_config
   | _             -> raise ConfigError
 
 let step_real_running_config (rc : config_real_running) : config * effect =
-  failure "fill in"
+  fill_in "step_real_running_config" (ConfigRealRunning rc)
 
-let step_ideal_running_config (rc : config_ideal_running) : config * effect =
-  failure "fill in"
+let step_ideal_running_config (c : config_ideal_running) : config * effect =
+  fill_in "step_real_running_config" (ConfigIdealRunning c)
 
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
@@ -1279,7 +1301,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
        (f_and
         (f_eq func_form dest_addr)
         (envport_form func_form adv_form source_port))
-      then failure "to func - fill in"
+      then fill_in "should go to real running" (ConfigRealSending c)
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
@@ -1296,9 +1318,11 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
-  let from_adv () = failure "fill in from adv" in
+  let from_adv () =
+    fill_in "message from adv" (ConfigRealSending c) in
 
-  let from_func () = failure "fill in from func" in
+  let from_func () =
+    fill_in "message from func" (ConfigRealSending c) in
 
   try
     match c.rwsc with
@@ -1309,8 +1333,8 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   | SMT_Test ->
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
-let step_ideal_sending_config (rc : config_ideal_sending) : config * effect =
-  failure "fill in"
+let step_ideal_sending_config (c : config_ideal_sending) : config * effect =
+  fill_in "trying to step ideal sending config" (ConfigIdealSending c)
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) : config * effect =
