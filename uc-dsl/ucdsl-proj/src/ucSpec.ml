@@ -330,6 +330,18 @@ type world =
   | Real
   | Ideal
 
+type peffect_r =
+  | EffectOK
+  | EffectRand
+  | EffectMsgOut of sent_msg_expr
+  | EffectFailOut
+  | EffectBlockedIf
+  | EffectBlockedMatch
+  | EffectBlockedPortOrAddrCompare
+
+
+type peffect = peffect_r located
+
 type interpreter_command_u =
   | Load of psymbol
   | Funex of fun_expr
@@ -343,5 +355,6 @@ type interpreter_command_u =
   | Back of int located
   | Finish
   | Quit
+  | Confirm of peffect
 
 type interpreter_command = interpreter_command_u located

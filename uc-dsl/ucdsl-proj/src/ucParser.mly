@@ -372,6 +372,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token USES
 %token VAR
 %token WITH
+%token CONFIRM
 
 (* fixed length *)
 
@@ -1155,6 +1156,7 @@ icomm :
   | c = undo_cmd; { c }
   | c = addv_cmd; { c }
   | c = addf_cmd; { c }
+  | c = confirm_cmd; { c }
 
 %inline filename :
   | nm = rlist1(_ident, DOT)
@@ -1190,29 +1192,15 @@ undo_cmd :
     }
 
 addv_cmd :
-  | w = lident; v = type_binding; 
-    {
-      if (unloc w) = "addv" 
-      then Addv v
-      else error_message (loc w)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ addv@ instead@ of@ %s?" (unloc w))
-    }
+  | VAR; v = type_binding; 
+    { Addv v }
 
 addf_cmd :
-  | w = lident; id =loc(_ident); COLON; COLON; f = expr;  
-    {
-      if (unloc w) = "addf" 
-      then Addf (id, f)
-      else error_message (loc w)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ addf@ instead@ of@ %s?" (unloc w))
-    }
+  | FUN; id = ident; COLON; f = expr;  
+    { Addf (id, f) }
 
 fun_ex_cmd :
-  | FUN; fe = fun_expr { Funex fe }
+  | FUNCT; fe = fun_expr { Funex fe }
 
 comm_word :
   | cw = lident; 
@@ -1228,6 +1216,38 @@ comm_word :
         error_message (loc cw)
         (fun ppf -> fprintf ppf
 "%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
+    }
+
+confirm_cmd :
+  | c = confirm_effect; { c }
+  | c = confirm_MsgOut; { c }
+
+confirm_effect :
+  | CONFIRM; ew = uident;
+    {
+      match (unloc ew) with
+      | "OK"           -> Confirm (mk_loc (loc ew) EffectOK)
+      | "Rand"         -> Confirm (mk_loc (loc ew) EffectRand)
+      | "FailOut"      -> Confirm (mk_loc (loc ew) EffectFailOut)
+      | "BlockedIf"    -> Confirm (mk_loc (loc ew) EffectBlockedIf)
+      | "BlockedMatch" -> Confirm (mk_loc (loc ew) EffectBlockedMatch)
+      | "BlockedPortOrAddrCompare" 
+        -> Confirm (mk_loc (loc ew) EffectBlockedPortOrAddrCompare)
+      | _ -> 
+        error_message (loc ew)
+        (fun ppf -> fprintf ppf
+"%s@ is@ not@ a@ valid@ effect." (unloc ew))
+    }
+
+confirm_MsgOut:
+  | CONFIRM; w = uident; sme = sent_msg_expr;
+    {
+      if (unloc w) = "MsgOut" 
+      then Confirm (mk_loc (loc w) (EffectMsgOut sme))
+      else error_message (loc w)
+            (fun ppf ->
+               fprintf ppf
+               "Did@ you@ mean@ MsgOut@ instead@ of@ %s?" (unloc w))
     }
 
 send_msg :
