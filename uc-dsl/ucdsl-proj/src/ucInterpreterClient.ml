@@ -333,6 +333,71 @@ let interpret (lexbuf : L.lexbuf) =
     modify_config mdfy
   in
 
+  let confirm (peff : peffect) : unit =
+    let c = currs() in
+    let effo = c.effect in
+    let config = Option.get c.config in
+    let pp_effect ppf eff = pp_effect ppf config eff in
+    begin match effo with
+    | None -> 
+      error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[no@ effects@ occured@ after@ last@ command@, only@ run@ and step@ commands@ produce@ effects.]")
+    | Some eff ->
+      begin match (unloc peff) with
+      | EffectOK ->
+        begin match eff with
+        | EffectOK -> ()
+        | _ ->
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectOK@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      | EffectRand ->
+        begin match eff with
+        | EffectRand _ -> ()
+        | _ -> 
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectRand@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      | EffectMsgOut sme -> () (*TODO*)
+      | EffectFailOut ->
+        begin match eff with
+        | EffectFailOut -> ()
+        | _ -> 
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectFailOut@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      | EffectBlockedIf ->
+        begin match eff with
+        | EffectBlockedIf -> ()
+        | _ -> 
+         error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectBlockedIf@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      | EffectBlockedMatch ->
+        begin match eff with
+        | EffectBlockedMatch -> ()
+        | _ -> 
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectBlockedMatch@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      | EffectBlockedPortOrAddrCompare ->
+        begin match eff with
+        | EffectBlockedPortOrAddrCompare -> ()
+        | _ -> 
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[confirm@ of@ EffectBlockedPortOrAddrCompare@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
+      end
+    end
+  in
+      
+
   let rec done_loop (): unit =
     try
       let cmd = next_cmd lexbuf in
@@ -346,6 +411,7 @@ let interpret (lexbuf : L.lexbuf) =
       | Back pi -> undo pi
       | Finish -> donec()
       | Quit -> exit 0
+      | Confirm peff -> confirm peff
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
