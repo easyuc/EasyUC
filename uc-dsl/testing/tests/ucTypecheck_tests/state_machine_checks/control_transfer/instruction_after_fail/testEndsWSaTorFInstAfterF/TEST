@@ -3,7 +3,7 @@ This test fails because we the control will be passed after fail and the stateme
 .
 args: testEndsWSaTorFInstAfterF.uc
 outcome: failure
-[error: testEndsWSaTorFInstAfterF.uc: from line 17 columns 24 to 30]
+[error: testEndsWSaTorFInstAfterF.uc: from line 17 columns 24 to 29]
 
 control transfer by "fail" or "send-and-transition" instruction is only
 allowed at end of message match clause
