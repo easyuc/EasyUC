@@ -169,6 +169,7 @@ type ty_index = (ty * int) located
 let uc_qsym_prefix_basic_types = ["Top"; "UCBasicTypes"]
 let uc_qsym_prefix_list_po     = ["Top"; "UCListPO"]
 let ec_qsym_prefix_core_int    = ["Top"; "CoreInt"]
+let ec_qsym_prefix_list        = ["Top"; "List"]
 
 let port_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "port")) []
@@ -201,6 +202,17 @@ let addr_le_op : expr =
 let addr_lt_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
+
+let addr_concat_op : expr =
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint] addr_ty
+
+let addr_nil_op : expr =
+  e_op
+  (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil)) [tint] addr_ty
+
+let addr_cons_op : expr =
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons)) [tint]
+  (tfun tint (tfun addr_ty addr_ty))
 
 let int_add_op : expr =
   e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
@@ -400,10 +412,6 @@ let id_adv_inter_of_fun_tyd (ft : fun_tyd) : symbol option =
 
 let id_adv_inter_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
   oget (id_adv_inter_of_fun_body_tyd (unloc ft))
-
-let sub_fun_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : symb_pair =
-  let rfbt = real_fun_body_tyd_of (unloc ft) in
-  IdMap.find subf rfbt.sub_funs
 
 let num_sub_funs_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -749,14 +757,16 @@ let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
      serves)
   with _ -> None
 
-(* returns None if the party does not server a basic direct interface;
-   otherwise returns Some (comp, bas, i), where [comp; bas] is the
-   basic direct interface served by the party, and i is the port index
-   for direct messages to/from the party *)
+(* None if the party does not serve a basic direct interface;
+   otherwise Some (comp, bas, i), where [comp; bas] is the basic
+   direct interface served by the party, and i is the port index for
+   direct messages to/from the party *)
+
+type party_dir_info = (symbol * symbol * int) option
 
 let get_dir_info_of_party_of_real_fun
     (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
-    (pty : symbol) : (symbol * symbol * int) option =
+    (pty : symbol) : party_dir_info =
   match get_dir_basic_inter_of_party_of_real_fun ft pty with
   | None     -> None
   | Some bas -> 
@@ -767,15 +777,17 @@ let get_dir_info_of_party_of_real_fun
       | CompositeTyd map ->
         Some (comp, bas, id_map_ordinal1_of_sym map bas)
 
-(* returns None if the party does not serve a basic adversarial
-   interface; otherwise returns Some (comp, bas, i, j), where [comp;
-   bas] is the basic direct interface served by the party, and i is
-   the port index for adversarial messages to/from the party, and j is
-   the corresponding adversarial port index *)
+(* None if the party does not serve a basic adversarial interface;
+   otherwise Some (comp, bas, i, j), where [comp; bas] is the basic
+   direct interface served by the party, and i is the port index for
+   adversarial messages to/from the party, and j is the corresponding
+   adversarial port index *)
+
+type party_adv_info = (symbol * symbol * int * int) option
 
 let get_adv_info_of_party_of_real_fun
     (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
-    (pty : symbol) : (symbol * symbol * int * int) option =
+    (pty : symbol) : party_adv_info =
   match get_adv_basic_inter_of_party_of_real_fun ft pty with
   | None     -> None
   | Some bas ->
@@ -790,6 +802,32 @@ let get_adv_info_of_party_of_real_fun
 
 let get_internal_pi_of_party_of_real_fun (ft : fun_tyd) (pty : symbol) : int =
   1 + party_ord_of_real_fun_tyd ft pty
+
+type party_info =
+       party_dir_info *  (* direct info for party *)
+       party_adv_info *  (* adversarial info for party *)
+       int               (* internal port index *)
+
+let get_info_of_party (maps : maps_tyd) (root : symbol) (base : int)
+    (ft : fun_tyd) (pty : symbol) : party_info =
+  let dir_opt = get_dir_info_of_party_of_real_fun maps root base ft pty in
+  let adv_opt = get_adv_info_of_party_of_real_fun maps root base ft pty in
+  let inter_pi = get_internal_pi_of_party_of_real_fun ft pty in
+  (dir_opt, adv_opt, inter_pi)
+
+type real_fun_info = party_info IdMap.t  (* map from party ids *)
+
+let get_info_of_real_func (maps : maps_tyd) (root : symbol) (rfid : symbol)
+    (base : int) : real_fun_info =
+  let ft = IdPairMap.find (root, rfid) maps.fun_map in
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let party_infos =
+    List.map
+    (fun pty -> (pty, get_info_of_party maps root base ft pty))
+    (List.map fst (IdMap.bindings rfbt.parties)) in
+  List.fold_left
+  (fun mp (pty, pty_info) -> IdMap.add pty pty_info mp)
+  IdMap.empty party_infos
 
 (* returns pair (i, j), where [i] is the suffix (relative to the
    address of the functionality) of the address of the
