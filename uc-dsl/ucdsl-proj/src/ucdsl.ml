@@ -54,7 +54,7 @@ let arg_specs =
    ("-units", Unit units_arg, "Require grouping definitions into units");
    ("-margin", Int margin_arg,
     "<n> Set pretty printing margin (default is 78)");
-   ("-debug", Unit debugging_arg, "Print interpeter debugging messages")
+   ("-debug", Unit debugging_arg, "Print interpeter debugging messages");
    ("-batch", Unit batch_arg, "Run interpreter in batch mode")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
