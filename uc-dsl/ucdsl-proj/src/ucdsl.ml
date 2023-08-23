@@ -41,6 +41,11 @@ let debugging_ref : bool ref = ref false
 let debugging_arg () =
   (debugging_ref := true; ())
 
+let batch_ref : bool ref = ref false
+
+let batch_arg () =
+  (batch_ref := true; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -49,7 +54,8 @@ let arg_specs =
    ("-units", Unit units_arg, "Require grouping definitions into units");
    ("-margin", Int margin_arg,
     "<n> Set pretty printing margin (default is 78)");
-   ("-debug", Unit debugging_arg, "Print interpeter debugging messages")]
+   ("-debug", Unit debugging_arg, "Print interpeter debugging messages")
+   ("-batch", Unit batch_arg, "Run interpreter in batch mode")]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
@@ -91,6 +97,9 @@ let () =
 
 let () =
   if ! debugging_ref then UcState.set_debugging ()
+
+let () =
+  if ! batch_ref then UcState.set_batch_mode ()
 
 let () =
   let len = String.length file in

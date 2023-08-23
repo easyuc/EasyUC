@@ -28,11 +28,19 @@ let get_raw_messages () = ! raw_messages
 
 let debugging : bool ref = ref false
 
-let set_debugging () = raw_messages := true
+let set_debugging () = debugging := true
 
-let unset_debugging () = raw_messages := false
+let unset_debugging () = debugging := false
 
-let get_debugging () = ! raw_messages
+let get_debugging () = ! debugging
+
+let batch_mode : bool ref = ref false
+
+let set_batch_mode () = batch_mode := true
+
+let unset_batch_mode () = batch_mode := false
+
+let get_batch_mode () = ! batch_mode
 
 let units : bool ref = ref false
 

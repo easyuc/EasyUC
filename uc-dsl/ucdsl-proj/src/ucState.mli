@@ -45,6 +45,21 @@ val unset_debugging : unit -> unit
 
 val get_debugging : unit -> bool
 
+(* boolean saying whether interpreter output should be 
+   run on a script in batch mode.
+   In batch mode, the output of the interpreter 
+   is reduced to just error messages in case there are some,
+   otherwise the interpreter just runs the whole script 
+   and exits with 0.  
+
+   default is no batch mode *)
+
+val set_batch_mode : unit -> unit
+
+val unset_batch_mode : unit -> unit
+
+val get_batch_mode : unit -> bool
+
 (* boolean saying whether top-level defintions should be required to
    be grouped into units
 

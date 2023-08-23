@@ -114,8 +114,11 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let prompt () : unit =
-    print_state();
-    print_prompt()
+    if (UcState.get_batch_mode ())
+    then ()
+    else
+      print_state();
+      print_prompt()
   in
 
   let load (psym : psymbol) : unit =
