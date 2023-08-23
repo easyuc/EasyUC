@@ -56,7 +56,8 @@
     "uses"            , USES        ;
     "var"             , VAR         ;
     "with"            , WITH        ;
-    "confirm"         , CONFIRM     ;
+    "assert"          , ASSERT      ;
+    "assumption"      , ASSUMPTION  ;
   ]
 
   let keywords =

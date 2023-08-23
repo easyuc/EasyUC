@@ -355,6 +355,6 @@ type interpreter_command_u =
   | Back of int located
   | Finish
   | Quit
-  | Confirm of peffect
+  | Assert of peffect
 
 type interpreter_command = interpreter_command_u located

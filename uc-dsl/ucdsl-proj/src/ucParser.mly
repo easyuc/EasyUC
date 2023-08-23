@@ -372,7 +372,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token USES
 %token VAR
 %token WITH
-%token CONFIRM
+%token ASSERT
+%token ASSUMPTION
 
 (* fixed length *)
 
@@ -1196,7 +1197,7 @@ addv_cmd :
     { Addv v }
 
 addf_cmd :
-  | FUN; id = ident; COLON; f = expr;  
+  | ASSUMPTION; id = ident; COLON; f = expr;  
     { Addf (id, f) }
 
 fun_ex_cmd :
@@ -1223,16 +1224,16 @@ confirm_cmd :
   | c = confirm_MsgOut; { c }
 
 confirm_effect :
-  | CONFIRM; ew = uident;
+  | ASSERT; ew = uident;
     {
       match (unloc ew) with
-      | "OK"           -> Confirm (mk_loc (loc ew) EffectOK)
-      | "Rand"         -> Confirm (mk_loc (loc ew) EffectRand)
-      | "FailOut"      -> Confirm (mk_loc (loc ew) EffectFailOut)
-      | "BlockedIf"    -> Confirm (mk_loc (loc ew) EffectBlockedIf)
-      | "BlockedMatch" -> Confirm (mk_loc (loc ew) EffectBlockedMatch)
+      | "OK"           -> Assert (mk_loc (loc ew) EffectOK)
+      | "Rand"         -> Assert (mk_loc (loc ew) EffectRand)
+      | "FailOut"      -> Assert (mk_loc (loc ew) EffectFailOut)
+      | "BlockedIf"    -> Assert (mk_loc (loc ew) EffectBlockedIf)
+      | "BlockedMatch" -> Assert (mk_loc (loc ew) EffectBlockedMatch)
       | "BlockedPortOrAddrCompare" 
-        -> Confirm (mk_loc (loc ew) EffectBlockedPortOrAddrCompare)
+        -> Assert (mk_loc (loc ew) EffectBlockedPortOrAddrCompare)
       | _ -> 
         error_message (loc ew)
         (fun ppf -> fprintf ppf
@@ -1240,10 +1241,10 @@ confirm_effect :
     }
 
 confirm_MsgOut:
-  | CONFIRM; w = uident; sme = sent_msg_expr;
+  | ASSERT; w = uident; sme = sent_msg_expr;
     {
       if (unloc w) = "MsgOut" 
-      then Confirm (mk_loc (loc w) (EffectMsgOut sme))
+      then Assert (mk_loc (loc w) (EffectMsgOut sme))
       else error_message (loc w)
             (fun ppf ->
                fprintf ppf

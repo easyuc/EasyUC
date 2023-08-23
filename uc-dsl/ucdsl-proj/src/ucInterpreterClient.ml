@@ -411,7 +411,7 @@ let interpret (lexbuf : L.lexbuf) =
       | Back pi -> undo pi
       | Finish -> donec()
       | Quit -> exit 0
-      | Confirm peff -> confirm peff
+      | Assert peff -> confirm peff
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
