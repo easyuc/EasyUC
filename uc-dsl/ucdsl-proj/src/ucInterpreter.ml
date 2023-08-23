@@ -433,6 +433,19 @@ let addr_le_form (addr1 : form) (addr2 : form) : form =
 let addr_lt_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
+let addr_concat_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_concat_op) [addr1; addr2] addr_ty
+
+let addr_nil_form : form = form_of_expr mhr addr_nil_op
+
+let addr_cons_form (n : form) (addr : form) : form =
+  f_app (form_of_expr mhr addr_cons_op) [n; addr] addr_ty
+
+let addr_make_form (ms : int list) : form =
+  List.fold_right
+  (fun m exp -> addr_cons_form (f_int (EcBigInt.of_int m)) exp)
+  ms addr_nil_form
+
 let port_to_addr_form (port : form) : form =
   f_proj port 0 addr_ty
 
