@@ -434,9 +434,7 @@ let addr_lt_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
 let addr_concat_form (addr1 : form) (addr2 : form) : form =
-  f_app
-  (f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint] addr_ty)
-  [addr1; addr2] addr_ty
+  f_app (form_of_expr mhr addr_concat_op) [addr1; addr2] addr_ty
 
 let addr_nil_form : form = form_of_expr mhr addr_nil_op
 

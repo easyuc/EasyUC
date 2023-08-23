@@ -204,7 +204,8 @@ let addr_lt_op : expr =
   (tfun addr_ty (tfun addr_ty tbool))
 
 let addr_concat_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint] addr_ty
+  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint]
+  (tfun addr_ty (tfun addr_ty addr_ty))
 
 let addr_nil_op : expr =
   e_op
