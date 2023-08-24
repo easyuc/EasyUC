@@ -804,23 +804,23 @@ let get_adv_info_of_party_of_real_fun
 let get_internal_pi_of_party_of_real_fun (ft : fun_tyd) (pty : symbol) : int =
   1 + party_ord_of_real_fun_tyd ft pty
 
-type party_info =
-       party_dir_info *  (* direct info for party *)
-       party_adv_info *  (* adversarial info for party *)
-       int               (* internal port index *)
+type party_info = {
+  pi_pdi : party_dir_info;  (* direct info for party *)
+  pi_pai : party_adv_info;  (* adversarial info for party *)
+  pi_ipi : int              (* internal port index *)
+}
 
 let get_info_of_party (maps : maps_tyd) (root : symbol) (base : int)
     (ft : fun_tyd) (pty : symbol) : party_info =
   let dir_opt = get_dir_info_of_party_of_real_fun maps root base ft pty in
   let adv_opt = get_adv_info_of_party_of_real_fun maps root base ft pty in
-  let inter_pi = get_internal_pi_of_party_of_real_fun ft pty in
-  (dir_opt, adv_opt, inter_pi)
+  let intern_pi = get_internal_pi_of_party_of_real_fun ft pty in
+  {pi_pdi = dir_opt; pi_pai = adv_opt; pi_ipi = intern_pi}
 
 type real_fun_info = party_info IdMap.t  (* map from party ids *)
 
-let get_info_of_real_func (maps : maps_tyd) (root : symbol) (rfid : symbol)
-    (base : int) : real_fun_info =
-  let ft = IdPairMap.find (root, rfid) maps.fun_map in
+let get_info_of_real_func (maps : maps_tyd) (root : symbol) (base : int)
+    (ft : fun_tyd) : real_fun_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let party_infos =
     List.map

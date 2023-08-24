@@ -252,8 +252,9 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
 type local_context = form EcIdent.Mid.t list
 
 type local_context_base =
-  | LCB_Var     of EcIdent.t * ty
-  | LCB_EnvPort of form * form  (* both of type address *)
+  | LCB_Param   of EcIdent.t * form  (* parameter *)
+  | LCB_Var     of EcIdent.t * ty    (* variable *)
+  | LCB_EnvPort of form * form       (* both of type address *)
   | LCB_IntPort of EcIdent.t * form  (* of type port *)
 
 let lc_create (lcbs : local_context_base list) : local_context =
@@ -261,6 +262,7 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
+       | LCB_Param (id, form)              -> (id, form)
        | LCB_Var (id, ty)                  ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [] ty)
        | LCB_EnvPort (func_form, adv_form) ->
@@ -1308,13 +1310,46 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
 
+  let from_env_find_party (c : config_real_sending) (rfi : real_fun_info)
+        : (symbol * symbol * symbol) option =
+    let rec find (bndgs : (symbol * party_info) list)
+          : (symbol * symbol * symbol) option =
+      match bndgs with
+      | []                 -> None
+      | (pid, pi) :: bndgs ->
+          match pi.pi_pdi with
+          | None                 -> find bndgs
+          | Some (comp, bas, pi) ->
+              if eval_bool_form_to_bool c.gc c.pi
+                 (f_eq (int_form pi) dest_pi)
+              then Some (pid, comp, bas)
+              else find bndgs
+    in find (IdMap.bindings rfi) in
+
+  let from_env_match (c : config_real_sending) (rfi : real_fun_info)
+      (sid : symbol) (args : form list) (sbt : state_body_tyd)
+        : config * effect =
+    failure "hi" in
+
   let from_env () =
     if mode = Dir &&
        eval_bool_form_to_bool c.gc c.pi
        (f_and
         (f_eq func_form dest_addr)
         (envport_form func_form adv_form source_port))
-      then fill_in "should go to real running" (ConfigRealSending c)
+      then let (sp, base, _) = c.rw in
+           let (root, fid) = sp in
+           let ft = IdPairMap.find sp c.maps.fun_map in
+           let rfi = get_info_of_real_func c.maps root base ft in
+           match from_env_find_party c rfi with
+           | None                  ->
+               fail_out_of_running_or_sending_config (ConfigRealSending c)
+           | Some (pid, comp, bas) ->
+               let pbt = unloc (party_of_real_fun_tyd ft pid) in
+               let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
+               let {id = sid; args = args} = IdMap.find pid rs in
+               let sbt = unloc (IdMap.find sid pbt.states) in
+               from_env_match c rfi sid args sbt
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
