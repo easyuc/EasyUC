@@ -807,6 +807,16 @@ let env_of_config (conf : config) : env =
   | ConfigRealSending c  -> env_of_gc c.gc
   | ConfigIdealSending c -> env_of_gc c.gc
 
+let maps_of_config (conf : config) : maps_tyd =
+  match conf with
+  | ConfigGen c          -> c.maps
+  | ConfigReal c         -> c.maps
+  | ConfigIdeal c        -> c.maps
+  | ConfigRealRunning c  -> c.maps
+  | ConfigIdealRunning c -> c.maps
+  | ConfigRealSending c  -> c.maps
+  | ConfigIdealSending c -> c.maps
+
 let control_of_real_or_ideal_config (conf : config) : control =
   match conf with
   | ConfigReal c  -> c.ctrl
@@ -818,6 +828,12 @@ let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
   | ConfigRealRunning c  -> Some (loc c.ins)
   | ConfigIdealRunning c -> Some (loc c.ins)
   | _                    -> None
+
+let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
+      : string =
+  let env = env_of_config conf in
+  let sme = inter_check_sent_msg_expr (maps_of_config conf) env sme in
+  pp_sent_msg_expr_to_string env sme
 
 (* pretty printer for configurations *)
 
@@ -1196,31 +1212,25 @@ let ideal_of_gen_config (conf : config) : config =
 (* sending messages and stepping configurations *)
 
 type effect =
-  | EffectOK                           (* step succeeded (not random
-                                          assignment), and new configuration
-                                          is running or sending *)
-  | EffectRand of EcIdent.t            (* step added ident representing
-                                          random choice to global context,
-                                          and new configuration is
-                                          running *)
-  | EffectMsgOut of sent_msg_expr_tyd  (* a message was output, and new
-                                          configuration is real or ideal *)
-  | EffectFailOut                      (* fail was output, and new
-                                          configuration is real or ideal *)
-  | EffectBlockedIf                    (* configuration is running *)
-  | EffectBlockedMatch                 (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
+  | EffectOK                        (* step succeeded (not random
+                                       assignment), and new configuration
+                                       is running or sending *)
+  | EffectRand of symbol            (* step added ident representing
+                                       random choice to global context,
+                                       and new configuration is running *)
+  | EffectMsgOut of string          (* a message was output, and new
+                                       configuration is real or ideal *)
+  | EffectFailOut                   (* fail was output, and new
+                                       configuration is real or ideal *)
+  | EffectBlockedIf                 (* configuration is running *)
+  | EffectBlockedMatch              (* configuration is running *)
+  | EffectBlockedPortOrAddrCompare  (* configuration is running or sending *)
 
-let pp_effect (ppf : formatter) (c : config) (e : effect) : unit =
-  let env = env_of_config c in
+let pp_effect (ppf : formatter) (e : effect) : unit =
   match e with
   | EffectOK                       -> fprintf ppf "EffectOK"
-  | EffectRand id                  ->
-      fprintf ppf "EffectRand: %a"
-      EcIdent.pp_ident id
-  | EffectMsgOut sme               ->
-      fprintf ppf "EffectMsgOut: %a"
-      (pp_sent_msg_expr_tyd env) sme
+  | EffectRand id                  -> fprintf ppf "EffectRand: %s" id
+  | EffectMsgOut pp_sme            -> fprintf ppf "EffectMsgOut: %s" pp_sme
   | EffectFailOut                  -> fprintf ppf "EffectFailOut"
   | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
   | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
@@ -1259,15 +1269,17 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
       : config * effect =
   match conf with
   | ConfigRealSending c  ->
+      let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigReal
        {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
         ctrl = ctrl},
-       EffectMsgOut c.sme)
+       EffectMsgOut pp_sme)
   | ConfigIdealSending c ->
+      let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigIdeal
        {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
         ctrl = ctrl},
-       EffectMsgOut c.sme)
+       EffectMsgOut pp_sme)
   | _                    -> raise ConfigError
 
 let send_message_to_real_or_ideal_config
@@ -1303,6 +1315,26 @@ let step_real_running_config (rc : config_real_running) : config * effect =
 let step_ideal_running_config (c : config_ideal_running) : config * effect =
   fill_in "step_real_running_config" (ConfigIdealRunning c)
 
+(*
+let match_ord_sme_against_msg_match_clauses (sme : sent_msg_expr_ord_tyd)
+    (clauses : msg_match_clause_tyd list)
+      : (EcIdent.t * form) list * instruction_tyd list located =
+  let sme_dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
+  let sme_source_port = source_port_of_sent_msg_expr_tyd c.sme in
+  let rec match_sme clauses =
+    match clauses with
+    | []                -> failure "should not happen"
+    | clause :: clauses ->
+        let {msg_pat; code} = clause in
+        let {port_id; msg_path_pat; pat_args} = msg_pat in
+        let {inter_id_path; msg_or_star} = unloc msg_path_pat in
+        if sme.path.inter_id_path = List.tl inter_id_path
+
+
+
+  in match_sme clauses
+*)
+
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
@@ -1329,7 +1361,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   let from_env_match (c : config_real_sending) (rfi : real_fun_info)
       (sid : symbol) (args : form list) (sbt : state_body_tyd)
         : config * effect =
-    failure "hi" in
+    fill_in "at from_env_match" (ConfigRealSending c) in
 
   let from_env () =
     if mode = Dir &&

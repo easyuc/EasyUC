@@ -339,8 +339,7 @@ let interpret (lexbuf : L.lexbuf) =
   let confirm (peff : peffect) : unit =
     let c = currs() in
     let effo = c.effect in
-    let config = Option.get c.config in
-    let pp_effect ppf eff = pp_effect ppf config eff in
+    let pp_effect ppf eff = pp_effect ppf eff in
     begin match effo with
     | None -> 
       error_message (loc peff) (fun ppf -> Format.fprintf ppf 

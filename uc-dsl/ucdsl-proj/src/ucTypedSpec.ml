@@ -886,6 +886,28 @@ type sent_msg_expr_tyd =
   | SMET_Ord    of sent_msg_expr_ord_tyd
   | SMET_EnvAdv of sent_msg_expr_env_adv_tyd
 
+let is_ord_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : bool =
+  match sme with
+  | SMET_Ord _    -> true
+  | SMET_EnvAdv _ -> false
+
+let is_env_adv_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : bool =
+  match sme with
+  | SMET_Ord _    -> false
+  | SMET_EnvAdv _ -> true
+
+let ord_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
+      : sent_msg_expr_ord_tyd =
+  match sme with
+  | SMET_Ord ord  -> ord
+  | SMET_EnvAdv _ -> failure "should not happen"
+
+let env_adv_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
+      : sent_msg_expr_env_adv_tyd =
+  match sme with
+  | SMET_Ord _          -> failure "should not happen"
+  | SMET_EnvAdv env_adv -> env_adv
+
 let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
   match sme with
   | SMET_Ord ord        -> ord.mode
@@ -941,14 +963,10 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
       pp_portform sme.in_port_form
       pp_portform sme.out_port_form
 
-(* check whether the results of pretty printing two sent message
-   expressions are equal strings *)
+(* pretty print a typed sent message expression to a string *)
 
-let send_msg_expr_tyd_pp_equal (env : EcEnv.env)
-    (sme1 : sent_msg_expr_tyd) (sme2 : sent_msg_expr_tyd) : bool =
+let pp_sent_msg_expr_to_string (env : EcEnv.env)
+    (sme : sent_msg_expr_tyd) : string =
   let _ = Format.flush_str_formatter () in
-  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme1 in
-  let s1 = Format.flush_str_formatter () in
-  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme2 in
-  let s2 = Format.flush_str_formatter () in
-  s1 = s2
+  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme in
+  Format.flush_str_formatter ()
