@@ -1315,12 +1315,12 @@ let step_real_running_config (rc : config_real_running) : config * effect =
 let step_ideal_running_config (c : config_ideal_running) : config * effect =
   fill_in "step_real_running_config" (ConfigIdealRunning c)
 
-(*
+(* will complete Friday, using matching functions from UcSpecTypedSpec
 let match_ord_sme_against_msg_match_clauses (sme : sent_msg_expr_ord_tyd)
     (clauses : msg_match_clause_tyd list)
       : (EcIdent.t * form) list * instruction_tyd list located =
-  let sme_dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
-  let sme_source_port = source_port_of_sent_msg_expr_tyd c.sme in
+  let sme_dest_port = sme.out_port_form in
+  let sme_source_port = sme.in_port_form in
   let rec match_sme clauses =
     match clauses with
     | []                -> failure "should not happen"
@@ -1328,11 +1328,18 @@ let match_ord_sme_against_msg_match_clauses (sme : sent_msg_expr_ord_tyd)
         let {msg_pat; code} = clause in
         let {port_id; msg_path_pat; pat_args} = msg_pat in
         let {inter_id_path; msg_or_star} = unloc msg_path_pat in
-        if sme.path.inter_id_path = List.tl inter_id_path
+        if (match msg_or_star with
+            | MsgOrStarMsg msg ->
+                List.tl sme.path.inter_id_path = inter_id_path &&
+                sme.path.msg = msg
+            | MsgOrStarStar    ->
+                UcUtils.sl1_starts_with_sl2 (List.tl sme.path.inter_id_path)
+                inter_id_path)
+        then 
 
 
-
-  in match_sme clauses
+        else match_sme clauses in
+  match_sme clauses
 *)
 
 let step_real_sending_config (c : config_real_sending) : config * effect =

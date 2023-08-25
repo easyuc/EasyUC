@@ -5,6 +5,7 @@
 
 open EcLocation
 open EcSymbols
+open EcUtils
 
 type psymbol = symbol located
 
@@ -25,6 +26,20 @@ let invert_dir (dir : msg_dir) =
 type 'a pat =                    (* for matching values *)
   | PatId       of 'a located    (* identifier to bind to *)
   | PatWildcard of EcLocation.t  (* wildcard *)
+
+let match_pat (pat : 'a pat) (y : 'b) : ('a * 'b) option =
+  match pat with
+  | PatId x       -> Some (unloc x, y)
+  | PatWildcard _ -> None
+
+(* if pats is None, then ys must be empty; if pats is Some pats',
+   then pats' and ys must have the same length *)
+
+let match_pats (pats : 'a pat list option) (ys : 'b list) : ('a * 'b) list =
+  match pats with
+  | None      -> []
+  | Some pats ->
+      List.filter_map (fun x -> x) (List.map2 match_pat pats ys)
 
 let get_loc_pat (pat : 'a pat) : EcLocation.t = 
   match pat with
@@ -59,6 +74,18 @@ type 'a msg_pat =
    msg_path_pat : msg_path_pat;        (* message path pattern *)
    pat_args     : 'a pat list option}  (* optional list of value patterns,
                                           one for each message argument *)
+
+let match_port_id (pid : 'a located option) (y : 'b) : ('a * 'b) option =
+  match pid with
+  | None     -> None
+  | Some pid -> Some (unloc pid, y)
+
+let match_msg_pat (mp : 'a msg_pat) (port : 'b) (args : 'b list)
+      : ('a * 'b) list =
+  (match match_port_id mp.port_id port with
+   | None   -> []
+   | Some p -> [p]) @
+  match_pats mp.pat_args args
 
 type msg_path_u =
   {inter_id_path : symbol list;  (* inter id path *)
