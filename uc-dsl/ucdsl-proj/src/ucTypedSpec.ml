@@ -67,7 +67,9 @@ let id_map_sym_of_ordinal1 (map : 'a IdMap.t) (i : int) : symbol =
 module SL =  (* domain: string list = symbol list *)
   struct
     type t = string list
-    let compare = Stdlib.compare
+    (* lexicographic ordering, using lexicographic ordering on
+       individual strings *)
+    let compare = List.compare String.compare
   end
 
 let sing_elt_of_id_set (id_set : IdSet.t) : symbol =
@@ -92,6 +94,7 @@ type symb_pair = symbol * symbol
 module SP =  (* domain: string * string = symb_pair *)
   struct
     type t = string * string
+    (* lexicogrphic ordering, using lexicographic ordering on strings *)
     let compare = Stdlib.compare
   end
 
@@ -138,7 +141,7 @@ let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
 let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
-  let l = IdMap.fold (fun _ v l -> v :: l ) mapind [] in
+  let l = IdMap.fold (fun _ v l -> v :: l) mapind [] in
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
   List.map (fun a -> fst a) lord
 
@@ -159,6 +162,9 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
+
+let unloc_ident_map (lm : 'a located Mid.t) : 'a Mid.t =
+  Mid.map (fun al -> unloc al) lm
 
 (* located type plus an index, starting from 0 *)
 
@@ -322,6 +328,19 @@ let vars_map_to_domain (mp : (EcIdent.t * ty) located IdMap.t) : IdSet.t =
   IdSet.of_list (List.map fst (IdMap.bindings mp))
 
 type state_tyd = state_body_tyd located  (* typed state *)
+
+(* should only be called when the number of parameters and arguments
+   are the same *)
+
+let match_params (params : ty_index Mid.t) (args : 'a list)
+      : (EcIdent.t * 'a) list =
+  let bindings = Mid.bindings params in
+  let idents =
+    List.map fst
+    (List.sort
+     (fun b1 b2 -> snd (unloc (snd b1)) - snd (unloc (snd b2)))
+     bindings) in
+  List.combine idents args
 
 let initial_state_id_of_states (states : state_tyd IdMap.t) : symbol =
   fst

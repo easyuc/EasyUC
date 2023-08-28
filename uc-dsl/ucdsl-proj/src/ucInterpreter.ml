@@ -241,15 +241,22 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
       : match_clause_interp =
   (sym, (bndgs, create_instr_interp_list_loc ins))
 
-(* a local context is a nonempty stack of maps from identifers (local
-   variables or bound identifiers (state parameters or ones bound by
-   message match clauses or ordinary match clauses)) to formulas,
-   which should be well typed in the global context
+(* a local context is a nonempty stack of maps (frames) from
+   identifers (local variables or bound identifiers (state parameters
+   or ones bound by message match clauses or ordinary match clauses))
+   to formulas, which should be well typed in the global context
 
-   the head of the list is the bottom of the stack, ..., and the last
-   element of the list is the top of the stack *)
+   the bottom frame is its first element, ..., and the top frame is
+   its last element *)
 
-type local_context = form EcIdent.Mid.t list
+type lc_frame      = form EcIdent.Mid.t
+type local_context = lc_frame list
+
+(* in an LCB_IntPort (id, f), the string of id will have the form
+   "intport." followed the name of the party (which in the case of a
+   simulator will consists of the (unqualified by the root) name of
+   the real functionality being simulated, followed by '.', followed
+   by the party) *)
 
 type local_context_base =
   | LCB_Param   of EcIdent.t * form  (* parameter *)
@@ -272,11 +279,16 @@ let lc_create (lcbs : local_context_base list) : local_context =
        | LCB_IntPort (id, port_form)       -> (id, port_form))
     lcbs)]
 
+(* when we pretty print the identifier of an internal port entry,
+   we replace the ':' by ' ' *)
+
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let subst_colon_by_blank (s : symbol) : symbol =
+    String.map (fun c -> if c = ':' then ' ' else c) s in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
-    fprintf ppf "@[%a :@ %a@]"
-    EcIdent.pp_ident id
+    fprintf ppf "@[%s :@ %a@]"
+    (subst_colon_by_blank (EcIdent.name id))
     (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
     EcPrinting.pp_list ",@ " pp_frame_entry ppf
@@ -306,6 +318,13 @@ let lc_apply (lc : local_context) (e : expr) : form =
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   Fsubst.f_subst subst f
+
+let push (lc : local_context) (fr : lc_frame) : local_context =
+  lc @ [fr]
+
+let pop (lc : local_context) : local_context =
+  (if List.is_empty lc then failure "should not happen");
+  List.take (List.length lc - 1) lc
 
 (* a global context is an EcEnv.LDecl.hyps *)
 
@@ -1315,12 +1334,12 @@ let step_real_running_config (rc : config_real_running) : config * effect =
 let step_ideal_running_config (c : config_ideal_running) : config * effect =
   fill_in "step_real_running_config" (ConfigIdealRunning c)
 
-(* will complete Friday, using matching functions from UcSpecTypedSpec
-let match_ord_sme_against_msg_match_clauses (sme : sent_msg_expr_ord_tyd)
-    (clauses : msg_match_clause_tyd list)
+(* should only be called with ordinary sme that will successfully
+   match *)
+
+let match_ord_sme_against_msg_match_clauses
+    (clauses : msg_match_clause_tyd list) (sme : sent_msg_expr_ord_tyd)
       : (EcIdent.t * form) list * instruction_tyd list located =
-  let sme_dest_port = sme.out_port_form in
-  let sme_source_port = sme.in_port_form in
   let rec match_sme clauses =
     match clauses with
     | []                -> failure "should not happen"
@@ -1328,19 +1347,18 @@ let match_ord_sme_against_msg_match_clauses (sme : sent_msg_expr_ord_tyd)
         let {msg_pat; code} = clause in
         let {port_id; msg_path_pat; pat_args} = msg_pat in
         let {inter_id_path; msg_or_star} = unloc msg_path_pat in
-        if (match msg_or_star with
-            | MsgOrStarMsg msg ->
-                List.tl sme.path.inter_id_path = inter_id_path &&
-                sme.path.msg = msg
-            | MsgOrStarStar    ->
-                UcUtils.sl1_starts_with_sl2 (List.tl sme.path.inter_id_path)
-                inter_id_path)
-        then 
-
-
-        else match_sme clauses in
+        match msg_or_star with
+        | MsgOrStarMsg msg ->
+           if List.tl sme.path.inter_id_path = inter_id_path &&
+              sme.path.msg = msg
+           then (match_msg_pat msg_pat sme.in_port_form sme.args, code)
+           else match_sme clauses
+        | MsgOrStarStar    ->
+            if UcUtils.sl1_starts_with_sl2 (List.tl sme.path.inter_id_path)
+               inter_id_path
+            then ([], code)  (* code will be fail *)
+            else match_sme clauses in
   match_sme clauses
-*)
 
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
@@ -1365,9 +1383,9 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
               else find bndgs
     in find (IdMap.bindings rfi) in
 
-  let from_env_match (c : config_real_sending) (rfi : real_fun_info)
-      (sid : symbol) (args : form list) (sbt : state_body_tyd)
-        : config * effect =
+  let from_env_match (root : symbol) (c : config_real_sending)
+      (rfi : real_fun_info) (sid : symbol) (args : form list)
+      (sbt : state_body_tyd) : config * effect =
     fill_in "at from_env_match" (ConfigRealSending c) in
 
   let from_env () =
@@ -1388,7 +1406,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
                let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
                let {id = sid; args = args} = IdMap.find pid rs in
                let sbt = unloc (IdMap.find sid pbt.states) in
-               from_env_match c rfi sid args sbt
+               from_env_match root c rfi sid args sbt
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
