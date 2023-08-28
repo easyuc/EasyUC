@@ -1,5 +1,5 @@
-
 open EcParsetree
+
 (*open UcGenEcInterface
 let crush () : unit =
   let ptac = 
@@ -86,11 +86,24 @@ let lemma_true () : unit =
   let plemma = paxiom_lemma "l_true" pfrm in
   decl_axiom plemma*)
   
+(* the substitution system has been changed in EasyCrypt, now using
+   the f_subst mechanism for everything
+
+   but I'm (Alley) not sure what you are trying to accomplish here... *)
+
 let trans_prop (env : EcEnv.env) (ue : EcUnify.unienv) (pfrm : EcParsetree.pformula) : EcFol.form =
   let frm = EcTyping.trans_prop env ue pfrm in
   if not (EcUnify.UniEnv.closed ue)
     then failwith "the formula contains free type variables"
-    else EcFol.Fsubst.uni (EcUnify.UniEnv.close ue) frm
+    else (*EcFol.Fsubst.uni (EcUnify.UniEnv.close ue)*) frm
+
+(*
+    let sty = { ty_subst_id with ts_u = subs } in
+    let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
+    EcFol.Fsubst.f_subst fs tform in
+*)
+
+
  (*
 let lemma_i_eq_one_impl_i_le_one' () : unit =
   let i_ = "i" in

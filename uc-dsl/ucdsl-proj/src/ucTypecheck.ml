@@ -1038,7 +1038,8 @@ let check_expr
                id))
     fv in
   (* update result type to take account of unification *)
-  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
+  let uidmap = EcUnify.UniEnv.assubst ue in
+  let res_ty = ty_subst (Tuni.subst uidmap) ty in
   (exp, res_ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
@@ -2441,7 +2442,8 @@ let inter_check_expr
     | None          -> ()
     | Some expct_ty ->
         unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
-  let res_ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ty in
+  let uidmap = EcUnify.UniEnv.assubst ue in
+  let res_ty = ty_subst (Tuni.subst uidmap) ty in
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr

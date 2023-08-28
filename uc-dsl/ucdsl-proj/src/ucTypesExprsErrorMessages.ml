@@ -154,7 +154,8 @@ let pp_tyerror env1 fmt error =
         msg "@\n";
 
         let pp_op fmt ((op, inst), subue) =
-          let inst = Tuni.offun_dom (EcUnify.UniEnv.assubst subue) inst in
+          let uidmap = EcUnify.UniEnv.assubst subue in
+          let inst = Tuni.subst_dom uidmap inst in
 
           begin match inst with
           | [] ->
@@ -170,7 +171,8 @@ let pp_tyerror env1 fmt error =
           let myuvars = List.fold_left Suid.union uvars myuvars in
           let myuvars = Suid.elements myuvars in
 
-          let tysubst = Tuni.offun (EcUnify.UniEnv.assubst subue) in
+          let uidmap = EcUnify.UniEnv.assubst subue in
+          let tysubst = ty_subst (Tuni.subst uidmap) in
           let myuvars = List.pmap
             (fun uid ->
               match tysubst (tuni uid) with

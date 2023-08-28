@@ -81,9 +81,10 @@ let unify_or_fail (env : EcEnv.env) ue loc ~expct:ty1 ty2 =
   with EcUnify.UnificationFailure pb ->
     match pb with
     | `TyUni (t1, t2)->
-        let tyinst = Tuni.offun (UE.assubst ue) in
-          tyerror loc env (TypeMismatch ((tyinst ty1, tyinst ty2),
-                                         (tyinst  t1, tyinst  t2)))
+       let uidmap = UE.assubst ue in
+       let tyinst = ty_subst (Tuni.subst uidmap) in
+       tyerror loc env (TypeMismatch ((tyinst ty1, tyinst ty2),
+                                      (tyinst  t1, tyinst  t2)))
     | `TcCtt _ ->
         tyerror loc env TypeClassMismatch
 
@@ -702,25 +703,26 @@ let transexp (env : EcEnv.env) ue e =
         let opsc = lookup_scope env popsc in
           transexp_r (Some opsc) env e
 
-    | PEapp
-      ({ pl_desc = PEident({ pl_desc = name; pl_loc = loc }, tvi)}, pes) ->
+    | PEapp ({ pl_desc = PEident({ pl_desc = name; pl_loc = loc }, tvi)}, pes) ->
         let tvi  = tvi |> omap (transtvi env ue) in
         let es   = List.map (transexp env) pes in
         let esig = snd (List.split es) in
         let ops  = select_exp_op env mode osc name ue tvi esig in
         begin match ops with
         | [] ->
-            let esig = Tuni.offun_dom (EcUnify.UniEnv.assubst ue) esig in
-            tyerror loc env (UnknownVarOrOp (name, esig))
+           let uidmap = EcUnify.UniEnv.assubst ue in
+           let esig = Tuni.subst_dom uidmap esig in
+           tyerror loc env (UnknownVarOrOp (name, esig))
 
         | [sel] ->
             let es = List.map2 (fun e l -> mk_loc l.pl_loc e) es pes in
             expr_of_opselect (env, ue) loc sel es
 
         | _ ->
-            let esig = Tuni.offun_dom (EcUnify.UniEnv.assubst ue) esig in
-            let matches = List.map (fun (_, _, subue, m) -> (m, subue)) ops in
-            tyerror loc env (MultipleOpMatch (name, esig, matches))
+           let uidmap = EcUnify.UniEnv.assubst ue in
+           let esig = Tuni.subst_dom uidmap esig in
+           let matches = List.map (fun (_, _, subue, m) -> (m, subue)) ops in
+           tyerror loc env (MultipleOpMatch (name, esig, matches))
         end
 
     | PEapp (pe, pes) ->
@@ -763,7 +765,8 @@ let transexp (env : EcEnv.env) ue e =
 
     | PEmatch (pce, pb) ->
         let ce, ety = transexp env pce in
-        let ety = Tuni.offun (EcUnify.UniEnv.assubst ue) ety in
+        let uidmap = EcUnify.UniEnv.assubst ue in
+        let ety = ty_subst (Tuni.subst uidmap) ety in
         let inddecl =
           match (EcEnv.ty_hnorm ety env).ty_node with
           | Tconstr (indp, _) -> begin
@@ -840,7 +843,8 @@ let transexp (env : EcEnv.env) ue e =
 
     | PEproji (sube, i) -> begin
       let sube', ety = transexp env sube in
-      let ty = Tuni.offun (EcUnify.UniEnv.assubst ue) ety in
+      let uidmap = EcUnify.UniEnv.assubst ue in
+      let ty = ty_subst (Tuni.subst uidmap) ety in
       match (EcEnv.ty_hnorm ty env).ty_node with
       | Ttuple l when i < List.length l ->
         let ty = List.nth l i in
