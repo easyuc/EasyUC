@@ -111,11 +111,6 @@ let can_prove_crush (proof : EcCoreGoal.proof) : bool =
   let proof_c = crush proof_m in
   EcCoreGoal.closed proof_c
 
-let can_prove (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos) : bool =
-  if can_prove_crush proof
-    then true
-    else can_prove_smt proof pi
-
 let eval_condition 
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form)
@@ -124,15 +119,18 @@ let eval_condition
   let proof_true = EcCoreGoal.start hyps form in
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
 
-  if can_prove proof_true pi
-    then
-      Bool true
+  if can_prove_crush proof_true
+  then Bool true
+  else
+    if can_prove_crush proof_false
+    then Bool false
     else
-      if can_prove proof_false pi
-        then
-          Bool false
-        else
-          Undecided
+      if can_prove_smt proof_true pi
+      then Bool true
+      else
+        if can_prove_smt proof_false pi
+        then Bool false
+        else Undecided
       
 let unique_id_for_proof (proof : EcCoreGoal.proof) : EcIdent.t = 
   let pregoal = get_only_pregoal proof in
@@ -500,10 +498,10 @@ let printEvalResult (res : eval_condition_result) : unit =
   | Bool false -> print_endline "FALSE"
   | Undecided  -> print_endline "UNDECIDED"
 
-(*comment out for printf debugging*)
+(*comment out for printf debugging
 let pp_ty _ _ = ()
 let pp_f _ _ = ()  
-let printEvalResult _ = ()
+let printEvalResult _ = ()*)
    
 let smt_op_form_not_None 
 (hyps : EcEnv.LDecl.hyps) 
