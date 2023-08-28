@@ -67,7 +67,9 @@ let id_map_sym_of_ordinal1 (map : 'a IdMap.t) (i : int) : symbol =
 module SL =  (* domain: string list = symbol list *)
   struct
     type t = string list
-    let compare = Stdlib.compare
+    (* lexicographic ordering, using lexicographic ordering on
+       individual strings *)
+    let compare = List.compare String.compare
   end
 
 let sing_elt_of_id_set (id_set : IdSet.t) : symbol =
@@ -92,6 +94,7 @@ type symb_pair = symbol * symbol
 module SP =  (* domain: string * string = symb_pair *)
   struct
     type t = string * string
+    (* lexicogrphic ordering, using lexicographic ordering on strings *)
     let compare = Stdlib.compare
   end
 
@@ -138,7 +141,7 @@ let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
 let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
-  let l = IdMap.fold (fun _ v l -> v :: l ) mapind [] in
+  let l = IdMap.fold (fun _ v l -> v :: l) mapind [] in
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
   List.map (fun a -> fst a) lord
 
@@ -159,6 +162,9 @@ let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
 
 let unlocm (lm : 'a located IdMap.t) : 'a IdMap.t =
   IdMap.map (fun al -> unloc al) lm
+
+let unloc_ident_map (lm : 'a located Mid.t) : 'a Mid.t =
+  Mid.map (fun al -> unloc al) lm
 
 (* located type plus an index, starting from 0 *)
 
@@ -322,6 +328,19 @@ let vars_map_to_domain (mp : (EcIdent.t * ty) located IdMap.t) : IdSet.t =
   IdSet.of_list (List.map fst (IdMap.bindings mp))
 
 type state_tyd = state_body_tyd located  (* typed state *)
+
+(* should only be called when the number of parameters and arguments
+   are the same *)
+
+let match_params (params : ty_index Mid.t) (args : 'a list)
+      : (EcIdent.t * 'a) list =
+  let bindings = Mid.bindings params in
+  let idents =
+    List.map fst
+    (List.sort
+     (fun b1 b2 -> snd (unloc (snd b1)) - snd (unloc (snd b2)))
+     bindings) in
+  List.combine idents args
 
 let initial_state_id_of_states (states : state_tyd IdMap.t) : symbol =
   fst
@@ -886,6 +905,28 @@ type sent_msg_expr_tyd =
   | SMET_Ord    of sent_msg_expr_ord_tyd
   | SMET_EnvAdv of sent_msg_expr_env_adv_tyd
 
+let is_ord_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : bool =
+  match sme with
+  | SMET_Ord _    -> true
+  | SMET_EnvAdv _ -> false
+
+let is_env_adv_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : bool =
+  match sme with
+  | SMET_Ord _    -> false
+  | SMET_EnvAdv _ -> true
+
+let ord_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
+      : sent_msg_expr_ord_tyd =
+  match sme with
+  | SMET_Ord ord  -> ord
+  | SMET_EnvAdv _ -> failure "should not happen"
+
+let env_adv_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
+      : sent_msg_expr_env_adv_tyd =
+  match sme with
+  | SMET_Ord _          -> failure "should not happen"
+  | SMET_EnvAdv env_adv -> env_adv
+
 let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
   match sme with
   | SMET_Ord ord        -> ord.mode
@@ -941,14 +982,10 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
       pp_portform sme.in_port_form
       pp_portform sme.out_port_form
 
-(* check whether the results of pretty printing two sent message
-   expressions are equal strings *)
+(* pretty print a typed sent message expression to a string *)
 
-let send_msg_expr_tyd_pp_equal (env : EcEnv.env)
-    (sme1 : sent_msg_expr_tyd) (sme2 : sent_msg_expr_tyd) : bool =
+let pp_sent_msg_expr_to_string (env : EcEnv.env)
+    (sme : sent_msg_expr_tyd) : string =
   let _ = Format.flush_str_formatter () in
-  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme1 in
-  let s1 = Format.flush_str_formatter () in
-  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme2 in
-  let s2 = Format.flush_str_formatter () in
-  s1 = s2
+  let () = pp_sent_msg_expr_tyd env Format.str_formatter sme in
+  Format.flush_str_formatter ()

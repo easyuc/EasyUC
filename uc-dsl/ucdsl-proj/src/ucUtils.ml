@@ -52,15 +52,11 @@ let format_id_paths_comma
     (ppf : Format.formatter) (iops : string list list) : unit =
   format_strings ppf ',' (List.map string_of_id_path iops)
 
-let sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
-  List.for_all 
-  identity
-  (List.mapi
-   (fun i s2 -> 
-      match (List.nth_opt sl1 i) with 
-      | Some s1 -> s1=s2
-      | None    -> false)
-   sl2)
+let rec sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
+  match sl1, sl2 with
+  | _,           []          -> true
+  | [],           _          -> false
+  | (s1 :: sl1), (s2 :: sl2) -> s1 = s2 && sl1_starts_with_sl2 sl1 sl2
 
 let capitalized_root_of_filename_with_extension file =
   String.capitalize_ascii (Filename.chop_extension (Filename.basename file))

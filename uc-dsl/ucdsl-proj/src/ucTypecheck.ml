@@ -946,10 +946,7 @@ let check_missing_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
     (l : EcLocation.t) : unit =
   let bip = List.find (fun p -> fst p = fst mp) bips in
-  let mtyp =
-    indexed_map_to_list
-    (unlocm (IdMap.find (snd mp) (snd bip)).params_map) in
-  if List.length mtyp <> 0
+  if not (IdMap.is_empty ((IdMap.find (snd mp) (snd bip)).params_map))
   then error_message l
          (fun ppf ->
             fprintf ppf

@@ -241,15 +241,22 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
       : match_clause_interp =
   (sym, (bndgs, create_instr_interp_list_loc ins))
 
-(* a local context is a nonempty stack of maps from identifers (local
-   variables or bound identifiers (state parameters or ones bound by
-   message match clauses or ordinary match clauses)) to formulas,
-   which should be well typed in the global context
+(* a local context is a nonempty stack of maps (frames) from
+   identifers (local variables or bound identifiers (state parameters
+   or ones bound by message match clauses or ordinary match clauses))
+   to formulas, which should be well typed in the global context
 
-   the head of the list is the bottom of the stack, ..., and the last
-   element of the list is the top of the stack *)
+   the bottom frame is its first element, ..., and the top frame is
+   its last element *)
 
-type local_context = form EcIdent.Mid.t list
+type lc_frame      = form EcIdent.Mid.t
+type local_context = lc_frame list
+
+(* in an LCB_IntPort (id, f), the string of id will have the form
+   "intport." followed the name of the party (which in the case of a
+   simulator will consists of the (unqualified by the root) name of
+   the real functionality being simulated, followed by '.', followed
+   by the party) *)
 
 type local_context_base =
   | LCB_Param   of EcIdent.t * form  (* parameter *)
@@ -272,11 +279,16 @@ let lc_create (lcbs : local_context_base list) : local_context =
        | LCB_IntPort (id, port_form)       -> (id, port_form))
     lcbs)]
 
+(* when we pretty print the identifier of an internal port entry,
+   we replace the ':' by ' ' *)
+
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let subst_colon_by_blank (s : symbol) : symbol =
+    String.map (fun c -> if c = ':' then ' ' else c) s in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
-    fprintf ppf "@[%a :@ %a@]"
-    EcIdent.pp_ident id
+    fprintf ppf "@[%s :@ %a@]"
+    (subst_colon_by_blank (EcIdent.name id))
     (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
     EcPrinting.pp_list ",@ " pp_frame_entry ppf
@@ -306,6 +318,13 @@ let lc_apply (lc : local_context) (e : expr) : form =
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   Fsubst.f_subst subst f
+
+let push (lc : local_context) (fr : lc_frame) : local_context =
+  lc @ [fr]
+
+let pop (lc : local_context) : local_context =
+  (if List.is_empty lc then failure "should not happen");
+  List.take (List.length lc - 1) lc
 
 (* a global context is an EcEnv.LDecl.hyps *)
 
@@ -807,6 +826,16 @@ let env_of_config (conf : config) : env =
   | ConfigRealSending c  -> env_of_gc c.gc
   | ConfigIdealSending c -> env_of_gc c.gc
 
+let maps_of_config (conf : config) : maps_tyd =
+  match conf with
+  | ConfigGen c          -> c.maps
+  | ConfigReal c         -> c.maps
+  | ConfigIdeal c        -> c.maps
+  | ConfigRealRunning c  -> c.maps
+  | ConfigIdealRunning c -> c.maps
+  | ConfigRealSending c  -> c.maps
+  | ConfigIdealSending c -> c.maps
+
 let control_of_real_or_ideal_config (conf : config) : control =
   match conf with
   | ConfigReal c  -> c.ctrl
@@ -818,6 +847,12 @@ let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
   | ConfigRealRunning c  -> Some (loc c.ins)
   | ConfigIdealRunning c -> Some (loc c.ins)
   | _                    -> None
+
+let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
+      : string =
+  let env = env_of_config conf in
+  let sme = inter_check_sent_msg_expr (maps_of_config conf) env sme in
+  pp_sent_msg_expr_to_string env sme
 
 (* pretty printer for configurations *)
 
@@ -1196,31 +1231,25 @@ let ideal_of_gen_config (conf : config) : config =
 (* sending messages and stepping configurations *)
 
 type effect =
-  | EffectOK                           (* step succeeded (not random
-                                          assignment), and new configuration
-                                          is running or sending *)
-  | EffectRand of EcIdent.t            (* step added ident representing
-                                          random choice to global context,
-                                          and new configuration is
-                                          running *)
-  | EffectMsgOut of sent_msg_expr_tyd  (* a message was output, and new
-                                          configuration is real or ideal *)
-  | EffectFailOut                      (* fail was output, and new
-                                          configuration is real or ideal *)
-  | EffectBlockedIf                    (* configuration is running *)
-  | EffectBlockedMatch                 (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare     (* configuration is running or sending *)
+  | EffectOK                        (* step succeeded (not random
+                                       assignment), and new configuration
+                                       is running or sending *)
+  | EffectRand of symbol            (* step added ident representing
+                                       random choice to global context,
+                                       and new configuration is running *)
+  | EffectMsgOut of string          (* a message was output, and new
+                                       configuration is real or ideal *)
+  | EffectFailOut                   (* fail was output, and new
+                                       configuration is real or ideal *)
+  | EffectBlockedIf                 (* configuration is running *)
+  | EffectBlockedMatch              (* configuration is running *)
+  | EffectBlockedPortOrAddrCompare  (* configuration is running or sending *)
 
-let pp_effect (ppf : formatter) (c : config) (e : effect) : unit =
-  let env = env_of_config c in
+let pp_effect (ppf : formatter) (e : effect) : unit =
   match e with
   | EffectOK                       -> fprintf ppf "EffectOK"
-  | EffectRand id                  ->
-      fprintf ppf "EffectRand: %a"
-      EcIdent.pp_ident id
-  | EffectMsgOut sme               ->
-      fprintf ppf "EffectMsgOut: %a"
-      (pp_sent_msg_expr_tyd env) sme
+  | EffectRand id                  -> fprintf ppf "EffectRand: %s" id
+  | EffectMsgOut pp_sme            -> fprintf ppf "EffectMsgOut: %s" pp_sme
   | EffectFailOut                  -> fprintf ppf "EffectFailOut"
   | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
   | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
@@ -1259,15 +1288,17 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
       : config * effect =
   match conf with
   | ConfigRealSending c  ->
+      let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigReal
        {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
         ctrl = ctrl},
-       EffectMsgOut c.sme)
+       EffectMsgOut pp_sme)
   | ConfigIdealSending c ->
+      let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigIdeal
        {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
         ctrl = ctrl},
-       EffectMsgOut c.sme)
+       EffectMsgOut pp_sme)
   | _                    -> raise ConfigError
 
 let send_message_to_real_or_ideal_config
@@ -1303,6 +1334,32 @@ let step_real_running_config (rc : config_real_running) : config * effect =
 let step_ideal_running_config (c : config_ideal_running) : config * effect =
   fill_in "step_real_running_config" (ConfigIdealRunning c)
 
+(* should only be called with ordinary sme that will successfully
+   match *)
+
+let match_ord_sme_against_msg_match_clauses
+    (clauses : msg_match_clause_tyd list) (sme : sent_msg_expr_ord_tyd)
+      : (EcIdent.t * form) list * instruction_tyd list located =
+  let rec match_sme clauses =
+    match clauses with
+    | []                -> failure "should not happen"
+    | clause :: clauses ->
+        let {msg_pat; code} = clause in
+        let {port_id; msg_path_pat; pat_args} = msg_pat in
+        let {inter_id_path; msg_or_star} = unloc msg_path_pat in
+        match msg_or_star with
+        | MsgOrStarMsg msg ->
+           if List.tl sme.path.inter_id_path = inter_id_path &&
+              sme.path.msg = msg
+           then (match_msg_pat msg_pat sme.in_port_form sme.args, code)
+           else match_sme clauses
+        | MsgOrStarStar    ->
+            if UcUtils.sl1_starts_with_sl2 (List.tl sme.path.inter_id_path)
+               inter_id_path
+            then ([], code)  (* code will be fail *)
+            else match_sme clauses in
+  match_sme clauses
+
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
@@ -1326,10 +1383,10 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
               else find bndgs
     in find (IdMap.bindings rfi) in
 
-  let from_env_match (c : config_real_sending) (rfi : real_fun_info)
-      (sid : symbol) (args : form list) (sbt : state_body_tyd)
-        : config * effect =
-    failure "hi" in
+  let from_env_match (root : symbol) (c : config_real_sending)
+      (rfi : real_fun_info) (sid : symbol) (args : form list)
+      (sbt : state_body_tyd) : config * effect =
+    fill_in "at from_env_match" (ConfigRealSending c) in
 
   let from_env () =
     if mode = Dir &&
@@ -1349,7 +1406,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
                let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
                let {id = sid; args = args} = IdMap.find pid rs in
                let sbt = unloc (IdMap.find sid pbt.states) in
-               from_env_match c rfi sid args sbt
+               from_env_match root c rfi sid args sbt
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and

@@ -69,7 +69,7 @@ let test_sent_real_config_core
   let () = pp_config Format.err_formatter config in
   Format.pp_print_newline Format.err_formatter ();
   let () = Printf.eprintf "---\n" in
-  pp_effect Format.err_formatter config eff;
+  pp_effect Format.err_formatter eff;
   Format.pp_print_newline Format.err_formatter ()
 
 let test_sent_real_config_1 (include_dirs : string list) (file : string)
@@ -212,16 +212,15 @@ let () =
   print_newline ();
 *)
 
-
+(*
   test_sent_real_config_1 ();
   Printf.eprintf "\n";
+*)
 
 (*
   test_sent_real_config_2 ();
   Printf.eprintf "\n";
 *)
 
-(*
   test_sent_real_config_3 ();
   Printf.eprintf "\n";
-*)
