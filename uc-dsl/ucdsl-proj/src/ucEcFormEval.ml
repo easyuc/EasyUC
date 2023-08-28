@@ -502,6 +502,26 @@ let printEvalResult (res : eval_condition_result) : unit =
 let pp_ty _ _ = ()
 let pp_f _ _ = ()  
 let printEvalResult _ = ()*)
+
+(* adapted from EcHiGoal.ml process_delta *)
+let rewrite_operator (opf : EcCoreFol.form) (tc:EcCoreGoal.tcenv1) =
+  let path, _ = EcCoreFol.destr_op opf in
+  let _, hyps, concl = EcCoreGoal.FApi.tc1_eflat tc in
+  let check_op = fun p -> 
+    if EcSymbols.sym_equal (EcPath.basename p) (EcPath.basename path) 
+    then `Force 
+    else `No 
+  in
+  let check_id = fun y -> 
+    EcSymbols.sym_equal (EcIdent.name y) (EcPath.basename path) 
+  in
+  let ri =
+    { EcReduction.no_red with
+        EcReduction.delta_p = check_op;
+        EcReduction.delta_h = check_id; } 
+  in
+  let redform = EcReduction.simplify ri hyps concl in
+  EcLowGoal.t_change ~ri ?target:None redform tc
    
 let smt_op_form_not_None 
 (hyps : EcEnv.LDecl.hyps) 
