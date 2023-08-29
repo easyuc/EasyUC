@@ -44,6 +44,10 @@ let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof)
   pp_proof proof';
   proof'
 
+let run_tacl (tacl : EcCoreGoal.FApi.backward list) (proof : EcCoreGoal.proof)
+: EcCoreGoal.proof =
+  List.fold_left (fun p tac -> run_tac tac p) proof tacl
+
 (*move => |>.*)
 let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_crush = (*modified from ecHiGoal.ml*)
@@ -55,7 +59,7 @@ let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => |>.";
   run_tac intro1_crush proof
 
-let tac_move_hyp_form_to_concl 
+let move_hyp_form_to_concl 
 (h_id : EcIdent.t) 
 (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
@@ -77,7 +81,7 @@ let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
       | _ -> None
     ) (EcEnv.LDecl.tohyps hyps).h_local
   in
-  let proof' = List.fold_right tac_move_hyp_form_to_concl hyp_ids proof in
+  let proof' = List.fold_right move_hyp_form_to_concl hyp_ids proof in
   proof'
 (*  
 let pp_prover_infos (pi : EcProvers.prover_infos) : unit =
@@ -111,13 +115,17 @@ let can_prove_crush (proof : EcCoreGoal.proof) : bool =
   let proof_c = crush proof_m in
   EcCoreGoal.closed proof_c
 
-let eval_condition 
+let eval_condition_pre_tacs
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form)
 (pi : EcProvers.prover_infos)
+(pre_tacs : EcCoreGoal.FApi.backward list)
 : eval_condition_result =
   let proof_true = EcCoreGoal.start hyps form in
+  let proof_true = run_tacl pre_tacs proof_true in
+
   let proof_false = EcCoreGoal.start hyps (EcCoreFol.f_not form) in
+  let proof_false = run_tacl pre_tacs proof_false in
 
   if can_prove_crush proof_true
   then Bool true
@@ -132,6 +140,14 @@ let eval_condition
         then Bool false
         else Undecided
       
+
+let eval_condition 
+(hyps : EcEnv.LDecl.hyps) 
+(form : EcCoreFol.form)
+(pi : EcProvers.prover_infos)
+: eval_condition_result =
+  eval_condition_pre_tacs hyps form pi []
+
 let unique_id_for_proof (proof : EcCoreGoal.proof) : EcIdent.t = 
   let pregoal = get_only_pregoal proof in
   let hyps = pregoal.g_hyps in
@@ -370,7 +386,7 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
   
 let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
-  tac_move_hyp_form_to_concl h_id proof
+  move_hyp_form_to_concl h_id proof
   
 
 
@@ -542,7 +558,8 @@ let smt_op_form_not_None
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
   pp_f hyps concl;
   print_endline "let er = evalCondition hyps concl in";
-  let er = eval_condition hyps concl pi in
+  let rw_get_as_op = rewrite_operator opf in 
+  let er = eval_condition_pre_tacs hyps concl pi [rw_get_as_op] in
   printEvalResult er;
   print_endline "match er with";
   match er with
