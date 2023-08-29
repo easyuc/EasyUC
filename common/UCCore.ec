@@ -133,7 +133,7 @@ lemma exper_pre_ext1 (func adv ext : addr) :
 proof.
 rewrite /exper_pre /inter_init_pre.
 move => |> inc_fun_adv.
-by apply inc_ext1.
+by apply inc_extl.
 qed.
 
 module Exper (Inter : INTER, Env : ENV) = {
