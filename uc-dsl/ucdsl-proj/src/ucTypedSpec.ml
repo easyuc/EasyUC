@@ -332,7 +332,7 @@ type state_tyd = state_body_tyd located  (* typed state *)
 (* should only be called when the number of parameters and arguments
    are the same *)
 
-let match_params (params : ty_index Mid.t) (args : 'a list)
+let match_state_args (params : ty_index Mid.t) (args : 'a list)
       : (EcIdent.t * 'a) list =
   let bindings = Mid.bindings params in
   let idents =

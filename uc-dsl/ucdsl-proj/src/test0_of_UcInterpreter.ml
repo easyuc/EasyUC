@@ -87,7 +87,25 @@ let test_sent_real_config_1 (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)$func" in
+   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)@((func,1))" in
+  test_sent_real_config_core real_config sme
+
+let test_sent_real_config_1a (include_dirs : string list) (file : string)
+    (fun_ex : string) : unit =
+  UcEcInterface.init ();
+  UcState.set_units();
+  UcState.set_include_dirs include_dirs;
+  UcState.set_debugging ();
+  let maps =
+    UcParseAndTypecheckFile.parse_and_typecheck_file_or_id (FOID_File file) in
+  let root = UcUtils.capitalized_root_of_filename_with_extension file in
+  let env = UcEcInterface.env () in
+  let fun_expr = parse_fun_expr fun_ex in
+  let config = create_gen_config root maps env fun_expr in
+  let real_config = real_of_gen_config config in
+  let sme =
+   parse_sent_msg_expr
+   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)@((func ++ [1],1))" in
   test_sent_real_config_core real_config sme
 
 let test_sent_real_config_2 (include_dirs : string list) (file : string)
@@ -160,6 +178,10 @@ let test_sent_real_config_1 (): unit =
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
   test_sent_real_config_1 [smc2_dir] smc2 fe
 
+let test_sent_real_config_1a (): unit =
+  let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
+  test_sent_real_config_1a [smc2_dir] smc2 fe
+
 let test_sent_real_config_2 (): unit =
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
   test_sent_real_config_2 [smc2_dir] smc2 fe
@@ -217,10 +239,15 @@ let () =
   Printf.eprintf "\n";
 *)
 
+  test_sent_real_config_1a ();
+  Printf.eprintf "\n";
+
 (*
   test_sent_real_config_2 ();
   Printf.eprintf "\n";
 *)
 
+(*
   test_sent_real_config_3 ();
   Printf.eprintf "\n";
+*)

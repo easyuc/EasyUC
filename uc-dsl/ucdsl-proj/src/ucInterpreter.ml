@@ -247,10 +247,14 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
    to formulas, which should be well typed in the global context
 
    the bottom frame is its first element, ..., and the top frame is
-   its last element *)
+   its last element
 
-type lc_frame      = form EcIdent.Mid.t
-type local_context = lc_frame list
+   the bottom frame includes entries corresponding to local_context_base
+   (see below); the remaining frames bind identifers bound by
+   ordinary meatch clauses *)
+
+type local_context_frame = form EcIdent.Mid.t
+type local_context       = local_context_frame list
 
 (* in an LCB_IntPort (id, f), the string of id will have the form
    "intport." followed the name of the party (which in the case of a
@@ -259,8 +263,9 @@ type local_context = lc_frame list
    by the party) *)
 
 type local_context_base =
-  | LCB_Param   of EcIdent.t * form  (* parameter *)
-  | LCB_Var     of EcIdent.t * ty    (* variable *)
+  | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
+                                        of message match clause *)
+  | LCB_Var     of EcIdent.t * ty    (* local variable *)
   | LCB_EnvPort of form * form       (* both of type address *)
   | LCB_IntPort of EcIdent.t * form  (* of type port *)
 
@@ -269,9 +274,9 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Param (id, form)              -> (id, form)
+       | LCB_Bound (id, form)              -> (id, form)
        | LCB_Var (id, ty)                  ->
-           (id, f_op EcCoreLib.CI_Witness.p_witness [] ty)
+           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
        | LCB_EnvPort (func_form, adv_form) ->
            (envport_id,
             f_app (form_of_expr mhr envport_op)
@@ -280,23 +285,24 @@ let lc_create (lcbs : local_context_base list) : local_context =
     lcbs)]
 
 (* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ' *)
+   we replace the ':' by ' ', so it matches the concrete syntax *)
 
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
   let subst_colon_by_blank (s : symbol) : symbol =
     String.map (fun c -> if c = ':' then ' ' else c) s in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
-    fprintf ppf "@[%s :@ %a@]"
+    fprintf ppf "@[%s ->@ %a@]"
     (subst_colon_by_blank (EcIdent.name id))
     (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
-    EcPrinting.pp_list ",@ " pp_frame_entry ppf
+    fprintf ppf "@[(@[%a@])@]"
+    (EcPrinting.pp_list ",@ " pp_frame_entry)
     (EcIdent.Mid.bindings frame) in
   let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
         : unit =
     match frames with
-    | []              -> failure "cannot happen"
+    | []              -> failure "should not happen"
     | [frame]         -> pp_frame ppf frame
     | frame :: frames ->
         fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
@@ -319,7 +325,7 @@ let lc_apply (lc : local_context) (e : expr) : form =
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   Fsubst.f_subst subst f
 
-let push (lc : local_context) (fr : lc_frame) : local_context =
+let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
 
 let pop (lc : local_context) : local_context =
@@ -355,7 +361,7 @@ let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 (* pretty printer for global contexts: separates elements
    by commas, allowing breaks *)
 
-let pp_gc (ppf : formatter) (gc : global_context) : unit =
+let pp_global_context (ppf : formatter) (gc : global_context) : unit =
   let env = env_of_gc gc in
   let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_loc (ppf : formatter) (id, lk) : unit =
@@ -370,7 +376,7 @@ let pp_gc (ppf : formatter) (gc : global_context) : unit =
         (EcPrinting.pp_form ppe) form
     | _                          -> failure "cannot happen" in
   let locs = List.rev (LDecl.tohyps gc).h_local in
-  fprintf ppf "@[%a@]"
+  fprintf ppf "@[(@[%a@])@]"
   (EcPrinting.pp_list ",@ " pp_loc) locs
 
 let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
@@ -473,7 +479,7 @@ let port_to_addr_form (port : form) : form =
 let port_to_pi_form (port : form) : form =
   f_proj port 1 tint
 
-let make_port (addr : form) (pi : form) : form =
+let make_port_form (addr : form) (pi : form) : form =
   f_tuple [addr; pi]
 
 let int_form (n : int) : form = f_int (EcBigInt.of_int n)
@@ -594,11 +600,13 @@ let pp_control (ppf : formatter) (ctrl : control) : unit =
    world *)
 
 type real_world_running_context =
-  | RWRC_IdealFunc of int list *
-                      symb_pair    (* functionality *)
+  | RWRC_IdealFunc of int list  *
+                      symb_pair *  (* functionality *)
+                      symbol       (* state name *)
   | RWRC_RealFunc  of int list  *
                       symb_pair *  (* functionality *)
-                      symbol       (* party name *)
+                      symbol    *  (* party name *)
+                      symbol       (* state name *)
 
 let pp_relative_address (ppf : formatter) (addr : int list) : unit =
   fprintf ppf "[@[%a@]]"
@@ -610,15 +618,16 @@ let pp_symb_pair (ppf : formatter) (sp : symb_pair) : unit =
 let pp_real_world_running_context (ppf : formatter)
     (rwrc : real_world_running_context) : unit =
   match rwrc with
-  | RWRC_IdealFunc (is, sp)       ->
-      fprintf ppf "@[running at %a: %a@]"
+  | RWRC_IdealFunc (is, sp_func, state_id)        ->
+      fprintf ppf "@[running at %a:@ %a/@,%s@]"
       pp_relative_address is
-      pp_symb_pair sp
-  | RWRC_RealFunc (is, sp, pty) ->
-      fprintf ppf "@[running at %a: %a: %s@]"
+      pp_symb_pair sp_func
+      state_id
+  | RWRC_RealFunc (is, sp_func, pty_id, state_id) ->
+      fprintf ppf "@[running at %a:@ %a/@,%s/@,%s@]"
       pp_relative_address is
-      pp_symb_pair sp
-      pty
+      pp_symb_pair sp_func
+      pty_id state_id
 
 type real_world_sending_context =
   | RWSC_Env                     (* sending from environment *)
@@ -970,7 +979,13 @@ let pp_int_set (ppf : formatter) (is : IntSet.t) : unit =
 let pp_global_context_msg (ppf : formatter) (gc : global_context) : unit =
   fprintf ppf
   "@[global context:@ %a@]"
-  pp_gc gc
+  pp_global_context gc
+
+let pp_local_context_msg (env : env) (ppf : formatter)
+    (lc : local_context) : unit =
+  fprintf ppf
+  "@[local context:@ %a@]"
+  (pp_local_context env) lc
 
 let pp_worlds_msg (ppf : formatter) (w : worlds) : unit =
   fprintf ppf
@@ -1027,7 +1042,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_real_world_with_states_msg c.maps c.gc c.rws) c.rw
       pp_input_guard_msg c.ig
       pp_real_world_running_context c.rwrc
-      (pp_local_context (env_of_gc c.gc)) c.lc
+      (pp_local_context_msg (env_of_gc c.gc)) c.lc
   | ConfigIdealRunning c ->
       fprintf ppf
       "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
@@ -1035,7 +1050,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_ideal_world_running_context c.iwrc
-      (pp_local_context (env_of_gc c.gc)) c.lc
+      (pp_local_context_msg (env_of_gc c.gc)) c.lc
   | ConfigRealSending c  ->
       fprintf ppf
       "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n@[message:@ %a@]@]"
@@ -1360,6 +1375,39 @@ let match_ord_sme_against_msg_match_clauses
             else match_sme clauses in
   match_sme clauses
 
+(* should only be called with ordinary sme that will successfully
+   match *)
+
+let match_ord_sme_in_state (rel_addr : int list) (sbt : state_body_tyd)
+    (state_args : form list) (sme : sent_msg_expr_ord_tyd)
+      : local_context * instruction_tyd list located =
+  let addr = addr_concat_form func_form (addr_make_form rel_addr) in
+  let port_of_addr i = make_port_form addr (int_form i) in
+  let state_params =
+    List.map (fun (id, f) -> (LCB_Bound (id, f)))
+    (match_state_args sbt.params state_args) in
+  let (mm_binds, mm_instructs) =
+    match_ord_sme_against_msg_match_clauses sbt.mmclauses sme in
+  let vars =
+    List.map (fun (_, (id, ty)) -> LCB_Var (id, ty))
+    (IdMap.bindings (unlocm sbt.vars)) in
+  let mm_binds =
+    List.map (fun (id, f) -> (LCB_Bound (id, f))) mm_binds in
+  let envport = LCB_EnvPort (addr, adv_form) in
+  let internal_ports =
+    List.mapi
+    (fun i (_, id) -> LCB_IntPort (id, port_of_addr (i + 1)))
+    (QidMap.bindings sbt.internal_ports) in
+  let lc =
+    lc_create
+    (state_params   @
+     vars           @
+     mm_binds       @
+     [envport]      @
+     internal_ports
+    ) in
+   (lc, mm_instructs)
+
 let step_real_sending_config (c : config_real_sending) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
@@ -1383,10 +1431,29 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
               else find bndgs
     in find (IdMap.bindings rfi) in
 
-  let from_env_match (root : symbol) (c : config_real_sending)
-      (rfi : real_fun_info) (sid : symbol) (args : form list)
-      (sbt : state_body_tyd) : config * effect =
-    fill_in "at from_env_match" (ConfigRealSending c) in
+  let from_env_match (c : config_real_sending) (func_sp : symb_pair) 
+      (party_id : symbol) (comp : symbol) (basic : symbol) (state_id : symbol)
+      (state_args : form list) (sbt : state_body_tyd) : config * effect =
+    match c.sme with
+    | SMET_Ord sme_ord        ->
+        let (root, func_id) = func_sp in
+        let iip = sme_ord.path.inter_id_path in
+        if List.hd iip = root && List.tl iip = [comp; basic]
+        then let (lc, ins) =
+               match_ord_sme_in_state [] sbt state_args sme_ord in
+             (ConfigRealRunning
+              {maps = c.maps;
+               gc   = c.gc;
+               pi   = c.pi;
+               rw   = c.rw;
+               ig   = c.ig;
+               rws  = c.rws;
+               rwrc = RWRC_RealFunc ([], func_sp, party_id, state_id);
+               lc   = lc;
+               ins  = create_instr_interp_list_loc ins},
+              EffectOK)
+        else fail_out_of_running_or_sending_config (ConfigRealSending c)
+    | SMET_EnvAdv sme_env_adv -> failure "cannot happen" in
 
   let from_env () =
     if mode = Dir &&
@@ -1394,19 +1461,19 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
        (f_and
         (f_eq func_form dest_addr)
         (envport_form func_form adv_form source_port))
-      then let (sp, base, _) = c.rw in
-           let (root, fid) = sp in
-           let ft = IdPairMap.find sp c.maps.fun_map in
+      then let (func_sp, base, _) = c.rw in
+           let (root, fid) = func_sp in
+           let ft = IdPairMap.find func_sp c.maps.fun_map in
            let rfi = get_info_of_real_func c.maps root base ft in
            match from_env_find_party c rfi with
            | None                  ->
                fail_out_of_running_or_sending_config (ConfigRealSending c)
-           | Some (pid, comp, bas) ->
+           | Some (pid, comp, basic) ->
                let pbt = unloc (party_of_real_fun_tyd ft pid) in
                let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
-               let {id = sid; args = args} = IdMap.find pid rs in
-               let sbt = unloc (IdMap.find sid pbt.states) in
-               from_env_match root c rfi sid args sbt
+               let {id = state_id; args = state_args} = IdMap.find pid rs in
+               let sbt = unloc (IdMap.find state_id pbt.states) in
+               from_env_match c func_sp pid comp basic state_id state_args sbt
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc c.pi
             (f_and
