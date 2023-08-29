@@ -514,10 +514,10 @@ let printEvalResult (res : eval_condition_result) : unit =
   | Bool false -> print_endline "FALSE"
   | Undecided  -> print_endline "UNDECIDED"
 
-(*comment out for printf debugging
+(*comment out for printf debugging*)
 let pp_ty _ _ = ()
 let pp_f _ _ = ()  
-let printEvalResult _ = ()*)
+let printEvalResult _ = ()
 
 (* adapted from EcHiGoal.ml process_delta *)
 let rewrite_operator (opf : EcCoreFol.form) (tc:EcCoreGoal.tcenv1) =
