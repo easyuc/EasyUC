@@ -174,4 +174,4 @@ op port_y : port.
 op testtext : text.
 end T.
 
-op suf : addr = [1].
+op testaddr : addr = [1].

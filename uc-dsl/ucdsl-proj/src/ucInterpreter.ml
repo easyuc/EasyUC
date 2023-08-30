@@ -444,6 +444,13 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
 
 (* making formulas for use in SMT applications *)
 
+(* TODO remove after debugging *)
+let uc_qsym_prefix_keys_etc = ["Top"; "KeysExponentsAndPlaintexts"]
+let testaddr_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_keys_etc, "testaddr")) []
+  addr_ty
+let testaddr_form : form = form_of_expr mhr testaddr_op
+
 let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
 
 let env_root_port_form : form = form_of_expr mhr env_root_port_op
