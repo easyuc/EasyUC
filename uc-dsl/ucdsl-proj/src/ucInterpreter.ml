@@ -1085,7 +1085,7 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let w = fun_expr_tyd_to_worlds maps fet in
   let ig = interface_input_guard_exclusion_of_worlds w in
   let gc = gc_create env in
-  let pi = default_prover_infos env in
+  let pi = default_prover_infos (env_of_gc gc) in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
 
 let update_prover_infos_config (conf : config)
