@@ -166,9 +166,6 @@ and call_bound = private {
 
 and module_type = form p_module_type
 
-(* TODO remove *)
-val dump_form : form -> string
-
 type mod_restr = form p_mod_restr
 
 (* -------------------------------------------------------------------- *)

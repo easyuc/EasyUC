@@ -1016,6 +1016,9 @@ let check_msg_pat
 
 (* checking instructions *)
 
+(* if expct_ty_opt is Some ty, then ty must not have any unification
+   or type variables *)
+
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
     (pexpr : pexpr) (expct_ty_opt : ty option) : expr * ty =
@@ -1025,6 +1028,23 @@ let check_expr
     | None          -> ()
     | Some expct_ty ->
         unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
+  (* replace unification variables in expression by types *)
+  let uidmap =
+    try EcUnify.UniEnv.close ue with
+    | EcUnify.UninstanciateUni ->
+        failure
+        "should not happen: a top-level expression won't have type variables" in
+  let sty = {ty_subst_id with ts_u = uidmap} in
+  let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
+  let exp = EcFol.Fsubst.subst_e fs exp in
+  (* update result type, using the expected type if supplied (which
+     was assumed to have no unification or type variables), and otherwise
+     applying the result of the unification to ty *)
+  let res_ty =
+    match expct_ty_opt with
+    | None          -> ty_subst (Tuni.subst uidmap) ty
+    | Some expct_ty -> expct_ty in
+  (* check for possibly uninitialized variables *)
   let () =
     let fv = e_fv exp in
     EcIdent.Mid.iter
@@ -1037,9 +1057,6 @@ let check_expr
                "@[expression@ uses@ possibly@ uninitialzed@ variable:@ %s@]"
                id))
     fv in
-  (* update result type to take account of unification *)
-  let uidmap = EcUnify.UniEnv.assubst ue in
-  let res_ty = ty_subst (Tuni.subst uidmap) ty in
   (exp, res_ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
@@ -2433,6 +2450,9 @@ let inter_check_real_fun_expr
           fprintf ppf
           "@[real@ functionality@ expected@]")
 
+(* if expct_ty_opt is Some ty, then ty must not have any unification
+   or type variables *)
+
 let inter_check_expr
     (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
       : expr * ty =
@@ -2442,8 +2462,22 @@ let inter_check_expr
     | None          -> ()
     | Some expct_ty ->
         unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
-  let uidmap = EcUnify.UniEnv.assubst ue in
-  let res_ty = ty_subst (Tuni.subst uidmap) ty in
+  (* replace unification variables in expression by types *)
+  let uidmap =
+    try EcUnify.UniEnv.close ue with
+    | EcUnify.UninstanciateUni ->
+        failure
+        "should not happen: a top-level expression won't have type variables" in
+  let sty = {ty_subst_id with ts_u = uidmap} in
+  let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
+  let exp = EcFol.Fsubst.subst_e fs exp in
+  (* update result type, using the expected type if supplied (which
+     was assumed to have no unification or type variables), and otherwise
+     applying the result of the unification to ty *)
+  let res_ty =
+    match expct_ty_opt with
+    | None          -> ty_subst (Tuni.subst uidmap) ty
+    | Some expct_ty -> expct_ty in
   (exp, res_ty)
 
 let inter_check_expr_port_or_addr

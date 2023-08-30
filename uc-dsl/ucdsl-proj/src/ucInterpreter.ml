@@ -444,13 +444,6 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
 
 (* making formulas for use in SMT applications *)
 
-(* TODO remove after debugging *)
-let uc_qsym_prefix_keys_etc = ["Top"; "KeysExponentsAndPlaintexts"]
-let testaddr_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_keys_etc, "testaddr")) []
-  addr_ty
-let testaddr_form : form = form_of_expr mhr testaddr_op
-
 let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
 
 let env_root_port_form : form = form_of_expr mhr env_root_port_op
@@ -1421,10 +1414,6 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   let dest_addr = port_to_addr_form dest_port in
   let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
-let debug =
-  addr_concat_form
-  func_form
-  (addr_cons_form (int_form 1) addr_nil_form)  in
 
   let from_env_find_party (c : config_real_sending) (rfi : real_fun_info)
         : (symbol * symbol * symbol) option =
@@ -1467,17 +1456,11 @@ let debug =
     | SMET_EnvAdv sme_env_adv -> failure "cannot happen" in
 
   let from_env () =
-Printf.eprintf "from_env: first: %s\nsecond: %s\n"
-(dump_form dest_addr) (dump_form debug);
-
     if mode = Dir &&
        eval_bool_form_to_bool c.gc c.pi
-(*       (f_and*)
-        (f_eq dest_addr debug)
-(*
-        (f_eq (func_form dest_addr)
+       (f_and
+        (f_eq dest_addr func_form)
         (envport_form func_form adv_form source_port))
-*)
       then let (func_sp, base, _) = c.rw in
            let (root, fid) = func_sp in
            let ft = IdPairMap.find func_sp c.maps.fun_map in

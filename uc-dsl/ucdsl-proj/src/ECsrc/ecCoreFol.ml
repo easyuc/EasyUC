@@ -167,40 +167,6 @@ and call_bound = {
 
 and module_type = form p_module_type
 
-(* TODO remove: *)
-let rec dump_form (f : form) : string = 
-  "form: type:" ^ EcTypes.dump_ty f.f_ty ^
-  "\nnode: " ^ dump_node f.f_node ^ ")\n"
-
-and dump_node (fn : f_node) : string =
-    match fn with
-    | Fquant _ -> "quantification"
-    | Fif _ -> "if"
-    | Flet _ -> "let"
-    | Fint  _ -> "int"
-    | Flocal id -> "local id:" ^ EcIdent.tostring id
-    | Fpvar _ -> "pvar"
-    | Fglob _ -> "glob"
-    | Fop (path, tys) -> "op:" ^ EcPath.tostring path ^ ", " ^ dump_tys tys
-    | Fapp (f, fs) -> "app:" ^ dump_form f ^ "," ^ dump_forms fs
-    | Ftuple fs -> "tuple:" ^ dump_forms fs
-    | Fproj  (f, i) -> "proj:" ^ dump_form f ^ Int.to_string i
-    | _ -> "other"
-
-and dump_forms (fs : form list) : string =
-  "(" ^
-  (match fs with
-   | [] -> ""
-   | [f] -> dump_form f
-   | f :: fs -> dump_form f ^ ", " ^ dump_forms fs) ^ ")"
-
-and dump_tys (tys : ty list) : string =
-  "(" ^
-  (match tys with
-   | [] -> ""
-   | [ty] -> EcTypes.dump_ty ty
-   | ty :: tys -> EcTypes.dump_ty ty ^ ", " ^ dump_tys tys) ^ ")"
-
 type mod_restr = form p_mod_restr
 
 (*-------------------------------------------------------------------- *)
