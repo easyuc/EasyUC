@@ -274,14 +274,14 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Bound (id, form)              -> (id, form)
-       | LCB_Var (id, ty)                  ->
+       | LCB_Bound (id, form)    -> (id, form)
+       | LCB_Var (id, ty)        ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort (func_form, adv_form) ->
+       | LCB_EnvPort (func, adv) ->
            (envport_id,
             f_app (form_of_expr mhr envport_op)
-            [func_form; adv_form] (tfun port_ty tbool))
-       | LCB_IntPort (id, port_form)       -> (id, port_form))
+            [func; adv] (tfun port_ty tbool))
+       | LCB_IntPort (id, port)  -> (id, port))
     lcbs)]
 
 (* when we pretty print the identifier of an internal port entry,
@@ -1414,6 +1414,10 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   let dest_addr = port_to_addr_form dest_port in
   let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
+let debug =
+  addr_concat_form
+  func_form
+  (addr_cons_form (int_form 1) addr_nil_form)  in
 
   let from_env_find_party (c : config_real_sending) (rfi : real_fun_info)
         : (symbol * symbol * symbol) option =
@@ -1456,11 +1460,17 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
     | SMET_EnvAdv sme_env_adv -> failure "cannot happen" in
 
   let from_env () =
+Printf.eprintf "from_env: first: %s\nsecond: %s\n"
+(dump_form dest_addr) (dump_form debug);
+
     if mode = Dir &&
        eval_bool_form_to_bool c.gc c.pi
-       (f_and
-        (f_eq func_form dest_addr)
+(*       (f_and*)
+        (f_eq dest_addr debug)
+(*
+        (f_eq (func_form dest_addr)
         (envport_form func_form adv_form source_port))
+*)
       then let (func_sp, base, _) = c.rw in
            let (root, fid) = func_sp in
            let ft = IdPairMap.find func_sp c.maps.fun_map in
