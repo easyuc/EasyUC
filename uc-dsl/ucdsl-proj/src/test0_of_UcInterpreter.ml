@@ -105,7 +105,7 @@ let test_sent_real_config_1a (include_dirs : string list) (file : string)
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
-   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)@((func ++ [1],1))" in
+   "((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(T.port_y,T.testtext)@((func ++ [1], 1))" in
   test_sent_real_config_core real_config sme
 
 let test_sent_real_config_2 (include_dirs : string list) (file : string)
@@ -234,13 +234,13 @@ let () =
   print_newline ();
 *)
 
-(*
   test_sent_real_config_1 ();
   Printf.eprintf "\n";
-*)
 
+(*
   test_sent_real_config_1a ();
   Printf.eprintf "\n";
+*)
 
 (*
   test_sent_real_config_2 ();

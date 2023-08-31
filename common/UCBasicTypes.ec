@@ -258,12 +258,15 @@ lemma envport_inc (self adv : addr, i : int) :
 proof.
 move => ne0_i.
 rewrite /envport /env_root_addr ne0_i /= incP =>
-  [[not_le_self_adv not_le_adv_self]].
+  [#] ne_self_adv not_le_self_adv not_le_adv_self.
 split.
 case (self <= []) => [le_self_nil | //].
-have // : self <= adv by rewrite (le_trans []) // ge_nil.
+have : self <= adv by rewrite (le_trans []) // ge_nil.
+rewrite leP => [[]] //.
 case (adv <= []) => [le_adv_nil | //].
-have // : adv <= self by rewrite (le_trans []) // ge_nil.
+have : adv <= self by rewrite (le_trans []) // ge_nil.
+rewrite leP => [[]] //.
+by rewrite eq_sym.
 qed.
 
 (* the rest of the theory is about the messages that are propagated by

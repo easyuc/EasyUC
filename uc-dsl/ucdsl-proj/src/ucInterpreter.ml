@@ -274,14 +274,14 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Bound (id, form)              -> (id, form)
-       | LCB_Var (id, ty)                  ->
+       | LCB_Bound (id, form)    -> (id, form)
+       | LCB_Var (id, ty)        ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort (func_form, adv_form) ->
+       | LCB_EnvPort (func, adv) ->
            (envport_id,
             f_app (form_of_expr mhr envport_op)
-            [func_form; adv_form] (tfun port_ty tbool))
-       | LCB_IntPort (id, port_form)       -> (id, port_form))
+            [func; adv] (tfun port_ty tbool))
+       | LCB_IntPort (id, port)  -> (id, port))
     lcbs)]
 
 (* when we pretty print the identifier of an internal port entry,
@@ -1078,7 +1078,7 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let w = fun_expr_tyd_to_worlds maps fet in
   let ig = interface_input_guard_exclusion_of_worlds w in
   let gc = gc_create env in
-  let pi = default_prover_infos env in
+  let pi = default_prover_infos (env_of_gc gc) in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
 
 let update_prover_infos_config (conf : config)
@@ -1459,7 +1459,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
     if mode = Dir &&
        eval_bool_form_to_bool c.gc c.pi
        (f_and
-        (f_eq func_form dest_addr)
+        (f_eq dest_addr func_form)
         (envport_form func_form adv_form source_port))
       then let (func_sp, base, _) = c.rw in
            let (root, fid) = func_sp in

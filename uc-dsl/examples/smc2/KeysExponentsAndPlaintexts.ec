@@ -173,3 +173,5 @@ op port_x : port.
 op port_y : port.
 op testtext : text.
 end T.
+
+op testaddr : addr = [1].
