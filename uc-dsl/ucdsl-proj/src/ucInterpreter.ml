@@ -251,7 +251,10 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
 
    the bottom frame includes entries corresponding to local_context_base
    (see below); the remaining frames bind identifers bound by
-   ordinary meatch clauses *)
+   ordinary meatch clauses
+
+   in practice, all the EcIdent.t's of all the frames will be
+   distinct, because of their tags *)
 
 type local_context_frame = form EcIdent.Mid.t
 type local_context       = local_context_frame list
@@ -423,6 +426,16 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
        | UcTransTypesExprs.TyError (l, env, tyerr) ->
            error_message l
            (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
+
+let gc_make_unique_id (gc : global_context) (id : symbol) : symbol =
+  let rec find (n : int) : symbol =
+    let next = id ^ BatInt.to_string n in
+    if try ignore (EcEnv.LDecl.by_name next gc); true with
+       | EcEnv.LDecl.LdeclError _ -> false
+    then next
+    else find (n + 1) in
+  try ignore (EcEnv.LDecl.by_name id gc); id with
+  | EcEnv.LDecl.LdeclError _ -> find 0
 
 (* prover infos *)
 
@@ -845,6 +858,16 @@ let maps_of_config (conf : config) : maps_tyd =
   | ConfigRealSending c  -> c.maps
   | ConfigIdealSending c -> c.maps
 
+let gc_of_config (conf : config) : global_context =
+  match conf with
+  | ConfigGen c          -> c.gc
+  | ConfigReal c         -> c.gc
+  | ConfigIdeal c        -> c.gc
+  | ConfigRealRunning c  -> c.gc
+  | ConfigIdealRunning c -> c.gc
+  | ConfigRealSending c  -> c.gc
+  | ConfigIdealSending c -> c.gc
+
 let control_of_real_or_ideal_config (conf : config) : control =
   match conf with
   | ConfigReal c  -> c.ctrl
@@ -1130,6 +1153,12 @@ let add_var_to_config (conf : config) (id : psymbol) (pty : pty) : config =
       let gc = gc_add_var c.gc id pty in
       ConfigIdealSending {c with gc = gc}
 
+let add_var_to_config_make_unique (conf : config) (id : psymbol)
+    (pty : pty) : config * symbol =
+  let l = loc id in
+  let id = gc_make_unique_id (gc_of_config conf) (unloc id) in
+  (add_var_to_config conf (mk_loc l id) pty, id)
+
 let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
   match conf with
   | ConfigGen c          ->
@@ -1153,6 +1182,12 @@ let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
   | ConfigIdealSending c ->
       let gc = gc_add_hyp c.gc id pexpr in
       ConfigIdealSending {c with gc = gc}
+
+let add_hyp_to_config_make_unique (conf : config) (id : psymbol)
+    (pexpr : pexpr) : config * symbol =
+  let l = loc id in
+  let id = gc_make_unique_id (gc_of_config conf) (unloc id) in
+  (add_hyp_to_config conf (mk_loc l id) pexpr, id)
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       : real_world_state =

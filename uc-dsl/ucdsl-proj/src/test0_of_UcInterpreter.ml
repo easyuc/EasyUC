@@ -234,18 +234,22 @@ let () =
   print_newline ();
 *)
 
+
 (*
   test_sent_real_config_1 ();
   Printf.eprintf "\n";
 *)
 
-(*
+
   test_sent_real_config_1a ();
+  Printf.eprintf "\n";
+
+
+(*
+  test_sent_real_config_2 ();
   Printf.eprintf "\n";
 *)
 
-  test_sent_real_config_2 ();
-  Printf.eprintf "\n";
 
 (*
   test_sent_real_config_3 ();

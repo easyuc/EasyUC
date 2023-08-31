@@ -37,11 +37,14 @@ val loc_of_running_config_next_instr : config -> EcLocation.t option
 val typecheck_and_pp_sent_msg_expr : config -> sent_msg_expr -> string
 
 val update_prover_infos_config :
-  config -> EcParsetree.pprover_infos -> config
+      config -> EcParsetree.pprover_infos -> config
 
-val add_var_to_config : config -> psymbol -> pty -> config
+val add_var_to_config             : config -> psymbol -> pty -> config
+val add_var_to_config_make_unique : config -> psymbol -> pty -> config * symbol
 
-val add_hyp_to_config : config -> psymbol -> pexpr -> config
+val add_hyp_to_config             : config -> psymbol -> pexpr -> config
+val add_hyp_to_config_make_unique :
+      config -> psymbol -> pexpr -> config * symbol
 
 val real_of_gen_config  : config -> config
 val ideal_of_gen_config : config -> config
