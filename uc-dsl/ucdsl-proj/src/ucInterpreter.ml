@@ -241,99 +241,74 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
       : match_clause_interp =
   (sym, (bndgs, create_instr_interp_list_loc ins))
 
-(* a local context is a nonempty stack of maps (frames) from
-   identifers (local variables or bound identifiers (state parameters
-   or ones bound by message match clauses or ordinary match clauses))
-   to formulas, which should be well typed in the global context
+(* making formulas *)
 
-   the bottom frame is its first element, ..., and the top frame is
-   its last element
+let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
 
-   the bottom frame includes entries corresponding to local_context_base
-   (see below); the remaining frames bind identifers bound by
-   ordinary meatch clauses
+let env_root_port_form : form = form_of_expr mhr env_root_port_op
 
-   in practice, all the EcIdent.t's of all the frames will be
-   distinct, because of their tags *)
+let envport_form (func : form) (adv : form) (pt : form) : form =
+  f_app (form_of_expr mhr envport_op) [func; adv; pt] tbool
 
-type local_context_frame = form EcIdent.Mid.t
-type local_context       = local_context_frame list
+let inc_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr inc_op) [addr1; addr2] tbool
 
-(* in an LCB_IntPort (id, f), the string of id will have the form
-   "intport." followed the name of the party (which in the case of a
-   simulator will consists of the (unqualified by the root) name of
-   the real functionality being simulated, followed by '.', followed
-   by the party) *)
+let addr_le_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_le_op) [addr1; addr2] tbool
 
-type local_context_base =
-  | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
-                                        of message match clause *)
-  | LCB_Var     of EcIdent.t * ty    (* local variable *)
-  | LCB_EnvPort of form * form       (* both of type address *)
-  | LCB_IntPort of EcIdent.t * form  (* of type port *)
+let addr_lt_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
 
-let lc_create (lcbs : local_context_base list) : local_context =
-  [EcIdent.Mid.of_list
-   (List.map
-    (fun lcb ->
-       match lcb with
-       | LCB_Bound (id, form)    -> (id, form)
-       | LCB_Var (id, ty)        ->
-           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort (func, adv) ->
-           (envport_id,
-            f_app (form_of_expr mhr envport_op)
-            [func; adv] (tfun port_ty tbool))
-       | LCB_IntPort (id, port)  -> (id, port))
-    lcbs)]
+let addr_concat_form (addr1 : form) (addr2 : form) : form =
+  f_app (form_of_expr mhr addr_concat_op) [addr1; addr2] addr_ty
 
-(* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ', so it matches the concrete syntax *)
+let addr_nil_form : form = form_of_expr mhr addr_nil_op
 
-let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let subst_colon_by_blank (s : symbol) : symbol =
-    String.map (fun c -> if c = ':' then ' ' else c) s in
-  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
-        : unit =
-    fprintf ppf "@[%s ->@ %a@]"
-    (subst_colon_by_blank (EcIdent.name id))
-    (pp_form env) form in
-  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
-    fprintf ppf "@[(@[%a@])@]"
-    (EcPrinting.pp_list ",@ " pp_frame_entry)
-    (EcIdent.Mid.bindings frame) in
-  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
-        : unit =
-    match frames with
-    | []              -> failure "should not happen"
-    | [frame]         -> pp_frame ppf frame
-    | frame :: frames ->
-        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
-  fprintf ppf "@[<v>%a@]" pp_frames lc
+let addr_cons_form (n : form) (addr : form) : form =
+  f_app (form_of_expr mhr addr_cons_op) [n; addr] addr_ty
 
-let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
-      : local_context =
-  EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
+let addr_make_form (ms : int list) : form =
+  List.fold_right
+  (fun m exp -> addr_cons_form (f_int (EcBigInt.of_int m)) exp)
+  ms addr_nil_form
 
-let lc_apply (lc : local_context) (e : expr) : form =
-  let f = form_of_expr mhr e in
-  let map =
-    List.fold_left
-    (fun acc nxt ->
-       EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
-    (List.hd lc) (List.tl lc) in
-  let subst =
-    List.fold_left
-    (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
-    Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
-  Fsubst.f_subst subst f
+let port_to_addr_form (port : form) : form =
+  f_proj port 0 addr_ty
 
-let push (lc : local_context) (fr : local_context_frame) : local_context =
-  lc @ [fr]
+let port_to_pi_form (port : form) : form =
+  f_proj port 1 tint
 
-let pop (lc : local_context) : local_context =
-  (if List.is_empty lc then failure "should not happen");
-  List.take (List.length lc - 1) lc
+let make_port_form (addr : form) (pi : form) : form =
+  f_tuple [addr; pi]
+
+let int_form (n : int) : form = f_int (EcBigInt.of_int n)
+
+let int_add_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_add_op) [n1; n2] tint
+
+let int_lt_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_lt_op) [n1; n2] tbool
+
+let int_le_form (n1 : form) (n2 : form) : form =
+  f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
+
+let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
+  IntSet.fold
+  (fun m f ->
+     (f_or
+      (f_eq n (f_int (EcBigInt.of_int m)))
+      f))
+  ms
+  f_false
+
+let uc_qsym_prefix_distr = ["Top"; "Distr"]
+
+let support_op (ty : ty) : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_distr, "support")) [ty]
+  (tfun (tdistr ty) (tfun ty tbool))
+
+let support_form (ty : ty) (d : form) (x : form) : form =
+  f_app (support_op ty) [d; x] tbool
 
 (* a global context is an EcEnv.LDecl.hyps *)
 
@@ -437,6 +412,130 @@ let gc_make_unique_id (gc : global_context) (id : symbol) : symbol =
   try ignore (EcEnv.LDecl.by_name id gc); id with
   | EcEnv.LDecl.LdeclError _ -> find 0
 
+(* for handling random assignments
+
+   it's up to the user to ensure the distribution has a nonempty
+   support - otherwise the added hypothesis will introduce an
+   inconsistency *)
+
+let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
+    (ty : ty)
+    (dist : form)  (* should have type tdistr ty *)
+      : global_context * EcIdent.t =
+  let id = EcIdent.create (gc_make_unique_id gc id_base) in
+  let hyp = EcIdent.create (gc_make_unique_id gc hyp_base) in
+  let support_app = support_form ty dist (f_local id ty) in
+  let gc = LDecl.add_local id (EcBaseLogic.LD_var (ty, None)) gc in
+  let gc =  LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
+  (gc, id)
+
+(* a local context is a nonempty stack of maps (frames) from
+   identifers (local variables or bound identifiers (state parameters
+   or ones bound by message match clauses or ordinary match clauses))
+   to formulas, which should be well typed in the global context
+
+   the bottom frame is its first element, ..., and the top frame is
+   its last element
+
+   the bottom frame includes entries corresponding to local_context_base
+   (see below); the remaining frames bind identifers bound by
+   ordinary meatch clauses
+
+   in practice, all the EcIdent.t's of all the frames will be
+   distinct, because of their tags *)
+
+type local_context_frame = form EcIdent.Mid.t
+type local_context       = local_context_frame list
+
+(* in an LCB_IntPort (id, f), the string of id will have the form
+   "intport." followed the name of the party (which in the case of a
+   simulator will consists of the (unqualified by the root) name of
+   the real functionality being simulated, followed by '.', followed
+   by the party) *)
+
+type local_context_base =
+  | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
+                                        of message match clause *)
+  | LCB_Var     of EcIdent.t * ty    (* local variable *)
+  | LCB_EnvPort of form * form       (* both of type address *)
+  | LCB_IntPort of EcIdent.t * form  (* of type port *)
+
+let lc_create (lcbs : local_context_base list) : local_context =
+  [EcIdent.Mid.of_list
+   (List.map
+    (fun lcb ->
+       match lcb with
+       | LCB_Bound (id, form)    -> (id, form)
+       | LCB_Var (id, ty)        ->
+           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
+       | LCB_EnvPort (func, adv) ->
+           (envport_id,
+            f_app (form_of_expr mhr envport_op)
+            [func; adv] (tfun port_ty tbool))
+       | LCB_IntPort (id, port)  -> (id, port))
+    lcbs)]
+
+(* when we pretty print the identifier of an internal port entry,
+   we replace the ':' by ' ', so it matches the concrete syntax *)
+
+let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let subst_colon_by_blank (s : symbol) : symbol =
+    String.map (fun c -> if c = ':' then ' ' else c) s in
+  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
+        : unit =
+    fprintf ppf "@[%s ->@ %a@]"
+    (subst_colon_by_blank (EcIdent.name id))
+    (pp_form env) form in
+  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
+    fprintf ppf "@[(@[%a@])@]"
+    (EcPrinting.pp_list ",@ " pp_frame_entry)
+    (EcIdent.Mid.bindings frame) in
+  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
+        : unit =
+    match frames with
+    | []              -> failure "should not happen"
+    | [frame]         -> pp_frame ppf frame
+    | frame :: frames ->
+        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
+  fprintf ppf "@[<v>%a@]" pp_frames lc
+
+let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
+      : local_context =
+  EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
+
+let lc_apply (lc : local_context) (e : expr) : form =
+  let f = form_of_expr mhr e in
+  let map =
+    List.fold_left
+    (fun acc nxt ->
+       EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
+    (List.hd lc) (List.tl lc) in
+  let subst =
+    List.fold_left
+    (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
+    Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
+  Fsubst.f_subst subst f
+
+let push (lc : local_context) (fr : local_context_frame) : local_context =
+  lc @ [fr]
+
+let pop (lc : local_context) : local_context =
+  (if List.is_empty lc then failure "should not happen");
+  List.take (List.length lc - 1) lc
+
+(* handle a random assignment *)
+
+let gc_lc_random_assign (gc : global_context) (lc : local_context)
+    (id_base : symbol) (hyp_base : symbol)
+    (ty : ty)             (* type of variable *)
+    (var_id : EcIdent.t)  (* variable - lhs of assignment, type ty *)
+    (dist : form)         (* rhs of assignment, type tdistr ty *)
+      : global_context * local_context *
+        symbol =  (* name of id standing for sampled value *)
+  let (gc, id) = gc_add_rand gc id_base hyp_base ty dist in
+  let lc = lc_update_var lc var_id (f_local id ty) in
+  (gc, lc, EcIdent.name id)
+
 (* prover infos *)
 
 type prover_infos = EcProvers.prover_infos
@@ -454,66 +553,6 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
        List.filter EcProvers.is_prover_known
        EcProvers.dft_prover_names;
      pr_timelimit = 1}
-
-(* making formulas for use in SMT applications *)
-
-let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
-
-let env_root_port_form : form = form_of_expr mhr env_root_port_op
-
-let envport_form (func : form) (adv : form) (pt : form) : form =
-  f_app (form_of_expr mhr envport_op) [func; adv; pt] tbool
-
-let inc_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr inc_op) [addr1; addr2] tbool
-
-let addr_le_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_le_op) [addr1; addr2] tbool
-
-let addr_lt_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
-
-let addr_concat_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_concat_op) [addr1; addr2] addr_ty
-
-let addr_nil_form : form = form_of_expr mhr addr_nil_op
-
-let addr_cons_form (n : form) (addr : form) : form =
-  f_app (form_of_expr mhr addr_cons_op) [n; addr] addr_ty
-
-let addr_make_form (ms : int list) : form =
-  List.fold_right
-  (fun m exp -> addr_cons_form (f_int (EcBigInt.of_int m)) exp)
-  ms addr_nil_form
-
-let port_to_addr_form (port : form) : form =
-  f_proj port 0 addr_ty
-
-let port_to_pi_form (port : form) : form =
-  f_proj port 1 tint
-
-let make_port_form (addr : form) (pi : form) : form =
-  f_tuple [addr; pi]
-
-let int_form (n : int) : form = f_int (EcBigInt.of_int n)
-
-let int_add_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_add_op) [n1; n2] tint
-
-let int_lt_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_lt_op) [n1; n2] tbool
-
-let int_le_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
-
-let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
-  IntSet.fold
-  (fun m f ->
-     (f_or
-      (f_eq n (f_int (EcBigInt.of_int m)))
-      f))
-  ms
-  f_false
 
 (* SMT applications *)
 
