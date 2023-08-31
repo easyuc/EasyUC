@@ -101,7 +101,15 @@ let interpret (lexbuf : L.lexbuf) =
     end
     ;
     match c.config with
-    | Some config -> pp_config Format.std_formatter config
+    | Some config ->
+      Format.fprintf Format.std_formatter "%a@." 
+        pp_config  config;
+      begin match c.effect with
+      | None -> ()
+      | Some eff ->
+        Format.fprintf Format.std_formatter "@.%a@." 
+        pp_effect eff;
+      end
     | None ->
       match c.config_gen with
       | Some config -> pp_config Format.std_formatter config
