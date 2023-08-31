@@ -1246,25 +1246,27 @@ let ideal_of_gen_config (conf : config) : config =
 (* sending messages and stepping configurations *)
 
 type effect =
-  | EffectOK                        (* step succeeded (not random
-                                       assignment), and new configuration
-                                       is running or sending *)
-  | EffectRand of symbol            (* step added ident representing
-                                       random choice to global context,
-                                       and new configuration is running *)
-  | EffectMsgOut of string          (* a message was output, and new
-                                       configuration is real or ideal *)
-  | EffectFailOut                   (* fail was output, and new
-                                       configuration is real or ideal *)
-  | EffectBlockedIf                 (* configuration is running *)
-  | EffectBlockedMatch              (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare  (* configuration is running or sending *)
+  | EffectOK                          (* step succeeded (not random
+                                         assignment), and new configuration
+                                         is running or sending *)
+  | EffectRand of symbol              (* step added ident representing
+                                         random choice to global context,
+                                         and new configuration is running *)
+  | EffectMsgOut of string * control  (* a message was output, and new
+                                         configuration is real or ideal;
+                                         control says who has control *)
+  | EffectFailOut                     (* fail was output, and new
+                                         configuration is real or ideal *)
+  | EffectBlockedIf                   (* configuration is running *)
+  | EffectBlockedMatch                (* configuration is running *)
+  | EffectBlockedPortOrAddrCompare    (* configuration is running or sending *)
 
 let pp_effect (ppf : formatter) (e : effect) : unit =
   match e with
   | EffectOK                       -> fprintf ppf "EffectOK"
   | EffectRand id                  -> fprintf ppf "EffectRand: %s" id
-  | EffectMsgOut pp_sme            -> fprintf ppf "EffectMsgOut: %s" pp_sme
+  | EffectMsgOut (pp_sme, ctrl)    ->
+      fprintf ppf "EffectMsgOut: %a: %s" pp_control ctrl pp_sme
   | EffectFailOut                  -> fprintf ppf "EffectFailOut"
   | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
   | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
@@ -1307,13 +1309,13 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
       (ConfigReal
        {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
         ctrl = ctrl},
-       EffectMsgOut pp_sme)
+       EffectMsgOut (pp_sme, ctrl))
   | ConfigIdealSending c ->
       let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigIdeal
        {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
         ctrl = ctrl},
-       EffectMsgOut pp_sme)
+       EffectMsgOut (pp_sme, ctrl))
   | _                    -> raise ConfigError
 
 let send_message_to_real_or_ideal_config

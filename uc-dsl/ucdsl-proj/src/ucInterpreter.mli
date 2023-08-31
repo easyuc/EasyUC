@@ -49,19 +49,20 @@ val ideal_of_gen_config : config -> config
 (* sending messages and stepping configurations *)
 
 type effect =
-  | EffectOK                        (* step succeeded (not random
-                                       assignment), and new configuration
-                                       is running or sending *)
-  | EffectRand of symbol            (* step added ident representing
-                                       random choice to global context,
-                                       and new configuration is running *)
-  | EffectMsgOut of string          (* a message was output, and new
-                                       configuration is real or ideal *)
-  | EffectFailOut                   (* fail was output, and new
-                                       configuration is real or ideal *)
-  | EffectBlockedIf                 (* configuration is running *)
-  | EffectBlockedMatch              (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare  (* configuration is running or sending *)
+  | EffectOK                          (* step succeeded (not random
+                                         assignment), and new configuration
+                                         is running or sending *)
+  | EffectRand of symbol              (* step added ident representing
+                                         random choice to global context,
+                                         and new configuration is running *)
+  | EffectMsgOut of string * control  (* a message was output, and new
+                                         configuration is real or ideal;
+                                         control says who has control *)
+  | EffectFailOut                     (* fail was output, and new
+                                         configuration is real or ideal *)
+  | EffectBlockedIf                   (* configuration is running *)
+  | EffectBlockedMatch                (* configuration is running *)
+  | EffectBlockedPortOrAddrCompare    (* configuration is running or sending *)
 
 val send_message_to_real_or_ideal_config : config -> sent_msg_expr -> config
 
