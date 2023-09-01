@@ -256,17 +256,17 @@ op envport (self adv : addr, pt : port) : bool =
 lemma envport_inc (self adv : addr, i : int) :
   i <> 0 => inc self adv => envport self adv (env_root_addr, i).
 proof.
-move => ne0_i.
-rewrite /envport /env_root_addr ne0_i /= incP =>
-  [#] ne_self_adv not_le_self_adv not_le_adv_self.
+move => ne0_i inc_self_adv.
+rewrite /envport /env_root_addr ne0_i /=.
 split.
 case (self <= []) => [le_self_nil | //].
 have : self <= adv by rewrite (le_trans []) // ge_nil.
-rewrite leP => [[]] //.
+have // := inc_nle_l self adv _.
+  trivial.
 case (adv <= []) => [le_adv_nil | //].
 have : adv <= self by rewrite (le_trans []) // ge_nil.
-rewrite leP => [[]] //.
-by rewrite eq_sym.
+have // := inc_nle_r self adv _.
+  trivial.
 qed.
 
 (* the rest of the theory is about the messages that are propagated by
