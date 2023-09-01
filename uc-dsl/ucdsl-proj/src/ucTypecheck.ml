@@ -2414,8 +2414,8 @@ let rec inter_check_fun_expr
            then error_message l
                 (fun ppf ->
                    fprintf ppf
-                   ("@[real@ functionality@ expects@ %d@ arguments,@ " ^^
-                    "but@ was@ applied@ to@ %d@ arguments@]")
+                   ("@[real@ functionality@ expects@ %d@ argument(s),@ " ^^
+                    "but@ was@ applied@ to@ %d@ argument(s)@]")
                    (List.length params_dir_pair_ids)
                    (List.length args_dir_pair_ids))
            else List.iteri
@@ -2578,8 +2578,8 @@ let inter_check_sme
              then error_message (loc sme.args)
                   (fun ppf ->
                      fprintf ppf
-                     ("[@there@ are@ %d@ arguments,@ whereas@ there@ " ^^
-                      "should@ be@ %d@ arguments@]")
+                     ("@[there@ are@ (is)@ %d@ argument(s),@ whereas@ " ^^
+                      "there@ should@ be@ %d@ argument(s)@]")
                      (List.length args) (List.length exp_tys))
              else let exprs =
                     List.mapi

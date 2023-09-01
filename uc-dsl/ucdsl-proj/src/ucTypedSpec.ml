@@ -442,10 +442,15 @@ let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
 
-let sub_fun_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
+let sub_fun_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.nth bndgs n)
+
+let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symb_pair =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.sub_funs in
+  snd (List.nth bndgs n)
 
 let num_params_of_real_fun_tyd
     (ft : fun_tyd) (param : symbol) : int =
@@ -474,10 +479,15 @@ let party_ord_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : int =
   let bndgs = IdMap.bindings rfbt.parties in
   fst (List.findi (fun _ (q, _) -> q = pty) bndgs)
 
-let party_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
+let party_nth_name_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.parties in
   fst (List.nth bndgs n)
+
+let party_nth_def_of_real_fun_tyd (ft : fun_tyd) (n : int) =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.parties in
+  snd (List.nth bndgs n)
 
 let initial_state_id_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
   let states = (ideal_fun_body_tyd_of (unloc ft)).states in
@@ -849,19 +859,16 @@ let get_info_of_real_func (maps : maps_tyd) (root : symbol) (base : int)
   (fun mp (pty, pty_info) -> IdMap.add pty pty_info mp)
   IdMap.empty party_infos
 
-(* returns pair (i, j), where [i] is the suffix (relative to the
-   address of the functionality) of the address of the
-   subfunctionality, and j is the corresponding adversarial port
-   index *)
+(* returns the adversarial port index of the nth (counting from 0, in
+   the ordering of the subfunctionality names) subfunctionality of a
+   real functionality *)
 
-let get_adv_info_of_sub_fun_of_real_fun
+let get_adv_pi_of_nth_sub_fun_of_real_fun
     (maps : maps_tyd) (root : symbol) (num_params : int) (base : int)
-    (ft : fun_tyd) (sf : symbol) : int * int =
+    (ft : fun_tyd) (n : int) : int =
   let num_adv_pis_of_parties =
     num_adv_pis_of_parties_of_real_fun maps root ft in
-  let n = sub_fun_ord_of_real_fun_tyd ft sf in
-  (1 + num_params + n,
-   base + 1 + num_adv_pis_of_parties + n)
+  base + 1 + num_adv_pis_of_parties + n
 
 (* Interpreter User Input *)
 
