@@ -257,7 +257,8 @@ let interpret (lexbuf : L.lexbuf) =
   let step () : unit =
     let c = currs() in
     let cconfig = Option.get c.config in
-    let conf, eff = step_running_or_sending_real_or_ideal_config cconfig in
+    let conf, eff =
+      step_running_or_sending_real_or_ideal_config cconfig None in
     let news =  
       {
         c with
@@ -273,7 +274,8 @@ let interpret (lexbuf : L.lexbuf) =
   let run () : unit =
 
     let rec runr (conf : config) : config * effect =
-      let conf, eff = step_running_or_sending_real_or_ideal_config conf in
+      let conf, eff =
+        step_running_or_sending_real_or_ideal_config conf None in
       if (eff != EffectOK)
       then conf,eff
       else runr conf

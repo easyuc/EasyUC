@@ -71,4 +71,12 @@ val send_message_to_real_or_ideal_config : config -> sent_msg_expr -> config
 
 val pp_effect : Format.formatter -> effect -> unit  (* for debugging *)
 
-val step_running_or_sending_real_or_ideal_config : config -> config * effect
+(* if the pprover_infos option is None, it means to use prover_infos
+   of the configuration for SMT calls
+
+   if it's Some ppi, it means to update the prover_infos of the
+   configuration with ppi, and use that for SMT calls; but the
+   returned configuration's prover_infos is *not* updated with ppi *)
+
+val step_running_or_sending_real_or_ideal_config :
+      config -> EcParsetree.pprover_infos option -> config * effect

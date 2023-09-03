@@ -920,6 +920,16 @@ let gc_of_config (conf : config) : global_context =
   | ConfigRealSending c  -> c.gc
   | ConfigIdealSending c -> c.gc
 
+let prover_infos_of_config (conf : config) : prover_infos =
+  match conf with
+  | ConfigGen c          -> c.pi
+  | ConfigReal c         -> c.pi
+  | ConfigIdeal c        -> c.pi
+  | ConfigRealRunning c  -> c.pi
+  | ConfigIdealRunning c -> c.pi
+  | ConfigRealSending c  -> c.pi
+  | ConfigIdealSending c -> c.pi
+
 let control_of_real_or_ideal_config (conf : config) : control =
   match conf with
   | ConfigReal c  -> c.ctrl
@@ -1432,10 +1442,12 @@ let send_message_to_real_or_ideal_config
        sme  = sme}
   | _             -> raise ConfigError
 
-let step_real_running_config (rc : config_real_running) : config * effect =
-  fill_in "step_real_running_config" (ConfigRealRunning rc)
+let step_real_running_config (c : config_real_running) (pi : prover_infos)
+      : config * effect =
+  fill_in "step_real_running_config" (ConfigRealRunning c)
 
-let step_ideal_running_config (c : config_ideal_running) : config * effect =
+let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
+      : config * effect =
   fill_in "step_real_running_config" (ConfigIdealRunning c)
 
 (* should only be called with ordinary sme that will successfully
@@ -1548,7 +1560,8 @@ let find_rel_addr_adv_pi_func_sp (gc : global_context) (pi : prover_infos)
          | res  -> res
   in find rw []
 
-let step_real_sending_config (c : config_real_sending) : config * effect =
+let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
+      : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
   let dest_addr = port_to_addr_form dest_port in
@@ -1562,14 +1575,14 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
     let rec find (bndgs : (symbol * party_info) list)
           : (symbol * symbol * symbol) option =
       match bndgs with
-      | []                 -> None
-      | (pid, pi) :: bndgs ->
-          match pi.pi_pdi with
-          | None                 -> find bndgs
-          | Some (comp, bas, pi) ->
-              if eval_bool_form_to_bool c.gc c.pi
-                 (f_eq (int_form pi) dest_pi)
-              then Some (pid, comp, bas)
+      | []                          -> None
+      | (pty_id, pty_info) :: bndgs ->
+          match pty_info.pi_pdi with
+          | None                   -> find bndgs
+          | Some (comp, bas, pind) ->
+              if eval_bool_form_to_bool c.gc pi
+                 (f_eq (int_form pind) dest_pi)
+              then Some (pty_id, comp, bas)
               else find bndgs
     in find (IdMap.bindings rfi) in
 
@@ -1606,7 +1619,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
 
   let from_env () =
     if mode = Dir &&
-       eval_bool_form_to_bool c.gc c.pi
+       eval_bool_form_to_bool c.gc pi
        (f_and
         (f_eq dest_addr func_form)
         (envport_form func_form adv_form source_port))
@@ -1625,7 +1638,7 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
                from_env_to_func_match c func_sp pid comp basic
                state_id state_args sbt
     else if mode = Adv &&
-            eval_bool_form_to_bool c.gc c.pi
+            eval_bool_form_to_bool c.gc pi
             (f_and
              (f_eq dest_addr adv_form)
               (f_or
@@ -1645,20 +1658,20 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
 
   let from_adv () =
     if mode = Dir ||
-       eval_bool_form_to_bool c.gc c.pi
+       eval_bool_form_to_bool c.gc pi
        (f_or
         (addr_le_form adv_form dest_addr)
         (f_or
          (f_not (f_eq adv_form source_addr))
          (int_lt_form source_pi (int_form 0))))
       then fail_out_of_running_or_sending_config (ConfigRealSending c)
-    else if eval_bool_form_to_bool c.gc c.pi
+    else if eval_bool_form_to_bool c.gc pi
             (addr_le_form func_form dest_addr)
-      then if eval_bool_form_to_bool c.gc c.pi
+      then if eval_bool_form_to_bool c.gc pi
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigRealSending c)
            else from_adv_to_func c
-    else if eval_bool_form_to_bool c.gc c.pi
+    else if eval_bool_form_to_bool c.gc pi
             (f_iff
              (f_eq source_pi (int_form 0))
              (f_eq dest_port env_root_port_form))
@@ -1677,14 +1690,22 @@ let step_real_sending_config (c : config_real_sending) : config * effect =
   | SMT_Test ->
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
-let step_ideal_sending_config (c : config_ideal_sending) : config * effect =
+let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
+      : config * effect =
   fill_in "trying to step ideal sending config" (ConfigIdealSending c)
 
 let step_running_or_sending_real_or_ideal_config
-    (conf : config) : config * effect =
+    (conf : config) (ppi_opt : EcParsetree.pprover_infos option)
+      : config * effect =
+  let pi =
+    match ppi_opt with
+    | None     -> prover_infos_of_config conf
+    | Some ppi ->
+        update_prover_infos (env_of_gc (gc_of_config conf))
+        (prover_infos_of_config conf) ppi in
   match conf with
-  | ConfigRealRunning c  -> step_real_running_config c
-  | ConfigIdealRunning c -> step_ideal_running_config c
-  | ConfigRealSending c  -> step_real_sending_config c
-  | ConfigIdealSending c -> step_ideal_sending_config c
+  | ConfigRealRunning c  -> step_real_running_config c pi
+  | ConfigIdealRunning c -> step_ideal_running_config c pi
+  | ConfigRealSending c  -> step_real_sending_config c pi
+  | ConfigIdealSending c -> step_ideal_sending_config c pi
   | _                    -> raise ConfigError
