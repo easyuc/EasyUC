@@ -187,7 +187,7 @@ let test_sent_real_config_4 (include_dirs : string list) (file : string)
 *)
   let sme =
    parse_sent_msg_expr
-   "((adv, 1))@_@((func ++ [3], 1))" in
+   "((adv, 1))@_@((func ++ [2; 2], 1))" in
   test_sent_real_config_core real_config sme
 
 (* include dirs not used when opening file! 
@@ -285,8 +285,10 @@ let () =
 *)
 
 
+(*
   test_sent_real_config_1 ();
   Printf.eprintf "\n";
+*)
 
 (*
   test_sent_real_config_1a ();
@@ -304,7 +306,5 @@ let () =
   Printf.eprintf "\n";
 *)
 
-(*
   test_sent_real_config_4 ();
   Printf.eprintf "\n";
-*)

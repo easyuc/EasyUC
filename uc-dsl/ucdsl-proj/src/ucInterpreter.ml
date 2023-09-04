@@ -552,7 +552,7 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
      pr_provers =
        List.filter EcProvers.is_prover_known
        EcProvers.dft_prover_names;
-     pr_timelimit = 1}
+     pr_timelimit = 3}
 
 (* SMT applications *)
 
@@ -1541,7 +1541,7 @@ let find_rel_addr_adv_pi_func_sp (gc : global_context) (pi : prover_infos)
     else let nargs = List.length rwas in
          let rec loop_args i =
            if i > nargs
-             then None
+             then try_sub_funs sp rel adv_pi nargs
            else let rel_i = rel @ [i] in
                 let addr_i =
                   addr_concat_form func_form (addr_make_form rel_i) in
@@ -1555,9 +1555,7 @@ let find_rel_addr_adv_pi_func_sp (gc : global_context) (pi : prover_infos)
                          then Some (rel_i, adv_pi, sp)
                          else None
                 else loop_args (i + 1) in
-         match loop_args 1 with
-         | None -> try_sub_funs sp rel adv_pi nargs
-         | res  -> res
+         loop_args 1
   in find rw []
 
 let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
@@ -1654,7 +1652,9 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
   let from_adv_to_func (c : config_real_sending) : config * effect =
-    fill_in "message from adv to func" (ConfigRealSending c) in
+    match find_rel_addr_adv_pi_func_sp c.gc pi c.maps dest_addr c.rw with
+    | None   -> fail_out_of_running_or_sending_config (ConfigRealSending c)
+    | Some _ -> fill_in "message from adv to func" (ConfigRealSending c) in
 
   let from_adv () =
     if mode = Dir ||
