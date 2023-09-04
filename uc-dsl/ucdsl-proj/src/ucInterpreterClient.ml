@@ -75,8 +75,11 @@ let cmd_prompt (cmd_no : int) =
   let cmd_no_str = string_of_int cmd_no in
   "#"^cmd_no_str^">"
 
+let fmt = Format.err_formatter
+
 let print_prompt () : unit =
-  print_endline (cmd_prompt (currs()).cmd_no)
+  let str = cmd_prompt (currs()).cmd_no in
+  Format.fprintf fmt "%s@." str
 
 let cmd_name () =
   "cmd #"^(string_of_int (currs()).cmd_no)
@@ -96,29 +99,32 @@ let interpret (lexbuf : L.lexbuf) =
     begin match loco with
     | Some l ->
       let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
-      print_endline ("UC file position: "^(l.loc_fname)^" "^b^" "^s^";")
+      let str = "UC file position: "^(l.loc_fname)^" "^b^" "^s^";" in
+      Format.fprintf fmt "%s@." str
     | None -> ()
     end
     ;
     match c.config with
     | Some config ->
-      Format.fprintf Format.std_formatter "%a@." 
+      Format.fprintf fmt "%a@." 
         pp_config  config;
       begin match c.effect with
       | None -> ()
       | Some eff ->
-        Format.fprintf Format.std_formatter "@.%a@." 
+        Format.fprintf fmt "@.%a@." 
         pp_effect eff;
       end
     | None ->
       match c.config_gen with
-      | Some config -> pp_config Format.std_formatter config
+      | Some config -> pp_config fmt config
       | None -> 
         match c.maps with
         | Some _ -> 
-          print_endline ("state: uc file "^(Option.get c.root)^" loaded;")
+          let str = "state: uc file "^(Option.get c.root)^" loaded;" in
+          Format.fprintf fmt "%s@." str
         | None   ->
-          print_endline ("state: uc file not loaded;")
+          let str = "state: uc file not loaded;" in
+          Format.fprintf fmt "%s@." str
   in
 
   let prompt () : unit =
