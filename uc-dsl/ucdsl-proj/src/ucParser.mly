@@ -1158,6 +1158,7 @@ icomm :
   | c = addv_cmd; { c }
   | c = addf_cmd; { c }
   | c = confirm_cmd; { c }
+  | c = step_prover_info; { c }
 
 %inline filename :
   | nm = rlist1(_ident, DOT)
@@ -1210,7 +1211,7 @@ comm_word :
       | "real"   -> World Real
       | "ideal"  -> World Ideal
       | "run"    -> Run
-      | "step"   -> Step
+      | "step"   -> Step None
       | "finish" -> Finish
       | "quit"   -> Quit
       | _ -> 
@@ -1253,6 +1254,17 @@ confirm_MsgOut:
 
 send_msg :
   | SEND; sme = sent_msg_expr; { Send sme }
+
+step_prover_info :
+  | step = lident; PROVER; pi = smt_info; 
+    {
+      if (unloc step) = "step" 
+      then Step (Some pi)
+      else error_message (loc step)
+            (fun ppf ->
+               fprintf ppf
+               "Did@ you@ mean@ step@ instead@ of@ %s?" (unloc step))
+    }
 
 prover_cmd:
   | PROVER x = smt_info { Prover x } 

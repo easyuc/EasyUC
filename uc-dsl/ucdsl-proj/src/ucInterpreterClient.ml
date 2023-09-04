@@ -260,11 +260,11 @@ let interpret (lexbuf : L.lexbuf) =
     push news
   in
 
-  let step () : unit =
+  let step (ppio : EcParsetree.pprover_infos option) : unit =
     let c = currs() in
     let cconfig = Option.get c.config in
     let conf, eff =
-      step_running_or_sending_real_or_ideal_config cconfig None in
+      step_running_or_sending_real_or_ideal_config cconfig ppio in
     let news =  
       {
         c with
@@ -422,9 +422,9 @@ let interpret (lexbuf : L.lexbuf) =
       begin  match (unloc cmd) with
       | Send sme  -> send sme
       | Run -> run()
-      | Step -> step()
-      | Addv tb -> addv tb (*TODO add to parser*)
-      | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
+      | Step ppio -> step ppio
+      | Addv tb -> addv tb 
+      | Addf (psy,pex) -> addf psy pex
       | Prover ppinfo -> prover ppinfo
       | Back pi -> undo pi
       | Finish -> donec()

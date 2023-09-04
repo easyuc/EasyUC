@@ -348,7 +348,7 @@ type interpreter_command_u =
   | World of world
   | Send of sent_msg_expr
   | Run
-  | Step
+  | Step of EcParsetree.pprover_infos option
   | Addv of type_binding
   | Addf of psymbol * pexpr
   | Prover of EcParsetree.pprover_infos
