@@ -84,26 +84,26 @@ let print_prompt () : unit =
 let cmd_name () =
   "cmd #"^(string_of_int (currs()).cmd_no)
 
-let interpret (lexbuf : L.lexbuf) =
+let pp_uc_file_pos
+(fmt : Format.formatter) ( c : interpreter_state) : unit =
+  let loco = 
+    match c.config with
+    | Some config ->
+      if ((is_real_running_config config) || (is_ideal_running_config config))
+      then loc_of_running_config_next_instr config
+      else None
+    | None -> None
+  in
+  begin match loco with
+  | Some l ->
+    let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
+    let str = "UC file position: "^(l.loc_fname)^" "^b^" "^s^";" in
+    Format.fprintf fmt "%s@." str
+  | None -> ()
+  end
 
-  let print_state () : unit =
-    let c = currs() in
-    let loco = 
-      match c.config with
-      | Some config ->
-        if ((is_real_running_config config) || (is_ideal_running_config config))
-        then loc_of_running_config_next_instr config
-        else None
-      | None -> None
-    in
-    begin match loco with
-    | Some l ->
-      let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
-      let str = "UC file position: "^(l.loc_fname)^" "^b^" "^s^";" in
-      Format.fprintf fmt "%s@." str
-    | None -> ()
-    end
-    ;
+let pp_interpreter_state 
+(fmt : Format.formatter) ( c : interpreter_state) : unit =
     match c.config with
     | Some config ->
       Format.fprintf fmt "%a@." 
@@ -125,6 +125,14 @@ let interpret (lexbuf : L.lexbuf) =
         | None   ->
           let str = "state: uc file not loaded;" in
           Format.fprintf fmt "%s@." str
+   
+
+let interpret (lexbuf : L.lexbuf) =
+
+  let print_state () : unit =
+    let c = currs() in
+    pp_uc_file_pos fmt c;
+    Format.fprintf fmt "state:@.%a;" pp_interpreter_state c
   in
 
   let prompt () : unit =
