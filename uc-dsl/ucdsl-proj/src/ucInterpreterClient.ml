@@ -129,17 +129,23 @@ let pp_interpreter_state
 
 let interpret (lexbuf : L.lexbuf) =
 
-  let print_state () : unit =
-    let c = currs() in
+  let print_state (c : interpreter_state) : unit =
     pp_uc_file_pos fmt c;
     Format.fprintf fmt "state:@.%a;" pp_interpreter_state c
+  in
+  
+  let push_print (is : interpreter_state) : unit =
+    push is;
+    if (UcState.get_batch_mode ())
+    then ()
+    else
+      print_state is
   in
 
   let prompt () : unit =
     if (UcState.get_batch_mode ())
     then ()
     else
-      print_state();
       print_prompt()
   in
 
@@ -177,7 +183,7 @@ let interpret (lexbuf : L.lexbuf) =
         config = None;
         effect = None;
       } in
-      push news
+      push_print news
     | None -> ()
   in
 
@@ -199,7 +205,7 @@ let interpret (lexbuf : L.lexbuf) =
         config = None;
         effect = None;
       } in
-    push news
+    push_print news
   in
 
   let world (w : world) : unit =
@@ -219,16 +225,18 @@ let interpret (lexbuf : L.lexbuf) =
       config = Some config;
       effect = None;
     } in
-    push news
+    push_print news
   in
 
   let undo (pi : int located) : unit =
     let i = unloc pi in
     let l = List.length !stack in
     if ((i < l) && (i > 0)) 
-    then
-      stack := BatList.drop i (!stack)
-    else
+    then begin
+      stack := BatList.drop i (!stack);
+      let c = currs() in
+      print_state c
+    end else
       error_message (loc pi)
         (fun ppf -> Format.fprintf ppf 
 "@[%i@ is@ not@ between@ 1@ and@ %i@]" i (l-1))
@@ -248,7 +256,7 @@ let interpret (lexbuf : L.lexbuf) =
     (* we pop all interpreter states until the one that preceeds 
        the start of the experiment *)
     while ((currs()).config!=None) do pop() done;
-    push news
+    push_print news
   in
 
   let send (sme : sent_msg_expr) : unit =
@@ -265,7 +273,7 @@ let interpret (lexbuf : L.lexbuf) =
         effect = Some EffectOK;  (* send_message_to_real_or_ideal_config
                                     doesn't produce an effect *)
       } in
-    push news
+    push_print news
   in
 
   let step (ppio : EcParsetree.pprover_infos option) : unit =
@@ -282,7 +290,7 @@ let interpret (lexbuf : L.lexbuf) =
         config = Some conf;
         effect = Some eff;
       } in
-    push news
+    push_print news
   in
 
   let run () : unit =
@@ -307,7 +315,7 @@ let interpret (lexbuf : L.lexbuf) =
         config = Some conf;
         effect = Some eff;
       } in
-    push news
+    push_print news
   in
   
 
@@ -326,7 +334,7 @@ let interpret (lexbuf : L.lexbuf) =
           config = Some conf;
           effect = None;
         } in
-        push news
+        push_print news
       with _ -> () end
     | None ->
       let cf = Option.get c.config_gen in
@@ -341,7 +349,7 @@ let interpret (lexbuf : L.lexbuf) =
           config_gen = Some conf;
           effect = None;
         } in
-        push news
+        push_print news
       with _ -> ()
   in
 
