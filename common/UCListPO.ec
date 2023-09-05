@@ -305,7 +305,7 @@ proof.
 by rewrite /(<=) /= lpo_pre.
 qed.
 
-hint rewrite lpo : le_pre.
+hint simplify [reduce] le_pre.
 
 lemma gt_cons (y : 'a, ys : 'a list) :
   [] < y :: ys.
@@ -327,7 +327,7 @@ proof.
 by rewrite /(<) lpo_pre.
 qed.
 
-hint rewrite lpo : lt_pre.
+hint simplify [reduce] lt_pre.
 
 lemma not_lt_same (xs : 'a list) :
   ! xs < xs.
@@ -360,7 +360,7 @@ proof.
 by rewrite /inc lpo_pre.
 qed.
 
-hint rewrite lpo : inc_pre.
+hint simplify [reduce] inc_pre.
 
 lemma not_inc_same (xs : 'a list) :
   ! inc xs xs.
