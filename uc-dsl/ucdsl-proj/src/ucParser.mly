@@ -1273,18 +1273,19 @@ fun_expr :
   | x = uqident; { FunExprNoArgs x }
   | x = uqident; LPAREN; y = separated_list(COMMA, fun_expr); RPAREN;
       { FunExprArgs (x,y) }
-  
+
 sent_msg_expr :
   | inpex = in_out_poa_pexpr; 
     in_poa = dollar_or_at; 
     path = msg_path; 
-    argsl = loc(args); 
+    argsl = loc(option(args));
     out_poa = dollar_or_at; 
     outpex = in_out_poa_pexpr; 
-      { SME_Ord
+      { let uargsl = mk_loc (loc argsl) (unloc argsl |? []) in
+        SME_Ord
         { in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
           path = path;
-          args = argsl;
+          args = uargsl;
           out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
         }
       }

@@ -187,7 +187,7 @@ let test_sent_real_config_4 (include_dirs : string list) (file : string)
 *)
   let sme =
    parse_sent_msg_expr
-   "((adv, 1))@_@((func ++ [2; 2], 1))" in
+   "((adv, 10))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1))" in
   test_sent_real_config_core real_config sme
 
 (* include dirs not used when opening file! 
