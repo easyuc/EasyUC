@@ -10,11 +10,11 @@ pwd=$(pwd)
 if [[ "$pwd" = *\'* ]];
   then echo ""
        echo "pathname to UC DSL directory cannot contain apostrophes"
-       exit;
+       exit 1
 elif [[ "$pwd" = *\ * ]];
   then echo ""
        echo "pathname to UC DSL directory cannot contain spaces"
-       exit;
+       exit 1
 fi
 
 if [ -L src/ECtheories ];
@@ -25,13 +25,13 @@ then echo "symbolic link to EasyCrypt theories directory already set"
      if [ $change == yes ];
      then echo ""
      else echo "exiting..."
-          exit
+          exit 1
      fi;
 fi
 
 rm -f ucdsl-proj/ECtheories
 
-echo "you need to enter the fully qualified pathname of the Easyrypt "
+echo "you need to enter the fully qualified pathname of the EasyCrypt "
 echo "theories directory (filename completion will be enabled)"
 echo ""
 read -e -p "EasyCrypt theories directory pathname? " ectheories
@@ -39,27 +39,27 @@ if [[ "$ectheories" = *\'* ]];
   then echo ""
        echo "pathname cannot contain apostrophes"
        echo symbolic link not created
-       exit;
+       exit 1
 elif [[ "$ectheories" = *\ * ]];
   then echo ""
        echo "pathname cannot contain spaces"
        echo symbolic link not created
-       exit;
+       exit 1
 elif [[ ! $ectheories = /* ]];
   then echo ""
        echo "pathname is not fully qualified"
        echo symbolic link not created
-       exit;
+       exit 1
 elif [ ! -d $ectheories ];
   then echo ""
        echo "pathname is not a directory";
        echo symbolic link not created
-       exit;
+       exit 1
 elif [ ! -e $ectheories/prelude/Pervasive.ec ];
   then echo ""
        echo "pathname is not the pathname of EasyCrypt theories directory"
        echo symbolic link not created
-       exit;
+       exit 1
 fi
 
 ln -s $ectheories ucdsl-proj/ECtheories

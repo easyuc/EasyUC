@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# script to semi-automatically update UC DSL source to include the current
+# EasyCrypt source
+#
+# should only be run by a UC DSL developer, as there are manual
+# steps!
+
+read -p 'Start the semi-automatic updating of EasyCrypt source in UC DSL? [yes/no] ' perm
+if [ $perm != yes ];
+then echo aborting;
+     exit 1
+fi
+
+echo ""
+echo "you need to enter the fully qualified pathname of the EasyCrypt "
+echo "src directory (filename completion will be enabled)"
+echo ""
+read -e -p "EasyCrypt src directory pathname? " ecsrc
+if [[ "$ecsrc" = *\'* ]];
+  then echo ""
+       echo "pathname cannot contain apostrophes"
+       exit 1;
+elif [[ "$ecsrc" = *\ * ]];
+  then echo ""
+       echo "pathname cannot contain spaces"
+       exit 1;
+elif [[ ! $ecsrc = /* ]];
+  then echo ""
+       echo "pathname is not fully qualified"
+       exit 1;
+elif [ ! -d $ecsrc ];
+  then echo ""
+       echo "pathname is not a directory";
+       exit 1;
+elif [ ! -e $ecsrc/ec.ml ];
+  then echo ""
+       echo "pathname is not the pathname of EasyCrypt src directory"
+       exit 1;
+fi
+
+cd src
+
+rm -rf our-modified-scope-and-commands;
+
+mkdir our-modified-scope-and-commands
+mv ecScope.{ml,mli} ecCommands.{ml,mli} our-modified-scope-and-commands
+
+cd ECsrc/
+
+rm -rf phl
+rm -f modified-for-ucdsl/*.{ml,mli}
+rm *.{ml,mli} ecParser.mly ecLexer.mll
+
+cp -r $ecsrc/phl .
+cp $ecsrc/*.{ml,mli} .
+cp $ecsrc/ecParser.mly .
+cp $ecsrc/ecLexer.mll .
+
+cp ecScope*.{ml,mli} ecCommands*.{ml,mli} modified-for-ucdsl
+
+cd ..  # back in src
+
+mv ECsrc/ecScope.{ml,mli} ECsrc/ecCommands.{ml,mli} .
+
+echo ""
+echo ready to manually move commented UC DSL code from
+echo "'our-modified-scope-and-commands'" to the files in "'src'"
+echo ""
+echo after doing this, delete "'our-modified-scope-and-commands'"

@@ -211,7 +211,12 @@ let move_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
 (*move => /=.*)
 let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_simplify tc = (*modified from ecHiGoal.ml*)
-    EcLowGoal.t_simplify ~delta:false ~logic:(Some `Full) tc
+    EcLowGoal.t_simplify ~delta:`No ~logic:(Some `Full) tc
+(* Alley: the other options for delta are
+  type redmode = [`Force | `IfTransparent | `IfApplied]
+  See EcEnv, module Op
+*)
+
   in
   print_endline "move => /=.";
   run_tac intro1_simplify proof
