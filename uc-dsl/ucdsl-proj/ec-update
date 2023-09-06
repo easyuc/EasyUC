@@ -48,11 +48,12 @@ mv ecScope.{ml,mli} ecCommands.{ml,mli} our-modified-scope-and-commands
 
 cd ECsrc/
 
-rm -rf phl
+rm -rf phl system
 rm -f modified-for-ucdsl/*.{ml,mli}
 rm *.{ml,mli} ecParser.mly ecLexer.mll
 
 cp -r $ecsrc/phl .
+cp -r $ecsrc/system .
 cp $ecsrc/*.{ml,mli} .
 cp $ecsrc/ecParser.mly .
 cp $ecsrc/ecLexer.mll .
