@@ -375,7 +375,7 @@ let interpret (lexbuf : L.lexbuf) =
     begin match effo with
     | None -> 
       error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[no@ effects@ occured@ after@ last@ command@, only@ run@ and step@ commands@ produce@ effects.]")
+      "@[assert@ failed@ as@ no@ effects@ occured@ after@ last@ command@, only@ run@ and step@ commands@ produce@ effects.]")
     | Some eff ->
       begin match (unloc peff) with
       | EffectOK ->
@@ -383,7 +383,7 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectOK -> ()
         | _ ->
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectOK@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectOK@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
       | EffectRand ->
@@ -391,16 +391,40 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectRand _ -> ()
         | _ -> 
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectRand@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectRand@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
-      | EffectMsgOut sme -> () (*TODO*)
+      | EffectMsgOut sme ->
+        begin match eff with
+        | EffectMsgOut (str , _ ) ->
+          let smestr = typecheck_and_pp_sent_msg_expr (Option.get c.config) sme
+          in
+          if smestr<>str 
+          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+            "@[assert@ of@ EffectMsgOut@ failed.@ The@ message@ that@ was@ sent@
+            ,%s is different from the asserted one %s]" str smestr)
+          (*
+          if ctrl<>ctr && ctr = CtrlEnv
+          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+             "@[assert@ of@ EffectMsgOut@ failed.@ The@ Env@ has@ control@
+              , asserted@ control@ was@ Adv]"
+          if ctrl<>ctr && ctr = CtrlAdv
+          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+             "@[assert@ of@ EffectMsgOut@ failed.@ The@ Adv@ has@ control@
+              , asserted@ control@ was@ Env]"
+          *)
+          else ()
+        | _ -> 
+          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
+      "@[assert@ of@ EffectMsgOut@ failed.@ The@ effect@ that@ occurred:@ %a]"
+         pp_effect eff)
+        end
       | EffectFailOut ->
         begin match eff with
         | EffectFailOut -> ()
         | _ -> 
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectFailOut@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectFailOut@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
       | EffectBlockedIf ->
@@ -408,7 +432,7 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectBlockedIf -> ()
         | _ -> 
          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectBlockedIf@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectBlockedIf@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
       | EffectBlockedMatch ->
@@ -416,7 +440,7 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectBlockedMatch -> ()
         | _ -> 
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectBlockedMatch@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectBlockedMatch@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
       | EffectBlockedPortOrAddrCompare ->
@@ -424,7 +448,7 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectBlockedPortOrAddrCompare -> ()
         | _ -> 
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[confirm@ of@ EffectBlockedPortOrAddrCompare@ failed.@ The@ effect@ that@ occurred:@ %a]"
+      "@[assert@ of@ EffectBlockedPortOrAddrCompare@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
       end
