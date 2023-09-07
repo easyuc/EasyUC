@@ -763,7 +763,7 @@ let is_basic_adv_of_ideal (uior : unit_info) (bas : symbol) : bool =
   | UI_Singleton si -> si.si_basic_adv = bas
   | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
 
-let get_dir_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
+let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
   try
     let dir_comp = id_dir_inter_of_fun_tyd ft in
@@ -775,7 +775,7 @@ let get_dir_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
      serves)
   with _ -> None
 
-let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
+let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
   try  
     let adv_comp = oget (id_adv_inter_of_fun_tyd ft) in
@@ -788,7 +788,7 @@ let get_adv_basic_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
   with _ -> None
 
 (* None if the party does not serve a basic direct interface;
-   otherwise Some (comp, bas, i), where [comp; bas] is the basic
+   otherwise Some (comp, sub, i), where [comp; sub] is the basic
    direct interface served by the party, and i is the port index for
    direct messages to/from the party *)
 
@@ -797,18 +797,18 @@ type party_dir_info = (symbol * symbol * int) option
 let get_dir_info_of_party_of_real_fun
     (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
     (pty : symbol) : party_dir_info =
-  match get_dir_basic_inter_of_party_of_real_fun ft pty with
+  match get_dir_sub_inter_of_party_of_real_fun ft pty with
   | None     -> None
-  | Some bas -> 
+  | Some sub -> 
       let comp = id_dir_inter_of_fun_tyd ft in
       let ibt = unloc (IdPairMap.find (root, comp) maps.dir_inter_map) in
       match ibt with
       | BasicTyd _       -> failure "cannot happen"
       | CompositeTyd map ->
-        Some (comp, bas, id_map_ordinal1_of_sym map bas)
+        Some (comp, sub, id_map_ordinal1_of_sym map sub)
 
 (* None if the party does not serve a basic adversarial interface;
-   otherwise Some (comp, bas, i, j), where [comp; bas] is the basic
+   otherwise Some (comp, sub, i, j), where [comp; sub] is the basic
    direct interface served by the party, and i is the port index for
    adversarial messages to/from the party, and j is the corresponding
    adversarial port index *)
@@ -818,17 +818,17 @@ type party_adv_info = (symbol * symbol * int * int) option
 let get_adv_info_of_party_of_real_fun
     (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
     (pty : symbol) : party_adv_info =
-  match get_adv_basic_inter_of_party_of_real_fun ft pty with
+  match get_adv_sub_inter_of_party_of_real_fun ft pty with
   | None     -> None
-  | Some bas ->
+  | Some sub ->
       let comp = oget (id_adv_inter_of_fun_tyd ft) in
       let ibt =
         unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
         match ibt with
         | BasicTyd _       -> failure "cannot happen"
         | CompositeTyd map ->
-            let n = id_map_ordinal_of_sym map bas in
-            Some (comp, bas, 1 + n, base + 1 + n)
+            let n = id_map_ordinal_of_sym map sub in
+            Some (comp, sub, 1 + n, base + 1 + n)
 
 let get_internal_pi_of_party_of_real_fun (ft : fun_tyd) (pty : symbol) : int =
   1 + party_ord_of_real_fun_tyd ft pty
@@ -979,10 +979,14 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
         Format.fprintf fmt "%a%s" pp_strl path.inter_id_path path.msg in
       let pp_forml (fmt : Format.formatter) (forml : form list) : unit =
         EcPrinting.pp_list ",@ " (pp_form env) fmt forml in
-      Format.fprintf fmt "@[%a@@@,%a@,(@[%a@])@,@@%a@]"
+      let pp_args (fmt : Format.formatter) (forml : form list) : unit =
+        if List.is_empty forml
+        then ()
+        else Format.fprintf fmt "(@[%a@])" pp_forml forml in
+      Format.fprintf fmt "@[%a@@@,%a@,%a@,@@%a@]"
       pp_portform inp
       pp_mpath path
-      pp_forml args
+      pp_args args
       pp_portform outp
   | SMET_EnvAdv sme ->
       Format.fprintf fmt "@[%a@@_@,@@%a@]"

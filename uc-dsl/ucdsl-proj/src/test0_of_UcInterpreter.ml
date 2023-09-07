@@ -187,13 +187,16 @@ let test_sent_real_config_4 (include_dirs : string list) (file : string)
 *)
   let sme =
    parse_sent_msg_expr
-   "((adv, 10))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1))" in
+   "((adv, 5))@SMC.KEDir.Pt1.pong@((func ++ [1], 1))" in
   test_sent_real_config_core real_config sme
 
 (* include dirs not used when opening file! 
 test has to be run in directory that contains SMC.uc file!*)
 
 let smc2_dir = "~/EasyUC/uc-dsl/examples/smc2"
+let smc2 = "SMC2.uc"
+
+let smc2_dir_ping = "~/EasyUC/uc-dsl/examples/smc2-ping-adv"
 let smc2 = "SMC2.uc"
 
 let test_gen_config_1 (): unit =
@@ -238,7 +241,7 @@ let test_sent_real_config_3 (): unit =
 
 let test_sent_real_config_4 (): unit =
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
-  test_sent_real_config_4 [smc2_dir] smc2 fe
+  test_sent_real_config_4 [smc2_dir_ping] smc2 fe
 
 (*********)
 
