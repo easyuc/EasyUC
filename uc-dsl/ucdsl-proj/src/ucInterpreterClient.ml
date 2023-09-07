@@ -59,8 +59,6 @@ let init_state : interpreter_state =
     effect = None;
   }
 
-
-
 let stack : interpreter_state list ref = ref []
 let currs() : interpreter_state =
   List.hd !stack
@@ -394,25 +392,23 @@ let interpret (lexbuf : L.lexbuf) =
       "@[assert@ of@ EffectRand@ failed.@ The@ effect@ that@ occurred:@ %a]"
          pp_effect eff)
         end
-      | EffectMsgOut sme ->
+      | EffectMsgOut (sme, ct) ->
         begin match eff with
-        | EffectMsgOut (str , _ ) ->
+        | EffectMsgOut (str , ctrl) ->
           let smestr = typecheck_and_pp_sent_msg_expr (Option.get c.config) sme
           in
           if smestr<>str 
           then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
             "@[assert@ of@ EffectMsgOut@ failed.@ The@ message@ that@ was@ sent@
             ,%s is different from the asserted one %s]" str smestr)
-          (*
-          if ctrl<>ctr && ctr = CtrlEnv
+          else if ct = UcSpec.CtrlAdv && ctrl = UcInterpreter.CtrlEnv
           then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
              "@[assert@ of@ EffectMsgOut@ failed.@ The@ Env@ has@ control@
-              , asserted@ control@ was@ Adv]"
-          if ctrl<>ctr && ctr = CtrlAdv
+              , asserted@ control@ was@ Adv]")
+          else if ct = UcSpec.CtrlEnv && ctrl = UcInterpreter.CtrlAdv
           then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
              "@[assert@ of@ EffectMsgOut@ failed.@ The@ Adv@ has@ control@
-              , asserted@ control@ was@ Env]"
-          *)
+              , asserted@ control@ was@ Env]")
           else ()
         | _ -> 
           error_message (loc peff) (fun ppf -> Format.fprintf ppf 

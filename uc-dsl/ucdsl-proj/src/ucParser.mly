@@ -1157,7 +1157,7 @@ icomm :
   | c = undo_cmd; { c }
   | c = addv_cmd; { c }
   | c = addf_cmd; { c }
-  | c = confirm_cmd; { c }
+  | c = assert_cmd; { c }
   | c = step_prover_info; { c }
 
 %inline filename :
@@ -1220,11 +1220,11 @@ comm_word :
 "%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
     }
 
-confirm_cmd :
-  | c = confirm_effect; { c }
-  | c = confirm_MsgOut; { c }
+assert_cmd :
+  | c = assert_effect; { c }
+  | c = assert_MsgOut; { c }
 
-confirm_effect :
+assert_effect :
   | ASSERT; ew = uident;
     {
       match (unloc ew) with
@@ -1241,15 +1241,28 @@ confirm_effect :
 "%s@ is@ not@ a@ valid@ effect." (unloc ew))
     }
 
-confirm_MsgOut:
-  | ASSERT; w = uident; sme = sent_msg_expr;
+assert_MsgOut:
+  | ASSERT; w = uident; sme = sent_msg_expr; ct = assert_ctrl;
     {
       if (unloc w) = "MsgOut" 
-      then Assert (mk_loc (loc w) (EffectMsgOut sme))
+      then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
       else error_message (loc w)
             (fun ppf ->
                fprintf ppf
                "Did@ you@ mean@ MsgOut@ instead@ of@ %s?" (unloc w))
+    }
+
+assert_ctrl:
+  | ct = uident;
+    {
+      match (unloc ct) with
+      | "CtrlEnv" -> CtrlEnv
+      | "CtrlAdv" -> CtrlAdv
+      | _ -> error_message (loc ct)
+            (fun ppf ->
+               fprintf ppf
+               "Did@ you@ mean@ CtrlEnv@ or@ CtrlAdv@ instead@ of@ %s?" 
+               (unloc ct))
     }
 
 send_msg :

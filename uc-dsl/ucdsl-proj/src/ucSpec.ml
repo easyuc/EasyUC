@@ -330,10 +330,14 @@ type world =
   | Real
   | Ideal
 
+type control =
+  | CtrlEnv
+  | CtrlAdv
+
 type peffect_r =
   | EffectOK
   | EffectRand
-  | EffectMsgOut of sent_msg_expr
+  | EffectMsgOut of sent_msg_expr * control
   | EffectFailOut
   | EffectBlockedIf
   | EffectBlockedMatch
