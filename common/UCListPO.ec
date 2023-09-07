@@ -329,6 +329,12 @@ qed.
 
 hint simplify [reduce] lt_pre.
 
+lemma eq_pre (xs ys zs : int list) :
+  xs ++ ys = xs ++ zs <=> ys = zs.
+proof. by elim xs. qed.
+
+hint simplify [reduce] eq_pre.
+
 lemma not_lt_same (xs : 'a list) :
   ! xs < xs.
 proof.
