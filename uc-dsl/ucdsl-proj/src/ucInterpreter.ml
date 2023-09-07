@@ -554,9 +554,9 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
        EcProvers.dft_prover_names;
      pr_timelimit = 3}
 
-(* SMT applications *)
+(* Using EasyCrypt Proof Engine *)
 
-exception SMT_Test
+exception ECProofEngine
 
 let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     (f : form) : bool =
@@ -564,7 +564,7 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       ("@[@[using@ SMT@ to@ determine@ truth@ or@ falsity@ " ^^
+       ("@[@[trying@ to@ prove@ truth@ or@ falsity@ " ^^
         "of:@]@\n@\n@[%a@]@]@.")
        (pp_form (env_of_gc gc)) f) in
   match UcEcFormEval.eval_condition gc f pi with
@@ -579,7 +579,7 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
       (debugging_message
        (fun ppf ->
           fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
-      raise SMT_Test
+      raise ECProofEngine
 
 (* configurations *)
 
@@ -1835,7 +1835,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | RWSC_Adv               -> from_adv ()
     | RWSC_FromFunc (is, sp) -> from_func ()
   with
-  | SMT_Test ->
+  | ECProofEngine ->
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
 let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
