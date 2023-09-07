@@ -48,15 +48,15 @@ let run_tacl (tacl : EcCoreGoal.FApi.backward list) (proof : EcCoreGoal.proof)
 : EcCoreGoal.proof =
   List.fold_left (fun p tac -> run_tac tac p) proof tacl
 
-(*move => |>.*)
+(*move => />.*)
 let crush (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let intro1_crush = (*modified from ecHiGoal.ml*)
-    let delta, tsolve = (false , None) in
+    let delta, tsolve = (true , None) in
     EcCoreGoal.FApi.t_or
       (EcPhlConseq.t_conseqauto ~delta ?tsolve)
       (EcLowGoal.t_crush ~delta ?tsolve)
   in
-  print_endline "move => |>.";
+  print_endline "move => />.";
   run_tac intro1_crush proof
 
 let move_hyp_form_to_concl 
