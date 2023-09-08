@@ -56,9 +56,22 @@ val get_debugging : unit -> bool
 
 val set_batch_mode : unit -> unit
 
-val unset_batch_mode : unit -> unit
-
 val get_batch_mode : unit -> bool
+
+(* The pg_mode tells the EcMessages to display errors in a format 
+   suitable for ProofGeneral. The pg_start_position is set to the end 
+   of the standard input buffer each time an interpreter command is processed, 
+   in order to allow proper highlighting of error location 
+   in ProofGeneral's script buffer. *)
+
+val set_pg_mode : unit -> unit
+
+val get_pg_mode : unit -> bool
+
+val set_pg_start_pos : int -> unit
+
+val get_pg_start_pos : unit -> int
+
 
 (* boolean saying whether top-level defintions should be required to
    be grouped into units

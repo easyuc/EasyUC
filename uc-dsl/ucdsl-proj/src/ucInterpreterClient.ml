@@ -1,8 +1,3 @@
-(*
-TODO: update this to work with the configuration type and
-functions in ucInterpreter.ml, ucInterpreter.mli
-*)
-
 open UcSpec
 open UcLexer
 open UcMessage
@@ -28,6 +23,8 @@ let lexbuf_from_channel (name : string) (ch : in_channel) =
   lexbuf
 
 let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
+  if UcState.get_pg_mode ()
+  then UcState.set_pg_start_pos lexbuf.L.lex_curr_p.L.pos_cnum;
   try UcParser.interpreter_command read lexbuf
   with
   | UcParser.Error ->

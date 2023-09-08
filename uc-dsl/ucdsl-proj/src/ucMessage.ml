@@ -29,20 +29,33 @@ let loc_to_str_raw (l : EcLocation.t) : string =
   (fst l.loc_start) (snd l.loc_start + 1)
   (fst l.loc_end) (snd l.loc_end + 1)
 
+let loc_to_str_pg (l : EcLocation.t) : string =
+  let startpos = UcState.get_pg_start_pos() in
+  Printf.sprintf "%d-%d"
+  (max 0 (l.loc_bchar - startpos))
+  (max 0 (l.loc_echar - startpos))
+
 exception ErrorMessageExn
 
 let message res mt loc_opt msgf =
-  let mt_str = message_type_str mt in
-  let raw    = UcState.get_raw_messages () in
+  let mt_str  = message_type_str mt in
+  let raw     = UcState.get_raw_messages () in
+  let pg_mode = UcState.get_pg_mode () in
   (match loc_opt with
    | None     ->
        if raw
        then Printf.eprintf "%s:\n\n"   mt_str
+       else if pg_mode
+       then Printf.eprintf "[%s:-%s]\n\n" mt_str 
+            (loc_to_str_pg EcLocation._dummy)
        else Printf.eprintf "[%s:]\n\n" mt_str
    | Some loc ->
        if raw
        then Printf.eprintf "%s: %s\n\n"   mt_str (loc_to_str_raw loc)
-       else Printf.eprintf "[%s: %s]\n\n" mt_str (loc_to_str loc));
+       else if pg_mode
+       then Printf.eprintf "[%s:-%s]\n\n" mt_str (loc_to_str_pg loc)
+       else Printf.eprintf "[%s: %s]\n\n" mt_str (loc_to_str loc)
+  );
   msgf Format.err_formatter;
   Format.pp_print_newline Format.err_formatter ();
   res ()

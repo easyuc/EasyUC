@@ -38,9 +38,19 @@ let batch_mode : bool ref = ref false
 
 let set_batch_mode () = batch_mode := true
 
-let unset_batch_mode () = batch_mode := false
-
 let get_batch_mode () = ! batch_mode
+
+let pg_mode : bool ref = ref false
+
+let set_pg_mode () = pg_mode := true
+
+let get_pg_mode () = ! pg_mode
+
+let pg_start_pos : int ref = ref 0
+
+let set_pg_start_pos p  = pg_start_pos := p
+
+let get_pg_start_pos () = ! pg_start_pos
 
 let units : bool ref = ref false
 
