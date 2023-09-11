@@ -1,7 +1,8 @@
 load KeyExchange.uc.
 functionality KEReal.
 real.
-send ((env_root_addr, 1))@KeyExchange.KEDir.Pt1.ke_req1(([7], 4))@((func, 1)).
+         send 
+         ((env_root_addr, 1))@KeyExchange.KEDir.Pt1.ke_req1(([7], 4))@((func, 1)).
 step.
 step.
 bla.

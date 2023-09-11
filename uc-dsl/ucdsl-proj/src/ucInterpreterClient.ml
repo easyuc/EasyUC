@@ -587,7 +587,7 @@ let rec load_loop () : unit =
   interpreter_loop()
   
 let stdIOclient =
-  UcState.set_raw_messages();
+  UcState.set_pg_mode();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
   

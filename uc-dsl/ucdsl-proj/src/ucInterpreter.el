@@ -68,6 +68,47 @@ insert contents from a file, mark the positions between character positions"
   
 (require 'proof) ;; sets some default values
 
+;;error highlighting adapted from easycrypt.el
+
+(defun get-last-error-location ()
+  "Remove [error] in the error message and extract the position and
+length of the error."
+  (proof-with-current-buffer-if-exists proof-response-buffer
+
+     (goto-char (point-max))
+     (when (re-search-backward "\\[error:\\([0-9]+\\)-\\([0-9]+\\)\\]" nil t)
+        (let* ((inhibit-read-only t)
+               (pos1 (string-to-number (match-string 1)))
+               (pos2 (string-to-number (match-string 2)))
+               (len (- pos2 pos1)))
+
+              (delete-region (match-beginning 0) (match-end 0))
+              (list pos1 len)))))
+
+(defun advance-until-command ()
+   (while (proof-looking-at "\\s-") (forward-char 1)))
+
+(defun highlight-error ()
+  "Use ‘get-last-error-location’ to know the position of the
+error and then highlight in the script buffer."
+  (proof-with-current-buffer-if-exists proof-script-buffer
+    (let ((mtch (get-last-error-location)))
+        (when mtch
+          (let ((pos (car mtch))
+                  (lgth (cadr mtch)))
+          ;;(if (eq (proof-unprocessed-begin) (point-min))
+                (goto-char (proof-unprocessed-begin))
+          ;;      (goto-char (+ (proof-unprocessed-begin 1)))
+          ;;    )
+            (advance-until-command)
+             (goto-char (+ (point) pos))
+             (span-make-self-removing-span
+               (point) (+ (point) lgth)
+               'face 'proof-script-highlight-error-face))))))
+
+(defun highlight-error-hook ()
+  (highlight-error))
+
 (require 'proof-easy-config)		; easy configure mechanism
 
 (
@@ -95,9 +136,12 @@ insert contents from a file, mark the positions between character positions"
  proof-shell-quit-cmd		 "quit.\n"
  proof-assistant-home-page	 "http://yes"
  proof-shell-annotated-prompt-regexp "#[0-9]*>"
- proof-shell-error-regexp	 "^error:"
+ proof-shell-error-regexp	 "^\\[error:"
  
  proof-shell-handle-output-system-specific 'frame-with-uc-file
+
+ proof-shell-handle-error-or-interrupt-hook 
+  'highlight-error-hook
 
  ;;proof-general-debug "non-nil thing"
 )

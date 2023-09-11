@@ -46,14 +46,14 @@ let message res mt loc_opt msgf =
        if raw
        then Printf.eprintf "%s:\n\n"   mt_str
        else if pg_mode
-       then Printf.eprintf "[%s:-%s]\n\n" mt_str 
+       then Printf.eprintf "[%s:%s]\n\n" mt_str 
             (loc_to_str_pg EcLocation._dummy)
        else Printf.eprintf "[%s:]\n\n" mt_str
    | Some loc ->
        if raw
        then Printf.eprintf "%s: %s\n\n"   mt_str (loc_to_str_raw loc)
        else if pg_mode
-       then Printf.eprintf "[%s:-%s]\n\n" mt_str (loc_to_str_pg loc)
+       then Printf.eprintf "[%s:%s]\n\n" mt_str (loc_to_str_pg loc)
        else Printf.eprintf "[%s: %s]\n\n" mt_str (loc_to_str loc)
   );
   msgf Format.err_formatter;
