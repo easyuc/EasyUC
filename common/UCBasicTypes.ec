@@ -306,7 +306,10 @@ proof. by case mod. qed.
 
    when translating from the UC DSL, we assign tags to messages of
    interfaces so that messages with different message paths are
-   guaranteed to be distinct
+   guaranteed to be distinct (tag assignment will be done on a
+   unit-by-unit basis, and each instance of a unit will need distinct
+   tags; this is also true for the assignment of adversarial port
+   indices)
 
    note that the UC DSL typechecker allows message arguments of
    types for which there is no EPDP into univ; such specifications
@@ -335,23 +338,27 @@ interface:
 Pt1: 1
 Pt2: 2
 
-And we assign tags:
+And in the translation to EasyCrypt we could assign tags:
 
-SMCDir.Pt1.smc_req: 1
-SMCDir.Pt2.smc_rsp: 2
+SMC.SMCDir.Pt1.smc_req: 1
+SMC.SMCDir.Pt2.smc_rsp: 2
 
 In the UC DSL interpreter,
 
-pt1@SMCDir.Pt1.smc_req(pt2, t)$func
+pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)$func
 
 abbreviates
 
-pt1@SMCDir.Pt1.smc_req(pt2, t)@(func, 1)
+pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 1))
+
+And in the EasyCrypt translation we would have
+
+(Dir, pt1, (func, 1), 1, <encoding-of> (pt2, t))
 
 Suppose, func is the address of SMCReal (which implements SMCDir) and
 we have the message
 
-pt1@SMCDir.Pt1.smc_req(pt2, t)@(func, 2)
+pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 2))
 
 In the interpreter, the port index of Pt1 is inconsistent with the
 destination port index 2, and so this message would result in failure.
@@ -361,5 +368,6 @@ In the EasyCrypt translation, we would have
 (Dir, pt1, (func, 2), 1, <encoding-of> (pt2, t))
 
 Because the tag is 1, this allows the generated EasyCrypt code
-to reject this message, because SMCReal implements SMCDir, and
-the message with tag 1 comes from the component with port index 1 *)
+for party Pt2 of SMCReal (which serves SMCDir.Pt2) to
+reject this message, because its incoming messages cannot have
+tag 1. In fact, it doesn't even have any incoming messages. *)
