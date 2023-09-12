@@ -101,32 +101,31 @@ let pp_interpreter_state
 (fmt : Format.formatter) ( c : interpreter_state) : unit =
     match c.config with
     | Some config ->
-      Format.fprintf fmt "%a@." 
-        pp_config  config;
+      Format.fprintf fmt "%a" pp_config config;
       begin match c.effect with
       | None -> ()
       | Some eff ->
-        Format.fprintf fmt "@.%a@." 
+        Format.fprintf fmt "@.%a" 
         pp_effect eff;
       end
     | None ->
       match c.config_gen with
-      | Some config -> pp_config fmt config
+      | Some config -> 
+        Format.fprintf fmt "%a" pp_config config
       | None -> 
         match c.maps with
         | Some _ -> 
-          let str = "state: uc file "^(Option.get c.root)^" loaded;" in
-          Format.fprintf fmt "%s@." str
+          let str = "uc file "^(Option.get c.root)^" loaded" in
+          Format.fprintf fmt "%s" str
         | None   ->
-          let str = "state: uc file not loaded;" in
-          Format.fprintf fmt "%s@." str
-   
+          let str = "uc file not loaded" in
+          Format.fprintf fmt "%s" str
 
 let interpret (lexbuf : L.lexbuf) =
 
   let print_state (c : interpreter_state) : unit =
     pp_uc_file_pos fmt c;
-    Format.fprintf fmt "state:@.%a;" pp_interpreter_state c
+    Format.fprintf fmt "state:@.%a@.;@." pp_interpreter_state c
   in
   
   let push_print (is : interpreter_state) : unit =
@@ -224,6 +223,12 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let undo (pi : int located) : unit =
+(*  let oc = open_out "filename.txt" in
+   Printf.fprintf oc "undo %d.@." (unloc pi);
+close_out oc;
+exit 0;
+*)
+
     let i = unloc pi in
     let l = List.length !stack in
     if ((i < l) && (i > 0)) 
