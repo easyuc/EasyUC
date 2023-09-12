@@ -20,11 +20,11 @@ open UcTypecheck
    is real or ideal
 
    with a real functionality, it is the base adversarial port index of
-   the functionality's unit, which will be the port index of the
-   adversary that the ideal functionality of the unit uses to
-   communicate with its simulator (note that this ideal functionality
-   will be implicit - an argument of the application of the real
-   functionality simulated by the simulator)
+   this instance of the functionality's unit, which will be the port
+   index of the adversary that the ideal functionality of the unit
+   uses to communicate with its simulator (note that this ideal
+   functionality will be implicit - an argument of the application of
+   the real functionality simulated by the simulator)
 
    with an ideal functionality, it is the adversarial port index
    by which it communicates with the adversary (it will have no
@@ -653,9 +653,11 @@ let pp_control (ppf : formatter) (ctrl : control) : unit =
 
 type real_world_running_context =
   | RWRC_IdealFunc of int list  *
+                      int       *  (* adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol       (* state name *)
   | RWRC_RealFunc  of int list  *
+                      int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol    *  (* party name *)
                       symbol       (* state name *)
@@ -680,15 +682,18 @@ let pp_rel_addr_real_func_info (ppf : formatter)
   pp_symb_pair sp_func
   pty_id
 
+(* no need to pretty-print adversarial port indices, as the
+   user can look these up in real world *)
+
 let pp_real_world_running_context (ppf : formatter)
     (rwrc : real_world_running_context) : unit =
   match rwrc with
-  | RWRC_IdealFunc (is, sp_func, state_id)        ->
+  | RWRC_IdealFunc (is, _, sp_func, state_id)        ->
       fprintf ppf "@[running at %a:@ %a/@,%s@]"
       pp_relative_address is
       pp_symb_pair sp_func
       state_id
-  | RWRC_RealFunc (is, sp_func, pty_id, state_id) ->
+  | RWRC_RealFunc (is, _, sp_func, pty_id, state_id) ->
       fprintf ppf "@[running at %a:@ %a/@,%s/@,%s@]"
       pp_relative_address is
       pp_symb_pair sp_func
@@ -1509,7 +1514,8 @@ let match_ord_sme_in_state (rel_addr : int list) (sbt : state_body_tyd)
     ) in
    (lc, mm_instructs)
 
-let find_rel_addr_adv_pi_func_sp (gc : global_context) (pi : prover_infos)
+let from_adv_to_func_find_rel_addr_adv_pi_func_sp
+    (gc : global_context) (pi : prover_infos)
     (maps : maps_tyd) (dest_addr : form) (rw : real_world)
       : (int list * int * symb_pair) option =
   let try_sub_funs (sp : symb_pair) (rel : int list) (base : int)
@@ -1558,6 +1564,51 @@ let find_rel_addr_adv_pi_func_sp (gc : global_context) (pi : prover_infos)
          loop_args 1
   in find rw []
 
+type real_world_rel_select =
+  | RW_Select_RealFun     of symb_pair * int * real_world_arg list *
+                             (symb_pair *  (* if arg: parent *)
+                              int *        (* index into parent's args *)
+                              int) option  (* parent's adv pi *)
+  | RW_Select_IdealFunArg of symb_pair * int *
+                             symb_pair *   (* parent *)
+                             int       *   (* index into parent's args *)
+                             int           (* parent's adv pi *)
+  | RW_Select_IdealSubFun of symb_pair * int *
+                             symb_pair *   (* parent *)
+                             int       *   (* index into parent's sub funs *)
+                             int           (* parent's adv pi *)
+
+let select_rel_addr_of_real_world
+    (maps : maps_tyd) (rel : int list) (rw : real_world)
+      : real_world_rel_select option =
+  let rec sel (rel : int list) ((sp_par, base, rwas) : real_world)
+      (par_opt : (symb_pair * int * int) option) =
+    match rel with
+    | []       -> Some (RW_Select_RealFun (sp_par, base, rwas, par_opt))
+    | i :: rel ->  (* i starts at 1 *)
+        let nargs = List.length rwas in
+        if i <= 0
+          then None
+        else if i <= nargs
+          then (match List.nth rwas (i - 1) with
+                | RWA_Real rw           ->
+                    sel rel rw (Some (sp_par, i - 1, base))
+                | RWA_Ideal (sp, advpi) ->
+                    Some
+                    (RW_Select_IdealFunArg (sp, advpi, sp_par, i - 1, base)))
+        else let ft = IdPairMap.find sp_par maps.fun_map in
+             let num_sub_funs = num_sub_funs_of_real_fun_tyd ft in
+             let j = i - num_sub_funs in
+             if j <= num_sub_funs
+             then Some
+                  (RW_Select_IdealSubFun
+                   (sub_fun_sp_nth_of_real_fun_tyd ft (j - 1),
+                    get_adv_pi_of_nth_sub_fun_of_real_fun maps
+                    (fst sp_par) nargs base ft (j - 1),
+                   sp_par, j - 1, base))
+             else None
+  in sel rel rw None
+
 let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
@@ -1584,8 +1635,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               else find bndgs
     in find (IdMap.bindings rfi) in
 
-  let from_env_to_func_match (func_sp : symb_pair) (party_id : symbol)
-      (comp : symbol) (sub : symbol) (state_id : symbol)
+  let from_env_to_func_match (base : int) (func_sp : symb_pair)
+      (party_id : symbol) (comp : symbol) (sub : symbol) (state_id : symbol)
       (state_args : form list) (sbt : state_body_tyd) : config * effect =
     match c.sme with
     | SMET_Ord sme_ord        ->
@@ -1602,7 +1653,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                rw   = c.rw;
                ig   = c.ig;
                rws  = c.rws;
-               rwrc = RWRC_RealFunc ([], func_sp, party_id, state_id);
+               rwrc = RWRC_RealFunc ([], base, func_sp, party_id, state_id);
                lc   = lc;
                ins  = create_instr_interp_list_loc ins},
               EffectOK)
@@ -1637,7 +1688,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
                let {id = state_id; args = state_args} = IdMap.find pid rs in
                let sbt = unloc (IdMap.find state_id pbt.states) in
-               from_env_to_func_match func_sp pid comp sub
+               from_env_to_func_match base func_sp pid comp sub
                state_id state_args sbt
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc pi
@@ -1673,7 +1724,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               else find bndgs
     in find (IdMap.bindings rfi) in
 
-  let from_adv_to_func_match (rel : int list)
+  let from_adv_to_func_match (rel : int list) (base : int)
       (func_sp : symb_pair) (party_id : symbol)
       (comp : symbol) (sub : symbol) (state_id : symbol)
       (state_args : form list) (sbt : state_body_tyd) : config * effect =
@@ -1701,7 +1752,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                     rw   = c.rw;
                     ig   = c.ig;
                     rws  = c.rws;
-                    rwrc = RWRC_RealFunc (rel, func_sp, party_id, state_id);
+                    rwrc =
+                      RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
                     lc   = lc;
                     ins  = create_instr_interp_list_loc ins},
                    EffectOK)
@@ -1737,7 +1789,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         let rs = real_state_of_fun_state (ILMap.find rel c.rws) in
         let {id = state_id; args = state_args} = IdMap.find ptyid rs in
         let sbt = unloc (IdMap.find state_id pbt.states) in
-        from_adv_to_func_match rel func_sp ptyid comp sub
+        from_adv_to_func_match rel base func_sp ptyid comp sub
         state_id state_args sbt in
 
   let from_adv_to_ideal_func (rel : int list) (adv_pi : int)
@@ -1774,7 +1826,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                     rw   = c.rw;
                     ig   = c.ig;
                     rws  = c.rws;
-                    rwrc = RWRC_IdealFunc ([], func_sp, state_id);
+                    rwrc = RWRC_IdealFunc ([], adv_pi, func_sp, state_id);
                     lc   = lc;
                     ins  = create_instr_interp_list_loc ins},
                    EffectOK)
@@ -1792,8 +1844,9 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
             pp_rel_addr_ideal_func_info (rel, func_sp));
          fail_out_of_running_or_sending_config (ConfigRealSending c)) in
 
-  let from_adv_to_func (c : config_real_sending) : config * effect =
-    match find_rel_addr_adv_pi_func_sp c.gc pi c.maps dest_addr c.rw with
+  let from_adv_to_func () : config * effect =
+    match from_adv_to_func_find_rel_addr_adv_pi_func_sp
+          c.gc pi c.maps dest_addr c.rw with
     | None                        ->
         fail_out_of_running_or_sending_config (ConfigRealSending c)
     | Some (rel, adv_pi, func_sp) ->
@@ -1818,7 +1871,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       then if eval_bool_form_to_bool c.gc pi
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigRealSending c)
-           else from_adv_to_func c
+           else from_adv_to_func ()
     else if eval_bool_form_to_bool c.gc pi
             (f_iff
              (f_eq source_pi (int_form 0))
@@ -1826,14 +1879,133 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       then msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
-  let from_func () =
-    fill_in "message from func" (ConfigRealSending c) in
+  let from_parent_to_ideal_func (rel : int list) (adv_pi : int)
+      (func_sp : symb_pair) (ifbt : ideal_fun_body_tyd) : config * effect =
+    match c.sme with
+    | SMET_Ord sme_ord ->
+        let (root, func_id) = func_sp in
+        let comp = ifbt.id_dir_inter in
+        let comp_map =
+          match unloc (IdPairMap.find (root, comp) c.maps.dir_inter_map) with
+          | BasicTyd _ -> failure "cannot happen"
+          | CompositeTyd map -> map in
+        let {id = state_id; args = state_args} =
+          ideal_state_of_fun_state (ILMap.find rel c.rws) in
+        let sbt = unloc (IdMap.find state_id ifbt.states) in
+        (match sme_ord.path.inter_id_path with
+         | root' :: comp' :: [sub] ->
+             if sme_ord.dir = In &&
+                comp = comp' &&
+                eval_bool_form_to_bool c.gc pi
+                (f_eq dest_pi (int_form (id_map_ordinal1_of_sym comp_map sub)))
+             then let (lc, ins) =
+                    match_ord_sme_in_state rel sbt state_args sme_ord in
+                  (ConfigRealRunning
+                   {maps = c.maps;
+                    gc   = c.gc;
+                    pi   = c.pi;
+                    rw   = c.rw;
+                    ig   = c.ig;
+                    rws  = c.rws;
+                    rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
+                    lc   = lc;
+                    ins  = create_instr_interp_list_loc ins},
+                   EffectOK)
+             else failure "should not happen"
+         | _                       -> failure "should not happen")
+    | SMET_EnvAdv _    ->
+        (debugging_message
+         (fun ppf ->
+            fprintf ppf
+            "@[message@ match@ failure@ at@ %a@]"
+            pp_rel_addr_ideal_func_info (rel, func_sp));
+         fail_out_of_running_or_sending_config (ConfigRealSending c)) in
+
+  let from_parent_to_arg_or_sub_fun (rel : int list)
+      (sp_par : symb_pair) (base : int) (rwas : real_world_arg list)
+        : config * effect =
+    let num_args = List.length rwas in
+    let ft_par = IdPairMap.find sp_par c.maps.fun_map in
+    let num_sub_funs = num_sub_funs_of_real_fun_tyd ft_par in
+    let rec find_arg (i : int) : int option =
+      if i > num_args
+      then None
+      else let rel_i = rel @ [i] in
+           let addr_i =
+             addr_concat_form func_form (addr_make_form rel_i) in
+           if eval_bool_form_to_bool c.gc pi
+              (f_eq dest_addr addr_i)
+           then Some i
+           else find_arg (i + 1) in
+    let rec find_sub_fun (i : int) : int option =
+      if i > num_sub_funs
+      then None
+      else let rel_i = rel @ [i] in
+           let addr_i =
+             addr_concat_form func_form (addr_make_form rel_i) in
+           if eval_bool_form_to_bool c.gc pi
+              (f_eq dest_addr addr_i)
+           then Some i
+           else find_sub_fun (i + 1) in
+     match find_arg 1 with
+     | None   ->
+         (match find_sub_fun (num_args + 1) with
+         | None   ->
+             fail_out_of_running_or_sending_config (ConfigRealSending c)
+         | Some i ->
+             let sp = sub_fun_sp_nth_of_real_fun_tyd ft_par (i - 1) in
+             let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
+             let ifbt = ideal_fun_body_tyd_of fbt in
+             from_parent_to_ideal_func (rel @ [i])
+             (get_adv_pi_of_nth_sub_fun_of_real_fun c.maps
+              (fst sp_par) num_args base ft_par (i - 1))
+             sp ifbt)
+     | Some i ->
+         (match List.nth rwas (i - 1) with
+          | RWA_Real (sp, adv_pi, _) ->
+              failure "hi"
+          | RWA_Ideal (sp, adv_pi)   ->
+             let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
+             let ifbt = ideal_fun_body_tyd_of fbt in
+             from_parent_to_ideal_func (rel @ [i]) adv_pi sp ifbt) in
+
+  let from_arg_or_sub_fun_to_parent (rel : int list)
+      (rwrs : real_world_rel_select) : config * effect =
+    match rwrs with
+    | RW_Select_RealFun (sp, base, _, par_opt) ->
+        (match par_opt with
+         | None                               ->  (* to env *)
+             msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
+         | Some (sp_par, par_arg_i, par_base) ->
+             fill_in "message from func" (ConfigRealSending c))
+    | RW_Select_IdealFunArg (sp, adv_pi, sp_par, par_arg_i, par_adv_pi) ->
+        fill_in "message from func" (ConfigRealSending c)
+    | RW_Select_IdealSubFun (sp, adv_pi, sp_par, par_arg_i, par_adv_pi) ->
+        fill_in "message from func" (ConfigRealSending c) in
+
+  let from_func (rel : int list) : config * effect =
+    let rwrso = select_rel_addr_of_real_world c.maps rel c.rw in
+    let cur_addr =
+      addr_concat_form func_form (addr_make_form rel) in
+    if mode = Adv
+      then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
+    else if eval_bool_form_to_bool c.gc pi
+            (addr_lt_form cur_addr dest_addr)
+      then (match BatOption.get rwrso with
+            | RW_Select_RealFun (sp, base, rwas, _) ->
+                from_parent_to_arg_or_sub_fun rel sp base rwas
+            | _                                     ->
+                fail_out_of_running_or_sending_config (ConfigRealSending c))
+    else if eval_bool_form_to_bool c.gc pi
+            (addr_lt_form dest_addr cur_addr)
+      then from_arg_or_sub_fun_to_parent rel (BatOption.get rwrso)
+    else failure "should not happen" in
 
   try
     match c.rwsc with
-    | RWSC_Env               -> from_env ()
-    | RWSC_Adv               -> from_adv ()
-    | RWSC_FromFunc (is, sp) -> from_func ()
+    | RWSC_Env                -> from_env ()
+    | RWSC_Adv                -> from_adv ()
+    | RWSC_FromFunc (rel, _) -> from_func rel
   with
   | ECProofEngine ->
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
