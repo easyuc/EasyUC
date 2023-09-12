@@ -15,20 +15,19 @@ open UcSpecTypedSpecCommon
 open UcTypedSpec
 open UcTypecheck
 
-(* the values of type int in a real world are positive numbers with
-   different interpretations depending upon whether the functionality
-   is real or ideal
+(* the values of type int in a real world are the base adversarial
+   port indices of the instances of the units of real or ideal
+   functionalities
 
-   with a real functionality, it is the base adversarial port index of
-   this instance of the functionality's unit, which will be the port
-   index of the adversary that the ideal functionality of the unit
-   uses to communicate with its simulator (note that this ideal
+   with a real functionality, it will be the adversarial port index
+   that the ideal functionality of the unit uses to communicate with
+   its simulator in the ideal world (note that this ideal
    functionality will be implicit - an argument of the application of
    the real functionality simulated by the simulator)
 
-   with an ideal functionality, it is the adversarial port index
-   by which it communicates with the adversary (it will have no
-   corresponding simulator) *)
+   with an ideal functionality, there will be no corresponding
+   simulator in the ideal world, but the base adversarial port index
+   will be the one by which it communicates with the adversary *)
 
 type real_world = symb_pair * int * real_world_arg list
 
@@ -174,7 +173,11 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
                         worlds.worlds_ideal.iw_other_sims @ sims)
                        fets
                    | FunExprTydIdeal sp ->
-                       iter (rwas @ [RWA_Ideal (sp, base)]) (base + 1)
+                       let num_adv_pis =
+                         match unit_info_of_root maps (fst sp) with
+                         | UI_Singleton _ -> failure "cannot happen"
+                         | UI_Triple ti   -> ti.ti_num_adv_pis in
+                       iter (rwas @ [RWA_Ideal (sp, base)]) (base + num_adv_pis)
                        sims fets in
              let base' = base + ti.ti_num_adv_pis in
              let (rwas, base', sims) = iter [] base' [] fets in
@@ -653,7 +656,7 @@ let pp_control (ppf : formatter) (ctrl : control) : unit =
 
 type real_world_running_context =
   | RWRC_IdealFunc of int list  *
-                      int       *  (* adversarial port index *)
+                      int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol       (* state name *)
   | RWRC_RealFunc  of int list  *
