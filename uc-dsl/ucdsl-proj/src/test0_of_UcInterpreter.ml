@@ -175,6 +175,9 @@ let test_sent_real_config_4 (include_dirs : string list) (file : string)
   let env = UcEcInterface.env () in
   let fun_expr = parse_fun_expr fun_ex in
   let config = create_gen_config root maps env fun_expr in
+  let () = pp_config Format.err_formatter config in
+  Format.pp_print_newline Format.err_formatter ();
+  let () = Printf.eprintf "---\n" in
   let real_config = real_of_gen_config config in
   let sme =
    parse_sent_msg_expr
@@ -240,7 +243,10 @@ let test_sent_real_config_3 (): unit =
   test_sent_real_config_3 [smc2_dir] smc2 fe
 
 let test_sent_real_config_4 (): unit =
+(*
   let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEReal), SMC.SMCReal(KeyExchange.KEReal))" in
+*)
+  let fe = "SMC2.SMC2Real(SMC.SMCReal(KeyExchange.KEIdeal), SMC.SMCReal(KeyExchange.KEReal))" in
   test_sent_real_config_4 [smc2_dir_ping] smc2 fe
 
 (*********)
