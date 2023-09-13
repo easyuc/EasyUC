@@ -1975,7 +1975,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let from_arg_or_sub_fun_to_parent (rel : int list)
       (rwrs : real_world_rel_select) : config * effect =
     match rwrs with
-    | RW_Select_RealFun (sp, base, _, par_opt) ->
+    | RW_Select_RealFun (sp, base, _, par_opt)                          ->
         (match par_opt with
          | None                               ->  (* to env *)
              msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
