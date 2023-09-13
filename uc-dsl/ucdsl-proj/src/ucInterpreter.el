@@ -162,7 +162,7 @@ error and then highlight in the script buffer."
 
 (
  proof-easy-config 'ucInterpreter "UCInterpreter"
- proof-prog-name		"ucInterpreterClient.exe"
+ proof-prog-name		"ucdsl.exe -interpreter"
  
  proof-terminal-string		".\n"
  
@@ -196,7 +196,7 @@ error and then highlight in the script buffer."
 
  proof-state-change-pre-hook 'set-state-info
 
- ;;proof-general-debug "non-nil thing"
+ proof-general-debug "non-nil thing"
 )
 
 (provide 'ucInterpreter)

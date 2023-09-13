@@ -478,7 +478,7 @@ let interpret (lexbuf : L.lexbuf) =
         (fun ppf -> Format.fprintf ppf 
 "@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@@,back@,finish.@]")
       end
-    with _ ->
+    with _ when UcState.get_pg_mode() ->
       prompt();
       done_loop()
   in
@@ -495,7 +495,7 @@ let rec load_loop () : unit =
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
       end
-    with _ ->
+    with _ when UcState.get_pg_mode() ->
       prompt();
       load_loop ()
   in
@@ -512,7 +512,7 @@ let rec load_loop () : unit =
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
       end
-    with _ ->
+    with _ when UcState.get_pg_mode() ->
       prompt();
       funexp_loop() 
   in
@@ -533,7 +533,7 @@ let rec load_loop () : unit =
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[addv@,@ addf@,@ prover@,@ or@ world@ command@ expected@]")
       end
-    with _ ->
+    with _ when UcState.get_pg_mode() ->
       prompt();
       world_loop()
   in
@@ -570,7 +570,7 @@ let rec load_loop () : unit =
         (fun ppf -> Format.fprintf ppf 
 "@[one@ of@ following@ commands@ expected:@ load@,@ functionality@,@ real@,@ ideal@,@ addv@,@ addf@,@ quit.@]")
       end
-    with _ ->
+    with _ when UcState.get_pg_mode() ->
       prompt();
       restart_loop()
   in
@@ -596,10 +596,15 @@ let rec load_loop () : unit =
   UcEcInterface.init();
   interpreter_loop()
   
-let stdIOclient =
+let stdIOclient () =
   UcState.set_pg_mode();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
-  
- 
-(**)
+
+let file_client (file : string) =
+  let ch = open_in file in
+  let lexbuf = lexbuf_from_channel file ch  in
+  interpret lexbuf;
+  close_in ch
+
+(*let _ = stdIOclient ()*)

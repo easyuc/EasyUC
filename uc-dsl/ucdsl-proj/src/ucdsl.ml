@@ -46,6 +46,11 @@ let batch_ref : bool ref = ref false
 let batch_arg () =
   (batch_ref := true; ())
 
+let interpreter_ref : bool ref = ref false
+
+let interpreter_arg () =
+  (interpreter_ref := true; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -55,7 +60,8 @@ let arg_specs =
    ("-margin", Int margin_arg,
     "<n> Set pretty printing margin (default is 78)");
    ("-debug", Unit debugging_arg, "Print interpeter debugging messages");
-   ("-batch", Unit batch_arg, "Run interpreter in batch mode")]
+   ("-batch", Unit batch_arg, "Run interpreter in batch mode");
+   ("-interpreter", Unit interpreter_arg, "Run interpreter, implicit with -batch arg or when file ends with .uci. To run interpreter in interactive mode, omit the file argument." )]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
 
@@ -74,7 +80,8 @@ let () = UcState.set_include_dirs (! include_dirs_ref)
 let file =
   let files = ! anony_arg_ref in
   match files with
-  | [file] -> file
+  | [file] -> Some file
+  | [] when ! interpreter_ref -> None
   | _      ->
       (usage arg_specs "Usage: ucdsl [options] file";
        exit 1)
@@ -99,26 +106,43 @@ let () =
   if ! debugging_ref then UcState.set_debugging ()
 
 let () =
-  if ! batch_ref then UcState.set_batch_mode ()
+  if ! batch_ref then 
+  begin
+    UcState.set_batch_mode (); interpreter_arg ()
+  end
 
 let () =
-  let len = String.length file in
-  if len < 4 || String.sub file (len - 3) 3 <> ".uc"
+  if file <> None 
+  then begin
+    let file = Option.get file in
+    let ext = Filename.extension file in
+    if (ext = ".uci") then interpreter_arg ()
+    ;
+    if (ext  <> ".uc" && ext <> ".uci")
     then non_loc_error_message_exit
          (fun ppf ->
             Format.fprintf ppf
-            "@[file@ lacks@ \".uc\"@ suffix:@ %s@]" file)
-  else if not (Sys.file_exists file)
+            "@[file@ lacks@ \".uc\"@ or@ \".uci\"@ suffix:@ %s@]" file)
+    else if not (Sys.file_exists file)
     then non_loc_error_message_exit
          (fun ppf ->
             Format.fprintf ppf
             "@[file@ does@ not@ exist:@ %s@]" file)
-  else let dir = Filename.dirname file in
+  else 
+  let dir = Filename.dirname file in
        UcState.add_highest_include_dirs dir
+  end
 
 let () =
   UcEcInterface.init ();
   try
-    ignore (parse_and_typecheck_file_or_id (FOID_File file));
-    exit 0
+    if ! interpreter_ref
+    then begin
+      if file = None
+      then UcInterpreterClient.stdIOclient ()
+      else UcInterpreterClient.file_client (Option.get file)
+    end else begin
+      ignore (parse_and_typecheck_file_or_id (FOID_File (Option.get file)));
+      exit 0
+    end
   with ErrorMessageExn -> exit 1
