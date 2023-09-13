@@ -31,6 +31,7 @@
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucInterpreter 
 
+(setq debug-on-quit t)
 
 (defun uc-file-frame (str)
   "Open a new frame with a buffer named *UC file*.
@@ -109,6 +110,55 @@ error and then highlight in the script buffer."
 (defun highlight-error-hook ()
   (highlight-error))
 
+;; reverting commands adapted from easycrypt-hooks.el
+
+(defvar last-but-one-statenum 0)
+
+;; Function for set or get the information in the span
+(defsubst get-span-statenum (span)
+  "Return the state number of the SPAN."
+  (span-property span 'statenum))
+
+(defsubst set-span-statenum (span val)
+  "Set the state number of the SPAN to VAL."
+  (span-set-property span 'statenum val))
+
+(defsubst proof-last-locked-span ()
+  (with-current-buffer proof-script-buffer
+  (span-at (- (proof-unprocessed-begin) 1) 'type)))
+
+(defun last-prompt-info (s)
+  "Extract the information from prompt."
+  (let ((lastprompt (or s (error "No prompt"))))
+    (when (string-match "#\\([0-9]+\\)>" lastprompt)
+           (string-to-number (match-string 1 lastprompt))
+    )
+  )
+)
+
+(defun last-prompt-info-safe ()
+  "Take from `proof-shell-last-prompt' the last information in the prompt."
+  (last-prompt-info proof-shell-last-prompt))
+
+(defun set-state-info ()
+  "Set information necessary for backtracking."
+  (if proof-shell-last-prompt
+     ;; infos = prompt infos of the very last prompt
+     ;; sp    = last locked span, which we want to fill with prompt infos
+     (let ((sp   (if proof-script-buffer (proof-last-locked-span)))
+           (info (or (last-prompt-info-safe) 0 )))
+
+       (unless (or (not sp) (get-span-statenum sp))
+         (set-span-statenum sp last-but-one-statenum))
+       (setq last-but-one-statenum info)
+     )))
+
+(defun find-and-forget (span)
+  (let ((span-staten (get-span-statenum span)))
+       (list (format "back %s." (int-to-string span-staten)))))
+
+;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
+
 (require 'proof-easy-config)		; easy configure mechanism
 
 (
@@ -125,7 +175,9 @@ error and then highlight in the script buffer."
 
 
  proof-non-undoables-regexp     "back"
- proof-undo-n-times-cmd         "back %s.\n"
+;; proof-undo-n-times-cmd         "back %s.\n"
+;; proof-forget-id-command        "back %s.\n"
+ proof-find-and-forget-fn       'find-and-forget
  
  proof-goal-command		"load %s.\n"
  proof-save-command		"finish.\n"
@@ -142,6 +194,8 @@ error and then highlight in the script buffer."
 
  proof-shell-handle-error-or-interrupt-hook 
   'highlight-error-hook
+
+ proof-state-change-pre-hook 'set-state-info
 
  ;;proof-general-debug "non-nil thing"
 )

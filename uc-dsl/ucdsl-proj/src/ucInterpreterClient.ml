@@ -223,14 +223,18 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let undo (pi : int located) : unit =
-(*  let oc = open_out "filename.txt" in
-   Printf.fprintf oc "undo %d.@." (unloc pi);
-close_out oc;
-exit 0;
-*)
-
     let i = unloc pi in
-    let l = List.length !stack in
+    if (List.exists (fun is -> is.cmd_no = i) !stack)
+    then begin
+      stack := List.filter (fun is -> is.cmd_no <= i) (!stack);
+      let c = currs() in
+      print_state c
+    end else
+      error_message (loc pi)
+        (fun ppf -> Format.fprintf ppf 
+"@[could@ not@ find@ command@ with@ cmd_no@ %i@]" i)
+
+(*    let l = List.length !stack in
     if ((i < l) && (i > 0)) 
     then begin
       stack := BatList.drop i (!stack);
@@ -240,6 +244,7 @@ exit 0;
       error_message (loc pi)
         (fun ppf -> Format.fprintf ppf 
 "@[%i@ is@ not@ between@ 1@ and@ %i@]" i (l-1))
+*)
   in
   
   let donec () : unit =
