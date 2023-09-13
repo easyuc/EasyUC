@@ -13,9 +13,9 @@ require export UCBasicTypes.
 (* guard an optional message using predicate *)
 
 op opt_msg_guard :
-     (mode -> addr -> int -> addr -> int -> int -> bool) ->
+     (mode -> addr -> int -> addr -> int -> tag -> bool) ->
      msg option -> msg option =
-  fun f : mode -> addr -> int -> addr -> int -> int -> bool =>
+  fun f : mode -> addr -> int -> addr -> int -> tag -> bool =>
   fun m_opt : msg option =>
     match m_opt with
     | None   => None
@@ -500,6 +500,8 @@ qed.
 
 end MakeInterface.
 
+(* TODO - need to update the following for the new tag model
+
 abstract theory DummyAdversary.
 
 (* dummy adversary (DA) - completely controlled by environment *)
@@ -884,3 +886,4 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
 }.
 
 end MakeSimulator.
+*)

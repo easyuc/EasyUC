@@ -300,22 +300,47 @@ lemma not_adv (mod : mode) :
 proof. by case mod. qed.
 
 (* a message has the form (mod, pt1, pt2, tag, u), for a mode mod, a
-   destination port pt1, a source port pt2, an integer tag, and a
-   universe value u (into which we must encode message arguments,
-   using EPDPs into univ)
-
-   when translating from the UC DSL, we assign tags to messages of
-   interfaces so that messages with different message paths are
-   guaranteed to be distinct (tag assignment will be done on a
-   unit-by-unit basis, and each instance of a unit will need distinct
-   tags; this is also true for the assignment of adversarial port
-   indices)
+   destination port pt1, a source port pt2, a tag tag, and a universe
+   value u (into which we must encode message arguments, using EPDPs
+   into univ)
 
    note that the UC DSL typechecker allows message arguments of
    types for which there is no EPDP into univ; such specifications
    cannot be translated into EasyCrypt code *)
 
-type msg = mode * port * port * int * univ.
+(* the representaton of an OCaml string with ints representing
+   characters
+
+   below in examples, we'll write "SMC", "smc_req", etc., even though
+   these are not literally values of type string *)
+
+type string = int list.
+
+(* direction of message *)
+
+type dir = [
+  | DirIn   (* message's destination port is a functionality implementing
+               the interface - so the message will be received by the
+               functionality *)
+  | DirOut  (* message's source port is a functionality implementing
+               the interface - so the message has been output by the
+               functionality *)
+].
+
+type tag = [
+  | TagNoInter       (* communication not involving messages of an
+                        interface *)
+  | TagComposite of  (* message is to/from composite interface *)
+      string &       (* unit root file name *)
+      string &       (* message name *)
+      dir            (* direction of message *)
+  | TagBasic     of  (* message is to/from basic interface *)
+      string &       (* unit root file name *)
+      string &       (* message name *)
+      dir            (* direction of message *)
+].
+
+type msg = mode * port * port * tag * univ.
 
 (* consider this example from uc-dsl/examples/smc-case-study/SMC.uc
 
@@ -338,11 +363,6 @@ interface:
 Pt1: 1
 Pt2: 2
 
-And in the translation to EasyCrypt we could assign tags:
-
-SMC.SMCDir.Pt1.smc_req: 1
-SMC.SMCDir.Pt2.smc_rsp: 2
-
 In the UC DSL interpreter,
 
 pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)$func
@@ -353,21 +373,73 @@ pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 1))
 
 And in the EasyCrypt translation we would have
 
-(Dir, pt1, (func, 1), 1, <encoding-of> (pt2, t))
+(Dir, pt1, (func, 1), TagComposite "SMC" "smc_req" DirIn,
+ <encoding-of> (pt2, t))
 
-Suppose, func is the address of SMCReal (which implements SMCDir) and
-we have the message
+Because the root is "SMC", the mode is Dir, and SMCDir is the
+composite direct interface of the unit, then implicitly this is the
+message's composite direct interface. The sub-interface, Pt1, is
+implicit in the destination (because the direction in DirIn) port
+index, 1. And the message is "smc_req".
 
-pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 2))
+If we take
 
-In the interpreter, the port index of Pt1 is inconsistent with the
-destination port index 2, and so this message would result in failure.
+(Dir, pt1, (func, 2), TagComposite "SMC" "smc_req" DirIn,
+ <encoding-of> (pt2, t))
 
-In the EasyCrypt translation, we would have
+this would correspond to 
 
-(Dir, pt1, (func, 2), 1, <encoding-of> (pt2, t))
+pt1@SMC.SMCDir.Pt2.smc_req(pt2, t)@((func, 1))
 
-Because the tag is 1, this allows the generated EasyCrypt code
-for party Pt2 of SMCReal (which serves SMCDir.Pt2) to
-reject this message, because its incoming messages cannot have
-tag 1. In fact, it doesn't even have any incoming messages. *)
+which is invalid.
+
+- - -
+
+Consider SMCReal, which has
+
+  subfun Fwd = Forwarding.Forw
+
+as a subfunctionality. If func is the address of (this instance) of
+SMCReal, then the address of Fwd will be (func ++ [1]). The internal
+ports of parties Pt1 and Pt2 of SMCReal will be (func, 1) and (func,
+2), respectively. Suppose Fwd is sending a fw_rsp message to Pt2 with
+arguments (pt1, pt2, epdp_text_key.`enc t ^^ k).  In the EasyCrypt
+encoding, this will look like
+
+(Dir, (func ++ 1, 1), (func, 2), TagComposite "Forwarding" "fw_rsp" DirOut,
+ <encoding-of> (pt1, pt2, epdp_text_key.`enc t ^^ k))
+
+And in the interpreter syntax, this looks like
+
+((func ++ 1, 1))@
+Forwarding.FwDir.D.fw_rsp((func, 1), (pt1, pt2, epdp_text_key.`enc t ^^ k))
+@((func, 2))
+
+- - -
+
+An adversarial message to SMCIdeal could look like
+
+(Adv, (adv, adv_pi), (func, 1), TagBasic "SMC" "sim_rsp" DirIn,
+ <encoding-of> ())
+
+In the interpreter syntax, this looks like
+
+((adv, adv_pi))@SMC.SMC2Sim.sim_rsp()@((func, 1))
+
+Here, the destination port index is always 1, because SMCIdeal is
+an ideal functionality.
+
+- - -
+
+A message from the root port of the environment to the root port
+of the adversary would look like
+
+(Adv, ([], 0), (adv, 0), TagNoInter, u)
+
+for whatever the list of booleans u is.
+
+In the interpreter syntax, this would be abstracted by
+
+(([], 0))@_@((adv, 0))
+
+*)

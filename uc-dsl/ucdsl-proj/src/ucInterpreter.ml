@@ -1423,11 +1423,57 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
        EffectMsgOut (pp_sme, ctrl))
   | _                    -> raise ConfigError
 
+let inter_check_sent_msg_expr_consistency
+    (maps : maps_tyd) (gc : global_context)
+    (pi : prover_infos) (sme : sent_msg_expr) : sent_msg_expr_tyd =
+  let sme_ty = inter_check_sent_msg_expr maps (env_of_gc gc) sme in
+  let check_consist (sme : sent_msg_expr_ord_tyd) (pi_form : form)
+      (src_or_dest : string) (l : EcLocation.t) : unit =
+    match sme.path.inter_id_path with
+    | root :: comp :: [sub] ->
+        (match unloc (Option.get (get_inter_tyd maps root comp)) with
+         | BasicTyd _       -> failure "cannot happen"
+         | CompositeTyd map ->
+             let porti = id_map_ordinal1_of_sym map sub
+             in if eval_bool_form_to_bool gc pi
+                   (f_eq pi_form (int_form porti))
+                then ()
+                else error_message l
+                     (fun ppf ->
+                        fprintf ppf
+                        ("@[%s@ port@ index@ is@ inconsistent@ with@ " ^^
+                         "message@ path@]")
+                        src_or_dest))
+    | _ :: [bas]            ->
+        if eval_bool_form_to_bool gc pi
+           (f_eq pi_form (int_form 1))
+        then ()
+        else error_message l
+             (fun ppf ->
+                fprintf ppf
+                ("@[%s@ port@ index@ is@ inconsistent@ with@ " ^^
+                 "message@ path@]")
+                src_or_dest)
+    | _                     -> failure "cannot happen" in
+  match sme_ty with
+  | SMET_Ord sme_ty ->
+      if sme_ty.dir = In
+      then let dest_pi = port_to_pi_form sme_ty.out_port_form in
+           check_consist sme_ty dest_pi "destination"
+           (loc_of_out_of_sent_msg_expr sme);
+           SMET_Ord sme_ty
+      else let source_pi = port_to_pi_form sme_ty.in_port_form in
+           check_consist sme_ty source_pi "source"
+           (loc_of_in_of_sent_msg_expr sme);
+           SMET_Ord sme_ty
+  | sme_ty          -> sme_ty
+
 let send_message_to_real_or_ideal_config
     (conf : config) (sme : sent_msg_expr) : config =
   match conf with
   | ConfigReal c  ->
-      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
+      let sme =
+        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi sme in
       ConfigRealSending
       {maps = c.maps;
        gc   = c.gc;
@@ -1438,7 +1484,8 @@ let send_message_to_real_or_ideal_config
        rwsc = if c.ctrl = CtrlEnv then RWSC_Env else RWSC_Adv;
        sme  = sme}
   | ConfigIdeal c ->
-      let sme = inter_check_sent_msg_expr c.maps (env_of_gc c.gc) sme in
+      let sme =
+        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi sme in
       ConfigIdealSending
       {maps = c.maps;
        gc   = c.gc;

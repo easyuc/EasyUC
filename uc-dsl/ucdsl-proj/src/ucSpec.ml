@@ -278,6 +278,11 @@ type port_or_addr_pexpr =
   | PoA_Port of pexpr
   | PoA_Addr of pexpr
 
+let loc_of_port_or_addr_pexpr (poap : port_or_addr_pexpr) : EcLocation.t =
+  match poap with
+  | PoA_Port pexpr -> loc pexpr
+  | PoA_Addr pexpr -> loc pexpr
+
 (* expression for message in transit (sent message expession)
 
    there are two forms, ordinary and for environment/adversary
@@ -323,6 +328,16 @@ type sent_msg_expr_env_adv =
 type sent_msg_expr =
   | SME_Ord    of sent_msg_expr_ord
   | SME_EnvAdv of sent_msg_expr_env_adv
+
+let loc_of_in_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
+  match sme with
+  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.in_poa_pexpr
+  | SME_EnvAdv sme -> loc sme.in_port_pexpr
+
+let loc_of_out_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
+  match sme with
+  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.out_poa_pexpr
+  | SME_EnvAdv sme -> loc sme.out_port_pexpr
 
 (* Interpreter User Input *)
 
