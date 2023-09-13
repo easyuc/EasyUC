@@ -31,8 +31,6 @@
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucInterpreter 
 
-(setq debug-on-quit t)
-
 (defun uc-file-frame (str)
   "Open a new frame with a buffer named *UC file*.
 insert contents from a file, mark the positions between character positions"
@@ -60,8 +58,9 @@ insert contents from a file, mark the positions between character positions"
 )
   
 (defun frame-with-uc-file (cmd str)
-  "call empty-frame if myassist shell output starts with UC file position:"
-  (if (string-prefix-p "UC file position:" string)
+  "call empty-frame if ucInterpreter shell output starts with UC file position:"
+  (proof-debug (concat "frame-with-uc-file of " str))
+  (if (string-prefix-p "UC file position:" str)
       (uc-file-frame str)
 ;;    (save-excursion (switch-to-buffer-other-frame "*UC file*"))
   )
