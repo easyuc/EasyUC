@@ -1685,21 +1685,21 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
         let iip = sme_ord.path.inter_id_path in
-        if List.hd iip = root && List.tl iip = [comp; sub] &&
-           sme_ord.dir = In
-        then let (lc, ins) =
-               match_ord_sme_in_state false rel sbt state_args sme_ord in
-             (ConfigRealRunning
-              {maps = c.maps;
-               gc   = c.gc;
-               pi   = c.pi;
-               rw   = c.rw;
-               ig   = c.ig;
-               rws  = c.rws;
-               rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
-               lc   = lc;
-               ins  = create_instr_interp_list_loc ins},
-              EffectOK)
+        if List.take 2 iip = [root; comp] && sme_ord.dir = In
+        then (assert (List.length iip = 3 && List.nth iip 2 = sub);
+              let (lc, ins) =
+                match_ord_sme_in_state false rel sbt state_args sme_ord in
+              (ConfigRealRunning
+               {maps = c.maps;
+                gc   = c.gc;
+                pi   = c.pi;
+                rw   = c.rw;
+                ig   = c.ig;
+                rws  = c.rws;
+                rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
+                lc   = lc;
+                ins  = create_instr_interp_list_loc ins},
+               EffectOK))
         else (debugging_message
               (fun ppf ->
                  fprintf ppf
@@ -1797,37 +1797,37 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | SMET_Ord sme_ord        ->
         let (root, func_id) = func_sp in
         let iip = sme_ord.path.inter_id_path in
-        if List.hd iip = root && List.tl iip = [comp; sub] &&
-           sme_ord.dir = In
-        then if sbt.is_initial
-             then (debugging_message
-                   (fun ppf ->
-                      fprintf ppf
-                      ("@[adversarial@ message@ rejected@ in@ initial@ " ^^
-                       "state@ at@ %a@]")
-                      pp_rel_addr_real_func_info (rel, func_sp, party_id));
-                   fail_out_of_running_or_sending_config
-                   (ConfigRealSending c))
-             else let (lc, ins) =
-                    match_ord_sme_in_state false rel sbt state_args sme_ord in
-                  (ConfigRealRunning
-                   {maps = c.maps;
-                    gc   = c.gc;
-                    pi   = c.pi;
-                    rw   = c.rw;
-                    ig   = c.ig;
-                    rws  = c.rws;
-                    rwrc =
-                      RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
-                    lc   = lc;
-                    ins  = create_instr_interp_list_loc ins},
-                   EffectOK)
-        else (debugging_message
-              (fun ppf ->
-                 fprintf ppf
-                 "@[message@ match@ failure@ at@ %a@]"
-                 pp_rel_addr_real_func_info (rel, func_sp, party_id));
-              fail_out_of_running_or_sending_config (ConfigRealSending c))
+        if List.take 2 iip = [root; comp] && sme_ord.dir = In
+        then (assert (List.length iip = 3 && List.nth iip 2 = sub);
+              if sbt.is_initial
+              then (debugging_message
+                    (fun ppf ->
+                       fprintf ppf
+                       ("@[adversarial@ message@ rejected@ in@ initial@ " ^^
+                        "state@ at@ %a@]")
+                       pp_rel_addr_real_func_info (rel, func_sp, party_id));
+                    fail_out_of_running_or_sending_config
+                    (ConfigRealSending c))
+              else let (lc, ins) =
+                     match_ord_sme_in_state false rel sbt state_args sme_ord in
+                   (ConfigRealRunning
+                    {maps = c.maps;
+                     gc   = c.gc;
+                     pi   = c.pi;
+                     rw   = c.rw;
+                     ig   = c.ig;
+                     rws  = c.rws;
+                     rwrc =
+                       RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
+                     lc   = lc;
+                     ins  = create_instr_interp_list_loc ins},
+                    EffectOK))
+         else (debugging_message
+               (fun ppf ->
+                  fprintf ppf
+                  "@[message@ match@ failure@ at@ %a@]"
+                  pp_rel_addr_real_func_info (rel, func_sp, party_id));
+               fail_out_of_running_or_sending_config (ConfigRealSending c))
     | SMET_EnvAdv _    ->
         (debugging_message
          (fun ppf ->
@@ -1867,8 +1867,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         let iip = sme_ord.path.inter_id_path in
-        if List.hd iip = root && List.tl iip = [basic] &&
-           sme_ord.dir = In &&
+        if iip = [root; basic] && sme_ord.dir = In &&
            eval_bool_form_to_bool c.gc pi
            (f_and
             (f_eq source_pi (int_form adv_pi))
@@ -1980,22 +1979,22 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         (match sme_ord.path.inter_id_path with
          | [root'; comp'; sub'] ->
-             if root' = root && comp' = comp &&
-                IdMap.find_opt sub' comp_map <> None && sme_ord.dir = In
-             then let (lc, ins) =
-                    match_ord_sme_in_state false rel sbt state_args sme_ord in
-                  (ConfigRealRunning
-                   {maps = c.maps;
-                    gc   = c.gc;
-                    pi   = c.pi;
-                    rw   = c.rw;
-                    ig   = c.ig;
-                    rws  = c.rws;
-                    rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
-                    lc   = lc;
-                    ins  = create_instr_interp_list_loc ins},
-                   EffectOK)
-             else failure "should not happen"
+             (assert
+              (root' = root && comp' = comp &&
+               IdMap.find_opt sub' comp_map <> None && sme_ord.dir = In);
+              let (lc, ins) =
+                match_ord_sme_in_state false rel sbt state_args sme_ord in
+              (ConfigRealRunning
+               {maps = c.maps;
+                gc   = c.gc;
+                pi   = c.pi;
+                rw   = c.rw;
+                ig   = c.ig;
+                rws  = c.rws;
+                rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
+                lc   = lc;
+                ins  = create_instr_interp_list_loc ins},
+               EffectOK))
          | _                    -> failure "should not happen")
     | SMET_EnvAdv _    ->
         (debugging_message
@@ -2082,26 +2081,20 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 id_dir param_or_sub_fun_name with
           | None     -> failure "should not happen"
           | Some sme -> sme in
-        if sme_ord.dir = Out
-        then let (lc, ins) =
-               match_ord_sme_in_state false rel sbt state_args sme_ord in
-             (ConfigRealRunning
-              {maps = c.maps;
-               gc   = c.gc;
-               pi   = c.pi;
-               rw   = c.rw;
-               ig   = c.ig;
-               rws  = c.rws;
-               rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
-               lc   = lc;
-               ins  = create_instr_interp_list_loc ins},
-              EffectOK)
-        else (debugging_message
-              (fun ppf ->
-                 fprintf ppf
-                 "@[message@ match@ failure@ at@ %a@]"
-                 pp_rel_addr_real_func_info (rel, func_sp, party_id));
-              failure "should not happen")
+        (assert (sme_ord.dir = Out);
+         let (lc, ins) =
+           match_ord_sme_in_state false rel sbt state_args sme_ord in
+         (ConfigRealRunning
+          {maps = c.maps;
+           gc   = c.gc;
+           pi   = c.pi;
+           rw   = c.rw;
+           ig   = c.ig;
+           rws  = c.rws;
+           rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
+           lc   = lc;
+           ins  = create_instr_interp_list_loc ins},
+          EffectOK))
     | SMET_EnvAdv _    ->
         (debugging_message
          (fun ppf ->
