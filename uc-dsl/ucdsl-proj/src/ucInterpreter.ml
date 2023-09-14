@@ -428,7 +428,7 @@ let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
   let hyp = EcIdent.create (gc_make_unique_id gc hyp_base) in
   let support_app = support_form ty dist (f_local id ty) in
   let gc = LDecl.add_local id (EcBaseLogic.LD_var (ty, None)) gc in
-  let gc =  LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
+  let gc = LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
   (gc, id)
 
 (* a local context is a nonempty stack of maps (frames) from
@@ -1506,9 +1506,28 @@ let send_message_to_real_or_ideal_config
        sme  = sme}
   | _             -> raise ConfigError
 
+(*
+exception StepBlockedIf
+exception StepBlockedMatch
+exception StepBlockedPortOrAddrCompare
+*)
+
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
       : config * effect =
-  fill_in "step_real_running_config" (ConfigRealRunning c)
+(*
+  try
+    let ins = c.ins in
+    assert (not (List.is_empty ins));
+    fill_in "step_real_running_config" (ConfigRealRunning c)
+  with
+  | StepBlockedIf ->
+      (ConfigRealRunning c, EffectBlockedIf)
+  | StepBlockedMatch ->
+      (ConfigRealRunning c, EffectBlockedMatch)
+  | StepBlockedPortOrAddrCompare ->
+      (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
+*)
+    fill_in "step_real_running_config" (ConfigRealRunning c)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
