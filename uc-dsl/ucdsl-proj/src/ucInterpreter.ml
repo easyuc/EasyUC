@@ -200,28 +200,30 @@ let fun_expr_to_worlds
   fun_expr_tyd_to_worlds maps fet
 
 (* like UcTypedSpec.instruction_tyd and UcTypedSpec.instruction_tyd_u,
-   but includes Pop instruction for popping a frame of local context *)
+   but includes Pop instruction for popping a frame of local context
+
+   we didn't need the location information for lists of instructions
+   or clauses *)
 
 type instr_interp_u =
   | Assign of lhs * expr
   | Sample of lhs * expr
-  | ITE of expr * instr_interp list located *
-           instr_interp list located option
-  | Match of expr * match_clause_interp list located
+  | ITE of expr * instr_interp list * instr_interp list option
+  | Match of expr * match_clause_interp list
   | SendAndTransition of send_and_transition_tyd
   | Fail
   | Pop  (* pop frame of local context *)
 
 and instr_interp = instr_interp_u located
 
-and match_clause_interp = symbol * (bindings * instr_interp list located)
+and match_clause_interp = symbol * (bindings * instr_interp list)
 
 let rec create_instr_interp (it : instruction_tyd) : instr_interp =
   mk_loc (loc it) (create_instr_interp_u (unloc it))
 
-and create_instr_interp_list_loc (its : instruction_tyd list located)
-      : instr_interp list located =
-  mk_loc (loc its) (List.map create_instr_interp (unloc its))
+and create_instr_interp_list (its : instruction_tyd list located)
+      : instr_interp list =
+  List.map create_instr_interp (unloc its)
 
 and create_instr_interp_u (itu : instruction_tyd_u) : instr_interp_u =
   match itu with
@@ -230,19 +232,16 @@ and create_instr_interp_u (itu : instruction_tyd_u) : instr_interp_u =
   | UcTypedSpec.ITE (exp, tins, eins) ->
       ITE
       (exp,
-       create_instr_interp_list_loc tins,
-       omap create_instr_interp_list_loc eins)
+       create_instr_interp_list tins,
+       omap create_instr_interp_list eins)
   | UcTypedSpec.Match (exp, clauses)  ->
-      Match
-      (exp,
-       mk_loc (loc clauses)
-       (List.map create_match_clause_interp (unloc clauses)))
+      Match (exp, List.map create_match_clause_interp (unloc clauses))
   | UcTypedSpec.SendAndTransition sat -> SendAndTransition sat
   | UcTypedSpec.Fail                  -> Fail
 
 and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
       : match_clause_interp =
-  (sym, (bndgs, create_instr_interp_list_loc ins))
+  (sym, (bndgs, create_instr_interp_list ins))
 
 (* making formulas *)
 
@@ -655,11 +654,11 @@ let pp_control (ppf : formatter) (ctrl : control) : unit =
    world *)
 
 type real_world_running_context =
-  | RWRC_IdealFunc of int list  *
+  | RWRC_IdealFunc of int list  *  (* relative address *)
                       int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol       (* state name *)
-  | RWRC_RealFunc  of int list  *
+  | RWRC_RealFunc  of int list  *  (* relative address *)
                       int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol    *  (* party name *)
@@ -815,7 +814,7 @@ type config_real_running = {
   rws  : real_world_state;
   rwrc : real_world_running_context;
   lc   : local_context;
-  ins  : instr_interp list located
+  ins  : instr_interp list
 }
 
 type config_ideal_running = {
@@ -827,7 +826,7 @@ type config_ideal_running = {
   iws  : ideal_world_state;
   iwrc : ideal_world_running_context;
   lc   : local_context;
-  ins  : instr_interp list located
+  ins  : instr_interp list
 }
 
 type config_real_sending = {
@@ -946,8 +945,14 @@ let control_of_real_or_ideal_config (conf : config) : control =
 
 let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
   match conf with
-  | ConfigRealRunning c  -> Some (loc c.ins)
-  | ConfigIdealRunning c -> Some (loc c.ins)
+  | ConfigRealRunning c  ->
+      (match c.ins with
+       | []       -> failure "cannot happen"
+       | ins :: _ -> Some (loc ins))
+  | ConfigIdealRunning c ->
+      (match c.ins with
+       | []       -> failure "cannot happen"
+       | ins :: _ -> Some (loc ins))
   | _                    -> None
 
 let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
@@ -1698,7 +1703,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 rws  = c.rws;
                 rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
                 lc   = lc;
-                ins  = create_instr_interp_list_loc ins},
+                ins  = create_instr_interp_list ins},
                EffectOK))
         else (debugging_message
               (fun ppf ->
@@ -1820,7 +1825,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                      rwrc =
                        RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
                      lc   = lc;
-                     ins  = create_instr_interp_list_loc ins},
+                     ins  = create_instr_interp_list ins},
                     EffectOK))
          else (debugging_message
                (fun ppf ->
@@ -1892,7 +1897,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                     rws  = c.rws;
                     rwrc = RWRC_IdealFunc ([], adv_pi, func_sp, state_id);
                     lc   = lc;
-                    ins  = create_instr_interp_list_loc ins},
+                    ins  = create_instr_interp_list ins},
                    EffectOK)
         else (debugging_message
               (fun ppf ->
@@ -1993,7 +1998,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 rws  = c.rws;
                 rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
                 lc   = lc;
-                ins  = create_instr_interp_list_loc ins},
+                ins  = create_instr_interp_list ins},
                EffectOK))
          | _                    -> failure "should not happen")
     | SMET_EnvAdv _    ->
@@ -2093,7 +2098,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
            rws  = c.rws;
            rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
            lc   = lc;
-           ins  = create_instr_interp_list_loc ins},
+           ins  = create_instr_interp_list ins},
           EffectOK))
     | SMET_EnvAdv _    ->
         (debugging_message

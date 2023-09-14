@@ -4,7 +4,9 @@
 
 open Format
 
-(* raise the exception Failure with the supplied string *)
+(* prints a failure message on the standard error output with
+   the string, and then does assert false, so we get a file
+   position *)
 
 val failure : string -> 'a
 
