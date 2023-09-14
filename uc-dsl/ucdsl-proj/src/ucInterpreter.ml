@@ -2077,14 +2077,12 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         : config * effect =
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
         let sme_ord =
           match subst_comp_in_sent_msg_expr_ord_tyd sme_ord
                 id_dir param_or_sub_fun_name with
           | None     -> failure "should not happen"
           | Some sme -> sme in
-        let iip = sme_ord.path.inter_id_path in
-        if List.hd iip = root && sme_ord.dir = Out
+        if sme_ord.dir = Out
         then let (lc, ins) =
                match_ord_sme_in_state false rel sbt state_args sme_ord in
              (ConfigRealRunning
