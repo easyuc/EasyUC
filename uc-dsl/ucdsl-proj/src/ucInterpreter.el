@@ -56,13 +56,17 @@ insert contents from a file, mark the positions between character positions"
     )
   )
 )
+
+(require 'cl)
   
 (defun frame-with-uc-file (cmd str)
   "call empty-frame if ucInterpreter shell output starts with UC file position:"
   (proof-debug (concat "frame-with-uc-file of " str))
-  (if (string-prefix-p "UC file position:" str)
-      (uc-file-frame str)
+  (let ((stps (search "UC file position:" str)))
+    (if stps
+      (uc-file-frame (substring str stps nil))
 ;;    (save-excursion (switch-to-buffer-other-frame "*UC file*"))
+    )
   )
 )
   
@@ -183,7 +187,10 @@ error and then highlight in the script buffer."
  
  proof-shell-start-goals-regexp	 "state:"
  proof-shell-end-goals-regexp	 ";"
- 
+
+ proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:"
+ proof-shell-eager-annotation-end   ";"
+
  proof-shell-quit-cmd		 "quit.\n"
  proof-assistant-home-page	 "http://yes"
  proof-shell-annotated-prompt-regexp "#[0-9]*>"
@@ -196,7 +203,7 @@ error and then highlight in the script buffer."
 
  proof-state-change-pre-hook 'set-state-info
 
- proof-general-debug "non-nil thing"
+ ;;proof-general-debug "non-nil thing"
 )
 
 (provide 'ucInterpreter)

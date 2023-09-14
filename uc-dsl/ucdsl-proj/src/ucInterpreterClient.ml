@@ -140,7 +140,10 @@ let interpret (lexbuf : L.lexbuf) =
     if (UcState.get_batch_mode ())
     then ()
     else
+      begin
+     (* Format.fprintf fmt "[warning: this is just a post-drill%i@.;@." (currs()).cmd_no;*)
       print_prompt()
+      end
   in
 
   let load (psym : psymbol) : unit =
