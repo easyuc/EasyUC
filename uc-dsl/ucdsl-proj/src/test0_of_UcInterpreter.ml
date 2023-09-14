@@ -294,10 +294,8 @@ let () =
 *)
 
 
-(*
   test_sent_real_config_1 ();
   Printf.eprintf "\n";
-*)
 
 (*
   test_sent_real_config_1a ();
@@ -315,5 +313,7 @@ let () =
   Printf.eprintf "\n";
 *)
 
+(*
   test_sent_real_config_4 ();
   Printf.eprintf "\n";
+*)
