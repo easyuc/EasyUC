@@ -83,7 +83,7 @@ let sing_elt_of_id_set (id_set : IdSet.t) : symbol =
 module QidMap = Map.Make(SL)
 module QidSet = Set.Make(SL)
 
-let exists_qid (qid_map : 'a QidMap.t) (qid : symbol list) : bool = 
+let exists_qid (qid_map : 'a QidMap.t) (qid : symbol list) : bool =
   QidMap.exists (fun key _ -> key = qid) qid_map
 
 let qid_map_domain (map : 'a QidMap.t) : QidSet.t =
@@ -108,7 +108,7 @@ module IdPairSet = Set.Make(SP)
    or simulator from that file *)
 
 let exists_id_pair
-    (id_pair_map : 'a IdPairMap.t) (id_pair : symb_pair) : bool = 
+    (id_pair_map : 'a IdPairMap.t) (id_pair : symb_pair) : bool =
   IdPairMap.exists (fun key _ -> key = id_pair) id_pair_map
 
 let id_pair_map_domain (map : 'a IdPairMap.t) : IdPairSet.t =
@@ -136,7 +136,7 @@ let nonempty_qid_to_qsymbol (xs : SL.t) : qsymbol =
 let nonempty_qid_to_string (xs : SL.t) : string =
   List.fold_left (fun s x -> if s <> "" then s ^ "." ^ x else x) "" xs
 
-let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t = 
+let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
@@ -250,15 +250,15 @@ type basic_inter_body_tyd = message_body_tyd IdMap.t
 
 (* inversion of direction *)
 
-let invert_msg_dir (mdbt : message_body_tyd) : message_body_tyd = 
+let invert_msg_dir (mdbt : message_body_tyd) : message_body_tyd =
   {mdbt with
      dir = invert_dir mdbt.dir}
 
 let invert_basic_inter_body_tyd
-    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd = 
+    (bibt : basic_inter_body_tyd) : basic_inter_body_tyd =
   IdMap.map invert_msg_dir bibt
 
-type inter_body_tyd = 
+type inter_body_tyd =
   | BasicTyd     of basic_inter_body_tyd  (* basic interface *)
   | CompositeTyd of symbol IdMap.t        (* composite interface; symbol is
                                              name of basic interface -
@@ -393,7 +393,7 @@ let real_fun_body_tyd_of (fbt : fun_body_tyd) : real_fun_body_tyd =
 
 let ideal_fun_body_tyd_of (fbt : fun_body_tyd) : ideal_fun_body_tyd =
   match fbt with
-  | FunBodyRealTyd _     ->  failure "cannot happen" 
+  | FunBodyRealTyd _     ->  failure "cannot happen"
   | FunBodyIdealTyd ifbt -> ifbt
 
 let is_real_fun_body_tyd (fbt : fun_body_tyd) : bool =
@@ -456,6 +456,10 @@ let num_params_of_real_fun_tyd
     (ft : fun_tyd) (param : symbol) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.params
+
+let param_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  fst (List.nth (indexed_map_to_list rfbt.params) n)
 
 let id_dir_inter_of_param_of_real_fun_tyd
     (ft : fun_tyd) (param : symbol) : symb_pair =
@@ -770,19 +774,19 @@ let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
     (some |- List.hd |- List.tl |- unloc)
-    (List.find 
+    (List.find
      (fun x -> List.hd (unloc x) = dir_comp)
      serves)
   with _ -> None
 
 let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
-  try  
+  try 
     let adv_comp = oget (id_adv_inter_of_fun_tyd ft) in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
     (some |- List.hd |- List.tl |- unloc)
-    (List.find 
+    (List.find
      (fun x -> List.hd (unloc x) = adv_comp)
      serves)
   with _ -> None
@@ -799,7 +803,7 @@ let get_dir_info_of_party_of_real_fun
     (pty : symbol) : party_dir_info =
   match get_dir_sub_inter_of_party_of_real_fun ft pty with
   | None     -> None
-  | Some sub -> 
+  | Some sub ->
       let comp = id_dir_inter_of_fun_tyd ft in
       let ibt = unloc (IdPairMap.find (root, comp) maps.dir_inter_map) in
       match ibt with
@@ -902,6 +906,22 @@ type sent_msg_expr_ord_tyd = {
   args          : form list;   (* message arguments *)
   out_port_form : form         (* destination *)
 }
+
+let subst_comp_in_msg_path_u (path : msg_path_u)
+    (old_comp : symbol) (new_comp : symbol) : msg_path_u option =
+  let {inter_id_path = iip; msg = msg} = path in
+  match iip with
+  | [root; comp; sub] ->
+      if comp = old_comp
+      then Some {inter_id_path = [root; new_comp; sub]; msg = msg}
+      else None
+  | _                 -> None
+
+let subst_comp_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
+    (old_comp : symbol) (new_comp : symbol) : sent_msg_expr_ord_tyd option =
+  match subst_comp_in_msg_path_u sme.path old_comp new_comp with
+  | None      -> None
+  | Some path -> Some {sme with path = path}
 
 type sent_msg_expr_env_adv_tyd = {  (* mode is implicitly Adv *)
   in_port_form  : form;
