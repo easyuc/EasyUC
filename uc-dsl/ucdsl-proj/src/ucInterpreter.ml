@@ -501,8 +501,20 @@ let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
         fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
   fprintf ppf "@[<v>%a@]" pp_frames lc
 
-let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
+let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
+      : EcIdent.t option =
+  EcIdent.Mid.fold_left
+  (fun acc id _ ->
+     match acc with
+     | None -> if EcIdent.name id = sym then Some id else None
+     | res  -> res)
+  None
+  map
+
+let lc_update_var (lc : local_context) (id : symbol) (f : form)
       : local_context =
+  let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
+  let id = Option.get (lc_find_key_from_sym lc_base id) in
   EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
 
 let lc_apply (lc : local_context) (e : expr) : form =
@@ -529,13 +541,13 @@ let pop (lc : local_context) : local_context =
 
 let gc_lc_random_assign (gc : global_context) (lc : local_context)
     (id_base : symbol) (hyp_base : symbol)
-    (ty : ty)             (* type of variable *)
-    (var_id : EcIdent.t)  (* variable - lhs of assignment, type ty *)
-    (dist : form)         (* rhs of assignment, type tdistr ty *)
+    (ty : ty)       (* type of variable *)
+    (var : symbol)  (* variable - lhs of assignment, type ty *)
+    (dist : form)   (* rhs of assignment, type tdistr ty *)
       : global_context * local_context *
         symbol =  (* name of id standing for sampled value *)
   let (gc, id) = gc_add_rand gc id_base hyp_base ty dist in
-  let lc = lc_update_var lc var_id (f_local id ty) in
+  let lc = lc_update_var lc var (f_local id ty) in
   (gc, lc, EcIdent.name id)
 
 (* prover infos *)
@@ -582,6 +594,22 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
        (fun ppf ->
           fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
       raise ECProofEngine
+
+let simplify_formula (gc : global_context) (f : form) : form =
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[@[trying@ to@ simplify@ formula:@]@\n@\n@[%a@]@]@."
+       (pp_form (env_of_gc gc)) f) in
+  let f = UcEcFormEval.simplify_formula gc f in
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[@[result@ is:@]@\n@\n@[%a@]@]@."
+       (pp_form (env_of_gc gc)) f) in
+  f
 
 (* configurations *)
 
@@ -1506,19 +1534,55 @@ let send_message_to_real_or_ideal_config
        sme  = sme}
   | _             -> raise ConfigError
 
-(*
 exception StepBlockedIf
 exception StepBlockedMatch
 exception StepBlockedPortOrAddrCompare
-*)
+
+let step_assign (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
+  let form = lc_apply lc expr in
+  let form = simplify_formula gc form in
+  match lhs with
+  | LHSSimp id   -> lc_update_var lc (unloc id) form
+  | LHSTuple ids -> failure "hi"
+
+let step_if_then_else (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (expr : expr) (inss_then : instr_interp list)
+    (inss_else_opt : instr_interp list option) : instr_interp list =
+  let expr_gc_form = lc_apply lc expr in
+  if try eval_bool_form_to_bool gc pi expr_gc_form with
+     | ECProofEngine -> raise StepBlockedIf
+  then inss_then
+  else (odfl [] inss_else_opt)
 
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
       : config * effect =
-(*
   try
-    let ins = c.ins in
-    assert (not (List.is_empty ins));
-    fill_in "step_real_running_config" (ConfigRealRunning c)
+    begin
+      let inss = c.ins in
+      assert (not (List.is_empty inss));
+      let (ins, inss) = (List.hd inss, List.tl inss) in
+      let (ins, l) = (unloc ins, loc ins) in
+      match ins with
+      | Assign (lhs, expr)         ->
+          let lc = step_assign c.gc c.lc c.pi lhs expr in
+          (ConfigRealRunning {c with lc = lc; ins = inss},
+           EffectOK)
+      | Sample (lhs, expr)         ->
+          fill_in "sampling" (ConfigRealRunning c)
+      | ITE (expr, inss_then, inss_else_opt) ->
+          let inss =
+            step_if_then_else c.gc c.lc c.pi expr inss_then inss_else_opt in
+          (ConfigRealRunning {c with ins = inss}, EffectOK)
+      | Match (expr, clauses)      ->
+          fill_in "match" (ConfigRealRunning c)
+      | SendAndTransition s_and_t  ->
+          fill_in "send and transition" (ConfigRealRunning c)
+      | Fail                       ->
+          fail_out_of_running_or_sending_config (ConfigRealRunning c)
+      | Pop                        ->
+          fill_in "pop" (ConfigRealRunning c)
+    end
   with
   | StepBlockedIf ->
       (ConfigRealRunning c, EffectBlockedIf)
@@ -1526,8 +1590,6 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       (ConfigRealRunning c, EffectBlockedMatch)
   | StepBlockedPortOrAddrCompare ->
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
-*)
-    fill_in "step_real_running_config" (ConfigRealRunning c)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =

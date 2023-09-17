@@ -29,9 +29,12 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
 
   party Pt1 serves SMC2Dir.Pt1 {
     initial state WaitReq {
+var x : int;
       match message with 
       | pt1@SMC2Dir.Pt1.smc_req(pt2, t) => {
+          x <- 1;
           if (envport pt2) {
+            x <- x + 1;
             send Fwd1.D.fw_req
                  (intport Pt2,
                   (epdp_pair_univ epdp_port_univ epdp_port_univ).`enc
