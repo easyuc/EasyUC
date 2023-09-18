@@ -407,12 +407,14 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
 let gc_make_unique_id (gc : global_context) (id : symbol) : symbol =
   let rec find (n : int) : symbol =
     let next = id ^ BatInt.to_string n in
-    if try ignore (EcEnv.LDecl.by_name next gc); true with
-       | EcEnv.LDecl.LdeclError _ -> false
+    if try ignore (EcEnv.LDecl.by_name next gc); false with
+     | EcEnv.LDecl.LdeclError _ -> true
     then next
     else find (n + 1) in
-  try ignore (EcEnv.LDecl.by_name id gc); id with
-  | EcEnv.LDecl.LdeclError _ -> find 0
+  if try ignore (EcEnv.LDecl.by_name id gc); false with
+     | EcEnv.LDecl.LdeclError _ -> true
+  then id
+  else find 1
 
 (* for handling random assignments
 
@@ -515,7 +517,7 @@ let lc_update_var (lc : local_context) (id : symbol) (f : form)
       : local_context =
   let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
   let id = Option.get (lc_find_key_from_sym lc_base id) in
-  EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
+  EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
 
 let lc_apply (lc : local_context) (e : expr) : form =
   let f = form_of_expr mhr e in
@@ -533,22 +535,9 @@ let lc_apply (lc : local_context) (e : expr) : form =
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
 
-let pop (lc : local_context) : local_context =
+let lc_pop (lc : local_context) : local_context =
   (if List.is_empty lc then failure "should not happen");
   List.take (List.length lc - 1) lc
-
-(* handle a random assignment *)
-
-let gc_lc_random_assign (gc : global_context) (lc : local_context)
-    (id_base : symbol) (hyp_base : symbol)
-    (ty : ty)       (* type of variable *)
-    (var : symbol)  (* variable - lhs of assignment, type ty *)
-    (dist : form)   (* rhs of assignment, type tdistr ty *)
-      : global_context * local_context *
-        symbol =  (* name of id standing for sampled value *)
-  let (gc, id) = gc_add_rand gc id_base hyp_base ty dist in
-  let lc = lc_update_var lc var (f_local id ty) in
-  (gc, lc, EcIdent.name id)
 
 (* prover infos *)
 
@@ -1535,16 +1524,56 @@ let send_message_to_real_or_ideal_config
   | _             -> raise ConfigError
 
 exception StepBlockedIf
+(*
 exception StepBlockedMatch
 exception StepBlockedPortOrAddrCompare
+*)
 
 let step_assign (gc : global_context) (lc : local_context)
     (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
+  let simpl f = simplify_formula gc f in
   let form = lc_apply lc expr in
-  let form = simplify_formula gc form in
+  let form = simpl form in
   match lhs with
   | LHSSimp id   -> lc_update_var lc (unloc id) form
-  | LHSTuple ids -> failure "hi"
+  | LHSTuple ids ->
+      let tys =
+        match form.f_ty.ty_node with
+        | Ttuple tys -> tys
+        | _          -> failure "should not happen" in
+      List.fold_lefti
+      (fun acc i id ->
+         let pr_simp = simpl (f_proj form i (List.nth tys i)) in
+         lc_update_var acc (unloc id) pr_simp)
+      lc
+      ids
+
+let step_sample (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (lhs : lhs) (expr : expr)
+      : global_context * local_context * symbol =
+  let simpl f = simplify_formula gc f in
+  let form = lc_apply lc expr in
+  let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
+  let form = simpl form in
+  match lhs with
+  | LHSSimp id   ->
+      let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
+      let lc = lc_update_var lc (unloc id) (f_local rand ty) in
+      (gc, lc, EcIdent.name rand)
+  | LHSTuple ids ->
+      let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
+      let tys =
+        match ty.ty_node with
+        | Ttuple tys -> tys
+        | _          -> failure "should not happen" in
+      let lc =
+        List.fold_lefti
+        (fun acc i id ->
+           let pr_rand = f_proj (f_local rand ty) i (List.nth tys i) in
+           lc_update_var acc (unloc id) pr_rand)
+        lc
+        ids in
+      (gc, lc, EcIdent.name rand)
 
 let step_if_then_else (gc : global_context) (lc : local_context)
     (pi : prover_infos) (expr : expr) (inss_then : instr_interp list)
@@ -1569,7 +1598,9 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
           (ConfigRealRunning {c with lc = lc; ins = inss},
            EffectOK)
       | Sample (lhs, expr)         ->
-          fill_in "sampling" (ConfigRealRunning c)
+          let (gc, lc, id) = step_sample c.gc c.lc c.pi lhs expr in
+          (ConfigRealRunning {c with gc = gc; lc = lc; ins = inss},
+           EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
             step_if_then_else c.gc c.lc c.pi expr inss_then inss_else_opt in
@@ -1581,15 +1612,18 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       | Fail                       ->
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
       | Pop                        ->
-          fill_in "pop" (ConfigRealRunning c)
+          let lc = lc_pop c.lc in
+          (ConfigRealRunning {c with lc = lc}, EffectOK)
     end
   with
   | StepBlockedIf ->
       (ConfigRealRunning c, EffectBlockedIf)
+(*
   | StepBlockedMatch ->
       (ConfigRealRunning c, EffectBlockedMatch)
   | StepBlockedPortOrAddrCompare ->
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
+*)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
