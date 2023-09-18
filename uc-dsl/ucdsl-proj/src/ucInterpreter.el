@@ -10,14 +10,10 @@
 ;;to proof-site.el inside proof-general folder /generic
 ;;
 ;;3.
-;;Add the folder that contains ucInterpreterClient.exe
-;;to the $PATH env variable, e.g. by running in shell:
-;;export PATH=$PATH:/usr/local/share/easycrypt/EasyUC/uc-dsl/ucdsl-proj/_build/default/src/
-;;
-;;Also add this path to the exec-path in .emacs file, e.g.:
+;;Add this path to the exec-path in .emacs file, e.g.:
 ;;(setq exec-path
 ;;        (append
-;;         '("/usr/local/share/easycrypt/EasyUC/uc-dsl/ucdsl-proj/_build/default/src/")
+;;         '("/usr/local/share/easycrypt/EasyUC/uc-dsl/bin/")
 ;;         exec-path))
 ;;
 ;;4.
@@ -166,7 +162,7 @@ error and then highlight in the script buffer."
 
 (
  proof-easy-config 'ucInterpreter "UCInterpreter"
- proof-prog-name		"ucdsl.exe -interpreter"
+ proof-prog-name		"ucdsl -interpreter"
  
  proof-terminal-string		".\n"
  
