@@ -158,7 +158,7 @@ error and then highlight in the script buffer."
 
 (defun find-and-forget (span)
   (let ((span-staten (get-span-statenum span)))
-       (list (format "back %s." (int-to-string span-staten)))))
+       (list (format "undo %s." (int-to-string span-staten)))))
 
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
 
@@ -177,9 +177,9 @@ error and then highlight in the script buffer."
  proof-save-command-regexp	"finish"
 
 
- proof-non-undoables-regexp     "back"
-;; proof-undo-n-times-cmd         "back %s.\n"
-;; proof-forget-id-command        "back %s.\n"
+ proof-non-undoables-regexp     "undo"
+;; proof-undo-n-times-cmd         "undo %s.\n"
+;; proof-forget-id-command        "undo %s.\n"
  proof-find-and-forget-fn       'find-and-forget
  
  proof-goal-command		"load %s.\n"

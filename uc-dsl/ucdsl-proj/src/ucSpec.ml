@@ -371,7 +371,7 @@ type interpreter_command_u =
   | Addv of type_binding
   | Addf of psymbol * pexpr
   | Prover of EcParsetree.pprover_infos
-  | Back of int located
+  | Undo of int located
   | Finish
   | Quit
   | Assert of peffect

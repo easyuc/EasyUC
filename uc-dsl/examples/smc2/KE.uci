@@ -1,4 +1,4 @@
-load KeyExchange.uc.
+load KeyExchange.
 functionality KEReal.
 real.
          send 

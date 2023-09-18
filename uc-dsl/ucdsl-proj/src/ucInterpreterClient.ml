@@ -147,21 +147,13 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let load (psym : psymbol) : unit =
-    let file = unloc psym in
-    let root =
-    try   
-      UcUtils.capitalized_root_of_filename_with_extension file 
-    with _ ->
-      error_message (loc psym)
-      (fun ppf -> Format.fprintf ppf 
-      "@[invalid@ filename@ %s,@ filename @ should@ have@ .uc@ suffix.@]" file)
-    in
+    let root = String.capitalize_ascii (unloc psym) in
     EcCommands.ucdsl_new();
     let maps =
     try
       Some
       ( UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
-        (UcParseFile.FOID_File file)) 
+        (UcParseFile.FOID_Id psym)) 
     with _ -> 
         EcCommands.ucdsl_end();
         None
@@ -472,14 +464,14 @@ let interpret (lexbuf : L.lexbuf) =
       | Addv tb -> addv tb 
       | Addf (psy,pex) -> addf psy pex
       | Prover ppinfo -> prover ppinfo
-      | Back pi -> undo pi
+      | Undo pi -> undo pi
       | Finish -> donec()
       | Quit -> exit 0
       | Assert peff -> confirm peff
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@@,back@,finish.@]")
+"@[one@ of@ following@ commands@ expected:@ send@,run@,step@,addv@,addf@,prover@@,undo@,finish.@]")
       end
     with _ when UcState.get_pg_mode() ->
       prompt();
@@ -492,7 +484,7 @@ let rec load_loop () : unit =
       begin  match (unloc cmd) with
       | Load psym ->
         load psym
-      | Back pi -> undo pi
+      | Undo pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -509,7 +501,7 @@ let rec load_loop () : unit =
       begin  match (unloc cmd) with
       | Funex fe ->
         funexp fe
-      | Back pi -> undo pi
+      | Undo pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -530,7 +522,7 @@ let rec load_loop () : unit =
 
       | World w ->
         world w
-      | Back pi -> undo pi
+      | Undo pi -> undo pi
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)
@@ -566,7 +558,7 @@ let rec load_loop () : unit =
       | Addv tb -> addv tb (*TODO add to parser*)
       | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
       | Prover ppinfo -> prover ppinfo
-      | Back pi -> undo pi  
+      | Undo pi -> undo pi  
       | Quit -> exit 0
       | _ ->
         error_message (loc cmd)

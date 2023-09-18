@@ -58,6 +58,7 @@
     "with"            , WITH        ;
     "assert"          , ASSERT      ;
     "assumption"      , ASSUMPTION  ;
+    "undo"            , UNDO        ;
   ]
 
   let keywords =

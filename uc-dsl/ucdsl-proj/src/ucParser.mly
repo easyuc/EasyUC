@@ -374,6 +374,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token WITH
 %token ASSERT
 %token ASSUMPTION
+%token UNDO
 
 (* fixed length *)
 
@@ -1160,6 +1161,7 @@ icomm :
   | c = assert_cmd; { c }
   | c = step_prover_info; { c }
 
+(*
 %inline filename :
   | nm = rlist1(_ident, DOT)
       { nm }
@@ -1170,12 +1172,12 @@ _file :
 
 file :
   | x = loc(_file) { x }
-
+*)
 load_uc_file :
-  | load = lident; file = file; 
+  | load = lident; file = ident; 
     {
       if (unloc load) = "load" 
-      then Load  (mk_loc (loc file) (string_of_qsymbol (unloc file)))
+      then Load file
       else error_message (loc load)
             (fun ppf ->
                fprintf ppf
@@ -1183,15 +1185,7 @@ load_uc_file :
     }
 
 undo_cmd :
-  | back = lident; no = loc(word); 
-    {
-      if (unloc back) = "back" 
-      then Back no
-      else error_message (loc back)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ undo@ instead@ of@ %s?" (unloc back))
-    }
+  | UNDO; no = loc(word); { Undo no }
 
 addv_cmd :
   | VAR; v = type_binding; 
