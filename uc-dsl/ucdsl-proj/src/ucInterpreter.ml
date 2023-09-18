@@ -200,28 +200,30 @@ let fun_expr_to_worlds
   fun_expr_tyd_to_worlds maps fet
 
 (* like UcTypedSpec.instruction_tyd and UcTypedSpec.instruction_tyd_u,
-   but includes Pop instruction for popping a frame of local context *)
+   but includes Pop instruction for popping a frame of local context
+
+   we didn't need the location information for lists of instructions
+   or clauses *)
 
 type instr_interp_u =
   | Assign of lhs * expr
   | Sample of lhs * expr
-  | ITE of expr * instr_interp list located *
-           instr_interp list located option
-  | Match of expr * match_clause_interp list located
+  | ITE of expr * instr_interp list * instr_interp list option
+  | Match of expr * match_clause_interp list
   | SendAndTransition of send_and_transition_tyd
   | Fail
   | Pop  (* pop frame of local context *)
 
 and instr_interp = instr_interp_u located
 
-and match_clause_interp = symbol * (bindings * instr_interp list located)
+and match_clause_interp = symbol * (bindings * instr_interp list)
 
 let rec create_instr_interp (it : instruction_tyd) : instr_interp =
   mk_loc (loc it) (create_instr_interp_u (unloc it))
 
-and create_instr_interp_list_loc (its : instruction_tyd list located)
-      : instr_interp list located =
-  mk_loc (loc its) (List.map create_instr_interp (unloc its))
+and create_instr_interp_list (its : instruction_tyd list located)
+      : instr_interp list =
+  List.map create_instr_interp (unloc its)
 
 and create_instr_interp_u (itu : instruction_tyd_u) : instr_interp_u =
   match itu with
@@ -230,19 +232,16 @@ and create_instr_interp_u (itu : instruction_tyd_u) : instr_interp_u =
   | UcTypedSpec.ITE (exp, tins, eins) ->
       ITE
       (exp,
-       create_instr_interp_list_loc tins,
-       omap create_instr_interp_list_loc eins)
+       create_instr_interp_list tins,
+       omap create_instr_interp_list eins)
   | UcTypedSpec.Match (exp, clauses)  ->
-      Match
-      (exp,
-       mk_loc (loc clauses)
-       (List.map create_match_clause_interp (unloc clauses)))
+      Match (exp, List.map create_match_clause_interp (unloc clauses))
   | UcTypedSpec.SendAndTransition sat -> SendAndTransition sat
   | UcTypedSpec.Fail                  -> Fail
 
 and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
       : match_clause_interp =
-  (sym, (bndgs, create_instr_interp_list_loc ins))
+  (sym, (bndgs, create_instr_interp_list ins))
 
 (* making formulas *)
 
@@ -408,12 +407,14 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
 let gc_make_unique_id (gc : global_context) (id : symbol) : symbol =
   let rec find (n : int) : symbol =
     let next = id ^ BatInt.to_string n in
-    if try ignore (EcEnv.LDecl.by_name next gc); true with
-       | EcEnv.LDecl.LdeclError _ -> false
+    if try ignore (EcEnv.LDecl.by_name next gc); false with
+     | EcEnv.LDecl.LdeclError _ -> true
     then next
     else find (n + 1) in
-  try ignore (EcEnv.LDecl.by_name id gc); id with
-  | EcEnv.LDecl.LdeclError _ -> find 0
+  if try ignore (EcEnv.LDecl.by_name id gc); false with
+     | EcEnv.LDecl.LdeclError _ -> true
+  then id
+  else find 1
 
 (* for handling random assignments
 
@@ -429,7 +430,7 @@ let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
   let hyp = EcIdent.create (gc_make_unique_id gc hyp_base) in
   let support_app = support_form ty dist (f_local id ty) in
   let gc = LDecl.add_local id (EcBaseLogic.LD_var (ty, None)) gc in
-  let gc =  LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
+  let gc = LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
   (gc, id)
 
 (* a local context is a nonempty stack of maps (frames) from
@@ -502,9 +503,21 @@ let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
         fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
   fprintf ppf "@[<v>%a@]" pp_frames lc
 
-let lc_update_var (lc : local_context) (id : EcIdent.t) (f : form)
+let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
+      : EcIdent.t option =
+  EcIdent.Mid.fold_left
+  (fun acc id _ ->
+     match acc with
+     | None -> if EcIdent.name id = sym then Some id else None
+     | res  -> res)
+  None
+  map
+
+let lc_update_var (lc : local_context) (id : symbol) (f : form)
       : local_context =
-  EcIdent.Mid.change (fun _ -> Some f) id (List.hd lc) :: List.tl lc
+  let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
+  let id = Option.get (lc_find_key_from_sym lc_base id) in
+  EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
 
 let lc_apply (lc : local_context) (e : expr) : form =
   let f = form_of_expr mhr e in
@@ -522,22 +535,9 @@ let lc_apply (lc : local_context) (e : expr) : form =
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
 
-let pop (lc : local_context) : local_context =
+let lc_pop (lc : local_context) : local_context =
   (if List.is_empty lc then failure "should not happen");
   List.take (List.length lc - 1) lc
-
-(* handle a random assignment *)
-
-let gc_lc_random_assign (gc : global_context) (lc : local_context)
-    (id_base : symbol) (hyp_base : symbol)
-    (ty : ty)             (* type of variable *)
-    (var_id : EcIdent.t)  (* variable - lhs of assignment, type ty *)
-    (dist : form)         (* rhs of assignment, type tdistr ty *)
-      : global_context * local_context *
-        symbol =  (* name of id standing for sampled value *)
-  let (gc, id) = gc_add_rand gc id_base hyp_base ty dist in
-  let lc = lc_update_var lc var_id (f_local id ty) in
-  (gc, lc, EcIdent.name id)
 
 (* prover infos *)
 
@@ -583,6 +583,22 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
        (fun ppf ->
           fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
       raise ECProofEngine
+
+let simplify_formula (gc : global_context) (f : form) : form =
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[@[trying@ to@ simplify@ formula:@]@\n@\n@[%a@]@]@."
+       (pp_form (env_of_gc gc)) f) in
+  let f = UcEcFormEval.simplify_formula gc f in
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[@[result@ is:@]@\n@\n@[%a@]@]@."
+       (pp_form (env_of_gc gc)) f) in
+  f
 
 (* configurations *)
 
@@ -655,11 +671,11 @@ let pp_control (ppf : formatter) (ctrl : control) : unit =
    world *)
 
 type real_world_running_context =
-  | RWRC_IdealFunc of int list  *
+  | RWRC_IdealFunc of int list  *  (* relative address *)
                       int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol       (* state name *)
-  | RWRC_RealFunc  of int list  *
+  | RWRC_RealFunc  of int list  *  (* relative address *)
                       int       *  (* base adversarial port index *)
                       symb_pair *  (* functionality *)
                       symbol    *  (* party name *)
@@ -815,7 +831,7 @@ type config_real_running = {
   rws  : real_world_state;
   rwrc : real_world_running_context;
   lc   : local_context;
-  ins  : instr_interp list located
+  ins  : instr_interp list
 }
 
 type config_ideal_running = {
@@ -827,7 +843,7 @@ type config_ideal_running = {
   iws  : ideal_world_state;
   iwrc : ideal_world_running_context;
   lc   : local_context;
-  ins  : instr_interp list located
+  ins  : instr_interp list
 }
 
 type config_real_sending = {
@@ -946,8 +962,14 @@ let control_of_real_or_ideal_config (conf : config) : control =
 
 let loc_of_running_config_next_instr (conf : config) : EcLocation.t option =
   match conf with
-  | ConfigRealRunning c  -> Some (loc c.ins)
-  | ConfigIdealRunning c -> Some (loc c.ins)
+  | ConfigRealRunning c  ->
+      (match c.ins with
+       | []       -> failure "cannot happen"
+       | ins :: _ -> Some (loc ins))
+  | ConfigIdealRunning c ->
+      (match c.ins with
+       | []       -> failure "cannot happen"
+       | ins :: _ -> Some (loc ins))
   | _                    -> None
 
 let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
@@ -1501,9 +1523,107 @@ let send_message_to_real_or_ideal_config
        sme  = sme}
   | _             -> raise ConfigError
 
+exception StepBlockedIf
+(*
+exception StepBlockedMatch
+exception StepBlockedPortOrAddrCompare
+*)
+
+let step_assign (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
+  let simpl f = simplify_formula gc f in
+  let form = lc_apply lc expr in
+  let form = simpl form in
+  match lhs with
+  | LHSSimp id   -> lc_update_var lc (unloc id) form
+  | LHSTuple ids ->
+      let tys =
+        match form.f_ty.ty_node with
+        | Ttuple tys -> tys
+        | _          -> failure "should not happen" in
+      List.fold_lefti
+      (fun acc i id ->
+         let pr_simp = simpl (f_proj form i (List.nth tys i)) in
+         lc_update_var acc (unloc id) pr_simp)
+      lc
+      ids
+
+let step_sample (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (lhs : lhs) (expr : expr)
+      : global_context * local_context * symbol =
+  let simpl f = simplify_formula gc f in
+  let form = lc_apply lc expr in
+  let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
+  let form = simpl form in
+  match lhs with
+  | LHSSimp id   ->
+      let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
+      let lc = lc_update_var lc (unloc id) (f_local rand ty) in
+      (gc, lc, EcIdent.name rand)
+  | LHSTuple ids ->
+      let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
+      let tys =
+        match ty.ty_node with
+        | Ttuple tys -> tys
+        | _          -> failure "should not happen" in
+      let lc =
+        List.fold_lefti
+        (fun acc i id ->
+           let pr_rand = f_proj (f_local rand ty) i (List.nth tys i) in
+           lc_update_var acc (unloc id) pr_rand)
+        lc
+        ids in
+      (gc, lc, EcIdent.name rand)
+
+let step_if_then_else (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (expr : expr) (inss_then : instr_interp list)
+    (inss_else_opt : instr_interp list option) : instr_interp list =
+  let expr_gc_form = lc_apply lc expr in
+  if try eval_bool_form_to_bool gc pi expr_gc_form with
+     | ECProofEngine -> raise StepBlockedIf
+  then inss_then
+  else (odfl [] inss_else_opt)
+
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
       : config * effect =
-  fill_in "step_real_running_config" (ConfigRealRunning c)
+  try
+    begin
+      let inss = c.ins in
+      assert (not (List.is_empty inss));
+      let (ins, inss) = (List.hd inss, List.tl inss) in
+      let (ins, l) = (unloc ins, loc ins) in
+      match ins with
+      | Assign (lhs, expr)         ->
+          let lc = step_assign c.gc c.lc c.pi lhs expr in
+          (ConfigRealRunning {c with lc = lc; ins = inss},
+           EffectOK)
+      | Sample (lhs, expr)         ->
+          let (gc, lc, id) = step_sample c.gc c.lc c.pi lhs expr in
+          (ConfigRealRunning {c with gc = gc; lc = lc; ins = inss},
+           EffectRand id)
+      | ITE (expr, inss_then, inss_else_opt) ->
+          let inss =
+            step_if_then_else c.gc c.lc c.pi expr inss_then inss_else_opt in
+          (ConfigRealRunning {c with ins = inss}, EffectOK)
+      | Match (expr, clauses)      ->
+          fill_in "match" (ConfigRealRunning c)
+      | SendAndTransition s_and_t  ->
+          fill_in "send and transition" (ConfigRealRunning c)
+      | Fail                       ->
+          fail_out_of_running_or_sending_config (ConfigRealRunning c)
+      | Pop                        ->
+          let lc = lc_pop c.lc in
+          (ConfigRealRunning {c with lc = lc}, EffectOK)
+    end
+  with
+  | StepBlockedIf ->
+      (ConfigRealRunning c, EffectBlockedIf)
+(*
+  | StepBlockedMatch ->
+      (ConfigRealRunning c, EffectBlockedMatch)
+  | StepBlockedPortOrAddrCompare ->
+      (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
+*)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
@@ -1698,7 +1818,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 rws  = c.rws;
                 rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
                 lc   = lc;
-                ins  = create_instr_interp_list_loc ins},
+                ins  = create_instr_interp_list ins},
                EffectOK))
         else (debugging_message
               (fun ppf ->
@@ -1820,7 +1940,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                      rwrc =
                        RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
                      lc   = lc;
-                     ins  = create_instr_interp_list_loc ins},
+                     ins  = create_instr_interp_list ins},
                     EffectOK))
          else (debugging_message
                (fun ppf ->
@@ -1892,7 +2012,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                     rws  = c.rws;
                     rwrc = RWRC_IdealFunc ([], adv_pi, func_sp, state_id);
                     lc   = lc;
-                    ins  = create_instr_interp_list_loc ins},
+                    ins  = create_instr_interp_list ins},
                    EffectOK)
         else (debugging_message
               (fun ppf ->
@@ -1993,7 +2113,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 rws  = c.rws;
                 rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
                 lc   = lc;
-                ins  = create_instr_interp_list_loc ins},
+                ins  = create_instr_interp_list ins},
                EffectOK))
          | _                    -> failure "should not happen")
     | SMET_EnvAdv _    ->
@@ -2093,7 +2213,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
            rws  = c.rws;
            rwrc = RWRC_RealFunc (rel, base, func_sp, party_id, state_id);
            lc   = lc;
-           ins  = create_instr_interp_list_loc ins},
+           ins  = create_instr_interp_list ins},
           EffectOK))
     | SMET_EnvAdv _    ->
         (debugging_message

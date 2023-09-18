@@ -175,3 +175,5 @@ op testtext : text.
 end T.
 
 op testaddr : addr = [1].
+
+op dinttrip : (int * int * int) distr.

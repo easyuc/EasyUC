@@ -1097,16 +1097,16 @@ let check_val_assign
     (lhs : lhs) (ex : pexpr)
     : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
-  let exp,_ = check_expr sa env ue ex (Some ty) in
-  Assign (lhs,exp), sa'
+  let (exp, _) = check_expr sa env ue ex (Some ty) in
+  Assign (lhs, exp), sa'
 
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
     (lhs : lhs) (ex : pexpr)
     : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
-  let exp,_ = check_expr sa env ue ex (Some (tdistr ty)) in
-  Sample (lhs,exp), sa'
+  let (exp, _) = check_expr sa env ue ex (Some (tdistr ty)) in
+  Sample (lhs, exp), sa'
 
 let check_state_expr
     (ss : state_sig IdMap.t) (sc : state_context) (sa : state_analysis)
