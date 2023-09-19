@@ -16,6 +16,14 @@ step.
 step.
 step.
 step.
+assert MsgOut
+((func ++ [3], 1))@
+Forwarding.FwAdv.fw_obs
+((func ++ [], 1), (func ++ [], 2),
+ (epdp_pair_univ epdp_port_univ epdp_port_univ).`enc
+ ((env_root_addr, 1), ([], 1)))
+@((adv, 2))
+CtrlAdv.
 send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
 step.
 step.
