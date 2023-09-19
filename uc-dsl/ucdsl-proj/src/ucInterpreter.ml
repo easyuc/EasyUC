@@ -1391,9 +1391,9 @@ type effect =
 let pp_effect (ppf : formatter) (e : effect) : unit =
   match e with
   | EffectOK                       -> fprintf ppf "EffectOK"
-  | EffectRand id                  -> fprintf ppf "EffectRand: %s" id
+  | EffectRand id                  -> fprintf ppf "@[EffectRand: %s@]" id
   | EffectMsgOut (pp_sme, ctrl)    ->
-      fprintf ppf "EffectMsgOut: %a: %s" pp_control ctrl pp_sme
+      fprintf ppf "@[EffectMsgOut:@ %a:@ %s@]" pp_control ctrl pp_sme
   | EffectFailOut                  -> fprintf ppf "EffectFailOut"
   | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
   | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
