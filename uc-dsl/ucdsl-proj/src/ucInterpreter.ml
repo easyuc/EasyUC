@@ -1526,8 +1526,11 @@ let send_message_to_real_or_ideal_config
 exception StepBlockedIf
 (*
 exception StepBlockedMatch
-exception StepBlockedPortOrAddrCompare
 *)
+exception StepBlockedPortOrAddrCompare
+
+(* start of functions that can be used for stepping in both real and
+   ideal worlds *)
 
 let step_assign (gc : global_context) (lc : local_context)
     (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
@@ -1584,6 +1587,250 @@ let step_if_then_else (gc : global_context) (lc : local_context)
   then inss_then
   else (odfl [] inss_else_opt)
 
+(* end of functions that can be used for stepping in both real and
+   ideal worlds *)
+
+let step_send_and_transition_from_ideal_fun (c : config_real_running)
+    (rel : int list) (base : int) (fun_sp : symb_pair)
+    (iip : string list) (msg : string) (msg_args : form list)
+    (port_form : form option) (new_rws : real_world_state)
+      : config * effect =
+  let (root, _) = fun_sp in
+  match port_form with
+  | None           ->  (* adversarial message to adversary *)
+      let path = {inter_id_path = root :: iip; msg = msg} in
+      let sme =
+        SMET_Ord
+        {mode          = Adv;
+         dir           = Out;
+         in_port_form  =
+           make_port_form
+           (addr_concat_form func_form (addr_make_form rel))
+           (int_form 1);
+         path          = path;
+         args          = msg_args;
+         out_port_form =
+           make_port_form adv_form (int_form base)} in
+      (ConfigRealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        rw   = c.rw;
+        ig   = c.ig;
+        rws  = new_rws;
+        rwsc = RWSC_FromFunc (rel, fun_sp);
+        sme  = sme},
+       EffectOK)
+  | Some port_form ->  (* direct message to environment (or parent) *)
+      let (comp, sub) =
+        match iip with
+        | [comp; sub] -> (comp, sub)
+        | _           -> failure "should not happen" in
+      let source_pi = get_pi_of_sub_interface c.maps root comp sub in
+      let path = {inter_id_path = root :: iip; msg = msg} in
+      if try eval_bool_form_to_bool c.gc c.pi
+             (envport_form (addr_concat_form func_form (addr_make_form rel))
+             adv_form port_form) with
+         | ECProofEngine -> raise StepBlockedPortOrAddrCompare
+      then let sme =
+             SMET_Ord
+             {mode          = Dir;
+              dir           = Out;
+              in_port_form  =
+                make_port_form
+                (addr_concat_form func_form (addr_make_form rel))
+                (int_form source_pi);
+              path          = path;
+              args          = msg_args;
+              out_port_form = port_form} in
+           (ConfigRealSending
+            {maps = c.maps;
+             gc   = c.gc;
+             pi   = c.pi;
+             rw   = c.rw;
+             ig   = c.ig;
+             rws  = new_rws;
+             rwsc = RWSC_FromFunc (rel, fun_sp);
+             sme  = sme},
+            EffectOK)
+      else (debugging_message
+            (fun ppf ->
+               fprintf ppf
+               "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
+               pp_rel_addr_ideal_func_info (rel, fun_sp));
+            fail_out_of_running_or_sending_config (ConfigRealRunning c))
+
+let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
+    (c : config_real_running) (rel : int list) (base : int)
+    (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
+    (iip : symbol list) (msg : symbol) (msg_args : form list)
+    (port_form : form option) (new_rws : real_world_state)
+    (comp : symbol) (sub : symbol) (child_i : int)
+    (dir_sp : symb_pair) : config * effect =
+  assert (Option.is_none port_form);
+  let (dir_root, dir_comp) = dir_sp in
+  let pty_internal_pi = get_internal_pi_of_party_of_real_fun ft pty_id in
+  let source_port =
+    make_port_form
+    (addr_concat_form func_form (addr_make_form rel))
+    (int_form pty_internal_pi) in
+  let dest_pi = get_pi_of_sub_interface c.maps dir_root dir_comp sub in
+  let dest_port =
+    make_port_form
+    (addr_concat_form func_form (addr_make_form (rel @ [child_i])))
+    (int_form dest_pi) in
+  let iip_new = dir_root :: dir_comp :: List.tl iip in
+  let path_new = {inter_id_path = iip_new; msg = msg} in
+  let sme =
+    SMET_Ord
+    {mode          = Dir;
+     dir           = In;
+     in_port_form  = source_port;
+     path          = path_new;
+     args          = msg_args;
+     out_port_form = dest_port} in
+  (ConfigRealSending
+   {maps = c.maps;
+    gc   = c.gc;
+    pi   = c.pi;
+    rw   = c.rw;
+    ig   = c.ig;
+    rws  = new_rws;
+    rwsc = RWSC_FromFunc (rel, fun_sp);
+    sme  = sme},
+   EffectOK)
+
+let step_send_and_transition_from_real_fun_party_to_env_or_adv
+    (c : config_real_running) (rel : int list) (base : int)
+    (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
+    (iip : symbol list) (msg : symbol) (msg_args : form list)
+    (port_form : form option) (new_rws : real_world_state)
+    (comp : symbol) (sub : symbol) : config * effect =
+  let (root, _) = fun_sp in
+  match port_form with
+  | None           ->  (* adversarial message to adversary *)
+      let (_, _, pty_pi, adv_pi) =
+        Option.get
+        (get_adv_info_of_party_of_real_fun c.maps root base
+         ft pty_id) in
+      let path = {inter_id_path = root :: iip; msg = msg} in
+      let sme =
+        SMET_Ord
+        {mode          = Adv;
+         dir           = Out;
+         in_port_form  =
+           make_port_form
+           (addr_concat_form func_form (addr_make_form rel))
+           (int_form pty_pi);
+         path          = path;
+         args          = msg_args;
+         out_port_form =
+           make_port_form adv_form (int_form adv_pi)} in
+      (ConfigRealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        rw   = c.rw;
+        ig   = c.ig;
+        rws  = new_rws;
+        rwsc = RWSC_FromFunc (rel, fun_sp);
+        sme  = sme},
+       EffectOK)
+  | Some port_form ->  (* direct message to environment (or parent) *)
+      let source_pi = get_pi_of_sub_interface c.maps root comp sub in
+      let path = {inter_id_path = root :: iip; msg = msg} in
+      if try eval_bool_form_to_bool c.gc c.pi
+             (envport_form (addr_concat_form func_form (addr_make_form rel))
+             adv_form port_form) with
+         | ECProofEngine -> raise StepBlockedPortOrAddrCompare
+      then let sme =
+             SMET_Ord
+             {mode          = Dir;
+              dir           = Out;
+              in_port_form  =
+                make_port_form
+                (addr_concat_form func_form (addr_make_form rel))
+                (int_form source_pi);
+              path          = path;
+              args          = msg_args;
+              out_port_form = port_form} in
+           (ConfigRealSending
+            {maps = c.maps;
+             gc   = c.gc;
+             pi   = c.pi;
+             rw   = c.rw;
+             ig   = c.ig;
+             rws  = c.rws;
+             rwsc = RWSC_FromFunc (rel, fun_sp);
+             sme  = sme},
+            EffectOK)
+      else (debugging_message
+            (fun ppf ->
+               fprintf ppf
+               "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
+               pp_rel_addr_real_func_info (rel, fun_sp, pty_id));
+            fail_out_of_running_or_sending_config (ConfigRealRunning c))
+
+let step_send_and_transition_from_real_fun_party (c : config_real_running)
+    (rel : int list) (base : int) (fun_sp : symb_pair) (pty_id : symbol)
+    (iip : symbol list) (msg : symbol) (msg_args : form list)
+    (port_form : form option) (new_rws : real_world_state)
+      : config * effect =
+  let (root, _) = fun_sp in
+  let (comp, sub) =
+    match iip with
+    | [comp; sub] -> (comp, sub)
+    | _           -> failure "should not happen" in
+  let ft = IdPairMap.find fun_sp c.maps.fun_map in
+  match get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+        c.maps root ft comp with
+  | None                   ->
+      step_send_and_transition_from_real_fun_party_to_env_or_adv
+      c rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
+      comp sub
+  | Some (child_i, dir_sp) ->
+       step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
+       c rel base fun_sp ft pty_id iip msg msg_args port_form
+       new_rws comp sub child_i dir_sp
+
+let step_send_and_transition (c : config_real_running)
+    (s_and_t : send_and_transition_tyd) : config * effect =
+  let simpl f = simplify_formula c.gc f in
+  let {msg_expr; state_expr} = s_and_t in
+  let {path; args = msg_args; port_expr} = msg_expr in
+  let {inter_id_path = iip; msg} = unloc path in
+  let msg_args =
+    List.map (fun arg -> simpl (lc_apply c.lc arg)) (unloc msg_args) in
+  let port_form =
+    match port_expr with
+    | None      -> None
+    | Some expr -> Some (simpl (lc_apply c.lc expr)) in
+  let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
+    state_expr in
+  let state_id = unloc state_id and state_args = unloc state_args in
+  let state_args =
+    List.map (fun arg -> simpl (lc_apply c.lc arg)) state_args in
+  let new_state = {id = state_id; args = state_args} in
+  let new_rws =
+    match c.rwrc with
+    | RWRC_IdealFunc (rel, _, _, _)          ->
+        ILMap.update rel (fun _ -> Some (IdealState new_state)) c.rws
+    | RWRC_RealFunc (rel, _, _, party_id, _) ->
+        let old_real_fun_state =
+          real_state_of_fun_state (ILMap.find rel c.rws) in
+        let new_real_fun_state =
+          IdMap.update party_id (fun _ -> Some new_state)
+          old_real_fun_state in
+        ILMap.update rel
+        (fun _ -> Some (RealState new_real_fun_state)) c.rws in
+  match c.rwrc with
+  | RWRC_IdealFunc (rel, base, fun_sp, _)          ->
+      step_send_and_transition_from_ideal_fun c rel base fun_sp
+      iip msg msg_args port_form new_rws
+  | RWRC_RealFunc (rel, base, fun_sp, party_id, _) ->
+      step_send_and_transition_from_real_fun_party c rel base fun_sp
+      party_id iip msg msg_args port_form new_rws
+
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
       : config * effect =
   try
@@ -1593,25 +1840,26 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       let (ins, inss) = (List.hd inss, List.tl inss) in
       let (ins, l) = (unloc ins, loc ins) in
       match ins with
-      | Assign (lhs, expr)         ->
+      | Assign (lhs, expr)                   ->
           let lc = step_assign c.gc c.lc c.pi lhs expr in
           (ConfigRealRunning {c with lc = lc; ins = inss},
            EffectOK)
-      | Sample (lhs, expr)         ->
+      | Sample (lhs, expr)                   ->
           let (gc, lc, id) = step_sample c.gc c.lc c.pi lhs expr in
           (ConfigRealRunning {c with gc = gc; lc = lc; ins = inss},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
             step_if_then_else c.gc c.lc c.pi expr inss_then inss_else_opt in
-          (ConfigRealRunning {c with ins = inss}, EffectOK)
-      | Match (expr, clauses)      ->
+            (ConfigRealRunning {c with ins = inss}, EffectOK)
+      | Match (expr, clauses)                ->
           fill_in "match" (ConfigRealRunning c)
-      | SendAndTransition s_and_t  ->
-          fill_in "send and transition" (ConfigRealRunning c)
-      | Fail                       ->
+      | SendAndTransition s_and_t            ->
+          assert (List.is_empty inss);
+          step_send_and_transition c s_and_t
+      | Fail                                 ->
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
-      | Pop                        ->
+      | Pop                                  ->
           let lc = lc_pop c.lc in
           (ConfigRealRunning {c with lc = lc}, EffectOK)
     end
@@ -1621,9 +1869,9 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
 (*
   | StepBlockedMatch ->
       (ConfigRealRunning c, EffectBlockedMatch)
+*)
   | StepBlockedPortOrAddrCompare ->
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
-*)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
@@ -2010,7 +2258,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                     rw   = c.rw;
                     ig   = c.ig;
                     rws  = c.rws;
-                    rwrc = RWRC_IdealFunc ([], adv_pi, func_sp, state_id);
+                    rwrc = RWRC_IdealFunc (rel, adv_pi, func_sp, state_id);
                     lc   = lc;
                     ins  = create_instr_interp_list ins},
                    EffectOK)
@@ -2078,7 +2326,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         fail_out_of_running_or_sending_config (ConfigRealSending c))
     | Some (pid, comp, sub) ->
         let pbt = unloc (party_of_real_fun_tyd ft pid) in
-        let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
+        let rs = real_state_of_fun_state (ILMap.find rel c.rws) in
         let {id = state_id; args = state_args} = IdMap.find pid rs in
         let sbt = unloc (IdMap.find state_id pbt.states) in
         direct_real_func_party_match rel base func_sp pid comp sub
@@ -2141,7 +2389,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
            then Some i
            else find_arg (i + 1) in
     let rec find_sub_fun (i : int) : int option =
-      if i > num_sub_funs
+      if i > num_args + num_sub_funs
       then None
       else let rel_i = rel @ [i] in
            let addr_i =
@@ -2161,21 +2409,22 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                   "argument@]"));
              fail_out_of_running_or_sending_config (ConfigRealSending c))
          | Some i ->
-             let sp = sub_fun_sp_nth_of_real_fun_tyd ft_par (i - 1) in
+             let sf_ind = i - num_args - 1 in  (* from 0 *)
+             let sp = sub_fun_sp_nth_of_real_fun_tyd ft_par sf_ind in
              let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
              let ifbt = ideal_fun_body_tyd_of fbt in
              from_parent_to_ideal_func (rel @ [i])
              (get_adv_pi_of_nth_sub_fun_of_real_fun c.maps
-              (fst sp_par) num_args base ft_par (i - 1))
+              (fst sp_par) num_args base ft_par sf_ind)
              sp ifbt)
      | Some i ->
          (match List.nth rwas (i - 1) with
           | RWA_Real (sp, adv_pi, _) ->
               from_parent_to_real_func (rel @ [i]) adv_pi sp
           | RWA_Ideal (sp, adv_pi)   ->
-             let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
-             let ifbt = ideal_fun_body_tyd_of fbt in
-             from_parent_to_ideal_func (rel @ [i]) adv_pi sp ifbt) in
+              let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
+              let ifbt = ideal_fun_body_tyd_of fbt in
+              from_parent_to_ideal_func (rel @ [i]) adv_pi sp ifbt) in
 
   let internal_real_func_find_party (rfi : real_fun_info) : symbol option =
     let rec find (bndgs : (symbol * party_info) list) : symbol option =
@@ -2238,8 +2487,9 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
              "internal@ port@ id@]"));
         fail_out_of_running_or_sending_config (ConfigRealSending c))
     | Some pid ->
+        let rel = List.take (List.length rel - 1) rel in
         let pbt = unloc (party_of_real_fun_tyd ft pid) in
-        let rs = real_state_of_fun_state (ILMap.find [] c.rws) in
+        let rs = real_state_of_fun_state (ILMap.find rel c.rws) in
         let {id = state_id; args = state_args} = IdMap.find pid rs in
         let sbt = unloc (IdMap.find state_id pbt.states) in
         internal_real_func_party_match rel base func_sp pid

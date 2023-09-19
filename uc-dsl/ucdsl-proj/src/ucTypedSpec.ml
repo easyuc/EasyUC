@@ -442,6 +442,15 @@ let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
 
+let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  let bndgs = IdMap.bindings rfbt.sub_funs in
+  fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
+
+let sub_fun_sp_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : symb_pair =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.find subf rfbt.sub_funs
+
 let sub_fun_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.sub_funs in
@@ -452,8 +461,7 @@ let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symb_pair =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   snd (List.nth bndgs n)
 
-let num_params_of_real_fun_tyd
-    (ft : fun_tyd) (param : symbol) : int =
+let num_params_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.params
 
@@ -547,9 +555,9 @@ type msg_mode =  (* message mode *)
 
 let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
       : (msg_mode * inter_tyd) option =
-  match IdPairMap.find_opt (root, top) (maps.dir_inter_map) with
+  match IdPairMap.find_opt (root, top) maps.dir_inter_map with
   | None    ->
-      (match IdPairMap.find_opt (root, top) (maps.adv_inter_map) with
+      (match IdPairMap.find_opt (root, top) maps.adv_inter_map with
        | None    -> None
        | Some it -> Some (Adv, it))
   | Some it -> Some (Dir, it)
@@ -781,7 +789,7 @@ let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
 
 let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
-  try 
+  try
     let adv_comp = oget (id_adv_inter_of_fun_tyd ft) in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
@@ -873,6 +881,37 @@ let get_adv_pi_of_nth_sub_fun_of_real_fun
   let num_adv_pis_of_parties =
     num_adv_pis_of_parties_of_real_fun maps root ft in
   base + 1 + num_adv_pis_of_parties + n
+
+(* get the port index of a sub interface of a composite interface *)
+
+let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
+    (comp : symbol) (sub : symbol) : int =
+  match unloc (Option.get (get_inter_tyd maps root comp)) with
+  | BasicTyd _       -> failure "should not happen"
+  | CompositeTyd map -> id_map_ordinal1_of_sym map sub
+
+(* get the child index (used as the suffix of the address) plus the
+   symb_pair naming the direct composite interface of a parameter or
+   subfunctionality of a real functionality; returns None when top is
+   neither parameter or subfunctionality *)
+
+let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+    (maps : maps_tyd) (root : symbol) (ft : fun_tyd) (top : symbol)
+      : (int * symb_pair) option =
+  match (try Some (index_of_param_of_real_fun_tyd ft top) with
+             | _ -> None) with
+  | Some i ->
+      let id_dir = id_dir_inter_of_param_of_real_fun_tyd ft top in
+      Some (i + 1, id_dir)
+  | None   ->
+      match (try Some (sub_fun_ord_of_real_fun_tyd ft top) with
+             | _ -> None) with
+    | Some i ->
+        let sub_fun_sp = sub_fun_sp_of_real_fun_tyd ft top in
+        let sub_fun_ft = IdPairMap.find sub_fun_sp maps.fun_map in
+        let id_dir = (fst sub_fun_sp, id_dir_inter_of_fun_tyd sub_fun_ft) in
+        Some (i + num_params_of_real_fun_tyd ft + 1, id_dir)
+    | None   -> None
 
 (* Interpreter User Input *)
 
@@ -1003,7 +1042,7 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
         if List.is_empty forml
         then ()
         else Format.fprintf fmt "(@[%a@])" pp_forml forml in
-      Format.fprintf fmt "@[%a@@@,%a@,%a@,@@%a@]"
+      Format.fprintf fmt "@[<hv>%a@@@,%a@,%a@,@@%a@]"
       pp_portform inp
       pp_mpath path
       pp_args args
