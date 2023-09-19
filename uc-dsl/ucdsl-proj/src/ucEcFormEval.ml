@@ -585,7 +585,7 @@ let deconstruct_data
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form) 
 (pi : EcProvers.prover_infos)
-: EcCoreFol.form =
+: EcSymbols.symbol  * EcCoreFol.form =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in
   print_endline "begin match ty.ty_node with";
@@ -597,20 +597,25 @@ let deconstruct_data
     begin match ty_dtyo with
     | Some ty_dt ->
       let sopl = EcInductive.datatype_projectors (p, tyd.tyd_params, ty_dt) in
-      let opfl = List.map (
+      let sopfl = List.map (
         fun (s,op) ->
         let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
-        EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty)
-        sopl in
+        let opf = 
+          EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty
+        in
+        (s,opf)
+      )
+         
+      sopl in
       print_endline 
       "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in";
-      let opfo = List.find_opt 
-      (fun opf -> smt_op_form_not_None hyps opf form pi) 
-      opfl in
+      let sopfo = List.find_opt 
+      (fun (s,opf) -> smt_op_form_not_None hyps opf form pi)
+      sopfl in
       print_endline "begin match opfo with";
-      begin match opfo with
-      | Some opf -> mk_oget_op_form opf form
+      begin match sopfo with
+      | Some (s, opf) -> (s , (mk_oget_op_form opf form))
       | None -> failwith "Couldn't find the operator for deconstruction"
       end
     | None -> failwith "Only data types can be deconstructed"
