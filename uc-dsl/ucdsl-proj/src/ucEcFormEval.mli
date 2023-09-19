@@ -17,4 +17,4 @@ val simplify_formula : EcEnv.LDecl.hyps -> EcCoreFol.form -> EcCoreFol.form
 val deconstruct_data : EcEnv.LDecl.hyps -> 
                        EcCoreFol.form ->
                        EcProvers.prover_infos ->
-                       EcSymbols.symbol * EcCoreFol.form
+                       EcPath.path * EcCoreFol.form

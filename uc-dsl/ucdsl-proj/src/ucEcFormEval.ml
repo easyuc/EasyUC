@@ -544,7 +544,7 @@ let rewrite_operator (opf : EcCoreFol.form) (tc:EcCoreGoal.tcenv1) =
   let redform = EcReduction.simplify ri hyps concl in
   EcLowGoal.t_change ~ri ?target:None redform tc
    
-let smt_op_form_not_None 
+let eval_op_form_not_None 
 (hyps : EcEnv.LDecl.hyps) 
 (opf : EcCoreFol.form) 
 (form : EcCoreFol.form)
@@ -581,11 +581,14 @@ let mk_oget_op_form
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
-let deconstruct_data 
-(hyps : EcEnv.LDecl.hyps) 
-(form : EcCoreFol.form) 
-(pi : EcProvers.prover_infos)
-: EcSymbols.symbol  * EcCoreFol.form =
+let deconstruct_data_simplify hyps form =
+  let sf = simplify_formula hyps form in
+  let opptyl, argforms = EcCoreFol.destr_op_app form in
+  ()
+  
+  
+
+let deconstruct_data_eval_not_None hyps form pi =
   let ty = EcCoreFol.f_ty form in
   let env = EcEnv.LDecl.toenv hyps in
   print_endline "begin match ty.ty_node with";
@@ -611,17 +614,27 @@ let deconstruct_data
       "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in";
       let sopfo = List.find_opt 
-      (fun (s,opf) -> smt_op_form_not_None hyps opf form pi)
+      (fun (s,opf) -> eval_op_form_not_None hyps opf form pi)
       sopfl in
       print_endline "begin match opfo with";
       begin match sopfo with
-      | Some (s, opf) -> (s , (mk_oget_op_form opf form))
+      | Some (s, opf) ->
+        let path = EcPath.pqoname (EcPath.prefix p) s in
+        let argf = mk_oget_op_form opf form in  
+        (path , argf)
       | None -> failwith "Couldn't find the operator for deconstruction"
       end
     | None -> failwith "Only data types can be deconstructed"
     end
   | _ -> failwith "Only constructed types can be deconstructed"
   end
+
+let deconstruct_data 
+(hyps : EcEnv.LDecl.hyps) 
+(form : EcCoreFol.form) 
+(pi : EcProvers.prover_infos)
+: EcPath.path * EcCoreFol.form =
+  deconstruct_data_eval_not_None hyps form pi
 
 
 
