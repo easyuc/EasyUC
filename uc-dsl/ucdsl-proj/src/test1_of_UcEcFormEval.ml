@@ -83,6 +83,7 @@ let json3 = {|
 |}
 
 let () : unit =
+  UcState.set_debugging ();
   UcEcInterface.init ();
   UcEcInterface.require (UcUtils.dummyloc "AllCore") (Some `Import);
   UcEcInterface.require (UcUtils.dummyloc "test1_of_UcEcFormEval") (Some `Import);

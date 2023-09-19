@@ -1,3 +1,5 @@
+open UcMessage
+
 type eval_condition_result = 
   | Bool of bool
   | Undecided
@@ -583,60 +585,69 @@ let mk_oget_op_form
 
 let deconstruct_data_simplify hyps form =
   let sf = simplify_formula hyps form in
-  let opptyl, argforms = EcCoreFol.destr_op_app form in
-  ()
-  
+  let opptyl, argforms = EcCoreFol.destr_op_app sf in
+  let path = fst opptyl in
+  let argf = EcCoreFol.f_tuple argforms in
+  (path, argf)
   
 
-let deconstruct_data_eval_not_None hyps form pi =
-  let ty = EcCoreFol.f_ty form in
-  let env = EcEnv.LDecl.toenv hyps in
-  print_endline "begin match ty.ty_node with";
-  begin match ty.ty_node with
-  | Tconstr (p,ty_args) ->
-    let tyd = EcEnv.Ty.by_path p env in
-    let ty_dtyo = EcDecl.tydecl_as_datatype tyd in
-    print_endline "begin match ty_dtyo with";
-    begin match ty_dtyo with
-    | Some ty_dt ->
-      let sopl = EcInductive.datatype_projectors (p, tyd.tyd_params, ty_dt) in
-      let sopfl = List.map (
-        fun (s,op) ->
-        let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
-        let opf = 
-          EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty
-        in
-        (s,opf)
-      )
-         
-      sopl in
-      print_endline 
+let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
+  let sopl = 
+    EcInductive.datatype_projectors (p, tyd.EcDecl.tyd_params, ty_dt) 
+  in
+  let sopfl = List.map (
+    fun (s,op) ->
+    let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
+    let opf = 
+      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty
+    in
+    (s,opf)
+  )       
+  sopl in
+  print_endline 
       "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in";
-      let sopfo = List.find_opt 
-      (fun (s,opf) -> eval_op_form_not_None hyps opf form pi)
-      sopfl in
-      print_endline "begin match opfo with";
-      begin match sopfo with
-      | Some (s, opf) ->
-        let path = EcPath.pqoname (EcPath.prefix p) s in
-        let argf = mk_oget_op_form opf form in  
-        (path , argf)
-      | None -> failwith "Couldn't find the operator for deconstruction"
-      end
-    | None -> failwith "Only data types can be deconstructed"
-    end
-  | _ -> failwith "Only constructed types can be deconstructed"
-  end
+  let sopfo = List.find_opt 
+  (fun (s,opf) -> eval_op_form_not_None hyps opf form pi)
+  sopfl in
+  print_endline "begin match opfo with";
+  match sopfo with
+  | Some (s, opf) ->
+    let path = EcPath.pqoname (EcPath.prefix p) s in
+    let argf = mk_oget_op_form opf form in  
+    (path , argf)
+  | None -> failwith "Couldn't find the operator for deconstruction"
+
 
 let deconstruct_data 
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form) 
 (pi : EcProvers.prover_infos)
 : EcPath.path * EcCoreFol.form =
-  deconstruct_data_eval_not_None hyps form pi
-
-
-
+  let ty = EcCoreFol.f_ty form in
+  print_endline "begin match ty.ty_node with";
+  begin match ty.ty_node with
+  | Tconstr (p,ty_args) ->
+    let env = EcEnv.LDecl.toenv hyps in
+    let tyd = EcEnv.Ty.by_path p env in
+    let ty_dtyo = EcDecl.tydecl_as_datatype tyd in
+    print_endline "begin match ty_dtyo with";
+    begin match ty_dtyo with
+    | Some ty_dt ->
+      begin try
+        let ret = deconstruct_data_simplify hyps form in
+        debugging_message (fun fmt -> Format.fprintf fmt 
+        "deconstruction by simplification succeded.@.");
+        ret
+      with _ ->
+        debugging_message (fun fmt -> Format.fprintf fmt 
+        "deconstruction by simplification failed.@. 
+         Trying to simplify by evaluating get_as_Constr@.");
+      deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi
+      end
+    | None -> failwith "Only data types can be deconstructed"
+    end
+  | _ -> failwith "Only constructed types can be deconstructed"
+  end
 
 
