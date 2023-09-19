@@ -44,3 +44,20 @@ step.
 step.
 step.
 step.
+step.
+step.
+step.
+step prover timeout=3.
+step.
+step.
+send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1; 1; 1], 1)).
+step.
+step prover timeout=3.
+step.
+(* this takes us to the ordinary match instruction in KeyExchange/Pt2/WaitFwd1
+*)
+
+
+
+
+

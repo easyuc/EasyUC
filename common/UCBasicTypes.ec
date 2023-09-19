@@ -29,6 +29,10 @@ prover [""].  (* no use of SMT *)
 
 require export AllCore List FSet Distr DBool StdOrder.
 
+(* auxiliary lemmas on lists *)
+
+require import UCListAux.
+
 (* prefix ordering on lists *)
 
 require export UCListPO.  (* uses for addresses *)
@@ -253,19 +257,39 @@ op env_root_port : port = ([], 0).
 op envport (self adv : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1  /\ pt <> ([], 0).
 
-lemma envport_inc (self adv : addr, i : int) :
-  i <> 0 => inc self adv => envport self adv (env_root_addr, i).
+lemma envport_inc_env_root_addr (func adv : addr, i : int) :
+  i <> 0 => inc func adv => envport func adv (env_root_addr, i).
 proof.
-move => ne0_i inc_self_adv.
+move => ne0_i inc_func_adv.
 rewrite /envport /env_root_addr ne0_i /=.
 split.
-case (self <= []) => [le_self_nil | //].
-have : self <= adv by rewrite (le_trans []) // ge_nil.
-have // := inc_nle_l self adv _.
+case (func <= []) => [le_func_nil | //].
+have : func <= adv by rewrite (le_trans []) // ge_nil.
+have // := inc_nle_l func adv _.
   trivial.
 case (adv <= []) => [le_adv_nil | //].
-have : adv <= self by rewrite (le_trans []) // ge_nil.
-have // := inc_nle_r self adv _.
+have : adv <= func by rewrite (le_trans []) // ge_nil.
+have // := inc_nle_r func adv _.
+  trivial.
+qed.
+
+lemma envport_ext_func (func adv xs ys : addr, i : int) :
+  inc func adv =>
+  envport (func ++ xs) adv (func ++ ys, i) <=> ! xs <= ys.
+proof.
+rewrite /envport /=.
+move => inc_func_adv.
+split.
+trivial.
+move => -> /=.
+split.
+rewrite (inc_le1_not_rl func) // le_ext_r.
+rewrite negb_and.
+left.
+case (func ++ ys = []) => [func_concat_ys_eq_nil | //].
+have // : func ++ ys <> [].
+  rewrite nonnil_cat_nonnil_l //.
+  have // := inc_non_nil func adv _.
   trivial.
 qed.
 

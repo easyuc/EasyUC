@@ -237,7 +237,7 @@ op nosmt (<=) (xs ys : 'a list) : bool =
 
 op nosmt inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
-lemma nosmt le_cases (xs ys : 'a list) :
+lemma le_cases (xs ys : 'a list) :
   xs <= ys <=> xs = ys \/ xs < ys.
 proof.
 rewrite /(<=) /(<) /=.
@@ -273,7 +273,7 @@ proof.
 by rewrite /inc lpo_incP.
 qed.
 
-lemma nosmt le_drop (xs ys : 'a list) :
+lemma le_drop (xs ys : 'a list) :
   xs <= ys <=> xs ++ drop (size xs) ys = ys.
 proof.
 split.
@@ -450,7 +450,7 @@ move => ne_xy.
 by rewrite le_cons negb_and ne_xy.
 qed.
 
-lemma nosmt not_le_other_branch (xs zs : 'a list, x y : 'a) :
+lemma not_le_other_branch (xs zs : 'a list, x y : 'a) :
   x <> y => xs ++ [x] <= zs => ! xs ++ [y] <= zs.
 proof.
 move => ne_xy /leP le_xs_x_zs.
@@ -471,7 +471,7 @@ case ys => [// | y ys _].
 by rewrite -{2}cats0 le_pre not_le_cons_nil.
 qed.
 
-lemma nosmt not_le_ext (xs ys zs : 'a list) :
+lemma not_le_ext (xs ys zs : 'a list) :
   ! xs <= ys => ! xs ++ zs <= ys.
 proof.
 move => not_le_xs_ys.
@@ -517,7 +517,7 @@ case (ys = []) => [->> | //].
 by rewrite not_inc_nil_right in inc_xs_ys.
 qed.
 
-lemma nosmt inc_pre_then_diff (xs : 'a list, y1 y2 : 'a, zs ws : 'a list) :
+lemma inc_pre_then_diff (xs : 'a list, y1 y2 : 'a, zs ws : 'a list) :
   y1 <> y2 => inc (xs ++ [y1] ++ zs) (xs ++ [y2] ++ ws).
 proof.
 move => ne_y1_y2.
@@ -597,27 +597,27 @@ proof.
 by rewrite -iff_negb /= !negb_or inc_cases_le.
 qed.
 
-lemma nosmt inc_le1_not_rl (xs ys zs : 'a list) :
+lemma inc_le1_not_rl (xs ys zs : 'a list) :
   inc xs ys => xs <= zs => ! ys <= zs.
 proof.
 move => lpo_inc_xs_ys /@leP [us <-].
 by rewrite not_le_cases inc_sym inc_extl.
 qed.
 
-lemma nosmt inc_le1_not_lr (xs ys zs : 'a list) :
+lemma inc_le1_not_lr (xs ys zs : 'a list) :
   inc xs ys => xs <= zs => ! zs <= ys.
 proof.
 move => lpo_inc_xs_ys /@leP [us <-].
 by rewrite not_le_cases inc_extl.
 qed.
 
-lemma nosmt inc_le2_not_lr (xs ys zs : 'a list) :
+lemma inc_le2_not_lr (xs ys zs : 'a list) :
   inc xs ys => ys <= zs => ! xs <= zs.
 proof.
 move => /@inc_sym; apply inc_le1_not_rl.
 qed.
 
-lemma nosmt inc_le2_not_rl (xs ys zs : 'a list) :
+lemma inc_le2_not_rl (xs ys zs : 'a list) :
   inc xs ys => ys <= zs => ! zs <= xs.
 proof.
 move => /@inc_sym; apply inc_le1_not_lr.

@@ -1591,7 +1591,7 @@ let step_if_then_else (gc : global_context) (lc : local_context)
    ideal worlds *)
 
 let step_send_and_transition_from_ideal_fun (c : config_real_running)
-    (rel : int list) (base : int) (fun_sp : symb_pair)
+    (pi : prover_infos)  (rel : int list) (base : int) (fun_sp : symb_pair)
     (iip : string list) (msg : string) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
       : config * effect =
@@ -1628,7 +1628,7 @@ let step_send_and_transition_from_ideal_fun (c : config_real_running)
         | _           -> failure "should not happen" in
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc c.pi
+      if try eval_bool_form_to_bool c.gc pi
              (envport_form (addr_concat_form func_form (addr_make_form rel))
              adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
@@ -1701,8 +1701,8 @@ let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
    EffectOK)
 
 let step_send_and_transition_from_real_fun_party_to_env_or_adv
-    (c : config_real_running) (rel : int list) (base : int)
-    (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
+    (c : config_real_running) (pi : prover_infos) (rel : int list)
+    (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
     (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) : config * effect =
@@ -1739,7 +1739,7 @@ let step_send_and_transition_from_real_fun_party_to_env_or_adv
   | Some port_form ->  (* direct message to environment (or parent) *)
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc c.pi
+      if try eval_bool_form_to_bool c.gc pi
              (envport_form (addr_concat_form func_form (addr_make_form rel))
              adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
@@ -1772,8 +1772,8 @@ let step_send_and_transition_from_real_fun_party_to_env_or_adv
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
 let step_send_and_transition_from_real_fun_party (c : config_real_running)
-    (rel : int list) (base : int) (fun_sp : symb_pair) (pty_id : symbol)
-    (iip : symbol list) (msg : symbol) (msg_args : form list)
+    (pi : prover_infos) (rel : int list) (base : int) (fun_sp : symb_pair)
+    (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
       : config * effect =
   let (root, _) = fun_sp in
@@ -1786,14 +1786,14 @@ let step_send_and_transition_from_real_fun_party (c : config_real_running)
         c.maps root ft comp with
   | None                   ->
       step_send_and_transition_from_real_fun_party_to_env_or_adv
-      c rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
+      c pi rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
   | Some (child_i, dir_sp) ->
        step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
        c rel base fun_sp ft pty_id iip msg msg_args port_form
        new_rws comp sub child_i dir_sp
 
-let step_send_and_transition (c : config_real_running)
+let step_send_and_transition (c : config_real_running) (pi : prover_infos)
     (s_and_t : send_and_transition_tyd) : config * effect =
   let simpl f = simplify_formula c.gc f in
   let {msg_expr; state_expr} = s_and_t in
@@ -1825,10 +1825,10 @@ let step_send_and_transition (c : config_real_running)
         (fun _ -> Some (RealState new_real_fun_state)) c.rws in
   match c.rwrc with
   | RWRC_IdealFunc (rel, base, fun_sp, _)          ->
-      step_send_and_transition_from_ideal_fun c rel base fun_sp
+      step_send_and_transition_from_ideal_fun c pi rel base fun_sp
       iip msg msg_args port_form new_rws
   | RWRC_RealFunc (rel, base, fun_sp, party_id, _) ->
-      step_send_and_transition_from_real_fun_party c rel base fun_sp
+      step_send_and_transition_from_real_fun_party c pi rel base fun_sp
       party_id iip msg msg_args port_form new_rws
 
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
@@ -1841,22 +1841,22 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       let (ins, l) = (unloc ins, loc ins) in
       match ins with
       | Assign (lhs, expr)                   ->
-          let lc = step_assign c.gc c.lc c.pi lhs expr in
+          let lc = step_assign c.gc c.lc pi lhs expr in
           (ConfigRealRunning {c with lc = lc; ins = inss},
            EffectOK)
       | Sample (lhs, expr)                   ->
-          let (gc, lc, id) = step_sample c.gc c.lc c.pi lhs expr in
+          let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
           (ConfigRealRunning {c with gc = gc; lc = lc; ins = inss},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
-            step_if_then_else c.gc c.lc c.pi expr inss_then inss_else_opt in
+            step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
             (ConfigRealRunning {c with ins = inss}, EffectOK)
       | Match (expr, clauses)                ->
           fill_in "match" (ConfigRealRunning c)
       | SendAndTransition s_and_t            ->
           assert (List.is_empty inss);
-          step_send_and_transition c s_and_t
+          step_send_and_transition c pi s_and_t
       | Fail                                 ->
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
       | Pop                                  ->
@@ -1875,7 +1875,7 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
-  fill_in "step_real_running_config" (ConfigIdealRunning c)
+  fill_in "step_ideal_running_config" (ConfigIdealRunning c)
 
 (* should only be called with ordinary sme that will successfully
    match *)
@@ -2007,31 +2007,31 @@ type real_world_rel_select =
 let select_rel_addr_of_real_world
     (maps : maps_tyd) (rel : int list) (rw : real_world)
       : real_world_rel_select option =
-  let rec sel (rel : int list) ((sp_par, base, rwas) : real_world)
+  let rec sel (rel : int list) ((sp, base, rwas) : real_world)
       (par_opt : (symb_pair * int * int) option) =
     match rel with
-    | []       -> Some (RW_Select_RealFun (sp_par, base, rwas, par_opt))
+    | []       -> Some (RW_Select_RealFun (sp, base, rwas, par_opt))
     | i :: rel ->  (* i starts at 1 *)
         let nargs = List.length rwas in
         if i <= 0
           then None
         else if i <= nargs
           then (match List.nth rwas (i - 1) with
-                | RWA_Real rw           ->
-                    sel rel rw (Some (sp_par, i - 1, base))
-                | RWA_Ideal (sp, advpi) ->
+                | RWA_Real rw            ->
+                    sel rel rw (Some (sp, i - 1, base))
+                | RWA_Ideal (sp_arg, advpi) ->
                     Some
-                    (RW_Select_IdealFunArg (sp, advpi, sp_par, i - 1, base)))
-        else let ft = IdPairMap.find sp_par maps.fun_map in
+                    (RW_Select_IdealFunArg (sp_arg, advpi, sp, i - 1, base)))
+        else let ft = IdPairMap.find sp maps.fun_map in
              let num_sub_funs = num_sub_funs_of_real_fun_tyd ft in
-             let j = i - num_sub_funs in
+             let j = i - nargs in
              if j <= num_sub_funs
              then Some
                   (RW_Select_IdealSubFun
                    (sub_fun_sp_nth_of_real_fun_tyd ft (j - 1),
                     get_adv_pi_of_nth_sub_fun_of_real_fun maps
-                    (fst sp_par) nargs base ft (j - 1),
-                   sp_par, j - 1, base))
+                    (fst sp) nargs base ft (j - 1),
+                    sp, j - 1, base))
              else None
   in sel rel rw None
 
@@ -2479,7 +2479,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     let ft = IdPairMap.find func_sp c.maps.fun_map in
     let rfi = get_info_of_real_func c.maps root base ft in
     match internal_real_func_find_party rfi with
-    | None                  ->
+    | None     ->
         (debugging_message
          (fun ppf ->
             fprintf ppf
@@ -2498,7 +2498,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let from_arg_or_sub_fun_to_parent (rel : int list)
       (rwrs : real_world_rel_select) : config * effect =
     match rwrs with
-    | RW_Select_RealFun (sp, base, _, par_opt)                    ->
+    | RW_Select_RealFun (sp, base, _, par_opt)                     ->
         (match par_opt with
          | None                               ->  (* to env *)
              msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
