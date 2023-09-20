@@ -604,9 +604,6 @@ let simplify_formula (gc : global_context) (f : form) : form =
        (pp_form (env_of_gc gc)) f) in
   f
 
-(* TODO - uncomment UcEcFormEval.deconstruct_data gc f pi once
-   this returns symbol * form list *)
-
 let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     (f : form) : symbol * EcCoreFol.form list =
   let () =
@@ -616,7 +613,7 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
        "@[@[trying@ to@ deconstruct@ formula:@]@\n@\n@[%a@]@]@."
        (pp_form (env_of_gc gc)) f) in
   let (constr, forms) : symbol * form list =
-    try (*UcEcFormEval.deconstruct_data gc f pi*) failure "hi" with
+    try UcEcFormEval.deconstruct_data gc f pi with
     | _ ->
         (debugging_message
          (fun ppf -> fprintf ppf "@[deconstruction@ failed@]");
@@ -626,7 +623,7 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     (fun ppf ->
        fprintf ppf
        ("@[@[result@ is:@]@\n@\n@[@[constructor:@ %s@];@ " ^^
-        "@[[@[%a@]]@]@.")
+        "@[args:@ [@[%a@]]@]@.")
        constr
        (EcPrinting.pp_list ";@ " (pp_form (env_of_gc gc))) forms) in
   (constr, forms)
@@ -1883,6 +1880,16 @@ let step_send_and_transition (c : config_real_running) (pi : prover_infos)
 
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
       : config * effect =
+  let rec handle_pops (rest : instr_interp list) (lc : local_context)
+        : instr_interp list * local_context =
+    (assert (not (List.is_empty rest));
+     if unloc (List.hd rest) = Pop
+     then handle_pops (List.tl rest) (lc_pop lc)
+     else (rest, lc)) in
+  let rec check_only_pops (rest : instr_interp list) : bool =
+    match rest with
+    | []            -> true
+    | instr :: rest -> unloc instr = Pop && check_only_pops rest in
   try
     begin
       let inss = c.ins in
@@ -1891,29 +1898,31 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       match unloc next with
       | Assign (lhs, expr)                   ->
           let lc = step_assign c.gc c.lc pi lhs expr in
+          let (rest, lc) = handle_pops rest lc in
           (ConfigRealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | Sample (lhs, expr)                   ->
           let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
+          let (rest, lc) = handle_pops rest lc in
           (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
             step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
-            (ConfigRealRunning {c with ins = inss @ rest}, EffectOK)
+          let (rest, lc) = handle_pops (inss @ rest) c.lc in
+          (ConfigRealRunning {c with ins = rest}, EffectOK)
       | Match (expr, clauses)                ->
           let (lc, inss) = step_match c.gc c.lc pi expr clauses in
-          (ConfigRealRunning {c with lc = lc; ins = inss @ rest},
+          let (rest, lc) = handle_pops (inss @ rest) lc in
+          (ConfigRealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | SendAndTransition s_and_t            ->
-          assert (List.is_empty rest);
+          assert (check_only_pops rest);
           step_send_and_transition c pi s_and_t
       | Fail                                 ->
-          assert (List.is_empty rest);
+          assert (check_only_pops rest);
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
-      | Pop                                  ->
-          let lc = lc_pop c.lc in
-          (ConfigRealRunning {c with lc = lc; ins = rest}, EffectOK)
+      | Pop                                  -> failure "cannot happen"
     end
   with
   | StepBlockedIf ->

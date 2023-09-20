@@ -64,13 +64,13 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
       match message with
       | pt1@KEDir.Pt1.ke_req1(pt2) => {
           i <- 0;
-          match A 3 false with
+          match if i = 0 then A 3 false else A 4 true with
           | A n b => {
-              match B (2, false) with
+              match B (n, b) with
               | A x b' => { i <- x + n; }
               | B p => { b'' <- p.`2; }
               end
-              i <- i + 1; }
+              i <- i + n + 1; }
           | B p => { b'' <- false; }
           end
           i <- i + 1;
