@@ -586,9 +586,8 @@ let mk_oget_op_form
 let deconstruct_data_simplify hyps form =
   let sf = simplify_formula hyps form in
   let opptyl, argforms = EcCoreFol.destr_op_app sf in
-  let path = fst opptyl in
-  let argf = EcCoreFol.f_tuple argforms in
-  (path, argf)
+  let ctorsym = EcPath.basename (fst opptyl) in
+  (ctorsym, argforms)
   
 
 let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
@@ -613,9 +612,22 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
   print_endline "begin match opfo with";
   match sopfo with
   | Some (s, opf) ->
+    let ogetf = simplify_formula hyps (mk_oget_op_form opf form) in
     let path = EcPath.pqoname (EcPath.prefix p) s in
-    let argf = mk_oget_op_form opf form in  
-    (path , argf)
+    let env = EcEnv.LDecl.toenv hyps in
+    let op = EcEnv.Op.by_path path env in
+    let dom , _ = EcTypes.tyfun_flat op.EcDecl.op_ty in
+    let args = 
+      match (List.length dom) with
+      | 0 -> []
+      | 1 -> [ogetf]
+      | _ -> 
+        List.mapi (
+          fun i argty -> let argf = EcCoreFol.f_proj ogetf i argty in
+          simplify_formula hyps argf 
+        ) dom
+    in 
+    (s , args)
   | None -> failwith "Couldn't find the operator for deconstruction"
 
 
@@ -623,7 +635,7 @@ let deconstruct_data
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form) 
 (pi : EcProvers.prover_infos)
-: EcPath.path * EcCoreFol.form =
+: EcSymbols.symbol * (EcCoreFol.form list) =
   let ty = EcCoreFol.f_ty form in
   print_endline "begin match ty.ty_node with";
   begin match ty.ty_node with
