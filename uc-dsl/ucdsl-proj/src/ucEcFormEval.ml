@@ -584,10 +584,13 @@ let mk_oget_op_form
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
 let deconstruct_data_simplify hyps form =
+  let env = EcEnv.LDecl.toenv hyps in
   let sf = simplify_formula hyps form in
   let opptyl, argforms = EcCoreFol.destr_op_app sf in
-  let ctorsym = EcPath.basename (fst opptyl) in
-  (ctorsym, argforms)
+  let opp = fst opptyl in
+  if EcEnv.Op.is_dtype_ctor env opp
+  then ((EcPath.basename opp), argforms)
+  else failwith "Simplification did not reduce formula to the form of ctor applied to data."
   
 
 let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
