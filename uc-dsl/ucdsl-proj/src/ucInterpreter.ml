@@ -479,30 +479,6 @@ let lc_create (lcbs : local_context_base list) : local_context =
        | LCB_IntPort (id, port)  -> (id, port))
     lcbs)]
 
-(* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ', so it matches the concrete syntax *)
-
-let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let subst_colon_by_blank (s : symbol) : symbol =
-    String.map (fun c -> if c = ':' then ' ' else c) s in
-  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
-        : unit =
-    fprintf ppf "@[%s ->@ %a@]"
-    (subst_colon_by_blank (EcIdent.name id))
-    (pp_form env) form in
-  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
-    fprintf ppf "@[(@[%a@])@]"
-    (EcPrinting.pp_list ",@ " pp_frame_entry)
-    (EcIdent.Mid.bindings frame) in
-  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
-        : unit =
-    match frames with
-    | []              -> failure "should not happen"
-    | [frame]         -> pp_frame ppf frame
-    | frame :: frames ->
-        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
-  fprintf ppf "@[<v>%a@]" pp_frames lc
-
 let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
       : EcIdent.t option =
   EcIdent.Mid.fold_left
@@ -535,9 +511,37 @@ let lc_apply (lc : local_context) (e : expr) : form =
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
 
+let make_and_push (lc : local_context) (bindings : (EcIdent.t * form) list)
+      : local_context =
+  push lc (EcIdent.Mid.of_list bindings)
+
 let lc_pop (lc : local_context) : local_context =
   (if List.is_empty lc then failure "should not happen");
   List.take (List.length lc - 1) lc
+
+(* when we pretty print the identifier of an internal port entry,
+   we replace the ':' by ' ', so it matches the concrete syntax *)
+
+let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let subst_colon_by_blank (s : symbol) : symbol =
+    String.map (fun c -> if c = ':' then ' ' else c) s in
+  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
+        : unit =
+    fprintf ppf "@[%s ->@ %a@]"
+    (subst_colon_by_blank (EcIdent.name id))
+    (pp_form env) form in
+  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
+    fprintf ppf "@[(@[%a@])@]"
+    (EcPrinting.pp_list ",@ " pp_frame_entry)
+    (EcIdent.Mid.bindings frame) in
+  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
+        : unit =
+    match frames with
+    | []              -> failure "should not happen"
+    | [frame]         -> pp_frame ppf frame
+    | frame :: frames ->
+        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
+  fprintf ppf "@[<v>%a@]" pp_frames lc
 
 (* prover infos *)
 
@@ -599,6 +603,33 @@ let simplify_formula (gc : global_context) (f : form) : form =
        "@[@[result@ is:@]@\n@\n@[%a@]@]@."
        (pp_form (env_of_gc gc)) f) in
   f
+
+(* TODO - uncomment UcEcFormEval.deconstruct_data gc f pi once
+   this returns symbol * form list *)
+
+let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
+    (f : form) : symbol * EcCoreFol.form list =
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       "@[@[trying@ to@ deconstruct@ formula:@]@\n@\n@[%a@]@]@."
+       (pp_form (env_of_gc gc)) f) in
+  let (constr, forms) : symbol * form list =
+    try (*UcEcFormEval.deconstruct_data gc f pi*) failure "hi" with
+    | _ ->
+        (debugging_message
+         (fun ppf -> fprintf ppf "@[deconstruction@ failed@]");
+         raise ECProofEngine) in
+  let () =
+    debugging_message
+    (fun ppf ->
+       fprintf ppf
+       ("@[@[result@ is:@]@\n@\n@[@[constructor:@ %s@];@ " ^^
+        "@[[@[%a@]]@]@.")
+       constr
+       (EcPrinting.pp_list ";@ " (pp_form (env_of_gc gc))) forms) in
+  (constr, forms)
 
 (* configurations *)
 
@@ -1524,9 +1555,7 @@ let send_message_to_real_or_ideal_config
   | _             -> raise ConfigError
 
 exception StepBlockedIf
-(*
 exception StepBlockedMatch
-*)
 exception StepBlockedPortOrAddrCompare
 
 (* start of functions that can be used for stepping in both real and
@@ -1586,6 +1615,27 @@ let step_if_then_else (gc : global_context) (lc : local_context)
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
   else (odfl [] inss_else_opt)
+
+let step_match (gc : global_context) (lc : local_context)
+    (pi : prover_infos) (expr : expr) (clauses : match_clause_interp list)
+      : local_context * instr_interp list =
+  let form = lc_apply lc expr in
+  let (form_constr, form_args) =
+    try deconstruct_datatype_value gc pi form with
+    | ECProofEngine -> raise StepBlockedMatch in
+  let rec find_match (clauses : match_clause_interp list)
+        : local_context * instr_interp list =
+    match clauses with
+    | []                                    -> failure "should not happen"
+    | (constr, (bindings, inss)) :: clauses ->
+        if constr = form_constr
+        then let ids =
+               List.map (fun (id, _) -> unloc id) bindings in
+             let bindings = List.combine ids form_args in
+             let lc = make_and_push lc bindings in
+             (lc, inss @ [mk_loc _dummy Pop])
+        else find_match clauses
+  in find_match clauses
 
 (* end of functions that can be used for stepping in both real and
    ideal worlds *)
@@ -1837,39 +1887,39 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
     begin
       let inss = c.ins in
       assert (not (List.is_empty inss));
-      let (ins, inss) = (List.hd inss, List.tl inss) in
-      let (ins, l) = (unloc ins, loc ins) in
-      match ins with
+      let (next, rest) = (List.hd inss, List.tl inss) in
+      match unloc next with
       | Assign (lhs, expr)                   ->
           let lc = step_assign c.gc c.lc pi lhs expr in
-          (ConfigRealRunning {c with lc = lc; ins = inss},
+          (ConfigRealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | Sample (lhs, expr)                   ->
           let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
-          (ConfigRealRunning {c with gc = gc; lc = lc; ins = inss},
+          (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
             step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
-            (ConfigRealRunning {c with ins = inss}, EffectOK)
+            (ConfigRealRunning {c with ins = inss @ rest}, EffectOK)
       | Match (expr, clauses)                ->
-          fill_in "match" (ConfigRealRunning c)
+          let (lc, inss) = step_match c.gc c.lc pi expr clauses in
+          (ConfigRealRunning {c with lc = lc; ins = inss @ rest},
+           EffectOK)
       | SendAndTransition s_and_t            ->
-          assert (List.is_empty inss);
+          assert (List.is_empty rest);
           step_send_and_transition c pi s_and_t
       | Fail                                 ->
+          assert (List.is_empty rest);
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
       | Pop                                  ->
           let lc = lc_pop c.lc in
-          (ConfigRealRunning {c with lc = lc}, EffectOK)
+          (ConfigRealRunning {c with lc = lc; ins = rest}, EffectOK)
     end
   with
   | StepBlockedIf ->
       (ConfigRealRunning c, EffectBlockedIf)
-(*
   | StepBlockedMatch ->
       (ConfigRealRunning c, EffectBlockedMatch)
-*)
   | StepBlockedPortOrAddrCompare ->
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
 
