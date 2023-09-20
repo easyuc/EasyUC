@@ -273,6 +273,26 @@ have // := inc_nle_r func adv _.
   trivial.
 qed.
 
+(* lemmas to help the UC DSL interpreter *)
+
+lemma envport_ext_func_iff (func adv xs ys : addr, i : int) :
+  envport (func ++ xs) adv (func ++ ys, i) <=>
+  ! xs <= ys /\ ! adv <= func ++ ys /\ (func ++ ys <> [] \/ i <> 0).
+proof.
+by rewrite /envport /= negb_and.
+qed.
+
+hint simplify [reduce] envport_ext_func_iff.
+
+lemma envport_ext_func_iff_helper (func adv xs : addr) :
+  inc func adv => ! adv <= func ++ xs.
+proof.
+move => inc_func_adv.
+rewrite (inc_le2_not_lr func) //.
+by rewrite inc_sym.
+rewrite le_ext_r.
+qed.
+
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
   inc func adv =>
   envport (func ++ xs) adv (func ++ ys, i) <=> ! xs <= ys.

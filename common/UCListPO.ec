@@ -611,13 +611,13 @@ move => lpo_inc_xs_ys /@leP [us <-].
 by rewrite not_le_cases inc_extl.
 qed.
 
-lemma inc_le2_not_lr (xs ys zs : 'a list) :
+lemma inc_le2_not_lr (ys xs zs : 'a list) :
   inc xs ys => ys <= zs => ! xs <= zs.
 proof.
 move => /@inc_sym; apply inc_le1_not_rl.
 qed.
 
-lemma inc_le2_not_rl (xs ys zs : 'a list) :
+lemma inc_le2_not_rl (ys xs zs : 'a list) :
   inc xs ys => ys <= zs => ! zs <= xs.
 proof.
 move => /@inc_sym; apply inc_le1_not_lr.
