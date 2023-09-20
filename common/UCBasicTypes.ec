@@ -293,6 +293,8 @@ by rewrite inc_sym.
 rewrite le_ext_r.
 qed.
 
+hint rewrite uc_dsl_interpreter_hints : envport_ext_func_iff_helper.
+
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
   inc func adv =>
   envport (func ++ xs) adv (func ++ ys, i) <=> ! xs <= ys.
