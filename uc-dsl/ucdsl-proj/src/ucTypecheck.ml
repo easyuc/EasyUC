@@ -429,7 +429,7 @@ let bind_locals_avoid_var
     (env : EcEnv.env) (sc : state_context) (bndgs : bindings) : EcEnv.env =
   List.fold_left
   (fun acc (id, ty) ->
-     bind_local_avoid_var env sc (unloc id) ty (loc id))
+     bind_local_avoid_var acc sc (unloc id) ty (loc id))
   env bndgs
 
 (* state signatures - boolean saying if initial state or not, plus
