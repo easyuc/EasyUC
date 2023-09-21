@@ -2567,11 +2567,11 @@ let inter_check_sme
                "sub-interface@ of@ composite@ interface@]")
               pp_qsymbol (msg_path_u_to_qsymbol path))
        | MPI_Good (mode, dir, pi, exp_tys) ->
-           let in_port_expr =
-             inter_check_expr_port_or_addr env ue sme.in_poa_pexpr
+           let src_port_expr =
+             inter_check_expr_port_or_addr env ue sme.src_poa_pexpr
              (if pi <> 0 && dir = Out then Some pi else None) in
-           let out_port_expr =
-             inter_check_expr_port_or_addr env ue sme.out_poa_pexpr
+           let dest_port_expr =
+             inter_check_expr_port_or_addr env ue sme.dest_poa_pexpr
              (if pi <> 0 && dir = In then Some pi else None) in
            let args = unloc sme.args in
              if List.length exp_tys <> List.length args
@@ -2590,20 +2590,20 @@ let inter_check_sme
                        ex)
                     args in
                   SMET_Ord
-                  {mode          = mode;
-                   dir           = dir;
-                   in_port_form  = expr2form in_port_expr;
-                   path          = path;
-                   args          = List.map expr2form exprs;
-                   out_port_form = expr2form out_port_expr})
+                  {mode           = mode;
+                   dir            = dir;
+                   src_port_form  = expr2form src_port_expr;
+                   path           = path;
+                   args           = List.map expr2form exprs;
+                   dest_port_form = expr2form dest_port_expr})
   | SME_EnvAdv sme ->
-      (let (in_port, _) =
-         inter_check_expr env ue sme.in_port_pexpr (Some port_ty) in
-       let (out_port, _) =
-         inter_check_expr env ue sme.out_port_pexpr (Some port_ty) in
+      (let (src_port, _) =
+         inter_check_expr env ue sme.src_port_pexpr (Some port_ty) in
+       let (dest_port, _) =
+         inter_check_expr env ue sme.dest_port_pexpr (Some port_ty) in
        SMET_EnvAdv
-       {in_port_form = expr2form in_port;
-        out_port_form = expr2form out_port})
+       {src_port_form  = expr2form src_port;
+        dest_port_form = expr2form dest_port})
 
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =

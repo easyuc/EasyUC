@@ -293,17 +293,17 @@ let loc_of_port_or_addr_pexpr (poap : port_or_addr_pexpr) : EcLocation.t =
    message path must be qualified by root, as otherwise could
    be ambiguous
 
-   origin or destination can be an address, when the port index
+   source or destination can be an address, when the port index
    is implicit from the message path
 
-   when it's the *origin* whose port index is being inferred, this
-   will be true iff the message direction is "out" and either the
+   when it's the *source* whose port index is being inferred, this
+   will be possible iff the message direction is "out" and either the
    message path terminates in a component of a composite interface or
    terminates with the basic adversarial interface of an ideal
    functionality
 
    when it's the *destination* whose port index is being inferred,
-   this will be true iff the message direction is "in" and either the
+   this will be possible iff the message direction is "in" and either the
    message path terminates in a component of a composite interface or
    terminates with the basic adversarial interface of an ideal
    functionality
@@ -315,29 +315,28 @@ let loc_of_port_or_addr_pexpr (poap : port_or_addr_pexpr) : EcLocation.t =
    and adversary are carrying out (which would pass data) *)
 
 type sent_msg_expr_ord =
-  {in_poa_pexpr  : port_or_addr_pexpr;  (* source *)
-   path          : msg_path;            (* message path *)
-   args          : pexpr list located;  (* message arguments *)
-   out_poa_pexpr : port_or_addr_pexpr}  (* destination *)
+  {src_poa_pexpr  : port_or_addr_pexpr;  (* source *)
+   path           : msg_path;            (* message path *)
+   args           : pexpr list located;  (* message arguments *)
+   dest_poa_pexpr : port_or_addr_pexpr}  (* destination *)
 
 type sent_msg_expr_env_adv =
-  { in_port_pexpr  : pexpr;
-    out_port_pexpr : pexpr
-  }
+  { src_port_pexpr  : pexpr;   (* source *)
+    dest_port_pexpr : pexpr }  (* destination *)
 
 type sent_msg_expr =
   | SME_Ord    of sent_msg_expr_ord
   | SME_EnvAdv of sent_msg_expr_env_adv
 
-let loc_of_in_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
+let loc_of_src_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
   match sme with
-  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.in_poa_pexpr
-  | SME_EnvAdv sme -> loc sme.in_port_pexpr
+  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.src_poa_pexpr
+  | SME_EnvAdv sme -> loc sme.src_port_pexpr
 
-let loc_of_out_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
+let loc_of_dest_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
   match sme with
-  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.out_poa_pexpr
-  | SME_EnvAdv sme -> loc sme.out_port_pexpr
+  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.dest_poa_pexpr
+  | SME_EnvAdv sme -> loc sme.dest_port_pexpr
 
 (* Interpreter User Input *)
 

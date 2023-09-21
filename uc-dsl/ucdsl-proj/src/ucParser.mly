@@ -1282,30 +1282,32 @@ fun_expr :
       { FunExprArgs (x,y) }
 
 sent_msg_expr :
-  | inpex = in_out_poa_pexpr; 
-    in_poa = dollar_or_at; 
+  | src_pex = poa_pexpr; 
+    src_doa = dollar_or_at; 
     path = msg_path; 
     argsl = loc(option(args));
-    out_poa = dollar_or_at; 
-    outpex = in_out_poa_pexpr; 
+    dest_doa = dollar_or_at; 
+    dest_pex = poa_pexpr; 
       { let uargsl = mk_loc (loc argsl) (unloc argsl |? []) in
         SME_Ord
-        { in_poa_pexpr = if in_poa then PoA_Addr inpex else PoA_Port inpex;
+        { src_poa_pexpr =
+            if src_doa then PoA_Addr src_pex else PoA_Port src_pex;
           path = path;
           args = uargsl;
-          out_poa_pexpr = if out_poa then PoA_Addr outpex else PoA_Port outpex;
+          dest_poa_pexpr =
+            if dest_doa then PoA_Addr dest_pex else PoA_Port dest_pex;
         }
       }
-  | in_port = in_out_poa_pexpr;
+  | src_port = poa_pexpr;
     AT; UNDERSCORE; AT;
-    out_port = in_out_poa_pexpr;
+    dest_port = poa_pexpr;
       { SME_EnvAdv
-        { in_port_pexpr  = in_port;
-          out_port_pexpr = out_port;
+        { src_port_pexpr  = src_port;
+          dest_port_pexpr = dest_port;
         }
       }
 
-in_out_poa_pexpr:
+poa_pexpr:
   | id = idexpr; { id }
   | LPAREN; ex = expr; RPAREN; { ex }
   

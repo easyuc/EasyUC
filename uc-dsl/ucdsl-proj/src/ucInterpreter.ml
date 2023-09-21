@@ -62,31 +62,10 @@ type ideal_world = {
   iw_other_sims : (symb_pair * int * int list) list
 }
 
-module Int =  (* domain: int *)
-  struct
-    type t = int
-    let compare = (Stdlib.compare : t -> t -> int)
-  end
-
-module IntSet = Set.Make(Int)
-
 type worlds = {
   worlds_real  : real_world;
   worlds_ideal : ideal_world
 }
-
-(* compute the adversarial port indices of a world that the environment
-   -- when communicating with the adversary / simulators + adversary --
-   may *not* communicate with *)
-
-let interface_input_guard_exclusion_of_ideal_world (iw : ideal_world)
-      : IntSet.t =
-  IntSet.union
-  (IntSet.singleton (proj3_2 iw.iw_main_sim))
-  (IntSet.of_list (List.map (fun (_, i, _) -> i) iw.iw_other_sims))
-
-let interface_input_guard_exclusion_of_worlds (w : worlds) : IntSet.t =
-  interface_input_guard_exclusion_of_ideal_world w.worlds_ideal
 
 let pp_int (ppf : formatter) (i : int) : unit =
   fprintf ppf "%d" i
@@ -147,7 +126,11 @@ let pp_worlds (ppf : formatter) (w : worlds) : unit =
   pp_real_world w.worlds_real
   pp_ideal_world w.worlds_ideal
 
-let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
+(* the returned int is the first adversarial port index *not* used
+   by the worlds *)
+
+let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
+      : worlds * int =
   let rec fun_expr_to_worlds_base (fet : fun_expr_tyd) (base : int)
         : worlds * int =
     match fet with
@@ -191,11 +174,14 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd) : worlds =
               base'))
      | FunExprTydIdeal _                    ->
          failure "should not be called with ideal functionality expression" in
-  let (wrlds, _) = fun_expr_to_worlds_base fet 1 in
-  wrlds
+  let (wrlds, base) = fun_expr_to_worlds_base fet 1 in
+  (wrlds, base)
+
+(* the returned int is the first adversarial port index *not* used
+   by the worlds *)
 
 let fun_expr_to_worlds
-    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : worlds =
+    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : worlds * int =
   let fet = inter_check_real_fun_expr root maps fe in
   fun_expr_tyd_to_worlds maps fet
 
@@ -293,15 +279,6 @@ let int_lt_form (n1 : form) (n2 : form) : form =
 
 let int_le_form (n1 : form) (n2 : form) : form =
   f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
-
-let int_memb_of_fset_form (n : form) (ms : IntSet.t) : form =
-  IntSet.fold
-  (fun m f ->
-     (f_or
-      (f_eq n (f_int (EcBigInt.of_int m)))
-      f))
-  ms
-  f_false
 
 let uc_qsym_prefix_distr = ["Top"; "Distr"]
 
@@ -765,40 +742,47 @@ let pp_real_world_sending_context (ppf : formatter)
       pp_symb_pair sp
 
 type ideal_world_running_context =
-  | IWRC_Ideal_Func of symb_pair *  (* functionality *)
-                       int          (* adversarial port index *)
-  | IWRC_Main_Sim   of symb_pair *  (* main simulator *)
-                       int          (* adversarial port index *)
-  | IWRC_OtherSim   of symb_pair *  (* other simulator *)
-                       int       *  (* adversarial port index *)
-                       int          (* index (from 0) into list of
-                                       other simulators *)
+  | IWRC_IdealFunc of int       *  (* adversarial port index *)
+                      symb_pair *  (* functionality *)
+                      symbol       (* state name *)
+  | IWRC_MainSim   of int       *  (* adversarial port index *)
+                      symb_pair *  (* main simulator *)
+                      symbol       (* state name *)
+  | IWRC_OtherSim  of int       *  (* adversarial port index *)
+                      symb_pair *  (* other simulator *)
+                      symbol    *  (* state name *)
+                      int          (* index (from 0) into list of
+                                      other simulators *)
 
 let pp_ideal_world_running_context (ppf : formatter)
     (iwrc : ideal_world_running_context) : unit =
   match iwrc with
-  | IWRC_Ideal_Func (sp, i)  ->
-      fprintf ppf "@[running at %a:%n@]"
-      pp_symb_pair sp
+  | IWRC_IdealFunc (i, sp, state_id)   ->
+      fprintf ppf "@[running at@ %n:@ %a/@,%s@]"
       i
-  | IWRC_Main_Sim (sp, i)    ->
-      fprintf ppf "@[running at %a:%n@]"
       pp_symb_pair sp
+      state_id
+  | IWRC_MainSim (i, sp, state_id)     ->
+      fprintf ppf "@[running at@ %n:@ %a/@,%s@]"
       i
-  | IWRC_OtherSim (sp, i, _) ->
-      fprintf ppf "@[running at %a:%n@]"
       pp_symb_pair sp
+      state_id
+  | IWRC_OtherSim (i, sp, state_id, _) ->
+      fprintf ppf "@[running at@ %n:@ %a/@,%s@]"
       i
+      pp_symb_pair sp
+      state_id
 
 type ideal_world_sending_context =
   | IWSC_Env                        (* sending from environment *)
   | IWSC_Adv                        (* sending from adversary *)
-  | IWSC_Ideal_Func of symb_pair *  (* functionality *)
-                       int          (* adversarial port index *)
-  | IWSC_Main_Sim   of symb_pair *  (* main simulator *)
-                       int          (* adversarial port index *)
-  | IWSC_OtherSim   of symb_pair *  (* other simulator *)
-                       int       *  (* adversarial port index *)
+  | IWSC_Ideal_Func of int       *  (* adversarial port index *)
+                       symb_pair    (* functionality *)
+  | IWSC_Main_Sim   of int       *  (* adversarial port index *)
+                       symb_pair    (* main simulator *)
+                       
+  | IWSC_OtherSim   of int       *  (* adversarial port index *)
+                       symb_pair *  (* other simulator *)
                        int          (* index (from 0) into list of
                                        other simulators *)
 
@@ -809,15 +793,15 @@ let pp_ideal_world_sending_context (ppf : formatter)
       fprintf ppf "@[sending from environment@]"
   | IWSC_Adv                 ->
       fprintf ppf "@[sending from adversary@]"
-  | IWSC_Ideal_Func (sp, i)  ->
+  | IWSC_Ideal_Func (i, sp)  ->
       fprintf ppf "@[sending from %a:%n@]"
       pp_symb_pair sp
       i
-  | IWSC_Main_Sim (sp, i)    ->
+  | IWSC_Main_Sim (i, sp)    ->
       fprintf ppf "@[sending from %a:%n@]"
       pp_symb_pair sp
       i
-  | IWSC_OtherSim (sp, i, _) ->
+  | IWSC_OtherSim (i, sp, _) ->
       fprintf ppf "@[sending from %a:%n@]"
       pp_symb_pair sp
       i
@@ -827,15 +811,18 @@ type config_gen = {
   gc   : global_context;
   pi   : prover_infos;
   w    : worlds;
-  ig   : IntSet.t  (* input guard of interface *)
-}
+  ig   : int  (* input guard of interface - first adversarial *)
+}             (* port index *not* used by worlds, and so available *)
+              (* to environment (0 is always available to the environment, *)
+              (* but used for communication between root of environment, *)
+              (* ([], 0), and root of adversary, (adv, 0)) *)
 
 type config_real = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  ig   : IntSet.t;
+  ig   : int;
   rws  : real_world_state;
   ctrl : control;
 }
@@ -845,7 +832,7 @@ type config_ideal = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  ig   : IntSet.t;
+  ig   : int;
   iws  : ideal_world_state;
   ctrl : control;
 }
@@ -855,7 +842,7 @@ type config_real_running = {
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  ig   : IntSet.t;
+  ig   : int;
   rws  : real_world_state;
   rwrc : real_world_running_context;
   lc   : local_context;
@@ -867,7 +854,7 @@ type config_ideal_running = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  ig   : IntSet.t;
+  ig   : int;
   iws  : ideal_world_state;
   iwrc : ideal_world_running_context;
   lc   : local_context;
@@ -879,7 +866,7 @@ type config_real_sending = {
   gc   : global_context;
   pi   : prover_infos;
   rw   : real_world;
-  ig   : IntSet.t;
+  ig   : int;
   rws  : real_world_state;
   rwsc : real_world_sending_context;
   sme  : sent_msg_expr_tyd
@@ -890,7 +877,7 @@ type config_ideal_sending = {
   gc   : global_context;
   pi   : prover_infos;
   iw   : ideal_world;
-  ig   : IntSet.t;
+  ig   : int;
   iws  : ideal_world_state;
   iwsc : ideal_world_sending_context;
   sme  : sent_msg_expr_tyd
@@ -1096,28 +1083,23 @@ let rec pp_sims_with_states (i : int) (gc : global_context)
   match spis with
   | []        -> ()
   | [spi]     ->
-    fprintf ppf " *@ %a@,[@[%a@]]"
+    fprintf ppf " *@ @[%a@,[@[%a@]]@]"
     pp_symb_pair_int_int_list spi
     (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
   | spi :: spis ->
-    fprintf ppf " *@ %a@,[@[%a@]]%a"
+    fprintf ppf " *@ @[%a@,[@[%a@]]%a@]"
     pp_symb_pair_int_int_list spi
     (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
     (pp_sims_with_states (i + 1) gc iws) spis
 
 let pp_ideal_world_with_states (maps : maps_tyd) (gc : global_context)
     (iws : ideal_world_state) (ppf : formatter) (iw : ideal_world) : unit =
-  fprintf ppf "@[%a@,[@[%a]@] /@ @[%a@,[@[%a@]]%a@]@]"
+  fprintf ppf "@[@[%a@,[@[%a]@]@] /@ @[@[%a@,[@[%a@]]@]%a@]@]"
   pp_symb_pair_int iw.iw_ideal_func
   (pp_state gc) iws.ideal_fun_state
   pp_symb_pair_int_int_list iw.iw_main_sim
   (pp_sim_state gc iws) iws.main_sim_state
   (pp_sims_with_states 0 gc iws) iw.iw_other_sims
-
-let pp_int_set (ppf : formatter) (is : IntSet.t) : unit =
-  let is = IntSet.elements is in
-  fprintf ppf "@[%a@]"
-  (EcPrinting.pp_list ",@ " pp_int) is
 
 let pp_global_context_msg (ppf : formatter) (gc : global_context) : unit =
   fprintf ppf
@@ -1147,10 +1129,8 @@ let pp_ideal_world_with_states_msg (maps : maps_tyd) (gc : global_context)
   "@[ideal world:@ %a@]"
   (pp_ideal_world_with_states maps gc iws) iw
 
-let pp_input_guard_msg (ppf : formatter) (is : IntSet.t) : unit =
-  fprintf ppf
-  "@[input guard exclusion:@ %a@]"
-  pp_int_set is
+let pp_input_guard_msg (ppf : formatter) (n : int) : unit =
+  fprintf ppf "@[input guard:@ %d@]" n
 
 let pp_control_msg (ppf : formatter) (ctrl : control) : unit =
   fprintf ppf
@@ -1218,8 +1198,7 @@ let pp_sent_msg_expr_tyd_in_config (ppf : formatter) (c : config)
 let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
     (fe : fun_expr) : config =
   let fet = inter_check_real_fun_expr root maps fe in
-  let w = fun_expr_tyd_to_worlds maps fet in
-  let ig = interface_input_guard_exclusion_of_worlds w in
+  let (w, ig) = fun_expr_tyd_to_worlds maps fet in
   let gc = gc_create env in
   let pi = default_prover_infos (env_of_gc gc) in
   ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
@@ -1474,10 +1453,12 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
   | _                    -> raise ConfigError
 
 let check_sme_port_index_consistency_core
-    (error : string -> unit) (maps : maps_tyd) (gc : global_context)
-    (pi : prover_infos) (sme : sent_msg_expr_tyd) : unit =
-  let check_consist (sme : sent_msg_expr_ord_tyd)
-      (pi_form : form) (src_or_dest_str : string) : unit =
+    (error : string -> EcLocation.t -> unit)
+    (loc_source : EcLocation.t) (loc_dest : EcLocation.t)
+    (maps : maps_tyd) (gc : global_context) (pi : prover_infos)
+    (sme : sent_msg_expr_tyd) : unit =
+  let check_consist (sme : sent_msg_expr_ord_tyd) (pi_form : form)
+      (src_or_dest_str : string) (loc_src_or_dest : EcLocation.t)  : unit =
     match sme.path.inter_id_path with
     | [root; comp; sub] ->
         (match unloc (Option.get (get_inter_tyd maps root comp)) with
@@ -1487,39 +1468,42 @@ let check_sme_port_index_consistency_core
              in if eval_bool_form_to_bool gc pi
                    (f_eq pi_form (int_form porti))
                 then ()
-                else error src_or_dest_str)
+                else error src_or_dest_str loc_src_or_dest)
     | [_; bas]          ->
         if eval_bool_form_to_bool gc pi
            (f_eq pi_form (int_form 1))
         then ()
-        else error src_or_dest_str
+        else error src_or_dest_str loc_src_or_dest
     | _                 -> failure "cannot happen" in
   match sme with
   | SMET_Ord sme ->
       if sme.dir = In
-      then let dest_pi = port_to_pi_form sme.out_port_form in
-           check_consist sme dest_pi "destination"
-      else let source_pi = port_to_pi_form sme.in_port_form in
-           check_consist sme source_pi "source"
+      then let dest_pi = port_to_pi_form sme.dest_port_form in
+           check_consist sme dest_pi "destination" loc_dest
+      else let source_pi = port_to_pi_form sme.src_port_form in
+           check_consist sme source_pi "source" loc_source
   | sme          -> ()
 
 let check_sme_port_index_consistency :
       maps_tyd -> global_context -> prover_infos -> sent_msg_expr_tyd -> unit =
   check_sme_port_index_consistency_core
-  (fun _ -> failure "should not happen")
+  (fun _ _ -> failure "should not happen")
+  _dummy _dummy
 
 let inter_check_sent_msg_expr_consistency
     (maps : maps_tyd) (gc : global_context)
     (pi : prover_infos) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let sme_ty = inter_check_sent_msg_expr maps (env_of_gc gc) sme in
+  let loc_source = loc_of_src_of_sent_msg_expr sme in
+  let loc_dest = loc_of_dest_of_sent_msg_expr sme in
   check_sme_port_index_consistency_core
-  (fun port_index_kind ->
-    error_message (loc_of_in_of_sent_msg_expr sme)
+  (fun port_index_kind loc_of_port_index ->
+    error_message loc_of_port_index
     (fun ppf ->
        fprintf ppf
        "@[%s@ port@ index@ is@ inconsistent@ with@ message@ path@]"
        port_index_kind))
-  maps gc pi sme_ty;
+  loc_source loc_dest maps gc pi sme_ty;
   sme_ty
 
 let send_message_to_real_or_ideal_config
@@ -1648,16 +1632,17 @@ let step_send_and_transition_from_ideal_fun (c : config_real_running)
       let path = {inter_id_path = root :: iip; msg = msg} in
       let sme =
         SMET_Ord
-        {mode          = Adv;
-         dir           = Out;
-         in_port_form  =
+        {mode           = Adv;
+         dir            = Out;
+         src_port_form  =
            make_port_form
            (addr_concat_form func_form (addr_make_form rel))
            (int_form 1);
-         path          = path;
-         args          = msg_args;
-         out_port_form =
+         path           = path;
+         args           = msg_args;
+         dest_port_form =
            make_port_form adv_form (int_form base)} in
+      let () = check_sme_port_index_consistency c.maps c.gc pi sme in
       (ConfigRealSending
        {maps = c.maps;
         gc   = c.gc;
@@ -1681,15 +1666,16 @@ let step_send_and_transition_from_ideal_fun (c : config_real_running)
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
-             {mode          = Dir;
-              dir           = Out;
-              in_port_form  =
+             {mode           = Dir;
+              dir            = Out;
+              src_port_form  =
                 make_port_form
                 (addr_concat_form func_form (addr_make_form rel))
                 (int_form source_pi);
-              path          = path;
-              args          = msg_args;
-              out_port_form = port_form} in
+              path           = path;
+              args           = msg_args;
+              dest_port_form = port_form} in
+           let () = check_sme_port_index_consistency c.maps c.gc pi sme in
            (ConfigRealSending
             {maps = c.maps;
              gc   = c.gc;
@@ -1708,8 +1694,8 @@ let step_send_and_transition_from_ideal_fun (c : config_real_running)
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
 let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-    (c : config_real_running) (rel : int list) (base : int)
-    (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
+    (c : config_real_running) (pi : prover_infos) (rel : int list)
+    (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
     (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) (child_i : int)
@@ -1730,12 +1716,13 @@ let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
   let path_new = {inter_id_path = iip_new; msg = msg} in
   let sme =
     SMET_Ord
-    {mode          = Dir;
-     dir           = In;
-     in_port_form  = source_port;
-     path          = path_new;
-     args          = msg_args;
-     out_port_form = dest_port} in
+    {mode           = Dir;
+     dir            = In;
+     src_port_form  = source_port;
+     path           = path_new;
+     args           = msg_args;
+     dest_port_form = dest_port} in
+  let () = check_sme_port_index_consistency c.maps c.gc pi sme in
   (ConfigRealSending
    {maps = c.maps;
     gc   = c.gc;
@@ -1763,16 +1750,17 @@ let step_send_and_transition_from_real_fun_party_to_env_or_adv
       let path = {inter_id_path = root :: iip; msg = msg} in
       let sme =
         SMET_Ord
-        {mode          = Adv;
-         dir           = Out;
-         in_port_form  =
+        {mode           = Adv;
+         dir            = Out;
+         src_port_form  =
            make_port_form
            (addr_concat_form func_form (addr_make_form rel))
            (int_form pty_pi);
-         path          = path;
-         args          = msg_args;
-         out_port_form =
+         path           = path;
+         args           = msg_args;
+         dest_port_form =
            make_port_form adv_form (int_form adv_pi)} in
+      let () = check_sme_port_index_consistency c.maps c.gc pi sme in
       (ConfigRealSending
        {maps = c.maps;
         gc   = c.gc;
@@ -1792,15 +1780,16 @@ let step_send_and_transition_from_real_fun_party_to_env_or_adv
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
-             {mode          = Dir;
-              dir           = Out;
-              in_port_form  =
+             {mode           = Dir;
+              dir            = Out;
+              src_port_form  =
                 make_port_form
                 (addr_concat_form func_form (addr_make_form rel))
                 (int_form source_pi);
-              path          = path;
-              args          = msg_args;
-              out_port_form = port_form} in
+              path           = path;
+              args           = msg_args;
+              dest_port_form = port_form} in
+           let () = check_sme_port_index_consistency c.maps c.gc pi sme in
            (ConfigRealSending
             {maps = c.maps;
              gc   = c.gc;
@@ -1837,7 +1826,7 @@ let step_send_and_transition_from_real_fun_party (c : config_real_running)
       comp sub
   | Some (child_i, dir_sp) ->
        step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-       c rel base fun_sp ft pty_id iip msg msg_args port_form
+       c pi rel base fun_sp ft pty_id iip msg msg_args port_form
        new_rws comp sub child_i dir_sp
 
 let step_send_and_transition (c : config_real_running) (pi : prover_infos)
@@ -1953,7 +1942,7 @@ let match_ord_sme_against_msg_match_clauses
         | MsgOrStarMsg msg ->
            if List.tl sme.path.inter_id_path = inter_id_path &&
               sme.path.msg = msg
-           then (match_msg_pat msg_pat sme.in_port_form sme.args, code)
+           then (match_msg_pat msg_pat sme.src_port_form sme.args, code)
            else match_sme clauses
         | MsgOrStarStar    ->
             if UcUtils.sl1_starts_with_sl2 (List.tl sme.path.inter_id_path)
@@ -2191,10 +2180,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                 (f_eq dest_pi (int_form 0))
                 (f_eq source_port env_root_port_form))
                (f_and
-                (int_lt_form (int_form 0) dest_pi)
-                (f_and
-                 (f_not (int_memb_of_fset_form dest_pi c.ig))
-                 (envport_form func_form adv_form source_port)))))
+                (int_le_form (int_form c.ig) dest_pi)
+                (envport_form func_form adv_form source_port))))
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
@@ -2613,7 +2600,91 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
 let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       : config * effect =
-  fill_in "trying to step ideal sending config" (ConfigIdealSending c)
+  let mode = mode_of_sent_msg_expr_tyd c.sme in
+  let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
+  let dest_addr = port_to_addr_form dest_port in
+  let dest_pi = port_to_pi_form dest_port in
+  let source_port = source_port_of_sent_msg_expr_tyd c.sme in
+(*
+  let source_addr = port_to_addr_form source_port in
+  let source_pi = port_to_pi_form source_port in
+*)
+
+  let from_env_to_ideal_fun (func_sp : symb_pair) (base : int)
+      (ifbt : ideal_fun_body_tyd) : config * effect =
+    match c.sme with
+    | SMET_Ord sme_ord ->
+        let (root, func_id) = func_sp in
+        let comp = ifbt.id_dir_inter in
+        let comp_map =
+          match unloc (IdPairMap.find (root, comp) c.maps.dir_inter_map) with
+          | BasicTyd _       -> failure "cannot happen"
+          | CompositeTyd map -> map in
+        let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
+        let sbt = unloc (IdMap.find state_id ifbt.states) in
+        (match sme_ord.path.inter_id_path with
+         | [root'; comp'; sub'] ->
+             (assert
+              (root' = root && comp' = comp &&
+               IdMap.find_opt sub' comp_map <> None && sme_ord.dir = In);
+              let (lc, ins) =
+                match_ord_sme_in_state false [] sbt state_args sme_ord in
+              (ConfigIdealRunning
+               {maps = c.maps;
+                gc   = c.gc;
+                pi   = c.pi;
+                iw   = c.iw;
+                ig   = c.ig;
+                iws  = c.iws;
+                iwrc = IWRC_IdealFunc (base, func_sp, state_id);
+                lc   = lc;
+                ins  = create_instr_interp_list ins},
+               EffectOK))
+         | _                    -> failure "should not happen")
+    | SMET_EnvAdv _    ->
+        (debugging_message
+         (fun ppf ->
+            fprintf ppf
+            "@[message@ match@ failure@ at@ ideal@ functionality@ %a@]"
+            pp_symb_pair func_sp);
+         fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
+
+  let from_env () =
+    if mode = Dir &&
+       eval_bool_form_to_bool c.gc pi
+       (f_and
+        (f_eq dest_addr func_form)
+        (envport_form func_form adv_form source_port))
+      then let (func_sp, base) = c.iw.iw_ideal_func in
+           let ft = unloc (IdPairMap.find func_sp c.maps.fun_map) in
+           let ifbt = ideal_fun_body_tyd_of ft in
+           from_env_to_ideal_fun func_sp base ifbt
+    else if mode = Adv &&
+            eval_bool_form_to_bool c.gc pi
+            (f_and
+             (f_eq dest_addr adv_form)
+              (f_or
+               (f_and
+                (f_eq dest_pi (int_form 0))
+                (f_eq source_port env_root_port_form))
+               (f_and
+                (int_lt_form (int_form 0) dest_pi)
+                (f_and
+                 (int_le_form (int_form c.ig) dest_pi)
+                 (envport_form func_form adv_form source_port)))))
+      then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
+    else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
+
+  try
+    match c.iwsc with
+    | IWSC_Env                              -> from_env ()
+    | IWSC_Adv                              -> failure "hi"
+    | IWSC_Ideal_Func (fun_sp, adv_pi)      -> failure "hi"
+    | IWSC_Main_Sim (sim_sp, adv_pi)        -> failure "hi"
+    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) -> failure "hi"
+  with
+  | ECProofEngine ->
+      (ConfigIdealSending c, EffectBlockedPortOrAddrCompare)
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config) (ppi_opt : EcParsetree.pprover_infos option)

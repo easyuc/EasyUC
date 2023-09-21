@@ -938,12 +938,12 @@ let is_ideal_at_top_fet (fet : fun_expr_tyd) : bool =
    the message path must be root-qualified *)
 
 type sent_msg_expr_ord_tyd = {
-  mode          : msg_mode;    (* message mode *)
-  dir           : msg_dir;     (* message direction *)
-  in_port_form  : form;        (* source *)
-  path          : msg_path_u;  (* message path *)
-  args          : form list;   (* message arguments *)
-  out_port_form : form         (* destination *)
+  mode           : msg_mode;    (* message mode *)
+  dir            : msg_dir;     (* message direction *)
+  src_port_form  : form;        (* source *)
+  path           : msg_path_u;  (* message path *)
+  args           : form list;   (* message arguments *)
+  dest_port_form : form         (* destination *)
 }
 
 let subst_comp_in_msg_path_u (path : msg_path_u)
@@ -963,8 +963,8 @@ let subst_comp_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
   | Some path -> Some {sme with path = path}
 
 type sent_msg_expr_env_adv_tyd = {  (* mode is implicitly Adv *)
-  in_port_form  : form;
-  out_port_form : form
+  src_port_form  : form;
+  dest_port_form : form
 }
 
 type sent_msg_expr_tyd =
@@ -1000,13 +1000,13 @@ let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
 
 let source_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
   match sme with
-  | SMET_Ord ord        -> ord.in_port_form
-  | SMET_EnvAdv env_adv -> env_adv.in_port_form
+  | SMET_Ord ord        -> ord.src_port_form
+  | SMET_EnvAdv env_adv -> env_adv.src_port_form
 
 let dest_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
   match sme with
-  | SMET_Ord ord        -> ord.out_port_form
-  | SMET_EnvAdv env_adv -> env_adv.out_port_form
+  | SMET_Ord ord        -> ord.dest_port_form
+  | SMET_EnvAdv env_adv -> env_adv.dest_port_form
 
 let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
   let ppe = EcPrinting.PPEnv.ofenv env in
@@ -1028,7 +1028,7 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
   match sme with
   | SMET_Ord sme    ->
       let inp, path, args, outp =
-        sme.in_port_form, sme.path, sme.args, sme.out_port_form in
+        sme.src_port_form, sme.path, sme.args, sme.dest_port_form in
       let pp_mpath (fmt : Format.formatter) (path : msg_path_u) : unit =
         let rec pp_strl (fmt : Format.formatter) (strl : string list) : unit =
           match strl with
@@ -1049,8 +1049,8 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
       pp_portform outp
   | SMET_EnvAdv sme ->
       Format.fprintf fmt "@[%a@@_@,@@%a@]"
-      pp_portform sme.in_port_form
-      pp_portform sme.out_port_form
+      pp_portform sme.src_port_form
+      pp_portform sme.dest_port_form
 
 (* pretty print a typed sent message expression to a string *)
 
