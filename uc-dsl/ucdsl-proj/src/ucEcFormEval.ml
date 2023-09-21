@@ -223,6 +223,16 @@ let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => /=.";
   run_tac intro1_simplify proof
 
+let try_move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+  let proof' = move_simplify proof in
+  let pregoal = get_only_pregoal proof in
+  let concl = pregoal.g_concl in
+  let pregoal' = get_only_pregoal proof' in
+  let concl' = pregoal'.g_concl in
+  if EcCoreFol.f_equal concl concl'
+  then None
+  else Some proof' 
+
 let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   let pregoal = get_only_pregoal proof in
   let concl = pregoal.g_concl in
@@ -387,7 +397,7 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
           if left_first
           then move_right_simplify proof
           else move_left_simplify proof
-       with _ -> None
+       with _ -> try_move_simplify proof
   in
   progression try_rewriting_step proof
   
@@ -425,7 +435,9 @@ let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof)
   let rec try_simpcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
-  = if counter=0 then None
+  = if counter=0 
+    then 
+      try_rewriting proof p_id
     else
       match try_rewriting proof p_id with
       | Some pr -> Some pr
