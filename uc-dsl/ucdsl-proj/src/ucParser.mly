@@ -375,6 +375,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token ASSERT
 %token ASSUMPTION
 %token UNDO
+%token DEBUG
 
 (* fixed length *)
 
@@ -1160,6 +1161,7 @@ icomm :
   | c = addf_cmd; { c }
   | c = assert_cmd; { c }
   | c = step_prover_info; { c }
+  | c = debug_cmd { c }
 
 (*
 %inline filename :
@@ -1261,6 +1263,9 @@ assert_ctrl:
 
 send_msg :
   | SEND; sme = sent_msg_expr; { Send sme }
+
+debug_cmd :
+  | DEBUG ; { Debug }
 
 step_prover_info :
   | step = lident; PROVER; pi = smt_info; 

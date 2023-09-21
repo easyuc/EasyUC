@@ -59,6 +59,7 @@
     "assert"          , ASSERT      ;
     "assumption"      , ASSUMPTION  ;
     "undo"            , UNDO        ;
+    "debug"           , DEBUG       ;
   ]
 
   let keywords =

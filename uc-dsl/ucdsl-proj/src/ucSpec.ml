@@ -374,5 +374,6 @@ type interpreter_command_u =
   | Finish
   | Quit
   | Assert of peffect
+  | Debug
 
 type interpreter_command = interpreter_command_u located

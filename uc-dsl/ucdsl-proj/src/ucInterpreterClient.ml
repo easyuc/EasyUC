@@ -452,7 +452,19 @@ let interpret (lexbuf : L.lexbuf) =
       end
     end
   in
-      
+  
+  let debug () : unit =
+    if (UcState.get_debugging ())
+    then begin
+      UcState.unset_debugging ();
+      non_loc_warning_message (fun ppf -> Format.fprintf ppf 
+      "@[Debugging@ messages@ turned@ off.]")
+    end else begin
+      UcState.set_debugging ();
+      non_loc_warning_message (fun ppf -> Format.fprintf ppf 
+      "@[Debugging@ messages@ turned@ on.]")
+    end
+  in
 
   let rec done_loop (): unit =
     try
@@ -468,6 +480,7 @@ let interpret (lexbuf : L.lexbuf) =
       | Finish -> donec()
       | Quit -> exit 0
       | Assert peff -> confirm peff
+      | Debug -> debug ()
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
@@ -486,6 +499,7 @@ let rec load_loop () : unit =
         load psym
       | Undo pi -> undo pi
       | Quit -> exit 0
+      | Debug -> debug ()
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
@@ -503,6 +517,7 @@ let rec load_loop () : unit =
         funexp fe
       | Undo pi -> undo pi
       | Quit -> exit 0
+      | Debug -> debug ()
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
@@ -524,6 +539,7 @@ let rec load_loop () : unit =
         world w
       | Undo pi -> undo pi
       | Quit -> exit 0
+      | Debug -> debug ()
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf "@[addv@,@ addf@,@ prover@,@ or@ world@ command@ expected@]")
@@ -560,6 +576,7 @@ let rec load_loop () : unit =
       | Prover ppinfo -> prover ppinfo
       | Undo pi -> undo pi  
       | Quit -> exit 0
+      | Debug -> debug ()
       | _ ->
         error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
