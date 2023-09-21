@@ -47,6 +47,7 @@ insert contents from a file, mark the positions between character positions"
             (let ((x (make-overlay ch-pos-beg ch-pos-end)))
               (overlay-put x 'face '(:foreground "blue")))
             (goto-char ch-pos-end)
+            (goto-char ch-pos-beg)
           )
         )
       )
