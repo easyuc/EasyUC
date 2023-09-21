@@ -780,7 +780,6 @@ type ideal_world_sending_context =
                        symb_pair    (* functionality *)
   | IWSC_Main_Sim   of int       *  (* adversarial port index *)
                        symb_pair    (* main simulator *)
-                       
   | IWSC_OtherSim   of int       *  (* adversarial port index *)
                        symb_pair *  (* other simulator *)
                        int          (* index (from 0) into list of
@@ -1461,15 +1460,12 @@ let check_sme_port_index_consistency_core
       (src_or_dest_str : string) (loc_src_or_dest : EcLocation.t)  : unit =
     match sme.path.inter_id_path with
     | [root; comp; sub] ->
-        (match unloc (Option.get (get_inter_tyd maps root comp)) with
-         | BasicTyd _       -> failure "cannot happen"
-         | CompositeTyd map ->
-             let porti = id_map_ordinal1_of_sym map sub
-             in if eval_bool_form_to_bool gc pi
-                   (f_eq pi_form (int_form porti))
-                then ()
-                else error src_or_dest_str loc_src_or_dest)
-    | [_; bas]          ->
+        let porti = get_pi_of_sub_interface maps root comp sub in
+        if eval_bool_form_to_bool gc pi
+           (f_eq pi_form (int_form porti))
+        then ()
+        else error src_or_dest_str loc_src_or_dest
+    | [_; _]            ->
         if eval_bool_form_to_bool gc pi
            (f_eq pi_form (int_form 1))
         then ()
@@ -2384,18 +2380,14 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
         let comp = ifbt.id_dir_inter in
-        let comp_map =
-          match unloc (IdPairMap.find (root, comp) c.maps.dir_inter_map) with
-          | BasicTyd _       -> failure "cannot happen"
-          | CompositeTyd map -> map in
         let {id = state_id; args = state_args} =
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         (match sme_ord.path.inter_id_path with
          | [root'; comp'; sub'] ->
              (assert
-              (root' = root && comp' = comp &&
-               IdMap.find_opt sub' comp_map <> None && sme_ord.dir = In);
+              (root' = root && comp' = comp && sme_ord.dir = In &&
+               check_sub_interface_and_get_pi c.maps root comp sub' <> None);
               let (lc, ins) =
                 match_ord_sme_in_state false rel sbt state_args sme_ord in
               (ConfigRealRunning
@@ -2612,42 +2604,39 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_env_to_ideal_fun (func_sp : symb_pair) (base : int)
       (ifbt : ideal_fun_body_tyd) : config * effect =
+    let msg_match_fail () : config * effect =
+      (debugging_message
+       (fun ppf ->
+          fprintf ppf
+          "@[message@ match@ failure@ at@ ideal@ functionality@ %a@]"
+          pp_symb_pair func_sp);
+       fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
     match c.sme with
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
         let comp = ifbt.id_dir_inter in
-        let comp_map =
-          match unloc (IdPairMap.find (root, comp) c.maps.dir_inter_map) with
-          | BasicTyd _       -> failure "cannot happen"
-          | CompositeTyd map -> map in
         let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         (match sme_ord.path.inter_id_path with
          | [root'; comp'; sub'] ->
-             (assert
-              (root' = root && comp' = comp &&
-               IdMap.find_opt sub' comp_map <> None && sme_ord.dir = In);
-              let (lc, ins) =
-                match_ord_sme_in_state false [] sbt state_args sme_ord in
-              (ConfigIdealRunning
-               {maps = c.maps;
-                gc   = c.gc;
-                pi   = c.pi;
-                iw   = c.iw;
-                ig   = c.ig;
-                iws  = c.iws;
-                iwrc = IWRC_IdealFunc (base, func_sp, state_id);
-                lc   = lc;
-                ins  = create_instr_interp_list ins},
-               EffectOK))
-         | _                    -> failure "should not happen")
-    | SMET_EnvAdv _    ->
-        (debugging_message
-         (fun ppf ->
-            fprintf ppf
-            "@[message@ match@ failure@ at@ ideal@ functionality@ %a@]"
-            pp_symb_pair func_sp);
-         fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
+              if root' = root && comp' = comp && sme_ord.dir = In &&
+                 check_sub_interface_and_get_pi c.maps root comp sub' <> None
+              then let (lc, ins) =
+                     match_ord_sme_in_state false [] sbt state_args sme_ord in
+                   (ConfigIdealRunning
+                    {maps = c.maps;
+                     gc   = c.gc;
+                     pi   = c.pi;
+                     iw   = c.iw;
+                     ig   = c.ig;
+                     iws  = c.iws;
+                     iwrc = IWRC_IdealFunc (base, func_sp, state_id);
+                     lc   = lc;
+                     ins  = create_instr_interp_list ins},
+                    EffectOK)
+              else msg_match_fail ()
+         | _                    -> msg_match_fail ())
+    | SMET_EnvAdv _    -> msg_match_fail () in
 
   let from_env () =
     if mode = Dir &&

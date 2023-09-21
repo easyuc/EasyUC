@@ -882,13 +882,26 @@ let get_adv_pi_of_nth_sub_fun_of_real_fun
     num_adv_pis_of_parties_of_real_fun maps root ft in
   base + 1 + num_adv_pis_of_parties + n
 
+(* check that a composite interface is valid and has the given
+   sub interface, returning None when this is not true, and
+   Some of the port index of the sub interface otherwise *)
+
+let check_sub_interface_and_get_pi (maps : maps_tyd) (root : symbol)
+    (comp : symbol) (sub : symbol) : int option =
+  match get_inter_tyd maps root comp with
+  | None    -> None
+  | Some it ->
+      match unloc it with
+      | BasicTyd _       -> None
+      | CompositeTyd map -> Some (id_map_ordinal1_of_sym map sub)
+
 (* get the port index of a sub interface of a composite interface *)
 
 let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
     (comp : symbol) (sub : symbol) : int =
-  match unloc (Option.get (get_inter_tyd maps root comp)) with
-  | BasicTyd _       -> failure "should not happen"
-  | CompositeTyd map -> id_map_ordinal1_of_sym map sub
+  match check_sub_interface_and_get_pi maps root comp sub with
+  | None   -> failure "should not happen"
+  | Some i -> i
 
 (* get the child index (used as the suffix of the address) plus the
    symb_pair naming the direct composite interface of a parameter or
