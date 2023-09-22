@@ -1972,6 +1972,11 @@ let match_ord_sme_in_state (is_sim : bool) (rel_addr : int list)
     List.mapi
     (fun i (_, id) -> LCB_IntPort (id, port_of_addr (i + 1)))
     (QidMap.bindings sbt.internal_ports) in
+  (* when internal ports are turned into port indices (beginning at 1),
+     we use the ordering List.compare String.compare; this is stable
+     under the prepending of RealFun, so that [Party] in the real
+     functionality and [RealFun; Party] in its simulator will be
+     assigned the same port index *) 
   let lc =
     lc_create
     (state_params   @

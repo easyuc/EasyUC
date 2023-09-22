@@ -335,7 +335,13 @@ type state_mid = state_body_mid located
 
    when internal ports are locally bound in environments, [Party] is
    turned into "intport:Party", and [RealFun; Party] is turned into
-   "intport:RealFun.Party]" *)
+   "intport:RealFun.Party]"
+
+   when internal ports are turned into port indices (beginning at 1),
+   we use the ordering List.compare String.compare; this is stable
+   under the prepending of RealFun, so that [Party] in the real
+   functionality and [RealFun; Party] in its simulator will be
+   assigned the same port index *) 
 
 type kind =    (* kind of entity *)
   | RealKind   (* real functionality *)
