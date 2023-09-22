@@ -37,17 +37,20 @@ insert contents from a file, mark the positions between character positions"
          )
       (let ( (params-line  (substring uc-file-line (length prefix)))
            )
-        (let ((params (split-string params-line)))
-          (let ( (filenam    (nth 0 params))
-                 (ch-pos-beg (string-to-number (nth 1 params)))
-                 (ch-pos-end (string-to-number (nth 2 params)))
-               )
-            (erase-buffer)
-            (insert-file filenam)
-            (let ((x (make-overlay ch-pos-beg ch-pos-end)))
-              (overlay-put x 'face '(:foreground "blue")))
-            (goto-char ch-pos-end)
-            (goto-char ch-pos-beg)
+        (if (string= params-line "None");if
+          (erase-buffer);then                   
+          (let ((params (split-string params-line)));else
+            (let ( (filenam    (nth 0 params))
+                   (ch-pos-beg (string-to-number (nth 1 params)))
+                   (ch-pos-end (string-to-number (nth 2 params)))
+                 )
+              (erase-buffer)
+              (insert-file filenam)
+              (let ((x (make-overlay ch-pos-beg ch-pos-end)))
+                (overlay-put x 'face '(:foreground "blue")))
+              (goto-char ch-pos-end)
+              (goto-char ch-pos-beg)
+            )
           )
         )
       )
@@ -183,11 +186,11 @@ error and then highlight in the script buffer."
  proof-goal-command		"load %s.\n"
  proof-save-command		"finish.\n"
  
- proof-shell-start-goals-regexp	 "state:"
- proof-shell-end-goals-regexp	 ";"
+ proof-shell-start-goals-regexp	 "^state:"
+ proof-shell-end-goals-regexp	 "^;"
 
  proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:"
- proof-shell-eager-annotation-end   ";"
+ proof-shell-eager-annotation-end   "^;"
 
  proof-shell-quit-cmd		 "quit.\n"
  proof-assistant-home-page	 "http://yes"

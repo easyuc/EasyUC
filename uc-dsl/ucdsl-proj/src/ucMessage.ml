@@ -60,6 +60,11 @@ let message res mt loc_opt msgf =
   );
   msgf Format.err_formatter;
   Format.pp_print_newline Format.err_formatter ();
+  if pg_mode then
+    begin
+      Printf.eprintf ";";
+      Format.pp_print_newline Format.err_formatter ()
+    end;
   res ()
 
 let error_message loc =
@@ -91,5 +96,7 @@ let debugging_message msgf =
   then begin
     Printf.eprintf "debugging:\n\n";
     msgf Format.err_formatter;
+    Format.pp_print_newline Format.err_formatter ();
+    Printf.eprintf ";";
     Format.pp_print_newline Format.err_formatter ()
   end
