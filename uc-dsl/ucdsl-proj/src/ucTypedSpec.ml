@@ -140,10 +140,26 @@ let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
+let indexed_map_to_list_keep_keys (mapind : ('o * int) IdMap.t) :
+  (symbol * 'o) list =
+  List.map
+  (fun (s, (x, _)) -> (s, x))
+  (List.sort
+   (fun (_, (_, a1)) (_, (_, a2)) -> a1 - a2)
+   (IdMap.bindings mapind))
+
 let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
   let l = IdMap.fold (fun _ v l -> v :: l) mapind [] in
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
   List.map (fun a -> fst a) lord
+
+let indexed_map_to_list_keep_keys (mapind : ('o * int) IdMap.t) :
+  (symbol * 'o) list =
+  List.map
+  (fun (s, (x, _)) -> (s, x))
+  (List.sort
+   (fun (_, (_, a1)) (_, (_, a2)) -> a1 - a2)
+   (IdMap.bindings mapind))
 
 let filter_map (fm : 'a -> 'b option) (m : 'a IdMap.t) : 'b IdMap.t =
   let flt =
@@ -972,6 +988,25 @@ let subst_comp_in_msg_path_u (path : msg_path_u)
 let subst_comp_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
     (old_comp : symbol) (new_comp : symbol) : sent_msg_expr_ord_tyd option =
   match subst_comp_in_msg_path_u sme.path old_comp new_comp with
+  | None      -> None
+  | Some path -> Some {sme with path = path}
+
+let subst_for_basic_iip_prefix_in_msg_path_u (path : msg_path_u)
+    (expected_prefix : string list) (new_prefix : string list)
+      : msg_path_u option =
+  let {inter_id_path = iip; msg = msg} = path in
+  let n = List.length expected_prefix in
+  if List.take n iip = expected_prefix
+  then let iip' = new_prefix @ List.drop n iip
+       in Some {inter_id_path = iip'; msg = msg}
+  else None
+
+let subst_for_iip_prefix_in_sent_msg_expr_ord_tyd 
+    (sme : sent_msg_expr_ord_tyd) (expected_prefix : string list)
+    (new_prefix : string list)
+      : sent_msg_expr_ord_tyd option =
+  match subst_for_basic_iip_prefix_in_msg_path_u sme.path
+        (expected_prefix : string list) (new_prefix : string list) with
   | None      -> None
   | Some path -> Some {sme with path = path}
 

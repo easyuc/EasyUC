@@ -56,10 +56,3 @@ step prover timeout=3.
 step.
 (* this takes us to the ordinary match instruction in KeyExchange/Pt2/WaitFwd1
 *)
-
-
-
-
-
-
-
