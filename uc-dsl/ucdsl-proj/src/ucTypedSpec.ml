@@ -280,15 +280,26 @@ type inter_body_tyd =
                                              name of basic interface -
                                              with same root *)
 
-let is_basic_tyd ibt =
+let is_basic_tyd (ibt : inter_body_tyd) : bool =
   match ibt with
   | BasicTyd _     -> true
   | CompositeTyd _ -> false
 
-let is_composite_tyd ibt =
+let is_composite_tyd (ibt : inter_body_tyd) : bool =
   match ibt with
   | BasicTyd _     -> false
   | CompositeTyd _ -> true
+
+let basic_tyd_of_inter_body_tyd (ibt : inter_body_tyd) : basic_inter_body_tyd =
+  match ibt with
+  | BasicTyd bibt  -> bibt
+  | CompositeTyd _ -> failure "should not happen"
+
+let composite_map_of_inter_body_tyd (ibt : inter_body_tyd)
+      : symbol IdMap.t =
+  match ibt with
+  | BasicTyd _      -> failure "should not happen"
+  | CompositeTyd mp -> mp
 
 type inter_tyd = inter_body_tyd located  (* typed interface *)
 
@@ -991,22 +1002,28 @@ let subst_comp_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
   | None      -> None
   | Some path -> Some {sme with path = path}
 
-let subst_for_basic_iip_prefix_in_msg_path_u (path : msg_path_u)
-    (expected_prefix : string list) (new_prefix : string list)
+let subst_for_iip_in_msg_path_u (path : msg_path_u) (new_iip : string list)
+      : msg_path_u =
+  {inter_id_path = new_iip; msg = path.msg}
+
+let subst_for_iip_in_sent_msg_expr_ord_tyd 
+    (sme : sent_msg_expr_ord_tyd) (new_iip : string list)
+      : sent_msg_expr_ord_tyd =
+  let new_path = subst_for_iip_in_msg_path_u sme.path new_iip in
+  {sme with path = new_path}
+
+let check_and_subst_for_iip_in_msg_path_u (path : msg_path_u)
+    (expected_iip : string list) (new_iip : string list)
       : msg_path_u option =
   let {inter_id_path = iip; msg = msg} = path in
-  let n = List.length expected_prefix in
-  if List.take n iip = expected_prefix
-  then let iip' = new_prefix @ List.drop n iip
-       in Some {inter_id_path = iip'; msg = msg}
+  if iip = expected_iip
+  then Some {inter_id_path = new_iip; msg = msg}
   else None
 
-let subst_for_iip_prefix_in_sent_msg_expr_ord_tyd 
-    (sme : sent_msg_expr_ord_tyd) (expected_prefix : string list)
-    (new_prefix : string list)
-      : sent_msg_expr_ord_tyd option =
-  match subst_for_basic_iip_prefix_in_msg_path_u sme.path
-        (expected_prefix : string list) (new_prefix : string list) with
+let check_and_subst_for_iip_in_sent_msg_expr_ord_tyd 
+    (sme : sent_msg_expr_ord_tyd) (expected_iip : string list)
+    (new_iip : string list) : sent_msg_expr_ord_tyd option =
+  match check_and_subst_for_iip_in_msg_path_u sme.path expected_iip new_iip with
   | None      -> None
   | Some path -> Some {sme with path = path}
 

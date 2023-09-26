@@ -28,13 +28,13 @@ direct SMCDir {
   Pt2 : SMCPt2  (* Party 2 *)
 }
 
-adversarial KEDirPt1 {
+adversarial SMCAdvPt1 {
   in pong
   out ping
 }
 
-adversarial KEDir {
-  Pt1 : KEDirPt1
+adversarial SMCAdv {
+  Pt1 : SMCAdvPt1
 }
 
 (* The real functionality implements the composite direct interface
@@ -48,20 +48,27 @@ adversarial KEDir {
    from KE, just as they can with the forwarding subfunctionality
    Fwd. *)
 
-functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir KEDir {
+functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir SMCAdv {
   subfun Fwd = Forwarding.Forw
 
-  party Pt1 serves SMCDir.Pt1 KEDir.Pt1 {
+  party Pt1 serves SMCDir.Pt1 SMCAdv.Pt1 {
     initial state WaitReq {
       match message with 
       | pt1@SMCDir.Pt1.smc_req(pt2, t) => {
-          if (envport pt2) {
-            send KE.Pt1.ke_req1(intport Pt2)
-            and transition WaitKE2(pt1, pt2, t).
-          }
-          else { fail. }
+          send SMCAdv.Pt1.ping
+          and transition WaitPong(pt1, pt2, t).
         }
       | *                              => { fail. }
+      end
+    }
+
+    state WaitPong(pt1 : port, pt2 : port, t : text) {
+      match message with 
+      | SMCAdv.Pt1.pong => {
+          send KE.Pt1.ke_req1(intport Pt2)
+          and transition WaitKE2(pt1, pt2, t).
+        }
+      | *              => { fail. }
       end
     }
 
@@ -180,14 +187,24 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
            its message to the simulator (which here will go the the
            adversary), initiating simulation of key exchange between
            the internal ports of the two parties of SMCReal *)
-        send SMCReal.KE.KEI2S.ke_sim_req1
-             (intport SMCReal.Pt1, intport SMCReal.Pt2)
-        and transition WaitAdv1(pt1, pt2).
+        send SMCReal.SMCAdv.Pt1.ping
+        and transition WaitPong(pt1, pt2).
       }
     (* no messages from the adversary to the real functionality can be
        matched in the initial state; they automatically flow through
        the simulator to the ideal functionality, where they result in
        failure *)
+    end
+  }
+
+  state WaitPong(pt1 : port, pt2 : port) {
+    match message with 
+    | SMCReal.SMCAdv.Pt1.pong => {
+        send SMCReal.KE.KEI2S.ke_sim_req1
+             (intport SMCReal.Pt1, intport SMCReal.Pt2)
+        and transition WaitAdv1(pt1, pt2).
+      }
+    | *              => { fail. }
     end
   }
 
