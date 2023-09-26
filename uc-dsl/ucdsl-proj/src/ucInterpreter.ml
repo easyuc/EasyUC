@@ -2672,9 +2672,56 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
+  let from_adv_or_sim_to_ideal_fun (func_sp : symb_pair) (base : int)
+      (ifbt : ideal_fun_body_tyd) : config * effect =
+    let msg_match_fail () : config * effect =
+      (debugging_message
+       (fun ppf ->
+          fprintf ppf
+          "@[message@ match@ failure@ at@ ideal@ functionality@ %a@]"
+          pp_symb_pair func_sp);
+       fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
+    match c.sme with
+    | SMET_Ord sme_ord ->
+        let (root, func_id) = func_sp in
+        let basic = ifbt.id_adv_inter in
+        let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
+        let sbt = unloc (IdMap.find state_id ifbt.states) in
+        (match sme_ord.path.inter_id_path with
+         | [root'; basic'] ->
+             if root' = root && basic' = basic && sme_ord.dir = In
+             then if sbt.is_initial
+                  then (debugging_message
+                        (fun ppf ->
+                           fprintf ppf
+                           ("@[adversarial@ message@ rejected@ in@ initial@ " ^^
+                            "state@ at@ %a@]")
+                           pp_symb_pair func_sp);
+                        fail_out_of_running_or_sending_config
+                        (ConfigIdealSending c))
+                  else let (lc, ins) =
+                         match_ord_sme_in_state false func_form sbt state_args
+                         sme_ord in
+                       (ConfigIdealRunning
+                        {maps = c.maps;
+                         gc   = c.gc;
+                         pi   = c.pi;
+                         iw   = c.iw;
+                         ig   = c.ig;
+                         iws  = c.iws;
+                         iwrc = IWRC_IdealFunc (base, func_sp, state_id);
+                         lc   = lc;
+                         ins  = create_instr_interp_list ins},
+                        EffectOK)
+             else msg_match_fail ()
+         | _               -> msg_match_fail ())
+    | SMET_EnvAdv _    -> msg_match_fail () in
+
   (* -1 <= i <= List.length c.iw_other_sims - 1
 
-     i is starting point of search, and -1 means the main simulator *)
+     i is starting point of search, and -1 means the main simulator
+
+     only for use when message's destination address is >= func_addr *)
 
   let rec find_sim_from_right (i : int)
         : (int * symb_pair * int * int list * sim_state) option =
@@ -2701,9 +2748,10 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   (* -1 <= i <= List.length c.iw_other_sims - 1
 
-     i is starting point of search, and -1 means the main simulator *)
+     i is starting point of search, and -1 means the main simulator
 
-(*
+     only for use when message's destination address is >= func_addr *)
+
   let rec find_sim_from_left (i : int)
         : (int * symb_pair * int * int list * sim_state) option =
     if i = -1
@@ -2714,7 +2762,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 let sim_st = c.iws.main_sim_state in
                 Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
            else find_sim_from_left (i + 1)
-    else if i <= List.length c.iw.iw_other_sims
+    else if i <= List.length c.iw.iw_other_sims - 1
       then let (sp, adv_pi, rf_arg_adv_pis) = List.nth c.iw.iw_other_sims i in
            if eval_bool_form_to_bool c.gc pi
               (f_eq dest_pi (int_form adv_pi))
@@ -2723,9 +2771,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            else find_sim_from_left (i + 1)
     else None in    
 
-  let from_func_or_sim_to_sim_basic_adv (i : int) (sim_sp : symb_pair)
-      (adv_pi : int) (sim_bt : sim_body_tyd) (sim_rf_addr : form)
-      (sim_state : state) : config * effect =
+  let dest_adv_to_sim (i : int) (sim_sp : symb_pair) (adv_pi : int)
+      (sim_rf_addr : form) (sim_state : state) : config * effect =
     let msg_match_fail () : config * effect =
       (debugging_message
        (fun ppf ->
@@ -2736,6 +2783,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     match c.sme with
     | SMET_Ord sme_ord ->
         let (root, _) = sim_sp in
+        let sim_bt = unloc (IdPairMap.find sim_sp c.maps.sim_map) in
         let {id = state_id; args = state_args} = sim_state in
         let state_bt = unloc (IdMap.find state_id sim_bt.states) in
         (match sme_ord.path.inter_id_path with
@@ -2761,9 +2809,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
               else msg_match_fail ()
          | _               -> msg_match_fail ())
     | SMET_EnvAdv _    -> msg_match_fail () in
-*)
 
-  let adv_or_sim_to_sim_basic_adv (i : int) (sim_sp : symb_pair)
+  let dest_ge_func_to_sim_cont (i : int) (sim_sp : symb_pair)
       (adv_pi : int) (sim_bt : sim_body_tyd) (sim_rf_addr : form)
       (sim_state : state) (expect_prefix : string list)
       (new_prefix : string list) (expect_source_adv_pi : int)
@@ -2806,7 +2853,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
              else msg_match_fail ())
     | SMET_EnvAdv _    -> msg_match_fail () in
 
-  let from_adv_to_sim (i : int) (sim_sp : symb_pair) (adv_pi : int)
+  let dest_ge_func_to_sim (i : int) (sim_sp : symb_pair) (adv_pi : int)
       (rf_arg_adv_pis : int list) (sim_rf_addr : form) (sim_st : state)
         : config * effect =
     let (root, _) = sim_sp in
@@ -2883,39 +2930,85 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     else match find_param_or_sub_fun () with
          | None                                                   -> failure ()
          | Some (expect_prefix, new_prefix, expect_source_adv_pi) ->
-             adv_or_sim_to_sim_basic_adv i sim_sp adv_pi sbt
+             dest_ge_func_to_sim_cont i sim_sp adv_pi sbt
              sim_rf_addr sim_st expect_prefix new_prefix
              expect_source_adv_pi in
 
-  let from_adv_to_func () =
-    match find_sim_from_right (List.length c.iw.iw_other_sims - 1) with
+  (* i is the starting point: -1 <= i <= List.length
+     c.iws.other_sims_states - 1
+
+     should only be called for message whose destination address
+     is >= func_form *)
+
+  let from_adv_to_sim_or_ideal_func (i : int) : config * effect =
+    match find_sim_from_right i with
     | None                                             -> 
-        let {id = state_id; args = _} = c.iws.ideal_fun_state in
-        let (func_sp, _) = c.iw.iw_ideal_func in
+        let (func_sp, base) = c.iw.iw_ideal_func in
         let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
         let ifbt = ideal_fun_body_tyd_of fbt in
-        (match IdMap.find_opt state_id ifbt.states with
-         | None       -> failure "cannot happen"
-         | Some state ->
-             if (unloc state).is_initial
-             then (debugging_message
-                   (fun ppf ->
-                      fprintf ppf
-                      ("@[message@ came@ to@ ideal@ functionality@ "   ^^
-                       "in@ initial@ state,@ and@ so@ resulting@ in@ " ^^
-                       "failure@]"));
-                   fail_out_of_running_or_sending_config (ConfigIdealSending c))
-             else (* if ideal functionality is not in initial state,
-                     a simulator should have been found for the destination
-                     address *)
-                  failure "should not happen")
+        from_adv_or_sim_to_ideal_fun (func_sp : symb_pair) base ifbt
     | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
         let {addr = sim_addr; state = sim_st} = sim_st in
         let sim_rf_addr = oget sim_addr in
-        from_adv_to_sim i sim_sp adv_pi rf_arg_adv_pis sim_rf_addr
+        dest_ge_func_to_sim i sim_sp adv_pi rf_arg_adv_pis sim_rf_addr
         sim_st in
 
-  let from_adv () =
+  (* i is the starting point: -1 <= i <= List.length
+     c.iws.other_sims_states - 1
+
+     should only be called for message whose destination
+     address is adv_form *)
+
+  let from_ideal_fun_or_sim_to_sim_or_adv (i : int) : config * effect =
+    match find_sim_from_left i with
+    | None                                -> 
+        msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
+    | Some (i, sim_sp, adv_pi, _, sim_st) ->
+        let {addr = sim_addr; state = sim_st} = sim_st in
+        let sim_rf_addr = oget sim_addr in
+        dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st in
+
+  (* i is the sending point:
+     -1 <= i <= List.length c.iws.other_sims_states - 1
+
+     depending upon whether the message goes left or right, the
+     starting point is i - 1 or i + 1, repectively, unless that
+     takes us to out of range - meaning the ideal functionality
+     or the adversary *)
+
+  let from_sim_left_or_right (i : int) : config * effect =
+    if eval_bool_form_to_bool c.gc pi
+       (f_eq dest_addr adv_form)
+      then if i = List.length c.iws.other_sims_states - 1
+           then msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
+           else match find_sim_from_left (i + 1) with
+                | None                                             -> 
+                    msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
+                | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
+                    let {addr = sim_addr; state = sim_st} = sim_st in
+                    let sim_rf_addr = oget sim_addr in
+                    dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st
+    else if eval_bool_form_to_bool c.gc pi
+            (addr_le_form func_form dest_addr)
+      then if i = -1
+           then let (func_sp, base) = c.iw.iw_ideal_func in
+                let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
+                let ifbt = ideal_fun_body_tyd_of fbt in
+                from_adv_or_sim_to_ideal_fun (func_sp : symb_pair) base ifbt
+           else match find_sim_from_right (i - 1) with
+                | None                                             -> 
+                    let (func_sp, base) = c.iw.iw_ideal_func in
+                    let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
+                    let ifbt = ideal_fun_body_tyd_of fbt in
+                    from_adv_or_sim_to_ideal_fun (func_sp : symb_pair) base ifbt
+                | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
+                    let {addr = sim_addr; state = sim_st} = sim_st in
+                    let sim_rf_addr = oget sim_addr in
+                    dest_ge_func_to_sim i sim_sp adv_pi rf_arg_adv_pis
+                    sim_rf_addr sim_st
+    else failure "should not happen" in
+
+  let from_adv () : config * effect =
     if mode = Dir ||
        eval_bool_form_to_bool c.gc pi
        (f_or
@@ -2929,7 +3022,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then if eval_bool_form_to_bool c.gc pi
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigIdealSending c)
-           else from_adv_to_func ()
+           else from_adv_to_sim_or_ideal_func 
+                (List.length c.iws.other_sims_states - 1)
     else if eval_bool_form_to_bool c.gc pi
             (f_iff
              (f_eq source_pi (int_form 0))
@@ -2941,9 +3035,13 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     match c.iwsc with
     | IWSC_Env                              -> from_env ()
     | IWSC_Adv                              -> from_adv ()
-    | IWSC_Ideal_Func (fun_sp, adv_pi)      -> failure "hi"
-    | IWSC_Main_Sim (sim_sp, adv_pi)        -> failure "hi"
-    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) -> failure "hi"
+    | IWSC_Ideal_Func (fun_sp, adv_pi)      ->
+        from_ideal_fun_or_sim_to_sim_or_adv (-1)
+    | IWSC_Main_Sim (sim_sp, adv_pi)        ->
+        from_sim_left_or_right (-1)
+    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) ->
+        from_sim_left_or_right (sim_i - 1)
+
   with
   | ECProofEngine ->
       (ConfigIdealSending c, EffectBlockedPortOrAddrCompare)
