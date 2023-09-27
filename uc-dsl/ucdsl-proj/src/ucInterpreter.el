@@ -199,7 +199,7 @@ error and then highlight in the script buffer."
  proof-save-command-regexp	"finish"
 
 
- proof-non-undoables-regexp     "undo"
+ proof-non-undoables-regexp     "undo\\|debug"
 ;; proof-undo-n-times-cmd         "undo %s.\n"
 ;; proof-forget-id-command        "undo %s.\n"
  proof-find-and-forget-fn       'find-and-forget
@@ -227,6 +227,14 @@ error and then highlight in the script buffer."
 
  ;;proof-general-debug "non-nil thing"
 )
+
+(defpgdefault menu-entries
+  '(
+    ["Toggle debug mode" (proof-shell-invisible-command "debug")
+     ;;:style    toggle
+     ;;:selected t;;easycrypt-proof-weak-mode
+     :help     "Toggles debug mode."]
+))
 
 (provide 'ucInterpreter)
 
