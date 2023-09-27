@@ -657,6 +657,10 @@ type sim_state = {
   state : state
 }
 
+let set_addr_if_none_in_sim_state (ss : sim_state)
+    (addr : form) : sim_state =
+  {ss with addr = Some (ss.addr |? addr)}
+
 type ideal_world_state = {
   ideal_fun_state   : ideal_state;
   main_sim_state    : sim_state;
@@ -2856,7 +2860,19 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                      pi   = c.pi;
                      iw   = c.iw;
                      ig   = c.ig;
-                     iws  = c.iws;
+                     iws  =
+                       if i = -1
+                       then {c.iws with
+                             main_sim_state =
+                               set_addr_if_none_in_sim_state
+                               c.iws.main_sim_state source_addr}
+                       else {c.iws with
+                             other_sims_states =
+                             List.modify_at i
+                             (fun ss ->
+                               set_addr_if_none_in_sim_state ss
+                               source_addr)
+                             c.iws.other_sims_states};
                      iwrc =
                        if i = -1
                        then IWRC_MainSim (base, sim_sp, state_id)
