@@ -2547,7 +2547,8 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
                if pi = 0
                then MPI_BasicButPartOfComposite
                else MPI_Good
-               (mode, mbt.dir, pi, indexed_map_to_list (unlocm mbt.params_map)))
+                    (mode, mbt.dir, pi,
+                     indexed_map_to_list (unlocm mbt.params_map)))
   | _                   -> MPI_Bad
 
 let inter_check_sme

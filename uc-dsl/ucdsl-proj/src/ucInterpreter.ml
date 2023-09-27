@@ -1617,7 +1617,9 @@ let step_match (gc : global_context) (lc : local_context)
 (* end of functions that can be used for stepping in both real and
    ideal worlds *)
 
-let step_send_and_transition_from_ideal_fun (c : config_real_running)
+(* real world send-and-transition *)
+
+let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
     (pi : prover_infos)  (rel : int list) (base : int) (fun_sp : symb_pair)
     (iip : string list) (msg : string) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
@@ -1689,7 +1691,7 @@ let step_send_and_transition_from_ideal_fun (c : config_real_running)
                pp_rel_addr_ideal_func_info (rel, fun_sp));
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
-let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
+let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (c : config_real_running) (pi : prover_infos) (rel : int list)
     (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
     (iip : symbol list) (msg : symbol) (msg_args : form list)
@@ -1730,7 +1732,7 @@ let step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     sme  = sme},
    EffectOK)
 
-let step_send_and_transition_from_real_fun_party_to_env_or_adv
+let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
     (c : config_real_running) (pi : prover_infos) (rel : int list)
     (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
     (iip : symbol list) (msg : symbol) (msg_args : form list)
@@ -1803,7 +1805,7 @@ let step_send_and_transition_from_real_fun_party_to_env_or_adv
                pp_rel_addr_real_func_info (rel, fun_sp, pty_id));
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
-let step_send_and_transition_from_real_fun_party (c : config_real_running)
+let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
     (pi : prover_infos) (rel : int list) (base : int) (fun_sp : symb_pair)
     (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
@@ -1817,15 +1819,15 @@ let step_send_and_transition_from_real_fun_party (c : config_real_running)
   match get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
         c.maps root ft comp with
   | None                   ->
-      step_send_and_transition_from_real_fun_party_to_env_or_adv
+      rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       c pi rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
   | Some (child_i, dir_sp) ->
-       step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
+       rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
        c pi rel base fun_sp ft pty_id iip msg msg_args port_form
        new_rws comp sub child_i dir_sp
 
-let step_send_and_transition (c : config_real_running) (pi : prover_infos)
+let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
     (s_and_t : send_and_transition_tyd) : config * effect =
   let simpl f = simplify_formula c.gc f in
   let {msg_expr; state_expr} = s_and_t in
@@ -1857,10 +1859,10 @@ let step_send_and_transition (c : config_real_running) (pi : prover_infos)
         (fun _ -> Some (RealState new_real_fun_state)) c.rws in
   match c.rwrc with
   | RWRC_IdealFunc (rel, base, fun_sp, _)          ->
-      step_send_and_transition_from_ideal_fun c pi rel base fun_sp
+      rw_step_send_and_transition_from_ideal_fun c pi rel base fun_sp
       iip msg msg_args port_form new_rws
   | RWRC_RealFunc (rel, base, fun_sp, party_id, _) ->
-      step_send_and_transition_from_real_fun_party c pi rel base fun_sp
+      rw_step_send_and_transition_from_real_fun_party c pi rel base fun_sp
       party_id iip msg msg_args port_form new_rws
 
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
@@ -1903,7 +1905,7 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
            EffectOK)
       | SendAndTransition s_and_t            ->
           assert (check_only_pops rest);
-          step_send_and_transition c pi s_and_t
+          rw_step_send_and_transition c pi s_and_t
       | Fail                                 ->
           assert (check_only_pops rest);
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
@@ -1917,9 +1919,63 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
   | StepBlockedPortOrAddrCompare ->
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
 
+let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
+    (s_and_t : send_and_transition_tyd) : config * effect =
+  fill_in "ideal world send-and-transition" (ConfigIdealRunning c)
+
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       : config * effect =
-  fill_in "step_ideal_running_config" (ConfigIdealRunning c)
+  let rec handle_pops (rest : instr_interp list) (lc : local_context)
+        : instr_interp list * local_context =
+    (assert (not (List.is_empty rest));
+     if unloc (List.hd rest) = Pop
+     then handle_pops (List.tl rest) (lc_pop lc)
+     else (rest, lc)) in
+  let rec check_only_pops (rest : instr_interp list) : bool =
+    match rest with
+    | []            -> true
+    | instr :: rest -> unloc instr = Pop && check_only_pops rest in
+  try
+    begin
+      let inss = c.ins in
+      assert (not (List.is_empty inss));
+      let (next, rest) = (List.hd inss, List.tl inss) in
+      match unloc next with
+      | Assign (lhs, expr)                   ->
+          let lc = step_assign c.gc c.lc pi lhs expr in
+          let (rest, lc) = handle_pops rest lc in
+          (ConfigIdealRunning {c with lc = lc; ins = rest},
+           EffectOK)
+      | Sample (lhs, expr)                   ->
+          let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
+          let (rest, lc) = handle_pops rest lc in
+          (ConfigIdealRunning {c with gc = gc; lc = lc; ins = rest},
+           EffectRand id)
+      | ITE (expr, inss_then, inss_else_opt) ->
+          let inss =
+            step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
+          let (rest, lc) = handle_pops (inss @ rest) c.lc in
+          (ConfigIdealRunning {c with ins = rest}, EffectOK)
+      | Match (expr, clauses)                ->
+          let (lc, inss) = step_match c.gc c.lc pi expr clauses in
+          let (rest, lc) = handle_pops (inss @ rest) lc in
+          (ConfigIdealRunning {c with lc = lc; ins = rest},
+           EffectOK)
+      | SendAndTransition s_and_t            ->
+          assert (check_only_pops rest);
+          iw_step_send_and_transition c pi s_and_t
+      | Fail                                 ->
+          assert (check_only_pops rest);
+          fail_out_of_running_or_sending_config (ConfigIdealRunning c)
+      | Pop                                  -> failure "cannot happen"
+    end
+  with
+  | StepBlockedIf ->
+      (ConfigIdealRunning c, EffectBlockedIf)
+  | StepBlockedMatch ->
+      (ConfigIdealRunning c, EffectBlockedMatch)
+  | StepBlockedPortOrAddrCompare ->
+      (ConfigIdealRunning c, EffectBlockedPortOrAddrCompare)
 
 (* should only be called with ordinary sme that will successfully
    match *)
@@ -2826,23 +2882,25 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     let check_path (sme_ord : sent_msg_expr_ord_tyd)
           : sent_msg_expr_ord_tyd option =
       let ft = IdPairMap.find (root, sim_bt.sims) c.maps.fun_map in
-      let comp_adv = Option.get (id_adv_inter_of_fun_tyd ft) in
-      match sme_ord.path.inter_id_path with
-      | [root'; comp'; sub'] ->
-          if root' = root && comp' = comp_adv && sme_ord.dir = In
-          then match check_sub_interface_and_get_pi c.maps
-                     root comp_adv sub' with
-               | None        -> failure "should not happen"
-               | Some adv_pi ->
-                   let src_adv_pi = base + adv_pi in
-                    if eval_bool_form_to_bool c.gc c.pi
-                       (f_eq source_pi (int_form src_adv_pi))
-                    then Some
-                         (subst_for_iip_in_sent_msg_expr_ord_tyd
-                          sme_ord [sim_bt.sims; sim_bt.uses; sub'])
-                    else None
-          else None
-      | _                    -> None in
+      match id_adv_inter_of_fun_tyd ft with
+      | None          -> None
+      | Some comp_adv ->
+          match sme_ord.path.inter_id_path with
+          | [root'; comp'; sub'] ->
+              if root' = root && comp' = comp_adv && sme_ord.dir = In
+              then match check_sub_interface_and_get_pi c.maps
+                         root comp_adv sub' with
+                   | None        -> failure "should not happen"
+                   | Some adv_pi ->
+                       let src_adv_pi = base + adv_pi in
+                         if eval_bool_form_to_bool c.gc c.pi
+                            (f_eq source_pi (int_form src_adv_pi))
+                         then Some
+                              (subst_for_iip_in_sent_msg_expr_ord_tyd
+                               sme_ord [sim_bt.sims; comp_adv; sub'])
+                         else None
+              else None
+          | _                    -> None in
     match c.sme with
     | SMET_Ord sme_ord ->
         let {id = state_id; args = state_args} = sim_state in
