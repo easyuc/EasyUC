@@ -25,29 +25,50 @@
 ;;close emacs, run emacs again, then
 ;;M-x ucInterpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
-;;.uci script for ucInterpreter 
+;;.uci script for ucInterpreter
+(defvar uc-frame)
+(defvar uc-window)
+(defvar uc-buffer)
+
+(defun init-uc-file-frame ()
+  "create a new, invisible frame with name *UC file*, create a buffer called uc-file-buffer, set it as a buffer for frame's window and set uc-frame/window/buffer variables for future reference"
+  (setq uc-frame (make-frame '((name . "*UC file*") (visibility . nil))))
+  (setq uc-window (frame-selected-window uc-frame))
+  (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
+  (with-current-buffer uc-buffer
+    (setq buffer-read-only t)
+  )
+  (set-window-buffer uc-window uc-buffer)
+)
+
+(init-uc-file-frame)
+
 
 (defun uc-file-frame (str)
-  "Open a new frame with a buffer named *UC file*.
-insert contents from a file, mark the positions between character positions"
-  (save-excursion ;we need save excursion as otherwise PG gets confused parsing the shell output
-    (switch-to-buffer-other-frame "*UC file*")
+  "If uc file and location in it are provided, insert file contents into uc-buffer from a file, mark the positions between character positions of the location.
+If not, hide the uc-frame "
+  (with-selected-frame uc-frame;;uc-window ;;uc-buffer
     (let ( (uc-file-line (car (split-string str ";")))
            (prefix "UC file position: ")
          )
       (let ( (params-line  (substring uc-file-line (length prefix)))
+             (inhibit-read-only t)
            )
+        (erase-buffer)
+        (make-frame-visible)
         (if (string= params-line "None");if
-          (erase-buffer);then                   
+          (insert "*** no code running ***");then  
           (let ((params (split-string params-line)));else
             (let ( (filenam    (nth 0 params))
                    (ch-pos-beg (string-to-number (nth 1 params)))
                    (ch-pos-end (string-to-number (nth 2 params)))
                  )
-              (erase-buffer)
               (insert-file filenam)
               (let ((x (make-overlay ch-pos-beg ch-pos-end)))
                 (overlay-put x 'face '(:foreground "blue")))
+              ;;(auto-raise-mode -1)
+              ;;(set-mark ch-pos-beg)
+              ;;(activate-mark)
               (goto-char ch-pos-end)
               (goto-char ch-pos-beg)
             )
