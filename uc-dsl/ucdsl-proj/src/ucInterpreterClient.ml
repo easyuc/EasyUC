@@ -386,7 +386,7 @@ let interpret (lexbuf : L.lexbuf) =
     begin match effo with
     | None -> 
       error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ failed@ as@ no@ effects@ occured@ after@ last@ command@, only@ run@ and step@ commands@ produce@ effects.@]")
+      "@[assert@ failed@ as@ no@ effects@ occured@ after@ last@ command,@ only@ run@ and step@ commands@ produce@ effects.@]")
     | Some eff ->
       begin match (unloc peff) with
       | EffectOK ->
@@ -561,7 +561,7 @@ let interpret (lexbuf : L.lexbuf) =
     | Debug -> debug ()
     | _ ->
       error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[addv@,@ addf@,@ prover@,@ or@ world@ command@ expected@]")
+        (fun ppf -> Format.fprintf ppf "@[addv,@ addf,@ prover,@ or@ world@ command@ expected@]")
   in
 
   let world_loop () : unit=
@@ -593,7 +593,7 @@ let interpret (lexbuf : L.lexbuf) =
     | _ ->
       error_message (loc cmd)
         (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ load@,@ functionality@,@ real@,@ ideal@,@ addv@,@ addf@,@ quit.@]")
+"@[one@ of@ following@ commands@ expected:@ load,@ functionality,@ real,@ ideal,@ addv,@ addf,@ quit.@]")
   in
       
   let restart_loop () : unit =
