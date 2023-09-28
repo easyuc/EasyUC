@@ -2047,20 +2047,20 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
     if is_param_of_real_fun_tyd ft param_or_sub_fun
       then let child_i =
              index_of_param_of_real_fun_tyd ft param_or_sub_fun in
-           let (root, _) =
+           let (param_root, _) =
              id_dir_inter_of_param_of_real_fun_tyd ft param_or_sub_fun in
            (1 + child_i,
             List.nth adv_pis_of_rf_args child_i,
-            root)
+            param_root)
     else if is_sub_fun_of_real_fun_tyd ft param_or_sub_fun
       then let child_i =
                  sub_fun_ord_of_real_fun_tyd ft param_or_sub_fun in
-           let (root, _) = sub_fun_sp_of_real_fun_tyd ft param_or_sub_fun in
+           let (sf_root, _) = sub_fun_sp_of_real_fun_tyd ft param_or_sub_fun in
            (1 + num_params_of_real_fun_tyd ft + child_i,
             base + 1 +
             num_adv_pis_of_parties_of_real_fun c.maps root ft +
             child_i,
-            root)
+            sf_root)
     else failure "should not happen" in
   let (rf, mid, sub) =
     match iip with
@@ -3364,20 +3364,6 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         dest_ge_func_to_sim i sim_sp adv_pi rf_arg_adv_pis sim_rf_addr
         sim_st in
 
-  (* i is the starting point: -1 <= i <= List.length
-     c.iws.other_sims_states - 1
-
-     should only be called for message whose destination
-     address is adv_form *)
-
-  let from_ideal_fun_or_sim_to_sim_or_adv (i : int) : config * effect =
-    match find_sim_from_left i with
-    | None                                -> 
-        msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
-    | Some (i, sim_sp, adv_pi, _, sim_st) ->
-        let {addr = sim_rf_addr; state = sim_st} = sim_st in
-        dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st in
-
   (* i is the sending point:
      -1 <= i <= List.length c.iws.other_sims_states - 1
 
@@ -3440,16 +3426,24 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
+  let from_ideal_func () : config * effect =
+    match mode_of_sent_msg_expr_tyd c.sme with
+    | Dir -> msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
+    | Adv ->
+        (match find_sim_from_left (-1) with
+         | None                                -> 
+             msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
+         | Some (i, sim_sp, adv_pi, _, sim_st) ->
+             let {addr = sim_rf_addr; state = sim_st} = sim_st in
+             dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st) in
+
   try
     match c.iwsc with
     | IWSC_Env                              -> from_env ()
     | IWSC_Adv                              -> from_adv ()
-    | IWSC_IdealFunc (fun_sp, adv_pi)       ->
-        from_ideal_fun_or_sim_to_sim_or_adv (-1)
-    | IWSC_MainSim (sim_sp, adv_pi)         ->
-        from_sim_left_or_right (-1)
-    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) ->
-        from_sim_left_or_right sim_i
+    | IWSC_IdealFunc (fun_sp, adv_pi)       -> from_ideal_func ()
+    | IWSC_MainSim (sim_sp, adv_pi)         -> from_sim_left_or_right (-1)
+    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) -> from_sim_left_or_right sim_i
 
   with
   | ECProofEngine ->
