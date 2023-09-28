@@ -300,9 +300,10 @@ let interpret (lexbuf : L.lexbuf) =
     let rec runr (conf : config) : config * effect =
       let conf, eff =
         step_running_or_sending_real_or_ideal_config conf None in
-      if (eff != EffectOK)
-      then conf,eff
-      else runr conf
+      match eff with
+      | EffectOK
+      | EffectRand _ -> runr conf
+      | _ -> conf,eff
     in
     
     let c = currs() in
