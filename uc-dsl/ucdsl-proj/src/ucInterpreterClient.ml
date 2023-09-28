@@ -278,21 +278,33 @@ let interpret (lexbuf : L.lexbuf) =
     push_print news
   in
 
-  let step (ppio : EcParsetree.pprover_infos option) : unit =
+  let step (loc : EcLocation.t)
+  (ppio : EcParsetree.pprover_infos option) : unit =
     let c = currs() in
     let cconfig = Option.get c.config in
-    let conf, eff =
-      step_running_or_sending_real_or_ideal_config cconfig ppio in
-    let news =  
-      {
-        c with
-        cmd_no = c.cmd_no+1;
-        ucdsl_new = false;
-        post_done = false;
-        config = Some conf;
-        effect = Some eff;
-      } in
-    push_print news
+    let is_running_or_sending_real_or_ideal_config config =
+      (is_real_running_config config)  ||
+      (is_ideal_running_config config) ||
+      (is_real_sending_config config)  ||
+      (is_ideal_sending_config config)
+    in
+    if (is_running_or_sending_real_or_ideal_config cconfig)
+    then
+      let conf, eff =
+        step_running_or_sending_real_or_ideal_config cconfig ppio in
+      let news =  
+        {
+          c with
+          cmd_no = c.cmd_no+1;
+          ucdsl_new = false;
+          post_done = false;
+          config = Some conf;
+          effect = Some eff;
+        } in
+      push_print news
+    else
+      error_message loc (fun ppf -> Format.fprintf ppf 
+      "@[You@ can@ step@ through@ only@ when@ running@ code@ or@ sending@ messages.@]")
   in
 
   let run () : unit =
@@ -486,7 +498,7 @@ let interpret (lexbuf : L.lexbuf) =
     match (unloc cmd) with
     | Send sme  -> send sme
     | Run -> run()
-    | Step ppio -> step ppio
+    | Step ppio -> step (loc cmd) ppio
     | Addv tb -> addv tb 
     | Addf (psy,pex) -> addf psy pex
     | Prover ppinfo -> prover ppinfo
