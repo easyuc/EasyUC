@@ -326,9 +326,8 @@ let interpret (lexbuf : L.lexbuf) =
     let c = currs() in
     match c.config with
     | Some cf ->
-      begin try
-        let conf = modify cf in
-        let news =  
+      let conf = modify cf in
+      let news =  
         {
           c with
           cmd_no = c.cmd_no+1;
@@ -337,13 +336,11 @@ let interpret (lexbuf : L.lexbuf) =
           config = Some conf;
           effect = None;
         } in
-        push_print news
-      with _ -> () end
+      push_print news
     | None ->
       let cf = Option.get c.config_gen in
-      try
-        let conf = modify cf in
-        let news =  
+      let conf = modify cf in
+      let news =  
         {
           c with
           cmd_no = c.cmd_no+1;
@@ -352,8 +349,7 @@ let interpret (lexbuf : L.lexbuf) =
           config_gen = Some conf;
           effect = None;
         } in
-        push_print news
-      with _ -> ()
+      push_print news
   in
 
   let addv (tb : type_binding) : unit =
@@ -576,8 +572,8 @@ let interpret (lexbuf : L.lexbuf) =
     | Load psym -> load psym
     | Funex fe -> funexp fe
     | World w -> world w
-    | Addv tb -> addv tb (*TODO add to parser*)
-    | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
+    | Addv tb -> addv tb
+    | Addf (psy,pex) -> addf psy pex
     | Prover ppinfo -> prover ppinfo
     | Undo pi -> undo pi  
     | Quit -> exit 0
