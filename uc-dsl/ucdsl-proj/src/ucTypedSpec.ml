@@ -464,6 +464,10 @@ let num_sub_funs_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.sub_funs
 
+let is_sub_fun_of_real_fun_tyd (ft : fun_tyd) (sym : symbol) : bool =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.mem sym rfbt.sub_funs  
+
 let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.sub_funs in
@@ -491,6 +495,10 @@ let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symb_pair =
 let num_params_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.params
+
+let is_param_of_real_fun_tyd (ft : fun_tyd) (sym : symbol) : bool =
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
+  IdMap.mem sym rfbt.params
 
 let param_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -797,10 +805,15 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
         ti_sims             = sbt.sims_arg_pair_ids;
         ti_num_adv_pis      = num_adv_pis}
 
-let is_basic_adv_of_ideal (uior : unit_info) (bas : symbol) : bool =
+let is_basic_adv_of_ideal_fun_of_unit (uior : unit_info) (bas : symbol) : bool =
   match uior with
   | UI_Singleton si -> si.si_basic_adv = bas
   | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
+
+let basic_adv_of_ideal_fun_of_unit (uior : unit_info) : symbol =
+  match uior with
+  | UI_Singleton _ -> failure "should not happen"
+  | UI_Triple ti   -> ti.ti_if_sim_basic_adv
 
 let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
       : symbol option =
@@ -986,19 +999,28 @@ type sent_msg_expr_ord_tyd = {
   dest_port_form : form         (* destination *)
 }
 
-let subst_comp_in_msg_path_u (path : msg_path_u)
+let drop_root_of_msg_path_u (path : msg_path_u) : msg_path_u =
+  let {inter_id_path = iip; msg = msg} = path in
+  {inter_id_path = List.tl iip; msg = msg}
+
+let drop_head_of_msg_path_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
+      : sent_msg_expr_ord_tyd =
+  {sme with path = drop_root_of_msg_path_u sme.path}
+
+let subst_comp_and_drop_root_in_msg_path_u (path : msg_path_u)
     (old_comp : symbol) (new_comp : symbol) : msg_path_u option =
   let {inter_id_path = iip; msg = msg} = path in
   match iip with
   | [root; comp; sub] ->
       if comp = old_comp
-      then Some {inter_id_path = [root; new_comp; sub]; msg = msg}
+      then Some {inter_id_path = [new_comp; sub]; msg = msg}
       else None
   | _                 -> None
 
-let subst_comp_in_sent_msg_expr_ord_tyd (sme : sent_msg_expr_ord_tyd)
-    (old_comp : symbol) (new_comp : symbol) : sent_msg_expr_ord_tyd option =
-  match subst_comp_in_msg_path_u sme.path old_comp new_comp with
+let subst_comp_and_drop_root_in_sent_msg_expr_ord_tyd
+    (sme : sent_msg_expr_ord_tyd) (old_comp : symbol)
+    (new_comp : symbol) : sent_msg_expr_ord_tyd option =
+  match subst_comp_and_drop_root_in_msg_path_u sme.path old_comp new_comp with
   | None      -> None
   | Some path -> Some {sme with path = path}
 
