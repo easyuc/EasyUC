@@ -1988,7 +1988,7 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
 let iw_step_send_and_transition_from_sim_basic_adv_left
     (c : config_ideal_running) (pi : prover_infos) (base : int)
     (sim_sp : symb_pair) (iip : string list) (msg : string)
-    (msg_args : form list) (port_form : form) (new_iws : ideal_world_state)
+    (msg_args : form list) (new_iws : ideal_world_state)
     (i : int) : config * effect =
   let (root, _) = sim_sp in
   let basic =
@@ -1996,39 +1996,32 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
     | [basic] -> basic
     | _       -> failure "should not happen" in
   let path = {inter_id_path = [root; basic]; msg = msg} in
-  if try eval_bool_form_to_bool c.gc pi
-         (f_and
-          (addr_le_form func_form (port_to_addr_form port_form))
-          (f_eq (port_to_pi_form port_form) (int_form 1))) with
-     | ECProofEngine -> raise StepBlockedPortOrAddrCompare
-  then let sme =
-         SMET_Ord
-         {mode           = Adv;
-          dir            = In;
-          src_port_form  = make_port_form adv_form (int_form base);
-          path           = path;
-          args           = msg_args;
-          dest_port_form = port_form} in
-       let () = check_sme_port_index_consistency c.maps c.gc pi sme in
-       (ConfigIdealSending
-        {maps = c.maps;
-         gc   = c.gc;
-         pi   = c.pi;
-         iw   = c.iw;
-         ig   = c.ig;
-         iws  = new_iws;
-         iwsc =
-           if i = -1
-           then IWSC_MainSim (base, sim_sp)
-           else IWSC_OtherSim (base, sim_sp, i);
-         sme  = sme},
-        EffectOK)
-  else (debugging_message
-        (fun ppf ->
-           fprintf ppf
-           "@[envport@ failure@ of@ destination@ port@ at@ %n:@ %a@]"
-           base pp_symb_pair sim_sp);
-        fail_out_of_running_or_sending_config (ConfigIdealRunning c))
+  let sim_rf_addr =
+    if i = -1
+    then Option.get c.iws.main_sim_state.addr
+    else Option.get ((List.nth c.iws.other_sims_states i).addr) in
+  let sme =
+    SMET_Ord
+    {mode           = Adv;
+     dir            = In;
+     src_port_form  = make_port_form adv_form (int_form base);
+     path           = path;
+     args           = msg_args;
+     dest_port_form = make_port_form sim_rf_addr (int_form 1)} in
+  let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+  (ConfigIdealSending
+   {maps = c.maps;
+    gc   = c.gc;
+    pi   = c.pi;
+    iw   = c.iw;
+    ig   = c.ig;
+    iws  = new_iws;
+    iwsc =
+      if i = -1
+      then IWSC_MainSim (base, sim_sp)
+      else IWSC_OtherSim (base, sim_sp, i);
+    sme  = sme},
+   EffectOK)
 
 let iw_step_send_and_transition_from_sim_comp_adv_right
     (c : config_ideal_running) (pi : prover_infos) (base : int)
@@ -2069,10 +2062,6 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
             child_i,
             root)
     else failure "should not happen" in
-
-(* TODO *)
-let () = Printf.eprintf "before: %s\n" (UcUtils.string_of_id_path iip) in
-
   let (rf, mid, sub) =
     match iip with
     | [rf; mid; sub] -> (rf, mid, sub)
@@ -2140,22 +2129,18 @@ let () = Printf.eprintf "before: %s\n" (UcUtils.string_of_id_path iip) in
 let iw_step_send_and_transition_from_sim (c : config_ideal_running)
     (pi : prover_infos) (base : int) (sim_sp : symb_pair) (iip : string list)
     (msg : string) (msg_args : form list) (port_form : form option)
-    (new_iws : ideal_world_state) (i : int)
-      : config * effect =
+    (new_iws : ideal_world_state) (i : int) : config * effect =
   match port_form with
-  | None           ->  (* composite adversarial message going to adversary
-                          or simulator on the right - message that
-                          subfunctionality or argument of the sending
-                          simulator's real functionality could send *)
-      iw_step_send_and_transition_from_sim_comp_adv_right c pi base sim_sp
-      iip msg msg_args new_iws i
-  | Some port_form ->  (* basic adversarial message to ideal functionality;
-                          can go to ideal functionality, or to simulator
-                          on the left (whose real functionality the
-                          ideal functionality is a subfunctionality or
-                          argument of) *)
-      iw_step_send_and_transition_from_sim_basic_adv_left c pi base sim_sp
-      iip msg msg_args port_form new_iws i
+  | None ->
+      (match List.length iip with
+       | 1 -> 
+           iw_step_send_and_transition_from_sim_basic_adv_left c pi base sim_sp
+           iip msg msg_args new_iws i
+       | 3 ->
+           iw_step_send_and_transition_from_sim_comp_adv_right c pi base sim_sp
+           iip msg msg_args new_iws i
+       | _ -> failure "cannot happen")
+  | Some _ -> failure "cannot happen"
 
 let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
     (s_and_t : send_and_transition_tyd) : config * effect =
@@ -3464,7 +3449,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | IWSC_MainSim (sim_sp, adv_pi)         ->
         from_sim_left_or_right (-1)
     | IWSC_OtherSim (sim_sp, adv_pi, sim_i) ->
-        from_sim_left_or_right (sim_i - 1)
+        from_sim_left_or_right sim_i
 
   with
   | ECProofEngine ->

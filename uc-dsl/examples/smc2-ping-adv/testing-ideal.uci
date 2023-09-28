@@ -32,5 +32,20 @@ step.
 send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1] ++ [1] ++ [1], 1)).
 step.
 step.
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+send ((adv, 9))@Forwarding.FwAdv.fw_ok@((func ++ [1] ++ [1] ++ [2], 1)).
+step.
+step.
+step.
+
+
+
+
 
 
