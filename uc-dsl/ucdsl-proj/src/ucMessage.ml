@@ -1,8 +1,6 @@
 (* UcMessage module *)
 
-let failure msg =
-  Printf.eprintf "failure: %s\n" msg;
-  assert false  (* so we get file position in output *)
+let failure msg = raise (Failure msg)
 
 type message_type =
   | WarningMessage

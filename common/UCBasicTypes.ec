@@ -275,6 +275,28 @@ qed.
 
 (* lemmas to help the UC DSL interpreter *)
 
+lemma addr_concat_nil_r (xs : addr) :
+  xs ++ [] = xs.
+proof.
+by rewrite cats0.
+qed.
+
+hint rewrite ucdsl_addr_rewriting : addr_concat_nil_r.
+
+(* TODO: remove when we can use rewriting hints in the interpreter *)
+hint simplify [reduce] addr_concat_nil_r.
+
+lemma extend_addr_by_sing (xs ys : addr, i : int) :
+  (xs ++ ys) ++ [i] = xs ++ (ys ++ [i]).
+proof.
+by rewrite catA.
+qed.
+
+hint rewrite ucdsl_addr_rewriting : extend_addr_by_sing.
+
+(* TODO: remove when we can use rewriting hints in the interpreter *)
+hint simplify [reduce] extend_addr_by_sing.
+
 lemma envport_ext_func_iff (func adv xs ys : addr, i : int) :
   envport (func ++ xs) adv (func ++ ys, i) <=>
   ! xs <= ys /\ ! adv <= func ++ ys /\ (func ++ ys <> [] \/ i <> 0).

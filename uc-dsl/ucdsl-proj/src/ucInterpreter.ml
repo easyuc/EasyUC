@@ -1627,6 +1627,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
     (port_form : form option) (new_rws : real_world_state)
       : config * effect =
   let (root, _) = fun_sp in
+  let simpl = simplify_formula c.gc in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
       let path = {inter_id_path = root :: iip; msg = msg} in
@@ -1635,9 +1636,10 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           make_port_form
-           (addr_concat_form func_form (addr_make_form rel))
-           (int_form 1);
+           simpl
+           (make_port_form
+            (addr_concat_form func_form (addr_make_form rel))
+            (int_form 1));
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -1669,9 +1671,10 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                make_port_form
-                (addr_concat_form func_form (addr_make_form rel))
-                (int_form source_pi);
+                simpl
+                (make_port_form
+                 (addr_concat_form func_form (addr_make_form rel))
+                 (int_form source_pi));
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
@@ -1701,17 +1704,20 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (comp : symbol) (sub : symbol) (child_i : int)
     (dir_sp : symb_pair) : config * effect =
   assert (Option.is_none port_form);
+  let simpl = simplify_formula c.gc in
   let (dir_root, dir_comp) = dir_sp in
   let pty_internal_pi = get_internal_pi_of_party_of_real_fun ft pty_id in
   let source_port =
-    make_port_form
-    (addr_concat_form func_form (addr_make_form rel))
-    (int_form pty_internal_pi) in
+    simplify_formula c.gc
+    (make_port_form
+     (addr_concat_form func_form (addr_make_form rel))
+     (int_form pty_internal_pi)) in
   let dest_pi = get_pi_of_sub_interface c.maps dir_root dir_comp sub in
   let dest_port =
-    make_port_form
-    (addr_concat_form func_form (addr_make_form (rel @ [child_i])))
-    (int_form dest_pi) in
+    simpl
+    (make_port_form
+     (addr_concat_form func_form (addr_make_form (rel @ [child_i])))
+     (int_form dest_pi)) in
   let iip_new = dir_root :: dir_comp :: List.tl iip in
   let path_new = {inter_id_path = iip_new; msg = msg} in
   let sme =
@@ -1740,6 +1746,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
     (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) : config * effect =
+  let simpl = simplify_formula c.gc in
   let (root, _) = fun_sp in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
@@ -1753,9 +1760,10 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           make_port_form
-           (addr_concat_form func_form (addr_make_form rel))
-           (int_form pty_pi);
+           simpl
+           (make_port_form
+            (addr_concat_form func_form (addr_make_form rel))
+            (int_form pty_pi));
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -1783,9 +1791,10 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                make_port_form
-                (addr_concat_form func_form (addr_make_form rel))
-                (int_form source_pi);
+                simpl
+                (make_port_form
+                 (addr_concat_form func_form (addr_make_form rel))
+                 (int_form source_pi));
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
@@ -2028,6 +2037,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
     (sim_sp : symb_pair) (iip : string list) (msg : string)
     (msg_args : form list) (new_iws : ideal_world_state) (i : int)
       : config * effect =
+  let simpl = simplify_formula c.gc in
   let sim_rf_addr =
     if i = -1
     then Option.get c.iws.main_sim_state.addr
@@ -2105,11 +2115,13 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
          {mode           = Adv;
           dir            = Out;
           src_port_form  =
-            make_port_form
-            (addr_concat_form sim_rf_addr (addr_make_form [child_i]))
-            (int_form 1);
+            (* TODO - use hint database when possible - see UCBasicTypes *)
+            simpl
+            (make_port_form
+             (addr_concat_form sim_rf_addr (addr_make_form [child_i]))
+             (int_form 1));
           path           = path;
-          args           = msg_args;
+          args           = List.map simpl msg_args;
           dest_port_form = make_port_form adv_form (int_form adv_pi)} in
        let () = check_sme_port_index_consistency c.maps c.gc pi sme in
        (ConfigIdealSending

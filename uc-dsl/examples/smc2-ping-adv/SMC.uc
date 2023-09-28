@@ -28,6 +28,9 @@ direct SMCDir {
   Pt2 : SMCPt2  (* Party 2 *)
 }
 
+(* Party 1 uses to communicate with the adversary. Doesn't accomplish
+   anything, but lets us test a feature. *)
+
 adversarial SMCAdvPt1 {
   in pong
   out ping

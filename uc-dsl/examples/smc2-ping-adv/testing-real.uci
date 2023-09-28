@@ -4,7 +4,7 @@ functionality
   (SMC.SMCReal(KeyExchange.KEReal),
   SMC.SMCReal(KeyExchange.KEReal)).
 var text : text.
-ideal.
+real.
 send
 ((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(([], 1),text)$func.
 run.
@@ -31,6 +31,8 @@ assert MsgOut
 CtrlAdv.
 send ((adv, 5))@SMC.SMCAdv.Pt1.pong@((func ++ [1], 1)).
 run.
+step prover timeout=3.
+run.
 assert MsgOut
 ((func ++ [1; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
@@ -40,6 +42,31 @@ Forwarding.FwAdv.fw_obs
 CtrlAdv.
 send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
 run.
+step prover timeout=3.
+run.
+
+step.
+(* blocked until simplification hints
+
+trying to deconstruct formula:
+
+epdp_port_port_key_univ.`dec (epdp_port_port_key_univ.`enc
+((func ++ [1], 1), (func ++ [1], 2), g ^ rand))
+
+
+
+
+deconstruction by simplification failed.
+ 
+         Trying to simplify by evaluating get_as_Constr
+
+
+
+
+deconstruction failed
+*)
+
+
 assert MsgOut
 ((func ++ [1; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
@@ -96,3 +123,4 @@ run.
 assert MsgOut
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text)@(([], 1))
 CtrlEnv.
+
