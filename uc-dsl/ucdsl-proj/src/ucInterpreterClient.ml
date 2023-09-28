@@ -153,29 +153,27 @@ let interpret (lexbuf : L.lexbuf) =
     EcCommands.ucdsl_new();
     let maps =
     try
-      Some
       ( UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
         (UcParseFile.FOID_Id psym)) 
-    with _ -> 
+    with _ ->
         EcCommands.ucdsl_end();
-        None
+        error_message (loc psym) (fun ppf -> Format.fprintf ppf
+        "@[Problem@ loading@ file.@ Try@ running@ first@ ucdsl -units %s @]" 
+        (unloc psym))
     in
-    match maps with
-    | Some _ ->
-      let c = currs() in
-      let news = 
+    let c = currs() in
+    let news = 
       { c with
         cmd_no = c.cmd_no+1;
         ucdsl_new = true;
         post_done = false;
         root = Some root;
-        maps = maps;
+        maps = Some maps;
         config_gen = None;
         config = None;
         effect = None;
       } in
-      push_print news
-    | None -> ()
+    push_print news
   in
 
   let funexp (fe : fun_expr): unit =
@@ -622,11 +620,13 @@ let interpret (lexbuf : L.lexbuf) =
   interpreter_loop()
   
 let stdIOclient () =
+  UcState.set_units();
   UcState.set_pg_mode();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
 
 let file_client (file : string) =
+  UcState.set_units();
   let ch = open_in file in
   let lexbuf = lexbuf_from_channel file ch  in
   interpret lexbuf;
