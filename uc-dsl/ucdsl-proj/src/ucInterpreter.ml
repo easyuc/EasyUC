@@ -152,8 +152,9 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
                        let (worlds, base) =
                          fun_expr_to_worlds_base fet base in
                        iter (rwas @ [RWA_Real worlds.worlds_real]) base
-                       (worlds.worlds_ideal.iw_main_sim ::
-                        worlds.worlds_ideal.iw_other_sims @ sims)
+                       (sims @
+                        (worlds.worlds_ideal.iw_main_sim ::
+                         worlds.worlds_ideal.iw_other_sims))
                        fets
                    | FunExprTydIdeal sp ->
                        let num_adv_pis =
@@ -169,13 +170,12 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
                  {iw_ideal_func = ((root, ti.ti_ideal), base);
                   iw_main_sim   =
                     ((root, ti.ti_sim), base,
-                      List.map adv_pi_of_rwa rwas);
+                     List.map adv_pi_of_rwa rwas);
                   iw_other_sims = sims}},
               base'))
      | FunExprTydIdeal _                    ->
          failure "should not be called with ideal functionality expression" in
-  let (wrlds, base) = fun_expr_to_worlds_base fet 1 in
-  (wrlds, base)
+  fun_expr_to_worlds_base fet 1
 
 (* the returned int is the first adversarial port index *not* used
    by the worlds *)
