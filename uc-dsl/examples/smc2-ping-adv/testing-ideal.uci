@@ -1,0 +1,51 @@
+load SMC2.
+functionality
+  SMC2.SMC2Real
+  (SMC.SMCReal(KeyExchange.KEReal),
+  SMC.SMCReal(KeyExchange.KEReal)).
+(*real.*) ideal.
+send
+((env_root_addr, 1))@SMC2.SMC2Dir.Pt1.smc_req(([], 1),T.testtext)$func.
+step.
+step.
+step.
+step.
+step.
+step.
+send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
+step.
+step.
+step.
+send ((adv, 3))@Forwarding.FwAdv.fw_ok@((func ++ [4], 1)).
+step.
+step.
+step.
+step.
+step.
+send ((adv, 5))@SMC.SMCAdv.Pt1.pong@((func ++ [1], 1)).
+step.
+step.
+step.
+step.
+step.
+step.
+send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1] ++ [1] ++ [1], 1)).
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+send ((adv, 9))@Forwarding.FwAdv.fw_ok@((func ++ [1] ++ [1] ++ [2], 1)).
+step.
+step.
+step.
+
+
+
+
+
+

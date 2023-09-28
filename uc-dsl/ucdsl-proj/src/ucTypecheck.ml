@@ -2521,7 +2521,7 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
              | BasicTyd bibt        ->
                  if List.is_empty rest
                  then let uior = unit_info_of_root maps root in
-                      if is_basic_adv_of_ideal uior top
+                      if is_basic_adv_of_ideal_fun_of_unit uior top
                       then Some (mode, 1, bibt)
                       else Some (mode, 0, bibt)  (* part of composite *)
                  else None
