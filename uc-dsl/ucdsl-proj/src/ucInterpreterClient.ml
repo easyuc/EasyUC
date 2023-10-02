@@ -504,10 +504,12 @@ let interpret (lexbuf : L.lexbuf) =
     | ErrorMessageExn ->
       prompt();
       loop body
-    | _ when UcState.get_pg_mode() ->
+    | e when UcState.get_pg_mode() ->
       try
         non_loc_error_message (fun ppf -> Format.fprintf ppf 
-        "@[Unhandled@ exception.@]")
+        "@[Unhandled exception: %s\n%s@]"
+        (Printexc.to_string e)
+        (Printexc.get_backtrace ()))
       with ErrorMessageExn ->
         prompt();
         loop body
