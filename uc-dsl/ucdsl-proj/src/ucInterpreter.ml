@@ -152,9 +152,9 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
                        let (worlds, base) =
                          fun_expr_to_worlds_base fet base in
                        iter (rwas @ [RWA_Real worlds.worlds_real]) base
-                       (sims @
-                        (worlds.worlds_ideal.iw_main_sim ::
-                         worlds.worlds_ideal.iw_other_sims))
+                       (worlds.worlds_ideal.iw_main_sim ::
+                        worlds.worlds_ideal.iw_other_sims @
+                        sims)
                        fets
                    | FunExprTydIdeal sp ->
                        let num_adv_pis =
