@@ -410,116 +410,6 @@ let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
   let gc = LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
   (gc, id)
 
-(* a local context is a nonempty stack of maps (frames) from
-   identifers (local variables or bound identifiers (state parameters
-   or ones bound by message match clauses or ordinary match clauses))
-   to formulas, which should be well typed in the global context
-
-   the bottom frame is its first element, ..., and the top frame is
-   its last element
-
-   the bottom frame includes entries corresponding to local_context_base
-   (see below); the remaining frames bind identifers bound by
-   ordinary meatch clauses
-
-   in practice, all the EcIdent.t's of all the frames will be
-   distinct, because of their tags *)
-
-type local_context_frame = form EcIdent.Mid.t
-type local_context       = local_context_frame list
-
-(* in an LCB_IntPort (id, f), the string of id will have the form
-   "intport." followed the name of the party (which in the case of a
-   simulator will consists of the (unqualified by the root) name of
-   the real functionality being simulated, followed by '.', followed
-   by the party) *)
-
-type local_context_base =
-  | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
-                                        of message match clause *)
-  | LCB_Var     of EcIdent.t * ty    (* local variable *)
-  | LCB_EnvPort of form * form       (* both of type address *)
-  | LCB_IntPort of EcIdent.t * form  (* of type port *)
-
-let lc_create (lcbs : local_context_base list) : local_context =
-  [EcIdent.Mid.of_list
-   (List.map
-    (fun lcb ->
-       match lcb with
-       | LCB_Bound (id, form)    -> (id, form)
-       | LCB_Var (id, ty)        ->
-           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort (func, adv) ->
-           (envport_id,
-            f_app (form_of_expr mhr envport_op)
-            [func; adv] (tfun port_ty tbool))
-       | LCB_IntPort (id, port)  -> (id, port))
-    lcbs)]
-
-let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
-      : EcIdent.t option =
-  EcIdent.Mid.fold_left
-  (fun acc id _ ->
-     match acc with
-     | None -> if EcIdent.name id = sym then Some id else None
-     | res  -> res)
-  None
-  map
-
-let lc_update_var (lc : local_context) (id : symbol) (f : form)
-      : local_context =
-  let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
-  let id = Option.get (lc_find_key_from_sym lc_base id) in
-  EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
-
-let lc_apply (lc : local_context) (e : expr) : form =
-  let f = form_of_expr mhr e in
-  let map =
-    List.fold_left
-    (fun acc nxt ->
-       EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
-    (List.hd lc) (List.tl lc) in
-  let subst =
-    List.fold_left
-    (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
-    Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
-  Fsubst.f_subst subst f
-
-let push (lc : local_context) (fr : local_context_frame) : local_context =
-  lc @ [fr]
-
-let make_and_push (lc : local_context) (bindings : (EcIdent.t * form) list)
-      : local_context =
-  push lc (EcIdent.Mid.of_list bindings)
-
-let lc_pop (lc : local_context) : local_context =
-  (if List.is_empty lc then failure "should not happen");
-  List.take (List.length lc - 1) lc
-
-(* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ', so it matches the concrete syntax *)
-
-let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let subst_colon_by_blank (s : symbol) : symbol =
-    String.map (fun c -> if c = ':' then ' ' else c) s in
-  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
-        : unit =
-    fprintf ppf "@[%s ->@ %a@]"
-    (subst_colon_by_blank (EcIdent.name id))
-    (pp_form env) form in
-  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
-    fprintf ppf "@[(@[%a@])@]"
-    (EcPrinting.pp_list ",@ " pp_frame_entry)
-    (EcIdent.Mid.bindings frame) in
-  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
-        : unit =
-    match frames with
-    | []              -> failure "should not happen"
-    | [frame]         -> pp_frame ppf frame
-    | frame :: frames ->
-        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
-  fprintf ppf "@[<v>%a@]" pp_frames lc
-
 (* prover infos *)
 
 type prover_infos = EcProvers.prover_infos
@@ -604,6 +494,121 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
        constr
        (EcPrinting.pp_list ";@ " (pp_form (env_of_gc gc))) forms) in
   (constr, forms)
+
+(* a local context is a nonempty stack of maps (frames) from
+   identifers (local variables or bound identifiers (state parameters
+   or ones bound by message match clauses or ordinary match clauses))
+   to formulas, which should be well typed in the global context
+
+   the bottom frame is its first element, ..., and the top frame is
+   its last element
+
+   the bottom frame includes entries corresponding to local_context_base
+   (see below); the remaining frames bind identifers bound by
+   ordinary meatch clauses
+
+   in practice, all the EcIdent.t's of all the frames will be
+   distinct, because of their tags *)
+
+type local_context_frame = form EcIdent.Mid.t
+type local_context       = local_context_frame list
+
+(* in an LCB_IntPort (id, f), the string of id will have the form
+   "intport." followed the name of the party (which in the case of a
+   simulator will consists of the (unqualified by the root) name of
+   the real functionality being simulated, followed by '.', followed
+   by the party) *)
+
+type local_context_base =
+  | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
+                                        of message match clause *)
+  | LCB_Var     of EcIdent.t * ty    (* local variable *)
+  | LCB_EnvPort of form * form       (* both of type address *)
+  | LCB_IntPort of EcIdent.t * form  (* of type port *)
+
+let lc_create (gc : global_context) (lcbs : local_context_base list)
+      : local_context =
+  let simpl = simplify_formula gc in
+  [EcIdent.Mid.of_list
+   (List.map
+    (fun lcb ->
+       match lcb with
+       | LCB_Bound (id, form)    -> (id, simpl form)
+       | LCB_Var (id, ty)        ->
+           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
+       | LCB_EnvPort (func, adv) ->
+           (envport_id,
+            simpl
+            (f_app (form_of_expr mhr envport_op)
+             [func; adv] (tfun port_ty tbool)))
+       | LCB_IntPort (id, port)  -> (id, simpl port))
+    lcbs)]
+
+let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
+      : EcIdent.t option =
+  EcIdent.Mid.fold_left
+  (fun acc id _ ->
+     match acc with
+     | None -> if EcIdent.name id = sym then Some id else None
+     | res  -> res)
+  None
+  map
+
+let lc_update_var (gc : global_context) (lc : local_context)
+    (id : symbol) (f : form) : local_context =
+  let f = simplify_formula gc f in
+  let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
+  let id = Option.get (lc_find_key_from_sym lc_base id) in
+  EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
+
+let lc_apply (gc : global_context) (lc : local_context) (e : expr) : form =
+  let f = form_of_expr mhr e in
+  let map =
+    List.fold_left
+    (fun acc nxt ->
+       EcIdent.Mid.union (fun _ _ f -> Some f) acc nxt)
+    (List.hd lc) (List.tl lc) in
+  let subst =
+    List.fold_left
+    (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
+    Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
+  let f = Fsubst.f_subst subst f in
+  simplify_formula gc f
+
+let push (lc : local_context) (fr : local_context_frame) : local_context =
+  lc @ [fr]
+
+let make_and_push (lc : local_context) (bindings : (EcIdent.t * form) list)
+      : local_context =
+  push lc (EcIdent.Mid.of_list bindings)
+
+let lc_pop (lc : local_context) : local_context =
+  (if List.is_empty lc then failure "should not happen");
+  List.take (List.length lc - 1) lc
+
+(* when we pretty print the identifier of an internal port entry,
+   we replace the ':' by ' ', so it matches the concrete syntax *)
+
+let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
+  let subst_colon_by_blank (s : symbol) : symbol =
+    String.map (fun c -> if c = ':' then ' ' else c) s in
+  let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
+        : unit =
+    fprintf ppf "@[%s ->@ %a@]"
+    (subst_colon_by_blank (EcIdent.name id))
+    (pp_form env) form in
+  let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
+    fprintf ppf "@[(@[%a@])@]"
+    (EcPrinting.pp_list ",@ " pp_frame_entry)
+    (EcIdent.Mid.bindings frame) in
+  let rec pp_frames (ppf : formatter) (frames : form EcIdent.Mid.t list)
+        : unit =
+    match frames with
+    | []              -> failure "should not happen"
+    | [frame]         -> pp_frame ppf frame
+    | frame :: frames ->
+        fprintf ppf "%a@;%a" pp_frame frame pp_frames frames in
+  fprintf ppf "@[<v>%a@]" pp_frames lc
 
 (* configurations *)
 
@@ -1542,11 +1547,9 @@ exception StepBlockedPortOrAddrCompare
 
 let step_assign (gc : global_context) (lc : local_context)
     (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
-  let simpl f = simplify_formula gc f in
-  let form = lc_apply lc expr in
-  let form = simpl form in
+  let form = lc_apply gc lc expr in
   match lhs with
-  | LHSSimp id   -> lc_update_var lc (unloc id) form
+  | LHSSimp id   -> lc_update_var gc lc (unloc id) form
   | LHSTuple ids ->
       let tys =
         match form.f_ty.ty_node with
@@ -1554,22 +1557,20 @@ let step_assign (gc : global_context) (lc : local_context)
         | _          -> failure "should not happen" in
       List.fold_lefti
       (fun acc i id ->
-         let pr_simp = simpl (f_proj form i (List.nth tys i)) in
-         lc_update_var acc (unloc id) pr_simp)
+         let pr = f_proj form i (List.nth tys i) in
+         lc_update_var gc acc (unloc id) pr)
       lc
       ids
 
 let step_sample (gc : global_context) (lc : local_context)
     (pi : prover_infos) (lhs : lhs) (expr : expr)
       : global_context * local_context * symbol =
-  let simpl f = simplify_formula gc f in
-  let form = lc_apply lc expr in
+  let form = lc_apply gc lc expr in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
-  let form = simpl form in
   match lhs with
   | LHSSimp id   ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
-      let lc = lc_update_var lc (unloc id) (f_local rand ty) in
+      let lc = lc_update_var gc lc (unloc id) (f_local rand ty) in
       (gc, lc, EcIdent.name rand)
   | LHSTuple ids ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
@@ -1581,7 +1582,7 @@ let step_sample (gc : global_context) (lc : local_context)
         List.fold_lefti
         (fun acc i id ->
            let pr_rand = f_proj (f_local rand ty) i (List.nth tys i) in
-           lc_update_var acc (unloc id) pr_rand)
+           lc_update_var gc acc (unloc id) pr_rand)
         lc
         ids in
       (gc, lc, EcIdent.name rand)
@@ -1589,7 +1590,7 @@ let step_sample (gc : global_context) (lc : local_context)
 let step_if_then_else (gc : global_context) (lc : local_context)
     (pi : prover_infos) (expr : expr) (inss_then : instr_interp list)
     (inss_else_opt : instr_interp list option) : instr_interp list =
-  let expr_gc_form = lc_apply lc expr in
+  let expr_gc_form = lc_apply gc lc expr in
   if try eval_bool_form_to_bool gc pi expr_gc_form with
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
@@ -1598,7 +1599,7 @@ let step_if_then_else (gc : global_context) (lc : local_context)
 let step_match (gc : global_context) (lc : local_context)
     (pi : prover_infos) (expr : expr) (clauses : match_clause_interp list)
       : local_context * instr_interp list =
-  let form = lc_apply lc expr in
+  let form = lc_apply gc lc expr in
   let (form_constr, form_args) =
     try deconstruct_datatype_value gc pi form with
     | ECProofEngine -> raise StepBlockedMatch in
@@ -1840,21 +1841,20 @@ let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
 
 let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
     (s_and_t : send_and_transition_tyd) : config * effect =
-  let simpl f = simplify_formula c.gc f in
   let {msg_expr; state_expr} = s_and_t in
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> simpl (lc_apply c.lc arg)) (unloc msg_args) in
+    List.map (fun arg -> lc_apply c.gc c.lc arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (simpl (lc_apply c.lc expr)) in
+    | Some expr -> Some (lc_apply c.gc c.lc expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> simpl (lc_apply c.lc arg)) state_args in
+    List.map (fun arg -> lc_apply c.gc c.lc arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_rws =
     match c.rwrc with
@@ -2156,21 +2156,20 @@ let iw_step_send_and_transition_from_sim (c : config_ideal_running)
 
 let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
     (s_and_t : send_and_transition_tyd) : config * effect =
-  let simpl f = simplify_formula c.gc f in
   let {msg_expr; state_expr} = s_and_t in
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> simpl (lc_apply c.lc arg)) (unloc msg_args) in
+    List.map (fun arg -> lc_apply c.gc c.lc arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (simpl (lc_apply c.lc expr)) in
+    | Some expr -> Some (lc_apply c.gc c.lc expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> simpl (lc_apply c.lc arg)) state_args in
+    List.map (fun arg -> lc_apply c.gc c.lc arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_iws =
     match c.iwrc with
@@ -2280,8 +2279,8 @@ let match_ord_sme_against_msg_match_clauses
 (* should only be called with ordinary sme that will successfully
    match *)
 
-let match_ord_sme_in_state (is_sim : bool) (addr : form)
-    (sbt : state_body_tyd) (state_args : form list)
+let match_ord_sme_in_state (gc : global_context) (is_sim : bool)
+    (addr : form) (sbt : state_body_tyd) (state_args : form list)
     (sme : sent_msg_expr_ord_tyd)
       : local_context * instruction_tyd list located =
   let port_of_addr i = make_port_form addr (int_form i) in
@@ -2307,7 +2306,7 @@ let match_ord_sme_in_state (is_sim : bool) (addr : form)
      functionality and [RealFun; Party] in its simulator will be
      assigned the same port index *) 
   let lc =
-    lc_create
+    lc_create gc
     (state_params   @
      vars           @
      mm_binds       @
@@ -2437,7 +2436,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state false addr sbt state_args sme_ord in
+                match_ord_sme_in_state c.gc false addr sbt state_args sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
                 gc   = c.gc;
@@ -2559,7 +2558,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               else let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state false addr sbt state_args sme_ord in
+                     match_ord_sme_in_state c.gc false addr sbt state_args
+                     sme_ord in
                    (ConfigRealRunning
                     {maps = c.maps;
                      gc   = c.gc;
@@ -2635,7 +2635,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
              else let sme_ord =
                     drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                   let (lc, ins) =
-                    match_ord_sme_in_state false addr sbt state_args sme_ord in
+                    match_ord_sme_in_state c.gc false addr sbt state_args
+                    sme_ord in
                   (ConfigRealRunning
                    {maps = c.maps;
                     gc   = c.gc;
@@ -2735,7 +2736,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state false addr sbt state_args sme_ord in
+                match_ord_sme_in_state c.gc false addr sbt state_args
+                sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
                 gc   = c.gc;
@@ -2837,7 +2839,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           | Some sme -> sme in
         (assert (sme_ord.dir = Out);
          let (lc, ins) =
-           match_ord_sme_in_state false addr sbt state_args sme_ord in
+           match_ord_sme_in_state c.gc false addr sbt state_args sme_ord in
          (ConfigRealRunning
           {maps = c.maps;
            gc   = c.gc;
@@ -2971,7 +2973,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                     let sme_ord =
                       drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                     let (lc, ins) =
-                      match_ord_sme_in_state false func_form sbt state_args
+                      match_ord_sme_in_state c.gc false func_form sbt state_args
                       sme_ord in
                     (ConfigIdealRunning
                      {maps = c.maps;
@@ -3045,8 +3047,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                          drop_head_of_msg_path_in_sent_msg_expr_ord_tyd
                          sme_ord in
                        let (lc, ins) =
-                         match_ord_sme_in_state false func_form sbt state_args
-                         sme_ord in
+                         match_ord_sme_in_state c.gc false func_form
+                         sbt state_args sme_ord in
                        (ConfigIdealRunning
                         {maps = c.maps;
                          gc   = c.gc;
@@ -3134,7 +3136,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         (match sme_ord.path.inter_id_path with
          | [root'; basic'] ->
               if root' = root && basic' = sim_bt.uses && sme_ord.dir = Out
-              then let source_addr =  simplify_formula c.gc source_addr in
+              then let source_addr = simplify_formula c.gc source_addr in
                    let () =
                      match sim_rf_addr with
                      | None      -> ()
@@ -3144,7 +3146,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                    let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state true source_addr state_bt
+                     match_ord_sme_in_state c.gc true source_addr state_bt
                      state_args sme_ord in
                    (ConfigIdealRunning
                     {maps = c.maps;
@@ -3217,7 +3219,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              let (lc, ins) =
-               match_ord_sme_in_state true sim_rf_addr state_bt
+               match_ord_sme_in_state c.gc true sim_rf_addr state_bt
                state_args sme_ord in
              (ConfigIdealRunning
               {maps = c.maps;
@@ -3259,7 +3261,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 eval_bool_form_to_bool c.gc c.pi
                 (f_eq source_pi (int_form expect_source_adv_pi))
              then let (lc, ins) =
-                    match_ord_sme_in_state true sim_rf_addr state_bt
+                    match_ord_sme_in_state c.gc true sim_rf_addr state_bt
                     state_args sme_ord in
                   (ConfigIdealRunning
                    {maps = c.maps;

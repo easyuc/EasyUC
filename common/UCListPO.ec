@@ -443,6 +443,8 @@ proof.
 rewrite -{1}(cats0 xs) le_pre ge_nil.
 qed.
 
+hint simplify [eqtrue] le_ext_r.
+
 lemma sing_not_le (x y : 'a) :
   x <> y => ! [x] <= [y].
 proof.
