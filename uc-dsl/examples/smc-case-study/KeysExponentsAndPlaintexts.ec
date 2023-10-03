@@ -88,17 +88,6 @@ hint simplify valid_epdp_text_key.
 
 (* consequences of axioms *)
 
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_text_key_cancel (t : text) :
-  epdp_text_key.`dec (epdp_text_key.`enc t) = Some t.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_text_key_cancel.
-
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
 
@@ -156,17 +145,6 @@ qed.
 
 hint simplify valid_epdp_key_univ.
 
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_key_univ_cancel (k : key) :
-  epdp_key_univ.`dec (epdp_key_univ.`enc k) = Some k.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_key_univ_cancel.
-
 (* EPDP from text to univ *)
 
 op epdp_text_univ : (text, univ) epdp =
@@ -178,17 +156,6 @@ rewrite valid_epdp_comp epdp.
 qed.
 
 hint simplify valid_epdp_text_univ.
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_text_univ_cancel (t : text) :
-  epdp_text_univ.`dec (epdp_text_univ.`enc t) = Some t.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_text_univ_cancel.
 
 (* EPDP between port * port * key and univ *)
 
@@ -202,14 +169,3 @@ rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_port_port_key_univ_cancel (x : port * port * key) :
-  epdp_port_port_key_univ.`dec (epdp_port_port_key_univ.`enc x) = Some x.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_port_port_key_univ_cancel.

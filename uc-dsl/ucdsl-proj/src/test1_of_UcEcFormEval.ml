@@ -48,17 +48,17 @@ let dft_pi = {
     
 let testEvalCond (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
-  printEvalResult (UcEcFormEval.eval_condition hyps concl dft_pi)
+  printEvalResult (UcEcFormEval.eval_condition hyps concl dft_pi [])
   
 let testSymplify (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  printFormula env (UcEcFormEval.simplify_formula hyps concl)
+  printFormula env (UcEcFormEval.simplify_formula hyps concl [])
   
 let testDeconstructData (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  let tcons , decfs = UcEcFormEval.deconstruct_data hyps concl dft_pi in
+  let tcons , decfs = UcEcFormEval.deconstruct_data hyps concl dft_pi [] in
   print_endline tcons;
   List.iter (fun decf -> printFormula env decf) decfs
 

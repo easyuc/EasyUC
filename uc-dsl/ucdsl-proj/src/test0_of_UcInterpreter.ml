@@ -66,7 +66,7 @@ let test_sent_real_config_core
   Format.pp_print_newline Format.err_formatter ();
   let () = Printf.eprintf "---\n" in
   let (config, eff) =
-    step_running_or_sending_real_or_ideal_config config None in
+    step_running_or_sending_real_or_ideal_config config None None in
   let () = pp_config Format.err_formatter config in
   Format.pp_print_newline Format.err_formatter ();
   let () = Printf.eprintf "---\n" in
@@ -83,7 +83,7 @@ let test_sent_real_config_core_cont
   Format.pp_print_newline Format.err_formatter ();
   let () = Printf.eprintf "---\n" in
   let (config, eff) =
-    step_running_or_sending_real_or_ideal_config config None in
+    step_running_or_sending_real_or_ideal_config config None None in
   let () = pp_config Format.err_formatter config in
   Format.pp_print_newline Format.err_formatter ();
   let () = Printf.eprintf "---\n" in
