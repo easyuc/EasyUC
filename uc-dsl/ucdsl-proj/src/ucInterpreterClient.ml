@@ -501,7 +501,7 @@ let interpret (lexbuf : L.lexbuf) =
     try
       body()
     with
-    | ErrorMessageExn ->
+    | ErrorMessageExn when UcState.get_pg_mode() ->
       prompt();
       loop body
     | e when UcState.get_pg_mode() ->
