@@ -74,6 +74,13 @@ let get_only_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
   match goal with
   | Some (1, pregoal) -> pregoal
   | _ -> failwith "failed getting the one and only pregoal"
+
+let get_last_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
+  let goal = EcCoreGoal.opened proof in
+  match goal with
+  | Some (_, pregoal) -> pregoal
+  | _ -> failwith "failed getting the last pregoal"
+
   
 let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let hyps = (get_only_pregoal proof).g_hyps  in
@@ -141,18 +148,9 @@ let eval_condition_pre_tacs
         if can_prove_smt proof_false pi
         then Bool false
         else Undecided
-      
-
-let eval_condition 
-(hyps : EcEnv.LDecl.hyps) 
-(form : EcCoreFol.form)
-(pi : EcProvers.prover_infos)
-(rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
-: eval_condition_result =
-  eval_condition_pre_tacs hyps form pi []
 
 let unique_id_for_proof (proof : EcCoreGoal.proof) : EcIdent.t = 
-  let pregoal = get_only_pregoal proof in
+  let pregoal = get_last_pregoal proof in
   let hyps = pregoal.g_hyps in
   let name = EcUid.NameGen.ofint (EcUid.unique ()) in
   EcEnv.LDecl.fresh_id hyps name
@@ -224,15 +222,51 @@ let move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => /=.";
   run_tac intro1_simplify proof
 
+(*move => //=.*)
+let move_simplify_trivial (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  let intro1_done tc = (*modified from ecHiGoal.ml*)
+    EcCoreGoal.FApi.t_seq 
+    (EcLowGoal.t_simplify ~delta:`No ~logic:(Some `Full))
+    EcHiGoal.process_trivial
+    tc
+  in
+  print_endline "move => //=.";
+  run_tac intro1_done proof
+
+let eq_proof_concl (proof1 : EcCoreGoal.proof) (proof2 : EcCoreGoal.proof)
+: bool =
+  if (EcCoreGoal.closed proof1)&&(EcCoreGoal.closed proof2)
+  then true
+  else
+    (
+      List.equal (EcCoreGoal.eq_handle)
+      (EcCoreGoal.all_hd_opened proof1) (EcCoreGoal.all_hd_opened proof2)
+    )
+    &&
+    (
+      let pregoal1 = get_last_pregoal proof1 in
+      let concl1 = pregoal1.g_concl in
+      let pregoal2 = get_last_pregoal proof2 in
+      let concl2 = pregoal2.g_concl in
+      if EcCoreFol.f_equal concl1 concl2
+      then true
+      else false 
+     )
+
+let changed_proof (proof : EcCoreGoal.proof) (proof' : EcCoreGoal.proof)
+: EcCoreGoal.proof option =
+  if eq_proof_concl proof proof'
+  then None
+  else Some proof'
+  
 let try_move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   let proof' = move_simplify proof in
-  let pregoal = get_only_pregoal proof in
-  let concl = pregoal.g_concl in
-  let pregoal' = get_only_pregoal proof' in
-  let concl' = pregoal'.g_concl in
-  if EcCoreFol.f_equal concl concl'
-  then None
-  else Some proof' 
+  changed_proof proof proof'
+
+let try_move_simplify_trivial (proof : EcCoreGoal.proof) 
+: EcCoreGoal.proof option =
+  let proof' = move_simplify_trivial proof in
+  changed_proof proof proof'
 
 let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   let pregoal = get_only_pregoal proof in
@@ -328,19 +362,16 @@ let move_left (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => <-.";
   run_tac (intro1_rw `RtoL) proof
 
-let rec move_all_hyps_up (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
-: EcCoreGoal.proof =
-  if (is_concl_p proof p_id)
-  then 
-    proof
-  else 
+let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  try
     let proof' = move_up proof in
-    move_all_hyps_up proof' p_id
+    move_all_hyps_up proof'
+  with _ -> proof
 
-let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
+let count_hyp_forms (proof : EcCoreGoal.proof) : int =
   print_endline "BEGIN count_hyp_forms";
-  let proof' = move_all_hyps_up proof p_id in
-  let pregoal = get_only_pregoal proof' in
+  let proof' = move_all_hyps_up proof in
+  let pregoal = get_last_pregoal proof' in
   let h = (EcEnv.LDecl.tohyps pregoal.g_hyps).h_local in
   let h_forms = List.filter 
     (
@@ -353,31 +384,28 @@ let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
   print_endline "END count_hyp_forms";
   List.length h_forms
 
-let try_rewriting_hints (proof : EcCoreGoal.proof) (rwhdb : EcSymbols.qsymbol)
+let try_rewriting_hints (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list) 
 : EcCoreGoal.proof option =
-  let pregoal = get_only_pregoal proof in
-  let env = EcEnv.LDecl.toenv pregoal.g_hyps in
+  let pregoal = get_last_pregoal proof in
   let penv = EcCoreGoal.proofenv_of_proof proof in
   let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
-  let ls  = snd (EcEnv.BaseRw.lookup rwhdb env) in
-  let ls  = EcPath.Sp.elements ls in
   let do1 lemma tc =
     let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
-    process_rewrite1_core ~close:false `LtoR pt tc
+    process_rewrite1_core `LtoR pt tc
   in 
-  let tac tc = EcCoreGoal.FApi.t_ors (List.map do1 ls) tc in
-  let proof' = run_tac tac proof in
-  let concl = pregoal.g_concl in
-  let concl' = (get_only_pregoal proof').g_concl in
-  if EcCoreFol.f_equal concl concl'
-  then None
-  else Some proof'
-
-let try_epdp_rewriting_hints (proof : EcCoreGoal.proof)
-: EcCoreGoal.proof option =
-  try_rewriting_hints proof (["Top"; "UCEncoding"], "epdp") 
+  let tac tc = EcCoreGoal.FApi.t_ors (List.map do1 rw_lems) tc in
+  try
+    (*pp_tc (EcCoreGoal.tcenv_of_proof proof);*)
+    let proof' = run_tac tac proof in
+    (*Format.eprintf "%s\n" "***RW SUCCESS***";*)
+    (*pp_tc (EcCoreGoal.tcenv_of_proof proof');*)
+    changed_proof proof proof'
+    (*Some proof'*)
+  with _(*e*) -> (*Format.eprintf "%s\n"
+("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));*)
+    None
   
-let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
+let try_rewriting (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
 : EcCoreGoal.proof option =
   let move_right_simplify proof =
     let proof_a = move_right proof in
@@ -390,7 +418,7 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
     Some proof_b
   in
   let go_left_first proof =
-    let concl = (get_only_pregoal proof).g_concl in
+    let concl = (get_last_pregoal proof).g_concl in
     begin match EcFol.sform_of_form concl with
     | SFimp (h,_) ->
       begin match EcFol.sform_of_form h with
@@ -406,8 +434,8 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
   in
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     let proof_a = try move_hash proof with _ -> proof in
-    let count = count_hyp_forms proof p_id in
-    let count_a = count_hyp_forms proof_a p_id in
+    let count = count_hyp_forms proof in
+    let count_a = count_hyp_forms proof_a in
     if (count <> count_a)
     then 
       Some proof_a
@@ -423,10 +451,10 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
           then move_right_simplify proof
           else move_left_simplify proof
        with _ -> 
-         let po = try_move_simplify proof in
+         let po = try_move_simplify_trivial proof in
          match po with
          | Some p -> po
-         | None -> try_epdp_rewriting_hints proof
+         | None -> try_rewriting_hints proof rw_lems
   in
   progression try_rewriting_step proof
   
@@ -436,11 +464,10 @@ let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof)
   
 
 
-let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
-: EcCoreGoal.proof =
+let rotate_hyps (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "BEGIN rotate_hyps";
-  let proof_a = move_all_hyps_up proof p_id in
-  let pregoal = get_only_pregoal proof_a in
+  let proof_a = move_all_hyps_up proof in
+  let pregoal = get_last_pregoal proof_a in
   let h = (EcEnv.LDecl.tohyps pregoal.g_hyps).h_local in
   let form_ids = List.filter_map 
     (
@@ -459,36 +486,39 @@ let rotate_hyps (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
     print_endline "END rotate_hyps";
     proof_c
 
-let try_simplification_cycle (p_id : EcIdent.t) (proof : EcCoreGoal.proof) 
-: EcCoreGoal.proof option =
+let try_simplification_cycle (rw_lems : EcPath.path list) 
+(proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   let rec try_simpcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
   = if counter=0 
     then 
-      try_rewriting proof p_id
+      try_rewriting proof rw_lems
     else
-      match try_rewriting proof p_id with
+      match try_rewriting proof rw_lems with
       | Some pr -> Some pr
-      | None -> try_simpcyc_r (counter-1) (rotate_hyps proof p_id) 
+      | None -> try_simpcyc_r (counter-1) (rotate_hyps proof) 
   in
-  let counter = count_hyp_forms proof p_id in
+  let counter = count_hyp_forms proof in
   try_simpcyc_r counter proof
   
-let try_simp (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
-: EcCoreGoal.proof option = 
-  progression (try_simplification_cycle p_id) proof 
+let try_simp (proof : EcCoreGoal.proof)
+(rw_lems : EcPath.path list) : EcCoreGoal.proof option = 
+  progression (try_simplification_cycle rw_lems) proof 
 
 let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
-: EcCoreFol.form =
+(rw_lems : EcPath.path list) : EcCoreFol.form =
   (*let proof_a = prelims proof p_id in*)
   let proof' = move_all_hyp_forms_to_concl proof in
-  let proof_o = try_simp proof' p_id in
+  let proof_o = try_simp proof' rw_lems in
   match proof_o with
-  | None -> extract_form proof p_id
+  | None -> extract_form proof p_id (* no progress happened *)
   | Some pr ->
-    let pr' = move_all_hyps_up pr p_id in 
-    extract_form pr' p_id
+    match List.length (EcCoreGoal.all_opened pr) with
+    | 1 ->
+      let pr' = move_all_hyps_up pr in 
+      extract_form pr' p_id         (* success - some progress happened *)
+    | _ -> extract_form proof p_id  (* opened more goals than could be closed *)
 
 (*
 let simplify_by_crushing 
@@ -537,7 +567,16 @@ let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
   pp_proof proof;
 (*try to simplify form*)  
   (*simplify_by_crushing proof p_id*)
-  simplify_heuristic proof p_id
+  simplify_heuristic proof p_id rw_lems
+
+let eval_condition 
+(hyps : EcEnv.LDecl.hyps) 
+(form : EcCoreFol.form)
+(pi : EcProvers.prover_infos)
+(rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
+: eval_condition_result =
+  let form = simplify_formula hyps form rw_lems in
+  eval_condition_pre_tacs hyps form pi []
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
   match oty.ty_node with
