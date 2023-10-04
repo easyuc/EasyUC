@@ -92,15 +92,11 @@ hint rewrite epdp : valid_epdp_text_key.
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
 
-lemma one_time1 (x y : key) :
+lemma one_time (x y : key) :
   x ^^ y ^^ kinv y = x.
 proof.
 by rewrite kmulA kinv_r kid_r.
 qed.
-
-(* so simplify and smt() can use right-to-left equation *)
-
-hint simplify [reduce] one_time1.
 
 (* we can define a bijection between exp and key *)
 
@@ -133,6 +129,18 @@ have -> : x = g ^ log x.
   by rewrite -/(gen (log x)) log_gen.
 by rewrite !double_exp_gen mulA.
 qed.
+
+(* now we can combine our one_time lemma with Diffie-Hellman: *)
+
+lemma one_time_dh (x : key, q1 q2 : exp) :
+  x ^^ (g ^ q2 ^ q1) ^^ kinv (g ^ q1 ^ q2) = x.
+proof.
+have -> : g ^ q1 ^ q2 = g ^ q2 ^ q1.
+  by rewrite 2!double_exp mulC.
+by rewrite one_time.
+qed.
+
+hint rewrite uc_dsl_interpreter_hints : one_time_dh.
 
 (* EPDP from key to univ *)
 
