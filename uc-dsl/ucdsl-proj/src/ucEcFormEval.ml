@@ -147,6 +147,7 @@ let eval_condition
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form)
 (pi : EcProvers.prover_infos)
+(rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
 : eval_condition_result =
   eval_condition_pre_tacs hyps form pi []
 
@@ -519,6 +520,7 @@ let simplify_by_crushing
 *)
               
 let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
+    (rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
 : EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
   let f_ty = EcCoreFol.f_ty form in
@@ -623,9 +625,9 @@ let mk_oget_op_form
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
-let deconstruct_data_simplify hyps form =
+let deconstruct_data_simplify hyps form rw_lems =
   let env = EcEnv.LDecl.toenv hyps in
-  let sf = simplify_formula hyps form in
+  let sf = simplify_formula hyps form rw_lems in
   let opptyl, argforms = EcCoreFol.destr_op_app sf in
   let opp = fst opptyl in
   if EcEnv.Op.is_dtype_ctor env opp
@@ -633,7 +635,8 @@ let deconstruct_data_simplify hyps form =
   else failwith "Simplification did not reduce formula to the form of ctor applied to data."
   
 
-let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
+let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
+    hyps form pi rw_lems =
   let sopl = 
     EcInductive.datatype_projectors (p, tyd.EcDecl.tyd_params, ty_dt) 
   in
@@ -655,7 +658,7 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
   print_endline "begin match opfo with";
   match sopfo with
   | Some (s, opf) ->
-    let ogetf = simplify_formula hyps (mk_oget_op_form opf form) in
+    let ogetf = simplify_formula hyps (mk_oget_op_form opf form) rw_lems in
     let path = EcPath.pqoname (EcPath.prefix p) s in
     let env = EcEnv.LDecl.toenv hyps in
     let op = EcEnv.Op.by_path path env in
@@ -667,7 +670,7 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi =
       | _ -> 
         List.mapi (
           fun i argty -> let argf = EcCoreFol.f_proj ogetf i argty in
-          simplify_formula hyps argf 
+          simplify_formula hyps argf rw_lems
         ) dom
     in 
     (s , args)
@@ -678,6 +681,7 @@ let deconstruct_data
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form) 
 (pi : EcProvers.prover_infos)
+(rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
 : EcSymbols.symbol * (EcCoreFol.form list) =
   let ty = EcCoreFol.f_ty form in
   print_endline "begin match ty.ty_node with";
@@ -690,7 +694,7 @@ let deconstruct_data
     begin match ty_dtyo with
     | Some ty_dt ->
       begin try
-        let ret = deconstruct_data_simplify hyps form in
+        let ret = deconstruct_data_simplify hyps form rw_lems in
         debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification succeded.@.");
         ret
@@ -698,7 +702,8 @@ let deconstruct_data
         debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");
-      deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt hyps form pi
+      deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
+      hyps form pi rw_lems
       end
     | None -> failwith "Only data types can be deconstructed"
     end

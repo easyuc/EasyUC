@@ -250,13 +250,13 @@ let testFormEval () : unit =
         ]     
     } in
     
-  printEvalResult (UcEcFormEval.eval_condition hyps_empty form_i_eq_0 dft_pi);
-  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_0 form_i_eq_0 dft_pi);
-  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_1 form_i_eq_0 dft_pi);
+  printEvalResult (UcEcFormEval.eval_condition hyps_empty form_i_eq_0 dft_pi []);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_0 form_i_eq_0 dft_pi []);
+  printEvalResult (UcEcFormEval.eval_condition hyps_i_eq_1 form_i_eq_0 dft_pi []);
   
-  printFormula env (UcEcFormEval.simplify_formula hyps_empty form_i_eq_0);
-  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_0 form_i_eq_0);
-  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_1 form_i_eq_0)
+  printFormula env (UcEcFormEval.simplify_formula hyps_empty form_i_eq_0 []);
+  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_0 form_i_eq_0 []);
+  printFormula env (UcEcFormEval.simplify_formula hyps_i_eq_1 form_i_eq_0 [])
   
 
 let () : unit =

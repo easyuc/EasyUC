@@ -311,7 +311,8 @@ let interpret (lexbuf : L.lexbuf) =
     if (is_running_or_sending_real_or_ideal_config cconfig)
     then
       let conf, eff =
-        step_running_or_sending_real_or_ideal_config cconfig ppio in
+        (* TODO let user remove or add rewriting databases *)
+        step_running_or_sending_real_or_ideal_config cconfig ppio None in
       let news =  
         {
           c with
@@ -331,7 +332,7 @@ let interpret (lexbuf : L.lexbuf) =
 
     let rec runr (conf : config) : config * effect =
       let conf, eff =
-        step_running_or_sending_real_or_ideal_config conf None in
+        step_running_or_sending_real_or_ideal_config conf None None in
       match eff with
       | EffectOK
       | EffectRand _ -> runr conf

@@ -414,13 +414,6 @@ let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
 
 type prover_infos = EcProvers.prover_infos
 
-let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
-    (ppi : EcParsetree.pprover_infos) : prover_infos =
-  try EcScope.Prover.pprover_infos_to_prover_infos env pi ppi with
-  | EcScope.HiScopeError (lopt, s) ->
-      opt_loc_error_message lopt
-      (fun ppf -> fprintf ppf "@[prover infos error: %s@]" s)
-
 let default_prover_infos (env : EcEnv.env) : prover_infos =
   {EcProvers.dft_prover_infos with
      pr_provers =
@@ -428,12 +421,84 @@ let default_prover_infos (env : EcEnv.env) : prover_infos =
        EcProvers.dft_prover_names;
      pr_timelimit = 1}
 
+let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
+    (ppi : EcParsetree.pprover_infos) : prover_infos =
+  try EcScope.Prover.pprover_infos_to_prover_infos env pi ppi with
+  | EcScope.HiScopeError (lopt, s) ->
+      opt_loc_error_message lopt
+      (fun ppf -> fprintf ppf "@[prover infos error: %s@]" s)
+
+(* rewriting databases *)
+
+type rewriting_dbs = qsymbol list
+
+let default_rewriting_dbs = [
+  (["Top"; "UCEncoding"],   "epdp");
+  (["Top"; "UCBasicTypes"], "uc_dsl_interpreter_hints")
+]
+
+let add_rewriting_db (env : env) (dbs : rewriting_dbs) (pdb : pqsymbol)
+      : rewriting_dbs =
+  let (db, l) = (unloc pdb, loc pdb) in
+  match EcEnv.BaseRw.lookup_opt db env with
+  | None   ->
+      error_message l
+      (fun ppf ->
+         fprintf ppf "@[bad@ rewriting@ database:@ %a@]"
+         pp_qsymbol db)
+  | Some _ -> dbs @ [db]
+
+let add_rewriting_dbs (env : env) (dbs : rewriting_dbs) (pdbs : pqsymbol list)
+      : rewriting_dbs =
+  List.fold_left
+  (fun acc pdb -> add_rewriting_db env dbs pdb)
+  dbs pdbs
+
+let rm_rewriting_db (dbs : rewriting_dbs) (pdb : pqsymbol)
+      : rewriting_dbs =
+  let (db, l) = (unloc pdb, loc pdb) in
+  try let (i, _) = List.findi (fun _ x -> x = db) dbs in
+      List.remove_at i dbs with
+  | Not_found ->
+      error_message l
+      (fun ppf ->
+         fprintf ppf "@[not@ a@ current@ rewriting@ database:@ %a@]"
+         pp_qsymbol db)
+
+let rm_rewriting_dbs (dbs : rewriting_dbs) (pdbs : pqsymbol list)
+      : rewriting_dbs =
+  List.fold_left
+  (fun acc pdb -> rm_rewriting_db dbs pdb)
+  dbs pdbs
+
+(* the first component is what should be removed; the second
+   component is what should then be added *)
+
+type rm_then_add_pdbs = pqsymbol list * pqsymbol list
+
+let rm_then_add_rewriting_dbs (env : env) (dbs : rewriting_dbs)
+    (rm_then_add_pdbs : rm_then_add_pdbs) : rewriting_dbs =
+  let dbs = rm_rewriting_dbs dbs (fst rm_then_add_pdbs) in
+  add_rewriting_dbs env dbs (snd rm_then_add_pdbs)
+
+let pp_rewriting_dbs (ppf : Format.formatter) (dbs : rewriting_dbs) : unit =
+  fprintf ppf "@[%a@]" (EcPrinting.pp_list ";@ " pp_qsymbol) dbs
+
+let lemmas_of_rewriting_dbs (env : env) (dbs : rewriting_dbs)
+      : EcPath.path list =
+  let lemmas_of_rw_dbs (db : qsymbol) : EcPath.path list =
+    let lems = snd (EcEnv.BaseRw.lookup db env) in
+    EcPath.Sp.elements lems in
+  List.fold_left
+  (fun acc db -> acc @ lemmas_of_rw_dbs db)
+  [] dbs
+
 (* Using EasyCrypt Proof Engine *)
 
 exception ECProofEngine
 
 let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
-    (f : form) : bool =
+    (dbs : rewriting_dbs) (f : form) : bool =
   let () =
     debugging_message
     (fun ppf ->
@@ -441,7 +506,8 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
        ("@[@[trying@ to@ prove@ truth@ or@ falsity@ " ^^
         "of:@]@\n@\n@[%a@]@]@.")
        (pp_form (env_of_gc gc)) f) in
-  match UcEcFormEval.eval_condition gc f pi with
+  let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
+  match UcEcFormEval.eval_condition gc f pi rw_lems with
   | UcEcFormEval.Bool b    ->
       (if b
        then debugging_message
@@ -455,14 +521,16 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
           fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
       raise ECProofEngine
 
-let simplify_formula (gc : global_context) (f : form) : form =
+let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
+      : form =
   let () =
     debugging_message
     (fun ppf ->
        fprintf ppf
        "@[@[trying@ to@ simplify@ formula:@]@\n@\n@[%a@]@]@."
        (pp_form (env_of_gc gc)) f) in
-  let f = UcEcFormEval.simplify_formula gc f in
+  let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
+  let f = UcEcFormEval.simplify_formula gc f rw_lems in
   let () =
     debugging_message
     (fun ppf ->
@@ -472,15 +540,16 @@ let simplify_formula (gc : global_context) (f : form) : form =
   f
 
 let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
-    (f : form) : symbol * EcCoreFol.form list =
+    (dbs : rewriting_dbs) (f : form) : symbol * EcCoreFol.form list =
   let () =
     debugging_message
     (fun ppf ->
        fprintf ppf
        "@[@[trying@ to@ deconstruct@ formula:@]@\n@\n@[%a@]@]@."
        (pp_form (env_of_gc gc)) f) in
+  let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   let (constr, forms) : symbol * form list =
-    try UcEcFormEval.deconstruct_data gc f pi with
+    try UcEcFormEval.deconstruct_data gc f pi rw_lems with
     | _ ->
         (debugging_message
          (fun ppf -> fprintf ppf "@[deconstruction@ failed@]");
@@ -526,9 +595,9 @@ type local_context_base =
   | LCB_EnvPort of form * form       (* both of type address *)
   | LCB_IntPort of EcIdent.t * form  (* of type port *)
 
-let lc_create (gc : global_context) (lcbs : local_context_base list)
-      : local_context =
-  let simpl = simplify_formula gc in
+let lc_create (gc : global_context) (dbs : rewriting_dbs)
+    (lcbs : local_context_base list) : local_context =
+  let simpl = simplify_formula gc dbs in
   [EcIdent.Mid.of_list
    (List.map
     (fun lcb ->
@@ -555,13 +624,14 @@ let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
   map
 
 let lc_update_var (gc : global_context) (lc : local_context)
-    (id : symbol) (f : form) : local_context =
-  let f = simplify_formula gc f in
+    (dbs : rewriting_dbs) (id : symbol) (f : form) : local_context =
+  let f = simplify_formula gc dbs f in
   let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
   let id = Option.get (lc_find_key_from_sym lc_base id) in
   EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
 
-let lc_apply (gc : global_context) (lc : local_context) (e : expr) : form =
+let lc_apply (gc : global_context) (lc : local_context)
+    (dbs : rewriting_dbs) (e : expr) : form =
   let f = form_of_expr mhr e in
   let map =
     List.fold_left
@@ -573,7 +643,7 @@ let lc_apply (gc : global_context) (lc : local_context) (e : expr) : form =
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   let f = Fsubst.f_subst subst f in
-  simplify_formula gc f
+  simplify_formula gc dbs f
 
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
@@ -820,6 +890,7 @@ type config_gen = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   w    : worlds;
   ig   : int  (* input guard of interface - first adversarial *)
 }             (* port index *not* used by worlds, and so available *)
@@ -831,6 +902,7 @@ type config_real = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   rw   : real_world;
   ig   : int;
   rws  : real_world_state;
@@ -841,6 +913,7 @@ type config_ideal = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   iw   : ideal_world;
   ig   : int;
   iws  : ideal_world_state;
@@ -851,6 +924,7 @@ type config_real_running = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   rw   : real_world;
   ig   : int;
   rws  : real_world_state;
@@ -863,6 +937,7 @@ type config_ideal_running = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   iw   : ideal_world;
   ig   : int;
   iws  : ideal_world_state;
@@ -875,6 +950,7 @@ type config_real_sending = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   rw   : real_world;
   ig   : int;
   rws  : real_world_state;
@@ -886,6 +962,7 @@ type config_ideal_sending = {
   maps : maps_tyd;
   gc   : global_context;
   pi   : prover_infos;
+  dbs  : rewriting_dbs;
   iw   : ideal_world;
   ig   : int;
   iws  : ideal_world_state;
@@ -978,6 +1055,16 @@ let prover_infos_of_config (conf : config) : prover_infos =
   | ConfigIdealRunning c -> c.pi
   | ConfigRealSending c  -> c.pi
   | ConfigIdealSending c -> c.pi
+
+let rewriting_dbs_of_config (conf : config) : rewriting_dbs =
+  match conf with
+  | ConfigGen c          -> c.dbs
+  | ConfigReal c         -> c.dbs
+  | ConfigIdeal c        -> c.dbs
+  | ConfigRealRunning c  -> c.dbs
+  | ConfigIdealRunning c -> c.dbs
+  | ConfigRealSending c  -> c.dbs
+  | ConfigIdealSending c -> c.dbs
 
 let control_of_real_or_ideal_config (conf : config) : control =
   match conf with
@@ -1211,7 +1298,8 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let (w, ig) = fun_expr_tyd_to_worlds maps fet in
   let gc = gc_create env in
   let pi = default_prover_infos (env_of_gc gc) in
-  ConfigGen {maps = maps; gc = gc; pi = pi; w = w; ig = ig}
+  let dbs = default_rewriting_dbs in
+  ConfigGen {maps = maps; gc = gc; pi = pi; dbs = dbs; w = w; ig = ig}
 
 let update_prover_infos_config (conf : config)
     (ppi : EcParsetree.pprover_infos) : config =
@@ -1237,6 +1325,58 @@ let update_prover_infos_config (conf : config)
   | ConfigIdealSending c ->
       let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
       ConfigIdealSending {c with pi = pi}
+
+let add_rewriting_dbs_config (conf : config) (pqsym : pqsymbol list) : config =
+  match conf with
+  | ConfigGen c          ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigGen {c with dbs = dbs}
+  | ConfigReal c         ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigReal {c with dbs = dbs}
+  | ConfigIdeal c        ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigIdeal {c with dbs = dbs}
+  | ConfigRealRunning c  ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigRealRunning {c with dbs = dbs}
+  | ConfigIdealRunning c ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigIdealRunning {c with dbs = dbs}
+  | ConfigRealSending c  ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigRealSending {c with dbs = dbs}
+  | ConfigIdealSending c ->
+      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      ConfigIdealSending {c with dbs = dbs}
+
+let rm_rewriting_dbs_config (conf : config) (pqsym : pqsymbol list) : config =
+  match conf with
+  | ConfigGen c          ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigGen {c with dbs = dbs}
+  | ConfigReal c         ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigReal {c with dbs = dbs}
+  | ConfigIdeal c        ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigIdeal {c with dbs = dbs}
+  | ConfigRealRunning c  ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigRealRunning {c with dbs = dbs}
+  | ConfigIdealRunning c ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigIdealRunning {c with dbs = dbs}
+  | ConfigRealSending c  ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigRealSending {c with dbs = dbs}
+  | ConfigIdealSending c ->
+      let dbs = rm_rewriting_dbs c.dbs pqsym in
+      ConfigIdealSending {c with dbs = dbs}
+
+let pp_rewriting_dbs_config (ppf : Format.formatter)
+    (conf : config) : unit =
+  pp_rewriting_dbs ppf (rewriting_dbs_of_config conf)
 
 let add_var_to_config (conf : config) (id : psymbol) (pty : pty) : config =
   match conf with
@@ -1348,7 +1488,7 @@ let real_of_gen_config (conf : config) : config =
       let rw = c.w.worlds_real in
       let rws = initial_real_world_state c.maps rw in
       ConfigReal
-      {maps = c.maps; gc = c.gc; pi = c.pi; rw = rw; ig = c.ig;
+      {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; rw = rw; ig = c.ig;
        rws = rws; ctrl = CtrlEnv}
   | _           -> raise ConfigError
 
@@ -1383,7 +1523,7 @@ let ideal_of_gen_config (conf : config) : config =
       let iw = c.w.worlds_ideal in
       let iws = initial_ideal_world_state c.maps iw in
       ConfigIdeal
-      {maps = c.maps; gc = c.gc; pi = c.pi; iw = iw; ig = c.ig;
+      {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; iw = iw; ig = c.ig;
        iws = iws; ctrl = CtrlEnv}
   | _           -> raise ConfigError
 
@@ -1421,23 +1561,23 @@ let fail_out_of_running_or_sending_config (conf : config) : config * effect =
   match conf with
   | ConfigRealRunning c  ->
       (ConfigReal
-       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
-        ctrl = CtrlEnv},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; rw = c.rw;
+        ig = c.ig; rws = c.rws; ctrl = CtrlEnv},
        EffectFailOut)
   | ConfigIdealRunning c ->
       (ConfigIdeal
-       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
-        ctrl = CtrlEnv},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; iw = c.iw;
+        ig = c.ig; iws = c.iws; ctrl = CtrlEnv},
        EffectFailOut)
   | ConfigRealSending c  ->
       (ConfigReal
-       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
-        ctrl = CtrlEnv},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; rw = c.rw;
+        ig = c.ig; rws = c.rws; ctrl = CtrlEnv},
        EffectFailOut)
   | ConfigIdealSending c ->
       (ConfigIdeal
-       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
-        ctrl = CtrlEnv},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; iw = c.iw;
+        ig = c.ig; iws = c.iws; ctrl = CtrlEnv},
        EffectFailOut)
   | _                    -> raise ConfigError
 
@@ -1447,14 +1587,14 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
   | ConfigRealSending c  ->
       let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigReal
-       {maps = c.maps; gc = c.gc; pi = c.pi; rw = c.rw; ig = c.ig; rws = c.rws;
-        ctrl = ctrl},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; rw = c.rw;
+        ig = c.ig; rws = c.rws; ctrl = ctrl},
        EffectMsgOut (pp_sme, ctrl))
   | ConfigIdealSending c ->
       let pp_sme = pp_sent_msg_expr_to_string (env_of_gc c.gc) c.sme in
       (ConfigIdeal
-       {maps = c.maps; gc = c.gc; pi = c.pi; iw = c.iw; ig = c.ig; iws = c.iws;
-        ctrl = ctrl},
+       {maps = c.maps; gc = c.gc; pi = c.pi; dbs = c.dbs; iw = c.iw;
+        ig = c.ig; iws = c.iws; ctrl = ctrl},
        EffectMsgOut (pp_sme, ctrl))
   | _                    -> raise ConfigError
 
@@ -1462,18 +1602,18 @@ let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
     (loc_source : EcLocation.t) (loc_dest : EcLocation.t)
     (maps : maps_tyd) (gc : global_context) (pi : prover_infos)
-    (sme : sent_msg_expr_tyd) : unit =
+    (dbs : rewriting_dbs) (sme : sent_msg_expr_tyd) : unit =
   let check_consist (sme : sent_msg_expr_ord_tyd) (pi_form : form)
       (src_or_dest_str : string) (loc_src_or_dest : EcLocation.t)  : unit =
     match sme.path.inter_id_path with
     | [root; comp; sub] ->
         let porti = get_pi_of_sub_interface maps root comp sub in
-        if eval_bool_form_to_bool gc pi
+        if eval_bool_form_to_bool gc pi dbs
            (f_eq pi_form (int_form porti))
         then ()
         else error src_or_dest_str loc_src_or_dest
     | [_; _]            ->
-        if eval_bool_form_to_bool gc pi
+        if eval_bool_form_to_bool gc pi dbs
            (f_eq pi_form (int_form 1))
         then ()
         else error src_or_dest_str loc_src_or_dest
@@ -1488,14 +1628,15 @@ let check_sme_port_index_consistency_core
   | sme          -> ()
 
 let check_sme_port_index_consistency :
-      maps_tyd -> global_context -> prover_infos -> sent_msg_expr_tyd -> unit =
+      maps_tyd -> global_context -> prover_infos -> rewriting_dbs ->
+      sent_msg_expr_tyd -> unit =
   check_sme_port_index_consistency_core
   (fun _ _ -> failure "should not happen")
   _dummy _dummy
 
 let inter_check_sent_msg_expr_consistency
-    (maps : maps_tyd) (gc : global_context)
-    (pi : prover_infos) (sme : sent_msg_expr) : sent_msg_expr_tyd =
+    (maps : maps_tyd) (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let sme_ty = inter_check_sent_msg_expr maps (env_of_gc gc) sme in
   let loc_source = loc_of_src_of_sent_msg_expr sme in
   let loc_dest = loc_of_dest_of_sent_msg_expr sme in
@@ -1506,7 +1647,7 @@ let inter_check_sent_msg_expr_consistency
        fprintf ppf
        "@[%s@ port@ index@ is@ inconsistent@ with@ message@ path@]"
        port_index_kind))
-  loc_source loc_dest maps gc pi sme_ty;
+  loc_source loc_dest maps gc pi dbs sme_ty;
   sme_ty
 
 let send_message_to_real_or_ideal_config
@@ -1514,11 +1655,12 @@ let send_message_to_real_or_ideal_config
   match conf with
   | ConfigReal c  ->
       let sme =
-        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi sme in
+        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
       ConfigRealSending
       {maps = c.maps;
        gc   = c.gc;
        pi   = c.pi;
+       dbs  = c.dbs;
        rw   = c.rw;
        ig   = c.ig;
        rws  = c.rws;
@@ -1526,11 +1668,12 @@ let send_message_to_real_or_ideal_config
        sme  = sme}
   | ConfigIdeal c ->
       let sme =
-        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi sme in
+        inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
       ConfigIdealSending
       {maps = c.maps;
        gc   = c.gc;
        pi   = c.pi;
+       dbs  = c.dbs;
        iw   = c.iw;
        ig   = c.ig;
        iws  = c.iws;
@@ -1546,10 +1689,11 @@ exception StepBlockedPortOrAddrCompare
    ideal worlds *)
 
 let step_assign (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (lhs : lhs) (expr : expr) : local_context =
-  let form = lc_apply gc lc expr in
+    (pi : prover_infos) (dbs : rewriting_dbs)
+    (lhs : lhs) (expr : expr) : local_context =
+  let form = lc_apply gc lc dbs expr in
   match lhs with
-  | LHSSimp id   -> lc_update_var gc lc (unloc id) form
+  | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
   | LHSTuple ids ->
       let tys =
         match form.f_ty.ty_node with
@@ -1558,19 +1702,20 @@ let step_assign (gc : global_context) (lc : local_context)
       List.fold_lefti
       (fun acc i id ->
          let pr = f_proj form i (List.nth tys i) in
-         lc_update_var gc acc (unloc id) pr)
+         lc_update_var gc acc dbs (unloc id) pr)
       lc
       ids
 
 let step_sample (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (lhs : lhs) (expr : expr)
+    (pi : prover_infos) (dbs : rewriting_dbs)
+    (lhs : lhs) (expr : expr)
       : global_context * local_context * symbol =
-  let form = lc_apply gc lc expr in
+  let form = lc_apply gc lc dbs expr in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
   match lhs with
   | LHSSimp id   ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
-      let lc = lc_update_var gc lc (unloc id) (f_local rand ty) in
+      let lc = lc_update_var gc lc dbs (unloc id) (f_local rand ty) in
       (gc, lc, EcIdent.name rand)
   | LHSTuple ids ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
@@ -1582,26 +1727,28 @@ let step_sample (gc : global_context) (lc : local_context)
         List.fold_lefti
         (fun acc i id ->
            let pr_rand = f_proj (f_local rand ty) i (List.nth tys i) in
-           lc_update_var gc acc (unloc id) pr_rand)
+           lc_update_var gc acc dbs (unloc id) pr_rand)
         lc
         ids in
       (gc, lc, EcIdent.name rand)
 
 let step_if_then_else (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (expr : expr) (inss_then : instr_interp list)
+    (pi : prover_infos) (dbs : rewriting_dbs)
+    (expr : expr) (inss_then : instr_interp list)
     (inss_else_opt : instr_interp list option) : instr_interp list =
-  let expr_gc_form = lc_apply gc lc expr in
-  if try eval_bool_form_to_bool gc pi expr_gc_form with
+  let expr_gc_form = lc_apply gc lc dbs expr in
+  if try eval_bool_form_to_bool gc pi dbs expr_gc_form with
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
   else (odfl [] inss_else_opt)
 
 let step_match (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (expr : expr) (clauses : match_clause_interp list)
+    (pi : prover_infos) (dbs : rewriting_dbs)
+    (expr : expr) (clauses : match_clause_interp list)
       : local_context * instr_interp list =
-  let form = lc_apply gc lc expr in
+  let form = lc_apply gc lc dbs expr in
   let (form_constr, form_args) =
-    try deconstruct_datatype_value gc pi form with
+    try deconstruct_datatype_value gc pi dbs form with
     | ECProofEngine -> raise StepBlockedMatch in
   let rec find_match (clauses : match_clause_interp list)
         : local_context * instr_interp list =
@@ -1623,12 +1770,13 @@ let step_match (gc : global_context) (lc : local_context)
 (* real world send-and-transition *)
 
 let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
-    (pi : prover_infos)  (rel : int list) (base : int) (fun_sp : symb_pair)
-    (iip : string list) (msg : string) (msg_args : form list)
-    (port_form : form option) (new_rws : real_world_state)
+    (pi : prover_infos) (dbs : rewriting_dbs) (rel : int list)
+    (base : int) (fun_sp : symb_pair) (iip : string list) (msg : string)
+    (msg_args : form list) (port_form : form option)
+    (new_rws : real_world_state)
       : config * effect =
   let (root, _) = fun_sp in
-  let simpl = simplify_formula c.gc in
+  let simpl = simplify_formula c.gc dbs in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
       let path = {inter_id_path = root :: iip; msg = msg} in
@@ -1645,11 +1793,12 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
          args           = msg_args;
          dest_port_form =
            make_port_form adv_form (int_form base)} in
-      let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigRealSending
        {maps = c.maps;
         gc   = c.gc;
         pi   = c.pi;
+        dbs  = c.dbs;
         rw   = c.rw;
         ig   = c.ig;
         rws  = new_rws;
@@ -1663,7 +1812,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
         | _           -> failure "should not happen" in
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi
+      if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form (addr_concat_form func_form (addr_make_form rel))
               adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
@@ -1679,11 +1828,12 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
            (ConfigRealSending
             {maps = c.maps;
              gc   = c.gc;
              pi   = c.pi;
+             dbs  = c.dbs;
              rw   = c.rw;
              ig   = c.ig;
              rws  = new_rws;
@@ -1698,18 +1848,18 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
 let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-    (c : config_real_running) (pi : prover_infos) (rel : int list)
-    (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
-    (iip : symbol list) (msg : symbol) (msg_args : form list)
-    (port_form : form option) (new_rws : real_world_state)
-    (comp : symbol) (sub : symbol) (child_i : int)
-    (dir_sp : symb_pair) : config * effect =
+    (c : config_real_running) (pi : prover_infos) (dbs : rewriting_dbs)
+    (rel : int list) (base : int) (fun_sp : symb_pair) (ft : fun_tyd)
+    (pty_id : symbol) (iip : symbol list) (msg : symbol)
+    (msg_args : form list) (port_form : form option)
+    (new_rws : real_world_state) (comp : symbol) (sub : symbol)
+    (child_i : int) (dir_sp : symb_pair) : config * effect =
   assert (Option.is_none port_form);
-  let simpl = simplify_formula c.gc in
+  let simpl = simplify_formula c.gc dbs in
   let (dir_root, dir_comp) = dir_sp in
   let pty_internal_pi = get_internal_pi_of_party_of_real_fun ft pty_id in
   let source_port =
-    simplify_formula c.gc
+    simpl
     (make_port_form
      (addr_concat_form func_form (addr_make_form rel))
      (int_form pty_internal_pi)) in
@@ -1729,11 +1879,12 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
      path           = path_new;
      args           = msg_args;
      dest_port_form = dest_port} in
-  let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+  let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
   (ConfigRealSending
    {maps = c.maps;
     gc   = c.gc;
     pi   = c.pi;
+    dbs  = c.dbs;
     rw   = c.rw;
     ig   = c.ig;
     rws  = new_rws;
@@ -1742,12 +1893,12 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
    EffectOK)
 
 let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
-    (c : config_real_running) (pi : prover_infos) (rel : int list)
-    (base : int) (fun_sp : symb_pair) (ft : fun_tyd) (pty_id : symbol)
-    (iip : symbol list) (msg : symbol) (msg_args : form list)
+    (c : config_real_running) (pi : prover_infos) (dbs : rewriting_dbs)
+    (rel : int list) (base : int) (fun_sp : symb_pair) (ft : fun_tyd)
+    (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) : config * effect =
-  let simpl = simplify_formula c.gc in
+  let simpl = simplify_formula c.gc dbs in
   let (root, _) = fun_sp in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
@@ -1769,11 +1920,12 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
          args           = msg_args;
          dest_port_form =
            make_port_form adv_form (int_form adv_pi)} in
-      let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigRealSending
        {maps = c.maps;
         gc   = c.gc;
         pi   = c.pi;
+        dbs  = c.dbs;
         rw   = c.rw;
         ig   = c.ig;
         rws  = new_rws;
@@ -1783,7 +1935,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
   | Some port_form ->  (* direct message to environment (or parent) *)
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi
+      if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form (addr_concat_form func_form (addr_make_form rel))
              adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
@@ -1799,11 +1951,12 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
            (ConfigRealSending
             {maps = c.maps;
              gc   = c.gc;
              pi   = c.pi;
+             dbs  = c.dbs;
              rw   = c.rw;
              ig   = c.ig;
              rws  = c.rws;
@@ -1818,10 +1971,10 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
             fail_out_of_running_or_sending_config (ConfigRealRunning c))
 
 let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
-    (pi : prover_infos) (rel : int list) (base : int) (fun_sp : symb_pair)
-    (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
-    (port_form : form option) (new_rws : real_world_state)
-      : config * effect =
+    (pi : prover_infos) (dbs : rewriting_dbs) (rel : int list) (base : int)
+    (fun_sp : symb_pair) (pty_id : symbol) (iip : symbol list)
+    (msg : symbol) (msg_args : form list) (port_form : form option)
+    (new_rws : real_world_state) : config * effect =
   let (root, _) = fun_sp in
   let (comp, sub) =
     match iip with
@@ -1832,29 +1985,30 @@ let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
         c.maps root ft comp with
   | None                   ->
       rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
-      c pi rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
+      c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
   | Some (child_i, dir_sp) ->
        rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-       c pi rel base fun_sp ft pty_id iip msg msg_args port_form
+       c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form
        new_rws comp sub child_i dir_sp
 
 let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
-    (s_and_t : send_and_transition_tyd) : config * effect =
+    (dbs : rewriting_dbs) (s_and_t : send_and_transition_tyd)
+      : config * effect =
   let {msg_expr; state_expr} = s_and_t in
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply c.gc c.lc arg) (unloc msg_args) in
+    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply c.gc c.lc expr) in
+    | Some expr -> Some (lc_apply c.gc c.lc dbs expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply c.gc c.lc arg) state_args in
+    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_rws =
     match c.rwrc with
@@ -1870,14 +2024,14 @@ let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
         (fun _ -> Some (RealState new_real_fun_state)) c.rws in
   match c.rwrc with
   | RWRC_IdealFunc (rel, base, fun_sp, _)          ->
-      rw_step_send_and_transition_from_ideal_fun c pi rel base fun_sp
+      rw_step_send_and_transition_from_ideal_fun c pi dbs rel base fun_sp
       iip msg msg_args port_form new_rws
   | RWRC_RealFunc (rel, base, fun_sp, party_id, _) ->
-      rw_step_send_and_transition_from_real_fun_party c pi rel base fun_sp
+      rw_step_send_and_transition_from_real_fun_party c pi dbs rel base fun_sp
       party_id iip msg msg_args port_form new_rws
 
 let step_real_running_config (c : config_real_running) (pi : prover_infos)
-      : config * effect =
+    (dbs : rewriting_dbs) : config * effect =
   let rec handle_pops (rest : instr_interp list) (lc : local_context)
         : instr_interp list * local_context =
     (assert (not (List.is_empty rest));
@@ -1895,28 +2049,28 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       let (next, rest) = (List.hd inss, List.tl inss) in
       match unloc next with
       | Assign (lhs, expr)                   ->
-          let lc = step_assign c.gc c.lc pi lhs expr in
+          let lc = step_assign c.gc c.lc pi dbs lhs expr in
           let (rest, lc) = handle_pops rest lc in
           (ConfigRealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | Sample (lhs, expr)                   ->
-          let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
+          let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
           let (rest, lc) = handle_pops rest lc in
           (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
-            step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
+            step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
           let (rest, lc) = handle_pops (inss @ rest) c.lc in
           (ConfigRealRunning {c with ins = rest}, EffectOK)
       | Match (expr, clauses)                ->
-          let (lc, inss) = step_match c.gc c.lc pi expr clauses in
+          let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
           let (rest, lc) = handle_pops (inss @ rest) lc in
           (ConfigRealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | SendAndTransition s_and_t            ->
           assert (check_only_pops rest);
-          rw_step_send_and_transition c pi s_and_t
+          rw_step_send_and_transition c pi dbs s_and_t
       | Fail                                 ->
           assert (check_only_pops rest);
           fail_out_of_running_or_sending_config (ConfigRealRunning c)
@@ -1931,8 +2085,9 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
       (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
 
 let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
-    (pi : prover_infos) (base : int) (fun_sp : symb_pair) (iip : string list)
-    (msg : string) (msg_args : form list) (port_form : form option)
+    (pi : prover_infos) (dbs : rewriting_dbs) (base : int)
+    (fun_sp : symb_pair) (iip : string list) (msg : string)
+    (msg_args : form list) (port_form : form option)
     (new_iws : ideal_world_state) : config * effect =
   let (root, _) = fun_sp in
   match port_form with
@@ -1947,11 +2102,12 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
          args           = msg_args;
          dest_port_form =
            make_port_form adv_form (int_form base)} in
-      let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigIdealSending
        {maps = c.maps;
         gc   = c.gc;
         pi   = c.pi;
+        dbs  = c.dbs;
         iw   = c.iw;
         ig   = c.ig;
         iws  = new_iws;
@@ -1965,7 +2121,7 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
         | _           -> failure "should not happen" in
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi
+      if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form func_form adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
@@ -1976,11 +2132,12 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
            (ConfigIdealSending
             {maps = c.maps;
              gc   = c.gc;
              pi   = c.pi;
+             dbs  = c.dbs;
              iw   = c.iw;
              ig   = c.ig;
              iws  = new_iws;
@@ -1995,8 +2152,8 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
             fail_out_of_running_or_sending_config (ConfigIdealRunning c))
 
 let iw_step_send_and_transition_from_sim_basic_adv_left
-    (c : config_ideal_running) (pi : prover_infos) (base : int)
-    (sim_sp : symb_pair) (iip : string list) (msg : string)
+    (c : config_ideal_running) (pi : prover_infos) (dbs : rewriting_dbs)
+    (base : int) (sim_sp : symb_pair) (iip : string list) (msg : string)
     (msg_args : form list) (new_iws : ideal_world_state)
     (i : int) : config * effect =
   let (root, _) = sim_sp in
@@ -2017,11 +2174,12 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
      path           = path;
      args           = msg_args;
      dest_port_form = make_port_form sim_rf_addr (int_form 1)} in
-  let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+  let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
   (ConfigIdealSending
    {maps = c.maps;
     gc   = c.gc;
     pi   = c.pi;
+    dbs  = c.dbs;
     iw   = c.iw;
     ig   = c.ig;
     iws  = new_iws;
@@ -2033,11 +2191,11 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
    EffectOK)
 
 let iw_step_send_and_transition_from_sim_comp_adv_right
-    (c : config_ideal_running) (pi : prover_infos) (base : int)
-    (sim_sp : symb_pair) (iip : string list) (msg : string)
+    (c : config_ideal_running) (pi : prover_infos) (dbs : rewriting_dbs)
+    (base : int) (sim_sp : symb_pair) (iip : string list) (msg : string)
     (msg_args : form list) (new_iws : ideal_world_state) (i : int)
       : config * effect =
-  let simpl = simplify_formula c.gc in
+  let simpl = simplify_formula c.gc dbs in
   let sim_rf_addr =
     if i = -1
     then Option.get c.iws.main_sim_state.addr
@@ -2090,11 +2248,12 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
           path           = path;
           args           = msg_args;
           dest_port_form = make_port_form adv_form (int_form adv_pi)} in
-       let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+       let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
         {maps = c.maps;
          gc   = c.gc;
          pi   = c.pi;
+         dbs  = c.dbs;
          iw   = c.iw;
          ig   = c.ig;
          iws  = new_iws;
@@ -2123,11 +2282,12 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
           path           = path;
           args           = List.map simpl msg_args;
           dest_port_form = make_port_form adv_form (int_form adv_pi)} in
-       let () = check_sme_port_index_consistency c.maps c.gc pi sme in
+       let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
         {maps = c.maps;
          gc   = c.gc;
          pi   = c.pi;
+         dbs  = c.dbs;
          iw   = c.iw;
          ig   = c.ig;
          iws  = new_iws;
@@ -2139,37 +2299,39 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
         EffectOK)
 
 let iw_step_send_and_transition_from_sim (c : config_ideal_running)
-    (pi : prover_infos) (base : int) (sim_sp : symb_pair) (iip : string list)
-    (msg : string) (msg_args : form list) (port_form : form option)
+    (pi : prover_infos) (dbs : rewriting_dbs) (base : int)
+    (sim_sp : symb_pair) (iip : string list) (msg : string)
+    (msg_args : form list) (port_form : form option)
     (new_iws : ideal_world_state) (i : int) : config * effect =
   match port_form with
   | None ->
       (match List.length iip with
        | 1 -> 
-           iw_step_send_and_transition_from_sim_basic_adv_left c pi base sim_sp
-           iip msg msg_args new_iws i
+           iw_step_send_and_transition_from_sim_basic_adv_left c pi dbs base
+           sim_sp iip msg msg_args new_iws i
        | 3 ->
-           iw_step_send_and_transition_from_sim_comp_adv_right c pi base sim_sp
-           iip msg msg_args new_iws i
+           iw_step_send_and_transition_from_sim_comp_adv_right c pi dbs base
+           sim_sp iip msg msg_args new_iws i
        | _ -> failure "cannot happen")
   | Some _ -> failure "cannot happen"
 
 let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
-    (s_and_t : send_and_transition_tyd) : config * effect =
+    (dbs : rewriting_dbs) (s_and_t : send_and_transition_tyd)
+      : config * effect =
   let {msg_expr; state_expr} = s_and_t in
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply c.gc c.lc arg) (unloc msg_args) in
+    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply c.gc c.lc expr) in
+    | Some expr -> Some (lc_apply c.gc c.lc dbs expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply c.gc c.lc arg) state_args in
+    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_iws =
     match c.iwrc with
@@ -2187,17 +2349,17 @@ let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
            c.iws.other_sims_states} in
   match c.iwrc with
   | IWRC_IdealFunc (base, fun_sp, _)   ->
-      iw_step_send_and_transition_from_ideal_fun c pi base fun_sp
+      iw_step_send_and_transition_from_ideal_fun c pi dbs base fun_sp
       iip msg msg_args port_form new_iws
   | IWRC_MainSim (base, sim_sp, _)     ->
-      iw_step_send_and_transition_from_sim c pi base sim_sp
+      iw_step_send_and_transition_from_sim c pi dbs base sim_sp
       iip msg msg_args port_form new_iws (-1)
   | IWRC_OtherSim (base, sim_sp, _, i) ->
-      iw_step_send_and_transition_from_sim c pi base sim_sp
+      iw_step_send_and_transition_from_sim c pi dbs base sim_sp
       iip msg msg_args port_form new_iws i
 
 let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
-      : config * effect =
+    (dbs : rewriting_dbs) : config * effect =
   let rec handle_pops (rest : instr_interp list) (lc : local_context)
         : instr_interp list * local_context =
     (assert (not (List.is_empty rest));
@@ -2215,28 +2377,28 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
       let (next, rest) = (List.hd inss, List.tl inss) in
       match unloc next with
       | Assign (lhs, expr)                   ->
-          let lc = step_assign c.gc c.lc pi lhs expr in
+          let lc = step_assign c.gc c.lc pi dbs lhs expr in
           let (rest, lc) = handle_pops rest lc in
           (ConfigIdealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | Sample (lhs, expr)                   ->
-          let (gc, lc, id) = step_sample c.gc c.lc pi lhs expr in
+          let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
           let (rest, lc) = handle_pops rest lc in
           (ConfigIdealRunning {c with gc = gc; lc = lc; ins = rest},
            EffectRand id)
       | ITE (expr, inss_then, inss_else_opt) ->
           let inss =
-            step_if_then_else c.gc c.lc pi expr inss_then inss_else_opt in
+            step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
           let (rest, lc) = handle_pops (inss @ rest) c.lc in
           (ConfigIdealRunning {c with ins = rest}, EffectOK)
       | Match (expr, clauses)                ->
-          let (lc, inss) = step_match c.gc c.lc pi expr clauses in
+          let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
           let (rest, lc) = handle_pops (inss @ rest) lc in
           (ConfigIdealRunning {c with lc = lc; ins = rest},
            EffectOK)
       | SendAndTransition s_and_t            ->
           assert (check_only_pops rest);
-          iw_step_send_and_transition c pi s_and_t
+          iw_step_send_and_transition c pi dbs s_and_t
       | Fail                                 ->
           assert (check_only_pops rest);
           fail_out_of_running_or_sending_config (ConfigIdealRunning c)
@@ -2279,9 +2441,9 @@ let match_ord_sme_against_msg_match_clauses
 (* should only be called with ordinary sme that will successfully
    match *)
 
-let match_ord_sme_in_state (gc : global_context) (is_sim : bool)
-    (addr : form) (sbt : state_body_tyd) (state_args : form list)
-    (sme : sent_msg_expr_ord_tyd)
+let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
+    (is_sim : bool) (addr : form) (sbt : state_body_tyd)
+    (state_args : form list) (sme : sent_msg_expr_ord_tyd)
       : local_context * instruction_tyd list located =
   let port_of_addr i = make_port_form addr (int_form i) in
   let state_params =
@@ -2306,7 +2468,7 @@ let match_ord_sme_in_state (gc : global_context) (is_sim : bool)
      functionality and [RealFun; Party] in its simulator will be
      assigned the same port index *) 
   let lc =
-    lc_create gc
+    lc_create gc dbs
     (state_params   @
      vars           @
      mm_binds       @
@@ -2316,7 +2478,7 @@ let match_ord_sme_in_state (gc : global_context) (is_sim : bool)
    (lc, mm_instructs)
 
 let from_adv_to_func_find_rel_addr_adv_pi_func_sp
-    (gc : global_context) (pi : prover_infos)
+    (gc : global_context) (pi : prover_infos) (dbs : rewriting_dbs)
     (maps : maps_tyd) (dest_addr : form) (rw : real_world)
       : (int list * int * symb_pair) option =
   let try_sub_funs (sp : symb_pair) (rel : int list) (base : int)
@@ -2327,7 +2489,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
       let rel_nargs_i = rel @ [nargs + i] in
       if i > num_sub_funs
         then None
-      else if eval_bool_form_to_bool gc pi
+      else if eval_bool_form_to_bool gc pi dbs
               (f_eq
                (addr_concat_form func_form
                 (addr_make_form rel_nargs_i))
@@ -2342,7 +2504,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
 
   let rec find ((sp, adv_pi, rwas) : real_world) (rel : int list)
         : (int list * int * symb_pair) option =
-    if eval_bool_form_to_bool gc pi
+    if eval_bool_form_to_bool gc pi dbs
        (f_eq (addr_concat_form func_form (addr_make_form rel)) dest_addr)
     then Some (rel, adv_pi, sp)
     else let nargs = List.length rwas in
@@ -2352,12 +2514,12 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
            else let rel_i = rel @ [i] in
                 let addr_i =
                   addr_concat_form func_form (addr_make_form rel_i) in
-                if eval_bool_form_to_bool gc pi
+                if eval_bool_form_to_bool gc pi dbs
                    (addr_le_form addr_i dest_addr)
                 then match List.nth rwas (i - 1) with
                      | RWA_Real rw            -> find rw (rel @ [i])
                      | RWA_Ideal (sp, adv_pi) ->
-                         if eval_bool_form_to_bool gc pi
+                         if eval_bool_form_to_bool gc pi dbs
                             (f_eq addr_i dest_addr)
                          then Some (rel_i, adv_pi, sp)
                          else None
@@ -2413,7 +2575,7 @@ let select_rel_addr_of_real_world
   in sel rel rw None
 
 let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
-      : config * effect =
+    (dbs : rewriting_dbs) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
   let dest_addr = port_to_addr_form dest_port in
@@ -2436,11 +2598,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state c.gc false addr sbt state_args sme_ord in
+                match_ord_sme_in_state c.gc dbs false addr sbt state_args
+                sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
                 gc   = c.gc;
                 pi   = c.pi;
+                dbs  = c.dbs;
                 rw   = c.rw;
                 ig   = c.ig;
                 rws  = c.rws;
@@ -2472,7 +2636,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           match pty_info.pi_pdi with
           | None                   -> find bndgs
           | Some (comp, sub, pind) ->
-              if eval_bool_form_to_bool c.gc pi
+              if eval_bool_form_to_bool c.gc pi dbs
                  (f_eq dest_pi (int_form pind))
               then Some (pty_id, comp, sub)
               else find bndgs
@@ -2480,7 +2644,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_env () =
     if mode = Dir &&
-       eval_bool_form_to_bool c.gc pi
+       eval_bool_form_to_bool c.gc pi dbs
        (f_and
         (f_eq dest_addr func_form)
         (envport_form func_form adv_form source_port))
@@ -2504,7 +2668,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                direct_real_func_party_match [] base func_sp pid comp sub
                state_id state_args sbt
     else if mode = Adv &&
-            eval_bool_form_to_bool c.gc pi
+            eval_bool_form_to_bool c.gc pi dbs
             (f_and
              (f_eq dest_addr adv_form)
               (f_or
@@ -2527,7 +2691,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           match pty_info.pi_pai with
           | None                           -> find bndgs
           | Some (comp, sub, pind, adv_pi) ->
-              if eval_bool_form_to_bool c.gc pi
+              if eval_bool_form_to_bool c.gc pi dbs
                  (f_and
                   (f_eq source_pi (int_form adv_pi))
                   (f_eq dest_pi (int_form pind)))
@@ -2558,12 +2722,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               else let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state c.gc false addr sbt state_args
+                     match_ord_sme_in_state c.gc dbs false addr sbt state_args
                      sme_ord in
                    (ConfigRealRunning
                     {maps = c.maps;
                      gc   = c.gc;
                      pi   = c.pi;
+                     dbs  = c.dbs;
                      rw   = c.rw;
                      ig   = c.ig;
                      rws  = c.rws;
@@ -2619,7 +2784,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         let iip = sme_ord.path.inter_id_path in
         let addr = addr_concat_form func_form (addr_make_form rel) in
         if iip = [root; basic] && sme_ord.dir = In &&
-           eval_bool_form_to_bool c.gc pi
+           eval_bool_form_to_bool c.gc pi dbs
            (f_and
             (f_eq source_pi (int_form adv_pi))
             (f_eq dest_pi   (int_form 1)))
@@ -2635,12 +2800,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
              else let sme_ord =
                     drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                   let (lc, ins) =
-                    match_ord_sme_in_state c.gc false addr sbt state_args
+                    match_ord_sme_in_state c.gc dbs false addr sbt state_args
                     sme_ord in
                   (ConfigRealRunning
                    {maps = c.maps;
                     gc   = c.gc;
                     pi   = c.pi;
+                    dbs  = c.dbs;
                     rw   = c.rw;
                     ig   = c.ig;
                     rws  = c.rws;
@@ -2664,7 +2830,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_adv_to_func () : config * effect =
     match from_adv_to_func_find_rel_addr_adv_pi_func_sp
-          c.gc pi c.maps dest_addr c.rw with
+          c.gc pi dbs c.maps dest_addr c.rw with
     | None                        ->
         fail_out_of_running_or_sending_config (ConfigRealSending c)
     | Some (rel, adv_pi, func_sp) ->
@@ -2677,20 +2843,20 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_adv () =
     if mode = Dir ||
-       eval_bool_form_to_bool c.gc pi
+       eval_bool_form_to_bool c.gc pi dbs
        (f_or
         (addr_le_form adv_form dest_addr)
         (f_or
          (f_not (f_eq adv_form source_addr))
          (int_lt_form source_pi (int_form 0))))
       then fail_out_of_running_or_sending_config (ConfigRealSending c)
-    else if eval_bool_form_to_bool c.gc pi
+    else if eval_bool_form_to_bool c.gc pi dbs
             (addr_le_form func_form dest_addr)
-      then if eval_bool_form_to_bool c.gc pi
+      then if eval_bool_form_to_bool c.gc pi dbs
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigRealSending c)
            else from_adv_to_func ()
-    else if eval_bool_form_to_bool c.gc pi
+    else if eval_bool_form_to_bool c.gc pi dbs
             (f_iff
              (f_eq source_pi (int_form 0))
              (f_eq dest_port env_root_port_form))
@@ -2736,12 +2902,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state c.gc false addr sbt state_args
+                match_ord_sme_in_state c.gc dbs false addr sbt state_args
                 sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
                 gc   = c.gc;
                 pi   = c.pi;
+                dbs  = c.dbs;
                 rw   = c.rw;
                 ig   = c.ig;
                 rws  = c.rws;
@@ -2770,7 +2937,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       else let rel_i = rel @ [i] in
            let addr_i =
              addr_concat_form func_form (addr_make_form rel_i) in
-           if eval_bool_form_to_bool c.gc pi
+           if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_addr addr_i)
            then Some i
            else find_arg (i + 1) in
@@ -2780,7 +2947,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       else let rel_i = rel @ [i] in
            let addr_i =
              addr_concat_form func_form (addr_make_form rel_i) in
-           if eval_bool_form_to_bool c.gc pi
+           if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_addr addr_i)
            then Some i
            else find_sub_fun (i + 1) in
@@ -2818,7 +2985,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       | []                          -> None
       | (pty_id, pty_info) :: bndgs ->
           let intpi = pty_info.pi_ipi in
-          if eval_bool_form_to_bool c.gc pi
+          if eval_bool_form_to_bool c.gc pi dbs
              (f_eq dest_pi (int_form intpi))
           then Some pty_id
           else find bndgs
@@ -2839,11 +3006,12 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           | Some sme -> sme in
         (assert (sme_ord.dir = Out);
          let (lc, ins) =
-           match_ord_sme_in_state c.gc false addr sbt state_args sme_ord in
+           match_ord_sme_in_state c.gc dbs false addr sbt state_args sme_ord in
          (ConfigRealRunning
           {maps = c.maps;
            gc   = c.gc;
            pi   = c.pi;
+           dbs  = c.dbs;
            rw   = c.rw;
            ig   = c.ig;
            rws  = c.rws;
@@ -2917,7 +3085,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     else let rwrso = select_rel_addr_of_real_world c.maps rel c.rw in
          let cur_addr =
            addr_concat_form func_form (addr_make_form rel) in
-         if eval_bool_form_to_bool c.gc pi
+         if eval_bool_form_to_bool c.gc pi dbs
             (addr_lt_form cur_addr dest_addr)
            then (match Option.get rwrso with
                  | RW_Select_RealFun (sp, base, rwas, _) ->
@@ -2925,7 +3093,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                  | _                                     ->
                      fail_out_of_running_or_sending_config
                      (ConfigRealSending c))
-         else if eval_bool_form_to_bool c.gc pi
+         else if eval_bool_form_to_bool c.gc pi dbs
                  (addr_lt_form dest_addr cur_addr)
            then from_arg_or_sub_fun_to_parent rel (Option.get rwrso)
          else failure "should not happen" in
@@ -2940,7 +3108,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
 
 let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
-      : config * effect =
+    (dbs : rewriting_dbs) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
   let dest_addr = port_to_addr_form dest_port in
@@ -2973,12 +3141,13 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                     let sme_ord =
                       drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                     let (lc, ins) =
-                      match_ord_sme_in_state c.gc false func_form sbt state_args
-                      sme_ord in
+                      match_ord_sme_in_state c.gc dbs false func_form
+                      sbt state_args sme_ord in
                     (ConfigIdealRunning
                      {maps = c.maps;
                       gc   = c.gc;
                       pi   = c.pi;
+                      dbs  = c.dbs;
                       iw   = c.iw;
                       ig   = c.ig;
                       iws  = c.iws;
@@ -2992,7 +3161,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_env () =
     if mode = Dir &&
-       eval_bool_form_to_bool c.gc pi
+       eval_bool_form_to_bool c.gc pi dbs
        (f_and
         (f_eq dest_addr func_form)
         (envport_form func_form adv_form source_port))
@@ -3001,7 +3170,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            let ifbt = ideal_fun_body_tyd_of ft in
            from_env_to_ideal_fun func_sp base ifbt
     else if mode = Adv &&
-            eval_bool_form_to_bool c.gc pi
+            eval_bool_form_to_bool c.gc pi dbs
             (f_and
              (f_eq dest_addr adv_form)
               (f_or
@@ -3047,12 +3216,13 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                          drop_head_of_msg_path_in_sent_msg_expr_ord_tyd
                          sme_ord in
                        let (lc, ins) =
-                         match_ord_sme_in_state c.gc false func_form
+                         match_ord_sme_in_state c.gc dbs false func_form
                          sbt state_args sme_ord in
                        (ConfigIdealRunning
                         {maps = c.maps;
                          gc   = c.gc;
                          pi   = c.pi;
+                         dbs  = c.dbs;
                          iw   = c.iw;
                          ig   = c.ig;
                          iws  = c.iws;
@@ -3076,7 +3246,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     then match c.iws.main_sim_state.addr with
          | None      -> None
          | Some addr ->
-             if eval_bool_form_to_bool c.gc pi
+             if eval_bool_form_to_bool c.gc pi dbs
                 (addr_le_form addr dest_addr)
              then let (sp, adv_pi, rf_arg_adv_pis) = c.iw.iw_main_sim in
                   let sim_st = c.iws.main_sim_state in
@@ -3085,7 +3255,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     else match (List.nth c.iws.other_sims_states i).addr with
          | None      -> find_sim_from_right (i - 1)
          | Some addr ->
-             if eval_bool_form_to_bool c.gc pi
+             if eval_bool_form_to_bool c.gc pi dbs
                 (addr_le_form addr dest_addr)
              then let (sp, adv_pi, rf_arg_adv_pis) =
                     List.nth c.iw.iw_other_sims i in
@@ -3103,7 +3273,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         : (int * symb_pair * int * int list * sim_state) option =
     if i = -1
       then let (_, adv_pi, _) = c.iw.iw_main_sim in
-           if eval_bool_form_to_bool c.gc pi
+           if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_pi (int_form adv_pi))
            then let (sp, adv_pi, rf_arg_adv_pis) = c.iw.iw_main_sim in
                 let sim_st = c.iws.main_sim_state in
@@ -3111,7 +3281,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            else find_sim_from_left (i + 1)
     else if i <= List.length c.iw.iw_other_sims - 1
       then let (sp, adv_pi, rf_arg_adv_pis) = List.nth c.iw.iw_other_sims i in
-           if eval_bool_form_to_bool c.gc pi
+           if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_pi (int_form adv_pi))
            then let sim_st = List.nth c.iws.other_sims_states i in
                 Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
@@ -3136,22 +3306,23 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         (match sme_ord.path.inter_id_path with
          | [root'; basic'] ->
               if root' = root && basic' = sim_bt.uses && sme_ord.dir = Out
-              then let source_addr = simplify_formula c.gc source_addr in
+              then let source_addr = simplify_formula c.gc dbs source_addr in
                    let () =
                      match sim_rf_addr with
                      | None      -> ()
                      | Some addr ->
-                         assert (eval_bool_form_to_bool c.gc c.pi
+                         assert (eval_bool_form_to_bool c.gc pi dbs
                                  (f_eq addr source_addr)) in
                    let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state c.gc true source_addr state_bt
+                     match_ord_sme_in_state c.gc dbs true source_addr state_bt
                      state_args sme_ord in
                    (ConfigIdealRunning
                     {maps = c.maps;
                      gc   = c.gc;
                      pi   = c.pi;
+                     dbs  = c.dbs;
                      iw   = c.iw;
                      ig   = c.ig;
                      iws  =
@@ -3203,7 +3374,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                    | None        -> failure "should not happen"
                    | Some adv_pi ->
                        let src_adv_pi = base + adv_pi in
-                         if eval_bool_form_to_bool c.gc c.pi
+                         if eval_bool_form_to_bool c.gc pi dbs
                             (f_eq source_pi (int_form src_adv_pi))
                          then Some
                               (subst_for_iip_in_sent_msg_expr_ord_tyd
@@ -3219,12 +3390,13 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              let (lc, ins) =
-               match_ord_sme_in_state c.gc true sim_rf_addr state_bt
+               match_ord_sme_in_state c.gc dbs true sim_rf_addr state_bt
                state_args sme_ord in
              (ConfigIdealRunning
               {maps = c.maps;
                gc   = c.gc;
                pi   = c.pi;
+               dbs  = c.dbs;
                iw   = c.iw;
                ig   = c.ig;
                iws  = c.iws;
@@ -3258,15 +3430,16 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              if sme_ord.dir = In &&
-                eval_bool_form_to_bool c.gc c.pi
+                eval_bool_form_to_bool c.gc pi dbs
                 (f_eq source_pi (int_form expect_source_adv_pi))
              then let (lc, ins) =
-                    match_ord_sme_in_state c.gc true sim_rf_addr state_bt
+                    match_ord_sme_in_state c.gc dbs true sim_rf_addr state_bt
                     state_args sme_ord in
                   (ConfigIdealRunning
                    {maps = c.maps;
                     gc   = c.gc;
                     pi   = c.pi;
+                    dbs  = c.dbs;
                     iw   = c.iw;
                     ig   = c.ig;
                     iws  = c.iws;
@@ -3320,7 +3493,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         then None
         else let addr =
                addr_concat_form sim_rf_addr (addr_make_form [i]) in
-             if eval_bool_form_to_bool c.gc pi
+             if eval_bool_form_to_bool c.gc pi dbs
                 (f_eq dest_addr addr)
              then Some i
              else find_param (i + 1) in
@@ -3330,7 +3503,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         else let addr =
                addr_concat_form sim_rf_addr
                (addr_make_form [sim_rf_num_params + i]) in
-             if eval_bool_form_to_bool c.gc pi
+             if eval_bool_form_to_bool c.gc pi dbs
                 (f_eq dest_addr addr)
              then Some i
              else find_sub_fun (i + 1) in
@@ -3349,7 +3522,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            "being@ simulated@ by:@ %n@; %a@]")
           base pp_symb_pair sim_sp);
        fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
-    if eval_bool_form_to_bool c.gc pi
+    if eval_bool_form_to_bool c.gc pi dbs
        (f_eq dest_addr sim_rf_addr)
     then dest_ge_func_to_sim_cont_adv_party i sim_sp base sbt
          sim_rf_addr sim_st
@@ -3387,7 +3560,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
      or the adversary *)
 
   let from_sim_left_or_right (i : int) : config * effect =
-    if eval_bool_form_to_bool c.gc pi
+    if eval_bool_form_to_bool c.gc pi dbs
        (f_eq dest_addr adv_form)
       then if i = List.length c.iws.other_sims_states - 1
            then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
@@ -3397,7 +3570,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
                     let {addr = sim_rf_addr; state = sim_st} = sim_st in
                     dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st
-    else if eval_bool_form_to_bool c.gc pi
+    else if eval_bool_form_to_bool c.gc pi dbs
             (addr_le_form func_form dest_addr)
       then if i = -1
            then let (func_sp, base) = c.iw.iw_ideal_func in
@@ -3419,21 +3592,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_adv () : config * effect =
     if mode = Dir ||
-       eval_bool_form_to_bool c.gc pi
+       eval_bool_form_to_bool c.gc pi dbs
        (f_or
         (addr_le_form adv_form dest_addr)
         (f_or
          (f_not (f_eq adv_form source_addr))
          (int_lt_form source_pi (int_form 0))))
       then fail_out_of_running_or_sending_config (ConfigIdealSending c)
-    else if eval_bool_form_to_bool c.gc pi
+    else if eval_bool_form_to_bool c.gc pi dbs
             (addr_le_form func_form dest_addr)
-      then if eval_bool_form_to_bool c.gc pi
+      then if eval_bool_form_to_bool c.gc pi dbs
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigIdealSending c)
            else from_adv_to_sim_or_ideal_func 
                 (List.length c.iws.other_sims_states - 1)
-    else if eval_bool_form_to_bool c.gc pi
+    else if eval_bool_form_to_bool c.gc pi dbs
             (f_iff
              (f_eq source_pi (int_form 0))
              (f_eq dest_port env_root_port_form))
@@ -3464,7 +3637,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       (ConfigIdealSending c, EffectBlockedPortOrAddrCompare)
 
 let step_running_or_sending_real_or_ideal_config
-    (conf : config) (ppi_opt : EcParsetree.pprover_infos option)
+    (conf : config)
+    (ppi_opt : EcParsetree.pprover_infos option)
+    (rm_then_add_pdbs_opt : rm_then_add_pdbs option)
       : config * effect =
   let pi =
     match ppi_opt with
@@ -3472,9 +3647,15 @@ let step_running_or_sending_real_or_ideal_config
     | Some ppi ->
         update_prover_infos (env_of_gc (gc_of_config conf))
         (prover_infos_of_config conf) ppi in
+  let dbs =
+    match rm_then_add_pdbs_opt with
+    | None                  -> rewriting_dbs_of_config conf
+    | Some rm_then_add_pdbs ->
+        rm_then_add_rewriting_dbs (env_of_gc (gc_of_config conf))
+        (rewriting_dbs_of_config conf) rm_then_add_pdbs in
   match conf with
-  | ConfigRealRunning c  -> step_real_running_config c pi
-  | ConfigIdealRunning c -> step_ideal_running_config c pi
-  | ConfigRealSending c  -> step_real_sending_config c pi
-  | ConfigIdealSending c -> step_ideal_sending_config c pi
+  | ConfigRealRunning c  -> step_real_running_config c pi dbs
+  | ConfigIdealRunning c -> step_ideal_running_config c pi dbs
+  | ConfigRealSending c  -> step_real_sending_config c pi dbs
+  | ConfigIdealSending c -> step_ideal_sending_config c pi dbs
   | _                    -> raise ConfigError

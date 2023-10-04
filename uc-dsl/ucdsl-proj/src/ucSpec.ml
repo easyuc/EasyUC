@@ -357,7 +357,6 @@ type peffect_r =
   | EffectBlockedMatch
   | EffectBlockedPortOrAddrCompare
 
-
 type peffect = peffect_r located
 
 type interpreter_command_u =

@@ -85,7 +85,7 @@ proof.
 rewrite /valid_epdp /epdp_id /= => y x -> //.
 qed.
 
-hint simplify [eqtrue] valid_epdp_id.
+hint simplify valid_epdp_id.
 hint rewrite epdp : valid_epdp_id.
 
 (* EPDP built from a bijection *)

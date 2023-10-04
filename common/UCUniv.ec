@@ -305,13 +305,14 @@ op nosmt epdp_unit_univ : (unit, univ) epdp =
   {|enc = enc_unit; dec = dec_unit|}.
 
 lemma valid_epdp_unit_univ : valid_epdp epdp_unit_univ.
+proof.
 apply epdp_intro => [x | u x].
 by rewrite /epdp_unit_univ /= /enc_unit /dec_unit.
 rewrite /epdp_unit_univ /= /enc_unit /dec_unit.
 by case u.
 qed.
 
-hint simplify [eqtrue] valid_epdp_unit_univ.
+hint simplify valid_epdp_unit_univ.
 hint rewrite epdp : valid_epdp_unit_univ.
 
 (* bool encoding: *)
@@ -325,6 +326,7 @@ op nosmt epdp_bool_univ : (bool, univ) epdp =
   {|enc = enc_bool; dec = dec_bool|}.
 
 lemma valid_epdp_bool_univ : valid_epdp epdp_bool_univ.
+proof.
 apply epdp_intro => [x | u x].
 by rewrite /epdp_bool_univ /= /enc_bool /dec_bool.
 rewrite /epdp_bool_univ /= /enc_bool /dec_bool.
@@ -334,7 +336,7 @@ have /= /size_eq0 -> // : (1 + size ys) - 1 = 1 - 1.
   by rewrite size_eq.
 qed.
 
-hint simplify [eqtrue] valid_epdp_bool_univ.
+hint simplify valid_epdp_bool_univ.
 hint rewrite epdp : valid_epdp_bool_univ.
 
 (* int encoding: *)
@@ -363,6 +365,7 @@ op nosmt epdp_int_univ : (int, univ) epdp =
   {|enc = enc_int; dec = dec_int|}.
 
 lemma valid_epdp_int_univ : valid_epdp epdp_int_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_int_univ /= /enc_int /dec_int /=.
 case (x = 0) => [-> // | ne0_x].
@@ -418,7 +421,7 @@ congr.
 by rewrite bs2intK_min.
 qed.
 
-hint simplify [eqtrue] valid_epdp_int_univ.
+hint simplify valid_epdp_int_univ.
 hint rewrite epdp : valid_epdp_int_univ.
 
 (* univ pair encoding: *)
@@ -437,6 +440,7 @@ op nosmt epdp_univ_pair_univ : (univ * univ, univ) epdp =
   {|enc = enc_univ_pair; dec = dec_univ_pair|}.
 
 lemma valid_epdp_univ_pair_univ : valid_epdp epdp_univ_pair_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_pair_univ /= /enc_univ_pair /dec_univ_pair.
 rewrite -catA alt_de_alt //=.
@@ -453,7 +457,7 @@ rewrite eqT => [[-> ->]].
 by rewrite -!catA cat1s.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_pair_univ.
+hint simplify valid_epdp_univ_pair_univ.
 hint rewrite epdp : valid_epdp_univ_pair_univ.
 
 lemma enc_univ_pair_size_lt1 (x y : univ) :
@@ -502,6 +506,7 @@ op nosmt epdp_univ_choice_univ : ((univ, univ) choice, univ) epdp =
   {|enc = enc_univ_choice; dec = dec_univ_choice|}.
 
 lemma valid_epdp_univ_choice_univ : valid_epdp epdp_univ_choice_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice_univ /= /enc_univ_choice /dec_univ_choice.
 by case x.
@@ -510,7 +515,7 @@ case u => [// | y ys /=].
 by case y.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice_univ.
+hint simplify valid_epdp_univ_choice_univ.
 hint rewrite epdp : valid_epdp_univ_choice_univ.
 
 (* univ choice3 encoding: *)
@@ -544,6 +549,7 @@ op nosmt epdp_univ_choice3_univ : ((univ, univ, univ) choice3, univ) epdp =
   {|enc = enc_univ_choice3; dec = dec_univ_choice3|}.
 
 lemma valid_epdp_univ_choice3_univ : valid_epdp epdp_univ_choice3_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice3_univ /= /enc_univ_choice3 /dec_univ_choice3.
 case x => /= x.
@@ -574,7 +580,7 @@ case (take 2 u = choice3_tag_3) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice3_univ.
+hint simplify valid_epdp_univ_choice3_univ.
 hint rewrite epdp : valid_epdp_univ_choice3_univ.
 
 (* univ choice4 encoding: *)
@@ -614,6 +620,7 @@ op nosmt epdp_univ_choice4_univ
   {|enc = enc_univ_choice4; dec = dec_univ_choice4|}.
 
 lemma valid_epdp_univ_choice4_univ : valid_epdp epdp_univ_choice4_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice4_univ /= /enc_univ_choice4 /dec_univ_choice4.
 case x => /= x.
@@ -655,7 +662,7 @@ case (take 2 u = choice4_tag_4) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice4_univ.
+hint simplify valid_epdp_univ_choice4_univ.
 hint rewrite epdp : valid_epdp_univ_choice4_univ.
 
 (* univ choice5 encoding: *)
@@ -700,6 +707,7 @@ op nosmt epdp_univ_choice5_univ
   {|enc = enc_univ_choice5; dec = dec_univ_choice5|}.
 
 lemma valid_epdp_univ_choice5_univ : valid_epdp epdp_univ_choice5_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice5_univ /= /enc_univ_choice5 /dec_univ_choice5.
 case x => /= x.
@@ -754,7 +762,7 @@ case (take 3 u = choice5_tag_5) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice5_univ.
+hint simplify valid_epdp_univ_choice5_univ.
 hint rewrite epdp : valid_epdp_univ_choice5_univ.
 
 (* univ choice6 encoding: *)
@@ -803,6 +811,7 @@ op nosmt epdp_univ_choice6_univ
   {|enc = enc_univ_choice6; dec = dec_univ_choice6|}.
 
 lemma valid_epdp_univ_choice6_univ : valid_epdp epdp_univ_choice6_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice6_univ /= /enc_univ_choice6 /dec_univ_choice6.
 case x => /= x.
@@ -872,7 +881,7 @@ case (take 3 u = choice6_tag_6) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice6_univ.
+hint simplify valid_epdp_univ_choice6_univ.
 hint rewrite epdp : valid_epdp_univ_choice6_univ.
 
 (* univ choice7 encoding: *)
@@ -925,6 +934,7 @@ op nosmt epdp_univ_choice7_univ
   {|enc = enc_univ_choice7; dec = dec_univ_choice7|}.
 
 lemma valid_epdp_univ_choice7_univ : valid_epdp epdp_univ_choice7_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice7_univ /= /enc_univ_choice7 /dec_univ_choice7.
 case x => /= x.
@@ -1011,7 +1021,7 @@ case (take 3 u = choice7_tag_7) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice7_univ.
+hint simplify valid_epdp_univ_choice7_univ.
 hint rewrite epdp : valid_epdp_univ_choice7_univ.
 
 (* univ choice8 encoding: *)
@@ -1070,6 +1080,7 @@ op nosmt epdp_univ_choice8_univ
   {|enc = enc_univ_choice8; dec = dec_univ_choice8|}.
 
 lemma valid_epdp_univ_choice8_univ : valid_epdp epdp_univ_choice8_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_choice8_univ /= /enc_univ_choice8 /dec_univ_choice8.
 case x => /= x.
@@ -1175,7 +1186,7 @@ case (take 3 u = choice8_tag_8) => [<- /= <- | //].
 by rewrite cat_take_drop.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_choice8_univ.
+hint simplify valid_epdp_univ_choice8_univ.
 hint rewrite epdp : valid_epdp_univ_choice8_univ.
 
 (* univ option encoding: *)
@@ -1199,6 +1210,7 @@ op nosmt epdp_univ_option_univ : (univ option, univ) epdp =
   {|enc = enc_univ_option; dec = dec_univ_option|}.
 
 lemma valid_epdp_univ_option_univ : valid_epdp epdp_univ_option_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_option_univ /= /enc_univ_option /dec_univ_option.
 by case x.
@@ -1208,7 +1220,7 @@ case y => [_ | _ /= <- //].
 case (ys = []) => [-> /= <- // | //].
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_option_univ.
+hint simplify valid_epdp_univ_option_univ.
 hint rewrite epdp : valid_epdp_univ_option_univ.
 
 (* univ list encoding: *)
@@ -1306,7 +1318,7 @@ case (wf_recur lt_list_size None dec_univ_list_wf_rec_def
        [-> // | /some_oget -> /= <- //].
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_list_univ.
+hint simplify valid_epdp_univ_list_univ.
 hint rewrite epdp : valid_epdp_univ_list_univ.
 
 (* tuple3 univ encoding: *)
@@ -1328,6 +1340,7 @@ op nosmt epdp_univ_tuple3_univ : (univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple3; dec = dec_univ_tuple3|}.
 
 lemma valid_epdp_univ_tuple3_univ : valid_epdp epdp_univ_tuple3_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3.
 rewrite !epdp /= !epdp /=.
@@ -1350,7 +1363,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple3_univ.
+hint simplify valid_epdp_univ_tuple3_univ.
 hint rewrite epdp : valid_epdp_univ_tuple3_univ.
 
 (* tuple4 univ encoding: *)
@@ -1373,6 +1386,7 @@ op nosmt epdp_univ_tuple4_univ : (univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple4; dec = dec_univ_tuple4|}.
 
 lemma valid_epdp_univ_tuple4_univ : valid_epdp epdp_univ_tuple4_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple4_univ /= /enc_univ_tuple4 /dec_univ_tuple4 /=.
 rewrite !epdp /= !epdp /=.
@@ -1395,7 +1409,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple4_univ.
+hint simplify valid_epdp_univ_tuple4_univ.
 hint rewrite epdp : valid_epdp_univ_tuple4_univ.
 
 (* tuple5 univ encoding: *)
@@ -1420,6 +1434,7 @@ op nosmt epdp_univ_tuple5_univ :
   {|enc = enc_univ_tuple5; dec = dec_univ_tuple5|}.
 
 lemma valid_epdp_univ_tuple5_univ : valid_epdp epdp_univ_tuple5_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple5_univ /= /enc_univ_tuple5
         /dec_univ_tuple5 /=.
@@ -1443,7 +1458,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple5_univ.
+hint simplify valid_epdp_univ_tuple5_univ.
 hint rewrite epdp : valid_epdp_univ_tuple5_univ.
 
 (* tuple6 univ encoding: *)
@@ -1469,6 +1484,7 @@ op nosmt epdp_univ_tuple6_univ :
   {|enc = enc_univ_tuple6; dec = dec_univ_tuple6|}.
 
 lemma valid_epdp_univ_tuple6_univ : valid_epdp epdp_univ_tuple6_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple6_univ /= /enc_univ_tuple6
         /dec_univ_tuple6 /=.
@@ -1492,7 +1508,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple6_univ.
+hint simplify valid_epdp_univ_tuple6_univ.
 hint rewrite epdp : valid_epdp_univ_tuple6_univ.
 
 (* tuple7 univ encoding: *)
@@ -1518,6 +1534,7 @@ op nosmt epdp_univ_tuple7_univ :
   {|enc = enc_univ_tuple7; dec = dec_univ_tuple7|}.
 
 lemma valid_epdp_univ_tuple7_univ : valid_epdp epdp_univ_tuple7_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple7_univ /= /enc_univ_tuple7
         /dec_univ_tuple7 /=.
@@ -1541,7 +1558,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple7_univ.
+hint simplify valid_epdp_univ_tuple7_univ.
 hint rewrite epdp : valid_epdp_univ_tuple7_univ.
 
 (* tuple8 univ encoding: *)
@@ -1567,6 +1584,7 @@ op nosmt epdp_univ_tuple8_univ :
   {|enc = enc_univ_tuple8; dec = dec_univ_tuple8|}.
 
 lemma valid_epdp_univ_tuple8_univ : valid_epdp epdp_univ_tuple8_univ.
+proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple8_univ /= /enc_univ_tuple8
         /dec_univ_tuple8 /=.
@@ -1591,7 +1609,7 @@ have val_u :
 by rewrite (epdp_dec_enc _ _ u) 1:valid_epdp_univ_pair_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_univ_tuple8_univ.
+hint simplify valid_epdp_univ_tuple8_univ.
 hint rewrite epdp : valid_epdp_univ_tuple8_univ.
 
 (* encoding of pair 'a * 'b *)

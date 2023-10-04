@@ -43,8 +43,8 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
-hint simplify [eqtrue] valid_epdp_exp_univ.
-hint rewrite epdp : valid_epdp_exp_univ. 
+hint simplify valid_epdp_exp_univ.  (* so simplify and smt() can use axiom *)
+hint rewrite epdp : valid_epdp_exp_univ.
 
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
@@ -58,7 +58,7 @@ axiom dexp_fu  : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll  : is_lossless dexp.
 
-hint simplify dexp_ll.  (* so simplify and smt() can use axiom *)
+hint simplify dexp_ll.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
@@ -85,32 +85,18 @@ op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
 hint simplify valid_epdp_text_key.
+hint rewrite epdp : valid_epdp_text_key.
 
 (* consequences of axioms *)
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_text_key_cancel (t : text) :
-  epdp_text_key.`dec (epdp_text_key.`enc t) = Some t.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_text_key_cancel.
 
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
 
-lemma one_time1 (x y : key) :
+lemma one_time (x y : key) :
   x ^^ y ^^ kinv y = x.
 proof.
 by rewrite kmulA kinv_r kid_r.
 qed.
-
-(* so simplify and smt() can use right-to-left equation *)
-
-hint simplify [reduce] one_time1.
 
 (* we can define a bijection between exp and key *)
 
@@ -144,6 +130,18 @@ have -> : x = g ^ log x.
 by rewrite !double_exp_gen mulA.
 qed.
 
+(* now we can combine our one_time lemma with Diffie-Hellman: *)
+
+lemma one_time_dh (x : key, q1 q2 : exp) :
+  x ^^ (g ^ q2 ^ q1) ^^ kinv (g ^ q1 ^ q2) = x.
+proof.
+have -> : g ^ q1 ^ q2 = g ^ q2 ^ q1.
+  by rewrite 2!double_exp mulC.
+by rewrite one_time.
+qed.
+
+hint rewrite uc_dsl_interpreter_hints : one_time_dh.
+
 (* EPDP from key to univ *)
 
 op epdp_key_univ : (key, univ) epdp =
@@ -155,17 +153,7 @@ rewrite valid_epdp_comp !(epdp, epdp_sub) 1:log_gen gen_log.
 qed.
 
 hint simplify valid_epdp_key_univ.
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_key_univ_cancel (k : key) :
-  epdp_key_univ.`dec (epdp_key_univ.`enc k) = Some k.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_key_univ_cancel.
+hint rewrite epdp : valid_epdp_key_univ.
 
 (* EPDP from text to univ *)
 
@@ -178,17 +166,7 @@ rewrite valid_epdp_comp epdp.
 qed.
 
 hint simplify valid_epdp_text_univ.
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_text_univ_cancel (t : text) :
-  epdp_text_univ.`dec (epdp_text_univ.`enc t) = Some t.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_text_univ_cancel.
+hint rewrite epdp : valid_epdp_text_univ.
 
 (* EPDP between port * port * key and univ *)
 
@@ -202,24 +180,4 @@ rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
-
-(* if a bug in simplification hints is fixed, we won't need
-   the following lemma and hint *)
-
-lemma epdp_port_port_key_univ_cancel (x : port * port * key) :
-  epdp_port_port_key_univ.`dec (epdp_port_port_key_univ.`enc x) = Some x.
-proof.
-by rewrite !epdp.
-qed.
-
-hint simplify [reduce] epdp_port_port_key_univ_cancel.
-
-(*added for tests*)
-theory T.
-op addr_x : addr.
-op port_x : port.
-op port_y : port.
-op testtext : text.
-end T.
-
-op testaddr : addr = [1].
+hint rewrite epdp : valid_epdp_port_port_key_univ.

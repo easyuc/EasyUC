@@ -31,8 +31,6 @@ assert MsgOut
 CtrlAdv.
 send ((adv, 5))@SMC.SMCAdv.Pt1.pong@((func ++ [1], 1)).
 run.
-step prover timeout=3.
-run.
 assert MsgOut
 ((func ++ [1; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
@@ -43,8 +41,6 @@ CtrlAdv.
 send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
 run.
 step prover timeout=3.
-run.
-
 step.
 (* blocked until simplification hints
 
