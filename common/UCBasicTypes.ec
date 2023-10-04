@@ -84,7 +84,7 @@ proof.
 rewrite valid_epdp_list_univ valid_epdp_int_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_addr_univ.
+hint simplify valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
 op env_root_addr : addr = [].
@@ -237,7 +237,7 @@ proof.
 rewrite valid_epdp_pair_univ 1:valid_epdp_list_univ valid_epdp_int_univ.
 qed.
 
-hint simplify [eqtrue] valid_epdp_port_univ.
+hint simplify valid_epdp_port_univ.
 hint rewrite epdp : valid_epdp_port_univ.
 
 op env_root_port : port = ([], 0).

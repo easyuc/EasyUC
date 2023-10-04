@@ -43,8 +43,8 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
-hint simplify [eqtrue] valid_epdp_exp_univ.
-hint rewrite epdp : valid_epdp_exp_univ. 
+hint simplify valid_epdp_exp_univ.  (* so simplify and smt() can use axiom *)
+hint rewrite epdp : valid_epdp_exp_univ.
 
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
@@ -58,7 +58,7 @@ axiom dexp_fu  : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll  : is_lossless dexp.
 
-hint simplify dexp_ll.  (* so simplify and smt() can use axiom *)
+hint simplify dexp_ll.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
@@ -85,6 +85,7 @@ op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
 hint simplify valid_epdp_text_key.
+hint rewrite epdp : valid_epdp_text_key.
 
 (* consequences of axioms *)
 
@@ -144,6 +145,7 @@ rewrite valid_epdp_comp !(epdp, epdp_sub) 1:log_gen gen_log.
 qed.
 
 hint simplify valid_epdp_key_univ.
+hint rewrite epdp : valid_epdp_key_univ.
 
 (* EPDP from text to univ *)
 
@@ -156,6 +158,7 @@ rewrite valid_epdp_comp epdp.
 qed.
 
 hint simplify valid_epdp_text_univ.
+hint rewrite epdp : valid_epdp_text_univ.
 
 (* EPDP between port * port * key and univ *)
 
@@ -169,3 +172,4 @@ rewrite valid_epdp_comp !(epdp, epdp_sub).
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
+hint rewrite epdp : valid_epdp_port_port_key_univ.
