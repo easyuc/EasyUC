@@ -297,16 +297,16 @@ let prelims (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   let proof_c = move_all_hyp_forms_to_concl proof_b in
   proof_c
 *)
+let process_rewrite1_core ?(close = true) s pt tc =
+  let tc = EcHiGoal.LowRewrite.t_rewrite_r (s, None, None) pt tc in
+  let cl = fun tc ->
+    if EcFol.f_equal EcFol.f_true (EcCoreGoal.FApi.tc1_goal tc) then
+      EcLowGoal.t_true tc
+    else EcLowGoal.t_id tc
+  in 
+  if close then EcCoreGoal.FApi.t_last cl tc else tc
+
 let intro1_rw s tc = (*modified from ecHiGoal.ml*)
-  let process_rewrite1_core ?(close = true) s pt tc =
-    let tc = EcHiGoal.LowRewrite.t_rewrite_r (s, None, None) pt tc in
-    let cl = fun tc ->
-      if EcFol.f_equal EcFol.f_true (EcCoreGoal.FApi.tc1_goal tc) then
-        EcLowGoal.t_true tc
-      else EcLowGoal.t_id tc
-    in 
-    if close then EcCoreGoal.FApi.t_last cl tc else tc
-  in
   let h = EcIdent.create "_" in
   let rwt tc =
     let pt = 
@@ -351,6 +351,30 @@ let count_hyp_forms (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : int =
   in
   print_endline "END count_hyp_forms";
   List.length h_forms
+
+let try_rewriting_hints (proof : EcCoreGoal.proof) (rwhdb : EcSymbols.qsymbol)
+: EcCoreGoal.proof option =
+  let pregoal = get_only_pregoal proof in
+  let env = EcEnv.LDecl.toenv pregoal.g_hyps in
+  let penv = EcCoreGoal.proofenv_of_proof proof in
+  let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
+  let ls  = snd (EcEnv.BaseRw.lookup rwhdb env) in
+  let ls  = EcPath.Sp.elements ls in
+  let do1 lemma tc =
+    let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
+    process_rewrite1_core ~close:false `LtoR pt tc
+  in 
+  let tac tc = EcCoreGoal.FApi.t_ors (List.map do1 ls) tc in
+  let proof' = run_tac tac proof in
+  let concl = pregoal.g_concl in
+  let concl' = (get_only_pregoal proof').g_concl in
+  if EcCoreFol.f_equal concl concl'
+  then None
+  else Some proof'
+
+let try_epdp_rewriting_hints (proof : EcCoreGoal.proof)
+: EcCoreGoal.proof option =
+  try_rewriting_hints proof (["Top"; "UCEncoding"], "epdp") 
   
 let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
 : EcCoreGoal.proof option =
@@ -397,7 +421,11 @@ let try_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
           if left_first
           then move_right_simplify proof
           else move_left_simplify proof
-       with _ -> try_move_simplify proof
+       with _ -> 
+         let po = try_move_simplify proof in
+         match po with
+         | Some p -> po
+         | None -> try_epdp_rewriting_hints proof
   in
   progression try_rewriting_step proof
   
