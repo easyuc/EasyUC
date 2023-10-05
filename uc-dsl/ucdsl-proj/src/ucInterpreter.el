@@ -190,22 +190,23 @@ error and then highlight in the script buffer."
  proof-easy-config 'ucInterpreter "UCInterpreter"
  proof-prog-name		"ucdsl -interpreter"
  
- proof-terminal-string		".\n"
+ proof-terminal-string		"."
+ proof-script-command-end-regexp "[^\\.]\\.\\(\\s \\|\n\\|$\\)"
  
  proof-script-comment-start	"(*"
  proof-script-comment-end	"*)"
  
- proof-goal-command-regexp	"load"
+ proof-goal-command-regexp	"load\\|functionality\\|real\\|ideal"
  proof-save-command-regexp	"finish"
 
 
  proof-non-undoables-regexp     "undo\\|debug"
-;; proof-undo-n-times-cmd         "undo %s.\n"
-;; proof-forget-id-command        "undo %s.\n"
+;; proof-undo-n-times-cmd         "undo %s."
+;; proof-forget-id-command        "undo %s."
  proof-find-and-forget-fn       'find-and-forget
  
- proof-goal-command		"load %s.\n"
- proof-save-command		"finish.\n"
+ proof-goal-command		"load %s."
+ proof-save-command		"finish."
  
  proof-shell-start-goals-regexp	 "^state:"
  proof-shell-end-goals-regexp	 "^;"
@@ -213,7 +214,7 @@ error and then highlight in the script buffer."
  proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:"
  proof-shell-eager-annotation-end   "^;"
 
- proof-shell-quit-cmd		 "quit.\n"
+ proof-shell-quit-cmd		 "quit."
  proof-assistant-home-page	 "http://yes"
  proof-shell-annotated-prompt-regexp "#[0-9]*>"
  proof-shell-error-regexp	 "^\\[error:"
