@@ -1937,7 +1937,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form (addr_concat_form func_form (addr_make_form rel))
-             adv_form port_form) with
+              adv_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
@@ -1959,7 +1959,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
              dbs  = c.dbs;
              rw   = c.rw;
              ig   = c.ig;
-             rws  = c.rws;
+             rws  = new_rws;
              rwsc = RWSC_Func (rel, fun_sp);
              sme  = sme},
             EffectOK)
@@ -3086,17 +3086,17 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
          let cur_addr =
            addr_concat_form func_form (addr_make_form rel) in
          if eval_bool_form_to_bool c.gc pi dbs
-            (addr_lt_form cur_addr dest_addr)
+            (f_eq dest_addr cur_addr)
+           then failure "should not happen"
+         else if eval_bool_form_to_bool c.gc pi dbs
+                 (addr_lt_form cur_addr dest_addr)
            then (match Option.get rwrso with
                  | RW_Select_RealFun (sp, base, rwas, _) ->
                      from_parent_to_arg_or_sub_fun rel sp base rwas
                  | _                                     ->
                      fail_out_of_running_or_sending_config
                      (ConfigRealSending c))
-         else if eval_bool_form_to_bool c.gc pi dbs
-                 (addr_lt_form dest_addr cur_addr)
-           then from_arg_or_sub_fun_to_parent rel (Option.get rwrso)
-         else failure "should not happen" in
+         else from_arg_or_sub_fun_to_parent rel (Option.get rwrso) in
 
   try
     match c.rwsc with

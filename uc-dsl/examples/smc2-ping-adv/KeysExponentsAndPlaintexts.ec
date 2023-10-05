@@ -140,7 +140,11 @@ have -> : g ^ q1 ^ q2 = g ^ q2 ^ q1.
 by rewrite one_time.
 qed.
 
+hint simplify [reduce] one_time_dh.
+
+(*
 hint rewrite uc_dsl_interpreter_hints : one_time_dh.
+*)
 
 (* EPDP from key to univ *)
 
@@ -167,6 +171,20 @@ qed.
 
 hint simplify valid_epdp_text_univ.
 hint rewrite epdp : valid_epdp_text_univ.
+
+(* EPDP between port * port and univ *)
+
+op nosmt epdp_port_port_univ : (port * port, univ) epdp =
+  epdp_pair_univ epdp_port_univ epdp_port_univ.
+
+lemma valid_epdp_port_port_univ :
+  valid_epdp epdp_port_port_univ.
+proof.
+rewrite valid_epdp_comp !(epdp, epdp_sub).
+qed.
+
+hint simplify valid_epdp_port_port_univ.
+hint rewrite epdp : valid_epdp_port_univ.
 
 (* EPDP between port * port * key and univ *)
 
