@@ -1541,9 +1541,6 @@ type effect =
                                          control says who has control *)
   | EffectFailOut                     (* fail was output, and new
                                          configuration is real or ideal *)
-  | EffectBlockedIf                   (* configuration is running *)
-  | EffectBlockedMatch                (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare    (* configuration is running or sending *)
 
 let pp_effect (ppf : formatter) (e : effect) : unit =
   match e with
@@ -1552,10 +1549,6 @@ let pp_effect (ppf : formatter) (e : effect) : unit =
   | EffectMsgOut (pp_sme, ctrl)    ->
       fprintf ppf "@[EffectMsgOut:@ %a:@ %s@]" pp_control ctrl pp_sme
   | EffectFailOut                  -> fprintf ppf "EffectFailOut"
-  | EffectBlockedIf                -> fprintf ppf "EffectBlockedIf"
-  | EffectBlockedMatch             -> fprintf ppf "EffectBlockedMatch"
-  | EffectBlockedPortOrAddrCompare ->
-      fprintf ppf "EffectBlockedPortOrAddrCompare"
 
 let fail_out_of_running_or_sending_config (conf : config) : config * effect =
   match conf with
@@ -2042,47 +2035,37 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
     match rest with
     | []            -> true
     | instr :: rest -> unloc instr = Pop && check_only_pops rest in
-  try
-    begin
-      let inss = c.ins in
-      assert (not (List.is_empty inss));
-      let (next, rest) = (List.hd inss, List.tl inss) in
-      match unloc next with
-      | Assign (lhs, expr)                   ->
-          let lc = step_assign c.gc c.lc pi dbs lhs expr in
-          let (rest, lc) = handle_pops rest lc in
-          (ConfigRealRunning {c with lc = lc; ins = rest},
-           EffectOK)
-      | Sample (lhs, expr)                   ->
-          let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
-          let (rest, lc) = handle_pops rest lc in
-          (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
-           EffectRand id)
-      | ITE (expr, inss_then, inss_else_opt) ->
-          let inss =
-            step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
-          let (rest, lc) = handle_pops (inss @ rest) c.lc in
-          (ConfigRealRunning {c with ins = rest}, EffectOK)
-      | Match (expr, clauses)                ->
-          let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
-          let (rest, lc) = handle_pops (inss @ rest) lc in
-          (ConfigRealRunning {c with lc = lc; ins = rest},
-           EffectOK)
-      | SendAndTransition s_and_t            ->
-          assert (check_only_pops rest);
-          rw_step_send_and_transition c pi dbs s_and_t
-      | Fail                                 ->
-          assert (check_only_pops rest);
-          fail_out_of_running_or_sending_config (ConfigRealRunning c)
-      | Pop                                  -> failure "cannot happen"
-    end
-  with
-  | StepBlockedIf ->
-      (ConfigRealRunning c, EffectBlockedIf)
-  | StepBlockedMatch ->
-      (ConfigRealRunning c, EffectBlockedMatch)
-  | StepBlockedPortOrAddrCompare ->
-      (ConfigRealRunning c, EffectBlockedPortOrAddrCompare)
+  let inss = c.ins in
+  assert (not (List.is_empty inss));
+  let (next, rest) = (List.hd inss, List.tl inss) in
+  match unloc next with
+  | Assign (lhs, expr)                   ->
+      let lc = step_assign c.gc c.lc pi dbs lhs expr in
+      let (rest, lc) = handle_pops rest lc in
+      (ConfigRealRunning {c with lc = lc; ins = rest},
+       EffectOK)
+  | Sample (lhs, expr)                   ->
+      let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
+      let (rest, lc) = handle_pops rest lc in
+      (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
+       EffectRand id)
+  | ITE (expr, inss_then, inss_else_opt) ->
+      let inss =
+        step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
+      let (rest, lc) = handle_pops (inss @ rest) c.lc in
+      (ConfigRealRunning {c with ins = rest}, EffectOK)
+  | Match (expr, clauses)                ->
+      let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
+      let (rest, lc) = handle_pops (inss @ rest) lc in
+      (ConfigRealRunning {c with lc = lc; ins = rest},
+       EffectOK)
+  | SendAndTransition s_and_t            ->
+      assert (check_only_pops rest);
+      rw_step_send_and_transition c pi dbs s_and_t
+  | Fail                                 ->
+      assert (check_only_pops rest);
+      fail_out_of_running_or_sending_config (ConfigRealRunning c)
+  | Pop                                  -> failure "cannot happen"
 
 let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
     (pi : prover_infos) (dbs : rewriting_dbs) (base : int)
@@ -2370,47 +2353,37 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
     match rest with
     | []            -> true
     | instr :: rest -> unloc instr = Pop && check_only_pops rest in
-  try
-    begin
-      let inss = c.ins in
-      assert (not (List.is_empty inss));
-      let (next, rest) = (List.hd inss, List.tl inss) in
-      match unloc next with
-      | Assign (lhs, expr)                   ->
-          let lc = step_assign c.gc c.lc pi dbs lhs expr in
-          let (rest, lc) = handle_pops rest lc in
-          (ConfigIdealRunning {c with lc = lc; ins = rest},
-           EffectOK)
-      | Sample (lhs, expr)                   ->
-          let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
-          let (rest, lc) = handle_pops rest lc in
-          (ConfigIdealRunning {c with gc = gc; lc = lc; ins = rest},
-           EffectRand id)
-      | ITE (expr, inss_then, inss_else_opt) ->
-          let inss =
-            step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
-          let (rest, lc) = handle_pops (inss @ rest) c.lc in
-          (ConfigIdealRunning {c with ins = rest}, EffectOK)
-      | Match (expr, clauses)                ->
-          let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
-          let (rest, lc) = handle_pops (inss @ rest) lc in
-          (ConfigIdealRunning {c with lc = lc; ins = rest},
-           EffectOK)
-      | SendAndTransition s_and_t            ->
-          assert (check_only_pops rest);
-          iw_step_send_and_transition c pi dbs s_and_t
-      | Fail                                 ->
-          assert (check_only_pops rest);
-          fail_out_of_running_or_sending_config (ConfigIdealRunning c)
-      | Pop                                  -> failure "cannot happen"
-    end
-  with
-  | StepBlockedIf ->
-      (ConfigIdealRunning c, EffectBlockedIf)
-  | StepBlockedMatch ->
-      (ConfigIdealRunning c, EffectBlockedMatch)
-  | StepBlockedPortOrAddrCompare ->
-      (ConfigIdealRunning c, EffectBlockedPortOrAddrCompare)
+  let inss = c.ins in
+  assert (not (List.is_empty inss));
+  let (next, rest) = (List.hd inss, List.tl inss) in
+  match unloc next with
+  | Assign (lhs, expr)                   ->
+      let lc = step_assign c.gc c.lc pi dbs lhs expr in
+      let (rest, lc) = handle_pops rest lc in
+      (ConfigIdealRunning {c with lc = lc; ins = rest},
+       EffectOK)
+  | Sample (lhs, expr)                   ->
+      let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
+      let (rest, lc) = handle_pops rest lc in
+      (ConfigIdealRunning {c with gc = gc; lc = lc; ins = rest},
+       EffectRand id)
+  | ITE (expr, inss_then, inss_else_opt) ->
+      let inss =
+        step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
+      let (rest, lc) = handle_pops (inss @ rest) c.lc in
+      (ConfigIdealRunning {c with ins = rest}, EffectOK)
+  | Match (expr, clauses)                ->
+      let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
+      let (rest, lc) = handle_pops (inss @ rest) lc in
+      (ConfigIdealRunning {c with lc = lc; ins = rest},
+       EffectOK)
+  | SendAndTransition s_and_t            ->
+      assert (check_only_pops rest);
+      iw_step_send_and_transition c pi dbs s_and_t
+  | Fail                                 ->
+      assert (check_only_pops rest);
+      fail_out_of_running_or_sending_config (ConfigIdealRunning c)
+  | Pop                                  -> failure "cannot happen"
 
 (* should only be called with ordinary sme that will successfully
    match *)
@@ -3104,8 +3077,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | RWSC_Adv           -> from_adv ()
     | RWSC_Func (rel, _) -> from_func rel
   with
-  | ECProofEngine ->
-      (ConfigRealSending c, EffectBlockedPortOrAddrCompare)
+  | ECProofEngine -> raise StepBlockedPortOrAddrCompare
 
 let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     (dbs : rewriting_dbs) : config * effect =
@@ -3633,8 +3605,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | IWSC_OtherSim (sim_sp, adv_pi, sim_i) -> from_sim_left_or_right sim_i
 
   with
-  | ECProofEngine ->
-      (ConfigIdealSending c, EffectBlockedPortOrAddrCompare)
+  | ECProofEngine -> raise StepBlockedPortOrAddrCompare
 
 let step_running_or_sending_real_or_ideal_config
     (conf : config)

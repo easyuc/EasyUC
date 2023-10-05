@@ -57,6 +57,8 @@ val ideal_of_gen_config : config -> config
 
 (* sending messages and stepping configurations *)
 
+val send_message_to_real_or_ideal_config : config -> sent_msg_expr -> config
+
 type effect =
   | EffectOK                          (* step succeeded (not random
                                          assignment), and new configuration
@@ -69,13 +71,26 @@ type effect =
                                          control says who has control *)
   | EffectFailOut                     (* fail was output, and new
                                          configuration is real or ideal *)
-  | EffectBlockedIf                   (* configuration is running *)
-  | EffectBlockedMatch                (* configuration is running *)
-  | EffectBlockedPortOrAddrCompare    (* configuration is running or sending *)
-
-val send_message_to_real_or_ideal_config : config -> sent_msg_expr -> config
 
 val pp_effect : Format.formatter -> effect -> unit  (* for debugging *)
+
+(* exceptions that can be raised by
+   step_running_or_sending_real_or_ideal_config *)
+
+(* step failed, because couldn't evaluate the boolean expression of
+   an if-then-else to true or false *)
+
+exception StepBlockedIf
+
+(* step failed, because couldn't expose the constructor of an
+   expression being matched *)
+
+exception StepBlockedMatch
+
+(* step failed, because address and/or port comparisons couldn't be
+   decided *)
+
+exception StepBlockedPortOrAddrCompare
 
 (* if the pprover_infos option is None, it means to use the prover_infos
    of the configuration for SMT calls
