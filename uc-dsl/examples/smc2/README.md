@@ -7,3 +7,6 @@ functionality. This is a two party functionality letting the clients
 of the two parties securely exchange a pair of messages: first one
 from the first to the second, followed by one from the second to the
 first.
+
+Read and experiment with the interpretation script
+[testing.uci](testing.uci) to learn how to use the UC DSL interpreter.
