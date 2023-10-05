@@ -26,6 +26,7 @@
 ;;M-x ucInterpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucInterpreter
+
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
