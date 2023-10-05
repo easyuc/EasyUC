@@ -8,13 +8,13 @@ uc_requires Forwarding SMC.
 ec_requires +KeysExponentsAndPlaintexts.
 
 direct SMC2Pt1 {
-  in pt1@smc_req(pt2 : port, t : text)   (* 1 *)
+  in  pt1@smc_req(pt2 : port, t : text)  (* 1 *)
   out smc_rsp(t : text)@pt1              (* 4 *)
 }
 
 direct SMC2Pt2 {
   out smc_rsp(pt1 : port, t : text)@pt2  (* 2 *)
-  in pt2@smc_req(t : text)               (* 3 *)
+  in  pt2@smc_req(t : text)              (* 3 *)
 }
 
 direct SMC2Dir {
@@ -33,9 +33,7 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
       | pt1@SMC2Dir.Pt1.smc_req(pt2, t) => {
           if (envport pt2) {
             send Fwd1.D.fw_req
-                 (intport Pt2,
-                  (epdp_pair_univ epdp_port_univ epdp_port_univ).`enc
-                   (pt1, pt2))
+                 (intport Pt2, epdp_port_port_univ.`enc (pt1, pt2))
             and transition WaitFwd2(pt1, pt2, t).
           }
           else { fail. }
@@ -76,8 +74,7 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
       var pt1, pt2 : port;
       match message with 
       | Fwd1.D.fw_rsp(_, u) => {
-          (pt1, pt2) <-
-            oget ((epdp_pair_univ epdp_port_univ epdp_port_univ).`dec u);
+          (pt1, pt2) <- oget (epdp_port_port_univ.`dec u);
           send Fwd2.D.fw_req(intport Pt1, [])
           and transition WaitSMC1(pt1, pt2).
         }
@@ -89,19 +86,22 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
       match message with
       | SMC1.Pt2.smc_rsp(_, t) => {
           send SMC2Dir.Pt2.smc_rsp(pt1, t)@pt2
-          and transition WaitReq.
+          and transition WaitReq(pt2).
         }
       | *                      => { fail. }
       end
     }
 
-    state WaitReq {
+    state WaitReq(pt2 : port) {
       match message with 
-      | SMC2.Pt2.smc_rsp(_, t) => {
-          send SMC2.Pt1.smc_req(intport Pt1, t)
-          and transition Final.
+      | pt2'@SMC2Dir.Pt2.smc_req(t) => {
+          if (pt2' = pt2) {
+            send SMC2.Pt1.smc_req(intport Pt1, t)
+            and transition Final.
+          }
+          else { fail. }
         }
-      | *                      => { fail. }
+      | *                           => { fail. }
       end
     }
 
@@ -145,11 +145,14 @@ functionality SMC2Ideal implements SMC2Dir SMC2IF_to_Sim {
 
   state WaitReq2(pt1 : port, pt2 : port) {
     match message with 
-    | pt1@SMC2Dir.Pt2.smc_req(t) => {
-        send SMC2IF_to_Sim.sim_req2
-        and transition WaitSim2(pt1, pt2, t).
+    | pt2'@SMC2Dir.Pt2.smc_req(t) => {
+        if (pt2' = pt2) {
+          send SMC2IF_to_Sim.sim_req2
+          and transition WaitSim2(pt1, pt2, t).
+        }
+        else { fail. }
       }
-    | *                          => { fail. }
+    | *                           => { fail. }
     end
   }
 
@@ -177,8 +180,7 @@ simulator SMC2Sim uses SMC2IF_to_Sim
     | SMC2IF_to_Sim.sim_req1(pt1, pt2) => {
         send SMC2Real.Fwd1.FwAdv.fw_obs
              (intport SMC2Real.Pt1, intport SMC2Real.Pt2,
-              (epdp_pair_univ epdp_port_univ epdp_port_univ).`enc
-               (pt1, pt2))
+              epdp_port_port_univ.`enc (pt1, pt2))
         and transition WaitAdv1.
       }
     | *                                => { fail. }

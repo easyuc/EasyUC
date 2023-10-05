@@ -502,7 +502,7 @@ let is_param_of_real_fun_tyd (ft : fun_tyd) (sym : symbol) : bool =
 
 let param_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
-  fst (List.nth (indexed_map_to_list rfbt.params) n)
+  fst (List.nth (indexed_map_to_list_keep_keys rfbt.params) n)
 
 let id_dir_inter_of_param_of_real_fun_tyd
     (ft : fun_tyd) (param : symbol) : symb_pair =
@@ -1104,7 +1104,7 @@ let pp_form (env : EcEnv.env) (fmt : Format.formatter) (f : form) : unit =
 let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
     (sme : sent_msg_expr_tyd) : unit =
   let no_parens (f : form) : bool =
-    not (is_local f) &&
+    is_local f ||
     match f.f_node with
     | Fop (_, []) -> true
     | _           -> false in
