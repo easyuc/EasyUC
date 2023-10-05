@@ -1145,10 +1145,11 @@ state_expr :
       { let uargs = unloc args |? [] in
         {id = id; args = mk_loc (loc args) uargs} }
 
-(* Interpreter commands *)
+(* Interpreter commands *)  
 
 interpreter_command :
   | c = loc(icomm); FINAL;{ c }
+  | l=loc(EOF); { mk_loc (loc l) Quit }
 
 icomm :
   | c = load_uc_file; { c }
