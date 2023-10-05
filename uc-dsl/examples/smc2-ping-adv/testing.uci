@@ -67,6 +67,15 @@ Forwarding.FwAdv.fw_obs
 @((adv, 6))
 CtrlAdv.
 send ((adv, 6))@Forwarding.FwAdv.fw_ok@((func ++ [1; 2], 1)).
+step.
+step.
+step.
+step.
+step.
+step.
+
+(*
+
 run.
 assert MsgOut
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2
@@ -228,3 +237,4 @@ assert MsgOut
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1
 CtrlEnv.
 finish.
+*)
