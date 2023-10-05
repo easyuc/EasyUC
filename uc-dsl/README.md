@@ -148,15 +148,14 @@ directory, which will be called something like
 the file `ucInterpreter.el` of the [`emacs`](emacs) directory to
 `ucInterpreter`.
 
-* In the `generic` subdirectory, add the triple
+* In the `generic` subdirectory, add following triple
+to the existing `proof-site.el` file, putting this next to the triples
+for proof assistants including `EasyCrypt` in the definition of
+`proof-assistant-table-default`:
 
 ```
 (ucInterpreter "UCInterpreter" "uci")
 ```
-
-to the existing `proof-site.el` file, putting this next to the triples
-for proof assistants including `EasyCrypt` in the definition of
-`proof-assistant-table-default`.
 
 * Then (editing this file in Emacs) byte compile it using the command
 `byte-compile-file` (run `M-x` `byte-compile-file` `RET` (return),
