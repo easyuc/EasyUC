@@ -151,7 +151,6 @@ let interpret (lexbuf : L.lexbuf) =
     if (UcState.get_batch_mode ())
     then ()
     else
-let () = Printf.eprintf "push_print\n" in
       print_state is
   in
 
