@@ -26,7 +26,6 @@
 ;;M-x ucInterpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucInterpreter
-
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
@@ -57,14 +56,18 @@ If not, hide the uc-frame "
            )
         (erase-buffer)
         (make-frame-visible)
-        (if (string= params-line "None");if
-          (insert "*** no code running ***");then  
+        (if (string= params-line "None")            ;if
+          (progn                                    ;then 
+           (insert "*** no code running ***")
+           (set-frame-name "*UC file*")
+          ) 
           (let ((params (split-string params-line)));else
             (let ( (filenam    (nth 0 params))
                    (ch-pos-beg (string-to-number (nth 1 params)))
                    (ch-pos-end (string-to-number (nth 2 params)))
                  )
               (insert-file filenam)
+              (set-frame-name filenam)
               (let ((x (make-overlay ch-pos-beg ch-pos-end)))
                 (overlay-put x 'face '(:foreground "blue")))
               ;;(auto-raise-mode -1)
