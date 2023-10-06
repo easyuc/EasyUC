@@ -88,6 +88,7 @@ If not, hide the uc-frame "
 (defun frame-with-uc-file (cmd str)
   "call empty-frame if ucInterpreter shell output starts with UC file position:"
   (proof-debug (concat "frame-with-uc-file of " str))
+
   (let ((stps (search "UC file position:" str)))
     (if stps
       (uc-file-frame (substring str stps nil))
@@ -240,6 +241,13 @@ error and then highlight in the script buffer."
      ;;:selected t;;easycrypt-proof-weak-mode
      :help     "Toggles debug mode."]
 ))
+
+(defun ucInterpreter-shell-extra-config ()
+  (with-current-buffer proof-goals-buffer 
+    (rename-buffer "*configuration*")
+  )
+)
+(add-hook 'ucInterpreter-shell-mode-hook 'ucInterpreter-shell-extra-config)
 
 (provide 'ucInterpreter)
 
