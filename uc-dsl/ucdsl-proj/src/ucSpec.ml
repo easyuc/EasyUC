@@ -353,9 +353,6 @@ type peffect_r =
   | EffectRand
   | EffectMsgOut of sent_msg_expr * control
   | EffectFailOut
-  | EffectBlockedIf
-  | EffectBlockedMatch
-  | EffectBlockedPortOrAddrCompare
 
 type peffect = peffect_r located
 

@@ -114,12 +114,6 @@ let pp_effect (ppf : Format.formatter) (e : effect) : unit =
     "@[Message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
   | EffectFailOut                  -> 
     Format.fprintf ppf "Note: \"fail.\" was called."
-  | EffectBlockedIf                -> 
-    Format.fprintf ppf "Blocking: cannot decide if condition."
-  | EffectBlockedMatch             -> 
-    Format.fprintf ppf "Blocking: cannot decide matching condition."
-  | EffectBlockedPortOrAddrCompare ->
-    Format.fprintf ppf "Blocking: cannot decide port or addr comparison."
 
 let pp_interpreter_state 
 (fmt : Format.formatter) ( c : interpreter_state) : unit =
@@ -298,50 +292,46 @@ let interpret (lexbuf : L.lexbuf) =
     push_print news
   in
 
-  let step (loc : EcLocation.t)
-  (ppio : EcParsetree.pprover_infos option) : unit =
+  let step_core (loc : EcLocation.t)
+      (ppio : EcParsetree.pprover_infos option) : config * effect =
     let c = currs() in
     let cconfig = Option.get c.config in
     let is_running_or_sending_real_or_ideal_config config =
-      (is_real_running_config config)  ||
-      (is_ideal_running_config config) ||
-      (is_real_sending_config config)  ||
-      (is_ideal_sending_config config)
-    in
-    if (is_running_or_sending_real_or_ideal_config cconfig)
+      is_real_running_config config  ||
+      is_ideal_running_config config ||
+      is_real_sending_config config  ||
+      is_ideal_sending_config config in
+    if is_running_or_sending_real_or_ideal_config cconfig
     then
-      let conf, eff =
-        (* TODO let user remove or add rewriting databases *)
-        step_running_or_sending_real_or_ideal_config cconfig ppio None in
-      let news =  
-        {
-          c with
-          cmd_no = c.cmd_no+1;
-          ucdsl_new = false;
-          post_done = false;
-          config = Some conf;
-          effect = Some eff;
-        } in
-      push_print news
+      try step_running_or_sending_real_or_ideal_config cconfig
+          ppio None with
+      | StepBlockedIf                -> 
+          error_message loc
+          (fun ppf ->
+             Format.fprintf ppf
+             "@[Blocking:@ cannot@ decide@ if@ condition.@]")
+      | StepBlockedMatch             ->
+          error_message loc
+          (fun ppf ->
+             Format.fprintf ppf
+             ("@[Blocking:@ cannot@ determine@ datatype@ " ^^
+              "constructor@ in@ match.@]"))
+      | StepBlockedPortOrAddrCompare ->
+          error_message loc
+          (fun ppf ->
+             Format.fprintf ppf
+             ("@[Blocking:@ cannot@ decide@ port@ or@ address@ " ^^
+              "comparisons.@]"))
     else
       error_message loc (fun ppf -> Format.fprintf ppf 
-      "@[You@ can@ step@ through@ only@ when@ running@ code@ or@ sending@ messages.@]")
+      ("@[You@ can@ step@ through@ only@ when@ running@ code@ or@ " ^^
+       "sending@ messages.@]"))
   in
 
-  let run () : unit =
-
-    let rec runr (conf : config) : config * effect =
-      let conf, eff =
-        step_running_or_sending_real_or_ideal_config conf None None in
-      match eff with
-      | EffectOK
-      | EffectRand _ -> runr conf
-      | _ -> conf,eff
-    in
-    
+  let step (loc : EcLocation.t)
+      (ppio : EcParsetree.pprover_infos option) : unit =
+    let conf, eff = step_core loc ppio in  (* could issue error *)
     let c = currs() in
-    let cconfig = Option.get c.config in
-    let conf, eff = runr cconfig in
     let news =  
       {
         c with
@@ -353,7 +343,37 @@ let interpret (lexbuf : L.lexbuf) =
       } in
     push_print news
   in
-  
+
+  let run (loc : EcLocation.t) : unit =
+    let rec runr (conf : config) (eff : effect) : config * effect =
+      match try Some  (* so tail recursive *)
+                (step_running_or_sending_real_or_ideal_config
+                 conf None None) with
+            | _ -> None with
+      | None             -> conf, eff
+      | Some (conf, eff) ->
+          (match eff with
+           | EffectOK
+           | EffectRand _ -> runr conf eff
+           | _ -> conf, eff) in
+    let conf, eff = step_core loc None in  (* could issue error *)
+    let conf, eff =
+      match eff with
+      | EffectOK
+      | EffectRand _ -> runr conf eff
+      | _            -> conf, eff in
+    let c = currs() in
+    let news =  
+      {
+        c with
+        cmd_no = c.cmd_no+1;
+        ucdsl_new = false;
+        post_done = false;
+        config = Some conf;
+        effect = Some eff;
+      } in
+    push_print news
+  in
 
   let modify_config (modify : config -> config) : unit =
     let c = currs() in
@@ -457,30 +477,6 @@ let interpret (lexbuf : L.lexbuf) =
       "@[assert@ of@ EffectFailOut@ failed.@ The@ effect@ that@ occurred:@ %a@]"
          pp_effect eff)
         end
-      | EffectBlockedIf ->
-        begin match eff with
-        | EffectBlockedIf -> ()
-        | _ -> 
-         error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectBlockedIf@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
-        end
-      | EffectBlockedMatch ->
-        begin match eff with
-        | EffectBlockedMatch -> ()
-        | _ -> 
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectBlockedMatch@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
-        end
-      | EffectBlockedPortOrAddrCompare ->
-        begin match eff with
-        | EffectBlockedPortOrAddrCompare -> ()
-        | _ -> 
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectBlockedPortOrAddrCompare@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
-        end
       end
     end
   in
@@ -520,7 +516,7 @@ let interpret (lexbuf : L.lexbuf) =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
     | Send sme  -> send sme
-    | Run -> run()
+    | Run -> run (loc cmd)
     | Step ppio -> step (loc cmd) ppio
     | Addv tb -> addv tb 
     | Addf (psy,pex) -> addf psy pex

@@ -1225,18 +1225,13 @@ assert_effect :
   | ASSERT; ew = lident;
     {
       match (unloc ew) with
-      | "ok"           -> Assert (mk_loc (loc ew) EffectOK)
-      | "rand"         -> Assert (mk_loc (loc ew) EffectRand)
-      | "fail_out"     -> Assert (mk_loc (loc ew) EffectFailOut)
-(* the rest can go away, as being turned into exceptions *)
-      | "BlockedIf"    -> Assert (mk_loc (loc ew) EffectBlockedIf)
-      | "BlockedMatch" -> Assert (mk_loc (loc ew) EffectBlockedMatch)
-      | "BlockedPortOrAddrCompare" 
-        -> Assert (mk_loc (loc ew) EffectBlockedPortOrAddrCompare)
-      | _ -> 
+      | "ok"       -> Assert (mk_loc (loc ew) EffectOK)
+      | "rand"     -> Assert (mk_loc (loc ew) EffectRand)
+      | "fail_out" -> Assert (mk_loc (loc ew) EffectFailOut)
+      | _          -> 
         error_message (loc ew)
         (fun ppf -> fprintf ppf
-"%s@ is@ not@ a@ valid@ effect." (unloc ew))
+           "%s@ is@ not@ a@ valid@ effect." (unloc ew))
     }
 
 assert_msg_out:
