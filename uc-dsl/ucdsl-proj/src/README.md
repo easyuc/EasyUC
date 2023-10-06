@@ -75,6 +75,20 @@ Program Structure
   module for formatting error messages issued when translating types
   and expressions
 
+* `UcInterpreter` ([`ucInterpreter.mli`](ucInterpreter.mli),
+   [`ucInterpreter.ml`](ucInterpreter.ml)) - module implementing
+  the semantics of the interpreter
+
+* `UcInterpreterClient` ([`ucInterpreterClient.mli`](ucInterpreterClient.mli),
+   [`ucInterpreterClient.ml`](ucInterpreterClient.ml)) - module implementing
+  the client of the interpreter, which lets a user run the interpreter,
+  either interactively via Proof General or in batch mode
+
+* `UcEcFormEval` ([`ucEcFormEval.mli`](ucEcFormEval.mli),
+   [`ucEcFormEval.ml`](ucEcFormEval.ml)) - module used by
+   the interpreter to leverage EasyCrypt's proof engine for
+   proving/disproving formulas and simplifying formulas
+
 Script for Comparing EasyCrypt Files with Originals
 --------------------------------------------------------------------------------
 

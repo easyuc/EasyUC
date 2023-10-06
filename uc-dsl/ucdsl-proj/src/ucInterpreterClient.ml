@@ -99,39 +99,33 @@ let pp_uc_file_pos
     Format.fprintf fmt "%s@." str
   end
 
+let pp_effect (ppf : Format.formatter) (e : effect) : unit =
+  let pp_control (ppf : Format.formatter) (ctrl : control) : unit =
+    match ctrl with
+    | CtrlEnv -> Format.fprintf ppf "environment"
+    | CtrlAdv -> Format.fprintf ppf "adversary"
+  in
+  match e with
+  | EffectOK                       -> ()
+  | EffectRand id                  ->
+    Format.fprintf ppf "@[Note: random value was assigned to: %s@]" id
+  | EffectMsgOut (pp_sme, ctrl)    ->
+    Format.fprintf ppf 
+    "@[Message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
+  | EffectFailOut                  -> 
+    Format.fprintf ppf "Note: \"fail.\" was called."
+  | EffectBlockedIf                -> 
+    Format.fprintf ppf "Blocking: cannot decide if condition."
+  | EffectBlockedMatch             -> 
+    Format.fprintf ppf "Blocking: cannot decide matching condition."
+  | EffectBlockedPortOrAddrCompare ->
+    Format.fprintf ppf "Blocking: cannot decide port or addr comparison."
+
 let pp_interpreter_state 
 (fmt : Format.formatter) ( c : interpreter_state) : unit =
-  let pp_effect (ppf : Format.formatter) (e : effect) : unit =
-    let pp_control (ppf : Format.formatter) (ctrl : control) : unit =
-      match ctrl with
-      | CtrlEnv -> Format.fprintf ppf "environment"
-      | CtrlAdv -> Format.fprintf ppf "adversary"
-    in
-    match e with
-    | EffectOK                       -> ()
-    | EffectRand id                  ->
-      Format.fprintf ppf "@[Note: random value was assigned to: %s@]" id
-    | EffectMsgOut (pp_sme, ctrl)    ->
-      Format.fprintf ppf 
-      "@[Message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
-    | EffectFailOut                  -> 
-      Format.fprintf ppf "Note: \"fail.\" was called."
-    | EffectBlockedIf                -> 
-      Format.fprintf ppf "Blocking: cannot decide if condition."
-    | EffectBlockedMatch             -> 
-      Format.fprintf ppf "Blocking: cannot decide matching condition."
-    | EffectBlockedPortOrAddrCompare ->
-      Format.fprintf ppf "Blocking: cannot decide port or addr comparison."
-  in
   match c.config with
   | Some config ->
     Format.fprintf fmt "%a" pp_config config;
-    begin match c.effect with
-    | None -> ()
-    | Some eff ->
-      Format.fprintf fmt "@.%a" 
-      pp_effect eff;
-    end
   | None ->
     match c.config_gen with
     | Some config -> 
@@ -148,6 +142,12 @@ let pp_interpreter_state
 let interpret (lexbuf : L.lexbuf) =
 
   let print_state (c : interpreter_state) : unit =
+    begin match c.effect with
+    | None -> ()
+    | Some eff ->
+      Format.fprintf fmt "@.effect:@.%a@.;@." 
+      pp_effect eff
+    end;
     pp_uc_file_pos fmt c;
     Format.fprintf fmt "state:@.%a@.;@." pp_interpreter_state c
   in

@@ -1214,20 +1214,21 @@ comm_word :
       | _ -> 
         error_message (loc cw)
         (fun ppf -> fprintf ppf
-"%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
+           "%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
     }
 
 assert_cmd :
   | c = assert_effect; { c }
-  | c = assert_MsgOut; { c }
+  | c = assert_msg_out; { c }
 
 assert_effect :
-  | ASSERT; ew = uident;
+  | ASSERT; ew = lident;
     {
       match (unloc ew) with
-      | "OK"           -> Assert (mk_loc (loc ew) EffectOK)
-      | "Rand"         -> Assert (mk_loc (loc ew) EffectRand)
-      | "FailOut"      -> Assert (mk_loc (loc ew) EffectFailOut)
+      | "ok"           -> Assert (mk_loc (loc ew) EffectOK)
+      | "rand"         -> Assert (mk_loc (loc ew) EffectRand)
+      | "fail_out"     -> Assert (mk_loc (loc ew) EffectFailOut)
+(* the rest can go away, as being turned into exceptions *)
       | "BlockedIf"    -> Assert (mk_loc (loc ew) EffectBlockedIf)
       | "BlockedMatch" -> Assert (mk_loc (loc ew) EffectBlockedMatch)
       | "BlockedPortOrAddrCompare" 
@@ -1238,27 +1239,27 @@ assert_effect :
 "%s@ is@ not@ a@ valid@ effect." (unloc ew))
     }
 
-assert_MsgOut:
-  | ASSERT; w = uident; sme = sent_msg_expr; ct = assert_ctrl;
+assert_msg_out:
+  | ASSERT; w = lident; sme = sent_msg_expr; ct = assert_ctrl;
     {
-      if (unloc w) = "MsgOut" 
+      if (unloc w) = "msg_out" 
       then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
       else error_message (loc w)
             (fun ppf ->
                fprintf ppf
-               "Did@ you@ mean@ MsgOut@ instead@ of@ %s?" (unloc w))
+               "Did@ you@ mean@ msg_out@ instead@ of@ %s?" (unloc w))
     }
 
 assert_ctrl:
-  | ct = uident;
+  | ct = lident;
     {
       match (unloc ct) with
-      | "CtrlEnv" -> CtrlEnv
-      | "CtrlAdv" -> CtrlAdv
+      | "ctrl_env" -> CtrlEnv
+      | "ctrl_adv" -> CtrlAdv
       | _ -> error_message (loc ct)
             (fun ppf ->
                fprintf ppf
-               "Did@ you@ mean@ CtrlEnv@ or@ CtrlAdv@ instead@ of@ %s?" 
+               "Did@ you@ mean@ ctrl_env@ or@ ctrl_adv@ instead@ of@ %s?" 
                (unloc ct))
     }
 

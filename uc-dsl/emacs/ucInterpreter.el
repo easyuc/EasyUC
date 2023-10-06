@@ -56,14 +56,18 @@ If not, hide the uc-frame "
            )
         (erase-buffer)
         (make-frame-visible)
-        (if (string= params-line "None");if
-          (insert "*** no code running ***");then  
+        (if (string= params-line "None")            ;if
+          (progn                                    ;then 
+           (insert "*** no code running ***")
+           (set-frame-name "*UC file*")
+          ) 
           (let ((params (split-string params-line)));else
             (let ( (filenam    (nth 0 params))
                    (ch-pos-beg (string-to-number (nth 1 params)))
                    (ch-pos-end (string-to-number (nth 2 params)))
                  )
               (insert-file filenam)
+              (set-frame-name filenam)
               (let ((x (make-overlay ch-pos-beg ch-pos-end)))
                 (overlay-put x 'face '(:foreground "blue")))
               ;;(auto-raise-mode -1)
@@ -84,6 +88,7 @@ If not, hide the uc-frame "
 (defun frame-with-uc-file (cmd str)
   "call empty-frame if ucInterpreter shell output starts with UC file position:"
   (proof-debug (concat "frame-with-uc-file of " str))
+
   (let ((stps (search "UC file position:" str)))
     (if stps
       (uc-file-frame (substring str stps nil))
@@ -211,7 +216,7 @@ error and then highlight in the script buffer."
  proof-shell-start-goals-regexp	 "^state:"
  proof-shell-end-goals-regexp	 "^;"
 
- proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:"
+ proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:\\|^effect:"
  proof-shell-eager-annotation-end   "^;"
 
  proof-shell-quit-cmd		 "quit."
@@ -236,6 +241,13 @@ error and then highlight in the script buffer."
      ;;:selected t;;easycrypt-proof-weak-mode
      :help     "Toggles debug mode."]
 ))
+
+(defun ucInterpreter-shell-extra-config ()
+  (with-current-buffer proof-goals-buffer 
+    (rename-buffer "*configuration*")
+  )
+)
+(add-hook 'ucInterpreter-shell-mode-hook 'ucInterpreter-shell-extra-config)
 
 (provide 'ucInterpreter)
 

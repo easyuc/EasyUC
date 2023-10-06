@@ -51,5 +51,5 @@ addresses), simulators that interfere with communication between
 environment and adversary, or violations of the coroutine model
 (trying to send two message in sequence, without control having first
 returned).  We are working toward a translator from the DSL into
-EasyCrypt, where the sequence of games security proofs will still be
+EasyCrypt, where the sequence of games security proofs will be
 mechanized.
