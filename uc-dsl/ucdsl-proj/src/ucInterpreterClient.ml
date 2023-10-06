@@ -145,7 +145,7 @@ let interpret (lexbuf : L.lexbuf) =
     begin match c.effect with
     | None -> ()
     | Some eff ->
-      Format.fprintf fmt "@.%a@.;@." 
+      Format.fprintf fmt "@.effect:@.%a@.;@." 
       pp_effect eff
     end;
     pp_uc_file_pos fmt c;
