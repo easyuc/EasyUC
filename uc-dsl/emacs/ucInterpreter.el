@@ -67,7 +67,7 @@ If not, hide the uc-frame "
                    (ch-pos-end (string-to-number (nth 2 params)))
                  )
               (insert-file filenam)
-              (set-frame-name filenam)
+              (set-frame-name (concat "running in: " filenam))
               (let ((x (make-overlay ch-pos-beg ch-pos-end)))
                 (overlay-put x 'face '(:foreground "blue")))
               ;;(auto-raise-mode -1)
