@@ -281,7 +281,7 @@ proof.
 by rewrite cats0.
 qed.
 
-hint rewrite uc_dsl_interpreter_hints : addr_concat_nil_r.
+hint rewrite ucdsl_interpreter_hints : addr_concat_nil_r.
 
 (* TODO: remove when we can use rewriting hints in the interpreter *)
 hint simplify [reduce] addr_concat_nil_r.
@@ -292,7 +292,7 @@ proof.
 by rewrite catA.
 qed.
 
-hint rewrite uc_dsl_interpreter_hints : extend_addr_by_sing.
+hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
 (* TODO: remove when we can use rewriting hints in the interpreter *)
 hint simplify [reduce] extend_addr_by_sing.
@@ -314,7 +314,7 @@ rewrite (inc_le2_not_lr func) //.
 by rewrite inc_sym.
 qed.
 
-hint rewrite uc_dsl_interpreter_hints : envport_ext_func_iff_helper.
+hint rewrite ucdsl_interpreter_hints : envport_ext_func_iff_helper.
 
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
   inc func adv =>

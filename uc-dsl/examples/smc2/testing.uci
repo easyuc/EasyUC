@@ -44,6 +44,11 @@ Forwarding.FwAdv.fw_obs
 @((adv, 7))
 ctrl_adv.
 send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
+step.
+step.
+step.
+(* in the next step epdp decoding happens *)
+step.
 run.
 assert msg_out
 ((func ++ [1; 1; 2], 1))@
@@ -62,6 +67,14 @@ Forwarding.FwAdv.fw_obs
 @((adv, 5))
 ctrl_adv.
 send ((adv, 5))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
+step.
+step.
+step.
+step.
+step.
+(* in the next step, one-time-pad decryption followed by epdp decryption
+   is necessary to produce the text value t *)
+step.
 run.
 assert msg_out
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2

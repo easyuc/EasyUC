@@ -32,6 +32,7 @@
     "forall"          , FORALL      ;
     "fun"             , FUN         ;
     "functionality"   , FUNCT       ;
+    "hint"            , HINT        ;
     "if"              , IF          ;
     "implements"      , IMPLEM      ;
     "in"              , IN          ;
@@ -71,23 +72,23 @@
 
   let _bad_ec_idents =
     ["Pr"; "abbrev"; "abstract"; "admit"; "algebra"; "alias"; "apply";
-    "as"; "assert"; "assumption"; "auto"; "axiom"; "axiomatized";
-    "beta"; "by"; "byequiv"; "byphoare"; "bypr"; "call"; "case";
-    "cbv"; "cfold"; "change"; "class"; "clear"; "clone"; "congr";
-    "conseq"; "const"; "cut"; "debug"; "declare"; "delta"; "do";
-    "done"; "eager"; "elim"; "equiv"; "eta"; "exact"; "exfalso";
-    "export"; "fel"; "fission"; "for"; "for"; "fusion"; "glob";
-    "goal"; "have"; "hint"; "hoare"; "idtac"; "import"; "include";
-    "inductive"; "inline"; "instance"; "iota"; "is"; "islossless";
-    "kill"; "lemma"; "local"; "logic"; "modpath"; "module"; "move";
-    "nosmt"; "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "pragma";
-    "pred"; "print"; "proc"; "progress"; "proof"; "qed"; "rcondf";
-    "rcondt"; "realize"; "reflexivity"; "remove"; "rename"; "replace";
-    "require"; "res"; "return"; "rewrite"; "rnd"; "rwnormal";
-    "search"; "section"; "seq"; "sim"; "simplify"; "skip"; "smt";
-    "sp"; "split"; "splitwhile"; "subst"; "suff"; "swap"; "symmetry";
-    "theory"; "time"; "transitivity"; "trivial"; "try"; "type";
-    "undo"; "unroll"; "while"; "why3"; "wp"; "zeta"]
+     "as"; "assert"; "assumption"; "auto"; "axiom"; "axiomatized";
+     "beta"; "by"; "byequiv"; "byphoare"; "bypr"; "call"; "case";
+     "cbv"; "cfold"; "change"; "class"; "clear"; "clone"; "congr";
+     "conseq"; "const"; "cut"; "debug"; "declare"; "delta"; "do";
+     "done"; "eager"; "elim"; "equiv"; "eta"; "exact"; "exfalso";
+     "export"; "fel"; "fission"; "for"; "for"; "fusion"; "glob";
+     "goal"; "have"; "hoare"; "idtac"; "import"; "include";
+     "inductive"; "inline"; "instance"; "iota"; "is"; "islossless";
+     "kill"; "lemma"; "local"; "logic"; "modpath"; "module"; "move";
+     "nosmt"; "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "print";
+     "pragma"; "pred"; "proc"; "progress"; "proof"; "qed"; "rcondf";
+     "rcondt"; "realize"; "reflexivity"; "remove"; "rename"; "replace";
+     "require"; "res"; "return"; "rewrite"; "rnd"; "rwnormal";
+     "search"; "section"; "seq"; "sim"; "simplify"; "skip"; "smt";
+     "sp"; "split"; "splitwhile"; "subst"; "suff"; "swap"; "symmetry";
+     "theory"; "time"; "transitivity"; "trivial"; "try"; "type";
+     "undo"; "unroll"; "while"; "why3"; "wp"; "zeta"]
 
   let bad_ec_idents =
     let table = Hashtbl.create 0 in

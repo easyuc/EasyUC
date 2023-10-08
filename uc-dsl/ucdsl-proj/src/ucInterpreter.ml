@@ -432,9 +432,12 @@ let update_prover_infos (env : EcEnv.env) (pi : prover_infos)
 
 type rewriting_dbs = qsymbol list
 
+let pp_rewriting_dbs (ppf : Format.formatter) (dbs : rewriting_dbs) : unit =
+  fprintf ppf "@[%a@]" (EcPrinting.pp_list ";@ " pp_qsymbol) dbs
+
 let default_rewriting_dbs = [
   (["Top"; "UCEncoding"],   "epdp");
-  (["Top"; "UCBasicTypes"], "uc_dsl_interpreter_hints")
+  (["Top"; "UCBasicTypes"], "ucdsl_interpreter_hints")
 ]
 
 let add_rewriting_db (env : env) (dbs : rewriting_dbs) (pdb : pqsymbol)
@@ -443,46 +446,46 @@ let add_rewriting_db (env : env) (dbs : rewriting_dbs) (pdb : pqsymbol)
   match EcEnv.BaseRw.lookup_opt db env with
   | None   ->
       error_message l
-      (fun ppf ->
-         fprintf ppf "@[bad@ rewriting@ database:@ %a@]"
-         pp_qsymbol db)
-  | Some _ -> dbs @ [db]
+      (fun ppf     ->
+         fprintf ppf "@[bad@ rewriting@ database@]")
+  | Some (path, _) ->
+      let qsym = EcPath.toqsymbol path in
+      if List.mem qsym dbs
+      then error_message l
+           (fun ppf ->
+              fprintf ppf "@[already@ a@ rewriting@ database@]")
+      else dbs @ [qsym]
 
 let add_rewriting_dbs (env : env) (dbs : rewriting_dbs) (pdbs : pqsymbol list)
       : rewriting_dbs =
   List.fold_left
-  (fun acc pdb -> add_rewriting_db env dbs pdb)
+  (fun acc pdb -> add_rewriting_db env acc pdb)
   dbs pdbs
 
-let rm_rewriting_db (dbs : rewriting_dbs) (pdb : pqsymbol)
+let rm_rewriting_db (env : env) (dbs : rewriting_dbs) (pdb : pqsymbol)
       : rewriting_dbs =
   let (db, l) = (unloc pdb, loc pdb) in
-  try let (i, _) = List.findi (fun _ x -> x = db) dbs in
+  let db_qual =
+    match EcEnv.BaseRw.lookup_opt db env with
+    | None           -> failure "cannot happen"
+    | Some (path, _) -> EcPath.toqsymbol path in
+  try let (i, _) = List.findi (fun _ x -> x = db_qual) dbs in
       List.remove_at i dbs with
   | Not_found ->
       error_message l
       (fun ppf ->
-         fprintf ppf "@[not@ a@ current@ rewriting@ database:@ %a@]"
-         pp_qsymbol db)
+         fprintf ppf "@[not@ a@ current@ rewriting@ database@]")
 
-let rm_rewriting_dbs (dbs : rewriting_dbs) (pdbs : pqsymbol list)
+let rm_rewriting_dbs (env : env) (dbs : rewriting_dbs) (pdbs : pqsymbol list)
       : rewriting_dbs =
   List.fold_left
-  (fun acc pdb -> rm_rewriting_db dbs pdb)
+  (fun acc pdb -> rm_rewriting_db env acc pdb)
   dbs pdbs
 
-(* the first component is what should be removed; the second
-   component is what should then be added *)
-
-type rm_then_add_pdbs = pqsymbol list * pqsymbol list
-
-let rm_then_add_rewriting_dbs (env : env) (dbs : rewriting_dbs)
-    (rm_then_add_pdbs : rm_then_add_pdbs) : rewriting_dbs =
-  let dbs = rm_rewriting_dbs dbs (fst rm_then_add_pdbs) in
-  add_rewriting_dbs env dbs (snd rm_then_add_pdbs)
-
-let pp_rewriting_dbs (ppf : Format.formatter) (dbs : rewriting_dbs) : unit =
-  fprintf ppf "@[%a@]" (EcPrinting.pp_list ";@ " pp_qsymbol) dbs
+let modify_rewriting_dbs (env : env) (dbs : rewriting_dbs)
+    (mod_dbs : mod_dbs) : rewriting_dbs =
+  let dbs = rm_rewriting_dbs env dbs (fst mod_dbs) in
+  add_rewriting_dbs env dbs (snd mod_dbs)
 
 let lemmas_of_rewriting_dbs (env : env) (dbs : rewriting_dbs)
       : EcPath.path list =
@@ -1326,60 +1329,36 @@ let update_prover_infos_config (conf : config)
       let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
       ConfigIdealSending {c with pi = pi}
 
-let rm_then_add_rewriting_dbs_config (conf : config)
-    (rm_then_add_pdbs : rm_then_add_pdbs) : config =
+let modify_rewriting_dbs_config (conf : config) (mod_dbs : mod_dbs)
+      : config =
   match conf with
   | ConfigGen c          ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigGen {c with dbs = dbs}
   | ConfigReal c         ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigReal {c with dbs = dbs}
   | ConfigIdeal c        ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigIdeal {c with dbs = dbs}
   | ConfigRealRunning c  ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigRealRunning {c with dbs = dbs}
   | ConfigIdealRunning c ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigIdealRunning {c with dbs = dbs}
   | ConfigRealSending c  ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigRealSending {c with dbs = dbs}
   | ConfigIdealSending c ->
       let dbs =
-        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
-      ConfigIdealSending {c with dbs = dbs}
-
-let rm_rewriting_dbs_config (conf : config) (pqsym : pqsymbol list) : config =
-  match conf with
-  | ConfigGen c          ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigGen {c with dbs = dbs}
-  | ConfigReal c         ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigReal {c with dbs = dbs}
-  | ConfigIdeal c        ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigIdeal {c with dbs = dbs}
-  | ConfigRealRunning c  ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigRealRunning {c with dbs = dbs}
-  | ConfigIdealRunning c ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigIdealRunning {c with dbs = dbs}
-  | ConfigRealSending c  ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
-      ConfigRealSending {c with dbs = dbs}
-  | ConfigIdealSending c ->
-      let dbs = rm_rewriting_dbs c.dbs pqsym in
+        modify_rewriting_dbs (env_of_gc c.gc) c.dbs mod_dbs in
       ConfigIdealSending {c with dbs = dbs}
 
 let pp_rewriting_dbs_config (ppf : Format.formatter)
@@ -3618,7 +3597,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 let step_running_or_sending_real_or_ideal_config
     (conf : config)
     (ppi_opt : EcParsetree.pprover_infos option)
-    (rm_then_add_pdbs_opt : rm_then_add_pdbs option)
+    (mod_dbs_opt : mod_dbs option)
       : config * effect =
   let pi =
     match ppi_opt with
@@ -3627,11 +3606,11 @@ let step_running_or_sending_real_or_ideal_config
         update_prover_infos (env_of_gc (gc_of_config conf))
         (prover_infos_of_config conf) ppi in
   let dbs =
-    match rm_then_add_pdbs_opt with
-    | None                  -> rewriting_dbs_of_config conf
-    | Some rm_then_add_pdbs ->
-        rm_then_add_rewriting_dbs (env_of_gc (gc_of_config conf))
-        (rewriting_dbs_of_config conf) rm_then_add_pdbs in
+    match mod_dbs_opt with
+    | None         -> rewriting_dbs_of_config conf
+    | Some mod_dbs ->
+        modify_rewriting_dbs (env_of_gc (gc_of_config conf))
+        (rewriting_dbs_of_config conf) mod_dbs in
   match conf with
   | ConfigRealRunning c  -> step_real_running_config c pi dbs
   | ConfigIdealRunning c -> step_ideal_running_config c pi dbs

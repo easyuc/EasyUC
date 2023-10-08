@@ -39,10 +39,8 @@ val typecheck_and_pp_sent_msg_expr : config -> sent_msg_expr -> string
 val update_prover_infos_config :
       config -> EcParsetree.pprover_infos -> config
 
-type rm_then_add_pdbs = pqsymbol list * pqsymbol list
-
-val rm_then_add_rewriting_dbs_config : config -> rm_then_add_pdbs -> config
-val pp_rewriting_dbs_config          : Format.formatter -> config -> unit
+val modify_rewriting_dbs_config : config -> mod_dbs -> config
+val pp_rewriting_dbs_config  : Format.formatter -> config -> unit
 
 val add_var_to_config             : config -> psymbol -> pty -> config
 val add_var_to_config_make_unique : config -> psymbol -> pty -> config * symbol
@@ -95,19 +93,21 @@ exception StepBlockedPortOrAddrCompare
    of the configuration for SMT calls
 
    if it's Some ppi, it means to update the prover_infos of the
-   configuration with ppi, and use that for SMT calls; but the
-   returned configuration's prover_infos is *not* updated with ppi
+   configuration with ppi (this can issue an error message, and use
+   that for SMT calls; but the returned configuration's prover_infos
+   is *not* updated with ppi
 
-   if rm_then_add_pdbs is None, it means to use the rewriting
+   if mod_pdbs is None, it means to use the rewriting
    databases of the configuration for simplification
 
    if it's Some (rm_pdbs, add_pdbs), it means to update the rewriting
    databases of the configuration by first removing rm_pdbs and then
-   adding add_pdbs, and use that for simplification; but the returned
-   configuration's rewriting databases are *not* updated *)
+   adding add_pdbs (this can issue an error message), and use that for
+   simplification; but the returned configuration's rewriting
+   databases are *not* updated *)
 
 val step_running_or_sending_real_or_ideal_config :
       config ->
       EcParsetree.pprover_infos option ->
-      rm_then_add_pdbs option ->
+      mod_dbs option ->
       config * effect

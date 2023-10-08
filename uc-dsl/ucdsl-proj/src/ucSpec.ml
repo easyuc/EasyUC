@@ -338,6 +338,13 @@ let loc_of_dest_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
   | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.dest_poa_pexpr
   | SME_EnvAdv sme -> loc sme.dest_port_pexpr
 
+(* rewriting databases modification *)
+
+(* the first component is what should be removed; the second
+   component is what should then be added *)
+
+type mod_dbs = pqsymbol list * pqsymbol list
+
 (* Interpreter User Input *)
 
 type world =
@@ -357,19 +364,20 @@ type peffect_r =
 type peffect = peffect_r located
 
 type interpreter_command_u =
-  | Load of psymbol
-  | FunEx of fun_expr
-  | World of world
-  | Send of sent_msg_expr
+  | Load      of psymbol
+  | FunEx     of fun_expr
+  | World     of world
+  | Send      of sent_msg_expr
   | Run
-  | Step of EcParsetree.pprover_infos option
-  | AddVar of type_binding
-  | AddAss of psymbol * pexpr
-  | Prover of EcParsetree.pprover_infos
+  | Step      of EcParsetree.pprover_infos option * mod_dbs option
+  | AddVar    of type_binding
+  | AddAss    of psymbol * pexpr
+  | Prover    of EcParsetree.pprover_infos
+  | Hint      of mod_dbs
   | Finish
-  | Assert of peffect
+  | Assert    of peffect
   | Debug
-  | Undo of int located
+  | Undo      of int located
   | Quit
 
 type interpreter_command = interpreter_command_u located

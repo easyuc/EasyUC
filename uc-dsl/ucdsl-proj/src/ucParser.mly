@@ -330,7 +330,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token <EcSymbols.symbol> PNUMOP  (* parenthesized numeric operator *)
 %token <EcBigInt.zint> UINT       (* unsigned integer constant *)
 %token <EcBigInt.zint * (int * EcBigInt.zint)> DECIMAL  (* decimal constant *)
-%token <string> STRING  (* string *)
+%token <string> STRING            (* string *)
 
 (* keywords *)
 
@@ -347,6 +347,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token FORALL
 %token FUN
 %token FUNCT
+%token HINT
 %token IF
 %token IMPLEM
 %token IN
@@ -1159,11 +1160,12 @@ icomm :
   | c = comm_word;        { c }
   | c = send_msg;         { c }
   | c = prover_cmd;       { c }
+  | c = hint_cmd;         { c }
   | c = undo_cmd;         { c }
   | c = add_var_cmd;      { c }
   | c = add_ass_cmd;      { c }
   | c = assert_cmd;       { c }
-  | c = step_prover_info; { c }
+  | c = step_prover_hint; { c }
   | c = debug_cmd         { c }
 
 load_uc_file :
@@ -1198,7 +1200,7 @@ comm_word :
         | "real"   -> World Real
         | "ideal"  -> World Ideal
         | "run"    -> Run
-        | "step"   -> Step None
+        | "step"   -> Step (None, None)
         | "finish" -> Finish
         | "quit"   -> Quit
         | _        -> 
@@ -1253,21 +1255,33 @@ send_msg :
   | SEND; sme = sent_msg_expr; { Send sme }
 
 debug_cmd :
-  | DEBUG ; { Debug }
+  | DEBUG; { Debug }
 
-step_prover_info :
-  | step = lident; PROVER; pi = smt_info; 
+(* modification of rewriting databases *)
+
+mod_pdbs :
+  rms = separated_list(COMMA, qident);
+  SLASH;
+  adds = separated_list(COMMA, qident);
+    { (rms, adds) }
+
+step_prover_hint :
+  | step = lident; PROVER; pi = smt_info; HINT; mpdbso = option(mod_pdbs);
     {
       if (unloc step) = "step" 
-      then Step (Some pi)
+      then Step (Some pi, mpdbso)
       else error_message (loc step)
             (fun ppf ->
                fprintf ppf
                "@[did@ you@ mean@ step@ instead@ of@ %s?@]" (unloc step))
     }
 
-prover_cmd:
+prover_cmd :
   | PROVER x = smt_info { Prover x } 
+
+hint_cmd :
+  | HINT; mpdbs = mod_pdbs;
+      { Hint mpdbs }
 
 fun_expr :
   | x = uqident; { FunExprNoArgs x }

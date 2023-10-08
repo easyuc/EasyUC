@@ -1,3 +1,5 @@
+(* UcInterpreterClient module *)
+
 open UcSpec
 open UcLexer
 open UcMessage
@@ -34,14 +36,14 @@ let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
 
 type interpreter_state = 
   {
-    cmd_no : int;
-    ucdsl_new : bool;
-    post_done : bool;
-    root : string option;
-    maps : maps_tyd option;
+    cmd_no     : int;
+    ucdsl_new  : bool;
+    post_done  : bool;
+    root       : string option;
+    maps       : maps_tyd option;
     config_gen : config option;
-    config : config option;
-    effect : effect option
+    config     : config option;
+    effect     : effect option
   }
 
 let init_state : interpreter_state =
@@ -137,7 +139,7 @@ let interpret (lexbuf : L.lexbuf) =
 
   let print_state (c : interpreter_state) : unit =
     begin match c.effect with
-    | None -> ()
+    | None     -> ()
     | Some eff ->
       Format.fprintf fmt "@.effect:@.%a@.;@." 
       pp_effect eff
@@ -282,7 +284,8 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let step_core (loc : EcLocation.t)
-      (ppio : EcParsetree.pprover_infos option) : config * effect =
+      (ppio : EcParsetree.pprover_infos option) (mdbso : mod_dbs option)
+        : config * effect =
     let c = currs() in
     let cconfig = Option.get c.config in
     let is_running_or_sending_real_or_ideal_config config =
@@ -293,7 +296,7 @@ let interpret (lexbuf : L.lexbuf) =
     if is_running_or_sending_real_or_ideal_config cconfig
     then
       try step_running_or_sending_real_or_ideal_config cconfig
-          ppio None with
+          ppio mdbso with
       | StepBlockedIf                -> 
           error_message loc
           (fun ppf ->
@@ -319,9 +322,9 @@ let interpret (lexbuf : L.lexbuf) =
           "sending@ messages.@]"))
   in
 
-  let step (loc : EcLocation.t)
-      (ppio : EcParsetree.pprover_infos option) : unit =
-    let conf, eff = step_core loc ppio in  (* could issue error *)
+  let step (loc : EcLocation.t) (ppio : EcParsetree.pprover_infos option)
+      (mpdbso : mod_dbs option) : unit =
+    let conf, eff = step_core loc ppio mpdbso in  (* could issue error *)
     let c = currs() in
     let news =  
       {
@@ -347,7 +350,7 @@ let interpret (lexbuf : L.lexbuf) =
            | EffectOK
            | EffectRand _ -> runr conf eff
            | _ -> conf, eff) in
-    let conf, eff = step_core loc None in  (* could issue error *)
+    let conf, eff = step_core loc None None in  (* could issue error *)
     let conf, eff =
       match eff with
       | EffectOK
@@ -396,18 +399,23 @@ let interpret (lexbuf : L.lexbuf) =
       push_print news
   in
 
-  let addv (tb : type_binding) : unit =
+  let add_var (tb : type_binding) : unit =
     let mdfy cf = add_var_to_config cf tb.id tb.ty in
     modify_config mdfy
   in
 
-  let addf (psy : psymbol) (pex : pexpr) : unit =
+  let add_ass (psy : psymbol) (pex : pexpr) : unit =
     let mdfy cf = add_hyp_to_config cf psy pex in
     modify_config mdfy
   in
 
   let prover (ppinfo : EcParsetree.pprover_infos) : unit =
     let mdfy cf = update_prover_infos_config cf ppinfo in
+    modify_config mdfy
+  in
+
+  let hint (mdbs: mod_dbs) : unit =
+    let mdfy cf = modify_rewriting_dbs_config cf mdbs in
     modify_config mdfy
   in
 
@@ -534,18 +542,19 @@ let interpret (lexbuf : L.lexbuf) =
   let done_body () : unit =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
-    | Send sme          -> send sme
-    | Run               -> run (loc cmd)
-    | Step ppio         -> step (loc cmd) ppio
-    | AddVar tb         -> addv tb 
-    | AddAss (psy, pex) -> addf psy pex
-    | Prover ppinfo     -> prover ppinfo
-    | Undo pi           -> undo pi
-    | Finish            -> donec ()
-    | Quit              -> exit 0
-    | Assert peff       -> confirm peff
-    | Debug             -> debug ()
-    | _                 ->
+    | Send sme           -> send sme
+    | Run                -> run (loc cmd)
+    | Step (ppio, mdbso) -> step (loc cmd) ppio mdbso
+    | AddVar tb          -> add_var tb 
+    | AddAss (psy, pex)  -> add_ass psy pex
+    | Prover ppinfo      -> prover ppinfo
+    | Hint mod_pdbs      -> hint mod_pdbs
+    | Undo pi            -> undo pi
+    | Finish             -> donec ()
+    | Quit               -> exit 0
+    | Assert peff        -> confirm peff
+    | Debug              -> debug ()
+    | _                  ->
         error_message (loc cmd)
         (fun ppf ->
            Format.fprintf ppf 
@@ -592,9 +601,10 @@ let interpret (lexbuf : L.lexbuf) =
   let world_body () : unit =
     let cmd = next_cmd lexbuf in 
     match (unloc cmd) with
-    | AddVar tb         -> addv tb
-    | AddAss (psy, pex) -> addf psy pex
+    | AddVar tb         -> add_var tb
+    | AddAss (psy, pex) -> add_ass psy pex
     | Prover ppinfo     -> prover ppinfo  
+    | Hint mod_pdbs     -> hint mod_pdbs
     | World w           -> world w
     | Undo pi           -> undo pi
     | Quit              -> exit 0
@@ -626,9 +636,10 @@ let interpret (lexbuf : L.lexbuf) =
     | Load psym         -> load psym
     | FunEx fe          -> funexp fe
     | World w           -> world w
-    | AddVar tb         -> addv tb
-    | AddAss (psy, pex) -> addf psy pex
+    | AddVar tb         -> add_var tb
+    | AddAss (psy, pex) -> add_ass psy pex
     | Prover ppinfo     -> prover ppinfo
+    | Hint mod_pdbs     -> hint mod_pdbs
     | Undo pi           -> undo pi  
     | Quit              -> exit 0
     | Debug             -> debug ()

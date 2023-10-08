@@ -1,3 +1,4 @@
+(* UcInterpreterClient module interface *)
 
 val stdIOclient : unit -> unit
 
