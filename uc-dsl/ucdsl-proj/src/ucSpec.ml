@@ -358,18 +358,18 @@ type peffect = peffect_r located
 
 type interpreter_command_u =
   | Load of psymbol
-  | Funex of fun_expr
+  | FunEx of fun_expr
   | World of world
   | Send of sent_msg_expr
   | Run
   | Step of EcParsetree.pprover_infos option
-  | Addv of type_binding
-  | Addf of psymbol * pexpr
+  | AddVar of type_binding
+  | AddAss of psymbol * pexpr
   | Prover of EcParsetree.pprover_infos
-  | Undo of int located
   | Finish
-  | Quit
   | Assert of peffect
   | Debug
+  | Undo of int located
+  | Quit
 
 type interpreter_command = interpreter_command_u located

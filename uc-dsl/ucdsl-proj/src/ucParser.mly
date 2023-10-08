@@ -1148,115 +1148,106 @@ state_expr :
 (* Interpreter commands *)  
 
 interpreter_command :
-  | c = loc(icomm); FINAL;{ c }
-  | l=loc(EOF); { mk_loc (loc l) Quit }
+  | c = loc(icomm); FINAL;
+      { c }
+  | l=loc(EOF);
+      { mk_loc (loc l) Quit }
 
 icomm :
-  | c = load_uc_file; { c }
-  | c = fun_ex_cmd; { c }
-  | c = comm_word; { c }
-  | c = send_msg; { c }
-  | c = prover_cmd; { c }
-  | c = undo_cmd; { c }
-  | c = addv_cmd; { c }
-  | c = addf_cmd; { c }
-  | c = assert_cmd; { c }
+  | c = load_uc_file;     { c }
+  | c = fun_ex_cmd;       { c }
+  | c = comm_word;        { c }
+  | c = send_msg;         { c }
+  | c = prover_cmd;       { c }
+  | c = undo_cmd;         { c }
+  | c = add_var_cmd;      { c }
+  | c = add_ass_cmd;      { c }
+  | c = assert_cmd;       { c }
   | c = step_prover_info; { c }
-  | c = debug_cmd { c }
+  | c = debug_cmd         { c }
 
-(*
-%inline filename :
-  | nm = rlist1(_ident, DOT)
-      { nm }
-
-_file :
-  | x = _ident { ([], x) }
-  | xs = filename; DOT; x = _ident { (xs, x) }
-
-file :
-  | x = loc(_file) { x }
-*)
 load_uc_file :
   | load = lident; file = ident; 
-    {
-      if (unloc load) = "load" 
-      then Load file
-      else error_message (loc load)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ load@ instead@ of@ %s?" (unloc load))
-    }
+      {
+        if (unloc load) = "load" 
+        then Load file
+        else error_message (loc load)
+              (fun ppf ->
+                 fprintf ppf
+                 "@[did@ you@ mean@ load@ instead@ of@ %s?@]" (unloc load))
+      }
 
 undo_cmd :
   | UNDO; no = loc(word); { Undo no }
 
-addv_cmd :
+add_var_cmd :
   | VAR; v = type_binding; 
-    { Addv v }
+      { AddVar v }
 
-addf_cmd :
+add_ass_cmd :
   | ASSUMPTION; id = ident; COLON; f = expr;  
-    { Addf (id, f) }
+      { AddAss (id, f) }
 
 fun_ex_cmd :
-  | FUNCT; fe = fun_expr { Funex fe }
+  | FUNCT; fe = fun_expr { FunEx fe }
 
 comm_word :
   | cw = lident; 
-    {
-      match (unloc cw) with
-      | "real"   -> World Real
-      | "ideal"  -> World Ideal
-      | "run"    -> Run
-      | "step"   -> Step None
-      | "finish" -> Finish
-      | "quit"   -> Quit
-      | _ -> 
-        error_message (loc cw)
-        (fun ppf -> fprintf ppf
-           "%s@ is@ not@ a@ valid@ interpreter@ command." (unloc cw))
-    }
+      {
+        match (unloc cw) with
+        | "real"   -> World Real
+        | "ideal"  -> World Ideal
+        | "run"    -> Run
+        | "step"   -> Step None
+        | "finish" -> Finish
+        | "quit"   -> Quit
+        | _        -> 
+          error_message (loc cw)
+          (fun ppf -> fprintf ppf
+             "@[%s@ is@ not@ a@ valid@ interpreter@ command@]" (unloc cw))
+      }
 
 assert_cmd :
-  | c = assert_effect; { c }
-  | c = assert_msg_out; { c }
-
-assert_effect :
-  | ASSERT; ew = lident;
-    {
-      match (unloc ew) with
-      | "ok"       -> Assert (mk_loc (loc ew) EffectOK)
-      | "rand"     -> Assert (mk_loc (loc ew) EffectRand)
-      | "fail_out" -> Assert (mk_loc (loc ew) EffectFailOut)
-      | _          -> 
-        error_message (loc ew)
-        (fun ppf -> fprintf ppf
-           "%s@ is@ not@ a@ valid@ effect." (unloc ew))
-    }
+  | c = assert_msg_out;      { c }
+  | c = assert_other_effect; { c }
 
 assert_msg_out:
   | ASSERT; w = lident; sme = sent_msg_expr; ct = assert_ctrl;
-    {
-      if (unloc w) = "msg_out" 
-      then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
-      else error_message (loc w)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ msg_out@ instead@ of@ %s?" (unloc w))
-    }
+      {
+        if (unloc w) = "msg_out" 
+        then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
+        else error_message (loc w)
+              (fun ppf ->
+                 fprintf ppf
+                 "@[did@ you@ mean@ msg_out@ instead@ of@ %s?@]" (unloc w))
+      }
 
 assert_ctrl:
   | ct = lident;
-    {
-      match (unloc ct) with
-      | "ctrl_env" -> CtrlEnv
-      | "ctrl_adv" -> CtrlAdv
-      | _ -> error_message (loc ct)
-            (fun ppf ->
-               fprintf ppf
-               "Did@ you@ mean@ ctrl_env@ or@ ctrl_adv@ instead@ of@ %s?" 
-               (unloc ct))
-    }
+      {
+        match (unloc ct) with
+        | "ctrl_env" -> CtrlEnv
+        | "ctrl_adv" -> CtrlAdv
+        | _          ->
+           error_message (loc ct)
+           (fun ppf ->
+              fprintf ppf
+              "@[did@ you@ mean@ ctrl_env@ or@ ctrl_adv@ instead@ of@ %s?@]" 
+              (unloc ct))
+      }
+
+assert_other_effect :
+  | ASSERT; ew = lident;
+      {
+        match (unloc ew) with
+        | "ok"       -> Assert (mk_loc (loc ew) EffectOK)
+        | "rand"     -> Assert (mk_loc (loc ew) EffectRand)
+        | "fail_out" -> Assert (mk_loc (loc ew) EffectFailOut)
+        | _          -> 
+          error_message (loc ew)
+          (fun ppf ->
+             fprintf ppf "@[%s@ is@ not@ a@ valid@ effect@]" (unloc ew))
+      }
 
 send_msg :
   | SEND; sme = sent_msg_expr; { Send sme }
@@ -1272,7 +1263,7 @@ step_prover_info :
       else error_message (loc step)
             (fun ppf ->
                fprintf ppf
-               "Did@ you@ mean@ step@ instead@ of@ %s?" (unloc step))
+               "@[did@ you@ mean@ step@ instead@ of@ %s?@]" (unloc step))
     }
 
 prover_cmd:

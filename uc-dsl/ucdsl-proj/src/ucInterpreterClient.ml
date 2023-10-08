@@ -173,9 +173,10 @@ let interpret (lexbuf : L.lexbuf) =
         (UcParseFile.FOID_Id psym)) 
     with _ ->
         EcCommands.ucdsl_end();
-        error_message (loc psym) (fun ppf -> Format.fprintf ppf
-        "@[Problem@ loading@ file.@ Try@ running@ first@ ucdsl -units %s @]" 
-        (unloc psym))
+        error_message (loc psym)
+        (fun ppf -> Format.fprintf ppf
+          "@[Problem@ loading@ file.@ Try@ running@ first@ ucdsl -units %s @]" 
+          (unloc psym))
     in
     let c = currs() in
     let news = 
@@ -243,19 +244,7 @@ let interpret (lexbuf : L.lexbuf) =
     end else
       error_message (loc pi)
         (fun ppf -> Format.fprintf ppf 
-"@[could@ not@ find@ command@ with@ cmd_no@ %i@]" i)
-
-(*    let l = List.length !stack in
-    if ((i < l) && (i > 0)) 
-    then begin
-      stack := BatList.drop i (!stack);
-      let c = currs() in
-      print_state c
-    end else
-      error_message (loc pi)
-        (fun ppf -> Format.fprintf ppf 
-"@[%i@ is@ not@ between@ 1@ and@ %i@]" i (l-1))
-*)
+           "@[could@ not@ find@ command@ with@ cmd_no@ %i@]" i)
   in
   
   let donec () : unit =
@@ -309,23 +298,25 @@ let interpret (lexbuf : L.lexbuf) =
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
-             "@[Blocking:@ cannot@ decide@ if@ condition.@]")
+             "@[Blocking:@ cannot@ decide@ if@ condition@]")
       | StepBlockedMatch             ->
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
              ("@[Blocking:@ cannot@ determine@ datatype@ " ^^
-              "constructor@ in@ match.@]"))
+              "constructor@ in@ match@]"))
       | StepBlockedPortOrAddrCompare ->
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
              ("@[Blocking:@ cannot@ decide@ port@ or@ address@ " ^^
-              "comparisons.@]"))
+              "comparisons@]"))
     else
-      error_message loc (fun ppf -> Format.fprintf ppf 
-      ("@[You@ can@ step@ through@ only@ when@ running@ code@ or@ " ^^
-       "sending@ messages.@]"))
+      error_message loc
+      (fun ppf ->
+         Format.fprintf ppf 
+         ("@[You@ can@ step@ through@ only@ when@ running@ code@ or@ " ^^
+          "sending@ messages.@]"))
   in
 
   let step (loc : EcLocation.t)
@@ -426,58 +417,84 @@ let interpret (lexbuf : L.lexbuf) =
     let pp_effect ppf eff = pp_effect ppf eff in
     begin match effo with
     | None -> 
-      error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ failed@ as@ no@ effects@ occured@ after@ last@ command,@ only@ run@ and step@ commands@ produce@ effects.@]")
+        error_message (loc peff)
+          (fun ppf ->
+             Format.fprintf ppf 
+             ("@[assert@ failed@ as@ no@ effects@ occured@ after@ last@ " ^^
+              "command,@ only@ run@ and step@ commands@ produce@ effects@]"))
     | Some eff ->
-      begin match (unloc peff) with
-      | EffectOK ->
-        begin match eff with
-        | EffectOK -> ()
-        | _ ->
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectOK@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
+        begin match (unloc peff) with
+        | EffectOK ->
+          begin match eff with
+          | EffectOK -> ()
+          | _        ->
+            error_message (loc peff)
+            (fun ppf ->
+               Format.fprintf ppf 
+               ("@[assert@ of@ OK@ effect failed.@ The@ effect@ that@ " ^^
+                "occurred:@ %a@]")
+               pp_effect eff)
+          end
+        | EffectRand ->
+            begin match eff with
+            | EffectRand _ -> ()
+            | _            -> 
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ rand@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ %a@]")
+                 pp_effect eff)
         end
-      | EffectRand ->
-        begin match eff with
-        | EffectRand _ -> ()
-        | _ -> 
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectRand@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
+        | EffectMsgOut (sme, ct) ->
+            begin match eff with
+            | EffectMsgOut (str, ctrl) ->
+                let smestr =
+                  typecheck_and_pp_sent_msg_expr (Option.get c.config) sme in
+                if smestr <> str 
+                  then error_message (loc peff)
+                       (fun ppf ->
+                          Format.fprintf ppf 
+                          ("@[assert@ of@ msg_out@ effect failed.@ The@ " ^^
+                           "message@ that@ was@ sent,@ @[%s@],@ is@ "     ^^
+                           "different@ from@ the@ asserted@ one,@ "       ^^
+                           "@[%s@]@]")
+                          str smestr)
+                else if ct = UcSpec.CtrlAdv && ctrl = UcInterpreter.CtrlEnv
+                  then error_message (loc peff)
+                       (fun ppf ->
+                          Format.fprintf ppf 
+                          ("@[assert@ of@ msg_out@ effect failed.@ The@ " ^^
+                           "environment@ has@ control,@ but@ asserted@ "  ^^
+                           "control@ was@ adversary@]"))
+                else if ct = UcSpec.CtrlEnv && ctrl = UcInterpreter.CtrlAdv
+                  then error_message (loc peff)
+                       (fun ppf ->
+                          Format.fprintf ppf 
+                          ("@[assert@ of@ msg_out@ effect@ failed.@ The@ " ^^
+                           "adversary@ has@ control,@ but@ asserted@ "     ^^
+                           "control@ was@ environment@]"))
+                else ()
+            | _ -> 
+                error_message (loc peff)
+                (fun ppf ->
+                   Format.fprintf ppf 
+                   ("@[assert@ of@ msg_out@ effect@ failed.@ The@ effect@ " ^^
+                    "that occurred:@ %a@]")
+                   pp_effect eff)
+            end
+        | EffectFailOut ->
+            begin match eff with
+            | EffectFailOut -> ()
+            | _ -> 
+                error_message (loc peff)
+                (fun ppf ->
+                   Format.fprintf ppf 
+                   ("@[assert@ of@ fail_out@ effect failed.@ The@ " ^^
+                    "effect@ that@ occurred:@ %a@]")
+                   pp_effect eff)
+            end
         end
-      | EffectMsgOut (sme, ct) ->
-        begin match eff with
-        | EffectMsgOut (str , ctrl) ->
-          let smestr = typecheck_and_pp_sent_msg_expr (Option.get c.config) sme
-          in
-          if smestr<>str 
-          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-            "@[assert@ of@ EffectMsgOut@ failed.@ The@ message@ that@ was@ sent@
-            ,%s is different from the asserted one %s@]" str smestr)
-          else if ct = UcSpec.CtrlAdv && ctrl = UcInterpreter.CtrlEnv
-          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-             "@[assert@ of@ EffectMsgOut@ failed.@ The@ Env@ has@ control@
-              , asserted@ control@ was@ Adv@]")
-          else if ct = UcSpec.CtrlEnv && ctrl = UcInterpreter.CtrlAdv
-          then error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-             "@[assert@ of@ EffectMsgOut@ failed.@ The@ Adv@ has@ control@
-              , asserted@ control@ was@ Env@]")
-          else ()
-        | _ -> 
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectMsgOut@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
-        end
-      | EffectFailOut ->
-        begin match eff with
-        | EffectFailOut -> ()
-        | _ -> 
-          error_message (loc peff) (fun ppf -> Format.fprintf ppf 
-      "@[assert@ of@ EffectFailOut@ failed.@ The@ effect@ that@ occurred:@ %a@]"
-         pp_effect eff)
-        end
-      end
     end
   in
   
@@ -499,37 +516,41 @@ let interpret (lexbuf : L.lexbuf) =
       body()
     with
     | ErrorMessageExn when UcState.get_pg_mode() ->
-      prompt();
-      loop body
-    | e when UcState.get_pg_mode() ->
-      try
-        non_loc_error_message (fun ppf -> Format.fprintf ppf 
-        "@[Unhandled exception: %s\n%s@]"
-        (Printexc.to_string e)
-        (Printexc.get_backtrace ()))
-      with ErrorMessageExn ->
         prompt();
         loop body
+    | e when UcState.get_pg_mode() ->
+        try
+          non_loc_error_message
+          (fun ppf ->
+             Format.fprintf ppf 
+             "@[Unhandled exception: %s\n%s@]"
+             (Printexc.to_string e)
+             (Printexc.get_backtrace ()))
+        with ErrorMessageExn ->
+          prompt();
+          loop body
   in
 
   let done_body () : unit =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
-    | Send sme  -> send sme
-    | Run -> run (loc cmd)
-    | Step ppio -> step (loc cmd) ppio
-    | Addv tb -> addv tb 
-    | Addf (psy,pex) -> addf psy pex
-    | Prover ppinfo -> prover ppinfo
-    | Undo pi -> undo pi
-    | Finish -> donec()
-    | Quit -> exit 0
-    | Assert peff -> confirm peff
-    | Debug -> debug ()
-    | _ ->
-      error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ send,@ run,@ step,@ addv,@ addf,@ prover,@ undo,@ finish.@]")
+    | Send sme          -> send sme
+    | Run               -> run (loc cmd)
+    | Step ppio         -> step (loc cmd) ppio
+    | AddVar tb         -> addv tb 
+    | AddAss (psy, pex) -> addf psy pex
+    | Prover ppinfo     -> prover ppinfo
+    | Undo pi           -> undo pi
+    | Finish            -> donec ()
+    | Quit              -> exit 0
+    | Assert peff       -> confirm peff
+    | Debug             -> debug ()
+    | _                 ->
+        error_message (loc cmd)
+        (fun ppf ->
+           Format.fprintf ppf 
+           ("@[one@ of@ following@ commands@ expected:@ send,@ run,@ " ^^
+            "step,@ var,@ assumption,@ prover,@ finish@]"))
   in
 
   let done_loop (): unit =
@@ -540,12 +561,12 @@ let interpret (lexbuf : L.lexbuf) =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
     | Load psym -> load psym
-    | Undo pi -> undo pi
-    | Quit -> exit 0
-    | Debug -> debug ()
-    | _ ->
-    error_message (loc cmd)
-    (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
+    | Undo pi   -> undo pi
+    | Quit      -> exit 0
+    | Debug     -> debug ()
+    | _         ->
+      error_message (loc cmd)
+      (fun ppf -> Format.fprintf ppf "@[load@ command@ expected@]")
   in
 
   let load_loop () : unit =
@@ -555,13 +576,13 @@ let interpret (lexbuf : L.lexbuf) =
   let funexp_body () : unit =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
-    | Funex fe -> funexp fe
-    | Undo pi -> undo pi
-    | Quit -> exit 0
-    | Debug -> debug ()
-    | _ ->
-      error_message (loc cmd)
-    (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
+    | FunEx fe -> funexp fe
+    | Undo pi  -> undo pi
+    | Quit     -> exit 0
+    | Debug    -> debug ()
+    | _        ->
+        error_message (loc cmd)
+        (fun ppf -> Format.fprintf ppf "@[functionality@ command@ expected@]")
   in
 
   let funexp_loop () : unit = 
@@ -571,16 +592,18 @@ let interpret (lexbuf : L.lexbuf) =
   let world_body () : unit =
     let cmd = next_cmd lexbuf in 
     match (unloc cmd) with
-    | Addv tb -> addv tb (*TODO add to parser*)
-    | Addf (psy,pex) -> addf psy pex (*TODO add to parser*)
-    | Prover ppinfo -> prover ppinfo  
-    | World w -> world w
-    | Undo pi -> undo pi
-    | Quit -> exit 0
-    | Debug -> debug ()
-    | _ ->
+    | AddVar tb         -> addv tb
+    | AddAss (psy, pex) -> addf psy pex
+    | Prover ppinfo     -> prover ppinfo  
+    | World w           -> world w
+    | Undo pi           -> undo pi
+    | Quit              -> exit 0
+    | Debug             -> debug ()
+    | _                 ->
       error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf "@[addv,@ addf,@ prover,@ or@ world@ command@ expected@]")
+      (fun ppf ->
+         Format.fprintf ppf
+         "@[var,@ assumption,@ prover,@ real,@ or@ ideal@ command@ expected@]")
   in
 
   let world_loop () : unit=
@@ -590,29 +613,30 @@ let interpret (lexbuf : L.lexbuf) =
   let complete_loop () : unit =
     let c = currs() in
     match c.maps with
-    | None -> load_loop()
+    | None   -> load_loop()
     | Some _ ->
       match c.config_gen with
-      | None -> funexp_loop()
-      | Some _ -> world_loop()
+      | None   -> funexp_loop ()
+      | Some _ -> world_loop ()
   in
  
   let restart_body () : unit =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
-    | Load psym -> load psym
-    | Funex fe -> funexp fe
-    | World w -> world w
-    | Addv tb -> addv tb
-    | Addf (psy,pex) -> addf psy pex
-    | Prover ppinfo -> prover ppinfo
-    | Undo pi -> undo pi  
-    | Quit -> exit 0
-    | Debug -> debug ()
-    | _ ->
+    | Load psym         -> load psym
+    | FunEx fe          -> funexp fe
+    | World w           -> world w
+    | AddVar tb         -> addv tb
+    | AddAss (psy, pex) -> addf psy pex
+    | Prover ppinfo     -> prover ppinfo
+    | Undo pi           -> undo pi  
+    | Quit              -> exit 0
+    | Debug             -> debug ()
+    | _                 ->
       error_message (loc cmd)
-        (fun ppf -> Format.fprintf ppf 
-"@[one@ of@ following@ commands@ expected:@ load,@ functionality,@ real,@ ideal,@ addv,@ addf,@ quit.@]")
+      (fun ppf -> Format.fprintf ppf 
+         ("@[one@ of@ following@ commands@ expected:@ load,@ " ^^
+          "functionality,@ real,@ ideal,@ var,@ assumption@]"))
   in
       
   let restart_loop () : unit =
@@ -628,9 +652,9 @@ let interpret (lexbuf : L.lexbuf) =
   let rec interpreter_loop (): unit =
     prompt();
     begin 
-    match (currs()).config with
-    | Some _ -> done_loop()
-    | None -> setup_loop()
+      match (currs()).config with
+      | Some _ -> done_loop()
+      | None   -> setup_loop()
     end;
     interpreter_loop()
   in
@@ -649,8 +673,6 @@ let stdIOclient () =
 let file_client (file : string) =
   UcState.set_units();
   let ch = open_in file in
-  let lexbuf = lexbuf_from_channel file ch  in
+  let lexbuf = lexbuf_from_channel file ch in
   interpret lexbuf;
   close_in ch
-
-(*let _ = stdIOclient ()*)
