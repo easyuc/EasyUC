@@ -108,12 +108,12 @@ let pp_effect (ppf : Format.formatter) (e : effect) : unit =
   match e with
   | EffectOK                       -> ()
   | EffectRand id                  ->
-    Format.fprintf ppf "@[Note: random value was assigned to: %s@]" id
+    Format.fprintf ppf "@[note: random value was assigned to: %s@]" id
   | EffectMsgOut (pp_sme, ctrl)    ->
     Format.fprintf ppf 
-    "@[Message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
+    "@[message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
   | EffectFailOut                  -> 
-    Format.fprintf ppf "Note: \"fail.\" was called."
+    Format.fprintf ppf "note: \"fail.\" was called."
 
 let pp_interpreter_state 
 (fmt : Format.formatter) ( c : interpreter_state) : unit =
@@ -175,7 +175,7 @@ let interpret (lexbuf : L.lexbuf) =
         EcCommands.ucdsl_end();
         error_message (loc psym)
         (fun ppf -> Format.fprintf ppf
-          "@[Problem@ loading@ file.@ Try@ running@ first@ ucdsl -units %s @]" 
+          "@[problem@ loading@ file.@ try@ running@ first@ ucdsl -units %s @]" 
           (unloc psym))
     in
     let c = currs() in
@@ -298,24 +298,24 @@ let interpret (lexbuf : L.lexbuf) =
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
-             "@[Blocking:@ cannot@ decide@ if@ condition@]")
+             "@[blocking:@ cannot@ decide@ if@ condition@]")
       | StepBlockedMatch             ->
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
-             ("@[Blocking:@ cannot@ determine@ datatype@ " ^^
+             ("@[blocking:@ cannot@ determine@ datatype@ " ^^
               "constructor@ in@ match@]"))
       | StepBlockedPortOrAddrCompare ->
           error_message loc
           (fun ppf ->
              Format.fprintf ppf
-             ("@[Blocking:@ cannot@ decide@ port@ or@ address@ " ^^
+             ("@[blocking:@ cannot@ decide@ port@ or@ address@ " ^^
               "comparisons@]"))
     else
       error_message loc
       (fun ppf ->
          Format.fprintf ppf 
-         ("@[You@ can@ step@ through@ only@ when@ running@ code@ or@ " ^^
+         ("@[you@ can@ step@ through@ only@ when@ running@ code@ or@ " ^^
           "sending@ messages.@]"))
   in
 
@@ -503,11 +503,11 @@ let interpret (lexbuf : L.lexbuf) =
     then begin
       UcState.unset_debugging ();
       non_loc_warning_message (fun ppf -> Format.fprintf ppf 
-      "@[Debugging@ messages@ turned@ off.@]")
+      "@[debugging@ messages@ turned@ off.@]")
     end else begin
       UcState.set_debugging ();
       non_loc_warning_message (fun ppf -> Format.fprintf ppf 
-      "@[Debugging@ messages@ turned@ on.@]")
+      "@[debugging@ messages@ turned@ on.@]")
     end
   in
 
@@ -523,7 +523,7 @@ let interpret (lexbuf : L.lexbuf) =
           non_loc_error_message
           (fun ppf ->
              Format.fprintf ppf 
-             "@[Unhandled exception: %s\n%s@]"
+             "@[unhandled exception: %s\n%s@]"
              (Printexc.to_string e)
              (Printexc.get_backtrace ()))
         with ErrorMessageExn ->

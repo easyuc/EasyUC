@@ -1326,28 +1326,36 @@ let update_prover_infos_config (conf : config)
       let pi = update_prover_infos (env_of_gc c.gc) c.pi ppi in
       ConfigIdealSending {c with pi = pi}
 
-let add_rewriting_dbs_config (conf : config) (pqsym : pqsymbol list) : config =
+let rm_then_add_rewriting_dbs_config (conf : config)
+    (rm_then_add_pdbs : rm_then_add_pdbs) : config =
   match conf with
   | ConfigGen c          ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigGen {c with dbs = dbs}
   | ConfigReal c         ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigReal {c with dbs = dbs}
   | ConfigIdeal c        ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigIdeal {c with dbs = dbs}
   | ConfigRealRunning c  ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigRealRunning {c with dbs = dbs}
   | ConfigIdealRunning c ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigIdealRunning {c with dbs = dbs}
   | ConfigRealSending c  ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigRealSending {c with dbs = dbs}
   | ConfigIdealSending c ->
-      let dbs = add_rewriting_dbs (env_of_gc c.gc) c.dbs pqsym in
+      let dbs =
+        rm_then_add_rewriting_dbs (env_of_gc c.gc) c.dbs rm_then_add_pdbs in
       ConfigIdealSending {c with dbs = dbs}
 
 let rm_rewriting_dbs_config (conf : config) (pqsym : pqsymbol list) : config =

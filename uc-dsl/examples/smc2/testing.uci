@@ -27,14 +27,14 @@ Forwarding.FwAdv.fw_obs
  (epdp_port_port_univ).`enc (pt1, pt2))
 @((adv, 2))
 ctrl_adv.
-send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
+send ((adv, 2))@Forwarding.FwAdv.fw_ok$(func ++ [3]).
 run.
 assert msg_out
 ((func ++ [4], 1))@
 Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
 @((adv, 3))
 ctrl_adv.
-send ((adv, 3))@Forwarding.FwAdv.fw_ok@((func ++ [4], 1)).
+send ((adv, 3))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@
@@ -43,7 +43,7 @@ Forwarding.FwAdv.fw_obs
  epdp_port_port_key_univ.`enc ((func ++ [1], 1), (func ++ [1], 2), g ^ rand))
 @((adv, 7))
 ctrl_adv.
-send ((adv, 7))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
+send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
 run.
 assert msg_out
 ((func ++ [1; 1; 2], 1))@
@@ -51,7 +51,7 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1), epdp_key_univ.`enc (g ^ rand1))
 @((adv, 8))
 ctrl_adv.
-send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1; 1; 2], 1)).
+send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
 run.
 assert msg_out
 ((func ++ [1; 2], 1))@
@@ -61,7 +61,7 @@ Forwarding.FwAdv.fw_obs
  ((func, 1), (func, 2), epdp_text_key.`enc text1 ^^ (g ^ rand1 ^ rand)))
 @((adv, 5))
 ctrl_adv.
-send ((adv, 5))@Forwarding.FwAdv.fw_ok@((func ++ [1; 2], 1)).
+send ((adv, 5))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
 run.
 assert msg_out
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2
@@ -75,7 +75,7 @@ Forwarding.FwAdv.fw_obs
  epdp_port_port_key_univ.`enc ((func ++ [2], 1), (func ++ [2], 2), g ^ rand2))
 @((adv, 12))
 ctrl_adv.
-send ((adv, 12))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 1], 1)).
+send ((adv, 12))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 1])).
 run.
 assert msg_out
 ((func ++ [2; 1; 2], 1))@
@@ -83,7 +83,7 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1), epdp_key_univ.`enc (g ^ rand3))
 @((adv, 13))
 ctrl_adv.
-send ((adv, 13))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 2], 1)).
+send ((adv, 13))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 2])).
 run.
 assert msg_out
 ((func ++ [2; 2], 1))@
@@ -93,7 +93,7 @@ Forwarding.FwAdv.fw_obs
  ((func, 2), (func, 1), epdp_text_key.`enc text2 ^^ (g ^ rand3 ^ rand2)))
 @((adv, 10))
 ctrl_adv.
-send ((adv, 10))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1)).
+send ((adv, 10))@Forwarding.FwAdv.fw_ok$((func ++ [2; 2])).
 run.
 assert msg_out
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1
@@ -117,14 +117,14 @@ Forwarding.FwAdv.fw_obs
  (epdp_port_port_univ).`enc (pt1, pt2))
 @((adv, 2))
 ctrl_adv.
-send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
+send ((adv, 2))@Forwarding.FwAdv.fw_ok$((func ++ [3])).
 run.
 assert msg_out
 ((func ++ [4], 1))@
 Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
 @((adv, 3))
 ctrl_adv.
-send ((adv, 3))@Forwarding.FwAdv.fw_ok@((func ++ [4], 1)).
+send ((adv, 3))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@
@@ -133,7 +133,7 @@ Forwarding.FwAdv.fw_obs
  epdp_port_port_key_univ.`enc ((func ++ [1], 1), (func ++ [1], 2), g ^ rand))
 @((adv, 7))
 ctrl_adv.
-send ((adv, 7))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
+send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
 run.
 assert msg_out
 ((func ++ [1; 1; 2], 1))@
@@ -141,7 +141,7 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1), epdp_key_univ.`enc (g ^ rand1))
 @((adv, 8))
 ctrl_adv.
-send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1; 1; 2], 1)).
+send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
 run.
 (* here is a difference from the real execution *)
 assert msg_out
@@ -161,7 +161,7 @@ Forwarding.FwAdv.fw_obs
 @((adv, 6))
 ctrl_adv.
 *)
-send ((adv, 5))@Forwarding.FwAdv.fw_ok@((func ++ [1; 2], 1)).
+send ((adv, 5))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
 run.
 assert msg_out
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2
@@ -176,7 +176,7 @@ Forwarding.FwAdv.fw_obs
 @((adv, 12))
 ctrl_adv.
 (* real assertion has rand2 *)
-send ((adv, 12))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 1], 1)).
+send ((adv, 12))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 1])).
 run.
 assert msg_out
 ((func ++ [2; 1; 2], 1))@
@@ -184,7 +184,7 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1), epdp_key_univ.`enc (g ^ rand4))
 @((adv, 13))
 ctrl_adv.
-send ((adv, 13))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 2], 1)).
+send ((adv, 13))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 2])).
 run.
 assert msg_out
 ((func ++ [2; 2], 1))@
@@ -203,7 +203,7 @@ Forwarding.FwAdv.fw_obs
 @((adv, 10))
 ctrl_adv.
 *)
-send ((adv, 10))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1)).
+send ((adv, 10))@Forwarding.FwAdv.fw_ok$((func ++ [2; 2])).
 run.
 assert msg_out
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1

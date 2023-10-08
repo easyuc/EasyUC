@@ -41,9 +41,8 @@ val update_prover_infos_config :
 
 type rm_then_add_pdbs = pqsymbol list * pqsymbol list
 
-val add_rewriting_dbs_config : config -> pqsymbol list -> config
-val rm_rewriting_dbs_config  : config -> pqsymbol list -> config
-val pp_rewriting_dbs_config  : Format.formatter -> config -> unit
+val rm_then_add_rewriting_dbs_config : config -> rm_then_add_pdbs -> config
+val pp_rewriting_dbs_config          : Format.formatter -> config -> unit
 
 val add_var_to_config             : config -> psymbol -> pty -> config
 val add_var_to_config_make_unique : config -> psymbol -> pty -> config * symbol
