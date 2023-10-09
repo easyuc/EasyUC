@@ -113,7 +113,7 @@ let can_prove_smt (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos): bool
   let pregoal = get_only_pregoal proof in
   try 
     let b = EcSmt.check pi pregoal.g_hyps pregoal.g_concl in
-    Gc.compact ();
+    Gc.collect ();
     print_endline (match b with true -> "SMT true" | false -> "SMT false");
     b
   with _ ->
