@@ -93,8 +93,47 @@ To clean up the build state, you can run
 ./build-cleanup
 ```
 
-You may want to add `/pathto/bin/ucdsl` to your shell's search path.  Run
-`ucdsl -help` for information about how to invoke the tool.
+You may want to add `/pathto/bin/ucdsl` to your shell's search path.
+Run`ucdsl -help` for information about how to invoke the tool.
+
+Running UC DSL from the Command Line
+--------------------------------------------------------------------
+
+When run from the command line, `ucdsl` must be invoked on a single
+UC DSL (`.uc`) file. Error messages and warning are output to the
+standard error output, and the final exit status will be 0 if
+there are no errors, and 1 otherwise.
+
+When one UC DSL file requires (`uc_require`s) another UC DSL file,
+this makes the definitions of that file, plus those of all the
+EasyCrypt theories and `.uc` files required (directly, or indirectly) by
+that file available *with* explicit qualification.
+
+Requiring an EasyCrypt theory makes the definitions of that theory,
+plus those of all the EasyCrypt theories required (directly or
+indirectly) by that theory, available. If a `+` is used, the
+definitions of the theory itself are also made available *without*
+qualification; but that does not apply to the definitions of
+EasyCrypt theories indirectly required by that theory.
+
+The `-units` command line option checks that a `.uc` file, and all the
+files that are recursively `uc_required` when it is processed, are
+*units*, where a unit is either:
+
+* has one ideal functionality, no real functionalities and no
+  simulators, and has no extraneous interfaces; or
+
+* has one real functionality, one ideal functionality, one simulator,
+  and no extraneous interfaces, where the real and ideal
+  functionalities share the same composite direct interface, the
+  simulator uses the ideal functionality's basic adversarial interface
+  (which is not allowed to be a component of the real functionality's
+  composite adversarial interface (if any)); the above implies that the
+  simulator simulates the real functionality.
+
+The search path for `.uc` and `.ec` files includes the current directory,
+and can be extended with the `-include` (`-I`) option. E.g., `-I foo`
+means to also search in subdirectory `foo`.
 
 Emacs Major Mode for Editing UC DSL Files
 --------------------------------------------------------------------
@@ -122,20 +161,26 @@ UC DSL Interpreter
 
 The UC DSL interpreter can (like EasyCrypt) be run either in batch
 mode or interactively. Interpretation is guided by a script, placed in
-a `.uci` file. In a script, one can load a `.uc` file, which must
-typecheck with the `-units` command line option to `ucdsl`. One can
-then enter a real functionality expression, which is automatically
-turned into real and ideal worlds.  One can then select a world, and
-experiment with it by sending messages, playing the role of the UC
-environment or adversary. Assertions in the script can be used to
-check that an excected message is output to the UC environment or
-adversary at some stage of execution, or that failure happens at some
-stage, returning control to the environment.
+a `.uci` file. In a script, one can load a `.uc` file. This checks
+that this file, and all the UC DSL files that are recursively
+`uc_required`, are units.  One can then enter a real functionality
+expression, which is automatically turned into real and ideal worlds.
+One can then select a world, and experiment with it by sending
+messages, playing the role of the UC environment or
+adversary. Assertions in the script can be used to check that an
+excected message is output to the UC environment or adversary at some
+stage of execution, or that failure happens at some stage, returning
+control to the environment.
 
-Scripts are developed in Emacs, with `ucdsl` running as a client of
-[Proof General](https://proofgeneral.github.io). This allows one to
-step forward and backward in an interpretation script, much as one
-steps forward and backward in an EasyCrypt proof.
+Scripts are developed in Emacs, with `ucdsl` running in interactive
+mode as a client of [Proof
+General](https://proofgeneral.github.io). This allows one to step
+forward and backward in an interpretation script, much as one steps
+forward and backward in an EasyCrypt proof. Once developed, a `.uci`
+file can be checked in batch mode, by invoking `ucdsl` with the
+`-batch` command line option. In batch mode, any errors or warnings
+are output to the standard error output. If there are no errors,
+the final exit status will be 0, otherwise it will be 1.
 
 To set up Proof General to be able to work with `ucdsl`, you should carry
 out the following steps:
@@ -171,8 +216,7 @@ adding the path to `ucdsl` to the definition of `exec-path` and the
 setting of the `PATH` variable.
 
 Now you will be able to edit and interactively execute `.uci`
-interpreter scripts using Proof General. To process scripts in batch
-mode, use the `-batch` command line argument.
+interpreter scripts using Proof General.
 
 To learn how to use the interpreter, read and experiment with the
 script `testing.uci` in [`smc2`](examples/smc2).
