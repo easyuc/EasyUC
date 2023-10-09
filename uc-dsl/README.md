@@ -99,10 +99,10 @@ Run`ucdsl -help` for information about how to invoke the tool.
 Running UC DSL from the Command Line
 --------------------------------------------------------------------
 
-When run from the command line, `ucdsl` must be invoked on a single
-UC DSL (`.uc`) file. Error messages and warning are output to the
-standard error output, and the final exit status will be 0 if
-there are no errors, and 1 otherwise.
+When run from the command line, `ucdsl` must be invoked on a single UC
+DSL (`.uc`) file, which it will parse and typecheck. Error messages
+and warning are output to the standard error output, and the final
+exit status will be 0 if there are no errors, and 1 otherwise.
 
 When one UC DSL file requires (`uc_require`s) another UC DSL file,
 this makes the definitions of that file, plus those of all the
