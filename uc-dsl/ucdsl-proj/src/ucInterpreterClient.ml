@@ -167,19 +167,25 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let load (psym : psymbol) : unit =
-    let root = String.capitalize_ascii (unloc psym) in
-    EcCommands.ucdsl_new();
+    let root = unloc psym in  (* capitalized, because uident in parser *)
+    EcCommands.ucdsl_new ();
+    let pg_mode = UcState.get_pg_mode () in
+    (* if we're in pg_mode, temporarily revert to ordinary error/warning
+       messages, while we parse and typecheck file *)
+    let () = if pg_mode then UcState.unset_pg_mode () in
     let maps =
-    try
-      ( UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
-        (UcParseFile.FOID_Id psym)) 
-    with _ ->
-        EcCommands.ucdsl_end();
+      try
+        UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
+        (UcParseFile.FOID_Id psym)
+      with _ ->
+        if pg_mode then UcState.set_pg_mode ();
+        EcCommands.ucdsl_end_ignore();
         error_message (loc psym)
         (fun ppf -> Format.fprintf ppf
-          "@[problem@ loading@ file.@ try@ running@ first@ ucdsl -units %s @]" 
-          (unloc psym))
-    in
+          ("@[problem@ loading@ file.@ try@ running@ first@ ucdsl " ^^
+           "-units %s@]")
+        (unloc psym)) in
+    let () = if pg_mode then UcState.set_pg_mode () in
     let c = currs() in
     let news = 
       { c with
@@ -511,11 +517,11 @@ let interpret (lexbuf : L.lexbuf) =
     then begin
       UcState.unset_debugging ();
       non_loc_warning_message (fun ppf -> Format.fprintf ppf 
-      "@[debugging@ messages@ turned@ off.@]")
+      "@[debugging@ messages@ turned@ off@]")
     end else begin
       UcState.set_debugging ();
       non_loc_warning_message (fun ppf -> Format.fprintf ppf 
-      "@[debugging@ messages@ turned@ on.@]")
+      "@[debugging@ messages@ turned@ on@]")
     end
   in
 

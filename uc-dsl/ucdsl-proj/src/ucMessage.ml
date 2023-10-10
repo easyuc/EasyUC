@@ -11,6 +11,8 @@ let message_type_str mt =
   | WarningMessage -> "warning"
   | ErrorMessage   -> "error"
 
+let loc_is_stdin (l : EcLocation.t) : bool = l.loc_fname = "stdin"
+
 (* make column numbers as well as line numbers begin from 1 *)
 
 let loc_to_str (l : EcLocation.t) : string =
@@ -45,16 +47,18 @@ let message res mt loc_opt msgf =
   (match loc_opt with
    | None     ->
        if raw
-         then Printf.eprintf "%s:\n\n"   mt_str
+         then Printf.eprintf "%s:\n\n" mt_str
        else if pg_mode
          then Printf.eprintf "[%s:%s]\n\n" mt_str 
               (loc_to_str_pg EcLocation._dummy)
        else Printf.eprintf "[%s:]\n\n" mt_str
    | Some loc ->
        if raw
-         then Printf.eprintf "%s: %s\n\n"   mt_str (loc_to_str_raw loc)
+         then Printf.eprintf "%s: %s\n\n" mt_str (loc_to_str_raw loc)
        else if pg_mode
          then Printf.eprintf "[%s:%s]\n\n" mt_str (loc_to_str_pg loc)
+       else if loc_is_stdin loc
+         then Printf.eprintf "[%s:]\n\n" mt_str
        else Printf.eprintf "[%s: %s]\n\n" mt_str (loc_to_str loc)
   );
   msgf Format.err_formatter;

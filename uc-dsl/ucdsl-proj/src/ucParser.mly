@@ -1169,14 +1169,14 @@ icomm :
   | c = debug_cmd         { c }
 
 load_uc_file :
-  | load = lident; file = ident; 
+  | load = lident; file = uident; 
       {
         if (unloc load) = "load" 
         then Load file
         else error_message (loc load)
-              (fun ppf ->
-                 fprintf ppf
-                 "@[did@ you@ mean@ load@ instead@ of@ %s?@]" (unloc load))
+             (fun ppf ->
+                fprintf ppf
+                "@[did@ you@ mean@ load@ instead@ of@ %s?@]" (unloc load))
       }
 
 undo_cmd :

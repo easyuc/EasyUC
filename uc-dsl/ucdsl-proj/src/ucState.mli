@@ -51,6 +51,8 @@ val get_raw_messages : unit -> bool
 
 val set_pg_mode : unit -> unit
 
+val unset_pg_mode : unit -> unit
+
 val get_pg_mode : unit -> bool
 
 val set_pg_start_pos : int -> unit
@@ -82,7 +84,7 @@ val unset_debugging : unit -> unit
 
 val get_debugging : unit -> bool
 
-(* boolean saying whether top-level defintions should be required to
+(* boolean saying whether top-level definitions should be required to
    be grouped into units
 
    default is that grouping into units is not required, but it is

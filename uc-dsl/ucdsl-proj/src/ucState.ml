@@ -30,6 +30,8 @@ let pg_mode : bool ref = ref false
 
 let set_pg_mode () = pg_mode := true
 
+let unset_pg_mode () = pg_mode := false
+
 let get_pg_mode () = ! pg_mode
 
 let pg_start_pos : int ref = ref 0
