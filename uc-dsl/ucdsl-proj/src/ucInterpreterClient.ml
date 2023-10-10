@@ -671,18 +671,15 @@ let interpret (lexbuf : L.lexbuf) =
   in
   
   stack := [];
-  stack := init_state::!stack;
-  UcEcInterface.init();
+  stack := init_state :: !stack;
   interpreter_loop()
   
-let stdIOclient () =
-  UcState.set_units();
+let std_IO_client () =
   UcState.set_pg_mode();
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
 
 let file_client (file : string) =
-  UcState.set_units();
   let ch = open_in file in
   let lexbuf = lexbuf_from_channel file ch in
   interpret lexbuf;

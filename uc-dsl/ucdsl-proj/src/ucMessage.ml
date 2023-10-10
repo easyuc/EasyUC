@@ -39,28 +39,29 @@ exception ErrorMessageExn
 
 let message res mt loc_opt msgf =
   let mt_str  = message_type_str mt in
+  (* raw and pg_mode will never both be set *)
   let raw     = UcState.get_raw_messages () in
   let pg_mode = UcState.get_pg_mode () in
   (match loc_opt with
    | None     ->
        if raw
-       then Printf.eprintf "%s:\n\n"   mt_str
+         then Printf.eprintf "%s:\n\n"   mt_str
        else if pg_mode
-       then Printf.eprintf "[%s:%s]\n\n" mt_str 
-            (loc_to_str_pg EcLocation._dummy)
+         then Printf.eprintf "[%s:%s]\n\n" mt_str 
+              (loc_to_str_pg EcLocation._dummy)
        else Printf.eprintf "[%s:]\n\n" mt_str
    | Some loc ->
        if raw
-       then Printf.eprintf "%s: %s\n\n"   mt_str (loc_to_str_raw loc)
+         then Printf.eprintf "%s: %s\n\n"   mt_str (loc_to_str_raw loc)
        else if pg_mode
-       then Printf.eprintf "[%s:%s]\n\n" mt_str (loc_to_str_pg loc)
+         then Printf.eprintf "[%s:%s]\n\n" mt_str (loc_to_str_pg loc)
        else Printf.eprintf "[%s: %s]\n\n" mt_str (loc_to_str loc)
   );
   msgf Format.err_formatter;
   Format.pp_print_newline Format.err_formatter ();
   if pg_mode then
     begin
-      Printf.eprintf ";";
+      Printf.eprintf ";";  (* for Proof General *)
       Format.pp_print_newline Format.err_formatter ()
     end;
   res ()
@@ -95,6 +96,6 @@ let debugging_message msgf =
     Printf.eprintf "debugging:\n\n";
     msgf Format.err_formatter;
     Format.pp_print_newline Format.err_formatter ();
-    Printf.eprintf ";";
+    if UcState.get_pg_mode () then Printf.eprintf ";";
     Format.pp_print_newline Format.err_formatter ()
   end

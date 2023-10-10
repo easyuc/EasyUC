@@ -1,5 +1,5 @@
 (* UcInterpreterClient module interface *)
 
-val stdIOclient : unit -> unit
+val std_IO_client : unit -> unit
 
 val file_client : string -> unit

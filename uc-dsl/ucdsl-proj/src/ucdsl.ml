@@ -36,40 +36,47 @@ let margin_ref : int ref = ref 78
 let margin_arg n =
   (margin_ref := n; ())
 
-let debugging_ref : bool ref = ref false
+let interpreter_ref : bool ref = ref false
 
-let debugging_arg () =
-  (debugging_ref := true; ())
+let interpreter_arg () =
+  (interpreter_ref := true; ())
 
 let batch_ref : bool ref = ref false
 
 let batch_arg () =
   (batch_ref := true; ())
 
-let interpreter_ref : bool ref = ref false
+let debug_ref : bool ref = ref false
 
-let interpreter_arg () =
-  (interpreter_ref := true; ())
+let debug_arg () =
+  (debug_ref := true; ())
 
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
     "<dir> Add directory to include search path");
-   ("-raw-msg", Unit raw_msg_arg, "Issue raw messages");
-   ("-units", Unit units_arg, "Require grouping definitions into units");
    ("-margin", Int margin_arg,
     "<n> Set pretty printing margin (default is 78)");
-   ("-debug", Unit debugging_arg, "Print interpeter debugging messages");
-   ("-batch", Unit batch_arg, "Run interpreter in batch mode");
-   ("-interpreter", Unit interpreter_arg, "Run interpreter, implicit with -batch arg or when file ends with .uci. To run interpreter in interactive mode, omit the file argument." )]
+   ("-raw-msg", Unit raw_msg_arg, "Issue raw messages, for Emacs UC DSL mode");
+   ("-units", Unit units_arg, "Require grouping definitions into units");
+   ("-interpreter", Unit interpreter_arg,
+    "Run interpreter; implicit on .uci file; omit file to run interactively");
+   ("-debug", Unit debug_arg, "Print interpeter debugging messages");
+   ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file")
+  ]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
+
+let error_and_exit (ppf : Format.formatter -> unit) : unit =
+  ppf Format.err_formatter;
+  Format.pp_print_newline Format.err_formatter ();
+  exit 1
 
 let () =
   List.iter
   (fun x ->
      if (not (Sys.file_exists x) || not (Sys.is_directory x))
-     then non_loc_error_message_exit
+     then error_and_exit
           (fun ppf ->
              Format.fprintf ppf
              "@[does@ not@ exist@ or@ is@ not@ a@ directory:@ %s@]" x))
@@ -77,72 +84,91 @@ let () =
 
 let () = UcState.set_include_dirs (! include_dirs_ref)
 
-let file =
-  let files = ! anony_arg_ref in
-  match files with
-  | [file] -> Some file
-  | [] when ! interpreter_ref -> None
-  | _      ->
-      (usage arg_specs "Usage: ucdsl [options] file";
-       exit 1)
-
-let () =
-  if ! raw_msg_ref then UcState.set_raw_messages ()
-
-let () =
-  if ! units_ref then UcState.set_units()
-
 let () =
   let n = ! margin_ref in
   if n < 3
-  then non_loc_error_message_exit
+  then error_and_exit
        (fun ppf ->
           Format.fprintf ppf
           "@[invalid@ pretty@ printer@ margin:@ %d@]" n)
   else (Format.pp_set_margin Format.std_formatter n;
         Format.pp_set_margin Format.err_formatter n)
 
-let () =
-  if ! debugging_ref then UcState.set_debugging ()
+let check_file_exists (file : string) : unit =
+  if not (Sys.file_exists file)
+  then error_and_exit
+       (fun ppf ->
+          Format.fprintf ppf
+          "@[file@ does@ not@ exist:@ %s@]" file)
 
-let () =
-  if ! batch_ref then 
-  begin
-    UcState.set_batch_mode (); interpreter_arg ()
-  end
+(* file ends in ".uc" *)
 
-let () =
-  if file <> None 
-  then begin
-    let file = Option.get file in
-    let ext = Filename.extension file in
-    if (ext = ".uci") then interpreter_arg ()
-    ;
-    if (ext  <> ".uc" && ext <> ".uci")
-    then non_loc_error_message_exit
-         (fun ppf ->
-            Format.fprintf ppf
-            "@[file@ lacks@ \".uc\"@ or@ \".uci\"@ suffix:@ %s@]" file)
-    else if not (Sys.file_exists file)
-    then non_loc_error_message_exit
-         (fun ppf ->
-            Format.fprintf ppf
-            "@[file@ does@ not@ exist:@ %s@]" file)
-  else 
+let check_uc_file (file : string) : unit =
+  let forbid_option (opt : string) : unit =
+    error_and_exit
+    (fun ppf ->
+       Format.fprintf ppf
+       "@[-%s@ option@ not@ allowed@ when@ checking@ .uc@ file@]"
+       opt) in
+  let () = if ! raw_msg_ref then UcState.set_raw_messages () in
+  let () = if ! units_ref then UcState.set_units () in
+  let () = if ! interpreter_ref then forbid_option "interpreter" in
+  let () = if ! debug_ref then forbid_option "debug" in
+  let () = if ! batch_ref then forbid_option "batch" in
   let dir = Filename.dirname file in
-       UcState.add_highest_include_dirs dir
-  end
+  let () = UcState.add_highest_include_dirs dir in
+  let () = UcEcInterface.init () in
+  try
+    (ignore (parse_and_typecheck_file_or_id (FOID_File file));
+     exit 0) with
+  | ErrorMessageExn -> exit 1
+
+(* file ends in ".uc" *)
+
+let interpreter_file (file : string) : unit =
+  let forbid_option (opt : string) : unit =
+    error_and_exit
+    (fun ppf ->
+       Format.fprintf ppf
+       "@[-%s@ option@ not@ allowed@ when@ checking@ .uci@ file@]"
+       opt) in
+  let () = UcState.set_units () in
+  let () = if ! raw_msg_ref then forbid_option "raw_msg" in
+  let () = if ! batch_ref then UcState.set_batch_mode () in
+  let () = if ! debug_ref then UcState.set_debugging () in
+  let dir = Filename.dirname file in
+  let () = UcState.add_highest_include_dirs dir in
+  let () = UcEcInterface.init() in
+  try (UcInterpreterClient.file_client file; exit 0) with
+  | ErrorMessageExn -> exit 1
+
+let interpreter_std_in () : unit =
+  let forbid_option (opt : string) : unit =
+    error_and_exit
+    (fun ppf ->
+       Format.fprintf ppf
+       ("@[-%s@ option@ not@ allowed@ when@ running@ interpreter@ " ^^
+        "from@ standard@ input@]")
+       opt) in
+  let () = UcState.set_units () in
+  let () = if ! raw_msg_ref then forbid_option "raw_msg" in
+  let () = if ! batch_ref then forbid_option "batch" in
+  let () = if ! debug_ref then UcState.set_debugging () in
+  let () = UcEcInterface.init() in
+  UcInterpreterClient.std_IO_client (); exit 0
 
 let () =
-  UcEcInterface.init ();
-  try
-    if ! interpreter_ref
-    then begin
-      if file = None
-      then UcInterpreterClient.stdIOclient ()
-      else UcInterpreterClient.file_client (Option.get file)
-    end else begin
-      ignore (parse_and_typecheck_file_or_id (FOID_File (Option.get file)));
-      exit 0
-    end
-  with ErrorMessageExn -> exit 1
+  match ! anony_arg_ref with
+  | [file]                    ->
+      (match Filename.extension file with
+       | ".uc"  -> (check_file_exists file; check_uc_file file)
+       | ".uci" -> (check_file_exists file; interpreter_file file)
+       | _      ->
+           error_and_exit
+           (fun ppf ->
+              Format.fprintf ppf
+              "@[file@ lacks@ \".uc\"@ or@ \".uci\"@ suffix:@ %s@]" file))
+  | [] when ! interpreter_ref -> interpreter_std_in ()
+  | _                         ->
+      (usage arg_specs "Usage: ucdsl [options] file";
+       exit 1)

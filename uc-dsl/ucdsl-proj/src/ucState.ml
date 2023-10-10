@@ -26,20 +26,6 @@ let unset_raw_messages () = raw_messages := true
 
 let get_raw_messages () = ! raw_messages
 
-let debugging : bool ref = ref false
-
-let set_debugging () = debugging := true
-
-let unset_debugging () = debugging := false
-
-let get_debugging () = ! debugging
-
-let batch_mode : bool ref = ref false
-
-let set_batch_mode () = batch_mode := true
-
-let get_batch_mode () = ! batch_mode
-
 let pg_mode : bool ref = ref false
 
 let set_pg_mode () = pg_mode := true
@@ -51,6 +37,20 @@ let pg_start_pos : int ref = ref 0
 let set_pg_start_pos p  = pg_start_pos := p
 
 let get_pg_start_pos () = ! pg_start_pos
+
+let batch_mode : bool ref = ref false
+
+let set_batch_mode () = batch_mode := true
+
+let get_batch_mode () = ! batch_mode
+
+let debugging : bool ref = ref false
+
+let set_debugging () = debugging := true
+
+let unset_debugging () = debugging := false
+
+let get_debugging () = ! debugging
 
 let units : bool ref = ref false
 
