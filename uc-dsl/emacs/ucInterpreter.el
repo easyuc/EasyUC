@@ -216,7 +216,7 @@ error and then highlight in the script buffer."
  proof-shell-start-goals-regexp	 "^state:"
  proof-shell-end-goals-regexp	 "^;"
 
- proof-shell-eager-annotation-start "^\\[warning: \\|^debugging:\\|^effect:"
+ proof-shell-eager-annotation-start "^\\[warning:0-0\\]\\|^\\[warning:\\|^debugging:\\|^effect:"
  proof-shell-eager-annotation-end   "^;"
 
  proof-shell-quit-cmd		 "quit."

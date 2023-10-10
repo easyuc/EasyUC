@@ -59,9 +59,9 @@ let message res mt loc_opt msgf =
   );
   msgf Format.err_formatter;
   Format.pp_print_newline Format.err_formatter ();
-  if pg_mode then
+  if (pg_mode && (mt = WarningMessage)) then
     begin
-      Printf.eprintf ";";  (* for Proof General *)
+      Printf.eprintf ";";
       Format.pp_print_newline Format.err_formatter ()
     end;
   res ()
