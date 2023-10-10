@@ -67,7 +67,7 @@ If not, hide the uc-frame "
                    (ch-pos-end (string-to-number (nth 2 params)))
                  )
               (insert-file filenam)
-              (set-frame-name (concat "running in: " filenam))
+              (set-frame-name filenam)
               (let ((x (make-overlay ch-pos-beg ch-pos-end)))
                 (overlay-put x 'face '(:foreground "blue")))
               ;;(auto-raise-mode -1)
@@ -90,7 +90,7 @@ If not, hide the uc-frame "
   (proof-debug (concat "frame-with-uc-file of " str))
 
   (let ((stps (search "UC file position:" str)))
-    (if stps
+    (if (and stps (member uc-frame (frame-list))) 
       (uc-file-frame (substring str stps nil))
 ;;    (save-excursion (switch-to-buffer-other-frame "*UC file*"))
     )
