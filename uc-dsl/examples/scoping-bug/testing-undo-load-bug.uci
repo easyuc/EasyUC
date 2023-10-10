@@ -1,0 +1,25 @@
+(* this script shows why we need to pop the EcCommands stack of
+   scopes when we undo a load *)
+load KeyExchange_no_T.
+functionality KEReal.
+(* will fail at this point:
+var y : int.
+assumption y_eq : y = T.x.
+*)
+real.
+finish.
+load KeyExchange_T.  (* T is now in current scope *)
+undo 1.  (* back to right before functionality *)
+functionality KEReal.
+var y : int.
+assumption y_eq : y = T.x.  (* should not work! *)
+(*
+state:
+global context:
+(func : addr, adv : addr, IncFuncAdv : inc func adv, y : int, y_eq : y = x)
+
+worlds:
+KeyExchange_no_T.KEReal:1 ~
+KeyExchange_no_T.KEIdeal:1 / KeyExchange_no_T.KESim:1
+*)
+
