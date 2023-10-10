@@ -1169,7 +1169,7 @@ let pp_sim_state (gc : global_context) (iws : ideal_world_state)
   let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
   let pp_addr (ppf : formatter) (f_opt : form option) : unit =
     match f_opt with
-    | None   -> fprintf ppf "uninitialzed"
+    | None   -> fprintf ppf "uninitialized"
     | Some f ->
         fprintf ppf "@[initialized:@ %a@]"
         (EcPrinting.pp_form ppe) f in
