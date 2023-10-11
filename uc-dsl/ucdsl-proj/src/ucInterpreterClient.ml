@@ -246,7 +246,10 @@ let interpret (lexbuf : L.lexbuf) =
     let i = unloc pi in
     if (List.exists (fun is -> is.cmd_no = i) !stack)
     then begin
-      stack := List.filter (fun is -> is.cmd_no <= i) (!stack);
+      let dos, undos = List.partition (fun is -> is.cmd_no <= i) (!stack) in
+      stack := dos;
+      let undo_loads = List.filter (fun is -> is.ucdsl_new) undos in
+      List.iter (fun _ -> EcCommands.ucdsl_end_ignore()) undo_loads; 
       let c = currs() in
       print_state c
     end else
