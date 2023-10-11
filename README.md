@@ -6,7 +6,7 @@ Composable (UC) Security using the
 [EasyCrypt](https://www.easycrypt.info/trac/) proof assistant. This is
 joint work between researchers
 
-* [Ran Canetti]() (Boston University, canetti@bu.edu)
+* Ran Canetti (Boston University, canetti@bu.edu)
 * Tomislav Petrovic (RIT Croatia, tomislav.petrovic@croatia.rit.edu)
 * [Alley Stoughton](http://alleystoughton.us) (Boston University, stough@bu.edu)
 * [Mayank Varia](https://www.mvaria.com) (Boston University, varia@bu.edu)
