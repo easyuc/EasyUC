@@ -15,8 +15,8 @@ with the assistance of
 
 * [Megan Chen](https://cs-people.bu.edu/megchen/)
   (Boston University, megchen@bu.edu)
-* [Gollamudi Tarakaram](https://tarakaramg.github.io)
-  (Boston College, https://tarakaramg.github.io)
+* [Tarakaram Gollamudi](https://tarakaramg.github.io)
+  (Boston College, gollamudi.ram@gmail.com)
 * [Uğur Y. Yavuz](https://www.uguryav.uz) (Boston University, uyyavuz@bu.edu)
 
 In our architecture, functionalities (real protocols, or ideal
