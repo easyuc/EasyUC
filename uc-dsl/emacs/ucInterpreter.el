@@ -87,7 +87,7 @@ If not, hide the uc-frame "
   
 (defun frame-with-uc-file (cmd str)
   "call empty-frame if ucInterpreter shell output starts with UC file position:"
-  (proof-debug (concat "frame-with-uc-file of " str))
+  ;;(proof-debug (concat "frame-with-uc-file of " str))
 
   (let ((stps (search "UC file position:" str)))
     (if (and stps (member uc-frame (frame-list))) 
@@ -187,6 +187,22 @@ error and then highlight in the script buffer."
   (let ((span-staten (get-span-statenum span)))
        (list (format "undo %s." (int-to-string span-staten)))))
 
+(defun delete-state-text ()
+  "Remove \"state:\" in the configuration window."
+  (proof-debug "delete-state-text called")
+  (proof-with-current-buffer-if-exists proof-goals-buffer
+    (proof-debug (buffer-string))
+     (goto-char (point-max))
+     (when (re-search-backward "^state:\n" nil t)
+        (let* ((inhibit-read-only t)
+              )
+(proof-debug "found it!!")
+              (delete-region (match-beginning 0) (match-end 0))
+         )
+     )
+  )
+)
+
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
 
 (require 'proof-easy-config)		; easy configure mechanism
@@ -225,6 +241,8 @@ error and then highlight in the script buffer."
  proof-shell-error-regexp	 "^\\[error:"
  
  proof-shell-handle-output-system-specific 'frame-with-uc-file
+
+ proof-shell-handle-delayed-output-hook 'delete-state-text
 
  proof-shell-handle-error-or-interrupt-hook 
   'highlight-error-hook
