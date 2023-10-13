@@ -7,14 +7,17 @@ Composable (UC) Security using the
 joint work between researchers
 
 * Ran Canetti (Boston University, canetti@bu.edu)
-* Tomislav Petrovic (RIT Croatia, tomislav@bu.edu)
+* Tomislav Petrovic (RIT Croatia, tomislav.petrovic@croatia.rit.edu)
 * [Alley Stoughton](http://alleystoughton.us) (Boston University, stough@bu.edu)
-* Mayank Varia (Boston University, varia@bu.edu)
+* [Mayank Varia](https://www.mvaria.com) (Boston University, varia@bu.edu)
 
 with the assistance of
 
-* Megan Chen (Boston University, megchen@bu.edu)
-* Gollamudi Tarakaram (Brandeis University, gtr@brandeis.edu)
+* [Megan Chen](https://cs-people.bu.edu/megchen/)
+  (Boston University, megchen@bu.edu)
+* [Tarakaram Gollamudi](https://tarakaramg.github.io)
+  (Boston College, gollamudi.ram@gmail.com)
+* [Uğur Y. Yavuz](https://www.uguryav.uz) (Boston University, uyyavuz@bu.edu)
 
 In our architecture, functionalities (real protocols, or ideal
 functionalities) have hierarchical addresses, and we build
