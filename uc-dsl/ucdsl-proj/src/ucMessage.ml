@@ -97,9 +97,24 @@ let opt_loc_warning_message = message (fun () -> ()) WarningMessage
 let debugging_message msgf =
   if UcState.get_debugging ()
   then begin
-    Printf.eprintf "debugging:\n\n";
-    msgf Format.err_formatter;
-    Format.pp_print_newline Format.err_formatter ();
-    if UcState.get_pg_mode () then Printf.eprintf ";";
-    Format.pp_print_newline Format.err_formatter ()
+    if UcState.get_pg_mode ()
+    then begin
+      let dbprf = "#dbg>" in
+      let fmt = Format.str_formatter in 
+      let _ = Format.flush_str_formatter () in
+      let mg = Format.pp_get_margin Format.err_formatter () in
+      Format.pp_set_margin fmt (mg - (String.length dbprf));
+      msgf fmt;
+      let str = Format.flush_str_formatter () in
+      let nl = Str.regexp_string "\n" in
+      let dbgstr = Str.global_replace nl ("\n;\n"^dbprf) str in
+      Printf.eprintf "%s" (dbprf^dbgstr^"\n;\n")
+    end
+    else begin  
+      Printf.eprintf "debugging:\n\n";
+      msgf Format.err_formatter
+      (*Format.pp_print_newline Format.err_formatter ();
+      if UcState.get_pg_mode () then Printf.eprintf ";";
+      Format.pp_print_newline Format.err_formatter ()*)
+    end
   end
