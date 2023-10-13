@@ -101,13 +101,12 @@ let debugging_message msgf =
     then begin
       Printf.eprintf "\n<dbg>\n";
       msgf Format.err_formatter;
-      Printf.eprintf "\n</dbg>\n"
+      Format.pp_print_newline Format.err_formatter ();
+      Printf.eprintf "</dbg>\n"
     end
     else begin  
       Printf.eprintf "debugging:\n\n";
-      msgf Format.err_formatter
-      (*Format.pp_print_newline Format.err_formatter ();
-      if UcState.get_pg_mode () then Printf.eprintf ";";
-      Format.pp_print_newline Format.err_formatter ()*)
+      msgf Format.err_formatter;
+      Format.pp_print_newline Format.err_formatter ()
     end
   end

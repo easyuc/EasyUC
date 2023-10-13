@@ -507,21 +507,21 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
     (fun ppf ->
        fprintf ppf
        ("@[@[trying@ to@ prove@ truth@ or@ falsity@ " ^^
-        "of:@]@\n@\n@[%a@]@]@.")
+        "of:@]@\n@[%a@]@]")
        (pp_form (env_of_gc gc)) f) in
   let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   match UcEcFormEval.eval_condition gc f pi rw_lems with
   | UcEcFormEval.Bool b    ->
       (if b
        then debugging_message
-            (fun ppf -> fprintf ppf "@[formula@ proved@]@.")
+            (fun ppf -> fprintf ppf "@[formula@ proved@]")
        else debugging_message
-            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]@."));
+            (fun ppf -> fprintf ppf "@[formula's@ negation@ proved@]"));
       b
   | UcEcFormEval.Undecided ->
       (debugging_message
        (fun ppf ->
-          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]@."));
+          fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]"));
       raise ECProofEngine
 
 let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
@@ -530,7 +530,7 @@ let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[@[trying@ to@ simplify@ formula:@]@\n@\n@[%a@]@]@."
+       "@[@[trying@ to@ simplify@ formula:@]@\n@[%a@]@]"
        (pp_form (env_of_gc gc)) f) in
   let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   let f = UcEcFormEval.simplify_formula gc f rw_lems in
@@ -538,7 +538,7 @@ let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[@[result@ is:@]@\n@\n@[%a@]@]@."
+       "@[@[result@ is:@]@\n@[%a@]@]"
        (pp_form (env_of_gc gc)) f) in
   f
 
@@ -548,7 +548,7 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       "@[@[trying@ to@ deconstruct@ formula:@]@\n@\n@[%a@]@]@."
+       "@[@[trying@ to@ deconstruct@ formula:@]@\n@[%a@]@]"
        (pp_form (env_of_gc gc)) f) in
   let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   let (constr, forms) : symbol * form list =
@@ -561,8 +561,8 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     debugging_message
     (fun ppf ->
        fprintf ppf
-       ("@[@[result@ is:@]@\n@\n@[@[constructor:@ %s@];@ " ^^
-        "@[args:@ [@[%a@]]@]@.")
+       ("@[@[result@ is:@]@\n@[@[constructor:@ %s@];@ " ^^
+        "@[args:@ [@[%a@]]@]@]")
        constr
        (EcPrinting.pp_list ";@ " (pp_form (env_of_gc gc))) forms) in
   (constr, forms)
