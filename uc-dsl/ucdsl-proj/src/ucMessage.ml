@@ -99,16 +99,9 @@ let debugging_message msgf =
   then begin
     if UcState.get_pg_mode ()
     then begin
-      let dbprf = "#dbg>" in
-      let fmt = Format.str_formatter in 
-      let _ = Format.flush_str_formatter () in
-      let mg = Format.pp_get_margin Format.err_formatter () in
-      Format.pp_set_margin fmt (mg - (String.length dbprf));
-      msgf fmt;
-      let str = Format.flush_str_formatter () in
-      let nl = Str.regexp_string "\n" in
-      let dbgstr = Str.global_replace nl ("\n;\n"^dbprf) str in
-      Printf.eprintf "%s" (dbprf^dbgstr^"\n;\n")
+      Printf.eprintf "\n<dbg>\n";
+      msgf Format.err_formatter;
+      Printf.eprintf "\n</dbg>\n"
     end
     else begin  
       Printf.eprintf "debugging:\n\n";
