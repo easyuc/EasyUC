@@ -1,0 +1,8 @@
+description
+  Resolution: Testing when party of real functionality that serves a
+  basic adversarial interface sends message from initial state that is
+  not to adversary.
+.
+args: test.uc
+outcome: success
+.

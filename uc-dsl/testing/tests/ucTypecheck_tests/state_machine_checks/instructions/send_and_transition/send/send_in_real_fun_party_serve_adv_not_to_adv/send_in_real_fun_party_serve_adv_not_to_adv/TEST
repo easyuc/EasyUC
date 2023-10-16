@@ -1,0 +1,11 @@
+description
+  Testing when party of real functionality that serves a basic adversarial
+  interface sends message from initial state that is not to adversary.
+.
+args: test.uc
+outcome: failure
+[error: test.uc: from line 25 columns 16 to 27]
+
+send and transition of initial state of party of real functionality that
+serves basic adversarial interface must send adversarial message to adversary
+.
