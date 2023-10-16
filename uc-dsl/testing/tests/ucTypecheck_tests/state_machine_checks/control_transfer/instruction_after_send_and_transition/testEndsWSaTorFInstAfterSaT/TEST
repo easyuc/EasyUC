@@ -3,7 +3,7 @@ This test fails because no instruction allowed after control transfer.
 .
 args: testEndsWSaTorFInstAfterSaT.uc
 outcome: failure
-[error: testEndsWSaTorFInstAfterSaT.uc: from line 17 columns 29 to 68]
+[error: testEndsWSaTorFInstAfterSaT.uc: from line 17 columns 29 to 69]
 
 control transfer by "fail" or "send-and-transition" instruction is only
 allowed at end of message match clause
