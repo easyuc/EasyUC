@@ -96,6 +96,48 @@ If not, hide the uc-frame "
     )
   )
 )
+
+
+(setq proof-buffer-menu 
+  (cons "Buffers"
+	`(["Layout Windows" proof-layout-windows]
+	  ,proof-3-window-mode-policy
+	  ""
+	  ["Rotate Output Buffers"
+	   proof-display-some-buffers
+	   :visible (not proof-three-window-enable)
+	   :active (buffer-live-p proof-goals-buffer)]
+	  ["Clear Responses"
+	   pg-response-clear-displays
+	   :active (buffer-live-p proof-response-buffer)]
+	  "----"
+	  ["Active Scripting"
+	   (proof-switch-to-buffer proof-script-buffer)
+	   :active (buffer-live-p proof-script-buffer)]
+	  ["Configuration"
+	   (proof-switch-to-buffer proof-goals-buffer t)
+	   :active (buffer-live-p proof-goals-buffer)]
+	  ["Response"
+	   (proof-switch-to-buffer proof-response-buffer t)
+	   :active (buffer-live-p proof-response-buffer)]
+	  ["Trace"
+	   (proof-switch-to-buffer proof-trace-buffer)
+	   :active (buffer-live-p proof-trace-buffer)
+	   :visible proof-shell-trace-output-regexp]
+          ["UC file"
+	   (proof-switch-to-buffer uc-buffer)
+	   :active (buffer-live-p uc-buffer)]
+	  ["Shell"
+	   (proof-switch-to-buffer proof-shell-buffer)
+	   :active (buffer-live-p proof-shell-buffer)]))
+  )
+
+(defconst proof-config-menu
+  (list "----"
+	;; buffer menu might better belong in toolbar menu?
+	proof-buffer-menu
+	proof-quick-opts-menu)
+  "Proof General configuration menu.")
   
 (require 'proof) ;; sets some default values
 
@@ -267,6 +309,7 @@ error and then highlight in the script buffer."
     (rename-buffer "*configuration*")
   )
 )
+
 (add-hook 'ucInterpreter-shell-mode-hook 'ucInterpreter-shell-extra-config)
 
 (provide 'ucInterpreter)
