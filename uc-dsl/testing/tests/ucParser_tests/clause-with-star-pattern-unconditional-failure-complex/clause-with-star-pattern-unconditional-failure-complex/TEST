@@ -4,7 +4,7 @@ have instruction block consisting of { fail. }
 .
 args: bad.uc
 outcome: failure
-[error: bad.uc: from line 18 columns 16 to 29]
+[error: bad.uc: from line 18 columns 16 to 30]
 
 message match clause whose message pattern has path ending in a "*" must have
 instruction block that is simply failure

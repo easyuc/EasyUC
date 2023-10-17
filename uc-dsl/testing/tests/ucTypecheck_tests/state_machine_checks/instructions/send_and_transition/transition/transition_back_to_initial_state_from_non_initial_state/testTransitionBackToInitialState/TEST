@@ -1,9 +1,9 @@
 description
-The test checks a functionality transitioning back to an initial state.
+The test checks a party of a real functionality transitioning back to an initial state.
 .
 args: testTransitionBackToInitialState.uc
 outcome: failure
 [error: testTransitionBackToInitialState.uc: from line 20 columns 66 to 67]
 
-functionality cannot transition back to initial state
+party of real functionality cannot transition back to initial state
 .

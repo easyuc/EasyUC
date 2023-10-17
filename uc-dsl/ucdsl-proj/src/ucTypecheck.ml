@@ -343,10 +343,26 @@ type state_mid = state_body_mid located
    functionality and [RealFun; Party] in its simulator will be
    assigned the same port index *) 
 
-type kind =    (* kind of entity *)
-  | RealKind   (* real functionality *)
-  | IdealKind  (* ideal functionality *)
-  | SimKind    (* simulator *)
+type kind =  (* kind of entity *)
+  | RealPartyKind of bool  (* party of real functionality; bool is true iff
+                              party serves basic adversarial interface *)
+  | IdealKind              (* ideal functionality *)
+  | SimKind                (* simulator *)
+
+let is_real_kind (k : kind) : bool =
+  match k with
+  | RealPartyKind _ -> true
+  | _               -> false
+
+let is_ideal_kind (k : kind) : bool =
+  match k with
+  | IdealKind -> true
+  | _         -> false
+
+let is_sim_kind (k : kind) : bool =
+  match k with
+  | SimKind -> true
+  | _       -> false
 
 type state_context =
   {initial        : bool;                (* initial state? *)
@@ -1124,18 +1140,24 @@ let check_state_expr
         (fun ppf ->
            fprintf ppf "@[non-existing@ state:@ %s@]" (unloc se.id)) in
   let () =
-    if is_init && sc.kind = SimKind
-      then error_message (loc se.id)
-           (fun ppf ->
-              fprintf ppf
-              ("@[simulator@ cannot@ transition@ back@ " ^^
-               "to@ initial@ state@]"))
-    else if is_init
-      then error_message (loc se.id)
-           (fun ppf ->
-              fprintf ppf
-              ("@[functionality@ cannot@ transition@ back@ " ^^
-               "to@ initial@ state@]")) in
+    if is_init
+    then if is_real_kind sc.kind
+           then error_message (loc se.id)
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[party@ of@ real@ functionality@ cannot@ transition@ " ^^
+                    "back@ to@ initial@ state@]"))
+         else if is_ideal_kind sc.kind
+           then error_message (loc se.id)
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[ideal functionality@ cannot@ transition@ back@ " ^^
+                    "to@ initial@ state@]"))
+         else error_message (loc se.id)  (* simulator *)
+              (fun ppf ->
+                 fprintf ppf
+                 ("@[simulator@ cannot@ transition@ back@ " ^^
+                  "to@ initial@ state@]")) in
   let args = se.args in
   if List.length tys <> List.length (unloc args)
   then error_message (loc args)
@@ -1176,7 +1198,7 @@ let check_send_direct
            ("@[outgoing@ messages@ to@ sub-interfaces@ of@ composite@ " ^^
             "direct@ interfaces@ must@ have@ destination@ ports@]")) in
   let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = port_exp}
+  {path = msg.path; args = args; port_expr = port_exp}
 
 let check_send_adversarial
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1190,7 +1212,7 @@ let check_send_adversarial
            "@[adversarial@ messages@ must@ not@ have@ destination@ ports@]")
     | None          -> () in
   let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = None }
+  {path = msg.path; args = args; port_expr = None}
 
 let check_send_internal
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1205,7 +1227,7 @@ let check_send_internal
             "destination@ ports@]"))
     | None          -> () in
   let args = check_msg_arguments sa env ue msg.args param_tis in
-  { path = msg.path; args = args; port_expr = None}
+  {path = msg.path; args = args; port_expr = None}
 
 let is_msg_path_in_basic_inter_paths
     (mp : msg_path) (bips : basic_inter_path list) : bool =
@@ -1233,15 +1255,23 @@ let check_msg_expr
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
   let l = loc msg.path in
   match sc.kind with
-  | RealKind -> 
-      if is_msg_path_in_basic_inter_paths msg.path abip.direct
-        then check_send_direct sa env ue msg param_tis
-      else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+  | RealPartyKind serves_basic_adv -> 
+      if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
         then check_send_adversarial sa env ue msg param_tis
+      else if sc.initial && serves_basic_adv
+        then error_message l
+             (fun ppf ->
+                fprintf ppf
+                ("@[send@ and@ transition@ of@ initial@ state@ "   ^^
+                 "of@ party@ of@ real@ functionality@ that@ "      ^^
+                 "serves@ basic@ adversarial@ interface@ "         ^^
+                 "must@ send@ adversarial@ message@ to@ adversary"))
+      else if is_msg_path_in_basic_inter_paths msg.path abip.direct
+        then check_send_direct sa env ue msg param_tis
       else if is_msg_path_in_basic_inter_paths msg.path abip.internal
         then check_send_internal sa env ue msg param_tis
       else failure "impossible - will be one of above"
-  | IdealKind ->
+  | IdealKind                      ->
       if sc.initial
       then if is_msg_path_in_basic_inter_paths msg.path abip.direct
              then error_message l
@@ -1259,7 +1289,7 @@ let check_msg_expr
            else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
              then check_send_adversarial sa env ue msg param_tis
            else failure "impossible - will be one of above"
-  | SimKind ->
+  | SimKind                        ->
       if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
       then check_send_adversarial sa env ue msg param_tis
       else failure "impossible - will be one of above"
@@ -1618,7 +1648,8 @@ let check_lowlevel_state
 
 (* check the lower-level of a state_tyd IdMap.t state machine;
    used for states of both real and ideal functionalities, and
-   simulators; kind will be RealKind, IdealKind or SimKind *)
+   simulators; kind will be RealPartyKind b (where b says if the
+   party serves a basic adversarial interfadce), IdealKind or SimKind *)
 
 let check_lowlevel_states
     (abip : all_basic_inter_paths) (kind : kind)
@@ -1773,8 +1804,17 @@ let check_lowlevel_party
     get_all_basic_inter_paths_of_real_fun_party root
     dir_inter_map adv_inter_map fun_map id_dir_inter id_adv_inter
     params sub_funs updt.serves in
+  let serves_basic_adv =
+    match id_adv_inter with
+    | None              -> false
+    | Some id_adv_inter ->
+        Option.is_some
+        (List.find_opt
+         (fun x -> List.hd (unloc x) = id_adv_inter)
+         updt.serves) in
   let states =
-    check_lowlevel_states abip RealKind internal_ports updt.states in
+    check_lowlevel_states abip (RealPartyKind serves_basic_adv)
+    internal_ports updt.states in
   let serves = updt.serves in
   let ret : party_body_tyd = {serves = serves; states = states} in
   mk_loc (loc pdt) ret

@@ -15,7 +15,7 @@ functionality F implements D {
    match message with
      x@D.D.bla => {
 		match IntPair 0 0 with 
-		| IntPair i j => {fail.}
+		| IntPair i j => { if (i < j) { fail. } else { fail.} }
 		end
      }
    end

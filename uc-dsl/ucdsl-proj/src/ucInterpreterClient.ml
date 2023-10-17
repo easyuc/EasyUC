@@ -524,7 +524,7 @@ let interpret (lexbuf : L.lexbuf) =
     end else begin
       UcState.set_debugging ();
       non_loc_warning_message (fun ppf -> Format.fprintf ppf 
-      "@[debugging@ messages@ turned@ on@]")
+      "@[debugging@ messages@ turned@ on@ (see@ buffer@ *trace*)@]")
     end
   in
 
