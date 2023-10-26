@@ -333,14 +333,60 @@ let prelims (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : EcCoreGoal.proof =
   let proof_c = move_all_hyp_forms_to_concl proof_b in
   proof_c
 *)
-let process_rewrite1_core ?(close = true) s pt tc =
-  let tc = EcHiGoal.LowRewrite.t_rewrite_r (s, None, None) pt tc in
+
+let process_rewrite_core ?(close = true) 
+(rwi : EcHiGoal.LowRewrite.rwinfos)
+(pt  : EcProofTerm.pt_ev)
+(tc  : EcCoreGoal.tcenv1) =
+  let tc = EcHiGoal.LowRewrite.t_rewrite_r rwi pt tc in
   let cl = fun tc ->
     if EcFol.f_equal EcFol.f_true (EcCoreGoal.FApi.tc1_goal tc) then
       EcLowGoal.t_true tc
     else EcLowGoal.t_id tc
   in 
   if close then EcCoreGoal.FApi.t_last cl tc else tc
+
+(* adapted from EcHiGoal.ml process_delta *)
+let selective_rewrite_operator 
+(opp : EcPath.path) 
+(occ : EcMatching.occ)
+(tc  : EcCoreGoal.tcenv1) =
+  let pform_of_opp (opp : EcPath.path) : EcParsetree.pformula =
+    let qs = EcPath.toqsymbol opp in
+    let pqs = UcUtils.dummyloc qs in
+    UcUtils.dummyloc (EcParsetree.PFident (pqs, None))
+  in
+  let rwocci_of_occ (occ : EcMatching.occ) : EcParsetree.rwocci =
+    match occ with
+    | (`Inclusive, sint) -> `Inclusive sint
+    | (`Exclusive, sint) -> `Exclusive sint
+  in
+  let s = `LtoR in
+  let o = Some (rwocci_of_occ occ) in
+  let p = pform_of_opp opp in
+  EcHiGoal.process_delta ~und_delta:false (s, o, p) tc
+  
+
+let rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  let addr_ops : EcPath.path list = [] in
+  let is_addr_literal (form : EcCoreFol.form) : bool = false in
+  let find_occ (addr_op : EcPath.path) (form : EcCoreFol.form) 
+  : EcMatching.occ = (`Inclusive, EcMaps.Sint.empty) in
+  let rewrite (addr_op : EcPath.path) (proof : EcCoreGoal.proof) 
+  : EcCoreGoal.proof =
+    let pregoal = get_last_pregoal proof in
+    let occ = find_occ addr_op pregoal.g_concl in
+    if EcMaps.Sint.is_empty (snd occ) 
+    then 
+      proof
+    else
+      let tac = selective_rewrite_operator addr_op occ in 
+      run_tac tac proof
+  in
+  proof
+
+let process_rewrite1_core ?(close = true) s pt tc =
+  process_rewrite_core ~close:close (s, None, None) pt tc
 
 let intro1_rw s tc = (*modified from ecHiGoal.ml*)
   let h = EcIdent.create "_" in
