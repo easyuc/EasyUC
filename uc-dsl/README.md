@@ -189,9 +189,9 @@ out the following steps:
 directory, which will be called something like
 `.emacs.d/elpa/proof-general-20211217.1753` in your home directory.
 
-* In this directory, create a new subdirectory, `ucInterpreter`. Copy
-the file `ucInterpreter.el` of the [`emacs`](emacs) directory to
-`ucInterpreter`.
+* In this directory, create a new subdirectory, `ucdsl-interpreter`. Copy
+the file `ucdsl-interpreter.el` of the [`emacs`](emacs) directory to
+`ucdsl-interpreter`.
 
 * In the `generic` subdirectory, add following triple
 to the existing `proof-site.el` file, putting this next to the triples
@@ -199,7 +199,7 @@ for proof assistants including `EasyCrypt` in the definition of
 `proof-assistant-table-default`:
 
 ```
-(ucInterpreter "UCInterpreter" "uci")
+(ucdsl-interpreter "UC DSL Interpreter" "uci")
 ```
 
 * Then (editing this file in Emacs) byte compile it using the command
@@ -217,6 +217,27 @@ setting of the `PATH` variable.
 
 Now you will be able to edit and interactively execute `.uci`
 interpreter scripts using Proof General.
+
+If you would like to customize the load paths used by EasyCrypt and
+the UC DSL interpreter when running in Proof General, you can
+create a file `.dir-locals.el` in the current directory with
+contents
+
+```
+;;; Directory Local Variables            -*- no-byte-compile: t -*-
+;;; For more information see (info "(emacs) Directory Variables")
+
+(
+ (easycrypt-mode .
+  ((easycrypt-load-path . (<dir1> <dir2> ...))))
+ (ucdsl-interpreter-mode .
+  ;; ../../prelude is automatically included
+  ((ucdsl-interpreter-load-path . (<dir1> <dir2> ...))))
+)
+```
+
+where `<dir1> <dir2> ...` has been replaced by a sequence of
+directories, inside double quotation marks. E.g., `"foo" "goo"`.
 
 To learn how to use the interpreter, read and experiment with the
 script `testing.uci` in [`smc2`](examples/smc2).
