@@ -218,6 +218,11 @@ setting of the `PATH` variable.
 Now you will be able to edit and interactively execute `.uci`
 interpreter scripts using Proof General.
 
+Note that if you are editing EasyCrypt (`.ec` or `.eca`) files
+simultaneously with UC DSL interpreter scripts (`.uci`), you will
+need to do this using two instances of Emacs, as Proof General
+can only work with one program at a time.
+
 If you would like to customize the load paths used by EasyCrypt and
 the UC DSL interpreter when running in Proof General, you can
 create a file `.dir-locals.el` in the current directory with
