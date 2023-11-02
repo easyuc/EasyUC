@@ -346,45 +346,141 @@ let process_rewrite_core ?(close = true)
   in 
   if close then EcCoreGoal.FApi.t_last cl tc else tc
 
+(* adapted from ecHiGoal.ml process_delta *)
+let process_delta_when_args_are_addr_literals p tc =
+  let is_addr_literal (form : EcCoreFol.form) : bool =
+    let is_int_literal (form : EcCoreFol.form) : bool =
+      match form.f_node with
+      | Fint _ -> true
+      | _ -> false
+    in
+    let is_list_cons (form : EcCoreFol.form) : bool =
+      let lcp = EcPath.fromqsymbol (["List"],"(::)") in
+      match form.f_node with
+      | Fop (p, _) when p = lcp -> true
+      | _ -> false
+    in
+    let is_empty_list (form : EcCoreFol.form) : bool =
+      let elp = EcPath.fromqsymbol (["List"],"\"[]\"") in
+      match form.f_node with
+      | Fop (p, _) when p = elp -> true
+      | _ -> false
+    in
+    let rec check (form : EcCoreFol.form) : bool =
+      match form.f_node with
+      | Fapp (fop, []) -> is_empty_list fop
+      | Fapp (fop, fargs) ->
+         if (List.length fargs) >= 2
+         then
+           (is_list_cons fop) &&
+           (is_int_literal (List.hd fargs)) &&
+           (check (List.hd (List.tl fargs)))
+         else false
+      | _ -> false
+                                                       
+    in
+    check form
+  in
+  let env, hyps, concl = EcCoreGoal.FApi.tc1_eflat tc in  
+
+  (* Continue with matching based unfolding *)
+  let (ptenv, p) =
+    let (ps, ue), p = EcProofTyping.tc1_process_pattern tc p in
+    let ev = EcMatching.MEV.of_idents (EcIdent.Mid.keys ps) `Form in
+      (EcProofTerm.ptenv (EcCoreGoal.(!!)tc) hyps (ue, ev), p)
+  in
+
+  let (tvi, tparams, body, args, dp) =
+    match EcFol.sform_of_form p with
+    | EcFol.SFop (p, args) -> begin
+        let op = EcEnv.Op.by_path (fst p) env in
+
+        match op.EcDecl.op_kind with
+        | EcDecl.OB_oper (Some (EcDecl.OP_Plain (f, _))) ->
+            (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
+        | EcDecl.OB_pred (Some (EcDecl.PR_Plain f)) ->
+            (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
+        | _ ->
+            EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "the operator cannot be unfolded"
+    end
+    | _ -> EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "not headed by an operator/predicate"
+
+  in
+
+  let ri = { EcReduction.full_red with
+               delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent)} in
+  let na = List.length args in
+
+  begin
+    let matches =
+      try  ignore (EcProofTerm.pf_find_occurence ptenv ~ptn:p concl); true
+      with EcProofTerm.FindOccFailure _ -> false
+    in
+
+    if matches then begin
+      let p    = EcProofTerm.concretize_form ptenv p in
+      let cpos =
+        let test = fun _ fp ->
+          let (fp : EcCoreFol.form) =
+            match fp.EcCoreFol.f_node with
+            | EcCoreFol.Fapp (h, hargs) when List.length hargs > na ->
+                let (a1, a2) = BatList.takedrop na hargs in
+                EcCoreFol.f_app h a1
+                  (EcTypes.toarrow
+                     (List.map EcCoreFol.f_ty a2) fp.EcCoreFol.f_ty)
+            | _ -> fp
+          in
+          if EcReduction.is_alpha_eq hyps p fp
+          then `Accept (-1)
+          else `Continue
+        in
+          EcMatching.FPosition.select test concl
+      in
+
+      let target =
+        EcMatching.FPosition.map cpos
+          (fun topfp ->
+            let (fp, args) = EcFol.destr_app topfp in
+            
+            match EcFol.sform_of_form fp with
+            | EcFol.SFop ((_, tvi), []) ->
+              if List.for_all is_addr_literal args
+              then begin
+                let subst = EcTypes.Tvar.init (List.map fst tparams) tvi in
+                let body  = EcFol.Fsubst.subst_tvar subst body in
+                let body  = EcCoreFol.f_app body args topfp.f_ty in
+                try  EcReduction.h_red EcReduction.beta_red hyps body
+                with EcEnv.NotReducible -> body
+              end else
+                topfp
+           | _ -> assert false)
+          concl
+      in
+        EcLowGoal.t_change ~ri ?target:None target tc
+    end else EcLowGoal.t_id tc
+  end
+
+
 (* adapted from EcHiGoal.ml process_delta *)
 let selective_rewrite_operator 
 (opp : EcPath.path) 
-(occ : EcMatching.occ)
 (tc  : EcCoreGoal.tcenv1) =
   let pform_of_opp (opp : EcPath.path) : EcParsetree.pformula =
     let qs = EcPath.toqsymbol opp in
     let pqs = UcUtils.dummyloc qs in
     UcUtils.dummyloc (EcParsetree.PFident (pqs, None))
   in
-  let rwocci_of_occ (occ : EcMatching.occ) : EcParsetree.rwocci =
-    match occ with
-    | (`Inclusive, sint) -> `Inclusive sint
-    | (`Exclusive, sint) -> `Exclusive sint
-  in
-  let s = `LtoR in
-  let o = Some (rwocci_of_occ occ) in
   let p = pform_of_opp opp in
-  EcHiGoal.process_delta ~und_delta:false (s, o, p) tc
+  process_delta_when_args_are_addr_literals p tc
   
 
 let rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let addr_ops : EcPath.path list = [] in
-  let is_addr_literal (form : EcCoreFol.form) : bool = false in
-  let find_occ (addr_op : EcPath.path) (form : EcCoreFol.form) 
-  : EcMatching.occ = (`Inclusive, EcMaps.Sint.empty) in
-  let rewrite (addr_op : EcPath.path) (proof : EcCoreGoal.proof) 
-  : EcCoreGoal.proof =
-    let pregoal = get_last_pregoal proof in
-    let occ = find_occ addr_op pregoal.g_concl in
-    if EcMaps.Sint.is_empty (snd occ) 
-    then 
-      proof
-    else
-      let tac = selective_rewrite_operator addr_op occ in 
-      run_tac tac proof
-  in
-  proof
-
+  List.fold_left (fun proof opp ->
+    let tac = selective_rewrite_operator opp in
+    run_tac tac proof  
+    ) proof addr_ops
+  
 let process_rewrite1_core ?(close = true) s pt tc =
   process_rewrite_core ~close:close (s, None, None) pt tc
 
