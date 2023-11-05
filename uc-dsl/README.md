@@ -43,20 +43,24 @@ Package Manager [opam](https://opam.ocaml.org),
 Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
 [Bisect_ppx](https://github.com/aantron/bisect_ppx)
 [EasyCrypt](https://github.com/EasyCrypt/easycrypt) and [Proof
-General](https://proofgeneral.github.io).  The easiest approach is to
-start by installing `opam` and then [installing
-EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then you must
-only install `Bisect_ppx`, via the `opam` command: `opam install
-bisect_ppx`.
+General](https://proofgeneral.github.io).  UC DSL is known to be
+compatible with OCaml Compiler version 5.1.1, Dune 3.13.0 and Why3
+1.7.1. The easiest approach is to start by installing `opam` and then
+[installing EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then
+you must only install `Bisect_ppx`, via the `opam` command: `opam
+install bisect_ppx`.
+
+Be sure to use <kbd>easycrypt</kbd> to configure <kbd>why3</kbd>, by
+running:
+```
+easycrypt why3config
+```
 
 Here are some more gentle [instructions for installing EasyCrypt and
 getting the Emacs text editor to work with
 it using Proof General](https://alleystoughton.us/easycrypt-installation.html).
 In particular, these instructions explain how to tell Emacs
 where to find the EasyCrypt executable on macOS.
-
-UC DSL is known to be compatible with OCaml Compiler version 5.1.0,
-Dune 3.12.1 and Why3 1.7.0.
 
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
@@ -253,7 +257,10 @@ where `<dir1> <dir2> ...` has been replaced by a sequence of
 directories, inside double quotation marks. E.g., `"foo" "goo"`.
 
 To learn how to use the interpreter, read and experiment with the
-script `testing.uci` in [`smc2`](examples/smc2).
+script `testing.uci` in [`smc2`](examples/smc2). A variation of `smc2`
+involving the corruption of a party and private (non-adversarially
+mediated) forwarding can be found in
+[`smc2-extra`](examples/smc2-extra).
 
 Unit Testing
 --------------------------------------------------------------------

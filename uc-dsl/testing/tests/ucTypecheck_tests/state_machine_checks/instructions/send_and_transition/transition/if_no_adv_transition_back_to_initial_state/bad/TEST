@@ -1,0 +1,10 @@
+description
+  Test where an ideal functionality with no basic adversarial interface
+  tries to transition back to its initial state.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 14 columns 48 to 52]
+
+ideal functionality cannot transition back to initial state
+.

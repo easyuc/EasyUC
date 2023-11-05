@@ -161,8 +161,14 @@ let adv_int_simulated
       let ifunu = EcLocation.unloc ifun in
       let ifbt = ideal_fun_body_tyd_of ifunu in
       let ifroot = fst (snd nmif) in
-      let adv_int_sp =  (ifroot, ifbt.id_adv_inter) in
-      IdPairMap.add (sbt.sims,fst nmif) adv_int_sp ret) ret nmifs
+      if ifbt.id_adv_inter<>None
+      then begin
+        let adv_int_sp =  (ifroot, (EcUtils.oget ifbt.id_adv_inter)) in
+        IdPairMap.add (sbt.sims,fst nmif) adv_int_sp ret
+        end
+      else
+        ret
+    ) ret nmifs
   
 
 let generate_ec (mt : maps_tyd) : unit =

@@ -1,0 +1,8 @@
+description
+  Resolution of simulator checking test in which simulated real
+  functionality has two parameters from different units
+  and so where the message paths won't be interchangeable.
+.
+args: -I supporting SMC2.uc
+outcome: success
+.

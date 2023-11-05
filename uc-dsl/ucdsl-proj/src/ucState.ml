@@ -54,6 +54,14 @@ let unset_debugging () = debugging := false
 
 let get_debugging () = ! debugging
 
+let run_print_pos : bool ref = ref false
+
+let set_run_print_pos () = run_print_pos := true
+
+let unset_run_print_pos () = run_print_pos := false
+
+let get_run_print_pos () = ! run_print_pos
+
 let units : bool ref = ref false
 
 let set_units () = units := true

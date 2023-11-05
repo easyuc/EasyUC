@@ -81,14 +81,13 @@
   let pflist loc ti (es : pformula    list) : pformula    =
     List.fold_right (fun e1 e2 -> pf_cons loc ti e1 e2) es (pf_nil loc ti)
 
-  let mk_axiom  ?(nosmt = false) ~locality (x, ty, pv, vd, f) k =
+  let mk_axiom ~locality (x, ty, pv, vd, f) k =
     { pa_name     = x;
       pa_tyvars   = ty;
       pa_pvars   = pv;
       pa_vars     = vd;
       pa_formula  = f;
       pa_kind     = k;
-      pa_nosmt    = nosmt;
       pa_locality = locality; }
 
   let mk_simplify l =
@@ -500,7 +499,6 @@
 %token MODULE
 %token MOVE
 %token NE
-%token NOSMT
 %token NOT
 %token NOTATION
 %token OF
@@ -1642,19 +1640,10 @@ oracle_restr:
 (* -------------------------------------------------------------------- *)
 (* Module restrictions *)
 
-mod_restr_el:
-  | f=lident COLON orcls=option(oracle_restr)
-    { { pmre_name = f; pmre_orcls = orcls; } }
-
 mod_restr:
   | LBRACE mr=mem_restr RBRACE
-    { { pmr_mem = mr; pmr_procs = [] } }
-  | LBRACKET l=rlist1(mod_restr_el,COMMA) RBRACKET
-    { { pmr_mem = []; pmr_procs = l } }
-  | LBRACE mr=mem_restr RBRACE LBRACKET l=rlist1(mod_restr_el,COMMA) RBRACKET
-    { { pmr_mem = mr;	pmr_procs = l } }
-  | LBRACKET l=rlist1(mod_restr_el,COMMA) RBRACKET LBRACE mr=mem_restr RBRACE
-    { { pmr_mem = mr;	pmr_procs = l } }
+    { { pmr_mem = mr } }
+
 
 (* -------------------------------------------------------------------- *)
 (* Modules interfaces                                                   *)
@@ -1670,11 +1659,11 @@ mod_restr:
     { { pmty_pq = x; pmty_mem = Some mr; } }
 
 sig_def:
-| pi_locality=loc(locality) MODULE TYPE pi_name=uident args=sig_params* mr=mod_restr? EQ i=sig_body
+| pi_locality=loc(locality) MODULE TYPE pi_name=uident args=sig_params* EQ i=sig_body
     { let pi_sig =
         Pmty_struct { pmsig_params = List.flatten args;
                       pmsig_body   = i;
-			                pmsig_restr  = mr; } in
+			               } in
       { pi_name; pi_sig; pi_locality = locality_as_local pi_locality; } }
 
 sig_body:
@@ -1851,7 +1840,7 @@ op_or_const:
 | CONST { `Const }
 
 operator:
-| locality=locality k=op_or_const st=nosmt tags=bracket(ident*)?
+| locality=locality k=op_or_const tags=bracket(ident*)?
     x=plist1(oident, COMMA) tyvars=tyvars_decl? args=ptybindings_opdecl?
     sty=prefix(COLON, loc(type_exp))? b=seq(prefix(EQ, loc(opbody)), opax?)?
 
@@ -1867,10 +1856,9 @@ operator:
       po_args     = odfl ([], None) args;
       po_def      = opdef_of_opbody sty (omap (unloc |- fst) b);
       po_ax       = obind snd b;
-      po_nosmt    = st;
       po_locality = locality; } }
 
-| locality=locality k=op_or_const st=nosmt tags=bracket(ident*)?
+| locality=locality k=op_or_const tags=bracket(ident*)?
     x=plist1(oident, COMMA) tyvars=tyvars_decl? args=ptybindings_opdecl?
     COLON LBRACE sty=loc(type_exp) PIPE reft=form RBRACE AS rname=ident
 
@@ -1882,7 +1870,6 @@ operator:
       po_args     = odfl ([], None) args;
       po_def      = opdef_of_opbody sty (Some (`Reft (rname, reft)));
       po_ax       = None;
-      po_nosmt    = st;
       po_locality = locality; } }
 
 opbody:
@@ -2049,21 +2036,17 @@ lemma_decl:
   COLON f=form
     { (x, tyvars, predvars, pd, f) }
 
-nosmt:
-| NOSMT { true  }
-| empty { false }
-
 axiom_tc:
 | /* empty */       { PLemma None }
 | BY bracket(empty) { PLemma (Some None) }
 | BY t=tactics      { PLemma (Some (Some t)) }
 
 axiom:
-| l=locality AXIOM ids=bracket(ident+)? o=nosmt d=lemma_decl
-    { mk_axiom ~locality:l ~nosmt:o d (PAxiom (odfl [] ids)) }
+| l=locality AXIOM ids=bracket(ident+)? d=lemma_decl
+    { mk_axiom ~locality:l d (PAxiom (odfl [] ids)) }
 
-| l=locality LEMMA o=nosmt d=lemma_decl ao=axiom_tc
-    { mk_axiom ~locality:l ~nosmt:o d ao }
+| l=locality LEMMA d=lemma_decl ao=axiom_tc
+    { mk_axiom ~locality:l d ao }
 
 | l=locality  EQUIV x=ident pd=pgtybindings? COLON p=loc( equiv_body(none)) ao=axiom_tc
 | l=locality  HOARE x=ident pd=pgtybindings? COLON p=loc( hoare_body(none)) ao=axiom_tc
@@ -3666,12 +3649,11 @@ clone_override:
 | TYPE ps=cltyparams x=qident mode=opclmode t=loc(type_exp)
    { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
 
-| OP st=nosmt x=qoident tyvars=bracket(tident*)?
+| OP x=qoident tyvars=bracket(tident*)?
     p=ptybinding1* sty=ioption(prefix(COLON, loc(type_exp)))
     mode=loc(opclmode) f=form
 
    { let ov = {
-       opov_nosmt  = st;
        opov_tyvars = tyvars;
        opov_args   = List.flatten p;
        opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;

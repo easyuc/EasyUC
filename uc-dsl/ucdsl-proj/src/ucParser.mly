@@ -622,8 +622,10 @@ comp_item :
    (listed first), and optionally implements an adversarial interface
    (listed second).  A real functionality either implements no
    adversarial interface, or implements a composite adversarial
-   interface. An ideal functionality must implement a basic
-   adversarial interface.
+   interface. An ideal functionality optionally implements an
+   adversarial interface; None is used for one that has no
+   communication with the adversary (it will not have an associated
+   simulator).
 
    The body of the functionality has a different form depending upon
    whether the functionality is real or ideal. The body of a real

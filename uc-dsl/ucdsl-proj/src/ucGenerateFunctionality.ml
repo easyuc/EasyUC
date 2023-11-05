@@ -533,11 +533,14 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
       r (pp_type sc) msg_ty;
     Format.fprintf ppf
       "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ (%a)@ /\\@ envport %s %s.`3)@]"
-         m mode_Dir m _self print_dir_pi_guard()  _self m;
+      m mode_Dir m _self print_dir_pi_guard()  _self m;
+    if ifbt.id_adv_inter<>None
+    then begin 
      Format.fprintf ppf "\\/";
      Format.fprintf ppf
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
-          m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m adv;
+       m mode_Adv m _self m (uc_name (EcUtils.oget ifbt.id_adv_inter)) m adv
+     end;
     Format.fprintf ppf "@;<0 2>@[%s %s %s(%s);@]" r "<@" parties_str m;
     Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
   in

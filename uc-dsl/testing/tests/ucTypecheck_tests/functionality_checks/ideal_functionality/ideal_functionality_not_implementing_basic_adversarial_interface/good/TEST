@@ -1,0 +1,7 @@
+description 
+  Resolution in which ideal functionality implements only a direct
+  composite interface.
+.
+args: good.uc
+outcome: success
+.

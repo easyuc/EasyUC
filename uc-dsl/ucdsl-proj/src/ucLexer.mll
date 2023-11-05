@@ -81,7 +81,7 @@
      "goal"; "have"; "hoare"; "idtac"; "import"; "include";
      "inductive"; "inline"; "instance"; "iota"; "is"; "islossless";
      "kill"; "lemma"; "local"; "logic"; "modpath"; "module"; "move";
-     "nosmt"; "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "print";
+     "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "print";
      "pragma"; "pred"; "proc"; "progress"; "proof"; "qed"; "rcondf";
      "rcondt"; "realize"; "reflexivity"; "remove"; "rename"; "replace";
      "require"; "res"; "return"; "rewrite"; "rnd"; "rwnormal";

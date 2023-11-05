@@ -5,5 +5,5 @@ args: requiring_non_existing_ec_theory.uc
 outcome:failure
 [error: requiring_non_existing_ec_theory.uc: from line 1 columns 14 to 19]
 
-EasyCrypt: error require importing theory: cannot locate theory `Enpty'
+EasyCrypt: error requiring theory: cannot locate theory `Enpty'
 .

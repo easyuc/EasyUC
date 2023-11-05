@@ -1,0 +1,7 @@
+description 
+  Resolution in which ideal functionality of singleton unit implements
+  only a direct composite interface.
+.
+args: -units good.uc
+outcome: success
+.

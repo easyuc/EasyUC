@@ -260,7 +260,6 @@ and pmod_restr_el = {
 
 and pmod_restr = {
   pmr_mem   : pmod_restr_mem;
-	pmr_procs : pmod_restr_el list;
  }
 
 (* -------------------------------------------------------------------- *)
@@ -270,7 +269,6 @@ and pmodule_sig =
 and pmodule_sig_struct = {
   pmsig_params : (psymbol * pmodule_type) list;
   pmsig_body   : pmodule_sig_struct_body;
-  pmsig_restr  : pmod_restr option;
 }
 
 and pmodule_sig_struct_body = pmodule_sig_item list
@@ -393,7 +391,6 @@ type poperator = {
   po_args   : ptybindings * ptybindings option;
   po_def    : pop_def;
   po_ax     : osymbol_r;
-  po_nosmt  : bool;
   po_locality : locality;
 }
 
@@ -1031,7 +1028,6 @@ type paxiom = {
   pa_vars     : pgtybindings option;
   pa_formula  : pformula;
   pa_kind     : paxiom_kind;
-  pa_nosmt    : bool;
   pa_locality : locality;
 }
 
@@ -1181,7 +1177,6 @@ and 'a genoverride = [
 and ty_override_def = psymbol list * pty
 
 and op_override_def = {
-  opov_nosmt  : bool;
   opov_tyvars : psymbol list option;
   opov_args   : ptybinding list;
   opov_retty  : pty;

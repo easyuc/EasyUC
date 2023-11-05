@@ -41,11 +41,11 @@ let parse_and_typecheck_file_or_id foid =
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
         let () = stack := List.tl (!stack) in
-        let cur_scope = EcCommands.ucdsl_current () in
+        let cur_scope = UcStackedScopes.current_scope () in
         let () = cache := IdMap.add uc_root (maps, cur_scope) (!cache) in
         maps
     | Some (maps, saved_scope) ->
         let () = stack := List.tl (!stack) in
-        let () = EcCommands.ucdsl_update saved_scope in
+        let () = UcStackedScopes.update_current_scope saved_scope in
         maps in
   parse_and_typecheck foid

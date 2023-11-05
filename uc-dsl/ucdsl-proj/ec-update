@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# script to semi-automatically update UC DSL source to include the current
-# EasyCrypt source
+# script to update UC DSL source to include the current EasyCrypt
+# source
 #
-# should only be run by a UC DSL developer, as there are manual
-# steps!
+# should only be run by a UC DSL developer, as changes in EasyCrypt
+# could make UC DSL fail to build, or change its semantics in problematic
+# ways
 
-read -p 'Start the semi-automatic updating of EasyCrypt source in UC DSL? [yes/no] ' perm
+read -p 'Start the updating of EasyCrypt source in UC DSL? [yes/no] ' perm
 if [ $perm != yes ];
 then echo aborting;
      exit 1
@@ -39,17 +40,9 @@ elif [ ! -e $ecsrc/ec.ml ];
        exit 1;
 fi
 
-cd src
-
-rm -rf our-modified-scope-and-commands;
-
-mkdir our-modified-scope-and-commands
-mv ecScope.{ml,mli} ecCommands.{ml,mli} our-modified-scope-and-commands
-
-cd ECsrc/
+cd src/ECsrc
 
 rm -rf phl system
-rm -f modified-for-ucdsl/*.{ml,mli}
 rm *.{ml,mli} ecParser.mly ecLexer.mll
 
 cp -r $ecsrc/phl .
@@ -57,15 +50,3 @@ cp -r $ecsrc/system .
 cp $ecsrc/*.{ml,mli} .
 cp $ecsrc/ecParser.mly .
 cp $ecsrc/ecLexer.mll .
-
-cp ecScope*.{ml,mli} ecCommands*.{ml,mli} modified-for-ucdsl
-
-cd ..  # back in src
-
-mv ECsrc/ecScope.{ml,mli} ECsrc/ecCommands.{ml,mli} .
-
-echo ""
-echo ready to manually move commented UC DSL code from
-echo "'our-modified-scope-and-commands'" to the files in "'src'"
-echo ""
-echo after doing this, delete "'our-modified-scope-and-commands'"

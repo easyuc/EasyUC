@@ -1,0 +1,11 @@
+description
+Test what happens when an EasyCrypt file being ec_required has
+an immediate error.
+.
+args: Foo.uc
+outcome: failure
+[error: Foo.uc: from line 1 columns 13 to 16]
+
+EasyCrypt: In external theory Goo [Goo.ec: line 3 (0)]: parse error
+
+.

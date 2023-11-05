@@ -84,6 +84,19 @@ val unset_debugging : unit -> unit
 
 val get_debugging : unit -> bool
 
+(* boolean saying whether interpreter output should include positions of
+   commands in .uc file that are being interpreted while executing a run
+   command in a .uci file that is being interpreted.
+
+   default is no printing of position, and should only be set if
+   the interpreter is run on a file without batch mode flag set *)
+
+val set_run_print_pos : unit -> unit
+
+val unset_run_print_pos : unit -> unit
+
+val get_run_print_pos : unit -> bool
+
 (* boolean saying whether top-level definitions should be required to
    be grouped into units
 

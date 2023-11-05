@@ -1,0 +1,12 @@
+description 
+  This tests fails because ideal functionality is implementing a
+  non-existent basic adversarial interface. But the point is
+  the good version, where it will implement only a direct composite
+  interface.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 10 columns 32 to 33]
+
+adversarial interface does not exist: A
+.

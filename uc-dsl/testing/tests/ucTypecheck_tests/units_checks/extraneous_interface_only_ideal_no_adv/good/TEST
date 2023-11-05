@@ -1,0 +1,7 @@
+description
+  Resolution of test when a unit with only ideal functionality with no
+  adversarial interface has an extraneous adversarial interface.
+.
+args: -units good.uc
+outcome: success
+.
