@@ -114,7 +114,7 @@
           (lambda ()
             (setq indent-tabs-mode nil)
             (set (make-local-variable 'compile-command)
-            (concat "ucdsl -raw-msg " buffer-file-name))))
+             (concat "ucdsl -raw-msg " buffer-file-name))))
 
 (define-derived-mode ucdsl-mode text-mode "UC DSL mode"
   "Major mode for editing UC DSL code"
