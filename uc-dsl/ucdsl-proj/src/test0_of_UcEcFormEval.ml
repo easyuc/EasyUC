@@ -260,6 +260,8 @@ let testFormEval () : unit =
   
 
 let () : unit =
+  let common_dir = UcConfig.uc_prelude_dir^"/../../common" in
+  UcState.set_include_dirs [common_dir];
   UcEcInterface.init ();
 (*
   lemma_one_is_one ();
@@ -268,6 +270,7 @@ let () : unit =
   qed ();*)
 
   UcEcInterface.require (dl "AllCore") (Some `Import);
+  UcEcInterface.require (dl "UCCore") (Some `Import);
   
 (*  lemma_i_eq_one_impl_i_le_one ();
   proof ();

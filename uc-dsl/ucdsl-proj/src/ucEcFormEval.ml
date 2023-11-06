@@ -346,6 +346,12 @@ let process_rewrite_core ?(close = true)
   in 
   if close then EcCoreGoal.FApi.t_last cl tc else tc
 
+let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  try
+    let proof' = move_up proof in
+    move_all_hyps_up proof'
+  with _ -> proof
+
 (* adapted from ecHiGoal.ml process_delta *)
 let process_delta_when_args_are_addr_literals p tc =
   let is_addr_literal (form : EcCoreFol.form) : bool =
@@ -474,12 +480,26 @@ let selective_rewrite_operator
   process_delta_when_args_are_addr_literals p tc
   
 
-let rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let addr_ops : EcPath.path list = [] in
-  List.fold_left (fun proof opp ->
+let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
+    : EcCoreGoal.proof option =
+  print_endline "try_rewrite_addr_ops_on_literals";
+  let addr_ops : EcPath.path list =
+    let inc = EcPath.fromqsymbol (["UCListPO"],"inc") in
+    let lpo = EcPath.fromqsymbol (["UCListPO"],"lpo") in
+    let leq = EcPath.fromqsymbol (["UCListPO"],"(<=)") in
+    [inc; lpo; leq]
+  in
+  let p = move_all_hyps_up proof in
+  let p' = List.fold_left (fun proof opp ->
     let tac = selective_rewrite_operator opp in
-    run_tac tac proof  
-    ) proof addr_ops
+    try
+      run_tac tac proof
+    with _ -> proof
+                 ) proof addr_ops
+  in
+  match changed_proof p p' with
+  | Some _ -> Some (move_all_hyp_forms_to_concl p')
+  | None -> None
   
 let process_rewrite1_core ?(close = true) s pt tc =
   process_rewrite_core ~close:close (s, None, None) pt tc
@@ -504,12 +524,6 @@ let move_right (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
 let move_left (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "move => <-.";
   run_tac (intro1_rw `RtoL) proof
-
-let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  try
-    let proof' = move_up proof in
-    move_all_hyps_up proof'
-  with _ -> proof
 
 let count_hyp_forms (proof : EcCoreGoal.proof) : int =
   print_endline "BEGIN count_hyp_forms";
@@ -597,7 +611,10 @@ let try_rewriting (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
          let po = try_move_simplify_trivial proof in
          match po with
          | Some p -> po
-         | None -> try_rewriting_hints proof rw_lems
+         | None -> let po = try_rewriting_hints proof rw_lems in
+                   match po with
+                   | Some p -> po
+                   | None -> try_rewrite_addr_ops_on_literals proof
   in
   progression try_rewriting_step proof
   
