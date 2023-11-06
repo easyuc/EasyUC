@@ -237,6 +237,20 @@ op nosmt (<=) (xs ys : 'a list) : bool =
 
 op nosmt inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
+lemma concat_nil_r (xs : 'a list) :
+  xs ++ [] = xs.
+proof.
+by rewrite cats0.
+qed.
+
+lemma concat_nil_l (xs : 'a list) :
+  [] ++ xs = xs.
+proof.
+by rewrite cat0s.
+qed.
+
+hint simplify [reduce] concat_nil_r, concat_nil_l.
+
 lemma le_cases (xs ys : 'a list) :
   xs <= ys <=> xs = ys \/ xs < ys.
 proof.
@@ -289,6 +303,10 @@ proof.
 by rewrite leP (LES [] xs xs) cat0s.
 qed.
 
+lemma le_nil_iff (xs : 'a list) :
+  xs <= [] <=> xs = [].
+proof. by case xs. qed.
+
 lemma not_le_cons_nil (x : 'a, xs : 'a list) :
   ! x :: xs <= [].
 proof. trivial. qed.
@@ -305,7 +323,21 @@ proof.
 by rewrite /(<=) /= lpo_pre.
 qed.
 
-hint simplify [reduce] le_pre.
+lemma le_pre_l (xs ys : 'a list) :
+  xs ++ ys <= xs <=> [] = ys.
+proof.
+by rewrite -{2}cats0 le_pre le_nil_iff eq_sym.
+qed.
+
+hint simplify [reduce] le_pre, le_pre_l.
+
+lemma le_ext_r (xs ys : 'a list) :
+  xs <= xs ++ ys.
+proof.
+rewrite -{1}(cats0 xs) le_pre ge_nil.
+qed.
+
+hint simplify [eqtrue] le_ext_r.
 
 lemma gt_cons (y : 'a, ys : 'a list) :
   [] < y :: ys.
@@ -327,13 +359,35 @@ proof.
 by rewrite /(<) lpo_pre.
 qed.
 
-hint simplify [reduce] lt_pre.
+lemma lt_pre_l (xs ys : 'a list) :
+  xs ++ ys < xs <=> false.
+proof.
+rewrite -{2}cats0 lt_pre.
+by case ys.
+qed.
+
+lemma lt_pre_r (xs zs : 'a list) :
+  xs < xs ++ zs <=> zs <> [].
+proof.
+rewrite -{1}cats0 lt_pre.
+by case zs.
+qed.
+
+hint simplify [reduce] lt_pre, lt_pre_l, lt_pre_r.
 
 lemma eq_pre (xs ys zs : int list) :
   xs ++ ys = xs ++ zs <=> ys = zs.
 proof. by elim xs. qed.
 
-hint simplify [reduce] eq_pre.
+lemma eq_pre_r (xs zs : int list) :
+  xs = xs ++ zs <=> [] = zs.
+proof. by rewrite -{1}cats0 eq_pre. qed.
+
+lemma eq_pre_l (xs ys : int list) :
+  xs ++ ys = xs <=> ys = [].
+proof. by rewrite -{2}cats0 eq_pre. qed.
+
+hint simplify [reduce] eq_pre, eq_pre_r, eq_pre_l.
 
 lemma not_lt_same (xs : 'a list) :
   ! xs < xs.
@@ -366,7 +420,21 @@ proof.
 by rewrite /inc lpo_pre.
 qed.
 
-hint simplify [reduce] inc_pre.
+lemma inc_pre_r (xs zs : 'a list) :
+  inc xs (xs ++ zs) <=> false.
+proof.
+rewrite -{1}cats0 inc_pre.
+by case zs.
+qed.
+
+lemma inc_pre_l (xs ys : 'a list) :
+  inc (xs ++ ys) xs <=> false.
+proof.
+rewrite -{2}cats0 inc_pre.
+by case ys.
+qed.
+
+hint simplify [reduce] inc_pre, inc_pre_r, inc_pre_l.
 
 lemma not_inc_same (xs : 'a list) :
   ! inc xs xs.
@@ -436,14 +504,6 @@ move => lt_xs_ys.
 case => [lt_ys_zs | /lpo_eqP <- //].
 by rewrite (lpo_lt_trans ys).
 qed.
-
-lemma le_ext_r (xs ys : 'a list) :
-  xs <= xs ++ ys.
-proof.
-rewrite -{1}(cats0 xs) le_pre ge_nil.
-qed.
-
-hint simplify [eqtrue] le_ext_r.
 
 lemma sing_not_le (x y : 'a) :
   x <> y => ! [x] <= [y].

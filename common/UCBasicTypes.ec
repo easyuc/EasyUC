@@ -275,17 +275,6 @@ qed.
 
 (* lemmas to help the UC DSL interpreter *)
 
-lemma addr_concat_nil_r (xs : addr) :
-  xs ++ [] = xs.
-proof.
-by rewrite cats0.
-qed.
-
-hint rewrite ucdsl_interpreter_hints : addr_concat_nil_r.
-
-(* TODO: remove when we can use rewriting hints in the interpreter *)
-hint simplify [reduce] addr_concat_nil_r.
-
 lemma extend_addr_by_sing (xs ys : addr, i : int) :
   (xs ++ ys) ++ [i] = xs ++ (ys ++ [i]).
 proof.
@@ -294,7 +283,9 @@ qed.
 
 hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
-(* TODO: remove when we can use rewriting hints in the interpreter *)
+(* TODO: remove this once simplification is happening after use
+   of rewriting hints *)
+
 hint simplify [reduce] extend_addr_by_sing.
 
 lemma envport_ext_func_iff (func adv xs ys : addr, i : int) :
@@ -304,7 +295,14 @@ proof.
 by rewrite /envport /= negb_and.
 qed.
 
-hint simplify [reduce] envport_ext_func_iff.
+lemma envport_ext_l_func_iff (func adv xs : addr, i : int) :
+  envport (func ++ xs) adv (func, i) <=>
+  xs <> [] /\ ! adv <= func /\ (func <> [] \/ i <> 0).
+proof.
+by rewrite -{2 3 4}(cats0 func) envport_ext_func_iff le_nil_iff.
+qed.
+
+hint simplify [reduce] envport_ext_func_iff, envport_ext_l_func_iff.
 
 lemma envport_ext_func_iff_helper (func adv xs : addr) :
   inc func adv => ! adv <= func ++ xs.
@@ -314,7 +312,11 @@ rewrite (inc_le2_not_lr func) //.
 by rewrite inc_sym.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : envport_ext_func_iff_helper.
+(*
+lemma inc_nle_r (xs ys : 'a list) : inc xs ys => ! ys <= xs.
+*)
+
+hint rewrite ucdsl_interpreter_hints : envport_ext_func_iff_helper inc_nle_r.
 
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
   inc func adv =>
