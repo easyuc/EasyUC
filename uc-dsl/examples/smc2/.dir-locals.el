@@ -1,4 +1,11 @@
-((easycrypt-mode .
-  ((eval .
-    (cl-flet ((pre (s) (concat (locate-dominating-file buffer-file-name ".dir-locals.el") s)))
-           (setq easycrypt-load-path `(,(pre ".") ,(pre "../../prelude"))))))))
+;;; Directory Local Variables            -*- no-byte-compile: t -*-
+;;; For more information see (info "(emacs) Directory Variables")
+
+(
+ (easycrypt-mode .
+  ((easycrypt-load-path . ("../../prelude"))))
+ (ucdsl-interpreter-mode .
+  ;; ../../prelude is automatically included
+  ((ucdsl-interpreter-load-path . ("supporting"))))
+)
+

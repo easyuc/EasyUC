@@ -1,12 +1,12 @@
-;; ucInterpreter.el
+;; ucdsl-interpreter.el
 
 ;;Setup:
 ;;1.
-;;create  /ucInterpreter folder in the proof-general folder 
+;;create  /ucdsl-interpreter folder in the proof-general folder 
 ;;
 ;;2.
 ;;add line
-;;(ucInterpreter "UCInterpreter" "uci")
+;;(ucdsl-interpreter "UCInterpreter" "uci")
 ;;to proof-site.el inside proof-general folder /generic
 ;;
 ;;3.
@@ -23,9 +23,9 @@
 ;;
 ;;5.
 ;;close emacs, run emacs again, then
-;;M-x ucInterpreter-mode
+;;M-x ucdsl-interpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
-;;.uci script for ucInterpreter
+;;.uci script for ucdsl-interpreter
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
@@ -86,7 +86,7 @@ If not, hide the uc-frame "
 (require 'cl)
   
 (defun frame-with-uc-file (cmd str)
-  "call empty-frame if ucInterpreter shell output starts with UC file position:"
+  "call empty-frame if ucdsl-interpreter shell output starts with UC file position:"
   ;;(proof-debug (concat "frame-with-uc-file of " str))
 
   (let ((stps (search "UC file position:" str)))
@@ -245,13 +245,51 @@ error and then highlight in the script buffer."
   )
 )
 
+;; command line options
+
+(defun ucdsl-interpreter-load-path-safep (path)
+  (and
+   (listp path)
+   (cl-every #'stringp path)))
+
+(defcustom ucdsl-interpreter-load-path nil
+  "Load path for UC DSL interpreter.
+This list specifies the load path for UC DSL Interpreter. The elements of
+this list are strings."
+  :type  '(repeat (string :tag "simple directory (-I)"))
+  :safe  'ucdsl-interpreter-load-path-safep
+  :group 'ucdsl-interpreter)
+
+;; --------------------------------------------------------------------
+(defun ucdsl-interpreter-option-of-load-path-entry (entry)
+  (list "-I" (expand-file-name entry)))
+
+;; --------------------------------------------------------------------
+(defun ucdsl-interpreter-include-options ()
+  (let ((result nil))
+    (when ucdsl-interpreter-load-path
+      (dolist (entry ucdsl-interpreter-load-path)
+        (setq result (append result (ucdsl-interpreter-option-of-load-path-entry entry)))))
+    result))
+
+;; --------------------------------------------------------------------
+(defun ucdsl-interpreter-build-prog-args ()
+  (delete "-interpreter" ucdsl-interpreter-prog-args)
+  (push "-interpreter" ucdsl-interpreter-prog-args))
+
+(ucdsl-interpreter-build-prog-args)
+
+;; --------------------------------------------------------------------
+(defun ucdsl-interpreter-prog-args ()
+  (append ucdsl-interpreter-prog-args (ucdsl-interpreter-include-options)))
+
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
 
 (require 'proof-easy-config)		; easy configure mechanism
 
 (
- proof-easy-config 'ucInterpreter "UCInterpreter"
- proof-prog-name		"ucdsl -interpreter"
+ proof-easy-config 'ucdsl-interpreter "UC DSL Interpreter"
+ proof-prog-name		"ucdsl"
  
  proof-terminal-string		"."
  proof-script-command-end-regexp "[^\\.]\\.\\(\\s \\|\n\\|$\\)"
@@ -261,7 +299,6 @@ error and then highlight in the script buffer."
  
  proof-goal-command-regexp	"load\\|functionality\\|real\\|ideal"
  proof-save-command-regexp	"finish"
-
 
  proof-non-undoables-regexp     "undo\\|debug"
 ;; proof-undo-n-times-cmd         "undo %s."
@@ -304,14 +341,14 @@ error and then highlight in the script buffer."
      :help     "Toggles debug mode."]
 ))
 
-(defun ucInterpreter-shell-extra-config ()
+(defun ucdsl-interpreter-shell-extra-config ()
   (with-current-buffer proof-goals-buffer 
     (rename-buffer "*configuration*")
   )
 )
 
-(add-hook 'ucInterpreter-shell-mode-hook 'ucInterpreter-shell-extra-config)
+(add-hook 'ucdsl-interpreter-shell-mode-hook 'ucdsl-interpreter-shell-extra-config)
 
-(provide 'ucInterpreter)
+(provide 'ucdsl-interpreter)
 
-;;; ucInterpreter.el ends here
+;;; ucdsl-interpreter.el ends here

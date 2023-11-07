@@ -275,17 +275,6 @@ qed.
 
 (* lemmas to help the UC DSL interpreter *)
 
-lemma addr_concat_nil_r (xs : addr) :
-  xs ++ [] = xs.
-proof.
-by rewrite cats0.
-qed.
-
-hint rewrite ucdsl_interpreter_hints : addr_concat_nil_r.
-
-(* TODO: remove when we can use rewriting hints in the interpreter *)
-hint simplify [reduce] addr_concat_nil_r.
-
 lemma extend_addr_by_sing (xs ys : addr, i : int) :
   (xs ++ ys) ++ [i] = xs ++ (ys ++ [i]).
 proof.
@@ -294,8 +283,13 @@ qed.
 
 hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
-(* TODO: remove when we can use rewriting hints in the interpreter *)
+(* TODO: remove this once simplification is happening after use
+   of rewriting hints *)
+
 hint simplify [reduce] extend_addr_by_sing.
+
+(* the following lemmas and hints are temporary, until we get
+   rewriting hints working correctly *)
 
 lemma envport_ext_func_iff (func adv xs ys : addr, i : int) :
   envport (func ++ xs) adv (func ++ ys, i) <=>
@@ -304,17 +298,45 @@ proof.
 by rewrite /envport /= negb_and.
 qed.
 
-hint simplify [reduce] envport_ext_func_iff.
-
-lemma envport_ext_func_iff_helper (func adv xs : addr) :
-  inc func adv => ! adv <= func ++ xs.
+lemma envport_ext_l_func_iff (func adv xs : addr, i : int) :
+  envport (func ++ xs) adv (func, i) <=>
+  xs <> [] /\ ! adv <= func /\ (func <> [] \/ i <> 0).
 proof.
+by rewrite -{2 3 4}(cats0 func) envport_ext_func_iff le_nil_iff.
+qed.
+
+hint simplify [reduce] envport_ext_func_iff, envport_ext_l_func_iff.
+
+op nosmt [opaque] addr_not_leq_ext (func adv xs : addr) : bool =
+  ! adv <= func ++ xs.
+
+lemma addr_not_leq_ext_suff_inc (func adv xs : addr) :
+  inc func adv => addr_not_leq_ext func adv xs.
+proof.
+rewrite /addr_not_leq_ext.
 move => inc_func_adv.
 rewrite (inc_le2_not_lr func) //.
 by rewrite inc_sym.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : envport_ext_func_iff_helper.
+op nosmt [opaque] addr_not_leq (func adv : addr) : bool =
+  ! adv <= func.
+
+lemma addr_not_leq_suff_inc (func adv : addr) :
+  inc func adv => addr_not_leq func adv.
+proof.
+rewrite /addr_not_leq.
+move => inc_func_adv.
+by rewrite inc_nle_r.
+qed.
+
+hint rewrite ucdsl_interpreter_hints :
+  addr_not_leq_ext_suff_inc addr_not_leq_suff_inc.
+
+(* end of temporary lemmas and hints *)
+
+(* the following lemmas and hints can be uncommented once we
+   have rewriting hints working
 
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
   inc func adv =>
@@ -335,6 +357,18 @@ have // : func ++ ys <> [].
   have // := inc_non_nil func adv _.
   trivial.
 qed.
+
+lemma envport_ext_l_func (func adv xs ys : addr, i : int) :
+  inc func adv =>
+  envport (func ++ xs) adv (func, i) <=> xs <> [].
+proof.
+move => inc_func_adv.
+by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
+qed.
+
+hint rewrite ucdsl_interpreter_hints : envport_ext_func envport_ext_l_func.
+
+*)
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
