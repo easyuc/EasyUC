@@ -40,7 +40,7 @@ f
   (if 2 + size varData <= 0 then []
    else maxUINT8 :: if 1 + size varData <= 0 then [] else maxUINT8 :: varData)
 *)
-rewrite !plus_size_le_hints /= //.
+rewrite !plus_size_le_hints //=.
 (*
 Current goal
 

@@ -230,12 +230,12 @@ qed.
 
 (* abbreviations *)
 
-op nosmt (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
+op nosmt [opaque] (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
 
-op nosmt (<=) (xs ys : 'a list) : bool =
+op nosmt [opaque] (<=) (xs ys : 'a list) : bool =
   let r = lpo xs ys in r = LT \/ r = Eq.
 
-op nosmt inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
+op nosmt [opaque] inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
 lemma concat_nil_r (xs : 'a list) :
   xs ++ [] = xs.
@@ -305,11 +305,12 @@ qed.
 
 lemma le_nil_iff (xs : 'a list) :
   xs <= [] <=> xs = [].
-proof. by case xs. qed.
+proof.
+rewrite /(<=); by case xs. qed.
 
 lemma not_le_cons_nil (x : 'a, xs : 'a list) :
   ! x :: xs <= [].
-proof. trivial. qed.
+proof. by rewrite /(<=). qed.
 
 lemma le_cons (x y : 'a, xs ys : 'a list) :
   x :: xs <= y :: ys <=> x = y /\ xs <= ys.
@@ -336,16 +337,15 @@ lemma le_ext_r (xs ys : 'a list) :
 proof.
 rewrite -{1}(cats0 xs) le_pre ge_nil.
 qed.
-
 hint simplify [eqtrue] le_ext_r.
 
 lemma gt_cons (y : 'a, ys : 'a list) :
   [] < y :: ys.
-proof. trivial. qed.
+proof. by rewrite /(<). qed.
 
 lemma not_lt_cons_nil (x : 'a, xs : 'a list) :
   ! x :: xs < [].
-proof. trivial. qed.
+proof. by rewrite /(<). qed.
 
 lemma lt_cons (x y : 'a, xs ys : 'a list) :
   x :: xs < y :: ys <=> x = y /\ xs < ys.
@@ -362,14 +362,14 @@ qed.
 lemma lt_pre_l (xs ys : 'a list) :
   xs ++ ys < xs <=> false.
 proof.
-rewrite -{2}cats0 lt_pre.
+rewrite -{2}cats0 lt_pre /(<).
 by case ys.
 qed.
 
 lemma lt_pre_r (xs zs : 'a list) :
   xs < xs ++ zs <=> zs <> [].
 proof.
-rewrite -{1}cats0 lt_pre.
+rewrite -{1}cats0 lt_pre /(<).
 by case zs.
 qed.
 
@@ -423,14 +423,14 @@ qed.
 lemma inc_pre_r (xs zs : 'a list) :
   inc xs (xs ++ zs) <=> false.
 proof.
-rewrite -{1}cats0 inc_pre.
+rewrite -{1}cats0 inc_pre /inc.
 by case zs.
 qed.
 
 lemma inc_pre_l (xs ys : 'a list) :
   inc (xs ++ ys) xs <=> false.
 proof.
-rewrite -{2}cats0 inc_pre.
+rewrite -{2}cats0 inc_pre /inc.
 by case ys.
 qed.
 
@@ -607,11 +607,11 @@ qed.
 lemma nosmt not_le_cases (xs ys : 'a list) :
   ! xs <= ys <=> ys < xs \/ inc xs ys.
 proof.
+rewrite /(<=) /(<) /inc /=.
 split.
-rewrite /(<=) /(<) /= /inc (lpo_sym_lt_gt ys xs) negb_or.
+rewrite (lpo_sym_lt_gt ys xs) negb_or.
 by case (lpo xs ys).
-rewrite /(<=) /(<) /lpo_inc /= (lpo_sym_lt_gt ys xs)
-        negb_or.
+rewrite (lpo_sym_lt_gt ys xs) negb_or.
 by case => ->.
 qed.
 
