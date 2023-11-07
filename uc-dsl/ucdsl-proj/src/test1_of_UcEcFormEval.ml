@@ -84,10 +84,13 @@ let json3 = {|
 
 let () : unit =
   UcState.set_debugging ();
+  let common_dir = UcConfig.uc_prelude_dir^"/../../common" in
+  UcState.set_include_dirs [common_dir];
   UcEcInterface.init ();
   UcEcInterface.require (UcUtils.dummyloc "AllCore") (Some `Import);
   UcEcInterface.require (UcUtils.dummyloc "test1_of_UcEcFormEval") (Some `Import);
-
+  UcEcInterface.require (UcUtils.dummyloc "UCCore") (Some `Import);
+(*
   testEvalCond json1 "i=0";
   testEvalCond json2 "i=0";
   testEvalCond json3 "i=0";
@@ -515,3 +518,85 @@ let json={|
   |} in
   let concl = "U" in
   testDeconstructData json concl;
+  *)
+(*
+lemma n28
+(
+func: addr,
+adv: addr,
+pt1: port,
+pt2: port,
+zmdfdb: bool -> bool
+) :
+envport func adv pt2 =>
+envport func adv pt1 =>
+inc func adv =>
+([1; 1; 1] <= func \/ ([1; 1; 1] <= [1; 1] /\ ! adv <= func ++ [1; 1])).
+proof.
+move => H1 H2 H3.
+(* we would like this to simplify to:
+[1; 1; 1] <= func
+*)
+rewrite envport_ext_func_iff_helper //.
+(*
+[1; 1; 1] <= func \/ [1; 1; 1] <= [1; 1] /\ !false
+*)
+move => />.  (* because second disjunct is false (not true), doesn't recognize *)
+(*
+[1; 1; 1] <= func \/ [1; 1; 1] <= [1; 1]
+*)
+delta.
+(* this is why selective delta is important - we'd like to only
+   apply delta when all args to operator are made entirely out of
+   constructors *)
+(*
+(let r = lpo [1; 1; 1] func in r = LT \/ r = Eq) \/
+let r = lpo [1; 1; 1] [1; 1] in r = LT \/ r = Eq
+*)
+simplify.
+(*
+(if func = [] then GT
+ else
+   if 1 = head 1 func then
+     if behead func = [] then GT
+     else
+       if 1 = head 1 (behead func) then
+         if behead (behead func) = [] then GT
+         else
+           if 1 = head 1 (behead (behead func)) then
+             if behead (behead (behead func)) = [] then Eq else LT
+           else Inc
+       else Inc
+   else Inc) =
+LT \/
+(if func = [] then GT
+ else
+   if 1 = head 1 func then
+     if behead func = [] then GT
+     else
+       if 1 = head 1 (behead func) then
+         if behead (behead func) = [] then GT
+         else
+           if 1 = head 1 (behead (behead func)) then
+             if behead (behead (behead func)) = [] then Eq else LT
+           else Inc
+       else Inc
+   else Inc) =
+Eq
+*)
+*)
+
+  let json={|
+    [
+      {"func":"addr"},
+      {"adv":"addr"},
+      {"pt1":"port"},
+      {"pt2":"port"},
+      "envport func adv pt2",
+      "envport func adv pt1",
+      "inc func adv"
+    ]
+  |} in
+  let concl = "[1; 1; 1] <= func \\/ ([1; 1; 1] <= [1; 1] /\\ ! adv <= func ++ [1; 1])" in
+  testSymplify json concl;
+  

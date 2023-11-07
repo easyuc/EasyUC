@@ -26,7 +26,7 @@ let pp_tc tc = (* copied from ecLowGoal.ml *)
 
   match cl with [] -> () | hd :: tl ->
 
-  Format.eprintf "%a@."
+  Format.printf "%a@."
     (EcPrinting.pp_goal (EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc_env tc)) 
     {prpo_pr = true; prpo_po = true})
     (hd, `All tl)
@@ -34,9 +34,35 @@ let pp_tc tc = (* copied from ecLowGoal.ml *)
 let pp_proof (proof : EcCoreGoal.proof) : unit =
   pp_tc (EcCoreGoal.tcenv_of_proof proof)
 
-(*comment out for printf debugging*)
+let ppe_ofhyps hyps = 
+  let env = EcEnv.LDecl.toenv hyps in
+  EcPrinting.PPEnv.ofenv env
+
+let pp_ty hyps ty =
+  let ppe = ppe_ofhyps hyps in
+  Format.printf "%a@." (EcPrinting.pp_type ppe) ty
+  
+let pp_f hyps f =
+  let ppe = ppe_ofhyps hyps in
+  Format.printf "%a@." (EcPrinting.pp_form ppe) f
+
+let pp_form tc1 f =
+  let ppe = EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc1_env tc1) in
+  Format.printf "%a@." (EcPrinting.pp_form ppe) f
+
+let printEvalResult (res : eval_condition_result) : unit =
+  match res with
+  | Bool true  -> print_endline "TRUE"
+  | Bool false -> print_endline "FALSE"
+  | Undecided  -> print_endline "UNDECIDED"
+
+(*comment out for printf debugging
+let pp_ty _ _ = ()
+let pp_f _ _ = ()
+let pp_form _ _ = ()  
+let printEvalResult _ = ()
 let print_endline _ = ()
-let pp_proof _ = ()
+let pp_proof _ = ()*)
    
 let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
@@ -80,7 +106,6 @@ let get_last_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
   match goal with
   | Some (_, pregoal) -> pregoal
   | _ -> failwith "failed getting the last pregoal"
-
   
 let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   let hyps = (get_only_pregoal proof).g_hyps  in
@@ -297,6 +322,7 @@ let extract_form (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
 let progression 
 (f : EcCoreGoal.proof -> EcCoreGoal.proof option)
 (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+  print_endline "progression";
   let rec r 
   (first_call : bool) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
@@ -354,7 +380,10 @@ let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
 
 (* adapted from ecHiGoal.ml process_delta *)
 let process_delta_when_args_are_addr_literals p tc =
+  print_endline "process_delta_when_args_are_addr_literals";
   let is_addr_literal (form : EcCoreFol.form) : bool =
+    print_endline "is_addr_literal";
+    pp_form tc form;
     let is_int_literal (form : EcCoreFol.form) : bool =
       match form.f_node with
       | Fint _ -> true
@@ -385,17 +414,24 @@ let process_delta_when_args_are_addr_literals p tc =
       | _ -> false
                                                        
     in
-    check form
+    let islit = check form in
+    print_endline (string_of_bool islit);
+    islit
   in
+  
+  print_endline "tc1_eflat";
   let env, hyps, concl = EcCoreGoal.FApi.tc1_eflat tc in  
-
+  print_endline "concl="; pp_form tc concl;
   (* Continue with matching based unfolding *)
+  print_endline "tc1_process_pattern";
   let (ptenv, p) =
     let (ps, ue), p = EcProofTyping.tc1_process_pattern tc p in
     let ev = EcMatching.MEV.of_idents (EcIdent.Mid.keys ps) `Form in
       (EcProofTerm.ptenv (EcCoreGoal.(!!)tc) hyps (ue, ev), p)
   in
+  print_endline "p="; pp_form tc p;
 
+  print_endline "(tvi, tparams, body, args, dp)";
   let (tvi, tparams, body, args, dp) =
     match EcFol.sform_of_form p with
     | EcFol.SFop (p, args) -> begin
@@ -407,24 +443,31 @@ let process_delta_when_args_are_addr_literals p tc =
         | EcDecl.OB_pred (Some (EcDecl.PR_Plain f)) ->
             (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
         | _ ->
+            print_endline "the operator cannot be unfolded";
             EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "the operator cannot be unfolded"
     end
-    | _ -> EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "not headed by an operator/predicate"
+    | _ ->
+       print_endline "not headed by an operator/predicate";
+       EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "not headed by an operator/predicate"
 
   in
-
+  print_endline "full_red";
   let ri = { EcReduction.full_red with
                delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent)} in
   let na = List.length args in
 
   begin
+    print_endline "matches";
     let matches =
       try  ignore (EcProofTerm.pf_find_occurence ptenv ~ptn:p concl); true
       with EcProofTerm.FindOccFailure _ -> false
     in
+    print_endline (string_of_bool matches);
 
-    if matches then begin
+    if (*matches*) true then begin
+      print_endline "concretize_form";
       let p    = EcProofTerm.concretize_form ptenv p in
+      print_endline "p="; pp_form tc p;
       let cpos =
         let test = fun _ fp ->
           let (fp : EcCoreFol.form) =
@@ -436,9 +479,16 @@ let process_delta_when_args_are_addr_literals p tc =
                      (List.map EcCoreFol.f_ty a2) fp.EcCoreFol.f_ty)
             | _ -> fp
           in
+          print_endline "fp="; pp_form tc fp;
           if EcReduction.is_alpha_eq hyps p fp
-          then `Accept (-1)
-          else `Continue
+          then begin
+              print_endline "is_alpha_eq YES";
+              `Accept (-1)
+            end
+          else begin
+              print_endline "is_alpha_eq NO";
+              `Continue
+              end
         in
           EcMatching.FPosition.select test concl
       in
@@ -463,7 +513,10 @@ let process_delta_when_args_are_addr_literals p tc =
           concl
       in
         EcLowGoal.t_change ~ri ?target:None target tc
-    end else EcLowGoal.t_id tc
+      end else begin
+      print_endline "t_id";
+      EcLowGoal.t_id tc
+      end
   end
 
 
@@ -471,6 +524,7 @@ let process_delta_when_args_are_addr_literals p tc =
 let selective_rewrite_operator 
 (opp : EcPath.path) 
 (tc  : EcCoreGoal.tcenv1) =
+  print_endline ("selective_rewrite_operator "^(EcPath.tostring opp));
   let pform_of_opp (opp : EcPath.path) : EcParsetree.pformula =
     let qs = EcPath.toqsymbol opp in
     let pqs = UcUtils.dummyloc qs in
@@ -485,21 +539,30 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
   print_endline "try_rewrite_addr_ops_on_literals";
   let addr_ops : EcPath.path list =
     let inc = EcPath.fromqsymbol (["UCListPO"],"inc") in
-    let lpo = EcPath.fromqsymbol (["UCListPO"],"lpo") in
-    let leq = EcPath.fromqsymbol (["UCListPO"],"(<=)") in
-    [inc; lpo; leq]
+    let les = EcPath.fromqsymbol (["UCListPO"],"<") in
+    let leq = EcPath.fromqsymbol (["UCListPO"],"<=") in
+    [(*inc; les;*) leq]
   in
   let p = move_all_hyps_up proof in
-  let p' = List.fold_left (fun proof opp ->
+  let p' = List.fold_left (fun pr opp ->
     let tac = selective_rewrite_operator opp in
     try
-      run_tac tac proof
-    with _ -> proof
-                 ) proof addr_ops
+      print_endline "run selective_rewrite_operator";
+      run_tac tac pr
+    with e ->
+      print_endline
+        ("selective_rewrite_operator EXCEPTION: "
+         ^(Printexc.to_string e)^(Printexc.get_backtrace()));
+      pr
+                 ) p addr_ops
   in
   match changed_proof p p' with
-  | Some _ -> Some (move_all_hyp_forms_to_concl p')
-  | None -> None
+  | Some _ ->
+     print_endline "try_rewrite_addr_ops_on_literals SUCCESS";
+     Some (move_all_hyp_forms_to_concl p')
+  | None ->
+     print_endline "try_rewrite_addr_ops_on_literals FAIL";
+     None
   
 let process_rewrite1_core ?(close = true) s pt tc =
   process_rewrite_core ~close:close (s, None, None) pt tc
@@ -733,7 +796,7 @@ let eval_condition
 (hyps : EcEnv.LDecl.hyps) 
 (form : EcCoreFol.form)
 (pi : EcProvers.prover_infos)
-(rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
+(rw_lems : EcPath.path list)
 : eval_condition_result =
   let form = simplify_formula hyps form rw_lems in
   eval_condition_pre_tacs hyps form pi []
@@ -742,30 +805,6 @@ let get_ty_from_oty (oty : EcTypes.ty) =
   match oty.ty_node with
   | Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
   | _ -> failwith "type is not an option type"
-
-
-let ppe_ofhyps hyps = 
-  let env = EcEnv.LDecl.toenv hyps in
-  EcPrinting.PPEnv.ofenv env
-
-let pp_ty hyps ty =
-  let ppe = ppe_ofhyps hyps in
-  Format.eprintf "%a@." (EcPrinting.pp_type ppe) ty
-  
-let pp_f hyps f =
-  let ppe = ppe_ofhyps hyps in
-  Format.eprintf "%a@." (EcPrinting.pp_form ppe) f
-  
-let printEvalResult (res : eval_condition_result) : unit =
-  match res with
-  | Bool true  -> print_endline "TRUE"
-  | Bool false -> print_endline "FALSE"
-  | Undecided  -> print_endline "UNDECIDED"
-
-(*comment out for printf debugging*)
-let pp_ty _ _ = ()
-let pp_f _ _ = ()  
-let printEvalResult _ = ()
 
 (* adapted from EcHiGoal.ml process_delta *)
 let rewrite_operator (opf : EcCoreFol.form) (tc:EcCoreGoal.tcenv1) =
