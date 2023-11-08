@@ -29,7 +29,10 @@ let parse_trans_frm (env : EcEnv.env) (frm_str : string) : EcCoreFol.form =
   in
   let ue  = EcTyping.transtyvars env (EcLocation._dummy, None) in
   let expr,_ = UcTransTypesExprs.transexp env ue pexpr in
-  EcCoreFol.form_of_expr EcFol.mhr expr
+  let ff = EcCoreFol.form_of_expr EcFol.mhr expr in
+  let ts = EcTypes.Tuni.subst (EcUnify.UniEnv.close ue) in
+  let fs = EcFol.Fsubst.f_subst_init ~sty:ts () in
+  EcFol.Fsubst.f_subst fs ff
 
 let p_t_concl (hyps : EcEnv.LDecl.hyps) (concl : string) : EcCoreFol.form =
   let env = EcEnv.LDecl.toenv hyps in

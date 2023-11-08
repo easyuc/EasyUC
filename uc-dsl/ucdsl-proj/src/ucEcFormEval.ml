@@ -50,6 +50,10 @@ let pp_form tc1 f =
   let ppe = EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc1_env tc1) in
   Format.printf "%a@." (EcPrinting.pp_form ppe) f
 
+let pp_form_ty tc1 f =
+  let ppe = EcPrinting.PPEnv.ofenv (EcCoreGoal.FApi.tc1_env tc1) in
+  Format.printf "%a@." (EcPrinting.pp_type ppe) (EcCoreFol.f_ty f)
+
 let printEvalResult (res : eval_condition_result) : unit =
   match res with
   | Bool true  -> print_endline "TRUE"
@@ -60,6 +64,7 @@ let printEvalResult (res : eval_condition_result) : unit =
 let pp_ty _ _ = ()
 let pp_f _ _ = ()
 let pp_form _ _ = ()  
+let pp_form_ty _ _ = ()
 let printEvalResult _ = ()
 let print_endline _ = ()
 let pp_proof _ = ()*)
@@ -385,33 +390,61 @@ let process_delta_when_args_are_addr_literals p tc =
     print_endline "is_addr_literal";
     pp_form tc form;
     let is_int_literal (form : EcCoreFol.form) : bool =
+      print_endline "is_int_literal";
+      pp_form tc form;
+      let is =
       match form.f_node with
       | Fint _ -> true
       | _ -> false
+      in
+      print_endline (string_of_bool is);
+      is
     in
     let is_list_cons (form : EcCoreFol.form) : bool =
-      let lcp = EcPath.fromqsymbol (["List"],"(::)") in
+      print_endline "is_list_cons";
+      pp_form tc form;
+      let lcp = EcPath.fromqsymbol (["Top"; "List"],"::") in
+      let is =
       match form.f_node with
-      | Fop (p, _) when p = lcp -> true
+      | Fop (p, _) -> print_endline (EcPath.tostring p);
+                      print_endline (EcPath.tostring lcp);
+                      p = lcp
       | _ -> false
+      in
+      print_endline (string_of_bool is);
+      is
     in
     let is_empty_list (form : EcCoreFol.form) : bool =
-      let elp = EcPath.fromqsymbol (["List"],"\"[]\"") in
+      print_endline "is_empty_list";
+      pp_form tc form;
+      let elp = EcPath.fromqsymbol (["Top"; "List"],"[]") in
+      let is =
       match form.f_node with
       | Fop (p, _) when p = elp -> true
       | _ -> false
+      in
+      print_endline (string_of_bool is);
+      is
     in
     let rec check (form : EcCoreFol.form) : bool =
-      match form.f_node with
-      | Fapp (fop, []) -> is_empty_list fop
+      print_endline "check";
+      pp_form tc form;
+      (is_empty_list form)
+      ||
+      match form.f_node with   
       | Fapp (fop, fargs) ->
          if (List.length fargs) >= 2
          then
            (is_list_cons fop) &&
            (is_int_literal (List.hd fargs)) &&
            (check (List.hd (List.tl fargs)))
-         else false
-      | _ -> false
+         else begin
+           print_endline "wrong no of args for";
+           pp_form tc fop;
+           false end
+      | _ ->
+         print_endline "form not Fapp";
+         false
                                                        
     in
     let islit = check form in
@@ -429,7 +462,7 @@ let process_delta_when_args_are_addr_literals p tc =
     let ev = EcMatching.MEV.of_idents (EcIdent.Mid.keys ps) `Form in
       (EcProofTerm.ptenv (EcCoreGoal.(!!)tc) hyps (ue, ev), p)
   in
-  print_endline "p="; pp_form tc p;
+  print_endline "p="; pp_form tc p; pp_form_ty tc p;
 
   print_endline "(tvi, tparams, body, args, dp)";
   let (tvi, tparams, body, args, dp) =
@@ -464,10 +497,10 @@ let process_delta_when_args_are_addr_literals p tc =
     in
     print_endline (string_of_bool matches);
 
-    if (*matches*) true then begin
+    if matches then begin
       print_endline "concretize_form";
       let p    = EcProofTerm.concretize_form ptenv p in
-      print_endline "p="; pp_form tc p;
+      print_endline "p="; pp_form tc p; pp_form_ty tc p;
       let cpos =
         let test = fun _ fp ->
           let (fp : EcCoreFol.form) =
@@ -479,7 +512,26 @@ let process_delta_when_args_are_addr_literals p tc =
                      (List.map EcCoreFol.f_ty a2) fp.EcCoreFol.f_ty)
             | _ -> fp
           in
-          print_endline "fp="; pp_form tc fp;
+          print_endline "fp="; pp_form tc fp;  pp_form_ty tc fp;
+          print_endline
+            ("f_equal p fp = "^(string_of_bool (EcCoreFol.f_equal p fp)));
+          begin
+            let check_ty env subst ty1 ty2 =
+              let ppe = EcPrinting.PPEnv.ofenv env in
+              print_endline "check_ty ty1,ty2 = ";
+              Format.printf "%a@." (EcPrinting.pp_type ppe) ty1;
+              Format.printf "%a@." (EcPrinting.pp_type ppe) ty2;
+  EcReduction.EqTest.for_type env ty1 (EcSubst.subst_ty subst ty2) in
+            match p.EcCoreFol.f_node, fp.EcCoreFol.f_node with
+            | Fop (pp,pp_ty), Fop(fpp,fpp_ty) ->
+               let p_equal = EcPath.p_equal pp fpp in
+           print_endline
+           ("p_equal = "^(string_of_bool p_equal));
+           if p_equal
+           then List.iter2 ( fun ty1 ty2 ->
+                  print_endline (string_of_bool (check_ty env EcSubst.empty ty1 ty2))) pp_ty fpp_ty
+            else ()
+        | _ -> () end;
           if EcReduction.is_alpha_eq hyps p fp
           then begin
               print_endline "is_alpha_eq YES";
