@@ -143,7 +143,7 @@ qed.
 hint simplify [reduce] one_time_dh.
 
 (*
-hint rewrite uc_dsl_interpreter_hints : one_time_dh.
+hint rewrite ucdsl_interpreter_hints : one_time_dh.
 *)
 
 (* EPDP from key to univ *)

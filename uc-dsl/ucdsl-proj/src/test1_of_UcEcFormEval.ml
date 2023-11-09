@@ -39,7 +39,9 @@ let p_t_concl (hyps : EcEnv.LDecl.hyps) (concl : string) : EcCoreFol.form =
   parse_trans_frm env concl
   
 let p_t_goal (json_hyps : string) (concl_str : string) : EcEnv.LDecl.hyps * EcCoreFol.form =
+  print_endline "json_hyps2ldecl_hyps";
   let hyps = json_hyps2ldecl_hyps json_hyps in
+  print_endline "p_t_concl";
   let concl = p_t_concl hyps concl_str in
   hyps, concl
 
@@ -48,20 +50,44 @@ let dft_pi = {
       pr_provers = 
       List.filter EcProvers.is_prover_known EcProvers.dft_prover_names
   }
+
+(*rewriting dbs copied from ucInterpreter.ml*)
+type rewriting_dbs = EcSymbols.qsymbol list
+
+let default_rewriting_dbs = [
+  (["Top"; "UCEncoding"],   "epdp");
+  (["Top"; "UCBasicTypes"], "ucdsl_interpreter_hints")
+  ]
+
+let lemmas_of_rewriting_dbs (env : EcEnv.env) (dbs : rewriting_dbs)
+      : EcPath.path list =
+  let lemmas_of_rw_dbs (db : EcSymbols.qsymbol) : EcPath.path list =
+    let lems = snd (EcEnv.BaseRw.lookup db env) in
+    EcPath.Sp.elements lems in
+  List.fold_left
+  (fun acc db -> acc @ lemmas_of_rw_dbs db)
+  [] dbs
+
+let def_rw_lems env = lemmas_of_rewriting_dbs env  default_rewriting_dbs
+(*rewriting dbs end*)
     
 let testEvalCond (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
-  printEvalResult (UcEcFormEval.eval_condition hyps concl dft_pi [])
+  let env = EcEnv.LDecl.toenv hyps in
+  let rw_lems = def_rw_lems env in
+  printEvalResult (UcEcFormEval.eval_condition hyps concl dft_pi rw_lems)
   
 let testSymplify (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  printFormula env (UcEcFormEval.simplify_formula hyps concl [])
+  let rw_lems = def_rw_lems env in
+  printFormula env (UcEcFormEval.simplify_formula hyps concl rw_lems)
   
 let testDeconstructData (json_hyps : string) (concl_str : string) : unit =
   let hyps, concl = p_t_goal json_hyps concl_str in
   let env = EcEnv.LDecl.toenv hyps in
-  let tcons , decfs = UcEcFormEval.deconstruct_data hyps concl dft_pi [] in
+  let rw_lems = def_rw_lems env in
+  let tcons , decfs = UcEcFormEval.deconstruct_data hyps concl dft_pi rw_lems in
   print_endline tcons;
   List.iter (fun decf -> printFormula env decf) decfs
 
@@ -88,11 +114,14 @@ let json3 = {|
 let () : unit =
   UcState.set_debugging ();
   let common_dir = UcConfig.uc_prelude_dir^"/../../common" in
-  UcState.set_include_dirs [common_dir];
+  let keys_dir = UcConfig.uc_prelude_dir^"/../examples/smc2-ping-adv" in
+  UcState.set_include_dirs [common_dir; keys_dir];
   UcEcInterface.init ();
   UcEcInterface.require (UcUtils.dummyloc "AllCore") (Some `Import);
   UcEcInterface.require (UcUtils.dummyloc "test1_of_UcEcFormEval") (Some `Import);
   UcEcInterface.require (UcUtils.dummyloc "UCCore") (Some `Import);
+  UcEcInterface.require (UcUtils.dummyloc "KeysExponentsAndPlaintexts") (Some `Export);
+  
 (*
   testEvalCond json1 "i=0";
   testEvalCond json2 "i=0";
@@ -587,7 +616,7 @@ LT \/
    else Inc) =
 Eq
 *)
-*)
+
 
   let json={|
     [
@@ -602,4 +631,48 @@ Eq
   |} in
   let concl = "[1; 1; 1] <= func \\/ ([1; 1; 1] <= [1; 1] /\\ ! adv <= func ++ [1; 1])" in
   testSymplify json concl;
+*)
+
+(*
+func: addr
+adv: addr
+text1: text
+text2: text
+pt1: port
+pt2: port
+rand: exp
+rand1: exp
+nissef: text option -> bool
+ffujff: rand1 \in dexp
+htwjff: rand \in dexp
+nfzjff: envport func adv pt2
+zpbkff: envport func adv pt1
+tydkff: inc func adv
+------------------------------------------------------------------------
+nissef (epdp_text_key.`dec
+  (epdp_text_key.`enc text1 ^^ (g ^ rand1 ^ rand) ^^ kinv (g ^ rand ^ rand1)))
+ *)
+
+  let json={|
+    [
+      {"func":"addr"},
+      {"adv":"addr"},
+      {"text1":"text"},
+      {"text2":"text"},
+      {"pt1":"port"},
+      {"pt2":"port"},
+      {"rand":"exp"},
+      {"rand1":"exp"},
+      "rand1 \\in dexp",
+      "rand \\in dexp",
+      "envport func adv pt2",
+      "envport func adv pt1",
+      "inc func adv"
+    ]
+  |} in
+  let concl = "epdp_text_key.`dec
+  (epdp_text_key.`enc text1 ^^ (g ^ rand1 ^ rand) ^^ kinv (g ^ rand ^ rand1))" in
+  testSymplify json concl;
+
+  testDeconstructData json concl;
   

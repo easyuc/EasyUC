@@ -60,14 +60,14 @@ let printEvalResult (res : eval_condition_result) : unit =
   | Bool false -> print_endline "FALSE"
   | Undecided  -> print_endline "UNDECIDED"
 
-(*comment out for printf debugging
+(*comment out for printf debugging*)
 let pp_ty _ _ = ()
 let pp_f _ _ = ()
 let pp_form _ _ = ()  
 let pp_form_ty _ _ = ()
 let printEvalResult _ = ()
 let print_endline _ = ()
-let pp_proof _ = ()*)
+let pp_proof _ = ()
    
 let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) 
 : EcCoreGoal.proof =
@@ -517,10 +517,10 @@ let process_delta_when_args_are_addr_literals p tc =
             ("f_equal p fp = "^(string_of_bool (EcCoreFol.f_equal p fp)));
           begin
             let check_ty env subst ty1 ty2 =
-              let ppe = EcPrinting.PPEnv.ofenv env in
+              (*let ppe = EcPrinting.PPEnv.ofenv env in
               print_endline "check_ty ty1,ty2 = ";
               Format.printf "%a@." (EcPrinting.pp_type ppe) ty1;
-              Format.printf "%a@." (EcPrinting.pp_type ppe) ty2;
+              Format.printf "%a@." (EcPrinting.pp_type ppe) ty2;*)
   EcReduction.EqTest.for_type env ty1 (EcSubst.subst_ty subst ty2) in
             match p.EcCoreFol.f_node, fp.EcCoreFol.f_node with
             | Fop (pp,pp_ty), Fop(fpp,fpp_ty) ->
@@ -593,7 +593,7 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
     let inc = EcPath.fromqsymbol (["UCListPO"],"inc") in
     let les = EcPath.fromqsymbol (["UCListPO"],"<") in
     let leq = EcPath.fromqsymbol (["UCListPO"],"<=") in
-    [(*inc; les;*) leq]
+    [inc; les; leq]
   in
   let p = move_all_hyps_up proof in
   let p' = List.fold_left (fun pr opp ->
@@ -617,7 +617,27 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
      None
   
 let process_rewrite1_core ?(close = true) s pt tc =
-  process_rewrite_core ~close:close (s, None, None) pt tc
+  try
+    process_rewrite_core ~close:close (s, None, None) pt tc
+  with
+  | EcHiGoal.LowRewrite.RewriteError e ->
+     let tc_error s = EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) s in
+      match e with
+      | EcHiGoal.LowRewrite.LRW_NotAnEquation ->
+          tc_error "not an equation to rewrite"
+      | EcHiGoal.LowRewrite.LRW_NothingToRewrite ->
+          tc_error "nothing to rewrite"
+      | EcHiGoal.LowRewrite.LRW_InvalidOccurence ->
+          tc_error "invalid occurence selector"
+      | EcHiGoal.LowRewrite.LRW_CannotInfer ->
+          tc_error "cannot infer all placeholders"
+      | EcHiGoal.LowRewrite.LRW_IdRewriting ->
+          tc_error "refuse to perform an identity rewriting"
+      | EcHiGoal.LowRewrite.LRW_RPatternNoMatch ->
+          tc_error "r-pattern does not match the goal"
+      | EcHiGoal.LowRewrite.LRW_RPatternNoRuleMatch ->
+          tc_error "r-pattern does not match the rewriting rule"
+
 
 let intro1_rw s tc = (*modified from ecHiGoal.ml*)
   let h = EcIdent.create "_" in
@@ -662,19 +682,20 @@ let try_rewriting_hints (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
   let penv = EcCoreGoal.proofenv_of_proof proof in
   let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
   let do1 lemma tc =
+    print_endline ("process_rewrite1_core for "^(EcPath.tostring lemma));
     let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
     process_rewrite1_core `LtoR pt tc
   in 
-  let tac tc = EcCoreGoal.FApi.t_ors (List.map do1 rw_lems) tc in
+  let rw_tac tc = EcCoreGoal.FApi.t_ors (List.map do1 rw_lems) tc in
+  let tac tc = EcCoreGoal.FApi.t_do `All None rw_tac tc in
   try
-    (*pp_tc (EcCoreGoal.tcenv_of_proof proof);*)
+    pp_proof proof;
     let proof' = run_tac tac proof in
-    (*Format.eprintf "%s\n" "***RW SUCCESS***";*)
-    (*pp_tc (EcCoreGoal.tcenv_of_proof proof');*)
+    print_endline "***RW SUCCESS***";
+    pp_proof proof';
     changed_proof proof proof'
-    (*Some proof'*)
-  with _(*e*) -> (*Format.eprintf "%s\n"
-("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));*)
+  with e -> print_endline
+("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
     None
   
 let try_rewriting (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
