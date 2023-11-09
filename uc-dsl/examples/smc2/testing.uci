@@ -3,6 +3,10 @@ functionality
   SMC2.SMC2Real
   (SMC.SMCReal(KeyExchange.KEReal),
    SMC.SMCReal(KeyExchange.KEReal)).
+
+(* let's try doing without SMT... *)
+prover [""].
+
 var text1 : text.
 var text2 : text.
 var pt1 : port.
@@ -17,6 +21,10 @@ step.
 step.
 step.
 step.
+(* so far, we are blocked here, trying to simplify
+  envport (func ++ [3]) adv (func, 2)
+a rewriting lemma in UCBasicTypes should let this simplify to true
+note that this also will use selective delta! *)
 step.
 step.
 step.

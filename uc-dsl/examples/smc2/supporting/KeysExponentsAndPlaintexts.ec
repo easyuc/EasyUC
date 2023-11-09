@@ -140,11 +140,7 @@ have -> : g ^ q1 ^ q2 = g ^ q2 ^ q1.
 by rewrite one_time.
 qed.
 
-hint simplify [reduce] one_time_dh.
-
-(*
 hint rewrite ucdsl_interpreter_hints : one_time_dh.
-*)
 
 (* EPDP from key to univ *)
 
