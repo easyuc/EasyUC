@@ -307,6 +307,8 @@ move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
 
+hint rewrite ucdsl_interpreter_hints : envport_ext_func envport_ext_l_func.
+
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
    UC DSL functionalities and simulators *)
