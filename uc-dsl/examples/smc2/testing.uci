@@ -4,8 +4,9 @@ functionality
   (SMC.SMCReal(KeyExchange.KEReal),
    SMC.SMCReal(KeyExchange.KEReal)).
 
-(* let's try doing without SMT... *)
-prover [""].
+(* we can remove this once the rewriting of envport is
+   is working *)
+prover timeout=3.
 
 var text1 : text.
 var text2 : text.
@@ -21,10 +22,10 @@ step.
 step.
 step.
 step.
-(* so far, we are blocked here, trying to simplify
+(* the next step should work by rewriting
   envport (func ++ [3]) adv (func, 2)
-a rewriting lemma in UCBasicTypes should let this simplify to true
-note that this also will use selective delta! *)
+the lemma envport_ext_l_func in UCBasicTypes should let this simplify to true;
+it generates a subgoal inc func adv *)
 step.
 step.
 step.

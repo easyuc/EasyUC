@@ -284,16 +284,12 @@ qed.
 hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
-  inc func adv =>
-  envport (func ++ xs) adv (func ++ ys, i) <=> ! xs <= ys.
+  inc func adv => ! xs <= ys =>
+  envport (func ++ xs) adv (func ++ ys, i).
 proof.
-rewrite /envport /=.
-move => inc_func_adv.
+rewrite /envport /= => inc_func_adv -> /=.
 split.
-trivial.
-move => -> /=.
-split.
-rewrite (inc_le1_not_rl func) // le_ext_r.
+by rewrite (inc_le1_not_rl func).
 rewrite negb_and.
 left.
 case (func ++ ys = []) => [func_concat_ys_eq_nil | //].
@@ -303,9 +299,9 @@ have // : func ++ ys <> [].
   trivial.
 qed.
 
-lemma envport_ext_l_func (func adv xs ys : addr, i : int) :
+lemma envport_ext_l_func (func adv : addr, i j : int) :
   inc func adv =>
-  envport (func ++ xs) adv (func, i) <=> xs <> [].
+  envport (func ++ [j]) adv (func, i).
 proof.
 move => inc_func_adv.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.

@@ -865,13 +865,16 @@ let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
   (*simplify_by_crushing proof p_id*)
   simplify_heuristic proof p_id rw_lems
 
-let eval_condition 
-(hyps : EcEnv.LDecl.hyps) 
-(form : EcCoreFol.form)
-(pi : EcProvers.prover_infos)
-(rw_lems : EcPath.path list)
-: eval_condition_result =
+let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
+    (pi : EcProvers.prover_infos) (rw_lems : EcPath.path list)
+      : eval_condition_result =
   let form = simplify_formula hyps form rw_lems in
+  let () =
+    debugging_message
+    (fun fmt ->
+       Format.fprintf fmt
+       "@[@[formula@ simplified@ to:@]@\n@[%a@]@]"
+       (EcPrinting.pp_form (ppe_ofhyps hyps)) form) in
   eval_condition_pre_tacs hyps form pi []
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
