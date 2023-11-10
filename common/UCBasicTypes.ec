@@ -299,15 +299,13 @@ have // : func ++ ys <> [].
   trivial.
 qed.
 
-lemma envport_ext_l_func (func adv : addr, i j : int) :
-  inc func adv =>
-  envport (func ++ [j]) adv (func, i).
+lemma envport_ext_l_func (func adv xs : addr, i : int) :
+  inc func adv => xs <> [] =>
+  envport (func ++ xs) adv (func, i).
 proof.
-move => inc_func_adv.
+move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
-
-hint rewrite ucdsl_interpreter_hints : envport_ext_func envport_ext_l_func.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
