@@ -66,7 +66,9 @@ let pp_f _ _ = ()
 let pp_form _ _ = ()  
 let pp_form_ty _ _ = ()
 let printEvalResult _ = ()
+let print_endline' = print_endline
 let print_endline _ = ()
+let pp_proof' = pp_proof
 let pp_proof _ = ()
    
 let run_tac (tac : EcCoreGoal.FApi.backward) (proof : EcCoreGoal.proof) 
@@ -113,7 +115,7 @@ let get_last_pregoal (proof : EcCoreGoal.proof) : EcCoreGoal.pregoal =
   | _ -> failwith "failed getting the last pregoal"
   
 let move_all_hyp_forms_to_concl (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  let hyps = (get_only_pregoal proof).g_hyps  in
+  let hyps = (get_last_pregoal proof).g_hyps  in
   let hyp_ids = List.filter_map ( fun h -> 
       match h with 
       | (id, EcBaseLogic.LD_hyp _) -> Some id
@@ -263,6 +265,7 @@ let move_simplify_trivial (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   in
   print_endline "move => //=.";
   run_tac intro1_done proof
+  
 
 let eq_proof_concl (proof1 : EcCoreGoal.proof) (proof2 : EcCoreGoal.proof)
 : bool =
@@ -295,10 +298,11 @@ let try_move_simplify (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   changed_proof proof proof'
 
 let try_move_simplify_trivial (proof : EcCoreGoal.proof) 
-: EcCoreGoal.proof option =
+    : EcCoreGoal.proof option =
   let proof' = move_simplify_trivial proof in
   changed_proof proof proof'
 
+(*
 let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   let pregoal = get_only_pregoal proof in
   let concl = pregoal.g_concl in
@@ -310,10 +314,11 @@ let is_concl_p (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
     end
   | _ -> false
   end
-  
+ *)
+
 let extract_form (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
 : EcCoreFol.form =
-  let pregoal = get_only_pregoal proof in
+  let pregoal = get_last_pregoal proof in
   let concl = pregoal.g_concl in
   begin match (EcCoreFol.f_node concl) with
   | Fapp (f, [fs]) -> 
@@ -688,12 +693,15 @@ let try_rewriting_hints (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
   in 
   let rw_tac tc = EcCoreGoal.FApi.t_ors (List.map do1 rw_lems) tc in
   let tac tc = EcCoreGoal.FApi.t_do `All None rw_tac tc in
+  let p = move_all_hyps_up proof in
   try
-    pp_proof proof;
-    let proof' = run_tac tac proof in
+    pp_proof p;
+    let p' = run_tac tac p in
     print_endline "***RW SUCCESS***";
-    pp_proof proof';
-    changed_proof proof proof'
+    pp_proof p';
+    match changed_proof p p' with
+    | Some _ -> Some (move_all_hyp_forms_to_concl p')
+    | None -> None
   with e -> print_endline
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
     None
@@ -860,6 +868,7 @@ let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
   let fp = EcCoreFol.f_local p_id p_ty in
   let concl = EcCoreFol.f_app fp [form] EcTypes.tbool in
   let proof = EcCoreGoal.start hyps concl in
+  print_endline "simplify_formula";
   pp_proof proof;
 (*try to simplify form*)  
   (*simplify_by_crushing proof p_id*)

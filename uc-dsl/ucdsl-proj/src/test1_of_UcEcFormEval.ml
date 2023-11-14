@@ -631,7 +631,7 @@ Eq
   |} in
   let concl = "[1; 1; 1] <= func \\/ ([1; 1; 1] <= [1; 1] /\\ ! adv <= func ++ [1; 1])" in
   testSymplify json concl;
-*)
+
 
 (*
 func: addr
@@ -675,4 +675,39 @@ nissef (epdp_text_key.`dec
   testSymplify json concl;
 
   testDeconstructData json concl;
-  
+*)  
+(*
+func: addr
+adv: addr
+IncFuncAdv: inc func adv
+text1: text
+text2: text
+pt1: port
+pt2: port
+envport_pt1: envport func adv pt1
+envport_pt2: envport func adv pt2
+rand: exp
+Hrand: rand \in dexp
+iufue: (port -> bool) -> bool
+------------------------------------------------------------------------
+iufue (envport (func ++ [1; 1; 1]) adv)
+
+ *)
+
+  let json={|
+    [
+      {"func":"addr"},
+      {"adv":"addr"},
+      {"text1":"text"},
+      {"text2":"text"},
+      {"pt1":"port"},
+      {"pt2":"port"},
+      {"rand":"exp"},
+      "rand \\in dexp",
+      "envport func adv pt2",
+      "envport func adv pt1",
+      "inc func adv"
+    ]
+  |} in
+  let concl = "envport (func ++ [1; 1; 1]) adv (func ++ [1; 1], 2)" in
+  testSymplify json concl;
