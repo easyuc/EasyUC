@@ -39,9 +39,7 @@ let p_t_concl (hyps : EcEnv.LDecl.hyps) (concl : string) : EcCoreFol.form =
   parse_trans_frm env concl
   
 let p_t_goal (json_hyps : string) (concl_str : string) : EcEnv.LDecl.hyps * EcCoreFol.form =
-  print_endline "json_hyps2ldecl_hyps";
   let hyps = json_hyps2ldecl_hyps json_hyps in
-  print_endline "p_t_concl";
   let concl = p_t_concl hyps concl_str in
   hyps, concl
 
@@ -122,7 +120,7 @@ let () : unit =
   UcEcInterface.require (UcUtils.dummyloc "UCCore") (Some `Import);
   UcEcInterface.require (UcUtils.dummyloc "KeysExponentsAndPlaintexts") (Some `Export);
   
-(*
+
   testEvalCond json1 "i=0";
   testEvalCond json2 "i=0";
   testEvalCond json3 "i=0";
@@ -550,7 +548,7 @@ let json={|
   |} in
   let concl = "U" in
   testDeconstructData json concl;
-  *)
+ 
 (*
 lemma n28
 (
@@ -616,7 +614,7 @@ LT \/
    else Inc) =
 Eq
 *)
-
+*)
 
   let json={|
     [
@@ -631,7 +629,7 @@ Eq
   |} in
   let concl = "[1; 1; 1] <= func \\/ ([1; 1; 1] <= [1; 1] /\\ ! adv <= func ++ [1; 1])" in
   testSymplify json concl;
-
+ 
 
 (*
 func: addr
@@ -675,7 +673,7 @@ nissef (epdp_text_key.`dec
   testSymplify json concl;
 
   testDeconstructData json concl;
-*)  
+  
 (*
 func: addr
 adv: addr

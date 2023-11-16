@@ -600,7 +600,6 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
     let leq = EcPath.fromqsymbol (["UCListPO"],"<=") in
     [inc; les; leq]
   in
-  let p = move_all_hyps_up proof in
   let p' = List.fold_left (fun pr opp ->
     let tac = selective_rewrite_operator opp in
     try
@@ -611,15 +610,9 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
         ("selective_rewrite_operator EXCEPTION: "
          ^(Printexc.to_string e)^(Printexc.get_backtrace()));
       pr
-                 ) p addr_ops
+                 ) proof addr_ops
   in
-  match changed_proof p p' with
-  | Some _ ->
-     print_endline "try_rewrite_addr_ops_on_literals SUCCESS";
-     Some (move_all_hyp_forms_to_concl p')
-  | None ->
-     print_endline "try_rewrite_addr_ops_on_literals FAIL";
-     None
+  changed_proof proof p'
   
 let process_rewrite1_core ?(close = true) s pt tc =
   try
@@ -681,32 +674,20 @@ let count_hyp_forms (proof : EcCoreGoal.proof) : int =
   print_endline "END count_hyp_forms";
   List.length h_forms
 
-let try_rewriting_hints (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list) 
-: EcCoreGoal.proof option =
-  let pregoal = get_last_pregoal proof in
-  let penv = EcCoreGoal.proofenv_of_proof proof in
-  let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
-  let do1 lemma tc =
-    print_endline ("process_rewrite1_core for "^(EcPath.tostring lemma));
-    let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
-    process_rewrite1_core `LtoR pt tc
-  in 
+(*
   let rw_tac tc = EcCoreGoal.FApi.t_ors (List.map do1 rw_lems) tc in
   let tac tc = EcCoreGoal.FApi.t_do `All None rw_tac tc in
-  let p = move_all_hyps_up proof in
   try
-    pp_proof p;
-    let p' = run_tac tac p in
+    pp_proof proof;
+    let p' = run_tac tac proof in
     print_endline "***RW SUCCESS***";
     pp_proof p';
-    match changed_proof p p' with
-    | Some _ -> Some (move_all_hyp_forms_to_concl p')
-    | None -> None
+    changed_proof proof p'
   with e -> print_endline
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
     None
-  
-let try_rewriting (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
+ *)
+let try_hyp_rewriting (proof : EcCoreGoal.proof)
 : EcCoreGoal.proof option =
   let move_right_simplify proof =
     let proof_a = move_right proof in
@@ -751,14 +732,14 @@ let try_rewriting (proof : EcCoreGoal.proof) (rw_lems : EcPath.path list)
           if left_first
           then move_right_simplify proof
           else move_left_simplify proof
-       with _ -> 
-         let po = try_move_simplify_trivial proof in
+       with _ -> None 
+       (*  let po = try_move_simplify_trivial proof in
          match po with
          | Some p -> po
          | None -> let po = try_rewriting_hints proof rw_lems in
                    match po with
                    | Some p -> po
-                   | None -> try_rewrite_addr_ops_on_literals proof
+                   | None -> try_rewrite_addr_ops_on_literals proof*)
   in
   progression try_rewriting_step proof
   
@@ -766,8 +747,6 @@ let move_down (h_id : EcIdent.t) (proof : EcCoreGoal.proof)
 : EcCoreGoal.proof =
   move_hyp_form_to_concl h_id proof
   
-
-
 let rotate_hyps (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   print_endline "BEGIN rotate_hyps";
   let proof_a = move_all_hyps_up proof in
@@ -790,38 +769,96 @@ let rotate_hyps (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
     print_endline "END rotate_hyps";
     proof_c
 
-let try_simplification_cycle (rw_lems : EcPath.path list) 
+let try_hyp_rewriting_cycle 
 (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
-  let rec try_simpcyc_r 
+  let rec try_hypcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
   = if counter=0 
     then 
-      try_rewriting proof rw_lems
+      try_hyp_rewriting proof
     else
-      match try_rewriting proof rw_lems with
+      match try_hyp_rewriting proof with
       | Some pr -> Some pr
-      | None -> try_simpcyc_r (counter-1) (rotate_hyps proof) 
+      | None -> try_hypcyc_r (counter-1) (rotate_hyps proof) 
   in
-  let counter = count_hyp_forms proof in
-  try_simpcyc_r counter proof
+  print_endline "try_hyp_rewriting_cycle";
+  let proof' = move_all_hyp_forms_to_concl proof in
+  let counter = count_hyp_forms proof' in
+  let proof_o = try_hypcyc_r counter proof in
+  match proof_o with
+  | Some p ->
+     print_endline "try_hyp_rewriting_cycle SUCCESS";
+     Some (move_all_hyps_up p)
+  | None ->
+     print_endline "try_hyp_rewriting_cycle FAIL";
+     None
   
-let try_simp (proof : EcCoreGoal.proof)
-(rw_lems : EcPath.path list) : EcCoreGoal.proof option = 
-  progression (try_simplification_cycle rw_lems) proof 
+let rec try_simp (proof : EcCoreGoal.proof)
+      (rw_lems : EcPath.path list) : EcCoreGoal.proof option =
+  let simps =
+    [
+      try_move_simplify_trivial;
+      try_hyp_rewriting_cycle;
+      try_rewriting_hints rw_lems;
+      try_rewrite_addr_ops_on_literals;
+    ] in
+  let simp proof =
+    List.fold_left (fun acc simpt ->
+        if acc <> None then acc else simpt proof) None simps
+  in
+  print_endline "try_simp";
+  progression simp proof
+
+and try_rewriting_hints (rw_lems : EcPath.path list) (proof : EcCoreGoal.proof) 
+    : EcCoreGoal.proof option =
+  print_endline "try_rewriting_hints";
+  let pregoal = get_last_pregoal proof in
+  let penv = EcCoreGoal.proofenv_of_proof proof in
+  let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
+  let do1 lemma tc =
+    print_endline ("process_rewrite1_core for "^(EcPath.tostring lemma));
+    let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
+    process_rewrite1_core `LtoR pt tc
+  in
+  let goal_no proof = List.length (EcCoreGoal.all_opened proof) in
+  let gn = goal_no proof in
+  let try_rewriting_hint lemma =
+    try
+      let p' = run_tac (do1 lemma) proof in
+      print_endline "***RW SUCCESS***";
+      pp_proof p';
+      if gn=1 && (goal_no p')>1
+      then begin
+        print_endline "goal no increased from one to more than one";
+        match try_simp p' rw_lems with
+        | Some p'' ->
+          if (goal_no p'') = 1
+          then begin
+              print_endline "goal no reduced back to one";
+              changed_proof proof p''
+            end else begin
+              print_endline "failed to reduce goal no to one"; None end
+        | None -> None
+      end else changed_proof proof p'
+    with e -> print_endline
+("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
+              None
+  in
+  pp_proof proof;
+  List.fold_left (fun acc lem ->
+      if acc<>None then acc else try_rewriting_hint lem) None rw_lems
+
 
 let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
 (rw_lems : EcPath.path list) : EcCoreFol.form =
   (*let proof_a = prelims proof p_id in*)
-  let proof' = move_all_hyp_forms_to_concl proof in
-  let proof_o = try_simp proof' rw_lems in
+  let proof_o = try_simp proof rw_lems in
   match proof_o with
   | None -> extract_form proof p_id (* no progress happened *)
   | Some pr ->
     match List.length (EcCoreGoal.all_opened pr) with
-    | 1 ->
-      let pr' = move_all_hyps_up pr in 
-      extract_form pr' p_id         (* success - some progress happened *)
+    | 1 -> extract_form pr p_id         (* success - some progress happened *)
     | _ -> extract_form proof p_id  (* opened more goals than could be closed *)
 
 (*
