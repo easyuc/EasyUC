@@ -307,7 +307,56 @@ move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : envport_ext_func envport_ext_l_func.
+(* lemma inc_nle_r (xs ys : 'a list), inc xs ys => ! ys <= xs *)
+
+lemma inc_ext_nle_r (func adv xs : addr) :
+  inc func adv => ! adv <= func ++ xs.
+proof.
+move => inc_func_adv.
+by rewrite inc_nle_r 1:inc_extl.
+qed.
+
+lemma inc_ne (func adv : addr) :
+  inc func adv => func <> adv.
+proof.
+move => inc_func_adv.
+case (func = adv) => [->> | //].
+by rewrite not_inc_same in inc_func_adv.
+qed.
+
+lemma inc_ne_ext_l (func adv xs : addr) :
+  inc func adv => func ++ xs <> adv.
+proof.
+move => inc_func_adv.
+case (func ++ xs = adv) => [<<- | //].
+by rewrite inc_pre_r in inc_func_adv.
+qed.
+
+hint rewrite ucdsl_interpreter_hints :
+  envport_ext_func envport_ext_l_func
+  inc_ext_nle_r inc_ext_nle_r
+  inc_ne inc_ne_ext_l.
+
+(* these lemmas don't work for automated rewriting because
+   choice of adv can't be inferred from conclusion *)
+
+lemma envport_ne_func (func adv : addr, pt : port) :
+  envport func adv pt => pt.`1 <> func.
+proof.
+rewrite /envport.
+move => [#] nle_func_pt_1 _ _.
+move : nle_func_pt_1.
+by case (pt.`1 = func).
+qed.
+
+lemma envport_not_gt_func (func adv : addr, pt : port) :
+  envport func adv pt => ! func < pt.`1.
+proof.
+rewrite /envport => [#] func_not_le_pt_1 _ _.
+move : func_not_le_pt_1.
+rewrite implybNN => func_not_lt_pt_1.
+by rewrite ltW.
+qed.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from

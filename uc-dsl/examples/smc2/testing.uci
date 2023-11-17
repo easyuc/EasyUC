@@ -4,10 +4,6 @@ functionality
   (SMC.SMCReal(KeyExchange.KEReal),
    SMC.SMCReal(KeyExchange.KEReal)).
 
-(* we can remove this once the rewriting of envport is
-   is working *)
-prover timeout=3.
-
 var text1 : text.
 var text2 : text.
 var pt1 : port.
@@ -22,10 +18,6 @@ step.
 step.
 step.
 step.
-(* the next step should work by rewriting
-  envport (func ++ [3]) adv (func, 2)
-the lemma envport_ext_l_func in UCBasicTypes should let this simplify to true;
-it generates a subgoal inc func adv *)
 step.
 step.
 step.
