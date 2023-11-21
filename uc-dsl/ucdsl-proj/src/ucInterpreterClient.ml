@@ -528,11 +528,21 @@ let interpret (lexbuf : L.lexbuf) =
     end
   in
 
+  let pg_mode_break_handler () : unit =
+    try
+      non_loc_error_message (fun ppf -> Format.fprintf ppf ("interrupted."));
+    with ErrorMessageExn -> ()
+  in
+  
   let rec loop (body : unit -> unit) : unit =
     try
       body()
     with
     | ErrorMessageExn when UcState.get_pg_mode() ->
+        prompt();
+        loop body
+    | Sys.Break when UcState.get_pg_mode() ->
+        pg_mode_break_handler ();
         prompt();
         loop body
     | e when UcState.get_pg_mode() ->
@@ -670,12 +680,14 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let rec interpreter_loop (): unit =
-    prompt();
-    begin 
+    try
+      prompt();
       match (currs()).config with
       | Some _ -> done_loop()
       | None   -> setup_loop()
-    end;
+    with Sys.Break when UcState.get_pg_mode() ->
+      pg_mode_break_handler ()
+    ;
     interpreter_loop()
   in
   
@@ -685,6 +697,7 @@ let interpret (lexbuf : L.lexbuf) =
   
 let std_IO_client () =
   UcState.set_pg_mode();
+  Sys.catch_break true;
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
 
