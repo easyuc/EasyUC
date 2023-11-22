@@ -6,7 +6,7 @@
 ;;
 ;;2.
 ;;add line
-;;(ucdsl-interpreter "UC DSL Interpreter" "uci")
+;;(ucdsl-interpreter "UCInterpreter" "uci")
 ;;to proof-site.el inside proof-general folder /generic
 ;;
 ;;3.
@@ -26,6 +26,7 @@
 ;;M-x ucdsl-interpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucdsl-interpreter
+
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
@@ -36,6 +37,7 @@
   (setq uc-window (frame-selected-window uc-frame))
   (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
   (with-current-buffer uc-buffer
+    (ucdsl-mode)
     (setq buffer-read-only t)
   )
   (set-window-buffer uc-window uc-buffer)
@@ -283,6 +285,43 @@ this list are strings."
 (defun ucdsl-interpreter-prog-args ()
   (append ucdsl-interpreter-prog-args (ucdsl-interpreter-include-options)))
 
+;; coloring
+;; --------------------------------------------------------------------
+(defvar ucdsl-interpreter-keywords '(
+  "step"
+  "load"
+  "functionality"
+  "var"
+  "real"
+  "ideal"
+  "send"
+  "run"
+  "var"
+  "assumption"
+  "prover"
+  "hint"
+  "finish"
+  "assert"
+  "debug"
+  "undo"
+  "quit"
+))
+
+(defvar ucdsl-interpreter-font-lock-keywords
+  (list
+    (cons (proof-ids-to-regexp ucdsl-interpreter-keywords)    'font-lock-keyword-face)
+))
+
+(defun comment-syntax ()
+  (modify-syntax-entry ?\* ". 23n")
+  (modify-syntax-entry ?\( "()1")
+  (modify-syntax-entry ?\) ")(4")
+)
+
+(comment-syntax)
+;; --------------------------------------------------------------------
+
+
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
 
 (require 'proof-easy-config)		; easy configure mechanism
@@ -330,7 +369,9 @@ this list are strings."
 
  proof-state-change-pre-hook 'set-state-info
 
- ;;proof-general-debug "non-nil thing"
+ proof-script-font-lock-keywords 'ucdsl-interpreter-font-lock-keywords
+ 
+;;proof-general-debug "non-nil thing"
 )
 
 (defpgdefault menu-entries
