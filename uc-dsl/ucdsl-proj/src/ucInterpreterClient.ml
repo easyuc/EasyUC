@@ -680,14 +680,14 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let rec interpreter_loop (): unit =
-    try
+    begin try
       prompt();
       match (currs()).config with
       | Some _ -> done_loop()
       | None   -> setup_loop()
     with Sys.Break when UcState.get_pg_mode() ->
       pg_mode_break_handler ()
-    ;
+    end;
     interpreter_loop()
   in
   
