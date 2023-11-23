@@ -455,6 +455,12 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectRand ->
             begin match eff with
             | EffectRand _ -> ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ rand@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _            -> 
               error_message (loc peff)
               (fun ppf ->
@@ -492,6 +498,12 @@ let interpret (lexbuf : L.lexbuf) =
                            "adversary@ has@ control,@ but@ asserted@ "     ^^
                            "control@ was@ environment@]"))
                 else ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ msg_out@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _ -> 
                 error_message (loc peff)
                 (fun ppf ->
@@ -503,6 +515,12 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectFailOut ->
             begin match eff with
             | EffectFailOut -> ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ fail_out@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _ -> 
                 error_message (loc peff)
                 (fun ppf ->
