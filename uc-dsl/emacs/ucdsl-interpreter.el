@@ -6,7 +6,7 @@
 ;;
 ;;2.
 ;;add line
-;;(ucdsl-interpreter "UCInterpreter" "uci")
+;;(ucdsl-interpreter "UC DSL Interpreter" "uci")
 ;;to proof-site.el inside proof-general folder /generic
 ;;
 ;;3.
