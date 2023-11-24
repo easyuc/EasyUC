@@ -71,7 +71,7 @@ If not, hide the uc-frame "
                 (insert-file filenam)
                 (set-frame-name filenam)
                 (let ((x (make-overlay ch-pos-beg ch-pos-end)))
-                  (overlay-put x 'face '(:foreground "blue")))
+                  (overlay-put x 'face '(:background "sky blue")))
               ;;(auto-raise-mode -1)
               ;;(set-mark ch-pos-beg)
               ;;(activate-mark)

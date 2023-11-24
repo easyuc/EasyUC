@@ -93,7 +93,7 @@ let pp_uc_file_pos
   in
   begin match loco with
   | Some l ->
-    let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
+    let b,s = (string_of_int (l.loc_bchar+1)),(string_of_int (l.loc_echar+1)) in
     let str = "UC file position: "^(l.loc_fname)^" "^b^" "^s^";" in
     Format.fprintf fmt "%s@." str
   | None -> 
