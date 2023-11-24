@@ -36,15 +36,14 @@
   (setq uc-frame (make-frame '((name . "*UC file*") (visibility . nil))))
   (setq uc-window (frame-selected-window uc-frame))
   (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
+  (set-window-buffer uc-window uc-buffer)
   (with-current-buffer uc-buffer
     (ucdsl-mode)
     (setq buffer-read-only t)
   )
-  (set-window-buffer uc-window uc-buffer)
 )
 
 (init-uc-file-frame)
-
 
 (defun uc-file-frame (str)
   "If uc file and location in it are provided, insert file contents into uc-buffer from a file, mark the positions between character positions of the location.
@@ -55,28 +54,30 @@ If not, hide the uc-frame "
          )
       (let ( (params-line  (substring uc-file-line (length prefix)))
              (inhibit-read-only t)
-           )
-        (erase-buffer)
-        (make-frame-visible)
-        (if (string= params-line "None")            ;if
-          (progn                                    ;then 
-           (insert "*** no code running ***")
-           (set-frame-name "*UC file*")
-          ) 
-          (let ((params (split-string params-line)));else
-            (let ( (filenam    (nth 0 params))
-                   (ch-pos-beg (string-to-number (nth 1 params)))
-                   (ch-pos-end (string-to-number (nth 2 params)))
-                 )
-              (insert-file filenam)
-              (set-frame-name filenam)
-              (let ((x (make-overlay ch-pos-beg ch-pos-end)))
-                (overlay-put x 'face '(:foreground "blue")))
+             )
+	(make-frame-visible)
+	(with-current-buffer uc-buffer
+          (erase-buffer)
+          (if (string= params-line "None")            ;if
+            (progn                                    ;then 
+             (insert "*** no code running ***")
+             (set-frame-name "*UC file*")
+            ) 
+            (let ((params (split-string params-line)));else
+              (let ( (filenam    (nth 0 params))
+                     (ch-pos-beg (string-to-number (nth 1 params)))
+                     (ch-pos-end (string-to-number (nth 2 params)))
+                   )
+                (insert-file filenam)
+                (set-frame-name filenam)
+                (let ((x (make-overlay ch-pos-beg ch-pos-end)))
+                  (overlay-put x 'face '(:foreground "blue")))
               ;;(auto-raise-mode -1)
               ;;(set-mark ch-pos-beg)
               ;;(activate-mark)
-              (goto-char ch-pos-end)
-              (goto-char ch-pos-beg)
+                (goto-char ch-pos-end)
+                (goto-char ch-pos-beg)
+	      )
             )
           )
         )
@@ -371,7 +372,7 @@ this list are strings."
 
  proof-script-font-lock-keywords 'ucdsl-interpreter-font-lock-keywords
  
-;;proof-general-debug "non-nil thing"
+;; proof-general-debug "non-nil thing"
 )
 
 (defpgdefault menu-entries
