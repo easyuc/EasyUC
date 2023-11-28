@@ -6,7 +6,7 @@
 ;;
 ;;2.
 ;;add line
-;;(ucdsl-interpreter "UCInterpreter" "uci")
+;;(ucdsl-interpreter "UC DSL Interpreter" "uci")
 ;;to proof-site.el inside proof-general folder /generic
 ;;
 ;;3.
@@ -26,6 +26,7 @@
 ;;M-x ucdsl-interpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucdsl-interpreter
+
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
@@ -35,14 +36,14 @@
   (setq uc-frame (make-frame '((name . "*UC file*") (visibility . nil))))
   (setq uc-window (frame-selected-window uc-frame))
   (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
+  (set-window-buffer uc-window uc-buffer)
   (with-current-buffer uc-buffer
+    (ucdsl-mode)
     (setq buffer-read-only t)
   )
-  (set-window-buffer uc-window uc-buffer)
 )
 
 (init-uc-file-frame)
-
 
 (defun uc-file-frame (str)
   "If uc file and location in it are provided, insert file contents into uc-buffer from a file, mark the positions between character positions of the location.
@@ -53,28 +54,30 @@ If not, hide the uc-frame "
          )
       (let ( (params-line  (substring uc-file-line (length prefix)))
              (inhibit-read-only t)
-           )
-        (erase-buffer)
-        (make-frame-visible)
-        (if (string= params-line "None")            ;if
-          (progn                                    ;then 
-           (insert "*** no code running ***")
-           (set-frame-name "*UC file*")
-          ) 
-          (let ((params (split-string params-line)));else
-            (let ( (filenam    (nth 0 params))
-                   (ch-pos-beg (string-to-number (nth 1 params)))
-                   (ch-pos-end (string-to-number (nth 2 params)))
-                 )
-              (insert-file filenam)
-              (set-frame-name filenam)
-              (let ((x (make-overlay ch-pos-beg ch-pos-end)))
-                (overlay-put x 'face '(:foreground "blue")))
+             )
+	(make-frame-visible)
+	(with-current-buffer uc-buffer
+          (erase-buffer)
+          (if (string= params-line "None")            ;if
+            (progn                                    ;then 
+             (insert "*** no code running ***")
+             (set-frame-name "*UC file*")
+            ) 
+            (let ((params (split-string params-line)));else
+              (let ( (filenam    (nth 0 params))
+                     (ch-pos-beg (string-to-number (nth 1 params)))
+                     (ch-pos-end (string-to-number (nth 2 params)))
+                   )
+                (insert-file filenam)
+                (set-frame-name filenam)
+                (let ((x (make-overlay ch-pos-beg ch-pos-end)))
+                  (overlay-put x 'face '(:background "sky blue")))
               ;;(auto-raise-mode -1)
               ;;(set-mark ch-pos-beg)
               ;;(activate-mark)
-              (goto-char ch-pos-end)
-              (goto-char ch-pos-beg)
+                (goto-char ch-pos-end)
+                (goto-char ch-pos-beg)
+	      )
             )
           )
         )
@@ -283,6 +286,43 @@ this list are strings."
 (defun ucdsl-interpreter-prog-args ()
   (append ucdsl-interpreter-prog-args (ucdsl-interpreter-include-options)))
 
+;; coloring
+;; --------------------------------------------------------------------
+(defvar ucdsl-interpreter-keywords '(
+  "step"
+  "load"
+  "functionality"
+  "var"
+  "real"
+  "ideal"
+  "send"
+  "run"
+  "var"
+  "assumption"
+  "prover"
+  "hint"
+  "finish"
+  "assert"
+  "debug"
+  "undo"
+  "quit"
+))
+
+(defvar ucdsl-interpreter-font-lock-keywords
+  (list
+    (cons (proof-ids-to-regexp ucdsl-interpreter-keywords)    'font-lock-keyword-face)
+))
+
+(defun comment-syntax ()
+  (modify-syntax-entry ?\* ". 23n")
+  (modify-syntax-entry ?\( "()1")
+  (modify-syntax-entry ?\) ")(4")
+)
+
+(comment-syntax)
+;; --------------------------------------------------------------------
+
+
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
 
 (require 'proof-easy-config)		; easy configure mechanism
@@ -330,7 +370,9 @@ this list are strings."
 
  proof-state-change-pre-hook 'set-state-info
 
- ;;proof-general-debug "non-nil thing"
+ proof-script-font-lock-keywords 'ucdsl-interpreter-font-lock-keywords
+ 
+;; proof-general-debug "non-nil thing"
 )
 
 (defpgdefault menu-entries

@@ -332,11 +332,20 @@ qed.
 
 hint simplify [reduce] le_pre, le_pre_l.
 
+lemma le_refl (xs : 'a list) : xs <= xs.
+proof.
+rewrite /(<=) /=.
+right; by rewrite lpo_eqP.
+qed.
+
+hint simplify [eqtrue] le_refl.
+
 lemma le_ext_r (xs ys : 'a list) :
   xs <= xs ++ ys.
 proof.
 rewrite -{1}(cats0 xs) le_pre ge_nil.
 qed.
+
 hint simplify [eqtrue] le_ext_r.
 
 lemma gt_cons (y : 'a, ys : 'a list) :
@@ -452,12 +461,6 @@ qed.
 lemma ltW (xs ys : 'a list) :
   xs < ys => xs <= ys.
 proof. move => @/(<=) @/(<) />. qed.
-
-lemma le_refl (xs : 'a list) : xs <= xs.
-proof.
-rewrite /(<=) /=.
-right; by rewrite lpo_eqP.
-qed.
 
 lemma le_trans (ys xs zs : 'a list) :
   xs <= ys => ys <= zs => xs <= zs.

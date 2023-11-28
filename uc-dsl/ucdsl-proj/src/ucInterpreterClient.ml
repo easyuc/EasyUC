@@ -93,7 +93,7 @@ let pp_uc_file_pos
   in
   begin match loco with
   | Some l ->
-    let b,s = (string_of_int l.loc_bchar),(string_of_int l.loc_echar) in
+    let b,s = (string_of_int (l.loc_bchar+1)),(string_of_int (l.loc_echar+1)) in
     let str = "UC file position: "^(l.loc_fname)^" "^b^" "^s^";" in
     Format.fprintf fmt "%s@." str
   | None -> 
@@ -455,6 +455,12 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectRand ->
             begin match eff with
             | EffectRand _ -> ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ rand@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _            -> 
               error_message (loc peff)
               (fun ppf ->
@@ -492,6 +498,12 @@ let interpret (lexbuf : L.lexbuf) =
                            "adversary@ has@ control,@ but@ asserted@ "     ^^
                            "control@ was@ environment@]"))
                 else ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ msg_out@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _ -> 
                 error_message (loc peff)
                 (fun ppf ->
@@ -503,6 +515,12 @@ let interpret (lexbuf : L.lexbuf) =
         | EffectFailOut ->
             begin match eff with
             | EffectFailOut -> ()
+            | EffectOK ->
+              error_message (loc peff)
+              (fun ppf ->
+                 Format.fprintf ppf 
+                 ("@[assert@ of@ fail_out@ effect@ failed.@ The@ effect@ " ^^
+                  "that@ occurred:@ OK@]"))
             | _ -> 
                 error_message (loc peff)
                 (fun ppf ->
@@ -528,11 +546,21 @@ let interpret (lexbuf : L.lexbuf) =
     end
   in
 
+  let pg_mode_break_handler () : unit =
+    try
+      non_loc_error_message (fun ppf -> Format.fprintf ppf ("interrupted."));
+    with ErrorMessageExn -> ()
+  in
+  
   let rec loop (body : unit -> unit) : unit =
     try
       body()
     with
     | ErrorMessageExn when UcState.get_pg_mode() ->
+        prompt();
+        loop body
+    | Sys.Break when UcState.get_pg_mode() ->
+        pg_mode_break_handler ();
         prompt();
         loop body
     | e when UcState.get_pg_mode() ->
@@ -670,11 +698,13 @@ let interpret (lexbuf : L.lexbuf) =
   in
 
   let rec interpreter_loop (): unit =
-    prompt();
-    begin 
+    begin try
+      prompt();
       match (currs()).config with
       | Some _ -> done_loop()
       | None   -> setup_loop()
+    with Sys.Break when UcState.get_pg_mode() ->
+      pg_mode_break_handler ()
     end;
     interpreter_loop()
   in
@@ -685,6 +715,7 @@ let interpret (lexbuf : L.lexbuf) =
   
 let std_IO_client () =
   UcState.set_pg_mode();
+  Sys.catch_break true;
   let lexbuf = lexbuf_from_channel "stdin" stdin  in
   interpret lexbuf
 

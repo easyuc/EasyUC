@@ -74,7 +74,7 @@ step.
 step.
 step.
 
-(*
+
 
 run.
 assert msg_out
@@ -237,4 +237,4 @@ assert msg_out
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1
 ctrl_env.
 finish.
-*)
+

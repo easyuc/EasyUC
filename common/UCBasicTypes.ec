@@ -283,72 +283,13 @@ qed.
 
 hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
-(* TODO: remove this once simplification is happening after use
-   of rewriting hints *)
-
-hint simplify [reduce] extend_addr_by_sing.
-
-(* the following lemmas and hints are temporary, until we get
-   rewriting hints working correctly *)
-
-lemma envport_ext_func_iff (func adv xs ys : addr, i : int) :
-  envport (func ++ xs) adv (func ++ ys, i) <=>
-  ! xs <= ys /\ ! adv <= func ++ ys /\ (func ++ ys <> [] \/ i <> 0).
-proof.
-by rewrite /envport /= negb_and.
-qed.
-
-lemma envport_ext_l_func_iff (func adv xs : addr, i : int) :
-  envport (func ++ xs) adv (func, i) <=>
-  xs <> [] /\ ! adv <= func /\ (func <> [] \/ i <> 0).
-proof.
-by rewrite -{2 3 4}(cats0 func) envport_ext_func_iff le_nil_iff.
-qed.
-
-hint simplify [reduce] envport_ext_func_iff, envport_ext_l_func_iff.
-
-op nosmt [opaque] addr_not_leq_ext (func adv xs : addr) : bool =
-  ! adv <= func ++ xs.
-
-lemma addr_not_leq_ext_suff_inc (func adv xs : addr) :
-  inc func adv => addr_not_leq_ext func adv xs.
-proof.
-rewrite /addr_not_leq_ext.
-move => inc_func_adv.
-rewrite (inc_le2_not_lr func) //.
-by rewrite inc_sym.
-qed.
-
-op nosmt [opaque] addr_not_leq (func adv : addr) : bool =
-  ! adv <= func.
-
-lemma addr_not_leq_suff_inc (func adv : addr) :
-  inc func adv => addr_not_leq func adv.
-proof.
-rewrite /addr_not_leq.
-move => inc_func_adv.
-by rewrite inc_nle_r.
-qed.
-
-hint rewrite ucdsl_interpreter_hints :
-  addr_not_leq_ext_suff_inc addr_not_leq_suff_inc.
-
-(* end of temporary lemmas and hints *)
-
-(* the following lemmas and hints can be uncommented once we
-   have rewriting hints working
-
 lemma envport_ext_func (func adv xs ys : addr, i : int) :
-  inc func adv =>
-  envport (func ++ xs) adv (func ++ ys, i) <=> ! xs <= ys.
+  inc func adv => ! xs <= ys =>
+  envport (func ++ xs) adv (func ++ ys, i).
 proof.
-rewrite /envport /=.
-move => inc_func_adv.
+rewrite /envport /= => inc_func_adv -> /=.
 split.
-trivial.
-move => -> /=.
-split.
-rewrite (inc_le1_not_rl func) // le_ext_r.
+by rewrite (inc_le1_not_rl func).
 rewrite negb_and.
 left.
 case (func ++ ys = []) => [func_concat_ys_eq_nil | //].
@@ -358,17 +299,64 @@ have // : func ++ ys <> [].
   trivial.
 qed.
 
-lemma envport_ext_l_func (func adv xs ys : addr, i : int) :
-  inc func adv =>
-  envport (func ++ xs) adv (func, i) <=> xs <> [].
+lemma envport_ext_l_func (func adv xs : addr, i : int) :
+  inc func adv => xs <> [] =>
+  envport (func ++ xs) adv (func, i).
 proof.
-move => inc_func_adv.
+move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : envport_ext_func envport_ext_l_func.
+(* lemma inc_nle_r (xs ys : 'a list), inc xs ys => ! ys <= xs *)
 
-*)
+lemma inc_ext_nle_r (func adv xs : addr) :
+  inc func adv => ! adv <= func ++ xs.
+proof.
+move => inc_func_adv.
+by rewrite inc_nle_r 1:inc_extl.
+qed.
+
+lemma inc_ne (func adv : addr) :
+  inc func adv => func <> adv.
+proof.
+move => inc_func_adv.
+case (func = adv) => [->> | //].
+by rewrite not_inc_same in inc_func_adv.
+qed.
+
+lemma inc_ne_ext_l (func adv xs : addr) :
+  inc func adv => func ++ xs <> adv.
+proof.
+move => inc_func_adv.
+case (func ++ xs = adv) => [<<- | //].
+by rewrite inc_pre_r in inc_func_adv.
+qed.
+
+hint rewrite ucdsl_interpreter_hints :
+  envport_ext_func envport_ext_l_func
+  inc_ext_nle_r inc_ext_nle_r
+  inc_ne inc_ne_ext_l.
+
+(* these lemmas don't work for automated rewriting because
+   choice of adv can't be inferred from conclusion *)
+
+lemma envport_ne_func (func adv : addr, pt : port) :
+  envport func adv pt => pt.`1 <> func.
+proof.
+rewrite /envport.
+move => [#] nle_func_pt_1 _ _.
+move : nle_func_pt_1.
+by case (pt.`1 = func).
+qed.
+
+lemma envport_not_gt_func (func adv : addr, pt : port) :
+  envport func adv pt => ! func < pt.`1.
+proof.
+rewrite /envport => [#] func_not_le_pt_1 _ _.
+move : func_not_le_pt_1.
+rewrite implybNN => func_not_lt_pt_1.
+by rewrite ltW.
+qed.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from

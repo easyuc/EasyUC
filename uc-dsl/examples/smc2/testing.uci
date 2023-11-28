@@ -3,6 +3,7 @@ functionality
   SMC2.SMC2Real
   (SMC.SMCReal(KeyExchange.KEReal),
    SMC.SMCReal(KeyExchange.KEReal)).
+
 var text1 : text.
 var text2 : text.
 var pt1 : port.
