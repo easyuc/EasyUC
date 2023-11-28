@@ -223,6 +223,11 @@ simultaneously with UC DSL interpreter scripts (`.uci`), you will
 need to do this using two instances of Emacs, as Proof General
 can only work with one program at a time.
 
+If you find that the highlighting of the currently executing code in a
+`.uc` file is offset from the correct position, this is because you
+have carriage return characters in the `.uc` file. Emacs preserves the
+Microsoft end of line encoding when it already exists in a file.
+
 If you would like to customize the load paths used by EasyCrypt and
 the UC DSL interpreter when running in Proof General, you can
 create a file `.dir-locals.el` in the current directory with

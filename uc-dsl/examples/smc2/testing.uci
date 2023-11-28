@@ -1,5 +1,3 @@
-(*comment*)
-(*"(*nested comment*)"*)
 load SMC2.
 functionality
   SMC2.SMC2Real
