@@ -2,6 +2,7 @@
 open EcUtils
 open EcIdent
 open EcPath
+open EcAst
 open EcTypes
 open EcDecl
 open EcModules
@@ -37,11 +38,7 @@ module EqTest_base = struct
     | Tfun (t1, t2), Tfun (t1', t2') ->
         for_type env t1 t1' && for_type env t2 t2'
 
-    | Tglob mp, _ when EcEnv.NormMp.tglob_reducible env mp ->
-        for_type env (EcEnv.NormMp.norm_tglob env mp) t2
-
-    | _, Tglob mp when EcEnv.NormMp.tglob_reducible env mp ->
-        for_type env t1 (EcEnv.NormMp.norm_tglob env mp)
+    | Tglob m1, Tglob m2 -> EcIdent.id_equal m1 m2
 
     | Tconstr (p1, lt1), Tconstr (p2, lt2) when EcPath.p_equal p1 p2 ->
         if
@@ -140,7 +137,7 @@ module EqTest_base = struct
       | Eop(o1,ty1), Eop(o2,ty2) ->
           p_equal o1 o2 && List.all2 (for_type env) ty1 ty2
 
-      | Equant(q1,b1,e1), Equant(q2,b2,e2) when qt_equal q1 q2 ->
+      | Equant(q1,b1,e1), Equant(q2,b2,e2) when eqt_equal q1 q2 ->
           let alpha = check_bindings env alpha b1 b2 in
           noconv (aux alpha) e1 e2
 
@@ -256,18 +253,19 @@ end) = struct
     for_type env fs1.fs_ret fs2.fs_ret
 
   (* -------------------------------------------------------------------- *)
-  let add_modules p1 p2 : EcSubst.subst =
-    List.fold_left2 (fun s (id1,_) (id2,_) ->
-        EcSubst.add_module s id1 (EcPath.mident id2)) EcSubst.empty p1 p2
+  let add_modules env p1 p2 : EcEnv.env * EcSubst.subst =
+    List.fold_left2 (fun (env, s) (id1,_) (id2,mt) ->
+        let env = EcEnv.Mod.bind_local id2 mt env in
+        env, EcSubst.add_module s id1 (EcPath.mident id2)) (env, EcSubst.empty) p1 p2
 
   (* ------------------------------------------------------------------ *)
-  let rec for_module_type env ~norm mt1 mt2 =
+  let rec for_module_type env ~norm (mt1:module_type) (mt2:module_type) =
     if EcPath.p_equal mt1.mt_name mt2.mt_name then
       let p1 = mt1.mt_params in
       let p2 = mt2.mt_params in
       List.for_all2
         (fun (_,mt1) (_,mt2) -> for_module_type env ~norm mt1 mt2) p1 p2 &&
-        let s = add_modules p2 p1 in
+        let env, s = add_modules env p2 p1 in
         let args1 = mt1.mt_args in
         let args2 = List.map (EcSubst.subst_mpath s) mt2.mt_args in
         List.for_all2 (for_mp env ~norm) args1 args2
@@ -294,7 +292,7 @@ end) = struct
     let p2 = ms2.mis_params in
     List.for_all2
       (fun (_,mt1) (_,mt2) -> for_module_type env ~norm mt1 mt2) p1 p2 &&
-    let s = add_modules p2 p1 in
+    let env, s = add_modules env p2 p1 in
     let body1 = ms1.mis_body in
     let body2 = EcSubst.subst_modsig_body s ms2.mis_body in
     for_module_sig_body env body1 body2
@@ -310,7 +308,7 @@ end) = struct
     let locals2 = List.sort cmp_v fd2.f_locals in
     List.for_all2 (for_variable env) locals1 locals2 &&
     for_stmt env Mid.empty ~norm fd1.f_body fd2.f_body &&
-      oall2 (for_expr env Mid.empty ~norm) fd1.f_ret fd2.f_ret
+    oall2 (for_expr env Mid.empty ~norm) fd1.f_ret fd2.f_ret
 
   (* ------------------------------------------------------------------ *)
   (* FIXME: FBalias FBdef *)
@@ -320,14 +318,16 @@ end) = struct
       for_function_def env ~norm fd1 fd2
 
     | FBalias xp1, FBalias xp2 ->
-      for_xp env ~norm xp1 xp2
+       for_xp env ~norm xp1 xp2
 
     | FBabs restr1, FBabs restr2 ->
        (* Should we use PreOI.equal (for_form env ~norm) *)
        OI.equal restr1 restr2
 
     | FBabs _, _ | _, FBabs _ -> assert false
+
     | _, _ -> false
+
 
   let for_function env ~norm f1 f2 =
     f1.f_name = f2.f_name &&
@@ -338,7 +338,7 @@ end) = struct
   let rec for_module_expr env ~norm ~body me1 me2 =
     me1.me_name = me2.me_name &&
       for_module_sig_body env me1.me_sig_body me2.me_sig_body &&
-    let s = add_modules me2.me_params me1.me_params in
+    let env, s = add_modules env me2.me_params me1.me_params in
     let comps1 = me1.me_comps in
     let comps2 = EcSubst.subst_module_comps s me2.me_comps in
 
@@ -499,9 +499,9 @@ let is_alpha_eq hyps f1 f2 =
     let pv2 = EcSubst.subst_progvar subst pv2 in
     ensure (EqTest_i.for_pv env pv1 pv2) in
 
-  let check_mp env subst mp1 mp2 =
-    let mp2 = EcSubst.subst_mpath subst mp2 in
-    ensure (EqTest_i.for_mp env mp1 mp2) in
+  let check_mod subst m1 m2 =
+    let m2 = EcPath.mget_ident (EcSubst.subst_mpath subst (EcPath.mident m2)) in
+    ensure (EcIdent.id_equal m1 m2) in
 
   let check_xp env subst xp1 xp2 =
     let xp2 = EcSubst.subst_xpath subst xp2 in
@@ -544,9 +544,9 @@ let is_alpha_eq hyps f1 f2 =
       check_mem subst m1 m2;
       check_pv env subst p1 p2
 
-    | Fglob(p1,m1), Fglob(p2,m2) ->
-      check_mem subst m1 m2;
-      check_mp env subst p1 p2
+    | Fglob(m1,mem1), Fglob(m2,mem2) ->
+      check_mem subst mem1 mem2;
+      check_mod subst m1 m2
 
     | Fop(p1, ty1), Fop(p2, ty2) when EcPath.p_equal p1 p2 ->
       List.iter2 (check_ty env subst) ty1 ty2
@@ -572,6 +572,17 @@ let is_alpha_eq hyps f1 f2 =
       (* FIXME should check the memenv *)
       aux env subst hs1.hs_pr hs2.hs_pr;
       aux env subst hs1.hs_po hs2.hs_po
+
+    | FeHoareF hf1, FeHoareF hf2 ->
+      check_xp env subst hf1.ehf_f hf2.ehf_f;
+      aux env subst hf1.ehf_pr hf2.ehf_pr;
+      aux env subst hf1.ehf_po hf2.ehf_po
+
+    | FeHoareS hs1, FeHoareS hs2 ->
+      check_s env subst hs1.ehs_s hs2.ehs_s;
+      (* FIXME should check the memenv *)
+      aux env subst hs1.ehs_pr hs2.ehs_pr;
+      aux env subst hs1.ehs_po hs2.ehs_po
 
     | FbdHoareF hf1, FbdHoareF hf2 ->
       ensure (hf1.bhf_cmp = hf2.bhf_cmp);
@@ -1218,9 +1229,7 @@ let reduce_head simplify ri env hyps f =
       f_app (Fsubst.f_subst subst body) eargs f.f_ty
 
     (* μ-reduction *)
-  | Fglob (mp, m) when ri.modpath ->
-    let f' = NormMp.norm_glob env m mp in
-    if f_equal f f' then raise nohead else f'
+  | Fglob (_, _) when ri.modpath -> raise nohead
 
     (* μ-reduction *)
   | Fpvar (pv, m) when ri.modpath ->
@@ -1405,6 +1414,10 @@ let rec simplify ri env f =
       let hf_f = EcEnv.NormMp.norm_xfun env hf.hf_f in
       f_map (fun ty -> ty) (simplify ri env) (f_hoareF_r { hf with hf_f })
 
+  | FeHoareF hf when ri.ri.modpath ->
+      let ehf_f = EcEnv.NormMp.norm_xfun env hf.ehf_f in
+      f_map (fun ty -> ty) (simplify ri env) (f_eHoareF_r { hf with ehf_f })
+
   | FbdHoareF hf when ri.ri.modpath ->
       let bhf_f = EcEnv.NormMp.norm_xfun env hf.bhf_f in
       f_map (fun ty -> ty) (simplify ri env) (f_bdHoareF_r { hf with bhf_f })
@@ -1504,6 +1517,10 @@ let zpop ri side f hd =
     f_hoareF_r {hf with hf_pr = pr; hf_po = po }
   | Zhl {f_node = FhoareS hs}, [pr;po] ->
     f_hoareS_r {hs with hs_pr = pr; hs_po = po }
+  | Zhl {f_node = FeHoareF hf}, [pr;po] ->
+    f_eHoareF_r {hf with ehf_pr = pr; ehf_po = po }
+  | Zhl {f_node = FeHoareS hs}, [pr;po] ->
+    f_eHoareS_r {hs with ehs_pr = pr; ehs_po = po }
   | Zhl {f_node = FbdHoareF hf}, [pr;po;bd] ->
     f_bdHoareF_r {hf with bhf_pr = pr; bhf_po = po; bhf_bd = bd}
   | Zhl {f_node = FbdHoareS hs}, [pr;po;bd] ->
@@ -1621,9 +1638,7 @@ let rec conv ri env f1 f2 stk =
 
   | Fglob (m1, mem1), Fglob (m2, mem2)
       when
-        EcPath.m_equal
-          (EcEnv.NormMp.norm_mpath env m1)
-          (EcEnv.NormMp.norm_mpath env m2)
+        EcIdent.id_equal m1 m2
         && EcMemory.mem_equal mem1 mem2 ->
       conv_next ri env f1 stk
 
@@ -1633,6 +1648,13 @@ let rec conv ri env f1 f2 stk =
   | FhoareS hs1, FhoareS hs2
       when EqTest_i.for_stmt env hs1.hs_s hs2.hs_s ->
     conv ri env hs1.hs_pr hs2.hs_pr (zhl f1 [hs1.hs_po] [hs2.hs_po] stk)
+
+  | FeHoareF hf1, FeHoareF hf2 when EqTest_i.for_xp env hf1.ehf_f hf2.ehf_f ->
+    conv ri env hf1.ehf_pr hf2.ehf_pr (zhl f1 [hf1.ehf_po] [hf2.ehf_po] stk)
+
+  | FeHoareS hs1, FeHoareS hs2
+      when EqTest_i.for_stmt env hs1.ehs_s hs2.ehs_s ->
+    conv ri env hs1.ehs_pr hs2.ehs_pr (zhl f1 [hs1.ehs_po] [hs2.ehs_po] stk)
 
   | FbdHoareF hf1, FbdHoareF hf2
       when EqTest_i.for_xp env hf1.bhf_f hf2.bhf_f && hf1.bhf_cmp = hf2.bhf_cmp  ->

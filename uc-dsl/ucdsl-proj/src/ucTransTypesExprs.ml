@@ -10,9 +10,9 @@ open EcPath
 open EcMaps
 open EcSymbols
 open EcLocation
+open EcAst
 open EcTypes
 open EcDecl
-open EcMemory
 open UcSpec
 open UcSpecTypedSpecCommon
 

@@ -509,12 +509,12 @@ let process_delta_when_args_are_addr_literals p tc =
       let cpos =
         let test = fun _ fp ->
           let (fp : EcCoreFol.form) =
-            match fp.EcCoreFol.f_node with
-            | EcCoreFol.Fapp (h, hargs) when List.length hargs > na ->
+            match fp.EcAst.f_node with
+            | EcAst.Fapp (h, hargs) when List.length hargs > na ->
                 let (a1, a2) = BatList.takedrop na hargs in
                 EcCoreFol.f_app h a1
                   (EcTypes.toarrow
-                     (List.map EcCoreFol.f_ty a2) fp.EcCoreFol.f_ty)
+                     (List.map EcCoreFol.f_ty a2) fp.EcAst.f_ty)
             | _ -> fp
           in
           print_endline "fp="; pp_form tc fp;  pp_form_ty tc fp;
@@ -527,7 +527,7 @@ let process_delta_when_args_are_addr_literals p tc =
               Format.printf "%a@." (EcPrinting.pp_type ppe) ty1;
               Format.printf "%a@." (EcPrinting.pp_type ppe) ty2;*)
   EcReduction.EqTest.for_type env ty1 (EcSubst.subst_ty subst ty2) in
-            match p.EcCoreFol.f_node, fp.EcCoreFol.f_node with
+            match p.EcAst.f_node, fp.EcAst.f_node with
             | Fop (pp,pp_ty), Fop(fpp,fpp_ty) ->
                let p_equal = EcPath.p_equal pp fpp in
            print_endline

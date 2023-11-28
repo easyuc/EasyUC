@@ -4,6 +4,7 @@ open EcLocation
 open EcIdent
 open EcSymbols
 open EcPath
+open EcAst
 open EcTypes
 open EcFol
 open EcEnv
@@ -175,8 +176,7 @@ module LowApply = struct
                 if mode = `Elim then f_imps obl f
                 else f_and (f_ands obl) f
             in
-
-            (Fsubst.f_bind_mod sbt x mp, f)
+            (EcFol.f_bind_mod sbt x mp env, f)
           with _ -> raise InvalidProofTerm
         end
 
@@ -474,7 +474,7 @@ let t_intros_x (ids : (ident  option) mloc list) (tc : tcenv1) =
         (id, LD_mem me, Fsubst.f_bind_mem sbt x (tg_val id))
     | GTmodty i ->
         LowIntro.check_name_validity !!tc `Module name;
-        (id, LD_modty i, Fsubst.f_bind_mod sbt x (EcPath.mident (tg_val id)))
+        (id, LD_modty i, Fsubst.f_bind_absmod sbt x (tg_val id))
   in
 
   let add_ld id ld hyps =
@@ -817,7 +817,7 @@ let t_generalize_hyps_x ?(missing = false) ?naming ?(letin = false) ids tc =
 
       | LD_modty mt ->
         let x    = fresh id in
-        let s    = Fsubst.f_bind_mod s id (EcPath.mident x) in
+        let s    = Fsubst.f_bind_absmod s id x in
         let mp   = EcPath.mident id in
         let sig_ = EcEnv.NormMp.sig_of_mp env mp in
         let bds  = `Forall (x, GTmodty mt) :: bds in
@@ -1607,13 +1607,16 @@ let t_rewrite
       RApi.close tc (VRewrite (hd, rwpt));
       RApi.tcenv_of_rtcenv tc
 
-  | Some (h : ident) ->
-      let hyps = oget (LDecl.hyp_convert h (fun _ _ -> tgfp) (RApi.tc_hyps tc)) in
-      let hd   = RApi.newgoal tc ~hyps (RApi.tc_goal tc) in
-      let rwpt = { rpt_proof = pt; rpt_occrs = pos; rpt_lc = Some h; } in
+  | Some (h : ident) -> begin
+      match LDecl.hyp_convert h (fun _ _ -> tgfp) (RApi.tc_hyps tc) with
+      | Some hyps ->
+         let hd   = RApi.newgoal tc ~hyps (RApi.tc_goal tc) in
+         let rwpt = { rpt_proof = pt; rpt_occrs = pos; rpt_lc = Some h; } in
+         RApi.close tc (VRewrite (hd, rwpt))
 
-      RApi.close tc (VRewrite (hd, rwpt));
-      RApi.tcenv_of_rtcenv tc
+      | None -> ()
+    end;
+    RApi.tcenv_of_rtcenv tc
 
 (* -------------------------------------------------------------------- *)
 let t_rewrite_hyp ?xconv ?mode ?donot (id : EcIdent.t) pos (tc : tcenv1) =
@@ -1623,7 +1626,7 @@ let t_rewrite_hyp ?xconv ?mode ?donot (id : EcIdent.t) pos (tc : tcenv1) =
 (* -------------------------------------------------------------------- *)
 type vsubst = [
   | `Local of EcIdent.t
-  | `Glob  of EcPath.mpath * EcMemory.memory
+  | `Glob  of EcIdent.t * EcMemory.memory
   | `PVar  of EcTypes.prog_var * EcMemory.memory
 ]
 
@@ -1669,11 +1672,8 @@ module LowSubst = struct
 
     (* Substitution of globs *)
     | Fglob (mp, m), None when kind.sk_glob -> Some (`Glob (mp, m))
-    | Fglob (mp, m), Some (`Glob (mp', m')) when kind.sk_glob ->
-        let gl  = EcEnv.NormMp.norm_glob env m  mp  in
-        let gl' = EcEnv.NormMp.norm_glob env m' mp' in
-
-        if   EcFol.f_equal gl gl'
+    | Fglob (mp, m), Some (`Glob (mp', _)) when kind.sk_glob ->
+        if   EcIdent.id_equal mp mp'
         then Some (`Glob (mp, m))
         else None
 
@@ -1727,7 +1727,7 @@ module LowSubst = struct
       | Some ((_, `Glob (mp, m), f) as aout) ->
         let f  = simplify { no_red with delta_h = predT } hyps f in
         let fv = EcPV.PV.fv env m f in
-        if EcPV.PV.mem_glob env mp fv then None else Some aout in
+        if EcPV.PV.mem_glob env (EcPath.mident mp) fv then None else Some aout in
     match aout with
     | None -> None
     | Some(side,v,f) ->
@@ -1759,7 +1759,7 @@ module LowSubst = struct
         (subst f, check)
 
     | `Glob (mp, m) ->
-        let subst f = EcPV.PVM.subst env (EcPV.PVM.add_glob env mp m f EcPV.PVM.empty) in
+        let subst f = EcPV.PVM.subst env (EcPV.PVM.add_glob env (EcPath.mident mp) m f EcPV.PVM.empty) in
         (* FIXME *)
         let check _tg = true in
         (subst f, check)
@@ -1790,13 +1790,6 @@ let gen_hyps post gG =
     | LD_hyp f                -> f_imp f gG
     | LD_abs_st _             -> raise InvalidGoalShape in
   List.fold_left do1 gG post
-
-let build_var var ty =
-  match var with
-  | `Glob (mp,m) -> f_glob mp m
-  | `Local x     -> f_local x ty
-  | `PVar(x,m)   -> f_pvar x ty m
-
 
 let t_rw_for_subst y togen concl side eqid tc =
   let hyps = FApi.tc1_hyps tc in

@@ -3,6 +3,7 @@ open EcSymbols
 open EcUtils
 open EcLocation
 open EcParsetree
+open EcAst
 open EcTypes
 open EcDecl
 open EcModules
@@ -133,7 +134,8 @@ let get_open_oper exn env p tys =
 let rec oper_compatible exn env ob1 ob2 =
   match ob1, ob2 with
   | OP_Plain(f1,_), OP_Plain(f2,_)  ->
-    error_body exn (EcReduction.is_conv (EcEnv.LDecl.init env []) f1 f2)
+    let ri = { EcReduction.full_red with delta_p = fun _-> `Force; } in
+    error_body exn (EcReduction.is_conv ~ri:ri (EcEnv.LDecl.init env []) f1 f2)
   | OP_Plain({f_node = Fop(p,tys)},_), _ ->
     let ob1 = get_open_oper exn env p tys  in
     oper_compatible exn env ob1 ob2
@@ -446,7 +448,7 @@ and replay_opd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopd) =
                 let codom   = EcTyping.transty tp env ue opov.opov_retty in
                 let env, xs = EcTyping.trans_binding env ue opov.opov_args in
                 let body    = EcTyping.trans_form env ue opov.opov_body codom in
-                let lam     = EcFol.f_lambda (List.map (fun (x, ty) -> (x, EcFol.GTty ty)) xs) body in
+                let lam     = EcFol.f_lambda (List.map (fun (x, ty) -> (x, GTty ty)) xs) body in
                 (lam.f_ty, lam)
               in
               begin
@@ -557,7 +559,7 @@ and replay_prd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopr) =
             let body =
               let env, xs = EcTyping.trans_binding env ue prov.prov_args in
               let body    = EcTyping.trans_form_opt env ue prov.prov_body None in
-              let xs      = List.map (fun (x, ty) -> x, EcFol.GTty ty) xs in
+              let xs      = List.map (fun (x, ty) -> x, GTty ty) xs in
               let lam     = EcFol.f_lambda xs body in
               lam
             in
@@ -566,7 +568,7 @@ and replay_prd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopr) =
               try
                 ty_compatible env ue
                   (List.map fst reftyvars, refty)
-                  (List.map fst (EcUnify.UniEnv.tparams ue), body.EcFol.f_ty)
+                  (List.map fst (EcUnify.UniEnv.tparams ue), body.f_ty)
               with Incompatible err ->
                 clone_error env
                   (CE_OpIncompatible ((snd ove.ovre_prefix, x), err))
@@ -582,7 +584,7 @@ and replay_prd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopr) =
             let tparams = EcUnify.UniEnv.tparams ue in
             let newpr   =
               { op_tparams  = tparams;
-                op_ty       = body.EcFol.f_ty;
+                op_ty       = body.f_ty;
                 op_kind     = OB_pred (Some (PR_Plain body));
                 op_opaque   = oopr.op_opaque;
                 op_clinline = prmode <> `Alias;

@@ -1,11 +1,9 @@
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcIdent
+open EcAst
 open EcTypes
-
 open EcCoreModules
-
-type memory = EcMemory.memory
 
 module BI = EcBigInt
 module Mp = EcPath.Mp
@@ -16,228 +14,71 @@ module Sx = EcPath.Sx
 open EcBigInt.Notations
 
 (* -------------------------------------------------------------------- *)
-type quantif =
-  | Lforall
-  | Lexists
-  | Llambda
+type quantif = EcAst.quantif
 
-type hoarecmp = FHle | FHeq | FHge
+type hoarecmp = EcAst.hoarecmp
 
-type gty =
-  | GTty    of EcTypes.ty
-  | GTmodty of module_type
-  | GTmem   of EcMemory.memtype
+type gty = EcAst.gty
 
-and binding  = (EcIdent.t * gty)
-and bindings = binding list
+type binding  = (EcIdent.t * gty)
+type bindings = binding list
 
-and form = {
-  f_node : f_node;
-  f_ty   : ty;
-  f_fv   : int EcIdent.Mid.t; (* local, memory, module ident *)
-  f_tag  : int;
-}
-
-and f_node =
-  | Fquant  of quantif * bindings * form
-  | Fif     of form * form * form
-  | Fmatch  of form * form list * ty
-  | Flet    of lpattern * form * form
-  | Fint    of BI.zint
-  | Flocal  of EcIdent.t
-  | Fpvar   of EcTypes.prog_var * memory
-  | Fglob   of EcPath.mpath     * memory
-  | Fop     of EcPath.path * ty list
-  | Fapp    of form * form list
-  | Ftuple  of form list
-  | Fproj   of form * int
-
-  | FhoareF of sHoareF (* $hr / $hr *)
-  | FhoareS of sHoareS
-
-  | FcHoareF of cHoareF (* $hr / $hr *)
-  | FcHoareS of cHoareS
-
-  | FbdHoareF of bdHoareF (* $hr / $hr *)
-  | FbdHoareS of bdHoareS
-
-  | FequivF of equivF (* $left,$right / $left,$right *)
-  | FequivS of equivS
-
-  | FeagerF of eagerF
-
-  | Fcoe of coe
-
-  | Fpr of pr (* hr *)
-
-and eagerF = {
-  eg_pr : form;
-  eg_sl : stmt;  (* No local program variables *)
-  eg_fl : EcPath.xpath;
-  eg_fr : EcPath.xpath;
-  eg_sr : stmt;  (* No local program variables *)
-  eg_po : form
-}
-
-and equivF = {
-  ef_pr : form;
-  ef_fl : EcPath.xpath;
-  ef_fr : EcPath.xpath;
-  ef_po : form;
-}
-
-and equivS = {
-  es_ml  : EcMemory.memenv;
-  es_mr  : EcMemory.memenv;
-  es_pr  : form;
-  es_sl  : stmt;
-  es_sr  : stmt;
-  es_po  : form; }
-
-and sHoareF = {
-  hf_pr : form;
-  hf_f  : EcPath.xpath;
-  hf_po : form;
-}
-
-and sHoareS = {
-  hs_m  : EcMemory.memenv;
-  hs_pr : form;
-  hs_s  : stmt;
-  hs_po : form; }
-
-and cHoareF = {
-  chf_pr : form;
-  chf_f  : EcPath.xpath;
-  chf_po : form;
-  chf_co : cost;
-}
-
-and cHoareS = {
-  chs_m  : EcMemory.memenv;
-  chs_pr : form;
-  chs_s  : stmt;
-  chs_po : form;
-  chs_co : cost; }
-
-and bdHoareF = {
-  bhf_pr  : form;
-  bhf_f   : EcPath.xpath;
-  bhf_po  : form;
-  bhf_cmp : hoarecmp;
-  bhf_bd  : form;
-}
-
-and bdHoareS = {
-  bhs_m   : EcMemory.memenv;
-  bhs_pr  : form;
-  bhs_s   : stmt;
-  bhs_po  : form;
-  bhs_cmp : hoarecmp;
-  bhs_bd  : form;
-}
-
-and pr = {
-  pr_mem   : memory;
-  pr_fun   : EcPath.xpath;
-  pr_args  : form;
-  pr_event : form;
-}
-
-and coe = {
-  coe_pre : form;
-  coe_mem : EcMemory.memenv;
-  coe_e   : expr;
-}
-
-(* Invariant: keys of c_calls are functions of local modules,
-   with no arguments. *)
-and cost = {
-  c_self  : form;    (* of type xint *)
-  c_calls : call_bound EcPath.Mx.t;
-}
-
+type form     = EcAst.form
+type f_node   = EcAst.f_node
+type eagerF   = EcAst.eagerF
+type equivF   = EcAst.equivF
+type equivS   = EcAst.equivS
+type sHoareF  = EcAst.sHoareF
+type sHoareS  = EcAst.sHoareS
+type eHoareF  = EcAst.eHoareF
+type eHoareS  = EcAst.eHoareS
+type cHoareF  = EcAst.cHoareF
+type cHoareS  = EcAst.cHoareS
+type bdHoareF = EcAst.bdHoareF
+type bdHoareS = EcAst.bdHoareS
+type pr       = EcAst.pr
+type coe      = EcAst.coe
+type cost     = EcAst.cost
 (* Call with cost at most [cb_cost], called at mist [cb_called].
    [cb_cost] is here to properly handle substsitution when instantiating an
    abstract module by a concrete one. *)
-and call_bound = {
-  cb_cost  : form;   (* of type xint *)
-  cb_called : form;  (* of type int  *)
-}
+type call_bound  = EcAst.call_bound
 
-and module_type = form p_module_type
+type module_type = EcAst.module_type
 
-type mod_restr = form p_mod_restr
+type mod_restr = EcAst.mod_restr
 
 (*-------------------------------------------------------------------- *)
-let mhr    = EcIdent.create "&hr"
-let mleft  = EcIdent.create "&1"
-let mright = EcIdent.create "&2"
-
-
-(*-------------------------------------------------------------------- *)
-let qt_equal : quantif -> quantif -> bool = (==)
-let qt_hash  : quantif -> int = Hashtbl.hash
+let mhr    = EcAst.mhr
+let mleft  = EcAst.mleft
+let mright = EcAst.mright
 
 (*-------------------------------------------------------------------- *)
-let f_equal : form -> form -> bool = (==)
+let qt_equal = EcAst.qt_equal
+let qt_hash  = EcAst.qt_hash
+
+(*-------------------------------------------------------------------- *)
+let f_equal = EcAst.f_equal
 let f_compare f1 f2 = f2.f_tag - f1.f_tag
-let f_hash f = f.f_tag
-let f_fv f = f.f_fv
+let f_hash = EcAst.f_hash
+let f_fv   = EcAst.f_fv
 let f_ty f = f.f_ty
 
-let mty_equal = EcCoreModules.p_mty_equal f_equal
-let mty_hash  = EcCoreModules.p_mty_hash f_hash
+let mty_equal = EcAst.mty_equal
+let mty_hash  = EcAst.mty_hash
 
-let mr_equal = EcCoreModules.p_mr_equal f_equal
-let mr_hash  = EcCoreModules.p_mr_hash f_hash
+let mr_equal = EcAst.mr_equal
+let mr_hash  = EcAst.mr_hash
 
 (*-------------------------------------------------------------------- *)
-let gty_equal ty1 ty2 =
-  match ty1, ty2 with
-  | GTty ty1, GTty ty2 ->
-      EcTypes.ty_equal ty1 ty2
-
-  | GTmodty p1, GTmodty p2  ->
-    mty_equal p1 p2
-
-  | GTmem mt1, GTmem mt2 ->
-      EcMemory.mt_equal mt1 mt2
-
-  | _ , _ -> false
-
-let gty_hash = function
-  | GTty ty -> EcTypes.ty_hash ty
-  | GTmodty p  ->  mty_hash p
-  | GTmem _ -> 1
+let gty_equal = EcAst.gty_equal
+let gty_hash  = EcAst.gty_hash
 
 (* -------------------------------------------------------------------- *)
-let mr_fv (mr : form p_mod_restr) : int Mid.t =
-  (* mr_oinfos *)
-  let fv =
-    EcSymbols.Msym.fold (fun _ oi fv ->
-        let fv = List.fold_left EcPath.x_fv fv (PreOI.allowed oi) in
-        match PreOI.costs oi with
-        | `Unbounded -> fv
-        | `Bounded (self,calls) ->
-          EcPath.Mx.fold (fun xp call fv ->
-              let fv = EcPath.x_fv fv xp in
-              fv_union fv (f_fv call)
-            ) calls (fv_union fv (f_fv self))
-      ) mr.mr_oinfos Mid.empty
-  in
-
-  fv_union fv
-    (fv_union
-       (mr_xpaths_fv mr.mr_xpaths)
-       (mr_mpaths_fv mr.mr_mpaths))
+let mr_fv = EcAst.mr_fv
 
 (* -------------------------------------------------------------------- *)
-let gty_fv = function
-  | GTty ty -> ty.ty_fv
-  | GTmodty mty -> mr_fv mty.mt_restr
-  | GTmem mt -> EcMemory.mt_fv mt
-
+let gty_fv = EcAst.gty_fv
 
 (* -------------------------------------------------------------------- *)
 let gtty (ty : EcTypes.ty) =
@@ -255,20 +96,11 @@ let as_modty = function GTmodty mty -> mty | _ -> assert false
 let as_mem   = function GTmem m -> m | _ -> assert false
 
 (*-------------------------------------------------------------------- *)
-let b_equal (b1 : bindings) (b2 : bindings) =
-  let b1_equal (x1, ty1) (x2, ty2) =
-    EcIdent.id_equal x1 x2 && gty_equal ty1 ty2
-  in
-    List.all2 b1_equal b1 b2
-
-let b_hash (bs : bindings) =
-  let b1_hash (x, ty) =
-    Why3.Hashcons.combine (EcIdent.tag x) (gty_hash ty)
-  in
-    Why3.Hashcons.combine_list b1_hash 0 bs
+let b_equal = EcAst.b_equal
+let b_hash  = EcAst.b_hash
 
 (* -------------------------------------------------------------------- *)
-let hcmp_hash : hoarecmp -> int = Hashtbl.hash
+let hcmp_hash = EcAst.hcmp_hash
 
 (*-------------------------------------------------------------------- *)
 module MSHf = EcMaps.MakeMSH(struct
@@ -280,386 +112,40 @@ module Mf = MSHf.M
 module Sf = MSHf.S
 module Hf = MSHf.H
 
-let call_bound_equal cb1 cb2 =
-     f_equal cb1.cb_cost cb2.cb_cost
-  && f_equal cb1.cb_called cb2.cb_called
-
-let cost_equal c1 c2 =
-     f_equal c1.c_self c2.c_self
-  && EcPath.Mx.equal call_bound_equal c1.c_calls c2.c_calls
-
-let hf_equal hf1 hf2 =
-     f_equal hf1.hf_pr hf2.hf_pr
-  && f_equal hf1.hf_po hf2.hf_po
-  && EcPath.x_equal hf1.hf_f hf2.hf_f
-
-let hs_equal hs1 hs2 =
-     f_equal hs1.hs_pr hs2.hs_pr
-  && f_equal hs1.hs_po hs2.hs_po
-  && s_equal hs1.hs_s hs2.hs_s
-  && EcMemory.me_equal hs1.hs_m hs2.hs_m
-
-let chf_equal chf1 chf2 =
-     f_equal chf1.chf_pr chf2.chf_pr
-  && f_equal chf1.chf_po chf2.chf_po
-  && cost_equal chf1.chf_co chf2.chf_co
-  && EcPath.x_equal chf1.chf_f chf2.chf_f
-
-let chs_equal chs1 chs2 =
-     f_equal chs1.chs_pr chs2.chs_pr
-  && f_equal chs1.chs_po chs2.chs_po
-  && cost_equal chs1.chs_co chs2.chs_co
-  && s_equal chs1.chs_s chs2.chs_s
-  && EcMemory.me_equal chs1.chs_m chs2.chs_m
-
-let bhf_equal bhf1 bhf2 =
-     f_equal bhf1.bhf_pr bhf2.bhf_pr
-  && f_equal bhf1.bhf_po bhf2.bhf_po
-  && EcPath.x_equal bhf1.bhf_f bhf2.bhf_f
-  && bhf1.bhf_cmp = bhf2.bhf_cmp
-  && f_equal bhf1.bhf_bd bhf2.bhf_bd
-
-let bhs_equal bhs1 bhs2 =
-     f_equal bhs1.bhs_pr bhs2.bhs_pr
-  && f_equal bhs1.bhs_po bhs2.bhs_po
-  && s_equal bhs1.bhs_s bhs2.bhs_s
-  && EcMemory.me_equal bhs1.bhs_m bhs2.bhs_m
-  && bhs1.bhs_cmp = bhs2.bhs_cmp
-  && f_equal bhs1.bhs_bd bhs2.bhs_bd
-
-let eqf_equal ef1 ef2 =
-     f_equal ef1.ef_pr ef2.ef_pr
-  && f_equal ef1.ef_po ef2.ef_po
-  && EcPath.x_equal ef1.ef_fl ef2.ef_fl
-  && EcPath.x_equal ef1.ef_fr ef2.ef_fr
-
-let eqs_equal es1 es2 =
-     f_equal es1.es_pr es2.es_pr
-  && f_equal es1.es_po es2.es_po
-  && s_equal es1.es_sl es2.es_sl
-  && s_equal es1.es_sr es2.es_sr
-  && EcMemory.me_equal es1.es_ml es2.es_ml
-  && EcMemory.me_equal es1.es_mr es2.es_mr
-
-let egf_equal eg1 eg2 =
-     f_equal eg1.eg_pr eg2.eg_pr
-  && f_equal eg1.eg_po eg2.eg_po
-  && EcCoreModules.s_equal eg1.eg_sl eg2.eg_sl
-  && EcPath.x_equal eg1.eg_fl eg2.eg_fl
-  && EcPath.x_equal eg1.eg_fr eg2.eg_fr
-  && EcCoreModules.s_equal eg1.eg_sr eg2.eg_sr
-
-let coe_equal coe1 coe2 =
-     EcTypes.e_equal   coe1.coe_e coe2.coe_e
-  && f_equal           coe1.coe_pre coe2.coe_pre
-  && EcMemory.me_equal coe1.coe_mem coe2.coe_mem
-
-let pr_equal pr1 pr2 =
-     EcIdent.id_equal pr1.pr_mem pr2.pr_mem
-  && EcPath.x_equal   pr1.pr_fun pr2.pr_fun
-  && f_equal          pr1.pr_event pr2.pr_event
-  && f_equal          pr1.pr_args pr2.pr_args
-
-(* -------------------------------------------------------------------- *)
-let hf_hash hf =
-  Why3.Hashcons.combine2
-    (f_hash hf.hf_pr) (f_hash hf.hf_po) (EcPath.x_hash hf.hf_f)
-
-let hs_hash hs =
-  Why3.Hashcons.combine3
-    (f_hash hs.hs_pr) (f_hash hs.hs_po)
-    (EcCoreModules.s_hash hs.hs_s)
-    (EcMemory.mem_hash hs.hs_m)
-
-let coe_hash coe =
-  Why3.Hashcons.combine2
-    (f_hash coe.coe_pre)
-    (EcTypes.e_hash coe.coe_e)
-    (EcMemory.mem_hash coe.coe_mem)
-
-let call_bound_hash cb =
-  Why3.Hashcons.combine
-    (f_hash cb.cb_cost)
-    (f_hash cb.cb_called)
-
-let cost_hash cost =
-  Why3.Hashcons.combine
-    (f_hash cost.c_self)
-    (Why3.Hashcons.combine_list
-       (fun (f,c) ->
-          Why3.Hashcons.combine
-            (EcPath.x_hash f)
-            (call_bound_hash c))
-       0 (EcPath.Mx.bindings cost.c_calls))
-
-let chf_hash chf =
-  Why3.Hashcons.combine3
-    (f_hash chf.chf_pr)
-    (f_hash chf.chf_po)
-    (cost_hash chf.chf_co)
-    (EcPath.x_hash chf.chf_f)
-
-let chs_hash chs =
-  Why3.Hashcons.combine3
-    (f_hash chs.chs_pr)
-    (f_hash chs.chs_po)
-    (cost_hash chs.chs_co)
-    (Why3.Hashcons.combine
-       (EcCoreModules.s_hash chs.chs_s)
-       (EcMemory.mem_hash chs.chs_m))
-
-let bhf_hash bhf =
-  Why3.Hashcons.combine_list f_hash
-    (Why3.Hashcons.combine (hcmp_hash bhf.bhf_cmp) (EcPath.x_hash bhf.bhf_f))
-    [bhf.bhf_pr;bhf.bhf_po;bhf.bhf_bd]
-
-let bhs_hash bhs =
-  Why3.Hashcons.combine_list f_hash
-    (Why3.Hashcons.combine2
-       (hcmp_hash bhs.bhs_cmp)
-       (EcCoreModules.s_hash bhs.bhs_s)
-       (EcMemory.mem_hash bhs.bhs_m))
-    [bhs.bhs_pr;bhs.bhs_po;bhs.bhs_bd]
-
-let ef_hash ef =
-  Why3.Hashcons.combine3
-    (f_hash ef.ef_pr) (f_hash ef.ef_po)
-    (EcPath.x_hash ef.ef_fl) (EcPath.x_hash ef.ef_fr)
-
-let es_hash es =
-  Why3.Hashcons.combine3
-    (f_hash es.es_pr) (f_hash es.es_po)
-    (EcCoreModules.s_hash es.es_sl)
-    (Why3.Hashcons.combine2
-       (EcMemory.mem_hash es.es_mr)
-       (EcMemory.mem_hash es.es_ml)
-       (EcCoreModules.s_hash es.es_sr))
-
-let eg_hash eg =
-  Why3.Hashcons.combine3
-    (f_hash eg.eg_pr) (f_hash eg.eg_po)
-    (Why3.Hashcons.combine (EcCoreModules.s_hash eg.eg_sl) (EcPath.x_hash eg.eg_fl))
-    (Why3.Hashcons.combine (EcCoreModules.s_hash eg.eg_sr) (EcPath.x_hash eg.eg_fr))
-
-let pr_hash pr =
-  Why3.Hashcons.combine3
-    (EcIdent.id_hash pr.pr_mem)
-    (EcPath.x_hash   pr.pr_fun)
-    (f_hash          pr.pr_args)
-    (f_hash          pr.pr_event)
+let call_bound_equal = EcAst.call_bound_equal
+let cost_equal = EcAst.cost_equal
+let hf_equal   = EcAst.hf_equal
+let hs_equal   = EcAst.hs_equal
+let ehf_equal  = EcAst.ehf_equal
+let ehs_equal  = EcAst.ehs_equal
+let chf_equal  = EcAst.chf_equal
+let chs_equal  = EcAst.chs_equal
+let bhf_equal  = EcAst.bhf_equal
+let bhs_equal  = EcAst.bhs_equal
+let eqf_equal  = EcAst.eqf_equal
+let eqs_equal  = EcAst.eqs_equal
+let egf_equal  = EcAst.egf_equal
+let coe_equal  = EcAst.coe_equal
+let pr_equal   = EcAst.pr_equal
 
 
 (* -------------------------------------------------------------------- *)
-module Hsform = Why3.Hashcons.Make (struct
-  type t = form
+let call_bound_hash = EcAst.call_bound_hash
+let cost_hash = EcAst.cost_hash
+let hf_hash   = EcAst.hf_hash
+let hs_hash   = EcAst.hs_hash
+let ehf_hash  = EcAst.ehf_hash
+let ehs_hash  = EcAst.ehs_hash
+let chf_hash  = EcAst.chf_hash
+let chs_hash  = EcAst.chs_hash
+let bhf_hash  = EcAst.bhf_hash
+let bhs_hash  = EcAst.bhs_hash
+let ef_hash   = EcAst.ef_hash
+let es_hash   = EcAst.es_hash
+let eg_hash   = EcAst.eg_hash
+let coe_hash  = EcAst.coe_hash
+let pr_hash   = EcAst.pr_hash
 
-  let equal_node f1 f2 =
-    match f1, f2 with
-    | Fquant(q1,b1,f1), Fquant(q2,b2,f2) ->
-        qt_equal q1 q2 && b_equal b1 b2 && f_equal f1 f2
-
-    | Fif(b1,t1,f1), Fif(b2,t2,f2) ->
-        f_equal b1 b2 && f_equal t1 t2 && f_equal f1 f2
-
-    | Fmatch(b1,es1,ty1), Fmatch(b2,es2,ty2) ->
-           List.all2 f_equal (b1::es1) (b2::es2)
-        && ty_equal ty1 ty2
-
-    | Flet(lp1,e1,f1), Flet(lp2,e2,f2) ->
-        lp_equal lp1 lp2 && f_equal e1 e2 && f_equal f1 f2
-
-    | Fint i1, Fint i2 ->
-        BI.equal i1 i2
-
-    | Flocal id1, Flocal id2 ->
-        EcIdent.id_equal id1 id2
-
-    | Fpvar(pv1,s1), Fpvar(pv2,s2) ->
-        EcIdent.id_equal s1 s2 && EcTypes.pv_equal pv1 pv2
-
-    | Fglob(mp1,m1), Fglob(mp2,m2) ->
-      EcPath.m_equal mp1 mp2 && EcIdent.id_equal m1 m2
-
-    | Fop(p1,lty1), Fop(p2,lty2) ->
-        EcPath.p_equal p1 p2 && List.all2 ty_equal lty1 lty2
-
-    | Fapp(f1,args1), Fapp(f2,args2) ->
-        f_equal f1 f2 && List.all2 f_equal args1 args2
-
-    | Ftuple args1, Ftuple args2 ->
-        List.all2 f_equal args1 args2
-
-    | Fproj(f1,i1), Fproj(f2,i2) ->
-      i1 = i2 && f_equal f1 f2
-
-    | FhoareF  hf1 , FhoareF  hf2  -> hf_equal hf1 hf2
-    | FhoareS  hs1 , FhoareS  hs2  -> hs_equal hs1 hs2
-    | FcHoareF hf1 , FcHoareF hf2  -> chf_equal hf1 hf2
-    | FcHoareS hs1 , FcHoareS hs2  -> chs_equal hs1 hs2
-    | FbdHoareF   bhf1, FbdHoareF   bhf2 -> bhf_equal bhf1 bhf2
-    | FbdHoareS   bhs1, FbdHoareS   bhs2 -> bhs_equal bhs1 bhs2
-    | FequivF     eqf1, FequivF     eqf2 -> eqf_equal eqf1 eqf2
-    | FequivS     eqs1, FequivS     eqs2 -> eqs_equal eqs1 eqs2
-    | FeagerF     eg1 , FeagerF     eg2  -> egf_equal eg1 eg2
-    | Fpr         pr1 , Fpr         pr2  -> pr_equal pr1 pr2
-    | Fcoe        coe1, Fcoe        coe2 -> coe_equal coe1 coe2
-
-    | _, _ -> false
-
-  let equal f1 f2 =
-       ty_equal f1.f_ty f2.f_ty
-    && equal_node f1.f_node f2.f_node
-
-  let hash f =
-    match f.f_node with
-    | Fquant(q, b, f) ->
-        Why3.Hashcons.combine2 (f_hash f) (b_hash b) (qt_hash q)
-
-    | Fif(b, t, f) ->
-        Why3.Hashcons.combine2 (f_hash b) (f_hash t) (f_hash f)
-
-    | Fmatch (f, fs, ty) ->
-        Why3.Hashcons.combine_list f_hash
-          (Why3.Hashcons.combine (f_hash f) (ty_hash ty))
-          fs
-
-    | Flet(lp, e, f) ->
-        Why3.Hashcons.combine2 (lp_hash lp) (f_hash e) (f_hash f)
-
-    | Fint i -> Hashtbl.hash i
-
-    | Flocal id -> EcIdent.tag id
-
-    | Fpvar(pv, m) ->
-        Why3.Hashcons.combine (EcTypes.pv_hash pv) (EcIdent.id_hash m)
-
-    | Fglob(mp, m) ->
-        Why3.Hashcons.combine (EcPath.m_hash mp) (EcIdent.id_hash m)
-
-    | Fop(p, lty) ->
-        Why3.Hashcons.combine_list ty_hash (EcPath.p_hash p) lty
-
-    | Fapp(f, args) ->
-        Why3.Hashcons.combine_list f_hash (f_hash f) args
-
-    | Ftuple args ->
-        Why3.Hashcons.combine_list f_hash 0 args
-    | Fproj(f,i) ->
-        Why3.Hashcons.combine (f_hash f) i
-
-    | FhoareF  hf   -> hf_hash hf
-    | FhoareS  hs   -> hs_hash hs
-    | FcHoareF chf  -> chf_hash chf
-    | FcHoareS chs  -> chs_hash chs
-    | FbdHoareF   bhf  -> bhf_hash bhf
-    | FbdHoareS   bhs  -> bhs_hash bhs
-    | FequivF     ef   -> ef_hash ef
-    | FequivS     es   -> es_hash es
-    | FeagerF     eg   -> eg_hash eg
-    | Fcoe        coe  -> coe_hash coe
-    | Fpr         pr   -> pr_hash pr
-
-  let fv_mlr = Sid.add mleft (Sid.singleton mright)
-
-  let cost_fv cost =
-    let self_fv = f_fv cost.c_self in
-    EcPath.Mx.fold (fun f c fv ->
-        let c_fv =
-          fv_union
-            (fv_union (f_fv c.cb_cost) fv)
-            (f_fv c.cb_called) in
-        EcPath.x_fv c_fv f
-      ) cost.c_calls self_fv
-
-  let fv_node f =
-    let union ex nodes =
-      List.fold_left (fun s a -> fv_union s (ex a)) Mid.empty nodes
-    in
-
-    match f with
-    | Fint _              -> Mid.empty
-    | Fop (_, tys)        -> union (fun a -> a.ty_fv) tys
-    | Fpvar (PVglob pv,m) -> EcPath.x_fv (fv_add m Mid.empty) pv
-    | Fpvar (PVloc _,m)   -> fv_add m Mid.empty
-    | Fglob (mp,m)        -> EcPath.m_fv (fv_add m Mid.empty) mp
-    | Flocal id           -> fv_singleton id
-    | Fapp (f, args)      -> union f_fv (f :: args)
-    | Ftuple args         -> union f_fv args
-    | Fproj(e, _)         -> f_fv e
-    | Fif (f1, f2, f3)    -> union f_fv [f1; f2; f3]
-    | Fmatch (b, fs, ty)  -> fv_union ty.ty_fv (union f_fv (b :: fs))
-
-    | Fquant(_, b, f) ->
-      let do1 (id, ty) fv = fv_union (gty_fv ty) (Mid.remove id fv) in
-      List.fold_right do1 b (f_fv f)
-
-    | Flet(lp, f1, f2) ->
-      let fv2 = fv_diff (f_fv f2) (lp_fv lp) in
-      fv_union (f_fv f1) fv2
-
-    | FhoareF hf ->
-      let fv = fv_union (f_fv hf.hf_pr) (f_fv hf.hf_po) in
-      EcPath.x_fv (Mid.remove mhr fv) hf.hf_f
-
-    | FhoareS hs ->
-      let fv = fv_union (f_fv hs.hs_pr) (f_fv hs.hs_po) in
-      fv_union (EcCoreModules.s_fv hs.hs_s) (Mid.remove (fst hs.hs_m) fv)
-
-    | FcHoareF chf ->
-      let fv = fv_union (f_fv chf.chf_pr)
-          (fv_union (f_fv chf.chf_po) (cost_fv chf.chf_co)) in
-      EcPath.x_fv (Mid.remove mhr fv) chf.chf_f
-
-    | FcHoareS chs ->
-      let fv = fv_union (f_fv chs.chs_pr)
-          (fv_union (f_fv chs.chs_po) (cost_fv chs.chs_co)) in
-      fv_union (EcCoreModules.s_fv chs.chs_s) (Mid.remove (fst chs.chs_m) fv)
-
-    | FbdHoareF bhf ->
-      let fv =
-        fv_union (f_fv bhf.bhf_pr)
-          (fv_union (f_fv bhf.bhf_po) (f_fv bhf.bhf_bd)) in
-      EcPath.x_fv (Mid.remove mhr fv) bhf.bhf_f
-
-    | FbdHoareS bhs ->
-      let fv =
-        fv_union (f_fv bhs.bhs_pr)
-          (fv_union (f_fv bhs.bhs_po) (f_fv bhs.bhs_bd)) in
-      fv_union (EcCoreModules.s_fv bhs.bhs_s) (Mid.remove (fst bhs.bhs_m) fv)
-
-    | FequivF ef ->
-        let fv = fv_union (f_fv ef.ef_pr) (f_fv ef.ef_po) in
-        let fv = fv_diff fv fv_mlr in
-        EcPath.x_fv (EcPath.x_fv fv ef.ef_fl) ef.ef_fr
-
-    | FequivS es ->
-        let fv = fv_union (f_fv es.es_pr) (f_fv es.es_po) in
-        let ml, mr = fst es.es_ml, fst es.es_mr in
-        let fv = fv_diff fv (Sid.add ml (Sid.singleton mr)) in
-        fv_union fv
-          (fv_union (EcCoreModules.s_fv es.es_sl) (EcCoreModules.s_fv es.es_sr))
-
-    | FeagerF eg ->
-        let fv = fv_union (f_fv eg.eg_pr) (f_fv eg.eg_po) in
-        let fv = fv_diff fv fv_mlr in
-        let fv = EcPath.x_fv (EcPath.x_fv fv eg.eg_fl) eg.eg_fr in
-        fv_union fv
-          (fv_union (EcCoreModules.s_fv eg.eg_sl) (EcCoreModules.s_fv eg.eg_sr))
-
-    | Fcoe coe ->
-      fv_union
-        (Mid.remove (fst coe.coe_mem) (f_fv coe.coe_pre))
-        (EcTypes.e_fv coe.coe_e)
-
-    | Fpr pr ->
-        let fve = Mid.remove mhr (f_fv pr.pr_event) in
-        let fv  = EcPath.x_fv fve pr.pr_fun in
-        fv_union (f_fv pr.pr_args) (fv_add pr.pr_mem fv)
-
-  let tag n f =
-    let fv = fv_union (fv_node f.f_node) f.f_ty.ty_fv in
-      { f with f_tag = n; f_fv = fv; }
-end)
 
 (* -------------------------------------------------------------------- *)
 let gty_as_ty =
@@ -683,15 +169,7 @@ let hoarecmp_opp cmp =
   | FHge -> FHle
 
 (* -------------------------------------------------------------------- *)
-let mk_form node ty =
-  let aout =
-    Hsform.hashcons
-      { f_node = node;
-        f_ty   = ty;
-        f_fv   = Mid.empty;
-        f_tag  = -1; }
-  in assert (EcTypes.ty_equal ty aout.f_ty); aout
-
+let mk_form = EcAst.mk_form
 let f_node { f_node = form } = form
 
 (* -------------------------------------------------------------------- *)
@@ -716,7 +194,7 @@ let f_pvloc  v  m = f_pvar (pv_loc v.v_name) v.v_type m
 let f_pvarg  ty m = f_pvar pv_arg ty m
 
 let f_pvlocs vs menv = List.map (fun v -> f_pvloc v menv) vs
-let f_glob   mp m   = mk_form (Fglob (mp, m)) (tglob mp)
+let f_glob   m mem   = mk_form (Fglob (m, mem)) (tglob m)
 
 (* -------------------------------------------------------------------- *)
 let f_tt     = f_op EcCoreLib.CI_Unit.p_tt    [] tunit
@@ -816,6 +294,16 @@ let f_hoareS hs_m hs_pr hs_s hs_po =
 
 let f_hoareF hf_pr hf_f hf_po =
   f_hoareF_r { hf_pr; hf_f; hf_po; }
+
+(* -------------------------------------------------------------------- *)
+let f_eHoareS_r hs = mk_form (FeHoareS hs) tbool
+let f_eHoareF_r hf = mk_form (FeHoareF hf) tbool
+
+let f_eHoareS ehs_m ehs_pr ehs_s ehs_po =
+  f_eHoareS_r { ehs_m; ehs_pr; ehs_s; ehs_po; }
+
+let f_eHoareF ehf_pr ehf_f ehf_po =
+  f_eHoareF_r { ehf_pr; ehf_f; ehf_po; }
 
 (* -------------------------------------------------------------------- *)
 let call_bound_r cb_cost cb_called =
@@ -1037,6 +525,16 @@ let f_map gt g fp =
       let po' = g hs.hs_po in
         f_hoareS_r { hs with hs_pr = pr'; hs_po = po'; }
 
+  | FeHoareF hf ->
+      let pr' = g hf.ehf_pr  in
+      let po' = g hf.ehf_po  in
+      f_eHoareF_r { hf with ehf_pr = pr'; ehf_po = po' }
+
+  | FeHoareS hs ->
+      let pr' = g hs.ehs_pr  in
+      let po' = g hs.ehs_po  in
+        f_eHoareS_r { hs with ehs_pr = pr'; ehs_po = po'; }
+
   | FcHoareF chf ->
       let pr' = g chf.chf_pr in
       let po' = g chf.chf_po in
@@ -1102,10 +600,12 @@ let f_iter g f =
   | Ftuple   es           -> List.iter g es
   | Fproj    (e, _)       -> g e
 
-  | FhoareF  hf  -> g hf.hf_pr; g hf.hf_po
-  | FhoareS  hs  -> g hs.hs_pr; g hs.hs_po
+  | FhoareF  hf   -> g hf.hf_pr; g hf.hf_po
+  | FhoareS  hs   -> g hs.hs_pr; g hs.hs_po
   | FcHoareF  chf -> g chf.chf_pr; g chf.chf_po; cost_iter g chf.chf_co
   | FcHoareS  chs -> g chs.chs_pr; g chs.chs_po; cost_iter g chs.chs_co
+  | FeHoareF  hf  -> g hf.ehf_pr; g hf.ehf_po
+  | FeHoareS  hs  -> g hs.ehs_pr; g hs.ehs_po
   | FbdHoareF bhf -> g bhf.bhf_pr; g bhf.bhf_po; g bhf.bhf_bd
   | FbdHoareS bhs -> g bhs.bhs_pr; g bhs.bhs_po; g bhs.bhs_bd
   | FequivF   ef  -> g ef.ef_pr; g ef.ef_po
@@ -1136,6 +636,8 @@ let form_exists g f =
   | FhoareS   hs -> g hs.hs_pr   || g hs.hs_po
   | FcHoareF  chf -> g chf.chf_pr  || g chf.chf_po
   | FcHoareS  chs -> g chs.chs_pr  || g chs.chs_po
+  | FeHoareF  hf  -> g hf.ehf_pr || g hf.ehf_po
+  | FeHoareS  hs  -> g hs.ehs_pr || g hs.ehs_po
   | FbdHoareF bhf -> g bhf.bhf_pr  || g bhf.bhf_po
   | FbdHoareS bhs -> g bhs.bhs_pr  || g bhs.bhs_po
   | FequivF   ef  -> g ef.ef_pr    || g ef.ef_po
@@ -1172,6 +674,9 @@ let form_forall g f =
   | FeagerF   eg  -> g eg.eg_pr   && g eg.eg_po
   | Fcoe      coe -> g coe.coe_pre
   | Fpr       pr  -> g pr.pr_args && g pr.pr_event
+  | FeHoareF  hf  -> g hf.ehf_pr && g hf.ehf_po
+  | FeHoareS  hs  -> g hs.ehs_pr && g hs.ehs_po
+
 
 (* -------------------------------------------------------------------- *)
 let f_ops f =
@@ -1258,6 +763,16 @@ let destr_hoareF f =
   | FhoareF es -> es
   | _ -> destr_error "hoareF"
 
+let destr_eHoareS f =
+  match f.f_node with
+  | FeHoareS es -> es
+  | _ -> destr_error "eHoareS"
+
+let destr_eHoareF f =
+  match f.f_node with
+  | FeHoareF es -> es
+  | _ -> destr_error "eHoareF"
+
 let destr_cHoareS f =
   match f.f_node with
   | FcHoareS es -> es
@@ -1316,7 +831,7 @@ let destr_pvar f =
 
 let destr_glob f =
   match f.f_node with
-  | Fglob(p,m) -> (p,m)
+  | Fglob(m , mem) -> (m, mem)
   | _ -> destr_error "destr_glob"
 
 (* -------------------------------------------------------------------- *)
@@ -1411,6 +926,7 @@ let is_tuple     f = is_from_destr destr_tuple     f
 let is_op        f = is_from_destr destr_op        f
 let is_local     f = is_from_destr destr_local     f
 let is_pvar      f = is_from_destr destr_pvar      f
+let is_glob      f = is_from_destr destr_glob      f
 let is_proj      f = is_from_destr destr_proj      f
 let is_and       f = is_from_destr destr_and       f
 let is_or        f = is_from_destr destr_or        f
@@ -1427,6 +943,8 @@ let is_equivS    f = is_from_destr destr_equivS    f
 let is_eagerF    f = is_from_destr destr_eagerF    f
 let is_hoareS    f = is_from_destr destr_hoareS    f
 let is_hoareF    f = is_from_destr destr_hoareF    f
+let is_eHoareS   f = is_from_destr destr_eHoareS   f
+let is_eHoareF   f = is_from_destr destr_eHoareF   f
 let is_cHoareS   f = is_from_destr destr_cHoareS   f
 let is_cHoareF   f = is_from_destr destr_cHoareF   f
 let is_bdHoareS  f = is_from_destr destr_bdHoareS  f
@@ -1540,6 +1058,7 @@ let expr_of_form mh f =
     | Fglob     _
     | FhoareF   _ | FhoareS   _
     | FcHoareF  _ | FcHoareS  _
+    | FeHoareF  _ | FeHoareS  _
     | FbdHoareF _ | FbdHoareS _
     | FequivF   _ | FequivS   _
     | FeagerF   _ | Fpr       _ -> raise CannotTranslate
@@ -1560,8 +1079,9 @@ type f_subst = {
   fs_freshen  : bool; (* true means freshen locals *)
   fs_loc      : form Mid.t;
   fs_esloc    : expr Mid.t;
-  fs_ty      : ty_subst;
+  fs_ty       : ty_subst;
   fs_mem      : EcIdent.t Mid.t;
+  fs_modglob  : (EcIdent.t -> form) Mid.t; (* Mappings between abstract modules and their globals *)
   fs_memtype  : EcMemory.memtype option; (* Only substituted in Fcoe *)
   fs_mempred  : mem_pr Mid.t;  (* For predicates over memories,
                                  only substituted in Fcoe *)
@@ -1569,12 +1089,14 @@ type f_subst = {
 
 (* -------------------------------------------------------------------- *)
 module Fsubst = struct
+
   let f_subst_id = {
     fs_freshen  = false;
     fs_loc      = Mid.empty;
     fs_esloc    = Mid.empty;
-    fs_ty      = ty_subst_id;
+    fs_ty       = ty_subst_id;
     fs_mem      = Mid.empty;
+    fs_modglob  = Mid.empty;
     fs_memtype  = None;
     fs_mempred  = Mid.empty;
   }
@@ -1584,6 +1106,7 @@ module Fsubst = struct
     && is_ty_subst_id s.fs_ty
     && Mid.is_empty   s.fs_loc
     && Mid.is_empty   s.fs_mem
+    && Mid.is_empty   s.fs_modglob
     && Mid.is_empty   s.fs_esloc
     && s.fs_memtype = None
 
@@ -1591,7 +1114,7 @@ module Fsubst = struct
     let sty = odfl ty_subst_id sty in
     { f_subst_id
         with fs_freshen  = odfl false freshen;
-             fs_ty      = sty;
+             fs_ty       = sty;
              fs_esloc    = odfl Mid.empty esloc;
              fs_mempred  = odfl Mid.empty mempred;
              fs_memtype  = mt; }
@@ -1609,11 +1132,26 @@ module Fsubst = struct
     let merger _ = Some m2 in
     { s with fs_mem = Mid.change merger m1 s.fs_mem }
 
-  let f_bind_mod s x mp =
-    assert (not (Mid.mem x s.fs_ty.ts_mp.sms_id));
-    let sms = EcPath.sms_bind_abs x mp s.fs_ty.ts_mp in
-    let sty = { s.fs_ty with ts_mp = sms } in
+  let f_bind_absmod s m1 m2 =
+    let merger o = assert (o = None); Some m2 in
+    let sty = { s.fs_ty with ts_absmod = Mid.change merger m1 s.fs_ty.ts_absmod } in
+    let sty = { sty with ts_cmod = Mid.add m1 (EcPath.mident m2) s.fs_ty.ts_cmod } in
     { s with fs_ty = sty }
+
+  let f_bind_cmod s m mp =
+    let merger o = assert (o = None); Some mp in
+    let sty = { s.fs_ty with ts_cmod = Mid.change merger m s.fs_ty.ts_cmod } in
+    { s with fs_ty = sty }
+
+  let f_bind_mod s x mp norm_mod =
+    match EcPath.mget_ident_opt mp with
+    | Some id ->
+         f_bind_absmod s x id
+    | None ->
+       let nm_ty = (norm_mod mhr).f_ty in
+       let s = f_bind_cmod s x mp in
+       let sty = { s.fs_ty with ts_modtglob = Mid.add x nm_ty s.fs_ty.ts_modtglob } in
+       { s with fs_ty = sty; fs_modglob = Mid.add x norm_mod s.fs_modglob }
 
   let f_bind_rename s xfrom xto ty =
     let xf = f_local xto ty in
@@ -1624,8 +1162,20 @@ module Fsubst = struct
     { s with fs_esloc = Mid.change merger xfrom s.fs_esloc }
 
   (* ------------------------------------------------------------------ *)
+  let f_rem_local s x =
+    { s with fs_loc = Mid.remove x s.fs_loc;
+             fs_esloc = Mid.remove x s.fs_esloc; }
+
   let f_rem_mem s m =
     { s with fs_mem = Mid.remove m s.fs_mem }
+
+  let f_rem_mod s x =
+    { s with
+        fs_ty = { (s.fs_ty) with
+          ts_absmod = Mid.remove x s.fs_ty.ts_absmod;
+          ts_modtglob = Mid.remove x s.fs_ty.ts_modtglob;
+          ts_cmod = Mid.remove x s.fs_ty.ts_cmod; };
+        fs_modglob = Mid.remove x s.fs_modglob; }
 
   (* ------------------------------------------------------------------ *)
   let add_local s (x,t as xt) =
@@ -1666,7 +1216,7 @@ module Fsubst = struct
 
   (* ------------------------------------------------------------------ *)
   let subst_xpath s f =
-    EcPath.x_subst s.fs_ty.ts_mp f
+    EcPath.x_subst_abs s.fs_ty.ts_cmod f
 
   let subst_stmt s c =
     let es =
@@ -1717,10 +1267,15 @@ module Fsubst = struct
         let ty' = ty_subst s.fs_ty fp.f_ty in
         f_pvar pv' ty' m'
 
-    | Fglob (mp, m) ->
+    | Fglob (mid, m) ->
         let m'  = Mid.find_def m m s.fs_mem in
-        let mp' = EcPath.m_subst s.fs_ty.ts_mp mp in
-        f_glob mp' m'
+        let mid = Mid.find_def mid mid s.fs_ty.ts_absmod in
+        begin
+          (* Have we computed the globals for this module *)
+          match Mid.find_opt mid s.fs_modglob with
+          | None -> f_glob mid m'
+          | Some f -> f m'
+        end
 
     | FhoareF hf ->
       let pr', po' =
@@ -1741,6 +1296,23 @@ module Fsubst = struct
         let me' = EcMemory.me_subst s.fs_mem (ty_subst s.fs_ty) hs.hs_m in
 
         f_hoareS me' pr' st' po'
+
+
+    | FeHoareF hf ->
+        assert (not (Mid.mem mhr s.fs_mem) && not (Mid.mem mhr s.fs_mem));
+        let ehf_pr  = f_subst ~tx s hf.ehf_pr in
+        let ehf_po  = f_subst ~tx s hf.ehf_po in
+        let ehf_f  = subst_xpath s hf.ehf_f in
+        f_eHoareF ehf_pr ehf_f ehf_po
+
+    | FeHoareS hs ->
+        assert (not (Mid.mem (fst hs.ehs_m) s.fs_mem));
+        let es  = e_subst_init s.fs_freshen s.fs_ty s.fs_esloc in
+        let ehs_pr  = f_subst ~tx s hs.ehs_pr in
+        let ehs_po  = f_subst ~tx s hs.ehs_po in
+        let ehs_s  = EcCoreModules.s_subst es hs.ehs_s in
+        let ehs_m = EcMemory.me_subst s.fs_mem (ty_subst s.fs_ty) hs.ehs_m in
+        f_eHoareS ehs_m ehs_pr ehs_s ehs_po
 
     | FcHoareF chf ->
       assert (not (Mid.mem mhr s.fs_mem));
@@ -1920,7 +1492,7 @@ module Fsubst = struct
     let sag = { f_subst_id with fs_loc = sag } in
     f_app (f_subst ~tx sag f) args fty
 
-  and subst_oi ~(tx : form -> form -> form) (s : f_subst) (oi : form PreOI.t) =
+  and subst_oi ~(tx : form -> form -> form) (s : f_subst) (oi : PreOI.t) =
     let costs = match PreOI.costs oi with
       | `Unbounded -> `Unbounded
       | `Bounded (self,calls) ->
@@ -1937,9 +1509,9 @@ module Fsubst = struct
       (List.map (subst_xpath s) (PreOI.allowed oi))
       costs
 
-  and mr_subst ~tx s mr : form p_mod_restr =
+  and mr_subst ~tx s mr : mod_restr =
     let sx = subst_xpath s in
-    let sm = EcPath.m_subst s.fs_ty.ts_mp in
+    let sm = EcPath.m_subst_abs s.fs_ty.ts_cmod in
     { mr_xpaths = ur_app (fun s -> Sx.fold (fun m rx ->
           Sx.add (sx m) rx) s Sx.empty) mr.mr_xpaths;
       mr_mpaths = ur_app (fun s -> Sm.fold (fun m r ->
@@ -1948,7 +1520,7 @@ module Fsubst = struct
     }
 
   and subst_mty ~tx s mty =
-    let sm = EcPath.m_subst s.fs_ty.ts_mp in
+    let sm = EcPath.m_subst_abs s.fs_ty.ts_cmod in
 
     let mt_params = List.map (snd_map (subst_mty ~tx s)) mty.mt_params in
     let mt_name   = mty.mt_name in
@@ -1975,16 +1547,21 @@ module Fsubst = struct
         let mt' = EcMemory.mt_subst (ty_subst s.fs_ty) mt in
         if mt == mt' then gty else GTmem mt'
 
-  and add_binding ~tx s (x, gty) =
+  and add_binding ~tx s (x, gty as xt) =
     let gty' = subst_gty ~tx s gty in
     let x'   = if s.fs_freshen then EcIdent.fresh x else x in
 
-    if x == x' then
-      (s, (x, gty'))
+    if x == x' && gty == gty' then
+      let s = match gty with
+        | GTty    _ -> f_rem_local s x
+        | GTmodty _ -> f_rem_mod   s x
+        | GTmem   _ -> f_rem_mem   s x
+      in
+        (s, xt)
     else
       let s = match gty' with
         | GTty   ty -> f_bind_rename s x x' ty
-        | GTmodty _ -> f_bind_mod s x (EcPath.mident x')
+        | GTmodty _ -> f_bind_absmod s x x'
         | GTmem   _ -> f_bind_mem s x x'
       in
         (s, (x', gty'))

@@ -62,12 +62,22 @@ type ini_options = {
   ini_why3     : string option;
   ini_ovrevict : string list;
   ini_provers  : string list;
+  ini_timeout  : int option;
   ini_idirs    : (string option * string) list;
   ini_rdirs    : (string option * string) list;
+}
+
+type ini_context = {
+  inic_ini  : ini_options;
+  inic_root : string option;
 }
 
 (* -------------------------------------------------------------------- *)
 exception InvalidIniFile of (int * string)
 
 val read_ini_file : string -> ini_options
-val parse_cmdline : ?ini:ini_options -> string array -> options
+
+val parse_cmdline :
+     ?ini:(string option -> ini_context list)
+  -> string array
+  -> options
