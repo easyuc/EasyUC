@@ -321,10 +321,14 @@ this list are strings."
 )
 
 (comment-syntax)
+
+
 ;; --------------------------------------------------------------------
 
 
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
+(require 'newcomment)
+(set (make-local-variable 'comment-quote-nested) nil)
 
 (require 'proof-easy-config)		; easy configure mechanism
 
