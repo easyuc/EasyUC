@@ -56,6 +56,7 @@ If not, hide the uc-frame "
              (inhibit-read-only t)
              )
 	(make-frame-visible)
+	(with-selected-window uc-window
 	(with-current-buffer uc-buffer
           (erase-buffer)
           (if (string= params-line "None")            ;if
@@ -80,7 +81,7 @@ If not, hide the uc-frame "
 	      )
             )
           )
-        )
+        ))
       )
     )
   )
@@ -320,10 +321,14 @@ this list are strings."
 )
 
 (comment-syntax)
+
+
 ;; --------------------------------------------------------------------
 
 
 ;; easy configure adapted from demoisa-easy.el, found in PG-adapting.pdf
+(require 'newcomment)
+(set (make-local-variable 'comment-quote-nested) nil)
 
 (require 'proof-easy-config)		; easy configure mechanism
 
