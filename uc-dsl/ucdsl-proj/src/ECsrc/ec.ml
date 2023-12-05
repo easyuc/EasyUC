@@ -72,7 +72,7 @@ let print_config config =
       let fullname =
         Printf.sprintf "%s@%s"
           prover.EcProvers.pr_name
-          prover.EcProvers.pr_version in
+          (EcProvers.Version.to_string prover.EcProvers.pr_version) in
 
       match prover.EcProvers.pr_evicted with
       | None -> fullname
@@ -192,11 +192,18 @@ let main () =
           | None ->
               EcRelocate.resource ["commands"] in
         let cmd  = Filename.concat root "runtest" in
-        let args = [
-            "runtest";
-            Format.sprintf "--bin=%s" Sys.executable_name;
-            input.runo_input
-          ] @ input.runo_scenarios
+        let args =
+            [
+              "runtest";
+              Format.sprintf "--bin=%s" Sys.executable_name;
+            ]
+          @ (List.flatten
+               (List.map
+                  (fun x -> ["-p"; x])
+                  (odfl [] input.runo_provers)))
+          @ (otolist (omap (Format.sprintf "--why3=%s") options.o_options.o_why3))
+          @ [input.runo_input]
+          @ input.runo_scenarios
         in
         Format.eprintf "Executing: %s@." (String.concat " " (cmd :: args));
         Unix.execv cmd (Array.of_list args)
