@@ -55,6 +55,9 @@ it using Proof General](https://alleystoughton.us/easycrypt-installation.html).
 In particular, these instructions explain how to tell Emacs
 where to find the EasyCrypt executable on macOS.
 
+UC DSL is known to be compatible with OCaml Compiler version 5.1.0,
+Dune 3.12.1 and Why3 1.7.0.
+
 To build the UC DSL tool `ucdsl`, first configure the tool by running
 
 ```
