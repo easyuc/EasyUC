@@ -1,7 +1,7 @@
 load SMC2.
 functionality
   SMC2.SMC2Real
-  (SMC.SMCReal(KeyExchange.KEReal),
+  (SMC.SMCIdeal,
    SMC.SMCReal(KeyExchange.KEReal)).
 
 var text1 : text.

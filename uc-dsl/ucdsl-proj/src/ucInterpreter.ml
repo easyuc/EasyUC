@@ -177,14 +177,6 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
          failure "should not be called with ideal functionality expression" in
   fun_expr_to_worlds_base fet 1
 
-(* the returned int is the first adversarial port index *not* used
-   by the worlds *)
-
-let fun_expr_to_worlds
-    (root : symbol) (maps : maps_tyd) (fe : fun_expr) : worlds * int =
-  let fet = inter_check_real_fun_expr root maps fe in
-  fun_expr_tyd_to_worlds maps fet
-
 (* like UcTypedSpec.instruction_tyd and UcTypedSpec.instruction_tyd_u,
    but includes Pop instruction for popping a frame of local context
 
