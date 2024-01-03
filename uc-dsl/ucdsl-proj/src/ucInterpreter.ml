@@ -21,9 +21,9 @@ open UcTypecheck
 
    with a real functionality, it will be the adversarial port index
    that the ideal functionality of the unit uses to communicate with
-   its simulator in the ideal world (note that this ideal
-   functionality will be implicit - an argument of the application of
-   the real functionality simulated by the simulator)
+   its simulator in the ideal world (note that, except at the top level,
+   this ideal functionality will be implicit - an argument of the
+   application of the real functionality simulated by the simulator)
 
    with an ideal functionality, there will be no corresponding
    simulator in the ideal world, but the base adversarial port index
@@ -53,7 +53,7 @@ let adv_pi_of_rwa (rwa : real_world_arg) : int =
    functionalities that are arguments to the application of the real
    functionality that the simulator is simulating (used by an ideal
    functionality to either communicate with its simulator or with the
-   adversary); the are listed in the order of the parameters of the
+   adversary); they are listed in the order of the parameters of the
    real functionality *)
 
 type ideal_world = {
