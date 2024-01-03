@@ -98,6 +98,8 @@ proof.
 by rewrite kmulA kinv_r kid_r.
 qed.
 
+hint rewrite ucdsl_interpreter_hints : one_time.
+
 (* we can define a bijection between exp and key *)
 
 op gen (q : exp) : key = g ^ q.
