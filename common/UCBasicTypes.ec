@@ -405,28 +405,15 @@ proof. by case mod. qed.
 
 type string = int list.
 
-(* direction of message *)
-
-type dir = [
-  | DirIn   (* message's destination port is a functionality implementing
-               the interface - so the message will be received by the
-               functionality *)
-  | DirOut  (* message's source port is a functionality implementing
-               the interface - so the message has been output by the
-               functionality *)
-].
-
 type tag = [
   | TagNoInter       (* communication not involving messages of an
                         interface *)
   | TagComposite of  (* message is to/from composite interface *)
       string &       (* unit root file name *)
-      string &       (* message name *)
-      dir            (* direction of message *)
+      string         (* message name *)
   | TagBasic     of  (* message is to/from basic interface *)
       string &       (* unit root file name *)
-      string &       (* message name *)
-      dir            (* direction of message *)
+      string         (* message name *)
 ].
 
 type msg = mode * port * port * tag * univ.
@@ -462,7 +449,7 @@ pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 1))
 
 And in the EasyCrypt translation we would have
 
-(Dir, pt1, (func, 1), TagComposite "SMC" "smc_req" DirIn,
+(Dir, pt1, (func, 1), TagComposite "SMC" "smc_req",
  <encoding-of> (pt2, t))
 
 Because the root is "SMC", the mode is Dir, and SMCDir is the
@@ -473,7 +460,7 @@ index, 1. And the message is "smc_req".
 
 If we take
 
-(Dir, pt1, (func, 2), TagComposite "SMC" "smc_req" DirIn,
+(Dir, pt1, (func, 2), TagComposite "SMC" "smc_req",
  <encoding-of> (pt2, t))
 
 this would correspond to 
@@ -495,7 +482,7 @@ ports of parties Pt1 and Pt2 of SMCReal will be (func, 1) and (func,
 arguments (pt1, pt2, epdp_text_key.`enc t ^^ k).  In the EasyCrypt
 encoding, this will look like
 
-(Dir, (func ++ 1, 1), (func, 2), TagComposite "Forwarding" "fw_rsp" DirOut,
+(Dir, (func ++ 1, 1), (func, 2), TagComposite "Forwarding" "fw_rsp",
  <encoding-of> (pt1, pt2, epdp_text_key.`enc t ^^ k))
 
 And in the interpreter syntax, this looks like
@@ -508,7 +495,7 @@ Forwarding.FwDir.D.fw_rsp((func, 1), (pt1, pt2, epdp_text_key.`enc t ^^ k))
 
 An adversarial message to SMCIdeal could look like
 
-(Adv, (adv, adv_pi), (func, 1), TagBasic "SMC" "sim_rsp" DirIn,
+(Adv, (adv, adv_pi), (func, 1), TagBasic "SMC" "sim_rsp",
  <encoding-of> ())
 
 In the interpreter syntax, this looks like
