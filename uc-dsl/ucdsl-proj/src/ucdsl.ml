@@ -51,6 +51,15 @@ let debug_ref : bool ref = ref false
 let debug_arg () =
   (debug_ref := true; ())
 
+let gen_ref : bool ref = ref false
+
+let gen_arg () =
+  (
+    units_arg ();
+    gen_ref := true;
+    ()
+  )
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -62,7 +71,8 @@ let arg_specs =
    ("-interpreter", Unit interpreter_arg,
     "Run interpreter; implicit on .uci file; omit file to run interactively");
    ("-debug", Unit debug_arg, "Print interpeter debugging messages");
-   ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file")
+   ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file");
+   ("-gen", Unit gen_arg, "Generate easycrypt files")
   ]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
@@ -119,7 +129,9 @@ let check_uc_file (file : string) : unit =
   let () = UcState.add_highest_include_dirs dir in
   let () = UcEcInterface.init () in
   try
-    (ignore (parse_and_typecheck_file_or_id (FOID_File file));
+    (let maps = parse_and_typecheck_file_or_id (FOID_File file) in
+     if ! gen_ref then UcGenerateEcFile.generate_ec maps
+     ;
      exit 0) with
   | ErrorMessageExn -> exit 1
 

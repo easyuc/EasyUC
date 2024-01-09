@@ -1,3 +1,3 @@
 open UcTypedSpec
 
-val generate_ec : typed_spec -> unit
+val generate_ec : maps_tyd -> unit
