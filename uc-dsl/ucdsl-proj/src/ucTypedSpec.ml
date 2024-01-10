@@ -563,7 +563,8 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
    functionalities and simulators; their domains are disjoint; type
    arguments to IdPairMap.t are all located types
 
-   two identifier maps, for UC and EC requires of roots *)
+   three identifier maps indexed by roots, giving UC and EC
+   requires plus the root's scope *)
 
 type maps_tyd =
   {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -571,7 +572,8 @@ type maps_tyd =
    fun_map       : fun_tyd IdPairMap.t;             (* functionalities *)
    sim_map       : sim_tyd IdPairMap.t;             (* simulators *)
    uc_reqs_map   : (symbol list) IdMap.t;           (* UC requires of roots *)
-   ec_reqs_map   : ((symbol * bool) list) IdMap.t}  (* EC required of roots *)
+   ec_reqs_map   : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
+   ec_scope_map  : EcScope.scope IdMap.t}           (* scopes of roots *)
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =
