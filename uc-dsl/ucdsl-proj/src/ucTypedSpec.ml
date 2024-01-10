@@ -558,17 +558,20 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
   let states = (unloc st).states in
   initial_state_id_of_states states
 
-(* four identifer pair (more precisely, pairs of symbols) maps for
-   direct and adversarial interfaces, functionalities and simulators;
-   their domains are disjoint
+(* four identifer pair (more precisely, pairs of symbols, the first of
+   which is a root) maps for direct and adversarial interfaces,
+   functionalities and simulators; their domains are disjoint;
+   type arguments to IdPairMap.t are all located types
 
-   type arguments to IdPairMap.t are all located types *)
+   two identifier maps, for UC and EC requires *)
 
 type maps_tyd =
-  {dir_inter_map : inter_tyd IdPairMap.t;  (* direct interfaces *)
-   adv_inter_map : inter_tyd IdPairMap.t;  (* adversarial interfaces *)
-   fun_map       : fun_tyd IdPairMap.t;    (* functionalities *)
-   sim_map       : sim_tyd IdPairMap.t}    (* simulators *)
+  {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
+   adv_inter_map : inter_tyd IdPairMap.t;           (* adversarial interfaces *)
+   fun_map       : fun_tyd IdPairMap.t;             (* functionalities *)
+   sim_map       : sim_tyd IdPairMap.t;             (* simulators *)
+   uc_reqs_map   : (symbol list) IdMap.t;           (* UC requires of roots *)
+   ec_reqs_map   : ((symbol * bool) list) IdMap.t}  (* EC required of roots *)
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =

@@ -2187,7 +2187,7 @@ let check_defs root maps defs =
 (**************************** specification checks ****************************)
 
 (* when merging maps, there will never be disagreement in cases when
-   an id pair is in the domain of both maps *)
+   an id pair or id is in the domain of both maps *)
 
 let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
   {dir_inter_map =
@@ -2205,7 +2205,15 @@ let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
    sim_map =
      IdPairMap.union
      (fun _ x y -> assert (x = y); Some x)
-     oldmap.sim_map newmap.sim_map}
+     oldmap.sim_map newmap.sim_map;
+   uc_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.uc_reqs_map newmap.uc_reqs_map;
+   ec_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.ec_reqs_map newmap.ec_reqs_map}
 
 let load_uc_req
     (check_id : psymbol -> maps_tyd) (maps : maps_tyd) (id : psymbol)
@@ -2225,11 +2233,19 @@ let load_uc_req
        maps
 
 let load_uc_reqs
-    (check_id : psymbol -> maps_tyd) (maps : maps_tyd)
+    (root : symbol) (check_id : psymbol -> maps_tyd) (maps : maps_tyd)
     (reqs : psymbol list) : maps_tyd =
-  List.fold_left (load_uc_req check_id) maps reqs
+  let maps = List.fold_left (load_uc_req check_id) maps reqs in
+  {maps with uc_reqs_map =
+     IdMap.update root 
+     (fun sym_opt ->
+        match sym_opt with
+        | None     -> Some (List.map unloc reqs)
+        | Some sym -> failure "cannot happen")
+     maps.uc_reqs_map}
 
-let load_ec_reqs (reqs : (string located * bool) list) =
+let load_ec_reqs (reqs : (string located * bool) list)
+      : (string * bool) list =
   (* last require import will be prelude/UCBasicTypes.ec *)
   let reqs = reqs @ [(mk_loc _dummy "UCBasicTypes", true)] in
   let reqimp (id, imp) =
@@ -2243,7 +2259,8 @@ let load_ec_reqs (reqs : (string located * bool) list) =
                "uppercase@ letter:@ %s@]")
               uid) in
     UcEcInterface.require id (if imp then Some `Import else None) in
-  List.iter reqimp reqs
+  List.iter reqimp reqs;
+  List.map (fun (id, b) -> unloc id, b) reqs
 
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   let check_units_subfun sfid (root', ifid) =
@@ -2399,10 +2416,20 @@ let typecheck
     {dir_inter_map = IdPairMap.empty;
      adv_inter_map = IdPairMap.empty;
      fun_map       = IdPairMap.empty;
-     sim_map       = IdPairMap.empty} in
+     sim_map       = IdPairMap.empty;
+     uc_reqs_map   = IdMap.empty;
+     ec_reqs_map   = IdMap.empty} in
   let maps =
-    load_uc_reqs check_id empty_maps spec.externals.uc_requires in
-  let () = load_ec_reqs spec.externals.ec_requires in
+    load_uc_reqs root check_id empty_maps spec.externals.uc_requires in
+  let ec_reqs = load_ec_reqs spec.externals.ec_requires in
+  let maps =
+    {maps with ec_reqs_map =
+       IdMap.update root 
+       (fun sym_opt ->
+          match sym_opt with
+          | None     -> Some ec_reqs
+          | Some sym -> failure "cannot happen")
+       maps.ec_reqs_map} in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
