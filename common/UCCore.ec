@@ -590,7 +590,6 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <-.
 by rewrite !epdp.
 qed.
 
-(*
 (* message from port (dte_da, 0) of dummy adversary to port ([], 0) of
    environment, telling environment that dummy adversary received
    message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u), where
@@ -613,12 +612,12 @@ op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
     epdp_tag_univ epdp_id).`enc
     (x.`dte_n, x.`dte_pt, x.`dte_tag, x.`dte_u)).
 
-op nosmt dec_da_to_env (m : msg) : da_to_env option =
+op nosmt [opaque] dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> 0) ?
+  in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
-            epdp_int_univ epdp_port_univ epdp_int_univ
+            epdp_int_univ epdp_port_univ epdp_tag_univ
             epdp_id).`dec v with
      | None   => None
      | Some x =>
@@ -635,25 +634,24 @@ lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=
-        !(epdp, epdp_sub) /=.
+rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /= !epdp.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
-case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> 0) => //.
+case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> TagNoInter) => //.
 rewrite !negb_or /= not_dir => [#] -> -> pt2_2 -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
-   epdp_int_univ epdp_id).`dec u =
+   epdp_tag_univ epdp_id).`dec u =
   Some (v.`dte_n, v.`dte_pt, v.`dte_tag, v.`dte_u).
   move : match_eq_some.
   case ((epdp_tuple4_univ epdp_int_univ epdp_port_univ
-         epdp_int_univ epdp_id).`dec u) => //.
+         epdp_tag_univ epdp_id).`dec u) => //.
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
-by rewrite (epdp_dec_enc _ _ u) // epdp_sub.
+rewrite (epdp_dec_enc _ _ u) // !epdp.
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_to_env_msg.
@@ -666,9 +664,9 @@ lemma eq_of_valid_da_to_env (m : msg) :
   (Adv,
    ([], 0),
    (x.`dte_da, 0),
-   0,
+   TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
-    epdp_int_univ epdp_id).`enc
+    epdp_tag_univ epdp_id).`enc
     (x.`dte_n, x.`dte_pt, x.`dte_tag, x.`dte_u)).
 proof.
 rewrite /is_valid.
@@ -679,6 +677,8 @@ case x => x1 x2 x3 x4 x5.
 move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
 by rewrite !epdp.
 qed.
+
+(*
 
 module DummyAdv : FUNC = {
   var self, env : addr
