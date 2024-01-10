@@ -77,11 +77,12 @@ require export UCUniv.
 
 type addr = int list.
 
-op epdp_addr_univ : (addr, univ) epdp = epdp_list_univ epdp_int_univ.
+op nosmt [opaque] epdp_addr_univ
+     : (addr, univ) epdp = epdp_list_univ epdp_int_univ.
 
 lemma valid_epdp_addr_univ : valid_epdp epdp_addr_univ.
 proof.
-rewrite valid_epdp_list_univ valid_epdp_int_univ.
+rewrite /epdp_addr_univ !epdp.
 qed.
 
 hint simplify valid_epdp_addr_univ.
@@ -229,12 +230,12 @@ op env_root_addr : addr = [].
 
 type port = addr * int.
 
-op epdp_port_univ : (port, univ) epdp =
+op nosmt [opaque] epdp_port_univ : (port, univ) epdp =
   epdp_pair_univ (epdp_list_univ epdp_int_univ) epdp_int_univ.
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
 proof.
-rewrite valid_epdp_pair_univ 1:valid_epdp_list_univ valid_epdp_int_univ.
+rewrite /epdp_port_univ !epdp.
 qed.
 
 hint simplify valid_epdp_port_univ.
@@ -415,6 +416,50 @@ type tag = [
       string &       (* unit root file name *)
       string         (* message name *)
 ].
+
+op tag_to_choice3 (tag : tag)
+     : (unit, string * string, string * string) choice3 =
+  match tag with
+  | TagNoInter            => Choice3_1 ()
+  | TagComposite root msg => Choice3_2 (root, msg)
+  | TagBasic root msg     => Choice3_3 (root, msg)
+  end.
+
+op choice3_to_tag
+   (ch3 : (unit, string * string, string * string) choice3) =
+  match ch3 with
+  | Choice3_1 _ => TagNoInter
+  | Choice3_2 p => TagComposite p.`1 p.`2
+  | Choice3_3 p => TagBasic p.`1 p.`2
+  end.
+
+op nosmt [opaque] epdp_tag_choice3
+     : (tag, (unit, string * string, string * string) choice3) epdp =
+  epdp_bijection tag_to_choice3 choice3_to_tag.
+
+lemma valid_epdp_tag_choice3 : valid_epdp epdp_tag_choice3.
+proof.
+rewrite /epdp_tag_choice3 !epdp.
+by case.
+by case; case.
+qed.
+
+hint rewrite epdp : valid_epdp_tag_choice3.
+
+op nosmt [opaque] epdp_tag_univ : (tag, univ) epdp =
+  epdp_comp
+  (epdp_choice3_univ
+   epdp_unit_univ 
+   (epdp_pair_univ (epdp_list_univ epdp_int_univ)
+    (epdp_list_univ epdp_int_univ))
+   (epdp_pair_univ (epdp_list_univ epdp_int_univ)
+    (epdp_list_univ epdp_int_univ)))
+  epdp_tag_choice3.
+
+lemma valid_epdp_tag_univ : valid_epdp epdp_tag_univ.
+proof.  
+rewrite /epdp_tag_univ !epdp.
+qed.
 
 type msg = mode * port * port * tag * univ.
 
