@@ -2240,8 +2240,8 @@ let load_uc_reqs
      IdMap.update root 
      (fun sym_opt ->
         match sym_opt with
-        | None     -> Some (List.map unloc reqs)
-        | Some sym -> failure "cannot happen")
+        | None   -> Some (List.map unloc reqs)
+        | Some _ -> failure "cannot happen")
      maps.uc_reqs_map}
 
 let load_ec_reqs (reqs : (string located * bool) list)
@@ -2427,8 +2427,8 @@ let typecheck
        IdMap.update root 
        (fun sym_opt ->
           match sym_opt with
-          | None     -> Some ec_reqs
-          | Some sym -> failure "cannot happen")
+          | None   -> Some ec_reqs
+          | Some _ -> failure "cannot happen")
        maps.ec_reqs_map} in
   let maps =
     try check_defs root maps spec.definitions with

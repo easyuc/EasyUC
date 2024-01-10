@@ -560,10 +560,10 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
 
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,
-   functionalities and simulators; their domains are disjoint;
-   type arguments to IdPairMap.t are all located types
+   functionalities and simulators; their domains are disjoint; type
+   arguments to IdPairMap.t are all located types
 
-   two identifier maps, for UC and EC requires *)
+   two identifier maps, for UC and EC requires of roots *)
 
 type maps_tyd =
   {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -724,9 +724,16 @@ let roots_of_map (map : 'a IdPairMap.t) : IdSet.t =
   IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
 
 let roots_of_maps (maps : maps_tyd) : IdSet.t =
-  IdSet.union (roots_of_map maps.dir_inter_map)
-  (IdSet.union (roots_of_map maps.adv_inter_map)
-   (IdSet.union (roots_of_map maps.fun_map) (roots_of_map maps.sim_map)))
+  let roots1 =
+    IdSet.union (roots_of_map maps.dir_inter_map)
+    (IdSet.union (roots_of_map maps.adv_inter_map)
+     (IdSet.union (roots_of_map maps.fun_map) (roots_of_map maps.sim_map))) in
+  let roots2 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.uc_reqs_map)) in
+  let roots3 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.ec_reqs_map)) in
+  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3);
+  roots1
 
 type singleton_info =
   {si_root      : symbol;
