@@ -734,7 +734,10 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
     IdSet.of_list (List.map fst (IdMap.bindings maps.uc_reqs_map)) in
   let roots3 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_reqs_map)) in
-  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3);
+  let roots4 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
+  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
+          IdSet.equal roots3 roots4);
   roots1
 
 type singleton_info =
