@@ -12,12 +12,14 @@
 # to go through the merged file, taking the old hand-generated code as
 # a starting point, but discarding the superceded code
 
+gnudiff=/opt/homebrew/bin/diff
+
 if [ $# -ne 2 ];
 then echo 'usage: ucdsl-merge OLD NEW'
      exit 1;
 fi
 
-/usr/bin/diff --old-group-format='<<<<< old text <<<<<
+$gnudiff --old-group-format='<<<<< old text <<<<<
 %<==== end of old ====
 ' \
 --new-group-format='>>>>> new text >>>>>

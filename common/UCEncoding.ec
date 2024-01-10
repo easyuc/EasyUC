@@ -10,7 +10,7 @@ require import AllCore List.
 
 type ('a, 'b) epdp = {enc : 'a -> 'b; dec : 'b -> 'a option}.
 
-op nosmt valid_epdp (epdp : ('a, 'b) epdp) : bool =
+op nosmt [opaque] valid_epdp (epdp : ('a, 'b) epdp) : bool =
   (forall (x : 'a), epdp.`dec (epdp.`enc x) = Some x) /\
   (forall (y : 'b, x : 'a), epdp.`dec y = Some x => epdp.`enc x = y).
 
@@ -29,7 +29,7 @@ qed.
 lemma epdp_dec_fail (epdp : ('a, 'b) epdp, x : 'a, y : 'b) :
   valid_epdp epdp => epdp.`dec y = None => epdp.`enc x <> y.
 proof.
-move => [valid_epdp_1 valid_epdp_2] dec_y_bad.
+rewrite /valid_epdp => [[valid_epdp_1 valid_epdp_2] dec_y_bad].
 case (epdp.`enc x = y) => [enc_x_eq_y | //].
 move : dec_y_bad.
 by rewrite -enc_x_eq_y valid_epdp_1.
@@ -40,7 +40,7 @@ lemma epdp_intro (epdp : ('a, 'b) epdp) :
   (forall (y : 'b, x : 'a), epdp.`dec y = Some x => epdp.`enc x = y) =>
   valid_epdp epdp.
 proof.
-trivial.
+by rewrite /valid_epdp.
 qed.
 
 (* is_valid epdp y checks whether y decodes in epdp *)
@@ -51,7 +51,7 @@ op is_valid (epdp : ('a, 'b) epdp, y : 'b) : bool =
 lemma is_valid_enc (epdp : ('a, 'b) epdp, x : 'a) :
   valid_epdp epdp => is_valid epdp (epdp.`enc x).
 proof.
-move => [enc_dec _].
+rewrite /valid_epdp => [[enc_dec _]].
 by rewrite /is_valid enc_dec.
 qed.
 
@@ -61,9 +61,6 @@ proof.
 rewrite /valid_epdp => [[enc_dec _]].
 by rewrite enc_dec.
 qed.
-
-(* epdp is used for EPDP rewriting hints that generate no subgoals,
-   except the validity of an epdp *)
 
 hint rewrite epdp : epdp_enc_dec.
 
@@ -77,7 +74,7 @@ qed.
 
 (* identity EPDP *)
 
-op nosmt epdp_id : ('a, 'a) epdp =
+op nosmt [opaque] epdp_id : ('a, 'a) epdp =
   {|enc = fun x => x; dec = fun y => Some y|}.
 
 lemma valid_epdp_id : valid_epdp epdp_id<:'a>.
@@ -90,7 +87,7 @@ hint rewrite epdp : valid_epdp_id.
 
 (* EPDP built from a bijection *)
 
-op nosmt epdp_bijection (f : 'a -> 'b, g : 'b -> 'a) : ('a, 'b) epdp =
+op nosmt [opaque] epdp_bijection (f : 'a -> 'b, g : 'b -> 'a) : ('a, 'b) epdp =
   {|enc = f; dec = (\o) Some g|}.
 
 lemma valid_epdp_bijection (f : 'a -> 'b, g : 'b -> 'a) :
@@ -105,13 +102,11 @@ rewrite /(\o) => /= <-.
 apply cancel_gf.
 qed.
 
-(* epdp_sub is used for EPDP rewriting hints that generate subgoals *)
-
-hint rewrite epdp_sub : valid_epdp_bijection.
+hint rewrite epdp : valid_epdp_bijection.
 
 (* composition of EPDPs *)
 
-op nosmt epdp_comp
+op nosmt [opaque] epdp_comp
      (epdp2 : ('b, 'c) epdp, epdp1 : ('a, 'b) epdp) : ('a, 'c) epdp =
   {|enc = (\o) epdp2.`enc epdp1.`enc;
     dec =
@@ -136,14 +131,16 @@ have val_y : epdp2.`dec y = Some (epdp1.`enc x).
 by rewrite (epdp_dec_enc _ _ y).
 qed.
 
+hint rewrite epdp : valid_epdp_comp.
+
 (* pair EPDPs *)
 
-op nosmt epdp_pair_enc
+op nosmt [opaque] epdp_pair_enc
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
       p : 'a * 'b) : 'c * 'd =
   (epdp1.`enc p.`1, epdp2.`enc p.`2).
 
-op nosmt epdp_pair_dec
+op nosmt [opaque] epdp_pair_dec
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
       p : 'c * 'd) : ('a * 'b) option =
   match epdp1.`dec p.`1 with
@@ -155,7 +152,7 @@ op nosmt epdp_pair_dec
       end
   end.
 
-op nosmt epdp_pair
+op nosmt [opaque] epdp_pair
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp) :
       ('a * 'b, 'c * 'd) epdp =
   {|enc = epdp_pair_enc epdp1 epdp2;
@@ -187,7 +184,7 @@ clear val_a1 val_a2 match_some.
 by case a.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_pair.
+hint rewrite epdp : valid_epdp_pair.
 
 (* tuple3 EPDPs *)
 
@@ -211,7 +208,7 @@ rewrite /tuple3_con /tuple3_decon.
 case x => /= [[x1 x2] //].
 qed.
 
-op nosmt epdp_tuple3
+op nosmt [opaque] epdp_tuple3
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp) :
        ('a * 'b * 'c, 'a' * 'b' * 'c') epdp =
@@ -228,15 +225,14 @@ lemma valid_epdp_tuple3
   valid_epdp (epdp_tuple3 epdp1 epdp2 epdp3).
 proof.
 move => valid1 valid2 valid3.
-rewrite valid_epdp_comp 1:epdp_sub.
+rewrite /epdp_tuple3 !epdp //.
 move => x; by rewrite tuple3_conK.
 move => x; by rewrite tuple3_deconK.
-rewrite valid_epdp_comp epdp_sub // 1:epdp_sub //.
 move => x; by rewrite tuple3_deconK.
 move => x; by rewrite tuple3_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple3.
+hint rewrite epdp : valid_epdp_tuple3.
 
 (* tuple4 EPDPs *)
 
@@ -261,7 +257,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_tuple4
+op nosmt [opaque] epdp_tuple4
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
        ('a * 'b * 'c * 'd, 'a' * 'b' * 'c' * 'd') epdp =
@@ -279,16 +275,14 @@ lemma valid_epdp_tuple4
   valid_epdp (epdp_tuple4 epdp1 epdp2 epdp3 epdp4).
 proof.
 move => valid1 valid2 valid3 valid4.
-rewrite valid_epdp_comp 1:valid_epdp_bijection.
+rewrite /epdp_tuple4 !epdp //.
 move => x; by rewrite tuple4_conK.
 move => x; by rewrite tuple4_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple3 //.
-rewrite valid_epdp_bijection.
 move => x; by rewrite tuple4_deconK.
 move => x; by rewrite tuple4_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple4.
+hint rewrite epdp : valid_epdp_tuple4.
 
 (* tuple5 EPDPs *)
 
@@ -313,7 +307,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_tuple5
+op nosmt [opaque] epdp_tuple5
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp) :
@@ -333,16 +327,14 @@ lemma valid_epdp_tuple5
   valid_epdp (epdp_tuple5 epdp1 epdp2 epdp3 epdp4 epdp5).
 proof.
 move => valid1 valid2 valid3 valid4 valid5.
-rewrite valid_epdp_comp 1:valid_epdp_bijection.
+rewrite /epdp_tuple5 !epdp //.
 move => x; by rewrite tuple5_conK.
 move => x; by rewrite tuple5_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple4 //.
-rewrite valid_epdp_bijection.
 move => x; by rewrite tuple5_deconK.
 move => x; by rewrite tuple5_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple5.
+hint rewrite epdp : valid_epdp_tuple5.
 
 (* tuple6 EPDPs *)
 
@@ -369,7 +361,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_tuple6
+op nosmt [opaque] epdp_tuple6
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
@@ -390,16 +382,14 @@ lemma valid_epdp_tuple6
   valid_epdp (epdp_tuple6 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6.
-rewrite valid_epdp_comp 1:valid_epdp_bijection.
+rewrite /epdp_tuple6 !epdp //.
 move => x; by rewrite tuple6_conK.
 move => x; by rewrite tuple6_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple5 //.
-rewrite valid_epdp_bijection.
 move => x; by rewrite tuple6_deconK.
 move => x; by rewrite tuple6_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple6.
+hint rewrite epdp : valid_epdp_tuple6.
 
 (* tuple7 EPDPs *)
 
@@ -428,7 +418,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_tuple7
+op nosmt [opaque] epdp_tuple7
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -452,16 +442,14 @@ lemma valid_epdp_tuple7
   valid_epdp (epdp_tuple7 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6 valid7.
-rewrite valid_epdp_comp 1:valid_epdp_bijection.
+rewrite /epdp_tuple7 !epdp //.
 move => x; by rewrite tuple7_conK.
 move => x; by rewrite tuple7_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple6 //.
-rewrite valid_epdp_bijection.
 move => x; by rewrite tuple7_deconK.
 move => x; by rewrite tuple7_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple7.
+hint rewrite epdp : valid_epdp_tuple7.
 
 (* tuple8 EPDPs *)
 
@@ -490,7 +478,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt epdp_tuple8
+op nosmt [opaque] epdp_tuple8
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -514,16 +502,14 @@ lemma valid_epdp_tuple8
   valid_epdp (epdp_tuple8 epdp1 epdp2 epdp3 epdp4 epdp5 epdp6 epdp7 epdp8).
 proof.
 move => valid1 valid2 valid3 valid4 valid5 valid6 valid7 valid8.
-rewrite valid_epdp_comp 1:valid_epdp_bijection.
+rewrite /epdp_tuple8 !epdp //.
 move => x; by rewrite tuple8_conK.
 move => x; by rewrite tuple8_deconK.
-rewrite valid_epdp_comp 1:valid_epdp_pair // 1:valid_epdp_tuple7 //.
-rewrite valid_epdp_bijection.
 move => x; by rewrite tuple8_deconK.
 move => x; by rewrite tuple8_conK.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_tuple8.
+hint rewrite epdp : valid_epdp_tuple8.
 
 (* choice EPDPs *)
 
@@ -532,7 +518,7 @@ type ('a, 'b) choice = [
   | ChoiceRight of 'b
 ].
 
-op nosmt epdp_choice_enc
+op nosmt [opaque] epdp_choice_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       ch : ('a, 'b) choice) : ('a', 'b') choice =
   match ch with
@@ -540,7 +526,7 @@ op nosmt epdp_choice_enc
   | ChoiceRight x => ChoiceRight (epdp2.`enc x)
   end.
 
-op nosmt epdp_choice_dec
+op nosmt [opaque] epdp_choice_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       ch : ('a', 'b') choice) : ('a, 'b) choice option =
   match ch with
@@ -556,7 +542,7 @@ op nosmt epdp_choice_dec
       end
   end.
 
-op nosmt epdp_choice
+op nosmt [opaque] epdp_choice
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp) :
      (('a, 'b) choice, ('a', 'b') choice) epdp =
   {|enc = epdp_choice_enc epdp1 epdp2;
@@ -589,7 +575,7 @@ have val_x : epdp2.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice.
+hint rewrite epdp : valid_epdp_choice.
 
 (* choice3 EPDPs *)
 
@@ -599,7 +585,7 @@ type ('a, 'b, 'c) choice3 = [
   | Choice3_3 of 'c
 ].
 
-op nosmt epdp_choice3_enc
+op nosmt [opaque] epdp_choice3_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp,
       ch : ('a, 'b, 'c) choice3) : ('a', 'b', 'c') choice3 =
@@ -609,7 +595,7 @@ op nosmt epdp_choice3_enc
   | Choice3_3 x => Choice3_3 (epdp3.`enc x)
   end.
 
-op nosmt epdp_choice3_dec
+op nosmt [opaque] epdp_choice3_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp,
       ch : ('a', 'b', 'c') choice3) : ('a, 'b, 'c) choice3 option =
@@ -631,7 +617,7 @@ op nosmt epdp_choice3_dec
       end
   end.
 
-op nosmt epdp_choice3
+op nosmt [opaque] epdp_choice3
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp) :
      (('a, 'b, 'c) choice3, ('a', 'b', 'c') choice3) epdp =
@@ -676,7 +662,7 @@ have val_x : epdp3.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice3.
+hint rewrite epdp : valid_epdp_choice3.
 
 (* choice4 EPDPs *)
 
@@ -687,7 +673,7 @@ type ('a, 'b, 'c, 'd) choice4 = [
   | Choice4_4 of 'd
 ].
 
-op nosmt epdp_choice4_enc
+op nosmt [opaque] epdp_choice4_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       ch : ('a, 'b, 'c, 'd) choice4) : ('a', 'b', 'c', 'd') choice4 =
@@ -698,7 +684,7 @@ op nosmt epdp_choice4_enc
   | Choice4_4 x => Choice4_4 (epdp4.`enc x)
   end.
 
-op nosmt epdp_choice4_dec
+op nosmt [opaque] epdp_choice4_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       ch : ('a', 'b', 'c', 'd') choice4)
@@ -726,7 +712,7 @@ op nosmt epdp_choice4_dec
       end
   end.
 
-op nosmt epdp_choice4
+op nosmt [opaque] epdp_choice4
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
      (('a, 'b, 'c, 'd) choice4, ('a', 'b', 'c', 'd') choice4) epdp =
@@ -784,7 +770,7 @@ have val_x : epdp4.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice4.
+hint rewrite epdp : valid_epdp_choice4.
 
 (* choice5 EPDPs *)
 
@@ -796,7 +782,7 @@ type ('a, 'b, 'c, 'd, 'e) choice5 = [
   | Choice5_5 of 'e
 ].
 
-op nosmt epdp_choice5_enc
+op nosmt [opaque] epdp_choice5_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp,
@@ -810,7 +796,7 @@ op nosmt epdp_choice5_enc
   | Choice5_5 x => Choice5_5 (epdp5.`enc x)
   end.
 
-op nosmt epdp_choice5_dec
+op nosmt [opaque] epdp_choice5_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp,
@@ -844,7 +830,7 @@ op nosmt epdp_choice5_dec
       end
   end.
 
-op nosmt epdp_choice5
+op nosmt [opaque] epdp_choice5
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp) :
@@ -919,7 +905,7 @@ have val_x : epdp5.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice5.
+hint rewrite epdp : valid_epdp_choice5.
 
 (* choice6 EPDPs *)
 
@@ -932,7 +918,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f) choice6 = [
   | Choice6_6 of 'f
 ].
 
-op nosmt epdp_choice6_enc
+op nosmt [opaque] epdp_choice6_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -947,7 +933,7 @@ op nosmt epdp_choice6_enc
   | Choice6_6 x => Choice6_6 (epdp6.`enc x)
   end.
 
-op nosmt epdp_choice6_dec
+op nosmt [opaque] epdp_choice6_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -986,7 +972,7 @@ op nosmt epdp_choice6_dec
       end
   end.
 
-op nosmt epdp_choice6
+op nosmt [opaque] epdp_choice6
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
@@ -1077,7 +1063,7 @@ have val_x : epdp6.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice6.
+hint rewrite epdp : valid_epdp_choice6.
 
 (* choice7 EPDPs *)
 
@@ -1091,7 +1077,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 = [
   | Choice7_7 of 'g
 ].
 
-op nosmt epdp_choice7_enc
+op nosmt [opaque] epdp_choice7_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1108,7 +1094,7 @@ op nosmt epdp_choice7_enc
   | Choice7_7 x => Choice7_7 (epdp7.`enc x)
   end.
 
-op nosmt epdp_choice7_dec
+op nosmt [opaque] epdp_choice7_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1153,7 +1139,7 @@ op nosmt epdp_choice7_dec
       end
   end.
 
-op nosmt epdp_choice7
+op nosmt [opaque] epdp_choice7
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1265,7 +1251,7 @@ have val_x : epdp7.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice7.
+hint rewrite epdp : valid_epdp_choice7.
 
 (* choice8 EPDPs *)
 
@@ -1280,7 +1266,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 = [
   | Choice8_8 of 'h
 ].
 
-op nosmt epdp_choice8_enc
+op nosmt [opaque] epdp_choice8_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1298,7 +1284,7 @@ op nosmt epdp_choice8_enc
   | Choice8_8 x => Choice8_8 (epdp8.`enc x)
   end.
 
-op nosmt epdp_choice8_dec
+op nosmt [opaque] epdp_choice8_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1348,7 +1334,7 @@ op nosmt epdp_choice8_dec
       end
   end.
 
-op nosmt epdp_choice8
+op nosmt [opaque] epdp_choice8
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1480,7 +1466,7 @@ have val_x : epdp8.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
-hint rewrite epdp_sub : valid_epdp_choice8.
+hint rewrite epdp : valid_epdp_choice8.
 
 (* option EPDPs *)
 
@@ -1532,7 +1518,7 @@ by rewrite unit_choice_to_optK.
 by rewrite opt_to_unit_choiceK.
 qed.
 
-op nosmt epdp_option
+op nosmt [opaque] epdp_option
      (epdp : ('a, 'b) epdp) : ('a option, 'b option) epdp =
   epdp_comp epdp_unit_choice_opt
   (epdp_comp (epdp_choice epdp_id epdp) epdp_opt_unit_choice).
@@ -1546,21 +1532,21 @@ rewrite /epdp_option valid_epdp_comp 1:valid_epdp_unit_choice_opt
         valid_epdp_opt_unit_choice.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_option.
+hint rewrite epdp : valid_epdp_option.
 
 (* list EPDPs *)
 
-op nosmt epdp_list_enc (epdp : ('a, 'b) epdp, xs : 'a list) : 'b list =
+op nosmt [opaque] epdp_list_enc (epdp : ('a, 'b) epdp, xs : 'a list) : 'b list =
   map epdp.`enc xs.
 
-op nosmt epdp_list_dec
+op nosmt [opaque] epdp_list_dec
      (epdp : ('a, 'b) epdp, ys : 'b list) : 'a list option =
   let vs = map epdp.`dec ys
   in if all is_some vs
      then Some (map oget vs)
      else None.
 
-op nosmt epdp_list (epdp : ('a, 'b) epdp) : ('a list, 'b list) epdp =
+op nosmt [opaque] epdp_list (epdp : ('a, 'b) epdp) : ('a list, 'b list) epdp =
   {|enc = epdp_list_enc epdp; dec = epdp_list_dec epdp|}.
 
 lemma valid_epdp_list (epdp : ('a, 'b) epdp) :
@@ -1587,4 +1573,4 @@ by rewrite dec_y_eq_None.
 by apply IH.
 qed.
 
-hint rewrite epdp_sub : valid_epdp_list.
+hint rewrite epdp : valid_epdp_list.

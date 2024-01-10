@@ -144,12 +144,13 @@ hint rewrite uc_dsl_interpreter_hints : one_time_dh.
 
 (* EPDP from key to univ *)
 
-op epdp_key_univ : (key, univ) epdp =
+op nosmt [opaque] epdp_key_univ : (key, univ) epdp =
   epdp_comp epdp_exp_univ (epdp_bijection log gen).
 
 lemma valid_epdp_key_univ : valid_epdp epdp_key_univ.
 proof.
-rewrite valid_epdp_comp !(epdp, epdp_sub) 1:log_gen gen_log.
+rewrite /epdp_key_univ.
+rewrite !epdp 1:log_gen gen_log.
 qed.
 
 hint simplify valid_epdp_key_univ.
@@ -157,12 +158,12 @@ hint rewrite epdp : valid_epdp_key_univ.
 
 (* EPDP from text to univ *)
 
-op epdp_text_univ : (text, univ) epdp =
+op nosmt [opaque] epdp_text_univ : (text, univ) epdp =
   epdp_comp epdp_key_univ epdp_text_key.
 
 lemma valid_epdp_text_univ : valid_epdp epdp_text_univ.
 proof.
-rewrite valid_epdp_comp epdp.
+by rewrite /epdp_text_univ !epdp.
 qed.
 
 hint simplify valid_epdp_text_univ.
@@ -170,13 +171,14 @@ hint rewrite epdp : valid_epdp_text_univ.
 
 (* EPDP between port * port * key and univ *)
 
-op nosmt epdp_port_port_key_univ : (port * port * key, univ) epdp =
+op nosmt [opaque] epdp_port_port_key_univ : (port * port * key, univ) epdp =
   epdp_tuple3_univ epdp_port_univ epdp_port_univ epdp_key_univ.
 
 lemma valid_epdp_port_port_key_univ :
   valid_epdp epdp_port_port_key_univ.
 proof.
-rewrite valid_epdp_comp !(epdp, epdp_sub).
+rewrite /epdp_port_port_key_univ.
+by rewrite !epdp.
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
