@@ -15,9 +15,14 @@ let gen_sim (id : string) (st : sim_tyd) : string = ""
 let print_files (mg : maps_gen) : unit = ()
 
 let generate_ec (mt : maps_tyd) : unit =
+  let scope (root : string) =
+    IdMap.find root mt.ec_scope_map
+  in
   let dim = IdPairMap.fold
     (fun sp it dim ->
-      IdPairMap.add sp (UcGenerateInter.gen_dir (snd sp) it) dim
+      IdPairMap.add sp (
+        UcGenerateInter.gen_dir (scope (fst sp)) (snd sp) it
+      ) dim
     ) mt.dir_inter_map IdPairMap.empty in
   
   let aim = IdPairMap.fold
