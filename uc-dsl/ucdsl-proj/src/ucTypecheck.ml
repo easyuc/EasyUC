@@ -2213,7 +2213,11 @@ let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
    ec_reqs_map =
      IdMap.union
      (fun _ x y -> assert (x = y); Some x)
-     oldmap.ec_reqs_map newmap.ec_reqs_map}
+     oldmap.ec_reqs_map newmap.ec_reqs_map;
+   ec_scope_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.ec_scope_map newmap.ec_scope_map}
 
 let load_uc_req
     (check_id : psymbol -> maps_tyd) (maps : maps_tyd) (id : psymbol)
@@ -2418,7 +2422,8 @@ let typecheck
      fun_map       = IdPairMap.empty;
      sim_map       = IdPairMap.empty;
      uc_reqs_map   = IdMap.empty;
-     ec_reqs_map   = IdMap.empty} in
+     ec_reqs_map   = IdMap.empty;
+     ec_scope_map  = IdMap.empty} in
   let maps =
     load_uc_reqs root check_id empty_maps spec.externals.uc_requires in
   let ec_reqs = load_ec_reqs spec.externals.ec_requires in
@@ -2435,6 +2440,14 @@ let typecheck
     | TyError (l, env, tyerr) ->
         error_message l
         (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr) in
+  let maps =
+    {maps with ec_scope_map =
+       IdMap.update root 
+       (fun sym_opt ->
+          match sym_opt with
+          | None   -> Some (EcCommands.ucdsl_current ())
+          | Some _ -> failure "cannot happen")
+       maps.ec_scope_map} in
   let () =
     if UcState.get_units ()
     then check_units root qual_file maps in

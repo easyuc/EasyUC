@@ -563,7 +563,8 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
    functionalities and simulators; their domains are disjoint; type
    arguments to IdPairMap.t are all located types
 
-   two identifier maps, for UC and EC requires of roots *)
+   three identifier maps indexed by roots, giving UC and EC
+   requires plus the root's scope *)
 
 type maps_tyd =
   {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -571,7 +572,8 @@ type maps_tyd =
    fun_map       : fun_tyd IdPairMap.t;             (* functionalities *)
    sim_map       : sim_tyd IdPairMap.t;             (* simulators *)
    uc_reqs_map   : (symbol list) IdMap.t;           (* UC requires of roots *)
-   ec_reqs_map   : ((symbol * bool) list) IdMap.t}  (* EC required of roots *)
+   ec_reqs_map   : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
+   ec_scope_map  : EcScope.scope IdMap.t}           (* scopes of roots *)
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =
@@ -732,7 +734,10 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
     IdSet.of_list (List.map fst (IdMap.bindings maps.uc_reqs_map)) in
   let roots3 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_reqs_map)) in
-  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3);
+  let roots4 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
+  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
+          IdSet.equal roots3 roots4);
   roots1
 
 type singleton_info =

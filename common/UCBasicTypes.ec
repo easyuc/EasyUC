@@ -461,6 +461,9 @@ proof.
 rewrite /epdp_tag_univ !epdp.
 qed.
 
+hint rewrite epdp : valid_epdp_tag_univ.
+hint simplify valid_epdp_tag_univ.
+
 type msg = mode * port * port * tag * univ.
 
 (* consider this example from uc-dsl/examples/smc-case-study/SMC.uc
