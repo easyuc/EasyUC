@@ -21,7 +21,7 @@ let invert_dir (dir : msg_dir) =
 (* message patterns and message paths
 
    the type variable 'a will be instantiated with either
-   symbol (UcSpec) or EcIdent.t (UcTypedSpec) *)
+   symbol (UcSpec) or EcIdent.t * EcTypes.ty (UcTypedSpec) *)
 
 type 'a pat =                    (* for matching values *)
   | PatId       of 'a located    (* identifier to bind to *)
@@ -30,6 +30,11 @@ type 'a pat =                    (* for matching values *)
 let match_pat (pat : 'a pat) (y : 'b) : ('a * 'b) option =
   match pat with
   | PatId x       -> Some (unloc x, y)
+  | PatWildcard _ -> None
+
+let pat_id_data (pat : 'a pat) : 'a option =
+  match pat with
+  | PatId x       -> Some (unloc x)
   | PatWildcard _ -> None
 
 (* if pats is None, then ys must be empty; if pats is Some pats',

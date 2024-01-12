@@ -678,8 +678,6 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
 by rewrite !epdp.
 qed.
 
-(*
-
 module DummyAdv : FUNC = {
   var self, env : addr
 
@@ -693,10 +691,8 @@ module DummyAdv : FUNC = {
     match (epdp_da_from_env_msg.`dec m) with
       Some x => {  (* from interface/simulator, we know x.`dfe_da = self *)
         if (0 < x.`dfe_n /\ x.`dfe_pt <> ([], 0) /\
-            ! self <= x.`dfe_pt.`1 ) {
-          r <-
-            Some
-            (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
+            ! self <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
+          r <- Some (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
         }
       }
     | None   => {
@@ -740,9 +736,9 @@ op ms_loop_invar
    (m.`2 = (self, 0) /\ m.`3 = ([], 0) \/
 
     m.`2.`1 = self /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
-    oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 0 \/
+    oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 1 \/
 
-    m.`2.`1 = self /\ 0 < m.`2.`2 < core_pi /\ ! self <= m.`3.`1 \/
+    m.`2.`1 = self /\ 0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ ! self <= m.`3.`1 \/
 
     if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 /\
     m.`3.`1 = self /\ 0 < m.`3.`2 < core_pi)) /\
@@ -766,7 +762,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
 
   var if_addr_opt : addr option
 
-  (* adv_ will be [] *)
+  (* self_ will not be []; adv_ = [] *)
 
   proc init(self_ adv_ : addr) : unit = {
     self <- self_; if_addr_opt <- None;
@@ -786,7 +782,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
         r <- None; not_done <- false;
       }
       elif (m.`2.`1 = self) {
-        if (0 < m.`2.`2 /\ m.`2.`2 < core_pi /\ if_addr <= m.`3.`1) {
+        if (0 < m.`2.`2 /\ if_addr <= m.`3.`1) {
           not_done <- true;
         }
         else {
@@ -794,7 +790,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
         }
       }
       elif (m.`2.`1 = if_addr) {
-        if (m.`2.`2 = 0 /\ m.`3 = (self, core_pi)) {
+        if (m.`2.`2 = 1 /\ m.`3 = (self, core_pi)) {
           not_done <- false;
         }
         else {
@@ -817,7 +813,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     else {
       m <- oget r;
       if (m.`1 = Dir \/ m.`2.`1 = self \/ m.`3.`1 <> self \/
-          m.`3.`2 < 0 \/ core_pi <= m.`3.`2) {
+          m.`3.`2 < 0) {
         r <- None; not_done <- false;
       }
       elif (if_addr_opt = None) {
@@ -839,7 +835,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     while (not_done) {
       if (m.`2.`2 = core_pi) {
         if (if_addr_opt = None) {
-          if_addr_opt <- Some m.`3.`1;  (* m.`3.`2 should be 0 *)
+          if_addr_opt <- Some m.`3.`1;
         }
         r <@ Core.invoke(m);
         (r, m, not_done) <@ after_core(r);
@@ -856,24 +852,19 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     return r;
   }
 
-  (* m.`1 = Adv /\ m.`2.`1 = self /\ 0 <= m.`2.`2 /\
-     ! self <= m.`3.`1 *)
+  (* m.`1 = Adv /\ m.`2.`1 = self /\
+     (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/ 0 < m.`2.`2 /\ m.`3 <> ([], 0)) *)
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    if (m.`2.`2 = core_pi) {
+    if (m.`2.`2 = core_pi) {  (* so m.`3 <> ([], 0) *)
       if (if_addr_opt = None) {
-        if (m.`3.`2 = 0) {  (* ideal functionality's internal port index *)
+        if (m.`3.`2 = 1) {  (* ideal functionality's external port index *)
           if_addr_opt <- Some m.`3.`1;
           r <@ loop(m);
         }
       }
-      elif (m.`3 = (oget if_addr_opt, 0)) {
-        r <@ loop(m);
-      }
-    }
-    elif (0 < m.`2.`2) {
-      if (if_addr_opt = None \/ ! oget if_addr_opt <= m.`3.`1) {
+      elif (m.`3 = (oget if_addr_opt, 1)) {
         r <@ loop(m);
       }
     }
@@ -885,4 +876,4 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
 }.
 
 end MakeSimulator.
-*)
+

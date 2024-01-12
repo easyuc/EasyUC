@@ -2369,7 +2369,7 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
 
 let match_ord_sme_against_msg_match_clauses
     (clauses : msg_match_clause_tyd list) (sme : sent_msg_expr_ord_tyd)
-      : (EcIdent.t * form) list * instruction_tyd list located =
+      : ((EcIdent.t * ty) * form) list * instruction_tyd list located =
   let rec match_sme clauses =
     match clauses with
     | []                -> failure "should not happen"
@@ -2407,7 +2407,7 @@ let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
     List.map (fun (_, (id, ty)) -> LCB_Var (id, ty))
     (IdMap.bindings (unlocm sbt.vars)) in
   let mm_binds =
-    List.map (fun (id, f) -> (LCB_Bound (id, f))) mm_binds in
+    List.map (fun ((id, _), f) -> (LCB_Bound (id, f))) mm_binds in
   let envport_maybe =
     if is_sim then [] else [LCB_EnvPort (addr, adv_form)] in
   let internal_ports =

@@ -860,11 +860,11 @@ let coverage_msg_path_pats
 
 let check_coverage_msg_path_pats
     (abip : all_basic_inter_paths) (sc : state_context)
-    (mml : EcIdent.t msg_pat list) : unit =
+    (mml : (EcIdent.t * ty) msg_pat list) : unit =
   let abip = incoming_abip abip in
   let r =
     coverage_msg_path_pats abip sc
-    (List.map (fun (mm : EcIdent.t msg_pat) -> mm.msg_path_pat) mml) in
+    (List.map (fun (mm : (EcIdent.t * ty) msg_pat) -> mm.msg_path_pat) mml) in
   if r <> []
   then let l = loc (List.last mml).msg_path_pat in
        error_message l
@@ -910,13 +910,13 @@ let check_non_port_id_binding
 
 let check_pat_add_id
     (sc : state_context) (env : env) (pat : symbol pat) (ty : ty)
-      : EcIdent.t pat * env =
+      : (EcIdent.t * ty) pat * env =
   match pat with
   | PatWildcard l -> (PatWildcard l, env)
   | PatId id      ->
       let l = loc id in
       let id' = EcIdent.create (unloc id) in
-      (PatId (mk_loc l id'), bind_local_avoid_var env sc id' ty l)
+      (PatId (mk_loc l (id', ty)), bind_local_avoid_var env sc id' ty l)
 
 let ids_of_pat (pat : symbol pat) : IdSet.t =
   match pat with
@@ -945,7 +945,7 @@ let check_disjoint_bindings (pats : symbol pat list) : unit =
 let check_pat_args_with_msg_type
     (bips : basic_inter_path list) (mp : symbol list * symbol)
     (pats : symbol pat list) (env : env) (sc : state_context)
-      : EcIdent.t pat list * env =
+      : (EcIdent.t * ty) pat list * env =
   let bip = List.find (fun p -> fst p = fst mp) bips in
   let mtyp =
     indexed_map_to_list
@@ -977,7 +977,7 @@ let check_missing_pat_args_with_msg_type
 
 let check_pat_args
     (bips : basic_inter_path list) (msg_pat : symbol msg_pat) (env : env)
-    (sc : state_context) : EcIdent.t pat list option * env =
+    (sc : state_context) : (EcIdent.t * ty) pat list option * env =
   match msg_pat.pat_args with
   | None      ->
       let () =
@@ -1003,7 +1003,7 @@ let check_pat_args
 
 let check_msg_pat
     (abip : all_basic_inter_paths) (msg_pat : symbol msg_pat)
-    (sc : state_context) (env : env) : EcIdent.t msg_pat * env =
+    (sc : state_context) (env : env) : (EcIdent.t * ty) msg_pat * env =
   let abip = incoming_abip abip in
   let () = check_msg_path_pat abip sc msg_pat.msg_path_pat in
   let (port_id, env) =
@@ -1031,6 +1031,10 @@ let check_msg_pat
               (None, env)) in
   let bips = flatten_all_basic_inter_paths abip in
   let (pat_args, env) = check_pat_args bips msg_pat env sc in
+  let port_id =
+    EcUtils.omap
+    (fun id -> mk_loc (loc id) (unloc id, port_ty))
+    port_id in
   ({port_id      = port_id;
     msg_path_pat = msg_pat.msg_path_pat;
     pat_args     = pat_args},

@@ -322,7 +322,10 @@ type send_and_transition_tyd =
   {msg_expr   : msg_expr_tyd;    (* message to send *)
    state_expr : state_expr_tyd}  (* state to transition to *)
 
-type bindings = (EcIdent.t located * EcTypes.ty) list
+type bindings = (EcIdent.t located * ty) list
+
+let unloc_bindings (bndgs : bindings) : (EcIdent.t * ty) list =
+  List.map (fun (id, ty) -> (unloc id, ty)) bndgs
 
 type instruction_tyd_u =
   | Assign of lhs * expr                           (* ordinary assignment *)
@@ -338,8 +341,26 @@ and instruction_tyd = instruction_tyd_u located
 and match_clause_tyd = symbol * (bindings * instruction_tyd list located)
 
 type msg_match_clause_tyd =                 (* message match clause *)
-  {msg_pat : EcIdent.t msg_pat;             (* message pattern *)
+  {msg_pat : (EcIdent.t * ty) msg_pat;      (* message pattern *)
    code    : instruction_tyd list located}  (* code of clause *)
+
+let msg_match_clause_msg_pat_bindings (mmc : msg_match_clause_tyd)
+      : (EcIdent.t * ty) list =
+  let msg_pat = mmc.msg_pat in
+  (match msg_pat.port_id with
+   | None   -> []
+   | Some x -> [unloc x]) @
+  (match msg_pat.pat_args with
+   | None    -> []
+   | Some xs ->
+       let ys =
+         List.map
+           (fun pat ->
+            match pat_id_data pat with
+            | None   -> []
+            | Some z -> [z])
+         xs in
+       List.concat ys)
 
 type state_body_tyd =
   {is_initial     : bool;                       (* the initial state? *)
