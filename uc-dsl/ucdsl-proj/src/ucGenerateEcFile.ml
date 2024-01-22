@@ -21,7 +21,7 @@ let generate_ec (mt : maps_tyd) : unit =
   let dim = IdPairMap.fold
     (fun sp it dim ->
       IdPairMap.add sp (
-        UcGenerateInter.gen_dir (scope (fst sp)) (snd sp) it
+        UcGenerateInter.gen_dir (scope (fst sp)) (fst sp) (snd sp) it
       ) dim
     ) mt.dir_inter_map IdPairMap.empty in
   

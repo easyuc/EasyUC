@@ -11,6 +11,30 @@ let params_map_to_list (pm : ty_index IdMap.t) : (string * EcTypes.ty) list =
   let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
   List.map (fun (name,(ty,_)) -> (name, ty)) bpm_ord
 
+type tag =
+  | TagNoInter       (* communication not involving messages of an
+                        interface *)
+  | TagComposite of  (* message is to/from composite interface *)
+      string *       (* unit root file name *)
+      string         (* message name *)
+  | TagBasic     of  (* message is to/from basic interface *)
+      string *       (* unit root file name *)
+      string         (* message name *)
+
+let print_tag (ppf : Format.formatter) (tag : tag) : unit =
+  match tag with
+  | TagNoInter -> Format.fprintf ppf "TagNoInter"
+  | TagComposite (root, name) -> Format.fprintf ppf "TagComposite@ %s@ %s" root name
+  | TagBasic (root, name) -> Format.fprintf ppf "TagBasic@ %s@ %s" root name
+
+let print_epdp_tag_univ (ppf : Format.formatter) (sc : EcScope.scope) : unit =
+  let env = EcScope.env sc in
+  let qepdp = (["Top";"UCBasicTypes"], "epdp_tag_univ") in
+  let pth, oper = EcEnv.Op.lookup qepdp env in
+  let epdp_opex = e_op pth [] oper.op_ty in
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
+  Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
+
 let _pi = "pi"
 
 let abs_oper_int (name : string) : string = "op "^name^" : int."
@@ -41,10 +65,16 @@ let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
 
 let name_epdp_op (tyname : string) : string = "epdp_"^tyname^"_univ"
 
+let epdp_enc_field : string = "enc"
+
+let mode_Dir : string = "Dir"
+
+let enc_op_name (name : string) : string = "enc_"^name
+
 
 (* print epdp for message data ----------------------------------------------*)
 
-(* epdp for constructed types -----------------------------------------------------*)
+(* epdp for constructed types -----------------------------------------------*)
 
 let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
 (tp : EcPath.path) (tyl : ty list) : unit =
@@ -164,6 +194,33 @@ let print_epdp_data_univ (sc : EcScope.scope) (ppf : Format.formatter)
 
 (*------------------------------------------------------------------------*)
 
+let print_enc_data (sc : EcScope.scope) 
+(var_name : string)
+(msg_name : string)
+(ppf : Format.formatter)
+(params_map : ty_index IdMap.t) 
+: unit =
+  let print_enc_args (var_name : string) (msg_name : string )
+  (ppf : Format.formatter) (params_map : ty_index IdMap.t) : unit =
+    let pns = fst (List.split (params_map_to_list params_map)) in
+    match pns with
+    | [] -> Format.fprintf ppf "@[()@]"
+    | [pn] -> Format.fprintf ppf "@[%s.`%s@]" var_name (name_record msg_name pn)
+    | pn::tl ->
+       let print_tl_args (ppf : Format.formatter) (pns : string list) =
+         List.iter (fun pn -> Format.fprintf ppf "@[,@ %s.`%s@]"
+                                var_name (name_record msg_name pn)) tl
+         in
+       Format.fprintf ppf "@[(%s.`%s%a)@]"
+         var_name (name_record msg_name pn) print_tl_args tl
+  in
+  Format.fprintf ppf "@[@ (%a).`%s@ %a@]"
+    (print_epdp_data_univ sc) params_map
+    epdp_enc_field
+    (print_enc_args var_name msg_name) params_map
+
+(*------------------------------------------------------------------------*)
+
 let print_record_field_nl
 (sc : EcScope.scope)
 (ppf : Format.formatter)
@@ -188,24 +245,62 @@ let print_braces_dedent_nl (ppf : Format.formatter) =
 let print_dir_message
 (ppf : Format.formatter)
 (sc : EcScope.scope)
-(name : string)
+(tag : tag)
+(mty_name : string)
 (mb : message_body_tyd)
     : unit =
-  let print_dir_message_record : unit =
-    print_str_nl ppf (ty_dec name);
+  let print_dir_message_record () : unit =
+    print_str_nl ppf (ty_dec mty_name);
     print_ident_braces_nl ppf;
-    print_record_field_nl sc ppf (name_record_func name) addr_ty;
-    print_record_field_nl sc ppf (name_record_dir_port name mb) port_ty;
+    print_record_field_nl sc ppf (name_record_func mty_name) addr_ty;
+    print_record_field_nl sc ppf (name_record_dir_port mty_name mb) port_ty;
     print_str_nl ppf "(*data*)";
     List.iter (fun (s,t) ->
-        print_record_field_nl sc ppf (name_record name s) t)
+        print_record_field_nl sc ppf (name_record mty_name s) t)
       (params_map_to_list mb.params_map);
     print_braces_dedent_nl ppf
   in
-  let print_enc_op : unit = ()
-    
+  let print_enc_op () : unit = 
+    let var_name = "x" in
+    let print_enc_op_body (ppf : Format.formatter) mb : unit =
+      let print_otherport ppf: unit = Format.fprintf ppf "@[%s.`%s@]"
+        var_name (name_record_dir_port mty_name mb)
+      in
+      let print_selfport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
+        var_name (name_record_func mty_name)
+      in
+      let print_ptsource ppf dir =
+        if dir = UcSpecTypedSpecCommon.In
+        then print_otherport ppf
+        else print_selfport ppf
+      in
+      let print_ptdest ppf dir =
+        if dir = UcSpecTypedSpecCommon.In
+        then print_selfport ppf
+        else print_otherport ppf
+      in
+      let print_mode ppf mode : unit =
+        Format.fprintf ppf "@[%s@]" mode
+      in
+      let print_tag_enc ppf tag : unit =
+        Format.fprintf ppf "%a.`%s@ (%a)"
+          print_epdp_tag_univ sc
+          epdp_enc_field
+          print_tag tag
+      in
+      Format.fprintf ppf "@[(%a,@ ,%a,@ %a,@ %a,@ %a)@]"
+        print_mode  mode_Dir
+        print_ptdest mb.dir
+        print_ptsource mb.dir
+        print_tag_enc tag
+        (print_enc_data sc var_name mty_name) mb.params_map
+    in
+    Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@.@[<hov2>%a@]@]"
+      (enc_op_name mty_name) var_name mty_name
+      print_enc_op_body mb   
   in
-  print_dir_message_record
+  print_dir_message_record ();
+  print_enc_op ()
 
 (*let write_message (ppf : Format.formatter) (sh : shadowed) 
   (tag : int) (name : string) (mb : message_body_tyd) : shadowed =
@@ -226,6 +321,7 @@ let print_dir_message
 let gen_basic_dir
 (sc : EcScope.scope)
 (id : string)
+(tag : tag)
 (bibt : basic_inter_body_tyd)
 : string =
   let sf = Format.get_str_formatter () in
@@ -233,12 +329,13 @@ let gen_basic_dir
   print_str_nl sf (open_theory name);
   print_str_nl sf pi_op;
   let bibtl = IdMap.bindings bibt in
-  List.iter (fun (n, mb) -> print_dir_message sf sc n mb) bibtl;
+  List.iter (fun (n, mb) -> print_dir_message sf sc tag n mb) bibtl;
   print_str_nl sf (close_theory id);
   Format.flush_str_formatter ()
 
-let gen_dir (sc : EcScope.scope) (id : string) (it : inter_tyd) : string = 
+let gen_dir (sc : EcScope.scope)
+(root : string ) (id : string) (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
-  | BasicTyd bibt -> gen_basic_dir sc id bibt
+  | BasicTyd bibt -> gen_basic_dir sc id (TagBasic (root, id)) bibt
   | CompositeTyd _ -> "" (*TODO*)
