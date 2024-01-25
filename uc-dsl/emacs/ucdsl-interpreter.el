@@ -26,24 +26,29 @@
 ;;M-x ucdsl-interpreter-mode
 ;;alternatively, run "emacs filename.uci" to start with  
 ;;.uci script for ucdsl-interpreter
-
 (defvar uc-frame)
 (defvar uc-window)
 (defvar uc-buffer)
+(defvar is-uc-frame-initialized nil)
 
 (defun init-uc-file-frame ()
   "create a new, invisible frame with name *UC file*, create a buffer called uc-file-buffer, set it as a buffer for frame's window and set uc-frame/window/buffer variables for future reference"
-  (setq uc-frame (make-frame '((name . "*UC file*") (visibility . nil))))
-  (setq uc-window (frame-selected-window uc-frame))
-  (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
-  (set-window-buffer uc-window uc-buffer)
-  (with-current-buffer uc-buffer
-    (ucdsl-mode)
-    (setq buffer-read-only t)
+  (if (eq is-uc-frame-initialized nil)
+    (progn	
+      (setq uc-frame (make-frame '((name . "*UC file*") (visibility . nil))))
+      (setq uc-window (frame-selected-window uc-frame))
+      (setq uc-buffer (generate-new-buffer "uc-file-buffer"))
+      (set-window-buffer uc-window uc-buffer)
+      (with-current-buffer uc-buffer
+        (ucdsl-mode)
+        (setq buffer-read-only t)
+	)
+      (setq is-uc-frame-initialized t)
+    )
   )
 )
 
-(init-uc-file-frame)
+
 
 (defun uc-file-frame (str)
   "If uc file and location in it are provided, insert file contents into uc-buffer from a file, mark the positions between character positions of the location.
@@ -92,7 +97,7 @@ If not, hide the uc-frame "
 (defun frame-with-uc-file (cmd str)
   "call empty-frame if ucdsl-interpreter shell output starts with UC file position:"
   ;;(proof-debug (concat "frame-with-uc-file of " str))
-
+  (init-uc-file-frame)
   (let ((stps (search "UC file position:" str)))
     (if (and stps (member uc-frame (frame-list))) 
       (uc-file-frame (substring str stps nil))
