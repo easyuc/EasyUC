@@ -671,6 +671,18 @@ type inline_info = [
 ]
 
 (* -------------------------------------------------------------------- *)
+type outline_kind =
+  | OKstmt of pstmt
+  | OKproc of pgamepath * pexpr option
+
+type outline_info = {
+    outline_side: side;
+    outline_start: codepos1;
+    outline_end: codepos1;
+    outline_kind: outline_kind;
+}
+
+(* -------------------------------------------------------------------- *)
 type fel_info = {
   pfel_cntr  : pformula;
   pfel_asg   : pformula;
@@ -693,6 +705,15 @@ type sim_info = {
   sim_pos  : codepos1 pair option;
   sim_hint : (pgamepath option pair * pformula) list * pformula option;
   sim_eqs  : pformula option
+}
+
+(* -------------------------------------------------------------------- *)
+type rw_eqv_info = {
+  rw_eqv_side  : side;
+  rw_eqv_dir   : [`LtoR | `RtoL];
+  rw_eqv_pos   : codepos1;
+  rw_eqv_lemma : ppterm;
+  rw_eqv_proc  : (pexpr list located * pexpr option) option;
 }
 
 (* -------------------------------------------------------------------- *)
@@ -731,11 +752,14 @@ type phltactic =
   | Pswap          of ((oside * swap_kind) located list)
   | Pcfold         of (oside * codepos * int option)
   | Pinline        of inline_info
+  | Poutline       of outline_info
   | Pinterleave    of interleave_info located
   | Pkill          of (oside * codepos * int option)
+  | Pasgncase      of (oside * codepos)
   | Prnd           of oside * semrndpos option * rnd_tac_info_f
-  | Prndsem        of oside * codepos1
+  | Prndsem        of bool * oside * codepos1
   | Palias         of (oside * codepos * osymbol_r)
+  | Pweakmem       of (oside * psymbol * fun_params)
   | Pset           of (oside * codepos * bool * psymbol * pexpr)
   | Pconseq        of (pcqoptions * (conseq_ppterm option tuple3))
   | Pconseqauto    of crushmode
@@ -752,6 +776,7 @@ type phltactic =
   | Pprbounded
   | Psim           of crushmode option* sim_info
   | Ptrans_stmt    of trans_info
+  | Prw_equiv      of rw_eqv_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
 
@@ -844,7 +869,6 @@ and rwarg1 =
   | RWSmt    of (bool * pprover_infos)
   | RWApp    of ppterm
   | RWTactic of rwtactic
-  | RWEquiv  of (side * pqsymbol * (pexpr list located * pexpr) * (pexpr list located * pexpr))
 
 and rwoptions = rwside * trepeat option * rwocc * pformula option
 and rwside    = [`LtoR | `RtoL]
@@ -1167,7 +1191,6 @@ and theory_override =
 | PTHO_Op     of op_override
 | PTHO_Pred   of pr_override
 | PTHO_Axiom  of ax_override
-| PTHO_Module of me_override
 | PTHO_ModTyp of mt_override
 | PTHO_Theory of th_override
 
@@ -1279,6 +1302,7 @@ type global_action =
 
 type global = {
   gl_action : global_action located;
+  gl_fail   : bool;
   gl_debug  : [`Timed | `Break] option;
 }
 

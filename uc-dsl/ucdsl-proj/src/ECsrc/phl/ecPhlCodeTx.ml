@@ -1,5 +1,6 @@
 (* -------------------------------------------------------------------- *)
 open EcUtils
+open EcParsetree
 open EcAst
 open EcTypes
 open EcModules
@@ -232,3 +233,103 @@ let process_alias (side, cpos, id) tc =
 let process_set (side, cpos, fresh, id, e) tc =
   let e = TTC.tc1_process_Xhl_exp tc side None e in
   t_set side cpos (fresh, id) e tc
+
+
+(* -------------------------------------------------------------------- *)
+
+let process_weakmem (side, id, params) tc =
+  let open EcLocation in
+  let hyps = FApi.tc1_hyps tc in
+  let env = FApi.tc1_env tc in
+  let _, f =
+    try LDecl.hyp_by_name (unloc id) hyps
+    with LDecl.LdeclError _ ->
+      tc_lookup_error !!tc ~loc:id.pl_loc `Local ([], unloc id)
+  in
+
+  let process_decl (x, ty) =
+    let ty = EcTyping.transty EcTyping.tp_tydecl env (EcUnify.UniEnv.create None) ty in
+    let x = omap unloc (unloc x) in
+    { ov_name = x; ov_type = ty }
+  in
+
+  let decls = List.map process_decl params in
+
+  let bind me =
+    try EcMemory.bindall decls me
+    with EcMemory.DuplicatedMemoryBinding x ->
+      tc_error ~loc:id.pl_loc !!tc "variable %s already declared" x in
+
+  let h =
+    match f.f_node with
+    | FhoareS hs ->
+      let me = bind hs.hs_m in
+      f_hoareS_r { hs with hs_m = me }
+
+    | FeHoareS hs ->
+      let me = bind hs.ehs_m in
+      f_eHoareS_r { hs with ehs_m = me }
+
+    | FbdHoareS hs ->
+      let me = bind hs.bhs_m in
+      f_bdHoareS_r { hs with bhs_m = me }
+
+    | FcHoareS hs ->
+      let me = bind hs.chs_m in
+      f_cHoareS_r { hs with chs_m = me }
+
+    | FequivS es ->
+      let do_side side es =
+        let es_ml, es_mr = if side = `Left then bind es.es_ml, es.es_mr else es.es_ml, bind es.es_mr in
+        {es with es_ml; es_mr}
+      in
+      let es =
+        match side with
+        | None -> do_side `Left (do_side `Right es)
+        | Some side -> do_side side es in
+      f_equivS_r es
+
+    | _ ->
+      tc_error ~loc:id.pl_loc !!tc "the hypothesis need to be a hoare/choare/phoare/ehoare/equiv on statement"
+  in
+  let concl = f_imp h (FApi.tc1_goal tc) in
+  FApi.xmutate1 tc `WeakenMem [concl]
+
+(* -------------------------------------------------------------------- *)
+let process_case ((side, pos) : side option * codepos) (tc : tcenv1) =
+  let (env, _, concl) = FApi.tc1_eflat tc in
+
+  let change (i : instr) =
+    if not (is_asgn i) then
+      tc_error !!tc "the code position should target an assignment";
+
+    let lv, e = destr_asgn i in
+
+    let pvl = EcPV.lp_write env lv in
+    let pve = EcPV.e_read env e in
+    let lv  = lv_to_list lv in
+
+    if not (EcPV.PV.indep env pvl pve) then
+      assert false;
+
+    let e =
+      match lv, e.e_node with
+      | [_], _         -> [e]
+      | _  , Etuple es -> es
+      | _  ,_          -> assert false in
+
+    let s = List.map2 (fun pv e -> i_asgn (LvVar (pv, e.e_ty), e)) lv e in
+
+    ([], s)
+  in
+
+  let kinds = [`Hoare `Stmt; `EHoare `Stmt; `PHoare `Stmt; `Equiv `Stmt] in
+
+  if not (EcLowPhlGoal.is_program_logic concl kinds) then
+    assert false;
+
+  let s = EcLowPhlGoal.tc1_get_stmt side tc in
+  let goals, s = EcMatching.Zipper.map pos change s in
+  let concl = EcLowPhlGoal.hl_set_stmt side concl s in
+
+  FApi.xmutate1 tc `ProcCase (goals @ [concl])

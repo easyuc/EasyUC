@@ -451,6 +451,7 @@
 %token EXLIM
 %token EXPECT
 %token EXPORT
+%token FAIL
 %token FEL
 %token FIRST
 %token FISSION
@@ -511,6 +512,7 @@
 %token NOTATION
 %token OF
 %token OP
+%token OUTLINE
 %token PCENT
 %token PHOARE
 %token PIPE
@@ -600,6 +602,7 @@
 %token UNDO
 %token UNROLL
 %token VAR
+%token WEAKMEM
 %token WHILE
 %token WHY3
 %token WITH
@@ -2638,14 +2641,6 @@ rwarg1:
         parse_error (loc x) (Some msg)
   }
 
-| EQUIV aout=bracket(
-    s=side x=qident
-    argsl=paren(loc(plist0(expr, COMMA))) resl=sexpr
-    argsr=paren(loc(plist0(expr, COMMA))) resr=sexpr {
-      RWEquiv (s, x, (argsl, resl), (argsr, resr))
-    }
-  ) { aout }
-
 rwpterms:
 | f=pterm
     { [(`LtoR, f)] }
@@ -3127,6 +3122,10 @@ interleave_info:
 | s=side? c1=interleavepos c2=interleavepos c3=interleavepos* k=word
    { (s, c1, c2 :: c3, k) }
 
+%inline outline_kind:
+| s=brace(stmt) { OKstmt(s) }
+| r=sexpr? LEAT f=loc(fident) { OKproc(f, r) }
+
 phltactic:
 | PROC
    { Pfun `Def }
@@ -3205,8 +3204,8 @@ phltactic:
 | RND s=side? info=rnd_info c=prefix(COLON, semrndpos)?
     { Prnd (s, c, info) }
 
-| RNDSEM s=side? c=codepos1
-    { Prndsem (s, c) }
+| RNDSEM red=boption(STAR) s=side? c=codepos1
+    { Prndsem (red, s, c) }
 
 | INLINE s=side? u=inlineopt? o=occurences?
   { Pinline (`ByName(s, u, ([], o))) }
@@ -3217,6 +3216,14 @@ phltactic:
 | INLINE s=side? u=inlineopt? p=codepos
     { Pinline (`CodePos (s, u, p)) }
 
+| OUTLINE s=side LBRACKET st=codepos1 e=option(MINUS e=codepos1 {e}) RBRACKET k=outline_kind
+    { Poutline {
+	  outline_side  = s;
+	  outline_start = st;
+	  outline_end   = odfl st e;
+	  outline_kind  = k }
+    }
+
 | KILL s=side? o=codepos
     { Pkill (s, o, Some 1) }
 
@@ -3226,6 +3233,9 @@ phltactic:
 | KILL s=side? o=codepos NOT STAR
     { Pkill (s, o, None) }
 
+| CASE LARROW s=side? o=codepos
+    { Pasgncase (s, o) }
+
 | ALIAS s=side? o=codepos
     { Palias (s, o, None) }
 
@@ -3234,6 +3244,9 @@ phltactic:
 
 | ALIAS s=side? o=codepos x=lident EQ e=expr
     { Pset (s, o, false, x,e) }
+
+| WEAKMEM s=side? h=loc(ipcore_name) p=param_decl
+    { Pweakmem(s, h, p) }
 
 | FISSION s=side? o=codepos AT d1=word COMMA d2=word
     { Pfission (s, o, (1, (d1, d2))) }
@@ -3343,6 +3356,21 @@ phltactic:
 | TRANSITIVITY STAR tk=trans_kind
     { Ptrans_stmt (tk, TFeq) }
 
+| REWRITE EQUIV LBRACKET
+    s=side cp=codepos1 rws=rwside x=pterm proc=rweqv_proc?
+  RBRACKET
+    {
+      let info = {
+          rw_eqv_side  = s;
+          rw_eqv_dir   = rws;
+          rw_eqv_pos   = cp;
+          rw_eqv_lemma = x;
+          rw_eqv_proc = proc;
+        }
+      in
+      Prw_equiv info
+    }
+
 | SYMMETRY
     { Psymmetry }
 
@@ -3386,6 +3414,12 @@ bdhoare_split:
 
 %inline trans_hyp:
 | LPAREN p=form LONGARROW q=form RPAREN { (p,q) }
+
+%inline rweqv_res:
+| COLON AT res=sexpr { res }
+
+%inline rweqv_proc:
+| p=paren(args=loc(plist0(expr, COMMA)) res=rweqv_res? {args, res}) {p}
 
 %inline repl_kind:
 | s=side p=im_block BY c=brace(stmt)
@@ -3838,8 +3872,11 @@ clone_override:
 | LEMMA x=qoident mode=loc(opclmode) y=qoident
   { x, PTHO_Axiom (y, unloc mode) }
 
-| MODULE x=uqident mode=loc(opclmode) y=uqident
-   { (x, PTHO_Module (y, unloc mode)) }
+| MODULE uqident loc(opclmode) uqident
+   { parse_error
+       (EcLocation.make $startpos $endpos)
+       (Some "Module overriding is no longer supported.")
+   }
 
 | MODULE TYPE x=uqident mode=loc(opclmode) y=uqident
    { (x, PTHO_ModTyp (y, unloc mode)) }
@@ -4020,9 +4057,11 @@ stop:
 | DROP DOT { }
 
 global:
-| db=debug_global? g=global_action ep=FINAL
+| db=debug_global? fail=boption(FAIL) g=global_action ep=FINAL
   { let lc = EcLocation.make $startpos ep in
-    { gl_action = EcLocation.mk_loc lc g; gl_debug = db; } }
+    { gl_action = EcLocation.mk_loc lc g;
+      gl_fail   = fail;
+      gl_debug  = db; } }
 
 debug_global:
 | TIME  { `Timed }

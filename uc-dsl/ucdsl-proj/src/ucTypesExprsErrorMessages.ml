@@ -9,6 +9,7 @@ open EcSymbols
 open EcUid
 open EcUtils
 open EcTypes
+open EcCoreSubst
 open UcTransTypesExprs
 
 let pp_fxerror _env fmt error =
@@ -136,7 +137,7 @@ let pp_tyerror env1 fmt error =
       List.iteri (fun i ty -> msg "  [%d]: @[%a@]@\n" (i+1) pp_type ty) tys
 
     | MultipleOpMatch (name, tys, matches) -> begin
-        let uvars = List.map EcTypes.Tuni.univars tys in
+        let uvars = List.map Tuni.univars tys in
         let uvars = List.fold_left Suid.union Suid.empty uvars in
 
         begin match tys with
@@ -167,7 +168,7 @@ let pp_tyerror env1 fmt error =
               (EcPrinting.pp_list ",@ " pp_type) inst
           end;
 
-          let myuvars = List.map EcTypes.Tuni.univars inst in
+          let myuvars = List.map Tuni.univars inst in
           let myuvars = List.fold_left Suid.union uvars myuvars in
           let myuvars = Suid.elements myuvars in
 

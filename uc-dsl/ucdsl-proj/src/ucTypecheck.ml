@@ -1060,15 +1060,14 @@ let check_expr
     | EcUnify.UninstanciateUni ->
         failure
         "should not happen: a top-level expression won't have type variables" in
-  let sty = {ty_subst_id with ts_u = uidmap} in
-  let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
-  let exp = EcFol.Fsubst.subst_e fs exp in
+  let ts = EcFol.Tuni.subst uidmap in
+  let exp = EcFol.Fsubst.e_subst ts exp in
   (* update result type, using the expected type if supplied (which
      was assumed to have no unification or type variables), and otherwise
      applying the result of the unification to ty *)
   let res_ty =
     match expct_ty_opt with
-    | None          -> ty_subst (Tuni.subst uidmap) ty
+    | None          -> EcFol.ty_subst ts ty
     | Some expct_ty -> expct_ty in
   (* check for possibly uninitialized variables *)
   let () =
@@ -2558,15 +2557,14 @@ let inter_check_expr
     | EcUnify.UninstanciateUni ->
         failure
         "should not happen: a top-level expression won't have type variables" in
-  let sty = {ty_subst_id with ts_u = uidmap} in
-  let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
-  let exp = EcFol.Fsubst.subst_e fs exp in
+  let ts = EcFol.Tuni.subst uidmap in
+  let exp = EcFol.Fsubst.e_subst ts exp in
   (* update result type, using the expected type if supplied (which
      was assumed to have no unification or type variables), and otherwise
      applying the result of the unification to ty *)
   let res_ty =
     match expct_ty_opt with
-    | None          -> ty_subst (Tuni.subst uidmap) ty
+    | None          -> EcFol.ty_subst ts ty
     | Some expct_ty -> expct_ty in
   (exp, res_ty)
 
