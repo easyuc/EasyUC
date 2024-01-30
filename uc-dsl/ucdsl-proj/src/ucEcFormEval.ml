@@ -1055,13 +1055,13 @@ let deconstruct_data
     | Some ty_dt ->
       begin try
         let ret = deconstruct_data_simplify hyps form rw_lems in
-        debugging_message (fun fmt -> Format.fprintf fmt 
-        "deconstruction by simplification succeded.@.");
+        (*debugging_message (fun fmt -> Format.fprintf fmt 
+        "deconstruction by simplification succeded.@.");*)
         ret
       with _ ->
-        debugging_message (fun fmt -> Format.fprintf fmt 
+        (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
-         Trying to simplify by evaluating get_as_Constr@.");
+         Trying to simplify by evaluating get_as_Constr@.");*)
       deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
       hyps form pi rw_lems
       end
