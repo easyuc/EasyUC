@@ -233,6 +233,12 @@ let print_record_field_nl
 
 let msg_ty_name (name : string) : string = "_"^name
 
+let dec_op_name (name : string) : string = "dec_"^name
+
+let epdp_op_name (name : string) : string = "epdp_"^name
+
+let tag_op_name (name : string) : string = "_tag_"^name
+
 let ty_dec (name : string) : string =
   "type "^(msg_ty_name name)^" ="
 
@@ -260,6 +266,38 @@ let print_dir_message
       (params_map_to_list mb.params_map);
     print_braces_dedent_nl ppf
   in
+
+  let print_tag_mty_name_op () : unit =
+    let print_str_as_ec_str
+    (ppf : Format.formatter) (s : string) : unit =
+      let intarr = List.init (String.length s)
+                     (fun i -> Char.code (s.[i])) in
+      Format.fprintf ppf "@[[";
+      List.iter (fun i ->
+          Format.fprintf ppf "%i;@ " i) intarr;
+      Format.fprintf ppf "]@]"
+    in
+    let print__name_as_ec_str_op (n : string) : unit =
+      Format.fprintf ppf
+        "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@."
+        n
+        print_str_as_ec_str n
+        n
+    in
+    let print_root_mtyname_as_ec_str_ops (r : string) (m : string) : unit =
+      print__name_as_ec_str_op r;
+      print__name_as_ec_str_op m
+    in
+    let t,r,m = match tag with
+    | TagComposite (r,m) -> ("TagComposite", r, m) 
+    | TagBasic (r,m) -> ("TagBasic",r,m)
+    | TagNoInter -> failure "TagNoInter should not show up here"
+    in
+    print_root_mtyname_as_ec_str_ops r m;
+    Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s@]@."
+      (tag_op_name mty_name) t r m
+  in
+
   let print_enc_op () : unit = 
     let var_name = "x" in
     let print_enc_op_body (ppf : Format.formatter) mb : unit =
@@ -299,8 +337,59 @@ let print_dir_message
       (enc_op_name mty_name) var_name mty_name
       print_enc_op_body mb   
   in
+
+  let print_dec_op () : unit =
+    let print_dec_op_body (ppf : Format.formatter) mb : unit =
+      let print_params_vars ppf pm : unit =
+        let pns = fst (List.split (params_map_to_list pm)) in
+        if pns<>[]
+        then
+          Format.fprintf ppf "%s" (List.hd pns);
+          List.iter (fun pn -> Format.fprintf ppf "@ ,%s" pn) (List.tl pns)
+      in
+      let print_data_assign ppf pm : unit =
+        let pns = fst (List.split (params_map_to_list pm)) in
+        List.iter (fun pn -> Format.fprintf ppf "@ %s@ =@ %s" pn pn)  pns
+      in
+      Format.fprintf ppf
+      "@[(mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@.";
+      Format.fprintf ppf 
+      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]@."
+      (tag_op_name mty_name);
+      Format.fprintf ppf "@[<hov2>@.";
+      Format.fprintf ppf "None@ :@.";
+      Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@."
+        (print_epdp_data_univ sc) mb.params_map;
+      Format.fprintf ppf "@[| None   => None@]@.";
+      Format.fprintf ppf "@[| Some p =>@]@.";
+      Format.fprintf ppf "@[<hov2>";
+      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@."
+        (print_params_vars) mb.params_map;
+      Format.fprintf ppf "@[in@ Some@]@.";
+      Format.fprintf ppf "@[<hov2>@.";
+      Format.fprintf ppf
+        "{|fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@.";
+      Format.fprintf ppf "@ %a|}@."
+        (print_data_assign) mb.params_map;
+      Format.fprintf ppf "@]";
+      Format.fprintf ppf "@]";
+      Format.fprintf ppf "end.@]@."
+    in
+    let var_name="m" in
+    Format.fprintf ppf "@[op@ %s@ (%s@ :@ msg)@ :@ %s@ =@.@[<hov2>%a@]@]"
+      (dec_op_name mty_name) var_name mty_name
+      print_dec_op_body mb 
+  in
+
+  let print_epdp_op () : unit =
+    Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@."
+    (epdp_op_name mty_name) (enc_op_name mty_name) (dec_op_name mty_name)
+  in
   print_dir_message_record ();
-  print_enc_op ()
+  print_tag_mty_name_op();
+  print_enc_op ();
+  print_dec_op ();
+  print_epdp_op ()
 
 (*let write_message (ppf : Format.formatter) (sh : shadowed) 
   (tag : int) (name : string) (mb : message_body_tyd) : shadowed =
