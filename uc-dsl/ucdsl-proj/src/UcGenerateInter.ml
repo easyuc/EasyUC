@@ -48,10 +48,10 @@ let open_theory (name : string) : string = "theory "^name^"."
 let close_theory (name : string) : string = "end "^name^"."
 
 let print_newline (ppf : Format.formatter) : unit =
-  Format.fprintf ppf "@."
+  Format.fprintf ppf "@;"
 
 let print_str_nl (ppf : Format.formatter) (str : string) : unit =
-  Format.fprintf ppf "%s@." str;
+  Format.fprintf ppf "%s@;" str;
   print_newline ppf
 
 let name_record_func (msg_name : string) : string = msg_name^"__func"
@@ -232,8 +232,7 @@ let print_record_field_nl
 (ty : EcTypes.ty)
 : unit =
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  Format.fprintf ppf "@[%s :@ @[%a@];@]" fn (EcPrinting.pp_type ppe) ty;
-  print_newline ppf
+  Format.fprintf ppf "@,@[%s :@ %a;@]" fn (EcPrinting.pp_type ppe) ty
 
 let msg_ty_name (name : string) : string = "_"^name
 
@@ -247,10 +246,10 @@ let ty_dec (name : string) : string =
   "type "^(msg_ty_name name)^" ="
 
 let print_ident_braces_nl (ppf : Format.formatter) =
-  Format.fprintf ppf "@[<hov 2>{@.@[<hov 1>"
+  Format.fprintf ppf "{@[<v 1>"
 
 let print_braces_dedent_nl (ppf : Format.formatter) =
-  Format.fprintf ppf "@]@.}@]"
+  Format.fprintf ppf "@]@,}@,"
 
 let print_dir_message
 (ppf : Format.formatter)
@@ -260,11 +259,11 @@ let print_dir_message
 (mb : message_body_tyd)
     : unit =
   let print_dir_message_record () : unit =
-    print_str_nl ppf (ty_dec mty_name);
+    Format.fprintf ppf "@[%s@]@," (ty_dec mty_name);
     print_ident_braces_nl ppf;
     print_record_field_nl sc ppf (name_record_func mty_name) addr_ty;
     print_record_field_nl sc ppf (name_record_dir_port mty_name mb) port_ty;
-    print_str_nl ppf "(*data*)";
+    Format.fprintf ppf "@,@[(*data*)@]";
     List.iter (fun (s,t) ->
         print_record_field_nl sc ppf (name_record mty_name s) t)
       (params_map_to_list mb.params_map);
@@ -283,7 +282,7 @@ let print_dir_message
     in
     let print__name_as_ec_str_op (n : string) : unit =
       Format.fprintf ppf
-        "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@."
+        "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@;"
         n
         print_str_as_ec_str n
         n
@@ -298,7 +297,7 @@ let print_dir_message
     | TagNoInter -> failure "TagNoInter should not show up here"
     in
     print_root_mtyname_as_ec_str_ops r m;
-    Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s@]@."
+    Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s@]@;"
       (tag_op_name mty_name) t r m
   in
 
@@ -337,7 +336,7 @@ let print_dir_message
         print_tag_enc tag
         (print_enc_data sc var_name mty_name) mb.params_map
     in
-    Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@.@[<hov2>%a@]@]"
+    Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@;@[<v 2>%a@]@]"
       (enc_op_name mty_name) var_name mty_name
       print_enc_op_body mb   
   in
@@ -356,37 +355,37 @@ let print_dir_message
         List.iter (fun pn -> Format.fprintf ppf "@ %s@ =@ %s" pn pn)  pns
       in
       Format.fprintf ppf
-      "@[(mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@.";
+      "@[(mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@;";
       Format.fprintf ppf 
-      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]@."
+      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]@;"
       (tag_op_name mty_name);
-      Format.fprintf ppf "@[<hov2>@.";
-      Format.fprintf ppf "None@ :@.";
-      Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@."
+      Format.fprintf ppf "@[<v 2>@;";
+      Format.fprintf ppf "None@ :@;";
+      Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@;"
         (print_epdp_data_univ sc) mb.params_map;
-      Format.fprintf ppf "@[| None   => None@]@.";
-      Format.fprintf ppf "@[| Some p =>@]@.";
-      Format.fprintf ppf "@[<hov2>";
-      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@."
+      Format.fprintf ppf "@[| None   => None@]@;";
+      Format.fprintf ppf "@[| Some p =>@]@;";
+      Format.fprintf ppf "@[<v 2>";
+      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@;"
         (print_params_vars) mb.params_map;
-      Format.fprintf ppf "@[in@ Some@]@.";
-      Format.fprintf ppf "@[<hov2>@.";
+      Format.fprintf ppf "@[in@ Some@]@;";
+      Format.fprintf ppf "@[<v 2>@;";
       Format.fprintf ppf
-        "{|fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@.";
-      Format.fprintf ppf "@ %a|}@."
+        "{|fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@;";
+      Format.fprintf ppf "@ %a|}@;"
         (print_data_assign) mb.params_map;
       Format.fprintf ppf "@]";
       Format.fprintf ppf "@]";
-      Format.fprintf ppf "end.@]@."
+      Format.fprintf ppf "end.@]@;"
     in
     let var_name="m" in
-    Format.fprintf ppf "@[op@ %s@ (%s@ :@ msg)@ :@ %s@ =@.@[<hov2>%a@]@]"
+    Format.fprintf ppf "@[op@ %s@ (%s@ :@ msg)@ :@ %s@ =@;@[<v 2>%a@]@]"
       (dec_op_name mty_name) var_name mty_name
       print_dec_op_body mb 
   in
 
   let print_epdp_op () : unit =
-    Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@."
+    Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@;"
     (epdp_op_name mty_name) (enc_op_name mty_name) (dec_op_name mty_name)
   in
   print_dir_message_record ();
@@ -419,11 +418,13 @@ let gen_basic_dir
 : string =
   let sf = Format.get_str_formatter () in
   let name = uc_name id in
+  Format.fprintf sf "@[<v>";
   print_str_nl sf (open_theory name);
   print_str_nl sf pi_op;
   let bibtl = IdMap.bindings bibt in
   List.iter (fun (n, mb) -> print_dir_message sf sc tag n mb) bibtl;
   print_str_nl sf (close_theory id);
+  Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
 let gen_dir (sc : EcScope.scope)
