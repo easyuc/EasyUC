@@ -87,7 +87,11 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
     | Some (pth, t) -> pth , t 
     | None -> match EcEnv.Op.lookup_opt qbase env with
               | Some (pth, t) -> pth , t 
-              | None -> failure ("couldn't find epdp operator for "^
+              | None -> if qtp = (["Top"; "UCUniv"], "univ")
+                        then EcEnv.Op.lookup
+                               (["Top"; "UCEncoding"], "epdp_id") env
+                        else failure
+                          ("couldn't find epdp operator for "^
                           (EcPath.tostring tp))
                             (*TODO special case for univ_univ? or change epdp_id name?*)
                             (*TODO try to find epdp for given type in scope, if that fails, make tydecl analisys and try to construct epdp, if that fails throw exception*)
@@ -114,7 +118,7 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
 (tyl : ty list) : unit =
   match epdp_basicUCtuple_name (List.length tyl) with
   | Some name ->
-     let qbase = (["Top";"UCBasicTypes"], name) in
+     let qbase = (["Top";"UCUniv"], name) in
      let env = EcScope.env sc in
      let pth,oper = EcEnv.Op.lookup qbase env in
      let epdp_opex = e_op pth tyl oper.op_ty in
