@@ -54,11 +54,11 @@ let print_str_nl (ppf : Format.formatter) (str : string) : unit =
   Format.fprintf ppf "%s@;" str;
   print_newline ppf
 
-let name_record_func (msg_name : string) : string = msg_name^"__func"
+let name_record_func (msg_name : string) : string = msg_name^"___func"
 
-let name_record_adv (msg_name : string) : string = msg_name^"__adv"
+let name_record_adv (msg_name : string) : string = msg_name^"___adv"
 
-let name_record (msg_name : string) (param_name : string) : string = msg_name^"_"^param_name
+let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
   name_record name (EcUtils.oget mb.port)
@@ -251,6 +251,29 @@ let print_ident_braces_nl (ppf : Format.formatter) =
 let print_braces_dedent_nl (ppf : Format.formatter) =
   Format.fprintf ppf "@]@,}@,"
 
+let print_str_as_ec_str (ppf : Format.formatter) (s : string) : unit =
+  let intarr = List.init (String.length s)
+                 (fun i -> Char.code (s.[i])) in
+  Format.fprintf ppf "@[[";
+  if intarr<>[]
+  then begin
+    Format.fprintf ppf "%i" (List.hd intarr);
+    List.iter (fun i ->
+      Format.fprintf ppf ";@ %i" i) (List.tl intarr)
+  end;
+  Format.fprintf ppf "].@]"
+
+let print__name_as_ec_str_op (ppf : Format.formatter)
+(n : string) : unit =
+  Format.fprintf ppf "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@,@,"
+    n print_str_as_ec_str n n
+
+let get_root_from_tag (tag : tag) : string =
+  match tag with
+  | TagComposite (r,_) -> r 
+  | TagBasic (r,_) -> r
+  | TagNoInter -> failure "TagNoInter has no root"
+
 let print_dir_message
 (ppf : Format.formatter)
 (sc : EcScope.scope)
@@ -258,46 +281,27 @@ let print_dir_message
 (mty_name : string)
 (mb : message_body_tyd)
     : unit =
+
   let print_dir_message_record () : unit =
     Format.fprintf ppf "@[%s@]@," (ty_dec mty_name);
-    print_ident_braces_nl ppf;
+    Format.fprintf ppf "{@[<v 1>";
     print_record_field_nl sc ppf (name_record_func mty_name) addr_ty;
     print_record_field_nl sc ppf (name_record_dir_port mty_name mb) port_ty;
     Format.fprintf ppf "@,@[(*data*)@]";
     List.iter (fun (s,t) ->
         print_record_field_nl sc ppf (name_record mty_name s) t)
       (params_map_to_list mb.params_map);
-    print_braces_dedent_nl ppf
+    Format.fprintf ppf "@]@,}.@,"
   in
 
   let print_tag_mty_name_op () : unit =
-    let print_str_as_ec_str
-    (ppf : Format.formatter) (s : string) : unit =
-      let intarr = List.init (String.length s)
-                     (fun i -> Char.code (s.[i])) in
-      Format.fprintf ppf "@[[";
-      List.iter (fun i ->
-          Format.fprintf ppf "%i;@ " i) intarr;
-      Format.fprintf ppf "]@]"
-    in
-    let print__name_as_ec_str_op (n : string) : unit =
-      Format.fprintf ppf
-        "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@;"
-        n
-        print_str_as_ec_str n
-        n
-    in
-    let print_root_mtyname_as_ec_str_ops (r : string) (m : string) : unit =
-      print__name_as_ec_str_op r;
-      print__name_as_ec_str_op m
-    in
     let t,r,m = match tag with
     | TagComposite (r,m) -> ("TagComposite", r, m) 
     | TagBasic (r,m) -> ("TagBasic",r,m)
     | TagNoInter -> failure "TagNoInter should not show up here"
     in
-    print_root_mtyname_as_ec_str_ops r m;
-    Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s@]@;"
+    print__name_as_ec_str_op ppf m;
+    Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s.@]@,"
       (tag_op_name mty_name) t r m
   in
 
@@ -323,21 +327,16 @@ let print_dir_message
       let print_mode ppf mode : unit =
         Format.fprintf ppf "@[%s@]" mode
       in
-      let print_tag_enc ppf tag : unit =
-        Format.fprintf ppf "%a.`%s@ (%a)"
-          print_epdp_tag_univ sc
-          epdp_enc_field
-          print_tag tag
-      in
-      Format.fprintf ppf "@[(%a,@ ,%a,@ %a,@ %a,@ %a)@]"
+      Format.fprintf ppf "@[(%a,@ (%a,@ %s),@ %a,@ %s,@ %a)@]"
         print_mode  mode_Dir
         print_ptdest mb.dir
+        _pi
         print_ptsource mb.dir
-        print_tag_enc tag
+        (tag_op_name mty_name)
         (print_enc_data sc var_name mty_name) mb.params_map
     in
-    Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@;@[<v 2>%a@]@]"
-      (enc_op_name mty_name) var_name mty_name
+    Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@;@[<v 2>%a@]@]@,.@,"
+      (enc_op_name mty_name) var_name (msg_ty_name mty_name)
       print_enc_op_body mb   
   in
 
@@ -347,45 +346,48 @@ let print_dir_message
         let pns = fst (List.split (params_map_to_list pm)) in
         if pns<>[]
         then
-          Format.fprintf ppf "%s" (List.hd pns);
-          List.iter (fun pn -> Format.fprintf ppf "@ ,%s" pn) (List.tl pns)
+          Format.fprintf ppf "%s" (name_record mty_name (List.hd pns));
+        List.iter (fun pn -> Format.fprintf ppf "@ ,%s"
+                               (name_record mty_name pn)) (List.tl pns)
       in
       let print_data_assign ppf pm : unit =
         let pns = fst (List.split (params_map_to_list pm)) in
-        List.iter (fun pn -> Format.fprintf ppf "@ %s@ =@ %s" pn pn)  pns
+        List.iter (fun pn -> let n = (name_record mty_name pn) in
+            Format.fprintf ppf "@,@[%s@ =@ %s;@]" n n)  pns
       in
       Format.fprintf ppf
-      "@[(mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@;";
+      "@[let@ (mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@,";
       Format.fprintf ppf 
-      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]@;"
+      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
       (tag_op_name mty_name);
-      Format.fprintf ppf "@[<v 2>@;";
-      Format.fprintf ppf "None@ :@;";
-      Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@;"
+      Format.fprintf ppf "@,@[<v 2>  ";
+      Format.fprintf ppf "@[None@ :@]@,";
+      Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@,"
         (print_epdp_data_univ sc) mb.params_map;
-      Format.fprintf ppf "@[| None   => None@]@;";
-      Format.fprintf ppf "@[| Some p =>@]@;";
-      Format.fprintf ppf "@[<v 2>";
-      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@;"
+      Format.fprintf ppf "@[| None   => None@]@,";
+      Format.fprintf ppf "@[| Some p =>@]";
+      Format.fprintf ppf "@,@[<v 2>  ";
+      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@,"
         (print_params_vars) mb.params_map;
-      Format.fprintf ppf "@[in@ Some@]@;";
-      Format.fprintf ppf "@[<v 2>@;";
+      Format.fprintf ppf "@[in@ Some@]";
+      Format.fprintf ppf "@,@[<v 2>{|@,";
       Format.fprintf ppf
-        "{|fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@;";
-      Format.fprintf ppf "@ %a|}@;"
+        "@[fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@]";
+      Format.fprintf ppf "%a"
         (print_data_assign) mb.params_map;
-      Format.fprintf ppf "@]";
-      Format.fprintf ppf "@]";
-      Format.fprintf ppf "end.@]@;"
+      Format.fprintf ppf "@]@,|}";
+      Format.fprintf ppf "@]@,end";
+      Format.fprintf ppf "@]"
     in
     let var_name="m" in
-    Format.fprintf ppf "@[op@ %s@ (%s@ :@ msg)@ :@ %s@ =@;@[<v 2>%a@]@]"
-      (dec_op_name mty_name) var_name mty_name
+    Format.fprintf ppf
+      "@[op@ nosmt@ [opaque]@ %s@ (%s@ :@ msg)@ :@ %s@ option =@,@[<v 2>  %a@]@,.@]@,@,"
+      (dec_op_name mty_name) var_name (msg_ty_name mty_name)
       print_dec_op_body mb 
   in
 
   let print_epdp_op () : unit =
-    Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@;"
+    Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@,@,"
     (epdp_op_name mty_name) (enc_op_name mty_name) (dec_op_name mty_name)
   in
   print_dir_message_record ();
@@ -413,7 +415,7 @@ let print_dir_message
 let gen_basic_dir
 (sc : EcScope.scope)
 (id : string)
-(tag : tag)
+(root : string)
 (bibt : basic_inter_body_tyd)
 : string =
   let sf = Format.get_str_formatter () in
@@ -421,8 +423,11 @@ let gen_basic_dir
   Format.fprintf sf "@[<v>";
   print_str_nl sf (open_theory name);
   print_str_nl sf pi_op;
+  print__name_as_ec_str_op sf root;
   let bibtl = IdMap.bindings bibt in
-  List.iter (fun (n, mb) -> print_dir_message sf sc tag n mb) bibtl;
+  List.iter (fun (n, mb) ->
+      let tag = (TagBasic (root, n)) in
+      print_dir_message sf sc tag n mb) bibtl;
   print_str_nl sf (close_theory id);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
@@ -431,5 +436,5 @@ let gen_dir (sc : EcScope.scope)
 (root : string ) (id : string) (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
-  | BasicTyd bibt -> gen_basic_dir sc id (TagBasic (root, id)) bibt
+  | BasicTyd bibt -> gen_basic_dir sc id root bibt
   | CompositeTyd _ -> "" (*TODO*)
