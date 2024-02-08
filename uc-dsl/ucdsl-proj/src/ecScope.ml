@@ -13,6 +13,7 @@ open EcAst
 open EcTypes
 open EcDecl
 open EcModules
+open EcFol
 open EcTyping
 open EcHiInductive
 open EcBigInt.Notations
@@ -956,8 +957,8 @@ module Ax = struct
       hierror "the formula contains free type variables";
 
     let uidmap = EcUnify.UniEnv.close ue in
-    let fs = EcFol.Fsubst.f_subst_init ~sty:(Tuni.subst uidmap) () in
-    let concl   = EcFol.Fsubst.f_subst fs concl in
+    let fs = Tuni.subst uidmap in
+    let concl   = Fsubst.f_subst fs concl in
     let tparams = EcUnify.UniEnv.tparams ue in
 
     if ax.pa_kind <> PSchema then
@@ -1236,7 +1237,7 @@ module Op = struct
 
     let uidmap  = EcUnify.UniEnv.close ue in
     let ts      = Tuni.subst uidmap in
-    let fs      = Fsubst.f_subst (Fsubst.f_subst_init ~sty:ts ()) in
+    let fs      = Fsubst.f_subst ts in
     let ty      = ty_subst ts ty in
     let tparams = EcUnify.UniEnv.tparams ue in
     let body    =
@@ -1309,7 +1310,7 @@ module Op = struct
             let ax      = f_forall (List.map (snd_map gtty) xs) ax in
 
             let uidmap  = EcUnify.UniEnv.close ue in
-            let subst   = Fsubst.f_subst_init ~sty:(Tuni.subst uidmap) () in
+            let subst   = Tuni.subst uidmap in
             let ax      = Fsubst.f_subst subst ax in
 
             ax
@@ -1318,9 +1319,7 @@ module Op = struct
           let ax, axpm =
             let bdpm = List.map fst tparams in
             let axpm = List.map EcIdent.fresh bdpm in
-              (EcCoreFol.Fsubst.subst_tvar
-                 (EcTypes.Tvar.init bdpm (List.map EcTypes.tvar axpm))
-                 ax,
+              (Tvar.f_subst ~freshen:true bdpm (List.map EcTypes.tvar axpm) ax,
                List.combine axpm (List.map snd tparams)) in
           let ax =
             { ax_tparams    = axpm;
@@ -1791,8 +1790,8 @@ module Ty = struct
           let ue = EcUnify.UniEnv.create (Some []) in
           let ax = trans_prop scenv ue ax in
           let uidmap = EcUnify.UniEnv.close ue in
-          let fs = EcFol.Fsubst.f_subst_init ~sty:(Tuni.subst uidmap) () in
-          let ax = EcFol.Fsubst.f_subst fs ax in
+          let fs = Tuni.subst uidmap in
+          let ax = Fsubst.f_subst fs ax in
             (unloc x, ax)
         in
           tcd.ptc_axs |> List.map check1 in
@@ -2451,8 +2450,8 @@ module Search = struct
                     let ps  = ref Mid.empty in
                     let ue  = EcUnify.UniEnv.create None in
                     let tip = EcUnify.UniEnv.opentvi ue decl.op_tparams None in
-                    let tip = {ty_subst_id with ts_v = tip} in
-                    let es = e_subst {e_subst_id with es_ty = tip } in
+                    let tip = f_subst_init ~tv:tip () in
+                    let es = e_subst tip in
                     let xs  = List.map (snd_map (ty_subst tip)) nt.ont_args in
                     let bd  = EcFol.form_of_expr EcFol.mhr (es nt.ont_body) in
                     let fp  = EcFol.f_lambda (List.map (snd_map EcFol.gtty) xs) bd in

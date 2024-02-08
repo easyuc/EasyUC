@@ -56,40 +56,42 @@ op enc_fw_req (x : fw_req) : msg =
     (x.`fw_req__pt2, x.`fw_req__u)).
 
 op nosmt [opaque] dec_fw_req (m : msg) : fw_req option =
-  let (mod, pt1, pt2, tag, v) = m
-  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag_fw_req) ?
+  let (mod, pt1, pt2, tag, v) = m in
+  let (pt1_1, pt1_2) = pt1
+  in (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag_fw_req) ?
      None :
      match (epdp_pair_univ epdp_port_univ epdp_id).`dec v with
      | None   => None
      | Some p =>
          let (pt2', u) = p
          in Some
-            {|fw_req___func = pt1.`1; fw_req__pt1 = pt2;
+            {|fw_req___func = pt1_1; fw_req__pt1 = pt2;
               fw_req__pt2 = pt2'; fw_req__u = u|}
      end.
 
-op epdp_fw_req = {|enc = enc_fw_req; dec = dec_fw_req|}.
+op epdp_fw_req : (fw_req, msg) epdp = {|enc = enc_fw_req; dec = dec_fw_req|}.
 
 lemma valid_epdp_fw_req : valid_epdp epdp_fw_req.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_fw_req /= /dec_fw_req /enc_fw_req /= !epdp.
+rewrite /epdp_fw_req /= /dec_fw_req /enc_fw_req /= !epdp /=.
 by case x.
-move => [mod pt1 pt2 tag u] v.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
 rewrite /epdp_fw_req /dec_fw_req /enc_fw_req /=.
-case (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag_fw_req) => //.
-rewrite !negb_or /= not_adv => [#] -> pt1_2 -> match_eq_some /=.
-have val_u :
-  (epdp_pair_univ epdp_port_univ epdp_id).`dec u =
-  Some (v.`fw_req__pt2, v.`fw_req__u).
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag_fw_req) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (epdp_pair_univ epdp_port_univ epdp_id).`dec v =
+  Some (u.`fw_req__pt2, u.`fw_req__u).
   move : match_eq_some.
-  case ((epdp_pair_univ epdp_port_univ epdp_id).`dec u) => //.
+  case ((epdp_pair_univ epdp_port_univ epdp_id).`dec v) => //.
   by case.
 move : match_eq_some.
-rewrite val_u /= => <- /=.
-split; first move : pt1_2; by case pt1.
-rewrite (epdp_dec_enc _ _ u) // !epdp.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+rewrite !epdp.
 qed.
 
 hint simplify [eqtrue] valid_epdp_fw_req.

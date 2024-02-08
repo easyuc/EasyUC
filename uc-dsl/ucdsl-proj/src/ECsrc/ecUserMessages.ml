@@ -4,6 +4,7 @@ open EcUid
 open EcPath
 open EcUtils
 open EcTypes
+open EcCoreSubst
 open EcEnv
 
 (* -------------------------------------------------------------------- *)
@@ -399,7 +400,7 @@ end = struct
         List.iteri (fun i ty -> msg "  [%d]: @[%a@]@\n" (i+1) pp_type ty) tys
 
     | MultipleOpMatch (name, tys, matches) -> begin
-        let uvars = List.map EcTypes.Tuni.univars tys in
+        let uvars = List.map Tuni.univars tys in
         let uvars = List.fold_left Suid.union Suid.empty uvars in
 
         begin match tys with
@@ -430,7 +431,7 @@ end = struct
               (EcPrinting.pp_list ",@ " pp_type) inst
           end;
 
-          let myuvars = List.map EcTypes.Tuni.univars inst in
+          let myuvars = List.map Tuni.univars inst in
           let myuvars = List.fold_left Suid.union uvars myuvars in
           let myuvars = Suid.elements myuvars in
 
@@ -702,7 +703,6 @@ end = struct
     | OVK_Abbrev    -> "abbreviation"
     | OVK_Theory    -> "theory"
     | OVK_Lemma     -> "lemma/axiom"
-    | OVK_ModExpr   -> "module"
     | OVK_ModType   -> "module type"
 
   let pp_incompatible env fmt = function
@@ -733,6 +733,10 @@ end = struct
     | CE_UnkOverride (kd, x) ->
         msg "unknown %s `%s'"
           (string_of_ovkind kd) (string_of_qsymbol x)
+
+    | CE_ThyOverride x ->
+        msg "Cannot override theory `%s`: contains module"
+          (string_of_qsymbol x)
 
     | CE_UnkAbbrev x ->
         msg "unknown abbreviation: `%s'" (string_of_qsymbol x)

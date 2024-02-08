@@ -233,7 +233,6 @@ module Prover : sig
   val pprover_infos_to_prover_infos :  (* UC DSL *)
      EcEnv.env -> EcProvers.prover_infos -> pprover_infos ->
      EcProvers.prover_infos
-
 end
 
 (* -------------------------------------------------------------------- *)

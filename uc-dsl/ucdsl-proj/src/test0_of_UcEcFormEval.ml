@@ -95,12 +95,12 @@ let lemma_true () : unit =
 let trans_closed_form env ue tform =
     (*let ue = EcUnify.UniEnv.create None in
     let tform = trans_form env ue form ty in*)
-    let subs = try EcUnify.UniEnv.close ue with
-      | EcUnify.UninstanciateUni ->
-        failwith "the formula contains free type variables" in
-    let sty = { EcTypes.ty_subst_id with ts_u = subs } in
-    let fs = EcFol.Fsubst.f_subst_init ~sty:sty () in
-    EcFol.Fsubst.f_subst fs tform 
+  let uidmap =
+        try EcUnify.UniEnv.close ue with
+        | EcUnify.UninstanciateUni ->
+            failwith "the formula contains free type variables" in
+  let ts = EcFol.Tuni.subst uidmap in
+  EcFol.Fsubst.f_subst ts tform
 
 let trans_prop (env : EcEnv.env) (ue : EcUnify.unienv) (pfrm : EcParsetree.pformula) : EcFol.form =
   let frm = EcTyping.trans_prop env ue pfrm in

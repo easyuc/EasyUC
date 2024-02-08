@@ -12,6 +12,7 @@ open EcSymbols
 open EcLocation
 open EcAst
 open EcTypes
+open EcFol
 open EcDecl
 open UcSpec
 open UcSpecTypedSpecCommon
@@ -653,9 +654,8 @@ let expr_of_opselect
              let xs = List.map (fst_map EcIdent.fresh) xs in
              ((args @ List.map (curry e_local) xs, []), xs) in
          let lcmap = List.map2 (fun (x, _) y -> (x, y)) bds tosub in
-         let subst = { EcTypes.e_subst_id with es_freshen = true; } in
-         let subst = { subst with es_loc = Mid.of_list lcmap; } in
-         let body  = EcTypes.e_subst subst body in
+         let subst = f_subst_init ~freshen:true ~esloc:(Mid.of_list lcmap) () in
+         let body  = e_subst subst body in
          (e_lam elam body, args)
 
     | (`Op _ | `Lc _ | `Pv _) as sel -> let op = match sel with

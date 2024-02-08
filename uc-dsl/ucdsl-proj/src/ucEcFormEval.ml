@@ -559,9 +559,10 @@ let process_delta_when_args_are_addr_literals p tc =
             | EcFol.SFop ((_, tvi), []) ->
               if List.for_all is_addr_literal args
               then begin
-                let subst = EcTypes.Tvar.init (List.map fst tparams) tvi in
-                let body  = EcFol.Fsubst.subst_tvar subst body in
-                let body  = EcCoreFol.f_app body args topfp.f_ty in
+                let body  =
+                  EcFol.Tvar.f_subst ~freshen:true (List.map fst tparams)
+                  tvi body in
+                let body  = EcFol.f_app body args topfp.f_ty in
                 try  EcReduction.h_red EcReduction.beta_red hyps body
                 with EcEnv.NotReducible -> body
               end else
