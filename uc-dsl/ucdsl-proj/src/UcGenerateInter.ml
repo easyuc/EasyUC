@@ -282,6 +282,12 @@ let print_dir_message
 (mb : message_body_tyd)
     : unit =
 
+  let _mty_name = msg_ty_name mty_name in
+  let _enc_op_name = enc_op_name _mty_name in
+  let _dec_op_name = dec_op_name _mty_name in
+  let _epdp_op_name = epdp_op_name _mty_name in
+  let _tag_op_name = tag_op_name _mty_name in
+  
   let print_dir_message_record () : unit =
     Format.fprintf ppf "@[%s@]@," (ty_dec mty_name);
     Format.fprintf ppf "{@[<v 1>";
@@ -302,41 +308,43 @@ let print_dir_message
     in
     print__name_as_ec_str_op ppf m;
     Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s.@]@,"
-      (tag_op_name mty_name) t r m
+      _tag_op_name t r m
+  in
+
+  let print_enc_op_body (ppf : Format.formatter) mb : unit =
+    let var_name = "x" in
+    let print_otherport ppf: unit = Format.fprintf ppf "@[%s.`%s@]"
+      var_name (name_record_dir_port mty_name mb)
+    in
+    let print_selfport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
+      var_name (name_record_func mty_name)
+    in
+    let print_ptsource ppf dir =
+      if dir = UcSpecTypedSpecCommon.In
+      then print_otherport ppf
+      else print_selfport ppf
+    in
+    let print_ptdest ppf dir =
+      if dir = UcSpecTypedSpecCommon.In
+      then print_selfport ppf
+      else print_otherport ppf
+    in
+    let print_mode ppf mode : unit =
+      Format.fprintf ppf "@[%s@]" mode
+    in
+    Format.fprintf ppf "@[(%a,@ (%a,@ %s),@ %a,@ %s,@ %a)@]"
+      print_mode  mode_Dir
+      print_ptdest mb.dir
+      _pi
+      print_ptsource mb.dir
+      _tag_op_name
+      (print_enc_data sc var_name mty_name) mb.params_map
   in
 
   let print_enc_op () : unit = 
     let var_name = "x" in
-    let print_enc_op_body (ppf : Format.formatter) mb : unit =
-      let print_otherport ppf: unit = Format.fprintf ppf "@[%s.`%s@]"
-        var_name (name_record_dir_port mty_name mb)
-      in
-      let print_selfport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
-        var_name (name_record_func mty_name)
-      in
-      let print_ptsource ppf dir =
-        if dir = UcSpecTypedSpecCommon.In
-        then print_otherport ppf
-        else print_selfport ppf
-      in
-      let print_ptdest ppf dir =
-        if dir = UcSpecTypedSpecCommon.In
-        then print_selfport ppf
-        else print_otherport ppf
-      in
-      let print_mode ppf mode : unit =
-        Format.fprintf ppf "@[%s@]" mode
-      in
-      Format.fprintf ppf "@[(%a,@ (%a,@ %s),@ %a,@ %s,@ %a)@]"
-        print_mode  mode_Dir
-        print_ptdest mb.dir
-        _pi
-        print_ptsource mb.dir
-        (tag_op_name mty_name)
-        (print_enc_data sc var_name mty_name) mb.params_map
-    in
     Format.fprintf ppf "@[op@ %s@ (%s@ :@ %s)@ :@ msg@ =@;@[<v 2>%a@]@]@,.@,"
-      (enc_op_name mty_name) var_name (msg_ty_name mty_name)
+      _enc_op_name var_name _mty_name
       print_enc_op_body mb   
   in
 
@@ -359,7 +367,7 @@ let print_dir_message
       "@[let@ (mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@,";
       Format.fprintf ppf 
       "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
-      (tag_op_name mty_name);
+      _tag_op_name;
       Format.fprintf ppf "@,@[<v 2>  ";
       Format.fprintf ppf "@[None@ :@]@,";
       Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@,"
@@ -371,8 +379,8 @@ let print_dir_message
         (print_params_vars) mb.params_map;
       Format.fprintf ppf "@[in@ Some@]";
       Format.fprintf ppf "@,@[<v 2>{|@,";
-      Format.fprintf ppf
-        "@[fw_req___func = pt1.`1;@ fw_req__pt1@ =@ pt2;@]";
+      Format.fprintf ppf "@[%s = pt1.`1;@ %s@ =@ pt2;@]"
+      (name_record_func mty_name) (name_record_dir_port mty_name mb);
       Format.fprintf ppf "%a"
         (print_data_assign) mb.params_map;
       Format.fprintf ppf "@]@,|}";
@@ -382,19 +390,104 @@ let print_dir_message
     let var_name="m" in
     Format.fprintf ppf
       "@[op@ nosmt@ [opaque]@ %s@ (%s@ :@ msg)@ :@ %s@ option =@,@[<v 2>  %a@]@,.@]@,@,"
-      (dec_op_name mty_name) var_name (msg_ty_name mty_name)
+      _dec_op_name var_name _mty_name
       print_dec_op_body mb 
   in
 
   let print_epdp_op () : unit =
     Format.fprintf ppf "@[op@ %s@ =@ @[{|enc@ =@ %s; dec = %s|}@].@]@,@,"
-    (epdp_op_name mty_name) (enc_op_name mty_name) (dec_op_name mty_name)
+    _epdp_op_name _enc_op_name _dec_op_name
   in
+
+  let print_valid_epdp_lemma () : unit =
+    let print_data_get ppf pm : unit =
+      let nr pn = (name_record mty_name pn) in
+      let pns = fst (List.split (params_map_to_list pm)) in
+      if pns<>[]
+      then
+        begin
+          Format.fprintf ppf "@[<h>u.`%s@]" (nr (List.hd pns));
+          List.iter (fun pn ->
+            Format.fprintf ppf "@ ,@[<h>u.`%s@]" (nr pn))  (List.tl pns)
+        end
+      else ()
+    in
+    Format.fprintf ppf "lemma valid_%s : valid_epdp %s.@,"
+    _epdp_op_name _epdp_op_name;
+    Format.fprintf ppf "proof.@,";
+    Format.fprintf ppf "apply epdp_intro.@,";
+    Format.fprintf ppf "move => x.@,";
+    Format.fprintf ppf "rewrite /%s /= /%s /%s /= !epdp /=.@,"
+    _epdp_op_name _dec_op_name _enc_op_name;
+    Format.fprintf ppf "by case x.@,";
+    Format.fprintf ppf "move => [mod [pt1_1 pt1_2] pt2 tag v] u.@,";
+    Format.fprintf ppf "rewrite /%s /%s /%s /=.@,"
+    _epdp_op_name _dec_op_name _enc_op_name;
+    Format.fprintf ppf "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
+    _pi _tag_op_name;
+    Format.fprintf ppf "rewrite !negb_or /= not_adv.@,";
+    Format.fprintf ppf "move => [#] -> -> -> match_eq_some /=.@,";
+    Format.fprintf ppf "have val_v :@,";
+    Format.fprintf ppf "  (%a).`dec v =@,"
+    (print_epdp_data_univ sc) mb.params_map;
+    Format.fprintf ppf "@[  Some (%a).@]@,"
+    print_data_get mb.params_map;
+    Format.fprintf ppf "  move : match_eq_some.@,";
+    Format.fprintf ppf "  case ((%a).`dec v) => //.@,"
+    (print_epdp_data_univ sc) mb.params_map;
+    Format.fprintf ppf "  by case.@,";
+    Format.fprintf ppf "move : match_eq_some.@,";
+    Format.fprintf ppf "rewrite val_v /= => <- /=.@,";
+    Format.fprintf ppf "apply epdp_dec_enc => //.@,";
+    Format.fprintf ppf "rewrite !epdp.@,";
+    Format.fprintf ppf "qed.@,@,"
+  in
+
+  let print_epdp_hints () : unit =
+    Format.fprintf ppf "hint simplify [eqtrue] valid_%s.@,"
+    _epdp_op_name;
+    Format.fprintf ppf "hint rewrite epdp : valid_%s.@,@,"
+    _epdp_op_name;
+  in
+  
+  let print_eq_of_valid_lemma () : unit =
+    let print_xi_data_many_times ppf i : unit =
+      for i = 1+2 to i+2 do
+        Format.fprintf ppf "@ x%i" i;
+      done  
+    in
+    Format.fprintf ppf "lemma eq_of_valid_%s (m : msg) :@,"
+    _mty_name;
+    Format.fprintf ppf "  is_valid %s m =>@,"
+    _epdp_op_name;
+    Format.fprintf ppf "  m =@,";
+    Format.fprintf ppf "  let x = oget (%s.`dec m) in@,"
+    _epdp_op_name;
+    Format.fprintf ppf "@[<v 4>%a@].@,"
+    print_enc_op_body mb;
+    Format.fprintf ppf "proof.@,";
+    Format.fprintf ppf "rewrite /is_valid.@,";
+    Format.fprintf ppf "move => val_m.@,";
+    Format.fprintf ppf "have [] x : exists (x : %s), %s.`dec m = Some x.@,"
+    _mty_name _epdp_op_name;
+    Format.fprintf ppf "  exists (oget (%s m)); by rewrite -some_oget.@,"
+    _dec_op_name;
+    Format.fprintf ppf "@[case x => x1 x2%a.@]@,"
+    print_xi_data_many_times (IdMap.cardinal mb.params_map);
+    Format.fprintf ppf "move => /(epdp_dec_enc _ _ _ valid_%s) <-.@,"
+    _epdp_op_name;
+    Format.fprintf ppf "by rewrite !epdp.@,";
+    Format.fprintf ppf "qed.@,@,";
+  in
+  
   print_dir_message_record ();
   print_tag_mty_name_op();
   print_enc_op ();
   print_dec_op ();
-  print_epdp_op ()
+  print_epdp_op ();
+  print_valid_epdp_lemma ();
+  print_epdp_hints ();
+  print_eq_of_valid_lemma ()
 
 (*let write_message (ppf : Format.formatter) (sh : shadowed) 
   (tag : int) (name : string) (mb : message_body_tyd) : shadowed =
