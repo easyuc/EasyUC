@@ -35,6 +35,12 @@ let print_epdp_tag_univ (ppf : Format.formatter) (sc : EcScope.scope) : unit =
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
 
+(* iff ucdsl message declaration has some port, it is a direct message *)
+let isdirect (mb : message_body_tyd) : bool =
+  match mb.port with
+  | None -> false
+  | Some _ -> true
+
 let _pi = "pi"
 
 let abs_oper_int (name : string) : string = "op "^name^" : int."
@@ -311,31 +317,30 @@ let print_dir_message
       _tag_op_name t r m
   in
 
-  let print_enc_op_body (ppf : Format.formatter) mb : unit =
+  let print_enc_op_body (ppf : Format.formatter) (mb : message_body_tyd) : unit =
     let var_name = "x" in
-    let print_otherport ppf: unit = Format.fprintf ppf "@[%s.`%s@]"
+    let print_otherport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
       var_name (name_record_dir_port mty_name mb)
     in
-    let print_selfport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
+    let print_selfport ppf () : unit = Format.fprintf ppf "@[%s.`%s@]"
       var_name (name_record_func mty_name)
     in
     let print_ptsource ppf dir =
       if dir = UcSpecTypedSpecCommon.In
       then print_otherport ppf
-      else print_selfport ppf
+      else Format.fprintf ppf "(%a,@ %s)" print_selfport () _pi
     in
     let print_ptdest ppf dir =
       if dir = UcSpecTypedSpecCommon.In
-      then print_selfport ppf
+      then Format.fprintf ppf "(%a,@ %s)" print_selfport () _pi
       else print_otherport ppf
     in
     let print_mode ppf mode : unit =
       Format.fprintf ppf "@[%s@]" mode
     in
-    Format.fprintf ppf "@[(%a,@ (%a,@ %s),@ %a,@ %s,@ %a)@]"
+    Format.fprintf ppf "@[(%a,@ %a,@ %a,@ %s,@ %a)@]"
       print_mode  mode_Dir
       print_ptdest mb.dir
-      _pi
       print_ptsource mb.dir
       _tag_op_name
       (print_enc_data sc var_name mty_name) mb.params_map
@@ -349,7 +354,10 @@ let print_dir_message
   in
 
   let print_dec_op () : unit =
-    let print_dec_op_body (ppf : Format.formatter) mb : unit =
+    let print_dec_op_body (ppf : Format.formatter) (mb : message_body_tyd): unit =
+      let otherport = if mb.dir = In
+                      then "pt2" else "pt1" in
+      let selfport = if mb.dir = In then "pt1" else "pt2" in
       let print_params_vars ppf pm : unit =
         let pns = fst (List.split (params_map_to_list pm)) in
         if pns<>[]
@@ -366,8 +374,8 @@ let print_dir_message
       Format.fprintf ppf
       "@[let@ (mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@,";
       Format.fprintf ppf 
-      "@[in@ (mod@ =@ Adv@ \\/@ pt1.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
-      _tag_op_name;
+      "@[in@ (mod@ =@ Adv@ \\/@ %s.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
+      selfport _tag_op_name;
       Format.fprintf ppf "@,@[<v 2>  ";
       Format.fprintf ppf "@[None@ :@]@,";
       Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@,"
@@ -379,8 +387,11 @@ let print_dir_message
         (print_params_vars) mb.params_map;
       Format.fprintf ppf "@[in@ Some@]";
       Format.fprintf ppf "@,@[<v 2>{|@,";
-      Format.fprintf ppf "@[%s = pt1.`1;@ %s@ =@ pt2;@]"
-      (name_record_func mty_name) (name_record_dir_port mty_name mb);
+      Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
+        (name_record_func mty_name)
+        selfport
+        (name_record_dir_port mty_name mb)
+        otherport;
       Format.fprintf ppf "%a"
         (print_data_assign) mb.params_map;
       Format.fprintf ppf "@]@,|}";
@@ -400,6 +411,16 @@ let print_dir_message
   in
 
   let print_valid_epdp_lemma () : unit =
+    let ptsource =
+      if mb.dir = UcSpecTypedSpecCommon.In
+      then "pt2"
+      else "[pt1_1 pt1_2]"
+    in
+    let ptdest =
+      if mb.dir = UcSpecTypedSpecCommon.In
+      then "[pt1_1 pt1_2]"
+      else "pt2"
+    in
     let print_data_get ppf pm : unit =
       let nr pn = (name_record mty_name pn) in
       let pns = fst (List.split (params_map_to_list pm)) in
@@ -420,7 +441,8 @@ let print_dir_message
     Format.fprintf ppf "rewrite /%s /= /%s /%s /= !epdp /=.@,"
     _epdp_op_name _dec_op_name _enc_op_name;
     Format.fprintf ppf "by case x.@,";
-    Format.fprintf ppf "move => [mod [pt1_1 pt1_2] pt2 tag v] u.@,";
+    Format.fprintf ppf "move => [mod %s %s tag v] u.@,"
+    ptdest ptsource;
     Format.fprintf ppf "rewrite /%s /%s /%s /=.@,"
     _epdp_op_name _dec_op_name _enc_op_name;
     Format.fprintf ppf "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
@@ -521,7 +543,7 @@ let gen_basic_dir
   List.iter (fun (n, mb) ->
       let tag = (TagBasic (root, n)) in
       print_dir_message sf sc tag n mb) bibtl;
-  print_str_nl sf (close_theory id);
+  print_str_nl sf (close_theory name);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
