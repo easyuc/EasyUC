@@ -43,6 +43,8 @@ let isdirect (mb : message_body_tyd) : bool =
 
 let _pi = "pi"
 
+let __adv_if_pi = "_adv_if_pi"
+
 let abs_oper_int (name : string) : string = "op "^name^" : int."
 
 let pi_op : string = abs_oper_int _pi
@@ -74,6 +76,8 @@ let name_epdp_op (tyname : string) : string = "epdp_"^tyname^"_univ"
 let epdp_enc_field : string = "enc"
 
 let mode_Dir : string = "Dir"
+
+let mode_Adv : string = "Adv"
 
 let enc_op_name (name : string) : string = "enc_"^name
 
@@ -280,7 +284,7 @@ let get_root_from_tag (tag : tag) : string =
   | TagBasic (r,_) -> r
   | TagNoInter -> failure "TagNoInter has no root"
 
-let print_dir_message
+let print_message
 (ppf : Format.formatter)
 (sc : EcScope.scope)
 (tag : tag)
@@ -293,12 +297,18 @@ let print_dir_message
   let _dec_op_name = dec_op_name _mty_name in
   let _epdp_op_name = epdp_op_name _mty_name in
   let _tag_op_name = tag_op_name _mty_name in
+  let isdirect = isdirect mb in
   
-  let print_dir_message_record () : unit =
+  let print_message_record () : unit =
     Format.fprintf ppf "@[%s@]@," (ty_dec mty_name);
     Format.fprintf ppf "{@[<v 1>";
     print_record_field_nl sc ppf (name_record_func mty_name) addr_ty;
-    print_record_field_nl sc ppf (name_record_dir_port mty_name mb) port_ty;
+    if isdirect
+    then print_record_field_nl sc ppf
+           (name_record_dir_port mty_name mb) port_ty
+    else print_record_field_nl sc ppf
+           (name_record_adv mty_name) addr_ty
+    ;
     Format.fprintf ppf "@,@[(*data*)@]";
     List.iter (fun (s,t) ->
         print_record_field_nl sc ppf (name_record mty_name s) t)
@@ -319,8 +329,12 @@ let print_dir_message
 
   let print_enc_op_body (ppf : Format.formatter) (mb : message_body_tyd) : unit =
     let var_name = "x" in
-    let print_otherport ppf : unit = Format.fprintf ppf "@[%s.`%s@]"
-      var_name (name_record_dir_port mty_name mb)
+    let print_otherport ppf : unit =
+      if isdirect
+      then Format.fprintf ppf "@[%s.`%s@]"
+             var_name (name_record_dir_port mty_name mb)
+      else Format.fprintf ppf "@[(%s.`%s,@ %s)@]"
+             var_name (name_record_adv mty_name) __adv_if_pi
     in
     let print_selfport ppf () : unit = Format.fprintf ppf "@[%s.`%s@]"
       var_name (name_record_func mty_name)
@@ -335,11 +349,10 @@ let print_dir_message
       then Format.fprintf ppf "(%a,@ %s)" print_selfport () _pi
       else print_otherport ppf
     in
-    let print_mode ppf mode : unit =
-      Format.fprintf ppf "@[%s@]" mode
-    in
-    Format.fprintf ppf "@[(%a,@ %a,@ %a,@ %s,@ %a)@]"
-      print_mode  mode_Dir
+    let mode = if isdirect then mode_Dir else mode_Adv in
+      
+    Format.fprintf ppf "@[(%s,@ %a,@ %a,@ %s,@ %a)@]"
+      mode
       print_ptdest mb.dir
       print_ptsource mb.dir
       _tag_op_name
@@ -355,27 +368,36 @@ let print_dir_message
 
   let print_dec_op () : unit =
     let print_dec_op_body (ppf : Format.formatter) (mb : message_body_tyd): unit =
-      let otherport = if mb.dir = In
-                      then "pt2" else "pt1" in
+      let otherport = if mb.dir = In then "pt2" else "pt1" in
+      let otherportoraddr = if isdirect then otherport else otherport ^".`1" in
       let selfport = if mb.dir = In then "pt1" else "pt2" in
       let print_params_vars ppf pm : unit =
         let pns = fst (List.split (params_map_to_list pm)) in
         if pns<>[]
-        then
+        then begin
           Format.fprintf ppf "%s" (name_record mty_name (List.hd pns));
-        List.iter (fun pn -> Format.fprintf ppf "@ ,%s"
+          List.iter (fun pn -> Format.fprintf ppf "@ ,%s"
                                (name_record mty_name pn)) (List.tl pns)
+        end
+        
       in
       let print_data_assign ppf pm : unit =
         let pns = fst (List.split (params_map_to_list pm)) in
         List.iter (fun pn -> let n = (name_record mty_name pn) in
             Format.fprintf ppf "@,@[%s@ =@ %s;@]" n n)  pns
       in
+      let not_mode = if isdirect then mode_Adv else mode_Dir in
+      let otherfield = if isdirect
+                       then (name_record_dir_port mty_name mb)
+                       else (name_record_adv mty_name) in
+      let adv_pi_not = if isdirect
+                       then ""
+                       else otherport^".`2 <> "^__adv_if_pi^" \\/ " in
       Format.fprintf ppf
       "@[let@ (mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@,";
       Format.fprintf ppf 
-      "@[in@ (mod@ =@ Adv@ \\/@ %s.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
-      selfport _tag_op_name;
+      "@[in@ (mod@ =@ %s@ \\/@ %s%s.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
+      not_mode adv_pi_not selfport _tag_op_name;
       Format.fprintf ppf "@,@[<v 2>  ";
       Format.fprintf ppf "@[None@ :@]@,";
       Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@,"
@@ -390,8 +412,8 @@ let print_dir_message
       Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
         (name_record_func mty_name)
         selfport
-        (name_record_dir_port mty_name mb)
-        otherport;
+        otherfield
+        otherportoraddr;
       Format.fprintf ppf "%a"
         (print_data_assign) mb.params_map;
       Format.fprintf ppf "@]@,|}";
@@ -444,9 +466,15 @@ let print_dir_message
     Format.fprintf ppf "move => [mod %s %s tag v] u.@,"
     ptdest ptsource;
     Format.fprintf ppf "rewrite /%s /%s /%s /=.@,"
-    _epdp_op_name _dec_op_name _enc_op_name;
-    Format.fprintf ppf "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
-    _pi _tag_op_name;
+      _epdp_op_name _dec_op_name _enc_op_name;
+    if isdirect
+    then Format.fprintf ppf
+           "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
+         _pi _tag_op_name
+    else Format.fprintf ppf
+    "case (mod = Dir  \\/ pt1_2 <> %s \\/  pt2.`2 <> %s \\/ tag <> %s) => //.@,"
+         _pi __adv_if_pi _tag_op_name
+    ;
     Format.fprintf ppf "rewrite !negb_or /= not_adv.@,";
     Format.fprintf ppf "move => [#] -> -> -> match_eq_some /=.@,";
     Format.fprintf ppf "have val_v :@,";
@@ -502,7 +530,7 @@ let print_dir_message
     Format.fprintf ppf "qed.@,@,";
   in
   
-  print_dir_message_record ();
+  print_message_record ();
   print_tag_mty_name_op();
   print_enc_op ();
   print_dec_op ();
@@ -527,7 +555,7 @@ let print_dir_message
   write_lemma ppf (lemma_eq_of_valid sh tag name mb);
   sh*)
 
-let gen_basic_dir
+let gen_basic_int
 (sc : EcScope.scope)
 (id : string)
 (root : string)
@@ -537,19 +565,19 @@ let gen_basic_dir
   let name = uc_name id in
   Format.fprintf sf "@[<v>";
   print_str_nl sf (open_theory name);
-  print_str_nl sf pi_op;
+  print_str_nl sf pi_op;(*TODO different for ideal adv interface ?*)
   print__name_as_ec_str_op sf root;
   let bibtl = IdMap.bindings bibt in
   List.iter (fun (n, mb) ->
       let tag = (TagBasic (root, n)) in
-      print_dir_message sf sc tag n mb) bibtl;
+      print_message sf sc tag n mb) bibtl;
   print_str_nl sf (close_theory name);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
-let gen_dir (sc : EcScope.scope)
+let gen_int (sc : EcScope.scope)
 (root : string ) (id : string) (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
-  | BasicTyd bibt -> gen_basic_dir sc id root bibt
+  | BasicTyd bibt -> gen_basic_int sc id root bibt
   | CompositeTyd _ -> "" (*TODO*)
