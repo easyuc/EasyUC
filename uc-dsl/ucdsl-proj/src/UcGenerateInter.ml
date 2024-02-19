@@ -405,9 +405,10 @@ let print_message
       Format.fprintf ppf "@[| None   => None@]@,";
       Format.fprintf ppf "@[| Some p =>@]";
       Format.fprintf ppf "@,@[<v 2>  ";
-      Format.fprintf ppf "@[let@ (%a)@ =@ p@]@,"
+      if not (IdMap.is_empty mb.params_map) then
+        Format.fprintf ppf "@[let@ (%a)@ =@ p@ in@]@,"
         (print_params_vars) mb.params_map;
-      Format.fprintf ppf "@[in@ Some@]";
+      Format.fprintf ppf "@[Some@]";
       Format.fprintf ppf "@,@[<v 2>{|@,";
       Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
         (name_record_func mty_name)
@@ -433,15 +434,16 @@ let print_message
   in
 
   let print_valid_epdp_lemma () : unit =
+    let pt2 = if isdirect then "pt2" else "[pt2_1 pt2_2]" in
     let ptsource =
       if mb.dir = UcSpecTypedSpecCommon.In
-      then "pt2"
+      then pt2
       else "[pt1_1 pt1_2]"
     in
     let ptdest =
       if mb.dir = UcSpecTypedSpecCommon.In
       then "[pt1_1 pt1_2]"
-      else "pt2"
+      else pt2
     in
     let print_data_get ppf pm : unit =
       let nr pn = (name_record mty_name pn) in
@@ -472,11 +474,12 @@ let print_message
            "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
          _pi _tag_op_name
     else Format.fprintf ppf
-    "case (mod = Dir  \\/ pt1_2 <> %s \\/  pt2.`2 <> %s \\/ tag <> %s) => //.@,"
-         _pi __adv_if_pi _tag_op_name
-    ;
-    Format.fprintf ppf "rewrite !negb_or /= not_adv.@,";
-    Format.fprintf ppf "move => [#] -> -> -> match_eq_some /=.@,";
+    "case (mod = Dir \\/ pt2_2 <> %s \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
+         __adv_if_pi _pi  _tag_op_name;
+      Format.fprintf ppf "rewrite !negb_or /= %s.@,"
+    (if isdirect then "not_adv" else "not_dir");
+    Format.fprintf ppf "move => [#] -> %s-> -> match_eq_some /=.@,"
+    (if isdirect then "" else "-> ");
     Format.fprintf ppf "have val_v :@,";
     Format.fprintf ppf "  (%a).`dec v =@,"
     (print_epdp_data_univ sc) mb.params_map;
@@ -484,12 +487,14 @@ let print_message
     print_data_get mb.params_map;
     Format.fprintf ppf "  move : match_eq_some.@,";
     Format.fprintf ppf "  case ((%a).`dec v) => //.@,"
-    (print_epdp_data_univ sc) mb.params_map;
-    Format.fprintf ppf "  by case.@,";
+      (print_epdp_data_univ sc) mb.params_map;
+    if not (IdMap.is_empty mb.params_map) then
+      Format.fprintf ppf "  by case.@,";
     Format.fprintf ppf "move : match_eq_some.@,";
     Format.fprintf ppf "rewrite val_v /= => <- /=.@,";
     Format.fprintf ppf "apply epdp_dec_enc => //.@,";
-    Format.fprintf ppf "rewrite !epdp.@,";
+    if not (IdMap.is_empty mb.params_map) then
+      Format.fprintf ppf "rewrite !epdp.@,";
     Format.fprintf ppf "qed.@,@,"
   in
 
