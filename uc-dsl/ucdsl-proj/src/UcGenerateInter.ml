@@ -580,9 +580,26 @@ let gen_basic_int
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
+let gen_comp_int (id : string) (sm : string IdMap.t) : string =
+  let sf = Format.get_str_formatter () in
+  let name = uc_name id in
+  Format.fprintf sf "@[<v>";
+  print_str_nl sf (open_theory name);
+  let sml = IdMap.bindings sm in
+  List.iteri (fun i (name, basicname) ->
+    Format.fprintf sf "@[clone %s as %s with@]@,"
+      (uc_name basicname) name;
+    Format.fprintf sf "@[  op %s = %i@]@,"
+      _pi (i+1);
+    Format.fprintf sf "@[proof *.@]@,@,"          
+    ) sml;
+  print_str_nl sf (close_theory name);
+  Format.fprintf sf "@]";
+  Format.flush_str_formatter ()
+
 let gen_int (sc : EcScope.scope)
 (root : string ) (id : string) (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
   | BasicTyd bibt -> gen_basic_int sc id root bibt
-  | CompositeTyd _ -> "" (*TODO*)
+  | CompositeTyd sm -> gen_comp_int id sm
