@@ -2,14 +2,7 @@ open UcTypedSpec
 open EcTypes
 open EcLocation
 open UcMessage
-
-(* params_map_to_list converts ty_index IdMap.t into a list of
-name, type pairs. The list is ordered according to the index of ty_index *)
-let params_map_to_list (pm : ty_index IdMap.t) : (string * EcTypes.ty) list =
-  let bpm = IdMap.bindings pm in
-  let bpm = List.map (fun (s,ti) -> (s, EcLocation.unloc ti)) bpm in
-  let bpm_ord = List.sort (fun (_,(_,i1)) (_,(_,i2)) -> i1-i2) bpm in
-  List.map (fun (name,(ty,_)) -> (name, ty)) bpm_ord
+open UcGenerateCommon
 
 type tag =
   | TagNoInter       (* communication not involving messages of an
@@ -241,8 +234,7 @@ let print_record_field_nl
 (fn : string)
 (ty : EcTypes.ty)
 : unit =
-  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  Format.fprintf ppf "@,@[%s :@ %a;@]" fn (EcPrinting.pp_type ppe) ty
+  Format.fprintf ppf "@,@[%s :@ %a;@]" fn (pp_type sc) ty
 
 let msg_ty_name (name : string) : string = "_"^name
 

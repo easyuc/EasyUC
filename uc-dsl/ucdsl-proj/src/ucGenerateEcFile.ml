@@ -25,7 +25,10 @@ let print_files (mg : maps_gen) : unit =
     let raim_b = IdPairMap.filter (fun (r,_) _ -> r = root) mg.basic_adv_inter_map in
     IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_b;
     let raim_c = IdPairMap.filter (fun (r,_) _ -> r = root) mg.comp_adv_inter_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c
+    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c;
+
+    let rootfun = IdPairMap.filter (fun (r,_) _ -> r = root) mg.fun_map in
+    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun
 
   in  
   let roots = 
@@ -53,9 +56,9 @@ let generate_ec (mt : maps_tyd) : unit =
   let aim_b = IdPairMap.fold f_gen_int mtaim_b IdPairMap.empty in
   let aim_c = IdPairMap.fold f_gen_int mtaim_c IdPairMap.empty in
 
-  let fm = IdPairMap.fold
-    (fun sp ft fm ->
-      IdPairMap.add sp (gen_fun (snd sp) ft) fm
+  let fm = IdPairMap.fold (fun sp ft fm -> IdPairMap.add
+     sp (UcGenerateFunctionality.gen_fun (scope (fst sp)) (snd sp) ft
+        ) fm
     ) mt.fun_map IdPairMap.empty in
 
   let sm = IdPairMap.fold
