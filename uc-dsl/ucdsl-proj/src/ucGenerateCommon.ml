@@ -22,3 +22,5 @@ let pp_type (sc : EcScope.scope) (ppf : Format.formatter) (ty : EcTypes.ty)
 let open_theory (name : string) : string = "theory "^name^"."
 
 let close_theory (name : string) : string = "end "^name^"."
+
+let uc_name (name : string) : string = "UC_"^name

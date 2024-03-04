@@ -42,12 +42,6 @@ let abs_oper_int (name : string) : string = "op "^name^" : int."
 
 let pi_op : string = abs_oper_int _pi
 
-let uc_name (name : string) : string = "UC_"^name
-
-let open_theory (name : string) : string = "theory "^name^"."
-
-let close_theory (name : string) : string = "end "^name^"."
-
 let print_newline (ppf : Format.formatter) : unit =
   Format.fprintf ppf "@;"
 

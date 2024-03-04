@@ -5,6 +5,9 @@ open UcGenerateCommon
 let state_name (name : string) : string = "_State_"^name
 let state_type_name = "_state"
 let uc__if = "UC__IF"
+let _self = "_self"
+let _adv = "_adv"
+let _st = "_st" 
 
 
 let print_state_type
@@ -34,6 +37,17 @@ let print_state_type
   Format.fprintf ppf "@]@\n";
   Format.fprintf ppf "].@;"
 
+let print_ideal_module (sc : EcScope.scope) (ppf : Format.formatter)
+      (id , ifbt : string * ideal_fun_body_tyd) : unit =
+  Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
+  Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
+  Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name;
+  Format.fprintf ppf "@[proc init(self_ adv_ : addr) : unit = {@]@;<0 2>";
+  Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]"
+    _self _adv _st (state_name (initial_state_id_of_states ifbt.states));
+  Format.fprintf ppf "@]@;}.";
+  ()
+  
 
 let gen_ideal_fun (sc : EcScope.scope) (id : string) (ifbt : ideal_fun_body_tyd)
     : string = 
@@ -41,6 +55,7 @@ let gen_ideal_fun (sc : EcScope.scope) (id : string) (ifbt : ideal_fun_body_tyd)
   Format.fprintf sf "@[<v>@,@,";
   Format.fprintf sf "@[%s@]@,@," (open_theory uc__if);
   Format.fprintf sf "@[%a@]@," (print_state_type sc) ifbt.states;
+  Format.fprintf sf "@[%a@]@," (print_ideal_module sc) (id, ifbt);
   Format.fprintf sf "@[%s@]@," (close_theory uc__if);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
