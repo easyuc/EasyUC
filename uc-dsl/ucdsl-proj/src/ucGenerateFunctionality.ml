@@ -7,7 +7,11 @@ let state_type_name = "_state"
 let uc__if = "UC__IF"
 let _self = "_self"
 let _adv = "_adv"
-let _st = "_st" 
+let _st = "_st"
+let _m = "_m"
+let _r = "_r"
+let msg_ty : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
 
 
 let print_state_type
@@ -37,14 +41,35 @@ let print_state_type
   Format.fprintf ppf "@]@\n";
   Format.fprintf ppf "].@;"
 
+let print_state_match_branch
+      (ppf : Format.formatter) (id , st : string * state_tyd) : unit =
+  let spn = fst (List.split (sparams_map_to_list
+                               (EcLocation.unloc st).params)) in
+  let print_state_params_names ppf spn =
+    List.iter (fun s -> Format.fprintf ppf "%s@ " s) spn
+  in
+  Format.fprintf ppf "@[| %s %a=> {@]@;<0 2>@[<v>"
+    (state_name id) print_state_params_names spn;
+  Format.fprintf ppf "@]@;}@;"
+
 let print_ideal_module (sc : EcScope.scope) (ppf : Format.formatter)
       (id , ifbt : string * ideal_fun_body_tyd) : unit =
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
   Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name;
-  Format.fprintf ppf "@[proc init(self_ adv_ : addr) : unit = {@]@;<0 2>";
-  Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]"
+  Format.fprintf ppf "@[proc init(self_ adv_ : %a) : unit = {@]@;<0 2>"
+    (pp_type sc) addr_ty;
+  Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]@;"
     _self _adv _st (state_name (initial_state_id_of_states ifbt.states));
+  Format.fprintf ppf "@[proc parties(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+    _m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+  Format.fprintf ppf "@[var %s : %a option <- None;@]@;" _r (pp_type sc) msg_ty;
+  Format.fprintf ppf "@[match %s with@]@;" _st;
+  IdMap.iter (fun id st -> Format.fprintf ppf "%a"
+                             print_state_match_branch (id, st)) ifbt.states;
+  Format.fprintf ppf "@[end;@]@;";
+  Format.fprintf ppf "@[return %s;@]" _r;
+  Format.fprintf ppf "@]@;}";
   Format.fprintf ppf "@]@;}.";
   ()
   
