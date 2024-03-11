@@ -11,6 +11,7 @@ let _adv = "_adv"
 let _st = "_st"
 let _m = "_m"
 let _r = "_r"
+let _x = "_x"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
 
@@ -49,7 +50,20 @@ let mmc_proc_name (stid : string) (mpp : msg_path_pat)
   let msgn = match mpp.msg_or_star with
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "not possible" in
-  (List.fold_left (fun n p -> stn^"_"^p) stid mpp.inter_id_path)^"_"^msgn
+  (List.fold_left (fun n p -> n^"_"^p) stn mpp.inter_id_path)^"_"^msgn
+
+let inter_id_path_str (iip : string list) : string =
+  List.fold_left (fun n p -> n^p^".") "" iip
+
+let mmc_epdp_name (mpp : msg_path_pat)
+    : string =
+  let mpp = EcLocation.unloc mpp in
+  let msgn = match mpp.msg_or_star with
+    | MsgOrStarMsg s -> s
+    | MsgOrStarStar -> UcMessage.failure "not possible" in
+  let _mty_name = msg_ty_name msgn in
+  let _epdp_op_name = epdp_op_name _mty_name in
+  (inter_id_path_str mpp.inter_id_path)^_epdp_op_name
   
 let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
       (ps : (string * ty) list) : unit =
@@ -61,6 +75,16 @@ let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
     let n,t = List.hd ps in
     Format.fprintf ppf "%s : %a" n (pp_type sc) t;
     List.iter (fun (n,t) -> print n t) (List.tl ps)
+
+let print_proc_params_call (ppf : Format.formatter) (ps : string  list) : unit =
+  let print n = Format.fprintf ppf ", %s" n
+  in
+  if List.is_empty ps
+  then ()
+  else
+    let n = List.hd ps in
+    Format.fprintf ppf "%s" n;
+    List.iter (fun n -> print n) (List.tl ps)
 
 let print_mmc_code sc ppf code =
   Format.fprintf ppf "@[return None;@]" 
@@ -82,6 +106,39 @@ let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
   print_mmc_code sc ppf mmc.code;
   Format.fprintf ppf "@]@;}@;"
 
+let print_mmc_proc_call (ppf : Format.formatter)
+      (state_id : string) (params : ty_index Mid.t)
+      (mmc : msg_match_clause_tyd) (msgn : string) (mb : message_body_tyd) : unit =
+  let mmc_msg_pat_bindings (mmc : msg_match_clause_tyd)
+      : string list =
+    let mty_name = msg_ty_name msgn in
+    let msg_pat = mmc.msg_pat in
+    let records =
+    (match msg_pat.port_id with
+     | None   -> []
+     | Some x -> [(name_record_dir_port mty_name mb)]) @
+    (match msg_pat.pat_args with
+     | None    -> []
+     | Some xs ->
+       let pm = fst (List.split (params_map_to_list mb.params_map)) in 
+       let ys =
+         List.mapi
+           (fun i pat ->
+            match pat_id_data pat with
+            | None   -> []
+            | Some z -> [name_record mty_name (List.nth pm i)])
+         xs in
+       List.concat ys) in
+    let iip = (EcLocation.unloc mmc.msg_pat.msg_path_pat).inter_id_path in
+    let pfx = _x^".`"^(inter_id_path_str iip) in
+    List.map (fun r -> pfx^"."^r) records
+  in
+  let params_list = fst (List.split (sparams_map_to_list params)) in
+  let params_list = params_list @ (mmc_msg_pat_bindings mmc) in
+  Format.fprintf ppf "@[%s (%a);@]"
+    (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
+    print_proc_params_call params_list
+
 let print_mmc_procs (sc : EcScope.scope) (ppf : Format.formatter)
       (states : state_tyd IdMap.t) : unit =
   IdMap.iter(fun id st -> let st:state_body_tyd = EcLocation.unloc st in
@@ -92,20 +149,50 @@ let print_mmc_procs (sc : EcScope.scope) (ppf : Format.formatter)
       ;) st.mmclauses
     ) states
 
-let no_msg_match (st : state_tyd) : bool =
-  List.exists (fun mmc -> not
-    (UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)
-  ) (EcLocation.unloc st).mmclauses
+
 
 let print_state_match_branch
       (ppf : Format.formatter) (id , st : string * state_tyd) : unit =
-  let spnt = sparams_map_to_list (EcLocation.unloc st).params in
-  let print_state_params_names ppf spn =
+  let st = EcLocation.unloc st in
+  let spnt = sparams_map_to_list st.params in
+  let print_state_params_names ppf spnt =
     List.iter (fun (n,_) -> Format.fprintf ppf "%s@ " n) spnt
   in
+  let rec print_mm ppf (mmcs : msg_match_clause_tyd list) : unit =
+    if List.is_empty mmcs
+    then ()
+    else
+      let mmc = List.hd mmcs in
+      Format.fprintf ppf "@[match %s.`dec %s with@]@;"
+        (mmc_epdp_name mmc.msg_pat.msg_path_pat) _m;
+      Format.fprintf ppf "@[| Some %s => {@]@;<0 2>@[<v>" _x;
+      (*print_mmc_proc_call ppf id st.params mmc msg_name mb;*)
+      Format.fprintf ppf "@]@;}@;";
+      Format.fprintf ppf "@[| None => {@]@;<0 2>@[<v>";
+      print_mm ppf (List.tl mmcs);
+      Format.fprintf ppf "@]@;}@;end;"
+  in
+  let mmcs = List.filter (fun mmc -> not
+    (UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)
+  ) st.mmclauses in
   Format.fprintf ppf "@[| %s %a=> {@]@;<0 2>@[<v>"
     (state_name id) print_state_params_names spnt;
+  print_mm ppf mmcs;
   Format.fprintf ppf "@]@;}@;"
+
+let print_proc_parties (sc : EcScope.scope) (ppf : Format.formatter)
+      (id , ifbt : string * ideal_fun_body_tyd) : unit =
+  Format.fprintf ppf "@[proc parties(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+    _m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
+      _r (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[match %s with@]@;" _st;
+    IdMap.iter (fun id st -> Format.fprintf ppf "%a"
+                             print_state_match_branch (id, st)) ifbt.states;
+    Format.fprintf ppf "@[end;@]@;";
+    Format.fprintf ppf "@[return %s;@]" _r;
+    Format.fprintf ppf "@]@;}"
+  
 
 let print_ideal_module (sc : EcScope.scope) (ppf : Format.formatter)
       (id , ifbt : string * ideal_fun_body_tyd) : unit =
@@ -119,23 +206,11 @@ let print_ideal_module (sc : EcScope.scope) (ppf : Format.formatter)
     Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]@;"
     _self _adv _st (state_name (initial_state_id_of_states ifbt.states));
   in
-  let print_proc_parties () =
-    Format.fprintf ppf "@[proc parties(%s : %a) : %a option = {@]@;<0 2>@[<v>"
-    _m (pp_type sc) msg_ty (pp_type sc) msg_ty;
-    Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
-      _r (pp_type sc) msg_ty;
-    Format.fprintf ppf "@[match %s with@]@;" _st;
-    IdMap.iter (fun id st -> Format.fprintf ppf "%a"
-                             print_state_match_branch (id, st)) ifbt.states;
-    Format.fprintf ppf "@[end;@]@;";
-    Format.fprintf ppf "@[return %s;@]" _r;
-    Format.fprintf ppf "@]@;}";
-  in
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
   print_mmc_procs sc ppf ifbt.states;
-  print_proc_parties ();
+  print_proc_parties sc ppf (id,ifbt);
   Format.fprintf ppf "@]@;}.";
   ()
   

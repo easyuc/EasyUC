@@ -24,3 +24,12 @@ let open_theory (name : string) : string = "theory "^name^"."
 let close_theory (name : string) : string = "end "^name^"."
 
 let uc_name (name : string) : string = "UC_"^name
+
+let epdp_op_name (name : string) : string = "epdp_"^name
+
+let msg_ty_name (name : string) : string = "_"^name
+
+let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
+
+let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
+  name_record name (EcUtils.oget mb.port)
