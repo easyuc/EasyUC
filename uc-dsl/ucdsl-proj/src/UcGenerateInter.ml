@@ -53,11 +53,6 @@ let name_record_func (msg_name : string) : string = msg_name^"___func"
 
 let name_record_adv (msg_name : string) : string = msg_name^"___adv"
 
-let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
-
-let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
-  name_record name (EcUtils.oget mb.port)
-
 let name_epdp_op (tyname : string) : string = "epdp_"^tyname^"_univ"
 
 let epdp_enc_field : string = "enc"
@@ -230,11 +225,7 @@ let print_record_field_nl
 : unit =
   Format.fprintf ppf "@,@[%s :@ %a;@]" fn (pp_type sc) ty
 
-let msg_ty_name (name : string) : string = "_"^name
-
 let dec_op_name (name : string) : string = "dec_"^name
-
-let epdp_op_name (name : string) : string = "epdp_"^name
 
 let tag_op_name (name : string) : string = "_tag_"^name
 

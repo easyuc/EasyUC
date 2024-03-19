@@ -1,4 +1,5 @@
 open UcTypedSpec
+open UcSpecTypedSpecCommon
 
 (* params_map_to_list converts ty_index IdMap.t into a list of
 name, type pairs. The list is ordered according to the index of ty_index *)
@@ -33,3 +34,47 @@ let name_record (msg_name : string) (param_name : string) : string = msg_name^"_
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
   name_record name (EcUtils.oget mb.port)
+
+module SLMap = Map.Make(SL)
+
+let make_msg_path_map (maps : maps_tyd)
+: message_body_tyd SLMap.t =
+  let make_map (itmap : inter_tyd IdPairMap.t) : message_body_tyd SLMap.t =
+    let add_mbs
+          (slmap : message_body_tyd SLMap.t)
+          (pfx : string list)
+          (bibt : basic_inter_body_tyd) :  message_body_tyd SLMap.t =
+      IdMap.fold (fun id mb slmap ->
+          SLMap.add (pfx@[id]) mb slmap
+        ) bibt slmap
+    in
+    IdPairMap.fold (fun idpair it slmap ->
+        let root = fst (idpair) in
+        let sl = [root ; snd (idpair)] in
+        match (EcLocation.unloc it) with
+        | BasicTyd bt -> add_mbs slmap sl bt
+        | CompositeTyd ct -> IdMap.fold (fun id bid slmap ->
+                                 let it = get_inter_tyd maps root bid in
+                                 let ibt = EcLocation.unloc (EcUtils.oget it) in
+                                 let bt = basic_tyd_of_inter_body_tyd ibt in
+                                 let sl = sl @ [id] in
+                                 add_mbs slmap sl bt
+                               ) ct slmap
+      ) itmap SLMap.empty
+  in
+  let dirmap = make_map maps.dir_inter_map in
+  let advmap = make_map maps.adv_inter_map in
+  SLMap.union (fun _ _ _ -> UcMessage.failure "union of SLmaps fail")
+    dirmap advmap
+
+let get_msg_body
+(mbmap : message_body_tyd SLMap.t) (root : string) (mpp : msg_path_pat)
+    : message_body_tyd =
+  let mpp = EcLocation.unloc mpp in
+  let msgnm =
+    match mpp.msg_or_star with
+    | MsgOrStarMsg s -> s
+    | MsgOrStarStar -> UcMessage.failure "impossible should be Msg"
+  in
+  let sl = [root]@mpp.inter_id_path@[msgnm] in
+  SLMap.find sl mbmap
