@@ -56,9 +56,12 @@ let generate_ec (mt : maps_tyd) : unit =
   let aim_b = IdPairMap.fold f_gen_int mtaim_b IdPairMap.empty in
   let aim_c = IdPairMap.fold f_gen_int mtaim_c IdPairMap.empty in
 
-  let fm = IdPairMap.fold (fun sp ft fm -> IdPairMap.add
-     sp (UcGenerateFunctionality.gen_fun (scope (fst sp)) (snd sp) ft
-        ) fm
+  let mbmap =  UcGenerateCommon.make_msg_path_map mt in
+
+  let fm = IdPairMap.fold (fun sp ft fm ->  let root = fst sp in
+    IdPairMap.add      
+      sp (UcGenerateFunctionality.gen_fun (scope root) root (snd sp) mbmap ft
+    ) fm
     ) mt.fun_map IdPairMap.empty in
 
   let sm = IdPairMap.fold

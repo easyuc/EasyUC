@@ -69,7 +69,7 @@ let make_msg_path_map (maps : maps_tyd)
 
 let get_msg_body
 (mbmap : message_body_tyd SLMap.t) (root : string) (mpp : msg_path_pat)
-    : message_body_tyd =
+    : (string * message_body_tyd) =
   let mpp = EcLocation.unloc mpp in
   let msgnm =
     match mpp.msg_or_star with
@@ -77,4 +77,5 @@ let get_msg_body
     | MsgOrStarStar -> UcMessage.failure "impossible should be Msg"
   in
   let sl = [root]@mpp.inter_id_path@[msgnm] in
-  SLMap.find sl mbmap
+  let mb = SLMap.find sl mbmap in
+  (msgnm,mb)
