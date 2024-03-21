@@ -20,6 +20,11 @@ let pp_type (sc : EcScope.scope) (ppf : Format.formatter) (ty : EcTypes.ty)
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   EcPrinting.pp_type ppe ppf ty
 
+let pp_expr (sc : EcScope.scope) (ppf : Format.formatter) (expr : EcTypes.expr)
+    : unit =
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
+  EcPrinting.pp_expr ppe ppf expr
+
 let open_theory (name : string) : string = "theory "^name^"."
 
 let close_theory (name : string) : string = "end "^name^"."

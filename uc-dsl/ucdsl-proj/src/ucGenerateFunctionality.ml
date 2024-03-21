@@ -91,8 +91,33 @@ let print_proc_params_call (ppf : Format.formatter) (ps : string  list) : unit =
     Format.fprintf ppf "%s" n;
     List.iter (fun n -> print n) (List.tl ps)
 
-let print_mmc_code sc ppf code =
-  Format.fprintf ppf "@[return None;@]" 
+let rec print_code (sc :  EcScope.scope) (ppf : Format.formatter)
+          (code : instruction_tyd list EcLocation.located) : unit =
+  let print_fail_instr () : unit =
+    Format.fprintf ppf "@[%s <- None;@]" _r
+  in
+  let print_ite_instr expr thencode elsecodeo : unit =
+    Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" (pp_expr sc) expr;
+    print_code sc ppf thencode;
+    Format.fprintf ppf  "@]@;}";
+    match elsecodeo with
+    | Some code ->
+      Format.fprintf ppf "@;@[else {@]@;<0 2>@[<v>";
+      print_code sc ppf code; 
+      Format.fprintf ppf  "@]@;}"
+    | None -> ()
+  in
+  let print_instruction ppf (it : instruction_tyd) : unit =
+    match EcLocation.unloc it with
+    | Assign (lhs, expr) -> ()
+    | Sample (lhs, expr) -> ()
+    | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
+    | Match (expr, mcl) -> ()
+    | SendAndTransition sat -> print_fail_instr ()
+    | Fail -> print_fail_instr ()
+  in
+  let code = EcLocation.unloc code in
+  List.iter (fun it -> Format.fprintf ppf "%a@;" print_instruction it) code
   
 
 let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
@@ -108,7 +133,9 @@ let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
       Format.fprintf ppf "@[var %s : %a;@]@;"
               (EcIdent.name ident) (pp_type sc) ty
     ) vars;
-  print_mmc_code sc ppf mmc.code;
+  Format.fprintf ppf "@[var %s : %a option;@]@;" _r (pp_type sc) msg_ty;
+  print_code sc ppf mmc.code;
+  Format.fprintf ppf "@[return %s;@]" _r;
   Format.fprintf ppf "@]@;}@;"
 
 let print_mmc_proc_call (ppf : Format.formatter)
