@@ -67,15 +67,20 @@ let make_msg_path_map (maps : maps_tyd)
   SLMap.union (fun _ _ _ -> UcMessage.failure "union of SLmaps fail")
     dirmap advmap
 
+(*returns a bool that determines if the interface path is a local path (true),
+  or references an interface defined in another file (false)
+  together with message name and body*)
 let get_msg_body
 (mbmap : message_body_tyd SLMap.t) (root : string) (mpp : msg_path_pat)
-    : (string * message_body_tyd) =
+    : (bool * string * message_body_tyd) =
   let mpp = EcLocation.unloc mpp in
   let msgnm =
     match mpp.msg_or_star with
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "impossible should be Msg"
   in
-  let sl = [root]@mpp.inter_id_path@[msgnm] in
-  let mb = SLMap.find sl mbmap in
-  (msgnm,mb)
+  let sl = mpp.inter_id_path@[msgnm] in
+  if SLMap.exists (fun p _ -> p = sl) mbmap
+  then let mb = SLMap.find sl mbmap in (false,msgnm,mb)
+  else let mb = SLMap.find ([root]@sl) mbmap in (true,msgnm,mb)
+  

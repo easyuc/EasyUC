@@ -50,20 +50,25 @@ let mmc_proc_name (stid : string) (mpp : msg_path_pat)
   let msgn = match mpp.msg_or_star with
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "not possible" in
-  (List.fold_left (fun n p -> n^"_"^p) stn mpp.inter_id_path)^"_"^msgn
+  (List.fold_left (fun n p -> n^"__"^p) stn mpp.inter_id_path)^"__"^msgn
 
-let inter_id_path_str (iip : string list) : string =
+let inter_id_path_str (loc : bool) (iip : string list) : string =
+  let iip =
+    if loc
+    then
+      let th = List.hd iip in [uc_name th]@(List.tl iip)
+    else
+      let fl,th,tl = List.hd iip, List.hd (List.tl iip), List.tl (List.tl iip)
+      in [uc_name fl]@[uc_name th]@tl
+  in
   List.fold_left (fun n p -> n^p^".") "" iip
 
-let mmc_epdp_name (mpp : msg_path_pat)
+let mmc_epdp_name (loc : bool) (msgn : string) (mpp : msg_path_pat)
     : string =
   let mpp = EcLocation.unloc mpp in
-  let msgn = match mpp.msg_or_star with
-    | MsgOrStarMsg s -> s
-    | MsgOrStarStar -> UcMessage.failure "not possible" in
   let _mty_name = msg_ty_name msgn in
   let _epdp_op_name = epdp_op_name _mty_name in
-  (inter_id_path_str mpp.inter_id_path)^_epdp_op_name
+  (inter_id_path_str loc mpp.inter_id_path)^_epdp_op_name
   
 let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
       (ps : (string * ty) list) : unit =
@@ -107,16 +112,15 @@ let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
   Format.fprintf ppf "@]@;}@;"
 
 let print_mmc_proc_call (ppf : Format.formatter)
-      (state_id : string) (params : ty_index Mid.t)
-      (mmc : msg_match_clause_tyd) (msgn : string) (mb : message_body_tyd) : unit =
+      (state_id : string) (params : ty_index Mid.t) (mmc : msg_match_clause_tyd)
+      (loc : bool) (msgn : string) (mb : message_body_tyd) : unit =
   let mmc_msg_pat_bindings (mmc : msg_match_clause_tyd)
       : string list =
-    let mty_name = msg_ty_name msgn in
     let msg_pat = mmc.msg_pat in
     let records =
     (match msg_pat.port_id with
      | None   -> []
-     | Some x -> [(name_record_dir_port mty_name mb)]) @
+     | Some x -> [(name_record_dir_port msgn mb)]) @
     (match msg_pat.pat_args with
      | None    -> []
      | Some xs ->
@@ -126,17 +130,17 @@ let print_mmc_proc_call (ppf : Format.formatter)
            (fun i pat ->
             match pat_id_data pat with
             | None   -> []
-            | Some z -> [name_record mty_name (List.nth pm i)])
+            | Some z -> [name_record msgn (List.nth pm i)])
          xs in
        List.concat ys) in
     let iip = (EcLocation.unloc mmc.msg_pat.msg_path_pat).inter_id_path in
-    let pfx = _x^".`"^(inter_id_path_str iip) in
-    List.map (fun r -> pfx^"."^r) records
+    let pfx = _x^".`"^(inter_id_path_str loc iip) in
+    List.map (fun r -> pfx^r) records
   in
   let params_list = fst (List.split (sparams_map_to_list params)) in
   let params_list = params_list @ (mmc_msg_pat_bindings mmc) in
-  Format.fprintf ppf "@[%s (%a);@]"
-    (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
+  Format.fprintf ppf "@[%s %s %s (%a);@]"
+    _r "<@" (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
     print_proc_params_call params_list
 
 let print_mmc_procs (sc : EcScope.scope) (ppf : Format.formatter)
@@ -164,11 +168,11 @@ let print_state_match_branch (root : string) (id : string)
     then ()
     else
       let mmc = List.hd mmcs in
+      let loc,msg_name,mb = get_msg_body mbmap root mmc.msg_pat.msg_path_pat in
       Format.fprintf ppf "@[match %s.`dec %s with@]@;"
-        (mmc_epdp_name mmc.msg_pat.msg_path_pat) _m;
+        (mmc_epdp_name loc msg_name mmc.msg_pat.msg_path_pat) _m;
       Format.fprintf ppf "@[| Some %s => {@]@;<0 2>@[<v>" _x;
-      let msg_name,mb = get_msg_body mbmap root mmc.msg_pat.msg_path_pat in
-      print_mmc_proc_call ppf id st.params mmc msg_name mb;
+      print_mmc_proc_call ppf id st.params mmc loc msg_name mb;
       Format.fprintf ppf "@]@;}@;";
       Format.fprintf ppf "@[| None => {@]@;<0 2>@[<v>";
       print_mm ppf (List.tl mmcs);
