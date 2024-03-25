@@ -49,6 +49,10 @@ let epdp_op_name (name : string) : string = "epdp_"^name
 
 let msg_ty_name (name : string) : string = "_"^name
 
+let name_record_func (msg_name : string) : string = msg_name^"___func"
+
+let name_record_adv (msg_name : string) : string = msg_name^"___adv"
+
 let name_record (msg_name : string) (param_name : string) : string = msg_name^"__"^param_name
 
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
@@ -86,20 +90,22 @@ let make_msg_path_map (maps : maps_tyd)
   SLMap.union (fun _ _ _ -> UcMessage.failure "union of SLmaps fail")
     dirmap advmap
 
-(*returns a bool that determines if the interface path is a local path (true),
-  or references an interface defined in another file (false)
-  together with message name and body*)
-let get_msg_body
-(mbmap : message_body_tyd SLMap.t) (root : string) (mpp : msg_path_pat)
-    : (bool * string * message_body_tyd) =
+let get_msg_name (mpp : msg_path_pat) : string =
   let mpp = EcLocation.unloc mpp in
-  let msgnm =
     match mpp.msg_or_star with
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "impossible should be Msg"
-  in
-  let sl = mpp.inter_id_path@[msgnm] in
+
+
+(*returns a bool that determines if the interface path is a local path (true),
+  or references an interface defined in another file (false)
+  together with message body*)
+let get_msg_body
+      (mbmap : message_body_tyd SLMap.t) (root : string)
+      (iip : string list) (msgnm : string)
+    : (bool * message_body_tyd) =
+  let sl = iip@[msgnm] in
   if SLMap.exists (fun p _ -> p = sl) mbmap
-  then let mb = SLMap.find sl mbmap in (false,msgnm,mb)
-  else let mb = SLMap.find ([root]@sl) mbmap in (true,msgnm,mb)
+  then let mb = SLMap.find sl mbmap in (false,mb)
+  else let mb = SLMap.find ([root]@sl) mbmap in (true,mb)
   

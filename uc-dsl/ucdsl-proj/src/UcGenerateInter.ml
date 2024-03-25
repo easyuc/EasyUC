@@ -49,10 +49,6 @@ let print_str_nl (ppf : Format.formatter) (str : string) : unit =
   Format.fprintf ppf "%s@;" str;
   print_newline ppf
 
-let name_record_func (msg_name : string) : string = msg_name^"___func"
-
-let name_record_adv (msg_name : string) : string = msg_name^"___adv"
-
 let name_epdp_op (tyname : string) : string = "epdp_"^tyname^"_univ"
 
 let epdp_enc_field : string = "enc"

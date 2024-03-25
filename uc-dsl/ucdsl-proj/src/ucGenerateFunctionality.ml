@@ -6,8 +6,6 @@ open UcGenerateCommon
 let state_name (name : string) : string = "_State_"^name
 let state_type_name = "_state"
 let uc__if = "UC__IF"
-let _self = "_self"
-let _adv = "_adv"
 let _st = "_st"
 let _m = "_m"
 let _r = "_r"
@@ -63,12 +61,11 @@ let inter_id_path_str (loc : bool) (iip : string list) : string =
   in
   List.fold_left (fun n p -> n^p^".") "" iip
 
-let mmc_epdp_name (loc : bool) (msgn : string) (mpp : msg_path_pat)
+let qual_epdp_name (loc : bool) (msgn : string) (iid : string list)
     : string =
-  let mpp = EcLocation.unloc mpp in
   let _mty_name = msg_ty_name msgn in
   let _epdp_op_name = epdp_op_name _mty_name in
-  (inter_id_path_str loc mpp.inter_id_path)^_epdp_op_name
+  (inter_id_path_str loc iid)^_epdp_op_name
   
 let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
       (ps : (string * ty) list) : unit =
@@ -91,21 +88,57 @@ let print_proc_params_call (ppf : Format.formatter) (ps : string  list) : unit =
     Format.fprintf ppf "%s" n;
     List.iter (fun n -> print n) (List.tl ps)
 
-let rec print_code (sc :  EcScope.scope) (ppf : Format.formatter)
+let rec print_code (sc :  EcScope.scope) (root : string)
+          (mbmap : message_body_tyd SLMap.t)(ppf : Format.formatter)
           (code : instruction_tyd list EcLocation.located) : unit =
   let print_fail_instr () : unit =
     Format.fprintf ppf "@[%s <- None;@]" _r
   in
   let print_ite_instr expr thencode elsecodeo : unit =
     Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" (pp_expr sc) expr;
-    print_code sc ppf thencode;
+    print_code sc root mbmap ppf thencode;
     Format.fprintf ppf  "@]@;}";
     match elsecodeo with
     | Some code ->
       Format.fprintf ppf "@;@[else {@]@;<0 2>@[<v>";
-      print_code sc ppf code; 
+      print_code sc root mbmap ppf code; 
       Format.fprintf ppf  "@]@;}"
     | None -> ()
+  in
+  let print_sat_instr (sat : send_and_transition_tyd) : unit =
+    (*send part*)
+    let msg_path = EcLocation.unloc sat.msg_expr.path in
+    let iip = msg_path.inter_id_path in
+    let msgn = msg_path.msg in
+    let loc,mb = get_msg_body mbmap root iip msgn in
+    Format.fprintf ppf "@[%s <- Some@]@;<0 2>@[<v>(%s.`enc@;"
+      _r (qual_epdp_name loc msgn iip);
+    Format.fprintf ppf "{|@;<0 2>@[<v>";
+    let pfx = inter_id_path_str loc iip in
+    Format.fprintf ppf "@[%s%s = %s;@]@;"
+      pfx (name_record_func msgn) _self;
+    begin match mb.port with
+    | Some _ ->
+      Format.fprintf ppf "@[%s%s = %a;@]@;"
+        pfx (name_record_dir_port msgn mb) (pp_expr sc) (EcUtils.oget sat.msg_expr.port_expr)
+    | None ->
+      Format.fprintf ppf "@[%s%s = %s;@]@;"
+        pfx (name_record_adv msgn) _adv
+    end
+    ;
+    let pm = fst (List.split (params_map_to_list mb.params_map)) in
+    let args = EcLocation.unloc sat.msg_expr.args in 
+    List.iteri (fun i pn ->
+        Format.fprintf ppf "@[%s%s = %a;@]@;"
+        pfx (name_record msgn pn) (pp_expr sc) (List.nth args i)
+      ) pm;
+    Format.fprintf ppf "@]@;|}";
+    Format.fprintf ppf ");@]@;";
+    (*transition part*)
+    Format.fprintf ppf "@[%s <- %s" _st (state_name (EcLocation.unloc sat.state_expr.id));
+    List.iter (fun ex -> Format.fprintf ppf "@ %a"
+      (pp_expr sc) ex) (EcLocation.unloc sat.state_expr.args);
+    Format.fprintf ppf ";@]"
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
@@ -113,14 +146,15 @@ let rec print_code (sc :  EcScope.scope) (ppf : Format.formatter)
     | Sample (lhs, expr) -> ()
     | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
     | Match (expr, mcl) -> ()
-    | SendAndTransition sat -> print_fail_instr ()
+    | SendAndTransition sat -> print_sat_instr sat
     | Fail -> print_fail_instr ()
   in
   let code = EcLocation.unloc code in
   List.iter (fun it -> Format.fprintf ppf "%a@;" print_instruction it) code
   
 
-let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
+let print_mmc_proc (sc : EcScope.scope) (root : string)
+      (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (state_id : string) (params : ty_index Mid.t)
       (vars : (EcIdent.t * ty) EcLocation.located IdMap.t)
       (mmc : msg_match_clause_tyd) : unit =
@@ -134,7 +168,7 @@ let print_mmc_proc (sc : EcScope.scope) (ppf : Format.formatter)
               (EcIdent.name ident) (pp_type sc) ty
     ) vars;
   Format.fprintf ppf "@[var %s : %a option;@]@;" _r (pp_type sc) msg_ty;
-  print_code sc ppf mmc.code;
+  print_code sc root mbmap ppf mmc.code;
   Format.fprintf ppf "@[return %s;@]" _r;
   Format.fprintf ppf "@]@;}@;"
 
@@ -170,13 +204,14 @@ let print_mmc_proc_call (ppf : Format.formatter)
     _r "<@" (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
     print_proc_params_call params_list
 
-let print_mmc_procs (sc : EcScope.scope) (ppf : Format.formatter)
+let print_mmc_procs (sc : EcScope.scope) (root : string)
+      (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (states : state_tyd IdMap.t) : unit =
   IdMap.iter(fun id st -> let st:state_body_tyd = EcLocation.unloc st in
     List.iter(fun mmc ->
       if UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat
       then ()
-      else print_mmc_proc sc ppf id st.params st.vars mmc
+      else print_mmc_proc sc root mbmap ppf id st.params st.vars mmc
       ;) st.mmclauses
     ) states
 
@@ -195,9 +230,11 @@ let print_state_match_branch (root : string) (id : string)
     then ()
     else
       let mmc = List.hd mmcs in
-      let loc,msg_name,mb = get_msg_body mbmap root mmc.msg_pat.msg_path_pat in
+      let msg_name = get_msg_name mmc.msg_pat.msg_path_pat in
+      let iip = (EcLocation.unloc mmc.msg_pat.msg_path_pat).inter_id_path in
+      let loc,mb = get_msg_body mbmap root iip msg_name in
       Format.fprintf ppf "@[match %s.`dec %s with@]@;"
-        (mmc_epdp_name loc msg_name mmc.msg_pat.msg_path_pat) _m;
+        (qual_epdp_name loc msg_name (EcLocation.unloc mmc.msg_pat.msg_path_pat).inter_id_path) _m;
       Format.fprintf ppf "@[| Some %s => {@]@;<0 2>@[<v>" _x;
       print_mmc_proc_call ppf id st.params mmc loc msg_name mb;
       Format.fprintf ppf "@]@;}@;";
@@ -244,7 +281,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
-  print_mmc_procs sc ppf ifbt.states;
+  print_mmc_procs sc root mbmap ppf ifbt.states;
   print_proc_parties sc root id mbmap ppf ifbt;
   Format.fprintf ppf "@]@;}.";
   ()
