@@ -307,8 +307,9 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
           m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m _adv;
     Format.fprintf ppf "@;<0 2>@[%s %s parties(%s);@]" r "<@" m;
-    Format.fprintf ppf "@;}@]@[return %s;@]@;}@;" r
+    Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
   in
+
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
