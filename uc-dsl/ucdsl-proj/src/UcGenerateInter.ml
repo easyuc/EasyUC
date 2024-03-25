@@ -53,10 +53,6 @@ let name_epdp_op (tyname : string) : string = "epdp_"^tyname^"_univ"
 
 let epdp_enc_field : string = "enc"
 
-let mode_Dir : string = "Dir"
-
-let mode_Adv : string = "Adv"
-
 let enc_op_name (name : string) : string = "enc_"^name
 
 

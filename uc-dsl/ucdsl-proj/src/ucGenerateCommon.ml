@@ -58,6 +58,10 @@ let name_record (msg_name : string) (param_name : string) : string = msg_name^"_
 let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
   name_record name (EcUtils.oget mb.port)
 
+let mode_Dir : string = "Dir"
+
+let mode_Adv : string = "Adv"
+
 module SLMap = Map.Make(SL)
 
 let make_msg_path_map (maps : maps_tyd)
