@@ -341,9 +341,7 @@ let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
           id)
   else try
          let env = LDecl.toenv gc in
-         let ue = EcUnify.UniEnv.create None in
-         let ty =
-           UcTransTypesExprs.transty UcTransTypesExprs.tp_nothing env ue pty in
+         let ty = inter_check_type env pty in
          LDecl.add_local (EcIdent.create id)
          (EcBaseLogic.LD_var (ty, None)) gc
        with
@@ -364,8 +362,7 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
           id)
   else try
          let env = LDecl.toenv gc in
-         let ue = EcUnify.UniEnv.create None in
-         let (exp, _) = UcTransTypesExprs.transexp env ue pexpr in
+         let (exp, _) = inter_check_expr env pexpr (Some tbool) in
          LDecl.add_local (EcIdent.create id)
          (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc
        with
