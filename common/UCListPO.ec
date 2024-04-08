@@ -327,7 +327,7 @@ qed.
 lemma le_pre_l (xs ys : 'a list) :
   xs ++ ys <= xs <=> [] = ys.
 proof.
-by rewrite -{2}cats0 le_pre le_nil_iff eq_sym.
+by rewrite -{2}(cats0 xs) le_pre le_nil_iff eq_sym.
 qed.
 
 hint simplify [reduce] le_pre, le_pre_l.
@@ -371,7 +371,7 @@ qed.
 lemma lt_pre_l (xs ys : 'a list) :
   xs ++ ys < xs <=> false.
 proof.
-rewrite -{2}cats0 lt_pre /(<).
+rewrite -{2}(cats0 xs) lt_pre /(<).
 by case ys.
 qed.
 
@@ -394,7 +394,7 @@ proof. by rewrite -{1}cats0 eq_pre. qed.
 
 lemma eq_pre_l (xs ys : int list) :
   xs ++ ys = xs <=> ys = [].
-proof. by rewrite -{2}cats0 eq_pre. qed.
+proof. by rewrite -{2}(cats0 xs) eq_pre. qed.
 
 hint simplify [reduce] eq_pre, eq_pre_r, eq_pre_l.
 
@@ -439,7 +439,7 @@ qed.
 lemma inc_pre_l (xs ys : 'a list) :
   inc (xs ++ ys) xs <=> false.
 proof.
-rewrite -{2}cats0 inc_pre /inc.
+rewrite -{2}(cats0 xs) inc_pre /inc.
 by case ys.
 qed.
 
@@ -533,7 +533,7 @@ lemma not_le_ext_nonnil_l (xs ys : 'a list) :
   ys <> [] => ! xs ++ ys <= xs.
 proof.
 case ys => [// | y ys _].
-by rewrite -{2}cats0 le_pre not_le_cons_nil.
+by rewrite -{2}(cats0 xs) le_pre not_le_cons_nil.
 qed.
 
 lemma not_le_ext (xs ys zs : 'a list) :
