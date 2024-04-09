@@ -710,7 +710,23 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
     let proof_b = move_simplify proof_a in
     Some proof_b
   in
-  let move_left_simplify proof =
+  let should_move_right proof =
+    let concl = (get_last_pregoal proof).g_concl in
+    begin match EcFol.sform_of_form concl with
+    | SFimp (h,_) ->
+      begin match EcFol.sform_of_form h with
+      | SFeq (v,_) ->
+        begin match EcFol.sform_of_form v with
+        | SFlocal _ -> true
+        | _ -> false
+        end
+      | _ -> true
+      end
+    | _ -> true
+    end
+  in
+  
+(*  let move_left_simplify proof =
     let proof_a = move_left proof in
     let proof_b = move_simplify proof_a in
     Some proof_b
@@ -729,9 +745,10 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
       end
     | _ -> false
     end
-  in
+    in
+ *)
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
-    let rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+    (*  let rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =*)
       let proof_a = try move_hash proof with _ -> proof in
       let count = count_hyp_forms proof in
       let count_a = count_hyp_forms proof_a in
@@ -739,7 +756,10 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
       then 
         Some proof_a
       else
-        let left_first = go_left_first proof in
+        if should_move_right proof
+        then try move_right_simplify proof with _ -> None
+        else None
+(* let left_first = go_left_first proof in
         try 
           if left_first
           then move_left_simplify proof
@@ -749,7 +769,7 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
             if left_first
             then move_right_simplify proof
             else move_left_simplify proof
-         with _ -> None 
+         with _ -> None *)
        (*  let po = try_move_simplify_trivial proof in
          match po with
          | Some p -> po
@@ -757,10 +777,10 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
                    match po with
                    | Some p -> po
                    | None -> try_rewrite_addr_ops_on_literals proof*)
-    in
+(*    in
     if should_simplify_further proof p_id
     then rewriting_step proof
-    else None  
+    else None  *)
   in
   progression try_rewriting_step proof
   
