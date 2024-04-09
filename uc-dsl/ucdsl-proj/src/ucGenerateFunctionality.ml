@@ -111,6 +111,7 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     let iip = msg_path.inter_id_path in
     let msgn = msg_path.msg in
     let loc,mb = get_msg_body mbmap root iip msgn in
+
     Format.fprintf ppf "@[%s <- Some@]@;<0 2>@[<v>(%s.`enc@;"
       _r (qual_epdp_name loc msgn iip);
     Format.fprintf ppf "{|@;<0 2>@[<v>";
