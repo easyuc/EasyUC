@@ -109,7 +109,7 @@ let json3 = {|
 |}
 
 let () : unit =
-  UcState.set_debugging ();
+  UcState.unset_debugging ();
   let common_dir = UcConfig.uc_prelude_dir^"/../../common" in
   let keys_dir = UcConfig.uc_prelude_dir^"/../examples/smc2-ping-adv" in
   UcState.set_include_dirs [common_dir; keys_dir];
@@ -127,6 +127,24 @@ let () : unit =
   testSymplify json1 "i=0";
   testSymplify json2 "i=0";
   testSymplify json3 "i=0";
+
+  let json={|
+    [
+      {"x":"int"},
+      "x = 3"
+    ]
+  |} in
+  let concl = "3 = x" in
+  testSymplify json concl;
+
+  let json={|
+    [
+      {"x":"int"},
+      "3 = x"
+    ]
+  |} in
+  let concl = "3 = x" in
+  testSymplify json concl;
   
   let json={|
     [

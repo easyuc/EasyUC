@@ -329,6 +329,27 @@ let extract_form (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
   | _ -> failwith "extract_form failed - not application"
   end
 
+let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
+  try
+    let proof' = move_up proof in
+    move_all_hyps_up proof'
+  with _ -> proof
+
+let should_simplify_further
+      (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
+  print_endline "should_simplify_further?";
+  let proof = move_all_hyps_up proof in
+  let concl = try extract_form proof p_id
+              with _ -> (get_last_pregoal proof).g_concl
+  in
+  pp_proof proof;
+  (*TODO add more conditions, like is_op?*)
+  let ret = not ((EcCoreFol.is_true concl) || (EcCoreFol.is_false concl)) in
+  print_endline ("should_simplify_further = "^(Bool.to_string ret));
+  ret
+                    
+                                               
+
 let progression 
 (f : EcCoreGoal.proof -> EcCoreGoal.proof option)
 (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
@@ -381,12 +402,6 @@ let process_rewrite_core ?(close = true)
     else EcLowGoal.t_id tc
   in 
   if close then EcCoreGoal.FApi.t_last cl tc else tc
-
-let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
-  try
-    let proof' = move_up proof in
-    move_all_hyps_up proof'
-  with _ -> proof
 
 (* adapted from ecHiGoal.ml process_delta *)
 let process_delta_when_args_are_addr_literals p tc =
@@ -688,14 +703,30 @@ let count_hyp_forms (proof : EcCoreGoal.proof) : int =
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
     None
  *)
-let try_hyp_rewriting (proof : EcCoreGoal.proof)
+let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
 : EcCoreGoal.proof option =
   let move_right_simplify proof =
     let proof_a = move_right proof in
     let proof_b = move_simplify proof_a in
     Some proof_b
   in
-  let move_left_simplify proof =
+  let should_move_right proof =
+    let concl = (get_last_pregoal proof).g_concl in
+    begin match EcFol.sform_of_form concl with
+    | SFimp (h,_) ->
+      begin match EcFol.sform_of_form h with
+      | SFeq (v,_) ->
+        begin match EcFol.sform_of_form v with
+        | SFlocal _ -> true
+        | _ -> false
+        end
+      | _ -> true
+      end
+    | _ -> true
+    end
+  in
+  
+(*  let move_left_simplify proof =
     let proof_a = move_left proof in
     let proof_b = move_simplify proof_a in
     Some proof_b
@@ -714,26 +745,31 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof)
       end
     | _ -> false
     end
-  in
+    in
+ *)
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
-    let proof_a = try move_hash proof with _ -> proof in
-    let count = count_hyp_forms proof in
-    let count_a = count_hyp_forms proof_a in
-    if (count <> count_a)
-    then 
-      Some proof_a
-    else
-      let left_first = go_left_first proof in
-      try 
-        if left_first
-        then move_left_simplify proof
-        else move_right_simplify proof
-      with _ ->
+    (*  let rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =*)
+      let proof_a = try move_hash proof with _ -> proof in
+      let count = count_hyp_forms proof in
+      let count_a = count_hyp_forms proof_a in
+      if (count <> count_a)
+      then 
+        Some proof_a
+      else
+        if should_move_right proof
+        then try move_right_simplify proof with _ -> None
+        else None
+(* let left_first = go_left_first proof in
         try 
           if left_first
-          then move_right_simplify proof
-          else move_left_simplify proof
-       with _ -> None 
+          then move_left_simplify proof
+          else move_right_simplify proof
+        with _ ->
+          try 
+            if left_first
+            then move_right_simplify proof
+            else move_left_simplify proof
+         with _ -> None *)
        (*  let po = try_move_simplify_trivial proof in
          match po with
          | Some p -> po
@@ -741,6 +777,10 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof)
                    match po with
                    | Some p -> po
                    | None -> try_rewrite_addr_ops_on_literals proof*)
+(*    in
+    if should_simplify_further proof p_id
+    then rewriting_step proof
+    else None  *)
   in
   progression try_rewriting_step proof
   
@@ -771,15 +811,15 @@ let rotate_hyps (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
     proof_c
 
 let try_hyp_rewriting_cycle 
-(proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
+(p_id : EcIdent.t) (proof : EcCoreGoal.proof)  : EcCoreGoal.proof option =
   let rec try_hypcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
   = if counter=0 
     then 
-      try_hyp_rewriting proof
+      try_hyp_rewriting proof p_id
     else
-      match try_hyp_rewriting proof with
+      match try_hyp_rewriting proof p_id with
       | Some pr -> Some pr
       | None -> try_hypcyc_r (counter-1) (rotate_hyps proof) 
   in
@@ -796,12 +836,13 @@ let try_hyp_rewriting_cycle
      None
   
 let rec try_simp (proof : EcCoreGoal.proof)
-      (rw_lems : EcPath.path list) : EcCoreGoal.proof option =
+          (rw_lems : EcPath.path list) (p_id : EcIdent.t)
+        : EcCoreGoal.proof option =
   let simps =
     [
       try_move_simplify_trivial;
-      try_hyp_rewriting_cycle;
-      try_rewriting_hints rw_lems;
+      try_hyp_rewriting_cycle p_id;
+      try_rewriting_hints p_id rw_lems;
       try_rewrite_addr_ops_on_literals;
     ] in
   let simp proof =
@@ -811,8 +852,8 @@ let rec try_simp (proof : EcCoreGoal.proof)
   print_endline "try_simp";
   progression simp proof
 
-and try_rewriting_hints (rw_lems : EcPath.path list) (proof : EcCoreGoal.proof) 
-    : EcCoreGoal.proof option =
+and try_rewriting_hints  (p_id : EcIdent.t) (rw_lems : EcPath.path list)
+(proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   print_endline "try_rewriting_hints";
   let pregoal = get_last_pregoal proof in
   let penv = EcCoreGoal.proofenv_of_proof proof in
@@ -832,7 +873,7 @@ and try_rewriting_hints (rw_lems : EcPath.path list) (proof : EcCoreGoal.proof)
       if gn=1 && (goal_no p')>1
       then begin
         print_endline "goal no increased from one to more than one";
-        match try_simp p' rw_lems with
+        match try_simp p' rw_lems p_id with
         | Some p'' ->
           if (goal_no p'') = 1
           then begin
@@ -854,7 +895,7 @@ and try_rewriting_hints (rw_lems : EcPath.path list) (proof : EcCoreGoal.proof)
 let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
 (rw_lems : EcPath.path list) : EcCoreFol.form =
   (*let proof_a = prelims proof p_id in*)
-  let proof_o = try_simp proof rw_lems in
+  let proof_o = try_simp proof rw_lems p_id in
   match proof_o with
   | None -> extract_form proof p_id (* no progress happened *)
   | Some pr ->

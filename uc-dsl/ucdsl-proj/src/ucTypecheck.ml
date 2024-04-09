@@ -2539,10 +2539,16 @@ let inter_check_real_fun_expr
           fprintf ppf
           "@[real@ functionality@ expected@]")
 
+(* check type in environment, rejecting type variables *)
+
+let inter_check_type (env : env) (pty : pty) : ty =
+  let ue = unif_env () in
+  transty tp_nothing env ue pty
+
 (* if expct_ty_opt is Some ty, then ty must not have any unification
    or type variables *)
 
-let inter_check_expr
+let inter_check_expr_ue
     (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
       : expr * ty =
   let (exp, ty) = transexp env ue pexpr in
@@ -2568,12 +2574,17 @@ let inter_check_expr
     | Some expct_ty -> expct_ty in
   (exp, res_ty)
 
+let inter_check_expr (env : env) (pexpr : pexpr) (expct_ty_opt : ty option)
+      : expr * ty =
+  let ue = unif_env () in
+  inter_check_expr_ue env ue pexpr expct_ty_opt
+
 let inter_check_expr_port_or_addr
     (env : env) (ue : unienv) (poa_pexpr : port_or_addr_pexpr)
     (pi_opt : int option) : expr =
   match poa_pexpr with
   | PoA_Port pexpr ->
-      let (expr, _) = inter_check_expr env ue pexpr (Some port_ty) in
+      let (expr, _) = inter_check_expr_ue env ue pexpr (Some port_ty) in
       expr
   | PoA_Addr pexpr ->
       match pi_opt with
@@ -2583,7 +2594,7 @@ let inter_check_expr_port_or_addr
              fprintf ppf
              "@[unable@ to@ infer@ port@ index@ of@ addr@]")
       | Some pi ->
-          let (expr, _) = inter_check_expr env ue pexpr (Some addr_ty) in
+          let (expr, _) = inter_check_expr_ue env ue pexpr (Some addr_ty) in
           (e_tuple [expr; e_int (EcBigInt.of_int pi)])
 
 type msg_path_info =
@@ -2674,7 +2685,7 @@ let inter_check_sme
                     List.mapi
                     (fun i pexpr ->
                        let (ex, _) =
-                         inter_check_expr env ue pexpr
+                         inter_check_expr_ue env ue pexpr
                          (Some (List.nth exp_tys i)) in
                        ex)
                     args in
@@ -2687,9 +2698,9 @@ let inter_check_sme
                    dest_port_form = expr2form dest_port_expr})
   | SME_EnvAdv sme ->
       (let (src_port, _) =
-         inter_check_expr env ue sme.src_port_pexpr (Some port_ty) in
+         inter_check_expr_ue env ue sme.src_port_pexpr (Some port_ty) in
        let (dest_port, _) =
-         inter_check_expr env ue sme.dest_port_pexpr (Some port_ty) in
+         inter_check_expr_ue env ue sme.dest_port_pexpr (Some port_ty) in
        SMET_EnvAdv
        {src_port_form  = expr2form src_port;
         dest_port_form = expr2form dest_port})

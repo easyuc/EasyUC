@@ -24,15 +24,43 @@ let lexbuf_from_channel (name : string) (ch : in_channel) =
   reset_pos_rename lexbuf name;
   lexbuf
 
+let lexbuf_from_string (name : string) (str : string) =
+  let lexbuf = L.from_string ~with_positions:true str in
+  reset_pos_rename lexbuf name;
+  lexbuf
+
+let file_str : string ref = ref ""
+
+let fmt = Format.err_formatter
+
+let echo_cmd (pos_start : L.position) (pos_end : L.position) : unit =
+  if (UcState.get_pg_mode ()) || (UcState.get_batch_mode ())
+  then ()
+  else
+    let p1 = pos_start.L.pos_cnum in
+    let p2 = pos_end.L.pos_cnum in
+    let cmd = String.sub !file_str p1 (p2-p1)  in
+    Format.fprintf fmt "%s@." cmd
+
+
 let next_cmd (lexbuf : L.lexbuf) : interpreter_command =
   if UcState.get_pg_mode ()
   then UcState.set_pg_start_pos lexbuf.L.lex_curr_p.L.pos_cnum;
-  try UcParser.interpreter_command read lexbuf
-  with
-  | UcParser.Error ->
+  let pos_before_read = lexbuf.L.lex_curr_p in
+  let intcom =
+    try UcParser.interpreter_command read lexbuf
+    with
+    | UcParser.Error ->
+       let pos_after_read = lexbuf.L.lex_curr_p in
+       echo_cmd pos_before_read pos_after_read;
       (error_message  (* no need to close channel *)
        (EcLocation.make lexbuf.L.lex_start_p lexbuf.L.lex_curr_p)
        (fun ppf -> Format.fprintf ppf "@[parse@ error@]"))
+  in
+  let pos_after_read = lexbuf.L.lex_curr_p in
+  echo_cmd pos_before_read pos_after_read;
+  intcom
+    
 
 type interpreter_state = 
   {
@@ -71,8 +99,6 @@ let pop() : unit =
 let cmd_prompt (cmd_no : int) =
   let cmd_no_str = string_of_int cmd_no in
   "#"^cmd_no_str^">"
-
-let fmt = Format.err_formatter
 
 let print_prompt () : unit =
   let str = cmd_prompt (currs()).cmd_no in
@@ -720,7 +746,13 @@ let std_IO_client () =
   interpret lexbuf
 
 let file_client (file : string) =
-  let ch = open_in file in
-  let lexbuf = lexbuf_from_channel file ch in
-  interpret lexbuf;
-  close_in ch
+  let read_whole_file filename =
+    let ch = open_in_bin filename in
+    let s = really_input_string ch (in_channel_length ch) in
+    close_in ch;
+    s
+  in
+  UcState.unset_pg_mode();
+  file_str := read_whole_file file;
+  let lexbuf = lexbuf_from_string file !file_str in
+  interpret lexbuf
