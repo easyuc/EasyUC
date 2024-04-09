@@ -10,6 +10,7 @@ let _st = "_st"
 let _m = "_m"
 let _r = "_r"
 let _x = "_x"
+let _envport = "envport"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
 
@@ -111,7 +112,14 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     let iip = msg_path.inter_id_path in
     let msgn = msg_path.msg in
     let loc,mb = get_msg_body mbmap root iip msgn in
-
+    begin match mb.port with
+    | Some port ->
+       Format.fprintf ppf
+         "@[if (%s %s %s %s) {@]@;<0 2>@[<v>"
+         _envport _self _adv port
+    | None -> ()
+    end
+    ;
     Format.fprintf ppf "@[%s <- Some@]@;<0 2>@[<v>(%s.`enc@;"
       _r (qual_epdp_name loc msgn iip);
     Format.fprintf ppf "{|@;<0 2>@[<v>";
@@ -139,7 +147,12 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     Format.fprintf ppf "@[%s <- %s" _st (state_name (EcLocation.unloc sat.state_expr.id));
     List.iter (fun ex -> Format.fprintf ppf "@ %a"
       (pp_expr sc) ex) (EcLocation.unloc sat.state_expr.args);
-    Format.fprintf ppf ";@]"
+    Format.fprintf ppf ";@]";
+    begin match mb.port with
+    | Some port ->
+       Format.fprintf ppf "@]@;}"
+    | None -> ()
+    end   
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
@@ -168,7 +181,7 @@ let print_mmc_proc (sc : EcScope.scope) (root : string)
       Format.fprintf ppf "@[var %s : %a;@]@;"
               (EcIdent.name ident) (pp_type sc) ty
     ) vars;
-  Format.fprintf ppf "@[var %s : %a option;@]@;" _r (pp_type sc) msg_ty;
+  Format.fprintf ppf "@[var %s : %a option <- None;@]@;" _r (pp_type sc) msg_ty;
   print_code sc root mbmap ppf mmc.code;
   Format.fprintf ppf "@[return %s;@]" _r;
   Format.fprintf ppf "@]@;}@;"
