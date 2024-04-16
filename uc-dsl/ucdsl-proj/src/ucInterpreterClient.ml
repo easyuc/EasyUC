@@ -301,21 +301,29 @@ let interpret (lexbuf : L.lexbuf) =
     push_print news
   in
 
-  let send (sme : sent_msg_expr) : unit =
+  let send (loc : EcLocation.t) (sme : sent_msg_expr) : unit =
     let c = currs() in
     let cconfig = Option.get c.config in
-    let conf = send_message_to_real_or_ideal_config cconfig sme in
-    let news =  
-      {
-        c with
-        cmd_no = c.cmd_no+1;
-        ucdsl_new = false;
-        post_done = false;
-        config = Some conf;
-        effect = Some EffectOK;  (* send_message_to_real_or_ideal_config
-                                    doesn't produce an effect *)
-      } in
-    push_print news
+    if is_real_config cconfig || is_ideal_config cconfig
+    then
+      let conf = send_message_to_real_or_ideal_config cconfig sme in
+      let news =  
+        {
+          c with
+          cmd_no = c.cmd_no+1;
+          ucdsl_new = false;
+          post_done = false;
+          config = Some conf;
+          effect = Some EffectOK;  (* send_message_to_real_or_ideal_config
+                                      doesn't produce an effect *)
+        } in
+      push_print news
+    else
+      error_message loc
+      (fun ppf ->
+         Format.fprintf ppf 
+           ("@[you@ can@ send@ messages@ only@ when@ " ^^
+             "environment@ or@ adverary@ have@ control"))
   in
 
   let step_core (loc : EcLocation.t)
@@ -605,7 +613,7 @@ let interpret (lexbuf : L.lexbuf) =
   let done_body () : unit =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
-    | Send sme           -> send sme
+    | Send sme           -> send (loc cmd) sme
     | Run                -> run (loc cmd)
     | Step (ppio, mdbso) -> step (loc cmd) ppio mdbso
     | AddVar tb          -> add_var tb 
