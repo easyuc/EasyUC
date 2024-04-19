@@ -485,6 +485,11 @@ qed.
 
 end MakeInterface.
 
+(* Wrapper for Real Functionalities
+
+   Translator from UC DSL to EasyCrypt will turn real functionalities
+   into plugins to the wrapper. *)
+
 abstract theory RealFunctionality.
 
 (* begin theory parameters *)
