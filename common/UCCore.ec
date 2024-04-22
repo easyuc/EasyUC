@@ -10,21 +10,6 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
 
 require export UCBasicTypes.
 
-(* guard an optional message using predicate *)
-
-op opt_msg_guard :
-     (mode -> addr -> int -> addr -> int -> tag -> bool) ->
-     msg option -> msg option =
-  fun f : mode -> addr -> int -> addr -> int -> tag -> bool =>
-  fun m_opt : msg option =>
-    match m_opt with
-    | None   => None
-    | Some m =>
-        if f m.`1 m.`2.`1 m.`2.`2 m.`3.`1 m.`3.`2 m.`4
-        then m_opt
-        else None
-    end.
-
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities"), as well as adversaries and
    simulators *)
@@ -499,6 +484,90 @@ proc; auto; smt().
 qed.
 
 end MakeInterface.
+
+(* Wrapper for Real Functionalities
+
+   Translator from UC DSL to EasyCrypt will turn real functionalities
+   into plugins to the wrapper. *)
+
+abstract theory RealFunctionality.
+
+(* begin theory parameters *)
+
+op num_parties : {int | 1 <= num_parties} as ge1_num_parties.
+
+op num_subfuns : {int | 0 <= num_subfuns} as ge0_num_subfuns.
+
+op num_params : {int | 0 <= num_params} as ge0_num_params.
+
+op adv_pi_num : {int | 0 <= adv_pi_num} as ge0_adv_pi_num.
+
+op adv_pi_begin : {int | 1 <= adv_pi_begin} as ge1_adv_pi_begin.
+
+(* end theory parameters *)
+
+op adv_pi_end : int = adv_pi_begin + adv_pi_num - 1.
+
+module MakeRF (Core : FUNC) : FUNC = {
+  var self, adv : addr
+
+  proc init(_self _adv : addr) : unit = {
+    self <- _self; adv <- _adv;
+    Core.init(_self, _adv);
+  }
+
+  proc after_core(r : msg option) : msg option * msg * bool = {
+    var m : msg <- witness;
+    var not_done <- true;
+    if (r = None) {
+      not_done <- false;
+    }
+    else {
+      m <- oget r;  (* next iteration, if any, will use m *)
+      if (m.`1 = Dir) {
+        if (! self <= m.`2.`1) {
+          not_done <- false;
+        }
+      }
+      else {  (* m.`1 = Adv *)
+        if (m.`2.`1 <> adv \/ ! adv_pi_begin <= m.`2.`2 <= adv_pi_end) {
+          r <- None;
+        }
+        not_done <- false;
+      }
+    }          
+    return (r, m, not_done);
+  }
+
+  proc loop(m : msg) : msg option = {
+    var r : msg option <- None;
+    var not_done : bool <- true;
+    while (not_done) {
+      r <@ Core.invoke(m);
+      (r, m, not_done) <@ after_core(r);
+    }
+    return r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    (* we can assume m.`3.`1 is not >= self and not >= adv *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self /\
+         1 <= m.`2.`2 <= num_parties) \/
+        (m.`1 = Adv /\
+         ((m.`2.`1 = self /\ 1 <= m.`2.`2 <= num_parties) \/
+          (exists (k : int),
+           1 <= k <= num_params /\ self ++ [k] <= m.`2.`1) \/
+          (exists (k : int),
+           num_params + 1 <= k <= num_params + num_subfuns /\
+           m.`2.`1 = self ++ [k])))) {
+      r <@ loop(m);
+    }
+    return r;
+  }
+}.
+
+end RealFunctionality.
 
 abstract theory DummyAdversary.
 
