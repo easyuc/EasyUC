@@ -952,7 +952,7 @@ let get_info_of_real_func (maps : maps_tyd) (root : symbol) (base : int)
    real functionality *)
 
 let get_adv_pi_of_nth_sub_fun_of_real_fun
-    (maps : maps_tyd) (root : symbol) (num_params : int) (base : int)
+    (maps : maps_tyd) (root : symbol) (base : int)
     (ft : fun_tyd) (n : int) : int =
   let num_adv_pis_of_parties =
     num_adv_pis_of_parties_of_real_fun maps root ft in
