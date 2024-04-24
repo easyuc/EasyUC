@@ -1,4 +1,5 @@
 open UcTypedSpec
+open UcGenerateCommon
 
 type maps_gen =
   {basic_dir_inter_map : string IdPairMap.t;  (* basic direct interfaces *)
@@ -14,7 +15,7 @@ let gen_sim (id : string) (st : sim_tyd) : string = ""
 
 let print_files (mg : maps_gen) : unit =
   let print_file (root : string) (mg : maps_gen) : unit =
-    let fs = open_out ("UC__"^root^".eca") in
+    let fs = open_out ((uc__name root)^".eca") in
 
     let pre = IdMap.find root mg.preamble_map in
     Printf.fprintf fs "%s" pre;
@@ -47,7 +48,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
   if List.is_empty uc_reqs  then () else
     Format.fprintf sf "require%a.@.@." (fun fs reqs->
        List.iter (fun s ->
-         Format.fprintf sf "@ UC_%s" s) reqs) uc_reqs;
+         Format.fprintf sf "@ %s" (uc_name s)) reqs) uc_reqs;
 
   let ec_reqs = IdMap.find root mt.ec_reqs_map in
   let ec_req_imp, ec_req = List.partition (fun (s,b) -> b) ec_reqs in
@@ -66,9 +67,27 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
     let ui = unit_info_of_root mt root in
     begin match ui with
     | UI_Singleton _ ->
-       Format.fprintf sf "op _adv_if_pi : int.@.@.";
-       Format.fprintf sf "axiom _adv_if_pi_gt0 : 0 < _adv_if_pi.@.@."
-    | UI_Triple _    -> ()
+       Format.fprintf sf "op %s : int.@.@." adv_if_pi_op_name;
+       Format.fprintf sf "axiom %s_gt0 : 0 < %s.@.@."
+         adv_if_pi_op_name adv_if_pi_op_name
+    | UI_Triple ti    ->
+       Format.fprintf sf "op %s : int.@.@." adv_pi_begin_op_name;
+       Format.fprintf sf "axiom %s_gt0 : 0 < %s.@.@."
+         adv_pi_begin_op_name adv_pi_begin_op_name;
+       let rf = IdPairMap.find (root,ti.ti_real) mt.fun_map in
+       let pinfo = get_info_of_real_func mt root 0 rf in
+       IdMap.iter (fun ptname ptinfo ->
+         match ptinfo.pi_pai with
+         | None -> ()
+         | Some  (_, _, ptadvpi, _) ->
+            Format.fprintf sf "op %s = %s + %i"
+              (adv_pt_pi_op_name ptname) adv_pi_begin_op_name ptadvpi
+         ) pinfo;
+       let nsf = num_sub_funs_of_real_fun_tyd rf in
+       for i = 0 to nsf-1 do
+         ()
+       done;
+       Format.fprintf sf "op _adv_pi_num : int =@.@."
     end ;
   Format.flush_str_formatter ()
 

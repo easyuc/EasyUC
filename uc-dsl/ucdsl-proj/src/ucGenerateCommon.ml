@@ -45,6 +45,14 @@ let close_theory (name : string) : string = "end "^name^"."
 
 let uc_name (name : string) : string = "UC_"^name
 
+let uc__name (name : string) : string = "UC__"^name
+
+let adv_if_pi_op_name = "_adv_if_pi"
+
+let adv_pi_begin_op_name = "_adv_pi_begin"
+
+let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
+
 let epdp_op_name (name : string) : string = "epdp_"^name
 
 let msg_ty_name (name : string) : string = "_"^name
