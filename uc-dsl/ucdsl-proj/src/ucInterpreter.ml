@@ -2446,7 +2446,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
         then Some
              (rel_nargs_i,
               get_adv_pi_of_nth_sub_fun_of_real_fun maps
-              (fst sp) nargs base ft (i - 1),
+              (fst sp) base ft (i - 1),
               sub_fun_sp_nth_of_real_fun_tyd ft (i - 1))
       else try_sf (i + 1) in
     try_sf 1 in
@@ -2518,7 +2518,7 @@ let select_rel_addr_of_real_world
                   (RW_Select_IdealSubFun
                    (sub_fun_sp_nth_of_real_fun_tyd ft (j - 1),
                     get_adv_pi_of_nth_sub_fun_of_real_fun maps
-                    (fst sp) nargs base ft (j - 1),
+                    (fst sp) base ft (j - 1),
                     sp, j - 1, base))
              else None
   in sel rel rw None
@@ -2917,7 +2917,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
              let ifbt = ideal_fun_body_tyd_of fbt in
              from_parent_to_ideal_func (rel @ [i])
              (get_adv_pi_of_nth_sub_fun_of_real_fun c.maps
-              (fst sp_par) num_args base ft_par sf_ind)
+              (fst sp_par) base ft_par sf_ind)
              sp ifbt)
      | Some i ->
          (match List.nth rwas (i - 1) with
