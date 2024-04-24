@@ -46,7 +46,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
   let sf = Format.get_str_formatter () in
   let uc_reqs = IdMap.find(root) mt.uc_reqs_map in
   if List.is_empty uc_reqs  then () else
-    Format.fprintf sf "require%a.@.@." (fun fs reqs->
+    Format.fprintf sf "@[require%a.@]@.@." (fun fs reqs->
        List.iter (fun s ->
          Format.fprintf sf "@ %s" (uc_name s)) reqs) uc_reqs;
 
@@ -57,10 +57,10 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
                             Format.fprintf sf "@ %s" s) reqs
   in
   if List.is_empty ec_req_imp then () else
-    Format.fprintf sf "require import%a.@.@." print ec_req_imp;
+    Format.fprintf sf "@[require import%a.@]@.@." print ec_req_imp;
   
   if List.is_empty ec_req then () else
-    Format.fprintf sf "require%a.@.@." print ec_req;
+    Format.fprintf sf "@[require%a.@]@.@." print ec_req;
 
     Format.fprintf sf "require import UCBasicTypes.@.@.";
 
@@ -68,8 +68,8 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
     begin match ui with
     | UI_Singleton _ ->
        Format.fprintf sf "op %s : int.@.@." adv_if_pi_op_name;
-       Format.fprintf sf "axiom %s_gt0 : 0 < %s.@.@."
-         adv_if_pi_op_name adv_if_pi_op_name
+       Format.fprintf sf "axiom %s : 0 < %s.@.@."
+         adv_if_pi_gt0_axiom_name adv_if_pi_op_name
     | UI_Triple ti    ->
        Format.fprintf sf "op %s : int.@.@." adv_pi_begin_op_name;
        Format.fprintf sf "axiom %s_gt0 : 0 < %s.@.@."
@@ -79,15 +79,36 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
        IdMap.iter (fun ptname ptinfo ->
          match ptinfo.pi_pai with
          | None -> ()
-         | Some  (_, _, ptadvpi, _) ->
-            Format.fprintf sf "op %s = %s + %i"
+         | Some  (_, _, _, ptadvpi) ->
+            Format.fprintf sf "op %s = %s + %i@."
               (adv_pt_pi_op_name ptname) adv_pi_begin_op_name ptadvpi
          ) pinfo;
+       Format.fprintf sf "@.";
        let nsf = num_sub_funs_of_real_fun_tyd rf in
-       for i = 0 to nsf-1 do
-         ()
+       for n = 0 to nsf-1 do
+         let isf_name = sub_fun_name_nth_of_real_fun_tyd rf n in
+         let isf_adv_pi = get_adv_pi_of_nth_sub_fun_of_real_fun
+                            mt root 0 rf n in
+         Format.fprintf sf "op %s : int = %s + %i.@."
+           (adv_sf_pi_op_name isf_name) adv_pi_begin_op_name isf_adv_pi
        done;
-       Format.fprintf sf "op _adv_pi_num : int =@.@."
+       Format.fprintf sf "@.op %s : int = %s.@.@."
+         adv_if_pi_op_name adv_pi_begin_op_name;
+       let np = num_params_of_real_fun_tyd rf in
+       let papi : string ref = ref (string_of_int ti.ti_num_adv_pis) in
+       for n = 0 to np-1 do
+         let pname = param_name_nth_of_real_fun_tyd rf n in
+         let r,_ = id_dir_inter_of_param_of_real_fun_tyd rf pname in
+         let rui = unit_info_of_root mt r in
+         match rui with
+         | UI_Singleton _ ->
+            clone_singleton_unit sf r pname !papi;
+            papi := !papi^" + 1"
+         | UI_Triple _ ->
+            clone_triple_unit sf r pname !papi;
+            papi := !papi^" + "^r^"."^adv_pi_num_op_name
+       done;
+       Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
     end ;
   Format.flush_str_formatter ()
 
@@ -123,7 +144,6 @@ let generate_ec (mt : maps_tyd) : unit =
     (fun sp st sm ->
       IdPairMap.add sp (gen_sim (snd sp) st) sm
     ) mt.sim_map IdPairMap.empty in
-  (*TODO handle uc_reqs and ec_reqs*)
   let mg =
     {basic_dir_inter_map = dim_b;
      comp_dir_inter_map  = dim_c;
@@ -134,4 +154,4 @@ let generate_ec (mt : maps_tyd) : unit =
      preamble_map  = preambles} in
 
   print_files mg
-  (*TODO writing to the file + possible merging with already existing file*)
+  

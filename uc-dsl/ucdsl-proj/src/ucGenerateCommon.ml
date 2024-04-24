@@ -49,9 +49,17 @@ let uc__name (name : string) : string = "UC__"^name
 
 let adv_if_pi_op_name = "_adv_if_pi"
 
+let adv_if_pi_gt0_axiom_name = "_adv_if_pi_gt0"
+
 let adv_pi_begin_op_name = "_adv_pi_begin"
 
+let adv_pi_begin_gt0_axiom_name = "_adv_pi_begin_gt0"
+
+let adv_pi_num_op_name = "_adv_pi_num"
+
 let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
+
+let adv_sf_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
 
 let epdp_op_name (name : string) : string = "epdp_"^name
 
@@ -69,6 +77,26 @@ let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
 let mode_Dir : string = "Dir"
 
 let mode_Adv : string = "Adv"
+
+let clone_singleton_unit
+(ppf : Format.formatter) (root : string) (asname : string) (advpi : string) =
+  Format.fprintf ppf  "clone %s as %s with  (* singleton unit *)@."
+    root asname;
+  Format.fprintf ppf "op %s <- %s@."
+    adv_if_pi_op_name advpi;
+  Format.fprintf ppf "proof *.@.";
+  Format.fprintf ppf "realize %s. smt(%s). qed.@.@."
+    adv_if_pi_gt0_axiom_name adv_pi_begin_gt0_axiom_name
+
+let clone_triple_unit
+(ppf : Format.formatter) (root : string) (asname : string) (advpibeg : string) =
+  Format.fprintf ppf  "clone %s as %s with  (* triple unit *)@."
+    root asname;
+  Format.fprintf ppf "op %s <- %s@."
+    adv_pi_begin_op_name advpibeg;
+  Format.fprintf ppf "proof *.@.";
+  Format.fprintf ppf "realize %s. smt(%s). qed.@.@."
+    adv_pi_begin_gt0_axiom_name adv_pi_begin_gt0_axiom_name
 
 module SLMap = Map.Make(SL)
 
