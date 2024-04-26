@@ -13,7 +13,9 @@ let state_type_name_pt (ptname : string) : string =
 
 let uc__if = "UC__IF"
 let uc__rf = "UC__RF"
+let uc__code = "UC__Code"
 let _st = "_st"
+let st_name (name : string) = "_st_"^name
 let _m = "_m"
 let _r = "_r"
 let _x = "_x"
@@ -428,13 +430,6 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
   done;
   Format.fprintf ppf "@]@;"
 
-let print_state_type_IF
-      (sc : EcScope.scope)
-      (ppf : Format.formatter)
-      (states : state_tyd IdMap.t)
-    : unit =
-  print_state_type sc ppf states state_type_name_IF state_name_IF
-  
 let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
       (parties : party_tyd IdMap.t) : unit =
   Format.fprintf ppf "@[<v>";
@@ -443,8 +438,75 @@ let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
         (state_type_name_pt pn) (state_name_pt pn);
     ) parties;
   Format.fprintf ppf "@]"
+
+let print_real_module (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
+      (rfbt : real_fun_body_tyd) : unit =
+  let print_vars () =
+     Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
+     IdMap.iter (fun pn _ ->
+         Format.fprintf ppf "@[var %s : %s@]@;"
+           (st_name pn) (state_type_name_pt pn)  
+       ) rfbt.parties;
+     Format.fprintf ppf "@;"
+  in
+  let print_proc_init () =
+    Format.fprintf ppf "@[proc init(self_ adv_ : %a) : unit = {@]@;<0 2>"
+    (pp_type sc) addr_ty;
+    Format.fprintf ppf "@[%s <- self_; %s <- adv_;@]@;"
+      _self _adv;
+    IdMap.iter (fun sfn (sfr, sfid) ->
+      Format.fprintf ppf "@[%s.%s.%s.%s.init(%s %s, %s);@]@;"
+      (uc_name sfn) uc__code uc__if (uc_name sfid) (addr_op_name sfn) _self _adv  ) rfbt.sub_funs;
+    IdMap.iter (fun pn pt ->
+    Format.fprintf ppf "@[ %s <- %s;@]@;"
+      (st_name pn) (state_name_pt pn (initial_state_id_of_party_tyd  pt))
+      ) rfbt.parties;
+    Format.fprintf ppf "@[}@]@;"
+  in
+  let print_proc_invoke () =
+ (*   let r, m = "r", "m" in
+    let print_dir_pi_guard ppf () : unit =
+      let basics = SLMap.filter_map (fun iip _ ->
+        if List.hd iip = root && List.hd (List.tl iip) = ifbt.id_dir_inter
+        then Some (List.hd (List.tl (List.tl iip)))
+        else None
+                       ) mbmap in
+      let basics = snd (List.split (SLMap.bindings basics)) in
+      let basics = List.sort_uniq String.compare basics in
+      let bhd = List.hd basics in
+      let btl = List.tl basics in
+      let compn = uc_name ifbt.id_dir_inter in
+      Format.fprintf ppf "%s.`2.`2 = %s.%s.pi" m compn bhd;
+      List.iter (fun bn ->
+        Format.fprintf ppf "@ \\/@ %s.`2.`2 = %s.%s.pi" m compn bn) btl
+    in
+    Format.fprintf ppf "@[proc invoke(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+      m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
+      r (pp_type sc) msg_ty;
+    Format.fprintf ppf
+      "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ (%a)@ /\\@ envport %s %s %s.`3)@]"
+         m mode_Dir m _self print_dir_pi_guard()  _self _adv m;
+     Format.fprintf ppf "\\/";
+     Format.fprintf ppf
+       "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
+          m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m _adv;
+    Format.fprintf ppf "@;<0 2>@[%s %s parties(%s);@]" r "<@" m;
+    Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
+    *)()
+  in
+
+  Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
+  print_vars ();
+  print_proc_init ();
+(*  print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF;
+  print_proc_parties sc root id mbmap ppf ifbt;*)
+  print_proc_invoke ();
+  Format.fprintf ppf "@]@\n}.";
   
-let print_real_module _ _ _ _ _ _ =()
+  ()
+
 
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
