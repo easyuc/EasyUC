@@ -88,23 +88,27 @@ let mode_Adv : string = "Adv"
 
 let clone_singleton_unit
 (ppf : Format.formatter) (root : string) (asname : string) (advpi : string) =
-  Format.fprintf ppf  "clone %s as %s with  (* singleton unit *)@."
+  Format.fprintf ppf "@[<v>";
+  Format.fprintf ppf  "@[clone %s as %s with  (* singleton unit *)@]@;"
     root asname;
-  Format.fprintf ppf "op %s <- %s@."
+  Format.fprintf ppf "@[op %s <- %s@]@;"
     adv_if_pi_op_name advpi;
-  Format.fprintf ppf "proof *.@.";
-  Format.fprintf ppf "realize %s. smt(%s). qed.@.@."
-    adv_if_pi_gt0_axiom_name adv_pi_begin_gt0_axiom_name
+  Format.fprintf ppf "@[proof *.@]@;";
+  Format.fprintf ppf "@[realize %s. smt(%s). qed.@]@;@;"
+    adv_if_pi_gt0_axiom_name adv_pi_begin_gt0_axiom_name;
+  Format.fprintf ppf "@]@;"
 
 let clone_triple_unit
 (ppf : Format.formatter) (root : string) (asname : string) (advpibeg : string) =
-  Format.fprintf ppf  "clone %s as %s with  (* triple unit *)@."
+  Format.fprintf ppf "@[<v>";
+  Format.fprintf ppf  "@[clone %s as %s with  (* triple unit *)@]@;"
     root asname;
-  Format.fprintf ppf "op %s <- %s@."
+  Format.fprintf ppf "@[op %s <- %s@]@;"
     adv_pi_begin_op_name advpibeg;
-  Format.fprintf ppf "proof *.@.";
-  Format.fprintf ppf "realize %s. smt(%s). qed.@.@."
-    adv_pi_begin_gt0_axiom_name adv_pi_begin_gt0_axiom_name
+  Format.fprintf ppf "@[proof *.@]@;";
+  Format.fprintf ppf "@[realize %s. smt(%s). qed.@]@;@;"
+    adv_pi_begin_gt0_axiom_name adv_pi_begin_gt0_axiom_name;
+  Format.fprintf ppf "@]@;"
 
 module SLMap = Map.Make(SL)
 

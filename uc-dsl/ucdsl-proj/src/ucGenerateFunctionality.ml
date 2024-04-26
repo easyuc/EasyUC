@@ -428,8 +428,22 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
   done;
   Format.fprintf ppf "@]@;"
 
+let print_state_type_IF
+      (sc : EcScope.scope)
+      (ppf : Format.formatter)
+      (states : state_tyd IdMap.t)
+    : unit =
+  print_state_type sc ppf states state_type_name_IF state_name_IF
   
-let print_party_types _ _ _ =()
+let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
+      (parties : party_tyd IdMap.t) : unit =
+  Format.fprintf ppf "@[<v>";
+  IdMap.iter (fun (pn : string) (pt : party_tyd) ->
+      print_state_type sc ppf (EcLocation.unloc pt).states
+        (state_type_name_pt pn) (state_name_pt pn);
+    ) parties;
+  Format.fprintf ppf "@]"
+  
 let print_real_module _ _ _ _ _ _ =()
 
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
