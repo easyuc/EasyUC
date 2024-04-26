@@ -57,6 +57,14 @@ let adv_pi_begin_gt0_axiom_name = "_adv_pi_begin_gt0"
 
 let adv_pi_num_op_name = "_adv_pi_num"
 
+let self = "self"
+
+let addr_op_name (name : string) : string = "_addr_"^name
+
+let extport_op_name (name : string) : string = "_extport_"^name
+
+let intport_op_name (name : string) : string = "_intport_"^name
+
 let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
 
 let adv_sf_pi_op_name (name : string) : string = "_adv_pt_pi_"^name

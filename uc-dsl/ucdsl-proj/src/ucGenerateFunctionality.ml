@@ -3,9 +3,16 @@ open UcSpecTypedSpecCommon
 open EcTypes
 open UcGenerateCommon
 
-let state_name (name : string) : string = "_State_"^name
-let state_type_name = "_state"
+let state_name_IF (name : string) : string = "_State_"^name
+let state_type_name_IF = "_state"
+
+let state_name_pt (ptname : string) (sname : string) : string =
+  "_State_"^ptname^"_"^sname
+let state_type_name_pt (ptname : string) : string =
+  "_state_"^ptname
+
 let uc__if = "UC__IF"
+let uc__rf = "UC__RF"
 let _st = "_st"
 let _m = "_m"
 let _r = "_r"
@@ -14,11 +21,12 @@ let _envport = "envport"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
 
-
 let print_state_type
       (sc : EcScope.scope)
       (ppf : Format.formatter)
       (states : state_tyd IdMap.t)
+      (state_type_name : string)
+      (state_name : string -> string)
     : unit =
   let s2e (sname, sbod : string * state_tyd) : (string * ty list) =
     let stys = snd (List.split (sparams_map_to_list
@@ -42,7 +50,15 @@ let print_state_type
   Format.fprintf ppf "@]@\n";
   Format.fprintf ppf "].@;"
 
-let mmc_proc_name (stid : string) (mpp : msg_path_pat)
+let print_state_type_IF
+      (sc : EcScope.scope)
+      (ppf : Format.formatter)
+      (states : state_tyd IdMap.t)
+    : unit =
+  print_state_type sc ppf states state_type_name_IF state_name_IF 
+
+let mmc_proc_name
+      (stid : string) (mpp : msg_path_pat) (state_name : string -> string)
     : string =
   let mpp = EcLocation.unloc mpp in
   let stn = state_name stid in
@@ -50,6 +66,9 @@ let mmc_proc_name (stid : string) (mpp : msg_path_pat)
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "not possible" in
   (List.fold_left (fun n p -> n^"__"^p) stn mpp.inter_id_path)^"__"^msgn
+
+let mmc_proc_name_IF (stid : string) (mpp : msg_path_pat) : string =
+  mmc_proc_name stid mpp state_name_IF
 
 let inter_id_path_str (loc : bool) (iip : string list) : string =
   let iip =
@@ -91,18 +110,19 @@ let print_proc_params_call (ppf : Format.formatter) (ps : string  list) : unit =
 
 let rec print_code (sc :  EcScope.scope) (root : string)
           (mbmap : message_body_tyd SLMap.t)(ppf : Format.formatter)
-          (code : instruction_tyd list EcLocation.located) : unit =
+          (code : instruction_tyd list EcLocation.located)
+        (state_name : string -> string): unit =
   let print_fail_instr () : unit =
     Format.fprintf ppf "@[%s <- None;@]" _r
   in
   let print_ite_instr expr thencode elsecodeo : unit =
     Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" (pp_expr sc) expr;
-    print_code sc root mbmap ppf thencode;
+    print_code sc root mbmap ppf thencode state_name;
     Format.fprintf ppf  "@]@;}";
     match elsecodeo with
     | Some code ->
       Format.fprintf ppf "@;@[else {@]@;<0 2>@[<v>";
-      print_code sc root mbmap ppf code; 
+      print_code sc root mbmap ppf code state_name; 
       Format.fprintf ppf  "@]@;}"
     | None -> ()
   in
@@ -171,9 +191,9 @@ let print_mmc_proc (sc : EcScope.scope) (root : string)
       (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (state_id : string) (params : ty_index Mid.t)
       (vars : (EcIdent.t * ty) EcLocation.located IdMap.t)
-      (mmc : msg_match_clause_tyd) : unit =
+      (mmc : msg_match_clause_tyd) (state_name : string -> string): unit =
   Format.fprintf ppf "@[proc %s (%a) : %a option = {@]@;<0 2>@[<v>"
-    (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
+    (mmc_proc_name state_id mmc.msg_pat.msg_path_pat state_name)
     (print_proc_params_decl sc) ((sparams_map_to_list params)@(
       List.map (fun (id,t) -> ((EcIdent.name id),t)) (msg_match_clause_msg_pat_bindings mmc)))
     (pp_type sc) msg_ty;
@@ -182,13 +202,14 @@ let print_mmc_proc (sc : EcScope.scope) (root : string)
               (EcIdent.name ident) (pp_type sc) ty
     ) vars;
   Format.fprintf ppf "@[var %s : %a option <- None;@]@;" _r (pp_type sc) msg_ty;
-  print_code sc root mbmap ppf mmc.code;
+  print_code sc root mbmap ppf mmc.code  state_name;
   Format.fprintf ppf "@[return %s;@]" _r;
   Format.fprintf ppf "@]@;}@;"
 
 let print_mmc_proc_call (ppf : Format.formatter)
       (state_id : string) (params : ty_index Mid.t) (mmc : msg_match_clause_tyd)
-      (loc : bool) (msgn : string) (mb : message_body_tyd) : unit =
+      (loc : bool) (msgn : string) (mb : message_body_tyd)
+      (state_name : string -> string) : unit =
   let mmc_msg_pat_bindings (mmc : msg_match_clause_tyd)
       : string list =
     let msg_pat = mmc.msg_pat in
@@ -215,17 +236,17 @@ let print_mmc_proc_call (ppf : Format.formatter)
   let params_list = fst (List.split (sparams_map_to_list params)) in
   let params_list = params_list @ (mmc_msg_pat_bindings mmc) in
   Format.fprintf ppf "@[%s %s %s (%a);@]"
-    _r "<@" (mmc_proc_name state_id mmc.msg_pat.msg_path_pat)
+    _r "<@" (mmc_proc_name state_id mmc.msg_pat.msg_path_pat state_name)
     print_proc_params_call params_list
 
 let print_mmc_procs (sc : EcScope.scope) (root : string)
       (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
-      (states : state_tyd IdMap.t) : unit =
+      (states : state_tyd IdMap.t) (state_name : string -> string) : unit =
   IdMap.iter(fun id st -> let st:state_body_tyd = EcLocation.unloc st in
     List.iter(fun mmc ->
       if UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat
       then ()
-      else print_mmc_proc sc root mbmap ppf id st.params st.vars mmc
+      else print_mmc_proc sc root mbmap ppf id st.params st.vars mmc state_name
       ;) st.mmclauses
     ) states
 
@@ -233,7 +254,8 @@ let print_mmc_procs (sc : EcScope.scope) (root : string)
 
 let print_state_match_branch (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t)
-      (ppf : Format.formatter) (st : state_tyd) : unit =
+      (ppf : Format.formatter) (st : state_tyd)
+      (state_name : string -> string): unit =
   let st = EcLocation.unloc st in
   let spnt = sparams_map_to_list st.params in
   let print_state_params_names ppf spnt =
@@ -250,7 +272,7 @@ let print_state_match_branch (root : string) (id : string)
       Format.fprintf ppf "@[match %s.`dec %s with@]@;"
         (qual_epdp_name loc msg_name (EcLocation.unloc mmc.msg_pat.msg_path_pat).inter_id_path) _m;
       Format.fprintf ppf "@[| Some %s => {@]@;<0 2>@[<v>" _x;
-      print_mmc_proc_call ppf id st.params mmc loc msg_name mb;
+      print_mmc_proc_call ppf id st.params mmc loc msg_name mb state_name;
       Format.fprintf ppf "@]@;}@;";
       Format.fprintf ppf "@[| None => {@]@;<0 2>@[<v>";
       print_mm ppf (List.tl mmcs);
@@ -264,6 +286,11 @@ let print_state_match_branch (root : string) (id : string)
   print_mm ppf mmcs;
   Format.fprintf ppf "@]@;}@;"
 
+let print_state_match_branch_IF (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t)
+      (ppf : Format.formatter) (st : state_tyd) : unit =
+  print_state_match_branch root id mbmap ppf st state_name_IF
+
 let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (ifbt : ideal_fun_body_tyd) : unit =
@@ -273,7 +300,7 @@ let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
       _r (pp_type sc) msg_ty;
     Format.fprintf ppf "@[match %s with@]@;" _st;
     IdMap.iter (fun id st -> Format.fprintf ppf "%a"
-      (print_state_match_branch root id mbmap) st) ifbt.states;
+      (print_state_match_branch_IF root id mbmap) st) ifbt.states;
     Format.fprintf ppf "@[end;@]@;";
     Format.fprintf ppf "@[return %s;@]" _r;
     Format.fprintf ppf "@]@;}@;"
@@ -284,13 +311,13 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
       (ifbt : ideal_fun_body_tyd) : unit =
   let print_vars () =
      Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
-     Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name;
+     Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name_IF;
   in
   let print_proc_init () =
     Format.fprintf ppf "@[proc init(self_ adv_ : %a) : unit = {@]@;<0 2>"
     (pp_type sc) addr_ty;
     Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]@;"
-    _self _adv _st (state_name (initial_state_id_of_states ifbt.states));
+    _self _adv _st (state_name_IF (initial_state_id_of_states ifbt.states));
   in
   let print_proc_invoke () =
     let r, m = "r", "m" in
@@ -327,7 +354,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
-  print_mmc_procs sc root mbmap ppf ifbt.states;
+  print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF;
   print_proc_parties sc root id mbmap ppf ifbt;
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
@@ -340,9 +367,82 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__if);
-  Format.fprintf sf "@[%a@]@;@;" (print_state_type sc) ifbt.states;
+  Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap) ifbt;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
+  Format.fprintf sf "@]";
+  Format.flush_str_formatter ()
+
+let print_sub_fun_clones (ppf : Format.formatter)
+      (rfbt : real_fun_body_tyd) : unit =
+  let nsf = IdMap.cardinal rfbt.sub_funs in
+  let bndgs = IdMap.bindings rfbt.sub_funs in
+  for n = 0 to nsf-1 do
+    let isf_name, (root, _) = List.nth bndgs n in
+    clone_singleton_unit
+      ppf root (uc_name isf_name) (adv_sf_pi_op_name isf_name)
+  done
+
+let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
+      (rfbt : real_fun_body_tyd) : unit =
+  let print_addr_op (name : string) (n : int) : unit =
+    Format.fprintf ppf "@[op %s (%s : %a) : %a = %s ++ [%i].@]@;"
+      (addr_op_name name) self (pp_type sc) addr_ty (pp_type sc) addr_ty self n
+  in
+  let print_port_op (port_op_name : string -> string) (name : string) (n : int)
+      : unit =
+    Format.fprintf ppf "@[op %s (%s : %a) : %a = (%s, %i).@]@;"
+      (port_op_name name) self (pp_type sc) addr_ty (pp_type sc) port_ty self n
+  in
+  let print_extport_op (name : string) (n : int) : unit =
+    print_port_op extport_op_name name n
+  in
+  let print_intport_op (name : string) (n : int) : unit =
+    print_port_op intport_op_name name n
+  in
+  Format.fprintf ppf "@[<v>";
+  let np = IdMap.cardinal rfbt.params in
+  let ps = indexed_map_to_list_keep_keys rfbt.params in 
+  for n = 0 to np-1 do
+    let pn = fst (List.nth ps n) in
+    print_addr_op pn (n+1)
+  done;
+  Format.fprintf ppf "@;";
+  let nsf = IdMap.cardinal rfbt.sub_funs in
+  let sfbndgs = IdMap.bindings rfbt.sub_funs in
+  for n = 0 to nsf-1 do
+    let isf_name = fst (List.nth sfbndgs n) in
+    print_addr_op isf_name (np+n+1)
+  done;
+  Format.fprintf ppf "@;";
+  let npt = IdMap.cardinal rfbt.parties in
+  let ptbndgs = IdMap.bindings rfbt.parties in
+  for n = 0 to npt-1 do
+    let ptn = fst (List.nth ptbndgs n) in
+    print_extport_op ptn (n+1)
+  done;
+  Format.fprintf ppf "@;";
+  for n = 0 to npt-1 do
+    let ptn = fst (List.nth ptbndgs n) in
+    print_intport_op ptn (npt+n+1)
+  done;
+  Format.fprintf ppf "@]@;"
+
+  
+let print_party_types _ _ _ =()
+let print_real_module _ _ _ _ _ _ =()
+
+let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
+    : string = 
+  let sf = Format.get_str_formatter () in
+  Format.fprintf sf "@[<v>";
+  Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
+  Format.fprintf sf "@[%a@]@;@;" print_sub_fun_clones rfbt;
+  Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rfbt;
+  Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
+  Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap) rfbt;
+  Format.fprintf sf "@[%s@]@;" (close_theory uc__rf);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
@@ -352,4 +452,4 @@ let gen_fun (sc : EcScope.scope) (root : string) (id : string)
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt
-  | FunBodyRealTyd rfbt  -> ""
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt
