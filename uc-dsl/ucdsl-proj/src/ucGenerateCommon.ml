@@ -61,9 +61,15 @@ let self = "self"
 
 let addr_op_name (name : string) : string = "_addr_"^name
 
+let addr_op_call (name : string) : string = "_addr_"^name^" "^_self
+
 let extport_op_name (name : string) : string = "_extport_"^name
 
+let extport_op_call (name : string) : string = "_extport_"^name^" "^_self
+
 let intport_op_name (name : string) : string = "_intport_"^name
+
+let intport_op_call (name : string) : string = "_intport_"^name^" "^_self
 
 let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
 

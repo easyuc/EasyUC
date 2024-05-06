@@ -112,6 +112,26 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
     end ;
   Format.flush_str_formatter ()
 
+
+let dir_int_internals
+(mt : maps_tyd) (root : string) (ft : fun_tyd) : symb_pair IdMap.t =
+  let fbt = EcLocation.unloc ft in
+  if is_ideal_fun_body_tyd  fbt
+  then IdMap.empty
+  else
+    let rfbt = real_fun_body_tyd_of (EcLocation.unloc ft) in
+    let bndgs = IdMap.bindings rfbt.sub_funs in
+    let sf_nms = fst (List.split bndgs) in
+    let pms = indexed_map_to_list_keep_keys rfbt.params in
+    let pm_nms = fst (List.split pms) in
+    let nms = sf_nms @ pm_nms in
+    List.fold_left (fun ret nm ->
+      let dir_int_sp = snd (EcUtils.oget
+        (get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+          mt root ft nm)) in
+      IdMap.add nm dir_int_sp ret) IdMap.empty nms
+  
+
 let generate_ec (mt : maps_tyd) : unit =
   let scope (root : string) =
     IdMap.find root mt.ec_scope_map
@@ -134,9 +154,12 @@ let generate_ec (mt : maps_tyd) : unit =
 
   let mbmap =  UcGenerateCommon.make_msg_path_map mt in
 
-  let fm = IdPairMap.fold (fun sp ft fm ->  let root = fst sp in
+  let fm = IdPairMap.fold (fun sp ft fm ->
+    let root, id = sp in
+    let dir_int_internals = dir_int_internals mt root ft in                 
     IdPairMap.add      
-      sp (UcGenerateFunctionality.gen_fun (scope root) root (snd sp) mbmap ft
+    sp (UcGenerateFunctionality.gen_fun
+          (scope root) root id mbmap ft dir_int_internals
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
