@@ -22,6 +22,8 @@ let _x = "_x"
 let _envport = "envport"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
+let parties_str = "parties"
+let proc_party_str (pn : string) = "party_"^pn
 
 let print_state_type
       (sc : EcScope.scope)
@@ -291,9 +293,9 @@ let print_mmc_proc_call (ppf : Format.formatter)
 
 
 let print_state_match_branch (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t)
+      (mbmap : message_body_tyd SLMap.t) (state_name : string -> string)
       (ppf : Format.formatter) (st : state_tyd)
-      (state_name : string -> string): unit =
+      : unit =
   let st = EcLocation.unloc st in
   let spnt = sparams_map_to_list st.params in
   let print_state_params_names ppf spnt =
@@ -325,21 +327,18 @@ let print_state_match_branch (root : string) (id : string)
   print_mm ppf mmcs;
   Format.fprintf ppf "@]@;}@;"
 
-let print_state_match_branch_IF (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t)
-      (ppf : Format.formatter) (st : state_tyd) : unit =
-  print_state_match_branch root id mbmap ppf st state_name_IF
+
 
 let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
-      (ifbt : ideal_fun_body_tyd) : unit =
-  Format.fprintf ppf "@[proc parties(%s : %a) : %a option = {@]@;<0 2>@[<v>"
-    _m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+(mbmap : message_body_tyd SLMap.t) (procn : string) (state_name : string -> string)
+      (ppf : Format.formatter) (states : state_tyd IdMap.t) : unit =
+  Format.fprintf ppf "@[proc %s(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+    procn _m (pp_type sc) msg_ty (pp_type sc) msg_ty;
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       _r (pp_type sc) msg_ty;
     Format.fprintf ppf "@[match %s with@]@;" _st;
     IdMap.iter (fun id st -> Format.fprintf ppf "%a"
-      (print_state_match_branch_IF root id mbmap) st) ifbt.states;
+      (print_state_match_branch root id mbmap state_name_IF) st) states;
     Format.fprintf ppf "@[end;@]@;";
     Format.fprintf ppf "@[return %s;@]" _r;
     Format.fprintf ppf "@]@;}@;"
@@ -386,7 +385,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
      Format.fprintf ppf
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
           m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m _adv;
-    Format.fprintf ppf "@;<0 2>@[%s %s parties(%s);@]" r "<@" m;
+    Format.fprintf ppf "@;<0 2>@[%s %s %s(%s);@]" r "<@" parties_str m;
     Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
   in
 
@@ -394,7 +393,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   print_vars ();
   print_proc_init ();
   print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF dii None;
-  print_proc_parties sc root id mbmap ppf ifbt;
+  print_proc_parties sc root id mbmap parties_str state_name_IF ppf ifbt.states;
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
   ()
