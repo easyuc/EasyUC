@@ -148,11 +148,19 @@ let make_msg_path_map (maps : maps_tyd)
   SLMap.union (fun _ _ _ -> UcMessage.failure "union of SLmaps fail")
     dirmap advmap
 
-let get_msg_name (mpp : msg_path_pat) : string =
-  let mpp = EcLocation.unloc mpp in
-    match mpp.msg_or_star with
+let get_msg_path (mpp : msg_path_pat) : msg_path =
+  let mppu = EcLocation.unloc mpp in
+  let msgn =
+    match mppu.msg_or_star with
     | MsgOrStarMsg s -> s
     | MsgOrStarStar -> UcMessage.failure "impossible should be Msg"
+  in
+  EcLocation.mk_loc (EcLocation.loc mpp)
+  {
+    inter_id_path = mppu.inter_id_path;
+    msg = msgn
+  }
+ 
 
 
 (*returns a bool that determines if the interface path is a local path (true),
