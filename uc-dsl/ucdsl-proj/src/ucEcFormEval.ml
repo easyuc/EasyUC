@@ -158,11 +158,11 @@ let can_prove_crush (proof : EcCoreGoal.proof) : bool =
   EcCoreGoal.closed proof_c
 
 let eval_condition_pre_tacs
-(hyps : EcEnv.LDecl.hyps) 
-(form : EcCoreFol.form)
-(pi : EcProvers.prover_infos)
-(pre_tacs : EcCoreGoal.FApi.backward list)
-: eval_condition_result =
+    (hyps : EcEnv.LDecl.hyps) 
+    (form : EcCoreFol.form)
+    (pi : EcProvers.prover_infos)
+    (pre_tacs : EcCoreGoal.FApi.backward list)
+      : eval_condition_result =
   let proof_true = EcCoreGoal.start hyps form in
   let proof_true = run_tacl pre_tacs proof_true in
 
@@ -963,7 +963,11 @@ let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
        Format.fprintf fmt
        "@[@[formula@ simplified@ to:@]@\n@[%a@]@]"
        (EcPrinting.pp_form (ppe_ofhyps hyps)) form) in
-  eval_condition_pre_tacs hyps form pi []
+  if EcFol.is_true form
+    then Bool true
+  else if EcFol.is_false form
+    then Bool false
+  else eval_condition_pre_tacs hyps form pi []
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
   match oty.ty_node with
