@@ -38,6 +38,20 @@ Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
 @((adv, 3))
 ctrl_adv.
 send ((adv, 3))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+step.
+
+(* this step fails, if inc_nle_r is included in rewriting hint
+   in UCBasicTypes *)
+step.
+
+
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@
