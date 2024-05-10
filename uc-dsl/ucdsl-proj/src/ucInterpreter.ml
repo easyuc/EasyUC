@@ -227,8 +227,10 @@ let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
 
 let env_root_port_form : form = form_of_expr mhr env_root_port_op
 
-let envport_form (func : form) (adv : form) (pt : form) : form =
-  f_app (form_of_expr mhr envport_op) [func; adv; pt] tbool
+let adv_addr_form : form = form_of_expr mhr adv_addr_op
+
+let envport_form (func : form) (pt : form) : form =
+  f_app (form_of_expr mhr envport_op) [func; pt] tbool
 
 let inc_form (addr1 : form) (addr2 : form) : form =
   f_app (form_of_expr mhr inc_op) [addr1; addr2] tbool
@@ -286,21 +288,18 @@ let support_form (ty : ty) (d : form) (x : form) : form =
 type global_context = LDecl.hyps
 
 let func_id         : EcIdent.t = EcIdent.create "func"
-let adv_id          : EcIdent.t = EcIdent.create "adv"
 let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
 
 let func_form : form = f_local func_id addr_ty
-let adv_form  : form = f_local adv_id addr_ty
 
 let gc_create (env : env) : global_context =
   let locs =
     [
       (func_id, EcBaseLogic.LD_var (addr_ty, None));
-      (adv_id,  EcBaseLogic.LD_var (addr_ty, None));
       (inc_func_adv_id,
        EcBaseLogic.LD_hyp
        (form_of_expr mhr
-        (e_app inc_op [e_local func_id addr_ty; e_local adv_id addr_ty]
+        (e_app inc_op [e_local func_id addr_ty; adv_addr_op]
          tbool)))
     ] in
   LDecl.init env ~locals:(List.rev locs) []
@@ -584,25 +583,23 @@ type local_context_base =
   | LCB_Bound   of EcIdent.t * form  (* bound identifier - state param or
                                         of message match clause *)
   | LCB_Var     of EcIdent.t * ty    (* local variable *)
-  | LCB_EnvPort of form * form       (* both of type address *)
+  | LCB_EnvPort of form
   | LCB_IntPort of EcIdent.t * form  (* of type port *)
 
 let lc_create (gc : global_context) (dbs : rewriting_dbs)
     (lcbs : local_context_base list) : local_context =
-  let simpl = simplify_formula gc dbs in
   [EcIdent.Mid.of_list
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Bound (id, form)    -> (id, simpl form)
-       | LCB_Var (id, ty)        ->
+       | LCB_Bound (id, form) -> (id, form)
+       | LCB_Var (id, ty)     ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort (func, adv) ->
+       | LCB_EnvPort func     ->
            (envport_id,
-            simpl
             (f_app (form_of_expr mhr envport_op)
-             [func; adv] (tfun port_ty tbool)))
-       | LCB_IntPort (id, port)  -> (id, simpl port))
+             [func] (tfun port_ty tbool)))
+       | LCB_IntPort (id, port)  -> (id, port))
     lcbs)]
 
 let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
@@ -617,12 +614,11 @@ let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
 
 let lc_update_var (gc : global_context) (lc : local_context)
     (dbs : rewriting_dbs) (id : symbol) (f : form) : local_context =
-  let f = simplify_formula gc dbs f in
   let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
   let id = Option.get (lc_find_key_from_sym lc_base id) in
   EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
 
-let lc_apply (gc : global_context) (lc : local_context)
+let lc_apply (simpl : bool) (gc : global_context) (lc : local_context)
     (dbs : rewriting_dbs) (e : expr) : form =
   let f = form_of_expr mhr e in
   let map =
@@ -635,7 +631,7 @@ let lc_apply (gc : global_context) (lc : local_context)
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   let f = Fsubst.f_subst subst f in
-  simplify_formula gc dbs f
+  if simpl then simplify_formula gc dbs f else f
 
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
@@ -1660,7 +1656,7 @@ exception StepBlockedPortOrAddrCompare
 let step_assign (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (lhs : lhs) (expr : expr) : local_context =
-  let form = lc_apply gc lc dbs expr in
+  let form = lc_apply true gc lc dbs expr in
   match lhs with
   | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
   | LHSTuple ids ->
@@ -1679,7 +1675,7 @@ let step_sample (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (lhs : lhs) (expr : expr)
       : global_context * local_context * symbol =
-  let form = lc_apply gc lc dbs expr in
+  let form = lc_apply true gc lc dbs expr in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
   match lhs with
   | LHSSimp id   ->
@@ -1705,7 +1701,7 @@ let step_if_then_else (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (expr : expr) (inss_then : instr_interp list)
     (inss_else_opt : instr_interp list option) : instr_interp list =
-  let expr_gc_form = lc_apply gc lc dbs expr in
+  let expr_gc_form = lc_apply false gc lc dbs expr in
   if try eval_bool_form_to_bool gc pi dbs expr_gc_form with
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
@@ -1715,7 +1711,7 @@ let step_match (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (expr : expr) (clauses : match_clause_interp list)
       : local_context * instr_interp list =
-  let form = lc_apply gc lc dbs expr in
+  let form = lc_apply false gc lc dbs expr in
   let (form_constr, form_args) =
     try deconstruct_datatype_value gc pi dbs form with
     | ECProofEngine -> raise StepBlockedMatch in
@@ -1761,7 +1757,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
          path           = path;
          args           = msg_args;
          dest_port_form =
-           make_port_form adv_form (int_form base)} in
+           make_port_form adv_addr_form (int_form base)} in
       let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigRealSending
        {maps = c.maps;
@@ -1783,7 +1779,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form (addr_concat_form func_form (addr_make_form rel))
-              adv_form port_form) with
+              port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
@@ -1888,7 +1884,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
          path           = path;
          args           = msg_args;
          dest_port_form =
-           make_port_form adv_form (int_form adv_pi)} in
+           make_port_form adv_addr_form (int_form adv_pi)} in
       let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigRealSending
        {maps = c.maps;
@@ -1906,7 +1902,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
              (envport_form (addr_concat_form func_form (addr_make_form rel))
-              adv_form port_form) with
+              port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
@@ -1968,16 +1964,16 @@ let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) (unloc msg_args) in
+    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply c.gc c.lc dbs expr) in
+    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) state_args in
+    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_rws =
     match c.rwrc with
@@ -2060,7 +2056,7 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
          path           = path;
          args           = msg_args;
          dest_port_form =
-           make_port_form adv_form (int_form base)} in
+           make_port_form adv_addr_form (int_form base)} in
       let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
       (ConfigIdealSending
        {maps = c.maps;
@@ -2081,7 +2077,7 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form func_form adv_form port_form) with
+             (envport_form func_form port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
              SMET_Ord
@@ -2129,7 +2125,7 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
     SMET_Ord
     {mode           = Adv;
      dir            = In;
-     src_port_form  = make_port_form adv_form (int_form base);
+     src_port_form  = make_port_form adv_addr_form (int_form base);
      path           = path;
      args           = msg_args;
      dest_port_form = make_port_form sim_rf_addr (int_form 1)} in
@@ -2206,7 +2202,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
           src_port_form  = make_port_form sim_rf_addr (int_form porti);
           path           = path;
           args           = msg_args;
-          dest_port_form = make_port_form adv_form (int_form adv_pi)} in
+          dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
        let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
         {maps = c.maps;
@@ -2240,7 +2236,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
              (int_form 1));
           path           = path;
           args           = List.map simpl msg_args;
-          dest_port_form = make_port_form adv_form (int_form adv_pi)} in
+          dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
        let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
         {maps = c.maps;
@@ -2281,16 +2277,16 @@ let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) (unloc msg_args) in
+    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply c.gc c.lc dbs expr) in
+    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply c.gc c.lc dbs arg) state_args in
+    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_iws =
     match c.iwrc with
@@ -2406,7 +2402,7 @@ let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
   let mm_binds =
     List.map (fun ((id, _), f) -> (LCB_Bound (id, f))) mm_binds in
   let envport_maybe =
-    if is_sim then [] else [LCB_EnvPort (addr, adv_form)] in
+    if is_sim then [] else [LCB_EnvPort addr] in
   let internal_ports =
     List.mapi
     (fun i (_, id) -> LCB_IntPort (id, port_of_addr (i + 1)))
@@ -2596,7 +2592,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
        eval_bool_form_to_bool c.gc pi dbs
        (f_and
         (f_eq dest_addr func_form)
-        (envport_form func_form adv_form source_port))
+        (envport_form func_form source_port))
       then let (func_sp, base, _) = c.rw in
            let (root, fid) = func_sp in
            let ft = IdPairMap.find func_sp c.maps.fun_map in
@@ -2619,14 +2615,14 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc pi dbs
             (f_and
-             (f_eq dest_addr adv_form)
+             (f_eq dest_addr adv_addr_form)
               (f_or
                (f_and
                 (f_eq dest_pi (int_form 0))
                 (f_eq source_port env_root_port_form))
                (f_and
                 (int_le_form (int_form c.ig) dest_pi)
-                (envport_form func_form adv_form source_port))))
+                (envport_form func_form source_port))))
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
@@ -2794,9 +2790,9 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     if mode = Dir ||
        eval_bool_form_to_bool c.gc pi dbs
        (f_or
-        (addr_le_form adv_form dest_addr)
+        (addr_le_form adv_addr_form dest_addr)
         (f_or
-         (f_not (f_eq adv_form source_addr))
+         (f_not (f_eq adv_addr_form source_addr))
          (int_lt_form source_pi (int_form 0))))
       then fail_out_of_running_or_sending_config (ConfigRealSending c)
     else if eval_bool_form_to_bool c.gc pi dbs
@@ -3112,7 +3108,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
        eval_bool_form_to_bool c.gc pi dbs
        (f_and
         (f_eq dest_addr func_form)
-        (envport_form func_form adv_form source_port))
+        (envport_form func_form source_port))
       then let (func_sp, base) = c.iw.iw_ideal_func in
            let ft = unloc (IdPairMap.find func_sp c.maps.fun_map) in
            let ifbt = ideal_fun_body_tyd_of ft in
@@ -3120,7 +3116,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     else if mode = Adv &&
             eval_bool_form_to_bool c.gc pi dbs
             (f_and
-             (f_eq dest_addr adv_form)
+             (f_eq dest_addr adv_addr_form)
               (f_or
                (f_and
                 (f_eq dest_pi (int_form 0))
@@ -3129,7 +3125,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 (int_lt_form (int_form 0) dest_pi)
                 (f_and
                  (int_le_form (int_form c.ig) dest_pi)
-                 (envport_form func_form adv_form source_port)))))
+                 (envport_form func_form source_port)))))
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
@@ -3509,7 +3505,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_sim_left_or_right (i : int) : config * effect =
     if eval_bool_form_to_bool c.gc pi dbs
-       (f_eq dest_addr adv_form)
+       (f_eq dest_addr adv_addr_form)
       then if i = List.length c.iws.other_sims_states - 1
            then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
            else match find_sim_from_left (i + 1) with
@@ -3542,9 +3538,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     if mode = Dir ||
        eval_bool_form_to_bool c.gc pi dbs
        (f_or
-        (addr_le_form adv_form dest_addr)
+        (addr_le_form adv_addr_form dest_addr)
         (f_or
-         (f_not (f_eq adv_form source_addr))
+         (f_not (f_eq adv_addr_form source_addr))
          (int_lt_form source_pi (int_form 0))))
       then fail_out_of_running_or_sending_config (ConfigIdealSending c)
     else if eval_bool_form_to_bool c.gc pi dbs

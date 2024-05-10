@@ -66,14 +66,14 @@ require export UCUniv.
 
    a functionality will always have a non-empty address
 
-   the adversary and any simulators will share the same non-empty address,
+   the adversary and any simulators will share the same address [0],
    which will be incomparable with the address of any functionality
 
-   these addresses are assigned at the beginning of an *experiment*,
-   in which the environment experiments with either a real
-   functionality and the adversary, or an ideal functionality and a
-   nonempty list of simulators plus the adversary (S1 * S2 * ... * Sn
-   * Adv) *)
+   the address of the functionality is assigned at the beginning of an
+   *experiment*, in which the environment experiments with either a
+   real functionality and the adversary, or an ideal functionality and
+   a nonempty list of simulators plus the adversary (S1 * S2 * ... *
+   Sn * Adv) *)
 
 type addr = int list.
 
@@ -88,7 +88,8 @@ qed.
 hint simplify valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
-op env_root_addr : addr = [].
+op env_root_addr : addr = [].   (* root address of environment *)
+op adv : addr           = [0].  (* address of adversary *)
 
 (* ports - pairs of functionality addresses and port indices; messages
    (see type below) have source and destination ports, and they have
@@ -243,23 +244,23 @@ hint rewrite epdp : valid_epdp_port_univ.
 
 op env_root_port : port = ([], 0).
 
-(* envport takes in the address, self, of a functionality, the
-   address, adv, of the adversary (self and adv should be nonempty and
-   incomparable), and a port pt, and tests whether pt's address is
-   neither a sub-address of the functionality or the adversary, and pt
-   is not the root port of the environment
+(* envport takes in the address, self, of a functionality (which
+   should be incomparable with the address, adv ([0]), of the
+   adversary, and a port pt, and tests whether pt's address is neither
+   a sub-address of the functionality or the adversary, and pt is not
+   the root port of the environment
 
    in UC DSL, envport is a keyword, and so cannot be used as an
    ordinary identifier. in DSL specs, it has type port -> bool, but
    during the interpretation process, or in the generated EasyCrypt
-   code, the real envport is first supplied the addresses of the
-   functionality in question and the adversary *)
+   code, the real envport is first supplied the address of the
+   functionality in question *)
 
-op envport (self adv : addr, pt : port) : bool =
+op envport (self : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1  /\ pt <> ([], 0).
 
-lemma envport_inc_env_root_addr (func adv : addr, i : int) :
-  i <> 0 => inc func adv => envport func adv (env_root_addr, i).
+lemma envport_inc_env_root_addr (func : addr, i : int) :
+  i <> 0 => inc func adv => envport func (env_root_addr, i).
 proof.
 move => ne0_i inc_func_adv.
 rewrite /envport /env_root_addr ne0_i /=.
@@ -284,9 +285,9 @@ qed.
 
 hint rewrite ucdsl_interpreter_hints : extend_addr_by_sing.
 
-lemma envport_ext_func (func adv xs ys : addr, i : int) :
+lemma envport_ext_func (func xs ys : addr, i : int) :
   inc func adv => ! xs <= ys =>
-  envport (func ++ xs) adv (func ++ ys, i).
+  envport (func ++ xs) (func ++ ys, i).
 proof.
 rewrite /envport /= => inc_func_adv -> /=.
 split.
@@ -300,9 +301,9 @@ have // : func ++ ys <> [].
   trivial.
 qed.
 
-lemma envport_ext_l_func (func adv xs : addr, i : int) :
+lemma envport_ext_l_func (func xs : addr, i : int) :
   inc func adv => xs <> [] =>
-  envport (func ++ xs) adv (func, i).
+  envport (func ++ xs) (func, i).
 proof.
 move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
@@ -317,7 +318,7 @@ move => inc_func_adv.
 by rewrite inc_nle_r 1:inc_extl.
 qed.
 
-lemma inc_ne (func adv : addr) :
+lemma inc_ne (func : addr) :
   inc func adv => func <> adv.
 proof.
 move => inc_func_adv.
@@ -325,24 +326,17 @@ case (func = adv) => [->> | //].
 by rewrite not_inc_same in inc_func_adv.
 qed.
 
-lemma inc_ne_ext_l (func adv xs : addr) :
+lemma inc_ne_ext_l (func xs : addr) :
   inc func adv => func ++ xs <> adv.
 proof.
 move => inc_func_adv.
-case (func ++ xs = adv) => [<<- | //].
-by rewrite inc_pre_r in inc_func_adv.
+case (func ++ xs = adv) => [adv_eq | //].
+move : inc_func_adv.
+by rewrite -adv_eq inc_pre_r.
 qed.
 
-hint rewrite ucdsl_interpreter_hints :
-  envport_ext_func envport_ext_l_func
-  inc_ext_nle_r inc_ext_nle_r
-  inc_ne inc_ne_ext_l.
-
-(* these lemmas don't work for automated rewriting because
-   choice of adv can't be inferred from conclusion *)
-
-lemma envport_ne_func (func adv : addr, pt : port) :
-  envport func adv pt => pt.`1 <> func.
+lemma envport_ne_func (func : addr, pt : port) :
+  envport func pt => pt.`1 <> func.
 proof.
 rewrite /envport.
 move => [#] nle_func_pt_1 _ _.
@@ -350,14 +344,20 @@ move : nle_func_pt_1.
 by case (pt.`1 = func).
 qed.
 
-lemma envport_not_gt_func (func adv : addr, pt : port) :
-  envport func adv pt => ! func < pt.`1.
+lemma envport_not_gt_func (func : addr, pt : port) :
+  envport func pt => ! func < pt.`1.
 proof.
 rewrite /envport => [#] func_not_le_pt_1 _ _.
 move : func_not_le_pt_1.
 rewrite implybNN => func_not_lt_pt_1.
 by rewrite ltW.
 qed.
+
+hint rewrite ucdsl_interpreter_hints :
+  envport_ext_func envport_ext_l_func
+  envport_ne_func envport_not_gt_func
+  inc_ext_nle_r inc_ext_nle_r
+  inc_ne inc_ne_ext_l.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
