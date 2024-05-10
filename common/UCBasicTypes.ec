@@ -363,6 +363,109 @@ hint rewrite ucdsl_interpreter_hints :
   (* SMC2 script fails if the following is included: *)
   inc_nle_r.
 
+lemma foo (func : addr) :
+  inc func adv =>
+  envport (func ++ [1; 1]) (func ++ [1], 2).
+proof.
+move => H.
+rewrite ucdsl_interpreter_hints.
+(*
+Current goal (remaining: 2)
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+inc func adv
+*)
+trivial.
+(*
+Current goal
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+! [1; 1] <= [1]
+*)
+by rewrite /(<=).
+qed.
+
+lemma foo' (func : addr) :
+  inc func adv =>
+  envport (func ++ [1; 1]) (func ++ [1], 2).
+proof.
+move => H.
+rewrite ucdsl_interpreter_hints.
+(*
+Current goal (remaining: 2)
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+inc func adv
+*)
+trivial.
+(*
+Current goal
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+! [1; 1] <= [1]
+*)
+rewrite ucdsl_interpreter_hints.
+(*
+Current goal (remaining: 2)
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+inc [1] [1; 1]
+
+not true!
+*)
+abort.
+
+lemma foo'' (func : addr) :
+  inc func adv =>
+  envport (func ++ [1; 1]) (func ++ [1], 2).
+proof.
+move => H.
+rewrite !ucdsl_interpreter_hints.
+(*
+Current goal (remaining: 2)
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+inc func adv
+*)
+trivial.
+(*
+Current goal (remaining: 2)
+
+Type variables: <none>
+
+func: addr
+H: inc func adv
+------------------------------------------------------------------------
+inc [1] [1; 1]
+
+not true!
+*)
+abort.
+
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
    UC DSL functionalities and simulators *)
