@@ -254,6 +254,11 @@ let addr_make_form (ms : int list) : form =
   (fun m exp -> addr_cons_form (f_int (EcBigInt.of_int m)) exp)
   ms addr_nil_form
 
+let addr_concat_form_from_list_smart (addr : form) (ms : int list) : form =
+  if List.is_empty ms
+  then addr
+  else addr_concat_form addr (addr_make_form ms)
+
 let port_to_addr_form (port : form) : form =
   f_proj port 0 addr_ty
 
@@ -1770,7 +1775,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
          src_port_form  =
            simpl
            (make_port_form
-            (addr_concat_form func_form (addr_make_form rel))
+            (addr_concat_form_from_list_smart func_form rel)
             (int_form 1));
          path           = path;
          args           = msg_args;
@@ -1796,7 +1801,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form (addr_concat_form func_form (addr_make_form rel))
+             (envport_form (addr_concat_form_from_list_smart func_form rel)
               port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
@@ -1806,7 +1811,7 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
               src_port_form  =
                 simpl
                 (make_port_form
-                 (addr_concat_form func_form (addr_make_form rel))
+                 (addr_concat_form_from_list_smart func_form rel)
                  (int_form source_pi));
               path           = path;
               args           = msg_args;
@@ -1844,13 +1849,13 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
   let source_port =
     simpl
     (make_port_form
-     (addr_concat_form func_form (addr_make_form rel))
+     (addr_concat_form_from_list_smart func_form rel)
      (int_form pty_internal_pi)) in
   let dest_pi = get_pi_of_sub_interface c.maps dir_root dir_comp sub in
   let dest_port =
     simpl
     (make_port_form
-     (addr_concat_form func_form (addr_make_form (rel @ [child_i])))
+     (addr_concat_form_from_list_smart func_form (rel @ [child_i]))
      (int_form dest_pi)) in
   let iip_new = dir_root :: dir_comp :: List.tl iip in
   let path_new = {inter_id_path = iip_new; msg = msg} in
@@ -1897,7 +1902,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
          src_port_form  =
            simpl
            (make_port_form
-            (addr_concat_form func_form (addr_make_form rel))
+            (addr_concat_form_from_list_smart func_form rel)
             (int_form pty_pi));
          path           = path;
          args           = msg_args;
@@ -1919,7 +1924,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
       if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form (addr_concat_form func_form (addr_make_form rel))
+             (envport_form (addr_concat_form_from_list_smart func_form rel)
               port_form) with
          | ECProofEngine -> raise StepBlockedPortOrAddrCompare
       then let sme =
@@ -1929,7 +1934,7 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
               src_port_form  =
                 simpl
                 (make_port_form
-                 (addr_concat_form func_form (addr_make_form rel))
+                 (addr_concat_form_from_list_smart func_form rel)
                  (int_form source_pi));
               path           = path;
               args           = msg_args;
@@ -2250,7 +2255,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
             (* TODO - use hint database when possible - see UCBasicTypes *)
             simpl
             (make_port_form
-             (addr_concat_form sim_rf_addr (addr_make_form [child_i]))
+             (addr_concat_form_from_list_smart sim_rf_addr [child_i])
              (int_form 1));
           path           = path;
           args           = List.map simpl msg_args;
@@ -2404,11 +2409,10 @@ let match_ord_sme_against_msg_match_clauses
 (* should only be called with ordinary sme that will successfully
    match *)
 
-let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
-    (is_sim : bool) (addr : form) (sbt : state_body_tyd)
-    (state_args : form list) (sme : sent_msg_expr_ord_tyd)
+let match_ord_sme_in_state (is_sim : bool) (addr : form)
+    (sbt : state_body_tyd) (state_args : form list)
+    (sme : sent_msg_expr_ord_tyd)
       : local_context * instruction_tyd list located =
-  let addr = simplify_formula gc dbs addr in
   let port_of_addr i = make_port_form addr (int_form i) in
   let state_params =
     List.map (fun (id, f) -> (LCB_Bound (id, f)))
@@ -2455,8 +2459,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
         then None
       else if eval_bool_form_to_bool gc pi dbs
               (f_eq
-               (addr_concat_form func_form
-                (addr_make_form rel_nargs_i))
+               (addr_concat_form_from_list_smart func_form rel_nargs_i)
                dest_addr)
         then Some
              (rel_nargs_i,
@@ -2469,7 +2472,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
   let rec find ((sp, adv_pi, rwas) : real_world) (rel : int list)
         : (int list * int * symb_pair) option =
     if eval_bool_form_to_bool gc pi dbs
-       (f_eq (addr_concat_form func_form (addr_make_form rel)) dest_addr)
+       (f_eq (addr_concat_form_from_list_smart func_form rel) dest_addr)
     then Some (rel, adv_pi, sp)
     else let nargs = List.length rwas in
          let rec loop_args i =
@@ -2477,7 +2480,7 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
              then try_sub_funs sp rel adv_pi nargs
            else let rel_i = rel @ [i] in
                 let addr_i =
-                  addr_concat_form func_form (addr_make_form rel_i) in
+                  addr_concat_form_from_list_smart func_form rel_i in
                 if eval_bool_form_to_bool gc pi dbs
                    (addr_le_form addr_i dest_addr)
                 then match List.nth rwas (i - 1) with
@@ -2556,13 +2559,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
         let iip = sme_ord.path.inter_id_path in
-        let addr = addr_concat_form func_form (addr_make_form rel) in
+        let addr = addr_concat_form_from_list_smart func_form rel in
         if List.take 2 iip = [root; comp] && sme_ord.dir = In
         then (assert (List.length iip = 3 && List.nth iip 2 = sub);
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state c.gc dbs false addr sbt state_args
+                match_ord_sme_in_state false addr sbt state_args
                 sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
@@ -2671,7 +2674,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | SMET_Ord sme_ord        ->
         let (root, func_id) = func_sp in
         let iip = sme_ord.path.inter_id_path in
-        let addr = addr_concat_form func_form (addr_make_form rel) in
+        let addr = addr_concat_form_from_list_smart func_form rel in
         if List.take 2 iip = [root; comp] && sme_ord.dir = In
         then (assert (List.length iip = 3 && List.nth iip 2 = sub);
               if sbt.is_initial
@@ -2686,7 +2689,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               else let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state c.gc dbs false addr sbt state_args
+                     match_ord_sme_in_state false addr sbt state_args
                      sme_ord in
                    (ConfigRealRunning
                     {maps = c.maps;
@@ -2746,7 +2749,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         let iip = sme_ord.path.inter_id_path in
-        let addr = addr_concat_form func_form (addr_make_form rel) in
+        let addr = addr_concat_form_from_list_smart func_form rel in
         if iip = [root; basic] && sme_ord.dir = In &&
            eval_bool_form_to_bool c.gc pi dbs
            (f_and
@@ -2764,7 +2767,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
              else let sme_ord =
                     drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                   let (lc, ins) =
-                    match_ord_sme_in_state c.gc dbs false addr sbt state_args
+                    match_ord_sme_in_state false addr sbt state_args
                     sme_ord in
                   (ConfigRealRunning
                    {maps = c.maps;
@@ -2857,7 +2860,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         let {id = state_id; args = state_args} =
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
-        let addr = addr_concat_form func_form (addr_make_form rel) in
+        let addr = addr_concat_form_from_list_smart func_form rel in
         (match sme_ord.path.inter_id_path with
          | [root'; comp'; sub'] ->
              (assert
@@ -2866,7 +2869,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
               let sme_ord =
                 drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
               let (lc, ins) =
-                match_ord_sme_in_state c.gc dbs false addr sbt state_args
+                match_ord_sme_in_state false addr sbt state_args
                 sme_ord in
               (ConfigRealRunning
                {maps = c.maps;
@@ -2900,7 +2903,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       then None
       else let rel_i = rel @ [i] in
            let addr_i =
-             addr_concat_form func_form (addr_make_form rel_i) in
+             addr_concat_form_from_list_smart func_form rel_i in
            if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_addr addr_i)
            then Some i
@@ -2910,7 +2913,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       then None
       else let rel_i = rel @ [i] in
            let addr_i =
-             addr_concat_form func_form (addr_make_form rel_i) in
+             addr_concat_form_from_list_smart func_form rel_i in
            if eval_bool_form_to_bool c.gc pi dbs
               (f_eq dest_addr addr_i)
            then Some i
@@ -2960,7 +2963,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (state_id : symbol) (state_args : form list) (sbt : state_body_tyd)
       (param_or_sub_fun_name : symbol) (id_dir : symbol)
         : config * effect =
-    let addr = addr_concat_form func_form (addr_make_form rel) in
+    let addr = addr_concat_form_from_list_smart func_form rel in
     match c.sme with
     | SMET_Ord sme_ord ->
         let sme_ord =
@@ -2970,7 +2973,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           | Some sme -> sme in
         (assert (sme_ord.dir = Out);
          let (lc, ins) =
-           match_ord_sme_in_state c.gc dbs false addr sbt state_args sme_ord in
+           match_ord_sme_in_state false addr sbt state_args sme_ord in
          (ConfigRealRunning
           {maps = c.maps;
            gc   = c.gc;
@@ -3048,7 +3051,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else let rwrso = select_rel_addr_of_real_world c.maps rel c.rw in
          let cur_addr =
-           addr_concat_form func_form (addr_make_form rel) in
+           addr_concat_form_from_list_smart func_form rel in
          if eval_bool_form_to_bool c.gc pi dbs
             (f_eq dest_addr cur_addr)
            then failure "should not happen"
@@ -3104,7 +3107,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                     let sme_ord =
                       drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                     let (lc, ins) =
-                      match_ord_sme_in_state c.gc dbs false func_form
+                      match_ord_sme_in_state false func_form
                       sbt state_args sme_ord in
                     (ConfigIdealRunning
                      {maps = c.maps;
@@ -3179,7 +3182,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                          drop_head_of_msg_path_in_sent_msg_expr_ord_tyd
                          sme_ord in
                        let (lc, ins) =
-                         match_ord_sme_in_state c.gc dbs false func_form
+                         match_ord_sme_in_state false func_form
                          sbt state_args sme_ord in
                        (ConfigIdealRunning
                         {maps = c.maps;
@@ -3279,7 +3282,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                    let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state c.gc dbs true source_addr state_bt
+                     match_ord_sme_in_state true source_addr state_bt
                      state_args sme_ord in
                    (ConfigIdealRunning
                     {maps = c.maps;
@@ -3353,7 +3356,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              let (lc, ins) =
-               match_ord_sme_in_state c.gc dbs true sim_rf_addr state_bt
+               match_ord_sme_in_state true sim_rf_addr state_bt
                state_args sme_ord in
              (ConfigIdealRunning
               {maps = c.maps;
@@ -3396,7 +3399,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 eval_bool_form_to_bool c.gc pi dbs
                 (f_eq source_pi (int_form expect_source_adv_pi))
              then let (lc, ins) =
-                    match_ord_sme_in_state c.gc dbs true sim_rf_addr state_bt
+                    match_ord_sme_in_state true sim_rf_addr state_bt
                     state_args sme_ord in
                   (ConfigIdealRunning
                    {maps = c.maps;
@@ -3455,7 +3458,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         if i > sim_rf_num_params
         then None
         else let addr =
-               addr_concat_form sim_rf_addr (addr_make_form [i]) in
+               addr_concat_form_from_list_smart sim_rf_addr [i] in
              if eval_bool_form_to_bool c.gc pi dbs
                 (f_eq dest_addr addr)
              then Some i
@@ -3464,8 +3467,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         if i > sim_rf_num_sub_funs
         then None
         else let addr =
-               addr_concat_form sim_rf_addr
-               (addr_make_form [sim_rf_num_params + i]) in
+               addr_concat_form_from_list_smart sim_rf_addr
+               [sim_rf_num_params + i] in
              if eval_bool_form_to_bool c.gc pi dbs
                 (f_eq dest_addr addr)
              then Some i
