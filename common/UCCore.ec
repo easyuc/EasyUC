@@ -11,17 +11,15 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
 require export UCBasicTypes.
 
 (* module type used for real protocols and ideal functionalities
-   (collectively, "functionalities"), as well as adversaries and
-   simulators *)
+   (collectively, "functionalities") *)
 
-(* precondition for ordinary (non-adversary/simulator)
-   functionalities: *)
+(* precondition for functionalities: *)
 
 op func_init_pre (self : addr) : bool = inc self adv.
 
 (* envport0 self adv pt says that pt is part of the environment, not
-   the functionality or adversary; it's allowed to be the root port,
-   env_root_port (([], 0)) *)
+   the functionality or adversary; it's allowed to be the root port of
+   the environment, env_root_port (([], 0)) *)
 
 op envport0 (self : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1.
@@ -29,24 +27,37 @@ op envport0 (self : addr, pt : port) : bool =
 module type FUNC = {
   (* initialize functionality telling it its address (self)
 
-     in the case of an adversary/simulator, this address will
-     always be adv, and the argument is ignored
-
-     precondition for ordinary (non-adversary/simulator)
-     functionalties: func_init_pre self *)
+     precondition: func_init_pre self *)
 
   proc init(self : addr) : unit
 
   (* respond to an incoming message, producing an optional
      outgoing message (None means error)
 
-     messages to a functionality should have addresses that are >=
-     self (in the case of an adversary/simulator, = self)
+     messages to a functionality should have destination addresses
+     that are >= self
 
-     if Some m' is returned, then the destination address of m' should
-     not be >= self, and the source address of m' should be >= self
-     (in the case of an adversary/simulator, the source address should
-     be = self) *)
+     if Some m' is returned, then the source address of m' should be
+     >= self; when m' is a direct message, the destination address should
+     satisfy envport self; when m' is an adversarial message, the destination
+     port should be (adv, adv_pi), for adv_pi > 0 *)
+
+  proc invoke(m : msg) : msg option
+}.
+
+(* module type used for an adversary (including the application of
+   a simulator to an adversary) *)
+
+module type ADV = {
+  proc init() : unit
+
+  (* messages sent to the adversary should have destination addresses
+     equal to adv; the destination port index should be 0 iff the
+     message is from the root of the environment; otherwise it should
+     be > 0
+
+     see the code for interfaces to understand what will be required
+     of outgoing messages from the adversary (for failure to not occur) *)
 
   proc invoke(m : msg) : msg option
 }.
@@ -181,14 +192,14 @@ op main_guard (func : addr, in_guard : int fset, m : msg) : bool =
   (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
    0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func m.`3).
 
-module MI (Func : FUNC, Adv : FUNC) : INTER = {
+module MI (Func : FUNC, Adv : ADV) : INTER = {
   var func : addr
   var in_guard : int fset
 
   proc init(func_ : addr, in_guard_ : int fset) : unit = {
     func <- func_; in_guard <- in_guard_;
     Func.init(func);
-    Adv.init(witness);  (* argument ignored *)
+    Adv.init();
   }
 
   proc after_func(r : msg option) : msg option * msg * bool = {
@@ -279,7 +290,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
 
 (* check that invariant is actually preserved: *)
 
-lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func ==>
@@ -296,7 +307,7 @@ auto => /> &hr pre r_not_none.
 rewrite !negb_or /= not_dir /#.
 qed.
 
-lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func ==>
@@ -318,7 +329,7 @@ rewrite -!eq_iff => -> /=.
 by rewrite IntOrder.lerNgt.
 qed.
 
-lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).invoke :
    inter_init_pre MI.func ==>
@@ -380,7 +391,7 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
 
-lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -391,7 +402,7 @@ proof.
 proc; auto; smt(some_oget le_refl).
 qed.
 
-lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -402,7 +413,7 @@ proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func /\ after_func_error MI.func r ==>
@@ -443,7 +454,7 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -454,7 +465,7 @@ proof.
 proc; auto; smt(some_oget).
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -465,7 +476,7 @@ proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
-lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func /\ after_adv_error MI.func r ==>
@@ -739,8 +750,8 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
 by rewrite !epdp.
 qed.
 
-module DummyAdv : FUNC = {
-  proc init(self_ : addr) : unit = {
+module DummyAdv : ADV = {
+  proc init() : unit = {
   }
 
   proc invoke(m : msg) : msg option = {
@@ -775,6 +786,8 @@ end DummyAdversary.
 
 abstract theory MakeSimulator.
 
+(* construct a simulator from a core *)
+
 (* begin theory parameters *)
 
 op core_pi : int.
@@ -785,6 +798,8 @@ axiom core_pi_gt0 :
 (* end theory parameters *)
 
 (* loop invariant for simulator's while loop *)
+
+(* TODO - this is out of date: *)
 
 op ms_loop_invar
      (if_addr_opt : addr option,
@@ -812,16 +827,16 @@ op ms_loop_invar
      (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
      0 < (oget r).`3.`2 < core_pi))).
 
-module MS (Core : FUNC, Adv : FUNC) : FUNC = {
+module MS (Core : ADV) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
      received with destination port index core_pi *)
 
   var if_addr_opt : addr option
 
-  proc init(self_ : addr) : unit = {
+  proc init() : unit = {
     if_addr_opt <- None;
-    Core.init(witness);
-    Adv.init(witness);
+    Core.init();
+    Adv.init();
   }
 
   proc after_core(r : msg option) : msg option * msg * bool = {
@@ -911,7 +926,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     var r : msg option <- None;
     if (m.`2.`2 = core_pi) {  (* so m.`3 <> env_root_port *)
       if (if_addr_opt = None) {
-        if (m.`3.`2 = 1) {  (* ideal functionality's external port index *)
+        if (m.`3.`2 = 1) {  (* ideal functionality's port index *)
           if_addr_opt <- Some m.`3.`1;
           r <@ loop(m);
         }
@@ -928,4 +943,3 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
 }.
 
 end MakeSimulator.
-
