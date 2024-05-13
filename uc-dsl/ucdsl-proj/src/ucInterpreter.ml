@@ -586,8 +586,7 @@ type local_context_base =
   | LCB_EnvPort of form
   | LCB_IntPort of EcIdent.t * form  (* of type port *)
 
-let lc_create (gc : global_context) (dbs : rewriting_dbs)
-    (lcbs : local_context_base list) : local_context =
+let lc_create (lcbs : local_context_base list) : local_context =
   [EcIdent.Mid.of_list
    (List.map
     (fun lcb ->
@@ -1615,12 +1614,30 @@ let inter_check_sent_msg_expr_consistency
   loc_source loc_dest maps gc pi dbs sme_ty;
   sme_ty
 
+let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
+    (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
+  let simpl = simplify_formula gc dbs in
+  match sme with
+  | SMET_Ord sme    ->
+      SMET_Ord
+      {mode           = sme.mode;
+       dir            = sme.dir;
+       src_port_form  = simpl sme.src_port_form;
+       path           = sme.path;
+       args           = List.map simpl sme.args;
+       dest_port_form = simpl sme.dest_port_form}
+  | SMET_EnvAdv sme ->
+      SMET_EnvAdv
+      {src_port_form  = simpl sme.src_port_form;
+       dest_port_form = simpl sme.dest_port_form}
+
 let send_message_to_real_or_ideal_config
     (conf : config) (sme : sent_msg_expr) : config =
   match conf with
   | ConfigReal c  ->
       let sme =
         inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
+      let sme = simplify_sent_msg_expr c.gc c.dbs sme in
       ConfigRealSending
       {maps = c.maps;
        gc   = c.gc;
@@ -1634,6 +1651,7 @@ let send_message_to_real_or_ideal_config
   | ConfigIdeal c ->
       let sme =
         inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
+      let sme = simplify_sent_msg_expr c.gc c.dbs sme in
       ConfigIdealSending
       {maps = c.maps;
        gc   = c.gc;
@@ -2390,6 +2408,7 @@ let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
     (is_sim : bool) (addr : form) (sbt : state_body_tyd)
     (state_args : form list) (sme : sent_msg_expr_ord_tyd)
       : local_context * instruction_tyd list located =
+  let addr = simplify_formula gc dbs addr in
   let port_of_addr i = make_port_form addr (int_form i) in
   let state_params =
     List.map (fun (id, f) -> (LCB_Bound (id, f)))
@@ -2413,7 +2432,7 @@ let match_ord_sme_in_state (gc : global_context) (dbs : rewriting_dbs)
      functionality and [RealFun; Party] in its simulator will be
      assigned the same port index *) 
   let lc =
-    lc_create gc dbs
+    lc_create
     (state_params   @
      vars           @
      mm_binds       @
