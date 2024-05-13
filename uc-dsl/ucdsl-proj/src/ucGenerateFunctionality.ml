@@ -505,36 +505,39 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[}@]@;"
   in
   let print_proc_invoke () =
- (*   let r, m = "r", "m" in
-    let print_dir_pi_guard ppf () : unit =
-      let basics = SLMap.filter_map (fun iip _ ->
-        if List.hd iip = root && List.hd (List.tl iip) = ifbt.id_dir_inter
-        then Some (List.hd (List.tl (List.tl iip)))
-        else None
-                       ) mbmap in
-      let basics = snd (List.split (SLMap.bindings basics)) in
-      let basics = List.sort_uniq String.compare basics in
-      let bhd = List.hd basics in
-      let btl = List.tl basics in
-      let compn = uc_name ifbt.id_dir_inter in
-      Format.fprintf ppf "%s.`2.`2 = %s.%s.pi" m compn bhd;
-      List.iter (fun bn ->
-        Format.fprintf ppf "@ \\/@ %s.`2.`2 = %s.%s.pi" m compn bn) btl
+    let r, m = "r", "m" in
+    let print_subfun_or_param_invoke ppf (nm : string) : unit =
+      Format.fprintf ppf
+      "@[if@ (%s <= %s.`2)@ {%s %s %s.invoke(%s);}@]@;"
+         (addr_op_call nm) m r "<@" nm m
     in
+    let print_party_invoke ppf (nm : string) : unit =
+      Format.fprintf ppf
+      "@[if ((%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s %s %s.`3)@]@;"
+         m mode_Dir m (extport_op_call nm) _self _adv m;
+      Format.fprintf ppf "@[\\/@]@;";
+      Format.fprintf ppf
+        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s))@]@;"
+        m mode_Adv m (extport_op_call nm) m _adv;
+      Format.fprintf ppf "@[\\/@]@;";
+      Format.fprintf ppf
+      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s <= %s.`3)@]@;"
+         m mode_Dir m (intport_op_call nm) _self m;
+      Format.fprintf ppf "@[{%s %s %s(%s);}@]@;"
+        r "<@" (proc_party_str nm) m
+    in
+
     Format.fprintf ppf "@[proc invoke(%s : %a) : %a option = {@]@;<0 2>@[<v>"
       m (pp_type sc) msg_ty (pp_type sc) msg_ty;
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       r (pp_type sc) msg_ty;
-    Format.fprintf ppf
-      "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ (%a)@ /\\@ envport %s %s %s.`3)@]"
-         m mode_Dir m _self print_dir_pi_guard()  _self _adv m;
-     Format.fprintf ppf "\\/";
-     Format.fprintf ppf
-       "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
-          m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m _adv;
-    Format.fprintf ppf "@;<0 2>@[%s %s parties(%s);@]" r "<@" m;
-    Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
-    *)()
+    IdMap.iter (fun sfn _ ->
+        print_subfun_or_param_invoke ppf sfn) rfbt.sub_funs;
+    IdMap.iter (fun pn _ ->
+        print_subfun_or_param_invoke ppf pn) rfbt.params;
+    IdMap.iter (fun pn _ ->
+      print_party_invoke ppf pn) rfbt.parties;
+    Format.fprintf ppf "@[return %s;@]@;}@;" r
   in
 
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
@@ -547,9 +550,6 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       print_mmc_procs sc root mbmap ppf states sn dii (Some pn);
       print_proc_parties sc root id mbmap ps sn dii ppf states
   ) rfbt.parties;
-
-(*  print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF;
-  print_proc_parties sc root id mbmap ppf ifbt;*)
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
   
