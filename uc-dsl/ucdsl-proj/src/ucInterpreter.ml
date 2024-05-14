@@ -311,6 +311,88 @@ let gc_create (env : env) : global_context =
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
+(* try to destruct canonical addresses and ports
+
+   addresses are canonical if they consist of either just func_id, or
+   func_id concatenated with a list of integer constants, constructed
+   with nil and cons
+
+     destruction produces an element of int list - [] in the first case
+
+   ports are canonical if they consist of the pair of a canonical
+   address and an integer constant
+
+     destruction produces an element of int list * int *)
+
+let destr_err() = raise (DestrError "can't destruct address or port")
+
+let is_concat_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path (EcPath.fromqsymbol (ec_qsym_prefix_list, "++"))
+  with _ -> false
+
+let is_cons_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path
+    (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
+  with _ -> false
+
+let is_nil_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path
+    (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
+  with _ -> false
+
+let is_func_id (f : form) : bool =
+  try
+    let id = destr_local f in
+    EcIdent.id_equal id func_id
+  with _ -> false
+
+(* the following functions can raise DestrError *)
+
+let destr_int (f : form) : int =
+  EcBigInt.to_int (destr_int f)
+
+let rec destr_int_list f : int list =
+  if is_nil_op f
+  then []
+  else match destr_app f with
+       | (x, [y; z]) ->
+           if is_cons_op x
+           then destr_int y :: destr_int_list z
+           else destr_err ()
+       | _           -> destr_err ()
+
+let destr_addr (addr : form) : int list =
+  if is_func_id addr
+  then []
+  else match destr_app addr with
+       | (x, [y; z]) ->
+           if not (is_concat_op x)
+             then destr_err ()
+           else if (is_func_id y)
+             then destr_int_list z
+           else destr_err ()
+       | _           -> destr_err ()
+
+(* end of exception raising functions *)
+
+let try_destr_addr (addr : form) : int list option =
+  try Some (destr_addr addr) with
+  | _ -> None
+
+let try_destr_port (port : form) : (int list * int) option =
+  try
+    Some
+    (match destr_tuple port with
+     | [x; y] -> (destr_addr x, destr_int y)
+     | _      -> destr_err ())
+  with _ -> None
+
 (* pretty printer for global contexts: separates elements
    by commas, allowing breaks *)
 
@@ -1567,6 +1649,23 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
        EffectMsgOut (pp_sme, ctrl))
   | _                    -> raise ConfigError
 
+let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
+    (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
+  let simpl = simplify_formula gc dbs in
+  match sme with
+  | SMET_Ord sme    ->
+      SMET_Ord
+      {mode           = sme.mode;
+       dir            = sme.dir;
+       src_port_form  = simpl sme.src_port_form;
+       path           = sme.path;
+       args           = List.map simpl sme.args;
+       dest_port_form = simpl sme.dest_port_form}
+  | SMET_EnvAdv sme ->
+      SMET_EnvAdv
+      {src_port_form  = simpl sme.src_port_form;
+       dest_port_form = simpl sme.dest_port_form}
+
 let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
     (loc_source : EcLocation.t) (loc_dest : EcLocation.t)
@@ -1577,13 +1676,19 @@ let check_sme_port_index_consistency_core
     match sme.path.inter_id_path with
     | [root; comp; sub] ->
         let porti = get_pi_of_sub_interface maps root comp sub in
-        if eval_bool_form_to_bool gc pi dbs
-           (f_eq pi_form (int_form porti))
+        if try
+             eval_bool_form_to_bool gc pi dbs
+             (f_eq pi_form (int_form porti))
+           with
+           | ECProofEngine -> false
         then ()
         else error src_or_dest_str loc_src_or_dest
     | [_; _]            ->
-        if eval_bool_form_to_bool gc pi dbs
-           (f_eq pi_form (int_form 1))
+        if try
+             eval_bool_form_to_bool gc pi dbs
+             (f_eq pi_form (int_form 1))
+           with
+           | ECProofEngine -> false
         then ()
         else error src_or_dest_str loc_src_or_dest
     | _                 -> failure "cannot happen" in
@@ -1607,6 +1712,7 @@ let inter_check_sent_msg_expr_consistency
     (maps : maps_tyd) (gc : global_context) (pi : prover_infos)
     (dbs : rewriting_dbs) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   let sme_ty = inter_check_sent_msg_expr maps (env_of_gc gc) sme in
+  let sme_ty = simplify_sent_msg_expr gc dbs sme_ty in
   let loc_source = loc_of_src_of_sent_msg_expr sme in
   let loc_dest = loc_of_dest_of_sent_msg_expr sme in
   check_sme_port_index_consistency_core
@@ -1614,27 +1720,10 @@ let inter_check_sent_msg_expr_consistency
     error_message loc_of_port_index
     (fun ppf ->
        fprintf ppf
-       "@[%s@ port@ index@ is@ inconsistent@ with@ message@ path@]"
+       "@[%s@ port@ index@ is@ (may@ be)@ inconsistent@ with@ message@ path@]"
        port_index_kind))
   loc_source loc_dest maps gc pi dbs sme_ty;
   sme_ty
-
-let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
-    (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
-  let simpl = simplify_formula gc dbs in
-  match sme with
-  | SMET_Ord sme    ->
-      SMET_Ord
-      {mode           = sme.mode;
-       dir            = sme.dir;
-       src_port_form  = simpl sme.src_port_form;
-       path           = sme.path;
-       args           = List.map simpl sme.args;
-       dest_port_form = simpl sme.dest_port_form}
-  | SMET_EnvAdv sme ->
-      SMET_EnvAdv
-      {src_port_form  = simpl sme.src_port_form;
-       dest_port_form = simpl sme.dest_port_form}
 
 let send_message_to_real_or_ideal_config
     (conf : config) (sme : sent_msg_expr) : config =
@@ -1642,7 +1731,6 @@ let send_message_to_real_or_ideal_config
   | ConfigReal c  ->
       let sme =
         inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
-      let sme = simplify_sent_msg_expr c.gc c.dbs sme in
       ConfigRealSending
       {maps = c.maps;
        gc   = c.gc;
@@ -1656,7 +1744,6 @@ let send_message_to_real_or_ideal_config
   | ConfigIdeal c ->
       let sme =
         inter_check_sent_msg_expr_consistency c.maps c.gc c.pi c.dbs sme in
-      let sme = simplify_sent_msg_expr c.gc c.dbs sme in
       ConfigIdealSending
       {maps = c.maps;
        gc   = c.gc;
@@ -2252,7 +2339,6 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
          {mode           = Adv;
           dir            = Out;
           src_port_form  =
-            (* TODO - use hint database when possible - see UCBasicTypes *)
             simpl
             (make_port_form
              (addr_concat_form_from_list_smart sim_rf_addr [child_i])
@@ -2284,7 +2370,7 @@ let iw_step_send_and_transition_from_sim (c : config_ideal_running)
   match port_form with
   | None ->
       (match List.length iip with
-       | 1 -> 
+       | 1 ->
            iw_step_send_and_transition_from_sim_basic_adv_left c pi dbs base
            sim_sp iip msg msg_args new_iws i
        | 3 ->
@@ -2434,7 +2520,7 @@ let match_ord_sme_in_state (is_sim : bool) (addr : form)
      we use the ordering List.compare String.compare; this is stable
      under the prepending of RealFun, so that [Party] in the real
      functionality and [RealFun; Party] in its simulator will be
-     assigned the same port index *) 
+     assigned the same port index *)
   let lc =
     lc_create
     (state_params   @
@@ -3252,7 +3338,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            then let sim_st = List.nth c.iws.other_sims_states i in
                 Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
            else find_sim_from_left (i + 1)
-    else None in    
+    else None in
 
   let dest_adv_to_sim (i : int) (sim_sp : symb_pair) (base : int)
       (sim_rf_addr : form option) (sim_state : state) : config * effect =
@@ -3506,7 +3592,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_adv_to_sim_or_ideal_func (i : int) : config * effect =
     match find_sim_from_right i with
-    | None                                             -> 
+    | None                                             ->
         let (func_sp, base) = c.iw.iw_ideal_func in
         let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
         let ifbt = ideal_fun_body_tyd_of fbt in
@@ -3531,7 +3617,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then if i = List.length c.iws.other_sims_states - 1
            then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
            else match find_sim_from_left (i + 1) with
-                | None                                             -> 
+                | None                                             ->
                     msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
                 | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
                     let {addr = sim_rf_addr; state = sim_st} = sim_st in
@@ -3544,7 +3630,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 let ifbt = ideal_fun_body_tyd_of fbt in
                 from_adv_or_sim_to_ideal_fun func_sp base ifbt
            else match find_sim_from_right (i - 1) with
-                | None                                             -> 
+                | None                                             ->
                     let (func_sp, base) = c.iw.iw_ideal_func in
                     let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
                     let ifbt = ideal_fun_body_tyd_of fbt in
@@ -3570,7 +3656,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then if eval_bool_form_to_bool c.gc pi dbs
               (f_eq source_pi (int_form 0))
            then fail_out_of_running_or_sending_config (ConfigIdealSending c)
-           else from_adv_to_sim_or_ideal_func 
+           else from_adv_to_sim_or_ideal_func
                 (List.length c.iws.other_sims_states - 1)
     else if eval_bool_form_to_bool c.gc pi dbs
             (f_iff
@@ -3584,7 +3670,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | Dir -> msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
     | Adv ->
         (match find_sim_from_left (-1) with
-         | None                                -> 
+         | None                                ->
              msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
          | Some (i, sim_sp, adv_pi, _, sim_st) ->
              let {addr = sim_rf_addr; state = sim_st} = sim_st in
