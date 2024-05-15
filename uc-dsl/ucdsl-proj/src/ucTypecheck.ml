@@ -140,13 +140,25 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
               ("@[more@ than@ the@ allowed@ maximum@ number@ (%d)@ of@ " ^^
                "parameters@]")
               max_msg_params)
-      else {dir = md.dir;
-            params_map =
-              check_name_type_bindings_top
-              (fun ppf ->
-                 fprintf ppf "@[duplicate@ message@ parameter@ name@]")
-              md.params;
-            port = Option.map unloc md.port})
+      else let params_map =
+                 check_name_type_bindings_top
+                 (fun ppf ->
+                    fprintf ppf "@[duplicate@ message@ parameter@ name@]")
+                 md.params in
+           let port =
+                 Option.map
+                 (fun idl ->
+                    let id = unloc idl in
+                    if IdMap.mem id params_map
+                    then error_message (loc idl)
+                         (fun ppf ->
+                            fprintf ppf
+                            "@[name@ also@ used@ as@ parameter@ name@]")
+                    else id)
+                 md.port in
+           {dir        = md.dir;
+            params_map = params_map;
+            port       = port})
    msg_map)
 
 let check_comp_item
@@ -181,7 +193,8 @@ let check_comp_inter
 
 let check_inter
     (root : symbol) (e_maps : symb_pair -> bool) (ik : inter_kind)
-    (inter_map : inter_tyd IdPairMap.t) (ni : named_inter) =
+    (inter_map : inter_tyd IdPairMap.t) (ni : named_inter)
+      : inter_tyd IdPairMap.t =
   let uid = unloc ni.id in
   let () =
     if e_maps (root, uid)
