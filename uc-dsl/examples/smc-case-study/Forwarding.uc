@@ -8,10 +8,10 @@
    single functionality party, to which forwarding requests come and from
    which forwarding responses originate).
 
-   the identifiers in "pt1@" and "@pt2" are used to help in name
-   choice in the generation of EasyCrypt code. But see below how they
-   are used in message pattern matching and send and transition
-   instructions. *)
+   the identifiers in the @s and the parameter names are used in code
+   generation and also useful when writing documentation. See below
+   how they are used in message pattern matching and send and
+   transition instructions. *)
 
 direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send
