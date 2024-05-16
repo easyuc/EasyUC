@@ -639,8 +639,8 @@ Eq
       {"adv":"addr"},
       {"pt1":"port"},
       {"pt2":"port"},
-      "envport func adv pt2",
-      "envport func adv pt1",
+      "envport func pt2",
+      "envport func pt1",
       "inc func adv"
     ]
   |} in
@@ -680,8 +680,8 @@ nissef (epdp_text_key.`dec
       {"rand1":"exp"},
       "rand1 \\in dexp",
       "rand \\in dexp",
-      "envport func adv pt2",
-      "envport func adv pt1",
+      "envport func pt2",
+      "envport func pt1",
       "inc func adv"
     ]
   |} in
@@ -719,10 +719,10 @@ iufue (envport (func ++ [1; 1; 1]) adv)
       {"pt2":"port"},
       {"rand":"exp"},
       "rand \\in dexp",
-      "envport func adv pt2",
-      "envport func adv pt1",
+      "envport func pt2",
+      "envport func pt1",
       "inc func adv"
     ]
   |} in
-  let concl = "envport (func ++ [1; 1; 1]) adv (func ++ [1; 1], 2)" in
+  let concl = "envport (func ++ [1; 1; 1]) (func ++ [1; 1], 2)" in
   testSymplify json concl;
