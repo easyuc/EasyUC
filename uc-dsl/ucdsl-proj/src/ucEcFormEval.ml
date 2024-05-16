@@ -840,10 +840,10 @@ let rec try_simp (proof : EcCoreGoal.proof)
         : EcCoreGoal.proof option =
   let simps =
     [
+      try_rewrite_addr_ops_on_literals;
       try_move_simplify_trivial;
       try_hyp_rewriting_cycle p_id;
       try_rewriting_hints p_id rw_lems;
-      try_rewrite_addr_ops_on_literals;
     ] in
   let simp proof =
     List.fold_left (fun acc simpt ->
