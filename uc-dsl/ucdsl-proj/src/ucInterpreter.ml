@@ -313,16 +313,23 @@ let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
 (* try to destruct canonical addresses and ports
 
-   addresses are canonical if they consist of either just func_id, or
-   func_id concatenated with a list of integer constants, constructed
-   with nil and cons
+   functionality addresses are canonical iff they consist of either
+   just func_id, or func_id concatenated with a list of integer
+   constants, constructed with nil and cons
 
-     destruction produces an element of int list - [] in the first case
+     destruction produces the relative address, an element of int list
+     - [] in the first case
 
-   ports are canonical if they consist of the pair of a canonical
-   address and an integer constant
+   functionality ports are canonical iff they consist of the pair of a
+   canonical functionality address and an integer constant
 
-     destruction produces an element of int list * int *)
+     destruction produces an element of int list * int - the relative
+     address paired with the port index
+
+   adversary ports are canonical iff they consist of the adversary
+   operator paired with an integer constant
+
+     destruction produces the port index *)
 
 let destr_err() = raise (DestrError "can't destruct address or port")
 
@@ -352,6 +359,13 @@ let is_func_id (f : form) : bool =
     EcIdent.id_equal id func_id
   with _ -> false
 
+let is_adv_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path
+    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
+  with _ -> false
+
 (* the following functions can raise DestrError *)
 
 let destr_int (f : form) : int =
@@ -367,7 +381,7 @@ let rec destr_int_list f : int list =
            else destr_err ()
        | _           -> destr_err ()
 
-let destr_addr (addr : form) : int list =
+let destr_func_addr (addr : form) : int list =
   if is_func_id addr
   then []
   else match destr_app addr with
@@ -381,15 +395,26 @@ let destr_addr (addr : form) : int list =
 
 (* end of exception raising functions *)
 
-let try_destr_addr (addr : form) : int list option =
-  try Some (destr_addr addr) with
+let try_destr_fun_addr (addr : form) : int list option =
+  try Some (destr_func_addr addr) with
   | _ -> None
 
-let try_destr_port (port : form) : (int list * int) option =
+let try_destr_func_port (port : form) : (int list * int) option =
   try
     Some
     (match destr_tuple port with
-     | [x; y] -> (destr_addr x, destr_int y)
+     | [x; y] -> (destr_func_addr x, destr_int y)
+     | _      -> destr_err ())
+  with _ -> None
+
+let try_destr_adv_port (port : form) : int option =
+  try
+    Some
+    (match destr_tuple port with
+     | [x; y] ->
+         if is_adv_op x
+         then destr_int y
+         else destr_err ()
      | _      -> destr_err ())
   with _ -> None
 
