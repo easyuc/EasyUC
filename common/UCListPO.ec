@@ -571,6 +571,20 @@ rewrite inc_sym.
 apply inc_nle_l.
 qed.
 
+lemma inc_nlt_l (xs ys : 'a list) :
+  inc xs ys => ! xs < ys.
+proof.
+rewrite /inc /(<) /=.
+by move => ->.
+qed.
+
+lemma inc_nlt_r (xs ys : 'a list) :
+  inc xs ys => ! ys < xs.
+proof.
+rewrite inc_sym.
+apply inc_nlt_l.
+qed.
+
 lemma inc_non_nil (xs ys : 'a list) :
   inc xs ys => xs <> [] /\ ys <> [].
 proof.

@@ -309,9 +309,10 @@ move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
 
-(* lemma inc_nle_r (xs ys : 'a list), inc xs ys => ! ys <= xs
-   lemma inc_nle_l (xs ys : 'a list), inc xs ys => ! xs <= ys.
-*)
+(* lemma inc_nle_l (xs ys : 'a list) : inc xs ys => ! xs <= ys.
+   lemma inc_nle_r (xs ys : 'a list) : inc xs ys => ! ys <= xs
+   lemma inc_nlt_l (xs ys : 'a list) : inc xs ys => ! xs < ys.
+   lemma inc_nlt_r (xs ys : 'a list) : inc xs ys => ! ys < xs *)
 
 lemma inc_ext_nle_r (func adv xs : addr) :
   inc func adv => ! adv <= func ++ xs.
@@ -359,7 +360,7 @@ hint rewrite ucdsl_interpreter_hints :
   envport_ext_func envport_ext_l_func
   envport_ne_func envport_not_gt_func
   inc_ext_nle_r inc_ext_nle_r inc_ne_ext_l
-  inc_ne inc_nle_r inc_nle_l.
+  inc_ne inc_nle_r inc_nle_l inc_nlt_l inc_nlt_r.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
