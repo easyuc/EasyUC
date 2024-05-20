@@ -834,16 +834,22 @@ let try_hyp_rewriting_cycle
   | None ->
      print_endline "try_hyp_rewriting_cycle FAIL";
      None
-  
+
+let do1 ptenv lemma tc =
+    print_endline ("process_rewrite1_core for "^(EcPath.tostring lemma));
+    let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
+    process_rewrite1_core `LtoR pt tc
+
+
 let rec try_simp (proof : EcCoreGoal.proof)
           (rw_lems : EcPath.path list) (p_id : EcIdent.t)
         : EcCoreGoal.proof option =
   let simps =
     [
+      try_rewrite_addr_ops_on_literals;
       try_move_simplify_trivial;
       try_hyp_rewriting_cycle p_id;
       try_rewriting_hints p_id rw_lems;
-      try_rewrite_addr_ops_on_literals;
     ] in
   let simp proof =
     List.fold_left (fun acc simpt ->
@@ -858,16 +864,11 @@ and try_rewriting_hints  (p_id : EcIdent.t) (rw_lems : EcPath.path list)
   let pregoal = get_last_pregoal proof in
   let penv = EcCoreGoal.proofenv_of_proof proof in
   let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
-  let do1 lemma tc =
-    print_endline ("process_rewrite1_core for "^(EcPath.tostring lemma));
-    let pt = EcProofTerm.pt_of_uglobal_r (EcProofTerm.copy ptenv) lemma in
-    process_rewrite1_core `LtoR pt tc
-  in
   let goal_no proof = List.length (EcCoreGoal.all_opened proof) in
   let gn = goal_no proof in
   let try_rewriting_hint lemma =
     try
-      let p' = run_tac (do1 lemma) proof in
+      let p' = run_tac (do1 ptenv lemma) proof in
       print_endline "***RW SUCCESS***";
       pp_proof p';
       if gn=1 && (goal_no p')>1
@@ -891,17 +892,21 @@ and try_rewriting_hints  (p_id : EcIdent.t) (rw_lems : EcPath.path list)
   List.fold_left (fun acc lem ->
       if acc<>None then acc else try_rewriting_hint lem) None rw_lems
 
-
 let simplify_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
-(rw_lems : EcPath.path list) : EcCoreFol.form =
-  (*let proof_a = prelims proof p_id in*)
-  let proof_o = try_simp proof rw_lems p_id in
+      (rw_lems : EcPath.path list)
+(heur : EcCoreGoal.proof -> EcPath.path list -> EcIdent.t -> EcCoreGoal.proof option): EcCoreFol.form =
+  let proof_o = heur proof rw_lems p_id in
   match proof_o with
   | None -> extract_form proof p_id (* no progress happened *)
   | Some pr ->
     match List.length (EcCoreGoal.all_opened pr) with
     | 1 -> extract_form pr p_id         (* success - some progress happened *)
     | _ -> extract_form proof p_id  (* opened more goals than could be closed *)
+
+let simplify_linear_heuristic (proof : EcCoreGoal.proof) (p_id : EcIdent.t) 
+      (rw_lems : EcPath.path list)
+    : EcCoreFol.form =
+simplify_heuristic proof p_id rw_lems try_simp
 
 (*
 let simplify_by_crushing 
@@ -930,10 +935,67 @@ let simplify_by_crushing
     end 
   in
   form_s
-*)
+ *)
+
+let rec try_eval_exponential_time (proof : EcCoreGoal.proof)
+(rw_lems : EcPath.path list) (p_id : EcIdent.t)
+        : EcCoreGoal.proof option =
+  let pregoal = get_last_pregoal proof in
+  let penv = EcCoreGoal.proofenv_of_proof proof in
+  let ptenv = EcProofTerm.ptenv_of_penv pregoal.g_hyps penv in
+  let try_rewriting_hint lemma proof =
+    try
+      let p' = run_tac (do1 ptenv lemma) proof in
+      print_endline "***RW SUCCESS (exponential)***";
+      pp_proof p';
+      changed_proof proof p'
+    with e -> print_endline
+("***RW EXCEPTION (exponential)***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
+      None
+  in
+  
+  let simps =
+    [
+      try_rewrite_addr_ops_on_literals; (*could be further separated into unrolling just one operator*)
+      try_move_simplify_trivial;
+      try_hyp_rewriting_cycle p_id; (*could be separated into single rewrites if needed*)
+      
+    ] in
+  let simps_rw = List.map (fun lem -> try_rewriting_hint lem) rw_lems in
+  let simps_all = simps @ simps_rw in
+  let donec p =
+    let goal_no proof = List.length (EcCoreGoal.all_opened proof) in
+    if (goal_no p)=1
+    then
+      let f = extract_form p p_id in
+      (EcFol.is_true f)||(EcFol.is_false f)
+    else
+      false
+  in
+  let simp proof =
+    List.fold_left (fun acc simpt ->
+        if acc <> None
+        then acc
+        else
+          let po = simpt proof in
+          match po with
+          | None -> None
+          | Some p ->
+             try_eval_exponential_time p rw_lems p_id
+      ) None simps_all
+  in
+  if donec proof
+  then Some proof
+  else simp proof
+
+let simplify_exponential_heuristic
+(proof : EcCoreGoal.proof) (p_id : EcIdent.t) (rw_lems : EcPath.path list)
+    : EcCoreFol.form =
+simplify_heuristic proof p_id rw_lems try_eval_exponential_time
               
-let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form) 
-    (rw_lems : EcPath.path list)  (* TODO - use repeatedly left-to-right *)
+let simplify_formula_heuristic (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
+(rw_lems : EcPath.path list)
+(heurist : EcCoreGoal.proof -> EcIdent.t -> EcPath.path list -> EcCoreFol.form) 
 : EcCoreFol.form =
 (*for conclusion, make a dummy predicate p with form as input*)
   let f_ty = EcCoreFol.f_ty form in
@@ -951,23 +1013,55 @@ let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
   pp_proof proof;
 (*try to simplify form*)  
   (*simplify_by_crushing proof p_id*)
-  simplify_heuristic proof p_id rw_lems
+  heurist proof p_id rw_lems
+
+let simplify_formula (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
+      (rw_lems : EcPath.path list) : EcCoreFol.form =
+  simplify_formula_heuristic hyps form rw_lems simplify_linear_heuristic
+
+let simplify_exponential_time (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
+      (rw_lems : EcPath.path list) : EcCoreFol.form =
+  simplify_formula_heuristic hyps form rw_lems simplify_exponential_heuristic
 
 let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
     (pi : EcProvers.prover_infos) (rw_lems : EcPath.path list)
-      : eval_condition_result =
-  let form = simplify_formula hyps form rw_lems in
-  let () =
+    : eval_condition_result =
+  let form_to_result form =
+    if EcFol.is_true form
+    then Bool true
+    else if EcFol.is_false form
+    then Bool false
+    else Undecided
+  in
+  let ret0 = form_to_result form in
+  if ret0 <> Undecided
+  then ret0
+  else  (* try simplification with linear procedure *)
+   let form1 = simplify_formula hyps form rw_lems in
     debugging_message
     (fun fmt ->
        Format.fprintf fmt
        "@[@[formula@ simplified@ to:@]@\n@[%a@]@]"
-       (EcPrinting.pp_form (ppe_ofhyps hyps)) form) in
-  if EcFol.is_true form
-    then Bool true
-  else if EcFol.is_false form
-    then Bool false
-  else eval_condition_pre_tacs hyps form pi []
+       (EcPrinting.pp_form (ppe_ofhyps hyps)) form1);
+    let ret1 = form_to_result form1 in
+    if ret1 <> Undecided
+    then ret1
+    else (* try crush/smt on simplified formula *)
+      let ret2 = eval_condition_pre_tacs hyps form1 pi [] in
+      if ret2 <> Undecided
+      then ret2
+      else (* try simplification with exponential procedure *)
+        let form2 = simplify_exponential_time hyps form rw_lems in
+        debugging_message
+       (fun fmt ->
+       Format.fprintf fmt
+       "@[@[formula@ simplified@ by@ trying@ all@ combinations to:@]@\n@[%a@]@]"
+       (EcPrinting.pp_form (ppe_ofhyps hyps)) form2);
+        let ret3 = form_to_result form2 in
+        if ret3 <> Undecided
+        then ret3
+        else (* try crush/smt on original formula *)
+          eval_condition_pre_tacs hyps form pi []
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
   match oty.ty_node with
