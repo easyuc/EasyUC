@@ -311,7 +311,9 @@ let gc_create (env : env) : global_context =
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
-(* try to destruct canonical addresses and ports
+(* destruction of canonical ports
+
+   a port is 
 
    functionality addresses are canonical iff they consist of either
    just func_id, or func_id concatenated with a list of integer
@@ -330,6 +332,11 @@ let env_of_gc (gc : global_context) : env = LDecl.toenv gc
    operator paired with an integer constant
 
      destruction produces the port index *)
+
+type canonical_port =
+   | CP_FuncRel of int list  (* the relative address, wrt func_id *)
+   | CP_Adv     of int       (* the adversarial port index *)
+   | CP_Root                 (* the root port *)
 
 let destr_err() = raise (DestrError "can't destruct address or port")
 
