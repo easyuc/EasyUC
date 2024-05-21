@@ -311,32 +311,36 @@ let gc_create (env : env) : global_context =
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
-(* destruction of canonical ports
+(* destruction of canonical ports to elements of the type
+   canonical_port
 
-   a port is 
+   a port is *canonical* iff it has one of the following values of
+   type form, where xs is a constant list of integers, and i is a
+   constant integer
 
-   functionality addresses are canonical iff they consist of either
-   just func_id, or func_id concatenated with a list of integer
-   constants, constructed with nil and cons
+   see the code below for how these are actually represented as
+   formulas
 
-     destruction produces the relative address, an element of int list
-     - [] in the first case
+   ([], 0) or env_root_port_op
 
-   functionality ports are canonical iff they consist of the pair of a
-   canonical functionality address and an integer constant
+     destructs to CP_Root
 
-     destruction produces an element of int list * int - the relative
-     address paired with the port index
+   (adv_addr_op, i)
 
-   adversary ports are canonical iff they consist of the adversary
-   operator paired with an integer constant
+     destructs to CP_Adv i
 
-     destruction produces the port index *)
+   adv_root_port_op (defined to be (adv_addr_op, 0))
+
+     destructs to CP_Adv 0
+
+   (func_id ++ xs, i)
+
+     destructs to CP_FuncRel (xs, i) *)
 
 type canonical_port =
-   | CP_FuncRel of int list  (* the relative address, wrt func_id *)
-   | CP_Adv     of int       (* the adversarial port index *)
-   | CP_Root                 (* the root port *)
+   | CP_EnvRoot
+   | CP_Adv     of int            (* the adversarial port index *)
+   | CP_FuncRel of int list * int (* relative address plus port index *)
 
 let destr_err() = raise (DestrError "can't destruct address or port")
 
@@ -366,11 +370,25 @@ let is_func_id (f : form) : bool =
     EcIdent.id_equal id func_id
   with _ -> false
 
+let is_env_root_port_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path
+    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
+  with _ -> false
+
 let is_adv_op (f : form) : bool =
   try
     let (path, _) = destr_op f in
     EcPath.p_equal path
     (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
+  with _ -> false
+
+let is_adv_root_port_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in
+    EcPath.p_equal path
+    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
   with _ -> false
 
 (* the following functions can raise DestrError *)
@@ -402,28 +420,47 @@ let destr_func_addr (addr : form) : int list =
 
 (* end of exception raising functions *)
 
-let try_destr_fun_addr (addr : form) : int list option =
-  try Some (destr_func_addr addr) with
-  | _ -> None
-
-let try_destr_func_port (port : form) : (int list * int) option =
+let try_destr_port (port : form) : canonical_port option =
   try
     Some
-    (match destr_tuple port with
-     | [x; y] -> (destr_func_addr x, destr_int y)
-     | _      -> destr_err ())
+    (if is_env_root_port_op port
+       then CP_EnvRoot
+     else if is_adv_root_port_op port
+       then CP_Adv 0
+     else match destr_tuple port with
+          | [x; y] ->
+              if is_adv_op x
+                then CP_Adv (destr_int y)
+              else if is_nil_op x
+                then let n = destr_int y
+                     in if n = 0 then CP_EnvRoot else destr_err ()
+              else CP_FuncRel (destr_func_addr x, destr_int y)
+          | _      -> destr_err ())
   with _ -> None
 
-let try_destr_adv_port (port : form) : int option =
-  try
-    Some
-    (match destr_tuple port with
-     | [x; y] ->
-         if is_adv_op x
-         then destr_int y
-         else destr_err ()
-     | _      -> destr_err ())
-  with _ -> None
+let try_destr_port_as_env_root (port : form) : bool =
+  match try_destr_port port with
+  | Some CP_EnvRoot -> true
+  | _               -> false
+
+let try_destr_port_as_adv (port : form) : int option =
+  match try_destr_port port with
+  | Some CP_Adv i -> Some i
+  | _             -> None
+
+let try_destr_port_as_func_rel (port : form) : (int list * int) option =
+  match try_destr_port port with
+  | Some CP_FuncRel (xs, i) -> Some (xs, i)
+  | _                       -> None
+
+let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
+  match cp with
+  | CP_EnvRoot         -> fprintf ppf "env_root_port"
+  | CP_Adv i           -> fprintf ppf "@[(@[adv,@ %d@])@]" i
+  | CP_FuncRel (xs, i) ->
+      fprintf ppf
+      "@[(@[%a,@ %d@])@]"
+      (EcPrinting.pp_list ";@ " pp_int) xs i
 
 (* pretty printer for global contexts: separates elements
    by commas, allowing breaks *)
@@ -877,7 +914,7 @@ type real_world_running_context =
 
 let pp_relative_address (ppf : formatter) (addr : int list) : unit =
   fprintf ppf "[@[%a@]]"
-  (EcPrinting.pp_list ",@ " pp_int) addr
+  (EcPrinting.pp_list ";@ " pp_int) addr
 
 let pp_symb_pair (ppf : formatter) (sp : symb_pair) : unit =
   fprintf ppf "%s.%s" (fst sp) (snd sp)

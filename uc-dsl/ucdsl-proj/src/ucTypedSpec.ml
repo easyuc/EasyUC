@@ -213,6 +213,10 @@ let adv_addr_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv")) []
   addr_ty
 
+let adv_root_port_op : expr =
+  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port")) []
+  port_ty
+
 let envport_op : expr =
   e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
   (tfun addr_ty (tfun port_ty tbool))

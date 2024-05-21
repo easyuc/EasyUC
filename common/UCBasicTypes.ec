@@ -243,6 +243,7 @@ hint simplify valid_epdp_port_univ.
 hint rewrite epdp : valid_epdp_port_univ.
 
 op env_root_port : port = ([], 0).
+op adv_root_port : port = (adv, 0).
 
 (* envport takes in the address, self, of a functionality (which
    should be incomparable with the address, adv ([0]), of the
