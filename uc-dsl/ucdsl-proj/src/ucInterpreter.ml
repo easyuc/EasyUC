@@ -455,11 +455,11 @@ let try_destr_port_as_func_rel (port : form) : (int list * int) option =
 
 let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
   match cp with
-  | CP_EnvRoot         -> fprintf ppf "env_root_port"
-  | CP_Adv i           -> fprintf ppf "@[(@[adv,@ %d@])@]" i
+  | CP_EnvRoot         -> fprintf ppf "@[env root@]"
+  | CP_Adv i           -> fprintf ppf "@[adv:@ %d@]" i
   | CP_FuncRel (xs, i) ->
       fprintf ppf
-      "@[(@[%a,@ %d@])@]"
+      "@[func@ rel:@ (@[[@[%a@]],@ %d@])@]"
       (EcPrinting.pp_list ";@ " pp_int) xs i
 
 (* pretty printer for global contexts: separates elements

@@ -322,12 +322,19 @@ move => inc_func_adv.
 by rewrite inc_nle_r 1:inc_extl.
 qed.
 
-lemma inc_ne (func : addr) :
+lemma inc_ne_func_adv (func : addr) :
   inc func adv => func <> adv.
 proof.
 move => inc_func_adv.
 case (func = adv) => [->> | //].
 by rewrite not_inc_same in inc_func_adv.
+qed.
+
+lemma inc_ne_adv_func (func : addr) :
+  inc func adv => adv <> func.
+proof.
+move => inc_func_adv.
+by rewrite eq_sym inc_ne_func_adv.
 qed.
 
 lemma inc_ne_ext_l (func xs : addr) :
@@ -361,7 +368,8 @@ hint rewrite ucdsl_interpreter_hints :
   envport_ext_func envport_ext_l_func
   envport_ne_func envport_not_gt_func
   inc_ext_nle_r inc_ext_nle_r inc_ne_ext_l
-  inc_ne inc_nle_r inc_nle_l inc_nlt_l inc_nlt_r.
+  inc_ne_func_adv inc_ne_adv_func
+  inc_nle_r inc_nle_l inc_nlt_l inc_nlt_r.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from
