@@ -1055,16 +1055,16 @@ module ILMap = Map.Make(IL)
 type real_world_state = fun_state ILMap.t
 
 (* addr will be None iff state is the simulator's initial state;
-   otherwise, it'll be the address (type addr) of the real
+   otherwise, it'll be the relative address (wrt func_id) of the real
    functionality being simulated *)
 
 type sim_state = {
-  addr  : form option;
+  addr  : int list option;
   state : state
 }
 
 let set_addr_if_none_in_sim_state (ss : sim_state)
-    (addr : form) : sim_state =
+    (addr : int list) : sim_state =
   {ss with addr = Some (ss.addr |? addr)}
 
 let update_state_in_sim_state (ss : sim_state)
@@ -1494,13 +1494,12 @@ let pp_real_world_with_states (maps : maps_tyd) (gc : global_context)
 
 let pp_sim_state (gc : global_context) (iws : ideal_world_state)
     (ppf : formatter) (sim_st : sim_state) : unit =
-  let ppe = EcPrinting.PPEnv.ofenv (env_of_gc gc) in
-  let pp_addr (ppf : formatter) (f_opt : form option) : unit =
+  let pp_addr (ppf : formatter) (f_opt : int list option) : unit =
     match f_opt with
-    | None   -> fprintf ppf "uninitialized"
-    | Some f ->
-        fprintf ppf "@[initialized:@ %a@]"
-        (EcPrinting.pp_form ppe) f in
+    | None     -> fprintf ppf "uninitialized"
+    | Some rel ->
+        fprintf ppf "@[initialized:@ @[func ++@ %a@]@]"
+        pp_relative_address rel in
   fprintf ppf "@[%a/%a@]"
   pp_addr sim_st.addr
   (pp_state gc) sim_st.state
@@ -2483,9 +2482,10 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
     | _       -> failure "should not happen" in
   let path = {inter_id_path = [root; basic]; msg = msg} in
   let sim_rf_addr =
-    if i = -1
-    then Option.get c.iws.main_sim_state.addr
-    else Option.get ((List.nth c.iws.other_sims_states i).addr) in
+    addr_concat_form_from_list_smart func_form    
+    (if i = -1
+     then Option.get c.iws.main_sim_state.addr
+     else Option.get ((List.nth c.iws.other_sims_states i).addr)) in
   let sme =
     SMET_Ord
     {mode           = Adv;
@@ -2517,9 +2517,10 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
       : config * effect =
   let simpl = simplify_formula c.gc dbs in
   let sim_rf_addr =
-    if i = -1
-    then Option.get c.iws.main_sim_state.addr
-    else Option.get ((List.nth c.iws.other_sims_states i).addr) in
+    addr_concat_form_from_list_smart func_form
+    (if i = -1
+     then Option.get c.iws.main_sim_state.addr
+     else Option.get ((List.nth c.iws.other_sims_states i).addr)) in
   let adv_pis_of_rf_args =
     if i = -1
     then let (_, _, adv_pis) = c.iw.iw_main_sim in adv_pis
@@ -3510,8 +3511,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     then match c.iws.main_sim_state.addr with
          | None      -> None
          | Some addr ->
-             if eval_bool_form_to_bool c.gc pi dbs
-                (addr_le_form addr dest_addr)
+             if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs
+                dest_port addr
              then let (sp, adv_pi, rf_arg_adv_pis) = c.iw.iw_main_sim in
                   let sim_st = c.iws.main_sim_state in
                   Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
@@ -3519,8 +3520,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     else match (List.nth c.iws.other_sims_states i).addr with
          | None      -> find_sim_from_right (i - 1)
          | Some addr ->
-             if eval_bool_form_to_bool c.gc pi dbs
-                (addr_le_form addr dest_addr)
+             if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs
+                dest_port addr
              then let (sp, adv_pi, rf_arg_adv_pis) =
                     List.nth c.iw.iw_other_sims i in
                   let sim_st = List.nth c.iws.other_sims_states i in
@@ -3553,7 +3554,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     else None in
 
   let dest_adv_to_sim (i : int) (sim_sp : symb_pair) (base : int)
-      (sim_rf_addr : form option) (sim_state : state) : config * effect =
+      (sim_rf_addr : int list option) (sim_state : state) : config * effect =
     let msg_match_fail () : config * effect =
       (debugging_message
        (fun ppf ->
@@ -3570,18 +3571,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
         (match sme_ord.path.inter_id_path with
          | [root'; basic'] ->
               if root' = root && basic' = sim_bt.uses && sme_ord.dir = Out
-              then let source_addr = simplify_formula c.gc dbs source_addr in
+              then let source_addr =
+                     match try_destr_port_as_func_rel source_port with
+                     | None          -> failure "cannot happen"
+                     | Some (rel, _) -> rel in
                    let () =
                      match sim_rf_addr with
                      | None      -> ()
                      | Some addr ->
-                         assert (eval_bool_form_to_bool c.gc pi dbs
-                                 (f_eq addr source_addr)) in
+                         assert (addr = source_addr) in
                    let sme_ord =
                      drop_head_of_msg_path_in_sent_msg_expr_ord_tyd sme_ord in
                    let (lc, ins) =
-                     match_ord_sme_in_state true source_addr state_bt
-                     state_args sme_ord in
+                     match_ord_sme_in_state true
+                     (addr_concat_form_from_list_smart func_form source_addr)
+                     state_bt state_args sme_ord in
                    (ConfigIdealRunning
                     {maps = c.maps;
                      gc   = c.gc;
@@ -3614,7 +3618,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | SMET_EnvAdv _    -> msg_match_fail () in
 
   let dest_ge_func_to_sim_cont_adv_party (i : int) (sim_sp : symb_pair)
-      (base : int) (sim_bt : sim_body_tyd) (sim_rf_addr : form)
+      (base : int) (sim_bt : sim_body_tyd) (sim_rf_addr : int list)
       (sim_state : state) : config * effect =
     let (root, _) = sim_sp in
     let msg_match_fail () : config * effect =
@@ -3654,8 +3658,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              let (lc, ins) =
-               match_ord_sme_in_state true sim_rf_addr state_bt
-               state_args sme_ord in
+               match_ord_sme_in_state true
+               (addr_concat_form_from_list_smart func_form sim_rf_addr)
+               state_bt state_args sme_ord in
              (ConfigIdealRunning
               {maps = c.maps;
                gc   = c.gc;
@@ -3674,7 +3679,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | SMET_EnvAdv _    -> msg_match_fail () in
 
   let dest_ge_func_to_sim_cont_param_or_sub_fun (i : int) (sim_sp : symb_pair)
-      (base : int) (sim_bt : sim_body_tyd) (sim_rf_addr : form)
+      (base : int) (sim_bt : sim_body_tyd) (sim_rf_addr : int list)
       (sim_state : state) (expect_iip : string list)
       (new_iip : string list) (expect_source_adv_pi : int)
         : config * effect =
@@ -3697,8 +3702,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 eval_bool_form_to_bool c.gc pi dbs
                 (f_eq source_pi (int_form expect_source_adv_pi))
              then let (lc, ins) =
-                    match_ord_sme_in_state true sim_rf_addr state_bt
-                    state_args sme_ord in
+                    match_ord_sme_in_state true
+                    (addr_concat_form_from_list_smart func_form sim_rf_addr)
+                    state_bt state_args sme_ord in
                   (ConfigIdealRunning
                    {maps = c.maps;
                     gc   = c.gc;
@@ -3718,7 +3724,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     | SMET_EnvAdv _    -> msg_match_fail () in
 
   let dest_ge_func_to_sim (i : int) (sim_sp : symb_pair) (base : int)
-      (rf_arg_adv_pis : int list) (sim_rf_addr : form) (sim_st : state)
+      (rf_arg_adv_pis : int list) (sim_rf_addr : int list) (sim_st : state)
         : config * effect =
     let (root, _) = sim_sp in
     let sbt = unloc (IdPairMap.find sim_sp c.maps.sim_map) in
@@ -3755,20 +3761,17 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       let rec find_param (i : int) : int option =
         if i > sim_rf_num_params
         then None
-        else let addr =
-               addr_concat_form_from_list_smart sim_rf_addr [i] in
-             if eval_bool_form_to_bool c.gc pi dbs
-                (f_eq dest_addr addr)
+        else let addr = sim_rf_addr @ [i] in
+             if equal_func_rel_addr_of_port c.gc pi dbs
+                dest_port addr
              then Some i
              else find_param (i + 1) in
       let rec find_sub_fun (i : int) : int option =
         if i > sim_rf_num_sub_funs
         then None
-        else let addr =
-               addr_concat_form_from_list_smart sim_rf_addr
-               [sim_rf_num_params + i] in
-             if eval_bool_form_to_bool c.gc pi dbs
-                (f_eq dest_addr addr)
+        else let addr = sim_rf_addr @ [sim_rf_num_params + i] in
+             if equal_func_rel_addr_of_port c.gc pi dbs
+                dest_port addr
              then Some i
              else find_sub_fun (i + 1) in
       match find_param 1 with
@@ -3786,8 +3789,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            "being@ simulated@ by:@ %n@; %a@]")
           base pp_symb_pair sim_sp);
        fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
-    if eval_bool_form_to_bool c.gc pi dbs
-       (f_eq dest_addr sim_rf_addr)
+    if equal_func_rel_addr_of_port c.gc pi dbs dest_port sim_rf_addr
     then dest_ge_func_to_sim_cont_adv_party i sim_sp base sbt
          sim_rf_addr sim_st
     else match find_param_or_sub_fun () with
