@@ -89,7 +89,7 @@ hint simplify valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
 op env_root_addr : addr = [].   (* root address of environment *)
-op adv : addr           = [0].  (* address of adversary *)
+op adv           : addr = [0].  (* address of adversary *)
 
 (* ports - pairs of functionality addresses and port indices; messages
    (see type below) have source and destination ports, and they have

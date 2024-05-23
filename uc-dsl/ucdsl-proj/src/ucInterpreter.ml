@@ -40,6 +40,41 @@ let adv_pi_of_rwa (rwa : real_world_arg) : int =
   | RWA_Real (_, i, _) -> i
   | RWA_Ideal (_, i)   -> i
 
+(* given a relative address, ns, of the destination port of a message,
+   return Some of the symb_pair of the functionality to which that
+   message is addressed, plus its adversarial port index (the base
+   address of the given instance for a real or ideal functionality,
+   and, in the case of a subfunctionality, the one that's calculated
+   relative to the base adversarial port index of its real
+   functionality); if ns is a bad relative address, return None *)
+
+let rec select_real_world (maps : maps_tyd) (rw : real_world) (ns : int list)
+      : (symb_pair * int) option =
+  match ns with
+  | []      ->
+      let (sp, base, _) = rw in
+      Some (sp, base)
+  | n :: ns ->
+      let (sp, base, rwas) = rw in
+      if n < 1
+        then None
+      else if n <= List.length rwas
+        then match List.nth rwas (n - 1) with
+             | RWA_Real rw          -> select_real_world maps rw ns
+             | RWA_Ideal (sp, base) ->
+                 if List.is_empty ns
+                 then Some (sp, base)
+                 else None
+      else let ft = IdPairMap.find sp maps.fun_map in
+           let num_sub_funs = num_sub_funs_of_real_fun_tyd ft in
+           let n = n - List.length rwas in
+           if n <= num_sub_funs
+           then Some
+                (sub_fun_sp_nth_of_real_fun_tyd ft (n - 1),
+                 get_adv_pi_of_nth_sub_fun_of_real_fun maps
+                 (fst sp) base ft (n - 1))
+           else None
+
 (* the ideal functionality is tagged with the adversarial port index
    of its simulator (the main one) - the second component of the data
    associated with the main simulator
@@ -438,10 +473,12 @@ let try_destr_port (port : form) : canonical_port option =
           | _      -> destr_err ())
   with _ -> None
 
-let try_destr_port_as_env_root (port : form) : bool =
+let try_destr_port_as_port_index (port : form) : int option =
   match try_destr_port port with
-  | Some CP_EnvRoot -> true
-  | _               -> false
+  | None                   -> None
+  | Some CP_EnvRoot        -> Some 0
+  | Some CP_Adv i          -> Some i
+  | Some CP_FuncRel (_, i) -> Some i
 
 let try_destr_port_as_adv (port : form) : int option =
   match try_destr_port port with
@@ -450,8 +487,10 @@ let try_destr_port_as_adv (port : form) : int option =
 
 let try_destr_port_as_func_rel (port : form) : (int list * int) option =
   match try_destr_port port with
-  | Some CP_FuncRel (xs, i) -> Some (xs, i)
-  | _                       -> None
+  | Some CP_FuncRel (rel, i) -> Some (rel, i)
+  | _                        -> None
+
+(* for debugging *)
 
 let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
   match cp with
@@ -710,6 +749,155 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
        constr
        (EcPrinting.pp_list ";@ " (pp_form (env_of_gc gc))) forms) in
   (constr, forms)
+
+(* facilitating message routing, exploiting canonical ports when
+   possible, but falling back on proof engine
+
+   in the interpreter, we are not "baking in" the definition of envport,
+   and so we will rely on simplification (or failing that SMT) for
+   this; this is to allow for a possible restriction of envport in
+   the future
+
+   we *are* baking in that the addresses of the functionality and
+   adversary are incomparable, and so are greater than the address
+   of the root of the environment, which is [] *)
+
+let equal_env_root_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs (f_eq port env_root_port_form)
+  | Some CP_EnvRoot          -> true
+  | Some _                   -> false
+
+let equal_port_index_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) (i : int) : bool =
+  match try_destr_port_as_port_index port with
+  | None       ->
+      eval_bool_form_to_bool gc pi dbs
+      (f_eq (port_to_pi_form port) (int_form i))
+  | Some porti -> porti = i
+
+let less_than_port_index_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) (i : int) : bool =
+  match try_destr_port_as_port_index port with
+  | None       ->
+      eval_bool_form_to_bool gc pi dbs
+      (int_lt_form (port_to_pi_form port) (int_form i))
+  | Some porti -> porti < i
+
+let less_than_or_equal_port_index_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form) (i : int) : bool =
+  match try_destr_port_as_port_index port with
+  | None       ->
+      eval_bool_form_to_bool gc pi dbs
+      (int_le_form (port_to_pi_form port) (int_form i))
+  | Some porti -> porti <= i
+
+let greater_than_port_index_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) (i : int) : bool =
+  match try_destr_port_as_port_index port with
+  | None       ->
+      eval_bool_form_to_bool gc pi dbs
+      (int_lt_form (int_form i) (port_to_pi_form port))
+  | Some porti -> porti > i
+
+let greater_than_or_equal_port_index_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form) (i : int) : bool =
+  match try_destr_port_as_port_index port with
+  | None       ->
+      eval_bool_form_to_bool gc pi dbs
+      (int_le_form (int_form i) (port_to_pi_form port))
+  | Some porti -> porti >= i
+
+let equal_func_rel_addr_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) (xs : int list) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (f_eq (port_to_addr_form port)
+       (addr_concat_form_from_list_smart func_form xs))
+  | Some CP_FuncRel (rel, _) -> rel = xs
+  | Some _                   -> false
+
+let rec list_po_le (xs : int list) (ys : int list) : bool =
+  match (xs, ys) with
+  | ([],      _)       -> true
+  | (_,       [])      -> false
+  | (x :: xs, y :: ys) -> x = y && list_po_le xs ys
+
+let rec list_po_lt (xs : int list) (ys : int list) : bool =
+  match (xs, ys) with
+  | ([],      [])      -> false
+  | ([],      _)       -> true
+  | (_,       [])      -> false
+  | (x :: xs, y :: ys) -> x = y && list_po_lt xs ys
+
+let less_than_func_rel_addr_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form)
+    (xs : int list) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (addr_lt_form (port_to_addr_form port)
+       (addr_concat_form_from_list_smart func_form xs))
+  | Some CP_EnvRoot          -> true
+  | Some CP_Adv _            -> false
+  | Some CP_FuncRel (rel, _) -> list_po_lt rel xs
+
+let less_than_or_equal_func_rel_addr_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form)
+    (xs : int list) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (addr_le_form (port_to_addr_form port)
+       (addr_concat_form_from_list_smart func_form xs))
+  | Some CP_EnvRoot          -> true
+  | Some CP_Adv _            -> false
+  | Some CP_FuncRel (rel, _) -> list_po_le rel xs
+
+let greater_than_func_rel_addr_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form)
+    (xs : int list) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (addr_lt_form
+       (addr_concat_form_from_list_smart func_form xs)
+       (port_to_addr_form port))
+  | Some CP_FuncRel (rel, _) -> list_po_lt xs rel
+  | Some _                   -> false
+
+let greater_than_or_equal_func_rel_addr_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form)
+    (xs : int list) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (addr_le_form
+       (addr_concat_form_from_list_smart func_form xs)
+       (port_to_addr_form port))
+  | Some CP_FuncRel (rel, _) -> list_po_le xs rel
+  | Some _                   -> false
+
+let equal_adv_addr_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (f_eq (port_to_addr_form port) adv_addr_form)
+  | Some CP_Adv _            -> true
+  | Some _                   -> false
+
+let greater_equal_adv_addr_of_port (gc : global_context) (pi : prover_infos)
+    (dbs : rewriting_dbs) (port : form) : bool =
+  match try_destr_port port with
+  | None                     ->
+      eval_bool_form_to_bool gc pi dbs
+      (addr_le_form adv_addr_form (port_to_addr_form port))
+  | Some CP_Adv _            -> true
+  | Some _                   -> false
 
 (* a local context is a nonempty stack of maps (frames) from
    identifers (local variables or bound identifiers (state parameters
@@ -1740,22 +1928,20 @@ let check_sme_port_index_consistency_core
     (loc_source : EcLocation.t) (loc_dest : EcLocation.t)
     (maps : maps_tyd) (gc : global_context) (pi : prover_infos)
     (dbs : rewriting_dbs) (sme : sent_msg_expr_tyd) : unit =
-  let check_consist (sme : sent_msg_expr_ord_tyd) (pi_form : form)
+  let check_consist (sme : sent_msg_expr_ord_tyd) (port_form : form)
       (src_or_dest_str : string) (loc_src_or_dest : EcLocation.t)  : unit =
     match sme.path.inter_id_path with
     | [root; comp; sub] ->
         let porti = get_pi_of_sub_interface maps root comp sub in
         if try
-             eval_bool_form_to_bool gc pi dbs
-             (f_eq pi_form (int_form porti))
+             equal_port_index_of_port gc pi dbs port_form porti
            with
            | ECProofEngine -> false
         then ()
         else error src_or_dest_str loc_src_or_dest
     | [_; _]            ->
         if try
-             eval_bool_form_to_bool gc pi dbs
-             (f_eq pi_form (int_form 1))
+             equal_port_index_of_port gc pi dbs port_form 1
            with
            | ECProofEngine -> false
         then ()
@@ -1764,10 +1950,10 @@ let check_sme_port_index_consistency_core
   match sme with
   | SMET_Ord sme ->
       if sme.dir = In
-      then let dest_pi = port_to_pi_form sme.dest_port_form in
-           check_consist sme dest_pi "destination" loc_dest
-      else let source_pi = port_to_pi_form sme.src_port_form in
-           check_consist sme source_pi "source" loc_source
+      then let dest_port = sme.dest_port_form in
+           check_consist sme dest_port "destination" loc_dest
+      else let source_port = sme.src_port_form in
+           check_consist sme source_port "source" loc_source
   | sme          -> ()
 
 let check_sme_port_index_consistency :
@@ -2602,8 +2788,10 @@ let match_ord_sme_in_state (is_sim : bool) (addr : form)
 
 let from_adv_to_func_find_rel_addr_adv_pi_func_sp
     (gc : global_context) (pi : prover_infos) (dbs : rewriting_dbs)
-    (maps : maps_tyd) (dest_addr : form) (rw : real_world)
+    (maps : maps_tyd) (dest_port : form) (rw : real_world)
       : (int list * int * symb_pair) option =
+  let dest_addr = port_to_addr_form dest_port in
+
   let try_sub_funs (sp : symb_pair) (rel : int list) (base : int)
       (nargs : int) : (int list * int * symb_pair) option =
     let ft = IdPairMap.find sp maps.fun_map in
@@ -2647,7 +2835,12 @@ let from_adv_to_func_find_rel_addr_adv_pi_func_sp
                          else None
                 else loop_args (i + 1) in
          loop_args 1
-  in find rw []
+  in match try_destr_port_as_func_rel dest_port with
+     | None          -> find rw []
+     | Some (rel, _) ->
+         match select_real_world maps rw rel with
+         | None              -> None
+         | Some (sp, adv_pi) -> Some (rel, adv_pi, sp)
 
 (* indices in the following are from 0 *)
 
@@ -2703,8 +2896,6 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let dest_addr = port_to_addr_form dest_port in
   let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
-  let source_addr = port_to_addr_form source_port in
-  let source_pi = port_to_pi_form source_port in
 
   let direct_real_func_party_match (rel : int list) (base : int)
       (func_sp : symb_pair) (party_id : symbol)
@@ -2758,18 +2949,16 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           match pty_info.pi_pdi with
           | None                   -> find bndgs
           | Some (comp, sub, pind) ->
-              if eval_bool_form_to_bool c.gc pi dbs
-                 (f_eq dest_pi (int_form pind))
+              if equal_port_index_of_port c.gc pi dbs dest_port pind
               then Some (pty_id, comp, sub)
               else find bndgs
     in find (IdMap.bindings rfi) in
 
   let from_env () =
     if mode = Dir &&
+       equal_func_rel_addr_of_port c.gc pi dbs dest_port [] &&
        eval_bool_form_to_bool c.gc pi dbs
-       (f_and
-        (f_eq dest_addr func_form)
-        (envport_form func_form source_port))
+       (envport_form func_form source_port)
       then let (func_sp, base, _) = c.rw in
            let (root, fid) = func_sp in
            let ft = IdPairMap.find func_sp c.maps.fun_map in
@@ -2790,16 +2979,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                direct_real_func_party_match [] base func_sp pid comp sub
                state_id state_args sbt
     else if mode = Adv &&
-            eval_bool_form_to_bool c.gc pi dbs
-            (f_and
-             (f_eq dest_addr adv_addr_form)
-              (f_or
-               (f_and
-                (f_eq dest_pi (int_form 0))
-                (f_eq source_port env_root_port_form))
-               (f_and
-                (int_le_form (int_form c.ig) dest_pi)
-                (envport_form func_form source_port))))
+            equal_adv_addr_of_port c.gc pi dbs dest_port &&
+            ((equal_port_index_of_port c.gc pi dbs dest_port 0 &&
+              equal_env_root_port c.gc pi dbs source_port) ||
+             (greater_than_or_equal_port_index_of_port c.gc pi dbs
+              dest_port c.ig &&
+              eval_bool_form_to_bool c.gc pi dbs
+              (envport_form func_form source_port)))
       then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
@@ -2813,11 +2999,10 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
           match pty_info.pi_pai with
           | None                           -> find bndgs
           | Some (comp, sub, pind, adv_pi) ->
-              if eval_bool_form_to_bool c.gc pi dbs
-                 (f_and
-                  (f_eq source_pi (int_form adv_pi))
-                  (f_eq dest_pi (int_form pind)))
-              then Some (pty_id, comp, sub)
+              if equal_port_index_of_port c.gc pi dbs dest_port pind
+              then if equal_port_index_of_port c.gc pi dbs source_port adv_pi
+                   then Some (pty_id, comp, sub)
+                   else None
               else find bndgs
     in find (IdMap.bindings rfi) in
 
@@ -2906,10 +3091,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         let iip = sme_ord.path.inter_id_path in
         let addr = addr_concat_form_from_list_smart func_form rel in
         if iip = [root; basic] && sme_ord.dir = In &&
-           eval_bool_form_to_bool c.gc pi dbs
-           (f_and
-            (f_eq source_pi (int_form adv_pi))
-            (f_eq dest_pi   (int_form 1)))
+           equal_port_index_of_port c.gc pi dbs dest_port 1 &&
+           equal_port_index_of_port c.gc pi dbs source_port adv_pi
         then if sbt.is_initial
              then (debugging_message
                    (fun ppf ->
@@ -2952,7 +3135,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_adv_to_func () : config * effect =
     match from_adv_to_func_find_rel_addr_adv_pi_func_sp
-          c.gc pi dbs c.maps dest_addr c.rw with
+          c.gc pi dbs c.maps dest_port c.rw with
     | None                        ->
         fail_out_of_running_or_sending_config (ConfigRealSending c)
     | Some (rel, adv_pi, func_sp) ->
@@ -2965,23 +3148,18 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_adv () =
     if mode = Dir ||
-       eval_bool_form_to_bool c.gc pi dbs
-       (f_or
-        (addr_le_form adv_addr_form dest_addr)
-        (f_or
-         (f_not (f_eq adv_addr_form source_addr))
-         (int_lt_form source_pi (int_form 0))))
+       greater_equal_adv_addr_of_port c.gc pi dbs dest_port ||
+       not (equal_adv_addr_of_port c.gc pi dbs source_port) ||
+       less_than_port_index_of_port c.gc pi dbs source_port 0
       then fail_out_of_running_or_sending_config (ConfigRealSending c)
-    else if eval_bool_form_to_bool c.gc pi dbs
-            (addr_le_form func_form dest_addr)
-      then if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq source_pi (int_form 0))
+    else if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs
+            dest_port []
+      then if equal_port_index_of_port c.gc pi dbs source_port 0
            then fail_out_of_running_or_sending_config (ConfigRealSending c)
            else from_adv_to_func ()
-    else if eval_bool_form_to_bool c.gc pi dbs
-            (f_iff
-             (f_eq source_pi (int_form 0))
-             (f_eq dest_port env_root_port_form))
+    else if equal_port_index_of_port c.gc pi dbs source_port 0 =
+            eval_bool_form_to_bool c.gc pi dbs
+            (f_eq dest_port env_root_port_form)
       then msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
