@@ -2893,8 +2893,6 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     (dbs : rewriting_dbs) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
-  let dest_addr = port_to_addr_form dest_port in
-  let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
 
   let direct_real_func_party_match (rel : int list) (base : int)
@@ -3158,8 +3156,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
            then fail_out_of_running_or_sending_config (ConfigRealSending c)
            else from_adv_to_func ()
     else if equal_port_index_of_port c.gc pi dbs source_port 0 =
-            eval_bool_form_to_bool c.gc pi dbs
-            (f_eq dest_port env_root_port_form)
+            equal_env_root_port c.gc pi dbs dest_port
       then msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigRealSending c) in
 
@@ -3231,53 +3228,32 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     let num_args = List.length rwas in
     let ft_par = IdPairMap.find sp_par c.maps.fun_map in
     let num_sub_funs = num_sub_funs_of_real_fun_tyd ft_par in
-    let rec find_arg (i : int) : int option =
-      if i > num_args
-      then None
-      else let rel_i = rel @ [i] in
-           let addr_i =
-             addr_concat_form_from_list_smart func_form rel_i in
-           if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq dest_addr addr_i)
-           then Some i
-           else find_arg (i + 1) in
-    let rec find_sub_fun (i : int) : int option =
-      if i > num_args + num_sub_funs
-      then None
-      else let rel_i = rel @ [i] in
-           let addr_i =
-             addr_concat_form_from_list_smart func_form rel_i in
-           if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq dest_addr addr_i)
-           then Some i
-           else find_sub_fun (i + 1) in
-     match find_arg 1 with
-     | None   ->
-         (match find_sub_fun (num_args + 1) with
-         | None   ->
-             (debugging_message
-              (fun ppf ->
-                 fprintf ppf
-                 ("@[unable@ to@ find@ subfunctionality@ or@ " ^^
-                  "argument@]"));
-             fail_out_of_running_or_sending_config (ConfigRealSending c))
-         | Some i ->
-             let sf_ind = i - num_args - 1 in  (* from 0 *)
-             let sp = sub_fun_sp_nth_of_real_fun_tyd ft_par sf_ind in
-             let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
-             let ifbt = ideal_fun_body_tyd_of fbt in
-             from_parent_to_ideal_func (rel @ [i])
-             (get_adv_pi_of_nth_sub_fun_of_real_fun c.maps
-              (fst sp_par) base ft_par sf_ind)
-             sp ifbt)
-     | Some i ->
-         (match List.nth rwas (i - 1) with
-          | RWA_Real (sp, adv_pi, _) ->
-              from_parent_to_real_func (rel @ [i]) adv_pi sp
-          | RWA_Ideal (sp, adv_pi)   ->
-              let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
-              let ifbt = ideal_fun_body_tyd_of fbt in
-              from_parent_to_ideal_func (rel @ [i]) adv_pi sp ifbt) in
+    let arg_or_sf_ind =
+      match try_destr_port_as_func_rel dest_port with
+      | None               -> failure "cannot happen"
+      | Some (dest_rel, _) ->
+          if List.length dest_rel <> List.length rel + 1
+          then failure "cannot happen"
+          else List.last dest_rel in
+    if arg_or_sf_ind < 1 ||
+       arg_or_sf_ind > num_args + num_sub_funs
+      then failure "cannot happen"
+    else if arg_or_sf_ind <= num_args
+      then match List.nth rwas (arg_or_sf_ind - 1) with
+           | RWA_Real (sp, adv_pi, _) ->
+               from_parent_to_real_func (rel @ [arg_or_sf_ind]) adv_pi sp
+           | RWA_Ideal (sp, adv_pi)   ->
+               let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
+               let ifbt = ideal_fun_body_tyd_of fbt in
+               from_parent_to_ideal_func (rel @ [arg_or_sf_ind]) adv_pi sp ifbt
+    else let sf_ind = arg_or_sf_ind - num_args - 1 in  (* from 0 *)
+         let sp = sub_fun_sp_nth_of_real_fun_tyd ft_par sf_ind in
+         let fbt = unloc (IdPairMap.find sp c.maps.fun_map) in
+         let ifbt = ideal_fun_body_tyd_of fbt in
+         from_parent_to_ideal_func (rel @ [arg_or_sf_ind])
+         (get_adv_pi_of_nth_sub_fun_of_real_fun c.maps
+          (fst sp_par) base ft_par sf_ind)
+         sp ifbt in
 
   let internal_real_func_find_party (rfi : real_fun_info) : symbol option =
     let rec find (bndgs : (symbol * party_info) list) : symbol option =
@@ -3285,8 +3261,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       | []                          -> None
       | (pty_id, pty_info) :: bndgs ->
           let intpi = pty_info.pi_ipi in
-          if eval_bool_form_to_bool c.gc pi dbs
-             (f_eq dest_pi (int_form intpi))
+          if equal_port_index_of_port c.gc pi dbs dest_port intpi
           then Some pty_id
           else find bndgs
     in find (IdMap.bindings rfi) in
@@ -3383,13 +3358,9 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     if mode = Adv
     then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else let rwrso = select_rel_addr_of_real_world c.maps rel c.rw in
-         let cur_addr =
-           addr_concat_form_from_list_smart func_form rel in
-         if eval_bool_form_to_bool c.gc pi dbs
-            (f_eq dest_addr cur_addr)
+         if equal_func_rel_addr_of_port c.gc pi dbs dest_port rel
            then failure "should not happen"
-         else if eval_bool_form_to_bool c.gc pi dbs
-                 (addr_lt_form cur_addr dest_addr)
+         else if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port rel
            then (match Option.get rwrso with
                  | RW_Select_RealFun (sp, base, rwas, _) ->
                      from_parent_to_arg_or_sub_fun rel sp base rwas
@@ -3460,27 +3431,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_env () =
     if mode = Dir &&
+       equal_func_rel_addr_of_port c.gc pi dbs dest_port [] &&
        eval_bool_form_to_bool c.gc pi dbs
-       (f_and
-        (f_eq dest_addr func_form)
-        (envport_form func_form source_port))
+       (envport_form func_form source_port)
       then let (func_sp, base) = c.iw.iw_ideal_func in
            let ft = unloc (IdPairMap.find func_sp c.maps.fun_map) in
            let ifbt = ideal_fun_body_tyd_of ft in
            from_env_to_ideal_fun func_sp base ifbt
     else if mode = Adv &&
-            eval_bool_form_to_bool c.gc pi dbs
-            (f_and
-             (f_eq dest_addr adv_addr_form)
-              (f_or
-               (f_and
-                (f_eq dest_pi (int_form 0))
-                (f_eq source_port env_root_port_form))
-               (f_and
-                (int_lt_form (int_form 0) dest_pi)
-                (f_and
-                 (int_le_form (int_form c.ig) dest_pi)
-                 (envport_form func_form source_port)))))
+            equal_adv_addr_of_port c.gc pi dbs dest_port &&
+            ((equal_port_index_of_port c.gc pi dbs dest_port 0 &&
+              equal_env_root_port c.gc pi dbs source_port) ||
+             (greater_than_or_equal_port_index_of_port c.gc pi dbs
+              dest_port c.ig &&
+              eval_bool_form_to_bool c.gc pi dbs
+              (envport_form func_form source_port)))
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
