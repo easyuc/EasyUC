@@ -1846,6 +1846,7 @@ let step_assign (gc : global_context) (lc : local_context)
       List.fold_lefti
       (fun acc i id ->
          let pr = f_proj form i (List.nth tys i) in
+         let pr = simplify_formula gc dbs pr in
          lc_update_var gc acc dbs (unloc id) pr)
       lc
       ids
