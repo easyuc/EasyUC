@@ -76,7 +76,7 @@ require export UCUniv.
    simulator applied to the adversary (simulators internally can
    consist of compositions of simulators; if unfolded, we have the
    composition of n simulators plus the adversary (S1 * S2 * ... * Sn
-   * Adv))
+   * Adv)) *)
 
 type addr = int list.
 

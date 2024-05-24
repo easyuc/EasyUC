@@ -65,15 +65,17 @@ let rec select_real_world (maps : maps_tyd) (rw : real_world) (ns : int list)
                  if List.is_empty ns
                  then Some (sp, base)
                  else None
-      else let ft = IdPairMap.find sp maps.fun_map in
-           let num_sub_funs = num_sub_funs_of_real_fun_tyd ft in
-           let n = n - List.length rwas in
-           if n <= num_sub_funs
-           then Some
-                (sub_fun_sp_nth_of_real_fun_tyd ft (n - 1),
-                 get_adv_pi_of_nth_sub_fun_of_real_fun maps
-                 (fst sp) base ft (n - 1))
-           else None
+      else if List.is_empty ns
+        then let ft = IdPairMap.find sp maps.fun_map in
+             let num_sub_funs = num_sub_funs_of_real_fun_tyd ft in
+             let n = n - List.length rwas in
+             if n <= num_sub_funs
+             then Some
+                  (sub_fun_sp_nth_of_real_fun_tyd ft (n - 1),
+                   get_adv_pi_of_nth_sub_fun_of_real_fun maps
+                   (fst sp) base ft (n - 1))
+             else None
+      else None
 
 (* the ideal functionality is tagged with the adversarial port index
    of its simulator (the main one) - the second component of the data
@@ -890,8 +892,8 @@ let equal_adv_addr_of_port (gc : global_context) (pi : prover_infos)
   | Some CP_Adv _            -> true
   | Some _                   -> false
 
-let greater_equal_adv_addr_of_port (gc : global_context) (pi : prover_infos)
-    (dbs : rewriting_dbs) (port : form) : bool =
+let greater_than_or_equal_adv_addr_of_port (gc : global_context)
+    (pi : prover_infos) (dbs : rewriting_dbs) (port : form) : bool =
   match try_destr_port port with
   | None                     ->
       eval_bool_form_to_bool gc pi dbs
@@ -3137,7 +3139,11 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     match from_adv_to_func_find_rel_addr_adv_pi_func_sp
           c.gc pi dbs c.maps dest_port c.rw with
     | None                        ->
-        fail_out_of_running_or_sending_config (ConfigRealSending c)
+        (debugging_message
+         (fun ppf ->
+            fprintf ppf
+            "@[bad@ destination@ address@ for@ real@ world@]");
+        fail_out_of_running_or_sending_config (ConfigRealSending c))
     | Some (rel, adv_pi, func_sp) ->
         let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
         match fbt with
@@ -3148,7 +3154,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_adv () =
     if mode = Dir ||
-       greater_equal_adv_addr_of_port c.gc pi dbs dest_port ||
+       greater_than_or_equal_adv_addr_of_port c.gc pi dbs dest_port ||
        not (equal_adv_addr_of_port c.gc pi dbs source_port) ||
        less_than_port_index_of_port c.gc pi dbs source_port 0
       then fail_out_of_running_or_sending_config (ConfigRealSending c)
@@ -3634,9 +3640,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
               if root' = root && comp' = comp_adv && sme_ord.dir = In
               then match check_sub_interface_and_get_pi c.maps
                          root comp_adv sub' with
-                   | None        -> failure "should not happen"
-                   | Some adv_pi ->
-                       let src_adv_pi = base + adv_pi in
+                   | None     -> failure "should not happen"
+                   | Some ind ->
+                       let src_adv_pi = base + ind in
                        if equal_port_index_of_port c.gc pi dbs
                           source_port src_adv_pi
                          then Some
@@ -3795,7 +3801,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
           fprintf ppf
           ("@[destination@ address@ of@ message@ does@ not@ correspond@ "  ^^
            "to@ argument@ or@ subfunctionality@ of@ real@ functionality@ " ^^
-           "being@ simulated@ by:@ %n@; %a@]")
+           "being@ simulated@ by:@ %n:@ %a@]")
           base pp_symb_pair sim_sp);
        fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
     if equal_func_rel_addr_of_port c.gc pi dbs dest_port sim_rf_addr
@@ -3870,11 +3876,11 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_adv () : config * effect =
     if mode = Dir ||
-       greater_equal_adv_addr_of_port c.gc pi dbs dest_port ||
+       greater_than_or_equal_adv_addr_of_port c.gc pi dbs dest_port ||
        not (equal_adv_addr_of_port c.gc pi dbs source_port) ||
        less_than_port_index_of_port c.gc pi dbs source_port 0
       then fail_out_of_running_or_sending_config (ConfigIdealSending c)
-    else if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port []
+    else if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs dest_port []
       then if equal_port_index_of_port c.gc pi dbs source_port 0
            then fail_out_of_running_or_sending_config (ConfigIdealSending c)
            else from_adv_to_sim_or_ideal_func
