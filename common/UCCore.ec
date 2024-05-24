@@ -11,44 +11,53 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
 require export UCBasicTypes.
 
 (* module type used for real protocols and ideal functionalities
-   (collectively, "functionalities"), as well as adversaries and
-   simulators *)
+   (collectively, "functionalities") *)
 
-(* precondition for ordinary (non-adversary/simulator)
-   functionalities: *)
+(* precondition for functionalities: *)
 
-op func_init_pre (self adv : addr) : bool = inc self adv.
+op func_init_pre (self : addr) : bool = inc self adv.
 
 (* envport0 self adv pt says that pt is part of the environment, not
-   the functionality or adversary; it's allowed to be the root port,
-   ([], 0) *)
+   the functionality or adversary; it's allowed to be the root port of
+   the environment, env_root_port (([], 0)) *)
 
-op envport0 (self adv : addr, pt : port) : bool =
+op envport0 (self : addr, pt : port) : bool =
   ! self <= pt.`1 /\ ! adv <= pt.`1.
 
 module type FUNC = {
-  (* initialize functionality (or adversary, simulator), telling it
-     its address (self) and the address of its adversary (adv)
+  (* initialize functionality telling it its address (self)
 
-     in the case of the adversary/simulator, the second argument will
-     be [], the root address of the environment (so the
-     adversary/simulator's "adversary" is the environment)
+     precondition: func_init_pre self *)
 
-     precondition for ordinary (non-adversary/simulator)
-     functionalties: func_init_pre self adv *)
-
-  proc init(self adv : addr) : unit
+  proc init(self : addr) : unit
 
   (* respond to an incoming message, producing an optional
      outgoing message (None means error)
 
-     messages to a functionality should have addresses that are >=
-     self (in the case of an adversary/simulator, = self)
+     messages to a functionality should have destination addresses
+     that are >= self
 
-     if Some m' is returned, then the destination address of m' should
-     not be >= self, and the source address of m' should be >= self
-     (in the case of an adversary/simulator, the source address should
-     be = self) *)
+     if Some m' is returned, then the source address of m' should be
+     >= self; when m' is a direct message, the destination address should
+     satisfy envport self; when m' is an adversarial message, the destination
+     port should be (adv, adv_pi), for adv_pi > 0 *)
+
+  proc invoke(m : msg) : msg option
+}.
+
+(* module type used for an adversary (including the application of
+   a simulator to an adversary) *)
+
+module type ADV = {
+  proc init() : unit
+
+  (* messages sent to the adversary should have destination addresses
+     equal to adv; the destination port index should be 0 iff the
+     message is from the root of the environment; otherwise it should
+     be > 0
+
+     see the code for interfaces to understand what will be required
+     of outgoing messages from the adversary (for failure to not occur) *)
 
   proc invoke(m : msg) : msg option
 }.
@@ -58,26 +67,23 @@ module type FUNC = {
 
 (* precondition: *)
 
-op inter_init_pre (func adv : addr) : bool = inc func adv.
+op inter_init_pre (func : addr) : bool = inc func adv.
 
 module type INTER = {
   (* initialize interface, telling it:
 
        * the address (func) of its functionality part;
 
-       * the address (adv) of its adversary part;
-
        * an incoming message guard (in_guard)
 
      the interface will initialize its functionality and adversary
-     parts; when calling the adversary part's init function, the
-     second argument will be [], the root address of the environment
+     parts
 
      precondition:
 
-       inter_init_pre func adv *)
+       inter_init_pre func *)
 
-  proc init(func adv : addr, in_guard : int fset) : unit
+  proc init(func : addr, in_guard : int fset) : unit
 
   (* respond to an incoming message from the environment, producing an
      optional outgoing message (None means error) *)
@@ -87,7 +93,7 @@ module type INTER = {
 
 (* module type of environments, parameterized by interfaces *)
 
-pred env_init_pre (func adv : addr) = inter_init_pre func adv.
+pred env_init_pre (func : addr) = inter_init_pre func.
 
 module type ENV (Inter : INTER) = {
   (* start environment, and let it interact with Inter (only via
@@ -98,11 +104,9 @@ module type ENV (Inter : INTER) = {
 
        * func is the address of interface's functionality part
 
-       * adv is the address of interface's adversary part
+     precondition : env_pre func *)
 
-     precondition : env_pre func adv *)
-
-  proc main(func adv : addr, in_guard : int fset) : bool {Inter.invoke}
+  proc main(func : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
 
 abstract theory Experiment.
@@ -111,10 +115,10 @@ abstract theory Experiment.
    interact with, and issue a final boolean judgment about, an
    interface, which is first initialized *)
 
-op exper_pre (func adv : addr) : bool = inter_init_pre func adv.
+op exper_pre (func : addr) : bool = inter_init_pre func.
 
-lemma exper_pre_ext1 (func adv ext : addr) :
-  exper_pre func adv => exper_pre (func ++ ext) adv.
+lemma exper_pre_ext1 (func ext : addr) :
+  exper_pre func => exper_pre (func ++ ext).
 proof.
 rewrite /exper_pre /inter_init_pre.
 move => |> inc_fun_adv.
@@ -128,8 +132,6 @@ module Exper (Inter : INTER, Env : ENV) = {
 
        * func is address of interface's functionality part
 
-       * adv is the address of the interface's adversary part
-
        * in_guard is the incoming message guard used by the interface
          and supplied to the environment
 
@@ -137,10 +139,10 @@ module Exper (Inter : INTER, Env : ENV) = {
 
        exper_pre func adv *)
 
-  proc main(func adv : addr, in_guard : int fset) : bool = {
+  proc main(func : addr, in_guard : int fset) : bool = {
     var b : bool;
-    Inter.init(func, adv, in_guard);
-    b <@ E.main(func, adv, in_guard);
+    Inter.init(func, in_guard);
+    b <@ E.main(func, in_guard);
     return b;
   }    
 }.
@@ -154,29 +156,29 @@ abstract theory MakeInterface.
 (* loop invariant for interface's while loop *)
 
 op mi_loop_invar
-     (func adv : addr, in_guard : int fset,
+     (func : addr, in_guard : int fset,
       r : msg option, m : msg, not_done : bool) : bool =
-  inter_init_pre func adv /\
+  inter_init_pre func /\
   (not_done =>
-   (m.`1 = Dir /\ func = m.`2.`1 /\ envport func adv m.`3) \/
+   (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
    (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2) \/
    (m.`1 = Adv /\ m.`2.`1 = adv /\
     (func <= m.`3.`1 /\ 0 < m.`2.`2 \/
-     m.`3 = ([], 0) /\ m.`2.`2 = 0 \/
-     envport func adv m.`3 /\ 0 < m.`2.`2 /\
+     m.`3 = env_root_port /\ m.`2.`2 = 0 \/
+     envport func m.`3 /\ 0 < m.`2.`2 /\
      m.`2.`2 \in in_guard))) /\
   (! not_done =>
    r = None \/
-   (envport0 func adv (oget r).`2 /\
-    ((oget r).`1 = Dir /\ (oget r).`2 <> ([], 0) /\
+   (envport0 func (oget r).`2 /\
+    ((oget r).`1 = Dir /\ (oget r).`2 <> env_root_port /\
       func = (oget r).`3.`1 \/
      (oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
-      ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0)))).
+      ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0)))).
 
 lemma mi_loop_invar_not_done_imp_dest
-      (func adv : addr, in_guard : int fset,
+      (func : addr, in_guard : int fset,
        m : msg, r : msg option) :
-  mi_loop_invar func adv in_guard r m true =>
+  mi_loop_invar func in_guard r m true =>
   func <= m.`2.`1 \/ m.`2.`1 = adv.
 proof.
 rewrite /mi_loop_invar; smt(le_refl).
@@ -184,20 +186,20 @@ qed.
 
 (* guard for invoke procedure of interface *)
 
-op main_guard (func adv : addr, in_guard : int fset, m : msg) : bool =
-  m.`1 = Dir /\ func = m.`2.`1 /\ envport func adv m.`3 \/
+op main_guard (func : addr, in_guard : int fset, m : msg) : bool =
+  m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
   m.`1 = Adv /\ m.`2.`1 = adv /\
-  (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/
-   0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func adv m.`3).
+  (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
+   0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func m.`3).
 
-module MI (Func : FUNC, Adv : FUNC) : INTER = {
-  var func, adv : addr
+module MI (Func : FUNC, Adv : ADV) : INTER = {
+  var func : addr
   var in_guard : int fset
 
-  proc init(func_ adv_ : addr, in_guard_ : int fset) : unit = {
-    func <- func_; adv <- adv_; in_guard <- in_guard_;
-    Func.init(func, adv);
-    Adv.init(adv, []);
+  proc init(func_ : addr, in_guard_ : int fset) : unit = {
+    func <- func_; in_guard <- in_guard_;
+    Func.init(func);
+    Adv.init();
   }
 
   proc after_func(r : msg option) : msg option * msg * bool = {
@@ -214,10 +216,10 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
       (* else: ! func <= m.`2.`1 /\ func <= m.`3.`1 *)
       elif (m.`1 = Dir) {
         not_done <- false;
-        if (adv <= m.`2.`1 \/ m.`2 = ([], 0) \/ func <> m.`3.`1) {
+        if (adv <= m.`2.`1 \/ m.`2 = env_root_port \/ func <> m.`3.`1) {
           r <- None;
         }
-        (* else: envport func adv m.`2 *)
+        (* else: envport func m.`2 *)
       }
       (* else: m.`1 = Adv *)
       elif (m.`2.`1 <> adv \/ m.`2.`2 <= 0) {
@@ -247,9 +249,9 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
         }
         (* else: 0 < m.`3.`2 *)
       }
-      else {  (* envport0 func adv m.`2 *)
+      else {  (* envport0 func m.`2 *)
         not_done <- false;
-        if (! (m.`3.`2 = 0 <=> m.`2 = ([], 0))) {
+        if (! (m.`3.`2 = 0 <=> m.`2 = env_root_port)) {
           r <- None;
         }
       }
@@ -276,7 +278,7 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
 
   proc invoke(m : msg) : msg option = {
     var r : msg option;
-    if (main_guard func adv in_guard m) {
+    if (main_guard func in_guard m) {
       r <@ loop(m);
     }
     else {
@@ -288,11 +290,11 @@ module MI (Func : FUNC, Adv : FUNC) : INTER = {
 
 (* check that invariant is actually preserved: *)
 
-lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv ==>
-   mi_loop_invar MI.func MI.adv MI.in_guard res.`1 res.`2 res.`3].
+   inter_init_pre MI.func ==>
+   mi_loop_invar MI.func MI.in_guard res.`1 res.`2 res.`3].
 proof.
 proc; sp 2.
 if; first auto.
@@ -305,11 +307,11 @@ auto => /> &hr pre r_not_none.
 rewrite !negb_or /= not_dir /#.
 qed.
 
-lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv ==>
-   mi_loop_invar MI.func MI.adv MI.in_guard res.`1 res.`2 res.`3].
+   inter_init_pre MI.func ==>
+   mi_loop_invar MI.func MI.in_guard res.`1 res.`2 res.`3].
 proof.
 proc; sp 2.
 if; first auto.
@@ -327,28 +329,28 @@ rewrite -!eq_iff => -> /=.
 by rewrite IntOrder.lerNgt.
 qed.
 
-lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   hoare
   [MI(Func, Adv).invoke :
-   inter_init_pre MI.func MI.adv ==>
+   inter_init_pre MI.func ==>
    res = None \/
-   (envport0 MI.func MI.adv (oget res).`2 /\
-    ((oget res).`1 = Dir /\ (oget res).`2 <> ([], 0) /\
+   (envport0 MI.func (oget res).`2 /\
+    ((oget res).`1 = Dir /\ (oget res).`2 <> env_root_port /\
       MI.func = (oget res).`3.`1 \/
-     (oget res).`1 = Adv /\ MI.adv = (oget res).`3.`1 /\ 0 <= (oget res).`3.`2 /\
-      ((oget res).`2 = ([], 0) <=> (oget res).`3.`2 = 0)))].
+     (oget res).`1 = Adv /\ adv = (oget res).`3.`1 /\ 0 <= (oget res).`3.`2 /\
+      ((oget res).`2 = env_root_port <=> (oget res).`3.`2 = 0)))].
 proof.
 proc.
 if.
 inline MI(Func, Adv).loop.
 wp; sp.
-while (mi_loop_invar MI.func MI.adv MI.in_guard r0 m0 not_done).
+while (mi_loop_invar MI.func MI.in_guard r0 m0 not_done).
 if.
-seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
+seq 1 : (inter_init_pre MI.func /\ not_done).
 call (_ : true); first auto => />.
 call (MI_after_func_hoare Func Adv).
 auto.
-seq 1 : (inter_init_pre MI.func MI.adv /\ not_done).
+seq 1 : (inter_init_pre MI.func /\ not_done).
 call (_ : true); first auto => />.
 call (MI_after_adv_hoare Func Adv).
 auto.
@@ -358,30 +360,30 @@ qed.
 
 (* phoare lemmas for after_func and after_adv: *)
 
-op after_func_to_env (func adv : addr, r : msg option) : bool =
+op after_func_to_env (func : addr, r : msg option) : bool =
   r <> None /\
-  (oget r).`1 = Dir /\ envport func adv (oget r).`2 /\
+  (oget r).`1 = Dir /\ envport func (oget r).`2 /\
   func = (oget r).`3.`1.
 
-op after_func_to_adv (func adv : addr, r : msg option) : bool =
+op after_func_to_adv (func : addr, r : msg option) : bool =
   r <> None /\
   (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
   func <= (oget r).`3.`1.
 
-op after_func_error (func adv : addr, r : msg option) : bool =
+op after_func_error (func : addr, r : msg option) : bool =
   r = None \/
   func <= (oget r).`2.`1 \/
   (oget r).`1 = Dir /\
-  (adv <= (oget r).`2.`1 \/ (oget r).`2 = ([], 0) \/
+  (adv <= (oget r).`2.`1 \/ (oget r).`2 = env_root_port \/
    (oget r).`3.`1 <> func) \/
   (oget r).`1 = Adv /\
   ((oget r).`2.`1 <> adv \/ (oget r).`2.`2 <= 0 \/
    ! (func <= (oget r).`3.`1)).
 
-lemma after_func_disj (func adv : addr, r : msg option) :
-  after_func_to_env func adv r \/
-  after_func_to_adv func adv r \/
-  after_func_error func adv r.
+lemma after_func_disj (func : addr, r : msg option) :
+  after_func_to_env func r \/
+  after_func_to_adv func r \/
+  after_func_error func r.
 proof.
 rewrite /after_func_to_env /after_func_to_adv /after_func_error
         /envport /envport0.
@@ -389,61 +391,61 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
 
-lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ r = r' /\
-   after_func_to_env MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ r = r' /\
+   after_func_to_env MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt(some_oget le_refl).
 qed.
 
-lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ r = r' /\
-   after_func_to_adv MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ r = r' /\
+   after_func_to_adv MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_func :
-   inter_init_pre MI.func MI.adv /\ after_func_error MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ after_func_error MI.func r ==>
    res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
 qed.
 
-pred after_adv_to_env (func adv : addr, r : msg option) =
+pred after_adv_to_env (func : addr, r : msg option) =
    r <> None /\
-   (oget r).`1 = Adv /\ envport0 func adv (oget r).`2 /\
+   (oget r).`1 = Adv /\ envport0 func (oget r).`2 /\
    adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
-   ((oget r).`2 = ([], 0) <=> (oget r).`3.`2 = 0).
+   ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0).
 
-pred after_adv_to_func (func adv : addr, r : msg option) =
+pred after_adv_to_func (func : addr, r : msg option) =
   r <> None /\
   (oget r).`1 = Adv /\ func <= (oget r).`2.`1 /\
   (oget r).`3.`1 = adv /\ 0 < (oget r).`3.`2.
 
-pred after_adv_error (func adv : addr, r : msg option) =
+pred after_adv_error (func : addr, r : msg option) =
    (r = None \/
     (oget r).`1 = Dir \/
     adv <= (oget r).`2.`1 \/
     adv <> (oget r).`3.`1 \/ (oget r).`3.`2 < 0 \/
     (func <= (oget r).`2.`1 /\ (oget r).`3.`2 = 0) \/
     (! func <= (oget r).`2.`1 /\
-     ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = ([], 0)))).
+     ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port))).
 
 lemma after_adv_disj (func adv : addr, r : msg option) :
-  after_adv_to_env func adv r  \/
-  after_adv_to_func func adv r \/
-  after_adv_error func adv r.
+  after_adv_to_env func r  \/
+  after_adv_to_func func r \/
+  after_adv_error func r.
 proof.
 rewrite /after_adv_to_env /after_adv_to_func /after_adv_error
         /envport /envport0.
@@ -452,32 +454,32 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' /\
-   after_adv_to_env MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ r = r' /\
+   after_adv_to_env MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt(some_oget).
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI})
+lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ r = r' /\
-   after_adv_to_func MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ r = r' /\
+   after_adv_to_func MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
-lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: FUNC{-Func, -MI}) :
+lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
   phoare
   [MI(Func, Adv).after_adv :
-   inter_init_pre MI.func MI.adv /\ after_adv_error MI.func MI.adv r ==>
+   inter_init_pre MI.func /\ after_adv_error MI.func r ==>
    res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
@@ -509,11 +511,11 @@ op adv_pi_begin : {int | 1 <= adv_pi_begin} as ge1_adv_pi_begin.
 op adv_pi_end : int = adv_pi_begin + adv_pi_num - 1.
 
 module MakeRF (Core : FUNC) : FUNC = {
-  var self, adv : addr
+  var self : addr
 
-  proc init(_self _adv : addr) : unit = {
-    self <- _self; adv <- _adv;
-    Core.init(_self, _adv);
+  proc init(_self : addr) : unit = {
+    self <- _self;
+    Core.init(_self);
   }
 
   proc after_core(r : msg option) : msg option * msg * bool = {
@@ -573,10 +575,10 @@ abstract theory DummyAdversary.
 
 (* dummy adversary (DA) - completely controlled by environment *)
 
-(* message from port ([], 0) of environment to port (dfe_da, 0) of
+(* message from port env_root_port of environment to port (dfe_da, 0) of
    dummy adversary, instructing dummy adversary to send message (Adv,
    dfe_pt, (dfe_da, dfe_n), dfe_tag, dfe_u); this instruction will
-   only be obeyed if 0 < dfe_n and dfe_pt <> ([], 0), dfe_pt.`1 is
+   only be obeyed if 0 < dfe_n and dfe_pt <> env_root_port, dfe_pt.`1 is
    not >= dfe_da, and dfe_tag is not TagNoInter *)
 
 type da_from_env =
@@ -588,7 +590,7 @@ type da_from_env =
    dfe_u   : univ}.  (* value of message to be sent by DA *)
 
 op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
-  (Adv, (x.`dfe_da, 0), ([], 0),
+  (Adv, (x.`dfe_da, 0), env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ
     epdp_tag_univ epdp_id).`enc
@@ -596,7 +598,7 @@ op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
 
 op nosmt [opaque] dec_da_from_env (m : msg) : da_from_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`dec v with
@@ -620,7 +622,8 @@ rewrite !epdp.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
-case (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> ([], 0) \/ tag <> TagNoInter) => //.
+case
+  (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) => //.
 rewrite !negb_or /= not_dir => [#] -> pt1_2 -> -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_port_univ epdp_int_univ
@@ -645,7 +648,7 @@ lemma eq_of_valid_da_from_env (m : msg) :
   let x = oget (epdp_da_from_env_msg.`dec m) in
   (Adv,
    (x.`dfe_da, 0),
-   ([], 0),
+   env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`enc
     (x.`dfe_pt, x.`dfe_n, x.`dfe_tag, x.`dfe_u)).
@@ -659,10 +662,10 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <-.
 by rewrite !epdp.
 qed.
 
-(* message from port (dte_da, 0) of dummy adversary to port ([], 0) of
+(* message from port (dte_da, 0) of dummy adversary to port env_root_port of
    environment, telling environment that dummy adversary received
    message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u), where
-   0 < dtn_n and dte_pt <> ([], 0) *)
+   0 < dtn_n and dte_pt <> env_root_port *)
 
 type da_to_env =
   {dte_da  : addr;   (* address of dummy adversary *)
@@ -675,7 +678,7 @@ type da_to_env =
    dte_u   : univ}.  (* value of message sent to DA *)
 
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
-  (Adv, ([], 0), (x.`dte_da, 0), 
+  (Adv, env_root_port, (x.`dte_da, 0), 
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -683,7 +686,7 @@ op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
 
 op nosmt [opaque] dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_int_univ epdp_port_univ epdp_tag_univ
@@ -707,7 +710,7 @@ rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /= !epdp.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
-case (mod = Dir \/ pt1 <> ([], 0) \/ pt2.`2 <> 0 \/ tag <> TagNoInter) => //.
+case (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) => //.
 rewrite !negb_or /= not_dir => [#] -> -> pt2_2 -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
@@ -731,7 +734,7 @@ lemma eq_of_valid_da_to_env (m : msg) :
   m =
   let x = oget (epdp_da_to_env_msg.`dec m) in
   (Adv,
-   ([], 0),
+   env_root_port,
    (x.`dte_da, 0),
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
@@ -747,11 +750,8 @@ move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
 by rewrite !epdp.
 qed.
 
-module DummyAdv : FUNC = {
-  var self, env : addr
-
-  proc init(self_ env_ : addr) = {
-    self <- self_; env <- env_;
+module DummyAdv : ADV = {
+  proc init() : unit = {
   }
 
   proc invoke(m : msg) : msg option = {
@@ -759,21 +759,21 @@ module DummyAdv : FUNC = {
 
     match (epdp_da_from_env_msg.`dec m) with
       Some x => {  (* from interface/simulator, we know x.`dfe_da = self *)
-        if (0 < x.`dfe_n /\ x.`dfe_pt <> ([], 0) /\
-            ! self <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
-          r <- Some (Adv, x.`dfe_pt, (self, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
+        if (0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\
+            ! adv <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
+          r <- Some (Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
         }
       }
     | None   => {
         (* message from functionality or environment;
            interface/simulator will enforce that m.`1 = Adv /\ m.`2.`1
            = self /\ 0 <= m.`2.`2 /\ ! self <= m.`3.`1 /\
-           (m.`3 = ([], 0) <=> m.`2.`2 = 0) *)
+           (m.`3 = env_root_port <=> m.`2.`2 = 0) *)
         if (0 < m.`2.`2) {
           r <-
             Some
             (enc_da_to_env
-             {|dte_da = self; dte_n = m.`2.`2; dte_pt = m.`3;
+             {|dte_da = adv; dte_n = m.`2.`2; dte_pt = m.`3;
                dte_tag = m.`4; dte_u = m.`5|});
         }
       }
@@ -786,6 +786,8 @@ end DummyAdversary.
 
 abstract theory MakeSimulator.
 
+(* construct a simulator from a core *)
+
 (* begin theory parameters *)
 
 op core_pi : int.
@@ -797,46 +799,44 @@ axiom core_pi_gt0 :
 
 (* loop invariant for simulator's while loop *)
 
-op ms_loop_invar
-     (self : addr, if_addr_opt : addr option,
-      m : msg, r : msg option, not_done : bool) : bool =
-  self <> [] /\ m.`1 = Adv /\
-  (not_done =>
-   (m.`2 = (self, 0) /\ m.`3 = ([], 0) \/
+(* TODO - this is out of date: *)
 
-    m.`2.`1 = self /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
+op ms_loop_invar
+     (if_addr_opt : addr option,
+      m : msg, r : msg option, not_done : bool) : bool =
+  m.`1 = Adv /\
+  (not_done =>
+   (m.`2 = (adv, 0) /\ m.`3 = env_root_port \/
+
+    m.`2.`1 = adv /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
     oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 1 \/
 
-    m.`2.`1 = self /\ 0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ ! self <= m.`3.`1 \/
+    m.`2.`1 = adv /\ 0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ ! adv <= m.`3.`1 \/
 
     if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 /\
-    m.`3.`1 = self /\ 0 < m.`3.`2 < core_pi)) /\
+    m.`3.`1 = adv /\ 0 < m.`3.`2 < core_pi)) /\
   (! not_done =>
    r = None \/
-   ((oget r).`1 = Adv /\ (oget r).`3.`1 = self /\ 
-    ((oget r).`2 = ([], 0) /\ (oget r).`3.`2 = 0 \/
+   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\ 
+    ((oget r).`2 = env_root_port /\ (oget r).`3.`2 = 0 \/
 
      if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
      (oget r).`3.`2 = core_pi \/
 
-     ! self <= (oget r).`2.`1 /\ (oget r).`2 <> ([], 0) /\
+     ! adv <= (oget r).`2.`1 /\ (oget r).`2 <> env_root_port /\
      (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
      0 < (oget r).`3.`2 < core_pi))).
 
-module MS (Core : FUNC, Adv : FUNC) : FUNC = {
-  var self : addr
-
+module MS (Core : ADV) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
      received with destination port index core_pi *)
 
   var if_addr_opt : addr option
 
-  (* self_ will not be []; adv_ = [] *)
-
-  proc init(self_ adv_ : addr) : unit = {
-    self <- self_; if_addr_opt <- None;
-    Core.init(self, []);
-    Adv.init(self, []);
+  proc init() : unit = {
+    if_addr_opt <- None;
+    Core.init();
+    Adv.init();
   }
 
   proc after_core(r : msg option) : msg option * msg * bool = {
@@ -850,7 +850,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
       if (m.`1 = Dir) {
         r <- None; not_done <- false;
       }
-      elif (m.`2.`1 = self) {
+      elif (m.`2.`1 = adv) {
         if (0 < m.`2.`2 /\ if_addr <= m.`3.`1) {
           not_done <- true;
         }
@@ -859,7 +859,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
         }
       }
       elif (m.`2.`1 = if_addr) {
-        if (m.`2.`2 = 1 /\ m.`3 = (self, core_pi)) {
+        if (m.`2.`2 = 1 /\ m.`3 = (adv, core_pi)) {
           not_done <- false;
         }
         else {
@@ -881,7 +881,7 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     }
     else {
       m <- oget r;
-      if (m.`1 = Dir \/ m.`2.`1 = self \/ m.`3.`1 <> self \/
+      if (m.`1 = Dir \/ m.`2.`1 = adv \/ m.`3.`1 <> adv \/
           m.`3.`2 < 0) {
         r <- None; not_done <- false;
       }
@@ -903,9 +903,6 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
     var not_done : bool <- true;
     while (not_done) {
       if (m.`2.`2 = core_pi) {
-        if (if_addr_opt = None) {
-          if_addr_opt <- Some m.`3.`1;
-        }
         r <@ Core.invoke(m);
         (r, m, not_done) <@ after_core(r);
       }
@@ -922,13 +919,14 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
   }
 
   (* m.`1 = Adv /\ m.`2.`1 = self /\
-     (m.`2.`2 = 0 /\ m.`3 = ([], 0) \/ 0 < m.`2.`2 /\ m.`3 <> ([], 0)) *)
+     (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
+      0 < m.`2.`2 /\ m.`3 <> env_root_port) *)
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    if (m.`2.`2 = core_pi) {  (* so m.`3 <> ([], 0) *)
+    if (m.`2.`2 = core_pi) {  (* so m.`3 <> env_root_port *)
       if (if_addr_opt = None) {
-        if (m.`3.`2 = 1) {  (* ideal functionality's external port index *)
+        if (m.`3.`2 = 1) {  (* ideal functionality's port index *)
           if_addr_opt <- Some m.`3.`1;
           r <@ loop(m);
         }
@@ -945,4 +943,3 @@ module MS (Core : FUNC, Adv : FUNC) : FUNC = {
 }.
 
 end MakeSimulator.
-

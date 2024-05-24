@@ -9,12 +9,14 @@ functionality
   (SMC.SMCIdeal,
    SMC.SMCReal(KeyExchange.KEIdeal)).
 
+prover [""].  (* we'll do without SMT solvers *)
+
 var text1 : text.
 var text2 : text.
 var pt1 : port.
 var pt2 : port.
-assumption envport_pt1 : envport func adv pt1.
-assumption envport_pt2 : envport func adv pt2.
+assumption envport_pt1 : envport func pt1.
+assumption envport_pt2 : envport func pt2.
 
 (* experiment with real world *)
 real.
