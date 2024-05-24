@@ -2018,8 +2018,7 @@ exception StepBlockedPortOrAddrCompare
    ideal worlds *)
 
 let step_assign (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (dbs : rewriting_dbs)
-    (lhs : lhs) (expr : expr) : local_context =
+    (dbs : rewriting_dbs) (lhs : lhs) (expr : expr) : local_context =
   let form = lc_apply true gc lc dbs expr in
   match lhs with
   | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
@@ -2031,13 +2030,13 @@ let step_assign (gc : global_context) (lc : local_context)
       List.fold_lefti
       (fun acc i id ->
          let pr = f_proj form i (List.nth tys i) in
+         let pr = simplify_formula gc dbs pr in
          lc_update_var gc acc dbs (unloc id) pr)
       lc
       ids
 
 let step_sample (gc : global_context) (lc : local_context)
-    (pi : prover_infos) (dbs : rewriting_dbs)
-    (lhs : lhs) (expr : expr)
+    (dbs : rewriting_dbs) (lhs : lhs) (expr : expr)
       : global_context * local_context * symbol =
   let form = lc_apply true gc lc dbs expr in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
@@ -2376,12 +2375,12 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
   let (next, rest) = (List.hd inss, List.tl inss) in
   match unloc next with
   | Assign (lhs, expr)                   ->
-      let lc = step_assign c.gc c.lc pi dbs lhs expr in
+      let lc = step_assign c.gc c.lc dbs lhs expr in
       let (rest, lc) = handle_pops rest lc in
       (ConfigRealRunning {c with lc = lc; ins = rest},
        EffectOK)
   | Sample (lhs, expr)                   ->
-      let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
+      let (gc, lc, id) = step_sample c.gc c.lc dbs lhs expr in
       let (rest, lc) = handle_pops rest lc in
       (ConfigRealRunning {c with gc = gc; lc = lc; ins = rest},
        EffectRand id)
@@ -2695,12 +2694,12 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
   let (next, rest) = (List.hd inss, List.tl inss) in
   match unloc next with
   | Assign (lhs, expr)                   ->
-      let lc = step_assign c.gc c.lc pi dbs lhs expr in
+      let lc = step_assign c.gc c.lc dbs lhs expr in
       let (rest, lc) = handle_pops rest lc in
       (ConfigIdealRunning {c with lc = lc; ins = rest},
        EffectOK)
   | Sample (lhs, expr)                   ->
-      let (gc, lc, id) = step_sample c.gc c.lc pi dbs lhs expr in
+      let (gc, lc, id) = step_sample c.gc c.lc dbs lhs expr in
       let (rest, lc) = handle_pops rest lc in
       (ConfigIdealRunning {c with gc = gc; lc = lc; ins = rest},
        EffectRand id)
@@ -3382,11 +3381,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     (dbs : rewriting_dbs) : config * effect =
   let mode = mode_of_sent_msg_expr_tyd c.sme in
   let dest_port = dest_port_of_sent_msg_expr_tyd c.sme in
-  let dest_addr = port_to_addr_form dest_port in
-  let dest_pi = port_to_pi_form dest_port in
   let source_port = source_port_of_sent_msg_expr_tyd c.sme in
-  let source_addr = port_to_addr_form source_port in
-  let source_pi = port_to_pi_form source_port in
 
   let from_env_to_ideal_fun (func_sp : symb_pair) (base : int)
       (ifbt : ideal_fun_body_tyd) : config * effect =
@@ -3534,23 +3529,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
      only for use when message's destination address is >= func_addr *)
 
-  let rec find_sim_from_left (i : int)
+  let rec find_sim_from_left (i : int) (dest_pi : int)
         : (int * symb_pair * int * int list * sim_state) option =
     if i = -1
       then let (_, adv_pi, _) = c.iw.iw_main_sim in
-           if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq dest_pi (int_form adv_pi))
+           if dest_pi = adv_pi
            then let (sp, adv_pi, rf_arg_adv_pis) = c.iw.iw_main_sim in
                 let sim_st = c.iws.main_sim_state in
                 Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
-           else find_sim_from_left (i + 1)
+           else find_sim_from_left (i + 1) dest_pi
     else if i <= List.length c.iw.iw_other_sims - 1
       then let (sp, adv_pi, rf_arg_adv_pis) = List.nth c.iw.iw_other_sims i in
-           if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq dest_pi (int_form adv_pi))
+           if dest_pi = adv_pi
            then let sim_st = List.nth c.iws.other_sims_states i in
                 Some (i, sp, adv_pi, rf_arg_adv_pis, sim_st)
-           else find_sim_from_left (i + 1)
+           else find_sim_from_left (i + 1) dest_pi
     else None in
 
   let dest_adv_to_sim (i : int) (sim_sp : symb_pair) (base : int)
@@ -3642,8 +3635,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                    | None        -> failure "should not happen"
                    | Some adv_pi ->
                        let src_adv_pi = base + adv_pi in
-                         if eval_bool_form_to_bool c.gc pi dbs
-                            (f_eq source_pi (int_form src_adv_pi))
+                       if equal_port_index_of_port c.gc pi dbs
+                          source_port src_adv_pi
                          then Some
                               (subst_for_iip_in_sent_msg_expr_ord_tyd
                                sme_ord [sim_bt.sims; comp_adv; sub'])
@@ -3699,8 +3692,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
          | None         -> msg_match_fail ()
          | Some sme_ord ->
              if sme_ord.dir = In &&
-                eval_bool_form_to_bool c.gc pi dbs
-                (f_eq source_pi (int_form expect_source_adv_pi))
+                equal_port_index_of_port c.gc pi dbs
+                source_port expect_source_adv_pi
              then let (lc, ins) =
                     match_ord_sme_in_state true
                     (addr_concat_form_from_list_smart func_form sim_rf_addr)
@@ -3757,7 +3750,8 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
              [sim_rf; sub_fun_id; basic_adv_id],
              base + sim_rf_num_adv_pis_of_parties + 1 + i))
       (IdMap.bindings sim_rfbt.sub_funs) in
-    let find_param_or_sub_fun () =
+    let find_param_or_sub_fun () :
+          (symbol list * symbol list * int) option =
       let rec find_param (i : int) : int option =
         if i > sim_rf_num_params
         then None
@@ -3774,13 +3768,26 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                 dest_port addr
              then Some i
              else find_sub_fun (i + 1) in
-      match find_param 1 with
-      | None   ->
-          (match find_sub_fun 1 with
-           | None   -> None
-           | Some i -> Some (List.nth sim_rf_sub_funs_info (i - 1)))
-      | Some i -> Some (List.nth sim_rf_params_info (i - 1)) in
-    let failure () =
+      match try_destr_port_as_func_rel dest_port with
+      | None          ->
+          (match find_param 1 with
+           | None   ->
+               (match find_sub_fun 1 with
+                | None   -> None
+                | Some i -> Some (List.nth sim_rf_sub_funs_info (i - 1)))
+           | Some i -> Some (List.nth sim_rf_params_info (i - 1)))
+      | Some (rel, _) ->
+          (assert (List.length rel = List.length sim_rf_addr + 1);
+           let i = List.last rel in
+           if i < 1
+             then None
+           else if i <= sim_rf_num_params
+             then Some (List.nth sim_rf_params_info (i - 1))
+           else let i = i - sim_rf_num_params in
+                if i > sim_rf_num_sub_funs
+                then None
+                else Some (List.nth sim_rf_sub_funs_info (i - 1))) in
+    let failure_msg () =
       (debugging_message
        (fun ppf ->
           fprintf ppf
@@ -3793,7 +3800,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     then dest_ge_func_to_sim_cont_adv_party i sim_sp base sbt
          sim_rf_addr sim_st
     else match find_param_or_sub_fun () with
-         | None                                             -> failure ()
+         | None                                             -> failure_msg ()
          | Some (expect_iip, new_iip, expect_source_adv_pi) ->
              dest_ge_func_to_sim_cont_param_or_sub_fun i sim_sp base sbt
              sim_rf_addr sim_st expect_iip new_iip expect_source_adv_pi in
@@ -3826,18 +3833,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
      or the adversary *)
 
   let from_sim_left_or_right (i : int) : config * effect =
-    if eval_bool_form_to_bool c.gc pi dbs
-       (f_eq dest_addr adv_addr_form)
+    if equal_adv_addr_of_port c.gc pi dbs dest_port
       then if i = List.length c.iws.other_sims_states - 1
            then msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
-           else match find_sim_from_left (i + 1) with
+           else let dest_pi =
+                  match try_destr_port_as_port_index dest_port with
+                  | None       -> failure "cannot happen"
+                  | Some porti -> porti in
+                match find_sim_from_left (i + 1) dest_pi with
                 | None                                             ->
                     msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
                 | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
                     let {addr = sim_rf_addr; state = sim_st} = sim_st in
                     dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st
-    else if eval_bool_form_to_bool c.gc pi dbs
-            (addr_le_form func_form dest_addr)
+    else if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs
+            dest_port []
       then if i = -1
            then let (func_sp, base) = c.iw.iw_ideal_func in
                 let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
@@ -3858,24 +3868,17 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   let from_adv () : config * effect =
     if mode = Dir ||
-       eval_bool_form_to_bool c.gc pi dbs
-       (f_or
-        (addr_le_form adv_addr_form dest_addr)
-        (f_or
-         (f_not (f_eq adv_addr_form source_addr))
-         (int_lt_form source_pi (int_form 0))))
+       greater_equal_adv_addr_of_port c.gc pi dbs dest_port ||
+       not (equal_adv_addr_of_port c.gc pi dbs source_port) ||
+       less_than_port_index_of_port c.gc pi dbs source_port 0
       then fail_out_of_running_or_sending_config (ConfigIdealSending c)
-    else if eval_bool_form_to_bool c.gc pi dbs
-            (addr_le_form func_form dest_addr)
-      then if eval_bool_form_to_bool c.gc pi dbs
-              (f_eq source_pi (int_form 0))
+    else if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port []
+      then if equal_port_index_of_port c.gc pi dbs source_port 0
            then fail_out_of_running_or_sending_config (ConfigIdealSending c)
            else from_adv_to_sim_or_ideal_func
                 (List.length c.iws.other_sims_states - 1)
-    else if eval_bool_form_to_bool c.gc pi dbs
-            (f_iff
-             (f_eq source_pi (int_form 0))
-             (f_eq dest_port env_root_port_form))
+    else if equal_port_index_of_port c.gc pi dbs source_port 0 =
+            equal_env_root_port c.gc pi dbs dest_port
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
@@ -3883,7 +3886,11 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     match mode_of_sent_msg_expr_tyd c.sme with
     | Dir -> msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
     | Adv ->
-        (match find_sim_from_left (-1) with
+        (let dest_pi =
+           match try_destr_port_as_port_index dest_port with
+           | None       -> failure "cannot happen"
+           | Some porti -> porti in
+         match find_sim_from_left (-1) dest_pi with
          | None                                ->
              msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
          | Some (i, sim_sp, adv_pi, _, sim_st) ->
