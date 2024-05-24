@@ -2516,10 +2516,9 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
       : config * effect =
   let simpl = simplify_formula c.gc dbs in
   let sim_rf_addr =
-    addr_concat_form_from_list_smart func_form
-    (if i = -1
-     then Option.get c.iws.main_sim_state.addr
-     else Option.get ((List.nth c.iws.other_sims_states i).addr)) in
+    if i = -1
+    then Option.get c.iws.main_sim_state.addr
+    else Option.get ((List.nth c.iws.other_sims_states i).addr) in
   let adv_pis_of_rf_args =
     if i = -1
     then let (_, _, adv_pis) = c.iw.iw_main_sim in adv_pis
@@ -2564,7 +2563,10 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
          SMET_Ord
          {mode           = Adv;
           dir            = Out;
-          src_port_form  = make_port_form sim_rf_addr (int_form porti);
+          src_port_form  =
+            make_port_form
+            (addr_concat_form_from_list_smart func_form sim_rf_addr)
+            (int_form porti);
           path           = path;
           args           = msg_args;
           dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
@@ -2594,10 +2596,10 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
          {mode           = Adv;
           dir            = Out;
           src_port_form  =
-            simpl
-            (make_port_form
-             (addr_concat_form_from_list_smart sim_rf_addr [child_i])
-             (int_form 1));
+            make_port_form
+            (addr_concat_form_from_list_smart func_form
+             (sim_rf_addr @ [child_i]))
+            (int_form 1);
           path           = path;
           args           = List.map simpl msg_args;
           dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
