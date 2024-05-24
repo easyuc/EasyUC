@@ -2481,7 +2481,7 @@ let iw_step_send_and_transition_from_sim_basic_adv_left
     | _       -> failure "should not happen" in
   let path = {inter_id_path = [root; basic]; msg = msg} in
   let sim_rf_addr =
-    addr_concat_form_from_list_smart func_form    
+    addr_concat_form_from_list_smart func_form
     (if i = -1
      then Option.get c.iws.main_sim_state.addr
      else Option.get ((List.nth c.iws.other_sims_states i).addr)) in
