@@ -426,7 +426,7 @@ let print_sub_fun_clones (ppf : Format.formatter)
   done
 
 let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
-      (rfbt : real_fun_body_tyd) : unit =
+      (rapm : rf_addr_port_maps) : unit =
   let print_addr_op (name : string) (n : int) : unit =
     Format.fprintf ppf "@[op %s (%s : %a) : %a = %s ++ [%i].@]@;"
       (addr_op_name name) self (pp_type sc) addr_ty (pp_type sc) addr_ty self n
@@ -443,31 +443,17 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
     print_port_op intport_op_name name n
   in
   Format.fprintf ppf "@[<v>";
-  let np = IdMap.cardinal rfbt.params in
-  let ps = indexed_map_to_list_keep_keys rfbt.params in 
-  for n = 0 to np-1 do
-    let pn = fst (List.nth ps n) in
-    print_addr_op pn (n+1)
-  done;
+  IdMap.iter (fun pn n ->
+    print_addr_op pn n) rapm.params_addr_sufix;
   Format.fprintf ppf "@;";
-  let nsf = IdMap.cardinal rfbt.sub_funs in
-  let sfbndgs = IdMap.bindings rfbt.sub_funs in
-  for n = 0 to nsf-1 do
-    let isf_name = fst (List.nth sfbndgs n) in
-    print_addr_op isf_name (np+n+1)
-  done;
+  IdMap.iter (fun pn n ->
+    print_addr_op pn n) rapm.subfun_addr_sufix;
   Format.fprintf ppf "@;";
-  let npt = IdMap.cardinal rfbt.parties in
-  let ptbndgs = IdMap.bindings rfbt.parties in
-  for n = 0 to npt-1 do
-    let ptn = fst (List.nth ptbndgs n) in
-    print_extport_op ptn (n+1)
-  done;
+  IdMap.iter (fun pn n ->
+    print_extport_op pn n) rapm.party_ext_port_id;
   Format.fprintf ppf "@;";
-  for n = 0 to npt-1 do
-    let ptn = fst (List.nth ptbndgs n) in
-    print_intport_op ptn (npt+n+1)
-  done;
+  IdMap.iter (fun pn n ->
+    print_intport_op pn n) rapm.party_int_port_id;
   Format.fprintf ppf "@]@;"
 
 let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
@@ -557,23 +543,23 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
 
 
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
+      (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd) (rapm : rf_addr_port_maps)
       (dii : symb_pair IdMap.t) : string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
   Format.fprintf sf "@[%a@]@;@;" print_sub_fun_clones rfbt;
-  Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rfbt;
+  Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii) rfbt;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__rf);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
-let gen_fun (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (ft : fun_tyd) (dii : symb_pair IdMap.t)
+let gen_fun (sc : EcScope.scope) (root : string) (id : string) (mbmap : message_body_tyd SLMap.t)
+      (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
     : string =
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
-  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt dii
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii 

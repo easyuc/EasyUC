@@ -160,8 +160,6 @@ let get_msg_path (mpp : msg_path_pat) : msg_path =
     inter_id_path = mppu.inter_id_path;
     msg = msgn
   }
- 
-
 
 (*returns a bool that determines if the interface path is a local path (true),
   or references an interface defined in another file (false)
@@ -174,4 +172,39 @@ let get_msg_body
   if SLMap.exists (fun p _ -> p = sl) mbmap
   then let mb = SLMap.find sl mbmap in (false,mb)
   else let mb = SLMap.find ([root]@sl) mbmap in (true,mb)
-  
+
+type rf_addr_port_maps =
+  {
+    params_addr_sufix : int IdMap.t;
+    subfun_addr_sufix : int IdMap.t;
+    party_ext_port_id : int IdMap.t;
+    party_int_port_id : int IdMap.t;
+  }
+
+let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
+    : rf_addr_port_maps =
+  let rfbt = real_fun_body_tyd_of (EcLocation.unloc ft) in
+  let pas = IdMap.mapi ( fun nm _ ->
+    fst (EcUtils.oget
+    (get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+    maps root ft nm))
+    ) rfbt.params in
+  let sas = IdMap.mapi ( fun nm _ ->
+    fst (EcUtils.oget
+    (get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+    maps root ft nm))
+              ) rfbt.sub_funs in
+  let rfinfo = get_info_of_real_func maps root 0 ft in
+  let pepi = IdMap.mapi ( fun nm pi ->
+                         let _,_, port = EcUtils.oget pi.pi_pdi in
+                         port
+               ) rfinfo in
+  let pipi = IdMap.mapi ( fun nm pi ->
+    pi.pi_ipi
+               ) rfinfo in
+  {
+    params_addr_sufix = pas;
+    subfun_addr_sufix = sas;
+    party_ext_port_id = pepi;
+    party_int_port_id = pipi;
+  }
