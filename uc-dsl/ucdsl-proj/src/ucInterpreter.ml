@@ -2864,7 +2864,7 @@ type real_world_rel_select =
 
 let select_rel_addr_of_real_world
     (maps : maps_tyd) (rel : int list) (rw : real_world)
-      : real_world_rel_select option =
+      : real_world_rel_select =
   let rec sel (rel : int list) ((sp, base, rwas) : real_world)
       (par_opt : (symb_pair * int * int) option) =
     match rel with
@@ -2875,7 +2875,7 @@ let select_rel_addr_of_real_world
           then None
         else if i <= nargs
           then (match List.nth rwas (i - 1) with
-                | RWA_Real rw            ->
+                | RWA_Real rw               ->
                     sel rel rw (Some (sp, i - 1, base))
                 | RWA_Ideal (sp_arg, advpi) ->
                     Some
@@ -2891,7 +2891,9 @@ let select_rel_addr_of_real_world
                     (fst sp) base ft (j - 1),
                     sp, j - 1, base))
              else None
-  in sel rel rw None
+  in match sel rel rw None with
+     | None      -> failure "should not happen"
+     | Some rwrs -> rwrs
 
 let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     (dbs : rewriting_dbs) : config * effect =
@@ -3365,17 +3367,17 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let from_func (rel : int list) : config * effect =
     if mode = Adv
     then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
-    else let rwrso = select_rel_addr_of_real_world c.maps rel c.rw in
+    else let rwrs = select_rel_addr_of_real_world c.maps rel c.rw in
          if equal_func_rel_addr_of_port c.gc pi dbs dest_port rel
            then failure "should not happen"
          else if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port rel
-           then (match Option.get rwrso with
+           then (match rwrs with
                  | RW_Select_RealFun (sp, base, rwas, _) ->
                      from_parent_to_arg_or_sub_fun rel sp base rwas
                  | _                                     ->
                      fail_out_of_running_or_sending_config
                      (ConfigRealSending c))
-         else from_arg_or_sub_fun_to_parent rel (Option.get rwrso) in
+         else from_arg_or_sub_fun_to_parent rel rwrs in
 
   try
     match c.rwsc with
