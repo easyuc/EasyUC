@@ -375,8 +375,13 @@ let print_message
       Format.fprintf ppf "@[| Some p =>@]";
       Format.fprintf ppf "@,@[<v 2>  ";
       if not (IdMap.is_empty mb.params_map) then
+      if (IdMap.cardinal mb.params_map) > 1 then
         Format.fprintf ppf "@[let@ (%a)@ =@ p@ in@]@,"
-        (print_params_vars) mb.params_map;
+          (print_params_vars) mb.params_map
+      else
+        Format.fprintf ppf "@[let@ %a@ =@ p@ in@]@,"
+          (print_params_vars) mb.params_map
+      ;
       Format.fprintf ppf "@[Some@]";
       Format.fprintf ppf "@,@[<v 2>{|@,";
       Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
@@ -457,12 +462,12 @@ let print_message
     Format.fprintf ppf "  move : match_eq_some.@,";
     Format.fprintf ppf "  case ((%a).`dec v) => //.@,"
       (print_epdp_data_univ sc) mb.params_map;
-    if not (IdMap.is_empty mb.params_map) then
+    if (IdMap.cardinal mb.params_map)>1 then
       Format.fprintf ppf "  by case.@,";
     Format.fprintf ppf "move : match_eq_some.@,";
     Format.fprintf ppf "rewrite val_v /= => <- /=.@,";
     Format.fprintf ppf "apply epdp_dec_enc => //.@,";
-    if not (IdMap.is_empty mb.params_map) then
+    if (IdMap.cardinal mb.params_map)>1 then
       Format.fprintf ppf "rewrite !epdp.@,";
     Format.fprintf ppf "qed.@,@,"
   in

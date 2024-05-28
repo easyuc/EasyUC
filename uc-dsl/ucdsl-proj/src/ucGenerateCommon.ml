@@ -29,12 +29,11 @@ let pp_expr (sc : EcScope.scope) (ppf : Format.formatter) (expr : EcTypes.expr)
     EcTypes.e_local (EcIdent.create idstr) addr_ty
   in
   let e_self = addr_ex_of_idstr _self in
-  let e_adv =  addr_ex_of_idstr _adv  in
-  let envport_self_adv =
-    EcTypes.e_app envport_op [e_self; e_adv]
+  let envport_self =
+    EcTypes.e_app envport_op [e_self]
       (EcTypes.tfun port_ty EcTypes.tbool) in
   let envport_subst =
-    EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self_adv] in
+    EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self] in
   let expr = EcSubst.subst_expr envport_subst expr in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   EcPrinting.pp_expr ppe ppf expr
