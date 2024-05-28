@@ -157,10 +157,15 @@ let generate_ec (mt : maps_tyd) : unit =
 
   let fm = IdPairMap.fold (fun sp ft fm ->
     let root, id = sp in
-    let dir_int_internals = dir_int_internals mt root ft in                 
+    let dir_int_internals = dir_int_internals mt root ft in
+    let rapm =
+      if is_real_fun_tyd ft
+      then Some (make_rf_addr_port_maps mt root ft)
+      else None
+    in
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
-          (scope root) root id mbmap ft dir_int_internals
+          (scope root) root id mbmap rapm ft dir_int_internals
     ) fm
     ) mt.fun_map IdPairMap.empty in
 

@@ -164,8 +164,8 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     begin match mb.port with
     | Some port ->
        Format.fprintf ppf
-         "@[if (%s %s %s %s) {@]@;<0 2>@[<v>"
-         _envport _self _adv port
+         "@[if (%s %s %s) {@]@;<0 2>@[<v>"
+         _envport _self port
     | None -> ()
     end
     else ()
@@ -383,8 +383,8 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       r (pp_type sc) msg_ty;
     Format.fprintf ppf
-      "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ (%a)@ /\\@ envport %s %s %s.`3)@]"
-         m mode_Dir m _self print_dir_pi_guard()  _self _adv m;
+      "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ (%a)@ /\\@ envport %s %s.`3)@]"
+         m mode_Dir m _self print_dir_pi_guard()  _self m;
      Format.fprintf ppf "\\/";
      Format.fprintf ppf
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
@@ -499,8 +499,8 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     in
     let print_party_invoke ppf (nm : string) : unit =
       Format.fprintf ppf
-      "@[if ((%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s %s %s.`3)@]@;"
-         m mode_Dir m (extport_op_call nm) _self _adv m;
+      "@[if ((%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s %s.`3)@]@;"
+         m mode_Dir m (extport_op_call nm) _self m;
       Format.fprintf ppf "@[\\/@]@;";
       Format.fprintf ppf
         "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s))@]@;"
