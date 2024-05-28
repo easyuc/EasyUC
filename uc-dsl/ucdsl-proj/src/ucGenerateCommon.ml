@@ -95,7 +95,7 @@ let clone_singleton_unit
 (ppf : Format.formatter) (root : string) (asname : string) (advpi : string) =
   Format.fprintf ppf "@[<v>";
   Format.fprintf ppf  "@[clone %s as %s with  (* singleton unit *)@]@;"
-    root asname;
+    (uc_name root) asname;
   Format.fprintf ppf "@[op %s <- %s@]@;"
     adv_if_pi_op_name advpi;
   Format.fprintf ppf "@[proof *.@]@;";
@@ -107,7 +107,7 @@ let clone_triple_unit
 (ppf : Format.formatter) (root : string) (asname : string) (advpibeg : string) =
   Format.fprintf ppf "@[<v>";
   Format.fprintf ppf  "@[clone %s as %s with  (* triple unit *)@]@;"
-    root asname;
+    (uc_name root) asname;
   Format.fprintf ppf "@[op %s <- %s@]@;"
     adv_pi_begin_op_name advpibeg;
   Format.fprintf ppf "@[proof *.@]@;";
