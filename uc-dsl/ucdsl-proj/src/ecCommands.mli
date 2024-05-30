@@ -59,7 +59,7 @@ val pp_maybe_current_goal : Format.formatter -> unit
 (* -------------------------------------------------------------------- *)
 val pragma_verbose : bool -> unit
 val pragma_g_prall : bool -> unit
-val pragma_check   : EcScope.Ax.mode -> unit
+val pragma_check   : EcScope.Ax.proofmode -> unit
 
 exception InvalidPragma of string
 
@@ -102,3 +102,4 @@ val ucdsl_end : unit -> unit
 (* end scope, reverting to saved one from stack, but ignoring the
    scope being ended *)
 val ucdsl_end_ignore : unit -> unit
+
