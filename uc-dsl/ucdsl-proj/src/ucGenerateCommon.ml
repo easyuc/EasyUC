@@ -23,21 +23,6 @@ let pp_type (sc : EcScope.scope) (ppf : Format.formatter) (ty : EcTypes.ty)
 let _self = "_self"
 let _adv = "_adv"
 
-let pp_expr (sc : EcScope.scope) (ppf : Format.formatter) (expr : EcTypes.expr)
-    : unit =
-  let addr_ex_of_idstr (idstr : string) =
-    EcTypes.e_local (EcIdent.create idstr) addr_ty
-  in
-  let e_self = addr_ex_of_idstr _self in
-  let envport_self =
-    EcTypes.e_app envport_op [e_self]
-      (EcTypes.tfun port_ty EcTypes.tbool) in
-  let envport_subst =
-    EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self] in
-  let expr = EcSubst.subst_expr envport_subst expr in
-  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  EcPrinting.pp_expr ppe ppf expr
-
 let open_theory (name : string) : string = "theory "^name^"."
 
 let close_theory (name : string) : string = "end "^name^"."
@@ -90,6 +75,42 @@ let name_record_dir_port (name : string)  (mb : message_body_tyd) : string =
 let mode_Dir : string = "Dir"
 
 let mode_Adv : string = "Adv"
+
+let pp_expr ?(ptnms : string list  = []) (sc : EcScope.scope) 
+(ppf : Format.formatter) (expr : EcTypes.expr)
+    : unit =
+  let addr_ex_of_idstr (idstr : string) =
+    EcTypes.e_local (EcIdent.create idstr) addr_ty
+  in
+  let e_self = addr_ex_of_idstr _self in
+  
+  (* envport substitution *)
+  let envport_self =
+    EcTypes.e_app envport_op [e_self]
+      (EcTypes.tfun port_ty EcTypes.tbool) in
+  let envport_subst =
+    EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self] in
+  let expr = EcSubst.subst_expr envport_subst expr in
+  
+  (* intport substitution *)
+  let intport_op_ex ptnm : EcTypes.expr =
+    EcTypes.e_op (EcPath.fromqsymbol ([], intport_op_name ptnm)) []
+      (EcTypes.tfun addr_ty port_ty)
+  in
+  let intport_self ptnm =
+    EcTypes.e_app (intport_op_ex ptnm) [e_self] port_ty in
+  let expr = List.fold_left (fun ex ptnm ->
+    let id = EcIdent.create ("intport:" ^ ptnm) in
+    print_endline (EcIdent.tostring id);             
+    let intport_subst =
+      EcSubst.add_elocals
+        EcSubst.empty [id] [intport_self ptnm] in
+      EcSubst.subst_expr intport_subst ex
+    ) expr ptnms in
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
+  EcPrinting.pp_expr ppe ppf expr
+
+
 
 let clone_singleton_unit
 (ppf : Format.formatter) (root : string) (asname : string) (advpi : string) =
