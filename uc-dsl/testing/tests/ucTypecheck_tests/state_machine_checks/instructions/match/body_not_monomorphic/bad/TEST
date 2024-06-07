@@ -1,0 +1,9 @@
+description
+Test where match instruction body is not monomorphic.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 15 column 3 to line 18 column 6]
+
+message match clause body must be monomorphic
+.
