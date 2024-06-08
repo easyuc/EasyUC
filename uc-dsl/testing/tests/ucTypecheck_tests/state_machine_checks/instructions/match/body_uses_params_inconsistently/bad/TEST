@@ -1,0 +1,14 @@
+description
+Test where match instruction body uses constructor parameter
+inconsistently.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 23 columns 28 to 29]
+
+This expression has type
+   int
+
+but is expected to have type
+   bool
+.
