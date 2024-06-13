@@ -9,7 +9,7 @@ functionality
   (SMC.SMCIdeal,
    SMC.SMCReal(KeyExchange.KEIdeal)).
 
-prover [""].  (* we'll do without SMT solvers *)
+(*prover ["Z3"].   we'll do without SMT solvers *)
 
 var text1 : text.
 var text2 : text.

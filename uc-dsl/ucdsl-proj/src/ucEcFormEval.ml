@@ -1049,11 +1049,14 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
   let sopfl = List.map (
     fun (s,op) ->
     let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
+    let opty =
+      EcCoreSubst.Tvar.subst
+      (EcCoreSubst.Tvar.init (List.map fst op.op_tparams) ty_args) op_ret_ty in
     let opf = 
-      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args op_ret_ty
+      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args opty
     in
     (s,opf)
-  )       
+  )              
   sopl in
   print_endline 
       "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
