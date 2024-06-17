@@ -1,0 +1,8 @@
+description
+Fix of test where match instruction matches on non-inductive type -
+version where it's a record type, whose only field is of
+the inductive type. Good version will use that.
+.
+args: good.uc
+outcome: success
+.

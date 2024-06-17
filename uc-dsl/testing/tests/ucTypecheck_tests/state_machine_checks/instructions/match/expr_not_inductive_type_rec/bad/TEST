@@ -1,0 +1,11 @@
+description
+Test where match instruction matches on non-inductive type -
+version where it's a record type, whose only field is of
+the inductive type. Good version will use that.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 17 columns 14 to 19]
+
+the expression does not have an inductive type
+.

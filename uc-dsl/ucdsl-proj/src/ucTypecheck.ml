@@ -1382,6 +1382,8 @@ and check_match
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
   let exp, ty = check_expr sa env ue ex None in
+  let uidmap = EcUnify.UniEnv.assubst ue in
+  let ty = EcFol.ty_subst (EcFol.Tuni.subst uidmap) ty in
   let inddecl =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
