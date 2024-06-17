@@ -76,7 +76,7 @@ let mode_Dir : string = "Dir"
 
 let mode_Adv : string = "Adv"
 
-let pp_expr ?(ptnms : string list  = []) (sc : EcScope.scope) 
+let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope) 
 (ppf : Format.formatter) (expr : EcTypes.expr)
     : unit =
   let addr_ex_of_idstr (idstr : string) =
@@ -93,20 +93,19 @@ let pp_expr ?(ptnms : string list  = []) (sc : EcScope.scope)
   let expr = EcSubst.subst_expr envport_subst expr in
   
   (* intport substitution *)
-  let intport_op_ex ptnm : EcTypes.expr =
+  let intport_op_ex (ptnm : string list) : EcTypes.expr =
+    let ptnm = List.nth ptnm ((List.length ptnm)-1) in
     EcTypes.e_op (EcPath.fromqsymbol ([], intport_op_name ptnm)) []
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =
     EcTypes.e_app (intport_op_ex ptnm) [e_self] port_ty in
-  let expr = List.fold_left (fun ex ptnm ->
-    let id = EcIdent.create ("intport:" ^ ptnm) in
-    print_endline (EcIdent.tostring id);             
+  let expr = QidMap.fold (fun ptnm id ex  ->        
     let intport_subst =
       EcSubst.add_elocals
         EcSubst.empty [id] [intport_self ptnm] in
       EcSubst.subst_expr intport_subst ex
-    ) expr ptnms in
+    ) intprts expr in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   EcPrinting.pp_expr ppe ppf expr
 

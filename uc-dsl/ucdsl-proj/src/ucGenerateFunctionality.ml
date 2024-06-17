@@ -141,20 +141,21 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t) (root : string)
 let rec print_code (sc :  EcScope.scope) (root : string)
           (mbmap : message_body_tyd SLMap.t)(ppf : Format.formatter)
           (code : instruction_tyd list EcLocation.located)
-          (state_name : string -> string) (dii : symb_pair IdMap.t) (ptn : string option)
-          (ptnms : string list) : unit =
-  let pp_ex = pp_expr ~ptnms:ptnms sc in
+          (state_name : string -> string) (dii : symb_pair IdMap.t)
+          (ptn : string option)
+          (intprts : EcIdent.t QidMap.t) : unit =
+  let pp_ex = pp_expr ~intprts:intprts sc in
   let print_fail_instr () : unit =
     Format.fprintf ppf "@[%s <- None;@]" _r
   in
   let print_ite_instr expr thencode elsecodeo : unit =
     Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" pp_ex expr;
-    print_code sc root mbmap ppf thencode state_name dii ptn ptnms;
+    print_code sc root mbmap ppf thencode state_name dii ptn intprts;
     Format.fprintf ppf  "@]@;}";
     match elsecodeo with
     | Some code ->
       Format.fprintf ppf "@;@[else {@]@;<0 2>@[<v>";
-      print_code sc root mbmap ppf code state_name dii ptn ptnms; 
+      print_code sc root mbmap ppf code state_name dii ptn intprts; 
       Format.fprintf ppf  "@]@;}"
     | None -> ()
   in
@@ -239,7 +240,8 @@ let print_mmc_proc (sc : EcScope.scope) (root : string)
       (state_id : string) (params : ty_index Mid.t)
       (vars : (EcIdent.t * ty) EcLocation.located IdMap.t)
       (mmc : msg_match_clause_tyd) (state_name : string -> string)
-      (dii : symb_pair IdMap.t) (ptn : string option) (ptnms : string list) : unit =
+      (dii : symb_pair IdMap.t) (ptn : string option)
+    (intprts : EcIdent.t QidMap.t) : unit =
   Format.fprintf ppf "@[proc %s (%a) : %a option = {@]@;<0 2>@[<v>"
     (mmc_proc_name state_id mmc.msg_pat.msg_path_pat state_name)
     (print_proc_params_decl sc) ((sparams_map_to_list params)@(
@@ -250,19 +252,19 @@ let print_mmc_proc (sc : EcScope.scope) (root : string)
               (EcIdent.name ident) (pp_type sc) ty
     ) vars;
   Format.fprintf ppf "@[var %s : %a option <- None;@]@;" _r (pp_type sc) msg_ty;
-  print_code sc root mbmap ppf mmc.code state_name dii ptn ptnms;
+  print_code sc root mbmap ppf mmc.code state_name dii ptn intprts;
   Format.fprintf ppf "@[return %s;@]" _r;
   Format.fprintf ppf "@]@;}@;"
 
 let print_mmc_procs (sc : EcScope.scope) (root : string)
       (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (states : state_tyd IdMap.t) (state_name : string -> string)
-      (dii : symb_pair IdMap.t) (ptn : string option) (ptnms : string list): unit =
+      (dii : symb_pair IdMap.t) (ptn : string option) : unit =
   IdMap.iter(fun id st -> let st:state_body_tyd = EcLocation.unloc st in
     List.iter(fun mmc ->
       if UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat
       then ()
-      else print_mmc_proc sc root mbmap ppf id st.params st.vars mmc state_name dii ptn ptnms
+      else print_mmc_proc sc root mbmap ppf id st.params st.vars mmc state_name dii ptn st.internal_ports
       ;) st.mmclauses
     ) states
 
@@ -398,7 +400,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
-  print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF dii None [];
+  print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF dii None;
   print_proc_parties sc root id mbmap parties_str state_name_IF dii ppf ifbt.states;
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
@@ -505,11 +507,11 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
          m mode_Dir m (extport_op_call nm) _self m;
       Format.fprintf ppf "@[\\/@]@;";
       Format.fprintf ppf
-        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s))@]@;"
+        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s)@]@;"
         m mode_Adv m (extport_op_call nm) m _adv;
       Format.fprintf ppf "@[\\/@]@;";
       Format.fprintf ppf
-      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s <= %s.`3)@]@;"
+      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s <= %s.`3))@]@;"
          m mode_Dir m (intport_op_call nm) _self m;
       Format.fprintf ppf "@[{%s %s %s(%s);}@]@;"
         r "<@" (proc_party_str nm) m
@@ -531,12 +533,11 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
-  let ptnms = fst (List.split (IdMap.bindings rfbt.parties)) in
   IdMap.iter (fun (pn : string) (pt : party_tyd) ->
       let states = (EcLocation.unloc pt).states in
       let sn = (state_name_pt pn) in
       let ps = proc_party_str pn in
-      print_mmc_procs sc root mbmap ppf states sn dii (Some pn) ptnms;
+      print_mmc_procs sc root mbmap ppf states sn dii (Some pn);
       print_proc_parties sc root id mbmap ps sn dii ppf states
   ) rfbt.parties;
   print_proc_invoke ();
