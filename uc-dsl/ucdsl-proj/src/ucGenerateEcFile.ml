@@ -101,13 +101,14 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let r,_ = id_dir_inter_of_param_of_real_fun_tyd rf pname in
          let rui = unit_info_of_root mt r in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^(!papi) in
+         let ucpn = uc_name pname in 
          match rui with
          | UI_Singleton _ ->
-            clone_singleton_unit sf r pname adv_pi_begin_str;
+            clone_singleton_unit sf r ucpn adv_pi_begin_str;
             papi := !papi^" + 1"
          | UI_Triple _ ->
-            clone_triple_unit sf r pname adv_pi_begin_str;
-            papi := !papi^" + "^r^"."^adv_pi_num_op_name
+            clone_triple_unit sf r ucpn adv_pi_begin_str;
+            papi := !papi^" + "^(parampath pname)^"."^adv_pi_num_op_name
        done;
        Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
     end ;
