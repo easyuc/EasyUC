@@ -33,8 +33,6 @@ let uc__name (name : string) : string = "UC__"^name
 
 let uc__code = "UC__Code"
 
-let parampath (pn : string) : string = (uc_name pn)^"."^uc__code 
-
 let adv_if_pi_op_name = "_adv_if_pi"
 
 let adv_if_pi_gt0_axiom_name = "_adv_if_pi_gt0"

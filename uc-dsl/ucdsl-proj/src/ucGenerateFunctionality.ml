@@ -488,9 +488,10 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       let params = List.sort (fun (_,(_,n1)) (_,(_,n2)) -> n1-n2) params in
       let pns = fst (List.split params) in
       Format.fprintf ppf "(";
+      Format.fprintf ppf "%s : FUNC" (List.hd pns);
       List.iter (fun pn ->
-        Format.fprintf ppf " %s : FUNC" pn) pns;
-      Format.fprintf ppf " )"
+        Format.fprintf ppf ", %s : FUNC" pn) (List.tl pns);
+      Format.fprintf ppf ")"
   in
   
   let print_vars () =
