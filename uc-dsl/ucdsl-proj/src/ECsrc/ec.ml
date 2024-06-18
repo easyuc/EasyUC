@@ -38,6 +38,8 @@ type pconfig = {
 }
 
 let print_config config =
+  let (module Sites) = EcRelocate.sites in
+
   (* Print git-hash *)
   Format.eprintf "git-hash: %s@\n%!" EcVersion.hash;
 
@@ -92,6 +94,9 @@ let print_config config =
       (String.concat ", " (List.map string_of_prover provers))
   end;
 
+  (* Command path *)
+  Format.eprintf "Commands PATH: %s@\n%!" Sites.commands;
+
   (* Print system PATH *)
   Format.eprintf "System PATH:@\n%!";
   List.iter
@@ -105,7 +110,7 @@ let main () =
    * disallows Why3 server to detect external provers completion      *)
   let _ : int list = Unix.sigprocmask Unix.SIG_SETMASK [] in
 
-  let theories = EcRelocate.Sites.theories in
+  let (module Sites) = EcRelocate.sites in
 
   (* Parse command line arguments *)
   let conffile, options =
@@ -190,18 +195,113 @@ let main () =
           | Some root ->
               List.fold_left Filename.concat root ["scripts"; "testing"]
           | None ->
-              EcRelocate.resource ["commands"] in
+              Sites.commands in
         let cmd  = Filename.concat root "runtest" in
+
+        let ecargs =
+          let maxjobs =
+            input.runo_provers.prvo_maxjobs
+            |> omap (fun i -> ["-max-provers"; string_of_int i])
+            |> odfl [] in
+
+          let timeout =
+            input.runo_provers.prvo_timeout
+            |> omap (fun i -> ["-timeout"; string_of_int i])
+            |> odfl [] in
+
+          let cpufactor =
+            input.runo_provers.prvo_cpufactor
+            |> omap (fun i -> ["-cpu-factor"; string_of_int i])
+            |> odfl [] in
+
+          let ppwidth =
+            input.runo_provers.prvo_ppwidth
+            |> omap (fun i -> ["-pp-width"; string_of_int i])
+            |> odfl [] in
+
+          let provers =
+            odfl [] input.runo_provers.prvo_provers
+            |> List.map (fun prover -> ["-p"; prover])
+            |> List.flatten in
+
+          let pragmas =
+            input.runo_provers.prvo_pragmas
+            |> List.map (fun pragmas -> ["-pragmas"; pragmas])
+            |> List.flatten  in
+
+          let checkall =
+            if input.runo_provers.prvo_checkall then
+              ["-check-all"]
+            else [] in
+
+          let profile =
+            if input.runo_provers.prvo_profile then
+              ["-profile"]
+            else [] in
+
+          let iterate =
+            if input.runo_provers.prvo_iterate then
+              ["-iterate"]
+            else [] in
+
+          let why3srv =
+            input.runo_provers.prvo_why3server
+            |> omap (fun server -> ["-server"; server])
+            |> odfl [] in
+
+          let why3 =
+            options.o_options.o_why3
+            |> omap (fun why3 -> ["-why3"; why3])
+            |> odfl [] in
+
+          let reloc =
+            if options.o_options.o_reloc then
+              ["-reloc"]
+            else [] in
+
+          let noevict =
+            options.o_options.o_ovrevict
+            |> List.map (fun p -> ["-no-evict"; p])
+            |> List.flatten in
+
+          let boot =
+            if options.o_options.o_loader.ldro_boot then
+              ["-boot"]
+            else [] in
+
+          let idirs =
+            options.o_options.o_loader.ldro_idirs
+            |> List.map (fun (pfx, name, rec_) ->
+                 let pfx = odfl "" (omap (fun pfx -> pfx ^ ":") pfx) in
+                 let opt = if rec_ then "-R" else "-I" in
+                 [opt; pfx ^ name])
+            |> List.flatten in
+
+
+          List.flatten [
+            maxjobs; timeout; cpufactor; ppwidth;
+            provers; pragmas; checkall ; profile;
+            iterate; why3srv; why3     ; reloc  ;
+            noevict; boot   ; idirs    ;
+          ]
+        in
+
         let args =
             [
               "runtest";
               Format.sprintf "--bin=%s" Sys.executable_name;
             ]
-          @ (List.flatten
-               (List.map
-                  (fun x -> ["-p"; x])
-                  (odfl [] input.runo_provers)))
-          @ (otolist (omap (Format.sprintf "--why3=%s") options.o_options.o_why3))
+          @ Option.to_list (
+              Option.map
+                (Format.sprintf "--report=%s")
+                input.runo_report
+            )
+          @ Option.to_list (
+              Option.map
+                (Format.sprintf "--jobs=%d")
+                input.runo_jobs
+            )
+          @ List.map (Format.sprintf "--bin-args=%s") ecargs
           @ [input.runo_input]
           @ input.runo_scenarios
         in
@@ -219,7 +319,7 @@ let main () =
         let pwd = Sys.getcwd () in
         Sys.chdir (
           List.fold_left Filename.concat
-            (List.hd EcRelocate.Sites.theories)
+            (List.hd Sites.theories)
             (List.init 3 (fun _ -> ".."))
         ); Some pwd
 
@@ -263,7 +363,7 @@ let main () =
       EcCommands.addidir ~namespace:`System (Filename.concat theory "prelude");
       if not ldropts.ldro_boot then
         EcCommands.addidir ~namespace:`System ~recursive:true theory
-    ) theories;
+    ) Sites.theories;
     List.iter (fun (onm, name, isrec) ->
         EcCommands.addidir
           ?namespace:(omap (fun nm -> `Named nm) onm)
@@ -446,9 +546,9 @@ let main () =
             (* Initialize global scope *)
             let checkmode = {
               EcCommands.cm_checkall  = prvopts.prvo_checkall;
-              EcCommands.cm_timeout   = prvopts.prvo_timeout;
-              EcCommands.cm_cpufactor = prvopts.prvo_cpufactor;
-              EcCommands.cm_nprovers  = prvopts.prvo_maxjobs;
+              EcCommands.cm_timeout   = odfl 3 (prvopts.prvo_timeout);
+              EcCommands.cm_cpufactor = odfl 1 (prvopts.prvo_cpufactor);
+              EcCommands.cm_nprovers  = odfl 4 (prvopts.prvo_maxjobs);
               EcCommands.cm_provers   = prvopts.prvo_provers;
               EcCommands.cm_profile   = prvopts.prvo_profile;
               EcCommands.cm_iterate   = prvopts.prvo_iterate;

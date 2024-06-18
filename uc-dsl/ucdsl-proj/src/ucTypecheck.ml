@@ -1055,8 +1055,22 @@ let check_msg_pat
 
 (* checking instructions *)
 
+let check_uninitialized_var (exp : expr) (l : EcLocation.t)
+    (sa : state_analysis) : unit =
+  let fv = e_fv exp in
+  EcIdent.Mid.iter
+  (fun ident _ ->
+     let id = EcIdent.name ident in
+     if IdSet.mem id sa.uninit_vs
+     then error_message l
+          (fun ppf ->
+             Format.fprintf ppf
+             "@[expression@ uses@ possibly@ uninitialzed@ variable:@ %s@]"
+             id))
+  fv
+
 (* if expct_ty_opt is Some ty, then ty must not have any unification
-   or type variables *)
+   variables *)
 
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
@@ -1067,35 +1081,9 @@ let check_expr
     | None          -> ()
     | Some expct_ty ->
         unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
-  (* replace unification variables in expression by types *)
-  let uidmap =
-    try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstanciateUni ->
-        failure
-        "should not happen: a top-level expression won't have type variables" in
-  let ts = EcFol.Tuni.subst uidmap in
-  let exp = EcFol.Fsubst.e_subst ts exp in
-  (* update result type, using the expected type if supplied (which
-     was assumed to have no unification or type variables), and otherwise
-     applying the result of the unification to ty *)
-  let res_ty =
-    match expct_ty_opt with
-    | None          -> EcFol.ty_subst ts ty
-    | Some expct_ty -> expct_ty in
   (* check for possibly uninitialized variables *)
-  let () =
-    let fv = e_fv exp in
-    EcIdent.Mid.iter
-    (fun ident _ ->
-       let id = EcIdent.name ident in
-       if IdSet.mem id sa.uninit_vs
-       then error_message (loc pexpr)
-            (fun ppf ->
-               Format.fprintf ppf
-               "@[expression@ uses@ possibly@ uninitialzed@ variable:@ %s@]"
-               id))
-    fv in
-  (exp, res_ty)
+  let () = check_uninitialized_var exp (loc pexpr) sa in
+  (exp, ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty =
@@ -1394,6 +1382,8 @@ and check_match
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
   let exp, ty = check_expr sa env ue ex None in
+  let uidmap = EcUnify.UniEnv.assubst ue in
+  let ty = EcFol.ty_subst (EcFol.Tuni.subst uidmap) ty in
   let inddecl =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
@@ -1432,8 +1422,8 @@ and check_match
        cons, (bndngs, ins))
     results in
   let cls = mk_loc (loc clauses) cls_u in
-  let sas = List.map (fun (_, (_,(_,sa)))-> sa) results in
-  Match(exp,cls), merge_state_analyses sas
+  let sas = List.map (fun (_, (_, (_, sa))) -> sa) results in
+  Match(exp, cls), merge_state_analyses sas
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -1535,32 +1525,87 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
 
 (* checking message match clauses *)
 
+let replace_unif_vars_in_msg_match_code (env : env) (ue : unienv)
+    (is : instruction_tyd list located) : instruction_tyd list located =
+  let uidmap =
+    try EcUnify.UniEnv.close ue with
+    | EcUnify.UninstanciateUni ->
+        error_message (loc is)
+        (fun ppf ->
+           Format.fprintf ppf
+           "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
+  let ts = EcFol.Tuni.subst uidmap in
+  let subst_ty = EcFol.ty_subst ts in
+  let subst_expr = EcFol.Fsubst.e_subst ts in
+  let replace_expr_list_loc exps =
+    mk_loc (loc exps) (List.map subst_expr (unloc exps)) in
+  let replace_expr_opt = EcUtils.omap subst_expr in
+  let replace_sat sat =
+    let {msg_expr; state_expr} = sat in
+    {msg_expr =
+       {path      = msg_expr.path;
+        args      = replace_expr_list_loc msg_expr.args;
+        port_expr = replace_expr_opt msg_expr.port_expr};
+     state_expr =
+       {id   = state_expr.id;
+        args = replace_expr_list_loc state_expr.args}} in
+
+  let rec replace ins =
+    mk_loc (loc ins)
+    (match unloc ins with
+     | Assign (lhs, exp)       -> Assign (lhs, subst_expr exp)
+     | Sample (lhs, exp)       -> Sample (lhs, subst_expr exp)
+     | ITE (exp, thens, elses) ->
+         ITE
+         (subst_expr exp,
+          mk_loc (loc thens) (List.map replace (unloc thens)),
+          EcUtils.omap
+          (fun is -> mk_loc (loc is) (List.map replace (unloc is)))
+          elses)
+     | Match (exp, clauses)    ->
+         Match (subst_expr exp, replace_match_clauses clauses)
+     | SendAndTransition sat   -> SendAndTransition (replace_sat sat)
+     | Fail                    -> Fail)
+  and replace_match_clauses clauses =
+    mk_loc (loc clauses)
+    (List.map
+     (fun (cons, (bndgs, ins)) ->
+        (cons,
+         (List.map
+          (fun (id, ty) -> (id, subst_ty ty))
+          bndgs,
+         mk_loc (loc ins) (List.map replace (unloc ins)))))
+     (unloc clauses)) in
+   mk_loc (loc is) (List.map replace (unloc is))
+
 let check_msg_match_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
+    (sc : state_context) (sa : state_analysis) (env : env)
     (is : instruction list located) : instruction_tyd list located =
-  let is' = fst (check_instructions abip ss sc sa env ue is) in
-  check_instrs_transfer_at_end is';
-  is'
+  let ue = unif_env () in
+  let is = fst (check_instructions abip ss sc sa env ue is) in
+  let is = replace_unif_vars_in_msg_match_code env ue is in
+  check_instrs_transfer_at_end is;
+  is
 
 let check_msg_match_clause
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
+    (sc : state_context) (sa : state_analysis) (env : env)
     (mmc : msg_match_clause) : msg_match_clause_tyd =
   let (msg_pat, env) = check_msg_pat abip mmc.msg_pat sc env in
-  let code = check_msg_match_code abip ss sc sa env ue mmc.code in
+  let code = check_msg_match_code abip ss sc sa env mmc.code in
   {msg_pat = msg_pat; code = code }
 
 (* checking states *)
 
 let check_state_code
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
-    (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
+    (sc : state_context) (sa : state_analysis) (env : env)
     (mmclauses : msg_match_clause list)
       : msg_match_clause_tyd list =
   let mmclauses' =
     List.map
-    (fun mmc -> check_msg_match_clause abip ss sc sa env ue mmc)
+    (fun mmc -> check_msg_match_clause abip ss sc sa env mmc)
     mmclauses in
   check_coverage_msg_path_pats abip sc
   (List.map (fun mmc -> mmc.msg_pat) mmclauses');
@@ -1652,8 +1697,7 @@ let check_lowlevel_state
   let sa = init_state_analysis sc in
   let ss = get_state_sigs states in
   let env = augment_env_with_state_context (top_env ()) sc in
-  let ue = unif_env () in
-  let code = check_state_code abip ss sc sa env ue us.mmclauses in
+  let code = check_state_code abip ss sc sa env us.mmclauses in
   let us' : state_body_tyd =
     {is_initial     = us.is_initial;
      params         = sc.params;

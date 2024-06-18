@@ -1,0 +1,6 @@
+description
+Resolution of test where match instruction body is not monomorphic.
+.
+args: good.uc
+outcome: success
+.

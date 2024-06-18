@@ -1,0 +1,7 @@
+description
+Resolution of test where match instruction body uses constructor parameter
+inconsistently.
+.
+args: good.uc
+outcome: success
+.

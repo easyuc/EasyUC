@@ -64,16 +64,19 @@ require export UCUniv.
 
    [] is the root address of the environment
 
-   a functionality will always have a non-empty address
-
    the adversary and any simulators will share the same address [0],
    which will be incomparable with the address of any functionality
 
-   the address of the functionality is assigned at the beginning of an
-   *experiment*, in which the environment experiments with either a
-   real functionality and the adversary, or an ideal functionality and
-   a nonempty list of simulators plus the adversary (S1 * S2 * ... *
-   Sn * Adv) *)
+   the address of a top-level functionality is assigned at the
+   beginning of an *experiment*, and this recursively sets the
+   addresses of all parameters and subfunctionalities
+
+   in an experiment, the environment experiments with either a real
+   functionality and the adversary, or an ideal functionality and
+   simulator applied to the adversary (simulators internally can
+   consist of compositions of simulators; if unfolded, we have the
+   composition of n simulators plus the adversary (S1 * S2 * ... * Sn
+   * Adv)) *)
 
 type addr = int list.
 
@@ -89,7 +92,7 @@ hint simplify valid_epdp_addr_univ.
 hint rewrite epdp : valid_epdp_addr_univ.
 
 op env_root_addr : addr = [].   (* root address of environment *)
-op adv : addr           = [0].  (* address of adversary *)
+op adv           : addr = [0].  (* address of adversary *)
 
 (* ports - pairs of functionality addresses and port indices; messages
    (see type below) have source and destination ports, and they have
@@ -152,19 +155,19 @@ op adv : addr           = [0].  (* address of adversary *)
    when a direct message is sent by a party of a real functionality
    with address alpha, only two possibilities are allowed:
 
-     * the address of the destination port is not a sub-address of
-       alpha (or []), and the source port must be (alpha, i), where i
-       is the port index corresponding to the component of the real
-       functionality's composite direct interface that the sending
-       party serves
+     * the address of the destination port is an envport relative to
+       the address of the functionality, and the source port must be
+       (alpha, i), where i is the port index corresponding to the
+       component of the real functionality's composite direct
+       interface that the sending party serves
 
-     * the address of the destination port must be the address of
-       one of the parameters or subfunctionalities of the real
-       functionality, and the port index of the destination port
-       must identify the component of the composite direct interface
-       implemented by the parameter or subfunctionality that the message
-       is a member of; in this case, the source port of the message
-       will be the internal port of the sending party
+     * the address of the destination port must be the address of one
+       of the parameters or subfunctionalities of the real
+       functionality, and the port index of the destination port must
+       identify the component of the composite direct interface
+       implemented by the parameter or subfunctionality that the
+       message is a member of; in this case, the source port of the
+       message will be the internal port of the sending party
 
    in the UC DSL, these two kind of messages are sent using different
    syntax; in the first case, the destination port is a value of type
@@ -190,9 +193,10 @@ op adv : addr           = [0].  (* address of adversary *)
 
    an ideal functionality with address alpha can send adversarial
    messages to/from to its simulator (if it comes from a triple unit)
-   or the adversay (if it comes from a singleton unit); when sending a
-   message, the source port will be (alpha, 1), and incoming messages
-   should have this destination port
+   or the adversay (if it comes from a singleton unit, as is true for
+   all subfunctionalities); when sending a message, the source port
+   will be (alpha, 1), and incoming messages should have this
+   destination port
 
    a simulator learns the address of its ideal functionality upon
    reception of the first message from it; after that, it responds to
@@ -206,14 +210,15 @@ op adv : addr           = [0].  (* address of adversary *)
 
    the environment is either experimenting with a real functionality
    and the adversary (the real world), or an ideal functionality and a
-   nonempty list of simulators followed by the adversary (S1 * S2 *
-   ... * Sn * Adv) (the ideal world); in the latter case, each
-   simulator has a distinct adversarial port index, which its ideal
-   functionality will use to communicate with it; messages from ideal
-   functionalities flow from left to right through the list of
-   simulators, looking for their home, or going all the way to the
-   adversary (messages can also originate from parties of real
-   functionalities, in which case they always go all the way to the
+   simulator that when unfolded consists of a nonempty list of
+   simulators followed by the adversary (S1 * S2 * ... * Sn * Adv)
+   (the ideal world); in the latter case, each simulator has a
+   distinct adversarial port index, which its ideal functionality will
+   use to communicate with it; messages from ideal functionalities
+   flow from left to right through the list of simulators, looking for
+   their home, or going all the way to the adversary (messages can
+   also originate from parties of real functionalities or
+   subfunctionalities, in which case they always go all the way to the
    adversary); messages going from right to left are handled by the
    appropriate simulator (pretending to be a real functionality), or
    go from the first simulator (S1) to the ideal functionality; when a
@@ -243,6 +248,7 @@ hint simplify valid_epdp_port_univ.
 hint rewrite epdp : valid_epdp_port_univ.
 
 op env_root_port : port = ([], 0).
+op adv_root_port : port = (adv, 0).
 
 (* envport takes in the address, self, of a functionality (which
    should be incomparable with the address, adv ([0]), of the
@@ -309,7 +315,10 @@ move => inc_func_adv ne_nil_xs.
 by rewrite -{2}(cats0 func) envport_ext_func // le_nil_iff.
 qed.
 
-(* lemma inc_nle_r (xs ys : 'a list), inc xs ys => ! ys <= xs *)
+(* lemma inc_nle_l (xs ys : 'a list) : inc xs ys => ! xs <= ys.
+   lemma inc_nle_r (xs ys : 'a list) : inc xs ys => ! ys <= xs
+   lemma inc_nlt_l (xs ys : 'a list) : inc xs ys => ! xs < ys.
+   lemma inc_nlt_r (xs ys : 'a list) : inc xs ys => ! ys < xs *)
 
 lemma inc_ext_nle_r (func adv xs : addr) :
   inc func adv => ! adv <= func ++ xs.
@@ -318,12 +327,19 @@ move => inc_func_adv.
 by rewrite inc_nle_r 1:inc_extl.
 qed.
 
-lemma inc_ne (func : addr) :
+lemma inc_ne_func_adv (func : addr) :
   inc func adv => func <> adv.
 proof.
 move => inc_func_adv.
 case (func = adv) => [->> | //].
 by rewrite not_inc_same in inc_func_adv.
+qed.
+
+lemma inc_ne_adv_func (func : addr) :
+  inc func adv => adv <> func.
+proof.
+move => inc_func_adv.
+by rewrite eq_sym inc_ne_func_adv.
 qed.
 
 lemma inc_ne_ext_l (func xs : addr) :
@@ -356,8 +372,9 @@ qed.
 hint rewrite ucdsl_interpreter_hints :
   envport_ext_func envport_ext_l_func
   envport_ne_func envport_not_gt_func
-  inc_ext_nle_r inc_ext_nle_r
-  inc_ne inc_ne_ext_l.
+  inc_ext_nle_r inc_ext_nle_r inc_ne_ext_l
+  inc_ne_func_adv inc_ne_adv_func
+  inc_nle_r inc_nle_l inc_nlt_l inc_nlt_r.
 
 (* the rest of the theory is about the messages that are propagated by
    the abstractions of UCCore.ec and the EasyCrypt code generated from

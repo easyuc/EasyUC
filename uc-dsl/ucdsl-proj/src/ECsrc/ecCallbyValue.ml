@@ -175,19 +175,6 @@ let rec norm st s f =
  let f = cbv st s f (Args.empty (Subst.subst_ty s f.f_ty)) in
  norm_lambda st f
 
-and norm_cost st s c =
-  let self'  = norm st s c.c_self
-  and calls' =
-    EcPath.Mx.fold (fun f cb calls ->
-        (* We do not normalize the xpath, as it is not a valid xpath. *)
-        let f' = Subst.subst_xpath s f
-        and cb' = call_bound_r (norm st s cb.cb_cost)
-                               (norm st s cb.cb_called) in
-        EcPath.Mx.change (fun old -> assert (old = None); Some cb') f' calls
-      ) c.c_calls EcPath.Mx.empty in
-  cost_r self' calls'
-
-
 and norm_lambda (st : state) (f : form) =
   match f.f_node with
   | Fquant (Llambda, b, f) ->
@@ -206,11 +193,10 @@ and norm_lambda (st : state) (f : form) =
   | Fglob   _ | Fpvar   _ | Fop       _
 
   | FhoareF _   | FhoareS _
-  | FcHoareF _  | FcHoareS _
   | FbdHoareF _ | FbdHoareS _
   | FeHoareF _ | FeHoareS _
   | FequivF _   | FequivS _
-  | FeagerF   _ | Fpr _ | Fcoe _
+  | FeagerF   _ | Fpr _
 
     -> f
 
@@ -323,8 +309,7 @@ and app_red st f1 args =
     f_app f1 args.stack args.resty
 
 and reduce_user_delta st f1 p tys args =
-  let f2 =
-    f_app f1 args.stack args.resty in
+  let f2 = f_app f1 args.stack args.resty in
 
   match reduce_user_with_exn st f2 with
   | f -> f
@@ -383,8 +368,12 @@ and cbv (st : state) (s : subst) (f : form) (args : args) : form =
     let rfn = f_app fn (List.take (List.length fnargs - 1) fnargs) f.f_ty in
     cbv st s rfn args
 
-  | Fquant (Llambda, b, f1) ->
-    betared st s b f1 args
+  | Fquant (Llambda, b, f1) when not (Args.isempty args) ->
+    cbv_init st Subst.subst_id (betared st s b f1 args)
+
+  | Fquant (Llambda, _, _) ->
+    assert (Args.isempty args);
+    Subst.subst s f
 
   | Fif (f, f1, f2) ->
     if st.st_ri.iota then
@@ -506,25 +495,6 @@ and cbv (st : state) (s : subst) (f : form) (args : args) : form =
     let ehs_m   = norm_me s hs.ehs_m in
     f_eHoareS_r { ehs_pr; ehs_po; ehs_s; ehs_m }
 
-  | FcHoareF chf ->
-    assert (Args.isempty args);
-    assert (not (Subst.has_mem s mhr));
-    let chf_pr = norm st s chf.chf_pr in
-    let chf_po = norm st s chf.chf_po in
-    let chf_f  = norm_xfun st s chf.chf_f in
-    let chf_c  = norm_cost st s chf.chf_co in
-    f_cHoareF_r { chf_pr; chf_f; chf_po; chf_co = chf_c; }
-
-  | FcHoareS chs ->
-    assert (Args.isempty args);
-    assert (not (Subst.has_mem s (fst chs.chs_m)));
-    let chs_pr = norm st s chs.chs_pr in
-    let chs_po = norm st s chs.chs_po in
-    let chs_s  = norm_stmt s chs.chs_s in
-    let chs_m  = norm_me s chs.chs_m in
-    let chs_c  = norm_cost st s chs.chs_co in
-    f_cHoareS_r { chs_pr; chs_po; chs_s; chs_m; chs_co = chs_c; }
-
   | FbdHoareF hf ->
     assert (Args.isempty args);
     assert (not (Subst.has_mem s mhr));
@@ -577,21 +547,6 @@ and cbv (st : state) (s : subst) (f : form) (args : args) : form =
     let eg_sl = norm_stmt s eg.eg_sl in
     let eg_sr = norm_stmt s eg.eg_sr in
     f_eagerF_r {eg_pr; eg_sl; eg_fl; eg_fr; eg_sr; eg_po }
-
-  | Fcoe coe ->
-    assert (Args.isempty args);
-    assert (not (Subst.has_mem s (fst coe.coe_mem)));
-    let coe_pre = norm st s coe.coe_pre in
-    let coe_e   = norm_e s coe.coe_e in
-    let coe_mem = norm_me s coe.coe_mem in
-
-    let coe = { coe_pre; coe_e; coe_mem } in
-
-    begin
-      match reduce_cost st.st_ri st.st_env coe with
-      | coe -> cbv_init st Subst.subst_id coe
-      | exception NotReducible -> reduce_user st (f_coe_r coe)
-    end
 
   | Fpr pr ->
     assert (Args.isempty args);
