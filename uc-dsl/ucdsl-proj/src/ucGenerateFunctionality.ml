@@ -480,6 +480,19 @@ let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
 let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
+  let print_params ppf params : unit =
+    if (IdMap.cardinal params)=0
+    then ()
+    else
+      let params = IdMap.bindings rfbt.params in
+      let params = List.sort (fun (_,(_,n1)) (_,(_,n2)) -> n1-n2) params in
+      let pns = fst (List.split params) in
+      Format.fprintf ppf "(";
+      List.iter (fun pn ->
+        Format.fprintf ppf " %s : FUNC" pn) pns;
+      Format.fprintf ppf " )"
+  in
+  
   let print_vars () =
      Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
      IdMap.iter (fun pn _ ->
@@ -534,13 +547,14 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
         print_subfun_or_param_invoke ppf sfn (subfunpath sfn sfid)
       ) rfbt.sub_funs;
     IdMap.iter (fun pn _ ->
-        print_subfun_or_param_invoke ppf pn (parampath pn)) rfbt.params;
+        print_subfun_or_param_invoke ppf pn pn) rfbt.params;
     IdMap.iter (fun pn _ ->
       print_party_invoke ppf pn) rfbt.parties;
     Format.fprintf ppf "@[return %s;@]@;}@;" r
   in
 
-  Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
+  Format.fprintf ppf "@[module %s %a = {@]@;<0 2>@[<v>"
+    (uc_name id) print_params rfbt.params;
   print_vars ();
   print_proc_init ();
   IdMap.iter (fun (pn : string) (pt : party_tyd) ->
