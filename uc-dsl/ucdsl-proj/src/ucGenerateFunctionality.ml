@@ -196,7 +196,7 @@ let rec print_code (sc :  EcScope.scope) (root : string)
            (EcUtils.oget sat.msg_expr.port_expr)
     | None ->
       Format.fprintf ppf "@[%s%s = %s;@]@;"
-        pfx (name_record_adv msgn) _adv
+        pfx (name_record_adv msgn) adv
     end
     ;
     let pm = fst (List.split (params_map_to_list mb.params_map)) in
@@ -364,14 +364,14 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
       (ppf : Format.formatter) (ifbt : ideal_fun_body_tyd) : unit =
   let print_vars () =
-     Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
+     Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
      Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name_IF;
   in
   let print_proc_init () =
-    Format.fprintf ppf "@[proc init(self_ adv_ : %a) : unit = {@]@;<0 2>"
+    Format.fprintf ppf "@[proc init(self_ : %a) : unit = {@]@;<0 2>"
     (pp_type sc) addr_ty;
-    Format.fprintf ppf "@[%s <- self_; %s <- adv_; %s <- %s;@]@;@[}@]@;"
-    _self _adv _st (state_name_IF (initial_state_id_of_states ifbt.states));
+    Format.fprintf ppf "@[%s <- self_; %s <- %s;@]@;@[}@]@;"
+    _self _st (state_name_IF (initial_state_id_of_states ifbt.states));
   in
   let print_proc_invoke () =
     let r, m = "r", "m" in
@@ -400,12 +400,12 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
      Format.fprintf ppf "\\/";
      Format.fprintf ppf
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
-          m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m _adv;
+          m mode_Adv m _self m (uc_name ifbt.id_adv_inter) m adv;
     Format.fprintf ppf "@;<0 2>@[%s %s %s(%s);@]" r "<@" parties_str m;
     Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
   in
 
-  Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
+  Format.fprintf ppf "@[module %s : FUNC= {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
   print_mmc_procs sc root mbmap ppf ifbt.states state_name_IF dii None;
@@ -495,7 +495,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   in
   
   let print_vars () =
-     Format.fprintf ppf "@[var %s, %s : %a@]@;" _self _adv (pp_type sc) addr_ty;
+     Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
      IdMap.iter (fun pn _ ->
          Format.fprintf ppf "@[var %s : %s@]@;"
            (st_name pn) (state_type_name_pt pn)  
@@ -504,13 +504,15 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   in
   let subfunpath sfn sfid = (uc_name sfn)^"."^uc__code^"."^uc__if^"."^(uc_name sfid) in
   let print_proc_init () =
-    Format.fprintf ppf "@[proc init(self_ adv_ : %a) : unit = {@]@;<0 2>"
+    Format.fprintf ppf "@[proc init(self_ : %a) : unit = {@]@;<0 2>"
     (pp_type sc) addr_ty;
-    Format.fprintf ppf "@[%s <- self_; %s <- adv_;@]@;"
-      _self _adv;
+    Format.fprintf ppf "@[%s <- self_;@]@;" _self;
     IdMap.iter (fun sfn (sfr, sfid) ->
-      Format.fprintf ppf "@[%s.init(%s, %s);@]@;"
-       (subfunpath sfn sfid) (addr_op_call sfn) _adv  ) rfbt.sub_funs;
+      Format.fprintf ppf "@[%s.init(%s);@]@;"
+        (subfunpath sfn sfid) (addr_op_call sfn)) rfbt.sub_funs;
+    IdMap.iter (fun pn _ ->
+      Format.fprintf ppf "@[%s.init(%s);@]@;"
+       pn (addr_op_call pn)) rfbt.params;
     IdMap.iter (fun pn pt ->
     Format.fprintf ppf "@[ %s <- %s;@]@;"
       (st_name pn) (state_name_pt pn (initial_state_id_of_party_tyd  pt))
@@ -531,7 +533,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       Format.fprintf ppf "@[\\/@]@;";
       Format.fprintf ppf
         "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s)@]@;"
-        m mode_Adv m (extport_op_call nm) m _adv;
+        m mode_Adv m (extport_op_call nm) m adv;
       Format.fprintf ppf "@[\\/@]@;";
       Format.fprintf ppf
       "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s <= %s.`3.`1))@]@;"
@@ -554,7 +556,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[return %s;@]@;}@;" r
   in
 
-  Format.fprintf ppf "@[module %s %a = {@]@;<0 2>@[<v>"
+  Format.fprintf ppf "@[module %s %a : FUNC = {@]@;<0 2>@[<v>"
     (uc_name id) print_params rfbt.params;
   print_vars ();
   print_proc_init ();

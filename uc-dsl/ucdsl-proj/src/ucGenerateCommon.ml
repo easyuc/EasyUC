@@ -21,7 +21,7 @@ let pp_type (sc : EcScope.scope) (ppf : Format.formatter) (ty : EcTypes.ty)
   EcPrinting.pp_type ppe ppf ty
 
 let _self = "_self"
-let _adv = "_adv"
+let adv = "adv"
 
 let open_theory (name : string) : string = "theory "^name^"."
 
