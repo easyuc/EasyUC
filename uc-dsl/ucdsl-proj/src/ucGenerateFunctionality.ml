@@ -244,12 +244,29 @@ let rec print_code (sc :  EcScope.scope) (root : string)
   let print_sample_instr lhs expr =
     Format.fprintf ppf "@[%a <$ %a;@]" print_lhs lhs pp_ex expr
   in
+  let print_match_instr expr (mcl:match_clause_tyd list) =
+    let print_mc ppf mc =
+      let print_bindings ppf bndngs =
+        List.iter (fun (id,_) ->
+            Format.fprintf ppf "%a " EcIdent.pp_ident (EcLocation.unloc id)
+          ) bndngs
+      in 
+      let (ctor, (bndngs, codeblock)) = mc in
+      Format.fprintf ppf "@[%s %a=> {@]@;<0 2>@[<v>"
+        ctor print_bindings bndngs;
+      print_code sc root mbmap ppf codeblock state_name dii ptn intprts; 
+      Format.fprintf ppf  "@]@;}"
+    in
+    Format.fprintf ppf "@[match %a with@]" pp_ex expr;
+    List.iter (fun mc -> Format.fprintf ppf "%a" print_mc mc) mcl;
+    Format.fprintf ppf "@[end;@]"
+  in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
     | Assign (lhs, expr) -> print_assign_instr lhs expr
     | Sample (lhs, expr) -> print_sample_instr lhs expr
     | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
-    | Match (expr, mcl) -> ()
+    | Match (expr, mcl) -> print_match_instr expr (EcLocation.unloc mcl)
     | SendAndTransition sat -> print_sat_instr sat
     | Fail -> print_fail_instr ()
   in
