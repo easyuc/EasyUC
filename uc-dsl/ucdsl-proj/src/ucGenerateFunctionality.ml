@@ -225,8 +225,7 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     end
     else ()
   in
-  let print_assign_instr lhs expr =
-    let print_lhs ppf lhs =
+  let print_lhs ppf lhs =
       match lhs with
       | LHSSimp ps ->
          Format.fprintf ppf "%s"(EcLocation.unloc ps)
@@ -238,14 +237,17 @@ let rec print_code (sc :  EcScope.scope) (root : string)
            ) (List.tl psl);
          Format.fprintf ppf ")"
        end
-    in
-    Format.fprintf ppf "@[%a <- %a;@]"
-    print_lhs lhs pp_ex expr
+  in
+  let print_assign_instr lhs expr =
+    Format.fprintf ppf "@[%a <- %a;@]" print_lhs lhs pp_ex expr
+  in
+  let print_sample_instr lhs expr =
+    Format.fprintf ppf "@[%a <$ %a;@]" print_lhs lhs pp_ex expr
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
     | Assign (lhs, expr) -> print_assign_instr lhs expr
-    | Sample (lhs, expr) -> ()
+    | Sample (lhs, expr) -> print_sample_instr lhs expr
     | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
     | Match (expr, mcl) -> ()
     | SendAndTransition sat -> print_sat_instr sat
