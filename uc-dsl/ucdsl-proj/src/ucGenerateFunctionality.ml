@@ -225,9 +225,26 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     end
     else ()
   in
+  let print_assign_instr lhs expr =
+    let print_lhs ppf lhs =
+      match lhs with
+      | LHSSimp ps ->
+         Format.fprintf ppf "%s"(EcLocation.unloc ps)
+      | LHSTuple psl ->
+       begin
+         Format.fprintf ppf "(%s" (EcLocation.unloc (List.hd psl));
+         List.iter (fun ps ->
+             Format.fprintf ppf ", %s" (EcLocation.unloc ps)
+           ) (List.tl psl);
+         Format.fprintf ppf ")"
+       end
+    in
+    Format.fprintf ppf "@[%a <- %a;@]"
+    print_lhs lhs pp_ex expr
+  in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
-    | Assign (lhs, expr) -> ()
+    | Assign (lhs, expr) -> print_assign_instr lhs expr
     | Sample (lhs, expr) -> ()
     | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
     | Match (expr, mcl) -> ()
