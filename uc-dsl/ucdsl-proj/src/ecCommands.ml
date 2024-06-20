@@ -523,16 +523,9 @@ and process_realize (scope : EcScope.scope) pr =
     scope
 
 (* -------------------------------------------------------------------- *)
-(* UC DSL *)
-(* we make processing the `prover` command do nothing, so why3 doesn't
-   have to be configured in order for ucdsl to ec_require files that
-   use this command (we aren't checking the proofs of EasyCrypt files) *)
-and process_proverinfo scope _ = scope
-(*
 and process_proverinfo scope pi =
   let scope = EcScope.Prover.process scope pi in
     scope
-*)
 
 (* -------------------------------------------------------------------- *)
 and process_pragma (scope : EcScope.scope) opt =
