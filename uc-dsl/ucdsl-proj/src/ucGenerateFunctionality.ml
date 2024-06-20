@@ -144,6 +144,21 @@ let rec print_code (sc :  EcScope.scope) (root : string)
           (ptn : string option)
           (intprts : EcIdent.t QidMap.t) : unit =
   let pp_ex = pp_expr ~intprts:intprts sc in
+  let pp_extyargs ppf ex =
+    match (EcTypes.e_ty ex).ty_node with
+    | EcAst.Tconstr (_,tyargs) ->
+       begin match tyargs with
+       | [] -> ()
+       | hd::tl ->
+          begin
+          Format.fprintf ppf "<:";
+          Format.fprintf ppf "%a" (pp_type sc) hd;
+          List.iter (fun ty -> Format.fprintf ppf ", %a" (pp_type sc) ty) tl;
+          Format.fprintf ppf ">"
+          end
+       end
+    | _ -> ()
+  in
   let print_fail_instr () : unit =
     Format.fprintf ppf "@[%s <- None;@]" _r
   in
@@ -252,14 +267,14 @@ let rec print_code (sc :  EcScope.scope) (root : string)
           ) bndngs
       in 
       let (ctor, (bndngs, codeblock)) = mc in
-      Format.fprintf ppf "@[%s %a=> {@]@;<0 2>@[<v>"
-        ctor print_bindings bndngs;
+      Format.fprintf ppf "@[| %s%a %a=> {@]@;<0 2>@[<v>"
+        ctor pp_extyargs expr print_bindings bndngs;
       print_code sc root mbmap ppf codeblock state_name dii ptn intprts; 
-      Format.fprintf ppf  "@]@;}"
+      Format.fprintf ppf  "@]@;}@;"
     in
-    Format.fprintf ppf "@[match %a with@]" pp_ex expr;
+    Format.fprintf ppf "@[match %a with@]@;@[<v>" pp_ex expr;
     List.iter (fun mc -> Format.fprintf ppf "%a" print_mc mc) mcl;
-    Format.fprintf ppf "@[end;@]"
+    Format.fprintf ppf "@]@;@[end;@]"
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
