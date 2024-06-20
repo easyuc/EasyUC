@@ -528,23 +528,27 @@ let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
     ) parties;
   Format.fprintf ppf "@]"
 
-let print_real_module (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
-  let print_params ppf params : unit =
+let _print_params str ppf params : unit =
     if (IdMap.cardinal params)=0
     then ()
     else
-      let params = IdMap.bindings rfbt.params in
+      let params = IdMap.bindings params in
       let params = List.sort (fun (_,(_,n1)) (_,(_,n2)) -> n1-n2) params in
       let pns = fst (List.split params) in
       Format.fprintf ppf "(";
-      Format.fprintf ppf "%s : FUNC" (List.hd pns);
+      Format.fprintf ppf "%s%s" (List.hd pns) str;
       List.iter (fun pn ->
-        Format.fprintf ppf ", %s : FUNC" pn) (List.tl pns);
+        Format.fprintf ppf ", %s%s" pn str) (List.tl pns);
       Format.fprintf ppf ")"
-  in
-  
+
+let print_params_FUNC ppf params : unit = _print_params " : FUNC" ppf params
+
+let print_params_list ppf params : unit =  _print_params "" ppf params
+    
+
+let print_real_module (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
   let print_vars () =
      Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
      IdMap.iter (fun pn _ ->
@@ -608,7 +612,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   in
 
   Format.fprintf ppf "@[module %s %a : FUNC = {@]@;<0 2>@[<v>"
-    (uc_name id) print_params rfbt.params;
+    (uc_name id) print_params_FUNC rfbt.params;
   print_vars ();
   print_proc_init ();
   IdMap.iter (fun (pn : string) (pt : party_tyd) ->
@@ -620,8 +624,37 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   ) rfbt.parties;
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
-  
   ()
+
+let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
+  let print_cloneRF =
+  Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
+  Format.fprintf ppf "@[op num_parties <- %i,@]@;"
+    (IdMap.cardinal rfbt.parties);
+  Format.fprintf ppf "@[op num_subfuns <- %i,@]@;"
+    (IdMap.cardinal rfbt.sub_funs);
+  Format.fprintf ppf "@[op num_params <- %i,@]@;"
+    (IdMap.cardinal rfbt.params);
+  Format.fprintf ppf "@[op adv_pi_num <- %s - 1,@]@;" adv_pi_num_op_name;
+  Format.fprintf ppf "@[op adv_pi_begin <- %s + 1@]@;" adv_pi_begin_op_name;
+  Format.fprintf ppf "@[proof *.@]@;";
+  Format.fprintf ppf "@[realize ge1_num_parties. smt. qed.@]@;";
+  Format.fprintf ppf "@[realize ge0_num_subfuns. smt. qed.@]@;";
+  Format.fprintf ppf "@[realize ge0_num_params. smt. qed.@]@;";
+  Format.fprintf ppf "@[realize ge0_adv_pi_num. smt. qed.@]@;";
+  Format.fprintf ppf "@[realize ge1_adv_pi_begin. smt. qed.@]@;@;"
+  in 
+  let print_MakeRF =
+    Format.fprintf ppf
+    "@[module RF%a = RFCore.MakeRF(%s.%s%a).@]"
+    print_params_FUNC rfbt.params
+    uc__rf
+    (uc_name id)
+    print_params_list rfbt.params
+  in
+  print_cloneRF;
+  print_MakeRF
+    
 
 
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
@@ -634,7 +667,8 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii) rfbt;
-  Format.fprintf sf "@[%s@]@;" (close_theory uc__rf);
+  Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
+  Format.fprintf sf "@[<v>%a@]@;"   print_cloneRF_MakeRF (id,rfbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
