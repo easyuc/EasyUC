@@ -2068,9 +2068,8 @@ let get_sim_components
   let qidmap_fun = QidMap.singleton [sims] (root, sims_body) in
   let qidmap_params =
     let pids =
-      IdMap.fold
-      (fun pid _ pids -> pid :: pids)
-      (real_fun_body_tyd_of sims_body).params [] in
+      indexed_map_to_list_only_keep_keys
+      (real_fun_body_tyd_of sims_body).params in
     List.fold_left2
     (fun mp pid pair_id ->
        let arg_body = unloc (IdPairMap.find pair_id fun_map) in

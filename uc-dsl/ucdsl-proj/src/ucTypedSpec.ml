@@ -140,14 +140,6 @@ let get_keys_as_sing_qids (m : 'a IdMap.t) : QidSet.t =
   let ids = fst (List.split (IdMap.bindings m)) in
   QidSet.of_list (List.map (fun id -> [id]) ids)
 
-let indexed_map_to_list_keep_keys (mapind : ('o * int) IdMap.t) :
-  (symbol * 'o) list =
-  List.map
-  (fun (s, (x, _)) -> (s, x))
-  (List.sort
-   (fun (_, (_, a1)) (_, (_, a2)) -> a1 - a2)
-   (IdMap.bindings mapind))
-
 let indexed_map_to_list (mapind : ('o * int) IdMap.t) : 'o list =
   let l = IdMap.fold (fun _ v l -> v :: l) mapind [] in
   let lord = List.sort (fun a1 a2 -> snd a1 - snd a2) l in
@@ -157,6 +149,14 @@ let indexed_map_to_list_keep_keys (mapind : ('o * int) IdMap.t) :
   (symbol * 'o) list =
   List.map
   (fun (s, (x, _)) -> (s, x))
+  (List.sort
+   (fun (_, (_, a1)) (_, (_, a2)) -> a1 - a2)
+   (IdMap.bindings mapind))
+
+let indexed_map_to_list_only_keep_keys (mapind : ('o * int) IdMap.t) :
+  symbol list =
+  List.map
+  (fun (s, _) -> s)
   (List.sort
    (fun (_, (_, a1)) (_, (_, a2)) -> a1 - a2)
    (IdMap.bindings mapind))
