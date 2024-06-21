@@ -1,0 +1,4 @@
+We'll cache in this directory versions of ecScope.ml/.mli and
+ecCommands.ml/.mli where the added external API cod is known to be
+compatible with UC DSL. If developments in EasyCrypt break UC DSL, we
+need to have a starting point for fixing things.

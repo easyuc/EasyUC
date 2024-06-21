@@ -24,7 +24,7 @@ val max_msg_params : int
    normally located in the file it was lexed from
 
    scopes and thus the current environment are manipulated in
-   the background using the ucdsl_ command of ecScope *)
+   the background using the extapi_ commands of ecScope *)
 
 val typecheck :
   symbol -> (symbol located -> maps_tyd) -> spec -> maps_tyd

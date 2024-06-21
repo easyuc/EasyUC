@@ -1,0 +1,7 @@
+description
+Resolution of test what happens when an EasyCrypt file being
+ec_required has an immediate error.
+.
+args: Foo.uc
+outcome: success
+.

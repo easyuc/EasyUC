@@ -1,7 +1,5 @@
 (* UcEcInterface module *)
 
-(* Interface with EasyCrypt *)
-
 open Batteries
 open Format
 open EcUtils
@@ -58,38 +56,48 @@ let init () =
     EcCommands.addidir ~namespace:`System ~recursive:false
     UcConfig.uc_prelude_dir;
 
-    EcCommands.ucdsl_init ();    
-    EcCommands.ucdsl_addnotifier notifier;
+    UcStackedScopes.scopes_stack_init ();    
+    UcStackedScopes.add_notifier notifier;
 
     (* Register user messages printers *)
     begin let open EcUserMessages in register () end)
   else ()
 
-let env () = EcScope.env (EcCommands.ucdsl_current ())
+let env () = EcScope.env (UcStackedScopes.current_scope ())
 
 let require id io =
-  try EcCommands.ucdsl_require (None, (id, None), io) with
-  | EcScope.HiScopeError (_, msg)         ->
-      error_message (EcLocation.loc id) 
-      (fun ppf ->
-         fprintf ppf
-         ("@[EasyCrypt:@ error@ require@ importing@ " ^^
-          "theory:@;<1 2>%s@]")
-         msg)
-  | EcScope.ImportError (None, name, e)   ->
+  try UcStackedScopes.require_theory (None, (id, None), io) with
+  | EcScope.TopError (loc, exn) ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)         ->
+           error_message (EcLocation.loc id) 
+           (fun ppf ->
+              fprintf ppf
+              ("@[EasyCrypt:@ error@ requiring " ^^
+               "theory:@;<1 2>%s@]")
+              msg)
+       | EcScope.ImportError (None, name, e)   ->
+           error_message (EcLocation.loc id)
+           (fun ppf ->
+              fprintf ppf
+              "@[EasyCrypt:@ In@ external@ theory@ %s@;<1 2>%a@]"
+              name EcPException.exn_printer e)
+       | EcScope.ImportError (Some l, name, e) ->
+           let l = {l with loc_fname = (EcLocation.unloc id) ^ ".ec"} in
+           error_message (EcLocation.loc id)
+           (fun ppf ->
+              fprintf ppf
+              "@[EasyCrypt:@ In@ external@ theory@ %s@ [%s]:@;<1 2>%a@]"
+              name (EcLocation.tostring l) EcPException.exn_printer e)
+       | _                                     ->
+           error_message (EcLocation.loc id)
+           (fun ppf ->
+              fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]"))
+  | _                           ->
       error_message (EcLocation.loc id)
       (fun ppf ->
-         fprintf ppf
-         "@[EasyCrypt:@ In@ external@ theory@ %s@;<1 2>%a@]"
-         name EcPException.exn_printer e)
-  | EcScope.ImportError (Some l, name, e) ->
-      let l = {l with loc_fname = (EcLocation.unloc id) ^ ".ec"} in
-      error_message (EcLocation.loc id)
-      (fun ppf ->
-         fprintf ppf
-         "@[EasyCrypt:@ In@ external@ theory@ %s@ [%s]:@;<1 2>%a@]"
-         name (EcLocation.tostring l) EcPException.exn_printer e)
-  | _                                     ->
-      error_message (EcLocation.loc id)
-      (fun ppf ->
-         fprintf ppf "@[EasyCrypt:@ error@ require@ importing@ theory@]")
+         fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]")
+
+
+
+

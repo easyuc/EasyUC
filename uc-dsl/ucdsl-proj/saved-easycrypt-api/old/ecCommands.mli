@@ -1,13 +1,3 @@
-(* A modification of src/ecCommands.mli of the EasyCrypt distribution
-
-   See "UC DSL" for changes
-
-   Imperative processing of global actions (from EcParsetree), where
-   the scopes (from EcScope) are stored in a context
-
-   For UC DSL, we have an alternative API, with its own kind of
-   context *)
-
 (* -------------------------------------------------------------------- *)
 open EcLocation
 
@@ -15,6 +5,9 @@ open EcLocation
 exception Restart
 
 (* -------------------------------------------------------------------- *)
+type loader
+
+val loader   : loader
 val addidir  : ?namespace:EcLoader.namespace -> ?recursive:bool -> string -> unit
 val loadpath : unit -> (EcLoader.namespace option * string) list
 
@@ -31,6 +24,8 @@ type checkmode = {
   cm_iterate  : bool;
 }
 
+val initial : checkmode:checkmode -> boot:bool -> EcScope.scope
+
 val initialize  :
      restart:bool
   -> undo:bool
@@ -40,6 +35,13 @@ val initialize  :
 
 val current     : unit -> EcScope.scope
 val addnotifier : notifier -> unit
+
+(* -------------------------------------------------------------------- *)
+val process_internal :
+     loader
+  -> EcScope.scope
+  -> EcParsetree.global_action located
+  -> EcScope.scope
 
 (* -------------------------------------------------------------------- *)
 val process : ?timed:bool -> ?break:bool ->
@@ -64,41 +66,3 @@ val pragma_check   : EcScope.Ax.proofmode -> unit
 exception InvalidPragma of string
 
 val apply_pragma : string -> unit
-
-(* UC DSL interface *)
-
-(* initialization stack of scopes to initial scope; the stack will
-   always be non-empty *)
-val ucdsl_init : unit -> unit
-
-(* add a notifier *)
-val ucdsl_addnotifier : notifier -> unit
-
-(* current scope -- top of stack *)
-val ucdsl_current : unit -> EcScope.scope
-
-(* update current scope *)
-val ucdsl_update : EcScope.scope -> unit
-
-(* require a theory in the current scope, updating the current scope *)
-val ucdsl_require :
-  string EcLocation.located option *    (* optional namespace *)
-  (string EcLocation.located *          (* theory to require *)
-   string EcLocation.located option) *  (* optional alternative name
-                                           for result of requiring *)
-  [ `Export | `Import ] option ->       (* do we export or import the
-                                           theory's definitions? *)
-  unit
-
-(* push new scope onto stack, created from the previous one, but
-   reverting the environment and required theories to the ones
-   of the prelude *)
-val ucdsl_new : unit -> unit
-
-(* end scope, reverting to saved one from stack, which is updated to
-   include required theories of ended scope *)
-val ucdsl_end : unit -> unit
-
-(* end scope, reverting to saved one from stack, but ignoring the
-   scope being ended *)
-val ucdsl_end_ignore : unit -> unit

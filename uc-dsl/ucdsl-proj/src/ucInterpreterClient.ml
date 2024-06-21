@@ -194,7 +194,7 @@ let interpret (lexbuf : L.lexbuf) =
 
   let load (psym : psymbol) : unit =
     let root = unloc psym in  (* capitalized, because uident in parser *)
-    EcCommands.ucdsl_new ();
+    UcStackedScopes.new_scope ();
     let pg_mode = UcState.get_pg_mode () in
     (* if we're in pg_mode, temporarily revert to ordinary error/warning
        messages, while we parse and typecheck file *)
@@ -205,7 +205,7 @@ let interpret (lexbuf : L.lexbuf) =
         (UcParseFile.FOID_Id psym)
       with _ ->
         if pg_mode then UcState.set_pg_mode ();
-        EcCommands.ucdsl_end_ignore();
+        UcStackedScopes.end_scope_ignore();
         error_message (loc psym)
         (fun ppf -> Format.fprintf ppf
           ("@[problem@ loading@ file.@ try@ running@ first@ ucdsl " ^^
@@ -275,7 +275,7 @@ let interpret (lexbuf : L.lexbuf) =
       let dos, undos = List.partition (fun is -> is.cmd_no <= i) (!stack) in
       stack := dos;
       let undo_loads = List.filter (fun is -> is.ucdsl_new) undos in
-      List.iter (fun _ -> EcCommands.ucdsl_end_ignore()) undo_loads; 
+      List.iter (fun _ -> UcStackedScopes.end_scope_ignore ()) undo_loads; 
       let c = currs() in
       print_state c
     end else

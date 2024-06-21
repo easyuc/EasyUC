@@ -1,0 +1,10 @@
+#!/bin/bash
+
+ecsrcdir=../src/ECsrc
+
+cp *.{ml,mli} old
+
+cp $ecsrcdir/ecScope.mli .
+cp $ecsrcdir/ecScope.ml .
+cp $ecsrcdir/ecCommands.mli .
+cp $ecsrcdir/ecCommands.ml .
