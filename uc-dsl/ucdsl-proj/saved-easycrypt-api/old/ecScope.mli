@@ -1,13 +1,3 @@
-(* A modification of src/ecScope.mli of the EasyCrypt distribution
-
-   See "UC DSL" for changes
-
-   Manipulation of scopes, which includes the current environment
-   (from EcEnv), information about what theories are loaded and
-   required, information about the current proof state (if any), the
-   current options, and information about the current section (if any)
-   *)
-
 (* -------------------------------------------------------------------- *)
 open EcSymbols
 open EcLocation
@@ -78,11 +68,10 @@ val attop  : scope -> bool
 val goal   : scope -> proof_auc option
 val xgoal  : scope -> proof_uc option
 
-(* creates a scope that's like the supplied one except that
-   the environment and required theories are the ones from the
-   prelude - we're simply exposing the function that was already
-   defined *)
-val for_loading : scope -> scope  (* UC DSL *)
+(* Creates a scope that is identical to the supplied one except
+ * that the environment and required theories are reset to the ones
+ * from the prelude. *)
+val for_loading : scope -> scope
 
 type topmode = [`InProof | `InActiveProof | `InTop]
 
@@ -151,9 +140,9 @@ module Theory : sig
 
   exception TopScope
 
-  (* [update_with_required scope1 scope2] updates scope1 with
-     the required theories of scope2 *)  
-  val update_with_required : scope -> scope -> scope (* UC DSL *)
+  (* [update_with_required dst src] updates [dst] with the required
+   * theories of [src] *)
+  val update_with_required : dst:scope -> src:scope -> scope
 
   (* [enter scope mode name] start a theory in scope [scope] with
    * name [name] and mode (abstract/concrete) [mode]. *)
@@ -231,9 +220,11 @@ module Prover : sig
   val full_check  : scope -> scope
   val check_proof : scope -> bool -> scope
 
-  val pprover_infos_to_prover_infos :  (* UC DSL *)
-     EcEnv.env -> EcProvers.prover_infos -> pprover_infos ->
-     EcProvers.prover_infos
+  val pprover_infos_to_prover_infos :
+       EcEnv.env
+    -> EcProvers.prover_infos
+    -> pprover_infos
+    -> EcProvers.prover_infos
 end
 
 (* -------------------------------------------------------------------- *)

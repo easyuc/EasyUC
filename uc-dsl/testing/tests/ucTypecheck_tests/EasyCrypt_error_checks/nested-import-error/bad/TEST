@@ -1,0 +1,18 @@
+description
+Test what happens when an EasyCrypt file being ec_required requires
+another EC file with an error.
+.
+args: Foo.uc
+outcome: failure
+[error: Foo.uc: from line 1 columns 13 to 16]
+
+EasyCrypt: In external theory Goo [Goo.ec: line 1 (0-12)]:
+  In external theory Who [./who.ec: line 1 (10)]:
+  
+  no matching operator, named `+', for the following parameters' type:
+    [1]: int
+    [2]: bool
+  
+
+
+.

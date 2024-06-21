@@ -141,7 +141,7 @@ let lemma_i_eq_one_impl_i_le_one' () : unit =
   let hyps = EcEnv.LDecl.init ~locals env [] in
   let proof = EcScope.PSCheck (EcCoreGoal.start hyps concl) in
 
-  let scope = EcCommands.ucdsl_current () in  
+  let scope = EcCommands.extapi_current () in  
   let puc = 
     match scope.sc_pr_uc with
     | Some puc -> puc
@@ -155,7 +155,7 @@ let lemma_i_eq_one_impl_i_le_one' () : unit =
   let puca = {puca with puc_jdg = proof} in
   let puc = {puc with puc_active = Some (puca,None); puc_init = scope.sc_env} in
   let scope = {scope with sc_pr_uc = Some puc} in
-  EcCommands.ucdsl_update scope
+  EcCommands.extapi_update scope
 *)
 let printEvalResult (res : UcEcFormEval.eval_condition_result) : unit =
   match res with

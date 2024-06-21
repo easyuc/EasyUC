@@ -1,8 +1,3 @@
-(* A modification of src/ecCommands.ml of the EasyCrypt distribution
-
-   See "UC DSL" for changes
- *)
-
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcLocation
@@ -192,6 +187,9 @@ end = struct
   let incontext (p : string) (ld : loader) =
     List.mem (norm p) ld.ld_stack
 end
+
+(* -------------------------------------------------------------------- *)
+type loader = Loader.loader
 
 (* -------------------------------------------------------------------- *)
 let process_search scope qs =
@@ -446,7 +444,10 @@ and process_th_require1 ld scope (nm, (sysname, thname), io) =
 
         try_finally (fun () ->
           let commands = EcIo.parseall (EcIo.from_file filename) in
-          let commands = List.fold_left (process_internal subld) iscope commands in
+          let commands =
+            List.fold_left 
+              (fun scope g -> process_internal subld scope g.gl_action)
+              iscope commands in
           commands)
         (fun () -> Pragma.set i_pragma)
       in
@@ -678,9 +679,14 @@ and process (ld : Loader.loader) (scope : EcScope.scope) g =
     scope
 
 (* -------------------------------------------------------------------- *)
-and process_internal ld scope g =
-  try  odfl scope (process ld scope g.gl_action)
-  with e -> raise (EcScope.toperror_of_exn ~gloc:(loc g.gl_action) e)
+and process_internal
+  (ld     : Loader.loader)
+  (scope  : EcScope.scope)
+  (action : global_action located)
+  : EcScope.scope
+=
+  try  odfl scope (process ld scope action)
+  with e -> raise (EcScope.toperror_of_exn ~gloc:(loc action) e)
 
 (* -------------------------------------------------------------------- *)
 let loader = Loader.create ()
@@ -876,60 +882,3 @@ let pp_maybe_current_goal stream =
   match (Pragma.get ()).pm_verbose with
   | true  -> pp_current_goal ~all:(Pragma.get ()).pm_g_prall stream
   | false -> ()
-
-(* UC DSL interface *)
-
-let checkmode = {
-    cm_checkall  = false; 
-    cm_timeout   = 0;
-    cm_cpufactor = 1; 
-    cm_nprovers  = 0;
-    cm_provers   = None;
-    cm_profile   = false;
-    cm_iterate   = false;
-  }
-
-let ucdsl_scope_stack : EcScope.scope list ref = ref []
-
-let ucdsl_init () =
-  let scope = initial ~checkmode:checkmode ~boot:false in
-  ucdsl_scope_stack := [scope]  
-
-let ucdsl_addnotifier (notifier : notifier) =
-  assert (not (List.is_empty (! ucdsl_scope_stack)));
-  let gstate = EcScope.gstate (List.hd (! ucdsl_scope_stack)) in
-  ignore (EcGState.add_notifier notifier gstate)
-
-let ucdsl_current () =
-  assert (not (List.is_empty (! ucdsl_scope_stack)));
-  List.hd (! ucdsl_scope_stack)
-
-let ucdsl_update scope =
-  assert (not (List.is_empty (! ucdsl_scope_stack)));
-  let rest = List.tl (! ucdsl_scope_stack) in
-  ucdsl_scope_stack := scope :: rest
-
-let ucdsl_require threq =
-  assert (not (List.is_empty (! ucdsl_scope_stack)));
-  let top_sc = List.hd (! ucdsl_scope_stack) in
-  let rest = List.tl (! ucdsl_scope_stack) in
-  let new_sc = process_th_require1 loader top_sc threq in
-  ucdsl_scope_stack := new_sc :: rest
-
-let ucdsl_new () =
-  assert (not (List.is_empty (! ucdsl_scope_stack)));
-  let new_sc = EcScope.for_loading (List.hd (! ucdsl_scope_stack)) in
-  ucdsl_scope_stack := new_sc :: ! ucdsl_scope_stack
-
-let ucdsl_end () =
-  assert (List.length (! ucdsl_scope_stack) >= 2);
-  let top_sc = List.hd (! ucdsl_scope_stack) in
-  let prev_sc = List.hd (List.tl (! ucdsl_scope_stack)) in
-  let rest = List.drop 2 (! ucdsl_scope_stack) in
-  let new_sc = EcScope.Theory.update_with_required prev_sc top_sc in
-  ucdsl_scope_stack := new_sc :: rest
-
-let ucdsl_end_ignore () =
-  assert (List.length (! ucdsl_scope_stack) >= 2);
-  let rest = List.tl (! ucdsl_scope_stack) in
-  ucdsl_scope_stack := rest

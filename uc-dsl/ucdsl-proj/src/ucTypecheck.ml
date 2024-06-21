@@ -2290,10 +2290,10 @@ let load_uc_req
           ("@[UC@ (.uc)@ file@ to@ be@ required@ must@ begin@ " ^^
            "with@ uppercase@ letter:@ %s@]")
           uid)
-  else let () = EcCommands.ucdsl_new () in
+  else let () = UcStackedScopes.new_scope () in
        let maps' = check_id id in
        let maps = union_maps maps maps' in
-       let () = EcCommands.ucdsl_end () in
+       let () = UcStackedScopes.end_scope () in
        maps
 
 let load_uc_reqs
@@ -2505,7 +2505,7 @@ let typecheck
        IdMap.update root 
        (fun sym_opt ->
           match sym_opt with
-          | None   -> Some (EcCommands.ucdsl_current ())
+          | None   -> Some (UcStackedScopes.current_scope ())
           | Some _ -> failure "cannot happen")
        maps.ec_scope_map} in
   let () =

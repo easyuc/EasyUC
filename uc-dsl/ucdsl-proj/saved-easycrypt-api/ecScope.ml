@@ -1,7 +1,3 @@
-(* A modification of src/ecScope.ml of the EasyCrypt distribution
-
-   See "UC DSL" for changes *)
-
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcMaps
@@ -610,10 +606,10 @@ module Prover = struct
     }
 
   (* -------------------------------------------------------------------- *)
-  let mk_prover_info scope (options : smt_options) =
+  let mk_prover_info_from_dft (dft : EcProvers.prover_infos)
+      (options : smt_options) : EcProvers.prover_infos =
     let open EcProvers in
 
-    let dft          = Prover_info.get scope.sc_options in
     let gn_debug     = odfl dft.gn_debug options.gn_debug in
     let pr_maxprocs  = odfl dft.pr_maxprocs options.po_nprovers in
     let pr_timelimit = max 0 (odfl dft.pr_timelimit options.po_timeout) in
@@ -640,52 +636,23 @@ module Prover = struct
       pr_wanted  ; pr_unwanted; pr_selected ; pr_quorum   ;
       pr_dumpin  ;
       gn_debug   ; }
+
+  (* -------------------------------------------------------------------- *)
+  let mk_prover_info scope (options : smt_options) =
+    let dft = Prover_info.get scope.sc_options in
+    mk_prover_info_from_dft dft options
 
   (* -------------------------------------------------------------------- *)
   let do_prover_info scope ppr =
     let options = process_prover_option (env scope) ppr in
     mk_prover_info scope options
 
-  (* UC DSL *)
-  (* a little code duplication, to keep things simple to maintain *)
   (* -------------------------------------------------------------------- *)
-  let mk_prover_info_from_dft
-      (dft : EcProvers.prover_infos) (options : smt_options) =
-    let open EcProvers in
-
-    let gn_debug     = odfl dft.gn_debug options.gn_debug in
-    let pr_maxprocs  = odfl dft.pr_maxprocs options.po_nprovers in
-    let pr_timelimit = max 0 (odfl dft.pr_timelimit options.po_timeout) in
-    let pr_cpufactor = max 0 (odfl dft.pr_cpufactor options.po_cpufactor) in
-    let pr_verbose   = max 0 (odfl dft.pr_verbose options.po_verbose) in
-    let pr_all       = odfl dft.pr_all options.pl_all in
-    let pr_max       = odfl dft.pr_max options.pl_max in
-    let pr_iterate   = odfl dft.pr_iterate options.pl_iterate in
-    let pr_wanted    = odfl dft.pr_wanted options.pl_wanted in
-    let pr_unwanted  = odfl dft.pr_unwanted options.pl_unwanted in
-    let pr_selected  = odfl dft.pr_selected options.pl_selected in
-    let pr_quorum    = max 1 (odfl dft.pr_quorum options.po_quorum) in
-    let pr_dumpin    = options.pl_dumpin in
-    let pr_provers   =
-      let l = odfl dft.pr_provers (fst options.po_provers) in
-      let do_ar l (k, p) =
-        match k with
-        | `Exclude -> List.remove_all l p
-        | `Include -> if List.exists ((=) p) l then l else p::l
-      in List.fold_left do_ar l (snd options.po_provers) in
-
-    { pr_maxprocs; pr_provers ; pr_timelimit; pr_cpufactor;
-      pr_verbose ; pr_all     ; pr_max      ; pr_iterate  ;
-      pr_wanted  ; pr_unwanted; pr_selected ; pr_quorum   ;
-      pr_dumpin  ;
-      gn_debug   ; }
-
   let pprover_infos_to_prover_infos
       (env : EcEnv.env) (dft : EcProvers.prover_infos)
       (ppr : pprover_infos) : EcProvers.prover_infos =
     let options = process_prover_option env ppr in
     mk_prover_info_from_dft dft options
-  (* end UC DSL *)
 
   (* -------------------------------------------------------------------- *)
   let process scope ppr =
@@ -868,7 +835,7 @@ module Ax = struct
           PSCheck proof
     in
     let puc =
-      let active =        
+      let active =
         { puc_name    = name
         ; puc_started = false
         ; puc_jdg     = puc
@@ -2079,15 +2046,14 @@ module Theory = struct
       | None -> assert false
 
   (* ------------------------------------------------------------------ *)
-  (* UC DSL *)
-  let update_with_required (scope1 : scope) (scope2 : scope) =
-    let scope = 
-      {scope1 with
-         sc_loaded =
-           Msym.union
-           (fun _ x y -> assert (x = y); Some x)
-           scope1.sc_loaded scope2.sc_loaded} in
-    List.fold_right require_loaded scope2.sc_required scope
+  let update_with_required ~(dst : scope) ~(src : scope) =
+    let dst =
+      let sc_loaded =
+        Msym.union
+          (fun _ x y -> assert (x ==(*phy*) y); Some x)
+          dst.sc_loaded src.sc_loaded
+      in { dst with sc_loaded }
+    in List.fold_right require_loaded src.sc_required dst
 
   (* ------------------------------------------------------------------ *)
   let add_clears clears scope =
