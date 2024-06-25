@@ -20,6 +20,11 @@ let pp_type (sc : EcScope.scope) (ppf : Format.formatter) (ty : EcTypes.ty)
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   EcPrinting.pp_type ppe ppf ty
 
+let pp_form (sc : EcScope.scope) (ppf : Format.formatter) (form : EcFol.form)
+    : unit =
+  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
+  EcPrinting.pp_form ppe ppf form
+
 let _self = "_self"
 let adv = "adv"
 

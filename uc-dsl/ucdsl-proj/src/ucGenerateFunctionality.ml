@@ -261,6 +261,25 @@ let rec print_code (sc :  EcScope.scope) (root : string)
     Format.fprintf ppf "@[%a <$ %a;@]" print_lhs lhs pp_ex expr
   in
   let print_match_instr expr (mcl:match_clause_tyd list) =
+    let ety = EcTypes.e_ty expr in
+    let p, _, typ = EcUtils.oget (EcEnv.Ty.get_top_decl ety (EcScope.env sc)) in
+    let pp_branch ppf (ctor, (bndngs, codeblock)) =
+      let bndngs = List.map (fun (idloc, ty) ->
+                       (EcLocation.unloc idloc, ty)) bndngs in
+      let pttn = EcTypes.toarrow (snd (List.split bndngs)) ety in
+      let pttn = EcFol.f_op (EcPath.pqoname (EcPath.prefix p) ctor) typ pttn in
+      let pttn = EcFol.f_app pttn (List.map
+                (fun (x, ty) -> EcFol.f_local x ty) bndngs) ety
+      in
+
+      Format.fprintf ppf "| %a => {@[<hov 2>" (pp_form sc) pttn;
+      print_code sc root mbmap ppf codeblock state_name dii ptn intprts; 
+      Format.fprintf ppf "}@]@ "
+    in
+
+    Format.fprintf ppf "@[<v>match (@[%a@]) with@ %aend;@]"
+      (pp_expr sc) expr (EcPrinting.pp_list "" pp_branch) mcl
+(*
     let print_mc ppf mc =
       let print_bindings ppf bndngs =
         List.iter (fun (id,_) ->
@@ -268,7 +287,7 @@ let rec print_code (sc :  EcScope.scope) (root : string)
           ) bndngs
       in 
       let (ctor, (bndngs, codeblock)) = mc in
-      Format.fprintf ppf "@[| (%s) %a=> {@]@;<0 2>@[<v>"
+      Format.fprintf ppf "@[| %s %a=> {@]@;<0 2>@[<v>"
         ctor print_bindings bndngs;
       print_code sc root mbmap ppf codeblock state_name dii ptn intprts; 
       Format.fprintf ppf  "@]@;}@;"
@@ -277,6 +296,7 @@ let rec print_code (sc :  EcScope.scope) (root : string)
       pp_ex expr (pp_type sc) (EcTypes.e_ty expr);
     List.iter (fun mc -> Format.fprintf ppf "%a" print_mc mc) mcl;
     Format.fprintf ppf "@]@;@[end;@]"
+ *)
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
