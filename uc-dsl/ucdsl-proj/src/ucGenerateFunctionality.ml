@@ -272,12 +272,12 @@ let rec print_code (sc :  EcScope.scope) (root : string)
                 (fun (x, ty) -> EcFol.f_local x ty) bndngs) ety
       in
 
-      Format.fprintf ppf "| %a => {@[<hov 2>" (pp_form sc) pttn;
+      Format.fprintf ppf "@[| %a => {@]@;@[<v 2>@;" (pp_form sc) pttn;
       print_code sc root mbmap ppf codeblock state_name dii ptn intprts; 
-      Format.fprintf ppf "}@]@ "
+      Format.fprintf ppf "@]@;@[}@]@;"
     in
 
-    Format.fprintf ppf "@[<v>match (@[%a@]) with@ %aend;@]"
+    Format.fprintf ppf "@[match (@[%a@]) with@]@;@[<v>%a@]@[end;@]@]"
       (pp_expr sc) expr (EcPrinting.pp_list "" pp_branch) mcl
 (*
     let print_mc ppf mc =
