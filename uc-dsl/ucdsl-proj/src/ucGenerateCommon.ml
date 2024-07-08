@@ -83,6 +83,8 @@ let mode_Dir : string = "Dir"
 
 let mode_Adv : string = "Adv"
 
+let _Adv : string = "Adv"
+
 let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope) 
 (ppf : Format.formatter) (expr : EcTypes.expr)
     : unit =
@@ -195,6 +197,8 @@ let get_msg_body
       (iip : string list) (msgnm : string)
     : (bool * message_body_tyd) =
   let sl = iip@[msgnm] in
+  List.iter (fun s -> print_string (s^" + ")) sl;
+  print_endline "";
   if SLMap.exists (fun p _ -> p = sl) mbmap
   then let mb = SLMap.find sl mbmap in (false,mb)
   else let mb = SLMap.find ([root]@sl) mbmap in (true,mb)

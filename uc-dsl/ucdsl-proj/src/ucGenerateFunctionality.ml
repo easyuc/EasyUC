@@ -13,6 +13,7 @@ let state_type_name_pt (ptname : string) : string =
 
 let uc__if = "UC__IF"
 let uc__rf = "UC__RF"
+let uc__sim = "UC__SIM"
 let _st = "_st"
 let st_name (name : string) = "_st_"^name
 let _m = "_m"
@@ -22,6 +23,7 @@ let _envport = "envport"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
 let parties_str = "parties"
+let loop_str = "loop"
 let proc_party_str (pn : string) = "party_"^pn
 
 let print_state_type
@@ -701,3 +703,53 @@ let gen_fun (sc : EcScope.scope) (root : string) (id : string) (mbmap : message_
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
   | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii 
+
+let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (ppf : Format.formatter) (sbt : sim_body_tyd) : unit =
+  let print_vars () =
+     Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
+     Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name_IF;
+  in
+  let print_proc_init () =
+    Format.fprintf ppf "@[proc init(self_ : %a) : unit = {@]@;<0 2>"
+    (pp_type sc) addr_ty;
+    Format.fprintf ppf "@[%s <- self_; %s <- %s;@]@;@[}@]@;"
+    _self _st (state_name_IF (initial_state_id_of_states sbt.states));
+  in
+  let print_proc_invoke () =
+    let r, m = "r", "m" in
+    Format.fprintf ppf "@[proc invoke(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+      m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
+      r (pp_type sc) msg_ty;
+     Format.fprintf ppf
+       "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@]{"
+          m mode_Adv m _self;
+    Format.fprintf ppf "@;<0 2>@[%s %s %s(%s);@]" r "<@" loop_str m;
+    Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
+  in
+
+  Format.fprintf ppf "@[module %s (%s : FUNC)= {@]@;<0 2>@[<v>"
+    (uc_name id) _Adv;
+  print_vars ();
+  print_proc_init ();
+  print_mmc_procs sc root mbmap ppf sbt.states state_name_IF dii None;
+  print_proc_parties sc root id mbmap loop_str state_name_IF dii ppf sbt.states None;
+  print_proc_invoke ();
+  Format.fprintf ppf "@]@\n}.";
+  ()
+  
+
+let gen_sim (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t) (sbt : sim_body_tyd) : string =
+  let sf = Format.get_str_formatter () in
+  Format.fprintf sf "@[<v>";
+  Format.fprintf sf "@[%s@]@;@;" (open_theory uc__sim);
+  Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) sbt.states;
+  Format.fprintf sf "@[%a@]@;@;"
+    (print_simulator_module sc root id mbmap IdMap.empty) sbt;
+  Format.fprintf sf "@[%s@]@;" (close_theory uc__sim);
+  Format.fprintf sf "@]";
+  Format.flush_str_formatter ()
+

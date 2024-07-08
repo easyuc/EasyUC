@@ -171,9 +171,10 @@ let generate_ec (mt : maps_tyd) : unit =
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
-  let sm = IdPairMap.fold
-    (fun sp st sm ->
-      IdPairMap.add sp (gen_sim (snd sp) st) sm
+  let sm = IdPairMap.fold (fun sp st sm ->
+    let root, id = sp in
+    let sbt = EcLocation.unloc st in
+    IdPairMap.add sp (UcGenerateFunctionality.gen_sim (scope root) root id mbmap sbt) sm
     ) mt.sim_map IdPairMap.empty in
   let mg =
     {basic_dir_inter_map = dim_b;
