@@ -31,7 +31,10 @@ let print_files (mg : maps_gen) : unit =
     IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c;
 
     let rootfun = IdPairMap.filter (fun (r,_) _ -> r = root) mg.fun_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun
+    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun;
+
+    let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
+    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
 
   in  
   let roots = 
@@ -133,6 +136,30 @@ let dir_int_internals
         (get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
           mt root ft nm)) in
       IdMap.add nm dir_int_sp ret) IdMap.empty nms
+
+let adv_int_simulated
+(mt : maps_tyd) (root : string) (st : sim_tyd) : symb_pair IdPairMap.t =
+  let sbt = EcLocation.unloc st in
+  let ft = IdPairMap.find (root, sbt.sims) mt.fun_map in 
+  let rfbt = real_fun_body_tyd_of (EcLocation.unloc ft) in
+  let ptnms = fst (List.split (IdMap.bindings rfbt.parties)) in
+  let ret = List.fold_left(fun ret pty ->
+    let basic_nm = get_adv_sub_inter_of_party_of_real_fun ft pty in
+    if (basic_nm <> None)
+    then IdPairMap.add (sbt.sims, pty)(root,EcUtils.oget basic_nm) ret
+    else ret) IdPairMap.empty ptnms in
+  let sf_nmifs = IdMap.bindings rfbt.sub_funs in
+  let pms = indexed_map_to_list_keep_keys rfbt.params in
+  let pm_nms = fst (List.split pms) in
+  let pm_nmifs = List.combine pm_nms sbt.sims_arg_pair_ids in
+  let nmifs = sf_nmifs @ pm_nmifs in
+  List.fold_left (fun ret nmif ->
+      let ifun = IdPairMap.find (snd nmif) mt.fun_map in
+      let ifunu = EcLocation.unloc ifun in
+      let ifbt = ideal_fun_body_tyd_of ifunu in
+      let ifroot = fst (snd nmif) in
+      let adv_int_sp =  (ifroot, ifbt.id_adv_inter) in
+      IdPairMap.add (sbt.sims,fst nmif) adv_int_sp ret) ret nmifs
   
 
 let generate_ec (mt : maps_tyd) : unit =
@@ -159,7 +186,7 @@ let generate_ec (mt : maps_tyd) : unit =
 
   let fm = IdPairMap.fold (fun sp ft fm ->
     let root, id = sp in
-    let dir_int_internals = dir_int_internals mt root ft in
+    let dii = dir_int_internals mt root ft in
     let rapm =
       if is_real_fun_tyd ft
       then Some (make_rf_addr_port_maps mt root ft)
@@ -167,14 +194,16 @@ let generate_ec (mt : maps_tyd) : unit =
     in
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
-          (scope root) root id mbmap rapm ft dir_int_internals
+          (scope root) root id mbmap rapm ft dii
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
   let sm = IdPairMap.fold (fun sp st sm ->
     let root, id = sp in
+    let ais = adv_int_simulated mt root st in           
     let sbt = EcLocation.unloc st in
-    IdPairMap.add sp (UcGenerateFunctionality.gen_sim (scope root) root id mbmap sbt) sm
+    IdPairMap.add sp (UcGenerateFunctionality.gen_sim
+                        (scope root) root id mbmap sbt ais) sm
     ) mt.sim_map IdPairMap.empty in
   let mg =
     {basic_dir_inter_map = dim_b;

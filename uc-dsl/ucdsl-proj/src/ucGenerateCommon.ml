@@ -38,6 +38,8 @@ let uc__name (name : string) : string = "UC__"^name
 
 let uc__code = "UC__Code"
 
+let uc__rf = "UC__RF"
+
 let adv_if_pi_op_name = "_adv_if_pi"
 
 let adv_if_pi_gt0_axiom_name = "_adv_if_pi_gt0"
@@ -104,7 +106,7 @@ let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope)
   (* intport substitution *)
   let intport_op_ex (ptnm : string list) : EcTypes.expr =
     let ptnm = List.nth ptnm ((List.length ptnm)-1) in
-    EcTypes.e_op (EcPath.fromqsymbol ([], intport_op_name ptnm)) []
+    EcTypes.e_op (EcPath.fromqsymbol ([], uc__rf^"."^intport_op_name ptnm)) []
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =
