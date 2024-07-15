@@ -66,8 +66,6 @@ let intport_op_call (name : string) : string = "_intport_"^name^" "^_self
 
 let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
 
-let adv_sf_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
-
 let epdp_op_name (name : string) : string = "epdp_"^name
 
 let msg_ty_name (name : string) : string = "_"^name
@@ -199,8 +197,8 @@ let get_msg_body
       (iip : string list) (msgnm : string)
     : (bool * message_body_tyd) =
   let sl = iip@[msgnm] in
-  List.iter (fun s -> print_string (s^" + ")) sl;
-  print_endline "";
+  (*List.iter (fun s -> print_string (s^" + ")) sl;
+  print_endline "";*)
   if SLMap.exists (fun p _ -> p = sl) mbmap
   then let mb = SLMap.find sl mbmap in (false,mb)
   else let mb = SLMap.find ([root]@sl) mbmap in (true,mb)

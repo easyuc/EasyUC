@@ -142,7 +142,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
           let iip = [root]@iiptl in
           let _,mb = get_msg_body mbmap root iip msgn in
           let pfx = inter_id_path_str true (List.tl iip) in
-          let pfx = uc__rf^"."^(uc_name (snd key))^"."^uc__code^"."^pfx in
+          let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
           pfx, mb
         else   
           let iip = msg_path.inter_id_path in
@@ -519,16 +519,6 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
-let print_sub_fun_clones (ppf : Format.formatter)
-      (rfbt : real_fun_body_tyd) : unit =
-  let nsf = IdMap.cardinal rfbt.sub_funs in
-  let bndgs = IdMap.bindings rfbt.sub_funs in
-  for n = 0 to nsf-1 do
-    let isf_name, (root, _) = List.nth bndgs n in
-    clone_singleton_unit
-      ppf root (uc_name isf_name) (adv_sf_pi_op_name isf_name)
-  done
-
 let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
       (rapm : rf_addr_port_maps) : unit =
   let print_addr_op (name : string) (n : int) : unit =
@@ -704,7 +694,6 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
-  Format.fprintf sf "@[%a@]@;@;" print_sub_fun_clones rfbt;
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii) rfbt;

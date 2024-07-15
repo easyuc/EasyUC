@@ -92,8 +92,11 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let isf_name = sub_fun_name_nth_of_real_fun_tyd rf n in
          let isf_adv_pi = get_adv_pi_of_nth_sub_fun_of_real_fun
                             mt root 0 rf n in
-         Format.fprintf sf "op %s : int = %s + %i.@."
-           (adv_sf_pi_op_name isf_name) adv_pi_begin_op_name isf_adv_pi
+         let sfnm = uc_name isf_name in
+         let adv_pi_begin_str = adv_pi_begin_op_name^" + "^
+                                  (string_of_int isf_adv_pi) in
+         let root = fst (sub_fun_sp_nth_of_real_fun_tyd rf n) in
+         clone_singleton_unit sf root sfnm adv_pi_begin_str
        done;
        Format.fprintf sf "@.op %s : int = %s.@.@."
          adv_if_pi_op_name adv_pi_begin_op_name;
