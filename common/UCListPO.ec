@@ -24,7 +24,7 @@ type resu = [
 
 (* comparison operator *)
 
-op nosmt lpo (xs ys : 'a list) : resu =
+op [smt_opaque] lpo (xs ys : 'a list) : resu =
   with xs = []      =>
     ((ys = []) ? Eq : LT)
   with xs = u :: us =>
@@ -50,35 +50,35 @@ inductive inc_spec (xs ys : 'a list) =
       & (xs = us ++ [x] ++ vs)
       & (ys = us ++ [y] ++ ws).
 
-lemma nosmt lpo_nil :
+lemma lpo_nil :
   lpo <:'a>[] [] = Eq.
 proof. done. qed.
 
-lemma nosmt lpo_nil_non_nil (y : 'a, ys : 'a list) :
+lemma lpo_nil_non_nil (y : 'a, ys : 'a list) :
   lpo [] (y :: ys) = LT.
 proof. done. qed.
 
-lemma nosmt lpo_non_nil_nil (x : 'a, xs : 'a list) :
+lemma lpo_non_nil_nil (x : 'a, xs : 'a list) :
   lpo (x :: xs) [] = GT.
 proof. done. qed.
 
-lemma nosmt lpo_non_nil_eq (x y : 'a, xs ys : 'a list) :
+lemma lpo_non_nil_eq (x y : 'a, xs ys : 'a list) :
   x = y => lpo (x :: xs) (y :: ys) = lpo xs ys.
 proof. done. qed.
 
-lemma nosmt lpo_non_nil_ne (x y : 'a, xs ys : 'a list) :
+lemma lpo_non_nil_ne (x y : 'a, xs ys : 'a list) :
   x <> y => lpo (x :: xs) (y :: ys) = Inc.
 proof.
 move => ne_xy; by rewrite /= ne_xy.
 qed.
 
-lemma nosmt lpo_pre (xs ys zs : 'a list) :
+lemma lpo_pre (xs ys zs : 'a list) :
   lpo (xs ++ ys) (xs ++ zs) = lpo ys zs.
 proof.
 by elim xs.
 qed.
 
-lemma nosmt lpo_eqP (xs ys : 'a list) :
+lemma lpo_eqP (xs ys : 'a list) :
   lpo xs ys = Eq <=> xs = ys.
 proof.
 split.
@@ -90,7 +90,7 @@ apply IH.
 move => ->; elim ys; done.
 qed.
 
-lemma nosmt lpo_ltP (xs ys : 'a list) :
+lemma lpo_ltP (xs ys : 'a list) :
   lpo xs ys = LT <=> lt_spec xs ys.
 proof.
 split.
@@ -106,7 +106,7 @@ elim xs => //=.
 by rewrite us_ne_nil.
 qed.
 
-lemma nosmt lpo_gtP (xs ys : 'a list) :
+lemma lpo_gtP (xs ys : 'a list) :
   lpo xs ys = GT <=> lt_spec ys xs.
 proof.
 split.
@@ -123,7 +123,7 @@ case => // u us _.
 by elim ys.
 qed.
 
-lemma nosmt lpo_sym_lt_gt (xs ys : 'a list) :
+lemma lpo_sym_lt_gt (xs ys : 'a list) :
   lpo xs ys = LT <=> lpo ys xs = GT.
 proof.
 split.
@@ -133,7 +133,7 @@ move => /lpo_gtP lts.
 by rewrite lpo_ltP.
 qed.
 
-lemma nosmt lpo_lt_trans (ys xs zs : 'a list) :
+lemma lpo_lt_trans (ys xs zs : 'a list) :
   lpo xs ys = LT => lpo ys zs = LT =>
   lpo xs zs = LT.
 proof.
@@ -144,7 +144,7 @@ rewrite lpo_ltP -catA
 move : us vs us_ne_nil vs_ne_nil; by case.
 qed.
 
-lemma nosmt lpo_gt_trans (ys xs zs : 'a list) :
+lemma lpo_gt_trans (ys xs zs : 'a list) :
   lpo xs ys = GT => lpo ys zs = GT =>
   lpo xs zs = GT.
 proof.
@@ -152,13 +152,13 @@ rewrite -!lpo_sym_lt_gt => lpo_ys_xs lpo_zs_ys.
 by rewrite (lpo_lt_trans ys).
 qed.
 
-lemma nosmt lpo_lt_ext_nonnil_r (xs : 'a list, y : 'a, ys : 'a list) :
+lemma lpo_lt_ext_nonnil_r (xs : 'a list, y : 'a, ys : 'a list) :
   lpo xs (xs ++ y :: ys) = LT.
 proof.
 by rewrite lpo_ltP (LTS _ _ (y :: ys)).
 qed.
 
-lemma nosmt lpo_incP (xs ys : 'a list) :
+lemma lpo_incP (xs ys : 'a list) :
   lpo xs ys = Inc <=> inc_spec xs ys.
 proof.
 split.
@@ -178,7 +178,7 @@ case => x y us vs ws ne_xy -> ->.
 elim us => //=; by rewrite ne_xy.
 qed.
 
-lemma nosmt lpo_inc_sym (xs ys : 'a list) :
+lemma lpo_inc_sym (xs ys : 'a list) :
   lpo xs ys = Inc <=> lpo ys xs = Inc.
 proof.
 split.
@@ -194,7 +194,7 @@ by rewrite lpo_incP
            // eq_sym.
 qed.
 
-lemma nosmt lpo_inc_pre (xs ys zs : 'a list) :
+lemma lpo_inc_pre (xs ys zs : 'a list) :
   lpo ys zs = Inc => lpo (xs ++ ys) (xs ++ zs) = Inc.
 proof. by elim xs. qed.
 
@@ -208,7 +208,7 @@ by rewrite -catA lpo_incP
             x0 y0 us (vs ++ zs) ws).
 qed.
 
-lemma nosmt lpo_inc_extr (xs ys zs : 'a list) :
+lemma lpo_inc_extr (xs ys zs : 'a list) :
   lpo xs ys = Inc => lpo xs (ys ++ zs) = Inc.
 proof.
 move => /lpo_incP [] x0 y0 us vs ws x0_ne_y0 -> ->.
@@ -218,7 +218,7 @@ by rewrite -(catA (us ++ [y0])) lpo_incP
             x0 y0 us vs (ws ++ zs)).
 qed.
 
-lemma nosmt lpo_inc_ext (xs ys zs ws : 'a list) :
+lemma lpo_inc_ext (xs ys zs ws : 'a list) :
   lpo xs ys = Inc => lpo (xs ++ zs) (ys ++ ws) = Inc.
 proof.
 move => /lpo_incP [] x y us vs ws0 x_ne_0 -> ->.
@@ -230,12 +230,12 @@ qed.
 
 (* abbreviations *)
 
-op nosmt [opaque] (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
+op [opaque smt_opaque] (<) (xs ys : 'a list) : bool = lpo xs ys = LT.
 
-op nosmt [opaque] (<=) (xs ys : 'a list) : bool =
+op [opaque smt_opaque] (<=) (xs ys : 'a list) : bool =
   let r = lpo xs ys in r = LT \/ r = Eq.
 
-op nosmt [opaque] inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
+op [opaque smt_opaque] inc (xs ys : 'a list) : bool = lpo xs ys = Inc.
 
 lemma concat_nil_r (xs : 'a list) :
   xs ++ [] = xs.
@@ -259,7 +259,7 @@ rewrite -(lpo_eqP xs ys).
 by case (lpo xs ys).
 qed.
 
-lemma nosmt leP (xs ys : 'a list) :
+lemma leP (xs ys : 'a list) :
   xs <= ys <=> le_spec xs ys.
 proof.
 split.
@@ -275,13 +275,13 @@ right; by rewrite lpo_eqP -xs_us_eq_ys nil_us cats0.
 left; by rewrite lpo_ltP (LTS xs ys us).
 qed.
 
-lemma nosmt ltP (xs ys : 'a list) :
+lemma ltP (xs ys : 'a list) :
   xs < ys <=> lt_spec xs ys.
 proof.
 by rewrite /(<) lpo_ltP.
 qed.
 
-lemma nosmt incP (xs ys : 'a list) :
+lemma incP (xs ys : 'a list) :
   inc xs ys <=> inc_spec xs ys.
 proof.
 by rewrite /inc lpo_incP.
@@ -621,7 +621,7 @@ proof.
 rewrite /inc; apply lpo_inc_ext.
 qed.
 
-lemma nosmt not_le_cases (xs ys : 'a list) :
+lemma not_le_cases (xs ys : 'a list) :
   ! xs <= ys <=> ys < xs \/ inc xs ys.
 proof.
 rewrite /(<=) /(<) /inc /=.
@@ -632,7 +632,7 @@ rewrite (lpo_sym_lt_gt ys xs) negb_or.
 by case => ->.
 qed.
 
-lemma nosmt not_lt_cases (xs ys : 'a list) :
+lemma not_lt_cases (xs ys : 'a list) :
   ! xs < ys <=> xs = ys \/ ys < xs \/ inc xs ys.
 proof.
 rewrite /(<) /inc.
@@ -640,7 +640,7 @@ rewrite -lpo_eqP (lpo_sym_lt_gt ys xs).
 by case (lpo xs ys).
 qed.
 
-lemma nosmt not_eq_cases (xs ys : 'a list) :
+lemma not_eq_cases (xs ys : 'a list) :
   ! xs = ys <=> xs < ys \/ ys < xs \/ inc xs ys.
 proof.
 rewrite /(<) /inc.
@@ -648,7 +648,7 @@ rewrite -lpo_eqP (lpo_sym_lt_gt ys xs).
 by case (lpo xs ys).
 qed.
 
-lemma nosmt inc_cases (xs ys : 'a list) :
+lemma inc_cases (xs ys : 'a list) :
   inc xs ys <=> xs <> ys /\ ! xs < ys /\ ! ys < xs.
 proof.
 rewrite /inc /(<).
@@ -656,7 +656,7 @@ rewrite -lpo_eqP (lpo_sym_lt_gt ys xs).
 by case (lpo xs ys).
 qed.
 
-lemma nosmt inc_cases_le (xs ys : 'a list) :
+lemma inc_cases_le (xs ys : 'a list) :
   inc xs ys <=> ! xs <= ys /\ ! ys <= xs.
 proof.
 rewrite /(<=) /inc /=.
@@ -664,13 +664,13 @@ rewrite (lpo_eqP ys xs) (eq_sym ys xs) -(lpo_eqP xs ys) (lpo_sym_lt_gt ys xs).
 by case (lpo xs ys).
 qed.
 
-lemma nosmt not_inc_cases (xs ys : 'a list) :
+lemma not_inc_cases (xs ys : 'a list) :
   ! inc xs ys <=> xs = ys \/ xs < ys \/ ys < xs.
 proof.
 by rewrite -iff_negb /= !negb_or inc_cases.
 qed.
 
-lemma nosmt not_inc_cases_le (xs ys : 'a list) :
+lemma not_inc_cases_le (xs ys : 'a list) :
   ! inc xs ys <=> xs <= ys \/ ys <= xs.
 proof.
 by rewrite -iff_negb /= !negb_or inc_cases_le.

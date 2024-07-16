@@ -644,13 +644,8 @@ and subst_oracle_infos (s : subst) (ois : oracle_infos) =
 
     (* -------------------------------------------------------------------- *)
 and subst_mod_restr (s : subst) (mr : mod_restr) =
-  let rx = ur_app (fun set -> EcPath.Sx.fold (fun x r ->
-      EcPath.Sx.add (subst_xpath s x) r
-    ) set EcPath.Sx.empty) mr.mr_xpaths in
-  let r = ur_app (fun set -> EcPath.Sm.fold (fun x r ->
-      EcPath.Sm.add (subst_mpath s x) r
-    ) set EcPath.Sm.empty) mr.mr_mpaths in
-  { mr_xpaths = rx; mr_mpaths = r; }
+  let subst_ (xs, ms) = Sx.map (subst_xpath s) xs, Sm.map (subst_mpath s) ms in
+  ur_app subst_ mr
 
 (* -------------------------------------------------------------------- *)
 and subst_modsig_body_item (s : subst) (item : module_sig_body_item) =
@@ -900,8 +895,8 @@ and subst_notation (s : subst) (nott : notation) =
 
 and subst_op_body (s : subst) (bd : opbody) =
   match bd with
-  | OP_Plain (body, nosmt) ->
-      OP_Plain (subst_form s body, nosmt)
+  | OP_Plain body ->
+      OP_Plain (subst_form s body)
 
   | OP_Constr (p, i)  -> OP_Constr (subst_path s p, i)
   | OP_Record p       -> OP_Record (subst_path s p)
@@ -913,8 +908,7 @@ and subst_op_body (s : subst) (bd : opbody) =
       OP_Fix { opf_args     = args;
                opf_resty    = subst_ty s opfix.opf_resty;
                opf_struct   = opfix.opf_struct;
-               opf_branches = subst_branches es opfix.opf_branches;
-               opf_nosmt    = opfix.opf_nosmt; }
+               opf_branches = subst_branches es opfix.opf_branches; }
 
   | OP_TC -> OP_TC
 

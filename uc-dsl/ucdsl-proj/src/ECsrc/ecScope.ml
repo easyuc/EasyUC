@@ -325,7 +325,7 @@ type prelude = {
   pr_required : required;
 }
 
-type thloaded = EcSection.checked_ctheory
+type thloaded = EcEnv.Theory.compiled_theory
 
 type scope = {
   sc_name     : (symbol * EcTheory.thmode);
@@ -891,7 +891,7 @@ module Ax = struct
            ax_spec       = concl;
            ax_kind       = kind;
            ax_loca       = ax.pa_locality;
-           ax_visibility = if ax.pa_nosmt then `NoSmt else `Visible; }
+           ax_visibility = `Visible; }
     in
 
     match ax.pa_kind with
@@ -1119,7 +1119,7 @@ module Op = struct
           let codom    = TT.transty TT.tp_relax eenv ue pty in
           let _env, xs = TT.trans_binding eenv ue args in
           let opty     = EcTypes.toarrow (List.map snd xs) codom in
-          let opabs    = EcDecl.mk_op ~opaque:false [] codom None lc in
+          let opabs    = EcDecl.mk_op ~opaque:optransparent [] codom None lc in
           let openv    = EcEnv.Op.bind (unloc op.po_name) opabs env in
           let openv    = EcEnv.Var.bind_locals xs openv in
           let reft     = TT.trans_prop openv ue reft in
@@ -1129,18 +1129,6 @@ module Op = struct
     if not (EcUnify.UniEnv.closed ue) then
       hierror ~loc "this operator type contains free type variables";
 
-    let nosmt = op.po_nosmt in
-
-    if nosmt &&
-       (match body with
-        | `Plain _  -> false
-        | `Fix _    -> false
-        | `Abstract ->
-            match refts with
-            | [] -> true
-            | _  -> false) then
-      hierror ~loc ("[nosmt] is not supported for pure abstract operators");
-
     let uidmap  = EcUnify.UniEnv.close ue in
     let ts      = Tuni.subst uidmap in
     let fs      = Fsubst.f_subst ts in
@@ -1149,20 +1137,22 @@ module Op = struct
     let body    =
       match body with
       | `Abstract -> None
-      | `Plain e  -> Some (OP_Plain (fs e, nosmt))
+      | `Plain e  -> Some (OP_Plain (fs e))
       | `Fix opfx ->
           Some (OP_Fix {
             opf_args     = opfx.EHI.mf_args;
             opf_resty    = opfx.EHI.mf_codom;
             opf_struct   = (opfx.EHI.mf_recs, List.length opfx.EHI.mf_args);
             opf_branches = opfx.EHI.mf_branches;
-            opf_nosmt    = nosmt;
           })
 
     in
 
     let tags   = Sstr.of_list (List.map unloc op.po_tags) in
-    let opaque = Sstr.mem "opaque" tags in
+    let opaque = {
+      smt       = Sstr.mem "smt_opaque" tags;
+      reduction = Sstr.mem "opaque" tags
+    } in
     let unfold =
       match op.po_args with
       | (a, Some _) -> Some (List.length a)
@@ -1190,13 +1180,12 @@ module Op = struct
       | None    -> bind scope (unloc op.po_name, tyop)
       | Some ax -> begin
           match tyop.op_kind with
-          | OB_oper (Some (OP_Plain (bd, _))) ->
+          | OB_oper (Some (OP_Plain bd)) ->
               let path  = EcPath.pqname (path scope) (unloc op.po_name) in
               let axop  =
-                let nosmt = op.po_nosmt in
                 let nargs = List.sum (List.map (List.length |- fst) args) in
-                  EcDecl.axiomatized_op ~nargs ~nosmt path (tyop.op_tparams, bd) lc in
-              let tyop  = { tyop with op_opaque = true; } in
+                  EcDecl.axiomatized_op ~nargs path (tyop.op_tparams, bd) lc in
+              let tyop  = { tyop with op_opaque = { reduction = true; smt = false; }} in
               let scope = bind scope (unloc op.po_name, tyop) in
               Ax.bind scope (unloc ax, axop)
 
@@ -1232,7 +1221,7 @@ module Op = struct
               ax_spec       = ax;
               ax_kind       = `Axiom (Ssym.empty, false);
               ax_loca       = lc;
-              ax_visibility = if nosmt then `NoSmt else `Visible; }
+              ax_visibility = `Visible; }
           in Ax.bind scope (unloc rname, ax))
         scope refts
     in
@@ -1247,7 +1236,7 @@ module Op = struct
           let subst = Tvar.init
             (List.map fst tparams)
             (List.map (tvar |- fst) nparams) in
-          let rop = EcDecl.mk_op ~opaque:false nparams (Tvar.subst subst ty) None lc in
+          let rop = EcDecl.mk_op ~opaque:optransparent nparams (Tvar.subst subst ty) None lc in
           bind scope (unloc name, rop)
         in List.fold_left addnew scope op.po_aliases
 
@@ -1357,9 +1346,9 @@ module Op = struct
     let opdecl = EcDecl.{
       op_tparams  = [];
       op_ty       = aout.f_ty;
-      op_kind     = OB_oper (Some (OP_Plain (aout, false)));
+      op_kind     = OB_oper (Some (OP_Plain aout));
       op_loca     = op.ppo_locality;
-      op_opaque   = false;
+      op_opaque   = optransparent;
       op_clinline = false;
       op_unfold   = None;
     } in
@@ -1480,27 +1469,6 @@ end
 (* -------------------------------------------------------------------- *)
 module Mod = struct
   module TT = EcTyping
-
-  let add_local_restr env path m =
-    let mpath = EcPath.pqname path m.me_name in
-    match m.me_body with
-    | ME_Alias _ | ME_Decl _ -> env
-    | ME_Structure _ ->
-      (* We keep only the internal part, i.e the inner global variables *)
-      (* TODO : using mod_use here to compute the set of inner global
-         variables is inefficient, change this algo *)
-      let mp = EcPath.mpath_crt mpath [] None in
-      let use = EcEnv.NormMp.mod_use env mp in
-      let rx =
-        let add x _ rx =
-          if EcPath.m_equal (EcPath.m_functor x.EcPath.x_top) mp then
-            Sx.add x rx
-          else rx in
-        Mx.fold add use.EcEnv.us_pv EcPath.Sx.empty in
-      EcEnv.Mod.add_restr_to_locals
-        { (ur_empty Sx.empty) with ur_neg = rx }
-        (ur_empty Sm.empty)
-        env
 
   let bind ?(import = EcTheory.import0) (scope : scope) (m : top_module_expr) =
     assert (scope.sc_pr_uc = None);
@@ -2001,10 +1969,10 @@ module Theory = struct
   exception TopScope
 
   (* ------------------------------------------------------------------ *)
-  let bind (scope : scope) (x, cth) =
+  let bind (scope : scope) (cth : thloaded) =
     assert (scope.sc_pr_uc = None);
     { scope with
-        sc_env = EcSection.add_th ~import:EcTheory.import0 x cth scope.sc_env }
+        sc_env = EcSection.add_th ~import:EcTheory.import0 cth scope.sc_env }
 
   (* ------------------------------------------------------------------ *)
   let required (scope : scope) (name : required_info) =
@@ -2038,7 +2006,7 @@ module Theory = struct
       match Msym.find_opt id.rqd_name scope.sc_loaded with
       | Some (rth, ids) ->
           let scope = List.fold_right require_loaded ids scope in
-          let env   = EcSection.require id.rqd_name rth scope.sc_env in
+          let env   = EcSection.require rth scope.sc_env in
             { scope with
                 sc_env      = env;
                 sc_required = id :: scope.sc_required; }
@@ -2088,7 +2056,7 @@ module Theory = struct
     let cth = exit_r ~pempty (add_clears clears scope) in
     let ((cth, required), (name, _), scope) = cth in
     let scope = List.fold_right require_loaded required scope in
-    let scope = ofold (fun cth scope -> bind scope (name, cth)) scope cth in
+    let scope = ofold (fun cth scope -> bind scope cth) scope cth in
     (name, scope)
 
   (* ------------------------------------------------------------------ *)
