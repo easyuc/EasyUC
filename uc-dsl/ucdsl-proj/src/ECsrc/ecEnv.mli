@@ -194,8 +194,6 @@ module Mod : sig
   val declare_local : EcIdent.t -> mty_mr -> env -> env
   val is_declared   : EcIdent.t -> env -> bool
 
-  val add_restr_to_locals : Sx.t use_restr -> Sm.t use_restr -> env -> env
-
   val import_vars : env -> mpath -> env
 
   (* Only bind module, ie no memory and no local variable *)
@@ -262,17 +260,27 @@ module Theory : sig
   type t    = ctheory
   type mode = [`All | thmode]
 
+  type compiled
+
+  type compiled_theory = private {
+    name     : symbol;
+    ctheory  : t;
+    compiled : compiled;
+  }
+
   val by_path     : ?mode:mode -> path -> env -> t
   val by_path_opt : ?mode:mode -> path -> env -> t option
   val lookup      : ?mode:mode -> qsymbol -> env -> path * t
   val lookup_opt  : ?mode:mode -> qsymbol -> env -> (path * t) option
   val lookup_path : ?mode:mode -> qsymbol -> env -> path
 
+  val env_of_theory : path -> env -> env
+
   val add  : path -> env -> env
-  val bind : ?import:import -> symbol -> ctheory -> env -> env
+  val bind : ?import:import -> compiled_theory -> env -> env
 
  (* FIXME: section ? ctheory -> theory *)
-  val require : symbol -> ctheory -> env -> env
+  val require : compiled_theory -> env -> env
   val import  : path -> env -> env
   val export  : path -> is_local -> env -> env
 
@@ -283,7 +291,7 @@ module Theory : sig
     -> ?pempty:[`Full | `ClearOnly | `No]
     -> EcTypes.is_local
     -> EcTheory.thmode
-    -> env -> ctheory option
+    -> env -> compiled_theory option
 end
 
 (* -------------------------------------------------------------------- *)

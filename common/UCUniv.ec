@@ -296,12 +296,12 @@ type univ = bool list.  (* universe values are lists of bits *)
 
 (* unit encoding: *)
 
-op nosmt [opaque] enc_unit (x : unit) : univ = [].
+op [opaque smt_opaque] enc_unit (x : unit) : univ = [].
 
-op nosmt [opaque] dec_unit (u : univ) : unit option =
+op [opaque smt_opaque] dec_unit (u : univ) : unit option =
   if u = [] then Some () else None.
 
-op nosmt [opaque] epdp_unit_univ : (unit, univ) epdp =
+op [opaque smt_opaque] epdp_unit_univ : (unit, univ) epdp =
   {|enc = enc_unit; dec = dec_unit|}.
 
 lemma valid_epdp_unit_univ : valid_epdp epdp_unit_univ.
@@ -317,12 +317,12 @@ hint rewrite epdp : valid_epdp_unit_univ.
 
 (* bool encoding: *)
 
-op nosmt [opaque] enc_bool (b : bool) : univ = [b].
+op [opaque smt_opaque] enc_bool (b : bool) : univ = [b].
 
-op nosmt [opaque] dec_bool (u : univ) : bool option =
+op [opaque smt_opaque] dec_bool (u : univ) : bool option =
   if size u = 1 then Some (head true u) else None.
 
-op nosmt [opaque] epdp_bool_univ : (bool, univ) epdp =
+op [opaque smt_opaque] epdp_bool_univ : (bool, univ) epdp =
   {|enc = enc_bool; dec = dec_bool|}.
 
 lemma valid_epdp_bool_univ : valid_epdp epdp_bool_univ.
@@ -341,14 +341,14 @@ hint rewrite epdp : valid_epdp_bool_univ.
 
 (* int encoding: *)
 
-op nosmt [opaque] enc_int (n : int) : univ =
+op [opaque smt_opaque] enc_int (n : int) : univ =
   if n = 0
   then []
   else if 0 < n
        then true  :: int2bs_min n
        else false :: int2bs_min (-n).
 
-op nosmt [opaque] dec_int (u : univ) : int option =
+op [opaque smt_opaque] dec_int (u : univ) : int option =
   match u with
   | []      => Some 0
   | b :: bs =>
@@ -361,7 +361,7 @@ op nosmt [opaque] dec_int (u : univ) : int option =
            else Some (-(bs2int bs))
   end.
 
-op nosmt [opaque] epdp_int_univ : (int, univ) epdp =
+op [opaque smt_opaque] epdp_int_univ : (int, univ) epdp =
   {|enc = enc_int; dec = dec_int|}.
 
 lemma valid_epdp_int_univ : valid_epdp epdp_int_univ.
@@ -426,17 +426,17 @@ hint rewrite epdp : valid_epdp_int_univ.
 
 (* univ pair encoding: *)
 
-op nosmt [opaque] enc_univ_pair (p : univ * univ) : univ =
+op [opaque smt_opaque] enc_univ_pair (p : univ * univ) : univ =
   alt true p.`1 ++ [false] ++ p.`2.
 
-op nosmt [opaque] dec_univ_pair (u : univ) : (univ * univ) option =
+op [opaque smt_opaque] dec_univ_pair (u : univ) : (univ * univ) option =
   match de_alt true u with
   | None   => None
   | Some p =>
       if p.`2 = [] then None else Some (p.`1, behead p.`2)
   end.
 
-op nosmt [opaque] epdp_univ_pair_univ : (univ * univ, univ) epdp =
+op [opaque smt_opaque] epdp_univ_pair_univ : (univ * univ, univ) epdp =
   {|enc = enc_univ_pair; dec = dec_univ_pair|}.
 
 lemma valid_epdp_univ_pair_univ : valid_epdp epdp_univ_pair_univ.
@@ -489,20 +489,20 @@ qed.
 
 (* univ choice encoding: *)
 
-op nosmt [opaque] enc_univ_choice (c : (univ, univ) choice) : univ =
+op [opaque smt_opaque] enc_univ_choice (c : (univ, univ) choice) : univ =
   match c with
   | ChoiceLeft u  => true  :: u
   | ChoiceRight u => false :: u
   end.
 
-op nosmt [opaque] dec_univ_choice (u : univ) : (univ, univ) choice option =
+op [opaque smt_opaque] dec_univ_choice (u : univ) : (univ, univ) choice option =
   if u = []
     then None
   else if head true u
     then Some (ChoiceLeft (behead u))
   else Some (ChoiceRight (behead u)).
 
-op nosmt [opaque] epdp_univ_choice_univ : ((univ, univ) choice, univ) epdp =
+op [opaque smt_opaque] epdp_univ_choice_univ : ((univ, univ) choice, univ) epdp =
   {|enc = enc_univ_choice; dec = dec_univ_choice|}.
 
 lemma valid_epdp_univ_choice_univ : valid_epdp epdp_univ_choice_univ.
@@ -525,14 +525,15 @@ op choice3_tag_1    = [false; false].
 op choice3_tag_2    = [false; true].
 op choice3_tag_3    = [true;  false].
 
-op nosmt [opaque] enc_univ_choice3 (c : (univ, univ, univ) choice3) : univ =
+op [opaque smt_opaque] enc_univ_choice3 (c : (univ, univ, univ) choice3) : univ =
   match c with
   | Choice3_1 u => choice3_tag_1 ++ u
   | Choice3_2 u => choice3_tag_2 ++ u
   | Choice3_3 u => choice3_tag_3 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice3 (u : univ) : (univ, univ, univ) choice3 option =
+op [opaque smt_opaque] dec_univ_choice3 (u : univ)
+     : (univ, univ, univ) choice3 option =
   if size u < choice3_tag_size
   then None
   else let tag  = take 2 u in
@@ -545,7 +546,7 @@ op nosmt [opaque] dec_univ_choice3 (u : univ) : (univ, univ, univ) choice3 optio
          then Some (Choice3_3 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice3_univ
+op [opaque smt_opaque] epdp_univ_choice3_univ
      : ((univ, univ, univ) choice3, univ) epdp =
   {|enc = enc_univ_choice3; dec = dec_univ_choice3|}.
 
@@ -592,7 +593,8 @@ op choice4_tag_2    = [false; true].
 op choice4_tag_3    = [true;  false].
 op choice4_tag_4    = [true;  true].
 
-op nosmt [opaque] enc_univ_choice4 (c : (univ, univ, univ, univ) choice4) : univ =
+op [opaque smt_opaque] enc_univ_choice4 (c : (univ, univ, univ, univ) choice4)
+     : univ =
   match c with
   | Choice4_1 u => choice4_tag_1 ++ u
   | Choice4_2 u => choice4_tag_2 ++ u
@@ -600,7 +602,7 @@ op nosmt [opaque] enc_univ_choice4 (c : (univ, univ, univ, univ) choice4) : univ
   | Choice4_4 u => choice4_tag_4 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice4 (u : univ)
+op [opaque smt_opaque] dec_univ_choice4 (u : univ)
      : (univ, univ, univ, univ) choice4 option =
   if size u < choice4_tag_size
   then None
@@ -616,7 +618,7 @@ op nosmt [opaque] dec_univ_choice4 (u : univ)
          then Some (Choice4_4 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice4_univ
+op [opaque smt_opaque] epdp_univ_choice4_univ
      : ((univ, univ, univ, univ) choice4, univ) epdp =
   {|enc = enc_univ_choice4; dec = dec_univ_choice4|}.
 
@@ -675,7 +677,7 @@ op choice5_tag_3    = [false; true;  false].
 op choice5_tag_4    = [false; true;  true].
 op choice5_tag_5    = [true;  false; false].
 
-op nosmt [opaque] enc_univ_choice5
+op [opaque smt_opaque] enc_univ_choice5
      (c : (univ, univ, univ, univ, univ) choice5) : univ =
   match c with
   | Choice5_1 u => choice5_tag_1 ++ u
@@ -685,7 +687,7 @@ op nosmt [opaque] enc_univ_choice5
   | Choice5_5 u => choice5_tag_5 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice5 (u : univ)
+op [opaque smt_opaque] dec_univ_choice5 (u : univ)
      : (univ, univ, univ, univ, univ) choice5 option =
   if size u < choice5_tag_size
   then None
@@ -703,7 +705,7 @@ op nosmt [opaque] dec_univ_choice5 (u : univ)
          then Some (Choice5_5 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice5_univ
+op [opaque smt_opaque] epdp_univ_choice5_univ
      : ((univ, univ, univ, univ, univ) choice5, univ) epdp =
   {|enc = enc_univ_choice5; dec = dec_univ_choice5|}.
 
@@ -776,7 +778,7 @@ op choice6_tag_4    = [false; true;  true].
 op choice6_tag_5    = [true;  false; false].
 op choice6_tag_6    = [true;  false; true].
 
-op nosmt [opaque] enc_univ_choice6
+op [opaque smt_opaque] enc_univ_choice6
          (c : (univ, univ, univ, univ, univ, univ) choice6) : univ =
   match c with
   | Choice6_1 u => choice6_tag_1 ++ u
@@ -787,7 +789,7 @@ op nosmt [opaque] enc_univ_choice6
   | Choice6_6 u => choice6_tag_6 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice6 (u : univ)
+op [opaque smt_opaque] dec_univ_choice6 (u : univ)
      : (univ, univ, univ, univ, univ, univ) choice6 option =
   if size u < choice6_tag_size
   then None
@@ -807,7 +809,7 @@ op nosmt [opaque] dec_univ_choice6 (u : univ)
          then Some (Choice6_6 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice6_univ
+op [opaque smt_opaque] epdp_univ_choice6_univ
      : ((univ, univ, univ, univ, univ, univ) choice6, univ) epdp =
   {|enc = enc_univ_choice6; dec = dec_univ_choice6|}.
 
@@ -896,7 +898,7 @@ op choice7_tag_5    = [true;  false; false].
 op choice7_tag_6    = [true;  false; true].
 op choice7_tag_7    = [true;  true;  false].
 
-op nosmt [opaque] enc_univ_choice7
+op [opaque smt_opaque] enc_univ_choice7
      (c : (univ, univ, univ, univ, univ, univ, univ) choice7) : univ =
   match c with
   | Choice7_1 u => choice7_tag_1 ++ u
@@ -908,7 +910,7 @@ op nosmt [opaque] enc_univ_choice7
   | Choice7_7 u => choice7_tag_7 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice7 (u : univ)
+op [opaque smt_opaque] dec_univ_choice7 (u : univ)
      : (univ, univ, univ, univ, univ, univ, univ) choice7 option =
   if size u < choice7_tag_size
   then None
@@ -930,7 +932,7 @@ op nosmt [opaque] dec_univ_choice7 (u : univ)
          then Some (Choice7_7 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice7_univ
+op [opaque smt_opaque] epdp_univ_choice7_univ
      : ((univ, univ, univ, univ, univ, univ, univ) choice7, univ) epdp =
   {|enc = enc_univ_choice7; dec = dec_univ_choice7|}.
 
@@ -1037,7 +1039,7 @@ op choice8_tag_6    = [true;  false; true].
 op choice8_tag_7    = [true;  true;  false].
 op choice8_tag_8    = [true;  true;  true].
 
-op nosmt [opaque] enc_univ_choice8
+op [opaque smt_opaque] enc_univ_choice8
      (c : (univ, univ, univ, univ, univ, univ, univ, univ)
       choice8) : univ =
   match c with
@@ -1051,7 +1053,7 @@ op nosmt [opaque] enc_univ_choice8
   | Choice8_8 u => choice8_tag_8 ++ u
   end.
 
-op nosmt [opaque] dec_univ_choice8 (u : univ)
+op [opaque smt_opaque] dec_univ_choice8 (u : univ)
      : (univ, univ, univ, univ, univ, univ, univ, univ) choice8 option =
   if size u < choice8_tag_size
   then None
@@ -1075,7 +1077,7 @@ op nosmt [opaque] dec_univ_choice8 (u : univ)
          then Some (Choice8_8 rest)
        else None.
 
-op nosmt [opaque] epdp_univ_choice8_univ
+op [opaque smt_opaque] epdp_univ_choice8_univ
      : ((univ, univ, univ, univ, univ, univ, univ, univ) choice8, univ)
        epdp =
   {|enc = enc_univ_choice8; dec = dec_univ_choice8|}.
@@ -1192,13 +1194,13 @@ hint rewrite epdp : valid_epdp_univ_choice8_univ.
 
 (* univ option encoding: *)
 
-op nosmt [opaque] enc_univ_option (u_opt : univ option) : univ =
+op [opaque smt_opaque] enc_univ_option (u_opt : univ option) : univ =
   match u_opt with
   | None   => [true]
   | Some u => false :: u
   end.
 
-op nosmt [opaque] dec_univ_option (u : univ) : univ option option =
+op [opaque smt_opaque] dec_univ_option (u : univ) : univ option option =
   if u = []
     then None
   else if head true u
@@ -1207,7 +1209,7 @@ op nosmt [opaque] dec_univ_option (u : univ) : univ option option =
          else None
   else Some (Some (behead u)).
 
-op nosmt [opaque] epdp_univ_option_univ : (univ option, univ) epdp =
+op [opaque smt_opaque] epdp_univ_option_univ : (univ option, univ) epdp =
   {|enc = enc_univ_option; dec = dec_univ_option|}.
 
 lemma valid_epdp_univ_option_univ : valid_epdp epdp_univ_option_univ.
@@ -1226,7 +1228,7 @@ hint rewrite epdp : valid_epdp_univ_option_univ.
 
 (* univ list encoding: *)
 
-op nosmt [opaque] enc_univ_list (us : univ list) : univ =
+op [opaque smt_opaque] enc_univ_list (us : univ list) : univ =
   with us = []      => []
   with us = v :: vs => epdp_univ_pair_univ.`enc (v, enc_univ_list vs).
 
@@ -1262,7 +1264,7 @@ op dec_univ_list_wf_rec_def
 op dec_univ_list : univ -> univ list option =
   wf_recur lt_list_size None dec_univ_list_wf_rec_def.
 
-op nosmt [opaque] epdp_univ_list_univ : (univ list, univ) epdp =
+op [opaque smt_opaque] epdp_univ_list_univ : (univ list, univ) epdp =
   {|enc = enc_univ_list; dec = dec_univ_list|}.
 
 lemma valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
@@ -1324,10 +1326,10 @@ hint rewrite epdp : valid_epdp_univ_list_univ.
 
 (* tuple3 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple3 (t : univ * univ * univ) : univ =
+op [opaque smt_opaque] enc_univ_tuple3 (t : univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc (t.`1, (epdp_univ_pair_univ.`enc (t.`2, t.`3))).
 
-op nosmt [opaque] dec_univ_tuple3 (u : univ) : (univ * univ * univ) option =
+op [opaque smt_opaque] dec_univ_tuple3 (u : univ) : (univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
   | Some p =>
@@ -1337,7 +1339,7 @@ op nosmt [opaque] dec_univ_tuple3 (u : univ) : (univ * univ * univ) option =
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple3_univ : (univ * univ * univ, univ) epdp =
+op [opaque smt_opaque] epdp_univ_tuple3_univ : (univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple3; dec = dec_univ_tuple3|}.
 
 lemma valid_epdp_univ_tuple3_univ : valid_epdp epdp_univ_tuple3_univ.
@@ -1369,11 +1371,11 @@ hint rewrite epdp : valid_epdp_univ_tuple3_univ.
 
 (* tuple4 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple4 (t : univ * univ * univ * univ) : univ =
+op [opaque smt_opaque] enc_univ_tuple4 (t : univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
   (t.`1, (epdp_univ_tuple3_univ.`enc (t.`2, t.`3, t.`4))).
 
-op nosmt [opaque] dec_univ_tuple4
+op [opaque smt_opaque] dec_univ_tuple4
      (u : univ) : (univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
@@ -1384,7 +1386,7 @@ op nosmt [opaque] dec_univ_tuple4
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple4_univ
+op [opaque smt_opaque] epdp_univ_tuple4_univ
      : (univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple4; dec = dec_univ_tuple4|}.
 
@@ -1417,11 +1419,12 @@ hint rewrite epdp : valid_epdp_univ_tuple4_univ.
 
 (* tuple5 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple5 (t : univ * univ * univ * univ * univ) : univ =
+op [opaque smt_opaque] enc_univ_tuple5 (t : univ * univ * univ * univ * univ)
+     : univ =
   epdp_univ_pair_univ.`enc
   (t.`1, (epdp_univ_tuple4_univ.`enc (t.`2, t.`3, t.`4, t.`5))).
 
-op nosmt [opaque] dec_univ_tuple5 (u : univ) :
+op [opaque smt_opaque] dec_univ_tuple5 (u : univ) :
     (univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
@@ -1432,7 +1435,7 @@ op nosmt [opaque] dec_univ_tuple5 (u : univ) :
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple5_univ :
+op [opaque smt_opaque] epdp_univ_tuple5_univ :
      (univ * univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple5; dec = dec_univ_tuple5|}.
 
@@ -1466,12 +1469,12 @@ hint rewrite epdp : valid_epdp_univ_tuple5_univ.
 
 (* tuple6 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple6
+op [opaque smt_opaque] enc_univ_tuple6
      (t : univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
   (t.`1, (epdp_univ_tuple5_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6))).
 
-op nosmt [opaque] dec_univ_tuple6 (u : univ) :
+op [opaque smt_opaque] dec_univ_tuple6 (u : univ) :
     (univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
@@ -1482,7 +1485,7 @@ op nosmt [opaque] dec_univ_tuple6 (u : univ) :
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple6_univ :
+op [opaque smt_opaque] epdp_univ_tuple6_univ :
     (univ * univ * univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple6; dec = dec_univ_tuple6|}.
 
@@ -1516,12 +1519,12 @@ hint rewrite epdp : valid_epdp_univ_tuple6_univ.
 
 (* tuple7 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple7
+op [opaque smt_opaque] enc_univ_tuple7
      (t : univ * univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
   (t.`1, (epdp_univ_tuple6_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7))).
 
-op nosmt [opaque] dec_univ_tuple7 (u : univ) :
+op [opaque smt_opaque] dec_univ_tuple7 (u : univ) :
     (univ * univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
@@ -1532,7 +1535,7 @@ op nosmt [opaque] dec_univ_tuple7 (u : univ) :
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple7_univ :
+op [opaque smt_opaque] epdp_univ_tuple7_univ :
     (univ * univ * univ * univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple7; dec = dec_univ_tuple7|}.
 
@@ -1566,12 +1569,12 @@ hint rewrite epdp : valid_epdp_univ_tuple7_univ.
 
 (* tuple8 univ encoding: *)
 
-op nosmt [opaque] enc_univ_tuple8
+op [opaque smt_opaque] enc_univ_tuple8
      (t : univ * univ * univ * univ * univ * univ * univ * univ) : univ =
   epdp_univ_pair_univ.`enc
   (t.`1, (epdp_univ_tuple7_univ.`enc (t.`2, t.`3, t.`4, t.`5, t.`6, t.`7, t.`8))).
 
-op nosmt [opaque] dec_univ_tuple8 (u : univ) :
+op [opaque smt_opaque] dec_univ_tuple8 (u : univ) :
     (univ * univ * univ * univ * univ * univ * univ * univ) option =
   match epdp_univ_pair_univ.`dec u with
   | None   => None
@@ -1582,7 +1585,7 @@ op nosmt [opaque] dec_univ_tuple8 (u : univ) :
       end
   end.
 
-op nosmt [opaque] epdp_univ_tuple8_univ :
+op [opaque smt_opaque] epdp_univ_tuple8_univ :
     (univ * univ * univ * univ * univ * univ * univ * univ, univ) epdp =
   {|enc = enc_univ_tuple8; dec = dec_univ_tuple8|}.
 
@@ -1617,7 +1620,7 @@ hint rewrite epdp : valid_epdp_univ_tuple8_univ.
 
 (* encoding of pair 'a * 'b *)
 
-op nosmt [opaque] epdp_pair_univ
+op [opaque smt_opaque] epdp_pair_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp)
        : ('a * 'b, univ) epdp =
   epdp_comp epdp_univ_pair_univ (epdp_pair epdp1 epdp2).
@@ -1635,7 +1638,7 @@ hint rewrite epdp : valid_epdp_pair_univ.
 
 (* encoding of tuple3 'a * 'b * 'c *)
 
-op nosmt [opaque] epdp_tuple3_univ
+op [opaque smt_opaque] epdp_tuple3_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp)
        : ('a * 'b * 'c, univ) epdp =
@@ -1656,7 +1659,7 @@ hint rewrite epdp : valid_epdp_tuple3_univ.
 
 (* encoding of tuple4 'a * 'b * 'c * 'd *)
 
-op nosmt [opaque] epdp_tuple4_univ
+op [opaque smt_opaque] epdp_tuple4_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp)
        : ('a * 'b * 'c * 'd, univ) epdp =
@@ -1678,7 +1681,7 @@ hint rewrite epdp : valid_epdp_tuple4_univ.
 
 (* encoding of tuple5 'a * 'b * 'c * 'd * 'e *)
 
-op nosmt [opaque] epdp_tuple5_univ
+op [opaque smt_opaque] epdp_tuple5_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp)
@@ -1703,7 +1706,7 @@ hint rewrite epdp : valid_epdp_tuple5_univ.
 
 (* encoding of tuple6 'a * 'b * 'c * 'd * 'e * 'f *)
 
-op nosmt [opaque] epdp_tuple6_univ
+op [opaque smt_opaque] epdp_tuple6_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp)
@@ -1728,7 +1731,7 @@ hint rewrite epdp : valid_epdp_tuple6_univ.
 
 (* encoding of tuple7 'a * 'b * 'c * 'd * 'e * 'f * 'g *)
 
-op nosmt [opaque] epdp_tuple7_univ
+op [opaque smt_opaque] epdp_tuple7_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1756,7 +1759,7 @@ hint rewrite epdp : valid_epdp_tuple7_univ.
 
 (* encoding of tuple8 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h *)
 
-op nosmt [opaque] epdp_tuple8_univ
+op [opaque smt_opaque] epdp_tuple8_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1785,7 +1788,7 @@ hint rewrite epdp : valid_epdp_tuple8_univ.
 
 (* encoding of ('a, 'b) choice *)
 
-op nosmt [opaque] epdp_choice_univ
+op [opaque smt_opaque] epdp_choice_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp)
        : (('a, 'b) choice, univ) epdp =
   epdp_comp epdp_univ_choice_univ (epdp_choice epdp1 epdp2).
@@ -1804,7 +1807,7 @@ hint rewrite epdp : valid_epdp_choice_univ.
 
 (* encoding of ('a, 'b, 'c) choice3 *)
 
-op nosmt [opaque] epdp_choice3_univ
+op [opaque smt_opaque] epdp_choice3_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp)
        : (('a, 'b, 'c) choice3, univ) epdp =
@@ -1825,7 +1828,7 @@ hint rewrite epdp : valid_epdp_choice3_univ.
 
 (* encoding of ('a, 'b, 'c, 'd) choice4 *)
 
-op nosmt [opaque] epdp_choice4_univ
+op [opaque smt_opaque] epdp_choice4_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp)
        : (('a, 'b, 'c, 'd) choice4, univ) epdp =
@@ -1847,7 +1850,7 @@ hint rewrite epdp : valid_epdp_choice4_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e) choice5 *)
 
-op nosmt [opaque] epdp_choice5_univ
+op [opaque smt_opaque] epdp_choice5_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp)
@@ -1872,7 +1875,7 @@ hint rewrite epdp : valid_epdp_choice5_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f) choice6 *)
 
-op nosmt [opaque] epdp_choice6_univ
+op [opaque smt_opaque] epdp_choice6_univ
    (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
     epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
     epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp)
@@ -1897,7 +1900,7 @@ hint rewrite epdp : valid_epdp_choice6_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 *)
 
-op nosmt [opaque] epdp_choice7_univ
+op [opaque smt_opaque] epdp_choice7_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1925,7 +1928,7 @@ hint rewrite epdp : valid_epdp_choice7_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 *)
 
-op nosmt [opaque] epdp_choice8_univ
+op [opaque smt_opaque] epdp_choice8_univ
      (epdp1 : ('a, univ) epdp, epdp2 : ('b, univ) epdp,
       epdp3 : ('c, univ) epdp, epdp4 : ('d, univ) epdp,
       epdp5 : ('e, univ) epdp, epdp6 : ('f, univ) epdp,
@@ -1954,7 +1957,7 @@ hint rewrite epdp : valid_epdp_choice8_univ.
 
 (* encoding of 'a option *)
 
-op nosmt [opaque] epdp_option_univ
+op [opaque smt_opaque] epdp_option_univ
      (epdp : ('a, univ) epdp) : ('a option, univ) epdp =
   epdp_comp epdp_univ_option_univ (epdp_option epdp).
 
@@ -1970,7 +1973,7 @@ hint rewrite epdp : valid_epdp_option_univ.
 
 (* encoding of 'a list *)
 
-op nosmt [opaque] epdp_list_univ
+op [opaque smt_opaque] epdp_list_univ
      (epdp : ('a, univ) epdp) : ('a list, univ) epdp =
   epdp_comp epdp_univ_list_univ (epdp_list epdp).
 

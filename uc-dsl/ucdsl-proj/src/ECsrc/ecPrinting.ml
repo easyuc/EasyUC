@@ -48,6 +48,10 @@ module PPEnv = struct
       ppe_fb     = Sp.empty;
       ppe_width  = max 20 width; }
 
+  let enter_theory (ppe : t) (p : EcPath.path) =
+    let ppe_env = EcEnv.Theory.env_of_theory p ppe.ppe_env in
+    { ppe with ppe_env }
+
   let enter_by_memid ppe id =
     match EcEnv.Memory.byid id ppe.ppe_env with
     | None   -> ppe
@@ -1883,11 +1887,10 @@ and pp_mem_restr ppe fmt mr =
     if b then Format.fprintf fmt "%s" all_mem_sym else () in
 
   let xpos_emp =
-    EcPath.Sx.is_empty (odfl EcPath.Sx.empty mr.mr_xpaths.ur_pos) in
+    EcPath.Sx.is_empty (odfl EcPath.Sx.empty (mr_xpaths mr).ur_pos) in
   let mpos_emp =
-    (EcPath.Sm.is_empty (odfl EcPath.Sm.empty mr.mr_mpaths.ur_pos)) in
-  let all_mem =
-    mr.mr_xpaths.ur_pos = None || mr.mr_mpaths.ur_pos = None in
+    EcPath.Sm.is_empty (odfl EcPath.Sm.empty (mr_mpaths mr).ur_pos) in
+  let all_mem = mr.ur_pos = None in
 
   let printed = ref (all_mem) in
   let pp_sep fmt b =
@@ -1896,19 +1899,19 @@ and pp_mem_restr ppe fmt mr =
     if b' then Format.fprintf fmt ",@ " else () in
 
   if all_mem &&
-     EcPath.Sm.is_empty mr.mr_mpaths.ur_neg &&
-     EcPath.Sx.is_empty mr.mr_xpaths.ur_neg
+     EcPath.Sm.is_empty (mr_mpaths mr).ur_neg &&
+     EcPath.Sx.is_empty (mr_xpaths mr).ur_neg
   then ()
   else Format.fprintf fmt "@[<h>{%a%a%a%a%a%a%a%a%a}@]@ "
       pp_top (all_mem)
       pp_sep xpos_emp
-      (pp_rx true) (odfl EcPath.Sx.empty mr.mr_xpaths.ur_pos)
+      (pp_rx true) (odfl EcPath.Sx.empty (mr_xpaths mr).ur_pos)
       pp_sep mpos_emp
-      (pp_r true) (odfl EcPath.Sm.empty mr.mr_mpaths.ur_pos)
-      pp_sep (EcPath.Sx.is_empty mr.mr_xpaths.ur_neg)
-      (pp_rx false) mr.mr_xpaths.ur_neg
-      pp_sep (EcPath.Sm.is_empty mr.mr_mpaths.ur_neg)
-      (pp_r false) mr.mr_mpaths.ur_neg
+      (pp_r true) (odfl EcPath.Sm.empty (mr_mpaths mr).ur_pos)
+      pp_sep (EcPath.Sx.is_empty (mr_xpaths mr).ur_neg)
+      (pp_rx false) (mr_xpaths mr).ur_neg
+      pp_sep (EcPath.Sm.is_empty (mr_mpaths mr).ur_neg)
+      (pp_r false) (mr_mpaths mr).ur_neg
 
 (* -------------------------------------------------------------------- *)
 (* Use in an hv box. *)
@@ -1916,7 +1919,7 @@ and pp_mty_mr ppe fmt (mty, mr) =
   Format.fprintf fmt "@[<hv 2>%a%a@]"
     (pp_modtype1 ppe) mty
     (pp_mem_restr ppe) mr
-  
+
 (* -------------------------------------------------------------------- *)
 and pp_modtype (ppe : PPEnv.t) fmt (mty : module_type) =
   Format.fprintf fmt "@[<hv 2>%a@]" (pp_modtype1 ppe) mty
@@ -2029,6 +2032,7 @@ let pp_sform ppe fmt f =
 
 (* -------------------------------------------------------------------- *)
 let pp_typedecl (ppe : PPEnv.t) fmt (x, tyd) =
+  let ppe = PPEnv.enter_theory ppe (Option.get (EcPath.prefix x)) in
   let ppe = PPEnv.add_locals ppe (List.map fst tyd.tyd_params) in
   let name = P.basename x in
 
@@ -2168,21 +2172,12 @@ let pp_opdecl_pr (ppe : PPEnv.t) fmt (basename, ts, ty, op) =
 let pp_opdecl_op (ppe : PPEnv.t) fmt (basename, ts, ty, op) =
   let ppe = PPEnv.add_locals ppe (List.map fst ts) in
 
-  let pp_nosmt fmt =
-    let b =
-      match op with
-      | None -> false
-      | Some (OP_Plain (_, b)) -> b
-      | Some (OP_Fix { opf_nosmt = b }) -> b
-      | _ -> false
-    in if b then Format.fprintf fmt "@ nosmt" else () in
-
   let pp_body fmt =
     match op with
     | None ->
         Format.fprintf fmt ": %a" (pp_type ppe) ty
 
-    | Some (OP_Plain (f, _)) ->
+    | Some (OP_Plain f) ->
         let ((subppe, pp_vds), f, has_vds) =
           let (vds, f) =
             match f.f_node with
@@ -2255,11 +2250,11 @@ let pp_opdecl_op (ppe : PPEnv.t) fmt (basename, ts, ty, op) =
   in
 
   match ts with
-  | [] -> Format.fprintf fmt "@[<hov 2>op%t %a %t.@]"
-      pp_nosmt pp_opname ([], basename) pp_body
+  | [] -> Format.fprintf fmt "@[<hov 2>op%a %t.@]"
+      pp_opname ([], basename) pp_body
   | _  ->
-      Format.fprintf fmt "@[<hov 2>op%t %a %a %t.@]"
-        pp_nosmt pp_opname ([], basename) (pp_tyvarannot ppe) ts pp_body
+      Format.fprintf fmt "@[<hov 2>op %a %a %t.@]"
+        pp_opname ([], basename) (pp_tyvarannot ppe) ts pp_body
 
 (* -------------------------------------------------------------------- *)
 let pp_opdecl_nt (ppe : PPEnv.t) fmt (basename, ts, _ty, nt) =
@@ -2283,6 +2278,8 @@ let pp_opdecl_nt (ppe : PPEnv.t) fmt (basename, ts, _ty, nt) =
 
 (* -------------------------------------------------------------------- *)
 let pp_opdecl ?(long = false) (ppe : PPEnv.t) fmt (x, op) =
+  let ppe = PPEnv.enter_theory ppe (Option.get (EcPath.prefix x)) in
+
   let pp_name fmt x =
     if long then
       let qs = PPEnv.op_symb ppe x None in
@@ -2314,7 +2311,6 @@ let pp_added_op (ppe : PPEnv.t) fmt op =
 (* -------------------------------------------------------------------- *)
 let pp_opname (ppe : PPEnv.t) fmt (p : EcPath.path) =
   pp_opname fmt (PPEnv.op_symb ppe p None)
-
 
 (* -------------------------------------------------------------------- *)
 let string_of_axkind = function
@@ -3222,6 +3218,7 @@ let pp_top_modexp ppe fmt (p, me) =
   pp_modexp_lc ppe fmt (mp, (me.tme_expr, Some me.tme_loca))
 
 let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
+  let ppe = PPEnv.enter_theory ppe path in
   let basename = EcPath.basename path in
   let pp_clone fmt thsrc =
     thsrc |> oiter (fun EcTheory.{ ths_base } ->

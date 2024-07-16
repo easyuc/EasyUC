@@ -10,7 +10,7 @@ require import AllCore List.
 
 type ('a, 'b) epdp = {enc : 'a -> 'b; dec : 'b -> 'a option}.
 
-op nosmt [opaque] valid_epdp (epdp : ('a, 'b) epdp) : bool =
+op [opaque smt_opaque] valid_epdp (epdp : ('a, 'b) epdp) : bool =
   (forall (x : 'a), epdp.`dec (epdp.`enc x) = Some x) /\
   (forall (y : 'b, x : 'a), epdp.`dec y = Some x => epdp.`enc x = y).
 
@@ -74,7 +74,7 @@ qed.
 
 (* identity EPDP *)
 
-op nosmt [opaque] epdp_id : ('a, 'a) epdp =
+op [opaque smt_opaque] epdp_id : ('a, 'a) epdp =
   {|enc = fun x => x; dec = fun y => Some y|}.
 
 lemma valid_epdp_id : valid_epdp epdp_id<:'a>.
@@ -87,7 +87,8 @@ hint rewrite epdp : valid_epdp_id.
 
 (* EPDP built from a bijection *)
 
-op nosmt [opaque] epdp_bijection (f : 'a -> 'b, g : 'b -> 'a) : ('a, 'b) epdp =
+op [opaque smt_opaque] epdp_bijection (f : 'a -> 'b, g : 'b -> 'a)
+     : ('a, 'b) epdp =
   {|enc = f; dec = (\o) Some g|}.
 
 lemma valid_epdp_bijection (f : 'a -> 'b, g : 'b -> 'a) :
@@ -106,7 +107,7 @@ hint rewrite epdp : valid_epdp_bijection.
 
 (* composition of EPDPs *)
 
-op nosmt [opaque] epdp_comp
+op [opaque smt_opaque] epdp_comp
      (epdp2 : ('b, 'c) epdp, epdp1 : ('a, 'b) epdp) : ('a, 'c) epdp =
   {|enc = (\o) epdp2.`enc epdp1.`enc;
     dec =
@@ -135,12 +136,12 @@ hint rewrite epdp : valid_epdp_comp.
 
 (* pair EPDPs *)
 
-op nosmt [opaque] epdp_pair_enc
+op [opaque smt_opaque] epdp_pair_enc
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
       p : 'a * 'b) : 'c * 'd =
   (epdp1.`enc p.`1, epdp2.`enc p.`2).
 
-op nosmt [opaque] epdp_pair_dec
+op [opaque smt_opaque] epdp_pair_dec
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp,
       p : 'c * 'd) : ('a * 'b) option =
   match epdp1.`dec p.`1 with
@@ -152,7 +153,7 @@ op nosmt [opaque] epdp_pair_dec
       end
   end.
 
-op nosmt [opaque] epdp_pair
+op [opaque smt_opaque] epdp_pair
      (epdp1 : ('a, 'c) epdp, epdp2 : ('b, 'd) epdp) :
       ('a * 'b, 'c * 'd) epdp =
   {|enc = epdp_pair_enc epdp1 epdp2;
@@ -208,7 +209,7 @@ rewrite /tuple3_con /tuple3_decon.
 case x => /= [[x1 x2] //].
 qed.
 
-op nosmt [opaque] epdp_tuple3
+op [opaque smt_opaque] epdp_tuple3
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp) :
        ('a * 'b * 'c, 'a' * 'b' * 'c') epdp =
@@ -257,7 +258,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt [opaque] epdp_tuple4
+op [opaque smt_opaque] epdp_tuple4
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
        ('a * 'b * 'c * 'd, 'a' * 'b' * 'c' * 'd') epdp =
@@ -307,7 +308,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt [opaque] epdp_tuple5
+op [opaque smt_opaque] epdp_tuple5
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp) :
@@ -361,7 +362,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt [opaque] epdp_tuple6
+op [opaque smt_opaque] epdp_tuple6
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
@@ -418,7 +419,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt [opaque] epdp_tuple7
+op [opaque smt_opaque] epdp_tuple7
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -478,7 +479,7 @@ case x => /= x1.
 by case x1.
 qed.
 
-op nosmt [opaque] epdp_tuple8
+op [opaque smt_opaque] epdp_tuple8
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -518,7 +519,7 @@ type ('a, 'b) choice = [
   | ChoiceRight of 'b
 ].
 
-op nosmt [opaque] epdp_choice_enc
+op [opaque smt_opaque] epdp_choice_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       ch : ('a, 'b) choice) : ('a', 'b') choice =
   match ch with
@@ -526,7 +527,7 @@ op nosmt [opaque] epdp_choice_enc
   | ChoiceRight x => ChoiceRight (epdp2.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice_dec
+op [opaque smt_opaque] epdp_choice_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       ch : ('a', 'b') choice) : ('a, 'b) choice option =
   match ch with
@@ -542,7 +543,7 @@ op nosmt [opaque] epdp_choice_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice
+op [opaque smt_opaque] epdp_choice
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp) :
      (('a, 'b) choice, ('a', 'b') choice) epdp =
   {|enc = epdp_choice_enc epdp1 epdp2;
@@ -585,7 +586,7 @@ type ('a, 'b, 'c) choice3 = [
   | Choice3_3 of 'c
 ].
 
-op nosmt [opaque] epdp_choice3_enc
+op [opaque smt_opaque] epdp_choice3_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp,
       ch : ('a, 'b, 'c) choice3) : ('a', 'b', 'c') choice3 =
@@ -595,7 +596,7 @@ op nosmt [opaque] epdp_choice3_enc
   | Choice3_3 x => Choice3_3 (epdp3.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice3_dec
+op [opaque smt_opaque] epdp_choice3_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp,
       ch : ('a', 'b', 'c') choice3) : ('a, 'b, 'c) choice3 option =
@@ -617,7 +618,7 @@ op nosmt [opaque] epdp_choice3_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice3
+op [opaque smt_opaque] epdp_choice3
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp) :
      (('a, 'b, 'c) choice3, ('a', 'b', 'c') choice3) epdp =
@@ -673,7 +674,7 @@ type ('a, 'b, 'c, 'd) choice4 = [
   | Choice4_4 of 'd
 ].
 
-op nosmt [opaque] epdp_choice4_enc
+op [opaque smt_opaque] epdp_choice4_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       ch : ('a, 'b, 'c, 'd) choice4) : ('a', 'b', 'c', 'd') choice4 =
@@ -684,7 +685,7 @@ op nosmt [opaque] epdp_choice4_enc
   | Choice4_4 x => Choice4_4 (epdp4.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice4_dec
+op [opaque smt_opaque] epdp_choice4_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       ch : ('a', 'b', 'c', 'd') choice4)
@@ -712,7 +713,7 @@ op nosmt [opaque] epdp_choice4_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice4
+op [opaque smt_opaque] epdp_choice4
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp) :
      (('a, 'b, 'c, 'd) choice4, ('a', 'b', 'c', 'd') choice4) epdp =
@@ -782,7 +783,7 @@ type ('a, 'b, 'c, 'd, 'e) choice5 = [
   | Choice5_5 of 'e
 ].
 
-op nosmt [opaque] epdp_choice5_enc
+op [opaque smt_opaque] epdp_choice5_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp,
@@ -796,7 +797,7 @@ op nosmt [opaque] epdp_choice5_enc
   | Choice5_5 x => Choice5_5 (epdp5.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice5_dec
+op [opaque smt_opaque] epdp_choice5_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp,
@@ -830,7 +831,7 @@ op nosmt [opaque] epdp_choice5_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice5
+op [opaque smt_opaque] epdp_choice5
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp) :
@@ -918,7 +919,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f) choice6 = [
   | Choice6_6 of 'f
 ].
 
-op nosmt [opaque] epdp_choice6_enc
+op [opaque smt_opaque] epdp_choice6_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -933,7 +934,7 @@ op nosmt [opaque] epdp_choice6_enc
   | Choice6_6 x => Choice6_6 (epdp6.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice6_dec
+op [opaque smt_opaque] epdp_choice6_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -972,7 +973,7 @@ op nosmt [opaque] epdp_choice6_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice6
+op [opaque smt_opaque] epdp_choice6
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp) :
@@ -1077,7 +1078,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 = [
   | Choice7_7 of 'g
 ].
 
-op nosmt [opaque] epdp_choice7_enc
+op [opaque smt_opaque] epdp_choice7_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1094,7 +1095,7 @@ op nosmt [opaque] epdp_choice7_enc
   | Choice7_7 x => Choice7_7 (epdp7.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice7_dec
+op [opaque smt_opaque] epdp_choice7_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1139,7 +1140,7 @@ op nosmt [opaque] epdp_choice7_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice7
+op [opaque smt_opaque] epdp_choice7
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1266,7 +1267,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 = [
   | Choice8_8 of 'h
 ].
 
-op nosmt [opaque] epdp_choice8_enc
+op [opaque smt_opaque] epdp_choice8_enc
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1284,7 +1285,7 @@ op nosmt [opaque] epdp_choice8_enc
   | Choice8_8 x => Choice8_8 (epdp8.`enc x)
   end.
 
-op nosmt [opaque] epdp_choice8_dec
+op [opaque smt_opaque] epdp_choice8_dec
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1334,7 +1335,7 @@ op nosmt [opaque] epdp_choice8_dec
       end
   end.
 
-op nosmt [opaque] epdp_choice8
+op [opaque smt_opaque] epdp_choice8
      (epdp1 : ('a, 'a') epdp, epdp2 : ('b, 'b') epdp,
       epdp3 : ('c, 'c') epdp, epdp4 : ('d, 'd') epdp,
       epdp5 : ('e, 'e') epdp, epdp6 : ('f, 'f') epdp,
@@ -1518,7 +1519,7 @@ by rewrite unit_choice_to_optK.
 by rewrite opt_to_unit_choiceK.
 qed.
 
-op nosmt [opaque] epdp_option
+op [opaque smt_opaque] epdp_option
      (epdp : ('a, 'b) epdp) : ('a option, 'b option) epdp =
   epdp_comp epdp_unit_choice_opt
   (epdp_comp (epdp_choice epdp_id epdp) epdp_opt_unit_choice).
@@ -1536,17 +1537,19 @@ hint rewrite epdp : valid_epdp_option.
 
 (* list EPDPs *)
 
-op nosmt [opaque] epdp_list_enc (epdp : ('a, 'b) epdp, xs : 'a list) : 'b list =
+op [opaque smt_opaque] epdp_list_enc (epdp : ('a, 'b) epdp, xs : 'a list)
+     : 'b list =
   map epdp.`enc xs.
 
-op nosmt [opaque] epdp_list_dec
+op [opaque smt_opaque] epdp_list_dec
      (epdp : ('a, 'b) epdp, ys : 'b list) : 'a list option =
   let vs = map epdp.`dec ys
   in if all is_some vs
      then Some (map oget vs)
      else None.
 
-op nosmt [opaque] epdp_list (epdp : ('a, 'b) epdp) : ('a list, 'b list) epdp =
+op [opaque smt_opaque] epdp_list (epdp : ('a, 'b) epdp)
+     : ('a list, 'b list) epdp =
   {|enc = epdp_list_enc epdp; dec = epdp_list_dec epdp|}.
 
 lemma valid_epdp_list (epdp : ('a, 'b) epdp) :

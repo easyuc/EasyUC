@@ -80,7 +80,7 @@ require export UCUniv.
 
 type addr = int list.
 
-op nosmt [opaque] epdp_addr_univ
+op [opaque smt_opaque] epdp_addr_univ
      : (addr, univ) epdp = epdp_list_univ epdp_int_univ.
 
 lemma valid_epdp_addr_univ : valid_epdp epdp_addr_univ.
@@ -236,7 +236,7 @@ op adv           : addr = [0].  (* address of adversary *)
 
 type port = addr * int.
 
-op nosmt [opaque] epdp_port_univ : (port, univ) epdp =
+op [opaque smt_opaque] epdp_port_univ : (port, univ) epdp =
   epdp_pair_univ (epdp_list_univ epdp_int_univ) epdp_int_univ.
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
@@ -450,7 +450,7 @@ op choice3_to_tag
   | Choice3_3 p => TagBasic p.`1 p.`2
   end.
 
-op nosmt [opaque] epdp_tag_choice3
+op [opaque smt_opaque] epdp_tag_choice3
      : (tag, (unit, string * string, string * string) choice3) epdp =
   epdp_bijection tag_to_choice3 choice3_to_tag.
 
@@ -463,7 +463,7 @@ qed.
 
 hint rewrite epdp : valid_epdp_tag_choice3.
 
-op nosmt [opaque] epdp_tag_univ : (tag, univ) epdp =
+op [opaque smt_opaque] epdp_tag_univ : (tag, univ) epdp =
   epdp_comp
   (epdp_choice3_univ
    epdp_unit_univ 
