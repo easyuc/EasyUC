@@ -1,0 +1,7 @@
+description
+  Resolution of test where an ideal functionality with no adversarial
+  interface tries to transition back to its initial state.
+.
+args: good.uc
+outcome: success
+.

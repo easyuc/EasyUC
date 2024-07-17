@@ -1,0 +1,10 @@
+description
+  Test when a unit with only ideal functionality with no
+  adversarial interface has an extraneous adversarial interface.
+.
+args: -units bad.uc
+outcome:failure
+[error: bad.uc: from line 0 columns 1 to 1]
+
+file with root Bad is not a valid unit because interface I is extraneous
+.

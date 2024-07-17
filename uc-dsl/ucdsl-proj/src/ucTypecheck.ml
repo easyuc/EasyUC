@@ -359,7 +359,8 @@ type state_mid = state_body_mid located
 type kind =  (* kind of entity *)
   | RealPartyKind of bool  (* party of real functionality; bool is true iff
                               party serves basic adversarial interface *)
-  | IdealKind              (* ideal functionality *)
+  | IdealKind              (* ideal functionality with adversarial interface *)
+  | IdealNoAdvKind         (* ideal functionality no adversarial interface *)
   | SimKind                (* simulator *)
 
 let is_real_kind (k : kind) : bool =
@@ -371,6 +372,11 @@ let is_ideal_kind (k : kind) : bool =
   match k with
   | IdealKind -> true
   | _         -> false
+
+let is_ideal_no_adv_kind (k : kind) : bool =
+  match k with
+  | IdealNoAdvKind -> true
+  | _              -> false
 
 let is_sim_kind (k : kind) : bool =
   match k with
@@ -1151,7 +1157,7 @@ let check_state_expr
                    fprintf ppf
                    ("@[party@ of@ real@ functionality@ cannot@ transition@ " ^^
                     "back@ to@ initial@ state@]"))
-         else if is_ideal_kind sc.kind
+         else if is_ideal_kind sc.kind || is_ideal_no_adv_kind sc.kind
            then error_message (loc se.id)
                 (fun ppf ->
                    fprintf ppf
@@ -1281,10 +1287,11 @@ let check_msg_expr
              then error_message l
                   (fun ppf ->
                      fprintf ppf
-                     ("@[send@ and@ transition@ of@ initial@ state@ " ^^
-                      "of@ ideal@ functionality@ must@ send@ "        ^^
-                      "adversarial@ message@ (to@ simulator@ if@ "    ^^
-                      "there@ is@ one,@ otherwise@ to@ adversary)@]"))
+                     ("@[send@ and@ transition@ of@ initial@ state@ "    ^^
+                      "of@ ideal@ functionality@ with@ adversarial@ "    ^^
+                      "interface@ must@ send@ adversarial@ message@ "    ^^
+                      "(to@ simulator@ if@ there@ is@ one,@ otherwise@ " ^^
+                      "to@ adversary)@]"))
            else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
              then check_send_adversarial sa env ue msg param_tis
            else failure "impossible - will be one of above"
@@ -1293,10 +1300,16 @@ let check_msg_expr
            else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
              then check_send_adversarial sa env ue msg param_tis
            else failure "impossible - will be one of above"
+  | IdealNoAdvKind                 ->
+      if is_msg_path_in_basic_inter_paths msg.path abip.direct
+        then check_send_direct sa env ue msg param_tis
+      else if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
+        then check_send_adversarial sa env ue msg param_tis
+      else failure "impossible - will be one of above"
   | SimKind                        ->
       if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
       then check_send_adversarial sa env ue msg param_tis
-      else failure "impossible - will be one of above"
+      else failure "impossible - will be above"
 
 let check_send_and_transition
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -2027,21 +2040,20 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
   | FunBodyIdeal state_defs ->
       let () =
         match fund.adv_id with
-        | None ->
-            error_message (loc fund.id)
-            (fun ppf ->
-               fprintf ppf
-               ("@[an@ ideal@ functionality@ must@ implement@ a@ basic@ " ^^
-                "adversarial@ interface@]"))
+        | None    -> ()
         | Some id ->
             check_is_basic_id AdversarialInterKind root maps.adv_inter_map id in
       let abip =
         get_all_external_basic_inter_paths root maps.dir_inter_map
         maps.adv_inter_map uid_dir_inter uid_adv_inter in
+      let ik =
+        match fund.adv_id with
+        | None   -> IdealNoAdvKind
+        | Some _ -> IdealKind in
       let states =
-        check_states fund.id abip IdealKind QidSet.empty state_defs in
+        check_states fund.id abip ik QidSet.empty state_defs in
       let ifbt =
-        {id_dir_inter = uid_dir_inter; id_adv_inter = Option.get uid_adv_inter;
+        {id_dir_inter = uid_dir_inter; id_adv_inter = uid_adv_inter;
          states = states} in
       let funbody = FunBodyIdealTyd ifbt in
       mk_loc (loc fund.id) funbody

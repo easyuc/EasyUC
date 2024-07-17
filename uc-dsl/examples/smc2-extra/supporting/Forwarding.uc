@@ -8,10 +8,10 @@
    single functionality party, to which forwarding requests come and from
    which forwarding responses originate).
 
-   the identifiers in "pt1@" and "@pt2" are used to help in name
-   choice in the generation of EasyCrypt code. But see below how they
-   are used in message pattern matching and send and transition
-   instructions. *)
+   the identifiers in the @s and the parameter names are used in code
+   generation and also useful when writing documentation. See below
+   how they are used in message pattern matching and send and
+   transition instructions. *)
 
 direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send
@@ -81,6 +81,13 @@ functionality Forw implements FwDir FwAdv {
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
     | FwAdv.fw_ok => {  (* no source port bound, because from adversary *)
+        (* in a send-and-transition where the message to be sent
+           is a direct one, a check is implicitly made that the
+           destination port is an envport; otherwise, the state
+           is not changed and failure results
+
+           (in this case, we know from the check in Init that pt2
+           is an envport) *)
         send FwDir.D.fw_rsp(pt1, u)@pt2
         and transition Final.
       }

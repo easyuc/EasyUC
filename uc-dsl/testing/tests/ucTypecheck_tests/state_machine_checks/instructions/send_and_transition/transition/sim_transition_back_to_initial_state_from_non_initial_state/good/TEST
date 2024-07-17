@@ -1,0 +1,7 @@
+description
+  Resolution of test where simulator tries to transition back to its
+  initial state.
+.
+args: good.uc
+outcome: success
+.
