@@ -54,7 +54,7 @@ let self = "self"
 
 let addr_op_name (name : string) : string = "_addr_"^name
 
-let addr_op_call (name : string) : string = "_addr_"^name^" "^_self
+let addr_op_call (name : string) : string = (addr_op_name name)^" "^_self
 
 let extport_op_name (name : string) : string = "_extport_"^name
 
