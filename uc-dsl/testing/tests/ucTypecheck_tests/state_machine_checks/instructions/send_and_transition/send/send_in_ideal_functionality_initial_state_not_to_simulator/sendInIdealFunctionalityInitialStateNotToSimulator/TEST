@@ -7,6 +7,7 @@ args: testSendInIdealFunctionalityInitialStateNotToSimulator.uc
 outcome: failure
 [error: testSendInIdealFunctionalityInitialStateNotToSimulator.uc: from line 16 columns 25 to 32]
 
-send and transition of initial state of ideal functionality must send
-adversarial message (to simulator if there is one, otherwise to adversary)
+send and transition of initial state of ideal functionality with adversarial
+interface must send adversarial message (to simulator if there is one,
+otherwise to adversary)
 .

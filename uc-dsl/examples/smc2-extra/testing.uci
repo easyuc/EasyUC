@@ -3,6 +3,9 @@ functionality
   SMC2.SMC2Real
   (SMC.SMCReal(KeyExchange.KEReal),
    SMC.SMCReal(KeyExchange.KEReal)).
+
+prover [""].  (* we'll do without SMT solvers *)
+
 var text1 : text.
 var text2 : text.
 var pt1 : port.
@@ -20,43 +23,59 @@ step.
 step.
 step.
 step.
+step.
+step.
+assert msg_out
+((func, 1))@
+SMC2.SMC2Adv.Pt3.ping
+(epdp_port_port_univ.`enc (pt1, pt2))
+@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@SMC2.SMC2Adv.Pt3.pong@((func, 1)).
+step.
+step.
+step.
+step.
+step.
+step.
+run.
 assert msg_out
 ((func ++ [3], 1))@
 Forwarding.FwAdv.fw_obs
 ((func, 1), (func, 2),
  (epdp_port_port_univ).`enc (pt1, pt2))
-@((adv, 2))
+@((adv, 3))
 ctrl_adv.
-send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
+send ((adv, 3))@Forwarding.FwAdv.fw_ok$(func ++ [3]).
 run.
 assert msg_out
 ((func ++ [4], 1))@
 Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
-@((adv, 3))
+@((adv, 4))
 ctrl_adv.
-send ((adv, 3))@Forwarding.FwAdv.fw_ok@((func ++ [4], 1)).
-run.
-assert msg_out
-((func ++ [1], 1))@SMC.SMCAdv.Pt1.ping@((adv, 5))
-ctrl_adv.
-send ((adv, 5))@SMC.SMCAdv.Pt1.pong@((func ++ [1], 1)).
+send ((adv, 4))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 1), (func ++ [1; 1], 2),
  epdp_port_port_key_univ.`enc ((func ++ [1], 1), (func ++ [1], 2), g ^ rand))
-@((adv, 8))
+@((adv, 10))
 ctrl_adv.
-send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
+send ((adv, 10))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
+step.
+step.
+step.
+(* in the next step epdp decoding happens *)
+step.
 run.
 assert msg_out
 ((func ++ [1; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1), epdp_key_univ.`enc (g ^ rand1))
-@((adv, 9))
+@((adv, 11))
 ctrl_adv.
-send ((adv, 9))@Forwarding.FwAdv.fw_ok@((func ++ [1; 1; 2], 1)).
+send ((adv, 11))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
 run.
 assert msg_out
 ((func ++ [1; 2], 1))@
@@ -64,18 +83,17 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  epdp_port_port_key_univ.`enc
  ((func, 1), (func, 2), epdp_text_key.`enc text1 ^^ (g ^ rand1 ^ rand)))
-@((adv, 6))
+@((adv, 8))
 ctrl_adv.
-send ((adv, 6))@Forwarding.FwAdv.fw_ok@((func ++ [1; 2], 1)).
+send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
 step.
 step.
 step.
 step.
 step.
+(* in the next step, one-time-pad decryption followed by epdp decryption
+   is necessary to produce the text value t *)
 step.
-
-
-
 run.
 assert msg_out
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2
@@ -83,26 +101,21 @@ ctrl_env.
 send pt2@SMC2.SMC2Dir.Pt2.smc_req(text2)$func.
 run.
 assert msg_out
-((func ++ [2], 1))@SMC.SMCAdv.Pt1.ping@((adv, 11))
-ctrl_adv.
-send ((adv, 11))@SMC.SMCAdv.Pt1.pong@((func ++ [2], 1)).
-run.
-assert msg_out
 ((func ++ [2; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 1), (func ++ [2; 1], 2),
  epdp_port_port_key_univ.`enc ((func ++ [2], 1), (func ++ [2], 2), g ^ rand2))
-@((adv, 14))
+@((adv, 15))
 ctrl_adv.
-send ((adv, 14))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 1], 1)).
+send ((adv, 15))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 1])).
 run.
 assert msg_out
 ((func ++ [2; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1), epdp_key_univ.`enc (g ^ rand3))
-@((adv, 15))
+@((adv, 16))
 ctrl_adv.
-send ((adv, 15))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 2], 1)).
+send ((adv, 16))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 2])).
 run.
 assert msg_out
 ((func ++ [2; 2], 1))@
@@ -110,16 +123,17 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1), epdp_text_key.`enc text2 ^^ (g ^ rand3 ^ rand2)))
-@((adv, 12))
+@((adv, 13))
 ctrl_adv.
-send ((adv, 12))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1)).
+send ((adv, 13))@Forwarding.FwAdv.fw_ok$((func ++ [2; 2])).
 run.
 assert msg_out
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1
 ctrl_env.
 finish.
 
-(* corresponding experiment with ideal world - with differences noted *)
+(* corresponding experiment with ideal world - with differences in
+   assertions noted *)
 ideal.
 send pt1@SMC2.SMC2Dir.Pt1.smc_req(pt2, text1)$func.
 step.
@@ -128,43 +142,49 @@ step.
 step.
 step.
 step.
+step.
+assert msg_out
+((func, 1))@
+SMC2.SMC2Adv.Pt3.ping
+(epdp_port_port_univ.`enc (pt1, pt2))
+@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@SMC2.SMC2Adv.Pt3.pong@((func, 1)).
+step.
+step.
+step.
 assert msg_out
 ((func ++ [3], 1))@
 Forwarding.FwAdv.fw_obs
 ((func, 1), (func, 2),
  (epdp_port_port_univ).`enc (pt1, pt2))
-@((adv, 2))
+@((adv, 3))
 ctrl_adv.
-send ((adv, 2))@Forwarding.FwAdv.fw_ok@((func ++ [3], 1)).
+send ((adv, 3))@Forwarding.FwAdv.fw_ok$((func ++ [3])).
 run.
 assert msg_out
 ((func ++ [4], 1))@
 Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
-@((adv, 3))
+@((adv, 4))
 ctrl_adv.
-send ((adv, 3))@Forwarding.FwAdv.fw_ok@((func ++ [4], 1)).
-run.
-assert msg_out
-((func ++ [1], 1))@SMC.SMCAdv.Pt1.ping@((adv, 5))
-ctrl_adv.
-send ((adv, 5))@SMC.SMCAdv.Pt1.pong@((func ++ [1], 1)).
+send ((adv, 4))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 1), (func ++ [1; 1], 2),
  epdp_port_port_key_univ.`enc ((func ++ [1], 1), (func ++ [1], 2), g ^ rand))
-@((adv, 8))
+@((adv, 10))
 ctrl_adv.
-send ((adv, 8))@Forwarding.FwAdv.fw_ok@((func ++ [1;1;1], 1)).
+send ((adv, 10))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
 run.
 assert msg_out
 ((func ++ [1; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1), epdp_key_univ.`enc (g ^ rand1))
-@((adv, 9))
+@((adv, 11))
 ctrl_adv.
-send ((adv, 9))@Forwarding.FwAdv.fw_ok@((func ++ [1; 1; 2], 1)).
+send ((adv, 11))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
 run.
 (* here is a difference from the real execution *)
 assert msg_out
@@ -172,7 +192,7 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  epdp_port_port_key_univ.`enc ((func, 1), (func, 2), g ^ rand2))
-@((adv, 6))
+@((adv, 8))
 ctrl_adv.
 (* in contrast, the real assertion was:
 assert msg_out
@@ -181,10 +201,10 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  epdp_port_port_key_univ.`enc
  ((func, 1), (func, 2), epdp_text_key.`enc text1 ^^ (g ^ rand1 ^ rand)))
-@((adv, 6))
+@((adv, 8))
 ctrl_adv.
 *)
-send ((adv, 6))@Forwarding.FwAdv.fw_ok@((func ++ [1; 2], 1)).
+send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
 run.
 assert msg_out
 ((func, 2))@SMC2.SMC2Dir.Pt2.smc_rsp(pt1, text1)@pt2
@@ -192,34 +212,30 @@ ctrl_env.
 send pt2@SMC2.SMC2Dir.Pt2.smc_req(text2)$func.
 run.
 assert msg_out
-((func ++ [2], 1))@SMC.SMCAdv.Pt1.ping@((adv, 11))
-ctrl_adv.
-send ((adv, 11))@SMC.SMCAdv.Pt1.pong@((func ++ [2], 1)).
-run.
-assert msg_out
 ((func ++ [2; 1; 1], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 1), (func ++ [2; 1], 2),
  epdp_port_port_key_univ.`enc ((func ++ [2], 1), (func ++ [2], 2), g ^ rand3))
-@((adv, 14))
+@((adv, 15))
 ctrl_adv.
 (* real assertion has rand2 *)
-send ((adv, 14))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 1], 1)).
+send ((adv, 15))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 1])).
 run.
 assert msg_out
 ((func ++ [2; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1), epdp_key_univ.`enc (g ^ rand4))
-@((adv, 15))
+@((adv, 16))
 ctrl_adv.
-send ((adv, 15))@Forwarding.FwAdv.fw_ok@((func ++ [2; 1; 2], 1)).
+(* real assertion has rand3 *)
+send ((adv, 16))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 2])).
 run.
 assert msg_out
 ((func ++ [2; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  epdp_port_port_key_univ.`enc ((func, 2), (func, 1), g ^ rand5))
-@((adv, 12))
+@((adv, 13))
 ctrl_adv.
 (* here was the real assertion:
 assert msg_out
@@ -228,13 +244,12 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1), epdp_text_key.`enc text2 ^^ (g ^ rand3 ^ rand2)))
-@((adv, 12))
+@((adv, 13))
 ctrl_adv.
 *)
-send ((adv, 12))@Forwarding.FwAdv.fw_ok@((func ++ [2; 2], 1)).
+send ((adv, 13))@Forwarding.FwAdv.fw_ok$((func ++ [2; 2])).
 run.
 assert msg_out
 ((func, 1))@SMC2.SMC2Dir.Pt1.smc_rsp(text2)@pt1
 ctrl_env.
 finish.
-

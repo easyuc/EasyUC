@@ -184,6 +184,11 @@ type preenv = {
   env_modlcs   : Sid.t;                 (* declared modules *)
   env_item     : theory_item list;      (* in reverse order *)
   env_norm     : env_norm ref;
+  (* Map theory paths to their env before just before theory was closed. *)
+  (* The environment should be incuded for all theories, including       *)
+  (* abstract ones. The purpose of this map is to simplify the code      *)
+  (* related to pretty-printing.                                         *)
+  env_thenvs   : preenv Mp.t;
 }
 
 and escope = {
@@ -302,7 +307,8 @@ let empty gstate =
     env_ntbase   = Mop.empty;
     env_modlcs   = Sid.empty;
     env_item     = [];
-    env_norm     = ref empty_norm_cache; }
+    env_norm     = ref empty_norm_cache;
+    env_thenvs   = Mp.empty; }
 
 (* -------------------------------------------------------------------- *)
 let copy (env : env) =
@@ -769,7 +775,8 @@ module MC = struct
           let for1 i (c, aty) =
             let aty = EcTypes.toarrow aty (tconstr mypath params) in
             let aty = EcSubst.freshen_type (tyd.tyd_params, aty) in
-            let cop = mk_op ~opaque:false (fst aty) (snd aty)
+            let cop = mk_op
+                        ~opaque:optransparent (fst aty) (snd aty)
                         (Some (OP_Constr (mypath, i))) loca in
             let cop = (ipath c, cop) in
               (c, cop)
@@ -813,7 +820,7 @@ module MC = struct
             let for1 i (f, aty) =
               let aty = EcTypes.tfun (tconstr mypath params) aty in
               let aty = EcSubst.freshen_type (tyd.tyd_params, aty) in
-              let fop = mk_op ~opaque:false (fst aty) (snd aty)
+              let fop = mk_op ~opaque:optransparent (fst aty) (snd aty)
                           (Some (OP_Proj (mypath, i, nfields))) loca in
               let fop = (ipath f, fop) in
                 (f, fop)
@@ -835,7 +842,7 @@ module MC = struct
           let stop   =
             let stty = toarrow (List.map snd fields) (tconstr mypath params) in
             let stty = EcSubst.freshen_type (tyd.tyd_params, stty) in
-              mk_op ~opaque:false (fst stty) (snd stty) (Some (OP_Record mypath)) loca
+              mk_op ~opaque:optransparent (fst stty) (snd stty) (Some (OP_Record mypath)) loca
           in
 
           let mc =
@@ -890,7 +897,7 @@ module MC = struct
           let opname = EcIdent.name opid in
           let optype = EcSubst.subst_ty tsubst optype in
           let opdecl =
-            mk_op ~opaque:false [(self, Sp.singleton mypath)]
+            mk_op ~opaque:optransparent [(self, Sp.singleton mypath)]
               optype (Some OP_TC) loca
           in (opid, xpath opname, optype, opdecl)
         in
@@ -1819,7 +1826,7 @@ module Mod = struct
       | _  ->
         let me_params = clearparams (List.length args) me.me_params in
 
-        let me_oinfos =       
+        let me_oinfos =
           let keep = List.map (EcPath.mident |- fst) me_params in
           let keep = Sm.of_list keep in
           Msym.map (OI.filter (fun f -> Sm.mem (f.x_top) keep)) me.me_oinfos in
@@ -1893,7 +1900,7 @@ module Mod = struct
         match me.me_body with
         | ME_Decl (mty, mr) ->
           let mr =
-            mr_add_restr mr (ur_empty xs) (ur_empty Sm.empty) in
+            mr_add_restr mr (ur_empty (xs, Sm.empty)) in
           { me with me_body = ME_Decl (mty, mr) }
         | _ -> me
       in
@@ -1983,34 +1990,6 @@ module Mod = struct
   let declare_local id modty env =
     { (bind_local id modty env) with
         env_modlcs = Sid.add id env.env_modlcs; }
-
-  let add_restr_to_locals (rx : Sx.t use_restr) (rm : Sm.t use_restr) env =
-
-    let update_id id mods =
-      let update me =
-        match me.me_body with
-        | ME_Decl (mty, mr) ->
-          let mr = mr_add_restr mr rx rm in
-          { me with me_body = ME_Decl (mty, mr) }
-        | _ -> me
-      in
-      MMsym.map_at
-        (List.map
-           (fun (ip, (me, lc)) ->
-             if   ip = IPIdent (id, None)
-             then (ip, (update me, lc))
-             else (ip, (me, lc))))
-        (EcIdent.name id) mods
-    in
-    let envc =
-      let mc_modules =
-        Sid.fold update_id env.env_modlcs
-          env.env_current.mc_modules
-      in { env.env_current with mc_modules } in
-    let en = !(env.env_norm) in
-    let norm = { en with get_restr_use = Mm.empty } in
-    { env with env_current = envc;
-      env_norm = ref norm; }
 
   let is_declared id env = Sid.mem id env.env_modlcs
 
@@ -2366,18 +2345,12 @@ module NormMp = struct
     item_use env Sid.empty (ref Sx.empty) mp use_empty item
 
   let restr_use env (mr : mod_restr) =
-    let get_use sx sm =
+    let get_use (sx, sm) =
       Sx.fold (fun xp r -> add_var env xp r) sx use_empty
       |> Sm.fold (fun mp r -> use_union r (mod_use env mp)) sm in
 
-    (* If any of the two positive restrictions is [None], then anything is
-       allowed. *)
-    let ur_pos = match mr.mr_xpaths.ur_pos, mr.mr_mpaths.ur_pos with
-      | None, _ | _, None -> None
-      | Some sx, Some sm -> some @@ get_use sx sm in
-
-    { ur_pos = ur_pos;
-      ur_neg = get_use mr.mr_xpaths.ur_neg mr.mr_mpaths.ur_neg; }
+    { ur_pos = omap get_use mr.ur_pos;
+      ur_neg = get_use mr.ur_neg; }
 
   let get_restr_use env mp =
     try
@@ -2732,13 +2705,13 @@ module Op = struct
     let op = oget (by_path_opt p env) in
 
     match op.op_kind with
-    | OB_oper (Some (OP_Plain (f, _)))
+    | OB_oper (Some (OP_Plain f))
     | OB_pred (Some (PR_Plain f)) -> begin
         let f =
           match mode with
           | `Force ->
              f
-          | `IfTransparent when not op.op_opaque ->
+          | `IfTransparent when not op.op_opaque.reduction ->
              f
           | `IfApplied when nargs >= odfl max_int op.op_unfold ->
              f
@@ -2884,6 +2857,14 @@ module Theory = struct
   type t    = ctheory
   type mode = [`All | thmode]
 
+  type compiled = env Mp.t
+
+  type compiled_theory = {
+    name     : symbol;
+    ctheory  : t;
+    compiled : compiled;
+  }
+
   (* ------------------------------------------------------------------ *)
   let enter name env =
     enter `Theory name env
@@ -2918,6 +2899,13 @@ module Theory = struct
 
   let lookup_path ?mode name env =
     fst (lookup ?mode name env)
+
+  (* ------------------------------------------------------------------ *)
+  let env_of_theory (p : EcPath.path) (env : env) =
+    if EcPath.isprefix ~prefix:p ~path:env.env_scope.ec_path then
+      env
+    else
+      Option.get (Mp.find_opt p env.env_thenvs)
 
   (* ------------------------------------------------------------------ *)
   let rec bind_instance_th path inst cth =
@@ -3035,26 +3023,41 @@ module Theory = struct
     in bind_base_th for1
 
   (* ------------------------------------------------------------------ *)
-  let bind ?(import = import0) name ({ cth_items = items; cth_mode = mode } as cth) env =
-    let env = MC.bind_theory name cth env in
-    let env = { env with env_item = mkitem import (Th_theory (name, cth)) :: env.env_item } in
+  let bind
+    ?(import = import0)
+     (cth  : compiled_theory)
+     (env : env)
+  =
+    let { cth_items = items; cth_mode = mode; } = cth.ctheory in
+    let env = MC.bind_theory cth.name cth.ctheory env in
+    let env = {
+      env with
+        env_item = mkitem import (Th_theory (cth.name, cth.ctheory)) :: env.env_item }
+    in
 
-    match import, mode with
-    | _, `Concrete ->
-        let thname      = EcPath.pqname (root env) name in
-        let env_tci     = bind_instance_th thname env.env_tci items in
-        let env_tc      = bind_tc_th thname env.env_tc items in
-        let env_rwbase  = bind_br_th thname env.env_rwbase items in
-        let env_atbase  = bind_at_th thname env.env_atbase items in
-        let env_ntbase  = bind_nt_th thname env.env_ntbase items in
-        let env_redbase = bind_rd_th thname env.env_redbase items in
-        let env =
-          { env with env_tci; env_tc; env_rwbase; env_atbase; env_ntbase; env_redbase; }
-        in
-        add_restr_th thname env items
+    let env =
+      match import, mode with
+      | _, `Concrete ->
+          let thname      = EcPath.pqname (root env) cth.name in
+          let env_tci     = bind_instance_th thname env.env_tci items in
+          let env_tc      = bind_tc_th thname env.env_tc items in
+          let env_rwbase  = bind_br_th thname env.env_rwbase items in
+          let env_atbase  = bind_at_th thname env.env_atbase items in
+          let env_ntbase  = bind_nt_th thname env.env_ntbase items in
+          let env_redbase = bind_rd_th thname env.env_redbase items in
+          let env =
+            { env with
+                env_tci   ; env_tc     ; env_rwbase;
+                env_atbase; env_ntbase; env_redbase; }
+          in
+          add_restr_th thname env items
 
-    | _, _ ->
-        env
+      | _, _ ->
+          env
+    in
+
+    { env with
+        env_thenvs = Mp.set_union env.env_thenvs cth.compiled }
 
   (* ------------------------------------------------------------------ *)
   let rebind name th env =
@@ -3175,7 +3178,15 @@ module Theory = struct
       in (cleared, omap (fun item_r -> { item with ti_item = item_r; }) item_r)
 
   (* ------------------------------------------------------------------ *)
-  let close ?(clears = []) ?(pempty = `No) loca mode env =
+  type clear_mode = [`Full | `ClearOnly | `No]
+
+  let close
+    ?(clears : path list = [])
+    ?(pempty : clear_mode = `No)
+     (loca   : is_local)
+     (mode   : thmode)
+     (env    : env)
+  =
     let items = List.rev env.env_item in
     let items =
       if   List.is_empty clears
@@ -3189,35 +3200,47 @@ module Theory = struct
     in
 
     items |> omap (fun items ->
-                 { cth_items = items;
-                   cth_source = None;
-                   cth_loca   = loca;
-                   cth_mode   = mode;
-               })
+      let ctheory =
+        { cth_items  = items
+        ; cth_source = None
+        ; cth_loca   = loca
+        ; cth_mode   = mode
+        } in
+
+      let root = env.env_scope.ec_path in
+      let name = EcPath.basename root in
+
+      let compiled =
+        Mp.filter
+          (fun path _ -> EcPath.isprefix ~prefix:root ~path)
+          env.env_thenvs in
+      let compiled = Mp.add env.env_scope.ec_path env compiled in
+
+      { name; ctheory; compiled; }
+    )
 
   (* ------------------------------------------------------------------ *)
-  let require x cth env =
-    let rootnm  = EcCoreLib.p_top in
-    let thpath  = EcPath.pqname rootnm x in
+  let require (compiled : compiled_theory) (env : env) =
+    let cth    = compiled.ctheory in
+    let rootnm = EcCoreLib.p_top in
+    let thpath = EcPath.pqname rootnm compiled.name in
 
     let env =
       match cth.cth_mode with
       | `Concrete ->
           let (_, thmc), submcs =
-            MC.mc_of_theory_r rootnm (x, cth)
-          in MC.bind_submc env rootnm ((x, thmc), submcs)
+            MC.mc_of_theory_r rootnm (compiled.name, cth)
+          in MC.bind_submc env rootnm ((compiled.name, thmc), submcs)
 
       | `Abstract -> env
     in
 
-    let th = cth in
-
     let topmc = Mip.find (IPPath rootnm) env.env_comps in
-    let topmc = MC._up_theory false topmc x (IPPath thpath, th) in
+    let topmc = MC._up_theory false topmc compiled.name (IPPath thpath, cth) in
     let topmc = MC._up_mc false topmc (IPPath thpath) in
 
     let current = env.env_current in
-    let current = MC._up_theory true current x (IPPath thpath, th) in
+    let current = MC._up_theory true current compiled.name (IPPath thpath, cth) in
     let current = MC._up_mc true current (IPPath thpath) in
 
     let comps = env.env_comps in
@@ -3226,7 +3249,9 @@ module Theory = struct
     let env = { env with env_current = current; env_comps = comps; } in
 
     match cth.cth_mode with
-    | `Abstract -> env
+    | `Abstract ->
+      { env with
+        env_thenvs  = Mp.set_union env.env_thenvs compiled.compiled; }
 
     | `Concrete ->
       { env with
@@ -3235,7 +3260,8 @@ module Theory = struct
           env_rwbase  = bind_br_th thpath env.env_rwbase cth.cth_items;
           env_atbase  = bind_at_th thpath env.env_atbase cth.cth_items;
           env_ntbase  = bind_nt_th thpath env.env_ntbase cth.cth_items;
-          env_redbase = bind_rd_th thpath env.env_redbase cth.cth_items; }
+          env_redbase = bind_rd_th thpath env.env_redbase cth.cth_items;
+          env_thenvs  = Mp.set_union env.env_thenvs compiled.compiled; }
 end
 
 (* -------------------------------------------------------------------- *)

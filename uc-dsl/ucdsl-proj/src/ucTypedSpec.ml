@@ -434,8 +434,8 @@ type real_fun_body_tyd =
 type ideal_fun_body_tyd =
   {id_dir_inter : symbol;             (* name of composite direct interface -
                                          with same root *)
-   id_adv_inter : symbol;             (* name of basic adversarial interface -
-                                         with same root *)
+   id_adv_inter : symbol option;      (* optional name of basic adversarial
+                                         interface - with same root *)
    states       : state_tyd IdMap.t}  (* state machine *)
 
 type fun_body_tyd =
@@ -470,7 +470,7 @@ let id_dir_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol =
 let id_adv_inter_of_fun_body_tyd (fbt : fun_body_tyd) : symbol option =
   match fbt with
   | FunBodyRealTyd rfbt  -> rfbt.id_adv_inter
-  | FunBodyIdealTyd ifbt -> Some ifbt.id_adv_inter
+  | FunBodyIdealTyd ifbt -> ifbt.id_adv_inter
 
 type fun_tyd = fun_body_tyd located  (* functionality *)
 
@@ -485,9 +485,6 @@ let id_dir_inter_of_fun_tyd (ft : fun_tyd) : symbol =
 
 let id_adv_inter_of_fun_tyd (ft : fun_tyd) : symbol option =
   id_adv_inter_of_fun_body_tyd (unloc ft)
-
-let id_adv_inter_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
-  oget (id_adv_inter_of_fun_body_tyd (unloc ft))
 
 let num_sub_funs_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -725,7 +722,8 @@ let inter_names_reach_fun
   | FunBodyIdealTyd ifbt ->
       IdSet.union
       (inter_names_reach_inter root maps ifbt.id_dir_inter)
-      (IdSet.singleton ifbt.id_adv_inter)  (* will be basic *)
+      (omap_dfl IdSet.singleton IdSet.empty
+       ifbt.id_adv_inter)  (* will be basic, if exists *)
 
 (* interface names that are reachable from a simulator *)
 
@@ -770,10 +768,10 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
   roots1
 
 type singleton_info =
-  {si_root      : symbol;
-   si_ideal     : symbol;
-   si_comp_dir  : symbol;
-   si_basic_adv : symbol}
+  {si_root          : symbol;
+   si_ideal         : symbol;
+   si_comp_dir      : symbol;
+   si_basic_adv_opt : symbol option}
 
 type triple_info =
   {ti_root             : symbol;
@@ -811,6 +809,9 @@ let num_adv_pis_of_parties_of_real_fun
        | BasicTyd _       -> failure "cannot happen"
        | CompositeTyd map -> IdMap.cardinal map)
 
+(* even if a subfunctionality has no adversarial interface, we
+   still allocate an adversarial port index for it *)
+
 let num_adv_pis_of_sub_funs_of_real_fun (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.sub_funs
@@ -823,10 +824,10 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
   then let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
       UI_Singleton
-      {si_root      = root;
-       si_ideal     = if_name;
-       si_comp_dir  = id_dir_inter_of_fun_tyd ift;
-       si_basic_adv = id_adv_inter_of_ideal_fun_tyd ift}
+      {si_root          = root;
+       si_ideal         = if_name;
+       si_comp_dir      = id_dir_inter_of_fun_tyd ift;
+       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift}
   else let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
        let rf_name = sing_elt_of_id_set rf_names in
@@ -845,16 +846,16 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
         ti_sim              = sim_name;
         ti_comp_dir         = id_dir_inter_of_fun_tyd ift;
         ti_comp_adv_opt     = id_adv_inter_of_fun_tyd rft;
-        ti_if_sim_basic_adv = id_adv_inter_of_ideal_fun_tyd ift;
+        ti_if_sim_basic_adv = Option.get (id_adv_inter_of_fun_tyd ift);
         ti_sims             = sbt.sims_arg_pair_ids;
         ti_num_adv_pis      = num_adv_pis}
 
 let is_basic_adv_of_ideal_fun_of_unit (uior : unit_info) (bas : symbol) : bool =
   match uior with
-  | UI_Singleton si -> si.si_basic_adv = bas
+  | UI_Singleton si -> si.si_basic_adv_opt = Some bas
   | UI_Triple ti    -> ti.ti_if_sim_basic_adv = bas
 
-let basic_adv_of_ideal_fun_of_unit (uior : unit_info) : symbol =
+let basic_adv_of_ideal_fun_of_triple_unit (uior : unit_info) : symbol =
   match uior with
   | UI_Singleton _ -> failure "should not happen"
   | UI_Triple ti   -> ti.ti_if_sim_basic_adv

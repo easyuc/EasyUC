@@ -1,5 +1,5 @@
 direct D' {
-in  x@bla()
+in x@bla()
 out bli()@x
 }
 

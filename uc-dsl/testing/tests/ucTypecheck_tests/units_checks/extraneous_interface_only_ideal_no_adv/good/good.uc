@@ -1,16 +1,11 @@
 direct D' {
-in  x@bla()
+in x@bla()
 out bli()@x
 }
 
 direct D {D:D'}
 
-adversarial I {
-in  bla()
-out bli()
-}
-
-functionality S() implements D I {
+functionality S() implements D {
 
   initial state Is 
   {

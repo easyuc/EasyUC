@@ -3088,13 +3088,14 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     match c.sme with
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
-        let basic = ifbt.id_adv_inter in
+        let basic_opt = ifbt.id_adv_inter in
         let {id = state_id; args = state_args} =
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         let iip = sme_ord.path.inter_id_path in
         let addr = addr_concat_form_from_list_smart func_form rel in
-        if iip = [root; basic] && sme_ord.dir = In &&
+        if basic_opt <> None && iip = [root; Option.get basic_opt] &&
+           sme_ord.dir = In &&
            equal_port_index_of_port c.gc pi dbs dest_port 1 &&
            equal_port_index_of_port c.gc pi dbs source_port adv_pi
         then if sbt.is_initial
@@ -3467,12 +3468,14 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     match c.sme with
     | SMET_Ord sme_ord ->
         let (root, func_id) = func_sp in
-        let basic = ifbt.id_adv_inter in
+        let basic_opt = ifbt.id_adv_inter in
         let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
         (match sme_ord.path.inter_id_path with
          | [root'; basic'] ->
-             if root' = root && basic' = basic && sme_ord.dir = In
+             assert (basic_opt <> None);
+             if root' = root && basic' = Option.get basic_opt &&
+                sme_ord.dir = In
              then if sbt.is_initial
                   then (debugging_message
                         (fun ppf ->
@@ -3740,7 +3743,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       (fun i (param_id, param_sp) ->
          let (param_root, _) = param_sp in
          let uior = unit_info_of_root c.maps param_root in
-         let basic_adv_id = basic_adv_of_ideal_fun_of_unit uior in
+         let basic_adv_id = basic_adv_of_ideal_fun_of_triple_unit uior in
          ([param_root; basic_adv_id],
           [sim_rf; param_id; basic_adv_id],
           List.nth rf_arg_adv_pis i))
@@ -3748,17 +3751,18 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     let sim_rf_num_adv_pis_of_parties =
       num_adv_pis_of_parties_of_real_fun c.maps root sim_ft in
     let sim_rf_num_sub_funs = IdMap.cardinal sim_rfbt.sub_funs in
-    let sim_rf_sub_funs_info : (symbol list * symbol list * int) list =
+    let sim_rf_sub_funs_info : (symbol list * symbol list * int) option list =
       List.mapi
       (fun i (sub_fun_id, sub_fun_sp) ->
          let (sub_fun_root, _) = sub_fun_sp in
-         let basic_adv_id =
-           Option.get
-           (id_adv_inter_of_fun_tyd
-            (IdPairMap.find sub_fun_sp c.maps.fun_map))
-         in ([sub_fun_root; basic_adv_id],
-             [sim_rf; sub_fun_id; basic_adv_id],
-             base + sim_rf_num_adv_pis_of_parties + 1 + i))
+         match id_adv_inter_of_fun_tyd
+               (IdPairMap.find sub_fun_sp c.maps.fun_map) with
+         | None              -> None
+         | Some basic_adv_id ->
+             Some
+             ([sub_fun_root; basic_adv_id],
+              [sim_rf; sub_fun_id; basic_adv_id],
+              base + sim_rf_num_adv_pis_of_parties + 1 + i))
       (IdMap.bindings sim_rfbt.sub_funs) in
     let find_param_or_sub_fun () :
           (symbol list * symbol list * int) option =
@@ -3784,7 +3788,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            | None   ->
                (match find_sub_fun 1 with
                 | None   -> None
-                | Some i -> Some (List.nth sim_rf_sub_funs_info (i - 1)))
+                | Some i -> List.nth sim_rf_sub_funs_info (i - 1))
            | Some i -> Some (List.nth sim_rf_params_info (i - 1)))
       | Some (rel, _) ->
           (assert (List.length rel = List.length sim_rf_addr + 1);
@@ -3796,7 +3800,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
            else let i = i - sim_rf_num_params in
                 if i > sim_rf_num_sub_funs
                 then None
-                else Some (List.nth sim_rf_sub_funs_info (i - 1))) in
+                else List.nth sim_rf_sub_funs_info (i - 1)) in
     let failure_msg () =
       (debugging_message
        (fun ppf ->

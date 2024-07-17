@@ -596,7 +596,7 @@ op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
     epdp_tag_univ epdp_id).`enc
     (x.`dfe_pt, x.`dfe_n, x.`dfe_tag, x.`dfe_u)).
 
-op nosmt [opaque] dec_da_from_env (m : msg) : da_from_env option =
+op [opaque smt_opaque] dec_da_from_env (m : msg) : da_from_env option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) ?
      None :
@@ -684,7 +684,7 @@ op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
     epdp_tag_univ epdp_id).`enc
     (x.`dte_n, x.`dte_pt, x.`dte_tag, x.`dte_u)).
 
-op nosmt [opaque] dec_da_to_env (m : msg) : da_to_env option =
+op [opaque smt_opaque] dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
      None :

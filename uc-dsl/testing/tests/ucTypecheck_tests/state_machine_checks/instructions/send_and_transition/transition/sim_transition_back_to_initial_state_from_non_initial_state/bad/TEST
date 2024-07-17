@@ -1,0 +1,9 @@
+description
+  Test where simulator tries to transition back to its initial state.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 34 columns 46 to 50]
+
+simulator cannot transition back to initial state
+.
