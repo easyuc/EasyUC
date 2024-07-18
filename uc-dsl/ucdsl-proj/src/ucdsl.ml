@@ -41,15 +41,20 @@ let interpreter_ref : bool ref = ref false
 let interpreter_arg () =
   (interpreter_ref := true; ())
 
+let debug_ref : bool ref = ref false
+
+let debug_arg () =
+  (debug_ref := true; ())
+
 let batch_ref : bool ref = ref false
 
 let batch_arg () =
   (batch_ref := true; ())
 
-let debug_ref : bool ref = ref false
+let version_ref : bool ref = ref false
 
-let debug_arg () =
-  (debug_ref := true; ())
+let version_arg () =
+  (version_ref := true; ())
 
 let run_print_pos_ref : bool ref = ref false
 
@@ -68,10 +73,16 @@ let arg_specs =
     "Run interpreter; implicit on .uci file; omit file to run interactively");
    ("-debug", Unit debug_arg, "Print interpeter debugging messages");
    ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file");
-   ("-run_print_pos", Unit run_print_pos_arg, "Print .uc file positions while executing interpreter run command for .uci file")
+   ("-run_print_pos", Unit run_print_pos_arg, "Print .uc file positions while executing interpreter run command for .uci file");
+   ("-version", Unit version_arg, "Print version and exit")
   ]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
+
+let () =
+  if ! version_ref
+  then (Printf.printf "%s\n" UcVersionDoNotEdit.version;
+        exit 0)
 
 let error_and_exit (ppf : Format.formatter -> unit) : unit =
   ppf Format.err_formatter;
