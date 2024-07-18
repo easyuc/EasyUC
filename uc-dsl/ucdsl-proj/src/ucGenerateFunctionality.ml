@@ -875,6 +875,20 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@]@\n}.";
   ()
   
+let print_cloneSIM_MS ppf (id,sbt : string * sim_body_tyd) =
+  let print_cloneSIM =
+  Format.fprintf ppf "@;@[clone MakeSimulator as MSCore with@]@;";
+  Format.fprintf ppf "@[op core_pi <- %s@]@;" adv_if_pi_op_name;
+  Format.fprintf ppf "@[proof *.@]@;";
+  Format.fprintf ppf "@[realize core_pi_gt0. smt. qed.@]@;"
+  in 
+  let print_MS =
+    Format.fprintf ppf
+      "@[module SIM(%s : ADV) = MSCore.MS(%s.%s(%s), %s).@]"
+      _Adv uc__sim (uc_name id) _Adv _Adv
+  in
+  print_cloneSIM;
+  print_MS
 
 let gen_sim (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (sbt : sim_body_tyd)
@@ -886,6 +900,7 @@ let gen_sim (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;"
     (print_simulator_module sc root id mbmap IdMap.empty ais) sbt;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__sim);
+  Format.fprintf sf "@[<v>%a@]@;"   print_cloneSIM_MS (id,sbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
