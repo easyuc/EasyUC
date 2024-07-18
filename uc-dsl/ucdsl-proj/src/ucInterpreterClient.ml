@@ -383,6 +383,19 @@ let interpret (lexbuf : L.lexbuf) =
 
   let run (loc : EcLocation.t) : unit =
     let rec runr (conf : config) (eff : effect) : config * effect =
+      if (UcState.get_run_print_pos ())
+      then begin
+        let c = currs() in
+        let c' =  
+        {
+          c with
+          ucdsl_new = false;
+          post_done = false;
+          config = Some conf;
+          effect = Some eff;
+        } in
+        pp_uc_file_pos fmt c'
+      end;
       match try Some  (* so tail recursive *)
                 (step_running_or_sending_real_or_ideal_config
                  conf None None) with

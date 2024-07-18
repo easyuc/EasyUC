@@ -51,6 +51,11 @@ let debug_ref : bool ref = ref false
 let debug_arg () =
   (debug_ref := true; ())
 
+let run_print_pos_ref : bool ref = ref false
+
+let run_print_pos_arg () =
+  (run_print_pos_ref := true; ())
+
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -62,7 +67,8 @@ let arg_specs =
    ("-interpreter", Unit interpreter_arg,
     "Run interpreter; implicit on .uci file; omit file to run interactively");
    ("-debug", Unit debug_arg, "Print interpeter debugging messages");
-   ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file")
+   ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file");
+   ("-run_print_pos", Unit run_print_pos_arg, "Print .uc file positions while executing interpreter run command for .uci file")
   ]
 
 let () = parse arg_specs anony_arg "Usage: ucdsl [options] file"
@@ -115,6 +121,7 @@ let check_uc_file (file : string) : unit =
   let () = if ! interpreter_ref then forbid_option "interpreter" in
   let () = if ! debug_ref then forbid_option "debug" in
   let () = if ! batch_ref then forbid_option "batch" in
+  let () = if ! run_print_pos_ref then forbid_option "run_print_pos" in
   let dir = Filename.dirname file in
   let () = UcState.add_highest_include_dirs dir in
   let () = UcEcInterface.init () in
@@ -136,6 +143,8 @@ let interpreter_file (file : string) : unit =
   let () = if ! raw_msg_ref then forbid_option "raw_msg" in
   let () = if ! batch_ref then UcState.set_batch_mode () in
   let () = if ! debug_ref then UcState.set_debugging () in
+  let () = if ! run_print_pos_ref && not ! batch_ref
+           then UcState.set_run_print_pos () in
   let dir = Filename.dirname file in
   let () = UcState.add_highest_include_dirs dir in
   let () = UcEcInterface.init() in
