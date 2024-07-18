@@ -85,12 +85,16 @@ let mode_Adv : string = "Adv"
 
 let _Adv : string = "Adv"
 
-let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope) 
-(ppf : Format.formatter) (expr : EcTypes.expr)
-    : unit =
+let if_addr_opt = "if_addr_opt"
+
+let oget_if_addr_opt = "(oget "^if_addr_opt^")"
+
+let pp_expr ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
+  (sc : EcScope.scope) (ppf : Format.formatter) (expr : EcTypes.expr) : unit =
   let addr_ex_of_idstr (idstr : string) =
     EcTypes.e_local (EcIdent.create idstr) addr_ty
   in
+
   let e_self = addr_ex_of_idstr _self in
   
   (* envport substitution *)
@@ -100,6 +104,11 @@ let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope)
   let envport_subst =
     EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self] in
   let expr = EcSubst.subst_expr envport_subst expr in
+
+  let e_oget_if_addr_opt =
+    let e_if_addr_opt =
+      EcTypes.e_local (EcIdent.create if_addr_opt) (EcTypes.toption addr_ty) in
+    EcTypes.e_oget e_if_addr_opt addr_ty in
   
   (* intport substitution *)
   let intport_op_ex (ptnm : string list) : EcTypes.expr =
@@ -108,7 +117,8 @@ let pp_expr ?(intprts : EcIdent.t QidMap.t = QidMap.empty) (sc : EcScope.scope)
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =
-    EcTypes.e_app (intport_op_ex ptnm) [e_self] port_ty in
+    let addr_ex = if is_sim then e_oget_if_addr_opt else e_self in
+    EcTypes.e_app (intport_op_ex ptnm) [addr_ex] port_ty in
   let expr = QidMap.fold (fun ptnm id ex  ->        
     let intport_subst =
       EcSubst.add_elocals

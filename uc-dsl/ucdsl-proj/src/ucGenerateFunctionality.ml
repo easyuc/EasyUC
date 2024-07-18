@@ -165,7 +165,7 @@ let rec print_code (sim_uses : string option)
           (ais : symb_pair IdPairMap.t)
           (ptn : string option)
           (intprts : EcIdent.t QidMap.t) : unit =
-  let pp_ex = pp_expr ~intprts:intprts sc in
+  let pp_ex = pp_expr ~is_sim:(sim_uses<>None) ~intprts:intprts sc in
 (*  let pp_extyargs ppf ex =
     match (EcTypes.e_ty ex).ty_node with
     | EcAst.Tconstr (_,tyargs) ->
