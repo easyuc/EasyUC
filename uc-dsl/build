@@ -37,6 +37,15 @@ then echo failure;
      exit;
 fi
 
+# for now, the UC DSL version is just the EasyUC Git Commit
+rm -f ucVersionDoNotEdit.ml
+ucdsl_git_commit=$(git rev-parse HEAD 2> /dev/null)
+if [[ $? == 0 ]];
+then echo "let version = \"EasyUC Git Commit $ucdsl_git_commit\"" > \
+     ucVersionDoNotEdit.ml;
+else echo "let version = \"unknown\"" > ucVersionDoNotEdit.ml;
+fi
+
 cd ..
 
 if [[ $coverage_mode == NO ]];
