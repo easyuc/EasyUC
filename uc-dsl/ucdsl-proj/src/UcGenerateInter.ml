@@ -397,7 +397,7 @@ let print_message
     in
     let var_name="m" in
     Format.fprintf ppf
-      "@[op@ nosmt@ [opaque]@ %s@ (%s@ :@ msg)@ :@ %s@ option =@,@[<v 2>  %a@]@,.@]@,@,"
+      "@[op@ [opaque smt_opaque]@ %s@ (%s@ :@ msg)@ :@ %s@ option =@,@[<v 2>  %a@]@,.@]@,@,"
       _dec_op_name var_name _mty_name
       print_dec_op_body mb 
   in
