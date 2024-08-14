@@ -27,12 +27,17 @@ let pp_form (sc : EcScope.scope) (ppf : Format.formatter) (form : EcFol.form)
 
 let _self = "_self"
 let adv = "adv"
+let _pi = "pi"
 
 let open_theory (name : string) : string = "theory "^name^"."
+
+let open_abstract_theory (name : string) : string = "abstract theory "^name^"."
 
 let close_theory (name : string) : string = "end "^name^"."
 
 let uc_name (name : string) : string = "UC_"^name
+
+let bi_name (id : string) : string = (uc_name id)^"_abs"
 
 let uc__name (name : string) : string = "UC__"^name
 

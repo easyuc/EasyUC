@@ -34,8 +34,6 @@ let isdirect (mb : message_body_tyd) : bool =
   | None -> false
   | Some _ -> true
 
-let _pi = "pi"
-
 let __adv_if_pi = "_adv_if_pi"
 
 let abs_oper_int (name : string) : string = "op "^name^" : int."
@@ -541,10 +539,10 @@ let gen_basic_int
 (bibt : basic_inter_body_tyd)
 : string =
   let sf = Format.get_str_formatter () in
-  let name = uc_name id in
+  let name = bi_name id in
   Format.fprintf sf "@[<v>";
-  print_str_nl sf (open_theory name);
-  print_str_nl sf pi_op;(*TODO different for ideal adv interface ?*)
+  print_str_nl sf (open_abstract_theory name);
+  print_str_nl sf pi_op;
   print__name_as_ec_str_op sf root;
   let bibtl = IdMap.bindings bibt in
   List.iter (fun (n, mb) ->
@@ -562,7 +560,7 @@ let gen_comp_int (id : string) (sm : string IdMap.t) : string =
   let sml = IdMap.bindings sm in
   List.iteri (fun i (name, basicname) ->
     Format.fprintf sf "@[clone %s as %s with@]@,"
-      (uc_name basicname) name;
+      (bi_name basicname) name;
     Format.fprintf sf "@[  op %s = %i@]@,"
       _pi (i+1);
     Format.fprintf sf "@[proof *.@]@,@,"          
