@@ -145,12 +145,13 @@ let adv_int_simulated
   let sbt = EcLocation.unloc st in
   let ft = IdPairMap.find (root, sbt.sims) mt.fun_map in 
   let rfbt = real_fun_body_tyd_of (EcLocation.unloc ft) in
-  let ptnms = fst (List.split (IdMap.bindings rfbt.parties)) in
-  let ret = List.fold_left(fun ret pty ->
-    let basic_nm = get_adv_sub_inter_of_party_of_real_fun ft pty in
-    if (basic_nm <> None)
-    then IdPairMap.add (sbt.sims, pty)(root,EcUtils.oget basic_nm) ret
-    else ret) IdPairMap.empty ptnms in
+  let ret =
+    if rfbt.id_adv_inter <> None
+    then
+      let rfaiid = EcUtils.oget rfbt.id_adv_inter in
+      IdPairMap.add (sbt.sims, rfaiid) (root, rfaiid) IdPairMap.empty
+    else
+      IdPairMap.empty in
   let sf_nmifs = IdMap.bindings rfbt.sub_funs in
   let pms = indexed_map_to_list_keep_keys rfbt.params in
   let pm_nms = fst (List.split pms) in

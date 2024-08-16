@@ -143,7 +143,11 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
           let key = sim_key msg_path.inter_id_path in
           let root, int_id = IdPairMap.find key ais in
           let iiptl = List.tl (List.tl msg_path.inter_id_path) in
-          let iip = [root]@iiptl in
+          let iip =
+            if int_id = snd key
+            then [root]@[int_id]@iiptl (* simulating interface of a party*)
+            else [root]@iiptl (* simulating interface of a sub functionality or parameter*)    
+          in
           let _,mb = get_msg_body mbmap root iip msgn in
           let pfx = inter_id_path_str true (List.tl iip) in
           let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
@@ -601,7 +605,8 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
     print_addr_op pn n) rapm.subfun_addr_sufix;
   Format.fprintf ppf "@;";
   IdMap.iter (fun pn n ->
-    print_extport_op pn n) rapm.party_ext_port_id;
+    if n<>None
+    then print_extport_op pn (EcUtils.oget n)) rapm.party_ext_port_id;
   Format.fprintf ppf "@;";
   IdMap.iter (fun pn n ->
     print_intport_op pn n) rapm.party_int_port_id;

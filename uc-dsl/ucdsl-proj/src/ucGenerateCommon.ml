@@ -222,7 +222,7 @@ type rf_addr_port_maps =
   {
     params_addr_sufix : int IdMap.t;
     subfun_addr_sufix : int IdMap.t;
-    party_ext_port_id : int IdMap.t;
+    party_ext_port_id : int option  IdMap.t;
     party_int_port_id : int IdMap.t;
   }
 
@@ -240,9 +240,13 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
     maps root ft nm))
               ) rfbt.sub_funs in
   let rfinfo = get_info_of_real_func maps root 0 ft in
-  let pepi = IdMap.mapi ( fun nm pi ->
-                         let _,_, port = EcUtils.oget pi.pi_pdi in
-                         port
+  let pepi = IdMap.mapi ( fun nm pi : int option->
+                          if pi.pi_pdi <> None
+                          then
+                            let _,_, port = EcUtils.oget pi.pi_pdi in
+                            Some port
+                          else
+                            None
                ) rfinfo in
   let pipi = IdMap.mapi ( fun nm pi ->
     pi.pi_ipi
