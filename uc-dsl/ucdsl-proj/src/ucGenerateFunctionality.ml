@@ -143,15 +143,20 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
           let key = sim_key msg_path.inter_id_path in
           let root, int_id = IdPairMap.find key ais in
           let iiptl = List.tl (List.tl msg_path.inter_id_path) in
+          let is_party_interface = int_id = snd key in
           let iip =
-            if int_id = snd key
+            if is_party_interface
             then [root]@[int_id]@iiptl (* simulating interface of a party*)
             else [root]@iiptl (* simulating interface of a sub functionality or parameter*)    
           in
           let _,mb = get_msg_body mbmap root iip msgn in
           let pfx = inter_id_path_str true (List.tl iip) in
-          let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
-          pfx, mb
+          if is_party_interface
+          then
+            pfx, mb
+          else
+            let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
+            pfx, mb
         else   
           let iip = msg_path.inter_id_path in
           let loc,mb = get_msg_body mbmap root iip msgn in
@@ -229,7 +234,9 @@ let rec print_code (sim_uses : string option)
       let iip = (EcLocation.unloc mp).inter_id_path in
       let sims = List.hd iip in
       let ptnm = List.hd (List.tl iip) in
-      is_sim && not is_sim_to_IF && (not (IdPairMap.mem (sims,ptnm) ais))
+      let sim_key = (sims,ptnm) in
+      is_sim && not is_sim_to_IF &&
+        (IdPairMap.mem sim_key ais) && ptnm = snd (IdPairMap.find sim_key ais)
     in
     let sim_from_sf_pm mp : string option =
       let iip = (EcLocation.unloc mp).inter_id_path in
@@ -241,19 +248,24 @@ let rec print_code (sim_uses : string option)
     in
     if is_sim
     then   
-      if is_sim_to_IF || (sim_from_Party mp)
+      if is_sim_to_IF
       then
         Format.fprintf ppf "@[%s%s = %s;@]@;"
           pfx (name_record_func msgn) oget_if_addr_opt
       else
-        if (sim_from_sf_pm mp)<> None
+        if (sim_from_Party mp)
         then
           Format.fprintf ppf "@[%s%s = %s;@]@;"
-            pfx (name_record_func msgn)
-            (addr_op_call_sim (EcUtils.oget (sim_from_sf_pm mp)))
+          pfx (name_record_func msgn) oget_if_addr_opt
         else
-          UcMessage.failure
-            "simulator sends only messages to IF or as RF to adv"
+          if (sim_from_sf_pm mp)<> None
+          then
+            Format.fprintf ppf "@[%s%s = %s;@]@;"
+              pfx (name_record_func msgn)
+              (addr_op_call_sim (EcUtils.oget (sim_from_sf_pm mp)))
+          else
+            UcMessage.failure
+              "simulator sends only messages to IF or as RF to adv"
     else
       if is_internal
       then
@@ -544,7 +556,10 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
      Format.fprintf ppf
        "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`2.`2 = %s.pi@ /\\@ %s.`3.`1 = %s))@]{"
        m mode_Adv m _self m (uc_name (EcUtils.oget ifbt.id_adv_inter)) m adv
-     end;
+      end
+    else
+      Format.fprintf ppf "@[)@]{"
+    ;
     Format.fprintf ppf "@;<0 2>@[%s %s %s(%s);@]" r "<@" parties_str m;
     Format.fprintf ppf "@;}@]@;@[return %s;@]@;}@;" r
   in
@@ -641,6 +656,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
 
 let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (pepi : int option  IdMap.t)
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
   let print_vars () =
      Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
@@ -675,6 +691,9 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
          (addr_op_call nm) m r "<@" path m
     in
     let print_party_invoke ppf (nm : string) : unit =
+      let has_extport = (IdMap.find nm pepi) <> None in
+      if has_extport
+      then begin
       Format.fprintf ppf
       "@[if ((%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s %s.`3)@]@;"
          m mode_Dir m (extport_op_call nm) _self m;
@@ -682,7 +701,11 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       Format.fprintf ppf
         "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s)@]@;"
         m mode_Adv m (extport_op_call nm) m adv;
-      Format.fprintf ppf "@[\\/@]@;";
+      Format.fprintf ppf "@[\\/@]@;"
+        end
+      else
+        Format.fprintf ppf "@[if(@]"
+      ;
       Format.fprintf ppf
       "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s <= %s.`3.`1))@]@;"
          m mode_Dir m (intport_op_call nm) _self m;
@@ -758,7 +781,8 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
-  Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii) rfbt;
+  Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
+                                    rapm.party_ext_port_id) rfbt;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;"   print_cloneRF_MakeRF (id,rfbt);
   Format.fprintf sf "@]";
@@ -805,7 +829,9 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
       let is_for_Party iip : string option =
         let sims = List.hd iip in
         let ptnm = List.hd (List.tl iip) in
-        if (sims = sbt.sims) && (not (IdPairMap.mem (sims,ptnm) ais)) 
+        let sim_key = (sims,ptnm) in
+        if (sims = sbt.sims) && (IdPairMap.mem sim_key ais) &&
+             ptnm = snd (IdPairMap.find sim_key ais)
         then Some ptnm
         else None
       in
@@ -823,9 +849,8 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
       else
         if (is_for_Party iip) <> None
         then
-          let ptn = EcUtils.oget (is_for_Party iip) in
-          Format.fprintf ppf "(%s.`3.`1 = adv) /\\ (%s.`2.`1 = UC__RF.%s %s)"
-            _m _m (extport_op_call ptn) oget_if_addr_opt
+          Format.fprintf ppf "(%s.`3.`1 = adv) /\\ (%s.`2.`1 = %s)"
+            _m _m oget_if_addr_opt
         else
           if (is_for_sf_pm iip) <> None
           then

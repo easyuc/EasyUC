@@ -83,7 +83,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          match ptinfo.pi_pai with
          | None -> ()
          | Some  (_, _, _, ptadvpi) ->
-            Format.fprintf sf "op %s = %s + %i@."
+            Format.fprintf sf "op %s = %s + %i.@."
               (adv_pt_pi_op_name ptname) adv_pi_begin_op_name ptadvpi
          ) pinfo;
        Format.fprintf sf "@.";
