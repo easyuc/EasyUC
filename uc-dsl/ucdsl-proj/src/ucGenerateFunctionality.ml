@@ -476,7 +476,12 @@ let print_state_match_branch (root : string) (id : string)
       Format.fprintf ppf "@[match %s.`dec %s with@]@;"
         epdp_str _m;
       Format.fprintf ppf "@[| Some %s => {@]@;<0 2>@[<v>" _x;
+      if is_internal then
+        Format.fprintf ppf "@[if (%s.`3.`1 = %s){@]@;<0 2>@[<v>"
+          _m (addr_op_call iiphd);
       print_mmc_proc_call ppf id st.params mmc pfx msg_name mb state_name;
+      if is_internal then
+        Format.fprintf ppf "@]@;}@;";
       Format.fprintf ppf "@]@;}@;";
       Format.fprintf ppf "@[| None => {@]@;<0 2>@[<v>";
       print_mm ppf (List.tl mmcs);
