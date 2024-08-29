@@ -28,6 +28,7 @@ let if_addr_opt = "if_addr_opt"
 let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 let addr_op_call_sim (name : string) : string =
   uc__rf^"."^(addr_op_name name)^" "^oget_if_addr_opt
+let if_metric_name = "if_metric"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -77,23 +78,6 @@ let mmc_proc_name
 
 let mmc_proc_name_IF (stid : string) (mpp : msg_path_pat) : string =
   mmc_proc_name stid mpp state_name
-
-let inter_id_path_str (loc : bool) (iip : string list) : string =
-  let iip =
-    if loc
-    then
-      let th = List.hd iip in [uc_name th]@(List.tl iip)
-    else
-      let fl,th,tl = List.hd iip, List.hd (List.tl iip), List.tl (List.tl iip)
-      in [uc_name fl]@[uc_name th]@tl
-  in
-  List.fold_left (fun n p -> n^p^".") "" iip
-
-let qual_epdp_name (msgn : string) (pfx : string)
-    : string =
-  let _mty_name = msg_ty_name msgn in
-  let _epdp_op_name = epdp_op_name _mty_name in
-  pfx^_epdp_op_name
   
 let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
       (ps : (string * ty) list) : unit =
@@ -115,56 +99,6 @@ let print_proc_params_call (ppf : Format.formatter) (ps : string  list) : unit =
     let n = List.hd ps in
     Format.fprintf ppf "%s" n;
     List.iter (fun n -> print n) (List.tl ps)
-
-let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
-      (ais : symb_pair IdPairMap.t) (root : string)
-      (mbmap : message_body_tyd SLMap.t)
-    : string * bool * string * string * message_body_tyd * string =
-    let msg_path = EcLocation.unloc mp in
-    let msgn = msg_path.msg in
-    let iiphd = List.hd msg_path.inter_id_path in
-    let is_internal = IdMap.mem iiphd dii in
-    let sim_key iip =  (iiphd, List.hd (List.tl iip)) in
-    let is_simulated = ((List.length msg_path.inter_id_path)>1) &&
-      IdPairMap.mem (sim_key msg_path.inter_id_path) ais in
-    let pfx, mb =
-      if is_internal
-      then
-        let root, int_id = IdMap.find iiphd dii in
-        let iiptl = List.tl msg_path.inter_id_path in
-        let iip = [root]@[int_id]@iiptl in
-        let _,mb = get_msg_body mbmap root iip msgn in
-        let pfx = inter_id_path_str true (List.tl iip) in
-        let pfx = (uc_name iiphd)^"."^uc__code^"."^pfx in
-        pfx, mb
-      else
-        if is_simulated
-        then
-          let key = sim_key msg_path.inter_id_path in
-          let root, int_id = IdPairMap.find key ais in
-          let iiptl = List.tl (List.tl msg_path.inter_id_path) in
-          let is_party_interface = int_id = snd key in
-          let iip =
-            if is_party_interface
-            then [root]@[int_id]@iiptl (* simulating interface of a party*)
-            else [root]@iiptl (* simulating interface of a sub functionality or parameter*)    
-          in
-          let _,mb = get_msg_body mbmap root iip msgn in
-          let pfx = inter_id_path_str true (List.tl iip) in
-          if is_party_interface
-          then
-            pfx, mb
-          else
-            let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
-            pfx, mb
-        else   
-          let iip = msg_path.inter_id_path in
-          let loc,mb = get_msg_body mbmap root iip msgn in
-          let pfx = inter_id_path_str loc iip in
-          pfx, mb
-    in
-    let epdp_str = qual_epdp_name msgn pfx in
-    msgn, is_internal, iiphd, pfx, mb, epdp_str
   
 let rec print_code (sim_uses : string option)
           (sc :  EcScope.scope) (root : string)
@@ -516,6 +450,8 @@ let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
     Format.fprintf ppf "@[end;@]@;";
     Format.fprintf ppf "@[return %s;@]" _r;
     Format.fprintf ppf "@]@;}@;"
+
+
   
 
 let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
@@ -584,7 +520,38 @@ let clone_adv_inter (ppf : Format.formatter) (id : string) =
       (bi_name id) (uc_name id);
     Format.fprintf ppf "@[  op %s = %s@]@;"
       _pi adv_if_pi_op_name;
-    Format.fprintf ppf "@[proof *.@]@;@;"   
+    Format.fprintf ppf "@[proof *.@]@;@;"
+(*
+op metric (g : glob M) : int =
+  match g.`1 with
+  | Init  => 2
+  | Next  => 1
+  | Final => 0
+  end.
+ *)
+let print_state_metric (name : string) (module_name : string) (var_indx : int)
+  (state_name : string -> string)
+  (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
+  let print_ctor_args (ppf : Format.formatter) (st_id : string) : unit =
+    let s = IdMap.find st_id st_map in
+    let sb = EcLocation.unloc s in
+    Mid.iter (fun _ _ -> Format.fprintf ppf "_ " ) sb.params
+  in
+  let lin = linearize_state_DAG st_map in
+  match lin with
+  | None -> Format.fprintf ppf
+              "@[(*cannot generate operator %s, states have cycles*)@]" name
+  | Some id_lvl_map ->
+     begin
+     Format.fprintf ppf "@[<v>@[op %s (g : glob %s) : int =@]@;<0 2>@[<v>"
+       name module_name;
+     Format.fprintf ppf "@[match g.`%i with@]@;" var_indx;
+     IdMap.iter (fun id lvl ->
+         Format.fprintf ppf "@[| %s %a=> %i@]@;"
+           (state_name id) print_ctor_args id lvl
+       ) id_lvl_map;
+     Format.fprintf ppf "@[end.@]@;@]@;@]"
+     end
 
 let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (ifbt : ideal_fun_body_tyd)
@@ -596,6 +563,9 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__if);
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
+  Format.fprintf sf "@[%a@]@;@;"
+    (print_state_metric if_metric_name (uc_name id) 1 state_name)
+    ifbt.states;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()

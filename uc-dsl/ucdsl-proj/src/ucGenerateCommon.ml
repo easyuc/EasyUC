@@ -257,3 +257,149 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
     party_ext_port_id = pepi;
     party_int_port_id = pipi;
   }
+
+let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
+      (ais : symb_pair IdPairMap.t) (root : string)
+      (mbmap : message_body_tyd SLMap.t)
+    : string * bool * string * string * message_body_tyd * string =
+  
+  let qual_epdp_name (msgn : string) (pfx : string)
+      : string =
+    let _mty_name = msg_ty_name msgn in
+    let _epdp_op_name = epdp_op_name _mty_name in
+    pfx^_epdp_op_name
+  in
+
+  let inter_id_path_str (loc : bool) (iip : string list) : string =
+    let iip =
+      if loc
+      then
+        let th = List.hd iip in [uc_name th]@(List.tl iip)
+      else
+        let fl,th,tl = List.hd iip, List.hd (List.tl iip), List.tl (List.tl iip)
+        in [uc_name fl]@[uc_name th]@tl
+    in    
+    List.fold_left (fun n p -> n^p^".") "" iip
+  in
+  
+    let msg_path = EcLocation.unloc mp in
+    let msgn = msg_path.msg in
+    let iiphd = List.hd msg_path.inter_id_path in
+    let is_internal = IdMap.mem iiphd dii in
+    let sim_key iip =  (iiphd, List.hd (List.tl iip)) in
+    let is_simulated = ((List.length msg_path.inter_id_path)>1) &&
+      IdPairMap.mem (sim_key msg_path.inter_id_path) ais in
+    let pfx, mb =
+      if is_internal
+      then
+        let root, int_id = IdMap.find iiphd dii in
+        let iiptl = List.tl msg_path.inter_id_path in
+        let iip = [root]@[int_id]@iiptl in
+        let _,mb = get_msg_body mbmap root iip msgn in
+        let pfx = inter_id_path_str true (List.tl iip) in
+        let pfx = (uc_name iiphd)^"."^uc__code^"."^pfx in
+        pfx, mb
+      else
+        if is_simulated
+        then
+          let key = sim_key msg_path.inter_id_path in
+          let root, int_id = IdPairMap.find key ais in
+          let iiptl = List.tl (List.tl msg_path.inter_id_path) in
+          let is_party_interface = int_id = snd key in
+          let iip =
+            if is_party_interface
+            then [root]@[int_id]@iiptl (* simulating interface of a party*)
+            else [root]@iiptl (* simulating interface of a sub functionality or parameter*)    
+          in
+          let _,mb = get_msg_body mbmap root iip msgn in
+          let pfx = inter_id_path_str true (List.tl iip) in
+          if is_party_interface
+          then
+            pfx, mb
+          else
+            let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
+            pfx, mb
+        else   
+          let iip = msg_path.inter_id_path in
+          let loc,mb = get_msg_body mbmap root iip msgn in
+          let pfx = inter_id_path_str loc iip in
+          pfx, mb
+    in
+    let epdp_str = qual_epdp_name msgn pfx in
+    msgn, is_internal, iiphd, pfx, mb, epdp_str
+
+
+let linearize_state_DAG (states : state_tyd IdMap.t) : int IdMap.t option =
+  let get_next_states (st_id : string) : IdSet.t =
+    let rec fold_code (codel : instruction_tyd list EcLocation.located)
+              (ret : IdSet.t) : IdSet.t =
+       let code = EcLocation.unloc codel in
+        List.fold_left (fun ret il ->
+                let i = EcLocation.unloc il in
+                match i with
+                | Assign _ -> ret
+                | Sample _ -> ret
+                | ITE (_,ill,illo) ->
+                   let reti = fold_code ill ret in
+                   if illo <> None
+                   then
+                     let rete = fold_code (EcUtils.oget illo) ret in
+                     IdSet.union reti rete
+                   else
+                     reti
+                | Match (_,mcll) ->
+                   let mcl = EcLocation.unloc mcll in
+                   List.fold_left (fun ret (_,(_,code)) ->
+                       fold_code code ret
+                     ) ret mcl
+                | SendAndTransition sat ->
+                       let id = EcLocation.unloc sat.state_expr.id in
+                       IdSet.add id ret
+                | Fail -> ret        
+          ) ret code
+    in
+    
+    let s = IdMap.find st_id states in
+    let sb = EcLocation.unloc s in
+    List.fold_left (fun ret mmc ->
+        fold_code mmc.code ret
+    ) IdSet.empty sb.mmclauses
+  in
+  let initial_state_id : string = fst
+      (IdMap.find_first (fun id ->
+        let s = IdMap.find id states in
+        let sb = EcLocation.unloc s in
+        sb.is_initial
+      ) states) in
+  let rec add_next_level_states (sls : IdSet.t list) : IdSet.t list option =
+    let last = List.hd sls in
+    let prev = List.fold_left (fun ret set -> IdSet.union ret set) IdSet.empty sls in
+    let next_sl = IdSet.fold (fun st_id idseto ->
+                      match idseto with
+                      | None -> None 
+                      | Some idset ->
+                         let ns = get_next_states st_id in
+                         if IdSet.exists (fun id ->
+                                IdSet.mem id prev
+                              ) ns
+                         then None
+                         else Some (IdSet.union idset ns)
+                    ) last (Some IdSet.empty) in
+    match next_sl with
+    | None -> None
+    | Some sl -> if IdSet.is_empty sl
+                 then Some sls
+                 else add_next_level_states (sl::sls)
+  in
+  let init = [IdSet.singleton initial_state_id] in
+  let lvls = add_next_level_states init in
+  match lvls with
+  | None -> None  
+  | Some sls -> let _, lin =
+                  List.fold_left (fun (lvl_no,lin) sl ->
+                    let lin = IdSet.fold (fun id lin ->
+                                  IdMap.add id lvl_no lin
+                                ) sl lin in
+                    (lvl_no + 1, lin)
+                    ) (0,IdMap.empty) sls in
+                Some lin
