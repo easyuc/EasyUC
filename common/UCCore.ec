@@ -9,6 +9,7 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
    ports *)
 
 require export UCBasicTypes.
+require import UCListAux.
 
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities") *)
@@ -492,23 +493,58 @@ end MakeInterface.
    Translator from UC DSL to EasyCrypt will turn real functionalities
    into plugins to the wrapper. *)
 
+type rf_info =
+  {rfi_num_parties         : int;
+   rfi_num_subfuns         : int;
+   rfi_num_params          : int;
+   rfi_adv_pi_begin        : int;  (* first adv pi of instance of unit *)
+   rfi_adv_pi_main_end     : int;  (* last advi pi not from params *)
+   rfi_adv_pi_begin_params : int list;
+   rfi_adv_pi_end_params   : int list}.
+   
+op rf_info_valid (rfi : rf_info) : bool =
+  1 <= rfi.`rfi_num_parties /\
+  0 <= rfi.`rfi_num_subfuns /\
+  0 <= rfi.`rfi_num_params /\
+  1 <= rfi.`rfi_adv_pi_begin /\
+  (* includes adv pi of ideal functionality of unit *)
+  rfi.`rfi_adv_pi_begin < rfi.`rfi_adv_pi_main_end /\
+  size rfi.`rfi_adv_pi_begin_params = rfi.`rfi_num_params /\
+  size rfi.`rfi_adv_pi_end_params   = rfi.`rfi_num_params /\
+  (1 <= rfi.`rfi_num_params =>
+   nth 0 rfi.`rfi_adv_pi_begin_params 1 = rfi.`rfi_adv_pi_main_end + 1 /\
+   (forall (pari : int),
+    1 <= pari <= rfi.`rfi_num_params =>
+    nth 0 rfi.`rfi_adv_pi_begin_params pari <
+    nth 0 rfi.`rfi_adv_pi_end_params pari) /\
+   (forall (pari : int),
+    1 <= pari <= rfi.`rfi_num_params - 1 =>
+    nth 0 rfi.`rfi_adv_pi_begin_params (pari + 1) =
+    nth 0 rfi.`rfi_adv_pi_end_params pari + 1)).
+
+op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  1 <= k <= rfi.`rfi_num_params /\ self ++ [k] <= addr.
+
+op addr_eq_param (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  1 <= k <= rfi.`rfi_num_params /\ addr = self ++ [k].
+
+op addr_eq_subfun (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  rfi.`rfi_num_params + 1 <= k <=
+  rfi.`rfi_num_params + rfi.`rfi_num_subfuns /\
+  addr = self ++ [k].
+
 abstract theory RealFunctionality.
 
 (* begin theory parameters *)
 
-op num_parties : {int | 1 <= num_parties} as ge1_num_parties.
+op rf_info : rf_info.
 
-op num_subfuns : {int | 0 <= num_subfuns} as ge0_num_subfuns.
-
-op num_params : {int | 0 <= num_params} as ge0_num_params.
-
-op adv_pi_num : {int | 0 <= adv_pi_num} as ge0_adv_pi_num.
-
-op adv_pi_begin : {int | 1 <= adv_pi_begin} as ge1_adv_pi_begin.
+axiom rf_info_valid : rf_info_valid rf_info.
 
 (* end theory parameters *)
-
-op adv_pi_end : int = adv_pi_begin + adv_pi_num - 1.
 
 module MakeRF (Core : FUNC) : FUNC = {
   var self : addr
@@ -518,24 +554,60 @@ module MakeRF (Core : FUNC) : FUNC = {
     Core.init(_self);
   }
 
-  proc after_core(r : msg option) : msg option * msg * bool = {
-    var m : msg <- witness;
+  proc after_core(r : msg option, orig_dest_addr : addr)
+         : msg option * msg * bool = {
+    var m : msg <- witness; var pari : int;
     var not_done <- true;
     if (r = None) {
       not_done <- false;
     }
     else {
       m <- oget r;  (* next iteration, if any, will use m *)
-      if (m.`1 = Dir) {
-        if (! self <= m.`2.`1) {
-          not_done <- false;
+      if (m.`3.`1 <> orig_dest_addr) {
+        not_done <- false; r <- None;
+      }
+      elif (m.`1 = Dir) {
+        if (m.`3.`1 = self) {
+          if (envport self m.`2) {
+            not_done <- false;
+          }
+          elif (! (addr_eq_param rf_info self m.`2.`1 \/
+                   addr_eq_subfun rf_info self m.`2.`1)) {
+            not_done <- false; r <- None;
+          }
+        }
+        elif (addr_eq_param  rf_info self m.`3.`1 \/
+              addr_eq_subfun rf_info self m.`3.`1) {
+          if (m.`2.`1 <> self) {
+            not_done <- false; r <- None;
+          }
+        }
+        else {  (* should not happen *)
+          not_done <- false; r <- None;
         }
       }
       else {  (* m.`1 = Adv *)
-        if (m.`2.`1 <> adv \/ ! adv_pi_begin <= m.`2.`2 <= adv_pi_end) {
+        not_done <- false;
+        if (m.`2.`1 <> adv) {
           r <- None;
         }
-        not_done <- false;
+        elif (m.`3.`1 = self \/
+              addr_eq_subfun rf_info self m.`3.`1) {
+          if (! rf_info.`rfi_adv_pi_begin + 1 <= m.`2.`2 <=
+                rf_info.`rfi_adv_pi_main_end) {
+            r <- None;
+          }
+        }
+        elif (addr_ge_param rf_info self m.`3.`1) {
+          pari <- head_of_drop_size_first 0 self m.`3.`1;
+          if (! (nth 0 rf_info.`rfi_adv_pi_begin_params pari < m.`2.`2 <=
+                 nth 0 rf_info.`rfi_adv_pi_end_params pari)) {
+            r <- None;
+          }
+        }
+        else {  (* should not happen *)
+          r <- None;
+        }
       }
     }          
     return (r, m, not_done);
@@ -546,23 +618,19 @@ module MakeRF (Core : FUNC) : FUNC = {
     var not_done : bool <- true;
     while (not_done) {
       r <@ Core.invoke(m);
-      (r, m, not_done) <@ after_core(r);
+      (r, m, not_done) <@ after_core(r, m.`2.`1);
     }
     return r;
   }
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    (* we can assume m.`3.`1 is not >= self and not >= adv *)
-    if ((m.`1 = Dir /\ m.`2.`1 = self /\
-         1 <= m.`2.`2 <= num_parties) \/
+    (* we can assume m.`3.`1 is not >= self *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self) \/
         (m.`1 = Adv /\
-         ((m.`2.`1 = self /\ 1 <= m.`2.`2 <= num_parties) \/
-          (exists (k : int),
-           1 <= k <= num_params /\ self ++ [k] <= m.`2.`1) \/
-          (exists (k : int),
-           num_params + 1 <= k <= num_params + num_subfuns /\
-           m.`2.`1 = self ++ [k])))) {
+         (m.`2.`1 = self \/
+          addr_ge_param rf_info self m.`2.`1 \/
+          addr_eq_subfun rf_info self m.`2.`1))) {
       r <@ loop(m);
     }
     return r;

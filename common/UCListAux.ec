@@ -1,6 +1,6 @@
 (* UCListAux.ec *)
 
-(* Auxiliary Lemmas on Lists *)
+(* Auxiliary Operations and Lemmas on Lists *)
 
 prover quorum=2 ["Alt-Ergo" "Z3"].  (* both Alt-Ergo and Z3 must succeed *)
 
@@ -95,3 +95,10 @@ case (ys ++ z :: zs = z :: zs) => [eq | //].
 rewrite -cat1s catA -(cat0s ([z] ++ zs)) -catA in eq.
 have // : ys = [] by apply (catIs ys [] ([z] ++ zs)).
 qed.
+
+op drop_size_first (xs ys : 'a list) : 'a list =
+  drop (size xs) ys.
+
+op head_of_drop_size_first (dft : 'a, xs ys : 'a list) : 'a =
+  head dft (drop_size_first xs ys).
+
