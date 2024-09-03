@@ -28,7 +28,7 @@ let if_addr_opt = "if_addr_opt"
 let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 let addr_op_call_sim (name : string) : string =
   uc__rf^"."^(addr_op_name name)^" "^oget_if_addr_opt
-let if_metric_name = "if_metric"
+let uc_metric_name = "_metric"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -522,13 +522,103 @@ let clone_adv_inter (ppf : Format.formatter) (id : string) =
       _pi adv_if_pi_op_name;
     Format.fprintf ppf "@[proof *.@]@;@;"
 (*
-op metric (g : glob M) : int =
-  match g.`1 with
-  | Init  => 2
-  | Next  => 1
-  | Final => 0
-  end.
+ lemma invoke (n : int) :
+  hoare
+    [
+      UC_SMC2Ideal.invoke :
+    if_metric (glob UC_SMC2Ideal)= n ==>
+   (res <> None =>
+     if_metric (glob UC_SMC2Ideal) < n)
+ ].
+ proof.
+proc.
+sp 1.
+if.
+inline.
  *)
+let print_lemma_metric_invoke (metric_name : string) (module_name : string) 
+      (root : string)
+      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
+  let print_proof_state_match_branch (ppf : Format.formatter)
+        (state : state_tyd) : unit =
+      let st = EcLocation.unloc state in
+      let rec print_proof_mm ppf (mmcs : msg_match_clause_tyd list) : unit =
+        let print_proof_mmc ppf (mmc : msg_match_clause_tyd) : unit =
+          let rec print_proof_code ppf
+                    (code : instruction_tyd list EcLocation.located) : unit =
+            let print_instruction ppf (it : instruction_tyd) : unit =
+              match EcLocation.unloc it with
+              | Assign (lhs, expr) ->
+                 Format.fprintf ppf "@[sp 1.@]@;"
+              | Sample (lhs, expr) ->
+                 Format.fprintf ppf "@[sp 1.@]@;"
+              | ITE (expr, thencode, elsecodeo) -> begin
+                   Format.fprintf ppf "@[if.@]@;";
+                   print_proof_code ppf thencode;
+                   if elsecodeo <> None then
+                     print_proof_code ppf (EcUtils.oget elsecodeo)
+                   end
+              | Match (expr, mcl) -> begin
+                 Format.fprintf ppf "@[match.@]@;";
+                 List.iter (fun (_,(_,code))-> print_proof_code ppf code)
+                   (EcLocation.unloc mcl)
+                end
+              | SendAndTransition sat ->
+                 Format.fprintf ppf "@[sp. skip. smt.@]@;"
+              | Fail ->
+                 Format.fprintf ppf "@[sp. skip. smt.@]@;"
+            in
+            
+            let code = EcLocation.unloc code in
+            List.iter (fun it -> Format.fprintf ppf "%a@;"
+                                   print_instruction it) code
+          in
+          
+          Format.fprintf ppf "@[sp %i.@]@;"
+            (List.length (msg_match_clause_msg_pat_bindings mmc));
+          print_proof_code ppf mmc.code
+        in
+        
+        if List.is_empty mmcs
+        then ()
+        else
+          let mmc = List.hd mmcs in
+          let mp = get_msg_path mmc.msg_pat.msg_path_pat in
+          let msg_name, is_internal, iiphd, pfx, mb, epdp_str =
+            get_msg_info mp dii IdPairMap.empty root mbmap in
+          Format.fprintf ppf "@[match.@]@;";
+          if is_internal then
+            Format.fprintf ppf "@[if.@]@;"
+          ;
+          Format.fprintf ppf "@[sp %i.@]" ((Mid.cardinal st.params) + 1);
+          print_proof_mmc ppf mmc;
+          print_proof_mm ppf (List.tl mmcs);
+      in
+      
+  let mmcs = List.filter (fun mmc -> not
+    (UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)
+  ) st.mmclauses in
+  print_proof_mm ppf mmcs;
+  in
+    
+  Format.fprintf ppf "@[lemma invoke (n : int) : hoare [@]@;<0 2>@[<v>";
+  Format.fprintf ppf
+  "%s.invoke :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)"
+  module_name metric_name module_name metric_name module_name;
+  Format.fprintf ppf "@]@;].@;";
+  Format.fprintf ppf "@[proof.@]@;";
+  Format.fprintf ppf "@[proc.@]@;";
+  Format.fprintf ppf "@[sp 1.@]@;";
+  Format.fprintf ppf "@[if.@]@;";
+  Format.fprintf ppf "@[inline.@]@;";
+  Format.fprintf ppf "@[sp 2.@]@;";
+  Format.fprintf ppf "@[match.@]@;";
+  IdMap.iter (fun _ st -> Format.fprintf ppf "%a"
+                            print_proof_state_match_branch st) st_map;
+  
+  Format.fprintf ppf "@[qed.@]@;"
+
 let print_state_metric (name : string) (module_name : string) (var_indx : int)
   (state_name : string -> string)
   (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
@@ -564,7 +654,10 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
   Format.fprintf sf "@[%a@]@;@;"
-    (print_state_metric if_metric_name (uc_name id) 1 state_name)
+    (print_state_metric uc_metric_name (uc_name id) 1 state_name)
+    ifbt.states;
+  Format.fprintf sf "@[%a@]@;@;"
+    (print_lemma_metric_invoke uc_metric_name (uc_name id) root mbmap dii)
     ifbt.states;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
   Format.fprintf sf "@]";
