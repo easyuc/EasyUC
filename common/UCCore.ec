@@ -502,6 +502,14 @@ type rf_info =
    rfi_adv_pi_begin_params : int list;
    rfi_adv_pi_end_params   : int list}.
    
+(* index from 1: *)
+
+op nth1_adv_pi_begin_params (rfi : rf_info, pari) : int =
+  nth 0 rfi.`rfi_adv_pi_begin_params (pari - 1).
+
+op nth1_adv_pi_end_params (rfi : rf_info, pari) : int =
+  nth 0 rfi.`rfi_adv_pi_end_params (pari - 1).
+
 op rf_info_valid (rfi : rf_info) : bool =
   1 <= rfi.`rfi_num_parties /\
   0 <= rfi.`rfi_num_subfuns /\
@@ -512,15 +520,14 @@ op rf_info_valid (rfi : rf_info) : bool =
   size rfi.`rfi_adv_pi_begin_params = rfi.`rfi_num_params /\
   size rfi.`rfi_adv_pi_end_params   = rfi.`rfi_num_params /\
   (1 <= rfi.`rfi_num_params =>
-   nth 0 rfi.`rfi_adv_pi_begin_params 1 = rfi.`rfi_adv_pi_main_end + 1 /\
+   nth1_adv_pi_begin_params rfi 1 = rfi.`rfi_adv_pi_main_end + 1 /\
    (forall (pari : int),
     1 <= pari <= rfi.`rfi_num_params =>
-    nth 0 rfi.`rfi_adv_pi_begin_params pari <
-    nth 0 rfi.`rfi_adv_pi_end_params pari) /\
+    nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_end_params rfi pari) /\
    (forall (pari : int),
     1 <= pari <= rfi.`rfi_num_params - 1 =>
-    nth 0 rfi.`rfi_adv_pi_begin_params (pari + 1) =
-    nth 0 rfi.`rfi_adv_pi_end_params pari + 1)).
+    nth1_adv_pi_begin_params rfi (pari + 1) =
+    nth1_adv_pi_end_params rfi pari + 1)).
 
 op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
   exists (k : int),
@@ -593,15 +600,15 @@ module MakeRF (Core : FUNC) : FUNC = {
         }
         elif (m.`3.`1 = self \/
               addr_eq_subfun rf_info self m.`3.`1) {
-          if (! rf_info.`rfi_adv_pi_begin + 1 <= m.`2.`2 <=
+          if (! rf_info.`rfi_adv_pi_begin < m.`2.`2 <=
                 rf_info.`rfi_adv_pi_main_end) {
             r <- None;
           }
         }
         elif (addr_ge_param rf_info self m.`3.`1) {
           pari <- head_of_drop_size_first 0 self m.`3.`1;
-          if (! (nth 0 rf_info.`rfi_adv_pi_begin_params pari < m.`2.`2 <=
-                 nth 0 rf_info.`rfi_adv_pi_end_params pari)) {
+          if (! (nth1_adv_pi_begin_params rf_info pari < m.`2.`2 <=
+                 nth1_adv_pi_end_params rf_info pari)) {
             r <- None;
           }
         }

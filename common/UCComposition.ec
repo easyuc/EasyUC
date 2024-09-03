@@ -25,6 +25,8 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
     Par.init(_self ++ [change_pari]);
   }
 
+  (* the same as after_core from MakeRF: *)
+
   proc after_core_or_par(r : msg option, orig_dest_addr)
          : msg option * msg * bool = {
     var m : msg <- witness; var pari : int;
@@ -71,8 +73,8 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
         }
         elif (addr_ge_param rf_info self m.`3.`1) {
           pari <- head_of_drop_size_first 0 self m.`3.`1;
-          if (! (nth 0 rf_info.`rfi_adv_pi_begin_params pari < m.`2.`2 <=
-                 nth 0 rf_info.`rfi_adv_pi_end_params pari)) {
+          if (! (nth1_adv_pi_begin_params rf_info pari < m.`2.`2 <=
+                 nth1_adv_pi_end_params rf_info pari)) {
             r <- None;
           }
         }
