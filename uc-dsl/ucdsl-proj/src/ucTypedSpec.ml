@@ -385,6 +385,49 @@ let vars_map_to_domain (mp : (EcIdent.t * ty) located IdMap.t) : IdSet.t =
 
 type state_tyd = state_body_tyd located  (* typed state *)
 
+(* return the set of possible next states of a located list of
+   instructions that has already passed the control transfer
+   checks (UcTypecheck.check_instrs_transfer_at_end) *)
+
+let rec state_transitions_of_instrs (is : instruction_tyd list located)
+          : IdSet.t =
+  let uis = unloc is in
+  match uis with
+  | [] -> failure "should not happen"
+  | is -> state_transitions_of_instr (List.last is)
+
+and state_transitions_of_instr (instr : instruction_tyd) : IdSet.t =
+  let uinstr = unloc instr in
+  match uinstr with
+  | Assign _                    -> failure "should not happen"
+  | Sample _                    -> failure "should not happen"
+  | ITE (_, thens, elses)       ->
+      IdSet.union (state_transitions_of_instrs thens)
+      (match elses with
+       | None       -> failure "should not happen"
+       | Some elses -> state_transitions_of_instrs elses)
+  | Match (_, clauses)          ->
+      List.fold_left
+      (fun ids (_, (_, is)) ->
+         IdSet.union ids (state_transitions_of_instrs is))
+      IdSet.empty
+      (unloc clauses)
+  | SendAndTransition sat       ->
+      IdSet.singleton (unloc sat.state_expr.id)
+  | Fail                        -> IdSet.empty
+
+(* return the set of possible next states of a typed state that has
+   already passed the control transfer checks
+   (UcTypecheck.check_instrs_transfer_at_end) *)
+
+let state_transitions_of_state (st : state_tyd) : IdSet.t =
+  let sbt = unloc st in
+  List.fold_left
+  (fun ids mmclause ->
+     IdSet.union ids (state_transitions_of_instrs mmclause.code))
+  IdSet.empty
+  sbt.mmclauses
+
 (* should only be called when the number of parameters and arguments
    are the same *)
 

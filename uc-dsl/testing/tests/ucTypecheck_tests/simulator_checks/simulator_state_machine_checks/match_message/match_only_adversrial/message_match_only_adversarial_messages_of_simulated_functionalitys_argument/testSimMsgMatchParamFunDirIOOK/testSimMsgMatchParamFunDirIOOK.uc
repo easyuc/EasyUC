@@ -61,7 +61,7 @@ functionality I() implements D Iio {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with Iio.* => {fail.} end
+  match message with Iio.bli => {send Iio.bla and transition II.} end
  }
 
  state II() {

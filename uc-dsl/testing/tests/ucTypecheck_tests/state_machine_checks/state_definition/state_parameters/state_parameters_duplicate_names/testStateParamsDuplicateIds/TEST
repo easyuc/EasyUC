@@ -3,7 +3,7 @@ This test fails because the variable p is defined more than once
 .
 args: testStateParamsDuplicateIds.uc
 outcome:  failure
-[error: testStateParamsDuplicateIds.uc: from line 16 columns 19 to 20]
+[error: testStateParamsDuplicateIds.uc: from line 17 columns 19 to 20]
 
 duplicate parameter name: p
 .

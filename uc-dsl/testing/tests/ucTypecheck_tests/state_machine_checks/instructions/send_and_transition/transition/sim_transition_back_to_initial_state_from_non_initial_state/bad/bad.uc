@@ -19,12 +19,6 @@ functionality F() implements D {
     sender@D.D'.bla() => { fail. }
    end
   }
-
-  state J {
-    match message with
-      sender@D.D'.bla() => { fail. }
-    end
-  }
  }
 }
 
@@ -32,12 +26,6 @@ simulator S uses A simulates F {
   initial state Init {
     match message with
     | A.pong => { send A.ping and transition Init. }
-    end
-  }
-
-  state Final {
-    match message with
-    | * => { fail. }
     end
   }
 }

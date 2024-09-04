@@ -1,0 +1,9 @@
+description
+  First reachability test - failure.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 27 columns 11 to 17]
+
+state Other1 is not reachable from initial state
+.
