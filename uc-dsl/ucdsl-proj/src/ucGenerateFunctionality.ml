@@ -550,34 +550,46 @@ let print_lemma_metric_invoke (metric_name : string) (module_name : string)
             let print_instruction ppf (it : instruction_tyd) : unit =
               match EcLocation.unloc it with
               | Assign (lhs, expr) ->
-                 Format.fprintf ppf "@[sp 1.@]@;"
+                 Format.fprintf ppf "@[sp 1. (*Assign instruction*)@]@;"
               | Sample (lhs, expr) ->
-                 Format.fprintf ppf "@[sp 1.@]@;"
+                 Format.fprintf ppf
+                 "@[seq 1 : (#pre). rnd. skip. smt. (*Sample instruction*)@]@;"
               | ITE (expr, thencode, elsecodeo) -> begin
-                   Format.fprintf ppf "@[if.@]@;";
+                  Format.fprintf ppf "@[if. (*if instruction*)@]@;";
                    print_proof_code ppf thencode;
                    if elsecodeo <> None then
                      print_proof_code ppf (EcUtils.oget elsecodeo)
                    end
               | Match (expr, mcl) -> begin
-                 Format.fprintf ppf "@[match.@]@;";
-                 List.iter (fun (_,(_,code))-> print_proof_code ppf code)
-                   (EcLocation.unloc mcl)
+                  let mcl = EcLocation.unloc mcl in
+                  Format.fprintf ppf
+                    "@[match. (*match instruction with %i branches*)@]@;"
+                    (List.length mcl);
+                  List.iter (fun (s,(_,code))->
+                      Format.fprintf ppf "@[(*branch %s*) %a@]"
+                        s print_proof_code code) mcl
                 end
               | SendAndTransition sat ->
-                 Format.fprintf ppf "@[sp. skip. smt.@]@;"
+                 Format.fprintf ppf
+                   "@[sp 4. skip. smt. (*SendAndTransition instruction*)@]@;"
               | Fail ->
-                 Format.fprintf ppf "@[sp. skip. smt.@]@;"
+                 Format.fprintf ppf "@[sp 3. skip. smt. (*Fail instruction*)@]@;"
             in
             
             let code = EcLocation.unloc code in
             List.iter (fun it -> Format.fprintf ppf "%a@;"
                                    print_instruction it) code
           in
-          
-          Format.fprintf ppf "@[sp %i.@]@;"
-            (List.length (msg_match_clause_msg_pat_bindings mmc));
-          print_proof_code ppf mmc.code
+
+          let pat_no = List.length (msg_match_clause_msg_pat_bindings mmc) in
+          if pat_no > 0
+          then Format.fprintf ppf "@[sp %i. (*pattern bindings*)@]@;" pat_no
+          ;
+          let is_empty = (EcLocation.unloc mmc.code = [])in
+          if is_empty
+          then Format.fprintf ppf
+                 "@[skip. smt. (*empty message match clause*)@]@;"
+          else print_proof_code ppf mmc.code
         in
         
         if List.is_empty mmcs
@@ -587,11 +599,16 @@ let print_lemma_metric_invoke (metric_name : string) (module_name : string)
           let mp = get_msg_path mmc.msg_pat.msg_path_pat in
           let msg_name, is_internal, iiphd, pfx, mb, epdp_str =
             get_msg_info mp dii IdPairMap.empty root mbmap in
-          Format.fprintf ppf "@[match.@]@;";
+          Format.fprintf ppf "@[match. (*message match*)@]@;";
+          Format.fprintf ppf
+            "@[sp 1. skip. smt. (*first message match goal*)@]@;";
           if is_internal then
-            Format.fprintf ppf "@[if.@]@;"
+            Format.fprintf ppf
+              "@[if.(*address check for internal messages*)@]@;"
           ;
-          Format.fprintf ppf "@[sp %i.@]" ((Mid.cardinal st.params) + 1);
+            Format.fprintf ppf
+            "@[sp %i. (*state param assignment, return value initialization*)@]"
+              ((Mid.cardinal st.params) + 1);
           print_proof_mmc ppf mmc;
           print_proof_mm ppf (List.tl mmcs);
       in
@@ -609,14 +626,15 @@ let print_lemma_metric_invoke (metric_name : string) (module_name : string)
   Format.fprintf ppf "@]@;].@;";
   Format.fprintf ppf "@[proof.@]@;";
   Format.fprintf ppf "@[proc.@]@;";
-  Format.fprintf ppf "@[sp 1.@]@;";
-  Format.fprintf ppf "@[if.@]@;";
+  Format.fprintf ppf "@[sp 1. (*initializing return value*)@]@;";
+  Format.fprintf ppf "@[if. (*invoke guard*)@]@;";
   Format.fprintf ppf "@[inline.@]@;";
-  Format.fprintf ppf "@[sp 2.@]@;";
-  Format.fprintf ppf "@[match.@]@;";
+  Format.fprintf ppf "@[sp 2. (*initializing input, return value*)@]@;";
+  Format.fprintf ppf "@[match. (*state match*)@]@;";
+  Format.fprintf ppf "@[sp 1. skip. smt. (*first state match goal*)@]@;";
   IdMap.iter (fun _ st -> Format.fprintf ppf "%a"
                             print_proof_state_match_branch st) st_map;
-  
+  Format.fprintf ppf "@[skip. smt. (*invoke guard false*)@]@;";
   Format.fprintf ppf "@[qed.@]@;"
 
 let print_state_metric (name : string) (module_name : string) (var_indx : int)
