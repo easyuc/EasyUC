@@ -20,7 +20,7 @@ functionality Ideal implements D A {
   party P serves D.E A.B {
     initial state Ini {
       match message with
-        pt@D.E.msgin => {fail.}
+        pt@D.E.msgin => {send A.B.msgout and transition Other.}
       end
     }
 

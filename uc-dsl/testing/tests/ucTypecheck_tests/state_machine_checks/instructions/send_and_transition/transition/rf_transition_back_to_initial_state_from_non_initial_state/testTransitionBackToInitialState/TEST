@@ -3,7 +3,7 @@ The test checks a party of a real functionality transitioning back to an initial
 .
 args: testTransitionBackToInitialState.uc
 outcome: failure
-[error: testTransitionBackToInitialState.uc: from line 20 columns 66 to 67]
+[error: testTransitionBackToInitialState.uc: from line 14 columns 64 to 65]
 
 party of real functionality cannot transition back to initial state
 .

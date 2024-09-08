@@ -3,7 +3,7 @@ This test fails because qort is a non-exsting type
 .
 args: testStateParamsNonExistingType.uc
 outcome:  failure
-[error: testStateParamsNonExistingType.uc: from line 16 columns 21 to 25]
+[error: testStateParamsNonExistingType.uc: from line 17 columns 21 to 25]
 
 unknown type name: qort
 .

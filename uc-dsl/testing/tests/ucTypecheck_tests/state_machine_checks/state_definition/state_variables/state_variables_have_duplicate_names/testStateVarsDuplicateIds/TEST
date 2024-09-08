@@ -3,7 +3,7 @@ This test fails because the variable p is defined twice in state T
 .
 args: testStateVarsDuplicateIds.uc
 outcome: failure
-[error: testStateVarsDuplicateIds.uc: from line 18 columns 20 to 21]
+[error: testStateVarsDuplicateIds.uc: from line 19 columns 20 to 21]
 
 duplicate variable name: p
 .

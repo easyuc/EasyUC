@@ -1,0 +1,6 @@
+description
+  Second reachability test - resolution.
+.
+args: good.uc
+outcome: success
+.

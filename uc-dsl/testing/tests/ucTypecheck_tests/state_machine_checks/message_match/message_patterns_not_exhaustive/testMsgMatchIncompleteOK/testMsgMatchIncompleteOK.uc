@@ -16,7 +16,7 @@ functionality S() implements D I {
   initial state Ini
   {
     match message with
-    | x@D.D.bla => {fail.}
+    | x@D.D.bla => {send I.bli and transition Other.}
     end
   }
 

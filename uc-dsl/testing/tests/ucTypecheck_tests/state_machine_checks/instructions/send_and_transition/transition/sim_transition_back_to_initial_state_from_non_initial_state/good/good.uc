@@ -19,12 +19,6 @@ functionality F() implements D {
     sender@D.D'.bla() => { fail. }
    end
   }
-
-  state J {
-    match message with
-      sender@D.D'.bla() => { fail. }
-    end
-  }
  }
 }
 

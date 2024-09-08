@@ -15,7 +15,7 @@ functionality R(F:D) implements D {
  party P serves D.D {
 
   initial state In {
-  match message with * => {fail.} end
+  match message with *  => {fail.} end
   }
  }
 }
@@ -30,11 +30,14 @@ functionality I() implements D Iio {
 simulator S uses Iio simulates R(I) {
 
  initial state In {
-  match message with Iio.* => {fail.} end
+  match message with Iio.bli => {send Iio.bla and transition II.} end
  }
 
  state II() {
-  match message with R.F.Iio.bli() => {fail.} end
+  match message with
+  R.F.Iio.bla() => {fail.}
+  | * => {fail.}
+  end
  }
 
 }
