@@ -140,7 +140,7 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
           if (m.`1 = Adv) {
             stub_st <- Some m;
             (* only mode and destination port matter (destination port id
-               must not be 0) *)
+               must simply be > 0) *)
             r <-
               Some
               (Adv, (adv, 1), (func ++ [change_pari], 1), TagNoInter, []);
@@ -231,7 +231,9 @@ declare axiom par_down (n : int) :
 
 lemma comp_bridge
       (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
-  in_guard_low' \subset in_guard_hi' => rest_adv_pi_ok in_guard_hi' =>
+  exper_pre func' =>
+  in_guard_low' \subset in_guard_hi' =>
+  rest_adv_pi_ok in_guard_hi' =>
   CompEnv.in_guard_low{m} = in_guard_low' =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
        .main(func', in_guard_low') @ &m : res] =
@@ -242,8 +244,6 @@ admit.
 qed.
 
 end section.
-
-print comp_bridge.
 
 lemma compos_bridge
       (Env <: ENV) (Adv <: ADV{-Env})
@@ -265,7 +265,9 @@ lemma compos_bridge
     ={m, glob Par} /\ term_par (glob Par){1} = n ==>
     ={res, glob Par} /\
     (res{1} = None \/ term_par (glob Par){1} < n)]) =>
-  in_guard_low' \subset in_guard_hi' => rest_adv_pi_ok in_guard_hi' =>
+  exper_pre func' =>
+  in_guard_low' \subset in_guard_hi' =>
+  rest_adv_pi_ok in_guard_hi' =>
   CompEnv.in_guard_low{m} = in_guard_low' =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
        .main(func', in_guard_low') @ &m : res] =
@@ -283,4 +285,3 @@ apply
 qed.
 
 end CompBridge.
-
