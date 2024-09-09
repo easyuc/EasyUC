@@ -13,6 +13,7 @@ let state_type_name_pt (ptname : string) : string =
 
 let uc__if = "UC__IF"
 let uc__sim = "UC__SIM"
+let _RF = "RF"
 let _st = "_st"
 let st_name (name : string) = "_st_"^name
 let _m = "_m"
@@ -554,7 +555,7 @@ let print_proof_state_match (root : string)
                     "@[match. (*match instruction with %i branches*)@]@;"
                     (List.length mcl);
                   List.iter (fun (s,(_,code))->
-                      Format.fprintf ppf "@[(*branch %s*)@ %a@]"
+                      Format.fprintf ppf "@[(*branch %s*)@ %a@]@;"
                         s print_proof_code code) mcl
                 end
               | SendAndTransition sat -> begin
@@ -853,6 +854,18 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@]@\n}.";
   ()
 
+let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
+  let parampath pmn = (uc_name pmn)^"."^uc__code^"."^_RF in
+  if pmns = []
+  then ()
+  else
+    let hd = List.hd pmns in
+    let tl = List.tl pmns in
+    Format.fprintf ppf "@[(%s%a)@]" (parampath hd) (fun ppf () ->
+      List.iter (fun pmn -> Format.fprintf ppf ", %s" (parampath pmn)) tl) ()
+
+
+
 let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
   let print_cloneRF =
   Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
@@ -873,30 +886,31 @@ let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
   in 
   let print_MakeRF =
     Format.fprintf ppf
-    "@[module RF%a = RFCore.MakeRF(%s.%s%a).@]"
-    print_params_FUNC rfbt.params
+      "@[module %s = RFCore.MakeRF(%s.%s%a).@]"
+    _RF
     uc__rf
     (uc_name id)
-    print_params_list rfbt.params
+    print_module_params (indexed_map_to_list_only_keep_keys rfbt.params)
   in
   print_cloneRF;
   print_MakeRF
     
 let print_RF_metric (id : string) (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (ppf : Format.formatter) (parties : party_tyd IdMap.t)
+      (pmns : string list) (ppf : Format.formatter) (parties : party_tyd IdMap.t)
     : unit =
   let print_party_metric (pn : string) (pt : party_tyd) (idx : int) : unit =
     let metric_name = uc_party_metric_name pn in
     let module_name = uc_name id in
     let st_map = (EcLocation.unloc pt).states in
-    let print_Pt_lemma_metric_invoke ppf () : unit =    
+    let print_Pt_lemma_metric_invoke (ppf : Format.formatter) () : unit =
       Format.fprintf ppf "@[lemma _invoke_%s (n : int) : hoare [@]@;<0 2>@[<v>"
         pn;
       Format.fprintf ppf
-        "%s.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)"
-        module_name (proc_party_str pn) metric_name module_name metric_name
-        module_name;
+        "%s%a.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)" 
+        module_name print_module_params pmns (proc_party_str pn)
+        metric_name module_name
+        metric_name module_name;
       Format.fprintf ppf "@]@;].@;";
       Format.fprintf ppf "@[proof. proc. inline. (*inline procedure calls*)@]@;";
       print_proof_state_match root mbmap dii "" ppf st_map;
@@ -924,9 +938,11 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
                                     rapm.party_ext_port_id) rfbt;
-   Format.fprintf sf "%a" (print_RF_metric id root mbmap dii) rfbt.parties;
+  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  Format.fprintf sf "@[<v>%a@]@;@;" (print_RF_metric id root mbmap dii pmns)
+    rfbt.parties;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
-  Format.fprintf sf "@[<v>%a@]@;"   print_cloneRF_MakeRF (id,rfbt);
+  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
