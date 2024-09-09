@@ -110,8 +110,6 @@ module type ENV (Inter : INTER) = {
   proc main(func : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
 
-abstract theory Experiment.
-
 (* carry out experiment in which the environment is allowed to
    interact with, and issue a final boolean judgment about, an
    interface, which is first initialized *)
@@ -147,8 +145,6 @@ module Exper (Inter : INTER, Env : ENV) = {
     return b;
   }    
 }.
-
-end Experiment.
 
 abstract theory MakeInterface.
 
@@ -488,6 +484,13 @@ qed.
 
 end MakeInterface.
 
+(* the top-level interface in theorems *)
+
+clone MakeInterface as MakeInt
+proof *.
+
+module MI = MakeInt.MI.
+
 (* Wrapper for Real Functionalities
 
    Translator from UC DSL to EasyCrypt will turn real functionalities
@@ -607,7 +610,7 @@ module MakeRF (Core : FUNC) : FUNC = {
         }
         elif (addr_ge_param rf_info self m.`3.`1) {
           pari <- head_of_drop_size_first 0 self m.`3.`1;
-          if (! (nth1_adv_pi_begin_params rf_info pari < m.`2.`2 <=
+          if (! (nth1_adv_pi_begin_params rf_info pari <= m.`2.`2 <=
                  nth1_adv_pi_end_params rf_info pari)) {
             r <- None;
           }
