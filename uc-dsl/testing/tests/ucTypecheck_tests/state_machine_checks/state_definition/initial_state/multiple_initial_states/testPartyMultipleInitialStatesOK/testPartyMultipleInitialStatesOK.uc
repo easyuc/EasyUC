@@ -1,5 +1,6 @@
 direct A' {
 in x@bla()
+out bli@x
 }
 
 direct A {A:A'}
@@ -9,7 +10,7 @@ functionality F() implements A {
   initial state S
   {
    match message with
-    * => {fail.}
+    x@A.A.bla => {send A.A.bli@x and transition T.}
    end
   }
 

@@ -3,7 +3,7 @@ This test check whether a party can have more than one initial state
 .
 args: testPartyMultipleInitialStates.uc
 outcome:  failure
-[error: testPartyMultipleInitialStates.uc: from line 8 columns 8 to 9]
+[error: testPartyMultipleInitialStates.uc: from line 9 columns 8 to 9]
 
 P has more than one initial state
 .

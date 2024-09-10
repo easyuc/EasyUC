@@ -1607,7 +1607,7 @@ let check_msg_match_clause
     (mmc : msg_match_clause) : msg_match_clause_tyd =
   let (msg_pat, env) = check_msg_pat abip mmc.msg_pat sc env in
   let code = check_msg_match_code abip ss sc sa env mmc.code in
-  {msg_pat = msg_pat; code = code }
+  {msg_pat = msg_pat; code = code}
 
 (* checking states *)
 
@@ -1719,6 +1719,36 @@ let check_lowlevel_state
      mmclauses      = code} in
   mk_loc (loc state) us'
 
+(* check that all states are reachable from the initial state
+   of otherwise checked states *)
+
+let check_reachability (states : state_tyd IdMap.t) : unit =
+  let rec closure olds nws =
+    match nws with
+    | []        -> IdSet.of_list olds
+    | nw :: nws ->
+      if List.mem nw olds
+      then closure olds nws
+      else let st = IdMap.find nw states in
+           let nexts = 
+             IdSet.to_list (state_transitions_of_state st) in
+           closure (olds @ [nw]) (nws @ nexts) in
+  let init_id = initial_state_id_of_states states in
+  let clos = closure [] [init_id] in
+  if IdSet.cardinal clos <> IdMap.cardinal states
+  then let fst_non_reach_id =
+         List.hd
+         (IdSet.to_list
+          (IdSet.diff
+           (IdSet.of_list (List.map fst (IdMap.bindings states)))
+           clos)) in
+       let fst_non_reach_st = IdMap.find fst_non_reach_id states in
+       error_message (loc fst_non_reach_st)
+       (fun ppf ->
+          fprintf ppf
+          "@[state@ %s@ is@ not@ reachable@ from@ initial@ state@]"
+          fst_non_reach_id)
+
 (* check the lower-level of a state_tyd IdMap.t state machine;
    used for states of both real and ideal functionalities, and
    simulators; kind will be RealPartyKind b (where b says if the
@@ -1728,9 +1758,11 @@ let check_lowlevel_states
     (abip : all_basic_inter_paths) (kind : kind)
     (internal_ports : QidSet.t) (states : state_mid IdMap.t)
       : state_tyd IdMap.t =
-  IdMap.map
+  let states =
+    IdMap.map
     (check_lowlevel_state abip kind internal_ports states)
-  states
+    states
+  in check_reachability states; states
 
 (* this is for use in checking ideal functionalities and simulators;
    not used when checking parties of real functionalities;

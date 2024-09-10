@@ -18,7 +18,7 @@ functionality S() implements D A {
   initial state Is 
   {
    match message with
-   | x@D.D.bla => {fail.}
+   | x@D.D.bla => {send A.A.bli and transition Other.}
    end
   }
 
