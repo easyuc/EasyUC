@@ -647,6 +647,56 @@ module MakeRF (Core : FUNC) : FUNC = {
   }
 }.
 
+lemma MakeRF_invoke_term_metric (Core <: FUNC{-MakeRF})
+      (tm_Core : glob Core -> int, n : int) :
+  (forall (n : int),
+   equiv
+   [Core.invoke ~ Core.invoke :
+    ={glob Core, m} /\ tm_Core (glob Core){1} = n ==>
+    ={glob Core, res} /\
+    (res{1} <> None => tm_Core (glob Core){1} < n)]) =>
+  equiv
+  [MakeRF(Core).invoke ~ MakeRF(Core).invoke :
+   ={glob MakeRF, glob Core, m} /\ tm_Core (glob Core){1} = n ==>
+   ={glob MakeRF, glob Core, res} /\
+   (res{1} <> None => tm_Core (glob Core){1} < n)].
+proof.
+move => Core_invoke_tm.
+proc; sp 1 1; if => //.
+inline MakeRF(Core).loop; wp; sp.
+conseq
+  (_ :
+   ={MakeRF.self, glob Core, m0, not_done} /\ not_done{1} /\
+   tm_Core (glob Core){1} = n ==>
+   _) => //.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+seq 1 1 :
+  (={MakeRF.self, glob Core, m0, r0} /\
+   (r0{1} <> None => tm_Core (glob Core){1} < n)).
+call (Core_invoke_tm n); first auto; smt().
+seq 1 1 : 
+  (={MakeRF.self, glob Core, m0, r0, not_done} /\
+   (r0{1} = None  => ! not_done{1}) /\
+   (r0{1} <> None => tm_Core (glob Core){1} < n)).
+inline*; auto; progress; smt().
+while
+  (={MakeRF.self, glob Core, m0, r0, not_done} /\
+   (r0{1} = None  => ! not_done{1}) /\
+   (r0{1} <> None => tm_Core (glob Core){1} < n)).
+conseq
+  (_ :
+   (={MakeRF.self, glob Core, m0, r0, not_done} /\
+    tm_Core (glob Core){1} < n) ==>
+   _); first smt().
+exlim (tm_Core (glob Core){1}) => n'.
+seq 1 1 :
+  (={MakeRF.self, glob Core, m0, r0} /\
+   (r0{1} <> None => tm_Core (glob Core){1} < n)).
+call (Core_invoke_tm n'); first auto; smt().
+inline*; auto; progress; smt().
+auto.
+qed.
+
 end RealFunctionality.
 
 abstract theory DummyAdversary.

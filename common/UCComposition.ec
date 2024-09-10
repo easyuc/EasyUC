@@ -217,7 +217,7 @@ declare axiom rest_down (n : int) :
    [Rest.invoke ~ Rest.invoke :
     ={m, glob Rest} /\ term_rest (glob Rest){1} = n ==>
     ={res, glob Rest} /\
-    (res{1} = None \/ term_rest (glob Rest){1} < n)].
+    (res{1} <> None => term_rest (glob Rest){1} < n)].
 
 declare axiom ge0_term_par (gl : glob Par) :
   0 <= term_par gl.
@@ -227,7 +227,7 @@ declare axiom par_down (n : int) :
    [Par.invoke ~ Par.invoke :
     ={m, glob Par} /\ term_par (glob Par){1} = n ==>
     ={res, glob Par} /\
-    (res{1} = None \/ term_par (glob Par){1} < n)].
+    (res{1} <> None => term_par (glob Par){1} < n)].
 
 lemma comp_bridge
       (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
@@ -257,14 +257,14 @@ lemma compos_bridge
    [Rest.invoke ~ Rest.invoke :
     ={m, glob Rest} /\ term_rest (glob Rest){1} = n ==>
     ={res, glob Rest} /\
-    (res{1} = None \/ term_rest (glob Rest){1} < n)]) =>
+    (res{1} <> None => term_rest (glob Rest){1} < n)]) =>
   (forall (gl : glob Par), 0 <= term_par gl) =>
   (forall (n : int),
    equiv
    [Par.invoke ~ Par.invoke :
     ={m, glob Par} /\ term_par (glob Par){1} = n ==>
     ={res, glob Par} /\
-    (res{1} = None \/ term_par (glob Par){1} < n)]) =>
+    (res{1} <> None => term_par (glob Par){1} < n)]) =>
   exper_pre func' =>
   in_guard_low' \subset in_guard_hi' =>
   rest_adv_pi_ok in_guard_hi' =>
@@ -274,8 +274,10 @@ lemma compos_bridge
   Pr[Exper(MI(Par, Adv), CompEnv(Rest, Env))
        .main(func' ++ [change_pari], in_guard_hi') @ &m : res].
 proof.
-move => ge0_term_rest term_rest_down ge0_term_par term_par_down.
-move => H1 H2 H3.
+move =>
+  ge0_term_rest term_rest_down ge0_term_par term_par_down
+  ep_func' sub_in_guard_low'_in_guard_high' rest_adv_pi_ok_in_guard_hi'
+  eq_in_guard_low_ce_in_guard_low'.
 apply
   (comp_bridge Env Adv Rest Par
    term_rest term_par
