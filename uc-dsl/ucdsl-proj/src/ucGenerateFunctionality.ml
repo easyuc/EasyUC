@@ -856,22 +856,64 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
 
 
 let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
+(*
+  op rf_info <-
+  {|
+    rfi_num_parties = 2;
+    rfi_num_subfuns = 2;
+    rfi_num_params  = 0;
+    rfi_adv_pi_begin = _adv_pi_begin;  (* first adv pi of instance of unit *)
+    rfi_adv_pi_main_end = _adv_pi_begin + _adv_pi_num;  (* last advi pi not from params *)
+    rfi_adv_pi_begin_params = [];
+    rfi_adv_pi_end_params = [];
+    |}
+*)
   let print_cloneRF =
-  Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
-  Format.fprintf ppf "@[op num_parties <- %i,@]@;"
+    let deduce_param_pis ppf rfbt =
+      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s.%s"
+        (uc_name pmn) uc__code adv_pi_num_op_name) rfbt.params
+    in
+    let begin_param_pis ppf rfbt =
+      if IdMap.is_empty rfbt.params
+      then ()
+      else
+        List.iteri (fun i (pmn, _) ->
+            if i>0 then Format.fprintf ppf "; "
+            ;
+            Format.fprintf ppf "%s"
+            (adv_pi_begin_param pmn)) (IdMap.bindings rfbt.params)
+    in
+    let end_param_pis ppf rfbt =
+      if IdMap.is_empty rfbt.params
+      then ()
+      else
+        List.iteri (fun i (pmn, _) ->
+            let nm = uc_name pmn in
+            if i>0 then Format.fprintf ppf "; "
+            ;
+            Format.fprintf ppf "%s + %s.%s.%s - 1"
+            (adv_pi_begin_param pmn) nm uc__code adv_pi_num_op_name)
+          (IdMap.bindings rfbt.params)
+    in
+    Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
+    Format.fprintf ppf "@[op rf_info <- {|@]@;";
+  Format.fprintf ppf "@[rfi_num_parties = %i;@]@;"
     (IdMap.cardinal rfbt.parties);
-  Format.fprintf ppf "@[op num_subfuns <- %i,@]@;"
+  Format.fprintf ppf "@[rfi_num_subfuns = %i;@]@;"
     (IdMap.cardinal rfbt.sub_funs);
-  Format.fprintf ppf "@[op num_params <- %i,@]@;"
+  Format.fprintf ppf "@[rfi_num_params = %i;@]@;"
     (IdMap.cardinal rfbt.params);
-  Format.fprintf ppf "@[op adv_pi_num <- %s - 1,@]@;" adv_pi_num_op_name;
-  Format.fprintf ppf "@[op adv_pi_begin <- %s + 1@]@;" adv_pi_begin_op_name;
+  Format.fprintf ppf "@[rfi_adv_pi_begin = %s;@]@;" adv_pi_begin_op_name;
+  Format.fprintf ppf "@[rfi_adv_pi_main_end = %s + %s - 1%a;@]@;"
+    adv_pi_begin_op_name adv_pi_num_op_name deduce_param_pis rfbt;
+  Format.fprintf ppf "@[rfi_adv_pi_begin_params = [%a];@]@;"
+    begin_param_pis rfbt;
+  Format.fprintf ppf "@[rfi_adv_pi_end_params = [%a];@]@;"
+    end_param_pis rfbt;
+  Format.fprintf ppf "@[|}@]@;";
   Format.fprintf ppf "@[proof *.@]@;";
-  Format.fprintf ppf "@[realize ge1_num_parties. smt. qed.@]@;";
-  Format.fprintf ppf "@[realize ge0_num_subfuns. smt. qed.@]@;";
-  Format.fprintf ppf "@[realize ge0_num_params. smt. qed.@]@;";
-  Format.fprintf ppf "@[realize ge0_adv_pi_num. smt. qed.@]@;";
-  Format.fprintf ppf "@[realize ge1_adv_pi_begin. smt. qed.@]@;@;"
+  Format.fprintf ppf "@[realize rf_info_valid. smt(%s). qed.@]@;@;"
+    adv_pi_begin_gt0_axiom_name
   in
   (*let print_MakeRFwRFparams =
 let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =

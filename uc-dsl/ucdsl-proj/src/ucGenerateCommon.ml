@@ -51,6 +51,8 @@ let adv_if_pi_gt0_axiom_name = "_adv_if_pi_gt0"
 
 let adv_pi_begin_op_name = "_adv_pi_begin"
 
+let adv_pi_begin_param pmn = "_adv_pi_begin_"^(uc_name pmn)
+
 let adv_pi_begin_gt0_axiom_name = "_adv_pi_begin_gt0"
 
 let adv_pi_num_op_name = "_adv_pi_num"

@@ -114,7 +114,10 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
             clone_singleton_unit sf r ucpn adv_pi_begin_str;
             papi := !papi^" + 1"
          | UI_Triple _ ->
-            clone_triple_unit sf r ucpn adv_pi_begin_str;
+            let alias_apb = (adv_pi_begin_param pname) in
+            Format.fprintf sf "op %s = %s.@.@."
+              alias_apb adv_pi_begin_str;
+            clone_triple_unit sf r ucpn alias_apb;
             papi := !papi^" + "^parampath^"."^adv_pi_num_op_name
        done;
        Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
