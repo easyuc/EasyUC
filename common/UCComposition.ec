@@ -206,27 +206,44 @@ declare module Adv  <: ADV{-Env}.
 declare module Rest <: FUNC{-Env, -Adv}.
 declare module Par  <: FUNC{-Env, -Adv, -Rest}.
 
-declare op term_rest : glob Rest -> int.
-declare op term_par  : glob Par -> int.
+declare op invar_rest : glob Rest -> bool.
+declare op term_rest  : glob Rest -> int.
+
+declare op invar_par  : glob Par  -> bool.
+declare op term_par   : glob Par  -> int.
 
 declare axiom ge0_term_rest (gl : glob Rest) :
   0 <= term_rest gl.
 
-declare axiom rest_down (n : int) :
+declare axiom rest_init :
+   equiv
+   [Rest.init ~ Rest.init :
+    ={self} ==>
+    ={glob Rest} /\ invar_rest (glob Rest){1}].
+
+declare axiom rest_invoke (n : int) :
    equiv
    [Rest.invoke ~ Rest.invoke :
-    ={m, glob Rest} /\ term_rest (glob Rest){1} = n ==>
-    ={res, glob Rest} /\
+    ={m, glob Rest} /\ invar_rest (glob Rest){1} /\
+    term_rest (glob Rest){1} = n ==>
+    ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
     (res{1} <> None => term_rest (glob Rest){1} < n)].
 
 declare axiom ge0_term_par (gl : glob Par) :
   0 <= term_par gl.
 
-declare axiom par_down (n : int) :
+declare axiom par_init :
+   equiv
+   [Par.init ~ Par.init :
+    ={self} ==>
+    ={glob Par} /\ invar_par (glob Par){1}].
+
+declare axiom par_invoke (n : int) :
    equiv
    [Par.invoke ~ Par.invoke :
-    ={m, glob Par} /\ term_par (glob Par){1} = n ==>
-    ={res, glob Par} /\
+    ={m, glob Par} /\ invar_par (glob Par){1} /\
+    term_par (glob Par){1} = n ==>
+    ={res, glob Par} /\ invar_par (glob Par){1} /\
     (res{1} <> None => term_par (glob Par){1} < n)].
 
 lemma comp_bridge
@@ -249,21 +266,32 @@ lemma compos_bridge
       (Env <: ENV) (Adv <: ADV{-Env})
       (Rest <: FUNC{-Env, -Adv})
       (Par <: FUNC{-Env, -Adv, -Rest})
-      (term_rest : glob Rest -> int, term_par : glob Par -> int)
+      (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
+       invar_par : glob Par -> bool, term_par : glob Par -> int)
       (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
   (forall (gl : glob Rest), 0 <= term_rest gl) =>
+  equiv
+  [Rest.init ~ Rest.init :
+   ={self} ==>
+   ={glob Rest} /\ invar_rest (glob Rest){1}] =>
   (forall (n : int),
    equiv
    [Rest.invoke ~ Rest.invoke :
-    ={m, glob Rest} /\ term_rest (glob Rest){1} = n ==>
-    ={res, glob Rest} /\
+    ={m, glob Rest} /\ invar_rest (glob Rest){1} /\
+    term_rest (glob Rest){1} = n ==>
+    ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
     (res{1} <> None => term_rest (glob Rest){1} < n)]) =>
   (forall (gl : glob Par), 0 <= term_par gl) =>
+  equiv
+  [Par.init ~ Par.init :
+   ={self} ==>
+   ={glob Par} /\ invar_par (glob Par){1}] =>
   (forall (n : int),
    equiv
    [Par.invoke ~ Par.invoke :
-    ={m, glob Par} /\ term_par (glob Par){1} = n ==>
-    ={res, glob Par} /\
+    ={m, glob Par} /\ invar_par (glob Par){1} /\
+    term_par (glob Par){1} = n ==>
+    ={res, glob Par} /\ invar_par (glob Par){1} /\
     (res{1} <> None => term_par (glob Par){1} < n)]) =>
   exper_pre func' =>
   in_guard_low' \subset in_guard_hi' =>
@@ -275,14 +303,15 @@ lemma compos_bridge
        .main(func' ++ [change_pari], in_guard_hi') @ &m : res].
 proof.
 move =>
-  ge0_term_rest term_rest_down ge0_term_par term_par_down
+  ge0_term_rest rest_init rest_invoke
+  ge0_term_par  par_init  par_invoke
   ep_func' sub_in_guard_low'_in_guard_high' rest_adv_pi_ok_in_guard_hi'
   eq_in_guard_low_ce_in_guard_low'.
 apply
   (comp_bridge Env Adv Rest Par
-   term_rest term_par
-   ge0_term_rest term_rest_down
-   ge0_term_par term_par_down
+   invar_rest term_rest invar_par term_par
+   ge0_term_rest rest_init rest_invoke
+   ge0_term_par par_init par_invoke
    _ _ _ &m) => //.
 qed.
 
