@@ -854,17 +854,6 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@]@\n}.";
   ()
 
-let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
-  let parampath pmn = (uc_name pmn)^"."^uc__code^"."^_RF in
-  if pmns = []
-  then ()
-  else
-    let hd = List.hd pmns in
-    let tl = List.tl pmns in
-    Format.fprintf ppf "@[(%s%a)@]" (parampath hd) (fun ppf () ->
-      List.iter (fun pmn -> Format.fprintf ppf ", %s" (parampath pmn)) tl) ()
-
-
 
 let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
   let print_cloneRF =
@@ -883,14 +872,33 @@ let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
   Format.fprintf ppf "@[realize ge0_num_params. smt. qed.@]@;";
   Format.fprintf ppf "@[realize ge0_adv_pi_num. smt. qed.@]@;";
   Format.fprintf ppf "@[realize ge1_adv_pi_begin. smt. qed.@]@;@;"
-  in 
-  let print_MakeRF =
+  in
+  (*let print_MakeRFwRFparams =
+let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
+  let parampath pmn = (uc_name pmn)^"."^uc__code^"."^_RF in
+  if pmns = []
+  then ()
+  else
+    let hd = List.hd pmns in
+    let tl = List.tl pmns in
+    Format.fprintf ppf "@[(%s%a)@]" (parampath hd) (fun ppf () ->
+    List.iter (fun pmn -> Format.fprintf ppf ", %s" (parampath pmn)) tl) ()
+    in
     Format.fprintf ppf
       "@[module %s = RFCore.MakeRF(%s.%s%a).@]"
     _RF
     uc__rf
     (uc_name id)
     print_module_params (indexed_map_to_list_only_keep_keys rfbt.params)
+  in*)
+  let print_MakeRF =
+    Format.fprintf ppf
+      "@[module %s%a = RFCore.MakeRF(%s.%s%a).@]"
+    _RF
+    print_params_FUNC rfbt.params
+    uc__rf
+    (uc_name id)
+    print_params_list rfbt.params
   in
   print_cloneRF;
   print_MakeRF
@@ -904,8 +912,21 @@ let print_RF_metric (id : string) (root : string)
     let module_name = uc_name id in
     let st_map = (EcLocation.unloc pt).states in
     let print_Pt_lemma_metric_invoke (ppf : Format.formatter) () : unit =
-      Format.fprintf ppf "@[lemma _invoke_%s (n : int) : hoare [@]@;<0 2>@[<v>"
-        pn;
+      let print_lemma_params ppf pmns =
+        List.iter(fun pmn -> Format.fprintf ppf "@[(%s <: FUNC)@]@ " pmn) pmns
+      in
+      let print_module_params ppf pmns : unit =
+        if pmns = []
+        then ()
+        else
+          let hd = List.hd pmns in
+          let tl = List.tl pmns in
+          Format.fprintf ppf "@[(%s%a)@]" hd (fun ppf () ->
+          List.iter (fun pmn -> Format.fprintf ppf ", %s" pmn) tl) ()
+      in
+      Format.fprintf ppf
+        "@[lemma _invoke_%s (n : int) %a : hoare [@]@;<0 2>@[<v>"
+        pn print_lemma_params pmns;
       Format.fprintf ppf
         "%s%a.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)" 
         module_name print_module_params pmns (proc_party_str pn)
