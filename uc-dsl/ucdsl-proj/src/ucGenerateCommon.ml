@@ -332,47 +332,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
 
 
 let linearize_state_DAG (states : state_tyd IdMap.t) : int IdMap.t option =
-  let get_next_states (st_id : string) : IdSet.t =
-    let rec fold_code (codel : instruction_tyd list EcLocation.located)
-              (ret : IdSet.t) : IdSet.t =
-       let code = EcLocation.unloc codel in
-        List.fold_left (fun ret il ->
-                let i = EcLocation.unloc il in
-                match i with
-                | Assign _ -> ret
-                | Sample _ -> ret
-                | ITE (_,ill,illo) ->
-                   let reti = fold_code ill ret in
-                   if illo <> None
-                   then
-                     let rete = fold_code (EcUtils.oget illo) ret in
-                     IdSet.union reti rete
-                   else
-                     reti
-                | Match (_,mcll) ->
-                   let mcl = EcLocation.unloc mcll in
-                   List.fold_left (fun ret (_,(_,code)) ->
-                       fold_code code ret
-                     ) ret mcl
-                | SendAndTransition sat ->
-                       let id = EcLocation.unloc sat.state_expr.id in
-                       IdSet.add id ret
-                | Fail -> ret        
-          ) ret code
-    in
-    
-    let s = IdMap.find st_id states in
-    let sb = EcLocation.unloc s in
-    List.fold_left (fun ret mmc ->
-        fold_code mmc.code ret
-    ) IdSet.empty sb.mmclauses
-  in
-  let initial_state_id : string = fst
-      (IdMap.find_first (fun id ->
-        let s = IdMap.find id states in
-        let sb = EcLocation.unloc s in
-        sb.is_initial
-      ) states) in
+  let initial_state_id : string = initial_state_id_of_states states in
   let rec add_next_level_states (sls : IdSet.t list) : IdSet.t list option =
     let last = List.hd sls in
     let prev = List.fold_left (fun ret set -> IdSet.union ret set) IdSet.empty sls in
@@ -380,7 +340,8 @@ let linearize_state_DAG (states : state_tyd IdMap.t) : int IdMap.t option =
                       match idseto with
                       | None -> None 
                       | Some idset ->
-                         let ns = get_next_states st_id in
+                         let s = IdMap.find st_id states in
+                         let ns = state_transitions_of_state s in
                          if IdSet.exists (fun id ->
                                 IdSet.mem id prev
                               ) ns
