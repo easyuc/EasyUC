@@ -27,7 +27,7 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
 
   (* the same as after_core from MakeRF: *)
 
-  proc after_core_or_par(r : msg option, orig_dest_addr)
+  proc after_par_or_rest(r : msg option, orig_dest_addr)
          : msg option * msg * bool = {
     var m : msg <- witness; var pari : int;
     var not_done <- true;
@@ -66,7 +66,7 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
         }
         elif (m.`3.`1 = self \/
               addr_eq_subfun rf_info self m.`3.`1) {
-          if (! rf_info.`rfi_adv_pi_begin + 1 <= m.`2.`2 <=
+          if (! rf_info.`rfi_adv_pi_begin < m.`2.`2 <=
                 rf_info.`rfi_adv_pi_main_end) {
             r <- None;
           }
@@ -96,7 +96,7 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
       else {
         r <@ Rest.invoke(m);
       }
-      (r, m, not_done) <@ after_core_or_par(r, m.`2.`1);
+      (r, m, not_done) <@ after_par_or_rest(r, m.`2.`1);
     }
     return r;
   }
@@ -114,6 +114,139 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
     return r;
   }
 }.
+
+op after_par_or_rest_return
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r <> None /\ (oget r).`3.`1 = orig_dest_addr /\
+  (((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\
+    envport func (oget r).`2) \/
+   ((oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\
+    ((((oget r).`3.`1 = func \/
+       addr_eq_subfun rf_info func (oget r).`3.`1) /\
+      rf_info.`rfi_adv_pi_begin < (oget r).`2.`2 <=
+      rf_info.`rfi_adv_pi_main_end) \/
+     (addr_ge_param rf_info func (oget r).`3.`1 /\
+      let pari = head_of_drop_size_first 0 func (oget r).`3.`1 in
+      nth1_adv_pi_begin_params rf_info pari <= (oget r).`2.`2 <=
+      nth1_adv_pi_end_params rf_info pari)))).
+
+op after_par_or_rest_continue
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r <> None /\ (oget r).`3.`1 = orig_dest_addr /\ (oget r).`1 = Dir /\
+  (((oget r).`3.`1 = func /\ 
+    (addr_eq_param rf_info func (oget r).`2.`1 \/
+     addr_eq_subfun rf_info func (oget r).`2.`1)) \/
+   ((addr_eq_param rf_info func (oget r).`3.`1 \/
+     addr_eq_subfun rf_info func (oget r).`3.`1) /\
+    (oget r).`2.`1 = func)).
+
+op after_par_or_rest_error
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r = None \/
+  (oget r).`3.`1 <> orig_dest_addr \/
+  ((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\
+   ! envport func (oget r).`2 /\
+   ! addr_eq_param rf_info func (oget r).`2.`1 /\
+   ! addr_eq_subfun rf_info func (oget r).`2.`1) \/
+  ((oget r).`1 = Dir /\
+   (addr_eq_param rf_info func (oget r).`3.`1 \/
+    addr_eq_subfun rf_info func (oget r).`3.`1) /\
+   (oget r).`2.`1 <> func) \/
+  ((oget r).`1 = Dir /\
+   (oget r).`3.`1 <> func /\
+   ! addr_eq_param rf_info func (oget r).`3.`1 /\
+   ! addr_eq_subfun rf_info func (oget r).`3.`1) \/
+  ((oget r).`1 = Adv /\ (oget r).`2.`1 <> adv) \/
+  ((oget r).`1 = Adv /\
+   ((oget r).`3.`1 = func \/
+    addr_eq_subfun rf_info func (oget r).`3.`1) /\
+   ! rf_info.`rfi_adv_pi_begin < (oget r).`2.`2 <=
+     rf_info.`rfi_adv_pi_main_end) \/
+  ((oget r).`1 = Adv /\
+   addr_ge_param rf_info func (oget r).`3.`1 /\
+   let pari = head_of_drop_size_first 0 func (oget r).`3.`1 in
+   ! (nth1_adv_pi_begin_params rf_info pari <= (oget r).`2.`2 <=
+      nth1_adv_pi_end_params rf_info pari)) \/
+  ((oget r).`1 = Adv /\
+   (oget r).`3.`1 <> func /\
+   ! addr_eq_subfun rf_info func (oget r).`3.`1 /\
+   ! addr_ge_param rf_info func (oget r).`3.`1).
+
+lemma after_par_or_rest_disj (func adv : addr, r : msg option,
+      orig_dest_addr : addr) :
+  after_par_or_rest_return func r orig_dest_addr \/
+  after_par_or_rest_continue func r orig_dest_addr \/
+  after_par_or_rest_error func r orig_dest_addr.
+proof.
+rewrite /after_par_or_rest_return /after_par_or_rest_continue
+        /after_par_or_rest_error.
+case (r = None) => // _ /=.
+case ((oget r).`2.`1 = UCBasicTypes.adv) => // _ /= /#.
+qed.
+
+lemma MakeRFComp_after_par_or_rest_return
+      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp})
+      (r' : msg option) :
+  phoare
+  [MakeRFComp(Rest, Par).after_par_or_rest :
+   r = r' /\
+   after_par_or_rest_return MakeRFComp.self r orig_dest_addr ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
+proof.
+proc => /=.
+sp 2.
+rcondf 1; first auto; smt().
+sp 1; elim* => m0.
+rcondf 1; first auto; smt().
+if.
+auto; smt().
+sp 1; elim* => not_done0.
+rcondf 1; first auto; smt().
+auto;
+  smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
+qed.
+
+lemma MakeRFComp_after_par_or_rest_continue
+      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp})
+      (r' : msg option) :
+  phoare
+  [MakeRFComp(Rest, Par).after_par_or_rest :
+   r = r' /\
+   after_par_or_rest_continue MakeRFComp.self r orig_dest_addr ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc => /=.
+auto;
+  smt(disjoint_addr_eq_param_envport disjoint_addr_eq_subfun_envport).
+qed.
+
+lemma MakeRFComp_after_par_or_rest_error
+      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp}) :
+  phoare
+  [MakeRFComp(Rest, Par).after_par_or_rest :
+   after_par_or_rest_error MakeRFComp.self r orig_dest_addr ==>
+   res.`1 = None /\ ! res.`3] = 1%r.
+proof.
+proc => /=.
+sp 2.
+if; first auto.
+sp 1; elim* => m0.
+if; first auto.
+if.
+auto; smt(not_addr_eq_param_self not_addr_eq_subfun_self).
+sp 1; elim* => not_done0.
+if; first auto.
+if.
+rcondt 1; first auto => &hr [#] _ H1 _ _ H2 H3 H4 H5 H6 H7.
+smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
+auto.
+if.
+sp 1.
+rcondt 1; first auto => &hr [#] H1 _ H2 _ _ H3 H4 H5 H6 H7.
+smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
+auto.
+auto.
+qed.
 
 clone MakeInterface as MakeInt'
 proof *.
