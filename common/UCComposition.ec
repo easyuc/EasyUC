@@ -185,8 +185,7 @@ case ((oget r).`2.`1 = UCBasicTypes.adv) => // _ /= /#.
 qed.
 
 lemma MakeRFComp_after_par_or_rest_return
-      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp})
-      (r' : msg option) :
+      (Rest <: FUNC) (Par <: FUNC) (r' : msg option) :
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
    r = r' /\
@@ -207,8 +206,7 @@ auto;
 qed.
 
 lemma MakeRFComp_after_par_or_rest_continue
-      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp})
-      (r' : msg option) :
+      (Rest <: FUNC) (Par <: FUNC) (r' : msg option) :
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
    r = r' /\
@@ -220,8 +218,7 @@ auto;
   smt(disjoint_addr_eq_param_envport disjoint_addr_eq_subfun_envport).
 qed.
 
-lemma MakeRFComp_after_par_or_rest_error
-      (Rest <: FUNC{-MI}) (Par <: FUNC{-Rest, -MakeRFComp}) :
+lemma MakeRFComp_after_par_or_rest_error (Rest <: FUNC) (Par <: FUNC) :
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
    after_par_or_rest_error MakeRFComp.self r orig_dest_addr ==>

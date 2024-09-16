@@ -287,7 +287,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
 
 (* check that invariant is actually preserved: *)
 
-lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_func_hoare (Func <: FUNC) (Adv <: ADV) :
   hoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func ==>
@@ -304,7 +304,7 @@ auto => /> &hr pre r_not_none.
 rewrite !negb_or /= not_dir /#.
 qed.
 
-lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_adv_hoare (Func <: FUNC) (Adv <: ADV) :
   hoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func ==>
@@ -774,12 +774,12 @@ case (r = None) => // _ /=.
 case ((oget r).`2.`1 = UCBasicTypes.adv) => // _ /= /#.
 qed.
 
-lemma MakeRF_after_core_return (Core <: FUNC{-MI}) (r' : msg option) :
+lemma MakeRF_after_core_return (Core <: FUNC) (r' : msg option) :
   phoare
   [MakeRF(Core).after_core :
    r = r' /\
    after_core_return MakeRF.self r orig_dest_addr ==>
-   res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ ! res.`3] = 1%r.
 proof.
 proc => /=.
 sp 2.
@@ -794,7 +794,7 @@ auto;
   smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
 qed.
 
-lemma MakeRF_after_core_continue (Core <: FUNC{-MI}) (r' : msg option) :
+lemma MakeRF_after_core_continue (Core <: FUNC) (r' : msg option) :
   phoare
   [MakeRF(Core).after_core :
    r = r' /\
@@ -806,7 +806,7 @@ auto;
   smt(disjoint_addr_eq_param_envport disjoint_addr_eq_subfun_envport).
 qed.
 
-lemma MakeRF_after_core_error (Core <: FUNC{-MI}) :
+lemma MakeRF_after_core_error (Core <: FUNC) :
   phoare
   [MakeRF(Core).after_core :
    after_core_error MakeRF.self r orig_dest_addr ==>
