@@ -3,7 +3,7 @@
 (* Singleton unit consisting of a forwarding ideal functionality
    supporting multiple subss *)
 
-ec_requires +SmtMap +Forwarding.
+ec_requires +FMap +Forwarding.
 
 (* direct interface *)
 
