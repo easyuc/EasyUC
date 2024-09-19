@@ -56,3 +56,14 @@ environment and adversary, or violations of the coroutine model
 returned).  We are working toward a translator from the DSL into
 EasyCrypt, where the sequence of games security proofs will be
 mechanized.
+
+Funding Support
+--------------------------------------------------------------------
+
+This work was supported by the National Science Foundation (NSF) under
+grant CNS-1801564 "Towards Mechanized Proofs of Composable Security
+Properties" and by the Defense Advanced Research Projects Agency
+(DARPA) under Contract No. N66001-22-C-4020.  Any opinions, findings
+and conclusions or recommendations expressed in this material are
+those of the author(s) and do not necessarily reflect the views of NSF
+or DARPA.
