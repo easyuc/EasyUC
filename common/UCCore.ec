@@ -849,12 +849,12 @@ lemma MakeRF_init_invar_hoare_implies_equiv (Core <: FUNC{-MakeRF})
   hoare [MakeRF(Core).init : true ==> core_invar (glob Core)] =>
   equiv
   [MakeRF(Core).init ~ MakeRF(Core).init :
-   ={glob MakeRF, glob Core, _self} ==>
+   ={glob Core, _self} ==>
    ={glob MakeRF, glob Core} /\ core_invar (glob Core){1}].
 proof.
 move => init_hoare.
 conseq
-  (_ : ={glob MakeRF, glob Core, _self} ==> ={glob MakeRF, glob Core})
+  (_ : ={glob Core, _self} ==> ={glob MakeRF, glob Core})
   (_ : true ==> core_invar (glob Core))
   (_ : true ==> true) => //.
 sim.
