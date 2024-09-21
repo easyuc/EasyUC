@@ -833,15 +833,10 @@ auto.
 auto.
 qed.
 
-lemma MakeRF_init_invar (Core <: FUNC{-MakeRF})
+lemma MakeRF_init_invar_hoare (Core <: FUNC{-MakeRF})
       (core_invar : glob Core -> bool) :
-  equiv
-  [Core.init ~ Core.init :
-   ={self} ==> ={glob Core} /\ core_invar (glob Core){1}] =>
-  equiv
-  [MakeRF(Core).init ~ MakeRF(Core).init :
-   ={_self} ==>
-   ={glob MakeRF, glob Core} /\ core_invar (glob Core){1}].
+  hoare [Core.init : true ==> core_invar (glob Core)] =>
+  hoare [MakeRF(Core).init : true ==> core_invar (glob Core)].
 proof.
 move => Core_init.
 proc; sp.
@@ -849,16 +844,80 @@ call Core_init.
 auto.
 qed.
 
-lemma MakeRF_invoke_term_metric (Core <: FUNC{-MakeRF})
+lemma MakeRF_init_invar_hoare_implies_equiv (Core <: FUNC{-MakeRF})
+      (core_invar : glob Core -> bool) :
+  hoare [MakeRF(Core).init : true ==> core_invar (glob Core)] =>
+  equiv
+  [MakeRF(Core).init ~ MakeRF(Core).init :
+   ={glob MakeRF, glob Core, _self} ==>
+   ={glob MakeRF, glob Core} /\ core_invar (glob Core){1}].
+proof.
+move => init_hoare.
+conseq
+  (_ : ={glob MakeRF, glob Core, _self} ==> ={glob MakeRF, glob Core})
+  (_ : true ==> core_invar (glob Core))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+lemma MakeRF_invoke_term_metric_hoare (Core <: FUNC{-MakeRF})
       (invar_Core : glob Core -> bool, tm_Core : glob Core -> int,
        n : int) :
   (forall (n : int),
-   equiv
-   [Core.invoke ~ Core.invoke :
-    ={glob Core, m} /\ invar_Core (glob Core){1} /\
-    tm_Core (glob Core){1} = n ==>
-    ={glob Core, res} /\ invar_Core (glob Core){1} /\
-    (res{1} <> None => tm_Core (glob Core){1} < n)]) =>
+   hoare
+   [Core.invoke :
+    invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+    invar_Core (glob Core) /\
+    (res <> None => tm_Core (glob Core) < n)]) =>
+  hoare
+  [MakeRF(Core).invoke :
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   invar_Core (glob Core) /\
+   (res <> None => tm_Core (glob Core) < n)].
+proof.
+move => Core_invoke_invar_tm.
+proc; sp 1; if => //.
+inline MakeRF(Core).loop; wp; sp.
+conseq
+  (_ :
+   not_done /\
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   _) => //.
+rcondt 1; first auto.
+seq 1 :
+  (invar_Core (glob Core) /\ (r0 <> None => tm_Core (glob Core) < n)).
+call (Core_invoke_invar_tm n); first auto; smt().
+seq 1 : 
+  (invar_Core (glob Core) /\
+   (r0 = None  => ! not_done) /\
+   (r0 <> None => tm_Core (glob Core) < n)).
+inline*; auto; progress; smt().
+while
+  (invar_Core (glob Core) /\
+   (r0 = None  => ! not_done) /\
+   (r0 <> None => tm_Core (glob Core) < n)).
+conseq
+  (_ :
+   (invar_Core (glob Core) /\
+    tm_Core (glob Core) < n) ==>
+   _); first smt().
+exlim (tm_Core (glob Core)) => n'.
+seq 1 :
+  (invar_Core (glob Core) /\
+   (r0 <> None => tm_Core (glob Core) < n)).
+call (Core_invoke_invar_tm n'); first auto; smt().
+inline*; auto; progress; smt().
+auto.
+qed.
+
+lemma MakeRF_invoke_term_metric_hoare_implies_equiv (Core <: FUNC{-MakeRF})
+      (invar_Core : glob Core -> bool, tm_Core : glob Core -> int,
+       n : int) :
+  hoare
+  [MakeRF(Core).invoke :
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   invar_Core (glob Core) /\
+   (res <> None => tm_Core (glob Core) < n)] =>
   equiv
   [MakeRF(Core).invoke ~ MakeRF(Core).invoke :
    ={glob MakeRF, glob Core, m} /\ invar_Core (glob Core){1} /\
@@ -866,40 +925,15 @@ lemma MakeRF_invoke_term_metric (Core <: FUNC{-MakeRF})
    ={glob MakeRF, glob Core, res} /\ invar_Core (glob Core){1} /\
    (res{1} <> None => tm_Core (glob Core){1} < n)].
 proof.
-move => Core_invoke_invar_tm.
-proc; sp 1 1; if => //.
-inline MakeRF(Core).loop; wp; sp.
+move => invoke_hoare.
 conseq
+  (_ : ={glob MakeRF, glob Core, m} ==> ={glob MakeRF, glob Core, res})
   (_ :
-   ={MakeRF.self, glob Core, m0, not_done} /\ not_done{1} /\
-   invar_Core (glob Core){1} /\ tm_Core (glob Core){1} = n ==>
-   _) => //.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-seq 1 1 :
-  (={MakeRF.self, glob Core, m0, r0} /\ invar_Core (glob Core){1} /\
-   (r0{1} <> None => tm_Core (glob Core){1} < n)).
-call (Core_invoke_invar_tm n); first auto; smt().
-seq 1 1 : 
-  (={MakeRF.self, glob Core, m0, r0, not_done} /\ invar_Core (glob Core){1} /\
-   (r0{1} = None  => ! not_done{1}) /\
-   (r0{1} <> None => tm_Core (glob Core){1} < n)).
-inline*; auto; progress; smt().
-while
-  (={MakeRF.self, glob Core, m0, r0, not_done} /\ invar_Core (glob Core){1} /\
-   (r0{1} = None  => ! not_done{1}) /\
-   (r0{1} <> None => tm_Core (glob Core){1} < n)).
-conseq
-  (_ :
-   (={MakeRF.self, glob Core, m0, r0, not_done} /\ invar_Core (glob Core){1} /\
-    tm_Core (glob Core){1} < n) ==>
-   _); first smt().
-exlim (tm_Core (glob Core){1}) => n'.
-seq 1 1 :
-  (={MakeRF.self, glob Core, m0, r0} /\ invar_Core (glob Core){1} /\
-   (r0{1} <> None => tm_Core (glob Core){1} < n)).
-call (Core_invoke_invar_tm n'); first auto; smt().
-inline*; auto; progress; smt().
-auto.
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   invar_Core (glob Core) /\
+   (res <> None => tm_Core (glob Core) < n))
+  (_ : true ==> true) => //.
+sim.
 qed.
 
 end RealFunctionality.
