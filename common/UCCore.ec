@@ -844,18 +844,24 @@ call Core_init.
 auto.
 qed.
 
-lemma MakeRF_init_invar_hoare_implies_equiv (Core <: FUNC{-MakeRF})
-      (core_invar : glob Core -> bool) :
-  hoare [MakeRF(Core).init : true ==> core_invar (glob Core)] =>
+(* init lemma for use with any functionality, Fun, with an invariant
+   for which we know the corresponding hoare lemma
+
+   e.g., Fun could be MakeRF(Core), where the invariant is on glob
+   (MakeRF(Core)) (not glob Core) *)
+
+lemma init_invar_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool) :
+  hoare [Fun.init : true ==> invar (glob Fun)] =>
   equiv
-  [MakeRF(Core).init ~ MakeRF(Core).init :
-   ={glob Core, _self} ==>
-   ={glob MakeRF, glob Core} /\ core_invar (glob Core){1}].
+  [Fun.init ~ Fun.init :
+   ={glob Fun, self} ==>
+   ={glob Fun} /\ invar (glob Fun){1}].
 proof.
 move => init_hoare.
 conseq
-  (_ : ={glob Core, _self} ==> ={glob MakeRF, glob Core})
-  (_ : true ==> core_invar (glob Core))
+  (_ : ={glob Fun, self} ==> ={glob Fun})
+  (_ : true ==> invar (glob Fun))
   (_ : true ==> true) => //.
 sim.
 qed.
@@ -910,28 +916,34 @@ inline*; auto; progress; smt().
 auto.
 qed.
 
-lemma MakeRF_invoke_term_metric_hoare_implies_equiv (Core <: FUNC{-MakeRF})
-      (invar_Core : glob Core -> bool, tm_Core : glob Core -> int,
+(* invoke lemma for use with any functionality, Fun, with an invariant and
+   termination metric for which we know the corresponding hoare lemma
+
+   e.g., Fun could be MakeRF(Core), where the invariant and termination
+   metric are on glob (MakeRF(Core)) (not glob Core) *)
+
+lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int,
        n : int) :
   hoare
-  [MakeRF(Core).invoke :
-   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
-   invar_Core (glob Core) /\
-   (res <> None => tm_Core (glob Core) < n)] =>
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n)] =>
   equiv
-  [MakeRF(Core).invoke ~ MakeRF(Core).invoke :
-   ={glob MakeRF, glob Core, m} /\ invar_Core (glob Core){1} /\
-   tm_Core (glob Core){1} = n ==>
-   ={glob MakeRF, glob Core, res} /\ invar_Core (glob Core){1} /\
-   (res{1} <> None => tm_Core (glob Core){1} < n)].
+  [Fun.invoke ~ Fun.invoke :
+   ={glob Fun, m} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={glob Fun, res} /\ invar (glob Fun){1} /\
+   (res{1} <> None => tm (glob Fun){1} < n)].
 proof.
 move => invoke_hoare.
 conseq
-  (_ : ={glob MakeRF, glob Core, m} ==> ={glob MakeRF, glob Core, res})
+  (_ : ={glob Fun, m} ==> ={glob Fun, res})
   (_ :
-   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
-   invar_Core (glob Core) /\
-   (res <> None => tm_Core (glob Core) < n))
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n))
   (_ : true ==> true) => //.
 sim.
 qed.
