@@ -343,7 +343,7 @@ declare op invar_par  : glob Par  -> bool.
 declare op term_par   : glob Par  -> int.
 
 declare axiom ge0_term_rest (gl : glob Rest) :
-  0 <= term_rest gl.
+  invar_rest gl => 0 <= term_rest gl.
 
 declare axiom Rest_init :
    equiv
@@ -360,7 +360,7 @@ declare axiom Rest_invoke (n : int) :
     (res{1} <> None => term_rest (glob Rest){1} < n)].
 
 declare axiom ge0_term_par (gl : glob Par) :
-  0 <= term_par gl.
+  invar_par gl => 0 <= term_par gl.
 
 declare axiom Par_init :
    equiv
@@ -441,7 +441,7 @@ lemma compos_bridge
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par : glob Par -> bool, term_par : glob Par -> int)
       (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
-  (forall (gl : glob Rest), 0 <= term_rest gl) =>
+  (forall (gl : glob Rest), invar_rest gl => 0 <= term_rest gl) =>
   equiv
   [Rest.init ~ Rest.init :
    ={self} ==>
@@ -453,7 +453,7 @@ lemma compos_bridge
     term_rest (glob Rest){1} = n ==>
     ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
     (res{1} <> None => term_rest (glob Rest){1} < n)]) =>
-  (forall (gl : glob Par), 0 <= term_par gl) =>
+  (forall (gl : glob Par), invar_par gl => 0 <= term_par gl) =>
   equiv
   [Par.init ~ Par.init :
    ={self} ==>
