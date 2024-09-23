@@ -491,6 +491,57 @@ proof *.
 
 module MI = MakeInt.MI.
 
+(* Converting Hoare lemmas about invariants and termination metrics
+   for functionalities into equiv lemmas *)
+
+(* init lemma for use with any functionality, Fun, with an invariant
+   for which we know the corresponding hoare lemma *)
+
+lemma init_invar_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool) :
+  hoare [Fun.init : true ==> invar (glob Fun)] =>
+  equiv
+  [Fun.init ~ Fun.init :
+   ={self, glob Fun} ==>
+   ={glob Fun} /\ invar (glob Fun){1}].
+proof.
+move => init_hoare.
+conseq
+  (_ : ={self, glob Fun} ==> ={glob Fun})
+  (_ : true ==> invar (glob Fun))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant and
+   termination metric for which we know the corresponding hoare lemma *)
+
+lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int,
+       n : int) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n)] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None => tm (glob Fun){1} < n)].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
 (* Wrapper for Real Functionalities
 
    Translator from UC DSL to EasyCrypt will turn real functionalities
@@ -844,28 +895,6 @@ call Core_init.
 auto.
 qed.
 
-(* init lemma for use with any functionality, Fun, with an invariant
-   for which we know the corresponding hoare lemma
-
-   e.g., Fun could be MakeRF(Core), where the invariant is on glob
-   (MakeRF(Core)) (not glob Core) *)
-
-lemma init_invar_hoare_implies_equiv (Fun <: FUNC)
-      (invar : glob Fun -> bool) :
-  hoare [Fun.init : true ==> invar (glob Fun)] =>
-  equiv
-  [Fun.init ~ Fun.init :
-   ={glob Fun, self} ==>
-   ={glob Fun} /\ invar (glob Fun){1}].
-proof.
-move => init_hoare.
-conseq
-  (_ : ={glob Fun, self} ==> ={glob Fun})
-  (_ : true ==> invar (glob Fun))
-  (_ : true ==> true) => //.
-sim.
-qed.
-
 lemma MakeRF_invoke_term_metric_hoare (Core <: FUNC{-MakeRF})
       (invar_Core : glob Core -> bool, tm_Core : glob Core -> int,
        n : int) :
@@ -914,38 +943,6 @@ seq 1 :
 call (Core_invoke_invar_tm n'); first auto; smt().
 inline*; auto; progress; smt().
 auto.
-qed.
-
-(* invoke lemma for use with any functionality, Fun, with an invariant and
-   termination metric for which we know the corresponding hoare lemma
-
-   e.g., Fun could be MakeRF(Core), where the invariant and termination
-   metric are on glob (MakeRF(Core)) (not glob Core) *)
-
-lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
-      (invar : glob Fun -> bool, tm : glob Fun -> int,
-       n : int) :
-  hoare
-  [Fun.invoke :
-   invar (glob Fun) /\ tm (glob Fun) = n ==>
-   invar (glob Fun) /\
-   (res <> None => tm (glob Fun) < n)] =>
-  equiv
-  [Fun.invoke ~ Fun.invoke :
-   ={glob Fun, m} /\ invar (glob Fun){1} /\
-   tm (glob Fun){1} = n ==>
-   ={glob Fun, res} /\ invar (glob Fun){1} /\
-   (res{1} <> None => tm (glob Fun){1} < n)].
-proof.
-move => invoke_hoare.
-conseq
-  (_ : ={glob Fun, m} ==> ={glob Fun, res})
-  (_ :
-   invar (glob Fun) /\ tm (glob Fun) = n ==>
-   invar (glob Fun) /\
-   (res <> None => tm (glob Fun) < n))
-  (_ : true ==> true) => //.
-sim.
 qed.
 
 end RealFunctionality.

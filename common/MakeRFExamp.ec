@@ -108,9 +108,9 @@ module MyFun = MakeRF(MyCore).
 (* now we lift our invariant, termination metric and lemmas to
    MyFun *)
 
+(*
 print glob MyFun.
 
-(*
 Globals [# = 0]:
 
 Prog. variables [# = 2]:
@@ -144,30 +144,4 @@ lemma MyFun_invoke_term_metric_hoare (n : int) :
 proof.
 rewrite /myfun_invar /myfun_metric /=.
 apply MakeRF_MyCore_invoke_term_metric_hoare.
-qed.
-
-(* now we get equiv versions *)
-
-lemma MyFun_init_invar_equiv :
-  equiv
-  [MyFun.init ~ MyFun.init :
-   ={glob MyFun, _self} ==>
-   ={glob MyFun} /\ myfun_invar (glob MyFun){1}].
-proof.
-apply (init_invar_hoare_implies_equiv MyFun myfun_invar).
-apply MyFun_init_invar_hoare.
-qed.
-
-lemma MyFun_invoke_term_metric_equiv (n : int) :
-  equiv
-  [MyFun.invoke ~ MyFun.invoke :
-   ={glob MyFun, m} /\ myfun_invar (glob MyFun){1} /\
-   myfun_metric (glob MyFun){1} = n ==>
-   ={glob MyFun, res} /\ myfun_invar (glob MyFun){1} /\
-   (res{1} <> None => myfun_metric (glob MyFun){1} < n)].
-proof.
-apply
-  (invoke_term_metric_hoare_implies_equiv MyFun
-   myfun_invar myfun_metric n).
-apply MyFun_invoke_term_metric_hoare.
 qed.
