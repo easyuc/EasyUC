@@ -343,12 +343,12 @@ declare op invar_par  : glob Par  -> bool.
 declare op term_par   : glob Par  -> int.
 
 declare axiom ge0_term_rest (gl : glob Rest) :
-  0 <= term_rest gl.
+  invar_rest gl => 0 <= term_rest gl.
 
 declare axiom Rest_init :
    equiv
    [Rest.init ~ Rest.init :
-    ={self} ==>
+    ={self, glob Rest} ==>
     ={glob Rest} /\ invar_rest (glob Rest){1}].
 
 declare axiom Rest_invoke (n : int) :
@@ -360,12 +360,12 @@ declare axiom Rest_invoke (n : int) :
     (res{1} <> None => term_rest (glob Rest){1} < n)].
 
 declare axiom ge0_term_par (gl : glob Par) :
-  0 <= term_par gl.
+  invar_par gl => 0 <= term_par gl.
 
 declare axiom Par_init :
    equiv
    [Par.init ~ Par.init :
-    ={self} ==>
+    ={self, glob Par} ==>
     ={glob Par} /\ invar_par (glob Par){1}].
 
 declare axiom Par_invoke (n : int) :
@@ -441,30 +441,22 @@ lemma compos_bridge
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par : glob Par -> bool, term_par : glob Par -> int)
       (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
-  (forall (gl : glob Rest), 0 <= term_rest gl) =>
-  equiv
-  [Rest.init ~ Rest.init :
-   ={self} ==>
-   ={glob Rest} /\ invar_rest (glob Rest){1}] =>
+  (forall (gl : glob Rest), invar_rest gl => 0 <= term_rest gl) =>
+  hoare [Rest.init : true ==> invar_rest (glob Rest)] =>
   (forall (n : int),
-   equiv
-   [Rest.invoke ~ Rest.invoke :
-    ={m, glob Rest} /\ invar_rest (glob Rest){1} /\
-    term_rest (glob Rest){1} = n ==>
-    ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
-    (res{1} <> None => term_rest (glob Rest){1} < n)]) =>
-  (forall (gl : glob Par), 0 <= term_par gl) =>
-  equiv
-  [Par.init ~ Par.init :
-   ={self} ==>
-   ={glob Par} /\ invar_par (glob Par){1}] =>
+   hoare
+   [Rest.invoke :
+    invar_rest (glob Rest) /\ term_rest (glob Rest) = n ==>
+    invar_rest (glob Rest) /\
+    (res <> None => term_rest (glob Rest) < n)]) =>
+  (forall (gl : glob Par), invar_par gl => 0 <= term_par gl) =>
+  hoare [Par.init : true ==> invar_par (glob Par)] =>
   (forall (n : int),
-   equiv
-   [Par.invoke ~ Par.invoke :
-    ={m, glob Par} /\ invar_par (glob Par){1} /\
-    term_par (glob Par){1} = n ==>
-    ={res, glob Par} /\ invar_par (glob Par){1} /\
-    (res{1} <> None => term_par (glob Par){1} < n)]) =>
+   hoare
+   [Par.invoke :
+    invar_par (glob Par) /\ term_par (glob Par) = n ==>
+    invar_par (glob Par) /\
+    (res <> None => term_par (glob Par) < n)]) =>
   exper_pre func' =>
   in_guard_low' \subset in_guard_hi' =>
   rest_adv_pi_ok in_guard_hi' =>
@@ -479,11 +471,41 @@ move =>
   ge0_term_par  par_init  par_invoke
   ep_func' sub_in_guard_low'_in_guard_high' rest_adv_pi_ok_in_guard_hi'
   eq_in_guard_low_ce_in_guard_low'.
+have rest_init_equiv :=
+  init_invar_hoare_implies_equiv Rest invar_rest rest_init.
+have rest_invoke_equiv :
+  forall (n : int),
+  equiv
+  [Rest.invoke ~ Rest.invoke :
+   ={arg, glob Rest} /\ invar_rest (glob Rest){1} /\
+   term_rest (glob Rest){1} = n ==>
+   ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
+   (res{1} <> None => term_rest (glob Rest){1} < n)].
+  move => n.
+  rewrite 
+  (invoke_term_metric_hoare_implies_equiv Rest
+   invar_rest term_rest)
+  rest_invoke.
+have par_init_equiv :=
+  init_invar_hoare_implies_equiv Par invar_par par_init.
+have par_invoke_equiv :
+  forall (n : int),
+  equiv
+  [Par.invoke ~ Par.invoke :
+   ={arg, glob Par} /\ invar_par (glob Par){1} /\
+   term_par (glob Par){1} = n ==>
+   ={res, glob Par} /\ invar_par (glob Par){1} /\
+   (res{1} <> None => term_par (glob Par){1} < n)].
+  move => n.
+  rewrite 
+  (invoke_term_metric_hoare_implies_equiv Par
+   invar_par term_par)
+  par_invoke.
 apply
   (comp_bridge Env Adv Rest Par
    invar_rest term_rest invar_par term_par
-   ge0_term_rest rest_init rest_invoke
-   ge0_term_par par_init par_invoke
+   ge0_term_rest rest_init_equiv rest_invoke_equiv
+   ge0_term_par par_init_equiv par_invoke_equiv
    _ _ _ &m) => //.
 qed.
 
