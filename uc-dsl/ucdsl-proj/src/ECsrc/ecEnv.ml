@@ -117,17 +117,20 @@ type env_norm = {
 type red_topsym = [
   | `Path of path
   | `Tuple
+  | `Proj of int
 ]
 
 module Mrd = EcMaps.Map.Make(struct
   type t = red_topsym
 
+  let to_comparable (p : t) =
+    match p with
+    | `Path p -> `Path p.p_tag
+    | `Tuple  -> `Tuple
+    | `Proj i -> `Proj i
+
   let compare (p1 : t) (p2 : t) =
-    match p1, p2 with
-    | `Path p1, `Path p2 ->  EcPath.p_compare p1 p2
-    | `Tuple  , `Tuple   ->  0
-    | `Tuple  , `Path _  -> -1
-    | `Path _ , `Tuple   ->  1
+    Stdlib.compare (to_comparable p1) (to_comparable p2)
 end)
 
 (* -------------------------------------------------------------------- *)
@@ -729,7 +732,7 @@ module MC = struct
       let axp  = EcPath.prefix (Lazy.force mypath) in
       let axp  = IPPath (EcPath.pqoname axp name) in
       let ax   =
-        { ax_kind       = `Axiom (Ssym.empty, false);
+        { ax_kind       = `Lemma;
           ax_tparams    = tv;
           ax_spec       = cl;
           ax_loca       = (snd obj).op_loca;
@@ -787,7 +790,7 @@ module MC = struct
               let scname = Printf.sprintf "%s_%s" x name in
                 (scname, { ax_tparams    = tyd.tyd_params;
                            ax_spec       = scheme;
-                           ax_kind       = `Axiom (Ssym.empty, false);
+                           ax_kind       = `Lemma;
                            ax_loca       = loca;
                            ax_visibility = `NoSmt;
                 })
@@ -832,7 +835,7 @@ module MC = struct
             let scname = Printf.sprintf "%s_ind" x in
               (scname, { ax_tparams    = tyd.tyd_params;
                          ax_spec       = scheme;
-                         ax_kind       = `Axiom (Ssym.empty, false);
+                         ax_kind       = `Lemma;
                          ax_loca       = loca;
                          ax_visibility = `NoSmt;
               })
@@ -919,7 +922,7 @@ module MC = struct
             let ax = EcSubst.subst_form fsubst ax in
               (x, { ax_tparams    = [(self, Sp.singleton mypath)];
                     ax_spec       = ax;
-                    ax_kind       = `Axiom (Ssym.empty, false);
+                    ax_kind       = `Lemma;
                     ax_loca       = loca;
                     ax_visibility = `NoSmt; }))
           tc.tc_axs
@@ -1451,11 +1454,12 @@ module Reduction = struct
   let add_rule ((_, rule) : path * rule option) (db : mredinfo) =
     match rule with None -> db | Some rule ->
 
-    let p =
+    let p : topsym =
       match rule.rl_ptn with
       | Rule (`Op p, _)   -> `Path (fst p)
-      | Rule (`Tuple, _) -> `Tuple
-      | Var _ | Int _    -> assert false in
+      | Rule (`Tuple, _)  -> `Tuple
+      | Rule (`Proj i, _) -> `Proj i
+      | Var _ | Int _     -> assert false in
 
     Mrd.change (fun rls ->
       let { ri_priomap } =
@@ -2385,14 +2389,23 @@ module NormMp = struct
       if   x_equal p xp then pv
       else EcTypes.pv_glob p
 
+  let flatten_use (us : use) =
+    let globs = Sid.elements us.us_gl in
+    let globs = List.sort EcIdent.id_ntr_compare globs in
+
+    let pv = Mx.bindings us.us_pv in
+    let pv = List.sort (fun (xp1, _) (xp2, _) -> x_ntr_compare xp1 xp2) pv in
+
+    (globs, pv)
+
   let globals env m mp =
     let us = mod_use env mp in
-    let l =
-      Sid.fold (fun id l -> f_glob id m :: l) us.us_gl [] in
-    let l =
-      Mx.fold
-        (fun xp ty l -> f_pvar (EcTypes.pv_glob xp) ty m :: l) us.us_pv l in
-    f_tuple l
+
+    let globs, pv = flatten_use us in
+    let globs = List.map (fun id -> f_glob id m) globs in
+    let pv = List.map (fun (xp, ty) -> f_pvar (pv_glob xp) ty m) pv in
+
+    f_tuple (globs @ pv)
 
   let norm_glob env m mp = globals env m mp
 

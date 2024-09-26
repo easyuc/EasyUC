@@ -1274,8 +1274,7 @@ rewrite /epdp_univ_list_univ /= /enc_univ_list /dec_univ_list.
 elim x => [| x xs IH].
 by rewrite wf_recur 1:wf_lt_list_size /= /dec_univ_list_wf_rec_def.
 rewrite wf_recur 1:wf_lt_list_size /= {1}/dec_univ_list_wf_rec_def
-        enc_univ_pair_nonnil /= epdp_enc_dec
-        1:valid_epdp_univ_pair_univ /=.
+        enc_univ_pair_nonnil /=.
 have -> /= :
   lt_list_size
   (enc_univ_list xs)
@@ -1345,8 +1344,7 @@ op [opaque smt_opaque] epdp_univ_tuple3_univ : (univ * univ * univ, univ) epdp =
 lemma valid_epdp_univ_tuple3_univ : valid_epdp epdp_univ_tuple3_univ.
 proof.
 apply epdp_intro => [x | u x].
-rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3.
-rewrite !epdp /= !epdp /=.
+rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3 /=.
 by case x.
 rewrite /epdp_univ_tuple3_univ /= /enc_univ_tuple3 /dec_univ_tuple3 =>
   match_dec_u_eq_some.
@@ -1394,7 +1392,6 @@ lemma valid_epdp_univ_tuple4_univ : valid_epdp epdp_univ_tuple4_univ.
 proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple4_univ /= /enc_univ_tuple4 /dec_univ_tuple4 /=.
-rewrite !epdp /= !epdp /=.
 by case x.
 rewrite /epdp_univ_tuple4_univ /= /enc_univ_tuple4 /dec_univ_tuple4 =>
   match_dec_u_eq_some.
@@ -1444,7 +1441,6 @@ proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple5_univ /= /enc_univ_tuple5
         /dec_univ_tuple5 /=.
-rewrite !epdp /= !epdp /=.
 by case x.
 rewrite /epdp_univ_tuple5_univ /= /enc_univ_tuple5
         /dec_univ_tuple5 => match_dec_u_eq_some.
@@ -1494,7 +1490,6 @@ proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple6_univ /= /enc_univ_tuple6
         /dec_univ_tuple6 /=.
-rewrite !epdp /= !epdp /=.
 by case x.
 rewrite /epdp_univ_tuple6_univ /= /enc_univ_tuple6
         /dec_univ_tuple6 => match_dec_u_eq_some.
@@ -1544,7 +1539,6 @@ proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple7_univ /= /enc_univ_tuple7
         /dec_univ_tuple7 /=.
-rewrite !epdp /= !epdp /=.
 by case x.
 rewrite /epdp_univ_tuple7_univ /= /enc_univ_tuple7
         /dec_univ_tuple7 => match_dec_u_eq_some.
@@ -1594,7 +1588,6 @@ proof.
 apply epdp_intro => [x | u x].
 rewrite /epdp_univ_tuple8_univ /= /enc_univ_tuple8
         /dec_univ_tuple8 /=.
-rewrite !epdp /= !epdp /=.
 by case x.
 rewrite /epdp_univ_tuple8_univ /= /enc_univ_tuple8
         /dec_univ_tuple8 => match_dec_u_eq_some.
@@ -1634,6 +1627,7 @@ rewrite /epdp_pair_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_pair_univ.
 hint rewrite epdp : valid_epdp_pair_univ.
 
 (* encoding of tuple3 'a * 'b * 'c *)
@@ -1655,6 +1649,7 @@ rewrite /epdp_tuple3_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple3_univ.
 hint rewrite epdp : valid_epdp_tuple3_univ.
 
 (* encoding of tuple4 'a * 'b * 'c * 'd *)
@@ -1677,6 +1672,7 @@ rewrite /epdp_tuple4_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple4_univ.
 hint rewrite epdp : valid_epdp_tuple4_univ.
 
 (* encoding of tuple5 'a * 'b * 'c * 'd * 'e *)
@@ -1702,6 +1698,7 @@ rewrite /epdp_tuple5_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple5_univ.
 hint rewrite epdp : valid_epdp_tuple5_univ.
 
 (* encoding of tuple6 'a * 'b * 'c * 'd * 'e * 'f *)
@@ -1727,6 +1724,7 @@ rewrite /epdp_tuple6_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple6_univ.
 hint rewrite epdp : valid_epdp_tuple6_univ.
 
 (* encoding of tuple7 'a * 'b * 'c * 'd * 'e * 'f * 'g *)
@@ -1755,6 +1753,7 @@ rewrite /epdp_tuple7_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple7_univ.
 hint rewrite epdp : valid_epdp_tuple7_univ.
 
 (* encoding of tuple8 'a * 'b * 'c * 'd * 'e * 'f * 'g * 'h *)
@@ -1784,6 +1783,7 @@ rewrite /epdp_tuple8_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple8_univ.
 hint rewrite epdp : valid_epdp_tuple8_univ.
 
 (* encoding of ('a, 'b) choice *)
@@ -1803,6 +1803,7 @@ rewrite /epdp_choice_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice_univ.
 hint rewrite epdp : valid_epdp_choice_univ.
 
 (* encoding of ('a, 'b, 'c) choice3 *)
@@ -1824,6 +1825,7 @@ rewrite /epdp_choice3_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice3_univ.
 hint rewrite epdp : valid_epdp_choice3_univ.
 
 (* encoding of ('a, 'b, 'c, 'd) choice4 *)
@@ -1846,6 +1848,7 @@ rewrite /epdp_choice4_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice4_univ.
 hint rewrite epdp : valid_epdp_choice4_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e) choice5 *)
@@ -1871,6 +1874,7 @@ rewrite /epdp_choice5_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice5_univ.
 hint rewrite epdp : valid_epdp_choice5_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f) choice6 *)
@@ -1896,6 +1900,7 @@ rewrite /epdp_choice6_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice6_univ.
 hint rewrite epdp : valid_epdp_choice6_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g) choice7 *)
@@ -1924,6 +1929,7 @@ rewrite /epdp_choice7_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice7_univ.
 hint rewrite epdp : valid_epdp_choice7_univ.
 
 (* encoding of ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) choice8 *)
@@ -1953,6 +1959,7 @@ rewrite /epdp_choice8_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_choice8_univ.
 hint rewrite epdp : valid_epdp_choice8_univ.
 
 (* encoding of 'a option *)
@@ -1969,6 +1976,7 @@ rewrite /epdp_option_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_option_univ.
 hint rewrite epdp : valid_epdp_option_univ.
 
 (* encoding of 'a list *)
@@ -1985,4 +1993,5 @@ rewrite /epdp_list_univ.
 by rewrite !epdp.
 qed.
 
+hint simplify [reduce] valid_epdp_list_univ.
 hint rewrite epdp : valid_epdp_list_univ.

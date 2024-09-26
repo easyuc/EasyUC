@@ -245,6 +245,8 @@ module NormMp : sig
   val use_mem_xp    : xpath -> use use_restr -> bool
   val use_mem_gl    : mpath -> use use_restr -> bool
 
+  val flatten_use : use -> EcIdent.t list * (xpath * ty) list
+
   val norm_glob     : env -> EcMemory.memory -> mpath -> form
   val norm_tglob    : env -> mpath -> EcTypes.ty
 
@@ -402,7 +404,7 @@ end
 (* -------------------------------------------------------------------- *)
 module Reduction : sig
   type rule   = EcTheory.rule
-  type topsym = [ `Path of path | `Tuple ]
+  type topsym = [ `Path of path | `Tuple | `Proj of int]
 
   val add1 : path * rule_option * rule option -> env -> env
   val add  : ?import:import -> (path * rule_option * rule option) list -> env -> env

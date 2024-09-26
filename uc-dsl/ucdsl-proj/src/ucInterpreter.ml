@@ -621,7 +621,6 @@ let pp_rewriting_dbs (ppf : Format.formatter) (dbs : rewriting_dbs) : unit =
   fprintf ppf "@[%a@]" (EcPrinting.pp_list ";@ " pp_qsymbol) dbs
 
 let default_rewriting_dbs = [
-  (["Top"; "UCEncoding"],   "epdp");
   (["Top"; "UCBasicTypes"], "ucdsl_interpreter_hints")
 ]
 

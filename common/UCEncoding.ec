@@ -62,6 +62,7 @@ rewrite /valid_epdp => [[enc_dec _]].
 by rewrite enc_dec.
 qed.
 
+hint simplify [reduce] epdp_enc_dec.
 hint rewrite epdp : epdp_enc_dec.
 
 lemma epdp_dec_enc (epdp : ('a, 'b) epdp, x : 'a, y : 'b) :
@@ -185,6 +186,7 @@ clear val_a1 val_a2 match_some.
 by case a.
 qed.
 
+hint simplify [reduce] valid_epdp_pair.
 hint rewrite epdp : valid_epdp_pair.
 
 (* tuple3 EPDPs *)
@@ -233,6 +235,7 @@ move => x; by rewrite tuple3_deconK.
 move => x; by rewrite tuple3_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple3.
 hint rewrite epdp : valid_epdp_tuple3.
 
 (* tuple4 EPDPs *)
@@ -283,6 +286,7 @@ move => x; by rewrite tuple4_deconK.
 move => x; by rewrite tuple4_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple4.
 hint rewrite epdp : valid_epdp_tuple4.
 
 (* tuple5 EPDPs *)
@@ -335,6 +339,7 @@ move => x; by rewrite tuple5_deconK.
 move => x; by rewrite tuple5_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple5.
 hint rewrite epdp : valid_epdp_tuple5.
 
 (* tuple6 EPDPs *)
@@ -390,6 +395,7 @@ move => x; by rewrite tuple6_deconK.
 move => x; by rewrite tuple6_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple6.
 hint rewrite epdp : valid_epdp_tuple6.
 
 (* tuple7 EPDPs *)
@@ -450,6 +456,7 @@ move => x; by rewrite tuple7_deconK.
 move => x; by rewrite tuple7_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple7.
 hint rewrite epdp : valid_epdp_tuple7.
 
 (* tuple8 EPDPs *)
@@ -510,6 +517,7 @@ move => x; by rewrite tuple8_deconK.
 move => x; by rewrite tuple8_conK.
 qed.
 
+hint simplify [reduce] valid_epdp_tuple8.
 hint rewrite epdp : valid_epdp_tuple8.
 
 (* choice EPDPs *)
@@ -576,6 +584,7 @@ have val_x : epdp2.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice.
 hint rewrite epdp : valid_epdp_choice.
 
 (* choice3 EPDPs *)
@@ -663,6 +672,7 @@ have val_x : epdp3.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice3.
 hint rewrite epdp : valid_epdp_choice3.
 
 (* choice4 EPDPs *)
@@ -771,6 +781,7 @@ have val_x : epdp4.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice4.
 hint rewrite epdp : valid_epdp_choice4.
 
 (* choice5 EPDPs *)
@@ -906,6 +917,7 @@ have val_x : epdp5.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice5.
 hint rewrite epdp : valid_epdp_choice5.
 
 (* choice6 EPDPs *)
@@ -1064,6 +1076,7 @@ have val_x : epdp6.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice6.
 hint rewrite epdp : valid_epdp_choice6.
 
 (* choice7 EPDPs *)
@@ -1252,6 +1265,7 @@ have val_x : epdp7.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice7.
 hint rewrite epdp : valid_epdp_choice7.
 
 (* choice8 EPDPs *)
@@ -1467,6 +1481,7 @@ have val_x : epdp8.`dec x = Some y.
 by rewrite (epdp_dec_enc _ _ x).
 qed.
 
+hint simplify [reduce] valid_epdp_choice8.
 hint rewrite epdp : valid_epdp_choice8.
 
 (* option EPDPs *)
@@ -1533,6 +1548,7 @@ rewrite /epdp_option valid_epdp_comp 1:valid_epdp_unit_choice_opt
         valid_epdp_opt_unit_choice.
 qed.
 
+hint simplify [reduce] valid_epdp_option.
 hint rewrite epdp : valid_epdp_option.
 
 (* list EPDPs *)
@@ -1576,4 +1592,5 @@ by rewrite dec_y_eq_None.
 by apply IH.
 qed.
 
+hint simplify [reduce] valid_epdp_list.
 hint rewrite epdp : valid_epdp_list.

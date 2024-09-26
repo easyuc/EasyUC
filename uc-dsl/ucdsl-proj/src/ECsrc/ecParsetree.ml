@@ -96,7 +96,7 @@ and 'a rfield = {
 type plvalue_r =
   | PLvSymbol of pqsymbol
   | PLvTuple  of pqsymbol list
-  | PLvMap    of pqsymbol * ptyannot option * pexpr
+  | PLvMap    of pqsymbol * ptyannot option * pexpr list
 
 and plvalue = plvalue_r located
 
@@ -451,10 +451,11 @@ type 'a ppt_head =
 
 type ppt_arg =
   | EA_none
-  | EA_form  of pformula
-  | EA_mem   of pmemory
-  | EA_mod   of pmsymbol located
-  | EA_proof of (pformula option) gppterm
+  | EA_form   of pformula
+  | EA_mem    of pmemory
+  | EA_mod    of pmsymbol located
+  | EA_proof  of (pformula option) gppterm
+  | EA_tactic of [`Done | `Smt | `DoneSmt]
 
 and 'a gppterm = {
   fp_mode : [`Implicit | `Explicit];
@@ -962,6 +963,7 @@ type logtactic =
   | Pmemory     of psymbol
   | Pgenhave    of pgenhave
   | Pwlog       of (psymbol list * bool * pformula)
+  | Pcoq        of (EcProvers.coq_mode option * psymbol * pprover_infos)
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core_r =
@@ -1242,6 +1244,7 @@ type global_action =
   | Greduction   of puserred
   | Ghint        of phint
   | Gprint       of pprint
+  | Gpaxiom
   | Gsearch      of pformula list
   | Glocate      of pqsymbol
   | GthOpen      of (is_local * bool * psymbol)

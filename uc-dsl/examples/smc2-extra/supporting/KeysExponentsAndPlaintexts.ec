@@ -44,7 +44,6 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
 hint simplify valid_epdp_exp_univ.  (* so simplify and smt() can use axiom *)
-hint rewrite epdp : valid_epdp_exp_univ.
 
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
@@ -85,7 +84,6 @@ op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
 hint simplify valid_epdp_text_key.
-hint rewrite epdp : valid_epdp_text_key.
 
 (* consequences of axioms *)
 
@@ -98,7 +96,7 @@ proof.
 by rewrite kmulA kinv_r kid_r.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : one_time.
+hint simplify [reduce] one_time.
 
 (* we can define a bijection between exp and key *)
 
@@ -142,7 +140,7 @@ have -> : g ^ q1 ^ q2 = g ^ q2 ^ q1.
 by rewrite one_time.
 qed.
 
-hint rewrite ucdsl_interpreter_hints : one_time_dh.
+hint simplify [reduce] one_time_dh.
 
 (* EPDP from key to univ *)
 
@@ -156,7 +154,6 @@ rewrite !epdp 1:log_gen gen_log.
 qed.
 
 hint simplify valid_epdp_key_univ.
-hint rewrite epdp : valid_epdp_key_univ.
 
 (* EPDP from text to univ *)
 
@@ -169,7 +166,6 @@ rewrite /epdp_text_univ !epdp.
 qed.
 
 hint simplify valid_epdp_text_univ.
-hint rewrite epdp : valid_epdp_text_univ.
 
 (* EPDP between port * port and univ *)
 
@@ -183,7 +179,6 @@ rewrite /epdp_port_port_univ !epdp.
 qed.
 
 hint simplify valid_epdp_port_port_univ.
-hint rewrite epdp : valid_epdp_port_univ.
 
 (* EPDP between port * port * key and univ *)
 
@@ -197,4 +192,3 @@ rewrite /epdp_port_port_key_univ !epdp.
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
-hint rewrite epdp : valid_epdp_port_port_key_univ.
