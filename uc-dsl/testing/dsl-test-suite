@@ -21,6 +21,7 @@ find . -name CONFLICT -type f -delete
 # run test suite
 
 ./dsl-test $* tests
+status=$?
 
 # generate bisect coverage report if there are some .coverage files
 
@@ -29,3 +30,5 @@ then echo no coverage files generated;
 else bisect-ppx-report html --coverage-path=./ --source-path=../ucdsl-proj --ignore-missing-files > bisect.log;
      echo bisect log is in bisect.log;
 fi
+
+exit $status

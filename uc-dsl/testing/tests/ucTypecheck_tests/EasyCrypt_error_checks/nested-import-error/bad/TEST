@@ -1,6 +1,16 @@
 description
 Test what happens when an EasyCrypt file being ec_required requires
 another EC file with an error.
+
+NOTE: we've fudged this test by making the file who.ec start with a
+lowercase letter. When Goo.ec requires Who, the EasyCrypt code that we
+run within ucdsl uses a Unix library function to figure out whether
+the actual file is who.ec (first try) or Who.ec (second
+try). Unfortuntely on macOS the first will succeed if the file is
+Foo.ec, but on other Posix systems it would fail, and the file would
+be correctly be identified as Who.ec. There doesn't seem to be a
+simple way of making this code work correctly on macOS. By making
+the file be who.ec, we'll get the same behavior on all Posix systems.
 .
 args: Foo.uc
 outcome: failure
