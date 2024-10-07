@@ -10,7 +10,8 @@ let params_map_to_list (pm : ty_index IdMap.t) : (string * EcTypes.ty) list =
   List.map (fun (name,(ty,_)) -> (name, ty)) bpm_ord
 
 let mid2IdMap (mi : 'a Mid.t) : ('a IdMap.t) =
-  Mid.fold (fun ident el im -> IdMap.add (EcIdent.name ident) el im) mi IdMap.empty 
+  Mid.fold (fun ident el im -> IdMap.add (EcIdent.name ident) el im)
+    mi IdMap.empty 
 
 let sparams_map_to_list (pm : ty_index Mid.t) : (string * EcTypes.ty) list =
   params_map_to_list (mid2IdMap pm)
@@ -366,3 +367,80 @@ let linearize_state_DAG (states : state_tyd IdMap.t) : int IdMap.t option =
                     (lvl_no + 1, lin)
                     ) (0,IdMap.empty) sls in
                 Some lin
+
+let get_own_glob_size_map (ftm : fun_tyd IdPairMap.t) : int IdPairMap.t =
+  let ogs (ft : fun_tyd) : int =
+    match EcLocation.unloc ft with
+    | FunBodyRealTyd rfbt ->
+       1 + (IdMap.cardinal rfbt.sub_funs) + (IdMap.cardinal rfbt.parties) 
+    | FunBodyIdealTyd _ -> 2
+  in
+  IdPairMap.map (fun ft -> ogs ft) ftm
+
+type pSP = NoP of SP.t | P of (SP.t * (pSP list))
+
+let getSP (psp : pSP) : SP.t =
+  match psp with
+  | NoP sp -> sp
+  | P (sp, _) -> sp
+
+let rec get_glob_size_w_params (ftm : fun_tyd IdPairMap.t) (func : pSP) : int =
+  let ogsm = get_own_glob_size_map ftm in
+  match func with
+  | NoP sp -> IdPairMap.find sp ogsm
+  | P (sp, params) ->
+     let psize (psp : pSP) : int =
+       let is_real  = is_real_fun_body_tyd
+                        (EcLocation.unloc (IdPairMap.find (getSP psp) ftm)) in
+       (get_glob_size_w_params ftm psp) +
+       (if is_real then 1 else 0)
+     in
+     let own = IdPairMap.find sp ogsm in
+     let pms = List.fold_left (fun sum psp -> sum + (psize psp)) 0 params in
+     own + pms
+
+let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
+  let ft = IdPairMap.find funcId mt.fun_map in
+  let fbt = EcLocation.unloc ft in
+  if (is_ideal_fun_body_tyd fbt)
+  then NoP funcId
+  else
+    let np = num_params_of_real_fun_tyd ft in
+    let get_nth_param_id n =
+      let pname = param_name_nth_of_real_fun_tyd ft n in
+      let r,_ = id_dir_inter_of_param_of_real_fun_tyd ft pname in
+      let rui = unit_info_of_root mt r in
+      match rui with
+      | UI_Singleton si -> (si.si_root, si.si_ideal)
+      | UI_Triple ti -> (ti.ti_root, ti.ti_real)
+    in
+    let paramIds = List.init np (fun n -> get_nth_param_id (n+1)) in
+    P (funcId, List.map (fun fid -> make_fully_real_pSP mt funcId) paramIds)
+
+let get_glob_ranges_of_fully_real_fun_glob_core
+(mt : maps_tyd) (funcId : SP.t) : int list IdMap.t =
+  let rfbt = real_fun_body_tyd_of
+               (EcLocation.unloc (IdPairMap.find funcId mt.fun_map )) in
+  let pn = IdMap.cardinal rfbt.parties in
+  let partyMap, last = IdMap.fold (fun pid _ (pm,i) ->
+    ((IdMap.add pid [(pn - i)] pm ), i+1)) rfbt.parties (IdMap.empty,0) in
+
+  let frrp = make_fully_real_pSP mt funcId in
+  let psizes = match frrp with
+    | NoP _ -> []
+    | P (_ , params) ->
+       List.map (fun psp -> get_glob_size_w_params mt.fun_map psp) params in
+  let range last size = List.init size (fun n -> last + 1 + n)
+  in
+  let params = IdMap.to_list rfbt.params in
+  let params = fst (List.split params) in
+  let params = List.combine params psizes in
+  let paramMap, last = List.fold_right (fun (id,size) (map, last) ->
+    IdMap.add id (range last size) map, last+size) params (IdMap.empty,last) in
+  let sn = IdMap.cardinal rfbt.sub_funs in
+  let max = last + 2 * sn in
+  let subfunMap, _ = IdMap.fold (fun pid _ (pm,i) ->
+    ((IdMap.add pid [(max - 2*i); (max - 2*i) - 1] pm ), i+1))
+                       rfbt.sub_funs (IdMap.empty,0) in
+  let f = fun _ _ _ -> UcMessage.failure "cannot happen" in
+  IdMap.union f (IdMap.union f partyMap paramMap) subfunMap

@@ -844,7 +844,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     let else_num = (IdMap.cardinal rfbt.sub_funs) +
                    (IdMap.cardinal rfbt.params) +
                      pc - 1 in
-    for i=1 to else_num do
+    for _ =1 to else_num do
       Format.fprintf ppf "@[}@]@;"
     done;
     Format.fprintf ppf "@[return %s;@]@;}@;" r
