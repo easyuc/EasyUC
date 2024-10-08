@@ -444,3 +444,29 @@ let get_glob_ranges_of_fully_real_fun_glob_core
                        rfbt.sub_funs (IdMap.empty,0) in
   let f = fun _ _ _ -> UcMessage.failure "cannot happen" in
   IdMap.union f (IdMap.union f partyMap paramMap) subfunMap
+
+let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
+      (grm : int list IdMap.t) : int list =
+  let union = IdMap.fold (fun _ il acc -> acc@il) grm [] in
+  List.map (fun i -> i+1) union
+
+let get_own_glob_range_of_fully_real_fun_glob_core
+(rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
+  IdMap.fold (fun id il acc ->
+      if not (IdMap.mem id rfbt.params) then acc@il else acc) grm []
+
+let get_own_glob_ranges_of_real_fun
+  (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list IdMap.t =
+  let params_range = IdMap.fold (fun id il acc ->
+    if (IdMap.mem id rfbt.params) then acc@il else acc) grm [] in
+  let sub_fun_shift = List.length params_range in
+  IdMap.filter_map (fun id rng ->
+      if (IdMap.mem id rfbt.params) then None
+      else
+        if (IdMap.mem id rfbt.parties) then Some rng
+        else
+          Some (List.map (fun i -> i-sub_fun_shift) rng)
+    ) grm
+ 
+
+

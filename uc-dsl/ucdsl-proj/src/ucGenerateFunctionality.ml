@@ -541,7 +541,7 @@ let print_proof_state_match (root : string)
                  Format.fprintf ppf "@[sp 1. (*Assign instruction*)@]@;"
               | Sample (lhs, expr) ->
                  Format.fprintf ppf
-                 "@[seq 1 : (#pre). rnd. skip. smt. (*Sample instruction*)@]@;"
+                 "@[seq 1 : (#pre). rnd. skip. smt(). (*Sample instruction*)@]@;"
               | ITE (expr, thencode, elsecodeo) -> begin
                   Format.fprintf ppf "@[if. (*if instruction*)@]@;";
                    print_proof_code ppf thencode;
@@ -567,17 +567,17 @@ let print_proof_state_match (root : string)
                  then Format.fprintf ppf "@[if. (*envport check*)@]@;"
                  ;  
                  Format.fprintf ppf
-                   "@[%s sp 3. skip. smt. (*SendAndTransition instruction*)@]@;"
+                   "@[%s sp 3. skip. smt(). (*SendAndTransition instruction*)@]@;"
                    ret_pfx;
                  if envportcheck
                  then
                    Format.fprintf ppf
-                   "@[%s sp 1. skip. smt. (*envport check failed case*)@]@;"
+                   "@[%s sp 1. skip. smt(). (*envport check failed case*)@]@;"
                    ret_pfx
                 end
               | Fail ->
                  Format.fprintf ppf
-                   "@[%s sp 2. skip. smt. (*Fail instruction*)@]@;" ret_pfx
+                   "@[%s sp 2. skip. smt(). (*Fail instruction*)@]@;" ret_pfx
             in
             
             let code = EcLocation.unloc code in
@@ -592,7 +592,7 @@ let print_proof_state_match (root : string)
           let is_empty = (EcLocation.unloc mmc.code = [])in
           if is_empty
           then Format.fprintf ppf
-                 "@[skip. smt. (*empty message match clause*)@]@;"
+                 "@[skip. smt(). (*empty message match clause*)@]@;"
           else print_proof_code ppf mmc.code
         in
         
@@ -605,7 +605,7 @@ let print_proof_state_match (root : string)
             get_msg_info mp dii IdPairMap.empty root mbmap in
           Format.fprintf ppf "@[match. (*message match*)@]@;";
           Format.fprintf ppf
-            "@[%s skip. smt. (*None branch of message match, dec failed*)@]@;"
+            "@[%s skip. smt(). (*None branch of message match, dec failed*)@]@;"
             ret_pfx;
           if is_internal then
             Format.fprintf ppf
@@ -618,7 +618,7 @@ let print_proof_state_match (root : string)
           print_proof_mm ppf (List.tl mmcs);
           if is_internal then
             Format.fprintf ppf
-              "@[%s skip. smt. (*address check for internal messages failed case*)@]@;"
+              "@[%s skip. smt(). (*address check for internal messages failed case*)@]@;"
               ret_pfx
           ;
       in
@@ -629,7 +629,7 @@ let print_proof_state_match (root : string)
   if List.is_empty mmcs
   then 
     Format.fprintf ppf
-            "@[%s skip. smt. (*empty state match branch code*)@]@;" ret_pfx
+            "@[%s skip. smt(). (*empty state match branch code*)@]@;" ret_pfx
   else
     print_proof_mm ppf mmcs;
   in
@@ -649,49 +649,79 @@ let print_IF_lemma_metric_invoke (metric_name : string) (module_name : string)
   module_name metric_name module_name metric_name module_name;
   Format.fprintf ppf "@]@;].@;";
   Format.fprintf ppf "@[proof.@]@;";
+  Format.fprintf ppf "@[rewrite /%s /=.@]@;" metric_name;
   Format.fprintf ppf "@[proc.@]@;";
   Format.fprintf ppf "@[sp 1. (*initializing return value*)@]@;";
   Format.fprintf ppf "@[if. (*invoke guard*)@]@;";
   Format.fprintf ppf "@[inline.@]@;";
   print_proof_state_match root mbmap dii "sp 1." ppf st_map;
-  Format.fprintf ppf "@[skip. smt. (*invoke guard false*)@]@;";
+  Format.fprintf ppf "@[skip. smt(). (*invoke guard false*)@]@;";
   Format.fprintf ppf "@[qed.@]@;"
 
-let print_state_metric (name : string) (module_name : string) (var_indx : int)
-  (state_name : string -> string)
-  (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
-  let print_ctor_args (ppf : Format.formatter) (st_id : string) : unit =
+let print_ctor_args_state_metric (st_id : string)  (ppf : Format.formatter)
+      (st_map : state_tyd IdMap.t) : unit =
     let s = IdMap.find st_id st_map in
     let sb = EcLocation.unloc s in
     Mid.iter (fun _ _ -> Format.fprintf ppf "_ " ) sb.params
-  in
+
+let glob_to_part_op_name module_name part_name =
+  "glob_"^module_name^"_to_"^part_name
+
+let _metric_good = "_metric_good"
+
+let _invar = "_invar"
+
+
+let print_IF_state_metric (module_name : string)
+  (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
   let lin = linearize_state_DAG st_map in
   match lin with
   | None -> Format.fprintf ppf
-              "@[(*cannot generate operator %s, states have cycles*)@]" name
+              "@[(*cannot generate operator %s, states have cycles*)@]"
+              uc_metric_name 
   | Some id_lvl_map ->
      begin
-     Format.fprintf ppf "@[<v>@[op %s (g : glob %s) : int =@]@;<0 2>@[<v>"
-       name module_name;
-     Format.fprintf ppf "@[match g.`%i with@]@;" var_indx;
+     let globopname = glob_to_part_op_name module_name _st in
+     Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`1.@]@;"
+     globopname module_name state_type_name_IF;
+     Format.fprintf ppf
+       "@[<v>@[op [smt_opaque] %s (g : glob %s) : int =@]@;<0 2>@[<v>"
+       uc_metric_name  module_name;
+     Format.fprintf ppf "@[match %s g with@]@;" globopname;
      IdMap.iter (fun id lvl ->
          Format.fprintf ppf "@[| %s %a=> %i@]@;"
-           (state_name id) print_ctor_args id lvl
+           (state_name id) (print_ctor_args_state_metric id) st_map lvl
        ) id_lvl_map;
      Format.fprintf ppf "@[end.@]@;@]@;@]"
      end
 
+
 let print_IF_metric (id : string)(root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t)
-  : unit =
+    : unit =
     Format.fprintf ppf "@[%a@]@;@;"
-    (print_state_metric uc_metric_name (uc_name id) 1 state_name)
+    (print_IF_state_metric (uc_name id))
     st_map;
   Format.fprintf ppf "@[%a@]@;@;"
     (print_IF_lemma_metric_invoke uc_metric_name (uc_name id) root mbmap dii)
     st_map
-  
+
+let print_IF_metric_related_lemmas
+      (ppf : Format.formatter) (id : string) : unit =
+  Format.fprintf ppf "@[<v>@;";
+  Format.fprintf ppf "@[(*alias*)@]@;";
+  Format.fprintf ppf "@[module IF = %s.@]@;" (uc_name id);
+  Format.fprintf ppf "@[op %s (g : glob IF) : bool = predT g.@]@;@;" _invar;
+  Format.fprintf ppf "@[lemma %s (g : glob IF) :@]@;"  _metric_good;
+  Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" _invar uc_metric_name;
+  Format.fprintf ppf "@[  proof. rewrite /%s.%s /=.@]@;" uc__if uc_metric_name;
+  Format.fprintf ppf "@[  smt(). qed.@]@;";
+  Format.fprintf ppf "@[lemma _init :@]@;";
+  Format.fprintf ppf "@[  hoare [IF.init : true ==> %s (glob IF)].@]@;" _invar;
+  Format.fprintf ppf "@[proof. proc. auto. qed.@]@;";
+  Format.fprintf ppf "@]@;"
+
 let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (ifbt : ideal_fun_body_tyd)
       (dii : symb_pair IdMap.t) : string =
@@ -703,6 +733,7 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
   Format.fprintf sf "%a" (print_IF_metric id root mbmap dii) ifbt.states;
+  Format.fprintf sf "@[%a@]@;@;" print_IF_metric_related_lemmas id;
   Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
@@ -840,11 +871,11 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     let pc = IdMap.cardinal rfbt.parties in
     List.iteri (fun i (pn, _) ->
         print_party_invoke ppf pn;
-        if i<pc then Format.fprintf ppf "@[else {@]@;") partyl;
+        if i+1<pc then Format.fprintf ppf "@[else {@]@;") partyl;
     let else_num = (IdMap.cardinal rfbt.sub_funs) +
                    (IdMap.cardinal rfbt.params) +
                      pc - 1 in
-    for _ =1 to else_num do
+    for _ = 1 to else_num do
       Format.fprintf ppf "@[}@]@;"
     done;
     Format.fprintf ppf "@[return %s;@]@;}@;" r
@@ -955,6 +986,27 @@ let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
   in
   print_cloneRF;
   print_MakeRF
+
+let print_state_metric (name : string) (module_name : string) (var_indx : int)
+  (state_name : string -> string)
+  (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
+  let lin = linearize_state_DAG st_map in
+  match lin with
+  | None -> Format.fprintf ppf
+              "@[(*cannot generate operator %s, states have cycles*)@]" name
+  | Some id_lvl_map ->
+     begin
+   
+     Format.fprintf ppf "@[<v>@[op %s (g : glob %s) : int =@]@;<0 2>@[<v>"
+       name module_name;
+     Format.fprintf ppf "@[match g.`%i with@]@;" var_indx;
+     IdMap.iter (fun id lvl ->
+         Format.fprintf ppf "@[| %s %a=> %i@]@;"
+           (state_name id) (print_ctor_args_state_metric id) st_map lvl
+       ) id_lvl_map;
+     Format.fprintf ppf "@[end.@]@;@]@;@]"
+     end
+
     
 let print_RF_metric (id : string) (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
@@ -1153,7 +1205,8 @@ let print_cloneSIM_MS ppf (id,sbt : string * sim_body_tyd) =
   Format.fprintf ppf "@;@[clone MakeSimulator as MSCore with@]@;";
   Format.fprintf ppf "@[op core_pi <- %s@]@;" adv_if_pi_op_name;
   Format.fprintf ppf "@[proof *.@]@;";
-  Format.fprintf ppf "@[realize core_pi_gt0. smt. qed.@]@;"
+  Format.fprintf ppf "@[realize core_pi_gt0. smt(%s). qed.@]@;"
+    adv_pi_begin_gt0_axiom_name
   in 
   let print_MS =
     Format.fprintf ppf
