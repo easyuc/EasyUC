@@ -998,7 +998,8 @@ let print_party_state_metric
   | Some id_lvl_map ->
      begin
    
-     Format.fprintf ppf "@[<v>@[op %s (g : %s) : int =@]@;<0 2>@[<v>"
+     Format.fprintf ppf
+       "@[<v>@[op [smt_opaque] %s (g : %s) : int =@]@;<0 2>@[<v>"
        name type_name;
      Format.fprintf ppf "@[match g with@]@;";
      IdMap.iter (fun id lvl ->
@@ -1018,6 +1019,10 @@ let print_RF_metric (id : string) (root : string)
     let metric_name = uc_party_metric_name pn in
     let module_name = uc_name id in
     let st_map = (EcLocation.unloc pt).states in
+    let snf = state_name_pt pn in
+    let stn = state_type_name_pt pn in
+    let svn = st_name pn in
+    let invar_op_name = "_invar_"^pn in
     let print_Pt_lemma_metric_invoke (ppf : Format.formatter)
     (globop : string) : unit =
       let print_lemma_params ppf pmns =
@@ -1041,13 +1046,20 @@ let print_RF_metric (id : string) (root : string)
         metric_name globop module_name
         metric_name globop module_name;
       Format.fprintf ppf "@]@;].@;";
-      Format.fprintf ppf "@[proof. proc. inline. (*inline procedure calls*)@]@;";
+      Format.fprintf ppf
+        "@[proof. rewrite /%s /=. proc. inline. (*inline procedure calls*)@]@;"
+        metric_name;
       print_proof_state_match root mbmap dii "" ppf st_map;
       Format.fprintf ppf "@[qed.@]@;"
     in
-    let snf = state_name_pt pn in
-    let stn = state_type_name_pt pn in
-    let svn = st_name pn in
+    let print_party_metric_good ppf () =
+      let lemma_pt_metric_good_name = "_metric_"^pn^"_good" in
+      Format.fprintf ppf "@[lemma %s (g : %s) :@]@;"
+        lemma_pt_metric_good_name stn;
+      Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" invar_op_name metric_name;
+      Format.fprintf ppf "@[    proof. rewrite /%s /=.@]@;" metric_name;
+      Format.fprintf ppf "@[      smt(). qed.@]@;";
+    in
     let pt_glob_op_name =  "glob_"^module_name^"_to_"^svn in
     let svi = IdMap.find pn svim in
     Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`%i.@]@;@;"
@@ -1055,7 +1067,12 @@ let print_RF_metric (id : string) (root : string)
     Format.fprintf ppf "@[%a@]@;@;"
     (print_party_state_metric metric_name stn snf)
     st_map;
-    Format.fprintf ppf "@[%a@]@;@;" print_Pt_lemma_metric_invoke pt_glob_op_name
+    Format.fprintf ppf
+      "@[%a@]@;@;" print_Pt_lemma_metric_invoke pt_glob_op_name;
+    Format.fprintf ppf "@[op %s (g : %s) : bool = predT g.@]@;@;"
+      invar_op_name stn;
+    Format.fprintf ppf
+      "@[<v>%a@]@;@;"  print_party_metric_good ()
   in
   let parties = IdMap.bindings parties in
   let parties = List.rev parties in
