@@ -110,4 +110,3 @@ val capitalized_root_of_filename_with_extension : string -> string
    returned qualified filename has the case that does exist *)
 
 val find_uc_root : string -> string -> string list -> string option
-  
