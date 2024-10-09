@@ -987,7 +987,8 @@ let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
   print_cloneRF;
   print_MakeRF
 
-let print_state_metric (name : string) (module_name : string) (var_indx : int)
+let print_party_state_metric
+      (name : string) (type_name : string)
   (state_name : string -> string)
   (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
   let lin = linearize_state_DAG st_map in
@@ -997,9 +998,9 @@ let print_state_metric (name : string) (module_name : string) (var_indx : int)
   | Some id_lvl_map ->
      begin
    
-     Format.fprintf ppf "@[<v>@[op %s (g : glob %s) : int =@]@;<0 2>@[<v>"
-       name module_name;
-     Format.fprintf ppf "@[match g.`%i with@]@;" var_indx;
+     Format.fprintf ppf "@[<v>@[op %s (g : %s) : int =@]@;<0 2>@[<v>"
+       name type_name;
+     Format.fprintf ppf "@[match g with@]@;";
      IdMap.iter (fun id lvl ->
          Format.fprintf ppf "@[| %s %a=> %i@]@;"
            (state_name id) (print_ctor_args_state_metric id) st_map lvl
@@ -1010,13 +1011,15 @@ let print_state_metric (name : string) (module_name : string) (var_indx : int)
     
 let print_RF_metric (id : string) (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (pmns : string list) (ppf : Format.formatter) (parties : party_tyd IdMap.t)
+      (pmns : string list) (svim : int IdMap.t)
+      (ppf : Format.formatter) (parties : party_tyd IdMap.t)
     : unit =
-  let print_party_metric (pn : string) (pt : party_tyd) (idx : int) : unit =
+  let print_party_metric (pn : string) (pt : party_tyd) : unit =
     let metric_name = uc_party_metric_name pn in
     let module_name = uc_name id in
     let st_map = (EcLocation.unloc pt).states in
-    let print_Pt_lemma_metric_invoke (ppf : Format.formatter) () : unit =
+    let print_Pt_lemma_metric_invoke (ppf : Format.formatter)
+    (globop : string) : unit =
       let print_lemma_params ppf pmns =
         List.iter(fun pmn -> Format.fprintf ppf "@[(%s <: FUNC)@]@ " pmn) pmns
       in
@@ -1033,30 +1036,36 @@ let print_RF_metric (id : string) (root : string)
         "@[lemma _invoke_%s (n : int) %a : hoare [@]@;<0 2>@[<v>"
         pn print_lemma_params pmns;
       Format.fprintf ppf
-        "%s%a.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)" 
+        "%s%a.%s :@ %s (%s(glob %s)) = n@ ==>@ (res <> None =>@ %s (%s(glob %s)) < n)" 
         module_name print_module_params pmns (proc_party_str pn)
-        metric_name module_name
-        metric_name module_name;
+        metric_name globop module_name
+        metric_name globop module_name;
       Format.fprintf ppf "@]@;].@;";
       Format.fprintf ppf "@[proof. proc. inline. (*inline procedure calls*)@]@;";
       print_proof_state_match root mbmap dii "" ppf st_map;
       Format.fprintf ppf "@[qed.@]@;"
     in
-    let sn = state_name_pt pn in
-    let i = idx + 1 in
+    let snf = state_name_pt pn in
+    let stn = state_type_name_pt pn in
+    let svn = st_name pn in
+    let pt_glob_op_name =  "glob_"^module_name^"_to_"^svn in
+    let svi = IdMap.find pn svim in
+    Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`%i.@]@;@;"
+      pt_glob_op_name module_name stn svi;
     Format.fprintf ppf "@[%a@]@;@;"
-    (print_state_metric metric_name module_name i sn)
+    (print_party_state_metric metric_name stn snf)
     st_map;
-    Format.fprintf ppf "@[%a@]@;@;" print_Pt_lemma_metric_invoke ()
+    Format.fprintf ppf "@[%a@]@;@;" print_Pt_lemma_metric_invoke pt_glob_op_name
   in
   let parties = IdMap.bindings parties in
   let parties = List.rev parties in
-  List.iteri (fun i (pn,pt) -> print_party_metric pn pt i) parties
+  List.iter (fun (pn,pt) -> print_party_metric pn pt) parties
 
 
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd) (rapm : rf_addr_port_maps)
-      (dii : symb_pair IdMap.t) : string =
+      (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
+      (rapm : rf_addr_port_maps)
+      (dii : symb_pair IdMap.t) (grm : int list IdMap.t): string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
@@ -1065,20 +1074,23 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
                                     rapm.party_ext_port_id) rfbt;
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
-  Format.fprintf sf "@[<v>%a@]@;@;" (print_RF_metric id root mbmap dii pmns)
+  let svim = get_glob_indices_of_real_fun_parties rfbt grm in
+  Format.fprintf sf "@[<v>%a@]@;@;"
+    (print_RF_metric id root mbmap dii pmns svim)
     rfbt.parties;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
-let gen_fun (sc : EcScope.scope) (root : string) (id : string) (mbmap : message_body_tyd SLMap.t)
+let gen_fun (sc : EcScope.scope) (root : string) (id : string)
+      (mbmap : message_body_tyd SLMap.t)
       (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
-    : string =
+      (grm : int list IdMap.t) : string =
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
-  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii 
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii grm
 
 let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)

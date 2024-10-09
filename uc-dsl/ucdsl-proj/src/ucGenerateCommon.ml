@@ -414,8 +414,8 @@ let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
       | UI_Singleton si -> (si.si_root, si.si_ideal)
       | UI_Triple ti -> (ti.ti_root, ti.ti_real)
     in
-    let paramIds = List.init np (fun n -> get_nth_param_id (n+1)) in
-    P (funcId, List.map (fun fid -> make_fully_real_pSP mt funcId) paramIds)
+    let paramIds = List.init np (fun n -> get_nth_param_id n) in
+    P (funcId, List.map (fun fid -> make_fully_real_pSP mt fid) paramIds)
 
 let get_glob_ranges_of_fully_real_fun_glob_core
 (mt : maps_tyd) (funcId : SP.t) : int list IdMap.t =
@@ -467,6 +467,14 @@ let get_own_glob_ranges_of_real_fun
         else
           Some (List.map (fun i -> i-sub_fun_shift) rng)
     ) grm
+
+let get_glob_indices_of_real_fun_parties
+      (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int IdMap.t =
+  let ogrm = get_own_glob_ranges_of_real_fun rfbt grm in
+  IdMap.filter_map (fun id rng ->
+      if (IdMap.mem id rfbt.parties)
+      then Some (List.hd rng)
+      else None ) ogrm
  
 
 

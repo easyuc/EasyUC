@@ -205,9 +205,14 @@ let generate_ec (mt : maps_tyd) : unit =
       then Some (make_rf_addr_port_maps mt root ft)
       else None
     in
+    let grm =
+      if is_real_fun_tyd ft
+      then get_glob_ranges_of_fully_real_fun_glob_core mt sp 
+      else IdMap.empty
+    in
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
-          (scope root) root id mbmap rapm ft dii
+          (scope root) root id mbmap rapm ft dii grm
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
