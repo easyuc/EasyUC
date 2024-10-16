@@ -424,7 +424,7 @@ let get_glob_ranges_of_fully_real_fun_glob_core
   let pn = IdMap.cardinal rfbt.parties in
   let partyMap, last = IdMap.fold (fun pid _ (pm,i) ->
     ((IdMap.add pid [(pn - i)] pm ), i+1)) rfbt.parties (IdMap.empty,0) in
-
+  let last = last + 1 in (*self*)
   let frrp = make_fully_real_pSP mt funcId in
   let psizes = match frrp with
     | NoP _ -> []
@@ -440,7 +440,7 @@ let get_glob_ranges_of_fully_real_fun_glob_core
   let sn = IdMap.cardinal rfbt.sub_funs in
   let max = last + 2 * sn in
   let subfunMap, _ = IdMap.fold (fun pid _ (pm,i) ->
-    ((IdMap.add pid [(max - 2*i); (max - 2*i) - 1] pm ), i+1))
+    ((IdMap.add pid [(max - 2*i) - 1; (max - 2*i)] pm ), i+1))
                        rfbt.sub_funs (IdMap.empty,0) in
   let f = fun _ _ _ -> UcMessage.failure "cannot happen" in
   IdMap.union f (IdMap.union f partyMap paramMap) subfunMap
@@ -451,9 +451,15 @@ let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
   List.map (fun i -> i+1) union
 
 let get_own_glob_range_of_fully_real_fun_glob_core
-(rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
-  IdMap.fold (fun id il acc ->
-      if not (IdMap.mem id rfbt.params) then acc@il else acc) grm []
+      (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
+  let partyrngrev = 
+  (IdMap.fold (fun id il acc ->
+       if (IdMap.mem id rfbt.parties) then acc@il else acc) grm []) in
+  let ptlast = List.hd partyrngrev in
+  let subfunrng = (IdMap.fold (fun id il acc ->
+       if (IdMap.mem id rfbt.sub_funs) then il@acc else acc) grm []) in
+  (List.rev partyrngrev)@[ptlast+1]@subfunrng
+  
 
 let get_own_glob_ranges_of_real_fun
   (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list IdMap.t =

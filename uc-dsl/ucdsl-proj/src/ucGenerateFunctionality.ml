@@ -14,6 +14,7 @@ let state_type_name_pt (ptname : string) : string =
 let uc__if = "UC__IF"
 let uc__sim = "UC__SIM"
 let _RF = "RF"
+let _IF = "IF"
 let _st = "_st"
 let st_name (name : string) = "_st_"^name
 let _m = "_m"
@@ -30,9 +31,13 @@ let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 let addr_op_call_sim (name : string) : string =
   uc__rf^"."^(addr_op_name name)^" "^oget_if_addr_opt
 let uc_metric_name = "_metric"
+let _metric_RF = "_metric_RF"
+let _metric_IF = "_metric_IF"
 let uc_party_metric_name pn = "_metric_"^pn
 let glob_op_name top_mod sub_mod =  "glob_"^top_mod^"_to_"^sub_mod
 let glob_op_name_own top_mod = glob_op_name top_mod "own"
+let module_name_IF name = (uc_name name)^"."^_IF
+let module_name_RF name = (uc_name name)^"."^_RF
 
 let print_state_type
       (sc : EcScope.scope)
@@ -1084,35 +1089,71 @@ let print_RF_metric (id : string) (root : string)
     Format.fprintf ppf
       "@[<v>%a@]@;@;"  print_party_metric_good ()
   in
-  let print_glob_operators ppf () =
+  let moduleRP = module_w_real_params pmns in
+  let print_glob_operators () =
     let print_glob_operator op_name top_type sub_type ppf range =
       Format.fprintf ppf "@[<v>";
-      Format.fprintf ppf "@[op %s(g : glob %s) / : glob %s =@]"
+      Format.fprintf ppf "@[op %s(g : glob %s) / : glob %s =@]@;"
         op_name top_type sub_type;
       let rhd = List.hd range in
       let rtl = List.tl range in
-      Format.fprintf ppf "(g.`%i%s)"
+      Format.fprintf ppf "(g.`%i%s)."
       rhd (List.fold_left (fun acc i -> acc^", g.`"^(string_of_int i)) "" rtl);
       Format.fprintf ppf "@]"
     in
-    let moduleRP = module_w_real_params pmns in
     Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name_own module_name) moduleRP module_name)
       (get_own_glob_range_of_fully_real_fun_glob_core rfbt grm);
-    List.iter (fun pmn -> let ucpmn = (uc_name pmn) in
-    Format.fprintf ppf "@[%a@]@;@;"
-      (print_glob_operator (glob_op_name module_name ucpmn) moduleRP ucpmn)
+    List.iter (fun pmn -> Format.fprintf ppf "@[%a@]@;@;"
+      (print_glob_operator (glob_op_name module_name (uc_name pmn))
+         moduleRP (module_name_RF pmn))
       (IdMap.find pmn grm)) pmns;
     let ogrs = get_own_glob_ranges_of_real_fun rfbt grm in
-    List.iter (fun sfn -> let ucsfn = uc_name sfn in
-    Format.fprintf ppf "@[%a@]@;@;"
-      (print_glob_operator (glob_op_name module_name ucsfn) module_name ucsfn)
+    List.iter (fun sfn -> Format.fprintf ppf "@[%a@]@;@;"
+      (print_glob_operator (glob_op_name module_name (uc_name sfn))
+         module_name (module_name_IF sfn))
       (IdMap.find sfn ogrs)) sfns;
+  in
+  let print_metric_operator () =
+(*    op [smt_opaque] _metric (g : glob UC_SMC2Real(SMC1, SMC2)) : int =
+  UC_SMC2._metric_RF(glob_UC_SMC2Real_to_SMC2 g)
+  + UC_SMC1._metric_RF(glob_UC_SMC2Real_to_SMC1 g)
+  + _metric_Pt3(glob_UC_SMC2Real_to_st_Pt3 (glob_UC_SMC2Real_own g))
+  + _metric_Pt2(glob_UC_SMC2Real_to_st_Pt2 (glob_UC_SMC2Real_own g))
+  + _metric_Pt1(glob_UC_SMC2Real_to_st_Pt1 (glob_UC_SMC2Real_own g))
+  + UC_Fwd4._metric_IF(glob_UC_SMC2Real_to_UC_Fwd4 (glob_UC_SMC2Real_own g))
+  + UC_Fwd3._metric_IF(glob_UC_SMC2Real_to_UC_Fwd3 (glob_UC_SMC2Real_own g))
+  + UC_Fwd2._metric_IF(glob_UC_SMC2Real_to_UC_Fwd2 (glob_UC_SMC2Real_own g))
+  + UC_Fwd1._metric_IF(glob_UC_SMC2Real_to_UC_Fwd1 (glob_UC_SMC2Real_own g))
+  .*)
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[ op [smt_opaque] %s (g : glob %s) : int =@]@;"
+      uc_metric_name moduleRP;
+    let is_first = ref true in
+    let plus() = if !is_first then begin is_first:=false; " " end else "+"
+    in
+    List.iter (fun pmn -> let ucpmn = uc_name pmn in
+        Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
+          (plus()) ucpmn _metric_RF (glob_op_name module_name ucpmn)
+      ) pmns;
+    let ptns = fst (List.split (IdMap.bindings parties)) in
+    List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
+          (plus()) (uc_party_metric_name ptn)
+          (glob_op_name module_name (st_name ptn))
+          (glob_op_name_own module_name)
+    ) ptns;
+    List.iter (fun sfn -> let ucsfn = uc_name sfn in
+        Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
+          (plus()) ucsfn _metric_IF (glob_op_name module_name ucsfn)
+          (glob_op_name_own module_name)
+    ) sfns;
+    Format.fprintf ppf ".@]@;@;"
   in
   let parties = IdMap.bindings parties in
   let parties = List.rev parties in
   List.iter (fun (pn,pt) -> print_party_metric pn pt) parties;
-  print_glob_operators ppf ()
+  print_glob_operators ();
+  print_metric_operator ()
   
 
 
