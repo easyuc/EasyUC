@@ -36,6 +36,8 @@ let _metric_IF = "_metric_IF"
 let uc_party_metric_name pn = "_metric_"^pn
 let glob_op_name top_mod sub_mod =  "glob_"^top_mod^"_to_"^sub_mod
 let glob_op_name_own top_mod = glob_op_name top_mod "own"
+let glob_to_part_op_name module_name part_name =
+  "glob_"^module_name^"_to_"^part_name
 let module_name_IF name = (uc_name name)^"."^_IF
 let module_name_RF name = (uc_name name)^"."^_RF
 let invoke = "invoke"
@@ -43,6 +45,18 @@ let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
 let _invoke_IF = "_invoke_IF"
 let _invoke_RF = "_invoke_RF"
+let _invar = "_invar"
+let invar_pt_op_name ptn = "_invar_"^ptn
+let _invar_IF = "_invar_IF"
+let _invar_RF = "_invar_RF"
+let _metric_good = "_metric_good"
+let _metric_good_RF = "_metric_good_RF"
+let _metric_good_IF = "_metric_good_IF"
+let _metric_pt_good ptn = "_metric_"^ptn^"_good"
+let init = "init"
+let _init = "_init"
+let _init_RF = "_init_RF"
+let _init_IF = "_init_IF"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -676,12 +690,6 @@ let print_ctor_args_state_metric (st_id : string)  (ppf : Format.formatter)
     let sb = EcLocation.unloc s in
     Mid.iter (fun _ _ -> Format.fprintf ppf "_ " ) sb.params
 
-let glob_to_part_op_name module_name part_name =
-  "glob_"^module_name^"_to_"^part_name
-
-let _metric_good = "_metric_good"
-
-let _invar = "_invar"
 
 
 let print_IF_state_metric (module_name : string)
@@ -1050,8 +1058,9 @@ let print_RF_metric (id : string) (root : string)
     let snf = state_name_pt pn in
     let stn = state_type_name_pt pn in
     let svn = st_name pn in
-    let invar_op_name = "_invar_"^pn in
+    let invar_op_name = invar_pt_op_name pn in
     let svim = get_glob_indices_of_real_fun_parties rfbt grm in
+    let lemma_pt_metric_good_name = _metric_pt_good pn in
     let print_Pt_lemma_metric_invoke (ppf : Format.formatter)
     (globop : string) : unit =
       let print_lemma_params ppf pmns =
@@ -1074,7 +1083,6 @@ let print_RF_metric (id : string) (root : string)
       Format.fprintf ppf "@[qed.@]@;"
     in
     let print_party_metric_good ppf () =
-      let lemma_pt_metric_good_name = "_metric_"^pn^"_good" in
       Format.fprintf ppf "@[lemma %s (g : %s) :@]@;"
         lemma_pt_metric_good_name stn;
       Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" invar_op_name metric_name;
@@ -1205,12 +1213,76 @@ let print_RF_metric (id : string) (root : string)
     Format.fprintf ppf "@[  smt().@]@;";
     Format.fprintf ppf "qed.@]@;@;"
   in
+  let print_invoke_operator () =
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[ op [smt_opaque] %s (g : glob %s) : bool =@]@;"
+      _invar moduleRP;
+    let is_first = ref true in
+    let cnj() = if !is_first then begin is_first:=false; "  " end else "/\\"
+    in
+    List.iter (fun pmn -> let ucpmn = uc_name pmn in
+        Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
+          (cnj()) ucpmn _invar_RF (glob_op_name module_name ucpmn)
+      ) pmns;
+    List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
+          (cnj()) (invar_pt_op_name ptn)
+          (glob_op_name module_name (st_name ptn))
+          (glob_op_name_own module_name)
+    ) ptns;
+    List.iter (fun sfn -> let ucsfn = uc_name sfn in
+        Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
+          (cnj()) ucsfn _invar_IF (glob_op_name module_name ucsfn)
+          (glob_op_name_own module_name)
+    ) sfns;
+    Format.fprintf ppf ".@]@;@;"
+  in
+  let print_metric_good_lemma () =
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[lemma %s (g : glob %s) :@]@;"
+    _metric_good moduleRP;
+    Format.fprintf ppf "@[%s g => 0 <= %s g.@]@;" _invar uc_metric_name;
+    Format.fprintf ppf "@[proof.@]@;";
+    Format.fprintf ppf "@[rewrite /%s /=.@]@;" uc_metric_name;
+    Format.fprintf ppf "@[rewrite /%s /=.@]@;" _invar;
+    Format.fprintf ppf "@[smt(@]@;";
+    List.iter(fun pmn ->
+        Format.fprintf ppf "@[%s.%s@]@;" (uc_name pmn) _metric_good_RF
+      ) pmns;
+    List.iter(fun sfn ->
+        Format.fprintf ppf "@[%s.%s@]@;" (uc_name sfn) _metric_good_IF
+      ) sfns;
+    List.iter(fun ptn ->
+        Format.fprintf ppf "@[%s@]@;" (_metric_pt_good ptn)
+      ) ptns;
+    Format.fprintf ppf "@[).@]@;";
+    Format.fprintf ppf "qed.@]@;@;"
+  in
+  let print_init_lemma () =
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[lemma %s :@]@;" _init;
+    Format.fprintf ppf "@[hoare [ %s.%s : true ==> %s (glob %s)].@]@;"
+      moduleRP init _invar moduleRP;
+    Format.fprintf ppf "@[proof. proc. sp. wp.@]@;";
+    List.iter(fun pmn ->
+        Format.fprintf ppf "@[call (%s.%s).@]@;" (uc_name pmn) _init_RF
+      ) (List.rev pmns);
+    List.iter(fun sfn ->
+        Format.fprintf ppf "@[call (%s.%s).@]@;" (uc_name sfn) _init_IF
+      ) (List.rev sfns);
+    Format.fprintf ppf "@[skip.@]@;";
+    Format.fprintf ppf "@[rewrite /%s /=.@]@;" _invar;
+    Format.fprintf ppf "@[smt().@]@;";
+    Format.fprintf ppf "qed.@]@;@;"
+  in
   let parties = IdMap.bindings parties in
   let parties = List.rev parties in
   List.iter (fun (pn,pt) -> print_party_metric pn pt) parties;
   print_glob_operators ();
   print_metric_operator ();
-  print_invoke_lemma ()
+  print_invoke_lemma ();
+  print_invoke_operator();
+  print_metric_good_lemma();
+  print_init_lemma ()
   
 
 
