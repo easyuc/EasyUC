@@ -38,6 +38,11 @@ let glob_op_name top_mod sub_mod =  "glob_"^top_mod^"_to_"^sub_mod
 let glob_op_name_own top_mod = glob_op_name top_mod "own"
 let module_name_IF name = (uc_name name)^"."^_IF
 let module_name_RF name = (uc_name name)^"."^_RF
+let invoke = "invoke"
+let _invoke = "_invoke"
+let _invoke_pn pn = "_invoke_"^pn
+let _invoke_IF = "_invoke_IF"
+let _invoke_RF = "_invoke_RF"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -493,8 +498,8 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
       List.iter (fun bn ->
         Format.fprintf ppf "@ \\/@ %s.`2.`2 = %s.%s.pi" m compn bn) btl
     in
-    Format.fprintf ppf "@[proc invoke(%s : %a) : %a option = {@]@;<0 2>@[<v>"
-      m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[proc %s(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+      invoke m (pp_type sc) msg_ty (pp_type sc) msg_ty;
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       r (pp_type sc) msg_ty;
     Format.fprintf ppf
@@ -650,10 +655,10 @@ let print_IF_lemma_metric_invoke (metric_name : string) (module_name : string)
       (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =    
-  Format.fprintf ppf "@[lemma _invoke (n : int) : hoare [@]@;<0 2>@[<v>";
+  Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" _invoke;
   Format.fprintf ppf
-  "%s.invoke :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)"
-  module_name metric_name module_name metric_name module_name;
+  "%s.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)"
+  module_name invoke metric_name module_name metric_name module_name;
   Format.fprintf ppf "@]@;].@;";
   Format.fprintf ppf "@[proof.@]@;";
   Format.fprintf ppf "@[rewrite /%s /=.@]@;" metric_name;
@@ -837,8 +842,8 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
     let r, m = "r", "m" in
     let print_subfun_or_param_invoke ppf (nm : string) (path : string): unit =
       Format.fprintf ppf
-        "@[if@ (%s <= %s.`2.`1)@ {%s %s %s.invoke(%s);}@]@;"
-        (addr_op_call nm) m r "<@" path m;
+        "@[if@ (%s <= %s.`2.`1)@ {%s %s %s.%s(%s);}@]@;"
+        (addr_op_call nm) m r "<@" path invoke m;
       Format.fprintf ppf
         "@[else {@]@;"
     in
@@ -865,8 +870,8 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
         r "<@" (proc_party_str nm) m
     in
 
-    Format.fprintf ppf "@[proc invoke(%s : %a) : %a option = {@]@;<0 2>@[<v>"
-      m (pp_type sc) msg_ty (pp_type sc) msg_ty;
+    Format.fprintf ppf "@[proc %s(%s : %a) : %a option = {@]@;<0 2>@[<v>"
+      invoke m (pp_type sc) msg_ty (pp_type sc) msg_ty;
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       r (pp_type sc) msg_ty;
     IdMap.iter (fun sfn (_,sfid) ->
@@ -1024,8 +1029,10 @@ let print_RF_metric (id : string) (root : string)
     : unit =
   let module_name = uc_name id in
   let parties = rfbt.parties in
+  let ptns = fst (List.split (IdMap.bindings parties)) in
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let sfns = fst (List.split (IdMap.bindings rfbt.sub_funs)) in
+  let rpmns = List.map (fun pmn -> (uc_name pmn)^".RF") pmns in
   let module_params_string pmns : string =
         if pmns = []
         then ""
@@ -1035,7 +1042,6 @@ let print_RF_metric (id : string) (root : string)
           (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
   in
   let module_w_real_params pmns =
-    let rpmns = List.map (fun pmn -> (uc_name pmn)^".RF") pmns in
     module_name^(module_params_string rpmns)
   in 
   let print_party_metric (pn : string) (pt : party_tyd) : unit =
@@ -1053,8 +1059,8 @@ let print_RF_metric (id : string) (root : string)
       in
       
       Format.fprintf ppf
-        "@[lemma _invoke_%s (n : int) %a : hoare [@]@;<0 2>@[<v>"
-        pn print_lemma_params pmns;
+        "@[lemma %s (n : int) %a : hoare [@]@;<0 2>@[<v>"
+        (_invoke_pn pn) print_lemma_params pmns;
       Format.fprintf ppf
         "%s%s.%s :@ %s (%s(glob %s)) = n@ ==>@ (res <> None =>@ %s (%s(glob %s)) < n)" 
         module_name (module_params_string pmns) (proc_party_str pn)
@@ -1136,7 +1142,6 @@ let print_RF_metric (id : string) (root : string)
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
           (plus()) ucpmn _metric_RF (glob_op_name module_name ucpmn)
       ) pmns;
-    let ptns = fst (List.split (IdMap.bindings parties)) in
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (plus()) (uc_party_metric_name ptn)
           (glob_op_name module_name (st_name ptn))
@@ -1149,11 +1154,63 @@ let print_RF_metric (id : string) (root : string)
     ) sfns;
     Format.fprintf ppf ".@]@;@;"
   in
+  let print_invoke_lemma () =
+    let print_call_sub_invoke metric globop1 globop2 sub_invoke =
+      Format.fprintf ppf "@[  if.@]@;";
+      Format.fprintf ppf "@[  exlim (%s(%s(%s(glob %s)))) => _sub_metric.@]@;"
+        metric globop1 globop2 moduleRP;
+      Format.fprintf ppf "@[  call (%s _sub_metric).@]@;" sub_invoke;
+      Format.fprintf ppf "@[  skip.@]@;";
+      Format.fprintf ppf "@[  smt().@]@;";
+    in
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[lemma %s (n : int)  : hoare [@]@;" _invoke;
+    Format.fprintf ppf "@[  %s.%s :@]@;" moduleRP invoke;
+    Format.fprintf ppf "@[  %s (glob %s) = n@]@;"
+    uc_metric_name moduleRP;
+    Format.fprintf ppf "@[  ==>@]@;";
+    Format.fprintf ppf "@[  (res <> None =>@]@;";
+    Format.fprintf ppf "@[  %s (glob %s) < n)@]@;"
+    uc_metric_name moduleRP;
+    Format.fprintf ppf "@[].@]@;";
+    Format.fprintf ppf "@[proof.@]@;";
+    Format.fprintf ppf "@[rewrite /%s /=.@]@;" uc_metric_name;
+    Format.fprintf ppf "@[  proc.@]@;";
+    Format.fprintf ppf "@[  sp 1.@]@;";
+    List.iter (fun sfn ->
+        let ucsfn = uc_name sfn in
+        let metric = ucsfn^"."^_metric_IF in
+        let globop1 = glob_op_name module_name ucsfn in
+        let globop2 = glob_op_name_own module_name in
+        let sub_invoke = ucsfn^"."^_invoke_IF in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke
+      ) sfns;
+    List.iter (fun pmn ->
+        let ucpmn = uc_name pmn in
+        let metric = ucpmn^"."^_metric_RF in
+        let globop1 = glob_op_name module_name ucpmn in
+        let globop2 = "" in
+        let sub_invoke = ucpmn^"."^_invoke_RF in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke
+      ) pmns;
+    List.iter (fun ptn ->
+        let metric = uc_party_metric_name ptn in
+        let globop1 = glob_op_name module_name (st_name ptn) in
+        let globop2 = glob_op_name_own module_name in
+        let sub_invoke = List.fold_left(fun acc rpmn ->
+          acc^" "^rpmn) (_invoke_pn ptn) rpmns in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke
+      ) ptns;
+    Format.fprintf ppf "@[  skip.@]@;";
+    Format.fprintf ppf "@[  smt().@]@;";
+    Format.fprintf ppf "qed.@]@;@;"
+  in
   let parties = IdMap.bindings parties in
   let parties = List.rev parties in
   List.iter (fun (pn,pt) -> print_party_metric pn pt) parties;
   print_glob_operators ();
-  print_metric_operator ()
+  print_metric_operator ();
+  print_invoke_lemma ()
   
 
 
