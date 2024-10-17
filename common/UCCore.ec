@@ -1099,7 +1099,6 @@ proof.
 apply epdp_intro.
 move => x.
 rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=.
-rewrite !epdp.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
@@ -1117,7 +1116,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt1_2; by case pt1.
-rewrite (epdp_dec_enc _ _ u) // !epdp.
+by rewrite (epdp_dec_enc _ _ u).
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_from_env_msg.
@@ -1137,10 +1136,9 @@ proof.
 rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_from_env), epdp_da_from_env_msg.`dec m = Some x.
-  exists (oget (dec_da_from_env m)); by rewrite -some_oget.
+  exists (oget (epdp_da_from_env_msg.`dec m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <-.
-by rewrite !epdp.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <- //.
 qed.
 
 (* message from port (dte_da, 0) of dummy adversary to port env_root_port of
@@ -1187,7 +1185,7 @@ lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /= !epdp.
+rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
@@ -1204,7 +1202,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
-rewrite (epdp_dec_enc _ _ u) // !epdp.
+by rewrite (epdp_dec_enc _ _ u).
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_to_env_msg.
@@ -1225,10 +1223,9 @@ proof.
 rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_to_env), epdp_da_to_env_msg.`dec m = Some x.
-  exists (oget (dec_da_to_env m)); by rewrite -some_oget.
+  exists (oget (epdp_da_to_env_msg.`dec m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
-by rewrite !epdp.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <- //.
 qed.
 
 module DummyAdv : ADV = {

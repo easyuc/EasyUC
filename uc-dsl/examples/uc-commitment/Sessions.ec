@@ -3,7 +3,7 @@
 (* Common EasyCrypt definitions for multi-session functionalities *)
 
 require import AllCore UCBasicTypes.
-require export SmtMap.
+require export FMap.
 
 (* An instance can encode whatever a port wants/needs.
 
@@ -24,8 +24,8 @@ type iport = ins * port.
 
 (* type of sessions maps, indexed by session ids (integers) *)
 
-type 'a sessions = (int, 'a) SmtMap.fmap.
+type 'a sessions = (int, 'a) fmap.
 
 (* initial (empty) sessions map *)
 
-op init : 'a sessions = SmtMap.empty.
+op init : 'a sessions = empty.

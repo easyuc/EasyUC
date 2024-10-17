@@ -61,29 +61,64 @@ let rec sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
 let capitalized_root_of_filename_with_extension file =
   String.capitalize_ascii (Filename.chop_extension (Filename.basename file))
 
-let find_file root ext prelude_dir include_dirs =
-  let full     = root ^ ext in
-  let full_cap = String.capitalize_ascii full in
-  let prelude_full = prelude_dir ^ "/" ^ full in
-  let prelude_full_cap = prelude_dir ^ "/" ^ full_cap in
-  if Sys.file_exists prelude_full
-    then Some prelude_full
-  else if Sys.file_exists prelude_full_cap
-    then Some prelude_full_cap
-  else if Sys.file_exists full
-    then Some full
-  else if Sys.file_exists full_cap
-    then Some full_cap
-  else List.fold_left
-       (fun opt_res dir ->
-          match opt_res with
-          | None   ->
-              let qualified     = dir ^ "/" ^ full in
-              let qualified_cap = dir ^ "/" ^ full_cap in
-              if Sys.file_exists qualified
-                then Some qualified
-              else if Sys.file_exists qualified_cap
-                then Some qualified_cap
-              else None
-          | Some _ -> opt_res)
-       None include_dirs
+(* the next three functions are adapted from code in
+   ECsrc/ecLoader.ml *)
+
+let try_stat name =
+  try Some (Unix.lstat name) with  (* does not follow symbolic links *)
+  | Unix.Unix_error _ -> None
+
+(* dev and ino will be the device and inode produced by Unix.lstat
+   of Filename.concat dir name *)
+
+let check_case dir name (dev, ino) =
+  let name = String.uncapitalize_ascii name in
+  let check1 tname =
+      match name = String.uncapitalize_ascii tname with
+      | false -> None
+      | true  -> begin
+          try
+            let stat = Filename.concat dir tname in
+            let stat = Unix.lstat stat in
+            if stat.Unix.st_dev = dev && stat.Unix.st_ino = ino
+            then Some tname
+            else None
+          with Unix.Unix_error _ -> None
+        end in
+  List.find_map_opt check1 (EcUtils.Os.listdir dir)
+
+(* full will be capitalized *)
+
+let normalize_case_of_full_in_dir dir full =
+  let stat =
+    let lfull = String.uncapitalize_ascii full in
+    EcUtils.List.fpick
+    (List.map
+     (fun name ->
+        let fullname = Filename.concat dir name in
+        fun () ->
+          try_stat fullname |> EcUtils.omap (fun stat -> (stat, name)))
+     [lfull; full])
+  in match stat with
+     | None              -> None
+     | Some (stat, name) ->
+         let stat = (stat.Unix.st_dev, stat.Unix.st_ino) in
+         check_case dir name stat
+
+let find_uc_root root prelude_dir include_dirs =
+  let full = root ^ ".uc" in
+  match normalize_case_of_full_in_dir prelude_dir full with
+  | Some res -> Some (Filename.concat prelude_dir res)
+  | None     ->
+      match normalize_case_of_full_in_dir "." full with
+      | Some res -> Some res
+      | None     ->
+          List.fold_left
+          (fun opt_res dir ->
+             match opt_res with
+             | Some _ -> opt_res
+             | None   ->
+                 match normalize_case_of_full_in_dir dir full with
+                 | None     -> None
+                 | Some res -> Some (Filename.concat dir res))
+          None include_dirs

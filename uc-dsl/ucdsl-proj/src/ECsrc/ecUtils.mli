@@ -8,6 +8,7 @@ val unexpected : unit -> 'a
 
 (* -------------------------------------------------------------------- *)
 val makedirs : string -> unit
+val safe_unlink : filename:string -> unit
 
 (* -------------------------------------------------------------------- *)
 type 'data cb = Cb : 'a * ('data -> 'a -> unit) -> 'data cb
@@ -208,6 +209,8 @@ end
 (* -------------------------------------------------------------------- *)
 module IO : sig
   include module type of BatIO
+
+  val pp_to_file : filename:string -> (Format.formatter -> unit) -> unit
 end
 
 (* -------------------------------------------------------------------- *)
@@ -290,6 +293,12 @@ module List : sig
   val reduce1    : ('a list -> 'a) -> 'a list -> 'a
   val find_dup   : ?cmp:('a -> 'a -> int) -> 'a list -> 'a option
   val has_dup    : ?cmp:('a -> 'a -> int) -> 'a list -> bool
+
+  val takedrop_while : ('a -> bool) -> 'a list -> 'a list * 'a list
+
+  val fold_left_map_while :
+       ('a -> 'b -> [`Interrupt | `Continue of 'a * 'c])
+    -> 'a -> 'b list -> 'a * 'c list * 'b list
 
   (* ------------------------------------------------------------------ *)
   val ksort:
