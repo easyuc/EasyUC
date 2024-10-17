@@ -1,8 +1,6 @@
-(* Composition Theorem Definitions and Proofs *)
+(* Abstract Theory for Composition Theorem Definitions and Proofs *)
 
 require import UCCore UCListAux.
-
-abstract theory CompBridge.
 
 (* begin theory parameters *)
 
@@ -245,6 +243,99 @@ auto.
 auto.
 qed.
 
+(* adv pis as fset for parameter being changed *)
+
+op change_par_adv_pis : int fset =
+     rangeset (nth1_adv_pi_begin_params rf_info change_pari)
+     (nth1_adv_pi_end_params rf_info change_pari + 1).
+
+lemma in_change_par_adv_pis (z : int) :
+  z \in change_par_adv_pis <=>
+  nth1_adv_pi_begin_params rf_info change_pari <= z <=
+  nth1_adv_pi_end_params rf_info change_pari.
+proof.
+rewrite /change_par_adv_pis.
+by rewrite mem_rangeset ltzS.
+qed.
+
+(* adv pis as fset for rest *)
+
+op union_map (f : 'a -> 'b fset, xs : 'a list) : 'b fset =
+  foldr (`|`) fset0 (map f xs).
+
+lemma in_union_map (f : 'a -> 'b fset, xs : 'a list, z : 'b) :
+  z \in union_map f xs <=>
+  has (fun ys => FSet.mem ys z) (map f xs).
+proof.
+elim xs => [/= |].
+by rewrite /union_map /= in_fset0.
+move => x xs IH.
+rewrite /union_map /= in_fsetU.
+congr; by rewrite -IH.
+qed.
+
+op rest_adv_pis : int fset =
+  rangeset rf_info.`rfi_adv_pi_begin
+  (rf_info.`rfi_adv_pi_main_end + 1) `|`
+  union_map
+  (fun pari => 
+    rangeset (nth1_adv_pi_begin_params rf_info pari)
+    (nth1_adv_pi_end_params rf_info pari + 1))
+  (range 1 change_pari) `|`
+  union_map
+  (fun pari => 
+    rangeset (nth1_adv_pi_begin_params rf_info pari)
+    (nth1_adv_pi_end_params rf_info pari + 1))
+  (range (change_pari + 1) (rf_info.`rfi_num_params + 1)).
+
+lemma in_rest_adv_pis (z : int) :
+  z \in rest_adv_pis <=>
+  rf_info.`rfi_adv_pi_begin <= z <= rf_info.`rfi_adv_pi_main_end \/
+  (exists pari,
+   1 <= pari < change_pari /\
+   nth1_adv_pi_begin_params rf_info pari <= z <=
+   nth1_adv_pi_end_params rf_info pari) \/
+  (exists pari,
+   change_pari < pari <= rf_info.`rfi_num_params /\
+   nth1_adv_pi_begin_params rf_info pari <= z <=
+   nth1_adv_pi_end_params rf_info pari).
+proof.
+have rfi_valid := rf_info_valid.
+have change_pari_valid := change_pari_valid.
+rewrite /rest_adv_pis.
+rewrite !in_fsetU mem_rangeset ltzS !in_union_map !has_map !hasP
+        !/preim.
+split =>
+  [[[-> // | [pari] []] | [pari]] |
+   [-> // |
+    [[pari] [] pari_range z_range |
+     [pari] [] pari_range z_range]]].
+rewrite mem_range => x_range.
+rewrite mem_rangeset ltzS => z_range.
+right; left; exists pari; smt().
+rewrite mem_range ltzS => [[pari_range]].
+rewrite mem_rangeset ltzS => z_range.
+right; right; exists pari; smt().
+left; right; exists pari.
+rewrite mem_range mem_rangeset /#.
+right; exists pari.
+rewrite mem_range mem_rangeset /#.
+qed.
+
+lemma disjoint_change_rest :
+  disjoint change_par_adv_pis rest_adv_pis.
+proof.
+have rfi_valid := rf_info_valid.
+have change_pari_valid := change_pari_valid.
+rewrite disjointP => k.
+rewrite /change_par_adv_pis mem_rangeset ltzS => k_range.
+rewrite in_rest_adv_pis !negb_or.
+split; last split.
+smt(rfi_valid_adv_pi_param_gt_adv_pi_main).
+smt(mem_range rfi_valid_adv_pi_parm_gt_adv_pi_lt_param).
+smt(mem_range rfi_valid_adv_pi_parm_gt_adv_pi_lt_param).
+qed.
+
 clone MakeInterface as MakeInt'
 proof *.
 
@@ -253,7 +344,6 @@ module MI' = MakeInt'.MI.
 module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
   var stub_st : msg option
   var func : addr
-  var in_guard_low : int fset
 
   module StubPar : FUNC = {
     proc init(func : addr) : unit = { }
@@ -313,21 +403,10 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
     stub_st <- None;
     func <- take (size func_ - 1) func_;
     b <@ Exper(MI'(MakeRFComp(Rest, StubPar), StubAdv), Env)
-           .main(func, in_guard_low);
+           .main(func, in_guard `\` rest_adv_pis);
     return b;
   }
 }.
-
-op rest_adv_pi_ok (guard : int fset) : bool =
-  (forall (advpi : int),
-   rf_info.`rfi_adv_pi_begin < advpi <= rf_info.`rfi_adv_pi_main_end =>
-   advpi \in guard) /\
-  (forall (advpi pari : int),
-   (1 <= pari < change_pari \/
-    change_pari < pari <= rf_info.`rfi_num_params) =>
-   (nth1_adv_pi_begin_params rf_info pari <= advpi <=
-    nth1_adv_pi_end_params rf_info pari) =>
-   advpi \in guard).
 
 section.
 
@@ -376,20 +455,15 @@ declare axiom Par_invoke (n : int) :
     ={res, glob Par} /\ invar_par (glob Par){1} /\
     (res{1} <> None => term_par (glob Par){1} < n)].
 
-lemma comp_bridge
-      (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
-  exper_pre func' =>
-  in_guard_low' \subset in_guard_hi' =>
-  rest_adv_pi_ok in_guard_hi' =>
-  CompEnv.in_guard_low{m} = in_guard_low' =>
+lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
+  exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
        .main(func', in_guard_low') @ &m : res] =
   Pr[Exper(MI(Par, Adv), CompEnv(Rest, Env))
-       .main(func' ++ [change_pari], in_guard_hi') @ &m : res].
+       .main(func' ++ [change_pari], in_guard_low' `|` rest_adv_pis)
+         @ &m : res].
 proof.
-move =>
-  ep_func' sub_in_guard_low'_in_guard_high' rest_adv_pi_ok_in_guard_hi'
-  eq_in_guard_low_ce_in_guard_low'.
+move => ep_func' disj_igl'_rest_adv_pis.
 byequiv => //.
 proc; inline *; wp.
 swap{2} 6 14; swap{2} 5 14; swap{2} 17 1; sp.
@@ -402,16 +476,17 @@ seq 3 3 :
    _self{2} = func' /\ _self{2} = func0{2} /\ _self{2} = MI'.func{2} /\
    _self{2} = MakeRFComp.self{2} /\ _self{2} = CompEnv.func{2} /\
    MI.func{2} = func' ++ [change_pari] /\
-   in_guard1{2} = CompEnv.in_guard_low{2} /\
    in_guard1{2} = MI'.in_guard{2} /\
    in_guard1{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_hi' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompEnv.stub_st{2} = None).
 call (_ : true).
 call Par_init.
 call Rest_init.
-auto; progress;
-  by rewrite size_cat /= take_size_cat.
+auto; progress.
+rewrite size_cat /= take_size_cat //.
+rewrite size_cat /= take_size_cat //.
+by rewrite disjoint_add_remove.
 call
   (_ :
    ={glob Adv, glob Rest, glob Par} /\
@@ -420,8 +495,8 @@ call
    MI.in_guard{1} = in_guard_low' /\
    MI'.func{2} = func' /\ MakeRFComp.self{2} = func' /\
    CompEnv.func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-   CompEnv.in_guard_low{2} = in_guard_low' /\
-   MI'.in_guard{2} = in_guard_low' /\ MI.in_guard{2} = in_guard_hi' /\
+   MI'.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompEnv.stub_st{2} = None).
 proc.
 if => //.
@@ -440,7 +515,7 @@ lemma compos_bridge
       (Par <: FUNC{-MI, -CompEnv, -Env, -Adv, -Rest})
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par : glob Par -> bool, term_par : glob Par -> int)
-      (func' : addr, in_guard_low' in_guard_hi' : int fset) &m :
+      (func' : addr, in_guard_low' : int fset) &m :
   (forall (gl : glob Rest), invar_rest gl => 0 <= term_rest gl) =>
   hoare [Rest.init : true ==> invar_rest (glob Rest)] =>
   (forall (n : int),
@@ -457,20 +532,19 @@ lemma compos_bridge
     invar_par (glob Par) /\ term_par (glob Par) = n ==>
     invar_par (glob Par) /\
     (res <> None => term_par (glob Par) < n)]) =>
-  exper_pre func' =>
-  in_guard_low' \subset in_guard_hi' =>
-  rest_adv_pi_ok in_guard_hi' =>
-  CompEnv.in_guard_low{m} = in_guard_low' =>
+  exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
        .main(func', in_guard_low') @ &m : res] =
   Pr[Exper(MI(Par, Adv), CompEnv(Rest, Env))
-       .main(func' ++ [change_pari], in_guard_hi') @ &m : res].
+       .main
+        (func' ++ [change_pari],
+         in_guard_low' `|` rest_adv_pis)
+       @ &m : res].
 proof.
 move =>
   ge0_term_rest rest_init rest_invoke
   ge0_term_par  par_init  par_invoke
-  ep_func' sub_in_guard_low'_in_guard_high' rest_adv_pi_ok_in_guard_hi'
-  eq_in_guard_low_ce_in_guard_low'.
+  ep_func' disj_igl'_rest_adv_pis.
 have rest_init_equiv :=
   init_invar_hoare_implies_equiv Rest invar_rest rest_init.
 have rest_invoke_equiv :
@@ -506,7 +580,85 @@ apply
    invar_rest term_rest invar_par term_par
    ge0_term_rest rest_init_equiv rest_invoke_equiv
    ge0_term_par par_init_equiv par_invoke_equiv
-   _ _ _ &m) => //.
+   _ _ &m) => //.
 qed.
 
-end CompBridge.
+(* the composition theorem
+
+   when used:
+
+     Adv1 wil be Adv
+     Par1 will be the fully real functionality
+     Adv2 will be the application of the corresponding
+       simulator to Adv
+     Par2 will be the corresponding ideal functionality
+
+   note that the assumption about the bound relating to these modules
+   will be an application of the security of the parameter as long as
+
+     disjoint (change_par_adv_pis `|` rest_adv_pis) in_guard' *)
+
+lemma composition
+      (Env <: ENV{-MI, -CompEnv}) (Rest <: FUNC{-MI, -CompEnv, -Env})
+      (Adv1 <: ADV{-MI, -CompEnv, -Env, -Rest})
+      (Par1 <: FUNC{-MI, -CompEnv, -Env, -Rest, -Adv1})
+      (Adv2 <: ADV{-MI, -CompEnv, -Env, -Rest})
+      (Par2 <: FUNC{-MI, -CompEnv, -Env, -Rest, -Adv2})
+      (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
+       invar_par1 : glob Par1 -> bool, term_par1 : glob Par1 -> int,
+       invar_par2 : glob Par2 -> bool, term_par2 : glob Par2 -> int)
+      (func' : addr, in_guard' : int fset, b : real) &m :
+  (forall (gl : glob Rest), invar_rest gl => 0 <= term_rest gl) =>
+  hoare [Rest.init : true ==> invar_rest (glob Rest)] =>
+  (forall (n : int),
+   hoare
+   [Rest.invoke :
+    invar_rest (glob Rest) /\ term_rest (glob Rest) = n ==>
+    invar_rest (glob Rest) /\
+    (res <> None => term_rest (glob Rest) < n)]) =>
+  (forall (gl : glob Par1), invar_par1 gl => 0 <= term_par1 gl) =>
+  hoare [Par1.init : true ==> invar_par1 (glob Par1)] =>
+  (forall (n : int),
+   hoare
+   [Par1.invoke :
+    invar_par1 (glob Par1) /\ term_par1 (glob Par1) = n ==>
+    invar_par1 (glob Par1) /\
+    (res <> None => term_par1 (glob Par1) < n)]) =>
+  (forall (gl : glob Par2), invar_par2 gl => 0 <= term_par2 gl) =>
+  hoare [Par2.init : true ==> invar_par2 (glob Par2)] =>
+  (forall (n : int),
+   hoare
+   [Par2.invoke :
+    invar_par2 (glob Par2) /\ term_par2 (glob Par2) = n ==>
+    invar_par2 (glob Par2) /\
+    (res <> None => term_par2 (glob Par2) < n)]) =>
+  exper_pre func' => disjoint in_guard' rest_adv_pis =>
+  `|Pr[Exper(MI(Par1, Adv1), CompEnv(Rest, Env))
+         .main(func' ++ [change_pari], in_guard' `|` rest_adv_pis)
+           @ &m : res] -
+    Pr[Exper(MI(Par2, Adv2), CompEnv(Rest, Env))
+         .main(func' ++ [change_pari], in_guard' `|` rest_adv_pis)
+           @ &m : res]| <= b =>
+  `|Pr[Exper(MI(MakeRFComp(Rest, Par1), Adv1), Env)
+         .main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(MakeRFComp(Rest, Par2), Adv2), Env)
+         .main(func', in_guard') @ &m : res]| <= b.
+proof.
+move =>
+  ge0_term_rest rest_init rest_invoke
+  ge0_term_par1 par1_init par1_invoke
+  ge0_term_par2 par2_init par2_invoke
+  ep_func' disj_igl'_rest_adv_pis bound_Pars.
+rewrite
+  (compos_bridge
+   Env Adv1 Rest Par1
+   invar_rest term_rest
+   invar_par1 term_par1
+   func' in_guard' &m) //.
+by rewrite
+  (compos_bridge
+   Env Adv2 Rest Par2
+   invar_rest term_rest
+   invar_par2 term_par2
+   func' in_guard' &m).
+qed.
