@@ -57,6 +57,14 @@ let init = "init"
 let _init = "_init"
 let _init_RF = "_init_RF"
 let _init_IF = "_init_IF"
+let module_params_string pmns : string =
+  if pmns = []
+  then ""
+  else
+    let hd = List.hd pmns in
+    let tl = List.tl pmns in
+    (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
+let _RFRP = "RFRP"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -916,8 +924,18 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@]@\n}.";
   ()
 
+let print_glob_operator op_name top_type sub_type ppf range =
+      Format.fprintf ppf "@[<v>";
+      Format.fprintf ppf "@[op %s(g : glob %s) / : glob %s =@]@;"
+        op_name top_type sub_type;
+      let rhd = List.hd range in
+      let rtl = List.tl range in
+      Format.fprintf ppf "(g.`%i%s)."
+      rhd (List.fold_left (fun acc i -> acc^", g.`"^(string_of_int i)) "" rtl);
+      Format.fprintf ppf "@]"
 
-let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
+let print_cloneRF_MakeRF ppf
+(id,rfbt,grm : string * real_fun_body_tyd * int list IdMap.t) : unit =
 (*
   op rf_info <-
   {|
@@ -977,35 +995,70 @@ let print_cloneRF_MakeRF ppf (id,rfbt : string * real_fun_body_tyd) =
   Format.fprintf ppf "@[realize rf_info_valid. smt(%s). qed.@]@;@;"
     adv_pi_begin_gt0_axiom_name
   in
-  (*let print_MakeRFwRFparams =
-let print_module_params (ppf : Format.formatter) (pmns : string list) : unit =
-  let parampath pmn = (uc_name pmn)^"."^uc__code^"."^_RF in
-  if pmns = []
-  then ()
-  else
-    let hd = List.hd pmns in
-    let tl = List.tl pmns in
-    Format.fprintf ppf "@[(%s%a)@]" (parampath hd) (fun ppf () ->
-    List.iter (fun pmn -> Format.fprintf ppf ", %s" (parampath pmn)) tl) ()
-    in
+  let print_MakeRF_and_lemmas =
+    let real = uc__rf^"."^(uc_name id) in
     Format.fprintf ppf
-      "@[module %s = RFCore.MakeRF(%s.%s%a).@]"
-    _RF
-    uc__rf
-    (uc_name id)
-    print_module_params (indexed_map_to_list_only_keep_keys rfbt.params)
-  in*)
-  let print_MakeRF =
+      "@[module %s = RFCore.MakeRF(%s%a).@]@;@;"
+      _RFRP
+    real
+    print_params_list rfbt.params;
     Format.fprintf ppf
-      "@[module %s%a = RFCore.MakeRF(%s.%s%a).@]"
-    _RF
-    print_params_FUNC rfbt.params
-    uc__rf
-    (uc_name id)
-    print_params_list rfbt.params
+      "@[lemma RFRP_Core_init_invar_hoare :
+  hoare [RFRP.init : true ==> UC__RF._invar (glob %s)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare %s UC__RF._invar).
+apply UC__RF._init.
+qed.@]@;@;"
+      real real;
+    Format.fprintf ppf
+"@[lemma RFRP_Core_invoke_term_metric_hoare (n : int) :
+  hoare
+  [RFRP.invoke :
+   UC__RF._invar (glob %s) /\\ UC__RF._metric (glob %s) = n ==>
+   UC__RF._invar (glob %s) /\\@;
+   (res <> None => UC__RF._metric (glob %s) < n)].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare %s UC__RF._invar UC__RF._metric).
+apply UC__RF._invoke.
+ qed.@]@;@;" real real real real real;
+    Format.fprintf ppf
+"@[(* now we lift our invariant, termination metric and lemmas to
+   RFRP *)@]@;@;";
+    let range = get_MakeRFs_glob_range_of_fully_real_fun_glob_core grm in
+    Format.fprintf ppf "@[%a@]@;@;"
+    (print_glob_operator "glob_RFRP_to_Core" _RFRP real) range;
+    Format.fprintf ppf
+"@[op RFRP_invar : glob RFRP -> bool =
+  fun (g : glob RFRP) => UC__RF._invar (glob_RFRP_to_Core g).
+
+op RFRP_metric : glob RFRP -> int =@;
+  fun (g : glob RFRP) => UC__RF._metric (glob_RFRP_to_Core g).
+
+lemma RFRP_metric_good (g : glob RFRP) :
+  RFRP_invar g => 0 <= RFRP_metric g.
+    proof.
+      smt(UC__RF._metric_good). qed.
+
+lemma RFRP_init_invar_hoare :
+  hoare [RFRP.init : true ==> RFRP_invar (glob RFRP)].
+proof.
+rewrite /RFRP_invar /=.
+apply RFRP_Core_init_invar_hoare.
+qed.
+
+lemma RFRP_invoke_term_metric_hoare (n : int) :
+  hoare
+  [RFRP.invoke :
+   RFRP_invar (glob RFRP) /\\ RFRP_metric (glob RFRP) = n ==>
+   RFRP_invar (glob RFRP) /\\
+   (res <> None => RFRP_metric (glob RFRP) < n)].
+proof.
+rewrite /RFRP_invar /RFRP_metric /=.
+apply RFRP_Core_invoke_term_metric_hoare.
+qed.@]@;@;"
   in
   print_cloneRF;
-  print_MakeRF
+  print_MakeRF_and_lemmas
 
 let print_party_state_metric
       (name : string) (type_name : string)
@@ -1041,14 +1094,6 @@ let print_RF_metric (id : string) (root : string)
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let sfns = fst (List.split (IdMap.bindings rfbt.sub_funs)) in
   let rpmns = List.map (fun pmn -> (uc_name pmn)^".RF") pmns in
-  let module_params_string pmns : string =
-        if pmns = []
-        then ""
-        else
-          let hd = List.hd pmns in
-          let tl = List.tl pmns in
-          (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
-  in
   let module_w_real_params pmns =
     module_name^(module_params_string rpmns)
   in 
@@ -1105,16 +1150,6 @@ let print_RF_metric (id : string) (root : string)
   in
   let moduleRP = module_w_real_params pmns in
   let print_glob_operators () =
-    let print_glob_operator op_name top_type sub_type ppf range =
-      Format.fprintf ppf "@[<v>";
-      Format.fprintf ppf "@[op %s(g : glob %s) / : glob %s =@]@;"
-        op_name top_type sub_type;
-      let rhd = List.hd range in
-      let rtl = List.tl range in
-      Format.fprintf ppf "(g.`%i%s)."
-      rhd (List.fold_left (fun acc i -> acc^", g.`"^(string_of_int i)) "" rtl);
-      Format.fprintf ppf "@]"
-    in
     Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name_own module_name) moduleRP module_name)
       (get_own_glob_range_of_fully_real_fun_glob_core rfbt grm);
@@ -1300,7 +1335,7 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[<v>%a@]@;@;"
     (print_RF_metric id root mbmap dii grm) rfbt;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
-  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt);
+  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt,grm);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 

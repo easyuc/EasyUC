@@ -448,7 +448,10 @@ let get_glob_ranges_of_fully_real_fun_glob_core
 let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
       (grm : int list IdMap.t) : int list =
   let union = IdMap.fold (fun _ il acc -> acc@il) grm [] in
-  List.map (fun i -> i+1) union
+  let union = List.sort (fun i1 i2 -> i1 - i2) union in
+  let min = List.hd union in
+  let max = List.nth union ((List.length union)-1)  in
+  List.init (max - min + 1) (fun i->i+2)
 
 let get_own_glob_range_of_fully_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
