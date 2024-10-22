@@ -996,17 +996,18 @@ let print_cloneRF_MakeRF ppf
     adv_pi_begin_gt0_axiom_name
   in
   let print_MakeRF_and_lemmas =
-    let real = uc__rf^"."^(uc_name id) in
+    let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+    let rpmns = List.map (fun pmn -> (uc_name pmn)^".RF") pmns in
+    let real = uc__rf^"."^(uc_name id)^(module_params_string rpmns) in
     Format.fprintf ppf
-      "@[module %s = RFCore.MakeRF(%s%a).@]@;@;"
+      "@[module %s = RFCore.MakeRF(%s).@]@;@;"
       _RFRP
-    real
-    print_params_list rfbt.params;
+    real;
     Format.fprintf ppf
       "@[lemma RFRP_Core_init_invar_hoare :
   hoare [RFRP.init : true ==> UC__RF._invar (glob %s)].
 proof.
-apply (RFCore.MakeRF_init_invar_hoare %s UC__RF._invar).
+apply (RFCore.MakeRF_init_invar_hoare (%s) UC__RF._invar).
 apply UC__RF._init.
 qed.@]@;@;"
       real real;
@@ -1018,7 +1019,7 @@ qed.@]@;@;"
    UC__RF._invar (glob %s) /\\@;
    (res <> None => UC__RF._metric (glob %s) < n)].
 proof.
-apply (RFCore.MakeRF_invoke_term_metric_hoare %s UC__RF._invar UC__RF._metric).
+apply (RFCore.MakeRF_invoke_term_metric_hoare (%s) UC__RF._invar UC__RF._metric).
 apply UC__RF._invoke.
  qed.@]@;@;" real real real real real;
     Format.fprintf ppf
@@ -1198,11 +1199,12 @@ let print_RF_metric (id : string) (root : string)
     Format.fprintf ppf ".@]@;@;"
   in
   let print_invoke_lemma () =
-    let print_call_sub_invoke metric globop1 globop2 sub_invoke =
+    let print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms =
       Format.fprintf ppf "@[  if.@]@;";
       Format.fprintf ppf "@[  exlim (%s(%s(%s(glob %s)))) => _sub_metric.@]@;"
         metric globop1 globop2 moduleRP;
-      Format.fprintf ppf "@[  call (%s _sub_metric).@]@;" sub_invoke;
+      Format.fprintf ppf "@[  call (%s _sub_metric %s).@]@;"
+        sub_invoke sub_invoke_pms;
       Format.fprintf ppf "@[  skip.@]@;";
       Format.fprintf ppf "@[  smt().@]@;";
     in
@@ -1226,7 +1228,8 @@ let print_RF_metric (id : string) (root : string)
         let globop1 = glob_op_name module_name ucsfn in
         let globop2 = glob_op_name_own module_name in
         let sub_invoke = ucsfn^"."^_invoke_IF in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke
+        let sub_invoke_pms = "" in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
       ) sfns;
     List.iter (fun pmn ->
         let ucpmn = uc_name pmn in
@@ -1234,15 +1237,17 @@ let print_RF_metric (id : string) (root : string)
         let globop1 = glob_op_name module_name ucpmn in
         let globop2 = "" in
         let sub_invoke = ucpmn^"."^_invoke_RF in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke
+        let sub_invoke_pms = "" in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
       ) pmns;
     List.iter (fun ptn ->
         let metric = uc_party_metric_name ptn in
         let globop1 = glob_op_name module_name (st_name ptn) in
         let globop2 = glob_op_name_own module_name in
-        let sub_invoke = List.fold_left(fun acc rpmn ->
-          acc^" "^rpmn) (_invoke_pn ptn) rpmns in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke
+        let sub_invoke = (_invoke_pn ptn) in
+        let sub_invoke_pms = List.fold_left(fun acc rpmn ->
+          acc^" "^rpmn)  "" rpmns in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
       ) ptns;
     Format.fprintf ppf "@[  skip.@]@;";
     Format.fprintf ppf "@[  smt().@]@;";
@@ -1250,7 +1255,7 @@ let print_RF_metric (id : string) (root : string)
   in
   let print_invoke_operator () =
     Format.fprintf ppf "@[<v>";
-    Format.fprintf ppf "@[ op [smt_opaque] %s (g : glob %s) : bool =@]@;"
+    Format.fprintf ppf "@[ op %s (g : glob %s) : bool =@]@;"
       _invar moduleRP;
     let is_first = ref true in
     let cnj() = if !is_first then begin is_first:=false; "  " end else "/\\"

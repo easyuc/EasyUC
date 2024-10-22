@@ -372,7 +372,7 @@ let get_own_glob_size_map (ftm : fun_tyd IdPairMap.t) : int IdPairMap.t =
   let ogs (ft : fun_tyd) : int =
     match EcLocation.unloc ft with
     | FunBodyRealTyd rfbt ->
-       1 + (IdMap.cardinal rfbt.sub_funs) + (IdMap.cardinal rfbt.parties) 
+       1 + (IdMap.cardinal rfbt.sub_funs)*2 + (IdMap.cardinal rfbt.parties) 
     | FunBodyIdealTyd _ -> 2
   in
   IdPairMap.map (fun ft -> ogs ft) ftm
@@ -429,7 +429,11 @@ let get_glob_ranges_of_fully_real_fun_glob_core
   let psizes = match frrp with
     | NoP _ -> []
     | P (_ , params) ->
-       List.map (fun psp -> get_glob_size_w_params mt.fun_map psp) params in
+       List.map (fun psp ->
+           let is_real  = is_real_fun_body_tyd
+             (EcLocation.unloc (IdPairMap.find (getSP psp) mt.fun_map)) in
+           (get_glob_size_w_params mt.fun_map psp) +
+           (if is_real then 1 else 0)) params in
   let range last size = List.init size (fun n -> last + 1 + n)
   in
   let params = IdMap.to_list rfbt.params in
