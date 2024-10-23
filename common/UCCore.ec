@@ -10,6 +10,7 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
 
 require export UCBasicTypes.
 require import UCListAux.
+require StdOrder.
 
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities") *)
@@ -145,6 +146,60 @@ module Exper (Inter : INTER, Env : ENV) = {
     return b;
   }    
 }.
+
+(* working with disjoint sets, which will be done in conjunction
+   with input guards *)
+
+lemma disjoint_sym (xs ys : 'a fset) :
+  disjoint xs ys => disjoint ys xs.
+proof.
+rewrite !disjointP => disj_xs_ys z z_in_ys.
+case (z \in xs) => [z_in_xs | //].
+have // : z \notin ys by apply disj_xs_ys.
+qed.
+
+lemma disjoint_with_union_implies_disjoint_with_first
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint xs ys.
+proof.
+rewrite disjointP => disj_xs_union_ys_zs.
+rewrite disjointP => x x_in_xs.
+have := disj_xs_union_ys_zs x _; first trivial.
+by rewrite in_fsetU negb_or.
+qed.
+
+lemma disjoint_with_union_implies_disjoint_with_second
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint xs ys.
+proof.
+rewrite disjointP => disj_xs_union_ys_zs.
+rewrite disjointP => x x_in_xs.
+have := disj_xs_union_ys_zs x _; first trivial.
+by rewrite in_fsetU negb_or.
+qed.
+
+lemma disjoint_add_remove (xs ys : 'a fset) :
+  disjoint xs ys => (xs `|` ys) `\` ys = xs.
+proof.
+rewrite disjointP => disj_xs_ys.
+rewrite fsetDK eqEsubset.
+split => z; rewrite in_fsetD => [[] -> // | z_in_xs].
+rewrite z_in_xs /=.
+case (z \in ys) => [z_in_ys | //].
+have // : z \notin ys by apply disj_xs_ys.
+qed.
+
+lemma disjoint_with_disjoint_union_add_first_disjoint_with_second
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint ys zs =>
+  disjoint (xs `|` ys) zs.
+proof.
+rewrite !disjointP => disj_xs_union_ys_zs disj_ys_zs => u.
+rewrite in_fsetU => [[u_in_xs | u_in_ys]].
+have := disj_xs_union_ys_zs u _; first trivial.
+by rewrite in_fsetU negb_or.
+by apply disj_ys_zs.
+qed.
 
 abstract theory MakeInterface.
 
@@ -482,6 +537,29 @@ proof.
 proc; auto; smt().
 qed.
 
+(* transitivity of security, proved using the triangular inequality *)
+
+lemma security_trans
+      (F1 <: FUNC)  (F2 <: FUNC)  (F3 <: FUNC)
+      (Adv1 <: ADV) (Adv2 <: ADV) (Adv3 <: ADV)
+      (Env <: ENV)
+      (func : addr) (guard : int fset) (b1 b2 : real) &m :
+`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res]| <= b1 =>
+`|Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]| <= b2 =>
+`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]| <= b1 + b2.
+move => first second.
+rewrite
+  (RealOrder.ler_trans
+   (`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+      Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res]| +
+    `|Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res] -
+      Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]|))
+  1:RealOrder.ler_dist_add RealOrder.ler_add //.
+qed.
+
 end MakeInterface.
 
 (* the top-level interface in theorems *)
@@ -582,6 +660,33 @@ op rf_info_valid (rfi : rf_info) : bool =
     1 <= pari <= rfi.`rfi_num_params - 1 =>
     nth1_adv_pi_begin_params rfi (pari + 1) =
     nth1_adv_pi_end_params rfi pari + 1)).
+
+lemma rfi_valid_adv_pi_param_gt_adv_pi_main (rfi : rf_info, pari : int) :
+  rf_info_valid rfi => 1 <= pari <= rfi.`rfi_num_params =>
+  rfi.`rfi_adv_pi_main_end < nth1_adv_pi_begin_params rfi pari.
+proof.
+move => rf_info_valid_rfi.
+have ind :
+  forall pi,
+  0 <= pi => 1 <= pi <= rfi.`rfi_num_params =>
+  rfi.`rfi_adv_pi_main_end < nth1_adv_pi_begin_params rfi pi.
+elim; smt().
+smt().
+qed.
+
+lemma rfi_valid_adv_pi_parm_gt_adv_pi_lt_param
+      (rfi : rf_info, pari parj : int) :
+  rf_info_valid rfi => 1 <= pari < parj <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi parj.
+proof.
+move => rf_info_valid_rfi [#] ge1_pari lt_pari_parj.
+have ind :
+  forall pj,
+  0 <= pj => pari < pj <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.  
+elim; smt().
+smt().
+qed.
 
 op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
   exists (k : int),
@@ -994,7 +1099,6 @@ proof.
 apply epdp_intro.
 move => x.
 rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=.
-rewrite !epdp.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
@@ -1012,7 +1116,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt1_2; by case pt1.
-rewrite (epdp_dec_enc _ _ u) // !epdp.
+by rewrite (epdp_dec_enc _ _ u).
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_from_env_msg.
@@ -1032,10 +1136,9 @@ proof.
 rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_from_env), epdp_da_from_env_msg.`dec m = Some x.
-  exists (oget (dec_da_from_env m)); by rewrite -some_oget.
+  exists (oget (epdp_da_from_env_msg.`dec m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <-.
-by rewrite !epdp.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <- //.
 qed.
 
 (* message from port (dte_da, 0) of dummy adversary to port env_root_port of
@@ -1082,7 +1185,7 @@ lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /= !epdp.
+rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
@@ -1099,7 +1202,7 @@ have val_u :
 move : match_eq_some.
 rewrite val_u /= => <- /=.
 split; first move : pt2_2; by case pt2.
-rewrite (epdp_dec_enc _ _ u) // !epdp.
+by rewrite (epdp_dec_enc _ _ u).
 qed.
 
 hint simplify [eqtrue] valid_epdp_da_to_env_msg.
@@ -1120,10 +1223,9 @@ proof.
 rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_to_env), epdp_da_to_env_msg.`dec m = Some x.
-  exists (oget (dec_da_to_env m)); by rewrite -some_oget.
+  exists (oget (epdp_da_to_env_msg.`dec m)); by rewrite -some_oget.
 case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <-.
-by rewrite !epdp.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <- //.
 qed.
 
 module DummyAdv : ADV = {
@@ -1159,6 +1261,19 @@ module DummyAdv : ADV = {
 }.
 
 end DummyAdversary.
+
+(* module type for simulators
+
+   a module that takes in Adv : ADV and yields an ADV will have this
+   type, making it possible to quantify over simulators *)
+
+module type SIM (Adv : ADV) = {
+  proc init() : unit {Adv.init}
+  proc invoke(m : msg) : msg option {Adv.invoke}
+}.
+
+module (SimComp (Sim2 : SIM, Sim1 : SIM) : SIM) (Adv : ADV) : ADV =
+  Sim2(Sim1(Adv)).
 
 abstract theory MakeSimulator.
 
@@ -1203,7 +1318,7 @@ op ms_loop_invar
      (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
      0 < (oget r).`3.`2 < core_pi))).
 
-module MS (Core : ADV) (Adv : ADV) : ADV = {
+module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
      received with destination port index core_pi *)
 
