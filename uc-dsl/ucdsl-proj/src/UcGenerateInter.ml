@@ -465,8 +465,6 @@ let print_message
     Format.fprintf ppf "move : match_eq_some.@,";
     Format.fprintf ppf "rewrite val_v /= => <- /=.@,";
     Format.fprintf ppf "apply epdp_dec_enc => //.@,";
-    if (IdMap.cardinal mb.params_map)>1 then
-      Format.fprintf ppf "rewrite !epdp.@,";
     Format.fprintf ppf "qed.@,@,"
   in
 
