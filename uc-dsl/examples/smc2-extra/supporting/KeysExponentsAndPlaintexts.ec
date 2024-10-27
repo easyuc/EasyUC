@@ -175,7 +175,7 @@ op [opaque smt_opaque] epdp_port_port_univ : (port * port, univ) epdp =
 lemma valid_epdp_port_port_univ :
   valid_epdp epdp_port_port_univ.
 proof.
-rewrite /epdp_port_port_univ !epdp.
+by rewrite /epdp_port_port_univ.
 qed.
 
 hint simplify valid_epdp_port_port_univ.
@@ -188,7 +188,7 @@ op [opaque smt_opaque] epdp_port_port_key_univ : (port * port * key, univ) epdp 
 lemma valid_epdp_port_port_key_univ :
   valid_epdp epdp_port_port_key_univ.
 proof.
-rewrite /epdp_port_port_key_univ !epdp.
+by rewrite /epdp_port_port_key_univ.
 qed.
 
 hint simplify valid_epdp_port_port_key_univ.
