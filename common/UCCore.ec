@@ -642,6 +642,10 @@ op nth1_adv_pi_begin_params (rfi : rf_info, pari) : int =
 op nth1_adv_pi_end_params (rfi : rf_info, pari) : int =
   nth 0 rfi.`rfi_adv_pi_end_params (pari - 1).
 
+op adv_pis_rf_info (rfi : rf_info) : int fset =
+  rangeset rfi.`rfi_adv_pi_begin
+  (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
+
 op rf_info_valid (rfi : rf_info) : bool =
   1 <= rfi.`rfi_num_parties /\
   0 <= rfi.`rfi_num_subfuns /\
@@ -661,7 +665,8 @@ op rf_info_valid (rfi : rf_info) : bool =
     nth1_adv_pi_begin_params rfi (pari + 1) =
     nth1_adv_pi_end_params rfi pari + 1)).
 
-lemma rfi_valid_adv_pi_param_gt_adv_pi_main (rfi : rf_info, pari : int) :
+lemma rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin
+      (rfi : rf_info, pari : int) :
   rf_info_valid rfi => 1 <= pari <= rfi.`rfi_num_params =>
   rfi.`rfi_adv_pi_main_end < nth1_adv_pi_begin_params rfi pari.
 proof.
@@ -674,7 +679,7 @@ elim; smt().
 smt().
 qed.
 
-lemma rfi_valid_adv_pi_parm_gt_adv_pi_lt_param
+lemma rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins
       (rfi : rf_info, pari parj : int) :
   rf_info_valid rfi => 1 <= pari < parj <= rfi.`rfi_num_params =>
   nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi parj.
@@ -686,6 +691,29 @@ have ind :
   nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.  
 elim; smt().
 smt().
+qed.
+
+lemma rfi_valid_param_adv_pi_in_range_for_pari (rfi : rf_info, i : int) :
+  rf_info_valid rfi => 1 <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi 1 <= i <=
+  nth1_adv_pi_end_params rfi rfi.`rfi_num_params =>
+  (exists (pari : int),
+   1 <= pari <= rfi.`rfi_num_params /\
+   nth1_adv_pi_begin_params rfi pari <= i <=
+   nth1_adv_pi_end_params rfi pari).
+proof.
+move => rf_info_valid_rfi rfi_num_params_ge1 i_is_param_adv_pi.
+case
+  (exists (pari : int),
+   (1 <= pari && pari <= rfi.`rfi_num_params) /\
+   nth1_adv_pi_begin_params rfi pari <= i &&
+   i <= nth1_adv_pi_end_params rfi pari) => [// | contrad].
+have /# :
+  forall (j : int),
+  0 <= j => 1 <= j <= rfi.`rfi_num_params =>
+  ! (nth1_adv_pi_begin_params rfi 1 <= i <=
+     nth1_adv_pi_end_params rfi j) by
+    elim => [// | j ge0_j IH j_plus1_good_par /#].
 qed.
 
 op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
