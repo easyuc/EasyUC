@@ -323,7 +323,7 @@ rewrite mem_range mem_rangeset /#.
 qed.
 
 lemma union_change_rest_eq_all_adv_pis_of_rf_info :
-  (change_par_adv_pis `|` rest_adv_pis) = adv_pis_rf_info rf_info.
+  change_par_adv_pis `|` rest_adv_pis = adv_pis_rf_info rf_info.
 proof.
 rewrite fsetP => x.
 rewrite /adv_pis_rf_info mem_rangeset in_fsetU
