@@ -1425,15 +1425,29 @@ let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
 (* pretty printer for configurations *)
 
 let party_and_sub_fun_states (maps : maps_tyd) (rws : real_world_state)
-    (addr : int list) (sp : symb_pair) : (symbol * state) list =
-  let rfbt = real_fun_body_tyd_of (unloc (IdPairMap.find sp maps.fun_map)) in
+    (addr : int list) (sp : symb_pair) (base : int)
+      : (int option * symbol * state) list =
+  let root = fst sp in
+  let ft = IdPairMap.find sp maps.fun_map in
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
   let num_args = IdMap.cardinal rfbt.params in
+  let num_adv_pis_of_parties =
+    num_adv_pis_of_parties_of_real_fun maps root ft in
   let of_parties =
-    IdMap.bindings (real_state_of_fun_state (ILMap.find addr rws)) in
+    List.map
+    (fun (pty, state) ->
+       let adv_pi_opt =
+         match get_adv_info_of_party_of_real_fun maps root base
+               ft pty with
+         | None                  -> None
+         | Some (_, _, _, advpi) -> Some advpi in
+       (adv_pi_opt, pty, state))
+    (IdMap.bindings (real_state_of_fun_state (ILMap.find addr rws))) in
   let of_sub_funs =
     List.mapi
     (fun i id ->
-       (id,
+       (Some (base + 1 + num_adv_pis_of_parties + i),
+        id,
         ideal_state_of_fun_state
         (ILMap.find (addr @ [1 + num_args + i]) rws)))
     (List.map fst (IdMap.bindings rfbt.sub_funs)) in
@@ -1448,26 +1462,29 @@ let pp_state (gc : global_context) (ppf : formatter)
       fprintf ppf "@[%s@,(@[%a@])@]" state.id
       (EcPrinting.pp_list ",@ " (pp_form env)) args
 
-let pp_sym_state (gc : global_context) (ppf : formatter)
-    ((id, state) : symbol * state) : unit =
-  fprintf ppf "@[%s:@ %a@]" id (pp_state gc) state
+let pp_adv_pi_opt_sym_state (gc : global_context) (ppf : formatter)
+    ((adv_pi_opt, id, state) : (int option) * symbol * state) : unit =
+  match adv_pi_opt with
+  | None        -> fprintf ppf "@[%s:@ %a@]" id (pp_state gc) state
+  | Some adv_pi ->
+      fprintf ppf "@[%s(%d):@ %a@]" id adv_pi (pp_state gc) state
 
-let pp_sym_state_list (gc : global_context) (ppf : formatter)
-    (sym_stat_list : (symbol * state) list) : unit =
-  EcPrinting.pp_list ",@ " (pp_sym_state gc) ppf sym_stat_list
+let pp_adv_pi_opt_sym_state_list (gc : global_context) (ppf : formatter)
+    (sym_stat_list : (int option * symbol * state) list) : unit =
+  EcPrinting.pp_list ",@ " (pp_adv_pi_opt_sym_state gc) ppf sym_stat_list
 
 let pp_real_world_with_states (maps : maps_tyd) (gc : global_context)
     (rws : real_world_state) (ppf : formatter) (rw : real_world) : unit =
   let rec pp_real_world (addr : int list) (ppf : formatter)
       ((sp, i, rwas) : real_world) : unit =
-    let psfs = party_and_sub_fun_states maps rws addr sp in
+    let psfs = party_and_sub_fun_states maps rws addr sp i in
     match rwas with
     | [] ->
       fprintf ppf "@[%a@,[@[%a@]]@]"
-      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+      pp_symb_pair_int (sp, i) (pp_adv_pi_opt_sym_state_list gc) psfs
     | _  ->
       fprintf ppf "@[%a@,[@[%a@]]@,(@[%a@])@]"
-      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+      pp_symb_pair_int (sp, i) (pp_adv_pi_opt_sym_state_list gc) psfs
       (pp_real_world_args 1 addr) rwas
 
   and pp_real_world_args (i : int) (addr : int list)
@@ -1501,7 +1518,7 @@ let pp_sim_state (gc : global_context) (iws : ideal_world_state)
     | Some rel ->
         fprintf ppf "@[initialized:@ @[func ++@ %a@]@]"
         pp_relative_address rel in
-  fprintf ppf "@[%a/%a@]"
+  fprintf ppf "@[%a /@ %a@]"
   pp_addr sim_st.addr
   (pp_state gc) sim_st.state
 
