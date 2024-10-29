@@ -1,4 +1,4 @@
-(* triple unit implementing a *re-entrant*, two-party real
+(* triple unit implementing a *reentrant*, two-party real
    functionality for carrying out a joint computation, together with an
    ideal functionality and simulator
 
@@ -30,7 +30,7 @@ direct CompDir {
 (* the basic adversarial interface to a party of the real
    functionality lets the party suspend its computation, giving
    control to the adversary; at a later point, the adversary can
-   resume the party's computation (but re-entrancy or communication
+   resume the party's computation (but reentrancy or communication
    from subfunctionalities may mean the party's state has changed, and
    resumption will be from that new state)
 

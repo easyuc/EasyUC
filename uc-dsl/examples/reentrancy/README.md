@@ -1,7 +1,7 @@
-Re-entrant Two Party Functionality for Joint Computation
+Reentrant Two Party Functionality for Joint Computation
 =====================================================================
 
-The files in this directory define a re-entrant two party
+The files in this directory define a reentrant two party
 functionality for jointly carrying out a computation involving inputs
 to the two parties. Unlike in the SMC2 example, the parties' clients
 only learn each other's identities (ports) when they receive their
@@ -16,7 +16,7 @@ The parties of the real functionality have adversarial interfaces,
 and can suspend their operation, giving control to the adversary,
 which may later resume them.
 
-The flow of control in this example is fundamentally re-entrant: the
+The flow of control in this example is fundamentally reentrant: the
 adversary gives control to the environment which reenters the real
 functionality by giving an input to the party that doesn't yet
 have its input. There is no other way for both parties to get their

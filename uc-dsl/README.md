@@ -261,7 +261,7 @@ script `testing.uci` in [`smc2`](examples/smc2). A variation of `smc2`
 involving the corruption of a party and private (non-adversarially
 mediated) forwarding can be found in
 [`smc2-extra`](examples/smc2-extra). And an example involving
-re-entrancy can be found in [`re-entrancy`](examples/re-entrancy).
+reentrancy can be found in [`reentrancy`](examples/reentrancy).
 
 Unit Testing
 --------------------------------------------------------------------
