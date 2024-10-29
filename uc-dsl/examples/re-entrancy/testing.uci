@@ -40,7 +40,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -50,7 +50,7 @@ ctrl_adv.
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 finish.
 
@@ -84,14 +84,14 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 finish.
 
@@ -125,7 +125,7 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -135,7 +135,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 finish.
 
@@ -177,7 +177,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -193,7 +193,7 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 finish.
 
@@ -230,7 +230,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -240,7 +240,7 @@ ctrl_adv.
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 finish.
 
@@ -274,14 +274,14 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 finish.
 
@@ -315,7 +315,7 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -325,7 +325,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 finish.
 
@@ -367,7 +367,7 @@ ctrl_adv.
 send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
 run.
 assert msg_out
-((func, 1))@Comp.CompDir.Pt1.rsp(pt2, h n1 (g n2))@pt1
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
 ctrl_env.
 send env_root_port@_@adv_root_port.
 run.
@@ -383,6 +383,6 @@ ctrl_adv.
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
-((func, 2))@Comp.CompDir.Pt2.rsp(pt1, h n2 (f n1))@pt2
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
 ctrl_env.
 finish.
