@@ -10,6 +10,10 @@ them including interpretation scripts.
 * [`smc2`](smc2) is an example using two instances of secure message
   communication.
 
+* [`re-entrancy`](re-entrancy) is an example involving re-entrancy,
+  where the adversary gives control to the environment which
+  reenters the real functionality.
+
 * [`smc2-extra`](smc2-extra) augments `smc2` with a corrupted party and
   private (non-adversarially mediated) forwarding.
 
