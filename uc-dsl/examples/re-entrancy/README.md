@@ -18,26 +18,31 @@ which may later resume them.
 
 The flow of control in this example is fundamentally re-entrant: the
 adversary gives control to the environment which reenters the real
-functionality by giving an input to the the party that doesn't yet
+functionality by giving an input to the party that doesn't yet
 have its input. There is no other way for both parties to get their
 inputs.
 
 The ideal functionality is much simpler than the real functionality.
 It only tells its simulator when inputs arrive from its clients, but
 not what those inputs are, or what the client ports are. Once both
-inputs have arrived, it lets the simulator tell it which order the
-outputs to the computation should be sent to the party's clients in.
+inputs have arrived, it lets the simulator tell it the order in which
+the outputs to the computation should be sent to the party's clients.
 The simulator can only make these decisions based on its interaction
-with the adversary, which thinks it's making scheduling decisions
-in the real world.
+with the adversary, which thinks it's making scheduling decisions in
+the real world.
 
 The simulator is rather complex, because of the reentrancy, and has to
 keep track of abstract versions of the states of the two parties and
 the two forwarders.
 
 Read and experiment with the interpretation script
-[testing.uci](testing.uci) to see how scheduling choices
+[Comp-testing.uci](Comp-testing.uci) to see how scheduling choices
 made by the adversary affect execution in the real and ideal
-worlds. In particular, note how control is transferred back
-and forth between the environment and adversary.
+worlds. In particular, note how the script transfers control back and
+forth between the environment and adversary.
+
+There is also a simple one party functionality [Main.uc](Main.uc) that
+uses `Comp`, supplying concrete inputs and checking that it gets the
+expected responses.  See [Main-testing.uci](Main-testing.uci) for
+experiments involving it.
 

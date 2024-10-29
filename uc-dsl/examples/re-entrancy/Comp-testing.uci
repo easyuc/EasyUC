@@ -1,3 +1,5 @@
+(* testing Comp *)
+
 load Comp.
 functionality Comp.CompReal.
 

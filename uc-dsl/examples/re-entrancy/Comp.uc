@@ -353,7 +353,7 @@ functionality CompIdeal implements CompDir CompIdeal2Sim {
    forwarders - see Comp.ec for the types *)
 
 simulator CompSim uses CompIdeal2Sim simulates CompReal {
-  initial state SPS_Init {
+  initial state Init {
     match message with
     | CompIdeal2Sim.inp_received(pty_name) => {
         match pty_name with
