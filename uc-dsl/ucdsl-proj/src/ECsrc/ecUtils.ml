@@ -278,6 +278,13 @@ type 'a doption =
   | Single of 'a
   | Double of ('a * 'a)
 
+module DOption = struct
+  let map (type a b) (f : a -> b) (x : a doption) : b doption =
+    match x with
+    | Single v -> Single (f v)
+    | Double (v1, v2) -> Double (f v1, f v2)
+end
+
 (* -------------------------------------------------------------------- *)
 type ('a, 'b) tagged = Tagged of ('a * 'b option)
 
@@ -459,6 +466,10 @@ module List = struct
   end
 
   include Parallel
+
+  (* ------------------------------------------------------------------ *)
+  let destruct (s : 'a list) =
+    match s with x :: xs -> (x, xs) | _ -> assert false
 
   (* ------------------------------------------------------------------ *)
   let nth_opt (s : 'a list) (i : int) =

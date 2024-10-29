@@ -1,0 +1,99 @@
+(* testing Main *)
+
+(* see more detailed tests of Comp in Comp-testing.uci *)
+
+load Main.
+functionality Main.MainReal(Comp.CompReal).
+
+prover [""].  (* we'll do without SMT solvers *)
+
+var pt : port.
+assumption envport_pt : envport func pt.
+
+(* first experiment with real world *)
+real.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 4))@Comp.CompAdv.Pt1.resume$(func ++ [1]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+send ((adv, 6))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 1]).
+run.
+send ((adv, 7))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 2]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* first experiment with ideal world *)
+ideal.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 4))@Comp.CompAdv.Pt1.resume$(func ++ [1]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+send ((adv, 6))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 1]).
+run.
+send ((adv, 7))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 2]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* second experiment with real world *)
+real.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 4))@Comp.CompAdv.Pt1.resume$(func ++ [1]).
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 6))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 1]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+send ((adv, 7))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 2]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* second experiment with ideal world *)
+ideal.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 4))@Comp.CompAdv.Pt1.resume$(func ++ [1]).
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 6))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 1]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+send ((adv, 7))@FwdSched.FwdSchedAdv.ok$(func ++ [1; 2]).
+run.
+send ((adv, 5))@Comp.CompAdv.Pt2.resume$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
