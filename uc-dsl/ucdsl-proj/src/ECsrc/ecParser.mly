@@ -1434,19 +1434,21 @@ param_decl:
 (* -------------------------------------------------------------------- *)
 (* Statements                                                           *)
 
-lvalue_u:
+lvalue_var:
 | x=loc(fident)
    { match lqident_of_fident x.pl_desc with
      | None   -> parse_error x.pl_loc None
-     | Some v -> PLvSymbol (mk_loc x.pl_loc v) }
+     | Some v -> mk_loc x.pl_loc v }
+
+lvalue_u:
+| x=lvalue_var
+   { PLvSymbol x }
 
 | LPAREN p=plist2(qident, COMMA) RPAREN
    { PLvTuple p }
 
-| x=loc(fident) DLBRACKET ti=tvars_app? es=plist1(expr, COMMA) RBRACKET
-   { match lqident_of_fident x.pl_desc with
-     | None   -> parse_error x.pl_loc None
-     | Some v -> PLvMap (mk_loc x.pl_loc v, ti, es) }
+| x=lvalue_var DLBRACKET ti=tvars_app? e=plist1(expr, COMMA) RBRACKET
+   { PLvMap (x, ti, e) }
 
 %inline lvalue:
 | x=loc(lvalue_u) { x }
@@ -2602,21 +2604,26 @@ tac_dir:
 | empty { Backs }
 
 icodepos_r:
-| IF       { (`If     :> cp_match) }
-| WHILE    { (`While  :> cp_match) }
-| LARROW   { (`Assign :> cp_match) }
-| LESAMPLE { (`Sample :> cp_match) }
-| LEAT     { (`Call   :> cp_match) }
+| IF       { (`If     :> pcp_match) }
+| WHILE    { (`While  :> pcp_match) }
+| LESAMPLE { (`Sample :> pcp_match) }
+| LEAT     { (`Call   :> pcp_match) }
+
+| lvm=lvmatch LARROW { (`Assign lvm :> pcp_match) }
+
+lvmatch:
+| empty        { (`LvmNone  :> plvmatch) }
+| x=lvalue_var { (`LvmVar x :> plvmatch) }
 
 %inline icodepos:
  | HAT x=icodepos_r { x }
 
 codepos1_wo_off:
 | i=sword
-    { (`ByPos i :> cp_base) }
+    { (`ByPos i :> pcp_base) }
 
 | k=icodepos i=option(brace(sword))
-    { (`ByMatch (i, k) :> cp_base) }
+    { (`ByMatch (i, k) :> pcp_base) }
 
 codepos1:
 | cp=codepos1_wo_off { (0, cp) }
@@ -2631,6 +2638,10 @@ codepos1:
 codepos:
 | nm=rlist0(nm1_codepos, empty) i=codepos1
     { (List.rev nm, i) }
+
+codeoffset1:
+| i=sword       { (`ByOffset   i :> pcodeoffset1) }
+| AT p=codepos1 { (`ByPosition p :> pcodeoffset1) }
 
 o_codepos1:
 | UNDERSCORE { None }
@@ -2684,21 +2695,24 @@ rnd_info:
 | phi=sform d1=sform d2=sform d3=sform d4=sform p=sform?
     { PMultRndParams ((phi, d1, d2, d3, d4), p) }
 
+(* ------------------------------------------------------------------------ *)
+(* Code motion                                                              *)
+%public phltactic:
+| SWAP info=iplist1(loc(swap_info), COMMA) %prec prec_below_comma
+    { Pswap info }
+
 swap_info:
-| s=side? p=swap_pos { s,p }
+| s=side? p=swap_position { (s, p) }
 
-swap_pos:
-| i1=word i2=word i3=word
-    { SKbase (i1, i2, i3) }
+swap_position:
+| offset=codeoffset1
+    { { interval = None; offset; } }
 
-| p=sword
-    { SKmove p }
+| start=codepos1 offset=codeoffset1
+    { { interval = Some (start, None); offset; } }
 
-| i1=word p=sword
-    { SKmovei (i1, p) }
-
-| LBRACKET i1=word DOTDOT i2=word RBRACKET p=sword
-    { SKmoveinter (i1, i2, p) }
+| LBRACKET start=codepos1 DOTDOT end_=codepos1 RBRACKET offset=codeoffset1
+    { { interval = Some (start, Some end_); offset; } }
 
 side:
 | LBRACE n=word RBRACE {
@@ -2977,7 +2991,7 @@ interleave_info:
 | s=brace(stmt) { OKstmt(s) }
 | r=sexpr? LEAT f=loc(fident) { OKproc(f, r) }
 
-phltactic:
+%public phltactic:
 | PROC
    { Pfun `Def }
 
@@ -3034,9 +3048,6 @@ phltactic:
       | Some _, true  ->
           parse_error s.pl_loc (Some "cannot give side and '='") }
 
-| SWAP info=iplist1(loc(swap_info), COMMA) %prec prec_below_comma
-    { Pswap info }
-
 | INTERLEAVE info=loc(interleave_info)
     { Pinterleave info }
 
@@ -3086,6 +3097,9 @@ phltactic:
 
 | ALIAS s=side? o=codepos x=lident EQ e=expr
     { Pset (s, o, false, x,e) }
+
+| ALIAS s=side? x=lident CEQ p=sform_h AT o=codepos
+    { Psetmatch (s, o, x, p) }
 
 | WEAKMEM s=side? h=loc(ipcore_name) p=param_decl
     { Pweakmem(s, h, p) }
@@ -3241,7 +3255,10 @@ phltactic:
     { Pprocchange (side, pos, f) }
 
 | PROC REWRITE side=side? pos=codepos f=pterm
-    { Pprocrewrite (side, pos, f) }
+    { Pprocrewrite (side, pos, `Rw f) }
+
+| PROC REWRITE side=side? pos=codepos SLASHEQ
+    { Pprocrewrite (side, pos, `Simpl) }
 
 bdhoare_split:
 | b1=sform b2=sform b3=sform?
