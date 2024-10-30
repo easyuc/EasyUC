@@ -43,6 +43,7 @@ forth between the environment and adversary.
 
 There is also a simple one party functionality [Main.uc](Main.uc) that
 uses `Comp`, supplying concrete inputs and checking that it gets the
-expected responses.  See [Main-testing.uci](Main-testing.uci) for
-experiments involving it.
-
+expected responses.  See [Main-testing.uci](Main-testing.uci)
+and [Main-testing-idealish.uci](Main-testing-idealish.uci)
+for experiments involving it (the former using the real functionality
+for `Comp`, and the latter using the ideal functionality).
