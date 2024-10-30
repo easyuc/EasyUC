@@ -9,9 +9,9 @@ outputs to the computation.
 
 The file [`FwdSched.uc`](FwdSched.uc) defines a version of forwarding
 of universe values in which the adversary learns nothing of the values
-being forwarded or the ports involved, but is purely in change of
+being forwarded or the ports involved, but is purely in charge of
 scheduling. The file [`Comp.ec`](Comp.ec) contains EasyCrypt
-definitions on which the main file [`Comp.uc`](Comp.uc) relies.
+definitions on which the UC DSL file [`Comp.uc`](Comp.uc) relies.
 The parties of the real functionality have adversarial interfaces,
 and can suspend their operation, giving control to the adversary,
 which may later resume them.
@@ -27,6 +27,7 @@ It only tells its simulator when inputs arrive from its clients, but
 not what those inputs are, or what the client ports are. Once both
 inputs have arrived, it lets the simulator tell it the order in which
 the outputs to the computation should be sent to the party's clients.
+But the values of those outputs are not influenced by the simulator.
 The simulator can only make these decisions based on its interaction
 with the adversary, which thinks it's making scheduling decisions in
 the real world.
