@@ -322,6 +322,45 @@ right; exists pari.
 rewrite mem_range mem_rangeset /#.
 qed.
 
+lemma union_change_rest_eq_all_adv_pis_of_rf_info :
+  change_par_adv_pis `|` rest_adv_pis = adv_pis_rf_info rf_info.
+proof.
+rewrite fsetP => x.
+rewrite /adv_pis_rf_info mem_rangeset in_fsetU
+       in_change_par_adv_pis in_rest_adv_pis ltzS.
+split =>
+  [[[A1 A2] |
+    [[B1 B2] | [[pari] [#] C1 C2 C3 C4 | [pari] [#] D1 D2 D3 D4]]] |
+   [] E1 E2].
+split => [| _].
+smt(rf_info_valid change_pari_valid
+    rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
+smt(rf_info_valid change_pari_valid
+    rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
+smt(rf_info_valid change_pari_valid
+    rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
+split => [| _].
+smt(rf_info_valid change_pari_valid
+    rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
+smt(rf_info_valid change_pari_valid
+    rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
+split => [| _].
+smt(rf_info_valid change_pari_valid
+    rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
+smt(rf_info_valid change_pari_valid
+    rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
+case (x <= rf_info.`rfi_adv_pi_main_end) => [/# | gt_main_end /=].
+rewrite lezNgt /= in gt_main_end.
+have ge_begin_1 : nth1_adv_pi_begin_params rf_info 1 <= x.
+smt(rf_info_valid change_pari_valid).
+clear E1 gt_main_end.
+have [pari] [] pari_range x_pari_adv_pi_range /#
+    := rfi_valid_param_adv_pi_in_range_for_pari
+       rf_info x _ _ _ => //.
+  apply rf_info_valid.
+  smt(rf_info_valid change_pari_valid).
+qed.
+
 lemma disjoint_change_rest :
   disjoint change_par_adv_pis rest_adv_pis.
 proof.
@@ -331,9 +370,9 @@ rewrite disjointP => k.
 rewrite /change_par_adv_pis mem_rangeset ltzS => k_range.
 rewrite in_rest_adv_pis !negb_or.
 split; last split.
-smt(rfi_valid_adv_pi_param_gt_adv_pi_main).
-smt(mem_range rfi_valid_adv_pi_parm_gt_adv_pi_lt_param).
-smt(mem_range rfi_valid_adv_pi_parm_gt_adv_pi_lt_param).
+smt(rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
+smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
+smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
 qed.
 
 clone MakeInterface as MakeInt'
