@@ -326,8 +326,9 @@ lemma union_change_rest_eq_all_adv_pis_of_rf_info :
   change_par_adv_pis `|` rest_adv_pis = adv_pis_rf_info rf_info.
 proof.
 rewrite fsetP => x.
-rewrite /adv_pis_rf_info mem_rangeset in_fsetU
-       in_change_par_adv_pis in_rest_adv_pis ltzS.
+rewrite /adv_pis_rf_info.
+have -> /= : rf_info.`rfi_num_params <> 0 by smt(change_pari_valid).
+rewrite mem_rangeset in_fsetU in_change_par_adv_pis in_rest_adv_pis ltzS.
 split =>
   [[[A1 A2] |
     [[B1 B2] | [[pari] [#] C1 C2 C3 C4 | [pari] [#] D1 D2 D3 D4]]] |

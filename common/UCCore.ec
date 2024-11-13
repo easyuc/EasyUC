@@ -643,8 +643,11 @@ op nth1_adv_pi_end_params (rfi : rf_info, pari) : int =
   nth 0 rfi.`rfi_adv_pi_end_params (pari - 1).
 
 op adv_pis_rf_info (rfi : rf_info) : int fset =
-  rangeset rfi.`rfi_adv_pi_begin
-  (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
+  if rfi.`rfi_num_params = 0
+  then rangeset rfi.`rfi_adv_pi_begin
+       rfi.`rfi_adv_pi_main_end
+  else rangeset rfi.`rfi_adv_pi_begin
+       (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
 
 op rf_info_valid (rfi : rf_info) : bool =
   1 <= rfi.`rfi_num_parties /\
