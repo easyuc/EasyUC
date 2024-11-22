@@ -2122,7 +2122,6 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
     (new_rws : real_world_state)
       : config * effect =
   let (root, _) = fun_sp in
-  let simpl = simplify_formula c.gc dbs in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
       let path = {inter_id_path = root :: iip; msg = msg} in
@@ -2131,10 +2130,9 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           simpl
-           (make_port_form
-            (addr_concat_form_from_list_smart func_form rel)
-            (int_form 1));
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form 1);
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -2167,10 +2165,9 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                simpl
-                (make_port_form
-                 (addr_concat_form_from_list_smart func_form rel)
-                 (int_form source_pi));
+                make_port_form
+                (addr_concat_form_from_list_smart func_form rel)
+                (int_form source_pi);
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
@@ -2201,20 +2198,17 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (new_rws : real_world_state) (comp : symbol) (sub : symbol)
     (child_i : int) (dir_sp : symb_pair) : config * effect =
   assert (Option.is_none port_form);
-  let simpl = simplify_formula c.gc dbs in
   let (dir_root, dir_comp) = dir_sp in
   let pty_internal_pi = get_internal_pi_of_party_of_real_fun ft pty_id in
   let source_port =
-    simpl
-    (make_port_form
-     (addr_concat_form_from_list_smart func_form rel)
-     (int_form pty_internal_pi)) in
+    make_port_form
+    (addr_concat_form_from_list_smart func_form rel)
+    (int_form pty_internal_pi) in
   let dest_pi = get_pi_of_sub_interface c.maps dir_root dir_comp sub in
   let dest_port =
-    simpl
-    (make_port_form
-     (addr_concat_form_from_list_smart func_form (rel @ [child_i]))
-     (int_form dest_pi)) in
+    make_port_form
+    (addr_concat_form_from_list_smart func_form (rel @ [child_i]))
+    (int_form dest_pi) in
   let iip_new = dir_root :: dir_comp :: List.tl iip in
   let path_new = {inter_id_path = iip_new; msg = msg} in
   let sme =
@@ -2244,7 +2238,6 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
     (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) : config * effect =
-  let simpl = simplify_formula c.gc dbs in
   let (root, _) = fun_sp in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
@@ -2258,10 +2251,9 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           simpl
-           (make_port_form
-            (addr_concat_form_from_list_smart func_form rel)
-            (int_form pty_pi));
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form pty_pi);
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -2290,10 +2282,9 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                simpl
-                (make_port_form
-                 (addr_concat_form_from_list_smart func_form rel)
-                 (int_form source_pi));
+                make_port_form
+                (addr_concat_form_from_list_smart func_form rel)
+                (int_form source_pi);
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
