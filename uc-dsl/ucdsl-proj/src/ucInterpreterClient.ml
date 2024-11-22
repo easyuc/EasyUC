@@ -577,8 +577,8 @@ let interpret (lexbuf : L.lexbuf) =
                    pp_effect eff)
             end
         end
-    end;
-    print_state c
+    end (* TODO ;
+    print_state c *)
   in
   
   let debug () : unit =

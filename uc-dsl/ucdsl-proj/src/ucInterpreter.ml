@@ -475,6 +475,9 @@ let try_destr_port (port : form) : canonical_port option =
           | _      -> destr_err ())
   with _ -> None
 
+let is_canon_port (port : form) : bool =
+  is_some (try_destr_port port)
+
 let try_destr_port_as_port_index (port : form) : int option =
   match try_destr_port port with
   | None                   -> None
@@ -1926,19 +1929,21 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
 let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
     (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
   let simpl = simplify_formula gc dbs in
+  let simpl_if_not_canon port =
+    if is_canon_port port then port else (simpl port) in
   match sme with
   | SMET_Ord sme    ->
       SMET_Ord
       {mode           = sme.mode;
        dir            = sme.dir;
-       src_port_form  = simpl sme.src_port_form;
+       src_port_form  = simpl_if_not_canon sme.src_port_form;
        path           = sme.path;
        args           = List.map simpl sme.args;
-       dest_port_form = simpl sme.dest_port_form}
+       dest_port_form = simpl_if_not_canon sme.dest_port_form}
   | SMET_EnvAdv sme ->
       SMET_EnvAdv
-      {src_port_form  = simpl sme.src_port_form;
-       dest_port_form = simpl sme.dest_port_form}
+      {src_port_form  = simpl_if_not_canon sme.src_port_form;
+       dest_port_form = simpl_if_not_canon sme.dest_port_form}
 
 let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
