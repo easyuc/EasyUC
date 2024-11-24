@@ -1,6 +1,53 @@
-(* Abstract Theory for Composition Theorem Definitions and Proofs *)
+(* Theory for Composition Theorem Definitions and Proofs *)
 
 require import UCCore UCListAux.
+
+(* global variables of all instances of abstract theory *)
+
+clone MakeInterface as CompEnvMakeInt
+proof *.
+module CompEnvMI = CompEnvMakeInt.MI.
+
+print CompEnvMakeInt.MI.
+
+(* we use the module restriction -CompGlobs for all instances
+   of the Composition abstract theory
+
+   print glob CompGlobs is
+
+     CompGlobs.ce_func : addr
+     CompGlobs.ce_stub_st : msg option
+     CompGlobs.mrfc_self : addr
+     CompEnvMakeInt.MI.func : addr
+     CompEnvMakeInt.MI.in_guard : int fset
+ *)
+
+module CompGlobs = {
+  (* state of instances of MakeRFComp *)
+
+  var mrfc_self : addr
+
+  (* state of instances of CompEnv *)
+
+  var ce_stub_st : msg option
+  var ce_func    : addr
+
+  (* dummy procedure that is only here so that glob CompGlobs
+     includes the global variables of CompEnvMI; this simplifies
+     module restrictions *)
+
+  proc comp_env_make_int_dummy() : unit = {
+    var addr : addr; var in_guard : int fset;
+    addr <- CompEnvMI.func; in_guard <- CompEnvMI.in_guard;
+  }    
+}.
+
+(* abstract theory for composition theorem
+
+   each instance shares the same globals, which simplifies
+   module restrictions *)
+
+abstract theory Composition.
 
 (* begin theory parameters *)
 
@@ -15,10 +62,8 @@ axiom change_pari_valid : 1 <= change_pari <= rf_info.`rfi_num_params.
 (* end theory parameters *)
 
 module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
-  var self : addr
-
   proc init(_self : addr) : unit = {
-    self <- _self;
+    CompGlobs.mrfc_self <- _self;
     Rest.init(_self);
     Par.init(_self ++ [change_pari]);
   }
@@ -38,18 +83,18 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
         not_done <- false; r <- None;
       }
       elif (m.`1 = Dir) {
-        if (m.`3.`1 = self) {
-          if (envport self m.`2) {
+        if (m.`3.`1 = CompGlobs.mrfc_self) {
+          if (envport CompGlobs.mrfc_self m.`2) {
             not_done <- false;
           }
-          elif (! (addr_eq_param rf_info self m.`2.`1 \/
-                   addr_eq_subfun rf_info self m.`2.`1)) {
+          elif (! (addr_eq_param rf_info CompGlobs.mrfc_self m.`2.`1 \/
+                   addr_eq_subfun rf_info CompGlobs.mrfc_self m.`2.`1)) {
             not_done <- false; r <- None;
           }
         }
-        elif (addr_eq_param rf_info self m.`3.`1 \/
-              addr_eq_subfun rf_info self m.`3.`1) {
-          if (m.`2.`1 <> self) {
+        elif (addr_eq_param rf_info CompGlobs.mrfc_self m.`3.`1 \/
+              addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1) {
+          if (m.`2.`1 <> CompGlobs.mrfc_self) {
             not_done <- false; r <- None;
           }
         }
@@ -62,15 +107,15 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
         if (m.`2.`1 <> adv) {
           r <- None;
         }
-        elif (m.`3.`1 = self \/
-              addr_eq_subfun rf_info self m.`3.`1) {
+        elif (m.`3.`1 = CompGlobs.mrfc_self \/
+              addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1) {
           if (! rf_info.`rfi_adv_pi_begin < m.`2.`2 <=
                 rf_info.`rfi_adv_pi_main_end) {
             r <- None;
           }
         }
-        elif (addr_ge_param rf_info self m.`3.`1) {
-          pari <- head_of_drop_size_first 0 self m.`3.`1;
+        elif (addr_ge_param rf_info CompGlobs.mrfc_self m.`3.`1) {
+          pari <- head_of_drop_size_first 0 CompGlobs.mrfc_self m.`3.`1;
           if (! (nth1_adv_pi_begin_params rf_info pari <= m.`2.`2 <=
                  nth1_adv_pi_end_params rf_info pari)) {
             r <- None;
@@ -88,7 +133,7 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
     var r : msg option <- None;
     var not_done : bool <- true;
     while (not_done) {
-      if (self ++ [change_pari] <= m.`2.`1) {
+      if (CompGlobs.mrfc_self ++ [change_pari] <= m.`2.`1) {
         r <@ Par.invoke(m);
       }
       else {
@@ -101,12 +146,12 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    (* we can assume m.`3.`1 is not >= self *)
-    if ((m.`1 = Dir /\ m.`2.`1 = self) \/
+    (* we can assume m.`3.`1 is not >= CompGlobs.mrfc_self *)
+    if ((m.`1 = Dir /\ m.`2.`1 = CompGlobs.mrfc_self) \/
         (m.`1 = Adv /\
-         (m.`2.`1 = self \/
-          addr_ge_param rf_info self m.`2.`1 \/
-          addr_eq_subfun rf_info self m.`2.`1))) {
+         (m.`2.`1 = CompGlobs.mrfc_self \/
+          addr_ge_param rf_info CompGlobs.mrfc_self m.`2.`1 \/
+          addr_eq_subfun rf_info CompGlobs.mrfc_self m.`2.`1))) {
       r <@ loop(m);
     }
     return r;
@@ -187,7 +232,7 @@ lemma MakeRFComp_after_par_or_rest_return
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
    r = r' /\
-   after_par_or_rest_return MakeRFComp.self r orig_dest_addr ==>
+   after_par_or_rest_return CompGlobs.mrfc_self r orig_dest_addr ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
 proc => /=.
@@ -208,7 +253,7 @@ lemma MakeRFComp_after_par_or_rest_continue
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
    r = r' /\
-   after_par_or_rest_continue MakeRFComp.self r orig_dest_addr ==>
+   after_par_or_rest_continue CompGlobs.mrfc_self r orig_dest_addr ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
 proof.
 proc => /=.
@@ -219,7 +264,7 @@ qed.
 lemma MakeRFComp_after_par_or_rest_error (Rest <: FUNC) (Par <: FUNC) :
   phoare
   [MakeRFComp(Rest, Par).after_par_or_rest :
-   after_par_or_rest_error MakeRFComp.self r orig_dest_addr ==>
+   after_par_or_rest_error CompGlobs.mrfc_self r orig_dest_addr ==>
    res.`1 = None /\ ! res.`3] = 1%r.
 proof.
 proc => /=.
@@ -376,34 +421,27 @@ smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
 smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
 qed.
 
-clone MakeInterface as MakeInt'
-proof *.
-
-module MI' = MakeInt'.MI.
-
 module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
-  var stub_st : msg option
-  var func : addr
-
   module StubPar : FUNC = {
     proc init(func : addr) : unit = { }
 
     proc invoke(m : msg) : msg option = {
       var r : msg option;
-      if (stub_st <> None) {
-        r <- stub_st; stub_st <- None;
+      if (CompGlobs.ce_stub_st <> None) {
+        r <- CompGlobs.ce_stub_st; CompGlobs.ce_stub_st <- None;
       }
       else {
         r <@ Inter.invoke(m);
         if (r <> None) {
           m <- oget r;
           if (m.`1 = Adv) {
-            stub_st <- Some m;
+            CompGlobs.ce_stub_st <- Some m;
             (* only mode and destination port matter (destination port id
                must simply be > 0) *)
             r <-
               Some
-              (Adv, (adv, 1), (func ++ [change_pari], 1), TagNoInter, []);
+              (Adv, (adv, 1), (CompGlobs.ce_func ++ [change_pari], 1),
+               TagNoInter, []);
           }
         }
       }
@@ -416,19 +454,20 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
 
     proc invoke(m : msg) : msg option = {
       var r : msg option;
-      if (stub_st <> None) {
-        r <- stub_st; stub_st <- None;
+      if (CompGlobs.ce_stub_st <> None) {
+        r <- CompGlobs.ce_stub_st; CompGlobs.ce_stub_st <- None;
       }
       else {
         r <@ Inter.invoke(m);
         if (r <> None) {
           m <- oget r;
           if (m.`1 = Dir) {
-            stub_st <- Some m;
+            CompGlobs.ce_stub_st <- Some m;
             (* only mode and destination address matter *)
             r <-
               Some
-              (Adv, (func ++ [change_pari], 1), (adv, 1), TagNoInter, []);
+              (Adv, (CompGlobs.ce_func ++ [change_pari], 1),
+               (adv, 1), TagNoInter, []);
           }
         }
       }
@@ -440,20 +479,20 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
 
   proc main(func_ : addr, in_guard : int fset) : bool = {
     var b : bool;
-    stub_st <- None;
-    func <- take (size func_ - 1) func_;
-    b <@ Exper(MI'(MakeRFComp(Rest, StubPar), StubAdv), Env)
-           .main(func, in_guard `\` rest_adv_pis);
+    CompGlobs.ce_stub_st <- None;
+    CompGlobs.ce_func <- take (size func_ - 1) func_;
+    b <@ Exper(CompEnvMI(MakeRFComp(Rest, StubPar), StubAdv), Env)
+           .main(CompGlobs.ce_func, in_guard `\` rest_adv_pis);
     return b;
   }
 }.
 
 section.
 
-declare module Env  <: ENV{-MI, -CompEnv}.
-declare module Adv  <: ADV{-MI, -CompEnv, -Env}.
-declare module Rest <: FUNC{-MI, -CompEnv, -Env, -Adv}.
-declare module Par  <: FUNC{-MI, -CompEnv, -Env, -Adv, -Rest}.
+declare module Env  <: ENV{-MI, -CompGlobs}.
+declare module Adv  <: ADV{-MI, -CompGlobs, -Env}.
+declare module Rest <: FUNC{-MI, -CompGlobs, -Env, -Adv}.
+declare module Par  <: FUNC{-MI, -CompGlobs, -Env, -Adv, -Rest}.
 
 declare op invar_rest : glob Rest -> bool.
 declare op term_rest  : glob Rest -> int.
@@ -511,15 +550,16 @@ seq 3 3 :
   (={glob Env, glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    _self{1} = func' /\ _self{1} = func{1} /\
-   _self{1} = MI.func{1} /\ _self{1} = MakeRFComp.self{1} /\
+   _self{1} = MI.func{1} /\ _self{1} = CompGlobs.mrfc_self{1} /\
    in_guard{1} = in_guard_low' /\ in_guard{1} = MI.in_guard{1} /\
-   _self{2} = func' /\ _self{2} = func0{2} /\ _self{2} = MI'.func{2} /\
-   _self{2} = MakeRFComp.self{2} /\ _self{2} = CompEnv.func{2} /\
+   _self{2} = func' /\ _self{2} = func0{2} /\
+   _self{2} = CompEnvMI.func{2} /\
+   _self{2} = CompGlobs.mrfc_self{2} /\ _self{2} = CompGlobs.ce_func{2} /\
    MI.func{2} = func' ++ [change_pari] /\
-   in_guard1{2} = MI'.in_guard{2} /\
+   in_guard1{2} = CompEnvMI.in_guard{2} /\
    in_guard1{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompEnv.stub_st{2} = None).
+   CompGlobs.ce_stub_st{2} = None).
 call (_ : true).
 call Par_init.
 call Rest_init.
@@ -531,13 +571,13 @@ call
   (_ :
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ MakeRFComp.self{1} = func' /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
-   MI'.func{2} = func' /\ MakeRFComp.self{2} = func' /\
-   CompEnv.func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-   MI'.in_guard{2} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompEnv.stub_st{2} = None).
+   CompGlobs.ce_stub_st{2} = None).
 proc.
 if => //.
 inline loop.
@@ -550,9 +590,9 @@ qed.
 end section.
 
 lemma compos_bridge
-      (Env <: ENV{-MI, -CompEnv}) (Adv <: ADV{-MI, -CompEnv, -Env})
-      (Rest <: FUNC{-MI, -CompEnv, -Env, -Adv})
-      (Par <: FUNC{-MI, -CompEnv, -Env, -Adv, -Rest})
+      (Env <: ENV{-MI, -CompGlobs}) (Adv <: ADV{-MI, -CompGlobs, -Env})
+      (Rest <: FUNC{-MI, -CompGlobs, -Env, -Adv})
+      (Par <: FUNC{-MI, -CompGlobs, -Env, -Adv, -Rest})
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par : glob Par -> bool, term_par : glob Par -> int)
       (func' : addr, in_guard_low' : int fset) &m :
@@ -639,11 +679,11 @@ qed.
      disjoint (change_par_adv_pis `|` rest_adv_pis) in_guard' *)
 
 lemma composition
-      (Env <: ENV{-MI, -CompEnv}) (Rest <: FUNC{-MI, -CompEnv, -Env})
-      (Adv1 <: ADV{-MI, -CompEnv, -Env, -Rest})
-      (Par1 <: FUNC{-MI, -CompEnv, -Env, -Rest, -Adv1})
-      (Adv2 <: ADV{-MI, -CompEnv, -Env, -Rest})
-      (Par2 <: FUNC{-MI, -CompEnv, -Env, -Rest, -Adv2})
+      (Env <: ENV{-MI, -CompGlobs}) (Rest <: FUNC{-MI, -CompGlobs, -Env})
+      (Adv1 <: ADV{-MI, -CompGlobs, -Env, -Rest})
+      (Par1 <: FUNC{-MI, -CompGlobs, -Env, -Rest, -Adv1})
+      (Adv2 <: ADV{-MI, -CompGlobs, -Env, -Rest})
+      (Par2 <: FUNC{-MI, -CompGlobs, -Env, -Rest, -Adv2})
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par1 : glob Par1 -> bool, term_par1 : glob Par1 -> int,
        invar_par2 : glob Par2 -> bool, term_par2 : glob Par2 -> int)
@@ -702,3 +742,5 @@ by rewrite
    invar_par2 term_par2
    func' in_guard' &m).
 qed.
+
+end Composition.
