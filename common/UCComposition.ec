@@ -8,39 +8,36 @@ clone MakeInterface as CompEnvMakeInt
 proof *.
 module CompEnvMI = CompEnvMakeInt.MI.
 
-print CompEnvMakeInt.MI.
-
-(* we use the module restriction -CompGlobs for all instances
-   of the Composition abstract theory
-
-   print glob CompGlobs is
-
-     CompGlobs.ce_func : addr
-     CompGlobs.ce_stub_st : msg option
-     CompGlobs.mrfc_self : addr
-     CompEnvMakeInt.MI.func : addr
-     CompEnvMakeInt.MI.in_guard : int fset
- *)
-
 module CompGlobs = {
-  (* state of instances of MakeRFComp *)
+  (* global of instances of MakeRFComp *)
 
   var mrfc_self : addr
 
-  (* state of instances of CompEnv *)
+  (* globals of instances of CompEnv *)
 
   var ce_stub_st : msg option
   var ce_func    : addr
 
-  (* dummy procedure that is only here so that glob CompGlobs
-     includes the global variables of CompEnvMI; this simplifies
-     module restrictions *)
+  (* force inclusion in `glob CompGlobs` of `glob CompEnvMI` *)
 
-  proc comp_env_make_int_dummy() : unit = {
-    var addr : addr; var in_guard : int fset;
-    addr <- CompEnvMI.func; in_guard <- CompEnvMI.in_guard;
-  }    
+  proc comp_env_mi_dummy() : unit = {
+    var func : addr; var in_guard : int fset;
+    func <- CompEnvMI.func; in_guard <- CompEnvMI.in_guard;
+  }
 }.
+
+(*
+print glob CompGlobs.
+
+Globals [# = 0]:
+
+Prog. variables [# = 5]:
+  CompGlobs.ce_func : addr
+  CompGlobs.ce_stub_st : msg option
+  CompGlobs.mrfc_self : addr
+  CompEnvMakeInt.MI.func : addr
+  CompEnvMakeInt.MI.in_guard : int fset
+*)
 
 (* abstract theory for composition theorem
 
@@ -534,6 +531,9 @@ declare axiom Par_invoke (n : int) :
     ={res, glob Par} /\ invar_par (glob Par){1} /\
     (res{1} <> None => term_par (glob Par){1} < n)].
 
+local module CompEnvStubPar : FUNC = CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubPar.
+local module CompEnvStubAdv : ADV  = CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubAdv.
+
 lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
   exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
@@ -582,6 +582,45 @@ proc.
 if => //.
 inline loop.
 sp 3 3.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+inline{1} 1; inline{2} 1.
+sp 2 2.
+if => //.
+inline{1} 1; inline{2} 1.
+sp 3 3; wp.
+(* left ~ right_top *)
+admit.
+sp 1 1.
+elim* => r0_r r0_L.
+seq 1 1 :
+  (={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\
+   invar_par (glob Par){1} /\
+   MI.func{1} = func' /\
+   CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None /\
+   ={r0, not_done} /\ r0{1} = None /\ !not_done{1}).
+call{1} (MakeInt.MI_after_func_error (MakeRFComp(Rest, Par)) Adv).
+call{2}
+  (CompEnvMakeInt.MI_after_func_error (MakeRFComp(Rest, CompEnvStubPar))
+   CompEnvStubAdv).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+auto; smt().
+inline{2} 1; sp 0 1.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 1.
+rcondt{2} 1; first auto => />.
+progress.
+admit.
 admit.
 auto.
 auto.
