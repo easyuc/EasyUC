@@ -381,7 +381,7 @@ rewrite -!eq_iff => -> /=.
 by rewrite IntOrder.lerNgt.
 qed.
 
-lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
   hoare
   [MI(Func, Adv).invoke :
    inter_init_pre MI.func ==>
@@ -443,7 +443,7 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
 
-lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
+lemma MI_after_func_to_env (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -454,7 +454,7 @@ proof.
 proc; auto; smt(some_oget le_refl).
 qed.
 
-lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
+lemma MI_after_func_to_adv (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -465,7 +465,7 @@ proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
+lemma MI_after_func_error (Func <: FUNC) (Adv <: ADV) :
   phoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func /\ after_func_error MI.func r ==>
@@ -476,8 +476,9 @@ qed.
 
 op after_adv_to_env (func : addr, r : msg option) : bool =
    r <> None /\
-   (oget r).`1 = Adv /\ envport0 func (oget r).`2 /\
-   adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
+   (oget r).`1 = Adv /\ ! func <= (oget r).`2.`1 /\
+   ! adv <= (oget r).`2.`1 /\ adv = (oget r).`3.`1 /\
+   0 <= (oget r).`3.`2 /\
    ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0).
 
 op after_adv_to_func (func : addr, r : msg option) : bool =
@@ -494,7 +495,7 @@ op after_adv_error (func : addr, r : msg option) : bool =
     (! func <= (oget r).`2.`1 /\
      ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port))).
 
-lemma after_adv_disj (func adv : addr, r : msg option) :
+lemma after_adv_disj (func : addr, r : msg option) :
   after_adv_to_env func r  \/
   after_adv_to_func func r \/
   after_adv_error func r.
@@ -506,7 +507,7 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
+lemma MI_after_adv_to_env (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -514,10 +515,10 @@ lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
    after_adv_to_env MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
-proc; auto; smt(some_oget).
+proc; auto; smt().
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
+lemma MI_after_adv_to_func (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -528,7 +529,7 @@ proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
-lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
+lemma MI_after_adv_error (Func <: FUNC) (Adv <: ADV) :
   phoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func /\ after_adv_error MI.func r ==>
