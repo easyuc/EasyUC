@@ -645,7 +645,7 @@ op nth1_adv_pi_end_params (rfi : rf_info, pari) : int =
 op adv_pis_rf_info (rfi : rf_info) : int fset =
   if rfi.`rfi_num_params = 0
   then rangeset rfi.`rfi_adv_pi_begin
-       rfi.`rfi_adv_pi_main_end
+       (rfi.`rfi_adv_pi_main_end + 1)
   else rangeset rfi.`rfi_adv_pi_begin
        (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
 
