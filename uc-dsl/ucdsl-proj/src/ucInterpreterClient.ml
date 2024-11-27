@@ -164,22 +164,23 @@ let pp_interpreter_state
 let interpret (lexbuf : L.lexbuf) =
 
   let print_state (c : interpreter_state) : unit =
-    begin match c.effect with
-    | None     -> ()
-    | Some eff ->
-      Format.fprintf fmt "@.effect:@.%a@.;@." 
-      pp_effect eff
-    end;
-    pp_uc_file_pos fmt c;
-    Format.fprintf fmt "state:@.%a@.;@." pp_interpreter_state c
+    if (UcState.get_batch_mode ())
+    then ()
+    else begin
+      begin match c.effect with
+      | None     -> ()
+      | Some eff ->
+        Format.fprintf fmt "@.effect:@.%a@.;@." 
+        pp_effect eff
+      end;
+      pp_uc_file_pos fmt c;
+      Format.fprintf fmt "state:@.%a@.;@." pp_interpreter_state c
+    end
   in
   
   let push_print (is : interpreter_state) : unit =
     push is;
-    if (UcState.get_batch_mode ())
-    then ()
-    else
-      print_state is
+    print_state is
   in
 
   let prompt () : unit =
@@ -577,8 +578,8 @@ let interpret (lexbuf : L.lexbuf) =
                    pp_effect eff)
             end
         end
-    end (* TODO ;
-    print_state c *)
+    end;
+    print_state c
   in
   
   let debug () : unit =
