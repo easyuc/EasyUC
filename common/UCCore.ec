@@ -507,6 +507,76 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
+lemma after_adv_to_env_ext_not_to_func
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  ! after_adv_to_func (func ++ [i]) r.
+proof.
+move => aate_func_r.
+rewrite /after_adv_to_func !negb_and.
+smt(not_le_ext).
+qed.
+
+lemma after_adv_to_env_ext_not_error
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  ! after_adv_error (func ++ [i]) r.
+proof.
+move => aate_func_r.
+rewrite /after_adv_error !negb_or.
+smt(not_le_ext).
+qed.
+
+lemma after_adv_to_env_ext
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  after_adv_to_env (func ++ [i]) r.
+proof.
+move => aate_func_r.
+have [// | [A | B]] := after_adv_disj (func ++ [i]) r.
+smt(after_adv_to_env_ext_not_to_func).
+smt(after_adv_to_env_ext_not_error).
+qed.
+
+lemma after_adv_to_func_ext_not_error
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_to_func func r =>
+  ! after_adv_error (func ++ [i]) r.
+proof.
+move => inc_func_adv aatf_func_r.
+rewrite /after_adv_error !negb_or /=.
+smt(inc_le1_not_rl ge_nil le_trans inc_nle_l).
+qed.
+
+lemma after_adv_to_func_ext_to_func_or_env
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_to_func func r =>
+  after_adv_to_func (func ++ [i]) r \/
+  after_adv_to_env (func ++ [i]) r.
+proof.
+move => inc_func_adv aatf_func_r.
+smt(after_adv_to_func_ext_not_error after_adv_disj).
+qed.
+
+lemma after_adv_error_ext_not_to_func
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_error func r =>
+  ! after_adv_to_func (func ++ [i]) r.
+proof.
+move => inc_func_adv.
+rewrite /after_adv_error /after_adv_to_func !negb_and /=.
+smt(inc_extl inc_le2_not_lr not_le_ext).
+qed.
+
+lemma after_adv_error_ext_error_or_to_env
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_error func r =>
+  after_adv_error (func ++ [i]) r \/ after_adv_to_env (func ++ [i]) r.
+proof.
+move => inc_func_adv aae_func_r.
+smt(after_adv_error_ext_not_to_func after_adv_disj).
+qed.
+
 lemma MI_after_adv_to_env (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare

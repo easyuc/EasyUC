@@ -6240,7 +6240,7 @@ exlim
      real_ke_real_simp_term_met_st_fws = Fwd.Forw.st{1};
      real_ke_real_simp_term_met_st_kes = KERS.KERealSimp.st{1}|}) => met.
 have [lem_first _] := smc_sec1_ke_real_simp_bridge_induction met.
-call lem_first.
+     call lem_first.
 auto.
 inline SMCSec1Bridge_TopRight(KERS.KERealSimp).rest.
 sp 4 0.
