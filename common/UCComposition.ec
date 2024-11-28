@@ -122,7 +122,7 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
           r <- None;
         }
       }
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -173,7 +173,7 @@ op after_par_or_rest_return
 op after_par_or_rest_continue
    (func : addr, r : msg option, orig_dest_addr : addr) : bool =
   r <> None /\ (oget r).`3.`1 = orig_dest_addr /\ (oget r).`1 = Dir /\
-  (((oget r).`3.`1 = func /\ 
+  (((oget r).`3.`1 = func /\
     (addr_eq_param rf_info func (oget r).`2.`1 \/
      addr_eq_subfun rf_info func (oget r).`2.`1)) \/
    ((addr_eq_param rf_info func (oget r).`3.`1 \/
@@ -320,12 +320,12 @@ op rest_adv_pis : int fset =
   rangeset rf_info.`rfi_adv_pi_begin
   (rf_info.`rfi_adv_pi_main_end + 1) `|`
   union_map
-  (fun pari => 
+  (fun pari =>
     rangeset (nth1_adv_pi_begin_params rf_info pari)
     (nth1_adv_pi_end_params rf_info pari + 1))
   (range 1 change_pari) `|`
   union_map
-  (fun pari => 
+  (fun pari =>
     rangeset (nth1_adv_pi_begin_params rf_info pari)
     (nth1_adv_pi_end_params rf_info pari + 1))
   (range (change_pari + 1) (rf_info.`rfi_num_params + 1)).
@@ -536,6 +536,166 @@ local module CompEnvStubPar : FUNC =
 local module CompEnvStubAdv : ADV  =
   CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubAdv.
 
+local module Left = {
+  proc f(m : msg) : msg option = {
+    var not_done : bool <- true; var r : msg option;
+    while (not_done) {
+      if (CompGlobs.mrfc_self ++ [change_pari] <= m.`2.`1) {
+        r <@ Par.invoke(m);
+      }
+      else {
+        r <@ Rest.invoke(m);
+      }
+      (r, m, not_done) <@
+        MakeRFComp(Rest, Par).after_par_or_rest(r, m.`2.`1);
+    }
+    (r, m, not_done) <@ MI(MakeRFComp(Rest, Par), Adv).after_func(r);
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ MakeRFComp(Rest, Par).invoke(m);
+        (r, m, not_done) <@ MI(MakeRFComp(Rest, Par), Adv).after_func(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MI(MakeRFComp(Rest, Par), Adv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local module RightTop = {
+  proc f(m : msg) : msg option = {
+    var not_done : bool <- true; var r : msg option <- None;
+    while (not_done) {
+      if (CompGlobs.mrfc_self ++ [change_pari] <= m.`2.`1) {
+        r <@ CompEnvStubPar.invoke(m);
+      }
+      else {
+        r <@ Rest.invoke(m);
+      }
+      (r, m, not_done) <@
+        MakeRFComp(Rest, CompEnvStubPar).after_par_or_rest(r, m.`2.`1);
+    }
+    (r, m, not_done) <@
+        CompEnvMI
+        (MakeRFComp(Rest, CompEnvStubPar), CompEnvStubAdv).after_func(r);
+    while (not_done) {
+      if (CompEnvMI.func <= m.`2.`1) {
+        r <@ MakeRFComp(Rest, CompEnvStubPar).invoke(m);
+        (r, m, not_done) <@
+          CompEnvMI
+          (MakeRFComp(Rest, CompEnvStubPar), CompEnvStubAdv).after_func(r);
+      }
+      else {
+        r <@ CompEnvStubAdv.invoke(m);
+        (r, m, not_done) <@
+          CompEnvMI
+          (MakeRFComp(Rest, CompEnvStubPar), CompEnvStubAdv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local module RightBottomAdv = {
+  proc f(m : msg) : msg option = {
+    var not_done : bool <- true; var r : msg option <- None;
+
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ Par.invoke(m);
+        (r, m, not_done) <@ MI(Par, Adv).after_func(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MI(Par, Adv).after_adv(r);
+      }
+    }
+    if (r <> None) {
+      m <- oget r;
+      if (m.`1 = Dir) {
+        CompGlobs.ce_stub_st <- Some m;
+        r <-
+          Some
+          (UCBasicTypes.Adv,
+           (CompGlobs.ce_func ++ [change_pari], 1),
+           (adv, 1), TagNoInter, []);
+      }
+    }
+    (r, m, not_done) <@
+       CompEnvMI
+       (MakeRFComp
+        (Rest, CompEnvStubPar), CompEnvStubAdv).after_adv(r);
+    while (not_done) {
+      if (CompEnvMI.func <= m.`2.`1) {
+        r <@ MakeRFComp(Rest, CompEnvStubPar).invoke(m);
+        (r, m, not_done) <@
+          CompEnvMI
+          (MakeRFComp(Rest, CompEnvStubPar),
+           CompEnvStubAdv).after_func(r);
+      }
+      else {
+        r <@ CompEnvStubAdv.invoke(m);
+       (r, m, not_done) <@
+         CompEnvMI
+         (MakeRFComp(Rest, CompEnvStubPar),
+          CompEnvStubAdv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local module RightBottomPar = {
+  proc f(m : msg) : msg option = {
+    var not_done : bool <- true; var r : msg option <- None;
+
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ Par.invoke(m);
+        (r, m, not_done) <@ MI(Par, Adv).after_func(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MI(Par, Adv).after_adv(r);
+      }
+    }
+    if (r <> None) {
+      m <- oget r;
+      if (m.`1 = Adv) {
+        CompGlobs.ce_stub_st <- Some m;
+        r <-
+          Some
+          (UCBasicTypes.Adv, (adv, 1),
+          (CompGlobs.ce_func ++ [change_pari], 1),
+          TagNoInter, []);
+      }
+    }
+    (r, m, not_done) <@
+       CompEnvMI
+       (MakeRFComp
+        (Rest, CompEnvStubPar), CompEnvStubAdv).after_func(r);
+    while (not_done) {
+      if (CompEnvMI.func <= m.`2.`1) {
+        r <@ MakeRFComp(Rest, CompEnvStubPar).invoke(m);
+        (r, m, not_done) <@
+          CompEnvMI
+          (MakeRFComp(Rest, CompEnvStubPar),
+           CompEnvStubAdv).after_func(r);
+      }
+      else {
+        r <@ CompEnvStubAdv.invoke(m);
+       (r, m, not_done) <@
+         CompEnvMI
+         (MakeRFComp(Rest, CompEnvStubPar),
+          CompEnvStubAdv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
 lemma main_guard_ext
       (func : addr, i : int, in_guard : int fset, xs : int fset,
        m : msg) :
@@ -619,9 +779,15 @@ sp 2 2.
 if => //.
 inline{1} 1; inline{2} 1.
 sp 3 3; wp.
+(* start of reduction to Left ~ RightTop *)
 conseq
   (_ :
    ={m2} /\ not_done0{1} /\ not_done0{2} /\
+   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m2{1}.`1 = UCBasicTypes.Adv /\
+    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -632,7 +798,85 @@ conseq
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
    _) => //.
-admit. (* left ~ right top *)
+transitivity{1}
+  {r <@ Left.f(m);}
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   m2{1} = m{2} /\ not_done0{1} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r0{1} = r{2})
+  (m{1} = m2{2} /\ not_done0{1} /\ not_done0{2} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={glob Adv, glob Rest, glob Par} /\ r{1} = r0{2} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
+       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
+       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} m2{2} true => //.
+inline{2} 1; sp 0 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+transitivity{2}
+  {r <@ RightTop.f(m);}
+  (={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={r} /\ ={glob Adv, glob Rest, glob Par} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None)
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done0{2} /\ m{1} = m2{2} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r{1} = r0{2}) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
+       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m2{2} => //.
+admit.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+(* end of Left ~ RightTop reduction *)
 sp 1 1.
 elim* => r0_r r0_L.
 seq 1 1 :
@@ -794,6 +1038,12 @@ sp 3 0.
 case (MakeInt.after_adv_to_func MI.func{2} r3{2}).
 seq 0 1 :
   (m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
+   r2{1} = None /\
+   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m2{1}.`1 = UCBasicTypes.Adv /\
+    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -807,9 +1057,15 @@ exlim r3{2} => r3_R.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r3_R).
 auto; smt(inc_extl).
 wp.
+(* start of reduction to Left ~ RightBottomAdv *)
 conseq
   (_ :
    m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
+   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m2{1}.`1 = UCBasicTypes.Adv /\
+    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -820,7 +1076,85 @@ conseq
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
    _) => //.
-admit.  (* left ~ right bottom adv *)
+transitivity{1}
+  {r <@ Left.f(m);}
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   m2{1} = m{2} /\ not_done0{1} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r0{1} = r{2})
+  (m{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={glob Adv, glob Rest, glob Par} /\ r{1} = r0{2} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
+       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
+       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} m3{2} true => //.
+inline{2} 1; sp 0 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+transitivity{2}
+  {r <@ RightBottomAdv.f(m);}
+  (={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={r} /\ ={glob Adv, glob Rest, glob Par} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None)
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done0{2} /\ m{1} = m3{2} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r{1} = r0{2}) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
+       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m3{2} => //.
+admit.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+(* end of Left ~ RightBottomAdv reduction *)
 seq 0 1 :
   (r3{2} = Some m2{1} /\ not_done0{1} /\ !not_done0{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -874,9 +1208,15 @@ sp 0 2.
 rcondt{2} 1; first auto.
 inline{2} 1.
 sp 0 3; wp.
+(* start of reduction to Left ~ RightTop *)
 conseq
   (_ :
    m2{1} = m5{2} /\ not_done0{1} /\ not_done1{2} /\
+   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m2{1}.`1 = UCBasicTypes.Adv /\
+    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -887,7 +1227,85 @@ conseq
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
    _) => //.
-admit. (* left ~ right top *)
+transitivity{1}
+  {r <@ Left.f(m);}
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done0{1} /\ m2{1} = m{2} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r0{1} = r{2})
+  (m{1} = m5{2} /\ not_done1{2} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={glob Adv, glob Rest, glob Par} /\ r{1} = r0{2} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
+       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
+       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} m5{2} => //.
+inline{2} 1; sp 0 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+transitivity{2}
+  {r <@ RightTop.f(m);}
+  (={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={r} /\ ={glob Adv, glob Rest, glob Par} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None)
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done1{2} /\ m{1} = m5{2}==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   r{1} = r0{2}) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
+       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m5{2} => //.
+admit.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+(* end of Left ~ RightTop reduction *)
 sp 1 0; elim* => r0_L.
 seq 1 0 :
   (r0{1} = None /\ !not_done{1} /\ r3{2} <> None /\
