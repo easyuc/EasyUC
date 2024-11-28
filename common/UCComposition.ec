@@ -538,7 +538,7 @@ local module CompEnvStubAdv : ADV  =
 
 local module Left = {
   proc f(m : msg) : msg option = {
-    var not_done : bool <- true; var r : msg option;
+    var not_done : bool <- true; var r : msg option <- None;
     while (not_done) {
       if (CompGlobs.mrfc_self ++ [change_pari] <= m.`2.`1) {
         r <@ Par.invoke(m);
@@ -671,6 +671,18 @@ local module RightBottomPar = {
           (CompGlobs.ce_func ++ [change_pari], 1),
           TagNoInter, []);
       }
+    }
+    (r, m, not_done) <@
+      MakeRFComp(Rest, CompEnvStubPar).after_par_or_rest(r, m.`2.`1);
+    while (not_done) {
+      if (CompGlobs.mrfc_self ++ [change_pari] <= m.`2.`1) {
+        r <@ CompEnvStubPar.invoke(m);
+      }
+      else {
+        r <@ Rest.invoke(m);
+      }
+      (r, m, not_done) <@
+        MakeRFComp(Rest, CompEnvStubPar).after_par_or_rest(r, m.`2.`1);
     }
     (r, m, not_done) <@
        CompEnvMI
@@ -834,7 +846,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
        CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} m2{2} true => //.
-inline{2} 1; sp 0 2.
+inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
@@ -1112,7 +1124,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
        CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} m3{2} true => //.
-inline{2} 1; sp 0 2.
+inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
@@ -1263,7 +1275,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
        CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} m5{2} => //.
-inline{2} 1; sp 0 2.
+inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
