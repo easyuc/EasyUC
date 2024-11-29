@@ -736,6 +736,106 @@ move => [/# | [#] _ not_ge_param _].
 smt(rf_info_valid change_pari_valid).
 qed.  
 
+local lemma comp_bridge_induct 
+      (func' : addr, in_guard_low' : int fset) :
+  exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
+  forall (n : int),
+  equiv
+  [Left.f ~ RightTop.f :
+   ={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={res, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None] /\
+  equiv
+  [Left.f ~ RightBottomAdv.f :
+   ={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={res, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None] /\
+  equiv
+  [Left.f ~ RightBottomPar.f :
+   ={m} /\
+   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    m{1}.`1 = UCBasicTypes.Adv /\
+    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
+     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={res, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None].
+proof.
+move => ep_func' disj_igl'_rest_adv_pis n.
+case (n < 0) => [lt0_n | ge0_n].
+(split; last split); exfalso; smt(ge0_term_rest ge0_term_par).
+rewrite -lezNgt in ge0_n.
+move : n ge0_n.
+elim /Int.sintind => n ge0_n IH.
+split.
+(* start of Left.f ~ RightTop.f *)
+proc.
+sp 2 2. rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+admit.
+admit.
+qed.
+
 lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
   exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
@@ -884,7 +984,11 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m2{2} => //.
-admit.
+exlim (glob Rest){1}, (glob Par){2} => gr gp.
+have [first _] :=
+  comp_bridge_induct func' in_guard_low'
+  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
+call first; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
@@ -1162,7 +1266,11 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m3{2} => //.
-admit.
+exlim (glob Rest){1}, (glob Par){2} => gr gp.
+have [_ [second _]] :=
+  comp_bridge_induct func' in_guard_low'
+  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
+call second; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
@@ -1313,7 +1421,11 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m5{2} => //.
-admit.
+exlim (glob Rest){1}, (glob Par){2} => gr gp.
+have [first _] :=
+  comp_bridge_induct func' in_guard_low'
+  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
+call first; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
