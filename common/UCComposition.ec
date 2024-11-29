@@ -618,7 +618,7 @@ local module RightBottomAdv = {
         CompGlobs.ce_stub_st <- Some m;
         r <-
           Some
-          (UCBasicTypes.Adv,
+          (Adv,
            (CompGlobs.ce_func ++ [change_pari], 1),
            (adv, 1), TagNoInter, []);
       }
@@ -667,7 +667,7 @@ local module RightBottomPar = {
         CompGlobs.ce_stub_st <- Some m;
         r <-
           Some
-          (UCBasicTypes.Adv, (adv, 1),
+          (Adv, (adv, 1),
           (CompGlobs.ce_func ++ [change_pari], 1),
           TagNoInter, []);
       }
@@ -744,7 +744,7 @@ local lemma comp_bridge_induct
   [Left.f ~ RightTop.f :
    ={m} /\
    (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
+    m{1}.`1 = Adv /\
     (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
@@ -770,11 +770,7 @@ local lemma comp_bridge_induct
   equiv
   [Left.f ~ RightBottomAdv.f :
    ={m} /\
-   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
-    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -797,11 +793,7 @@ local lemma comp_bridge_induct
   equiv
   [Left.f ~ RightBottomPar.f :
    ={m} /\
-   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
-    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -896,7 +888,7 @@ conseq
   (_ :
    ={m2} /\ not_done0{1} /\ not_done0{2} /\
    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
+    m2{1}.`1 = Adv /\
     (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
@@ -918,7 +910,7 @@ transitivity{1}
    r0{1} = r{2})
   (m{1} = m2{2} /\ not_done0{1} /\ not_done0{2} /\
    (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
+    m{1}.`1 = Adv /\
     (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
@@ -953,7 +945,7 @@ transitivity{2}
   {r <@ RightTop.f(m);}
   (={m} /\
    (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
+    m{1}.`1 = Adv /\
     (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
@@ -1154,12 +1146,8 @@ sp 3 0.
 case (MakeInt.after_adv_to_func MI.func{2} r3{2}).
 seq 0 1 :
   (m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
-   r2{1} = None /\
-   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
-    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
+   r3{2} = Some m2{1} /\ m2{1}.`1 = Adv /\
+   MI.func{2} <= m2{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1177,11 +1165,7 @@ wp.
 conseq
   (_ :
    m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
-   (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
-    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
+   m2{1}.`1 = Adv /\ MI.func{2} <= m2{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1199,11 +1183,7 @@ transitivity{1}
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    r0{1} = r{2})
   (m{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
-   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
-    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1234,11 +1214,7 @@ sim.
 transitivity{2}
   {r <@ RightBottomAdv.f(m);}
   (={m} /\
-   (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
-    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-     addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
-     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
+   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1288,7 +1264,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None /\
    MakeInt.after_adv_to_func MI.func{1} r3{2} /\
    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
+    m2{1}.`1 = Adv /\
     (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1))).
@@ -1312,7 +1288,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None /\
    MakeInt.after_adv_to_func MI.func{1} (Some m0{2}) /\
    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
+    m2{1}.`1 = Adv /\
     (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1))).
@@ -1333,7 +1309,7 @@ conseq
   (_ :
    m2{1} = m5{2} /\ not_done0{1} /\ not_done1{2} /\
    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m2{1}.`1 = UCBasicTypes.Adv /\
+    m2{1}.`1 = Adv /\
     (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1)) /\
@@ -1355,7 +1331,7 @@ transitivity{1}
    r0{1} = r{2})
   (m{1} = m5{2} /\ not_done1{2} /\
    (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
+    m{1}.`1 = Adv /\
     (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
@@ -1390,7 +1366,7 @@ transitivity{2}
   {r <@ RightTop.f(m);}
   (={m} /\
    (m{1}.`1 = Dir /\ m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    m{1}.`1 = UCBasicTypes.Adv /\
+    m{1}.`1 = Adv /\
     (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
      addr_ge_param rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1)) /\
@@ -1446,7 +1422,7 @@ seq 1 0 :
    (MakeInt.after_adv_to_func MI.func{2} r3{2} \/
     MakeInt.after_adv_to_env MI.func{2} r3{2}) /\
    ! ((oget r3{2}).`1 = Dir /\ (oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
-      (oget r3{2}).`1 = UCBasicTypes.Adv /\
+      (oget r3{2}).`1 = Adv /\
       ((oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
        addr_ge_param rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1 \/
        addr_eq_subfun rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1))).
@@ -1469,7 +1445,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None /\
    MakeInt.after_adv_to_func MI.func{1} r3{2} /\
    ! ((oget r3{2}).`1 = Dir /\ (oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
-      (oget r3{2}).`1 = UCBasicTypes.Adv /\
+      (oget r3{2}).`1 = Adv /\
       ((oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
        addr_ge_param rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1 \/
        addr_eq_subfun rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1))).
@@ -1493,7 +1469,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None /\
    MakeInt.after_adv_to_func MI.func{1} r3{2} /\
    ! ((oget r3{2}).`1 = Dir /\ (oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
-      (oget r3{2}).`1 = UCBasicTypes.Adv /\
+      (oget r3{2}).`1 = Adv /\
       ((oget r3{2}).`2.`1 = CompGlobs.mrfc_self{1} \/
        addr_ge_param rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1 \/
        addr_eq_subfun rf_info CompGlobs.mrfc_self{1} (oget r3{2}).`2.`1))).
