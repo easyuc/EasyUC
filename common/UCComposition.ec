@@ -1369,7 +1369,7 @@ conseq
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
-   _); first smt(inc_extl).
+   _); first smt().
 transitivity{1}
   {r <@ Left.f(m);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
