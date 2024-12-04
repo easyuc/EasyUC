@@ -768,7 +768,7 @@ local lemma comp_bridge_induct
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
-    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2})) /\
+    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\ envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -845,6 +845,18 @@ split.
 (* start of Left.f ~ RightTop.f *)
 proc.
 sp 2 2. rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+inline{2} 1.
+rcondf{2} 2; first auto.
+inline{2} 2; sp 0 2.
+rcondt{2} 1; first auto.
+smt(le_pre le_cons not_le_other_branch not_le_ext_nonnil_l
+    rf_info_valid change_pari_valid).
+inline{2} 1.
+rcondt{2} 4; first auto.
+rcondt{2} 4; first auto.
+sp 0 3.
+admit.
 admit.
 admit.
 qed.
@@ -914,7 +926,8 @@ conseq
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
     (m2{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2})) /\
+    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m2{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -939,7 +952,8 @@ transitivity{1}
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
-    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2})) /\
+    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -976,7 +990,8 @@ transitivity{2}
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
-    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2})) /\
+    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1343,7 +1358,8 @@ conseq
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
     (m2{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2})) /\
+    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m2{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1367,7 +1383,8 @@ transitivity{1}
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
-    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2})) /\
+    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1404,7 +1421,8 @@ transitivity{2}
      addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Adv /\
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
-    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2})) /\
+    (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
