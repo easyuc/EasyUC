@@ -69,60 +69,56 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
 
   proc after_par_or_rest(r : msg option, orig_dest_addr : addr)
          : msg option * msg * bool = {
-    var m : msg <- witness; var pari : int;
+    var m : msg <- witness;
     var not_done <- true;
     if (r = None) {
       not_done <- false;
     }
     else {
       m <- oget r;  (* next iteration, if any, will use m *)
-      if (m.`3.`1 <> orig_dest_addr) {
-        not_done <- false; r <- None;
-      }
-      elif (m.`1 = Dir) {
-        if (m.`3.`1 = CompGlobs.mrfc_self) {
+      if (m.`1 = Dir) {
+        if (m.`3.`1 = CompGlobs.mrfc_self /\
+            CompGlobs.mrfc_self = orig_dest_addr) {
           if (envport CompGlobs.mrfc_self m.`2) {
             not_done <- false;
           }
-          elif (! (addr_eq_param rf_info CompGlobs.mrfc_self m.`2.`1 \/
-                   addr_eq_subfun rf_info CompGlobs.mrfc_self m.`2.`1)) {
+          elif (addr_eq_subfun rf_info CompGlobs.mrfc_self m.`2.`1 \/
+                addr_eq_param rf_info CompGlobs.mrfc_self m.`2.`1) {
+          }
+          else {
             not_done <- false; r <- None;
           }
         }
-        elif (addr_eq_param rf_info CompGlobs.mrfc_self m.`3.`1 \/
-              addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1) {
-          if (m.`2.`1 <> CompGlobs.mrfc_self) {
-            not_done <- false; r <- None;
-          }
+        elif (addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1 /\
+              m.`3.`1 = orig_dest_addr /\ m.`2.`1 = CompGlobs.mrfc_self) {
         }
-        else {  (* should not happen *)
+        elif (addr_eq_param rf_info CompGlobs.mrfc_self m.`3.`1 /\
+              CompGlobs.mrfc_self ++
+              [next_of_addr CompGlobs.mrfc_self m.`3.`1] <= orig_dest_addr /\
+              m.`2.`1 = CompGlobs.mrfc_self) {
+        }
+        else {
           not_done <- false; r <- None;
         }
       }
       else {  (* m.`1 = Adv *)
         not_done <- false;
-        if (m.`2.`1 <> adv) {
+        if (m.`2.`1 <> adv \/ ! 0 < m.`2.`2) {
           r <- None;
         }
-        elif (m.`3.`1 = CompGlobs.mrfc_self \/
-              addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1) {
-          if (! rf_info.`rfi_adv_pi_begin < m.`2.`2 <=
-                rf_info.`rfi_adv_pi_main_end) {
-            r <- None;
-          }
+        elif ((m.`3.`1 = CompGlobs.mrfc_self \/
+               addr_eq_subfun rf_info CompGlobs.mrfc_self m.`3.`1) /\
+              m.`3.`1 = orig_dest_addr) {
         }
-        elif (addr_ge_param rf_info CompGlobs.mrfc_self m.`3.`1) {
-          pari <- head_of_drop_size_first 0 CompGlobs.mrfc_self m.`3.`1;
-          if (! (nth1_adv_pi_begin_params rf_info pari <= m.`2.`2 <=
-                 nth1_adv_pi_end_params rf_info pari)) {
-            r <- None;
-          }
-        }
-        else {  (* should not happen *)
+        elif (addr_ge_param rf_info CompGlobs.mrfc_self m.`3.`1 /\
+              CompGlobs.mrfc_self ++
+              [next_of_addr CompGlobs.mrfc_self m.`3.`1] <= orig_dest_addr) {
+        } 
+        else {
           r <- None;
         }
       }
-    }
+    }          
     return (r, m, not_done);
   }
 
@@ -157,60 +153,48 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
 
 op after_par_or_rest_return
    (func : addr, r : msg option, orig_dest_addr : addr) : bool =
-  r <> None /\ (oget r).`3.`1 = orig_dest_addr /\
-  (((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\
+  r <> None /\
+  (((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\ func = orig_dest_addr /\
     envport func (oget r).`2) \/
-   ((oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\
-    ((((oget r).`3.`1 = func \/
-       addr_eq_subfun rf_info func (oget r).`3.`1) /\
-      rf_info.`rfi_adv_pi_begin < (oget r).`2.`2 <=
-      rf_info.`rfi_adv_pi_main_end) \/
+   ((oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
+    ((((oget r).`3.`1 = func \/ addr_eq_subfun rf_info func (oget r).`3.`1) /\
+       (oget r).`3.`1 = orig_dest_addr) \/
      (addr_ge_param rf_info func (oget r).`3.`1 /\
-      let pari = head_of_drop_size_first 0 func (oget r).`3.`1 in
-      nth1_adv_pi_begin_params rf_info pari <= (oget r).`2.`2 <=
-      nth1_adv_pi_end_params rf_info pari)))).
+      func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr)))).
 
 op after_par_or_rest_continue
    (func : addr, r : msg option, orig_dest_addr : addr) : bool =
-  r <> None /\ (oget r).`3.`1 = orig_dest_addr /\ (oget r).`1 = Dir /\
-  (((oget r).`3.`1 = func /\
-    (addr_eq_param rf_info func (oget r).`2.`1 \/
-     addr_eq_subfun rf_info func (oget r).`2.`1)) \/
-   ((addr_eq_param rf_info func (oget r).`3.`1 \/
-     addr_eq_subfun rf_info func (oget r).`3.`1) /\
+  r <> None /\ (oget r).`1 = Dir /\
+  (((oget r).`3.`1 = func /\ func = orig_dest_addr /\
+    (addr_eq_subfun rf_info func (oget r).`2.`1 \/
+     addr_eq_param rf_info func (oget r).`2.`1)) \/
+   (addr_eq_subfun rf_info func (oget r).`3.`1 /\
+    (oget r).`3.`1 = orig_dest_addr /\ (oget r).`2.`1 = func) \/
+   (addr_eq_param rf_info func (oget r).`3.`1 /\
+    func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr /\
     (oget r).`2.`1 = func)).
 
 op after_par_or_rest_error
    (func : addr, r : msg option, orig_dest_addr : addr) : bool =
   r = None \/
-  (oget r).`3.`1 <> orig_dest_addr \/
   ((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\
    ! envport func (oget r).`2 /\
    ! addr_eq_param rf_info func (oget r).`2.`1 /\
    ! addr_eq_subfun rf_info func (oget r).`2.`1) \/
-  ((oget r).`1 = Dir /\
-   (addr_eq_param rf_info func (oget r).`3.`1 \/
-    addr_eq_subfun rf_info func (oget r).`3.`1) /\
-   (oget r).`2.`1 <> func) \/
-  ((oget r).`1 = Dir /\
-   (oget r).`3.`1 <> func /\
-   ! addr_eq_param rf_info func (oget r).`3.`1 /\
-   ! addr_eq_subfun rf_info func (oget r).`3.`1) \/
+  ((oget r).`1 = Dir /\ 
+   ((oget r).`3.`1 <> func \/ func <> orig_dest_addr) /\
+   (! addr_eq_subfun rf_info func (oget r).`3.`1 \/
+      (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
+   (! addr_eq_param rf_info func (oget r).`3.`1 \/
+    ! func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr \/
+    (oget r).`2.`1 <> func)) \/
   ((oget r).`1 = Adv /\ (oget r).`2.`1 <> adv) \/
+  ((oget r).`1 = Adv /\ ! 0 < (oget r).`2.`2) \/
   ((oget r).`1 = Adv /\
-   ((oget r).`3.`1 = func \/
-    addr_eq_subfun rf_info func (oget r).`3.`1) /\
-   ! rf_info.`rfi_adv_pi_begin < (oget r).`2.`2 <=
-     rf_info.`rfi_adv_pi_main_end) \/
-  ((oget r).`1 = Adv /\
-   addr_ge_param rf_info func (oget r).`3.`1 /\
-   let pari = head_of_drop_size_first 0 func (oget r).`3.`1 in
-   ! (nth1_adv_pi_begin_params rf_info pari <= (oget r).`2.`2 <=
-      nth1_adv_pi_end_params rf_info pari)) \/
-  ((oget r).`1 = Adv /\
-   (oget r).`3.`1 <> func /\
-   ! addr_eq_subfun rf_info func (oget r).`3.`1 /\
-   ! addr_ge_param rf_info func (oget r).`3.`1).
+   (((oget r).`3.`1 <> func /\ ! addr_eq_subfun rf_info func (oget r).`3.`1) \/
+     (oget r).`3.`1 <> orig_dest_addr) /\
+   (! addr_ge_param rf_info func (oget r).`3.`1 \/
+    ! func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr)).
 
 lemma after_par_or_rest_disj (func adv : addr, r : msg option,
       orig_dest_addr : addr) :
@@ -231,18 +215,7 @@ lemma MakeRFComp_after_par_or_rest_return
    r = r' /\
    after_par_or_rest_return CompGlobs.mrfc_self r orig_dest_addr ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
-proof.
-proc => /=.
-sp 2.
-rcondf 1; first auto; smt().
-sp 1; elim* => m0.
-rcondf 1; first auto; smt().
-if.
-auto; smt().
-sp 1; elim* => not_done0.
-rcondf 1; first auto; smt().
-auto;
-  smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
+proc; auto; smt().
 qed.
 
 lemma MakeRFComp_after_par_or_rest_continue
@@ -255,7 +228,8 @@ lemma MakeRFComp_after_par_or_rest_continue
 proof.
 proc => /=.
 auto;
-  smt(disjoint_addr_eq_param_envport disjoint_addr_eq_subfun_envport).
+  smt(disjoint_addr_eq_param_envport
+      disjoint_addr_eq_subfun_envport).
 qed.
 
 lemma MakeRFComp_after_par_or_rest_error (Rest <: FUNC) (Par <: FUNC) :
@@ -265,24 +239,10 @@ lemma MakeRFComp_after_par_or_rest_error (Rest <: FUNC) (Par <: FUNC) :
    res.`1 = None /\ ! res.`3] = 1%r.
 proof.
 proc => /=.
-sp 2.
-if; first auto.
-sp 1; elim* => m0.
-if; first auto.
-if.
-auto; smt(not_addr_eq_param_self not_addr_eq_subfun_self).
-sp 1; elim* => not_done0.
-if; first auto.
-if.
-rcondt 1; first auto => &hr [#] _ H1 _ _ H2 H3 H4 H5 H6 H7.
-smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
-auto.
-if.
-sp 1.
-rcondt 1; first auto => &hr [#] H1 _ H2 _ _ H3 H4 H5 H6 H7.
-smt(not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
-auto.
-auto.
+auto;
+  smt(not_addr_eq_param_self not_addr_eq_subfun_self
+      not_addr_eq_param_self not_addr_eq_subfun_self
+      not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
 qed.
 
 (* specialization of addr_eq and addr_ge operators to rest / changed
@@ -531,7 +491,9 @@ declare axiom Rest_invoke (n : int) :
     ={m, glob Rest} /\ invar_rest (glob Rest){1} /\
     term_rest (glob Rest){1} = n ==>
     ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
-    (res{1} <> None => term_rest (glob Rest){1} < n)].
+    (res{1} <> None =>
+     term_rest (glob Rest){1} < n /\
+     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in rest_adv_pis))].
 
 declare axiom ge0_term_par (gl : glob Par) :
   invar_par gl => 0 <= term_par gl.
@@ -548,7 +510,9 @@ declare axiom Par_invoke (n : int) :
     ={m, glob Par} /\ invar_par (glob Par){1} /\
     term_par (glob Par){1} = n ==>
     ={res, glob Par} /\ invar_par (glob Par){1} /\
-    (res{1} <> None => term_par (glob Par){1} < n)].
+    (res{1} <> None =>
+     term_par (glob Par){1} < n /\
+     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in change_par_adv_pis))].
 
 local module CompEnvStubPar : FUNC =
   CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubPar.
@@ -1764,7 +1728,9 @@ lemma compos_bridge
    [Rest.invoke :
     invar_rest (glob Rest) /\ term_rest (glob Rest) = n ==>
     invar_rest (glob Rest) /\
-    (res <> None => term_rest (glob Rest) < n)]) =>
+    (res <> None =>
+     term_rest (glob Rest) < n /\
+     ((oget res).`1 = Adv => (oget res).`2.`2 \in rest_adv_pis))]) =>
   (forall (gl : glob Par), invar_par gl => 0 <= term_par gl) =>
   hoare [Par.init : true ==> invar_par (glob Par)] =>
   (forall (n : int),
@@ -1772,7 +1738,9 @@ lemma compos_bridge
    [Par.invoke :
     invar_par (glob Par) /\ term_par (glob Par) = n ==>
     invar_par (glob Par) /\
-    (res <> None => term_par (glob Par) < n)]) =>
+    (res <> None =>
+     term_par (glob Par) < n /\
+     ((oget res).`1 = Adv => (oget res).`2.`2 \in change_par_adv_pis))]) =>
   exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
        .main(func', in_guard_low') @ &m : res] =
@@ -1795,7 +1763,9 @@ have rest_invoke_equiv :
    ={arg, glob Rest} /\ invar_rest (glob Rest){1} /\
    term_rest (glob Rest){1} = n ==>
    ={res, glob Rest} /\ invar_rest (glob Rest){1} /\
-   (res{1} <> None => term_rest (glob Rest){1} < n)].
+   (res{1} <> None =>
+    term_rest (glob Rest){1} < n /\
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in rest_adv_pis))].
   move => n.
   rewrite 
   (invoke_term_metric_hoare_implies_equiv Rest
@@ -1810,7 +1780,9 @@ have par_invoke_equiv :
    ={arg, glob Par} /\ invar_par (glob Par){1} /\
    term_par (glob Par){1} = n ==>
    ={res, glob Par} /\ invar_par (glob Par){1} /\
-   (res{1} <> None => term_par (glob Par){1} < n)].
+   (res{1} <> None =>
+    term_par (glob Par){1} < n /\
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in change_par_adv_pis))].
   move => n.
   rewrite 
   (invoke_term_metric_hoare_implies_equiv Par
@@ -1856,7 +1828,9 @@ lemma composition
    [Rest.invoke :
     invar_rest (glob Rest) /\ term_rest (glob Rest) = n ==>
     invar_rest (glob Rest) /\
-    (res <> None => term_rest (glob Rest) < n)]) =>
+    (res <> None =>
+       term_rest (glob Rest) < n /\
+       ((oget res).`1 = Adv => (oget res).`2.`2 \in rest_adv_pis))]) =>
   (forall (gl : glob Par1), invar_par1 gl => 0 <= term_par1 gl) =>
   hoare [Par1.init : true ==> invar_par1 (glob Par1)] =>
   (forall (n : int),
@@ -1864,7 +1838,9 @@ lemma composition
    [Par1.invoke :
     invar_par1 (glob Par1) /\ term_par1 (glob Par1) = n ==>
     invar_par1 (glob Par1) /\
-    (res <> None => term_par1 (glob Par1) < n)]) =>
+    (res <> None =>
+       term_par1 (glob Par1) < n /\
+       ((oget res).`1 = Adv => (oget res).`2.`2 \in change_par_adv_pis))]) =>
   (forall (gl : glob Par2), invar_par2 gl => 0 <= term_par2 gl) =>
   hoare [Par2.init : true ==> invar_par2 (glob Par2)] =>
   (forall (n : int),
@@ -1872,7 +1848,9 @@ lemma composition
    [Par2.invoke :
     invar_par2 (glob Par2) /\ term_par2 (glob Par2) = n ==>
     invar_par2 (glob Par2) /\
-    (res <> None => term_par2 (glob Par2) < n)]) =>
+    (res <> None =>
+       term_par2 (glob Par2) < n /\
+       ((oget res).`1 = Adv => (oget res).`2.`2 \in change_par_adv_pis))]) =>
   exper_pre func' => disjoint in_guard' rest_adv_pis =>
   `|Pr[Exper(MI(Par1, Adv1), CompEnv(Rest, Env))
          .main(func' ++ [change_pari], in_guard' `|` rest_adv_pis)
