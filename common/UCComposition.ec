@@ -264,18 +264,19 @@ op addr_eq_param_rest (rfi : rf_info, self addr : addr) : bool =
   (1 <= k < change_pari \/ change_pari < k <= rfi.`rfi_num_params) /\
   addr = self ++ [k].
 
-lemma after_func_to_adv_ch_pari_cond_iff_after_par_or_rest_return_and_adv
+(* lemmas relating the MakeInt.after_func_... lemmas and the
+   after_par_or_rest_... lemmas *)
+
+lemma after_func_to_adv_ch_pari_implies_after_par_or_rest_return_and_adv
       (func : addr, r : msg option, orig_dest_addr : addr) :
   func ++ [change_pari] <= orig_dest_addr =>
-  MakeInt.after_func_to_adv (func ++ [change_pari]) r <=>
+  MakeInt.after_func_to_adv (func ++ [change_pari]) r =>
   (after_par_or_rest_return func r orig_dest_addr /\
    (oget r).`1 = Adv).
 proof.
 move => oda_ge_addr_ch_pari.
 rewrite /after_func_to_adv /after_par_or_rest_return.
-split;
-  [smt(change_pari_valid next_of_addr_ge_self_plus) |
-   smt(le_refl le_ext_r next_of_addr_ge_self_plus)].
+smt(change_pari_valid next_of_addr_ge_self_plus).
 qed.
 
 lemma after_par_or_rest_return_from_change_pari
@@ -291,7 +292,7 @@ rewrite /after_par_or_rest_return.
 smt(next_of_addr_ge_self_plus).
 qed.
 
-lemma after_func_error_ch_pari_cond_implies_after_par_or_rest_error
+lemma after_func_error_ch_pari_implies_after_par_or_rest_error
       (func : addr, r : msg option, orig_dest_addr : addr) :      
   inc func adv => func ++ [change_pari] <= orig_dest_addr =>
   MakeInt.after_func_error (func ++ [change_pari]) r =>
@@ -305,7 +306,7 @@ smt(le_refl inc_nle_r inc_non_nil not_le_ext_nonnil_l
     not_le_other_branch next_of_addr_ge_self_plus).
 qed.
 
-lemma after_func_to_env_ch_pari_cond_implies_after_par_or_rest_cont_or_error
+lemma after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error
       (func : addr, r : msg option, orig_dest_addr : addr) :      
   MakeInt.after_func_to_env (func ++ [change_pari]) r =>
   after_par_or_rest_continue func r orig_dest_addr \/
