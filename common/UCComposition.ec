@@ -184,7 +184,7 @@ op after_par_or_rest_error
   ((oget r).`1 = Dir /\ 
    ((oget r).`3.`1 <> func \/ func <> orig_dest_addr) /\
    (! addr_eq_subfun rf_info func (oget r).`3.`1 \/
-      (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
+    (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
    (! addr_eq_param rf_info func (oget r).`3.`1 \/
     ! func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr \/
     (oget r).`2.`1 <> func)) \/
@@ -263,6 +263,71 @@ op addr_eq_param_rest (rfi : rf_info, self addr : addr) : bool =
   exists (k : int),
   (1 <= k < change_pari \/ change_pari < k <= rfi.`rfi_num_params) /\
   addr = self ++ [k].
+
+lemma after_func_to_adv_ch_pari_cond_iff_after_par_or_rest_return_and_adv
+      (func : addr, r : msg option, orig_dest_addr : addr) :
+  func ++ [change_pari] <= orig_dest_addr =>
+  MakeInt.after_func_to_adv (func ++ [change_pari]) r <=>
+  (after_par_or_rest_return func r orig_dest_addr /\
+   (oget r).`1 = Adv).
+proof.
+move => oda_ge_addr_ch_pari.
+rewrite /after_func_to_adv /after_par_or_rest_return.
+split;
+  [smt(change_pari_valid next_of_addr_ge_self_plus) |
+   smt(le_refl le_ext_r next_of_addr_ge_self_plus)].
+qed.
+
+lemma after_par_or_rest_return_from_change_pari
+      (func : addr, r : msg option, orig_dest_addr : addr) :
+  func ++ [change_pari] <= orig_dest_addr =>
+  after_par_or_rest_return func r orig_dest_addr =>
+  (oget r).`1 = Adv =>
+  r <> None /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
+  func ++ [change_pari] <= (oget r).`3.`1.
+proof.
+move => oda_ge_addr_ch_pari.
+rewrite /after_par_or_rest_return.
+smt(next_of_addr_ge_self_plus).
+qed.
+
+lemma after_func_error_ch_pari_cond_implies_after_par_or_rest_error
+      (func : addr, r : msg option, orig_dest_addr : addr) :      
+  inc func adv => func ++ [change_pari] <= orig_dest_addr =>
+  MakeInt.after_func_error (func ++ [change_pari]) r =>
+  after_par_or_rest_error func r orig_dest_addr.
+proof.
+move => inc_func_adv oda_ge_addr_ch_pari.
+rewrite /after_func_error /after_par_or_rest_error.
+move => [// | [dest_ge_par |]].
+smt(not_le_ext_nonnil_l inc_extl inc_nle_l).
+smt(le_refl inc_nle_r inc_non_nil not_le_ext_nonnil_l
+    not_le_other_branch next_of_addr_ge_self_plus).
+qed.
+
+lemma after_func_to_env_ch_pari_cond_implies_after_par_or_rest_cont_or_error
+      (func : addr, r : msg option, orig_dest_addr : addr) :      
+  MakeInt.after_func_to_env (func ++ [change_pari]) r =>
+  after_par_or_rest_continue func r orig_dest_addr \/
+  after_par_or_rest_error func r orig_dest_addr.
+proof.
+rewrite /after_func_to_env /after_par_or_rest_continue
+        /after_par_or_rest_error => [#] -> -> ep_par <- /= /#.
+qed.
+
+lemma after_par_or_rest_continue_from_change_pari
+      (func : addr, r : msg option, orig_dest_addr : addr) :
+  func ++ [change_pari] <= orig_dest_addr =>
+  after_par_or_rest_continue func r orig_dest_addr =>
+  r <> None /\ (oget r).`1 = Dir /\ (oget r).`2.`1 = func /\
+  (oget r).`3.`1 = func ++ [change_pari].
+proof.
+move => oda_ge_addr_ch_pari.
+rewrite /after_par_or_rest_continue.
+smt(le_refl le_pre le_cons not_le_ext_nonnil_l
+    rf_info_valid change_pari_valid
+    next_of_addr_ge_self_plus).
+qed.
 
 (* adv pis as fset for parameter being changed *)
 
