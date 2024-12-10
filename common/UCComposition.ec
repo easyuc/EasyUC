@@ -1,5 +1,7 @@
 (* Theory for Composition Theorem Definitions and Proofs *)
 
+prover quorum=2 ["Z3" "Alt-Ergo"].
+
 require import UCCore UCListAux.
 
 (* global variables of all instances of abstract theory *)
@@ -302,8 +304,21 @@ move => inc_func_adv oda_ge_addr_ch_pari.
 rewrite /after_func_error /after_par_or_rest_error.
 move => [// | [dest_ge_par |]].
 smt(not_le_ext_nonnil_l inc_extl inc_nle_l).
-smt(le_refl inc_nle_r inc_non_nil not_le_ext_nonnil_l
-    not_le_other_branch next_of_addr_ge_self_plus).
+move => [[] -> [#] [| [| src_ne_par]] |].
+smt(inc_nle_r  not_le_ext_nonnil_l).
+smt(inc_non_nil not_le_ext_nonnil_l).
+right; right => /=; split; [idtac | split].
+smt(not_le_ext_nonnil_l).
+smt(le_refl next_of_addr_ge_self_plus).
+case (addr_eq_param rf_info func (oget r).`3.`1) => [/= | //].
+rewrite /addr_eq_param => [[k]] [#] _ _ src_eq.
+rewrite src_eq.
+have -> :
+  next_of_addr func (func ++ [k]) = k
+  by apply next_of_addr_ge_self_plus.
+case (k = change_pari) => [// | k_ne_change_pari].
+smt(not_le_other_branch).
+smt(next_of_addr_ge_self_plus).
 qed.
 
 lemma after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error
@@ -887,8 +902,8 @@ rcondt{2} 4; first auto.
 rcondt{2} 4; first auto.
 sp 0 3.
 seq 1 1 :
-  (r{1} = r2{2} /\ ={glob Adv, glob Rest, glob Par} /\
-   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{1}.`2.`1 /\
+  (r{1} = r2{2} /\ ={m} /\ ={glob Adv, glob Rest, glob Par} /\
+   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{2}.`2.`1 /\
    (r{1} = None \/
     term_rest (glob Rest){1} + term_par (glob Par){2} < n) /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -956,8 +971,9 @@ rcondf{2} 1; first auto.
 auto.
 conseq
   (_ :
-   r{1} = r2{2} /\ ={glob Adv, glob Rest, glob Par} /\
+   r{1} = r2{2} /\ ={m} /\
    CompGlobs.mrfc_self{1} ++ [change_pari] <= m{1}.`2.`1 /\
+   ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} < n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -1023,10 +1039,11 @@ case (MakeInt.after_func_to_adv MI.func{2} r2{2}).
 seq 1 1 :
   (r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
    ! not_done{1} /\ not_done0{2} /\
+   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{2}.`2.`1 /\
    MakeInt.after_func_to_adv MI.func{2} r2{2} /\
+   ! (MakeInt.after_func_error MI.func{2} r2{2}) /\
    m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
    0 < m{1}.`2.`2 /\
-   MI.func{1} ++ [change_pari] <= m{1}.`3.`1 /\
    term_rest (glob Rest){1} + term_par (glob Par){2} < n /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -1040,8 +1057,8 @@ seq 1 1 :
 exlim r{1} => r1.
 call{1} (MakeRFComp_after_par_or_rest_return Rest Par r1).
 call{2} (MakeInt.MI_after_func_to_adv Par Adv r1).
-auto;
-  smt(inc_extl
+auto; progress [-delta];
+  smt(inc_extl oget_some
       after_func_to_adv_ch_pari_implies_after_par_or_rest_return_and_adv).
 rcondt{2} 1; first auto.
 rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
@@ -1050,9 +1067,10 @@ seq 1 0 :
   (r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
    not_done{1} /\ not_done0{2} /\
    MakeInt.after_func_to_adv MI.func{2} r2{2} /\
+   ! MakeInt.after_func_error MI.func{2} r2{2} /\
    m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
    0 < m{1}.`2.`2 /\
-   MI.func{1} ++ [change_pari] <= m{1}.`3.`1 /\
+   MI.func{1} ++ [change_pari] <= m{2}.`2.`1 /\
    term_rest (glob Rest){1} + term_par (glob Par){2} < n /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -1069,6 +1087,177 @@ call{1}
 auto; smt(inc_extl le_trans le_ext_r).
 rcondt{1} 1; first auto.
 rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
+seq 1 1 :
+  (r{1} = r2{2} /\
+   MI.func{1} ++ [change_pari] <= m{2}.`2.`1 /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} < n /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call (_ : true); first auto.
+case (MakeInt.after_adv_error MI.func{1} r{1}).
+seq 1 0 :
+  (r{1} = None /\ !not_done{1} /\
+   MI.func{1} ++ [change_pari] <= m{2}.`2.`1 /\
+   MakeInt.after_adv_error MI.func{1} r2{2} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} < n /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{1} (MakeInt.MI_after_adv_error (MakeRFComp(Rest, Par)) Adv).
+auto; smt().
+rcondf{1} 1; auto.
+case (MakeInt.after_adv_error MI.func{2} r2{2}).
+seq 0 1 :
+  (r{1} = None /\ r2{2} = None /\ !not_done0{2} /\
+   MI.func{1} ++ [change_pari] <= m{2}.`2.`1 /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{2} (MakeInt.MI_after_adv_error Par Adv).
+auto; smt(inc_extl).
+rcondf{2} 1; first auto.
+rcondf{2} 3; first auto.
+sp 0 3.
+seq 0 1 :
+  (r{1} = None /\ r{2} = None /\ !not_done{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{2}
+  (MakeRFComp_after_par_or_rest_error
+   Rest CompEnvStubPar); first auto; smt().
+rcondf{2} 1; first auto.
+seq 0 1 :
+  (r{1} = None /\ r{2} = None /\ !not_done{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{2}
+  (CompEnvMakeInt.MI_after_func_error
+   (MakeRFComp(Rest, CompEnvStubPar)) CompEnvStubAdv).
+auto.
+rcondf{2} 1; first auto.
+auto.
+exlim r2{2} => r2'.
+seq 0 1 :
+  (r{1} = None /\ r2{2} = Some m2{2} /\ !not_done0{2} /\
+   MakeInt.MI.func{1} ++ [change_pari] <= m{2}.`2.`1 /\
+   MakeInt.after_adv_error MakeInt.MI.func{1} r2{2} /\
+   ! MakeInt.after_adv_error MI.func{2} r2{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{2} (MakeInt.MI_after_adv_to_env Par Adv r2').
+auto;
+  smt(inc_extl
+      MakeInt.after_adv_error_ext_error_or_to_env).
+rcondf{2} 1; first auto.
+rcondt{2} 3; first auto.
+rcondt{2} 4; first auto; smt().
+sp 0 6; elim* => old_stub.
+seq 0 1 :
+  (r{1} = None /\ r{2} = Some m{2} /\ !not_done{2} /\
+   m{2} =
+     (Adv, (adv, 1), (MI.func{1} ++ [change_pari], 1),
+      TagNoInter, []) /\
+   MakeInt.after_adv_error MakeInt.MI.func{1} (Some m0{2}) /\
+   CompGlobs.ce_stub_st{2} = Some m0{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis).
+exlim r{2} => r2''.
+call{2}
+  (MakeRFComp_after_par_or_rest_return
+   Rest CompEnvStubPar r2'').
+auto => |> &2 _ dst_ge_par aae_top not_aae_bot _ _.
+split => [| /#].
+smt(rf_info_valid change_pari_valid le_refl
+    next_of_addr_ge_self_plus le_refl oget_some).
+rcondf{2} 1; first auto.
+seq 0 1 :
+  (r{1} = None /\ r{2} = Some m{2} /\ not_done{2} /\
+   m{2} =
+     (Adv, (adv, 1), (MI.func{1} ++ [change_pari], 1),
+      TagNoInter, []) /\
+   MakeInt.after_adv_error MakeInt.MI.func{1} (Some m0{2}) /\
+   CompGlobs.ce_stub_st{2} = Some m0{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis).
+exlim r{2} => r'.
+call{2}
+  (CompEnvMakeInt.MI_after_func_to_adv
+   (MakeRFComp(Rest, CompEnvStubPar)) CompEnvStubAdv r').
+auto; progress [-delta]; smt(inc_extl).
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; smt(inc_nle_l).
+inline{2} 1.
+rcondt{2} 2; first auto.
+sp 0 4.
+seq 0 1 :
+  (r{1} = None /\ r{2} = None /\ !not_done{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call{2}
+  (CompEnvMakeInt.MI_after_adv_error
+   (MakeRFComp(Rest, CompEnvStubPar)) CompEnvStubAdv).
+auto.
+rcondf{2} 1; first auto.
+auto.
 admit.
 admit.
 admit.
@@ -1393,7 +1582,7 @@ exlim r0{1} => r0_L.
 call{1} (MakeInt.MI_after_adv_to_func (MakeRFComp(Rest, Par)) Adv r0_L).
 auto.
 rcondt{1} 1; first auto.
-rcondt{1} 1; first auto; smt().
+rcondt{1} 1; first auto; smt(oget_some).
 inline{1} 1.
 sp 2 0.
 if{1}.
@@ -1415,7 +1604,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None).
 exlim r3{2} => r3_R.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r3_R).
-auto; smt(inc_extl).
+auto; smt(inc_extl oget_some).
 wp.
 (* start of reduction to Left ~ RightBottomAdv *)
 conseq
@@ -1527,7 +1716,7 @@ seq 0 1 :
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1))).
 exlim r3{2} => r3_R.
 call{2} (MakeInt.MI_after_adv_to_env Par Adv r3_R).
-auto; smt(inc_extl).
+auto; smt(inc_extl oget_some).
 rcondf{2} 1; first auto.
 rcondt{2} 3; first auto.
 rcondf{2} 4; first auto; smt().
@@ -1556,7 +1745,7 @@ call{2}
    CompEnvStubAdv r0_R).
 auto; smt(inc_extl).
 rcondt{2} 1; first auto.
-rcondt{2} 1; first auto; smt().
+rcondt{2} 1; first auto; smt(oget_some).
 inline{2} 1.
 sp 0 2.
 rcondt{2} 1; first auto.
