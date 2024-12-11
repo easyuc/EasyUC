@@ -9,6 +9,8 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
    ports *)
 
 require export UCBasicTypes.
+require import UCListAux.
+require StdOrder.
 
 (* module type used for real protocols and ideal functionalities
    (collectively, "functionalities") *)
@@ -93,7 +95,7 @@ module type INTER = {
 
 (* module type of environments, parameterized by interfaces *)
 
-pred env_init_pre (func : addr) = inter_init_pre func.
+op env_init_pre (func : addr) : bool = inter_init_pre func.
 
 module type ENV (Inter : INTER) = {
   (* start environment, and let it interact with Inter (only via
@@ -108,8 +110,6 @@ module type ENV (Inter : INTER) = {
 
   proc main(func : addr, in_guard : int fset) : bool {Inter.invoke}
 }.
-
-abstract theory Experiment.
 
 (* carry out experiment in which the environment is allowed to
    interact with, and issue a final boolean judgment about, an
@@ -144,10 +144,62 @@ module Exper (Inter : INTER, Env : ENV) = {
     Inter.init(func, in_guard);
     b <@ E.main(func, in_guard);
     return b;
-  }    
+  }
 }.
 
-end Experiment.
+(* working with disjoint sets, which will be done in conjunction
+   with input guards *)
+
+lemma disjoint_sym (xs ys : 'a fset) :
+  disjoint xs ys => disjoint ys xs.
+proof.
+rewrite !disjointP => disj_xs_ys z z_in_ys.
+case (z \in xs) => [z_in_xs | //].
+have // : z \notin ys by apply disj_xs_ys.
+qed.
+
+lemma disjoint_with_union_implies_disjoint_with_first
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint xs ys.
+proof.
+rewrite disjointP => disj_xs_union_ys_zs.
+rewrite disjointP => x x_in_xs.
+have := disj_xs_union_ys_zs x _; first trivial.
+by rewrite in_fsetU negb_or.
+qed.
+
+lemma disjoint_with_union_implies_disjoint_with_second
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint xs ys.
+proof.
+rewrite disjointP => disj_xs_union_ys_zs.
+rewrite disjointP => x x_in_xs.
+have := disj_xs_union_ys_zs x _; first trivial.
+by rewrite in_fsetU negb_or.
+qed.
+
+lemma disjoint_add_remove (xs ys : 'a fset) :
+  disjoint xs ys => (xs `|` ys) `\` ys = xs.
+proof.
+rewrite disjointP => disj_xs_ys.
+rewrite fsetDK eqEsubset.
+split => z; rewrite in_fsetD => [[] -> // | z_in_xs].
+rewrite z_in_xs /=.
+case (z \in ys) => [z_in_ys | //].
+have // : z \notin ys by apply disj_xs_ys.
+qed.
+
+lemma disjoint_with_disjoint_union_add_first_disjoint_with_second
+      (xs ys zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint ys zs =>
+  disjoint (xs `|` ys) zs.
+proof.
+rewrite !disjointP => disj_xs_union_ys_zs disj_ys_zs => u.
+rewrite in_fsetU => [[u_in_xs | u_in_ys]].
+have := disj_xs_union_ys_zs u _; first trivial.
+by rewrite in_fsetU negb_or.
+by apply disj_ys_zs.
+qed.
 
 abstract theory MakeInterface.
 
@@ -226,7 +278,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
         r <- None; not_done <- false;
       }
       (* else: m.`2.`1 = adv /\ 0 < m.`2.`2 *)
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -271,7 +323,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
       else {  (* adv = m.`2.`1 *)
         r <@ Adv.invoke(m);
         (r, m, not_done) <@ after_adv(r);
-      }      
+      }
     }
     return r;
   }
@@ -290,7 +342,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
 
 (* check that invariant is actually preserved: *)
 
-lemma MI_after_func_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_func_hoare (Func <: FUNC) (Adv <: ADV) :
   hoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func ==>
@@ -307,7 +359,7 @@ auto => /> &hr pre r_not_none.
 rewrite !negb_or /= not_dir /#.
 qed.
 
-lemma MI_after_adv_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_adv_hoare (Func <: FUNC) (Adv <: ADV) :
   hoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func ==>
@@ -329,7 +381,7 @@ rewrite -!eq_iff => -> /=.
 by rewrite IntOrder.lerNgt.
 qed.
 
-lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_invoke_hoare (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
   hoare
   [MI(Func, Adv).invoke :
    inter_init_pre MI.func ==>
@@ -391,7 +443,7 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
 
-lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
+lemma MI_after_func_to_env (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -402,7 +454,7 @@ proof.
 proc; auto; smt(some_oget le_refl).
 qed.
 
-lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
+lemma MI_after_func_to_adv (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -413,7 +465,7 @@ proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_func_error (Func <: FUNC) (Adv <: ADV) :
   phoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func /\ after_func_error MI.func r ==>
@@ -422,18 +474,19 @@ proof.
 proc; auto; smt().
 qed.
 
-pred after_adv_to_env (func : addr, r : msg option) =
+op after_adv_to_env (func : addr, r : msg option) : bool =
    r <> None /\
-   (oget r).`1 = Adv /\ envport0 func (oget r).`2 /\
-   adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
+   (oget r).`1 = Adv /\ ! func <= (oget r).`2.`1 /\
+   ! adv <= (oget r).`2.`1 /\ adv = (oget r).`3.`1 /\
+   0 <= (oget r).`3.`2 /\
    ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0).
 
-pred after_adv_to_func (func : addr, r : msg option) =
+op after_adv_to_func (func : addr, r : msg option) : bool =
   r <> None /\
   (oget r).`1 = Adv /\ func <= (oget r).`2.`1 /\
   (oget r).`3.`1 = adv /\ 0 < (oget r).`3.`2.
 
-pred after_adv_error (func : addr, r : msg option) =
+op after_adv_error (func : addr, r : msg option) : bool =
    (r = None \/
     (oget r).`1 = Dir \/
     adv <= (oget r).`2.`1 \/
@@ -442,7 +495,7 @@ pred after_adv_error (func : addr, r : msg option) =
     (! func <= (oget r).`2.`1 /\
      ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port))).
 
-lemma after_adv_disj (func adv : addr, r : msg option) :
+lemma after_adv_disj (func : addr, r : msg option) :
   after_adv_to_env func r  \/
   after_adv_to_func func r \/
   after_adv_error func r.
@@ -454,7 +507,77 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
+lemma after_adv_to_env_ext_not_to_func
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  ! after_adv_to_func (func ++ [i]) r.
+proof.
+move => aate_func_r.
+rewrite /after_adv_to_func !negb_and.
+smt(not_le_ext).
+qed.
+
+lemma after_adv_to_env_ext_not_error
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  ! after_adv_error (func ++ [i]) r.
+proof.
+move => aate_func_r.
+rewrite /after_adv_error !negb_or.
+smt(not_le_ext).
+qed.
+
+lemma after_adv_to_env_ext
+      (func : addr, r : msg option, i : int) :
+  after_adv_to_env func r =>
+  after_adv_to_env (func ++ [i]) r.
+proof.
+move => aate_func_r.
+have [// | [A | B]] := after_adv_disj (func ++ [i]) r.
+smt(after_adv_to_env_ext_not_to_func).
+smt(after_adv_to_env_ext_not_error).
+qed.
+
+lemma after_adv_to_func_ext_not_error
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_to_func func r =>
+  ! after_adv_error (func ++ [i]) r.
+proof.
+move => inc_func_adv aatf_func_r.
+rewrite /after_adv_error !negb_or /=.
+smt(inc_le1_not_rl ge_nil le_trans inc_nle_l).
+qed.
+
+lemma after_adv_to_func_ext_to_func_or_env
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_to_func func r =>
+  after_adv_to_func (func ++ [i]) r \/
+  after_adv_to_env (func ++ [i]) r.
+proof.
+move => inc_func_adv aatf_func_r.
+smt(after_adv_to_func_ext_not_error after_adv_disj).
+qed.
+
+lemma after_adv_error_ext_not_to_func
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_error func r =>
+  ! after_adv_to_func (func ++ [i]) r.
+proof.
+move => inc_func_adv.
+rewrite /after_adv_error /after_adv_to_func !negb_and /=.
+smt(inc_extl inc_le2_not_lr not_le_ext).
+qed.
+
+lemma after_adv_error_ext_error_or_to_env
+      (func : addr, r : msg option, i : int) :
+  inc func adv => after_adv_error func r =>
+  after_adv_error (func ++ [i]) r \/ after_adv_to_env (func ++ [i]) r.
+proof.
+move => inc_func_adv aae_func_r.
+smt(after_adv_error_ext_not_to_func after_adv_disj).
+qed.
+
+lemma MI_after_adv_to_env (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -462,10 +585,10 @@ lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
    after_adv_to_env MI.func r ==>
    res.`1 = r' /\ res.`1 = Some res.`2 /\ !res.`3] = 1%r.
 proof.
-proc; auto; smt(some_oget).
+proc; auto; smt().
 qed.
 
-lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI})
+lemma MI_after_adv_to_func (Func <: FUNC) (Adv <: ADV)
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -476,7 +599,7 @@ proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
-lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: ADV{-Func, -MI}) :
+lemma MI_after_adv_error (Func <: FUNC) (Adv <: ADV) :
   phoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func /\ after_adv_error MI.func r ==>
@@ -485,30 +608,294 @@ proof.
 proc; auto; smt().
 qed.
 
+(* transitivity of security, proved using the triangular inequality *)
+
+lemma security_trans
+      (F1 <: FUNC)  (F2 <: FUNC)  (F3 <: FUNC)
+      (Adv1 <: ADV) (Adv2 <: ADV) (Adv3 <: ADV)
+      (Env <: ENV)
+      (func : addr) (guard : int fset) (b1 b2 : real) &m :
+`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res]| <= b1 =>
+`|Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]| <= b2 =>
+`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+  Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]| <= b1 + b2.
+move => first second.
+rewrite
+  (RealOrder.ler_trans
+   (`|Pr[Exper(MI(F1, Adv1), Env).main(func, guard) @ &m : res] -
+      Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res]| +
+    `|Pr[Exper(MI(F2, Adv2), Env).main(func, guard) @ &m : res] -
+      Pr[Exper(MI(F3, Adv3), Env).main(func, guard) @ &m : res]|))
+  1:RealOrder.ler_dist_add RealOrder.ler_add //.
+qed.
+
 end MakeInterface.
+
+(* the top-level interface in theorems *)
+
+clone MakeInterface as MakeInt
+proof *.
+
+module MI = MakeInt.MI.
+
+(* Converting Hoare lemmas about invariants and termination metrics
+   for functionalities into equiv lemmas
+
+   lemmas for invoke also restrict destination adversarial
+   port indices for adversarial messages *)
+
+(* init lemma for use with any functionality, Fun, with an invariant
+   for which we know the corresponding hoare lemma *)
+
+lemma init_invar_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool) :
+  hoare [Fun.init : true ==> invar (glob Fun)] =>
+  equiv
+  [Fun.init ~ Fun.init :
+   ={self, glob Fun} ==>
+   ={glob Fun} /\ invar (glob Fun){1}].
+proof.
+move => init_hoare.
+conseq
+  (_ : ={self, glob Fun} ==> ={glob Fun})
+  (_ : true ==> invar (glob Fun))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant and
+   termination metric for which we know the corresponding hoare lemma *)
+
+lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int,
+       n : int, advpis : int fset) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis))] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None =>
+    tm (glob Fun){1} < n /\
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in advpis))].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis)))
+  (_ : true ==> true) => //.
+sim.
+qed.
 
 (* Wrapper for Real Functionalities
 
    Translator from UC DSL to EasyCrypt will turn real functionalities
    into plugins to the wrapper. *)
 
+type rf_info =
+  {rfi_num_parties         : int;
+   rfi_num_subfuns         : int;
+   rfi_num_params          : int;
+   rfi_adv_pi_begin        : int;  (* first adv pi of instance of unit *)
+   rfi_adv_pi_main_end     : int;  (* last advi pi not from params *)
+   rfi_adv_pi_begin_params : int list;
+   rfi_adv_pi_end_params   : int list}.
+
+(* indexed from 1: *)
+
+op nth1_adv_pi_begin_params (rfi : rf_info, pari) : int =
+  nth 0 rfi.`rfi_adv_pi_begin_params (pari - 1).
+
+op nth1_adv_pi_end_params (rfi : rf_info, pari) : int =
+  nth 0 rfi.`rfi_adv_pi_end_params (pari - 1).
+
+op adv_pis_rf_info (rfi : rf_info) : int fset =
+  if rfi.`rfi_num_params = 0
+  then rangeset rfi.`rfi_adv_pi_begin
+       (rfi.`rfi_adv_pi_main_end + 1)
+  else rangeset rfi.`rfi_adv_pi_begin
+       (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
+
+op rf_info_valid (rfi : rf_info) : bool =
+  1 <= rfi.`rfi_num_parties /\
+  0 <= rfi.`rfi_num_subfuns /\
+  0 <= rfi.`rfi_num_params /\
+  1 <= rfi.`rfi_adv_pi_begin /\
+  (* includes adv pi of ideal functionality of unit *)
+  rfi.`rfi_adv_pi_begin < rfi.`rfi_adv_pi_main_end /\
+  size rfi.`rfi_adv_pi_begin_params = rfi.`rfi_num_params /\
+  size rfi.`rfi_adv_pi_end_params   = rfi.`rfi_num_params /\
+  (1 <= rfi.`rfi_num_params =>
+   nth1_adv_pi_begin_params rfi 1 = rfi.`rfi_adv_pi_main_end + 1 /\
+   (forall (pari : int),
+    1 <= pari <= rfi.`rfi_num_params =>
+    nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_end_params rfi pari) /\
+   (forall (pari : int),
+    1 <= pari <= rfi.`rfi_num_params - 1 =>
+    nth1_adv_pi_begin_params rfi (pari + 1) =
+    nth1_adv_pi_end_params rfi pari + 1)).
+
+lemma rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin
+      (rfi : rf_info, pari : int) :
+  rf_info_valid rfi => 1 <= pari <= rfi.`rfi_num_params =>
+  rfi.`rfi_adv_pi_main_end < nth1_adv_pi_begin_params rfi pari.
+proof.
+move => rf_info_valid_rfi.
+have ind :
+  forall pi,
+  0 <= pi => 1 <= pi <= rfi.`rfi_num_params =>
+  rfi.`rfi_adv_pi_main_end < nth1_adv_pi_begin_params rfi pi.
+elim; smt().
+smt().
+qed.
+
+lemma rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins
+      (rfi : rf_info, pari parj : int) :
+  rf_info_valid rfi => 1 <= pari < parj <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi parj.
+proof.
+move => rf_info_valid_rfi [#] ge1_pari lt_pari_parj.
+have ind :
+  forall pj,
+  0 <= pj => pari < pj <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.
+elim; smt().
+smt().
+qed.
+
+lemma rfi_valid_param_adv_pi_in_range_for_pari (rfi : rf_info, i : int) :
+  rf_info_valid rfi => 1 <= rfi.`rfi_num_params =>
+  nth1_adv_pi_begin_params rfi 1 <= i <=
+  nth1_adv_pi_end_params rfi rfi.`rfi_num_params =>
+  (exists (pari : int),
+   1 <= pari <= rfi.`rfi_num_params /\
+   nth1_adv_pi_begin_params rfi pari <= i <=
+   nth1_adv_pi_end_params rfi pari).
+proof.
+move => rf_info_valid_rfi rfi_num_params_ge1 i_is_param_adv_pi.
+case
+  (exists (pari : int),
+   (1 <= pari && pari <= rfi.`rfi_num_params) /\
+   nth1_adv_pi_begin_params rfi pari <= i &&
+   i <= nth1_adv_pi_end_params rfi pari) => [// | contrad].
+have /# :
+  forall (j : int),
+  0 <= j => 1 <= j <= rfi.`rfi_num_params =>
+  ! (nth1_adv_pi_begin_params rfi 1 <= i <=
+     nth1_adv_pi_end_params rfi j) by
+    elim => [// | j ge0_j IH j_plus1_good_par /#].
+qed.
+
+op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  1 <= k <= rfi.`rfi_num_params /\ self ++ [k] <= addr.
+
+op addr_eq_param (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  1 <= k <= rfi.`rfi_num_params /\ addr = self ++ [k].
+
+op addr_eq_subfun (rfi : rf_info, self addr : addr) : bool =
+  exists (k : int),
+  rfi.`rfi_num_params + 1 <= k <=
+  rfi.`rfi_num_params + rfi.`rfi_num_subfuns /\
+  addr = self ++ [k].
+
+(* should only be applied when addr is >= self ++ [i], for some
+   necessarily unique i; returns the i *)
+
+op next_of_addr (self addr : addr) : int =
+  head_of_drop_size_first 0 self addr.
+
+lemma next_of_addr_ge_self_plus (self addr : addr, i : int) :
+  self ++ [i] <= addr => next_of_addr self addr = i.
+proof.
+move => self_concat_i_le_addr.
+have <- : self ++ [i] ++ drop (size (self ++ [i])) addr = addr
+  by rewrite -le_drop.
+rewrite /next_of_addr /head_of_drop_size_first /drop_size_first.
+by rewrite -catA drop_size_cat.
+qed.
+
+lemma disjoint_addr_eq_param_subfun (rfi : rf_info, self addr : addr) :
+  addr_eq_param rfi self addr => addr_eq_subfun rfi self addr =>
+  false.
+proof.
+rewrite /addr_eq_param /addr_eq_subfun.
+move =>
+  [k1] [#] _ le_k1_num_params ->
+  [k2] [#] le_num_params_pl1_k2 _ /#.
+qed.
+
+lemma disjoint_addr_ge_param_eq_subfun (rfi : rf_info, self addr : addr) :
+  addr_ge_param rfi self addr => addr_eq_subfun rfi self addr =>
+  false.
+proof.
+rewrite /addr_ge_param /addr_eq_subfun.
+move =>
+  [k1] [#] _ le_k1_num_params sing_k1_le_sing_k2
+  [k2] [#] le_num_params_pl1_k2 _ ->>.
+rewrite le_pre in sing_k1_le_sing_k2.
+smt(sing_not_le).
+qed.
+
+lemma not_addr_ge_param_self (rfi : rf_info, self : addr) :
+  ! addr_ge_param rfi self self.
+proof.
+by case (addr_ge_param rfi self self).
+qed.
+
+lemma not_addr_eq_param_self (rfi : rf_info, self : addr) :
+  ! addr_eq_param rfi self self.
+proof.
+by case (addr_eq_param rfi self self).
+qed.
+
+lemma not_addr_eq_subfun_self (rfi : rf_info, self : addr) :
+  ! addr_eq_subfun rfi self self.
+proof.
+by case (addr_eq_subfun rfi self self).
+qed.
+
+lemma disjoint_addr_eq_param_envport
+      (rfi : rf_info, self addr : addr, pi : int) :
+  addr_eq_param rfi self addr => envport self (addr, pi) =>
+  false.
+proof.
+rewrite /addr_eq_param /envport /=.
+move => [k] [#] _ _ -> /#.
+qed.
+
+lemma disjoint_addr_eq_subfun_envport
+      (rfi : rf_info, self addr : addr, pi : int) :
+  addr_eq_subfun rfi self addr => envport self (addr, pi) =>
+  false.
+proof.
+rewrite /addr_eq_subfun /envport /=.
+move => [k] [#] _ _ -> /#.
+qed.
+
 abstract theory RealFunctionality.
 
 (* begin theory parameters *)
 
-op num_parties : {int | 1 <= num_parties} as ge1_num_parties.
+op rf_info : rf_info.
 
-op num_subfuns : {int | 0 <= num_subfuns} as ge0_num_subfuns.
-
-op num_params : {int | 0 <= num_params} as ge0_num_params.
-
-op adv_pi_num : {int | 0 <= adv_pi_num} as ge0_adv_pi_num.
-
-op adv_pi_begin : {int | 1 <= adv_pi_begin} as ge1_adv_pi_begin.
+axiom rf_info_valid : rf_info_valid rf_info.
 
 (* end theory parameters *)
-
-op adv_pi_end : int = adv_pi_begin + adv_pi_num - 1.
 
 module MakeRF (Core : FUNC) : FUNC = {
   var self : addr
@@ -518,7 +905,8 @@ module MakeRF (Core : FUNC) : FUNC = {
     Core.init(_self);
   }
 
-  proc after_core(r : msg option) : msg option * msg * bool = {
+  proc after_core(r : msg option, orig_dest_addr : addr)
+         : msg option * msg * bool = {
     var m : msg <- witness;
     var not_done <- true;
     if (r = None) {
@@ -527,17 +915,45 @@ module MakeRF (Core : FUNC) : FUNC = {
     else {
       m <- oget r;  (* next iteration, if any, will use m *)
       if (m.`1 = Dir) {
-        if (! self <= m.`2.`1) {
-          not_done <- false;
+        if (m.`3.`1 = self /\ self = orig_dest_addr) {
+          if (envport self m.`2) {
+            not_done <- false;
+          }
+          elif (addr_eq_subfun rf_info self m.`2.`1 \/
+                addr_eq_param rf_info self m.`2.`1) {
+          }
+          else {
+            not_done <- false; r <- None;
+          }
+        }
+        elif (addr_eq_subfun rf_info self m.`3.`1 /\
+              m.`3.`1 = orig_dest_addr /\ m.`2.`1 = self) {
+        }
+        elif (addr_eq_param rf_info self m.`3.`1 /\
+              self ++ [next_of_addr self m.`3.`1] <= orig_dest_addr /\
+              m.`2.`1 = self) {
+        }
+        else {
+          not_done <- false; r <- None;
         }
       }
       else {  (* m.`1 = Adv *)
-        if (m.`2.`1 <> adv \/ ! adv_pi_begin <= m.`2.`2 <= adv_pi_end) {
+        not_done <- false;
+        if (m.`2.`1 <> adv \/ ! 0 < m.`2.`2) {
           r <- None;
         }
-        not_done <- false;
+        elif ((m.`3.`1 = self \/
+               addr_eq_subfun rf_info self m.`3.`1) /\
+              m.`3.`1 = orig_dest_addr) {
+        }
+        elif (addr_ge_param rf_info self m.`3.`1 /\
+              self ++ [next_of_addr self m.`3.`1] <= orig_dest_addr) {
+        }
+        else {
+          r <- None;
+        }
       }
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -546,28 +962,197 @@ module MakeRF (Core : FUNC) : FUNC = {
     var not_done : bool <- true;
     while (not_done) {
       r <@ Core.invoke(m);
-      (r, m, not_done) <@ after_core(r);
+      (r, m, not_done) <@ after_core(r, m.`2.`1);
     }
     return r;
   }
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    (* we can assume m.`3.`1 is not >= self and not >= adv *)
-    if ((m.`1 = Dir /\ m.`2.`1 = self /\
-         1 <= m.`2.`2 <= num_parties) \/
+    (* we can assume m.`3.`1 is not >= self *)
+    if ((m.`1 = Dir /\ m.`2.`1 = self) \/
         (m.`1 = Adv /\
-         ((m.`2.`1 = self /\ 1 <= m.`2.`2 <= num_parties) \/
-          (exists (k : int),
-           1 <= k <= num_params /\ self ++ [k] <= m.`2.`1) \/
-          (exists (k : int),
-           num_params + 1 <= k <= num_params + num_subfuns /\
-           m.`2.`1 = self ++ [k])))) {
+         (m.`2.`1 = self \/
+          addr_ge_param rf_info self m.`2.`1 \/
+          addr_eq_subfun rf_info self m.`2.`1))) {
       r <@ loop(m);
     }
     return r;
   }
 }.
+
+op after_core_return
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r <> None /\
+  (((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\ func = orig_dest_addr /\
+    envport func (oget r).`2) \/
+   ((oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
+    ((((oget r).`3.`1 = func \/ addr_eq_subfun rf_info func (oget r).`3.`1) /\
+       (oget r).`3.`1 = orig_dest_addr) \/
+     (addr_ge_param rf_info func (oget r).`3.`1 /\
+      func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr)))).
+
+op after_core_continue
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r <> None /\ (oget r).`1 = Dir /\
+  (((oget r).`3.`1 = func /\ func = orig_dest_addr /\
+    (addr_eq_subfun rf_info func (oget r).`2.`1 \/
+     addr_eq_param rf_info func (oget r).`2.`1)) \/
+   (addr_eq_subfun rf_info func (oget r).`3.`1 /\
+    (oget r).`3.`1 = orig_dest_addr /\ (oget r).`2.`1 = func) \/
+   (addr_eq_param rf_info func (oget r).`3.`1 /\
+    func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr /\
+    (oget r).`2.`1 = func)).
+
+op after_core_error
+   (func : addr, r : msg option, orig_dest_addr : addr) : bool =
+  r = None \/
+  ((oget r).`1 = Dir /\ (oget r).`3.`1 = func /\
+   ! envport func (oget r).`2 /\
+   ! addr_eq_param rf_info func (oget r).`2.`1 /\
+   ! addr_eq_subfun rf_info func (oget r).`2.`1) \/
+  ((oget r).`1 = Dir /\
+   ((oget r).`3.`1 <> func \/ func <> orig_dest_addr) /\
+   (! addr_eq_subfun rf_info func (oget r).`3.`1 \/
+      (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
+   (! addr_eq_param rf_info func (oget r).`3.`1 \/
+    ! func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr \/
+    (oget r).`2.`1 <> func)) \/
+  ((oget r).`1 = Adv /\ (oget r).`2.`1 <> adv) \/
+  ((oget r).`1 = Adv /\ ! 0 < (oget r).`2.`2) \/
+  ((oget r).`1 = Adv /\
+   (((oget r).`3.`1 <> func /\ ! addr_eq_subfun rf_info func (oget r).`3.`1) \/
+     (oget r).`3.`1 <> orig_dest_addr) /\
+   (! addr_ge_param rf_info func (oget r).`3.`1 \/
+    ! func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr)).
+
+lemma after_core_disj (func adv : addr, r : msg option,
+      orig_dest_addr : addr) :
+  after_core_return func r orig_dest_addr \/
+  after_core_continue func r orig_dest_addr \/
+  after_core_error func r orig_dest_addr.
+proof.
+rewrite /after_core_return /after_core_continue
+        /after_core_error.
+case (r = None) => // _ /=.
+case ((oget r).`2.`1 = UCBasicTypes.adv) => // _ /= /#.
+qed.
+
+lemma MakeRF_after_core_return (Core <: FUNC) (r' : msg option) :
+  phoare
+  [MakeRF(Core).after_core :
+   r = r' /\
+   after_core_return MakeRF.self r orig_dest_addr ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ ! res.`3] = 1%r.
+proof.
+proc; auto; smt().
+qed.
+
+lemma MakeRF_after_core_continue (Core <: FUNC) (r' : msg option) :
+  phoare
+  [MakeRF(Core).after_core :
+   r = r' /\
+   after_core_continue MakeRF.self r orig_dest_addr ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc => /=.
+auto;
+  smt(disjoint_addr_eq_param_envport
+      disjoint_addr_eq_subfun_envport).
+qed.
+
+lemma MakeRF_after_core_error (Core <: FUNC) :
+  phoare
+  [MakeRF(Core).after_core :
+   after_core_error MakeRF.self r orig_dest_addr ==>
+   res.`1 = None /\ ! res.`3] = 1%r.
+proof.
+proc => /=.
+auto;
+  smt(not_addr_eq_param_self not_addr_eq_subfun_self
+      not_addr_eq_param_self not_addr_eq_subfun_self
+      not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
+qed.
+
+(* termination invariants and metrics
+
+   lemmas for invoke also restrict destination adversarial
+   port indices for adversarial messages *)
+
+lemma MakeRF_init_invar_hoare (Core <: FUNC{-MakeRF})
+      (core_invar : glob Core -> bool) :
+  hoare [Core.init : true ==> core_invar (glob Core)] =>
+  hoare [MakeRF(Core).init : true ==> core_invar (glob Core)].
+proof.
+move => Core_init.
+proc; sp.
+call Core_init.
+auto.
+qed.
+
+lemma MakeRF_invoke_term_metric_hoare (Core <: FUNC{-MakeRF})
+      (invar_Core : glob Core -> bool, tm_Core : glob Core -> int,
+       n : int, advpis : int fset) :
+  (forall (n : int),
+   hoare
+   [Core.invoke :
+    invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+    invar_Core (glob Core) /\
+    (res <> None =>
+     tm_Core (glob Core) < n /\
+     ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis))]) =>
+  hoare
+  [MakeRF(Core).invoke :
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   invar_Core (glob Core) /\
+   (res <> None =>
+    tm_Core (glob Core) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis))].
+proof.
+move => Core_invoke_invar_tm.
+proc; sp 1; if => //.
+inline 1; wp; sp.
+conseq
+  (_ :
+   not_done /\
+   invar_Core (glob Core) /\ tm_Core (glob Core) = n ==>
+   _) => //.
+rcondt 1; first auto.
+seq 1 :
+  (invar_Core (glob Core) /\
+   (r0 <> None =>
+    tm_Core (glob Core) < n /\
+    ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis))).
+call (Core_invoke_invar_tm n); first auto; smt().
+seq 1 :
+  (invar_Core (glob Core) /\
+   (r0 = None  => ! not_done) /\
+   (r0 <> None =>
+    tm_Core (glob Core) < n /\
+    ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis))).
+inline*; auto; progress; smt().
+while
+  (invar_Core (glob Core) /\
+   (r0 = None  => ! not_done) /\
+   (r0 <> None =>
+    tm_Core (glob Core) < n /\
+    ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis))).
+conseq
+  (_ :
+   invar_Core (glob Core) /\
+   tm_Core (glob Core) < n /\
+   ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis) ==>
+   _); first smt().
+exlim (tm_Core (glob Core)) => n'.
+seq 1 :
+  (invar_Core (glob Core) /\
+   (r0 <> None =>
+    tm_Core (glob Core) < n /\
+    ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis))).
+call (Core_invoke_invar_tm n'); first auto; smt().
+inline*; auto; progress; smt().
+auto.
+qed.
 
 end RealFunctionality.
 
@@ -676,7 +1261,7 @@ type da_to_env =
    dte_u   : univ}.  (* value of message sent to DA *)
 
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
-  (Adv, env_root_port, (x.`dte_da, 0), 
+  (Adv, env_root_port, (x.`dte_da, 0),
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -781,6 +1366,19 @@ module DummyAdv : ADV = {
 
 end DummyAdversary.
 
+(* module type for simulators
+
+   a module that takes in Adv : ADV and yields an ADV will have this
+   type, making it possible to quantify over simulators *)
+
+module type SIM (Adv : ADV) = {
+  proc init() : unit {Adv.init}
+  proc invoke(m : msg) : msg option {Adv.invoke}
+}.
+
+module (SimComp (Sim2 : SIM, Sim1 : SIM) : SIM) (Adv : ADV) : ADV =
+  Sim2(Sim1(Adv)).
+
 abstract theory MakeSimulator.
 
 (* construct a simulator from a core *)
@@ -814,7 +1412,7 @@ op ms_loop_invar
     m.`3.`1 = adv /\ 0 < m.`3.`2 < core_pi)) /\
   (! not_done =>
    r = None \/
-   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\ 
+   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\
     ((oget r).`2 = env_root_port /\ (oget r).`3.`2 = 0 \/
 
      if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
@@ -824,7 +1422,7 @@ op ms_loop_invar
      (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
      0 < (oget r).`3.`2 < core_pi))).
 
-module MS (Core : ADV) (Adv : ADV) : ADV = {
+module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
      received with destination port index core_pi *)
 
@@ -865,7 +1463,7 @@ module MS (Core : ADV) (Adv : ADV) : ADV = {
       }
       else {
         r <- None; not_done <- false;
-      }        
+      }
     }
     return (r, m, not_done);
   }
