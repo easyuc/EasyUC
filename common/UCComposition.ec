@@ -115,12 +115,12 @@ module MakeRFComp (Rest : FUNC, Par : FUNC) : FUNC = {
         elif (addr_ge_param rf_info CompGlobs.mrfc_self m.`3.`1 /\
               CompGlobs.mrfc_self ++
               [next_of_addr CompGlobs.mrfc_self m.`3.`1] <= orig_dest_addr) {
-        } 
+        }
         else {
           r <- None;
         }
       }
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -183,7 +183,7 @@ op after_par_or_rest_error
    ! envport func (oget r).`2 /\
    ! addr_eq_param rf_info func (oget r).`2.`1 /\
    ! addr_eq_subfun rf_info func (oget r).`2.`1) \/
-  ((oget r).`1 = Dir /\ 
+  ((oget r).`1 = Dir /\
    ((oget r).`3.`1 <> func \/ func <> orig_dest_addr) /\
    (! addr_eq_subfun rf_info func (oget r).`3.`1 \/
     (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
@@ -247,6 +247,36 @@ auto;
       not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
 qed.
 
+lemma after_par_or_rest_return_intro_adv_from_param
+      (func : addr, r : msg option, orig_dest_addr : addr) :
+ r <> None => (oget r).`1 = Adv => (oget r).`2.`1 = adv =>
+ 0 < (oget r).`2.`2 =>
+ addr_ge_param rf_info func (oget r).`3.`1 =>
+ func ++ [next_of_addr func (oget r).`3.`1] <= orig_dest_addr =>
+ after_par_or_rest_return func r orig_dest_addr.
+proof.
+move => non_None mod dest_adv gt0_dest_pi src_ge_param oda_ge_par.
+rewrite /after_par_or_rest_return.
+rewrite non_None /=.
+right; smt().
+qed.
+
+lemma after_par_or_rest_return_intro_adv_from_rest
+      (func : addr, r : msg option, orig_dest_addr : addr) :
+ r <> None => (oget r).`1 = Adv => (oget r).`2.`1 = adv =>
+ 0 < (oget r).`2.`2 =>
+ ((oget r).`3.`1 = func \/ addr_eq_subfun rf_info func (oget r).`3.`1) =>
+ (oget r).`3.`1 = orig_dest_addr =>
+ after_par_or_rest_return func r orig_dest_addr.
+proof.
+move =>
+  non_None mod dest_adv gt0_dest_pi
+  src_eq_func_or_eq_sf src_eq_oda.
+rewrite /after_par_or_rest_return.
+rewrite non_None /=.
+right; smt().
+qed.
+
 (* specialization of addr_eq and addr_ge operators to rest / changed
    parameter *)
 
@@ -295,7 +325,7 @@ smt(next_of_addr_ge_self_plus).
 qed.
 
 lemma after_func_error_ch_pari_implies_after_par_or_rest_error
-      (func : addr, r : msg option, orig_dest_addr : addr) :      
+      (func : addr, r : msg option, orig_dest_addr : addr) :
   inc func adv => func ++ [change_pari] <= orig_dest_addr =>
   MakeInt.after_func_error (func ++ [change_pari]) r =>
   after_par_or_rest_error func r orig_dest_addr.
@@ -322,7 +352,7 @@ smt(next_of_addr_ge_self_plus).
 qed.
 
 lemma after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error
-      (func : addr, r : msg option, orig_dest_addr : addr) :      
+      (func : addr, r : msg option, orig_dest_addr : addr) :
   MakeInt.after_func_to_env (func ++ [change_pari]) r =>
   after_par_or_rest_continue func r orig_dest_addr \/
   after_par_or_rest_error func r orig_dest_addr.
@@ -478,6 +508,16 @@ smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
 smt(mem_range rfi_valid_lt_par_indices_implies_lt_param_adv_pi_begins).
 qed.
 
+(* composed environment, made out of Rest and Env *)
+
+(* dummy messages between stubs of CompEnv *)
+
+op dummy_msg_to_stub_adv (func : addr) : msg =
+  (Adv, (adv, 1), (func ++ [change_pari], 1), TagNoInter, []).
+
+op dummy_msg_to_stub_par (func : addr) : msg =
+  (Adv, (func ++ [change_pari], 1), (adv, 1), TagNoInter, []).
+
 module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
   module StubPar : FUNC = {
     proc init(func : addr) : unit = { }
@@ -493,12 +533,7 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
           m <- oget r;
           if (m.`1 = Adv) {
             CompGlobs.ce_stub_st <- Some m;
-            (* only mode and destination port matter (destination port id
-               must simply be > 0) *)
-            r <-
-              Some
-              (Adv, (adv, 1), (CompGlobs.ce_func ++ [change_pari], 1),
-               TagNoInter, []);
+            r <- Some (dummy_msg_to_stub_adv CompGlobs.ce_func);
           }
         }
       }
@@ -520,11 +555,7 @@ module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
           m <- oget r;
           if (m.`1 = Dir) {
             CompGlobs.ce_stub_st <- Some m;
-            (* only mode and destination address matter *)
-            r <-
-              Some
-              (Adv, (CompGlobs.ce_func ++ [change_pari], 1),
-               (adv, 1), TagNoInter, []);
+            r <- Some (dummy_msg_to_stub_par CompGlobs.ce_func);
           }
         }
       }
@@ -680,11 +711,7 @@ local module RightBottomAdv = {
       m <- oget r;
       if (m.`1 = Dir) {
         CompGlobs.ce_stub_st <- Some m;
-        r <-
-          Some
-          (Adv,
-           (CompGlobs.ce_func ++ [change_pari], 1),
-           (adv, 1), TagNoInter, []);
+        r <- Some (dummy_msg_to_stub_par CompGlobs.ce_func);
       }
     }
     (r, m, not_done) <@
@@ -729,11 +756,7 @@ local module RightBottomPar = {
       m <- oget r;
       if (m.`1 = Adv) {
         CompGlobs.ce_stub_st <- Some m;
-        r <-
-          Some
-          (Adv, (adv, 1),
-          (CompGlobs.ce_func ++ [change_pari], 1),
-          TagNoInter, []);
+        r <- Some (dummy_msg_to_stub_adv CompGlobs.ce_func);
       }
     }
     (r, m, not_done) <@
@@ -775,7 +798,7 @@ local module RightBottomPar = {
 lemma main_guard_ext
       (func : addr, i : int, in_guard : int fset, xs : int fset,
        m : msg) :
-  MakeInt.main_guard func in_guard m => ! func <= m.`2.`1 => 
+  MakeInt.main_guard func in_guard m => ! func <= m.`2.`1 =>
   MakeInt.main_guard (func ++ [i]) (in_guard `|` xs) m.
 proof.
 move => mg_in_guard_m dest_not_ge_func.
@@ -800,7 +823,7 @@ move => [/# | [#] _ not_ge_param _].
 smt(rf_info_valid change_pari_valid).
 qed.
 
-local lemma comp_bridge_induct 
+local lemma comp_bridge_induct
       (func' : addr, in_guard_low' : int fset) :
   exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   forall (n : int),
@@ -1194,9 +1217,7 @@ rcondt{2} 4; first auto; smt().
 sp 0 6; elim* => old_stub.
 seq 0 1 :
   (r{1} = None /\ r{2} = Some m{2} /\ !not_done{2} /\
-   m{2} =
-     (Adv, (adv, 1), (MI.func{1} ++ [change_pari], 1),
-      TagNoInter, []) /\
+   m{2} = dummy_msg_to_stub_adv MI.func{1} /\
    MakeInt.after_adv_error MakeInt.MI.func{1} (Some m0{2}) /\
    CompGlobs.ce_stub_st{2} = Some m0{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -1213,14 +1234,21 @@ call{2}
    Rest CompEnvStubPar r2'').
 auto => |> &2 _ dst_ge_par aae_top not_aae_bot _ _.
 split => [| /#].
-smt(rf_info_valid change_pari_valid le_refl
-    next_of_addr_ge_self_plus le_refl oget_some).
+apply after_par_or_rest_return_intro_adv_from_param.
+trivial.
+by rewrite oget_some /dummy_msg_to_stub_adv.
+by rewrite oget_some /dummy_msg_to_stub_adv.
+by rewrite oget_some /dummy_msg_to_stub_adv.
+rewrite oget_some /dummy_msg_to_stub_adv /=.
+smt(le_refl rf_info_valid change_pari_valid).
+rewrite oget_some /dummy_msg_to_stub_adv /=.
+rewrite
+  (next_of_addr_ge_self_plus func' (func' ++ [change_pari])
+   change_pari) 1:le_refl //.
 rcondf{2} 1; first auto.
 seq 0 1 :
   (r{1} = None /\ r{2} = Some m{2} /\ not_done{2} /\
-   m{2} =
-     (Adv, (adv, 1), (MI.func{1} ++ [change_pari], 1),
-      TagNoInter, []) /\
+   m{2} = dummy_msg_to_stub_adv MI.func{1} /\
    MakeInt.after_adv_error MakeInt.MI.func{1} (Some m0{2}) /\
    CompGlobs.ce_stub_st{2} = Some m0{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -2126,7 +2154,7 @@ have rest_invoke_equiv :
     term_rest (glob Rest){1} < n /\
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in rest_adv_pis))].
   move => n.
-  rewrite 
+  rewrite
   (invoke_term_metric_hoare_implies_equiv Rest
    invar_rest term_rest)
   rest_invoke.
@@ -2143,7 +2171,7 @@ have par_invoke_equiv :
     term_par (glob Par){1} < n /\
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in change_par_adv_pis))].
   move => n.
-  rewrite 
+  rewrite
   (invoke_term_metric_hoare_implies_equiv Par
    invar_par term_par)
   par_invoke.

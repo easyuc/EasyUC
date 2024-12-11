@@ -144,7 +144,7 @@ module Exper (Inter : INTER, Env : ENV) = {
     Inter.init(func, in_guard);
     b <@ E.main(func, in_guard);
     return b;
-  }    
+  }
 }.
 
 (* working with disjoint sets, which will be done in conjunction
@@ -278,7 +278,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
         r <- None; not_done <- false;
       }
       (* else: m.`2.`1 = adv /\ 0 < m.`2.`2 *)
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -323,7 +323,7 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
       else {  (* adv = m.`2.`1 *)
         r <@ Adv.invoke(m);
         (r, m, not_done) <@ after_adv(r);
-      }      
+      }
     }
     return r;
   }
@@ -713,7 +713,7 @@ type rf_info =
    rfi_adv_pi_main_end     : int;  (* last advi pi not from params *)
    rfi_adv_pi_begin_params : int list;
    rfi_adv_pi_end_params   : int list}.
-   
+
 (* indexed from 1: *)
 
 op nth1_adv_pi_begin_params (rfi : rf_info, pari) : int =
@@ -771,7 +771,7 @@ move => rf_info_valid_rfi [#] ge1_pari lt_pari_parj.
 have ind :
   forall pj,
   0 <= pj => pari < pj <= rfi.`rfi_num_params =>
-  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.  
+  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.
 elim; smt().
 smt().
 qed.
@@ -948,12 +948,12 @@ module MakeRF (Core : FUNC) : FUNC = {
         }
         elif (addr_ge_param rf_info self m.`3.`1 /\
               self ++ [next_of_addr self m.`3.`1] <= orig_dest_addr) {
-        } 
+        }
         else {
           r <- None;
         }
       }
-    }          
+    }
     return (r, m, not_done);
   }
 
@@ -1011,7 +1011,7 @@ op after_core_error
    ! envport func (oget r).`2 /\
    ! addr_eq_param rf_info func (oget r).`2.`1 /\
    ! addr_eq_subfun rf_info func (oget r).`2.`1) \/
-  ((oget r).`1 = Dir /\ 
+  ((oget r).`1 = Dir /\
    ((oget r).`3.`1 <> func \/ func <> orig_dest_addr) /\
    (! addr_eq_subfun rf_info func (oget r).`3.`1 \/
       (oget r).`3.`1 <> orig_dest_addr \/ (oget r).`2.`1 <> func) /\
@@ -1124,7 +1124,7 @@ seq 1 :
     tm_Core (glob Core) < n /\
     ((oget r0).`1 = Adv => (oget r0).`2.`2 \in advpis))).
 call (Core_invoke_invar_tm n); first auto; smt().
-seq 1 : 
+seq 1 :
   (invar_Core (glob Core) /\
    (r0 = None  => ! not_done) /\
    (r0 <> None =>
@@ -1261,7 +1261,7 @@ type da_to_env =
    dte_u   : univ}.  (* value of message sent to DA *)
 
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
-  (Adv, env_root_port, (x.`dte_da, 0), 
+  (Adv, env_root_port, (x.`dte_da, 0),
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -1412,7 +1412,7 @@ op ms_loop_invar
     m.`3.`1 = adv /\ 0 < m.`3.`2 < core_pi)) /\
   (! not_done =>
    r = None \/
-   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\ 
+   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\
     ((oget r).`2 = env_root_port /\ (oget r).`3.`2 = 0 \/
 
      if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
@@ -1463,7 +1463,7 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
       }
       else {
         r <- None; not_done <- false;
-      }        
+      }
     }
     return (r, m, not_done);
   }
