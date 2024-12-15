@@ -247,6 +247,61 @@ auto;
       not_addr_ge_param_self disjoint_addr_ge_param_eq_subfun).
 qed.
 
+(* we prove that the after_par_or_rest operators are equivalent on
+   original destination addresses that are >= func ++ [change_pari] *)
+
+lemma cond_equiv_ge_param_test
+      (func : addr, m : msg, oda1 oda2 : addr) :
+  func ++ [change_pari] <= oda1 => func ++ [change_pari] <= oda2 =>
+  (addr_ge_param rf_info func m.`3.`1 /\
+   func ++ [next_of_addr func m.`3.`1] <= oda1) =
+  (addr_ge_param rf_info func m.`3.`1 /\
+   func ++ [next_of_addr func m.`3.`1] <= oda2).
+proof.
+move => le_oda1 le_oda2.
+smt(next_of_addr_ge_self_plus not_le_other_branch).
+qed.
+
+lemma pari_cond_after_par_or_rest_return_equiv
+      (func : addr, r : msg option, oda1 oda2 : addr) :
+  func ++ [change_pari] <= oda1 => func ++ [change_pari] <= oda2 =>
+  after_par_or_rest_return func r oda1 <=>
+  after_par_or_rest_return func r oda2.
+proof.
+move => le_oda1 le_oda2.
+rewrite /after_par_or_rest_return.
+rewrite (cond_equiv_ge_param_test func (oget r) oda1 oda2) //.
+have -> : func <> oda1 by smt(not_le_ext_nonnil_l).
+have -> /= : func <> oda2 by smt(not_le_ext_nonnil_l).
+smt(rf_info_valid change_pari_valid next_of_addr_ge_self_plus).
+qed.
+
+lemma pari_cond_after_par_or_rest_continue_equiv
+      (func : addr, r : msg option, oda1 oda2 : addr) :
+  func ++ [change_pari] <= oda1 => func ++ [change_pari] <= oda2 =>
+  after_par_or_rest_continue func r oda1 <=>
+  after_par_or_rest_continue func r oda2.
+proof.
+move => le_oda1 le_oda2.
+rewrite /after_par_or_rest_continue.
+have -> : func <> oda1 by smt(not_le_ext_nonnil_l).
+have -> /= : func <> oda2 by smt(not_le_ext_nonnil_l).
+smt(le_pre le_cons rf_info_valid change_pari_valid
+    not_le_other_branch).
+qed.
+
+lemma pari_cond_after_par_or_rest_error_equiv
+      (func : addr, r : msg option, oda1 oda2 : addr) :
+  func ++ [change_pari] <= oda1 => func ++ [change_pari] <= oda2 =>
+  after_par_or_rest_error func r oda1 <=>
+  after_par_or_rest_error func r oda2.
+proof.
+move => le_oda1 le_oda2.
+smt(pari_cond_after_par_or_rest_continue_equiv
+    pari_cond_after_par_or_rest_return_equiv
+    after_par_or_rest_disj).
+qed.
+
 lemma after_par_or_rest_return_intro_adv_from_param
       (func : addr, r : msg option, orig_dest_addr : addr) :
  r <> None => (oget r).`1 = Adv => (oget r).`2.`1 = adv =>
@@ -1026,7 +1081,8 @@ rcondt{2} 4; first auto.
 rcondt{2} 4; first auto.
 sp 0 3.
 seq 1 1 :
-  (r{1} = r2{2} /\ ={m} /\ ={glob Adv, glob Rest, glob Par} /\
+  (r{1} = r2{2} /\ ={glob Adv, glob Rest, glob Par} /\
+   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{1}.`2.`1 /\
    CompGlobs.mrfc_self{1} ++ [change_pari] <= m{2}.`2.`1 /\
    (r{1} = None \/
     term_rest (glob Rest){1} + term_par (glob Par){1} < n) /\
@@ -1095,8 +1151,9 @@ rcondf{2} 1; first auto.
 auto.
 conseq
   (_ :
-   r{1} = r2{2} /\ ={m} /\
+   r{1} = r2{2} /\
    CompGlobs.mrfc_self{1} ++ [change_pari] <= m{1}.`2.`1 /\
+   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){1} < n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -1852,9 +1909,10 @@ rcondf{2} 1; first auto.
 auto.
 exlim r2{2} => r2'.
 seq 0 1 :
-  (r{1} = r2{2} /\ r2{2} = Some m2{2} /\ ={m} /\
+  (r{1} = r2{2} /\ r2{2} = Some m2{2} /\
    !not_done0{2} /\
    CompGlobs.mrfc_self{1} ++ [change_pari] <= m{1}.`2.`1 /\
+   CompGlobs.mrfc_self{1} ++ [change_pari] <= m{2}.`2.`1 /\
    MakeInt.after_func_to_env MI.func{2} r2{2} /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){1} < n /\
@@ -1887,7 +1945,7 @@ seq 1 1 :
    CompGlobs.ce_stub_st{2} = None).
 call{1} (MakeRFComp_after_par_or_rest_error Rest Par).
 call{2} (MakeRFComp_after_par_or_rest_error Rest CompEnvStubPar).
-auto.
+auto; smt(pari_cond_after_par_or_rest_error_equiv).
 rcondf{1} 1; first auto.
 seq 1 0 :
   (r{1} = None /\ r{2} = None /\ !not_done{1} /\ !not_done{2} /\
@@ -1941,8 +1999,9 @@ seq 1 1 :
 exlim r{1} => r'.
 call{1} (MakeRFComp_after_par_or_rest_continue Rest Par r').
 call{2} (MakeRFComp_after_par_or_rest_continue Rest CompEnvStubPar r').
-auto; progress [-delta];
-  smt(after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error).
+auto; 
+  smt(after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error
+      pari_cond_after_par_or_rest_error_equiv).
 conseq
   (_ :
    ={r, m} /\ r{1} = Some m{1} /\ not_done{1} /\ not_done{2} /\
@@ -2961,6 +3020,26 @@ admit.
 (* end of Left.f ~ RightTop.f *)
 split.
 (* start of Left.f ~ RightBottomAdv *)
+proc => /=.
+sp 2 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+seq 1 1 :
+  (={r} /\ ={glob Adv, glob Rest, glob Par} /\
+   MI.func{2} <= m{1}.`2.`1 /\
+   (r{1} = None \/
+    term_rest (glob Rest){1} + term_par (glob Par){1} < n) /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+exlim (term_par (glob Par){1}) => tp.
+call (Par_invoke tp).
+auto; smt().
 admit.
 (* end of Left.f ~ RightBottomAdv *)
 (* start of Left.f ~ RightBottomPar *)
@@ -2970,8 +3049,7 @@ rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 seq 1 1 :
   (={r} /\ ={glob Adv, glob Rest, glob Par} /\
-   MakeInt.MI.func{2} <= m{1}.`2.`1 /\
-   CompGlobs.mrfc_self{1} ++ [change_pari] <= m_orig{2}.`2.`1 /\
+   MI.func{2} <= m{1}.`2.`1 /\  MI.func{2} <= m_orig{2}.`2.`1 /\
    (r{1} = None \/
     term_rest (glob Rest){1} + term_par (glob Par){1} < n) /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\

@@ -829,6 +829,15 @@ rewrite /next_of_addr /head_of_drop_size_first /drop_size_first.
 by rewrite -catA drop_size_cat.
 qed.
 
+lemma next_of_addrs_ge_self_plus_eq (self addr1 addr2 : addr, i : int) :
+  self ++ [i] <= addr1 => self ++ [i] <= addr2 =>
+  next_of_addr self addr1 = next_of_addr self addr2.
+proof.
+move => self_i_le_addr1 self_i_le_addr2.
+rewrite (next_of_addr_ge_self_plus _ _ i) //
+        (next_of_addr_ge_self_plus _ _ i) //.
+qed.
+
 lemma disjoint_addr_eq_param_subfun (rfi : rf_info, self addr : addr) :
   addr_eq_param rfi self addr => addr_eq_subfun rfi self addr =>
   false.
