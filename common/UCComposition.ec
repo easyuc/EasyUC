@@ -1130,7 +1130,7 @@ rewrite -lezNgt in ge0_n.
 move : n ge0_n.
 elim /Int.sintind => n ge0_n IH.
 split.
-(* start of LeftMFRC.f ~ RightMFRC.f *)
+(* start of first equiv: LeftMFRC.f ~ RightMFRC.f *)
 proc.
 sp 2 2. rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 if => //.
@@ -3083,7 +3083,7 @@ auto.
 admit.
 (* end of LeftMFRC.f ~ RightMFRC.f *)
 split.
-(* start of LeftMFRC.f ~ RightMIFromAdv *)
+(* start of second equiv: LeftMFRC.f ~ RightMIFromAdv *)
 proc => /=.
 sp 2 2.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
@@ -3107,7 +3107,7 @@ auto; smt().
 admit.
 (* end of LeftMFRC.f ~ RightMIFromAdv *)
 split.
-(* start of LeftMFRC.f ~ RightMIFromPar *)
+(* start of third equiv: LeftMFRC.f ~ RightMIFromPar *)
 proc => /=.
 sp 2 2.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
@@ -3131,7 +3131,7 @@ auto; smt().
 admit.
 (* end of LeftMFRC.f ~ RightMIFromPar *)
 split.
-(* start of LeftMI.f ~ RightMIFromAdv.f *)
+(* start of fourth equiv: LeftMI.f ~ RightMIFromAdv.f *)
 proc => /=; sp 2 2.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
 rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
@@ -3148,241 +3148,10 @@ seq 1 1 :
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
 call (_ : true); first auto.
-admit.
-(* end of LeftMI.f ~ RightMIFromAdv.f *)
-(* start of LeftMI.f ~ RightMIFromPar.f *)
-proc => /=; sp 2 2.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
-rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
-rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
-seq 1 1 :
-  (={r, glob Adv, glob Rest, glob Par} /\
-   MI.func{2} <= m_orig{2}.`2.`1 /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
-   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
-   MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None).
-call (_ : true); first auto.
-admit.
-(* end of LeftMI.f ~ RightMIFromPar.f *)
-qed.
-
-lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
-  exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
-  Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
-       .main(func', in_guard_low') @ &m : res] =
-  Pr[Exper(MI(Par, Adv), CompEnv(Rest, Env))
-       .main(func' ++ [change_pari], in_guard_low' `|` rest_adv_pis)
-         @ &m : res].
-proof.
-move => ep_func' disj_igl'_rest_adv_pis.
-byequiv => //.
-proc; inline *; wp.
-swap{2} 6 14; swap{2} 5 14; swap{2} 17 1; sp.
-seq 3 3 :
-  (={glob Env, glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   _self{1} = func' /\ _self{1} = func{1} /\
-   _self{1} = MI.func{1} /\ _self{1} = CompGlobs.mrfc_self{1} /\
-   in_guard{1} = in_guard_low' /\ in_guard{1} = MI.in_guard{1} /\
-   _self{2} = func' /\ _self{2} = func0{2} /\
-   _self{2} = CompEnvMI.func{2} /\
-   _self{2} = CompGlobs.mrfc_self{2} /\ _self{2} = CompGlobs.ce_func{2} /\
-   MI.func{2} = func' ++ [change_pari] /\
-   in_guard1{2} = CompEnvMI.in_guard{2} /\
-   in_guard1{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None).
-call (_ : true).
-call Par_init.
-call Rest_init.
-auto; progress.
-rewrite size_cat /= take_size_cat //.
-rewrite size_cat /= take_size_cat //.
-by rewrite disjoint_add_remove.
-call
-  (_ :
-   ={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\
-   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
-   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None).
-proc.
-if => //.
-inline loop.
-sp 3 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-(* TODO *)
-if => //.
-inline{1} 1; inline{2} 1.
-sp 2 2.
-if => //.
-inline{1} 1; inline{2} 1.
-sp 3 3; wp.
-(* start of reduction to LeftMFRC ~ RightMFRC *)
-conseq
-  (_ :
-   ={m2} /\ not_done0{1} /\ not_done0{2} /\
-   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
-    (m2{1}.`1 = Dir /\
-     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Adv /\
-     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
-     envport MI.func{2} m2{1}.`3)) /\
-   ={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\
-   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
-   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None ==>
-   _).
-auto; smt(inc_nle_l).
-transitivity{1}
-  {r0 <@ LeftMFRC.f(m2);}
-  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
-   ={m2} /\ not_done0{1} ==>
-   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
-   ={r0})
-  (={m2} /\ not_done0{1} /\ not_done0{2} /\
-   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
-    (m2{1}.`1 = Dir /\
-     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Adv /\
-     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
-     envport MI.func{2} m2{1}.`3)) /\
-   ={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\
-   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
-   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None ==>
-  ={glob Adv, glob Rest, glob Par} /\ ={r0} /\
-  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
-  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
-  MI.func{2} = func' ++ [change_pari] /\
-  CompEnvMI.in_guard{2} = in_guard_low' /\
-  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-  CompGlobs.ce_stub_st{2} = None) => //.
-progress.
-exists (glob Adv){2} (glob Par){2} (glob Rest){2}
-       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
-       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
-       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
-       MakeInt.MI.in_guard{1} m2{2} true => //.
-inline{2} 1; sp 0 3.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-sim.
-transitivity{2}
-  {r0 <@ RightMFRC.f(m2);}
-  (={m2} /\
-   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
-    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
-    (m2{1}.`1 = Dir /\
-     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Adv /\
-     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
-    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
-     envport MI.func{2} m2{1}.`3)) /\
-    ={glob Adv, glob Rest, glob Par} /\
-    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-    MI.in_guard{1} = in_guard_low' /\
-    CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
-    CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
-    CompEnvMI.in_guard{2} = in_guard_low' /\
-    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-    CompGlobs.ce_stub_st{2} = None ==>
-   ={r0} /\ ={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
-   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
-   MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None)
-  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
-   not_done0{2} /\ ={m2} ==>
-   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
-   ={r0}) => //.
-progress.
-exists (glob Adv){2} (glob Par){2} (glob Rest){2}
-       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
-       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
-       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m2{2} => //.
-exlim (glob Rest){1}, (glob Par){2} => gr gp.
-have [#] first _ _ _ _ :=
-  comp_bridge_induct func' in_guard_low'
-  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
-call first; first auto.
-inline{1} 1; sp 3 0.
-rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-sim.
-(* end of LeftMFRC ~ RightMFRC reduction *)
-sp 1 1; elim* => r0_r r0_L.
-seq 1 1 :
-  (={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
-   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
-   MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None /\
-   ={r0, not_done} /\ r0{1} = None /\ !not_done{1}).
-call{1} (MakeInt.MI_after_func_error (MakeRFComp(Rest, Par)) Adv).
-call{2}
-  (CompEnvMakeInt.MI_after_func_error (MakeRFComp(Rest, CompEnvStubPar))
-   CompEnvStubAdv).
-auto; smt().
-rcondf{1} 1; first auto. rcondf{2} 1; first auto.
-auto; smt().
-inline{2} 1; sp 0 1.
-rcondf{2} 1; first auto.
-inline{2} 1; sp 0 1.
-rcondt{2} 1; first auto => />.
-smt(main_guard_ext).
-inline{2} 1; sp 0 3.
-rcondt{2} 1; first auto.
-rcondf{2} 1; first auto; smt(not_le_ext).
-seq 1 1 :
-  (r0{1} = r3{2} /\
-   ={glob Adv, glob Rest, glob Par} /\
-   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
-   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
-   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
-   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
-   MI.func{2} = func' ++ [change_pari] /\
-   CompEnvMI.in_guard{2} = in_guard_low' /\
-   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
-   CompGlobs.ce_stub_st{2} = None).
-call (_ : true); first auto.
-case (MakeInt.after_adv_to_env MI.func{1} r0{1}).
+case (MakeInt.after_adv_to_env MI.func{1} r{1}).
 seq 1 0 :
-  (r0{1} = r3{2} /\ r0{1} = Some m0{1} /\ !not_done{1} /\
-   MakeInt.after_adv_to_env MI.func{1} r0{1} /\
+  (={r} /\ r{1} = Some m{1} /\ !not_done{1} /\
+   MakeInt.after_adv_to_env MI.func{1} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -3392,16 +3161,16 @@ seq 1 0 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
-exlim r0{1} => r0_L.
-call{1} (MakeInt.MI_after_adv_to_env (MakeRFComp(Rest, Par)) Adv r0_L).
+exlim r{1} => r_L.
+call{1} (MakeInt.MI_after_adv_to_env (MakeRFComp(Rest, Par)) Adv r_L).
 auto.
 rcondf{1} 1; first auto.
 wp.
 conseq
   (_ :
-   r0{1} = r3{2} /\
-   MakeInt.after_adv_to_env MI.func{1} r0{1} /\
-   MakeInt.after_adv_to_env MI.func{2} r0{1} /\
+   ={r} /\
+   MakeInt.after_adv_to_env MI.func{1} r{1} /\
+   MakeInt.after_adv_to_env MI.func{2} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
@@ -3411,8 +3180,9 @@ conseq
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
-   _).
-smt(MakeInt.after_adv_to_env_ext).
+   _); first smt(MakeInt.after_adv_to_env_ext).
+admit.
+(*
 seq 0 1 :
   (r0{1} = r3{2} /\ r0{1} <> None /\ !not_done0{2} /\
    MakeInt.after_adv_to_env MI.func{1} r0{1} /\
@@ -3975,6 +3745,329 @@ call{2}
 auto.
 rcondf{2} 1; first auto; smt().
 auto.
+*)
+admit.
+(* end of LeftMI.f ~ RightMIFromAdv.f *)
+(* start of fifth equiv: LeftMI.f ~ RightMIFromPar.f *)
+proc => /=; sp 2 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
+rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
+rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
+seq 1 1 :
+  (={r, glob Adv, glob Rest, glob Par} /\
+   MI.func{2} <= m_orig{2}.`2.`1 /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call (_ : true); first auto.
+admit.
+(* end of LeftMI.f ~ RightMIFromPar.f *)
+qed.
+
+lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
+  exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
+  Pr[Exper(MI(MakeRFComp(Rest, Par), Adv), Env)
+       .main(func', in_guard_low') @ &m : res] =
+  Pr[Exper(MI(Par, Adv), CompEnv(Rest, Env))
+       .main(func' ++ [change_pari], in_guard_low' `|` rest_adv_pis)
+         @ &m : res].
+proof.
+move => ep_func' disj_igl'_rest_adv_pis.
+byequiv => //.
+proc; inline *; wp.
+swap{2} 6 14; swap{2} 5 14; swap{2} 17 1; sp.
+seq 3 3 :
+  (={glob Env, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   _self{1} = func' /\ _self{1} = func{1} /\
+   _self{1} = MI.func{1} /\ _self{1} = CompGlobs.mrfc_self{1} /\
+   in_guard{1} = in_guard_low' /\ in_guard{1} = MI.in_guard{1} /\
+   _self{2} = func' /\ _self{2} = func0{2} /\
+   _self{2} = CompEnvMI.func{2} /\
+   _self{2} = CompGlobs.mrfc_self{2} /\ _self{2} = CompGlobs.ce_func{2} /\
+   MI.func{2} = func' ++ [change_pari] /\
+   in_guard1{2} = CompEnvMI.in_guard{2} /\
+   in_guard1{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call (_ : true).
+call Par_init.
+call Rest_init.
+auto; progress.
+rewrite size_cat /= take_size_cat //.
+rewrite size_cat /= take_size_cat //.
+by rewrite disjoint_add_remove.
+call
+  (_ :
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+proc.
+if => //.
+inline loop.
+sp 3 3.
+case (MI.func{1} <= m0{1}.`2.`1).
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+inline{1} 1; inline{2} 1.
+sp 2 2.
+if => //.
+inline{1} 1; inline{2} 1.
+sp 3 3; wp.
+(* start of reduction to LeftMFRC ~ RightMFRC *)
+conseq
+  (_ :
+   ={m2} /\ not_done0{1} /\ not_done0{2} /\
+   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+    (m2{1}.`1 = Dir /\
+     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Adv /\
+     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m2{1}.`3)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   _).
+auto; smt(inc_nle_l).
+transitivity{1}
+  {r0 <@ LeftMFRC.f(m2);}
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={m2} /\ not_done0{1} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={r0})
+  (={m2} /\ not_done0{1} /\ not_done0{2} /\
+   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+    (m2{1}.`1 = Dir /\
+     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Adv /\
+     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m2{1}.`3)) /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={glob Adv, glob Rest, glob Par} /\ ={r0} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
+       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
+       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} m2{2} true => //.
+inline{2} 1; sp 0 3.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+transitivity{2}
+  {r0 <@ RightMFRC.f(m2);}
+  (={m2} /\
+   (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
+    addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
+    (m2{1}.`1 = Dir /\
+     addr_eq_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Adv /\
+     addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1) \/
+    (m2{1}.`1 = Dir /\ m2{1}.`2.`1 = MI.func{2} /\
+     envport MI.func{2} m2{1}.`3)) /\
+    ={glob Adv, glob Rest, glob Par} /\
+    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+    MI.in_guard{1} = in_guard_low' /\
+    CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+    CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+    CompEnvMI.in_guard{2} = in_guard_low' /\
+    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+    CompGlobs.ce_stub_st{2} = None ==>
+   ={r0} /\ ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None)
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done0{2} /\ ={m2} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={r0}) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
+       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m2{2} => //.
+exlim (glob Rest){1}, (glob Par){2} => gr gp.
+have [#] first _ _ _ _ :=
+  comp_bridge_induct func' in_guard_low'
+  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
+call first; first auto.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+(* end of LeftMFRC ~ RightMFRC reduction *)
+sp 1 1; elim* => r0_r r0_L.
+seq 1 1 :
+  (={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None /\
+   ={r0, not_done} /\ r0{1} = None /\ !not_done{1}).
+call{1} (MakeInt.MI_after_func_error (MakeRFComp(Rest, Par)) Adv).
+call{2}
+  (CompEnvMakeInt.MI_after_func_error (MakeRFComp(Rest, CompEnvStubPar))
+   CompEnvStubAdv).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+auto; smt().
+conseq
+  (_ :
+   ={m0} /\ m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   MakeInt.main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m0{1} /\
+   not_done{1} /\ not_done{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   _); first smt(le_refl).
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; smt(inc_nle_l).
+inline{2} 1; sp 0 1.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 1.
+rcondt{2} 1; first auto; smt(main_guard_ext inc_nle_l).
+inline{2} 1; sp 0 3.
+conseq
+  (_ :
+   m0{1} = m3{2} /\ m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   not_done{1} /\ not_done0{2} /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   _) => //.
+(* start of reduction to LeftMI ~ RightMIFromAdv *)
+transitivity{1}
+  {r <@ LeftMI.f(m0);}
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={m0} /\ not_done{1} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={r})
+  (m0{1} = m3{2} /\ not_done{1} /\ not_done0{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+  ={glob Adv, glob Rest, glob Par} /\ ={r} /\
+  invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+  MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+  MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+  CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+  MI.func{2} = func' ++ [change_pari] /\
+  CompEnvMI.in_guard{2} = in_guard_low' /\
+  MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+  CompGlobs.ce_stub_st{2} = None) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
+       MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
+       CompEnvMakeInt.MI.in_guard{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} m3{2} true => //.
+inline{2} 1; sp 0 3.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+transitivity{2}
+  {r <@ RightMIFromAdv.f(m3);}
+  (m0{1} = m3{2} /\ m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\
+   CompEnvMI.func{2} = func' /\ CompGlobs.mrfc_self{2} = func' /\
+   CompGlobs.ce_func{2} = func' /\ MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={r} /\ ={glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None)
+  (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   not_done0{2} /\ ={m3} ==>
+   ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
+   ={r}) => //.
+progress.
+exists (glob Adv){2} (glob Par){2} (glob Rest){2}
+       MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
+       MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
+       (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m3{2} => //.
+exlim (glob Rest){1}, (glob Par){2} => gr gp.
+have [#] _ _ _ fourth _ :=
+  comp_bridge_induct func' in_guard_low'
+  ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
+call fourth; first auto.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sim.
+(* end of reduction to LeftMI ~ RightMIFromAdv *)
 auto.
 auto.
 qed.
