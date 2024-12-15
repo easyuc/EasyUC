@@ -731,7 +731,24 @@ local module CompEnvStubPar : FUNC =
 local module CompEnvStubAdv : ADV  =
   CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubAdv.
 
-local module Left = {
+local module LeftMI = {
+  proc f(m : msg) : msg option = {
+    var not_done : bool <- true; var r : msg option <- None;
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ MakeRFComp(Rest, Par).invoke(m);
+        (r, m, not_done) <@ MI(MakeRFComp(Rest, Par), Adv).after_func(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MI(MakeRFComp(Rest, Par), Adv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local module LeftMFRC = {
   proc f(m : msg) : msg option = {
     var not_done : bool <- true; var r : msg option <- None;
     while (not_done) {
@@ -759,7 +776,7 @@ local module Left = {
   }
 }.
 
-local module RightTop = {
+local module RightMFRC = {
   proc f(m : msg) : msg option = {
     var not_done : bool <- true; var r : msg option <- None;
     while (not_done) {
@@ -793,7 +810,7 @@ local module RightTop = {
   }
 }.
 
-local module RightBottomAdv = {
+local module RightMIFromAdv = {
   proc f(m : msg) : msg option = {
     var not_done : bool <- true; var r : msg option <- None;
 
@@ -838,7 +855,7 @@ local module RightBottomAdv = {
   }
 }.
 
-local module RightBottomPar = {
+local module RightMIFromPar = {
   proc f(m : msg, m_orig : msg) : msg option = {
     var not_done : bool <- true; var r : msg option <- None;
 
@@ -983,7 +1000,7 @@ local lemma comp_bridge_induct
   exper_pre func' => disjoint in_guard_low' rest_adv_pis =>
   forall (n : int),
   equiv
-  [Left.f ~ RightTop.f :
+  [LeftMFRC.f ~ RightMFRC.f :
    ={m} /\
    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
@@ -1012,9 +1029,8 @@ local lemma comp_bridge_induct
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None] /\
   equiv
-  [Left.f ~ RightBottomAdv.f :
-   ={m} /\
-   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
+  [LeftMFRC.f ~ RightMIFromAdv.f :
+   ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -1035,9 +1051,53 @@ local lemma comp_bridge_induct
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None] /\
   equiv
-  [Left.f ~ RightBottomPar.f :
-   ={m} /\
-   m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
+  [LeftMFRC.f ~ RightMIFromPar.f :
+   ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
+   MI.func{2} <= m_orig{2}.`2.`1 /\
+   ={glob Adv, glob Rest, glob Par} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={res, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None] /\
+  equiv
+  [LeftMI.f ~ RightMIFromAdv.f :
+   ={m} /\ m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
+   ={glob Adv, glob Rest, glob Par} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None ==>
+   ={res, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None] /\
+  equiv
+  [LeftMI.f ~ RightMIFromPar.f :
+   ={m} /\ m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
    MI.func{2} <= m_orig{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
@@ -1061,12 +1121,16 @@ local lemma comp_bridge_induct
 proof.
 move => ep_func' disj_igl'_rest_adv_pis n.
 case (n < 0) => [lt0_n | ge0_n].
-(split; last split); exfalso; smt(ge0_term_rest ge0_term_par).
+split; first exfalso; smt(ge0_term_rest ge0_term_par).
+split; first exfalso; smt(ge0_term_rest ge0_term_par).
+split; first exfalso; smt(ge0_term_rest ge0_term_par).
+split; first exfalso; smt(ge0_term_rest ge0_term_par).
+exfalso; smt(ge0_term_rest ge0_term_par).
 rewrite -lezNgt in ge0_n.
 move : n ge0_n.
 elim /Int.sintind => n ge0_n IH.
 split.
-(* start of Left.f ~ RightTop.f *)
+(* start of LeftMFRC.f ~ RightMFRC.f *)
 proc.
 sp 2 2. rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 if => //.
@@ -1491,7 +1555,7 @@ call{2} (MakeInt.MI_after_adv_to_func Par Adv r2').
 auto; smt(inc_extl).
 (* beginning of reduction to third conjunct of IH *)
 transitivity{1}
-  {r <@ Left.f(m1);}
+  {r <@ LeftMFRC.f(m1);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m1} /\ not_done0{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -1528,7 +1592,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r <@ RightBottomPar.f(m2, m);}
+  {r <@ RightMIFromPar.f(m2, m);}
   (m1{1} = m2{2} /\ m1{1}.`1 = Adv /\ MI.func{2} <= m1{1}.`2.`1 /\
    MI.func{2} <= m{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -1560,7 +1624,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m{2} m2{2} => //.
 exlim (term_rest (glob Rest){1} + term_par (glob Par){1}) => tm.
 case @[ambient] (0 <= tm < n) => [tm_ok | tm_not_ok].
-have [_ [_ third]] := IH tm _ => //.
+have [#] _ _ third _ _ := IH tm _ => //.
 call third; first auto.
 exfalso; smt(ge0_term_rest ge0_term_par).
 inline{1} 1; sp 4 0.
@@ -1707,7 +1771,7 @@ conseq
 progress [-delta]; smt().
 (* beginning of reduction to first conjunct of IH *)
 transitivity{1}
-  {r <@ Left.f(m1);}
+  {r <@ LeftMFRC.f(m1);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m1} /\ not_done0{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -1746,7 +1810,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r <@ RightTop.f(m5);}
+  {r <@ RightMFRC.f(m5);}
   (m1{1} = m5{2} /\ not_done1{2} /\ m1{1}.`1 = Adv /\
    (m1{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m1{1}.`2.`1 \/
@@ -1781,7 +1845,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m5{2} not_done1{2} => //.
 exlim (term_rest (glob Rest){1} + term_par (glob Par){1}) => tm.
 case @[ambient] (0 <= tm < n) => [tm_ok | tm_not_ok].
-have [first _] := IH tm _ => //.
+have [#] first _ _ _ _ := IH tm _ => //.
 call first; first auto; smt().
 exfalso; smt(ge0_term_rest ge0_term_par).
 inline{1} 1; sp 3 0.
@@ -2023,7 +2087,7 @@ have :=
   (Some m{2}) oda _ _ => //.
 (* beginning of reduction to first conjunct of IH *)
 transitivity{1}
-  {r <@ Left.f(m);}
+  {r <@ LeftMFRC.f(m);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m} /\ not_done{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -2059,7 +2123,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r <@ RightTop.f(m);}
+  {r <@ RightMFRC.f(m);}
   (={m} /\ not_done{2} /\ m{1}.`2.`1 = MI.func{1} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -2093,7 +2157,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m{2} not_done{2}; smt().
 exlim (term_rest (glob Rest){1} + term_par (glob Par){1}) => tm.
 case @[ambient] (0 <= tm < n) => [tm_ok | tm_not_ok].
-have [first _] := IH tm _ => //.
+have [#] first _ _ _ _ := IH tm _ => //.
 call first; first auto; smt().
 exfalso; smt(ge0_term_rest ge0_term_par).
 inline{1} 1; sp 3 0.
@@ -2243,7 +2307,7 @@ conseq
    _); first smt(after_par_or_rest_continue_implied_pre_cond_equiv1).
 (* beginning of reduction to first conjunct of IH *)
 transitivity{1}
-  {r <@ Left.f(m);}
+  {r <@ LeftMFRC.f(m);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m} /\ not_done{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -2283,7 +2347,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r <@ RightTop.f(m);}
+  {r <@ RightMFRC.f(m);}
   (={m} /\ not_done{2} /\
    (m{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1 \/
@@ -2320,7 +2384,7 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m{2} not_done{2} => //.
 exlim (term_rest (glob Rest){1} + term_par (glob Par){1}) => tm.
 case @[ambient] (0 <= tm < n) => [tm_ok | tm_not_ok].
-have [first _] := IH tm _ => //.
+have [#] first _ _ _ _ := IH tm _ => //.
 call first; first auto; smt().
 exfalso; smt(ge0_term_rest ge0_term_par).
 inline{1} 1; sp 3 0.
@@ -2553,7 +2617,7 @@ exlim r3{2} => r3_R.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r3_R).
 auto; smt(inc_extl oget_some).
 wp.
-(* start of reduction to Left ~ RightBottomAdv *)
+(* start of reduction to LeftMFRC ~ RightMIFromAdv *)
 conseq
   (_ :
    m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
@@ -2569,7 +2633,7 @@ conseq
    CompGlobs.ce_stub_st{2} = None ==>
    _) => //.
 transitivity{1}
-  {r0 <@ Left.f(m2);}
+  {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m2} /\ not_done0{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -2604,7 +2668,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r0 <@ RightBottomAdv.f(m3);}
+  {r0 <@ RightMIFromAdv.f(m3);}
   (m2{1} = m3{2} /\
    m2{1}.`1 = Adv /\ MI.func{2} <= m2{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -2642,7 +2706,7 @@ call second; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
-(* end of Left ~ RightBottomAdv reduction *)
+(* end of LeftMFRC ~ RightMIFromAdv reduction *)
 seq 0 1 :
   (r3{2} = Some m2{1} /\ not_done0{1} /\ !not_done0{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -2698,7 +2762,7 @@ sp 0 2.
 rcondt{2} 1; first auto.
 inline{2} 1.
 sp 0 3; wp.
-(* start of reduction to Left ~ RightTop *)
+(* start of reduction to LeftMFRC ~ RightMFRC *)
 conseq
   (_ :
    m2{1} = m5{2} /\ not_done0{1} /\ not_done1{2} /\
@@ -2721,7 +2785,7 @@ conseq
    CompGlobs.ce_stub_st{2} = None ==>
    _); first smt().
 transitivity{1}
-  {r0 <@ Left.f(m2);}
+  {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    not_done0{1} /\ ={m2} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -2763,7 +2827,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r0 <@ RightTop.f(m5);}
+  {r0 <@ RightMFRC.f(m5);}
   (m2{1} = m5{2} /\
    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
@@ -2808,7 +2872,7 @@ call first; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
-(* end of Left ~ RightTop reduction *)
+(* end of LeftMFRC ~ RightMFRC reduction *)
 sp 1 0; elim* => r0_L.
 seq 1 0 :
   (r0{1} = None /\ !not_done{1} /\ r3{2} <> None /\
@@ -3017,9 +3081,9 @@ auto.
 *)
 (* end of c/p *)
 admit.
-(* end of Left.f ~ RightTop.f *)
+(* end of LeftMFRC.f ~ RightMFRC.f *)
 split.
-(* start of Left.f ~ RightBottomAdv *)
+(* start of LeftMFRC.f ~ RightMIFromAdv *)
 proc => /=.
 sp 2 2.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
@@ -3041,8 +3105,9 @@ exlim (term_par (glob Par){1}) => tp.
 call (Par_invoke tp).
 auto; smt().
 admit.
-(* end of Left.f ~ RightBottomAdv *)
-(* start of Left.f ~ RightBottomPar *)
+(* end of LeftMFRC.f ~ RightMIFromAdv *)
+split.
+(* start of LeftMFRC.f ~ RightMIFromPar *)
 proc => /=.
 sp 2 2.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
@@ -3064,7 +3129,47 @@ exlim (term_par (glob Par){1}) => tp.
 call (Par_invoke tp).
 auto; smt().
 admit.
-(* end of Left.f ~ RightBottomPar *)
+(* end of LeftMFRC.f ~ RightMIFromPar *)
+split.
+(* start of LeftMI.f ~ RightMIFromAdv.f *)
+proc => /=; sp 2 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
+rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
+rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
+seq 1 1 :
+  (={r, glob Adv, glob Rest, glob Par} /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call (_ : true); first auto.
+admit.
+(* end of LeftMI.f ~ RightMIFromAdv.f *)
+(* start of LeftMI.f ~ RightMIFromPar.f *)
+proc => /=; sp 2 2.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
+rcondf{1} 1; first auto; smt(inc_extl inc_nle_l).
+rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
+seq 1 1 :
+  (={r, glob Adv, glob Rest, glob Par} /\
+   MI.func{2} <= m_orig{2}.`2.`1 /\
+   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
+   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
+   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
+   CompGlobs.mrfc_self{2} = func' /\ CompGlobs.ce_func{2} = func' /\
+   MI.func{2} = func' ++ [change_pari] /\
+   CompEnvMI.in_guard{2} = in_guard_low' /\
+   MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
+   CompGlobs.ce_stub_st{2} = None).
+call (_ : true); first auto.
+admit.
+(* end of LeftMI.f ~ RightMIFromPar.f *)
 qed.
 
 lemma comp_bridge (func' : addr, in_guard_low' : int fset) &m :
@@ -3116,13 +3221,14 @@ if => //.
 inline loop.
 sp 3 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+(* TODO *)
 if => //.
 inline{1} 1; inline{2} 1.
 sp 2 2.
 if => //.
 inline{1} 1; inline{2} 1.
 sp 3 3; wp.
-(* start of reduction to Left ~ RightTop *)
+(* start of reduction to LeftMFRC ~ RightMFRC *)
 conseq
   (_ :
    ={m2} /\ not_done0{1} /\ not_done0{2} /\
@@ -3146,7 +3252,7 @@ conseq
    _).
 auto; smt(inc_nle_l).
 transitivity{1}
-  {r0 <@ Left.f(m2);}
+  {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m2} /\ not_done0{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -3188,7 +3294,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r0 <@ RightTop.f(m2);}
+  {r0 <@ RightMFRC.f(m2);}
   (={m2} /\
    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
@@ -3226,14 +3332,14 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m2{2} => //.
 exlim (glob Rest){1}, (glob Par){2} => gr gp.
-have [first _] :=
+have [#] first _ _ _ _ :=
   comp_bridge_induct func' in_guard_low'
   ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
 call first; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
-(* end of Left ~ RightTop reduction *)
+(* end of LeftMFRC ~ RightMFRC reduction *)
 sp 1 1; elim* => r0_r r0_L.
 seq 1 1 :
   (={glob Adv, glob Rest, glob Par} /\
@@ -3260,8 +3366,7 @@ rcondt{2} 1; first auto => />.
 smt(main_guard_ext).
 inline{2} 1; sp 0 3.
 rcondt{2} 1; first auto.
-rcondf{2} 1; first auto.
-smt(not_le_ext).
+rcondf{2} 1; first auto; smt(not_le_ext).
 seq 1 1 :
   (r0{1} = r3{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -3409,7 +3514,7 @@ exlim r3{2} => r3_R.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r3_R).
 auto; smt(inc_extl oget_some).
 wp.
-(* start of reduction to Left ~ RightBottomAdv *)
+(* start of reduction to LeftMFRC ~ RightMIFromAdv *)
 conseq
   (_ :
    m2{1} = m3{2} /\ not_done0{1} /\ not_done0{2} /\
@@ -3425,7 +3530,7 @@ conseq
    CompGlobs.ce_stub_st{2} = None ==>
    _) => //.
 transitivity{1}
-  {r0 <@ Left.f(m2);}
+  {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={m2} /\ not_done0{1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -3460,7 +3565,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r0 <@ RightBottomAdv.f(m3);}
+  {r0 <@ RightMIFromAdv.f(m3);}
   (m2{1} = m3{2} /\
    m2{1}.`1 = Adv /\ MI.func{2} <= m2{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -3491,14 +3596,14 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m3{2} => //.
 exlim (glob Rest){1}, (glob Par){2} => gr gp.
-have [_ [second _]] :=
+have [#] _ second _ _ _ :=
   comp_bridge_induct func' in_guard_low'
   ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
 call second; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
-(* end of Left ~ RightBottomAdv reduction *)
+(* end of LeftMFRC ~ RightMIFromAdv reduction *)
 seq 0 1 :
   (r3{2} = Some m2{1} /\ not_done0{1} /\ !not_done0{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -3554,7 +3659,7 @@ sp 0 2.
 rcondt{2} 1; first auto.
 inline{2} 1.
 sp 0 3; wp.
-(* start of reduction to Left ~ RightTop *)
+(* start of reduction to LeftMFRC ~ RightMFRC *)
 conseq
   (_ :
    m2{1} = m5{2} /\ not_done0{1} /\ not_done1{2} /\
@@ -3577,7 +3682,7 @@ conseq
    CompGlobs.ce_stub_st{2} = None ==>
    _); first smt().
 transitivity{1}
-  {r0 <@ Left.f(m2);}
+  {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    not_done0{1} /\ ={m2} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -3619,7 +3724,7 @@ inline{2} 1; sp 0 3.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 transitivity{2}
-  {r0 <@ RightTop.f(m5);}
+  {r0 <@ RightMFRC.f(m5);}
   (m2{1} = m5{2} /\
    (m2{1}.`2.`1 = CompGlobs.mrfc_self{1} \/
     addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m2{1}.`2.`1 \/
@@ -3657,14 +3762,14 @@ exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
        (MakeInt.MI.in_guard{1} `|` rest_adv_pis) m5{2} => //.
 exlim (glob Rest){1}, (glob Par){2} => gr gp.
-have [first _] :=
+have [#] first _ _ _ _ :=
   comp_bridge_induct func' in_guard_low'
   ep_func' disj_igl'_rest_adv_pis (term_rest gr + term_par gp).
 call first; first auto.
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
-(* end of Left ~ RightTop reduction *)
+(* end of LeftMFRC ~ RightMFRC reduction *)
 sp 1 0; elim* => r0_L.
 seq 1 0 :
   (r0{1} = None /\ !not_done{1} /\ r3{2} <> None /\
