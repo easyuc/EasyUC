@@ -1009,7 +1009,7 @@ local lemma LeftMI_RightMIFromAdv
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\ envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1031,7 +1031,7 @@ local lemma LeftMI_RightMIFromAdv
   [LeftMFRC.f ~ RightMIFromAdv.f :
    ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1053,7 +1053,7 @@ local lemma LeftMI_RightMIFromAdv
   [LeftMI.f ~ RightMIFromAdv.f :
    ={m} /\ m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1079,7 +1079,7 @@ rcondf{1} 1; first auto; smt(inc_nle_l).
 rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
 seq 1 1 :
   (={r} /\ ={glob Adv, glob Rest, glob Par} /\
-  term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+  term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1094,7 +1094,7 @@ seq 1 0 :
   (={r} /\ r{1} = Some m{1} /\ !not_done{1} /\
    MakeInt.after_adv_to_env MI.func{1} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1114,7 +1114,7 @@ conseq
    MakeInt.after_adv_to_env MI.func{1} r{1} /\
    MakeInt.after_adv_to_env MI.func{2} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
     invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1129,7 +1129,7 @@ seq 0 1 :
    MakeInt.after_adv_to_env MI.func{1} r{1} /\
    MakeInt.after_adv_to_env MI.func{2} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1148,7 +1148,7 @@ seq 0 1 :
   (={r} /\ !not_done{2} /\
    MakeInt.after_adv_to_env MI.func{1} r{1} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1168,7 +1168,7 @@ case (MakeInt.after_adv_to_func MI.func{1} r{1}).
 conseq
   (_ :
     ={r} /\ ={glob Adv, glob Rest, glob Par} /\
-    term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+    term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
     invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
     MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
     MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1185,7 +1185,7 @@ conseq
 seq 1 0 :
   (={r} /\ r{1} = Some m{1} /\ not_done{1} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1213,7 +1213,7 @@ seq 0 1 :
   (m1{1} = m{2} /\ not_done0{1} /\ not_done{2} /\
    r{2} = Some m{2} /\ m{2}.`1 = Adv /\ MI.func{2} <= m{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1232,7 +1232,7 @@ conseq
    m1{1} = m{2} /\ not_done0{1} /\ not_done{2} /\
    m1{1}.`1 = Adv /\ MI.func{2} <= m1{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1251,7 +1251,7 @@ transitivity{1}
   (m1{1} = m{2} /\ not_done{2} /\
    m1{1}.`1 = Adv /\ MI.func{2} <= m1{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1282,7 +1282,7 @@ transitivity{2}
   {r <@ RightMIFromAdv.f(m);}
   (m1{1} = m{2} /\ m1{1}.`1 = Adv /\ MI.func{2} <= m1{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1317,7 +1317,7 @@ sim.
 seq 0 1 :
   (r{2} = Some m1{1} /\ not_done0{1} /\ !not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1342,7 +1342,7 @@ sp 0 1.
 seq 0 1 :
   (m1{1} = m{2} /\ not_done0{1} /\ not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1381,7 +1381,7 @@ conseq
     (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{2} /\
      envport MI.func{2} m1{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1407,7 +1407,7 @@ transitivity{1}
     (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{2} /\
      envport MI.func{2} m1{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1446,7 +1446,7 @@ transitivity{2}
     (m1{1}.`1 = Dir /\ m1{1}.`2.`1 = MI.func{2} /\
      envport MI.func{2} m1{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\
@@ -1694,7 +1694,7 @@ local lemma LeftMI_RightMIFromPar
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\ envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1717,7 +1717,7 @@ local lemma LeftMI_RightMIFromPar
    ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    MI.func{2} <= m_orig{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1740,7 +1740,7 @@ local lemma LeftMI_RightMIFromPar
    ={m} /\ m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
    MI.func{2} <= m_orig{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -1767,7 +1767,7 @@ rcondf{2} 1; first auto; smt(inc_extl inc_nle_l).
 seq 1 1 :
   (={r} /\ ={glob Adv, glob Rest, glob Par} /\
   MI.func{2} <= m_orig{2}.`2.`1 /\
-  term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+  term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
   invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
   MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
   MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -2413,7 +2413,7 @@ local lemma comp_bridge_induct
      addr_ge_param_rest rf_info CompGlobs.mrfc_self{1} m{1}.`2.`1) \/
     (m{1}.`1 = Dir /\ m{1}.`2.`1 = MI.func{2} /\ envport MI.func{2} m{1}.`3)) /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -2435,7 +2435,7 @@ local lemma comp_bridge_induct
   [LeftMFRC.f ~ RightMIFromAdv.f :
    ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
@@ -2458,7 +2458,7 @@ local lemma comp_bridge_induct
    ={m} /\ m{1}.`1 = Adv /\ MI.func{2} <= m{1}.`2.`1 /\
    MI.func{2} <= m_orig{2}.`2.`1 /\
    ={glob Adv, glob Rest, glob Par} /\
-   term_rest (glob Rest){1} + term_par (glob Par){2} = n /\
+   term_rest (glob Rest){1} + term_par (glob Par){1} = n /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
    MI.func{1} = func' /\ CompGlobs.mrfc_self{1} = func' /\
    MI.in_guard{1} = in_guard_low' /\ CompEnvMI.func{2} = func' /\
