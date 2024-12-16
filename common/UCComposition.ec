@@ -3389,9 +3389,6 @@ seq 1 1 :
 exlim (term_par (glob Par){1}) => tp.
 call (Par_invoke tp).
 auto; smt().
-
-(* start?? *)
-
 case (r{1} = None).
 seq 1 1 :
   (={r} /\ r{1} = None /\ !not_done{1} /\ !not_done{2} /\
@@ -4297,7 +4294,6 @@ call first; first auto; smt().
 exfalso; smt(ge0_term_rest ge0_term_par).
 inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
-
 sim.
 (* end of reduction to first conjunct of IH *)
 qed.
