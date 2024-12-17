@@ -85,7 +85,7 @@ op [opaque smt_opaque] epdp_addr_univ
 
 lemma valid_epdp_addr_univ : valid_epdp epdp_addr_univ.
 proof.
-rewrite /epdp_addr_univ !epdp.
+by rewrite /epdp_addr_univ.
 qed.
 
 hint simplify valid_epdp_addr_univ.
@@ -241,7 +241,7 @@ op [opaque smt_opaque] epdp_port_univ : (port, univ) epdp =
 
 lemma valid_epdp_port_univ : valid_epdp epdp_port_univ.
 proof.
-rewrite /epdp_port_univ !epdp.
+by rewrite /epdp_port_univ.
 qed.
 
 hint simplify valid_epdp_port_univ.

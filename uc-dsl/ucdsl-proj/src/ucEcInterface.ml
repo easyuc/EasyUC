@@ -97,7 +97,3 @@ let require id io =
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]")
-
-
-
-

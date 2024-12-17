@@ -172,8 +172,9 @@
   ]
 
   module SMT : sig
-    val mk_pi_option  : psymbol -> pi option -> smt
-    val mk_smt_option : smt list -> pprover_infos
+    val mk_pi_option      : psymbol -> pi option -> smt
+    val mk_smt_option     : smt list -> pprover_infos
+    val simple_smt_option : pprover_infos
   end = struct
     let option_matching tomatch =
       let match_option = String.option_matching tomatch in
@@ -304,7 +305,7 @@
         let pr =
           match k with
           | `Only ->
-	            ok_use_only r p; { r with pp_use_only = p :: r.pp_use_only }
+                   ok_use_only r p; { r with pp_use_only = p :: r.pp_use_only }
           | `Include -> { r with pp_add_rm = (`Include, p) :: r.pp_add_rm }
           | `Exclude -> { r with pp_add_rm = (`Exclude, p) :: r.pp_add_rm }
 
@@ -350,6 +351,9 @@
         plem_selected   = !selected;
         psmt_debug      = !debug;
       }
+
+    let simple_smt_option =
+        { (mk_smt_option []) with plem_max = Some (Some 0) }
   end
 %}
 
@@ -415,6 +419,10 @@
 %token CONGR
 %token CONSEQ
 %token CONST
+%token COQ
+%token CHECK
+%token EDIT
+%token FIX
 %token DEBUG
 %token DECLARE
 %token DELTA
@@ -666,6 +674,9 @@ _lident:
 | ECALL      { "ecall"      }
 | FROM       { "from"       }
 | EXIT       { "exit"       }
+| CHECK      { "check"      }
+| EDIT       { "edit"       }
+| FIX        { "fix"        }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
 | x=FIELD { match x with `Eq -> "fieldeq" | `Raw -> "field" }
@@ -869,6 +880,9 @@ pside_:
 
 pside:
 | x=brace(pside_) { x }
+
+pside_force:
+| brace(b=boption(NOT) m=loc(pside_) { (b, m) }) { $1 }
 
 (* -------------------------------------------------------------------- *)
 (* Patterns                                                             *)
@@ -1200,7 +1214,7 @@ sform_u(P):
    { let e1 = List.reduce1 (fun _ -> lmap (fun x -> PFtuple x) e1) (unloc e1) in
      pfset (EcLocation.make $startpos $endpos) ti se e1 e2 }
 
-| x=sform_r(P) s=loc(pside)
+| x=sform_r(P) s=pside_force
    { PFside (x, s) }
 
 | op=loc(numop) ti=tvars_app?
@@ -1420,19 +1434,21 @@ param_decl:
 (* -------------------------------------------------------------------- *)
 (* Statements                                                           *)
 
-lvalue_u:
+lvalue_var:
 | x=loc(fident)
    { match lqident_of_fident x.pl_desc with
      | None   -> parse_error x.pl_loc None
-     | Some v -> PLvSymbol (mk_loc x.pl_loc v) }
+     | Some v -> mk_loc x.pl_loc v }
+
+lvalue_u:
+| x=lvalue_var
+   { PLvSymbol x }
 
 | LPAREN p=plist2(qident, COMMA) RPAREN
    { PLvTuple p }
 
-| x=loc(fident) DLBRACKET ti=tvars_app? e=expr RBRACKET
-   { match lqident_of_fident x.pl_desc with
-     | None   -> parse_error x.pl_loc None
-     | Some v -> PLvMap (mk_loc x.pl_loc v, ti, e) }
+| x=lvalue_var DLBRACKET ti=tvars_app? e=plist1(expr, COMMA) RBRACKET
+   { PLvMap (x, ti, e) }
 
 %inline lvalue:
 | x=loc(lvalue_u) { x }
@@ -2339,10 +2355,10 @@ intro_pattern:
    { IPDone (Some `Variant) }
 
 | SLASHSHARP
-   { IPSmt (false, { (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
+   { IPSmt (false, SMT.simple_smt_option) }
 
 | SLASHSLASHSHARP
-   { IPSmt (true, { (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
+   { IPSmt (true, SMT.simple_smt_option) }
 
 | SLASHEQ
    { IPSimplify `Default }
@@ -2395,6 +2411,15 @@ gpterm_arg:
     exp=iboption(AT) p=qident tvi=tvars_app? args=loc(gpterm_arg)*
   RPAREN
     { EA_proof (mk_pterm exp (FPNamed (p, tvi)) args) }
+
+| SLASHSLASH
+    { EA_tactic `Done }
+
+| SLASHSHARP
+    { EA_tactic `Smt }
+
+| SLASHSLASHSHARP
+    { EA_tactic `DoneSmt }
 
 gpterm(F):
 | hd=gpterm_head(F)
@@ -2453,10 +2478,10 @@ rwarg1:
    { RWDone (Some `Variant) }
 
 | SLASHSHARP
-   { RWSmt (false, { (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
+   { RWSmt (false, SMT.simple_smt_option) }
 
 | SLASHSLASHSHARP
-   { RWSmt (true, { (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
+   { RWSmt (true, SMT.simple_smt_option) }
 
 | SLASHEQ
    { RWSimpl `Default }
@@ -2579,21 +2604,26 @@ tac_dir:
 | empty { Backs }
 
 icodepos_r:
-| IF       { (`If     :> cp_match) }
-| WHILE    { (`While  :> cp_match) }
-| LARROW   { (`Assign :> cp_match) }
-| LESAMPLE { (`Sample :> cp_match) }
-| LEAT     { (`Call   :> cp_match) }
+| IF       { (`If     :> pcp_match) }
+| WHILE    { (`While  :> pcp_match) }
+| LESAMPLE { (`Sample :> pcp_match) }
+| LEAT     { (`Call   :> pcp_match) }
+
+| lvm=lvmatch LARROW { (`Assign lvm :> pcp_match) }
+
+lvmatch:
+| empty        { (`LvmNone  :> plvmatch) }
+| x=lvalue_var { (`LvmVar x :> plvmatch) }
 
 %inline icodepos:
  | HAT x=icodepos_r { x }
 
 codepos1_wo_off:
 | i=sword
-    { (`ByPos i :> cp_base) }
+    { (`ByPos i :> pcp_base) }
 
 | k=icodepos i=option(brace(sword))
-    { (`ByMatch (i, k) :> cp_base) }
+    { (`ByMatch (i, k) :> pcp_base) }
 
 codepos1:
 | cp=codepos1_wo_off { (0, cp) }
@@ -2608,6 +2638,10 @@ codepos1:
 codepos:
 | nm=rlist0(nm1_codepos, empty) i=codepos1
     { (List.rev nm, i) }
+
+codeoffset1:
+| i=sword       { (`ByOffset   i :> pcodeoffset1) }
+| AT p=codepos1 { (`ByPosition p :> pcodeoffset1) }
 
 o_codepos1:
 | UNDERSCORE { None }
@@ -2661,21 +2695,24 @@ rnd_info:
 | phi=sform d1=sform d2=sform d3=sform d4=sform p=sform?
     { PMultRndParams ((phi, d1, d2, d3, d4), p) }
 
+(* ------------------------------------------------------------------------ *)
+(* Code motion                                                              *)
+%public phltactic:
+| SWAP info=iplist1(loc(swap_info), COMMA) %prec prec_below_comma
+    { Pswap info }
+
 swap_info:
-| s=side? p=swap_pos { s,p }
+| s=side? p=swap_position { (s, p) }
 
-swap_pos:
-| i1=word i2=word i3=word
-    { SKbase (i1, i2, i3) }
+swap_position:
+| offset=codeoffset1
+    { { interval = None; offset; } }
 
-| p=sword
-    { SKmove p }
+| start=codepos1 offset=codeoffset1
+    { { interval = Some (start, None); offset; } }
 
-| i1=word p=sword
-    { SKmovei (i1, p) }
-
-| LBRACKET i1=word DOTDOT i2=word RBRACKET p=sword
-    { SKmoveinter (i1, i2, p) }
+| LBRACKET start=codepos1 DOTDOT end_=codepos1 RBRACKET offset=codeoffset1
+    { { interval = Some (start, Some end_); offset; } }
 
 side:
 | LBRACE n=word RBRACE {
@@ -2758,6 +2795,9 @@ logtactic:
 
 | SMT pi=smt_info
    { Psmt pi }
+
+| COQ mode=coq_info name=loc(STRING) LPAREN dbmap=dbmap1* RPAREN
+    { Pcoq (mode, name, SMT.mk_smt_option [`WANTEDLEMMAS dbmap])}
 
 | SMT LPAREN dbmap=dbmap1* RPAREN
    { Psmt (SMT.mk_smt_option [`WANTEDLEMMAS dbmap]) }
@@ -2951,7 +2991,7 @@ interleave_info:
 | s=brace(stmt) { OKstmt(s) }
 | r=sexpr? LEAT f=loc(fident) { OKproc(f, r) }
 
-phltactic:
+%public phltactic:
 | PROC
    { Pfun `Def }
 
@@ -3008,17 +3048,11 @@ phltactic:
       | Some _, true  ->
           parse_error s.pl_loc (Some "cannot give side and '='") }
 
-| SWAP info=iplist1(loc(swap_info), COMMA) %prec prec_below_comma
-    { Pswap info }
-
 | INTERLEAVE info=loc(interleave_info)
     { Pinterleave info }
 
-| CFOLD s=side? c=codepos NOT n=word
-    { Pcfold (s, c, Some n) }
-
-| CFOLD s=side? c=codepos
-    { Pcfold (s, c, None) }
+| CFOLD s=side? c=codepos n=word?
+    { Pcfold (s, c, n) }
 
 | RND s=side? info=rnd_info c=prefix(COLON, semrndpos)?
     { Prnd (s, c, info) }
@@ -3063,6 +3097,9 @@ phltactic:
 
 | ALIAS s=side? o=codepos x=lident EQ e=expr
     { Pset (s, o, false, x,e) }
+
+| ALIAS s=side? x=lident CEQ p=sform_h AT o=codepos
+    { Psetmatch (s, o, x, p) }
 
 | WEAKMEM s=side? h=loc(ipcore_name) p=param_decl
     { Pweakmem(s, h, p) }
@@ -3218,7 +3255,10 @@ phltactic:
     { Pprocchange (side, pos, f) }
 
 | PROC REWRITE side=side? pos=codepos f=pterm
-    { Pprocrewrite (side, pos, f) }
+    { Pprocrewrite (side, pos, `Rw f) }
+
+| PROC REWRITE side=side? pos=codepos SLASHEQ
+    { Pprocrewrite (side, pos, `Simpl) }
 
 bdhoare_split:
 | b1=sform b2=sform b3=sform?
@@ -3717,9 +3757,14 @@ print:
 | REWRITE     qs=qident          { Pr_db   (`Rewrite qs) }
 | SOLVE       qs=ident           { Pr_db   (`Solve   qs) }
 
+coq_info:
+|           { None }
+| CHECK    { Some EcProvers.Check }
+| EDIT      { Some EcProvers.Edit }
+| FIX       { Some EcProvers.Fix }
 
 smt_info:
-| li=smt_info1* { SMT.mk_smt_option li}
+| li=smt_info1* { SMT.mk_smt_option li }
 
 smt_info1:
 | t=word
@@ -3836,6 +3881,7 @@ global_action:
 | hint             { Ghint        $1 }
 | x=loc(proofend)  { Gsave        x  }
 | PRINT p=print    { Gprint       p  }
+| PRINT AXIOM      { Gpaxiom         }
 | SEARCH x=search+ { Gsearch      x  }
 | LOCATE x=qident  { Glocate      x  }
 | WHY3 x=STRING    { GdumpWhy3    x  }

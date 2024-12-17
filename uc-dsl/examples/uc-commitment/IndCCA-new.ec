@@ -8,7 +8,7 @@
 
 prover quorum=2 ["Z3" "Alt-Ergo"].
 
-require import AllCore Distr List FSet SmtMap FelTactic.
+require import AllCore Distr List FSet FMap FelTactic.
 require import StdOrder. import RealOrder.
 require import StdBigop. import Bigreal BRA.
 require import StdRing. import RField.

@@ -67,6 +67,10 @@ let ty_compatible env ue (rtyvars, rty) (ntyvars, nty) =
 let error_body exn b = if not b then raise exn
 
 (* -------------------------------------------------------------------- *)
+let ri_compatible =
+    { EcReduction.full_red with delta_p = (fun _-> `Force); user = false }
+
+(* -------------------------------------------------------------------- *)
 let constr_compatible exn env cs1 cs2 =
   error_body exn (List.length cs1 = List.length cs2);
   let doit (s1,tys1) (s2,tys2) =
@@ -122,8 +126,7 @@ let tydecl_compatible env tyd1 tyd2 =
 let expr_compatible exn env s e1 e2 =
   let f1 = EcFol.form_of_expr EcFol.mhr e1 in
   let f2 = EcSubst.subst_form s (EcFol.form_of_expr EcFol.mhr e2) in
-  let ri = { EcReduction.full_red with delta_p = fun _-> `Force; } in
-  error_body exn (EcReduction.is_conv ~ri:ri (EcEnv.LDecl.init env []) f1 f2)
+  error_body exn (EcReduction.is_conv ~ri:ri_compatible (EcEnv.LDecl.init env []) f1 f2)
 
 let get_open_oper exn env p tys =
   let oper = EcEnv.Op.by_path p env in
@@ -135,8 +138,7 @@ let get_open_oper exn env p tys =
 let rec oper_compatible exn env ob1 ob2 =
   match ob1, ob2 with
   | OP_Plain f1, OP_Plain f2 ->
-    let ri = { EcReduction.full_red with delta_p = fun _-> `Force; } in
-    error_body exn (EcReduction.is_conv ~ri:ri (EcEnv.LDecl.init env []) f1 f2)
+    error_body exn (EcReduction.is_conv ~ri:ri_compatible (EcEnv.LDecl.init env []) f1 f2)
   | OP_Plain {f_node = Fop(p,tys)}, _ ->
     let ob1 = get_open_oper exn env p tys  in
     oper_compatible exn env ob1 ob2
@@ -237,10 +239,10 @@ let operator_compatible env oper1 oper2 =
   let exn  = Incompatible (OpBody(*oper1,oper2*)) in
   match okind1, okind2 with
   | OB_oper None      , OB_oper _          -> ()
-  | OB_oper (Some ob1), OB_oper (Some ob2) -> oper_compatible exn env ob1 ob2
+  | OB_oper (Some ob1), OB_oper (Some ob2) -> oper_compatible exn env ob2 ob1
   | OB_pred None      , OB_pred _          -> ()
-  | OB_pred (Some pb1), OB_pred (Some pb2) -> pred_compatible exn env pb1 pb2
-  | OB_nott nb1       , OB_nott nb2        -> nott_compatible exn env nb1 nb2
+  | OB_pred (Some pb1), OB_pred (Some pb2) -> pred_compatible exn env pb2 pb1
+  | OB_nott nb1       , OB_nott nb2        -> nott_compatible exn env nb2 nb1
   | _                 , _                  -> raise exn
 
 (* -------------------------------------------------------------------- *)
@@ -675,19 +677,21 @@ and replay_axd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, ax) =
 
     let doproof =
       match Msym.find_opt x (ove.ovre_ovrd.evc_lemmas.ev_bynames) with
-      | Some (pt, hide) -> Some (pt, hide)
+      | Some (pt, hide, explicit) -> Some (pt, hide, explicit)
       | None when is_axiom ax.ax_kind ->
           List.Exceptionless.find_map
-            (function (pt, None) -> Some (pt, `Alias) | (pt, Some pttags) ->
+            (function (pt, None) -> Some (pt, `Alias, false) | (pt, Some pttags) ->
                if check_evtags pttags (Ssym.elements tags) then
-                 Some (pt, `Alias)
+                 Some (pt, `Alias, false)
                else None)
             ove.ovre_glproof
       | _ -> None
     in
       match doproof with
       | None -> (ax, proofs, false)
-      | Some (pt, hide)  ->
+      | Some (pt, hide, explicit)  ->
+          if explicit && not (EcDecl.is_axiom ax.ax_kind) then
+            clone_error (EcSection.env scenv) (CE_ProofForLemma (snd ove.ovre_prefix, x));
           let ax  = { ax with
             ax_kind = `Lemma;
             ax_visibility = if hide <> `Alias then `Hidden else ax.ax_visibility
@@ -754,13 +758,7 @@ and replay_mod
 
       let mp, (newme, newlc) = EcEnv.Mod.lookup (unloc newname) env in
 
-      let np =
-        match mp.m_top with
-        | `Concrete (p, None) -> p
-        | _ -> assert false
-      in
-
-      let substme = EcSubst.add_moddef subst ~src:(xpath ove name) ~dst:np in
+      let substme = EcSubst.add_moddef subst ~src:(xpath ove name) ~dst:mp in
 
       let me    = EcSubst.subst_top_module substme me in
       let me    = { me with tme_expr = { me.tme_expr with me_name = name } } in
@@ -770,12 +768,12 @@ and replay_mod
       if not (EcReduction.EqTest.for_mexpr ~body:false env me.tme_expr newme.tme_expr) then
         clone_error env (CE_ModIncompatible (snd ove.ovre_prefix, name));
 
-      let (subst, _) =
+      let subst =
         match mode with
         | `Alias ->
-          rename ove subst (`Module, name)
+          fst (rename ove subst (`Module, name))
         | `Inline _ ->
-          substme, EcPath.basename np in
+          substme in
 
       let newme =
         if mode = `Alias || mode = `Inline `Keep then

@@ -79,18 +79,34 @@ val sl1_starts_with_sl2 : string list -> string list -> bool
 (* obtain the basename of a file (everything after the final "/", or
    everything if there is no "/"), remove the basename's
    extension (raises Invalid_argument if there is no extension), and
-   the capitalize the first letter *)
+   then capitalize the first letter *)
 
 val capitalized_root_of_filename_with_extension : string -> string
 
-(* find_file root ext prelude_dir include_dirs
+(* find_uc_root root prelude_dir include_dirs
 
-   searches for root concatenated with ext, or failing that the result
-   of capitalizing the first letter of root concatenated with ext:
+   root should consist of a string of letters and digits whose initial
+   character is capitalized; prelude_dir should be the fully qualified
+   name of the UC DSL prelude directory; the elements of include_dirs
+   should be fully qualified directories
 
-   we first look in the directory prelude, then in the current
-   directory, and finally in the include dirs (from front (highest
-   precedence) to back (lowest precedence)) *)
+   search for root in first the prelude_dir, or failing that, in the
+   current directory, or failing that, in the directories of
+   include_dirs (from front (highest precedence) to back (lowest
+   precedence)); returns Some of the qualified filename (fully
+   qualified, if not found in the current directory) if the search
+   suceeds, or None if it fails
 
-val find_file : string -> string -> string -> string list -> string option
-  
+   when searching in a directory, we first look for the
+   uncapitalization (just the first letter) of root concatenated with
+   ".uc", and if that doesn't exist we look for root concatenated with
+   ".uc"
+
+   in a case-sensitive filesystem (e.g., Linux, normally), e.g., both
+   foo.uc and Foo.uc could exist, in which case we find foo.uc
+
+   in a case-insensitive / case-preserving filesystem (e.g., macOS,
+   normally), only one of, e.g., foo.uc and Foo.uc can exist, and the
+   returned qualified filename has the case that does exist *)
+
+val find_uc_root : string -> string -> string list -> string option

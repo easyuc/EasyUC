@@ -24,5 +24,4 @@ check UCEncoding.ec
 check UCUniv.ec
 check UCBasicTypes.ec
 check UCCore.ec
-check MakeRFExamp.ec
-check UCComposition.eca
+check UCComposition.ec

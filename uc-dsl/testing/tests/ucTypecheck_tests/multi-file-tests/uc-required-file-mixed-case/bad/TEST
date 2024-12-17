@@ -1,0 +1,11 @@
+description
+Test what happens when a uc_required file can't be found because
+it's case is mixed. The code works differently depending upon
+whether the filesystem is case-sensitive or not.
+.
+args: Goo.uc
+outcome: failure
+[error: Goo.uc: from line 1 columns 13 to 19]
+
+unable to find .uc file: FooBar
+.

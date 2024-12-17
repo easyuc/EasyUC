@@ -45,7 +45,7 @@ let parse_file_or_id foid =
                 "@[unable@ to@ open@ file:@ %s@]" file))
     | FOID_Id id     ->
         let uid = unloc id in
-        (match UcUtils.find_file uid ".uc" prelude_dir inc_dirs with
+        (match UcUtils.find_uc_root uid prelude_dir inc_dirs with
          | None           ->
              error_message (loc id)
              (fun ppf ->

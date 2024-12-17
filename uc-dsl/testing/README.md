@@ -256,7 +256,8 @@ depending upon what verbosity level you want `dsl-test` to employ.
 before running `dsl-test`. When `dsl-test-suite` finishes, if `ucdsl`
 was built with code coverage instrumentation, you can find the code
 coverage report in the subdirectory `_coverage`; open `index.html`
-with your web browser.
+with your web browser. The exit status of `dsl-test-suite` will be
+the exit status of `dsl-test`.
 
 To remove all the `log`, `CONFLICT` and `.coverage` files, run the
 command
@@ -268,5 +269,5 @@ command
 Feedback
 --------------------------------------------------------------------
 
-Please contact Alley Stoughton (stough@bu.edu) or Gollamudi Tarakaram
-(gtr@brandeis.edu) with feature requests, bug report or other feedback.
+Please contact Alley Stoughton (stough@bu.edu) with feature requests,
+bug report or other feedback.

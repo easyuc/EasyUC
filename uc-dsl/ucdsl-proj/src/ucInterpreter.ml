@@ -475,6 +475,9 @@ let try_destr_port (port : form) : canonical_port option =
           | _      -> destr_err ())
   with _ -> None
 
+let is_canon_port (port : form) : bool =
+  is_some (try_destr_port port)
+
 let try_destr_port_as_port_index (port : form) : int option =
   match try_destr_port port with
   | None                   -> None
@@ -621,7 +624,6 @@ let pp_rewriting_dbs (ppf : Format.formatter) (dbs : rewriting_dbs) : unit =
   fprintf ppf "@[%a@]" (EcPrinting.pp_list ";@ " pp_qsymbol) dbs
 
 let default_rewriting_dbs = [
-  (["Top"; "UCEncoding"],   "epdp");
   (["Top"; "UCBasicTypes"], "ucdsl_interpreter_hints")
 ]
 
@@ -1426,15 +1428,29 @@ let typecheck_and_pp_sent_msg_expr (conf : config) (sme : sent_msg_expr)
 (* pretty printer for configurations *)
 
 let party_and_sub_fun_states (maps : maps_tyd) (rws : real_world_state)
-    (addr : int list) (sp : symb_pair) : (symbol * state) list =
-  let rfbt = real_fun_body_tyd_of (unloc (IdPairMap.find sp maps.fun_map)) in
+    (addr : int list) (sp : symb_pair) (base : int)
+      : (int option * symbol * state) list =
+  let root = fst sp in
+  let ft = IdPairMap.find sp maps.fun_map in
+  let rfbt = real_fun_body_tyd_of (unloc ft) in
   let num_args = IdMap.cardinal rfbt.params in
+  let num_adv_pis_of_parties =
+    num_adv_pis_of_parties_of_real_fun maps root ft in
   let of_parties =
-    IdMap.bindings (real_state_of_fun_state (ILMap.find addr rws)) in
+    List.map
+    (fun (pty, state) ->
+       let adv_pi_opt =
+         match get_adv_info_of_party_of_real_fun maps root base
+               ft pty with
+         | None                  -> None
+         | Some (_, _, _, advpi) -> Some advpi in
+       (adv_pi_opt, pty, state))
+    (IdMap.bindings (real_state_of_fun_state (ILMap.find addr rws))) in
   let of_sub_funs =
     List.mapi
     (fun i id ->
-       (id,
+       (Some (base + 1 + num_adv_pis_of_parties + i),
+        id,
         ideal_state_of_fun_state
         (ILMap.find (addr @ [1 + num_args + i]) rws)))
     (List.map fst (IdMap.bindings rfbt.sub_funs)) in
@@ -1449,26 +1465,29 @@ let pp_state (gc : global_context) (ppf : formatter)
       fprintf ppf "@[%s@,(@[%a@])@]" state.id
       (EcPrinting.pp_list ",@ " (pp_form env)) args
 
-let pp_sym_state (gc : global_context) (ppf : formatter)
-    ((id, state) : symbol * state) : unit =
-  fprintf ppf "@[%s:@ %a@]" id (pp_state gc) state
+let pp_adv_pi_opt_sym_state (gc : global_context) (ppf : formatter)
+    ((adv_pi_opt, id, state) : (int option) * symbol * state) : unit =
+  match adv_pi_opt with
+  | None        -> fprintf ppf "@[%s:@ %a@]" id (pp_state gc) state
+  | Some adv_pi ->
+      fprintf ppf "@[%s(%d):@ %a@]" id adv_pi (pp_state gc) state
 
-let pp_sym_state_list (gc : global_context) (ppf : formatter)
-    (sym_stat_list : (symbol * state) list) : unit =
-  EcPrinting.pp_list ",@ " (pp_sym_state gc) ppf sym_stat_list
+let pp_adv_pi_opt_sym_state_list (gc : global_context) (ppf : formatter)
+    (sym_stat_list : (int option * symbol * state) list) : unit =
+  EcPrinting.pp_list ",@ " (pp_adv_pi_opt_sym_state gc) ppf sym_stat_list
 
 let pp_real_world_with_states (maps : maps_tyd) (gc : global_context)
     (rws : real_world_state) (ppf : formatter) (rw : real_world) : unit =
   let rec pp_real_world (addr : int list) (ppf : formatter)
       ((sp, i, rwas) : real_world) : unit =
-    let psfs = party_and_sub_fun_states maps rws addr sp in
+    let psfs = party_and_sub_fun_states maps rws addr sp i in
     match rwas with
     | [] ->
       fprintf ppf "@[%a@,[@[%a@]]@]"
-      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+      pp_symb_pair_int (sp, i) (pp_adv_pi_opt_sym_state_list gc) psfs
     | _  ->
       fprintf ppf "@[%a@,[@[%a@]]@,(@[%a@])@]"
-      pp_symb_pair_int (sp, i) (pp_sym_state_list gc) psfs
+      pp_symb_pair_int (sp, i) (pp_adv_pi_opt_sym_state_list gc) psfs
       (pp_real_world_args 1 addr) rwas
 
   and pp_real_world_args (i : int) (addr : int list)
@@ -1502,7 +1521,7 @@ let pp_sim_state (gc : global_context) (iws : ideal_world_state)
     | Some rel ->
         fprintf ppf "@[initialized:@ @[func ++@ %a@]@]"
         pp_relative_address rel in
-  fprintf ppf "@[%a/%a@]"
+  fprintf ppf "@[%a /@ %a@]"
   pp_addr sim_st.addr
   (pp_state gc) sim_st.state
 
@@ -1910,19 +1929,21 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
 let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
     (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
   let simpl = simplify_formula gc dbs in
+  let simpl_if_not_canon port =
+    if is_canon_port port then port else (simpl port) in
   match sme with
   | SMET_Ord sme    ->
       SMET_Ord
       {mode           = sme.mode;
        dir            = sme.dir;
-       src_port_form  = simpl sme.src_port_form;
+       src_port_form  = simpl_if_not_canon sme.src_port_form;
        path           = sme.path;
        args           = List.map simpl sme.args;
-       dest_port_form = simpl sme.dest_port_form}
+       dest_port_form = simpl_if_not_canon sme.dest_port_form}
   | SMET_EnvAdv sme ->
       SMET_EnvAdv
-      {src_port_form  = simpl sme.src_port_form;
-       dest_port_form = simpl sme.dest_port_form}
+      {src_port_form  = simpl_if_not_canon sme.src_port_form;
+       dest_port_form = simpl_if_not_canon sme.dest_port_form}
 
 let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
@@ -2106,7 +2127,6 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
     (new_rws : real_world_state)
       : config * effect =
   let (root, _) = fun_sp in
-  let simpl = simplify_formula c.gc dbs in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
       let path = {inter_id_path = root :: iip; msg = msg} in
@@ -2115,10 +2135,9 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           simpl
-           (make_port_form
-            (addr_concat_form_from_list_smart func_form rel)
-            (int_form 1));
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form 1);
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -2151,10 +2170,9 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                simpl
-                (make_port_form
-                 (addr_concat_form_from_list_smart func_form rel)
-                 (int_form source_pi));
+                make_port_form
+                (addr_concat_form_from_list_smart func_form rel)
+                (int_form source_pi);
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
@@ -2185,20 +2203,17 @@ let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (new_rws : real_world_state) (comp : symbol) (sub : symbol)
     (child_i : int) (dir_sp : symb_pair) : config * effect =
   assert (Option.is_none port_form);
-  let simpl = simplify_formula c.gc dbs in
   let (dir_root, dir_comp) = dir_sp in
   let pty_internal_pi = get_internal_pi_of_party_of_real_fun ft pty_id in
   let source_port =
-    simpl
-    (make_port_form
-     (addr_concat_form_from_list_smart func_form rel)
-     (int_form pty_internal_pi)) in
+    make_port_form
+    (addr_concat_form_from_list_smart func_form rel)
+    (int_form pty_internal_pi) in
   let dest_pi = get_pi_of_sub_interface c.maps dir_root dir_comp sub in
   let dest_port =
-    simpl
-    (make_port_form
-     (addr_concat_form_from_list_smart func_form (rel @ [child_i]))
-     (int_form dest_pi)) in
+    make_port_form
+    (addr_concat_form_from_list_smart func_form (rel @ [child_i]))
+    (int_form dest_pi) in
   let iip_new = dir_root :: dir_comp :: List.tl iip in
   let path_new = {inter_id_path = iip_new; msg = msg} in
   let sme =
@@ -2228,7 +2243,6 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
     (pty_id : symbol) (iip : symbol list) (msg : symbol) (msg_args : form list)
     (port_form : form option) (new_rws : real_world_state)
     (comp : symbol) (sub : symbol) : config * effect =
-  let simpl = simplify_formula c.gc dbs in
   let (root, _) = fun_sp in
   match port_form with
   | None           ->  (* adversarial message to adversary *)
@@ -2242,10 +2256,9 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
         {mode           = Adv;
          dir            = Out;
          src_port_form  =
-           simpl
-           (make_port_form
-            (addr_concat_form_from_list_smart func_form rel)
-            (int_form pty_pi));
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form pty_pi);
          path           = path;
          args           = msg_args;
          dest_port_form =
@@ -2274,10 +2287,9 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
              {mode           = Dir;
               dir            = Out;
               src_port_form  =
-                simpl
-                (make_port_form
-                 (addr_concat_form_from_list_smart func_form rel)
-                 (int_form source_pi));
+                make_port_form
+                (addr_concat_form_from_list_smart func_form rel)
+                (int_form source_pi);
               path           = path;
               args           = msg_args;
               dest_port_form = port_form} in
