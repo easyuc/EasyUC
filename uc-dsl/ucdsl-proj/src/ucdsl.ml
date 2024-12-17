@@ -61,15 +61,6 @@ let run_print_pos_ref : bool ref = ref false
 let run_print_pos_arg () =
   (run_print_pos_ref := true; ())
 
-let gen_ref : bool ref = ref false
-
-let gen_arg () =
-  (
-    units_arg ();
-    gen_ref := true;
-    ()
-  )
-
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
    ("-include", String include_arg,
@@ -82,7 +73,6 @@ let arg_specs =
     "Run interpreter; implicit on .uci file; omit file to run interactively");
    ("-debug", Unit debug_arg, "Print interpeter debugging messages");
    ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file");
-   ("-gen", Unit gen_arg, "Generate easycrypt files");
    ("-run-print-pos", Unit run_print_pos_arg, "Print .uc file positions while executing interpreter run command for .uci file");
    ("-version", Unit version_arg, "Print version and exit")
   ]
@@ -147,9 +137,7 @@ let check_uc_file (file : string) : unit =
   let () = UcState.add_highest_include_dirs dir in
   let () = UcEcInterface.init () in
   try
-    (let maps = parse_and_typecheck_file_or_id (FOID_File file) in
-     if ! gen_ref then UcGenerateEcFile.generate_ec maps
-     ;
+    (ignore (parse_and_typecheck_file_or_id (FOID_File file));
      exit 0) with
   | ErrorMessageExn -> exit 1
 

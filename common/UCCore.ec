@@ -443,11 +443,7 @@ case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
 
-<<<<<<< HEAD
 lemma MI_after_func_to_env (Func <: FUNC) (Adv <: ADV)
-=======
-lemma MI_after_func_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
->>>>>>> deploy-gen-ec-print
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -458,11 +454,7 @@ proof.
 proc; auto; smt(some_oget le_refl).
 qed.
 
-<<<<<<< HEAD
 lemma MI_after_func_to_adv (Func <: FUNC) (Adv <: ADV)
-=======
-lemma MI_after_func_to_adv (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
->>>>>>> deploy-gen-ec-print
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_func :
@@ -473,11 +465,7 @@ proof.
 proc; auto; smt(inc_nle_l some_oget).
 qed.
 
-<<<<<<< HEAD
 lemma MI_after_func_error (Func <: FUNC) (Adv <: ADV) :
-=======
-lemma MI_after_func_error (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
->>>>>>> deploy-gen-ec-print
   phoare
   [MI(Func, Adv).after_func :
    inter_init_pre MI.func /\ after_func_error MI.func r ==>
@@ -519,7 +507,6 @@ case ((oget r).`1) => // /=.
 smt().
 qed.
 
-<<<<<<< HEAD
 lemma after_adv_to_env_ext_not_to_func
       (func : addr, r : msg option, i : int) :
   after_adv_to_env func r =>
@@ -591,9 +578,6 @@ smt(after_adv_error_ext_not_to_func after_adv_disj).
 qed.
 
 lemma MI_after_adv_to_env (Func <: FUNC) (Adv <: ADV)
-=======
-lemma MI_after_adv_to_env (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
->>>>>>> deploy-gen-ec-print
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -604,11 +588,7 @@ proof.
 proc; auto; smt().
 qed.
 
-<<<<<<< HEAD
 lemma MI_after_adv_to_func (Func <: FUNC) (Adv <: ADV)
-=======
-lemma MI_after_adv_to_func (Func <: FUNC{-MI}) (Adv <: ADV{-MI})
->>>>>>> deploy-gen-ec-print
       (r' : msg option) :
   phoare
   [MI(Func, Adv).after_adv :
@@ -619,11 +599,7 @@ proof.
 proc; auto; smt(oget_some some_oget inc_le1_not_rl IntOrder.lerNgt).
 qed.
 
-<<<<<<< HEAD
 lemma MI_after_adv_error (Func <: FUNC) (Adv <: ADV) :
-=======
-lemma MI_after_adv_error (Func <: FUNC{-MI}) (Adv <: ADV{-MI}) :
->>>>>>> deploy-gen-ec-print
   phoare
   [MI(Func, Adv).after_adv :
    inter_init_pre MI.func /\ after_adv_error MI.func r ==>
@@ -795,11 +771,7 @@ move => rf_info_valid_rfi [#] ge1_pari lt_pari_parj.
 have ind :
   forall pj,
   0 <= pj => pari < pj <= rfi.`rfi_num_params =>
-<<<<<<< HEAD
   nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.
-=======
-  nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_begin_params rfi pj.  
->>>>>>> deploy-gen-ec-print
 elim; smt().
 smt().
 qed.
