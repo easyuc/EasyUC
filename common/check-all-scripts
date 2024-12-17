@@ -24,4 +24,9 @@ check UCEncoding.ec
 check UCUniv.ec
 check UCBasicTypes.ec
 check UCCore.ec
+<<<<<<< HEAD
 check UCComposition.ec
+=======
+check MakeRFExamp.ec
+check UCComposition.eca
+>>>>>>> deploy-gen-ec-print
