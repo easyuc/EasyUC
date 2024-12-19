@@ -334,6 +334,29 @@ let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
 
 let func_form : form = f_local func_id addr_ty
 
+(* test whether func_form is *abstract* in the sense that it doesn't
+   appear freely in any assumptions (hypotheses) of a global context
+   except inc_func_adv_id and applications of envport_op
+
+   we say that func_form is *concrete* in gc iff it is not abstract in
+   gc
+
+   this is a sufficient (but not necessary) condition for knowing that
+   func_form won't further simplify *)
+
+let func_is_abstract_in_gc (gc : global_context) : bool =
+  let is_abs_in_local (id, lk) =
+    EcIdent.id_equal id inc_func_adv_id ||
+    match lk with
+    | EcBaseLogic.LD_hyp f ->
+        not (Mid.mem func_id (f_fv f)) ||
+        (match f.f_node with
+         | Fapp (g, _) ->
+             f_equal g (form_of_expr mhr envport_op)
+         | _           -> false)
+    | _                    -> true
+  in List.for_all is_abs_in_local (LDecl.tohyps gc).h_local
+
 let gc_create (env : env) : global_context =
   let locs =
     [
@@ -362,7 +385,7 @@ let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
      destructs to CP_Root
 
-   (adv_addr_op, i)
+   (adv_addr_op, i) or ([0], i)
 
      destructs to CP_Adv i
 
@@ -457,6 +480,11 @@ let destr_func_addr (addr : form) : int list =
 
 (* end of exception raising functions *)
 
+let is_adv_op_or_value (f : form) : bool =
+  is_adv_op f ||
+  try destr_int_list f = [0] with
+  | _ -> false
+
 let try_destr_port (port : form) : canonical_port option =
   try
     Some
@@ -466,7 +494,7 @@ let try_destr_port (port : form) : canonical_port option =
        then CP_Adv 0
      else match destr_tuple port with
           | [x; y] ->
-              if is_adv_op x
+              if is_adv_op_or_value x
                 then CP_Adv (destr_int y)
               else if is_nil_op x
                 then let n = destr_int y
@@ -562,8 +590,18 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
   else try
          let env = LDecl.toenv gc in
          let (exp, _) = inter_check_expr env pexpr (Some tbool) in
-         LDecl.add_local (EcIdent.create id)
-         (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc
+         let gc =
+           LDecl.add_local (EcIdent.create id)
+           (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc in
+         let () =
+           if not (func_is_abstract_in_gc gc)
+           then debugging_message
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[func@ is@ now@ concrete,@ which@ may@ slow @ " ^^
+                    "down@ interpretation@]"))
+           else () in
+         gc
        with
        | UcTransTypesExprs.TyError (l, env, tyerr) ->
            error_message l
@@ -1929,21 +1967,23 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
 let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
     (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
   let simpl = simplify_formula gc dbs in
-  let simpl_if_not_canon port =
-    if is_canon_port port then port else (simpl port) in
+  let simpl_port =
+    if func_is_abstract_in_gc gc
+    then (fun port -> if is_canon_port port then port else simpl port)
+    else simpl in
   match sme with
   | SMET_Ord sme    ->
       SMET_Ord
       {mode           = sme.mode;
        dir            = sme.dir;
-       src_port_form  = simpl_if_not_canon sme.src_port_form;
+       src_port_form  = simpl_port sme.src_port_form;
        path           = sme.path;
        args           = List.map simpl sme.args;
-       dest_port_form = simpl_if_not_canon sme.dest_port_form}
+       dest_port_form = simpl_port sme.dest_port_form}
   | SMET_EnvAdv sme ->
       SMET_EnvAdv
-      {src_port_form  = simpl_if_not_canon sme.src_port_form;
-       dest_port_form = simpl_if_not_canon sme.dest_port_form}
+      {src_port_form  = simpl_port sme.src_port_form;
+       dest_port_form = simpl_port sme.dest_port_form}
 
 let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
@@ -2528,7 +2568,6 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
     (base : int) (sim_sp : symb_pair) (iip : string list) (msg : string)
     (msg_args : form list) (new_iws : ideal_world_state) (i : int)
       : config * effect =
-  let simpl = simplify_formula c.gc dbs in
   let sim_rf_addr =
     if i = -1
     then Option.get c.iws.main_sim_state.addr
@@ -2615,7 +2654,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
              (sim_rf_addr @ [child_i]))
             (int_form 1);
           path           = path;
-          args           = List.map simpl msg_args;
+          args           = msg_args;
           dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
        let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
