@@ -767,6 +767,15 @@ let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
        (pp_form (env_of_gc gc)) f) in
   f
 
+let simplify_port (gc : global_context) (dbs : rewriting_dbs)
+      : form -> form =
+  if func_is_abstract_in_gc gc
+  then (fun (port : form) ->
+          if is_canon_port port
+          then port
+          else simplify_formula gc dbs port)
+  else (fun (port : form) -> simplify_formula gc dbs port)
+
 let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     (dbs : rewriting_dbs) (f : form) : symbol * EcCoreFol.form list =
   let () =
@@ -1967,10 +1976,7 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
 let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
     (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
   let simpl = simplify_formula gc dbs in
-  let simpl_port =
-    if func_is_abstract_in_gc gc
-    then (fun port -> if is_canon_port port then port else simpl port)
-    else simpl in
+  let simpl_port = simplify_port gc dbs in
   match sme with
   | SMET_Ord sme    ->
       SMET_Ord
@@ -2385,7 +2391,9 @@ let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
+    | Some expr ->
+        let port = lc_apply false c.gc c.lc dbs expr in
+        Some (simplify_port c.gc dbs port) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
@@ -2700,7 +2708,9 @@ let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
+    | Some expr ->
+        let port = lc_apply false c.gc c.lc dbs expr
+        in Some (simplify_port c.gc dbs port) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
