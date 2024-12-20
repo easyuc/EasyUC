@@ -4,11 +4,15 @@ prover quorum=2 ["Z3" "Alt-Ergo"].
 
 require import UCCore UCListAux.
 
-(* global variables of all instances of abstract theory *)
+(* in the abstract theory, Composition, below, we'll use both the
+   top-level INTER MI, but also the following one inside the composed
+   environment, CompEnv *)
 
 clone MakeInterface as CompEnvMakeInt
 proof *.
 module CompEnvMI = CompEnvMakeInt.MI.
+
+(* global variables of all instances of abstract theory *)
 
 module CompGlobs = {
   (* global of instances of MakeRFComp *)
@@ -324,9 +328,7 @@ lemma after_par_or_rest_return_intro_adv_from_rest
  (oget r).`3.`1 = orig_dest_addr =>
  after_par_or_rest_return func r orig_dest_addr.
 proof.
-move =>
-  non_None mod dest_adv gt0_dest_pi
-  src_eq_func_or_eq_sf src_eq_oda.
+move => non_None mod dest_adv gt0_dest_pi src_eq_func_or_eq_sf src_eq_oda.
 rewrite /after_par_or_rest_return.
 rewrite non_None /=.
 right; smt().
@@ -399,8 +401,7 @@ qed.
 
 lemma after_par_or_rest_return_from_rest
       (func : addr, r : msg option, orig_dest_addr : addr) :
-  ! func ++ [change_pari] <= orig_dest_addr =>
-  (oget r).`1 = Adv =>
+  ! func ++ [change_pari] <= orig_dest_addr => (oget r).`1 = Adv =>
   after_par_or_rest_return func r orig_dest_addr =>
   r <> None /\ (oget r).`2.`1 = adv /\ 0 < (oget r).`2.`2 /\
   func <= (oget r).`3.`1 /\ ! func ++ [change_pari] <= (oget r).`3.`1.
@@ -410,16 +411,14 @@ rewrite /after_par_or_rest_return.
 move => -> /= [#] -> -> -> /= [[] [] |].
 move => -> _; smt(not_le_ext_nonnil_l le_refl).
 rewrite /addr_eq_subfun => [[k]] [] rng_k -> func_plus_k_eq_oda.
-split.
-rewrite le_ext_r.
+split; first rewrite le_ext_r.
 move : oda_nge_addr_ch_pari.
 by rewrite func_plus_k_eq_oda.
 rewrite /addr_ge_param => [] [] [k] [] k_rng src_ge_func_plus_k.
 have -> : next_of_addr func (oget r).`3.`1 = k
   by smt(next_of_addr_ge_self_plus).
 move => func_plus_k_le_oda.
-split.
-by rewrite (le_trans (func ++ [k])) 1:le_ext_r.
+split; first by rewrite (le_trans (func ++ [k])) 1:le_ext_r.
 have k_ne_change_pari : k <> change_pari by smt().
 smt(not_le_other_branch).
 qed.
@@ -478,8 +477,8 @@ qed.
 (* adv pis as fset for parameter being changed *)
 
 op change_par_adv_pis : int fset =
-     rangeset (nth1_adv_pi_begin_params rf_info change_pari)
-     (nth1_adv_pi_end_params rf_info change_pari + 1).
+  rangeset (nth1_adv_pi_begin_params rf_info change_pari)
+  (nth1_adv_pi_end_params rf_info change_pari + 1).
 
 lemma in_change_par_adv_pis (z : int) :
   z \in change_par_adv_pis <=>
@@ -731,6 +730,8 @@ local module CompEnvStubPar : FUNC =
 local module CompEnvStubAdv : ADV  =
   CompEnv(Rest, Env, MakeInt.MI(Par, Adv)).StubAdv.
 
+(* code blocks from the left / right sides of equational judgements *)
+
 local module LeftMI = {
   proc f(m : msg) : msg option = {
     var not_done : bool <- true; var r : msg option <- None;
@@ -970,7 +971,7 @@ move => [/# | [#] _ not_ge_param _].
 smt(rf_info_valid change_pari_valid).
 qed.
 
-lemma after_par_or_rest_continue_implied_pre_cond_equiv1 self m oda :
+lemma after_par_or_rest_continue_implies_pre_cond_equiv1 self m oda :
   inc self adv =>
   after_par_or_rest_continue self (Some m) oda =>
   (m.`2.`1 = self \/
@@ -986,14 +987,16 @@ rewrite /addr_eq_param => [[k] [#] ge1_k le_np_k ->].
 case (k = change_pari) => [-> | /#].
 right; right; right => /=.
 rewrite is_dir /= /envport src_eq_self.
-split.
-by rewrite not_le_ext_nonnil_l.
-split.
-smt(inc_nle_r).
+split; first by rewrite not_le_ext_nonnil_l.
+split; first smt(inc_nle_r).
 case (m.`3 = ([], 0)) => [src_eq_env_root_port | //].
 have self_nil : self = [] by rewrite -src_eq_self /#.
 smt(not_inc_nil_left).
 qed.
+
+(* this lemma assumes the first and second equiv's from
+   comp_bridge_induct with the same termination metric as
+   the conclusion *)
 
 local lemma LeftMI_RightMIFromAdv
       (n : int, func': addr, in_guard_low': int fset) :
@@ -1680,6 +1683,10 @@ rcondf{2} 1; first auto; smt().
 auto.
 qed.
 
+(* this lemma assumes the first and third equiv's from
+   comp_bridge_induct with the same termination metric as the
+   conclusion *)
+
 local lemma LeftMI_RightMIFromPar
       (n : int, func': addr, in_guard_low': int fset) :
   exper_pre func' =>
@@ -2120,7 +2127,6 @@ call{2}
   (MakeRFComp_after_par_or_rest_return
    Rest CompEnvStubPar r2'').
 auto; progress [-delta].
-
 apply after_par_or_rest_return_intro_adv_from_param.
 trivial.
 by rewrite oget_some /dummy_msg_to_stub_adv.
@@ -2181,11 +2187,9 @@ call{2}
 auto; smt(inc_extl).
 rcondt{2} 1; first auto.
 rcondt{2} 1; first auto; smt(oget_some).
-inline{2} 1.
-sp 0 2.
+inline{2} 1; sp 0 2.
 if => //.
-inline{1} 1; inline{2} 1.
-sp 3 3.
+inline{1} 1; inline{2} 1; sp 3 3.
 conseq
   (_ :
    not_done0{1} /\ not_done0{2} /\ m1{1} = m2{2} /\
@@ -2397,6 +2401,9 @@ auto; smt().
 rcondf{2} 1; first auto.
 auto.
 qed.
+
+(* the main strong induction on the sum of the termination metrics of
+   Rest and Par of the conjunction of three mutually recursive equivs *)
 
 local lemma comp_bridge_induct
       (func' : addr, in_guard_low' : int fset) :
@@ -2922,8 +2929,7 @@ transitivity{1}
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None) => //.
-move => &1 &2 [#] -> -> H1 -> -> H2 -> -> ->.
-progress.
+move => &1 &2 [#] -> -> H1 -> -> H2 -> -> ->; progress.
 exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
        MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
@@ -3114,7 +3120,7 @@ conseq
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
-   _); first smt(after_par_or_rest_continue_implied_pre_cond_equiv1).
+   _); first smt(after_par_or_rest_continue_implies_pre_cond_equiv1).
 (* beginning of reduction to first conjunct of IH *)
 transitivity{1}
   {r <@ LeftMFRC.f(m);}
@@ -3774,7 +3780,7 @@ transitivity{1}
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None) => //.
-move => &1 &2 [#] ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?.
+move => &1 &2 [#] *.
 exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        CompGlobs.ce_func{1} CompGlobs.ce_stub_st{1}
        MakeInt.MI.func{1} CompEnvMakeInt.MI.func{1}
@@ -3809,7 +3815,7 @@ transitivity{2}
    not_done0{2} /\ ={m1} ==>
    ={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
    ={r}) => //.
-move => &1 &2 [#] ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?.
+move => &1 &2 [#] *.
 exists (glob Adv){2} (glob Par){2} (glob Rest){2}
        MakeInt.MI.func{1} None MakeInt.MI.func{1} MakeInt.MI.func{1}
        MakeInt.MI.in_guard{1} (MakeInt.MI.func{1} ++ [change_pari])
