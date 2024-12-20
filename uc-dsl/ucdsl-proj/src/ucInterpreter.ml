@@ -595,6 +595,10 @@ let destr_func_addr (addr : form) : int list =
 
 (* end of exception raising functions *)
 
+let is_int (f : form) : bool =
+  try let _ = destr_int f in true with
+  | _ -> false
+
 let is_int_list (f : form) : bool =
   try let _ = destr_int_list f in true with
   | _ -> false
@@ -684,6 +688,10 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
          | Fop (op, _) ->
              if Op.is_dtype_ctor env op
                then List.for_all is_weak_simp fs
+             else if f_equal f fop_int_opp  (* int negation *)
+               then (match fs with
+                     | [g] -> is_int g
+                     | _   -> false)
              else if is_concat_op_path op && func_abstract
                then (match fs with
                      | [fs1; fs2] ->
