@@ -599,6 +599,11 @@ let is_int (f : form) : bool =
   try let _ = destr_int f in true with
   | _ -> false
 
+let is_int_non_opp (f : form) : bool =
+  match f.f_node with
+  | Fint _ -> true
+  | _      -> false
+
 let is_int_list (f : form) : bool =
   try let _ = destr_int_list f in true with
   | _ -> false
@@ -662,15 +667,13 @@ let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
    that we won't *immediately* need to make decisions about
 
    we start with values made out of constructors and integer literals,
-   but then we also allow leaves (not lhs's of applications) that are
+   but then we also allow leaves (not lhs's of applications) that are:
 
    * identifiers in the global context, even though they might be
      rewritten by assumptions
 
-   * of the form (func ++ <int list literal>), just when func is
-     abstract
-
-   * the constants env_root_port, adv and adv_root_port *)
+   * of the form (func ++ <int list literal>), but just when func is
+     abstract *)
 
 let is_weakly_simplified (env : env) (func_abstract : bool)
     (f : form) : bool =
@@ -678,11 +681,7 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
     match f.f_node with
     | Fint _       -> true
     | Flocal _     -> true
-    | Fop (op, _)  ->
-        Op.is_dtype_ctor env op     ||
-        is_env_root_port_op_path op ||
-        is_adv_op_path op           ||
-        is_adv_root_port_op_path op
+    | Fop (op, _)  -> Op.is_dtype_ctor env op
     | Fapp (f, fs) ->
         (match f.f_node with
          | Fop (op, _) ->
@@ -690,12 +689,11 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
                then List.for_all is_weak_simp fs
              else if f_equal f fop_int_opp  (* int negation *)
                then (match fs with
-                     | [g] -> is_int g
+                     | [g] -> is_int_non_opp g
                      | _   -> false)
              else if is_concat_op_path op && func_abstract
                then (match fs with
-                     | [fs1; fs2] ->
-                         is_func_id fs1 && is_int_list fs2
+                     | [fs1; fs2] -> is_func_id fs1 && is_int_list fs2
                      | _          -> false)
              else false
          | _           -> false)
