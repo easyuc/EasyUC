@@ -12,6 +12,7 @@ module P  = EcPath
 module EP = EcParser
 module BI = EcBigInt
 module EI = EcInductive
+module CP = EcMatching.Position
 
 module Ssym = EcSymbols.Ssym
 module Msym = EcSymbols.Msym
@@ -2112,7 +2113,7 @@ let pp_scvar ppe fmt vs =
   pp_list "@ " pp_grp fmt vs
 
 (* -------------------------------------------------------------------- *)
-let pp_codepos1 (ppe : PPEnv.t) (fmt : Format.formatter) ((off, cp) : EcMatching.Position.codepos1) =
+let pp_codepos1 (ppe : PPEnv.t) (fmt : Format.formatter) ((off, cp) : CP.codepos1) =
   let s : string =
     match cp with
     | `ByPos i ->
@@ -2123,9 +2124,12 @@ let pp_codepos1 (ppe : PPEnv.t) (fmt : Format.formatter) ((off, cp) : EcMatching
           let k =
             match k with
             | `If     -> "if"
+            | `Match  -> "match"
             | `While  -> "while"
-            | `Sample -> "<$"
-            | `Call   -> "<@"
+            | `Sample `LvmNone -> "<$"
+            | `Sample (`LvmVar pv) -> Format.asprintf "%a<$" (pp_pv ppe) pv
+            | `Call `LvmNone -> "<@"
+            | `Call (`LvmVar pv) -> Format.asprintf "%a<@" (pp_pv ppe) pv
             | `Assign `LvmNone -> "<-"
             | `Assign (`LvmVar pv) -> Format.asprintf "%a<-" (pp_pv ppe) pv
           in Format.asprintf "^%s" k in
@@ -2141,11 +2145,25 @@ let pp_codepos1 (ppe : PPEnv.t) (fmt : Format.formatter) ((off, cp) : EcMatching
     Format.fprintf fmt "%s%s%d" s (if off < 0 then "-" else "+") (abs off)
 
 (* -------------------------------------------------------------------- *)
-let pp_codeoffset1 (ppe : PPEnv.t) (fmt : Format.formatter) (offset : EcMatching.Position.codeoffset1) =
+let pp_codeoffset1 (ppe : PPEnv.t) (fmt : Format.formatter) (offset : CP.codeoffset1) =
   match offset with
   | `ByPosition p -> Format.fprintf fmt "%a" (pp_codepos1 ppe) p
   | `ByOffset   o -> Format.fprintf fmt "%d" o
-  
+
+(* -------------------------------------------------------------------- *)
+let pp_codepos (ppe : PPEnv.t) (fmt : Format.formatter) ((nm, cp1) : CP.codepos) =
+  let pp_nm (fmt : Format.formatter) ((cp, bs) : CP.codepos1 * CP.codepos_brsel) =
+    let bs = 
+      match bs with
+      | `Cond  true  -> "."
+      | `Cond  false -> "?"
+      | `Match cp    -> Format.sprintf "#%s." cp
+      in
+    Format.fprintf fmt "%a%s" (pp_codepos1 ppe) cp bs
+  in
+
+  Format.fprintf fmt "%a%a" (pp_list "" pp_nm) nm (pp_codepos1 ppe) cp1
+
 (* -------------------------------------------------------------------- *)
 let pp_opdecl_pr (ppe : PPEnv.t) fmt (basename, ts, ty, op) =
   let ppe = PPEnv.add_locals ppe (List.map fst ts) in

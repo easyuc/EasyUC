@@ -3,7 +3,11 @@
 (* Translating (and checking) types and expressions from concrete to
    abstract syntax *)
 
-(* Adapted from src/ecTyping.ml of the EasyCrypt distribution *)
+(* Adapted from an old version of EcTyping of the EasyCrypt
+   distribution
+
+   The new version of EcTyping provides typechecking for formulas, not
+   giving a separate typechecker for expressions *)
 
 open EcUtils
 open EcPath

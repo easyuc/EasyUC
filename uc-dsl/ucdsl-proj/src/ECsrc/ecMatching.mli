@@ -14,9 +14,10 @@ module Position : sig
   type cp_match = [
     | `If
     | `While
+    | `Match
     | `Assign of lvmatch
-    | `Sample
-    | `Call
+    | `Sample of lvmatch
+    | `Call   of lvmatch
   ]
 
   and lvmatch = [ `LvmNone | `LvmVar of EcTypes.prog_var ]
@@ -26,9 +27,10 @@ module Position : sig
     | `ByMatch of int option * cp_match
   ]
 
-  type codepos1    = int * cp_base
-  type codepos     = (codepos1 * int) list * codepos1
-  type codeoffset1 = [`ByOffset of int | `ByPosition of codepos1]
+  type codepos_brsel = [`Cond of bool | `Match of EcSymbols.symbol]
+  type codepos1      = int * cp_base
+  type codepos       = (codepos1 * codepos_brsel) list * codepos1
+  type codeoffset1   = [`ByOffset of int | `ByPosition of codepos1]
 
   val shift1 : offset:int -> codepos1 -> codepos1
   val shift  : offset:int -> codepos  -> codepos
@@ -40,11 +42,18 @@ end
 module Zipper : sig
   open Position
 
+  type spath_match_ctxt = {
+    locals : (EcIdent.t * ty) list;
+    prebr  : ((EcIdent.t * ty) list * stmt) list;
+    postbr : ((EcIdent.t * ty) list * stmt) list;
+  }
+
   type ipath =
   | ZTop
   | ZWhile  of expr * spath
   | ZIfThen of expr * spath * stmt
   | ZIfElse of expr * stmt  * spath
+  | ZMatch  of expr * spath * spath_match_ctxt
 
   and spath = (instr list * instr list) * ipath
 
@@ -73,7 +82,12 @@ module Zipper : sig
   val zipper : instr list -> instr list -> ipath -> zipper
 
   (* Return the zipper for the stmt [stmt] at code position [codepos].
-   * Raise [InvalidCPos] if [codepos] is not valid for [stmt]. *)
+   * Raise [InvalidCPos] if [codepos] is not valid for [stmt]. It also
+   * returns a input code-position, but fully resolved (i.e. with absolute
+   * positions only). The second variant simply throw away the second
+   * output.
+   *)
+  val zipper_of_cpos_r : env -> codepos -> stmt -> zipper * codepos
   val zipper_of_cpos : env -> codepos -> stmt -> zipper
 
   (* Zip the zipper, returning the corresponding statement *)

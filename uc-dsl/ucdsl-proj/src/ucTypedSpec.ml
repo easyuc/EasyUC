@@ -6,6 +6,16 @@
    associated interfaces, but also for user input to the
    interpreter. *)
 
+(* Note: at least for now, the type expr of abstract expressions is
+   provided by EcTypes (redeclared from EcAst), but it's possible this
+   will be removed, in favor of using a subset of the typed formulas
+   (form), also provided by EcAst. If/when this happens, we'll add a
+   declaration of expr to this module, and provide injections and
+   projections to/from form
+
+   see UcTypecheck for our typechecker, which makes use of
+   UcTransTypesExprs for typechecking types and expressions *)
+
 open EcLocation
 open EcUtils
 open EcSymbols

@@ -3,7 +3,7 @@
 (* Formatting error messages issued when translating types and
    expressions *)
 
-(* adapted from ecUserMessages.ml of EasyCrypt distribution *)
+(* adapted from EcUserMessages of EasyCrypt distribution *)
 
 open EcSymbols
 open EcUid
