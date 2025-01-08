@@ -6,8 +6,15 @@
    simulators and associated interfaces, but also for user input to
    the interpreter. *)
 
-(* specification of symbols, types and expressions borrowed from
-   src/ecParsetree.ml of EasyCrypt distribution *)
+(* specification of symbols, types (pty) and expressions (pexpr)
+   borrowed from an older version of ECsrc/ecParsetree.ml
+
+   the current version of this module represents expressions as
+   a subset of the datatype of parsed formulas (pformula)
+
+   because the UC DSL does not include program logic judgements and
+   other related formulas, we've made a decision to only join the
+   EasyCrypt types post typechecking *)
 
 open EcLocation
 open EcSymbols

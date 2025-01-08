@@ -5,6 +5,7 @@ open Format
 open EcSymbols
 open EcLocation
 open EcUtils
+open EcAst
 open EcTypes
 open EcFol
 open EcEnv
@@ -334,6 +335,29 @@ let inc_func_adv_id : EcIdent.t = EcIdent.create "IncFuncAdv"
 
 let func_form : form = f_local func_id addr_ty
 
+(* test whether func_form is *abstract* in the sense that it doesn't
+   appear freely in any assumptions (hypotheses) of a global context
+   except inc_func_adv_id and applications of envport_op
+
+   we say that func_form is *concrete* in gc iff it is not abstract in
+   gc
+
+   this is a sufficient (but not necessary) condition for knowing that
+   func_form won't further simplify *)
+
+let func_is_abstract_in_gc (gc : global_context) : bool =
+  let is_abs_in_local (id, lk) =
+    EcIdent.id_equal id inc_func_adv_id ||
+    match lk with
+    | EcBaseLogic.LD_hyp f ->
+        not (Mid.mem func_id (f_fv f)) ||
+        (match f.f_node with
+         | Fapp (g, _) ->
+             f_equal g (form_of_expr mhr envport_op)
+         | _           -> false)
+    | _                    -> true
+  in List.for_all is_abs_in_local (LDecl.tohyps gc).h_local
+
 let gc_create (env : env) : global_context =
   let locs =
     [
@@ -347,164 +371,6 @@ let gc_create (env : env) : global_context =
   LDecl.init env ~locals:(List.rev locs) []
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
-
-(* destruction of canonical ports to elements of the type
-   canonical_port
-
-   a port is *canonical* iff it has one of the following values of
-   type form, where xs is a constant list of integers, and i is a
-   constant integer
-
-   see the code below for how these are actually represented as
-   formulas
-
-   ([], 0) or env_root_port_op
-
-     destructs to CP_Root
-
-   (adv_addr_op, i)
-
-     destructs to CP_Adv i
-
-   adv_root_port_op (defined to be (adv_addr_op, 0))
-
-     destructs to CP_Adv 0
-
-   (func_id ++ xs, i)
-
-     destructs to CP_FuncRel (xs, i) *)
-
-type canonical_port =
-   | CP_EnvRoot
-   | CP_Adv     of int            (* the adversarial port index *)
-   | CP_FuncRel of int list * int (* relative address plus port index *)
-
-let destr_err() = raise (DestrError "can't destruct address or port")
-
-let is_concat_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path (EcPath.fromqsymbol (ec_qsym_prefix_list, "++"))
-  with _ -> false
-
-let is_cons_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path
-    (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
-  with _ -> false
-
-let is_nil_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path
-    (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
-  with _ -> false
-
-let is_func_id (f : form) : bool =
-  try
-    let id = destr_local f in
-    EcIdent.id_equal id func_id
-  with _ -> false
-
-let is_env_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path
-    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
-  with _ -> false
-
-let is_adv_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path
-    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
-  with _ -> false
-
-let is_adv_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in
-    EcPath.p_equal path
-    (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
-  with _ -> false
-
-(* the following functions can raise DestrError *)
-
-let destr_int (f : form) : int =
-  EcBigInt.to_int (destr_int f)
-
-let rec destr_int_list f : int list =
-  if is_nil_op f
-  then []
-  else match destr_app f with
-       | (x, [y; z]) ->
-           if is_cons_op x
-           then destr_int y :: destr_int_list z
-           else destr_err ()
-       | _           -> destr_err ()
-
-let destr_func_addr (addr : form) : int list =
-  if is_func_id addr
-  then []
-  else match destr_app addr with
-       | (x, [y; z]) ->
-           if not (is_concat_op x)
-             then destr_err ()
-           else if (is_func_id y)
-             then destr_int_list z
-           else destr_err ()
-       | _           -> destr_err ()
-
-(* end of exception raising functions *)
-
-let try_destr_port (port : form) : canonical_port option =
-  try
-    Some
-    (if is_env_root_port_op port
-       then CP_EnvRoot
-     else if is_adv_root_port_op port
-       then CP_Adv 0
-     else match destr_tuple port with
-          | [x; y] ->
-              if is_adv_op x
-                then CP_Adv (destr_int y)
-              else if is_nil_op x
-                then let n = destr_int y
-                     in if n = 0 then CP_EnvRoot else destr_err ()
-              else CP_FuncRel (destr_func_addr x, destr_int y)
-          | _      -> destr_err ())
-  with _ -> None
-
-let is_canon_port (port : form) : bool =
-  is_some (try_destr_port port)
-
-let try_destr_port_as_port_index (port : form) : int option =
-  match try_destr_port port with
-  | None                   -> None
-  | Some CP_EnvRoot        -> Some 0
-  | Some CP_Adv i          -> Some i
-  | Some CP_FuncRel (_, i) -> Some i
-
-let try_destr_port_as_adv (port : form) : int option =
-  match try_destr_port port with
-  | Some CP_Adv i -> Some i
-  | _             -> None
-
-let try_destr_port_as_func_rel (port : form) : (int list * int) option =
-  match try_destr_port port with
-  | Some CP_FuncRel (rel, i) -> Some (rel, i)
-  | _                        -> None
-
-(* for debugging *)
-
-let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
-  match cp with
-  | CP_EnvRoot         -> fprintf ppf "@[env root@]"
-  | CP_Adv i           -> fprintf ppf "@[adv:@ %d@]" i
-  | CP_FuncRel (xs, i) ->
-      fprintf ppf
-      "@[func@ rel:@ (@[[@[%a@]],@ %d@])@]"
-      (EcPrinting.pp_list ";@ " pp_int) xs i
 
 (* pretty printer for global contexts: separates elements
    by commas, allowing breaks *)
@@ -562,8 +428,18 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
   else try
          let env = LDecl.toenv gc in
          let (exp, _) = inter_check_expr env pexpr (Some tbool) in
-         LDecl.add_local (EcIdent.create id)
-         (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc
+         let gc =
+           LDecl.add_local (EcIdent.create id)
+           (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc in
+         let () =
+           if not (func_is_abstract_in_gc gc)
+           then debugging_message
+                (fun ppf ->
+                   fprintf ppf
+                   ("@[func@ is@ now@ concrete,@ which@ may@ slow @ " ^^
+                    "down@ interpretation@]"))
+           else () in
+         gc
        with
        | UcTransTypesExprs.TyError (l, env, tyerr) ->
            error_message l
@@ -597,6 +473,233 @@ let gc_add_rand (gc : global_context) (id_base : symbol) (hyp_base : symbol)
   let gc = LDecl.add_local id (EcBaseLogic.LD_var (ty, None)) gc in
   let gc = LDecl.add_local hyp (EcBaseLogic.LD_hyp support_app) gc in
   (gc, id)
+
+(* destruction of canonical ports to elements of the type
+   canonical_port
+
+   a port is *canonical* iff it has one of the following values of
+   type form, where xs is a constant list of integers, and i is a
+   constant integer
+
+   see the code below for how these are actually represented as
+   formulas
+
+   ([], 0) or env_root_port_op
+
+     destructs to CP_Root
+
+   (adv_addr_op, i) or ([0], i)
+
+     destructs to CP_Adv i
+
+   adv_root_port_op (defined to be (adv_addr_op, 0))
+
+     destructs to CP_Adv 0
+
+   (func_id ++ xs, i)
+
+     destructs to CP_FuncRel (xs, i) *)
+
+type canonical_port =
+   | CP_EnvRoot
+   | CP_Adv     of int            (* the adversarial port index *)
+   | CP_FuncRel of int list * int (* relative address plus port index *)
+
+let destr_err() = raise (DestrError "can't destruct address or port")
+
+let is_concat_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path (EcPath.fromqsymbol (ec_qsym_prefix_list, "++"))
+
+let is_concat_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_concat_op_path path
+  with _ -> false
+
+let is_cons_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path
+  (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
+
+let is_cons_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_cons_op_path path
+  with _ -> false
+
+let is_nil_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path
+  (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
+
+let is_nil_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_nil_op_path path
+  with _ -> false
+
+let is_func_id (f : form) : bool =
+  try
+    let id = destr_local f in
+    EcIdent.id_equal id func_id
+  with _ -> false
+
+let is_env_root_port_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path
+  (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
+
+let is_env_root_port_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_env_root_port_op_path path
+  with _ -> false
+
+let is_adv_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path
+  (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
+
+let is_adv_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_adv_op_path path
+  with _ -> false
+
+let is_adv_root_port_op_path (path : EcPath.path) : bool =
+  EcPath.p_equal path
+  (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
+
+let is_adv_root_port_op (f : form) : bool =
+  try
+    let (path, _) = destr_op f in is_adv_root_port_op_path path
+  with _ -> false
+
+(* the following functions can raise DestrError *)
+
+let destr_int (f : form) : int =
+  EcBigInt.to_int (destr_int f)
+
+let rec destr_int_list f : int list =
+  if is_nil_op f
+  then []
+  else match destr_app f with
+       | (x, [y; z]) ->
+           if is_cons_op x
+           then destr_int y :: destr_int_list z
+           else destr_err ()
+       | _           -> destr_err ()
+
+let destr_func_addr (addr : form) : int list =
+  if is_func_id addr
+  then []
+  else match destr_app addr with
+       | (x, [y; z]) ->
+           if not (is_concat_op x)
+             then destr_err ()
+           else if (is_func_id y)
+             then destr_int_list z
+           else destr_err ()
+       | _           -> destr_err ()
+
+(* end of exception raising functions *)
+
+let is_int (f : form) : bool =
+  try let _ = destr_int f in true with
+  | _ -> false
+
+let is_int_non_opp (f : form) : bool =
+  match f.f_node with
+  | Fint _ -> true
+  | _      -> false
+
+let is_int_list (f : form) : bool =
+  try let _ = destr_int_list f in true with
+  | _ -> false
+
+let is_adv_op_or_value (f : form) : bool =
+  is_adv_op f ||
+  try destr_int_list f = [0] with
+  | _ -> false
+
+let try_destr_port (port : form) : canonical_port option =
+  try
+    Some
+    (if is_env_root_port_op port
+       then CP_EnvRoot
+     else if is_adv_root_port_op port
+       then CP_Adv 0
+     else match destr_tuple port with
+          | [x; y] ->
+              if is_adv_op_or_value x
+                then CP_Adv (destr_int y)
+              else if is_nil_op x
+                then let n = destr_int y
+                     in if n = 0 then CP_EnvRoot else destr_err ()
+              else CP_FuncRel (destr_func_addr x, destr_int y)
+          | _      -> destr_err ())
+  with _ -> None
+
+let is_canon_port (port : form) : bool =
+  is_some (try_destr_port port)
+
+let try_destr_port_as_port_index (port : form) : int option =
+  match try_destr_port port with
+  | None                   -> None
+  | Some CP_EnvRoot        -> Some 0
+  | Some CP_Adv i          -> Some i
+  | Some CP_FuncRel (_, i) -> Some i
+
+let try_destr_port_as_adv (port : form) : int option =
+  match try_destr_port port with
+  | Some CP_Adv i -> Some i
+  | _             -> None
+
+let try_destr_port_as_func_rel (port : form) : (int list * int) option =
+  match try_destr_port port with
+  | Some CP_FuncRel (rel, i) -> Some (rel, i)
+  | _                        -> None
+
+(* for debugging *)
+
+let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
+  match cp with
+  | CP_EnvRoot         -> fprintf ppf "@[env root@]"
+  | CP_Adv i           -> fprintf ppf "@[adv:@ %d@]" i
+  | CP_FuncRel (xs, i) ->
+      fprintf ppf
+      "@[func@ rel:@ (@[[@[%a@]],@ %d@])@]"
+      (EcPrinting.pp_list ";@ " pp_int) xs i
+
+(* it's useful to have a notion of being *weakly simplified* that is
+   strong enough for values (like arguments to messages and states)
+   that we won't *immediately* need to make decisions about
+
+   we start with values made out of constructors and integer literals,
+   but then we also allow leaves (not lhs's of applications) that are:
+
+   * identifiers in the global context, even though they might be
+     rewritten by assumptions
+
+   * of the form (func ++ <int list literal>), but just when func is
+     abstract *)
+
+let is_weakly_simplified (env : env) (func_abstract : bool)
+    (f : form) : bool =
+  let rec is_weak_simp f =
+    match f.f_node with
+    | Fint _       -> true
+    | Flocal _     -> true
+    | Fop (op, _)  -> Op.is_dtype_ctor env op
+    | Fapp (f, fs) ->
+        (match f.f_node with
+         | Fop (op, _) ->
+             if Op.is_dtype_ctor env op
+               then List.for_all is_weak_simp fs
+             else if f_equal f fop_int_opp  (* int negation *)
+               then (match fs with
+                     | [g] -> is_int_non_opp g
+                     | _   -> false)
+             else if is_concat_op_path op && func_abstract
+               then (match fs with
+                     | [fs1; fs2] -> is_func_id fs1 && is_int_list fs2
+                     | _          -> false)
+             else false
+         | _           -> false)
+    | Ftuple fs    -> List.for_all is_weak_simp fs
+    | _            -> false
+  in is_weak_simp f
 
 (* prover infos *)
 
@@ -683,7 +786,7 @@ let lemmas_of_rewriting_dbs (env : env) (dbs : rewriting_dbs)
   (fun acc db -> acc @ lemmas_of_rw_dbs db)
   [] dbs
 
-(* Using EasyCrypt Proof Engine *)
+(* using EasyCrypt proof engine *)
 
 exception ECProofEngine
 
@@ -711,23 +814,35 @@ let eval_bool_form_to_bool (gc : global_context) (pi : prover_infos)
           fprintf ppf "@[unable@ to@ prove@ formula@ or@ its@ negation@]"));
       raise ECProofEngine
 
-let simplify_formula (gc : global_context) (dbs : rewriting_dbs) (f : form)
-      : form =
-  let () =
-    debugging_message
-    (fun ppf ->
-       fprintf ppf
-       "@[@[trying@ to@ simplify@ formula:@]@\n@[%a@]@]"
-       (pp_form (env_of_gc gc)) f) in
-  let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
-  let f = UcEcFormEval.simplify_formula gc f rw_lems in
-  let () =
-    debugging_message
-    (fun ppf ->
-       fprintf ppf
-       "@[@[result@ is:@]@\n@[%a@]@]"
-       (pp_form (env_of_gc gc)) f) in
-  f
+let simplify_formula (strong : bool) (gc : global_context)
+    (dbs : rewriting_dbs) (f : form) : form =
+  if not strong &&
+     is_weakly_simplified (env_of_gc gc) (func_is_abstract_in_gc gc) f
+  then f
+  else let () =
+         debugging_message
+         (fun ppf ->
+            fprintf ppf
+            "@[@[trying@ to@ simplify@ formula:@]@\n@[%a@]@]"
+            (pp_form (env_of_gc gc)) f) in
+       let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
+       let f = UcEcFormEval.simplify_formula gc f rw_lems in
+       let () =
+         debugging_message
+         (fun ppf ->
+            fprintf ppf
+            "@[@[result@ is:@]@\n@[%a@]@]"
+            (pp_form (env_of_gc gc)) f) in
+       f
+
+let simplify_port (gc : global_context) (dbs : rewriting_dbs)
+      : form -> form =
+  if func_is_abstract_in_gc gc
+  then (fun (port : form) ->
+          if is_canon_port port
+          then port
+          else simplify_formula true gc dbs port)
+  else (fun (port : form) -> simplify_formula true gc dbs port)
 
 let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
     (dbs : rewriting_dbs) (f : form) : symbol * EcCoreFol.form list =
@@ -965,8 +1080,13 @@ let lc_update_var (gc : global_context) (lc : local_context)
   let id = Option.get (lc_find_key_from_sym lc_base id) in
   EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
 
-let lc_apply (simpl : bool) (gc : global_context) (lc : local_context)
-    (dbs : rewriting_dbs) (e : expr) : form =
+type lca_mode =      (* at end: *)
+  | LCAM_NoSimp      (* don't simplify at all *)
+  | LCAM_WeakSimp    (* settle for a weakly simplified formula *)
+  | LCAM_StrongSimp  (* strongly simplify *)
+
+let lc_apply (mode : lca_mode) (gc : global_context)
+    (lc : local_context) (dbs : rewriting_dbs) (e : expr) : form =
   let f = form_of_expr mhr e in
   let map =
     List.fold_left
@@ -978,7 +1098,10 @@ let lc_apply (simpl : bool) (gc : global_context) (lc : local_context)
     (fun acc (x, f) -> Fsubst.f_bind_local acc x f)
     Fsubst.f_subst_id (EcIdent.Mid.bindings map) in
   let f = Fsubst.f_subst subst f in
-  if simpl then simplify_formula gc dbs f else f
+  match mode with
+  | LCAM_NoSimp     -> f
+  | LCAM_WeakSimp   -> simplify_formula false gc dbs f
+  | LCAM_StrongSimp -> simplify_formula true gc dbs f
 
 let push (lc : local_context) (fr : local_context_frame) : local_context =
   lc @ [fr]
@@ -1928,22 +2051,21 @@ let msg_out_of_sending_config (conf : config) (ctrl : control)
 
 let simplify_sent_msg_expr (gc : global_context) (dbs : rewriting_dbs)
     (sme : sent_msg_expr_tyd) : sent_msg_expr_tyd =
-  let simpl = simplify_formula gc dbs in
-  let simpl_if_not_canon port =
-    if is_canon_port port then port else (simpl port) in
+  let simpl = simplify_formula false gc dbs in
+  let simpl_port = simplify_port gc dbs in
   match sme with
   | SMET_Ord sme    ->
       SMET_Ord
       {mode           = sme.mode;
        dir            = sme.dir;
-       src_port_form  = simpl_if_not_canon sme.src_port_form;
+       src_port_form  = simpl_port sme.src_port_form;
        path           = sme.path;
        args           = List.map simpl sme.args;
-       dest_port_form = simpl_if_not_canon sme.dest_port_form}
+       dest_port_form = simpl_port sme.dest_port_form}
   | SMET_EnvAdv sme ->
       SMET_EnvAdv
-      {src_port_form  = simpl_if_not_canon sme.src_port_form;
-       dest_port_form = simpl_if_not_canon sme.dest_port_form}
+      {src_port_form  = simpl_port sme.src_port_form;
+       dest_port_form = simpl_port sme.dest_port_form}
 
 let check_sme_port_index_consistency_core
     (error : string -> EcLocation.t -> unit)
@@ -2042,7 +2164,7 @@ exception StepBlockedPortOrAddrCompare
 
 let step_assign (gc : global_context) (lc : local_context)
     (dbs : rewriting_dbs) (lhs : lhs) (expr : expr) : local_context =
-  let form = lc_apply true gc lc dbs expr in
+  let form = lc_apply LCAM_WeakSimp gc lc dbs expr in
   match lhs with
   | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
   | LHSTuple ids ->
@@ -2053,7 +2175,7 @@ let step_assign (gc : global_context) (lc : local_context)
       List.fold_lefti
       (fun acc i id ->
          let pr = f_proj form i (List.nth tys i) in
-         let pr = simplify_formula gc dbs pr in
+         let pr = simplify_formula true gc dbs pr in
          lc_update_var gc acc dbs (unloc id) pr)
       lc
       ids
@@ -2061,7 +2183,7 @@ let step_assign (gc : global_context) (lc : local_context)
 let step_sample (gc : global_context) (lc : local_context)
     (dbs : rewriting_dbs) (lhs : lhs) (expr : expr)
       : global_context * local_context * symbol =
-  let form = lc_apply true gc lc dbs expr in
+  let form = lc_apply LCAM_StrongSimp gc lc dbs expr in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
   match lhs with
   | LHSSimp id   ->
@@ -2087,7 +2209,7 @@ let step_if_then_else (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (expr : expr) (inss_then : instr_interp list)
     (inss_else_opt : instr_interp list option) : instr_interp list =
-  let expr_gc_form = lc_apply false gc lc dbs expr in
+  let expr_gc_form = lc_apply LCAM_NoSimp gc lc dbs expr in
   if try eval_bool_form_to_bool gc pi dbs expr_gc_form with
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
@@ -2097,7 +2219,7 @@ let step_match (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
     (expr : expr) (clauses : match_clause_interp list)
       : local_context * instr_interp list =
-  let form = lc_apply false gc lc dbs expr in
+  let form = lc_apply LCAM_NoSimp gc lc dbs expr in
   let (form_constr, form_args) =
     try deconstruct_datatype_value gc pi dbs form with
     | ECProofEngine -> raise StepBlockedMatch in
@@ -2341,16 +2463,22 @@ let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) (unloc msg_args) in
+    List.map
+    (fun arg -> lc_apply LCAM_WeakSimp c.gc c.lc dbs arg)
+    (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
+    | Some expr ->
+        let port = lc_apply LCAM_NoSimp c.gc c.lc dbs expr in
+        Some (simplify_port c.gc dbs port) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) state_args in
+    List.map
+    (fun arg -> lc_apply LCAM_WeakSimp c.gc c.lc dbs arg)
+    state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_rws =
     match c.rwrc with
@@ -2528,7 +2656,6 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
     (base : int) (sim_sp : symb_pair) (iip : string list) (msg : string)
     (msg_args : form list) (new_iws : ideal_world_state) (i : int)
       : config * effect =
-  let simpl = simplify_formula c.gc dbs in
   let sim_rf_addr =
     if i = -1
     then Option.get c.iws.main_sim_state.addr
@@ -2615,7 +2742,7 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
              (sim_rf_addr @ [child_i]))
             (int_form 1);
           path           = path;
-          args           = List.map simpl msg_args;
+          args           = msg_args;
           dest_port_form = make_port_form adv_addr_form (int_form adv_pi)} in
        let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
        (ConfigIdealSending
@@ -2657,16 +2784,22 @@ let iw_step_send_and_transition (c : config_ideal_running) (pi : prover_infos)
   let {path; args = msg_args; port_expr} = msg_expr in
   let {inter_id_path = iip; msg} = unloc path in
   let msg_args =
-    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) (unloc msg_args) in
+    List.map
+    (fun arg -> lc_apply LCAM_WeakSimp c.gc c.lc dbs arg)
+    (unloc msg_args) in
   let port_form =
     match port_expr with
     | None      -> None
-    | Some expr -> Some (lc_apply true c.gc c.lc dbs expr) in
+    | Some expr ->
+        let port = lc_apply LCAM_NoSimp c.gc c.lc dbs expr
+        in Some (simplify_port c.gc dbs port) in
   let {UcTypedSpec.id = state_id; UcTypedSpec.args = state_args} =
     state_expr in
   let state_id = unloc state_id and state_args = unloc state_args in
   let state_args =
-    List.map (fun arg -> lc_apply true c.gc c.lc dbs arg) state_args in
+    List.map
+    (fun arg -> lc_apply LCAM_WeakSimp c.gc c.lc dbs arg)
+    state_args in
   let new_state = {id = state_id; args = state_args} in
   let new_iws =
     match c.iwrc with

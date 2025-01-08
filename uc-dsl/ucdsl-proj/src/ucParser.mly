@@ -1,7 +1,7 @@
 (* Menhir Specification for UC DSL Parser (UcParser module) *)
 
 (* indicated portions of this file are adapted from the EasyCrypt
-   lexer, src/ucParser.mly *)
+   parser *)
 
 %{
 
@@ -468,10 +468,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
    of the corresponding type (defined in UcSpec). *)
 
 %type <UcSpec.spec> spec
-%type <UcSpec.fun_expr> fun_expr_start
-%type <UcSpec.sent_msg_expr> sent_msg_expr_start
-%type <UcSpec.pty> ty_start
-%type <UcSpec.pexpr> expr_start
 %type <UcSpec.interpreter_command> interpreter_command
 
 (* in the generated ucParser.ml : 
@@ -480,15 +476,9 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
 
    and similarly for the other start symbols *)
 
-%start spec fun_expr_start sent_msg_expr_start ty_start expr_start
-       interpreter_command
+%start spec interpreter_command
 
 %%
-(*for testing purposes, to be removed*)
-expr_start : x=expr EOF {x}
-ty_start : x=loc(type_exp) EOF {x}
-fun_expr_start : x=fun_expr EOF {x}
-sent_msg_expr_start : x=sent_msg_expr EOF {x}
 
 (* a UC DSL specification consists of a preamble which requires
   other .ec and .uc files, followed by a list of definitions of direct and
@@ -1391,7 +1381,14 @@ args :
 
 (* Identifiers, Words and Operators
 
-   everything below adapted from EasyCrypt parser *)
+   everything below adapted from an older version of the EasyCrypt
+   parser
+
+   the new version of the EasyCrypt parser treats expressions as a
+   subset of formulas; because the UC DSL does not need program
+   judgments and related formulas, we've made a decision to only parse
+   what we need and to do our own typechecking; we join the EasyCrypt
+   types post-typechecking *)
 
 %inline _lident :
   | x = LIDENT { x }
@@ -1553,7 +1550,10 @@ type_exp :
   | ty = plist2(loc(simpl_type_exp), STAR)         { PTtuple ty }
   | ty1 = loc(type_exp); RARROW; ty2=loc(type_exp) { PTfun(ty1, ty2) }
 
-(* Expressions *)
+(* Expressions
+
+   our expressions have support for envport and intport -
+   see below *)
 
 tyvar_byname1:
 | x = tident; EQ; ty = loc(type_exp) { (x, ty) }

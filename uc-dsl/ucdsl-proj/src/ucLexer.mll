@@ -1,7 +1,6 @@
 (* OCamlLex specification for UC DSL Lexer (UcLexer module) *)
 
-(* portions of this file are adapted from the EasyCrypt lexer,
-   src/ucLexer.mll *)
+(* portions of this file are adapted from the EasyCrypt lexer *)
 
 (*********************************** Header ***********************************)
 
