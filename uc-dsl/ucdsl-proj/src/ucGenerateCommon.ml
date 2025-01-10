@@ -421,10 +421,10 @@ let get_glob_ranges_of_fully_real_fun_glob_core
 (mt : maps_tyd) (funcId : SP.t) : int list IdMap.t =
   let rfbt = real_fun_body_tyd_of
                (EcLocation.unloc (IdPairMap.find funcId mt.fun_map )) in
-  let pn = IdMap.cardinal rfbt.parties in
-  let partyMap, last = IdMap.fold (fun pid _ (pm,i) ->
-    ((IdMap.add pid [(pn - i)] pm ), i+1)) rfbt.parties (IdMap.empty,0) in
-  let last = last + 1 in (*self*)
+  let pn = List.sort compare (fst (List.split (IdMap.bindings rfbt.parties))) in
+  let partyMap, last = List.fold_left (fun (pm,i) pid ->
+    ((IdMap.add pid [i+1] pm ), i+1)) (IdMap.empty,1) pn in
+  (*_self is 1, _st_Pt1 is 2, _st_Pt2 is 3, etc.*)
   let frrp = make_fully_real_pSP mt funcId in
   let psizes = match frrp with
     | NoP _ -> []
@@ -441,11 +441,11 @@ let get_glob_ranges_of_fully_real_fun_glob_core
   let params = List.combine params psizes in
   let paramMap, last = List.fold_right (fun (id,size) (map, last) ->
     IdMap.add id (range last size) map, last+size) params (IdMap.empty,last) in
-  let sn = IdMap.cardinal rfbt.sub_funs in
-  let max = last + 2 * sn in
-  let subfunMap, _ = IdMap.fold (fun pid _ (pm,i) ->
-    ((IdMap.add pid [(max - 2*i) - 1; (max - 2*i)] pm ), i+1))
-                       rfbt.sub_funs (IdMap.empty,0) in
+  let sn = List.sort compare
+             (fst (List.split (IdMap.bindings rfbt.sub_funs))) in
+  let subfunMap, _ = List.fold_left (fun (pm,i) sfid ->
+    ((IdMap.add sfid [i+1; i+2] pm ), i+2))
+                       (IdMap.empty,last) sn in
   let f = fun _ _ _ -> UcMessage.failure "cannot happen" in
   IdMap.union f (IdMap.union f partyMap paramMap) subfunMap
 
@@ -459,13 +459,13 @@ let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
 
 let get_own_glob_range_of_fully_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
-  let partyrngrev = 
+  let partyrng = 
   (IdMap.fold (fun id il acc ->
        if (IdMap.mem id rfbt.parties) then acc@il else acc) grm []) in
-  let ptlast = List.hd partyrngrev in
   let subfunrng = (IdMap.fold (fun id il acc ->
        if (IdMap.mem id rfbt.sub_funs) then il@acc else acc) grm []) in
-  (List.rev partyrngrev)@[ptlast+1]@subfunrng
+  let rng = (List.rev partyrng)@[1]@subfunrng in
+  List.sort compare rng
   
 
 let get_own_glob_ranges_of_real_fun
