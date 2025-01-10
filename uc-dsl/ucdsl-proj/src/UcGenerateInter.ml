@@ -434,7 +434,7 @@ let print_message
     Format.fprintf ppf "proof.@,";
     Format.fprintf ppf "apply epdp_intro.@,";
     Format.fprintf ppf "move => x.@,";
-    Format.fprintf ppf "rewrite /%s /= /%s /%s /= !epdp /=.@,"
+    Format.fprintf ppf "rewrite /%s /= /%s /%s /=.@,"
     _epdp_op_name _dec_op_name _enc_op_name;
     Format.fprintf ppf "by case x.@,";
     Format.fprintf ppf "move => [mod %s %s tag v] u.@,"
@@ -495,7 +495,8 @@ let print_message
     Format.fprintf ppf "move => val_m.@,";
     Format.fprintf ppf "have [] x : exists (x : %s), %s.`dec m = Some x.@,"
     _mty_name _epdp_op_name;
-    Format.fprintf ppf "  exists (oget (%s m)); by rewrite -some_oget.@,"
+    Format.fprintf ppf
+      "  exists (oget (%s m)); rewrite -some_oget; smt(); smt().@,"
     _dec_op_name;
     Format.fprintf ppf "@[case x => x1 x2%a.@]@,"
     print_xi_data_many_times (IdMap.cardinal mb.params_map);
