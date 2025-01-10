@@ -65,6 +65,7 @@ let module_params_string pmns : string =
     let tl = List.tl pmns in
     (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
 let _RFRP = "RFRP"
+let smt_sat_lemmas = "mem_oflist"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -601,8 +602,8 @@ let print_proof_state_match (root : string)
                  then Format.fprintf ppf "@[if. (*envport check*)@]@;"
                  ;  
                  Format.fprintf ppf
-                   "@[%s sp 3. skip. smt(). (*SendAndTransition instruction*)@]@;"
-                   ret_pfx;
+                   "@[%s sp 3. skip. smt(%s). (*SendAndTransition instruction*)@]@;"
+                   ret_pfx smt_sat_lemmas;
                  if envportcheck
                  then
                    Format.fprintf ppf
@@ -679,8 +680,14 @@ let print_IF_lemma_metric_invoke (metric_name : string) (module_name : string)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =    
   Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" _invoke;
   Format.fprintf ppf
-  "%s.%s :@ %s (glob %s) = n@ ==>@ (res <> None =>@ %s (glob %s) < n)"
-  module_name invoke metric_name module_name metric_name module_name;
+    "%s.%s :@ %s (glob %s) /\\ %s (glob %s) = n@ ==>@ "
+    module_name invoke _invar module_name metric_name module_name;
+  Format.fprintf ppf
+    "(res <> None =>@ %s (glob %s) < n@;"
+    metric_name module_name;
+  Format.fprintf ppf
+    "/\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in oflist [%s]))@;"
+    _Adv adv_if_pi_op_name;
   Format.fprintf ppf "@]@;].@;";
   Format.fprintf ppf "@[proof.@]@;";
   Format.fprintf ppf "@[rewrite /%s /=.@]@;" metric_name;
@@ -710,7 +717,7 @@ let print_IF_state_metric (module_name : string)
   | Some id_lvl_map ->
      begin
      let globopname = glob_to_part_op_name module_name _st in
-     Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`1.@]@;"
+     Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`2.@]@;"
      globopname module_name state_type_name_IF;
      Format.fprintf ppf
        "@[<v>@[op [smt_opaque] %s (g : glob %s) : int =@]@;<0 2>@[<v>"
@@ -735,12 +742,17 @@ let print_IF_metric (id : string)(root : string)
     (print_IF_lemma_metric_invoke uc_metric_name (uc_name id) root mbmap dii)
     st_map
 
-let print_IF_metric_related_lemmas
+let print_IF_invar
       (ppf : Format.formatter) (id : string) : unit =
   Format.fprintf ppf "@[<v>@;";
   Format.fprintf ppf "@[(*alias*)@]@;";
   Format.fprintf ppf "@[module IF = %s.@]@;" (uc_name id);
   Format.fprintf ppf "@[op %s (g : glob IF) : bool = predT g.@]@;@;" _invar;
+  Format.fprintf ppf "@]@;"
+
+
+let print_IF_metric_good_init_lemmas
+      (ppf : Format.formatter) (_ : unit): unit =
   Format.fprintf ppf "@[lemma %s (g : glob IF) :@]@;"  _metric_good;
   Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" _invar uc_metric_name;
   Format.fprintf ppf "@[  proof. rewrite /%s.%s /=.@]@;" uc__if uc_metric_name;
@@ -760,8 +772,9 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__if);
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
+  Format.fprintf sf "@[%a@]@;@;" print_IF_invar id;
   Format.fprintf sf "%a" (print_IF_metric id root mbmap dii) ifbt.states;
-  Format.fprintf sf "@[%a@]@;@;" print_IF_metric_related_lemmas id;
+  Format.fprintf sf "@[%a@]@;@;" print_IF_metric_good_init_lemmas ();
   Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
