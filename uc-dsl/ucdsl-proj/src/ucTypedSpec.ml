@@ -4,17 +4,11 @@
 
    This includes specifications of functionalities, simulators and
    associated interfaces, but also for user input to the
-   interpreter. *)
+   interpreter.
 
-(* Note: at least for now, the type expr of abstract expressions is
-   provided by EcTypes (redeclared from EcAst), but it's possible this
-   will be removed, in favor of using a subset of the typed formulas
-   (form), also provided by EcAst. If/when this happens, we'll add a
-   declaration of expr to this module, and provide injections and
-   projections to/from form
-
-   see UcTypecheck for our typechecker, which makes use of
-   UcTransTypesExprs for typechecking types and expressions *)
+   We use the EasyCrypt types `ty` (types) and `form` (formulas).
+   Only a subset of formulas can be expressed in our grammar
+   (see `expr` of ucParser.mly); we consider these "expressions". *)
 
 open EcLocation
 open EcUtils
@@ -211,60 +205,60 @@ let addr_ty : ty =
 
 (* UC DSL and EasyCrypt operators *)
 
-let env_root_addr_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_addr")) []
+let env_root_addr_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_addr")) []
   addr_ty
 
-let env_root_port_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port")) []
+let env_root_port_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port")) []
   port_ty
 
-let adv_addr_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv")) []
+let adv_addr_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv")) []
   addr_ty
 
-let adv_root_port_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port")) []
+let adv_root_port_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port")) []
   port_ty
 
-let envport_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
+let envport_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
   (tfun addr_ty (tfun port_ty tbool))
 
-let inc_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) [tint]
+let inc_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let addr_le_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) [tint]
+let addr_le_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let addr_lt_op : expr =
-  e_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
+let addr_lt_op : form =
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
-let addr_concat_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint]
+let addr_concat_op : form =
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint]
   (tfun addr_ty (tfun addr_ty addr_ty))
 
-let addr_nil_op : expr =
-  e_op
+let addr_nil_op : form =
+  f_op
   (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil)) [tint] addr_ty
 
-let addr_cons_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons)) [tint]
+let addr_cons_op : form =
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons)) [tint]
   (tfun tint (tfun addr_ty addr_ty))
 
-let int_add_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
+let int_add_op : form =
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
   (tfun tint (tfun tint tbool))
 
-let int_lt_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "lt")) []
+let int_lt_op : form =
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "lt")) []
   (tfun tint (tfun tint tbool))
 
-let int_le_op : expr =
-  e_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le")) []
+let int_le_op : form =
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le")) []
   (tfun tint (tfun tint tbool))
 
 (* values of type EcIdent.t *)
@@ -327,12 +321,12 @@ type inter_tyd = inter_body_tyd located  (* typed interface *)
 
 type msg_expr_tyd =
   {path      : msg_path;           (* message path *)
-   args      : expr list located;  (* message arguments *)
-   port_expr : expr option}        (* message destination - port expr *)
+   args      : form list located;  (* message arguments *)
+   port_expr : form option}        (* message destination - port expr *)
 
 type state_expr_tyd =
   {id   : psymbol;            (* state to transition to *)
-   args : expr list located}  (* arguments of new state *)
+   args : form list located}  (* arguments of new state *)
 
 (* instructions *)
 
@@ -346,11 +340,11 @@ let unloc_bindings (bndgs : bindings) : (EcIdent.t * ty) list =
   List.map (fun (id, ty) -> (unloc id, ty)) bndgs
 
 type instruction_tyd_u =
-  | Assign of lhs * expr                           (* ordinary assignment *)
-  | Sample of lhs * expr                           (* sampling assignment *)
-  | ITE of expr * instruction_tyd list located *   (* if-then-else *)
+  | Assign of lhs * form                           (* ordinary assignment *)
+  | Sample of lhs * form                           (* sampling assignment *)
+  | ITE of form * instruction_tyd list located *   (* if-then-else *)
            instruction_tyd list located option
-  | Match of expr * match_clause_tyd list located  (* match instruction *)
+  | Match of form * match_clause_tyd list located  (* match instruction *)
   | SendAndTransition of send_and_transition_tyd   (* send and transition *)
   | Fail                                           (* failure *)
 
@@ -545,7 +539,7 @@ let num_sub_funs_of_real_fun_tyd (ft : fun_tyd) : int =
 
 let is_sub_fun_of_real_fun_tyd (ft : fun_tyd) (sym : symbol) : bool =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
-  IdMap.mem sym rfbt.sub_funs  
+  IdMap.mem sym rfbt.sub_funs
 
 let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -1126,7 +1120,7 @@ let subst_for_iip_in_msg_path_u (path : msg_path_u) (new_iip : string list)
       : msg_path_u =
   {inter_id_path = new_iip; msg = path.msg}
 
-let subst_for_iip_in_sent_msg_expr_ord_tyd 
+let subst_for_iip_in_sent_msg_expr_ord_tyd
     (sme : sent_msg_expr_ord_tyd) (new_iip : string list)
       : sent_msg_expr_ord_tyd =
   let new_path = subst_for_iip_in_msg_path_u sme.path new_iip in
@@ -1140,7 +1134,7 @@ let check_and_subst_for_iip_in_msg_path_u (path : msg_path_u)
   then Some {inter_id_path = new_iip; msg = msg}
   else None
 
-let check_and_subst_for_iip_in_sent_msg_expr_ord_tyd 
+let check_and_subst_for_iip_in_sent_msg_expr_ord_tyd
     (sme : sent_msg_expr_ord_tyd) (expected_iip : string list)
     (new_iip : string list) : sent_msg_expr_ord_tyd option =
   match check_and_subst_for_iip_in_msg_path_u sme.path expected_iip new_iip with

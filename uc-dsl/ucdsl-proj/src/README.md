@@ -4,10 +4,6 @@ UC DSL Source Directory
 The subdirectory `ECsrc` contains a copy of the EasyCrypt source
 (`src`) directory.
 
-The files in this directory beginning with `ec` are EasyCrypt source
-files that have been modified from the originals. The original
-files can be found in `ECsrc/modified-for-ucdsl`.
-
 Program Structure
 --------------------------------------------------------------------------------
 
@@ -26,14 +22,6 @@ Program Structure
 
 * `UcState` ([`ucState.mli`](ucState.mli),
   [`ucState.ml`](ucState.ml)) - module for the UC DSL global state
-
-* `EcScope` ([`ecScope.mli`](ecScope.mli),
-  [`ecScope.ml`](ecScope.ml)) - modification of EasyCrypt's `EcScope`
-  module
-
-* `EcCommands` ([`ecCommands.mli`](ecCommands.mli),
-  [`ecCommands.ml`](ecCommands.ml)) - modification of EasyCrypt's
-  `EcCommands` module
 
 * `UcEcInterface` ([`ucEcInterface.mli`](ucEcInterface.mli),
   [`ucEcInterface.ml`](ucEcInterface.ml)) - module providing
@@ -63,18 +51,6 @@ Program Structure
   [`ucParseAndTypecheckFile.ml`](ucParseAndTypecheckFile.ml)) -
   module for parsing and then typechecking a file
 
-* `UcTransTypesExprs`
-  ([`ucTransTypesExprs.mli`](ucTransTypesExprs.mli),
-  [`ucTransTypesExprs.ml`](ucTransTypesExprs.ml)) - module for
-  translating (and checking) types and expressions from concrete to
-  abstract syntax
-
-* `UcTypesExprsErrorMessages`
-  ([`ucTypesExprsErrorMessages.mli`](ucTypesExprsErrorMessages.mli),
-  [`ucTypesExprsErrorMessages.ml`](ucTypesExprsErrorMessages.ml)) -
-  module for formatting error messages issued when translating types
-  and expressions
-
 * `UcInterpreter` ([`ucInterpreter.mli`](ucInterpreter.mli),
    [`ucInterpreter.ml`](ucInterpreter.ml)) - module implementing
   the semantics of the interpreter
@@ -88,19 +64,3 @@ Program Structure
    [`ucEcFormEval.ml`](ucEcFormEval.ml)) - module used by
    the interpreter to leverage EasyCrypt's proof engine for
    proving/disproving formulas and simplifying formulas
-
-Script for Comparing EasyCrypt Files with Originals
---------------------------------------------------------------------------------
-
-The bash shell script [`ec-diff`](ec-diff) can be used to (run it with
-no arguments):
-
-* check whether any files in `ECsrc`, `ECsrc/phl` and `ECsrc/system` are
-  different from the corresponding files of the current EasyCrypt `src`
-  directory
-
-* check whether the original versions of the `ec`* files in this
-  directory that were saved in `ECsrc/modified-for-ucdsl` are the same
-  as the corresponding files in the current EasyCrypt `src` directory
-
-* do a diff of each of these `ec`* files with their original version

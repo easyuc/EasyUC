@@ -7,7 +7,7 @@ outcome: failure
 [error: testSampleAssignWrongType.uc: from line 17 columns 24 to 28]
 
 This expression has type
-   exp distr
+   exp Distr.distr
 
 but is expected to have type
    key Pervasive.distr

@@ -11,6 +11,7 @@ open Format
 open EcUtils
 open EcLocation
 open EcSymbols
+open EcParsetree
 
 open UcSpec
 open UcSpecTypedSpecCommon
@@ -18,7 +19,8 @@ open UcMessage
 
 module BI = EcBigInt
 
-(* auxiliary functions for symbols and expressions *)
+(* auxiliary functions for symbols and expressions (represented as
+   formuals) *)
 
 let pqsymb_of_psymb (x : psymbol) : pqsymbol =
   mk_loc x.pl_loc ([], x.pl_desc)
@@ -26,26 +28,30 @@ let pqsymb_of_psymb (x : psymbol) : pqsymbol =
 let pqsymb_of_symb loc (x : symbol) : pqsymbol =
   mk_loc loc ([], x)
 
-let mk_peid_symb loc (s : symbol) (ti : ptyinstan option) : pexpr =
-  mk_loc loc (PEident (pqsymb_of_symb loc s, ti))
+let mk_pfid_symb loc (s : symbol) (ti : ptyannot option) : pformula =
+  mk_loc loc (PFident (pqsymb_of_symb loc s, ti))
 
-let peapp_symb loc (s : symbol) (ti : ptyinstan option) (es : pexpr list) =
-  PEapp (mk_peid_symb loc s ti, es)
+let pfapp_symb loc (s : symbol) (ti : ptyannot option)
+    (es : pformula list) : pformula_r =
+  PFapp (mk_pfid_symb loc s ti, es)
 
-let peget loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
-  peapp_symb loc EcCoreLib.s_get ti [e1; e2]
+let pfget loc (ti : ptyannot option) (e1 : pformula)
+    (e2 : pformula) : pformula_r =
+  pfapp_symb loc EcCoreLib.s_get ti [e1; e2]
 
-let peset loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) (e3 : pexpr) =
-  peapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
+let pfset loc (ti : ptyannot option) (e1 : pformula) (e2 : pformula)
+    (e3 : pformula) : pformula_r =
+  pfapp_symb loc EcCoreLib.s_set ti [e1; e2; e3]
 
-let pe_nil loc (ti : ptyinstan option) =
-  mk_peid_symb loc EcCoreLib.s_nil ti
+let pf_nil loc (ti : ptyannot option) : pformula =
+  mk_pfid_symb loc EcCoreLib.s_nil ti
 
-let pe_cons loc (ti : ptyinstan option) (e1 : pexpr) (e2 : pexpr) =
-  mk_loc loc (peapp_symb loc EcCoreLib.s_cons ti [e1; e2])
+let pf_cons loc (ti : ptyannot option) (e1 : pformula)
+    (e2 : pformula) : pformula =
+  mk_loc loc (pfapp_symb loc EcCoreLib.s_cons ti [e1; e2])
 
-let pelist loc (ti : ptyinstan option) (es : pexpr list) : pexpr =
-  List.fold_right (fun e1 e2 -> pe_cons loc ti e1 e2) es (pe_nil loc ti)
+let pflist loc (ti : ptyannot option) (es : pformula list) : pformula =
+  List.fold_right (fun e1 e2 -> pf_cons loc ti e1 e2) es (pf_nil loc ti)
 
 (* check for parse errors in messages of direct or adversarial
    interfaces due to improper inclusion of omission of source or
@@ -95,12 +101,13 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       (* no parse errors are possible, but there may be type errors *)
       ()
 
-  (* ------------------------------------------------------------------ *)
+  (* prover-related definitions *)
+
   type prover =
     [ `Exclude | `Include | `Only] * psymbol
 
   type pi = [
-    | `DBHINT of EcParsetree.pdbhint
+    | `DBHINT of pdbhint
     | `INT    of int
     | `PROVER of prover list
   ]
@@ -113,8 +120,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
     | `MAXPROVERS     of int
     | `PROVER         of prover list
     | `TIMEOUT        of int
-    | `UNWANTEDLEMMAS of EcParsetree.pdbhint
-    | `WANTEDLEMMAS   of EcParsetree.pdbhint
+    | `UNWANTEDLEMMAS of pdbhint
+    | `WANTEDLEMMAS   of pdbhint
     | `VERBOSE        of int option
     | `VERSION        of [ `Full | `Lazy ]
     | `DUMPIN         of string located
@@ -124,9 +131,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
   module SMT : sig
     val mk_pi_option  : psymbol -> pi option -> smt
-    val mk_smt_option : smt list -> EcParsetree.pprover_infos
+    val mk_smt_option : smt list -> pprover_infos
   end = struct
-    open EcParsetree
     let option_matching tomatch =
       let match_option = String.option_matching tomatch in
       fun s ->
@@ -319,6 +325,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
   end
 
 %}
+
 %token <Lexing.position> FINAL (* a "." followed by whitespace of eof *)
 %token EOF  (* end-of-file *)
 
@@ -424,7 +431,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token IFF
 %token PLUS
 %token MINUS
-%token STAR   (* other uses *) 
+%token STAR   (* other uses *)
 %token EQ     (* other uses *)
 %token NE
 %token GT
@@ -439,7 +446,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 %nonassoc IN
 
-%right    IMPL 
+%right    IMPL
 %nonassoc IFF
 %right    ORA  OR
 %right    ANDA AND
@@ -470,7 +477,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %type <UcSpec.spec> spec
 %type <UcSpec.interpreter_command> interpreter_command
 
-(* in the generated ucParser.ml : 
+(* in the generated ucParser.ml :
 
 val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
 
@@ -484,18 +491,18 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
   other .ec and .uc files, followed by a list of definitions of direct and
   adversarial interfaces, functionalities and simlators *)
 
-spec : 
+spec :
   | ext = preamble; defs = list(def); EOF
       { {externals = ext; definitions = defs} }
-        
-preamble : 
+
+preamble :
   | uc_reqs = option(uc_requires); ec_reqs = option(ec_requires)
       { {uc_requires = uc_reqs |? [];
          ec_requires = ec_reqs |? []} }
 
 (* require .uc files *)
 
-uc_requires : 
+uc_requires :
   | UC_REQUIRES; uc_reqs = nonempty_list(ident); final_or_dot
       { uc_reqs }
 
@@ -508,7 +515,7 @@ final_or_dot :
 
    +id means also do an import, id means no import *)
 
-ec_requires : 
+ec_requires :
   | EC_REQUIRES; ec_reqs = nonempty_list(require); final_or_dot
       { ec_reqs }
 
@@ -520,7 +527,7 @@ require :
    functionality or a simulator.  All of the names must be
    distinct. *)
 
-def : 
+def :
   | ind = inter_def
       { InterDef ind }
   | fund = fun_def
@@ -546,7 +553,7 @@ def :
    ports. The names of message parameters as well as the names of
    source and destination ports should be considered documentation *)
 
-inter_def : 
+inter_def :
   | DIRECT; ni = named_inter
       { check_parsing_direct_inter ni;
         DirectInter ni }
@@ -554,7 +561,7 @@ inter_def :
       { check_parsing_adversarial_inter ni;
         AdversarialInter ni }
 
-named_inter : 
+named_inter :
   | inter_id = uident; LBRACE; inter = loc(option(inter)); RBRACE
       { match unloc inter with
         | None       ->
@@ -563,7 +570,7 @@ named_inter :
         | Some inter ->
             {id = inter_id; inter = inter} : named_inter }
 
-inter : 
+inter :
   | msgs = nonempty_list(message_def)
       { Basic msgs }
   | cis = nonempty_list(comp_item)
@@ -627,7 +634,7 @@ comp_item :
 
    The body of an ideal functionality is a state machine. *)
 
-fun_def :        
+fun_def :
   | FUNCT; name = uident; params = loc(option(fun_params));
     IMPLEM; dir_id = uident; adv_id = option(uident);
     fun_body = fun_body
@@ -643,11 +650,11 @@ fun_def :
          dir_id = dir_id; adv_id = adv_id;
          fun_body = fun_body} }
 
-fun_params : 
+fun_params :
   | LPAREN; fps = separated_list(COMMA, fun_param); RPAREN
       { fps }
 
-fun_param : 
+fun_param :
   | name = uident; COLON; dir_qid = uqident  (* qualified, allowing different
                                                 root *)
       { {id = name; dir_qid = dir_qid} : fun_param }
@@ -658,7 +665,7 @@ fun_body :
   | ifb = ideal_fun_body
       { FunBodyIdeal ifb }
 
-real_fun_body : 
+real_fun_body :
   | LBRACE; sfs = list(sub_fun_decl); pdfs = loc(list(party_def)); RBRACE
       { if List.is_empty (unloc pdfs)
         then error_message (loc pdfs)
@@ -674,7 +681,7 @@ ideal_fun_body :
 (* a subfunctionality declaration declares a new instance
    of an ideal functionality *)
 
-sub_fun_decl : 
+sub_fun_decl :
   | SUBFUN; id = uident; EQ; fun_qid = uqident;  (* qualified, allowing
                                                     different root *)
       { {id = id; fun_qid = fun_qid} : sub_fun_decl }
@@ -694,15 +701,15 @@ sub_fun_decl :
    inter id paths, consisting of the name of a composite interface,
    followed by the name of one of its sub-interfaces. *)
 
-party_def : 
+party_def :
   | PARTY; id = uident; serves = serves; sm = state_machine
      { {id = id; serves = serves; states = sm} }
 
-serves : 
+serves :
   | SERVES; serves = list(uqident)
       { serves }
 
-state_machine : 
+state_machine :
   | LBRACE; sds = nonempty_list(state_def) RBRACE
       { sds }
 
@@ -713,7 +720,7 @@ state_machine :
    and describes how incoming messages should be matched and processed
    via a nonempty list of message matching clauses *)
 
-state_def : 
+state_def :
   | INITIAL; st = state
       { let params = unloc (st : state).params in  (* type hint necessary *)
         if not (List.is_empty params)
@@ -726,7 +733,7 @@ state_def :
       { FollowingState
         {id = (st : state).id; params = st.params; code = st.code} }
 
-state : 
+state :
   | STATE; id = uident; params = loc(option(state_params)); code = state_code
       { let uparams = unloc params |? [] in
         {id = id;
@@ -737,15 +744,15 @@ state_params :
   LPAREN; params = type_bindings; RPAREN
     { params }
 
-state_code : 
+state_code :
   | LBRACE; vars = local_var_decls; mm = message_matching; RBRACE
       { {vars = vars; mmclauses = mm} }
 
-local_var_decls : 
+local_var_decls :
   | lvds = list(local_var_decl)
       { List.flatten lvds }
 
-local_var_decl : 
+local_var_decl :
   | VAR; lvs = separated_nonempty_list(COMMA, lident); COLON;
     t = loc(type_exp) SEMICOLON
       { List.map (fun lv -> {id = lv; ty = t}) lvs }
@@ -852,7 +859,6 @@ local_var_decl :
    The message matching clauses must be exhaustive - cover all
    possible paths - and non-redundant. *)
 
-
 message_matching :
   | MATCH; MESSAGE; WITH; PIPE?
     mmcs = loc(separated_list(PIPE, msg_match_clause)); END
@@ -903,7 +909,7 @@ msg_pat :
          msg_path_pat = (mmb : symbol msg_pat_body).msg_path_pat;
          pat_args = mmb.pat_args} }
 
-msg_pat_body : 
+msg_pat_body :
   | msg_path_pat = msg_path_pat; pat_args = option(pat_args)
       { {msg_path_pat = msg_path_pat; pat_args = pat_args}
           : symbol msg_pat_body }
@@ -912,19 +918,19 @@ pat_args :
   | LPAREN; pa = separated_list(COMMA, pat); RPAREN
       { pa }
 
-pat : 
+pat :
   | id = lident
       { PatId id }
   | l = loc(UNDERSCORE)
       { PatWildcard (loc l) }
 
-msg_path_pat : 
+msg_path_pat :
   | mppqid = genqident(msg_path_end)
       { let l = loc mppqid in
         let (iip, msg_or_star) = unloc mppqid in
         mk_loc l {inter_id_path = iip; msg_or_star = msg_or_star} }
 
-msg_path_end : 
+msg_path_end :
   | id = lident
       { MsgOrStarMsg (unloc id) }
   | STAR
@@ -987,7 +993,7 @@ msg_path_end :
    have type port and stand for the internal port of the given party
    *)
 
-sim_def : 
+sim_def :
   | SIM; name = uident; USES uses = uident;
     SIMS sims = uident; args = loc(option(sim_fun_args));
     sms = state_machine
@@ -995,13 +1001,13 @@ sim_def :
         {id = name; uses = uses; sims = sims;
          sims_arg_qids = mk_loc (loc args) uargs; states = sms} }
 
-sim_fun_args : 
+sim_fun_args :
   | LPAREN; args = separated_list(COMMA, uqident); RPAREN
       { args }
 
 (* Instructions *)
 
-inst_block : 
+inst_block :
   | LBRACE; is = loc(list(instruction)); RBRACE
       { is }
 
@@ -1009,7 +1015,7 @@ inst_block :
   | x = loc(instruction_u)
       { x }
 
-instruction_u : 
+instruction_u :
   | i = assignment
       { i }
   | i = ifthenelse
@@ -1032,7 +1038,7 @@ assign_lhs :
   | LPAREN; ids = plist2(lident, COMMA); RPAREN
       { LHSTuple ids }
 
-assignment : 
+assignment :
   | lhs = assign_lhs; LARROW; e = expr; SEMICOLON
       { Assign (lhs, e) }
   | lhs = assign_lhs; LESAMPLE; e = expr; SEMICOLON
@@ -1040,11 +1046,11 @@ assignment :
 
 (* Conditional (if-then-else) Instructions *)
 
-ifthenelse : 
+ifthenelse :
   | IF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
-iftail : 
+iftail :
   | /* empty */
       { None }
   | ELSE; eins = inst_block
@@ -1057,7 +1063,7 @@ iftail :
   | x = loc(elifthenelse_u)
       { x }
 
-elifthenelse_u : 
+elifthenelse_u :
   | ELIF LPAREN; c = expr; RPAREN; tins = inst_block; ift = iftail
       { ITE (c, tins, ift) }
 
@@ -1080,7 +1086,7 @@ match_in :
 
 (* Control Transfer Instructions *)
 
-control_transfer : 
+control_transfer :
   | sat = send_and_transition; final_or_dot
       { SendAndTransition sat }
   | FAIL; final_or_dot
@@ -1112,7 +1118,7 @@ control_transfer :
    the initial state of an ideal functionality must send an
    adversarial message (waking up its simulator, when there is one). *)
 
-send_and_transition : 
+send_and_transition :
   | SEND; msg = msg_expr; ANDTXT; TRANSITION; state = state_expr
       { {msg_expr = msg; state_expr = state} }
 
@@ -1122,7 +1128,7 @@ msg_path :
         let qid = unloc lqid in
         mk_loc l {inter_id_path = fst qid; msg = snd qid} }
 
-msg_expr : 
+msg_expr :
   | path = msg_path; args = loc(option(args)); port_expr = option(dest)
       { let uargs = unloc args |? [] in
         {path = path; args = mk_loc (loc args) uargs; port_expr = port_expr} }
@@ -1133,12 +1139,12 @@ dest :
   | AT; LPAREN; ex = expr; RPAREN;
       { ex }
 
-state_expr : 
+state_expr :
   | id = uident; args = loc(option(args))
       { let uargs = unloc args |? [] in
         {id = id; args = mk_loc (loc args) uargs} }
 
-(* Interpreter commands *)  
+(* Interpreter commands *)
 
 interpreter_command :
   | c = loc(icomm); FINAL;
@@ -1161,9 +1167,9 @@ icomm :
   | c = debug_cmd         { c }
 
 load_uc_file :
-  | load = lident; file = uident; 
+  | load = lident; file = uident;
       {
-        if (unloc load) = "load" 
+        if (unloc load) = "load"
         then Load file
         else error_message (loc load)
              (fun ppf ->
@@ -1175,18 +1181,18 @@ undo_cmd :
   | UNDO; no = loc(word); { Undo no }
 
 add_var_cmd :
-  | VAR; v = type_binding; 
+  | VAR; v = type_binding;
       { AddVar v }
 
 add_ass_cmd :
-  | ASSUMPTION; id = ident; COLON; f = expr;  
+  | ASSUMPTION; id = ident; COLON; f = expr;
       { AddAss (id, f) }
 
 fun_ex_cmd :
   | FUNCT; fe = fun_expr { FunEx fe }
 
 comm_word :
-  | cw = lident; 
+  | cw = lident;
       {
         match (unloc cw) with
         | "real"   -> World Real
@@ -1195,7 +1201,7 @@ comm_word :
         | "step"   -> Step (None, None)
         | "finish" -> Finish
         | "quit"   -> Quit
-        | _        -> 
+        | _        ->
           error_message (loc cw)
           (fun ppf -> fprintf ppf
              "@[%s@ is@ not@ a@ valid@ interpreter@ command@]" (unloc cw))
@@ -1205,10 +1211,10 @@ assert_cmd :
   | c = assert_msg_out;      { c }
   | c = assert_other_effect; { c }
 
-assert_msg_out:
+assert_msg_out :
   | ASSERT; w = lident; sme = sent_msg_expr; ct = assert_ctrl;
       {
-        if (unloc w) = "msg_out" 
+        if (unloc w) = "msg_out"
         then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
         else error_message (loc w)
               (fun ppf ->
@@ -1216,7 +1222,7 @@ assert_msg_out:
                  "@[did@ you@ mean@ msg_out@ instead@ of@ %s?@]" (unloc w))
       }
 
-assert_ctrl:
+assert_ctrl :
   | ct = lident;
       {
         match (unloc ct) with
@@ -1226,7 +1232,7 @@ assert_ctrl:
            error_message (loc ct)
            (fun ppf ->
               fprintf ppf
-              "@[did@ you@ mean@ ctrl_env@ or@ ctrl_adv@ instead@ of@ %s?@]" 
+              "@[did@ you@ mean@ ctrl_env@ or@ ctrl_adv@ instead@ of@ %s?@]"
               (unloc ct))
       }
 
@@ -1237,7 +1243,7 @@ assert_other_effect :
         | "ok"       -> Assert (mk_loc (loc ew) EffectOK)
         | "rand"     -> Assert (mk_loc (loc ew) EffectRand)
         | "fail_out" -> Assert (mk_loc (loc ew) EffectFailOut)
-        | _          -> 
+        | _          ->
           error_message (loc ew)
           (fun ppf ->
              fprintf ppf "@[%s@ is@ not@ a@ valid@ effect@]" (unloc ew))
@@ -1260,7 +1266,7 @@ mod_pdbs :
 step_prover_hint :
   | step = lident; PROVER; pi = smt_info; HINT; mpdbso = option(mod_pdbs);
     {
-      if (unloc step) = "step" 
+      if (unloc step) = "step"
       then Step (Some pi, mpdbso)
       else error_message (loc step)
             (fun ppf ->
@@ -1269,7 +1275,7 @@ step_prover_hint :
     }
 
 prover_cmd :
-  | PROVER x = smt_info { Prover x } 
+  | PROVER x = smt_info { Prover x }
 
 hint_cmd :
   | HINT; mpdbs = mod_pdbs;
@@ -1281,19 +1287,19 @@ fun_expr :
       { FunExprArgs (x,y) }
 
 sent_msg_expr :
-  | src_pex = poa_pexpr; 
-    src_doa = dollar_or_at; 
-    path = msg_path; 
+  | src_pex = poa_pexpr;
+    src_doa = dollar_or_at;
+    path = msg_path;
     argsl = loc(option(args));
-    dest_doa = dollar_or_at; 
-    dest_pex = poa_pexpr; 
+    dest_doa = dollar_or_at;
+    dest_pex = poa_pexpr;
       { let uargsl = mk_loc (loc argsl) (unloc argsl |? []) in
         SME_Ord
-        { src_poa_pexpr =
+        { src_poa  =
             if src_doa then PoA_Addr src_pex else PoA_Port src_pex;
-          path = path;
-          args = uargsl;
-          dest_poa_pexpr =
+          path     = path;
+          args     = uargsl;
+          dest_poa =
             if dest_doa then PoA_Addr dest_pex else PoA_Port dest_pex;
         }
       }
@@ -1301,43 +1307,43 @@ sent_msg_expr :
     AT; UNDERSCORE; AT;
     dest_port = poa_pexpr;
       { SME_EnvAdv
-        { src_port_pexpr  = src_port;
-          dest_port_pexpr = dest_port;
+        { src_port  = src_port;
+          dest_port = dest_port;
         }
       }
 
-poa_pexpr:
+poa_pexpr :
   | id = idexpr; { id }
   | LPAREN; ex = expr; RPAREN; { ex }
-  
+
 dollar_or_at :
   | DOLLAR { true  }
   | AT     { false }
 
 (* prover command *)
 
-dbmap1:
+dbmap1 :
   | f = dbmap_flag? x = dbmap_target
-      { { EcParsetree.pht_flag = odfl `Include f;
-          EcParsetree.pht_kind = (fst x);
-          EcParsetree.pht_name = (snd x); } }
+      { { pht_flag = odfl `Include f;
+          pht_kind = (fst x);
+          pht_name = (snd x); } }
 
-%inline dbmap_flag:
+%inline dbmap_flag :
   | PLUS  { `Include }
   | MINUS { `Exclude }
 
-%inline dbmap_target:
+%inline dbmap_target :
   | AT x = uqident { (`Theory, x) }
   | x = qident     { (`Lemma , x) }
 
-dbhint:
+dbhint :
   | m = dbmap1           { [m] }
   | m = paren( dbmap1* ) {  m  }
 
-smt_info:
+smt_info :
   | li = smt_info1* { SMT.mk_smt_option li}
 
-smt_info1:
+smt_info1 :
   | t = word
       { `MAXLEMMAS (Some t) }
 
@@ -1353,26 +1359,26 @@ smt_info1:
   | x = lident po = prefix(EQ, smt_option)?
       { SMT.mk_pi_option x po }
 
-prover_kind1:
+prover_kind1 :
   | l = loc(STRING)       { `Only   , l }
   | PLUS  l = loc(STRING) { `Include, l }
   | MINUS l = loc(STRING) { `Exclude, l }
 
-prover_kind:
+prover_kind :
   | LBRACKET lp = prover_kind1* RBRACKET { lp }
 
-%inline smt_option:
+%inline smt_option :
   | n = word        { `INT n    }
   | d = dbhint      { `DBHINT d }
   | p = prover_kind { `PROVER p }
 
 (* Type Bindings and Arguments *)
 
-type_binding : 
+type_binding :
   | name = lident; COLON; t = loc(type_exp)
       { {id = name; ty = t} : type_binding }
 
-type_bindings : 
+type_bindings :
   | ps = separated_list(COMMA, type_binding) { ps }
 
 args :
@@ -1384,11 +1390,8 @@ args :
    everything below adapted from an older version of the EasyCrypt
    parser
 
-   the new version of the EasyCrypt parser treats expressions as a
-   subset of formulas; because the UC DSL does not need program
-   judgments and related formulas, we've made a decision to only parse
-   what we need and to do our own typechecking; we join the EasyCrypt
-   types post-typechecking *)
+   our expressions (expr) are restricted to what we actually need,
+   and we have made some changes (see UC DSL below) *)
 
 %inline _lident :
   | x = LIDENT { x }
@@ -1399,9 +1402,9 @@ args :
 %inline _tident :
   | x = TIDENT { x }
 
-%inline lident: x = loc(_lident) { x }
-%inline uident: x = loc(_uident) { x }
-%inline tident: x = loc(_tident) { x }
+%inline lident : x = loc(_lident) { x }
+%inline uident : x = loc(_uident) { x }
+%inline tident : x = loc(_tident) { x }
 
 %inline _ident :
   | x = _lident { x }
@@ -1455,8 +1458,8 @@ genqident(X) :
   | x = _boident      { x }
   | x = paren(PUNIOP) { x }
 
-%inline boident: x = loc(_boident) { x }
-%inline  oident: x = loc( _oident) { x }
+%inline boident : x = loc(_boident) { x }
+%inline  oident : x = loc( _oident) { x }
 
 qoident :
   | x = boident
@@ -1555,56 +1558,56 @@ type_exp :
    our expressions have support for envport and intport -
    see below *)
 
-tyvar_byname1:
-| x = tident; EQ; ty = loc(type_exp) { (x, ty) }
+tyvar_byname1 :
+  | x = tident; EQ; ty = loc(type_exp) { (x, ty) }
 
-tyvar_instan:
-| lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
-| lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
+tyvar_instan :
+  | lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
+  | lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
 
-%inline tvars_instan:
-| LTCOLON k = loc(tyvar_instan) GT { k }
+%inline tvars_instan :
+  | LTCOLON k = loc(tyvar_instan) GT { k }
 
-%inline sexpr: x = loc(sexpr_u) { x }
-%inline  expr: x = loc( expr_u) { x }
+%inline sexpr : x = loc(sexpr_u) { x }
+%inline  expr : x = loc( expr_u) { x }
 
 (* begin UC DSL *)
 
-%inline idexpr: x = loc(idexpr_u) { x }
+%inline idexpr : x = loc(idexpr_u) { x }
 
 idexpr_u :
   | x = qoident; ti = tvars_instan?
-      { PEident (x, ti) }
+      { PFident (x, ti) }
 
 (* end UC DSL *)
 
 sexpr_u :
   | e = sexpr; PCENT; p = uqident
-      { PEscope (p, e) }
+      { PFscope (p, e) }
 
   | e=sexpr p=loc(prefix(PCENT, _lident))
       { if unloc p = "top" then
-          PEscope (pqsymb_of_symb p.pl_loc "<top>", e)
+          PFscope (pqsymb_of_symb p.pl_loc "<top>", e)
         else
           let p = lmap (fun x -> "%" ^ x) p in
-          PEapp (mk_loc (loc p) (PEident (pqsymb_of_psymb p, None)), [e]) }
+          PFapp (mk_loc (loc p) (PFident (pqsymb_of_psymb p, None)), [e]) }
 
   | LPAREN; e = expr; COLONTILD; ty = loc(type_exp); RPAREN
-      { PEcast (e, ty) }
+      { PFcast (e, ty) }
 
   | n = uint
-      { PEint n }
+      { PFint n }
 
   | d = DECIMAL
-      { PEdecimal d }
+      { PFdecimal d }
 
 (* begin UC DSL *)
 
   | x = loc(ENVPORT)  (* envport function *)
-      { PEident (mk_loc (loc x) ([], "envport"), None) }
+      { PFident (mk_loc (loc x) ([], "envport"), None) }
 
   | y = loc(INTPORT); x = uqident  (* internal port names *)
-      { PEident
+      { PFident
         (mk_loc (merge (loc y) (loc x))
          ([], "intport:" ^ string_of_qsymbol (unloc x)),
          None) }
@@ -1614,99 +1617,99 @@ sexpr_u :
 (* end UC DSL *)
 
   | op = loc(numop); ti = tvars_instan?
-       { peapp_symb op.pl_loc op.pl_desc ti [] }
+       { pfapp_symb op.pl_loc op.pl_desc ti [] }
 
   | se = sexpr; DLBRACKET; ti = tvars_instan?; e = loc(plist1(expr, COMMA));
     RBRACKET
-      { let e = List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e) (unloc e) in
-        peget (EcLocation.make $startpos $endpos) ti se e }
+      { let e = List.reduce1 (fun _ -> lmap (fun x -> PFtuple x) e) (unloc e) in
+        pfget (EcLocation.make $startpos $endpos) ti se e }
 
   | se = sexpr; DLBRACKET; ti = tvars_instan?; e1=loc(plist1(expr, COMMA));
     LARROW e2=expr RBRACKET
       { let e1 =
-          List.reduce1 (fun _ -> lmap (fun x -> PEtuple x) e1) (unloc e1) in
-        peset (EcLocation.make $startpos $endpos) ti se e1 e2 }
+          List.reduce1 (fun _ -> lmap (fun x -> PFtuple x) e1) (unloc e1) in
+        pfset (EcLocation.make $startpos $endpos) ti se e1 e2 }
 
   | TICKPIPE; ti = tvars_instan?; e = expr; PIPE
-      { peapp_symb e.pl_loc EcCoreLib.s_abs ti [e] }
+      { pfapp_symb e.pl_loc EcCoreLib.s_abs ti [e] }
 
   | LBRACKET; ti = tvars_instan?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
-      { unloc (pelist es.pl_loc ti es.pl_desc) }
+      { unloc (pflist es.pl_loc ti es.pl_desc) }
 
   | LBRACKET; ti = tvars_instan?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
       { let id =
-          PEident (mk_loc op.pl_loc EcCoreLib.s_dinter, ti)
-        in PEapp(mk_loc op.pl_loc id, [e1; e2]) }
+          PFident (mk_loc op.pl_loc EcCoreLib.s_dinter, ti)
+        in PFapp(mk_loc op.pl_loc id, [e1; e2]) }
 
   | LPAREN; es = plist0(expr, COMMA); RPAREN
-      { PEtuple es }
+      { PFtuple es }
 
   | r = loc(RBOOL)
-      { PEident (mk_loc r.pl_loc EcCoreLib.s_dbool, None) }
+      { PFident (mk_loc r.pl_loc EcCoreLib.s_dbool, None) }
 
   | LPBRACE; fields = rlist1(expr_field, SEMICOLON); SEMICOLON?; RPBRACE
-      { PErecord (None, fields) }
+      { PFrecord (None, fields) }
 
   | LPBRACE; b = sexpr; WITH; fields = rlist1(expr_field, SEMICOLON);
     SEMICOLON? RPBRACE
-      { PErecord (Some b, fields) }
+      { PFrecord (Some b, fields) }
 
   | e = sexpr DOTTICK x = qident
-      { PEproj (e, x) }
+      { PFproj (e, x) }
 
   | e = sexpr DOTTICK n = loc(word)
       { if n.pl_desc = 0 then
           error_message n.pl_loc
           (fun ppf ->
              Format.fprintf ppf "@[tuple@ projections@ start@ at@ 1@]");
-        PEproji(e,n.pl_desc - 1) }
+        PFproji(e,n.pl_desc - 1) }
 
 expr_u :
   | e = sexpr_u { e }
 
   | e = sexpr; args = sexpr+
-       { PEapp (e, args) }
+       { PFapp (e, args) }
 
   | op = loc(uniop); ti = tvars_instan?; e = expr
-       { peapp_symb op.pl_loc op.pl_desc ti [e] }
+       { pfapp_symb op.pl_loc op.pl_desc ti [e] }
 
   | e = expr_chained_orderings %prec prec_below_order
        { fst e }
 
   | e1 = expr; op = loc(NE); ti = tvars_instan?; e2=expr
-       { peapp_symb op.pl_loc "[!]" None
-         [ mk_loc op.pl_loc (peapp_symb op.pl_loc "=" ti [e1; e2])] }
+       { pfapp_symb op.pl_loc "[!]" None
+         [ mk_loc op.pl_loc (pfapp_symb op.pl_loc "=" ti [e1; e2])] }
 
   | e1 = expr; op = loc(binop); ti = tvars_instan?; e2=expr
-       { peapp_symb op.pl_loc op.pl_desc ti [e1; e2] }
+       { pfapp_symb op.pl_loc op.pl_desc ti [e1; e2] }
 
   | c = expr; QUESTION; e1 = expr; COLON; e2 = expr; %prec LOP2
-      { PEif (c, e1, e2) }
+      { PFif (c, e1, e2) }
 
   | IF; c = expr; THEN; e1 = expr; ELSE; e2 = expr
-      { PEif (c, e1, e2) }
+      { PFif (c, e1, e2) }
 
   | MATCH; e = expr; WITH;
     PIPE?; bs = plist0(p = mcptn(sbinop); IMPL; be = expr { (p, be) }, PIPE);
     END
-      { PEmatch (e, bs) }
+      { PFmatch (e, bs) }
 
   | LET; p = lpattern; EQ; e1 = expr; IN; e2 = expr
-      { PElet (p, (e1, None), e2) }
+      { PFlet (p, (e1, None), e2) }
 
   | LET; p = lpattern; COLON; ty = loc(type_exp); EQ; e1 = expr; IN; e2 = expr
-      { PElet (p, (e1, Some ty), e2) }
+      { PFlet (p, (e1, Some ty), e2) }
 
   | r = loc(RBOOL); TILD; e = sexpr
-       { let id  = PEident(mk_loc r.pl_loc EcCoreLib.s_dbitstring, None) in
+       { let id  = PFident(mk_loc r.pl_loc EcCoreLib.s_dbitstring, None) in
          let loc = EcLocation.make $startpos $endpos in
-         PEapp (mk_loc loc id, [e]) }
+         PFapp (mk_loc loc id, [e]) }
 
   | FUN; pd = ptybindings; IMPL; e = expr
-  | FUN; pd = ptybindings; COMMA; e = expr { PElambda (pd, e) }
+  | FUN; pd = ptybindings; COMMA; e = expr { PFlambda (pd, e) }
 
-  | FORALL; pd = ptybindings; COMMA; e = expr { PEforall (pd, e) }
-  | EXIST; pd = ptybindings; COMMA; e = expr { PEexists (pd, e) }
+  | FORALL; pd = pgtybindings; COMMA; e = expr { PFforall (pd, e) }
+  | EXIST; pd = pgtybindings; COMMA; e = expr { PFexists (pd, e) }
 
 mcptn(BOP):
   | c = qoident; tvi = tvars_instan?; ps = bdident*
@@ -1743,16 +1746,16 @@ expr_ordering :
 expr_chained_orderings :
   | e = expr_ordering
       { let (op, ti, e1, e2) = e in
-        (peapp_symb op.pl_loc (unloc op) ti [e1; e2], e2) }
+        (pfapp_symb op.pl_loc (unloc op) ti [e1; e2], e2) }
 
   | e1 = loc(expr_chained_orderings); op = loc(ordering_op);
     ti = tvars_instan?; e2 = expr
       { let (lce1, (e1, le)) = (e1.pl_loc, unloc e1) in
         let loc = EcLocation.make $startpos $endpos in
-        (peapp_symb loc "&&" None
+        (pfapp_symb loc "&&" None
          [EcLocation.mk_loc lce1 e1;
           EcLocation.mk_loc loc
-          (peapp_symb op.pl_loc (unloc op) ti [le; e2])],
+          (pfapp_symb op.pl_loc (unloc op) ti [le; e2])],
          e2) }
 
 pty_varty :
@@ -1775,6 +1778,14 @@ ptybindings :
 
   | x = bdident+; COLON; ty = loc(type_exp)
       { [x, ty] }
+
+pgtybinding1 :
+  | x=ptybinding1
+      { List.map (fun (xs, ty) -> (xs, PGTY_Type ty)) x }
+  (* EasyCrypt has more options *)
+
+pgtybindings :
+  | x=pgtybinding1+ { List.flatten x }
 
 (* Localization *)
 
@@ -1809,7 +1820,6 @@ iplist1_r(X, S) :
 %inline empty :
   | /**/ { () }
 
-(* -------------------------------------------------------------------- *)
 __rlist1(X, S):                         (* left-recursive *)
   | x = X { [x] }
   | xs = __rlist1(X, S); S; x = X { x :: xs }
@@ -1824,7 +1834,6 @@ __rlist1(X, S):                         (* left-recursive *)
 %inline rlist2(X, S) :
   | xs = __rlist1(X, S); S; x = X { List.rev (x :: xs) }
 
-(* -------------------------------------------------------------------- *)
 %inline paren(X) :
   | LPAREN; x = X; RPAREN { x }
 
@@ -1834,7 +1843,6 @@ __rlist1(X, S):                         (* left-recursive *)
 %inline bracket(X) :
   | LBRACKET; x = X; RBRACKET { x }
 
-(* -------------------------------------------------------------------- *)
 %inline seq(X, Y) :
   | x = X; y = Y { (x, y) }
 
