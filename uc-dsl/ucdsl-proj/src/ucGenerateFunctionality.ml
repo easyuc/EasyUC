@@ -11,12 +11,10 @@ let state_name_pt (ptname : string) (sname : string) : string =
 let state_type_name_pt (ptname : string) : string =
   "_state_"^ptname
 
-let uc__if = "UC__IF"
+
 let uc__sim = "UC__SIM"
 let _RF = "RF"
 let _IF = "IF"
-let _st = "_st"
-let st_name (name : string) = "_st_"^name
 let _m = "_m"
 let _r = "_r"
 let _x = "_x"
@@ -948,7 +946,7 @@ let print_glob_operator op_name top_type sub_type ppf range =
       Format.fprintf ppf "@]"
 
 let print_cloneRF_MakeRF ppf
-(id,rfbt,grm : string * real_fun_body_tyd * int list IdMap.t) : unit =
+(id,rfbt,gvil : string * real_fun_body_tyd * globVarId list) : unit =
 (*
   op rf_info <-
   {|
@@ -1038,7 +1036,7 @@ apply UC__RF._invoke.
     Format.fprintf ppf
 "@[(* now we lift our invariant, termination metric and lemmas to
    RFRP *)@]@;@;";
-    let range = get_MakeRFs_glob_range_of_fully_real_fun_glob_core grm in
+    let range = get_MakeRFs_glob_range_of_fully_real_fun_glob_core gvil in
     Format.fprintf ppf "@[%a@]@;@;"
     (print_glob_operator "glob_RFRP_to_Core" _RFRP real) range;
     Format.fprintf ppf
@@ -1099,7 +1097,7 @@ let print_party_state_metric
     
 let print_RF_metric (id : string) (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (grm : int list IdMap.t)
+      (gvil : globVarId list)
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd)
     : unit =
   let module_name = uc_name id in
@@ -1118,7 +1116,7 @@ let print_RF_metric (id : string) (root : string)
     let stn = state_type_name_pt pn in
     let svn = st_name pn in
     let invar_op_name = invar_pt_op_name pn in
-    let svim = get_glob_indices_of_real_fun_parties rfbt grm in
+    let svim = get_glob_indices_of_real_fun_parties rfbt gvil in
     let lemma_pt_metric_good_name = _metric_pt_good pn in
     let print_Pt_lemma_metric_invoke (ppf : Format.formatter)
     (globop : string) : unit =
@@ -1166,12 +1164,12 @@ let print_RF_metric (id : string) (root : string)
   let print_glob_operators () =
     Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name_own module_name) moduleRP module_name)
-      (get_own_glob_range_of_fully_real_fun_glob_core rfbt grm);
+      (get_own_glob_range_of_fully_real_fun_glob_core rfbt gvil);
     List.iter (fun pmn -> Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name module_name (uc_name pmn))
          moduleRP (module_name_RF pmn))
-      (IdMap.find pmn grm)) pmns;
-    let ogrs = get_own_glob_ranges_of_real_fun rfbt grm in
+      (get_glob_range_of_parameter gvil pmn)) pmns;
+    let ogrs = get_own_glob_ranges_of_real_fun rfbt gvil in
     List.iter (fun sfn -> Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name module_name (uc_name sfn))
          module_name (module_name_IF sfn))
@@ -1342,7 +1340,7 @@ let print_RF_metric (id : string) (root : string)
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
       (rapm : rf_addr_port_maps)
-      (dii : symb_pair IdMap.t) (grm : int list IdMap.t): string =
+      (dii : symb_pair IdMap.t) (gvil : globVarId list) : string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
@@ -1351,20 +1349,20 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
                                     rapm.party_ext_port_id) rfbt;
   Format.fprintf sf "@[<v>%a@]@;@;"
-    (print_RF_metric id root mbmap dii grm) rfbt;
+    (print_RF_metric id root mbmap dii gvil) rfbt;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
-  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt,grm);
+  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
 let gen_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t)
       (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
-      (grm : int list IdMap.t) : string =
+      (gvil : globVarId list) : string =
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
-  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii grm
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii gvil
 
 let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)

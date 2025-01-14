@@ -27,7 +27,13 @@ let pp_form (sc : EcScope.scope) (ppf : Format.formatter) (form : EcFol.form)
   EcPrinting.pp_form ppe ppf form
 
 let _self = "_self"
+
+let _st = "_st"
+
+let st_name (name : string) = "_st_"^name
+
 let adv = "adv"
+
 let _pi = "pi"
 
 let open_theory (name : string) : string = "theory "^name^"."
@@ -45,6 +51,8 @@ let uc__name (name : string) : string = "UC__"^name
 let uc__code = "UC__Code"
 
 let uc__rf = "UC__RF"
+
+let uc__if = "UC__IF"
 
 let adv_if_pi_op_name = "_adv_if_pi"
 
@@ -377,22 +385,23 @@ let get_own_glob_size_map (ftm : fun_tyd IdPairMap.t) : int IdPairMap.t =
   in
   IdPairMap.map (fun ft -> ogs ft) ftm
 
-type pSP = NoP of SP.t | P of (SP.t * (pSP list))
+type pSP = IF of SP.t | RF of (SP.t * (pSP list))
 
 let getSP (psp : pSP) : SP.t =
   match psp with
-  | NoP sp -> sp
-  | P (sp, _) -> sp
+  | IF sp -> sp
+  | RF (sp, _) -> sp
 
 let rec get_glob_size_w_params (ftm : fun_tyd IdPairMap.t) (func : pSP) : int =
   let ogsm = get_own_glob_size_map ftm in
   match func with
-  | NoP sp -> IdPairMap.find sp ogsm
-  | P (sp, params) ->
+  | IF sp -> IdPairMap.find sp ogsm
+  | RF (sp, params) ->
      let psize (psp : pSP) : int =
        let is_real  = is_real_fun_body_tyd
                         (EcLocation.unloc (IdPairMap.find (getSP psp) ftm)) in
        (get_glob_size_w_params ftm psp) +
+       (*+1 for MakeRF._self*)  
        (if is_real then 1 else 0)
      in
      let own = IdPairMap.find sp ogsm in
@@ -403,7 +412,7 @@ let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
   let ft = IdPairMap.find funcId mt.fun_map in
   let fbt = EcLocation.unloc ft in
   if (is_ideal_fun_body_tyd fbt)
-  then NoP funcId
+  then IF funcId
   else
     let np = num_params_of_real_fun_tyd ft in
     let get_nth_param_id n =
@@ -415,75 +424,124 @@ let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
       | UI_Triple ti -> (ti.ti_root, ti.ti_real)
     in
     let paramIds = List.init np (fun n -> get_nth_param_id n) in
-    P (funcId, List.map (fun fid -> make_fully_real_pSP mt fid) paramIds)
+    RF (funcId, List.map (fun fid -> make_fully_real_pSP mt fid) paramIds)
 
-let get_glob_ranges_of_fully_real_fun_glob_core
-(mt : maps_tyd) (funcId : SP.t) : int list IdMap.t =
-  let rfbt = real_fun_body_tyd_of
-               (EcLocation.unloc (IdPairMap.find funcId mt.fun_map )) in
-  let pn = List.sort compare (fst (List.split (IdMap.bindings rfbt.parties))) in
-  let partyMap, last = List.fold_left (fun (pm,i) pid ->
-    ((IdMap.add pid [i+1] pm ), i+1)) (IdMap.empty,1) pn in
-  (*_self is 1, _st_Pt1 is 2, _st_Pt2 is 3, etc.*)
-  let frrp = make_fully_real_pSP mt funcId in
-  let psizes = match frrp with
-    | NoP _ -> []
-    | P (_ , params) ->
-       List.map (fun psp ->
-           let is_real  = is_real_fun_body_tyd
-             (EcLocation.unloc (IdPairMap.find (getSP psp) mt.fun_map)) in
-           (get_glob_size_w_params mt.fun_map psp) +
-           (if is_real then 1 else 0)) params in
-  let range last size = List.init size (fun n -> last + 1 + n)
-  in
-  let params = IdMap.to_list rfbt.params in
-  let params = fst (List.split params) in
-  let params = List.combine params psizes in
-  let paramMap, last = List.fold_right (fun (id,size) (map, last) ->
-    IdMap.add id (range last size) map, last+size) params (IdMap.empty,last) in
-  let sn = List.sort compare
-             (fst (List.split (IdMap.bindings rfbt.sub_funs))) in
-  let subfunMap, _ = List.fold_left (fun (pm,i) sfid ->
-    ((IdMap.add sfid [i+1; i+2] pm ), i+2))
-                       (IdMap.empty,last) sn in
-  let f = fun _ _ _ -> UcMessage.failure "cannot happen" in
-  IdMap.union f (IdMap.union f partyMap paramMap) subfunMap
+type globVarId = string list * string
+
+let get_subfun_path (thpath : string list) (sfname : string) (rootid : string) =
+  thpath @ [sfname] @ [uc__code] @ [uc__if] @ [rootid]
+
+let get_IF_globVarIds (funpath : string list) : globVarId list =
+  [
+    (funpath, _self);
+    (funpath, _st)
+  ]
+
+let get_subfun_globVarIds
+(thpath : string list) (sfname : string) (rootid : string) : globVarId list =
+  let funpath = get_subfun_path thpath sfname rootid in
+  get_IF_globVarIds funpath
+
+let get_party_globVarId (funpath : string list) (ptname : string) : globVarId =
+  (funpath, (st_name ptname))
+
+let get_self_globVarId (funpath : string list) : globVarId =
+  (funpath, _self)
+
+let get_MakeRF_self_globVarId  (thpath : string list) : globVarId  =
+  (thpath @ [uc__code] @ ["RFCore"] @ ["MakeRF"], "self")
+  
+let rec get_globVarIds
+(mt : maps_tyd) (psp : pSP) (thpath : string list) (funsufix : string list)
+        : globVarId list =
+  let funpath : string list = thpath @ funsufix in
+  let fbt = (EcLocation.unloc (IdPairMap.find (getSP psp) mt.fun_map)) in
+  match psp with
+  | RF (_ , params) ->
+    let rfbt = real_fun_body_tyd_of fbt in
+    let subfunglobs = IdMap.mapi (fun id ( _ , rid) ->
+                          get_subfun_globVarIds thpath id rid) rfbt.sub_funs in
+    let subfunglobs = List.flatten
+                        (snd (List.split (IdMap.bindings subfunglobs))) in
+    let partyglobs = IdMap.mapi (fun id _ ->
+                         get_party_globVarId funpath id) rfbt.parties in
+    let partyglobs = snd (List.split(IdMap.bindings partyglobs)) in
+    let ownglobs = [get_self_globVarId funpath] @ partyglobs @ subfunglobs in
+    let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+    let paraml = List.combine param_names params in
+    let paramglobs = List.map (fun (id, psp) ->
+                         let thpath = thpath @ [id] @ [uc__code]in
+                         let ifrfth = match psp with
+                           | IF _ -> uc__if
+                           | RF _ -> uc__rf
+                         in
+                         let funsufix = [ifrfth] @ [fst (getSP psp)] in
+                         let globs = get_globVarIds mt psp thpath funsufix in
+                         let makeRFself = get_MakeRF_self_globVarId thpath in
+                         makeRFself :: globs
+                       ) paraml
+    in
+    let paramglobs = List.flatten paramglobs in
+    ownglobs @ paramglobs
+  | IF _ -> get_IF_globVarIds funpath
+      
+    
+let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
+  let c = List.compare compare (fst g1) (fst g2) in
+  if c = 0
+  then compare (snd g1) (snd g2)
+  else c
+  
+let get_globVarIds_of_fully_real_fun_glob_core
+      (mt : maps_tyd) (funcId : SP.t) : globVarId list =
+  let psp = make_fully_real_pSP mt funcId in
+  let ret = get_globVarIds mt psp [] [snd funcId] in
+  List.sort compare_globVarIds ret
 
 let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
-      (grm : int list IdMap.t) : int list =
-  let union = IdMap.fold (fun _ il acc -> acc@il) grm [] in
-  let union = List.sort (fun i1 i2 -> i1 - i2) union in
-  let min = List.hd union in
-  let max = List.nth union ((List.length union)-1)  in
-  List.init (max - min + 1) (fun i->i+2)
+      (gvil : globVarId list) : int list =
+  (*add +2, one to increment 0 and another one for MakeRF._self*)
+  List.init (List.length gvil) (fun i->i+2)
+
+let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
+  let indices = List.mapi (fun i a ->
+                    if f a
+                    then Some i
+                    else None
+                  ) l in
+  List.filter_map (fun i -> i) indices
 
 let get_own_glob_range_of_fully_real_fun_glob_core
-      (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list =
-  let partyrng = 
-  (IdMap.fold (fun id il acc ->
-       if (IdMap.mem id rfbt.parties) then acc@il else acc) grm []) in
-  let subfunrng = (IdMap.fold (fun id il acc ->
-       if (IdMap.mem id rfbt.sub_funs) then il@acc else acc) grm []) in
-  let rng = (List.rev partyrng)@[1]@subfunrng in
-  List.sort compare rng
-  
+      (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list =
+  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+  filter_indices gvil (fun gvi -> not (List.mem (List.hd(fst gvi)) param_names))
+
+let get_glob_range_of_parameter
+      (gvil : globVarId list) (pmn : string): int list =
+  filter_indices gvil (fun gvi -> List.hd(fst gvi) = pmn)
 
 let get_own_glob_ranges_of_real_fun
-  (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int list IdMap.t =
-  let params_range = IdMap.fold (fun id il acc ->
-    if (IdMap.mem id rfbt.params) then acc@il else acc) grm [] in
-  let sub_fun_shift = List.length params_range in
-  IdMap.filter_map (fun id rng ->
-      if (IdMap.mem id rfbt.params) then None
-      else
-        if (IdMap.mem id rfbt.parties) then Some rng
-        else
-          Some (List.map (fun i -> i-sub_fun_shift) rng)
-    ) grm
+      (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list IdMap.t =
+  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+  let owngvil =
+    List.filter
+      (fun gvi -> not(List.mem (List.hd(fst gvi)) param_names)) gvil in
+  let subfunmap = IdMap.mapi (fun id _ ->
+    filter_indices owngvil (fun gvi -> List.hd(fst gvi) = id)
+      ) rfbt.sub_funs in
+  let funcid = List.hd (fst (List.hd owngvil)) in
+  let partymap = IdMap.mapi (fun id _ ->
+    filter_indices owngvil
+      (fun gvi -> List.hd(fst gvi) = funcid
+                  && List.hd (List.tl (fst gvi)) = id)
+                   ) rfbt.parties in
+  IdMap.union (fun _ _ _ ->
+      UcMessage.failure "impossible, parties and sub_funs have different names")
+    subfunmap partymap
 
 let get_glob_indices_of_real_fun_parties
-      (rfbt : real_fun_body_tyd) (grm : int list IdMap.t) : int IdMap.t =
-  let ogrm = get_own_glob_ranges_of_real_fun rfbt grm in
+      (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int IdMap.t =
+  let ogrm = get_own_glob_ranges_of_real_fun rfbt gvil in
   IdMap.filter_map (fun id rng ->
       if (IdMap.mem id rfbt.parties)
       then Some (List.hd rng)
