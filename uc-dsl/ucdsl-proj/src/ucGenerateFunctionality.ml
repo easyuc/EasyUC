@@ -63,7 +63,8 @@ let module_params_string pmns : string =
     let tl = List.tl pmns in
     (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
 let _RFRP = "RFRP"
-let smt_sat_lemmas = "mem_oflist"
+let smt_sat_lemmas = "mem_oflist mem_rangeset"
+let rf_info = "rf_info"
 
 let print_state_type
       (sc : EcScope.scope)
@@ -945,6 +946,49 @@ let print_glob_operator op_name top_type sub_type ppf range =
       rhd (List.fold_left (fun acc i -> acc^", g.`"^(string_of_int i)) "" rtl);
       Format.fprintf ppf "@]"
 
+let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
+  let deduce_param_pis ppf rfbt =
+      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s.%s"
+        (uc_name pmn) uc__code adv_pi_num_op_name) rfbt.params
+  in
+  let begin_param_pis ppf rfbt =
+      if IdMap.is_empty rfbt.params
+      then ()
+      else
+        List.iteri (fun i (pmn, _) ->
+            if i>0 then Format.fprintf ppf "; "
+            ;
+            Format.fprintf ppf "%s"
+            (adv_pi_begin_param pmn)) (IdMap.bindings rfbt.params)
+  in
+  let end_param_pis ppf rfbt =
+      if IdMap.is_empty rfbt.params
+      then ()
+      else
+        List.iteri (fun i (pmn, _) ->
+            let nm = uc_name pmn in
+            if i>0 then Format.fprintf ppf "; "
+            ;
+            Format.fprintf ppf "%s + %s.%s.%s - 1"
+            (adv_pi_begin_param pmn) nm uc__code adv_pi_num_op_name)
+          (IdMap.bindings rfbt.params)
+  in
+  Format.fprintf ppf "@[op %s = {|@]@;" rf_info;
+  Format.fprintf ppf "@[rfi_num_parties = %i;@]@;"
+    (IdMap.cardinal rfbt.parties);
+  Format.fprintf ppf "@[rfi_num_subfuns = %i;@]@;"
+    (IdMap.cardinal rfbt.sub_funs);
+  Format.fprintf ppf "@[rfi_num_params = %i;@]@;"
+    (IdMap.cardinal rfbt.params);
+  Format.fprintf ppf "@[rfi_adv_pi_begin = %s;@]@;" adv_pi_begin_op_name;
+  Format.fprintf ppf "@[rfi_adv_pi_main_end = %s + %s - 1%a;@]@;"
+    adv_pi_begin_op_name adv_pi_num_op_name deduce_param_pis rfbt;
+  Format.fprintf ppf "@[rfi_adv_pi_begin_params = [%a];@]@;"
+    begin_param_pis rfbt;
+  Format.fprintf ppf "@[rfi_adv_pi_end_params = [%a];@]@;"
+    end_param_pis rfbt;
+  Format.fprintf ppf "@[|}.@]@;"
+
 let print_cloneRF_MakeRF ppf
 (id,rfbt,gvil : string * real_fun_body_tyd * globVarId list) : unit =
 (*
@@ -960,48 +1004,8 @@ let print_cloneRF_MakeRF ppf
     |}
 *)
   let print_cloneRF =
-    let deduce_param_pis ppf rfbt =
-      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s.%s"
-        (uc_name pmn) uc__code adv_pi_num_op_name) rfbt.params
-    in
-    let begin_param_pis ppf rfbt =
-      if IdMap.is_empty rfbt.params
-      then ()
-      else
-        List.iteri (fun i (pmn, _) ->
-            if i>0 then Format.fprintf ppf "; "
-            ;
-            Format.fprintf ppf "%s"
-            (adv_pi_begin_param pmn)) (IdMap.bindings rfbt.params)
-    in
-    let end_param_pis ppf rfbt =
-      if IdMap.is_empty rfbt.params
-      then ()
-      else
-        List.iteri (fun i (pmn, _) ->
-            let nm = uc_name pmn in
-            if i>0 then Format.fprintf ppf "; "
-            ;
-            Format.fprintf ppf "%s + %s.%s.%s - 1"
-            (adv_pi_begin_param pmn) nm uc__code adv_pi_num_op_name)
-          (IdMap.bindings rfbt.params)
-    in
     Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
-    Format.fprintf ppf "@[op rf_info <- {|@]@;";
-  Format.fprintf ppf "@[rfi_num_parties = %i;@]@;"
-    (IdMap.cardinal rfbt.parties);
-  Format.fprintf ppf "@[rfi_num_subfuns = %i;@]@;"
-    (IdMap.cardinal rfbt.sub_funs);
-  Format.fprintf ppf "@[rfi_num_params = %i;@]@;"
-    (IdMap.cardinal rfbt.params);
-  Format.fprintf ppf "@[rfi_adv_pi_begin = %s;@]@;" adv_pi_begin_op_name;
-  Format.fprintf ppf "@[rfi_adv_pi_main_end = %s + %s - 1%a;@]@;"
-    adv_pi_begin_op_name adv_pi_num_op_name deduce_param_pis rfbt;
-  Format.fprintf ppf "@[rfi_adv_pi_begin_params = [%a];@]@;"
-    begin_param_pis rfbt;
-  Format.fprintf ppf "@[rfi_adv_pi_end_params = [%a];@]@;"
-    end_param_pis rfbt;
-  Format.fprintf ppf "@[|}@]@;";
+    Format.fprintf ppf "@[op %s <- %s.%s@]@;" rf_info uc__rf rf_info;
   Format.fprintf ppf "@[proof *.@]@;";
   Format.fprintf ppf "@[realize rf_info_valid. smt(%s). qed.@]@;@;"
     adv_pi_begin_gt0_axiom_name
@@ -1028,7 +1032,8 @@ qed.@]@;@;"
   [RFRP.invoke :
    UC__RF._invar (glob %s) /\\ UC__RF._metric (glob %s) = n ==>
    UC__RF._invar (glob %s) /\\@;
-   (res <> None => UC__RF._metric (glob %s) < n)].
+ (res <> None => UC__RF._metric (glob %s) < n@;
+ /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info UC__RF.rf_info))].
 proof.
 apply (RFCore.MakeRF_invoke_term_metric_hoare (%s) UC__RF._invar UC__RF._metric).
 apply UC__RF._invoke.
@@ -1063,7 +1068,8 @@ lemma RFRP_invoke_term_metric_hoare (n : int) :
   [RFRP.invoke :
    RFRP_invar (glob RFRP) /\\ RFRP_metric (glob RFRP) = n ==>
    RFRP_invar (glob RFRP) /\\
-   (res <> None => RFRP_metric (glob RFRP) < n)].
+ (res <> None => RFRP_metric (glob RFRP) < n
+ /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info UC__RF.rf_info))].
 proof.
 rewrite /RFRP_invar /RFRP_metric /=.
 apply RFRP_Core_invoke_term_metric_hoare.
@@ -1128,10 +1134,13 @@ let print_RF_metric (id : string) (root : string)
         "@[lemma %s (n : int) %a : hoare [@]@;<0 2>@[<v>"
         (_invoke_pn pn) print_lemma_params pmns;
       Format.fprintf ppf
-        "%s%s.%s :@ %s (%s(glob %s)) = n@ ==>@ (res <> None =>@ %s (%s(glob %s)) < n)" 
+        "@[%s%s.%s :@ %s (%s(glob %s)) = n@ ==>@ (res <> None =>@ %s (%s(glob %s)) < n@]@;"
         module_name (module_params_string pmns) (proc_party_str pn)
         metric_name globop module_name
         metric_name globop module_name;
+      Format.fprintf ppf
+        "@[ /\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in  adv_pis_rf_info %s))@]"
+        mode_Adv rf_info;
       Format.fprintf ppf "@]@;].@;";
       Format.fprintf ppf
         "@[proof. rewrite /%s /=. proc. inline. (*inline procedure calls*)@]@;"
@@ -1210,14 +1219,14 @@ let print_RF_metric (id : string) (root : string)
     Format.fprintf ppf ".@]@;@;"
   in
   let print_invoke_lemma () =
-    let print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms =
+    let print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_hint =
       Format.fprintf ppf "@[  if.@]@;";
       Format.fprintf ppf "@[  exlim (%s(%s(%s(glob %s)))) => _sub_metric.@]@;"
         metric globop1 globop2 moduleRP;
       Format.fprintf ppf "@[  call (%s _sub_metric %s).@]@;"
         sub_invoke sub_invoke_pms;
       Format.fprintf ppf "@[  skip.@]@;";
-      Format.fprintf ppf "@[  smt().@]@;";
+      Format.fprintf ppf "@[  smt(%s).@]@;" smt_hint;
     in
     Format.fprintf ppf "@[<v>";
     Format.fprintf ppf "@[lemma %s (n : int)  : hoare [@]@;" _invoke;
@@ -1226,9 +1235,9 @@ let print_RF_metric (id : string) (root : string)
     uc_metric_name moduleRP;
     Format.fprintf ppf "@[  ==>@]@;";
     Format.fprintf ppf "@[  (res <> None =>@]@;";
-    Format.fprintf ppf "@[  %s (glob %s) < n)@]@;"
+    Format.fprintf ppf "@[  %s (glob %s) < n@]@;"
     uc_metric_name moduleRP;
-    Format.fprintf ppf "@[].@]@;";
+    Format.fprintf ppf "@[/\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info rf_info))].@]@;";
     Format.fprintf ppf "@[proof.@]@;";
     Format.fprintf ppf "@[rewrite /%s /=.@]@;" uc_metric_name;
     Format.fprintf ppf "@[  proc.@]@;";
@@ -1240,7 +1249,7 @@ let print_RF_metric (id : string) (root : string)
         let globop2 = glob_op_name_own module_name in
         let sub_invoke = ucsfn^"."^_invoke_IF in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_sat_lemmas 
       ) sfns;
     List.iter (fun pmn ->
         let ucpmn = uc_name pmn in
@@ -1249,7 +1258,7 @@ let print_RF_metric (id : string) (root : string)
         let globop2 = "" in
         let sub_invoke = ucpmn^"."^_invoke_RF in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_sat_lemmas
       ) pmns;
     List.iter (fun ptn ->
         let metric = uc_party_metric_name ptn in
@@ -1258,7 +1267,7 @@ let print_RF_metric (id : string) (root : string)
         let sub_invoke = (_invoke_pn ptn) in
         let sub_invoke_pms = List.fold_left(fun acc rpmn ->
           acc^" "^rpmn)  "" rpmns in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms ""
       ) ptns;
     Format.fprintf ppf "@[  skip.@]@;";
     Format.fprintf ppf "@[  smt().@]@;";
@@ -1344,6 +1353,7 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
+  Format.fprintf sf "@[%a@]@;@;" print_rf_info_operator rfbt;
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
