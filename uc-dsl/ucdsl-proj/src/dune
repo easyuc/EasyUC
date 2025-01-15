@@ -17,6 +17,5 @@
 
 (menhir
   (modules ucParser)
-  (flags --explain --dump)
-  (infer true)
-)
+  (explain true)
+  (flags --table))
