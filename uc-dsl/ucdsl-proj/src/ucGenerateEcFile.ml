@@ -210,6 +210,15 @@ let generate_ec (mt : maps_tyd) : unit =
       then get_globVarIds_of_fully_real_fun_glob_core mt sp 
       else []
     in
+    (*remove print
+    let print_gvi (gvi : globVarId) : unit =
+      print_endline "";
+      List.iter (fun s -> print_string (s^".")) (fst gvi);
+      print_string (snd gvi)
+    in
+    List.iter (fun gvi -> print_gvi gvi) gvil;
+    print_endline "";
+    end remove print*)
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
           (scope root) root id mbmap rapm ft dii gvil

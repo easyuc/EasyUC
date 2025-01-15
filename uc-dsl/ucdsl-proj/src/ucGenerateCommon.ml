@@ -429,7 +429,7 @@ let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
 type globVarId = string list * string
 
 let get_subfun_path (thpath : string list) (sfname : string) (rootid : string) =
-  thpath @ [sfname] @ [uc__code] @ [uc__if] @ [rootid]
+  thpath @ [uc_name sfname] @ [uc__code] @ [uc__if] @ [uc_name rootid]
 
 let get_IF_globVarIds (funpath : string list) : globVarId list =
   [
@@ -449,7 +449,7 @@ let get_self_globVarId (funpath : string list) : globVarId =
   (funpath, _self)
 
 let get_MakeRF_self_globVarId  (thpath : string list) : globVarId  =
-  (thpath @ [uc__code] @ ["RFCore"] @ ["MakeRF"], "self")
+  (thpath @ ["RFCore"] @ ["MakeRF"], "self")
   
 let rec get_globVarIds
 (mt : maps_tyd) (psp : pSP) (thpath : string list) (funsufix : string list)
@@ -470,12 +470,12 @@ let rec get_globVarIds
     let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
     let paraml = List.combine param_names params in
     let paramglobs = List.map (fun (id, psp) ->
-                         let thpath = thpath @ [id] @ [uc__code]in
+                         let thpath = thpath @ [uc_name id] @ [uc__code]in
                          let ifrfth = match psp with
                            | IF _ -> uc__if
                            | RF _ -> uc__rf
                          in
-                         let funsufix = [ifrfth] @ [fst (getSP psp)] in
+                         let funsufix = [ifrfth] @ [uc_name (fst(getSP psp))] in
                          let globs = get_globVarIds mt psp thpath funsufix in
                          let makeRFself = get_MakeRF_self_globVarId thpath in
                          makeRFself :: globs
@@ -487,20 +487,22 @@ let rec get_globVarIds
       
     
 let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
-  let c = List.compare compare (fst g1) (fst g2) in
-  if c = 0
-  then compare (snd g1) (snd g2)
-  else c
+  let l1 = List.length (fst g1) in
+  let l2 = List.length (fst g2) in
+  if l1 = l2
+  then
+    compare g1 g2
+  else l1 - l2
   
 let get_globVarIds_of_fully_real_fun_glob_core
       (mt : maps_tyd) (funcId : SP.t) : globVarId list =
   let psp = make_fully_real_pSP mt funcId in
-  let ret = get_globVarIds mt psp [] [snd funcId] in
+  let ret = get_globVarIds mt psp [] [uc_name (snd funcId)] in
   List.sort compare_globVarIds ret
 
 let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
       (gvil : globVarId list) : int list =
-  (*add +2, one to increment 0 and another one for MakeRF._self*)
+  (*add +2, one to increment 0 and another one to make up for MakeRF._self*)
   List.init (List.length gvil) (fun i->i+2)
 
 let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
@@ -509,31 +511,40 @@ let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
                     then Some i
                     else None
                   ) l in
-  List.filter_map (fun i -> i) indices
+  
+  let indxs = List.filter_map (fun i -> i ) indices in
+  (*+1 b.c. first indx in ec is 1, not 0*)
+  List.map (fun i -> i+1) indxs
+
+let param_names (rfbt : real_fun_body_tyd) =
+  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+  List.map (fun nm -> uc_name nm) param_names
 
 let get_own_glob_range_of_fully_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list =
-  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
-  filter_indices gvil (fun gvi -> not (List.mem (List.hd(fst gvi)) param_names))
+  let param_names = param_names rfbt in
+  filter_indices gvil (fun gvi ->
+      not (List.mem (List.hd(fst gvi)) param_names))
 
 let get_glob_range_of_parameter
       (gvil : globVarId list) (pmn : string): int list =
-  filter_indices gvil (fun gvi -> List.hd(fst gvi) = pmn)
+  filter_indices gvil (fun gvi ->  List.hd(fst gvi) = uc_name pmn)
 
 let get_own_glob_ranges_of_real_fun
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list IdMap.t =
-  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+  let param_names = param_names rfbt in
   let owngvil =
     List.filter
-      (fun gvi -> not(List.mem (List.hd(fst gvi)) param_names)) gvil in
+      (fun gvi ->
+        not(List.mem (List.hd(fst gvi)) param_names)) gvil in
   let subfunmap = IdMap.mapi (fun id _ ->
-    filter_indices owngvil (fun gvi -> List.hd(fst gvi) = id)
+    filter_indices owngvil (fun gvi -> List.hd(fst gvi) = uc_name id)
       ) rfbt.sub_funs in
   let funcid = List.hd (fst (List.hd owngvil)) in
   let partymap = IdMap.mapi (fun id _ ->
     filter_indices owngvil
       (fun gvi -> List.hd(fst gvi) = funcid
-                  && List.hd (List.tl (fst gvi)) = id)
+                  && (snd gvi) = (st_name id))
                    ) rfbt.parties in
   IdMap.union (fun _ _ _ ->
       UcMessage.failure "impossible, parties and sub_funs have different names")
