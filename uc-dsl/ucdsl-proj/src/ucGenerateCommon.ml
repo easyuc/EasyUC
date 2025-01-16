@@ -408,7 +408,7 @@ let rec get_glob_size_w_params (ftm : fun_tyd IdPairMap.t) (func : pSP) : int =
      let pms = List.fold_left (fun sum psp -> sum + (psize psp)) 0 params in
      own + pms
 
-let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
+let rec make_pSP (mt : maps_tyd) (funcId : SP.t) (real_params : bool): pSP =
   let ft = IdPairMap.find funcId mt.fun_map in
   let fbt = EcLocation.unloc ft in
   if (is_ideal_fun_body_tyd fbt)
@@ -421,12 +421,23 @@ let rec make_fully_real_pSP (mt : maps_tyd) (funcId : SP.t) : pSP =
       let rui = unit_info_of_root mt r in
       match rui with
       | UI_Singleton si -> (si.si_root, si.si_ideal)
-      | UI_Triple ti -> (ti.ti_root, ti.ti_real)
+      | UI_Triple ti -> if real_params
+                        then (ti.ti_root, ti.ti_real)
+                        else (ti.ti_root, ti.ti_ideal)
     in
     let paramIds = List.init np (fun n -> get_nth_param_id n) in
-    RF (funcId, List.map (fun fid -> make_fully_real_pSP mt fid) paramIds)
+    RF (funcId, List.map (fun fid -> make_pSP mt fid real_params) paramIds)
 
 type globVarId = string list * string
+
+let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
+  let l1 = List.length (fst g1) in
+  let l2 = List.length (fst g2) in
+  if l1 = l2
+  then
+    compare g1 g2
+  else l1 - l2
+
 
 let get_subfun_path (thpath : string list) (sfname : string) (rootid : string) =
   thpath @ [uc_name sfname] @ [uc__code] @ [uc__if] @ [uc_name rootid]
@@ -456,6 +467,7 @@ let rec get_globVarIds
         : globVarId list =
   let funpath : string list = thpath @ funsufix in
   let fbt = (EcLocation.unloc (IdPairMap.find (getSP psp) mt.fun_map)) in
+  let gvil = 
   match psp with
   | RF (_ , params) ->
     let rfbt = real_fun_body_tyd_of fbt in
@@ -484,23 +496,20 @@ let rec get_globVarIds
     let paramglobs = List.flatten paramglobs in
     ownglobs @ paramglobs
   | IF _ -> get_IF_globVarIds funpath
-      
-    
-let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
-  let l1 = List.length (fst g1) in
-  let l2 = List.length (fst g2) in
-  if l1 = l2
-  then
-    compare g1 g2
-  else l1 - l2
+  in
+  List.sort compare_globVarIds gvil
   
 let get_globVarIds_of_fully_real_fun_glob_core
       (mt : maps_tyd) (funcId : SP.t) : globVarId list =
-  let psp = make_fully_real_pSP mt funcId in
-  let ret = get_globVarIds mt psp [] [uc_name (snd funcId)] in
-  List.sort compare_globVarIds ret
+  let psp = make_pSP mt funcId true in
+  get_globVarIds mt psp [] [uc_name (snd funcId)]
 
-let get_MakeRFs_glob_range_of_fully_real_fun_glob_core
+let get_globVarIds_of_real_fun_w_ideal_params_glob_core
+      (mt : maps_tyd) (funcId : SP.t) : globVarId list =
+  let psp = make_pSP mt funcId false in
+  get_globVarIds mt psp [] [uc_name (snd funcId)]
+
+let get_MakeRFs_glob_range_of_real_fun_glob_core
       (gvil : globVarId list) : int list =
   (*add +2, one to increment 0 and another one to make up for MakeRF._self*)
   List.init (List.length gvil) (fun i->i+2)
@@ -520,7 +529,7 @@ let param_names (rfbt : real_fun_body_tyd) =
   let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
   List.map (fun nm -> uc_name nm) param_names
 
-let get_own_glob_range_of_fully_real_fun_glob_core
+let get_own_glob_range_of_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list =
   let param_names = param_names rfbt in
   filter_indices gvil (fun gvi ->
