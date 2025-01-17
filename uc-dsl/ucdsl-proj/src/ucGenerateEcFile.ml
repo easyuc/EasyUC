@@ -207,8 +207,8 @@ let generate_ec (mt : maps_tyd) : unit =
     in
     let gvil =
       if is_real_fun_tyd ft
-      then get_globVarIds_of_fully_real_fun_glob_core mt sp 
-      else []
+      then get_gvil mt sp 
+      else empty_gvil
     in
     (*remove print
     let print_gvi (gvi : globVarId) : unit =

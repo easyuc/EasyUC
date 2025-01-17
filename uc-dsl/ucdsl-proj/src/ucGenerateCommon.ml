@@ -489,8 +489,11 @@ let rec get_globVarIds
                          in
                          let funsufix = [ifrfth] @ [uc_name (fst(getSP psp))] in
                          let globs = get_globVarIds mt psp thpath funsufix in
-                         let makeRFself = get_MakeRF_self_globVarId thpath in
-                         makeRFself :: globs
+                         match psp with
+                           | IF _ -> globs
+                           | RF _ ->
+                              let makeRFself=get_MakeRF_self_globVarId thpath in
+                              makeRFself :: globs
                        ) paraml
     in
     let paramglobs = List.flatten paramglobs in
@@ -508,6 +511,21 @@ let get_globVarIds_of_real_fun_w_ideal_params_glob_core
       (mt : maps_tyd) (funcId : SP.t) : globVarId list =
   let psp = make_pSP mt funcId false in
   get_globVarIds mt psp [] [uc_name (snd funcId)]
+
+type gvil = { gvil_RP : globVarId list;
+              gvil_IP : globVarId list }
+
+let get_gvil (mt : maps_tyd) (funcId : SP.t) : gvil =
+  {
+    gvil_RP = get_globVarIds_of_fully_real_fun_glob_core mt funcId;
+    gvil_IP = get_globVarIds_of_real_fun_w_ideal_params_glob_core mt funcId
+  }
+
+let empty_gvil = {
+    gvil_RP = [];
+    gvil_IP = []
+  }
+                                                    
 
 let get_MakeRFs_glob_range_of_real_fun_glob_core
       (gvil : globVarId list) : int list =
