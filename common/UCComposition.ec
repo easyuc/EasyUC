@@ -1259,7 +1259,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None).
 exlim r{2} => r'.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r').
-auto; smt(inc_extl oget_some).
+auto; progress; smt(inc_extl oget_some).
 wp.
 (* start of reduction to second *)
 conseq
@@ -1370,7 +1370,7 @@ seq 0 1 :
      addr_eq_subfun rf_info CompGlobs.mrfc_self{1} m1{1}.`2.`1))).
 exlim r{2} => r'.
 call{2} (MakeInt.MI_after_adv_to_env Par Adv r').
-auto; smt(inc_extl oget_some).
+auto; progress; smt(inc_extl oget_some).
 rcondf{2} 1; first auto. rcondt{2} 1; first auto.
 rcondf{2} 2; first auto; smt().
 sp 0 1.
@@ -1425,7 +1425,7 @@ conseq
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
-   _); first smt().
+   _); first progress; smt().
 transitivity{1}
   {r <@ LeftMFRC.f(m1);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -2019,7 +2019,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None).
 exlim r{2} => r2'.
 call{2} (MakeInt.MI_after_adv_to_func Par Adv r2').
-auto; smt(inc_extl).
+auto; progress; smt(inc_extl).
 conseq
   (_ :
    m1{1} = m{2} /\ not_done0{1} /\ not_done{2} /\
@@ -2132,7 +2132,7 @@ seq 0 1 :
    CompGlobs.ce_stub_st{2} = None).
 exlim r{2} => r2'.
 call{2} (MakeInt.MI_after_adv_to_env Par Adv r2').
-auto;
+auto; progress [-delta];
   smt(inc_extl
       MakeInt.after_adv_to_func_ext_to_func_or_env).
 rcondf{2} 1; first auto. rcondt{2} 1; first auto.
@@ -2532,9 +2532,9 @@ if => //.
 inline{2} 1.
 rcondf{2} 2; first auto.
 inline{2} 2; sp 0 2.
-rcondt{2} 1; first auto.
-smt(le_pre le_cons not_le_other_branch not_le_ext_nonnil_l
-    rf_info_valid change_pari_valid).
+rcondt{2} 1; first auto; progress;
+  smt(le_pre le_cons not_le_other_branch not_le_ext_nonnil_l
+      rf_info_valid change_pari_valid).
 inline{2} 1.
 rcondt{2} 4; first auto.
 rcondt{2} 4; first auto.
@@ -2555,7 +2555,7 @@ seq 1 1 :
    CompGlobs.ce_stub_st{2} = None).
 exlim (term_par (glob Par){1}) => tp.
 call (Par_invoke tp).
-auto; smt().
+auto; progress; smt().
 case (r{1} = None).
 seq 1 1 :
   (r{1} = r2{2} /\ r{1} = None /\ !not_done{1} /\ !not_done0{2} /\
@@ -2589,7 +2589,7 @@ seq 1 1 :
 call{1}
   (MakeInt.MI_after_func_error (MakeRFComp(Rest, Par)) Adv).
 call{2} (MakeRFComp_after_par_or_rest_error Rest CompEnvStubPar).
-auto; smt().
+auto; progress; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
 seq 1 1 :
   (={r} /\ !not_done{1} /\ !not_done{2} /\
@@ -2858,7 +2858,7 @@ seq 1 1 :
    CompGlobs.ce_stub_st{2} = None).
 call{1} (MakeRFComp_after_par_or_rest_error Rest Par).
 call{2} (MakeRFComp_after_par_or_rest_error Rest CompEnvStubPar).
-auto; smt(pari_cond_after_par_or_rest_error_equiv).
+auto; progress; smt(pari_cond_after_par_or_rest_error_equiv).
 rcondf{1} 1; first auto.
 seq 1 0 :
   (r{1} = None /\ r{2} = None /\ !not_done{1} /\ !not_done{2} /\
@@ -2912,7 +2912,7 @@ seq 1 1 :
 exlim r{1} => r'.
 call{1} (MakeRFComp_after_par_or_rest_continue Rest Par r').
 call{2} (MakeRFComp_after_par_or_rest_continue Rest CompEnvStubPar r').
-auto; 
+auto; progress [-delta];
   smt(after_func_to_env_ch_pari_implies_after_par_or_rest_cont_or_error
       pari_cond_after_par_or_rest_error_equiv).
 conseq
@@ -4414,7 +4414,7 @@ conseq
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
    _).
-auto; smt(inc_nle_l).
+auto; progress; smt(inc_nle_l).
 transitivity{1}
   {r0 <@ LeftMFRC.f(m2);}
   (={glob Adv, glob Rest, glob Par, glob CompGlobs, glob MI} /\
@@ -4520,7 +4520,7 @@ call{1} (MakeInt.MI_after_func_error (MakeRFComp(Rest, Par)) Adv).
 call{2}
   (CompEnvMakeInt.MI_after_func_error (MakeRFComp(Rest, CompEnvStubPar))
    CompEnvStubAdv).
-auto; smt().
+auto; progress; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
 auto; smt().
 conseq
@@ -4537,13 +4537,13 @@ conseq
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None ==>
-   _); first smt(le_refl).
+   _); first progress; smt(le_refl).
 rcondt{2} 1; first auto.
 rcondf{2} 1; first auto; smt(inc_nle_l).
 inline{2} 1; sp 0 1.
 rcondf{2} 1; first auto.
 inline{2} 1; sp 0 1.
-rcondt{2} 1; first auto; smt(main_guard_ext inc_nle_l).
+rcondt{2} 1; first auto; progress; smt(main_guard_ext inc_nle_l).
 inline{2} 1; sp 0 3.
 conseq
   (_ :
