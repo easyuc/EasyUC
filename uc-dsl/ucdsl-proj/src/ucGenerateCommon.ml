@@ -70,15 +70,18 @@ let self = "self"
 
 let addr_op_name (name : string) : string = "_addr_"^name
 
-let addr_op_call (name : string) : string = (addr_op_name name)^" "^_self
+let addr_op_call ?(pfx = "") (name : string) : string
+  = (addr_op_name name)^" "^pfx^_self
 
 let extport_op_name (name : string) : string = "_extport_"^name
 
-let extport_op_call (name : string) : string = "_extport_"^name^" "^_self
+let extport_op_call  ?(pfx = "") (name : string) : string =
+  "_extport_"^name^" "^pfx^_self
 
 let intport_op_name (name : string) : string = "_intport_"^name
 
-let intport_op_call (name : string) : string = "_intport_"^name^" "^_self
+let intport_op_call ?(pfx = "") (name : string) : string =
+  "_intport_"^name^" "^pfx^_self
 
 let adv_pt_pi_op_name (name : string) : string = "_adv_pt_pi_"^name
 
@@ -106,12 +109,13 @@ let if_addr_opt = "if_addr_opt"
 let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 
 let pp_expr ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
-  (sc : EcScope.scope) (ppf : Format.formatter) (expr : EcTypes.expr) : unit =
+      ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
+      (expr : EcTypes.expr) : unit =
   let addr_ex_of_idstr (idstr : string) =
     EcTypes.e_local (EcIdent.create idstr) addr_ty
   in
 
-  let e_self = addr_ex_of_idstr _self in
+  let e_self = addr_ex_of_idstr (glob_pfx^_self) in
   
   (* envport substitution *)
   let envport_self =
