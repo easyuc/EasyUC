@@ -65,7 +65,9 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
   if List.is_empty ec_req then () else
     Format.fprintf sf "@[require%a.@]@.@." print ec_req;
 
-    Format.fprintf sf "require import UCCore.@.@.";
+  Format.fprintf sf "require import UCCore.@.@.";
+
+  Format.fprintf sf "require UCComposition.@.@.";
 
     let ui = unit_info_of_root mt root in
     begin match ui with

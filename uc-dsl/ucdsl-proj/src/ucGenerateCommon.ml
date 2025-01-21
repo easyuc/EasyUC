@@ -48,6 +48,9 @@ let bi_name (id : string) : string = (uc_name id)^"_abs"
 
 let uc__name (name : string) : string = "UC__"^name
 
+let rest_name (name : string) (idx : int) : string =
+  (uc_name name)^"_Rest"^(string_of_int idx)
+
 let uc__code = "UC__Code"
 
 let uc__rf = "UC__RF"
@@ -389,30 +392,19 @@ let get_own_glob_size_map (ftm : fun_tyd IdPairMap.t) : int IdPairMap.t =
   in
   IdPairMap.map (fun ft -> ogs ft) ftm
 
-type pSP = IF of SP.t | RF of (SP.t * (pSP list))
+type pSP = IF of SP.t | RF of (SP.t * (pSP list)) | Dropped
 
 let getSP (psp : pSP) : SP.t =
   match psp with
   | IF sp -> sp
   | RF (sp, _) -> sp
+  | Dropped -> UcMessage.failure "No identifier for dropped parameter"
 
-let rec get_glob_size_w_params (ftm : fun_tyd IdPairMap.t) (func : pSP) : int =
-  let ogsm = get_own_glob_size_map ftm in
-  match func with
-  | IF sp -> IdPairMap.find sp ogsm
-  | RF (sp, params) ->
-     let psize (psp : pSP) : int =
-       let is_real  = is_real_fun_body_tyd
-                        (EcLocation.unloc (IdPairMap.find (getSP psp) ftm)) in
-       (get_glob_size_w_params ftm psp) +
-       (*+1 for MakeRF._self*)  
-       (if is_real then 1 else 0)
-     in
-     let own = IdPairMap.find sp ogsm in
-     let pms = List.fold_left (fun sum psp -> sum + (psize psp)) 0 params in
-     own + pms
-
-let rec make_pSP (mt : maps_tyd) (funcId : SP.t) (real_params : bool): pSP =
+(*the param_idx determines which parameter will be dropped out,
+  all the parameters with smaller index are ideal funcs,
+  all the parameters with larger index are real funcs with real params.
+ Fully real functionality is obtained by setting param_idx = 0*)
+let rec make_pSP (mt : maps_tyd) (funcId : SP.t) (param_idx : int): pSP =
   let ft = IdPairMap.find funcId mt.fun_map in
   let fbt = EcLocation.unloc ft in
   if (is_ideal_fun_body_tyd fbt)
@@ -425,12 +417,16 @@ let rec make_pSP (mt : maps_tyd) (funcId : SP.t) (real_params : bool): pSP =
       let rui = unit_info_of_root mt r in
       match rui with
       | UI_Singleton si -> (si.si_root, si.si_ideal)
-      | UI_Triple ti -> if real_params
+      | UI_Triple ti -> if n+1 > param_idx
                         then (ti.ti_root, ti.ti_real)
                         else (ti.ti_root, ti.ti_ideal)
     in
     let paramIds = List.init np (fun n -> get_nth_param_id n) in
-    RF (funcId, List.map (fun fid -> make_pSP mt fid real_params) paramIds)
+    let ppSP = List.mapi (fun i fid ->
+                   if i+1 = param_idx
+                   then Dropped
+                   else make_pSP mt fid 0 ) paramIds in
+    RF (funcId, ppSP)
 
 type globVarId = string list * string
 
@@ -485,11 +481,14 @@ let rec get_globVarIds
     let ownglobs = [get_self_globVarId funpath] @ partyglobs @ subfunglobs in
     let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
     let paraml = List.combine param_names params in
+    let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
                          let thpath = thpath @ [uc_name id] @ [uc__code]in
                          let ifrfth = match psp with
                            | IF _ -> uc__if
                            | RF _ -> uc__rf
+                           | Dropped -> UcMessage.failure
+                                          "impossible dropped param"
                          in
                          let funsufix = [ifrfth] @ [uc_name (fst(getSP psp))] in
                          let globs = get_globVarIds mt psp thpath funsufix in
@@ -498,36 +497,59 @@ let rec get_globVarIds
                            | RF _ ->
                               let makeRFself=get_MakeRF_self_globVarId thpath in
                               makeRFself :: globs
+                           | Dropped -> UcMessage.failure
+                                          "impossible dropped param"
                        ) paraml
     in
     let paramglobs = List.flatten paramglobs in
     ownglobs @ paramglobs
   | IF _ -> get_IF_globVarIds funpath
+  | Dropped -> UcMessage.failure
+                 "get_globVarIds cannot be called for dropped parameter of Rest" 
   in
   List.sort compare_globVarIds gvil
   
 let get_globVarIds_of_fully_real_fun_glob_core
       (mt : maps_tyd) (funcId : SP.t) : globVarId list =
-  let psp = make_pSP mt funcId true in
+  let psp = make_pSP mt funcId 0 in
   get_globVarIds mt psp [] [uc_name (snd funcId)]
+
+let get_param_num (mt : maps_tyd) (funcId : SP.t) : int =
+  let ft = IdPairMap.find funcId mt.fun_map in
+  num_params_of_real_fun_tyd ft
 
 let get_globVarIds_of_real_fun_w_ideal_params_glob_core
       (mt : maps_tyd) (funcId : SP.t) : globVarId list =
-  let psp = make_pSP mt funcId false in
+  let np = get_param_num mt funcId in
+  let psp = make_pSP mt funcId (np+1) in
   get_globVarIds mt psp [] [uc_name (snd funcId)]
 
+let get_globVarIds_of_Rest_modules
+      (mt : maps_tyd) (funcId : SP.t) : globVarId list list =
+  let np = get_param_num mt funcId in
+  List.init np (fun n ->
+      let idx = n+1 in
+      let psp = make_pSP mt funcId idx in
+      get_globVarIds mt psp [] [rest_name (snd funcId) idx])
+
+  
+
 type gvil = { gvil_RP : globVarId list;
-              gvil_IP : globVarId list }
+              gvil_IP : globVarId list;
+              gvil_Rest : globVarId list list
+            }
 
 let get_gvil (mt : maps_tyd) (funcId : SP.t) : gvil =
   {
     gvil_RP = get_globVarIds_of_fully_real_fun_glob_core mt funcId;
-    gvil_IP = get_globVarIds_of_real_fun_w_ideal_params_glob_core mt funcId
+    gvil_IP = get_globVarIds_of_real_fun_w_ideal_params_glob_core mt funcId;
+    gvil_Rest = get_globVarIds_of_Rest_modules mt funcId
   }
 
 let empty_gvil = {
     gvil_RP = [];
-    gvil_IP = []
+    gvil_IP = [];
+    gvil_Rest = []
   }
                                                     
 

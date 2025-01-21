@@ -40,6 +40,10 @@ let glob_to_part_op_name module_name part_name =
   "glob_"^module_name^"_to_"^part_name
 let module_name_IF name = (uc_name name)^"."^_IF
 let module_name_RF name = (uc_name name)^"."^_RF
+let rest_composition_clone (rest_idx : int) =
+  (uc__name "Rest")^(string_of_int rest_idx)
+let rest_module_name (id : string) (rest_idx : int)=
+  (uc_name id)^"_Rest"^(string_of_int rest_idx)
 let invoke = "invoke"
 let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
@@ -1059,7 +1063,7 @@ let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
   let rest_params = IdMap.filter (fun _ (_,idx) ->
                         (idx+1) <> drop_param)
                       rfbt.params in
-  let rest_module_name = (uc_name id)^"_Rest"^(string_of_int drop_param) in
+  let rest_module_name = rest_module_name id drop_param in
   Format.fprintf ppf "@[module %s %a : FUNC = {@]@;<0 2>@[<v>"
     rest_module_name print_params_FUNC rest_params;
   let module_pfx = (uc_name id)^"." in
@@ -1517,8 +1521,21 @@ let print_RF_metric (id : string) (root : string)
       print_it false;
   end
   
+let print_clone_Composition ppf (rest_idx : int) : unit =
+  Format.fprintf ppf "
+clone UCComposition.Composition as %s with
+op change_pari = %i,
+op %s <- %s
+proof *.
+realize rf_info_valid. smt(%s). qed.
+realize change_pari_valid. smt(). qed.
+"
+    (rest_composition_clone rest_idx)
+    rest_idx
+    rf_info rf_info
+    adv_pi_begin_gt0_axiom_name
 
-
+  
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
       (rapm : rf_addr_port_maps)
@@ -1535,7 +1552,8 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
     (print_RF_metric id root mbmap dii gvil) rfbt;
   for i = 1 to IdMap.cardinal rfbt.params do
     Format.fprintf sf "@[%a@]@;@;"
-     (print_rest_module sc root id mbmap dii rapm.party_ext_port_id rfbt) i
+      (print_rest_module sc root id mbmap dii rapm.party_ext_port_id rfbt) i;
+    Format.fprintf sf "@[%a@]@;@;" print_clone_Composition i
   done;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil.gvil_RP);
