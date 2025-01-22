@@ -9,12 +9,36 @@ open UcParseAndTypecheckFile
 
 let () = Printexc.record_backtrace true
 
-(* order is *opposite* to the order of the -I options *)
+let error_and_exit (ppf : Format.formatter -> unit) : 'a =
+  ppf Format.err_formatter;
+  Format.pp_print_newline Format.err_formatter ();
+  exit 1
+
+(* order is *opposite* to the order of the -I options, meaning that
+   later -I options have higher precedence than earlier ones
+
+   extra trailing slashes are removed *)
 
 let include_dirs_ref : string list ref = ref []
 
+let trim_trailing_slashes (s : string) : string =
+  let err s =
+    error_and_exit
+    (fun ppf ->
+       Format.fprintf ppf
+       "@[include@ directory@ cannot@ be@ empty@]") in
+  let cs = List.rev (String.to_list s) in
+  let rec trim ds =
+    match ds with
+    | []      -> err s
+    | ['/']   -> ds
+    | e :: es -> if e = '/' then trim es else ds in
+  String.of_list (List.rev (trim cs))
+
 let include_arg (s : string) =
-  (include_dirs_ref := s :: (! include_dirs_ref); ())
+  include_dirs_ref :=
+  trim_trailing_slashes s :: (! include_dirs_ref);
+  ()
 
 let anony_arg_ref : string list ref = ref []
 
@@ -83,11 +107,6 @@ let () =
   if ! version_ref
   then (Printf.printf "%s\n" UcVersionDoNotEdit.version;
         exit 0)
-
-let error_and_exit (ppf : Format.formatter -> unit) : unit =
-  ppf Format.err_formatter;
-  Format.pp_print_newline Format.err_formatter ();
-  exit 1
 
 let () =
   List.iter
