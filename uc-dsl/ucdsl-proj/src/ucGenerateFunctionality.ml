@@ -1296,7 +1296,7 @@ let print_module_lemmas ?(rest_idx = None)
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let pmns = if rest_idx = None
              then pmns
-             else List.filteri (fun i _ -> i<>ridx())
+             else List.filteri (fun i _ -> i+1<>ridx())
                     pmns in
   let rpmns = List.map (fun pmn -> (module_name pmn)^".RF") pmns in
   let ipmns = List.map (fun pmn -> (module_name pmn)^".IF") pmns in
@@ -1304,6 +1304,14 @@ let print_module_lemmas ?(rest_idx = None)
   let module_name = if rest_idx = None
                     then module_name id
                     else rest_name id (ridx()) in
+  let adv_pis = if rest_idx = None
+                then "adv_pis_rf_info "^rf_info
+                else (rest_composition_clone (ridx()))^".rest_adv_pis" in
+  let party_invoke_lemma_name pn =
+    if rest_idx = None
+    then _invoke_pn pn
+    else _invoke_pn_rest pn (ridx())
+  in
   let print_party_metric (pn : string) (pt : party_tyd) : unit =
     let metric_name = uc_party_metric_name pn in 
     let st_map = (EcLocation.unloc pt).states in
@@ -1318,20 +1326,18 @@ let print_module_lemmas ?(rest_idx = None)
       let print_lemma_params ppf pmns =
         List.iter(fun pmn -> Format.fprintf ppf "@[(%s <: FUNC)@]@ " pmn) pmns
       in
-      let invoke_lemma_name = if rest_idx = None
-                              then _invoke_pn pn
-                              else _invoke_pn_rest pn (ridx()) in
+      
       Format.fprintf ppf
         "@[lemma %s (n : int) %a : hoare [@]@;<0 2>@[<v>"
-        invoke_lemma_name print_lemma_params pmns;
+        (party_invoke_lemma_name pn) print_lemma_params pmns;
       Format.fprintf ppf
         "@[%s.%s :@ %s (%s(glob %s)) = n@ ==>@ (res <> None =>@ %s (%s(glob %s)) < n@]@;"
         (module_name^(module_params_string pmns)) (proc_party_str pn)
-        metric_name globop module_name 
-        metric_name globop module_name;
+        metric_name globop (uc_name id) 
+        metric_name globop (uc_name id);
       Format.fprintf ppf
-        "@[ /\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in  adv_pis_rf_info %s))@]"
-        mode_Adv rf_info;
+        "@[ /\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in  %s))@]"
+        mode_Adv adv_pis;
       Format.fprintf ppf "@]@;].@;";
       Format.fprintf ppf
         "@[proof. rewrite /%s /=. proc. inline. (*inline procedure calls*)@]@;"
@@ -1346,7 +1352,7 @@ let print_module_lemmas ?(rest_idx = None)
       Format.fprintf ppf "@[    proof. rewrite /%s /=.@]@;" metric_name;
       Format.fprintf ppf "@[      smt(). qed.@]@;";
     in
-    let pt_glob_op_name =  glob_op_name module_name svn in
+    let pt_glob_op_name =  glob_op_name (uc_name id) svn in
     if rest_idx = None
     then begin
       let svi = IdMap.find pn svim in
@@ -1367,7 +1373,7 @@ let print_module_lemmas ?(rest_idx = None)
         "@[<v>%a@]@;@;"  print_party_metric_good ()
     end
   in
-  let print_module_abbrev (rp : bool) =(*--swap--*)
+  let print_module_abbrev (rp : bool) =
     let desc = if rest_idx = None
                then (if rp then "real" else "ideal")
                else "" in
@@ -1388,18 +1394,16 @@ let print_module_lemmas ?(rest_idx = None)
                else List.nth gvil.gvil_Rest (ridx()-1) in
     Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
-         (moduleIRP id rfbt rp rest_idx) module_name)
+         (moduleIRP id rfbt rp rest_idx) (uc_name id))
       (get_own_glob_range_of_real_fun_glob_core rfbt gvil);
-    
-    if rest_idx = None then begin
     List.iter (fun pmn -> Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) (uc_name pmn))
          (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rp) pmn))
       (get_glob_range_of_parameter gvil pmn)) pmns;
-    
+    if rest_idx = None && rp then begin 
     let ogrs = get_own_glob_ranges_of_real_fun rfbt gvil in
     List.iter (fun sfn -> Format.fprintf ppf "@[%a@]@;@;"
-      (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) (uc_name sfn))
+      (print_glob_operator (glob_op_name (uc_name id) (uc_name sfn))
          module_name (module_name_IF sfn))
       (IdMap.find sfn ogrs)) sfns
     end
@@ -1417,12 +1421,12 @@ let print_module_lemmas ?(rest_idx = None)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (plus()) (uc_party_metric_name ptn)
-          (glob_op_name module_name (st_name ptn))
+          (glob_op_name (uc_name id) (st_name ptn))
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) ptns;
     List.iter (fun sfn -> let ucsfn = uc_name sfn in
         Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
-          (plus()) ucsfn _metric_IF (glob_op_name (moduleIRP id rfbt rp rest_idx) ucsfn)
+          (plus()) ucsfn _metric_IF (glob_op_name (uc_name id) ucsfn)
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) sfns;
     Format.fprintf ppf ".@]@;@;"
@@ -1446,7 +1450,8 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[  (res <> None =>@]@;";
     Format.fprintf ppf "@[  %s (glob %s) < n@]@;"
     (metric_name_IRP rfbt rp rest_idx) (moduleIRP id rfbt rp rest_idx);
-    Format.fprintf ppf "@[/\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info rf_info))].@]@;";
+    Format.fprintf ppf "@[/\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  %s))].@]@;"
+      adv_pis;
     Format.fprintf ppf "@[proof.@]@;";
     Format.fprintf ppf "@[rewrite /%s /=.@]@;" (metric_name_IRP rfbt rp rest_idx);
     Format.fprintf ppf "@[  proc.@]@;";
@@ -1454,7 +1459,7 @@ let print_module_lemmas ?(rest_idx = None)
     List.iter (fun sfn ->
         let ucsfn = uc_name sfn in
         let metric = ucsfn^"."^_metric_IF in
-        let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) ucsfn in
+        let globop1 = glob_op_name (uc_name id) ucsfn in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
         let sub_invoke = ucsfn^"."^_invoke_IF in
         let sub_invoke_pms = "" in
@@ -1472,9 +1477,9 @@ let print_module_lemmas ?(rest_idx = None)
     List.iter (fun ptn ->
         let pmns = if rp then rpmns else ipmns in
         let metric = uc_party_metric_name ptn in
-        let globop1 = glob_op_name module_name (st_name ptn) in
+        let globop1 = glob_op_name (uc_name id) (st_name ptn) in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
-        let sub_invoke = (_invoke_pn ptn) in
+        let sub_invoke = (party_invoke_lemma_name ptn) in
         let sub_invoke_pms = List.fold_left(fun acc pmn ->
           acc^" "^pmn)  "" pmns in
         print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms ""
@@ -1497,13 +1502,13 @@ let print_module_lemmas ?(rest_idx = None)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (cnj()) (invar_pt_op_name ptn)
-          (glob_op_name module_name (st_name ptn))
+          (glob_op_name (uc_name id) (st_name ptn))
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) ptns;
     List.iter (fun sfn -> let ucsfn = uc_name sfn in
         Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
           (cnj()) ucsfn _invar_IF
-          (glob_op_name (moduleIRP id rfbt rp rest_idx) ucsfn)
+          (glob_op_name (uc_name id) ucsfn)
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) sfns;
     Format.fprintf ppf ".@]@;@;"
@@ -1565,14 +1570,27 @@ let print_module_lemmas ?(rest_idx = None)
     print_metric_good_lemma(rp);
     print_init_lemma (rp)
   in
-  if IdMap.is_empty rfbt.params
-  then print_it true
+  if rest_idx = None
+  then begin
+    if IdMap.is_empty rfbt.params
+    then print_it true
+    else begin
+        print_module_abbrev true;
+        print_it true;
+        print_module_abbrev false;
+        print_it false;
+      end
+    end
   else begin
-      print_module_abbrev true;
-      print_it true;
-      print_module_abbrev false;
-      print_it false;
-  end
+    if IdMap.cardinal rfbt.params > 1
+    then print_module_abbrev true
+    else ()
+  ;
+    print_it true
+    end
+
+    
+
   
 let print_clone_Composition ppf (rest_idx : int) : unit =
   Format.fprintf ppf "
