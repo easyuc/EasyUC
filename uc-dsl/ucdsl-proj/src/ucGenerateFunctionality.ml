@@ -82,7 +82,8 @@ let module_params_string pmns : string =
     let tl = List.tl pmns in
     (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
 let _RFRP = "RFRP"
-let smt_sat_lemmas = "mem_oflist mem_rangeset"
+let smt_sat_lemmas = "mem_oflist mem_rangeset in_fsetU"
+let smt_invoke_lemmas = "mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU"
 let rf_info = "rf_info"
 
 let module_name (id : string) = uc_name id
@@ -125,15 +126,29 @@ let moduleIRP (id : string) (rfbt : real_fun_body_tyd)
   | None -> if real_params
             then moduleRP id rfbt
             else moduleIP id
-  | Some i -> rest_name id i
+  | Some i -> if IdMap.cardinal rfbt.params <= 1
+              then rest_name id i
+              else (rest_name id i)^"_P"
   
-let module_name_IRF (real_params : bool) =
-    if real_params
-    then module_name_RF
-    else module_name_IF
+let module_name_IRF (rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then module_name_RF
+            else module_name_IF
+  | Some i -> if param_idx+1 < i
+              then module_name_IF
+              else module_name_RF
 
-let metricIRF (real_params : bool) =
-    if real_params then _metric_RF else _metric_IF
+let metricIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then _metric_RF
+            else _metric_IF
+  | Some i -> if param_idx+1 < i
+              then _metric_IF
+              else _metric_RF
 
 let metric_name_IRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -143,12 +158,26 @@ let metric_name_IRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else uc_metric_IP
   | Some i -> rest_metric i
 
-let invokeIRF (real_params : bool) =
-    if real_params then _invoke_RF else _invoke_IF
+let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then _invoke_RF
+            else _invoke_IF
+  | Some i -> if param_idx+1 < i
+              then _invoke_IF
+              else _invoke_RF
 
 
-let invarIRF (real_params : bool) =
-  if real_params then _invar_RF else _invar_IF
+let invarIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then _invar_RF
+            else _invar_IF
+  | Some i -> if param_idx+1 < i
+              then _invar_IF
+              else _invar_RF
 
 let invokeIRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -174,8 +203,15 @@ let initIRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else _init_IP
   | Some i -> rest_init i
 
-let initIRF (real_params : bool) =
-    if real_params then _init_RF else _init_IF
+let initIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then _init_RF
+            else _init_IF
+  | Some i -> if param_idx+1 < i
+              then _init_IF
+              else _init_RF
 
 let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -185,8 +221,15 @@ let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else _metric_good_IP
   | Some i -> rest_metric_good i
 
-let metric_goodIRF (real_params : bool) =
-    if real_params then _metric_good_RF else _metric_good_IF
+let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
+      (rest_idx : int option) (param_idx : int) =
+  match rest_idx with
+  | None -> if real_params
+            then _metric_good_RF
+            else _metric_good_IF
+  | Some i -> if param_idx+1 < i
+              then _metric_good_IF
+              else _metric_good_RF
 
 let print_state_type
       (sc : EcScope.scope)
@@ -1396,9 +1439,9 @@ let print_module_lemmas ?(rest_idx = None)
       (print_glob_operator (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
          (moduleIRP id rfbt rp rest_idx) (uc_name id))
       (get_own_glob_range_of_real_fun_glob_core rfbt gvil);
-    List.iter (fun pmn -> Format.fprintf ppf "@[%a@]@;@;"
+    List.iteri (fun i pmn -> Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) (uc_name pmn))
-         (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rp) pmn))
+         (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rfbt rp rest_idx i) pmn))
       (get_glob_range_of_parameter gvil pmn)) pmns;
     if rest_idx = None && rp then begin 
     let ogrs = get_own_glob_ranges_of_real_fun rfbt gvil in
@@ -1415,9 +1458,9 @@ let print_module_lemmas ?(rest_idx = None)
     let is_first = ref true in
     let plus() = if !is_first then begin is_first:=false; " " end else "+"
     in
-    List.iter (fun pmn -> let ucpmn = uc_name pmn in
+    List.iteri (fun i pmn -> let ucpmn = uc_name pmn in
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (plus()) ucpmn (metricIRF rp) (glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn)
+          (plus()) ucpmn (metricIRF rfbt rp rest_idx i) (glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (plus()) (uc_party_metric_name ptn)
@@ -1463,19 +1506,26 @@ let print_module_lemmas ?(rest_idx = None)
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
         let sub_invoke = ucsfn^"."^_invoke_IF in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_sat_lemmas 
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas 
       ) sfns;
-    List.iter (fun pmn ->
+    List.iteri (fun i pmn ->
         let ucpmn = uc_name pmn in
-        let metric = ucpmn^"."^(metricIRF rp) in
+        let metric = ucpmn^"."^(metricIRF rfbt rp rest_idx i) in
         let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn in
         let globop2 = "" in
-        let sub_invoke = ucpmn^"."^(invokeIRF rp) in
+        let sub_invoke = ucpmn^"."^(invokeIRF rfbt rp rest_idx i) in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_sat_lemmas
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas
       ) pmns;
     List.iter (fun ptn ->
-        let pmns = if rp then rpmns else ipmns in
+        let pmns = match rest_idx with
+          | None -> if rp
+                    then rpmns
+                    else ipmns
+          | Some idx -> List.init ((IdMap.cardinal rfbt.params)-1)
+                          (fun i -> if i+1<idx
+                                    then List.nth ipmns i
+                                    else List.nth rpmns i) in
         let metric = uc_party_metric_name ptn in
         let globop1 = glob_op_name (uc_name id) (st_name ptn) in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
@@ -1495,9 +1545,9 @@ let print_module_lemmas ?(rest_idx = None)
     let is_first = ref true in
     let cnj() = if !is_first then begin is_first:=false; "  " end else "/\\"
     in
-    List.iter (fun pmn -> let ucpmn = uc_name pmn in
+    List.iteri (fun i pmn -> let ucpmn = uc_name pmn in
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (cnj()) ucpmn (invarIRF rp)
+          (cnj()) ucpmn (invarIRF rfbt rp rest_idx i)
           (glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
@@ -1525,9 +1575,9 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[rewrite /%s /=.@]@;"
       (invarIRP rfbt rp rest_idx);
     Format.fprintf ppf "@[smt(@]@;";
-    List.iter(fun pmn ->
+    List.iteri(fun i pmn ->
         Format.fprintf ppf "@[%s.%s@]@;"
-          (uc_name pmn) (metric_goodIRF rp)
+          (uc_name pmn) (metric_goodIRF rfbt rp rest_idx i)
       ) pmns;
     List.iter(fun sfn ->
         Format.fprintf ppf "@[%s.%s@]@;" (uc_name sfn) _metric_good_IF
@@ -1545,9 +1595,9 @@ let print_module_lemmas ?(rest_idx = None)
       (moduleIRP id rfbt rp rest_idx) init
       (invarIRP rfbt rp rest_idx) (moduleIRP id rfbt rp rest_idx);
     Format.fprintf ppf "@[proof. proc. sp. wp.@]@;";
-    List.iter(fun pmn ->
+    List.iteri(fun i pmn ->
         Format.fprintf ppf "@[call (%s.%s).@]@;"
-          (uc_name pmn) (initIRF rp)
+          (uc_name pmn) (initIRF rfbt rp rest_idx i)
       ) (List.rev pmns);
     List.iter(fun sfn ->
         Format.fprintf ppf "@[call (%s.%s).@]@;"
