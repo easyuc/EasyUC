@@ -1341,8 +1341,8 @@ let print_module_lemmas ?(rest_idx = None)
              then pmns
              else List.filteri (fun i _ -> i+1<>ridx())
                     pmns in
-  let rpmns = List.map (fun pmn -> (module_name pmn)^".RF") pmns in
-  let ipmns = List.map (fun pmn -> (module_name pmn)^".IF") pmns in
+  let rpmns = List.map (fun pmn -> module_name_RF pmn) pmns in
+  let ipmns = List.map (fun pmn -> module_name_IF pmn) pmns in
   let sfns = fst (List.split (IdMap.bindings rfbt.sub_funs)) in
   let module_name = if rest_idx = None
                     then module_name id
@@ -1639,9 +1639,6 @@ let print_module_lemmas ?(rest_idx = None)
     print_it true
     end
 
-    
-
-  
 let print_clone_Composition ppf (rest_idx : int) : unit =
   Format.fprintf ppf "
 clone UCComposition.Composition as %s with
@@ -1655,6 +1652,121 @@ realize change_pari_valid. smt(). qed.
     rest_idx
     rf_info rf_info
     adv_pi_begin_gt0_axiom_name
+
+let print_sequence_of_games_proof  (id : string)
+      ppf (rfbt : real_fun_body_tyd) =
+  let mRP = moduleRP id rfbt in
+  let _RFRP_Comp_RP_eq_lemma = "equiv_"^mRP^"_Composed1_RP" in
+  let parametrized_rest_module i = moduleIRP id rfbt true (Some i) in
+  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let ith_param_real i = module_name_RF (List.nth pmns (i-1)) in
+  let ith_param_ideal i = module_name_RF (List.nth pmns (i-1)) in
+  let _Comp_RP_Comp_IP_diff_lemma i =
+    let _i = string_of_int i in
+    "diff_Composed"^_i^"_RP_Composed"^_i^"_IP" in
+  let simip = "SIMIP" in
+  let sim_stack i =
+    let rec firstk k xs =
+      if k=0
+      then []
+      else
+        match xs with
+        | []    -> failwith "firstk"
+        | x::xs -> if k=1 then [x] else x::firstk (k-1) xs
+    in
+    let pmns = firstk i pmns in
+    List.fold_left (fun sprev pmn ->
+        (uc_name pmn)^".SIM("^sprev^")") _Adv pmns
+  in
+  let sim_st = sim_stack (IdMap.cardinal rfbt.params) in
+  let parameter_Bound i =
+    let pmn = List.nth pmns (i-1) in
+    (uc_name pmn)^".Bound("^uc__rf^"."^(rest_composition_clone i)
+    ^".CompEnv("^uc__rf^"."^(parametrized_rest_module i)^", Env), Adv)"
+  in
+  
+  let print_RFRP_Comp_RP_eq_lemma ppf () =
+    Format.fprintf ppf
+"lemma %s
+    (Env <: ENV{-MI, -RFRP, -UCComposition.CompGlobs})
+    (Adv <: ADV{-MI, -Env,  -RFRP, -UCComposition.CompGlobs})
+    (func' : addr, in_guard' : int fset) &m :
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]
+  -
+  Pr[Exper(MI(%s.%s.MakeRFComp(%s.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]| <= 0.0
+ .@;@;"
+_RFRP_Comp_RP_eq_lemma
+"@"
+uc__rf (rest_composition_clone 1) uc__rf (parametrized_rest_module 1) (ith_param_real 1) "@";
+    Format.fprintf ppf  "proof. admit. qed.@;@;"
+  in
+
+  let print_simulator_abbrev ppf () =
+    Format.fprintf ppf "@[<v>@[(*Simulator stack abreviation*)@]@;";
+    Format.fprintf ppf "@[module %s(%s : ADV) = %s.@]@]" simip _Adv sim_st
+  in
+  
+  let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
+    Format.fprintf ppf
+"lemma %s
+    (Env <: ENV{-MI,  -UCComposition.CompGlobs, -RFRP, -SIMIP, -RFIP})
+    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env,  -RFRP, -SIMIP, -RFIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info) =>
+`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), %s), Env).main(func', in_guard') %s &m : res]
+  -
+Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), %s), Env).main(func', in_guard') %s &m : res]|
+  <=
+Pr[%s.main
+       (func' ++ [UC__RF.%s.change_pari],
+        in_guard' `|` UC__RF.%s.rest_adv_pis) %s &m : res]
+ ."
+(_Comp_RP_Comp_IP_diff_lemma i)
+(rest_composition_clone i) (parametrized_rest_module i) (ith_param_real i) (sim_stack (i-1)) "@"
+(rest_composition_clone i) (parametrized_rest_module i) (ith_param_ideal i) (sim_stack i) "@"
+(parameter_Bound i)
+(parametrized_rest_module i)
+(parametrized_rest_module i) "@";
+    Format.fprintf ppf  "proof. admit. qed.@;@;"
+  in
+  let print_Comp_IP_Comp_RP_eq_lemma ppf (i : int) =
+    ()
+  in
+  let print_Comp_IP_RFIP_eq_lemma ppf () =
+    ()
+  in
+  let print_RFRP_RFIP_diff_lemma ppf () =
+    ()
+  in
+  let pmnum = IdMap.cardinal rfbt.params in
+  if pmnum = 0
+  then ()
+  else begin
+    Format.fprintf ppf "@[<v>";
+    Format.fprintf ppf "@[%a@]@;@;"
+      print_RFRP_Comp_RP_eq_lemma ();
+    Format.fprintf ppf "@[%a@]@;@;"
+      print_simulator_abbrev ();
+    if pmnum = 1
+    then ()
+    else
+      for pn = 1 to pmnum do
+        Format.fprintf ppf "@[%a@]@;@;"
+          print_Comp_RP_Comp_IP_diff_lemma pn;
+        if pn < pmnum
+        then Format.fprintf ppf "@[%a@]@;@;"
+               print_Comp_IP_Comp_RP_eq_lemma pn;
+      done
+    ;
+    Format.fprintf ppf "@[%a@]@;@;"
+      print_Comp_IP_RFIP_eq_lemma ();
+    Format.fprintf ppf "@[%a@]@;@;"
+      print_RFRP_RFIP_diff_lemma ();
+    Format.fprintf ppf "@]"
+  end
+  
+
 
   
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
@@ -1680,6 +1792,7 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   done;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil.gvil_RP);
+  Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id) rfbt;
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
