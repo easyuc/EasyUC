@@ -1036,7 +1036,7 @@ type local_context_frame = form EcIdent.Mid.t
 type local_context       = local_context_frame list
 
 (* in an LCB_IntPort (id, f), the string of id will have the form
-   "intport." followed the name of the party (which in the case of a
+   "intport " followed the name of the party (which in the case of a
    simulator will consists of the (unqualified by the root) name of
    the real functionality being simulated, followed by '.', followed
    by the party) *)
@@ -1053,13 +1053,13 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Bound (id, form) -> (id, form)
-       | LCB_Var (id, ty)     ->
+       | LCB_Bound (id, form)   -> (id, form)
+       | LCB_Var (id, ty)       ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort func     ->
+       | LCB_EnvPort func       ->
            (envport_id,
             (f_app envport_op [func] (tfun port_ty tbool)))
-       | LCB_IntPort (id, port)  -> (id, port))
+       | LCB_IntPort (id, port) -> (id, port))
     lcbs)]
 
 let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
@@ -1111,17 +1111,10 @@ let lc_pop (lc : local_context) : local_context =
   (if List.is_empty lc then failure "should not happen");
   List.take (List.length lc - 1) lc
 
-(* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ', so it matches the concrete syntax *)
-
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let subst_colon_by_blank (s : symbol) : symbol =
-    String.map (fun c -> if c = ':' then ' ' else c) s in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
-    fprintf ppf "@[%s ->@ %a@]"
-    (subst_colon_by_blank (EcIdent.name id))
-    (pp_form env) form in
+    fprintf ppf "@[%s ->@ %a@]" (EcIdent.name id) (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
     fprintf ppf "@[(@[%a@])@]"
     (EcPrinting.pp_list ",@ " pp_frame_entry)

@@ -302,13 +302,13 @@ type state_mid = state_body_mid located
 
    in the concrete syntax [Party] is written "intport Party", and
    [RealFun; Party] is written "intport RealFun.Party"; these are
-   turned by the parser into PEident's, whose arguments are
-   localizations of ([], "intport:Party") and ([],
-   "intport:RealFun.Party")
+   turned by the parser into PFident's, whose arguments are
+   localizations of ([], "intport Party") and ([],
+   "intport RealFun.Party")
 
    when internal ports are locally bound in environments, [Party] is
-   turned into "intport:Party", and [RealFun; Party] is turned into
-   "intport:RealFun.Party]"
+   turned into "intport Party", and [RealFun; Party] is turned into
+   "intport RealFun.Party"
 
    when internal ports are turned into port indices (beginning at 1),
    we use the ordering List.compare String.compare; this is stable
@@ -372,7 +372,7 @@ let make_state_context
        QidMap.update qid
        (fun _ ->
           Some
-          (EcIdent.create ("intport:" ^ nonempty_qid_to_string qid)))
+          (EcIdent.create ("intport " ^ nonempty_qid_to_string qid)))
        acc)
     QidMap.empty
     (QidSet.elements ports) in

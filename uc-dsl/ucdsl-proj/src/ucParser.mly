@@ -1609,7 +1609,7 @@ sexpr_u :
   | y = loc(INTPORT); x = uqident  (* internal port names *)
       { PFident
         (mk_loc (merge (loc y) (loc x))
-         ([], "intport:" ^ string_of_qsymbol (unloc x)),
+         ([], "intport " ^ string_of_qsymbol (unloc x)),
          None) }
 
   | x = idexpr_u; { x }

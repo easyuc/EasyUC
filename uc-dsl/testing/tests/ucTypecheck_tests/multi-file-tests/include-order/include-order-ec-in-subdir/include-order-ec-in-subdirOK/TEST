@@ -1,0 +1,8 @@
+description
+  check that directory of .uc file has highest priority
+  in include path even if it was included with -I already,
+  and even if that earlier include ends with a slash
+.
+args: -I A/ -I B A/Main.uc
+outcome: success
+.

@@ -14,10 +14,12 @@ let error_and_exit (ppf : Format.formatter -> unit) : 'a =
   Format.pp_print_newline Format.err_formatter ();
   exit 1
 
-(* order is *opposite* to the order of the -I options, meaning that
-   later -I options have higher precedence than earlier ones
+(* order is *opposite* to the order of the -I options. later -I
+   options have higher precedence than earlier ones, and come
+   earlier in ! include_dirs_ref
 
-   extra trailing slashes are removed *)
+   extra trailing slashes are removed, and we only keep the
+   highest precedence instance of a directory *)
 
 let include_dirs_ref : string list ref = ref []
 
@@ -36,9 +38,9 @@ let trim_trailing_slashes (s : string) : string =
   String.of_list (List.rev (trim cs))
 
 let include_arg (s : string) =
-  include_dirs_ref :=
-  trim_trailing_slashes s :: (! include_dirs_ref);
-  ()
+  let s = trim_trailing_slashes s in
+  let incs = s :: List.remove (! include_dirs_ref) s in
+  include_dirs_ref := incs; ()
 
 let anony_arg_ref : string list ref = ref []
 
