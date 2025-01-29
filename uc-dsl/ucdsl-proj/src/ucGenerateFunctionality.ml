@@ -82,6 +82,7 @@ let module_params_string pmns : string =
     let tl = List.tl pmns in
     (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
 let _RFRP = "RFRP"
+let _RFIP = "RFIP"
 let smt_sat_lemmas = "mem_oflist mem_rangeset in_fsetU"
 let smt_invoke_lemmas = "mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU"
 let rf_info = "rf_info"
@@ -1205,7 +1206,7 @@ let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
   Format.fprintf ppf "@[|}.@]@;"
 
 let print_cloneRF_MakeRF ppf
-(id,rfbt,gvil : string * real_fun_body_tyd * globVarId list) : unit =
+(id,rfbt,gvil : string * real_fun_body_tyd * gvil) : unit =
 (*
   op rf_info <-
   {|
@@ -1225,26 +1226,43 @@ let print_cloneRF_MakeRF ppf
   Format.fprintf ppf "@[realize rf_info_valid. smt(%s). qed.@]@;@;"
     adv_pi_begin_gt0_axiom_name
   in
-  let print_MakeRF_and_lemmas =
-    let real = uc__rf^"."^(moduleRP id rfbt) in
+  let print_MakeRF_and_lemmas
+        (gvil : globVarId list)
+        (core_module : string)
+        (makeRF_module : string)
+        (core_invar_op : string)
+        (core_init_lemma : string)
+        (core_metric_op : string)
+        (core_invoke_lemma : string)
+        (core_metric_good_lemma : string)
+    =
+    let makeRF_core_init_invar_lemma = makeRF_module^"_Core_init_invar_hoare" in
+    let makeRF_core_invoke_lemma = makeRF_module^"_Core_invoke_term_metric_hoare" in
+    let makeRF_init_invar_lemma = makeRF_module^"_init_invar_hoare" in
+    let makeRF_invoke_lemma = makeRF_module^"_invoke_term_metric_hoare" in
+    let makeRF_invar_op = makeRF_module^_invar in
+    let makeRF_metric_op = makeRF_module^uc_metric_name in
+    let makeRF_metric_good_lemma = makeRF_module^_metric_good in
+    let glob_op_name = "glob_"^makeRF_module^"_to_Core" in
     Format.fprintf ppf
       "@[module %s = RFCore.MakeRF(%s).@]@;@;"
-      _RFRP
-    real;
+      makeRF_module
+    core_module;
     Format.fprintf ppf
-"@[lemma RFRP_Core_init_invar_hoare :
-  hoare [RFRP.init : true ==> %s.%s (glob %s)].
+"@[lemma %s :
+  hoare [%s.init : true ==> %s.%s (glob %s)].
 proof.
 apply (RFCore.MakeRF_init_invar_hoare (%s) %s.%s).
 apply %s.%s.
-qed.@]@;@;"
-      uc__rf (invarIRP rfbt true None)  real
-      real uc__rf (invarIRP rfbt true None)
-      uc__rf (initIRP rfbt true None);
+ qed.@]@;@;"
+      makeRF_core_init_invar_lemma
+      makeRF_module uc__rf core_invar_op  core_module
+      core_module uc__rf core_invar_op
+      uc__rf core_init_lemma;
     Format.fprintf ppf
-"@[lemma RFRP_Core_invoke_term_metric_hoare (n : int) :
+"@[lemma %s (n : int) :
   hoare
-  [RFRP.invoke :
+  [%s.invoke :
    %s.%s (glob %s) /\\ %s.%s (glob %s) = n ==>
    %s.%s (glob %s) /\\@;
  (res <> None => %s.%s (glob %s) < n@;
@@ -1253,56 +1271,100 @@ proof.
 apply (RFCore.MakeRF_invoke_term_metric_hoare (%s) %s.%s %s.%s).
 apply %s.%s.
  qed.@]@;@;"
-uc__rf (invarIRP rfbt true None) real
-uc__rf (metric_name_IRP rfbt true None) real
-uc__rf (invarIRP rfbt true None) real
-uc__rf (metric_name_IRP rfbt true None) real
-real uc__rf (invarIRP rfbt true None) uc__rf (metric_name_IRP rfbt true None)
-    uc__rf (invokeIRP rfbt true None);
+makeRF_core_invoke_lemma
+makeRF_module
+uc__rf core_invar_op core_module
+uc__rf core_metric_op core_module
+uc__rf core_invar_op core_module
+uc__rf core_metric_op core_module
+core_module uc__rf core_invar_op uc__rf core_metric_op
+    uc__rf core_invoke_lemma;
     Format.fprintf ppf
-"@[(* now we lift our invariant, termination metric and lemmas to
-   RFRP *)@]@;@;";
+      "@[(* now we lift our invariant, termination metric and lemmas to %s *)@]@;@;"
+      makeRF_module;
     let range = get_MakeRFs_glob_range_of_real_fun_glob_core gvil in
     Format.fprintf ppf "@[%a@]@;@;"
-    (print_glob_operator "glob_RFRP_to_Core" _RFRP real) range;
+    (print_glob_operator glob_op_name makeRF_module core_module) range;
     Format.fprintf ppf
-"@[op RFRP_invar : glob RFRP -> bool =
-  fun (g : glob RFRP) => %s.%s (glob_RFRP_to_Core g).
+"@[op %s : glob %s -> bool =
+  fun (g : glob %s) => %s.%s (%s g).
 
-op RFRP_metric : glob RFRP -> int =
-  fun (g : glob RFRP) => %s.%s (glob_RFRP_to_Core g).
+op %s : glob %s -> int =
+  fun (g : glob %s) => %s.%s (%s g).
 
-lemma RFRP_metric_good (g : glob RFRP) :
-  RFRP_invar g => 0 <= RFRP_metric g.
+lemma %s (g : glob %s) :
+  %s g => 0 <= %s g.
     proof.
  smt(%s.%s). qed.
  "
-uc__rf (invarIRP rfbt true None)
-uc__rf (metric_name_IRP rfbt true None)
-uc__rf (metric_goodIRP rfbt true None);
+makeRF_invar_op makeRF_module
+makeRF_module uc__rf core_invar_op glob_op_name
+makeRF_metric_op makeRF_module
+makeRF_module uc__rf core_metric_op glob_op_name
+makeRF_metric_good_lemma makeRF_module
+makeRF_invar_op makeRF_metric_op
+uc__rf core_metric_good_lemma;
 
 Format.fprintf ppf 
-"lemma RFRP_init_invar_hoare :
-  hoare [RFRP.init : true ==> RFRP_invar (glob RFRP)].
+"lemma %s :
+  hoare [%s.init : true ==> %s (glob %s)].
 proof.
-rewrite /RFRP_invar /=.
-apply RFRP_Core_init_invar_hoare.
-qed.
+rewrite /%s /=.
+apply %s.
+ qed.
+ "
+makeRF_init_invar_lemma
+makeRF_module makeRF_invar_op makeRF_module
+makeRF_invar_op
+makeRF_core_init_invar_lemma;
 
-lemma RFRP_invoke_term_metric_hoare (n : int) :
+Format.fprintf ppf
+"
+lemma %s (n : int) :
   hoare
-  [RFRP.invoke :
-   RFRP_invar (glob RFRP) /\\ RFRP_metric (glob RFRP) = n ==>
-   RFRP_invar (glob RFRP) /\\
- (res <> None => RFRP_metric (glob RFRP) < n
+  [%s.invoke :
+   %s (glob %s) /\\ %s (glob %s) = n ==>
+   %s (glob %s) /\\
+ (res <> None => %s (glob %s) < n
  /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info UC__RF.rf_info))].
 proof.
-rewrite /RFRP_invar /RFRP_metric /=.
-apply RFRP_Core_invoke_term_metric_hoare.
-qed.@]@;@;"
+rewrite /%s /%s /=.
+apply %s.
+ qed.@]@;@;"
+
+makeRF_invoke_lemma
+makeRF_module
+makeRF_invar_op makeRF_module makeRF_metric_op makeRF_module
+makeRF_invar_op makeRF_module
+makeRF_metric_op makeRF_module
+makeRF_invar_op makeRF_metric_op
+makeRF_core_invoke_lemma
   in
   print_cloneRF;
+  let rp_module = uc__rf^"."^(moduleRP id rfbt) in
   print_MakeRF_and_lemmas
+    gvil.gvil_RP
+    rp_module
+    _RFRP
+    (invarIRP rfbt true None)
+    (initIRP rfbt true None)
+    (metric_name_IRP rfbt true None)
+    (invokeIRP rfbt true None)
+    (metric_goodIRP rfbt true None);
+  if IdMap.cardinal rfbt.params = 0
+  then ()
+  else
+    let ip_module = uc__rf^"."^(moduleIP id) in
+    print_MakeRF_and_lemmas
+    gvil.gvil_IP
+    ip_module
+    _RFIP
+    (invarIRP rfbt false None)
+    (initIRP rfbt false None)
+    (metric_name_IRP rfbt false None)
+    (invokeIRP rfbt false None)
+    (metric_goodIRP rfbt false None)
+
 
 let print_party_state_metric
       (name : string) (type_name : string)
@@ -1655,6 +1717,7 @@ realize change_pari_valid. smt(). qed.
 
 let print_sequence_of_games_proof  (id : string)
       ppf (rfbt : real_fun_body_tyd) =
+  let pmnum = IdMap.cardinal rfbt.params in
   let mRP = moduleRP id rfbt in
   let _RFRP_Comp_RP_eq_lemma = "equiv_"^mRP^"_Composed1_RP" in
   let parametrized_rest_module i = moduleIRP id rfbt true (Some i) in
@@ -1664,6 +1727,10 @@ let print_sequence_of_games_proof  (id : string)
   let _Comp_RP_Comp_IP_diff_lemma i =
     let _i = string_of_int i in
     "diff_Composed"^_i^"_RP_Composed"^_i^"_IP" in
+  let _Comp_IP_Comp_RP_eq_lemma i =
+    "equiv_Composed"^(string_of_int i)^"_IP_Composed"^(string_of_int (i+1))^"_RP" in
+  let _Comp_IP_RFIP_eq_lemma =
+    "equiv_Composed"^(string_of_int (IdMap.cardinal rfbt.params))^"_IP_RFIP" in
   let simip = "SIMIP" in
   let sim_stack i =
     let rec firstk k xs =
@@ -1678,7 +1745,7 @@ let print_sequence_of_games_proof  (id : string)
     List.fold_left (fun sprev pmn ->
         (uc_name pmn)^".SIM("^sprev^")") _Adv pmns
   in
-  let sim_st = sim_stack (IdMap.cardinal rfbt.params) in
+  let sim_st = sim_stack pmnum in
   let parameter_Bound i =
     let pmn = List.nth pmns (i-1) in
     (uc_name pmn)^".Bound("^uc__rf^"."^(rest_composition_clone i)
@@ -1705,7 +1772,22 @@ uc__rf (rest_composition_clone 1) uc__rf (parametrized_rest_module 1) (ith_param
     Format.fprintf ppf "@[<v>@[(*Simulator stack abreviation*)@]@;";
     Format.fprintf ppf "@[module %s(%s : ADV) = %s.@]@]" simip _Adv sim_st
   in
-  
+  let probability_parameter_Bound ppf (i : int) =
+    Format.fprintf ppf "
+Pr[%s.main
+       (func' ++ [UC__RF.%s.change_pari],
+        in_guard' `|` UC__RF.%s.rest_adv_pis) %s &m : res]
+"
+      (parameter_Bound i)
+      (rest_composition_clone i)
+      (rest_composition_clone i) "@"
+  in
+  let sum_of_prob_diffs ppf () =
+    Format.fprintf ppf "@[%a@]" probability_parameter_Bound 1;
+    for i = 2 to pmnum do
+      Format.fprintf ppf "@;+@;@[%a@]" probability_parameter_Bound i
+    done
+  in
   let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
     Format.fprintf ppf
 "lemma %s
@@ -1718,28 +1800,79 @@ uc__rf (rest_composition_clone 1) uc__rf (parametrized_rest_module 1) (ith_param
   -
 Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), %s), Env).main(func', in_guard') %s &m : res]|
   <=
-Pr[%s.main
-       (func' ++ [UC__RF.%s.change_pari],
-        in_guard' `|` UC__RF.%s.rest_adv_pis) %s &m : res]
- ."
+%a
+ .@;"
 (_Comp_RP_Comp_IP_diff_lemma i)
 (rest_composition_clone i) (parametrized_rest_module i) (ith_param_real i) (sim_stack (i-1)) "@"
 (rest_composition_clone i) (parametrized_rest_module i) (ith_param_ideal i) (sim_stack i) "@"
-(parameter_Bound i)
-(parametrized_rest_module i)
-(parametrized_rest_module i) "@";
+probability_parameter_Bound i
+;
     Format.fprintf ppf  "proof. admit. qed.@;@;"
   in
   let print_Comp_IP_Comp_RP_eq_lemma ppf (i : int) =
-    ()
+    Format.fprintf ppf
+    "
+     lemma %s
+    (Env <: ENV{-MI,  -UCComposition.CompGlobs, -RFRP, -RFIP})
+    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFRP, -RFIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
+`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]
+  -
+Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]|
+  <= 0.0
+    .
+     "
+    (_Comp_IP_Comp_RP_eq_lemma i)
+    (rest_composition_clone i) (parametrized_rest_module i) (ith_param_ideal i) "@"
+    (rest_composition_clone (i+1)) (parametrized_rest_module (i+1)) (ith_param_real (i+1)) "@"
+;
+Format.fprintf ppf  "proof. admit. qed.@;@;"
+
   in
   let print_Comp_IP_RFIP_eq_lemma ppf () =
-    ()
+    Format.fprintf ppf
+    "
+     lemma %s
+    (Env <: ENV{-MI, -UCComposition.CompGlobs, -RFIP})
+    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
+`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]
+  -
+Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
+  <= 0.0
+    .
+     "
+      _Comp_IP_RFIP_eq_lemma
+      (rest_composition_clone pmnum) (parametrized_rest_module pmnum) (ith_param_ideal pmnum) "@"
+      "@"
+    ;
+      Format.fprintf ppf  "proof. admit. qed.@;@;"
+
   in
   let print_RFRP_RFIP_diff_lemma ppf () =
-    ()
+    Format.fprintf ppf
+    "
+     lemma exper_RF_RP_IP_Pr_diff
+(Env <: ENV{-MI, -RFIP, -RFRP, -UCComposition.CompGlobs, -SIMIP})
+    (Adv <: ADV{-MI, -Env, -RFIP, -RFRP, -UCComposition.CompGlobs, -SIMIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info) =>
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]
+-
+    Pr[Exper(MI(RFIP,SIMIP(Adv)), Env).main(func', in_guard') %s &m : res]| <=
+ (
+%a
+     )
+      .
+     " "@" "@" sum_of_prob_diffs ()
+    ;
+      Format.fprintf ppf  "proof. admit. qed.@;@;"
   in
-  let pmnum = IdMap.cardinal rfbt.params in
   if pmnum = 0
   then ()
   else begin
@@ -1791,7 +1924,7 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
     (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt
   done;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
-  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil.gvil_RP);
+  Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
   Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id) rfbt;
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
