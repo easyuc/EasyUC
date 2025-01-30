@@ -1751,7 +1751,16 @@ let print_sequence_of_games_proof  (id : string)
     (uc_name pmn)^".Bound("^uc__rf^"."^(rest_composition_clone i)
     ^".CompEnv("^uc__rf^"."^(parametrized_rest_module i)^", Env), Adv)"
   in
-  
+  let composition_module ((i, ri) : int * bool) : string =
+    let ith_param = if ri
+                    then ith_param_real i
+                    else ith_param_ideal i
+    in
+    Printf.sprintf "%s.%s.MakeRFComp(%s.%s, %s)"
+      uc__rf (rest_composition_clone i)
+      uc__rf (parametrized_rest_module i)
+      ith_param
+  in
   let print_RFRP_Comp_RP_eq_lemma ppf () =
     Format.fprintf ppf
 "lemma %s
@@ -1760,11 +1769,11 @@ let print_sequence_of_games_proof  (id : string)
     (func' : addr, in_guard' : int fset) &m :
   `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]
   -
-  Pr[Exper(MI(%s.%s.MakeRFComp(%s.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]| <= 0.0
+  Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]| <= 0.0
  .@;@;"
 _RFRP_Comp_RP_eq_lemma
 "@"
-uc__rf (rest_composition_clone 1) uc__rf (parametrized_rest_module 1) (ith_param_real 1) "@";
+(composition_module (1,true)) "@";
     Format.fprintf ppf  "proof. admit. qed.@;@;"
   in
 
@@ -1796,15 +1805,15 @@ Pr[%s.main
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info) =>
-`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), %s), Env).main(func', in_guard') %s &m : res]
+`|Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]
   -
-Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), %s), Env).main(func', in_guard') %s &m : res]|
+Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]|
   <=
 %a
  .@;"
 (_Comp_RP_Comp_IP_diff_lemma i)
-(rest_composition_clone i) (parametrized_rest_module i) (ith_param_real i) (sim_stack (i-1)) "@"
-(rest_composition_clone i) (parametrized_rest_module i) (ith_param_ideal i) (sim_stack i) "@"
+(composition_module (i,true)) (sim_stack (i-1)) "@"
+(composition_module (i,false)) (sim_stack i) "@"
 probability_parameter_Bound i
 ;
     Format.fprintf ppf  "proof. admit. qed.@;@;"
@@ -1818,15 +1827,15 @@ probability_parameter_Bound i
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
-`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]
+`|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
   -
-Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]|
+Pr[Exper(MI(%S, Adv), Env).main(func', in_guard') %s &m : res]|
   <= 0.0
     .
      "
     (_Comp_IP_Comp_RP_eq_lemma i)
-    (rest_composition_clone i) (parametrized_rest_module i) (ith_param_ideal i) "@"
-    (rest_composition_clone (i+1)) (parametrized_rest_module (i+1)) (ith_param_real (i+1)) "@"
+    (composition_module (i,false)) "@"
+    (composition_module (i+1,true)) "@"
 ;
 Format.fprintf ppf  "proof. admit. qed.@;@;"
 
@@ -1840,20 +1849,21 @@ Format.fprintf ppf  "proof. admit. qed.@;@;"
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
-`|Pr[Exper(MI(UC__RF.%s.MakeRFComp(UC__RF.%s, %s), Adv), Env).main(func', in_guard') %s &m : res]
+`|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
   -
 Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
   <= 0.0
     .
      "
       _Comp_IP_RFIP_eq_lemma
-      (rest_composition_clone pmnum) (parametrized_rest_module pmnum) (ith_param_ideal pmnum) "@"
+      (composition_module (pmnum,false)) "@"
       "@"
     ;
       Format.fprintf ppf  "proof. admit. qed.@;@;"
 
   in
   let print_RFRP_RFIP_diff_lemma ppf () =
+    (*lemma statement*)
     Format.fprintf ppf
     "
      lemma exper_RF_RP_IP_Pr_diff
@@ -1871,7 +1881,51 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
       .
      " "@" "@" sum_of_prob_diffs ()
     ;
-      Format.fprintf ppf  "proof. admit. qed.@;@;"
+      (*proof*)
+    let apply_security_trans
+      (mod1 : string) (mod2 : string) (mod3 : string)
+      (adv1 : string) (adv2 : string) (adv3 : string)
+      (bound1 : string) (bound2 : string) =
+      Format.fprintf ppf "@[apply (
+    MakeInt.security_trans
+    %s
+    %s
+    %s
+    %s
+    %s
+    %s
+
+    Env
+    func' in_guard'
+    %s
+    %s
+    &m
+). @]@;"
+        mod1
+        mod2
+        mod3
+        adv1
+        adv2
+        adv3
+        bound1
+        bound2
+    in
+    let by_apply (lemma : string) (adv : string) =
+      Format.fprintf ppf
+        "@[ by apply (%s Env %s func' in_guard' &m).@]@;@;"
+        lemma adv
+    in
+    Format.fprintf ppf "@[<v>[@proof.@]@;";
+    Format.fprintf ppf "@[move => exper disj.@]@;";
+    let sum_bound : string = Format.asprintf "%a" sum_of_prob_diffs () in
+    apply_security_trans
+      _RFRP (composition_module (1,true)) _RFIP
+      _Adv _Adv simip
+      "0.0" sum_bound;
+    by_apply _RFRP_Comp_RP_eq_lemma _Adv;
+    (*TODO intermediate games here*)
+    by_apply _Comp_IP_RFIP_eq_lemma simip;
+    Format.fprintf ppf "qed.@]@;@;"
   in
   if pmnum = 0
   then ()
