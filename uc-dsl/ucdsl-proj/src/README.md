@@ -64,3 +64,12 @@ Program Structure
    [`ucEcFormEval.ml`](ucEcFormEval.ml)) - module used by
    the interpreter to leverage EasyCrypt's proof engine for
    proving/disproving formulas and simplifying formulas
+
+* `UcEasyCryptCommentMacros`
+   ([`ucEasyCryptCommentMacros.mli`](ucEasyCryptCommentMacros.mli),
+   [`ucEasyCryptCommentMacros.ml`](ucEasyCryptCommentMacros.ml)) -
+   module implementing EasyCrypt comment macros
+
+* `UcEasyCryptCommentMacrosTest
+   ([`ucEasyCryptCommentMacrosTest.ml`](ucEasyCryptCommentMacrosTest.ml) -
+   module for testing the EasyCrypt comments macros implementation

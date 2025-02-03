@@ -7,7 +7,7 @@
           (ocamlopt_flags -O3 -unbox-closures)))
 
 (executables
- (names ucdsl ucInterpreterClient)
+ (names ucdsl ucEasyCryptCommentMacrosTest)
  (modes exe)
  (libraries batteries camlp-streams dune-build-info inifiles why3 yojson zarith)
  (foreign_stubs (language c) (names eunix))
