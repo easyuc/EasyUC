@@ -19,3 +19,13 @@ hi there <<A>>:<<B>>
  *)
 
 (*! Bar(A, B) <<A>> : (*!<<B>>*) <<A>> A *)
+
+(*! SecBound(Path, Adv, Mem)
+|Pr[<<Path>>.GRF
+    (<<Path>>.PRF,
+     <<Path>>.Adv2RFA(<<Adv>>)).main() @ <<Mem>> : res] -
+ Pr[<<Path>>.GRF
+    (<<Path>>.TRF,
+     <<Path>>.Adv2RFA(<<Adv>>)).main() @ <<Mem>> : res]| +
+(<<Path>>.limit_pre%r + <<Path>>.limit_post%r) / (2 ^ <<Path>>.text_len)%r
+*)

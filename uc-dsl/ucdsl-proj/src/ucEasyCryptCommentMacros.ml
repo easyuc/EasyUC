@@ -190,7 +190,9 @@ and scan_from_open (inp : input) (lnum : int) (nest : int)
            if nest = 0
            then macs
            else raise (ECComMacs_NonterminatedComment lnum)
-       | Some c -> scan_init inp lnum nest macs mac_opt c
+       | Some d ->
+           scan_init inp lnum nest macs
+           (add_char_to_opt_macro_body mac_opt c) d
 and scan_from_open_star (inp : input) (lnum : int) (nest : int)
     (macs : macro list) (mac_opt : macro option) (c : char) : macro list =
   if c = '\n'
@@ -319,7 +321,7 @@ let apply_macro (macs : macro list) (name : string) (args : string list)
 (* start for testing *)
 
 let print_macro (mac : macro) : unit =
-  Printf.printf "name: %s; params: %s\n\nbody:\n<beg>%s<end>\n\n"
+  Printf.printf "name: %s; params: %s\n\nbody:\n---\n%s\n---\n\n"
   mac.name (String.concat ", " mac.params) mac.body
 
 let print_macros (macs : macro list) : unit =
@@ -341,7 +343,7 @@ let test_scan_and_check (filename : string) : unit =
 let test_subst (filename : string) (name : string)
     (args : string list) : unit =
   try let macs = scan_and_check_file filename in
-      Printf.printf "substitution test\nargs: %s\nresult:\n<beg>%s<end>\n"
+      Printf.printf "args: %s\nresult:\n---\n%s\n---\n"
       (String.concat ", " args)
       (apply_macro macs name args) with
   | ECComMacs_ScanError lnum            ->
