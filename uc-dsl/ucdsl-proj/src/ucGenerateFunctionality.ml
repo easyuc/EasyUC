@@ -1723,7 +1723,7 @@ let print_sequence_of_games_proof  (id : string)
   let parametrized_rest_module i = moduleIRP id rfbt true (Some i) in
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let ith_param_real i = module_name_RF (List.nth pmns (i-1)) in
-  let ith_param_ideal i = module_name_RF (List.nth pmns (i-1)) in
+  let ith_param_ideal i = module_name_IF (List.nth pmns (i-1)) in
   let _Comp_RP_Comp_IP_diff_lemma i =
     let _i = string_of_int i in
     "diff_Composed"^_i^"_RP_Composed"^_i^"_IP" in
@@ -1732,6 +1732,9 @@ let print_sequence_of_games_proof  (id : string)
   let _Comp_IP_RFIP_eq_lemma =
     "equiv_Composed"^(string_of_int (IdMap.cardinal rfbt.params))^"_IP_RFIP" in
   let simip = "SIMIP" in
+  let simnm (pmn : string) (adv : string) =
+    (uc_name pmn)^".SIM("^adv^")"
+  in
   let sim_stack i =
     let rec firstk k xs =
       if k=0
@@ -1743,7 +1746,7 @@ let print_sequence_of_games_proof  (id : string)
     in
     let pmns = firstk i pmns in
     List.fold_left (fun sprev pmn ->
-        (uc_name pmn)^".SIM("^sprev^")") _Adv pmns
+        simnm pmn sprev) _Adv pmns
   in
   let sim_st = sim_stack pmnum in
   let parameter_Bound i =
@@ -1791,11 +1794,18 @@ Pr[%s.main
       (rest_composition_clone i)
       (rest_composition_clone i) "@"
   in
+  let sum_of_prob_diffs_from ppf (start : int) =
+    if start>pmnum
+    then Format.fprintf ppf "@[0.0@]"
+    else begin
+      Format.fprintf ppf "@[%a@]" probability_parameter_Bound start;
+      for i = (start+1) to pmnum do
+        Format.fprintf ppf "@;+@;@[%a@]" probability_parameter_Bound i
+      done
+    end
+  in
   let sum_of_prob_diffs ppf () =
-    Format.fprintf ppf "@[%a@]" probability_parameter_Bound 1;
-    for i = 2 to pmnum do
-      Format.fprintf ppf "@;+@;@[%a@]" probability_parameter_Bound i
-    done
+     sum_of_prob_diffs_from ppf 1
   in
   let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
     Format.fprintf ppf
@@ -1829,7 +1839,7 @@ probability_parameter_Bound i
     disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
 `|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
   -
-Pr[Exper(MI(%S, Adv), Env).main(func', in_guard') %s &m : res]|
+Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]|
   <= 0.0
     .
      "
@@ -1888,17 +1898,17 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
       (bound1 : string) (bound2 : string) =
       Format.fprintf ppf "@[apply (
     MakeInt.security_trans
-    %s
-    %s
-    %s
-    %s
-    %s
-    %s
+    (%s)
+    (%s)
+    (%s)
+    (%s)
+    (%s)
+    (%s)
 
     Env
     func' in_guard'
-    %s
-    %s
+    (%s)
+    (%s)
     &m
 ). @]@;"
         mod1
@@ -1912,19 +1922,36 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
     in
     let by_apply (lemma : string) (adv : string) =
       Format.fprintf ppf
-        "@[ by apply (%s Env %s func' in_guard' &m).@]@;@;"
+        "@[ by apply (%s Env (%s) func' in_guard' &m).@]@;@;"
         lemma adv
     in
-    Format.fprintf ppf "@[<v>[@proof.@]@;";
+    Format.fprintf ppf "@[<v>@[proof.@]@;";
     Format.fprintf ppf "@[move => exper disj.@]@;";
     let sum_bound : string = Format.asprintf "%a" sum_of_prob_diffs () in
+    let simip_adv = simip^"("^_Adv^")" in
     apply_security_trans
       _RFRP (composition_module (1,true)) _RFIP
-      _Adv _Adv simip
+      _Adv _Adv simip_adv
       "0.0" sum_bound;
     by_apply _RFRP_Comp_RP_eq_lemma _Adv;
-    (*TODO intermediate games here*)
-    by_apply _Comp_IP_RFIP_eq_lemma simip;
+    for pn = 1 to pmnum do
+      apply_security_trans
+        (composition_module (pn,true)) (composition_module (pn,false)) _RFIP
+        (sim_stack (pn-1)) (sim_stack pn) simip_adv
+        (Format.asprintf "%a" probability_parameter_Bound pn)
+        (Format.asprintf "%a" sum_of_prob_diffs_from (pn+1));
+      by_apply (_Comp_RP_Comp_IP_diff_lemma pn) _Adv;
+      if pn < pmnum
+      then begin
+          apply_security_trans
+        (composition_module (pn,false)) (composition_module (pn+1,true)) _RFIP
+        (sim_stack pn) (sim_stack pn) simip_adv
+        "0.0" (Format.asprintf "%a" sum_of_prob_diffs_from (pn+1));
+        by_apply (_Comp_IP_Comp_RP_eq_lemma pn) (sim_stack pn);
+      end
+    done
+    ;
+    by_apply _Comp_IP_RFIP_eq_lemma simip_adv;
     Format.fprintf ppf "qed.@]@;@;"
   in
   if pmnum = 0
@@ -1935,16 +1962,13 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
       print_RFRP_Comp_RP_eq_lemma ();
     Format.fprintf ppf "@[%a@]@;@;"
       print_simulator_abbrev ();
-    if pmnum = 1
-    then ()
-    else
-      for pn = 1 to pmnum do
-        Format.fprintf ppf "@[%a@]@;@;"
-          print_Comp_RP_Comp_IP_diff_lemma pn;
-        if pn < pmnum
-        then Format.fprintf ppf "@[%a@]@;@;"
-               print_Comp_IP_Comp_RP_eq_lemma pn;
-      done
+    for pn = 1 to pmnum do
+      Format.fprintf ppf "@[%a@]@;@;"
+        print_Comp_RP_Comp_IP_diff_lemma pn;
+      if pn < pmnum
+      then Format.fprintf ppf "@[%a@]@;@;"
+             print_Comp_IP_Comp_RP_eq_lemma pn;
+    done
     ;
     Format.fprintf ppf "@[%a@]@;@;"
       print_Comp_IP_RFIP_eq_lemma ();
