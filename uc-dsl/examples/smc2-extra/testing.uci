@@ -16,9 +16,7 @@ assumption envport_pt2 : envport func pt2.
 (* experiment with real world *)
 real.
 send pt1@SMC2.SMC2Dir.Pt1.smc_req(pt2, text1)$func.
-step.
-step.
-step.
+run 3.
 step.
 step.
 step.
@@ -32,10 +30,7 @@ SMC2.SMC2Adv.Pt3.ping
 @((adv, 2))
 ctrl_adv.
 send ((adv, 2))@SMC2.SMC2Adv.Pt3.pong@((func, 1)).
-step.
-step.
-step.
-step.
+run 4.
 step.
 step.
 run.
