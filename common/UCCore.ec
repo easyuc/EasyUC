@@ -1169,22 +1169,22 @@ abstract theory DummyAdversary.
 
 (* dummy adversary (DA) - completely controlled by environment *)
 
-(* message from port env_root_port of environment to port (dfe_da, 0) of
-   dummy adversary, instructing dummy adversary to send message (Adv,
-   dfe_pt, (dfe_da, dfe_n), dfe_tag, dfe_u); this instruction will
-   only be obeyed if 0 < dfe_n and dfe_pt <> env_root_port, dfe_pt.`1 is
-   not >= dfe_da, and dfe_tag is not TagNoInter *)
+(* message from port env_root_port of environment to port
+   adv_root_port (adv, 0) of dummy adversary, instructing dummy
+   adversary to send message (Adv, dfe_pt, (adv, dfe_n), dfe_tag,
+   dfe_u); this instruction will only be obeyed if 0 < dfe_n,
+   dfe_pt <> env_root_port, dfe_pt.`1 is not >= adv, and dfe_tag is
+   not TagNoInter *)
 
 type da_from_env =
-  {dfe_da  : addr;   (* address of dummy adversary *)
-   (* data: *)
+  {(* data: *)
    dfe_pt  : port;   (* destination port of message to be sent by DA *)
    dfe_n   : int;    (* source port index of message to be sent by DA *)
    dfe_tag : tag;    (* tag of message to be sent by DA *)
    dfe_u   : univ}.  (* value of message to be sent by DA *)
 
 op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
-  (Adv, (x.`dfe_da, 0), env_root_port,
+  (Adv, adv_root_port, env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ
     epdp_tag_univ epdp_id).`enc
@@ -1192,16 +1192,15 @@ op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
 
 op [opaque smt_opaque] dec_da_from_env (m : msg) : da_from_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1 <> adv_root_port \/ pt2 <> env_root_port \/
+      tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`dec v with
      | None   => None
      | Some x =>
          let (pt, n, tag, u) = x
-         in Some
-            {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_tag = tag;
-              dfe_u = u|}
+         in Some {|dfe_pt = pt; dfe_n = n; dfe_tag = tag; dfe_u = u|}
      end.
 
 op epdp_da_from_env_msg =
@@ -1216,8 +1215,9 @@ by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
 case
-  (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 -> -> match_eq_some /=.
+  (mod = Dir \/ pt1 <> adv_root_port \/ pt2 <> env_root_port \/
+   tag <> TagNoInter) => //.
+rewrite !negb_or /= not_dir => [#] -> -> -> -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_port_univ epdp_int_univ
    epdp_tag_univ epdp_id).`dec u =
@@ -1228,7 +1228,6 @@ have val_u :
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
-split; first move : pt1_2; by case pt1.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
@@ -1240,7 +1239,7 @@ lemma eq_of_valid_da_from_env (m : msg) :
   m =
   let x = oget (epdp_da_from_env_msg.`dec m) in
   (Adv,
-   (x.`dfe_da, 0),
+   adv_root_port,
    env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`enc
@@ -1250,27 +1249,26 @@ rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_from_env), epdp_da_from_env_msg.`dec m = Some x.
   exists (oget (epdp_da_from_env_msg.`dec m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 x5.
+case x => x1 x2 x3 x4.
 move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <- //.
 qed.
 
-(* message from port (dte_da, 0) of dummy adversary to port env_root_port of
-   environment, telling environment that dummy adversary received
-   message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u), where
-   0 < dtn_n and dte_pt <> env_root_port *)
+(* message from port adv_root_port of dummy adversary to port
+   env_root_port of environment, telling environment that dummy
+   adversary received message (Adv, (adv, dte_n), dte_pt, dte_tag,
+   dte_u), where 0 < dtn_n and dte_pt <> env_root_port *)
 
 type da_to_env =
-  {dte_da  : addr;   (* address of dummy adversary *)
-   (* data: *)
+  {(* data: *)
    dte_n   : int;    (* destination port index of message sent to DA;
-                        the port's address will be dte_da
+                        the port's address will be adv
                         (enforced by interface/simulator) *)
    dte_pt  : port;   (* source port of message sent to DA *)
    dte_tag : tag;    (* tag of message sent to DA *)
    dte_u   : univ}.  (* value of message sent to DA *)
 
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
-  (Adv, env_root_port, (x.`dte_da, 0),
+  (Adv, env_root_port, adv_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -1278,7 +1276,8 @@ op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
 
 op [opaque smt_opaque] dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1 <> env_root_port \/ pt2 <> adv_root_port \/
+      tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_int_univ epdp_port_univ epdp_tag_univ
@@ -1286,9 +1285,7 @@ op [opaque smt_opaque] dec_da_to_env (m : msg) : da_to_env option =
      | None   => None
      | Some x =>
          let (n, pt, tag, u) = x
-        in Some
-           {|dte_da = pt2.`1; dte_n = n; dte_pt = pt; dte_tag = tag;
-             dte_u = u|}
+        in Some {|dte_n = n; dte_pt = pt; dte_tag = tag; dte_u = u|}
      end.
 
 op epdp_da_to_env_msg =  (* let SMT provers inspect *)
@@ -1302,8 +1299,9 @@ rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
 rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
-case (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) => //.
-rewrite !negb_or /= not_dir => [#] -> -> pt2_2 -> match_eq_some /=.
+case (mod = Dir \/ pt1 <> env_root_port \/ pt2 <> adv_root_port \/
+      tag <> TagNoInter) => //.
+rewrite !negb_or /= not_dir => [#] -> -> -> -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
    epdp_tag_univ epdp_id).`dec u =
@@ -1314,7 +1312,6 @@ have val_u :
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
-split; first move : pt2_2; by case pt2.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
@@ -1327,7 +1324,7 @@ lemma eq_of_valid_da_to_env (m : msg) :
   let x = oget (epdp_da_to_env_msg.`dec m) in
   (Adv,
    env_root_port,
-   (x.`dte_da, 0),
+   adv_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -1337,19 +1334,18 @@ rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : da_to_env), epdp_da_to_env_msg.`dec m = Some x.
   exists (oget (epdp_da_to_env_msg.`dec m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 x5.
+case x => x1 x2 x3 x4.
 move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <- //.
 qed.
 
 module DummyAdv : ADV = {
-  proc init() : unit = {
-  }
+  proc init() : unit = { }
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
 
     match (epdp_da_from_env_msg.`dec m) with
-      Some x => {  (* from interface/simulator, we know x.`dfe_da = adv *)
+      Some x => {
         if (0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\
             ! adv <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
           r <- Some (Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
@@ -1358,13 +1354,13 @@ module DummyAdv : ADV = {
     | None   => {
         (* message from functionality or environment;
            interface/simulator will enforce that m.`1 = Adv /\ m.`2.`1
-           = self /\ 0 <= m.`2.`2 /\ ! self <= m.`3.`1 /\
-           (m.`3 = env_root_port <=> m.`2.`2 = 0) *)
+           = adv /\ 0 <= m.`2.`2 /\ ! adv <= m.`3.`1 /\ (m.`3 =
+           env_root_port <=> m.`2.`2 = 0) *)
         if (0 < m.`2.`2) {
           r <-
             Some
             (enc_da_to_env
-             {|dte_da = adv; dte_n = m.`2.`2; dte_pt = m.`3;
+             {|dte_n = m.`2.`2; dte_pt = m.`3;
                dte_tag = m.`4; dte_u = m.`5|});
         }
       }
@@ -1403,38 +1399,11 @@ axiom core_pi_gt0 :
 
 (* loop invariant for simulator's while loop *)
 
-(* TODO - this is out of date: *)
-
-op ms_loop_invar
-     (if_addr_opt : addr option,
-      m : msg, r : msg option, not_done : bool) : bool =
-  m.`1 = Adv /\
-  (not_done =>
-   (m.`2 = (adv, 0) /\ m.`3 = env_root_port \/
-
-    m.`2.`1 = adv /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
-    oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 1 \/
-
-    m.`2.`1 = adv /\ 0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ ! adv <= m.`3.`1 \/
-
-    if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 /\
-    m.`3.`1 = adv /\ 0 < m.`3.`2 < core_pi)) /\
-  (! not_done =>
-   r = None \/
-   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\
-    ((oget r).`2 = env_root_port /\ (oget r).`3.`2 = 0 \/
-
-     if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
-     (oget r).`3.`2 = core_pi \/
-
-     ! adv <= (oget r).`2.`1 /\ (oget r).`2 <> env_root_port /\
-     (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
-     0 < (oget r).`3.`2 < core_pi))).
-
 module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
      received with destination port index core_pi *)
 
+  (* if non-None, inc (oget if_addr_opt) adv *)
   var if_addr_opt : addr option
 
   proc init() : unit = {
@@ -1455,7 +1424,7 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
         r <- None; not_done <- false;
       }
       elif (m.`2.`1 = adv) {
-        if (0 < m.`2.`2 /\ if_addr <= m.`3.`1) {
+        if (0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ if_addr <= m.`3.`1) {
           not_done <- true;
         }
         else {
@@ -1485,7 +1454,7 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
     }
     else {
       m <- oget r;
-      if (m.`1 = Dir \/ m.`2.`1 = adv \/ m.`3.`1 <> adv \/
+      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ m.`3.`1 <> adv \/
           m.`3.`2 < 0) {
         r <- None; not_done <- false;
       }
@@ -1506,25 +1475,27 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
     var r : msg option <- None;
     var not_done : bool <- true;
     while (not_done) {
-      if (m.`2.`2 = core_pi) {
+      if (m.`2.`1 = adv) {
+        if (m.`2.`2 = core_pi) {
+          r <@ Core.invoke(m);
+          (r, m, not_done) <@ after_core(r);
+        }
+        else {
+          r <@ Adv.invoke(m);
+          (r, m, not_done) <@ after_adv(r);
+        }
+      }
+      else {  (* if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 *)
         r <@ Core.invoke(m);
         (r, m, not_done) <@ after_core(r);
-      }
-      elif (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
-        r <@ Core.invoke(m);
-        (r, m, not_done) <@ after_core(r);
-      }
-      else {
-        r <@ Adv.invoke(m);
-        (r, m, not_done) <@ after_adv(r);
       }
     }
     return r;
   }
 
-  (* m.`1 = Adv /\ m.`2.`1 = self /\
+  (* m.`1 = Adv /\ m.`2.`1 = adv /\
      (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
-      0 < m.`2.`2 /\ m.`3 <> env_root_port) *)
+      0 < m.`2.`2 /\ ! adv <= m.`3.`1 /\ m.`3 <> env_root_port) *)
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
