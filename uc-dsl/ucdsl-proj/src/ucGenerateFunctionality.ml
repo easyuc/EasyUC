@@ -312,7 +312,7 @@ let rec print_code (sim_uses : string option)
           (ptn : string option)
           (intprts : EcIdent.t QidMap.t)
           (glob_pfx : string): unit =
-  let pp_ex = pp_expr ~is_sim:(sim_uses<>None) ~intprts:intprts ~glob_pfx:glob_pfx sc in
+  let pp_ex = pp_form ~is_sim:(sim_uses<>None) ~intprts:intprts ~glob_pfx:glob_pfx sc in
 (*  let pp_extyargs ppf ex =
     match (EcTypes.e_ty ex).ty_node with
     | EcAst.Tconstr (_,tyargs) ->
@@ -332,8 +332,8 @@ let rec print_code (sim_uses : string option)
   let print_fail_instr () : unit =
     Format.fprintf ppf "@[%s <- None;@]" _r
   in
-  let print_ite_instr expr thencode elsecodeo : unit =
-    Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" pp_ex expr;
+  let print_ite_instr form thencode elsecodeo : unit =
+    Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" pp_ex form;
     print_code sim_uses
       sc root mbmap ppf thencode state_name dii ais ptn intprts glob_pfx;
     Format.fprintf ppf  "@]@;}";
@@ -468,14 +468,14 @@ let rec print_code (sim_uses : string option)
          Format.fprintf ppf ")"
        end
   in
-  let print_assign_instr lhs expr =
-    Format.fprintf ppf "@[%a <- %a;@]" print_lhs lhs pp_ex expr
+  let print_assign_instr lhs form =
+    Format.fprintf ppf "@[%a <- %a;@]" print_lhs lhs pp_ex form
   in
-  let print_sample_instr lhs expr =
-    Format.fprintf ppf "@[%a <$ %a;@]" print_lhs lhs pp_ex expr
+  let print_sample_instr lhs form =
+    Format.fprintf ppf "@[%a <$ %a;@]" print_lhs lhs pp_ex form
   in
-  let print_match_instr expr (mcl:match_clause_tyd list) =
-    let ety = EcTypes.e_ty expr in
+  let print_match_instr form (mcl:match_clause_tyd list) =
+    let ety = EcFol.f_ty form in
     let p, _, typ = EcUtils.oget (EcEnv.Ty.get_top_decl ety (EcScope.env sc)) in
     let pp_branch ppf (ctor, (bndngs, codeblock)) =
       let bndngs = List.map (fun (idloc, ty) ->
@@ -493,7 +493,7 @@ let rec print_code (sim_uses : string option)
     in
 
     Format.fprintf ppf "@[match (@[%a@]) with@]@;@[<v>%a@]@[end;@]@]"
-      (pp_expr sc) expr (EcPrinting.pp_list "" pp_branch) mcl
+      (pp_form sc) form (EcPrinting.pp_list "" pp_branch) mcl
 (*
     let print_mc ppf mc =
       let print_bindings ppf bndngs =
@@ -515,10 +515,10 @@ let rec print_code (sim_uses : string option)
   in
   let print_instruction ppf (it : instruction_tyd) : unit =
     match EcLocation.unloc it with
-    | Assign (lhs, expr) -> print_assign_instr lhs expr
-    | Sample (lhs, expr) -> print_sample_instr lhs expr
-    | ITE (expr, thencode, elsecodeo) -> print_ite_instr expr thencode elsecodeo
-    | Match (expr, mcl) -> print_match_instr expr (EcLocation.unloc mcl)
+    | Assign (lhs, form) -> print_assign_instr lhs form
+    | Sample (lhs, form) -> print_sample_instr lhs form
+    | ITE (form, thencode, elsecodeo) -> print_ite_instr form thencode elsecodeo
+    | Match (form, mcl) -> print_match_instr form (EcLocation.unloc mcl)
     | SendAndTransition sat -> print_sat_instr sat
     | Fail -> print_fail_instr ()
   in
@@ -744,18 +744,18 @@ let print_proof_state_match (root : string)
                     (code : instruction_tyd list EcLocation.located) : unit =
             let print_instruction ppf (it : instruction_tyd) : unit =
               match EcLocation.unloc it with
-              | Assign (lhs, expr) ->
+              | Assign (lhs, form) ->
                  Format.fprintf ppf "@[sp 1. (*Assign instruction*)@]@;"
-              | Sample (lhs, expr) ->
+              | Sample (lhs, form) ->
                  Format.fprintf ppf
-                 "@[seq 1 : (#pre). rnd. skip. smt(). (*Sample instruction*)@]@;"
-              | ITE (expr, thencode, elsecodeo) -> begin
+                 "@[seq 1 : (#pre). rnd. skip. move => />;smt(). (*Sample instruction*)@]@;"
+              | ITE (form, thencode, elsecodeo) -> begin
                   Format.fprintf ppf "@[if. (*if instruction*)@]@;";
                    print_proof_code ppf thencode;
                    if elsecodeo <> None then
                      print_proof_code ppf (EcUtils.oget elsecodeo)
                    end
-              | Match (expr, mcl) -> begin
+              | Match (form, mcl) -> begin
                   let mcl = EcLocation.unloc mcl in
                   let mcl = List.rev mcl in (*TODO: check how ec chooses order*)
                   Format.fprintf ppf
@@ -774,17 +774,17 @@ let print_proof_state_match (root : string)
                  then Format.fprintf ppf "@[if. (*envport check*)@]@;"
                  ;  
                  Format.fprintf ppf
-                   "@[%s sp 3. skip. smt(%s). (*SendAndTransition instruction*)@]@;"
+                   "@[%s sp 3. skip. move => />;smt(%s). (*SendAndTransition instruction*)@]@;"
                    ret_pfx smt_sat_lemmas;
                  if envportcheck
                  then
                    Format.fprintf ppf
-                   "@[%s sp 1. skip. smt(). (*envport check failed case*)@]@;"
+                   "@[%s sp 1. skip. move => />;smt(). (*envport check failed case*)@]@;"
                    ret_pfx
                 end
               | Fail ->
                  Format.fprintf ppf
-                   "@[%s sp 2. skip. smt(). (*Fail instruction*)@]@;" ret_pfx
+                   "@[%s sp 2. skip. move => />;smt(). (*Fail instruction*)@]@;" ret_pfx
             in
             
             let code = EcLocation.unloc code in
@@ -812,7 +812,7 @@ let print_proof_state_match (root : string)
             get_msg_info mp dii IdPairMap.empty root mbmap in
           Format.fprintf ppf "@[match. (*message match*)@]@;";
           Format.fprintf ppf
-            "@[%s skip. smt(). (*None branch of message match, dec failed*)@]@;"
+            "@[%s skip. move => />;smt(). (*None branch of message match, dec failed*)@]@;"
             ret_pfx;
           if is_internal then
             Format.fprintf ppf
@@ -825,7 +825,7 @@ let print_proof_state_match (root : string)
           print_proof_mm ppf (List.tl mmcs);
           if is_internal then
             Format.fprintf ppf
-              "@[%s skip. smt(). (*address check for internal messages failed case*)@]@;"
+              "@[%s skip. move => />;smt(). (*address check for internal messages failed case*)@]@;"
               ret_pfx
           ;
       in
@@ -836,7 +836,7 @@ let print_proof_state_match (root : string)
   if List.is_empty mmcs
   then 
     Format.fprintf ppf
-            "@[%s skip. smt(). (*empty state match branch code*)@]@;" ret_pfx
+            "@[%s skip. move => />;smt(). (*empty state match branch code*)@]@;" ret_pfx
   else
     print_proof_mm ppf mmcs;
   in

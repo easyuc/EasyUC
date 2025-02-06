@@ -111,45 +111,51 @@ let if_addr_opt = "if_addr_opt"
 
 let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 
-let pp_expr ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
+let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
       ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
-      (expr : EcTypes.expr) : unit =
+      (form : EcFol.form) : unit =
   let addr_ex_of_idstr (idstr : string) =
-    EcTypes.e_local (EcIdent.create idstr) addr_ty
+    EcFol.f_local (EcIdent.create idstr) addr_ty
   in
 
-  let e_self = addr_ex_of_idstr (glob_pfx^_self) in
+  let f_self = addr_ex_of_idstr (glob_pfx^_self) in
   
   (* envport substitution *)
   let envport_self =
-    EcTypes.e_app envport_op [e_self]
+    EcFol.f_app envport_op [f_self]
       (EcTypes.tfun port_ty EcTypes.tbool) in
   let envport_subst =
-    EcSubst.add_elocals EcSubst.empty [envport_id] [envport_self] in
-  let expr = EcSubst.subst_expr envport_subst expr in
+    EcSubst.add_flocal EcSubst.empty envport_id envport_self in
+  let form = EcSubst.subst_form envport_subst form in
 
-  let e_oget_if_addr_opt =
-    let e_if_addr_opt =
-      EcTypes.e_local (EcIdent.create if_addr_opt) (EcTypes.toption addr_ty) in
-    EcTypes.e_oget e_if_addr_opt addr_ty in
+  let f_oget_if_addr_opt =
+    let f_if_addr_opt =
+      EcFol.f_local (EcIdent.create if_addr_opt) (EcTypes.toption addr_ty) in
+    let f_oget (f : EcFol.form) (ty : EcTypes.ty) : EcFol.form =
+      let op = EcFol.f_op EcCoreLib.CI_Option.p_oget [ty]
+                 (EcTypes.tfun (EcTypes.toption ty) ty)
+      in
+      EcFol.f_app op [f] ty
+    in
+    f_oget f_if_addr_opt addr_ty in
   
   (* intport substitution *)
-  let intport_op_ex (ptnm : string list) : EcTypes.expr =
+  let intport_op_ex (ptnm : string list) : EcFol.form =
     let ptnm = List.nth ptnm ((List.length ptnm)-1) in
-    EcTypes.e_op (EcPath.fromqsymbol ([], uc__rf^"."^intport_op_name ptnm)) []
+    EcFol.f_op (EcPath.fromqsymbol ([], uc__rf^"."^intport_op_name ptnm)) []
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =
-    let addr_ex = if is_sim then e_oget_if_addr_opt else e_self in
-    EcTypes.e_app (intport_op_ex ptnm) [addr_ex] port_ty in
-  let expr = QidMap.fold (fun ptnm id ex  ->        
+    let addr_ex = if is_sim then f_oget_if_addr_opt else f_self in
+    EcFol.f_app (intport_op_ex ptnm) [addr_ex] port_ty in
+  let form = QidMap.fold (fun ptnm id ex  ->        
     let intport_subst =
-      EcSubst.add_elocals
-        EcSubst.empty [id] [intport_self ptnm] in
-      EcSubst.subst_expr intport_subst ex
-    ) intprts expr in
+      EcSubst.add_flocal
+        EcSubst.empty id (intport_self ptnm) in
+      EcSubst.subst_form intport_subst ex
+    ) intprts form in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  EcPrinting.pp_expr ppe ppf expr
+  EcPrinting.pp_form ppe ppf form
 
 
 
