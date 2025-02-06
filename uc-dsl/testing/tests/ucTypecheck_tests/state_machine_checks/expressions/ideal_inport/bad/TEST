@@ -1,0 +1,9 @@
+description
+Test with ideal functionality referring to intport.
+.
+args: bad.uc
+outcome:  failure
+[error: bad.uc: from line 17 columns 20 to 29]
+
+unknown variable or constant: `intport Q'
+.

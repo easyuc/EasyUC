@@ -159,7 +159,7 @@ have // : z \notin ys by apply disj_xs_ys.
 qed.
 
 lemma disjoint_with_union_implies_disjoint_with_first
-      (xs ys zs : 'a fset) :
+      (zs xs ys : 'a fset) :
   disjoint xs (ys `|` zs) => disjoint xs ys.
 proof.
 rewrite disjointP => disj_xs_union_ys_zs.
@@ -169,8 +169,8 @@ by rewrite in_fsetU negb_or.
 qed.
 
 lemma disjoint_with_union_implies_disjoint_with_second
-      (xs ys zs : 'a fset) :
-  disjoint xs (ys `|` zs) => disjoint xs ys.
+      (ys xs zs : 'a fset) :
+  disjoint xs (ys `|` zs) => disjoint xs zs.
 proof.
 rewrite disjointP => disj_xs_union_ys_zs.
 rewrite disjointP => x x_in_xs.
@@ -1349,7 +1349,7 @@ module DummyAdv : ADV = {
     var r : msg option <- None;
 
     match (epdp_da_from_env_msg.`dec m) with
-      Some x => {  (* from interface/simulator, we know x.`dfe_da = self *)
+      Some x => {  (* from interface/simulator, we know x.`dfe_da = adv *)
         if (0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\
             ! adv <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
           r <- Some (Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u);

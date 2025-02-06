@@ -4,7 +4,9 @@
 
 open EcSymbols
 open EcLocation
+open EcParsetree
 open EcTypes
+open EcFol
 open EcEnv
 
 open UcSpec
@@ -41,7 +43,7 @@ val inter_check_type : env -> pty -> ty
 (* typecheck an expression against an optional type with no unification
    of type variables *)
 
-val inter_check_expr : env -> pexpr -> ty option -> expr * ty
+val inter_check_expr : env -> pformula -> ty option -> form * ty
 
 (* typecheck a sent message expression in an environment *)
 

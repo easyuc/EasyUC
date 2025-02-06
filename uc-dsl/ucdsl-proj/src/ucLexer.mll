@@ -60,6 +60,7 @@
     "assumption"      , ASSUMPTION  ;
     "undo"            , UNDO        ;
     "debug"           , DEBUG       ;
+    "run"             , RUN         ;
   ]
 
   let keywords =

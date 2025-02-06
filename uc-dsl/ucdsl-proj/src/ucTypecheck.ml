@@ -7,8 +7,12 @@ open Format
 
 open EcLocation
 open EcSymbols
+open EcParsetree
+open EcAst
 open EcTypes
+open EcFol
 open EcUnify
+open EcTyping
 open EcEnv
 
 open UcUtils
@@ -16,7 +20,6 @@ open UcMessage
 open UcSpec
 open UcSpecTypedSpecCommon
 open UcTypedSpec
-open UcTransTypesExprs
 
 (* the current maximum number of allowed parameters to a message;
    changing this will require updates to the EasyCrypt code generation *)
@@ -54,41 +57,6 @@ let is_ec_type_name s =
 let is_ec_op_name s =
   Option.is_some (EcEnv.Op.lookup_opt ([], s) (top_env ()))
 
-let check_not_ec_theory_name id_l =  (* currently not used *)
-  if is_ec_theory_name (unloc id_l)
-  then error_message (loc id_l)
-       (fun ppf ->
-          fprintf ppf
-          ("@[identifer@ is@ name@ of@ EasyCrypt@ theory@]"))
-
-let warning_theory_name s qual_file =
-  if is_ec_theory_name s
-  then warning_message (begin_of_file_loc qual_file)
-       (fun ppf ->
-          fprintf ppf
-          ("@[EasyCrypt@ theory@ \"%s\"@ may@ have@ different@ " ^^
-           "definition@ in@ generated@ EasyCrypt@ code@]")
-          s)
-
-let warning_type_name s qual_file =
-  if is_ec_type_name s
-  then warning_message (begin_of_file_loc qual_file)
-       (fun ppf ->
-          fprintf ppf
-          ("@[EasyCrypt@ type@ name@ \"%s\"@ may@ have@ different@ " ^^
-           "definition@ in@ generated@ EasyCrypt@ code@]")
-          s)
-
-let warning_op_name s qual_file =
-  if is_ec_op_name s
-  then warning_message (begin_of_file_loc qual_file)
-       (fun ppf ->
-          fprintf ppf
-          ("@[EasyCrypt@ operator@ or@ constructor@ name@ \"%s\"@ " ^^
-           "may@ have@ different@ definition@ in@ generated@ " ^^
-           "EasyCrypt@ code@]")
-          s)
-
 (* check type in top-level environment, rejecting type variables *)
 
 let check_type_top (pty : pty) : ty =
@@ -103,14 +71,6 @@ let check_name_type_bindings_top
   (fun (nt : type_binding) ->
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
   nt_map
-
-let pp_ty env ppf ty =
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  EcPrinting.pp_type ppe ppf ty
-
-let pp_expr env ppf expr =
-  let ppe = EcPrinting.PPEnv.ofenv env in
-  EcPrinting.pp_expr ppe ppf expr
 
 (****************************** interface checks ******************************)
 
@@ -342,19 +302,19 @@ type state_mid = state_body_mid located
 
    in the concrete syntax [Party] is written "intport Party", and
    [RealFun; Party] is written "intport RealFun.Party"; these are
-   turned by the parser into PEident's, whose arguments are
-   localizations of ([], "intport:Party") and ([],
-   "intport:RealFun.Party")
+   turned by the parser into PFident's, whose arguments are
+   localizations of ([], "intport Party") and ([],
+   "intport RealFun.Party")
 
    when internal ports are locally bound in environments, [Party] is
-   turned into "intport:Party", and [RealFun; Party] is turned into
-   "intport:RealFun.Party]"
+   turned into "intport Party", and [RealFun; Party] is turned into
+   "intport RealFun.Party"
 
    when internal ports are turned into port indices (beginning at 1),
    we use the ordering List.compare String.compare; this is stable
    under the prepending of RealFun, so that [Party] in the real
    functionality and [RealFun; Party] in its simulator will be
-   assigned the same port index *) 
+   assigned the same port index *)
 
 type kind =  (* kind of entity *)
   | RealPartyKind of bool  (* party of real functionality; bool is true iff
@@ -396,7 +356,7 @@ type state_context =
 let make_state_context
     (s : state_body_mid) (ports : QidSet.t) (kind : kind) : state_context =
   let params =
-    Mid.of_list   
+    Mid.of_list
     (List.map
      (fun (x, u) ->
         (EcIdent.create x, u))
@@ -412,7 +372,7 @@ let make_state_context
        QidMap.update qid
        (fun _ ->
           Some
-          (EcIdent.create ("intport:" ^ nonempty_qid_to_string qid)))
+          (EcIdent.create ("intport " ^ nonempty_qid_to_string qid)))
        acc)
     QidMap.empty
     (QidSet.elements ports) in
@@ -1061,9 +1021,9 @@ let check_msg_pat
 
 (* checking instructions *)
 
-let check_uninitialized_var (exp : expr) (l : EcLocation.t)
+let check_uninitialized_var (exp : form) (l : EcLocation.t)
     (sa : state_analysis) : unit =
-  let fv = e_fv exp in
+  let fv = f_fv exp in
   EcIdent.Mid.iter
   (fun ident _ ->
      let id = EcIdent.name ident in
@@ -1080,16 +1040,17 @@ let check_uninitialized_var (exp : expr) (l : EcLocation.t)
 
 let check_expr
     (sa : state_analysis) (env : env) (ue : unienv)
-    (pexpr : pexpr) (expct_ty_opt : ty option) : expr * ty =
-  let (exp, ty) = transexp env ue pexpr in
+    (pform : pformula) (expct_ty_opt : ty option) : form * ty =
+  let form = trans_form_opt env ue pform None in
+  let ty = form.f_ty in
   let () =
     match expct_ty_opt with
     | None          -> ()
     | Some expct_ty ->
-        unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
+        unify_or_fail env ue (loc pform) ~expct:expct_ty ty in
   (* check for possibly uninitialized variables *)
-  let () = check_uninitialized_var exp (loc pexpr) sa in
-  (exp, ty)
+  let () = check_uninitialized_var form (loc pform) sa in
+  (form, ty)
 
 let check_lhs_var (sc : state_context) (sa : state_analysis) (id : psymbol)
       : state_analysis * ty =
@@ -1126,16 +1087,16 @@ let check_lhs (sc : state_context) (sa : state_analysis) (lhs : lhs) =
 
 let check_val_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (lhs : lhs) (ex : pexpr)
-    : instruction_tyd_u * state_analysis =
+    (lhs : lhs) (ex : pformula)
+      : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
   let (exp, _) = check_expr sa env ue ex (Some ty) in
   Assign (lhs, exp), sa'
 
 let check_sampl_assign
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (lhs : lhs) (ex : pexpr)
-    : instruction_tyd_u * state_analysis =
+    (lhs : lhs) (ex : pformula)
+      : instruction_tyd_u * state_analysis =
   let (sa', ty) = check_lhs sc sa lhs in
   let (exp, _) = check_expr sa env ue ex (Some (tdistr ty)) in
   Sample (lhs, exp), sa'
@@ -1181,7 +1142,8 @@ let check_state_expr
 
 let check_msg_arguments
     (sa : state_analysis) (env : env) (ue : unienv)
-    (es : pexpr list located) (mc : ty_index IdMap.t) : expr list located =
+    (es : pformula list located) (mc : ty_index IdMap.t)
+      : form list located =
   let sg = indexed_map_to_list (unlocm mc) in
   if List.length (unloc es) <> List.length sg
   then error_message (loc es)
@@ -1265,7 +1227,7 @@ let check_msg_expr
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
   let l = loc msg.path in
   match sc.kind with
-  | RealPartyKind serves_basic_adv -> 
+  | RealPartyKind serves_basic_adv ->
       if is_msg_path_in_basic_inter_paths msg.path abip.adversarial
         then check_send_adversarial sa env ue msg param_tis
       else if sc.initial && serves_basic_adv
@@ -1326,7 +1288,7 @@ let check_toplevel_match_clause
   let filter = fun _ op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
   let tvi = tvi |> EcUtils.omap (transtvi env ue) in
-  let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue [] in
+  let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
   match cts with
   | []                          ->
       tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
@@ -1373,7 +1335,7 @@ let check_toplevel_match_clause
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (ex : pexpr) (tins : instruction list located)
+    (ex : pformula) (tins : instruction list located)
     (eins_opt : instruction list located option)
     : instruction_tyd_u * state_analysis =
   let ex, _ = check_expr sa env ue ex (Some tbool) in
@@ -1391,7 +1353,7 @@ let rec check_ite
 and check_match
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
     (sc : state_context) (sa : state_analysis) (env : env) (ue : unienv)
-    (ex : pexpr) (clauses : match_clause list located)
+    (ex : pformula) (clauses : match_clause list located)
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
   let exp, ty = check_expr sa env ue ex None in
@@ -1549,10 +1511,10 @@ let replace_unif_vars_in_msg_match_code (env : env) (ue : unienv)
            "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
   let ts = EcFol.Tuni.subst uidmap in
   let subst_ty = EcFol.ty_subst ts in
-  let subst_expr = EcFol.Fsubst.e_subst ts in
+  let subst_form = EcFol.Fsubst.f_subst ts in
   let replace_expr_list_loc exps =
-    mk_loc (loc exps) (List.map subst_expr (unloc exps)) in
-  let replace_expr_opt = EcUtils.omap subst_expr in
+    mk_loc (loc exps) (List.map subst_form (unloc exps)) in
+  let replace_expr_opt = EcUtils.omap subst_form in
   let replace_sat sat =
     let {msg_expr; state_expr} = sat in
     {msg_expr =
@@ -1566,17 +1528,17 @@ let replace_unif_vars_in_msg_match_code (env : env) (ue : unienv)
   let rec replace ins =
     mk_loc (loc ins)
     (match unloc ins with
-     | Assign (lhs, exp)       -> Assign (lhs, subst_expr exp)
-     | Sample (lhs, exp)       -> Sample (lhs, subst_expr exp)
+     | Assign (lhs, exp)       -> Assign (lhs, subst_form exp)
+     | Sample (lhs, exp)       -> Sample (lhs, subst_form exp)
      | ITE (exp, thens, elses) ->
          ITE
-         (subst_expr exp,
+         (subst_form exp,
           mk_loc (loc thens) (List.map replace (unloc thens)),
           EcUtils.omap
           (fun is -> mk_loc (loc is) (List.map replace (unloc is)))
           elses)
      | Match (exp, clauses)    ->
-         Match (subst_expr exp, replace_match_clauses clauses)
+         Match (subst_form exp, replace_match_clauses clauses)
      | SendAndTransition sat   -> SendAndTransition (replace_sat sat)
      | Fail                    -> Fail)
   and replace_match_clauses clauses =
@@ -1730,7 +1692,7 @@ let check_reachability (states : state_tyd IdMap.t) : unit =
       if List.mem nw olds
       then closure olds nws
       else let st = IdMap.find nw states in
-           let nexts = 
+           let nexts =
              IdSet.to_list (state_transitions_of_state st) in
            closure (olds @ [nw]) (nws @ nexts) in
   let init_id = initial_state_id_of_states states in
@@ -2344,7 +2306,7 @@ let load_uc_reqs
     (reqs : psymbol list) : maps_tyd =
   let maps = List.fold_left (load_uc_req check_id) maps reqs in
   {maps with uc_reqs_map =
-     IdMap.update root 
+     IdMap.update root
      (fun sym_opt ->
         match sym_opt with
         | None   -> Some (List.map unloc reqs)
@@ -2532,7 +2494,7 @@ let typecheck
   let ec_reqs = load_ec_reqs spec.externals.ec_requires in
   let maps =
     {maps with ec_reqs_map =
-       IdMap.update root 
+       IdMap.update root
        (fun sym_opt ->
           match sym_opt with
           | None   -> Some ec_reqs
@@ -2542,10 +2504,10 @@ let typecheck
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
         error_message l
-        (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr) in
+        (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr) in
   let maps =
     {maps with ec_scope_map =
-       IdMap.update root 
+       IdMap.update root
        (fun sym_opt ->
           match sym_opt with
           | None   -> Some (UcStackedScopes.current_scope ())
@@ -2649,22 +2611,23 @@ let inter_check_type (env : env) (pty : pty) : ty =
    or type variables *)
 
 let inter_check_expr_ue
-    (env : env) (ue : unienv) (pexpr : pexpr) (expct_ty_opt : ty option)
-      : expr * ty =
-  let (exp, ty) = transexp env ue pexpr in
+    (env : env) (ue : unienv) (pform : pformula) (expct_ty_opt : ty option)
+      : form * ty =
+  let form = trans_form_opt env ue pform None in
+  let ty = form.f_ty in
   let () =
     match expct_ty_opt with
     | None          -> ()
     | Some expct_ty ->
-        unify_or_fail env ue (loc pexpr) ~expct:expct_ty ty in
-  (* replace unification variables in expression by types *)
+        unify_or_fail env ue (loc pform) ~expct:expct_ty ty in
+  (* replace unification variables in formula by types *)
   let uidmap =
     try EcUnify.UniEnv.close ue with
     | EcUnify.UninstanciateUni ->
         failure
         "should not happen: a top-level expression won't have type variables" in
   let ts = EcFol.Tuni.subst uidmap in
-  let exp = EcFol.Fsubst.e_subst ts exp in
+  let form = EcFol.Fsubst.f_subst ts form in
   (* update result type, using the expected type if supplied (which
      was assumed to have no unification or type variables), and otherwise
      applying the result of the unification to ty *)
@@ -2672,20 +2635,20 @@ let inter_check_expr_ue
     match expct_ty_opt with
     | None          -> EcFol.ty_subst ts ty
     | Some expct_ty -> expct_ty in
-  (exp, res_ty)
+  (form, res_ty)
 
-let inter_check_expr (env : env) (pexpr : pexpr) (expct_ty_opt : ty option)
-      : expr * ty =
+let inter_check_expr (env : env) (pform : pformula) (expct_ty_opt : ty option)
+      : form * ty =
   let ue = unif_env () in
-  inter_check_expr_ue env ue pexpr expct_ty_opt
+  inter_check_expr_ue env ue pform expct_ty_opt
 
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (poa_pexpr : port_or_addr_pexpr)
-    (pi_opt : int option) : expr =
-  match poa_pexpr with
+    (env : env) (ue : unienv) (poa : port_or_addr)
+    (pi_opt : int option) : form =
+  match poa with
   | PoA_Port pexpr ->
-      let (expr, _) = inter_check_expr_ue env ue pexpr (Some port_ty) in
-      expr
+      let (form, _) = inter_check_expr_ue env ue pexpr (Some port_ty) in
+      form
   | PoA_Addr pexpr ->
       match pi_opt with
       | None    ->
@@ -2694,8 +2657,8 @@ let inter_check_expr_port_or_addr
              fprintf ppf
              "@[unable@ to@ infer@ port@ index@ of@ addr@]")
       | Some pi ->
-          let (expr, _) = inter_check_expr_ue env ue pexpr (Some addr_ty) in
-          (e_tuple [expr; e_int (EcBigInt.of_int pi)])
+          let (form, _) = inter_check_expr_ue env ue pexpr (Some addr_ty) in
+          (f_tuple [form; f_int (EcBigInt.of_int pi)])
 
 type msg_path_info =
   | MPI_Bad
@@ -2746,7 +2709,6 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
 
 let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
-  let expr2form = EcFol.form_of_expr EcFol.mhr in
   let ue = unif_env () in
   match sme with
   | SME_Ord sme    ->
@@ -2768,10 +2730,10 @@ let inter_check_sme
               pp_qsymbol (msg_path_u_to_qsymbol path))
        | MPI_Good (mode, dir, pi, exp_tys) ->
            let src_port_expr =
-             inter_check_expr_port_or_addr env ue sme.src_poa_pexpr
+             inter_check_expr_port_or_addr env ue sme.src_poa
              (if pi <> 0 && dir = Out then Some pi else None) in
            let dest_port_expr =
-             inter_check_expr_port_or_addr env ue sme.dest_poa_pexpr
+             inter_check_expr_port_or_addr env ue sme.dest_poa
              (if pi <> 0 && dir = In then Some pi else None) in
            let args = unloc sme.args in
              if List.length exp_tys <> List.length args
@@ -2792,22 +2754,22 @@ let inter_check_sme
                   SMET_Ord
                   {mode           = mode;
                    dir            = dir;
-                   src_port_form  = expr2form src_port_expr;
+                   src_port_form  = src_port_expr;
                    path           = path;
-                   args           = List.map expr2form exprs;
-                   dest_port_form = expr2form dest_port_expr})
+                   args           = exprs;
+                   dest_port_form = dest_port_expr})
   | SME_EnvAdv sme ->
       (let (src_port, _) =
-         inter_check_expr_ue env ue sme.src_port_pexpr (Some port_ty) in
+         inter_check_expr_ue env ue sme.src_port (Some port_ty) in
        let (dest_port, _) =
-         inter_check_expr_ue env ue sme.dest_port_pexpr (Some port_ty) in
+         inter_check_expr_ue env ue sme.dest_port (Some port_ty) in
        SMET_EnvAdv
-       {src_port_form  = expr2form src_port;
-        dest_port_form = expr2form dest_port})
+       {src_port_form  = src_port;
+        dest_port_form = dest_port})
 
 let inter_check_sent_msg_expr
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
   try inter_check_sme maps env sme with
   | TyError (l, env, tyerr) ->
       error_message l
-      (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
+      (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)

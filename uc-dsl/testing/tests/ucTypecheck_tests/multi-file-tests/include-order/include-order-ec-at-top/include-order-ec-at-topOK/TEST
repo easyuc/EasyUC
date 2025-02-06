@@ -1,0 +1,9 @@
+description
+  check that later -I has highest priority in include
+  path even if it was included earlier, and even if
+  that earlier include was followed by a slash but
+  later one was not.
+.
+args: -I A/ -I B -I A Main.uc
+outcome: success
+.

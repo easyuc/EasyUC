@@ -1,6 +1,7 @@
 (* UnInterpreter module interface *)
 
 open EcSymbols
+open EcParsetree
 open EcEnv
 
 open UcSpecTypedSpecCommon
@@ -45,9 +46,9 @@ val pp_rewriting_dbs_config  : Format.formatter -> config -> unit
 val add_var_to_config             : config -> psymbol -> pty -> config
 val add_var_to_config_make_unique : config -> psymbol -> pty -> config * symbol
 
-val add_hyp_to_config             : config -> psymbol -> pexpr -> config
+val add_hyp_to_config             : config -> psymbol -> pformula -> config
 val add_hyp_to_config_make_unique :
-      config -> psymbol -> pexpr -> config * symbol
+      config -> psymbol -> pformula -> config * symbol
 
 val real_of_gen_config  : config -> config
 val ideal_of_gen_config : config -> config

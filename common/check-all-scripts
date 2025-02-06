@@ -2,9 +2,23 @@
 
 # check all the UC common EasyCrypt scripts
 
-# SMT timeout in seconds -- try increasing
+# usage: check-all-scripts [timeout]
 
-timeout=2
+if [ $# -eq 0 ];
+  then echo using default timeout: 2;
+       echo "";
+       timeout=2;
+elif [ $# -eq 1 ];
+  then if [ "$1" -gt 0 ] 2>/dev/null
+       then echo using timeout: $1;
+            echo "";
+            timeout=$1;
+       else echo timeout must be positive integer;
+            exit 1;
+       fi;
+else echo usage check-all-scripts [timeout];
+     exit 1;
+fi;
 
 check() {
   echo checking $1;

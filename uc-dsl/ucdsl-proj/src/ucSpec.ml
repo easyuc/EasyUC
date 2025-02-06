@@ -4,91 +4,20 @@
 
    This includes parse trees for specifications of functionalities,
    simulators and associated interfaces, but also for user input to
-   the interpreter. *)
+   the interpreter.
 
-(* specification of symbols, types (pty) and expressions (pexpr)
-   borrowed from an older version of ECsrc/ecParsetree.ml
+   We use EasyCrypt's parse trees for types (pty) and formulas
+   (pformula).
 
-   the current version of this module represents expressions as
-   a subset of the datatype of parsed formulas (pformula)
-
-   because the UC DSL does not include program logic judgements and
-   other related formulas, we've made a decision to only join the
-   EasyCrypt types post typechecking *)
+   We still talk about "expressions" in the UC DSL, even though they
+   are represented as formulas. They are the subset of formulas
+   described by our grammar (see nonterminal `expr` of
+   ucParser.mly). *)
 
 open EcLocation
 open EcSymbols
-open EcBigInt
+open EcParsetree
 open UcSpecTypedSpecCommon
-
-(* symbols *)
-
-let qsymb_of_symb (x : symbol) : qsymbol = ([], x)
-
-type pqsymbol  = qsymbol located
-type osymbol_r = psymbol option
-type osymbol   = osymbol_r located
-
-(* types *)
-
-type pty_r =
-  | PTunivar
-  | PTtuple of pty list
-  | PTnamed of pqsymbol
-  | PTvar   of psymbol
-  | PTapp   of pqsymbol * pty list
-  | PTfun   of pty * pty
-and pty = pty_r located
-
-(* type variable instantiations *)
-
-type ptyinstan_r =
-  | TVIunamed of pty list
-  | TVInamed  of (psymbol * pty) list
-
-and ptyinstan  = ptyinstan_r located
-
-(* expressions *)
-
-type plpattern_r =
-  | LPSymbol of psymbol
-  | LPTuple  of osymbol list
-  | LPRecord of (pqsymbol * psymbol) list
-
-and plpattern = plpattern_r located
-
-type ppattern =
-  | PPApp of (pqsymbol * ptyinstan option) * osymbol list
-
-type ptybinding  = osymbol list * pty
-and  ptybindings = ptybinding list
-
-and pexpr_r =
-  | PEcast    of pexpr * pty                       (* type cast          *)
-  | PEint     of zint                              (* int. literal       *)
-  | PEdecimal of (zint * (int * zint))             (* dec. literal       *)
-  | PEident   of pqsymbol * ptyinstan option       (* symbol             *)
-  | PEapp     of pexpr * pexpr list                (* op. application    *)
-  | PElet     of plpattern * pexpr_wty * pexpr     (* let binding        *)
-  | PEtuple   of pexpr list                        (* tuple constructor  *)
-  | PEif      of pexpr * pexpr * pexpr             (* _ ? _ : _          *)
-  | PEmatch   of pexpr * (ppattern * pexpr) list   (* match              *)
-  | PEforall  of ptybindings * pexpr               (* forall quant.      *)
-  | PEexists  of ptybindings * pexpr               (* exists quant.      *)
-  | PElambda  of ptybindings * pexpr               (* lambda abstraction *)
-  | PErecord  of pexpr option * pexpr rfield list  (* record             *)
-  | PEproj    of pexpr * pqsymbol                  (* projection         *)
-  | PEproji   of pexpr * int                       (* tuple projection   *)
-  | PEscope   of pqsymbol * pexpr                  (* scope selection    *)
-
-and pexpr = pexpr_r located
-and pexpr_wty = pexpr * pty option
-
-and 'a rfield = {
-  rf_name  : pqsymbol;
-  rf_tvi   : ptyinstan option;
-  rf_value : 'a;
-}
 
 (* type bindings *)
 
@@ -136,13 +65,13 @@ type inter_def =
 (* message and state expressions *)
 
 type msg_expr =
-  {path      : msg_path;            (* message path *)
-   args      : pexpr list located;  (* message arguments *)
-   port_expr : pexpr option}        (* message destination - port expr *)
+  {path      : msg_path;               (* message path *)
+   args      : pformula list located;  (* message arguments *)
+   port_expr : pformula option}        (* message destination - port expr *)
 
 type state_expr =
-  {id   : psymbol;             (* state to transition to *)
-   args : pexpr list located}  (* arguments of new state *)
+  {id   : psymbol;                (* state to transition to *)
+   args : pformula list located}  (* arguments of new state *)
 
 (* instructions *)
 
@@ -151,13 +80,13 @@ type send_and_transition =
    state_expr : state_expr}  (* state to transition to *)
 
 type instruction_u =
-  | Assign of lhs * pexpr                       (* ordinary assignment *)
-  | Sample of lhs * pexpr                       (* sampling assignment *)
-  | ITE of pexpr * instruction list located *   (* if-then-else *)
+  | Assign of lhs * pformula                       (* ordinary assignment *)
+  | Sample of lhs * pformula                       (* sampling assignment *)
+  | ITE of pformula * instruction list located *   (* if-then-else *)
            instruction list located option
-  | Match of pexpr * match_clause list located  (* match instruction *)
-  | SendAndTransition of send_and_transition    (* send and transition *)
-  | Fail                                        (* failure *)
+  | Match of pformula * match_clause list located  (* match instruction *)
+  | SendAndTransition of send_and_transition       (* send and transition *)
+  | Fail                                           (* failure *)
 
 and instruction = instruction_u located
 
@@ -185,10 +114,10 @@ type state =
   {id     : psymbol;                    (* name of state *)
    params : type_binding list located;  (* typed state parameters *)
    code   : state_code}                 (* code of state *)
-                
+
 type state_def =  (* state definition *)
   | InitialState of state
-  | FollowingState of state 
+  | FollowingState of state
 
 (* functionalities and simulators *)
 
@@ -281,14 +210,14 @@ let loc_of_fun_expr (fe : fun_expr) : EcLocation.t =
 
 (* for use in sent message expr *)
 
-type port_or_addr_pexpr =
-  | PoA_Port of pexpr
-  | PoA_Addr of pexpr
+type port_or_addr =
+  | PoA_Port of pformula
+  | PoA_Addr of pformula
 
-let loc_of_port_or_addr_pexpr (poap : port_or_addr_pexpr) : EcLocation.t =
-  match poap with
-  | PoA_Port pexpr -> loc pexpr
-  | PoA_Addr pexpr -> loc pexpr
+let loc_of_port_or_addr (poa : port_or_addr) : EcLocation.t =
+  match poa with
+  | PoA_Port pformula -> loc pformula
+  | PoA_Addr pformula -> loc pformula
 
 (* expression for message in transit (sent message expession)
 
@@ -322,14 +251,14 @@ let loc_of_port_or_addr_pexpr (poap : port_or_addr_pexpr) : EcLocation.t =
    and adversary are carrying out (which would pass data) *)
 
 type sent_msg_expr_ord =
-  {src_poa_pexpr  : port_or_addr_pexpr;  (* source *)
-   path           : msg_path;            (* message path *)
-   args           : pexpr list located;  (* message arguments *)
-   dest_poa_pexpr : port_or_addr_pexpr}  (* destination *)
+  {src_poa  : port_or_addr;           (* source *)
+   path     : msg_path;               (* message path *)
+   args     : pformula list located;  (* message arguments *)
+   dest_poa : port_or_addr}           (* destination *)
 
 type sent_msg_expr_env_adv =
-  { src_port_pexpr  : pexpr;   (* source *)
-    dest_port_pexpr : pexpr }  (* destination *)
+  {src_port  : pformula;   (* source *)
+   dest_port : pformula }  (* destination *)
 
 type sent_msg_expr =
   | SME_Ord    of sent_msg_expr_ord
@@ -337,13 +266,13 @@ type sent_msg_expr =
 
 let loc_of_src_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
   match sme with
-  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.src_poa_pexpr
-  | SME_EnvAdv sme -> loc sme.src_port_pexpr
+  | SME_Ord sme    -> loc_of_port_or_addr sme.src_poa
+  | SME_EnvAdv sme -> loc sme.src_port
 
 let loc_of_dest_of_sent_msg_expr (sme : sent_msg_expr) : EcLocation.t =
   match sme with
-  | SME_Ord sme    -> loc_of_port_or_addr_pexpr sme.dest_poa_pexpr
-  | SME_EnvAdv sme -> loc sme.dest_port_pexpr
+  | SME_Ord sme    -> loc_of_port_or_addr sme.dest_poa
+  | SME_EnvAdv sme -> loc sme.dest_port
 
 (* rewriting databases modification *)
 
@@ -371,20 +300,20 @@ type peffect_r =
 type peffect = peffect_r located
 
 type interpreter_command_u =
-  | Load      of psymbol
-  | FunEx     of fun_expr
-  | World     of world
-  | Send      of sent_msg_expr
-  | Run
-  | Step      of EcParsetree.pprover_infos option * mod_dbs option
-  | AddVar    of type_binding
-  | AddAss    of psymbol * pexpr
-  | Prover    of EcParsetree.pprover_infos
-  | Hint      of mod_dbs
+  | Load   of psymbol
+  | FunEx  of fun_expr
+  | World  of world
+  | Send   of sent_msg_expr
+  | Run    of int option
+  | Step   of EcParsetree.pprover_infos option * mod_dbs option
+  | AddVar of type_binding
+  | AddAss of psymbol * pformula
+  | Prover of EcParsetree.pprover_infos
+  | Hint   of mod_dbs
   | Finish
-  | Assert    of peffect
+  | Assert of peffect
   | Debug
-  | Undo      of int located
+  | Undo   of int located
   | Quit
 
 type interpreter_command = interpreter_command_u located

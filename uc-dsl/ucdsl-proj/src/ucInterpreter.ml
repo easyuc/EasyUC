@@ -6,6 +6,7 @@ open EcSymbols
 open EcLocation
 open EcUtils
 open EcAst
+open EcParsetree
 open EcTypes
 open EcFol
 open EcEnv
@@ -222,10 +223,10 @@ let fun_expr_tyd_to_worlds (maps : maps_tyd) (fet : fun_expr_tyd)
    or clauses *)
 
 type instr_interp_u =
-  | Assign of lhs * expr
-  | Sample of lhs * expr
-  | ITE of expr * instr_interp list * instr_interp list option
-  | Match of expr * match_clause_interp list
+  | Assign            of lhs * form
+  | Sample            of lhs * form
+  | ITE               of form * instr_interp list * instr_interp list option
+  | Match             of form * match_clause_interp list
   | SendAndTransition of send_and_transition_tyd
   | Fail
   | Pop  (* pop frame of local context *)
@@ -261,31 +262,31 @@ and create_match_clause_interp ((sym, (bndgs, ins)) : match_clause_tyd)
 
 (* making formulas *)
 
-let env_root_addr_form : form = form_of_expr mhr env_root_addr_op
+let env_root_addr_form : form = env_root_addr_op
 
-let env_root_port_form : form = form_of_expr mhr env_root_port_op
+let env_root_port_form : form = env_root_port_op
 
-let adv_addr_form : form = form_of_expr mhr adv_addr_op
+let adv_addr_form : form = adv_addr_op
 
 let envport_form (func : form) (pt : form) : form =
-  f_app (form_of_expr mhr envport_op) [func; pt] tbool
+  f_app envport_op [func; pt] tbool
 
 let inc_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr inc_op) [addr1; addr2] tbool
+  f_app inc_op [addr1; addr2] tbool
 
 let addr_le_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_le_op) [addr1; addr2] tbool
+  f_app addr_le_op [addr1; addr2] tbool
 
 let addr_lt_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_lt_op) [addr1; addr2] tbool
+  f_app addr_lt_op [addr1; addr2] tbool
 
 let addr_concat_form (addr1 : form) (addr2 : form) : form =
-  f_app (form_of_expr mhr addr_concat_op) [addr1; addr2] addr_ty
+  f_app addr_concat_op [addr1; addr2] addr_ty
 
-let addr_nil_form : form = form_of_expr mhr addr_nil_op
+let addr_nil_form : form = addr_nil_op
 
 let addr_cons_form (n : form) (addr : form) : form =
-  f_app (form_of_expr mhr addr_cons_op) [n; addr] addr_ty
+  f_app addr_cons_op [n; addr] addr_ty
 
 let addr_make_form (ms : int list) : form =
   List.fold_right
@@ -309,13 +310,13 @@ let make_port_form (addr : form) (pi : form) : form =
 let int_form (n : int) : form = f_int (EcBigInt.of_int n)
 
 let int_add_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_add_op) [n1; n2] tint
+  f_app int_add_op [n1; n2] tint
 
 let int_lt_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_lt_op) [n1; n2] tbool
+  f_app int_lt_op [n1; n2] tbool
 
 let int_le_form (n1 : form) (n2 : form) : form =
-  f_app (form_of_expr mhr int_le_op) [n1; n2] tbool
+  f_app int_le_op [n1; n2] tbool
 
 let uc_qsym_prefix_distr = ["Top"; "Distr"]
 
@@ -352,8 +353,7 @@ let func_is_abstract_in_gc (gc : global_context) : bool =
     | EcBaseLogic.LD_hyp f ->
         not (Mid.mem func_id (f_fv f)) ||
         (match f.f_node with
-         | Fapp (g, _) ->
-             f_equal g (form_of_expr mhr envport_op)
+         | Fapp (g, _) -> f_equal g envport_op
          | _           -> false)
     | _                    -> true
   in List.for_all is_abs_in_local (LDecl.tohyps gc).h_local
@@ -364,9 +364,8 @@ let gc_create (env : env) : global_context =
       (func_id, EcBaseLogic.LD_var (addr_ty, None));
       (inc_func_adv_id,
        EcBaseLogic.LD_hyp
-       (form_of_expr mhr
-        (e_app inc_op [e_local func_id addr_ty; adv_addr_op]
-         tbool)))
+       (f_app inc_op [f_local func_id addr_ty; adv_addr_op]
+        tbool))
     ] in
   LDecl.init env ~locals:(List.rev locs) []
 
@@ -410,11 +409,11 @@ let gc_add_var (gc : global_context) (id : psymbol) (pty : pty)
          LDecl.add_local (EcIdent.create id)
          (EcBaseLogic.LD_var (ty, None)) gc
        with
-       | UcTransTypesExprs.TyError (l, env, tyerr) ->
+       | EcTyping.TyError (l, env, tyerr) ->
            error_message l
-           (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
 
-let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
+let gc_add_hyp (gc : global_context) (id : psymbol) (pform : pformula)
       : global_context =
   let l = loc id in
   let id = unloc id in
@@ -427,10 +426,10 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
           id)
   else try
          let env = LDecl.toenv gc in
-         let (exp, _) = inter_check_expr env pexpr (Some tbool) in
+         let (form, _) = inter_check_expr env pform (Some tbool) in
          let gc =
            LDecl.add_local (EcIdent.create id)
-           (EcBaseLogic.LD_hyp (form_of_expr mhr exp)) gc in
+           (EcBaseLogic.LD_hyp form) gc in
          let () =
            if not (func_is_abstract_in_gc gc)
            then debugging_message
@@ -441,9 +440,9 @@ let gc_add_hyp (gc : global_context) (id : psymbol) (pexpr : pexpr)
            else () in
          gc
        with
-       | UcTransTypesExprs.TyError (l, env, tyerr) ->
+       | EcTyping.TyError (l, env, tyerr) ->
            error_message l
-           (fun ppf -> UcTypesExprsErrorMessages.pp_tyerror env ppf tyerr)
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
 
 let gc_make_unique_id (gc : global_context) (id : symbol) : symbol =
   let rec find (n : int) : symbol =
@@ -1037,7 +1036,7 @@ type local_context_frame = form EcIdent.Mid.t
 type local_context       = local_context_frame list
 
 (* in an LCB_IntPort (id, f), the string of id will have the form
-   "intport." followed the name of the party (which in the case of a
+   "intport " followed the name of the party (which in the case of a
    simulator will consists of the (unqualified by the root) name of
    the real functionality being simulated, followed by '.', followed
    by the party) *)
@@ -1054,14 +1053,13 @@ let lc_create (lcbs : local_context_base list) : local_context =
    (List.map
     (fun lcb ->
        match lcb with
-       | LCB_Bound (id, form) -> (id, form)
-       | LCB_Var (id, ty)     ->
+       | LCB_Bound (id, form)   -> (id, form)
+       | LCB_Var (id, ty)       ->
            (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
-       | LCB_EnvPort func     ->
+       | LCB_EnvPort func       ->
            (envport_id,
-            (f_app (form_of_expr mhr envport_op)
-             [func] (tfun port_ty tbool)))
-       | LCB_IntPort (id, port)  -> (id, port))
+            (f_app envport_op [func] (tfun port_ty tbool)))
+       | LCB_IntPort (id, port) -> (id, port))
     lcbs)]
 
 let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
@@ -1086,8 +1084,7 @@ type lca_mode =      (* at end: *)
   | LCAM_StrongSimp  (* strongly simplify *)
 
 let lc_apply (mode : lca_mode) (gc : global_context)
-    (lc : local_context) (dbs : rewriting_dbs) (e : expr) : form =
-  let f = form_of_expr mhr e in
+    (lc : local_context) (dbs : rewriting_dbs) (f : form) : form =
   let map =
     List.fold_left
     (fun acc nxt ->
@@ -1114,17 +1111,10 @@ let lc_pop (lc : local_context) : local_context =
   (if List.is_empty lc then failure "should not happen");
   List.take (List.length lc - 1) lc
 
-(* when we pretty print the identifier of an internal port entry,
-   we replace the ':' by ' ', so it matches the concrete syntax *)
-
 let pp_local_context (env : env) (ppf : formatter) (lc : local_context) : unit =
-  let subst_colon_by_blank (s : symbol) : symbol =
-    String.map (fun c -> if c = ':' then ' ' else c) s in
   let pp_frame_entry (ppf : formatter) ((id, form) : EcIdent.t * form)
         : unit =
-    fprintf ppf "@[%s ->@ %a@]"
-    (subst_colon_by_blank (EcIdent.name id))
-    (pp_form env) form in
+    fprintf ppf "@[%s ->@ %a@]" (EcIdent.name id) (pp_form env) form in
   let pp_frame (ppf : formatter) (frame : form EcIdent.Mid.t) : unit =
     fprintf ppf "@[(@[%a@])@]"
     (EcPrinting.pp_list ",@ " pp_frame_entry)
@@ -1866,35 +1856,36 @@ let add_var_to_config_make_unique (conf : config) (id : psymbol)
   let id = gc_make_unique_id (gc_of_config conf) (unloc id) in
   (add_var_to_config conf (mk_loc l id) pty, id)
 
-let add_hyp_to_config (conf : config) (id : psymbol) (pexpr : pexpr) : config =
+let add_hyp_to_config (conf : config) (id : psymbol) (pform : pformula)
+      : config =
   match conf with
   | ConfigGen c          ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigGen {c with gc = gc}
   | ConfigReal c         ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigReal {c with gc = gc}
   | ConfigIdeal c        ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigIdeal {c with gc = gc}
   | ConfigRealRunning c  ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigRealRunning {c with gc = gc}
   | ConfigIdealRunning c ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigIdealRunning {c with gc = gc}
   | ConfigRealSending c  ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigRealSending {c with gc = gc}
   | ConfigIdealSending c ->
-      let gc = gc_add_hyp c.gc id pexpr in
+      let gc = gc_add_hyp c.gc id pform in
       ConfigIdealSending {c with gc = gc}
 
 let add_hyp_to_config_make_unique (conf : config) (id : psymbol)
-    (pexpr : pexpr) : config * symbol =
+    (pform : pformula) : config * symbol =
   let l = loc id in
   let id = gc_make_unique_id (gc_of_config conf) (unloc id) in
-  (add_hyp_to_config conf (mk_loc l id) pexpr, id)
+  (add_hyp_to_config conf (mk_loc l id) pform, id)
 
 let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       : real_world_state =
@@ -2163,8 +2154,8 @@ exception StepBlockedPortOrAddrCompare
    ideal worlds *)
 
 let step_assign (gc : global_context) (lc : local_context)
-    (dbs : rewriting_dbs) (lhs : lhs) (expr : expr) : local_context =
-  let form = lc_apply LCAM_WeakSimp gc lc dbs expr in
+    (dbs : rewriting_dbs) (lhs : lhs) (form : form) : local_context =
+  let form = lc_apply LCAM_WeakSimp gc lc dbs form in
   match lhs with
   | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
   | LHSTuple ids ->
@@ -2181,9 +2172,9 @@ let step_assign (gc : global_context) (lc : local_context)
       ids
 
 let step_sample (gc : global_context) (lc : local_context)
-    (dbs : rewriting_dbs) (lhs : lhs) (expr : expr)
+    (dbs : rewriting_dbs) (lhs : lhs) (form : form)
       : global_context * local_context * symbol =
-  let form = lc_apply LCAM_StrongSimp gc lc dbs expr in
+  let form = lc_apply LCAM_StrongSimp gc lc dbs form in
   let ty = Option.get (as_tdistr (EcEnv.Ty.hnorm form.f_ty (env_of_gc gc))) in
   match lhs with
   | LHSSimp id   ->
@@ -2207,9 +2198,9 @@ let step_sample (gc : global_context) (lc : local_context)
 
 let step_if_then_else (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
-    (expr : expr) (inss_then : instr_interp list)
+    (form : form) (inss_then : instr_interp list)
     (inss_else_opt : instr_interp list option) : instr_interp list =
-  let expr_gc_form = lc_apply LCAM_NoSimp gc lc dbs expr in
+  let expr_gc_form = lc_apply LCAM_NoSimp gc lc dbs form in
   if try eval_bool_form_to_bool gc pi dbs expr_gc_form with
      | ECProofEngine -> raise StepBlockedIf
   then inss_then
@@ -2217,9 +2208,9 @@ let step_if_then_else (gc : global_context) (lc : local_context)
 
 let step_match (gc : global_context) (lc : local_context)
     (pi : prover_infos) (dbs : rewriting_dbs)
-    (expr : expr) (clauses : match_clause_interp list)
+    (form : form) (clauses : match_clause_interp list)
       : local_context * instr_interp list =
-  let form = lc_apply LCAM_NoSimp gc lc dbs expr in
+  let form = lc_apply LCAM_NoSimp gc lc dbs form in
   let (form_constr, form_args) =
     try deconstruct_datatype_value gc pi dbs form with
     | ECProofEngine -> raise StepBlockedMatch in

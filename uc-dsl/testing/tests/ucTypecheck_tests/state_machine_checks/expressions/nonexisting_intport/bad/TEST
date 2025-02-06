@@ -1,0 +1,9 @@
+description
+Test with bad internal port.
+.
+args: bad.uc
+outcome:  failure
+[error: bad.uc: from line 14 columns 39 to 48]
+
+unknown variable or constant: `intport Q'
+.
