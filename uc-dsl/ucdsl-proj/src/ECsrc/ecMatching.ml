@@ -19,6 +19,7 @@ module Position = struct
     | `If
     | `While
     | `Assign of lvmatch
+    | `AssignTuple of lvmatch
     | `Sample of lvmatch
     | `Call   of lvmatch
     | `Match
@@ -119,6 +120,14 @@ module Zipper = struct
             | _, `LvmNone -> i-1
             | LvVar (pv, _), `LvmVar pvm
                  when EcReduction.EqTest.for_pv env pv pvm
+              -> i-1
+            | _ -> i
+          end
+        | Sasgn (lv, _), `AssignTuple lvm -> begin
+            match lv, lvm with
+            | LvTuple _, `LvmNone -> i-1
+            | LvTuple pvs, `LvmVar pvm
+                  when List.exists (fun (pv, _) -> EcReduction.EqTest.for_pv env pv pvm) pvs
               -> i-1
             | _ -> i
           end
@@ -946,8 +955,7 @@ module FPosition = struct
                doit pos (`WithCtxt (ctxt, b :: fs))
 
           | Fquant (_, b, f) ->
-              let xs   = List.pmap (function (x, GTty _) -> Some x | _ -> None) b in
-              let ctxt = List.fold_left ((^~) Sid.add) ctxt xs in
+              let ctxt = List.fold_left ((^~) Sid.add) ctxt (List.fst b) in
               doit pos (`WithCtxt (ctxt, [f]))
 
           | Flet (lp, f1, f2) ->

@@ -22,25 +22,26 @@ exception ECComMacs_ScanError            of int  (* other scanning error *)
 
 exception ECComMacs_Error of string  (* post-scanning error *)
 
-(* type of comment macros
+(* abstract type representing a list of macros
 
-   the name and parameters of a macro are sequences of letters
-   and digits, beginning with a letter; the parameters must be
-   distinct
+   each macro consists of a name (a string), parameters (a list of
+   strings) and a body (a string)
+
+   the name and parameters are sequences of letters and digits,
+   beginning with a letter; the parameters must be distinct
 
    the body can have arbitrary whitespace in it, except not at its
-   beginning or end *)
+   beginning or end
 
-type macro = private {
-  name   : string;       (* macro name *)
-  params : string list;  (* params of macro *)
-  body   : string        (* body of macro *)
-}
+   there cannot be more than one macro with the same name in
+   a list of macros *)
+
+type macros
 
 (* given a filename file, either fully qualified or interpreted
    relative to the current directory, scan_and_check_file file scans
-   and checks the file, returning its macros, in the order in which
-   they were defined, or raising an exception if there is an error
+   and checks the file, returning its list of macros, or raising an
+   exception if there is an error
 
    - - -
 
@@ -69,19 +70,24 @@ type macro = private {
 
    the names of all the macros must be distinct *)
 
-val scan_and_check_file : string -> macro list
+val scan_and_check_file : string -> macros
+
+(* has_name macros name tests whether macros contains a macro with
+   name name *)
+
+val has_name : macros -> string -> bool
 
 (* in a call apply_macro macs name args, if there is no macro in macs
    with name name, an ECComMacs_Error exception is raised; otherwise,
    suppose mac is the element of macs with name name
 
-   if args has a different length than mac.params, an
-   ECComMacs_Error exception is raised
+   if args has a different length than the list of parameters of mac,
+   an ECComMacs_Error exception is raised
 
    otherwise, let (par1, arg1), ... (parn, argn) be
    the corresponding parameter/argument pairs
 
-   the returned string is formed by starting with mac.body,
+   the returned string is formed by starting with mac's body
    and working through the parameter/argument pairs in order:
 
      simultaneously substituting
@@ -108,17 +114,13 @@ val scan_and_check_file : string -> macro list
      result of apply_macro may fail to have properly nested
      comments *)
 
-val apply_macro : macro list -> string -> string list -> string
+val apply_macro : macros -> string -> string list -> string
 
 (* begin for debugging *)
 
-(* print a macro *)
-
-val print_macro : macro -> unit
-
 (* print a list of macros *)
 
-val print_macros : macro list -> unit
+val print_macros : macros -> unit
 
 (* scan and check a file, printing out the resulting macros, and
    turning raised exceptions into error messages *)
@@ -126,7 +128,7 @@ val print_macros : macro list -> unit
 val test_scan_and_check : string -> unit
 
 (* test_subst file name [arg1; ...; argn], scans and checks
-   file, yielding macs, and then evaluates
+   file, yielding macs : macros, and then evaluates
 
      apply_macro macs name [arg1; ...; argn],
 
