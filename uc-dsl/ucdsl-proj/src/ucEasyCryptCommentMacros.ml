@@ -98,6 +98,8 @@ type macro = {
   body   : string
 }
 
+type macros = macro list
+
 let macro_empty_body (name : string) (params : string list) : macro =
   {name = name; params = params; body = ""}
 
@@ -299,12 +301,15 @@ let scan_and_check_file (filename : string) : macro list =
   let macros = scan_file filename in
   check_macros macros; macros
 
+let has_name (macs : macro list) (name : string) : bool =
+  List.exists (fun mac -> mac.name = name) macs
+
 let make_var (var : string) : string = "<<" ^ var ^ ">>"
 
 let apply_macro (macs : macro list) (name : string) (args : string list)
       : string =
   match List.find_opt (fun mac -> mac.name = name) macs with
-  | None     -> 
+  | None     ->
       raise (ECComMacs_Error (Printf.sprintf "undefined macro: %s" name))
   | Some mac ->
     if List.length args <> List.length mac.params
