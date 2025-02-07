@@ -1353,9 +1353,9 @@ module DummyAdv : ADV = {
       }
     | None   => {
         (* message from functionality or environment;
-           interface/simulator will enforce that m.`1 = Adv /\ m.`2.`1
-           = adv /\ 0 <= m.`2.`2 /\ ! adv <= m.`3.`1 /\ (m.`3 =
-           env_root_port <=> m.`2.`2 = 0) *)
+           interface/simulator will enforce that m.`1 = Adv /\
+           m.`2.`1 = adv /\ 0 <= m.`2.`2 /\ ! adv <= m.`3.`1 /\
+           (m.`3 = env_root_port <=> m.`2.`2 = 0) *)
         if (0 < m.`2.`2) {
           r <-
             Some
@@ -1454,8 +1454,8 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
     }
     else {
       m <- oget r;
-      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ m.`3.`1 <> adv \/
-          m.`3.`2 < 0) {
+      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ m.`3.`1 <> adv \/ m.`3.`2 < 0 \/
+          ! (m.`3.`2 = 0 <=> m.`2 = env_root_port)) {
         r <- None; not_done <- false;
       }
       elif (if_addr_opt = None) {
@@ -1474,6 +1474,11 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   proc loop(m : msg) : msg option = {
     var r : msg option <- None;
     var not_done : bool <- true;
+
+    (* not_done =>
+       (m.`2.`1 = adv \/
+        if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) *)
+
     while (not_done) {
       if (m.`2.`1 = adv) {
         if (m.`2.`2 = core_pi) {
