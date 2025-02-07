@@ -47,9 +47,7 @@ Forwarding.FwAdv.fw_obs
 @((adv, 7))
 ctrl_adv.
 send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
-step.
-step.
-step.
+run 3.
 (* in the next step epdp decoding happens *)
 step.
 run.
