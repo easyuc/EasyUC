@@ -631,6 +631,21 @@ let interpret (lexbuf : L.lexbuf) =
         pg_mode_break_handler ();
         prompt();
         loop body
+    | Stack_overflow -> (*issue #56: print graceful error message*)
+       let print_stack_overflow_message ppf =
+         Format.fprintf ppf "@[unhandled exception: stack overflow@]"
+       in
+       if UcState.get_pg_mode()
+       then
+         try
+          non_loc_error_message print_stack_overflow_message
+         with ErrorMessageExn ->
+         begin
+          prompt();
+          loop body
+         end
+       else
+         non_loc_error_message_exit print_stack_overflow_message
     | e when UcState.get_pg_mode() ->
         try
           non_loc_error_message
