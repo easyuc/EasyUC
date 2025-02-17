@@ -633,7 +633,8 @@ let interpret (lexbuf : L.lexbuf) =
         loop body
     | Stack_overflow -> (*issue #56: print graceful error message*)
        let print_stack_overflow_message ppf =
-         Format.fprintf ppf "@[unhandled exception: stack overflow@]"
+         Format.fprintf ppf
+   "@[stack overflow, check your easycrypt rewriting and simplification hints@]"
        in
        if UcState.get_pg_mode()
        then
