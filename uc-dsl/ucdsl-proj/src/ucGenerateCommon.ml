@@ -616,6 +616,27 @@ let get_glob_indices_of_real_fun_parties
       if (IdMap.mem id rfbt.parties)
       then Some (List.hd rng)
       else None ) ogrm
- 
+
+let rec get_param_bounds (mt : maps_tyd) (psp : pSP) (thpath : string): string =
+  (*let psp = make_pSP mt funcId 0 in*)
+  let funcId = getSP psp in
+  let filename = (uc_name (fst funcId))^".eca" in
+  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let own_bound = UcEasyCryptCommentMacros.apply_macro
+                    macros "Bound" [thpath; "TODO:Env"] in
+  let fbt = (EcLocation.unloc (IdPairMap.find funcId mt.fun_map)) in 
+  match psp with
+  | RF (_ , params) ->
+    let rfbt = real_fun_body_tyd_of fbt in
+    let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+    let paraml = List.combine param_names params in
+    let parambounds = List.map (fun (id, psp) ->
+                       let pmthpath = thpath^"."^uc__code^"."^(uc_name id) in
+                       get_param_bounds mt psp pmthpath
+                        ) paraml
+    in
+    List.fold_left (fun acc pb -> acc^" +\n"^ pb) own_bound parambounds
+  | _ -> UcMessage.failure
+                 "get_param_bounds cannot be called for ideal functionality or dropped parameter of Rest, only for real functionality with real parameters"
 
 

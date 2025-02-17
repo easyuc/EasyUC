@@ -1749,7 +1749,7 @@ let print_sequence_of_games_proof  (id : string)
         simnm pmn sprev) _Adv pmns
   in
   let sim_st = sim_stack pmnum in
-  let parameter_Bound i =
+  let parameter_Bound i : string =
     let pmn = List.nth pmns (i-1) in
     (uc_name pmn)^".Bound("^uc__rf^"."^(rest_composition_clone i)
     ^".CompEnv("^uc__rf^"."^(parametrized_rest_module i)^", Env), Adv)"
