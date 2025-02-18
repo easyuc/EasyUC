@@ -205,7 +205,7 @@ let interpret (lexbuf : L.lexbuf) =
       try
         UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
         (UcParseFile.FOID_Id psym)
-      with _ ->
+      with e when e <> Sys.Break ->
         if pg_mode then UcState.set_pg_mode ();
         UcStackedScopes.end_scope_ignore();
         error_message (loc psym)
@@ -414,7 +414,7 @@ let interpret (lexbuf : L.lexbuf) =
         match try Some  (* so tail recursive *)
                   (step_running_or_sending_real_or_ideal_config
                    conf None None) with
-              | _ -> None with
+              | e when e <> Sys.Break -> None with
         | None             -> conf, eff
         | Some (conf, eff) ->
             (match eff with

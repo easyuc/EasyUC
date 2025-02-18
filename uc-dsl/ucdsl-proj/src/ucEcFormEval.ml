@@ -148,7 +148,7 @@ let can_prove_smt (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos): bool
     Gc.compact ();
     print_endline (match b with true -> "SMT true" | false -> "SMT false");
     b
-  with _ ->
+  with e when e <> Sys.Break ->
     print_endline "SMT exception";
     false
 
@@ -333,14 +333,14 @@ let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   try
     let proof' = move_up proof in
     move_all_hyps_up proof'
-  with _ -> proof
+  with e when e <> Sys.Break -> proof
 
 let should_simplify_further
       (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   print_endline "should_simplify_further?";
   let proof = move_all_hyps_up proof in
   let concl = try extract_form proof p_id
-              with _ -> (get_last_pregoal proof).g_concl
+              with e when e <> Sys.Break -> (get_last_pregoal proof).g_concl
   in
   pp_proof proof;
   (*TODO add more conditions, like is_op?*)
@@ -621,7 +621,7 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
     try
       print_endline "run selective_rewrite_operator";
       run_tac tac pr
-    with e ->
+    with e when e <> Sys.Break ->
       print_endline
         ("selective_rewrite_operator EXCEPTION: "
          ^(Printexc.to_string e)^(Printexc.get_backtrace()));
@@ -749,7 +749,7 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
  *)
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     (*  let rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =*)
-      let proof_a = try move_hash proof with _ -> proof in
+      let proof_a = try move_hash proof with e when e <> Sys.Break -> proof in
       let count = count_hyp_forms proof in
       let count_a = count_hyp_forms proof_a in
       if (count <> count_a)
@@ -757,7 +757,7 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
         Some proof_a
       else
         if should_move_right proof
-        then try move_right_simplify proof with _ -> None
+        then try move_right_simplify proof with e when e <> Sys.Break -> None
         else None
 (* let left_first = go_left_first proof in
         try 
@@ -883,7 +883,7 @@ and try_rewriting_hints  (p_id : EcIdent.t) (rw_lems : EcPath.path list)
               print_endline "failed to reduce goal no to one"; None end
         | None -> None
       end else changed_proof proof p'
-    with e -> print_endline
+    with e when e <> Sys.Break -> print_endline
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
               None
   in
@@ -1107,7 +1107,7 @@ let deconstruct_data
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification succeded.@.");*)
         ret
-      with _ ->
+      with e when e <> Sys.Break ->
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");*)

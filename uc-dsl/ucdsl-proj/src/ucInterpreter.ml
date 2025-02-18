@@ -512,7 +512,7 @@ let is_concat_op_path (path : EcPath.path) : bool =
 let is_concat_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_concat_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_cons_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
@@ -521,7 +521,7 @@ let is_cons_op_path (path : EcPath.path) : bool =
 let is_cons_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_cons_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_nil_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
@@ -530,13 +530,13 @@ let is_nil_op_path (path : EcPath.path) : bool =
 let is_nil_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_nil_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_func_id (f : form) : bool =
   try
     let id = destr_local f in
     EcIdent.id_equal id func_id
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_env_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
@@ -545,7 +545,7 @@ let is_env_root_port_op_path (path : EcPath.path) : bool =
 let is_env_root_port_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_env_root_port_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_adv_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
@@ -554,7 +554,7 @@ let is_adv_op_path (path : EcPath.path) : bool =
 let is_adv_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_adv_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 let is_adv_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
@@ -563,7 +563,7 @@ let is_adv_root_port_op_path (path : EcPath.path) : bool =
 let is_adv_root_port_op (f : form) : bool =
   try
     let (path, _) = destr_op f in is_adv_root_port_op_path path
-  with _ -> false
+  with e when e <> Sys.Break -> false
 
 (* the following functions can raise DestrError *)
 
@@ -596,7 +596,7 @@ let destr_func_addr (addr : form) : int list =
 
 let is_int (f : form) : bool =
   try let _ = destr_int f in true with
-  | _ -> false
+  | e when e <> Sys.Break -> false
 
 let is_int_non_opp (f : form) : bool =
   match f.f_node with
@@ -605,12 +605,12 @@ let is_int_non_opp (f : form) : bool =
 
 let is_int_list (f : form) : bool =
   try let _ = destr_int_list f in true with
-  | _ -> false
+  | e when e <> Sys.Break -> false
 
 let is_adv_op_or_value (f : form) : bool =
   is_adv_op f ||
   try destr_int_list f = [0] with
-  | _ -> false
+  | e when e <> Sys.Break -> false
 
 let try_destr_port (port : form) : canonical_port option =
   try
@@ -628,7 +628,7 @@ let try_destr_port (port : form) : canonical_port option =
                      in if n = 0 then CP_EnvRoot else destr_err ()
               else CP_FuncRel (destr_func_addr x, destr_int y)
           | _      -> destr_err ())
-  with _ -> None
+  with e when e <> Sys.Break -> None
 
 let is_canon_port (port : form) : bool =
   is_some (try_destr_port port)
@@ -854,7 +854,7 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
   let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   let (constr, forms) : symbol * form list =
     try UcEcFormEval.deconstruct_data gc f pi rw_lems with
-    | _ ->
+    | e when e <> Sys.Break ->
         (debugging_message
          (fun ppf -> fprintf ppf "@[deconstruction@ failed@]");
          raise ECProofEngine) in
