@@ -13,8 +13,7 @@ let state_type_name_pt (ptname : string) : string =
 
 
 let uc__sim = "UC__SIM"
-let _RF = "RF"
-let _IF = "IF"
+
 let _m = "_m"
 let _r = "_r"
 let _x = "_x"
@@ -24,56 +23,11 @@ let msg_ty : ty =
 let parties_str = "parties"
 let loop_str = "loop"
 let proc_party_str (pn : string) = "party_"^pn
-let if_addr_opt = "if_addr_opt"
-let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 let addr_op_call_sim (name : string) : string =
   uc__rf^"."^(addr_op_name name)^" "^oget_if_addr_opt
-let uc_metric_name = "_metric"
-let uc_metric_RP = "_metric_RP"
-let uc_metric_IP = "_metric_IP"
-let _metric_RF = "_metric_RF"
-let _metric_IF = "_metric_IF"
-let rest_metric i = "_metric_Rest"^(string_of_int i)
-let uc_party_metric_name pn = "_metric_"^pn
-let glob_op_name top_mod sub_mod =  "glob_"^top_mod^"_to_"^sub_mod
-let glob_op_name_own top_mod = glob_op_name top_mod "own"
-let glob_to_part_op_name module_name part_name =
-  "glob_"^module_name^"_to_"^part_name
-let module_name_IF name = (uc_name name)^"."^_IF
-let module_name_RF name = (uc_name name)^"."^_RF
-let rest_composition_clone (rest_idx : int) =
-  (uc__name "Rest")^(string_of_int rest_idx)
-let invoke = "invoke"
-let _invoke = "_invoke"
-let _invoke_pn pn = "_invoke_"^pn
-let _invoke_pn_rest pn rest_idx =
-  "_invoke_"^pn^"_Rest"^(string_of_int rest_idx)
-let _invoke_IF = "_invoke_IF"
-let _invoke_RF = "_invoke_RF"
-let _invoke_IP = "_invoke_IP"
-let _invoke_RP = "_invoke_RP"
-let rest_invoke i = "_invoke_Rest"^(string_of_int i)
-let _invar = "_invar"
-let _invar_IP = "_invar_IP"
-let _invar_RP = "_invar_RP"
-let rest_invar i = "_invar_Rest"^(string_of_int i)
-let invar_pt_op_name ptn = "_invar_"^ptn
-let _invar_IF = "_invar_IF"
-let _invar_RF = "_invar_RF"
-let _metric_good = "_metric_good"
-let rest_metric_good i = "_metric_good_Rest"^(string_of_int i)
-let _metric_good_RF = "_metric_good_RF"
-let _metric_good_IF = "_metric_good_IF"
-let _metric_good_RP = "_metric_good_RP"
-let _metric_good_IP = "_metric_good_IP"
+
 let _metric_pt_good ptn = "_metric_"^ptn^"_good"
-let init = "init"
-let _init = "_init"
-let _init_RF = "_init_RF"
-let _init_IF = "_init_IF"
-let _init_RP = "_init_RP"
-let _init_IP = "_init_IP"
-let rest_init i = "_init_Rest"^(string_of_int i)
+
 let module_params_string pmns : string =
   if pmns = []
   then ""
@@ -85,152 +39,6 @@ let _RFRP = "RFRP"
 let _RFIP = "RFIP"
 let smt_sat_lemmas = "mem_oflist mem_rangeset in_fsetU"
 let smt_invoke_lemmas = "mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU"
-let rf_info = "rf_info"
-
-let module_name (id : string) = uc_name id
-    
-let moduleRP (id : string) (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then (module_name id)
-  else (module_name id) ^ "_RP"
-
-let metricRP (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then uc_metric_name
-  else uc_metric_RP
-
-let metric_goodRP (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then _metric_good
-  else _metric_good_RP
-
-let invarRP (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then _invar
-  else _invar_RP
-
-let invokeRP (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then _invoke
-  else _invoke_RP
-
-let initRP (rfbt : real_fun_body_tyd) =
-  if IdMap.is_empty rfbt.params
-  then _init
-  else _init_RP
-
-let moduleIP (id : string) = (module_name id) ^ "_IP"
-  
-let moduleIRP (id : string) (rfbt : real_fun_body_tyd)
-      (real_params : bool) (rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then moduleRP id rfbt
-            else moduleIP id
-  | Some i -> if IdMap.cardinal rfbt.params <= 1
-              then rest_name id i
-              else (rest_name id i)^"_P"
-  
-let module_name_IRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then module_name_RF
-            else module_name_IF
-  | Some i -> if param_idx+1 < i
-              then module_name_IF
-              else module_name_RF
-
-let metricIRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then _metric_RF
-            else _metric_IF
-  | Some i -> if param_idx+1 < i
-              then _metric_IF
-              else _metric_RF
-
-let metric_name_IRP (rfbt : real_fun_body_tyd) (real_params : bool)
-  (rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then metricRP rfbt
-            else uc_metric_IP
-  | Some i -> rest_metric i
-
-let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then _invoke_RF
-            else _invoke_IF
-  | Some i -> if param_idx+1 < i
-              then _invoke_IF
-              else _invoke_RF
-
-
-let invarIRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then _invar_RF
-            else _invar_IF
-  | Some i -> if param_idx+1 < i
-              then _invar_IF
-              else _invar_RF
-
-let invokeIRP (rfbt : real_fun_body_tyd) (real_params : bool)
-  (rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then invokeRP rfbt
-            else _invoke_IP
-  | Some i -> rest_invoke i
-
-let invarIRP (rfbt : real_fun_body_tyd) (real_params : bool)
-(rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then invarRP rfbt
-            else _invar_IP
-  | Some i -> rest_invar i 
-
-let initIRP (rfbt : real_fun_body_tyd) (real_params : bool)
-  (rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then initRP rfbt
-            else _init_IP
-  | Some i -> rest_init i
-
-let initIRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then _init_RF
-            else _init_IF
-  | Some i -> if param_idx+1 < i
-              then _init_IF
-              else _init_RF
-
-let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
-  (rest_idx : int option) =
-  match rest_idx with
-  | None -> if real_params
-            then metric_goodRP rfbt
-            else _metric_good_IP
-  | Some i -> rest_metric_good i
-
-let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then _metric_good_RF
-            else _metric_good_IF
-  | Some i -> if param_idx+1 < i
-              then _metric_good_IF
-              else _metric_good_RF
 
 let print_state_type
       (sc : EcScope.scope)
@@ -1716,11 +1524,10 @@ realize change_pari_valid. smt(). qed.
     adv_pi_begin_gt0_axiom_name
 
 let print_sequence_of_games_proof  (id : string)
-      ppf (rfbt : real_fun_body_tyd) =
+       (rfbt : real_fun_body_tyd) ppf (pbs : string list)=
   let pmnum = IdMap.cardinal rfbt.params in
   let mRP = moduleRP id rfbt in
   let _RFRP_Comp_RP_eq_lemma = "equiv_"^mRP^"_Composed1_RP" in
-  let parametrized_rest_module i = moduleIRP id rfbt true (Some i) in
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let ith_param_real i = module_name_RF (List.nth pmns (i-1)) in
   let ith_param_ideal i = module_name_IF (List.nth pmns (i-1)) in
@@ -1749,10 +1556,7 @@ let print_sequence_of_games_proof  (id : string)
         simnm pmn sprev) _Adv pmns
   in
   let sim_st = sim_stack pmnum in
-  let parameter_Bound i : string =
-    let pmn = List.nth pmns (i-1) in
-    (uc_name pmn)^".Bound("^uc__rf^"."^(rest_composition_clone i)
-    ^".CompEnv("^uc__rf^"."^(parametrized_rest_module i)^", Env), Adv)"
+  let parameter_Bound i : string = List.nth pbs (i-1)
   in
   let composition_module ((i, ri) : int * bool) : string =
     let ith_param = if ri
@@ -1761,7 +1565,7 @@ let print_sequence_of_games_proof  (id : string)
     in
     Printf.sprintf "%s.%s.MakeRFComp(%s.%s, %s)"
       uc__rf (rest_composition_clone i)
-      uc__rf (parametrized_rest_module i)
+      uc__rf (parametrized_rest_module id rfbt i)
       ith_param
   in
   let print_RFRP_Comp_RP_eq_lemma ppf () =
@@ -1983,7 +1787,7 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
       (rapm : rf_addr_port_maps)
-      (dii : symb_pair IdMap.t) (gvil : gvil) : string =
+      (dii : symb_pair IdMap.t) (gvil : gvil) (pbs : string list) : string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
@@ -2003,18 +1807,18 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   done;
   Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
-  Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id) rfbt;
+  Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id rfbt) pbs;
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
 let gen_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t)
       (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
-      (gvil : gvil) : string =
+      (gvil : gvil) (pbs : string list): string =
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
-  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii gvil
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii gvil pbs
 
 let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)

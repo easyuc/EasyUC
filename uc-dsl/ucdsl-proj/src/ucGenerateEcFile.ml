@@ -212,6 +212,11 @@ let generate_ec (mt : maps_tyd) : unit =
       then get_gvil mt sp 
       else empty_gvil
     in
+    let pbs =
+      if is_real_fun_tyd ft
+      then get_parameter_bounds mt sp 
+      else []                       
+    in
     (*remove print
     let print_gvi (gvi : globVarId) : unit =
       print_endline "";
@@ -223,7 +228,7 @@ let generate_ec (mt : maps_tyd) : unit =
     end remove print*)
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
-          (scope root) root id mbmap rapm ft dii gvil
+          (scope root) root id mbmap rapm ft dii gvil pbs
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
