@@ -1589,14 +1589,15 @@ _RFRP_Comp_RP_eq_lemma
     Format.fprintf ppf "@[module %s(%s : ADV) = %s.@]@]" simip _Adv sim_st
   in
   let probability_parameter_Bound ppf (i : int) =
-    Format.fprintf ppf "
+    Format.fprintf ppf "%s" (parameter_Bound i)
+(*    Format.fprintf ppf "
 Pr[%s.main
        (func' ++ [UC__RF.%s.change_pari],
         in_guard' `|` UC__RF.%s.rest_adv_pis) %s &m : res]
 "
       (parameter_Bound i)
       (rest_composition_clone i)
-      (rest_composition_clone i) "@"
+      (rest_composition_clone i) "@"*)
   in
   let sum_of_prob_diffs_from ppf (start : int) =
     if start>pmnum

@@ -311,7 +311,7 @@ let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
   = moduleIRP id rfbt true (Some i)
 
 let compEnv (id : string) (rfbt : real_fun_body_tyd) (i : int)
-  = uc__rf^"."^(rest_composition_clone i)
+  = uc__rf^"."^(rest_composition_clone (i+1))
     ^".CompEnv("^uc__rf^"."^(parametrized_rest_module id rfbt i)
 
 let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
@@ -830,15 +830,19 @@ let rec get_bound_tree
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let own_bound = UcEasyCryptCommentMacros.apply_macro
-                    macros "Bound" [thpath; thpath^"."^env] in
+                    macros "Bound" [thpath; env] in
 
   match psp with
   | RF (_ , params) ->
     let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
     let paraml = List.combine param_names params in
     let parambounds = List.mapi (fun i (id, psp) ->
-                       let pmthpath = thpath^"."^uc__code^"."^(uc_name id) in
-                       let compenv = compEnv (snd funcId) rfbt i in 
+                       let pmthpath =
+                         if thpath = ""
+                         then (uc_name id)^"."
+                         else thpath^uc__code^"."^(uc_name id)^"." in
+                       let compenv = "Env"
+                       (*TODO compEnv (snd funcId) rfbt i*) in 
                        get_bound_tree mt psp pmthpath compenv
                         ) paraml
     in
