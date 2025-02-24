@@ -113,6 +113,14 @@ let oget_if_addr_opt = "(oget "^if_addr_opt^")"
 
 let rf_info = "rf_info"
 
+let rest_composition_clone (rest_idx : int) =
+  (uc__name "Rest")^(string_of_int rest_idx)
+
+let rest_nameP (id : string) (rfbt : real_fun_body_tyd) (i : int) =
+  if IdMap.cardinal rfbt.params <= 1
+  then rest_name id i
+  else (rest_name id i)^"_P"
+
 let _RF = "RF"
 let _IF = "IF"
 let uc_metric_name = "_metric"
@@ -128,8 +136,6 @@ let glob_to_part_op_name module_name part_name =
   "glob_"^module_name^"_to_"^part_name
 let module_name_IF name = (uc_name name)^"."^_IF
 let module_name_RF name = (uc_name name)^"."^_RF
-let rest_composition_clone (rest_idx : int) =
-  (uc__name "Rest")^(string_of_int rest_idx)
 let invoke = "invoke"
 let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
@@ -202,9 +208,7 @@ let moduleIRP (id : string) (rfbt : real_fun_body_tyd)
   | None -> if real_params
             then moduleRP id rfbt
             else moduleIP id
-  | Some i -> if IdMap.cardinal rfbt.params <= 1
-              then rest_name id i
-              else (rest_name id i)^"_P"
+  | Some i -> rest_nameP id rfbt i
   
 let module_name_IRF (rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
@@ -310,9 +314,11 @@ let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
 let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
   = moduleIRP id rfbt true (Some i)
 
-let compEnv (id : string) (rfbt : real_fun_body_tyd) (i : int)
-  = uc__rf^"."^(rest_composition_clone (i+1))
-    ^".CompEnv("^uc__rf^"."^(parametrized_rest_module id rfbt i)
+let compEnv (thpath : string) (id : string) (rfbt : real_fun_body_tyd) (i : int)
+    : string -> string =
+  fun str ->
+    thpath^uc__rf^"."^(rest_composition_clone i)^".CompEnv("^
+    thpath^uc__rf^"."^(rest_nameP id rfbt i)^", "^str^")"
 
 let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
       ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
@@ -823,12 +829,14 @@ let get_glob_indices_of_real_fun_parties
 type bT = string * (bT list)
 
 let rec get_bound_tree
-  (mt : maps_tyd) (psp : pSP) (thpath : string) (env : string) : bT =
+          (mt : maps_tyd) (psp : pSP) (thpath : string)
+          (envp :  string -> string) : bT =
   let funcId = getSP psp in
   let fbt = (EcLocation.unloc (IdPairMap.find funcId mt.fun_map)) in
   let rfbt = real_fun_body_tyd_of fbt in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let env = envp "Env" in
   let own_bound = UcEasyCryptCommentMacros.apply_macro
                     macros "Bound" [thpath; env] in
 
@@ -837,12 +845,13 @@ let rec get_bound_tree
     let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
     let paraml = List.combine param_names params in
     let parambounds = List.mapi (fun i (id, psp) ->
-                       let pmthpath =
-                         if thpath = ""
-                         then (uc_name id)^"."
-                         else thpath^uc__code^"."^(uc_name id)^"." in
-                       let compenv = "Env"
-                       (*TODO compEnv (snd funcId) rfbt i*) in 
+                       let cepath =
+                         if thpath = "" then ""
+                         else thpath^uc__code^"." in
+                       let pmthpath = cepath^(uc_name id)^"." in
+                       let compenv : string -> string = fun str ->
+                         envp (compEnv cepath (snd funcId) rfbt (i+1) str)
+                       in 
                        get_bound_tree mt psp pmthpath compenv
                         ) paraml
     in
@@ -855,7 +864,7 @@ let rec sum_bounds (bt : bT) : string =
 
 let get_parameter_bounds (mt : maps_tyd) (funcId : SP.t) : string list =
   let psp = make_pSP mt funcId 0 in
-  let bt = get_bound_tree mt psp "" "Env" in
+  let bt = get_bound_tree mt psp "" (fun str -> str) in
   List.map (fun pbt -> sum_bounds pbt) (snd bt)
 
 
