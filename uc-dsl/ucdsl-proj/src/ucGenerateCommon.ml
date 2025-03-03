@@ -51,12 +51,6 @@ let uc__name (name : string) : string = "UC__"^name
 let rest_name (name : string) (idx : int) : string =
   (uc_name name)^"_Rest"^(string_of_int idx)
 
-let uc__code = "UC__Code"
-
-let uc__rf = "UC__RF"
-
-let uc__if = "UC__IF"
-
 let adv_if_pi_op_name = "_adv_if_pi"
 
 let adv_if_pi_gt0_axiom_name = "_adv_if_pi_gt0"
@@ -124,6 +118,7 @@ let rest_nameP (id : string) (rfbt : real_fun_body_tyd) (i : int) =
 let _RF = "RF"
 let _IF = "IF"
 let uc_metric_name = "_metric"
+let uc_metric_name_IF = "_metric_IF"
 let uc_metric_RP = "_metric_RP"
 let uc_metric_IP = "_metric_IP"
 let _metric_RF = "_metric_RF"
@@ -141,7 +136,7 @@ let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
 let _invoke_pn_rest pn rest_idx =
   "_invoke_"^pn^"_Rest"^(string_of_int rest_idx)
-let _invoke_IF = "_invoke_IF"
+let iF_invoke = "IF_invoke"
 let _invoke_RF = "_invoke_RF"
 let _invoke_IP = "_invoke_IP"
 let _invoke_RP = "_invoke_RP"
@@ -156,13 +151,13 @@ let _invar_RF = "_invar_RF"
 let _metric_good = "_metric_good"
 let rest_metric_good i = "_metric_good_Rest"^(string_of_int i)
 let _metric_good_RF = "_metric_good_RF"
-let _metric_good_IF = "_metric_good_IF"
+let iF_metric_good = "IF_metric_good"
 let _metric_good_RP = "_metric_good_RP"
 let _metric_good_IP = "_metric_good_IP"
 let init = "init"
 let _init = "_init"
 let _init_RF = "_init_RF"
-let _init_IF = "_init_IF"
+let iF_init = "IF_init"
 let _init_RP = "_init_RP"
 let _init_IP = "_init_IP"
 let rest_init i = "_init_Rest"^(string_of_int i)
@@ -243,9 +238,9 @@ let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
   match rest_idx with
   | None -> if real_params
             then _invoke_RF
-            else _invoke_IF
+            else iF_invoke
   | Some i -> if param_idx+1 < i
-              then _invoke_IF
+              then iF_invoke
               else _invoke_RF
 
 
@@ -288,9 +283,9 @@ let initIRF (rfbt : real_fun_body_tyd) (real_params : bool)
   match rest_idx with
   | None -> if real_params
             then _init_RF
-            else _init_IF
+            else iF_init
   | Some i -> if param_idx+1 < i
-              then _init_IF
+              then iF_init
               else _init_RF
 
 let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
@@ -306,9 +301,9 @@ let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
   match rest_idx with
   | None -> if real_params
             then _metric_good_RF
-            else _metric_good_IF
+            else iF_metric_good
   | Some i -> if param_idx+1 < i
-              then _metric_good_IF
+              then iF_metric_good
               else _metric_good_RF
 
 let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
@@ -317,8 +312,8 @@ let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
 let compEnv (thpath : string) (id : string) (rfbt : real_fun_body_tyd) (i : int)
     : string -> string =
   fun str ->
-    thpath^uc__rf^"."^(rest_composition_clone i)^".CompEnv("^
-    thpath^uc__rf^"."^(rest_nameP id rfbt i)^", "^str^")"
+    thpath^"."^(rest_composition_clone i)^".CompEnv("^
+    thpath^"."^(rest_nameP id rfbt i)^", "^str^")"
 
 let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
       ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
@@ -351,7 +346,7 @@ let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
   (* intport substitution *)
   let intport_op_ex (ptnm : string list) : EcFol.form =
     let ptnm = List.nth ptnm ((List.length ptnm)-1) in
-    EcFol.f_op (EcPath.fromqsymbol ([], uc__rf^"."^intport_op_name ptnm)) []
+    EcFol.f_op (EcPath.fromqsymbol ([], intport_op_name ptnm)) []
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =
@@ -530,7 +525,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
         let iip = [root]@[int_id]@iiptl in
         let _,mb = get_msg_body mbmap root iip msgn in
         let pfx = inter_id_path_str true (List.tl iip) in
-        let pfx = (uc_name iiphd)^"."^uc__code^"."^pfx in
+        let pfx = (uc_name iiphd)^"."^pfx in
         pfx, mb
       else
         if is_simulated
@@ -550,7 +545,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
           then
             pfx, mb
           else
-            let pfx = (uc_name (snd key))^"."^uc__code^"."^pfx in
+            let pfx = (uc_name (snd key))^"."^pfx in
             pfx, mb
         else   
           let iip = msg_path.inter_id_path in
@@ -655,7 +650,7 @@ let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
 
 
 let get_subfun_path (thpath : string list) (sfname : string) (rootid : string) =
-  thpath @ [uc_name sfname] @ [uc__code] @ [uc__if] @ [uc_name rootid]
+  thpath @ [uc_name sfname] @ [uc_name rootid]
 
 let get_IF_globVarIds (funpath : string list) : globVarId list =
   [
@@ -698,14 +693,8 @@ let rec get_globVarIds
     let paraml = List.combine param_names params in
     let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
-                         let thpath = thpath @ [uc_name id] @ [uc__code]in
-                         let ifrfth = match psp with
-                           | IF _ -> uc__if
-                           | RF _ -> uc__rf
-                           | Dropped -> UcMessage.failure
-                                          "impossible dropped param"
-                         in
-                         let funsufix = [ifrfth] @ [uc_name (fst(getSP psp))] in
+                         let thpath = thpath @ [uc_name id] in
+                         let funsufix = [uc_name (fst(getSP psp))] in
                          let globs = get_globVarIds mt psp thpath funsufix in
                          match psp with
                            | IF _ -> globs
@@ -770,8 +759,13 @@ let empty_gvil = {
 
 let get_MakeRFs_glob_range_of_real_fun_glob_core
       (gvil : globVarId list) : int list =
-  (*add +2, one to increment 0 and another one to make up for MakeRF._self*)
-  List.init (List.length gvil) (fun i->i+2)
+  let coreself = get_MakeRF_self_globVarId [] in
+  let gvilc = coreself::gvil  in
+  let gvilc = List.sort compare_globVarIds gvilc in
+  let ci = EcUtils.oget (List.find_index (fun gvi -> gvi = coreself) gvilc) in
+  (*add +1 to index, to increment 0-based indices*)
+  let is = List.init (List.length gvilc) (fun i->i+1) in
+  List.filter (fun i -> i<>(ci+1)) is
 
 let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
   let indices = List.mapi (fun i a ->
@@ -834,7 +828,7 @@ let rec get_bound_tree
   let funcId = getSP psp in
   let fbt = (EcLocation.unloc (IdPairMap.find funcId mt.fun_map)) in
   let rfbt = real_fun_body_tyd_of fbt in
-  let filename = (uc_name (fst funcId))^".eca" in
+  let filename = (fst funcId)^".ec" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let env = envp "Env" in
   let own_bound = UcEasyCryptCommentMacros.apply_macro
@@ -845,12 +839,9 @@ let rec get_bound_tree
     let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
     let paraml = List.combine param_names params in
     let parambounds = List.mapi (fun i (id, psp) ->
-                       let cepath =
-                         if thpath = "" then ""
-                         else thpath^uc__code^"." in
-                       let pmthpath = cepath^(uc_name id)^"." in
+                       let pmthpath = thpath^(uc_name id)^"." in
                        let compenv : string -> string = fun str ->
-                         envp (compEnv cepath (snd funcId) rfbt (i+1) str)
+                         envp (compEnv thpath (snd funcId) rfbt (i+1) str)
                        in 
                        get_bound_tree mt psp pmthpath compenv
                         ) paraml

@@ -3,16 +3,16 @@ open UcSpecTypedSpecCommon
 open EcTypes
 open UcGenerateCommon
 
-let state_name (name : string) : string = "_State_"^name
-let state_type_name_IF = "_state"
+let state_name_IF (name : string) : string = "_State_IF_"^name
+let state_type_name_IF = "_state_IF"
+
+let state_name_SIM (name : string) : string = "_State_SIM_"^name
+let state_type_name_SIM = "_state_SIM"
 
 let state_name_pt (ptname : string) (sname : string) : string =
   "_State_"^ptname^"_"^sname
 let state_type_name_pt (ptname : string) : string =
   "_state_"^ptname
-
-
-let uc__sim = "UC__SIM"
 
 let _m = "_m"
 let _r = "_r"
@@ -24,7 +24,7 @@ let parties_str = "parties"
 let loop_str = "loop"
 let proc_party_str (pn : string) = "party_"^pn
 let addr_op_call_sim (name : string) : string =
-  uc__rf^"."^(addr_op_name name)^" "^oget_if_addr_opt
+  (addr_op_name name)^" "^oget_if_addr_opt
 
 let _metric_pt_good ptn = "_metric_"^ptn^"_good"
 
@@ -74,7 +74,7 @@ let print_state_type_IF
       (ppf : Format.formatter)
       (states : state_tyd IdMap.t)
     : unit =
-  print_state_type sc ppf states state_type_name_IF state_name 
+  print_state_type sc ppf states state_type_name_IF state_name_IF 
 
 let mmc_proc_name
       (stid : string) (mpp : msg_path_pat) (state_name : string -> string)
@@ -87,7 +87,7 @@ let mmc_proc_name
   (List.fold_left (fun n p -> n^"__"^p) stn mpp.inter_id_path)^"__"^msgn
 
 let mmc_proc_name_IF (stid : string) (mpp : msg_path_pat) : string =
-  mmc_proc_name stid mpp state_name
+  mmc_proc_name stid mpp state_name_IF
   
 let print_proc_params_decl (sc : EcScope.scope) (ppf : Format.formatter)
       (ps : (string * ty) list) : unit =
@@ -482,7 +482,7 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[proc init(self_ : %a) : unit = {@]@;<0 2>"
     (pp_type sc) addr_ty;
     Format.fprintf ppf "@[%s <- self_; %s <- %s;@]@;@[}@]@;"
-    _self _st (state_name (initial_state_id_of_states ifbt.states));
+    _self _st (state_name_IF (initial_state_id_of_states ifbt.states));
   in
   let print_proc_invoke () =
     let r, m = "r", "m" in
@@ -526,8 +526,9 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   print_vars ();
   print_proc_init ();
   print_mmc_procs
-    sc root mbmap ppf ifbt.states state_name dii IdPairMap.empty None "";
-  print_proc_parties sc root id mbmap parties_str state_name dii ppf ifbt.states None;
+    sc root mbmap ppf ifbt.states state_name_IF dii IdPairMap.empty None "";
+  print_proc_parties
+    sc root id mbmap parties_str state_name_IF dii ppf ifbt.states None;
   print_proc_invoke ();
   Format.fprintf ppf "@]@\n}.";
   ()
@@ -658,10 +659,10 @@ let print_IF_lemma_metric_invoke (metric_name : string) (module_name : string)
       (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =    
-  Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" _invoke;
+  Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" iF_invoke;
   Format.fprintf ppf
     "%s.%s :@ %s (glob %s) /\\ %s (glob %s) = n@ ==>@ "
-    module_name invoke _invar module_name metric_name module_name;
+    module_name invoke _invar_IF module_name metric_name module_name;
   Format.fprintf ppf
     "(res <> None =>@ %s (glob %s) < n@;"
     metric_name module_name;
@@ -693,7 +694,7 @@ let print_IF_state_metric (module_name : string)
   match lin with
   | None -> Format.fprintf ppf
               "@[(*cannot generate operator %s, states have cycles*)@]"
-              uc_metric_name 
+              uc_metric_name_IF
   | Some id_lvl_map ->
      begin
      let globopname = glob_to_part_op_name module_name _st in
@@ -701,11 +702,11 @@ let print_IF_state_metric (module_name : string)
      globopname module_name state_type_name_IF;
      Format.fprintf ppf
        "@[<v>@[op [smt_opaque] %s (g : glob %s) : int =@]@;<0 2>@[<v>"
-       uc_metric_name  module_name;
+       uc_metric_name_IF  module_name;
      Format.fprintf ppf "@[match %s g with@]@;" globopname;
      IdMap.iter (fun id lvl ->
          Format.fprintf ppf "@[| %s %a=> %i@]@;"
-           (state_name id) (print_ctor_args_state_metric id) st_map lvl
+           (state_name_IF id) (print_ctor_args_state_metric id) st_map lvl
        ) id_lvl_map;
      Format.fprintf ppf "@[end.@]@;@]@;@]"
      end
@@ -719,7 +720,7 @@ let print_IF_metric (id : string)(root : string)
     (print_IF_state_metric (uc_name id))
     st_map;
   Format.fprintf ppf "@[%a@]@;@;"
-    (print_IF_lemma_metric_invoke uc_metric_name (uc_name id) root mbmap dii)
+    (print_IF_lemma_metric_invoke uc_metric_name_IF (uc_name id) root mbmap dii)
     st_map
 
 let print_IF_invar
@@ -727,18 +728,19 @@ let print_IF_invar
   Format.fprintf ppf "@[<v>@;";
   Format.fprintf ppf "@[(*alias*)@]@;";
   Format.fprintf ppf "@[module IF = %s.@]@;" (uc_name id);
-  Format.fprintf ppf "@[op %s (g : glob IF) : bool = predT g.@]@;@;" _invar;
+  Format.fprintf ppf "@[op %s (g : glob IF) : bool = predT g.@]@;@;" _invar_IF;
   Format.fprintf ppf "@]@;"
 
 
 let print_IF_metric_good_init_lemmas
       (ppf : Format.formatter) (_ : unit): unit =
-  Format.fprintf ppf "@[lemma %s (g : glob IF) :@]@;"  _metric_good;
-  Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" _invar uc_metric_name;
-  Format.fprintf ppf "@[  proof. rewrite /%s.%s /=.@]@;" uc__if uc_metric_name;
-  Format.fprintf ppf "@[  smt(). qed.@]@;";
-  Format.fprintf ppf "@[lemma _init :@]@;";
-  Format.fprintf ppf "@[  hoare [IF.init : true ==> %s (glob IF)].@]@;" _invar;
+  Format.fprintf ppf "@[lemma %s (g : glob IF) :@]@;"  iF_metric_good;
+  Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" _invar_IF uc_metric_name_IF;
+  Format.fprintf ppf "@[  proof. rewrite /%s /=.@]@;" uc_metric_name_IF;
+  Format.fprintf ppf "@[  smt(). qed.@]@;@;@;";
+  Format.fprintf ppf "@[lemma IF_init :@]@;";
+  Format.fprintf ppf "@[  hoare [IF.init : true ==> %s (glob IF)].@]@;"
+    _invar_IF;
   Format.fprintf ppf "@[proof. proc. auto. qed.@]@;";
   Format.fprintf ppf "@]@;"
 
@@ -749,13 +751,11 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[<v>";
   if ifbt.id_adv_inter<>None
   then clone_adv_inter sf (EcUtils.oget ifbt.id_adv_inter);
-  Format.fprintf sf "@[%s@]@;@;" (open_theory uc__if);
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
   Format.fprintf sf "@[%a@]@;@;" print_IF_invar id;
   Format.fprintf sf "%a" (print_IF_metric id root mbmap dii) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" print_IF_metric_good_init_lemmas ();
-  Format.fprintf sf "@[%s@]@;" (close_theory uc__if);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
@@ -827,7 +827,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
        ) parties;
      Format.fprintf ppf "@;"
 
-  let subfunpath sfn sfid = (uc_name sfn)^"."^uc__code^"."^uc__if^"."^(uc_name sfid)
+  let subfunpath sfn sfid = (uc_name sfn)^"."^(uc_name sfid)
   
   let print_proc_init ppf (sc : EcScope.scope) ?(module_pfx = "")
     (params : (symb_pair * int) IdMap.t)
@@ -972,8 +972,8 @@ let print_glob_operator op_name top_type sub_type ppf range =
 
 let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
   let deduce_param_pis ppf rfbt =
-      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s.%s"
-        (uc_name pmn) uc__code adv_pi_num_op_name) rfbt.params
+      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s"
+        (uc_name pmn)  adv_pi_num_op_name) rfbt.params
   in
   let begin_param_pis ppf rfbt =
       if IdMap.is_empty rfbt.params
@@ -993,8 +993,8 @@ let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
             let nm = uc_name pmn in
             if i>0 then Format.fprintf ppf "; "
             ;
-            Format.fprintf ppf "%s + %s.%s.%s - 1"
-            (adv_pi_begin_param pmn) nm uc__code adv_pi_num_op_name)
+            Format.fprintf ppf "%s + %s.%s - 1"
+            (adv_pi_begin_param pmn) nm adv_pi_num_op_name)
           (IdMap.bindings rfbt.params)
   in
   Format.fprintf ppf "@[op %s = {|@]@;" rf_info;
@@ -1029,7 +1029,7 @@ let print_cloneRF_MakeRF ppf
 *)
   let print_cloneRF =
     Format.fprintf ppf "@;@[clone RealFunctionality as RFCore with@]@;";
-    Format.fprintf ppf "@[op %s <- %s.%s@]@;" rf_info uc__rf rf_info;
+    Format.fprintf ppf "@[op %s <- %s@]@;" rf_info rf_info;
   Format.fprintf ppf "@[proof *.@]@;";
   Format.fprintf ppf "@[realize rf_info_valid. smt(%s). qed.@]@;@;"
     adv_pi_begin_gt0_axiom_name
@@ -1058,35 +1058,35 @@ let print_cloneRF_MakeRF ppf
     core_module;
     Format.fprintf ppf
 "@[lemma %s :
-  hoare [%s.init : true ==> %s.%s (glob %s)].
+  hoare [%s.init : true ==> %s (glob %s)].
 proof.
-apply (RFCore.MakeRF_init_invar_hoare (%s) %s.%s).
-apply %s.%s.
+apply (RFCore.MakeRF_init_invar_hoare (%s) %s).
+apply %s.
  qed.@]@;@;"
       makeRF_core_init_invar_lemma
-      makeRF_module uc__rf core_invar_op  core_module
-      core_module uc__rf core_invar_op
-      uc__rf core_init_lemma;
+      makeRF_module core_invar_op  core_module
+      core_module core_invar_op
+      core_init_lemma;
     Format.fprintf ppf
 "@[lemma %s (n : int) :
   hoare
   [%s.invoke :
-   %s.%s (glob %s) /\\ %s.%s (glob %s) = n ==>
-   %s.%s (glob %s) /\\@;
- (res <> None => %s.%s (glob %s) < n@;
- /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info UC__RF.rf_info))].
+   %s (glob %s) /\\ %s (glob %s) = n ==>
+   %s (glob %s) /\\@;
+ (res <> None => %s (glob %s) < n@;
+ /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info rf_info))].
 proof.
-apply (RFCore.MakeRF_invoke_term_metric_hoare (%s) %s.%s %s.%s).
-apply %s.%s.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (%s) %s %s).
+apply %s.
  qed.@]@;@;"
 makeRF_core_invoke_lemma
 makeRF_module
-uc__rf core_invar_op core_module
-uc__rf core_metric_op core_module
-uc__rf core_invar_op core_module
-uc__rf core_metric_op core_module
-core_module uc__rf core_invar_op uc__rf core_metric_op
-    uc__rf core_invoke_lemma;
+core_invar_op core_module
+core_metric_op core_module
+core_invar_op core_module
+core_metric_op core_module
+core_module core_invar_op core_metric_op
+    core_invoke_lemma;
     Format.fprintf ppf
       "@[(* now we lift our invariant, termination metric and lemmas to %s *)@]@;@;"
       makeRF_module;
@@ -1095,23 +1095,23 @@ core_module uc__rf core_invar_op uc__rf core_metric_op
     (print_glob_operator glob_op_name makeRF_module core_module) range;
     Format.fprintf ppf
 "@[op %s : glob %s -> bool =
-  fun (g : glob %s) => %s.%s (%s g).
+  fun (g : glob %s) => %s (%s g).
 
 op %s : glob %s -> int =
-  fun (g : glob %s) => %s.%s (%s g).
+  fun (g : glob %s) => %s (%s g).
 
 lemma %s (g : glob %s) :
   %s g => 0 <= %s g.
     proof.
- smt(%s.%s). qed.
+ smt(%s). qed.
  "
 makeRF_invar_op makeRF_module
-makeRF_module uc__rf core_invar_op glob_op_name
+makeRF_module core_invar_op glob_op_name
 makeRF_metric_op makeRF_module
-makeRF_module uc__rf core_metric_op glob_op_name
+makeRF_module core_metric_op glob_op_name
 makeRF_metric_good_lemma makeRF_module
 makeRF_invar_op makeRF_metric_op
-uc__rf core_metric_good_lemma;
+core_metric_good_lemma;
 
 Format.fprintf ppf 
 "lemma %s :
@@ -1134,7 +1134,7 @@ lemma %s (n : int) :
    %s (glob %s) /\\ %s (glob %s) = n ==>
    %s (glob %s) /\\
  (res <> None => %s (glob %s) < n
- /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info UC__RF.rf_info))].
+ /\\ ((oget res).`1 = Adv => (oget res).`2.`2 \\in  adv_pis_rf_info rf_info))].
 proof.
 rewrite /%s /%s /=.
 apply %s.
@@ -1149,7 +1149,7 @@ makeRF_invar_op makeRF_metric_op
 makeRF_core_invoke_lemma
   in
   print_cloneRF;
-  let rp_module = uc__rf^"."^(moduleRP id rfbt) in
+  let rp_module = (moduleRP id rfbt) in
   print_MakeRF_and_lemmas
     gvil.gvil_RP
     rp_module
@@ -1162,7 +1162,7 @@ makeRF_core_invoke_lemma
   if IdMap.cardinal rfbt.params = 0
   then ()
   else
-    let ip_module = uc__rf^"."^(moduleIP id) in
+    let ip_module = (moduleIP id) in
     print_MakeRF_and_lemmas
     gvil.gvil_IP
     ip_module
@@ -1374,7 +1374,7 @@ let print_module_lemmas ?(rest_idx = None)
         let metric = ucsfn^"."^_metric_IF in
         let globop1 = glob_op_name (uc_name id) ucsfn in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
-        let sub_invoke = ucsfn^"."^_invoke_IF in
+        let sub_invoke = ucsfn^"."^iF_invoke in
         let sub_invoke_pms = "" in
         print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas 
       ) sfns;
@@ -1450,7 +1450,7 @@ let print_module_lemmas ?(rest_idx = None)
           (uc_name pmn) (metric_goodIRF rfbt rp rest_idx i)
       ) pmns;
     List.iter(fun sfn ->
-        Format.fprintf ppf "@[%s.%s@]@;" (uc_name sfn) _metric_good_IF
+        Format.fprintf ppf "@[%s.%s@]@;" (uc_name sfn) iF_metric_good
       ) sfns;
     List.iter(fun ptn ->
         Format.fprintf ppf "@[%s@]@;" (_metric_pt_good ptn)
@@ -1471,7 +1471,7 @@ let print_module_lemmas ?(rest_idx = None)
       ) (List.rev pmns);
     List.iter(fun sfn ->
         Format.fprintf ppf "@[call (%s.%s).@]@;"
-          (uc_name sfn) _init_IF
+          (uc_name sfn) iF_init
       ) (List.rev sfns);
     Format.fprintf ppf "@[skip.@]@;";
     Format.fprintf ppf "@[rewrite /%s /=.@]@;"
@@ -1563,9 +1563,9 @@ let print_sequence_of_games_proof  (id : string)
                     then ith_param_real i
                     else ith_param_ideal i
     in
-    Printf.sprintf "%s.%s.MakeRFComp(%s.%s, %s)"
-      uc__rf (rest_composition_clone i)
-      uc__rf (parametrized_rest_module id rfbt i)
+    Printf.sprintf "%s.MakeRFComp(%s, %s)"
+      (rest_composition_clone i)
+      (parametrized_rest_module id rfbt i)
       ith_param
   in
   let print_RFRP_Comp_RP_eq_lemma ppf () =
@@ -1592,8 +1592,8 @@ _RFRP_Comp_RP_eq_lemma
     Format.fprintf ppf "%s" (parameter_Bound i)
 (*    Format.fprintf ppf "
 Pr[%s.main
-       (func' ++ [UC__RF.%s.change_pari],
-        in_guard' `|` UC__RF.%s.rest_adv_pis) %s &m : res]
+       (func' ++ [%s.change_pari],
+        in_guard' `|` %s.rest_adv_pis) %s &m : res]
 "
       (parameter_Bound i)
       (rest_composition_clone i)
@@ -1619,7 +1619,7 @@ Pr[%s.main
     (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env,  -RFRP, -SIMIP, -RFIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info) =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
 `|Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]
   -
 Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]|
@@ -1641,7 +1641,7 @@ probability_parameter_Bound i
     (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFRP, -RFIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
+    disjoint in_guard' (adv_pis_rf_info rf_info)  =>
 `|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
   -
 Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]|
@@ -1663,7 +1663,7 @@ Format.fprintf ppf  "proof. admit. qed.@;@;"
     (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info)  =>
+    disjoint in_guard' (adv_pis_rf_info rf_info)  =>
 `|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
   -
 Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
@@ -1686,7 +1686,7 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
     (Adv <: ADV{-MI, -Env, -RFIP, -RFRP, -UCComposition.CompGlobs, -SIMIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info UC__RF.rf_info) =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
   `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]
 -
     Pr[Exper(MI(RFIP,SIMIP(Adv)), Env).main(func', in_guard') %s &m : res]| <=
@@ -1791,7 +1791,6 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (dii : symb_pair IdMap.t) (gvil : gvil) (pbs : string list) : string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
-  Format.fprintf sf "@[%s@]@;@;" (open_theory uc__rf);
   Format.fprintf sf "@[%a@]@;@;" print_rf_info_operator rfbt;
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
@@ -1806,7 +1805,6 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf sf "@[<v>%a@]@;@;"
     (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt
   done;
-  Format.fprintf sf "@[%s@]@;@;" (close_theory uc__rf);
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
   Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id rfbt) pbs;
   Format.fprintf sf "@]";
@@ -1828,12 +1826,12 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   let print_vars () =
     Format.fprintf ppf "@[var %s : %a option@]@;"
       if_addr_opt (pp_type sc) addr_ty;
-     Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name_IF;
+     Format.fprintf ppf "@[var %s : %s@]@;" _st state_type_name_SIM;
   in
   let print_proc_init () =
     Format.fprintf ppf "@[proc init() : unit = {@]@;<0 2>@[<v>";
     Format.fprintf ppf "@[%s <- None; %s <- %s;@]@;"
-      if_addr_opt _st (state_name (initial_state_id_of_states sbt.states));
+      if_addr_opt _st (state_name_SIM (initial_state_id_of_states sbt.states));
     Format.fprintf ppf "@[%s.init();@]@]@;@[}@]@;" _Adv
   in
   
@@ -1896,7 +1894,7 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
       Format.fprintf ppf "@[{@]@;<0 2>@[<v>";
       let objstr = "(oget ("^epdp_str^".`dec "^_m^"))" in
       print_mmc_proc_call ~objstr
-        ppf stid st.params mmc pfx msg_name mb state_name "";
+        ppf stid st.params mmc pfx msg_name mb state_name_SIM "";
       Format.fprintf ppf "@]@;}@;";
       if List.is_empty (List.tl mmcs)
       then ()
@@ -1910,7 +1908,7 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
     (UcSpecTypedSpecCommon.msg_path_pat_ends_star mmc.msg_pat.msg_path_pat)
   ) st.mmclauses in
   Format.fprintf ppf "@[| %s %a=> {@]@;<0 2>@[<v>"
-    (state_name stid) print_state_params_names spnt;
+    (state_name_SIM stid) print_state_params_names spnt;
   print_mm ppf mmcs;
   Format.fprintf ppf "@]@;}@;"
   in
@@ -1936,7 +1934,7 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   print_proc_init ();
   let sim_uses = Some sbt.uses in
   print_mmc_procs ~sim_uses
-    sc root mbmap ppf sbt.states state_name dii ais None "";
+    sc root mbmap ppf sbt.states state_name_SIM dii ais None "";
   print_proc_invoke ppf sbt.states;
   Format.fprintf ppf "@]@\n}.";
   ()
@@ -1951,22 +1949,27 @@ let print_cloneSIM_MS ppf (id,sbt : string * sim_body_tyd) =
   in 
   let print_MS =
     Format.fprintf ppf
-      "@[module SIM(%s : ADV) = MSCore.MS(%s.%s(%s), %s).@]"
-      _Adv uc__sim (uc_name id) _Adv _Adv
+      "@[module SIM(%s : ADV) = MSCore.MS(%s(%s), %s).@]"
+      _Adv (uc_name id) _Adv _Adv
   in
   print_cloneSIM;
   print_MS
+
+let print_state_type_SIM
+      (sc : EcScope.scope)
+      (ppf : Format.formatter)
+      (states : state_tyd IdMap.t)
+    : unit =
+  print_state_type sc ppf states state_type_name_SIM state_name_SIM 
 
 let gen_sim (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (sbt : sim_body_tyd)
       (ais : symb_pair IdPairMap.t): string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
-  Format.fprintf sf "@[%s@]@;@;" (open_theory uc__sim);
-  Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) sbt.states;
+  Format.fprintf sf "@[%a@]@;@;" (print_state_type_SIM sc) sbt.states;
   Format.fprintf sf "@[%a@]@;@;"
     (print_simulator_module sc root id mbmap IdMap.empty ais) sbt;
-  Format.fprintf sf "@[%s@]@;" (close_theory uc__sim);
   Format.fprintf sf "@[<v>%a@]@;"   print_cloneSIM_MS (id,sbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()

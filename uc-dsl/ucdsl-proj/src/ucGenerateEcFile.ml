@@ -110,7 +110,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let rui = unit_info_of_root mt r in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^(!papi) in
          let ucpn = uc_name pname in
-         let parampath = (uc_name pname)^"."^uc__code in
+         let parampath = (uc_name pname) in
          match rui with
          | UI_Singleton _ ->
             clone_singleton_unit sf r ucpn adv_pi_begin_str;
@@ -223,7 +223,7 @@ let generate_ec (mt : maps_tyd) : unit =
       List.iter (fun s -> print_string (s^".")) (fst gvi);
       print_string (snd gvi)
     in
-    List.iter (fun gvi -> print_gvi gvi) gvil;
+    List.iter (fun gvi -> print_gvi gvi) gvil.gvil_RP;
     print_endline "";
     end remove print*)
     IdPairMap.add      
