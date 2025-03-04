@@ -35,7 +35,7 @@ let module_params_string pmns : string =
     let hd = List.hd pmns in
     let tl = List.tl pmns in
     (List.fold_left (fun acc pmn -> acc^", "^pmn) ("("^hd) tl)^")"
-let _RFRP = "RFRP"
+
 let _RFIP = "RFIP"
 let smt_sat_lemmas = "mem_oflist mem_rangeset in_fsetU"
 let smt_invoke_lemmas = "mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU"
@@ -1044,14 +1044,14 @@ let print_cloneRF_MakeRF ppf
         (core_invoke_lemma : string)
         (core_metric_good_lemma : string)
     =
-    let makeRF_core_init_invar_lemma = makeRF_module^"_Core_init_invar_hoare" in
-    let makeRF_core_invoke_lemma = makeRF_module^"_Core_invoke_term_metric_hoare" in
-    let makeRF_init_invar_lemma = makeRF_module^"_init_invar_hoare" in
-    let makeRF_invoke_lemma = makeRF_module^"_invoke_term_metric_hoare" in
-    let makeRF_invar_op = makeRF_module^_invar in
-    let makeRF_metric_op = makeRF_module^uc_metric_name in
-    let makeRF_metric_good_lemma = makeRF_module^_metric_good in
+    let makeRF_core_init_invar_lemma = makeRF_module^"_Core_init" in
+    let makeRF_core_invoke_lemma = makeRF_module^"_Core_invoke" in
     let glob_op_name = "glob_"^makeRF_module^"_to_Core" in
+    let makeRF_init_invar_lemma = makeRF_init_invar_lemma makeRF_module in
+    let makeRF_invoke_lemma = makeRF_invoke_lemma makeRF_module in
+    let makeRF_invar_op = makeRF_invar_op makeRF_module in
+    let makeRF_metric_op = makeRF_metric_op makeRF_module in
+    let makeRF_metric_good_lemma = makeRF_metric_good_lemma makeRF_module in
     Format.fprintf ppf
       "@[module %s = RFCore.MakeRF(%s).@]@;@;"
       makeRF_module

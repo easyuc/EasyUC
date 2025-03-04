@@ -115,13 +115,22 @@ let rest_nameP (id : string) (rfbt : real_fun_body_tyd) (i : int) =
   then rest_name id i
   else (rest_name id i)^"_P"
 
-let _RF = "RF"
+let _RFRP = "RFRP"
 let _IF = "IF"
 let uc_metric_name = "_metric"
+let _invar = "_invar"
+let _metric_good = "_metric_good"
 let uc_metric_name_IF = "_metric_IF"
 let uc_metric_RP = "_metric_RP"
 let uc_metric_IP = "_metric_IP"
-let _metric_RF = "_metric_RF"
+let makeRF_init_invar_lemma (makeRF_module : string) = makeRF_module^"_init"
+let makeRF_invoke_lemma (makeRF_module : string) = makeRF_module^"_invoke"
+let makeRF_invar_op (makeRF_module : string) =_invar^"_"^ makeRF_module
+let makeRF_metric_op (makeRF_module : string) =
+  uc_metric_name^"_"^ makeRF_module
+let makeRF_metric_good_lemma (makeRF_module : string) =
+  makeRF_module^_metric_good
+let _metric_RFRP = makeRF_metric_op _RFRP
 let _metric_IF = "_metric_IF"
 let rest_metric i = "_metric_Rest"^(string_of_int i)
 let uc_party_metric_name pn = "_metric_"^pn
@@ -130,33 +139,31 @@ let glob_op_name_own top_mod = glob_op_name top_mod "own"
 let glob_to_part_op_name module_name part_name =
   "glob_"^module_name^"_to_"^part_name
 let module_name_IF name = (uc_name name)^"."^_IF
-let module_name_RF name = (uc_name name)^"."^_RF
+let module_name_RF name = (uc_name name)^"."^_RFRP
 let invoke = "invoke"
 let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
 let _invoke_pn_rest pn rest_idx =
   "_invoke_"^pn^"_Rest"^(string_of_int rest_idx)
 let iF_invoke = "IF_invoke"
-let _invoke_RF = "_invoke_RF"
+let rFRP_invoke =  makeRF_invoke_lemma _RFRP
 let _invoke_IP = "_invoke_IP"
 let _invoke_RP = "_invoke_RP"
 let rest_invoke i = "_invoke_Rest"^(string_of_int i)
-let _invar = "_invar"
 let _invar_IP = "_invar_IP"
 let _invar_RP = "_invar_RP"
 let rest_invar i = "_invar_Rest"^(string_of_int i)
 let invar_pt_op_name ptn = "_invar_"^ptn
 let _invar_IF = "_invar_IF"
-let _invar_RF = "_invar_RF"
-let _metric_good = "_metric_good"
+let _invar_RFRP = makeRF_invar_op _RFRP
 let rest_metric_good i = "_metric_good_Rest"^(string_of_int i)
-let _metric_good_RF = "_metric_good_RF"
+let rFRP_metric_good = makeRF_metric_good_lemma _RFRP
 let iF_metric_good = "IF_metric_good"
 let _metric_good_RP = "_metric_good_RP"
 let _metric_good_IP = "_metric_good_IP"
 let init = "init"
 let _init = "_init"
-let _init_RF = "_init_RF"
+let rFRP_init = makeRF_init_invar_lemma _RFRP
 let iF_init = "IF_init"
 let _init_RP = "_init_RP"
 let _init_IP = "_init_IP"
@@ -219,11 +226,11 @@ let metricIRF (rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
-            then _metric_RF
+            then _metric_RFRP
             else _metric_IF
   | Some i -> if param_idx+1 < i
               then _metric_IF
-              else _metric_RF
+              else _metric_RFRP
 
 let metric_name_IRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -237,22 +244,22 @@ let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
-            then _invoke_RF
+            then rFRP_invoke
             else iF_invoke
   | Some i -> if param_idx+1 < i
               then iF_invoke
-              else _invoke_RF
+              else rFRP_invoke
 
 
 let invarIRF (rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
-            then _invar_RF
+            then _invar_RFRP
             else _invar_IF
   | Some i -> if param_idx+1 < i
               then _invar_IF
-              else _invar_RF
+              else _invar_RFRP
 
 let invokeIRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -282,11 +289,11 @@ let initIRF (rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
-            then _init_RF
+            then rFRP_init
             else iF_init
   | Some i -> if param_idx+1 < i
               then iF_init
-              else _init_RF
+              else rFRP_init
 
 let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
@@ -300,11 +307,11 @@ let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
-            then _metric_good_RF
+            then rFRP_metric_good
             else iF_metric_good
   | Some i -> if param_idx+1 < i
               then iF_metric_good
-              else _metric_good_RF
+              else rFRP_metric_good
 
 let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
   = moduleIRP id rfbt true (Some i)
@@ -312,8 +319,8 @@ let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
 let compEnv (thpath : string) (id : string) (rfbt : real_fun_body_tyd) (i : int)
     : string -> string =
   fun str ->
-    thpath^"."^(rest_composition_clone i)^".CompEnv("^
-    thpath^"."^(rest_nameP id rfbt i)^", "^str^")"
+    thpath^(rest_composition_clone i)^".CompEnv("^
+    thpath^(rest_nameP id rfbt i)^", "^str^")"
 
 let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
       ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
