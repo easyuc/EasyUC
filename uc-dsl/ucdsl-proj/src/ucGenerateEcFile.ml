@@ -11,39 +11,49 @@ type maps_gen =
    preamble_map        : string IdMap.t;}     (* UC and EC requires, port indices
                                                  and clones of subfunctionalities and parameter*)
 
-let gen_sim (id : string) (st : sim_tyd) : string = ""
-
-let print_files (mg : maps_gen) : unit =
-  let print_file (root : string) (mg : maps_gen) : unit =
-    let fs = open_out ((uc__name root)^".eca") in
-
-    let pre = IdMap.find root mg.preamble_map in
-    Printf.fprintf fs "%s" pre;
+let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
+  let print_file (root : string) : unit =
+    let print_main (fs : out_channel) : unit =
+      let pre = IdMap.find root mg.preamble_map in
+      Printf.fprintf fs "%s" pre;
     
-    let rdim_b = IdPairMap.filter (fun (r,_) _ -> r = root) mg.basic_dir_inter_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rdim_b;
-    let rdim_c = IdPairMap.filter (fun (r,_) _ -> r = root) mg.comp_dir_inter_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rdim_c;
+      let rdim_b = IdPairMap.filter (fun (r,_) _ -> r = root)
+                     mg.basic_dir_inter_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rdim_b;
+      let rdim_c = IdPairMap.filter (fun (r,_) _ -> r = root)
+                     mg.comp_dir_inter_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rdim_c;
 
-    let raim_b = IdPairMap.filter (fun (r,_) _ -> r = root) mg.basic_adv_inter_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_b;
-    let raim_c = IdPairMap.filter (fun (r,_) _ -> r = root) mg.comp_adv_inter_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c;
+      let raim_b = IdPairMap.filter (fun (r,_) _ -> r = root)
+                     mg.basic_adv_inter_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_b;
+      let raim_c = IdPairMap.filter (fun (r,_) _ -> r = root)
+                     mg.comp_adv_inter_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c;
 
-    let rootfun = IdPairMap.filter (fun (r,_) _ -> r = root) mg.fun_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun;
+      let rootfun = IdPairMap.filter (fun (r,_) _ -> r = root) mg.fun_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun;
 
-    let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
-    IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
-
-  in  
-  let roots = 
-    IdSet.union (roots_of_map mg.basic_dir_inter_map)
-      (IdSet.union (roots_of_map mg.basic_adv_inter_map)
-       (IdSet.union (roots_of_map mg.comp_dir_inter_map)
-       (IdSet.union (roots_of_map mg.comp_adv_inter_map)
-       (IdSet.union (roots_of_map mg.fun_map) (roots_of_map mg.sim_map))))) in
-  IdSet.iter (fun r -> print_file r mg) roots
+      let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
+      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
+    in
+    let ui = unit_info_of_root mt root in
+    match ui with
+    | UI_Singleton _ ->
+      begin
+      let fs = open_out ((uc_name root)^".eca") in
+      print_main fs;
+      close_out fs
+      end
+    | UI_Triple _ ->
+      begin
+      let fs = open_out ((uc__name root)^".eca") in
+      print_main fs;
+      close_out fs
+      end
+  in 
+  let roots = roots_of_maps mt in
+  IdSet.iter (fun r -> print_file r) roots
 
 let print_preamble (mt : maps_tyd) (root : string) : string =
   let sf = Format.get_str_formatter () in
@@ -175,9 +185,8 @@ let adv_int_simulated
       else
         ret
     ) ret nmifs
-  
 
-let generate_ec (mt : maps_tyd) : unit =
+let gen_maps (mt : maps_tyd) : maps_gen =
   let scope (root : string) =
     IdMap.find root mt.ec_scope_map
   in
@@ -239,14 +248,31 @@ let generate_ec (mt : maps_tyd) : unit =
     IdPairMap.add sp (UcGenerateFunctionality.gen_sim
                         (scope root) root id mbmap sbt ais) sm
     ) mt.sim_map IdPairMap.empty in
-  let mg =
     {basic_dir_inter_map = dim_b;
      comp_dir_inter_map  = dim_c;
      basic_adv_inter_map = aim_b;
      comp_adv_inter_map  = aim_c;
      fun_map       = fm;
      sim_map       = sm;
-     preamble_map  = preambles} in
+     preamble_map  = preambles}
 
-  print_files mg
+let generate_ec (mt : maps_tyd) : unit =
+  let roots = roots_of_maps mt in
+  (*print default user file if it doesn't exist*)
+  IdSet.iter(fun r ->
+    let ui = unit_info_of_root mt r in
+    match ui with
+    | UI_Triple _ ->
+      let userfs = r^".eca" in
+      if not(Sys.file_exists userfs)
+      then
+        begin
+        let fs = open_out userfs in
+        print_userfile_stub fs r;
+        close_out fs
+        end
+    | UI_Singleton _ -> ()
+    ) roots;
+  let mg = gen_maps mt in
+  print_files mt mg
   

@@ -835,7 +835,7 @@ let rec get_bound_tree
   let funcId = getSP psp in
   let fbt = (EcLocation.unloc (IdPairMap.find funcId mt.fun_map)) in
   let rfbt = real_fun_body_tyd_of fbt in
-  let filename = (fst funcId)^".ec" in
+  let filename = (fst funcId)^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let env = envp "Env" in
   let own_bound = UcEasyCryptCommentMacros.apply_macro
@@ -864,5 +864,37 @@ let get_parameter_bounds (mt : maps_tyd) (funcId : SP.t) : string list =
   let psp = make_pSP mt funcId 0 in
   let bt = get_bound_tree mt psp "" (fun str -> str) in
   List.map (fun pbt -> sum_bounds pbt) (snd bt)
+
+let print_userfile_stub (fs : out_channel) (root : string) =
+  Printf.fprintf fs
+"
+require import UCCore.
+
+require UC__%s.
+
+clone include UC__%s.
+
+(*! Bound(PathPfx, Env) 0.0 *)
+  
+lemma %s_RFIP_IF_advantage
+    (Env <: ENV{-MI, -RFIP, -IF, -SIM})
+    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      (*adv pis of KE are disj. from in_guard'*)    
+ `|Pr[Exper(MI(RFIP, Adv), Env)
+         .main(func', in_guard')
+           @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env)
+         .main(func', in_guard')
+      @ &m : res]| <=
+    0.0
+      .
+proof.
+admit.
+qed.     
+"
+root root root
 
 
