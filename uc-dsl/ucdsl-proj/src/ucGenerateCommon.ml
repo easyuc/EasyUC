@@ -117,6 +117,7 @@ let rest_nameP (id : string) (rfbt : real_fun_body_tyd) (i : int) =
 
 let _RFRP = "RFRP"
 let _IF = "IF"
+let _COMPENV = "COMPENV"
 let uc_metric_name = "_metric"
 let _invar = "_invar"
 let _metric_good = "_metric_good"
@@ -696,7 +697,8 @@ let rec get_globVarIds
                          get_party_globVarId funpath id) rfbt.parties in
     let partyglobs = snd (List.split(IdMap.bindings partyglobs)) in
     let ownglobs = [get_self_globVarId funpath] @ partyglobs @ subfunglobs in
-    let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+    let param_names = fst (List.split (indexed_map_to_list_keep_keys
+                                         rfbt.params)) in
     let paraml = List.combine param_names params in
     let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
@@ -786,7 +788,8 @@ let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
   List.map (fun i -> i+1) indxs
 
 let param_names (rfbt : real_fun_body_tyd) =
-  let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+  let param_names = fst (List.split (indexed_map_to_list_keep_keys
+                                       rfbt.params)) in
   List.map (fun nm -> uc_name nm) param_names
 
 let get_own_glob_range_of_real_fun_glob_core
@@ -843,7 +846,8 @@ let rec get_bound_tree
 
   match psp with
   | RF (_ , params) ->
-    let param_names = fst (List.split (IdMap.bindings rfbt.params)) in
+    let param_names = fst (List.split (indexed_map_to_list_keep_keys
+                                          rfbt.params)) in
     let paraml = List.combine param_names params in
     let parambounds = List.mapi (fun i (id, psp) ->
                        let pmthpath = thpath^(uc_name id)^"." in
@@ -865,7 +869,67 @@ let get_parameter_bounds (mt : maps_tyd) (funcId : SP.t) : string list =
   let bt = get_bound_tree mt psp "" (fun str -> str) in
   List.map (fun pbt -> sum_bounds pbt) (snd bt)
 
-let print_userfile_stub (fs : out_channel) (root : string) =
+let get_CompEnvNo_macro (mt : maps_tyd) (funcId : SP.t) : string =
+  let psp = make_pSP mt funcId 0 in
+  let rec paramno psp =
+    match psp with
+    | RF (_ , params) ->
+       List.fold_left (fun acc pmpsp -> acc + 1 + paramno pmpsp ) 0 params
+    | _ -> 0
+  in
+  Printf.sprintf "(*! CompEnvNo() %s*)" (string_of_int (paramno psp))
+
+let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string = ""
+
+let get_Bound_RFRP_RFIP (mt : maps_tyd) (funcId : SP.t) : string = ""
+
+let get_Bound_RFIP_IF (funcId : SP.t) : string =
+  let filename = (fst funcId)^".eca" in
+  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  UcEasyCryptCommentMacros.apply_macro macros "Bound" [""; "Env"]
+
+let get_CompEnvNo (funcId : SP.t) : int =
+  let filename = (uc_name (fst funcId))^".eca" in
+  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let no_str = UcEasyCryptCommentMacros.apply_macro macros "CompEnvNo" [] in
+  int_of_string no_str
+
+
+let get_CompEnv_aliases (id : string) (rfbt : real_fun_body_tyd)
+: string list list =
+  let params = indexed_map_to_list_keep_keys rfbt.params in
+  List.mapi (fun i (pmid,funcId) ->
+    let pmceno = get_CompEnvNo funcId in
+    let alias pmcei =
+      Printf.sprintf "%s.CompEnv(%s,%s.COMPENV%i(Env))"
+      (rest_composition_clone i) (rest_nameP id rfbt i) (uc_name pmid)
+      pmcei
+    in
+    List.init pmceno (fun j -> alias j)
+    ) params
+
+let get_Bound_RFRP_IF (id : string) (rfbt : real_fun_body_tyd) (param_no : int)
+    : string =
+  let params = indexed_map_to_list_keep_keys rfbt.params in
+  let (pmnm, funcId) = List.nth params param_no in
+  let filename = (uc_name (fst funcId))^".eca" in
+  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let uc_pmnm = uc_name pmnm in
+  let alnos = List.map (fun l -> List.length l) (get_CompEnv_aliases id rfbt) in
+  let fstalnos = List.filteri (fun i _ -> i < param_no) alnos in
+  let lastidx = List.fold_left (fun acc i -> acc + i) 0 fstalnos in
+  let ceno = List.nth alnos param_no in
+  let ces = List.init ceno (fun i -> _COMPENV^(string_of_int (i+lastidx+1))) in
+  let params = uc_pmnm :: ces in
+   UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" params
+
+let print_userfile_stub
+(fs : out_channel) (root : string) (rf_has_params : bool) =
+  let rfip_eq_rfrp =
+    if rf_has_params
+    then ""
+    else "module RFIP = RFRP. (*real fun has no params so real fun with ideal params is the same as real fun with real params*)"
+  in
   Printf.fprintf fs
 "
 require import UCCore.
@@ -873,6 +937,8 @@ require import UCCore.
 require UC__%s.
 
 clone include UC__%s.
+
+%s
 
 (*! Bound(PathPfx, Env) 0.0 *)
   
@@ -895,6 +961,9 @@ proof.
 admit.
 qed.     
 "
-root root root
+root root rfip_eq_rfrp root
+
+let print_UC_file (fs : out_channel) = ()
+  
 
 

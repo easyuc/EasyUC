@@ -983,7 +983,8 @@ let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
             if i>0 then Format.fprintf ppf "; "
             ;
             Format.fprintf ppf "%s"
-            (adv_pi_begin_param pmn)) (IdMap.bindings rfbt.params)
+              (adv_pi_begin_param pmn)) (indexed_map_to_list_keep_keys
+                                           rfbt.params)
   in
   let end_param_pis ppf rfbt =
       if IdMap.is_empty rfbt.params
@@ -995,7 +996,7 @@ let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
             ;
             Format.fprintf ppf "%s + %s.%s - 1"
             (adv_pi_begin_param pmn) nm adv_pi_num_op_name)
-          (IdMap.bindings rfbt.params)
+          (indexed_map_to_list_keep_keys rfbt.params)
   in
   Format.fprintf ppf "@[op %s = {|@]@;" rf_info;
   Format.fprintf ppf "@[rfi_num_parties = %i;@]@;"

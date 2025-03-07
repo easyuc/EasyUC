@@ -258,19 +258,32 @@ let gen_maps (mt : maps_tyd) : maps_gen =
 
 let generate_ec (mt : maps_tyd) : unit =
   let roots = roots_of_maps mt in
-  (*print default user file if it doesn't exist*)
+  (*write default user file if it doesn't exist*)
   IdSet.iter(fun r ->
     let ui = unit_info_of_root mt r in
     match ui with
-    | UI_Triple _ ->
+    | UI_Triple ti ->
       let userfs = r^".eca" in
       if not(Sys.file_exists userfs)
       then
         begin
+        let np = num_params_of_real_fun_tyd
+          (IdPairMap.find (r, ti.ti_real) mt.fun_map) in
         let fs = open_out userfs in
-        print_userfile_stub fs r;
+        print_userfile_stub fs r (np<>0);
         close_out fs
         end
+    | UI_Singleton _ -> ()
+    ) roots;
+  (*write UC single underscore files for triple units*)
+    IdSet.iter(fun r ->
+    let ui = unit_info_of_root mt r in
+    match ui with
+    | UI_Triple ti ->
+      let sufs = (uc_name r)^".eca" in
+      let sp = (r, ti.ti_real) in
+      let pbs = get_parameter_bounds mt sp in
+      ()
     | UI_Singleton _ -> ()
     ) roots;
   let mg = gen_maps mt in
