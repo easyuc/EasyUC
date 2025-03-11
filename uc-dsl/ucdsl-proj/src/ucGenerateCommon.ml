@@ -118,6 +118,7 @@ let rest_nameP (id : string) (rfbt : real_fun_body_tyd) (i : int) =
 let _RFRP = "RFRP"
 let _IF = "IF"
 let _COMPENV = "COMPENV"
+let compenv (i : int) = _COMPENV^(string_of_int i)
 let uc_metric_name = "_metric"
 let _invar = "_invar"
 let _metric_good = "_metric_good"
@@ -830,44 +831,35 @@ let get_glob_indices_of_real_fun_parties
       then Some (List.hd rng)
       else None ) ogrm
 
-type bT = string * (bT list)
+type macro_fun = (int * (string list -> string))
 
-let rec get_bound_tree
-          (mt : maps_tyd) (psp : pSP) (thpath : string)
-          (envp :  string -> string) : bT =
-  let funcId = getSP psp in
-  let fbt = (EcLocation.unloc (IdPairMap.find funcId mt.fun_map)) in
-  let rfbt = real_fun_body_tyd_of fbt in
+let get_RFIP_IF_bound_from_macro (funcId : SP.t) : string list -> string =
   let filename = (fst funcId)^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  let env = envp "Env" in
-  let own_bound = UcEasyCryptCommentMacros.apply_macro
-                    macros "Bound" [thpath; env] in
+  UcEasyCryptCommentMacros.apply_macro macros "Bound"
 
-  match psp with
-  | RF (_ , params) ->
-    let param_names = fst (List.split (indexed_map_to_list_keep_keys
-                                          rfbt.params)) in
-    let paraml = List.combine param_names params in
-    let parambounds = List.mapi (fun i (id, psp) ->
-                       let pmthpath = thpath^(uc_name id)^"." in
-                       let compenv : string -> string = fun str ->
-                         envp (compEnv thpath (snd funcId) rfbt (i+1) str)
-                       in 
-                       get_bound_tree mt psp pmthpath compenv
-                        ) paraml
+let rec get_Bound_RFRP_IF_macro_fun
+(mt : maps_tyd) (funcId : SP.t) : macro_fun =
+  let own = (1+1, get_RFIP_IF_bound_from_macro funcId) in
+  let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
+  let rfbt = real_fun_body_tyd_of fbt in
+  let params = indexed_map_to_list_keep_keys rfbt.params in
+  let parambounds : macro_fun list = List.map (fun (pmnm, fid) ->
+    let ppnum, pbound = get_Bound_RFRP_IF_macro_fun mt fid in
+    let pbound': string list -> string =  fun (ppl : string list) ->
+      pbound (((List.hd ppl)^pmnm^".") :: (List.tl ppl))
     in
-    own_bound, parambounds
-  | _ -> UcMessage.failure
-           "get_param_bounds cannot be called for ideal functionality or dropped parameter of Rest, only for real functionality with real parameters"
-
-let rec sum_bounds (bt : bT) : string =
-  List.fold_left (fun acc pbt -> acc^" +\n"^(sum_bounds pbt)) (fst bt) (snd bt)
-
-let get_parameter_bounds (mt : maps_tyd) (funcId : SP.t) : string list =
-  let psp = make_pSP mt funcId 0 in
-  let bt = get_bound_tree mt psp "" (fun str -> str) in
-  List.map (fun pbt -> sum_bounds pbt) (snd bt)
+    ppnum, pbound') params in
+  let pno = List.fold_right (fun (ppno,_) acc -> ppno-1+acc) parambounds (1+1) in
+  let boundfun : string list -> string = fun (pml : string list) ->
+    let pmnmpm = List.hd pml in
+    let (pml', str) = List.fold_left (fun (pml,str) (pnum,pbound) ->
+                      ((BatList.drop pnum pml) ,
+                       (str^"\n+\n"^(pbound (pmnmpm::(BatList.take pnum pml)))))
+    ) (pml,"") parambounds in
+    (str^"\n+\n"^((snd own) (pmnmpm::pml'))) in
+  (pno , boundfun)
+  
 
 let get_CompEnvNo_macro (mt : maps_tyd) (funcId : SP.t) : string =
   let psp = make_pSP mt funcId 0 in
@@ -879,14 +871,10 @@ let get_CompEnvNo_macro (mt : maps_tyd) (funcId : SP.t) : string =
   in
   Printf.sprintf "(*! CompEnvNo() %s*)" (string_of_int (paramno psp))
 
-let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string = ""
-
-let get_Bound_RFRP_RFIP (mt : maps_tyd) (funcId : SP.t) : string = ""
+let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =""
 
 let get_Bound_RFIP_IF (funcId : SP.t) : string =
-  let filename = (fst funcId)^".eca" in
-  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  UcEasyCryptCommentMacros.apply_macro macros "Bound" [""; "Env"]
+   (get_RFIP_IF_bound_from_macro funcId)[""; "Env"]
 
 let get_CompEnvNo (funcId : SP.t) : int =
   let filename = (uc_name (fst funcId))^".eca" in
@@ -901,27 +889,37 @@ let get_CompEnv_aliases (id : string) (rfbt : real_fun_body_tyd)
   List.mapi (fun i (pmid,funcId) ->
     let pmceno = get_CompEnvNo funcId in
     let alias pmcei =
-      Printf.sprintf "%s.CompEnv(%s,%s.COMPENV%i(Env))"
+      Printf.sprintf "%s.CompEnv(%s,%s.%s(Env))"
       (rest_composition_clone i) (rest_nameP id rfbt i) (uc_name pmid)
-      pmcei
+      (compenv pmcei)
     in
     List.init pmceno (fun j -> alias j)
     ) params
 
-let get_Bound_RFRP_IF (id : string) (rfbt : real_fun_body_tyd) (param_no : int)
+let get_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
     : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
   let (pmnm, funcId) = List.nth params param_no in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let uc_pmnm = uc_name pmnm in
-  let alnos = List.map (fun l -> List.length l) (get_CompEnv_aliases id rfbt) in
+  let alnos = List.map (fun l -> List.length l) (get_CompEnv_aliases "" rfbt) in
   let fstalnos = List.filteri (fun i _ -> i < param_no) alnos in
-  let lastidx = List.fold_left (fun acc i -> acc + i) 0 fstalnos in
+  let lastidx = List.fold_left (fun acc i -> acc + i) 1 fstalnos in
   let ceno = List.nth alnos param_no in
   let ces = List.init ceno (fun i -> _COMPENV^(string_of_int (i+lastidx+1))) in
   let params = uc_pmnm :: ces in
-   UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" params
+  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" params
+
+let get_Bound_RFRP_RFIP (rfbt : real_fun_body_tyd) : string =
+  let k = IdMap.cardinal rfbt.params in
+  if k > 0
+  then   
+    let bounds =
+      List.init k (fun i -> get_Bound_RFRP_IF rfbt (i+1)) in
+    List.fold_left (fun acc str -> acc^"\n+\n"^str)
+      (List.hd bounds) (List.tl bounds)
+  else ""
 
 let print_userfile_stub
 (fs : out_channel) (root : string) (rf_has_params : bool) =
