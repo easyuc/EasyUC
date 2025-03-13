@@ -27,8 +27,8 @@ exception ECComMacs_Error of string  (* post-scanning error *)
    each macro consists of a name (a string), parameters (a list of
    strings) and a body (a string)
 
-   the name and parameters are sequences of letters and digits,
-   beginning with a letter; the parameters must be distinct
+   the name and parameters are sequences of letters digits, and underscores,
+   beginning with a letter or underscore; the parameters must be distinct
 
    the body can have arbitrary whitespace in it, except not at its
    beginning or end

@@ -443,8 +443,6 @@ let get_msg_body
       (iip : string list) (msgnm : string)
     : (bool * message_body_tyd) =
   let sl = iip@[msgnm] in
-  (*List.iter (fun s -> print_string (s^" + ")) sl;
-  print_endline "";*)
   if SLMap.exists (fun p _ -> p = sl) mbmap
   then let mb = SLMap.find sl mbmap in (false,mb)
   else let mb = SLMap.find ([root]@sl) mbmap in (true,mb)
@@ -838,7 +836,7 @@ let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2]
 
 let rec get_Bound_RFRP_IF_macro_fun
-(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
+          (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let own = get_RFIP_IF_bound_from_macro funcId in
@@ -848,13 +846,18 @@ let rec get_Bound_RFRP_IF_macro_fun
     then ((paramboundstr s1 s2)^"\n+\n"^(own s1 s2))
     else (own s1 s2)
 and get_params_sum_Bound_RFRP_IF_macro_fun
-(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
+(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =  
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
-  let parambounds : bound_macro_fun list = List.mapi (fun i (pmnm, fid) ->
-    let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
-    apply_param_Bound_RFRP_IF_macro_fun pbound pmnm i) params
+  let parambounds : bound_macro_fun list =
+    List.mapi (fun i (pmnm, (r,dirint)) ->
+      let ui = unit_info_of_root mt r in
+      let fid = match ui with
+        | UI_Triple ti -> (r,ti.ti_real)
+        | _ -> UcMessage.failure "impossible param must be from triple unit" in
+      let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
+      apply_param_Bound_RFRP_IF_macro_fun pbound pmnm i) params
   in
   fun s1 s2 ->
     List.fold_left (fun str pbound ->
@@ -871,7 +874,7 @@ let get_Bound_RFIP_IF (funcId : SP.t) : string =
 let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
     : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
-  let (pmnm, funcId) = List.nth params param_no in
+  let (pmnm, funcId) = List.nth params (param_no-1) in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let bmf = fun s1 s2 ->

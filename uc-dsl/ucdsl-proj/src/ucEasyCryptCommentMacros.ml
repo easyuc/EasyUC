@@ -29,13 +29,13 @@ let scan_ident_opt (inp : input) (lnum : int) (c : char)
       then match input_char_opt inp with
            | None   -> (lnum, None, None)
            | Some c -> scan_init lnum c
-    else if Char.is_letter c
+    else if Char.is_letter c || c = '_'
       then match input_char_opt inp with
            | None   -> (lnum, Some (String.of_char c), None)
            | Some d -> scan_rest lnum [c] d
     else (lnum, None, Some c)
   and scan_rest lnum cs c =
-    if Char.is_letter c || Char.is_digit c
+    if Char.is_letter c || Char.is_digit c || c = '_'
     then match input_char_opt inp with
          | None   -> (lnum, Some (String.of_list (cs @ [c])), None)
          | Some d -> scan_rest lnum (cs @ [c]) d
