@@ -1523,9 +1523,18 @@ realize change_pari_valid. smt(). qed.
     rest_idx
     rf_info rf_info
     adv_pi_begin_gt0_axiom_name
+  
+let print_CompEnv_abbrev id rfbt ppf rest_idx =
+      Format.fprintf ppf
+"(*abbreviation for %i-th composed environment*)
+module CE%i = %s.CompEnv(%s,Env)
+ "
+rest_idx
+rest_idx (rest_composition_clone rest_idx) (rest_nameP id rfbt rest_idx)
 
-let print_sequence_of_games_proof  (id : string)
-       (rfbt : real_fun_body_tyd) ppf (pbs : string list)=
+
+let print_sequence_of_games_proof  (id : string) ppf
+       (rfbt : real_fun_body_tyd) =
   let pmnum = IdMap.cardinal rfbt.params in
   let mRP = moduleRP id rfbt in
   let _RFRP_Comp_RP_eq_lemma = "equiv_"^mRP^"_Composed1_RP" in
@@ -1557,7 +1566,7 @@ let print_sequence_of_games_proof  (id : string)
         simnm pmn sprev) _Adv pmns
   in
   let sim_st = sim_stack pmnum in
-  let parameter_Bound i : string = List.nth pbs (i-1)
+  let parameter_Bound i : string = get_param_Bound_RFRP_IF rfbt i
   in
   let composition_module ((i, ri) : int * bool) : string =
     let ith_param = if ri
@@ -1789,7 +1798,7 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
       (rapm : rf_addr_port_maps)
-      (dii : symb_pair IdMap.t) (gvil : gvil) (pbs : string list) : string =
+      (dii : symb_pair IdMap.t) (gvil : gvil): string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%a@]@;@;" print_rf_info_operator rfbt;
@@ -1803,22 +1812,23 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf sf "@[%a@]@;@;"
       (print_rest_module sc root id mbmap dii rapm.party_ext_port_id rfbt) i;
     Format.fprintf sf "@[%a@]@;@;" print_clone_Composition i;
+    Format.fprintf sf "@[%a@]@;@;" (print_CompEnv_abbrev id rfbt) i;
     Format.fprintf sf "@[<v>%a@]@;@;"
     (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt
   done;
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
-  Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id rfbt) pbs;
+  Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id) rfbt;
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
 let gen_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t)
       (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
-      (gvil : gvil) (pbs : string list): string =
+      (gvil : gvil): string =
   let fbt = EcLocation.unloc ft in
   match fbt with
   | FunBodyIdealTyd ifbt -> gen_ideal_fun sc root id mbmap ifbt dii
-  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii gvil pbs
+  | FunBodyRealTyd rfbt  -> gen_real_fun sc root id mbmap rfbt (EcUtils.oget rapm) dii gvil
 
 let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)

@@ -318,12 +318,6 @@ let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
 let parametrized_rest_module (id : string) (rfbt : real_fun_body_tyd) (i : int)
   = moduleIRP id rfbt true (Some i)
 
-let compEnv (thpath : string) (id : string) (rfbt : real_fun_body_tyd) (i : int)
-    : string -> string =
-  fun str ->
-    thpath^(rest_composition_clone i)^".CompEnv("^
-    thpath^(rest_nameP id rfbt i)^", "^str^")"
-
 let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
       ?(glob_pfx = "") (sc : EcScope.scope) (ppf : Format.formatter)
       (form : EcFol.form) : unit =
@@ -831,92 +825,66 @@ let get_glob_indices_of_real_fun_parties
       then Some (List.hd rng)
       else None ) ogrm
 
-type macro_fun = (int * (string list -> string))
+type bound_macro_fun = string -> string -> string
 
-let get_RFIP_IF_bound_from_macro (funcId : SP.t) : string list -> string =
+let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
+      (pmnm : string) (pmno : int) : bound_macro_fun =
+  fun s1 s2 -> bmf (s1^pmnm^".") (s1^(compenv pmno)^"("^s2^")")
+
+let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (fst funcId)^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  UcEasyCryptCommentMacros.apply_macro macros "Bound"
+  fun s1 s2 ->
+  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2]
 
 let rec get_Bound_RFRP_IF_macro_fun
-(mt : maps_tyd) (funcId : SP.t) : macro_fun =
-  let own = (1+1, get_RFIP_IF_bound_from_macro funcId) in
+(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
+  let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
+  let rfbt = real_fun_body_tyd_of fbt in
+  let own = get_RFIP_IF_bound_from_macro funcId in
+  let paramboundstr = get_params_sum_Bound_RFRP_IF_macro_fun mt funcId in
+  fun s1 s2 ->
+    if 0 < (IdMap.cardinal rfbt.params)
+    then ((paramboundstr s1 s2)^"\n+\n"^(own s1 s2))
+    else (own s1 s2)
+and get_params_sum_Bound_RFRP_IF_macro_fun
+(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
-  let parambounds : macro_fun list = List.map (fun (pmnm, fid) ->
-    let ppnum, pbound = get_Bound_RFRP_IF_macro_fun mt fid in
-    let pbound': string list -> string =  fun (ppl : string list) ->
-      pbound (((List.hd ppl)^pmnm^".") :: (List.tl ppl))
-    in
-    ppnum, pbound') params in
-  let pno = List.fold_right (fun (ppno,_) acc -> ppno-1+acc) parambounds (1+1) in
-  let boundfun : string list -> string = fun (pml : string list) ->
-    let pmnmpm = List.hd pml in
-    let (pml', str) = List.fold_left (fun (pml,str) (pnum,pbound) ->
-                      ((BatList.drop pnum pml) ,
-                       (str^"\n+\n"^(pbound (pmnmpm::(BatList.take pnum pml)))))
-    ) (pml,"") parambounds in
-    (str^"\n+\n"^((snd own) (pmnmpm::pml'))) in
-  (pno , boundfun)
-  
-
-let get_CompEnvNo_macro (mt : maps_tyd) (funcId : SP.t) : string =
-  let psp = make_pSP mt funcId 0 in
-  let rec paramno psp =
-    match psp with
-    | RF (_ , params) ->
-       List.fold_left (fun acc pmpsp -> acc + 1 + paramno pmpsp ) 0 params
-    | _ -> 0
+  let parambounds : bound_macro_fun list = List.mapi (fun i (pmnm, fid) ->
+    let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
+    apply_param_Bound_RFRP_IF_macro_fun pbound pmnm i) params
   in
-  Printf.sprintf "(*! CompEnvNo() %s*)" (string_of_int (paramno psp))
-
-let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =""
+  fun s1 s2 ->
+    List.fold_left (fun str pbound ->
+        (str^"\n+\n"^(pbound s1 s2))) "" parambounds
+  
+let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =
+  let bmf = get_Bound_RFRP_IF_macro_fun mt funcId in
+  let macro_body = bmf "<<ParamName>>" "<<Env>>" in
+  "(*! Bound_RFRP_IF(ParamName, Env)\n"^macro_body^"\n*)"
 
 let get_Bound_RFIP_IF (funcId : SP.t) : string =
-   (get_RFIP_IF_bound_from_macro funcId)[""; "Env"]
+   (get_RFIP_IF_bound_from_macro funcId) "" "Env"
 
-let get_CompEnvNo (funcId : SP.t) : int =
-  let filename = (uc_name (fst funcId))^".eca" in
-  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  let no_str = UcEasyCryptCommentMacros.apply_macro macros "CompEnvNo" [] in
-  int_of_string no_str
-
-
-let get_CompEnv_aliases (id : string) (rfbt : real_fun_body_tyd)
-: string list list =
-  let params = indexed_map_to_list_keep_keys rfbt.params in
-  List.mapi (fun i (pmid,funcId) ->
-    let pmceno = get_CompEnvNo funcId in
-    let alias pmcei =
-      Printf.sprintf "%s.CompEnv(%s,%s.%s(Env))"
-      (rest_composition_clone i) (rest_nameP id rfbt i) (uc_name pmid)
-      (compenv pmcei)
-    in
-    List.init pmceno (fun j -> alias j)
-    ) params
-
-let get_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
+let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
     : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
   let (pmnm, funcId) = List.nth params param_no in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  let uc_pmnm = uc_name pmnm in
-  let alnos = List.map (fun l -> List.length l) (get_CompEnv_aliases "" rfbt) in
-  let fstalnos = List.filteri (fun i _ -> i < param_no) alnos in
-  let lastidx = List.fold_left (fun acc i -> acc + i) 1 fstalnos in
-  let ceno = List.nth alnos param_no in
-  let ces = List.init ceno (fun i -> _COMPENV^(string_of_int (i+lastidx+1))) in
-  let params = uc_pmnm :: ces in
-  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" params
+  let bmf = fun s1 s2 ->
+    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2] in
+  let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf pmnm param_no in
+  bmf "" "Env"
 
-let get_Bound_RFRP_RFIP (rfbt : real_fun_body_tyd) : string =
+let get_param_sum_Bound_RFRP_RFIP (rfbt : real_fun_body_tyd) : string =
   let k = IdMap.cardinal rfbt.params in
   if k > 0
   then   
     let bounds =
-      List.init k (fun i -> get_Bound_RFRP_IF rfbt (i+1)) in
+      List.init k (fun i -> get_param_Bound_RFRP_IF rfbt (i+1)) in
     List.fold_left (fun acc str -> acc^"\n+\n"^str)
       (List.hd bounds) (List.tl bounds)
   else ""
@@ -938,7 +906,7 @@ clone include UC__%s.
 
 %s
 
-(*! Bound(PathPfx, Env) 0.0 *)
+(*! Bound_RFIP_IF(PathPfx, Env) 0.0 *)
   
 lemma %s_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM})
@@ -961,7 +929,69 @@ qed.
 "
 root root rfip_eq_rfrp root
 
-let print_UC_file (fs : out_channel) = ()
-  
+let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t)=
+  let boundmacro = get_Bound_RFRP_IF_macro mt funcId in
+  let paramsumbound : string =
+    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" in
+  let boundRFIP_IF : string = get_Bound_RFIP_IF funcId in
+  Printf.fprintf fs
 
+"
+prover quorum=2 [\"Alt-Ergo\" \"Z3\"].
 
+require import UCCore.
+
+require SMC.
+                                
+clone include SMC.
+
+module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
+                                
+%s
+                                
+lemma SMC_RFRP_IF_advantage
+    (Env <: ENV{-MI, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
+    (Adv <: ADV{-MI, -Env, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      
+ `|Pr[Exper(MI(RFRP, Adv), Env)
+         .main(func', in_guard')
+           @ &m : res] -
+    Pr[Exper(MI(IF, SIMCOMP(Adv)), Env)
+         .main(func', in_guard')
+      @ &m : res]| <=
+%s
++
+%s
+.
+    proof.
+    move => exper disj.
+    apply (
+    MakeInt.security_trans
+    (RFRP)
+    (RFIP)
+    (IF)
+    (Adv)
+    (SIMIP(Adv))
+    (SIMCOMP(Adv))
+
+    Env
+    func' in_guard'
+    (
+%s
+    )
+    (%s)
+    &m
+). 
+ by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
+
+ by apply (SMC_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
+ qed.
+ "
+boundmacro
+paramsumbound
+boundRFIP_IF
+paramsumbound
+boundRFIP_IF

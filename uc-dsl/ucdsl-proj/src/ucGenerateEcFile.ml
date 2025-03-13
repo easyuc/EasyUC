@@ -221,11 +221,6 @@ let gen_maps (mt : maps_tyd) : maps_gen =
       then get_gvil mt sp 
       else empty_gvil
     in
-    let pbs =
-      if is_real_fun_tyd ft
-      then get_parameter_bounds mt sp 
-      else []                       
-    in
     (*remove print
     let print_gvi (gvi : globVarId) : unit =
       print_endline "";
@@ -237,7 +232,7 @@ let gen_maps (mt : maps_tyd) : maps_gen =
     end remove print*)
     IdPairMap.add      
     sp (UcGenerateFunctionality.gen_fun
-          (scope root) root id mbmap rapm ft dii gvil pbs
+          (scope root) root id mbmap rapm ft dii gvil
     ) fm
     ) mt.fun_map IdPairMap.empty in
 
@@ -282,8 +277,11 @@ let generate_ec (mt : maps_tyd) : unit =
     | UI_Triple ti ->
       let sufs = (uc_name r)^".eca" in
       let sp = (r, ti.ti_real) in
-      let pbs = get_parameter_bounds mt sp in
-      ()
+      let fs = open_out sufs in
+      begin
+        print_UC_file fs mt sp;
+        close_out fs
+      end
     | UI_Singleton _ -> ()
     ) roots;
   let mg = gen_maps mt in
