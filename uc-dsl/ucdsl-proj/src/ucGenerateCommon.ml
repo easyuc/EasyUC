@@ -827,7 +827,7 @@ type bound_macro_fun = string -> string -> string
 
 let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
       (pmnm : string) (pmno : int) : bound_macro_fun =
-  fun s1 s2 -> bmf (s1^pmnm^".") (s1^(compenv pmno)^"("^s2^")")
+  fun s1 s2 -> bmf (s1^(uc_name pmnm)^".") (s1^(compenv pmno)^"("^s2^")")
 
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (fst funcId)^".eca" in
@@ -850,18 +850,23 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
-  let parambounds : bound_macro_fun list =
-    List.mapi (fun i (pmnm, (r,dirint)) ->
-      let ui = unit_info_of_root mt r in
-      let fid = match ui with
-        | UI_Triple ti -> (r,ti.ti_real)
-        | _ -> UcMessage.failure "impossible param must be from triple unit" in
-      let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
-      apply_param_Bound_RFRP_IF_macro_fun pbound pmnm i) params
-  in
-  fun s1 s2 ->
-    List.fold_left (fun str pbound ->
-        (str^"\n+\n"^(pbound s1 s2))) "" parambounds
+  if List.length params = 0
+  then fun s1 s2 -> ""
+  else
+    let parambounds : bound_macro_fun list =
+      List.mapi (fun i (pmnm, (r,dirint)) ->
+        let ui = unit_info_of_root mt r in
+        let fid = match ui with
+          | UI_Triple ti -> (r,ti.ti_real)
+          | _ -> UcMessage.failure
+                   "impossible param must be from triple unit" in
+        let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
+        apply_param_Bound_RFRP_IF_macro_fun pbound pmnm (i+1)) params
+    in
+    fun s1 s2 ->
+      List.fold_left (fun str pbound ->
+          (str^"\n+\n"^(pbound s1 s2)))
+        ((List.hd parambounds) s1 s2) (List.tl parambounds)
   
 let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =
   let bmf = get_Bound_RFRP_IF_macro_fun mt funcId in
@@ -932,27 +937,12 @@ qed.
 "
 root root rfip_eq_rfrp root
 
-let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t)=
-  let boundmacro = get_Bound_RFRP_IF_macro mt funcId in
-  let paramsumbound : string =
-    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" in
-  let boundRFIP_IF : string = get_Bound_RFIP_IF funcId in
-  Printf.fprintf fs
-
-"
-prover quorum=2 [\"Alt-Ergo\" \"Z3\"].
-
-require import UCCore.
-
-require SMC.
-                                
-clone include SMC.
-
-module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
-                                
-%s
-                                
-lemma SMC_RFRP_IF_advantage
+let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
+  let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
+Printf.fprintf fs
+"module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
+                                                               
+lemma %s_RFRP_IF_advantage
     (Env <: ENV{-MI, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
     (Adv <: ADV{-MI, -Env, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
     (func' : addr, in_guard' : int fset) &m :
@@ -990,11 +980,74 @@ lemma SMC_RFRP_IF_advantage
 ). 
  by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
 
- by apply (SMC_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
+ by apply (%s_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
  qed.
  "
-boundmacro
+root
 paramsumbound
 boundRFIP_IF
 paramsumbound
 boundRFIP_IF
+root
+  in
+  let print_UC_file_func_wo_params root boundRFIP_IF =
+    Printf.fprintf fs
+"
+lemma %s_RFRP_IF_advantage
+    (Env <: ENV{-MI, -RFRP, -IF, -SIM})
+    (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>    
+ `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] -
+   Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]|
+ <=
+ %s
+.
+    proof.
+      apply (%s_RFIP_IF_advantage
+      Env
+      Adv
+      func'
+      in_guard'
+      &m)
+      .
+    qed.
+"
+root
+boundRFIP_IF
+root
+  in
+  
+  let root = fst funcId in
+  let boundmacro = get_Bound_RFRP_IF_macro mt funcId in
+  let paramsumbound : string =
+    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" in
+  let boundRFIP_IF : string = get_Bound_RFIP_IF funcId in
+  let has_params =
+    let ft = IdPairMap.find funcId mt.fun_map in
+    num_params_of_real_fun_tyd ft > 0
+  in
+  Printf.fprintf fs
+
+"
+prover quorum=2 [\"Alt-Ergo\" \"Z3\"].
+
+require import UCCore.
+
+require %s.
+                                
+clone include %s.
+
+%s
+"
+  root
+  root
+  boundmacro
+  ;
+  if has_params
+  then print_UC_file_func_w_params root paramsumbound boundRFIP_IF
+  else print_UC_file_func_wo_params root boundRFIP_IF
+    
+    
+  

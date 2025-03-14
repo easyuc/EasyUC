@@ -1526,11 +1526,12 @@ realize change_pari_valid. smt(). qed.
   
 let print_CompEnv_abbrev id rfbt ppf rest_idx =
       Format.fprintf ppf
-"(*abbreviation for %i-th composed environment*)
-module CE%i = %s.CompEnv(%s,Env)
+"(*abbreviation for %i. composed environment*)
+module %s%i(Env : ENV) = %s.CompEnv(%s,Env).
  "
 rest_idx
-rest_idx (rest_composition_clone rest_idx) (rest_nameP id rfbt rest_idx)
+_COMPENV rest_idx
+(rest_composition_clone rest_idx) (rest_nameP id rfbt rest_idx)
 
 
 let print_sequence_of_games_proof  (id : string) ppf
@@ -1812,9 +1813,9 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf sf "@[%a@]@;@;"
       (print_rest_module sc root id mbmap dii rapm.party_ext_port_id rfbt) i;
     Format.fprintf sf "@[%a@]@;@;" print_clone_Composition i;
-    Format.fprintf sf "@[%a@]@;@;" (print_CompEnv_abbrev id rfbt) i;
     Format.fprintf sf "@[<v>%a@]@;@;"
-    (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt
+      (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt;
+    Format.fprintf sf "@[%a@]@;@;" (print_CompEnv_abbrev id rfbt) i
   done;
   Format.fprintf sf "@[<v>%a@]@;@;"   print_cloneRF_MakeRF (id,rfbt, gvil);
   Format.fprintf sf "@[%a@]@;@;" (print_sequence_of_games_proof id) rfbt;
