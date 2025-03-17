@@ -510,60 +510,52 @@ let is_concat_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path (EcPath.fromqsymbol (ec_qsym_prefix_list, "++"))
 
 let is_concat_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_concat_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_concat_op_path path
+  with DestrError _ -> false
 
 let is_cons_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
 
 let is_cons_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_cons_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_cons_op_path path
+  with DestrError _ -> false
 
 let is_nil_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
 
 let is_nil_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_nil_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_nil_op_path path
+  with DestrError _ -> false
 
 let is_func_id (f : form) : bool =
-  try
-    let id = destr_local f in
-    EcIdent.id_equal id func_id
-  with e when e <> Sys.Break -> false
+  try let id = destr_local f in EcIdent.id_equal id func_id
+  with DestrError _ -> false
 
 let is_env_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
 
 let is_env_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_env_root_port_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_env_root_port_op_path path
+  with DestrError _ -> false
 
 let is_adv_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
 
 let is_adv_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_adv_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_adv_op_path path
+  with DestrError _ -> false
 
 let is_adv_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
 
 let is_adv_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_adv_root_port_op_path path
-  with e when e <> Sys.Break -> false
+  try let (path, _) = destr_op f in is_adv_root_port_op_path path
+  with DestrError _ -> false
 
 (* the following functions can raise DestrError *)
 
@@ -596,7 +588,7 @@ let destr_func_addr (addr : form) : int list =
 
 let is_int (f : form) : bool =
   try let _ = destr_int f in true with
-  | e when e <> Sys.Break -> false
+  | DestrError _ -> false
 
 let is_int_non_opp (f : form) : bool =
   match f.f_node with
@@ -605,12 +597,12 @@ let is_int_non_opp (f : form) : bool =
 
 let is_int_list (f : form) : bool =
   try let _ = destr_int_list f in true with
-  | e when e <> Sys.Break -> false
+  | DestrError _ -> false
 
 let is_adv_op_or_value (f : form) : bool =
   is_adv_op f ||
   try destr_int_list f = [0] with
-  | e when e <> Sys.Break -> false
+  | DestrError _ -> false
 
 let try_destr_port (port : form) : canonical_port option =
   try
@@ -628,7 +620,7 @@ let try_destr_port (port : form) : canonical_port option =
                      in if n = 0 then CP_EnvRoot else destr_err ()
               else CP_FuncRel (destr_func_addr x, destr_int y)
           | _      -> destr_err ())
-  with e when e <> Sys.Break -> None
+  with DestrError _ -> None
 
 let is_canon_port (port : form) : bool =
   is_some (try_destr_port port)
