@@ -1708,6 +1708,98 @@ if; last first.
 sim.
 move => />.
  @;";
+    Format.fprintf ppf
+"(*case when (MakeInt.MI.func <= m0.`2.`1) is true,
+if calling invoke has the same result, the rest is similar on both sides*)
+seq 1 1 : (%a); last first.
+sim.
+ @;" print_invariant "r0, m, m0, not_done,";
+    Format.fprintf ppf
+"(*show that MakeRF and MakeRFComp invoke have the same result*)
+inline invoke.
+sp.
+
+(*the if conditions are the same, testing if real functionality is the
+  destination m, in case it is not the destination the results are the same*)
+if; last first.
+sp. skip.
+move => />.
+move => />.
+wp.
+ 
+(*in case real functionality is the destination of m,
+  the loops return the same result*)
+inline loop.
+sp.
+wp.
+ @;";
+    Format.fprintf ppf
+"(*each iteration of the wile loop has same result on both sides*)  
+while (%a
+); last first.
+ skip. move => />." print_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,";
+    Format.fprintf ppf
+"(*we inline real functionality invoke and composed functionality invoke
+to show the result is the same*)
+inline{1} (1) invoke. 
+inline %s.invoke.
+sp 2 0.
+ @;" (parametrized_rest_module id rfbt 1);
+    Format.fprintf ppf
+"(*case when message is for the first parameter functionality*)
+case (UCComposition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).";
+    for i = 1 to IdMap.cardinal rfbt.sub_funs
+    do
+      Format.fprintf ppf
+      "(*the message is not for %i. sub-functionality*)
+rcondf{1} 0.
+move => &m0.
+skip.
+move => />.
+smt(not_le_other_branch).
+       @;" i
+    done;
+    Format.fprintf ppf
+"(*the if conditions on both sides are equivalent and true, and result is the same*)
+rcondt{1} 0.
+move => &m0.
+skip.
+move => />.
+
+rcondt{2} 0.
+move => &m0.
+skip.
+move => />.
+
+sim.
+
+(*case when message is NOT for the first parameter*)
+(*message is NOT for the first parameter on right side*)
+    rcondf {2} 0.
+move => &m0.
+skip.
+move => />.
+sp 0 2.
+ @;";
+    for i = 1 to IdMap.cardinal rfbt.sub_funs
+    do
+      Format.fprintf ppf
+        "(*if m is for %i. sub-functionality*)
+if.
+move => />.
+sim.
+@;" i
+    done;  
+    Format.fprintf ppf
+"(*message is NOT for the first parameter on left side*)
+rcondf{1} 1.
+move => &m0.
+skip.
+move => />.
+
+(*the rest is similar*)
+ sim.
+ @;";
     Format.fprintf ppf  "qed.@;@;"
   in
 
