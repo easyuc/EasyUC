@@ -1580,19 +1580,135 @@ let print_sequence_of_games_proof  (id : string) ppf
       ith_param
   in
   let print_RFRP_Comp_RP_eq_lemma ppf () =
+    let print_exper_RFRP_prob ppf () =
+      Format.fprintf ppf
+        "Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]"
+        "@"
+    in 
+    let print_exper_Rest1_RP_prob ppf () =
+      Format.fprintf ppf
+        "Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]"
+        (composition_module (1,true)) "@"
+    in 
+    let print_exper_prob_diff ppf () =
+      Format.fprintf ppf "`|%a@;-@;%a| <= 0.0"
+        print_exper_RFRP_prob () print_exper_Rest1_RP_prob ()
+    in
+    let print_invariant ppf invstr =
+      Format.fprintf ppf "={%s
+glob Adv,
+glob MI,
+glob %s.RFRP,
+glob %s
+}
+/\ RFCore.MakeRF.self{1} = UCComposition.CompGlobs.mrfc_self{2}
+/\ %s._self{1} =  UCComposition.CompGlobs.mrfc_self{2}"
+        invstr
+        (ith_param_real 1)
+        id
+        id
+    in
     Format.fprintf ppf
 "lemma %s
     (Env <: ENV{-MI, -RFRP, -UCComposition.CompGlobs})
     (Adv <: ADV{-MI, -Env,  -RFRP, -UCComposition.CompGlobs})
     (func' : addr, in_guard' : int fset) &m :
-  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') %s &m : res]
-  -
-  Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]| <= 0.0
+  %a
  .@;@;"
 _RFRP_Comp_RP_eq_lemma
-"@"
-(composition_module (1,true)) "@";
-    Format.fprintf ppf  "proof. admit. qed.@;@;"
+print_exper_prob_diff ();
+    Format.fprintf ppf  "proof.@;@;";
+    Format.fprintf ppf
+"
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+%a
+)
+    <=>
+(
+%a
+ =
+%a
+).
+smt().
+
+apply H.
+clear H.
+@;"
+print_exper_prob_diff ()
+print_exper_RFRP_prob ()
+print_exper_Rest1_RP_prob ();
+    
+    Format.fprintf ppf  "byequiv => //.@;@;";
+    Format.fprintf ppf
+"
+(*unfold Exper main procedures, put in precondition all up to Adv.init call*)
+proc.
+inline *.
+sp.
+@; 
+ ";
+    Format.fprintf ppf
+      "
+(*Adv init call doesn't touch any of the globs, because of module restrictions*)
+seq 1 1 : (%a).
+call (_ : true).
+skip.
+move => />.
+       "     print_invariant "";
+    Format.fprintf ppf
+      "
+(*Adv init call doesn't touch any of the globs, because of module restrictions*)
+seq 1 1 : (%a).
+call (_ : true).
+skip.
+move => />.
+@;"     print_invariant "";
+    Format.fprintf ppf
+      "
+(*calling ENV main doesn't make a difference in globs between left and right side*)
+call (_ : %a
+  ); last first.
+skip; move => />.
+       @;" print_invariant "";
+    Format.fprintf ppf
+"(*unfold MI invoke to show the result is the same on both sides*)
+proc.
+
+  (*if m is not in inguard the result is the same on both sides*)
+if; last first.
+sp.
+skip.
+move => />.
+move => />.
+
+(*if m is in inguard the loop will return the same on both sides*) 
+      inline loop.
+(* on both sides before the while loop we have:
+m0 <- m                                              
+r0 <- None     
+not_done <- true
+      
+and after the loop
+r <- r0
+*)
+sp.
+wp.
+ @;";
+    Format.fprintf ppf
+"(*the locals and globals are the same after each iteration of the while loop*)
+while (%a); last first.
+ skip; move => />.
+ @;"
+    print_invariant "r0, m, m0, not_done,";
+    Format.fprintf ppf
+"(*case when (MakeInt.MI.func <= m0.`2.`1) is false is similar on both sides*)
+if; last first.
+sim.
+move => />.
+ @;";
+    Format.fprintf ppf  "qed.@;@;"
   in
 
   let print_simulator_abbrev ppf () =
