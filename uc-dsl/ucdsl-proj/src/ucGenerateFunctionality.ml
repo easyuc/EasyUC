@@ -1595,18 +1595,22 @@ let print_sequence_of_games_proof  (id : string) ppf
         print_exper_RFRP_prob () print_exper_Rest1_RP_prob ()
     in
     let print_invariant ppf invstr =
+      let print_param_globs ppf () =
+        for i = 1 to IdMap.cardinal rfbt.params
+        do
+          Format.fprintf ppf "glob %s,\n" (ith_param_real i)
+        done           
+      in
       Format.fprintf ppf "={%s
 glob Adv,
 glob MI,
-glob %s.RFRP,
-glob %s
+%aglob %s
 }
-/\ RFCore.MakeRF.self{1} = UCComposition.CompGlobs.mrfc_self{2}
-/\ %s._self{1} =  UCComposition.CompGlobs.mrfc_self{2}"
+/\\ RFCore.MakeRF.self{1} = UCComposition.CompGlobs.mrfc_self{2}
+/\\ %s._self{1} =  UCComposition.CompGlobs.mrfc_self{2}"
         invstr
-        (ith_param_real 1)
-        id
-        id
+        print_param_globs ()(uc_name id)
+        (uc_name id)
     in
     Format.fprintf ppf
 "lemma %s
@@ -1656,15 +1660,7 @@ seq 1 1 : (%a).
 call (_ : true).
 skip.
 move => />.
-       "     print_invariant "";
-    Format.fprintf ppf
-      "
-(*Adv init call doesn't touch any of the globs, because of module restrictions*)
-seq 1 1 : (%a).
-call (_ : true).
-skip.
-move => />.
-@;"     print_invariant "";
+       "     print_invariant "func, in_guard, glob Env,";
     Format.fprintf ppf
       "
 (*calling ENV main doesn't make a difference in globs between left and right side*)
@@ -1737,7 +1733,8 @@ wp.
 "(*each iteration of the wile loop has same result on both sides*)  
 while (%a
 ); last first.
- skip. move => />." print_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,";
+ skip. move => />.
+ @;" print_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,";
     Format.fprintf ppf
 "(*we inline real functionality invoke and composed functionality invoke
 to show the result is the same*)
@@ -1747,7 +1744,8 @@ sp 2 0.
  @;" (parametrized_rest_module id rfbt 1);
     Format.fprintf ppf
 "(*case when message is for the first parameter functionality*)
-case (UCComposition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).";
+ case (UCComposition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+@;";
     for i = 1 to IdMap.cardinal rfbt.sub_funs
     do
       Format.fprintf ppf
