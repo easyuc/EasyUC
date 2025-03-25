@@ -657,8 +657,9 @@ let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
    strong enough for values (like arguments to messages and states)
    that we won't *immediately* need to make decisions about
 
-   we start with values made out of constructors and integer literals,
-   but then we also allow leaves (not lhs's of applications) that are:
+   we start with values made out of true, false, the element of type
+   unit, constructors and integer literals, but then we also allow leaves
+   (not lhs's of applications) that are:
 
    * identifiers in the global context, even though they might be
      rewritten by assumptions
@@ -672,7 +673,11 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
     match f.f_node with
     | Fint _       -> true
     | Flocal _     -> true
-    | Fop (op, _)  -> Op.is_dtype_ctor env op
+    | Fop (op, _)  ->
+        EcPath.p_equal op EcCoreLib.CI_Unit.p_tt    ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_true  ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_false ||
+        Op.is_dtype_ctor env op
     | Fapp (f, fs) ->
         (match f.f_node with
          | Fop (op, _) ->
