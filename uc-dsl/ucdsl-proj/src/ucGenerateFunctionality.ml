@@ -1512,7 +1512,7 @@ let print_module_lemmas ?(rest_idx = None)
 
 let print_clone_Composition ppf (rest_idx : int) : unit =
   Format.fprintf ppf "
-clone UCComposition.Composition as %s with
+clone UC_Composition.Composition as %s with
 op change_pari = %i,
 op %s <- %s
 proof *.
@@ -1551,7 +1551,7 @@ let print_sequence_of_games_proof  (id : string) ppf
     "equiv_Composed"^(string_of_int (IdMap.cardinal rfbt.params))^"_IP_RFIP" in
   let simip = "SIMIP" in
   let simnm (pmn : string) (adv : string) =
-    (uc_name pmn)^".SIM("^adv^")"
+    (uc_name pmn)^"."^simcomp^"("^adv^")"
   in
   let sim_stack i =
     let rec firstk k xs =
@@ -1564,10 +1564,11 @@ let print_sequence_of_games_proof  (id : string) ppf
     in
     let pmns = firstk i pmns in
     List.fold_left (fun sprev pmn ->
-        simnm pmn sprev) _Adv pmns
+        simnm pmn sprev) _Adv pmns 
   in
   let sim_st = sim_stack pmnum in
-  let parameter_Bound i : string = get_param_Bound_RFRP_IF rfbt i
+  let parameter_Bound i : string =
+    get_param_Bound_RFRP_IF rfbt i "Env" (sim_stack (i-1))
   in
   let composition_module ((i, ri) : int * bool) : string =
     let ith_param = if ri
@@ -1606,16 +1607,16 @@ glob Adv,
 glob MI,
 %aglob %s
 }
-/\\ RFCore.MakeRF.self{1} = UCComposition.CompGlobs.mrfc_self{2}
-/\\ %s._self{1} =  UCComposition.CompGlobs.mrfc_self{2}"
+/\\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\\ %s._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}"
         invstr
         print_param_globs ()(uc_name id)
         (uc_name id)
     in
     Format.fprintf ppf
 "lemma %s
-    (Env <: ENV{-MI, -RFRP, -UCComposition.CompGlobs})
-    (Adv <: ADV{-MI, -Env,  -RFRP, -UCComposition.CompGlobs})
+    (Env <: ENV{-MI, -RFRP, -AllCGs})
+    (Adv <: ADV{-MI, -Env,  -RFRP, -AllCGs})
     (func' : addr, in_guard' : int fset) &m :
   %a
  .@;@;"
@@ -1744,7 +1745,7 @@ sp 2 0.
  @;" (parametrized_rest_module id rfbt 1);
     Format.fprintf ppf
 "(*case when message is for the first parameter functionality*)
- case (UCComposition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+ case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
 @;";
     for i = 1 to IdMap.cardinal rfbt.sub_funs
     do
@@ -1805,16 +1806,30 @@ move => />.
     Format.fprintf ppf "@[<v>@[(*Simulator stack abreviation*)@]@;";
     Format.fprintf ppf "@[module %s(%s : ADV) = %s.@]@]" simip _Adv sim_st
   in
+  let print_AllCGs_abbrev ppf () =
+    Format.fprintf ppf
+   "@[<v>@[(*all CompGlobs module, abreviation for lemma module restrictions*)@]@;";
+    Format.fprintf ppf "@[module AllCGs = {@]@;";
+    Format.fprintf ppf "@[module OwnCGs = UC_Composition.CompGlobs@]@;";
+    List.iter (fun pmn ->
+        Format.fprintf ppf "@[module %sAllCGs = %s.AllCGs@]@;"
+               (uc_name pmn) (uc_name pmn);
+      ) pmns;
+    Format.fprintf ppf "}.@]@;@;"
+  in
+  let print_AllIFs_abbrev ppf () =
+    Format.fprintf ppf
+   "@[<v>@[(*all IFs module, abreviation for lemma module restrictions*)@]@;";
+    Format.fprintf ppf "@[module AllIFs = {@]@;";
+    Format.fprintf ppf "@[module OwnIF = IF@]@;";
+    List.iter (fun pmn ->
+        Format.fprintf ppf "@[module %sAllIFs = %s.AllIFs@]@;"
+          (uc_name pmn) (uc_name pmn);
+      ) pmns;
+    Format.fprintf ppf "}.@]@;@;"
+  in
   let probability_parameter_Bound ppf (i : int) =
     Format.fprintf ppf "%s" (parameter_Bound i)
-(*    Format.fprintf ppf "
-Pr[%s.main
-       (func' ++ [%s.change_pari],
-        in_guard' `|` %s.rest_adv_pis) %s &m : res]
-"
-      (parameter_Bound i)
-      (rest_composition_clone i)
-      (rest_composition_clone i) "@"*)
   in
   let sum_of_prob_diffs_from ppf (start : int) =
     if start>pmnum
@@ -1830,10 +1845,11 @@ Pr[%s.main
      sum_of_prob_diffs_from ppf 1
   in
   let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
+    let pmth = uc_name (List.nth pmns (i-1)) in
     Format.fprintf ppf
 "lemma %s
-    (Env <: ENV{-MI,  -UCComposition.CompGlobs, -RFRP, -SIMIP, -RFIP})
-    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env,  -RFRP, -SIMIP, -RFIP})
+    (Env <: ENV{-MI,  -AllCGs, -RFRP, -SIMIP, -AllIFs})
+    (Adv <: ADV{-MI, -AllCGs, -Env,  -RFRP, -SIMIP, -AllIFs})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -1848,14 +1864,87 @@ Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]|
 (composition_module (i,false)) (sim_stack i) "@"
 probability_parameter_Bound i
 ;
-    Format.fprintf ppf  "proof. admit. qed.@;@;"
+  Format.fprintf ppf
+    "proof.
+move => experpre disjguard.
+apply (%s.composition
+Env (%s)
+(%s) %s
+(%s)
+%s.IF
+%s
+%s
+%s._invar_RFRP
+%s._metric_RFRP
+%s._invar_IF
+%s._metric_IF
+func' in_guard'
+(%a)
+&m).
+     "
+    (rest_composition_clone i)
+    (parametrized_rest_module id rfbt i)
+    (sim_stack (i-1)) (ith_param_real i)
+    (sim_stack i)
+    pmth
+    (rest_invar i)
+    (rest_metric i)
+    pmth
+    pmth
+    pmth
+    pmth
+    probability_parameter_Bound i;
+  Format.fprintf ppf "
+apply %s.
+apply %s.
+apply %s.
+
+apply %s.RFRP_metric_good.
+apply %s.RFRP_init.
+apply %s.RFRP_invoke.
+
+apply %s.IF_metric_good.
+apply %s.IF_init.
+move => n.
+conseq (%s.IF_invoke n).
+smt(mem_oflist mem_rangeset).
+trivial.
+"
+    (rest_metric_good i)
+    (rest_init i)
+    (rest_invoke i)
+    pmth
+    pmth
+    pmth
+    pmth
+    pmth
+    pmth;
+  Format.fprintf ppf
+"
+smt(fsetUC %s.union_change_rest_eq_all_adv_pis_of_rf_info disjoint_with_union_implies_disjoint_with_first).
+apply (%s.%s_RFRP_IF_advantage
+    (%s(Env))
+    (%s)
+    (func' ++ [%s.change_pari])
+  (in_guard' `|` %s.rest_adv_pis)
+).
+    by rewrite exper_pre_ext1.
+by apply %s.disjoint_in_guard'_with_all_implies_disjoint_add_rest_with_change. 
+qed.@;@;"
+    (rest_composition_clone i)
+    pmth (fst (List.nth (indexed_map_to_list rfbt.params) (i-1)))
+    (compenv i)
+    (sim_stack (i-1))
+    (rest_composition_clone i)
+    (rest_composition_clone i)
+    (rest_composition_clone i)
   in
   let print_Comp_IP_Comp_RP_eq_lemma ppf (i : int) =
     Format.fprintf ppf
     "
      lemma %s
-    (Env <: ENV{-MI,  -UCComposition.CompGlobs, -RFRP, -RFIP})
-    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFRP, -RFIP})
+    (Env <: ENV{-MI,  -AllCGs, -RFRP, -AllIFs})
+    (Adv <: ADV{-MI, -AllCGs, -Env, -RFRP, -AllIFs})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info)  =>
@@ -1876,8 +1965,8 @@ Format.fprintf ppf  "proof. admit. qed.@;@;"
     Format.fprintf ppf
     "
      lemma %s
-    (Env <: ENV{-MI, -UCComposition.CompGlobs, -RFIP})
-    (Adv <: ADV{-MI, -UCComposition.CompGlobs, -Env, -RFIP})
+    (Env <: ENV{-MI, -AllCGs, -RFIP})
+    (Adv <: ADV{-MI, -AllCGs, -Env, -RFIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info)  =>
@@ -1899,8 +1988,8 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
     Format.fprintf ppf
     "
      lemma exper_RF_RP_IP_Pr_diff
-(Env <: ENV{-MI, -RFIP, -RFRP, -UCComposition.CompGlobs, -SIMIP})
-    (Adv <: ADV{-MI, -Env, -RFIP, -RFRP, -UCComposition.CompGlobs, -SIMIP})
+(Env <: ENV{-MI, -AllIFs, -RFRP, -AllCGs, -SIMIP})
+    (Adv <: ADV{-MI, -Env, -AllIFs, -RFRP, -AllCGs, -SIMIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -1976,6 +2065,8 @@ Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') %s &m : res]|
     by_apply _Comp_IP_RFIP_eq_lemma simip_adv;
     Format.fprintf ppf "qed.@]@;@;"
   in
+  print_AllCGs_abbrev ppf ();
+  print_AllIFs_abbrev ppf ();
   if pmnum = 0
   then ()
   else begin

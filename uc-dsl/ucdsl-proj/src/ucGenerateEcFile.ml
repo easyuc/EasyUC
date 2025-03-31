@@ -79,6 +79,8 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
 
   Format.fprintf sf "require UCComposition.@.@.";
 
+  Format.fprintf sf "clone UCComposition as UC_Composition.@.@.";
+
     let ui = unit_info_of_root mt root in
     begin match ui with
     | UI_Singleton _ ->

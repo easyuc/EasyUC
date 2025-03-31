@@ -170,6 +170,7 @@ let iF_init = "IF_init"
 let _init_RP = "_init_RP"
 let _init_IP = "_init_IP"
 let rest_init i = "_init_Rest"^(string_of_int i)
+let simcomp = "SIMCOMP"
 
 
 let module_name (id : string) = uc_name id
@@ -823,35 +824,36 @@ let get_glob_indices_of_real_fun_parties
       then Some (List.hd rng)
       else None ) ogrm
 
-type bound_macro_fun = string -> string -> string
+type bound_macro_fun = string -> string -> string -> string
 
 let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
       (pmnm : string) (pmno : int) : bound_macro_fun =
-  fun s1 s2 -> bmf (s1^(uc_name pmnm)^".") (s1^(compenv pmno)^"("^s2^")")
+  fun s1 s2 s3 ->
+  bmf (s1^(uc_name pmnm)^".") (s1^(compenv pmno)^"("^s2^")") s3
 
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (fst funcId)^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  fun s1 s2 ->
-  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2]
+  fun s1 s2 s3->
+  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3]
 
 let rec get_Bound_RFRP_IF_macro_fun
-          (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
+(mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let own = get_RFIP_IF_bound_from_macro funcId in
   let paramboundstr = get_params_sum_Bound_RFRP_IF_macro_fun mt funcId in
-  fun s1 s2 ->
+  fun s1 s2 s3 ->
     if 0 < (IdMap.cardinal rfbt.params)
-    then ((paramboundstr s1 s2)^"\n+\n"^(own s1 s2))
-    else (own s1 s2)
+    then ((paramboundstr s1 s2 s3)^"\n+\n"^(own s1 s2 s3))
+    else (own s1 s2 s3)
 and get_params_sum_Bound_RFRP_IF_macro_fun
 (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =  
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
   if List.length params = 0
-  then fun s1 s2 -> ""
+  then fun s1 s2 s3 -> ""
   else
     let parambounds : bound_macro_fun list =
       List.mapi (fun i (pmnm, (r,dirint)) ->
@@ -863,39 +865,29 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
         let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
         apply_param_Bound_RFRP_IF_macro_fun pbound pmnm (i+1)) params
     in
-    fun s1 s2 ->
+    fun s1 s2 s3 ->
       List.fold_left (fun str pbound ->
-          (str^"\n+\n"^(pbound s1 s2)))
-        ((List.hd parambounds) s1 s2) (List.tl parambounds)
+          (str^"\n+\n"^(pbound s1 s2 s3)))
+        ((List.hd parambounds) s1 s2 s3) (List.tl parambounds)
   
 let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =
   let bmf = get_Bound_RFRP_IF_macro_fun mt funcId in
-  let macro_body = bmf "<<ParamName>>" "<<Env>>" in
-  "(*! Bound_RFRP_IF(ParamName, Env)\n"^macro_body^"\n*)"
+  let macro_body = bmf "<<ParamName>>" "<<Env>>" "<<Adv>>" in
+  "(*! Bound_RFRP_IF(ParamName, Env, Adv)\n"^macro_body^"\n*)"
 
 let get_Bound_RFIP_IF (funcId : SP.t) : string =
-   (get_RFIP_IF_bound_from_macro funcId) "" "Env"
+   (get_RFIP_IF_bound_from_macro funcId) "" "Env" _Adv
 
 let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
-    : string =
+    (env : string) (adv : string) : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
   let (pmnm, funcId) = List.nth params (param_no-1) in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  let bmf = fun s1 s2 ->
-    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2] in
+  let bmf = fun s1 s2 s3 ->
+    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2;s3] in
   let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf pmnm param_no in
-  bmf "" "Env"
-
-let get_param_sum_Bound_RFRP_RFIP (rfbt : real_fun_body_tyd) : string =
-  let k = IdMap.cardinal rfbt.params in
-  if k > 0
-  then   
-    let bounds =
-      List.init k (fun i -> get_param_Bound_RFRP_IF rfbt (i+1)) in
-    List.fold_left (fun acc str -> acc^"\n+\n"^str)
-      (List.hd bounds) (List.tl bounds)
-  else ""
+  bmf "" env adv
 
 let print_userfile_stub
 (fs : out_channel) (root : string) (rf_has_params : bool) =
@@ -914,7 +906,7 @@ clone include UC__%s.
 
 %s
 
-(*! Bound_RFIP_IF(PathPfx, Env) 0.0 *)
+(*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
   
 lemma %s_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM})
@@ -940,11 +932,11 @@ root root rfip_eq_rfrp root
 let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
   let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
 Printf.fprintf fs
-"module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
+"module %s(Adv : ADV) = SIMIP(SIM(Adv)).
                                                                
 lemma %s_RFRP_IF_advantage
-    (Env <: ENV{-MI, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
-    (Adv <: ADV{-MI, -Env, -RFRP, -RFIP, -IF, -SIMCOMP, -UCComposition.CompGlobs})
+    (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+    (Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -983,6 +975,7 @@ lemma %s_RFRP_IF_advantage
  by apply (%s_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
  qed.
  "
+simcomp
 root
 paramsumbound
 boundRFIP_IF
@@ -992,7 +985,8 @@ root
   in
   let print_UC_file_func_wo_params root boundRFIP_IF =
     Printf.fprintf fs
-"
+      "module %s(Adv : ADV) = SIM(Adv).
+
 lemma %s_RFRP_IF_advantage
     (Env <: ENV{-MI, -RFRP, -IF, -SIM})
     (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM})
@@ -1013,7 +1007,8 @@ lemma %s_RFRP_IF_advantage
       &m)
       .
     qed.
-"
+ "
+simcomp
 root
 boundRFIP_IF
 root
@@ -1022,7 +1017,7 @@ root
   let root = fst funcId in
   let boundmacro = get_Bound_RFRP_IF_macro mt funcId in
   let paramsumbound : string =
-    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" in
+    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" _Adv in
   let boundRFIP_IF : string = get_Bound_RFIP_IF funcId in
   let has_params =
     let ft = IdPairMap.find funcId mt.fun_map in
