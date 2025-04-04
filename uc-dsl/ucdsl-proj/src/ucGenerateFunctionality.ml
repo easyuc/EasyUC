@@ -1940,25 +1940,330 @@ qed.@;@;"
     (rest_composition_clone i)
   in
   let print_Comp_IP_Comp_RP_eq_lemma ppf (i : int) =
+    let print_exper_Resti_IP_prob ppf () =
+      Format.fprintf ppf
+        "Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]"
+        (composition_module (i,false)) "@"
+    in
+    let print_exper_Restiinc_RP_prob ppf () =
+      Format.fprintf ppf
+        "Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]"
+        (composition_module (i+1,true)) "@"
+    in 
+    let print_exper_prob_diff ppf () =
+      Format.fprintf ppf "`|%a@;-@;%a| <= 0.0"
+        print_exper_Resti_IP_prob () print_exper_Restiinc_RP_prob ()
+    in
+    let print_param_globs ppf () =
+      for i = 1 to i
+      do
+        Format.fprintf ppf "glob %s,\n" (ith_param_ideal i)
+      done;
+      for i = (i+1) to pmnum
+      do
+        Format.fprintf ppf "glob %s,\n" (ith_param_real i)
+      done     
+    in
+    let print_invariant_globs ppf invstr =
+      Format.fprintf ppf "={%s
+glob Adv,
+glob MI,
+%aglob %s
+}"
+        invstr
+        print_param_globs ()(uc_name id)
+    in
+    let print_invariant_eqs ppf () =
+      Format.fprintf ppf
+"UC_Composition.CompGlobs.mrfc_self{1} = %s._self{1}
+/\\ UC_Composition.CompGlobs.mrfc_self{2} = %s._self{2}"
+(uc_name id)
+(uc_name id)
+    in
+    let print_invariant ppf invstr =
+      
+      Format.fprintf ppf "%a
+/\\ %a"
+        print_invariant_globs invstr
+        print_invariant_eqs ()
+    in
+    let print_sim_invariant ppf invstr =
+      Format.fprintf ppf
+        "(*both sides are similar*)
+sim
+/
+(%a)
+:
+(%a).
+@;"
+      print_invariant_eqs ()
+      print_invariant_globs invstr
+    in
     Format.fprintf ppf
     "
-     lemma %s
-    (Env <: ENV{-MI,  -AllCGs, -RFRP, -AllIFs})
-    (Adv <: ADV{-MI, -AllCGs, -Env, -RFRP, -AllIFs})
-    (func' : addr, in_guard' : int fset) &m :
-    exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info rf_info)  =>
-`|Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]
-  -
-Pr[Exper(MI(%s, Adv), Env).main(func', in_guard') %s &m : res]|
+lemma %s
+(Env <: ENV{-MI,  -AllCGs, -RFRP, -AllIFs})
+(Adv <: ADV{-MI, -AllCGs, -Env, -RFRP, -AllIFs})
+(func' : addr, in_guard' : int fset) &m :
+exper_pre func' =>
+disjoint in_guard' (adv_pis_rf_info rf_info)  =>
+%a
   <= 0.0
     .
      "
     (_Comp_IP_Comp_RP_eq_lemma i)
-    (composition_module (i,false)) "@"
-    (composition_module (i+1,true)) "@"
-;
-Format.fprintf ppf  "proof. admit. qed.@;@;"
+    print_exper_prob_diff ()
+    ;
+    Format.fprintf ppf  "proof.@;@;"
+    ;
+    Format.fprintf ppf
+"move => exper_pre disjoint.
+ @;"
+    ;
+    Format.fprintf ppf
+"
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+%a
+)
+    <=>
+(
+%a
+ =
+%a
+).
+smt().
+
+apply H.
+clear H.
+@;"
+print_exper_prob_diff ()
+print_exper_Resti_IP_prob ()
+print_exper_Restiinc_RP_prob ()
+    ;
+    Format.fprintf ppf
+"byequiv => //.
+proc.
+@;"
+    ;
+    Format.fprintf ppf
+"(*calling MI.init on both sides results in same memories*)
+ seq 1 1 : (%a).
+ @;"
+    print_invariant "glob Env, func, in_guard,"
+    ;
+    Format.fprintf ppf
+"(*inline all the inits before Adv.init*) 
+inline *.
+(*all init assignments before Adv.init go into precondition*)
+sp.
+%a
+ @;" print_sim_invariant "glob Env, func, in_guard,"
+    ;
+    Format.fprintf ppf
+"(*call Exper.main*)
+call (_ :
+%a
+); last first.
+
+skip.
+move => />.
+ @;" print_invariant ""
+    ;
+      Format.fprintf ppf
+        "
+(*unfold MI.invoke*)
+proc.
+
+(*if conditions are the same, as well as the else branches on both sides*)
+if; last first.
+sp. skip. move => />.
+move => />.
+
+(*inline MI.loop*)
+inline loop.
+
+(*everything before and after the while loop is the same, move it to pre/post conditions*)
+sp.
+wp.
+@;"
+    ;
+    Format.fprintf ppf  
+      "while (%a
+); last first.
+skip. move => />.
+@;" print_invariant "r0, m, m0, not_done,"
+    ;
+    Format.fprintf ppf  
+      "(*if conditions are the same on both sides, and else branches are similar*)
+if; last first.
+%a
+move => />.
+@;" print_sim_invariant "r0, m, m0, not_done,"
+    ;
+    Format.fprintf ppf  
+      "(*after_func is similar on both sides*)
+seq 1 1 : (%a
+); last first.
+%a
+@;"
+      print_invariant "r0, m, m0, not_done,"
+      print_sim_invariant "r0, m, m0, not_done,"
+    ;
+    Format.fprintf ppf  
+      "(*inline invoke, put everything before and after if into pre/post conditions*)
+inline invoke.
+sp. wp.
+
+(*if conditions and else branches are the same on both sides*)
+if; last first.
+skip. move => />.
+move => />.
+
+(*inline composed RF loop, put everything before and after if into pre/post conditions*)
+inline loop.
+sp. wp.
+@;"
+    ;
+      Format.fprintf ppf  
+  "(*while invariant*)
+while (%a
+); last first.
+skip. move => />.
+@;" print_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
+    ;
+    Format.fprintf ppf  
+      "(*after_par_or_rest are similar on both sides*)
+seq 1 1 : (%a
+); last first.
+%a
+@;"
+      print_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
+      print_sim_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
+    ;
+    Format.fprintf ppf  
+      "(*case when message is for the %i. parameter functionality*)
+case (UC_Composition.CompGlobs.mrfc_self{1} ++ [%s.change_pari] <= m2{1}.`2.`1).
+rcondt{1} 0.
+move => &m0. skip. move => />.
+
+(*message is not for right parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+
+(*inline right invoke*)
+inline{2} (1) invoke.
+sp.
+@;"
+      i
+      (rest_composition_clone i)
+    ;
+    for i = 1 to IdMap.cardinal rfbt.sub_funs
+    do
+      Format.fprintf ppf
+      "(*the message is not for %i. sub-functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+       @;" i
+    done
+    ;
+    for i = 1 to (i-1)
+    do
+      Format.fprintf ppf
+      "(*the message is not for %i. parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+       @;" i
+    done
+    ;
+     Format.fprintf ppf
+"(*message is for %i. parameter functionality*)
+rcondt{2} 0.
+move => &m0. skip. move => />.
+%a
+move => />.
+ @;"
+      i
+      print_sim_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
+    ;
+    Format.fprintf ppf  
+      "(*case when message is NOT for the 1. parameter functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />.
+
+(*case when message is for the %i. parameter functionality*)
+case (UC_Composition.CompGlobs.mrfc_self{2} ++ [%s.change_pari] <= m2{2}.`2.`1).
+rcondt{2} 0.
+move => &m0. skip. move => />.
+
+(*inline left invoke*)
+inline{1} (1) invoke.
+sp.
+@;"
+      (i+1)
+      (rest_composition_clone (i+1))
+    ;
+    for i = 1 to IdMap.cardinal rfbt.sub_funs
+    do
+      Format.fprintf ppf
+      "(*the message is not for %i. sub-functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+       @;" i
+    done
+    ;
+      Format.fprintf ppf
+"(*message is for %i. parameter functionality*)
+rcondt{1} 0.
+move => &m0. skip. move => />.
+%a
+@;"
+      (i+1)
+      print_sim_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
+    ;
+      Format.fprintf ppf
+"(*case when message is NOT for the %i. parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />.
+
+(*inline both invokes*)
+inline{1} (1) invoke.
+inline{2} (1) invoke.
+sp. wp.
+ @;" (i+1)
+    ;
+    for i = 1 to IdMap.cardinal rfbt.sub_funs
+    do
+      Format.fprintf ppf
+      "(*if message is for %i. sub-functionality*)
+if. move => />. sim.
+       @;" i
+    done
+    ;
+    for i = 1 to (i-1)
+    do
+      Format.fprintf ppf
+      "(*if message is for %i. parameter functionality*)
+if. move => />. sim.
+       @;" i
+    done
+    ;  
+    Format.fprintf ppf  
+  "
+(*message is not for %i. parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />.
+
+(*message is not for %i. parameter functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />.
+
+(*the rest is similar*)
+sim.
+@;" i (i+1)
+    ;
+    Format.fprintf ppf  "qed.@;@;"
 
   in
   let print_Comp_IP_RFIP_eq_lemma ppf () =
