@@ -171,6 +171,9 @@ let _init_RP = "_init_RP"
 let _init_IP = "_init_IP"
 let rest_init i = "_init_Rest"^(string_of_int i)
 let simcomp = "SIMCOMP"
+let simip = "SIMIP"
+let simnm (pmn : string) (adv : string) =
+    (uc_name pmn)^"."^simcomp^"("^adv^")"
 
 
 let module_name (id : string) = uc_name id
@@ -826,10 +829,31 @@ let get_glob_indices_of_real_fun_parties
 
 type bound_macro_fun = string -> string -> string -> string
 
+let sim_stack_adv rfbt adv i =
+  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let rec firstk k xs =
+      if k=0
+      then []
+      else
+        match xs with
+        | []    -> failwith "firstk"
+        | x::xs -> if k=1 then [x] else x::firstk (k-1) xs
+   in
+   let pmns = firstk i pmns in
+   List.fold_left (fun sprev pmn ->
+       simnm pmn sprev) adv pmns
+
+let sim_stack rfbt i = sim_stack_adv rfbt _Adv i
+
 let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
-      (pmnm : string) (pmno : int) : bound_macro_fun =
+      (rfbt : real_fun_body_tyd) (pmno : int) : bound_macro_fun =
+  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let pmnm = List.nth pmns (pmno-1) in
   fun s1 s2 s3 ->
-  bmf (s1^(uc_name pmnm)^".") (s1^(compenv pmno)^"("^s2^")") s3
+  bmf
+    (s1^(uc_name pmnm)^".")
+    (s1^(compenv pmno)^"("^s2^")")
+    (sim_stack_adv rfbt s3 (pmno-1))
 
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (fst funcId)^".eca" in
@@ -863,7 +887,7 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
           | _ -> UcMessage.failure
                    "impossible param must be from triple unit" in
         let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
-        apply_param_Bound_RFRP_IF_macro_fun pbound pmnm (i+1)) params
+        apply_param_Bound_RFRP_IF_macro_fun pbound rfbt (i+1)) params
     in
     fun s1 s2 s3 ->
       List.fold_left (fun str pbound ->
@@ -886,8 +910,28 @@ let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let bmf = fun s1 s2 s3 ->
     UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2;s3] in
-  let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf pmnm param_no in
+  let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf rfbt param_no in
   bmf "" env adv
+  
+let parameter_Bound rfbt i : string =
+  get_param_Bound_RFRP_IF rfbt i "Env" "Adv" (*sim_stack rfbt (i-1)*)
+
+let probability_parameter_Bound rfbt ppf (i : int) =
+    Format.fprintf ppf "%s" (parameter_Bound rfbt i)
+
+let sum_of_prob_diffs_from rfbt ppf (start : int) =
+  let pmnum = IdMap.cardinal rfbt.params in
+  if start>pmnum
+  then Format.fprintf ppf "@[0.0@]"
+  else begin
+    Format.fprintf ppf "@[%a@]" (probability_parameter_Bound rfbt) start;
+    for i = (start+1) to pmnum do
+      Format.fprintf ppf "@;+@;@[%a@]" (probability_parameter_Bound rfbt) i
+    done
+  end
+
+let sum_of_prob_diffs rfbt ppf () =
+     sum_of_prob_diffs_from rfbt ppf 1
 
 let print_userfile_stub
 (fs : out_channel) (root : string) (rf_has_params : bool) =
@@ -904,7 +948,9 @@ require UC__%s.
 
 clone include UC__%s.
 
-%s
+ %s
+
+module AllCGs = {module UC__AllCGs = AllCGs_}.
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
   
@@ -932,7 +978,7 @@ root root rfip_eq_rfrp root
 let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
   let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
 Printf.fprintf fs
-"module %s(Adv : ADV) = SIMIP(SIM(Adv)).
+"module %s(Adv : ADV) = SIM(SIMIP(Adv)).
                                                                
 lemma %s_RFRP_IF_advantage
     (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
@@ -988,8 +1034,8 @@ root
       "module %s(Adv : ADV) = SIM(Adv).
 
 lemma %s_RFRP_IF_advantage
-    (Env <: ENV{-MI, -RFRP, -IF, -SIM})
-    (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM})
+    (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
+    (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>    

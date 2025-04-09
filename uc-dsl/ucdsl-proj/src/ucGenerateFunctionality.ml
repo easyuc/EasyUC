@@ -1549,27 +1549,7 @@ let print_sequence_of_games_proof  (id : string) ppf
     "equiv_Composed"^(string_of_int i)^"_IP_Composed"^(string_of_int (i+1))^"_RP" in
   let _Comp_IP_RFIP_eq_lemma =
     "equiv_Composed"^(string_of_int (IdMap.cardinal rfbt.params))^"_IP_RFIP" in
-  let simip = "SIMIP" in
-  let simnm (pmn : string) (adv : string) =
-    (uc_name pmn)^"."^simcomp^"("^adv^")"
-  in
-  let sim_stack i =
-    let rec firstk k xs =
-      if k=0
-      then []
-      else
-        match xs with
-        | []    -> failwith "firstk"
-        | x::xs -> if k=1 then [x] else x::firstk (k-1) xs
-    in
-    let pmns = firstk i pmns in
-    List.fold_left (fun sprev pmn ->
-        simnm pmn sprev) _Adv pmns 
-  in
-  let sim_st = sim_stack pmnum in
-  let parameter_Bound i : string =
-    get_param_Bound_RFRP_IF rfbt i "Env" (sim_stack (i-1))
-  in
+  let sim_st = sim_stack rfbt pmnum in
   let composition_module ((i, ri) : int * bool) : string =
     let ith_param = if ri
                     then ith_param_real i
@@ -1615,8 +1595,8 @@ glob MI,
     in
     Format.fprintf ppf
 "lemma %s
-    (Env <: ENV{-MI, -RFRP, -AllCGs})
-    (Adv <: ADV{-MI, -Env,  -RFRP, -AllCGs})
+    (Env <: ENV{-MI, -RFRP, -AllCGs_})
+    (Adv <: ADV{-MI, -Env,  -RFRP, -AllCGs_})
     (func' : addr, in_guard' : int fset) &m :
   %a
  .@;@;"
@@ -1809,7 +1789,7 @@ move => />.
   let print_AllCGs_abbrev ppf () =
     Format.fprintf ppf
    "@[<v>@[(*all CompGlobs module, abreviation for lemma module restrictions*)@]@;";
-    Format.fprintf ppf "@[module AllCGs = {@]@;";
+    Format.fprintf ppf "@[module AllCGs_ = {@]@;";
     Format.fprintf ppf "@[module OwnCGs = UC_Composition.CompGlobs@]@;";
     List.iter (fun pmn ->
         Format.fprintf ppf "@[module %sAllCGs = %s.AllCGs@]@;"
@@ -1828,28 +1808,12 @@ move => />.
       ) pmns;
     Format.fprintf ppf "}.@]@;@;"
   in
-  let probability_parameter_Bound ppf (i : int) =
-    Format.fprintf ppf "%s" (parameter_Bound i)
-  in
-  let sum_of_prob_diffs_from ppf (start : int) =
-    if start>pmnum
-    then Format.fprintf ppf "@[0.0@]"
-    else begin
-      Format.fprintf ppf "@[%a@]" probability_parameter_Bound start;
-      for i = (start+1) to pmnum do
-        Format.fprintf ppf "@;+@;@[%a@]" probability_parameter_Bound i
-      done
-    end
-  in
-  let sum_of_prob_diffs ppf () =
-     sum_of_prob_diffs_from ppf 1
-  in
   let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
     let pmth = uc_name (List.nth pmns (i-1)) in
     Format.fprintf ppf
 "lemma %s
-    (Env <: ENV{-MI,  -AllCGs, -RFRP, -SIMIP, -AllIFs})
-    (Adv <: ADV{-MI, -AllCGs, -Env,  -RFRP, -SIMIP, -AllIFs})
+    (Env <: ENV{-MI,  -AllCGs_, -RFRP, -SIMIP, -AllIFs})
+    (Adv <: ADV{-MI, -AllCGs_, -Env,  -RFRP, -SIMIP, -AllIFs})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -1860,9 +1824,9 @@ Pr[Exper(MI(%s, %s), Env).main(func', in_guard') %s &m : res]|
 %a
  .@;"
 (_Comp_RP_Comp_IP_diff_lemma i)
-(composition_module (i,true)) (sim_stack (i-1)) "@"
-(composition_module (i,false)) (sim_stack i) "@"
-probability_parameter_Bound i
+(composition_module (i,true)) (sim_stack rfbt (i-1)) "@"
+(composition_module (i,false)) (sim_stack rfbt i) "@"
+(probability_parameter_Bound rfbt) i
 ;
   Format.fprintf ppf
     "proof.
@@ -1884,8 +1848,8 @@ func' in_guard'
      "
     (rest_composition_clone i)
     (parametrized_rest_module id rfbt i)
-    (sim_stack (i-1)) (ith_param_real i)
-    (sim_stack i)
+    (sim_stack rfbt (i-1)) (ith_param_real i)
+    (sim_stack rfbt i)
     pmth
     (rest_invar i)
     (rest_metric i)
@@ -1893,7 +1857,7 @@ func' in_guard'
     pmth
     pmth
     pmth
-    probability_parameter_Bound i;
+    (probability_parameter_Bound rfbt) i;
   Format.fprintf ppf "
 apply %s.
 apply %s.
@@ -1934,7 +1898,7 @@ qed.@;@;"
     (rest_composition_clone i)
     pmth (fst (List.nth (indexed_map_to_list rfbt.params) (i-1)))
     (compenv i)
-    (sim_stack (i-1))
+    (sim_stack rfbt (i-1))
     (rest_composition_clone i)
     (rest_composition_clone i)
     (rest_composition_clone i)
@@ -2002,8 +1966,8 @@ sim
     Format.fprintf ppf
     "
 lemma %s
-(Env <: ENV{-MI,  -AllCGs, -RFRP, -AllIFs})
-(Adv <: ADV{-MI, -AllCGs, -Env, -RFRP, -AllIFs})
+(Env <: ENV{-MI,  -AllCGs_, -RFRP, -AllIFs})
+(Adv <: ADV{-MI, -AllCGs_, -Env, -RFRP, -AllIFs})
 (func' : addr, in_guard' : int fset) &m :
 exper_pre func' =>
 disjoint in_guard' (adv_pis_rf_info rf_info)  =>
@@ -2302,8 +2266,8 @@ glob MI,
     Format.fprintf ppf
     "
 lemma %s
-(Env <: ENV{-MI, -AllCGs, -RFIP})
-(Adv <: ADV{-MI, -AllCGs, -Env, -RFIP})
+(Env <: ENV{-MI, -AllCGs_, -RFIP})
+(Adv <: ADV{-MI, -AllCGs_, -Env, -RFIP})
 (func' : addr, in_guard' : int fset) &m :
 exper_pre func' =>
 disjoint in_guard' (adv_pis_rf_info rf_info)  =>
@@ -2511,8 +2475,8 @@ sim.
     Format.fprintf ppf
     "
      lemma exper_RF_RP_IP_Pr_diff
-(Env <: ENV{-MI, -AllIFs, -RFRP, -AllCGs, -SIMIP})
-    (Adv <: ADV{-MI, -Env, -AllIFs, -RFRP, -AllCGs, -SIMIP})
+(Env <: ENV{-MI, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
+    (Adv <: ADV{-MI, -Env, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -2523,7 +2487,7 @@ sim.
 %a
      )
       .
-     " "@" "@" sum_of_prob_diffs ()
+     " "@" "@" (sum_of_prob_diffs rfbt) ()
     ;
       (*proof*)
     let apply_security_trans
@@ -2561,7 +2525,7 @@ sim.
     in
     Format.fprintf ppf "@[<v>@[proof.@]@;";
     Format.fprintf ppf "@[move => exper disj.@]@;";
-    let sum_bound : string = Format.asprintf "%a" sum_of_prob_diffs () in
+    let sum_bound : string = Format.asprintf "%a" (sum_of_prob_diffs rfbt) () in
     let simip_adv = simip^"("^_Adv^")" in
     apply_security_trans
       _RFRP (composition_module (1,true)) _RFIP
@@ -2571,17 +2535,17 @@ sim.
     for pn = 1 to pmnum do
       apply_security_trans
         (composition_module (pn,true)) (composition_module (pn,false)) _RFIP
-        (sim_stack (pn-1)) (sim_stack pn) simip_adv
-        (Format.asprintf "%a" probability_parameter_Bound pn)
-        (Format.asprintf "%a" sum_of_prob_diffs_from (pn+1));
+        (sim_stack rfbt (pn-1)) (sim_stack rfbt pn) simip_adv
+        (Format.asprintf "%a" (probability_parameter_Bound rfbt) pn)
+        (Format.asprintf "%a" (sum_of_prob_diffs_from rfbt) (pn+1));
       by_apply (_Comp_RP_Comp_IP_diff_lemma pn) _Adv;
       if pn < pmnum
       then begin
           apply_security_trans
         (composition_module (pn,false)) (composition_module (pn+1,true)) _RFIP
-        (sim_stack pn) (sim_stack pn) simip_adv
-        "0.0" (Format.asprintf "%a" sum_of_prob_diffs_from (pn+1));
-        by_apply (_Comp_IP_Comp_RP_eq_lemma pn) (sim_stack pn);
+        (sim_stack rfbt pn) (sim_stack rfbt pn) simip_adv
+        "0.0" (Format.asprintf "%a" (sum_of_prob_diffs_from rfbt) (pn+1));
+        by_apply (_Comp_IP_Comp_RP_eq_lemma pn) (sim_stack rfbt pn);
       end
     done
     ;
