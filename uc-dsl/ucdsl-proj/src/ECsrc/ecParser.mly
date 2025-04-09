@@ -1984,7 +1984,7 @@ theory_clear_items:
 | xs=theory_clear_item1* { xs }
 
 theory_open:
-| loca=is_local b=boption(ABSTRACT) THEORY x=uident
+| loca=is_local b=iboption(ABSTRACT) THEORY x=uident
     { (loca, b, x) }
 
 theory_close:
@@ -2904,8 +2904,9 @@ interleave_info:
    { (s, c1, c2 :: c3, k) }
 
 %inline outline_kind:
-| s=brace(stmt) { OKstmt(s) }
-| r=sexpr? LEAT f=loc(fident) { OKproc(f, r) }
+| BY s=brace(stmt) { OKstmt(s) }
+| TILD f=loc(fident) { OKproc(f, true) }
+| f=loc(fident) { OKproc(f, false) }
 
 %public phltactic:
 | PROC
@@ -2985,11 +2986,10 @@ interleave_info:
 | INLINE s=side? u=inlineopt? p=codepos
     { Pinline (`CodePos (s, u, p)) }
 
-| OUTLINE s=side LBRACKET st=codepos1 e=option(MINUS e=codepos1 {e}) RBRACKET k=outline_kind
+| OUTLINE s=side cpr=codepos_or_range k=outline_kind
     { Poutline {
 	  outline_side  = s;
-	  outline_start = st;
-	  outline_end   = odfl st e;
+	  outline_range = cpr;
 	  outline_kind  = k }
     }
 
@@ -3655,6 +3655,13 @@ realize:
 | REALIZE x=qident BY bracket(empty)
     {  { pr_name = x; pr_proof = Some None; } }
 
+
+(* -------------------------------------------------------------------- *)
+(* Theory aliasing                                                      *)
+
+theory_alias: (* FIXME: THEORY ALIAS -> S/R conflict *)
+| THEORY name=uident EQ target=uqident { (name, target) }
+
 (* -------------------------------------------------------------------- *)
 (* Printing                                                             *)
 phint:
@@ -3792,6 +3799,7 @@ global_action:
 | theory_export    { GthExport    $1 }
 | theory_clone     { GthClone     $1 }
 | theory_clear     { GthClear     $1 }
+| theory_alias     { GthAlias     $1 }
 | module_import    { GModImport   $1 }
 | section_open     { GsctOpen     $1 }
 | section_close    { GsctClose    $1 }
