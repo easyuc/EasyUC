@@ -339,12 +339,43 @@ let should_simplify_further
       (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   print_endline "should_simplify_further?";
   let proof = move_all_hyps_up proof in
+  let hyps = (get_last_pregoal proof).g_hyps  in
+  let env = EcEnv.LDecl.toenv hyps in
   let concl = try extract_form proof p_id
               with e when e <> Sys.Break -> (get_last_pregoal proof).g_concl
   in
   pp_proof proof;
+  let is_weakly_simplified (f : EcAst.form) : bool =
+    let is_int_non_opp (f : EcAst.form) : bool =
+      match f.EcAst.f_node with
+      | Fint _ -> true
+      | _      -> false
+    in
+    let rec is_weak_simp f =
+      match f.EcAst.f_node with
+      | Fint _       -> true
+      | Fop (op, _)  ->
+        EcPath.p_equal op EcCoreLib.CI_Unit.p_tt    ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_true  ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_false ||
+        EcEnv.Op.is_dtype_ctor env op
+      | Fapp (f, fs) ->
+          (match f.f_node with
+           | Fop (op, _) ->
+               if EcEnv.Op.is_dtype_ctor env op
+                 then List.for_all is_weak_simp fs
+               else if EcFol.f_equal f EcFol.fop_int_opp  (* int negation *)
+                 then (match fs with
+                       | [g] -> is_int_non_opp g
+                       | _   -> false)
+               else false
+           | _           -> false)
+      | Ftuple fs    -> List.for_all is_weak_simp fs
+      | _            -> false
+    in is_weak_simp f
+  in
   (*TODO add more conditions, like is_op?*)
-  let ret = not ((EcCoreFol.is_true concl) || (EcCoreFol.is_false concl)) in
+  let ret = not (is_weakly_simplified concl) in
   print_endline ("should_simplify_further = "^(Bool.to_string ret));
   ret
                     
@@ -844,10 +875,18 @@ let rec try_simp (proof : EcCoreGoal.proof)
       try_move_simplify_trivial;
       try_hyp_rewriting_cycle p_id;
       try_rewriting_hints p_id rw_lems;
-    ] in
+    ]
+  in
   let simp proof =
-    List.fold_left (fun acc simpt ->
-        if acc <> None then acc else simpt proof) None simps
+    List.fold_left (
+      fun acc simpt ->
+        if acc <> None
+        then acc
+        else
+          if (should_simplify_further proof p_id)
+          then simpt proof
+          else None
+      ) None simps
   in
   print_endline "try_simp";
   progression simp proof
