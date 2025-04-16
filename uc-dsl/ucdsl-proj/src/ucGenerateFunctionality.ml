@@ -2628,7 +2628,7 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[proc init() : unit = {@]@;<0 2>@[<v>";
     Format.fprintf ppf "@[%s <- None; %s <- %s;@]@;"
       if_addr_opt _st (state_name_SIM (initial_state_id_of_states sbt.states));
-    Format.fprintf ppf "@[%s.init();@]@]@;@[}@]@;" _Adv
+    Format.fprintf ppf "@]@;@[}@]@;"
   in
   
   let print_state_match_branch (stid : string)
@@ -2724,8 +2724,7 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[return %s;@]" _r;
     Format.fprintf ppf "@]@;}@;"
   in
-  Format.fprintf ppf "@[module %s (%s : ADV)= {@]@;<0 2>@[<v>"
-    (uc_name id) _Adv;
+  Format.fprintf ppf "@[module %s = {@]@;<0 2>@[<v>" (uc_name id);
   print_vars ();
   print_proc_init ();
   let sim_uses = Some sbt.uses in
@@ -2745,8 +2744,8 @@ let print_cloneSIM_MS ppf (id,sbt : string * sim_body_tyd) =
   in 
   let print_MS =
     Format.fprintf ppf
-      "@[module SIM(%s : ADV) = MSCore.MS(%s(%s), %s).@]"
-      _Adv (uc_name id) _Adv _Adv
+      "@[module SIM(%s : ADV) = MSCore.MS(%s, %s).@]"
+      _Adv (uc_name id) _Adv
   in
   print_cloneSIM;
   print_MS
