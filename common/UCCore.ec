@@ -735,7 +735,7 @@ op rf_info_valid (rfi : rf_info) : bool =
   0 <= rfi.`rfi_num_params /\
   1 <= rfi.`rfi_adv_pi_begin /\
   (* includes adv pi of ideal functionality of unit *)
-  rfi.`rfi_adv_pi_begin < rfi.`rfi_adv_pi_main_end /\
+  rfi.`rfi_adv_pi_begin <= rfi.`rfi_adv_pi_main_end /\
   size rfi.`rfi_adv_pi_begin_params = rfi.`rfi_num_params /\
   size rfi.`rfi_adv_pi_end_params   = rfi.`rfi_num_params /\
   (1 <= rfi.`rfi_num_params =>
