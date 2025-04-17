@@ -1466,10 +1466,23 @@ let print_module_lemmas ?(rest_idx = None)
       (moduleIRP id rfbt rp rest_idx) init
       (invarIRP rfbt rp rest_idx) (moduleIRP id rfbt rp rest_idx);
     Format.fprintf ppf "@[proof. proc. sp. wp.@]@;";
-    List.iteri(fun i pmn ->
-        Format.fprintf ppf "@[call (%s.%s).@]@;"
-          (uc_name pmn) (initIRF rfbt rp rest_idx i)
-      ) (List.rev pmns);
+    let pmnum = IdMap.cardinal rfbt.params in
+    for i = pmnum-1 downto 0 do
+      match rest_idx with
+      | None -> if rp
+                  then Format.fprintf ppf "@[call (%s.%s).@]@;"
+                         (uc_name (List.nth pmns i)) rFRP_init
+                  else Format.fprintf ppf "@[call (%s.%s).@]@;"
+                         (uc_name (List.nth pmns i)) iF_init
+      | Some r -> if (i + 1) < r
+                    then Format.fprintf ppf "@[call (%s.%s).@]@;"
+                         (uc_name (List.nth pmns i)) iF_init
+                    else
+                      if (i + 1) > r
+                      then Format.fprintf ppf "@[call (%s.%s).@]@;"
+                           (uc_name (List.nth pmns (i-1))) rFRP_init
+                      else ()
+    done;
     List.iter(fun sfn ->
         Format.fprintf ppf "@[call (%s.%s).@]@;"
           (uc_name sfn) iF_init

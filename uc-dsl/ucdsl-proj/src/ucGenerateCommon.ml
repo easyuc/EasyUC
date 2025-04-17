@@ -291,15 +291,6 @@ let initIRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else _init_IP
   | Some i -> rest_init i
 
-let initIRF (rfbt : real_fun_body_tyd) (real_params : bool)
-      (rest_idx : int option) (param_idx : int) =
-  match rest_idx with
-  | None -> if real_params
-            then rFRP_init
-            else iF_init
-  | Some i -> if param_idx+1 < i
-              then iF_init
-              else rFRP_init
 
 let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
   (rest_idx : int option) =
