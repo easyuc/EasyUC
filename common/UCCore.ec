@@ -742,7 +742,7 @@ op rf_info_valid (rfi : rf_info) : bool =
    nth1_adv_pi_begin_params rfi 1 = rfi.`rfi_adv_pi_main_end + 1 /\
    (forall (pari : int),
     1 <= pari <= rfi.`rfi_num_params =>
-    nth1_adv_pi_begin_params rfi pari < nth1_adv_pi_end_params rfi pari) /\
+    nth1_adv_pi_begin_params rfi pari <= nth1_adv_pi_end_params rfi pari) /\
    (forall (pari : int),
     1 <= pari <= rfi.`rfi_num_params - 1 =>
     nth1_adv_pi_begin_params rfi (pari + 1) =
