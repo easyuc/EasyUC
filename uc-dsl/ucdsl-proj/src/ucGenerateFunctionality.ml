@@ -1906,7 +1906,7 @@ apply (%s.%s_RFRP_IF_advantage
   (in_guard' `|` %s.rest_adv_pis)
 ).
     by rewrite exper_pre_ext1.
-by apply %s.disjoint_in_guard'_with_all_implies_disjoint_add_rest_with_change. 
+by apply %s.disjoint_in_guard_with_all_implies_disjoint_add_rest_with_change. 
 qed.@;@;"
     (rest_composition_clone i)
     pmth (fst (List.nth (indexed_map_to_list rfbt.params) (i-1)))
@@ -2165,7 +2165,7 @@ move => />.
       print_sim_invariant "r0, r1, r2, m, m0, m1, m2, not_done, not_done0,"
     ;
     Format.fprintf ppf  
-      "(*case when message is NOT for the 1. parameter functionality*)
+      "(*case when message is NOT for the %i. parameter functionality*)
 rcondf{1} 0.
 move => &m0. skip. move => />.
 
@@ -2178,8 +2178,18 @@ move => &m0. skip. move => />.
 inline{1} (1) invoke.
 sp.
 @;"
+      i
       (i+1)
       (rest_composition_clone (i+1))
+    ;
+    for i = 1 to (i-1)
+    do
+      Format.fprintf ppf
+      "(*the message is not for %i. parameter functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+       @;" i
+    done
     ;
     for i = 1 to IdMap.cardinal rfbt.sub_funs
     do
