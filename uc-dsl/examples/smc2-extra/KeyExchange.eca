@@ -1,0 +1,2456 @@
+
+(*! Bound_RFIP_IF(ParamName,Env,Adv)
+`|Pr[DDH.DDH1(<<ParamName>>DDH_Adv(<<Env>>, <<Adv>>)).main() @ &m : res] -
+  Pr[DDH.DDH2(<<ParamName>>DDH_Adv(<<Env>>, <<Adv>>)).main() @ &m : res]|
+*)
+
+require import  UCCore.
+
+require DDH.
+
+module DDH_Adv_globs ={
+  var k : DDH.key
+}.
+
+module DDH_Adv(Env : ENV, Adv : ADV) : DDH.DDH_ADV =
+{
+    var k : DDH.key
+    proc main(k1 k2 k3 : DDH.key) = {k<-k1; return true;}
+}.
+
+require UC__KeyExchange.
+
+clone include UC__KeyExchange.
+
+module AllCGs = {
+  var k : DDH.key
+  module UC__AllCGs_ = AllCGs_
+  module DDH_Globs = DDH_Adv_globs
+  proc dummy () = {k<-DDH_Adv.k;}
+}.
+
+require import KeysExponentsAndPlaintexts.
+type ke_real_simp_state = [
+    KERealSimpStateWaitReq1
+  | KERealSimpStateWaitAdv1 of port & port & exp
+  | KERealSimpStateWaitReq2 of port & port & exp & exp
+  | KERealSimpStateWaitAdv2 of port & port & exp & exp
+  | KERealSimpStateFinal
+].
+
+module KERealSimp : FUNC =
+{
+  var _self : addr
+  var _st : ke_real_simp_state
+  proc init(self_ : addr) : unit = {
+    _self <- self_;
+    _st <- KERealSimpStateWaitReq1;
+  }
+
+  proc _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
+  var q1 : exp;
+  var _r : msg option <- None;
+  var _pt1 : port <- _intport_Pt1 _self;
+  var _pt2 : port <- _intport_Pt2 _self;
+  var u : univ;
+  if (envport _self pt2) {
+    q1 <$ dexp;
+    u <- epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
+    _r <- Some
+      (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
+          UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw1.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw1.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw1.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KERealSimpStateWaitAdv1 pt1 pt2 q1;
+    
+  }
+  else { _r <- None;}
+  return _r;
+  }
+
+  proc _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
+  var k1 : key;
+  var q2 : exp;
+  var _r : msg option <- None;
+  if (envport _self pt2) {
+    k1 <- g ^ q1;
+    q2 <$ dexp;
+    _r <- Some
+      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+        {|
+          UC_KEDir.Pt2.ke_rsp1___func = _self;
+          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+          UC_KEDir.Pt2.ke_rsp1__k = k1 ^ q2;
+          
+        |});
+      _st <- KERealSimpStateWaitReq2 pt1 pt2 q1 q2;
+    }
+  return _r;
+  }
+
+  proc _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2') : msg option = {
+  var u : univ;
+  var _pt1 : port <- _intport_Pt2 _self;
+  var _pt2 : port <- _intport_Pt1 _self;
+  var _r : msg option <- None;
+  if (pt2' = pt2) {
+    u <- epdp_key_univ.`enc (g ^ q2);
+    _r <- Some
+      (UC_Fw2.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
+          UC_Fw2.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw2.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw2.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw2.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KERealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
+  }
+  return _r;
+  }
+
+  proc _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
+  var _r : msg option <- None;
+  if (envport _self pt1) {
+    _r <- Some
+          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+          {|
+            UC_KEDir.Pt1.ke_rsp2___func = _self;
+            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q2) ^ q1;
+            
+          |});
+        _st <- KERealSimpStateFinal;
+  }
+  return _r;
+  }
+  
+  proc parties(m : msg) : msg option = {
+    var _r : msg option <- None;
+    
+    return _r;
+  }
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    match _st with
+    | KERealSimpStateWaitReq1 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt1 _self){
+        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
+        | Some _x => {
+          r <@ _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KERealSimpStateWaitAdv1 pt1 pt2 q1 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
+        match UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KERealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt2 _self){
+        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
+        | Some _x => {
+          r <@ _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, q1, q2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KERealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
+        match UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q1, q2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KERealSimpStateFinal => {}
+    end;
+    return r;
+  }
+}.
+
+
+
+module RFIP = RFRP. (*KeyExchange has no parameters so Real Functionality with Ideal Parameters is the same as Real Functionality with Real Parameters*)
+
+(* relational invariant for connecting KEReal and KERealSimp *)
+
+type real_simp_rel_st = {
+  real_simp_rel_st_func : addr;
+  real_simp_rel_st_r1s  : _state_Pt1;
+  real_simp_rel_st_r2s  : _state_Pt2;
+  real_simp_rel_st_fws1 : UC_Fw1._state_IF;
+  real_simp_rel_st_fws2 : UC_Fw2._state_IF;
+  real_simp_rel_st_rss  : ke_real_simp_state;
+}.
+
+op    real_simp_rel0 (st : real_simp_rel_st) : bool =
+  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitReq1) /\
+  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitFwd1) /\
+  (st.`real_simp_rel_st_fws1 = UC_Fw1._State_IF_Init) /\
+  (st.`real_simp_rel_st_fws2 = UC_Fw2._State_IF_Init) /\
+  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitReq1).
+
+op real_simp_rel1 (st : real_simp_rel_st, pt1 pt2 : port, q1 : exp) : bool =
+  (envport st.`real_simp_rel_st_func pt1) /\
+  (envport st.`real_simp_rel_st_func pt2) /\
+  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitFwd1) /\
+  (st.`real_simp_rel_st_fws1 =
+     UC_Fw1._State_IF_Wait
+     (_intport_Pt1 st.`real_simp_rel_st_func)
+     (_intport_Pt2 st.`real_simp_rel_st_func)
+     (epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))) /\
+  (st.`real_simp_rel_st_fws2 = UC_Fw2._State_IF_Init) /\
+  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv1 pt1 pt2 q1).
+
+  op real_simp_rel2 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) : bool =
+  (envport st.`real_simp_rel_st_func pt1) /\
+  (envport st.`real_simp_rel_st_func pt2) /\
+  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitReq2 pt2 q2) /\
+  (st.`real_simp_rel_st_fws1 = UC_Fw1._State_IF_Final) /\
+  (st.`real_simp_rel_st_fws2 = UC_Fw2._State_IF_Init) /\
+  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitReq2 pt1 pt2 q1 q2).  
+
+op real_simp_rel3 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) : bool =
+  (envport st.`real_simp_rel_st_func pt1) /\
+  (envport st.`real_simp_rel_st_func pt2) /\
+  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (st.`real_simp_rel_st_r2s  = _State_Pt2_Final) /\
+  (st.`real_simp_rel_st_fws1 = UC_Fw1._State_IF_Final) /\
+  (st.`real_simp_rel_st_fws2 =
+     UC_Fw2._State_IF_Wait
+     (_intport_Pt2 st.`real_simp_rel_st_func)
+     (_intport_Pt1 st.`real_simp_rel_st_func)
+     (epdp_key_univ.`enc (g ^ q2))) /\
+  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2).
+
+op real_simp_rel4 (st : real_simp_rel_st) : bool =
+  (st.`real_simp_rel_st_r1s  = _State_Pt1_Final) /\
+  (st.`real_simp_rel_st_r2s  = _State_Pt2_Final) /\
+  (st.`real_simp_rel_st_fws1 = UC_Fw1._State_IF_Final) /\
+  (st.`real_simp_rel_st_fws2 = UC_Fw2._State_IF_Final) /\
+  (st.`real_simp_rel_st_rss  = KERealSimpStateFinal).
+
+inductive real_simp_rel (st : real_simp_rel_st) =
+    RealSimpRel0 of (real_simp_rel0 st)
+  | RealSimpRel1 (pt1 pt2 : port, q1 : exp) of
+      (real_simp_rel1 st pt1 pt2 q1)
+  | RealSimpRel2 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_rel2 st pt1 pt2 q1 q2)
+  | RealSimpRel3 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_rel3 st pt1 pt2 q1 q2)
+  | RealSimpRel4 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_rel4 st).
+
+      op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
+      (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
+   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).     
+
+lemma KEReal_KERealSimp_invoke (func : addr) :
+  equiv
+  [RFIP.invoke ~ KERealSimp.invoke :
+    inc func adv /\ ={m} /\
+    mi_invoke_loop_calls_func_invoke func m{1} /\
+    RFIP.self{1} = func /\
+    UC_KEReal._self{1} = func /\ 
+   UC_Fw1.IF._self{1} =  _addr_Fw1 func /\
+   UC_Fw2.IF._self{1} =  _addr_Fw2 func /\
+   KERealSimp._self{2} = func /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|} ==>
+   ={res} /\
+   real_simp_rel
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}].
+ proof.
+ proc.
+case
+  (real_simp_rel0
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}).
+     sp.
+ match{2}.
+     if{2}.
+     match{2}.
+(*is direct message for Pt1 but ke_req1 does not decode*)
+     if{1}.
+     inline loop.
+     sp.
+     rcondt{1} 0.
+     auto.
+     inline{1} invoke.
+     sp.
+     rcondf{1} 0. move => &m. skip. move => &hr.
+have H :
+     UC_KEReal._self{hr} = func /\
+ KERealSimp._self{m} = func /\
+ m1{hr} = m0{hr} /\
+ m0{hr} = m{hr} /\
+ m{hr} = m{m} /\
+     m{m}.`2 = _extport_Pt1 KERealSimp._self{m} /\
+     _addr_Fw1 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
+     smt(not_le_ext_nonnil_l).
+     smt().
+
+ rcondf{1} 0. move => &m. skip. move => &hr. 
+have H :
+     UC_KEReal._self{hr} = func /\
+ KERealSimp._self{m} = func /\
+ m1{hr} = m0{hr} /\
+ m0{hr} = m{hr} /\
+ m{hr} = m{m} /\
+     m{m}.`2 = _extport_Pt1 KERealSimp._self{m} /\
+     _addr_Fw2 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
+     smt(not_le_ext_nonnil_l).
+     smt().
+
+rcondt{1} 0.
+move => &m. skip. move => />.
+     inline party_Pt1.
+     sp.
+match{1}.
+exfalso. smt(RealSimpRel0). 
+exfalso. smt(RealSimpRel0). 
+match{1}.
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+         exfalso.
+      smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
+         (*why not just smt(). ????
+         since we have:
+         UC_KEDir.Pt1.epdp__ke_req1.`dec _m{1} = Some _x{1} /\
+         UC_KEDir.Pt1.epdp__ke_req1.`dec  m{2} = None /\
+     _m{1} = m1{1} /\
+     m1{1} = m0{1} /\
+     m0{1} = m{1} /\
+     m{1} = m{2}
+         *)
+         skip. move => />.
+     
+(*is direct message for Pt1 and ke_req1 decodes*)
+     rcondt{1} 0. move => &m. skip. move => />. smt().
+
+inline loop.
+sp.
+         rcondt{1} 0. move => &m. skip. move => />.
+inline invoke.
+sp.
+         rcondf{1} 0. move => &m. skip. move => />. smt(not_le_ext_nonnil_l).
+         rcondf{1} 0. move => &m. skip. move => />. smt(not_le_ext_nonnil_l).
+rcondt{1} 0. move => &m. skip. move => />.    
+         inline party_Pt1.
+sp.
+match{1}.
+         exfalso. smt(RealSimpRel0). 
+         exfalso. smt(RealSimpRel0).
+         match{1}.
+         exfalso. smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
+inline _State_Pt1_WaitReq1__KEDir__Pt1__ke_req1.
+         inline _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1.
+sp.     
+         if; last first.
+         sp.
+         seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+         (! envport func pt2{1}) /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.
+         smt(RealSimpRel0).
+
+         smt().
+         seq 1 1 : (#pre /\ ={q1}).
+rnd.
+      skip. trivial.
+      sp 5 0.
+      elim* => r0_L r1_L _r_L _st_Pt1_L _r1_L.
+
+      seq 1 0 : (
+      not_done{1} /\
+    m0{1} = (UC_Fw1.UC_FwDir.D.epdp__fw_req.`enc
+      {| UC_Fw1.UC_FwDir.D.fw_req___func = _addr_Fw1 UC_KEReal._self{1};
+        UC_Fw1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_KEReal._self{1};
+        UC_Fw1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_KEReal._self{1};
+        UC_Fw1.UC_FwDir.D.fw_req__u =
+        epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+   _pt1{2} = _intport_Pt1 KERealSimp._self{2} /\
+    _pt2{2} = _intport_Pt2 KERealSimp._self{2} /\
+    envport func pt1{1} /\
+    envport func pt2{1} /\
+    ={m, _x, q1} /\
+    inc func adv /\
+      mi_invoke_loop_calls_func_invoke func m{1} /\
+      RFIP.self{1} = func /\
+      UC_KEReal._self{1} = func /\
+      UC_Fw1.IF._self{1} = _addr_Fw1 func /\
+      UC_Fw2.IF._self{1} = _addr_Fw2 func /\
+      KERealSimp._self{2} = func /\
+      KERealSimp._st{2} = KERealSimpStateWaitReq1 /\
+      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
+      UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1 /\
+      UC_Fw1.IF._st{1} = UC_Fw1._State_IF_Init /\
+      UC_Fw2.IF._st{1} = UC_Fw2._State_IF_Init
+  ).
+
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
+      skip. move => &1 &2.
+      have H :
+  UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} =>
+  _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 = m{2}.`3. 
+      smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1). 
+smt().
+
+rcondt{1} 0.  move => &m. skip. move => />.
+sp 2 0.  
+rcondt{1} 0.  move => &m. skip. move => />.
+sp 2 0.
+      rcondt{1} 0.  move => &m. skip.
+  smt(UC_Fw1.UC_FwDir.D.eq_of_valid__fw_req UC_Fw1.UC_FwDir.D.valid_epdp__fw_req
+not_le_ext_nonnil_l     
+   inc_nle_r).
+inline parties.
+      sp 2 0.
+match{1}.
+      exfalso. smt().
+
+  
+(*match{1}. exfalso. smt(). not working, using the case workaround*)
+      case (UC_Fw1.UC_FwDir.D.epdp__fw_req.`dec _m1{1} <> Some
+    {| UC_Fw1.UC_FwDir.D.fw_req___func = _addr_Fw1 UC_KEReal._self{1};
+    UC_Fw1.UC_FwDir.D.fw_req__pt1 =
+    _intport_Pt1 UC_KEReal._self{1};
+    UC_Fw1.UC_FwDir.D.fw_req__pt2 =
+    _intport_Pt2 UC_KEReal._self{1};
+    UC_Fw1.UC_FwDir.D.fw_req__u =
+     epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}
+  ).
+      exfalso. move => &1 &2.
+  smt.
+      (*  smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_req). did not work for some reason*)
+  simplify.
+      match Some {1} 1.
+  move => &m.
+      skip. smt().
+
+inline _State_IF_Init__FwDir__D__fw_req.
+sp 4 1.
+      rcondt{1} 0.
+  move => &m. skip.
+  move => &hr P.
+  smt.
+sp.
+
+      seq 1 0 : (
+    !not_done{1} /\
+    ={pt1, pt2, q1} /\
+    envport func pt1{1} /\
+    envport func pt2{1} /\
+r{2} =
+    Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+      {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KERealSimp._self{2};
+        UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+        UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func; 
+        UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
+        UC_Fw1.UC_FwAdv.fw_obs__u =
+        epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |})
+
+        /\
+
+r0{1} =
+      Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+        {| UC_Fw1.UC_FwAdv.fw_obs___func = UC_Fw1.UC_Forw._self{1};
+          UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func;
+          UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
+          UC_Fw1.UC_FwAdv.fw_obs__u =
+          epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |})
+
+          /\
+
+UC_KEReal._self{1} = func /\
+       UC_Fw1.UC_Forw._self{1} = _addr_Fw1 func /\
+       UC_Fw2.UC_Forw._self{1} = _addr_Fw2 func /\
+          KERealSimp._self{2} = func /\
+      
+      KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
+          UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Wait
+      (_intport_Pt1 UC_KEReal._self{1})
+      (_intport_Pt2 UC_KEReal._self{1})
+      (epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1})) /\
+      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
+      UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1 /\
+      UC_Fw2.UC_Forw._st{1} = UC_Fw2._State_IF_Init
+    ).
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
+        skip.  
+        smt(
+        _adv_pi_begin_gt0
+        UC_Fw1.UC_FwAdv.valid_epdp__fw_obs
+        UC_Fw1.UC_FwAdv.eq_of_valid__fw_obs).
+rcondf{1} 0.
+move => &m. skip. move => />.
+        sp.
+        skip.
+    move => &1 &2 P. (*smt won't work wihout P*)
+        smt(RealSimpRel1).
+
+        exfalso. smt().
+        if{1}; last first.
+        skip. smt(RealSimpRel0).
+        inline loop.
+        sp. rcondt{1} 0. move => &m. skip. move => />.
+
+inline invoke.
+        sp.
+        if{1}. sp. if{1}.
+    inline parties. sp.
+        match _State_IF_Init {1} 0. auto; smt().
+    match None {1} 0. auto; smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_req
+        UC_Fw1.UC_FwDir.D.eq_of_valid__fw_req).
+        sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+             sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+if{1}. sp. if{1}.
+    inline parties. sp.
+        match _State_IF_Init {1} 0. auto; smt().
+    match None {1} 0. auto; smt(UC_Fw2.UC_FwDir.D.valid_epdp__fw_req
+        UC_Fw2.UC_FwDir.D.eq_of_valid__fw_req).
+        sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+             sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+     
+        if{1}.
+inline party_Pt1.
+sp. match{1}.
+        exfalso. smt().
+        exfalso. smt().
+        match{1}.
+        sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+exfalso.
+     move => &1 &2 P.   
+have H : m1{1}.`1 <> Dir.
+         smt().
+have H2 : _m{1} = m1{1} /\ m1{1}.`1 <> Dir => UC_KEDir.Pt1.epdp__ke_req1.`dec _m{1} = None.
+         smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
+         smt().
+
+         if{1}; last first.
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+inline party_Pt2.
+         sp. match{1}.
+exfalso. smt().
+         match{1}.
+ sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+         rcondf{1} 0. move => &m. skip. move => />. smt.
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel0
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel0).
+
+exfalso. smt().
+
+         exfalso. smt().
+         exfalso. smt().
+         exfalso. smt().
+     exfalso. smt().
+(*       smt(
+       lpo_nil
+       lpo_nil_non_nil
+       lpo_non_nil_nil
+       lpo_non_nil_eq
+       lpo_pre
+       lpo_eqP
+       lpo_ltP
+       lpo_gtP
+       lpo_sym_lt_gt
+       lpo_lt_trans
+       lpo_gt_trans
+       lpo_lt_ext_nonnil_r
+       lpo_incP
+       lpo_inc_sym
+       lpo_inc_pre
+       lpo_inc_extl
+       lpo_inc_extr
+       lpo_inc_ext
+       concat_nil_r
+       concat_nil_l
+       le_cases
+       leP
+       ltP
+       incP
+       le_drop
+       ge_nil
+       le_nil_iff
+       not_le_cons_nil
+       le_cons
+       le_pre
+       le_pre_l
+       le_refl
+       le_ext_r
+       gt_cons
+       not_lt_cons_nil
+       lt_cons
+       lt_pre
+       lt_pre_l
+       lt_pre_r
+       eq_pre
+       eq_pre_r
+       eq_pre_l
+       not_lt_same
+
+       not_inc_nil_left
+     ).*)  
+     
+ case
+ (exists (pt1 pt2 : port, q1 : exp),
+   real_simp_rel1
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     pt1
+     pt2
+     q1
+ ).
+ elim* => pt1 pt2 q1.
+     sp.
+     case(KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1 pt2 q1);
+last first. exfalso. smt().
+match KERealSimpStateWaitAdv1 {2} 0. 
+ move => &m. skip. smt().
+ if{2}.
+match{2}.
+     (*is adv for Fw1 but dec fails*)
+
+     rcondt{1} 0. move => &m. skip. smt().
+inline loop.
+sp.
+     rcondt{1} 0. move => &m. skip. smt().
+     inline invoke.
+     sp.
+ rcondt{1} 0. move => &m. skip. smt.
+     sp.
+     rcondt{1} 0. move => &m. skip. move => &hr. move => />. smt().
+     inline parties.
+ sp.
+     case(UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Wait
+     (_intport_Pt1 func)
+     (_intport_Pt2 func)
+     (epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)));
+last first. exfalso. smt().
+match _State_IF_Wait {1} 0. 
+ move => &m. skip. smt().
+       case(UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec _m{1} = None);
+       last first. exfalso. smt(UC_Fw1.UC_FwAdv.valid_epdp__fw_ok UC_Fw1.UC_FwAdv.eq_of_valid__fw_ok).
+       match None {1} 0. move => &m. skip. smt().
+       sp.
+   seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+
+         (*is adv for Fw1 and dec succeeds*)
+     rcondt{1} 0. move => &m. skip. smt().
+inline loop.
+sp.
+     rcondt{1} 0. move => &m. skip. smt().
+     inline invoke.
+     sp.
+ rcondt{1} 0. move => &m. skip. smt.
+     sp.
+     rcondt{1} 0. move => &m. skip. move => &hr. move => />. smt().
+     inline parties.
+ sp.
+     case(UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Wait
+     (_intport_Pt1 func)
+     (_intport_Pt2 func)
+     (epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)));
+last first. exfalso. smt().
+match _State_IF_Wait {1} 0. 
+   move => &m. skip. smt().
+   match{1}.
+exfalso. smt(UC_Fw1.UC_FwAdv.valid_epdp__fw_ok UC_Fw1.UC_FwAdv.eq_of_valid__fw_ok).
+inline _State_IF_Wait__FwAdv__fw_ok.
+   rcondt{1} 5.
+   move => &m. sp. skip. move => &hr />. smt.
+       sp.
+
+      seq 1 0 : (
+     not_done{1} = true /\
+     UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec m{1} = Some _x{1} /\
+     KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1{!2} pt2{!2} q1{!2} /\
+      r{2} = None /\
+       r{1} = None /\
+       inc func adv /\
+     ={m} /\
+     m0{1} =  UC_Fw1.UC_FwDir.D.epdp__fw_rsp.`enc
+     {| UC_Fw1.UC_FwDir.D.fw_rsp___func = _addr_Fw1 func;
+       UC_Fw1.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt2 func;
+       UC_Fw1.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt1 func;
+       UC_Fw1.UC_FwDir.D.fw_rsp__u = (epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)); |} /\
+         mi_invoke_loop_calls_func_invoke func m{1} /\
+         RFIP.self{1} = func /\
+         UC_KEReal._self{1} = func /\
+         UC_Fw1.IF._self{1} = _addr_Fw1 func /\
+         UC_Fw2.IF._self{1} = _addr_Fw2 func /\
+         KERealSimp._self{2} = func /\
+
+       KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1 pt2 q1 /\
+     (envport func pt1) /\
+ (envport func pt2) /\
+  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (UC_KEReal._st_Pt2{1}  = _State_Pt2_WaitFwd1) /\
+  (UC_Fw1.IF._st{1} = UC_Fw1._State_IF_Final) /\
+  (UC_Fw2.IF._st{1} = UC_Fw2._State_IF_Init) 
+  
+
+         /\
+     m{2}.`1 = Adv /\
+     m{2}.`3.`1 = adv /\ _addr_Fw1 KERealSimp._self{2} = m{2}.`2.`1
+  ).
+
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
+      skip. move => &1 &2 P. smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw1.UC_FwDir.D.eq_of_valid__fw_rsp). 
+
+rcondt{1} 0.  move => &m. sp. skip. trivial.
+      sp.
+
+rcondf{1} 0. move => &m. sp. skip. smt.
+rcondf{1} 0. move => &m. sp. skip. smt.
+rcondf{1} 0. move => &m. sp. skip. smt.
+rcondt{1} 0. move => &m. sp. skip. smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw1.UC_FwDir.D.eq_of_valid__fw_rsp). 
+inline party_Pt2.
+      sp.
+      case(UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1);
+      last first. exfalso. smt().
+      match  _State_Pt2_WaitFwd1 {1} 0. auto; smt().
+      match Some {1} 0. auto; progress; smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw1.UC_FwDir.D.eq_of_valid__fw_rsp).
+
+      rcondt{1} 0. move => &m. skip. smt(UC_Fw1.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw1.UC_FwDir.D.eq_of_valid__fw_rsp). 
+  
+      inline _State_Pt2_WaitFwd1__Fw1__D__fw_rsp.
+sp. match Some {1} 0. auto; progress; smt.
+sp.  
+
+inline _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok.
+sp.
+rcondt{2} 0.  move => &m. skip. smt.
+      sp.
+      seq 1 1 :
+  (#pre /\ ={q2}).
+    rnd. skip. smt().
+
+  rcondt{1} 0. move => &m. skip. smt.
+    sp.
+seq 1 0 : (
+    !not_done{1} /\
+    ={q2, k1} /\
+    envport func pt1 /\
+    envport func pt2 /\
+r{2} =
+    Some (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+      {| UC_KEDir.Pt2.ke_rsp1___func = KERealSimp._self{2};
+         UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+        UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+        UC_KEDir.Pt2.ke_rsp1__k = k1{2} ^ q2{2}; |})
+
+        /\
+
+r0{1} =
+      Some (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+      {| UC_KEDir.Pt2.ke_rsp1___func = func;
+        UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+        UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+        UC_KEDir.Pt2.ke_rsp1__k = k1{1} ^ q2{1}; |})
+
+          /\
+
+UC_KEReal._self{1} = func /\
+       UC_Fw1.UC_Forw._self{1} = _addr_Fw1 func /\
+       UC_Fw2.UC_Forw._self{1} = _addr_Fw2 func /\
+          KERealSimp._self{2} = func /\
+      
+      KERealSimp._st{2} = KERealSimpStateWaitReq2 pt1 pt2 q1 q2{2} /\
+          UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Final /\
+      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1 /\
+      UC_KEReal._st_Pt2{1} =  _State_Pt2_WaitReq2 pt2 q2{1} /\
+      UC_Fw2.UC_Forw._st{1} = UC_Fw2._State_IF_Init
+    ).
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
+        skip. smt.
+    
+rcondf{1} 0. move => &m. skip. trivial.
+        sp. skip. move => &1 &2 P.
+        have H : r{1} = r{2}. smt.
+        rewrite H //=.
+        have H2 : real_simp_rel2
+    {| real_simp_rel_st_func = func;
+      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+      real_simp_rel_st_fws1 = UC_Fw1.UC_Forw._st{1};
+      real_simp_rel_st_fws2 = UC_Fw2.UC_Forw._st{1};
+      real_simp_rel_st_rss = KERealSimp._st{2}; |}
+      pt1 pt2 q1 q2{1}.
+smt().    
+      smt(RealSimpRel2).
+
+      (*not adv msg for Fw1*)
+      if{1}; last first. skip. move => />.
+    inline loop.
+      sp.
+      rcondt{1} 0. auto.
+      inline invoke.
+      sp.
+    if{1}. sp. if{1}.
+    inline parties. sp.
+        match _State_IF_Wait {1} 0. auto; smt().
+    match None {1} 0. auto; progress; smt.
+        sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+             sp.
+      seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+
+if{1}. sp. if{1}.
+    inline parties. sp.
+        match _State_IF_Init {1} 0. auto; smt().
+         match None {1} 0. auto; progress; smt(not_le_ext_nonnil_l UC_Fw2.UC_FwDir.D.valid_epdp__fw_req
+        UC_Fw2.UC_FwDir.D.eq_of_valid__fw_req).
+        sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+     
+             sp.
+     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).     
+      if{1}.
+      inline party_Pt1.
+      case(UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1); last first. exfalso; smt().
+    sp. match _State_Pt1_WaitFwd2 {1} 0. auto. smt().
+match{1}.
+      sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+rcondf{1} 0.  auto; progress; smt.
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+
+     if{1}.
+      inline party_Pt2.
+      case(UC_KEReal._st_Pt2{1} =  _State_Pt2_WaitFwd1); last first. exfalso; smt().
+    sp. match  _State_Pt2_WaitFwd1 {1} 0. auto. trivial.
+match{1}.
+      sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+rcondf{1} 0.  auto; progress; smt.
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel1
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel1).
+
+
+    
+ case
+ (exists (pt1 pt2 : port, q1 q2 : exp),
+   real_simp_rel2
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     pt1
+     pt2
+     q1
+     q2
+ ).
+     sp.
+     elim* => pt1 pt2 q1 q2.
+     case(KERealSimp._st{2} =
+     KERealSimpStateWaitReq2 pt1 pt2 q1 q2); last first. exfalso. auto. smt().
+ match KERealSimpStateWaitReq2 {2} 0. auto; smt().
+     if{2}; last first.
+     (*not a Dir msg with extport Pt2*)
+if{1}; last first. skip. auto; smt().
+inline loop.
+     sp.
+ rcondt{1} 0. auto; smt().
+inline invoke.
+     sp.
+     if{1}. sp. if{1}.
+ inline parties.
+     sp.
+ match _State_IF_Final {1} 0. auto; progress; smt().
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+     sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+if{1}. sp. if{1}.
+ inline parties.
+     sp.
+          match _State_IF_Init {1} 0. auto; smt().
+         match None {1} 0. auto; progress; smt(not_le_ext_nonnil_l UC_Fw2.UC_FwDir.D.valid_epdp__fw_req
+        UC_Fw2.UC_FwDir.D.eq_of_valid__fw_req).
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+     sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+
+if{1}.
+         inline party_Pt1.
+sp.
+case(UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1); last first. exfalso. auto. smt().
+match _State_Pt1_WaitFwd2 {1} 0. auto; smt().
+match{1}.
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+         rcondf{1} 0. auto; progress; smt.
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+if{1}.
+inline UC_KEReal.party_Pt2.
+         sp.
+         match _State_Pt2_WaitReq2 {1} 0. auto;smt().
+     match None {1} 0. auto; smt(UC_KEDir.Pt2.valid_epdp__ke_req2
+        UC_KEDir.Pt2.eq_of_valid__ke_req2).
+         
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+     sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+
+         match{2}.
+     (*Dir msg with extport Pt2 but ke_req2 does not decode*)
+         if{1}.
+inline loop.
+         sp.
+         rcondt{1} 0. auto; smt().
+inline invoke.
+         sp.
+         rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
+     rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
+rcondf{1} 0. auto; progress; smt().
+rcondt{1} 0. auto; progress; smt().
+         inline party_Pt2.
+         sp.
+         case (UC_KEReal._st_Pt2{1} = _State_Pt2_WaitReq2 pt2 q2); last first.
+         exfalso. auto; progress; smt().
+match _State_Pt2_WaitReq2 {1} 0. auto; progress; smt().
+         case(UC_KEDir.Pt2.epdp__ke_req2.`dec _m{1} = None); last first.
+         exfalso. auto; progress;
+         smt(UC_KEDir.Pt2.valid_epdp__ke_req2 UC_KEDir.Pt2.eq_of_valid__ke_req2).
+         match None {1} 0.  auto; progress; smt().
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+skip.  
+         smt(RealSimpRel2).
+
+ (*Dir msg with extport Pt2 ke_req2 decodes*)
+if{1}.
+inline loop.
+         sp.
+         rcondt{1} 0. auto; smt().
+inline invoke.
+         sp.
+         rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
+     rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
+rcondf{1} 0. auto; progress; smt().
+rcondt{1} 0. auto; progress; smt().
+         inline party_Pt2.
+         sp.
+         case (UC_KEReal._st_Pt2{1} = _State_Pt2_WaitReq2 pt2 q2); last first.
+         exfalso. auto; progress; smt().
+match _State_Pt2_WaitReq2 {1} 0. auto; progress; smt().
+case(UC_KEDir.Pt2.epdp__ke_req2.`dec _m{1} = Some _x{2}); last first.
+         exfalso. auto; progress;
+         smt(UC_KEDir.Pt2.valid_epdp__ke_req2 UC_KEDir.Pt2.eq_of_valid__ke_req2).
+match Some {1} 0. auto; progress; smt(). 
+         inline _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2.
+     sp 0 8.
+         if{2}; last first.
+     (*pt2 port is different than original*)
+         sp.
+         inline _State_Pt2_WaitReq2__KEDir__Pt2__ke_req2.
+rcondf{1} 5. auto; progress; smt().
+sp.
+    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel2
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel2).
+         (*pt2 port is same as original*)
+inline _State_Pt2_WaitReq2__KEDir__Pt2__ke_req2.
+         rcondt{1} 5. auto; progress; smt().
+     sp.
+     
+seq 1 0 : (
+       not_done{1} = true /\
+       
+         UC_KEDir.Pt2.epdp__ke_req2.`dec m{2} = Some _x{2} /\
+       _x{2}.`UC_KEDir.Pt2.ke_req2__pt2 = pt2 /\
+     m{2}.`1 = Dir /\
+     envport func m{2}.`3 /\
+         m{2}.`2 = _extport_Pt2 func  /\
+    
+      r{2} = Some (UC_Fw2.UC_FwAdv.epdp__fw_obs.`enc
+         {| UC_Fw2.UC_FwAdv.fw_obs___func = _addr_Fw2 func;
+           UC_Fw2.UC_FwAdv.fw_obs___adv = adv;
+           UC_Fw2.UC_FwAdv.fw_obs__pt1 = _intport_Pt2 func;
+           UC_Fw2.UC_FwAdv.fw_obs__pt2 = _intport_Pt1 func;
+           UC_Fw2.UC_FwAdv.fw_obs__u = epdp_key_univ.`enc (g ^ q2) ; |}) /\
+       m0{1} = (UC_Fw2.UC_FwDir.D.epdp__fw_req.`enc
+         {| UC_Fw2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
+           UC_Fw2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
+           UC_Fw2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
+           UC_Fw2.UC_FwDir.D.fw_req__u = epdp_key_univ.`enc (g ^ q2); |})   /\
+       r0{1} = Some m0{1} /\
+      
+       inc func adv /\
+     ={m} /\
+     
+         mi_invoke_loop_calls_func_invoke func m{1} /\
+         RFIP.self{1} = func /\
+         UC_KEReal._self{1} = func /\
+         UC_Fw1.IF._self{1} = _addr_Fw1 func /\
+         UC_Fw2.IF._self{1} = _addr_Fw2 func /\
+         KERealSimp._self{2} = func /\
+
+       KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
+     (envport func pt1) /\
+ (envport func pt2) /\
+  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (UC_KEReal._st_Pt2{1}  = _State_Pt2_Final) /\
+  (UC_Fw1.IF._st{1} = UC_Fw1._State_IF_Final) /\
+  (UC_Fw2.IF._st{1} = UC_Fw2._State_IF_Init)
+  ).
+
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
+      skip. smt().
+
+rcondt{1} 0. by auto.
+      sp.
+      rcondf{1} 0. move => &m. skip. 
+move => &hr P. 
+      have H: m2{hr}.`2.`1 = _addr_Fw2 func. smt(). rewrite H.
+      have I : UC_KEReal._self{hr} = func. smt(). rewrite I.
+  rewrite /_addr_Fw1 /_addr_Fw2.
+      smt(sing_not_le).
+rcondt{1} 0. auto.  
+      sp.
+      rcondt{1} 0.
+  move => &m. skip. move=> &hr P.
+      have H : m6{hr}.`2.`1 = UC_Fw2.UC_Forw._self{hr}. smt().
+      rewrite H //=. clear H.
+  have H : m6{hr}.`1 = Dir. smt().
+      rewrite H //=. clear H.
+      have H : UC_Fw2.UC_Forw._self{hr} = _addr_Fw2 func. smt().
+      rewrite H //=. clear H.
+  have H : m6{hr}.`3 = _intport_Pt2 func. smt().
+  rewrite H //=. clear H. smt.
+
+inline parties.  
+      sp.
+      case(UC_Fw2.UC_Forw._st{1} = UC_Fw2._State_IF_Init); last first. exfalso. smt().
+      match _State_IF_Init {1} 0. auto.
+case(UC_Fw2.UC_FwDir.D.epdp__fw_req.`dec _m1{1} =Some {| UC_Fw2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
+           UC_Fw2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
+           UC_Fw2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
+      UC_Fw2.UC_FwDir.D.fw_req__u = epdp_key_univ.`enc (g ^ q2); |});
+      last first. exfalso.
+move => &1 &2 P.
+have H : UC_Fw2.UC_FwDir.D.epdp__fw_req.`dec m0{1} =
+   Some
+  {| UC_Fw2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
+    UC_Fw2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
+    UC_Fw2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
+    UC_Fw2.UC_FwDir.D.fw_req__u = epdp_key_univ.`enc (g ^ q2); |}.
+    smt.
+    have I : m0{1} = _m1{1} . smt().
+  move : H.
+    rewrite I.
+  smt().
+
+match Some {1} 0. auto; smt().
+inline _State_IF_Init__FwDir__D__fw_req.
+rcondt{1} 5. auto; smt.
+sp.
+
+    seq 1 0 : (! not_done{1} /\
+    r0{1} = r{2} /\
+  real_simp_rel3
+    {| real_simp_rel_st_func = func;
+      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+      real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+      real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+      real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+  ).
+
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
+      skip.
+  
+  move => &1 &2 P.
+  smt(UC_Fw2.UC_FwDir.D.eq_of_valid__fw_req
+      UC_Fw2.UC_FwDir.D.valid_epdp__fw_req
+        _adv_pi_begin_gt0
+        UC_Fw2.UC_FwAdv.valid_epdp__fw_obs
+      UC_Fw2.UC_FwAdv.eq_of_valid__fw_obs).
+rcondf{1} 0. auto.
+sp. skip. smt(RealSimpRel3).  
+exfalso. smt().
+
+case
+ (exists (pt1 pt2 : port, q1 q2 : exp),
+   real_simp_rel3
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     pt1
+     pt2
+     q1
+     q2
+ ).
+     sp.
+ elim*=> pt1 pt2 q1 q2.
+
+case(KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2); last first. exfalso. auto; progress; smt().
+match KERealSimpStateWaitAdv2 {2} 0. auto; smt().
+     if{2}; last first.
+     (*not adv msg for Fw2*)
+ if{1}; last first. auto; smt().
+inline loop.
+     sp.
+     rcondt{1} 0. auto; smt().
+ inline invoke.
+     sp.
+     if{1}.
+     sp.
+     if{1}; last first.
+ sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+     
+         inline parties.
+         sp.
+         case(UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Final); last first.
+         exfalso. auto; smt().
+         match _State_IF_Final {1} 0. auto; smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+
+if{1}.
+     sp.
+     if{1}; last first.
+ sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+     
+         inline parties.
+         sp.
+     case(UC_Fw2.UC_Forw._st{1} = UC_Fw2._State_IF_Wait pt1 pt2 (epdp_key_univ.`enc (g ^ q2))); last first.
+         exfalso. auto; smt.
+         match _State_IF_Wait {1} 0. auto; smt().
+         case(UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec _m{1} = None); last first.
+         exfalso. auto;smt.
+     match None {1} 0. auto; smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+
+if{1}.
+         inline party_Pt1.
+sp.
+         case(UC_KEReal._st_Pt1{1} =  _State_Pt1_WaitFwd2 pt1 q1); last first.
+     exfalso. auto;smt().
+match _State_Pt1_WaitFwd2 {1} 0. auto;smt().
+match{1}.
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+         rcondf{1} 0.
+     move => &m. skip. move=> &hr.
+         have H : mi_invoke_loop_calls_func_invoke func m{hr} => m{hr}.`3.`1 <> _addr_Fw2 func. auto;smt.
+move => P. auto;smt().
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+
+         if{1}.
+     inline party_Pt2.
+         sp.
+         case(UC_KEReal._st_Pt2{1} = _State_Pt2_Final); last first. exfalso. auto; smt().
+     match _State_Pt2_Final {1} 0. auto; smt().
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+
+     match{2}.
+         (*adv msg for Fw2 but fw_ok does not decode*)
+         rcondt{1} 0. auto; smt().
+     inline loop.
+         sp.
+         rcondt{1} 0. auto; smt().
+         inline invoke.
+         sp.
+if{1}. sp. if{1}.
+inline parties. sp.
+         match _State_IF_Final {1} 0. auto; smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+         
+         rcondt{1} 0. auto; smt.
+         sp.
+         rcondt{1} 0. auto; smt.
+         inline parties.
+sp.
+
+         match _State_IF_Wait {1} 0. auto; smt().
+     match None {1} 0. auto; smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel3
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel3).
+     
+         (*adv msg for Fw2 and fw_ok decodes*)
+         rcondt{1} 0. auto;smt().
+     inline loop.
+         sp.
+         rcondt{1} 0. auto; smt().
+         inline invoke.
+         sp.
+         rcondf{1} 0. auto; progress; smt.
+         rcondt{1} 0. auto; smt.
+         sp.
+         rcondt{1} 0. auto; smt.
+         inline parties.
+         sp.
+case(UC_Fw2.IF._st{1} = UC_Fw2._State_IF_Wait (_intport_Pt2 func) (_intport_Pt1 func) (epdp_key_univ.`enc (g ^ q2)));last first. exfalso. auto;progress;smt().     
+         match _State_IF_Wait {1} 0. auto; smt().
+match Some {1} 0. auto; smt(UC_Fw1.UC_FwAdv.valid_epdp__fw_ok UC_Fw1.UC_FwAdv.eq_of_valid__fw_ok).
+         inline _State_IF_Wait__FwAdv__fw_ok.
+   rcondt{1} 5.
+   move => &m. sp. skip. move => &hr. auto; progress; smt.
+       sp. simplify.
+
+      seq 1 0 : (
+     not_done{1} = true /\
+       
+         UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec m{1} = Some _x{1} /\
+     m{2}.`1 = Adv /\
+      m{2}.`3.`1 = adv /\ _addr_Fw2 func = m{2}.`2.`1 /\
+    
+      r{2} = None /\
+       r0{1} = Some m0{1} /\
+      
+       inc func adv /\
+     ={m} /\ m0{1} = UC_Fw2.UC_FwDir.D.epdp__fw_rsp.`enc
+         {| UC_Fw2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func;
+           UC_Fw2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
+           UC_Fw2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func;
+           UC_Fw2.UC_FwDir.D.fw_rsp__u = (epdp_key_univ.`enc (g ^ q2)); |} /\
+     
+         mi_invoke_loop_calls_func_invoke func m{1} /\
+         RFIP.self{1} = func /\
+         UC_KEReal._self{1} = func /\
+         UC_Fw1.IF._self{1} = _addr_Fw1 func /\
+         UC_Fw2.IF._self{1} = _addr_Fw2 func /\
+         KERealSimp._self{2} = func /\
+
+       KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
+     (envport func pt1) /\
+     (envport func pt2) /\
+       pt1{!2} = pt1 /\
+       pt2{!2} = pt2 /\
+     pt1{!1} = _intport_Pt2 func /\
+       pt2{!1} = _intport_Pt1 func /\
+       q1{!1} = q1 /\
+       q2{!1} = q2 /\
+      q1{!2} = q1 /\
+       q2{!2} = q2 /\
+  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
+  (UC_KEReal._st_Pt2{1}  = _State_Pt2_Final) /\
+  (UC_Fw1.IF._st{1} = UC_Fw1._State_IF_Final) /\
+  (UC_Fw2.IF._st{1} = UC_Fw2._State_IF_Final)
+  ).
+
+exlim r0{1} => r0.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
+      skip. move => &1 &2 P.  smt(UC_Fw2.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw2.UC_FwDir.D.eq_of_valid__fw_rsp).
+
+      rcondt{1} 0. auto;smt().
+  sp.
+rcondf{1} 0. auto;smt.
+      rcondf{1} 0. auto;smt.
+      rcondt{1} 0. auto;smt.
+  inline party_Pt1.
+      sp.
+     
+      match _State_Pt1_WaitFwd2 {1} 0. auto;smt().
+ 
+           match Some {1} 0. auto;progress;smt(UC_Fw2.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw2.UC_FwDir.D.eq_of_valid__fw_rsp).
+           rcondt{1} 0. auto;smt.
+       inline _State_Pt1_WaitFwd2__Fw2__D__fw_rsp.
+      sp.
+      case (epdp_key_univ.`dec u3{1} = Some (g ^ q2)); last first.
+      exfalso. move => &1 &2 P.
+have H : epdp_key_univ.`dec u3{1} = Some (g ^ q2).
+  have H : UC_Fw2.UC_FwDir.D.epdp__fw_rsp.`dec (UC_Fw2.UC_FwDir.D.epdp__fw_rsp.`enc
+    {| UC_Fw2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; UC_Fw2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
+        UC_Fw2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; UC_Fw2.UC_FwDir.D.fw_rsp__u = epdp_key_univ.`enc
+        (g ^ q2); |}) = Some {| UC_Fw2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; UC_Fw2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
+        UC_Fw2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; UC_Fw2.UC_FwDir.D.fw_rsp__u = epdp_key_univ.`enc
+        (g ^ q2); |}.
+          smt(UC_Fw2.UC_FwDir.D.valid_epdp__fw_rsp UC_Fw2.UC_FwDir.D.eq_of_valid__fw_rsp).
+      have H' :UC_Fw2.UC_FwDir.D.epdp__fw_rsp.`dec (m0{1}) =
+   Some {| UC_Fw2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; UC_Fw2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
+        UC_Fw2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; UC_Fw2.UC_FwDir.D.fw_rsp__u = epdp_key_univ.`enc
+        (g ^ q2); |}.
+smt().
+have H'': _x0{1} = {| UC_Fw2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; UC_Fw2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
+        UC_Fw2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; UC_Fw2.UC_FwDir.D.fw_rsp__u = epdp_key_univ.`enc
+        (g ^ q2); |}. smt().
+      have U3 : u3{1} = epdp_key_univ.`enc
+      (g ^ q2). smt().
+      rewrite U3.
+smt().
+smt().
+        
+      match Some {1} 0. auto; smt(). 
+           rcondt{1} 0. auto;smt().
+           sp.
+elim* => r0_L r2_L _r5_L _st_Pt1_L _r7_L.
+        inline _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok.  rcondt{2} 6. auto; progress ; smt().
+sp.
+seq 1 0 : (! not_done{1} /\
+    r0{1} = r{2} /\
+  real_simp_rel4
+    {| real_simp_rel_st_func = func;
+      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+      real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+      real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+      real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+  ).
+
+  exlim r0{1} => r0.
+  elim* => r_R _st_R.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
+      skip.
+  
+  move => &1 &2 P.
+  have H : (r0{!1}, m0{1}.`2.`1).`1 = r0.
+  smt(UC_Fw2.UC_FwDir.D.eq_of_valid__fw_rsp
+      UC_Fw2.UC_FwDir.D.valid_epdp__fw_rsp
+        _adv_pi_begin_gt0
+        UC_KEDir.Pt1.valid_epdp__ke_rsp2
+      UC_KEDir.Pt1.eq_of_valid__ke_rsp2).
+      rewrite H //=. clear H.
+  have H : RFCore.after_core_return RFCore.MakeRF.self{1} r0 m0{1}.`2.`1 .
+  smt().
+      rewrite H //=. clear H.
+  move => result Q.
+have H : result.`1 = r0.
+  smt().
+      rewrite H //=. clear H.
+have H : ! result.`3.
+  smt().
+      rewrite H //=. clear H.
+have H : r{2} = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+       {| UC_KEDir.Pt1.ke_rsp2___func = KERealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt10{2};
+         UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
+         rewrite H. clear H.
+         have H : pt10{2} = pt1. smt(). rewrite H. clear H.
+have H : r0 = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+       {| UC_KEDir.Pt1.ke_rsp2___func = KERealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+         UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
+         rewrite H //=. clear H.
+smt().     
+ 
+rcondf{1} 0. auto.
+sp. skip. smt(RealSimpRel4).
+       
+ case
+ (
+   real_simp_rel4
+   {|real_simp_rel_st_func = func;
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+ ).
+ sp.
+     case(KERealSimp._st{2} = KERealSimpStateFinal); last first. exfalso. auto;smt().
+ match KERealSimpStateFinal {2} 0. auto;smt().
+     if{1};last first. auto;smt().
+ inline loop.
+     sp.
+     rcondt{1} 0. auto;smt().
+ inline invoke.
+     sp.
+     if{1}.
+     sp.
+     if{1}.
+     inline parties.
+     sp.
+     case(UC_Fw1.UC_Forw._st{1} = UC_Fw1._State_IF_Final);last first.
+     exfalso. auto; smt().
+     match _State_IF_Final {1} 0. auto;smt().
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+     if{1}.
+     sp.
+     if{1}.
+     inline parties.
+     sp.
+    (* case(UC_Fw2.UC_Forw._st{1} = UC_Fw2._State_IF_Final);last first.
+     exfalso. auto; smt().*)
+     match _State_IF_Final {1} 0. auto;smt().
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+     
+         if{1}.
+         inline party_Pt1.
+         sp.
+         match _State_Pt1_Final {1} 0. auto;smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+     if{1}.
+         inline party_Pt2.
+         sp.
+         match _State_Pt2_Final {1} 0. auto;smt().
+     sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+      sp.
+seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
+  real_simp_rel4
+       {| real_simp_rel_st_func = func;
+         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
+         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+         real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+     ).
+         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
+         skip. move => />.
+         rcondf{1} 0.
+         trivial.
+         sp.
+         skip.  
+         smt(RealSimpRel4).
+
+
+
+
+
+
+
+
+ 
+exfalso.
+ move => &1 &2.
+ move => [#].
+ move => _ _ _ _ _ _ _ _.
+move => []; smt().
+qed.
+
+lemma Exper_KEReal_KERealSimp
+    (Env <: ENV {-MI, -RFIP, -KERealSimp})
+    (Adv <: ADV {-MI, -RFIP, -KERealSimp, -Env})
+    (func' : addr) (in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  Pr[Exper(MI(RFIP, Adv), Env).main
+       (func', in_guard') @ &m : res] =
+  Pr[Exper(MI(KERealSimp, Adv), Env).main
+       (func', in_guard') @ &m : res].
+     proof.
+     print inter_init_pre.
+     move => exper_pre disjoint.
+       byequiv; first last.
+       trivial.
+     trivial.
+       proc.
+       seq 1 1 : (
+       ={func, in_guard, glob Adv, glob Env, glob MI}
+       /\ func{1} = func'
+         /\ MI.func{1} = func'
+       /\ MI.in_guard{1} = in_guard'
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     ).
+       inline *.
+       sp.
+         call (_ : ={ glob Env, glob MI}
+
+         /\ MI.func{1} = func'
+       /\ MI.in_guard{1} = in_guard'
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     ).
+       skip.
+     move => />.
+     print real_simp_rel0.
+         rewrite RealSimpRel0.
+         rewrite /real_simp_rel0 //.
+
+     
+         call (_ : ={glob MI, glob Adv}
+/\ MI.func{1} = func'
+       /\ MI.in_guard{1} = in_guard'
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     );
+       last first.
+       skip; move => />.
+  
+       proc.
+       if; last first.
+       sp. skip. move => />.
+     move => />.
+     
+       inline loop.
+         sp; wp.
+     print KEReal_KERealSimp_invoke.
+     while (={glob MI, glob Adv, not_done, m, m0, r0}
+       /\ MI.func{1} = func'
+         /\ MI.in_guard{1} = in_guard'
+         /\
+
+      (MakeInt.mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1})
+  
+
+        (*
+        op mi_loop_invar
+     (func : addr, in_guard : int fset,
+      r : msg option, m : msg, not_done : bool) : bool =
+  inter_init_pre func /\
+  (not_done =>
+   (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
+   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2) \/
+   (m.`1 = Adv /\ m.`2.`1 = adv /\
+    (func <= m.`3.`1 /\ 0 < m.`2.`2 \/
+     m.`3 = env_root_port /\ m.`2.`2 = 0 \/
+     envport func m.`3 /\ 0 < m.`2.`2 /\
+     m.`2.`2 \in in_guard))) /\
+  (! not_done =>
+   r = None \/
+   (envport0 func (oget r).`2 /\
+    ((oget r).`1 = Dir /\ (oget r).`2 <> env_root_port /\
+      func = (oget r).`3.`1 \/
+     (oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
+        ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0)))).
+        
+        op main_guard (func : addr, in_guard : int fset, m : msg) : bool =
+m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
+  m.`1 = Adv /\ m.`2.`1 = adv /\
+  (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
+   0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func m.`3).
+        *)      
+       
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|});
+       last first.
+     skip. move => />. smt(). 
+     if; last first.
+     seq 1 1 : #post.
+ call(_ : 
+    ={glob MI} /\
+   MI.func{1} = func' /\
+   MI.in_guard{1} = in_guard' /\
+   RFCore.MakeRF.self{1} = func' /\
+   KERealSimp._self{2} = func' /\
+   UC_KEReal._self{1} = func' /\
+   UC_Fw1.IF._self{1} = _addr_Fw1 func' /\
+   UC_Fw2.IF._self{1} = _addr_Fw2 func' /\
+   real_simp_rel
+     {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+         real_simp_rel_st_fws1 = UC_Fw1.IF._st{1}; real_simp_rel_st_fws2 =
+         UC_Fw2.IF._st{1}; real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+       skip. auto;progress; smt().
+
+inline after_adv.
+auto;progress;smt().
+       smt().
+
+ seq 1 1 : #post. (*
+       ={glob MI, glob Adv, not_done, m, m0, r0} /\ MI.func{1} = func'
+         
+       /\  MakeInt.MI.func{1} <= m0{1}.`2.`1
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     ); last first.
+     call(_ : ={glob MI, glob Adv} /\ MI.func{1} = func'
+         /\ MI.in_guard{1} = in_guard'
+       /\ RFCore.MakeRF.self{1} = func'
+       /\ KERealSimp._self{2} = func'
+         /\ UC_KEReal._self{1} = func'
+         /\ UC_Fw1.IF._self{1} = _addr_Fw1 func'
+         /\ UC_Fw2.IF._self{1} = _addr_Fw2 func'
+       /\ real_simp_rel
+   {|real_simp_rel_st_func = func';
+     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
+     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
+     real_simp_rel_st_fws1 = UC_Fw1.IF._st{1};
+     real_simp_rel_st_fws2 = UC_Fw2.IF._st{1};
+     real_simp_rel_st_rss  = KERealSimp._st{2}|}*)
+         auto.
+
+     call (KEReal_KERealSimp_invoke func').
+         skip.
+   move => &1 &2 P. 
+       have H: inc func' adv. smt(). rewrite H //=. clear H.
+   
+       have H: m0{1} = m0{2}. smt(). rewrite H //=. clear H.
+   
+       have H:RFCore.MakeRF.self{1} = func'. smt(). rewrite H //=. clear H.
+   
+       have H: UC_KEReal._self{1} = func' . smt(). rewrite H //=. clear H.
+   
+       have H: UC_Fw1.UC_Forw._self{1} = _addr_Fw1 func'. smt(). rewrite H //=. clear H.
+   
+   have H: UC_Fw2.UC_Forw._self{1} = _addr_Fw2 func' . smt(). rewrite H //=. clear H.
+       have H:KERealSimp._self{2} = func'  . smt(). rewrite H //=. clear H.
+   
+       have H:real_simp_rel
+   {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
+       real_simp_rel_st_fws1 = UC_Fw1.UC_Forw._st{1}; real_simp_rel_st_fws2 =
+     UC_Fw2.UC_Forw._st{1}; real_simp_rel_st_rss = KERealSimp._st{2}; |} . smt(). rewrite H //=. clear H.
+   
+       have H:forall (result_L result_R : msg option) (_st_Pt1_L : _state_Pt1)
+  (_st_Pt2_L : _state_Pt2) (_st_L : UC_Fw1._state_IF)
+  (_st_L0 : UC_Fw2._state_IF) (_st_R : ke_real_simp_state),
+  result_L = result_R /\
+  real_simp_rel
+    {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
+        real_simp_rel_st_r2s = _st_Pt2_L; real_simp_rel_st_fws1 = _st_L;
+        real_simp_rel_st_fws2 = _st_L0; real_simp_rel_st_rss = _st_R; |} =>
+  (((MakeInt.MI.func{1} = MakeInt.MI.func{2} /\
+     MakeInt.MI.in_guard{1} = MakeInt.MI.in_guard{2}) /\
+    (glob Adv){1} = (glob Adv){2} /\
+    not_done{1} = not_done{2} /\ m{1} = m{2} /\ result_L = result_R) /\
+   MakeInt.MI.func{1} = func' /\
+   MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.mi_loop_invar func' in_guard' result_L m0{2} not_done{1} /\
+   real_simp_rel
+     {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
+         real_simp_rel_st_r2s = _st_Pt2_L; real_simp_rel_st_fws1 = _st_L;
+         real_simp_rel_st_fws2 = _st_L0; real_simp_rel_st_rss = _st_R; |}) /\
+  (not_done{1} <=> not_done{2}) . smt(). 
+   
+    have I:
+MakeInt.mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1} =>
+    mi_invoke_loop_calls_func_invoke func' m0{1}.
+rewrite /mi_loop_invar /mi_invoke_loop_calls_func_invoke.
+  move => />.
+    case (not_done{1}).
+    smt.
+  smt.
+    smt().
+
+inline after_func. auto;progress; smt().
+qed.
+     
+lemma KeyExchange_RFIP_IF_advantage
+    (Env <: ENV{-MI, -RFIP, -IF, -SIM, -DDH_Adv})
+    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM, -DDH_Adv})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      (*adv pis of KE are disj. from in_guard'*)    
+ `|Pr[Exper(MI(RFIP, Adv), Env)
+         .main(func', in_guard')
+           @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env)
+         .main(func', in_guard')
+      @ &m : res]| <=
+`|Pr[DDH.DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
+Pr[DDH.DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|
+      .
+    proof.
+      admit.
+    qed.
