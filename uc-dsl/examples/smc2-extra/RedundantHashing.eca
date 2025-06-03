@@ -22,7 +22,7 @@ prover quorum=2 ["Alt-Ergo" "Z3"].  (* both Alt-Ergo and Z3 must succeed *)
 
 (***************************** Standard Theories ******************************)
 
-require import AllCore Distr FSet FMap SmtMap List.
+require import AllCore Distr FSet FMap List.
 require IterProc.
 
 (***************************** Auxiliary Theories *****************************)
@@ -144,7 +144,7 @@ section.
    adversary has already returned its boolean result (and so oracle
    map equality is no longer of interest) *)
 
-declare module HashAdv <: HASHING_ADV {-NonOptHashing, -OptHashing}.
+declare module HashAdv <: HASHING_ADV{-NonOptHashing, -OptHashing}.
 
 (* extended hashing module interface
 
@@ -468,7 +468,8 @@ proc; inline*; sp.
 while (mem l inp' \/ dom NOH'.mp inp').
 auto; progress;
   rewrite -mem_fdom fdom_set in_fsetU1; smt(mem_fdom mem_ne_list_drop1).
-auto; progress; smt(memE).
+auto => /> &hr.
+rewrite memE /#.
 qed.
 
 local lemma NOH'_rehash_red_inps_not_red_not_dom (inp' : input) :
@@ -511,7 +512,7 @@ proc; inline*; sp.
 while
   (={l} /\ NOH'.mp{1} = OH'.mp{2} /\
    ! mem l{1} inp /\ oget NOH'.mp{1}.[inp] = out).
-auto; progress; (*[smt(mem_drop) | smt(mem_ne_list_drop1 get_setE)]*) smt.
+auto; progress; [smt(mem_drop) | smt(mem_ne_list_drop1 get_setE)].
 auto; smt(memE).
 qed.
 
@@ -564,11 +565,10 @@ local lemma NOH'_rehash_red_inps_rslt_rehash_red_inps_addl :
    NOH'.red_inps{1} = NOH'.red_inps{2} `|` fset1 inp{1} ==>
    ={res, NOH'.mp}].
 proof.
-(*proc; inline NOH'.rehash_red_inps; wp 1 3.
+proc; inline NOH'.rehash_red_inps; wp 1 3.
 conseq (_ : _ ==> ={NOH'.mp}) => //.
 transitivity*{2}
   { Iter(NOH'.I).iters(elems NOH'.red_inps, [inp]); } => //.
-progress; by exists NOH'.mp{2} NOH'.red_inps{2} inp{2} out{2}.
 symmetry.
 call (iters_perm NOH'.I iter_perm2).
 auto; progress.
@@ -586,8 +586,7 @@ auto.
 rcondt{1} 1; first auto.
 inline{1} (1) NOH'.I.f.
 seq 4 2 : (={NOH'.mp} /\ l{1} = []); first auto.
-  rcondf{1} 1; auto.*)
-admit.
+rcondf{1} 1; auto.
 qed.
 
 local lemma NOH'_rehash_red_inps_rslt_OH'_rehash_red_inps :
