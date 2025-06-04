@@ -2438,6 +2438,7 @@ inline after_func. auto;progress; smt().
 qed.
 
 require RedundantHashing.
+require import FMap.
 
 section.
 
@@ -2456,7 +2457,7 @@ proof *.
 realize doutput_ll. apply dexp_ll. qed.
 
 print RH.HASHING.
-module (KERealSimpHashingAdv : RH.HASHING_ADV)
+local module (KERealSimpHashingAdv : RH.HASHING_ADV)
              (Hash : RH.HASHING) = {
 module KERealSimpHash : FUNC =
 {
@@ -2613,6 +2614,62 @@ proc main() : bool = {
   }
 }.
 
+type real_simp_hash_rel_st = {
+  real_simp_hash_rel_st_rss : ke_real_simp_state;
+  real_simp_hash_rel_st_map : (exp_names, exp) fmap;
+}.
+
+pred real_simp_hash_rel0 (st : real_simp_hash_rel_st) =
+  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitReq1 /\
+  st.`real_simp_hash_rel_st_map.[exp1] = None /\
+  st.`real_simp_hash_rel_st_map.[exp2] = None.
+
+pred real_simp_hash_rel1 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 : exp) =
+  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitAdv1 pt1 pt2 q1 /\
+  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`real_simp_hash_rel_st_map.[exp2] = None.
+
+pred real_simp_hash_rel2 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
+  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitReq2 pt1 pt2 q1 q2 /\
+  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
+
+pred real_simp_hash_rel3 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
+  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2 /\
+  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
+
+pred real_simp_hash_rel4 (st : real_simp_hash_rel_st) =
+  st.`real_simp_hash_rel_st_rss = KERealSimpStateFinal /\
+  st.`real_simp_hash_rel_st_map.[exp1] <> None /\
+  st.`real_simp_hash_rel_st_map.[exp2] <> None.
+
+inductive real_simp_hash_rel (st : real_simp_hash_rel_st) =
+    RealSimpHashRel0 of (real_simp_hash_rel0 st)
+  | RealSimpHashRel1 (pt1 pt2 : port, q1 : exp) of
+      (real_simp_hash_rel1 st pt1 pt2 q1)
+  | RealSimpHashRel2 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_hash_rel2 st pt1 pt2 q1 q2)
+  | RealSimpHashRel3 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_hash_rel3 st pt1 pt2 q1 q2)
+  | RealSimpHashRel4  of
+      (real_simp_hash_rel4 st).
+
+local lemma KERealSimp_KERealSimpHash_OptHashing_invoke :
+  equiv
+  [KERealSimp.invoke ~
+   KERealSimpHashingAdv(RH.OptHashing).KERealSimpHash.invoke :
+   ={m} /\
+   ={_self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+   real_simp_hash_rel
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
+   ={res} /\
+   ={_self,_st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+   real_simp_hash_rel
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}].
+proof. admit. qed.
 end section.
      
 lemma KeyExchange_RFIP_IF_advantage
