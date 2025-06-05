@@ -2669,7 +2669,194 @@ local lemma KERealSimp_KERealSimpHash_OptHashing_invoke :
    real_simp_hash_rel
    {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}].
-proof. admit. qed.
+ proof.
+   proc.
+   sp.
+ case
+  (real_simp_hash_rel0
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
+   match KERealSimpStateWaitReq1 {1} 0.
+     auto; progress; smt().
+ match KERealSimpStateWaitReq1 {2} 0.
+   auto; progress; smt().
+   if.
+   auto; progress; smt().
+   match.
+   auto; progress; smt().
+   auto; progress; smt().
+   auto; progress; smt().
+ move => _x _x0.
+ inline _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1.
+sp.
+if.
+   auto; progress; smt().
+   inline hash.
+   sp 0 1.
+   rcondt{2} 0.
+     auto; progress; smt().
+ seq 1 1 : (#pre /\ q1{1} = out{2}).
+     rnd.
+     auto; progress; smt().
+ sp 0 1.
+ seq 0 1 :  (#pre /\ ={q1}).
+     auto; progress; smt(get_setE).
+     sp. skip.
+ move => &1 &2 P. 
+     have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : real_simp_hash_rel1
+  {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
+    pt1{2} pt2{2} q1{2}.
+rewrite /real_simp_hash_rel1.
+    simplify.
+  have H : KERealSimpHashingAdv.KERealSimpHash._st{2} =
+KERealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2}.
+    smt(). rewrite H //=. clear H.
+have H : RH.OptHashing.mp{2}.[exp1] = Some q1{2}.
+    smt(get_setE). rewrite H //=. clear H.
+  have H : RH.OptHashing.mp{2}.[exp2] = None.
+smt(get_setE). rewrite H //=.
+    smt(RealSimpHashRel1).
+    auto; progress; smt().
+    auto; progress; smt().
+case
+ (exists (pt1 pt2 : port, q1 : exp),
+   real_simp_hash_rel1
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
+     pt1
+     pt2
+     q1
+ ).
+     match KERealSimpStateWaitAdv1 {1} 0.
+     auto; progress; smt().
+ match KERealSimpStateWaitAdv1 {2} 0.
+     auto; progress; smt().
+     if.
+     auto; progress; smt().
+     match.
+     auto; progress; smt().
+     auto; progress; smt().
+     auto; progress; smt().
+ move => x _0.
+     inline _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok.
+     sp.
+ if.
+     auto; progress; smt().
+     sp.
+     inline hash.
+     rcondt{2} 2.  auto; progress; smt().
+     sp 0 1.
+     seq 1 1 : (#pre /\ q2{1} = out{2}).
+     rnd. auto; progress; smt().
+     sp 0 1.
+     seq 0 1 : (#pre /\ ={q2}).
+     sp.
+     auto; progress; smt(get_setE).
+     sp.
+     skip.
+ move => &1 &2 P.
+     have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : real_simp_hash_rel2
+{| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+  real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
+  pt1{2}
+  pt2{2}
+  q1{2}
+q2{2}.
+smt(get_setE ).
+smt(RealSimpHashRel2). 
+  auto; progress; smt().
+  auto; progress; smt().
+case
+ (exists (pt1 pt2 : port, q1 q2 : exp),
+   real_simp_hash_rel2
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
+     pt1
+     pt2
+     q1
+     q2
+ ).
+  match KERealSimpStateWaitReq2 {1} 0.
+     auto; progress; smt().
+  match KERealSimpStateWaitReq2 {2} 0.
+     auto; progress; smt().
+     if. auto; progress; smt().
+     match. auto; progress; smt().
+     auto; progress; smt().
+     auto; progress; smt().
+ move => _x _x0.
+     inline _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2.
+   
+sp 8 8.
+     
+     if. auto; progress; smt().
+     sp.
+skip. move => &1 &2 P.
+have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : real_simp_hash_rel3
+{| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+  real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
+  pt1{2}
+  pt2{2}
+  q1{2}
+q2{2}.
+smt(get_setE ).
+  smt(RealSimpHashRel3).
+  auto; progress; smt().
+  auto; progress; smt().
+
+case
+(exists (pt1 pt2 : port, q1 q2 : exp),
+   real_simp_hash_rel3
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
+     pt1
+     pt2
+     q1
+     q2
+ ).
+
+     match KERealSimpStateWaitAdv2 {1} 0.
+     auto; progress; smt().
+ match KERealSimpStateWaitAdv2 {2} 0.
+     auto; progress; smt().
+ if; last first.
+     auto; progress; smt().
+     auto; progress; smt().
+     match. auto; progress; smt().
+     auto; progress; smt().
+     auto; progress; smt().
+ move => x y.
+     inline _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok.
+     sp 5 5.
+     if; last first.
+     auto; progress; smt().
+ auto; progress; smt().
+     auto; progress; smt( RealSimpHashRel4).
+ case
+  (real_simp_hash_rel4
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
+  match  KERealSimpStateFinal {1} 0.
+     auto; progress; smt().
+ match  KERealSimpStateFinal {2} 0.
+     auto; progress; smt().
+     sp. auto; progress; smt().
+     exfalso.
+ move => &1 &2.
+ move => [#].
+ move => _ _ _ _ _.
+ move => []; smt().
+qed.
 end section.
      
 lemma KeyExchange_RFIP_IF_advantage
