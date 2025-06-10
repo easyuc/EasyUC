@@ -6,6 +6,11 @@
 
 require import  UCCore.
 
+require import KeysExponentsAndPlaintexts.
+
+require RedundantHashing.
+require import FMap.
+
 require DDH.
 
 module DDH_Adv_globs ={
@@ -31,7 +36,13 @@ module AllCGs = {
   proc dummy () = {k<-DDH_Adv.k;}
 }.
 
-require import KeysExponentsAndPlaintexts.
+module RFIP = RFRP. (*KeyExchange has no parameters so Real Functionality with Ideal Parameters is the same as Real Functionality with Real Parameters*)
+
+section.
+
+declare module Adv <: ADV{-MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs}.
+declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs}.
+
 type ke_real_simp_state = [
     KERealSimpStateWaitReq1
   | KERealSimpStateWaitAdv1 of port & port & exp
@@ -40,7 +51,7 @@ type ke_real_simp_state = [
   | KERealSimpStateFinal
 ].
 
-module KERealSimp : FUNC =
+local module KERealSimp : FUNC =
 {
   var _self : addr
   var _st : ke_real_simp_state
@@ -188,9 +199,6 @@ module KERealSimp : FUNC =
 }.
 
 
-
-module RFIP = RFRP. (*KeyExchange has no parameters so Real Functionality with Ideal Parameters is the same as Real Functionality with Real Parameters*)
-
 (* relational invariant for connecting KEReal and KERealSimp *)
 
 type real_simp_rel_st = {
@@ -266,7 +274,7 @@ inductive real_simp_rel (st : real_simp_rel_st) =
       (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
    (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).     
 
-lemma KEReal_KERealSimp_invoke (func : addr) :
+local lemma KEReal_KERealSimp_invoke (func : addr) :
   equiv
   [RFIP.invoke ~ KERealSimp.invoke :
     inc func adv /\ ={m} /\
@@ -2190,9 +2198,7 @@ exfalso.
 move => []; smt().
 qed.
 
-lemma Exper_KEReal_KERealSimp
-    (Env <: ENV {-MI, -RFIP, -KERealSimp})
-    (Adv <: ADV {-MI, -RFIP, -KERealSimp, -Env})
+local lemma Exper_KEReal_KERealSimp
     (func' : addr) (in_guard' : int fset) &m :
   exper_pre func' =>
   disjoint in_guard' (adv_pis_rf_info rf_info) =>
@@ -2437,13 +2443,7 @@ rewrite /mi_loop_invar /mi_invoke_loop_calls_func_invoke.
 inline after_func. auto;progress; smt().
 qed.
 
-require RedundantHashing.
-require import FMap.
 
-section.
-
-declare module Adv <: ADV{-MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv}.
-declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv}.
 
 type exp_names = [exp1 | exp2 | exp3].
 
@@ -2857,7 +2857,130 @@ case
  move => _ _ _ _ _.
  move => []; smt().
 qed.
-end section.
+
+local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+            (func' adv' : addr, in_guard' : int fset) &m :
+  DDH_Adv_globs.func{m} = func' =>
+  DDH_Adv_globs.in_guard{m} = in_guard' =>
+  Pr[Exper(MI(KERealSimp, Adv), Env).main
+       (func', in_guard') @ &m : res] =
+     Pr[RH.GOptHashing(KERealSimpHashingAdv).main() @ &m : res].
+     proof.
+     move => DDH_Adv_glob_func DDH_Adv_glob_in_guard.
+       byequiv.
+       proc.
+       inline*.
+       sp.
+       seq 1 1 : (
+RH.OptHashing.mp{2} = empty /\
+  inp{2} = exp1 /\
+  inp0{2} = exp2 /\
+  func{2} = DDH_Adv_globs.func{2} /\
+  in_guard{2} = DDH_Adv_globs.in_guard{2} /\
+  func_{2} = func{2} /\
+  in_guard_{2} = in_guard{2} /\
+  MakeInt.MI.func{2} = func_{2} /\
+  MakeInt.MI.in_guard{2} = in_guard_{2} /\
+  self_{2} = MakeInt.MI.func{2} /\
+  KERealSimpHashingAdv.KERealSimpHash._self{2} = self_{2} /\
+  KERealSimpHashingAdv.KERealSimpHash._st{2} = KERealSimpStateWaitReq1 /\
+  func_{1} = func{1} /\
+  in_guard_{1} = in_guard{1} /\
+  MakeInt.MI.func{1} = func_{1} /\
+  MakeInt.MI.in_guard{1} = in_guard_{1} /\
+  self_{1} = MakeInt.MI.func{1} /\
+  KERealSimp._self{1} = self_{1} /\
+  KERealSimp._st{1} = KERealSimpStateWaitReq1 /\
+  (glob Env){2} = (glob Env){m} /\
+  DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
+  DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
+  (func{1}, in_guard{1}) = (func', in_guard') /\
+  (glob Env){1} = (glob Env){m} /\ (glob Adv){1} = (glob Adv){2}
+     ).
+call(_:true). auto;progress;smt().
+wp.
+    call(_:(={glob MI, glob Adv} /\ ={ _self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+    MakeInt.MI.func{1} = func' /\
+MakeInt.MI.in_guard{1} = in_guard' /\
+   real_simp_hash_rel
+   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|})).
+proc.
+    if;last first.
+auto;progress;smt().
+auto;progress;smt().
+inline loop.
+sp. wp.
+while (={glob MI, glob Adv, not_done, m, m0, r0}
+       /\ MI.func{1} = func'
+         /\ MI.in_guard{1} = in_guard'
+ /\ ={ _self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash)
+       /\ real_simp_hash_rel
+     {| real_simp_hash_rel_st_rss = KERealSimp._st{1};
+         real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
+       if.
+       auto;progress;smt().
+       seq 1 1 : #post.
+
+       call KERealSimp_KERealSimpHash_OptHashing_invoke.
+ auto;progress;smt().  
+       inline after_func. auto;progress; smt().
+       seq 1 1 : #pre.
+   call(_ : true (*(((MakeInt.MI.func{1}, MakeInt.MI.in_guard{1}) =
+     (MakeInt.MI.func{2}, MakeInt.MI.in_guard{2})) /\
+    MI.func{1} = func' /\
+    MI.in_guard{1} = in_guard' /\
+    (KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2} /\
+     KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}) /\
+    real_simp_hash_rel
+      {| real_simp_hash_rel_st_rss = KERealSimp._st{1};
+          real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |})*)).
+       auto;progress; smt().
+       inline after_adv. auto;progress; smt().
+       auto;progress; smt().
+  
+       skip. move => &1 &2 P.
+have H : ((func{1}, in_guard{1}).`1 = (func{2}, in_guard{2}).`1 /\
+  (func{1}, in_guard{1}).`2 = (func{2}, in_guard{2}).`2).
+     auto;progress;smt(). rewrite H //=. clear H.
+   have H : (glob Env){1} = (glob Env){2} .
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : (MakeInt.MI.func{1} = MakeInt.MI.func{2} /\
+   MakeInt.MI.in_guard{1} = MakeInt.MI.in_guard{2}).
+have H : MakeInt.MI.func{1} = func{1}.
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : func{1} = func'.
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : MakeInt.MI.in_guard{1} = in_guard{1}.
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : in_guard{1} = in_guard'.
+    auto;progress;smt(). rewrite H //=. clear H.
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : (glob Adv){1} = (glob Adv){2} .
+    auto;progress;smt(). rewrite H //=. clear H.
+    have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}.
+have H : KERealSimp._self{1} = func{1}.
+    auto;progress;smt(). rewrite H //=. clear H.
+auto;progress;smt(). rewrite H //=. clear H.
+    have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2} .
+    auto;progress;smt(). rewrite H //=. clear H.
+    have H : MakeInt.MI.func{1} = func'  .
+have H : MakeInt.MI.func{1} = func{1}. smt(). rewrite H //=. clear H.
+    auto;progress;smt(). rewrite H //=. clear H.
+    have H : MakeInt.MI.in_guard{1} = in_guard' .
+    auto;progress;smt(). rewrite H //=. clear H.
+have H : real_simp_hash_rel0
+  {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.
+rewrite /real_simp_hash_rel0.
+have H : {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.`real_simp_hash_rel_st_rss =
+    KERealSimpStateWaitReq1 . smt(). rewrite H //=. clear H.
+auto;progress;smt. smt(RealSimpHashRel0).
+    smt().
+  smt().
+qed.
+  end section.
      
 lemma KeyExchange_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM, -DDH_Adv})
