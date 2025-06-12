@@ -13,30 +13,183 @@ require import FMap.
 
 require DDH.
 
+require UC__KeyExchange.
+
+clone include UC__KeyExchange.
+
+
+
+module RFIP = RFRP. (*KeyExchange has no parameters so Real Functionality with Ideal Parameters is the same as Real Functionality with Real Parameters*)
+
 module DDH_Adv_globs ={
   var func : addr
   var in_guard : int fset
   var k1, k2, k3 : DDH.key
 }.
 
-module DDH_Adv(Env : ENV, Adv : ADV) : DDH.DDH_ADV =
-{
-    var k : DDH.key
-    proc main(k1 k2 k3 : DDH.key) = {k<-k1; return true;}
-}.
-
-require UC__KeyExchange.
-
-clone include UC__KeyExchange.
-
 module AllCGs = {
   var k : DDH.key
   module UC__AllCGs_ = AllCGs_
   module DDH_Globs = DDH_Adv_globs
-  proc dummy () = {k<-DDH_Adv.k;}
 }.
 
-module RFIP = RFRP. (*KeyExchange has no parameters so Real Functionality with Ideal Parameters is the same as Real Functionality with Real Parameters*)
+type ke_ddh_state = [
+    KEDDHStateWaitReq1
+  | KEDDHStateWaitAdv1 of (port * port)
+  | KEDDHStateWaitReq2 of (port * port)
+  | KEDDHStateWaitAdv2 of (port * port)
+  | KEDDHStateFinal
+].
+
+
+module DDH_Adv (Env : ENV, Adv : FUNC) : DDH_ADV = {
+  module KEDDH : FUNC = {
+    var _self : addr
+    var _st : ke_ddh_state
+
+    proc init(self_ : addr) : unit = {
+      _self <- self_;
+      _st <- KEDDHStateWaitReq1;
+    }
+  proc _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
+  var _r : msg option <- None;
+  var _pt1 : port <- _intport_Pt1 _self;
+  var _pt2 : port <- _intport_Pt2 _self;
+  var u : univ;
+  if (envport _self pt2) {
+    u <- epdp_port_port_key_univ.`enc (pt1, pt2, DDH_Adv_globs.k1);
+    _r <- Some
+      (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
+          UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw1.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw1.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw1.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEDDHStateWaitAdv1 pt1 pt2;
+    
+  }
+  else { _r <- None;}
+  return _r;
+  }
+
+  proc _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port) : msg option = {
+  var _r : msg option <- None;
+  if (envport _self pt2) {
+    _r <- Some
+      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+        {|
+          UC_KEDir.Pt2.ke_rsp1___func = _self;
+          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+          UC_KEDir.Pt2.ke_rsp1__k = DDH_Adv_globs.k3;
+          
+        |});
+      _st <- KEDDHStateWaitReq2 pt1 pt2;
+    }
+  return _r;
+  }
+
+  proc _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2') : msg option = {
+  var u : univ;
+  var _pt1 : port <- _intport_Pt2 _self;
+  var _pt2 : port <- _intport_Pt1 _self;
+  var _r : msg option <- None;
+  if (pt2' = pt2) {
+    u <- epdp_key_univ.`enc (DDH_Adv_globs.k2);
+    _r <- Some
+      (UC_Fw2.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
+          UC_Fw2.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw2.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw2.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw2.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEDDHStateWaitAdv2 pt1 pt2;   
+  }
+  return _r;
+  }
+
+  proc _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port) : msg option = {
+  var _r : msg option <- None;
+  if (envport _self pt1) {
+    _r <- Some
+          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+          {|
+            UC_KEDir.Pt1.ke_rsp2___func = _self;
+            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+            UC_KEDir.Pt1.ke_rsp2__k = DDH_Adv_globs.k3;
+            
+          |});
+        _st <- KEDDHStateFinal;
+  }
+  return _r;
+  }
+
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    match _st with
+    | KEDDHStateWaitReq1 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt1 _self){
+        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
+        | Some _x => {
+          r <@ _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEDDHStateWaitAdv1 pt1 pt2 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
+        match UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEDDHStateWaitReq2 pt1 pt2 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt2 _self){
+        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
+        | Some _x => {
+          r <@ _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEDDHStateWaitAdv2 pt1 pt2 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
+        match UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q1, q2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEDDHStateFinal => {}
+    end;
+    return r;
+  }
+}
+    
+    
+  
+
+  proc main(k1_ k2_ k3_ : key) : bool = {
+    var b : bool;
+    DDH_Adv_globs.k1 <- k1_; DDH_Adv_globs.k2 <- k2_; DDH_Adv_globs.k3 <- k3_;
+    b <@ Exper(MI(KEDDH, Adv), Env).main(DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
+    return b;
+  }
+}.
+
+
 
 section.
 
@@ -2549,12 +2702,6 @@ module KERealSimpHash : FUNC =
         _st <- KERealSimpStateFinal;
   }
   return _r;
-  }
-  
-  proc parties(m : msg) : msg option = {
-    var _r : msg option <- None;
-    
-    return _r;
   }
 
   proc invoke(m : msg) : msg option = {
