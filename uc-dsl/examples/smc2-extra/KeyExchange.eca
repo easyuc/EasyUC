@@ -3505,7 +3505,167 @@ if; last first.
         skip. move => &1 &2 P. progress;smt(get_setE gen_log RealSimpHashDDH1Rel0).
     smt().
 smt().    
-qed.
+  qed.
+
+type ke_hybrid_state = [
+    KEHybridStateWaitReq1
+  | KEHybridStateWaitAdv1 of port & port & exp
+  | KEHybridStateWaitReq2 of port & port & exp & exp & exp
+  | KEHybridStateWaitAdv2 of port & port & exp & exp & exp
+  | KEHybridStateFinal
+].
+
+local module (KEHybridHashingAdv : RH.HASHING_ADV)
+             (Hash : RH.HASHING) = {
+  module KEHybridHash : FUNC = {
+    var _self, adv : addr
+    var _st : ke_hybrid_state
+
+    proc init(self_ : addr) : unit = {
+      _self <- self_;
+      _st <- KEHybridStateWaitReq1;
+    }
+
+  proc _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
+  var _r : msg option <- None;
+  var _pt1 : port <- _intport_Pt1 _self;
+  var _pt2 : port <- _intport_Pt2 _self;
+  var q1 : exp;    
+  var u : univ;
+  if (envport _self pt2) {
+    q1 <@ Hash.hash(exp1);
+    u <- epdp_port_port_key_univ.`enc (pt1, pt2, (g ^ q1));
+    _r <- Some
+      (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
+          UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw1.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw1.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw1.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEHybridStateWaitAdv1 pt1 pt2 q1;
+    
+    }
+    else { _r <- None;}
+    return _r;
+  }
+
+proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
+  var _r : msg option <- None;
+  var q2, q3 : exp;  
+  if (envport _self pt2) {
+    q2 <@ Hash.hash(exp2); q3 <@ Hash.hash(exp3);  
+    _r <- Some
+      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+        {|
+          UC_KEDir.Pt2.ke_rsp1___func = _self;
+          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+          UC_KEDir.Pt2.ke_rsp1__k = (g ^ q3);
+          
+        |});
+      _st <- KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3;
+    }
+  return _r;
+  }
+
+  proc _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2' : port, q1 q2 q3 : exp ) : msg option = {
+  var u : univ;
+  var _pt1 : port <- _intport_Pt2 _self;
+  var _pt2 : port <- _intport_Pt1 _self;
+  var _r : msg option <- None;
+  if (pt2' = pt2) {
+    u <- epdp_key_univ.`enc (g ^ q2);
+    _r <- Some
+      (UC_Fw2.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
+          UC_Fw2.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw2.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw2.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw2.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3;   
+  }
+  return _r;
+  }
+  proc _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q3 : exp) : msg option = {
+  var _r : msg option <- None;
+  if (envport _self pt1) {
+    _r <- Some
+          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+          {|
+            UC_KEDir.Pt1.ke_rsp2___func = _self;
+            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q3);
+            
+          |});
+        _st <- KEHybridStateFinal;
+  }
+  return _r;
+  }
+
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    match _st with
+    | KEHybridStateWaitReq1 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt1 _self){
+        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
+        | Some _x => {
+          r <@ _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitAdv1 pt1 pt2 q1 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
+        match UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3=> {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt2 _self){
+        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
+        | Some _x => {
+          r <@ _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2, q1, q2, q3);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3=> {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
+        match UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q3);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateFinal => {}
+    end;
+    return r;
+    }
+  }
+
+  proc main() : bool = {
+    var b : bool;
+    Hash.rhash(exp1); Hash.rhash(exp2); Hash.rhash(exp3);
+    b <@ Exper(MI(KEHybridHash, Adv), Env).main
+           (DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
+    return b;
+  }
+}.
+
+
     end section.
      
 lemma KeyExchange_RFIP_IF_advantage
