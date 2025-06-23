@@ -3932,11 +3932,85 @@ sp.
     RH.NonOptHashing.mp{1}.[exp3] = Some q3{2}
     ==> b0{1} = b{2}).
 auto; progress; smt(get_setE).         
-  call(_ : true).
-
-
-
+  inline *.
+sp.
+seq 1 1 : #pre. call(_:true). auto;smt().
+      wp.
+      conseq(_ :
+    DDH_Adv_globs.k1{2} = g ^ q1{2} /\
+  DDH_Adv_globs.k2{2} = g ^ q2{2} /\
+  DDH_Adv_globs.k3{2} = g ^ q3{2} /\
+MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
+      MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
+    DDH_Adv.KEDDH._self{2} = MakeInt.MI.func{2} /\
+      DDH_Adv.KEDDH._st{2} = KEDDHStateWaitReq1 /\
+    KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
+  KEHybridHashingAdv.KEHybridHash._st{1} = KEHybridStateWaitReq1 /\
+={glob Env, glob Adv, glob MI, DDH_Adv_globs.in_guard, DDH_Adv_globs.func, func, in_guard} /\
+  RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
+  RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
+  RH.NonOptHashing.mp{1}.[exp3] = Some q3{2}
+    ==>
+={b1}
+). auto; smt().
+      call(_:
+    RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv_globs.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv_globs.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv_globs.k3{2}) /\
+  MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
+  MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
+  DDH_Adv.KEDDH._self{2} = MakeInt.MI.func{2} /\
   
+  KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
+  
+  (
+   ={glob Adv} /\
+   (MakeInt.MI.func{1}, MakeInt.MI.in_guard{1}) =
+   (MakeInt.MI.func{2}, MakeInt.MI.in_guard{2}) /\
+   ={DDH_Adv_globs.in_guard, DDH_Adv_globs.func}) /\
+ hybrid_hash_ddh2_rel
+   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
+     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
+     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
+     hybrid_hash_ddh2_rel_st_rss =
+     KEHybridHashingAdv.KEHybridHash._st{1};
+     hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH._st{2}|}
+  ).
+proc.
+      if; last first. auto;smt(). auto;smt().
+  inline loop.
+      sp. wp.
+  while(
+  (={m, m0, r0, not_done} /\
+   RH.NonOptHashing.mp{1}.[exp1] = Some (log DDH_Adv_globs.k1{2}) /\
+   RH.NonOptHashing.mp{1}.[exp2] = Some (log DDH_Adv_globs.k2{2}) /\
+   RH.NonOptHashing.mp{1}.[exp3] = Some (log DDH_Adv_globs.k3{2}) /\
+   MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
+   MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
+   DDH_Adv.KEDDH._self{2} = MakeInt.MI.func{2} /\
+   KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
+   (={glob Adv, glob MI} /\
+    ={DDH_Adv_globs.in_guard, DDH_Adv_globs.func}) /\
+   hybrid_hash_ddh2_rel
+     {| hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
+         hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
+         hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
+       hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
+       hybrid_hash_ddh2_rel_st_hs = DDH_Adv.KEDDH._st{2}; |})).
+if.
+       auto; smt().
+       seq 1 1 : #pre.
+       call KEHybridHashingAdv_NonOptHashing_KEDDH_DDH2_invoke.
+       skip. progress. inline after_func. auto; progress; smt().
+       inline after_adv. seq 1 1 : #pre.
+call(_ : true).
+       auto; progress; smt().
+       auto; progress; smt().
+       auto; progress; smt().
+ auto; progress; smt(gen_log HybridHashDDH2Rel0).
+trivial. trivial.
+qed.
+
  end section.
      
 lemma KeyExchange_RFIP_IF_advantage
