@@ -384,6 +384,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token ASSUMPTION
 %token UNDO
 %token DEBUG
+%token RUN
 
 (* fixed length *)
 
@@ -1165,6 +1166,11 @@ icomm :
   | c = assert_cmd;       { c }
   | c = step_prover_hint; { c }
   | c = debug_cmd         { c }
+  | c = run_cmd           { c }
+
+run_cmd :
+  | RUN; no = option(word)
+      { Run no }
 
 load_uc_file :
   | load = lident; file = uident;
@@ -1197,7 +1203,6 @@ comm_word :
         match (unloc cw) with
         | "real"   -> World Real
         | "ideal"  -> World Ideal
-        | "run"    -> Run
         | "step"   -> Step (None, None)
         | "finish" -> Finish
         | "quit"   -> Quit

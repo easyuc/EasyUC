@@ -649,7 +649,7 @@ op dummy_msg_to_stub_adv (func : addr) : msg =
 op dummy_msg_to_stub_par (func : addr) : msg =
   (Adv, (func ++ [change_pari], 1), (adv, 1), TagNoInter, []).
 
-module CompEnv (Rest : FUNC, Env : ENV, Inter : INTER) = {
+module (CompEnv (Rest : FUNC, Env : ENV) : ENV) (Inter : INTER) = {
   module StubPar : FUNC = {
     proc init(func : addr) : unit = { }
 

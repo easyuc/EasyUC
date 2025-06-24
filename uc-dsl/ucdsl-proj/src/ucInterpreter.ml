@@ -510,60 +510,52 @@ let is_concat_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path (EcPath.fromqsymbol (ec_qsym_prefix_list, "++"))
 
 let is_concat_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_concat_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_concat_op_path path
+  with DestrError _ -> false
 
 let is_cons_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
 
 let is_cons_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_cons_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_cons_op_path path
+  with DestrError _ -> false
 
 let is_nil_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
 
 let is_nil_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_nil_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_nil_op_path path
+  with DestrError _ -> false
 
 let is_func_id (f : form) : bool =
-  try
-    let id = destr_local f in
-    EcIdent.id_equal id func_id
-  with _ -> false
+  try let id = destr_local f in EcIdent.id_equal id func_id
+  with DestrError _ -> false
 
 let is_env_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
 
 let is_env_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_env_root_port_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_env_root_port_op_path path
+  with DestrError _ -> false
 
 let is_adv_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
 
 let is_adv_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_adv_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_adv_op_path path
+  with DestrError _ -> false
 
 let is_adv_root_port_op_path (path : EcPath.path) : bool =
   EcPath.p_equal path
   (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
 
 let is_adv_root_port_op (f : form) : bool =
-  try
-    let (path, _) = destr_op f in is_adv_root_port_op_path path
-  with _ -> false
+  try let (path, _) = destr_op f in is_adv_root_port_op_path path
+  with DestrError _ -> false
 
 (* the following functions can raise DestrError *)
 
@@ -596,7 +588,7 @@ let destr_func_addr (addr : form) : int list =
 
 let is_int (f : form) : bool =
   try let _ = destr_int f in true with
-  | _ -> false
+  | DestrError _ -> false
 
 let is_int_non_opp (f : form) : bool =
   match f.f_node with
@@ -605,12 +597,12 @@ let is_int_non_opp (f : form) : bool =
 
 let is_int_list (f : form) : bool =
   try let _ = destr_int_list f in true with
-  | _ -> false
+  | DestrError _ -> false
 
 let is_adv_op_or_value (f : form) : bool =
   is_adv_op f ||
   try destr_int_list f = [0] with
-  | _ -> false
+  | DestrError _ -> false
 
 let try_destr_port (port : form) : canonical_port option =
   try
@@ -628,7 +620,7 @@ let try_destr_port (port : form) : canonical_port option =
                      in if n = 0 then CP_EnvRoot else destr_err ()
               else CP_FuncRel (destr_func_addr x, destr_int y)
           | _      -> destr_err ())
-  with _ -> None
+  with DestrError _ -> None
 
 let is_canon_port (port : form) : bool =
   is_some (try_destr_port port)
@@ -665,8 +657,9 @@ let pp_canonical_port (ppf : formatter) (cp : canonical_port) : unit =
    strong enough for values (like arguments to messages and states)
    that we won't *immediately* need to make decisions about
 
-   we start with values made out of constructors and integer literals,
-   but then we also allow leaves (not lhs's of applications) that are:
+   we start with values made out of true, false, the element of type
+   unit, constructors and integer literals, but then we also allow leaves
+   (not lhs's of applications) that are:
 
    * identifiers in the global context, even though they might be
      rewritten by assumptions
@@ -680,7 +673,11 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
     match f.f_node with
     | Fint _       -> true
     | Flocal _     -> true
-    | Fop (op, _)  -> Op.is_dtype_ctor env op
+    | Fop (op, _)  ->
+        EcPath.p_equal op EcCoreLib.CI_Unit.p_tt    ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_true  ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_false ||
+        Op.is_dtype_ctor env op
     | Fapp (f, fs) ->
         (match f.f_node with
          | Fop (op, _) ->
@@ -854,7 +851,7 @@ let deconstruct_datatype_value (gc : global_context) (pi : prover_infos)
   let rw_lems = lemmas_of_rewriting_dbs (env_of_gc gc) dbs in
   let (constr, forms) : symbol * form list =
     try UcEcFormEval.deconstruct_data gc f pi rw_lems with
-    | _ ->
+    | e when e <> Sys.Break ->
         (debugging_message
          (fun ppf -> fprintf ppf "@[deconstruction@ failed@]");
          raise ECProofEngine) in

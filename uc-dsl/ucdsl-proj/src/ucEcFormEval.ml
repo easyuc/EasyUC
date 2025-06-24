@@ -148,7 +148,7 @@ let can_prove_smt (proof : EcCoreGoal.proof) (pi : EcProvers.prover_infos): bool
     Gc.compact ();
     print_endline (match b with true -> "SMT true" | false -> "SMT false");
     b
-  with _ ->
+  with e when e <> Sys.Break ->
     print_endline "SMT exception";
     false
 
@@ -333,18 +333,49 @@ let rec move_all_hyps_up (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
   try
     let proof' = move_up proof in
     move_all_hyps_up proof'
-  with _ -> proof
+  with e when e <> Sys.Break -> proof
 
 let should_simplify_further
       (proof : EcCoreGoal.proof) (p_id : EcIdent.t) : bool =
   print_endline "should_simplify_further?";
   let proof = move_all_hyps_up proof in
+  let hyps = (get_last_pregoal proof).g_hyps  in
+  let env = EcEnv.LDecl.toenv hyps in
   let concl = try extract_form proof p_id
-              with _ -> (get_last_pregoal proof).g_concl
+              with e when e <> Sys.Break -> (get_last_pregoal proof).g_concl
   in
   pp_proof proof;
+  let is_weakly_simplified (f : EcAst.form) : bool =
+    let is_int_non_opp (f : EcAst.form) : bool =
+      match f.EcAst.f_node with
+      | Fint _ -> true
+      | _      -> false
+    in
+    let rec is_weak_simp f =
+      match f.EcAst.f_node with
+      | Fint _       -> true
+      | Fop (op, _)  ->
+        EcPath.p_equal op EcCoreLib.CI_Unit.p_tt    ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_true  ||
+        EcPath.p_equal op EcCoreLib.CI_Bool.p_false ||
+        EcEnv.Op.is_dtype_ctor env op
+      | Fapp (f, fs) ->
+          (match f.f_node with
+           | Fop (op, _) ->
+               if EcEnv.Op.is_dtype_ctor env op
+                 then List.for_all is_weak_simp fs
+               else if EcFol.f_equal f EcFol.fop_int_opp  (* int negation *)
+                 then (match fs with
+                       | [g] -> is_int_non_opp g
+                       | _   -> false)
+               else false
+           | _           -> false)
+      | Ftuple fs    -> List.for_all is_weak_simp fs
+      | _            -> false
+    in is_weak_simp f
+  in
   (*TODO add more conditions, like is_op?*)
-  let ret = not ((EcCoreFol.is_true concl) || (EcCoreFol.is_false concl)) in
+  let ret = not (is_weakly_simplified concl) in
   print_endline ("should_simplify_further = "^(Bool.to_string ret));
   ret
                     
@@ -621,7 +652,7 @@ let try_rewrite_addr_ops_on_literals (proof : EcCoreGoal.proof)
     try
       print_endline "run selective_rewrite_operator";
       run_tac tac pr
-    with e ->
+    with e when e <> Sys.Break ->
       print_endline
         ("selective_rewrite_operator EXCEPTION: "
          ^(Printexc.to_string e)^(Printexc.get_backtrace()));
@@ -749,7 +780,7 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
  *)
   let try_rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
     (*  let rewriting_step (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =*)
-      let proof_a = try move_hash proof with _ -> proof in
+      let proof_a = try move_hash proof with e when e <> Sys.Break -> proof in
       let count = count_hyp_forms proof in
       let count_a = count_hyp_forms proof_a in
       if (count <> count_a)
@@ -757,7 +788,7 @@ let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
         Some proof_a
       else
         if should_move_right proof
-        then try move_right_simplify proof with _ -> None
+        then try move_right_simplify proof with e when e <> Sys.Break -> None
         else None
 (* let left_first = go_left_first proof in
         try 
@@ -844,10 +875,18 @@ let rec try_simp (proof : EcCoreGoal.proof)
       try_move_simplify_trivial;
       try_hyp_rewriting_cycle p_id;
       try_rewriting_hints p_id rw_lems;
-    ] in
+    ]
+  in
   let simp proof =
-    List.fold_left (fun acc simpt ->
-        if acc <> None then acc else simpt proof) None simps
+    List.fold_left (
+      fun acc simpt ->
+        if acc <> None
+        then acc
+        else
+          if (should_simplify_further proof p_id)
+          then simpt proof
+          else None
+      ) None simps
   in
   print_endline "try_simp";
   progression simp proof
@@ -883,7 +922,7 @@ and try_rewriting_hints  (p_id : EcIdent.t) (rw_lems : EcPath.path list)
               print_endline "failed to reduce goal no to one"; None end
         | None -> None
       end else changed_proof proof p'
-    with e -> print_endline
+    with e when e <> Sys.Break -> print_endline
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
               None
   in
@@ -1107,7 +1146,7 @@ let deconstruct_data
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification succeded.@.");*)
         ret
-      with _ ->
+      with e when e <> Sys.Break ->
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");*)
