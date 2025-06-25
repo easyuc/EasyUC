@@ -4011,6 +4011,405 @@ call(_ : true).
 trivial. trivial.
 qed.
 
+
+
+local module KEHybrid : FUNC = {
+  var _self : addr
+  var _st : ke_hybrid_state
+
+  proc init(self_ : addr) : unit = {
+    _self <- self_;
+    _st <- KEHybridStateWaitReq1;
+    }
+
+  proc _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
+  var _r : msg option <- None;
+  var _pt1 : port <- _intport_Pt1 _self;
+  var _pt2 : port <- _intport_Pt2 _self;
+  var q1 : exp;    
+  var u : univ;
+  if (envport _self pt2) {
+    q1 <$ dexp;
+    u <- epdp_port_port_key_univ.`enc (pt1, pt2, (g ^ q1));
+    _r <- Some
+      (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
+          UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw1.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw1.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw1.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEHybridStateWaitAdv1 pt1 pt2 q1;
+    
+    }
+    else { _r <- None;}
+    return _r;
+  }
+
+
+proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
+  var _r : msg option <- None;
+  var q2, q3 : exp;  
+  if (envport _self pt2) {
+     q2 <$ dexp; q3 <$ dexp;  
+    _r <- Some
+      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+        {|
+          UC_KEDir.Pt2.ke_rsp1___func = _self;
+          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
+          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
+          UC_KEDir.Pt2.ke_rsp1__k = (g ^ q3);
+          
+        |});
+      _st <- KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3;
+    }
+  return _r;
+  }
+
+
+  proc _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2' : port, q1 q2 q3 : exp ) : msg option = {
+  var u : univ;
+  var _pt1 : port <- _intport_Pt2 _self;
+  var _pt2 : port <- _intport_Pt1 _self;
+  var _r : msg option <- None;
+  if (pt2' = pt2) {
+    u <- epdp_key_univ.`enc (g ^ q2);
+    _r <- Some
+      (UC_Fw2.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fw2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
+          UC_Fw2.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fw2.UC_FwAdv.fw_obs__pt1 = _pt1;
+          UC_Fw2.UC_FwAdv.fw_obs__pt2 = _pt2;
+          UC_Fw2.UC_FwAdv.fw_obs__u = u;       
+        |});
+    _st <- KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3;   
+  }
+  return _r;
+}
+
+proc _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q3 : exp) : msg option = {
+  var _r : msg option <- None;
+  if (envport _self pt1) {
+    _r <- Some
+          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+          {|
+            UC_KEDir.Pt1.ke_rsp2___func = _self;
+            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q3);
+            
+          |});
+        _st <- KEHybridStateFinal;
+  }
+  return _r;
+  }
+
+
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    match _st with
+    | KEHybridStateWaitReq1 => {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt1 _self){
+        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
+        | Some _x => {
+          r <@ _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitAdv1 pt1 pt2 q1 => {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
+        match UC_Fw1.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3=> {
+      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_Pt2 _self){
+        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
+        | Some _x => {
+          r <@ _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2, q1, q2, q3);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3=> {
+      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
+        match UC_Fw2.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _ => {
+          r <@ _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q3);
+        }
+        | None => {}
+        end;
+      }
+    }
+    | KEHybridStateFinal => {}
+    end;
+    return r;
+  }
+}.
+
+type hybrid_hash_rel_st = {
+  hybrid_hash_rel_st_rss : ke_hybrid_state;
+  hybrid_hash_rel_st_map : (exp_names, exp) fmap;
+}.
+
+pred hybrid_hash_rel0 (st : hybrid_hash_rel_st) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq1 /\
+  st.`hybrid_hash_rel_st_map.[exp1] = None /\
+  st.`hybrid_hash_rel_st_map.[exp2] = None /\
+  st.`hybrid_hash_rel_st_map.[exp3] = None.
+
+pred hybrid_hash_rel1 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv1 pt1 pt2 q1 /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = None /\
+  st.`hybrid_hash_rel_st_map.[exp3] = None.
+
+pred hybrid_hash_rel2 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3 /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
+  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+
+pred hybrid_hash_rel3 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3 /\
+  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
+  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
+  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+
+pred hybrid_hash_rel4 (st : hybrid_hash_rel_st) =
+  st.`hybrid_hash_rel_st_rss = KEHybridStateFinal.
+
+
+
+inductive hybrid_hash_rel (st : hybrid_hash_rel_st) =
+    HybridHashRel0 of (hybrid_hash_rel0 st)
+  | HybridHashRel1 (pt1 pt2 : port, q1 : exp) of
+      (hybrid_hash_rel1 st pt1 pt2 q1)
+  | HybridHashRel2 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_hash_rel2 st pt1 pt2 q1 q2 q3)
+  | HybridHashRel3 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_hash_rel3 st pt1 pt2 q1 q2 q3)
+  | HybridHashRel4 of (hybrid_hash_rel4 st).
+
+local lemma KEHybrid_KEHybridHash_OptHashing_invoke :
+  equiv
+  [KEHybrid.invoke ~
+   KEHybridHashingAdv(RH.OptHashing).KEHybridHash.invoke :
+   ={m} /\
+   ={_self, _st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
+   ={res} /\
+   ={_self, _st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}].
+ proof.
+proc.
+   sp.
+   case (hybrid_hash_rel0 {|
+     hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
+   match KEHybridStateWaitReq1 {1} 0. auto;smt().
+   match KEHybridStateWaitReq1 {2} 0. auto;smt().
+   if; last first. auto;smt(). auto;smt().
+   match. auto;smt(). auto;smt(). auto;smt().
+ move => _x _x0.
+   inline _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1.
+   sp. wp.
+   if; last first. auto;smt(). auto;smt().
+   inline hash.
+   sp. rcondt{2} 0. auto; smt(mem_empty).
+   seq 1 1 : (#pre /\ q1{1} = out{2}).
+   rnd. auto;smt().
+   sp. skip. move=> &1 &2 P.
+   progress.
+   smt(get_setE).
+   smt(). smt(get_setE).
+   have H : hybrid_hash_rel1 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1{1} pt2{1} q1{1}.
+smt(get_setE). smt(HybridHashRel1).
+
+   case ( exists (pt1 pt2:port) (q1:exp),
+   hybrid_hash_rel1 {|
+     hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1).
+elim* => pt1 pt2 q1.
+match KEHybridStateWaitAdv1  {1} 0. auto;smt().
+   match KEHybridStateWaitAdv1  {2} 0. auto;smt().
+ if; last first. auto;smt(). auto;smt().
+   match. auto;smt(). auto;smt(). auto;smt().
+ move => _x _x0.
+   inline _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok.
+   sp. wp. if; last first. auto;smt(). auto;smt().
+inline hash.
+   sp. rcondt{2} 0. auto; smt(mem_empty).
+   seq 1 1 : (#pre /\ q2{1} = out{2}).
+   rnd. auto;smt().
+   sp. rcondt{2} 0. auto; smt(mem_set).
+   seq 1 1 : (#pre /\ q3{1} = out0{2}).
+   rnd. auto;smt().
+sp. skip. move=> &1 &2 P.
+   progress.
+ smt(get_setE).
+   smt(). smt(get_setE).
+ have H : hybrid_hash_rel2 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2{1} q3{1}.
+   smt(get_setE). smt(HybridHashRel2).
+case ( exists (pt1 pt2 : port) (q1 q2 q3 : exp),
+   hybrid_hash_rel2 {|
+     hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3).
+ elim* => pt1 pt2 q1 q2 q3.
+match KEHybridStateWaitReq2  {1} 0. auto;smt().
+   match KEHybridStateWaitReq2  {2} 0. auto;smt().
+ if; last first. auto;smt(). auto;smt().
+   match. auto;smt(). auto;smt(). auto;smt().
+ move => _x _x0.
+   inline _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2.
+   sp 9 9. wp 1 1. if; last first. auto;smt(). auto;smt().
+ sp. skip. move=> &1 &2 P.
+   progress.
+   smt().
+smt().
+   smt().
+ have H : hybrid_hash_rel3 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3.
+ smt(get_setE). smt(HybridHashRel3).
+case ( exists (pt1 pt2 : port) (q1 q2 q3 : exp),
+   hybrid_hash_rel3 {|
+     hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3).
+   elim* => pt1 pt2 q1 q2 q3.
+ match KEHybridStateWaitAdv2  {1} 0. auto;smt().
+   match KEHybridStateWaitAdv2  {2} 0. auto;smt().
+ if; last first. auto;smt(). auto;smt().
+   match. auto;smt(). auto;smt(). auto;smt().
+ move => _x _x0.
+   inline _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok.
+   sp 4 4. wp 1 1. if; last first. auto;smt(). auto;smt().
+ sp. skip. move=> &1 &2 P.
+   progress.
+   smt().
+smt().
+   smt().
+ have H : hybrid_hash_rel4 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}.
+   smt(get_setE). smt(HybridHashRel4).
+case (
+   hybrid_hash_rel4 {|
+     hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
+   
+match KEHybridStateFinal  {1} 0. auto;smt().
+   match KEHybridStateFinal  {2} 0. auto;smt().
+   auto;smt().
+
+ exfalso.
+move => &1 &2. 
+move => [#].
+move => _ _ _ _ _.
+move => []; smt().
+qed.
+
+local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
+            (func' adv' : addr, in_guard' : int fset) &m :
+  DDH_Adv_globs.func{m} = func' =>
+  DDH_Adv_globs.in_guard{m} = in_guard' =>
+  Pr[Exper(MI(KEHybrid, Adv), Env).main
+       (func', in_guard') @ &m : res] =
+  Pr[RH.GOptHashing(KEHybridHashingAdv).main() @ &m : res].
+  proof.
+  move => DDH_Adv_globs_func DDH_Adv_globs_in_guard.
+    byequiv.
+    proc.
+    inline*.
+  sp.
+    seq 1 1 : (
+    RH.OptHashing.mp{2} = empty /\
+  inp{2} = exp1 /\
+  inp0{2} = exp2 /\
+  inp1{2} = exp3 /\
+  func{2} = DDH_Adv_globs.func{2} /\
+  in_guard{2} = DDH_Adv_globs.in_guard{2} /\
+  func_{2} = func{2} /\
+  in_guard_{2} = in_guard{2} /\
+  MakeInt.MI.func{2} = func_{2} /\
+  MakeInt.MI.in_guard{2} = in_guard_{2} /\
+  self_{2} = MakeInt.MI.func{2} /\
+  KEHybridHashingAdv.KEHybridHash._self{2} = self_{2} /\
+  KEHybridHashingAdv.KEHybridHash._st{2} = KEHybridStateWaitReq1 /\
+  func_{1} = func{1} /\
+  in_guard_{1} = in_guard{1} /\
+  MakeInt.MI.func{1} = func_{1} /\
+  MakeInt.MI.in_guard{1} = in_guard_{1} /\
+  self_{1} = MakeInt.MI.func{1} /\
+  KEHybrid._self{1} = self_{1} /\
+  KEHybrid._st{1} = KEHybridStateWaitReq1 /\
+  (glob Env){2} = (glob Env){m} /\
+  DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
+  DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
+  (func{1}, in_guard{1}) = (func', in_guard') /\
+  (glob Env){1} = (glob Env){m} /\ (glob Adv){1} = (glob Adv){2}
+).
+    call (_ : true). auto; smt().
+wp.
+    call(_ :
+  ={glob Adv,  glob MI} /\
+  MakeInt.MI.func{2} = func' /\
+  MakeInt.MI.in_guard{2} = in_guard' /\
+  KEHybridHashingAdv.KEHybridHash._self{2} = func' /\
+  KEHybrid._self{1} = func' /\
+  DDH_Adv_globs.in_guard{2} = in_guard' /\
+    DDH_Adv_globs.func{2} = func' /\
+  KEHybrid._st{1} = KEHybridHashingAdv.KEHybridHash._st{2} /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+  ).
+proc.
+      if; last first. auto;smt(). auto;smt().
+  inline loop.
+      sp. wp.
+      while(
+   ={m, m0, r0, glob Adv, glob MI} /\
+   MakeInt.MI.func{2} = func' /\
+   MakeInt.MI.in_guard{2} = in_guard' /\
+   KEHybridHashingAdv.KEHybridHash._self{2} = func' /\
+   KEHybrid._self{1} = func' /\
+     DDH_Adv_globs.in_guard{2} = in_guard' /\ DDH_Adv_globs.func{2} = func' /\
+   KEHybrid._st{1} = KEHybridHashingAdv.KEHybridHash._st{2}
+   /\
+   hybrid_hash_rel
+   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
+     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
+  ).
+
+if;last first.
+      seq 1 1 : #pre. call(_:true). auto;smt().
+  inline after_adv.
+auto;progress;smt().
+      auto;progress;smt().
+      seq 1 1 : #pre.
+      call KEHybrid_KEHybridHash_OptHashing_invoke.
+  skip. move => &1 &2 P.
+      progress; smt().
+      inline after_func.
+  auto;progress;smt().
+skip. move => &1 &2 P.
+      progress; smt().
+      skip. move => &1 &2 P.
+      have H : func{1} = func'. smt().
+  have G : in_guard{1} = in_guard'. smt().
+      progress;smt(HybridHashRel0 mem_empty). smt(). smt(). 
+qed.
+
+      
  end section.
      
 lemma KeyExchange_RFIP_IF_advantage
