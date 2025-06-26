@@ -4155,6 +4155,80 @@ proc _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q3 
   }
 }.
 
+op _invar_KEHybrid (g : glob KEHybrid) : bool = predT g.
+
+ 
+
+op glob_KEHybrid_to__st (g : glob KEHybrid) / : ke_hybrid_state = g.`2.
+op [smt_opaque] _metric_KEHybrid (g : glob KEHybrid) : int =
+  match glob_KEHybrid_to__st g with
+  | KEHybridStateWaitReq1 => 4
+  | KEHybridStateWaitAdv1 _ _ _ => 3
+  | KEHybridStateWaitReq2 _ _ _ _ _ => 2
+  | KEHybridStateWaitAdv2 _ _ _ _ _ => 1
+  | KEHybridStateFinal => 0
+  end.
+  
+
+
+local lemma KEHybrid_invoke (n : int) : hoare [
+  KEHybrid.invoke :
+  _invar_KEHybrid (glob KEHybrid) /\ _metric_KEHybrid (glob KEHybrid) = n
+  ==>
+  (res <> None =>
+  _metric_KEHybrid (glob KEHybrid) < n
+  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis_rf_info rf_info))
+   ].
+proof.
+rewrite /_metric_KEHybrid /=.
+  proc. inline. sp.
+  match.
+if.
+match.
+  skip. move => />;smt().
+  sp 5.
+  if; last first.
+  sp. skip. move => />;smt().
+  seq 1 : #pre. rnd.
+  skip. move => />;smt().
+  sp.
+  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
+  skip. move => />;smt().
+if; last first.
+  sp. skip. move => />;smt().
+  match.
+  sp. skip. move => />;smt().
+sp 4.
+  if.
+seq 1 : #pre. rnd.
+  skip. move => />;smt().
+seq 1 : #pre. rnd.
+  skip. move => />;smt().
+sp.
+  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
+  sp. skip. move => />;smt().
+  if; last first. skip. move => />;smt().
+  match.
+  skip. move => />;smt().
+sp 9.
+if; last first. sp. skip. move => />;smt().
+sp.
+  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
+  if; last first. sp. skip. move => />;smt().
+match.
+  skip. move => />;smt().
+  sp 4.
+if; last first. sp. skip. move => />;smt().
+sp.
+  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
+  skip. move => />;smt().
+qed.
+
+lemma _metric_KEHybrid_good (g : glob KEHybrid) :
+  _invar_KEHybrid g => 0 <= _metric_KEHybrid g.
+    proof. rewrite /_metric_KEHybrid /=.
+      smt(). qed.
+
 type hybrid_hash_rel_st = {
   hybrid_hash_rel_st_rss : ke_hybrid_state;
   hybrid_hash_rel_st_map : (exp_names, exp) fmap;
