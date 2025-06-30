@@ -643,8 +643,8 @@ module MI = MakeInt.MI.
 (* Converting Hoare lemmas about invariants and termination metrics
    for functionalities into equiv lemmas
 
-   lemmas for invoke also restrict destination adversarial
-   port indices for adversarial messages *)
+   lemmas for invoke have two forms, one of them restricting
+   destination adversarial port indices for adversarial messages *)
 
 (* init lemma for use with any functionality, Fun, with an invariant
    for which we know the corresponding hoare lemma *)
@@ -665,19 +665,46 @@ conseq
 sim.
 qed.
 
-(* invoke lemma for use with any functionality, Fun, with an invariant and
-   termination metric for which we know the corresponding hoare lemma *)
-
 lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int, n : int) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n)] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None => tm (glob Fun){1} < n)].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric, including restricting adversarial port
+   indices of outgoing adversarial messages, for which we know the
+   corresponding hoare lemma *)
+
+lemma invoke_term_metric_adv_pis_hoare_implies_equiv (Fun <: FUNC)
       (invar : glob Fun -> bool, tm : glob Fun -> int,
-       n : int, advpis : int fset) :
+       n : int, adv_pis : int fset) :
   hoare
   [Fun.invoke :
    invar (glob Fun) /\ tm (glob Fun) = n ==>
    invar (glob Fun) /\
    (res <> None =>
     tm (glob Fun) < n /\
-    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis))] =>
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis))] =>
   equiv
   [Fun.invoke ~ Fun.invoke :
    ={m, glob Fun} /\ invar (glob Fun){1} /\
@@ -685,7 +712,7 @@ lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
    ={res, glob Fun} /\ invar (glob Fun){1} /\
    (res{1} <> None =>
     tm (glob Fun){1} < n /\
-    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in advpis))].
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in adv_pis))].
 proof.
 move => invoke_hoare.
 conseq
@@ -695,7 +722,7 @@ conseq
    invar (glob Fun) /\
    (res <> None =>
     tm (glob Fun) < n /\
-    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis)))
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis)))
   (_ : true ==> true) => //.
 sim.
 qed.
@@ -781,22 +808,6 @@ op adv_pis_rf_info (rfi : rf_info) : int fset =
   else rangeset rfi.`rfi_adv_pi_begin
        (nth1_adv_pi_end_params rfi rfi.`rfi_num_params + 1).
 
-op adv_pis_rf_info_first (rfi : rf_info) : int =
-  rfi.`rfi_adv_pi_begin.
-
-op adv_pis_rf_info_last (rfi : rf_info) : int =
-  if rfi.`rfi_num_params = 0
-  then rfi.`rfi_adv_pi_main_end
-  else nth1_adv_pi_end_params rfi rfi.`rfi_num_params.
-
-lemma adv_pis_rf_info_rangeset (rfi : rf_info) :
-  adv_pis_rf_info rfi =
-  rangeset (adv_pis_rf_info_first rfi) (adv_pis_rf_info_last rfi + 1).
-proof.
-rewrite /adv_pis_rf_info /adv_pis_rf_info_first /adv_pis_rf_info_last.
-by case (rfi.`rfi_num_params = 0).
-qed.
-
 op rf_info_valid (rfi : rf_info) : bool =
   1 <= rfi.`rfi_num_parties /\
   0 <= rfi.`rfi_num_subfuns /\
@@ -865,6 +876,22 @@ have /# :
   ! (nth1_adv_pi_begin_params rfi 1 <= i <=
      nth1_adv_pi_end_params rfi j) by
     elim => [// | j ge0_j IH j_plus1_good_par /#].
+qed.
+
+op adv_pis_rf_info_first (rfi : rf_info) : int =
+  rfi.`rfi_adv_pi_begin.
+
+op adv_pis_rf_info_last (rfi : rf_info) : int =
+  if rfi.`rfi_num_params = 0
+  then rfi.`rfi_adv_pi_main_end
+  else nth1_adv_pi_end_params rfi rfi.`rfi_num_params.
+
+lemma adv_pis_rf_info_rangeset (rfi : rf_info) :
+  adv_pis_rf_info rfi =
+  rangeset (adv_pis_rf_info_first rfi) (adv_pis_rf_info_last rfi + 1).
+proof.
+rewrite /adv_pis_rf_info /adv_pis_rf_info_first /adv_pis_rf_info_last.
+by case (rfi.`rfi_num_params = 0).
 qed.
 
 lemma adv_pis_rf_info_first_ge1 (rfi : rf_info) :
@@ -1467,21 +1494,11 @@ abstract theory Simulator.
 
 (* begin theory parameters *)
 
-op adv_pis_begin : int.  (* first adversarial port index of unit *)
-op adv_pis_end   : int.  (* last adversarial port index of unit *)
+(* adversarial port index of simulator *)
 
-axiom adv_pis_begin_ge1    : 1 <= adv_pis_begin.
-axiom adv_pis_begin_le_end : adv_pis_begin <= adv_pis_end.
+op sim_adv_pi : int.
 
-(* end theory parameters *)
-
-op sim_adv_pi : int      = adv_pis_begin.
-op adv_pis    : int fset = rangeset adv_pis_begin (adv_pis_end + 1).
-
-lemma sim_adv_pi_ge1 : 1 <= sim_adv_pi.
-proof.
-by rewrite /sim_adv_pi adv_pis_begin_ge1.
-qed.
+axiom sim_adv_pi_ge1 : 1 <= sim_adv_pi.
 
 (* end theory parameters *)
 
@@ -1824,11 +1841,12 @@ module (CombEnvAdv (Env : ENV, Adv : ADV) : ENV) (Inter : INTER) = {
 
 section.
 
-declare module Env       <: ENV{-MI, -CombEnvAdv}.
-declare module Adv       <: ADV{-MI, -CombEnvAdv, -Env}.
+declare module Env       <: ENV{-MI, -MS, -CombEnvAdv}.
+declare module Adv       <: ADV{-MI, -MS, -CombEnvAdv, -Env}.
 declare module RealFunc  <: FUNC{-MI, -CombEnvAdv, -Env, -Adv}.
-declare module IdealFunc <: FUNC{-MI, -CombEnvAdv, -Env, -Adv}.
-declare module SimCore   <: ADV{-MI, -CombEnvAdv, -Env, -Adv, -IdealFunc}.
+declare module IdealFunc <: FUNC{-MI, -MS, -CombEnvAdv, -Env, -Adv}.
+declare module SimCore   <:
+  ADV{-MI, -MS, -CombEnvAdv, -Env, -Adv, -IdealFunc}.
 
 declare op invar_rf : glob RealFunc -> bool.
 declare op term_rf  : glob RealFunc -> int.
@@ -1852,9 +1870,7 @@ declare axiom RealFunc_invoke (n : int) :
     ={m, glob RealFunc} /\ invar_rf (glob RealFunc){1} /\
     term_rf (glob RealFunc){1} = n ==>
     ={res, glob RealFunc} /\ invar_rf (glob RealFunc){1} /\
-    (res{1} <> None =>
-     term_rf (glob RealFunc){1} < n /\
-     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in adv_pis))].
+    (res{1} <> None => term_rf (glob RealFunc){1} < n)].
 
 declare axiom ge0_term_if (gl : glob IdealFunc) :
   invar_if gl => 0 <= term_if gl.
@@ -1871,9 +1887,7 @@ declare axiom IdealFunc_invoke (n : int) :
     ={m, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
     term_if (glob IdealFunc){1} = n ==>
     ={res, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
-    (res{1} <> None =>
-     term_if (glob IdealFunc){1} < n /\
-     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in adv_pis))].
+    (res{1} <> None => term_if (glob IdealFunc){1} < n)].
 
 declare axiom ge0_term_sc (gl : glob SimCore) :
   invar_sc gl => 0 <= term_sc gl.
@@ -1893,14 +1907,13 @@ declare axiom SimCore_invoke (n : int) :
     (res{1} <> None => term_sc (glob SimCore){1} < n)].
 
 local lemma bridge_real (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
   Pr[Exper(MI(RealFunc, Adv), Env).main(func', in_guard') @ &m : res] =
   Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
        .main(func', in_guard') @ &m : res].
 proof.
-byequiv => //.
-proc.
-inline*.
-sp; wp.
+move => ep_func'.
+byequiv => //; proc; inline*; sp; wp.
 seq 2 10 :
   (={glob RealFunc, glob Adv, glob Env} /\
    func{1} = func' /\ in_guard{1} = in_guard' /\
@@ -1928,16 +1941,45 @@ auto.
 qed.
 
 local lemma bridge_ideal (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
   Pr[Exper(MI(IdealFunc, MS(SimCore, Adv)), Env)
        .main(func', in_guard') @ &m : res] =
   Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))
        .main(func', in_guard') @ &m : res].
 proof.
+move => ep_func' disj_ig'.
+byequiv => //; proc; inline*; sp; wp.
+seq 4 12 :
+  (={glob MS, glob IdealFunc, glob SimCore, glob Adv, glob Env} /\
+   func{1} = func' /\ in_guard{1} = in_guard' /\
+   func0{2} = func' /\ in_guard0{2} = in_guard' /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   MS.if_addr_opt{1} = None).
+swap{1} 1 1; swap{2} 8 4; swap{2} 3 8; swap{2} 1 9.
+call (_ : true).
+call (_ : true).
+call (_ : true).
+auto.
+call
+  (_ :
+   ={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => MS.if_addr_opt{1} = Some func')).
+proc.
+if => //.
+inline{1} 1; inline{2} 1; sp 3 4.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 admit.
+auto.
+auto.
 qed.
 
 lemma dummy_adv (func' : addr, in_guard' : int fset, b : real) &m :
-  exper_pre func' => disjoint in_guard' adv_pis =>
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
   `|Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
          .main(func', in_guard') @ &m : res] -
     Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))
@@ -1947,16 +1989,17 @@ lemma dummy_adv (func' : addr, in_guard' : int fset, b : real) &m :
          .main(func', in_guard') @ &m : res]| <= b.
 proof.
 move => ep_func' disj_ig' reduct.
-by rewrite bridge_real bridge_ideal.
+by rewrite bridge_real // bridge_ideal.
 qed.
 
 end section.
 
 lemma dummy_adversary
-      (Env <: ENV{-MI, -CombEnvAdv}) (Adv <: ADV{-MI, -CombEnvAdv, -Env})
+      (Env <: ENV{-MI, -MS, -CombEnvAdv})
+      (Adv <: ADV{-MI, -MS, -CombEnvAdv, -Env})
       (RealFunc <: FUNC{-MI, -CombEnvAdv, -Env, -Adv})
-      (IdealFunc <: FUNC{-MI, -CombEnvAdv, -Env, -Adv})
-      (SimCore <: ADV{-MI, -CombEnvAdv, -Env, -Adv, -IdealFunc})
+      (IdealFunc <: FUNC{-MI, -MS, -CombEnvAdv, -Env, -Adv})
+      (SimCore <: ADV{-MI, -MS, -CombEnvAdv, -Env, -Adv, -IdealFunc})
       (invar_rf : glob RealFunc -> bool, term_rf : glob RealFunc -> int,
        invar_if : glob IdealFunc -> bool, term_if : glob IdealFunc -> int,
        invar_sc : glob SimCore -> bool, term_sc : glob SimCore -> int,
@@ -1968,9 +2011,7 @@ lemma dummy_adversary
    [RealFunc.invoke :
     invar_rf (glob RealFunc) /\ term_rf (glob RealFunc) = n ==>
     invar_rf (glob RealFunc) /\
-    (res <> None =>
-       term_rf (glob RealFunc) < n /\
-       ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis))]) =>
+    (res <> None => term_rf (glob RealFunc) < n)]) =>
   (forall (gl : glob IdealFunc), invar_if gl => 0 <= term_if gl) =>
   hoare [IdealFunc.init : true ==> invar_if (glob IdealFunc)] =>
   (forall (n : int),
@@ -1978,9 +2019,7 @@ lemma dummy_adversary
    [IdealFunc.invoke :
     invar_if (glob IdealFunc) /\ term_if (glob IdealFunc) = n ==>
     invar_if (glob IdealFunc) /\
-    (res <> None =>
-       term_if (glob IdealFunc) < n /\
-       ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis))]) =>
+    (res <> None => term_if (glob IdealFunc) < n)]) =>
   (forall (gl : glob SimCore), invar_sc gl => 0 <= term_sc gl) =>
   hoare [SimCore.init : true ==> invar_sc (glob SimCore)] =>
   (forall (n : int),
@@ -1989,7 +2028,7 @@ lemma dummy_adversary
     invar_sc (glob SimCore) /\ term_sc (glob SimCore) = n ==>
     invar_sc (glob SimCore) /\
     (res <> None => term_sc (glob SimCore) < n)]) =>
-  exper_pre func' => disjoint in_guard' adv_pis =>
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
   `|Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
          .main(func', in_guard') @ &m : res] -
     Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))

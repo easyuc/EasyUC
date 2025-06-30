@@ -4700,7 +4700,7 @@ have rest_invoke_equiv :
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in rest_adv_pis))].
   move => n.
   rewrite
-  (invoke_term_metric_hoare_implies_equiv Rest
+  (invoke_term_metric_adv_pis_hoare_implies_equiv Rest
    invar_rest term_rest)
   rest_invoke.
 have par_init_equiv :=
@@ -4717,7 +4717,7 @@ have par_invoke_equiv :
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in change_par_adv_pis))].
   move => n.
   rewrite
-  (invoke_term_metric_hoare_implies_equiv Par
+  (invoke_term_metric_adv_pis_hoare_implies_equiv Par
    invar_par term_par)
   par_invoke.
 apply
