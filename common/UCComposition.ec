@@ -948,8 +948,8 @@ local module RightMIFromPar = {
 lemma main_guard_ext
       (func : addr, i : int, in_guard : int fset, xs : int fset,
        m : msg) :
-  MakeInt.main_guard func in_guard m => ! func <= m.`2.`1 =>
-  MakeInt.main_guard (func ++ [i]) (in_guard `|` xs) m.
+  main_guard func in_guard m => ! func <= m.`2.`1 =>
+  main_guard (func ++ [i]) (in_guard `|` xs) m.
 proof.
 move => mg_in_guard_m dest_not_ge_func.
 rewrite /main_guard.
@@ -963,12 +963,12 @@ lemma main_guard_ext_adv_advpi_in_new
   inc func adv => m.`1 = Adv => m.`2.`1 = adv =>
   0 < m.`2.`2 => m.`2.`2 \in xs =>
   func <= m.`3.`1 => ! func ++ [i] <= m.`3.`1 =>
-  MakeInt.main_guard (func ++ [i]) (in_guard `|` xs) m.
+  main_guard (func ++ [i]) (in_guard `|` xs) m.
 proof.
 move =>
   inc_func_adv mode_eq_Adv dest_adv dest_pi_gt0
   dest_advpi_in_xs src_ge_func src_nge_func_plus_i.
-rewrite /MakeInt.main_guard /=.
+rewrite /main_guard /=.
 right.
 split; first trivial.
 split; first trivial.
@@ -4526,7 +4526,7 @@ auto; smt().
 conseq
   (_ :
    ={m0} /\ m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
-   MakeInt.main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m0{1} /\
+   main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m0{1} /\
    not_done{1} /\ not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -4700,7 +4700,7 @@ have rest_invoke_equiv :
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in rest_adv_pis))].
   move => n.
   rewrite
-  (invoke_term_metric_hoare_implies_equiv Rest
+  (invoke_term_metric_adv_pis_hoare_implies_equiv Rest
    invar_rest term_rest)
   rest_invoke.
 have par_init_equiv :=
@@ -4717,7 +4717,7 @@ have par_invoke_equiv :
     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in change_par_adv_pis))].
   move => n.
   rewrite
-  (invoke_term_metric_hoare_implies_equiv Par
+  (invoke_term_metric_adv_pis_hoare_implies_equiv Par
    invar_par term_par)
   par_invoke.
 apply
@@ -4757,8 +4757,8 @@ lemma composition
       (Par2 <: FUNC{-MI, -CompGlobs, -Env, -Rest, -Adv2})
       (invar_rest : glob Rest -> bool, term_rest : glob Rest -> int,
        invar_par1 : glob Par1 -> bool, term_par1 : glob Par1 -> int,
-       invar_par2 : glob Par2 -> bool, term_par2 : glob Par2 -> int)
-      (func' : addr, in_guard' : int fset, b : real) &m :
+       invar_par2 : glob Par2 -> bool, term_par2 : glob Par2 -> int,
+       func' : addr, in_guard' : int fset, b : real) &m :
   (forall (gl : glob Rest), invar_rest gl => 0 <= term_rest gl) =>
   hoare [Rest.init : true ==> invar_rest (glob Rest)] =>
   (forall (n : int),
