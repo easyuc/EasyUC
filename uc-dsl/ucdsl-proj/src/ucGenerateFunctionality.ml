@@ -2942,10 +2942,10 @@ let print_simulator_module (sc : EcScope.scope) (root : string) (id : string)
   
 let print_cloneSIM_MS ppf (id,sbt : string * sim_body_tyd) =
   let print_cloneSIM =
-  Format.fprintf ppf "@;@[clone MakeSimulator as MSCore with@]@;";
-  Format.fprintf ppf "@[op core_pi <- %s@]@;" adv_if_pi_op_name;
+  Format.fprintf ppf "@;@[clone Simulator as MSCore with@]@;";
+  Format.fprintf ppf "@[op sim_adv_pi <- %s@]@;" adv_if_pi_op_name;
   Format.fprintf ppf "@[proof *.@]@;";
-  Format.fprintf ppf "@[realize core_pi_gt0. smt(%s). qed.@]@;"
+  Format.fprintf ppf "@[realize sim_adv_pi_ge1. smt(%s). qed.@]@;"
     adv_pi_begin_gt0_axiom_name
   in 
   let print_MS =
