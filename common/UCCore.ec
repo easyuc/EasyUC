@@ -1779,12 +1779,14 @@ module (CombEnvAdv (Env : ENV, Adv : ADV) : ENV) (Inter : INTER) = {
             r <- None; not_done <- false;
           }
           (* else: 0 < m.`3.`2 *)
-          m <-
-            epdp_da_from_env.`enc
-            {|dfe_pt = m.`2; dfe_n = m.`3.`2; dfe_tag = m.`4;
-              dfe_u = m.`5|};
-          r <- Some m; not_done <- true;
-          adv_to_adv <- false;  (* will be routed to Inter *)
+          else {
+            m <-
+              epdp_da_from_env.`enc
+              {|dfe_pt = m.`2; dfe_n = m.`3.`2; dfe_tag = m.`4;
+                dfe_u = m.`5|};
+            r <- Some m; not_done <- true;
+            adv_to_adv <- false;  (* will be routed to Inter *)
+          }
         }
         else {  (* envport0 func m.`2 *)
           not_done <- false;
@@ -2001,6 +2003,31 @@ seq 1 1 :
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
 call (_ : true); first auto.
+inline{2} 1; sp 0 3.
+case (MakeInt.after_adv_error func' r{1}).
+seq 1 0 : 
+  (={glob RealFunc, glob Adv} /\ r{1} = None /\ ! not_done{1} /\
+   MakeInt.after_adv_error func' r0{2} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_adv_error RealFunc Adv).
+auto.
+rcondf{1} 1; first auto.
+if{2}.
+rcondf{2} 3; first auto.
+auto.
+sp 0 1.
+if{2}.
+rcondf{2} 4; first auto.
+auto.
+if{2}.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 4; first auto; smt().
+auto.
+rcondf{2} 4; first auto.
+auto; smt().
 admit.
 qed.
 
