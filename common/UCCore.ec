@@ -1992,6 +1992,15 @@ move : n ge0_n.
 elim /Int.sintind => n ge0_n IH.
 proc; sp.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; smt(inc_nle_l).
+rcondt{2} 1; first auto.
+seq 1 1 :
+  (={r, glob RealFunc, glob Adv} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call (_ : true); first auto.
 admit.
 qed.
 
