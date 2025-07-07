@@ -2435,13 +2435,13 @@ local lemma Exper_KEReal_KERealSimp
      
        inline loop.
          sp; wp.
-     print KEReal_KERealSimp_invoke.
+     print mi_loop_invar.
      while (={glob MI, glob Adv, not_done, m, m0, r0}
        /\ MI.func{1} = func'
          /\ MI.in_guard{1} = in_guard'
          /\
 
-      (MakeInt.mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1})
+      (mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1})
   
 
         (*
@@ -2575,7 +2575,7 @@ auto;progress;smt().
     not_done{1} = not_done{2} /\ m{1} = m{2} /\ result_L = result_R) /\
    MakeInt.MI.func{1} = func' /\
    MakeInt.MI.in_guard{1} = in_guard' /\
-   MakeInt.mi_loop_invar func' in_guard' result_L m0{2} not_done{1} /\
+   mi_loop_invar func' in_guard' result_L m0{2} not_done{1} /\
    real_simp_rel
      {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
          real_simp_rel_st_r2s = _st_Pt2_L; real_simp_rel_st_fws1 = _st_L;
@@ -2583,7 +2583,7 @@ auto;progress;smt().
   (not_done{1} <=> not_done{2}) . smt(). 
    
     have I:
-MakeInt.mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1} =>
+mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1} =>
     mi_invoke_loop_calls_func_invoke func' m0{1}.
 rewrite /mi_loop_invar /mi_invoke_loop_calls_func_invoke.
   move => />.
@@ -3005,7 +3005,7 @@ case
 qed.
 
 local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
-            (func' adv' : addr, in_guard' : int fset) &m :
+            (func' : addr, in_guard' : int fset) &m :
   DDH_Adv_globs.func{m} = func' =>
   DDH_Adv_globs.in_guard{m} = in_guard' =>
   Pr[Exper(MI(KERealSimp, Adv), Env).main
@@ -3902,7 +3902,7 @@ exfalso.
 qed.
 
 local lemma KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
-            (func' adv' : addr, in_guard' : int fset) &m :
+            (func' : addr, in_guard' : int fset) &m :
   DDH_Adv_globs.func{m} = func' =>
   DDH_Adv_globs.in_guard{m} = in_guard' =>
   Pr[RH.GNonOptHashing(KEHybridHashingAdv).main() @ &m : res] =
@@ -4392,7 +4392,7 @@ move => []; smt().
 qed.
 
 local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
-            (func' adv' : addr, in_guard' : int fset) &m :
+            (func' : addr, in_guard' : int fset) &m :
   DDH_Adv_globs.func{m} = func' =>
   DDH_Adv_globs.in_guard{m} = in_guard' =>
   Pr[Exper(MI(KEHybrid, Adv), Env).main
@@ -4483,6 +4483,46 @@ skip. move => &1 &2 P.
       progress;smt(HybridHashRel0 mem_empty). smt(). smt(). 
 qed.
 
+local lemma Exper_KEHybrid_KEIdeal_KESim
+            (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  Pr[Exper(MI(KEHybrid, Adv), Env).main
+       (func', in_guard') @ &m : res] =
+  Pr[Exper(MI(UC_KEIdeal, SIM(Adv)), Env).main
+       (func', in_guard') @ &m : res].
+proof. admit. qed.
+
+lemma ke_sec (func': addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  DDH_Adv_globs.func{m} = func' =>
+  DDH_Adv_globs.in_guard{m} = in_guard' =>
+  `|Pr[Exper(MI(RFIP, Adv), Env).main
+         (func', in_guard') @ &m : res] -
+    Pr[Exper(MI(UC_KEIdeal, SIM(Adv)), Env).main
+         (func', in_guard') @ &m : res]| <=
+  `|Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res] -
+    Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
+proof.
+move => pre disj func'_eq in_guard'_eq.
+  rewrite (Exper_KEReal_KERealSimp func' in_guard' &m) 1:/#.
+  trivial.
+rewrite (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+  func' in_guard' &m).
+trivial. trivial.
+  rewrite
+           -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m).
+  rewrite (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
+  func' in_guard' &m).
+  trivial. trivial.
+  rewrite -(Exper_KEHybrid_KEIdeal_KESim func' in_guard' &m).
+trivial.
+rewrite (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func' in_guard' &m). trivial. trivial.
+rewrite -(RH.GNonOptHashing_GOptHashing KEHybridHashingAdv &m). rewrite -(KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
+  func' in_guard' &m).
+  trivial. trivial.
+trivial.
+qed.
       
  end section.
      
@@ -4492,6 +4532,8 @@ lemma KeyExchange_RFIP_IF_advantage
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
+    DDH_Adv_globs.func{m} = func' =>
+  DDH_Adv_globs.in_guard{m} = in_guard' =>
       (*adv pis of KE are disj. from in_guard'*)    
  `|Pr[Exper(MI(RFIP, Adv), Env)
          .main(func', in_guard')
@@ -4503,5 +4545,6 @@ lemma KeyExchange_RFIP_IF_advantage
 Pr[DDH.DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|
       .
     proof.
-      admit.
+      move => pre disj func'_eq in_guard'_eq.
+by apply (ke_sec Adv Env func' in_guard' &m).
     qed.
