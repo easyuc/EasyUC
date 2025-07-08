@@ -192,8 +192,8 @@ module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV = {
 
 section.
 
-declare module Adv <: ADV{-MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs, -DDH_Adv}.
-declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs, -DDH_Adv}.
+declare module Adv <: ADV{-MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs, -DDH_Adv, -MSCore.CombEnvAdv, -MSCore.MS}.
+declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_KEIdeal, -UC_KESim, -DDH_Adv_globs, -DDH_Adv, -MSCore.CombEnvAdv, -MSCore.MS}.
 
 type ke_real_simp_state = [
     KERealSimpStateWaitReq1
@@ -4482,15 +4482,63 @@ skip. move => &1 &2 P.
   have G : in_guard{1} = in_guard'. smt().
       progress;smt(HybridHashRel0 mem_empty). smt(). smt(). 
 qed.
+print MSCore.
+local lemma Exper_KEHybrid_KEIdeal_KESim_dummy_adversary
+    (EnvX <: ENV)
+            (func' : addr, in_guard' : int fset) &m :
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  `|Pr[Exper(MI(KEHybrid, DummyAdv), EnvX).main
+       (func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)), EnvX).main
+       (func', in_guard') @ &m : res]| <= 0%r.
+proof. admit. qed.
+
+print MSCore.dummy_adversary.
 
 local lemma Exper_KEHybrid_KEIdeal_KESim
             (func' : addr, in_guard' : int fset) &m :
-  exper_pre func' =>
-  Pr[Exper(MI(KEHybrid, Adv), Env).main
-       (func', in_guard') @ &m : res] =
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  `|Pr[Exper(MI(KEHybrid, Adv), Env).main
+       (func', in_guard') @ &m : res] -
   Pr[Exper(MI(UC_KEIdeal, SIM(Adv)), Env).main
-       (func', in_guard') @ &m : res].
-proof. admit. qed.
+       (func', in_guard') @ &m : res]| <= 0%r.
+     proof.
+     move => pre disj.
+
+       apply (MSCore.dummy_adversary
+       Env Adv
+       KEHybrid
+       UC_KEIdeal
+       UC_KESim
+       _invar_KEHybrid _metric_KEHybrid
+       _invar_IF _metric_IF
+       _invar_UC_KESim _metric_UC_KESim
+       func' in_guard' 0%r &m
+     ).
+         apply _metric_KEHybrid_good.
+         rewrite /_invar_KEHybrid. rewrite /predT. trivial.
+     rewrite /_invar_KEHybrid.
+         rewrite /predT. simplify.
+     move => n.
+     by conseq (KEHybrid_invoke n);smt().
+         apply IF_metric_good.
+         rewrite /_invar_IF /predT //.
+     move => n.
+     by conseq (IF_invoke n);smt().
+         apply UC_KESim_metric_good.
+         rewrite /_invar_UC_KESim /predT //.
+         apply UC_KESim_invoke.
+         trivial.
+     trivial.
+       apply (Exper_KEHybrid_KEIdeal_KESim_dummy_adversary
+     (MSCore.CombEnvAdv(Env, Adv))
+     func' in_guard' &m
+   ).
+   trivial.
+trivial.      
+   qed.
 
 lemma ke_sec (func': addr, in_guard' : int fset) &m :
     exper_pre func' =>
