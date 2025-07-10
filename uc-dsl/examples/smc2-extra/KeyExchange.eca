@@ -4484,7 +4484,7 @@ skip. move => &1 &2 P.
 qed.
 print MSCore.
 local lemma Exper_KEHybrid_KEIdeal_KESim_dummy_adversary
-    (EnvX <: ENV)
+    (EnvX <: ENV{-MI, -KEHybrid, -UC_KEIdeal, -MSCore.MS, -UC_KESim})
             (func' : addr, in_guard' : int fset) &m :
             exper_pre func' =>
             disjoint in_guard' (fset1 _adv_if_pi) =>
@@ -4492,7 +4492,23 @@ local lemma Exper_KEHybrid_KEIdeal_KESim_dummy_adversary
        (func', in_guard') @ &m : res] -
   Pr[Exper(MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)), EnvX).main
        (func', in_guard') @ &m : res]| <= 0%r.
-proof. admit. qed.
+     proof.
+     admit. (*
+move => pre disj.
+       have H :
+`|Pr[Exper(MI(KEHybrid, DummyAdv), EnvX).main(func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)), EnvX).main(func',in_guard') @ &m : res]| <=
+0%r
+    <=>
+  Pr[Exper(MI(KEHybrid, DummyAdv), EnvX).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)), EnvX).main(func',in_guard') @ &m : res].
+  smt(). apply H. clear H.
+byequiv.
+proc.
+inline init.
+sp.
+call (_ : true).*)
+qed.
 
 print MSCore.dummy_adversary.
 
@@ -4526,7 +4542,7 @@ local lemma Exper_KEHybrid_KEIdeal_KESim
          apply IF_metric_good.
          rewrite /_invar_IF /predT //.
      move => n.
-     by conseq (IF_invoke n);smt().
+       by conseq (IF_invoke n);smt(set1E in_fset1).
          apply UC_KESim_metric_good.
          rewrite /_invar_UC_KESim /predT //.
          apply UC_KESim_invoke.
@@ -4563,8 +4579,38 @@ trivial. trivial.
   rewrite (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
   func' in_guard' &m).
   trivial. trivial.
-  rewrite -(Exper_KEHybrid_KEIdeal_KESim func' in_guard' &m).
-trivial.
+  have H :
+Pr[Exper(MI(UC_KEIdeal, SIM(Adv)), Env).main(func', in_guard') @ &m : res]
+=
+Pr[Exper(MI(KEHybrid, Adv), Env).main (func', in_guard') @ &m : res].
+  have H :
+`|Pr[Exper(MI(KEHybrid, Adv), Env).main
+       (func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_KEIdeal, SIM(Adv)), Env).main
+    (func', in_guard') @ &m : res]| <= 0%r.
+      apply Exper_KEHybrid_KEIdeal_KESim. trivial.
+      rewrite /adv_pis_rf_info in disj.
+      rewrite /_adv_if_pi.
+      rewrite /rf_info in disj.
+      move : disj. move => /> disj.
+      rewrite /_adv_pi_num in disj.
+  print rangeset.
+  search rangeset.
+  search oflist.
+    rewrite /rangeset /range in disj.
+  search iota_.
+  have H : _adv_pi_begin \in (oflist (iota_ _adv_pi_begin (_adv_pi_begin + 3 - _adv_pi_begin))).
+    smt(mem_oflist oflist_cons mem_rangeset iota0 iota1 fset0U fsetU0 fsetUC in_fsetU set1E in_fset1 in_fsetU1 disjoint_with_union_implies_disjoint_with_first disjointP).
+  print disjoint.
+  search (`&`).
+  print disjoint.
+  search fset0.
+    have Q: _adv_pi_begin \notin in_guard'.
+  search (`&`).
+    smt(mem_oflist oflist_cons mem_rangeset iota0 iota1 fset0U fsetU0 fsetUC in_fsetU set1E in_fset1 in_fsetU1 disjoint_with_union_implies_disjoint_with_first disjointP).
+  smt(mem_oflist oflist_cons mem_rangeset iota0 iota1 fset0U fsetU0 fsetUC in_fsetU set1E in_fset1 in_fsetU1 disjoint_with_union_implies_disjoint_with_first disjointP).
+    smt().
+  rewrite H. clear H.
 rewrite (Exper_KEHybrid_KEHybridHashingAdv_OptHashing func' in_guard' &m). trivial. trivial.
 rewrite -(RH.GNonOptHashing_GOptHashing KEHybridHashingAdv &m). rewrite -(KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
   func' in_guard' &m).
@@ -4575,8 +4621,8 @@ qed.
  end section.
      
 lemma KeyExchange_RFIP_IF_advantage
-    (Env <: ENV{-MI, -RFIP, -IF, -SIM, -DDH_Adv})
-    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM, -DDH_Adv})
+    (Env <: ENV{-MI, -RFIP, -IF, -SIM, -DDH_Adv, -DDH_Adv_globs, -MSCore.CombEnvAdv})
+    (Adv <: ADV{-MI, -RFIP, -IF, -SIM, -DDH_Adv, -DDH_Adv_globs, -MSCore.CombEnvAdv, -Env})
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
