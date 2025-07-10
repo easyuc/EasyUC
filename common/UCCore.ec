@@ -655,8 +655,10 @@ module MI = MakeInt.MI.
 (* Converting Hoare lemmas about invariants and termination metrics
    for functionalities into equiv lemmas
 
-   lemmas for invoke have two forms, one of them restricting
-   destination adversarial port indices for adversarial messages *)
+   lemmas for invoke have three forms, one of them restricting
+   destination adversarial port indices to a single index, one
+   restricting them to a finite set of indices, and one making
+   no restriction on them *)
 
 (* init lemma for use with any functionality, Fun, with an invariant
    for which we know the corresponding hoare lemma *)
@@ -676,6 +678,11 @@ conseq
   (_ : true ==> true) => //.
 sim.
 qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric making no restriction on destination
+   adversarial port indices, for which we know the corresponding hoare
+   lemma *)
 
 lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
       (invar : glob Fun -> bool, tm : glob Fun -> int, n : int) :
@@ -703,8 +710,45 @@ sim.
 qed.
 
 (* invoke lemma for use with any functionality, Fun, with an invariant
-   and termination metric, including restricting adversarial port
-   indices of outgoing adversarial messages, for which we know the
+   and termination metric restricting destination adversarial port
+   indices to a single adversarial port index, for which we know the
+   corresponding hoare lemma *)
+
+lemma invoke_term_metric_adv_pi_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int,
+       n : int, adv_pi : int) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 = adv_pi))] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None =>
+    tm (glob Fun){1} < n /\
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 = adv_pi))].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 = adv_pi)))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric restricting destination adversarial port
+   indices to a finite set of port indices, for which we know the
    corresponding hoare lemma *)
 
 lemma invoke_term_metric_adv_pis_hoare_implies_equiv (Fun <: FUNC)
@@ -1911,7 +1955,9 @@ declare axiom IdealFunc_invoke (n : int) :
     ={m, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
     term_if (glob IdealFunc){1} = n ==>
     ={res, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
-    (res{1} <> None => term_if (glob IdealFunc){1} < n)].
+    (res{1} <> None =>
+     term_if (glob IdealFunc){1} < n /\
+     ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 = sim_adv_pi))].
 
 declare axiom ge0_term_sc (gl : glob SimCore) :
   invar_sc gl => 0 <= term_sc gl.
@@ -2569,7 +2615,9 @@ lemma dummy_adversary
    [IdealFunc.invoke :
     invar_if (glob IdealFunc) /\ term_if (glob IdealFunc) = n ==>
     invar_if (glob IdealFunc) /\
-    (res <> None => term_if (glob IdealFunc) < n)]) =>
+    (res <> None =>
+     term_if (glob IdealFunc) < n /\
+     ((oget res).`1 = Adv => (oget res).`2.`2 = sim_adv_pi))]) =>
   (forall (gl : glob SimCore), invar_sc gl => 0 <= term_sc gl) =>
   hoare [SimCore.init : true ==> invar_sc (glob SimCore)] =>
   (forall (n : int),
@@ -2603,7 +2651,9 @@ move => n.
 rewrite (invoke_term_metric_hoare_implies_equiv RealFunc) rf_invoke.
 by apply (init_invar_hoare_implies_equiv IdealFunc).
 move => n.
-by rewrite (invoke_term_metric_hoare_implies_equiv IdealFunc) if_invoke.
+by rewrite
+   (invoke_term_metric_adv_pi_hoare_implies_equiv IdealFunc _ _ _ sim_adv_pi)
+   if_invoke.
 by apply (adv_init_invar_hoare_implies_equiv SimCore).
 move => n.
 rewrite (adv_invoke_term_metric_hoare_implies_equiv SimCore) sc_invoke.
