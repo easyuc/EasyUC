@@ -4584,8 +4584,10 @@ sp.
       proc.
       if; last first. auto;smt(). smt().
   inline loop.
-      sp. wp.
-      while(
+    sp. wp.
+    rcondt{1} 0. auto;smt().
+rcondt{2} 0. auto;smt().
+     (* while(
   ={m, not_done, m0, r0, glob MI, glob DummyAdv} /\
    MakeInt.MI.func{2} = func' /\
    MakeInt.MI.in_guard{2} = in_guard' /\
@@ -4604,7 +4606,42 @@ sp.
          ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |})
 
-    ).
+ ).
+     case(ke_hybrid_ideal_sim_rel0
+   {|ke_hybrid_ideal_sim_rel_st_func = func';
+     ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+     ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+     ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}
+ ).*)
+if. auto;smt().
+    inline{1} (1) invoke.
+inline{2} (1) invoke.
+ sp.
+     match KEHybridStateWaitReq1 {1} 0. auto;smt().
+ (* case when message is acceptable for KEHybrid *)
+ case(m1{1}.`1 = Dir /\ 
+    envport KEHybrid._self{1} m1{1}.`3 /\     
+     m1{1}.`2 = _extport_Pt1 KEHybrid._self{1}).
+     rcondt{1} 0. auto;smt().
+     rcondt{2} 0. auto;smt().
+     inline parties.
+ sp.
+match _State_IF_WaitReq1 {2} 0. auto;smt().
+match. auto;smt(). auto;smt().
+sp.
+inline after_func.
+     auto;smt().
+ move => _x _x0.
+inline _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1.
+inline _State_IF_WaitReq1__KEDir__Pt1__ke_req1.
+sp 5 3.
+     if;last first.
+sp.
+inline after_func.
+
+     auto;progress;smt(). smt().
+     sp.
+ inline  MakeInt.MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)).after_func.
 qed.
 
 print MSCore.dummy_adversary.
