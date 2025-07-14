@@ -2997,13 +2997,7 @@ smt(sim_adv_pi_ge1).
 inline{2} 1; sp.
 match Some {2} 1; first auto; progress; smt().
 rcondt{2} 1; first auto => /> &hr <- /=.
-move => _ _ m2_is_adv iao_not_none oget_iao_le_m2_dest_addr _.
-move => m2_src_addr_eq_adv ge0_m2_si iff _ _ func_le_oget_iao.
-split.
-admit.
-split.
-admit.
-admit.
+smt(inc_nle_l inc_le1_not_rl ge_nil le_trans).
 sp; elim* => r5_R r6_R.
 seq 0 1 :
   (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
