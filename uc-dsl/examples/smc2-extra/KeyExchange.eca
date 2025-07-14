@@ -4629,8 +4629,11 @@ inline{2} (1) invoke.
 match _State_IF_WaitReq1 {2} 0. auto;smt().
 match. auto;smt(). auto;smt().
 sp.
-inline after_func.
-     auto;smt().
+    inline after_func.
+sp.
+rcondf{1} 0. auto;progress;smt().
+    rcondf{2} 0. auto;progress;smt().
+auto;progress;smt(). 
  move => _x _x0.
 inline _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1.
 inline _State_IF_WaitReq1__KEDir__Pt1__ke_req1.
@@ -4638,10 +4641,25 @@ sp 5 3.
      if;last first.
 sp.
 inline after_func.
-
+    rcondf{1} 6. auto;progress;smt().
+rcondf{2} 6. auto;progress;smt().
      auto;progress;smt(). smt().
      sp.
- inline  MakeInt.MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)).after_func.
+    inline{2} (1) after_func.
+sp 0 3.
+rcondf{2} 0. auto;progress;smt().
+    sp 0 1.
+    rcondf{2} 0.
+move => &m0. skip. move => &hr P. smt.
+    rcondf{2} 0. move => &m0. skip. move => &hr P. smt().
+rcondf{2} 0. move => &m0. skip. move => &hr P. smt.
+sp.
+rcondt{2} 0. move => &m0. skip. move => &hr P. smt().
+    rcondf{2} 0. move => &m0. skip. move => &hr P. smt.
+inline{2} (1) invoke.
+sp 0 2.
+rcondt{2} 0. smt.
+    auto;progress;smt().
 qed.
 
 print MSCore.dummy_adversary.
