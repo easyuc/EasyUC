@@ -4873,7 +4873,7 @@ skip. move => &1 &2 P.
       progress;smt().
       rcondf{2} 0. auto;smt().
       auto; smt().
-    
+(*do ovdje*)    
       smt().
 have H : m1{hr}.`1 = Dir /\
         m1{hr}.`2.`1 = UC_KEIdeal._self{hr} /\ envport UC_KEIdeal._self{hr} m1{hr}.`3.
