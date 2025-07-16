@@ -701,3 +701,28 @@ lemma inc_le2_not_rl (ys xs zs : 'a list) :
 proof.
 move => /@inc_sym; apply inc_le1_not_lr.
 qed.
+
+lemma inc_ext_l (xs ys zs : 'a list) :
+  inc xs ys => xs <= zs => inc zs ys.
+proof.
+rewrite incP => [[] x y us vs ws ne_x_y xs_eq ys_eq].
+rewrite le_drop; pose ts := drop (size xs) zs.
+move => <-.
+rewrite xs_eq ys_eq incP.
+have -> : us ++ [x] ++ vs ++ ts = us ++ [x] ++ (vs ++ ts).
+  by rewrite -catA.
+by apply (IncS _ _ x y us (vs ++ ts) ws).
+qed.
+
+lemma inc_ext_r (xs ys zs : 'a list) :
+  inc xs ys => ys <= zs => inc xs zs.
+proof.
+rewrite incP => [[] x y us vs ws ne_x_y xs_eq ys_eq].
+rewrite le_drop; pose ts := drop (size ys) zs.
+move => <-.
+rewrite xs_eq ys_eq incP.
+have -> : us ++ [y] ++ ws ++ ts = us ++ [y] ++ (ws ++ ts).
+  by rewrite -catA.
+by apply (IncS _ _ x y us vs (ws ++ ts)).
+qed.
+

@@ -125,6 +125,18 @@ move => |> inc_fun_adv.
 by apply inc_extl.
 qed.
 
+lemma exper_pre_func_nle_env_root_addr (func : addr) :
+  exper_pre func => ! func <= env_root_addr.
+proof.
+smt(inc_nle_l le_trans ge_nil).
+qed.
+
+lemma exper_pre_adv_nle_env_root_addr (func : addr) :
+  exper_pre func => ! adv <= env_root_addr.
+proof.
+smt(inc_nle_r le_trans ge_nil).
+qed.
+
 module Exper (Inter : INTER, Env : ENV) = {
   module E = Env(Inter)
 
@@ -201,8 +213,6 @@ by rewrite in_fsetU negb_or.
 by apply disj_ys_zs.
 qed.
 
-abstract theory MakeInterface.
-
 (* make interface out of functionality and adversary parts *)
 
 (* loop invariant for interface's while loop *)
@@ -243,6 +253,8 @@ op main_guard (func : addr, in_guard : int fset, m : msg) : bool =
   m.`1 = Adv /\ m.`2.`1 = adv /\
   (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
    0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func m.`3).
+
+abstract theory MakeInterface.
 
 module MI (Func : FUNC, Adv : ADV) : INTER = {
   var func : addr
@@ -643,8 +655,10 @@ module MI = MakeInt.MI.
 (* Converting Hoare lemmas about invariants and termination metrics
    for functionalities into equiv lemmas
 
-   lemmas for invoke also restrict destination adversarial
-   port indices for adversarial messages *)
+   lemmas for invoke have three forms, one of them restricting
+   destination adversarial port indices to a single index (and also
+   restricting the source port index to 1), one restricting them to a
+   finite set of indices, and one making no restriction on them *)
 
 (* init lemma for use with any functionality, Fun, with an invariant
    for which we know the corresponding hoare lemma *)
@@ -665,19 +679,54 @@ conseq
 sim.
 qed.
 
-(* invoke lemma for use with any functionality, Fun, with an invariant and
-   termination metric for which we know the corresponding hoare lemma *)
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric making no restriction on destination
+   adversarial port indices, for which we know the corresponding hoare
+   lemma *)
 
 lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int, n : int) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n)] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None => tm (glob Fun){1} < n)].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None => tm (glob Fun) < n))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric restricting outgoing adversarial messages to
+   have a specified destination port index and also have the source
+   port index 1, for which we know the corresponding hoare lemma
+
+   this is for use with ideal functionalities *)
+
+lemma invoke_term_metric_adv_pi_hoare_implies_equiv (Fun <: FUNC)
       (invar : glob Fun -> bool, tm : glob Fun -> int,
-       n : int, advpis : int fset) :
+       n : int, adv_pi : int) :
   hoare
   [Fun.invoke :
    invar (glob Fun) /\ tm (glob Fun) = n ==>
    invar (glob Fun) /\
    (res <> None =>
     tm (glob Fun) < n /\
-    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis))] =>
+    ((oget res).`1 = Adv =>
+     (oget res).`2.`2 = adv_pi /\ (oget res).`3.`2 = 1))] =>
   equiv
   [Fun.invoke ~ Fun.invoke :
    ={m, glob Fun} /\ invar (glob Fun){1} /\
@@ -685,7 +734,8 @@ lemma invoke_term_metric_hoare_implies_equiv (Fun <: FUNC)
    ={res, glob Fun} /\ invar (glob Fun){1} /\
    (res{1} <> None =>
     tm (glob Fun){1} < n /\
-    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in advpis))].
+    ((oget res{1}).`1 = Adv =>
+     (oget res{1}).`2.`2 = adv_pi /\ (oget res{1}).`3.`2 = 1))].
 proof.
 move => invoke_hoare.
 conseq
@@ -695,7 +745,97 @@ conseq
    invar (glob Fun) /\
    (res <> None =>
     tm (glob Fun) < n /\
-    ((oget res).`1 = Adv => (oget res).`2.`2 \in advpis)))
+    ((oget res).`1 = Adv =>
+     (oget res).`2.`2 = adv_pi /\ (oget res).`3.`2 = 1)))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any functionality, Fun, with an invariant
+   and termination metric restricting destination adversarial port
+   indices to a finite set of port indices, for which we know the
+   corresponding hoare lemma *)
+
+lemma invoke_term_metric_adv_pis_hoare_implies_equiv (Fun <: FUNC)
+      (invar : glob Fun -> bool, tm : glob Fun -> int,
+       n : int, adv_pis : int fset) :
+  hoare
+  [Fun.invoke :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis))] =>
+  equiv
+  [Fun.invoke ~ Fun.invoke :
+   ={m, glob Fun} /\ invar (glob Fun){1} /\
+   tm (glob Fun){1} = n ==>
+   ={res, glob Fun} /\ invar (glob Fun){1} /\
+   (res{1} <> None =>
+    tm (glob Fun){1} < n /\
+    ((oget res{1}).`1 = Adv => (oget res{1}).`2.`2 \in adv_pis))].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Fun} ==> ={glob Fun, res})
+  (_ :
+   invar (glob Fun) /\ tm (glob Fun) = n ==>
+   invar (glob Fun) /\
+   (res <> None =>
+    tm (glob Fun) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis)))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* Converting Hoare lemmas about invariants and termination metrics
+   for adversaries into equiv lemmas
+
+   This will be used for simulator cores *)
+
+(* init lemma for use with any adversary, Adv, with an invariant
+   for which we know the corresponding hoare lemma *)
+
+lemma adv_init_invar_hoare_implies_equiv (Adv <: ADV)
+      (invar : glob Adv -> bool) :
+  hoare [Adv.init : true ==> invar (glob Adv)] =>
+  equiv
+  [Adv.init ~ Adv.init :
+   ={glob Adv} ==>
+   ={glob Adv} /\ invar (glob Adv){1}].
+proof.
+move => init_hoare.
+conseq
+  (_ : ={glob Adv} ==> ={glob Adv})
+  (_ : true ==> invar (glob Adv))
+  (_ : true ==> true) => //.
+sim.
+qed.
+
+(* invoke lemma for use with any adversary, Adv, with an invariant and
+   termination metric for which we know the corresponding hoare lemma *)
+
+lemma adv_invoke_term_metric_hoare_implies_equiv (Adv <: ADV)
+      (invar : glob Adv -> bool, tm : glob Adv -> int, n : int) :
+  hoare
+  [Adv.invoke :
+   invar (glob Adv) /\ tm (glob Adv) = n ==>
+   invar (glob Adv) /\
+   (res <> None => tm (glob Adv) < n)] =>
+  equiv
+  [Adv.invoke ~ Adv.invoke :
+   ={m, glob Adv} /\ invar (glob Adv){1} /\
+   tm (glob Adv){1} = n ==>
+   ={res, glob Adv} /\ invar (glob Adv){1} /\
+   (res{1} <> None => tm (glob Adv){1} < n)].
+proof.
+move => invoke_hoare.
+conseq
+  (_ : ={m, glob Adv} ==> ={glob Adv, res})
+  (_ :
+   invar (glob Adv) /\ tm (glob Adv) = n ==>
+   invar (glob Adv) /\
+   (res <> None => tm (glob Adv) < n))
   (_ : true ==> true) => //.
 sim.
 qed.
@@ -797,6 +937,33 @@ have /# :
   ! (nth1_adv_pi_begin_params rfi 1 <= i <=
      nth1_adv_pi_end_params rfi j) by
     elim => [// | j ge0_j IH j_plus1_good_par /#].
+qed.
+
+op adv_pis_rf_info_first (rfi : rf_info) : int =
+  rfi.`rfi_adv_pi_begin.
+
+op adv_pis_rf_info_last (rfi : rf_info) : int =
+  if rfi.`rfi_num_params = 0
+  then rfi.`rfi_adv_pi_main_end
+  else nth1_adv_pi_end_params rfi rfi.`rfi_num_params.
+
+lemma adv_pis_rf_info_rangeset (rfi : rf_info) :
+  adv_pis_rf_info rfi =
+  rangeset (adv_pis_rf_info_first rfi) (adv_pis_rf_info_last rfi + 1).
+proof.
+rewrite /adv_pis_rf_info /adv_pis_rf_info_first /adv_pis_rf_info_last.
+by case (rfi.`rfi_num_params = 0).
+qed.
+
+lemma adv_pis_rf_info_first_ge1 (rfi : rf_info) :
+  rf_info_valid rfi => 1 <= adv_pis_rf_info_first rfi.
+proof. smt(). qed.
+
+lemma adv_pis_rf_info_first_le_last (rfi : rf_info) :
+  rf_info_valid rfi =>
+  adv_pis_rf_info_first rfi <= adv_pis_rf_info_last rfi.
+proof.
+smt(rfi_valid_adv_pi_main_end_lt_adv_pi_param_begin).
 qed.
 
 op addr_ge_param (rfi : rf_info, self addr : addr) : bool =
@@ -1165,26 +1332,23 @@ qed.
 
 end RealFunctionality.
 
-abstract theory DummyAdversary.
-
 (* dummy adversary (DA) - completely controlled by environment *)
 
-(* message from port env_root_port of environment to port (dfe_da, 0) of
-   dummy adversary, instructing dummy adversary to send message (Adv,
-   dfe_pt, (dfe_da, dfe_n), dfe_tag, dfe_u); this instruction will
-   only be obeyed if 0 < dfe_n and dfe_pt <> env_root_port, dfe_pt.`1 is
-   not >= dfe_da, and dfe_tag is not TagNoInter *)
+(* message from port env_root_port of environment to port
+   adv_root_port (adv, 0) of dummy adversary, instructing dummy
+   adversary to send message (Adv, dfe_pt, (adv, dfe_n), dfe_tag,
+   dfe_u); this instruction will only be obeyed if 0 < dfe_n,
+   dfe_pt <> env_root_port and dfe_pt.`1 is not >= adv *)
 
 type da_from_env =
-  {dfe_da  : addr;   (* address of dummy adversary *)
-   (* data: *)
+  {(* data: *)
    dfe_pt  : port;   (* destination port of message to be sent by DA *)
    dfe_n   : int;    (* source port index of message to be sent by DA *)
    dfe_tag : tag;    (* tag of message to be sent by DA *)
    dfe_u   : univ}.  (* value of message to be sent by DA *)
 
 op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
-  (Adv, (x.`dfe_da, 0), env_root_port,
+  (Adv, adv_root_port, env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ
     epdp_tag_univ epdp_id).`enc
@@ -1192,32 +1356,32 @@ op enc_da_from_env (x : da_from_env) : msg =  (* let SMT provers inspect *)
 
 op [opaque smt_opaque] dec_da_from_env (m : msg) : da_from_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1 <> adv_root_port \/ pt2 <> env_root_port \/
+      tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`dec v with
      | None   => None
      | Some x =>
          let (pt, n, tag, u) = x
-         in Some
-            {|dfe_da = pt1.`1; dfe_pt = pt; dfe_n = n; dfe_tag = tag;
-              dfe_u = u|}
+         in Some {|dfe_pt = pt; dfe_n = n; dfe_tag = tag; dfe_u = u|}
      end.
 
-op epdp_da_from_env_msg =
+op epdp_da_from_env =
   {|enc = enc_da_from_env; dec = dec_da_from_env|}.
 
-lemma valid_epdp_da_from_env_msg : valid_epdp epdp_da_from_env_msg.
+lemma valid_epdp_da_from_env : valid_epdp epdp_da_from_env.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_from_env_msg /= /dec_da_from_env /enc_da_from_env /=.
+rewrite /epdp_da_from_env /= /dec_da_from_env /enc_da_from_env /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_da_from_env_msg /dec_da_from_env /enc_da_from_env /=.
+rewrite /epdp_da_from_env /dec_da_from_env /enc_da_from_env /=.
 case
-  (mod = Dir \/ pt1.`2 <> 0 \/ pt2 <> env_root_port \/ tag <> TagNoInter) => //.
-rewrite !negb_or /= not_dir => [#] -> pt1_2 -> -> match_eq_some /=.
+  (mod = Dir \/ pt1 <> adv_root_port \/ pt2 <> env_root_port \/
+   tag <> TagNoInter) => //.
+rewrite !negb_or /= not_dir => [#] -> -> -> -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_port_univ epdp_int_univ
    epdp_tag_univ epdp_id).`dec u =
@@ -1228,19 +1392,18 @@ have val_u :
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
-split; first move : pt1_2; by case pt1.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
-hint simplify [eqtrue] valid_epdp_da_from_env_msg.
-hint rewrite epdp : valid_epdp_da_from_env_msg.
+hint simplify [eqtrue] valid_epdp_da_from_env.
+hint rewrite epdp : valid_epdp_da_from_env.
 
 lemma eq_of_valid_da_from_env (m : msg) :
-  is_valid epdp_da_from_env_msg m =>
+  is_valid epdp_da_from_env m =>
   m =
-  let x = oget (epdp_da_from_env_msg.`dec m) in
+  let x = oget (epdp_da_from_env.`dec m) in
   (Adv,
-   (x.`dfe_da, 0),
+   adv_root_port,
    env_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ epdp_id).`enc
@@ -1248,29 +1411,28 @@ lemma eq_of_valid_da_from_env (m : msg) :
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : da_from_env), epdp_da_from_env_msg.`dec m = Some x.
-  exists (oget (epdp_da_from_env_msg.`dec m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env_msg) <- //.
+have [] x : exists (x : da_from_env), epdp_da_from_env.`dec m = Some x.
+  exists (oget (epdp_da_from_env.`dec m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_from_env) <- //.
 qed.
 
-(* message from port (dte_da, 0) of dummy adversary to port env_root_port of
-   environment, telling environment that dummy adversary received
-   message (Adv, (dte_da, dte_n), dte_pt, dte_tag, dte_u), where
-   0 < dtn_n and dte_pt <> env_root_port *)
+(* message from port adv_root_port of dummy adversary to port
+   env_root_port of environment, telling environment that dummy
+   adversary received message (Adv, (adv, dte_n), dte_pt, dte_tag,
+   dte_u), where 0 < dtn_n and dte_pt <> env_root_port *)
 
 type da_to_env =
-  {dte_da  : addr;   (* address of dummy adversary *)
-   (* data: *)
+  {(* data: *)
    dte_n   : int;    (* destination port index of message sent to DA;
-                        the port's address will be dte_da
+                        the port's address will be adv
                         (enforced by interface/simulator) *)
    dte_pt  : port;   (* source port of message sent to DA *)
    dte_tag : tag;    (* tag of message sent to DA *)
    dte_u   : univ}.  (* value of message sent to DA *)
 
 op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
-  (Adv, env_root_port, (x.`dte_da, 0),
+  (Adv, env_root_port, adv_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -1278,7 +1440,8 @@ op enc_da_to_env (x : da_to_env) : msg =  (* let SMT provers inspect *)
 
 op [opaque smt_opaque] dec_da_to_env (m : msg) : da_to_env option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) ?
+  in (mod = Dir \/ pt1 <> env_root_port \/ pt2 <> adv_root_port \/
+      tag <> TagNoInter) ?
      None :
      match (epdp_tuple4_univ
             epdp_int_univ epdp_port_univ epdp_tag_univ
@@ -1286,24 +1449,23 @@ op [opaque smt_opaque] dec_da_to_env (m : msg) : da_to_env option =
      | None   => None
      | Some x =>
          let (n, pt, tag, u) = x
-        in Some
-           {|dte_da = pt2.`1; dte_n = n; dte_pt = pt; dte_tag = tag;
-             dte_u = u|}
+        in Some {|dte_n = n; dte_pt = pt; dte_tag = tag; dte_u = u|}
      end.
 
-op epdp_da_to_env_msg =  (* let SMT provers inspect *)
+op epdp_da_to_env =  (* let SMT provers inspect *)
   {|enc = enc_da_to_env; dec = dec_da_to_env|}.
 
-lemma valid_epdp_da_to_env_msg : valid_epdp epdp_da_to_env_msg.
+lemma valid_epdp_da_to_env : valid_epdp epdp_da_to_env.
 proof.
 apply epdp_intro.
 move => x.
-rewrite /epdp_da_to_env_msg /= /dec_da_to_env /enc_da_to_env /=.
+rewrite /epdp_da_to_env /= /dec_da_to_env /enc_da_to_env /=.
 by case x.
 move => [mod pt1 pt2 tag u] v.
-rewrite /epdp_da_to_env_msg /dec_da_to_env /enc_da_to_env /=.
-case (mod = Dir \/ pt1 <> env_root_port \/ pt2.`2 <> 0 \/ tag <> TagNoInter) => //.
-rewrite !negb_or /= not_dir => [#] -> -> pt2_2 -> match_eq_some /=.
+rewrite /epdp_da_to_env /dec_da_to_env /enc_da_to_env /=.
+case (mod = Dir \/ pt1 <> env_root_port \/ pt2 <> adv_root_port \/
+      tag <> TagNoInter) => //.
+rewrite !negb_or /= not_dir => [#] -> -> -> -> match_eq_some /=.
 have val_u :
   (epdp_tuple4_univ epdp_int_univ epdp_port_univ
    epdp_tag_univ epdp_id).`dec u =
@@ -1314,20 +1476,19 @@ have val_u :
   by case.
 move : match_eq_some.
 rewrite val_u /= => <- /=.
-split; first move : pt2_2; by case pt2.
 by rewrite (epdp_dec_enc _ _ u).
 qed.
 
-hint simplify [eqtrue] valid_epdp_da_to_env_msg.
-hint rewrite epdp : valid_epdp_da_to_env_msg.
+hint simplify [eqtrue] valid_epdp_da_to_env.
+hint rewrite epdp : valid_epdp_da_to_env.
 
 lemma eq_of_valid_da_to_env (m : msg) :
-  is_valid epdp_da_to_env_msg m =>
+  is_valid epdp_da_to_env m =>
   m =
-  let x = oget (epdp_da_to_env_msg.`dec m) in
+  let x = oget (epdp_da_to_env.`dec m) in
   (Adv,
    env_root_port,
-   (x.`dte_da, 0),
+   adv_root_port,
    TagNoInter,
    (epdp_tuple4_univ epdp_int_univ epdp_port_univ
     epdp_tag_univ epdp_id).`enc
@@ -1335,36 +1496,46 @@ lemma eq_of_valid_da_to_env (m : msg) :
 proof.
 rewrite /is_valid.
 move => val_m.
-have [] x : exists (x : da_to_env), epdp_da_to_env_msg.`dec m = Some x.
-  exists (oget (epdp_da_to_env_msg.`dec m)); by rewrite -some_oget.
-case x => x1 x2 x3 x4 x5.
-move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env_msg) <- //.
+have [] x : exists (x : da_to_env), epdp_da_to_env.`dec m = Some x.
+  exists (oget (epdp_da_to_env.`dec m)); by rewrite -some_oget.
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp_da_to_env) <- //.
+qed.
+
+lemma dest_pi_gt0_implies_dec_epdp_da_from_env_fails (m : msg) :
+  0 < m.`2.`2 => epdp_da_from_env.`dec m = None.
+proof.
+case m => x1 x2 x3 x4 x5; case x2 => x2_1 x2_2 /=.
+move => gt0_dest_pi.
+rewrite /epdp_da_from_env /dec_da_from_env /=.
+rewrite /adv_root_port /= negb_and.
+have -> // : x2_2 <> 0 by smt().
 qed.
 
 module DummyAdv : ADV = {
-  proc init() : unit = {
-  }
+  proc init() : unit = { }
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
 
-    match (epdp_da_from_env_msg.`dec m) with
-      Some x => {  (* from interface/simulator, we know x.`dfe_da = adv *)
+    match epdp_da_from_env.`dec m with
+      Some x => {
+        (* m.`1 = Adv, m.`2 = adv_root_port, m.`3 = env_root_port *)
         if (0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\
-            ! adv <= x.`dfe_pt.`1 /\ x.`dfe_tag <> TagNoInter) {
+            ! adv <= x.`dfe_pt.`1) {
           r <- Some (Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u);
         }
       }
     | None   => {
         (* message from functionality or environment;
-           interface/simulator will enforce that m.`1 = Adv /\ m.`2.`1
-           = self /\ 0 <= m.`2.`2 /\ ! self <= m.`3.`1 /\
+           interface/simulator will enforce that m.`1 = Adv /\
+           m.`2.`1 = adv /\ 0 <= m.`2.`2 /\ ! adv <= m.`3.`1 /\
            (m.`3 = env_root_port <=> m.`2.`2 = 0) *)
-        if (0 < m.`2.`2) {
+        if (0 < m.`2.`2) { (* so can't overlap with above *)
           r <-
             Some
-            (enc_da_to_env
-             {|dte_da = adv; dte_n = m.`2.`2; dte_pt = m.`3;
+            (epdp_da_to_env.`enc
+             {|dte_n = m.`2.`2; dte_pt = m.`3;
                dte_tag = m.`4; dte_u = m.`5|});
         }
       }
@@ -1372,8 +1543,6 @@ module DummyAdv : ADV = {
     return r;
   }
 }.
-
-end DummyAdversary.
 
 (* module type for simulators
 
@@ -1385,55 +1554,30 @@ module type SIM (Adv : ADV) = {
   proc invoke(m : msg) : msg option {Adv.invoke}
 }.
 
+(* simulator composition *)
+
 module (SimComp (Sim2 : SIM, Sim1 : SIM) : SIM) (Adv : ADV) : ADV =
   Sim2(Sim1(Adv)).
 
-abstract theory MakeSimulator.
+(* making simulators and dummy adversary theorem *)
 
-(* construct a simulator from a core *)
+abstract theory Simulator.
 
 (* begin theory parameters *)
 
-op core_pi : int.
+(* adversarial port index of simulator *)
 
-axiom core_pi_gt0 :
-  0 < core_pi.
+op sim_adv_pi : int.
+
+axiom sim_adv_pi_ge1 : 1 <= sim_adv_pi.
 
 (* end theory parameters *)
 
-(* loop invariant for simulator's while loop *)
-
-(* TODO - this is out of date: *)
-
-op ms_loop_invar
-     (if_addr_opt : addr option,
-      m : msg, r : msg option, not_done : bool) : bool =
-  m.`1 = Adv /\
-  (not_done =>
-   (m.`2 = (adv, 0) /\ m.`3 = env_root_port \/
-
-    m.`2.`1 = adv /\ m.`2.`2 = core_pi /\ if_addr_opt <> None /\
-    oget if_addr_opt = m.`3.`1 /\ m.`3.`2 = 1 \/
-
-    m.`2.`1 = adv /\ 0 < m.`2.`2 /\ m.`2.`2 <> core_pi /\ ! adv <= m.`3.`1 \/
-
-    if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1 /\
-    m.`3.`1 = adv /\ 0 < m.`3.`2 < core_pi)) /\
-  (! not_done =>
-   r = None \/
-   ((oget r).`1 = Adv /\ (oget r).`3.`1 = adv /\
-    ((oget r).`2 = env_root_port /\ (oget r).`3.`2 = 0 \/
-
-     if_addr_opt <> None /\ (oget r).`2 = (oget if_addr_opt, 0) /\
-     (oget r).`3.`2 = core_pi \/
-
-     ! adv <= (oget r).`2.`1 /\ (oget r).`2 <> env_root_port /\
-     (if_addr_opt <> None => ! oget if_addr_opt <= (oget r).`2.`1) /\
-     0 < (oget r).`3.`2 < core_pi))).
-
 module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   (* address of ideal functionality; only known after first message
-     received with destination port index core_pi *)
+     received with destination port index sim_adv_pi (this holds
+     assuming source address of this message is address of
+     ideal functionality) *)
 
   var if_addr_opt : addr option
 
@@ -1455,7 +1599,7 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
         r <- None; not_done <- false;
       }
       elif (m.`2.`1 = adv) {
-        if (0 < m.`2.`2 /\ if_addr <= m.`3.`1) {
+        if (0 < m.`2.`2 /\ m.`2.`2 <> sim_adv_pi /\ if_addr <= m.`3.`1) {
           not_done <- true;
         }
         else {
@@ -1463,7 +1607,7 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
         }
       }
       elif (m.`2.`1 = if_addr) {
-        if (m.`2.`2 = 1 /\ m.`3 = (adv, core_pi)) {
+        if (m.`2.`2 = 1 /\ m.`3 = (adv, sim_adv_pi)) {
           not_done <- false;
         }
         else {
@@ -1485,14 +1629,11 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
     }
     else {
       m <- oget r;
-      if (m.`1 = Dir \/ m.`2.`1 = adv \/ m.`3.`1 <> adv \/
-          m.`3.`2 < 0) {
+      if (m.`1 = Dir \/ adv <= m.`2.`1 \/ m.`3.`1 <> adv \/ m.`3.`2 < 0 \/
+          ! (m.`3.`2 = 0 <=> m.`2 = env_root_port)) {
         r <- None; not_done <- false;
       }
-      elif (if_addr_opt = None) {
-        not_done <- false;
-      }
-      elif (oget if_addr_opt <= m.`2.`1) {
+      elif (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
         not_done <- true;
       }
       else {
@@ -1505,32 +1646,36 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   proc loop(m : msg) : msg option = {
     var r : msg option <- None;
     var not_done : bool <- true;
+
     while (not_done) {
-      if (m.`2.`2 = core_pi) {
-        r <@ Core.invoke(m);
-        (r, m, not_done) <@ after_core(r);
-      }
-      elif (if_addr_opt <> None /\ oget if_addr_opt <= m.`2.`1) {
-        r <@ Core.invoke(m);
-        (r, m, not_done) <@ after_core(r);
-      }
-      else {
+      if (m.`2.`1 = adv /\ m.`2.`2 <> sim_adv_pi) {
         r <@ Adv.invoke(m);
         (r, m, not_done) <@ after_adv(r);
+      } else {
+        (* if_addr_opt <> None *)
+        r <@ Core.invoke(m);
+        (r, m, not_done) <@ after_core(r);
       }
     }
     return r;
   }
 
-  (* m.`1 = Adv /\ m.`2.`1 = self /\
+  (* (if_addr_opt <> None => inc (oget if_addr_opt) adv) /\
+
+     m.`1 = Adv /\ m.`2.`1 = adv /\
      (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
-      0 < m.`2.`2 /\ m.`3 <> env_root_port) *)
+      0 < m.`2.`2 /\ ! adv <= m.`3.`1 /\ m.`3 <> env_root_port) *)
 
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    if (m.`2.`2 = core_pi) {  (* so m.`3 <> env_root_port *)
+    if (m.`2.`2 = sim_adv_pi) {
       if (if_addr_opt = None) {
-        if (m.`3.`2 = 1) {  (* ideal functionality's port index *)
+        (* adversarial messages from ideal functionality must have
+           source port index 1 *)
+        if (m.`3.`2 = 1) {
+          (* for the ideal functionalities generated by the
+             translator, m.`3.`1 will be equal to the address of the
+             functionality, but we can't check for that *)
           if_addr_opt <- Some m.`3.`1;
           r <@ loop(m);
         }
@@ -1546,4 +1691,2906 @@ module (MS (Core : ADV) : SIM) (Adv : ADV) : ADV = {
   }
 }.
 
-end MakeSimulator.
+op after_core_return (if_addr : addr, r : msg option) : bool =
+  r <> None /\ (oget r).`1 = Adv /\ (oget r).`2.`1 = if_addr /\
+  (oget r).`2.`2 = 1 /\ (oget r).`3 = (adv, sim_adv_pi).
+
+op after_core_continue (if_addr : addr, r : msg option) : bool =
+  r <> None /\ (oget r).`1 = Adv /\ (oget r).`2.`1 = adv /\
+  0 < (oget r).`2.`2 /\ (oget r).`2.`2 <> sim_adv_pi /\
+  if_addr <= (oget r).`3.`1.
+
+op after_core_error (if_addr : addr, r : msg option) : bool =
+  r = None \/
+  (oget r).`1 = Dir \/
+  (oget r).`2.`1 = adv /\
+  (! 0 < (oget r).`2.`2 \/ (oget r).`2.`2 = sim_adv_pi \/
+   ! if_addr <= (oget r).`3.`1) \/
+  (oget r).`2.`1 = if_addr /\
+  (! (oget r).`2.`2 = 1 \/ ! (oget r).`3 = (adv, sim_adv_pi)) \/
+  (oget r).`2.`1 <> adv /\ (oget r).`2.`1 <> if_addr.
+
+lemma after_core_disj (if_addr : addr, r : msg option) :
+  after_core_return if_addr r \/
+  after_core_continue if_addr r \/
+  after_core_error if_addr r.
+proof.
+smt().
+qed.
+
+lemma MS_after_core_return (CoreSim <: ADV) (Adv <: ADV)
+      (r' : msg option) :
+  phoare
+  [MS(CoreSim, Adv).after_core :
+   r = r' /\
+   MS.if_addr_opt <> None /\ inc (oget MS.if_addr_opt) adv /\
+   after_core_return (oget MS.if_addr_opt) r ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ ! res.`3] = 1%r.
+proof.
+proc; auto; smt(inc_ne_adv_func).
+qed.
+
+lemma MS_after_core_continue (CoreSim <: ADV) (Adv <: ADV)
+      (r' : msg option) :
+  phoare
+  [MS(CoreSim, Adv).after_core :
+   r = r' /\
+   after_core_continue (oget MS.if_addr_opt) r ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof.
+proc; auto; smt().
+qed.
+
+lemma MS_after_core_error (CoreSim <: ADV) (Adv <: ADV) :
+  phoare
+  [MS(CoreSim, Adv).after_core :
+   MS.if_addr_opt <> None /\ inc (oget MS.if_addr_opt) adv /\
+   after_core_error (oget MS.if_addr_opt) r ==>
+   res.`1 = None /\ ! res.`3] = 1%r.
+proof.
+proc; auto; smt(inc_ne_adv_func).
+qed.
+
+op after_adv_return (if_addr_opt : addr option, r : msg option) : bool =
+  r <> None /\ (oget r).`1 = Adv /\ ! adv <= (oget r).`2.`1 /\
+  (oget r).`3.`1 = adv /\ 0 <= (oget r).`3.`2 /\
+  ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port) /\
+  (if_addr_opt = None \/ ! oget if_addr_opt <= (oget r).`2.`1).
+
+op after_adv_continue (if_addr_opt : addr option, r : msg option) : bool =
+  r <> None /\ (oget r).`1 = Adv /\
+  if_addr_opt <> None /\ oget if_addr_opt <= (oget r).`2.`1 /\
+  ! adv <= (oget r).`2.`1 /\
+  (oget r).`3.`1 = adv /\ 0 <= (oget r).`3.`2 /\
+  ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port).
+
+op after_adv_error (r : msg option) : bool =
+  r = None \/ (oget r).`1 = Dir \/ adv <= (oget r).`2.`1 \/
+  (oget r).`3.`1 <> adv \/ (oget r).`3.`2 < 0 \/
+  ! ((oget r).`3.`2 = 0 <=> (oget r).`2 = env_root_port).
+
+lemma after_adv_disj (if_addr_opt : addr option, r : msg option) :
+  after_adv_return if_addr_opt r \/
+  after_adv_continue if_addr_opt r \/
+  after_adv_error r.
+proof.
+smt().
+qed.
+
+lemma MS_after_adv_return (CoreSim <: ADV) (Adv <: ADV)
+      (r' : msg option) :
+  phoare
+  [MS(CoreSim, Adv).after_adv :
+   r = r' /\
+   after_adv_return MS.if_addr_opt r ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ ! res.`3] = 1%r.
+proof. proc; auto; smt(inc_ne_adv_func). qed.
+
+lemma MS_after_adv_continue (CoreSim <: ADV) (Adv <: ADV)
+      (r' : msg option) :
+  phoare
+  [MS(CoreSim, Adv).after_adv :
+   r = r' /\
+   after_adv_continue MS.if_addr_opt r ==>
+   res.`1 = r' /\ res.`1 = Some res.`2 /\ res.`3] = 1%r.
+proof. proc; auto; smt(). qed.
+
+lemma MS_after_adv_error (CoreSim <: ADV) (Adv <: ADV) :
+  phoare
+  [MS(CoreSim, Adv).after_adv :
+   after_adv_error r ==>
+   res.`1 = None /\ ! res.`3] = 1%r.
+proof. proc; auto; smt(). qed.
+
+(* combined environment, made up of the real environment and
+   the adversary *)
+
+module (CombEnvAdv (Env : ENV, Adv : ADV) : ENV) (Inter : INTER) = {
+  var func : addr
+  var in_guard : int fset
+
+  module CombInter : INTER = {
+    proc init(func : addr, in_guard : int fset) : unit = { }
+
+    proc after_adv(r : msg option) : msg option * msg * bool * bool = {
+      var not_done : bool; var m : msg <- witness;
+      var adv_to_adv : bool <- true;
+
+      if (r = None) {
+        not_done <- false;
+      }
+      else {
+        m <- oget r;
+        if (m.`1 = Dir \/ adv <= m.`2.`1 \/ adv <> m.`3.`1 \/ m.`3.`2 < 0) {
+          r <- None; not_done <- false;
+        }
+        elif (func <= m.`2.`1) {
+          if (m.`3.`2 = 0) {
+            r <- None; not_done <- false;
+          }
+          (* else: 0 < m.`3.`2 *)
+          else {
+            m <-
+              epdp_da_from_env.`enc
+              {|dfe_pt = m.`2; dfe_n = m.`3.`2; dfe_tag = m.`4;
+                dfe_u = m.`5|};
+            r <- Some m; not_done <- true;
+            adv_to_adv <- false;  (* will be routed to Inter *)
+          }
+        }
+        else {  (* envport0 func m.`2 *)
+          not_done <- false;
+          if (! (m.`3.`2 = 0 <=> m.`2 = env_root_port)) {
+            r <- None;
+          }
+        }
+      }
+      return (r, m, not_done, adv_to_adv);
+    }
+
+    proc after_inter(r : msg option) : msg option * msg * bool * bool = {
+      var not_done : bool; var m : msg <- witness;
+      var adv_to_adv : bool <- witness; var dte : da_to_env;
+
+      if (r = None) {
+        not_done <- false;
+      }
+      else {
+        m <- oget r;
+        if (m.`1 = Dir) {
+          not_done <- false;
+        }
+        else {
+          dte <- oget (epdp_da_to_env.`dec m);
+          m <-
+            (Adv, (adv, dte.`dte_n), dte.`dte_pt,
+             dte.`dte_tag, dte.`dte_u);
+          r <- Some m; not_done <- true; adv_to_adv <- true;
+        }
+      }
+      return (r, m, not_done, adv_to_adv);
+    }
+
+    proc loop(m : msg) : msg option = {
+      var r : msg option <- None;
+      var not_done : bool <- true;
+
+      (* adversarial messages from environment will not go to dummy
+         adversary *)
+      var adv_to_adv : bool <- true;
+
+      while (not_done) {
+        if (m.`2.`1 = adv /\ adv_to_adv) {
+          r <@ Adv.invoke(m);
+          (r, m, not_done, adv_to_adv) <@ after_adv(r);
+        }
+        else {
+          r <@ Inter.invoke(m);
+          (r, m, not_done, adv_to_adv) <@ after_inter(r);
+        }
+      }
+      return r;
+    }
+
+    proc invoke(m : msg) : msg option = {
+      var r : msg option;
+      if (main_guard func in_guard m) {  (* usual guard for interface *)
+        r <@ loop(m);
+      }
+      else {
+        r <- None;
+      }
+      return r;
+    }
+  }
+
+  proc main(func_ : addr, in_guard_ : int fset) : bool = {
+    var b : bool;
+    func <- func_; in_guard <- in_guard_;
+    Adv.init();
+    b <@ Exper(CombInter, Env).main(func, in_guard);
+    return b;
+  }
+}.
+
+section.
+
+declare module Env       <: ENV{-MI, -MS, -CombEnvAdv}.
+declare module Adv       <: ADV{-MI, -MS, -CombEnvAdv, -Env}.
+declare module RealFunc  <: FUNC{-MI, -CombEnvAdv, -Env, -Adv}.
+declare module IdealFunc <: FUNC{-MI, -MS, -CombEnvAdv, -Env, -Adv}.
+declare module SimCore   <:
+  ADV{-MI, -MS, -CombEnvAdv, -Env, -Adv, -IdealFunc}.
+
+declare op invar_rf : glob RealFunc -> bool.
+declare op term_rf  : glob RealFunc -> int.
+declare op invar_if : glob IdealFunc -> bool.
+declare op term_if  : glob IdealFunc -> int.
+declare op invar_sc : glob SimCore -> bool.
+declare op term_sc  : glob SimCore -> int.
+
+declare axiom ge0_term_rf (gl : glob RealFunc) :
+  invar_rf gl => 0 <= term_rf gl.
+
+declare axiom RealFunc_init :
+   equiv
+   [RealFunc.init ~ RealFunc.init :
+    ={self, glob RealFunc} ==>
+    ={glob RealFunc} /\ invar_rf (glob RealFunc){1}].
+
+declare axiom RealFunc_invoke (n : int) :
+   equiv
+   [RealFunc.invoke ~ RealFunc.invoke :
+    ={m, glob RealFunc} /\ invar_rf (glob RealFunc){1} /\
+    term_rf (glob RealFunc){1} = n ==>
+    ={res, glob RealFunc} /\ invar_rf (glob RealFunc){1} /\
+    (res{1} <> None => term_rf (glob RealFunc){1} < n)].
+
+declare axiom ge0_term_if (gl : glob IdealFunc) :
+  invar_if gl => 0 <= term_if gl.
+
+declare axiom IdealFunc_init :
+   equiv
+   [IdealFunc.init ~ IdealFunc.init :
+    ={self, glob IdealFunc} ==>
+    ={glob IdealFunc} /\ invar_if (glob IdealFunc){1}].
+
+declare axiom IdealFunc_invoke (n : int) :
+   equiv
+   [IdealFunc.invoke ~ IdealFunc.invoke :
+    ={m, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
+    term_if (glob IdealFunc){1} = n ==>
+    ={res, glob IdealFunc} /\ invar_if (glob IdealFunc){1} /\
+    (res{1} <> None =>
+     term_if (glob IdealFunc){1} < n /\
+     ((oget res{1}).`1 = Adv =>
+      (oget res{1}).`2.`2 = sim_adv_pi /\ (oget res{1}).`3.`2 = 1))].
+
+declare axiom ge0_term_sc (gl : glob SimCore) :
+  invar_sc gl => 0 <= term_sc gl.
+
+declare axiom SimCore_init :
+   equiv
+   [SimCore.init ~ SimCore.init :
+    ={glob SimCore} ==>
+    ={glob SimCore} /\ invar_sc (glob SimCore){1}].
+
+declare axiom SimCore_invoke (n : int) :
+   equiv
+   [SimCore.invoke ~ SimCore.invoke :
+    ={m, glob SimCore} /\ invar_sc (glob SimCore){1} /\
+    term_sc (glob SimCore){1} = n ==>
+    ={res, glob SimCore} /\ invar_sc (glob SimCore){1} /\
+    (res{1} <> None => term_sc (glob SimCore){1} < n)].
+
+local module RealLeft = {
+  proc f(m : msg) : msg option = {
+    var not_done <- true; var r : msg option <- witness;
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ RealFunc.invoke(m);
+        (r, m, not_done) <@ MI(RealFunc, Adv).after_func(r);
+      }
+      else {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MI(RealFunc, Adv).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local module RealCI = CombEnvAdv(Env, Adv, MI(RealFunc, DummyAdv)).CombInter.
+
+local module RealRight = {
+  proc f(m : msg) : msg option = {
+    var not_done <- true; var r : msg option <- witness;
+    var adv_to_adv : bool <- true;
+
+    while (not_done) {
+      if (m.`2.`1 = adv /\ adv_to_adv) {
+        r <@ Adv.invoke(m);
+        (r, m, not_done, adv_to_adv) <@
+          RealCI.after_adv(r);
+      }
+      else {
+        r <@ MI(RealFunc, DummyAdv).invoke(m);
+        (r, m, not_done, adv_to_adv) <@
+          RealCI.after_inter(r);
+      }
+    }
+    return r;
+  }
+}.
+
+local lemma bridge_real_induct (func' : addr, in_guard' : int fset) :
+  exper_pre func' =>
+  forall (n : int),
+  equiv
+  [RealLeft.f ~ RealRight.f :
+   ={m, glob RealFunc, glob Adv} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} ==>
+   ={res, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard'].
+proof.
+move => ep_func' n.
+case (n < 0) => [lt0_n | ge0_n].
+exfalso; smt(ge0_term_rf).
+rewrite -lezNgt in ge0_n.
+move : n ge0_n.
+elim /Int.sintind => n ge0_n IH.
+proc; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; smt(inc_nle_l).
+rcondt{2} 1; first auto.
+seq 1 1 :
+  (={r, glob RealFunc, glob Adv} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call (_ : true); first auto.
+inline{2} 1; sp 0 3.
+case (MakeInt.after_adv_error func' r{1}).
+seq 1 0 :
+  (={glob RealFunc, glob Adv} /\ r{1} = None /\ ! not_done{1} /\
+   MakeInt.after_adv_error func' r0{2} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_adv_error RealFunc Adv); first auto.
+rcondf{1} 1; first auto.
+if{2}.
+rcondf{2} 3; first auto.
+auto.
+sp 0 1.
+if{2}.
+rcondf{2} 4; first auto.
+auto.
+if{2}.
+rcondt{2} 1; first auto; smt().
+rcondf{2} 4; first auto; smt().
+auto.
+rcondf{2} 4; first auto.
+auto; smt().
+case (MakeInt.after_adv_to_env func' r{1}).
+seq 1 0 :
+  (={glob RealFunc, glob Adv} /\ r{1} = r0{2} /\ ! not_done{1} /\
+   ! MakeInt.after_adv_error func' r0{2} /\
+   MakeInt.after_adv_to_env func' r0{2} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
+call{1} (MakeInt.MI_after_adv_to_env RealFunc Adv r').
+auto.
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto; smt().
+rcondf{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+rcondf{2} 5; first auto.
+auto; smt().
+seq 1 0 :
+  (={glob RealFunc, glob Adv} /\ r{1} = r0{2} /\
+   r{1} = Some m{1} /\ not_done{1} /\
+   MakeInt.after_adv_to_func func' r0{2} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
+call{1} (MakeInt.MI_after_adv_to_func RealFunc Adv r').
+auto; progress; smt().
+rcondt{1} 1; first auto.
+rcondt{1} 1; first auto; smt(oget_some).
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; smt(inc_le1_not_rl).
+rcondt{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+sp 0 6; rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1.
+rcondt{2} 2; first auto.
+inline{2} 2.
+rcondt{2} 5; first auto.
+rcondf{2} 5; first auto; progress.
+by rewrite /epdp_da_from_env /enc_da_from_env /= inc_nle_l.
+sp 0 4; elim* => r0_R.
+inline{2} 1; sp 0 2.
+match Some {2} 1; first auto; progress; smt().
+rcondt{2} 1; first auto => /> &hr <- /=.
+progress; smt(exper_pre_func_nle_env_root_addr inc_le1_not_rl).
+sp.
+seq 0 1 :
+  (={glob RealFunc, glob Adv} /\ r2{2} = Some m2{2} /\
+   m{1} = m2{2} /\ not_done1{2} /\
+   MakeInt.after_adv_to_func func' r2{2} /\
+   term_rf (glob RealFunc){1} = n /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r2{2} => r2'.
+call{2} (MakeInt.MI_after_adv_to_func RealFunc DummyAdv r2').
+auto => /> &1 &2 <- /=; progress; last 4 by rewrite H8.
+rewrite H8 /= in H9. rewrite -H9 /#. smt().
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt(inc_le1_not_rl).
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ r{1} = r2{2} /\
+   (r{1} <> None => term_rf (glob RealFunc){1} < n) /\
+   invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call (RealFunc_invoke n).
+auto; smt().
+case (MakeInt.after_func_error func' r{1}).
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r{1} = r2{2} /\ r{1} = None /\
+   not_done{1} = not_done1{2} /\ not_done{1} = false /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_func_error RealFunc Adv).
+call{2} (MakeInt.MI_after_func_error RealFunc DummyAdv).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r{1}).
+exlim r{1} => r'.
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
+   ! not_done{1} /\ ! not_done1{2} /\
+   MakeInt.after_func_to_env func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_func_to_env RealFunc Adv r').
+call{2} (MakeInt.MI_after_func_to_env RealFunc DummyAdv r').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r{1} *)
+exlim r{1} => r'.
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   term_rf (glob RealFunc){1} < n /\
+   r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
+   not_done{1} /\ not_done1{2} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ 0 < m{1}.`2.`2 /\
+   func' <= m{1}.`3.`1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_func_to_adv RealFunc Adv r').
+call{2} (MakeInt.MI_after_func_to_adv RealFunc DummyAdv r').
+auto; progress; smt().
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{2} 1; sp 0 2.
+match None {2} 1; auto; progress.
+rewrite dest_pi_gt0_implies_dec_epdp_da_from_env_fails /#.
+rcondt{2} 1; first auto; progress; smt().
+sp; elim* => r2' r3'.
+seq 0 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   term_rf (glob RealFunc){1} < n /\
+   not_done{1} /\ ! not_done1{2} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ 0 < m{1}.`2.`2 /\
+   func' <= m{1}.`3.`1 /\
+   r2{2} = Some m2{2} /\
+   m2{2} =
+   epdp_da_to_env.`enc
+   {|dte_n = m{1}.`2.`2; dte_pt = m{1}.`3;
+     dte_tag = m{1}.`4; dte_u = m{1}.`5;|} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r2{2} => r2''.
+call{2} (MakeInt.MI_after_adv_to_env RealFunc DummyAdv r2'').
+auto; progress.
+trivial.
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_func_nle_env_root_addr).
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_adv_nle_env_root_addr).
+rewrite H10 /= in H11. by rewrite -H11.
+rcondf{2} 1; first auto.
+sp 0 2; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondf{2} 1; first auto.
+sp 0 6.
+conseq
+  (_ :
+   ={m, not_done, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   term_rf (glob RealFunc){1} < n /\ not_done{1} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+progress; smt().
+transitivity{1}
+  {r <@ RealLeft.f(m);}
+  (={m, glob RealFunc, glob Adv, glob MI} /\ not_done{1} ==>
+   ={r, glob RealFunc, glob Adv, glob MI})
+  (={m, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   term_rf (glob RealFunc){1} < n /\ not_done{2} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ RealRight.f(m);}
+  (={m, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   term_rf (glob RealFunc){1} < n /\ not_done{2} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard')
+  (={m, glob RealFunc, glob Adv, glob MI, glob CombEnvAdv} /\
+   not_done{2} /\ adv_to_adv{2} ==>
+   ={r, glob RealFunc, glob Adv, glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_rf (glob RealFunc){1}) => tm.
+case @[ambient] (0 <= tm < n) => [tm_ok | tm_not_ok].
+have induct := IH tm _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_rf).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim => />.
+qed.
+
+local lemma bridge_real (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  Pr[Exper(MI(RealFunc, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
+       .main(func', in_guard') @ &m : res].
+proof.
+move => ep_func'.
+byequiv => //; proc; inline*; sp; wp.
+seq 2 10 :
+  (={glob RealFunc, glob Adv, glob Env} /\ invar_rf (glob RealFunc){1} /\
+   func{1} = func' /\ in_guard{1} = in_guard' /\
+   func0{2} = func' /\ in_guard0{2} = in_guard' /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+swap{2} 6 4; swap{2} 1 8.
+call (_ : true).
+call RealFunc_init.
+auto.
+call
+  (_ :
+   ={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+proc.
+if => //.
+inline{1} 1; inline{2} 1; sp 3 4.
+case (m0{1}.`1 = Dir).
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto; progress; smt(le_refl).
+rcondf{2} 1; first auto; progress; smt(inc_ne_func_adv).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt(le_refl).
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r0{1} = r2{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim (glob RealFunc){1} => grf.
+call (RealFunc_invoke (term_rf grf)).
+auto.
+case (MakeInt.after_func_error func' r0{1}).
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r0{1} = r2{2} /\ r0{1} = None /\
+   not_done{1} = not_done0{2} /\ not_done{1} = false /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+call{1} (MakeInt.MI_after_func_error RealFunc Adv).
+call{2} (MakeInt.MI_after_func_error RealFunc DummyAdv).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r0{1}).
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r0{1} = r2{2} /\ m0{1} = m2{2} /\ r0{1} = Some m0{1} /\
+   ! not_done{1} /\ ! not_done0{2} /\
+   MakeInt.after_func_to_env func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_func_to_env RealFunc Adv r0').
+call{2} (MakeInt.MI_after_func_to_env RealFunc DummyAdv r0').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r0{1} *)
+seq 1 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   r0{1} = r2{2} /\ m0{1} = m2{2} /\ r0{1} = Some m0{1} /\
+   not_done{1} /\ not_done0{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ 0 < m0{1}.`2.`2 /\
+   func' <= m0{1}.`3.`1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_func_to_adv RealFunc Adv r0').
+call{2} (MakeInt.MI_after_func_to_adv RealFunc DummyAdv r0').
+auto; progress; smt().
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{2} 1; sp 0 2.
+match None {2} 1; auto; progress.
+rewrite dest_pi_gt0_implies_dec_epdp_da_from_env_fails /#.
+rcondt{2} 1; first auto; progress; smt().
+sp; elim* => r2' r3'.
+seq 0 1 :
+  (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{1} /\ ! not_done0{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ 0 < m0{1}.`2.`2 /\
+   func' <= m0{1}.`3.`1 /\
+   r2{2} = Some m2{2} /\
+   m2{2} =
+   epdp_da_to_env.`enc
+   {|dte_n = m0{1}.`2.`2; dte_pt = m0{1}.`3;
+     dte_tag = m0{1}.`4; dte_u = m0{1}.`5;|} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r2{2} => r2''.
+call{2} (MakeInt.MI_after_adv_to_env RealFunc DummyAdv r2'').
+auto; progress.
+trivial.
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_func_nle_env_root_addr).
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_adv_nle_env_root_addr).
+rewrite H9 /= in H10; by rewrite -H10.
+rcondf{2} 1; first auto.
+sp 0 2; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondf{2} 1; first auto.
+sp 0 6.
+conseq
+  (_ :
+   ={m0, not_done, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{1} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+progress; smt().
+transitivity{1}
+  {r0 <@ RealLeft.f(m0);}
+  (={m0, glob RealFunc, glob Adv, glob MI} /\ not_done{1} ==>
+   ={r0, glob RealFunc, glob Adv, glob MI})
+  (={m0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r0 <@ RealRight.f(m0);}
+  (={m0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard')
+  (={m0, glob RealFunc, glob Adv, glob MI, glob CombEnvAdv} /\
+   not_done{2} /\ adv_to_adv{2} ==>
+   ={r0, glob RealFunc, glob Adv, glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob RealFunc){1} => grf.
+have bri := bridge_real_induct func' in_guard' ep_func' (term_rf grf).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim => />.
+conseq
+  (_ :
+   ={m0, not_done, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{1} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+progress; smt().
+transitivity{1}
+  {r <@ RealLeft.f(m0);}
+  (={m0, glob RealFunc, glob Adv, glob MI} /\ not_done{1} ==>
+   ={r, glob RealFunc, glob Adv, glob MI})
+  (={m0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ adv_to_adv{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard') => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ RealRight.f(m0);}
+  (={m0, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   not_done{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' ==>
+   ={r, glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard')
+  (={m0, glob RealFunc, glob Adv, glob MI, glob CombEnvAdv} /\
+   not_done{2} /\ adv_to_adv{2} ==>
+   ={glob RealFunc, glob Adv, glob MI, glob CombEnvAdv, r}) => //.
+smt().
+exlim (glob RealFunc){1} => grf.
+have bri := bridge_real_induct func' in_guard' ep_func' (term_rf grf).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim => />.
+auto.
+auto.
+qed.
+
+local module IdealLeft = {
+  proc f(m : msg) : msg option = {
+    var not_done <- true; var r : msg option <- witness;
+    while (not_done) {
+      if (m.`2.`1 = adv /\ m.`2.`2 <> sim_adv_pi) {
+        r <@ Adv.invoke(m);
+        (r, m, not_done) <@ MS(SimCore, Adv).after_adv(r);
+      } else {
+        (* if_addr_opt <> None *)
+        r <@ SimCore.invoke(m);
+        (r, m, not_done) <@ MS(SimCore, Adv).after_core(r);
+      }
+    }
+    (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, Adv)).after_adv(r);
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ IdealFunc.invoke(m);
+        (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, Adv)).after_func(r);
+      } else {
+        r <@ MS(SimCore, Adv).invoke(m);
+        (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, Adv)).after_adv(r);
+      }
+    }
+    return r;
+  }
+}.
+
+module IdealCI =
+  CombEnvAdv(Env, Adv, MI(IdealFunc, MS(SimCore, DummyAdv))).CombInter.
+
+local module IdealRight = {
+  proc f(m : msg) : msg option = {
+    var not_done <- true; var r : msg option <- witness;
+    var adv_to_adv <- true;
+    while (not_done) {
+      if (m.`2.`1 = adv /\ m.`2.`2 <> sim_adv_pi) {
+        r <@ DummyAdv.invoke(m);
+        (r, m, not_done) <@ MS(SimCore, DummyAdv).after_adv(r);
+      } else {
+        (* if_addr_opt <> None *)
+        r <@ SimCore.invoke(m);
+        (r, m, not_done) <@ MS(SimCore, DummyAdv).after_core(r);
+      }
+    }
+    (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, DummyAdv)).after_adv(r);
+    while (not_done) {
+      if (MI.func <= m.`2.`1) {
+        r <@ IdealFunc.invoke(m);
+        (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, DummyAdv)).after_func(r);
+      } else {
+        r <@ MS(SimCore, DummyAdv).invoke(m);
+        (r, m, not_done) <@ MI(IdealFunc, MS(SimCore, DummyAdv)).after_adv(r);
+      }
+    }
+    (r, m, not_done, adv_to_adv) <@ IdealCI.after_inter(r);
+    while (not_done) {
+      if (m.`2.`1 = adv /\ adv_to_adv) {
+        r <@ Adv.invoke(m);
+        (r, m, not_done, adv_to_adv) <@ IdealCI.after_adv(r);
+      } else {
+        r <@ MI(IdealFunc, MS(SimCore, DummyAdv)).invoke(m);
+        (r, m, not_done, adv_to_adv) <@ IdealCI.after_inter(r);
+      }
+    }
+    return r;
+  }
+}.
+
+lemma dpi_ne_sim_adv_pi_suff_from_disj_mg (m : msg, ig : int fset, func : addr) :
+  disjoint ig (fset1 sim_adv_pi) => main_guard func ig m =>
+  m.`1 = Adv =>  m.`2.`2 <> sim_adv_pi.
+proof.
+move => disj_ig_sim_adv_pi mg m_adv.
+case (m.`2.`2 = sim_adv_pi) => [m_dpi_eq_sap | //].
+move : mg.
+rewrite /main_guard => [[/# | [#] _ _ [| [#] _ m_dpi_in_ig _]]].
+smt(sim_adv_pi_ge1).
+rewrite m_dpi_eq_sap in m_dpi_in_ig.
+rewrite disjointP in disj_ig_sim_adv_pi; have := disj_ig_sim_adv_pi sim_adv_pi.
+by rewrite in_fset1 /=.
+qed.
+
+local lemma bridge_ideal_induct (func' : addr, in_guard' : int fset) :
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
+  forall (n : int),
+  equiv
+  [IdealLeft.f ~ IdealRight.f :
+   ={m, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   (m{1}.`2.`1 = adv => m{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   term_sc (glob SimCore){1} = n /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} ==>
+   ={res, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})].
+proof.
+move => ep_func' dig' n.
+case (n < 0) => [lt0_n | ge0_n].
+exfalso; smt(ge0_term_if ge0_term_sc).
+rewrite -lezNgt in ge0_n.
+move : n ge0_n.
+elim /Int.sintind => n ge0_n IH.
+proc; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; smt(). rcondf{2} 1; first auto; smt().
+seq 1 1 :
+  (={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   (r{1} <> None => term_sc (glob SimCore){1} < n) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1}).
+call (SimCore_invoke n); first auto => />.
+case (after_core_error (oget MS.if_addr_opt{1}) r{1}).
+seq 1 1 :
+  (={r, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   r{1} = None /\ !not_done{1} /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   (r{1} <> None => term_sc (glob SimCore){1} < n) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1}).
+call{1} (MS_after_core_error SimCore Adv).
+call{2} (MS_after_core_error SimCore DummyAdv).
+auto; progress; smt(inc_ext_l).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+seq 1 1 :
+  (={r, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   r{1} = None /\ !not_done{1} /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   (r{1} <> None => term_sc (glob SimCore){1} < n) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1}).
+call{1}
+  (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+rcondf{2} 3; first auto.
+auto.
+case (after_core_return (oget MS.if_addr_opt{1}) r{1}).
+seq 1 1 :
+  (={r, m, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt,
+     glob Adv} /\
+   !not_done{1} /\ r{1} = Some m{1} /\
+   after_core_return (oget MS.if_addr_opt{1}) r{1} /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   (r{1} <> None => term_sc (glob SimCore){1} < n) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1}).
+exlim r{1} => r'.
+call{1} (MS_after_core_return SimCore Adv r').
+call{2} (MS_after_core_return SimCore DummyAdv r').
+auto; smt(inc_ext_l).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+seq 1 1 :
+  (={r, m, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt,
+     glob Adv} /\
+   not_done{1} /\ r{1} = Some m{1} /\
+   after_core_return (oget MS.if_addr_opt{1}) r{1} /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) /\
+   (r{1} <> None => term_sc (glob SimCore){1} < n) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1}).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_adv_to_func IdealFunc (MS(SimCore, Adv)) r').
+call{2}
+  (MakeInt.MI_after_adv_to_func IdealFunc (MS(SimCore, DummyAdv)) r').
+auto; progress [-delta]; last 4 smt().
+smt(). rewrite /after_adv_to_func /=; smt(sim_adv_pi_ge1).
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto; progress; smt(le_trans).
+rcondt{2} 1; first auto; progress; smt(le_trans).
+(* start call of IdealFunc *)
+seq 1 1 :
+  (={r, glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   (r{1} <> None /\ (oget r{1}).`1 = Adv =>
+    (oget r{1}).`2.`2 = sim_adv_pi /\ (oget r{1}).`3.`2 = 1) /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim (term_if (glob IdealFunc){1}) => m.
+call (IdealFunc_invoke m); first auto; progress; smt().
+case (MakeInt.after_func_error func' r{1}).
+seq 1 1 :
+  (={r, not_done, glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r{1} = None /\ !not_done{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r{1}).
+seq 1 1 :
+  (={r, m, not_done, glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r{1} = Some m{1} /\ !not_done{1} /\
+   MakeInt.after_func_to_env func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, Adv)) r').
+call{2}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, DummyAdv)) r').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r{1} *)
+seq 1 1 :
+  (={r, m, not_done, glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = Some m{1} /\ not_done{1} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ m{1}.`2.`2 = sim_adv_pi /\
+   func' <= m{1}.`3.`1 /\ m{1}.`3.`2 = 1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, Adv)) r').
+call{2}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, DummyAdv)) r').
+auto; progress; smt().
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; progress; smt(inc_nle_l).
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{1} 1; inline{2} 1; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp; inline{1} 1; inline{2} 1; sp 3 3.
+conseq
+  (_ :
+   ={m1, not_done0, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{1} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done0{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_sc (glob SimCore){1}) => tsc.
+case @[ambient] (0 <= tsc < n) => [tm_ok | tm_not_ok].
+have induct := IH tsc _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_sc).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+if => //.
+inline{1} 1; inline{2} 1; sp.
+conseq
+  (_ :
+   ={m1, not_done0, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{1} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done0{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_sc (glob SimCore){1}) => tsc.
+case @[ambient] (0 <= tsc < n) => [tm_ok | tm_not_ok].
+have induct := IH tsc _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_sc).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+sp.
+seq 1 1 :
+  (={r, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r{1} = None /\ !not_done{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
+call{2} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, DummyAdv))).
+auto; progress; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+inline{2} 1.
+rcondt{2} 4; first auto.
+rcondf{2} 6; first auto.
+auto.
+seq 1 1 :
+  (={r, m, not_done, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = Some m{1} /\ not_done{1} /\
+   after_core_continue (oget MS.if_addr_opt{1}) r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1} (MS_after_core_continue SimCore Adv r').
+call{2} (MS_after_core_continue SimCore DummyAdv r').
+auto; first smt().
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondt{1} 1; first auto; progress; smt().
+rcondt{2} 1; first auto; progress; smt().
+inline{2} 1; sp.
+match None {2} 1; auto; progress [-delta].
+rewrite dest_pi_gt0_implies_dec_epdp_da_from_env_fails //.
+by move : H3; rewrite /after_core_continue.
+rcondt{2} 1; first auto; progress; smt().
+sp; elim* => r_R r0_R.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{2} =
+     (epdp_da_to_env.`enc
+      {|dte_n = m{1}.`2.`2; dte_pt = m{1}.`3; dte_tag = m{1}.`4;
+        dte_u = m{1}.`5;|}) /\
+   r{2} = Some m{2} /\ ! not_done{2} /\
+   after_core_continue (oget MS.if_addr_opt{1}) (Some m{1}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{2} => r'.
+call{2} (MS_after_adv_return SimCore DummyAdv r').
+auto; progress.
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_adv_nle_env_root_addr).
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+case (MS.if_addr_opt{2} = None) => [// | /=].
+move => /H5 func_le_oget_if_addr_opt.
+smt(le_trans exper_pre_func_nle_env_root_addr).
+rewrite H7 /= in H8. by rewrite -H8 /=.
+rcondf{2} 1; first auto.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{2} =
+     (epdp_da_to_env.`enc
+      {|dte_n = m{1}.`2.`2; dte_pt = m{1}.`3; dte_tag = m{1}.`4;
+        dte_u = m{1}.`5;|}) /\
+   r{2} = Some m{2} /\ ! not_done{2} /\
+   after_core_continue (oget MS.if_addr_opt{1}) (Some m{1}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{2} => r'.
+call{2} (MakeInt.MI_after_adv_to_env IdealFunc (MS(SimCore, DummyAdv)) r').
+auto; progress.
+smt().
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_func_nle_env_root_addr).
+rewrite oget_some /epdp_da_to_env /enc_da_to_env /=.
+smt(exper_pre_adv_nle_env_root_addr).
+rewrite H7 /= in H8. by rewrite -H8 /=.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondf{2} 1; first auto.
+sp.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto.
+seq 1 1 :
+  (={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call (_ : true); first auto; progress [-delta]; smt().
+inline{2} 1; sp 0 3.
+case (after_adv_error r{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r{1} = None /\ !not_done{1} /\
+   after_adv_error r2{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MS_after_adv_error SimCore Adv); first auto.
+rcondf{1} 1; first auto.
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r{1} = None /\ !not_done{1} /\
+   after_adv_error r2{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
+auto.
+rcondf{1} 1; first auto.
+if{2}.
+sp 1 2.
+rcondf{2} 1; first auto.
+auto.
+sp 0 1.
+if{2}.
+sp 1 3.
+rcondf{2} 1; first auto.
+auto.
+if{2}.
+rcondt{2} 1; first auto; progress.
+rewrite !negb_or in H5.
+case ((oget r2{hr}).`2.`1 <> env_root_addr) => [/# |].
+smt(negb_or ge_nil le_trans inc_nle_l).
+rcondf{2} 4; first auto.
+auto.
+sp 0 1.
+rcondt{2} 1; first auto; progress; smt().
+rcondf{2} 3; first auto.
+auto.
+case (after_adv_return MS.if_addr_opt{1} r{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r2{2} /\ r{1} = Some m{1} /\ !not_done{1} /\
+   after_adv_return MS.if_addr_opt{1} r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1} (MS_after_adv_return SimCore Adv r'); first auto.
+rcondf{1} 1; first auto.
+case (MakeInt.after_adv_to_env func' r{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r2{2} /\ r{1} = Some m{1} /\ !not_done{1} /\
+   after_adv_return MS.if_addr_opt{1} r{1} /\
+   MakeInt.after_adv_to_env func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_adv_to_env IdealFunc
+   (MS(SimCore, Adv)) r').
+auto; smt().
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondf{2} 4; first auto.
+auto.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r2{2} /\
+   after_adv_return MS.if_addr_opt{1} r{1} /\
+   MakeInt.after_adv_to_func func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   _).
+progress [-delta].
+have [error | //] :
+  MakeInt.after_adv_error MakeInt.MI.func{1} (Some m{1}) \/
+  MakeInt.after_adv_to_func MakeInt.MI.func{1} (Some m{1}).
+  smt().
+have // : false.
+  move : error; rewrite /MakeInt.after_adv_error.
+  smt(ge_nil le_trans inc_nle_l).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r2{2} /\ r{1} = Some m{1} /\ not_done{1} /\
+   after_adv_return MS.if_addr_opt{1} r{1} /\
+   MakeInt.after_adv_to_func func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_adv_to_func IdealFunc
+   (MS(SimCore, Adv)) r'); first auto.
+rcondt{1} 1; first auto.
+rcondt{1} 1; first auto; progress; smt().
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; progress; smt(inc_le1_not_rl).
+rcondt{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(inc_nle_l).
+inline{2} 1; sp.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+elim* => r2_R.
+match Some {2} 1; first auto; progress; smt().
+rcondt{2} 1; first auto => /> &hr <- /=.
+progress; smt(exper_pre_func_nle_env_root_addr inc_le1_not_rl).
+sp; elim* => r6_R r7_R.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{1} = m6{2} /\ r6{2} = Some m6{2} /\ !not_done3{2} /\
+   after_adv_return MS.if_addr_opt{1} r6{2} /\
+   MakeInt.after_adv_to_func func' r6{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r6{2} => r6'.
+call{2} (MS_after_adv_return SimCore DummyAdv r6'); first auto.
+move => |> &1 &2 <- /=.
+progress [-delta].
+rewrite /after_adv_return /= /#.
+rewrite H7 /= in H8. rewrite -H8 /#.
+smt(). smt().
+rcondf{2} 1; first auto.
+sp.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{1} = m4{2} /\ not_done2{2} /\
+   MakeInt.after_adv_to_func func' (Some m4{2}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r4{2} => r4'.
+call{2}
+  (MakeInt.MI_after_adv_to_func IdealFunc
+   (MS(SimCore, DummyAdv)) r4'); first auto; smt().
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt().
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r4{2} /\
+   (r{1} <> None => (oget r{1}).`1 = Adv =>
+    (oget r{1}).`2.`2 = sim_adv_pi /\ (oget r{1}).`3.`2 = 1) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim (term_if (glob IdealFunc)){1} => tif.
+call (IdealFunc_invoke tif); first auto; smt().
+case (MakeInt.after_func_error func' r{1}).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r4{2} /\ r{1} = None /\
+   not_done{1} = not_done2{2} /\ not_done{1} = false /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r{1}).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r4{2} /\ m{1} = m4{2} /\ r{1} = Some m{1} /\
+   ! not_done{1} /\ ! not_done2{2} /\
+   MakeInt.after_func_to_env func' r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, Adv)) r').
+call{2}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, DummyAdv)) r').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r{1} *)
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r4{2} /\ m{1} = m4{2} /\ r{1} = Some m{1} /\
+   not_done{1} /\ not_done2{2} /\
+   m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ m{1}.`2.`2 = sim_adv_pi /\
+   func' <= m{1}.`3.`1 /\ m{1}.`3.`2 = 1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, Adv)) r').
+call{2}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, DummyAdv)) r').
+auto; progress; smt().
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; progress; smt(inc_nle_l).
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{1} 1; inline{2} 1; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp; inline{1} 1; inline{2} 1; sp 3 3.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{1} /\ not_done4{2} /\ m1{1} = m9{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m1{1} = m9{2} /\ not_done4{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m9);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m1{1} = m9{2} /\ not_done4{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m9, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done4{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_sc (glob SimCore){1}) => tsc.
+case @[ambient] (0 <= tsc < n) => [tm_ok | tm_not_ok].
+have induct := IH tsc _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_sc).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+if => //.
+inline{1} 1; inline{2} 1; sp.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done0{1} /\ not_done4{2} /\ m1{1} = m9{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m1);}
+  (={m1, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m1{1} = m9{2} /\ not_done4{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m9);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m1{1} = m9{2} /\ not_done4{2} /\
+   (m1{1}.`2.`1 = adv => m1{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m9, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done4{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_sc (glob SimCore){1}) => tsc.
+case @[ambient] (0 <= tsc < n) => [tm_ok | tm_not_ok].
+have induct := IH tsc _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_sc).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+sp.
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   !not_done{1} /\ !not_done2{2} /\ r{1} = None /\ r4{2} = None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
+call{2} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, DummyAdv))).
+auto.
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   r{1} = r2{2} /\ r{1} = Some m{1} /\ not_done{1} /\
+   after_adv_continue MS.if_addr_opt{1} r{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r{1} => r'.
+call{1} (MS_after_adv_continue SimCore Adv r');
+  first auto; progress [-delta]; smt().
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; progress; smt().
+rcondt{2} 2; first auto; progress; smt(le_trans).
+rcondf{2} 2; first auto; progress.
+case (m{m}.`3.`2 = 0) => [eq0_spi | //].
+have eq_nil_dest_addr : m{m}.`2.`1 = [] by smt().
+have le_func_nil : MakeInt.MI.func{m} <= [] by smt(le_trans).
+have le_func_adv : MakeInt.MI.func{m} <= adv.
+  rewrite (le_trans []) 1:le_func_nil ge_nil.
+smt(inc_nle_l).
+sp; elim* => r2_R.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(inc_nle_l).
+inline{2} 1; sp.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+match Some {2} 1; first auto; progress; smt().
+rcondt{2} 1; first auto => /> &hr <- /=.
+smt(inc_nle_l inc_le1_not_rl ge_nil le_trans).
+sp; elim* => r6_R r7_R.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{1} = m6{2} /\ r6{2} = Some m6{2} /\ not_done{1} /\ not_done3{2} /\
+   after_adv_continue MS.if_addr_opt{1} r6{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r6{2} => r6'.
+call{2} (MS_after_adv_continue SimCore DummyAdv r6'); first auto.
+move => |> &1 &2 <- /=.
+progress [-delta].
+rewrite /after_adv_continue /= /#.
+rewrite H6 /= in H7. rewrite -H7 /#.
+smt().
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done{1} /\ not_done3{2} /\ m{1} = m6{2} /\
+   (m{1}.`2.`1 = adv => m{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+progress.
+move : H4; by rewrite /after_adv_continue /= 1:H6.
+by move : H4; rewrite /after_adv_continue.
+transitivity{1}
+  {r <@ IdealLeft.f(m);}
+  (={m, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   not_done3{2} /\ m{1} = m6{2} /\
+   (m{1}.`2.`1 = adv => m{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m6);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   term_sc (glob SimCore){1} < n /\
+   m{1} = m6{2} /\ not_done3{2} /\
+   (m{1}.`2.`1 = adv => m{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m6, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done3{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (term_sc (glob SimCore){1}) => tsc.
+case @[ambient] (0 <= tsc < n) => [tm_ok | tm_not_ok].
+have induct := IH tsc _ => //.
+call induct; first auto.
+exfalso; smt(ge0_term_sc).
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+qed.
+
+local lemma bridge_ideal (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
+  Pr[Exper(MI(IdealFunc, MS(SimCore, Adv)), Env)
+       .main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))
+       .main(func', in_guard') @ &m : res].
+proof.
+move => ep_func' disj_ig'.
+byequiv => //; proc; inline*; sp; wp.
+seq 4 12 :
+  (={glob MS, glob IdealFunc, glob SimCore, glob Adv, glob Env} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   func{1} = func' /\ in_guard{1} = in_guard' /\
+   func0{2} = func' /\ in_guard0{2} = in_guard' /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   MS.if_addr_opt{1} = None).
+swap{1} 1 1; swap{2} 8 4; swap{2} 3 8; swap{2} 1 9.
+call (_ : true).
+call SimCore_init.
+call IdealFunc_init.
+auto.
+call
+  (_ :
+   ={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (* with our actual ideal functionalities, <= will actually be = *)
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+proc.
+if => //.
+inline{1} 1; inline{2} 1; sp 3 4.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+case (m0{1}.`1 = Dir).
+rcondt{1} 1; first auto; progress; smt(le_refl).
+rcondf{2} 1; first auto; progress; smt(inc_ne_func_adv).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt(le_refl).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   r0{1} = r2{2} /\
+   (r0{1} <> None /\ (oget r0{1}).`1 = Adv =>
+    (oget r0{1}).`2.`2 = sim_adv_pi /\ (oget r0{1}).`3.`2 = 1) /\
+   adv_to_adv{2} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim (term_if (glob IdealFunc){1}) => n.
+call (IdealFunc_invoke n); first auto; progress; smt().
+case (MakeInt.after_func_error func' r0{1}).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r2{2} /\ r0{1} = None /\
+   not_done{1} = not_done0{2} /\ not_done{1} = false /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r0{1}).
+exlim r0{1} => r0'.
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r2{2} /\ m0{1} = m2{2} /\ r0{1} = Some m0{1} /\
+   ! not_done{1} /\ ! not_done0{2} /\
+   MakeInt.after_func_to_env func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, Adv)) r0').
+call{2}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, DummyAdv)) r0').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r0{1} *)
+exlim r0{1} => r0'.
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r2{2} /\ m0{1} = m2{2} /\ r0{1} = Some m0{1} /\
+   not_done{1} /\ not_done0{2} /\ adv_to_adv{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ m0{1}.`2.`2 = sim_adv_pi /\
+   func' <= m0{1}.`3.`1 /\ m0{1}.`3.`2 = 1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, Adv)) r0').
+call{2}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, DummyAdv)) r0').
+auto; progress; smt().
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; progress; smt(inc_nle_l).
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{1} 1; inline{2} 1; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp; inline{1} 1; inline{2} 1; sp 3 3.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done1{2} /\ m2{1} = m4{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m2);}
+  (={m2, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done1{2} /\ m2{1} = m4{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m4);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m2{1} = m4{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m4, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done1{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob SimCore){1} => gsc.
+have bri :=
+  bridge_ideal_induct func' in_guard' ep_func' disj_ig' (term_sc gsc).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+if => //.
+inline{1} 1; inline{2} 1; sp.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done1{2} /\ m2{1} = m4{2} /\
+   MS.if_addr_opt{1} <> None /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m2);}
+  (={m2, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done1{2} /\ m2{1} = m4{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m4);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m2{1} = m4{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m4, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done1{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob SimCore){1} => gsc.
+have bri :=
+  bridge_ideal_induct func' in_guard' ep_func' disj_ig' (term_sc gsc).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+sp.
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = None /\ r2{2} = None /\ !not_done{1} /\ !not_done0{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_adv_error IdealFunc
+   (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_adv_error IdealFunc
+   (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+inline{2} 3; sp 0 5.
+rcondt{2} 1; first auto. rcondf{2} 3; first auto.
+auto.
+rcondt{2} 1; first auto; progress; smt().
+rcondf{1} 1; first auto; progress; smt(inc_nle_l).
+inline{1} 1; sp.
+rcondf{1} 1; first auto; progress; smt(dpi_ne_sim_adv_pi_suff_from_disj_mg).
+inline{1} 1; sp.
+rcondt{1} 1; first auto.
+rcondt{1} 1; first auto; progress; smt(dpi_ne_sim_adv_pi_suff_from_disj_mg).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r2{1} = r0{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call (_ : true); first auto.
+inline{2} 1; sp 0 3.
+case (after_adv_error r2{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r2{1} = None /\ !not_done0{1} /\
+   after_adv_error r1{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MS_after_adv_error SimCore Adv); first auto.
+rcondf{1} 1; first auto.
+sp 2 0.
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = None /\ !not_done{1} /\
+   after_adv_error r1{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_adv_error IdealFunc
+   (MS(SimCore, Adv))).
+auto.
+rcondf{1} 1; first auto.
+if{2}.
+sp 1 2.
+rcondf{2} 1; first auto.
+auto.
+sp 0 1.
+if{2}.
+sp 1 3.
+rcondf{2} 1; first auto.
+auto.
+if{2}.
+rcondt{2} 1; first auto; progress.
+rewrite !negb_or in H5.
+case ((oget r1{hr}).`2.`1 <> env_root_addr) => [/# |].
+smt(negb_or ge_nil le_trans inc_nle_l).
+rcondf{2} 4; first auto.
+auto.
+sp 0 1.
+rcondt{2} 1; first auto; progress; smt().
+rcondf{2} 3; first auto.
+auto.
+case (after_adv_return MS.if_addr_opt{1} r2{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r2{1} = r1{2} /\ r2{1} = Some m2{1} /\ !not_done0{1} /\
+   after_adv_return MS.if_addr_opt{1} r2{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r2{1} => r2'.
+call{1} (MS_after_adv_return SimCore Adv r2'); first auto.
+rcondf{1} 1; first auto.
+sp 2 0.
+case (MakeInt.after_adv_to_env func' r0{1}).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r1{2} /\ r0{1} = Some m0{1} /\ !not_done{1} /\
+   after_adv_return MS.if_addr_opt{1} r0{1} /\
+   MakeInt.after_adv_to_env func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
+call{1}
+  (MakeInt.MI_after_adv_to_env IdealFunc
+   (MS(SimCore, Adv)) r0').
+auto; smt().
+rcondf{1} 1; first auto.
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+rcondf{2} 3; first auto; smt().
+rcondf{2} 4; first auto.
+auto.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r1{2} /\
+   after_adv_return MS.if_addr_opt{1} r0{1} /\
+   MakeInt.after_adv_to_func func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   _).
+progress [-delta].
+have [error | //] :
+  MakeInt.after_adv_error MakeInt.MI.func{1} (Some m2{1}) \/
+  MakeInt.after_adv_to_func MakeInt.MI.func{1} (Some m2{1}).
+  smt().
+have // : false.
+  move : error; rewrite /MakeInt.after_adv_error.
+  smt(ge_nil le_trans inc_nle_l).
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r1{2} /\ r0{1} = Some m0{1} /\ not_done{1} /\
+   after_adv_return MS.if_addr_opt{1} r0{1} /\
+   MakeInt.after_adv_to_func func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
+call{1}
+  (MakeInt.MI_after_adv_to_func IdealFunc
+   (MS(SimCore, Adv)) r0'); first auto.
+rcondt{1} 1; first auto.
+rcondt{1} 1; first auto; progress; smt().
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; progress; smt(inc_le1_not_rl).
+rcondt{2} 2; first auto; smt().
+rcondf{2} 2; first auto; smt().
+sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(inc_nle_l).
+inline{2} 1; sp.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+elim* => r1_R.
+match Some {2} 1; first auto; progress; smt().
+rcondt{2} 1; first auto => /> &hr <- /=.
+progress; smt(exper_pre_func_nle_env_root_addr inc_le1_not_rl).
+sp; elim* => r5_R r6_R.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m0{1} = m5{2} /\ r5{2} = Some m5{2} /\ !not_done2{2} /\
+   after_adv_return MS.if_addr_opt{1} r5{2} /\
+   MakeInt.after_adv_to_func func' r5{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r5{2} => r5'.
+call{2} (MS_after_adv_return SimCore DummyAdv r5'); first auto.
+move => |> &1 &2 <- /=.
+progress [-delta].
+rewrite /after_adv_return /= /#.
+rewrite H6 /= in H7. rewrite -H7 /#.
+smt(). smt().
+rcondf{2} 1; first auto.
+sp.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m0{1} = m3{2} /\ not_done1{2} /\
+   MakeInt.after_adv_to_func func' (Some m3{2}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r3{2} => r3'.
+call{2}
+  (MakeInt.MI_after_adv_to_func IdealFunc
+   (MS(SimCore, DummyAdv)) r3'); first auto; smt().
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt().
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r3{2} /\
+   (r0{1} <> None => (oget r0{1}).`1 = Adv =>
+    (oget r0{1}).`2.`2 = sim_adv_pi /\ (oget r0{1}).`3.`2 = 1) /\
+   MakeInt.after_adv_to_func func' (Some m3{2}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim (term_if (glob IdealFunc)){1} => tif.
+call (IdealFunc_invoke tif); first auto; smt().
+case (MakeInt.after_func_error func' r0{1}).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r3{2} /\ r0{1} = None /\
+   not_done{1} = not_done1{2} /\ not_done{1} = false /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, Adv))).
+call{2}
+  (MakeInt.MI_after_func_error IdealFunc
+   (MS(SimCore, DummyAdv))).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+case (MakeInt.after_func_to_env func' r0{1}).
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r3{2} /\ m0{1} = m3{2} /\ r0{1} = Some m0{1} /\
+   ! not_done{1} /\ ! not_done1{2} /\
+   MakeInt.after_func_to_env func' r0{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
+call{1}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, Adv)) r0').
+call{2}
+  (MakeInt.MI_after_func_to_env IdealFunc
+   (MS(SimCore, DummyAdv)) r0').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondf{2} 1; first auto.
+sp 0 1.
+rcondt{2} 1; first auto; smt().
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+(* MakeInt.after_func_to_adv func' r0{1} *)
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r0{1} = r3{2} /\ m0{1} = m3{2} /\ r0{1} = Some m0{1} /\
+   not_done{1} /\ not_done1{2} /\
+   m0{1}.`1 = Adv /\ m0{1}.`2.`1 = adv /\ m0{1}.`2.`2 = sim_adv_pi /\
+   func' <= m0{1}.`3.`1 /\ m0{1}.`3.`2 = 1 /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
+call{1}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, Adv)) r0').
+call{2}
+  (MakeInt.MI_after_func_to_adv IdealFunc
+   (MS(SimCore, DummyAdv)) r0').
+auto; progress; smt().
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; progress; smt(inc_nle_l).
+rcondf{2} 1; first auto; progress; smt(inc_nle_l).
+inline{1} 1; inline{2} 1; sp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+if => //.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+sp; inline{1} 1; inline{2} 1; sp 3 3.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done1{1} /\ not_done3{2} /\ m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m4);}
+  (={m4, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done1{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done1{1} /\ not_done3{2} /\ m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m8);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m8, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done3{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob SimCore){1} => gsc.
+have bri :=
+  bridge_ideal_induct func' in_guard' ep_func' disj_ig' (term_sc gsc).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+if => //.
+inline{1} 1; inline{2} 1; sp.
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done1{1} /\ not_done3{2} /\ m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+transitivity{1}
+  {r <@ IdealLeft.f(m4);}
+  (={m4, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done1{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done1{1} /\ not_done3{2} /\ m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m8);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m4{1} = m8{2} /\
+   (m4{1}.`2.`1 = adv => m4{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m8, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done3{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob SimCore){1} => gsc.
+have bri :=
+  bridge_ideal_induct func' in_guard' ep_func' disj_ig' (term_sc gsc).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+sp.
+seq 1 1 :
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   !not_done{1} /\ !not_done1{2} /\ r0{1} = None /\ r3{2} = None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+call{1} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
+call{2} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, DummyAdv))).
+auto.
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+sp; inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+sp 0 2.
+rcondf{2} 1; first auto.
+auto.
+seq 1 0 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   r2{1} = r1{2} /\ r2{1} = Some m2{1} /\ not_done0{1} /\
+   after_adv_continue MS.if_addr_opt{1} r2{1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r2{1} => r2'.
+call{1} (MS_after_adv_continue SimCore Adv r2');
+  first auto; progress [-delta]; smt().
+rcondf{2} 1; first auto.
+rcondf{2} 2; first auto; progress; smt().
+rcondt{2} 2; first auto; progress; smt(le_trans).
+rcondf{2} 2; first auto; progress.
+case (m2{m0}.`3.`2 = 0) => [eq0_spi | //].
+have eq_nil_dest_addr : m2{m0}.`2.`1 = [] by smt().
+have le_func_nil : MakeInt.MI.func{m0} <= [] by smt(le_trans).
+have le_func_adv : MakeInt.MI.func{m0} <= adv.
+  rewrite (le_trans []) 1:le_func_nil ge_nil.
+smt(inc_nle_l).
+sp; elim* => r1_R.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(inc_nle_l).
+inline{2} 1; sp.
+rcondf{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress.
+rewrite /epdp_da_from_env /enc_da_from_env /=.
+smt(sim_adv_pi_ge1).
+inline{2} 1; sp.
+match Some {2} 1; first auto; progress; smt().
+rcondt{2} 1; first auto => /> &hr <- /=.
+smt(inc_nle_l inc_le1_not_rl ge_nil le_trans).
+sp; elim* => r5_R r6_R.
+seq 0 1 :
+  (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m2{1} = m5{2} /\ r5{2} = Some m5{2} /\ not_done0{1} /\ not_done2{2} /\
+   after_adv_continue MS.if_addr_opt{1} r5{2} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r5{2} => r5'.
+call{2} (MS_after_adv_continue SimCore DummyAdv r5'); first auto.
+move => |> &1 &2 <- /=.
+progress [-delta].
+rewrite /after_adv_continue /= /#.
+rewrite H5 /= in H6. rewrite -H6 /#.
+smt().
+conseq
+  (_ :
+   ={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done2{2} /\ m2{1} = m5{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+progress.
+move : H3; by rewrite /after_adv_continue /= 1:H5.
+by move : H3; rewrite /after_adv_continue.
+transitivity{1}
+  {r <@ IdealLeft.f(m2);}
+  (={m2, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI} /\
+   not_done0{1} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv, glob MI})
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   not_done0{1} /\ not_done2{2} /\ m2{1} = m5{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})) => //.
+smt().
+inline{2} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+transitivity{2}
+  {r <@ IdealRight.f(m5);}
+  (={glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   m2{1} = m5{2} /\
+   (m2{1}.`2.`1 = adv => m2{1}.`2.`2 = sim_adv_pi) /\
+   MS.if_addr_opt{1} <> None /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}) ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv} /\
+   invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
+   MakeInt.MI.func{1} = func' /\ MakeInt.MI.in_guard{1} = in_guard' /\
+   MakeInt.MI.func{2} = func' /\ MakeInt.MI.in_guard{2} = in_guard' /\
+   CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
+   (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1}))
+  (={m5, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv, adv_to_adv} /\ not_done2{2} ==>
+   ={r, glob IdealFunc, glob SimCore, MS.if_addr_opt, glob Adv,
+     glob MI, glob CombEnvAdv}) => //.
+smt().
+exlim (glob SimCore){1} => gsc.
+have bri :=
+  bridge_ideal_induct func' in_guard' ep_func' disj_ig' (term_sc gsc).
+call bri; first auto.
+inline{1} 1; sp. rcondt{1} 1; first auto. rcondt{2} 1; first auto. sim.
+auto.
+auto.
+qed.
+
+lemma dummy_adv (func' : addr, in_guard' : int fset, b : real) &m :
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
+  `|Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
+         .main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))
+         .main(func', in_guard') @ &m : res]| <= b =>
+  `|Pr[Exper(MI(RealFunc, Adv), Env).main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IdealFunc, MS(SimCore, Adv)), Env)
+         .main(func', in_guard') @ &m : res]| <= b.
+proof.
+move => ep_func' disj_ig' reduct.
+by rewrite bridge_real // bridge_ideal.
+qed.
+
+end section.
+
+lemma dummy_adversary
+      (Env <: ENV{-MI, -MS, -CombEnvAdv})
+      (Adv <: ADV{-MI, -MS, -CombEnvAdv, -Env})
+      (RealFunc <: FUNC{-MI, -CombEnvAdv, -Env, -Adv})
+      (IdealFunc <: FUNC{-MI, -MS, -CombEnvAdv, -Env, -Adv})
+      (SimCore <: ADV{-MI, -MS, -CombEnvAdv, -Env, -Adv, -IdealFunc})
+      (invar_rf : glob RealFunc -> bool, term_rf : glob RealFunc -> int,
+       invar_if : glob IdealFunc -> bool, term_if : glob IdealFunc -> int,
+       invar_sc : glob SimCore -> bool, term_sc : glob SimCore -> int,
+       func' : addr, in_guard' : int fset, b : real) &m :
+  (forall (gl : glob RealFunc), invar_rf gl => 0 <= term_rf gl) =>
+  hoare [RealFunc.init : true ==> invar_rf (glob RealFunc)] =>
+  (forall (n : int),
+   hoare
+   [RealFunc.invoke :
+    invar_rf (glob RealFunc) /\ term_rf (glob RealFunc) = n ==>
+    invar_rf (glob RealFunc) /\
+    (res <> None => term_rf (glob RealFunc) < n)]) =>
+  (forall (gl : glob IdealFunc), invar_if gl => 0 <= term_if gl) =>
+  hoare [IdealFunc.init : true ==> invar_if (glob IdealFunc)] =>
+  (forall (n : int),
+   hoare
+   [IdealFunc.invoke :
+    invar_if (glob IdealFunc) /\ term_if (glob IdealFunc) = n ==>
+    invar_if (glob IdealFunc) /\
+    (res <> None =>
+     term_if (glob IdealFunc) < n /\
+     ((oget res).`1 = Adv =>
+      (oget res).`2.`2 = sim_adv_pi /\ (oget res).`3.`2 = 1))]) =>
+  (forall (gl : glob SimCore), invar_sc gl => 0 <= term_sc gl) =>
+  hoare [SimCore.init : true ==> invar_sc (glob SimCore)] =>
+  (forall (n : int),
+   hoare
+   [SimCore.invoke :
+    invar_sc (glob SimCore) /\ term_sc (glob SimCore) = n ==>
+    invar_sc (glob SimCore) /\
+    (res <> None => term_sc (glob SimCore) < n)]) =>
+  exper_pre func' => disjoint in_guard' (fset1 sim_adv_pi) =>
+  `|Pr[Exper(MI(RealFunc, DummyAdv), CombEnvAdv(Env, Adv))
+         .main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IdealFunc, MS(SimCore, DummyAdv)), CombEnvAdv(Env, Adv))
+         .main(func', in_guard') @ &m : res]| <= b =>
+  `|Pr[Exper(MI(RealFunc, Adv), Env).main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IdealFunc, MS(SimCore, Adv)), Env)
+         .main(func', in_guard') @ &m : res]| <= b.
+proof.
+move =>
+  ge0_term_rf rf_init rf_invoke
+  ge0_term_if if_init if_invoke
+  ge0_term_sc sc_init sc_invoke
+  ep_func' disj_ig' reduct.
+apply
+  (dummy_adv
+   Env Adv RealFunc IdealFunc SimCore
+   invar_rf term_rf invar_if term_if invar_sc term_sc
+   ge0_term_rf _ _ ge0_term_if _ _ ge0_term_sc _ _
+   func' in_guard' b &m) => //.
+by apply (init_invar_hoare_implies_equiv RealFunc).
+move => n.
+rewrite (invoke_term_metric_hoare_implies_equiv RealFunc) rf_invoke.
+by apply (init_invar_hoare_implies_equiv IdealFunc).
+move => n.
+by rewrite
+   (invoke_term_metric_adv_pi_hoare_implies_equiv IdealFunc _ _ _ sim_adv_pi)
+   if_invoke.
+by apply (adv_init_invar_hoare_implies_equiv SimCore).
+move => n.
+rewrite (adv_invoke_term_metric_hoare_implies_equiv SimCore) sc_invoke.
+qed.
+
+end Simulator.
