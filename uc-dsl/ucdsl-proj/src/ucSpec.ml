@@ -304,7 +304,7 @@ type interpreter_command_u =
   | FunEx  of fun_expr
   | World  of world
   | Send   of sent_msg_expr
-  | Run
+  | Run    of int option
   | Step   of EcParsetree.pprover_infos option * mod_dbs option
   | AddVar of type_binding
   | AddAss of psymbol * pformula

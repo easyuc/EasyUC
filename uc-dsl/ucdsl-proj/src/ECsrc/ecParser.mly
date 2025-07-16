@@ -1444,6 +1444,9 @@ mod_item:
 | IMPORT VAR ms=loc(mod_qident)+
     { Pst_import ms }
 
+mod_remove_var:
+| MINUS VAR xs=plist1(lident, COMMA) { xs }
+
 mod_update_var:
 | v=var_decl { v }
 
@@ -1453,19 +1456,20 @@ mod_update_fun:
 
 update_stmt:
 | PLUS s=brace(stmt){ [Pups_add (s, true)] }
-| MINUS s=brace(stmt){ [Pups_add (s, false)] }
+| PLUS HAT s=brace(stmt){ [Pups_add (s, false)] }
 | TILD s=brace(stmt) { [Pups_del; Pups_add (s, true)] }
 | MINUS { [Pups_del] }
 
 update_cond:
-| PLUS e=sexpr { Pupc_add e }
+| PLUS e=sexpr { Pupc_add (e, true) }
+| PLUS HAT e=sexpr { Pupc_add (e, false) }
 | TILD e=sexpr { Pupc_mod e }
 | MINUS bs=branch_select { Pupc_del bs }
 
 fun_update:
-| cp=loc(codepos) sup=update_stmt
+| cp=loc(codepos_or_range) sup=update_stmt
   { List.map (fun v -> (cp, Pup_stmt v)) sup }
-| cp=loc(codepos) cup=update_cond
+| cp=loc(codepos_or_range) cup=update_cond
   { [(cp, Pup_cond cup)] }
 
 (* -------------------------------------------------------------------- *)
@@ -1478,8 +1482,8 @@ mod_body:
 | LBRACE stt=loc(mod_item)* RBRACE
     { Pm_struct stt }
 
-| m=mod_qident WITH LBRACE vs=mod_update_var* fs=mod_update_fun* RBRACE
-  { Pm_update (m, vs, fs) }
+| m=mod_qident WITH LBRACE dvs=mod_remove_var? vs=mod_update_var* fs=mod_update_fun* RBRACE
+  { Pm_update (m, odfl [] dvs, vs, fs) }
 
 mod_def_or_decl:
 | locality=locality MODULE header=mod_header c=mod_cast? EQ ptm_body=loc(mod_body)
@@ -1980,7 +1984,7 @@ theory_clear_items:
 | xs=theory_clear_item1* { xs }
 
 theory_open:
-| loca=is_local b=boption(ABSTRACT) THEORY x=uident
+| loca=is_local b=iboption(ABSTRACT) THEORY x=uident
     { (loca, b, x) }
 
 theory_close:
@@ -2537,6 +2541,14 @@ codepos:
 | nm=rlist0(nm1_codepos, empty) i=codepos1
     { (nm, i) }
 
+codepos_range:
+| LBRACKET cps=codepos DOTDOT cpe=codepos RBRACKET { (cps, `Base cpe) }
+| LBRACKET cps=codepos MINUS cpe=codepos1 RBRACKET { (cps, `Offset cpe) }
+
+codepos_or_range:
+| cp=codepos { (cp, `Offset (0, `ByPos 0)) }
+| cpr=codepos_range  { cpr }
+
 codeoffset1:
 | i=sword       { (`ByOffset   i :> pcodeoffset1) }
 | AT p=codepos1 { (`ByPosition p :> pcodeoffset1) }
@@ -2682,8 +2694,14 @@ logtactic:
 | MOVE vw=prefix(SLASH, pterm)* gp=prefix(COLON, revert)?
    { Pmove { pr_rev = odfl prevert0 gp; pr_view = vw; } }
 
+| CLEAR
+   { Pclear (`Exclude []) }
+
+| CLEAR MINUS l=loc(ipcore_name)+
+   { Pclear (`Exclude l) }
+
 | CLEAR l=loc(ipcore_name)+
-   { Pclear l }
+   { Pclear (`Include l) }
 
 | CONGR
    { Pcongr }
@@ -2886,8 +2904,9 @@ interleave_info:
    { (s, c1, c2 :: c3, k) }
 
 %inline outline_kind:
-| s=brace(stmt) { OKstmt(s) }
-| r=sexpr? LEAT f=loc(fident) { OKproc(f, r) }
+| BY s=brace(stmt) { OKstmt(s) }
+| TILD f=loc(fident) { OKproc(f, true) }
+| f=loc(fident) { OKproc(f, false) }
 
 %public phltactic:
 | PROC
@@ -2967,11 +2986,10 @@ interleave_info:
 | INLINE s=side? u=inlineopt? p=codepos
     { Pinline (`CodePos (s, u, p)) }
 
-| OUTLINE s=side LBRACKET st=codepos1 e=option(MINUS e=codepos1 {e}) RBRACKET k=outline_kind
+| OUTLINE s=side cpr=codepos_or_range k=outline_kind
     { Poutline {
 	  outline_side  = s;
-	  outline_start = st;
-	  outline_end   = odfl st e;
+	  outline_range = cpr;
 	  outline_kind  = k }
     }
 
@@ -3637,6 +3655,13 @@ realize:
 | REALIZE x=qident BY bracket(empty)
     {  { pr_name = x; pr_proof = Some None; } }
 
+
+(* -------------------------------------------------------------------- *)
+(* Theory aliasing                                                      *)
+
+theory_alias: (* FIXME: THEORY ALIAS -> S/R conflict *)
+| THEORY name=uident EQ target=uqident { (name, target) }
+
 (* -------------------------------------------------------------------- *)
 (* Printing                                                             *)
 phint:
@@ -3774,6 +3799,7 @@ global_action:
 | theory_export    { GthExport    $1 }
 | theory_clone     { GthClone     $1 }
 | theory_clear     { GthClear     $1 }
+| theory_alias     { GthAlias     $1 }
 | module_import    { GModImport   $1 }
 | section_open     { GsctOpen     $1 }
 | section_close    { GsctClose    $1 }

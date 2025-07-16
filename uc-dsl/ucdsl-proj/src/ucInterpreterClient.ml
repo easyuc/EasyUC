@@ -205,7 +205,7 @@ let interpret (lexbuf : L.lexbuf) =
       try
         UcParseAndTypecheckFile.parse_and_typecheck_file_or_id
         (UcParseFile.FOID_Id psym)
-      with _ ->
+      with e when e <> Sys.Break ->
         if pg_mode then UcState.set_pg_mode ();
         UcStackedScopes.end_scope_ignore();
         error_message (loc psym)
@@ -383,8 +383,19 @@ let interpret (lexbuf : L.lexbuf) =
     push_print news
   in
 
-  let run (loc : EcLocation.t) : unit =
-    let rec runr (conf : config) (eff : effect) : config * effect =
+  let run (loc : EcLocation.t) (stepno : int option) : unit =
+    let decstepno (stepno : int option) : int option =
+      match stepno with
+      | None -> None
+      | Some i -> Some (i-1)
+    in
+    let proceed (stepno : int option) : bool =
+      match stepno with
+      | None -> true
+      | Some i -> i > 0
+    in
+    let rec runr (conf : config) (eff : effect) (stepno : int option)
+            : config * effect =
       if (UcState.get_run_print_pos ())
       then begin
         let c = currs() in
@@ -397,34 +408,41 @@ let interpret (lexbuf : L.lexbuf) =
           effect = Some eff;
         } in
         pp_uc_file_pos fmt c'
-      end;
-      match try Some  (* so tail recursive *)
-                (step_running_or_sending_real_or_ideal_config
-                 conf None None) with
-            | _ -> None with
-      | None             -> conf, eff
-      | Some (conf, eff) ->
-          (match eff with
-           | EffectOK
-           | EffectRand _ -> runr conf eff
-           | _ -> conf, eff) in
-    let conf, eff = step_core loc None None in  (* could issue error *)
-    let conf, eff =
-      match eff with
-      | EffectOK
-      | EffectRand _ -> runr conf eff
-      | _            -> conf, eff in
-    let c = currs() in
-    let news =
-      {
-        c with
-        cmd_no = c.cmd_no+1;
-        ucdsl_new = false;
-        post_done = false;
-        config = Some conf;
-        effect = Some eff;
-      } in
-    push_print news
+        end;
+      if proceed stepno
+      then
+        match try Some  (* so tail recursive *)
+                  (step_running_or_sending_real_or_ideal_config
+                   conf None None) with
+              | e when e <> Sys.Break -> None with
+        | None             -> conf, eff
+        | Some (conf, eff) ->
+            (match eff with
+             | EffectOK
+             | EffectRand _ -> runr conf eff (decstepno stepno)
+             | _ -> conf, eff)
+      else conf, eff
+    in
+    if proceed stepno
+    then
+      let conf, eff = step_core loc None None in  (* could issue error *)
+      let conf, eff =
+        match eff with
+        | EffectOK
+        | EffectRand _ -> runr conf eff (decstepno stepno)
+        | _            -> conf, eff in
+      let c = currs() in
+      let news =
+        {
+          c with
+          cmd_no = c.cmd_no+1;
+          ucdsl_new = false;
+          post_done = false;
+          config = Some conf;
+          effect = Some eff;
+        } in
+      push_print news
+    else ()
   in
 
   let modify_config (modify : config -> config) : unit =
@@ -613,6 +631,22 @@ let interpret (lexbuf : L.lexbuf) =
         pg_mode_break_handler ();
         prompt();
         loop body
+    | Stack_overflow -> (*issue #56: print graceful error message*)
+       let print_stack_overflow_message ppf =
+         Format.fprintf ppf
+   "@[stack overflow, check your EasyCrypt rewriting and simplification hints@]"
+       in
+       if UcState.get_pg_mode()
+       then
+         try
+          non_loc_error_message print_stack_overflow_message
+         with ErrorMessageExn ->
+         begin
+          prompt();
+          loop body
+         end
+       else
+         non_loc_error_message_exit print_stack_overflow_message
     | e when UcState.get_pg_mode() ->
         try
           non_loc_error_message
@@ -630,7 +664,7 @@ let interpret (lexbuf : L.lexbuf) =
     let cmd = next_cmd lexbuf in
     match (unloc cmd) with
     | Send sme           -> send (loc cmd) sme
-    | Run                -> run (loc cmd)
+    | Run no             -> run (loc cmd) no
     | Step (ppio, mdbso) -> step (loc cmd) ppio mdbso
     | AddVar tb          -> add_var tb
     | AddAss (psy, pex)  -> add_ass psy pex
