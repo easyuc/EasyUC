@@ -4487,23 +4487,25 @@ type ke_hybrid_ideal_sim_rel_st = {
   ke_hybrid_ideal_sim_rel_st_func : addr;
   ke_hybrid_ideal_sim_rel_st_hs : ke_hybrid_state;
   ke_hybrid_ideal_sim_rel_st_is : _state_IF;
-  ke_hybrid_ideal_sim_rel_st_ss : _state_SIM
+  ke_hybrid_ideal_sim_rel_st_ss : _state_SIM;
+  ke_hybrid_ideal_sim_rel_st_sa : addr option
 }.
 
 pred ke_hybrid_ideal_sim_rel0 (st : ke_hybrid_ideal_sim_rel_st) =
   st.`ke_hybrid_ideal_sim_rel_st_hs = KEHybridStateWaitReq1 /\
   st.`ke_hybrid_ideal_sim_rel_st_is = _State_IF_WaitReq1 /\
-  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitReq1.
+  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitReq1 /\
+  st.`ke_hybrid_ideal_sim_rel_st_sa = None.
 
 pred ke_hybrid_ideal_sim_rel1
      (st : ke_hybrid_ideal_sim_rel_st, pt1 pt2 : port, q1 : exp) =
-  ! st.`ke_hybrid_ideal_sim_rel_st_func <= pt1.`1 /\
-  ! st.`ke_hybrid_ideal_sim_rel_st_func <= pt2.`1 /\
-  ! adv <= pt1.`1 /\
-  ! adv <= pt2.`1 /\
+  envport st.`ke_hybrid_ideal_sim_rel_st_func pt2 /\
   st.`ke_hybrid_ideal_sim_rel_st_hs = KEHybridStateWaitAdv1 pt1 pt2 q1 /\
   st.`ke_hybrid_ideal_sim_rel_st_is = _State_IF_WaitSim1 pt1 pt2 /\
-  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitAdv1 q1.
+  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitAdv1 q1 /\
+  st.`ke_hybrid_ideal_sim_rel_st_sa = Some st.`ke_hybrid_ideal_sim_rel_st_func.
+
+
 
 pred ke_hybrid_ideal_sim_rel2
      (st : ke_hybrid_ideal_sim_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
@@ -4513,7 +4515,8 @@ pred ke_hybrid_ideal_sim_rel2
   ! adv <= pt2.`1 /\
   st.`ke_hybrid_ideal_sim_rel_st_hs = KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3 /\
   st.`ke_hybrid_ideal_sim_rel_st_is = _State_IF_WaitReq2 pt1 pt2 q3 /\
-  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitReq2 q1 q2.
+  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitReq2 q1 q2 /\
+  st.`ke_hybrid_ideal_sim_rel_st_sa = Some st.`ke_hybrid_ideal_sim_rel_st_func.
 
 pred ke_hybrid_ideal_sim_rel3
      (st : ke_hybrid_ideal_sim_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
@@ -4523,13 +4526,15 @@ pred ke_hybrid_ideal_sim_rel3
   ! adv <= pt2.`1 /\
   st.`ke_hybrid_ideal_sim_rel_st_hs = KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3 /\
   st.`ke_hybrid_ideal_sim_rel_st_is = _State_IF_WaitSim2 pt1 pt2 q3 /\
-  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitAdv2 q1 q2.
+  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_WaitAdv2 q1 q2 /\
+  st.`ke_hybrid_ideal_sim_rel_st_sa = Some st.`ke_hybrid_ideal_sim_rel_st_func.
 
 pred ke_hybrid_ideal_sim_rel4
      (st : ke_hybrid_ideal_sim_rel_st) =
   st.`ke_hybrid_ideal_sim_rel_st_hs = KEHybridStateFinal /\
   st.`ke_hybrid_ideal_sim_rel_st_is = _State_IF_Final /\
-  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_Final.
+  st.`ke_hybrid_ideal_sim_rel_st_ss = _State_SIM_Final /\
+  st.`ke_hybrid_ideal_sim_rel_st_sa = Some st.`ke_hybrid_ideal_sim_rel_st_func.
 
 inductive ke_hybrid_ideal_sim_rel (st : ke_hybrid_ideal_sim_rel_st) =
     KEHybridIdealSimRel0 of (ke_hybrid_ideal_sim_rel0 st)
@@ -4566,19 +4571,19 @@ move => pre disj.
 byequiv; first last. trivial. trivial.
 proc.
 inline init.
-sp.
+sp. 
     call (_ : ={glob MI} /\
     MakeInt.MI.func{2} = func' /\
     MakeInt.MI.in_guard{2} = in_guard' /\
   UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-  MSCore.MS.if_addr_opt{2} = None /\
-  UC_KESim.if_addr_opt{2} = None /\
+  MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
   KEHybrid._self{1} = MakeInt.MI.func{1} /\
   ke_hybrid_ideal_sim_rel(  {|
   ke_hybrid_ideal_sim_rel_st_func = func';
   ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
   ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-  ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}
+  ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+  ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}
     |})
 ); last first. auto;smt(KEHybridIdealSimRel0).
       proc.
@@ -4589,7 +4594,9 @@ case(ke_hybrid_ideal_sim_rel0
    {|ke_hybrid_ideal_sim_rel_st_func = func';
      ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
      ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-     ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}
+     ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+     ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}
+     |}
  ).
     rcondt{1} 0. auto;smt().
 rcondt{2} 0. auto;smt().
@@ -4640,20 +4647,21 @@ seq 1 0 : (
         MakeInt.MI.func{2} = func' /\
         MakeInt.MI.in_guard{2} = in_guard' /\
         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-        MSCore.MS.if_addr_opt{2} = None /\
-        UC_KESim.if_addr_opt{2} = None /\
+        MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
         KEHybrid._self{1} = MakeInt.MI.func{1} /\
         ke_hybrid_ideal_sim_rel
           {| ke_hybrid_ideal_sim_rel_st_func = func';
               ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
               ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-              ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+            ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
        (main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1}) /\
       ke_hybrid_ideal_sim_rel0
         {| ke_hybrid_ideal_sim_rel_st_func = func';
             ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
             ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+          ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
      MakeInt.MI.func{1} <= m{1}.`2.`1 /\
     ! (m{1}.`1 = Dir /\
        envport KEHybrid._self{1} m{1}.`3 /\
@@ -4680,14 +4688,14 @@ sp 0 2.
   MakeInt.MI.func{2} = func' /\
   MakeInt.MI.in_guard{2} = in_guard' /\
   UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-  MSCore.MS.if_addr_opt{2} = None /\
-  UC_KESim.if_addr_opt{2} = None /\
+  MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
   KEHybrid._self{1} = MakeInt.MI.func{1} /\
   ke_hybrid_ideal_sim_rel
     {| ke_hybrid_ideal_sim_rel_st_func = func';
         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}).
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|}).
 call{2} (MakeInt.MI_after_func_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))).
 skip. move => &1 &2 P.
       progress;smt().
@@ -4702,14 +4710,14 @@ skip. move => &1 &2 P.
   MakeInt.MI.func{2} = func' /\
   MakeInt.MI.in_guard{2} = in_guard' /\
   UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-  MSCore.MS.if_addr_opt{2} = None /\
-  UC_KESim.if_addr_opt{2} = None /\
+  MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
   KEHybrid._self{1} = MakeInt.MI.func{1} /\
   ke_hybrid_ideal_sim_rel
     {| ke_hybrid_ideal_sim_rel_st_func = func';
         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}).
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|}).
 call{2} (MakeInt.MI_after_func_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))).
 skip. move => &1 &2 P.
       progress;smt().
@@ -4733,20 +4741,21 @@ seq 1 0 : (
         MakeInt.MI.func{2} = func' /\
         MakeInt.MI.in_guard{2} = in_guard' /\
         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-        MSCore.MS.if_addr_opt{2} = None /\
-        UC_KESim.if_addr_opt{2} = None /\
+        MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
         KEHybrid._self{1} = MakeInt.MI.func{1} /\
         ke_hybrid_ideal_sim_rel
           {| ke_hybrid_ideal_sim_rel_st_func = func';
               ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
               ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-              ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+            ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
        (main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1}) /\
       ke_hybrid_ideal_sim_rel0
         {| ke_hybrid_ideal_sim_rel_st_func = func';
             ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
             ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+          ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
      MakeInt.MI.func{1} <= m{1}.`2.`1 /\
      (m{1}.`1 = Dir /\
        envport KEHybrid._self{1} m{1}.`3 /\
@@ -4776,14 +4785,14 @@ sp 0 2.
   MakeInt.MI.func{2} = func' /\
   MakeInt.MI.in_guard{2} = in_guard' /\
   UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-  MSCore.MS.if_addr_opt{2} = None /\
-  UC_KESim.if_addr_opt{2} = None /\
+  MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
   KEHybrid._self{1} = MakeInt.MI.func{1} /\
   ke_hybrid_ideal_sim_rel
     {| ke_hybrid_ideal_sim_rel_st_func = func';
         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}).
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|}).
 call{2} (MakeInt.MI_after_func_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))).
 skip. move => &1 &2 P.
       progress;smt().
@@ -4800,7 +4809,10 @@ seq 1 0 : (
  
       UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
     pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
-     pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    _pt1{1} = _intport_Pt1 KEHybrid._self{1} /\
+    _pt2{1} = _intport_Pt2 KEHybrid._self{1} /\
+    
      r0{1} = None /\
      m0{2} = m{2} /\
        r0{2} = None /\
@@ -4813,20 +4825,21 @@ seq 1 0 : (
         MakeInt.MI.func{2} = func' /\
         MakeInt.MI.in_guard{2} = in_guard' /\
         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-        MSCore.MS.if_addr_opt{2} = None /\
-        UC_KESim.if_addr_opt{2} = None /\
+        MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
         KEHybrid._self{1} = MakeInt.MI.func{1} /\
         ke_hybrid_ideal_sim_rel
           {| ke_hybrid_ideal_sim_rel_st_func = func';
               ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
               ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-              ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+            ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
        (main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1}) /\
       ke_hybrid_ideal_sim_rel0
         {| ke_hybrid_ideal_sim_rel_st_func = func';
             ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
             ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |} /\
+          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+          ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|} /\
      MakeInt.MI.func{1} <= m{1}.`2.`1 /\
      (m{1}.`1 = Dir /\
        envport KEHybrid._self{1} m{1}.`3 /\
@@ -4860,14 +4873,14 @@ sp 0 4.
   MakeInt.MI.func{2} = func' /\
   MakeInt.MI.in_guard{2} = in_guard' /\
   UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-  MSCore.MS.if_addr_opt{2} = None /\
-  UC_KESim.if_addr_opt{2} = None /\
+  MSCore.MS.if_addr_opt{2} =  UC_KESim.if_addr_opt{2} /\
   KEHybrid._self{1} = MakeInt.MI.func{1} /\
   ke_hybrid_ideal_sim_rel
     {| ke_hybrid_ideal_sim_rel_st_func = func';
         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
-        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2}; |}).
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}|}).
 call{2} (MakeInt.MI_after_func_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))).
 skip. move => &1 &2 P.
       progress;smt().
@@ -4886,7 +4899,7 @@ inline{2} (1) parties.
       sp 0 3.
       rcondt{2} 0. auto;smt().
   sp 0 5 => //=.
-  exlim r0{2} => r0.
+  exlim r0{2} => r0R.
       seq 0 1 : (
     
   r0{2} =
@@ -4897,7 +4910,8 @@ inline{2} (1) parties.
         UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}) /\
     Some m0{2} = r0{2} /\
     not_done{2} = true /\
-    
+    _pt1{1} = _intport_Pt1 KEHybrid._self{1} /\
+    _pt2{1} = _intport_Pt2 KEHybrid._self{1} /\
     KEHybrid._st{1} = KEHybridStateWaitReq1 /\
         UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
         UC_KESim._st{2} = _State_SIM_WaitReq1 /\
@@ -4905,8 +4919,8 @@ inline{2} (1) parties.
          MakeInt.MI.func{2} = func' /\
          MakeInt.MI.in_guard{2} = in_guard' /\
          UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
-         MSCore.MS.if_addr_opt{2} = None /\
-         UC_KESim.if_addr_opt{2} = None /\
+      MSCore.MS.if_addr_opt{2} = UC_KESim.if_addr_opt{2} /\
+    UC_KESim.if_addr_opt{2} = None /\
       KEHybrid._self{1} = MakeInt.MI.func{1} /\
       main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
     
@@ -4918,18 +4932,427 @@ inline{2} (1) parties.
     UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
    envport KEHybrid._self{1} pt2{1}
       ).
-          call{2} (MakeInt.MI_after_func_to_adv UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv)) r0).
+          call{2} (MakeInt.MI_after_func_to_adv UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv)) r0R).
           skip. move => &1 &2 P.
           progress. 
           smt(). smt(). smt(). smt(). smt(). smt(_adv_pi_begin_gt0).
           smt(). have Q : result.`1 = _r0{2}. smt(). smt().
           smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
           smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
-      smt(). smt(). smt(). smt(). smt(). smt(). 
+      smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
 
           rcondt{2} 0. auto;smt().
       rcondf{2} 0. auto;smt.
-          auto;progress;smt().
+inline{2} (1) invoke.
+sp 0 2.
+rcondt{2} 0. auto;smt().
+          rcondt{2} 0. auto;smt().
+          rcondt{2} 0. auto;smt().
+          sp 0 1.
+      inline{2} (1) loop.
+          sp 0 3.
+          rcondt{2} 0. auto;smt().
+          rcondf{2} 0. auto;smt().
+      inline{2} (1) invoke.
+          sp 0 2.
+          rcondt{2} 0. auto;smt().
+          sp 0 1.
+          match _State_SIM_WaitReq1 {2} 0. auto;smt().
+          rcondt{2} 0. auto;smt().
+      inline _State_SIM_WaitReq1__KEI2S__ke_sim_req1.
+sp 0 3.      
+seq 1 1 : (#pre /\ ={q1}).
+          rnd. auto;smt().
+      (*UC_Fw1.UC_FwAdv.epdp__fw_obs to be sent to adversary*)
+          sp 5 4.
+      exlim r0{1} => r0L.
+          seq 1 0 : (
+
+  r0{1} =
+      Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
+        Some m0{1} = r0{1} /\
+    
+  r3{2} =
+    Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+            _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+            _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+          epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |}) /\
+        not_done{2} = true /\
+        not_done{1} = true /\
+    
+    KEHybrid._st{1} = KEHybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+        UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+        UC_KESim._st{2} = _State_SIM_WaitAdv1 q1{2} /\
+    ={m, glob MI, q1} /\
+         MakeInt.MI.func{2} = func' /\
+         MakeInt.MI.in_guard{2} = in_guard' /\
+         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
+         MSCore.MS.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+         UC_KESim.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+      KEHybrid._self{1} = MakeInt.MI.func{1} /\
+      main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
+    
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
+   envport KEHybrid._self{1} pt2{1}
+      ).
+          call{1} (MakeInt.MI_after_func_to_adv KEHybrid DummyAdv r0L).
+          skip. move => &1 &2 P. 
+      have Q10 : pt10{2} = pt1{2}.
+          have Q : (oget(UC_KEI2S.epdp__ke_sim_req1.`dec _m0{2})).`UC_KEI2S.ke_sim_req1__pt1 =  pt1{2}.
+          have Q : _m0{2} = oget r0{2}. smt(). rewrite Q. clear Q.
+      
+      have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
+        UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
+          UC_KEI2S.ke_sim_req1___adv = adv;
+        UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
+          UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
+      smt(
+          UC_KEI2S.valid_epdp__ke_sim_req1
+          UC_KEI2S.eq_of_valid__ke_sim_req1
+      ). smt(). 
+have Q20 : pt20{2} = pt2{2}.
+          have Q : (oget(UC_KEI2S.epdp__ke_sim_req1.`dec _m0{2})).`UC_KEI2S.ke_sim_req1__pt2 =  pt2{2}.
+          have Q : _m0{2} = oget r0{2}. smt(). rewrite Q. clear Q.
+      
+      have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
+        UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
+          UC_KEI2S.ke_sim_req1___adv = adv;
+        UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
+          UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
+      smt(
+          UC_KEI2S.valid_epdp__ke_sim_req1
+          UC_KEI2S.eq_of_valid__ke_sim_req1
+      ). smt().
+          have Qe : r3{2} = _r2{2}. smt().
+      have QO : (oget(UC_KEI2S.epdp__ke_sim_req1.`dec _m0{2})).`UC_KEI2S.ke_sim_req1__pt2 =  pt2{2}.
+          have Q : _m0{2} = oget r0{2}. smt(). rewrite Q. clear Q.
+      
+      have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
+        UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
+          UC_KEI2S.ke_sim_req1___adv = adv;
+        UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
+          UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
+      smt(
+          UC_KEI2S.valid_epdp__ke_sim_req1
+          UC_KEI2S.eq_of_valid__ke_sim_req1
+      ).
+progress.
+          smt().
+          smt(). smt(). smt(). smt(@UCListPO). smt(_adv_pi_begin_gt0). smt(@UCListPO). smt(). smt(). rewrite -Q10 -Q20. smt(). smt().
+          smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
+          smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
+       smt(). smt(). smt(). smt(). smt(). smt(). 
+          clear r0R r0L.
+      exlim r3{2} => r3R.
+seq 0 1 : (
+
+  r0{1} =
+      Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
+     Some m0{1} = r0{1} /\   
+not_done0{2}= true /\
+        Some m3{2} = r3{2} /\    
+  r3{2} =
+    Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+            _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+            _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+          epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |}) /\
+        not_done{2} = true /\
+        not_done{1} = true /\
+    
+    KEHybrid._st{1} = KEHybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+        UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+        UC_KESim._st{2} = _State_SIM_WaitAdv1 q1{2} /\
+    ={m, glob MI, q1} /\
+         MakeInt.MI.func{2} = func' /\
+         MakeInt.MI.in_guard{2} = in_guard' /\
+         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
+         MSCore.MS.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+         UC_KESim.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+      KEHybrid._self{1} = MakeInt.MI.func{1} /\
+      main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
+    
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
+   envport KEHybrid._self{1} pt2{1}
+      ).
+ call{2} (MSCore.MS_after_core_continue UC_KESim DummyAdv r3R).   
+          skip. move => &1 &2 P. progress;smt(_adv_pi_begin_gt0 @UCListPO).
+       clear r3R.
+          rcondt{2} 0. auto;smt().
+          rcondt{2} 0. auto;smt().
+     
+          inline{2} (1) invoke.
+          sp 0 2.
+          match None {2} 0. 
+      move => &m0. skip. move => &hr P. 
+          apply  dest_pi_gt0_implies_dec_epdp_da_from_env_fails.
+      have H : m4{hr} = (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+     {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+       UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+       _intport_Pt1 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+       _intport_Pt2 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs__u =
+       epdp_port_port_key_univ.`enc (pt1{hr}, pt2{hr}, g ^ q1{hr}); |}).
+       have H : m4{hr} = m3{hr}. smt(). rewrite H. clear H. smt().
+rewrite H. clear H.
+       smt(UC_Fw1._adv_if_pi_gt0).
+       rcondt{2} 0. move => &m0. skip. move => &hr P. 
+have H : m4{hr} = (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+     {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+       UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+       _intport_Pt1 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+       _intport_Pt2 (oget UC_KESim.if_addr_opt{hr});
+       UC_Fw1.UC_FwAdv.fw_obs__u =
+       epdp_port_port_key_univ.`enc (pt1{hr}, pt2{hr}, g ^ q1{hr}); |}).
+       have H : m4{hr} = m3{hr}. smt(). rewrite H. clear H. smt().
+rewrite H. clear H.
+       smt(UC_Fw1._adv_if_pi_gt0).
+   sp 0 2.
+   exlim r3{2} => r3R.
+   seq 0 1 : (
+
+  r0{1} =
+      Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
+    Some m0{1} = r0{1} /\    
+not_done0{2}= false /\
+        Some m3{2} = r3{2} /\    
+  m4{2} =
+    UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+            _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+            _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |} /\
+
+   r3{2} = Some (epdp_da_to_env.`enc
+      {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+          m4{2}.`5; |}) /\
+        not_done{2} = true /\
+        not_done{1} = true /\
+    
+    KEHybrid._st{1} = KEHybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+        UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+        UC_KESim._st{2} = _State_SIM_WaitAdv1 q1{2} /\
+    ={m, glob MI, q1} /\
+         MakeInt.MI.func{2} = func' /\
+         MakeInt.MI.in_guard{2} = in_guard' /\
+         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
+         MSCore.MS.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+         UC_KESim.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+      KEHybrid._self{1} = MakeInt.MI.func{1} /\
+      main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
+    
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
+   envport KEHybrid._self{1} pt2{1}
+      ).
+          call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r3R).
+skip. move => &1 &2 P. progress;smt(@UCListPO).
+   clear r3R.
+          rcondf{2} 0. auto;smt().
+      sp 0 2.
+exlim r0{2} => r0R.
+seq 0 1 : (
+r0{1} =
+      Some (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
+ Some m0{1} = r0{1} /\       
+not_done{2} = false /\
+        Some m3{2} = r3{2} /\    
+  m4{2} =
+    UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+            _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+            _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |} /\
+
+   r0{2} = Some (epdp_da_to_env.`enc
+      {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+          m4{2}.`5; |}) /\
+    not_done{1} = true /\
+    Some m0{2} = r0{2} /\
+    
+    KEHybrid._st{1} = KEHybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+        UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+        UC_KESim._st{2} = _State_SIM_WaitAdv1 q1{2} /\
+    ={m, glob MI, q1} /\
+         MakeInt.MI.func{2} = func' /\
+         MakeInt.MI.in_guard{2} = in_guard' /\
+         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
+         MSCore.MS.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+         UC_KESim.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+      KEHybrid._self{1} = MakeInt.MI.func{1} /\
+      main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
+    
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
+   envport KEHybrid._self{1} pt2{1}
+      ).
+ call{2} (MakeInt.MI_after_adv_to_env UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv)) r0R).   
+          skip. move => &1 &2 P. progress.
+          smt(). smt(). smt(). smt().  smt(@UCListPO). smt(@UCListPO).
+          smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
+have Q : result.`1 = r3{2}. smt(). 
+          smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().
+          smt(). smt(). smt(). smt(). smt(). smt(). smt().
+          smt(). smt(). smt(). smt(). smt(). smt(). smt().
+      smt(). smt(). smt(). smt().
+       clear r0R.
+rcondf{2} 0. auto;smt().
+          rcondt{1} 0. auto;smt().
+          rcondf{1} 0. move => &m0. skip. move => &hr P.
+          smt(@UCListPO).
+          inline{1} (1) invoke.
+      sp 2 0.
+          match None {1} 0. 
+      move => &m0. skip. move => &hr P. 
+          apply  dest_pi_gt0_implies_dec_epdp_da_from_env_fails.
+      have H : m2{hr} = (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+     {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{hr};
+       UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+       UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{hr};
+       UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{hr};
+       UC_Fw1.UC_FwAdv.fw_obs__u =
+       epdp_port_port_key_univ.`enc (pt1{hr}, pt2{hr}, g ^ q1{hr}); |}). 
+       have H : m2{hr} = m0{hr}. smt(). rewrite H. clear H. smt().
+       smt(UC_Fw1._adv_if_pi_gt0).
+       rcondt{1} 0. move => &m0. skip. move => &hr P.
+   have H : m2{hr} = (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+     {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{hr};
+         UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+         UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{hr};
+       UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{hr};
+       UC_Fw1.UC_FwAdv.fw_obs__u =
+       epdp_port_port_key_univ.`enc (pt1{hr}, pt2{hr}, g ^ q1{hr}); |}).
+have H : m2{hr} = m0{hr}. smt(). rewrite H. clear H.
+       smt().
+       smt(UC_Fw1._adv_if_pi_gt0).
+       sp 2 0.
+exlim r0{1} => r0L.
+       seq 1 0 : (
+     
+m2{1} = (UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+       {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
+         UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+         UC_Fw1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
+         UC_Fw1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
+         UC_Fw1.UC_FwAdv.fw_obs__u =
+          epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\     
+r0{1} = Some (epdp_da_to_env.`enc
+      {| dte_n = m2{1}.`2.`2; dte_pt = m2{1}.`3; dte_tag = m2{1}.`4; dte_u =
+          m2{1}.`5; |}) /\ 
+    not_done{1} = false /\
+    
+  m4{2} =
+    UC_Fw1.UC_FwAdv.epdp__fw_obs.`enc
+          {| UC_Fw1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs___adv = adv;
+            UC_Fw1.UC_FwAdv.fw_obs__pt1 =
+            _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__pt2 =
+            _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
+            UC_Fw1.UC_FwAdv.fw_obs__u =
+            epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |} /\
+r0{2} = Some (epdp_da_to_env.`enc
+      {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+          m4{2}.`5; |}) /\
+    
+    
+    KEHybrid._st{1} = KEHybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+        UC_KEIdeal._st{2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+        UC_KESim._st{2} = _State_SIM_WaitAdv1 q1{2} /\
+    ={m, glob MI, q1} /\
+         MakeInt.MI.func{2} = func' /\
+         MakeInt.MI.in_guard{2} = in_guard' /\
+         UC_KEIdeal._self{2} = MakeInt.MI.func{2} /\
+         MSCore.MS.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+         UC_KESim.if_addr_opt{2} = Some UC_KEIdeal._self{2} /\
+      KEHybrid._self{1} = MakeInt.MI.func{1} /\
+      main_guard MakeInt.MI.func{1} MakeInt.MI.in_guard{1} m{1} /\
+    
+    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
+    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} /\
+    UC_KEDir.Pt1.epdp__ke_req1.`dec m{1} = Some _x{1} /\
+   envport KEHybrid._self{1} pt2{1}
+      ).
+ call{1} (MakeInt.MI_after_adv_to_env KEHybrid DummyAdv r0L).   
+          skip. move => &1 &2 P. progress; smt(@UCListPO).
+       clear r0L.   
+          rcondf{1} 0. auto;smt().
+      skip. move => &1 &2 P.
+          progress. smt().
+          smt(). smt(). smt(). smt(). smt(). smt(). smt().
+have H : ke_hybrid_ideal_sim_rel1 {| ke_hybrid_ideal_sim_rel_st_func = func'; ke_hybrid_ideal_sim_rel_st_hs =
+      KEHybrid._st{1}; ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+        ke_hybrid_ideal_sim_rel_st_sa = UC_KESim.if_addr_opt{2}; |} pt1{1} pt2{1} q1{1}.
+      rewrite /ke_hybrid_ideal_sim_rel1.
+      move => />. smt().
+                smt(KEHybridIdealSimRel1).
           (*do ovdje*)    
       smt().
 
