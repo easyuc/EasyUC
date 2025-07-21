@@ -1802,6 +1802,50 @@ lemma MS_after_adv_error (CoreSim <: ADV) (Adv <: ADV) :
    res.`1 = None /\ ! res.`3] = 1%r.
 proof. proc; auto; smt(). qed.
 
+(* lemmas connecting MakeInt.after_adv operators with (MS) after_adv
+   operators; two are left-to-right implications, suggesting a primary
+   case analysis on MakeInt.after_adv *)
+
+lemma MI_after_adv_error_iff_after_adv_error
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv =>
+  MakeInt.after_adv_error func' r <=> after_adv_error r.  
+proof.
+move => inc_func'_adv.
+rewrite /MakeInt.after_adv_error /after_adv_error.
+smt(inc_nle_l le_trans ge_nil).
+qed.
+
+lemma MI_after_adv_to_env_implies_after_adv_return
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv =>
+  (if_addr_opt <> None => if_addr_opt = Some func') =>
+  MakeInt.after_adv_to_env func' r => after_adv_return if_addr_opt r.  
+proof.
+move => inc_func'_adv if_addr_opt_cond.
+rewrite /MakeInt.after_adv_to_env /after_adv_return /#.
+qed.
+
+lemma MI_after_adv_to_func_implies_after_adv_return_if_addr_opt_unset
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv => if_addr_opt = None => 
+  MakeInt.after_adv_to_func func' r => after_adv_return if_addr_opt r.  
+proof.
+move => inc_func'_adv if_addr_opt_none.
+rewrite /MakeInt.after_adv_to_func /after_adv_return.
+smt(inc_le1_not_rl inc_nle_l le_trans ge_nil).
+qed.
+
+lemma MI_after_adv_to_func_iff_after_adv_continue_if_addr_opt_set
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv => if_addr_opt = Some func' =>
+  MakeInt.after_adv_to_func func' r <=> after_adv_continue if_addr_opt r.  
+proof.
+move => inc_func'_adv ->.
+rewrite /MakeInt.after_adv_to_func /after_adv_continue.
+smt(inc_le1_not_rl inc_nle_l le_trans ge_nil).
+qed.
+
 (* combined environment, made up of the real environment and
    the adversary *)
 
