@@ -2170,7 +2170,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 case (MakeInt.after_func_to_env func' r{1}).
-exlim r{1} => r'.
 seq 1 1 :
   (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
    r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
@@ -2179,6 +2178,7 @@ seq 1 1 :
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
 call{1} (MakeInt.MI_after_func_to_env RealFunc Adv r').
 call{2} (MakeInt.MI_after_func_to_env RealFunc DummyAdv r').
 auto; smt().
@@ -2191,7 +2191,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 (* MakeInt.after_func_to_adv func' r{1} *)
-exlim r{1} => r'.
 seq 1 1 :
   (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
    term_rf (glob RealFunc){1} < n /\
@@ -2202,6 +2201,7 @@ seq 1 1 :
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
 call{1} (MakeInt.MI_after_func_to_adv RealFunc Adv r').
 call{2} (MakeInt.MI_after_func_to_adv RealFunc DummyAdv r').
 auto; progress; smt().
@@ -3721,7 +3721,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 case (MakeInt.after_func_to_env func' r0{1}).
-exlim r0{1} => r0'.
 seq 1 1 :
   (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
    invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
@@ -3732,6 +3731,7 @@ seq 1 1 :
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
    (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
 call{1}
   (MakeInt.MI_after_func_to_env IdealFunc
    (MS(SimCore, Adv)) r0').
@@ -3748,7 +3748,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 (* MakeInt.after_func_to_adv func' r0{1} *)
-exlim r0{1} => r0'.
 seq 1 1 :
   (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
    invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
@@ -3760,6 +3759,7 @@ seq 1 1 :
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
    (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
 call{1}
   (MakeInt.MI_after_func_to_adv IdealFunc
    (MS(SimCore, Adv)) r0').
