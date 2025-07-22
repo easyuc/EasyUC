@@ -1512,6 +1512,52 @@ rewrite /adv_root_port /= negb_and.
 have -> // : x2_2 <> 0 by smt().
 qed.
 
+(* lemmas about how outgoing messages from Dummy Adversary are handled
+   by MakeInt *)
+
+(* when incoming message to Dummy Adversary decodes to dfe, passes
+   guard and dfe.`dfe_pt.`1 is >= address of functionality, then
+   outgoing message goes to functionality *)
+
+lemma MI_after_adv_to_func_da_from_env_msg_if_func'_le_dfe_pt_1
+      (func' : addr, dfe : da_from_env) :
+  func' <= dfe.`dfe_pt.`1 =>
+  0 < dfe.`dfe_n /\ dfe.`dfe_pt <> env_root_port /\ ! adv <= dfe.`dfe_pt.`1 =>
+  MakeInt.after_adv_to_func func' 
+  (Some (Adv, dfe.`dfe_pt, (adv, dfe.`dfe_n), dfe.`dfe_tag, dfe.`dfe_u)).  
+proof.
+move => func'_le_dfe_pt_1 da_some_guard.
+rewrite /MakeInt.after_adv_to_func /=.
+smt().
+qed.
+
+(* when incoming message to Dummy Adversary decodes to dfe, passes
+   guard and dfe.`dfe_pt.`1 is not >= address of functionality, then
+   outgoing message goes to environment *)
+
+lemma MI_after_adv_to_env_da_from_env_msg_if_func'_nle_dfe_pt_1
+      (func' : addr, dfe : da_from_env) :
+  ! func' <= dfe.`dfe_pt.`1 =>
+  0 < dfe.`dfe_n /\ dfe.`dfe_pt <> env_root_port /\ ! adv <= dfe.`dfe_pt.`1 =>
+  MakeInt.after_adv_to_env func' 
+  (Some (Adv, dfe.`dfe_pt, (adv, dfe.`dfe_n), dfe.`dfe_tag, dfe.`dfe_u)).  
+proof.
+move => func'_nle_dfe_pt_1 da_some_guard.
+rewrite /MakeInt.after_adv_to_env /= /#.
+qed.
+
+(* outgoing epdp_da_to_env.`enc message goes to environment *)
+
+lemma MI_after_adv_to_env_enc_da_to_env (func' : addr, dte : da_to_env) :
+  inc func' adv =>
+  MakeInt.after_adv_to_env func' (Some (epdp_da_to_env.`enc dte)).
+proof.
+move => inc_func'_adv.
+rewrite /MakeInt.after_adv_to_env /epdp_da_to_env /enc_da_to_env /=.
+split; first smt(inc_nle_l le_trans ge_nil).
+split => [| //]; first smt(inc_nle_r le_trans ge_nil).
+qed.
+
 module DummyAdv : ADV = {
   proc init() : unit = { }
 
