@@ -1866,7 +1866,6 @@ call{2}
 auto.
 rcondf{2} 1; first auto.
 auto.
-exlim r{2} => r2'.
 seq 0 1 :
   (r{1} = None /\ r{2} = Some m{2} /\ !not_done{2} /\
    MakeInt.MI.func{1} ++ [change_pari] <= m_orig{2}.`2.`1 /\
@@ -1881,6 +1880,7 @@ seq 0 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r{2} => r2'.
 call{2} (MakeInt.MI_after_adv_to_env Par Adv r2').
 auto;
   smt(inc_extl
@@ -2383,7 +2383,6 @@ rcondf{2} 1; first auto; progress; smt(inc_nle_l).
 inline{2} 1.
 rcondt{2} 2; first auto.
 sp 0 4.
-exlim r{1} => r'.
 seq 0 1 :
   (={r} /\ r{1} = Some m{1} /\ !not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
@@ -2395,6 +2394,7 @@ seq 0 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r{1} => r'.
 call{2}
   (CompEnvMakeInt.MI_after_adv_to_env
    (MakeRFComp(Rest, CompEnvStubPar)) CompEnvStubAdv r').
@@ -2781,7 +2781,6 @@ inline{1} 1; sp 4 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 (* end of reduction to LeftMI_RightMIFromPar *)
-exlim r2{2} => r2'.
 seq 0 1 :
   (r{1} = r2{2} /\ r2{2} = Some m2{2} /\
    !not_done0{2} /\
@@ -2798,6 +2797,7 @@ seq 0 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r2{2} => r2'.
 call{2} (MakeInt.MI_after_func_to_env Par Adv r2').
 auto; smt(inc_extl MakeInt.after_func_disj).
 rcondf{2} 1; first auto.
@@ -3224,7 +3224,6 @@ call{2}
 auto; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
 auto.
-exlim r{1} => r'.
 seq 1 1 :
   (={r, m} /\ r{1} = Some m{1} /\ not_done{1} /\ not_done{2} /\
     m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\ 0 < m{1}.`2.`2 /\
@@ -3240,6 +3239,7 @@ seq 1 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r{1} => r'.
 call{1} (MakeInt.MI_after_func_to_adv (MakeRFComp(Rest, Par)) Adv r').
 call{2}
   (CompEnvMakeInt.MI_after_func_to_adv
@@ -3580,7 +3580,6 @@ inline{1} 1; sp 3 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 (* end of reduction to LeftMI_RightMIFromPar *)
-exlim r{2} => r2'.
 seq 0 1 :
   (={r} /\ r{2} = Some m{2} /\
    !not_done{2} /\
@@ -3596,6 +3595,7 @@ seq 0 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r{2} => r2'.
 call{2} (MakeInt.MI_after_func_to_env Par Adv r2').
 auto; smt(inc_extl MakeInt.after_func_disj).
 rcondf{2} 1; first auto. rcondt{2} 1; first auto.
@@ -4051,7 +4051,6 @@ inline{1} 1; sp 4 0.
 rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 sim.
 (* end of reduction to LeftMI_RightMIFromPar *)
-exlim r{2} => r2'.
 seq 0 1 :
   (={r} /\ r{2} = Some m{2} /\
    !not_done{2} /\
@@ -4068,6 +4067,7 @@ seq 0 1 :
    CompEnvMI.in_guard{2} = in_guard_low' /\
    MI.in_guard{2} = in_guard_low' `|` rest_adv_pis /\
    CompGlobs.ce_stub_st{2} = None).
+exlim r{2} => r2'.
 call{2} (MakeInt.MI_after_func_to_env Par Adv r2').
 auto; smt(inc_extl MakeInt.after_func_disj).
 rcondf{2} 1; first auto. rcondt{2} 1; first auto.

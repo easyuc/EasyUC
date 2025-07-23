@@ -1512,6 +1512,52 @@ rewrite /adv_root_port /= negb_and.
 have -> // : x2_2 <> 0 by smt().
 qed.
 
+(* lemmas about how outgoing messages from Dummy Adversary are handled
+   by MakeInt *)
+
+(* when incoming message to Dummy Adversary decodes to dfe, passes
+   guard and dfe.`dfe_pt.`1 is >= address of functionality, then
+   outgoing message goes to functionality *)
+
+lemma MI_after_adv_to_func_da_from_env_msg_if_func'_le_dfe_pt_1
+      (func' : addr, dfe : da_from_env) :
+  func' <= dfe.`dfe_pt.`1 =>
+  0 < dfe.`dfe_n /\ dfe.`dfe_pt <> env_root_port /\ ! adv <= dfe.`dfe_pt.`1 =>
+  MakeInt.after_adv_to_func func' 
+  (Some (Adv, dfe.`dfe_pt, (adv, dfe.`dfe_n), dfe.`dfe_tag, dfe.`dfe_u)).  
+proof.
+move => func'_le_dfe_pt_1 da_some_guard.
+rewrite /MakeInt.after_adv_to_func /=.
+smt().
+qed.
+
+(* when incoming message to Dummy Adversary decodes to dfe, passes
+   guard and dfe.`dfe_pt.`1 is not >= address of functionality, then
+   outgoing message goes to environment *)
+
+lemma MI_after_adv_to_env_da_from_env_msg_if_func'_nle_dfe_pt_1
+      (func' : addr, dfe : da_from_env) :
+  ! func' <= dfe.`dfe_pt.`1 =>
+  0 < dfe.`dfe_n /\ dfe.`dfe_pt <> env_root_port /\ ! adv <= dfe.`dfe_pt.`1 =>
+  MakeInt.after_adv_to_env func' 
+  (Some (Adv, dfe.`dfe_pt, (adv, dfe.`dfe_n), dfe.`dfe_tag, dfe.`dfe_u)).  
+proof.
+move => func'_nle_dfe_pt_1 da_some_guard.
+rewrite /MakeInt.after_adv_to_env /= /#.
+qed.
+
+(* outgoing epdp_da_to_env.`enc message goes to environment *)
+
+lemma MI_after_adv_to_env_enc_da_to_env (func' : addr, dte : da_to_env) :
+  inc func' adv =>
+  MakeInt.after_adv_to_env func' (Some (epdp_da_to_env.`enc dte)).
+proof.
+move => inc_func'_adv.
+rewrite /MakeInt.after_adv_to_env /epdp_da_to_env /enc_da_to_env /=.
+split; first smt(inc_nle_l le_trans ge_nil).
+split => [| //]; first smt(inc_nle_r le_trans ge_nil).
+qed.
+
 module DummyAdv : ADV = {
   proc init() : unit = { }
 
@@ -1801,6 +1847,50 @@ lemma MS_after_adv_error (CoreSim <: ADV) (Adv <: ADV) :
    after_adv_error r ==>
    res.`1 = None /\ ! res.`3] = 1%r.
 proof. proc; auto; smt(). qed.
+
+(* lemmas connecting MakeInt.after_adv operators with (MS) after_adv
+   operators; two are left-to-right implications, suggesting a primary
+   case analysis on MakeInt.after_adv *)
+
+lemma MI_after_adv_error_iff_after_adv_error
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv =>
+  MakeInt.after_adv_error func' r <=> after_adv_error r.  
+proof.
+move => inc_func'_adv.
+rewrite /MakeInt.after_adv_error /after_adv_error.
+smt(inc_nle_l le_trans ge_nil).
+qed.
+
+lemma MI_after_adv_to_env_implies_after_adv_return
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv =>
+  (if_addr_opt <> None => if_addr_opt = Some func') =>
+  MakeInt.after_adv_to_env func' r => after_adv_return if_addr_opt r.  
+proof.
+move => inc_func'_adv if_addr_opt_cond.
+rewrite /MakeInt.after_adv_to_env /after_adv_return /#.
+qed.
+
+lemma MI_after_adv_to_func_implies_after_adv_return_if_addr_opt_unset
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv => if_addr_opt = None => 
+  MakeInt.after_adv_to_func func' r => after_adv_return if_addr_opt r.  
+proof.
+move => inc_func'_adv if_addr_opt_none.
+rewrite /MakeInt.after_adv_to_func /after_adv_return.
+smt(inc_le1_not_rl inc_nle_l le_trans ge_nil).
+qed.
+
+lemma MI_after_adv_to_func_iff_after_adv_continue_if_addr_opt_set
+      (func' : addr, if_addr_opt : addr option, r : msg option) :
+  inc func' adv => if_addr_opt = Some func' =>
+  MakeInt.after_adv_to_func func' r <=> after_adv_continue if_addr_opt r.  
+proof.
+move => inc_func'_adv ->.
+rewrite /MakeInt.after_adv_to_func /after_adv_continue.
+smt(inc_le1_not_rl inc_nle_l le_trans ge_nil).
+qed.
 
 (* combined environment, made up of the real environment and
    the adversary *)
@@ -2170,7 +2260,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 case (MakeInt.after_func_to_env func' r{1}).
-exlim r{1} => r'.
 seq 1 1 :
   (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
    r{1} = r2{2} /\ m{1} = m2{2} /\ r{1} = Some m{1} /\
@@ -2179,6 +2268,7 @@ seq 1 1 :
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
 call{1} (MakeInt.MI_after_func_to_env RealFunc Adv r').
 call{2} (MakeInt.MI_after_func_to_env RealFunc DummyAdv r').
 auto; smt().
@@ -2191,7 +2281,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 (* MakeInt.after_func_to_adv func' r{1} *)
-exlim r{1} => r'.
 seq 1 1 :
   (={glob RealFunc, glob Adv} /\ invar_rf (glob RealFunc){1} /\
    term_rf (glob RealFunc){1} < n /\
@@ -2202,6 +2291,7 @@ seq 1 1 :
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard').
+exlim r{1} => r'.
 call{1} (MakeInt.MI_after_func_to_adv RealFunc Adv r').
 call{2} (MakeInt.MI_after_func_to_adv RealFunc DummyAdv r').
 auto; progress; smt().
@@ -3721,7 +3811,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 case (MakeInt.after_func_to_env func' r0{1}).
-exlim r0{1} => r0'.
 seq 1 1 :
   (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
    invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
@@ -3732,6 +3821,7 @@ seq 1 1 :
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
    (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
 call{1}
   (MakeInt.MI_after_func_to_env IdealFunc
    (MS(SimCore, Adv)) r0').
@@ -3748,7 +3838,6 @@ sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 (* MakeInt.after_func_to_adv func' r0{1} *)
-exlim r0{1} => r0'.
 seq 1 1 :
   (={glob IdealFunc, glob SimCore, glob MS, glob Adv} /\
    invar_if (glob IdealFunc){1} /\ invar_sc (glob SimCore){1} /\
@@ -3760,6 +3849,7 @@ seq 1 1 :
    MI.func{2} = func' /\ MI.in_guard{2} = in_guard' /\
    CombEnvAdv.func{2} = func' /\ CombEnvAdv.in_guard{2} = in_guard' /\
    (MS.if_addr_opt{1} <> None => func' <= oget MS.if_addr_opt{1})).
+exlim r0{1} => r0'.
 call{1}
   (MakeInt.MI_after_func_to_adv IdealFunc
    (MS(SimCore, Adv)) r0').
