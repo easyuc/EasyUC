@@ -1,7 +1,5 @@
 (* partially idealized use of SMC2 - first SMC is idealized,
-   second SMC uses idealized key exchange
-
-   assertions are identical in real and ideal *)
+   second SMC uses idealized key exchange *)
 
 load SMC2.
 functionality
@@ -76,6 +74,8 @@ assert msg_out
 ctrl_env.
 finish.
 
+(* corresponding experiment with ideal world - with the one difference in
+   assertions noted *)
 ideal.
 send pt1@SMC2.SMC2Dir.Pt1.smc_req(pt2, text1)$func.
 run.
@@ -118,6 +118,7 @@ assert msg_out
 ctrl_adv.
 send ((adv, 8))@KeyExchange.KEI2S.ke_sim_rsp$(func ++ [2; 1]).
 run.
+(* here is a difference from the real execution *)
 assert msg_out
 ((func ++ [2; 2], 1))@
 Forwarding.FwAdv.fw_obs
@@ -125,6 +126,16 @@ Forwarding.FwAdv.fw_obs
  epdp_port_port_key_univ.`enc ((func, 2), (func, 1), g ^ rand))
 @((adv, 7))
 ctrl_adv.
+(* in contrast, the real assertion was:
+assert msg_out
+((func ++ [2; 2], 1))@
+Forwarding.FwAdv.fw_obs
+((func ++ [2], 1), (func ++ [2], 2),
+ epdp_port_port_key_univ.`enc
+ ((func, 2), (func, 1), epdp_text_key.`enc text2 ^^ (g ^ rand)))
+@((adv, 7))
+ctrl_adv.
+*)
 send ((adv, 7))@Forwarding.FwAdv.fw_ok$(func ++ [2; 2]).
 run.
 assert msg_out
