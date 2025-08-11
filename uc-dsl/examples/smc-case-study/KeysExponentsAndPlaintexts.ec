@@ -142,6 +142,41 @@ qed.
 
 hint simplify [reduce] one_time_dh.
 
+(* isomorphism of exp for use with rnd tactic in real/ideal security
+   proof *)
+
+op pad_iso_l (t : text, q : exp) : exp =
+  log (epdp_text_key.`enc t ^^ (g ^ q)).
+
+op pad_iso_r (t : text, q : exp) : exp =
+  log (kinv (epdp_text_key.`enc t) ^^ (g ^ q)).
+
+lemma pad_iso_lr (t : text) : cancel (pad_iso_l t) (pad_iso_r t).
+proof.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -/(gen q) -/(gen (log (epdp_text_key.`enc t ^^ (g ^ q))))
+   log_gen -kmulA kinv_l kid_l gen_log.
+qed.
+
+lemma pad_iso_rl (t : text) : cancel (pad_iso_r t) (pad_iso_l t).
+proof.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -/(gen q) -/(gen (log (kinv (epdp_text_key.`enc t) ^^ gen q)))
+           log_gen -kmulA kinv_r kid_l gen_log.
+qed.
+
+(* lemma for connecting real and ideal games in security proof *)
+
+lemma gen_to_pad_iso_l_eq (t : text, q : exp) :
+  g ^ (pad_iso_l t q) = epdp_text_key.`enc t ^^ (g ^ q).
+proof.
+rewrite /pad_iso_l.
+have -> :
+  g ^ log (epdp_text_key.`enc t ^^ (g ^ q)) =
+  gen (log (epdp_text_key.`enc t ^^ (g ^ q))) by rewrite /gen.
+by rewrite log_gen.
+qed.
+
 (* EPDP from key to univ *)
 
 op [opaque smt_opaque] epdp_key_univ : (key, univ) epdp =
