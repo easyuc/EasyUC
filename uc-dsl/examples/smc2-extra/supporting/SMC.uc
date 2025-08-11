@@ -116,6 +116,10 @@ functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
   }
 }
 
+(* The ideal functionality and simulator are set up to facilitate
+   handling the one-time pad encryption using the Diffie-Hellman
+   key using EasyCrypt's rnd tactic with an appropriate isomorphism *)
+
 (* basic adversarial interface between ideal functionality and
    simulator *)
 
@@ -188,6 +192,12 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
        KeyExchange.KEIdeal corresponding to parameter KE of
        SMCReal *)
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
+        (* q must be sampled "early", so it can be matched with
+           the sampling of q in KeyExchange.KEIdeal
+
+           pad_iso_l and pad_iso_r of KeysExponentsAndPlaintexts.ec
+           are used with the rnd tactic to handle the one-time pad
+           argument *)
         q <$ dexp;
         send SMCReal.KE.KEI2S.ke_sim_req2
         and transition WaitAdv2(pt1, pt2, q).
