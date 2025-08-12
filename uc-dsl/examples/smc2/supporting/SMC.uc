@@ -211,6 +211,10 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
   state WaitAdv2(pt1 : port, pt2 : port, q : exp) {
     match message with 
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
+      (* in SMCReal(KeyExchange.KEIdeal), the group element
+         being forwarded is epdp_text_key.`enc t ^^ k, where
+         t is the text being securely communicated, and k is
+         the key agreed by Diffie-Hellman key exchange *)
         send SMCReal.Fwd.FwAdv.fw_obs
              (intport SMCReal.Pt1, intport SMCReal.Pt2,
               epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q))
