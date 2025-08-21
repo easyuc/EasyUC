@@ -6213,7 +6213,7 @@ match _State_IF_WaitSim1 {2} 0. auto;smt().
       r0{2} = None /\
       not_done{2} = true /\
       m0{1} = oget r0{1} /\
-      not_done{1} = true /\
+      not_done{1} = false /\
       (={m} /\
        ke_hybrid_ideal_sim_rel
          {| ke_hybrid_ideal_sim_rel_func = func';
@@ -6235,8 +6235,10 @@ match _State_IF_WaitSim1 {2} 0. auto;smt().
      
  ).
  exlim r0{1} => r0L. 
- call{1} (MakeInt.MI_after_adv_to_env KEHybrid DummyAdv r0L).
-auto;progress;smt().   
+     call{1} (MakeInt.MI_after_adv_to_env KEHybrid DummyAdv r0L).
+     auto;progress;smt(eq_of_valid_da_to_env @UCListPO).
+ rcondf{1} 0. auto;smt().
+ 
           (*do ovdje*)   
 qed.
 
