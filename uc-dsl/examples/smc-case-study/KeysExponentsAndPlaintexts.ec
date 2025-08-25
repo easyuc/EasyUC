@@ -1,11 +1,13 @@
-(* KeysExponentsAndPlainTexts.ec *)
+(* KeysExponentsAndPlaintexts.ec *)
+
+(********************** Keys, Exponents and Plain texts ***********************)
 
 prover [""].  (* no use of SMT provers *)
 
 require import AllCore Distr.
 require import UCBasicTypes.
 
-(********************** Keys, Exponents and Plain texts ***********************)
+(*************************** Begin Theory Parameters **************************)
 
 (* group of keys *)
 
@@ -43,8 +45,6 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
-hint simplify valid_epdp_exp_univ.  (* so simplify and smt() can use axiom *)
-
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
    weights is 1%r) distribution over exp
@@ -56,8 +56,6 @@ op dexp : exp distr.
 axiom dexp_fu  : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll  : is_lossless dexp.
-
-hint simplify dexp_ll.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
@@ -83,9 +81,13 @@ op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
-hint simplify valid_epdp_text_key.
+(************************** End of Theory Parameters **************************)
 
-(* consequences of axioms *)
+(* simplification hints involving theory parameter axioms *)
+
+hint simplify valid_epdp_exp_univ.
+hint simplify dexp_ll.
+hint simplify valid_epdp_text_key.
 
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
