@@ -15,7 +15,88 @@ uc_requires Forwarding.
    indirectly) by that theory, available: *with* qualification, if
    without a "+"; *without* qualification, if with a "+". *)
 
-ec_requires +KeysExponentsAndPlaintexts.
+ec_requires KeyExp.
+
+(**************************** Begin Unit Parameters ***************************)
+
+(* group of keys *)
+
+type key.
+
+op (^^) : key -> key -> key.  (* binary operation *)
+
+op kid : key.  (* identity *)
+
+op kinv : key -> key.  (* inverse *)
+
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
+
+axiom kid_l (x : key) : kid ^^ x = x.
+
+axiom kid_r (x : key) : x ^^ kid = x.
+
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
+
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
+
+(* commutative semigroup of exponents *)
+
+type exp.
+
+op e : exp.  (* some exponent *)
+
+op ( * ) : exp -> exp -> exp.  (* multiplication *)
+
+axiom mulC (q r : exp) : q * r = r * q.
+
+axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
+op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
+
+axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
+
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
+
+op dexp : exp distr.
+
+axiom dexp_fu  : is_full dexp.
+axiom dexp_uni : is_uniform dexp.
+axiom dexp_ll  : is_lossless dexp.
+
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
+
+op g : key.  (* generator *)
+
+op (^) : key -> exp -> key.  (* exponentiation *)
+
+axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
+
+(* the following axioms say that each key is uniquely generated from g
+   by exponentiation *)
+
+axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
+
+axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
+
+(***************************** End Unit Parameters ****************************)
+
+ec_clone import KeyExp as KeyExp' with
+  type key         <- key,
+  op (^^)          <- (^^),
+  op kid           <- kid,
+  op kinv          <- kinv,
+  type exp         <- exp,
+  op e             <- e,
+  op ( * )         <- ( * ),
+  op epdp_exp_univ <- epdp_exp_univ,
+  op dexp          <- dexp,
+  op g             <- g,
+  op (^)           <- (^).
 
 (* The composite direct interface has two components, one for each
    of two parties. *)
@@ -225,7 +306,7 @@ functionality KEIdeal implements KEDir KEI2S {
     match message with
     | pt2'@KEDir.Pt2.ke_req2 => {
         if (pt2' = pt2) {
-          send KEI2S.ke_sim_req2 and transition WaitSim2(pt1, pt2, q).
+          send KEI2S.ke_sim_req2 and transition WaitSim2(pt1, q).
         }
         else { fail. }
       }
@@ -233,7 +314,7 @@ functionality KEIdeal implements KEDir KEI2S {
     end
   }
 
-  state WaitSim2(pt1 : port, pt2 : port, q : exp) {
+  state WaitSim2(pt1 : port, q : exp) {
     match message with
     | KEI2S.ke_sim_rsp => {
         send KEDir.Pt1.ke_rsp2(g ^ q)@pt1 and transition Final.
@@ -301,7 +382,7 @@ simulator KESim uses KEI2S simulates KEReal {
         (* q2 has to be sampled "early", so as to match it using rnd
            tactic with sampling of q2 in real functionality *)
         q2 <$ dexp;
-        send KEI2S.ke_sim_rsp and transition WaitReq2(q1, q2).
+        send KEI2S.ke_sim_rsp and transition WaitReq2(q2).
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
@@ -309,19 +390,19 @@ simulator KESim uses KEI2S simulates KEReal {
     end
   }
 
-  state WaitReq2(q1 : exp, q2 : exp) {
+  state WaitReq2(q2 : exp) {
     match message with 
     | KEI2S.ke_sim_req2 => {
         send KEReal.Fw2.FwAdv.fw_obs
              (intport KEReal.Pt2, intport KEReal.Pt1,
               epdp_key_univ.`enc (g ^ q2))
-        and transition WaitAdv2(q1, q2).
+        and transition WaitAdv2.
       }
     | *                 => { fail. }
     end
   }
 
-  state WaitAdv2(q1 : exp, q2 : exp) {
+  state WaitAdv2 {
     match message with 
     | KEReal.Fw2.FwAdv.fw_ok => {
         send KEI2S.ke_sim_rsp and transition Final.

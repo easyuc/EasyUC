@@ -1,6 +1,6 @@
-(* KeysExponentsAndPlaintexts.ec *)
+(* KeyExp.ec *)
 
-(********************** Keys, Exponents and Plain texts ***********************)
+(***************************** Keys and Exponents *****************************)
 
 prover [""].  (* no use of SMT provers *)
 
@@ -73,21 +73,12 @@ axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
 
 axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 
-(* plain texts, with an EPDP to key *)
-
-type text.
-
-op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
-
-axiom valid_epdp_text_key : valid_epdp epdp_text_key.
-
-(************************** End of Theory Parameters **************************)
+(**************************** End Theory Parameters ***************************)
 
 (* simplification hints involving theory parameter axioms *)
 
 hint simplify valid_epdp_exp_univ.
 hint simplify dexp_ll.
-hint simplify valid_epdp_text_key.
 
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
@@ -144,41 +135,6 @@ qed.
 
 hint simplify [reduce] one_time_dh.
 
-(* isomorphism of exp for use with rnd tactic in real/ideal security
-   proof *)
-
-op pad_iso_l (t : text, q : exp) : exp =
-  log (epdp_text_key.`enc t ^^ (g ^ q)).
-
-op pad_iso_r (t : text, q : exp) : exp =
-  log (kinv (epdp_text_key.`enc t) ^^ (g ^ q)).
-
-lemma pad_iso_lr (t : text) : cancel (pad_iso_l t) (pad_iso_r t).
-proof.
-rewrite /cancel /pad_iso_l /pad_iso_r => q.
-by rewrite -/(gen q) -/(gen (log (epdp_text_key.`enc t ^^ (g ^ q))))
-   log_gen -kmulA kinv_l kid_l gen_log.
-qed.
-
-lemma pad_iso_rl (t : text) : cancel (pad_iso_r t) (pad_iso_l t).
-proof.
-rewrite /cancel /pad_iso_l /pad_iso_r => q.
-by rewrite -/(gen q) -/(gen (log (kinv (epdp_text_key.`enc t) ^^ gen q)))
-           log_gen -kmulA kinv_r kid_l gen_log.
-qed.
-
-(* lemma for connecting real and ideal games in security proof *)
-
-lemma gen_to_pad_iso_l_eq (t : text, q : exp) :
-  g ^ (pad_iso_l t q) = epdp_text_key.`enc t ^^ (g ^ q).
-proof.
-rewrite /pad_iso_l.
-have -> :
-  g ^ log (epdp_text_key.`enc t ^^ (g ^ q)) =
-  gen (log (epdp_text_key.`enc t ^^ (g ^ q))) by rewrite /gen.
-by rewrite log_gen.
-qed.
-
 (* EPDP from key to univ *)
 
 op [opaque smt_opaque] epdp_key_univ : (key, univ) epdp =
@@ -191,31 +147,6 @@ rewrite !epdp 1:log_gen gen_log.
 qed.
 
 hint simplify valid_epdp_key_univ.
-
-(* EPDP from text to univ *)
-
-op [opaque smt_opaque] epdp_text_univ : (text, univ) epdp =
-  epdp_comp epdp_key_univ epdp_text_key.
-
-lemma valid_epdp_text_univ : valid_epdp epdp_text_univ.
-proof.
-rewrite /epdp_text_univ !epdp.
-qed.
-
-hint simplify valid_epdp_text_univ.
-
-(* EPDP between port * port and univ *)
-
-op [opaque smt_opaque] epdp_port_port_univ : (port * port, univ) epdp =
-  epdp_pair_univ epdp_port_univ epdp_port_univ.
-
-lemma valid_epdp_port_port_univ :
-  valid_epdp epdp_port_port_univ.
-proof.
-by rewrite /epdp_port_port_univ.
-qed.
-
-hint simplify valid_epdp_port_port_univ.
 
 (* EPDP between port * port * key and univ *)
 

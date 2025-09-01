@@ -7,7 +7,111 @@
 
 uc_requires Forwarding KeyExchange.
 
-ec_requires +KeysExponentsAndPlaintexts.
+ec_requires KeyExpText.
+
+(**************************** Begin Unit Parameters ***************************)
+
+(* group of keys *)
+
+type key.
+
+op (^^) : key -> key -> key.  (* binary operation *)
+
+op kid : key.  (* identity *)
+
+op kinv : key -> key.  (* inverse *)
+
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
+
+axiom kid_l (x : key) : kid ^^ x = x.
+
+axiom kid_r (x : key) : x ^^ kid = x.
+
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
+
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
+
+(* commutative semigroup of exponents *)
+
+type exp.
+
+op e : exp.  (* some exponent *)
+
+op ( * ) : exp -> exp -> exp.  (* multiplication *)
+
+axiom mulC (q r : exp) : q * r = r * q.
+
+axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
+op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
+
+axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
+
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
+
+op dexp : exp distr.
+
+axiom dexp_fu  : is_full dexp.
+axiom dexp_uni : is_uniform dexp.
+axiom dexp_ll  : is_lossless dexp.
+
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
+
+op g : key.  (* generator *)
+
+op (^) : key -> exp -> key.  (* exponentiation *)
+
+axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
+
+(* the following axioms say that each key is uniquely generated from g
+   by exponentiation *)
+
+axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
+
+axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
+
+(* plain texts, with an EPDP to key *)
+
+type text.
+
+op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
+
+axiom valid_epdp_text_key : valid_epdp epdp_text_key.
+
+(***************************** End Unit Parameters ****************************)
+
+ec_clone import KeyExpText as KeyExpText' with
+  type key         <- key,
+  op (^^)          <- (^^),
+  op kid           <- kid,
+  op kinv          <- kinv,
+  type exp         <- exp,
+  op e             <- e,
+  op ( * )         <- ( * ),
+  op epdp_exp_univ <- epdp_exp_univ,
+  op dexp          <- dexp,
+  op g             <- g,
+  op (^)           <- (^),
+  type text        <- text,
+  op epdp_text_key <- epdp_text_key.
+
+uc_clone KeyExchange as KeyEx with
+  type key         <- key,
+  op (^^)          <- (^^),
+  op kid           <- kid,
+  op kinv          <- kinv,
+  type exp         <- exp,
+  op e             <- e,
+  op ( * )         <- ( * ),
+  op epdp_exp_univ <- epdp_exp_univ,
+  op dexp          <- dexp,
+  op g             <- g,
+  op (^)           <- (^).
 
 (* The composite direct interface has two components, corresponding
    to the two parties of the real functionality. *)
@@ -31,15 +135,15 @@ direct SMCDir {
 (* The real functionality implements the composite direct interface
    SMCDir, and (in this case) no composite adversarial interface. It
    is parameterized by a key exchange functionality, KE, implementing
-   the direct composite interface KeyExchange.KEDir, which could be
-   KeyExchange.KEReal or KeyExchange.KEIdeal. Note that KEDir must be
-   qualified by KeyExchange.
+   the direct composite interface KeyEx.KEDir, which could be
+   KeyEx.KEReal or KeyEx.KEIdeal. Note that KEDir must be qualified by
+   KeyEx.
 
    The parties of SMCReal can send messages to, and receive messages
    from KE, just as they can with the forwarding subfunctionality
    Fwd. *)
 
-functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
+functionality SMCReal(KE : KeyEx) implements SMCDir {
   subfun Fwd = Forwarding.Forw
 
   party Pt1 serves SMCDir.Pt1 {
@@ -160,20 +264,20 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
 
 (* Because the real functionality SMCReal is parameterized by a key
    exchange functionality implementing the composite direct interface
-   KeyExchange.KEDir, when saying what SMCSim "simulates", we must
-   indicate the ideal functionality that implements that composite
-   direct interface. *)
+   KeyEx.KEDir, when saying what SMCSim "simulates", we must indicate
+   the ideal functionality that implements that composite direct
+   interface. *)
 
-simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
+simulator SMCSim uses SMC2Sim simulates SMCReal(KeyEx.KEIdeal) {
   initial state WaitReq {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
         (* simulator learns address of ideal functionality *)
-        (* here we are pretending to be the instance of
-           KeyExchange.KEIdeal corresponding to parameter KE, sending
-           its message to the simulator (which here will go the the
-           adversary), initiating simulation of key exchange between
-           the internal ports of the two parties of SMCReal *)
+        (* here we are pretending to be the instance of KeyEx.KEIdeal
+           corresponding to parameter KE, sending its message to the
+           simulator (which here will go the the adversary),
+           initiating simulation of key exchange between the internal
+           ports of the two parties of SMCReal *)
         send SMCReal.KE.KEI2S.ke_sim_req1
              (intport SMCReal.Pt1, intport SMCReal.Pt2)
         and transition WaitAdv1(pt1, pt2).
@@ -189,15 +293,13 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
     var q : exp;
     match message with 
     (* here we receive a message intended for the instance of
-       KeyExchange.KEIdeal corresponding to parameter KE of
-       SMCReal *)
+       KeyEx.KEIdeal corresponding to parameter KE of SMCReal *)
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
         (* q must be sampled "early", so it can be matched with
-           the sampling of q in KeyExchange.KEIdeal
+           the sampling of q in KeyEx.KEIdeal
 
-           pad_iso_l and pad_iso_r of KeysExponentsAndPlaintexts.ec
-           are used with the rnd tactic to handle the one-time pad
-           argument *)
+           pad_iso_l and pad_iso_r of KeysExpsText.ec are used with
+           the rnd tactic to handle the one-time pad argument *)
         q <$ dexp;
         send SMCReal.KE.KEI2S.ke_sim_req2
         and transition WaitAdv2(pt1, pt2, q).
@@ -211,20 +313,20 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
   state WaitAdv2(pt1 : port, pt2 : port, q : exp) {
     match message with 
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
-      (* in SMCReal(KeyExchange.KEIdeal), the group element
-         being forwarded is epdp_text_key.`enc t ^^ k, where
-         t is the text being securely communicated, and k is
-         the key agreed by Diffie-Hellman key exchange *)
+      (* in SMCReal(KeyEx.KEIdeal), the group element being forwarded
+         is epdp_text_key.`enc t ^^ k, where t is the text being
+         securely communicated, and k is the key agreed by
+         Diffie-Hellman key exchange *)
         send SMCReal.Fwd.FwAdv.fw_obs
              (intport SMCReal.Pt1, intport SMCReal.Pt2,
               epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q))
-        and transition WaitAdv3(pt1, pt2, q).
+        and transition WaitAdv3.
       }
     | *                           => { fail. }
     end
   }
 
-  state WaitAdv3(pt1 : port, pt2 : port, q : exp) {
+  state WaitAdv3 {
     match message with 
     | SMCReal.Fwd.FwAdv.fw_ok => {
         send SMC2Sim.sim_rsp and transition Final.
