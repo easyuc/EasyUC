@@ -8326,8 +8326,343 @@ rcondf{1} 0. auto.
         auto;progress;smt().
         rcondf{2} 0. auto.
         skip.
-    auto;progress;smt().
-              (*do ovdje*)
+        auto;progress;smt().
+    
+    move => x x0.
+        if. auto;smt(eq_of_valid_da_from_env).
+    
+
+    sp 2 2;
+          elim* => r2_R r3_R r0_L r1_L.
+      case(func' <= x.`dfe_pt.`1).
+          seq 1 1 :
+      (
+        func' <= x.`dfe_pt.`1 /\
+        0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1 /\
+        
+        r0{1} = Some
+          (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+          m0{1} = oget r0{1} /\
+          not_done{1} = true /\
+     
+          r2{2} = r0{1} /\
+          m2{2} = oget r2{2} /\
+          not_done0{2} = true
+
+          /\
+    ke_hybrid_ideal_sim_rel2
+     {| ke_hybrid_ideal_sim_rel_func = func';
+         ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+         ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+         ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+         ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+         ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+         ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+         ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+         ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+         ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+       ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |}
+     pt1 pt2 q1 q2 q3
+      ).
+      exlim r0{1} => r0L2R.
+          call{1} (MakeInt.MI_after_adv_to_func KEHybrid DummyAdv  r0L2R).
+      
+          call{2} (MSCore.MS_after_adv_continue UC_KESim  DummyAdv r0L2R).
+           auto;progress;smt(eq_of_valid_da_from_env). 
+          rcondt{1} 0. auto;smt().
+          rcondt{1} 0. auto;smt().
+      inline{1} (1) invoke.
+          sp 2 0.
+          match KEHybridStateWaitReq2 {1} 0. auto;smt().
+      rcondf{1} 0. auto;smt().
+sp 1 0.
+          seq 1 0 :(
+         
+    r0{1} = None /\
+    KEHybrid._st{1} =
+    KEHybridStateWaitReq2 pt1{!1} pt2{!1} q1{!1} q2{!1} q3{!1} /\
+    
+    func' <= x.`dfe_pt.`1 /\
+    0 < x.`dfe_n /\
+    x.`dfe_pt <> env_root_port /\
+    ! adv <= x.`dfe_pt.`1 /\
+   
+    
+    not_done{1} = false /\
+    r2{2} = Some (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+    m2{2} = oget r2{2} /\
+    not_done0{2} = true /\
+    ke_hybrid_ideal_sim_rel2
+      {| ke_hybrid_ideal_sim_rel_func = func';
+          ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+          ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+          ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+          ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+          ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+          ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+          ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+          ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+          ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+          ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+          ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |}
+      pt1 pt2 q1 q2 q3
+    ).
+        call{1} (MakeInt.MI_after_func_error KEHybrid DummyAdv). auto;progress;smt().
+        rcondf{1} 0. auto.
+        rcondt{2} 0. auto.
+        rcondf{2} 0. auto;progress;smt(@UCListPO).
+        inline{2} (1) invoke.
+        sp 0 2.
+        rcondf{2} 0. auto;smt().
+    match _State_SIM_WaitReq2 {2} 0. auto;smt().
+        rcondf{2} 0. auto;progress;smt().
+sp 0 1.    
+        seq 0 1 :(
+      r2{2} = None /\
+    UC_KESim._st{2} = _State_SIM_WaitReq2 q1{!2} q2{!2} /\
+    r0{1} = None /\
+    KEHybrid._st{1} =
+    KEHybridStateWaitReq2 pt1{!1} pt2{!1} q1{!1} q2{!1} q3{!1} /\
+   
+    not_done0{2} = false /\
+    ke_hybrid_ideal_sim_rel2
+      {| ke_hybrid_ideal_sim_rel_func = func';
+          ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+          ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+          ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+          ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+          ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+          ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+          ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+          ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+          ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+          ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+          ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+          ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |}
+      pt1 pt2 q1 q2 q3
+    ).
+        call{2} (MSCore.MS_after_core_error UC_KESim DummyAdv). auto;progress;smt().
+    rcondf{2} 0. auto.
+sp 0 2.
+        seq 0 1 :(
+  r0{2} = None /\
+  UC_KESim._st{2} = _State_SIM_WaitReq2 q1{!2} q2{!2} /\
+  r0{1} = None /\
+  KEHybrid._st{1} =
+  KEHybridStateWaitReq2 pt1{!1} pt2{!1} q1{!1} q2{!1} q3{!1} /\
+  not_done{2} = false /\
+  ke_hybrid_ideal_sim_rel2
+    {| ke_hybrid_ideal_sim_rel_func = func';
+        ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+        ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+        ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+        ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+        ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+        ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+        ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+        ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+        ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} pt1
+    pt2 q1 q2 q3
+    ).
+        call{2} (MakeInt.MI_after_adv_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))). auto;progress;smt().
+        rcondf{2} 0. auto.
+        auto;smt(KEHybridIdealSimRel2).
+        seq 1 1 :(
+      r2{2} =
+   Some
+     (UCBasicTypes.Adv, x0.`dfe_pt, (adv, x0.`dfe_n), x0.`dfe_tag, x0.`dfe_u) /\
+   
+   r0{1} =
+   Some (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+   
+   x = x0 /\
+    m2{2} = oget r2{2} /\
+    
+    not_done0{2} = false /\
+    
+    state =
+     {| ke_hybrid_ideal_sim_rel_func = func';
+         ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+         ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+         ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+         ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+         ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+         ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+         ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+         ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+         ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+         ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+         ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+         ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} /\
+     
+     
+     not_done{1} = false /\
+     (
+      ke_hybrid_ideal_sim_rel
+        {| ke_hybrid_ideal_sim_rel_func = func';
+            ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+            ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+            ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+            ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+            ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+            ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+            ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+            ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+            ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+            ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+            ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |}) /\
+     
+   0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1 /\
+  ! func' <= x.`dfe_pt.`1
+    ).
+    exlim r0{1} => r0L2R.
+        call{1} (MakeInt.MI_after_adv_to_env KEHybrid DummyAdv r0L2R).
+call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0L2R).
+        auto;progress;smt().
+        rcondf{1} 0. auto.
+    rcondf{2} 0. auto.
+        sp 0 2.
+        seq 0 1 :(
+  r0{2} =
+  Some
+    (UCBasicTypes.Adv, x0.`dfe_pt, (adv, x0.`dfe_n), x0.`dfe_tag, x0.`dfe_u) /\
+  r0{1} =
+  Some (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+  x = x0 /\
+  m0{2} = oget r0{2} /\
+  not_done{2} = false /\
+  state =
+  {| ke_hybrid_ideal_sim_rel_func = func'; ke_hybrid_ideal_sim_rel_in_guard =
+      in_guard'; ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+      ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+      ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+      ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+      ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+      ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+      ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+      ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+      ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} /\
+  not_done{1} = false /\
+  ke_hybrid_ideal_sim_rel
+    {| ke_hybrid_ideal_sim_rel_func = func';
+        ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+        ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+        ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+        ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+        ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+        ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+        ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+        ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+        ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} /\
+  0 < x.`dfe_n /\
+  x.`dfe_pt <> env_root_port /\
+  ! adv <= x.`dfe_pt.`1 /\ ! func' <= x.`dfe_pt.`1
+    ).
+exlim r0{2} => r0R.
+        call{2} (MakeInt.MI_after_adv_to_env UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv)) r0R).
+        auto;progress;smt().
+        rcondf{2} 0. auto.
+        auto;progress;smt().
+        sp 1 1.
+        seq 1 1 :(
+    r2{2} = None /\
+    
+      r0{1} = None /\
+      
+       not_done0{2} = false /\
+      
+       (state =
+        {| ke_hybrid_ideal_sim_rel_func = func';
+            ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+            ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+            ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+            ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+            ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+            ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+            ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+            ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+            ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+            ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+            ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+            ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} /\
+        
+        not_done{1} = false /\
+        (
+         ke_hybrid_ideal_sim_rel
+           {| ke_hybrid_ideal_sim_rel_func = func';
+               ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+               ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+               ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+               ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+               ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+               ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+               ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+               ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+               ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+               ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+               ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+               ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |})
+        ) 
+      ).
+          call{1} (MakeInt.MI_after_adv_error KEHybrid DummyAdv).
+          call{2} (MSCore.MS_after_adv_error UC_KESim DummyAdv).
+          auto;progress;smt().
+          rcondf{1} 0. auto.
+          rcondf{2} 0. auto.
+          sp 0 2.
+          seq 0 1 :(
+
+  r0{1} = None /\
+  r0{2} = None /\
+  not_done{2} = false /\
+  state =
+  {| ke_hybrid_ideal_sim_rel_func = func'; ke_hybrid_ideal_sim_rel_in_guard =
+      in_guard'; ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+      ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+      ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+      ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+      ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+      ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+      ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+      ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+      ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+      ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+      ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |} /\
+  ke_hybrid_ideal_sim_rel
+    {| ke_hybrid_ideal_sim_rel_func = func';
+        ke_hybrid_ideal_sim_rel_in_guard = in_guard';
+        ke_hybrid_ideal_sim_rel_st_hs = KEHybrid._st{1};
+        ke_hybrid_ideal_sim_rel_st_hslf = KEHybrid._self{1};
+        ke_hybrid_ideal_sim_rel_st_is = UC_KEIdeal._st{2};
+        ke_hybrid_ideal_sim_rel_st_islf = UC_KEIdeal._self{2};
+        ke_hybrid_ideal_sim_rel_st_ss = UC_KESim._st{2};
+        ke_hybrid_ideal_sim_rel_sim_ao = UC_KESim.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_ms_ao = MSCore.MS.if_addr_opt{2};
+        ke_hybrid_ideal_sim_rel_mi1_func = MakeInt.MI.func{1};
+        ke_hybrid_ideal_sim_rel_mi1_in_guard = MakeInt.MI.in_guard{1};
+        ke_hybrid_ideal_sim_rel_mi2_func = MakeInt.MI.func{2};
+        ke_hybrid_ideal_sim_rel_mi2_in_guard = MakeInt.MI.in_guard{2}; |}
+      ).
+          call{2} (MakeInt.MI_after_adv_error UC_KEIdeal (MSCore.MS(UC_KESim, DummyAdv))).
+          auto;progress;smt().
+      rcondf{2} 0. auto.
+          auto;progress;smt().
+
+
+
+          (*do ovdje*)
    
 qed.
 
