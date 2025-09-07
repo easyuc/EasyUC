@@ -518,11 +518,10 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@]@\n}.";
   ()
 
-let clone_adv_inter (ppf : Format.formatter) (id : string) =
+let clone_sim_inter (ppf : Format.formatter) (id : string) =
   Format.fprintf ppf "@[clone %s as %s with@]@;"
       (bi_name id) (uc_name id);
-    Format.fprintf ppf "@[  op %s = %s@]@;"
-      _pi adv_if_pi_op_name;
+    Format.fprintf ppf "@[  op %s = 1@]@;" _pi;
     Format.fprintf ppf "@[proof *.@]@;@;"
 
 let print_proof_state_match (root : string)
@@ -933,7 +932,7 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   if ifbt.id_adv_inter<>None
-  then clone_adv_inter sf (EcUtils.oget ifbt.id_adv_inter);
+  then clone_sim_inter sf (EcUtils.oget ifbt.id_adv_inter);
   Format.fprintf sf "@[%a@]@;@;" (print_state_type_IF sc) ifbt.states;
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
   Format.fprintf sf "@[%a@]@;@;" print_IF_invar id;
