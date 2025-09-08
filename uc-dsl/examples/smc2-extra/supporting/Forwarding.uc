@@ -81,13 +81,10 @@ functionality Forw implements FwDir FwAdv {
   state Wait(pt1 : port, pt2 : port, u : univ) {
     match message with
     | FwAdv.fw_ok => {  (* no source port bound, because from adversary *)
-        (* in a send-and-transition where the message to be sent
-           is a direct one, a check is implicitly made that the
-           destination port is an envport; otherwise, the state
-           is not changed and failure results
-
-           (in this case, we know from the check in Init that pt2
-           is an envport) *)
+        (* when a direct message is being sent to the
+           environment/parent functionality, checks about the
+           destination port are carried out by the recipient after the
+           message is sent and the state is changed *)
         send FwDir.D.fw_rsp(pt1, u)@pt2
         and transition Final.
       }
