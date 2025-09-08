@@ -3,6 +3,9 @@
 (* Singleton unit consisting of a forwarding ideal functionality. The
    adversary is allowed to delay but not alter message forwarding. *)
 
+(* we have no unit parameters - see, e.g., KeyExchange.uc to see how
+   unit parameters can be specified *)
+
 (* The basic direct interface for the single functionality party (because
    we won't have a real functionality, there is no reason not to use a
    single functionality party, to which forwarding requests come and from

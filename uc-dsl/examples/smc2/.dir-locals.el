@@ -6,6 +6,6 @@
   ((easycrypt-load-path . ("../../prelude"))))
  (ucdsl-interpreter-mode .
   ;; ../../prelude is automatically included
-  ((ucdsl-interpreter-load-path . ("supporting"))))
+  )
 )
 

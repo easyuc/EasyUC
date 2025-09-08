@@ -12,8 +12,11 @@ uc_requires Forwarding.
 
 (* Requiring an EasyCrypt theory makes the definitions of that theory,
    plus those of all the EasyCrypt theories required (directly or
-   indirectly) by that theory, available: *with* qualification, if
-   without a "+"; *without* qualification, if with a "+". *)
+   indirectly) by that theory, available, *with* qualification.  To
+   make the definitions of that theory only available without
+   qualification, prepend the theory with a "+", e.g., `ec_requires
+   +KeyExp`. Here, we don't use a "+", because we only clone KeyExp,
+   below *)
 
 ec_requires KeyExp.
 
@@ -130,8 +133,19 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
      subfunctionalities must be ideal functionalities *)
 
-  subfun Fw1 = Forwarding.Forw  (* must be qualified *)
-  subfun Fw2 = Forwarding.Forw
+  subfun Fw1 = Forwarding.Forw  (* must be qualified, as from *)
+  subfun Fw2 = Forwarding.Forw  (* different unit *)
+
+  (* this is equivalent to first cloning Forwarding, twice
+
+     uc_clone Forwarding as Forwarding1.
+     uc_clone Forwarding as Forwarding2.
+
+     ... and then writing ...
+
+    subfun Fw1 = Forwarding1.Forw
+    subfun Fw2 = Forwarding2.Forw
+  *)
 
   (* Party 1 (Pt1) serves the basic direct interface KEDir.Pt1; this
      restricts the messages it can receive/send from/to the

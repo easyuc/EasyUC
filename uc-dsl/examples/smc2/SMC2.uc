@@ -1,9 +1,11 @@
 (* Secure Message Communication *)
 
 (* Triple unit for two way secure message communcation between two
-   parties *)
+   parties, with two different types of plain texts *)
 
 uc_requires Forwarding SMC.
+
+ec_requires +EPDPAux.
 
 (**************************** Begin Unit Parameters ***************************)
 

@@ -139,11 +139,14 @@ direct SMCDir {
    KeyEx.KEReal or KeyEx.KEIdeal. Note that KEDir must be qualified by
    KeyEx.
 
+   If KeyExchange had no unit parameters, we could have implicitly
+   cloned it by writing `KE : KeyExchange.KEDir`
+
    The parties of SMCReal can send messages to, and receive messages
    from KE, just as they can with the forwarding subfunctionality
    Fwd. *)
 
-functionality SMCReal(KE : KeyEx) implements SMCDir {
+functionality SMCReal(KE : KeyEx.KEDir) implements SMCDir {
   subfun Fwd = Forwarding.Forw
 
   party Pt1 serves SMCDir.Pt1 {
