@@ -2271,39 +2271,29 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
         | _           -> failure "should not happen" in
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form (addr_concat_form_from_list_smart func_form rel)
-              port_form) with
-         | ECProofEngine -> raise StepBlockedPortOrAddrCompare
-      then let sme =
-             SMET_Ord
-             {mode           = Dir;
-              dir            = Out;
-              src_port_form  =
-                make_port_form
-                (addr_concat_form_from_list_smart func_form rel)
-                (int_form source_pi);
-              path           = path;
-              args           = msg_args;
-              dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
-           (ConfigRealSending
-            {maps = c.maps;
-             gc   = c.gc;
-             pi   = c.pi;
-             dbs  = c.dbs;
-             rw   = c.rw;
-             ig   = c.ig;
-             rws  = new_rws;
-             rwsc = RWSC_Func (rel, fun_sp);
-             sme  = sme},
-            EffectOK)
-      else (debugging_message
-            (fun ppf ->
-               fprintf ppf
-               "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
-               pp_rel_addr_ideal_func_info (rel, fun_sp));
-            fail_out_of_running_or_sending_config (ConfigRealRunning c))
+      let sme =
+        SMET_Ord
+        {mode           = Dir;
+         dir            = Out;
+         src_port_form  =
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form source_pi);
+         path           = path;
+         args           = msg_args;
+         dest_port_form = port_form} in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
+      (ConfigRealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        dbs  = c.dbs;
+        rw   = c.rw;
+        ig   = c.ig;
+        rws  = new_rws;
+        rwsc = RWSC_Func (rel, fun_sp);
+        sme  = sme},
+       EffectOK)
 
 let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (c : config_real_running) (pi : prover_infos) (dbs : rewriting_dbs)
@@ -2388,39 +2378,29 @@ let rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
   | Some port_form ->  (* direct message to environment (or parent) *)
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form (addr_concat_form_from_list_smart func_form rel)
-              port_form) with
-         | ECProofEngine -> raise StepBlockedPortOrAddrCompare
-      then let sme =
-             SMET_Ord
-             {mode           = Dir;
-              dir            = Out;
-              src_port_form  =
-                make_port_form
-                (addr_concat_form_from_list_smart func_form rel)
-                (int_form source_pi);
-              path           = path;
-              args           = msg_args;
-              dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
-           (ConfigRealSending
-            {maps = c.maps;
-             gc   = c.gc;
-             pi   = c.pi;
-             dbs  = c.dbs;
-             rw   = c.rw;
-             ig   = c.ig;
-             rws  = new_rws;
-             rwsc = RWSC_Func (rel, fun_sp);
-             sme  = sme},
-            EffectOK)
-      else (debugging_message
-            (fun ppf ->
-               fprintf ppf
-               "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
-               pp_rel_addr_real_func_info (rel, fun_sp, pty_id));
-            fail_out_of_running_or_sending_config (ConfigRealRunning c))
+      let sme =
+        SMET_Ord
+        {mode           = Dir;
+         dir            = Out;
+         src_port_form  =
+           make_port_form
+           (addr_concat_form_from_list_smart func_form rel)
+           (int_form source_pi);
+         path           = path;
+         args           = msg_args;
+         dest_port_form = port_form} in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
+      (ConfigRealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        dbs  = c.dbs;
+        rw   = c.rw;
+        ig   = c.ig;
+        rws  = new_rws;
+        rwsc = RWSC_Func (rel, fun_sp);
+        sme  = sme},
+       EffectOK)
 
 let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
     (pi : prover_infos) (dbs : rewriting_dbs) (rel : int list) (base : int)
@@ -2569,35 +2549,26 @@ let iw_step_send_and_transition_from_ideal_fun (c : config_ideal_running)
         | _           -> failure "should not happen" in
       let source_pi = get_pi_of_sub_interface c.maps root comp sub in
       let path = {inter_id_path = root :: iip; msg = msg} in
-      if try eval_bool_form_to_bool c.gc pi dbs
-             (envport_form func_form port_form) with
-         | ECProofEngine -> raise StepBlockedPortOrAddrCompare
-      then let sme =
-             SMET_Ord
-             {mode           = Dir;
-              dir            = Out;
-              src_port_form  = make_port_form func_form (int_form source_pi);
-              path           = path;
-              args           = msg_args;
-              dest_port_form = port_form} in
-           let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
-           (ConfigIdealSending
-            {maps = c.maps;
-             gc   = c.gc;
-             pi   = c.pi;
-             dbs  = c.dbs;
-             iw   = c.iw;
-             ig   = c.ig;
-             iws  = new_iws;
-             iwsc = IWSC_IdealFunc fun_sp;
-             sme  = sme},
-            EffectOK)
-      else (debugging_message
-            (fun ppf ->
-               fprintf ppf
-               "@[envport@ failure@ of@ destination@ port@ at@ %n:@ %a@]"
-               base pp_symb_pair fun_sp);
-            fail_out_of_running_or_sending_config (ConfigIdealRunning c))
+      let sme =
+        SMET_Ord
+        {mode           = Dir;
+         dir            = Out;
+         src_port_form  = make_port_form func_form (int_form source_pi);
+         path           = path;
+         args           = msg_args;
+         dest_port_form = port_form} in
+      let () = check_sme_port_index_consistency c.maps c.gc pi dbs sme in
+      (ConfigIdealSending
+       {maps = c.maps;
+        gc   = c.gc;
+        pi   = c.pi;
+        dbs  = c.dbs;
+        iw   = c.iw;
+        ig   = c.ig;
+        iws  = new_iws;
+        iwsc = IWSC_IdealFunc fun_sp;
+        sme  = sme},
+       EffectOK)
 
 let iw_step_send_and_transition_from_sim_basic_adv_left
     (c : config_ideal_running) (pi : prover_infos) (dbs : rewriting_dbs)
@@ -3469,13 +3440,26 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
         internal_real_func_party_match rel base func_sp pid
         state_id state_args sbt param_or_subfun_name id_dir in
 
-  let from_arg_or_sub_fun_to_parent (rel : int list)
+  let from_func_to_env_or_parent (rel : int list)
       (rwrs : real_world_rel_select) : config * effect =
     match rwrs with
     | RW_Select_RealFun (sp, base, _, par_opt)                     ->
         (match par_opt with
          | None                               ->  (* to env *)
-             msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
+             let sme = c.sme in
+             let dest_port = dest_port_of_sent_msg_expr_tyd sme in
+             if try eval_bool_form_to_bool c.gc pi dbs
+                    (envport_form
+                     (addr_concat_form_from_list_smart func_form rel)
+                     dest_port) with
+                | ECProofEngine -> raise StepBlockedPortOrAddrCompare
+             then msg_out_of_sending_config (ConfigRealSending c) CtrlEnv
+             else (debugging_message
+                   (fun ppf ->
+                      fprintf ppf
+                      "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
+                      pp_rel_addr_ideal_func_info (rel, sp));
+                   fail_out_of_running_or_sending_config (ConfigRealSending c))
          | Some (sp_par, par_arg_i, par_base) ->
              let ft = IdPairMap.find sp c.maps.fun_map in
              let id_dir = id_dir_inter_of_fun_tyd ft in
@@ -3511,7 +3495,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
                  | _                                     ->
                      fail_out_of_running_or_sending_config
                      (ConfigRealSending c))
-         else from_arg_or_sub_fun_to_parent rel rwrs in
+         else from_func_to_env_or_parent rel rwrs in
 
   try
     match c.rwsc with
@@ -4029,9 +4013,21 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
       then msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
     else fail_out_of_running_or_sending_config (ConfigIdealSending c) in
 
-  let from_ideal_func () : config * effect =
+  let from_ideal_func (fun_sp : symb_pair) : config * effect =
     match mode_of_sent_msg_expr_tyd c.sme with
-    | Dir -> msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
+    | Dir ->
+       let sme = c.sme in
+       let dest_port = dest_port_of_sent_msg_expr_tyd sme in
+         if try eval_bool_form_to_bool c.gc pi dbs
+                (envport_form func_form dest_port) with
+            | ECProofEngine -> raise StepBlockedPortOrAddrCompare
+         then msg_out_of_sending_config (ConfigIdealSending c) CtrlEnv
+         else (debugging_message
+               (fun ppf ->
+                  fprintf ppf
+                  "@[envport@ failure@ of@ destination@ port@ at@ %a@]"
+                  pp_symb_pair fun_sp);
+               fail_out_of_running_or_sending_config (ConfigIdealSending c))
     | Adv ->
         (let dest_pi =
            match try_destr_port_as_port_index dest_port with
@@ -4046,11 +4042,11 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
 
   try
     match c.iwsc with
-    | IWSC_Env                              -> from_env ()
-    | IWSC_Adv                              -> from_adv ()
-    | IWSC_IdealFunc (fun_sp, adv_pi)       -> from_ideal_func ()
-    | IWSC_MainSim (sim_sp, adv_pi)         -> from_sim_left_or_right (-1)
-    | IWSC_OtherSim (sim_sp, adv_pi, sim_i) -> from_sim_left_or_right sim_i
+    | IWSC_Env                    -> from_env ()
+    | IWSC_Adv                    -> from_adv ()
+    | IWSC_IdealFunc fun_sp       -> from_ideal_func fun_sp
+    | IWSC_MainSim _              -> from_sim_left_or_right (-1)
+    | IWSC_OtherSim (_, _, sim_i) -> from_sim_left_or_right sim_i
 
   with
   | ECProofEngine -> raise StepBlockedPortOrAddrCompare
