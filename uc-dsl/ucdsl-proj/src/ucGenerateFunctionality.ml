@@ -559,21 +559,9 @@ let print_proof_state_match (root : string)
                         s print_proof_code code) mcl
                 end
               | SendAndTransition sat -> begin
-                 let mp = sat.msg_expr.path in
-                 let _, is_internal, _, _, mb, _ =
-                   get_msg_info mp dii ais root mbmap in
-                 let envportcheck = (not is_internal) && (mb.port <> None) in
-                 if envportcheck
-                 then Format.fprintf ppf "@[if. (*envport check*)@]@;"
-                 ;  
                  Format.fprintf ppf
                    "@[%s sp 3. skip. move => />;smt(%s). (*SendAndTransition instruction*)@]@;"
-                   ret_pfx smt_sat_lemmas;
-                 if envportcheck
-                 then
-                   Format.fprintf ppf
-                   "@[%s sp 1. skip. move => />;smt(). (*envport check failed case*)@]@;"
-                   ret_pfx
+                   ret_pfx smt_sat_lemmas
                 end
               | Fail ->
                  Format.fprintf ppf
@@ -654,7 +642,7 @@ let print_lemma_metric_invoke
     "(res <> None =>@ %s (glob %s) < n@;"
     metric_name module_name;
   Format.fprintf ppf
-    "/\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in oflist [%s]))@;"
+    "/\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in oflist [%s] /\\ (oget res).`3.`2 = 1))@;"
     _Adv adv_if_pi_op_name;
   Format.fprintf ppf "@]@;].@;";
   Format.fprintf ppf "@[proof.@]@;";
@@ -952,8 +940,11 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
     Format.fprintf ppf "@[op %s (%s : %a) : %a = (%s, %i).@]@;"
       (port_op_name name) self (pp_type sc) addr_ty (pp_type sc) port_ty self n
   in
-  let print_extport_op (name : string) (n : int) : unit =
-    print_port_op extport_op_name name n
+  let print_extport_dir_op (name : string) (n : int) : unit =
+    print_port_op extport_dir_op_name name n
+  in
+   let print_extport_adv_op (name : string) (n : int) : unit =
+    print_port_op extport_adv_op_name name n
   in
   let print_intport_op (name : string) (n : int) : unit =
     print_port_op intport_op_name name n
@@ -967,7 +958,13 @@ let print_addr_and_port_operators (sc : EcScope.scope) (ppf : Format.formatter)
   Format.fprintf ppf "@;";
   IdMap.iter (fun pn n ->
     if n<>None
-    then print_extport_op pn (EcUtils.oget n)) rapm.party_ext_port_id;
+    then print_extport_dir_op pn (EcUtils.oget n)) rapm.party_ext_dir_port_id;
+  Format.fprintf ppf "@;";
+  IdMap.iter (fun pn nn ->
+    if nn<>None
+    then
+        let ptp,_ = EcUtils.oget nn in
+        print_extport_adv_op pn ptp) rapm.party_ext_adv_port_id;
   Format.fprintf ppf "@;";
   IdMap.iter (fun pn n ->
     print_intport_op pn n) rapm.party_int_port_id;
@@ -1032,7 +1029,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
     Format.fprintf ppf "@[}@]@;"
  
   let print_proc_invoke ppf (sc : EcScope.scope) ?(module_pfx = "")
-    (pepi : int option  IdMap.t)
+    (rapm : rf_addr_port_maps)
     (params : (symb_pair * int) IdMap.t)
     (sub_funs : symb_pair IdMap.t)
     (parties : party_tyd IdMap.t) =
@@ -1045,24 +1042,28 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
         "@[else {@]@;"
     in
     let print_party_invoke ppf (nm : string) : unit =
-      let has_extport = (IdMap.find nm pepi) <> None in
-      if has_extport
+      Format.fprintf ppf "@[if(@]"
+      ;
+      let has_dir_extport = (IdMap.find nm rapm.party_ext_dir_port_id) <> None
+      in
+      if has_dir_extport
       then begin
       Format.fprintf ppf
-      "@[if ((%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s%s %s.`3)@]@;"
-      m mode_Dir m (extport_op_call ~pfx:module_pfx nm)
+      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s%s %s.`3)@]@;"
+      m mode_Dir m (extport_dir_op_call ~pfx:module_pfx nm)
       module_pfx _self m;
-      Format.fprintf ppf "@[\\/@]@;";
-      Format.fprintf ppf
-        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s.`3.`1 = %s)@]@;"
-        m mode_Adv m (extport_op_call ~pfx:module_pfx nm) m adv;
       Format.fprintf ppf "@[\\/@]@;"
-        end
-      else
-        Format.fprintf ppf "@[if(@]"
-      ;
+        end;
+      let adv_extport = IdMap.find nm rapm.party_ext_adv_port_id in
+      if (adv_extport <> None)
+      then begin   
       Format.fprintf ppf
-      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s%s <= %s.`3.`1))@]@;"
+        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s)@]@;"
+        m mode_Adv m (extport_adv_op_call ~pfx:module_pfx nm);
+      Format.fprintf ppf "@[\\/@]@;"
+      end;     
+      Format.fprintf ppf
+      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s%s < %s.`3.`1))@]@;"
       m mode_Dir m (intport_op_call ~pfx:module_pfx nm)
       module_pfx _self m;
       Format.fprintf ppf "@[{%s %s %s(%s);}@]@;"
@@ -1094,7 +1095,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
 
 let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (pepi : int option  IdMap.t)
+      (rapm : rf_addr_port_maps)
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
 
   Format.fprintf ppf "@[module %s %a : FUNC = {@]@;<0 2>@[<v>"
@@ -1108,13 +1109,13 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       print_mmc_procs sc root mbmap ppf states sn dii IdPairMap.empty (Some pn) "";
       print_proc_parties sc root id mbmap ps sn dii ppf states (Some pn)
   ) rfbt.parties;
-  print_proc_invoke ppf sc pepi rfbt.params rfbt.sub_funs rfbt.parties;
+  print_proc_invoke ppf sc rapm rfbt.params rfbt.sub_funs rfbt.parties;
   Format.fprintf ppf "@]@\n}.";
   ()
 
 let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
-      (pepi : int option  IdMap.t)
+      (rapm : rf_addr_port_maps)
       (rfbt : real_fun_body_tyd) (ppf : Format.formatter) 
       (drop_param : int) : unit =
   let rest_params = IdMap.filter (fun _ (_,idx) ->
@@ -1136,7 +1137,7 @@ let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
         ppf states (Some pn) ~pfx:module_pfx
   ) rfbt.parties;
   print_proc_invoke ppf sc ~module_pfx:module_pfx
-    pepi rest_params rfbt.sub_funs rfbt.parties;
+    rapm rest_params rfbt.sub_funs rfbt.parties;
   Format.fprintf ppf "@]@\n}.";
   ()
 
@@ -2795,12 +2796,12 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_addr_and_port_operators sc) rapm;
   Format.fprintf sf "@[%a@]@;@;" (print_party_types sc) rfbt.parties;
   Format.fprintf sf "@[%a@]@;@;" (print_real_module sc root id mbmap dii
-                                    rapm.party_ext_port_id) rfbt;
+                                    rapm) rfbt;
   Format.fprintf sf "@[<v>%a@]@;@;"
     (print_module_lemmas id root mbmap dii gvil) rfbt;
   for i = 1 to IdMap.cardinal rfbt.params do
     Format.fprintf sf "@[%a@]@;@;"
-      (print_rest_module sc root id mbmap dii rapm.party_ext_port_id rfbt) i;
+      (print_rest_module sc root id mbmap dii rapm rfbt) i;
     Format.fprintf sf "@[%a@]@;@;" print_clone_Composition i;
     Format.fprintf sf "@[<v>%a@]@;@;"
       (print_module_lemmas id root mbmap dii gvil ~rest_idx:(Some i)) rfbt;

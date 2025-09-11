@@ -70,10 +70,16 @@ let addr_op_name (name : string) : string = "_addr_"^name
 let addr_op_call ?(pfx = "") (name : string) : string
   = (addr_op_name name)^" "^pfx^_self
 
-let extport_op_name (name : string) : string = "_extport_"^name
+let extport_dir_op_name (name : string) : string = "_extport_dir_"^name
 
-let extport_op_call  ?(pfx = "") (name : string) : string =
-  "_extport_"^name^" "^pfx^_self
+let extport_dir_op_call  ?(pfx = "") (name : string) : string =
+  (extport_dir_op_name name)^" "^pfx^_self
+
+let extport_adv_op_name (name : string) : string = "_extport_adv_"^name
+
+let extport_adv_op_call  ?(pfx = "") (name : string) : string =
+  (extport_adv_op_name name)^" "^pfx^_self
+
 
 let intport_op_name (name : string) : string = "_intport_"^name
 
@@ -450,7 +456,8 @@ type rf_addr_port_maps =
   {
     params_addr_sufix : int IdMap.t;
     subfun_addr_sufix : int IdMap.t;
-    party_ext_port_id : int option  IdMap.t;
+    party_ext_dir_port_id : int option  IdMap.t;
+    party_ext_adv_port_id : (int * int) option  IdMap.t;
     party_int_port_id : int IdMap.t;
   }
 
@@ -468,11 +475,19 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
     maps root ft nm))
               ) rfbt.sub_funs in
   let rfinfo = get_info_of_real_func maps root 0 ft in
-  let pepi = IdMap.mapi ( fun nm pi : int option->
+  let pedpi = IdMap.mapi ( fun nm pi : int option->
                           if pi.pi_pdi <> None
                           then
                             let _,_, port = EcUtils.oget pi.pi_pdi in
                             Some port
+                          else
+                            None
+                ) rfinfo in
+  let peapi = IdMap.mapi ( fun nm pi : (int * int) option->
+                          if pi.pi_pai <> None
+                          then
+                            let _,_, ptport, advport = EcUtils.oget pi.pi_pai in
+                            Some (ptport,advport)
                           else
                             None
                ) rfinfo in
@@ -482,7 +497,8 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
   {
     params_addr_sufix = pas;
     subfun_addr_sufix = sas;
-    party_ext_port_id = pepi;
+    party_ext_dir_port_id = pedpi;
+    party_ext_adv_port_id = peapi;
     party_int_port_id = pipi;
   }
 
