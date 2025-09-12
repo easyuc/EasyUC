@@ -158,16 +158,6 @@ let rec print_code (sim_uses : string option)
     let mp = sat.msg_expr.path in
     let msgn, is_internal, iiphd, pfx, mb, epdp_str =
       get_msg_info mp dii ais root mbmap in 
-    if not is_internal then
-    begin match mb.port with
-    | Some port ->
-       Format.fprintf ppf
-         "@[if (%s %s %s) {@]@;<0 2>@[<v>"
-         _envport (glob_pfx^_self) port
-    | None -> ()
-    end
-    else ()
-    ;
     Format.fprintf ppf "@[%s <- Some@]@;<0 2>@[<v>(%s.`enc@;"
       _r epdp_str;
     Format.fprintf ppf "{|@;<0 2>@[<v>";
@@ -254,14 +244,7 @@ let rec print_code (sim_uses : string option)
       glob_pfx state_var_name (state_name (EcLocation.unloc sat.state_expr.id));
     List.iter (fun ex -> Format.fprintf ppf "@ %a"
       pp_ex ex) (EcLocation.unloc sat.state_expr.args);
-    Format.fprintf ppf ";@]";
-    if not is_internal then
-    begin match mb.port with
-    | Some port ->
-       Format.fprintf ppf "@]@;}"
-    | None -> ()
-    end
-    else ()
+    Format.fprintf ppf ";@]"
   in
   let print_lhs ppf lhs =
       match lhs with
