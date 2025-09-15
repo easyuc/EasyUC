@@ -4,8 +4,8 @@
 (
  (easycrypt-mode .
   ((easycrypt-load-path . ("../../prelude"))))
- (ucdsl-interpreter-mode .
-  ;; ../../prelude is automatically included
-  )
+;; (ucdsl-interpreter-mode .
+;;   ../../prelude is automatically included
+;;  )
 )
 

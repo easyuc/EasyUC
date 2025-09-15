@@ -53,11 +53,7 @@ axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
    consequently exp has only finitely many elements *)
 
-op dexp : exp distr.
-
-axiom dexp_fu  : is_full dexp.
-axiom dexp_uni : is_uniform dexp.
-axiom dexp_ll  : is_lossless dexp.
+op [full uniform lossless] dexp : exp distr.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
