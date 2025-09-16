@@ -9,7 +9,7 @@
 (executables
  (names ucdsl ucEasyCryptCommentMacrosTest)
  (modes exe)
- (libraries batteries camlp-streams dune-build-info inifiles pcre2 why3 yojson zarith)
+ (libraries batteries camlp-streams dune-build-info dune-site inifiles pcre2 why3 yojson zarith)
  (foreign_stubs (language c) (names eunix))
  (instrumentation (backend bisect_ppx --bisect-silent yes)))
 

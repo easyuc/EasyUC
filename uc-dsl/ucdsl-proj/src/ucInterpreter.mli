@@ -57,20 +57,22 @@ val ideal_of_gen_config : config -> config
 
 val send_message_to_real_or_ideal_config : config -> sent_msg_expr -> config
 
-type effect =
-  | EffectOK                          (* step succeeded (not random
-                                         assignment), and new configuration
-                                         is running or sending *)
-  | EffectRand of symbol              (* step added ident representing
-                                         random choice to global context,
-                                         and new configuration is running *)
-  | EffectMsgOut of string * control  (* a message was output, and new
-                                         configuration is real or ideal;
-                                         control says who has control *)
-  | EffectFailOut                     (* fail was output, and new
-                                         configuration is real or ideal *)
+(* effects *)
 
-val pp_effect : Format.formatter -> effect -> unit  (* for debugging *)
+type eff =
+  | EffOK                          (* step succeeded (not random
+                                      assignment), and new configuration
+                                      is running or sending *)
+  | EffRand of symbol              (* step added ident representing
+                                      random choice to global context,
+                                      and new configuration is running *)
+  | EffMsgOut of string * control  (* a message was output, and new
+                                      configuration is real or ideal;
+                                      control says who has control *)
+  | EffFailOut                     (* fail was output, and new
+                                      configuration is real or ideal *)
+
+val pp_eff : Format.formatter -> eff -> unit  (* for debugging *)
 
 (* exceptions that can be raised by
    step_running_or_sending_real_or_ideal_config *)
@@ -111,4 +113,4 @@ val step_running_or_sending_real_or_ideal_config :
       config ->
       EcParsetree.pprover_infos option ->
       mod_dbs option ->
-      config * effect
+      config * eff
