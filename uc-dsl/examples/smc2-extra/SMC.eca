@@ -1,0 +1,55 @@
+
+require import UCCore.
+
+require import KeysExponentsAndPlaintexts.
+
+require UC__SMC.
+
+clone include UC__SMC.
+
+ 
+
+module AllCGs = {module UC__AllCGs = AllCGs_}.
+
+section.
+
+declare module Adv <: ADV{-MI, -RFIP, -UC_SMCIdeal, -UC_SMCSim, -MSCore.CombEnvAdv, -MSCore.MS}.
+declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_SMCIdeal, -UC_SMCSim, -MSCore.CombEnvAdv, -MSCore.MS}.
+
+
+lemma smc_sec (func': addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFIP, Adv), Env).main
+         (func', in_guard') @ &m : res] -
+    Pr[Exper(MI(UC_SMCIdeal, SIM(Adv)), Env).main
+         (func', in_guard') @ &m : res]| <=
+  0.0.
+       proof.
+         admit.
+       qed.
+
+end section.
+
+
+(*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
+  
+lemma SMC_RFIP_IF_advantage
+    (Env <: ENV{-MI, -RFIP, -IF, -SIM, -MSCore.CombEnvAdv})
+    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM, -MSCore.CombEnvAdv})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      (*adv pis of KE are disj. from in_guard'*)    
+ `|Pr[Exper(MI(RFIP, Adv), Env)
+         .main(func', in_guard')
+           @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env)
+         .main(func', in_guard')
+      @ &m : res]| <=
+    0.0
+      .
+proof.
+move => pre disj.
+by apply (smc_sec Adv Env func' in_guard' &m).
+qed.     
