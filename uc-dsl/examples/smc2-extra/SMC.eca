@@ -16,6 +16,157 @@ section.
 declare module Adv <: ADV{-MI, -RFIP, -UC_SMCIdeal, -UC_SMCSim, -MSCore.CombEnvAdv, -MSCore.MS}.
 declare module Env <: ENV{-Adv, -MI, -RFIP, -UC_SMCIdeal, -UC_SMCSim, -MSCore.CombEnvAdv, -MSCore.MS}.
 
+type smc_real_ke_ideal_simp_state = [
+    SMCRealKEIdealSimpStateWaitReq
+  | SMCRealKEIdealSimpStateWaitAdv1 of port & port & text
+  | SMCRealKEIdealSimpStateWaitAdv2 of port & port & text & key
+  | SMCRealKEIdealSimpStateWaitAdv3 of port & port & text & key
+  | SMCRealKEIdealSimpStateFinal
+].
+
+module SMCRealKEIdealSimp : FUNC = {
+  var _self : addr
+  var _st : smc_real_ke_ideal_simp_state
+
+  proc init(self_ : addr) : unit = {
+    _self <- self_; 
+    _st <- SMCRealKEIdealSimpStateWaitReq;
+  }
+
+ 
+  proc _State_SMCRealKEIdealSimpStateWaitReq___SMCDir__Pt1__smc_req (pt1 pt2 : port, t : text) : msg option = {
+    var _r : msg option <- None;
+    if (envport _self pt2) {
+      _r <- Some
+        (UC_KE.UC_KEI2S.epdp__ke_sim_req1.`enc
+        {|
+          UC_KE.UC_KEI2S.ke_sim_req1___func = _self;
+          UC_KE.UC_KEI2S.ke_sim_req1___adv = adv;
+          UC_KE.UC_KEI2S.ke_sim_req1__pt1 = pt1;
+          UC_KE.UC_KEI2S.ke_sim_req1__pt2 = pt2;
+          
+        |});
+      _st <- SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t;
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+
+  proc _State_SMCRealKEIdealSimpStateWaitAdv1__KEI2S__ke_sim_rsp (pt1 pt2 : port, t : text) : msg option = {
+    var q : exp;
+    var _r : msg option <- None;
+    q <$ dexp;
+    _r <- Some
+        (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+        {|
+          UC_KE.UC_KEI2S.ke_sim_req2___func = _self;
+          UC_KE.UC_KEI2S.ke_sim_req2___adv = adv;
+        |});
+    _st <- SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t (g^q);
+    return _r;
+  }
+
+  proc _State_SMCRealKEIdealSimpStateWaitAdv2__KEI2S__ke_sim_rsp (pt1 pt2 : port, t : text, k : key) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+        (UC_Fwd.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fwd.UC_FwAdv.fw_obs___func = _self;
+          UC_Fwd.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 _self;
+          UC_Fwd.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 _self;
+          UC_Fwd.UC_FwAdv.fw_obs__u = epdp_port_port_key_univ.`enc
+        (pt1, pt2, epdp_text_key.`enc t ^^ k);
+          
+        |});
+     _st <- SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k;
+     return _r;
+  }
+
+    proc _State_SMCRealKEIdealSimpStateWaitAdv3__FwAdv__fw_ok (pt1 pt2 : port, t : text, k : key) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+          (UC_SMCDir.Pt2.epdp__smc_rsp.`enc
+          {|
+            UC_SMCDir.Pt2.smc_rsp___func = _self;
+            UC_SMCDir.Pt2.smc_rsp__pt2 = pt2;
+            UC_SMCDir.Pt2.smc_rsp__pt1 = pt1;
+            UC_SMCDir.Pt2.smc_rsp__t = t;          
+          |});
+     _st <- SMCRealKEIdealSimpStateFinal;
+     return _r;
+  }  
+  
+  proc invoke(m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st with
+    | SMCRealKEIdealSimpStateWaitReq => {
+      if (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 _self /\ envport _self m.`3) {  
+        match UC_SMCDir.Pt1.epdp__smc_req.`dec m with
+        | Some _x => {
+          _r <@ _State_SMCRealKEIdealSimpStateWaitAdv1__KEI2S__ke_sim_rsp (_x.`UC_SMCDir.Pt1.smc_req__pt1, _x.`UC_SMCDir.Pt1.smc_req__pt2, _x.`UC_SMCDir.Pt1.smc_req__t);
+        }
+        | None => {
+        
+        }
+        end;
+      }
+
+
+    }
+    | SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t => {
+      if(m.`1 = Adv /\ m.`2.`1 = _addr_KE _self /\  m.`3.`1 = adv){
+        match UC_KE.UC_KEI2S.epdp__ke_sim_rsp.`dec m with
+        | Some _x => {
+          _r <@ _State_SMCRealKEIdealSimpStateWaitAdv1__KEI2S__ke_sim_rsp (pt1, pt2, t);
+        }
+        | None => {
+        }
+        end;
+      }
+    }
+    | SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t k => {
+      if(m.`1 = Adv /\ m.`2.`1 =  _addr_KE _self /\  m.`3.`1 = adv){
+        match UC_KE.UC_KEI2S.epdp__ke_sim_rsp.`dec m with
+        | Some _x => {
+          _r <@ _State_SMCRealKEIdealSimpStateWaitAdv2__KEI2S__ke_sim_rsp (pt1, pt2, t, k);
+        }
+        | None => {
+        }
+        end;
+      }
+
+    }
+    | SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k => {
+      if(m.`1 = Adv /\ m.`2.`1 =  _addr_Fwd _self /\  m.`3.`1 = adv){
+        match UC_Fwd.UC_FwAdv.epdp__fw_ok.`dec m with
+        | Some _x => {
+          _r <@ _State_SMCRealKEIdealSimpStateWaitAdv3__FwAdv__fw_ok (pt1, pt2, t, k);
+        }
+        | None => { 
+        }
+        end;
+      }
+    }
+    | SMCRealKEIdealSimpStateFinal => {}
+    end;
+    return _r;
+  }
+}.
+
+type smc_real_ke_ideal_simp_rel_st = {
+  smc_real_ke_ideal_simp_rel_st_func : addr;
+  smc_real_ke_ideal_simp_rel_st_r1s  : _state_Pt1;
+  smc_real_ke_ideal_simp_rel_st_r2s  : _state_Pt2;
+  smc_real_ke_ideal_simp_rel_st_fws  : UC_Fwd._state_IF;
+  smc_real_ke_ideal_simp_rel_st_keis : UC_KE._state_IF;
+  smc_real_ke_ideal_simp_rel_st_riss : smc_real_ke_ideal_simp_state;
+}.
+
 
 lemma smc_sec (func': addr, in_guard' : int fset) &m :
     exper_pre func' =>
