@@ -24,7 +24,7 @@ type smc_real_ke_ideal_simp_state = [
   | SMCRealKEIdealSimpStateFinal
 ].
 
-module SMCRealKEIdealSimp : FUNC = {
+local module SMCRealKEIdealSimp : FUNC = {
   var _self : addr
   var _st : smc_real_ke_ideal_simp_state
 
@@ -158,15 +158,350 @@ module SMCRealKEIdealSimp : FUNC = {
   }
 }.
 
+op _invar_SMCRealKEIdealSimp(g : glob SMCRealKEIdealSimp) = predT g.
+op  _metric_SMCRealKEIdealSimp(g : glob SMCRealKEIdealSimp) =
+  match g.`2 with
+  | SMCRealKEIdealSimpStateWaitReq => 4
+  | SMCRealKEIdealSimpStateWaitAdv1 _ _ _ => 3
+  | SMCRealKEIdealSimpStateWaitAdv2 _ _ _ _ => 2
+  | SMCRealKEIdealSimpStateWaitAdv3 _ _ _ _ => 1
+  | SMCRealKEIdealSimpStateFinal => 0
+end.
+
+local lemma _metric_SMCRealKEIdealSimp_good (g : glob SMCRealKEIdealSimp) :
+    _invar_SMCRealKEIdealSimp g => 0 <= _metric_SMCRealKEIdealSimp g.
+    proof. rewrite /_metric_SMCRealKEIdealSimp /=.
+      smt(). qed.
+  
+local lemma SMCRealKEIdealSimp_invoke (n : int) : hoare [
+  SMCRealKEIdealSimp.invoke :
+  _invar_SMCRealKEIdealSimp (glob SMCRealKEIdealSimp) /\ _metric_SMCRealKEIdealSimp (glob SMCRealKEIdealSimp) = n
+  ==>
+  (res <> None =>
+  _metric_SMCRealKEIdealSimp (glob SMCRealKEIdealSimp) < n
+  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis_rf_info rf_info /\ (oget res).`3.`2 = 1))
+].
+proof.
+  rewrite /_metric_SMCRealKEIdealSimp /=. proc. sp 1.
+  match.
+  if;last first. auto;progress;smt().
+  match.
+  auto;progress;smt().
+inline.
+  sp.
+  seq 1 : (#pre). rnd.
+  auto;progress;smt().
+  sp 3.
+  elim* => _r1 _st _r0_0.
+auto;progress;smt(@FSet).
+  if;last first. auto;progress;smt().
+  match. auto;progress;smt().
+  inline.
+  sp 4.
+  seq 1 : (#pre). rnd.
+  auto;progress;smt().
+  auto;progress;smt(@FSet).
+  if;last first. auto;progress;smt().
+match. auto;progress;smt().
+  inline.
+  sp 7. auto;progress;smt(@FSet).
+if;last first. auto;progress;smt().
+match. auto;progress;smt().
+  inline.
+  sp 7. auto;progress;smt(@FSet).
+auto;progress;smt().
+qed.
+
 type smc_real_ke_ideal_simp_rel_st = {
-  smc_real_ke_ideal_simp_rel_st_func : addr;
+  smc_real_ke_ideal_simp_rel_st_ria  : addr;
   smc_real_ke_ideal_simp_rel_st_r1s  : _state_Pt1;
   smc_real_ke_ideal_simp_rel_st_r2s  : _state_Pt2;
+  smc_real_ke_ideal_simp_rel_st_fwa  : addr;
   smc_real_ke_ideal_simp_rel_st_fws  : UC_Fwd._state_IF;
+  smc_real_ke_ideal_simp_rel_st_keia : addr;
   smc_real_ke_ideal_simp_rel_st_keis : UC_KE._state_IF;
+  smc_real_ke_ideal_simp_rel_st_risa : addr;
   smc_real_ke_ideal_simp_rel_st_riss : smc_real_ke_ideal_simp_state;
 }.
 
+op smc_real_ke_ideal_simp_relC (st : smc_real_ke_ideal_simp_rel_st) : bool =
+  st.`smc_real_ke_ideal_simp_rel_st_ria  = st.`smc_real_ke_ideal_simp_rel_st_risa /\
+  st.`smc_real_ke_ideal_simp_rel_st_fwa = _addr_Fwd st.`smc_real_ke_ideal_simp_rel_st_ria /\
+  st.`smc_real_ke_ideal_simp_rel_st_keia = _addr_KE st.`smc_real_ke_ideal_simp_rel_st_ria.
+
+op smc_real_ke_ideal_simp_rel0 (st : smc_real_ke_ideal_simp_rel_st) : bool =
+  smc_real_ke_ideal_simp_relC st /\
+  st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_WaitReq /\
+  st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_WaitKE1 /\
+  st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Init /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_WaitReq1 /\
+  st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitReq.
+
+op smc_real_ke_ideal_simp_rel1 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, t : text) : bool =
+  smc_real_ke_ideal_simp_relC st /\
+  (envport st.`smc_real_ke_ideal_simp_rel_st_ria pt2) /\
+  st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_WaitKE2 pt1 pt2 t /\
+  st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_WaitKE1 /\
+  st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Init /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_WaitSim1 pt1 pt2 /\
+  st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t.
+
+  op smc_real_ke_ideal_simp_rel2 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, t : text, k : key) : bool =
+  smc_real_ke_ideal_simp_relC st /\
+  (envport st.`smc_real_ke_ideal_simp_rel_st_ria pt2) /\
+  st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_WaitKE2 pt1 pt2 t /\
+  st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_WaitFwd k /\
+  st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Init /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_WaitSim2 pt1 pt2 (log k) /\
+  st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t k.
+
+  op smc_real_ke_ideal_simp_rel3 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, t : text, k : key) : bool =
+  smc_real_ke_ideal_simp_relC st /\
+  (envport st.`smc_real_ke_ideal_simp_rel_st_ria pt2) /\
+  st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_Final /\
+  st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_WaitFwd k /\
+  st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Wait
+    (_intport_Pt1 st.`smc_real_ke_ideal_simp_rel_st_ria)
+    (_intport_Pt2 st.`smc_real_ke_ideal_simp_rel_st_ria)
+    (epdp_port_port_key_univ.`enc (pt1, pt2, epdp_text_key.`enc t ^^ k)) /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_Final /\
+  st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k.
+
+  op smc_real_ke_ideal_simp_rel4 (st : smc_real_ke_ideal_simp_rel_st) : bool =
+  st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_Final /\
+  st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_Final /\
+  st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Final /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_Final /\
+    st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateFinal.
+
+  inductive smc_real_ke_ideal_simp_rel (st : smc_real_ke_ideal_simp_rel_st) =
+    SMCRealKEIdealSimpRel0 of (smc_real_ke_ideal_simp_rel0 st)
+  | SMCRealKEIdealSimpRel1 (pt1 pt2 : port, t : text)
+    of (smc_real_ke_ideal_simp_rel1 st pt1 pt2 t)
+  | SMCRealKEIdealSimpRel2 (pt1 pt2 : port, t : text, k : key)
+    of (smc_real_ke_ideal_simp_rel2 st pt1 pt2 t k)
+  | SMCRealKEIdealSimpRel3 (pt1 pt2 : port, t : text, k : key)
+    of (smc_real_ke_ideal_simp_rel3 st pt1 pt2 t k)
+  | SMCRealKEIdealSimpRel4 of (smc_real_ke_ideal_simp_rel4 st).
+
+
+
+local lemma SMCRealKEIdeal_SMCRealKEIdealSimp_invoke :
+  equiv
+  [RFIP.invoke ~
+   SMCRealKEIdealSimp.invoke :
+   ={m} /\
+   smc_real_ke_ideal_simp_rel {|
+   smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+   smc_real_ke_ideal_simp_rel_st_r1s  = UC_SMCReal._st_Pt1{1};
+   smc_real_ke_ideal_simp_rel_st_r2s  = UC_SMCReal._st_Pt2{1};
+   smc_real_ke_ideal_simp_rel_st_fwa  = UC_Fwd.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+   smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2};
+     |}
+   ==>
+   ={res} /\
+   smc_real_ke_ideal_simp_rel {|
+   smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+   smc_real_ke_ideal_simp_rel_st_r1s  = UC_SMCReal._st_Pt1{1};
+   smc_real_ke_ideal_simp_rel_st_r2s  = UC_SMCReal._st_Pt2{1};
+   smc_real_ke_ideal_simp_rel_st_fwa  = UC_Fwd.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+   smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2};
+     |}].
+ proof.
+admit.
+qed.
+
+local lemma Exper_SMCRealKEIdeal_SMCRealKEIdealSimp
+  (func' : addr) (in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+ `|Pr[Exper(MI(RFIP, Adv), Env).main
+       (func', in_guard') @ &m : res] -
+  Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main
+       (func', in_guard') @ &m : res]| <= 0%r.
+     proof.
+     move => exper_pre disjoint.
+       have H :
+`|Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] -
+  Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main(func', in_guard') @ &m : res]| <= 0%r
+    <=>
+  Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main(func', in_guard') @ &m : res].
+  smt(). rewrite H. clear H.
+       byequiv; first last.
+       trivial.
+       trivial.
+       proc.
+       seq 1 1 :(
+       ={func, in_guard, glob Env, glob Adv, glob MI} /\
+       func{1} = func' /\
+       in_guard{1} = in_guard' /\
+       MakeInt.MI.func{1} = func' /\
+       MakeInt.MI.in_guard{1} = in_guard' /\
+       smc_real_ke_ideal_simp_rel {|
+   smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+   smc_real_ke_ideal_simp_rel_st_r1s  = UC_SMCReal._st_Pt1{1};
+   smc_real_ke_ideal_simp_rel_st_r2s  = UC_SMCReal._st_Pt2{1};
+   smc_real_ke_ideal_simp_rel_st_fwa  = UC_Fwd.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+   smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+   smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+   smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2};
+     |}
+     ).
+         inline{1} (1) init.
+         inline{2} (1) init.
+         sp 4 4.
+     inline{1} (1) init.
+         inline{2} (1) init.
+         sp 2 3.
+         inline{1} (1) init.
+         sp 2 0.
+         inline{1} (1) init.
+         sp 3 0.
+         inline{1} (1) init.
+         sp 5 0.
+         call (_ : true).
+         auto;progress;smt(SMCRealKEIdealSimpRel0).
+     call (_ : 
+   ={glob MI, glob Adv} /\
+  MakeInt.MI.func{1} = func' /\
+  MakeInt.MI.in_guard{1} = in_guard' /\
+  smc_real_ke_ideal_simp_rel
+    {| smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+        smc_real_ke_ideal_simp_rel_st_r1s = UC_SMCReal._st_Pt1{1};
+        smc_real_ke_ideal_simp_rel_st_r2s = UC_SMCReal._st_Pt2{1};
+        smc_real_ke_ideal_simp_rel_st_fwa = UC_Fwd.IF._self{1};
+        smc_real_ke_ideal_simp_rel_st_fws = UC_Fwd.IF._st{1};
+        smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+        smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+        smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+      smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2}; |}).
+      proc.
+      if; last first.
+      auto;progress;smt().
+      auto;progress;smt().
+      inline{1} (1) loop.
+      inline{2} (1) loop.
+      sp 3 3. wp 1 1.
+  while(
+  ={glob MI, glob Adv, not_done, m, m0, r0} /\
+  MI.func{1} = func' /\
+  MI.in_guard{1} = in_guard' /\
+  mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1} /\
+  smc_real_ke_ideal_simp_rel
+    {| smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+        smc_real_ke_ideal_simp_rel_st_r1s = UC_SMCReal._st_Pt1{1};
+        smc_real_ke_ideal_simp_rel_st_r2s = UC_SMCReal._st_Pt2{1};
+        smc_real_ke_ideal_simp_rel_st_fwa = UC_Fwd.IF._self{1};
+        smc_real_ke_ideal_simp_rel_st_fws = UC_Fwd.IF._st{1};
+        smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+        smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+        smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+      smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2}; |}
+  ).
+      if. auto;smt().
+      seq 1 1 :(
+     ={glob Adv, glob MI, not_done, m, m0, r0} /\
+   MI.func{1} = func' /\
+   MI.in_guard{1} = in_guard' /\
+   smc_real_ke_ideal_simp_rel
+     {| smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+         smc_real_ke_ideal_simp_rel_st_r1s = UC_SMCReal._st_Pt1{1};
+         smc_real_ke_ideal_simp_rel_st_r2s = UC_SMCReal._st_Pt2{1};
+         smc_real_ke_ideal_simp_rel_st_fwa = UC_Fwd.IF._self{1};
+         smc_real_ke_ideal_simp_rel_st_fws = UC_Fwd.IF._st{1};
+         smc_real_ke_ideal_simp_rel_st_keia = UC_KE.IF._self{1};
+         smc_real_ke_ideal_simp_rel_st_keis = UC_KE.IF._st{1};
+         smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+         smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimp._st{2}; |} 
+   ).
+
+  call SMCRealKEIdeal_SMCRealKEIdealSimp_invoke.
+ auto;progress;smt(). 
+       inline after_func. auto;progress; smt().
+       inline after_adv.
+       seq 1 1 : #pre.
+   call(_ : true).
+       auto;progress; smt().
+       auto;progress; smt().
+       auto;progress; smt().
+   auto;progress; smt().
+ qed.
+
+ local lemma Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim_dummy_adversary
+     (EnvX <: ENV{-MI, -SMCRealKEIdealSimp, -DummyAdv, -UC_SMCIdeal, -MSCore.MS, -UC_SMCSim})
+            (func' : addr, in_guard' : int fset) &m :
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  Pr[Exper(MI(SMCRealKEIdealSimp, DummyAdv), EnvX).main
+       (func', in_guard') @ &m : res] =
+  Pr[Exper(MI(UC_SMCIdeal, MSCore.MS(UC_SMCSim, DummyAdv)), EnvX).main
+       (func', in_guard') @ &m : res].
+     proof.
+       admit.
+   qed.
+
+local lemma Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim
+            (func' : addr, in_guard' : int fset) &m :
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  `|Pr[Exper(MI(SMCRealKEIdealSimp, Adv), Env).main
+       (func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_SMCIdeal, SIM(Adv)), Env).main
+       (func', in_guard') @ &m : res]| <= 0%r.
+     proof.
+     move => pre disj.
+
+       apply (MSCore.dummy_adversary
+       Env Adv
+       SMCRealKEIdealSimp
+       UC_SMCIdeal
+       UC_SMCSim
+       _invar_SMCRealKEIdealSimp _metric_SMCRealKEIdealSimp
+       _invar_IF _metric_IF
+       _invar_UC_SMCSim _metric_UC_SMCSim
+       func' in_guard' 0%r &m
+     ).
+         apply _metric_SMCRealKEIdealSimp_good.
+         rewrite /_invar_SMCRealKEIdealSimp. rewrite /predT. trivial.
+     rewrite /_invar_SMCRealKEIdealSimp.
+         rewrite /predT. simplify.
+     move => n.
+     by conseq (SMCRealKEIdealSimp_invoke n);smt().
+         apply IF_metric_good.
+         rewrite /_invar_IF /predT //.
+     move => n.
+       by conseq (IF_invoke n);smt(set1E in_fset1).
+         apply UC_SMCSim_metric_good.
+         rewrite /_invar_UC_SMCSim /predT //.
+         apply UC_SMCSim_invoke.
+         trivial.
+         trivial.
+         have H :
+`|Pr[Exper(MI(SMCRealKEIdealSimp, DummyAdv), MSCore.CombEnvAdv(Env, Adv)).main(func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_SMCIdeal, MSCore.MS(UC_SMCSim, DummyAdv)), MSCore.CombEnvAdv(Env, Adv)).main(func', in_guard') @ &m :  res]| <= 0%r
+    <=>
+  Pr[Exper(MI(SMCRealKEIdealSimp, DummyAdv), MSCore.CombEnvAdv(Env, Adv)).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(UC_SMCIdeal, MSCore.MS(UC_SMCSim, DummyAdv)), MSCore.CombEnvAdv(Env, Adv)).main(func', in_guard') @ &m :
+  res].
+  smt(). rewrite H. clear H.
+       apply (Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim_dummy_adversary
+     (MSCore.CombEnvAdv(Env, Adv))
+     func' in_guard' &m
+   ).
+   trivial.
+trivial.      
+   qed.
 
 lemma smc_sec (func': addr, in_guard' : int fset) &m :
     exper_pre func' =>
@@ -175,9 +510,32 @@ lemma smc_sec (func': addr, in_guard' : int fset) &m :
          (func', in_guard') @ &m : res] -
     Pr[Exper(MI(UC_SMCIdeal, SIM(Adv)), Env).main
          (func', in_guard') @ &m : res]| <=
-  0.0.
+  (0.0) + (0.0). 
        proof.
-         admit.
+       move => exper_pre disjoint.
+       have H1 :  `|Pr[Exper(MakeInt.MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] -
+      Pr[Exper(MakeInt.MI(SMCRealKEIdealSimp, Adv), Env).main(func',
+                                                              in_guard') @ &m :
+        res]| <= 0%r.
+        apply (Exper_SMCRealKEIdeal_SMCRealKEIdealSimp func' in_guard' &m). auto. auto.
+      have H2 :  `|Pr[Exper(MakeInt.MI(SMCRealKEIdealSimp, Adv), Env).main(func',
+                                                              in_guard') @ &m :
+         res] -
+      Pr[Exper(MakeInt.MI(UC_SMCIdeal, SIM(Adv)), Env).main(func', in_guard') @ &m :
+         res]| <=
+        0%r. apply (Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim func' in_guard' &m). auto.
+        have Q1 : _adv_if_pi \in (adv_pis_rf_info rf_info).
+        have Q2 : _adv_if_pi = _adv_pi_begin. smt(). rewrite Q2. clear Q2.
+      rewrite /adv_pis_rf_info.
+        smt(@FSet).
+        smt(@FSet).
+      move : H1 H2. move : &m.
+         apply (MakeInt.security_trans
+         RFIP SMCRealKEIdealSimp UC_SMCIdeal
+         Adv Adv (SIM(Adv))
+         Env
+         func' in_guard' (0.0) (0.0)
+       ).
        qed.
 
 end section.
