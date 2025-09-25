@@ -438,6 +438,67 @@ local lemma Exper_SMCRealKEIdeal_SMCRealKEIdealSimp
    auto;progress; smt().
  qed.
 
+type simp_ideal_rel_st = {
+  simp_ideal_rel_st_risa : addr;
+  simp_ideal_rel_st_riss : smc_real_ke_ideal_simp_state;
+  simp_ideal_rel_st_ifa  : addr;
+  simp_ideal_rel_st_ifs  : _state_IF;
+  simp_ideal_rel_st_sims : _state_SIM;
+  simp_ideal_rel_st_sim_ao : addr option;
+  simp_ideal_rel_st_ms_ao  : addr option;
+}.
+
+op simp_ideal_relC (st : simp_ideal_rel_st) : bool =
+  st.`simp_ideal_rel_st_risa  = st.`simp_ideal_rel_st_ifa  /\
+  st.`simp_ideal_rel_st_sim_ao = st.`simp_ideal_rel_st_ms_ao.
+
+op simp_ideal_rel0 (st : simp_ideal_rel_st) : bool =
+  simp_ideal_relC st /\
+  st.`simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitReq /\
+  st.`simp_ideal_rel_st_ifs = _State_IF_WaitReq /\
+  st.`simp_ideal_rel_st_sims = _State_SIM_WaitReq /\
+  st.`simp_ideal_rel_st_sim_ao = None.
+
+op simp_ideal_rel1 (st : simp_ideal_rel_st, pt1 pt2 : port, t: text) : bool =
+  simp_ideal_relC st /\
+  st.`simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t /\
+  st.`simp_ideal_rel_st_ifs = _State_IF_WaitSim pt1 pt2 t /\
+  st.`simp_ideal_rel_st_sims = _State_SIM_WaitAdv1 pt1 pt2 /\
+  st.`simp_ideal_rel_st_sim_ao = Some st.`simp_ideal_rel_st_ifa.
+
+op simp_ideal_rel2 (st : simp_ideal_rel_st, pt1 pt2 : port, t : text, k : key) : bool =
+  simp_ideal_relC st /\
+  st.`simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t k /\
+  st.`simp_ideal_rel_st_ifs = _State_IF_WaitSim pt1 pt2 t /\
+  st.`simp_ideal_rel_st_sims = _State_SIM_WaitAdv2 pt1 pt2 (log k) /\
+  st.`simp_ideal_rel_st_sim_ao = Some st.`simp_ideal_rel_st_ifa.
+
+op simp_ideal_rel3 (st : simp_ideal_rel_st, pt1 pt2 : port, t : text, k : key) : bool =
+  simp_ideal_relC st /\
+  st.`simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k /\
+  st.`simp_ideal_rel_st_ifs = _State_IF_WaitSim pt1 pt2 t /\
+  st.`simp_ideal_rel_st_sims = _State_SIM_WaitAdv3 pt1 pt2 (log k) /\
+  st.`simp_ideal_rel_st_sim_ao = Some st.`simp_ideal_rel_st_ifa.
+
+op simp_ideal_rel4 (st : simp_ideal_rel_st) : bool =
+  simp_ideal_relC st /\
+  st.`simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateFinal /\
+  st.`simp_ideal_rel_st_ifs = _State_IF_Final /\
+  st.`simp_ideal_rel_st_sims = _State_SIM_Final /\
+  st.`simp_ideal_rel_st_sim_ao = Some st.`simp_ideal_rel_st_ifa.
+
+inductive simp_ideal_rel (st : simp_ideal_rel_st) =
+    SimpIdealRel0 of (simp_ideal_rel0 st)
+  | SimpIdealRel1 (pt1 pt2 : port, t : text)
+    of (simp_ideal_rel1 st pt1 pt2 t)
+  | SimpIdealRel2 (pt1 pt2 : port, t : text, k : key)
+    of (simp_ideal_rel2 st pt1 pt2 t k)
+  | SimpIdealRel3 (pt1 pt2 : port, t : text, k : key)
+    of (simp_ideal_rel3 st pt1 pt2 t k)
+  | SimpIdealRel4 of (simp_ideal_rel4 st).
+
+ 
+
  local lemma Exper_SMCRealKEIdealSimp_SMCIdeal_SMCSim_dummy_adversary
      (EnvX <: ENV{-MI, -SMCRealKEIdealSimp, -DummyAdv, -UC_SMCIdeal, -MSCore.MS, -UC_SMCSim})
             (func' : addr, in_guard' : int fset) &m :
