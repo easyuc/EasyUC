@@ -40,10 +40,10 @@ local module SMCRealKEIdealSimp : FUNC = {
       _r <- Some
         (UC_KE.UC_KEI2S.epdp__ke_sim_req1.`enc
         {|
-          UC_KE.UC_KEI2S.ke_sim_req1___func = _self;
+          UC_KE.UC_KEI2S.ke_sim_req1___func = _addr_KE _self;
           UC_KE.UC_KEI2S.ke_sim_req1___adv = adv;
-          UC_KE.UC_KEI2S.ke_sim_req1__pt1 = pt1;
-          UC_KE.UC_KEI2S.ke_sim_req1__pt2 = pt2;
+          UC_KE.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 _self;
+          UC_KE.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 _self;
           
         |});
       _st <- SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t;
@@ -240,7 +240,9 @@ op smc_real_ke_ideal_simp_rel1 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : po
   st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_WaitKE2 pt1 pt2 t /\
   st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_WaitKE1 /\
   st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Init /\
-  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_WaitSim1 pt1 pt2 /\
+  st.`smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_WaitSim1
+    (_intport_Pt1 st.`smc_real_ke_ideal_simp_rel_st_ria)
+    (_intport_Pt2 st.`smc_real_ke_ideal_simp_rel_st_ria) /\
   st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv1 pt1 pt2 t.
 
   op smc_real_ke_ideal_simp_rel2 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : port, t : text, k : key) : bool =
@@ -265,6 +267,7 @@ op smc_real_ke_ideal_simp_rel1 (st : smc_real_ke_ideal_simp_rel_st, pt1 pt2 : po
   st.`smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k.
 
   op smc_real_ke_ideal_simp_rel4 (st : smc_real_ke_ideal_simp_rel_st) : bool =
+  smc_real_ke_ideal_simp_relC st /\
   st.`smc_real_ke_ideal_simp_rel_st_r1s  = _State_Pt1_Final /\
   st.`smc_real_ke_ideal_simp_rel_st_r2s  = _State_Pt2_Final /\
   st.`smc_real_ke_ideal_simp_rel_st_fws  = UC_Fwd._State_IF_Final /\
@@ -426,10 +429,11 @@ local lemma SMCRealKEIdealSimp_invoke0_SandT(m : msg) : phoare [
       ==>
       res = Some (UC_KE.UC_KEI2S.epdp__ke_sim_req1.`enc                                 
         {|
-          UC_KE.UC_KEI2S.ke_sim_req1___func = SMCRealKEIdealSimp._self;
+          UC_KE.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self;
           UC_KE.UC_KEI2S.ke_sim_req1___adv = adv;
-          UC_KE.UC_KEI2S.ke_sim_req1__pt1 = ((oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m)).`UC_SMCDir.Pt1.smc_req__pt1);
-          UC_KE.UC_KEI2S.ke_sim_req1__pt2 = ((oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m)).`UC_SMCDir.Pt1.smc_req__pt2); |})   /\
+          UC_KE.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self;
+          UC_KE.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self; |})
+          /\
         SMCRealKEIdealSimp._st = SMCRealKEIdealSimpStateWaitAdv1
       ((oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m)).`UC_SMCDir.Pt1.smc_req__pt1)
       ((oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m)).`UC_SMCDir.Pt1.smc_req__pt2)
@@ -735,7 +739,8 @@ local lemma SMCRealKEIdeal_SMCRealKEIdealSimp_invoke :
   equiv
   [RFIP.invoke ~
    SMCRealKEIdealSimp.invoke :
-   ={m} /\
+    ={m} /\
+    exper_pre UC_SMCReal._self{1} /\
    smc_real_ke_ideal_simp_rel {|
    smc_real_ke_ideal_simp_rel_st_cra = RFIP.self{1};  
    smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
@@ -782,37 +787,41 @@ local lemma SMCRealKEIdeal_SMCRealKEIdealSimp_invoke :
  move => rel0.
    proc *.
  case (m{1}.`1 = Dir /\ m{1}.`2 = _extport_dir_Pt1 UC_SMCReal._self{1} /\ envport UC_SMCReal._self{1} m{1}.`3
-      /\ UC_SMCDir.Pt1.epdp__smc_req.`dec m{1} <> None); last first.
+   /\ UC_SMCDir.Pt1.epdp__smc_req.`dec m{1} <> None
+ /\ envport UC_SMCReal._self{1} ((oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{1})).`UC_SMCDir.Pt1.smc_req__pt2)); last first.
    call{1} SMCRealKEIdeal_invoke0_fail.
    call{2} SMCRealKEIdealSimp_invoke0_fail.
    auto;progress;smt().
- inline{2} (1) invoke.
-  sp 0 2.
-   match  SMCRealKEIdealSimpStateWaitReq {2} 0. auto;smt().
-   rcondt{2} 0. auto;smt(  UC_SMCDir.Pt1.eq_of_valid__smc_req).
- match Some {2} 0. auto;smt(  UC_SMCDir.Pt1.eq_of_valid__smc_req).
-   inline{2} (1)  _State_SMCRealKEIdealSimpStateWaitAdv1__KEI2S__ke_sim_rsp.
-   sp 0 4.
-   inline {1} (1) invoke.
-   sp 2 0.
-   rcondt{1} 0. auto;progress;smt().
-   inline{1} (1) loop.
-   sp 3 0.
-   rcondt{1} 0. auto.
-   inline{1} (1) invoke.
-   sp 2 0.
-   rcondf{1} 0. auto;progress;smt(@UCListPO).
-   rcondf{1} 0. auto;progress;smt(@UCListPO).
-   rcondt{1} 0. auto;progress;smt().
-   inline{1} (1) party_Pt1.
-   sp 2 0.
-   match _State_Pt1_WaitReq {1} 0. auto;smt().
- match Some {1} 0. auto;progress;smt().
-   inline _State_Pt1_WaitReq__SMCDir__Pt1__smc_req.
- sp 4 0.
-rcondt{1} 0. auto;smt().
- seq 1 1 : (#pre /\ ={q}).
-rnd.
+ exlim m{1} => m.
+ call{1} (SMCRealKEIdeal_invoke0_SandT m).
+   call{2} (SMCRealKEIdealSimp_invoke0_SandT m).
+   skip. move => &1 &2 P.
+ have Q :  smc_real_ke_ideal_simp_rel1 {| smc_real_ke_ideal_simp_rel_st_cra = UC_SMCReal._self{1};
+      smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+      smc_real_ke_ideal_simp_rel_st_r1s =
+      _State_Pt1_WaitKE2
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt1
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt2
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__t;
+      smc_real_ke_ideal_simp_rel_st_r2s = _State_Pt2_WaitKE1;
+      smc_real_ke_ideal_simp_rel_st_fwa = _addr_Fwd UC_SMCReal._self{1};
+      smc_real_ke_ideal_simp_rel_st_fws = UC_Fwd._State_IF_Init;
+      smc_real_ke_ideal_simp_rel_st_keia = _addr_KE UC_SMCReal._self{1};
+      smc_real_ke_ideal_simp_rel_st_keis =
+      UC_KE._State_IF_WaitSim1 (_intport_Pt1 UC_SMCReal._self{1})
+        (_intport_Pt2 UC_SMCReal._self{1});
+      smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+      smc_real_ke_ideal_simp_rel_st_riss =
+      SMCRealKEIdealSimpStateWaitAdv1
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt1
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt2
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__t;
+          |}
+      (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt1
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__pt2
+        (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__t.
+          progress;smt().
+        progress;smt(SMCRealKEIdealSimpRel1).
    by admit.
    by admit.
    by admit.
@@ -935,15 +944,16 @@ local lemma Exper_SMCRealKEIdeal_SMCRealKEIdealSimp
    ).
 
        call SMCRealKEIdeal_SMCRealKEIdealSimp_invoke.
-   auto;progress;smt(@UCListPO).
+       skip. move => &1 &2 P. have H : UC_SMCReal._self{1} = RFIP.self{1}. smt.
+   progress;smt(@UCListPO).
+
        inline after_func. auto;progress; smt().
-       inline after_adv.
+       inline after_adv. 
        seq 1 1 : #pre.
-   call(_ : true).
+   call(_ : true). auto;progress;smt().
        auto;progress; smt().
        auto;progress; smt().
        auto;progress; smt().
-   auto;progress; smt().
  qed.
 
 type simp_ideal_rel_st = {
