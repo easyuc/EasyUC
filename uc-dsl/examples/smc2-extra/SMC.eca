@@ -64,7 +64,7 @@ local module SMCRealKEIdealSimp : FUNC = {
     _r <- Some
         (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
         {|
-          UC_KE.UC_KEI2S.ke_sim_req2___func = _self;
+          UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE _self;
           UC_KE.UC_KEI2S.ke_sim_req2___adv = adv;
         |});
     _st <- SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t (g^q);
@@ -2203,10 +2203,397 @@ sp 0 2.
  auto;progress;smt(@UCListPO).         
               rcondf{2} 0. auto.
 auto;progress;smt().  
+sp 1 1.
+              seq 1 1 :(
+      r0{1} = None /\
+            r2{2} = None /\
+            not_done{1} = false /\
+            not_done0{2} = false /\
 
+          ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+          MakeInt.MI.func{1} = func' /\
+          MakeInt.MI.in_guard{1} = in_guard' /\
+          SMCRealKEIdealSimp._self{1} = func' /\
+          simp_ideal_rel
+            {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+                simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+                simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+                simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+                simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+                simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+                simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |}
+          ).
+call{1} (MakeInt.MI_after_adv_error SMCRealKEIdealSimp DummyAdv).
+              call{2} (MSCore.MS_after_adv_error UC_SMCSim DummyAdv).
+              auto;progress;smt().
+rcondf{1} 0. auto.
+              rcondf{2} 0. auto.
+              sp 0 2.
+          seq 0 1 : (#post /\ not_done{2} = false).
+              call{2} (MakeInt.MI_after_adv_error UC_SMCIdeal (MSCore.MS(UC_SMCSim, DummyAdv))).
+          auto;progress;smt().
+              rcondf{2} 0. auto.
+              auto;progress;smt().
+          move => x x0.
+          if. auto;progress;smt().
+              sp 2 2.
+          case(func' <= x.`dfe_pt.`1).
+              seq 1 1 :(
+              exists (r2_R r3_R : msg option),
+    r2{2} = r0{1} /\
+      r0{1} =
+      Some
+        (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+        m2{2} = m0{1} /\
+        m0{1} = oget r0{1} /\
+        not_done0{2} = true /\
+        not_done{1} = true /\
+ state =
+         {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+             simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+             simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+             simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+             simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+             simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+             simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+          ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+          MakeInt.MI.func{1} = func' /\
+          MakeInt.MI.in_guard{1} = in_guard' /\
+          SMCRealKEIdealSimp._self{1} = func' /\
+          simp_ideal_rel
+            {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+                simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+                simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+                simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+                simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+                simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+                simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+ 
+              0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1
+            /\ func' <= x.`dfe_pt.`1
+          ).         
+          exlim r0{1} => r0L.
+              call{1} (MakeInt.MI_after_adv_to_func SMCRealKEIdealSimp DummyAdv r0L).
+              call{2} (MSCore.MS_after_adv_continue UC_SMCSim DummyAdv r0L).
+          auto;progress;smt().
+              rcondt{2} 0. auto.
+          rcondf{2} 0. auto;smt(@UCListPO).
+inline{2} (1) invoke.
+              sp 0 2.
+              rcondf{2} 0. auto;smt().
+              match _State_SIM_WaitAdv1 {2} 0. auto;smt().
+          rcondt{1} 0. auto.
+              rcondt{1} 0. auto;smt().
+              inline{1} (1) invoke.
+              sp 2 0.
+              match SMCRealKEIdealSimpStateWaitAdv1 {1} 0. auto;smt().
+              if{2}.
+              rcondt{1} 0. auto;progress;smt().
+              match Some {1} 0. auto;progress;smt().
+              inline _State_SMCRealKEIdealSimpStateWaitAdv1__KEI2S__ke_sim_rsp.
+              inline _State_SIM_WaitAdv1__SMCReal__KE__KEI2S__ke_sim_rsp.
+              sp 4 3.
+              seq 1 1 : (#pre /\ ={q}).
+          rnd.
+              auto;progress;smt().
+              sp 4 4.
+              seq 0 1 : (
 
-          ;progress;smt. smt(@FSet @UCListPO _adv_pi_begin_gt0 simp_ideal_rel_implies_C).
+    r2{2} = Some (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+      {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
+        UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+    m2{2} = oget r2{2} /\
+    not_done0{2} = true /\
+      r0{1} =
+      Some (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+        {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
+            UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      SMCRealKEIdealSimp._st{1} =
+          SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
+      UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
+ pt10{2} = pt1{!2} /\
+       pt20{2} = pt2{!2} /\
+       pt10{1} = pt1{!1} /\
+       pt20{1} = pt2{!1} /\
+       t0{1} = t{!1} /\
+ 
+          state =
+          {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+            simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+            simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+            simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+            simp_ideal_rel_st_sims = _State_SIM_WaitAdv1 pt1{!2} pt2{!2};
+              simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+              simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+          ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+          MakeInt.MI.func{1} = func' /\
+          MakeInt.MI.in_guard{1} = in_guard' /\
+          SMCRealKEIdealSimp._self{1} = func' /\
+          simp_ideal_rel
+            {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+              simp_ideal_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+              simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+              simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+              simp_ideal_rel_st_sims = _State_SIM_WaitAdv1 pt1{!2} pt2{!2};
+                simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+                simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+
+      ={q}
+    ).
+    exlim r2{2} => r2R.
+        call{2} (MSCore.MS_after_core_continue UC_SMCSim DummyAdv r2R).
+   auto;progress;smt. 
 rcondt{2} 0. auto.
+rcondt{2} 0. auto;progress;smt().
+inline{2} (1) invoke.
+sp 0 2.
+        match None {2} 0. auto;progress;smt(eq_of_valid_da_from_env).
+        rcondt{2} 0. auto;progress;smt(_adv_pi_begin_gt0).
+        sp 0 2.
+        seq 0 1 :(
+        exists (r2_R r4_R : msg option),
+    r2{2} =
+    Some (epdp_da_to_env.`enc
+      {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+          m4{2}.`5; |}) /\
+    m2{2} = oget r2{2} /\
+    epdp_da_from_env.`dec m4{2} = None /\
+    m4{2} = UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+      {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
+          UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+    not_done0{2} = false /\
+    r0{1} =
+    Some (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+      {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
+          UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+    SMCRealKEIdealSimp._st{1} =
+    SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
+    UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
+    pt10{2} = pt1{!2} /\
+    pt20{2} = pt2{!2} /\
+    pt10{1} = pt1{!1} /\
+    pt20{1} = pt2{!1} /\
+    t0{1} = t{!1} /\
+    state =
+    {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+        simp_ideal_rel_st_riss =
+        SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+        simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+        UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims =
+        _State_SIM_WaitAdv1 pt1{!2} pt2{!2}; simp_ideal_rel_st_sim_ao =
+      UC_SMCSim.if_addr_opt{2};
+      simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+    ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+    MakeInt.MI.func{1} = func' /\
+    MakeInt.MI.in_guard{1} = in_guard' /\
+    SMCRealKEIdealSimp._self{1} = func' /\
+    simp_ideal_rel
+      {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+          simp_ideal_rel_st_riss =
+          SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+          simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+          simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+          simp_ideal_rel_st_sims = _State_SIM_WaitAdv1 pt1{!2} pt2{!2};
+          simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+          simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+    ={q}
+    ).
+    exlim r2{2} => r2R.
+    call{2} (MSCore.MS_after_adv_return UC_SMCSim DummyAdv r2R).
+        auto;progress;smt( @UCListPO).
+        rcondf{2} 0. auto.
+        sp 0 2.
+    seq 0 1 : ( 
+  r0{2} = 
+    Some (epdp_da_to_env.`enc
+      {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+          m4{2}.`5; |}) /\
+    m0{2} = oget r0{2} /\
+ 
+    m4{2} = UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+    {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
+        UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+    not_done{2} = false /\
+    r0{1} =
+    Some (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+      {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
+          UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+    SMCRealKEIdealSimp._st{1} =
+    SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
+    UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
+    pt10{2} = pt1{!2} /\
+    pt20{2} = pt2{!2} /\
+    pt10{1} = pt1{!1} /\
+    pt20{1} = pt2{!1} /\
+    t0{1} = t{!1} /\
+    state =
+    {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+        simp_ideal_rel_st_riss =
+        SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+        simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+        UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims =
+        _State_SIM_WaitAdv1 pt1{!2} pt2{!2}; simp_ideal_rel_st_sim_ao =
+        UC_SMCSim.if_addr_opt{2}; simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+    ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+    MakeInt.MI.func{1} = func' /\
+    MakeInt.MI.in_guard{1} = in_guard' /\
+    SMCRealKEIdealSimp._self{1} = func' /\
+    simp_ideal_rel
+      {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+          simp_ideal_rel_st_riss =
+          SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+          simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+          simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+          simp_ideal_rel_st_sims = _State_SIM_WaitAdv1 pt1{!2} pt2{!2};
+          simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+          simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+    ={q}).
+  exlim r0{2} => r0R.
+      call{2} (MakeInt.MI_after_adv_to_env UC_SMCIdeal (MSCore.MS(UC_SMCSim, DummyAdv)) r0R).
+      auto;progress;smt( @UCListPO).
+      rcondf{2} 0. auto.
+      seq 1 0 : (
+  r0{2} =
+  Some (epdp_da_to_env.`enc
+    {| dte_n = m4{2}.`2.`2; dte_pt = m4{2}.`3; dte_tag = m4{2}.`4; dte_u =
+        m4{2}.`5; |}) /\
+
+  m4{2} = UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+  {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
+      UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+
+  r0{1} =
+  Some (UC_KE.UC_KEI2S.epdp__ke_sim_req2.`enc
+    {| UC_KE.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
+      UC_KE.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+  m0{1} = oget r0{1} /\
+  not_done{1} = true /\
+  SMCRealKEIdealSimp._st{1} =
+  SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
+  UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
+  pt10{2} = pt1{!2} /\
+  pt20{2} = pt2{!2} /\
+  pt10{1} = pt1{!1} /\
+  pt20{1} = pt2{!1} /\
+  t0{1} = t{!1} /\
+  state =
+  {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+      simp_ideal_rel_st_riss =
+      SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+      simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+      UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims =
+      _State_SIM_WaitAdv1 pt1{!2} pt2{!2}; simp_ideal_rel_st_sim_ao =
+      UC_SMCSim.if_addr_opt{2}; simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+  ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+  MakeInt.MI.func{1} = func' /\
+  MakeInt.MI.in_guard{1} = in_guard' /\
+  SMCRealKEIdealSimp._self{1} = func' /\
+  simp_ideal_rel
+    {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+        simp_ideal_rel_st_riss =
+        SMCRealKEIdealSimpStateWaitAdv1 pt1{!1} pt2{!1} t{!1};
+        simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+        UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims =
+        _State_SIM_WaitAdv1 pt1{!2} pt2{!2}; simp_ideal_rel_st_sim_ao =
+        UC_SMCSim.if_addr_opt{2}; simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+  ={q}
+).
+exlim r0{1} => r0L.
+    call{1} (MakeInt.MI_after_func_to_adv SMCRealKEIdealSimp DummyAdv r0L).
+auto;progress;smt(_adv_pi_begin_gt0).
+    rcondt{1} 0. auto.
+rcondf{1} 0. auto;smt(@UCListPO).
+    inline{1} (1) invoke.
+sp 2 0.
+    match None {1} 0. auto;progress;smt(eq_of_valid_da_from_env).
+    rcondt{1} 0. auto;progress;smt(_adv_pi_begin_gt0).
+sp 2 0.
+    seq 1 0 : (#post /\ not_done{1} = false).
+exlim r0{1} => r0L.
+    call{1} (MakeInt.MI_after_adv_to_env SMCRealKEIdealSimp DummyAdv r0L).
+    skip. move => &1 &2 P.
+have Q : simp_ideal_rel2
+  {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+      simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+      simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+      UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+      simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+      simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} pt1 pt2 t (g ^ q{1}).
+smt(gen_log).
+    progress;smt(@UCListPO SimpIdealRel2).
+    rcondf{1} 0. auto.
+    auto.
+  sp 0 1.
+    seq 1 0 :(
+
+     _r{1} = None /\
+  
+     r2{2} = None /\
+       state =
+       {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+           simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+           simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+           simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+           simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+           simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+           simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+       ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+       MakeInt.MI.func{1} = func' /\
+       MakeInt.MI.in_guard{1} = in_guard' /\
+       SMCRealKEIdealSimp._self{1} = func' /\
+       simp_ideal_rel
+         {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+             simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+             simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2};
+             simp_ideal_rel_st_ifs = UC_SMCIdeal._st{2};
+             simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+             simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+             simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} 
+       ).
+           if{1};last first.
+           auto;progress;smt().
+           match None {1} 0. auto;progress;smt().
+           auto;progress;smt().
+           sp 1 0.
+           seq 0 1 : (
+  r0{1} = None /\
+         r2{2} = None /\
+         not_done0{2} = false /\
+  state =
+  {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+      simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+      simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+      UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+      simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+      simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |} /\
+  ={MakeInt.MI.func, MakeInt.MI.in_guard} /\
+  MakeInt.MI.func{1} = func' /\
+  MakeInt.MI.in_guard{1} = in_guard' /\
+  SMCRealKEIdealSimp._self{1} = func' /\
+  simp_ideal_rel
+    {| simp_ideal_rel_st_risa = SMCRealKEIdealSimp._self{1};
+        simp_ideal_rel_st_riss = SMCRealKEIdealSimp._st{1};
+        simp_ideal_rel_st_ifa = UC_SMCIdeal._self{2}; simp_ideal_rel_st_ifs =
+        UC_SMCIdeal._st{2}; simp_ideal_rel_st_sims = UC_SMCSim._st{2};
+        simp_ideal_rel_st_sim_ao = UC_SMCSim.if_addr_opt{2};
+        simp_ideal_rel_st_ms_ao = MSCore.MS.if_addr_opt{2}; |}
+  ).
+      call{2} (MSCore.MS_after_core_error UC_SMCSim DummyAdv).
+      auto;progress;smt().
+      rcondf{2} 0. auto.
+      sp 0 2.
+      seq 1 1 :(#post /\ not_done{1} = false /\ not_done{2} = false).
+      call{1} (MakeInt.MI_after_func_error SMCRealKEIdealSimp DummyAdv).
+      call{2} (MakeInt.MI_after_adv_error UC_SMCIdeal (MSCore.MS(UC_SMCSim, DummyAdv))).
+      auto;progress;smt().
+  rcondf{1} 0. auto.
+      rcondf{2} 0. auto.
+  auto;progress;smt().
+
+
+
+      progress;smt(@FSet @UCListPO _adv_pi_begin_gt0 simp_ideal_rel_implies_C).
+rcondt{2} 0. auto;progress;smt(_adv_pi_begin_gt0).
      
 qed.
 
