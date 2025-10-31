@@ -4248,7 +4248,15 @@ rcondt{1} 0. auto.
           match _State_SIM_Final {2} 0. auto;smt().
       sp 0 1.
   auto;progress;smt().
-
+      seq 0 1 : (#pre /\ not_done0{2} = false).
+      call{2} (MSCore.MS_after_core_error UC_SMCSim DummyAdv).
+  auto;progress;smt().
+      rcondf{2} 0. auto.
+      sp 0 2.
+      seq 1 1 : (#post /\ not_done{1} = false /\ not_done{2} = false).
+  call{1} (MakeInt.MI_after_func_error SMCRealKEIdealSimp DummyAdv).
+      call{2} (MakeInt.MI_after_adv_error UC_SMCIdeal (MSCore.MS(UC_SMCSim, DummyAdv))).
+      auto;progress;smt().
       rcondf{1} 0. auto.
       rcondf{2} 0. auto.
       auto;smt().
