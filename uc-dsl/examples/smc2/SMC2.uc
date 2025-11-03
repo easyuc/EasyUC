@@ -86,34 +86,37 @@ axiom valid_epdp_text2_key : valid_epdp epdp_text2_key.
 (***************************** End Unit Parameters ****************************)
 
 uc_clone SMC as SMC1 with
-  type key         <- key,
-  op (^^)          <- (^^),
-  op kid           <- kid,
-  op kinv          <- kinv,
-  type exp         <- exp,
-  op e             <- e,
-  op ( * )         <- ( * ),
-  op epdp_exp_univ <- epdp_exp_univ,
-  op dexp          <- dexp,
-  op g             <- g,
-  op (^)           <- (^),
-  type text        <- text1,
-  op epdp_text_key <- epdp_text1_key.
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^),
+  type text        = text1,
+  op epdp_text_key = epdp_text1_key.
 
 uc_clone SMC as SMC2 with
-  type key         <- key,
-  op (^^)          <- (^^),
-  op kid           <- kid,
-  op kinv          <- kinv,
-  type exp         <- exp,
-  op e             <- e,
-  op ( * )         <- ( * ),
-  op epdp_exp_univ <- epdp_exp_univ,
-  op dexp          <- dexp,
-  op g             <- g,
-  op (^)           <- (^),
-  type text        <- text2,
-  op epdp_text_key <- epdp_text2_key.
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^),
+  type text        = text2,
+  op epdp_text_key = epdp_text2_key.
+
+uc_clone Forwarding as Forwarding1.
+uc_clone Forwarding as Forwarding2.
 
 direct SMC2Pt1 {
   in  pt1@smc_req(pt2 : port, t : text1)  (* 1 *)
@@ -132,8 +135,8 @@ direct SMC2Dir {
 
 functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
     implements SMC2Dir {
-  subfun Fwd1 = Forwarding.Forw
-  subfun Fwd2 = Forwarding.Forw
+  subfun Fwd1 = Forwarding1.Forw
+  subfun Fwd2 = Forwarding2.Forw
 
   party Pt1 serves SMC2Dir.Pt1 {
     initial state WaitReq {

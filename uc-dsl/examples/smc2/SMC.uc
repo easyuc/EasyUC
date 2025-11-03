@@ -96,18 +96,25 @@ ec_clone import KeyExpText as KeyExpText' with
   type text        <- text,
   op epdp_text_key <- epdp_text_key.
 
+(* UC cloning must be done with "=" (not "<-" or "<=")
+
+   code below could use EasyCrypt types and operators in KeyEx
+   (e.g., KeyEx.g), but we already have names for everything *)
+
 uc_clone KeyExchange as KeyEx with
-  type key         <- key,
-  op (^^)          <- (^^),
-  op kid           <- kid,
-  op kinv          <- kinv,
-  type exp         <- exp,
-  op e             <- e,
-  op ( * )         <- ( * ),
-  op epdp_exp_univ <- epdp_exp_univ,
-  op dexp          <- dexp,
-  op g             <- g,
-  op (^)           <- (^).
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^).
+
+uc_clone Forwarding as Forwarding'.
 
 (* The composite direct interface has two components, corresponding
    to the two parties of the real functionality. *)
@@ -143,7 +150,7 @@ direct SMCDir {
    Fwd. *)
 
 functionality SMCReal(KE : KeyEx.KEDir) implements SMCDir {
-  subfun Fwd = Forwarding.Forw
+  subfun Fwd = Forwarding'.Forw
 
   party Pt1 serves SMCDir.Pt1 {
     initial state WaitReq {
