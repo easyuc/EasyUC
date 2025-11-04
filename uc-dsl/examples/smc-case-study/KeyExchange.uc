@@ -12,10 +12,8 @@ uc_requires Forwarding.
 
 (* Requiring an EasyCrypt theory makes the definitions of that theory,
    plus those of all the EasyCrypt theories required (directly or
-   indirectly) by that theory, available. If a "+" is used, the
-   definitions of the theory itself are also made available *without*
-   qualification; but that does not apply to the definitions of
-   EasyCrypt theories indirectly required by that theory. *)
+   indirectly) by that theory, available: *with* qualification, if
+   without a "+"; *without* qualification, if with a "+". *)
 
 ec_requires +KeysExponentsAndPlaintexts.
 
@@ -84,8 +82,8 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
 
     state WaitFwd2(pt1 : port, q1 : exp) {
       match message with
-      (* We only respond to a response message from forwarder Fw2
-         arriving on the internal port of Pt1, giving us the
+      (* We can only respond to a response message from forwarder Fw2,
+         which arrives on the internal port of Pt1, giving us the
          value u : univ that came from Pt2. The _ matches the port
          that made the forwarding request, which will be the internal
          port of Pt2.
@@ -93,10 +91,10 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
          If a subfunctionality sends a message whose destination port
          isn't the internal port of one of the real functionality's
          parties, this is an error which results in a "fail", with
-         control going back to the root of the environment. (This also
-         applies to messages from parameters of the real functionality
-         - of which there are none in this case.) *)
-
+         control going back to the root of the environment (and
+         the state not changing). (This also applies to messages from
+         parameters of the real functionality - of which there are none
+         in this case.) *)
       | Fw2.D.fw_rsp(_, u) => {
           (* we must decode u into a key, k2: *)
           match epdp_key_univ.`dec u with
@@ -163,6 +161,9 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
     }
   }
 }
+
+(* The ideal functionality and simulator are structured so as to
+   allow a reduction to Decisional Diffie-Hellman *)
 
 (* basic adversarial interface between ideal functionality and
    simulator *)
@@ -297,6 +298,8 @@ simulator KESim uses KEI2S simulates KEReal {
        for messages intended for the real functionality, like this
        OK message destined for the first forwarder *)
     | KEReal.Fw1.FwAdv.fw_ok => {
+        (* q2 has to be sampled "early", so as to match it using rnd
+           tactic with sampling of q2 in real functionality *)
         q2 <$ dexp;
         send KEI2S.ke_sim_rsp and transition WaitReq2(q1, q2).
       }

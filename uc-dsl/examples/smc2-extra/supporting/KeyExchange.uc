@@ -162,6 +162,9 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   }
 }
 
+(* The ideal functionality and simulator are structured so as to
+   allow a reduction to Decisional Diffie-Hellman *)
+
 (* basic adversarial interface between ideal functionality and
    simulator *)
 
@@ -295,6 +298,8 @@ simulator KESim uses KEI2S simulates KEReal {
        for messages intended for the real functionality, like this
        OK message destined for the first forwarder *)
     | KEReal.Fw1.FwAdv.fw_ok => {
+        (* q2 has to be sampled "early", so as to match it using rnd
+           tactic with sampling of q2 in real functionality *)
         q2 <$ dexp;
         send KEI2S.ke_sim_rsp and transition WaitReq2(q1, q2).
       }

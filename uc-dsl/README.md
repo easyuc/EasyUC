@@ -44,8 +44,8 @@ Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
 [Bisect_ppx](https://github.com/aantron/bisect_ppx)
 [EasyCrypt](https://github.com/EasyCrypt/easycrypt) and [Proof
 General](https://proofgeneral.github.io).  UC DSL is known to be
-compatible with OCaml Compiler version 5.1.1, Dune 3.13.0 and Why3
-1.7.1. The easiest approach is to start by installing `opam` and then
+compatible with OCaml Compiler version 5.3.0, Dune 3.20.2 and Why3
+1.8.1. The easiest approach is to start by installing `opam` and then
 [installing EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then
 you must only install `Bisect_ppx`, via the `opam` command: `opam
 install bisect_ppx`.

@@ -13,10 +13,6 @@ open EcFol
 open EcMatching.Position
 
 (* -------------------------------------------------------------------- *)
-type wp = EcEnv.env -> EcMemory.memenv -> stmt -> EcFol.form -> EcFol.form option
-val  wp : wp option ref
-
-(* -------------------------------------------------------------------- *)
 type opmatch = [
   | `Op   of EcPath.path * EcTypes.ty list
   | `Lc   of EcIdent.t
@@ -213,7 +209,7 @@ val trans_gbinding : env -> EcUnify.unienv -> pgtybindings ->
 
 (* -------------------------------------------------------------------- *)
 val transexp :
-  env -> [`InProc|`InOp] -> EcUnify.unienv -> pexpr -> expr * ty
+  env -> ?tt:ty -> [`InProc|`InOp] -> EcUnify.unienv -> pexpr -> expr * ty
 
 val transexpcast :
   env -> [`InProc|`InOp] -> EcUnify.unienv -> ty -> pexpr -> expr

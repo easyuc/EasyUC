@@ -38,6 +38,10 @@ Forwarding.FwAdv.fw_obs((func, 2), (func, 1), [])
 @((adv, 3))
 ctrl_adv.
 send ((adv, 3))@Forwarding.FwAdv.fw_ok$((func ++ [4])).
+run 8.
+step.
+(* here is where random sampling happens *)
+step.
 run.
 assert msg_out
 ((func ++ [1; 1; 1], 1))@

@@ -1,11 +1,13 @@
-(* KeysExponentsAndPlainTexts.ec *)
+(* KeysExponentsAndPlaintexts.ec *)
+
+(********************** Keys, Exponents and Plain texts ***********************)
 
 prover [""].  (* no use of SMT provers *)
 
 require import AllCore Distr.
 require import UCBasicTypes.
 
-(********************** Keys, Exponents and Plain texts ***********************)
+(*************************** Begin Theory Parameters **************************)
 
 (* group of keys *)
 
@@ -43,8 +45,6 @@ op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
 
 axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
 
-hint simplify valid_epdp_exp_univ.  (* so simplify and smt() can use axiom *)
-
 (* full (every element has non-zero weight), uniform (all elements
    with non-zero weight have same weight) and lossless (sum of all
    weights is 1%r) distribution over exp
@@ -56,8 +56,6 @@ op dexp : exp distr.
 axiom dexp_fu  : is_full dexp.
 axiom dexp_uni : is_uniform dexp.
 axiom dexp_ll  : is_lossless dexp.
-
-hint simplify dexp_ll.
 
 (* connection between key and exp, via generator key and
    exponentiation operation *)
@@ -83,9 +81,13 @@ op epdp_text_key : (text, key) epdp.  (* EPDP from text to key *)
 
 axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
-hint simplify valid_epdp_text_key.
+(************************** End of Theory Parameters **************************)
 
-(* consequences of axioms *)
+(* simplification hints involving theory parameter axioms *)
+
+hint simplify valid_epdp_exp_univ.
+hint simplify dexp_ll.
+hint simplify valid_epdp_text_key.
 
 (* common simplifications needed in security proofs suitable
    for use in automated rewriting: *)
@@ -141,6 +143,41 @@ by rewrite one_time.
 qed.
 
 hint simplify [reduce] one_time_dh.
+
+(* isomorphism of exp for use with rnd tactic in real/ideal security
+   proof *)
+
+op pad_iso_l (t : text, q : exp) : exp =
+  log (epdp_text_key.`enc t ^^ (g ^ q)).
+
+op pad_iso_r (t : text, q : exp) : exp =
+  log (kinv (epdp_text_key.`enc t) ^^ (g ^ q)).
+
+lemma pad_iso_lr (t : text) : cancel (pad_iso_l t) (pad_iso_r t).
+proof.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -/(gen q) -/(gen (log (epdp_text_key.`enc t ^^ (g ^ q))))
+   log_gen -kmulA kinv_l kid_l gen_log.
+qed.
+
+lemma pad_iso_rl (t : text) : cancel (pad_iso_r t) (pad_iso_l t).
+proof.
+rewrite /cancel /pad_iso_l /pad_iso_r => q.
+by rewrite -/(gen q) -/(gen (log (kinv (epdp_text_key.`enc t) ^^ gen q)))
+           log_gen -kmulA kinv_r kid_l gen_log.
+qed.
+
+(* lemma for connecting real and ideal games in security proof *)
+
+lemma gen_to_pad_iso_l_eq (t : text, q : exp) :
+  g ^ (pad_iso_l t q) = epdp_text_key.`enc t ^^ (g ^ q).
+proof.
+rewrite /pad_iso_l.
+have -> :
+  g ^ log (epdp_text_key.`enc t ^^ (g ^ q)) =
+  gen (log (epdp_text_key.`enc t ^^ (g ^ q))) by rewrite /gen.
+by rewrite log_gen.
+qed.
 
 (* EPDP from key to univ *)
 

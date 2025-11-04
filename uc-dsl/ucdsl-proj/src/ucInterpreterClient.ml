@@ -72,7 +72,7 @@ type interpreter_state =
     maps       : maps_tyd option;
     config_gen : config option;
     config     : config option;
-    effect     : effect option
+    eff        : eff option
   }
 
 let init_state : interpreter_state =
@@ -84,7 +84,7 @@ let init_state : interpreter_state =
     maps = None;
     config_gen = None;
     config = None;
-    effect = None;
+    eff = None;
   }
 
 let stack : interpreter_state list ref = ref []
@@ -128,20 +128,20 @@ let pp_uc_file_pos
     Format.fprintf fmt "%s@." str
   end
 
-let pp_effect (ppf : Format.formatter) (e : effect) : unit =
+let pp_eff (ppf : Format.formatter) (e : eff) : unit =
   let pp_control (ppf : Format.formatter) (ctrl : control) : unit =
     match ctrl with
     | CtrlEnv -> Format.fprintf ppf "environment"
     | CtrlAdv -> Format.fprintf ppf "adversary"
   in
   match e with
-  | EffectOK                       -> ()
-  | EffectRand id                  ->
+  | EffOK                       -> ()
+  | EffRand id                  ->
     Format.fprintf ppf "@[note: random value was assigned to: %s@]" id
-  | EffectMsgOut (pp_sme, ctrl)    ->
+  | EffMsgOut (pp_sme, ctrl)    ->
     Format.fprintf ppf
     "@[message was output:@ %a:@ %s@]" pp_control ctrl pp_sme
-  | EffectFailOut                  ->
+  | EffFailOut                  ->
     Format.fprintf ppf "note: \"fail.\" was called."
 
 let pp_interpreter_state
@@ -168,11 +168,11 @@ let interpret (lexbuf : L.lexbuf) =
     if (UcState.get_batch_mode ())
     then ()
     else begin
-      begin match c.effect with
+      begin match c.eff with
       | None     -> ()
       | Some eff ->
         Format.fprintf fmt "@.effect:@.%a@.;@."
-        pp_effect eff
+        pp_eff eff
       end;
       pp_uc_file_pos fmt c;
       Format.fprintf fmt "state:@.%a@.;@." pp_interpreter_state c
@@ -224,7 +224,7 @@ let interpret (lexbuf : L.lexbuf) =
         maps = Some maps;
         config_gen = None;
         config = None;
-        effect = None;
+        eff = None;
       } in
     push_print news
   in
@@ -245,7 +245,7 @@ let interpret (lexbuf : L.lexbuf) =
         post_done = false;
         config_gen = Some config_gen;
         config = None;
-        effect = None;
+        eff = None;
       } in
     push_print news
   in
@@ -265,7 +265,7 @@ let interpret (lexbuf : L.lexbuf) =
       ucdsl_new = false;
       post_done = false;
       config = Some config;
-      effect = None;
+      eff = None;
     } in
     push_print news
   in
@@ -295,7 +295,7 @@ let interpret (lexbuf : L.lexbuf) =
         ucdsl_new = false;
         post_done = true;
         config = None;
-        effect = None;
+        eff = None;
       } in
     (* we pop all interpreter states until the one that preceeds
        the start of the experiment *)
@@ -316,8 +316,8 @@ let interpret (lexbuf : L.lexbuf) =
           ucdsl_new = false;
           post_done = false;
           config = Some conf;
-          effect = Some EffectOK;  (* send_message_to_real_or_ideal_config
-                                      doesn't produce an effect *)
+          eff = Some EffOK;  (* send_message_to_real_or_ideal_config
+                                doesn't produce an effect *)
         } in
       push_print news
     else
@@ -330,7 +330,7 @@ let interpret (lexbuf : L.lexbuf) =
 
   let step_core (loc : EcLocation.t)
       (ppio : EcParsetree.pprover_infos option) (mdbso : mod_dbs option)
-        : config * effect =
+        : config * eff =
     let c = currs() in
     let cconfig = Option.get c.config in
     let is_running_or_sending_real_or_ideal_config config =
@@ -378,7 +378,7 @@ let interpret (lexbuf : L.lexbuf) =
         ucdsl_new = false;
         post_done = false;
         config = Some conf;
-        effect = Some eff;
+        eff = Some eff;
       } in
     push_print news
   in
@@ -394,8 +394,8 @@ let interpret (lexbuf : L.lexbuf) =
       | None -> true
       | Some i -> i > 0
     in
-    let rec runr (conf : config) (eff : effect) (stepno : int option)
-            : config * effect =
+    let rec runr (conf : config) (eff : eff) (stepno : int option)
+            : config * eff =
       if (UcState.get_run_print_pos ())
       then begin
         let c = currs() in
@@ -405,7 +405,7 @@ let interpret (lexbuf : L.lexbuf) =
           ucdsl_new = false;
           post_done = false;
           config = Some conf;
-          effect = Some eff;
+          eff = Some eff;
         } in
         pp_uc_file_pos fmt c'
         end;
@@ -418,8 +418,8 @@ let interpret (lexbuf : L.lexbuf) =
         | None             -> conf, eff
         | Some (conf, eff) ->
             (match eff with
-             | EffectOK
-             | EffectRand _ -> runr conf eff (decstepno stepno)
+             | EffOK
+             | EffRand _ -> runr conf eff (decstepno stepno)
              | _ -> conf, eff)
       else conf, eff
     in
@@ -428,8 +428,8 @@ let interpret (lexbuf : L.lexbuf) =
       let conf, eff = step_core loc None None in  (* could issue error *)
       let conf, eff =
         match eff with
-        | EffectOK
-        | EffectRand _ -> runr conf eff (decstepno stepno)
+        | EffOK
+        | EffRand _ -> runr conf eff (decstepno stepno)
         | _            -> conf, eff in
       let c = currs() in
       let news =
@@ -439,7 +439,7 @@ let interpret (lexbuf : L.lexbuf) =
           ucdsl_new = false;
           post_done = false;
           config = Some conf;
-          effect = Some eff;
+          eff = Some eff;
         } in
       push_print news
     else ()
@@ -457,7 +457,7 @@ let interpret (lexbuf : L.lexbuf) =
           ucdsl_new = false;
           post_done = false;
           config = Some conf;
-          effect = None;
+          eff = None;
         } in
       push_print news
     | None ->
@@ -470,7 +470,7 @@ let interpret (lexbuf : L.lexbuf) =
           ucdsl_new = false;
           post_done = false;
           config_gen = Some conf;
-          effect = None;
+          eff = None;
         } in
       push_print news
   in
@@ -495,10 +495,10 @@ let interpret (lexbuf : L.lexbuf) =
     modify_config mdfy
   in
 
-  let confirm (peff : peffect) : unit =
+  let confirm (peff : peff) : unit =
     let c = currs() in
-    let effo = c.effect in
-    let pp_effect ppf eff = pp_effect ppf eff in
+    let effo = c.eff in
+    let pp_eff ppf eff = pp_eff ppf eff in
     begin match effo with
     | None ->
         error_message (loc peff)
@@ -508,21 +508,21 @@ let interpret (lexbuf : L.lexbuf) =
               "command,@ only@ run@ and step@ commands@ produce@ effects@]"))
     | Some eff ->
         begin match (unloc peff) with
-        | EffectOK ->
+        | EffOK ->
           begin match eff with
-          | EffectOK -> ()
+          | EffOK -> ()
           | _        ->
             error_message (loc peff)
             (fun ppf ->
                Format.fprintf ppf
                ("@[assert@ of@ OK@ effect failed.@ The@ effect@ that@ " ^^
                 "occurred:@ %a@]")
-               pp_effect eff)
+               pp_eff eff)
           end
-        | EffectRand ->
+        | EffRand ->
             begin match eff with
-            | EffectRand _ -> ()
-            | EffectOK ->
+            | EffRand _ -> ()
+            | EffOK ->
               error_message (loc peff)
               (fun ppf ->
                  Format.fprintf ppf
@@ -534,11 +534,11 @@ let interpret (lexbuf : L.lexbuf) =
                  Format.fprintf ppf
                  ("@[assert@ of@ rand@ effect@ failed.@ The@ effect@ " ^^
                   "that@ occurred:@ %a@]")
-                 pp_effect eff)
+                 pp_eff eff)
         end
-        | EffectMsgOut (sme, ct) ->
+        | EffMsgOut (sme, ct) ->
             begin match eff with
-            | EffectMsgOut (str, ctrl) ->
+            | EffMsgOut (str, ctrl) ->
                 let smestr =
                   typecheck_and_pp_sent_msg_expr (Option.get c.config) sme in
                 if smestr <> str
@@ -565,7 +565,7 @@ let interpret (lexbuf : L.lexbuf) =
                            "adversary@ has@ control,@ but@ asserted@ "     ^^
                            "control@ was@ environment@]"))
                 else ()
-            | EffectOK ->
+            | EffOK ->
               error_message (loc peff)
               (fun ppf ->
                  Format.fprintf ppf
@@ -577,12 +577,12 @@ let interpret (lexbuf : L.lexbuf) =
                    Format.fprintf ppf
                    ("@[assert@ of@ msg_out@ effect@ failed.@ The@ effect@ " ^^
                     "that occurred:@ %a@]")
-                   pp_effect eff)
+                   pp_eff eff)
             end
-        | EffectFailOut ->
+        | EffFailOut ->
             begin match eff with
-            | EffectFailOut -> ()
-            | EffectOK ->
+            | EffFailOut -> ()
+            | EffOK ->
               error_message (loc peff)
               (fun ppf ->
                  Format.fprintf ppf
@@ -594,7 +594,7 @@ let interpret (lexbuf : L.lexbuf) =
                    Format.fprintf ppf
                    ("@[assert@ of@ fail_out@ effect failed.@ The@ " ^^
                     "effect@ that@ occurred:@ %a@]")
-                   pp_effect eff)
+                   pp_eff eff)
             end
         end
     end;

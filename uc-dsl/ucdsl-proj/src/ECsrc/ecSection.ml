@@ -219,66 +219,66 @@ let rec on_form (cb : cb) (f : EcFol.form) =
     | EcAst.Fpr       pr           -> on_pr  cb pr
 
   and on_hf cb hf =
-    on_form cb hf.EcAst.hf_pr;
-    on_form cb hf.EcAst.hf_po;
+    on_form cb (hf_pr hf).inv;
+    on_form cb (hf_po hf).inv;
     on_xp cb hf.EcAst.hf_f
 
   and on_hs cb hs =
-    on_form cb hs.EcAst.hs_pr;
-    on_form cb hs.EcAst.hs_po;
+    on_form cb (hs_pr hs).inv;
+    on_form cb (hs_po hs).inv;
     on_stmt cb hs.EcAst.hs_s;
     on_memenv cb hs.EcAst.hs_m
 
   and on_ef cb ef =
-    on_form cb ef.EcAst.ef_pr;
-    on_form cb ef.EcAst.ef_po;
+    on_form cb (EcAst.ef_pr ef).inv;
+    on_form cb (EcAst.ef_po ef).inv;
     on_xp cb ef.EcAst.ef_fl;
     on_xp cb ef.EcAst.ef_fr
 
   and on_es cb es =
-    on_form cb es.EcAst.es_pr;
-    on_form cb es.EcAst.es_po;
+    on_form cb (EcAst.es_pr es).inv;
+    on_form cb (EcAst.es_po es).inv;
     on_stmt cb es.EcAst.es_sl;
     on_stmt cb es.EcAst.es_sr;
     on_memenv cb es.EcAst.es_ml;
     on_memenv cb es.EcAst.es_mr
 
   and on_eg cb eg =
-    on_form cb eg.EcAst.eg_pr;
-    on_form cb eg.EcAst.eg_po;
+    on_form cb (EcAst.eg_pr eg).inv;
+    on_form cb (EcAst.eg_po eg).inv;
     on_xp cb eg.EcAst.eg_fl;
     on_xp cb eg.EcAst.eg_fr;
     on_stmt cb eg.EcAst.eg_sl;
     on_stmt cb eg.EcAst.eg_sr;
 
   and on_ehf cb hf =
-    on_form cb hf.EcAst.ehf_pr;
-    on_form cb hf.EcAst.ehf_po;
+    on_form cb (EcAst.ehf_pr hf).inv;
+    on_form cb (EcAst.ehf_po hf).inv;
     on_xp cb hf.EcAst.ehf_f
 
   and on_ehs cb hs =
-    on_form cb hs.EcAst.ehs_pr;
-    on_form cb hs.EcAst.ehs_po;
+    on_form cb (EcAst.ehs_pr hs).inv;
+    on_form cb (EcAst.ehs_po hs).inv;
     on_stmt cb hs.EcAst.ehs_s;
     on_memenv cb hs.EcAst.ehs_m
 
   and on_bhf cb bhf =
-    on_form cb bhf.EcAst.bhf_pr;
-    on_form cb bhf.EcAst.bhf_po;
-    on_form cb bhf.EcAst.bhf_bd;
+    on_form cb (EcAst.bhf_pr bhf).inv;
+    on_form cb (EcAst.bhf_po bhf).inv;
+    on_form cb (EcAst.bhf_bd bhf).inv;
     on_xp cb bhf.EcAst.bhf_f
 
   and on_bhs cb bhs =
-    on_form cb bhs.EcAst.bhs_pr;
-    on_form cb bhs.EcAst.bhs_po;
-    on_form cb bhs.EcAst.bhs_bd;
+    on_form cb (EcAst.bhs_pr bhs).inv;
+    on_form cb (EcAst.bhs_po bhs).inv;
+    on_form cb (EcAst.bhs_bd bhs).inv;
     on_stmt cb bhs.EcAst.bhs_s;
     on_memenv cb bhs.EcAst.bhs_m
 
 
   and on_pr cb pr =
     on_xp cb pr.EcAst.pr_fun;
-    List.iter (on_form cb) [pr.EcAst.pr_event; pr.EcAst.pr_args]
+    List.iter (on_form cb) [pr.EcAst.pr_event.inv; pr.EcAst.pr_args]
 
   in
     on_ty cb f.EcAst.f_ty; fornode ()
@@ -786,8 +786,7 @@ let generalize_tydecl to_gen prefix (name, tydecl) =
     let to_gen = { to_gen with tg_subst} in
     let tydecl = {
         tyd_params; tyd_type;
-        tyd_loca = `Global;
-        tyd_resolve = tydecl.tyd_resolve } in
+        tyd_loca = `Global; } in
     to_gen, Some (Th_type (name, tydecl))
 
   | `Declare ->
@@ -1030,44 +1029,39 @@ let generalize_auto to_gen auto_rl =
 (* --------------------------------------------------------------- *)
 let get_locality scenv = scenv.sc_loca
 
-let set_local l =
-  match l with
-  | `Global -> `Local
-  | _ -> l
+let id_lc = function
+  | `Global -> `Global
+  | `Local -> `Local
 
-let rec set_local_item item =
+let set_lc lc = function
+  | `Global | `Local -> id_lc lc
+  | l -> l
+
+let rec set_lc_item lc_override item =
   let lcitem =
     match item.ti_item with
-    | Th_type         (s,ty) -> Th_type      (s, { ty with tyd_loca = set_local ty.tyd_loca })
-    | Th_operator     (s,op) -> Th_operator  (s, { op with op_loca  = set_local op.op_loca   })
-    | Th_axiom        (s,ax) -> Th_axiom     (s, { ax with ax_loca  = set_local ax.ax_loca   })
-    | Th_modtype      (s,ms) -> Th_modtype   (s, { ms with tms_loca = set_local ms.tms_loca  })
-    | Th_module          me  -> Th_module        { me with tme_loca = set_local me.tme_loca  }
-    | Th_typeclass    (s,tc) -> Th_typeclass (s, { tc with tc_loca  = set_local tc.tc_loca   })
-    | Th_theory      (s, th) -> Th_theory    (s, set_local_th th)
-    | Th_export       (p,lc) -> Th_export    (p, set_local lc)
-    | Th_instance (ty,ti,lc) -> Th_instance  (ty,ti, set_local lc)
-    | Th_baserw       (s,lc) -> Th_baserw    (s, set_local lc)
-    | Th_addrw     (p,ps,lc) -> Th_addrw     (p, ps, set_local lc)
+    | Th_type         (s,ty) -> Th_type      (s, { ty with tyd_loca = set_lc lc_override ty.tyd_loca })
+    | Th_operator     (s,op) -> Th_operator  (s, { op with op_loca  = set_lc lc_override op.op_loca   })
+    | Th_axiom        (s,ax) -> Th_axiom     (s, { ax with ax_loca  = set_lc lc_override ax.ax_loca   })
+    | Th_modtype      (s,ms) -> Th_modtype   (s, { ms with tms_loca = set_lc lc_override ms.tms_loca  })
+    | Th_module          me  -> Th_module        { me with tme_loca = set_lc lc_override me.tme_loca  }
+    | Th_typeclass    (s,tc) -> Th_typeclass (s, { tc with tc_loca  = set_lc lc_override tc.tc_loca   })
+    | Th_theory      (s, th) -> Th_theory    (s, set_local_th lc_override th)
+    | Th_export       (p,lc) -> Th_export    (p, set_lc lc_override lc)
+    | Th_instance (ty,ti,lc) -> Th_instance  (ty,ti, set_lc lc_override lc)
+    | Th_baserw       (s,lc) -> Th_baserw    (s, set_lc lc_override lc)
+    | Th_addrw     (p,ps,lc) -> Th_addrw     (p, ps, set_lc lc_override lc)
     | Th_reduction       r   -> Th_reduction r
-    | Th_auto       auto_rl  -> Th_auto      {auto_rl with locality=set_local auto_rl.locality}
+    | Th_auto       auto_rl  -> Th_auto      {auto_rl with locality=set_lc lc_override auto_rl.locality}
     | Th_alias         alias -> Th_alias     alias
 
   in { item with ti_item = lcitem }
 
-and set_local_th th =
-  { th with cth_items = List.map set_local_item th.cth_items;
-            cth_loca  = set_local th.cth_loca; }
-
-let sc_th_item t item =
-  let item =
-    match get_locality t with
-    | `Global -> item
-    | `Local  -> set_local_item item in
-  SC_th_item item
+and set_local_th lc_override th =
+  { th with cth_items = List.map (set_lc_item lc_override) th.cth_items;
+            cth_loca  = set_lc lc_override th.cth_loca; }
 
 let sc_decl_mod (id,mt) = SC_decl_mod (id,mt)
-
 
 (* ---------------------------------------------------------------- *)
 
@@ -1321,7 +1315,7 @@ let enter_theory (name:symbol) (lc:is_local) (mode:thmode) scenv : scenv =
      hierror "can not start a local theory outside of a section";
   { sc_env   = EcEnv.Theory.enter name scenv.sc_env;
     sc_top   = Some scenv;
-    sc_loca  = if lc = `Local then lc else scenv.sc_loca;
+    sc_loca  = lc;
     sc_abstr = scenv.sc_abstr || mode = `Abstract;
     sc_insec = scenv.sc_insec;
     sc_name  = Th (name, lc, mode);
@@ -1337,30 +1331,35 @@ let exit_theory ?clears ?pempty scenv =
     name, cth, scenv
 
 (* -----------------------------------------------------------*)
-let add_item_ (item : theory_item) (scenv:scenv) =
-  let item = if scenv.sc_loca = `Local then set_local_item item else item in
+let add_item_ ?(override_locality=None) (item : theory_item) (scenv:scenv) =
+  let item = match override_locality, scenv.sc_loca with
+    | Some lc, _ | None, (`Local as lc) -> set_lc_item lc item
+    | _ -> item
+  in
   let env = scenv.sc_env in
+  let import = item.ti_import in
   let env =
     match item.ti_item with
-    | Th_type    (s,tyd)     -> EcEnv.Ty.bind s tyd env
-    | Th_operator (s,op)     -> EcEnv.Op.bind s op env
-    | Th_axiom   (s, ax)     -> EcEnv.Ax.bind s ax env
-    | Th_modtype (s, ms)     -> EcEnv.ModTy.bind s ms env
-    | Th_module       me     -> EcEnv.Mod.bind me.tme_expr.me_name me env
-    | Th_typeclass(s,tc)     -> EcEnv.TypeClass.bind s tc env
+    | Th_type    (s,tyd)     -> EcEnv.Ty.bind ~import s tyd env
+    | Th_operator (s,op)     -> EcEnv.Op.bind ~import s op env
+    | Th_axiom   (s, ax)     -> EcEnv.Ax.bind ~import s ax env
+    | Th_modtype (s, ms)     -> EcEnv.ModTy.bind ~import s ms env
+    | Th_module       me     -> EcEnv.Mod.bind ~import me.tme_expr.me_name me env
+    | Th_typeclass(s,tc)     -> EcEnv.TypeClass.bind ~import s tc env
     | Th_export  (p, lc)     -> EcEnv.Theory.export p lc env
-    | Th_instance (tys,i,lc) -> EcEnv.TypeClass.add_instance tys i lc env
-    | Th_baserw   (s,lc)     -> EcEnv.BaseRw.add s lc env
-    | Th_addrw (p,ps,lc)     -> EcEnv.BaseRw.addto p ps lc env
-    | Th_auto auto           -> EcEnv.Auto.add ~level:auto.level ?base:auto.base
+    | Th_instance (tys,i,lc) -> EcEnv.TypeClass.add_instance ~import tys i lc env (*FIXME: import? *)
+    | Th_baserw   (s,lc)     -> EcEnv.BaseRw.add ~import s lc env
+    | Th_addrw (p,ps,lc)     -> EcEnv.BaseRw.addto ~import p ps lc env
+    | Th_auto auto           -> EcEnv.Auto.add
+                                  ~import ~level:auto.level ?base:auto.base
                                   auto.axioms auto.locality env
-    | Th_alias     (n,p) -> EcEnv.Theory.alias n p env
-    | Th_reduction r         -> EcEnv.Reduction.add r env
+    | Th_alias     (n,p)     -> EcEnv.Theory.alias ~import n p env
+    | Th_reduction r         -> EcEnv.Reduction.add ~import r env
     | _                      -> assert false
   in
-  { scenv with
+  (item, { scenv with
     sc_env = env;
-    sc_items = SC_th_item item :: scenv.sc_items}
+    sc_items = SC_th_item item :: scenv.sc_items})
 
 let add_th ~import (cth : EcEnv.Theory.compiled_theory) scenv =
   let env = EcEnv.Theory.bind ~import cth scenv.sc_env in
@@ -1390,7 +1389,7 @@ let rec generalize_th_item (to_gen : to_gen) (prefix : path) (th_item : theory_i
   let scenv =
     item |> Option.fold ~none:to_gen.tg_env ~some:(fun item ->
       let item = { ti_import = th_item.ti_import; ti_item = item; } in
-      add_item_ item to_gen.tg_env
+      add_item_ item to_gen.tg_env |> snd
     )
   in
 
@@ -1407,25 +1406,12 @@ and generalize_ctheory
   if cth.cth_mode = `Abstract && cth.cth_loca = `Local then
     add_clear genenv (`Th path)
   else
-    let compiled =
-      let genenv =
-        let scenv =
-          enter_theory
-            name `Global cth.cth_mode
-            genenv.tg_env
-        in
-        { genenv with tg_env = scenv }
-      in
+    let scenv = enter_theory name `Global cth.cth_mode genenv.tg_env in
+    let genenv_tmp = List.fold_left
+      (fun x -> generalize_th_item x path)
+      { genenv with tg_env = scenv } cth.cth_items in
 
-      let genenv =
-        List.fold_left (fun genenv item ->
-          generalize_th_item genenv path item
-        ) genenv cth.cth_items in
-
-      let _, compiled, _ = exit_theory genenv.tg_env in
-
-      compiled
-    in        
+    let _, compiled, _ = exit_theory genenv_tmp.tg_env in
 
     match compiled with
     | None ->
@@ -1433,7 +1419,7 @@ and generalize_ctheory
     | Some compiled when List.is_empty compiled.ctheory.cth_items ->
       genenv
     | Some compiled ->
-      let scenv = add_th ~import:import0 compiled genenv.tg_env in
+      let scenv = add_th ~import:true compiled genenv.tg_env in
       { genenv with tg_env = scenv; }
 
 and generalize_lc_item (genenv : to_gen) (prefix : path) (item : sc_item) =
@@ -1508,9 +1494,8 @@ let check_item scenv item =
   | Th_theory  _   -> assert false
   | Th_alias _     -> () (* FIXME:ALIAS *)
 
-let rec add_item (item : theory_item) (scenv : scenv) =
-  let item = if scenv.sc_loca = `Local then set_local_item item else item in
-  let scenv1 = add_item_ item scenv in
+let rec add_item ?(override_locality=None) (item : theory_item) (scenv : scenv) =
+  let item, scenv1 = add_item_ ~override_locality item scenv in
   begin match item.ti_item with
   | Th_theory (s,cth) ->
     if cth.cth_loca = `Local && not scenv.sc_insec then
