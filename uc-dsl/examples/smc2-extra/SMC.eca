@@ -847,7 +847,285 @@ local lemma SMCRealKEIdealSimp_invoke2_fail (pt1 pt2 : port, t : text, k : key) 
     auto;smt().
   qed.
 
-  local lemma SMCRealKEIdealSimp_invoke2_SandT (pt1 pt2 : port, t : text, k : key) : phoare [
+  local lemma SMCRealKEIdeal_invoke2_SandT (pt1 pt2 : port, t : text, k : key) : phoare [
+  RFCore.MakeRF(UC_SMCReal(UC_KE.UC_KEIdeal)).invoke :
+  mi_invoke_loop_calls_func_invoke RFIP.self m /\
+  (m.`1 = Adv /\ m.`2.`1 = _addr_KE UC_SMCReal._self /\  m.`3.`1 = adv /\
+        UC_KE.UC_KEI2S.epdp__ke_sim_rsp.`dec m <> None) /\
+  exper_pre UC_SMCReal._self /\
+      RFCore.MakeRF.self = UC_SMCReal._self /\
+      UC_SMCReal._st_Pt1 = _State_Pt1_WaitKE2 pt1 pt2 t /\
+      UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+      UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+      UC_Fwd.IF._st = UC_Fwd._State_IF_Init /\
+      UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+      UC_KE.IF._st = UC_KE._State_IF_WaitSim2 (_intport_Pt1 UC_SMCReal._self) (_intport_Pt2 UC_SMCReal._self) (log k)
+      ==>
+res = Some (UC_Fwd.UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_Fwd.UC_FwAdv.fw_obs___func = _addr_Fwd UC_SMCReal._self;
+          UC_Fwd.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMCReal._self;
+          UC_Fwd.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMCReal._self;
+          UC_Fwd.UC_FwAdv.fw_obs__u = epdp_port_port_key_univ.`enc
+          (pt1, pt2, epdp_text_key.`enc t ^^ k)
+         |})
+      /\
+      RFCore.MakeRF.self = UC_SMCReal._self /\
+      UC_SMCReal._st_Pt1 = _State_Pt1_Final  /\
+      UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+      UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+      UC_Fwd.IF._st =  UC_Fwd._State_IF_Wait
+        (_intport_Pt1 UC_SMCReal._self)
+        (_intport_Pt2 UC_SMCReal._self)
+        (epdp_port_port_key_univ.`enc (pt1, pt2, epdp_text_key.`enc t ^^ k))/\
+      UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+      UC_KE.IF._st = UC_KE._State_IF_Final
+
+
+] = 1%r.
+proof.
+  proc.
+sp 1.
+  rcondt 0. auto;smt(@UCListPO).
+inline loop.  
+  sp 3.
+  rcondt 0. auto.
+inline (1) invoke.
+  sp 2.
+rcondf 0. auto;progress;smt(@UCListPO).
+  rcondt 0. auto;progress;smt(@UCListPO).
+inline (1) invoke.
+  sp 2.
+  rcondt 0. auto;progress;smt(@UCListPO).
+inline parties.
+  sp 2.
+match _State_IF_WaitSim2 0. auto;smt().
+  match Some 0.  auto;smt(UC_KE.UC_KEI2S.eq_of_valid__ke_sim_rsp).
+inline _State_IF_WaitSim2__KEI2S__ke_sim_rsp.
+  sp 10.
+  inline (1) after_core.
+sp.
+  conseq (_ :
+    r0 =
+    Some (UC_KE.UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+    {| UC_KE.UC_KEDir.Pt1.ke_rsp2___func = UC_KE.UC_KEIdeal._self;
+       UC_KE.UC_KEDir.Pt1.ke_rsp2__pt1 = (_intport_Pt1 UC_SMCReal._self);
+       UC_KE.UC_KEDir.Pt1.ke_rsp2__k = g ^ q; |}) /\
+    m0 = oget r0 /\
+    UC_KE.UC_KEIdeal._st = UC_KE._State_IF_Final /\
+    not_done = true /\
+    q = log k /\
+    exper_pre UC_SMCReal._self /\
+    RFCore.MakeRF.self = UC_SMCReal._self /\
+    UC_SMCReal._st_Pt1 = _State_Pt1_WaitKE2 pt1 pt2 t /\
+    UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+    UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+    UC_Fwd.IF._st = UC_Fwd._State_IF_Init /\
+    UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+      UC_KE.IF._st = UC_KE._State_IF_Final
+  ==> _
+).
+    
+    auto;progress;smt(@UCListPO).
+    rcondt 0. auto.
+inline (1) invoke.
+sp 2.
+rcondf 0. auto;progress;smt(@UCListPO).
+rcondf 0. auto;progress;smt(@UCListPO).
+rcondt 0. auto;progress;smt(@UCListPO).
+inline party_Pt1.
+    sp 2.
+    match _State_Pt1_WaitKE2 0. auto;smt().
+    match Some 0. auto;progress;smt().
+    rcondt 0. auto;progress;smt().
+    inline _State_Pt1_WaitKE2__KE__Pt1__ke_rsp2.
+    sp 10. wp.
+inline (1) after_core.    
+sp 4. rcondf 0. auto.
+    sp 1. rcondt 0. auto.
+rcondt 0. auto;progress;smt(@UCListPO).
+    rcondf 0. auto;progress;smt(@UCListPO).
+    rcondt 0. auto;progress;smt(@UCListPO).
+    sp.
+    conseq (_ :
+    r0 =
+    Some (UC_Fwd.UC_FwDir.D.epdp__fw_req.`enc
+    {| UC_Fwd.UC_FwDir.D.fw_req___func = _addr_Fwd UC_SMCReal._self;
+      UC_Fwd.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMCReal._self;
+      UC_Fwd.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMCReal._self;
+      UC_Fwd.UC_FwDir.D.fw_req__u =
+          epdp_port_port_key_univ.`enc
+          (pt1, pt2, epdp_text_key.`enc t ^^ k); |}) /\
+    m0 = oget r0 /\
+    not_done = true /\
+    exper_pre UC_SMCReal._self /\
+    RFCore.MakeRF.self = UC_SMCReal._self /\
+    UC_SMCReal._st_Pt1 = _State_Pt1_Final /\
+    UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+    UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+    UC_Fwd.IF._st = UC_Fwd._State_IF_Init /\
+    UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+            UC_KE.IF._st = UC_KE._State_IF_Final
+      ==> _
+    ).
+    move => &1 P. progress.
+have H : r0{1} = Some (UC_Fwd.UC_FwDir.D.epdp__fw_req.`enc
+  {| UC_Fwd.UC_FwDir.D.fw_req___func = _addr_Fwd UC_SMCReal._self{1};
+    UC_Fwd.UC_FwDir.D.fw_req__pt1 =
+    _intport_Pt1 UC_SMCReal._self{1};
+    UC_Fwd.UC_FwDir.D.fw_req__pt2 =
+    _intport_Pt2 UC_SMCReal._self{1};
+    UC_Fwd.UC_FwDir.D.fw_req__u =
+              epdp_port_port_key_univ.`enc
+              (pt12{1}, pt22{1}, epdp_text_key.`enc t0{1} ^^ k{!1}); |}).
+                smt(). rewrite H. clear H.
+                congr. congr. congr. congr. congr.
+                smt(). smt().  congr. smt().
+                have H : k{!1} = g^q{1}. smt. rewrite H. clear H.
+                smt(@KeysExponentsAndPlaintexts).         
+                smt(). smt(). smt(). smt(). smt(). smt(). smt(). smt().  smt(). smt().
+rcondt 0. auto.          
+inline (1) invoke.
+                sp 2.
+                rcondt 0. auto;progress;smt(@UCListPO).
+                inline (1) invoke.
+                sp 2.
+                rcondt 0. auto;progress;smt(@UCListPO).
+                inline parties.
+                sp 2.
+                match _State_IF_Init 0. auto;smt().
+                match Some 0. auto;progress;smt().
+                inline _State_IF_Init__FwDir__D__fw_req.
+                sp 4.
+                rcondt 0. auto;progress;smt.
+          sp 6.
+inline (1) after_core.
+sp 4.
+                rcondf 0. auto;smt().
+                sp 1.
+                rcondf 0. auto;smt().
+                sp 1.
+                rcondf 0. auto;progress;smt.
+                rcondt 0. auto;progress;smt(@UCListPO).
+                sp.
+                rcondf 0. auto.
+                auto;progress;smt.
+        qed.
+
+local lemma SMCRealKEIdeal_invoke2_fail (pt1 pt2 : port, t : text, k : key) : phoare [
+  RFCore.MakeRF(UC_SMCReal(UC_KE.UC_KEIdeal)).invoke :
+  mi_invoke_loop_calls_func_invoke RFIP.self m /\
+  !(m.`1 = Adv /\ m.`2.`1 = _addr_KE UC_SMCReal._self /\  m.`3.`1 = adv /\
+        UC_KE.UC_KEI2S.epdp__ke_sim_rsp.`dec m <> None) /\
+  exper_pre UC_SMCReal._self /\
+      RFCore.MakeRF.self = UC_SMCReal._self /\
+      UC_SMCReal._st_Pt1 = _State_Pt1_WaitKE2 pt1 pt2 t /\
+      UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+      UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+      UC_Fwd.IF._st = UC_Fwd._State_IF_Init /\
+      UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+      UC_KE.IF._st = UC_KE._State_IF_WaitSim2 (_intport_Pt1 UC_SMCReal._self) (_intport_Pt2 UC_SMCReal._self) (log k)
+      ==>
+res = None
+      /\
+      RFCore.MakeRF.self = UC_SMCReal._self /\
+      UC_SMCReal._st_Pt1 = _State_Pt1_WaitKE2 pt1 pt2 t /\
+      UC_SMCReal._st_Pt2 = _State_Pt2_WaitFwd k /\
+      UC_Fwd.IF._self = _addr_Fwd UC_SMCReal._self /\
+      UC_Fwd.IF._st = UC_Fwd._State_IF_Init /\
+      UC_KE.IF._self = _addr_KE UC_SMCReal._self /\
+      UC_KE.IF._st = UC_KE._State_IF_WaitSim2 (_intport_Pt1 UC_SMCReal._self) (_intport_Pt2 UC_SMCReal._self) (log k)
+] = 1%r.
+proof.
+proc.
+  sp 1.
+if; last first. progress;smt().
+inline loop.
+sp 3.
+  rcondt 0. auto.
+  inline invoke.
+  sp 2.
+  if.
+  sp 2.
+  if;last first.
+  sp 2.
+  inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+  inline parties.
+  sp 2.
+  match _State_IF_Init 0. auto;smt().
+  match None 0. auto;progress;smt(@UCListPO UC_Fwd.UC_FwDir.D.eq_of_valid__fw_req).
+  sp 3.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+  if.
+  sp 2.
+  if;last first.
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+inline parties.
+  sp 2.
+  match _State_IF_WaitSim2 0. auto;smt().
+match None 0. auto;progress;smt(@UCListPO UC_KE.UC_KEDir.Pt1.eq_of_valid__ke_req1).
+  sp 3.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+  if.
+inline party_Pt1.
+  sp 2.
+  match _State_Pt1_WaitKE2 0. auto;smt().
+match.
+  
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+  rcondf 0. auto;progress;smt(@UCListPO).
+sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+  if;last first. sp 1.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+sp 1.  auto;progress;smt().
+inline party_Pt2.
+  sp 2.
+  match _State_Pt2_WaitFwd 0. auto;smt().
+  match.
+sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+sp 1.  auto;progress;smt().
+rcondf 0. auto;progress;smt(@UCListPO).
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+qed.
+
+
+
+
+
+
+
+local lemma SMCRealKEIdealSimp_invoke2_SandT (pt1 pt2 : port, t : text, k : key) : phoare [
    SMCRealKEIdealSimp.invoke :
       mi_invoke_loop_calls_func_invoke SMCRealKEIdealSimp._self m /\
       (m.`1 = Adv /\ m.`2.`1 = _addr_KE SMCRealKEIdealSimp._self /\  m.`3.`1 = adv /\
@@ -1242,6 +1520,35 @@ smt(). smt(SMCRealKEIdealSimpRel2). smt().
        call{1} (SMCRealKEIdeal_invoke1_fail pt1 pt2 t).
 auto;progress;smt().
 
+move => pt1 pt2 t k smc_real_ke_ideal_simp_rel2.
+         proc *.
+       case (m{2}.`1 = UCBasicTypes.Adv /\
+        m{2}.`2.`1 = _addr_KE SMCRealKEIdealSimp._self{2} /\
+         m{2}.`3.`1 = adv /\ UC_KE.UC_KEI2S.epdp__ke_sim_rsp.`dec m{2} <> None).
+       
+        call{2} (SMCRealKEIdealSimp_invoke2_SandT pt1 pt2 t k).
+         call{1} (SMCRealKEIdeal_invoke2_SandT pt1 pt2 t k).
+         skip. move => &1 &2 P.
+    have Q : smc_real_ke_ideal_simp_rel3
+       {| smc_real_ke_ideal_simp_rel_st_cra = RFCore.MakeRF.self{1};
+           smc_real_ke_ideal_simp_rel_st_ria = UC_SMCReal._self{1};
+           smc_real_ke_ideal_simp_rel_st_r1s = _State_Pt1_Final;
+           smc_real_ke_ideal_simp_rel_st_r2s = UC_SMCReal._st_Pt2{1};
+           smc_real_ke_ideal_simp_rel_st_fwa = UC_Fwd.UC_Forw._self{1};
+           smc_real_ke_ideal_simp_rel_st_fws = UC_Fwd._State_IF_Wait
+        (_intport_Pt1 UC_SMCReal._self{1})
+        (_intport_Pt2 UC_SMCReal._self{1})
+        (epdp_port_port_key_univ.`enc (pt1, pt2, epdp_text_key.`enc t ^^ k));
+           smc_real_ke_ideal_simp_rel_st_keia = UC_KE.UC_KEIdeal._self{1};
+           smc_real_ke_ideal_simp_rel_st_keis = UC_KE._State_IF_Final;
+           smc_real_ke_ideal_simp_rel_st_risa = SMCRealKEIdealSimp._self{2};
+         smc_real_ke_ideal_simp_rel_st_riss = SMCRealKEIdealSimpStateWaitAdv3 pt1 pt2 t k; |} pt1 pt2 t k.
+          progress;smt(@KeysExponentsAndPlaintexts).
+          progress;smt(SMCRealKEIdealSimpRel3).
+
+      call{2} (SMCRealKEIdealSimp_invoke2_fail pt1 pt2 t k).
+          call{1} (SMCRealKEIdeal_invoke2_fail pt1 pt2 t k).
+      auto;progress;smt().
      qed.
 
 local lemma Exper_SMCRealKEIdeal_SMCRealKEIdealSimp
