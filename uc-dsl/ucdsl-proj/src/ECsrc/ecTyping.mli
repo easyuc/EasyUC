@@ -13,10 +13,6 @@ open EcFol
 open EcMatching.Position
 
 (* -------------------------------------------------------------------- *)
-type wp = EcEnv.env -> EcMemory.memenv -> stmt -> EcFol.form -> EcFol.form option
-val  wp : wp option ref
-
-(* -------------------------------------------------------------------- *)
 type opmatch = [
   | `Op   of EcPath.path * EcTypes.ty list
   | `Lc   of EcIdent.t
@@ -234,6 +230,7 @@ val trans_codepos_range : ?memory:EcMemory.memory -> env -> pcodepos_range -> co
 val trans_codepos1 : ?memory:EcMemory.memory -> env -> pcodepos1 -> codepos1
 val trans_codepos : ?memory:EcMemory.memory -> env -> pcodepos -> codepos
 val trans_dcodepos1 : ?memory:EcMemory.memory -> env -> pcodepos1 doption -> codepos1 doption
+val trans_codeoffset1 : ?memory:EcMemory.memory -> env -> pcodeoffset1 -> codeoffset1
 
 (* -------------------------------------------------------------------- *)
 type ptnmap = ty EcIdent.Mid.t ref

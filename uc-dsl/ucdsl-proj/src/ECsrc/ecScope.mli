@@ -173,6 +173,16 @@ module Theory : sig
    * theory. *)
   val require : scope -> (required_info * thmode) -> (scope -> scope) -> scope
 
+  (* start/finish adding a new top-level required theory, not
+     necessarily produced using a loader or having a corresponding
+     file
+
+     require_start enters the theory, starting from a for-loading scope
+
+     require_finish requires in old the result of exiting new_ *)
+  val require_start  : required_info * thmode -> scope -> scope
+  val require_finish : required_info -> old:scope -> new_:scope -> scope
+
   val add_clears : (pqsymbol option) list -> scope -> scope
 
   val required : scope -> required
