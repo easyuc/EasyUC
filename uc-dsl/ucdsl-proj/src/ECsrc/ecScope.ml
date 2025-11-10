@@ -1143,6 +1143,7 @@ module Op = struct
       | `Plain e  -> Some (OP_Plain (fs e))
       | `Fix opfx ->
           Some (OP_Fix {
+            opf_recp     = EcPath.pqname (EcEnv.root eenv) (EcIdent.name opfx.EHI.mf_name);
             opf_args     = opfx.EHI.mf_args;
             opf_resty    = opfx.EHI.mf_codom;
             opf_struct   = (opfx.EHI.mf_recs, List.length opfx.EHI.mf_args);
@@ -1738,6 +1739,22 @@ module Theory = struct
         end
 
   (* -------------------------------------------------------------------- *)
+  let require_start ((ri, mode) : required_info * thmode) (old : scope)
+        : scope =
+    assert (old.sc_pr_uc = None && not (required old ri));
+    let new_ = enter (for_loading old) mode ri.rqd_name `Global in
+    { new_ with sc_env = EcSection.astop new_.sc_env }
+
+  let require_finish (ri : required_info) ~(old : scope) ~(new_ : scope)
+        : scope =
+    let (cth, rqs), (name', _), new_ = exit_r ~pempty:`No new_ in
+    assert (ri.rqd_name = name');
+    let scope =
+      { old with sc_loaded =
+          Msym.add ri.rqd_name (oget cth, rqs) new_.sc_loaded; } in
+    require_loaded ri scope
+
+  (* -------------------------------------------------------------------- *)
   let required scope = scope.sc_required
 
   (* -------------------------------------------------------------------- *)
@@ -1839,7 +1856,7 @@ module Cloning = struct
       | Some pt ->
           let t = { pt_core = pt; pt_intros = []; } in
           let t = { pl_loc = pt.pl_loc; pl_desc = Pby (Some [t]); } in
-          let t = { pt_core = t; pt_intros = []; } in 
+          let t = { pt_core = t; pt_intros = []; } in
           let (x, ax) = axc.C.axc_axiom in
 
           let pucflags = { puc_smt = true; puc_local = false; } in
@@ -1896,7 +1913,7 @@ module Cloning = struct
         | `Include -> scope)
         scope
     in
-    
+
     if is_none thcl.pthc_local && oth.cth_loca = `Local then
       notify scope `Info
         "Theory `%s` has inherited `local` visibility. \
@@ -1985,14 +2002,14 @@ module Ty = struct
     let carrier =
       let ue = EcUnify.UniEnv.create None in
       transty tp_tydecl env ue subtype.pst_carrier in
-    
+
     let pred =
       let x = EcIdent.create (fst subtype.pst_pred).pl_desc in
       let env = EcEnv.Var.bind_local x carrier env in
       let ue = EcUnify.UniEnv.create None in
       let pred = EcTyping.trans_prop env ue (snd subtype.pst_pred) in
       if not (EcUnify.UniEnv.closed ue) then
-        hierror ~loc:(snd subtype.pst_pred).pl_loc 
+        hierror ~loc:(snd subtype.pst_pred).pl_loc
           "the predicate contains free type variables";
       let uidmap = EcUnify.UniEnv.close ue in
       let fs = Tuni.subst uidmap in
@@ -2014,12 +2031,12 @@ module Ty = struct
             ev_bynames = Msym.empty;
             ev_global  =  [ (None, Some [`Include, "prove"]) ]
           } } in
- 
+
     let cname = Option.map unloc subtype.pst_cname in
     let npath = ofold ((^~) EcPath.pqname) (EcEnv.root env) cname in
     let cpath = EcPath.fromqsymbol ([EcCoreLib.i_top], "Subtype") in
     let theory = EcEnv.Theory.by_path ~mode:`Abstract cpath env in
-      
+
     let renames =
       match subtype.pst_rename with
       | None -> []
@@ -2042,7 +2059,7 @@ module Ty = struct
         ) in
 
     let proofs = Cloning.replay_proofs scope `Check proofs in
-    
+
     Ax.add_defer scope proofs
 
   (* ------------------------------------------------------------------ *)

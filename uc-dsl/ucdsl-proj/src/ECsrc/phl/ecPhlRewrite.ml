@@ -5,6 +5,7 @@ open EcCoreGoal
 open EcEnv
 open EcModules
 open EcFol
+open Batteries
 
 (* -------------------------------------------------------------------- *)
 let t_change
@@ -112,7 +113,7 @@ let process_rewrite_rw
     let data, e =
       EcUtils.ofdfl
         (fun () -> tc_error !!tc "cannot find a pattern to rewrite")
-        (List.find_map try1 pts) in
+        (List.find_map_opt try1 pts) in
 
     (m, data), expr_of_ss_inv e
   in
@@ -167,3 +168,101 @@ let process_rewrite
   match rw with
   | `Rw rw -> process_rewrite_rw side pos rw tc
   | `Simpl -> process_rewrite_simpl side pos tc
+
+(* -------------------------------------------------------------------- *)
+let t_change_stmt
+  (side : side option)
+  (pos : EcMatching.Position.codepos_range) 
+  (s : stmt)
+  (tc : tcenv1)
+=
+  let env = FApi.tc1_env tc in
+  let me, stmt = EcLowPhlGoal.tc1_get_stmt side tc in 
+
+  let (zpr, _), (stmt, epilog) = EcMatching.Zipper.zipper_and_split_of_cpos_range env pos stmt in
+
+  let pvs = EcPV.is_write env (stmt @ s.s_node) in
+  let pvs, globs = EcPV.PV.elements pvs in
+
+  let pre_pvs, pre_globs = EcPV.PV.elements @@ EcPV.PV.inter 
+    (EcPV.is_read env stmt) 
+    (EcPV.is_read env s.s_node)
+  in
+
+  let mleft = EcIdent.create "&1" in (* FIXME: PR: is this how we want to do this? *)
+  let mright = EcIdent.create "&2" in
+
+  let eq =
+   List.map
+     (fun (pv, ty) -> f_eq (f_pvar pv ty mleft).inv (f_pvar pv ty mright).inv)
+     pvs
+   @
+   List.map
+     (fun mp -> f_eqglob mp mleft mp mright)
+     globs in
+
+  let pre_eq = 
+    List.map
+      (fun (pv, ty) -> f_eq (f_pvar pv ty mleft).inv (f_pvar pv ty mright).inv)
+      pre_pvs
+    @
+    List.map
+      (fun mp -> f_eqglob mp mleft mp mright)
+      pre_globs
+    in
+
+  let goal1 =
+     f_equivS
+       (snd me) (snd me)
+       {ml=mleft; mr=mright; inv=f_ands pre_eq} 
+       (EcAst.stmt stmt) s
+       {ml=mleft; mr=mright; inv=f_ands eq}
+  in
+
+  let stmt = EcMatching.Zipper.zip { zpr with z_tail = s.s_node @ epilog } in
+
+  let goal2 =
+   EcLowPhlGoal.hl_set_stmt
+     side (FApi.tc1_goal tc)
+     stmt in
+
+  FApi.xmutate1 tc `ProcChangeStmt [goal1; goal2]
+
+(* -------------------------------------------------------------------- *)
+let process_change_stmt
+  (side   : side option)
+  (pos    : pcodepos_range)
+  (s      : pstmt)
+  (tc     : tcenv1)
+=
+  let env = FApi.tc1_env tc in
+
+  begin match side, (FApi.tc1_goal tc).f_node with
+  | _, FhoareF _ 
+  | _, FeHoareF _
+  | _, FequivF _
+  | _, FbdHoareF _ -> tc_error !!tc "Expecting goal with inlined program code"
+  | Some _, FhoareS _ 
+  | Some _, FeHoareS _
+  | Some _, FbdHoareS _-> tc_error !!tc "Tactic should not receive side for non-relational goal"
+  | None, FequivS _ -> tc_error !!tc "Tactic requires side selector for relational goal"
+  | None, FhoareS _ 
+  | None, FeHoareS _
+  | None, FbdHoareS _
+  | Some _ , FequivS _ -> ()
+  | _ -> tc_error !!tc "Wrong goal shape, expecting hoare or equiv goal with inlined code"
+  end;
+
+  let me, _ = EcLowPhlGoal.tc1_get_stmt side tc in 
+
+  let pos = 
+    let env = EcEnv.Memory.push_active_ss me env in
+    EcTyping.trans_codepos_range ~memory:(fst me) env pos 
+  in
+
+  let s = match side with 
+  | Some side -> EcProofTyping.tc1_process_prhl_stmt tc side s
+  | None -> EcProofTyping.tc1_process_Xhl_stmt tc s 
+  in
+
+  t_change_stmt side pos s tc
