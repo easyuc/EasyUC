@@ -1220,7 +1220,7 @@ assert_msg_out :
   | ASSERT; w = lident; sme = sent_msg_expr; ct = assert_ctrl;
       {
         if (unloc w) = "msg_out"
-        then Assert (mk_loc (loc w) (EffectMsgOut (sme, ct)))
+        then Assert (mk_loc (loc w) (EffMsgOut (sme, ct)))
         else error_message (loc w)
               (fun ppf ->
                  fprintf ppf
@@ -1245,9 +1245,9 @@ assert_other_effect :
   | ASSERT; ew = lident;
       {
         match (unloc ew) with
-        | "ok"       -> Assert (mk_loc (loc ew) EffectOK)
-        | "rand"     -> Assert (mk_loc (loc ew) EffectRand)
-        | "fail_out" -> Assert (mk_loc (loc ew) EffectFailOut)
+        | "ok"       -> Assert (mk_loc (loc ew) EffOK)
+        | "rand"     -> Assert (mk_loc (loc ew) EffRand)
+        | "fail_out" -> Assert (mk_loc (loc ew) EffFailOut)
         | _          ->
           error_message (loc ew)
           (fun ppf ->

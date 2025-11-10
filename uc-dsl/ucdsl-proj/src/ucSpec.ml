@@ -291,13 +291,13 @@ type control =
   | CtrlEnv
   | CtrlAdv
 
-type peffect_r =
-  | EffectOK
-  | EffectRand
-  | EffectMsgOut of sent_msg_expr * control
-  | EffectFailOut
+type peff_r =
+  | EffOK
+  | EffRand
+  | EffMsgOut of sent_msg_expr * control
+  | EffFailOut
 
-type peffect = peffect_r located
+type peff = peff_r located
 
 type interpreter_command_u =
   | Load   of psymbol
@@ -311,7 +311,7 @@ type interpreter_command_u =
   | Prover of EcParsetree.pprover_infos
   | Hint   of mod_dbs
   | Finish
-  | Assert of peffect
+  | Assert of peff
   | Debug
   | Undo   of int located
   | Quit
