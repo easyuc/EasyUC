@@ -36,16 +36,23 @@ type require_t =
 
 val require_theory : require_t -> unit
 
+(* start/finish adding a new top-level required theory, not
+   corresponding to a file
+
+  require_start enters the theory, giving it the supplied name, and
+  starting from a for-loading scope
+ 
+  require_finish requires in old the result of exiting new_ *)
+
+val require_theory_start  : string -> EcTheory.thmode -> unit
+val require_theory_finish :
+      string -> old:EcScope.scope -> new_:EcScope.scope -> unit
+
 (* push new scope onto stack, created from the current one, but
     reverting the environment and required theories to the ones
     of the prelude *)
 
 val new_scope : unit -> unit
-
-(* end current scope, reverting to previous one from stack, which is
-   updated to include required theories of ended scope *)
-
-val end_scope : unit -> unit
 
 (* end scope, reverting to previous one from stack, but ignoring the
    scope being ended *)

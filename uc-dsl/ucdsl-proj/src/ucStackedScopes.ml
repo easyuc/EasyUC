@@ -51,19 +51,25 @@ let require_theory ((nm, name, export) : require_t) =
   (fun top -> EcCommands.process_internal EcCommands.loader top query)
   (! scopes_stack)
 
-let new_scope () =
-  let newscope = EcScope.for_loading (current_scope ()) in
-  scopes_stack := newscope :: !scopes_stack
+let require_theory_start (name : string) (thmode : EcTheory.thmode) =
+  let new_ =
+    EcScope.Theory.require_start (name, thmode) (current_scope ()) in
+  scopes_stack := new_ :: (! scopes_stack)
 
-let end_scope () =
+let require_theory_finish (name : string) ~old:scope ~new_:scope =
   match !scopes_stack with
   | top :: prev :: rest ->
-      let new_scope =
-        EcScope.Theory.update_with_required ~dst:prev ~src:top in
-      scopes_stack := new_scope :: rest
+      let repl = EcScope.Theory.require_finish name ~old:prev ~new_:top in
+      scopes_stack := repl :: rest
   | _                   -> raise InvalidScopesStack
+
+let new_scope () =
+  let new_ = EcScope.for_loading (current_scope ()) in
+  scopes_stack := new_ :: !scopes_stack
 
 let end_scope_ignore () =
   match !scopes_stack with
   | _ :: ((_ :: _) as rest) -> scopes_stack := rest
   | _                       -> raise InvalidScopesStack
+
+
