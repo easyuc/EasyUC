@@ -1601,6 +1601,13 @@ module Theory = struct
       | None -> assert false
 
   (* ------------------------------------------------------------------ *)
+  let update_with_required ~(dst : scope) ~(src : scope) =
+    let dst =
+      let sc_loaded = src.sc_loaded
+      in { dst with sc_loaded }
+    in List.fold_right require_loaded src.sc_required dst
+
+  (* ------------------------------------------------------------------ *)
   let add_clears clears scope =
     let clears =
       let for1 = function
@@ -1729,33 +1736,26 @@ module Theory = struct
         end
 
   (* -------------------------------------------------------------------- *)
-  let require_start ((name_, mode) : symbol * thmode) (old : scope)
+  let require_start ((thname, mode) : symbol * thmode) (old : scope)
         : scope =
-    let ri = {
-      rqd_name      = name_;
-      rqd_kind      = `EcA;   (* not used *)
-      rqd_namespace = None;   (* not used *)
-      rqd_digest    = "";     (* not used *)
-      rqd_direct    = false;  (* not used *)
-    } in
-    assert (old.sc_pr_uc = None && not (required old ri));
-    let new_ = enter (for_loading old) mode ri.rqd_name `Global in
+    assert (old.sc_pr_uc = None);
+    let new_ = enter (for_loading old) mode thname `Global in
     { new_ with sc_env = EcSection.astop new_.sc_env }
 
-  let require_finish (name_ : symbol) ~(old : scope) ~(new_ : scope)
+  let require_finish (thname : symbol) ~(old : scope) ~(new_ : scope)
         : scope =
-    let ri = {
-      rqd_name      = name_;
-      rqd_kind      = `EcA;   (* not used *)
-      rqd_namespace = None;   (* not used *)
-      rqd_digest    = "";     (* not used *)
-      rqd_direct    = false;  (* not used *)
-    } in
     let (cth, rqs), (name', _), new_ = exit_r ~pempty:`No new_ in
-    assert (name_ = name');
+    assert (thname = name');
     let scope =
       { old with sc_loaded =
-          Msym.add name_ (oget cth, rqs) new_.sc_loaded; } in
+          Msym.add thname (oget cth, rqs) new_.sc_loaded; } in
+    let ri =
+      { rqd_name      = thname;
+        rqd_namespace = None;   (* dummy *)
+        rqd_kind      = `EcA;   (* dummy *)
+        rqd_digest    = "";     (* dummy *)
+        rqd_direct    = false;  (* dummy *)
+      } in
     require_loaded ri scope
 
   (* -------------------------------------------------------------------- *)

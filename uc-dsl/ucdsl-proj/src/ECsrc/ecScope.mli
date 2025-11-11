@@ -141,6 +141,11 @@ module Theory : sig
 
   exception TopScope
 
+  (* [update_with_required dst src] updates [dst] with the required
+   * theories of [src]; the loaded entries of [src] must include
+   * all those of [dst] *)
+  val update_with_required : dst:scope -> src:scope -> scope
+
   (* [enter scope mode name] start a theory in scope [scope] with
    * name [name] and mode (abstract/concrete) [mode]. *)
   val enter : scope -> thmode -> symbol -> EcTypes.is_local -> scope
@@ -169,14 +174,14 @@ module Theory : sig
    * theory. *)
   val require : scope -> (required_info * thmode) -> (scope -> scope) -> scope
 
-  (* start/finish adding a new top-level required theory, not
-     necessarily produced using a loader or having a corresponding
-     file
+  (* start/finish adding a new top-level required theory, not having a
+     corresponding file
 
-     require_start enters the theory, giving it the supplied name
-     and theory mode, and starting from a for-loading scope
+     [require_start] enters the theory, with the given name and mode,
+     starting from a for-loading scope; the name must not already be
+     loaded
 
-     require_finish requires in old the result of exiting new_ *)
+     [require_finish] requires in old the result of exiting [new_] *)
   val require_start  : symbol * thmode -> scope -> scope
   val require_finish : symbol -> old:scope -> new_:scope -> scope
 

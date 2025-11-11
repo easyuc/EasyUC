@@ -56,7 +56,7 @@ let require_theory_start (name : string) (thmode : EcTheory.thmode) =
     EcScope.Theory.require_start (name, thmode) (current_scope ()) in
   scopes_stack := new_ :: (! scopes_stack)
 
-let require_theory_finish (name : string) ~old:scope ~new_:scope =
+let require_theory_finish (name : string) =
   match !scopes_stack with
   | top :: prev :: rest ->
       let repl = EcScope.Theory.require_finish name ~old:prev ~new_:top in

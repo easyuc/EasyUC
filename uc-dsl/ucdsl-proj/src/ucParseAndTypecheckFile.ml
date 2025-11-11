@@ -36,6 +36,8 @@ let parse_and_typecheck_file_or_id foid =
     match IdMap.find_opt uc_root (!cache) with
     | None                      ->
         let (spec, qual_file) = parse_file_or_id foid in
+        let () =
+          UcStackedScopes.require_theory_start ("_" ^ uc_root) `Abstract in
         let maps =
           typecheck qual_file
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
