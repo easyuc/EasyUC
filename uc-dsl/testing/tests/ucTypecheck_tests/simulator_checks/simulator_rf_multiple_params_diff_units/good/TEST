@@ -2,6 +2,10 @@ description
   Resolution of simulator checking test in which simulated real
   functionality has two parameters from different units
   and so where the message paths won't be interchangeable.
+
+  But this also tests a scope managment subtlety, that
+  EcScope.Theory.update with required unions the loaded theories of
+  the source and destination scopes.
 .
 args: -I supporting SMC2.uc
 outcome: success

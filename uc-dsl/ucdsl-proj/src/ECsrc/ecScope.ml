@@ -1603,7 +1603,10 @@ module Theory = struct
   (* ------------------------------------------------------------------ *)
   let update_with_required ~(dst : scope) ~(src : scope) =
     let dst =
-      let sc_loaded = src.sc_loaded
+      let sc_loaded =
+        Msym.union
+          (fun _ x y -> assert (x ==(*phy*) y); Some x)
+          dst.sc_loaded src.sc_loaded
       in { dst with sc_loaded }
     in List.fold_right require_loaded src.sc_required dst
 
@@ -1736,19 +1739,17 @@ module Theory = struct
         end
 
   (* -------------------------------------------------------------------- *)
-  let require_start ((thname, mode) : symbol * thmode) (old : scope)
-        : scope =
+  let require_start ((thname, mode) : symbol * thmode) (old : scope) : scope =
     assert (old.sc_pr_uc = None);
     let new_ = enter (for_loading old) mode thname `Global in
     { new_ with sc_env = EcSection.astop new_.sc_env }
 
-  let require_finish (thname : symbol) ~(old : scope) ~(new_ : scope)
-        : scope =
-    let (cth, rqs), (name', _), new_ = exit_r ~pempty:`No new_ in
-    assert (thname = name');
-    let scope =
-      { old with sc_loaded =
-          Msym.add thname (oget cth, rqs) new_.sc_loaded; } in
+  let require_finish (thname : symbol) (scope : scope) : scope =
+    let (cth, rqs), (name', _), scope = exit_r ~pempty:`No scope in
+    assert (thname = name' && not (Msym.mem thname scope.sc_loaded));
+    let loaded =
+      { scope with sc_loaded =
+          Msym.add thname (oget cth, rqs) scope.sc_loaded; } in
     let ri =
       { rqd_name      = thname;
         rqd_namespace = None;   (* dummy *)
@@ -1756,7 +1757,7 @@ module Theory = struct
         rqd_digest    = "";     (* dummy *)
         rqd_direct    = false;  (* dummy *)
       } in
-    require_loaded ri scope
+    require_loaded ri loaded
 
   (* -------------------------------------------------------------------- *)
   let required scope = scope.sc_required

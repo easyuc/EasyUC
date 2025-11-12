@@ -178,12 +178,16 @@ module Theory : sig
      corresponding file
 
      [require_start] enters the theory, with the given name and mode,
-     starting from a for-loading scope; the name must not already be
-     loaded
+     starting from a scope identical to the supplied one except that
+     the environment and required theories are reset to the ones from
+     the prelude; a proof must not be in progress
 
-     [require_finish] requires in old the result of exiting [new_] *)
+     [require_finish thname scope] requires in [scope] the result of
+     exiting the top-level theory of [scope], asserting that the theory
+     exited was [thname] and that it was not already loaded *)
+
   val require_start  : symbol * thmode -> scope -> scope
-  val require_finish : symbol -> old:scope -> new_:scope -> scope
+  val require_finish : symbol -> scope -> scope
 
   val add_clears : (pqsymbol option) list -> scope -> scope
 

@@ -2295,11 +2295,8 @@ let load_uc_req
           ("@[UC@ (.uc)@ file@ to@ be@ required@ must@ begin@ " ^^
            "with@ uppercase@ letter:@ %s@]")
           uid)
-  else let () = UcStackedScopes.new_scope () in
-       let maps' = check_id id in
-       let maps = union_maps maps maps' in
-       let () = UcStackedScopes.end_scope () in
-       maps
+  else let maps' = check_id id in
+       union_maps maps maps'
 
 let load_uc_reqs
     (root : symbol) (check_id : psymbol -> maps_tyd) (maps : maps_tyd)
