@@ -229,13 +229,12 @@ let interpret (lexbuf : L.lexbuf) =
     push_print news
   in
 
-  let funexp (fe : fun_expr): unit =
+  let funexp (fe : fun_expr) : unit =
     let c = currs() in
-    let config_gen = create_gen_config
-      (Option.get c.root)
-      (Option.get c.maps)
-      (UcEcInterface.env ())
-      fe
+    let root = Option.get c.root in
+    let maps = Option.get c.maps in
+    let env = EcScope.env (IdMap.find root maps.ec_scope_map) in
+    let config_gen = create_gen_config root maps env fe
     in
     let news =
       {
