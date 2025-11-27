@@ -1,0 +1,163 @@
+
+require import UCCore.
+
+require UC__SMC2.
+
+clone include UC__SMC2.
+
+require import KeysExponentsAndPlaintexts.
+
+print glob RFIP.
+type real_rec = {
+  _self : addr;
+  _st_Pt1 : _state_Pt1;
+  _st_Pt2 : _state_Pt2;
+  core_self : addr;
+  Fwd1_self : addr;
+  Fwd1_st : UC_Fwd1._state_IF;
+  Fwd2_self : addr;
+  Fwd2_st : UC_Fwd2._state_IF;
+  SMC1_self : addr;
+  SMC1_st : UC_SMC1._state_IF;
+  SMC2_self : addr;
+  SMC2_st : UC_SMC2._state_IF;
+  }.
+
+  op to_real_rec (st_real : glob RFIP) : real_rec =
+  {|
+    _self = st_real.`1;
+  _st_Pt1 = st_real.`2;
+  _st_Pt2 = st_real.`3;
+  core_self = st_real.`4;
+  Fwd1_self = st_real.`5;
+  Fwd1_st = st_real.`6;
+  Fwd2_self = st_real.`7;
+  Fwd2_st = st_real.`8;
+  SMC1_self = st_real.`9;
+  SMC1_st = st_real.`10;
+  SMC2_self = st_real.`11;
+  SMC2_st = st_real.`12;
+    |}.
+
+  op to_real_glob (st_real : real_rec) : glob RFIP =
+  (
+     st_real.`_self,
+  st_real.`_st_Pt1,
+  st_real.`_st_Pt2,
+  st_real.`core_self,
+  st_real.`Fwd1_self,
+  st_real.`Fwd1_st,
+  st_real.`Fwd2_self,
+  st_real.`Fwd2_st,
+  st_real.`SMC1_self,
+  st_real.`SMC1_st,
+  st_real.`SMC2_self,
+  st_real.`SMC2_st
+  ).
+
+  print glob IF.
+  type ideal_rec = {
+    ideal_self : addr;
+    ideal_st : _state_IF;
+  }.
+  op to_ideal_rec(st_ideal : glob IF) : ideal_rec =
+  {|
+    ideal_self = st_ideal.`1;
+    ideal_st = st_ideal.`2;
+    |}.
+  op to_ideal_glob(st_ideal : ideal_rec) : glob IF =
+  (
+    st_ideal.`ideal_self,
+    st_ideal.`ideal_st
+    ).
+
+    print glob SIM.
+    type sim_rec = {
+      if_ao : addr option;
+      core_if_ao : addr option;
+      sim_st : _state_SIM;
+    }.
+    
+  op to_sim_rec(st_sim : glob SIM) : sim_rec =
+  {|
+    if_ao = st_sim.`2;
+    core_if_ao = st_sim.`3;
+    sim_st = st_sim.`1;
+    |}.
+
+  op to_sim_glob(st_sim : sim_rec) : glob SIM =
+  (
+    st_sim.`sim_st,
+    st_sim.`if_ao,
+    st_sim.`core_if_ao
+    ).
+    
+  op smc2_real_ideal_C (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =    
+  st_sim.`core_if_ao = st_sim.`if_ao /\ 
+  st_ideal.`ideal_self = st_real.`_self /\
+  st_real.`_self = st_real.`core_self /\
+  st_real.`Fwd1_self = _addr_Fwd1 st_real.`_self /\
+  st_real.`Fwd2_self = _addr_Fwd2 st_real.`_self /\
+  st_real.`SMC1_self = _addr_SMC1 st_real.`_self /\
+  st_real.`SMC2_self = _addr_SMC2 st_real.`_self
+.
+
+
+op smc2_real_ideal_0 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =
+  smc2_real_ideal_C st_real st_ideal st_sim /\
+  st_real.`_st_Pt1 = _State_Pt1_WaitReq /\
+  st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
+  st_real.`Fwd1_st = UC_Fwd1._State_IF_Init /\
+  st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
+  st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
+  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq /\
+  st_ideal.`ideal_st = _State_IF_WaitReq1 /\
+  st_sim.`sim_st = _State_SIM_WaitReq1 /\
+  st_sim.`if_ao = None
+  .
+
+op smc2_real_ideal_1 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec,
+pt1 pt2 : port, t : text) : bool =
+  smc2_real_ideal_C st_real st_ideal st_sim /\
+  st_real.`_st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
+  st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
+  st_real.`Fwd1_st = UC_Fwd1._State_IF_Wait
+(_intport_Pt1 st_real.`_self)
+(_intport_Pt2 st_real.`_self)
+(epdp_port_port_univ.`enc (pt1, pt2)) /\
+  st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
+  st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
+  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq /\
+  st_ideal.`ideal_st = _State_IF_WaitSim1 pt1 pt2 t /\
+  st_sim.`sim_st = _State_SIM_WaitAdv1 /\
+  st_sim.`if_ao = Some st_ideal.`ideal_self
+  .
+
+inductive smc2_real_ideal_rel (st_real : glob RFIP, st_ideal : glob IF, st_sim : glob SIM) =
+  SMCRealKEIdealSimpRel0
+of (smc2_real_ideal_0 (to_real_rec st_real) (to_ideal_rec st_ideal) (to_sim_rec st_sim))
+  | SMCRealKEIdealSimpRel1 (pt1 pt2 : port, t : text)
+of (smc2_real_ideal_0 (to_real_rec st_real) (to_ideal_rec st_ideal) (to_sim_rec st_sim) pt1 pt2 t)
+
+module AllCGs = {module UC__AllCGs = AllCGs_}.
+
+(*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
+  
+lemma SMC2_RFIP_IF_advantage
+    (Env <: ENV{-MI, -RFIP, -IF, -SIM})
+    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      (*adv pis of KE are disj. from in_guard'*)    
+ `|Pr[Exper(MI(RFIP, Adv), Env)
+         .main(func', in_guard')
+           @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env)
+         .main(func', in_guard')
+      @ &m : res]| <=
+    0.0
+      .
+proof.
+admit.
+qed.     
