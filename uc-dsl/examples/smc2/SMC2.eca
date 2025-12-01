@@ -91,35 +91,48 @@ type real_rec = {
     st_sim.`if_ao,
     st_sim.`core_if_ao
     ).
-    
-  op smc2_real_ideal_C (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =    
-  st_sim.`core_if_ao = st_sim.`if_ao /\ 
-  st_ideal.`ideal_self = st_real.`_self /\
+
+  op smc2_real_C (st_real : real_rec) : bool =
   st_real.`_self = st_real.`core_self /\
   st_real.`Fwd1_self = _addr_Fwd1 st_real.`_self /\
   st_real.`Fwd2_self = _addr_Fwd2 st_real.`_self /\
   st_real.`SMC1_self = _addr_SMC1 st_real.`_self /\
   st_real.`SMC2_self = _addr_SMC2 st_real.`_self
+  .
+
+  op smc2_sim_C (st_sim : sim_rec) : bool =
+  st_sim.`core_if_ao = st_sim.`if_ao.
+    
+  op smc2_real_ideal_C (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =    
+  st_ideal.`ideal_self = st_real.`_self
 .
 
-
-op smc2_real_ideal_0 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =
-  smc2_real_ideal_C st_real st_ideal st_sim /\
+  op smc2_real_0 (st_real : real_rec) : bool =
+  smc2_real_C st_real /\
   st_real.`_st_Pt1 = _State_Pt1_WaitReq /\
   st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
   st_real.`Fwd1_st = UC_Fwd1._State_IF_Init /\
   st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
   st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
-  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq /\
+  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq
+.
+
+  op smc2_ideal_0 (st_ideal : ideal_rec, st_sim : sim_rec) : bool =
+  smc2_sim_C st_sim /\
   st_ideal.`ideal_st = _State_IF_WaitReq1 /\
   st_sim.`sim_st = _State_SIM_WaitReq1 /\
   st_sim.`if_ao = None
+.
+
+op smc2_real_ideal_0 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec) : bool =
+  smc2_real_ideal_C st_real st_ideal st_sim /\
+  smc2_real_0 st_real /\
+  smc2_ideal_0 st_ideal st_sim
   .
 
-op smc2_real_ideal_1 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec,
-pt1 pt2 : port, t : text) : bool =
-  smc2_real_ideal_C st_real st_ideal st_sim /\
-  st_real.`_st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
+op smc2_real_1 (st_real : real_rec, pt1 pt2 : port, t : text) : bool =
+smc2_real_C st_real /\
+st_real.`_st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
   st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
   st_real.`Fwd1_st = UC_Fwd1._State_IF_Wait
 (_intport_Pt1 st_real.`_self)
@@ -127,19 +140,275 @@ pt1 pt2 : port, t : text) : bool =
 (epdp_port_port_univ.`enc (pt1, pt2)) /\
   st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
   st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
-  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq /\
+  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq
+  .
+
+op smc2_ideal_1 (st_ideal : ideal_rec, st_sim : sim_rec, pt1 pt2 : port, t : text) : bool =
+  smc2_sim_C st_sim /\
   st_ideal.`ideal_st = _State_IF_WaitSim1 pt1 pt2 t /\
   st_sim.`sim_st = _State_SIM_WaitAdv1 /\
   st_sim.`if_ao = Some st_ideal.`ideal_self
+  .
+
+op smc2_real_ideal_1 (st_real : real_rec, st_ideal : ideal_rec, st_sim : sim_rec,
+pt1 pt2 : port, t : text) : bool =
+  smc2_real_ideal_C st_real st_ideal st_sim /\
+  smc2_real_1 st_real pt1 pt2 t /\
+  smc2_ideal_1 st_ideal st_sim pt1 pt2 t
   .
 
 inductive smc2_real_ideal_rel (st_real : glob RFIP, st_ideal : glob IF, st_sim : glob SIM) =
   SMCRealKEIdealSimpRel0
 of (smc2_real_ideal_0 (to_real_rec st_real) (to_ideal_rec st_ideal) (to_sim_rec st_sim))
   | SMCRealKEIdealSimpRel1 (pt1 pt2 : port, t : text)
-of (smc2_real_ideal_0 (to_real_rec st_real) (to_ideal_rec st_ideal) (to_sim_rec st_sim) pt1 pt2 t)
+of (smc2_real_ideal_1 (to_real_rec st_real) (to_ideal_rec st_ideal) (to_sim_rec st_sim) pt1 pt2 t).
 
 module AllCGs = {module UC__AllCGs = AllCGs_}.
+
+section.
+
+declare module Adv <: ADV{-MI, -RFIP, -IF, -SIM, -MSCore.CombEnvAdv, -MSCore.MS}.
+declare module Env <: ENV{-Adv, -MI, -RFIP, -IF, -SIM, -MSCore.CombEnvAdv, -MSCore.MS}.
+
+op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
+      (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
+      (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).
+      
+local lemma SMC2Real_invoke0_fail : phoare [
+  RFIP.invoke :
+  mi_invoke_loop_calls_func_invoke RFIP.self m /\
+  !(m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+    envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+      smc2_real_0 (to_real_rec (glob RFIP))
+      ==>
+      res = None /\
+      smc2_real_0 (to_real_rec (glob RFIP))
+] = 1%r.
+proof.
+  proc.
+  sp 1.
+if; last first. progress;smt().
+inline loop.
+  sp 3. wp 1.
+  rcondt 0. auto.
+inline (1) invoke.
+  sp 2.
+  if.
+  inline (1) invoke.
+  sp 2.
+if;last first.
+  sp 2.
+inline after_core.
+sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+  inline parties.
+sp 2.
+  match _State_IF_Init 0. auto;smt().
+  match None 0. auto;progress;smt(@UCListPO UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req).
+  sp 3.
+  inline after_core.
+sp.
+  rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+if.
+  inline (1) invoke.
+  sp 2.
+if;last first.
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+ auto;progress;smt().
+  inline parties.
+sp 2.
+  match _State_IF_Init 0. auto;smt().
+  match None 0. auto;progress;smt(@UCListPO UC_Fwd2.UC_FwDir.D.eq_of_valid__fw_req).
+  sp 3.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+if.
+  inline (1) invoke.
+  sp 2.
+if;last first.
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+auto;progress;smt().
+inline parties.
+sp 2.
+  match _State_IF_WaitReq 0. auto;smt().
+  match None 0. auto;progress;smt(@UCListPO UC_SMC1.UC_SMCDir.Pt1.eq_of_valid__smc_req).
+  sp 3.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+ auto;progress;smt().
+if.
+  inline (1) invoke.
+  sp 2.
+if;last first.
+  sp 2.
+inline after_core.
+  sp.
+rcondf 0. auto;progress;smt().
+auto;progress;smt().
+inline parties.
+sp 2.
+  match _State_IF_WaitReq 0. auto;smt().
+  match None 0. auto;progress;smt(@UCListPO UC_SMC2.UC_SMCDir.Pt1.eq_of_valid__smc_req).
+  sp 3.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+  if.
+  inline party_Pt1.
+  sp 2.
+  match _State_Pt1_WaitReq 0. auto;smt().
+  match.
+ sp 2.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+  auto;progress;smt().
+inline _State_Pt1_WaitReq__SMC2Dir__Pt1__smc_req.
+  sp 4.
+  rcondf 0. auto;progress;smt().
+ sp 4.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+  if.
+inline party_Pt2.
+  sp 2.
+  match _State_Pt2_WaitFwd1 0. auto;smt().
+match.
+ sp 2.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+rcondf 0. auto;progress;smt(@UCListPO).
+ sp 2.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+ sp 1.
+inline after_core.
+  sp.
+  rcondf 0. auto;progress;smt().
+auto;progress;smt().
+qed.
+
+local lemma SMC2Real_invoke1_SandT(m : msg) : phoare [
+  RFIP.invoke :
+  arg = m /\
+  mi_invoke_loop_calls_func_invoke RFIP.self m /\
+  (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+    envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+      smc2_real_0 (to_real_rec (glob RFIP))
+      ==>
+      res =
+      Some (UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
+        {|UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwDir.D.fw_req__u = epdp_port_port_univ.`enc (
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2); |})
+        /\
+      smc2_real_1 (to_real_rec (glob RFIP))
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t
+] = 1%r.
+proof.
+proc.
+  sp 1.
+rcondt 0. auto;smt().
+inline loop.
+  sp 3.
+  rcondt 0. auto.
+  inline (1) invoke.
+sp 2.
+  rcondf 0. auto;progress;smt(@UCListPO).
+  rcondf 0. auto;progress;smt(@UCListPO).
+  rcondf 0. auto;progress;smt(@UCListPO).
+  rcondf 0. auto;progress;smt(@UCListPO).
+rcondt 0. auto;progress;smt(@UCListPO).
+inline party_Pt1.
+  sp 2.
+  match _State_Pt1_WaitReq 0. auto;smt().
+  match Some 0. auto;smt(UC_SMC2Dir.Pt1.eq_of_valid__smc_req).
+  inline _State_Pt1_WaitReq__SMC2Dir__Pt1__smc_req.
+  sp 4.
+  rcondt 0. auto;smt().
+  sp 5.
+inline (1) after_core.
+  sp.
+  rcondt 0. auto;progress;smt(@UCListPO @FSet).
+
+  conseq(_ :
+r0 =
+    Some (UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
+    {| UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwDir.D.fw_req__u =
+          epdp_port_port_univ.`enc (pt1, pt2); |}) /\
+    UC_SMC2Real._st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
+m0 = oget r0 /\ 
+    pt1 = _x.`UC_SMC2Dir.Pt1.smc_req__pt1 /\
+    pt2 = _x.`UC_SMC2Dir.Pt1.smc_req__pt2 /\
+    t = _x.`UC_SMC2Dir.Pt1.smc_req__t /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m = Some _x /\
+    m{!hr} = m /\
+    mi_invoke_loop_calls_func_invoke RFIP.self m /\
+    (m.`1 = Dir /\
+     m.`2 = _extport_dir_Pt1 RFIP.self /\
+     UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+     envport RFIP.self
+       (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2) /\
+    smc2_real_0 {|(to_real_rec (glob RFIP)) with _st_Pt1 = _State_Pt1_WaitReq|}
+     ==> _).
+       auto;progress;smt().
+   inline (1) invoke.
+       sp 2.
+       rcondt 0. auto;smt().
+       inline (1) invoke.
+       sp 2.
+       rcondt 0.
+       skip. move => &1 P.
+       have H : m4{1} = m0{1}. smt(). rewrite H. clear H.
+       have H : m0{1}.`1 = Dir. smt(). rewrite H. clear H.
+       have H : m0{1}.`2.`1 = UC_Fwd1.UC_Forw._self{1}. smt(). rewrite H. clear H.
+       have H : m0{1}.`3 = _intport_Pt1 UC_SMC2Real._self{1}. smt(). rewrite H. clear H.
+   simplify.
+       have H : UC_Fwd1.UC_Forw._self{1} = _addr_Fwd1 UC_SMC2Real._self{1}. smt(). rewrite H. clear H.
+       rewrite /_addr_Fwd1.
+       rewrite /_intport_Pt1.
+   rewrite /envport.
+   progress. smt(@UCListPO).
+   smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
+   have H : envport UC_Fwd1.UC_Forw._self{1} m0{1}.`3. smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
+       UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
+   {| UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self{1};
+     UC_Fwd1.UC_FwDir.D.fw_req__pt1 =
+     _intport_Pt1 UC_SMC2Real._self{1};
+     UC_Fwd1.UC_FwDir.D.fw_req__pt2 =
+     _intport_Pt2 UC_SMC2Real._self{1};
+     UC_Fwd1.UC_FwDir.D.fw_req__u =
+         epdp_port_port_univ.`enc (pt1{1}, pt2{1}); |}. smt(). rewrite H. clear H.
+       auto;progress;smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
+   end section.
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
   
