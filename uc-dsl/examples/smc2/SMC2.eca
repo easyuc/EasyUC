@@ -94,6 +94,7 @@ type real_rec = {
 
   op smc2_real_C (st_real : real_rec) : bool =
   st_real.`_self = st_real.`core_self /\
+  exper_pre st_real.`_self /\
   st_real.`Fwd1_self = _addr_Fwd1 st_real.`_self /\
   st_real.`Fwd2_self = _addr_Fwd2 st_real.`_self /\
   st_real.`SMC1_self = _addr_SMC1 st_real.`_self /\
@@ -317,13 +318,14 @@ local lemma SMC2Real_invoke1_SandT(m : msg) : phoare [
       smc2_real_0 (to_real_rec (glob RFIP))
       ==>
       res =
-      Some (UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
-        {|UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwDir.D.fw_req__u = epdp_port_port_univ.`enc (
+      Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
-            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2); |})
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|})
         /\
       smc2_real_1 (to_real_rec (glob RFIP))
         (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
@@ -385,29 +387,66 @@ m0 = oget r0 /\
        rcondt 0. auto;smt().
        inline (1) invoke.
        sp 2.
-       rcondt 0.
-       skip. move => &1 P.
-       have H : m4{1} = m0{1}. smt(). rewrite H. clear H.
-       have H : m0{1}.`1 = Dir. smt(). rewrite H. clear H.
-       have H : m0{1}.`2.`1 = UC_Fwd1.UC_Forw._self{1}. smt(). rewrite H. clear H.
-       have H : m0{1}.`3 = _intport_Pt1 UC_SMC2Real._self{1}. smt(). rewrite H. clear H.
-   simplify.
-       have H : UC_Fwd1.UC_Forw._self{1} = _addr_Fwd1 UC_SMC2Real._self{1}. smt(). rewrite H. clear H.
-       rewrite /_addr_Fwd1.
-       rewrite /_intport_Pt1.
-   rewrite /envport.
-   progress. smt(@UCListPO).
-   smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
-   have H : envport UC_Fwd1.UC_Forw._self{1} m0{1}.`3. smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
-       UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
-   {| UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self{1};
-     UC_Fwd1.UC_FwDir.D.fw_req__pt1 =
-     _intport_Pt1 UC_SMC2Real._self{1};
-     UC_Fwd1.UC_FwDir.D.fw_req__pt2 =
-     _intport_Pt2 UC_SMC2Real._self{1};
-     UC_Fwd1.UC_FwDir.D.fw_req__u =
-         epdp_port_port_univ.`enc (pt1{1}, pt2{1}); |}. smt(). rewrite H. clear H.
-       auto;progress;smt(UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req @UCListPO).
+       rcondt 0. auto;progress;smt(@UCListPO).
+inline parties.  
+       sp 2.
+       match _State_IF_Init 0. auto;smt().
+       match Some 0. auto;progress;smt().
+       inline _State_IF_Init__FwDir__D__fw_req.
+       sp 4.
+       rcondt 0. auto;progress;smt.
+       sp 5.
+       inline (1) after_core.
+       sp 5. rcondf 0. auto;smt(). sp 1. rcondf 0. auto;smt(). sp 1.
+       rcondf 0. auto;progress;smt(@UCListPO @FSet _adv_pi_begin_gt0).
+       rcondt 0. auto;progress;smt(@UCListPO @FSet _adv_pi_begin_gt0).
+       sp 1.
+       rcondf 0. auto.
+   sp 1.
+   auto;progress;smt.
+ qed.
+
+local lemma Exper_SMC2Real_SMC2Ideal_SMCSim_dummy_adversary
+     (EnvX <: ENV{-MI, -RFIP, -DummyAdv, -UC_SMC2Ideal, -MSCore.MS, -UC_SMC2Sim})
+            (func' : addr, in_guard' : int fset) &m :
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  Pr[Exper(MI(RFIP, DummyAdv), EnvX).main
+       (func', in_guard') @ &m : res] =
+  Pr[Exper(MI(UC_SMC2Ideal, MSCore.MS(UC_SMC2Sim, DummyAdv)), EnvX).main
+       (func', in_guard') @ &m : res].
+     proof.
+     move => exper_pre disjoint.
+     byequiv; first last.
+trivial.
+trivial.
+       proc.
+
+         inline{1} (1) init.
+         inline{2} (1) init.
+         sp 4 4.
+     inline{1} (1) init.
+         inline{2} (1) init.
+         sp 3 3.
+         inline{1} (1) init.
+         inline{2} (1) init.
+         sp 0 1.
+         inline{2} (1) init.
+         sp 0 2.
+         inline{2} (1) init.
+     auto;progress;smt(SimpIdealRel0).
+     call (_ : 
+   ={glob MI} /\
+  MakeInt.MI.func{1} = func' /\
+     MakeInt.MI.in_guard{1} = in_guard' /\
+   SMCRealKEIdealSimp._self{1} = func' /\
+     smc2_real_ideal_0
+   (to_real_rec (glob RFIP))
+   (to_ideal_rec (glob IF))
+   (to_sim_rec (glob SIM))
+
+ );last first. auto;progress;smt(SimpIdealRel0).
+ 
    end section.
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
