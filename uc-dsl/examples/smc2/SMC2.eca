@@ -175,17 +175,17 @@ op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
       (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
       (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).
       
-local lemma SMC2Real_invoke0_fail : phoare [
+local lemma SMC2Real_invoke0_fail : hoare [
   RFIP.invoke :
-  mi_invoke_loop_calls_func_invoke RFIP.self m /\
   !(m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
     UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
-    envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+  envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+  envport RFIP.self m.`3 /\
       smc2_real_0 (to_real_rec (glob RFIP))
       ==>
       res = None /\
       smc2_real_0 (to_real_rec (glob RFIP))
-] = 1%r.
+].
 proof.
   proc.
   sp 1.
@@ -311,11 +311,11 @@ qed.
 local lemma SMC2Real_invoke1_SandT(m : msg) : phoare [
   RFIP.invoke :
   arg = m /\
-  mi_invoke_loop_calls_func_invoke RFIP.self m /\
   (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
     UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
     envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
-      smc2_real_0 (to_real_rec (glob RFIP))
+            envport RFIP.self m.`3 /\
+    smc2_real_0 (to_real_rec (glob RFIP))
       ==>
       res =
       Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
@@ -406,6 +406,195 @@ inline parties.
    auto;progress;smt.
  qed.
 
+ local lemma MI_real_invoke1_SandT(m : msg) : phoare [
+  MakeInt.MI(RFIP, DummyAdv).invoke :
+  arg = m /\
+  (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+    envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+    smc2_real_0 (to_real_rec (glob RFIP)) /\
+  envport MakeInt.MI.func m.`3 /\
+  MakeInt.MI.func = RFIP.self
+  ==>
+  let 
+      rm =
+      UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|} in
+      res = Some (epdp_da_to_env.`enc
+        {| dte_n = rm.`2.`2; dte_pt = rm.`3; dte_tag = rm.`4; dte_u = rm.`5; |})
+        /\
+      smc2_real_1 (to_real_rec (glob RFIP))
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+  MakeInt.MI.func = RFIP.self
+] = 1%r.
+proof.
+  proc.
+  rcondt 0. auto;progress;smt().
+inline loop.
+  sp 3.
+  rcondt 0. auto.
+rcondt 0. auto;progress;smt(@UCListPO).
+  seq 1 : (
+  r0 =
+  Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+        ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+         (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
+        |}) /\
+  smc2_real_1
+    (to_real_rec (glob RFIP))
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+  MakeInt.MI.func = RFIP.self
+  ).
+  conseq (_ : _ ==> _ : = 1%r).
+call (SMC2Real_invoke1_SandT m).
+      auto;progress;smt().
+  conseq (_ : _ ==> _ : = 1%r).
+call (SMC2Real_invoke1_SandT m).
+    auto;progress;smt().
+  seq 1 : (
+  r0 =
+  Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+        ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+         (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
+           |}) /\
+   m0 = oget r0 /\
+  smc2_real_1
+    (to_real_rec (glob RFIP))
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+    (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+      MakeInt.MI.func = RFIP.self
+      /\
+    not_done = true
+).
+exlim r0 => r0.
+conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_to_adv RFIP DummyAdv r0).
+    auto;progress;smt(@UCListPO _adv_pi_begin_gt0).
+exlim r0 => r0.
+conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_to_adv RFIP DummyAdv r0).
+    auto;progress;smt(@UCListPO _adv_pi_begin_gt0).
+    rcondt 0. auto.
+    rcondf 0. auto;progress;smt(@UCListPO).
+inline (1) invoke.
+    sp 2.
+match None 0. auto;progress;smt(eq_of_valid_da_from_env).
+    rcondt 0. auto;progress;smt(_adv_pi_begin_gt0).
+    sp 2.
+    seq 1 :(
+     r0 =
+    Some (epdp_da_to_env.`enc
+      {| dte_n = m1.`2.`2; dte_pt = m1.`3; dte_tag = m1.`4; dte_u = m1.`5; |}) /\
+    m1 = UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+          ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+           (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
+             |} /\
+       m0 = oget r0 /\
+       not_done = false /\
+    smc2_real_1
+      (to_real_rec (glob RFIP))
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+    MakeInt.MI.func = RFIP.self 
+    ).
+exlim r0 => r0.
+conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_adv_to_env RFIP DummyAdv r0).
+    auto;progress;smt(@UCListPO).
+exlim r0 => r0.
+conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_adv_to_env RFIP DummyAdv r0).
+    auto;progress;smt(@UCListPO).
+    rcondf 0. auto.
+    sp.
+        auto;progress;smt(@UCListPO).
+exlim r0 => r0.
+        conseq (_ : _ ==>
+        r0 =
+    Some (epdp_da_to_env.`enc
+      {| dte_n = m1.`2.`2; dte_pt = m1.`3; dte_tag = m1.`4; dte_u = m1.`5; |}) /\
+    m1 = UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+          ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+           (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
+             |} /\
+       m0 = oget r0 /\
+       not_done = false /\
+    smc2_real_1
+      (to_real_rec (glob RFIP))
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+      (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+    MakeInt.MI.func = RFIP.self : = 1%r).
+    call (MakeInt.MI_after_adv_to_env RFIP DummyAdv r0).
+    auto;progress;smt(@UCListPO).
+qed.
+
+ local lemma MI_real_invoke1_SandT(m : msg) : phoare [
+  MakeInt.MI(RFIP, DummyAdv).invoke :
+  arg = m /\
+  (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+    envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+    smc2_real_0 (to_real_rec (glob RFIP)) /\
+  envport MakeInt.MI.func m.`3 /\
+  MakeInt.MI.func = RFIP.self
+  ==>
+  let 
+      rm =
+      UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|} in
+      res = Some (epdp_da_to_env.`enc
+        {| dte_n = rm.`2.`2; dte_pt = rm.`3; dte_tag = rm.`4; dte_u = rm.`5; |})
+        /\
+      smc2_real_1 (to_real_rec (glob RFIP))
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+  MakeInt.MI.func = RFIP.self
+      ] = 1%r.
+      proc *.
+call (MI_real_invoke1_SandT m).
+
+print main_guard.
+
 local lemma Exper_SMC2Real_SMC2Ideal_SMCSim_dummy_adversary
      (EnvX <: ENV{-MI, -RFIP, -DummyAdv, -UC_SMC2Ideal, -MSCore.MS, -UC_SMC2Sim})
             (func' : addr, in_guard' : int fset) &m :
@@ -427,26 +616,37 @@ trivial.
          sp 4 4.
      inline{1} (1) init.
          inline{2} (1) init.
-         sp 3 3.
+         sp 2 3.
          inline{1} (1) init.
          inline{2} (1) init.
-         sp 0 1.
+         sp 2 1.
          inline{2} (1) init.
-         sp 0 2.
-         inline{2} (1) init.
-     auto;progress;smt(SimpIdealRel0).
+       sp 0 2.
+      inline{1} (1) init.
+       sp 3 0.
+     inline{1} (1) init.
+       sp 3 0.
+     inline{1} (1) init.
+       sp 3 0.
+     inline{1} (1) init.
+       sp 5 0.
+     inline{1} (1) init.
+       inline{2} (1) init.
+ 
      call (_ : 
    ={glob MI} /\
   MakeInt.MI.func{1} = func' /\
      MakeInt.MI.in_guard{1} = in_guard' /\
-   SMCRealKEIdealSimp._self{1} = func' /\
+   RFIP.self{1} = func' /\
      smc2_real_ideal_0
-   (to_real_rec (glob RFIP))
-   (to_ideal_rec (glob IF))
-   (to_sim_rec (glob SIM))
+   (to_real_rec (glob RFIP){1})
+   (to_ideal_rec (glob IF){2})
+   (to_sim_rec (glob SIM){2})
 
- );last first. auto;progress;smt(SimpIdealRel0).
- 
+ );last first.
+     auto;progress;smt().
+ proc *.
+inline{1} (1) invoke. 
    end section.
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
