@@ -1,7 +1,7 @@
 (* simple one party main functionality that uses Comp *)
 
 uc_requires Comp.
-ec_requires +Comp.
+ec_requires +CompDefs.
 
 direct Dir' {
   in pt@start
