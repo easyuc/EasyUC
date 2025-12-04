@@ -8,7 +8,7 @@
    adversary just plays the role of the scheduler *)
 
 uc_requires FwdSched.
-ec_requires +Comp.
+ec_requires +CompDefs.
 
 direct CompDir' {
   (* pt makes a request by supplying an input n, but not specifying
