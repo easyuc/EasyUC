@@ -2,7 +2,7 @@
    functionality for carrying out a joint computation, together with an
    ideal functionality and simulator
 
-   see Comp.ec for supporting definitions
+   see CompDefs.ec for supporting definitions
 
    the adverarial model for the real functionality is that the
    adversary just plays the role of the scheduler *)
