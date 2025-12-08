@@ -63,20 +63,27 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
   let env = EcScope.env sc in
   let qtp = EcPath.toqsymbol tp in
   let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
-  let qbase = (["Top";"UCBasicTypes"], snd qepdp) in
   let pth, oper =
     match EcEnv.Op.lookup_opt qepdp env with
     | Some (pth, t) -> pth , t 
-    | None -> match EcEnv.Op.lookup_opt qbase env with
-              | Some (pth, t) -> pth , t 
-              | None -> if qtp = (["Top"; "UCUniv"], "univ")
-                        then EcEnv.Op.lookup
-                               (["Top"; "UCEncoding"], "epdp_id") env
-                        else failure
-                          ("couldn't find epdp operator for "^
+    | None ->
+       let qbase = (["Top";"UCBasicTypes"], snd qepdp) in
+       match EcEnv.Op.lookup_opt qbase env with
+       | Some (pth, t) -> pth , t 
+       | None ->
+         let qbase = (["Top";"UCEncoding"], snd qepdp) in
+         match EcEnv.Op.lookup_opt qbase env with
+         | Some (pth, t) -> pth , t 
+         | None ->
+            let qbase = (["Top";"UCUniv"], snd qepdp) in
+            match EcEnv.Op.lookup_opt qbase env with
+            | Some (pth, t) -> pth , t 
+            | None ->
+               if qtp = (["Top"; "UCUniv"], "univ")
+               then EcEnv.Op.lookup (["Top"; "UCEncoding"], "epdp_id") env
+               else failure ("couldn't find epdp operator for "^
                           (EcPath.tostring tp))
-                            (*TODO special case for univ_univ? or change epdp_id name?*)
-                            (*TODO try to find epdp for given type in scope, if that fails, make tydecl analisys and try to construct epdp, if that fails throw exception*)
+                          (*TODO try to find epdp for given type in scope, if that fails, make tydecl analisys and try to construct epdp, if that fails throw exception*)
   in
   let epdp_opex = e_op pth tyl oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
