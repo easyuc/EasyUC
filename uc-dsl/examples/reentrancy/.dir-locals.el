@@ -3,7 +3,7 @@
 
 (
  (easycrypt-mode .
-  ((easycrypt-load-path . ("../../prelude"))))
+  ((easycrypt-load-path . ("../../../common"))))
 ;; (ucdsl-interpreter-mode .
 ;;  ;; ../../prelude is automatically included
 ;;  ((ucdsl-interpreter-load-path . ("supporting"))))
