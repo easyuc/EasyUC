@@ -177,17 +177,21 @@ type def =
   | FunDef   of fun_def    (* functionality *)
   | SimDef   of sim_def    (* simulator *)
 
-(* UC and EasyCrypt requires *)
+(* abstract operator or type, axiom, EC clone or UC clone *)
 
-type externals =
+type aotac =
+  | AOTAC_AbstractOp of poperator
+
+type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
-   ec_requires : (psymbol * bool) list}  (* require and optionally import
+   ec_requires : (psymbol * bool) list;  (* require and optionally import
                                             .ec files; true means import *)
+   aotacs      : aotac list}
 
 (* overall UC specifications *)
 
 type spec =
-  {externals   : externals;
+  {preamble   : preamble;
    definitions : def list}
 
 (* functionality expression

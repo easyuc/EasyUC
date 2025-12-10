@@ -40,6 +40,7 @@
     "let"             , LET         ;
     "match"           , MATCH       ;
     "message"         , MESSAGE     ;
+    "op"              , OP          ;
     "out"             , OUT         ;
     "party"           , PARTY       ;
     "prover"          , PROVER      ;
@@ -81,9 +82,9 @@
      "goal"; "have"; "hoare"; "idtac"; "import"; "include";
      "inductive"; "inline"; "instance"; "iota"; "is"; "islossless";
      "kill"; "lemma"; "local"; "logic"; "modpath"; "module"; "move";
-     "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "print";
-     "pragma"; "pred"; "proc"; "progress"; "proof"; "qed"; "rcondf";
-     "rcondt"; "realize"; "reflexivity"; "remove"; "rename"; "replace";
+     "notation"; "of"; "phoare"; "pose"; "pr"; "print"; "pragma";
+     "pred"; "proc"; "progress"; "proof"; "qed"; "rcondf"; "rcondt";
+     "realize"; "reflexivity"; "remove"; "rename"; "replace";
      "require"; "res"; "return"; "rewrite"; "rnd"; "rwnormal";
      "search"; "section"; "seq"; "sim"; "simplify"; "skip"; "smt";
      "sp"; "split"; "splitwhile"; "subst"; "suff"; "swap"; "symmetry";

@@ -363,6 +363,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token LET
 %token MATCH
 %token MESSAGE
+%token OP
 %token OUT
 %token PARTY
 %token PROVER
@@ -493,24 +494,22 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
   adversarial interfaces, functionalities and simlators *)
 
 spec :
-  | ext = preamble; defs = list(def); EOF
-      { {externals = ext; definitions = defs} }
+  | pre = preamble; defs = list(def); EOF
+      { {preamble = pre; definitions = defs} }
 
 preamble :
   | uc_reqs = option(uc_requires); ec_reqs = option(ec_requires);
     aotacs = list(abstract_operator_or_type_axiom_clone)
       { {uc_requires = uc_reqs |? [];
-         ec_requires = ec_reqs |? []} }
+         ec_requires = ec_reqs |? [];
+         aotacs      = aotacs}
+      }
 
 (* require .uc files *)
 
 uc_requires :
-  | UC_REQUIRES; uc_reqs = nonempty_list(ident); final_or_dot
+  | UC_REQUIRES; uc_reqs = nonempty_list(ident); FINAL
       { uc_reqs }
-
-final_or_dot :
-  | FINAL { }  (* a "." followed by whitespace or end-of_file *)
-  | DOT   { }  (* a "." not so followed *)
 
 (* require .ec files, making types and operators available for use in
    UC DSL specification
@@ -518,53 +517,48 @@ final_or_dot :
    +id means also do an import, id means no import *)
 
 ec_requires :
-  | EC_REQUIRES; ec_reqs = nonempty_list(ec_require); final_or_dot
+  | EC_REQUIRES; ec_reqs = nonempty_list(ec_require); FINAL
       { ec_reqs }
 
 ec_require :
   | x = option(PLUS); id = ident
       { (id, Option.is_some x) }
 
+(* abstract operator or abstract type declaration, or
+   axiom specification, or EC clone, or UC clone *)
+
 abstract_operator_or_type_axiom_clone :
-  | ao = abstract_operator { }
+  | ao = abstract_operator; FINAL { AOTAC_AbstractOp ao }
 (*
   | ax = axiom { }
   | eee = ec_clone { }
   | ucc = uc_clone { }
 *)
 
-typaram:
+typaram :
 | x=tident { (x, []) }
 | x=tident LTCOLON tc=plist1(lqident, AMP) { (x, tc) }
 
-typarams:
-| empty { []  }
-| x=tident { [(x, [])] }
-| xs=paren(plist1(typaram, COMMA)) { xs }
-
-tyvars_decl:
+tyvars_decl :
 | LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
     { tyvars }
 
 | LBRACKET tyvars=rlist2(tident , empty) RBRACKET
     { List.map (fun x -> (x, [])) tyvars }
 
-abstract_operator:
-| tags = bracket(ident*)? name = oident tyvars = tyvars_decl?
-  ty = prefix(COLON, loc(type_exp)) { }
-
-(*
-    { po_kind     = `Op;
-      po_name     = name;
-      po_aliases  = [];
-      po_tags     = odfl [] tags;
-      po_tyvars   = tyvars;
-      po_args     = ([], None);
-      po_def      = PO_abstr ty;
-      po_ax       = None;
-      po_locality = locality; } }
-*)
-
+abstract_operator :
+| OP; tags = bracket(ident*)?; name = oident; tyvars = tyvars_decl?;
+  ty = prefix(COLON, loc(type_exp))
+    { {po_kind     = `Op;
+       po_name     = name;
+       po_aliases  = [];
+       po_tags     = odfl [] tags;
+       po_tyvars   = tyvars;
+       po_args     = ([], None);
+       po_def      = PO_abstr ty;
+       po_ax       = None;
+       po_locality = `Global}
+    }
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be
@@ -1134,6 +1128,10 @@ control_transfer :
       { SendAndTransition sat }
   | FAIL; final_or_dot
       { Fail }
+
+final_or_dot :
+  | FINAL { }  (* a "." followed by whitespace or end-of_file *)
+  | DOT   { }  (* a "." not so followed *)
 
 (* The send_and_transition command consists of two parts, the send
    part which sends a message, and the transition part which

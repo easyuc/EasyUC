@@ -2487,8 +2487,8 @@ let typecheck
      ec_reqs_map   = IdMap.empty;
      ec_scope_map  = IdMap.empty} in
   let maps =
-    load_uc_reqs root check_id empty_maps spec.externals.uc_requires in
-  let ec_reqs = load_ec_reqs spec.externals.ec_requires in
+    load_uc_reqs root check_id empty_maps spec.preamble.uc_requires in
+  let ec_reqs = load_ec_reqs spec.preamble.ec_requires in
   let maps =
     {maps with ec_reqs_map =
        IdMap.update root
