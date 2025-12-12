@@ -56,6 +56,8 @@ op party_name_to_bool (pn : party_name) : bool =
 op bool_to_party_name (b : bool) : party_name =
   if b then Pt1 else Pt2.
 
+(* epdp allowing us to forward party names *)
+
 op epdp_party_name_univ : (party_name, univ) epdp =
   epdp_comp epdp_bool_univ
   (epdp_bijection party_name_to_bool bool_to_party_name).
@@ -77,8 +79,8 @@ type sim_party_state = [
   | SPS_Init
   | SPS_PendingFwdWaitAdvOrOtherFwd
   | SPS_PendingFwdWaitAdv
-  | SPS_WaitAdvOrOtherFwd
-  | SPS_WaitAdvOrInput
+  | SPS_WaitOtherFwd
+  | SPS_WaitInput
   | SPS_PendingOutputWaitAdv
   | SPS_Final
 ].

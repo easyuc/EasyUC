@@ -29,18 +29,20 @@ direct CompDir {
 
 (* the basic adversarial interface to a party of the real
    functionality lets the party suspend its computation, giving
-   control to the adversary; at a later point, the adversary can
-   resume the party's computation (but reentrancy or communication
-   from subfunctionalities may mean the party's state has changed, and
-   resumption will be from that new state)
+   control to the adversary
 
-   until a party is in its final state, in which all messages result
-   in failure, resumption never fails, but may result in immediate
-   suspension *)
+   once the party is not in its initial state, the adversary can
+   attempt to resume the party; depending upon the party's state, this
+   may result in failure (giving control to the root port of the
+   environment, which may in turn give control to the root port of the
+   adversary, which may make some other scheduling decision)
+
+   we use failure rather than giving control back to the adversary
+   so that a termination metric can be defined *)
 
 adversarial CompAdv' {
-  out suspend  (* give control to adversary *)
-  in  resume   (* resume control *)
+  out suspend
+  in  resume
 }
 
 adversarial CompAdv {
@@ -50,7 +52,7 @@ adversarial CompAdv {
 
 (* the real functionality
 
-   once the functionality is reentered, the adversary will
+   once the functionality is reentered, the adversary may
    have multiple choices for what to schedule next - either
    approving forwarding or resuming suspended parties *)
 
@@ -69,7 +71,7 @@ functionality CompReal implements CompDir CompAdv {
       | Fwd2.D.rsp(_, u)        => {
           (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
           send CompAdv.Pt1.suspend
-          and transition WaitAdvOrInput(pt2, n2).
+          and transition WaitInput(pt2, n2).
         }            
       | *                       => { fail. }
       end
@@ -80,7 +82,7 @@ functionality CompReal implements CompDir CompAdv {
       match message with
       | CompAdv.Pt1.resume => {
           send Fwd1.D.req(intport Pt2, epdp_port_int_univ.`enc (pt1, f n1))
-          and transition WaitAdvOrFwd2(pt1, n1).
+          and transition WaitFwd2(pt1, n1).
         }
       | Fwd2.D.rsp(_, u)   => {
           (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
@@ -101,33 +103,25 @@ functionality CompReal implements CompDir CompAdv {
       end
     }
 
-    state WaitAdvOrFwd2(pt1 : port, n1 : int) {
+    state WaitFwd2(pt1 : port, n1 : int) {
       var pt2 : port; var n2 : int;
       match message with
-      | CompAdv.Pt1.resume => {
-          send CompAdv.Pt1.suspend
-          and transition WaitAdvOrFwd2(pt1, n1).
-        }
-      | Fwd2.D.rsp(_, u)   => {
+      | Fwd2.D.rsp(_, u) => {
           (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
           send CompDir.Pt1.rsp(pt2, h n1 n2)@pt1
           and transition Final.
       }            
-      | *                  => { fail. }
+      | *                => { fail. }  (* including resumption *)
       end
     }
 
-    state WaitAdvOrInput(pt2 : port, n2 : int) {
+    state WaitInput(pt2 : port, n2 : int) {
       match message with
-      | CompAdv.Pt1.resume      => {
-          send CompAdv.Pt1.suspend
-          and transition WaitAdvOrInput(pt2, n2).
-        }
       | pt1@CompDir.Pt1.req(n1) => {
           send Fwd1.D.req(intport Pt2, epdp_port_int_univ.`enc (pt1, f n1))
           and transition PendingOutputWaitAdv(pt1, pt2, n1, n2).
         }
-      | *                       => { fail. }
+      | *                       => { fail. }  (* including resumption *)
       end
     }
 
@@ -143,7 +137,7 @@ functionality CompReal implements CompDir CompAdv {
 
     state Final {
       match message with
-      | * => { fail. }
+      | * => { fail. }  (* including resumption *)
       end
     }
   }
@@ -159,7 +153,7 @@ functionality CompReal implements CompDir CompAdv {
       | Fwd1.D.rsp(_, u)        => {
           (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
           send CompAdv.Pt2.suspend
-          and transition WaitAdvOrInput(pt1, n1).
+          and transition WaitInput(pt1, n1).
         }            
       | *                       => { fail. }
       end
@@ -170,7 +164,7 @@ functionality CompReal implements CompDir CompAdv {
       match message with
       | CompAdv.Pt2.resume => {
           send Fwd2.D.req(intport Pt1, epdp_port_int_univ.`enc (pt2, g n2))
-          and transition WaitAdvOrFwd1(pt2, n2).
+          and transition WaitFwd1(pt2, n2).
         }
       | Fwd1.D.rsp(_, u)   => {
           (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
@@ -191,33 +185,25 @@ functionality CompReal implements CompDir CompAdv {
       end
     }
 
-    state WaitAdvOrFwd1(pt2 : port, n2 : int) {
+    state WaitFwd1(pt2 : port, n2 : int) {
       var pt1 : port; var n1 : int;
       match message with
-      | CompAdv.Pt2.resume => {
-          send CompAdv.Pt2.suspend
-          and transition WaitAdvOrFwd1(pt2, n2).
-        }
-      | Fwd1.D.rsp(_, u)   => {
+      | Fwd1.D.rsp(_, u) => {
           (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
           send CompDir.Pt2.rsp(pt1, h n2 n1)@pt2
           and transition Final.
       }            
-      | *                  => { fail. }
+      | *                => { fail. }  (* including resumption *)
       end
     }
 
-    state WaitAdvOrInput(pt1 : port, n1 : int) {
+    state WaitInput(pt1 : port, n1 : int) {
       match message with
-      | CompAdv.Pt2.resume       => {
-          send CompAdv.Pt2.suspend
-          and transition WaitAdvOrInput(pt1, n1).
-        }
       | pt2@CompDir.Pt2.req(n2) => {
           send Fwd2.D.req(intport Pt1, epdp_port_int_univ.`enc (pt2, g n2))
           and transition PendingOutputWaitAdv(pt1, pt2, n1, n2).
         }
-      | *                        => { fail. }
+      | *                       => { fail. }  (* including resumption *)
       end
     }
 
@@ -233,7 +219,7 @@ functionality CompReal implements CompDir CompAdv {
 
     state Final {
       match message with
-      | * => { fail. }
+      | * => { fail. }  (* including resumption *)
       end
     }
   }
@@ -390,7 +376,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
                 (SPS_PendingFwdWaitAdvOrOtherFwd, pty2state,
                  fwd1state, fwd2state).
             }
-            elif (pty1state = SPS_WaitAdvOrInput /\ fwd1state = SFS_Init) {
+            elif (pty1state = SPS_WaitInput /\ fwd1state = SFS_Init) {
               send CompReal.Fwd2.FwdSchedAdv.req
               and transition
                 Main
@@ -407,7 +393,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
                 (pty1state, SPS_PendingFwdWaitAdvOrOtherFwd,
                  fwd1state, fwd2state).
             }
-            elif (pty2state = SPS_WaitAdvOrInput /\ fwd2state = SFS_Init) {
+            elif (pty2state = SPS_WaitInput /\ fwd2state = SFS_Init) {
               send CompReal.Fwd2.FwdSchedAdv.req
               and transition
                 Main
@@ -423,7 +409,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
             fwd1state = SFS_Init) {
           send CompReal.Fwd1.FwdSchedAdv.req
           and transition
-            Main(SPS_WaitAdvOrOtherFwd, pty2state, SFS_WaitOK, fwd2state).
+            Main(SPS_WaitOtherFwd, pty2state, SFS_WaitOK, fwd2state).
         }
         elif (pty1state = SPS_PendingFwdWaitAdv /\ fwd1state = SFS_Init) {
           send CompReal.Fwd1.FwdSchedAdv.req
@@ -432,23 +418,19 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
             (SPS_PendingOutputWaitAdv, pty2state,
              SFS_WaitOK, fwd2state).
         }
-        elif (pty1state = SPS_WaitAdvOrOtherFwd \/
-              pty1state = SPS_WaitAdvOrInput) {
-          send CompReal.CompAdv.Pt1.suspend
-          and transition Main(pty1state, pty2state, fwd1state, fwd2state).
-        }
         elif (pty1state = SPS_PendingOutputWaitAdv) {
           send CompIdeal2Sim.out_enabled(Pt1)
           and transition Main(SPS_Final, pty2state, fwd1state, fwd2state).
         }
-        else { fail. }
+        else { fail. }  (* includes case where pty1state is SPS_WaitOtherFwd
+                           or SPS_WaitInput *)
       }
     | CompReal.CompAdv.Pt2.resume          => {
         if (pty2state = SPS_PendingFwdWaitAdvOrOtherFwd /\
             fwd2state = SFS_Init) {
           send CompReal.Fwd2.FwdSchedAdv.req
           and transition
-            Main(pty1state, SPS_WaitAdvOrOtherFwd, fwd1state, SFS_WaitOK).
+            Main(pty1state, SPS_WaitOtherFwd, fwd1state, SFS_WaitOK).
         }
         elif (pty2state = SPS_PendingFwdWaitAdv /\ fwd2state = SFS_Init) {
           send CompReal.Fwd2.FwdSchedAdv.req
@@ -457,22 +439,18 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
             (pty1state, SPS_PendingOutputWaitAdv,
              fwd1state, SFS_WaitOK).
         }
-        elif (pty2state = SPS_WaitAdvOrOtherFwd \/
-              pty2state = SPS_WaitAdvOrInput) {
-          send CompReal.CompAdv.Pt2.suspend
-          and transition Main(pty1state, pty2state, fwd1state, fwd2state).
-        }
         elif (pty2state = SPS_PendingOutputWaitAdv) {
           send CompIdeal2Sim.out_enabled(Pt2)
           and transition Main(pty1state, SPS_Final, fwd1state, fwd2state).
         }
-        else { fail. }
+        else { fail. }  (* includes case where pty2state is SPS_WaitOtherFwd
+                           or SPS_WaitInput *)
       }
     | CompReal.Fwd1.FwdSchedAdv.ok         => {
         if (fwd1state = SFS_WaitOK /\ pty2state = SPS_Init) {
           send CompReal.CompAdv.Pt2.suspend
           and transition
-            Main(pty1state, SPS_WaitAdvOrInput, SFS_Final, fwd2state).
+            Main(pty1state, SPS_WaitInput, SFS_Final, fwd2state).
         }
         elif (fwd1state = SFS_WaitOK /\
               pty2state = SPS_PendingFwdWaitAdvOrOtherFwd ) {
@@ -480,7 +458,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
           and transition
             Main(pty1state, SPS_PendingFwdWaitAdv, SFS_Final, fwd2state).
         }
-        elif (fwd1state = SFS_WaitOK /\ pty2state = SPS_WaitAdvOrOtherFwd) {
+        elif (fwd1state = SFS_WaitOK /\ pty2state = SPS_WaitOtherFwd) {
           send CompIdeal2Sim.out_enabled(Pt2)
           and transition Main(pty1state, SPS_Final, SFS_Final, fwd2state).
         }
@@ -490,7 +468,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
         if (fwd2state = SFS_WaitOK /\ pty1state = SPS_Init) {
           send CompReal.CompAdv.Pt1.suspend
           and transition
-            Main(SPS_WaitAdvOrInput, pty2state, fwd1state, SFS_Final).
+            Main(SPS_WaitInput, pty2state, fwd1state, SFS_Final).
         }
         elif (fwd2state = SFS_WaitOK /\
               pty1state = SPS_PendingFwdWaitAdvOrOtherFwd ) {
@@ -498,7 +476,7 @@ simulator CompSim uses CompIdeal2Sim simulates CompReal {
           and transition
             Main(SPS_PendingFwdWaitAdv, pty2state, fwd1state, SFS_Final).
         }
-        elif (fwd2state = SFS_WaitOK /\ pty1state = SPS_WaitAdvOrOtherFwd) {
+        elif (fwd2state = SFS_WaitOK /\ pty1state = SPS_WaitOtherFwd) {
           send CompIdeal2Sim.out_enabled(Pt1)
           and transition Main(SPS_Final, pty2state, fwd1state, SFS_Final).
         }

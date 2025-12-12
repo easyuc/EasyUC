@@ -167,10 +167,13 @@ assert msg_out
 ctrl_adv.
 send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
 run.
+assert fail_out.
+(* resuming Pt1 resulted in failure - it is only waiting for Fwd2 *)
+send env_root_port@_@adv_root_port.
+step.
 assert msg_out
-((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+env_root_port@_@adv_root_port
 ctrl_adv.
-(* resume didn't do anything *)
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
 assert msg_out
@@ -188,10 +191,13 @@ env_root_port@_@adv_root_port
 ctrl_adv.
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
+assert fail_out.
+(* resuming Pt2 resulted in failure - it is only waiting for Fwd1 *)
+send env_root_port@_@adv_root_port.
+step.
 assert msg_out
-((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+env_root_port@_@adv_root_port
 ctrl_adv.
-(* resume didn't do anything *)
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out
@@ -202,7 +208,7 @@ finish.
 (* corresponding experiments with ideal world - literally
    the same except for "real" -> "ideal" *)
 
-(* first experiment with ideal world *)
+(* first experiment with real world *)
 ideal.
 send pt1@Comp.CompDir.Pt1.req(n1)$func.
 run.
@@ -246,7 +252,7 @@ assert msg_out
 ctrl_env.
 finish.
 
-(* second experiment with ideal world *)
+(* second experiment with real world *)
 ideal.
 send pt1@Comp.CompDir.Pt1.req(n1)$func.
 run.
@@ -287,7 +293,7 @@ assert msg_out
 ctrl_env.
 finish.
 
-(* third experiment with ideal world *)
+(* third experiment with real world *)
 ideal.
 send pt2@Comp.CompDir.Pt2.req(n2)$func.
 run.
@@ -331,7 +337,7 @@ assert msg_out
 ctrl_env.
 finish.
 
-(* fourth experiment with ideal world
+(* fourth experiment with real world
 
    includes some progressless suspend/resume cycles *)
 ideal.
@@ -357,10 +363,13 @@ assert msg_out
 ctrl_adv.
 send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
 run.
+assert fail_out.
+(* resuming Pt1 resulted in failure - it is only waiting for Fwd2 *)
+send env_root_port@_@adv_root_port.
+step.
 assert msg_out
-((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+env_root_port@_@adv_root_port
 ctrl_adv.
-(* resume didn't do anything *)
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
 assert msg_out
@@ -378,10 +387,13 @@ env_root_port@_@adv_root_port
 ctrl_adv.
 send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
 run.
+assert fail_out.
+(* resuming Pt2 resulted in failure - it is only waiting for Fwd1 *)
+send env_root_port@_@adv_root_port.
+step.
 assert msg_out
-((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+env_root_port@_@adv_root_port
 ctrl_adv.
-(* resume didn't do anything *)
 send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
 run.
 assert msg_out

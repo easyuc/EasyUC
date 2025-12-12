@@ -10,11 +10,11 @@ outputs to the computation.
 The file [`FwdSched.uc`](FwdSched.uc) defines a version of forwarding
 of universe values in which the adversary learns nothing of the values
 being forwarded or the ports involved, but is purely in charge of
-scheduling. The file [`Comp.ec`](Comp.ec) contains EasyCrypt
-definitions on which the UC DSL file [`Comp.uc`](Comp.uc) relies.
-The parties of the real functionality have adversarial interfaces,
-and can suspend their operation, giving control to the adversary,
-which may later resume them.
+scheduling. The file [`CompDefs.ec`](CompDefs.ec) contains EasyCrypt
+definitions on which the UC DSL file [`Comp.uc`](Comp.uc) relies.  The
+parties of the real functionality have adversarial interfaces, and can
+suspend their operation, giving control to the adversary, which may
+later resume them.
 
 The flow of control in this example is fundamentally reentrant: the
 adversary gives control to the environment which reenters the real
@@ -41,6 +41,14 @@ Read and experiment with the interpretation script
 made by the adversary affect execution in the real and ideal
 worlds. In particular, note how the script transfers control back and
 forth between the environment and adversary.
+
+Depending on the state a party of the real functionality is in, an
+attempt by the adversary to resume it may result in failure, giving
+control to the root port of the environment - which may in turn
+give control to the root of the adversary, which may try another
+scheduling option. We use this approach rather than giving control
+back to the adversary, so that it's possible to define termination
+metrics for use in the EasyCrypt proofs.
 
 There is also a simple one party functionality [Main.uc](Main.uc) that
 uses `Comp`, supplying concrete inputs and checking that it gets the

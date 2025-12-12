@@ -12,6 +12,15 @@ direct Dir {
   D : Dir'
 }
 
+(* once the party is not in its initial state, the adversary can
+   attempt to resume the party; depending upon the party's state, this
+   may result in failure (giving control to the root port of the
+   environment, which may in turn give control to the root port of the
+   adversary, which may make some other scheduling decision)
+
+   we use failure rather than giving control back to the adversary
+   so that a termination metric can be defined *)
+
 adversarial Adv' {
   out suspend
   in resume
@@ -74,11 +83,7 @@ functionality MainReal(Comp : Comp.CompDir) implements Dir Adv {
           }
           else { fail. }
         }
-      | Adv.A.resume        => {
-          send Adv.A.suspend
-          and transition Third(pt, out1opt, out2opt).
-        }
-      | *                   => { fail. }
+      | *                   => { fail. }  (* includes resumption *)
       end
     }
 
@@ -155,10 +160,8 @@ simulator MainSim
     | MainReal.Comp.CompIdeal2Sim.out_enabled(_) => {
         send MainReal.Adv.A.suspend and transition Fourth.
       }
-    | MainReal.Adv.A.resume                      => {
-        send MainReal.Adv.A.suspend and transition Third.
-      }
-    | *                                          => { fail. }
+    | *                                          => { fail. }  (* including
+                                                                  resumption *)
     end
   }
 
@@ -167,10 +170,8 @@ simulator MainSim
     | MainReal.Comp.CompIdeal2Sim.out_enabled(_) => {
         send MainIdeal2Sim.don and transition Final.
       }
-    | MainReal.Adv.A.resume                      => {
-        send MainReal.Adv.A.suspend and transition Fourth.
-      }
-    | *                                          => { fail. }
+    | *                                          => { fail. }  (* including
+                                                                  resumption *)
     end
   }
 
