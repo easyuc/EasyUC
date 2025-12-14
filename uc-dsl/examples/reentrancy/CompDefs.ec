@@ -85,6 +85,17 @@ type sim_party_state = [
   | SPS_Final
 ].
 
+op metric_sim_party_state (sps : sim_party_state) : int =
+  match sps with
+  | SPS_Init                        => 6
+  | SPS_PendingFwdWaitAdvOrOtherFwd => 5
+  | SPS_PendingFwdWaitAdv           => 4
+  | SPS_WaitOtherFwd                => 3
+  | SPS_WaitInput                   => 2
+  | SPS_PendingOutputWaitAdv        => 1
+  | SPS_Final                       => 0
+  end.
+
 (* simulator's view of the state of a forwarder - see states of
    FwdSched in FwdSched.uc for comparison *)
 
@@ -93,3 +104,11 @@ type sim_fwd_state = [
   | SFS_WaitOK
   | SFS_Final
 ].
+
+op metric_sim_fwd_state (sfs : sim_fwd_state) : int =
+  match sfs with
+  | SFS_Init   => 2
+  | SFS_WaitOK => 1
+  | SFS_Final  => 0
+  end.
+

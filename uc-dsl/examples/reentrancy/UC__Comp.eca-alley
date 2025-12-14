@@ -1,0 +1,2058 @@
+require UC_FwdSched.
+
+require import CompDefs.
+
+require import UCCore.
+
+require UCComposition.
+
+clone UCComposition as UC_Composition.
+
+op _adv_pi_begin : int.
+
+axiom _adv_pi_begin_gt0 : 0 < _adv_pi_begin.
+
+op _adv_pt_pi_Pt1 = _adv_pi_begin + 1.
+op _adv_pt_pi_Pt2 = _adv_pi_begin + 2.
+
+clone UC_FwdSched as UC_Fwd1 with  (* singleton unit *)
+op _adv_if_pi <- _adv_pi_begin + 3
+proof *.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
+
+
+clone UC_FwdSched as UC_Fwd2 with  (* singleton unit *)
+op _adv_if_pi <- _adv_pi_begin + 4
+proof *.
+realize _adv_if_pi_gt0. smt(_adv_pi_begin_gt0). qed.
+
+
+
+op _adv_if_pi : int = _adv_pi_begin.
+
+op _adv_pi_num : int = 5.
+
+abstract theory UC_CompDir'_abs.
+
+op pi : int.
+
+op _Comp =  [67; 111; 109; 112]. (*Comp as ascii array*)
+
+type _req =
+{
+  req___func : addr;
+  req__pt : port;
+  (*data*)
+  req__n : int;
+}.
+op _req =  [114; 101; 113]. (*req as ascii array*)
+
+op _tag__req =  TagBasic _Comp _req.
+op enc__req (x : _req) : msg =
+(Dir, (x.`req___func, pi), x.`req__pt, _tag__req,
+ (epdp_int_univ).`enc x.`req__n)
+.
+op [opaque smt_opaque] dec__req (m : msg) : _req option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__req) ?
+    None :
+    match (epdp_int_univ).`dec v with
+    | None   => None
+    | Some p =>
+      let req__n = p in
+      Some
+      {|
+        req___func = pt1.`1; req__pt = pt2;
+        req__n = req__n;
+      |}
+    end
+.
+
+op epdp__req = {|enc = enc__req; dec = dec__req|}.
+
+lemma valid_epdp__req : valid_epdp epdp__req.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__req /= /dec__req /enc__req /=.
+by case x.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
+rewrite /epdp__req /dec__req /enc__req /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__req) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (epdp_int_univ).`dec v =
+  Some (u.`req__n).
+  move : match_eq_some.
+  case ((epdp_int_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__req.
+hint rewrite epdp : valid_epdp__req.
+
+lemma eq_of_valid__req (m : msg) :
+  is_valid epdp__req m =>
+  m =
+  let x = oget (epdp__req.`dec m) in
+(Dir, (x.`req___func, pi), x.`req__pt, _tag__req,
+ (epdp_int_univ).`enc x.`req__n).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _req), epdp__req.`dec m = Some x.
+  exists (oget (dec__req m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ valid_epdp__req) <-.
+by rewrite !epdp.
+qed.
+
+type _rsp =
+{
+  rsp___func : addr;
+  rsp__pt : port;
+  (*data*)
+  rsp__pt' : port;
+  rsp__m : int;
+}.
+op _rsp =  [114; 115; 112]. (*rsp as ascii array*)
+
+op _tag__rsp =  TagBasic _Comp _rsp.
+op enc__rsp (x : _rsp) : msg =
+(Dir, x.`rsp__pt, (x.`rsp___func, pi), _tag__rsp,
+ (epdp_pair_univ (epdp_port_univ) (epdp_int_univ)).`enc
+(x.`rsp__pt', x.`rsp__m))
+.
+op [opaque smt_opaque] dec__rsp (m : msg) : _rsp option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__rsp) ?
+    None :
+    match (epdp_pair_univ (epdp_port_univ) (epdp_int_univ)).`dec v with
+    | None   => None
+    | Some p =>
+      let (rsp__pt' ,rsp__m) = p in
+      Some
+      {|
+        rsp___func = pt2.`1; rsp__pt = pt1;
+        rsp__pt' = rsp__pt';
+        rsp__m = rsp__m;
+      |}
+    end
+.
+
+op epdp__rsp = {|enc = enc__rsp; dec = dec__rsp|}.
+
+lemma valid_epdp__rsp : valid_epdp epdp__rsp.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__rsp /= /dec__rsp /enc__rsp /=.
+by case x.
+move => [mod pt2 [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__rsp /dec__rsp /enc__rsp /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__rsp) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (epdp_pair_univ (epdp_port_univ) (epdp_int_univ)).`dec v =
+  Some (u.`rsp__pt' ,u.`rsp__m).
+  move : match_eq_some.
+  case ((epdp_pair_univ (epdp_port_univ) (epdp_int_univ)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__rsp.
+hint rewrite epdp : valid_epdp__rsp.
+
+lemma eq_of_valid__rsp (m : msg) :
+  is_valid epdp__rsp m =>
+  m =
+  let x = oget (epdp__rsp.`dec m) in
+(Dir, x.`rsp__pt, (x.`rsp___func, pi), _tag__rsp,
+ (epdp_pair_univ (epdp_port_univ) (epdp_int_univ)).`enc
+(x.`rsp__pt', x.`rsp__m)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _rsp), epdp__rsp.`dec m = Some x.
+  exists (oget (dec__rsp m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__rsp) <-.
+by rewrite !epdp.
+qed.
+
+end UC_CompDir'_abs.
+
+
+
+theory UC_CompDir.
+
+clone UC_CompDir'_abs as Pt1 with
+  op pi = 1
+proof *.
+
+clone UC_CompDir'_abs as Pt2 with
+  op pi = 2
+proof *.
+
+end UC_CompDir.
+
+
+
+abstract theory UC_CompAdv'_abs.
+
+op pi : int.
+
+op _Comp =  [67; 111; 109; 112]. (*Comp as ascii array*)
+
+type _resume =
+{
+  resume___func : addr;
+  resume___adv : addr;
+  (*data*)
+}.
+op _resume =  [114; 101; 115; 117; 109; 101]. (*resume as ascii array*)
+
+op _tag__resume =  TagBasic _Comp _resume.
+op enc__resume (x : _resume) : msg =
+(Adv, (x.`resume___func, pi), (x.`resume___adv, _adv_if_pi), _tag__resume,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__resume (m : msg) : _resume option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  _tag__resume) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        resume___func = pt1.`1; resume___adv = pt2.`1;
+      |}
+    end
+.
+
+op epdp__resume = {|enc = enc__resume; dec = dec__resume|}.
+
+lemma valid_epdp__resume : valid_epdp epdp__resume.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__resume /= /dec__resume /enc__resume /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__resume /dec__resume /enc__resume /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__resume) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__resume.
+hint rewrite epdp : valid_epdp__resume.
+
+lemma eq_of_valid__resume (m : msg) :
+  is_valid epdp__resume m =>
+  m =
+  let x = oget (epdp__resume.`dec m) in
+(Adv, (x.`resume___func, pi), (x.`resume___adv, _adv_if_pi), _tag__resume,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _resume), epdp__resume.`dec m = Some x.
+  exists (oget (dec__resume m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__resume) <-.
+by rewrite !epdp.
+qed.
+
+type _suspend =
+{
+  suspend___func : addr;
+  suspend___adv : addr;
+  (*data*)
+}.
+op _suspend =  [115; 117; 115; 112; 101; 110; 100]. (*suspend as ascii
+array*)
+
+op _tag__suspend =  TagBasic _Comp _suspend.
+op enc__suspend (x : _suspend) : msg =
+(Adv, (x.`suspend___adv, _adv_if_pi), (x.`suspend___func, pi), _tag__suspend,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__suspend (m : msg) : _suspend option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__suspend) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        suspend___func = pt2.`1; suspend___adv = pt1.`1;
+      |}
+    end
+.
+
+op epdp__suspend = {|enc = enc__suspend; dec = dec__suspend|}.
+
+lemma valid_epdp__suspend : valid_epdp epdp__suspend.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__suspend /= /dec__suspend /enc__suspend /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__suspend /dec__suspend /enc__suspend /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__suspend) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__suspend.
+hint rewrite epdp : valid_epdp__suspend.
+
+lemma eq_of_valid__suspend (m : msg) :
+  is_valid epdp__suspend m =>
+  m =
+  let x = oget (epdp__suspend.`dec m) in
+(Adv, (x.`suspend___adv, _adv_if_pi), (x.`suspend___func, pi), _tag__suspend,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _suspend), epdp__suspend.`dec m = Some x.
+  exists (oget (dec__suspend m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__suspend) <-.
+by rewrite !epdp.
+qed.
+
+end UC_CompAdv'_abs.
+
+
+
+abstract theory UC_CompIdeal2Sim_abs.
+
+op pi : int.
+
+op _Comp =  [67; 111; 109; 112]. (*Comp as ascii array*)
+
+type _inp_received =
+{
+  inp_received___func : addr;
+  inp_received___adv : addr;
+  (*data*)
+  inp_received__pty : party_name;
+}.
+op _inp_received =
+ [105; 110; 112; 95; 114; 101; 99; 101; 105; 118; 101; 100]. (*inp_received
+as ascii array*)
+
+op _tag__inp_received =  TagBasic _Comp _inp_received.
+op enc__inp_received (x : _inp_received) : msg =
+(Adv, (x.`inp_received___adv, _adv_if_pi), (x.`inp_received___func, pi),
+_tag__inp_received,  (epdp_party_name_univ).`enc x.`inp_received__pty)
+.
+op [opaque smt_opaque] dec__inp_received (m : msg) : _inp_received option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__inp_received) ?
+    None :
+    match (epdp_party_name_univ).`dec v with
+    | None   => None
+    | Some p =>
+      let inp_received__pty = p in
+      Some
+      {|
+        inp_received___func = pt2.`1; inp_received___adv = pt1.`1;
+        inp_received__pty = inp_received__pty;
+      |}
+    end
+.
+
+op epdp__inp_received = {|enc = enc__inp_received; dec = dec__inp_received|}.
+
+lemma valid_epdp__inp_received : valid_epdp epdp__inp_received.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__inp_received /= /dec__inp_received /enc__inp_received /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__inp_received /dec__inp_received /enc__inp_received /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__inp_received) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (epdp_party_name_univ).`dec v =
+  Some (u.`inp_received__pty).
+  move : match_eq_some.
+  case ((epdp_party_name_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__inp_received.
+hint rewrite epdp : valid_epdp__inp_received.
+
+lemma eq_of_valid__inp_received (m : msg) :
+  is_valid epdp__inp_received m =>
+  m =
+  let x = oget (epdp__inp_received.`dec m) in
+(Adv, (x.`inp_received___adv, _adv_if_pi), (x.`inp_received___func, pi),
+_tag__inp_received,  (epdp_party_name_univ).`enc x.`inp_received__pty).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _inp_received), epdp__inp_received.`dec m = Some x.
+  exists (oget (dec__inp_received m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ valid_epdp__inp_received) <-.
+by rewrite !epdp.
+qed.
+
+type _out_enabled =
+{
+  out_enabled___func : addr;
+  out_enabled___adv : addr;
+  (*data*)
+  out_enabled__pty : party_name;
+}.
+op _out_enabled =  [111; 117; 116; 95; 101; 110; 97; 98; 108; 101; 100].
+(*out_enabled as ascii array*)
+
+op _tag__out_enabled =  TagBasic _Comp _out_enabled.
+op enc__out_enabled (x : _out_enabled) : msg =
+(Adv, (x.`out_enabled___func, pi), (x.`out_enabled___adv, _adv_if_pi),
+_tag__out_enabled,  (epdp_party_name_univ).`enc x.`out_enabled__pty)
+.
+op [opaque smt_opaque] dec__out_enabled (m : msg) : _out_enabled option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  _tag__out_enabled) ?
+    None :
+    match (epdp_party_name_univ).`dec v with
+    | None   => None
+    | Some p =>
+      let out_enabled__pty = p in
+      Some
+      {|
+        out_enabled___func = pt1.`1; out_enabled___adv = pt2.`1;
+        out_enabled__pty = out_enabled__pty;
+      |}
+    end
+.
+
+op epdp__out_enabled = {|enc = enc__out_enabled; dec = dec__out_enabled|}.
+
+lemma valid_epdp__out_enabled : valid_epdp epdp__out_enabled.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__out_enabled /= /dec__out_enabled /enc__out_enabled /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__out_enabled /dec__out_enabled /enc__out_enabled /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__out_enabled) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (epdp_party_name_univ).`dec v =
+  Some (u.`out_enabled__pty).
+  move : match_eq_some.
+  case ((epdp_party_name_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__out_enabled.
+hint rewrite epdp : valid_epdp__out_enabled.
+
+lemma eq_of_valid__out_enabled (m : msg) :
+  is_valid epdp__out_enabled m =>
+  m =
+  let x = oget (epdp__out_enabled.`dec m) in
+(Adv, (x.`out_enabled___func, pi), (x.`out_enabled___adv, _adv_if_pi),
+_tag__out_enabled,  (epdp_party_name_univ).`enc x.`out_enabled__pty).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _out_enabled), epdp__out_enabled.`dec m = Some x.
+  exists (oget (dec__out_enabled m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3.
+move => /(epdp_dec_enc _ _ _ valid_epdp__out_enabled) <-.
+by rewrite !epdp.
+qed.
+
+end UC_CompIdeal2Sim_abs.
+
+
+
+theory UC_CompAdv.
+
+clone UC_CompAdv'_abs as Pt1 with
+  op pi = 1
+proof *.
+
+clone UC_CompAdv'_abs as Pt2 with
+  op pi = 2
+proof *.
+
+end UC_CompAdv.
+
+
+
+clone UC_CompIdeal2Sim_abs as UC_CompIdeal2Sim with
+  op pi = 1
+proof *.
+
+type _state_IF = [ 
+  | _State_IF_AccumOtherInput of (port * int) option & (port * int) option
+  | _State_IF_Final
+  | _State_IF_HandleOutputs of (port * int) & (port * int) & bool & bool
+  | _State_IF_Init
+  
+]. 
+
+module UC_CompIdeal : FUNC= {
+  var _self : addr
+  var _st : _state_IF
+  proc init(self_ : addr) : unit = {
+    _self <- self_; _st <- _State_IF_Init;
+  }
+  proc _State_IF_AccumOtherInput__CompDir__Pt1__req (inp1_opt : (port *
+  int) option, inp2_opt : (port *
+  int) option, pt1 : port, n1 : int) : msg option = {
+    var _r : msg option <- None;
+    if (inp1_opt = None) {
+      _r <- Some
+        (UC_CompIdeal2Sim.epdp__inp_received.`enc
+        {|
+          UC_CompIdeal2Sim.inp_received___func = _self;
+          UC_CompIdeal2Sim.inp_received___adv = adv;
+          UC_CompIdeal2Sim.inp_received__pty = Pt1;
+          
+        |});
+      _st <- _State_IF_HandleOutputs (pt1, n1) (oget inp2_opt) false false;
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc _State_IF_AccumOtherInput__CompDir__Pt2__req (inp1_opt : (port *
+  int) option, inp2_opt : (port *
+  int) option, pt2 : port, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    if (inp2_opt = None) {
+      _r <- Some
+        (UC_CompIdeal2Sim.epdp__inp_received.`enc
+        {|
+          UC_CompIdeal2Sim.inp_received___func = _self;
+          UC_CompIdeal2Sim.inp_received___adv = adv;
+          UC_CompIdeal2Sim.inp_received__pty = Pt2;
+          
+        |});
+      _st <- _State_IF_HandleOutputs (oget inp1_opt) (pt2, n2) false false;
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc _State_IF_HandleOutputs__CompIdeal2Sim__out_enabled (inp1 : port *
+  int, inp2 : port *
+  int, out1_done : bool, out2_done : bool, pty : party_name) : msg option = {
+    var _r : msg option <- None;
+    match (pty) with
+    | Pt1 => {
+    
+      if (out1_done) {
+        _r <- None;
+        
+      }
+      else {
+        if (out2_done) {
+          _r <- Some
+            (UC_CompDir.Pt1.epdp__rsp.`enc
+            {|
+              UC_CompDir.Pt1.rsp___func = _self;
+              UC_CompDir.Pt1.rsp__pt = inp1.`1;
+              UC_CompDir.Pt1.rsp__pt' = inp2.`1;
+              UC_CompDir.Pt1.rsp__m = h inp1.`2 (g inp2.`2);
+              
+            |});
+          _st <- _State_IF_Final;
+          
+        }
+        else {
+          _r <- Some
+            (UC_CompDir.Pt1.epdp__rsp.`enc
+            {|
+              UC_CompDir.Pt1.rsp___func = _self;
+              UC_CompDir.Pt1.rsp__pt = inp1.`1;
+              UC_CompDir.Pt1.rsp__pt' = inp2.`1;
+              UC_CompDir.Pt1.rsp__m = h inp1.`2 (g inp2.`2);
+              
+            |});
+          _st <- _State_IF_HandleOutputs inp1 inp2 true false;
+          
+        }
+        
+      }
+      
+    }
+    | Pt2 => {
+    
+      if (out2_done) {
+        _r <- None;
+        
+      }
+      else {
+        if (out1_done) {
+          _r <- Some
+            (UC_CompDir.Pt2.epdp__rsp.`enc
+            {|
+              UC_CompDir.Pt2.rsp___func = _self;
+              UC_CompDir.Pt2.rsp__pt = inp2.`1;
+              UC_CompDir.Pt2.rsp__pt' = inp1.`1;
+              UC_CompDir.Pt2.rsp__m = h inp2.`2 (f inp1.`2);
+              
+            |});
+          _st <- _State_IF_Final;
+          
+        }
+        else {
+          _r <- Some
+            (UC_CompDir.Pt2.epdp__rsp.`enc
+            {|
+              UC_CompDir.Pt2.rsp___func = _self;
+              UC_CompDir.Pt2.rsp__pt = inp2.`1;
+              UC_CompDir.Pt2.rsp__pt' = inp1.`1;
+              UC_CompDir.Pt2.rsp__m = h inp2.`2 (f inp1.`2);
+              
+            |});
+          _st <- _State_IF_HandleOutputs inp1 inp2 false true;
+          
+        }
+        
+      }
+      
+    }
+    end;
+  return _r;
+}
+proc _State_IF_Init__CompDir__Pt1__req (pt1 : port, n1 : int) : msg option = {
+  var _r : msg option <- None;
+  _r <- Some
+    (UC_CompIdeal2Sim.epdp__inp_received.`enc
+    {|
+      UC_CompIdeal2Sim.inp_received___func = _self;
+      UC_CompIdeal2Sim.inp_received___adv = adv;
+      UC_CompIdeal2Sim.inp_received__pty = Pt1;
+      
+    |});
+  _st <- _State_IF_AccumOtherInput (Some (pt1, n1)) None;
+  return _r;
+}
+proc _State_IF_Init__CompDir__Pt2__req (pt2 : port, n2 : int) : msg option = {
+  var _r : msg option <- None;
+  _r <- Some
+    (UC_CompIdeal2Sim.epdp__inp_received.`enc
+    {|
+      UC_CompIdeal2Sim.inp_received___func = _self;
+      UC_CompIdeal2Sim.inp_received___adv = adv;
+      UC_CompIdeal2Sim.inp_received__pty = Pt2;
+      
+    |});
+  _st <- _State_IF_AccumOtherInput None (Some (pt2, n2));
+  return _r;
+} proc parties(_m : msg) : msg option = {
+  var _r : msg option <- None;
+  match _st with
+  | _State_IF_AccumOtherInput inp1_opt inp2_opt => {
+    match UC_CompDir.Pt1.epdp__req.`dec _m with
+    | Some _x => {
+      _r <@ _State_IF_AccumOtherInput__CompDir__Pt1__req (inp1_opt, inp2_opt, _x.`UC_CompDir.Pt1.req__pt, _x.`UC_CompDir.Pt1.req__n);
+    }
+    | None => {
+      match UC_CompDir.Pt2.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_AccumOtherInput__CompDir__Pt2__req (inp1_opt, inp2_opt, _x.`UC_CompDir.Pt2.req__pt, _x.`UC_CompDir.Pt2.req__n);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+  }
+  | _State_IF_Final => {
+    
+  }
+  | _State_IF_HandleOutputs inp1 inp2 out1_done out2_done => {
+    match UC_CompIdeal2Sim.epdp__out_enabled.`dec _m with
+    | Some _x => {
+      _r <@ _State_IF_HandleOutputs__CompIdeal2Sim__out_enabled (inp1, inp2, out1_done, out2_done, _x.`UC_CompIdeal2Sim.out_enabled__pty);
+    }
+    | None => {
+      
+    }
+    end;
+  }
+  | _State_IF_Init => {
+    match UC_CompDir.Pt1.epdp__req.`dec _m with
+    | Some _x => {
+      _r <@ _State_IF_Init__CompDir__Pt1__req (_x.`UC_CompDir.Pt1.req__pt, _x.`UC_CompDir.Pt1.req__n);
+    }
+    | None => {
+      match UC_CompDir.Pt2.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_Init__CompDir__Pt2__req (_x.`UC_CompDir.Pt2.req__pt, _x.`UC_CompDir.Pt2.req__n);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+  }
+  end;
+  return _r;
+} proc invoke(m : msg) : msg option = {
+  var r : msg option <- None;
+  if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)\/ (m.`1 = Adv /\
+                                                             m.`2.`1 = _self
+                                                             /\
+                                                             m.`3.`1 = adv)){
+    r <@ parties(m);
+  }
+return r; } 
+}. 
+
+(*alias*)
+module IF = UC_CompIdeal.
+
+op _invar_IF (g : glob IF) : bool =
+(* BEGIN USER FILL *)
+  true.
+(* END USER FILL *)
+
+op _metric_IF (g : glob IF) : int =
+(* BEGIN USER FILL *)
+  match g.`2 with
+  | _State_IF_Init                  => 5
+  | _State_IF_AccumOtherInput x y   => if x = None /\ y = None then 4 else 3
+  | _State_IF_HandleOutputs x y z w => if !z /\ !w then 2 else 1
+  | _State_IF_Final                 => 0
+  end.
+(* END USER FILL *)
+
+lemma IF_metric_good (g : glob IF) :
+  _invar_IF g => 0 <= _metric_IF g.
+proof.
+(* BEGIN USER FILL *)
+smt().
+(* END USER FILL *)
+qed.
+
+lemma IF_init :
+  hoare [IF.init : true ==> _invar_IF (glob IF)].
+proof.
+(* BEGIN USER FILL *)
+proc; auto.
+(* END USER FILL *)
+qed.
+
+lemma IF_invoke (n : int) :
+  hoare
+  [UC_CompIdeal.invoke :
+   _invar_IF (glob IF) /\ _metric_IF (glob IF) = n ==>
+   _invar_IF (glob IF) /\
+   (res <> None =>
+    _metric_IF (glob IF) < n /\
+    ((oget res).`1 = Adv =>
+     (oget res).`2.`2 = _adv_if_pi /\ (oget res).`3.`2 = 1))].
+proof.
+(* BEGIN USER FILL *)
+rewrite /_metric_IF; proc; sp 1.
+if; last auto.
+inline; sp 2.
+match; auto; smt().
+(* END USER FILL *)
+qed.
+
+op rf_info = {| rfi_num_parties = 2; rfi_num_subfuns = 2; rfi_num_params = 0;
+rfi_adv_pi_begin = _adv_pi_begin;
+rfi_adv_pi_main_end = _adv_pi_begin + _adv_pi_num - 1;
+rfi_adv_pi_begin_params = []; rfi_adv_pi_end_params = []; |}. 
+
+
+op _addr_Fwd1 (self : addr) : addr = self ++ [1].
+op _addr_Fwd2 (self : addr) : addr = self ++ [2].
+
+op _extport_dir_Pt1 (self : addr) : port = (self, 1).
+op _extport_dir_Pt2 (self : addr) : port = (self, 2).
+
+op _extport_adv_Pt1 (self : addr) : port = (self, 1).
+op _extport_adv_Pt2 (self : addr) : port = (self, 2).
+
+op _intport_Pt1 (self : addr) : port = (self, 1).
+op _intport_Pt2 (self : addr) : port = (self, 2).
+ 
+
+type _state_Pt1 = [ 
+  | _State_Pt1_Final
+  | _State_Pt1_Init
+  | _State_Pt1_PendingFwd1WaitAdv of port & port & int & int
+  | _State_Pt1_PendingFwd1WaitAdvOrFwd2 of port & int
+  | _State_Pt1_PendingOutputWaitAdv of port & port & int & int
+  | _State_Pt1_WaitFwd2 of port & int
+  | _State_Pt1_WaitInput of port & int
+  
+].
+type _state_Pt2 = [ 
+  | _State_Pt2_Final
+  | _State_Pt2_Init
+  | _State_Pt2_PendingFwd2WaitAdv of port & port & int & int
+  | _State_Pt2_PendingFwd2WaitAdvOrFwd1 of port & int
+  | _State_Pt2_PendingOutputWaitAdv of port & port & int & int
+  | _State_Pt2_WaitFwd1 of port & int
+  | _State_Pt2_WaitInput of port & int
+  
+].
+
+
+module UC_CompReal  : FUNC = {
+  var _self : addr
+  var _st_Pt1 : _state_Pt1
+  var _st_Pt2 : _state_Pt2
+  
+  proc init(self_ : addr) : unit = {
+    _self <- self_;
+  UC_Fwd1.UC_FwdSched.init(_addr_Fwd1 _self);
+  UC_Fwd2.UC_FwdSched.init(_addr_Fwd2 _self);
+  _st_Pt1 <- _State_Pt1_Init;
+  _st_Pt2 <- _State_Pt2_Init;
+  }
+  proc _State_Pt1_Init__CompDir__Pt1__req (pt1 : port, n1 : int) : msg option = {
+    var n2 : int;
+    var pt2 : port;
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_CompAdv.Pt1.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt1.suspend___func = _self;
+        UC_CompAdv.Pt1.suspend___adv = adv;
+        
+      |});
+    _st_Pt1 <- _State_Pt1_PendingFwd1WaitAdvOrFwd2 pt1 n1;
+    return _r;
+  }
+  proc _State_Pt1_Init__Fwd2__D__rsp (u : univ) : msg option = {
+    var n2 : int;
+    var pt2 : port;
+    var _r : msg option <- None;
+    (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompAdv.Pt1.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt1.suspend___func = _self;
+        UC_CompAdv.Pt1.suspend___adv = adv;
+        
+      |});
+    _st_Pt1 <- _State_Pt1_WaitInput pt2 n2;
+    return _r;
+  }
+  proc _State_Pt1_PendingFwd1WaitAdv__CompAdv__Pt1__resume (pt1 : port, pt2 : port, n1 : int, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd1.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd1.UC_FwdSchedDir.D.req___func = _addr_Fwd1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt1 = _intport_Pt1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt2 = _intport_Pt2 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt1, f n1);
+        
+      |});
+    _st_Pt1 <- _State_Pt1_PendingOutputWaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc _State_Pt1_PendingFwd1WaitAdvOrFwd2__CompAdv__Pt1__resume (pt1 : port, n1 : int) : msg option = {
+    var n2 : int;
+    var pt2 : port;
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd1.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd1.UC_FwdSchedDir.D.req___func = _addr_Fwd1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt1 = _intport_Pt1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt2 = _intport_Pt2 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt1, f n1);
+        
+      |});
+    _st_Pt1 <- _State_Pt1_WaitFwd2 pt1 n1;
+    return _r;
+  }
+  proc _State_Pt1_PendingFwd1WaitAdvOrFwd2__Fwd2__D__rsp (pt1 : port, n1 : int, u : univ) : msg option = {
+    var n2 : int;
+    var pt2 : port;
+    var _r : msg option <- None;
+    (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompAdv.Pt1.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt1.suspend___func = _self;
+        UC_CompAdv.Pt1.suspend___adv = adv;
+        
+      |});
+    _st_Pt1 <- _State_Pt1_PendingFwd1WaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc _State_Pt1_PendingOutputWaitAdv__CompAdv__Pt1__resume (pt1 : port, pt2 : port, n1 : int, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_CompDir.Pt1.epdp__rsp.`enc
+      {|
+        UC_CompDir.Pt1.rsp___func = _self;
+        UC_CompDir.Pt1.rsp__pt = pt1;
+        UC_CompDir.Pt1.rsp__pt' = pt2;
+        UC_CompDir.Pt1.rsp__m = h n1 n2;
+        
+      |});
+    _st_Pt1 <- _State_Pt1_Final;
+    return _r;
+  }
+  proc _State_Pt1_WaitFwd2__Fwd2__D__rsp (pt1 : port, n1 : int, u : univ) : msg option = {
+    var n2 : int;
+    var pt2 : port;
+    var _r : msg option <- None;
+    (pt2, n2) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompDir.Pt1.epdp__rsp.`enc
+      {|
+        UC_CompDir.Pt1.rsp___func = _self;
+        UC_CompDir.Pt1.rsp__pt = pt1;
+        UC_CompDir.Pt1.rsp__pt' = pt2;
+        UC_CompDir.Pt1.rsp__m = h n1 n2;
+        
+      |});
+    _st_Pt1 <- _State_Pt1_Final;
+    return _r;
+  }
+  proc _State_Pt1_WaitInput__CompDir__Pt1__req (pt2 : port, n2 : int, pt1 : port, n1 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd1.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd1.UC_FwdSchedDir.D.req___func = _addr_Fwd1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt1 = _intport_Pt1 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__pt2 = _intport_Pt2 _self;
+        UC_Fwd1.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt1, f n1);
+        
+      |});
+    _st_Pt1 <- _State_Pt1_PendingOutputWaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc party_Pt1(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st_Pt1 with
+    | _State_Pt1_Final => {
+      
+    }
+    | _State_Pt1_Init => {
+      match UC_CompDir.Pt1.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_Init__CompDir__Pt1__req (_x.`UC_CompDir.Pt1.req__pt, _x.`UC_CompDir.Pt1.req__n);
+      }
+      | None => {
+        match UC_Fwd2.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+        | Some _x => {
+          if (_m.`3.`1 = _addr_Fwd2 _self){
+            _r <@ _State_Pt1_Init__Fwd2__D__rsp (_x.`UC_Fwd2.UC_FwdSchedDir.D.rsp__u);
+          }
+          
+        }
+        | None => {
+          
+        }
+        end;
+      }
+      end;
+    }
+    | _State_Pt1_PendingFwd1WaitAdv pt1 pt2 n1 n2 => {
+      match UC_CompAdv.Pt1.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_PendingFwd1WaitAdv__CompAdv__Pt1__resume (pt1, pt2, n1, n2);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt1_PendingFwd1WaitAdvOrFwd2 pt1 n1 => {
+      match UC_CompAdv.Pt1.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_PendingFwd1WaitAdvOrFwd2__CompAdv__Pt1__resume (pt1, n1);
+      }
+      | None => {
+        match UC_Fwd2.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+        | Some _x => {
+          if (_m.`3.`1 = _addr_Fwd2 _self){
+            _r <@ _State_Pt1_PendingFwd1WaitAdvOrFwd2__Fwd2__D__rsp (pt1, n1, _x.`UC_Fwd2.UC_FwdSchedDir.D.rsp__u);
+          }
+          
+        }
+        | None => {
+          
+        }
+        end;
+      }
+      end;
+    }
+    | _State_Pt1_PendingOutputWaitAdv pt1 pt2 n1 n2 => {
+      match UC_CompAdv.Pt1.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_PendingOutputWaitAdv__CompAdv__Pt1__resume (pt1, pt2, n1, n2);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt1_WaitFwd2 pt1 n1 => {
+      match UC_Fwd2.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+      | Some _x => {
+        if (_m.`3.`1 = _addr_Fwd2 _self){
+          _r <@ _State_Pt1_WaitFwd2__Fwd2__D__rsp (pt1, n1, _x.`UC_Fwd2.UC_FwdSchedDir.D.rsp__u);
+        }
+        
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt1_WaitInput pt2 n2 => {
+      match UC_CompDir.Pt1.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_WaitInput__CompDir__Pt1__req (pt2, n2, _x.`UC_CompDir.Pt1.req__pt, _x.`UC_CompDir.Pt1.req__n);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc _State_Pt2_Init__CompDir__Pt2__req (pt2 : port, n2 : int) : msg option = {
+    var n1 : int;
+    var pt1 : port;
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_CompAdv.Pt2.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt2.suspend___func = _self;
+        UC_CompAdv.Pt2.suspend___adv = adv;
+        
+      |});
+    _st_Pt2 <- _State_Pt2_PendingFwd2WaitAdvOrFwd1 pt2 n2;
+    return _r;
+  }
+  proc _State_Pt2_Init__Fwd1__D__rsp (u : univ) : msg option = {
+    var n1 : int;
+    var pt1 : port;
+    var _r : msg option <- None;
+    (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompAdv.Pt2.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt2.suspend___func = _self;
+        UC_CompAdv.Pt2.suspend___adv = adv;
+        
+      |});
+    _st_Pt2 <- _State_Pt2_WaitInput pt1 n1;
+    return _r;
+  }
+  proc _State_Pt2_PendingFwd2WaitAdv__CompAdv__Pt2__resume (pt1 : port, pt2 : port, n1 : int, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd2.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd2.UC_FwdSchedDir.D.req___func = _addr_Fwd2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt1 = _intport_Pt2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt2 = _intport_Pt1 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt2, g n2);
+        
+      |});
+    _st_Pt2 <- _State_Pt2_PendingOutputWaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc _State_Pt2_PendingFwd2WaitAdvOrFwd1__CompAdv__Pt2__resume (pt2 : port, n2 : int) : msg option = {
+    var n1 : int;
+    var pt1 : port;
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd2.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd2.UC_FwdSchedDir.D.req___func = _addr_Fwd2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt1 = _intport_Pt2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt2 = _intport_Pt1 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt2, g n2);
+        
+      |});
+    _st_Pt2 <- _State_Pt2_WaitFwd1 pt2 n2;
+    return _r;
+  }
+  proc _State_Pt2_PendingFwd2WaitAdvOrFwd1__Fwd1__D__rsp (pt2 : port, n2 : int, u : univ) : msg option = {
+    var n1 : int;
+    var pt1 : port;
+    var _r : msg option <- None;
+    (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompAdv.Pt2.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt2.suspend___func = _self;
+        UC_CompAdv.Pt2.suspend___adv = adv;
+        
+      |});
+    _st_Pt2 <- _State_Pt2_PendingFwd2WaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc _State_Pt2_PendingOutputWaitAdv__CompAdv__Pt2__resume (pt1 : port, pt2 : port, n1 : int, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_CompDir.Pt2.epdp__rsp.`enc
+      {|
+        UC_CompDir.Pt2.rsp___func = _self;
+        UC_CompDir.Pt2.rsp__pt = pt2;
+        UC_CompDir.Pt2.rsp__pt' = pt1;
+        UC_CompDir.Pt2.rsp__m = h n2 n1;
+        
+      |});
+    _st_Pt2 <- _State_Pt2_Final;
+    return _r;
+  }
+  proc _State_Pt2_WaitFwd1__Fwd1__D__rsp (pt2 : port, n2 : int, u : univ) : msg option = {
+    var n1 : int;
+    var pt1 : port;
+    var _r : msg option <- None;
+    (pt1, n1) <- oget (epdp_port_int_univ.`dec u);
+    _r <- Some
+      (UC_CompDir.Pt2.epdp__rsp.`enc
+      {|
+        UC_CompDir.Pt2.rsp___func = _self;
+        UC_CompDir.Pt2.rsp__pt = pt2;
+        UC_CompDir.Pt2.rsp__pt' = pt1;
+        UC_CompDir.Pt2.rsp__m = h n2 n1;
+        
+      |});
+    _st_Pt2 <- _State_Pt2_Final;
+    return _r;
+  }
+  proc _State_Pt2_WaitInput__CompDir__Pt2__req (pt1 : port, n1 : int, pt2 : port, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Fwd2.UC_FwdSchedDir.D.epdp__req.`enc
+      {|
+        UC_Fwd2.UC_FwdSchedDir.D.req___func = _addr_Fwd2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt1 = _intport_Pt2 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__pt2 = _intport_Pt1 _self;
+        UC_Fwd2.UC_FwdSchedDir.D.req__u = epdp_port_int_univ.`enc
+        (pt2, g n2);
+        
+      |});
+    _st_Pt2 <- _State_Pt2_PendingOutputWaitAdv pt1 pt2 n1 n2;
+    return _r;
+  }
+  proc party_Pt2(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st_Pt2 with
+    | _State_Pt2_Final => {
+      
+    }
+    | _State_Pt2_Init => {
+      match UC_CompDir.Pt2.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt2_Init__CompDir__Pt2__req (_x.`UC_CompDir.Pt2.req__pt, _x.`UC_CompDir.Pt2.req__n);
+      }
+      | None => {
+        match UC_Fwd1.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+        | Some _x => {
+          if (_m.`3.`1 = _addr_Fwd1 _self){
+            _r <@ _State_Pt2_Init__Fwd1__D__rsp (_x.`UC_Fwd1.UC_FwdSchedDir.D.rsp__u);
+          }
+          
+        }
+        | None => {
+          
+        }
+        end;
+      }
+      end;
+    }
+    | _State_Pt2_PendingFwd2WaitAdv pt1 pt2 n1 n2 => {
+      match UC_CompAdv.Pt2.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt2_PendingFwd2WaitAdv__CompAdv__Pt2__resume (pt1, pt2, n1, n2);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt2_PendingFwd2WaitAdvOrFwd1 pt2 n2 => {
+      match UC_CompAdv.Pt2.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt2_PendingFwd2WaitAdvOrFwd1__CompAdv__Pt2__resume (pt2, n2);
+      }
+      | None => {
+        match UC_Fwd1.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+        | Some _x => {
+          if (_m.`3.`1 = _addr_Fwd1 _self){
+            _r <@ _State_Pt2_PendingFwd2WaitAdvOrFwd1__Fwd1__D__rsp (pt2, n2, _x.`UC_Fwd1.UC_FwdSchedDir.D.rsp__u);
+          }
+          
+        }
+        | None => {
+          
+        }
+        end;
+      }
+      end;
+    }
+    | _State_Pt2_PendingOutputWaitAdv pt1 pt2 n1 n2 => {
+      match UC_CompAdv.Pt2.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt2_PendingOutputWaitAdv__CompAdv__Pt2__resume (pt1, pt2, n1, n2);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt2_WaitFwd1 pt2 n2 => {
+      match UC_Fwd1.UC_FwdSchedDir.D.epdp__rsp.`dec _m with
+      | Some _x => {
+        if (_m.`3.`1 = _addr_Fwd1 _self){
+          _r <@ _State_Pt2_WaitFwd1__Fwd1__D__rsp (pt2, n2, _x.`UC_Fwd1.UC_FwdSchedDir.D.rsp__u);
+        }
+        
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt2_WaitInput pt1 n1 => {
+      match UC_CompDir.Pt2.epdp__req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt2_WaitInput__CompDir__Pt2__req (pt1, n1, _x.`UC_CompDir.Pt2.req__pt, _x.`UC_CompDir.Pt2.req__n);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if (_addr_Fwd1 _self <= m.`2.`1) {r <@ UC_Fwd1.UC_FwdSched.invoke(m);}
+    else {
+    if (_addr_Fwd2 _self <= m.`2.`1) {r <@ UC_Fwd2.UC_FwdSched.invoke(m);}
+    else {
+    if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 _self /\ envport _self m.`3)
+    \/
+    (m.`1 = Adv /\ m.`2 = _extport_adv_Pt1 _self)
+    \/
+    (m.`1 = Dir /\ m.`2 = _intport_Pt1 _self /\ _self < m.`3.`1))
+    {r <@ party_Pt1(m);}
+    else {
+    if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 _self /\ envport _self m.`3)
+    \/
+    (m.`1 = Adv /\ m.`2 = _extport_adv_Pt2 _self)
+    \/
+    (m.`1 = Dir /\ m.`2 = _intport_Pt2 _self /\ _self < m.`3.`1))
+    {r <@ party_Pt2(m);}
+    }
+    }
+    }
+    return r;
+    }
+    
+  }.
+ op glob_UC_CompReal_to__st_Pt2 (g : glob UC_CompReal) / : _state_Pt2 = g.`3.
+ 
+(* TODO - Pt2 is a dag, so should work, but metric patched here *)
+
+ op _invar_Pt2 (g : _state_Pt2) : bool = true.
+
+ op _metric_Pt2 (st : _state_Pt2) : int =
+   match st with
+   | _State_Pt2_Init => 6
+   | _State_Pt2_PendingFwd2WaitAdvOrFwd1 _ _ => 5
+   | _State_Pt2_PendingFwd2WaitAdv _ _ _ _ => 4
+   | _State_Pt2_WaitFwd1 _ _ => 3
+   | _State_Pt2_WaitInput _ _ => 2
+   | _State_Pt2_PendingOutputWaitAdv _ _ _ _ => 1
+   | _State_Pt2_Final => 0
+   end.
+
+ lemma _metric_Pt2_good (g : _state_Pt2) :
+   _invar_Pt2 g => 0 <= _metric_Pt2 g.
+ proof.
+   rewrite /_metric_Pt2 /=. smt().
+ qed.
+
+ lemma _invoke_Pt2 (n : int)  : hoare [
+   UC_CompReal.party_Pt2 :
+   _metric_Pt2 (glob_UC_CompReal_to__st_Pt2(glob UC_CompReal)) = n ==>
+   (res <> None =>
+   _metric_Pt2 (glob_UC_CompReal_to__st_Pt2(glob UC_CompReal)) < n
+    /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))
+ ]. proof.
+(* 
+  rewrite /_metric_Pt2 /=. proc. inline. (*inline procedure calls*)
+  sp 1. (*initializing input, return value*) match. (*state match*)
+ (*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+ (*state branch Init*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 1. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch PendingFwd2WaitAdv*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 5. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  (*state branch PendingFwd2WaitAdvOrFwd1*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 3. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 3. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch PendingOutputWaitAdv*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 5. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  (*state branch WaitFwd1*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 3. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch WaitInput*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 3. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+*)
+admit.
+  qed. 
+ 
+ op glob_UC_CompReal_to__st_Pt1 (g : glob UC_CompReal) / : _state_Pt1 = g.`2.
+ 
+(* TODO is a dag, should work, but metric patched here *)
+
+ op _invar_Pt1 (g : _state_Pt1) : bool = true.
+
+ op _metric_Pt1 (st : _state_Pt1) : int =
+   match st with
+   | _State_Pt1_Init => 6
+   | _State_Pt1_PendingFwd1WaitAdvOrFwd2 _ _ => 5
+   | _State_Pt1_PendingFwd1WaitAdv _ _ _ _ => 4
+   | _State_Pt1_WaitFwd2 _ _ => 3
+   | _State_Pt1_WaitInput _ _ => 2
+   | _State_Pt1_PendingOutputWaitAdv _ _ _ _ => 1
+   | _State_Pt1_Final => 0
+   end.
+
+ lemma _metric_Pt1_good (g : _state_Pt1) :
+   _invar_Pt1 g => 0 <= _metric_Pt1 g.
+     proof. rewrite /_metric_Pt1 /=.
+       smt(). qed.
+
+ lemma _invoke_Pt1 (n : int)  : hoare [
+   UC_CompReal.party_Pt1 :
+   _metric_Pt1 (glob_UC_CompReal_to__st_Pt1(glob UC_CompReal)) = n ==>
+   (res <> None =>
+   _metric_Pt1 (glob_UC_CompReal_to__st_Pt1(glob UC_CompReal)) < n
+    /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))
+ ]. proof.
+(*
+  rewrite /_metric_Pt1 /=. proc. inline. (*inline procedure calls*)
+  sp 1. (*initializing input, return value*) match. (*state match*)
+ (*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+ (*state branch Init*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 1. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch PendingFwd1WaitAdv*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 5. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  (*state branch PendingFwd1WaitAdvOrFwd2*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 3. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 3. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch PendingOutputWaitAdv*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 5. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  (*state branch WaitFwd2*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ if. (*address check for internal messages*)
+ sp 3. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 1. (*Assign instruction*) 
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+   skip. move => />;smt(). (*address check for internal messages failed case*)
+ (*state branch WaitInput*) match. (*message match*)
+  skip. move => />;smt(). (*None branch of message match, dec failed*)
+ sp 3. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
+  sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+*)
+admit.
+  qed. 
+ 
+ op glob_UC_CompReal_to_own(g : glob UC_CompReal) / : glob UC_CompReal =
+ (g.`1, g.`2, g.`3, g.`4, g.`5, g.`6, g.`7).
+ 
+ op glob_UC_CompReal_to_UC_Fwd1(g : glob UC_CompReal) / : glob UC_Fwd1.IF =
+ (g.`4, g.`5).
+ 
+ op glob_UC_CompReal_to_UC_Fwd2(g : glob UC_CompReal) / : glob UC_Fwd2.IF =
+ (g.`6, g.`7).
+ 
+  op [smt_opaque] _metric (g : glob UC_CompReal) : int =
+  _metric_Pt1(glob_UC_CompReal_to__st_Pt1 (glob_UC_CompReal_to_own g))
+ +_metric_Pt2(glob_UC_CompReal_to__st_Pt2 (glob_UC_CompReal_to_own g))
+ +UC_Fwd1._metric_IF(glob_UC_CompReal_to_UC_Fwd1 (glob_UC_CompReal_to_own g))
+ +UC_Fwd2._metric_IF(glob_UC_CompReal_to_UC_Fwd2 (glob_UC_CompReal_to_own g))
+ .
+ 
+ lemma _invoke (n : int)  : hoare [
+   UC_CompReal.invoke :
+   _metric (glob UC_CompReal) = n
+   ==>
+   (res <> None =>
+   _metric (glob UC_CompReal) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+ proof.
+ rewrite /_metric /=.
+   proc.
+   sp 1.
+   if.
+   exlim (UC_Fwd1._metric_IF(glob_UC_CompReal_to_UC_Fwd1(glob_UC_CompReal_to_own(glob UC_CompReal)))) => _sub_metric.
+   call (UC_Fwd1.IF_invoke _sub_metric ).
+   skip.
+   smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+   if.
+   exlim (UC_Fwd2._metric_IF(glob_UC_CompReal_to_UC_Fwd2(glob_UC_CompReal_to_own(glob UC_CompReal)))) => _sub_metric.
+   call (UC_Fwd2.IF_invoke _sub_metric ).
+   skip.
+   smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+   if.
+   exlim (_metric_Pt1(glob_UC_CompReal_to__st_Pt1(glob_UC_CompReal_to_own(glob UC_CompReal)))) => _sub_metric.
+   call (_invoke_Pt1 _sub_metric ).
+   skip.
+   smt().
+   if.
+   exlim (_metric_Pt2(glob_UC_CompReal_to__st_Pt2(glob_UC_CompReal_to_own(glob UC_CompReal)))) => _sub_metric.
+   call (_invoke_Pt2 _sub_metric ).
+   skip.
+   smt().
+   skip.
+   smt().
+ qed.
+ 
+  op _invar (g : glob UC_CompReal) : bool =
+   _invar_Pt1(glob_UC_CompReal_to__st_Pt1 (glob_UC_CompReal_to_own g))
+ /\_invar_Pt2(glob_UC_CompReal_to__st_Pt2 (glob_UC_CompReal_to_own g))
+ /\UC_Fwd1._invar_IF(glob_UC_CompReal_to_UC_Fwd1 (glob_UC_CompReal_to_own g))
+ /\UC_Fwd2._invar_IF(glob_UC_CompReal_to_UC_Fwd2 (glob_UC_CompReal_to_own g))
+ .
+ 
+ lemma _metric_good (g : glob UC_CompReal) :
+ _invar g => 0 <= _metric g.
+ proof.
+ rewrite /_metric /=.
+ rewrite /_invar /=.
+ smt(
+ UC_Fwd1.IF_metric_good
+ UC_Fwd2.IF_metric_good
+ _metric_Pt1_good
+ _metric_Pt2_good
+ ).
+ qed.
+ 
+ lemma _init :
+ hoare [ UC_CompReal.init : true ==> _invar (glob UC_CompReal)].
+ proof. proc. sp. wp.
+ call (UC_Fwd2.IF_init).
+ call (UC_Fwd1.IF_init).
+ skip.
+ rewrite /_invar /=.
+ smt().
+ qed.
+ 
+   
+   clone RealFunctionality as RFCore with
+   op rf_info <- rf_info
+   proof *.
+   realize rf_info_valid. smt(_adv_pi_begin_gt0). qed.
+   
+   module RFRP = RFCore.MakeRF(UC_CompReal).
+   
+   lemma RFRP_Core_init :
+  hoare [RFRP.init : true ==> _invar (glob UC_CompReal)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare (UC_CompReal) _invar).
+apply _init.
+ qed.
+   
+   lemma RFRP_Core_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar (glob UC_CompReal) /\ _metric (glob UC_CompReal) = n ==>
+   _invar (glob UC_CompReal) /\
+   
+ (res <> None => _metric (glob UC_CompReal) < n
+   
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (UC_CompReal) _invar _metric).
+apply _invoke.
+ qed.
+   
+   (* now we lift our invariant, termination metric and lemmas to RFRP *)
+   
+   op glob_RFRP_to_Core(g : glob RFRP) / : glob UC_CompReal =
+   (g.`1, g.`2, g.`3, g.`5, g.`6, g.`7, g.`8).
+   
+   op _invar_RFRP : glob RFRP -> bool =
+  fun (g : glob RFRP) => _invar (glob_RFRP_to_Core g).
+
+op _metric_RFRP : glob RFRP -> int =
+  fun (g : glob RFRP) => _metric (glob_RFRP_to_Core g).
+
+lemma RFRP_metric_good (g : glob RFRP) :
+  _invar_RFRP g => 0 <= _metric_RFRP g.
+    proof.
+ smt(_metric_good). qed.
+ lemma RFRP_init :
+  hoare [RFRP.init : true ==> _invar_RFRP (glob RFRP)].
+proof.
+rewrite /_invar_RFRP /=.
+apply RFRP_Core_init.
+ qed.
+ 
+lemma RFRP_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar_RFRP (glob RFRP) /\ _metric_RFRP (glob RFRP) = n ==>
+   _invar_RFRP (glob RFRP) /\
+ (res <> None => _metric_RFRP (glob RFRP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_invar_RFRP /_metric_RFRP /=.
+apply RFRP_Core_invoke.
+ qed.
+   
+     (*all CompGlobs module, abreviation for lemma module restrictions*)
+     module AllCGs_ = {
+     module OwnCGs = UC_Composition.CompGlobs
+     }. 
+     (*all IFs module, abreviation for lemma module restrictions*)
+     module AllIFs = {
+     module OwnIF = IF
+     }.  
+ 
+
+type _state_SIM = [ 
+  | _State_SIM_Init
+  | _State_SIM_Main of sim_party_state & sim_party_state & sim_fwd_state &
+  sim_fwd_state
+  
+]. 
+
+module UC_CompSim = {
+  var if_addr_opt : addr option
+  var _st : _state_SIM
+  proc init() : unit = {
+    if_addr_opt <- None; _st <- _State_SIM_Init;
+    
+  }
+  proc _State_SIM_Init__CompIdeal2Sim__inp_received (pty_name : party_name) : msg option = {
+    var _r : msg option <- None;
+    match (pty_name) with
+    | Pt1 => {
+    
+      _r <- Some
+        (UC_CompAdv.Pt1.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt1.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt1.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main SPS_PendingFwdWaitAdvOrOtherFwd SPS_Init
+      SFS_Init SFS_Init;
+      
+    }
+    | Pt2 => {
+    
+      _r <- Some
+        (UC_CompAdv.Pt2.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt2.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt2.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main SPS_Init SPS_PendingFwdWaitAdvOrOtherFwd
+      SFS_Init SFS_Init;
+      
+    }
+    end;
+  return _r;
+}
+proc _State_SIM_Main__CompIdeal2Sim__inp_received (pty1state : sim_party_state, pty2state : sim_party_state, fwd1state : sim_fwd_state, fwd2state : sim_fwd_state, pty_name : party_name) : msg option = {
+  var _r : msg option <- None;
+  match (pty_name) with
+  | Pt1 => {
+  
+    if (pty1state = SPS_Init) {
+      _r <- Some
+        (UC_CompAdv.Pt1.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt1.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt1.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main SPS_PendingFwdWaitAdvOrOtherFwd pty2state
+      fwd1state fwd2state;
+      
+    }
+    else {
+      if (pty1state = SPS_WaitInput /\ fwd1state = SFS_Init) {
+        _r <- Some
+          (UC_Fwd2.UC_FwdSchedAdv.epdp__req.`enc
+          {|
+            UC_Fwd2.UC_FwdSchedAdv.req___func = _addr_Fwd2 (oget if_addr_opt);
+            UC_Fwd2.UC_FwdSchedAdv.req___adv = adv;
+            
+          |});
+        _st <- _State_SIM_Main SPS_PendingOutputWaitAdv pty2state SFS_WaitOK
+        fwd2state;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  | Pt2 => {
+  
+    if (pty2state = SPS_Init) {
+      _r <- Some
+        (UC_CompAdv.Pt2.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt2.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt2.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main pty1state SPS_PendingFwdWaitAdvOrOtherFwd
+      fwd1state fwd2state;
+      
+    }
+    else {
+      if (pty2state = SPS_WaitInput /\ fwd2state = SFS_Init) {
+        _r <- Some
+          (UC_Fwd2.UC_FwdSchedAdv.epdp__req.`enc
+          {|
+            UC_Fwd2.UC_FwdSchedAdv.req___func = _addr_Fwd2 (oget if_addr_opt);
+            UC_Fwd2.UC_FwdSchedAdv.req___adv = adv;
+            
+          |});
+        _st <- _State_SIM_Main pty1state SPS_PendingOutputWaitAdv fwd1state
+        SFS_WaitOK;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  end;
+return _r;
+}
+proc _State_SIM_Main__CompReal__CompAdv__Pt1__resume (pty1state : sim_party_state, pty2state : sim_party_state, fwd1state : sim_fwd_state, fwd2state : sim_fwd_state) : msg option = {
+  var _r : msg option <- None;
+  if (pty1state = SPS_PendingFwdWaitAdvOrOtherFwd /\ fwd1state = SFS_Init) {
+    _r <- Some
+      (UC_Fwd1.UC_FwdSchedAdv.epdp__req.`enc
+      {|
+        UC_Fwd1.UC_FwdSchedAdv.req___func = _addr_Fwd1 (oget if_addr_opt);
+        UC_Fwd1.UC_FwdSchedAdv.req___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Main SPS_WaitOtherFwd pty2state SFS_WaitOK fwd2state;
+    
+  }
+  else {
+    if (pty1state = SPS_PendingFwdWaitAdv /\ fwd1state = SFS_Init) {
+      _r <- Some
+        (UC_Fwd1.UC_FwdSchedAdv.epdp__req.`enc
+        {|
+          UC_Fwd1.UC_FwdSchedAdv.req___func = _addr_Fwd1 (oget if_addr_opt);
+          UC_Fwd1.UC_FwdSchedAdv.req___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main SPS_PendingOutputWaitAdv pty2state SFS_WaitOK
+      fwd2state;
+      
+    }
+    else {
+      if (pty1state = SPS_PendingOutputWaitAdv) {
+        _r <- Some
+          (UC_CompIdeal2Sim.epdp__out_enabled.`enc
+          {|
+            UC_CompIdeal2Sim.out_enabled___func = (oget if_addr_opt);
+            UC_CompIdeal2Sim.out_enabled___adv = adv;
+            UC_CompIdeal2Sim.out_enabled__pty = Pt1;
+            
+          |});
+        _st <- _State_SIM_Main SPS_Final pty2state fwd1state fwd2state;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  return _r;
+}
+proc _State_SIM_Main__CompReal__CompAdv__Pt2__resume (pty1state : sim_party_state, pty2state : sim_party_state, fwd1state : sim_fwd_state, fwd2state : sim_fwd_state) : msg option = {
+  var _r : msg option <- None;
+  if (pty2state = SPS_PendingFwdWaitAdvOrOtherFwd /\ fwd2state = SFS_Init) {
+    _r <- Some
+      (UC_Fwd2.UC_FwdSchedAdv.epdp__req.`enc
+      {|
+        UC_Fwd2.UC_FwdSchedAdv.req___func = _addr_Fwd2 (oget if_addr_opt);
+        UC_Fwd2.UC_FwdSchedAdv.req___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Main pty1state SPS_WaitOtherFwd fwd1state SFS_WaitOK;
+    
+  }
+  else {
+    if (pty2state = SPS_PendingFwdWaitAdv /\ fwd2state = SFS_Init) {
+      _r <- Some
+        (UC_Fwd2.UC_FwdSchedAdv.epdp__req.`enc
+        {|
+          UC_Fwd2.UC_FwdSchedAdv.req___func = _addr_Fwd2 (oget if_addr_opt);
+          UC_Fwd2.UC_FwdSchedAdv.req___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main pty1state SPS_PendingOutputWaitAdv fwd1state
+      SFS_WaitOK;
+      
+    }
+    else {
+      if (pty2state = SPS_PendingOutputWaitAdv) {
+        _r <- Some
+          (UC_CompIdeal2Sim.epdp__out_enabled.`enc
+          {|
+            UC_CompIdeal2Sim.out_enabled___func = (oget if_addr_opt);
+            UC_CompIdeal2Sim.out_enabled___adv = adv;
+            UC_CompIdeal2Sim.out_enabled__pty = Pt2;
+            
+          |});
+        _st <- _State_SIM_Main pty1state SPS_Final fwd1state fwd2state;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  return _r;
+}
+proc _State_SIM_Main__CompReal__Fwd1__FwdSchedAdv__ok (pty1state : sim_party_state, pty2state : sim_party_state, fwd1state : sim_fwd_state, fwd2state : sim_fwd_state) : msg option = {
+  var _r : msg option <- None;
+  if (fwd1state = SFS_WaitOK /\ pty2state = SPS_Init) {
+    _r <- Some
+      (UC_CompAdv.Pt2.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt2.suspend___func = (oget if_addr_opt);
+        UC_CompAdv.Pt2.suspend___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Main pty1state SPS_WaitInput SFS_Final fwd2state;
+    
+  }
+  else {
+    if (fwd1state = SFS_WaitOK /\ pty2state = SPS_PendingFwdWaitAdvOrOtherFwd) {
+      _r <- Some
+        (UC_CompAdv.Pt2.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt2.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt2.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main pty1state SPS_PendingFwdWaitAdv SFS_Final
+      fwd2state;
+      
+    }
+    else {
+      if (fwd1state = SFS_WaitOK /\ pty2state = SPS_WaitOtherFwd) {
+        _r <- Some
+          (UC_CompIdeal2Sim.epdp__out_enabled.`enc
+          {|
+            UC_CompIdeal2Sim.out_enabled___func = (oget if_addr_opt);
+            UC_CompIdeal2Sim.out_enabled___adv = adv;
+            UC_CompIdeal2Sim.out_enabled__pty = Pt2;
+            
+          |});
+        _st <- _State_SIM_Main pty1state SPS_Final SFS_Final fwd2state;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  return _r;
+}
+proc _State_SIM_Main__CompReal__Fwd2__FwdSchedAdv__ok (pty1state : sim_party_state, pty2state : sim_party_state, fwd1state : sim_fwd_state, fwd2state : sim_fwd_state) : msg option = {
+  var _r : msg option <- None;
+  if (fwd2state = SFS_WaitOK /\ pty1state = SPS_Init) {
+    _r <- Some
+      (UC_CompAdv.Pt1.epdp__suspend.`enc
+      {|
+        UC_CompAdv.Pt1.suspend___func = (oget if_addr_opt);
+        UC_CompAdv.Pt1.suspend___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Main SPS_WaitInput pty2state fwd1state SFS_Final;
+    
+  }
+  else {
+    if (fwd2state = SFS_WaitOK /\ pty1state = SPS_PendingFwdWaitAdvOrOtherFwd) {
+      _r <- Some
+        (UC_CompAdv.Pt1.epdp__suspend.`enc
+        {|
+          UC_CompAdv.Pt1.suspend___func = (oget if_addr_opt);
+          UC_CompAdv.Pt1.suspend___adv = adv;
+          
+        |});
+      _st <- _State_SIM_Main SPS_PendingFwdWaitAdv pty2state fwd1state
+      SFS_Final;
+      
+    }
+    else {
+      if (fwd2state = SFS_WaitOK /\ pty1state = SPS_WaitOtherFwd) {
+        _r <- Some
+          (UC_CompIdeal2Sim.epdp__out_enabled.`enc
+          {|
+            UC_CompIdeal2Sim.out_enabled___func = (oget if_addr_opt);
+            UC_CompIdeal2Sim.out_enabled___adv = adv;
+            UC_CompIdeal2Sim.out_enabled__pty = Pt1;
+            
+          |});
+        _st <- _State_SIM_Main SPS_Final pty2state fwd1state SFS_Final;
+        
+      }
+      else {
+        _r <- None;
+        
+      }
+      
+    }
+    
+  }
+  return _r;
+}
+proc invoke(_m : msg) : msg option = {
+  var _r : msg option <- None;
+  if (if_addr_opt = None) {if_addr_opt <- Some _m.`3.`1;}
+  match _st with
+  | _State_SIM_Init => {
+    if ((_m.`3.`1 = (oget if_addr_opt)) /\ (_m.`2.`1 = adv) /\ (UC_CompIdeal2Sim.epdp__inp_received.`dec _m) <> None)
+    {
+      _r <@ _State_SIM_Init__CompIdeal2Sim__inp_received ((oget (UC_CompIdeal2Sim.epdp__inp_received.`dec _m)).`UC_CompIdeal2Sim.inp_received__pty);
+    }
+    
+  }
+  | _State_SIM_Main pty1state pty2state fwd1state fwd2state => {
+    if ((_m.`3.`1 = (oget if_addr_opt)) /\ (_m.`2.`1 = adv) /\ (UC_CompIdeal2Sim.epdp__inp_received.`dec _m) <> None)
+    {
+      _r <@ _State_SIM_Main__CompIdeal2Sim__inp_received (pty1state, pty2state, fwd1state, fwd2state, (oget (UC_CompIdeal2Sim.epdp__inp_received.`dec _m)).`UC_CompIdeal2Sim.inp_received__pty);
+    }
+    else {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = (oget if_addr_opt)) /\ (UC_CompAdv.Pt1.epdp__resume.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_Main__CompReal__CompAdv__Pt1__resume (pty1state, pty2state, fwd1state, fwd2state);
+      }
+      else {
+        if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = (oget if_addr_opt)) /\ (UC_CompAdv.Pt2.epdp__resume.`dec _m) <> None)
+        {
+          _r <@ _State_SIM_Main__CompReal__CompAdv__Pt2__resume (pty1state, pty2state, fwd1state, fwd2state);
+        }
+        else {
+          if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Fwd1 (oget if_addr_opt)) /\ (UC_Fwd1.UC_FwdSchedAdv.epdp__ok.`dec _m) <> None)
+          {
+            _r <@ _State_SIM_Main__CompReal__Fwd1__FwdSchedAdv__ok (pty1state, pty2state, fwd1state, fwd2state);
+          }
+          else {
+            if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Fwd2 (oget if_addr_opt)) /\ (UC_Fwd2.UC_FwdSchedAdv.epdp__ok.`dec _m) <> None)
+            {
+              _r <@ _State_SIM_Main__CompReal__Fwd2__FwdSchedAdv__ok (pty1state, pty2state, fwd1state, fwd2state);
+            }
+            
+          }
+          
+        }
+        
+      }
+      
+    }
+    
+  }
+  end;
+  return _r;
+}
+
+}.  
+
+op _invar_UC_CompSim (g : glob UC_CompSim) : bool =
+(* BEGIN USER FILL *)
+  true.
+(* END USER FILL *)
+
+op _metric_UC_CompSim (g : glob UC_CompSim) : int =
+(* BEGIN USER FILL *)
+  match g.`1 with
+  | _State_SIM_Init                     => 17
+  | _State_SIM_Main sps1 sps2 sfs1 sfs2 =>
+      metric_sim_party_state sps1 + metric_sim_party_state sps2 +
+      metric_sim_fwd_state sfs1 + metric_sim_fwd_state sfs2
+  end.
+(* END USER FILL *)
+
+lemma _metric_UC_CompSim_good (g : glob UC_CompSim) :
+  _invar_UC_CompSim g => 0 <= _metric_UC_CompSim g.
+proof.
+(* BEGIN USER FILL *)
+smt().
+(* END USER FILL *)
+qed.
+
+lemma UC_CompSim_init :
+  hoare [UC_CompSim.init : true ==> _invar_UC_CompSim (glob UC_CompSim)].
+proof.
+(* USER BEGIN FILL *)
+proc. auto.
+(* USER END FILL *)
+qed.   
+
+lemma UC_CompSim_invoke (n : int) :
+  hoare
+  [UC_CompSim.invoke :
+   _invar_UC_CompSim (glob UC_CompSim) /\
+   _metric_UC_CompSim (glob UC_CompSim) = n ==>
+   res <> None =>
+   _metric_UC_CompSim (glob UC_CompSim) < n].
+proof.
+(* BEGIN USER FILL *)
+rewrite /_invar_CompSim /_metric_UC_CompSim
+        /metric_sim_party_state /metric_sim_fwd_state.
+proc; sp 1.
+if.
+sp 1; elim* => if_addr_opt.
+match; inline*; auto; smt().
+match; inline*; auto; smt().
+(* END USER FILL *)
+qed.
+
+clone Simulator as MSCore with
+op sim_adv_pi <- _adv_if_pi
+proof *.
+realize sim_adv_pi_ge1. smt(_adv_pi_begin_gt0). qed.
+module SIM(Adv : ADV) = MSCore.MS(UC_CompSim, Adv).
+
+

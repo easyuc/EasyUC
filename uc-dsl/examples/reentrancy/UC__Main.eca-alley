@@ -1,0 +1,2149 @@
+require UC_Comp.
+
+require import CompDefs.
+
+require import UCCore.
+
+require UCComposition.
+
+clone UCComposition as UC_Composition.
+
+op _adv_pi_begin : int.
+
+axiom _adv_pi_begin_gt0 : 0 < _adv_pi_begin.
+
+op _adv_pt_pi_Pt = _adv_pi_begin + 1.
+
+
+op _adv_if_pi : int = _adv_pi_begin.
+
+op _adv_pi_begin_UC_Comp = _adv_pi_begin + 2.
+
+(* TODO : had to use UC_Comp' *)
+clone UC_Comp as UC_Comp' with  (* triple unit *)
+op _adv_pi_begin <- _adv_pi_begin_UC_Comp
+proof *.
+realize _adv_pi_begin_gt0. smt(_adv_pi_begin_gt0). qed.
+
+
+op _adv_pi_num : int = 2 + UC_Comp'._adv_pi_num.
+
+abstract theory UC_Dir'_abs.
+
+op pi : int.
+
+op _Main =  [77; 97; 105; 110]. (*Main as ascii array*)
+
+type _ok =
+{
+  ok___func : addr;
+  ok__pt : port;
+  (*data*)
+}.
+op _ok =  [111; 107]. (*ok as ascii array*)
+
+op _tag__ok =  TagBasic _Main _ok.
+op enc__ok (x : _ok) : msg =
+(Dir, x.`ok__pt, (x.`ok___func, pi), _tag__ok,  ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__ok (m : msg) : _ok option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__ok) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        ok___func = pt2.`1; ok__pt = pt1;
+      |}
+    end
+.
+
+op epdp__ok = {|enc = enc__ok; dec = dec__ok|}.
+
+lemma valid_epdp__ok : valid_epdp epdp__ok.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__ok /= /dec__ok /enc__ok /=.
+by case x.
+move => [mod pt2 [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__ok /dec__ok /enc__ok /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__ok) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__ok.
+hint rewrite epdp : valid_epdp__ok.
+
+lemma eq_of_valid__ok (m : msg) :
+  is_valid epdp__ok m =>
+  m =
+  let x = oget (epdp__ok.`dec m) in
+(Dir, x.`ok__pt, (x.`ok___func, pi), _tag__ok,  ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _ok), epdp__ok.`dec m = Some x.
+  exists (oget (dec__ok m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__ok) <-.
+by rewrite !epdp.
+qed.
+
+type _start =
+{
+  start___func : addr;
+  start__pt : port;
+  (*data*)
+}.
+op _start =  [115; 116; 97; 114; 116]. (*start as ascii array*)
+
+op _tag__start =  TagBasic _Main _start.
+op enc__start (x : _start) : msg =
+(Dir, (x.`start___func, pi), x.`start__pt, _tag__start,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__start (m : msg) : _start option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__start) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        start___func = pt1.`1; start__pt = pt2;
+      |}
+    end
+.
+
+op epdp__start = {|enc = enc__start; dec = dec__start|}.
+
+lemma valid_epdp__start : valid_epdp epdp__start.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__start /= /dec__start /enc__start /=.
+by case x.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
+rewrite /epdp__start /dec__start /enc__start /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__start) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__start.
+hint rewrite epdp : valid_epdp__start.
+
+lemma eq_of_valid__start (m : msg) :
+  is_valid epdp__start m =>
+  m =
+  let x = oget (epdp__start.`dec m) in
+(Dir, (x.`start___func, pi), x.`start__pt, _tag__start,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _start), epdp__start.`dec m = Some x.
+  exists (oget (dec__start m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__start) <-.
+by rewrite !epdp.
+qed.
+
+end UC_Dir'_abs.
+
+
+
+theory UC_Dir.
+
+clone UC_Dir'_abs as D with
+  op pi = 1
+proof *.
+
+end UC_Dir.
+
+
+
+abstract theory UC_Adv'_abs.
+
+op pi : int.
+
+op _Main =  [77; 97; 105; 110]. (*Main as ascii array*)
+
+type _resume =
+{
+  resume___func : addr;
+  resume___adv : addr;
+  (*data*)
+}.
+op _resume =  [114; 101; 115; 117; 109; 101]. (*resume as ascii array*)
+
+op _tag__resume =  TagBasic _Main _resume.
+op enc__resume (x : _resume) : msg =
+(Adv, (x.`resume___func, pi), (x.`resume___adv, _adv_if_pi), _tag__resume,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__resume (m : msg) : _resume option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  _tag__resume) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        resume___func = pt1.`1; resume___adv = pt2.`1;
+      |}
+    end
+.
+
+op epdp__resume = {|enc = enc__resume; dec = dec__resume|}.
+
+lemma valid_epdp__resume : valid_epdp epdp__resume.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__resume /= /dec__resume /enc__resume /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__resume /dec__resume /enc__resume /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__resume) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__resume.
+hint rewrite epdp : valid_epdp__resume.
+
+lemma eq_of_valid__resume (m : msg) :
+  is_valid epdp__resume m =>
+  m =
+  let x = oget (epdp__resume.`dec m) in
+(Adv, (x.`resume___func, pi), (x.`resume___adv, _adv_if_pi), _tag__resume,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _resume), epdp__resume.`dec m = Some x.
+  exists (oget (dec__resume m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__resume) <-.
+by rewrite !epdp.
+qed.
+
+type _suspend =
+{
+  suspend___func : addr;
+  suspend___adv : addr;
+  (*data*)
+}.
+op _suspend =  [115; 117; 115; 112; 101; 110; 100]. (*suspend as ascii
+array*)
+
+op _tag__suspend =  TagBasic _Main _suspend.
+op enc__suspend (x : _suspend) : msg =
+(Adv, (x.`suspend___adv, _adv_if_pi), (x.`suspend___func, pi), _tag__suspend,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__suspend (m : msg) : _suspend option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__suspend) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        suspend___func = pt2.`1; suspend___adv = pt1.`1;
+      |}
+    end
+.
+
+op epdp__suspend = {|enc = enc__suspend; dec = dec__suspend|}.
+
+lemma valid_epdp__suspend : valid_epdp epdp__suspend.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__suspend /= /dec__suspend /enc__suspend /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__suspend /dec__suspend /enc__suspend /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__suspend) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__suspend.
+hint rewrite epdp : valid_epdp__suspend.
+
+lemma eq_of_valid__suspend (m : msg) :
+  is_valid epdp__suspend m =>
+  m =
+  let x = oget (epdp__suspend.`dec m) in
+(Adv, (x.`suspend___adv, _adv_if_pi), (x.`suspend___func, pi), _tag__suspend,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _suspend), epdp__suspend.`dec m = Some x.
+  exists (oget (dec__suspend m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__suspend) <-.
+by rewrite !epdp.
+qed.
+
+end UC_Adv'_abs.
+
+
+
+abstract theory UC_MainIdeal2Sim_abs.
+
+op pi : int.
+
+op _Main =  [77; 97; 105; 110]. (*Main as ascii array*)
+
+type _don =
+{
+  don___func : addr;
+  don___adv : addr;
+  (*data*)
+}.
+op _don =  [100; 111; 110]. (*don as ascii array*)
+
+op _tag__don =  TagBasic _Main _don.
+op enc__don (x : _don) : msg =
+(Adv, (x.`don___func, pi), (x.`don___adv, _adv_if_pi), _tag__don,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__don (m : msg) : _don option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <> _tag__don)
+  ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        don___func = pt1.`1; don___adv = pt2.`1;
+      |}
+    end
+.
+
+op epdp__don = {|enc = enc__don; dec = dec__don|}.
+
+lemma valid_epdp__don : valid_epdp epdp__don.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__don /= /dec__don /enc__don /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__don /dec__don /enc__don /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__don) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__don.
+hint rewrite epdp : valid_epdp__don.
+
+lemma eq_of_valid__don (m : msg) :
+  is_valid epdp__don m =>
+  m =
+  let x = oget (epdp__don.`dec m) in
+(Adv, (x.`don___func, pi), (x.`don___adv, _adv_if_pi), _tag__don,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _don), epdp__don.`dec m = Some x.
+  exists (oget (dec__don m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__don) <-.
+by rewrite !epdp.
+qed.
+
+type _start =
+{
+  start___func : addr;
+  start___adv : addr;
+  (*data*)
+}.
+op _start =  [115; 116; 97; 114; 116]. (*start as ascii array*)
+
+op _tag__start =  TagBasic _Main _start.
+op enc__start (x : _start) : msg =
+(Adv, (x.`start___adv, _adv_if_pi), (x.`start___func, pi), _tag__start,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__start (m : msg) : _start option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__start) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        start___func = pt2.`1; start___adv = pt1.`1;
+      |}
+    end
+.
+
+op epdp__start = {|enc = enc__start; dec = dec__start|}.
+
+lemma valid_epdp__start : valid_epdp epdp__start.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__start /= /dec__start /enc__start /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__start /dec__start /enc__start /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__start) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__start.
+hint rewrite epdp : valid_epdp__start.
+
+lemma eq_of_valid__start (m : msg) :
+  is_valid epdp__start m =>
+  m =
+  let x = oget (epdp__start.`dec m) in
+(Adv, (x.`start___adv, _adv_if_pi), (x.`start___func, pi), _tag__start,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _start), epdp__start.`dec m = Some x.
+  exists (oget (dec__start m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__start) <-.
+by rewrite !epdp.
+qed.
+
+end UC_MainIdeal2Sim_abs.
+
+
+
+theory UC_Adv.
+
+clone UC_Adv'_abs as A with
+  op pi = 1
+proof *.
+
+end UC_Adv.
+
+
+
+clone UC_MainIdeal2Sim_abs as UC_MainIdeal2Sim with
+  op pi = 1
+proof *.
+
+type _state_IF = [ 
+  | _State_IF_Final
+  | _State_IF_Init
+  | _State_IF_WaitSim of port
+  
+]. 
+
+module UC_MainIdeal : FUNC= {
+  var _self : addr
+  var _st : _state_IF
+  proc init(self_ : addr) : unit = {
+    _self <- self_; _st <- _State_IF_Init;
+  }
+  proc _State_IF_Init__Dir__D__start (pt : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_MainIdeal2Sim.epdp__start.`enc
+      {|
+        UC_MainIdeal2Sim.start___func = _self;
+        UC_MainIdeal2Sim.start___adv = adv;
+        
+      |});
+    _st <- _State_IF_WaitSim pt;
+    return _r;
+  }
+  proc _State_IF_WaitSim__MainIdeal2Sim__don (pt : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Dir.D.epdp__ok.`enc
+      {|
+        UC_Dir.D.ok___func = _self;
+        UC_Dir.D.ok__pt = pt;
+        
+      |});
+    _st <- _State_IF_Final;
+    return _r;
+  }
+  proc parties(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st with
+    | _State_IF_Final => {
+      
+    }
+    | _State_IF_Init => {
+      match UC_Dir.D.epdp__start.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_Init__Dir__D__start (_x.`UC_Dir.D.start__pt);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_IF_WaitSim pt => {
+      match UC_MainIdeal2Sim.epdp__don.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_WaitSim__MainIdeal2Sim__don (pt);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)\/ (m.`1 = Adv
+                                                               /\
+                                                               m.`2.`1 = _self
+                                                               /\
+                                                               m.`3.`1 = adv)){
+      r <@ parties(m);
+    }
+  return r;
+  }
+  
+}.
+
+
+(*alias*)
+module IF = UC_MainIdeal.
+op _invar_IF (g : glob IF) : bool = predT g.
+
+ 
+
+op glob_UC_MainIdeal_to__st (g : glob UC_MainIdeal) / : _state_IF = g.`2.
+op [smt_opaque] _metric_IF (g : glob UC_MainIdeal) : int =
+  match glob_UC_MainIdeal_to__st g with
+  | _State_IF_Final => 0
+  | _State_IF_Init => 2
+  | _State_IF_WaitSim _ => 1
+  end.
+  
+
+
+lemma IF_invoke (n : int) : hoare [
+  UC_MainIdeal.invoke :
+  _invar_IF (glob UC_MainIdeal) /\ _metric_IF (glob UC_MainIdeal) = n
+  ==>
+  (res <> None =>
+  _metric_IF (glob UC_MainIdeal) < n
+  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in oflist [_adv_if_pi] /\ (oget res).`3.`2 = 1))
+   ].
+proof. rewrite /_metric_IF /=. proc. sp 1. (*initializing return value*)
+if. (*invoke guard*) inline. sp 1. sp 1. (*initializing input, return value*)
+match. (*state match*)
+(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch Init*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ (*state branch WaitSim*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 2. (*state param assignment, return value initialization*)sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ skip. smt(). (*invoke guard false*) qed. 
+
+lemma IF_metric_good (g : glob IF) :   _invar_IF g => 0 <= _metric_IF g.
+  proof. rewrite /_metric_IF /=.   smt(). qed.   lemma IF_init :
+  hoare [IF.init : true ==> _invar_IF (glob IF)]. proof. proc. auto. qed. 
+ 
+
+
+op rf_info = {| rfi_num_parties = 1; rfi_num_subfuns = 0; rfi_num_params = 1;
+rfi_adv_pi_begin = _adv_pi_begin;
+rfi_adv_pi_main_end = _adv_pi_begin + _adv_pi_num - 1 - UC_Comp'._adv_pi_num;
+rfi_adv_pi_begin_params = [_adv_pi_begin_UC_Comp];
+rfi_adv_pi_end_params = [_adv_pi_begin_UC_Comp + UC_Comp'._adv_pi_num - 1];
+|}. 
+
+op _addr_Comp (self : addr) : addr = self ++ [1].
+
+
+op _extport_dir_Pt (self : addr) : port = (self, 1).
+
+op _extport_adv_Pt (self : addr) : port = (self, 1).
+
+op _intport_Pt (self : addr) : port = (self, 1).
+ 
+
+type _state_Pt = [ 
+  | _State_Pt_Final
+  | _State_Pt_First of port
+  | _State_Pt_Init
+  | _State_Pt_Second of port
+  | _State_Pt_Third of port & int option & int option
+  
+].
+
+
+module UC_MainReal (Comp : FUNC) : FUNC = {
+  var _self : addr
+  var _st_Pt : _state_Pt
+  
+  proc init(self_ : addr) : unit = {
+    _self <- self_;
+  Comp.init(_addr_Comp _self);
+  _st_Pt <- _State_Pt_Init;
+  }
+  proc _State_Pt_First__Adv__A__resume (pt : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Comp'.UC_CompDir.Pt1.epdp__req.`enc
+      {|
+        UC_Comp'.UC_CompDir.Pt1.req___func = _addr_Comp _self;
+        UC_Comp'.UC_CompDir.Pt1.req__pt = _intport_Pt _self;
+        UC_Comp'.UC_CompDir.Pt1.req__n = 5;
+        
+      |});
+    _st_Pt <- _State_Pt_Second pt;
+    return _r;
+  }
+  proc _State_Pt_Init__Dir__D__start (pt : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Adv.A.epdp__suspend.`enc
+      {|
+        UC_Adv.A.suspend___func = _self;
+        UC_Adv.A.suspend___adv = adv;
+        
+      |});
+    _st_Pt <- _State_Pt_First pt;
+    return _r;
+  }
+  proc _State_Pt_Second__Adv__A__resume (pt : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Comp'.UC_CompDir.Pt2.epdp__req.`enc
+      {|
+        UC_Comp'.UC_CompDir.Pt2.req___func = _addr_Comp _self;
+        UC_Comp'.UC_CompDir.Pt2.req__pt = _intport_Pt _self;
+        UC_Comp'.UC_CompDir.Pt2.req__n = -10;
+        
+      |});
+    _st_Pt <- _State_Pt_Third pt None None;
+    return _r;
+  }
+  proc _State_Pt_Third__Comp__Pt1__rsp (pt : port, out1opt : int option, out2opt : int option, n1 : int) : msg option = {
+    var _r : msg option <- None;
+    if (out1opt <> None) {
+      _r <- None;
+      
+    }
+    else {
+      if (out2opt = None) {
+        _r <- Some
+          (UC_Adv.A.epdp__suspend.`enc
+          {|
+            UC_Adv.A.suspend___func = _self;
+            UC_Adv.A.suspend___adv = adv;
+            
+          |});
+        _st_Pt <- _State_Pt_Third pt (Some n1) None;
+        
+      }
+      else {
+        if (n1 + oget out2opt = 10) {
+          _r <- Some
+            (UC_Dir.D.epdp__ok.`enc
+            {|
+              UC_Dir.D.ok___func = _self;
+              UC_Dir.D.ok__pt = pt;
+              
+            |});
+          _st_Pt <- _State_Pt_Final;
+          
+        }
+        else {
+          _r <- None;
+          
+        }
+        
+      }
+      
+    }
+    return _r;
+  }
+  proc _State_Pt_Third__Comp__Pt2__rsp (pt : port, out1opt : int option, out2opt : int option, n2 : int) : msg option = {
+    var _r : msg option <- None;
+    if (out2opt <> None) {
+      _r <- None;
+      
+    }
+    else {
+      if (out1opt = None) {
+        _r <- Some
+          (UC_Adv.A.epdp__suspend.`enc
+          {|
+            UC_Adv.A.suspend___func = _self;
+            UC_Adv.A.suspend___adv = adv;
+            
+          |});
+        _st_Pt <- _State_Pt_Third pt None (Some n2);
+        
+      }
+      else {
+        if (oget out1opt + n2 = 10) {
+          _r <- Some
+            (UC_Dir.D.epdp__ok.`enc
+            {|
+              UC_Dir.D.ok___func = _self;
+              UC_Dir.D.ok__pt = pt;
+              
+            |});
+          _st_Pt <- _State_Pt_Final;
+          
+        }
+        else {
+          _r <- None;
+          
+        }
+        
+      }
+      
+    }
+    return _r;
+  }
+  proc party_Pt(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st_Pt with
+    | _State_Pt_Final => {
+      
+    }
+    | _State_Pt_First pt => {
+      match UC_Adv.A.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt_First__Adv__A__resume (pt);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt_Init => {
+      match UC_Dir.D.epdp__start.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt_Init__Dir__D__start (_x.`UC_Dir.D.start__pt);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt_Second pt => {
+      match UC_Adv.A.epdp__resume.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt_Second__Adv__A__resume (pt);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt_Third pt out1opt out2opt => {
+      match UC_Comp'.UC_CompDir.Pt1.epdp__rsp.`dec _m with
+      | Some _x => {
+        if (_m.`3.`1 = _addr_Comp _self){
+          _r <@ _State_Pt_Third__Comp__Pt1__rsp (pt, out1opt, out2opt, _x.`UC_Comp'.UC_CompDir.Pt1.rsp__m);
+        }
+        
+      }
+      | None => {
+        match UC_Comp'.UC_CompDir.Pt2.epdp__rsp.`dec _m with
+        | Some _x => {
+          if (_m.`3.`1 = _addr_Comp _self){
+            _r <@ _State_Pt_Third__Comp__Pt2__rsp (pt, out1opt, out2opt, _x.`UC_Comp'.UC_CompDir.Pt2.rsp__m);
+          }
+          
+        }
+        | None => {
+          
+        }
+        end;
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if (_addr_Comp _self <= m.`2.`1) {r <@ Comp.invoke(m);}
+    else {
+    if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt _self /\ envport _self m.`3)
+    \/
+    (m.`1 = Adv /\ m.`2 = _extport_adv_Pt _self)
+    \/
+    (m.`1 = Dir /\ m.`2 = _intport_Pt _self /\ _self < m.`3.`1))
+    {r <@ party_Pt(m);}
+    }
+    return r;
+    }
+    
+  }.
+
+op glob_UC_MainReal_to__st_Pt (g : glob UC_MainReal) / : _state_Pt = g.`2.
+ 
+op _invar_Pt (g : _state_Pt) : bool =
+(* BEGIN USER FILL *)
+  true.
+(* END USER FILL *)
+ 
+op _metric_Pt (g : _state_Pt) : int =
+(* BEGIN USER FILL *)
+  match g with
+  | _State_Pt_Init                      => 5
+  | _State_Pt_First _                   => 4
+  | _State_Pt_Second _                  => 3
+  | _State_Pt_Third _ out1opt out2opt   =>
+      (if out1opt = None then 1 else 0) +
+      (if out2opt = None then 1 else 0)
+  | _State_Pt_Final                     => 0
+  end.
+(* END USER FILL *)
+
+lemma _metric_Pt_good (g : _state_Pt) :
+  _invar_Pt g => 0 <= _metric_Pt g.
+proof.
+(* BEGIN USER FILL *)
+rewrite /_metric_Pt /=. smt().
+(* END USER FILL *)
+qed.
+
+lemma _invoke_Pt (n : int) (Comp <: FUNC) :
+  hoare
+  [UC_MainReal(Comp).party_Pt :
+   _invar_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) /\
+   _metric_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) = n ==>
+   _invar_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) /\
+   (res <> None =>
+    _metric_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) < n /\
+    ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+(* BEGIN USER FILL *)
+rewrite /_invar_Pt /_metric_Pt.
+proc; sp 1 => /=; match.
+auto.
+match; auto; inline*; auto; smt().
+match.
+auto.
+inline*; auto; smt(mem_rangeset).
+match.
+auto.
+inline*; auto; smt(mem_rangeset).
+inline*; auto; smt(mem_rangeset).
+(* END USER FILL *)
+qed.
+ 
+ (*abbreviation for UC_MainReal with real parameters*)
+ module UC_MainReal_RP = UC_MainReal(UC_Comp'.RFRP).
+ 
+ op glob_UC_MainReal_RP_to_own(g : glob UC_MainReal_RP) / : glob UC_MainReal =
+ (g.`1, g.`2).
+ 
+ op glob_UC_MainReal_RP_to_UC_Comp'(g : glob UC_MainReal_RP) / : glob UC_Comp'.RFRP =
+ (g.`3, g.`4, g.`5, g.`6, g.`7, g.`8, g.`9, g.`10).
+ 
+  op [smt_opaque] _metric_RP (g : glob UC_MainReal_RP) : int =
+  UC_Comp'._metric_RFRP(glob_UC_MainReal_RP_to_UC_Comp' g)
+ +_metric_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_RP_to_own g))
+ .
+ 
+ lemma _invoke_RP (n : int)  : hoare [
+   UC_MainReal_RP.invoke :
+   _metric_RP (glob UC_MainReal_RP) = n
+   ==>
+   (res <> None =>
+   _metric_RP (glob UC_MainReal_RP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+ proof.
+ rewrite /_metric_RP /=.
+   proc.
+   sp 1.
+   if.
+   exlim (UC_Comp'._metric_RFRP(glob_UC_MainReal_RP_to_UC_Comp'((glob UC_MainReal_RP)))) => _sub_metric.
+   call (UC_Comp'.RFRP_invoke _sub_metric ).
+   skip.
+   smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+   if.
+   exlim (_metric_Pt(glob_UC_MainReal_to__st_Pt(glob_UC_MainReal_RP_to_own(glob UC_MainReal_RP)))) => _sub_metric.
+   call (_invoke_Pt _sub_metric  UC_Comp'.RFRP).
+   skip.
+   smt().
+   skip.
+   smt().
+ qed.
+ 
+  op _invar_RP (g : glob UC_MainReal_RP) : bool =
+   UC_Comp'._invar_RFRP(glob_UC_MainReal_RP_to_UC_Comp' g)
+ /\_invar_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_RP_to_own g))
+ .
+ 
+ lemma _metric_good_RP (g : glob UC_MainReal_RP) :
+ _invar_RP g => 0 <= _metric_RP g.
+ proof.
+ rewrite /_metric_RP /=.
+ rewrite /_invar_RP /=.
+ smt(
+ UC_Comp'.RFRP_metric_good
+ _metric_Pt_good
+ ).
+ qed.
+ 
+ lemma _init_RP :
+ hoare [ UC_MainReal_RP.init : true ==> _invar_RP (glob UC_MainReal_RP)].
+ proof. proc. sp. wp.
+ call (UC_Comp'.RFRP_init).
+ skip.
+ rewrite /_invar_RP /=.
+ smt().
+ qed.
+ 
+ (*abbreviation for UC_MainReal with ideal parameters*)
+ module UC_MainReal_IP = UC_MainReal(UC_Comp'.IF).
+ 
+ op glob_UC_MainReal_IP_to_own(g : glob UC_MainReal_IP) / : glob UC_MainReal =
+ (g.`1, g.`2).
+ 
+ op glob_UC_MainReal_IP_to_UC_Comp'(g : glob UC_MainReal_IP) / : glob UC_Comp'.IF =
+ (g.`3, g.`4).
+ 
+  op [smt_opaque] _metric_IP (g : glob UC_MainReal_IP) : int =
+  UC_Comp'._metric_IF(glob_UC_MainReal_IP_to_UC_Comp' g)
+ +_metric_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_IP_to_own g))
+ .
+ 
+ lemma _invoke_IP (n : int)  : hoare [
+   UC_MainReal_IP.invoke :
+   _metric_IP (glob UC_MainReal_IP) = n
+   ==>
+   (res <> None =>
+   _metric_IP (glob UC_MainReal_IP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+ proof.
+ rewrite /_metric_IP /=.
+   proc.
+   sp 1.
+   if.
+   exlim (UC_Comp'._metric_IF(glob_UC_MainReal_IP_to_UC_Comp'((glob UC_MainReal_IP)))) => _sub_metric.
+   call (UC_Comp'.IF_invoke _sub_metric ).
+   skip.
+   smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+   if.
+   exlim (_metric_Pt(glob_UC_MainReal_to__st_Pt(glob_UC_MainReal_IP_to_own(glob UC_MainReal_IP)))) => _sub_metric.
+   call (_invoke_Pt _sub_metric  UC_Comp'.IF).
+   skip.
+   smt().
+   skip.
+   smt().
+ qed.
+ 
+  op _invar_IP (g : glob UC_MainReal_IP) : bool =
+   UC_Comp'._invar_IF(glob_UC_MainReal_IP_to_UC_Comp' g)
+ /\_invar_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_IP_to_own g))
+ .
+ 
+ lemma _metric_good_IP (g : glob UC_MainReal_IP) :
+ _invar_IP g => 0 <= _metric_IP g.
+ proof.
+ rewrite /_metric_IP /=.
+ rewrite /_invar_IP /=.
+ smt(
+ UC_Comp'.IF_metric_good
+ _metric_Pt_good
+ ).
+ qed.
+ 
+ lemma _init_IP :
+ hoare [ UC_MainReal_IP.init : true ==> _invar_IP (glob UC_MainReal_IP)].
+ proof. proc. sp. wp.
+ call (UC_Comp'.IF_init).
+ skip.
+ rewrite /_invar_IP /=.
+ smt().
+ qed.
+ 
+   module UC_MainReal_Rest1  : FUNC = {
+     proc init(self_ : addr) : unit = {
+       UC_MainReal._self <- self_;
+     UC_MainReal._st_Pt <- _State_Pt_Init;
+     }
+     proc _State_Pt_First__Adv__A__resume (pt : port) : msg option = {
+       var _r : msg option <- None;
+       _r <- Some
+         (UC_Comp'.UC_CompDir.Pt1.epdp__req.`enc
+         {|
+           UC_Comp'.UC_CompDir.Pt1.req___func = _addr_Comp UC_MainReal._self;
+           UC_Comp'.UC_CompDir.Pt1.req__pt = _intport_Pt UC_MainReal._self;
+           UC_Comp'.UC_CompDir.Pt1.req__n = 5;
+           
+         |});
+       UC_MainReal._st_Pt <- _State_Pt_Second pt;
+       return _r;
+     }
+     proc _State_Pt_Init__Dir__D__start (pt : port) : msg option = {
+       var _r : msg option <- None;
+       _r <- Some
+         (UC_Adv.A.epdp__suspend.`enc
+         {|
+           UC_Adv.A.suspend___func = UC_MainReal._self;
+           UC_Adv.A.suspend___adv = adv;
+           
+         |});
+       UC_MainReal._st_Pt <- _State_Pt_First pt;
+       return _r;
+     }
+     proc _State_Pt_Second__Adv__A__resume (pt : port) : msg option = {
+       var _r : msg option <- None;
+       _r <- Some
+         (UC_Comp'.UC_CompDir.Pt2.epdp__req.`enc
+         {|
+           UC_Comp'.UC_CompDir.Pt2.req___func = _addr_Comp UC_MainReal._self;
+           UC_Comp'.UC_CompDir.Pt2.req__pt = _intport_Pt UC_MainReal._self;
+           UC_Comp'.UC_CompDir.Pt2.req__n = -10;
+           
+         |});
+       UC_MainReal._st_Pt <- _State_Pt_Third pt None None;
+       return _r;
+     }
+     proc _State_Pt_Third__Comp__Pt1__rsp (pt : port, out1opt : int option, out2opt : int option, n1 : int) : msg option = {
+       var _r : msg option <- None;
+       if (out1opt <> None) {
+         _r <- None;
+         
+       }
+       else {
+         if (out2opt = None) {
+           _r <- Some
+             (UC_Adv.A.epdp__suspend.`enc
+             {|
+               UC_Adv.A.suspend___func = UC_MainReal._self;
+               UC_Adv.A.suspend___adv = adv;
+               
+             |});
+           UC_MainReal._st_Pt <- _State_Pt_Third pt (Some n1) None;
+           
+         }
+         else {
+           if (n1 + oget out2opt = 10) {
+             _r <- Some
+               (UC_Dir.D.epdp__ok.`enc
+               {|
+                 UC_Dir.D.ok___func = UC_MainReal._self;
+                 UC_Dir.D.ok__pt = pt;
+                 
+               |});
+             UC_MainReal._st_Pt <- _State_Pt_Final;
+             
+           }
+           else {
+             _r <- None;
+             
+           }
+           
+         }
+         
+       }
+       return _r;
+     }
+     proc _State_Pt_Third__Comp__Pt2__rsp (pt : port, out1opt : int option, out2opt : int option, n2 : int) : msg option = {
+       var _r : msg option <- None;
+       if (out2opt <> None) {
+         _r <- None;
+         
+       }
+       else {
+         if (out1opt = None) {
+           _r <- Some
+             (UC_Adv.A.epdp__suspend.`enc
+             {|
+               UC_Adv.A.suspend___func = UC_MainReal._self;
+               UC_Adv.A.suspend___adv = adv;
+               
+             |});
+           UC_MainReal._st_Pt <- _State_Pt_Third pt None (Some n2);
+           
+         }
+         else {
+           if (oget out1opt + n2 = 10) {
+             _r <- Some
+               (UC_Dir.D.epdp__ok.`enc
+               {|
+                 UC_Dir.D.ok___func = UC_MainReal._self;
+                 UC_Dir.D.ok__pt = pt;
+                 
+               |});
+             UC_MainReal._st_Pt <- _State_Pt_Final;
+             
+           }
+           else {
+             _r <- None;
+             
+           }
+           
+         }
+         
+       }
+       return _r;
+     }
+     proc party_Pt(_m : msg) : msg option = {
+       var _r : msg option <- None;
+       match UC_MainReal._st_Pt with
+       | _State_Pt_Final => {
+         
+       }
+       | _State_Pt_First pt => {
+         match UC_Adv.A.epdp__resume.`dec _m with
+         | Some _x => {
+           _r <@ _State_Pt_First__Adv__A__resume (pt);
+         }
+         | None => {
+           
+         }
+         end;
+       }
+       | _State_Pt_Init => {
+         match UC_Dir.D.epdp__start.`dec _m with
+         | Some _x => {
+           _r <@ _State_Pt_Init__Dir__D__start (_x.`UC_Dir.D.start__pt);
+         }
+         | None => {
+           
+         }
+         end;
+       }
+       | _State_Pt_Second pt => {
+         match UC_Adv.A.epdp__resume.`dec _m with
+         | Some _x => {
+           _r <@ _State_Pt_Second__Adv__A__resume (pt);
+         }
+         | None => {
+           
+         }
+         end;
+       }
+       | _State_Pt_Third pt out1opt out2opt => {
+         match UC_Comp'.UC_CompDir.Pt1.epdp__rsp.`dec _m with
+         | Some _x => {
+           if (_m.`3.`1 = _addr_Comp UC_MainReal._self){
+             _r <@ _State_Pt_Third__Comp__Pt1__rsp (pt, out1opt, out2opt, _x.`UC_Comp'.UC_CompDir.Pt1.rsp__m);
+           }
+           
+         }
+         | None => {
+           match UC_Comp'.UC_CompDir.Pt2.epdp__rsp.`dec _m with
+           | Some _x => {
+             if (_m.`3.`1 = _addr_Comp UC_MainReal._self){
+               _r <@ _State_Pt_Third__Comp__Pt2__rsp (pt, out1opt, out2opt, _x.`UC_Comp'.UC_CompDir.Pt2.rsp__m);
+             }
+             
+           }
+           | None => {
+             
+           }
+           end;
+         }
+         end;
+       }
+       end;
+       return _r;
+     }
+     proc invoke(m : msg) : msg option = {
+       var r : msg option <- None;
+       if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt UC_MainReal._self /\
+          envport UC_MainReal._self m.`3)
+       \/
+       (m.`1 = Adv /\ m.`2 = _extport_adv_Pt UC_MainReal._self)
+       \/
+       (m.`1 = Dir /\ m.`2 = _intport_Pt UC_MainReal._self /\
+       UC_MainReal._self < m.`3.`1))
+       {r <@ party_Pt(m);}
+       return r;
+       }
+       
+     }.
+    
+clone UC_Composition.Composition as UC__Rest1 with
+op change_pari = 1,
+op rf_info <- rf_info
+proof *.
+realize rf_info_valid. smt(_adv_pi_begin_gt0). qed.
+realize change_pari_valid. smt(). qed.
+
+    lemma _invoke_Pt_Rest1 (n : int)  : hoare [
+      UC_MainReal_Rest1.party_Pt :
+      _metric_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) = n ==>
+      (res <> None =>
+      _metric_Pt (glob_UC_MainReal_to__st_Pt(glob UC_MainReal)) < n
+       /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  UC__Rest1.rest_adv_pis))
+    ].
+    proof. rewrite /_metric_Pt /=. proc. inline. (*inline procedure calls*)
+     sp 1. (*initializing input, return value*) match. (*state match*)
+    (*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+    (*state branch First*) match. (*message match*)
+     skip. move => />;smt(). (*None branch of message match, dec failed*)
+    sp 2. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+     (*state branch Init*) match. (*message match*)
+     skip. move => />;smt(). (*None branch of message match, dec failed*)
+    sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+     sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+     (*state branch Second*) match. (*message match*)
+     skip. move => />;smt(). (*None branch of message match, dec failed*)
+    sp 2. (*state param assignment, return value initialization*) sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+     (*state branch Third*) match. (*message match*)
+(* TODO - error - "instruction list not empty *)
+admit.
+admit.
+(*
+     skip. move => />;smt(). (*None branch of message match, dec failed*)
+    if. (*address check for internal messages*)
+    sp 4. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+    if. (*if instruction*)
+     sp 2. skip. move => />;smt(). (*Fail instruction*) 
+    if. (*if instruction*)
+     sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+     if. (*if instruction*)
+     sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+      sp 2. skip. move => />;smt(). (*Fail instruction*)    
+    match. (*message match*)
+     skip. move => />;smt(). (*None branch of message match, dec failed*)
+    if. (*address check for internal messages*)
+    sp 4. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+    if. (*if instruction*)
+     sp 2. skip. move => />;smt(). (*Fail instruction*) 
+    if. (*if instruction*)
+     sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+     if. (*if instruction*)
+     sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+      sp 2. skip. move => />;smt(). (*Fail instruction*)    
+     skip. move => />;smt(). (*address check for internal messages failed case*)
+     skip. move => />;smt(). (*address check for internal messages failed case*)
+*)
+    qed. 
+    
+    op glob_UC_MainReal_Rest1_to_own(g : glob UC_MainReal_Rest1) / : glob UC_MainReal =
+    (g.`1, g.`2).
+    
+     op [smt_opaque] _metric_Rest1 (g : glob UC_MainReal_Rest1) : int =
+     _metric_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_Rest1_to_own g))
+    .
+    
+    lemma _invoke_Rest1 (n : int)  : hoare [
+      UC_MainReal_Rest1.invoke :
+      _metric_Rest1 (glob UC_MainReal_Rest1) = n
+      ==>
+      (res <> None =>
+      _metric_Rest1 (glob UC_MainReal_Rest1) < n
+    /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  UC__Rest1.rest_adv_pis))].
+    proof.
+    rewrite /_metric_Rest1 /=.
+      proc.
+      sp 1.
+      if.
+      exlim (_metric_Pt(glob_UC_MainReal_to__st_Pt(glob_UC_MainReal_Rest1_to_own(glob UC_MainReal_Rest1)))) => _sub_metric.
+      call (_invoke_Pt_Rest1 _sub_metric ).
+      skip.
+      smt().
+      skip.
+      smt().
+    qed.
+    
+     op _invar_Rest1 (g : glob UC_MainReal_Rest1) : bool =
+      _invar_Pt(glob_UC_MainReal_to__st_Pt (glob_UC_MainReal_Rest1_to_own g))
+    .
+    
+    lemma _metric_good_Rest1 (g : glob UC_MainReal_Rest1) :
+    _invar_Rest1 g => 0 <= _metric_Rest1 g.
+    proof.
+    rewrite /_metric_Rest1 /=.
+    rewrite /_invar_Rest1 /=.
+    smt(
+    _metric_Pt_good
+    ).
+    qed.
+    
+    lemma _init_Rest1 :
+    hoare [ UC_MainReal_Rest1.init : true ==> _invar_Rest1 (glob UC_MainReal_Rest1)].
+    proof. proc. sp. wp.
+    skip.
+    rewrite /_invar_Rest1 /=.
+    smt().
+    qed.
+    
+      (*abbreviation for 1. composed environment*)
+module COMPENV1(Env : ENV) = UC__Rest1.CompEnv(UC_MainReal_Rest1,Env).
+ 
+    
+    clone RealFunctionality as RFCore with
+    op rf_info <- rf_info
+    proof *.
+    realize rf_info_valid. smt(_adv_pi_begin_gt0). qed.
+    
+    module RFRP = RFCore.MakeRF(UC_MainReal_RP).
+    
+    lemma RFRP_Core_init :
+  hoare [RFRP.init : true ==> _invar_RP (glob UC_MainReal_RP)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare (UC_MainReal_RP) _invar_RP).
+apply _init_RP.
+ qed.
+    
+    lemma RFRP_Core_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar_RP (glob UC_MainReal_RP) /\ _metric_RP (glob UC_MainReal_RP) = n ==>
+   _invar_RP (glob UC_MainReal_RP) /\
+    
+ (res <> None => _metric_RP (glob UC_MainReal_RP) < n
+    
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (UC_MainReal_RP) _invar_RP _metric_RP).
+apply _invoke_RP.
+ qed.
+    
+    (* now we lift our invariant, termination metric and lemmas to RFRP *)
+    
+    op glob_RFRP_to_Core(g : glob RFRP) / : glob UC_MainReal_RP =
+    (g.`1, g.`2, g.`4, g.`5, g.`6, g.`7, g.`8, g.`9, g.`10, g.`11).
+    
+    op _invar_RFRP : glob RFRP -> bool =
+  fun (g : glob RFRP) => _invar_RP (glob_RFRP_to_Core g).
+
+op _metric_RFRP : glob RFRP -> int =
+  fun (g : glob RFRP) => _metric_RP (glob_RFRP_to_Core g).
+
+lemma RFRP_metric_good (g : glob RFRP) :
+  _invar_RFRP g => 0 <= _metric_RFRP g.
+    proof.
+ smt(_metric_good_RP). qed.
+ lemma RFRP_init :
+  hoare [RFRP.init : true ==> _invar_RFRP (glob RFRP)].
+proof.
+rewrite /_invar_RFRP /=.
+apply RFRP_Core_init.
+ qed.
+ 
+lemma RFRP_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar_RFRP (glob RFRP) /\ _metric_RFRP (glob RFRP) = n ==>
+   _invar_RFRP (glob RFRP) /\
+ (res <> None => _metric_RFRP (glob RFRP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_invar_RFRP /_metric_RFRP /=.
+apply RFRP_Core_invoke.
+ qed.
+    
+    module RFIP = RFCore.MakeRF(UC_MainReal_IP).
+    
+    lemma RFIP_Core_init :
+  hoare [RFIP.init : true ==> _invar_IP (glob UC_MainReal_IP)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare (UC_MainReal_IP) _invar_IP).
+apply _init_IP.
+ qed.
+    
+    lemma RFIP_Core_invoke (n : int) :
+  hoare
+  [RFIP.invoke :
+   _invar_IP (glob UC_MainReal_IP) /\ _metric_IP (glob UC_MainReal_IP) = n ==>
+   _invar_IP (glob UC_MainReal_IP) /\
+    
+ (res <> None => _metric_IP (glob UC_MainReal_IP) < n
+    
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (UC_MainReal_IP) _invar_IP _metric_IP).
+apply _invoke_IP.
+ qed.
+    
+    (* now we lift our invariant, termination metric and lemmas to RFIP *)
+    
+    op glob_RFIP_to_Core(g : glob RFIP) / : glob UC_MainReal_IP =
+    (g.`1, g.`2, g.`4, g.`5).
+    
+    op _invar_RFIP : glob RFIP -> bool =
+  fun (g : glob RFIP) => _invar_IP (glob_RFIP_to_Core g).
+
+op _metric_RFIP : glob RFIP -> int =
+  fun (g : glob RFIP) => _metric_IP (glob_RFIP_to_Core g).
+
+lemma RFIP_metric_good (g : glob RFIP) :
+  _invar_RFIP g => 0 <= _metric_RFIP g.
+    proof.
+ smt(_metric_good_IP). qed.
+ lemma RFIP_init :
+  hoare [RFIP.init : true ==> _invar_RFIP (glob RFIP)].
+proof.
+rewrite /_invar_RFIP /=.
+apply RFIP_Core_init.
+ qed.
+ 
+lemma RFIP_invoke (n : int) :
+  hoare
+  [RFIP.invoke :
+   _invar_RFIP (glob RFIP) /\ _metric_RFIP (glob RFIP) = n ==>
+   _invar_RFIP (glob RFIP) /\
+ (res <> None => _metric_RFIP (glob RFIP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_invar_RFIP /_metric_RFIP /=.
+apply RFIP_Core_invoke.
+ qed.
+    
+      (*all CompGlobs module, abreviation for lemma module restrictions*)
+      module AllCGs_ = {
+      module OwnCGs = UC_Composition.CompGlobs
+      module UC_Comp'AllCGs = UC_Comp'.AllCGs
+      }. 
+      (*all IFs module, abreviation for lemma module restrictions*)
+      module AllIFs = {
+      module OwnIF = IF
+      module UC_Comp'AllIFs = UC_Comp'.AllIFs
+      }. 
+      lemma equiv_UC_MainReal_RP_Composed1_RP
+    (Env <: ENV{-MI, -RFRP, -AllCGs_})
+    (Adv <: ADV{-MI, -Env,  -RFRP, -AllCGs_})
+    (func' : addr, in_guard' : int fset) &m :
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+      -
+      Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP), Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+ .
+       proof. 
+      
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+`|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+      -
+      Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP), Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+)
+    <=>
+(
+Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+ =
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP), Adv), Env).main(func', in_guard') @ &m : res]
+).
+smt().
+
+apply H.
+clear H.
+
+      byequiv => //. 
+      
+(*unfold Exper main procedures, put in precondition all up to Adv.init call*)
+proc.
+inline *.
+sp.
+
+       
+ 
+(*Adv init call doesn't touch any of the globs, because of module restrictions*)
+seq 1 1 : (={func, in_guard, glob Env,
+glob Adv,
+glob MI,
+glob UC_Comp'.RFRP,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}).
+call (_ : true).
+skip.
+move => />.
+       
+(*calling ENV main doesn't make a difference in globs between left and right side*)
+call (_ : ={
+glob Adv,
+glob MI,
+glob UC_Comp'.RFRP,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+  ); last first.
+skip; move => />.
+       
+      (*unfold MI invoke to show the result is the same on both sides*)
+proc.
+
+  (*if m is not in inguard the result is the same on both sides*)
+if; last first.
+sp.
+skip.
+move => />.
+move => />.
+
+(*if m is in inguard the loop will return the same on both sides*) 
+      inline loop.
+(* on both sides before the while loop we have:
+m0 <- m                                              
+r0 <- None     
+not_done <- true
+      
+and after the loop
+r <- r0
+*)
+sp.
+wp.
+ 
+      (*the locals and globals are the same after each iteration of the while loop*)
+while (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob UC_Comp'.RFRP,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+ skip; move => />.
+ 
+      (*case when (MakeInt.MI.func <= m0.`2.`1) is false is similar on both sides*)
+if; last first.
+sim.
+move => />.
+ 
+      (*case when (MakeInt.MI.func <= m0.`2.`1) is true,
+if calling invoke has the same result, the rest is similar on both sides*)
+seq 1 1 : (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob UC_Comp'.RFRP,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+sim.
+ 
+      (*show that MakeRF and MakeRFComp invoke have the same result*)
+inline invoke.
+sp.
+
+(*the if conditions are the same, testing if real functionality is the
+  destination m, in case it is not the destination the results are the same*)
+if; last first.
+sp. skip.
+move => />.
+move => />.
+wp.
+ 
+(*in case real functionality is the destination of m,
+  the loops return the same result*)
+inline loop.
+sp.
+wp.
+ 
+      (*each iteration of the wile loop has same result on both sides*)  
+while (={r0, r1, r2, m, m0, m1, m2, not_done, not_done0,
+glob Adv,
+glob MI,
+glob UC_Comp'.RFRP,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+); last first.
+ skip. move => />.
+ 
+      (*we inline real functionality invoke and composed functionality invoke
+to show the result is the same*)
+inline{1} (1) invoke. 
+inline UC_MainReal_Rest1.invoke.
+sp 2 0.
+ 
+      (*case when message is for the first parameter functionality*)
+ case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+
+      (*the if conditions on both sides are equivalent and true, and result is the same*)
+rcondt{1} 0.
+move => &m0.
+skip.
+move => />.
+
+rcondt{2} 0.
+move => &m0.
+skip.
+move => />.
+
+sim.
+
+(*case when message is NOT for the first parameter*)
+(*message is NOT for the first parameter on right side*)
+    rcondf {2} 0.
+move => &m0.
+skip.
+move => />.
+sp 0 2.
+ 
+      (*message is NOT for the first parameter on left side*)
+rcondf{1} 1.
+move => &m0.
+skip.
+move => />.
+
+(*the rest is similar*)
+ sim.
+ 
+      qed.  
+      
+      (*Simulator stack abreviation*)
+      module SIMIP(Adv : ADV) = UC_Comp'.SIMCOMP(Adv).
+      
+      lemma diff_Composed1_RP_Composed1_IP
+    (Env <: ENV{-MI,  -AllCGs_, -RFRP, -SIMIP, -AllIFs})
+    (Adv <: ADV{-MI, -AllCGs_, -Env,  -RFRP, -SIMIP, -AllIFs})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP), Adv), Env).main(func', in_guard') @ &m : res]
+  -
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.IF), UC_Comp'.SIMCOMP(Adv)), Env).main(func', in_guard') @ &m : res]|
+  <=
+0.0
+ .
+      proof.
+move => experpre disjguard.
+apply (UC__Rest1.composition
+Env (UC_MainReal_Rest1)
+(Adv) UC_Comp'.RFRP
+(UC_Comp'.SIMCOMP(Adv))
+UC_Comp'.IF
+_invar_Rest1
+_metric_Rest1
+UC_Comp'._invar_RFRP
+UC_Comp'._metric_RFRP
+UC_Comp'._invar_IF
+UC_Comp'._metric_IF
+func' in_guard'
+(0.0)
+&m).
+     
+apply _metric_good_Rest1.
+apply _init_Rest1.
+apply _invoke_Rest1.
+
+apply UC_Comp'.RFRP_metric_good.
+apply UC_Comp'.RFRP_init.
+apply UC_Comp'.RFRP_invoke.
+
+apply UC_Comp'.IF_metric_good.
+apply UC_Comp'.IF_init.
+move => n.
+conseq (UC_Comp'.IF_invoke n).
+smt(mem_oflist mem_rangeset).
+trivial.
+
+smt(fsetUC UC__Rest1.union_change_rest_eq_all_adv_pis_of_rf_info disjoint_with_union_implies_disjoint_with_first).
+apply (UC_Comp'.Comp_RFRP_IF_advantage
+    (COMPENV1(Env))
+    (Adv)
+    (func' ++ [UC__Rest1.change_pari])
+  (in_guard' `|` UC__Rest1.rest_adv_pis)
+).
+    by rewrite exper_pre_ext1.
+by apply UC__Rest1.disjoint_in_guard_with_all_implies_disjoint_add_rest_with_change. 
+qed.
+       
+      
+      
+lemma equiv_Composed1_IP_RFIP
+(Env <: ENV{-MI, -AllCGs_, -RFIP})
+(Adv <: ADV{-MI, -AllCGs_, -Env, -RFIP})
+(func' : addr, in_guard' : int fset) &m :
+exper_pre func' =>
+disjoint in_guard' (adv_pis_rf_info rf_info)  =>
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.IF), Adv), Env).main(func', in_guard') @ &m : res]
+      -
+      Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+.
+
+      proof. 
+      move => exper_pre disjoint.
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.IF), Adv), Env).main(func', in_guard') @ &m : res]
+      -
+      Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+)
+    <=>
+(
+Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]
+ =
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.IF), Adv), Env).main(func', in_guard') @ &m : res]
+).
+smt().
+
+apply H.
+clear H.
+
+      byequiv => //. 
+      
+(*unfold Exper main procedures, put in precondition all up to Adv.init call*)
+proc.
+
+       
+ (*calling MI.init on both sides results in same memories*)
+   seq 1 1 : (={glob Env, func, in_guard,
+glob Adv,
+glob MI,
+glob UC_Comp'.IF,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+).
+(*inline all the inits before Adv.init*) 
+inline *.
+(*all init assignments before Adv.init go into precondition*)
+sp.
+(*calling Adv.init is similar on both sides*)
+sim.
+ 
+      (*call Exper.main*)
+call (_ : ={
+glob Adv,
+glob MI,
+glob UC_Comp'.IF,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+); last first.
+skip. move => />.
+ 
+      (*unfold MI.invoke*)
+proc.
+
+(*if conditions and else branches are the same on both sides*)
+if; last first.
+sp. skip. move => />.
+move => />.
+
+(*inline MI.loop on both sides*)
+inline loop.
+
+(*put all before and after while loop into pre and post conditions*)
+sp.
+wp.
+
+      while (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob UC_Comp'.IF,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+skip. move => />.
+
+      (*if message destination sub-address of MI.func, prove else branch first, they are same*)
+if; last first.
+sim.
+move => />.
+
+(*inline invoke on both sides*)
+inline{1} (1) invoke.
+inline{2} (1) invoke.
+sp.
+
+(*if conditions and else branches are same on both sides*)
+if; last first.
+sim.
+move => />.
+
+(*inline loop on both sides*)
+inline loop.
+ sp.
+ 
+      (*calls after while loop are similar*)
+seq 1 1 : (={m,m0,m1,m2,r0,r1,r2,not_done, not_done0,
+glob Adv,
+glob MI,
+glob UC_Comp'.IF,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+sp.
+sim.
+ 
+      (*while invariant*)
+while (={m,m0,m1,m2,r0,r1,r2,not_done, not_done0,
+glob Adv,
+glob MI,
+glob UC_Comp'.IF,
+glob UC_MainReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_MainReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+skip. move => />.
+
+      (*case when message is for 2. parameter functionality*)
+case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+rcondt{2} 0.
+move => &m0. skip. move => />.
+
+(*inline real functionality invoke*)
+inline{1} (1) invoke.
+ sp.
+ 
+      (*message is for 1. parameter functionality*)
+rcondt{1} 0.
+move => &m0. skip. move => />.
+
+      (*the rest is similar*)
+sim.
+ 
+      (*case when message is NOT for 1. parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />.
+
+(*inline both invoke calls*)
+inline{1} (1) invoke.
+inline{2} (1) invoke.
+sp.
+
+      
+(*message is not for 1. parameter functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />.
+
+(*the rest is similar*)
+sim.
+ 
+      qed.  
+      
+      
+     lemma exper_RF_RP_IP_Pr_diff
+(Env <: ENV{-MI, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
+    (Adv <: ADV{-MI, -Env, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+-
+    Pr[Exper(MI(RFIP,SIMIP(Adv)), Env).main(func', in_guard') @ &m : res]| <=
+ (
+
+      0.0
+     )
+      .
+     proof.
+                              move => exper disj.
+                              apply (
+    MakeInt.security_trans
+    (RFRP)
+    (UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP))
+    (RFIP)
+    (Adv)
+    (Adv)
+    (SIMIP(Adv))
+
+    Env
+    func' in_guard'
+    (0.0)
+    (0.0)
+    &m
+). 
+                               by apply (equiv_UC_MainReal_RP_Composed1_RP Env (Adv) func' in_guard' &m).
+                              
+                              apply (
+    MakeInt.security_trans
+    (UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.RFRP))
+    (UC__Rest1.MakeRFComp(UC_MainReal_Rest1, UC_Comp'.IF))
+    (RFIP)
+    (Adv)
+    (UC_Comp'.SIMCOMP(Adv))
+    (SIMIP(Adv))
+
+    Env
+    func' in_guard'
+    (0.0)
+    (0.0)
+    &m
+). 
+                               by apply (diff_Composed1_RP_Composed1_IP Env (Adv) func' in_guard' &m).
+                              
+                               by apply (equiv_Composed1_IP_RFIP Env (SIMIP(Adv)) func' in_guard' &m).
+                              
+                              qed.
+       
+      
+        
+
+type _state_SIM = [ 
+  | _State_SIM_Final
+  | _State_SIM_First
+  | _State_SIM_Fourth
+  | _State_SIM_Init
+  | _State_SIM_Second
+  | _State_SIM_Third
+  
+]. 
+
+module UC_MainSim = {
+  var if_addr_opt : addr option
+  var _st : _state_SIM
+  proc init() : unit = {
+    if_addr_opt <- None; _st <- _State_SIM_Init;
+    
+  }
+  proc _State_SIM_First__MainReal__Adv__A__resume () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Comp'.UC_CompIdeal2Sim.epdp__inp_received.`enc
+      {|
+        UC_Comp'.UC_CompIdeal2Sim.inp_received___func = _addr_Comp (oget if_addr_opt);
+        UC_Comp'.UC_CompIdeal2Sim.inp_received___adv = adv;
+        UC_Comp'.UC_CompIdeal2Sim.inp_received__pty = Pt1;
+        
+      |});
+    _st <- _State_SIM_Second;
+    return _r;
+  }
+  proc _State_SIM_Fourth__MainReal__Comp__CompIdeal2Sim__out_enabled () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_MainIdeal2Sim.epdp__don.`enc
+      {|
+        UC_MainIdeal2Sim.don___func = (oget if_addr_opt);
+        UC_MainIdeal2Sim.don___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Final;
+    return _r;
+  }
+  proc _State_SIM_Init__MainIdeal2Sim__start () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Adv.A.epdp__suspend.`enc
+      {|
+        UC_Adv.A.suspend___func = (oget if_addr_opt);
+        UC_Adv.A.suspend___adv = adv;
+        
+      |});
+    _st <- _State_SIM_First;
+    return _r;
+  }
+  proc _State_SIM_Second__MainReal__Adv__A__resume () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Comp'.UC_CompIdeal2Sim.epdp__inp_received.`enc
+      {|
+        UC_Comp'.UC_CompIdeal2Sim.inp_received___func = _addr_Comp (oget if_addr_opt);
+        UC_Comp'.UC_CompIdeal2Sim.inp_received___adv = adv;
+        UC_Comp'.UC_CompIdeal2Sim.inp_received__pty = Pt2;
+        
+      |});
+    _st <- _State_SIM_Third;
+    return _r;
+  }
+  proc _State_SIM_Third__MainReal__Comp__CompIdeal2Sim__out_enabled () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_Adv.A.epdp__suspend.`enc
+      {|
+        UC_Adv.A.suspend___func = (oget if_addr_opt);
+        UC_Adv.A.suspend___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Fourth;
+    return _r;
+  }
+  proc invoke(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    if (if_addr_opt = None) {if_addr_opt <- Some _m.`3.`1;}
+    match _st with
+    | _State_SIM_Final => {
+      
+    }
+    | _State_SIM_First => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = (oget if_addr_opt)) /\ (UC_Adv.A.epdp__resume.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_First__MainReal__Adv__A__resume ();
+      }
+      
+    }
+    | _State_SIM_Fourth => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Comp (oget if_addr_opt)) /\ (UC_Comp'.UC_CompIdeal2Sim.epdp__out_enabled.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_Fourth__MainReal__Comp__CompIdeal2Sim__out_enabled ();
+      }
+      
+    }
+    | _State_SIM_Init => {
+      if ((_m.`3.`1 = (oget if_addr_opt)) /\ (_m.`2.`1 = adv) /\ (UC_MainIdeal2Sim.epdp__start.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_Init__MainIdeal2Sim__start ();
+      }
+      
+    }
+    | _State_SIM_Second => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = (oget if_addr_opt)) /\ (UC_Adv.A.epdp__resume.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_Second__MainReal__Adv__A__resume ();
+      }
+      
+    }
+    | _State_SIM_Third => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Comp (oget if_addr_opt)) /\ (UC_Comp'.UC_CompIdeal2Sim.epdp__out_enabled.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_Third__MainReal__Comp__CompIdeal2Sim__out_enabled ();
+      }
+      
+    }
+    end;
+    return _r;
+  }
+  
+}.
+
+
+op _invar_UC_MainSim (g : glob UC_MainSim) : bool = predT g.
+
+ 
+
+op glob_UC_MainSim_to__st (g : glob UC_MainSim) / : _state_SIM = g.`1.
+op [smt_opaque] _metric_UC_MainSim (g : glob UC_MainSim) : int =
+  match glob_UC_MainSim_to__st g with
+  | _State_SIM_Final => 0
+  | _State_SIM_First => 4
+  | _State_SIM_Fourth => 1
+  | _State_SIM_Init => 5
+  | _State_SIM_Second => 3
+  | _State_SIM_Third => 2
+  end.
+  
+
+
+lemma UC_MainSim_invoke (n : int) : hoare [
+  UC_MainSim.invoke :
+  _invar_UC_MainSim (glob UC_MainSim) /\ _metric_UC_MainSim (glob UC_MainSim) = n
+  ==>
+  res <> None =>
+  _metric_UC_MainSim (glob UC_MainSim) < n
+   ].
+proof. rewrite /_metric_UC_MainSim /=. proc.
+sp 1. (*initializing return value*)
+seq 1 : (#pre /\ UC_MainSim.if_addr_opt <> None). sp 1. auto;smt(). (*if_addr_opt initialized after first message is received*)
+inline. match. (*state match*)
+(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch First*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch Fourth*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch Init*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch Second*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch Third*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ qed. 
+
+lemma UC_MainSim_metric_good (g : glob UC_MainSim) :
+  _invar_UC_MainSim g => 0 <= _metric_UC_MainSim g.
+  proof. rewrite /_metric_UC_MainSim /=.   smt(). qed.  
+lemma UC_MainSim_init :
+  hoare [UC_MainSim.init : true ==> _invar_UC_MainSim (glob UC_MainSim)].
+proof. proc. auto. qed. 
+ 
+
+clone Simulator as MSCore with
+op sim_adv_pi <- _adv_if_pi
+proof *.
+realize sim_adv_pi_ge1. smt(_adv_pi_begin_gt0). qed.
+module SIM(Adv : ADV) = MSCore.MS(UC_MainSim, Adv).
+
+
