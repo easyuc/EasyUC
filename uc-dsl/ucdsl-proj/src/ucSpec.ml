@@ -177,21 +177,26 @@ type def =
   | FunDef   of fun_def    (* functionality *)
   | SimDef   of sim_def    (* simulator *)
 
-(* abstract operator or type, axiom, EC clone or UC clone *)
+(* abstract operator, abstract type or axiom *)
 
-type aotac =
-  | AOTAC_AbstractOp of poperator
+type spec_param =
+  | SP_AbstractOp of poperator
+
+(* EC and UC clones *)
+
+type spec_clone = unit
 
 type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
    ec_requires : (psymbol * bool) list;  (* require and optionally import
                                             .ec files; true means import *)
-   aotacs      : aotac list}
+   spec_params : spec_param list;
+   spec_clones : spec_clone list}
 
 (* overall UC specifications *)
 
 type spec =
-  {preamble   : preamble;
+  {preamble    : preamble;
    definitions : def list}
 
 (* functionality expression

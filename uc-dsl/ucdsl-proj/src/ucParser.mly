@@ -499,10 +499,11 @@ spec :
 
 preamble :
   | uc_reqs = option(uc_requires); ec_reqs = option(ec_requires);
-    aotacs = list(abstract_operator_or_type_axiom_clone)
+    params = list(spec_param); clones = list(spec_clone)
       { {uc_requires = uc_reqs |? [];
          ec_requires = ec_reqs |? [];
-         aotacs      = aotacs}
+         spec_params = params;
+         spec_clones = clones}
       }
 
 (* require .uc files *)
@@ -525,10 +526,10 @@ ec_require :
       { (id, Option.is_some x) }
 
 (* abstract operator or abstract type declaration, or
-   axiom specification, or EC clone, or UC clone *)
+   axiom specification *)
 
-abstract_operator_or_type_axiom_clone :
-  | ao = abstract_operator; FINAL { AOTAC_AbstractOp ao }
+spec_param :
+  | ao = abstract_operator; FINAL { SP_AbstractOp ao }
 (*
   | ax = axiom { }
   | eee = ec_clone { }
@@ -536,29 +537,29 @@ abstract_operator_or_type_axiom_clone :
 *)
 
 typaram :
-| x=tident { (x, []) }
-| x=tident LTCOLON tc=plist1(lqident, AMP) { (x, tc) }
+  | x=tident { (x, []) }
+  | x=tident LTCOLON tc=plist1(lqident, AMP) { (x, tc) }
 
 tyvars_decl :
-| LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
-    { tyvars }
+  | LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
+      { tyvars }
 
-| LBRACKET tyvars=rlist2(tident , empty) RBRACKET
-    { List.map (fun x -> (x, [])) tyvars }
+  | LBRACKET tyvars=rlist2(tident , empty) RBRACKET
+      { List.map (fun x -> (x, [])) tyvars }
 
-abstract_operator :
-| OP; tags = bracket(ident*)?; name = oident; tyvars = tyvars_decl?;
-  ty = prefix(COLON, loc(type_exp))
-    { {po_kind     = `Op;
-       po_name     = name;
-       po_aliases  = [];
-       po_tags     = odfl [] tags;
-       po_tyvars   = tyvars;
-       po_args     = ([], None);
-       po_def      = PO_abstr ty;
-       po_ax       = None;
-       po_locality = `Global}
-    }
+ abstract_operator :
+  | OP; tags = bracket(ident*)?; name = oident; tyvars = tyvars_decl?;
+    ty = prefix(COLON, loc(type_exp))
+      { {po_kind     = `Op;
+         po_name     = name;
+         po_aliases  = [];
+         po_tags     = odfl [] tags;
+         po_tyvars   = tyvars;
+         po_args     = ([], None);
+         po_def      = PO_abstr ty;
+         po_ax       = None;
+         po_locality = `Global}
+      }
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be
