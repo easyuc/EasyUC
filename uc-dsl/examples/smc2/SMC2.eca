@@ -560,11 +560,15 @@ qed.
        (epdp_da_from_env.`dec m <> None) /\
    smc2_real_0 (to_real_rec (glob RFIP)) /\
   envport MakeInt.MI.func m.`3 /\
-  MakeInt.MI.func = RFIP.self
+  MakeInt.MI.func = RFIP.self /\
+   inter_init_pre MakeInt.MI.func /\
+   disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
   ==>
   res = None /\
   smc2_real_0 (to_real_rec (glob RFIP)) /\
-  MakeInt.MI.func = RFIP.self
+  MakeInt.MI.func = RFIP.self /\
+   inter_init_pre MakeInt.MI.func /\
+   disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) 
       ] = 1%r.
           proc.
 if;last first.
@@ -582,14 +586,11 @@ auto;progress;smt().
           seq 1 :(
    r0 = None /\
    not_done = false /\
-   (
-    smc2_real_0
-      (to_real_rec
-         (UC_SMC2Real._self, UC_SMC2Real._st_Pt1, UC_SMC2Real._st_Pt2,
-          RFCore.MakeRF.self, UC_Fwd1.UC_Forw._self, UC_Fwd1.UC_Forw._st,
-           UC_Fwd2.UC_Forw._self, UC_Fwd2.UC_Forw._st, UC_SMC1.UC_SMCIdeal._self,
-           UC_SMC1.UC_SMCIdeal._st, UC_SMC2.UC_SMCIdeal._self, UC_SMC2.UC_SMCIdeal._st))
-           /\ MakeInt.MI.func = RFIP.self) 
+          smc2_real_0 (to_real_rec (glob RFIP)) /\
+          MakeInt.MI.func = RFIP.self /\
+    inter_init_pre MakeInt.MI.func /\
+    disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+   main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr}
  ).
  conseq (_ : _ ==> _ : = 1%r).
      call (MakeInt.MI_after_func_error RFIP DummyAdv).
@@ -616,14 +617,11 @@ inline (1) invoke.
 seq 1 :(
    r0 = None /\
    not_done = false /\
-   (
-    smc2_real_0
-      (to_real_rec
-         (UC_SMC2Real._self, UC_SMC2Real._st_Pt1, UC_SMC2Real._st_Pt2,
-          RFCore.MakeRF.self, UC_Fwd1.UC_Forw._self, UC_Fwd1.UC_Forw._st,
-           UC_Fwd2.UC_Forw._self, UC_Fwd2.UC_Forw._st, UC_SMC1.UC_SMCIdeal._self,
-           UC_SMC1.UC_SMCIdeal._st, UC_SMC2.UC_SMCIdeal._self, UC_SMC2.UC_SMCIdeal._st))
-           /\ MakeInt.MI.func = RFIP.self) 
+  smc2_real_0 (to_real_rec (glob RFIP)) /\
+          MakeInt.MI.func = RFIP.self /\
+    inter_init_pre MakeInt.MI.func /\
+    disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+   main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr}
  ).
  conseq (_ : _ ==> _ : = 1%r).
      call (MakeInt.MI_after_adv_error RFIP DummyAdv).
@@ -645,14 +643,11 @@ rcondf 0. auto.
    not_done = true /\
    epdp_da_from_env.`dec m = Some x /\
    m{!hr} = m /\
-       smc2_real_0
-         (to_real_rec
-            (UC_SMC2Real._self, UC_SMC2Real._st_Pt1, UC_SMC2Real._st_Pt2,
-             RFCore.MakeRF.self, UC_Fwd1.UC_Forw._self, UC_Fwd1.UC_Forw._st,
-              UC_Fwd2.UC_Forw._self, UC_Fwd2.UC_Forw._st, UC_SMC1.UC_SMCIdeal._self,
-              UC_SMC1.UC_SMCIdeal._st, UC_SMC2.UC_SMCIdeal._self,
-             UC_SMC2.UC_SMCIdeal._st)) /\
-       envport MakeInt.MI.func m.`3 /\ MakeInt.MI.func = RFIP.self /\
+       smc2_real_0 (to_real_rec (glob RFIP)) /\
+          MakeInt.MI.func = RFIP.self /\
+    inter_init_pre MakeInt.MI.func /\
+    disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+       envport MakeInt.MI.func m.`3 /\
       main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr} /\
      ! MakeInt.MI.func <= m.`2.`1 /\
     0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1
@@ -675,14 +670,11 @@ auto;progress;smt(eq_of_valid_da_from_env).
           seq 1 :(
    r0 = None /\
    not_done = false /\
-   (
-    smc2_real_0
-      (to_real_rec
-         (UC_SMC2Real._self, UC_SMC2Real._st_Pt1, UC_SMC2Real._st_Pt2,
-          RFCore.MakeRF.self, UC_Fwd1.UC_Forw._self, UC_Fwd1.UC_Forw._st,
-           UC_Fwd2.UC_Forw._self, UC_Fwd2.UC_Forw._st, UC_SMC1.UC_SMCIdeal._self,
-           UC_SMC1.UC_SMCIdeal._st, UC_SMC2.UC_SMCIdeal._self, UC_SMC2.UC_SMCIdeal._st))
-           /\ MakeInt.MI.func = RFIP.self) 
+   smc2_real_0 (to_real_rec (glob RFIP)) /\
+          MakeInt.MI.func = RFIP.self /\
+    inter_init_pre MakeInt.MI.func /\
+    disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+   main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr}
  ).
  conseq (_ : _ ==> _ : = 1%r).
      call (MakeInt.MI_after_func_error RFIP DummyAdv).
@@ -707,8 +699,308 @@ exlim r0 => r0.
      call (MakeInt.MI_after_adv_to_func RFIP DummyAdv r0).
      auto;progress;smt(eq_of_valid_da_from_env @UCListPO).
  auto.
+qed.
+
+local lemma MI_ideal_invoke1_fail(m : msg) : phoare [
+  MakeInt.MI(IF, SIM(DummyAdv)).invoke:
+  arg = m /\
+  !(m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+   envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+       (epdp_da_from_env.`dec m <> None) /\
+   smc2_ideal_0 (to_ideal_rec (glob IF)) (to_sim_rec (glob SIM)) /\
+  envport MakeInt.MI.func m.`3 /\
+  MakeInt.MI.func = IF._self /\
+  inter_init_pre MakeInt.MI.func /\
+  disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+  ==>
+  res = None /\
+  smc2_ideal_0 (to_ideal_rec (glob IF)) (to_sim_rec (glob SIM)) /\
+  MakeInt.MI.func = IF._self /\
+  inter_init_pre MakeInt.MI.func /\
+  disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+      ] = 1%r.
+          proc.
+if;last first.
+          auto;progress;smt().
+      inline loop.
+sp 3.
+          rcondt 0. auto.
+      if.
+inline (1) invoke.
+          sp 2.
+if;last first.
+          sp 1.
+seq 1 :(
+   r0 = None /\
+   not_done = false /\
+    smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+    (to_sim_rec
+       (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+         MakeInt.MI.func = IF._self /\
+     inter_init_pre MakeInt.MI.func /\
+     disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+ ).
+     conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+ call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+     rcondf 0. auto.
+     auto;progress;smt(@UCListPO).
+  hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+auto.
+
+     inline (1) parties.
+     sp 2.
+     match _State_IF_WaitReq1 0. auto;progress;smt().
+     match.
+           sp 2.
+seq 1 :(
+   r0 = None /\
+   not_done = false /\
+    smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+    (to_sim_rec
+       (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+         MakeInt.MI.func = IF._self /\
+         inter_init_pre MakeInt.MI.func /\
+     disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+ ).
+     conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+ call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+     rcondf 0. auto.
+     auto;progress;smt(@UCListPO).
+  hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+     auto.
+ 
+ inline _State_IF_WaitReq1__SMC2Dir__Pt1__smc_req.
+     sp 4.
+     rcondf 0. auto;progress;smt.
+sp 4.
+seq 1 :(
+   r0 = None /\
+   not_done = false /\
+    smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+    (to_sim_rec
+       (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+         MakeInt.MI.func = IF._self /\
+     inter_init_pre MakeInt.MI.func /\
+     disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+ ).
+     conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+ call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+     rcondf 0. auto.
+     auto;progress;smt(@UCListPO).
+  hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+     auto.
+
+ inline (1) invoke. 
+     sp 2.
+ print main_guard.
+ rcondf 0. auto;progress;smt(@UCListPO @FSet).  
+inline (1) loop.
+   sp 3.
+   rcondt 0. auto.
+rcondt 0. auto;progress;smt(@UCListPO @FSet).
+   inline (1) invoke.
+   sp 2.
+   match Some 0. auto;progress;smt().
+   if; last first.
+   sp 1.
+   seq 1 :(
+   r2 = None /\
+   not_done0 = false /\
+       smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+         (to_sim_rec
+            (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+       MakeInt.MI.func = IF._self /\
+       inter_init_pre MakeInt.MI.func /\
+       disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+ ).
+     conseq (_ : _ ==> _ : = 1%r).
+call (MSCore.MS_after_adv_error UC_SMC2Sim DummyAdv).
+     auto;progress;smt().
+ call (MSCore.MS_after_adv_error UC_SMC2Sim DummyAdv).
+     auto;progress;smt().
+     rcondf 0. auto.
+     sp 2.
+     wp.
+     seq 1 :(#post /\ not_done = false).
+conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_adv_error IF (SIM(DummyAdv))).
+     auto;progress;smt().
+ call (MakeInt.MI_after_adv_error IF (SIM(DummyAdv))).
+ auto;progress;smt().    
+rcondf 0. auto.
+ auto;progress;smt().
+ hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_adv_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+     auto.
+ hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MSCore.MS_after_adv_error UC_SMC2Sim DummyAdv).
+        auto;progress;smt().
+     auto.
+sp 2.
+     seq 1 :(
+    r2 = Some (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+   m2 = oget r2 /\
+   not_done0 = false /\
+   epdp_da_from_env.`dec m = Some x /\
+   m{!hr} = m /\
+       smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+         (to_sim_rec
+            (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+              MakeInt.MI.func = IF._self /\
+    inter_init_pre MakeInt.MI.func /\
+    disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+       envport MakeInt.MI.func m.`3 /\
+      main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr} /\
+     ! MakeInt.MI.func <= m.`2.`1 /\
+    0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1
+
+        ).
+        conseq (_ : _ ==> _ : = 1%r).
+        exlim r2 => r2.
+        call (MSCore.MS_after_adv_return UC_SMC2Sim DummyAdv r2).
+            auto;progress;smt(@UCListPO).
+        exlim r2 => r2.
+            call (MSCore.MS_after_adv_return UC_SMC2Sim DummyAdv r2).
+            auto;progress;smt(@UCListPO).
+            rcondf 0. auto.
+            sp 2.
+            seq 1 :(
+  r0 =
+  Some (UCBasicTypes.Adv, x.`dfe_pt, (adv, x.`dfe_n), x.`dfe_tag, x.`dfe_u) /\
+  m0 = oget r0 /\
+  not_done = true /\
+  epdp_da_from_env.`dec m = Some x /\
+  m{!hr} = m /\
+  smc2_ideal_0 (to_ideal_rec (UC_SMC2Ideal._self, UC_SMC2Ideal._st))
+    (to_sim_rec
+       (UC_SMC2Sim._st, UC_SMC2Sim.if_addr_opt, MSCore.MS.if_addr_opt)) /\
+  MakeInt.MI.func = IF._self /\
+  inter_init_pre MakeInt.MI.func /\
+  disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi) /\
+  envport MakeInt.MI.func m.`3 /\
+  main_guard MakeInt.MI.func MakeInt.MI.in_guard m{!hr} /\
+  ! MakeInt.MI.func <= m.`2.`1 /\
+  0 < x.`dfe_n /\ x.`dfe_pt <> env_root_port /\ ! adv <= x.`dfe_pt.`1
+        ).
+            conseq (_ : _ ==> _ : = 1%r).
+        exlim r0 => r0.
+            call (MakeInt.MI_after_adv_to_func IF (SIM(DummyAdv)) r0).
+        auto;progress;smt(@UCListPO eq_of_valid_da_from_env).
+ exlim r0 => r0.
+            call (MakeInt.MI_after_adv_to_func IF (SIM(DummyAdv)) r0).
+            auto;progress;smt(@UCListPO eq_of_valid_da_from_env).
+            rcondt 0. auto.
+            rcondt 0. auto;progress;smt(eq_of_valid_da_from_env @UCListPO).
+inline (1) invoke.
+            sp 2.
+            if; last first. sp. wp.
+seq 1 :(#post /\ not_done = false).
+     conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+ call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+     rcondf 0. auto.
+     auto;progress;smt(@UCListPO).
+  hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+     auto.
+            inline (1) parties.
+            sp 2.
+            match _State_IF_WaitReq1 0. auto;smt().
+        match None 0. auto;progress;smt(UC_SMC2Dir.Pt1.eq_of_valid__smc_req).
+            sp 2. wp.
+        seq 1 :(#post /\ not_done = false).
+     conseq (_ : _ ==> _ : = 1%r).
+     call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+ call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+     auto;progress;smt(@UCListPO).
+     rcondf 0. auto.
+     auto;progress;smt(@UCListPO).
+  hoare. simplify.
+    conseq (_ : _ ==> _ : = 1%r).
+    call (MakeInt.MI_after_func_error IF (SIM(DummyAdv))).
+        auto;progress;smt().
+            auto.
+
+        hoare. simplify.
+        conseq (_ : _ ==> _ : = 1%r).
+        exlim r0 => r0.
+     call (MakeInt.MI_after_adv_to_func IF (SIM(DummyAdv)) r0).
+            auto;progress;smt(@UCListPO eq_of_valid_da_from_env).
+            auto.
+        hoare. simplify.
+        conseq (_ : _ ==> _ : = 1%r).
+        exlim r2 => r2.
+        call (MSCore.MS_after_adv_return UC_SMC2Sim DummyAdv r2).
+            auto;progress;smt(@UCListPO).
+        auto.
     qed.
 
+local lemma MI_ideal_invoke1_SandT(m : msg) : phoare [
+  MakeInt.MI(IF, SIM(DummyAdv)).invoke:
+  arg = m /\
+  (m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 RFIP.self /\
+    UC_SMC2Dir.Pt1.epdp__smc_req.`dec m <> None /\
+   envport RFIP.self ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2)) /\
+       (epdp_da_from_env.`dec m <> None) /\
+   smc2_ideal_0 (to_ideal_rec (glob IF)) (to_sim_rec (glob SIM)) /\
+  envport MakeInt.MI.func m.`3 /\
+  MakeInt.MI.func = IF._self /\
+  inter_init_pre MakeInt.MI.func /\
+  disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+  ==>
+  let 
+      rm =
+      UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
+            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|} in
+      res = Some (epdp_da_to_env.`enc
+        {| dte_n = rm.`2.`2; dte_pt = rm.`3; dte_tag = rm.`4; dte_u = rm.`5; |})
+        /\
+      smc2_ideal_1 (to_ideal_rec (glob IF)) (to_sim_rec (glob SIM))
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2
+        (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__t /\
+  MakeInt.MI.func = IF._self /\
+  inter_init_pre MakeInt.MI.func /\
+  disjoint MakeInt.MI.in_guard (fset1 _adv_if_pi)
+      ] = 1%r.
+      proof.
+        proc.
+rcondt 0. auto;progress;smt(@UCListPO @FSet).
+      
+      
       print main_guard.
 
 local lemma Exper_SMC2Real_SMC2Ideal_SMCSim_dummy_adversary
