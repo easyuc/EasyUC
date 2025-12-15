@@ -7,7 +7,16 @@
 #
 # easyuc-merge NEW OLD
 #
-# merges file NEW with OLD, putting the result in NEW
+# merges file NEW with OLD, putting the result in NEW, and removing
+# OLD
+#
+# the user is asked to approve the changes to files
+#
+# the new and old differences are marked in the result; search for
+#
+#   <<<<< old text <<<<<
+#   >>>>> new text >>>>>
+#   == end of old new ==
 
 # running
 #
@@ -49,3 +58,4 @@ $gnudiff --old-group-format='<<<<< old text <<<<<
 %>== end of old new ==
 ' $old $new > $tmp
 mv -i $tmp $new
+rm -i $old
