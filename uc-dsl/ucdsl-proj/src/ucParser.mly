@@ -382,7 +382,6 @@ let mk_tydecl ~locality (tyvars, name) body =
 %token IMPLEM
 %token IMPORT
 %token IN
-%token INCLUDE
 %token INITIAL
 %token INTPORT
 %token LET
@@ -614,8 +613,7 @@ spec_ec_clone :
       }
 
 clone_import :
-  | IMPORT  { `Import  }
-  | INCLUDE { `Include }
+  | IMPORT { `Import  }
 
 clone_with :
   | WITH; x = plist1(clone_override, COMMA)
@@ -646,23 +644,19 @@ cltyparams :
   | xs = paren(plist1(tident, COMMA)) { xs }
 
 spec_uc_clone :
-  | UC_CLONE; ip = uc_clone_import?; x = uident; y = prefix(AS, uident)?;
-    cw = uc_clone_with?
+  | UC_CLONE; x = uident; AS; y = uident; cw = uc_clone_with?
       { let l : EcLocation.t = loc x in
         let x = mk_loc l (qsymb_of_symb (unloc x)) in
         { pthc_base   = x;
-          pthc_name   = y;
+          pthc_name   = Some y;
           pthc_ext    = EcUtils.odfl [] cw;
           pthc_prf    = [];
           pthc_rnm    = [];
           pthc_clears = [];
           pthc_opts   = [];
           pthc_local  = None;
-          pthc_import = ip; }
+          pthc_import = None; }
       }
-
-uc_clone_import :
-  | IMPORT { `Import  }
 
 uc_clone_with :
   | WITH; x = plist1(uc_clone_override, COMMA)
