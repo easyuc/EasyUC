@@ -324,6 +324,23 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       }
   end
 
+(* auxiliary function for making an axiom *)
+
+let mk_axiom ~locality (x, ty, pv, vd, f) k =
+  { pa_name     = x;
+    pa_tyvars   = ty;
+    pa_pvars    = pv;
+    pa_vars     = vd;
+    pa_formula  = f;
+    pa_kind     = k;
+    pa_locality = locality; }
+
+let mk_tydecl ~locality (tyvars, name) body =
+  { pty_name     = name;
+    pty_tyvars   = tyvars;
+    pty_body     = body;
+    pty_locality = locality; }
+
 %}
 
 %token <Lexing.position> FINAL (* a "." followed by whitespace of eof *)
@@ -343,7 +360,13 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 %token ADVERSARIAL
 %token ANDTXT
+%token AS
+%token ASSERT
+%token ASSUMPTION
+%token AXIOM
+%token DEBUG
 %token DIRECT
+%token EC_CLONE
 %token EC_REQUIRES
 %token ELIF
 %token ELSE
@@ -357,7 +380,9 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token HINT
 %token IF
 %token IMPLEM
+%token IMPORT
 %token IN
+%token INCLUDE
 %token INITIAL
 %token INTPORT
 %token LET
@@ -367,6 +392,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token OUT
 %token PARTY
 %token PROVER
+%token RUN
 %token SEND
 %token SERVES
 %token SIM
@@ -377,15 +403,13 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 %token TIMEOUT
 %token TOP
 %token TRANSITION
+%token TYPE
+%token UC_CLONE
 %token UC_REQUIRES
+%token UNDO
 %token USES
 %token VAR
 %token WITH
-%token ASSERT
-%token ASSUMPTION
-%token UNDO
-%token DEBUG
-%token RUN
 
 (* fixed length *)
 
@@ -525,29 +549,26 @@ ec_require :
   | x = option(PLUS); id = ident
       { (id, Option.is_some x) }
 
-(* abstract operator or abstract type declaration, or
-   axiom specification *)
+(* parameters of specifications *)
 
 spec_param :
-  | ao = abstract_operator; FINAL { SP_AbstractOp ao }
-(*
-  | ax = axiom { }
-  | eee = ec_clone { }
-  | ucc = uc_clone { }
-*)
+  | ao = spec_abstract_operator_decl; FINAL { SP_AbstractOpDecl ao }
+  | at = spec_abstract_type_decl; FINAL { SP_AbstractTypeDecl at }
+  | ax = spec_axiom; FINAL { SP_Axiom ax}
 
 typaram :
-  | x=tident { (x, []) }
-  | x=tident LTCOLON tc=plist1(lqident, AMP) { (x, tc) }
+  | x = tident { (x, []) }
+
+typarams:
+  | empty { []  }
+  | x = tident { [(x, [])] }
+  | xs = paren(plist1(typaram, COMMA)) { xs }
 
 tyvars_decl :
   | LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
       { tyvars }
 
-  | LBRACKET tyvars=rlist2(tident , empty) RBRACKET
-      { List.map (fun x -> (x, [])) tyvars }
-
- abstract_operator :
+spec_abstract_operator_decl :
   | OP; tags = bracket(ident*)?; name = oident; tyvars = tyvars_decl?;
     ty = prefix(COLON, loc(type_exp))
       { {po_kind     = `Op;
@@ -560,6 +581,109 @@ tyvars_decl :
          po_ax       = None;
          po_locality = `Global}
       }
+
+%inline tyd_name:
+| tya = typarams; x = ident { (tya, x) }
+
+spec_abstract_type_decl :
+  | TYPE; tn = tyd_name
+      { mk_tydecl ~locality:`Global tn (PTYD_Abstract []) }
+
+spec_axiom :
+  | AXIOM; ids = bracket(ident+)?; x = ident; tyvars = tyvars_decl?;
+    pd = pgtybindings?; COLON; e = expr
+      { mk_axiom ~locality:`Global (x, tyvars, None, pd, e)
+        (PAxiom (odfl [] ids)) }
+
+spec_clone :
+  | c = spec_ec_clone; FINAL { SC_ECClone c }
+  | c = spec_uc_clone; FINAL { SC_UCClone c }
+
+spec_ec_clone :
+  | EC_CLONE; ip = clone_import?; x = uqident; y = prefix(AS, uident)?;
+    cw = clone_with?
+      { { pthc_base   = x;
+          pthc_name   = y;
+          pthc_ext    = EcUtils.odfl [] cw;
+          pthc_prf    = [];
+          pthc_rnm    = [];
+          pthc_clears = [];
+          pthc_opts   = [];
+          pthc_local  = None;
+          pthc_import = ip; }
+      }
+
+clone_import :
+  | IMPORT  { `Import  }
+  | INCLUDE { `Include }
+
+clone_with :
+  | WITH; x = plist1(clone_override, COMMA)
+      { x }
+
+clone_override:
+  | TYPE; ps = cltyparams; x = qident; mode = opclmode; t = loc(type_exp);
+      { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | OP; x = qoident; tyvars = bracket(tident*)?;
+    p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
+    mode = loc(opclmode); e = expr
+      { let ov =
+          { opov_tyvars = tyvars;
+            opov_args   = List.flatten p;
+            opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
+            opov_body   = e } in
+        (x, PTHO_Op (`BySyntax ov, unloc mode))
+      }
+
+opclmode :
+  | EQ       { `Alias         }
+  | LARROW   { `Inline `Clear }
+  | LE       { `Inline `Keep  }
+
+cltyparams :
+  | empty { [] }
+  | x = tident { [x] }
+  | xs = paren(plist1(tident, COMMA)) { xs }
+
+spec_uc_clone :
+  | UC_CLONE; ip = uc_clone_import?; x = uident; y = prefix(AS, uident)?;
+    cw = uc_clone_with?
+      { let l : EcLocation.t = loc x in
+        let x = mk_loc l (qsymb_of_symb (unloc x)) in
+        { pthc_base   = x;
+          pthc_name   = y;
+          pthc_ext    = EcUtils.odfl [] cw;
+          pthc_prf    = [];
+          pthc_rnm    = [];
+          pthc_clears = [];
+          pthc_opts   = [];
+          pthc_local  = None;
+          pthc_import = ip; }
+      }
+
+uc_clone_import :
+  | IMPORT { `Import  }
+
+uc_clone_with :
+  | WITH; x = plist1(uc_clone_override, COMMA)
+      { x }
+
+uc_clone_override:
+  | TYPE; ps = cltyparams; x = qident; mode = uc_opclmode; t = loc(type_exp);
+      { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | OP; x = qoident; tyvars = bracket(tident*)?;
+    p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
+    mode = loc(uc_opclmode); e = expr
+      { let ov =
+          { opov_tyvars = tyvars;
+            opov_args   = List.flatten p;
+            opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
+            opov_body   = e } in
+        (x, PTHO_Op (`BySyntax ov, unloc mode))
+      }
+
+uc_opclmode :
+  | EQ { `Alias }
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be

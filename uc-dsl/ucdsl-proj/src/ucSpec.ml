@@ -180,11 +180,15 @@ type def =
 (* abstract operator, abstract type or axiom *)
 
 type spec_param =
-  | SP_AbstractOp of poperator
+  | SP_AbstractOpDecl   of poperator
+  | SP_AbstractTypeDecl of ptydecl
+  | SP_Axiom            of paxiom
 
 (* EC and UC clones *)
 
-type spec_clone = unit
+type spec_clone =
+  | SC_ECClone of theory_cloning
+  | SC_UCClone of theory_cloning
 
 type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
