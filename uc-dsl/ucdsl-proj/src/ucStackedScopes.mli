@@ -30,6 +30,15 @@ val push_scope : EcScope.scope -> unit
 
 val add_notifier : notifier -> unit
 
+(* process an operator declaration, type declaration, axiom
+   specification or theory cloning in the current scope, updating
+   the scope *)
+
+val process_op_decl      : poperator -> unit
+val process_type_decl    : ptydecl -> unit
+val process_axiom        : paxiom -> unit
+val process_theory_clone : theory_cloning -> unit
+
 (* require a theory in the current scope, updating the current scope *)
 
 type require_t =

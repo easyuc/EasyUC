@@ -132,7 +132,7 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
      subfunctionalities must be ideal functionalities *)
 
-  subfun Fw1 = Forwarding1.Forw  (* must be qualified *)
+  subfun Fw1 = Forwarding1.Forw
   subfun Fw2 = Forwarding2.Forw
 
   (* Party 1 (Pt1) serves the basic direct interface KEDir.Pt1; this

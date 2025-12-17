@@ -177,25 +177,26 @@ type def =
   | FunDef   of fun_def    (* functionality *)
   | SimDef   of sim_def    (* simulator *)
 
-(* abstract operator, abstract type or axiom *)
+(* spec parameters *)
 
 type spec_param =
-  | SP_AbstractOpDecl   of poperator
-  | SP_AbstractTypeDecl of ptydecl
-  | SP_Axiom            of paxiom
+  | SP_AbstractOpDecl   of poperator  (* abstract operator declaration *)
+  | SP_AbstractTypeDecl of ptydecl    (* abstract type declaration *)
+  | SP_Axiom            of paxiom     (* axiom specification *)
 
-(* EC and UC clones *)
+(* spec's EC and UC clones *)
 
 type spec_clone =
-  | SC_ECClone of theory_cloning
-  | SC_UCClone of theory_cloning
+  | SC_ECClone of theory_cloning            (* EC clone *)
+  | SC_UCClone of psymbol * theory_cloning  (* UC clone: the root and EC
+                                               clone of "_" ^ root *)
 
 type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
    ec_requires : (psymbol * bool) list;  (* require and optionally import
                                             .ec files; true means import *)
-   spec_params : spec_param list;
-   spec_clones : spec_clone list}
+   spec_params : spec_param list;        (* parameters to spec *)
+   spec_clones : spec_clone list}        (* ec and uc clones of spec *)
 
 (* overall UC specifications *)
 

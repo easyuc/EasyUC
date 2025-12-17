@@ -512,8 +512,9 @@ val spec : (Lexing.lexbuf -> UcParser.token) -> Lexing.lexbuf -> UcSpec.spec
 
 %%
 
-(* a UC DSL specification consists of a preamble which requires
-  other .ec and .uc files, followed by a list of definitions of direct and
+(* a UC DSL specification consists of a preamble consisting of
+  requires other .ec and .uc files, parameters of the spec, and EC and
+  UC clones, followed by a list of definitions of direct and
   adversarial interfaces, functionalities and simlators *)
 
 spec :
@@ -551,17 +552,24 @@ ec_require :
 (* parameters of specifications *)
 
 spec_param :
-  | ao = spec_abstract_operator_decl; FINAL { SP_AbstractOpDecl ao }
-  | at = spec_abstract_type_decl; FINAL { SP_AbstractTypeDecl at }
-  | ax = spec_axiom; FINAL { SP_Axiom ax}
+  | ao = spec_abstract_operator_decl; FINAL
+      { SP_AbstractOpDecl ao }
+  | at = spec_abstract_type_decl; FINAL
+      { SP_AbstractTypeDecl at }
+  | ax = spec_axiom; FINAL
+      { SP_Axiom ax}
 
 typaram :
-  | x = tident { (x, []) }
+  | x = tident
+      { (x, []) }
 
 typarams:
-  | empty { []  }
-  | x = tident { [(x, [])] }
-  | xs = paren(plist1(typaram, COMMA)) { xs }
+  | empty
+      { [] }
+  | x = tident
+      { [(x, [])] }
+  | xs = paren(plist1(typaram, COMMA))
+      { xs }
 
 tyvars_decl :
   | LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
@@ -582,7 +590,7 @@ spec_abstract_operator_decl :
       }
 
 %inline tyd_name:
-| tya = typarams; x = ident { (tya, x) }
+  | tya = typarams; x = ident { (tya, x) }
 
 spec_abstract_type_decl :
   | TYPE; tn = tyd_name
@@ -596,7 +604,7 @@ spec_axiom :
 
 spec_clone :
   | c = spec_ec_clone; FINAL { SC_ECClone c }
-  | c = spec_uc_clone; FINAL { SC_UCClone c }
+  | c = spec_uc_clone; FINAL { SC_UCClone (fst c, snd c) }
 
 spec_ec_clone :
   | EC_CLONE; ip = clone_import?; x = uqident; y = prefix(AS, uident)?;
@@ -613,7 +621,8 @@ spec_ec_clone :
       }
 
 clone_import :
-  | IMPORT { `Import  }
+  | IMPORT
+      { `Import  }
 
 clone_with :
   | WITH; x = plist1(clone_override, COMMA)
@@ -622,11 +631,12 @@ clone_with :
 clone_override:
   | TYPE; ps = cltyparams; x = qident; mode = opclmode; t = loc(type_exp);
       { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
-  | OP; x = qoident; tyvars = bracket(tident*)?;
-    p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
+
+  | OP; x = qoident; p = ptybinding1*;
+    sty = ioption(prefix(COLON, loc(type_exp)));
     mode = loc(opclmode); e = expr
       { let ov =
-          { opov_tyvars = tyvars;
+          { opov_tyvars = None;
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
@@ -634,28 +644,32 @@ clone_override:
       }
 
 opclmode :
-  | EQ       { `Alias         }
-  | LARROW   { `Inline `Clear }
-  | LE       { `Inline `Keep  }
+  | EQ      { `Alias         }
+  | LARROW  { `Inline `Clear }
+  | LE      { `Inline `Keep  }
 
 cltyparams :
-  | empty { [] }
-  | x = tident { [x] }
-  | xs = paren(plist1(tident, COMMA)) { xs }
+  | empty
+      { [] }
+  | x = tident
+      { [x] }
+  | xs = paren(plist1(tident, COMMA))
+      { xs }
 
 spec_uc_clone :
   | UC_CLONE; x = uident; AS; y = uident; cw = uc_clone_with?
-      { let l : EcLocation.t = loc x in
-        let x = mk_loc l (qsymb_of_symb (unloc x)) in
-        { pthc_base   = x;
-          pthc_name   = Some y;
-          pthc_ext    = EcUtils.odfl [] cw;
-          pthc_prf    = [];
-          pthc_rnm    = [];
-          pthc_clears = [];
-          pthc_opts   = [];
-          pthc_local  = None;
-          pthc_import = None; }
+      { let l = loc x in
+        let z = mk_loc l (qsymb_of_symb ("_" ^ unloc x)) in
+        (x,
+         { pthc_base   = z;
+           pthc_name   = Some y;
+           pthc_ext    = EcUtils.odfl [] cw;
+           pthc_prf    = [];
+           pthc_rnm    = [];
+           pthc_clears = [];
+           pthc_opts   = [];
+           pthc_local  = None;
+           pthc_import = None; }) : psymbol * theory_cloning
       }
 
 uc_clone_with :
@@ -665,11 +679,12 @@ uc_clone_with :
 uc_clone_override:
   | TYPE; ps = cltyparams; x = qident; mode = uc_opclmode; t = loc(type_exp);
       { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
-  | OP; x = qoident; tyvars = bracket(tident*)?;
-    p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
+
+  | OP; x = qoident; p = ptybinding1*;
+    sty = ioption(prefix(COLON, loc(type_exp)));
     mode = loc(uc_opclmode); e = expr
       { let ov =
-          { opov_tyvars = tyvars;
+          { opov_tyvars = None;
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
