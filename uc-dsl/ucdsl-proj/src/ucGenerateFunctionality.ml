@@ -55,8 +55,8 @@ let print_state_type
   let ste = List.map s2e (IdMap.bindings states) in
   let print_stys ppf stys : unit =
     let sty1 = List.hd stys in
-    Format.fprintf ppf "%a" (pp_type sc) sty1;
-    List.iter (fun ty -> Format.fprintf ppf "@ &@ %a" (pp_type sc) ty
+    Format.fprintf ppf "(%a)" (pp_type sc) sty1;
+    List.iter (fun ty -> Format.fprintf ppf "@ &@ (%a)" (pp_type sc) ty
       ) (List.tl stys)
   in
   Format.fprintf ppf "@[type %s = [ @]@;<0 2>" state_type_name;
@@ -242,7 +242,7 @@ let rec print_code (sim_uses : string option)
       | Some pn -> st_name pn in
     Format.fprintf ppf "@[%s%s <- %s"
       glob_pfx state_var_name (state_name (EcLocation.unloc sat.state_expr.id));
-    List.iter (fun ex -> Format.fprintf ppf "@ %a"
+    List.iter (fun ex -> Format.fprintf ppf "@ (%a)"
       pp_ex ex) (EcLocation.unloc sat.state_expr.args);
     Format.fprintf ppf ";@]"
   in
