@@ -552,10 +552,10 @@ ec_require :
 (* parameters of specifications *)
 
 spec_param :
-  | ao = spec_abstract_operator_decl; FINAL
-      { SP_AbstractOpDecl ao }
   | at = spec_abstract_type_decl; FINAL
       { SP_AbstractTypeDecl at }
+  | ao = spec_abstract_operator_decl; FINAL
+      { SP_AbstractOpDecl ao }
   | ax = spec_axiom; FINAL
       { SP_Axiom ax}
 
@@ -571,24 +571,6 @@ typarams:
   | xs = paren(plist1(typaram, COMMA))
       { xs }
 
-tyvars_decl :
-  | LBRACKET tyvars=rlist0(typaram, COMMA) RBRACKET
-      { tyvars }
-
-spec_abstract_operator_decl :
-  | OP; tags = bracket(ident*)?; name = oident; tyvars = tyvars_decl?;
-    ty = prefix(COLON, loc(type_exp))
-      { {po_kind     = `Op;
-         po_name     = name;
-         po_aliases  = [];
-         po_tags     = odfl [] tags;
-         po_tyvars   = tyvars;
-         po_args     = ([], None);
-         po_def      = PO_abstr ty;
-         po_ax       = None;
-         po_locality = `Global}
-      }
-
 %inline tyd_name:
   | tya = typarams; x = ident { (tya, x) }
 
@@ -596,10 +578,24 @@ spec_abstract_type_decl :
   | TYPE; tn = tyd_name
       { mk_tydecl ~locality:`Global tn (PTYD_Abstract []) }
 
+spec_abstract_operator_decl :
+  | OP; tags = bracket(ident*)?; name = oident;
+    ty = prefix(COLON, loc(type_exp))
+      { {po_kind     = `Op;
+         po_name     = name;
+         po_aliases  = [];
+         po_tags     = odfl [] tags;
+         po_tyvars   = None;
+         po_args     = ([], None);
+         po_def      = PO_abstr ty;
+         po_ax       = None;
+         po_locality = `Global}
+      }
+
 spec_axiom :
-  | AXIOM; ids = bracket(ident+)?; x = ident; tyvars = tyvars_decl?;
-    pd = pgtybindings?; COLON; e = expr
-      { mk_axiom ~locality:`Global (x, tyvars, None, pd, e)
+  | AXIOM; ids = bracket(ident+)?; x = ident; pd = pgtybindings?;
+    COLON; e = expr
+      { mk_axiom ~locality:`Global (x, None, None, pd, e)
         (PAxiom (odfl [] ids)) }
 
 spec_clone :

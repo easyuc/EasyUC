@@ -14,10 +14,15 @@
    described by our grammar (see nonterminal `expr` of
    ucParser.mly). *)
 
+open Format
+
+open EcUtils
 open EcLocation
 open EcSymbols
 open EcParsetree
+
 open UcSpecTypedSpecCommon
+open UcMessage
 
 (* type bindings *)
 
@@ -180,8 +185,8 @@ type def =
 (* spec parameters *)
 
 type spec_param =
-  | SP_AbstractOpDecl   of poperator  (* abstract operator declaration *)
   | SP_AbstractTypeDecl of ptydecl    (* abstract type declaration *)
+  | SP_AbstractOpDecl   of poperator  (* abstract operator declaration *)
   | SP_Axiom            of paxiom     (* axiom specification *)
 
 (* spec's EC and UC clones *)
@@ -197,6 +202,61 @@ type preamble =
                                             .ec files; true means import *)
    spec_params : spec_param list;        (* parameters to spec *)
    spec_clones : spec_clone list}        (* ec and uc clones of spec *)
+
+(* pretty printing help for translator *)
+
+let pp_abstract_type_decl (ptyd : ptydecl) (ppf : formatter) : unit =
+  let name = unloc ptyd.pty_name in
+  let tyvars = List.map (unloc |- fst) ptyd.pty_tyvars in
+  match List.length ptyd.pty_tyvars with
+  | 0 -> fprintf ppf "@[type %s@]" name
+  | 1 -> fprintf ppf "@[type %s %s@]" (List.hd tyvars) name
+  | _ ->
+      fprintf ppf "@[type (%a) %s]"
+      (EcPrinting.pp_list ",@ " pp_symbol) tyvars name
+
+let pp_abstract_op_decl (env : EcEnv.env) (po : poperator)
+    (ppf : formatter) : unit =
+  let tags = List.map unloc po.po_tags in
+  let name = unloc (po.po_name) in
+  let pty =
+    match po.po_def with
+    | PO_abstr pty -> pty
+    | _            -> failure "cannot happen" in
+  let ue = EcUnify.UniEnv.create None in
+  let ty = EcTyping.transty EcTyping.tp_tydecl env ue pty in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let pp_tags ppf =
+    fprintf ppf "@[[%a]@]" (EcPrinting.pp_list "@ " pp_symbol) in
+  match List.length tags with
+  | 0 ->
+      fprintf ppf "@[op@  %s@ :@ %a@]" name
+      (EcPrinting.pp_type ppe) ty
+  | _ ->
+      fprintf ppf "@[op@ %a@ %s@ :@ %a@]" pp_tags tags name
+      (EcPrinting.pp_type ppe) ty
+
+
+
+
+
+
+
+
+
+
+(*
+
+  let uidmap =
+    try EcUnify.UniEnv.close ue with
+    | EcUnify.UninstanciateUni ->
+        error_message (loc is)
+        (fun ppf ->
+           Format.fprintf ppf
+           "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
+*)
+
+
 
 (* overall UC specifications *)
 
