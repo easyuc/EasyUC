@@ -575,9 +575,12 @@ let print_proof_state_match (root : string)
           let msg_name, is_internal, iiphd, pfx, mb, epdp_str =
             get_msg_info mp dii ais root mbmap in
           Format.fprintf ppf "@[match. (*message match*)@]@;";
-          Format.fprintf ppf
+          if List.is_empty (List.tl mmcs)
+          then Format.fprintf ppf
             "@[%s skip. move => />;smt(). (*None branch of message match, dec failed*)@]@;"
-            ret_pfx;
+            ret_pfx
+          else print_proof_mm ppf (List.tl mmcs)
+          ;
           if is_internal then
             Format.fprintf ppf
               "@[if. (*address check for internal messages*)@]@;"
@@ -586,7 +589,6 @@ let print_proof_state_match (root : string)
             "@[sp %i. (*state param assignment, return value initialization*)@]"
               ((Mid.cardinal st.params) + 1);
           print_proof_mmc ppf mmc;
-          print_proof_mm ppf (List.tl mmcs);
           if is_internal then
             Format.fprintf ppf
               "@[%s skip. move => />;smt(). (*address check for internal messages failed case*)@]@;"
@@ -730,15 +732,16 @@ let print_SIM_proof_state_match (root : string)
         else
           let mmc = List.hd mmcs in
           Format.fprintf ppf "@[if;last first. (*message guard*)@]@;";
-          Format.fprintf ppf
+          if List.is_empty (List.tl mmcs)
+          then Format.fprintf ppf
             "@[%s skip. move => />;smt(). (*message guard failed*)@]@;"
-            ret_pfx;
-          
-            Format.fprintf ppf
+            ret_pfx
+          else print_proof_mm ppf (List.tl mmcs)
+          ;
+          Format.fprintf ppf
             "@[sp %i. (*state param assignment, return value initialization*)@]"
               ((Mid.cardinal st.params) + 1);
           print_proof_mmc ppf mmc;
-          print_proof_mm ppf (List.tl mmcs);
           
       in
       
