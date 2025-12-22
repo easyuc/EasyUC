@@ -574,40 +574,30 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
 
 
 let linearize_state_DAG (states : state_tyd IdMap.t) : int IdMap.t option =
-  let initial_state_id : string = initial_state_id_of_states states in
-  let rec add_next_level_states (sls : IdSet.t list) : IdSet.t list option =
-    let last = List.hd sls in
-    let prev = List.fold_left (fun ret set -> IdSet.union ret set) IdSet.empty sls in
-    let next_sl = IdSet.fold (fun st_id idseto ->
-                      match idseto with
-                      | None -> None 
-                      | Some idset ->
-                         let s = IdMap.find st_id states in
-                         let ns = state_transitions_of_state s in
-                         if IdSet.exists (fun id ->
-                                IdSet.mem id prev
-                              ) ns
-                         then None
-                         else Some (IdSet.union idset ns)
-                    ) last (Some IdSet.empty) in
-    match next_sl with
-    | None -> None
-    | Some sl -> if IdSet.is_empty sl
-                 then Some sls
-                 else add_next_level_states (sl::sls)
+  let init = IdMap.map (fun _ -> IdSet.empty) states in
+  let stG = IdMap.fold (fun st_id st_tyd acc ->
+                 let st_trs = state_transitions_of_state st_tyd in
+                 IdSet.fold (fun st_tr acc ->
+                     IdMap.update st_tr (fun inso ->
+                         let ins = EcUtils.oget inso in
+                         Some (IdSet.add st_id ins)) acc) st_trs acc
+              ) states init in
+  let rec order_states (stl : string list) (stG : IdSet.t IdMap.t)
+          : string list option =
+    if (IdMap.is_empty stG) then Some stl else
+    let top, rest = IdMap.partition (fun _ ins -> IdSet.is_empty ins) stG in
+    if (IdMap.is_empty top) then None else
+    let top_stl = fst (List.split (IdMap.bindings top)) in
+    let stl = stl @ top_stl in
+    let stG = IdMap.map (fun ins ->
+                  IdSet.diff ins (IdSet.of_list top_stl)) rest in
+    order_states stl stG
   in
-  let init = [IdSet.singleton initial_state_id] in
-  let lvls = add_next_level_states init in
-  match lvls with
-  | None -> None  
-  | Some sls -> let _, lin =
-                  List.fold_left (fun (lvl_no,lin) sl ->
-                    let lin = IdSet.fold (fun id lin ->
-                                  IdMap.add id lvl_no lin
-                                ) sl lin in
-                    (lvl_no + 1, lin)
-                    ) (0,IdMap.empty) sls in
-                Some lin
+  let stlo = order_states [] stG in
+  match stlo with
+  | None -> None
+  | Some stl -> Some (fst(List.fold_right (fun st_id (acc, i) ->
+                  ((IdMap.add st_id i acc),i+1)) stl (IdMap.empty, 0)))
 
 let get_own_glob_size_map (ftm : fun_tyd IdPairMap.t) : int IdPairMap.t =
   let ogs (ft : fun_tyd) : int =
