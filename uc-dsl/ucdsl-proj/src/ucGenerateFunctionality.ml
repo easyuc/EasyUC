@@ -621,8 +621,8 @@ let print_lemma_metric_invoke
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =    
   Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" iF_invoke;
   Format.fprintf ppf
-    "%s.%s :@ %s (glob %s) /\\ %s (glob %s) = n@ ==>@ "
-    module_name invoke invar_name  module_name metric_name module_name;
+    "%s.%s :@ %s (glob %s) /\\ %s (glob %s) = n@ ==>@ %s (glob %s) /\\ @ "
+    module_name invoke invar_name module_name metric_name module_name invar_name module_name;
   Format.fprintf ppf
     "(res <> None =>@ %s (glob %s) < n@;"
     metric_name module_name;
@@ -797,18 +797,23 @@ let print_state_metric
   (module_name : string)
   (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
   let lin = linearize_state_DAG st_map in
-  match lin with
-  | None -> Format.fprintf ppf
-              "@[(*cannot generate operator %s, states have cycles*)@]"
-              metric_name
-  | Some id_lvl_map ->
-     begin
-     let globopname = glob_to_part_op_name module_name _st in
+  let globopname = glob_to_part_op_name module_name _st in
      Format.fprintf ppf "@[op %s (g : glob %s) / : %s = g.`%i.@]@;"
      globopname module_name state_type_name state_pos_in_glob;
      Format.fprintf ppf
        "@[<v>@[op [smt_opaque] %s (g : glob %s) : int =@]@;<0 2>@[<v>"
        metric_name  module_name;
+  match lin with
+  | None ->
+     begin
+     Format.fprintf ppf
+              "@[(*cannot generate operator %s, states have cycles*)@]@;"
+              metric_name;
+     Format.fprintf ppf "@[(* BEGIN USER FILL *)@]@;";
+     Format.fprintf ppf "@[(* END USER FILL *)@]"
+     end
+  | Some id_lvl_map ->
+     begin
      Format.fprintf ppf "@[match %s g with@]@;" globopname;
      IdMap.iter (fun id lvl ->
          Format.fprintf ppf "@[| %s %a=> %i@]@;"
@@ -865,14 +870,14 @@ let print_IF_invar
   Format.fprintf ppf "@[<v>@;";
   Format.fprintf ppf "@[(*alias*)@]@;";
   Format.fprintf ppf "@[module IF = %s.@]@;" (uc_name id);
-  Format.fprintf ppf "@[op %s (g : glob IF) : bool = predT g.@]@;@;" _invar_IF;
+  Format.fprintf ppf "@[op %s (g : glob IF) : bool = true.@]@;@;" _invar_IF;
   Format.fprintf ppf "@]@;"
 
 let print_SIM_invar
       (ppf : Format.formatter) (id : string) : unit =
   let module_name = uc_name id in
   Format.fprintf ppf "@[<v>@;";
-  Format.fprintf ppf "@[op %s (g : glob %s) : bool = predT g.@]@;@;" (_invar_SIM module_name) module_name;
+  Format.fprintf ppf "@[op %s (g : glob %s) : bool = true.@]@;@;" (_invar_SIM module_name) module_name;
   Format.fprintf ppf "@]@;"
 
 
@@ -1450,7 +1455,7 @@ let print_module_lemmas ?(rest_idx = None)
       "@[%a@]@;@;" print_Pt_lemma_metric_invoke pt_glob_op_name;
     if rest_idx = None
     then begin
-      Format.fprintf ppf "@[op %s (g : %s) : bool = predT g.@]@;@;"
+      Format.fprintf ppf "@[op %s (g : %s) : bool = true.@]@;@;"
         invar_op_name stn;
       Format.fprintf ppf
         "@[<v>%a@]@;@;"  print_party_metric_good ()
