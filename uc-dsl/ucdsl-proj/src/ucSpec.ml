@@ -185,16 +185,16 @@ type def =
 (* spec parameters *)
 
 type spec_param =
-  | SP_AbstractTypeDecl of ptydecl    (* abstract type declaration *)
-  | SP_AbstractOpDecl   of poperator  (* abstract operator declaration *)
-  | SP_Axiom            of paxiom     (* axiom specification *)
+  | SP_AbstractTypeDecl of ptydecl located    (* abstract type decl *)
+  | SP_AbstractOpDecl   of poperator located  (* abstract operator decl *)
+  | SP_Axiom            of paxiom located     (* axiom specification *)
 
 (* spec's EC and UC clones *)
 
 type spec_clone =
-  | SC_ECClone of theory_cloning            (* EC clone *)
-  | SC_UCClone of psymbol * theory_cloning  (* UC clone: the root and EC
-                                               clone of "_" ^ root *)
+  | SC_ECClone of theory_cloning located   (* EC clone *)
+  | SC_UCClone of psymbol *                (* UC clone: the root and *)
+                  theory_cloning located   (* EC clone of "_" ^ root *)
 
 type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
@@ -203,60 +203,137 @@ type preamble =
    spec_params : spec_param list;        (* parameters to spec *)
    spec_clones : spec_clone list}        (* ec and uc clones of spec *)
 
-(* pretty printing help for translator *)
+(* pretty printing help for the UC DSL to EasyCrypt translator
+
+   these functions will be partially applied - all but the final
+   formatter argument - during typechecking, and only after the
+   declaration or cloning in question was already checked by EasyCrypt
+   (but the supplied environment will be the one in which the checking
+   as done); consequently, they should never raise exceptions
+
+   when using them with fprint, use %t (not %a) *)
 
 let pp_abstract_type_decl (ptyd : ptydecl) (ppf : formatter) : unit =
   let name = unloc ptyd.pty_name in
   let tyvars = List.map (unloc |- fst) ptyd.pty_tyvars in
-  match List.length ptyd.pty_tyvars with
-  | 0 -> fprintf ppf "@[type %s@]" name
-  | 1 -> fprintf ppf "@[type %s %s@]" (List.hd tyvars) name
+  match List.length tyvars with
+  | 0 -> fprintf ppf "@[type %s.@]" name
+  | 1 -> fprintf ppf "@[type %s %s.@]" (List.hd tyvars) name
   | _ ->
-      fprintf ppf "@[type (%a) %s]"
+      fprintf ppf "@[type@ (%a)@ %s.@]"
       (EcPrinting.pp_list ",@ " pp_symbol) tyvars name
 
 let pp_abstract_op_decl (env : EcEnv.env) (po : poperator)
     (ppf : formatter) : unit =
+  let ue = EcUnify.UniEnv.create None in
+  let ppe = EcPrinting.PPEnv.ofenv env in
   let tags = List.map unloc po.po_tags in
   let name = unloc (po.po_name) in
   let pty =
     match po.po_def with
     | PO_abstr pty -> pty
     | _            -> failure "cannot happen" in
-  let ue = EcUnify.UniEnv.create None in
   let ty = EcTyping.transty EcTyping.tp_tydecl env ue pty in
-  let ppe = EcPrinting.PPEnv.ofenv env in
   let pp_tags ppf =
     fprintf ppf "@[[%a]@]" (EcPrinting.pp_list "@ " pp_symbol) in
   match List.length tags with
   | 0 ->
-      fprintf ppf "@[op@  %s@ :@ %a@]" name
+      fprintf ppf "@[op@ %a@ :@ %a.@]"
+      (EcPrinting.pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
       (EcPrinting.pp_type ppe) ty
   | _ ->
-      fprintf ppf "@[op@ %a@ %s@ :@ %a@]" pp_tags tags name
+      fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
+      pp_tags tags
+      (EcPrinting.pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
       (EcPrinting.pp_type ppe) ty
 
+let pgtybinding_to_ptybinding ((osyms, pgty) : pgtybinding)
+      : ptybinding =
+  (osyms,
+   match pgty with
+   | PGTY_Type pty -> pty
+   | _             -> failure "cannot happen")
 
+type aptybinding = symbol option list * EcAst.ty
 
+let abs_ptybinding (env : EcEnv.env) (ue : EcUnify.unienv)
+    (ptybs : ptybindings) : aptybinding list =
+  List.map
+  (fun (osyms, pty) ->
+     (List.map (omap unloc) (List.map unloc osyms),
+      EcTyping.transty EcTyping.tp_tydecl env ue pty))
+  ptybs
 
+let pp_aptybinding (ppe : EcPrinting.PPEnv.t) (ppf : formatter)
+    ((osyms, ty) : aptybinding) : unit =
+  let pp_osym (ppf : formatter) (osym : symbol option) =
+    match osym with
+    | None   -> fprintf ppf "_"
+    | Some s -> fprintf ppf "%s" s in
+  fprintf ppf "@[(@[%a@ :@ %a@])@]"
+  (EcPrinting.pp_list "@ " pp_osym) osyms
+  (EcPrinting.pp_type ppe) ty  
 
+let add_aptybinding_to_env (env : EcEnv.env) ((osyms, ty) : aptybinding)
+      : EcEnv.env =
+  let locs =
+    List.filter_map
+    (omap (fun sym -> (EcIdent.create sym, EcBaseLogic.LD_var (ty, None))))
+    osyms in
+  let x = EcEnv.LDecl.init env ~locals:(List.rev locs) [] in
+  EcEnv.LDecl.toenv x
 
+let add_aptybindings_to_env (env : EcEnv.env) (aptybs : aptybinding list)
+      : EcEnv.env =
+  List.fold_left add_aptybinding_to_env env aptybs
 
+let pp_aptybindings (ppe : EcPrinting.PPEnv.t) (ppf : formatter)
+    (aptybs : aptybinding list) : unit =
+  fprintf ppf "@[%a@]"
+  (EcPrinting.pp_list "@ " (pp_aptybinding ppe)) aptybs
 
+let pp_axiom (env : EcEnv.env) (pa : paxiom) (ppf : formatter) : unit =
+  let ue = EcUnify.UniEnv.create None in
+  let name = unloc (pa.pa_name) in
+  let ptybs_opt = omap (List.map pgtybinding_to_ptybinding) pa.pa_vars in
+  let aptybs_opt = omap (abs_ptybinding env ue) ptybs_opt in
+  let pf = pa.pa_formula in
+  match aptybs_opt with
+  | None        ->
+      let ppe = EcPrinting.PPEnv.ofenv env in
+      let f = EcTyping.trans_form_opt env ue pf (Some EcTypes.tbool) in
+      let uidmap =
+        try EcUnify.UniEnv.close ue with
+        | EcUnify.UninstanciateUni -> failure "cannot happen" in
+      let ts = EcFol.Tuni.subst uidmap in
+      let f = EcFol.Fsubst.f_subst ts f in
+      fprintf ppf "@[axiom@ %s@ :@ %a.@]" name 
+      (EcPrinting.pp_form ppe) f
+  | Some aptybs ->
+      let ppe = EcPrinting.PPEnv.ofenv env in
+      let env' = add_aptybindings_to_env env aptybs in
+      let ppe' = EcPrinting.PPEnv.ofenv env' in
+      let f = EcTyping.trans_form_opt env' ue pf (Some EcTypes.tbool) in
+      let uidmap =
+        try EcUnify.UniEnv.close ue with
+        | EcUnify.UninstanciateUni -> failure "cannot happen" in
+      let ts = EcFol.Tuni.subst uidmap in
+      let f = EcFol.Fsubst.f_subst ts f in
+      fprintf ppf "@[axiom@ %s@ %a@ :@ %a.@]" name 
+      (pp_aptybindings ppe) aptybs
+      (EcPrinting.pp_form ppe') f
 
+type ppna = formatter -> unit  (* pp with no argument *)
 
-(*
-
-  let uidmap =
-    try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstanciateUni ->
-        error_message (loc is)
-        (fun ppf ->
-           Format.fprintf ppf
-           "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
-*)
-
-
+let ppna_list_sep sep (ppnas : ppna list) : ppna =
+  fun ppf ->
+  let rec f (ppnas : ppna list) (ppf : formatter) =
+    match ppnas with
+    | []            -> ()
+    | [ppna]        -> ppna ppf
+    | ppna :: ppnas ->
+        fprintf ppf "%t%(%)%t" ppna sep (f ppnas) in
+  fprintf ppf "@[%t@]" (f ppnas)
 
 (* overall UC specifications *)
 

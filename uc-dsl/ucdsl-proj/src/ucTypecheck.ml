@@ -2328,6 +2328,32 @@ let load_ec_reqs (reqs : (string located * bool) list)
   List.iter reqimp reqs;
   List.map (fun (id, b) -> unloc id, b) reqs
 
+let process_type_decl (ptyd : ptydecl located) : ppna =
+  let () = UcEcInterface.process_type_decl ptyd in
+  pp_abstract_type_decl (unloc ptyd)
+
+let process_op_decl (pop : poperator located) : ppna =
+  let env = UcEcInterface.env() in
+  let () = UcEcInterface.process_op_decl pop in
+  pp_abstract_op_decl env (unloc pop)
+
+let process_axiom (pax : paxiom located) : ppna =
+  let env = UcEcInterface.env() in
+  let () = UcEcInterface.process_axiom pax in
+  pp_axiom env (unloc pax)
+
+let process_spec_params (sps : spec_param list) : unit =
+  let ppnas =
+    List.map 
+    (fun sp ->
+       match sp with
+       | SP_AbstractTypeDecl ptyd -> process_type_decl ptyd
+       | SP_AbstractOpDecl pop    -> process_op_decl pop
+       | SP_Axiom pax             -> process_axiom pax)
+    sps in
+  let ppna = ppna_list_sep "@\n@\n" ppnas in
+  ppna Format.std_formatter
+
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   let check_units_subfun sfid (root', ifid) =
     (* root' will already have been checked to be a valid unit,
@@ -2497,6 +2523,7 @@ let typecheck
           | None   -> Some ec_reqs
           | Some _ -> failure "cannot happen")
        maps.ec_reqs_map} in
+  let () = process_spec_params spec.preamble.spec_params in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->

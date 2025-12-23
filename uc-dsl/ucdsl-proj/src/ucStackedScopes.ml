@@ -41,33 +41,33 @@ let add_notifier (notifier : EcCommands.notifier) : unit =
   let gstate = EcScope.gstate (current_scope ()) in
   ignore (EcGState.add_notifier notifier gstate)
 
-let process_op_decl (pop : poperator) : unit =
-  let query = Goperator pop in
-  let query = mk_loc _dummy query in
+let process_type_decl (ptyd : ptydecl located) : unit =
+  let query = Gtype [unloc ptyd] in
+  let query = mk_loc (loc ptyd) query in
   scopes_stack :=
   map_scopes
   (fun top -> EcCommands.process_internal EcCommands.loader top query)
   (! scopes_stack)
 
-let process_type_decl (ptyd : ptydecl) : unit =
-  let query = Gtype [ptyd] in
-  let query = mk_loc _dummy query in
+let process_op_decl (pop : poperator located) : unit =
+  let query = Goperator (unloc pop) in
+  let query = mk_loc (loc pop) query in
   scopes_stack :=
   map_scopes
   (fun top -> EcCommands.process_internal EcCommands.loader top query)
   (! scopes_stack)
 
-let process_axiom (pa : paxiom) : unit =
-  let query = Gaxiom pa in
-  let query = mk_loc _dummy query in
+let process_axiom (pa : paxiom located) : unit =
+  let query = Gaxiom (unloc pa) in
+  let query = mk_loc (loc pa) query in
   scopes_stack :=
   map_scopes
   (fun top -> EcCommands.process_internal EcCommands.loader top query)
   (! scopes_stack)
 
-let process_theory_clone (tc : theory_cloning) : unit =
-  let query = GthClone tc in
-  let query = mk_loc _dummy query in
+let process_theory_clone (tc : theory_cloning located) : unit =
+  let query = GthClone (unloc tc) in
+  let query = mk_loc (loc tc) query in
   scopes_stack :=
   map_scopes
   (fun top -> EcCommands.process_internal EcCommands.loader top query)

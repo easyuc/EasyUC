@@ -324,7 +324,13 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       }
   end
 
-(* auxiliary function for making an axiom *)
+(* auxiliary functions for making a type declaration of an axiom *)
+
+let mk_tydecl ~locality (tyvars, name) body =
+  { pty_name     = name;
+    pty_tyvars   = tyvars;
+    pty_body     = body;
+    pty_locality = locality; }
 
 let mk_axiom ~locality (x, ty, pv, vd, f) k =
   { pa_name     = x;
@@ -334,12 +340,6 @@ let mk_axiom ~locality (x, ty, pv, vd, f) k =
     pa_formula  = f;
     pa_kind     = k;
     pa_locality = locality; }
-
-let mk_tydecl ~locality (tyvars, name) body =
-  { pty_name     = name;
-    pty_tyvars   = tyvars;
-    pty_body     = body;
-    pty_locality = locality; }
 
 %}
 
@@ -575,13 +575,14 @@ typarams:
   | tya = typarams; x = ident { (tya, x) }
 
 spec_abstract_type_decl :
-  | TYPE; tn = tyd_name
-      { mk_tydecl ~locality:`Global tn (PTYD_Abstract []) }
+  | x = loc(TYPE); tn = tyd_name
+      { mk_loc (loc x) (mk_tydecl ~locality:`Global tn (PTYD_Abstract [])) }
 
 spec_abstract_operator_decl :
-  | OP; tags = bracket(ident*)?; name = oident;
+  | x = loc(OP); tags = bracket(ident*)?; name = oident;
     ty = prefix(COLON, loc(type_exp))
-      { {po_kind     = `Op;
+      { mk_loc (loc x)
+        {po_kind     = `Op;
          po_name     = name;
          po_aliases  = [];
          po_tags     = odfl [] tags;
@@ -593,20 +594,21 @@ spec_abstract_operator_decl :
       }
 
 spec_axiom :
-  | AXIOM; ids = bracket(ident+)?; x = ident; pd = pgtybindings?;
-    COLON; e = expr
-      { mk_axiom ~locality:`Global (x, None, None, pd, e)
-        (PAxiom (odfl [] ids)) }
+  | x = loc(AXIOM); name = ident; pd = pgtybindings?; COLON; e = expr
+      { mk_loc (loc x)
+        (mk_axiom ~locality:`Global (name, None, None, pd, e)
+         (PAxiom [])) }
 
 spec_clone :
   | c = spec_ec_clone; FINAL { SC_ECClone c }
   | c = spec_uc_clone; FINAL { SC_UCClone (fst c, snd c) }
 
 spec_ec_clone :
-  | EC_CLONE; ip = clone_import?; x = uqident; y = prefix(AS, uident)?;
-    cw = clone_with?
-      { { pthc_base   = x;
-          pthc_name   = y;
+  | x = loc(EC_CLONE); ip = clone_import?; base = uqident;
+    name = prefix(AS, uident)?; cw = clone_with?
+      { mk_loc (loc x)
+        { pthc_base   = base;
+          pthc_name   = name;
           pthc_ext    = EcUtils.odfl [] cw;
           pthc_prf    = [];
           pthc_rnm    = [];
@@ -653,19 +655,20 @@ cltyparams :
       { xs }
 
 spec_uc_clone :
-  | UC_CLONE; x = uident; AS; y = uident; cw = uc_clone_with?
-      { let l = loc x in
-        let z = mk_loc l (qsymb_of_symb ("_" ^ unloc x)) in
-        (x,
-         { pthc_base   = z;
-           pthc_name   = Some y;
+  | x = loc(UC_CLONE); base = uident; AS; name = uident; cw = uc_clone_with?
+      { let l = loc base in
+        let base_ = mk_loc l (qsymb_of_symb ("_" ^ unloc base)) in
+        (base,
+         mk_loc (loc x)
+         { pthc_base   = base_;
+           pthc_name   = Some name;
            pthc_ext    = EcUtils.odfl [] cw;
            pthc_prf    = [];
            pthc_rnm    = [];
            pthc_clears = [];
            pthc_opts   = [];
            pthc_local  = None;
-           pthc_import = None; }) : psymbol * theory_cloning
+           pthc_import = None; })
       }
 
 uc_clone_with :

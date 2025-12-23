@@ -2,6 +2,8 @@
 
 open Batteries
 open Format
+
+open EcLocation
 open EcUtils
 open UcMessage
 open UcConfig
@@ -65,6 +67,50 @@ let init () =
 
 let env () = EcScope.env (UcStackedScopes.current_scope ())
 
+let process_type_decl ptyd =
+  try UcStackedScopes.process_type_decl ptyd with
+  | EcScope.TopError(l, exn) ->
+      (match exn with
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | exn                              ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ declaration@]"))
+  | exn ->
+      error_message (loc ptyd)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ declaration@]")
+
+let process_op_decl pop =
+  try UcStackedScopes.process_op_decl pop with
+  | EcScope.TopError(l, exn) ->
+      (match exn with
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | exn                              ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ declaration@]"))
+  | exn ->
+      error_message (loc pop)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ declaration@]")
+
+let process_axiom pax =
+  try UcStackedScopes.process_axiom pax with
+  | exn ->
+      let () = Printf.printf "exception: %s" (Printexc.to_string exn) in
+      raise exn
+
+let process_theory_clone cl =
+  try UcStackedScopes.process_theory_clone cl with
+  | exn ->
+      let () = Printf.printf "exception: %s" (Printexc.to_string exn) in
+      raise exn
+
 let require id io =
   try UcStackedScopes.require_theory (None, (id, None), io) with
   | EcScope.TopError (loc, exn) ->
@@ -73,7 +119,7 @@ let require id io =
            error_message (EcLocation.loc id) 
            (fun ppf ->
               fprintf ppf
-              ("@[EasyCrypt:@ error@ requiring " ^^
+              ("@[EasyCrypt:@ error@ requiring@ " ^^
                "theory:@;<1 2>%s@]")
               msg)
        | EcScope.ImportError (None, name, e)   ->
@@ -92,8 +138,8 @@ let require id io =
        | _                                     ->
            error_message (EcLocation.loc id)
            (fun ppf ->
-              fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]"))
+              fprintf ppf "@[EasyCrypt:@ error@ requiring@ theory@]"))
   | _                           ->
       error_message (EcLocation.loc id)
       (fun ppf ->
-         fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]")
+         fprintf ppf "@[EasyCrypt:@ error@ requiring@ theory@]")

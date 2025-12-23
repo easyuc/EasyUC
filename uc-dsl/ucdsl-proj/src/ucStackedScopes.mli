@@ -4,6 +4,7 @@
    operations to manipulate this stack using operations from
    EcScope *)
 
+open EcLocation
 open EcParsetree
 open EcCommands
 
@@ -30,14 +31,14 @@ val push_scope : EcScope.scope -> unit
 
 val add_notifier : notifier -> unit
 
-(* process an operator declaration, type declaration, axiom
+(* process a type declaration, operator declaration, axiom
    specification or theory cloning in the current scope, updating
    the scope *)
 
-val process_op_decl      : poperator -> unit
-val process_type_decl    : ptydecl -> unit
-val process_axiom        : paxiom -> unit
-val process_theory_clone : theory_cloning -> unit
+val process_type_decl    : ptydecl located        -> unit
+val process_op_decl      : poperator located      -> unit
+val process_axiom        : paxiom located         -> unit
+val process_theory_clone : theory_cloning located -> unit
 
 (* require a theory in the current scope, updating the current scope *)
 
