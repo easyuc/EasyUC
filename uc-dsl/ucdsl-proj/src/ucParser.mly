@@ -382,6 +382,7 @@ let mk_axiom ~locality (x, ty, pv, vd, f) k =
 %token IMPLEM
 %token IMPORT
 %token IN
+%token INCLUDE
 %token INITIAL
 %token INTPORT
 %token LET
@@ -621,16 +622,18 @@ spec_ec_clone :
 clone_import :
   | IMPORT
       { `Import  }
+  | INCLUDE
+      { `Include }
 
 clone_with :
   | WITH; x = plist1(clone_override, COMMA)
       { x }
 
 clone_override:
-  | TYPE; ps = cltyparams; x = qident; mode = opclmode; t = loc(type_exp);
-      { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | TYPE; ps = cltyparams; x = ident; mode = opclmode; t = loc(type_exp);
+      { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (ps, t), mode)) }
 
-  | OP; x = qoident; p = ptybinding1*;
+  | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
     mode = loc(opclmode); e = expr
       { let ov =
@@ -638,7 +641,7 @@ clone_override:
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
-        (x, PTHO_Op (`BySyntax ov, unloc mode))
+        (pqsymb_of_psymb x, PTHO_Op (`BySyntax ov, unloc mode))
       }
 
 opclmode :
@@ -679,7 +682,7 @@ uc_clone_override:
   | TYPE; ps = cltyparams; x = qident; mode = uc_opclmode; t = loc(type_exp);
       { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
 
-  | OP; x = qoident; p = ptybinding1*;
+  | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
     mode = loc(uc_opclmode); e = expr
       { let ov =
@@ -687,7 +690,7 @@ uc_clone_override:
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
-        (x, PTHO_Op (`BySyntax ov, unloc mode))
+        (pqsymb_of_psymb x, PTHO_Op (`BySyntax ov, unloc mode))
       }
 
 uc_opclmode :

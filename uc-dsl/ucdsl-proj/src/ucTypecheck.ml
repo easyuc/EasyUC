@@ -2352,7 +2352,21 @@ let process_spec_params (sps : spec_param list) : unit =
        | SP_Axiom pax             -> process_axiom pax)
     sps in
   let ppna = ppna_list_sep "@\n@\n" ppnas in
-  ppna Format.std_formatter
+  fprintf Format.std_formatter "%t@\n@\n" ppna
+
+let process_ec_clone (pcl : theory_cloning located) : unit =
+  let env = UcEcInterface.env() in
+  let () = UcEcInterface.process_theory_clone pcl in
+  let ppna = pp_theory_cloning ECCloneType env (unloc pcl) in
+  fprintf Format.std_formatter "%t@\n" ppna
+
+let process_spec_clones (scs : spec_clone list) : unit =
+  List.iter
+  (fun sc ->
+     match sc with
+     | SC_ECClone thc         -> process_ec_clone thc
+     | SC_UCClone (psym, tcl) -> ())
+  scs
 
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   let check_units_subfun sfid (root', ifid) =
@@ -2524,6 +2538,7 @@ let typecheck
           | Some _ -> failure "cannot happen")
        maps.ec_reqs_map} in
   let () = process_spec_params spec.preamble.spec_params in
+  let () = process_spec_clones spec.preamble.spec_clones in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->

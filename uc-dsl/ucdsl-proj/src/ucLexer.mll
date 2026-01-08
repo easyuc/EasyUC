@@ -42,6 +42,7 @@
     "implements"      , IMPLEM      ;
     "import"          , IMPORT      ;
     "in"              , IN          ;
+    "include"         , INCLUDE     ;
     "initial"         , INITIAL     ;
     "intport"         , INTPORT     ;
     "let"             , LET         ;
@@ -85,13 +86,13 @@
      "cut"; "debug"; "declare"; "delta"; "do"; "done"; "eager";
      "elim"; "equiv"; "eta"; "exact"; "exfalso"; "export"; "fel";
      "fission"; "for"; "for"; "fusion"; "glob"; "goal"; "have";
-     "hoare"; "idtac"; "include"; "inductive"; "inline"; "instance";
-     "iota"; "is"; "islossless"; "kill"; "lemma"; "local"; "logic";
-     "modpath"; "module"; "move"; "notation"; "of"; "phoare"; "pose";
-     "pr"; "print"; "pragma"; "pred"; "proc"; "progress"; "proof";
-     "qed"; "rcondf"; "rcondt"; "realize"; "reflexivity"; "remove";
-     "rename"; "replace"; "require"; "res"; "return"; "rewrite";
-     "rnd"; "rwnormal"; "search"; "section"; "seq"; "sim"; "simplify";
+     "hoare"; "idtac"; "inductive"; "inline"; "instance"; "iota";
+     "is"; "islossless"; "kill"; "lemma"; "local"; "logic"; "modpath";
+     "module"; "move"; "notation"; "of"; "phoare"; "pose"; "pr";
+     "print"; "pragma"; "pred"; "proc"; "progress"; "proof"; "qed";
+     "rcondf"; "rcondt"; "realize"; "reflexivity"; "remove"; "rename";
+     "replace"; "require"; "res"; "return"; "rewrite"; "rnd";
+     "rwnormal"; "search"; "section"; "seq"; "sim"; "simplify";
      "skip"; "smt"; "sp"; "split"; "splitwhile"; "subst"; "suff";
      "swap"; "symmetry"; "theory"; "time"; "transitivity"; "trivial";
      "try"; "undo"; "unroll"; "while"; "why3"; "wp"; "zeta"]

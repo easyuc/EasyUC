@@ -71,14 +71,17 @@ let process_type_decl ptyd =
   try UcStackedScopes.process_type_decl ptyd with
   | EcScope.TopError(l, exn) ->
       (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
        | EcTyping.TyError (l, env, tyerr) ->
            error_message l
            (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
-       | exn                              ->
+       | _                                ->
            error_message l
            (fun ppf ->
               fprintf ppf "@[error@ processing@ declaration@]"))
-  | exn ->
+  | _                        ->
       error_message (loc ptyd)
       (fun ppf ->
          fprintf ppf "@[error@ processing@ declaration@]")
@@ -87,29 +90,61 @@ let process_op_decl pop =
   try UcStackedScopes.process_op_decl pop with
   | EcScope.TopError(l, exn) ->
       (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
        | EcTyping.TyError (l, env, tyerr) ->
            error_message l
            (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
-       | exn                              ->
+       | _                                ->
            error_message l
            (fun ppf ->
               fprintf ppf "@[error@ processing@ declaration@]"))
-  | exn ->
+  | _                        ->
       error_message (loc pop)
       (fun ppf ->
          fprintf ppf "@[error@ processing@ declaration@]")
 
 let process_axiom pax =
   try UcStackedScopes.process_axiom pax with
-  | exn ->
-      let () = Printf.printf "exception: %s" (Printexc.to_string exn) in
-      raise exn
+  | EcScope.TopError(l, exn) ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ axiom1@]"))
+  | _                        ->
+      error_message (loc pax)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ axiom2@]")
 
 let process_theory_clone cl =
   try UcStackedScopes.process_theory_clone cl with
-  | exn ->
-      let () = Printf.printf "exception: %s" (Printexc.to_string exn) in
-      raise exn
+  | EcScope.TopError(l, exn)         ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ theory@ clone@]"))
+  | EcThCloning.CloneError (env, e)  ->
+      error_message (loc cl)
+      (fun ppf -> EcUserMessages.CloneError.pp_clone_error env ppf e)
+  | _                                ->
+      error_message (loc cl)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ theory@ clone@]")
 
 let require id io =
   try UcStackedScopes.require_theory (None, (id, None), io) with
