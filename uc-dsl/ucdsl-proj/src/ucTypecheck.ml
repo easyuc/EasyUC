@@ -2252,7 +2252,8 @@ let check_defs root maps defs =
 (**************************** specification checks ****************************)
 
 (* when merging maps, there will never be disagreement in cases when
-   an id pair or id is in the domain of both maps *)
+   an id pair or id is in the domain of both maps - their values will
+   have the same physical addresses *)
 
 let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
   {dir_inter_map =
@@ -2279,6 +2280,14 @@ let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
      IdMap.union
      (fun _ x y -> assert (x = y); Some x)
      oldmap.ec_reqs_map newmap.ec_reqs_map;
+   spec_params_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_params_map newmap.spec_params_map;
+   spec_clones_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_clones_map newmap.spec_clones_map;
    ec_scope_map =
      IdMap.union
      (fun _ x y -> assert (x == y); Some x)
@@ -2342,7 +2351,7 @@ let process_axiom (pax : paxiom located) : ppna =
   let () = UcEcInterface.process_axiom pax in
   pp_axiom env (unloc pax)
 
-let process_spec_params (sps : spec_param list) : unit =
+let process_spec_params (sps : spec_param list) : ppna =
   let ppnas =
     List.map 
     (fun sp ->
@@ -2351,21 +2360,19 @@ let process_spec_params (sps : spec_param list) : unit =
        | SP_AbstractOpDecl pop    -> process_op_decl pop
        | SP_Axiom pax             -> process_axiom pax)
     sps in
-  let ppna = ppna_list_sep "@\n@\n" ppnas in
-  fprintf Format.std_formatter "%t@\n@\n" ppna
+  ppna_list_sep "@\n@\n" ppnas
 
-let process_ec_clone (pcl : theory_cloning located) : unit =
+let process_ec_clone (pcl : theory_cloning located) : ppna =
   let env = UcEcInterface.env() in
   let () = UcEcInterface.process_theory_clone pcl in
-  let ppna = pp_theory_cloning ECCloneType env (unloc pcl) in
-  fprintf Format.std_formatter "%t@\n" ppna
+  pp_theory_cloning env (unloc pcl)
 
-let process_spec_clones (scs : spec_clone list) : unit =
-  List.iter
+let process_spec_clones (scs : spec_clone list) : spec_clone_info list =
+  List.map
   (fun sc ->
      match sc with
-     | SC_ECClone thc         -> process_ec_clone thc
-     | SC_UCClone (psym, tcl) -> ())
+     | SC_ECClone thc         -> SCI_EC (process_ec_clone thc)
+     | SC_UCClone (psym, tcl) -> failure "hi")
   scs
 
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
@@ -2519,13 +2526,15 @@ let typecheck
     (spec : spec) : maps_tyd =
   let root = UcUtils.capitalized_root_of_filename_with_extension qual_file in
   let empty_maps =
-    {dir_inter_map = IdPairMap.empty;
-     adv_inter_map = IdPairMap.empty;
-     fun_map       = IdPairMap.empty;
-     sim_map       = IdPairMap.empty;
-     uc_reqs_map   = IdMap.empty;
-     ec_reqs_map   = IdMap.empty;
-     ec_scope_map  = IdMap.empty} in
+    {dir_inter_map   = IdPairMap.empty;
+     adv_inter_map   = IdPairMap.empty;
+     fun_map         = IdPairMap.empty;
+     sim_map         = IdPairMap.empty;
+     uc_reqs_map     = IdMap.empty;
+     ec_reqs_map     = IdMap.empty;
+     spec_params_map = IdMap.empty;
+     spec_clones_map = IdMap.empty;
+     ec_scope_map    = IdMap.empty} in
   let maps =
     load_uc_reqs root check_id empty_maps spec.preamble.uc_requires in
   let ec_reqs = load_ec_reqs spec.preamble.ec_requires in
@@ -2537,8 +2546,24 @@ let typecheck
           | None   -> Some ec_reqs
           | Some _ -> failure "cannot happen")
        maps.ec_reqs_map} in
-  let () = process_spec_params spec.preamble.spec_params in
-  let () = process_spec_clones spec.preamble.spec_clones in
+  let spec_params_ppna = process_spec_params spec.preamble.spec_params in
+  let maps =
+    {maps with spec_params_map =
+       IdMap.update root
+       (fun sym_opt ->
+          match sym_opt with
+          | None   -> Some spec_params_ppna
+          | Some _ -> failure "cannot happen")
+       maps.spec_params_map} in
+  let spec_clone_infos = process_spec_clones spec.preamble.spec_clones in
+  let maps =
+    {maps with spec_clones_map =
+       IdMap.update root
+       (fun sym_opt ->
+          match sym_opt with
+          | None   -> Some spec_clone_infos
+          | Some _ -> failure "cannot happen")
+       maps.spec_clones_map} in
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->

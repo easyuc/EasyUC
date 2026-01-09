@@ -69,7 +69,7 @@ let env () = EcScope.env (UcStackedScopes.current_scope ())
 
 let process_type_decl ptyd =
   try UcStackedScopes.process_type_decl ptyd with
-  | EcScope.TopError(l, exn) ->
+  | EcScope.TopError(l, exn)  ->
       (match exn with
        | EcScope.HiScopeError (_, msg)    ->
            error_message l
@@ -81,14 +81,17 @@ let process_type_decl ptyd =
            error_message l
            (fun ppf ->
               fprintf ppf "@[error@ processing@ declaration@]"))
-  | _                        ->
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc ptyd)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
       error_message (loc ptyd)
       (fun ppf ->
          fprintf ppf "@[error@ processing@ declaration@]")
 
 let process_op_decl pop =
   try UcStackedScopes.process_op_decl pop with
-  | EcScope.TopError(l, exn) ->
+  | EcScope.TopError(l, exn)  ->
       (match exn with
        | EcScope.HiScopeError (_, msg)    ->
            error_message l
@@ -100,14 +103,17 @@ let process_op_decl pop =
            error_message l
            (fun ppf ->
               fprintf ppf "@[error@ processing@ declaration@]"))
-  | _                        ->
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc pop)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
       error_message (loc pop)
       (fun ppf ->
          fprintf ppf "@[error@ processing@ declaration@]")
 
 let process_axiom pax =
   try UcStackedScopes.process_axiom pax with
-  | EcScope.TopError(l, exn) ->
+  | EcScope.TopError(l, exn)  ->
       (match exn with
        | EcScope.HiScopeError (_, msg)    ->
            error_message l
@@ -118,11 +124,14 @@ let process_axiom pax =
        | _                                ->
            error_message l
            (fun ppf ->
-              fprintf ppf "@[error@ processing@ axiom1@]"))
-  | _                        ->
+              fprintf ppf "@[error@ processing@ axiom@]"))
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc pax)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
       error_message (loc pax)
       (fun ppf ->
-         fprintf ppf "@[error@ processing@ axiom2@]")
+         fprintf ppf "@[error@ processing@ axiom@]")
 
 let process_theory_clone cl =
   try UcStackedScopes.process_theory_clone cl with
@@ -141,6 +150,9 @@ let process_theory_clone cl =
   | EcThCloning.CloneError (env, e)  ->
       error_message (loc cl)
       (fun ppf -> EcUserMessages.CloneError.pp_clone_error env ppf e)
+  | EcEnv.DuplicatedBinding s        ->
+      error_message (loc cl)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
   | _                                ->
       error_message (loc cl)
       (fun ppf ->

@@ -631,22 +631,51 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
   let states = (unloc st).states in
   initial_state_id_of_states states
 
+(* information about EC and UC clones *)
+
+type sc_uc_used_by =
+  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality *)
+  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter *)
+
+type sc_uc_clone_info =
+  {sc_uc_as       : symbol;                    (* name of clone *)
+   sc_uc_of       : symbol;                    (* root being cloned *)
+   sc_uc_ppna_fun : string -> string -> ppna;  (* when given s and t, returns
+                                                  ppna for formatting EC
+                                                  expression of UC clone
+                                                  augmented with overriding:
+                                                  op s <- t *)
+   sc_uc_used     : (string *                  (* real funct using clone *)
+                     sc_uc_used_by)            (* how rf uses clone *)
+                    option}
+
+type spec_clone_info =
+  | SCI_EC of ppna              (* ppna for formatting an EC clone *)
+  | SCI_UC of sc_uc_clone_info  (* information about a UC clone *)
+
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,
    functionalities and simulators; their domains are disjoint; type
    arguments to IdPairMap.t are all located types
 
-   three identifier maps indexed by roots, giving UC and EC
-   requires plus the root's scope *)
+   five identifier maps indexed by roots, giving: UC and EC
+   requires; ppna's for formatting spec parameters of roots;
+   lists of clones of roots; and scopes of roots *)
 
 type maps_tyd =
-  {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
-   adv_inter_map : inter_tyd IdPairMap.t;           (* adversarial interfaces *)
-   fun_map       : fun_tyd IdPairMap.t;             (* functionalities *)
-   sim_map       : sim_tyd IdPairMap.t;             (* simulators *)
-   uc_reqs_map   : (symbol list) IdMap.t;           (* UC requires of roots *)
-   ec_reqs_map   : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
-   ec_scope_map  : EcScope.scope IdMap.t}           (* scopes of roots *)
+  {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
+   adv_inter_map   : inter_tyd IdPairMap.t;           (* adversarial
+                                                         interfaces *)
+   fun_map         : fun_tyd IdPairMap.t;             (* functionalities *)
+   sim_map         : sim_tyd IdPairMap.t;             (* simulators *)
+   uc_reqs_map     : (symbol list) IdMap.t;           (* UC requires of roots *)
+   ec_reqs_map     : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
+   spec_params_map : ppna IdMap.t;                    (* ppna's for formatting
+                                                         spec parameters
+                                                         of roots *)
+   spec_clones_map : spec_clone_info list IdMap.t;    (* lists of clones
+                                                         of roots *)
+   ec_scope_map    : EcScope.scope IdMap.t}           (* scopes of roots *)
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =
