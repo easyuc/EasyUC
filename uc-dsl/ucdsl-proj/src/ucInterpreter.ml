@@ -701,7 +701,7 @@ let is_weakly_simplified (env : env) (func_abstract : bool)
 
 type prover_infos = EcProvers.prover_infos
 
-let default_prover_infos (env : EcEnv.env) : prover_infos =
+let default_prover_infos () : prover_infos =
   {EcProvers.dft_prover_infos with
      pr_provers =
        List.filter EcProvers.is_prover_known
@@ -1069,8 +1069,8 @@ let lc_find_key_from_sym (map : 'a EcIdent.Mid.t) (sym : symbol)
   None
   map
 
-let lc_update_var (gc : global_context) (lc : local_context)
-    (dbs : rewriting_dbs) (id : symbol) (f : form) : local_context =
+let lc_update_var (lc : local_context) (id : symbol) (f : form)
+      : local_context =
   let (lc_base, lc_rest) = (List.hd lc, List.tl lc) in
   let id = Option.get (lc_find_key_from_sym lc_base id) in
   EcIdent.Mid.change (fun _ -> Some f) id lc_base :: lc_rest
@@ -1623,8 +1623,8 @@ let pp_real_world_with_states (maps : maps_tyd) (gc : global_context)
         (pp_state gc) ideal_st in
   pp_real_world [] ppf rw
 
-let pp_sim_state (gc : global_context) (iws : ideal_world_state)
-    (ppf : formatter) (sim_st : sim_state) : unit =
+let pp_sim_state (gc : global_context) (ppf : formatter)
+    (sim_st : sim_state) : unit =
   let pp_addr (ppf : formatter) (f_opt : int list option) : unit =
     match f_opt with
     | None     -> fprintf ppf "uninitialized"
@@ -1643,20 +1643,20 @@ let rec pp_sims_with_states (i : int) (gc : global_context)
   | [spi]     ->
     fprintf ppf " *@ @[%a@,[@[%a@]]@]"
     pp_symb_pair_int_int_list spi
-    (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
+    (pp_sim_state gc) (List.nth iws.other_sims_states i)
   | spi :: spis ->
     fprintf ppf " *@ @[%a@,[@[%a@]]%a@]"
     pp_symb_pair_int_int_list spi
-    (pp_sim_state gc iws) (List.nth iws.other_sims_states i)
+    (pp_sim_state gc) (List.nth iws.other_sims_states i)
     (pp_sims_with_states (i + 1) gc iws) spis
 
-let pp_ideal_world_with_states (maps : maps_tyd) (gc : global_context)
+let pp_ideal_world_with_states (gc : global_context)
     (iws : ideal_world_state) (ppf : formatter) (iw : ideal_world) : unit =
   fprintf ppf "@[@[%a@,[@[%a]@]@] /@ @[@[%a@,[@[%a@]]@]%a@]@]"
   pp_symb_pair_int iw.iw_ideal_func
   (pp_state gc) iws.ideal_fun_state
   pp_symb_pair_int_int_list iw.iw_main_sim
-  (pp_sim_state gc iws) iws.main_sim_state
+  (pp_sim_state gc) iws.main_sim_state
   (pp_sims_with_states 0 gc iws) iw.iw_other_sims
 
 let pp_global_context_msg (ppf : formatter) (gc : global_context) : unit =
@@ -1681,11 +1681,11 @@ let pp_real_world_with_states_msg (maps : maps_tyd) (gc : global_context)
   "@[real world:@ %a@]"
   (pp_real_world_with_states maps gc rws) rw
 
-let pp_ideal_world_with_states_msg (maps : maps_tyd) (gc : global_context)
+let pp_ideal_world_with_states_msg (gc : global_context)
     (iws : ideal_world_state) (ppf : formatter) (iw : ideal_world) : unit =
   fprintf ppf
   "@[ideal world:@ %a@]"
-  (pp_ideal_world_with_states maps gc iws) iw
+  (pp_ideal_world_with_states gc iws) iw
 
 let pp_input_guard_msg (ppf : formatter) (n : int) : unit =
   fprintf ppf "@[input guard:@ %d@]" n
@@ -1713,7 +1713,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       fprintf ppf
       "@[%a@\n@\n%a@\n@\n%a@\n%a@]"
       pp_global_context_msg c.gc
-      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      (pp_ideal_world_with_states_msg c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_control_msg c.ctrl
   | ConfigRealRunning c  ->
@@ -1728,7 +1728,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       fprintf ppf
       "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n%a@]"
       pp_global_context_msg c.gc
-      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      (pp_ideal_world_with_states_msg c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_ideal_world_running_context c.iwrc
       (pp_local_context_msg (env_of_gc c.gc)) c.lc
@@ -1744,7 +1744,7 @@ let pp_config (ppf : formatter) (conf : config) : unit =
       fprintf ppf
       "@[%a@\n@\n%a@\n@\n%a@\n%a@\n@\n@[message:@ %a@]@]"
       pp_global_context_msg c.gc
-      (pp_ideal_world_with_states_msg c.maps c.gc c.iws) c.iw
+      (pp_ideal_world_with_states_msg c.gc c.iws) c.iw
       pp_input_guard_msg c.ig
       pp_ideal_world_sending_context c.iwsc
       (pp_sent_msg_expr_tyd (env_of_gc c.gc)) c.sme
@@ -1758,7 +1758,7 @@ let create_gen_config (root : symbol) (maps : maps_tyd) (env : env)
   let fet = inter_check_real_fun_expr root maps fe in
   let (w, ig) = fun_expr_tyd_to_worlds maps fet in
   let gc = gc_create env in
-  let pi = default_prover_infos (env_of_gc gc) in
+  let pi = default_prover_infos () in
   let dbs = default_rewriting_dbs in
   ConfigGen {maps = maps; gc = gc; pi = pi; dbs = dbs; w = w; ig = ig}
 
@@ -2088,7 +2088,7 @@ let check_sme_port_index_consistency_core
            check_consist sme dest_port "destination" loc_dest
       else let source_port = sme.src_port_form in
            check_consist sme source_port "source" loc_source
-  | sme          -> ()
+  | _            -> ()
 
 let check_sme_port_index_consistency :
       maps_tyd -> global_context -> prover_infos -> rewriting_dbs ->
@@ -2156,7 +2156,7 @@ let step_assign (gc : global_context) (lc : local_context)
     (dbs : rewriting_dbs) (lhs : lhs) (form : form) : local_context =
   let form = lc_apply LCAM_WeakSimp gc lc dbs form in
   match lhs with
-  | LHSSimp id   -> lc_update_var gc lc dbs (unloc id) form
+  | LHSSimp id   -> lc_update_var lc (unloc id) form
   | LHSTuple ids ->
       let tys =
         match form.f_ty.ty_node with
@@ -2166,7 +2166,7 @@ let step_assign (gc : global_context) (lc : local_context)
       (fun acc i id ->
          let pr = f_proj form i (List.nth tys i) in
          let pr = simplify_formula true gc dbs pr in
-         lc_update_var gc acc dbs (unloc id) pr)
+         lc_update_var acc (unloc id) pr)
       lc
       ids
 
@@ -2178,7 +2178,7 @@ let step_sample (gc : global_context) (lc : local_context)
   match lhs with
   | LHSSimp id   ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
-      let lc = lc_update_var gc lc dbs (unloc id) (f_local rand ty) in
+      let lc = lc_update_var lc (unloc id) (f_local rand ty) in
       (gc, lc, EcIdent.name rand)
   | LHSTuple ids ->
       let (gc, rand) = gc_add_rand gc "rand" "Hrand" ty form in
@@ -2190,7 +2190,7 @@ let step_sample (gc : global_context) (lc : local_context)
         List.fold_lefti
         (fun acc i id ->
            let pr_rand = f_proj (f_local rand ty) i (List.nth tys i) in
-           lc_update_var gc acc dbs (unloc id) pr_rand)
+           lc_update_var acc (unloc id) pr_rand)
         lc
         ids in
       (gc, lc, EcIdent.name rand)
@@ -2299,10 +2299,10 @@ let rw_step_send_and_transition_from_ideal_fun (c : config_real_running)
 
 let rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
     (c : config_real_running) (pi : prover_infos) (dbs : rewriting_dbs)
-    (rel : int list) (base : int) (fun_sp : symb_pair) (ft : fun_tyd)
+    (rel : int list) (fun_sp : symb_pair) (ft : fun_tyd)
     (pty_id : symbol) (iip : symbol list) (msg : symbol)
     (msg_args : form list) (port_form : form option)
-    (new_rws : real_world_state) (comp : symbol) (sub : symbol)
+    (new_rws : real_world_state) (sub : symbol)
     (child_i : int) (dir_sp : symb_pair) : config * eff =
   assert (Option.is_none port_form);
   let (dir_root, dir_comp) = dir_sp in
@@ -2409,22 +2409,21 @@ let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
     (fun_sp : symb_pair) (pty_id : symbol) (iip : symbol list)
     (msg : symbol) (msg_args : form list) (port_form : form option)
     (new_rws : real_world_state) : config * eff =
-  let (root, _) = fun_sp in
   let (comp, sub) =
     match iip with
     | [comp; sub] -> (comp, sub)
     | _           -> failure "should not happen" in
   let ft = IdPairMap.find fun_sp c.maps.fun_map in
   match get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
-        c.maps root ft comp with
+        c.maps ft comp with
   | None                   ->
       rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
   | Some (child_i, dir_sp) ->
        rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-       c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form
-       new_rws comp sub child_i dir_sp
+       c pi dbs rel fun_sp ft pty_id iip msg msg_args port_form
+       new_rws sub child_i dir_sp
 
 let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
     (dbs : rewriting_dbs) (s_and_t : send_and_transition_tyd)
@@ -2499,7 +2498,7 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
   | ITE (expr, inss_then, inss_else_opt) ->
       let inss =
         step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
-      let (rest, lc) = handle_pops (inss @ rest) c.lc in
+      let (rest, _) = handle_pops (inss @ rest) c.lc in
       (ConfigRealRunning {c with ins = rest}, EffOK)
   | Match (expr, clauses)                ->
       let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
@@ -2816,11 +2815,11 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
   | ITE (expr, inss_then, inss_else_opt) ->
       let inss =
         step_if_then_else c.gc c.lc pi dbs expr inss_then inss_else_opt in
-      let (rest, lc) = handle_pops (inss @ rest) c.lc in
+      let (rest, _) = handle_pops (inss @ rest) c.lc in
       (ConfigIdealRunning {c with ins = rest}, EffOK)
   | Match (expr, clauses)                ->
       let (lc, inss) = step_match c.gc c.lc pi dbs expr clauses in
-      let (rest, lc) = handle_pops (inss @ rest) lc in
+      let (rest, _) = handle_pops (inss @ rest) lc in
       (ConfigIdealRunning {c with lc = lc; ins = rest},
        EffOK)
   | SendAndTransition s_and_t            ->
@@ -2842,7 +2841,7 @@ let match_ord_sme_against_msg_match_clauses
     | []                -> failure "should not happen"
     | clause :: clauses ->
         let {msg_pat; code} = clause in
-        let {port_id; msg_path_pat; pat_args} = msg_pat in
+        let msg_path_pat = msg_pat.msg_path_pat in
         let {inter_id_path; msg_or_star} = unloc msg_path_pat in
         match msg_or_star with
         | MsgOrStarMsg msg ->
@@ -3013,7 +3012,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (state_args : form list) (sbt : state_body_tyd) : config * eff =
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let iip = sme_ord.path.inter_id_path in
         let addr = addr_concat_form_from_list_smart func_form rel in
         if List.take 2 iip = [root; comp] && sme_ord.dir = In
@@ -3070,7 +3069,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
        eval_bool_form_to_bool c.gc pi dbs
        (envport_form func_form source_port)
       then let (func_sp, base, _) = c.rw in
-           let (root, fid) = func_sp in
+           let (root, _) = func_sp in
            let ft = IdPairMap.find func_sp c.maps.fun_map in
            let rfi = get_info_of_real_func c.maps root base ft in
            match direct_real_func_find_party rfi with
@@ -3122,7 +3121,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (state_args : form list) (sbt : state_body_tyd) : config * eff =
     match c.sme with
     | SMET_Ord sme_ord        ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let iip = sme_ord.path.inter_id_path in
         let addr = addr_concat_form_from_list_smart func_form rel in
         if List.take 2 iip = [root; comp] && sme_ord.dir = In
@@ -3169,8 +3168,8 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
          fail_out_of_running_or_sending_config (ConfigRealSending c)) in
 
   let from_adv_to_real_func (rel : int list) (base : int)
-      (func_sp : symb_pair) (rfbt : real_fun_body_tyd) : config * eff =
-    let (root, fid) = func_sp in
+      (func_sp : symb_pair) : config * eff =
+    let (root, _) = func_sp in
     let ft = IdPairMap.find func_sp c.maps.fun_map in
     let rfi = get_info_of_real_func c.maps root base ft in
     match from_adv_to_func_find_party rfi with
@@ -3193,7 +3192,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (func_sp : symb_pair) (ifbt : ideal_fun_body_tyd) : config * eff =
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let basic_opt = ifbt.id_adv_inter in
         let {id = state_id; args = state_args} =
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
@@ -3256,8 +3255,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     | Some (rel, adv_pi, func_sp) ->
         let fbt = unloc (IdPairMap.find func_sp c.maps.fun_map) in
         match fbt with
-        | FunBodyRealTyd rfbt  ->
-            from_adv_to_real_func rel adv_pi func_sp rfbt
+        | FunBodyRealTyd _     -> from_adv_to_real_func rel adv_pi func_sp
         | FunBodyIdealTyd ifbt ->
             from_adv_to_ideal_func rel adv_pi func_sp ifbt in
 
@@ -3279,7 +3277,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
 
   let from_parent_to_real_func (rel : int list) (base : int)
       (func_sp : symb_pair) : config * eff =
-    let (root, fid) = func_sp in
+    let (root, _) = func_sp in
     let ft = IdPairMap.find func_sp c.maps.fun_map in
     let rfi = get_info_of_real_func c.maps root base ft in
     match direct_real_func_find_party rfi with
@@ -3302,7 +3300,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
       (func_sp : symb_pair) (ifbt : ideal_fun_body_tyd) : config * eff =
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let comp = ifbt.id_dir_inter in
         let {id = state_id; args = state_args} =
           ideal_state_of_fun_state (ILMap.find rel c.rws) in
@@ -3422,7 +3420,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let from_arg_or_sub_fun_to_parent_cont (rel : int list) (func_sp : symb_pair)
       (base : int) (param_or_subfun_name : symbol) (id_dir : symbol)
         : config * eff =
-    let (root, fid) = func_sp in
+    let (root, _) = func_sp in
     let ft = IdPairMap.find func_sp c.maps.fun_map in
     let rfi = get_info_of_real_func c.maps root base ft in
     match internal_real_func_find_party rfi with
@@ -3445,7 +3443,7 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
   let from_func_to_env_or_parent (rel : int list)
       (rwrs : real_world_rel_select) : config * eff =
     match rwrs with
-    | RW_Select_RealFun (sp, base, _, par_opt)                     ->
+    | RW_Select_RealFun (sp, _, _, par_opt)                        ->
         (match par_opt with
          | None                               ->  (* to env *)
              let sme = c.sme in
@@ -3524,7 +3522,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
        fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let comp = ifbt.id_dir_inter in
         let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
@@ -3586,7 +3584,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
        fail_out_of_running_or_sending_config (ConfigIdealSending c)) in
     match c.sme with
     | SMET_Ord sme_ord ->
-        let (root, func_id) = func_sp in
+        let (root, _) = func_sp in
         let basic_opt = ifbt.id_adv_inter in
         let {id = state_id; args = state_args} = c.iws.ideal_fun_state in
         let sbt = unloc (IdMap.find state_id ifbt.states) in
@@ -3974,9 +3972,9 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
                   | None       -> failure "cannot happen"
                   | Some porti -> porti in
                 match find_sim_from_left (i + 1) dest_pi with
-                | None                                             ->
+                | None                                ->
                     msg_out_of_sending_config (ConfigIdealSending c) CtrlAdv
-                | Some (i, sim_sp, adv_pi, rf_arg_adv_pis, sim_st) ->
+                | Some (i, sim_sp, adv_pi, _, sim_st) ->
                     let {addr = sim_rf_addr; state = sim_st} = sim_st in
                     dest_adv_to_sim i sim_sp adv_pi sim_rf_addr sim_st
     else if greater_than_or_equal_func_rel_addr_of_port c.gc pi dbs

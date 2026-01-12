@@ -590,7 +590,7 @@ let party_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : party_tyd =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.find pty rfbt.parties
 
-let num_parties_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : int =
+let num_parties_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.parties
 
@@ -939,7 +939,7 @@ let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
 type party_dir_info = (symbol * symbol * int) option
 
 let get_dir_info_of_party_of_real_fun
-    (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
+    (maps : maps_tyd) (root : symbol) (ft : fun_tyd)
     (pty : symbol) : party_dir_info =
   match get_dir_sub_inter_of_party_of_real_fun ft pty with
   | None     -> None
@@ -985,7 +985,7 @@ type party_info = {
 
 let get_info_of_party (maps : maps_tyd) (root : symbol) (base : int)
     (ft : fun_tyd) (pty : symbol) : party_info =
-  let dir_opt = get_dir_info_of_party_of_real_fun maps root base ft pty in
+  let dir_opt = get_dir_info_of_party_of_real_fun maps root ft pty in
   let adv_opt = get_adv_info_of_party_of_real_fun maps root base ft pty in
   let intern_pi = get_internal_pi_of_party_of_real_fun ft pty in
   {pi_pdi = dir_opt; pi_pai = adv_opt; pi_ipi = intern_pi}
@@ -1041,7 +1041,7 @@ let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
    neither parameter or subfunctionality *)
 
 let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
-    (maps : maps_tyd) (root : symbol) (ft : fun_tyd) (top : symbol)
+    (maps : maps_tyd) (ft : fun_tyd) (top : symbol)
       : (int * symb_pair) option =
   match (try Some (index_of_param_of_real_fun_tyd ft top) with
              | _ -> None) with
@@ -1103,11 +1103,11 @@ let subst_comp_and_drop_root_in_msg_path_u (path : msg_path_u)
     (old_comp : symbol) (new_comp : symbol) : msg_path_u option =
   let {inter_id_path = iip; msg = msg} = path in
   match iip with
-  | [root; comp; sub] ->
+  | [_; comp; sub] ->
       if comp = old_comp
       then Some {inter_id_path = [new_comp; sub]; msg = msg}
       else None
-  | _                 -> None
+  | _              -> None
 
 let subst_comp_and_drop_root_in_sent_msg_expr_ord_tyd
     (sme : sent_msg_expr_ord_tyd) (old_comp : symbol)
@@ -1174,8 +1174,8 @@ let env_adv_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
 
 let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
   match sme with
-  | SMET_Ord ord        -> ord.mode
-  | SMET_EnvAdv env_adv -> Adv
+  | SMET_Ord ord  -> ord.mode
+  | SMET_EnvAdv _ -> Adv
 
 let source_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
   match sme with

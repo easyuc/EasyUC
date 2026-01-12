@@ -1282,9 +1282,8 @@ let check_send_and_transition
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
-    (l : EcLocation.t) (sc : state_context) (env : env) (ue : unienv)
-    (gindty : ty) (clause : match_clause)
-      : symbol * (bindings * instruction list located) =
+    (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
+    (clause : match_clause) : symbol * (bindings * instruction list located) =
   let filter = fun _ op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
   let tvi = tvi |> EcUtils.omap (transtvi env ue) in
@@ -1373,7 +1372,7 @@ and check_match
     | Some x -> x in
   let top_results =
     List.map
-    (check_toplevel_match_clause ex_loc sc env ue ty)
+    (check_toplevel_match_clause ex_loc env ue ty)
     (unloc clauses) in
   (* the left-hand-sides of top_results are a subset of the left-hand sides
      of inddecl.tydt_ctors (with the order perhaps different) *)
@@ -1500,7 +1499,7 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
 
 (* checking message match clauses *)
 
-let replace_unif_vars_in_msg_match_code (env : env) (ue : unienv)
+let replace_unif_vars_in_msg_match_code (ue : unienv)
     (is : instruction_tyd list located) : instruction_tyd list located =
   let uidmap =
     try EcUnify.UniEnv.close ue with
@@ -1559,7 +1558,7 @@ let check_msg_match_code
     (is : instruction list located) : instruction_tyd list located =
   let ue = unif_env () in
   let is = fst (check_instructions abip ss sc sa env ue is) in
-  let is = replace_unif_vars_in_msg_match_code env ue is in
+  let is = replace_unif_vars_in_msg_match_code ue is in
   check_instrs_transfer_at_end is;
   is
 
@@ -2552,7 +2551,7 @@ let rec inter_check_fun_expr
       let fun_id = unloc fun_id_l in
       let l = loc fun_id_l in
       (match unloc (IdPairMap.find fun_id maps.fun_map) with
-       | FunBodyRealTyd rfbt ->
+       | FunBodyRealTyd _  ->
            let params_dir_pair_ids =
              get_dir_interface_pair_ids_of_params_of_real_fun_id
              maps.fun_map fun_id in

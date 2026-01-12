@@ -67,7 +67,7 @@ let env () = EcScope.env (UcStackedScopes.current_scope ())
 
 let require id io =
   try UcStackedScopes.require_theory (None, (id, None), io) with
-  | EcScope.TopError (loc, exn) ->
+  | EcScope.TopError (_, exn) ->
       (match exn with
        | EcScope.HiScopeError (_, msg)         ->
            error_message (EcLocation.loc id) 
@@ -93,7 +93,7 @@ let require id io =
            error_message (EcLocation.loc id)
            (fun ppf ->
               fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]"))
-  | _                           ->
+  | _                         ->
       error_message (EcLocation.loc id)
       (fun ppf ->
          fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]")

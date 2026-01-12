@@ -26,7 +26,7 @@ let scopes_stack_init () : unit =
       cm_profile   = false;
       cm_iterate   = false;
   } in
-  scopes_stack := [EcCommands.initial ~checkmode ~boot:false]
+  scopes_stack := [EcCommands.initial ~checkmode ~boot:false ~checkproof:false]
 
 let current_scope () : EcScope.scope =
   oget ~exn:InvalidScopesStack (List.Exceptionless.hd !scopes_stack)
