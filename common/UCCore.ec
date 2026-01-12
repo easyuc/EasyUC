@@ -2646,7 +2646,7 @@ local module IdealLeft = {
   }
 }.
 
-module IdealCI =
+local module IdealCI =
   CombEnvAdv(Env, Adv, MI(IdealFunc, MS(SimCore, DummyAdv))).CombInter.
 
 local module IdealRight = {
