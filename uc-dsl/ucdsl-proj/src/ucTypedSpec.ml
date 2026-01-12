@@ -17,6 +17,7 @@ open EcTypes
 open EcFol
 
 open UcSpecTypedSpecCommon
+open UcPreamblePP
 open UcMessage
 
 (* the term "id" or "identifier" is used in our code for several
@@ -652,6 +653,14 @@ type sc_uc_clone_info =
 type spec_clone_info =
   | SCI_EC of ppna              (* ppna for formatting an EC clone *)
   | SCI_UC of sc_uc_clone_info  (* information about a UC clone *)
+
+let uc_cloned_as (name : symbol) (scis : spec_clone_info list) : bool =
+  List.exists
+  (fun sci ->
+     match sci with
+     | SCI_EC _     -> false
+     | SCI_UC uc_ci -> uc_ci.sc_uc_as = name)
+  scis
 
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,

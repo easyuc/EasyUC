@@ -20,6 +20,7 @@ open UcMessage
 open UcSpec
 open UcSpecTypedSpecCommon
 open UcTypedSpec
+open UcPreamblePP
 
 (* the current maximum number of allowed parameters to a message;
    changing this will require updates to the EasyCrypt code generation *)
@@ -2367,13 +2368,58 @@ let process_ec_clone (pcl : theory_cloning located) : ppna =
   let () = UcEcInterface.process_theory_clone pcl in
   pp_theory_cloning env (unloc pcl)
 
-let process_spec_clones (scs : spec_clone list) : spec_clone_info list =
-  List.map
-  (fun sc ->
+let process_uc_clone (maps : maps_tyd) (scis : spec_clone_info list)
+    ((psym, pcl) : psymbol * theory_cloning located) : spec_clone_info list =
+  let uc_of = unloc psym in
+  if not (IdMap.mem uc_of maps.ec_scope_map)
+  then failure "hi"
+  else let uc_as = 
+         match ((unloc pcl).pthc_name) with
+         | None    -> failure "cannot happen"
+         | Some id -> unloc id in
+       if uc_cloned_as uc_as scis
+       then failure "hi"
+       else let env = UcEcInterface.env() in
+            let () = UcEcInterface.process_theory_clone pcl in
+            let pcl = unloc pcl in
+            let base = mk_loc (loc pcl.pthc_base) ([], ("UC_" ^ uc_of)) in
+            let f s t =
+              pp_theory_cloning env
+              {pthc_base   = base;
+               pthc_name   = pcl.pthc_name;
+               pthc_ext    =
+                 let ov =
+                   {opov_tyvars = None;
+                    opov_args   = []
+                    opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
+                    opov_body   = PFident (t, None)} in
+        (pqsymb_of_psymb s, PTHO_Op (`BySyntax ov, LARROW))
+
+
+
+                 
+                 pcl.pthc_ext;
+               pthc_prf    = [];
+               pthc_rnm    = [];
+               pthc_clears = [];
+               pthc_opts   = [];
+               pthc_local  = None;
+               pthc_import = None} in
+            scis @
+            [SCI_UC
+             {sc_uc_as       = uc_as;
+              sc_uc_of       = uc_of;
+              sc_uc_ppna_fun = f;
+              sc_uc_used     = None}]
+
+let process_spec_clones (maps : maps_tyd) (scs : spec_clone list)
+      : spec_clone_info list =
+  List.fold_left
+  (fun scis sc ->
      match sc with
-     | SC_ECClone thc         -> SCI_EC (process_ec_clone thc)
-     | SC_UCClone (psym, tcl) -> failure "hi")
-  scs
+     | SC_ECClone thc          -> scis @ [SCI_EC (process_ec_clone thc)]
+     | SC_UCClone (uc_of, tch) -> process_uc_clone maps scis (uc_of, tch))
+  [] scs
 
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   let check_units_subfun sfid (root', ifid) =
@@ -2555,7 +2601,7 @@ let typecheck
           | None   -> Some spec_params_ppna
           | Some _ -> failure "cannot happen")
        maps.spec_params_map} in
-  let spec_clone_infos = process_spec_clones spec.preamble.spec_clones in
+  let spec_clone_infos = process_spec_clones maps spec.preamble.spec_clones in
   let maps =
     {maps with spec_clones_map =
        IdMap.update root

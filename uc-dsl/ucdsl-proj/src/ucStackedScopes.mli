@@ -53,10 +53,10 @@ type require_t =
 val require_theory : require_t -> unit
 
 (* pushes a scope onto the stack opening a new top-level required
-   theory with the supplied name, prepended with "_", and theory mode,
-   starting with a scope identical to one at the top of the stack
-   except that the environment and required theories are reset to the
-   ones from the prelude
+   theory with the supplied name and theory mode, starting with a
+   scope identical to one at the top of the stack except that the
+   environment and required theories are reset to the ones from the
+   prelude
 
    the scopes stack must be nonempty, and there must not be a proof in
    progress *)  
@@ -65,8 +65,8 @@ val require_theory_start  : string -> EcTheory.thmode -> unit
 
 (* end the current scope, requiring in the previous one the result of
    exiting the current scope, first checking that a top-level theory
-   with the supplied name, prepended with "_", is being exited,
-   and that this theory was not already loaded *)
+   with the supplied name is being exited, and that this theory was
+   not already loaded *)
 
 val require_theory_finish : string -> unit
 

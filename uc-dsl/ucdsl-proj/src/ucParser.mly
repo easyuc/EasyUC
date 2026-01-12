@@ -660,7 +660,7 @@ cltyparams :
 spec_uc_clone :
   | x = loc(UC_CLONE); base = uident; AS; name = uident; cw = uc_clone_with?
       { let l = loc base in
-        let base_ = mk_loc l (qsymb_of_symb ("_" ^ unloc base)) in
+        let base_ = mk_loc l (qsymb_of_symb ("UC__" ^ unloc base)) in
         (base,
          mk_loc (loc x)
          { pthc_base   = base_;

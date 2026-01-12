@@ -88,14 +88,14 @@ let require_theory ((nm, name, export) : require_t) : unit =
 
 let require_theory_start (name : string) (thmode : EcTheory.thmode) : unit =
   let new_ =
-    EcScope.Theory.require_start ("_" ^ name, thmode) (current_scope ()) in
+    EcScope.Theory.require_start (name, thmode) (current_scope ()) in
   scopes_stack := new_ :: (! scopes_stack)
 
 let require_theory_finish (name : string) : unit =
   match !scopes_stack with
   | top :: rest ->
       (try
-         let repl = EcScope.Theory.require_finish ("_" ^ name) top in
+         let repl = EcScope.Theory.require_finish name top in
          scopes_stack := repl :: rest
        with e -> raise e)
   | _           -> raise ScopesStackError
