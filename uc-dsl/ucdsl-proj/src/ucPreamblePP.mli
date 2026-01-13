@@ -39,6 +39,14 @@ val pp_axiom : EcEnv.env -> paxiom -> ppna
 
 val pp_theory_cloning : EcEnv.env -> theory_cloning -> ppna
 
+(* pp_theory_cloning_uc_changes env tcl uc_of s t produces a ppna for
+   printing the cloning of tcl, except that uc_of is used as the name
+   of the theory being cloned, it must be the case that there is a
+   target of the cloning and no import/export/include is done, and
 
+     op s <- t
 
+   is added as a first overwriting *)
 
+val pp_theory_cloning_uc_changes :
+  EcEnv.env -> theory_cloning -> string -> string -> string -> ppna

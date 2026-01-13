@@ -1283,9 +1283,8 @@ let check_send_and_transition
   SendAndTransition {msg_expr = msg_exp; state_expr = state_exp}
 
 let check_toplevel_match_clause
-    (l : EcLocation.t) (sc : state_context) (env : env) (ue : unienv)
-    (gindty : ty) (clause : match_clause)
-      : symbol * (bindings * instruction list located) =
+    (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
+    (clause : match_clause) : symbol * (bindings * instruction list located) =
   let filter = fun _ op -> EcDecl.is_ctor op in
   let PPApp ((cname, tvi), cargs) = fst clause in
   let tvi = tvi |> EcUtils.omap (transtvi env ue) in
@@ -1374,7 +1373,7 @@ and check_match
     | Some x -> x in
   let top_results =
     List.map
-    (check_toplevel_match_clause ex_loc sc env ue ty)
+    (check_toplevel_match_clause ex_loc env ue ty)
     (unloc clauses) in
   (* the left-hand-sides of top_results are a subset of the left-hand sides
      of inddecl.tydt_ctors (with the order perhaps different) *)
@@ -1501,7 +1500,7 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
 
 (* checking message match clauses *)
 
-let replace_unif_vars_in_msg_match_code (env : env) (ue : unienv)
+let replace_unif_vars_in_msg_match_code (ue : unienv)
     (is : instruction_tyd list located) : instruction_tyd list located =
   let uidmap =
     try EcUnify.UniEnv.close ue with
@@ -1560,7 +1559,7 @@ let check_msg_match_code
     (is : instruction list located) : instruction_tyd list located =
   let ue = unif_env () in
   let is = fst (check_instructions abip ss sc sa env ue is) in
-  let is = replace_unif_vars_in_msg_match_code env ue is in
+  let is = replace_unif_vars_in_msg_match_code ue is in
   check_instrs_transfer_at_end is;
   is
 
@@ -2372,45 +2371,25 @@ let process_uc_clone (maps : maps_tyd) (scis : spec_clone_info list)
     ((psym, pcl) : psymbol * theory_cloning located) : spec_clone_info list =
   let uc_of = unloc psym in
   if not (IdMap.mem uc_of maps.ec_scope_map)
-  then failure "hi"
-  else let uc_as = 
+  then error_message (loc psym)
+       (fun ppf ->
+          fprintf ppf
+          "@[%s@ is@ not@ an@ already@ required@ root@]" uc_of)
+  else let uc_as =
          match ((unloc pcl).pthc_name) with
          | None    -> failure "cannot happen"
          | Some id -> unloc id in
-       if uc_cloned_as uc_as scis
-       then failure "hi"
-       else let env = UcEcInterface.env() in
-            let () = UcEcInterface.process_theory_clone pcl in
-            let pcl = unloc pcl in
-            let base = mk_loc (loc pcl.pthc_base) ([], ("UC_" ^ uc_of)) in
-            let f s t =
-              pp_theory_cloning env
-              {pthc_base   = base;
-               pthc_name   = pcl.pthc_name;
-               pthc_ext    =
-                 let ov =
-                   {opov_tyvars = None;
-                    opov_args   = []
-                    opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
-                    opov_body   = PFident (t, None)} in
-        (pqsymb_of_psymb s, PTHO_Op (`BySyntax ov, LARROW))
-
-
-
-                 
-                 pcl.pthc_ext;
-               pthc_prf    = [];
-               pthc_rnm    = [];
-               pthc_clears = [];
-               pthc_opts   = [];
-               pthc_local  = None;
-               pthc_import = None} in
-            scis @
-            [SCI_UC
-             {sc_uc_as       = uc_as;
-              sc_uc_of       = uc_of;
-              sc_uc_ppna_fun = f;
-              sc_uc_used     = None}]
+       let env = UcEcInterface.env() in
+       let () = UcEcInterface.process_theory_clone pcl in
+       let f s t =
+         pp_theory_cloning_uc_changes env (unloc pcl)
+         ("UC_" ^ uc_of) s t in
+       scis @
+       [SCI_UC
+        {sc_uc_as       = uc_as;
+         sc_uc_of       = uc_of;
+         sc_uc_ppna_fun = f;
+         sc_uc_used     = None}]
 
 let process_spec_clones (maps : maps_tyd) (scs : spec_clone list)
       : spec_clone_info list =
@@ -2610,6 +2589,20 @@ let typecheck
           | None   -> Some spec_clone_infos
           | Some _ -> failure "cannot happen")
        maps.spec_clones_map} in
+(* TODO: remove *)
+  let () =
+    fprintf Format.std_formatter "@[%t@\n@\n@]" spec_params_ppna in
+  let () =
+    List.iter
+    (fun x ->
+       match x with
+       | SCI_EC ppna ->
+           fprintf Format.std_formatter "@[%t@\n@\n@]" ppna
+       | SCI_UC y ->
+         let f = y.sc_uc_ppna_fun in
+         fprintf Format.std_formatter "@[%t@\n@\n@]" (f "from" "to"))
+    spec_clone_infos in
+(* end TODO *)
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->
@@ -2662,7 +2655,7 @@ let rec inter_check_fun_expr
       let fun_id = unloc fun_id_l in
       let l = loc fun_id_l in
       (match unloc (IdPairMap.find fun_id maps.fun_map) with
-       | FunBodyRealTyd rfbt ->
+       | FunBodyRealTyd _  ->
            let params_dir_pair_ids =
              get_dir_interface_pair_ids_of_params_of_real_fun_id
              maps.fun_map fun_id in

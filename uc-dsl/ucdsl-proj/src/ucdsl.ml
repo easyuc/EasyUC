@@ -24,7 +24,7 @@ let error_and_exit (ppf : Format.formatter -> unit) : 'a =
 let include_dirs_ref : string list ref = ref []
 
 let trim_trailing_slashes (s : string) : string =
-  let err s =
+  let err () =
     error_and_exit
     (fun ppf ->
        Format.fprintf ppf
@@ -32,7 +32,7 @@ let trim_trailing_slashes (s : string) : string =
   let cs = List.rev (String.to_list s) in
   let rec trim ds =
     match ds with
-    | []      -> err s
+    | []      -> err ()
     | ['/']   -> ds
     | e :: es -> if e = '/' then trim es else ds in
   String.of_list (List.rev (trim cs))

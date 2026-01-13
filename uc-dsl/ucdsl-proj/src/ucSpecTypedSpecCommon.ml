@@ -3,14 +3,9 @@
 (* Common definitions used by UcSpec (specification parse trees) and
    UcTypedSpec (typed specifications) *)
 
-open Format
-
 open EcLocation
 open EcSymbols
 open EcUtils
-open EcParsetree
-
-open UcMessage
 
 type psymbol = symbol located
 

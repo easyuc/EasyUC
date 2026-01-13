@@ -241,7 +241,7 @@ let pp_theory_cloning (env : EcEnv.env) (tc : theory_cloning) : ppna =
       match import_opt with
       | None        -> fprintf ppf "clone@ %a" pp_qsymbol base
       | Some import ->
-        fprintf ppf "clone@ %a@ %a" pp_import import pp_qsymbol base in
+          fprintf ppf "clone@ %a@ %a" pp_import import pp_qsymbol base in
     let ppna_second ppf =
       match name_opt with
       | None      -> fprintf ppf "%t" ppna_first
@@ -251,3 +251,25 @@ let pp_theory_cloning (env : EcEnv.env) (tc : theory_cloning) : ppna =
     | _ ->
         fprintf ppf "@[%t@ with@\n@ @ @[%a@].@]"
         ppna_second (pp_list ",@\n" (pp_override env)) overs
+
+let pp_theory_cloning_uc_changes (env : EcEnv.env) (tc : theory_cloning)
+    (uc_of : symbol) (s : symbol) (t : symbol) : ppna =
+  fun (ppf : formatter) ->
+    let () =
+      if tc.pthc_prf <> [] || tc.pthc_rnm <> [] || tc.pthc_clears <> [] ||
+         tc.pthc_opts <> [] || tc.pthc_local <> None || tc.pthc_import <> None
+      then failure "cannot happen" in
+    let uc_as =
+      match tc.pthc_name with
+      | None      -> failure "cannot happen"
+      | Some psym -> unloc psym in
+    let overs = tc.pthc_ext in
+    let ppna_first ppf = fprintf ppf "clone@ %s@ as@ %s" uc_of uc_as in
+    match List.length overs with
+    | 0 ->
+        fprintf ppf "@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@].@]"
+        ppna_first s t
+    | _ ->
+        fprintf ppf
+        "@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@],@\n@ @ %a.@]"
+        ppna_first s t (pp_list ",@\n" (pp_override env)) overs
