@@ -654,13 +654,41 @@ type spec_clone_info =
   | SCI_EC of ppna              (* ppna for formatting an EC clone *)
   | SCI_UC of sc_uc_clone_info  (* information about a UC clone *)
 
-let uc_cloned_as (name : symbol) (scis : spec_clone_info list) : bool =
-  List.exists
-  (fun sci ->
-     match sci with
-     | SCI_EC _     -> false
-     | SCI_UC uc_ci -> uc_ci.sc_uc_as = name)
-  scis
+exception SCILookupUndefined
+
+let sci_lookup_root_of_uc_as (name : symbol) (scis : spec_clone_info list)
+      : symbol =
+  let rec lookup scis =
+    match scis with
+    | []          -> raise SCILookupUndefined
+    | sci :: scis ->
+        match sci with
+        | SCI_EC _    -> lookup scis
+        | SCI_UC info ->
+            if info.sc_uc_as = name then info.sc_uc_of else lookup scis in
+  lookup scis
+
+exception SCIUpdateUndefined
+exception SCIUpdateAlreadyUsed
+
+let sci_update_uc_clone_usage (name : symbol) (used : string * sc_uc_used_by)
+    (scis : spec_clone_info list) : spec_clone_info list =
+  let rec update olds news =
+    match news with
+    | []        -> raise SCIUpdateUndefined
+    | nw :: nws ->
+        match nw with
+        | SCI_EC _    -> update (olds @ [nw]) nws
+        | SCI_UC info ->
+            if info.sc_uc_as = name
+            then match info.sc_uc_used with
+                 | None ->
+                     olds @
+                     [SCI_UC {info with sc_uc_used = Some used}] @
+                     nws
+                 | Some _ -> raise SCIUpdateAlreadyUsed
+            else update (olds @ [nw]) nws in
+  update [] scis
 
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,

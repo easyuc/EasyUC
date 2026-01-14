@@ -249,7 +249,9 @@ let pp_theory_cloning (env : EcEnv.env) (tc : theory_cloning) : ppna =
     match List.length overs with
     | 0 -> fprintf ppf "@[%t.@]" ppna_second
     | _ ->
-        fprintf ppf "@[%t@ with@\n@ @ @[%a@].@]"
+        fprintf ppf
+        ("@[%t@ with@\n@ @ @[%a@]@\n" ^^
+         "proof *.@\n(* BEGIN USER FILL *)@\n(* END USER FILL *)@]")
         ppna_second (pp_list ",@\n" (pp_override env)) overs
 
 let pp_theory_cloning_uc_changes (env : EcEnv.env) (tc : theory_cloning)
@@ -267,9 +269,12 @@ let pp_theory_cloning_uc_changes (env : EcEnv.env) (tc : theory_cloning)
     let ppna_first ppf = fprintf ppf "clone@ %s@ as@ %s" uc_of uc_as in
     match List.length overs with
     | 0 ->
-        fprintf ppf "@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@].@]"
+        fprintf ppf
+        ("@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@]@\n" ^^
+         "proof *.@\n(* BEGIN USER FILL *)@\n(* END USER FILL *)@]")
         ppna_first s t
     | _ ->
         fprintf ppf
-        "@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@],@\n@ @ %a.@]"
+        ("@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@],@\n@ @ %a@\n" ^^
+         "proof *.@\n(* BEGIN USER FILL *)@\n(* END USER FILL *)@]")
         ppna_first s t (pp_list ",@\n" (pp_override env)) overs
