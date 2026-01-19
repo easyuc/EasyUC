@@ -997,7 +997,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
        ) parties;
      Format.fprintf ppf "@;"
 
-  let subfunpath sfn sfid = (uc_name sfn)^"."^(uc_name sfid)
+  let subfunpath sfn sfid = sfn^".IF"
   
   let print_proc_init ppf (sc : EcScope.scope) ?(module_pfx = "")
     (params : (symb_pair * int) IdMap.t)
@@ -1147,7 +1147,7 @@ let print_glob_operator op_name top_type sub_type ppf range =
 let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
   let deduce_param_pis ppf rfbt =
       IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s"
-        (uc_name pmn)  adv_pi_num_op_name) rfbt.params
+        pmn  adv_pi_num_op_name) rfbt.params
   in
   let begin_param_pis ppf rfbt =
       if IdMap.is_empty rfbt.params
@@ -1164,12 +1164,11 @@ let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
       if IdMap.is_empty rfbt.params
       then ()
       else
-        List.iteri (fun i (pmn, _) ->
-            let nm = uc_name pmn in
+        List.iteri (fun i (pmn, _) ->           
             if i>0 then Format.fprintf ppf "; "
             ;
             Format.fprintf ppf "%s + %s.%s - 1"
-            (adv_pi_begin_param pmn) nm adv_pi_num_op_name)
+            (adv_pi_begin_param pmn) pmn adv_pi_num_op_name)
           (indexed_map_to_list_keep_keys rfbt.params)
   in
   Format.fprintf ppf "@[op %s = {|@]@;" rf_info;
@@ -1485,13 +1484,13 @@ let print_module_lemmas ?(rest_idx = None)
          (moduleIRP id rfbt rp rest_idx) (uc_name id))
       (get_own_glob_range_of_real_fun_glob_core rfbt gvil);
     List.iteri (fun i pmn -> Format.fprintf ppf "@[%a@]@;@;"
-      (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) (uc_name pmn))
+      (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
          (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rfbt rp rest_idx i) pmn))
       (get_glob_range_of_parameter gvil pmn)) pmns;
     if rest_idx = None && rp then begin 
     let ogrs = get_own_glob_ranges_of_real_fun rfbt gvil in
     List.iter (fun sfn -> Format.fprintf ppf "@[%a@]@;@;"
-      (print_glob_operator (glob_op_name (uc_name id) (uc_name sfn))
+      (print_glob_operator (glob_op_name (uc_name id) sfn)
          module_name (module_name_IF sfn))
       (IdMap.find sfn ogrs)) sfns
     end
@@ -1503,18 +1502,18 @@ let print_module_lemmas ?(rest_idx = None)
     let is_first = ref true in
     let plus() = if !is_first then begin is_first:=false; " " end else "+"
     in
-    List.iteri (fun i pmn -> let ucpmn = uc_name pmn in
+    List.iteri (fun i pmn ->
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (plus()) ucpmn (metricIRF rfbt rp rest_idx i) (glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn)
+          (plus()) pmn (metricIRF rfbt rp rest_idx i) (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (plus()) (uc_party_metric_name ptn)
           (glob_op_name (uc_name id) (st_name ptn))
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) ptns;
-    List.iter (fun sfn -> let ucsfn = uc_name sfn in
+    List.iter (fun sfn ->
         Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
-          (plus()) ucsfn _metric_IF (glob_op_name (uc_name id) ucsfn)
+          (plus()) sfn _metric_IF (glob_op_name (uc_name id) sfn)
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) sfns;
     Format.fprintf ppf ".@]@;@;"
@@ -1544,21 +1543,19 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[rewrite /%s /=.@]@;" (metric_name_IRP rfbt rp rest_idx);
     Format.fprintf ppf "@[  proc.@]@;";
     Format.fprintf ppf "@[  sp 1.@]@;";
-    List.iter (fun sfn ->
-        let ucsfn = uc_name sfn in
-        let metric = ucsfn^"."^_metric_IF in
-        let globop1 = glob_op_name (uc_name id) ucsfn in
+    List.iter (fun sfn ->        
+        let metric = sfn^"."^_metric_IF in
+        let globop1 = glob_op_name (uc_name id) sfn in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
-        let sub_invoke = ucsfn^"."^iF_invoke in
+        let sub_invoke = sfn^"."^iF_invoke in
         let sub_invoke_pms = "" in
         print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas 
       ) sfns;
     List.iteri (fun i pmn ->
-        let ucpmn = uc_name pmn in
-        let metric = ucpmn^"."^(metricIRF rfbt rp rest_idx i) in
-        let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn in
+        let metric = pmn^"."^(metricIRF rfbt rp rest_idx i) in
+        let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) pmn in
         let globop2 = "" in
-        let sub_invoke = ucpmn^"."^(invokeIRF rfbt rp rest_idx i) in
+        let sub_invoke = pmn^"."^(invokeIRF rfbt rp rest_idx i) in
         let sub_invoke_pms = "" in
         print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas
       ) pmns;
@@ -1590,20 +1587,20 @@ let print_module_lemmas ?(rest_idx = None)
     let is_first = ref true in
     let cnj() = if !is_first then begin is_first:=false; "  " end else "/\\"
     in
-    List.iteri (fun i pmn -> let ucpmn = uc_name pmn in
+    List.iteri (fun i pmn ->
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (cnj()) ucpmn (invarIRF rfbt rp rest_idx i)
-          (glob_op_name (moduleIRP id rfbt rp rest_idx) ucpmn)
+          (cnj()) pmn (invarIRF rfbt rp rest_idx i)
+          (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (cnj()) (invar_pt_op_name ptn)
           (glob_op_name (uc_name id) (st_name ptn))
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) ptns;
-    List.iter (fun sfn -> let ucsfn = uc_name sfn in
+    List.iter (fun sfn ->
         Format.fprintf ppf "@[%s%s.%s(%s (%s g))@]@;"
-          (cnj()) ucsfn _invar_IF
-          (glob_op_name (uc_name id) ucsfn)
+          (cnj()) sfn _invar_IF
+          (glob_op_name (uc_name id) sfn)
           (glob_op_name_own (moduleIRP id rfbt rp rest_idx))
     ) sfns;
     Format.fprintf ppf ".@]@;@;"
@@ -1622,10 +1619,10 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[smt(@]@;";
     List.iteri(fun i pmn ->
         Format.fprintf ppf "@[%s.%s@]@;"
-          (uc_name pmn) (metric_goodIRF rfbt rp rest_idx i)
+          pmn (metric_goodIRF rfbt rp rest_idx i)
       ) pmns;
     List.iter(fun sfn ->
-        Format.fprintf ppf "@[%s.%s@]@;" (uc_name sfn) iF_metric_good
+        Format.fprintf ppf "@[%s.%s@]@;" sfn iF_metric_good
       ) sfns;
     List.iter(fun ptn ->
         Format.fprintf ppf "@[%s@]@;" (_metric_pt_good ptn)
@@ -1645,21 +1642,21 @@ let print_module_lemmas ?(rest_idx = None)
       match rest_idx with
       | None -> if rp
                   then Format.fprintf ppf "@[call (%s.%s).@]@;"
-                         (uc_name (List.nth pmns i)) rFRP_init
+                         (List.nth pmns i) rFRP_init
                   else Format.fprintf ppf "@[call (%s.%s).@]@;"
-                         (uc_name (List.nth pmns i)) iF_init
+                         (List.nth pmns i) iF_init
       | Some r -> if (i + 1) < r
                     then Format.fprintf ppf "@[call (%s.%s).@]@;"
-                         (uc_name (List.nth pmns i)) iF_init
+                         (List.nth pmns i) iF_init
                     else
                       if (i + 1) > r
                       then Format.fprintf ppf "@[call (%s.%s).@]@;"
-                           (uc_name (List.nth pmns (i-1))) rFRP_init
+                           (List.nth pmns (i-1)) rFRP_init
                       else ()
     done;
     List.iter(fun sfn ->
         Format.fprintf ppf "@[call (%s.%s).@]@;"
-          (uc_name sfn) iF_init
+          sfn iF_init
       ) (List.rev sfns);
     Format.fprintf ppf "@[skip.@]@;";
     Format.fprintf ppf "@[rewrite /%s /=.@]@;"
@@ -1980,7 +1977,7 @@ move => />.
     Format.fprintf ppf "@[module OwnCGs = UC_Composition.CompGlobs@]@;";
     List.iter (fun pmn ->
         Format.fprintf ppf "@[module %sAllCGs = %s.AllCGs@]@;"
-               (uc_name pmn) (uc_name pmn);
+             pmn pmn;
       ) pmns;
     Format.fprintf ppf "}.@]@;@;"
   in
@@ -1991,12 +1988,12 @@ move => />.
     Format.fprintf ppf "@[module OwnIF = IF@]@;";
     List.iter (fun pmn ->
         Format.fprintf ppf "@[module %sAllIFs = %s.AllIFs@]@;"
-          (uc_name pmn) (uc_name pmn);
+          pmn pmn;
       ) pmns;
     Format.fprintf ppf "}.@]@;@;"
   in
   let print_Comp_RP_Comp_IP_diff_lemma ppf (i : int) =
-    let pmth = uc_name (List.nth pmns (i-1)) in
+    let pmth = List.nth pmns (i-1) in
     Format.fprintf ppf
 "lemma %s
     (Env <: ENV{-MI,  -AllCGs_, -RFRP, -SIMIP, -AllIFs})

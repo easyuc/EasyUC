@@ -147,8 +147,8 @@ let glob_op_name top_mod sub_mod =  "glob_"^top_mod^"_to_"^sub_mod
 let glob_op_name_own top_mod = glob_op_name top_mod "own"
 let glob_to_part_op_name module_name part_name =
   "glob_"^module_name^"_to_"^part_name
-let module_name_IF name = (uc_name name)^"."^_IF
-let module_name_RF name = (uc_name name)^"."^_RFRP
+let module_name_IF name = name^"."^_IF
+let module_name_RF name = name^"."^_RFRP
 let invoke = "invoke"
 let _invoke = "_invoke"
 let _invoke_pn pn = "_invoke_"^pn
@@ -397,6 +397,7 @@ let clone_triple_unit
 
 module SLMap = Map.Make(SL)
 
+
 let make_msg_path_map (maps : maps_tyd)
 : message_body_tyd SLMap.t =
   let make_map (itmap : inter_tyd IdPairMap.t) : message_body_tyd SLMap.t =
@@ -513,7 +514,6 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
     let _epdp_op_name = epdp_op_name _mty_name in
     pfx^_epdp_op_name
   in
-
   let inter_id_path_str (loc : bool) (iip : string list) : string =
     let iip =
       if loc
@@ -541,7 +541,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
         let iip = [root]@[int_id]@iiptl in
         let _,mb = get_msg_body mbmap root iip msgn in
         let pfx = inter_id_path_str true (List.tl iip) in
-        let pfx = (uc_name iiphd)^"."^pfx in
+        let pfx = (iiphd)^"."^pfx in
         pfx, mb
       else
         if is_simulated
@@ -561,7 +561,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
           then
             pfx, mb
           else
-            let pfx = (uc_name (snd key))^"."^pfx in
+            let pfx = (snd key)^"."^pfx in
             pfx, mb
         else   
           let iip = msg_path.inter_id_path in
@@ -656,7 +656,7 @@ let compare_globVarIds (g1 : globVarId) (g2 : globVarId) : int =
 
 
 let get_subfun_path (thpath : string list) (sfname : string) (rootid : string) =
-  thpath @ [uc_name sfname] @ [uc_name rootid]
+  thpath @ [sfname] @ [uc_name rootid]
 
 let get_IF_globVarIds (funpath : string list) : globVarId list =
   [
@@ -700,7 +700,7 @@ let rec get_globVarIds
     let paraml = List.combine param_names params in
     let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
-                         let thpath = thpath @ [uc_name id] in
+                         let thpath = thpath @ [id] in
                          let funsufix = [uc_name (fst(getSP psp))] in
                          let globs = get_globVarIds mt psp thpath funsufix in
                          match psp with
@@ -786,9 +786,8 @@ let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
   List.map (fun i -> i+1) indxs
 
 let param_names (rfbt : real_fun_body_tyd) =
-  let param_names = fst (List.split (indexed_map_to_list_keep_keys
-                                       rfbt.params)) in
-  List.map (fun nm -> uc_name nm) param_names
+ fst (List.split (indexed_map_to_list_keep_keys
+                                       rfbt.params))
 
 let get_own_glob_range_of_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list =
@@ -798,7 +797,7 @@ let get_own_glob_range_of_real_fun_glob_core
 
 let get_glob_range_of_parameter
       (gvil : globVarId list) (pmn : string): int list =
-  filter_indices gvil (fun gvi ->  List.hd(fst gvi) = uc_name pmn)
+  filter_indices gvil (fun gvi ->  List.hd(fst gvi) = pmn)
 
 let get_own_glob_ranges_of_real_fun
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list IdMap.t =
@@ -808,7 +807,7 @@ let get_own_glob_ranges_of_real_fun
       (fun gvi ->
         not(List.mem (List.hd(fst gvi)) param_names)) gvil in
   let subfunmap = IdMap.mapi (fun id _ ->
-    filter_indices owngvil (fun gvi -> List.hd(fst gvi) = uc_name id)
+    filter_indices owngvil (fun gvi -> List.hd(fst gvi) = id)
       ) rfbt.sub_funs in
   let funcid = List.hd (fst (List.hd owngvil)) in
   let partymap = IdMap.mapi (fun id _ ->
@@ -852,7 +851,7 @@ let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
   let pmnm = List.nth pmns (pmno-1) in
   fun s1 s2 s3 ->
   bmf
-    (s1^(uc_name pmnm)^".")
+    (s1^pmnm^".")
     (s1^(compenv pmno)^"("^s2^")")
     (sim_stack_adv rfbt s3 (pmno-1))
 

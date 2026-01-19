@@ -106,11 +106,10 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let isf_name = sub_fun_name_nth_of_real_fun_tyd rf n in
          let isf_adv_pi = get_adv_pi_of_nth_sub_fun_of_real_fun
                             mt root 0 rf n in
-         let sfnm = uc_name isf_name in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^
                                   (string_of_int isf_adv_pi) in
          let root = fst (sub_fun_sp_nth_of_real_fun_tyd rf n) in
-         clone_singleton_unit sf root sfnm adv_pi_begin_str
+         clone_singleton_unit sf root isf_name adv_pi_begin_str
        done;
        Format.fprintf sf "@.op %s : int = %s.@.@."
          adv_if_pi_op_name adv_pi_begin_op_name;
@@ -121,17 +120,16 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let r,_ = id_dir_inter_of_param_of_real_fun_tyd rf pname in
          let rui = unit_info_of_root mt r in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^(!papi) in
-         let ucpn = uc_name pname in
          let parampath = (uc_name pname) in
          match rui with
          | UI_Singleton _ ->
-            clone_singleton_unit sf r ucpn adv_pi_begin_str;
+            clone_singleton_unit sf r pname adv_pi_begin_str;
             papi := !papi^" + 1"
          | UI_Triple _ ->
             let alias_apb = (adv_pi_begin_param pname) in
             Format.fprintf sf "op %s = %s.@.@."
               alias_apb adv_pi_begin_str;
-            clone_triple_unit sf r ucpn alias_apb;
+            clone_triple_unit sf r pname alias_apb;
             papi := !papi^" + "^parampath^"."^adv_pi_num_op_name
        done;
        Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
