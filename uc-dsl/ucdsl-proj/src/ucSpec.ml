@@ -129,7 +129,8 @@ type party_def =
 
 type sub_fun_decl =     (* subfunctionality definition *)
   {id      : psymbol;   (* name of subfunctionality *)
-   fun_qid : pqsymbol}  (* qualified name of ideal functionality *)
+   fun_qid : pqsymbol}  (* qualified name of ideal functionality,
+                           starting from name of clone of its root *)
 
 type fun_body_real =                   (* real functionality body *)
   {sub_fun_decls : sub_fun_decl list;  (* sub-functionalities *)
@@ -146,7 +147,8 @@ let is_real_fun_body (fb : fun_body) : bool =
 
 type fun_param =        (* functionality parameter *)
   {id      : psymbol;   (* name of parameter to functionality *)
-   dir_qid : pqsymbol}  (* qualified name of composite direct interface *)
+   dir_qid : pqsymbol}  (* qualified name of composite direct interface,
+                           starting from name of clone of its root *)
 
 type fun_def =                 (* functionality definition *)
   {id       : psymbol;         (* name of functionality *)

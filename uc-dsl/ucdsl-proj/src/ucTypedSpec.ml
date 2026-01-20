@@ -464,20 +464,34 @@ let state_of_party_tyd (pt : party_tyd) (st : symbol) : state_tyd =
 let initial_state_id_of_party_tyd (pt : party_tyd) : symbol =
   initial_state_id_of_states ((unloc pt).states)
 
+(* info of real functionality parameter or subfunctionality
+
+   (root, id) is the name of the composite direct interface (for a
+   parameter) or ideal functionality (for a subfunctionality)
+
+   clone is the clone of root, in the root of the real functionality
+
+   in the case of a parameter, the corresponding argument will
+   be a functionality from the same clone *)
+
+type porsf_info = symbol  (* root *)
+                * symbol  (* id *)
+                * symbol  (* clone of root *)
+
 type real_fun_body_tyd =
-  {params       : (symb_pair * int) IdMap.t;  (* names of composite direct
-                                                 interfaces; index is
-                                                 parameter number *)
-   id_dir_inter : symbol;                     (* name of composite direct
-                                                 interface - with same
-                                                 root *)
-   id_adv_inter : symbol option;              (* optional name of composite
-                                                 adversarial interface -
-                                                 with same root *)
-   sub_funs     : symb_pair IdMap.t;          (* names of ideal
-                                                 functionalities - pair
-                                                 is (root, id) *)
-   parties      : party_tyd IdMap.t}          (* parties *)
+  {params       : (porsf_info * int) IdMap.t;  (* porsf_info of composite direct
+                                                  interfaces; index is
+                                                  parameter number from 0 *)
+   id_dir_inter : symbol;                      (* name of composite direct
+                                                  interface - with same
+                                                  root *)
+   id_adv_inter : symbol option;               (* optional name of composite
+                                                  adversarial interface -
+                                                  with same root *)
+   sub_funs     : porsf_info IdMap.t;          (* porsf_info of ideal
+                                                  functionalities - pair
+                                                  is (root, id) *)
+   parties      : party_tyd IdMap.t}           (* parties *)
 
 type ideal_fun_body_tyd =
   {id_dir_inter : symbol;             (* name of composite direct interface -
@@ -552,7 +566,8 @@ let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
 
-let sub_fun_sp_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : symb_pair =
+let sub_fun_porsf_info_of_real_fun_tyd (ft : fun_tyd)
+    (subf : symbol) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.find subf rfbt.sub_funs
 
@@ -561,10 +576,16 @@ let sub_fun_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.nth bndgs n)
 
-let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symb_pair =
+let sub_fun_porsf_info_nth_of_real_fun_tyd (ft : fun_tyd)
+    (n : int) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.sub_funs in
   snd (List.nth bndgs n)
+
+let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd)
+    (n : int) : symb_pair =
+  let (root, id, _) = sub_fun_porsf_info_nth_of_real_fun_tyd ft n in
+  (root, id)
 
 let num_params_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -578,8 +599,8 @@ let param_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   fst (List.nth (indexed_map_to_list_keep_keys rfbt.params) n)
 
-let id_dir_inter_of_param_of_real_fun_tyd
-    (ft : fun_tyd) (param : symbol) : symb_pair =
+let porsf_info_dir_inter_of_param_of_real_fun_tyd
+    (ft : fun_tyd) (param : symbol) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   fst (IdMap.find param rfbt.params)
 
@@ -654,28 +675,30 @@ type spec_clone_info =
   | SCI_EC of ppna              (* ppna for formatting an EC clone *)
   | SCI_UC of sc_uc_clone_info  (* information about a UC clone *)
 
-exception SCILookupUndefined
-
-let sci_lookup_root_of_uc_as (name : symbol) (scis : spec_clone_info list)
-      : symbol =
+let sci_lookup_uc_clone (name : symbol) (scis : spec_clone_info list)
+      : symbol option =
   let rec lookup scis =
     match scis with
-    | []          -> raise SCILookupUndefined
+    | []          -> None
     | sci :: scis ->
         match sci with
         | SCI_EC _    -> lookup scis
         | SCI_UC info ->
-            if info.sc_uc_as = name then info.sc_uc_of else lookup scis in
+            if info.sc_uc_as = name
+            then Some info.sc_uc_of
+            else lookup scis in
   lookup scis
 
-exception SCIUpdateUndefined
-exception SCIUpdateAlreadyUsed
+exception SCIUndefined
+exception SCIAlreadyUsed
 
 let sci_update_uc_clone_usage (name : symbol) (used : string * sc_uc_used_by)
-    (scis : spec_clone_info list) : spec_clone_info list =
+    (scis : spec_clone_info list)
+      : spec_clone_info list *
+        symbol =                (* uc_of corresponding to uc_as *)
   let rec update olds news =
     match news with
-    | []        -> raise SCIUpdateUndefined
+    | []        -> raise SCIUndefined
     | nw :: nws ->
         match nw with
         | SCI_EC _    -> update (olds @ [nw]) nws
@@ -683,10 +706,11 @@ let sci_update_uc_clone_usage (name : symbol) (used : string * sc_uc_used_by)
             if info.sc_uc_as = name
             then match info.sc_uc_used with
                  | None ->
-                     olds @
-                     [SCI_UC {info with sc_uc_used = Some used}] @
-                     nws
-                 | Some _ -> raise SCIUpdateAlreadyUsed
+                     (olds @
+                      [SCI_UC {info with sc_uc_used = Some used}] @
+                      nws,
+                      info.sc_uc_of)
+                 | Some _ -> raise SCIAlreadyUsed
             else update (olds @ [nw]) nws in
   update [] scis
 
@@ -1102,25 +1126,26 @@ let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
   | Some i -> i
 
 (* get the child index (used as the suffix of the address) plus the
-   symb_pair naming the direct composite interface of a parameter or
+   porsf_info of the composite direct interface of a parameter or
    subfunctionality of a real functionality; returns None when top is
-   neither parameter or subfunctionality *)
+   neither parameter nor subfunctionality *)
 
 let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
     (maps : maps_tyd) (ft : fun_tyd) (top : symbol)
       : (int * symb_pair) option =
   match (try Some (index_of_param_of_real_fun_tyd ft top) with
-             | _ -> None) with
+         | _ -> None) with
   | Some i ->
-      let id_dir = id_dir_inter_of_param_of_real_fun_tyd ft top in
-      Some (i + 1, id_dir)
+      let (root, id, _) =
+        porsf_info_dir_inter_of_param_of_real_fun_tyd ft top in
+      Some (i + 1, (root, id))
   | None   ->
       match (try Some (sub_fun_ord_of_real_fun_tyd ft top) with
              | _ -> None) with
     | Some i ->
-        let sub_fun_sp = sub_fun_sp_of_real_fun_tyd ft top in
-        let sub_fun_ft = IdPairMap.find sub_fun_sp maps.fun_map in
-        let id_dir = (fst sub_fun_sp, id_dir_inter_of_fun_tyd sub_fun_ft) in
+        let (root, id, _) = sub_fun_porsf_info_of_real_fun_tyd ft top in
+        let sub_fun_ft = IdPairMap.find (root, id) maps.fun_map in
+        let id_dir = (root, id_dir_inter_of_fun_tyd sub_fun_ft) in
         Some (i + num_params_of_real_fun_tyd ft + 1, id_dir)
     | None   -> None
 

@@ -27,6 +27,15 @@ open UcPreamblePP
 
 let max_msg_params = 8
 
+let check_qid2 (qid : pqsymbol) : symb_pair =
+  match unloc qid with
+  | ([id1], id2) -> (id1, id2)
+  | _            ->
+      error_message (loc qid)
+      (fun ppf ->
+         fprintf ppf
+         "@[qualified@ id@ must@ have@ exactly@ two@ components@]")
+
 (* convert a named list into an id map, checking for uniqueness
    of names; get_id returns the name of a list element *)
 
@@ -1773,8 +1782,8 @@ let get_all_basic_inter_paths_of_real_fun_party
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
     (fun_map : fun_tyd IdPairMap.t) (dirid : symbol) (advid : symbol option)
-    (params : (symb_pair * int) IdMap.t)
-    (sub_funs : symb_pair IdMap.t) (serves : symbol list located list)
+    (params : (porsf_info * int) IdMap.t)
+    (sub_funs : porsf_info IdMap.t) (serves : symbol list located list)
       : all_basic_inter_paths =
   let abips =
     get_all_external_basic_inter_paths root dir_inter_map
@@ -1785,16 +1794,14 @@ let get_all_basic_inter_paths_of_real_fun_party
     filter_basic_inter_paths_by_serves abips.adversarial serves in
   let param_bips_map =
     IdMap.mapi
-    (fun pid (x : symb_pair * int) ->
-       let root' = fst (fst x) in
-       let inter_id = snd (fst x) in
+    (fun pid (((root', inter_id, _), _) : porsf_info * int) ->
        get_basic_inter_paths root' pid inter_id dir_inter_map)
     params in
   let sub_fun_bips_map =
     IdMap.mapi
-    (fun sfid (pid : symb_pair) ->
+    (fun sfid ((root', id, _) : porsf_info) ->
+       let pid = (root', id) in
        let dirid = get_dir_inter_id_impl_by_fun_pair_id pid fun_map in
-       let root' = fst pid in
        get_basic_inter_paths root' sfid dirid dir_inter_map)
     sub_funs in
   let internal_bips_map =
@@ -1864,8 +1871,8 @@ let check_lowlevel_party
     (adv_inter_map : inter_tyd IdPairMap.t)
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
     (id_adv_inter : symbol option) (internal_ports : QidSet.t)
-    (params : (symb_pair * int) IdMap.t)
-    (sub_funs : symb_pair IdMap.t) (pdt : party_mid) : party_tyd =
+    (params : (porsf_info * int) IdMap.t)
+    (sub_funs : porsf_info IdMap.t) (pdt : party_mid) : party_tyd =
   let updt = unloc pdt in
   let abip =
     get_all_basic_inter_paths_of_real_fun_party root
@@ -1890,8 +1897,8 @@ let check_parties
     (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
     (fun_map : fun_tyd IdPairMap.t) (id_dir_inter : symbol)
-    (id_adv_inter : symbol option) (params : (symb_pair * int) IdMap.t)
-    (sub_funs : symb_pair IdMap.t) (party_defs : party_def IdMap.t)
+    (id_adv_inter : symbol option) (params : (porsf_info * int) IdMap.t)
+    (sub_funs : porsf_info IdMap.t) (party_defs : party_def IdMap.t)
       : party_tyd IdMap.t =
   let internal_ports = get_keys_as_sing_qids party_defs in
   let parties_mid =
@@ -1903,13 +1910,31 @@ let check_parties
     parties_mid
 
 let check_real_fun_params
-    (root : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
-    (adv_inter_map : inter_tyd IdPairMap.t) (params : fun_param list)
-      : (symb_pair * int) IdMap.t =
-  let check_real_fun_param (param : fun_param) : symb_pair * int =
+    (root : symbol) (rfname : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
+    (adv_inter_map : inter_tyd IdPairMap.t)
+    (scis : spec_clone_info list) (params : fun_param list)
+      : (porsf_info * int) IdMap.t * spec_clone_info list =
+  let check_real_fun_param _ (param : fun_param)
+      ((i, map, scis)
+         : int * (porsf_info * int) IdMap.t * spec_clone_info list)
+        : int * (porsf_info * int) IdMap.t * spec_clone_info list =
+    let (clone, id) = check_qid2 param.dir_qid in
+    let (scis, cloned) =
+      try sci_update_uc_clone_usage clone (rfname, SC_UC_Param i) scis
+      with
+      | SCIUndefined   ->
+          error_message (loc param.dir_qid)
+          (fun ppf -> fprintf ppf "@[not@ a@ UC@ clone: %s@]" clone)
+      | SCIAlreadyUsed ->
+          error_message (loc param.dir_qid)
+          (fun ppf ->
+             fprintf ppf
+             ("@[UC@ clone@ was@ already@ used@ by@ real@ functionality:@" ^^
+              "%s@]")
+             clone) in
     let pid =
       check_exists_inter_qid DirectInterKind root
-      dir_inter_map param.dir_qid in
+      dir_inter_map (mk_loc (loc param.dir_qid) ([cloned], id)) in
     let () =
       check_is_composite_id_pair root DirectInterKind dir_inter_map pid in
     let () =
@@ -1920,12 +1945,16 @@ let check_real_fun_params
               fprintf ppf
               ("@[functionality@ parameter@ name@ may@ not@ be@ same@ " ^^
                "as@ top-level@ interface@ name@]")) in
-     (unloc pid, index_of_ex param params) in
+    (i + 1,
+     IdMap.add (unloc param.id) ((cloned, id, clone), i) map,
+     scis) in
   let param_map =
     check_unique_ids
     (fun ppf -> fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
     params (fun p -> p.id) in
-  IdMap.map check_real_fun_param param_map
+  let (_, map, scis) =
+    IdMap.fold check_real_fun_param param_map (0, IdMap.empty, scis)
+  in (map, scis)
 
 let check_exists_fun_qid
     (root : symbol) (fun_map : fun_tyd IdPairMap.t)
@@ -1953,7 +1982,8 @@ let check_exists_fun_qid
          fprintf ppf
          "@[invalid@ form@ for@ functionality@ name:@ %a@]" pp_qsymbol uqid)
 
-let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
+let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def)
+      : fun_tyd * spec_clone_info list =
   let () =
     check_exists_inter_id DirectInterKind root maps.dir_inter_map fund.dir_id in
   let () =
@@ -1965,6 +1995,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
     | Some id ->
         (check_exists_inter_id AdversarialInterKind root maps.adv_inter_map id;
          Some (unloc id)) in
+  let scis = IdMap.find root maps.spec_clones_map in
   match fund.fun_body with
   | FunBodyReal fbr ->
       let () =
@@ -1973,9 +2004,9 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
         | Some id ->
             check_is_composite_id AdversarialInterKind root
             maps.adv_inter_map id in
-      let params =
-        check_real_fun_params root maps.dir_inter_map maps.adv_inter_map
-        fund.params in
+      let (params, scis) =
+        check_real_fun_params root (unloc fund.id)
+        maps.dir_inter_map maps.adv_inter_map scis fund.params in
       let sub_fun_decls =
         check_unique_ids
         (fun ppf -> fprintf ppf "@[duplicate@ subfunctionality@ name@]")
@@ -1991,20 +2022,33 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
                 ("@[the@ name@ %s@ is@ the@ same@ name@ as@ one@ of@ the@ " ^^
                  "functionality's@ parameters@]")
                 id) in
-      let check_sub_fun_decl (sf : sub_fun_decl) : symb_pair =
+      let check_sub_fun_decl _ (sf : sub_fun_decl)
+          ((i, map, scis)
+             : int * porsf_info IdMap.t * spec_clone_info list)
+            : int * porsf_info IdMap.t * spec_clone_info list =
         let uid = unloc sf.id in
+        let (clone, id) = check_qid2 sf.fun_qid in
+        let (scis, cloned) =
+          try sci_update_uc_clone_usage clone
+              (unloc fund.id, SC_UC_SubFun i) scis
+          with
+          | SCIUndefined   ->
+              error_message (loc sf.fun_qid)
+              (fun ppf -> fprintf ppf "@[not@ a@ UC@ clone: %s@]" clone)
+          | SCIAlreadyUsed ->
+              error_message (loc sf.fun_qid)
+              (fun ppf ->
+                 fprintf ppf
+                 ("@[UC@ clone@ was@ already@ used@ by@ real@ " ^^
+                  "functionality:@ %s@]")
+                 clone) in
         let fun_pid =
-          check_exists_fun_qid root maps.fun_map sf.fun_qid in
+          check_exists_fun_qid root maps.fun_map
+          (mk_loc (loc sf.fun_qid) ([cloned], id)) in
         let ft = IdPairMap.find (unloc fun_pid) maps.fun_map in
         let fbt = unloc ft in
-        if uid = unloc fund.id
-          then error_message (loc sf.id)
-               (fun ppf ->
-                  fprintf ppf
-                  ("@[subfunctionality@ name@ may@ not@ be@ same@ " ^^
-                   "as@ real@ functionality@ name@]"))
-        else if exists_id_pair_inter_maps maps.dir_inter_map
-                maps.adv_inter_map (root, uid)
+        if exists_id_pair_inter_maps maps.dir_inter_map
+           maps.adv_inter_map (root, uid)
           then error_message (loc sf.id)
                (fun ppf ->
                   fprintf ppf
@@ -2016,8 +2060,11 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
                   fprintf ppf
                   "@[%a@ is@ not@ an@ ideal@ functionality@]"
                   (pp_id_pair_abbrev root) (unloc fun_pid))
-        else unloc fun_pid in
-      let sub_funs = IdMap.map check_sub_fun_decl sub_fun_decls in
+        else (i + 1,
+              IdMap.add (unloc sf.id) (cloned, id, clone) map,
+              scis) in
+      let (_, sub_funs, scis) =
+        IdMap.fold check_sub_fun_decl sub_fun_decls (0, IdMap.empty, scis) in
       let party_defs =
         check_unique_ids
         (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
@@ -2030,7 +2077,7 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
          id_adv_inter = uid_adv_inter; sub_funs = sub_funs;
          parties = parties} in
       let funbody = FunBodyRealTyd fbrt in
-      mk_loc (loc fund.id) funbody
+      (mk_loc (loc fund.id) funbody, scis)
   | FunBodyIdeal state_defs ->
       let () =
         match fund.adv_id with
@@ -2050,10 +2097,10 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def) : fun_tyd =
         {id_dir_inter = uid_dir_inter; id_adv_inter = uid_adv_inter;
          states = states} in
       let funbody = FunBodyIdealTyd ifbt in
-      mk_loc (loc fund.id) funbody
+      (mk_loc (loc fund.id) funbody, scis)
 
-let check_fun_def
-    (root : symbol) (maps : maps_tyd) (fund : fun_def) : maps_tyd =
+let check_fun_def (root : symbol) (maps : maps_tyd) (fund : fun_def)
+      : maps_tyd =
   let uid = unloc fund.id in
   let () =
     if exists_id_pair_maps_tyd maps (root, uid)
@@ -2061,9 +2108,11 @@ let check_fun_def
          (fun ppf ->
             fprintf ppf
             "@[identifier@ already@ declared@ at@ top-level:@ %s@]" uid) in
-  let funt = check_fun root maps fund in
+  let (funt, scis) = check_fun root maps fund in
   {maps with
-     fun_map = IdPairMap.add (root, uid) funt maps.fun_map}
+     fun_map         = IdPairMap.add (root, uid) funt maps.fun_map;
+     spec_clones_map =
+       IdMap.update root (fun _ -> Some scis) maps.spec_clones_map}
 
 (****************************** simulator checks ******************************)
 
@@ -2083,9 +2132,9 @@ let get_sim_components
     QidMap.empty pids sims_arg_pair_ids in
   let qidmap_subfuns =
     IdMap.fold
-    (fun sfid ideal_fun_pair_id mp ->
-       let ideal_body = unloc (IdPairMap.find ideal_fun_pair_id fun_map) in
-       QidMap.add [sims; sfid] (fst ideal_fun_pair_id, ideal_body) mp)
+    (fun sfid (root', id, _) mp ->
+       let ideal_body = unloc (IdPairMap.find (root', id) fun_map) in
+       QidMap.add [sims; sfid] (root', ideal_body) mp)
     (real_fun_body_tyd_of sims_body).sub_funs QidMap.empty in
   let disj = (fun _ _ _ -> failure "cannot happen") in
   QidMap.union disj qidmap_fun
@@ -2148,7 +2197,9 @@ let get_dir_interface_pair_ids_of_params_of_real_fun_id
       : symb_pair list =
   let func = IdPairMap.find funid fun_map in
   match unloc func with
-  | FunBodyRealTyd fbr -> indexed_map_to_list fbr.params
+  | FunBodyRealTyd fbr ->
+      List.map (fun (root, id, _) -> (root, id))
+      (indexed_map_to_list fbr.params)
   | FunBodyIdealTyd _  -> failure "cannot happen - will be real functionality"
 
 let get_dir_interface_pair_ids_of_params_of_real_fun_id_root
@@ -2401,7 +2452,7 @@ let process_spec_clones (maps : maps_tyd) (scs : spec_clone list)
   [] scs
 
 let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
-  let check_units_subfun sfid (root', ifid) =
+  let check_units_subfun sfid (root', ifid, _) =
     (* root' will already have been checked to be a valid unit,
        unless it's the current file, in which case all but the
        subfunctionality and parameter checks will have been completed *)
@@ -2427,7 +2478,7 @@ let check_units_subfuns (root : string) (maps : maps_tyd) (rf : fun_tyd) =
   IdMap.iter check_units_subfun sub_funs
 
 let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
-  let check_units_param paramid ((root', dirid), _) =
+  let check_units_param paramid ((root', dirid, _), _) =
     (* root' will already have been checked to be a valid unit, unless
        it's the current file, in which case all but the parameter
        checks will have been completed *)

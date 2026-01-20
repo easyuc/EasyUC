@@ -1894,9 +1894,11 @@ let initial_real_world_state (maps : maps_tyd) (rw : real_world)
       (fun (pt : party_tyd) ->
          state_no_args (initial_state_id_of_party_tyd pt))
       pts)) in
-  let init_of_subfuns (subs : symb_pair IdMap.t) (nargs : int)
+  let init_of_subfuns (subs : porsf_info IdMap.t) (nargs : int)
       (addr : int list) : (int list * fun_state) list =
-    let sps = List.map snd (IdMap.bindings subs) in
+    let sps =
+      List.map (fun (_, (root, id, _)) -> (root, id))
+      (IdMap.bindings subs) in
     List.mapi
     (fun i sp ->
        (addr @ [1 + nargs + i],
@@ -2635,15 +2637,17 @@ let iw_step_send_and_transition_from_sim_comp_adv_right
     if is_param_of_real_fun_tyd ft param_or_sub_fun
       then let child_i =
              index_of_param_of_real_fun_tyd ft param_or_sub_fun in
-           let (param_root, _) =
-             id_dir_inter_of_param_of_real_fun_tyd ft param_or_sub_fun in
+           let (param_root, _, _) =
+             porsf_info_dir_inter_of_param_of_real_fun_tyd ft
+             param_or_sub_fun in
            (1 + child_i,
             List.nth adv_pis_of_rf_args child_i,
             param_root)
     else if is_sub_fun_of_real_fun_tyd ft param_or_sub_fun
       then let child_i =
                  sub_fun_ord_of_real_fun_tyd ft param_or_sub_fun in
-           let (sf_root, _) = sub_fun_sp_of_real_fun_tyd ft param_or_sub_fun in
+           let (sf_root, _, _) =
+             sub_fun_porsf_info_of_real_fun_tyd ft param_or_sub_fun in
            (1 + num_params_of_real_fun_tyd ft + child_i,
             base + 1 +
             num_adv_pis_of_parties_of_real_fun c.maps root ft +
@@ -3857,8 +3861,7 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     let sim_rf_num_params = IdMap.cardinal sim_rfbt.params in
     let sim_rf_params_info : (symbol list * symbol list * int) list =
       List.mapi
-      (fun i (param_id, param_sp) ->
-         let (param_root, _) = param_sp in
+      (fun i (param_id, (param_root, _, _)) ->
          let uior = unit_info_of_root c.maps param_root in
          let basic_adv_id = basic_adv_of_ideal_fun_of_triple_unit uior in
          ([param_root; basic_adv_id],
@@ -3870,14 +3873,13 @@ let step_ideal_sending_config (c : config_ideal_sending) (pi : prover_infos)
     let sim_rf_num_sub_funs = IdMap.cardinal sim_rfbt.sub_funs in
     let sim_rf_sub_funs_info : (symbol list * symbol list * int) option list =
       List.mapi
-      (fun i (sub_fun_id, sub_fun_sp) ->
-         let (sub_fun_root, _) = sub_fun_sp in
+      (fun i (sub_fun_id, (sf_root, sf_id, _)) ->
          match id_adv_inter_of_fun_tyd
-               (IdPairMap.find sub_fun_sp c.maps.fun_map) with
+               (IdPairMap.find (sf_root, sf_id) c.maps.fun_map) with
          | None              -> None
          | Some basic_adv_id ->
              Some
-             ([sub_fun_root; basic_adv_id],
+             ([sf_root; basic_adv_id],
               [sim_rf; sub_fun_id; basic_adv_id],
               base + sim_rf_num_adv_pis_of_parties + 1 + i))
       (IdMap.bindings sim_rfbt.sub_funs) in
