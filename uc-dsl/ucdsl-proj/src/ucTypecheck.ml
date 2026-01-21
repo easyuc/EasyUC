@@ -71,7 +71,7 @@ let is_ec_op_name s =
 
 let check_type_top (pty : pty) : ty =
   let ue = unif_env () in
-  transty tp_nothing (top_env ()) ue pty
+  transty tp_nothing (top_env ()) ue pty 
 
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)

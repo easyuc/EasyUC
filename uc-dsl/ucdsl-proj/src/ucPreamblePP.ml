@@ -275,6 +275,6 @@ let pp_theory_cloning_uc_changes (env : EcEnv.env) (tc : theory_cloning)
         ppna_first s t
     | _ ->
         fprintf ppf
-        ("@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@],@\n@ @ %a@\n" ^^
+        ("@[%t@ with@\n@ @ @[op@ %s@ <-@ %s@],@\n@ @ @[%a@]@\n" ^^
          "proof *.@\n(* BEGIN USER FILL *)@\n(* END USER FILL *)@]")
         ppna_first s t (pp_list ",@\n" (pp_override env)) overs

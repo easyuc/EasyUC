@@ -266,6 +266,42 @@ let int_le_op : form =
 
 let envport_id : EcIdent.t = EcIdent.create "envport"
 
+(* substitution of path prefixes in types and formulas
+
+   when using the following functions, none of the paths involved
+   should, when converted to a symbol list, be equal to olds *)
+
+let cond_subst_path_prefix (olds : SL.t) (news : SL.t) (p : EcPath.path)
+      : EcPath.path =
+  let ne_sym_list_to_path (symbs : symbol list) : EcPath.path =
+    EcPath.fromqsymbol (nonempty_qid_to_qsymbol symbs) in
+  let origs = EcPath.tolist p in
+  let rec rem olds origs =
+    match (olds, origs) with
+    | (_,           [])            -> failure "should not happen"
+    | ([],          _)             -> ne_sym_list_to_path (news @ origs)
+    | (old :: olds, orig :: origs) ->
+        if old = orig then rem olds origs else p in
+  rem olds origs
+
+let cond_subst_path_prefix_in_type (olds : SL.t) (news : SL.t) (ty : ty)
+      : ty =
+  let rec cond_subst_ty (ty : ty) =
+    EcAst.mk_ty (cond_subst_ty_node ty.ty_node)
+
+  and cond_subst_ty_node (node : ty_node) =
+    match node with
+    | Tglob   _        -> failure "cannot happen"
+    | Tunivar _        -> failure "cannot happen"
+    | Tvar x           -> Tvar x   
+    | Ttuple tys       -> Ttuple (List.map cond_subst_ty tys)
+    | Tconstr (p, tys) ->
+        Tconstr
+        (cond_subst_path_prefix olds news p,
+         List.map cond_subst_ty tys)
+    | Tfun (ty1, ty2)  -> Tfun (cond_subst_ty ty1, cond_subst_ty ty2) in
+  cond_subst_ty ty
+
 (* typed messages and functionality interfaces *)
 
 type message_body_tyd =
