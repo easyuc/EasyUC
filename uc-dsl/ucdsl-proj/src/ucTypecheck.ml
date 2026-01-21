@@ -1214,15 +1214,11 @@ let get_msg_def_for_msg_path
   let bip = List.find (fun bip -> fst bip = iip) bips in
   IdMap.find msg (snd bip)
 
-let check_send_msg_path
-    (msg : msg_expr) (abip : all_basic_inter_paths) : unit =
-  let abip = outgoing_abip abip in
-  check_outgoing_msg_path abip msg.path
-
 let check_msg_expr
     (abip : all_basic_inter_paths) (sc : state_context) (sa : state_analysis)
     (env : env) (ue : unienv) (msg : msg_expr) : msg_expr_tyd =
-  let () = check_send_msg_path msg abip in
+  let abip = outgoing_abip abip in
+  let () = check_outgoing_msg_path abip msg.path in
   let bips = abip.direct @ abip.adversarial @ abip.internal in
   let param_tis = (get_msg_def_for_msg_path msg.path bips).params_map in
   let l = loc msg.path in
