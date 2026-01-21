@@ -48,6 +48,10 @@ let bi_name (id : string) : string = (uc_name id)^"_abs"
 
 let uc__name (name : string) : string = "UC__"^name
 
+let uc___name (name : string) : string = "UC___"^name
+
+let __name (name : string) : string = name^"__"
+
 let rest_name (name : string) (idx : int) : string =
   (uc_name name)^"_Rest"^(string_of_int idx)
 
@@ -183,7 +187,7 @@ let rest_init i = "_init_Rest"^(string_of_int i)
 let simcomp = "SIMCOMP"
 let simip = "SIMIP"
 let simnm (pmn : string) (adv : string) =
-    (uc_name pmn)^"."^simcomp^"("^adv^")"
+    pmn^"."^simcomp^"("^adv^")"
 
 
 let module_name (id : string) = uc_name id
@@ -856,7 +860,7 @@ let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
     (sim_stack_adv rfbt s3 (pmno-1))
 
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
-  let filename = (fst funcId)^".eca" in
+  let filename = (uc__name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   fun s1 s2 s3->
   UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3]
@@ -944,9 +948,9 @@ let print_userfile_stub
 "
 require import UCCore.
 
-require UC__%s.
+require %s.
 
-clone include UC__%s.
+clone include %s.
 
  %s
 
@@ -973,7 +977,7 @@ proof.
 admit.
 qed.     
 "
-root root rfip_eq_rfrp root
+(uc___name root) (uc___name root) rfip_eq_rfrp root
 
 let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
   let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
@@ -1082,8 +1086,8 @@ clone include %s.
 
 %s
 "
-  root
-  root
+  (uc__name root)
+  (uc__name root)
   boundmacro
   ;
   if has_params

@@ -47,7 +47,7 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
       end
     | UI_Triple _ ->
       begin
-      let fs = open_out ((uc__name root)^".eca") in
+      let fs = open_out ((uc___name root)^".eca") in
       print_main fs;
       close_out fs
       end
@@ -120,7 +120,6 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let r,_ = id_dir_inter_of_param_of_real_fun_tyd rf pname in
          let rui = unit_info_of_root mt r in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^(!papi) in
-         let parampath = (uc_name pname) in
          match rui with
          | UI_Singleton _ ->
             clone_singleton_unit sf r pname adv_pi_begin_str;
@@ -130,7 +129,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
             Format.fprintf sf "op %s = %s.@.@."
               alias_apb adv_pi_begin_str;
             clone_triple_unit sf r pname alias_apb;
-            papi := !papi^" + "^parampath^"."^adv_pi_num_op_name
+            papi := !papi^" + "^pname^"."^adv_pi_num_op_name
        done;
        Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
     end ;
@@ -258,7 +257,7 @@ let generate_ec (mt : maps_tyd) : unit =
     let ui = unit_info_of_root mt r in
     match ui with
     | UI_Triple ti ->
-      let userfs = r^".eca" in
+      let userfs = (uc__name r)^".eca" in
       if not(Sys.file_exists userfs)
       then
         begin

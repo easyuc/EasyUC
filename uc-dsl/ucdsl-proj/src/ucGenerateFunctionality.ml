@@ -970,7 +970,8 @@ let print_party_types (sc : EcScope.scope) (ppf : Format.formatter)
     ) parties;
   Format.fprintf ppf "@]"
 
-let _print_params str ppf params : unit =
+let print_params_FUNC ppf params : unit =
+    let str = " : FUNC" in
     if (IdMap.cardinal params)=0
     then ()
     else
@@ -978,14 +979,10 @@ let _print_params str ppf params : unit =
       let params = List.sort (fun (_,(_,n1)) (_,(_,n2)) -> n1-n2) params in
       let pns = fst (List.split params) in
       Format.fprintf ppf "(";
-      Format.fprintf ppf "%s%s" (List.hd pns) str;
+      Format.fprintf ppf "%s%s" (__name (List.hd pns)) str;
       List.iter (fun pn ->
-        Format.fprintf ppf ", %s%s" pn str) (List.tl pns);
+        Format.fprintf ppf ", %s%s" (__name pn) str) (List.tl pns);
       Format.fprintf ppf ")"
-
-let print_params_FUNC ppf params : unit = _print_params " : FUNC" ppf params
-
-let print_params_list ppf params : unit =  _print_params "" ppf params
 
 (*real and rest module print begin -----------------------------*)
 
@@ -1012,7 +1009,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
         (addr_op_call ~pfx:module_pfx sfn)) sub_funs;
     IdMap.iter (fun pn _ ->
       Format.fprintf ppf "@[%s.init(%s);@]@;"
-       pn (addr_op_call ~pfx:module_pfx pn)) params;
+       (__name pn) (addr_op_call ~pfx:module_pfx pn)) params;
     IdMap.iter (fun pn pt ->
     Format.fprintf ppf "@[%s%s <- %s;@]@;"
       module_pfx (st_name pn) (state_name_pt pn (initial_state_id_of_party_tyd  pt))
@@ -1069,7 +1066,7 @@ let print_params_list ppf params : unit =  _print_params "" ppf params
         print_subfun_or_param_invoke ppf sfn (subfunpath sfn sfid)
       ) sub_funs;
     IdMap.iter (fun pn _ ->
-        print_subfun_or_param_invoke ppf pn pn) params;
+        print_subfun_or_param_invoke ppf pn (__name pn)) params;
     let partyl = IdMap.to_list parties in
     let pc = IdMap.cardinal parties in
     List.iteri (fun i (pn, _) ->
