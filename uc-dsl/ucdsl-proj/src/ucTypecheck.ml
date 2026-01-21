@@ -1905,9 +1905,9 @@ let check_parties
     check_toplevel_parties root dir_inter_map adv_inter_map id_dir_inter
     id_adv_inter party_defs in
   IdMap.map
-      (check_lowlevel_party root dir_inter_map adv_inter_map fun_map
-      id_dir_inter id_adv_inter internal_ports params sub_funs)
-    parties_mid
+  (check_lowlevel_party root dir_inter_map adv_inter_map fun_map
+   id_dir_inter id_adv_inter internal_ports params sub_funs)
+  parties_mid
 
 let check_real_fun_params
     (root : symbol) (rfname : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
