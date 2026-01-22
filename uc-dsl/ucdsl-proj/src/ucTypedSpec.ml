@@ -672,16 +672,17 @@ let initial_state_id_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
   initial_state_id_of_states states
 
 type sim_body_tyd =
-  {uses : symbol;                       (* basic adversarial interface
-                                           from ideal functionality - with
-                                           same root *)
-   sims : symbol;                       (* real functionality being
-                                           simulated - with same root *)
-   sims_arg_pair_ids : symb_pair list;  (* arguments to real
-                                           functionality - pairs
-                                           (root, id), naming ideal
-                                           functionalities *)
-   states : state_tyd IdMap.t}          (* state machine *)
+  {uses : symbol;                (* basic adversarial interface
+                                    from ideal functionality - with
+                                    same root *)
+   sims : symbol;                (* real functionality being
+                                    simulated - with same root *)
+   sims_args : porsf_info list;  (* arguments to real
+                                    functionality - triples
+                                    (cloned, id, clone), naming ideal
+                                    functionalities (cloned, id) from
+                                    clone clone *)
+   states : state_tyd IdMap.t}   (* state machine *)
 
 type sim_tyd = sim_body_tyd located  (* simulator *)
 
@@ -954,7 +955,7 @@ type triple_info =
    ti_comp_dir         : symbol;
    ti_comp_adv_opt     : symbol option;
    ti_if_sim_basic_adv : symbol;
-   ti_sims             : symb_pair list;
+   ti_sims             : porsf_info list;
    ti_num_adv_pis      : int}
 
 type unit_info =
@@ -1020,7 +1021,7 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
         ti_comp_dir         = id_dir_inter_of_fun_tyd ift;
         ti_comp_adv_opt     = id_adv_inter_of_fun_tyd rft;
         ti_if_sim_basic_adv = Option.get (id_adv_inter_of_fun_tyd ift);
-        ti_sims             = sbt.sims_arg_pair_ids;
+        ti_sims             = sbt.sims_args;
         ti_num_adv_pis      = num_adv_pis}
 
 let is_basic_adv_of_ideal_fun_of_unit (uior : unit_info) (bas : symbol) : bool =
