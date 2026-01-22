@@ -2137,65 +2137,56 @@ let check_fun_def (root : symbol) (maps : maps_tyd) (fund : fun_def)
 
 let get_sim_basic_inter_id_paths
     (root : symbol) (fun_map : fun_tyd IdPairMap.t)
-    (adv_inter_map : inter_tyd IdPairMap.t) (sims : symbol)
+    (adv_inter_map : inter_tyd IdPairMap.t) (uses : symbol) (sims : symbol)
     (sim_args : (symbol * symbol * symbol) list)
       : basic_inter_path list =
   let sims_body = unloc (IdPairMap.find (root, sims) fun_map) in
+  let from_if_bips =
+    (List.map invert_basic_inter_path
+     (get_basic_inter_paths_from_inter_id root uses adv_inter_map)) in
   let sims_bips =
     match id_adv_inter_of_fun_body_tyd sims_body with
-    | Some id -> get_basic_inter_paths_from_inter_id root id adv_inter_map
+    | Some id ->
+        List.map
+        (fun (ids, bipt) -> ([sims] @ ids, bipt))
+        (get_basic_inter_paths_from_inter_id root id adv_inter_map)
     | None    -> [] in
-  let qidmap_params =
+  let params_bips =
     let pids =
       indexed_map_to_list_only_keep_keys
       (real_fun_body_tyd_of sims_body).params in
     List.fold_left2
     (fun bips pid (cloned, fun_id, clone) ->
        let ideal_body = unloc (IdPairMap.find (cloned, fun_id) fun_map) in
-       let basic_adv_id =
-         match id_adv_inter_of_fun_body_tyd ideal_body with
-         | None       -> failure "cannot happen"
-         | Some id -> id in
-       get_basic_inter_paths_from_inter_id root id adv_inter_map
-
-       QidMap.add [sims; pid] (cloned, basic_adv_id, clone) mp)
+       match id_adv_inter_of_fun_body_tyd ideal_body with
+       | None              -> bips
+       | Some basic_adv_id ->
+           let bips =
+             bips @
+             List.map
+             (fun (ids, bipt) -> ([sims; pid] @ ids, bipt))
+             (get_basic_inter_paths_from_inter_id cloned basic_adv_id
+              adv_inter_map) in
+           cond_subst_path_prefix_in_bips
+           ["Top"; ("UC__" ^ cloned)] ["Top"; "UC__" ^ root; clone] bips)
     [] pids sim_args in
-  let qidmap_subfuns =
-    IdMap.fold
-    (fun sfid (cloned, fun_id, clone) mp ->
+  let subfuns_bips =
+    List.fold
+    (fun bips (sfid, (cloned, fun_id, clone)) -> 
        let ideal_body = unloc (IdPairMap.find (cloned, fun_id) fun_map) in
-       let basic_adv_id =
-         match id_adv_inter_of_fun_body_tyd ideal_body with
-         | None       -> failure "cannot happen"
-         | Some id -> id in
-       QidMap.add [sims; sfid] (cloned, basic_adv_id, clone) mp)
-    (real_fun_body_tyd_of sims_body).sub_funs QidMap.empty in
-  let disj = (fun _ _ _ -> failure "cannot happen") in
-  QidMap.union disj qidmap_fun
-  (QidMap.union disj qidmap_params qidmap_subfuns)
-
-let get_fun_adv_basic_inter_paths
-    (adv_inter_map : inter_tyd IdPairMap.t)
-    (comp : symbol * fun_body_tyd) : basic_inter_path list =
-  match id_adv_inter_of_fun_body_tyd (snd comp) with
-  | Some id -> get_basic_inter_paths_from_inter_id (fst comp) id adv_inter_map
-  | None    -> []
-
-let get_sim_basic_inter_id_paths
-    (root : symbol) (adv_inter_map : inter_tyd IdPairMap.t) (uses : symbol)
-    (comps : (symbol * fun_body_tyd) QidMap.t) : basic_inter_path list =
-  let bips_comps_map =
-    QidMap.map (get_fun_adv_basic_inter_paths adv_inter_map) comps in
-  let bips_map =
-    QidMap.add
-    []
-    (List.map invert_basic_inter_path
-     (get_basic_inter_paths_from_inter_id root uses adv_inter_map))
-    bips_comps_map in
-  QidMap.fold
-  (fun qid bips_of_qid bips ->
-     bips @ List.map (fun bip -> (qid @ fst bip, snd bip)) bips_of_qid)
-  bips_map []
+       match id_adv_inter_of_fun_body_tyd ideal_body with
+       | None              -> bips
+       | Some basic_adv_id ->
+           let bips =
+             bips @
+             List.map
+             (fun (ids, bipt) -> ([sims; sfid] @ ids, bipt))
+             (get_basic_inter_paths_from_inter_id cloned basic_adv_id
+              adv_inter_map) in
+           cond_subst_path_prefix_in_bips
+           ["Top"; ("UC__" ^ cloned)] ["Top"; "UC__" ^ root; clone] bips)
+    [] (IdMap.bindings (real_fun_body_tyd_of sims_body).sub_funs) in
+  from_if_bips @ sims_bips @ params_bips @ subfuns_bips
 
 let get_internal_ports (real_fun_body : real_fun_body_tyd) : QidSet.t =
   get_keys_as_sing_qids real_fun_body.parties
@@ -2276,8 +2267,8 @@ let check_sims_fun_args
             "@[wrong@ number@ of@ arguments@ for@ functionality@]") in
   List.iteri
   (fun i pair_id ->
-     let (cloned1, id1, clone1) as x = List.nth params_dir_porsf_infos i in
-     let (cloned2, id2, clone2) as y = List.nth args_dir_porsf_infos i in
+     let (cloned1, id1, clone1) as y = List.nth args_dir_porsf_infos i in
+     let (cloned2, id2, clone2) as x = List.nth params_dir_porsf_infos i in
      if (x <> y)
      then error_message (loc pair_id)
           (fun ppf ->
@@ -2321,9 +2312,9 @@ let check_sim
   let () = check_sims_fun_args root fun_map sd.sims sims_args in
   let sims_args = unlocs (unloc sims_args) in
   let internal_ports = get_sim_internal_ports root fun_map sims in
-  let comps = get_sim_components root fun_map sim_args sims in
   let bips =
-    get_sim_basic_inter_id_paths root adv_inter_map uses comps in
+    get_sim_basic_inter_id_paths root fun_map adv_inter_map uses sims
+    sims_args in
   let abip = {direct = []; adversarial = bips; internal = []} in
   let states = check_states sd.id abip SimKind internal_ports sd.states in
   let sbt =

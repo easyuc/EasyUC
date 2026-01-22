@@ -145,7 +145,7 @@ functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
           if (envport pt2) {
             send Fwd1.D.fw_req
                  (intport Pt2, epdp_port_port_univ.`enc (pt1, pt2))
-            and transition WaitFwd2(pt1, pt2, t).
+            and transition WaitFwd2(pt1, t).
           }
           else { fail. }
         }
