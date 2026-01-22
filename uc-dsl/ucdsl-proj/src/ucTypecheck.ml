@@ -2486,7 +2486,8 @@ let process_uc_clone (maps : maps_tyd) (scis : spec_clone_info list)
         {sc_uc_as       = uc_as;
          sc_uc_of       = uc_of;
          sc_uc_ppna_fun = f;
-         sc_uc_used     = None}]
+         sc_uc_used     = None;
+         sc_uc_loc      = loc psym}]
 
 let process_spec_clones (maps : maps_tyd) (scs : spec_clone list)
       : spec_clone_info list =
@@ -2705,6 +2706,13 @@ let typecheck
     | TyError (l, env, tyerr) ->
         error_message l
         (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr) in
+  let () =
+    let scis = IdMap.find root maps.spec_clones_map in
+    match sci_unused_first_clone scis with
+    | None            -> ()
+    | Some (clone, l) ->
+        error_message l
+        (fun ppf -> fprintf ppf "@[unused@ clone:@ %s@]"clone) in
   let maps =
     {maps with ec_scope_map =
        IdMap.update root

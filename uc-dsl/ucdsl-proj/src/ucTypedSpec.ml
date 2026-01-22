@@ -706,7 +706,8 @@ type sc_uc_clone_info =
                                                   op s <- t *)
    sc_uc_used     : (string *                  (* real funct using clone *)
                      sc_uc_used_by)            (* how rf uses clone *)
-                    option}
+                    option;
+   sc_uc_loc      : EcLocation.t}
 
 type spec_clone_info =
   | SCI_EC of ppna              (* ppna for formatting an EC clone *)
@@ -750,6 +751,18 @@ let sci_update_uc_clone_usage (name : symbol) (used : string * sc_uc_used_by)
                  | Some _ -> raise SCIAlreadyUsed
             else update (olds @ [nw]) nws in
   update [] scis
+
+let rec sci_unused_first_clone (scis : spec_clone_info list)
+    : (symbol * EcLocation.t) option =
+  match scis with
+  | []          -> None
+  | sci :: scis ->
+      match sci with
+      | SCI_EC _    -> sci_unused_first_clone scis
+      | SCI_UC info ->
+          if Option.is_none info.sc_uc_used
+          then Some (info.sc_uc_as, info.sc_uc_loc)
+          else sci_unused_first_clone scis
 
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,
