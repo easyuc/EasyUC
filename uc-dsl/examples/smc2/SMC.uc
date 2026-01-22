@@ -101,7 +101,7 @@ ec_clone import KeyExpText as KeyExpText' with
    code below could use EasyCrypt types and operators in KeyEx
    (e.g., KeyEx.g), but we already have names for everything *)
 
-uc_clone KeyExchange as KeyExchange' with
+uc_clone KeyExchange with
   type key         = key,
   op (^^)          = (^^),
   op kid           = kid,
@@ -114,7 +114,7 @@ uc_clone KeyExchange as KeyExchange' with
   op g             = g,
   op (^)           = (^).
 
-uc_clone Forwarding as Forwarding'.
+uc_clone Forwarding.
 
 (* The composite direct interface has two components, corresponding
    to the two parties of the real functionality. *)
@@ -146,8 +146,8 @@ direct SMCDir {
    from KE, just as they can with the forwarding subfunctionality
    Fwd. *)
 
-functionality SMCReal(KE : KeyExchange'.KEDir) implements SMCDir {
-  subfun Fwd = Forwarding'.Forw
+functionality SMCReal(KE : KeyExchange.KEDir) implements SMCDir {
+  subfun Fwd = Forwarding.Forw
 
   party Pt1 serves SMCDir.Pt1 {
     initial state WaitReq {
@@ -271,7 +271,7 @@ functionality SMCIdeal implements SMCDir SMC2Sim {
    the ideal functionality that implements that composite direct
    interface. *)
 
-simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange'.KEIdeal) {
+simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
   initial state WaitReq {
     match message with 
     | SMC2Sim.sim_req(pt1, pt2) => {
