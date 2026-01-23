@@ -2605,9 +2605,10 @@ let inter_check_type (env : env) (pty : pty) : ty =
 (* if expct_ty_opt is Some ty, then ty must not have any unification
    or type variables *)
 
-let inter_check_expr_ue
-    (env : env) (ue : unienv) (pform : pformula) (expct_ty_opt : ty option)
+let inter_check_expr
+    (env : env) (pform : pformula) (expct_ty_opt : ty option)
       : form * ty =
+  let ue = unif_env() in
   let form = trans_form_opt env ue pform None in
   let ty = form.f_ty in
   let () =
@@ -2619,8 +2620,10 @@ let inter_check_expr_ue
   let uidmap =
     try EcUnify.UniEnv.close ue with
     | EcUnify.UninstanciateUni ->
-        failure
-        "should not happen: a top-level expression won't have type variables" in
+        error_message (loc pform)
+        (fun ppf ->
+           Format.fprintf ppf
+           "@[top-level@ expressions@ must@ be@ monomorphic@]") in
   let ts = EcFol.Tuni.subst uidmap in
   let form = EcFol.Fsubst.f_subst ts form in
   (* update result type, using the expected type if supplied (which
@@ -2632,17 +2635,11 @@ let inter_check_expr_ue
     | Some expct_ty -> expct_ty in
   (form, res_ty)
 
-let inter_check_expr (env : env) (pform : pformula) (expct_ty_opt : ty option)
-      : form * ty =
-  let ue = unif_env () in
-  inter_check_expr_ue env ue pform expct_ty_opt
-
 let inter_check_expr_port_or_addr
-    (env : env) (ue : unienv) (poa : port_or_addr)
-    (pi_opt : int option) : form =
+    (env : env) (poa : port_or_addr) (pi_opt : int option) : form =
   match poa with
   | PoA_Port pexpr ->
-      let (form, _) = inter_check_expr_ue env ue pexpr (Some port_ty) in
+      let (form, _) = inter_check_expr env pexpr (Some port_ty) in
       form
   | PoA_Addr pexpr ->
       match pi_opt with
@@ -2652,7 +2649,7 @@ let inter_check_expr_port_or_addr
              fprintf ppf
              "@[unable@ to@ infer@ port@ index@ of@ addr@]")
       | Some pi ->
-          let (form, _) = inter_check_expr_ue env ue pexpr (Some addr_ty) in
+          let (form, _) = inter_check_expr env pexpr (Some addr_ty) in
           (f_tuple [form; f_int (EcBigInt.of_int pi)])
 
 type msg_path_info =
@@ -2704,7 +2701,6 @@ let inter_check_root_qualified_msg_path (maps : maps_tyd) (mp : msg_path_u)
 
 let inter_check_sme
     (maps : maps_tyd) (env : env) (sme : sent_msg_expr) : sent_msg_expr_tyd =
-  let ue = unif_env () in
   match sme with
   | SME_Ord sme    ->
       (let path = unloc (sme.path) in
@@ -2725,10 +2721,10 @@ let inter_check_sme
               pp_qsymbol (msg_path_u_to_qsymbol path))
        | MPI_Good (mode, dir, pi, exp_tys) ->
            let src_port_expr =
-             inter_check_expr_port_or_addr env ue sme.src_poa
+             inter_check_expr_port_or_addr env sme.src_poa
              (if pi <> 0 && dir = Out then Some pi else None) in
            let dest_port_expr =
-             inter_check_expr_port_or_addr env ue sme.dest_poa
+             inter_check_expr_port_or_addr env sme.dest_poa
              (if pi <> 0 && dir = In then Some pi else None) in
            let args = unloc sme.args in
              if List.length exp_tys <> List.length args
@@ -2742,7 +2738,7 @@ let inter_check_sme
                     List.mapi
                     (fun i pexpr ->
                        let (ex, _) =
-                         inter_check_expr_ue env ue pexpr
+                         inter_check_expr env pexpr
                          (Some (List.nth exp_tys i)) in
                        ex)
                     args in
@@ -2755,9 +2751,9 @@ let inter_check_sme
                    dest_port_form = dest_port_expr})
   | SME_EnvAdv sme ->
       (let (src_port, _) =
-         inter_check_expr_ue env ue sme.src_port (Some port_ty) in
+         inter_check_expr env sme.src_port (Some port_ty) in
        let (dest_port, _) =
-         inter_check_expr_ue env ue sme.dest_port (Some port_ty) in
+         inter_check_expr env sme.dest_port (Some port_ty) in
        SMET_EnvAdv
        {src_port_form  = src_port;
         dest_port_form = dest_port})
