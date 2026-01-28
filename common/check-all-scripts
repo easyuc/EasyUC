@@ -20,6 +20,10 @@ else echo usage check-all-scripts [timeout];
      exit 1;
 fi;
 
+# delete .eco files in this and sub-directories
+
+find . -name '*.eco' -delete
+
 check() {
   echo checking $1;
   if easycrypt -timeout $timeout $1;
