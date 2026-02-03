@@ -2421,9 +2421,9 @@ let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
       c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
   | Some (child_i, dir_sp) ->
-       rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
-       c pi dbs rel fun_sp ft pty_id iip msg msg_args port_form
-       new_rws sub child_i dir_sp
+      rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
+      c pi dbs rel fun_sp ft pty_id iip msg msg_args port_form
+      new_rws sub child_i dir_sp
 
 let rw_step_send_and_transition (c : config_real_running) (pi : prover_infos)
     (dbs : rewriting_dbs) (s_and_t : send_and_transition_tyd)
@@ -3423,22 +3423,28 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     let (root, _) = func_sp in
     let ft = IdPairMap.find func_sp c.maps.fun_map in
     let rfi = get_info_of_real_func c.maps root base ft in
-    match internal_real_func_find_party rfi with
-    | None     ->
-        (debugging_message
-         (fun ppf ->
-            fprintf ppf
-            ("@[unable@ to@ find@ party@ with@ " ^^
-             "internal@ port@ id@]"));
-        fail_out_of_running_or_sending_config (ConfigRealSending c))
-    | Some pid ->
-        let rel = List.take (List.length rel - 1) rel in
-        let pbt = unloc (party_of_real_fun_tyd ft pid) in
-        let rs = real_state_of_fun_state (ILMap.find rel c.rws) in
-        let {id = state_id; args = state_args} = IdMap.find pid rs in
-        let sbt = unloc (IdMap.find state_id pbt.states) in
-        internal_real_func_party_match rel base func_sp pid
-        state_id state_args sbt param_or_subfun_name id_dir in
+    let rel = List.take (List.length rel - 1) rel in
+    if not (equal_func_rel_addr_of_port c.gc pi dbs dest_port rel)
+    then (debugging_message
+          (fun ppf ->
+             fprintf ppf
+             "@[destination@ address@ not@ address@ of@ parent@]");
+          fail_out_of_running_or_sending_config (ConfigRealSending c))
+    else match internal_real_func_find_party rfi with
+         | None     ->
+             (debugging_message
+              (fun ppf ->
+                 fprintf ppf
+                 ("@[unable@ to@ find@ party@ with@ correct@ " ^^
+                  "internal@ port@ id@]"));
+             fail_out_of_running_or_sending_config (ConfigRealSending c))
+         | Some pid ->
+             let pbt = unloc (party_of_real_fun_tyd ft pid) in
+             let rs = real_state_of_fun_state (ILMap.find rel c.rws) in
+             let {id = state_id; args = state_args} = IdMap.find pid rs in
+             let sbt = unloc (IdMap.find state_id pbt.states) in
+             internal_real_func_party_match rel base func_sp pid
+             state_id state_args sbt param_or_subfun_name id_dir in
 
   let from_func_to_env_or_parent (rel : int list)
       (rwrs : real_world_rel_select) : config * eff =
@@ -3486,15 +3492,13 @@ let step_real_sending_config (c : config_real_sending) (pi : prover_infos)
     if mode = Adv
     then msg_out_of_sending_config (ConfigRealSending c) CtrlAdv
     else let rwrs = select_rel_addr_of_real_world c.maps rel c.rw in
-         if equal_func_rel_addr_of_port c.gc pi dbs dest_port rel
-           then failure "should not happen"
-         else if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port rel
-           then (match rwrs with
-                 | RW_Select_RealFun (sp, base, rwas, _) ->
-                     from_parent_to_arg_or_sub_fun rel sp base rwas
-                 | _                                     ->
-                     fail_out_of_running_or_sending_config
-                     (ConfigRealSending c))
+         if greater_than_func_rel_addr_of_port c.gc pi dbs dest_port rel
+         then (match rwrs with
+               | RW_Select_RealFun (sp, base, rwas, _) ->
+                   from_parent_to_arg_or_sub_fun rel sp base rwas
+               | _                                     ->
+                   fail_out_of_running_or_sending_config
+                   (ConfigRealSending c))
          else from_func_to_env_or_parent rel rwrs in
 
   try
