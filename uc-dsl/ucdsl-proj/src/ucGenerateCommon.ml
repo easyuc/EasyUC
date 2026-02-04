@@ -831,8 +831,6 @@ let get_glob_indices_of_real_fun_parties
       then Some (List.hd rng)
       else None ) ogrm
 
-type bound_macro_fun = string -> string -> string -> string
-
 let sim_stack_adv rfbt adv i =
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let rec firstk k xs =
@@ -849,21 +847,25 @@ let sim_stack_adv rfbt adv i =
 
 let sim_stack rfbt i = sim_stack_adv rfbt _Adv i
 
+type bound_macro_fun = string -> string -> string -> string -> string -> string
+
 let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
       (rfbt : real_fun_body_tyd) (pmno : int) : bound_macro_fun =
   let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
   let pmnm = List.nth pmns (pmno-1) in
-  fun s1 s2 s3 ->
+  fun s1 s2 s3 s4 s5 ->
   bmf
     (s1^pmnm^".")
     (s1^(compenv pmno)^"("^s2^")")
     (sim_stack_adv rfbt s3 (pmno-1))
+    (s4^" ++ ["^s1^(rest_composition_clone pmno)^".change_pari]")
+    (s5^" `|` "^s1^(rest_composition_clone pmno)^".rest_adv_pis")
 
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (uc__name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  fun s1 s2 s3->
-  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3]
+  fun s1 s2 s3 s4 s5 ->
+  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3;s4;s5]
 
 let rec get_Bound_RFRP_IF_macro_fun
 (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
@@ -871,17 +873,17 @@ let rec get_Bound_RFRP_IF_macro_fun
   let rfbt = real_fun_body_tyd_of fbt in
   let own = get_RFIP_IF_bound_from_macro funcId in
   let paramboundstr = get_params_sum_Bound_RFRP_IF_macro_fun mt funcId in
-  fun s1 s2 s3 ->
+  fun s1 s2 s3 s4 s5 ->
     if 0 < (IdMap.cardinal rfbt.params)
-    then ((paramboundstr s1 s2 s3)^"\n+\n"^(own s1 s2 s3))
-    else (own s1 s2 s3)
+    then ((paramboundstr s1 s2 s3 s4 s5)^"\n+\n"^(own s1 s2 s3 s4 s5))
+    else (own s1 s2 s3 s4 s5)
 and get_params_sum_Bound_RFRP_IF_macro_fun
 (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =  
   let fbt = EcLocation.unloc (IdPairMap.find funcId mt.fun_map) in
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
   if List.length params = 0
-  then fun s1 s2 s3 -> ""
+  then fun s1 s2 s3 s4 s5 -> ""
   else
     let parambounds : bound_macro_fun list =
       List.mapi (fun i (pmnm, (r,dirint)) ->
@@ -893,32 +895,33 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
         let pbound = get_Bound_RFRP_IF_macro_fun mt fid in
         apply_param_Bound_RFRP_IF_macro_fun pbound rfbt (i+1)) params
     in
-    fun s1 s2 s3 ->
+    fun s1 s2 s3 s4 s5 ->
       List.fold_left (fun str pbound ->
-          (str^"\n+\n"^(pbound s1 s2 s3)))
-        ((List.hd parambounds) s1 s2 s3) (List.tl parambounds)
+          (str^"\n+\n"^(pbound s1 s2 s3 s4 s5)))
+        ((List.hd parambounds) s1 s2 s3 s4 s5) (List.tl parambounds)
   
 let get_Bound_RFRP_IF_macro (mt : maps_tyd) (funcId : SP.t) : string =
   let bmf = get_Bound_RFRP_IF_macro_fun mt funcId in
-  let macro_body = bmf "<<ParamName>>" "<<Env>>" "<<Adv>>" in
-  "(*! Bound_RFRP_IF(ParamName, Env, Adv)\n"^macro_body^"\n*)"
+  let macro_body =
+    bmf "<<ParamName>>" "<<Env>>" "<<Adv>>" "<<func>>" "<<in_guard>>" in
+  "(*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)\n"^macro_body^"\n*)"
 
 let get_Bound_RFIP_IF (funcId : SP.t) : string =
-   (get_RFIP_IF_bound_from_macro funcId) "" "Env" _Adv
+   (get_RFIP_IF_bound_from_macro funcId) "" "Env" _Adv "func'" "in_guard'"
 
 let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
-    (env : string) (adv : string) : string =
+    (env : string) (adv : string) (func : string) (in_guard : string) : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
   let (pmnm, funcId) = List.nth params (param_no-1) in
   let filename = (uc_name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  let bmf = fun s1 s2 s3 ->
-    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2;s3] in
+  let bmf = fun s1 s2 s3 s4 s5->
+    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2;s3;s4;s5] in
   let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf rfbt param_no in
-  bmf "" env adv
+  bmf "" env adv func in_guard
   
 let parameter_Bound rfbt i : string =
-  get_param_Bound_RFRP_IF rfbt i "Env" "Adv" (*sim_stack rfbt (i-1)*)
+  get_param_Bound_RFRP_IF rfbt i "Env" "Adv" "func'" "in_guard'"
 
 let probability_parameter_Bound rfbt ppf (i : int) =
     Format.fprintf ppf "%s" (parameter_Bound rfbt i)
@@ -956,7 +959,7 @@ clone include %s.
 
 module AllCGs = {module UC__AllCGs = AllCGs_}.
 
-(*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
+(*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard) 0.0 *)
   
 lemma %s_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM})
@@ -964,7 +967,7 @@ lemma %s_RFIP_IF_advantage
     (func' : addr, in_guard' : int fset) &m :
     exper_pre func' =>
     disjoint in_guard' (adv_pis_rf_info rf_info) =>
-      (*adv pis of KE are disj. from in_guard'*)    
+      (*adv pis of functionality are disj. from in_guard'*)    
  `|Pr[Exper(MI(RFIP, Adv), Env)
          .main(func', in_guard')
            @ &m : res] -
@@ -1067,7 +1070,8 @@ root
   let root = fst funcId in
   let boundmacro = get_Bound_RFRP_IF_macro mt funcId in
   let paramsumbound : string =
-    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId) "" "Env" _Adv in
+    (get_params_sum_Bound_RFRP_IF_macro_fun mt funcId)
+      "" "Env" _Adv "func'" "in_guard'" in
   let boundRFIP_IF : string = get_Bound_RFIP_IF funcId in
   let has_params =
     let ft = IdPairMap.find funcId mt.fun_map in

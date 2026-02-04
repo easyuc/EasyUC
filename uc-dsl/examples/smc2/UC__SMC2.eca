@@ -1,9 +1,9 @@
 
 require import UCCore.
 
-require UC__SMC2.
+require UC___SMC2.
 
-clone include UC__SMC2.
+clone include UC___SMC2.
 
 require import KeysExponentsAndPlaintexts.
 
@@ -14,25 +14,27 @@ type real_rec = {
   _st_Pt2 : _state_Pt2;
   core_self : addr;
   Fwd1_self : addr;
-  Fwd1_st : UC_Fwd1._state_IF;
+  Fwd1_st : Fwd1._state_IF;
   Fwd2_self : addr;
-  Fwd2_st : UC_Fwd2._state_IF;
+  Fwd2_st : Fwd2._state_IF;
   SMC1_self : addr;
-  SMC1_st : UC_SMC1._state_IF;
+  SMC1_st : SMC1._state_IF;
   SMC2_self : addr;
-  SMC2_st : UC_SMC2._state_IF;
-  }.
+  SMC2_st : SMC2._state_IF;
+}.
+
+print glob RFIP.
 
   op to_real_rec (st_real : glob RFIP) : real_rec =
   {|
     _self = st_real.`1;
   _st_Pt1 = st_real.`2;
   _st_Pt2 = st_real.`3;
-  core_self = st_real.`4;
-  Fwd1_self = st_real.`5;
-  Fwd1_st = st_real.`6;
-  Fwd2_self = st_real.`7;
-  Fwd2_st = st_real.`8;
+  core_self = st_real.`8;
+  Fwd1_self = st_real.`4;
+  Fwd1_st = st_real.`5;
+  Fwd2_self = st_real.`6;
+  Fwd2_st = st_real.`7;
   SMC1_self = st_real.`9;
   SMC1_st = st_real.`10;
   SMC2_self = st_real.`11;
@@ -44,11 +46,11 @@ type real_rec = {
      st_real.`_self,
   st_real.`_st_Pt1,
   st_real.`_st_Pt2,
-  st_real.`core_self,
   st_real.`Fwd1_self,
   st_real.`Fwd1_st,
   st_real.`Fwd2_self,
   st_real.`Fwd2_st,
+  st_real.`core_self,
   st_real.`SMC1_self,
   st_real.`SMC1_st,
   st_real.`SMC2_self,
@@ -112,10 +114,10 @@ type real_rec = {
   smc2_real_C st_real /\
   st_real.`_st_Pt1 = _State_Pt1_WaitReq /\
   st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
-  st_real.`Fwd1_st = UC_Fwd1._State_IF_Init /\
-  st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
-  st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
-  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq
+  st_real.`Fwd1_st = Fwd1._State_IF_Init /\
+  st_real.`Fwd2_st = Fwd2._State_IF_Init /\
+  st_real.`SMC1_st = SMC1._State_IF_WaitReq /\
+  st_real.`SMC2_st = SMC2._State_IF_WaitReq
 .
 
   op smc2_ideal_0 (st_ideal : ideal_rec, st_sim : sim_rec) : bool =
@@ -135,13 +137,13 @@ op smc2_real_1 (st_real : real_rec, pt1 pt2 : port, t : text) : bool =
 smc2_real_C st_real /\
 st_real.`_st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
   st_real.`_st_Pt2 = _State_Pt2_WaitFwd1 /\
-  st_real.`Fwd1_st = UC_Fwd1._State_IF_Wait
+  st_real.`Fwd1_st = Fwd1._State_IF_Wait
 (_intport_Pt1 st_real.`_self)
 (_intport_Pt2 st_real.`_self)
 (epdp_port_port_univ.`enc (pt1, pt2)) /\
-  st_real.`Fwd2_st = UC_Fwd2._State_IF_Init /\
-  st_real.`SMC1_st = UC_SMC1._State_IF_WaitReq /\
-  st_real.`SMC2_st = UC_SMC2._State_IF_WaitReq
+  st_real.`Fwd2_st = Fwd2._State_IF_Init /\
+  st_real.`SMC1_st = SMC1._State_IF_WaitReq /\
+  st_real.`SMC2_st = SMC2._State_IF_WaitReq
   .
 
 op smc2_ideal_1 (st_ideal : ideal_rec, st_sim : sim_rec, pt1 pt2 : port, t : text) : bool =
@@ -207,7 +209,7 @@ auto;progress;smt().
   inline parties.
 sp 2.
   match _State_IF_Init 0. auto;smt().
-  match None 0. auto;progress;smt(@UCListPO UC_Fwd1.UC_FwDir.D.eq_of_valid__fw_req).
+  match None 0. auto;progress;smt(@UCListPO Fwd1.UC_FwDir.D.eq_of_valid__fw_req).
   sp 3.
   inline after_core.
 sp.
@@ -225,7 +227,7 @@ rcondf 0. auto;progress;smt().
   inline parties.
 sp 2.
   match _State_IF_Init 0. auto;smt().
-  match None 0. auto;progress;smt(@UCListPO UC_Fwd2.UC_FwDir.D.eq_of_valid__fw_req).
+  match None 0. auto;progress;smt(@UCListPO Fwd2.UC_FwDir.D.eq_of_valid__fw_req).
   sp 3.
 inline after_core.
   sp.
@@ -243,7 +245,7 @@ auto;progress;smt().
 inline parties.
 sp 2.
   match _State_IF_WaitReq 0. auto;smt().
-  match None 0. auto;progress;smt(@UCListPO UC_SMC1.UC_SMCDir.Pt1.eq_of_valid__smc_req).
+  match None 0. auto;progress;smt(@UCListPO SMC1.UC_SMCDir.Pt1.eq_of_valid__smc_req).
   sp 3.
 inline after_core.
   sp.
@@ -261,7 +263,7 @@ auto;progress;smt().
 inline parties.
 sp 2.
   match _State_IF_WaitReq 0. auto;smt().
-  match None 0. auto;progress;smt(@UCListPO UC_SMC2.UC_SMCDir.Pt1.eq_of_valid__smc_req).
+  match None 0. auto;progress;smt(@UCListPO SMC2.UC_SMCDir.Pt1.eq_of_valid__smc_req).
   sp 3.
 inline after_core.
   sp.
@@ -318,12 +320,12 @@ local lemma SMC2Real_invoke0_SandT(m : msg) : phoare [
     smc2_real_0 (to_real_rec (glob RFIP))
       ==>
       res =
-      Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+      Some (Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|})
         /\
@@ -360,11 +362,11 @@ inline (1) after_core.
 
   conseq(_ :
 r0 =
-    Some (UC_Fwd1.UC_FwDir.D.epdp__fw_req.`enc
-    {| UC_Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwDir.D.fw_req__u =
+    Some (Fwd1.UC_FwDir.D.epdp__fw_req.`enc
+    {| Fwd1.UC_FwDir.D.fw_req___func = _addr_Fwd1 UC_SMC2Real._self;
+      Fwd1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      Fwd1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMC2Real._self;
+      Fwd1.UC_FwDir.D.fw_req__u =
           epdp_port_port_univ.`enc (pt1, pt2); |}) /\
     UC_SMC2Real._st_Pt1 = _State_Pt1_WaitFwd2 pt1 pt2 t /\
 m0 = oget r0 /\ 
@@ -418,12 +420,12 @@ inline parties.
   ==>
   let 
       rm =
-      UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+      Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|} in
       res = Some (epdp_da_to_env.`enc
@@ -444,12 +446,12 @@ inline loop.
 rcondt 0. auto;progress;smt(@UCListPO).
   seq 1 : (
   r0 =
-  Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+  Some (Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
         ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
          (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
         |}) /\
@@ -467,12 +469,12 @@ call (SMC2Real_invoke0_SandT m).
     auto;progress;smt().
   seq 1 : (
   r0 =
-  Some (UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+  Some (Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__pt2 =_intport_Pt2 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
         ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
          (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
            |}) /\
@@ -504,12 +506,12 @@ match None 0. auto;progress;smt(eq_of_valid_da_from_env).
      r0 =
     Some (epdp_da_to_env.`enc
       {| dte_n = m1.`2.`2; dte_pt = m1.`3; dte_tag = m1.`4; dte_u = m1.`5; |}) /\
-    m1 = UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-    {| UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
-      UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
+    m1 = Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+    {| Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs___adv = adv;
+      Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+      Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc
           ((oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
            (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);
              |} /\
@@ -977,12 +979,12 @@ local lemma MI_ideal_invoke1_SandT(m : msg) : phoare [
   ==>
   let 
       rm =
-      UC_Fwd1.UC_FwAdv.epdp__fw_obs.`enc
-        {|UC_Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs___adv = adv;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
-          UC_Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
+      Fwd1.UC_FwAdv.epdp__fw_obs.`enc
+        {|Fwd1.UC_FwAdv.fw_obs___func = _addr_Fwd1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs___adv = adv;
+          Fwd1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMC2Real._self;
+          Fwd1.UC_FwAdv.fw_obs__u = epdp_port_port_univ.`enc (
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt1,
             (oget (UC_SMC2Dir.Pt1.epdp__smc_req.`dec m)).`UC_SMC2Dir.Pt1.smc_req__pt2);|} in
       res = Some (epdp_da_to_env.`enc
@@ -998,8 +1000,10 @@ local lemma MI_ideal_invoke1_SandT(m : msg) : phoare [
       ] = 1%r.
       proof.
         proc.
-rcondt 0. auto;progress;smt(@UCListPO @FSet).
-      
+        rcondt 0.
+admit.
+        admit.
+        qed. 
       
       print main_guard.
 
@@ -1054,10 +1058,12 @@ trivial.
  );last first.
      auto;progress;smt().
  proc *.
-inline{1} (1) invoke. 
-   end section.
+     inline{1} (1) invoke.
+ admit.
+qed.
+end section.
 
-(*! Bound_RFIP_IF(PathPfx, Env, Adv) 0.0 *)
+(*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard) 0.0 *)
   
 lemma SMC2_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM})
