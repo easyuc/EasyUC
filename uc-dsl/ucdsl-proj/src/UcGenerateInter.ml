@@ -81,9 +81,8 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
             | None ->
                if qtp = (["Top"; "UCUniv"], "univ")
                then EcEnv.Op.lookup (["Top"; "UCEncoding"], "epdp_id") env
-               else failure ("couldn't find epdp operator for "^
-                          (EcPath.tostring tp))
-                          (*TODO try to find epdp for given type in scope, if that fails, make tydecl analisys and try to construct epdp, if that fails throw exception*)
+               else failure ("couldn't find epdp operator "^(EcSymbols.string_of_qsymbol qepdp))
+                          
   in
   let epdp_opex = e_op pth tyl oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
