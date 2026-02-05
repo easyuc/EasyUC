@@ -913,7 +913,7 @@ let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
     let dir_comp = id_dir_inter_of_fun_tyd ft in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
-    (some |- List.hd |- List.tl |- unloc)
+    (some -| List.hd -| List.tl -| unloc)
     (List.find
      (fun x -> List.hd (unloc x) = dir_comp)
      serves)
@@ -925,7 +925,7 @@ let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
     let adv_comp = oget (id_adv_inter_of_fun_tyd ft) in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
-    (some |- List.hd |- List.tl |- unloc)
+    (some -| List.hd -| List.tl -| unloc)
     (List.find
      (fun x -> List.hd (unloc x) = adv_comp)
      serves)

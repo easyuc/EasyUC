@@ -1358,8 +1358,8 @@ and check_match
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
         match EcEnv.Ty.by_path indp env with
-        | { tyd_type = `Datatype dt } -> Some (indp, dt)
-        | _                           -> None
+        | { tyd_type = Datatype dt } -> Some (indp, dt)
+        | _                          -> None
       end
     | _                 -> None in
   let (_, inddecl) =
@@ -1499,7 +1499,7 @@ let replace_unif_vars_in_msg_match_code (ue : unienv)
     (is : instruction_tyd list located) : instruction_tyd list located =
   let uidmap =
     try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstanciateUni ->
+    | EcUnify.UninstantiateUni ->
         error_message (loc is)
         (fun ppf ->
            Format.fprintf ppf
@@ -2619,7 +2619,7 @@ let inter_check_expr
   (* replace unification variables in formula by types *)
   let uidmap =
     try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstanciateUni ->
+    | EcUnify.UninstantiateUni ->
         error_message (loc pform)
         (fun ppf ->
            Format.fprintf ppf

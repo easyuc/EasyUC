@@ -606,7 +606,7 @@ let process_delta_when_args_are_addr_literals p tc =
               if List.for_all is_addr_literal args
               then begin
                 let body  =
-                  EcFol.Tvar.f_subst ~freshen:true (List.map fst tparams)
+                  EcFol.Tvar.f_subst ~freshen:true tparams
                   tvi body in
                 let body  = EcFol.f_app body args topfp.f_ty in
                 try  EcReduction.h_red EcReduction.beta_red hyps body
@@ -1089,7 +1089,7 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dt
     let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
     let opty =
       EcCoreSubst.Tvar.subst
-      (EcCoreSubst.Tvar.init (List.map fst op.op_tparams) ty_args) op_ret_ty in
+      (EcCoreSubst.Tvar.init op.op_tparams ty_args) op_ret_ty in
     let opf = 
       EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args opty
     in
