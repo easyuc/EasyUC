@@ -49,6 +49,29 @@ hint simplify valid_epdp_port_int_univ.
 
 type party_name = [Pt1 | Pt2].  (* party names *)
 
+op party_name_to_bool (pn : party_name) : bool =
+  with pn = Pt1 => true
+  with pn = Pt2 => false.
+
+op bool_to_party_name (b : bool) : party_name =
+  if b then Pt1 else Pt2.
+
+(* epdp allowing us to forward party names *)
+
+op epdp_party_name_univ : (party_name, univ) epdp =
+  epdp_comp epdp_bool_univ
+  (epdp_bijection party_name_to_bool bool_to_party_name).
+
+lemma valid_epdp_party_name_univ :
+  valid_epdp epdp_party_name_univ.
+proof.
+rewrite /epdp_party_name_univ !epdp.
+move => pn; by case pn.
+move => b; by case b.
+qed.
+
+hint simplify valid_epdp_party_name_univ.
+
 (* simulator's view of a party's state - see party states of
    real functionality for comparison *)
 
@@ -56,11 +79,22 @@ type sim_party_state = [
   | SPS_Init
   | SPS_PendingFwdWaitAdvOrOtherFwd
   | SPS_PendingFwdWaitAdv
-  | SPS_WaitAdvOrOtherFwd
-  | SPS_WaitAdvOrInput
+  | SPS_WaitOtherFwd
+  | SPS_WaitInput
   | SPS_PendingOutputWaitAdv
   | SPS_Final
 ].
+
+op metric_sim_party_state (sps : sim_party_state) : int =
+  match sps with
+  | SPS_Init                        => 6
+  | SPS_PendingFwdWaitAdvOrOtherFwd => 5
+  | SPS_PendingFwdWaitAdv           => 4
+  | SPS_WaitOtherFwd                => 3
+  | SPS_WaitInput                   => 2
+  | SPS_PendingOutputWaitAdv        => 1
+  | SPS_Final                       => 0
+  end.
 
 (* simulator's view of the state of a forwarder - see states of
    FwdSched in FwdSched.uc for comparison *)
@@ -70,3 +104,11 @@ type sim_fwd_state = [
   | SFS_WaitOK
   | SFS_Final
 ].
+
+op metric_sim_fwd_state (sfs : sim_fwd_state) : int =
+  match sfs with
+  | SFS_Init   => 2
+  | SFS_WaitOK => 1
+  | SFS_Final  => 0
+  end.
+
