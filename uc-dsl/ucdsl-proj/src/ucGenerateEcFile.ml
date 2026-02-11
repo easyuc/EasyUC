@@ -37,20 +37,34 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
       let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
       IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
     in
+    let backup_and_write_eca (filename : string) : unit =
+      let fn = filename^".eca" in
+      let bck_fn = filename^"~.eca" in
+      if (Sys.file_exists fn)
+      then
+        if (not (Sys.file_exists bck_fn))
+        then
+          begin
+          Sys.rename fn bck_fn;
+          UcMessage.non_loc_warning_message (fun ppf ->
+          Format.fprintf ppf "@[file %s was saved as %s and then re-generated@]"
+            fn bck_fn)
+          end
+        else
+          UcMessage.non_loc_error_message (fun ppf ->
+          Format.fprintf ppf "@[file %s could not be saved as %s, it already exists. Merge files if needed and delete %s@]"
+            fn bck_fn bck_fn)
+      ;
+      let fs = open_out (filename^".eca") in
+      print_main fs;
+      close_out fs
+    in
     let ui = unit_info_of_root mt root in
     match ui with
     | UI_Singleton _ ->
-      begin
-      let fs = open_out ((uc_name root)^".eca") in
-      print_main fs;
-      close_out fs
-      end
+      backup_and_write_eca (uc_name root)
     | UI_Triple _ ->
-      begin
-      let fs = open_out ((uc___name root)^".eca") in
-      print_main fs;
-      close_out fs
-      end
+      backup_and_write_eca (uc___name root)
   in 
   let roots = roots_of_maps mt in
   IdSet.iter (fun r -> print_file r) roots
