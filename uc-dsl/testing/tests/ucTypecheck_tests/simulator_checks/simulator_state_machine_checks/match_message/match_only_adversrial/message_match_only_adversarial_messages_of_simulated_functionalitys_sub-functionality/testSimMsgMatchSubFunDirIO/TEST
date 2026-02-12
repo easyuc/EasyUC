@@ -4,7 +4,7 @@ path
 .
 args: testSimMsgMatchSubFunDirIO.uc
 outcome: failure
-[error: testSimMsgMatchSubFunDirIO.uc: from line 67 columns 22 to 37]
+[error: testSimMsgMatchSubFunDirIO.uc: from line 43 columns 22 to 37]
 
 message path is not one of the possible incoming message paths:
   Iio.bli, R.A.A.abla, R.F.Iio.bla, R.SFQ.A2'.abla2

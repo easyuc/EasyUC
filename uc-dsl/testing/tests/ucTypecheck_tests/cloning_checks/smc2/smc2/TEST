@@ -1,0 +1,6 @@
+description
+typecheck the good version with units checking
+.
+args:-units SMC2.uc
+outcome:success
+.

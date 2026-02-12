@@ -1,0 +1,6 @@
+description
+check that interpretation script runs without error
+.
+args:-batch testing.uci
+outcome:success
+.

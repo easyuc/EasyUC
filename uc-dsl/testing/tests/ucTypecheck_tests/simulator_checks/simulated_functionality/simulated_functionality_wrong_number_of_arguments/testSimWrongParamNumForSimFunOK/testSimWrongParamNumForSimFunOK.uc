@@ -20,13 +20,6 @@ functionality R() implements D {
  }
 }
 
-functionality I() implements D Iio {
-
-  initial state In {
-  match message with * => {fail.} end
-  }
-}
-
 simulator S uses Iio simulates R() {
 
   initial state In {

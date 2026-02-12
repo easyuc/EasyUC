@@ -1,3 +1,6 @@
+uc_requires X.
+uc_clone X.
+
 direct D' {
 in  x@bla()
 out bli()@x
@@ -20,14 +23,7 @@ functionality R() implements D {
  }
 }
 
-functionality I() implements D Iio {
-
-  initial state In {
-  match message with * => {fail.} end
-  }
-}
-
-simulator S uses Iio simulates R(I) {
+simulator S uses Iio simulates R(X.I) {
 
   initial state In {
   match message with Iio.* => {fail.} end

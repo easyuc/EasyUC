@@ -3,7 +3,7 @@ This test fails because functionality Q does not exist.
 .
 args: testSubFunNonExistingFun.uc
 outcome:failure
-[error: testSubFunNonExistingFun.uc: from line 9 columns 12 to 13]
+[error: testSubFunNonExistingFun.uc: from line 12 columns 12 to 15]
 
-functionality does not exist: Q
+functionality does not exist: X.Q
 .

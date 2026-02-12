@@ -1,3 +1,7 @@
+uc_requires X.
+
+uc_clone X.
+
 direct D' {
 in  x@bla()
 out bli()@x
@@ -5,7 +9,7 @@ out bli()@x
 
 direct D {D:D'}
 
-functionality F(G:D) implements D {
+functionality F(G:X.D) implements D {
 
  party P serves D.D {
 

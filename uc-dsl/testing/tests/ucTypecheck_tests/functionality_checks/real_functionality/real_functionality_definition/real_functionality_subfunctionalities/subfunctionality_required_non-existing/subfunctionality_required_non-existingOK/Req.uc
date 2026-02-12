@@ -8,7 +8,6 @@ adversarial D {
 in bli()
 }
 
-
 functionality S() implements A D {
 
   initial state Isus 

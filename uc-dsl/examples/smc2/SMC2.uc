@@ -1,20 +1,131 @@
 (* Secure Message Communication *)
 
 (* Triple unit for two way secure message communcation between two
-   parties *)
+   parties, with two different types of plain texts *)
 
 uc_requires Forwarding SMC.
 
-ec_requires +KeysExponentsAndPlaintexts.
+ec_requires +EPDPAux.
+
+(**************************** Begin Unit Parameters ***************************)
+
+(* group of keys *)
+
+type key.
+
+op (^^) : key -> key -> key.  (* binary operation *)
+
+op kid : key.  (* identity *)
+
+op kinv : key -> key.  (* inverse *)
+
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
+
+axiom kid_l (x : key) : kid ^^ x = x.
+
+axiom kid_r (x : key) : x ^^ kid = x.
+
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
+
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
+
+(* commutative semigroup of exponents *)
+
+type exp.
+
+op e : exp.  (* some exponent *)
+
+op ( * ) : exp -> exp -> exp.  (* multiplication *)
+
+axiom mulC (q r : exp) : q * r = r * q.
+
+axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
+op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
+
+axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
+
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
+
+op [full uniform lossless] dexp : exp distr.
+
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
+
+op g : key.  (* generator *)
+
+op (^) : key -> exp -> key.  (* exponentiation *)
+
+axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
+
+(* the following axioms say that each key is uniquely generated from g
+   by exponentiation *)
+
+axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
+
+axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
+
+(* two types of plain texts, both with EPDPs to key *)
+
+type text1.
+
+op epdp_text1_key : (text1, key) epdp.  (* EPDP from text1 to key *)
+
+axiom valid_epdp_text1_key : valid_epdp epdp_text1_key.
+
+type text2.
+
+op epdp_text2_key : (text2, key) epdp.  (* EPDP from text2 to key *)
+
+axiom valid_epdp_text2_key : valid_epdp epdp_text2_key.
+
+(***************************** End Unit Parameters ****************************)
+
+uc_clone Forwarding as Forwarding1.
+uc_clone Forwarding as Forwarding2.
+
+uc_clone SMC as SMC1 with
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^),
+  type text        = text1,
+  op epdp_text_key = epdp_text1_key.
+
+uc_clone SMC as SMC2 with
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^),
+  type text        = text2,
+  op epdp_text_key = epdp_text2_key.
 
 direct SMC2Pt1 {
-  in  pt1@smc_req(pt2 : port, t : text)  (* 1 *)
-  out smc_rsp(t : text)@pt1              (* 4 *)
+  in  pt1@smc_req(pt2 : port, t : text1)  (* 1 *)
+  out smc_rsp(t : text2)@pt1              (* 4 *)
 }
 
 direct SMC2Pt2 {
-  out smc_rsp(pt1 : port, t : text)@pt2  (* 2 *)
-  in  pt2@smc_req(t : text)              (* 3 *)
+  out smc_rsp(pt1 : port, t : text1)@pt2  (* 2 *)
+  in  pt2@smc_req(t : text2)              (* 3 *)
 }
 
 direct SMC2Dir {
@@ -22,10 +133,10 @@ direct SMC2Dir {
   Pt2 : SMC2Pt2
 }
 
-functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
+functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
     implements SMC2Dir {
-  subfun Fwd1 = Forwarding.Forw
-  subfun Fwd2 = Forwarding.Forw
+  subfun Fwd1 = Forwarding1.Forw
+  subfun Fwd2 = Forwarding2.Forw
 
   party Pt1 serves SMC2Dir.Pt1 {
     initial state WaitReq {
@@ -34,7 +145,7 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
           if (envport pt2) {
             send Fwd1.D.fw_req
                  (intport Pt2, epdp_port_port_univ.`enc (pt1, pt2))
-            and transition WaitFwd2(pt1, pt2, t).
+            and transition WaitFwd2(pt1, t).
           }
           else { fail. }
         }
@@ -42,7 +153,7 @@ functionality SMC2Real(SMC1 : SMC.SMCDir, SMC2 : SMC.SMCDir)
       end
     }
 
-    state WaitFwd2(pt1 : port, pt2 : port, t : text) {
+    state WaitFwd2(pt1 : port, t : text1) {
       match message with
       | Fwd2.D.fw_rsp(_, _) => {
           send SMC1.Pt1.smc_req(intport Pt2, t)
@@ -133,7 +244,7 @@ functionality SMC2Ideal implements SMC2Dir SMC2IF_to_Sim {
     end
   }
 
-  state WaitSim1(pt1 : port, pt2 : port, t : text) {
+  state WaitSim1(pt1 : port, pt2 : port, t : text1) {
     match message with
     | SMC2IF_to_Sim.sim_rsp => {
         send SMC2Dir.Pt2.smc_rsp(pt1, t)@pt2
@@ -148,7 +259,7 @@ functionality SMC2Ideal implements SMC2Dir SMC2IF_to_Sim {
     | pt2'@SMC2Dir.Pt2.smc_req(t) => {
         if (pt2' = pt2) {
           send SMC2IF_to_Sim.sim_req2
-          and transition WaitSim2(pt1, pt2, t).
+          and transition WaitSim2(pt1, t).
         }
         else { fail. }
       }
@@ -156,7 +267,7 @@ functionality SMC2Ideal implements SMC2Dir SMC2IF_to_Sim {
     end
   }
 
-  state WaitSim2(pt1 : port, pt2 : port, t : text) {
+  state WaitSim2(pt1 : port, t : text2) {
     match message with
     | SMC2IF_to_Sim.sim_rsp => {
         send SMC2Dir.Pt1.smc_rsp(t)@pt1
@@ -174,7 +285,7 @@ functionality SMC2Ideal implements SMC2Dir SMC2IF_to_Sim {
 }
 
 simulator SMC2Sim uses SMC2IF_to_Sim
-          simulates SMC2Real(SMC.SMCIdeal, SMC.SMCIdeal) {
+          simulates SMC2Real(SMC1.SMCIdeal, SMC2.SMCIdeal) {
   initial state WaitReq1 {
     match message with 
     | SMC2IF_to_Sim.sim_req1(pt1, pt2) => {

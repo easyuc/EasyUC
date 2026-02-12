@@ -1,3 +1,7 @@
+uc_requires X.
+uc_clone X as X1.
+uc_clone X as X2.
+
 direct D' {
 in  x@bla()
 out bli()@x
@@ -10,13 +14,6 @@ in  bla()
 out bli()
 }
 
-direct D2' {
-in  x@bla2()
-out bli2()@x
-}
-
-direct D2 {D2:D2'}
-
 adversarial A' {
 in  abla()
 out abli()
@@ -24,23 +21,9 @@ out abli()
 
 adversarial A {A:A'}
 
-adversarial A2' {
-in  abla2()
-out abli2()
-}
+functionality R(F:X2.D) implements D A {
 
-adversarial A2 {A2:A2'}
-
-functionality Q() implements D2 A2' {
-
-  initial state In {
-  match message with *  => {fail.} end
-  }
-}
-
-functionality R(F:D) implements D A {
-
- subfun SFQ=Q
+ subfun SFQ=X1.Q
  
  party P serves D.D A.A {
 
@@ -50,14 +33,7 @@ functionality R(F:D) implements D A {
  }
 }
 
-functionality I() implements D Iio {
-
-  initial state In {
-  match message with * => {fail.} end
-  }
-}
-
-simulator S uses Iio simulates R(I) {
+simulator S uses Iio simulates R(X2.I) {
 
  initial state In {
   match message with Iio.bli => {send Iio.bla and transition II.} end

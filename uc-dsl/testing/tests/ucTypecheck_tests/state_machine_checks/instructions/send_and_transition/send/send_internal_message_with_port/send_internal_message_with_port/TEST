@@ -3,7 +3,7 @@ This test fails because the message G.D.bla shoudn't have a port
 .
 args: testSendInternWithPort.uc
 outcome: failure
-[error: testSendInternWithPort.uc: from line 14 columns 37 to 38]
+[error: testSendInternWithPort.uc: from line 18 columns 37 to 38]
 
 messages to subfunctionalities must not have destination ports
 .

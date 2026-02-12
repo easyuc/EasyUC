@@ -4,7 +4,7 @@ This test gives a fix of the test testSimMsgMatchRealFunDirIO
 .
 args: message_match_adversarial_binding_port.uc
 outcome: failure
-[error: message_match_adversarial_binding_port.uc: from line 45 columns 3 to 4]
+[error: message_match_adversarial_binding_port.uc: from line 40 columns 3 to 4]
 
 message patterns matching adversarial messages may not bind source ports to
 identifiers

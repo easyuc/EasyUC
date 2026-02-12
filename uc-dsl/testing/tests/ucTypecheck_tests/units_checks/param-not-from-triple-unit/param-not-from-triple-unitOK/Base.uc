@@ -1,4 +1,5 @@
 uc_requires Sub.
+uc_clone Sub.
 
 direct D' {
   in x@bla()

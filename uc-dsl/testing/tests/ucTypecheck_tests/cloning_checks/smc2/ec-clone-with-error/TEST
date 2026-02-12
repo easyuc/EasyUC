@@ -1,0 +1,9 @@
+description
+error in EC clone
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC.uc: from line 94 columns 23 to 37]
+
+unknown variable or constant: `epdp_exp_univ''
+.

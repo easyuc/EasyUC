@@ -1,9 +1,12 @@
+uc_requires X.
+uc_clone X.
+
 direct A {
 in x@bla()
 }
 
 direct D {D:A}
 
-functionality R(F1:D) implements D {
+functionality R(F1:X.D) implements D {
  party P serves D.D {initial state I {match message with * => {fail.}end}}
 }

@@ -1,5 +1,6 @@
 description
-
+resolution of test where functionality parameter name is the same as
+an interface
 .
 args: argument_name_same_as_interfaceOK.uc
 outcome:  success

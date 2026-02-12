@@ -1,0 +1,10 @@
+description
+subfunctionalities cloned out of order
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC2.uc: from line 139 columns 17 to 33]
+
+UC clones must be used in order, first by subfunctionality declarations, and
+then by functionality parameter declarations; Forwarding1 was already used
+.

@@ -1,0 +1,10 @@
+description
+params cloned out of order
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC2.uc: from line 136 columns 51 to 62]
+
+UC clones must be used in order, first by subfunctionality declarations, and
+then by functionality parameter declarations; SMC1 was already used
+.

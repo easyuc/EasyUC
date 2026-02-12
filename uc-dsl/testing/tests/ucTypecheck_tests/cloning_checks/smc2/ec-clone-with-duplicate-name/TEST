@@ -1,0 +1,9 @@
+description
+EC clone with duplicated name.
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC.uc: from line 101 columns 1 to 9]
+
+duplicated binding: KeyExpText
+.

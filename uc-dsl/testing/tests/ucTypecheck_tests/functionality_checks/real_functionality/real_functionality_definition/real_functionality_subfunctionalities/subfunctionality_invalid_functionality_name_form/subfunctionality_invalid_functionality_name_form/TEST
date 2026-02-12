@@ -1,9 +1,0 @@
-description
-
-.
-args: subfunctionality_invalid_functionality_name_form.uc
-outcome:failure
-[error: subfunctionality_invalid_functionality_name_form.uc: from line 26 columns 11 to 16]
-
-invalid form for functionality name: A.B.C
-.

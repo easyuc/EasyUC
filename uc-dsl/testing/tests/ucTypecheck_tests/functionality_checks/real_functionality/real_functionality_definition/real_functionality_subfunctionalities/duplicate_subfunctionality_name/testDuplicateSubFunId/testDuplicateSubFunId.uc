@@ -1,3 +1,7 @@
+uc_requires X.
+uc_clone X as X1.
+uc_clone X as X2.
+
 direct D' {
 in x@bla()
 }
@@ -8,21 +12,10 @@ adversarial A {
 in bla()
 }
 
-functionality Q implements D A {
-
-  initial state Is 
-  {
-   match message with
-    * => {fail.}
-   end
-  }
- 
-}
-
 functionality R() implements D {
 
-subfun SF=Q
-subfun SF=Q
+subfun SF=X1.Q
+subfun SF=X2.Q
 
  party P serves D.D {
   initial state Isus 

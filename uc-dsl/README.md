@@ -1,11 +1,10 @@
 UC Domain Specific Language
 ====================================================================
 
-This directory contains a prototype of the implementation of a domain
-specific language (DSL) for expressing functionalities (protocols and
-ideal functionalities) and simulators. The DSL will allow crypto
-theorists to easily write and understand functionalities and
-simulators.
+This directory contains the implementation of a domain specific
+language (DSL) for expressing functionalities (protocols and ideal
+functionalities) and simulators. The DSL will allow crypto theorists
+to easily write and understand functionalities and simulators.
 
 The DSL design was driven by the expression of functionalities and
 simulators in our EasyCrypt architecture for UC.  But it allows
@@ -15,17 +14,19 @@ boilerplate.
 DSL type-checking will catch errors like badly formed messages (e.g.,
 ones with bad source addresses), attempts to send two messages in
 sequence (without first getting control back), or simulators that
-interfere with communication between the environment and adversary. We
-are working on implementing a translator that will turn DSL code into
-code in EasyCrypt's procedural programming language, automatically
-generating message-routing boilerplate.  Security proofs will then be
-carried out in EasyCrypt using the sequence of games approach.
+interfere with communication between the environment and adversary.
+
+We have an interpreter for letting the user experiment with their UC
+designs, and are finalizing the implementation of a translator from
+the UC DSL into code in EasyCrypt's procedural programming language,
+automatically generating message-routing boilerplate.  Security proofs
+will then be carried out in EasyCrypt using the sequence of games
+approach.
 
 Some examples are in the [`examples`](examples) subdirectory,
-including the files in the subdirectory
-[`smc-case-study`](examples/smc-case-study), which contains the
-definitions of the functionalities and simulators of our SMC (secure
-message transmission) case study.
+including the files in the subdirectory [`smc2`](examples/smc2), which
+contains the definitions of the functionalities and simulators of a
+two way SMC (secure message transmission) case study.
 
 The OCaml code for a lexer, parser, typechecker and interpreter for
 the DSL can be found in the subdirectory
@@ -123,6 +124,12 @@ definitions of the theory itself are also made available *without*
 qualification; but that does not apply to the definitions of
 EasyCrypt theories indirectly required by that theory.
 
+The UC DSL has a cloning mechanism that is similar to that of
+EasyCrypt.  This allows files to have parameters and associated
+axioms. The parameters can be instantiated by cloning. In the
+work-in-progress translation into EasyCrypt, all axioms will have to
+be proved to hold.
+
 The `-units` command line option checks that a `.uc` file, and all the
 files that are recursively `uc_required` when it is processed, are
 *units*, where a unit is either:
@@ -137,6 +144,8 @@ files that are recursively `uc_required` when it is processed, are
   (which is not allowed to be a component of the real functionality's
   composite adversarial interface (if any)); the above implies that the
   simulator simulates the real functionality.
+
+In either case, all clones must be used.
 
 The search path for `.uc` and `.ec` files includes the current directory,
 and can be extended with the `-include` (`-I`) option. E.g., `-I foo`
@@ -257,10 +266,7 @@ where `<dir1> <dir2> ...` has been replaced by a sequence of
 directories, inside double quotation marks. E.g., `"foo" "goo"`.
 
 To learn how to use the interpreter, read and experiment with the
-script `testing.uci` in [`smc2`](examples/smc2). A variation of `smc2`
-involving the corruption of a party and private (non-adversarially
-mediated) forwarding can be found in
-[`smc2-extra`](examples/smc2-extra). And an example involving
+script `testing.uci` in [`smc2`](examples/smc2). An example involving
 reentrancy can be found in [`reentrancy`](examples/reentrancy).
 
 Unit Testing

@@ -1,0 +1,12 @@
+description
+faulty axiom
+.
+args:-units SMC2.uc
+outcome:failure
+[error: KeyExchange.uc: from line 55 columns 47 to 48]
+
+no matching operator, named `*', for the following parameters' type:
+  [1]: exp
+  [2]: int
+
+.

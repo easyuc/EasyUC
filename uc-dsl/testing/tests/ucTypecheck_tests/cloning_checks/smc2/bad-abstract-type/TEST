@@ -1,0 +1,9 @@
+description
+bad abstract type declaration
+.
+args:-units SMC2.uc
+outcome:failure
+[error: KeyExchange.uc: from line 27 columns 1 to 5]
+
+a type variable appear at least twice
+.

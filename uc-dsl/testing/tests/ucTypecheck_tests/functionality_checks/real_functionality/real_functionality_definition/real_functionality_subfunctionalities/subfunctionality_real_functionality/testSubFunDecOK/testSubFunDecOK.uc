@@ -1,29 +1,15 @@
-adversarial Adv' {
-in bla()
-}
-
-adversarial Adv {Adv:Adv'}
+uc_requires X.
+uc_clone X.
 
 direct D' {
-
-in x@bla()
+  in x@bla()
 }
 
 direct D {D:D'}
 
-functionality F implements D Adv' {
-
-  initial state Is
-  {
-   match message with
-    | * => { fail. }
-   end
-  }
- }
-
 functionality R() implements D{
 
-subfun SF=F
+subfun SF=X.F
 
  party P serves D.D {
   initial state Is

@@ -4,7 +4,7 @@ but in the definition of simulator S R has argument I
 .
 args: testSimWrongParamNumForSimFun.uc
 outcome:  failure
-[error: testSimWrongParamNumForSimFun.uc: from line 30 columns 33 to 36]
+[error: testSimWrongParamNumForSimFun.uc: from line 26 columns 33 to 38]
 
 wrong number of arguments for functionality
 .

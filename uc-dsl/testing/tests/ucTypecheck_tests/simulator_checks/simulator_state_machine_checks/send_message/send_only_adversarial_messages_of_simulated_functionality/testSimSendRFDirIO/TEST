@@ -4,8 +4,8 @@ out going message path
 .
 args: testSimSendRFDirIO.uc
 outcome: failure
-[error: testSimSendRFDirIO.uc: from line 64 columns 42 to 51]
+[error: testSimSendRFDirIO.uc: from line 42 columns 42 to 51]
 
 message path is not one of the possible outgoing message paths:
-  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli, R.SFQ.A2'.abli2
+  Iio.i2sbla, R.A.A.abli, R.F.Iio.i2sbli
 .

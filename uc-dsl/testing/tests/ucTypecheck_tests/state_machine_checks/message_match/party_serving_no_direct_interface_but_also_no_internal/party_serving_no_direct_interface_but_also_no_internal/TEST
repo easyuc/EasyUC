@@ -4,7 +4,7 @@ internal message either
 .
 args: testPartyServingNoDirectInterfaceButAlsoNoInternal.uc
 outcome: failure
-[error: testPartyServingNoDirectInterfaceButAlsoNoInternal.uc: from line 32 columns 6 to 7]
+[error: testPartyServingNoDirectInterfaceButAlsoNoInternal.uc: from line 35 columns 6 to 7]
 
 no incoming message paths in this state
 .

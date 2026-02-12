@@ -1,6 +1,0 @@
-description
-resolution of test when subfunctionality is not from a singleton unit
-.
-args: -units Base.uc
-outcome: success
-.

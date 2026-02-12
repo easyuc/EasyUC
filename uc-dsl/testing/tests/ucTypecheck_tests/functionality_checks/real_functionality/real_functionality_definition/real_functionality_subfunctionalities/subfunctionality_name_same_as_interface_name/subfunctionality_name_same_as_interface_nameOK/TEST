@@ -1,5 +1,7 @@
 description
 Test resolving subfunctionality name being the same as an interface.
+Note: in the resolution, we show that a subfunctionality can have
+the same name as the functionality itself.
 .
 args: subfunctionality_name_same_as_interface_nameOK.uc
 outcome: success

@@ -3,7 +3,7 @@ description
 .
 args: subfunctionality_required_non-existing.uc
 outcome:failure
-[error: subfunctionality_required_non-existing.uc: from line 15 columns 12 to 17]
+[error: subfunctionality_required_non-existing.uc: from line 17 columns 12 to 18]
 
 functionality does not exist: Req.T
 .

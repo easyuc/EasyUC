@@ -1,0 +1,6 @@
+description
+there is an extra clone, but no units checking
+.
+args:SMC2.uc
+outcome:success
+.

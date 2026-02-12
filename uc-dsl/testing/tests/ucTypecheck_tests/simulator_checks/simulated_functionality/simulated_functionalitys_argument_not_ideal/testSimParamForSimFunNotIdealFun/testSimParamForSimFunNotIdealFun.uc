@@ -1,3 +1,6 @@
+uc_requires X.
+uc_clone X.
+
 direct D' {
 in  x@bla()
 out bli()@x
@@ -10,7 +13,7 @@ in  bla()
 out bli()
 }
 
-functionality R(F:D) implements D {
+functionality R(F:X.D) implements D {
 
  party P serves D.D {
   initial state In {
@@ -19,14 +22,7 @@ functionality R(F:D) implements D {
  }
 }
 
-functionality I() implements D Iio {
-
-  initial state In {
-  match message with * => {fail.} end
-  }
-}
-
-simulator S uses Iio simulates R(R) {
+simulator S uses Iio simulates R(X.R) {
 
   initial state In {
   match message with Iio.* => {fail.} end
