@@ -9,4 +9,5 @@ The files `UCEncoding.ec`, `UCListAux.ec`, `UCListPO.ec`,
 `UCUniv.ec` and `UCBasicTypes.ec` are symbolic links to those files in
 `../Common`.
 
-`UCBasicTypes.ec` is `ec_required` last when processing UC DSL files.
+`UCBasicTypes.ec` is automatically `ec_required` last when `ucdsl`
+processes UC DSL files.

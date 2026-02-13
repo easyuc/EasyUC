@@ -1,1 +1,1 @@
-../../common/UCUniv.ec
+../common/UCUniv.ec

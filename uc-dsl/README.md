@@ -3,7 +3,7 @@ UC Domain Specific Language
 
 This directory contains the implementation of a domain specific
 language (DSL) for expressing functionalities (protocols and ideal
-functionalities) and simulators. The DSL will allow crypto theorists
+functionalities) and simulators. The DSL allows crypto theorists
 to easily write and understand functionalities and simulators.
 
 The DSL design was driven by the expression of functionalities and
@@ -11,7 +11,7 @@ simulators in our EasyCrypt architecture for UC.  But it allows
 expression at a much higher level, avoiding all the message-routing
 boilerplate.
 
-DSL type-checking will catch errors like badly formed messages (e.g.,
+DSL type-checking catches errors like badly formed messages (e.g.,
 ones with bad source addresses), attempts to send two messages in
 sequence (without first getting control back), or simulators that
 interfere with communication between the environment and adversary.
@@ -32,8 +32,8 @@ The OCaml code for a lexer, parser, typechecker and interpreter for
 the DSL can be found in the subdirectory
 [`ucdsl-proj`](ucdsl-proj). It builds upon the EasyCrypt
 implementation, and is distributed under the same software license.
-The software is still under development. The translator into EasyCrypt
-is yet to be written.
+The software is still under development. The implementation of the
+translator into EasyCrypt is work in progress.
 
 Building the UC DSL Tool
 --------------------------------------------------------------------
@@ -45,8 +45,8 @@ Batteries](https://ocaml-batteries-team.github.io/batteries-included/hdoc2/),
 [Bisect_ppx](https://github.com/aantron/bisect_ppx)
 [EasyCrypt](https://github.com/EasyCrypt/easycrypt) and [Proof
 General](https://proofgeneral.github.io).  UC DSL is known to be
-compatible with OCaml Compiler version 5.3.0, Dune 3.20.2 and Why3
-1.8.1. The easiest approach is to start by installing `opam` and then
+compatible with OCaml Compiler version 5.4.0, Dune 3.20.2 and Why3
+1.8.2. The easiest approach is to start by installing `opam` and then
 [installing EasyCrypt](https://github.com/EasyCrypt/easycrypt).  Then
 you must only install `Bisect_ppx`, via the `opam` command: `opam
 install bisect_ppx`.
@@ -109,7 +109,7 @@ Running UC DSL from the Command Line
 
 When run from the command line, `ucdsl` must be invoked on a single UC
 DSL (`.uc`) file, which it will parse and typecheck. Error messages
-and warning are output to the standard error output, and the final
+and warnings are output to the standard error output, and the final
 exit status will be 0 if there are no errors, and 1 otherwise.
 
 When one UC DSL file requires (`uc_require`s) another UC DSL file,
@@ -126,9 +126,9 @@ EasyCrypt theories indirectly required by that theory.
 
 The UC DSL has a cloning mechanism that is similar to that of
 EasyCrypt.  This allows files to have parameters and associated
-axioms. The parameters can be instantiated by cloning. In the
-work-in-progress translation into EasyCrypt, all axioms will have to
-be proved to hold.
+axioms. The parameters can be instantiated by cloning. When UC DSL
+files are translated into EasyCrypt, the user will have to prove
+that these axioms hold.
 
 The `-units` command line option checks that a `.uc` file, and all the
 files that are recursively `uc_required` when it is processed, are
@@ -184,7 +184,7 @@ expression, which is automatically turned into real and ideal worlds.
 One can then select a world, and experiment with it by sending
 messages, playing the role of the UC environment or
 adversary. Assertions in the script can be used to check that an
-excected message is output to the UC environment or adversary at some
+expected message is output to the UC environment or adversary at some
 stage of execution, or that failure happens at some stage, returning
 control to the environment.
 
@@ -192,7 +192,7 @@ Scripts are developed in Emacs, with `ucdsl` running in interactive
 mode as a client of [Proof
 General](https://proofgeneral.github.io). This allows one to step
 forward and backward in an interpretation script, much as one steps
-forward and backward in an EasyCrypt proof. Once developed, a `.uci`
+forward and backward in an EasyCrypt script. Once developed, a `.uci`
 file can be checked in batch mode, by invoking `ucdsl` with the
 `-batch` command line option. In batch mode, any errors or warnings
 are output to the standard error output. If there are no errors,
@@ -280,10 +280,19 @@ building `ucdsl` with code coverage instrumentation turned on).
 UC DSL Prelude
 --------------------------------------------------------------------
 
-The subdirectory [`prelude`](prelude) contains the files of the UC
-DSL Prelude, which are first on the search path when `ucdsl` runs.
-The file `UCBasicTypes.ec` is automatically `ec_required` last
+The subdirectory [`prelude`](prelude) contains the EasyCrypt theories
+of the UC DSL Prelude, which are first on the search path when `ucdsl`
+runs.  The theory `UCBasicTypes.ec` is automatically `ec_required` last
 when processing UC DSL files.
+
+EasyUC Common EasyCrypt Theories
+--------------------------------------------------------------------
+
+The subdirectory [`common`](common) contains EasyCrypt theories that will be
+used in EasyUC proofs involving files generated by the forthcoming UC
+DSL to EasyCrypt translator. Included in these theories are proofs of
+the EasyUC versions of the UC dummy adversary and composition
+theorems.
 
 UC DSL Development
 --------------------------------------------------------------------

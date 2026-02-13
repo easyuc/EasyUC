@@ -1,1 +1,1 @@
-../../common/UCEncoding.ec
+../common/UCEncoding.ec

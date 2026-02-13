@@ -1,1 +1,1 @@
-../../common/UCBasicTypes.ec
+../common/UCBasicTypes.ec
