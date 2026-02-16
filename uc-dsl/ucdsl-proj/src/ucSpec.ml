@@ -17,6 +17,7 @@
 open EcLocation
 open EcSymbols
 open EcParsetree
+
 open UcSpecTypedSpecCommon
 
 (* type bindings *)
@@ -128,7 +129,8 @@ type party_def =
 
 type sub_fun_decl =     (* subfunctionality definition *)
   {id      : psymbol;   (* name of subfunctionality *)
-   fun_qid : pqsymbol}  (* qualified name of ideal functionality *)
+   fun_qid : pqsymbol}  (* qualified name of ideal functionality,
+                           starting from name of clone of its root *)
 
 type fun_body_real =                   (* real functionality body *)
   {sub_fun_decls : sub_fun_decl list;  (* sub-functionalities *)
@@ -145,7 +147,8 @@ let is_real_fun_body (fb : fun_body) : bool =
 
 type fun_param =        (* functionality parameter *)
   {id      : psymbol;   (* name of parameter to functionality *)
-   dir_qid : pqsymbol}  (* qualified name of composite direct interface *)
+   dir_qid : pqsymbol}  (* qualified name of composite direct interface,
+                           starting from name of clone of its root *)
 
 type fun_def =                 (* functionality definition *)
   {id       : psymbol;         (* name of functionality *)
@@ -177,17 +180,31 @@ type def =
   | FunDef   of fun_def    (* functionality *)
   | SimDef   of sim_def    (* simulator *)
 
-(* UC and EasyCrypt requires *)
+(* spec parameters *)
 
-type externals =
+type spec_param =
+  | SP_AbstractTypeDecl of ptydecl located    (* abstract type decl *)
+  | SP_AbstractOpDecl   of poperator located  (* abstract operator decl *)
+  | SP_Axiom            of paxiom located     (* axiom specification *)
+
+(* spec's EC and UC clones *)
+
+type spec_clone =
+  | SC_ECClone of theory_cloning located   (* EC clone *)
+  | SC_UCClone of psymbol *                (* UC clone: the root and *)
+                  theory_cloning located   (* EC clone of "_" ^ root *)
+
+type preamble =
   {uc_requires : psymbol list;           (* require .uc files *)
-   ec_requires : (psymbol * bool) list}  (* require and optionally import
+   ec_requires : (psymbol * bool) list;  (* require and optionally import
                                             .ec files; true means import *)
+   spec_params : spec_param list;        (* parameters to spec *)
+   spec_clones : spec_clone list}        (* ec and uc clones of spec *)
 
 (* overall UC specifications *)
 
 type spec =
-  {externals   : externals;
+  {preamble    : preamble;
    definitions : def list}
 
 (* functionality expression

@@ -1,0 +1,9 @@
+description
+Attempt to use <- in a UC clone.
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC2.uc: from line 100 columns 20 to 22]
+
+parse error
+.

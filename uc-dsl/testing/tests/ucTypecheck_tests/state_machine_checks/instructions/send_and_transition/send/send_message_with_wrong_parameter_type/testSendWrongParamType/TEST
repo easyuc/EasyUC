@@ -4,7 +4,7 @@ but here sender is of type port
 .
 args: testSendWrongParamType.uc
 outcome: failure
-[error: testSendWrongParamType.uc: from line 16 columns 41 to 47]
+[error: testSendWrongParamType.uc: from line 19 columns 41 to 47]
 
 This expression has type
    port

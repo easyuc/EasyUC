@@ -1,0 +1,9 @@
+description
+faulty abstract operator declaration
+.
+args:-units SMC2.uc
+outcome:failure
+[error: SMC.uc: from line 24 columns 37 to 38]
+
+unknown variable or constant: `z'
+.

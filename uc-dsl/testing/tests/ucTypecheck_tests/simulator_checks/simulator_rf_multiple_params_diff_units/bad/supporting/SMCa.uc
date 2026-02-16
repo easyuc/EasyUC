@@ -9,6 +9,9 @@ uc_requires Forwarding KeyExchange.
 
 ec_requires +KeysExponentsAndPlaintexts.
 
+uc_clone Forwarding.
+uc_clone KeyExchange.
+
 (* The composite direct interface has two components, corresponding
    to the two parties of the real functionality. *)
 

@@ -4,7 +4,7 @@ transfer.
 .
 args: testEndsWSaTorFInstAfterITE.uc
 outcome:  failure
-[error: testEndsWSaTorFInstAfterITE.uc: from line 16 columns 34 to 39]
+[error: testEndsWSaTorFInstAfterITE.uc: from line 19 columns 34 to 39]
 
 control transfer by "fail" or "send-and-transition" instruction is only
 allowed at end of message match clause

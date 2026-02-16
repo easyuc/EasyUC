@@ -1,0 +1,11 @@
+We have the good version of the smc2 example, with a couple
+unnatural changes to test features. And then various bad versions.
+
+The unnatural changes are
+
+(1) To make use of how Forwarding is implicitly UC required by
+KeyExchange and SMC.
+
+(2) To have a constant in a file EC cloned in Forwarding, that
+is accessed in SMC2.
+ 

@@ -1,7 +1,0 @@
-description
-resolution of test when subfunctionality is not from a singleton unit
-because its from the same file
-.
-args: -units Base.uc
-outcome: success
-.

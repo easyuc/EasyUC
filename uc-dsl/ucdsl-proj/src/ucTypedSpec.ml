@@ -10,6 +10,8 @@
    Only a subset of formulas can be expressed in our grammar
    (see `expr` of ucParser.mly); we consider these "expressions". *)
 
+open Format
+
 open EcLocation
 open EcUtils
 open EcSymbols
@@ -17,6 +19,7 @@ open EcTypes
 open EcFol
 
 open UcSpecTypedSpecCommon
+open UcPreamblePP
 open UcMessage
 
 (* the term "id" or "identifier" is used in our code for several
@@ -265,6 +268,100 @@ let int_le_op : form =
 
 let envport_id : EcIdent.t = EcIdent.create "envport"
 
+(* substitution of path prefixes in types and formulas
+
+   when using the following functions, none of the paths involved
+   should, when converted to a symbol list, be equal to olds *)
+
+let error_non_EasyUC_type_or_formula () =
+  non_loc_error_message
+  (fun ppf -> fprintf ppf "@[non-EasyUC@ type@ or@ formula@]")
+
+let cond_subst_path_prefix (olds : SL.t) (news : SL.t) (p : EcPath.path)
+      : EcPath.path =
+  let ne_sym_list_to_path (symbs : symbol list) : EcPath.path =
+    EcPath.fromqsymbol (nonempty_qid_to_qsymbol symbs) in
+  let origs = EcPath.tolist p in
+  let rec rem olds origs =
+    match (olds, origs) with
+    | (_,           [])            -> error_non_EasyUC_type_or_formula ()
+    | ([],          _)             -> ne_sym_list_to_path (news @ origs)
+    | (old :: olds, orig :: origs) ->
+        if old = orig then rem olds origs else p in
+  rem olds origs
+
+let cond_subst_path_prefix_in_type (olds : SL.t) (news : SL.t) (ty : ty)
+      : ty =
+  let rec cond_subst_ty (ty : ty) =
+    EcAst.mk_ty (cond_subst_ty_node ty.ty_node)
+  and cond_subst_ty_node (node : ty_node) =
+    match node with
+    | Tglob   _        -> error_non_EasyUC_type_or_formula ()
+    | Tunivar _        -> error_non_EasyUC_type_or_formula ()
+    | Tvar x           -> Tvar x   
+    | Ttuple tys       -> Ttuple (List.map cond_subst_ty tys)
+    | Tconstr (p, tys) ->
+        Tconstr
+        (cond_subst_path_prefix olds news p,
+         List.map cond_subst_ty tys)
+    | Tfun (ty1, ty2)  -> Tfun (cond_subst_ty ty1, cond_subst_ty ty2) in
+  cond_subst_ty ty
+
+let cond_subst_path_prefix_in_form (olds : SL.t) (news : SL.t) (f : form)
+      : form =
+  let rec cond_subst_form (f : form) =
+    EcAst.mk_form (cond_subst_f_node f.f_node)
+    (cond_subst_path_prefix_in_type olds news f.f_ty)
+  and cond_subst_f_node (node : f_node) =
+    match node with
+    | Fquant (q, bnds, f) ->
+        let cond_subst_gty (gty : gty) =
+          match gty with
+          | GTty ty -> EcAst.GTty (cond_subst_path_prefix_in_type olds news ty)
+          | _       -> error_non_EasyUC_type_or_formula () in
+        Fquant
+        (q,
+         List.map
+         (fun (id, gty) -> (id, cond_subst_gty gty))
+         bnds,
+         cond_subst_form f)
+    | Fif (f1, f2, f3)    ->
+        Fif (cond_subst_form f1, cond_subst_form f2, cond_subst_form f3)
+    | Fmatch (f, fs, ty)  ->
+        Fmatch
+        (cond_subst_form f, List.map cond_subst_form fs,
+         cond_subst_path_prefix_in_type olds news ty)
+    | Flet (lpat, f1, f2) ->
+        Flet (cond_subst_lpattern lpat, cond_subst_form f1, cond_subst_form f2)
+    | Fint fzi            -> Fint fzi
+    | Flocal id           -> Flocal id
+    | Fop (p, tys)        ->
+        Fop
+        (cond_subst_path_prefix olds news p,
+         List.map (cond_subst_path_prefix_in_type olds news) tys)
+    | Fapp (f, fs)        ->
+        Fapp (cond_subst_form f, List.map cond_subst_form fs)
+    | Ftuple fs           -> Ftuple (List.map cond_subst_form fs)
+    | Fproj (f, i)        -> Fproj (cond_subst_form f, i)
+    | _                   -> error_non_EasyUC_type_or_formula ()
+   and cond_subst_lpattern (lpat : lpattern) =
+     match lpat with
+     | LSymbol (id, ty)    ->
+         LSymbol (id, cond_subst_path_prefix_in_type olds news ty)
+     | LTuple  sbnds       ->
+         LTuple
+         (List.map
+          (fun (id, ty) -> (id, cond_subst_path_prefix_in_type olds news ty))
+          sbnds)
+     | LRecord (p, osbnds) ->
+         LRecord
+         (cond_subst_path_prefix olds news p,
+          List.map
+          (fun (osbnd, ty) ->
+             (osbnd, cond_subst_path_prefix_in_type olds news ty))
+          osbnds) in
+   cond_subst_form f
+
 (* typed messages and functionality interfaces *)
 
 type message_body_tyd =
@@ -463,20 +560,34 @@ let state_of_party_tyd (pt : party_tyd) (st : symbol) : state_tyd =
 let initial_state_id_of_party_tyd (pt : party_tyd) : symbol =
   initial_state_id_of_states ((unloc pt).states)
 
+(* info of real functionality parameter or subfunctionality
+
+   (root, id) is the name of the composite direct interface (for a
+   parameter) or ideal functionality (for a subfunctionality)
+
+   clone is the clone of root, in the root of the real functionality
+
+   in the case of a parameter, the corresponding argument will
+   be a functionality from the same clone *)
+
+type porsf_info = symbol  (* root *)
+                * symbol  (* id *)
+                * symbol  (* clone of root *)
+
 type real_fun_body_tyd =
-  {params       : (symb_pair * int) IdMap.t;  (* names of composite direct
-                                                 interfaces; index is
-                                                 parameter number *)
-   id_dir_inter : symbol;                     (* name of composite direct
-                                                 interface - with same
-                                                 root *)
-   id_adv_inter : symbol option;              (* optional name of composite
-                                                 adversarial interface -
-                                                 with same root *)
-   sub_funs     : symb_pair IdMap.t;          (* names of ideal
-                                                 functionalities - pair
-                                                 is (root, id) *)
-   parties      : party_tyd IdMap.t}          (* parties *)
+  {params       : (porsf_info * int) IdMap.t;  (* porsf_info of composite direct
+                                                  interfaces; index is
+                                                  parameter number from 0 *)
+   id_dir_inter : symbol;                      (* name of composite direct
+                                                  interface - with same
+                                                  root *)
+   id_adv_inter : symbol option;               (* optional name of composite
+                                                  adversarial interface -
+                                                  with same root *)
+   sub_funs     : porsf_info IdMap.t;          (* porsf_info of ideal
+                                                  functionalities - pair
+                                                  is (root, id) *)
+   parties      : party_tyd IdMap.t}           (* parties *)
 
 type ideal_fun_body_tyd =
   {id_dir_inter : symbol;             (* name of composite direct interface -
@@ -551,7 +662,8 @@ let sub_fun_ord_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : int =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.findi (fun _ (q, _) -> q = subf) bndgs)
 
-let sub_fun_sp_of_real_fun_tyd (ft : fun_tyd) (subf : symbol) : symb_pair =
+let sub_fun_porsf_info_of_real_fun_tyd (ft : fun_tyd)
+    (subf : symbol) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.find subf rfbt.sub_funs
 
@@ -560,10 +672,16 @@ let sub_fun_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let bndgs = IdMap.bindings rfbt.sub_funs in
   fst (List.nth bndgs n)
 
-let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symb_pair =
+let sub_fun_porsf_info_nth_of_real_fun_tyd (ft : fun_tyd)
+    (n : int) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   let bndgs = IdMap.bindings rfbt.sub_funs in
   snd (List.nth bndgs n)
+
+let sub_fun_sp_nth_of_real_fun_tyd (ft : fun_tyd)
+    (n : int) : symb_pair =
+  let (root, id, _) = sub_fun_porsf_info_nth_of_real_fun_tyd ft n in
+  (root, id)
 
 let num_params_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
@@ -577,8 +695,8 @@ let param_name_nth_of_real_fun_tyd (ft : fun_tyd) (n : int) : symbol =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   fst (List.nth (indexed_map_to_list_keep_keys rfbt.params) n)
 
-let id_dir_inter_of_param_of_real_fun_tyd
-    (ft : fun_tyd) (param : symbol) : symb_pair =
+let porsf_info_dir_inter_of_param_of_real_fun_tyd
+    (ft : fun_tyd) (param : symbol) : porsf_info =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   fst (IdMap.find param rfbt.params)
 
@@ -590,7 +708,7 @@ let party_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : party_tyd =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.find pty rfbt.parties
 
-let num_parties_of_real_fun_tyd (ft : fun_tyd) (pty : symbol) : int =
+let num_parties_of_real_fun_tyd (ft : fun_tyd) : int =
   let rfbt = real_fun_body_tyd_of (unloc ft) in
   IdMap.cardinal rfbt.parties
 
@@ -614,16 +732,17 @@ let initial_state_id_of_ideal_fun_tyd (ft : fun_tyd) : symbol =
   initial_state_id_of_states states
 
 type sim_body_tyd =
-  {uses : symbol;                       (* basic adversarial interface
-                                           from ideal functionality - with
-                                           same root *)
-   sims : symbol;                       (* real functionality being
-                                           simulated - with same root *)
-   sims_arg_pair_ids : symb_pair list;  (* arguments to real
-                                           functionality - pairs
-                                           (root, id), naming ideal
-                                           functionalities *)
-   states : state_tyd IdMap.t}          (* state machine *)
+  {uses : symbol;                (* basic adversarial interface
+                                    from ideal functionality - with
+                                    same root *)
+   sims : symbol;                (* real functionality being
+                                    simulated - with same root *)
+   sims_args : porsf_info list;  (* arguments to real
+                                    functionality - triples
+                                    (cloned, id, clone), naming ideal
+                                    functionalities (cloned, id) from
+                                    clone clone *)
+   states : state_tyd IdMap.t}   (* state machine *)
 
 type sim_tyd = sim_body_tyd located  (* simulator *)
 
@@ -631,22 +750,105 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
   let states = (unloc st).states in
   initial_state_id_of_states states
 
+(* information about EC and UC clones *)
+
+type sc_uc_used_by =
+  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality *)
+  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter *)
+
+type sc_uc_clone_info =
+  {sc_uc_as       : symbol;                    (* name of clone *)
+   sc_uc_of       : symbol;                    (* root being cloned *)
+   sc_uc_ppna_fun : string -> string -> ppna;  (* when given s and t, returns
+                                                  ppna for formatting EC
+                                                  expression of UC clone
+                                                  augmented with overriding:
+                                                  op s <- t *)
+   sc_uc_used     : (string *                  (* real funct using clone *)
+                     sc_uc_used_by)            (* how rf uses clone *)
+                    option;
+   sc_uc_loc      : EcLocation.t}
+
+type spec_clone_info =
+  | SCI_EC of ppna              (* ppna for formatting an EC clone *)
+  | SCI_UC of sc_uc_clone_info  (* information about a UC clone *)
+
+let sci_lookup_uc_clone (name : symbol) (scis : spec_clone_info list)
+      : symbol option =
+  let rec lookup scis =
+    match scis with
+    | []          -> None
+    | sci :: scis ->
+        match sci with
+        | SCI_EC _    -> lookup scis
+        | SCI_UC info ->
+            if info.sc_uc_as = name
+            then Some info.sc_uc_of
+            else lookup scis in
+  lookup scis
+
+exception SCIUndefined
+exception SCIAlreadyUsed
+
+let sci_update_uc_clone_usage (name : symbol) (used : string * sc_uc_used_by)
+    (scis : spec_clone_info list)
+      : spec_clone_info list *
+        symbol               *  (* uc_of corresponding to uc_as *)
+        int =                   (* index from 0 of updated element *)
+  let rec update i olds news =
+    match news with
+    | []        -> raise SCIUndefined
+    | nw :: nws ->
+        match nw with
+        | SCI_EC _    -> update (i + 1) (olds @ [nw]) nws
+        | SCI_UC info ->
+            if info.sc_uc_as = name
+            then match info.sc_uc_used with
+                 | None ->
+                     (olds @
+                      [SCI_UC {info with sc_uc_used = Some used}] @
+                      nws,
+                      info.sc_uc_of,
+                      i)
+                 | Some _ -> raise SCIAlreadyUsed
+            else update (i + 1) (olds @ [nw]) nws in
+  update 0 [] scis
+
+let rec sci_unused_first_clone (scis : spec_clone_info list)
+    : (symbol * EcLocation.t) option =
+  match scis with
+  | []          -> None
+  | sci :: scis ->
+      match sci with
+      | SCI_EC _    -> sci_unused_first_clone scis
+      | SCI_UC info ->
+          if Option.is_none info.sc_uc_used
+          then Some (info.sc_uc_as, info.sc_uc_loc)
+          else sci_unused_first_clone scis
+
 (* four identifer pair (more precisely, pairs of symbols, the first of
    which is a root) maps for direct and adversarial interfaces,
    functionalities and simulators; their domains are disjoint; type
    arguments to IdPairMap.t are all located types
 
-   three identifier maps indexed by roots, giving UC and EC
-   requires plus the root's scope *)
+   five identifier maps indexed by roots, giving: UC and EC
+   requires; ppna's for formatting spec parameters of roots;
+   lists of clones of roots; and scopes of roots *)
 
 type maps_tyd =
-  {dir_inter_map : inter_tyd IdPairMap.t;           (* direct interfaces *)
-   adv_inter_map : inter_tyd IdPairMap.t;           (* adversarial interfaces *)
-   fun_map       : fun_tyd IdPairMap.t;             (* functionalities *)
-   sim_map       : sim_tyd IdPairMap.t;             (* simulators *)
-   uc_reqs_map   : (symbol list) IdMap.t;           (* UC requires of roots *)
-   ec_reqs_map   : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
-   ec_scope_map  : EcScope.scope IdMap.t}           (* scopes of roots *)
+  {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
+   adv_inter_map   : inter_tyd IdPairMap.t;           (* adversarial
+                                                         interfaces *)
+   fun_map         : fun_tyd IdPairMap.t;             (* functionalities *)
+   sim_map         : sim_tyd IdPairMap.t;             (* simulators *)
+   uc_reqs_map     : (symbol list) IdMap.t;           (* UC requires of roots *)
+   ec_reqs_map     : ((symbol * bool) list) IdMap.t;  (* EC requires of roots *)
+   spec_params_map : ppna IdMap.t;                    (* ppna's for formatting
+                                                         spec parameters
+                                                         of roots *)
+   spec_clones_map : spec_clone_info list IdMap.t;    (* lists of clones
+                                                         of roots *)
+   ec_scope_map    : EcScope.scope IdMap.t}           (* scopes of roots *)
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =
@@ -828,7 +1030,7 @@ type triple_info =
    ti_comp_dir         : symbol;
    ti_comp_adv_opt     : symbol option;
    ti_if_sim_basic_adv : symbol;
-   ti_sims             : symb_pair list;
+   ti_sims             : porsf_info list;
    ti_num_adv_pis      : int}
 
 type unit_info =
@@ -894,7 +1096,7 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
         ti_comp_dir         = id_dir_inter_of_fun_tyd ift;
         ti_comp_adv_opt     = id_adv_inter_of_fun_tyd rft;
         ti_if_sim_basic_adv = Option.get (id_adv_inter_of_fun_tyd ift);
-        ti_sims             = sbt.sims_arg_pair_ids;
+        ti_sims             = sbt.sims_args;
         ti_num_adv_pis      = num_adv_pis}
 
 let is_basic_adv_of_ideal_fun_of_unit (uior : unit_info) (bas : symbol) : bool =
@@ -913,7 +1115,7 @@ let get_dir_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
     let dir_comp = id_dir_inter_of_fun_tyd ft in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
-    (some |- List.hd |- List.tl |- unloc)
+    (some -| List.hd -| List.tl -| unloc)
     (List.find
      (fun x -> List.hd (unloc x) = dir_comp)
      serves)
@@ -925,7 +1127,7 @@ let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
     let adv_comp = oget (id_adv_inter_of_fun_tyd ft) in
     let party = unloc (party_of_real_fun_tyd ft pty) in
     let serves = party.serves in
-    (some |- List.hd |- List.tl |- unloc)
+    (some -| List.hd -| List.tl -| unloc)
     (List.find
      (fun x -> List.hd (unloc x) = adv_comp)
      serves)
@@ -939,7 +1141,7 @@ let get_adv_sub_inter_of_party_of_real_fun (ft : fun_tyd) (pty : symbol)
 type party_dir_info = (symbol * symbol * int) option
 
 let get_dir_info_of_party_of_real_fun
-    (maps : maps_tyd) (root : symbol) (base : int) (ft : fun_tyd)
+    (maps : maps_tyd) (root : symbol) (ft : fun_tyd)
     (pty : symbol) : party_dir_info =
   match get_dir_sub_inter_of_party_of_real_fun ft pty with
   | None     -> None
@@ -985,7 +1187,7 @@ type party_info = {
 
 let get_info_of_party (maps : maps_tyd) (root : symbol) (base : int)
     (ft : fun_tyd) (pty : symbol) : party_info =
-  let dir_opt = get_dir_info_of_party_of_real_fun maps root base ft pty in
+  let dir_opt = get_dir_info_of_party_of_real_fun maps root ft pty in
   let adv_opt = get_adv_info_of_party_of_real_fun maps root base ft pty in
   let intern_pi = get_internal_pi_of_party_of_real_fun ft pty in
   {pi_pdi = dir_opt; pi_pai = adv_opt; pi_ipi = intern_pi}
@@ -1036,25 +1238,26 @@ let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
   | Some i -> i
 
 (* get the child index (used as the suffix of the address) plus the
-   symb_pair naming the direct composite interface of a parameter or
+   porsf_info of the composite direct interface of a parameter or
    subfunctionality of a real functionality; returns None when top is
-   neither parameter or subfunctionality *)
+   neither parameter nor subfunctionality *)
 
 let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
-    (maps : maps_tyd) (root : symbol) (ft : fun_tyd) (top : symbol)
+    (maps : maps_tyd) (ft : fun_tyd) (top : symbol)
       : (int * symb_pair) option =
   match (try Some (index_of_param_of_real_fun_tyd ft top) with
-             | _ -> None) with
+         | _ -> None) with
   | Some i ->
-      let id_dir = id_dir_inter_of_param_of_real_fun_tyd ft top in
-      Some (i + 1, id_dir)
+      let (root, id, _) =
+        porsf_info_dir_inter_of_param_of_real_fun_tyd ft top in
+      Some (i + 1, (root, id))
   | None   ->
       match (try Some (sub_fun_ord_of_real_fun_tyd ft top) with
              | _ -> None) with
     | Some i ->
-        let sub_fun_sp = sub_fun_sp_of_real_fun_tyd ft top in
-        let sub_fun_ft = IdPairMap.find sub_fun_sp maps.fun_map in
-        let id_dir = (fst sub_fun_sp, id_dir_inter_of_fun_tyd sub_fun_ft) in
+        let (root, id, _) = sub_fun_porsf_info_of_real_fun_tyd ft top in
+        let sub_fun_ft = IdPairMap.find (root, id) maps.fun_map in
+        let id_dir = (root, id_dir_inter_of_fun_tyd sub_fun_ft) in
         Some (i + num_params_of_real_fun_tyd ft + 1, id_dir)
     | None   -> None
 
@@ -1062,11 +1265,14 @@ let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
 
 (* typed functionality expression
 
-   each functionality is qualified by its root file *)
+   each functionality is qualified by its root file
+
+   the path is of the theory the functionality's body should be
+   interpreted in *)
 
 type fun_expr_tyd =
-  | FunExprTydReal  of symb_pair * fun_expr_tyd list
-  | FunExprTydIdeal of symb_pair
+  | FunExprTydReal  of symb_pair * symbol list * fun_expr_tyd list
+  | FunExprTydIdeal of symb_pair * symbol list
 
 let is_real_at_top_fet (fet : fun_expr_tyd) : bool =
   match fet with
@@ -1103,11 +1309,11 @@ let subst_comp_and_drop_root_in_msg_path_u (path : msg_path_u)
     (old_comp : symbol) (new_comp : symbol) : msg_path_u option =
   let {inter_id_path = iip; msg = msg} = path in
   match iip with
-  | [root; comp; sub] ->
+  | [_; comp; sub] ->
       if comp = old_comp
       then Some {inter_id_path = [new_comp; sub]; msg = msg}
       else None
-  | _                 -> None
+  | _              -> None
 
 let subst_comp_and_drop_root_in_sent_msg_expr_ord_tyd
     (sme : sent_msg_expr_ord_tyd) (old_comp : symbol)
@@ -1174,8 +1380,8 @@ let env_adv_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd)
 
 let mode_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : msg_mode =
   match sme with
-  | SMET_Ord ord        -> ord.mode
-  | SMET_EnvAdv env_adv -> Adv
+  | SMET_Ord ord  -> ord.mode
+  | SMET_EnvAdv _ -> Adv
 
 let source_port_of_sent_msg_expr_tyd (sme : sent_msg_expr_tyd) : form =
   match sme with

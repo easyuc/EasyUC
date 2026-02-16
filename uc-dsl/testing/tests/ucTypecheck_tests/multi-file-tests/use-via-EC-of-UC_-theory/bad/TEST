@@ -1,0 +1,10 @@
+description
+test for when a UC___... theory is indirectly used via EasyCrypt
+and it conflicts with one introduced by the typechecker
+.
+args: SMC2.uc
+outcome: failure
+[error:]
+
+theory beginning with "UC_" used via EasyCrypt: UC___KeyExchange
+.

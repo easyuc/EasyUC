@@ -1,3 +1,6 @@
+uc_requires X.
+uc_clone X.
+
 direct A {
 in x@bla()
 }

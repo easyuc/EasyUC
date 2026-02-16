@@ -7,6 +7,11 @@ uc_requires Forwarding SMCa SMCb.
 
 ec_requires +KeysExponentsAndPlaintexts.
 
+uc_clone Forwarding as Forwarding1.
+uc_clone Forwarding as Forwarding2.
+uc_clone SMCa.
+uc_clone SMCb.
+
 direct SMC2Pt1 {
   in  pt1@smc_req(pt2 : port, t : text)  (* 1 *)
   out smc_rsp(t : text)@pt1              (* 4 *)
@@ -24,8 +29,8 @@ direct SMC2Dir {
 
 functionality SMC2Real(SMC1 : SMCa.SMCDir, SMC2 : SMCb.SMCDir)
     implements SMC2Dir {
-  subfun Fwd1 = Forwarding.Forw
-  subfun Fwd2 = Forwarding.Forw
+  subfun Fwd1 = Forwarding1.Forw
+  subfun Fwd2 = Forwarding2.Forw
 
   party Pt1 serves SMC2Dir.Pt1 {
     initial state WaitReq {

@@ -17,6 +17,9 @@ uc_requires Forwarding.
 
 ec_requires +KeysExponentsAndPlaintexts.
 
+uc_clone Forwarding as Forwarding1.
+uc_clone Forwarding as Forwarding2.
+
 (* The composite direct interface has two components, one for each
    of two parties. *)
 
@@ -49,8 +52,8 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
      subfunctionalities must be ideal functionalities *)
 
-  subfun Fw1 = Forwarding.Forw  (* must be qualified *)
-  subfun Fw2 = Forwarding.Forw
+  subfun Fw1 = Forwarding1.Forw  (* must be qualified *)
+  subfun Fw2 = Forwarding2.Forw
 
   (* Party 1 (Pt1) serves the basic direct interface KEDir.Pt1; this
      restricts the messages it can receive/send from/to the

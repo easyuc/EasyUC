@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# check all the UC common EasyCrypt scripts
+
+# usage: check-all-scripts [timeout]
+
+if [ $# -eq 0 ];
+  then echo using default timeout: 2;
+       echo "";
+       timeout=2;
+elif [ $# -eq 1 ];
+  then if [ "$1" -gt 0 ] 2>/dev/null
+       then echo using timeout: $1;
+            echo "";
+            timeout=$1;
+       else echo timeout must be positive integer;
+            exit 1;
+       fi;
+else echo usage check-all-scripts [timeout];
+     exit 1;
+fi;
+
+# delete .eco files in this and sub-directories
+
+find . -name '*.eco' -delete
+
+check() {
+  echo checking $1;
+  if easycrypt -timeout $timeout $1;
+  then echo passed: $1;
+       echo "";
+  else echo failed: $1;
+       echo "";
+       echo "skipping remaining scripts";
+  exit 1;
+  fi;
+}
+
+check UCListAux.ec
+check UCListPO.ec
+check UCEncoding.ec
+check UCUniv.ec
+check UCBasicTypes.ec
+check UCCore.ec
+check UCComposition.ec

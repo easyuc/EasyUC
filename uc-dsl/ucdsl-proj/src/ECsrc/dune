@@ -4,4 +4,4 @@
 
 (menhir
  (modules ecParser)
- (flags --table))
+ (flags --table --unused-token COMMENT))

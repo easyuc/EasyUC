@@ -20,7 +20,13 @@
     "Top"             , TOP         ;
     "adversarial"     , ADVERSARIAL ;
     "and"             , ANDTXT      ;
+    "as"              , AS          ;
+    "assert"          , ASSERT      ;
+    "assumption"      , ASSUMPTION  ;
+    "axiom"           , AXIOM       ;
+    "debug"           , DEBUG       ;
     "direct"          , DIRECT      ;
+    "ec_clone"        , EC_CLONE    ;
     "ec_requires"     , EC_REQUIRES ;
     "elif"            , ELIF        ;
     "else"            , ELSE        ;
@@ -34,15 +40,19 @@
     "hint"            , HINT        ;
     "if"              , IF          ;
     "implements"      , IMPLEM      ;
+    "import"          , IMPORT      ;
     "in"              , IN          ;
+    "include"         , INCLUDE     ;
     "initial"         , INITIAL     ;
     "intport"         , INTPORT     ;
     "let"             , LET         ;
     "match"           , MATCH       ;
     "message"         , MESSAGE     ;
+    "op"              , OP          ;
     "out"             , OUT         ;
     "party"           , PARTY       ;
     "prover"          , PROVER      ;
+    "run"             , RUN         ;
     "send"            , SEND        ;
     "serves"          , SERVES      ;
     "simulates"       , SIMS        ;
@@ -52,15 +62,13 @@
     "then"            , THEN        ;
     "timeout"         , TIMEOUT     ;
     "transition"      , TRANSITION  ;
+    "type"            , TYPE        ;
+    "uc_clone"        , UC_CLONE    ;
     "uc_requires"     , UC_REQUIRES ;
+    "undo"            , UNDO        ;
     "uses"            , USES        ;
     "var"             , VAR         ;
     "with"            , WITH        ;
-    "assert"          , ASSERT      ;
-    "assumption"      , ASSUMPTION  ;
-    "undo"            , UNDO        ;
-    "debug"           , DEBUG       ;
-    "run"             , RUN         ;
   ]
 
   let keywords =
@@ -72,23 +80,22 @@
 
   let _bad_ec_idents =
     ["Pr"; "abbrev"; "abstract"; "admit"; "algebra"; "alias"; "apply";
-     "as"; "assert"; "assumption"; "auto"; "axiom"; "axiomatized";
-     "beta"; "by"; "byequiv"; "byphoare"; "bypr"; "call"; "case";
-     "cbv"; "cfold"; "change"; "class"; "clear"; "clone"; "congr";
-     "conseq"; "const"; "cut"; "debug"; "declare"; "delta"; "do";
-     "done"; "eager"; "elim"; "equiv"; "eta"; "exact"; "exfalso";
-     "export"; "fel"; "fission"; "for"; "for"; "fusion"; "glob";
-     "goal"; "have"; "hoare"; "idtac"; "import"; "include";
-     "inductive"; "inline"; "instance"; "iota"; "is"; "islossless";
-     "kill"; "lemma"; "local"; "logic"; "modpath"; "module"; "move";
-     "notation"; "of"; "op"; "phoare"; "pose"; "pr"; "print";
-     "pragma"; "pred"; "proc"; "progress"; "proof"; "qed"; "rcondf";
-     "rcondt"; "realize"; "reflexivity"; "remove"; "rename"; "replace";
-     "require"; "res"; "return"; "rewrite"; "rnd"; "rwnormal";
-     "search"; "section"; "seq"; "sim"; "simplify"; "skip"; "smt";
-     "sp"; "split"; "splitwhile"; "subst"; "suff"; "swap"; "symmetry";
-     "theory"; "time"; "transitivity"; "trivial"; "try"; "type";
-     "undo"; "unroll"; "while"; "why3"; "wp"; "zeta"]
+     "assert"; "assumption"; "auto"; "axiomatized"; "beta"; "by";
+     "byequiv"; "byphoare"; "bypr"; "call"; "case"; "cbv"; "cfold";
+     "change"; "class"; "clear"; "clone"; "congr"; "conseq"; "const";
+     "cut"; "debug"; "declare"; "delta"; "do"; "done"; "eager";
+     "elim"; "equiv"; "eta"; "exact"; "exfalso"; "export"; "fel";
+     "fission"; "for"; "for"; "fusion"; "glob"; "goal"; "have";
+     "hoare"; "idtac"; "inductive"; "inline"; "instance"; "iota";
+     "is"; "islossless"; "kill"; "lemma"; "local"; "logic"; "modpath";
+     "module"; "move"; "notation"; "of"; "phoare"; "pose"; "pr";
+     "print"; "pragma"; "pred"; "proc"; "progress"; "proof"; "qed";
+     "rcondf"; "rcondt"; "realize"; "reflexivity"; "remove"; "rename";
+     "replace"; "require"; "res"; "return"; "rewrite"; "rnd";
+     "rwnormal"; "search"; "section"; "seq"; "sim"; "simplify";
+     "skip"; "smt"; "sp"; "split"; "splitwhile"; "subst"; "suff";
+     "swap"; "symmetry"; "theory"; "time"; "transitivity"; "trivial";
+     "try"; "undo"; "unroll"; "while"; "why3"; "wp"; "zeta"]
 
   let bad_ec_idents =
     let table = Hashtbl.create 0 in

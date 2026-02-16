@@ -33,19 +33,35 @@ let parse_and_typecheck_file_or_id foid =
               "@[illegal@ recursion@ in@ UC@ requires:@;<1 2>%a@]"
               UcUtils.format_strings_comma (List.rev (uc_root :: !stack)))
       else stack := uc_root :: !stack in
+    let end_scope_duplicated_binding_err s =
+      non_loc_error_message
+      (fun ppf ->
+         Format.fprintf ppf
+         ("@[theory@ beginning@ with@ \"UC_\"@ used@ via@ " ^^
+          "EasyCrypt: %s@]")
+          s) in
     match IdMap.find_opt uc_root (!cache) with
-    | None                      ->
+    | None                     ->
         let (spec, qual_file) = parse_file_or_id foid in
+        let () =
+          UcStackedScopes.require_theory_start ("UC___" ^ uc_root) `Abstract in
         let maps =
           typecheck qual_file
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
         let () = stack := List.tl (!stack) in
+        let () = UcStackedScopes.require_theory_finish ("UC___" ^ uc_root) in
         let cur_scope = UcStackedScopes.current_scope () in
         let () = cache := IdMap.add uc_root (maps, cur_scope) (!cache) in
+        let () =
+          try UcStackedScopes.end_scope () with
+          | EcEnv.DuplicatedBinding s -> end_scope_duplicated_binding_err s in
         maps
     | Some (maps, saved_scope) ->
         let () = stack := List.tl (!stack) in
-        let () = UcStackedScopes.update_current_scope saved_scope in
+        let () = UcStackedScopes.push_scope saved_scope in
+        let () =
+          try UcStackedScopes.end_scope () with
+          | EcEnv.DuplicatedBinding s -> end_scope_duplicated_binding_err s in
         maps in
   parse_and_typecheck foid

@@ -1,6 +1,0 @@
-description
-Test resolving subfunctionality name being the same as an interface.
-.
-args: subfunctionality_invalid_functionality_name_formOK.uc
-outcome: success
-.

@@ -4,7 +4,7 @@ of unit with real functionality, ideal functionality and simulator
 .
 args: -units Base.uc
 outcome: failure
-[error: Base.uc: from line 24 columns 15 to 17]
+[error: Base.uc: from line 25 columns 15 to 17]
 
 composite direct interface Sub.D of parameter Foo of real functionality must
 come from unit with real functionality, ideal functionality and simulator

@@ -1,0 +1,80 @@
+(* testing Main *)
+
+(* see more detailed tests of Comp in Comp-testing.uci *)
+
+load Main.
+(* argument is ideal functionality *)
+functionality Main.MainReal(Comp.CompIdeal).
+
+prover [""].  (* we'll do without SMT solvers *)
+
+var pt : port.
+assumption envport_pt : envport func pt.
+
+(* first experiment with real world *)
+real.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt1)$(func ++ [1]).
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt2)$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* first experiment with ideal world *)
+ideal.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt1)$(func ++ [1]).
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt2)$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* second experiment with real world *)
+real.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt2)$(func ++ [1]).
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt1)$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.
+
+(* second experiment with ideal world *)
+ideal.
+send pt@Main.Dir.D.start$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 2))@Main.Adv.A.resume$func.
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt2)$(func ++ [1]).
+run.
+send ((adv, 3))@Comp.CompIdeal2Sim.out_enabled(Pt1)$(func ++ [1]).
+run.
+assert msg_out
+((func, 1))@Main.Dir.D.ok@pt
+ctrl_env.
+finish.

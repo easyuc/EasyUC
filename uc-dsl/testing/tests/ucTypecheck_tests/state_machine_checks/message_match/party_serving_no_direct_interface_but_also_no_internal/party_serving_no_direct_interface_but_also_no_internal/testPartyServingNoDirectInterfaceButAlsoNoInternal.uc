@@ -1,3 +1,6 @@
+uc_requires Foo.
+uc_clone Foo.
+
 adversarial B {
 in bla()
 }

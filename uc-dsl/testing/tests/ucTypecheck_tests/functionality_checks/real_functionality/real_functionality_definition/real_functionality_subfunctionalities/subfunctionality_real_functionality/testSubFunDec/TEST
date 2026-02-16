@@ -3,7 +3,7 @@ description
 .
 args: testSubFunDec.uc
 outcome: failure
-[error: testSubFunDec.uc: from line 28 columns 11 to 12]
+[error: testSubFunDec.uc: from line 17 columns 11 to 14]
 
-F is not an ideal functionality
+X.F is not an ideal functionality
 .

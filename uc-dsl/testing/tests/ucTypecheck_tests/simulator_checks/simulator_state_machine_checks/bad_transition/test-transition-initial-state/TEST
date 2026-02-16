@@ -3,7 +3,7 @@ Test when simulator transitions back to intial state.
 .
 args: bad.uc
 outcome:  failure
-[error: bad.uc: from line 62 columns 75 to 77]
+[error: bad.uc: from line 28 columns 75 to 77]
 
 simulator cannot transition back to initial state
 .

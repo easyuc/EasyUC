@@ -3,7 +3,7 @@ This test fails because D.D.* is alreadycovered by sender@D.D.bla
 .
 args: testMsgMatchAlreadyCovered.uc
 outcome: failure
-[error: testMsgMatchAlreadyCovered.uc: from line 34 columns 6 to 11]
+[error: testMsgMatchAlreadyCovered.uc: from line 27 columns 6 to 11]
 
 this pattern is covered by previous patterns and would never match, in
 initial state

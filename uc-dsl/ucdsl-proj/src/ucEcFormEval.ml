@@ -516,7 +516,7 @@ let process_delta_when_args_are_addr_literals p tc =
   print_endline "p="; pp_form tc p; pp_form_ty tc p;
 
   print_endline "(tvi, tparams, body, args, dp)";
-  let (tvi, tparams, body, args, dp) =
+  let (_, tparams, body, args, dp) =
     match EcFol.sform_of_form p with
     | EcFol.SFop (p, args) -> begin
         let op = EcEnv.Op.by_path (fst p) env in
@@ -606,7 +606,7 @@ let process_delta_when_args_are_addr_literals p tc =
               if List.for_all is_addr_literal args
               then begin
                 let body  =
-                  EcFol.Tvar.f_subst ~freshen:true (List.map fst tparams)
+                  EcFol.Tvar.f_subst ~freshen:true tparams
                   tvi body in
                 let body  = EcFol.f_app body args topfp.f_ty in
                 try  EcReduction.h_red EcReduction.beta_red hyps body
@@ -734,8 +734,7 @@ let count_hyp_forms (proof : EcCoreGoal.proof) : int =
 ("***RW EXCEPTION***"^(Printexc.to_string e)^(Printexc.get_backtrace()));
     None
  *)
-let try_hyp_rewriting (proof : EcCoreGoal.proof) (p_id : EcIdent.t)
-: EcCoreGoal.proof option =
+let try_hyp_rewriting (proof : EcCoreGoal.proof) : EcCoreGoal.proof option =
   let move_right_simplify proof =
     let proof_a = move_right proof in
     let proof_b = move_simplify proof_a in
@@ -841,16 +840,16 @@ let rotate_hyps (proof : EcCoreGoal.proof) : EcCoreGoal.proof =
     print_endline "END rotate_hyps";
     proof_c
 
-let try_hyp_rewriting_cycle 
-(p_id : EcIdent.t) (proof : EcCoreGoal.proof)  : EcCoreGoal.proof option =
+let try_hyp_rewriting_cycle (proof : EcCoreGoal.proof)
+      : EcCoreGoal.proof option =
   let rec try_hypcyc_r 
   (counter : int) (proof : EcCoreGoal.proof) 
   : EcCoreGoal.proof option 
   = if counter=0 
     then 
-      try_hyp_rewriting proof p_id
+      try_hyp_rewriting proof
     else
-      match try_hyp_rewriting proof p_id with
+      match try_hyp_rewriting proof with
       | Some pr -> Some pr
       | None -> try_hypcyc_r (counter-1) (rotate_hyps proof) 
   in
@@ -873,7 +872,7 @@ let rec try_simp (proof : EcCoreGoal.proof)
     [
       try_rewrite_addr_ops_on_literals;
       try_move_simplify_trivial;
-      try_hyp_rewriting_cycle p_id;
+      try_hyp_rewriting_cycle;
       try_rewriting_hints p_id rw_lems;
     ]
   in
@@ -1080,7 +1079,7 @@ let deconstruct_data_simplify hyps form rw_lems =
   else failwith "Simplification did not reduce formula to the form of ctor applied to data."
   
 
-let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
+let deconstruct_data_eval_not_None p ty_args tyd ty_dt
     hyps form pi rw_lems =
   let sopl = 
     EcInductive.datatype_projectors (p, tyd.EcDecl.tyd_params, ty_dt) 
@@ -1090,7 +1089,7 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
     let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
     let opty =
       EcCoreSubst.Tvar.subst
-      (EcCoreSubst.Tvar.init (List.map fst op.op_tparams) ty_args) op_ret_ty in
+      (EcCoreSubst.Tvar.init op.op_tparams ty_args) op_ret_ty in
     let opf = 
       EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args opty
     in
@@ -1101,7 +1100,7 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
       "let opfo = List.find_opt (fun opf -> smt_op_form_not_None hyps opf form pi) 
       opfl in";
   let sopfo = List.find_opt 
-  (fun (s,opf) -> eval_op_form_not_None hyps opf form pi)
+  (fun (_,opf) -> eval_op_form_not_None hyps opf form pi)
   sopfl in
   print_endline "begin match opfo with";
   match sopfo with
@@ -1150,7 +1149,7 @@ let deconstruct_data
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");*)
-      deconstruct_data_eval_not_None p ty_args tyd ty_dtyo ty_dt
+      deconstruct_data_eval_not_None p ty_args tyd ty_dt
       hyps form pi rw_lems
       end
     | None -> failwith "Only data types can be deconstructed"

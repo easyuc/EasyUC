@@ -1,22 +1,5 @@
-direct X { in pt@hi out bye@pt }
-direct XX {X : X}
-
-adversarial Y { in bye out hi }
-
-functionality SF implements XX Y {
-  initial state IS {
-    match message with
-      pt@XX.X.hi => { send Y.hi and transition NS(pt). }
-    end
-  }
-
-  state NS(pt : port) {
-    match message with
-      Y.bye => { send XX.X.bye@pt and transition NS(pt). }
-    | *     => { fail. }
-    end
-  }
-}
+uc_requires Foo.
+uc_clone Foo.
 
 adversarial B {
 in bla()
@@ -36,7 +19,7 @@ Subio3:E
 }
 
 functionality S() implements D A {
- subfun SF = SF
+ subfun SF = Foo.SF
 
  party P1 serves D.Subio {
   initial state Is 

@@ -2,6 +2,8 @@
 
 open Batteries
 open Format
+
+open EcLocation
 open EcUtils
 open UcMessage
 open UcConfig
@@ -65,15 +67,106 @@ let init () =
 
 let env () = EcScope.env (UcStackedScopes.current_scope ())
 
+let process_type_decl ptyd =
+  try UcStackedScopes.process_type_decl ptyd with
+  | EcScope.TopError(l, exn)  ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ declaration@]"))
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc ptyd)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
+      error_message (loc ptyd)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ declaration@]")
+
+let process_op_decl pop =
+  try UcStackedScopes.process_op_decl pop with
+  | EcScope.TopError(l, exn)  ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ declaration@]"))
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc pop)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
+      error_message (loc pop)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ declaration@]")
+
+let process_axiom pax =
+  try UcStackedScopes.process_axiom pax with
+  | EcScope.TopError(l, exn)  ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ axiom@]"))
+  | EcEnv.DuplicatedBinding s ->
+      error_message (loc pax)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                         ->
+      error_message (loc pax)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ axiom@]")
+
+let process_theory_clone cl =
+  try UcStackedScopes.process_theory_clone cl with
+  | EcScope.TopError(l, exn)         ->
+      (match exn with
+       | EcScope.HiScopeError (_, msg)    ->
+           error_message l
+           (fun ppf -> fprintf ppf "@[error:@ %s@]" msg)
+       | EcTyping.TyError (l, env, tyerr) ->
+           error_message l
+           (fun ppf -> EcUserMessages.TypingError.pp_tyerror env ppf tyerr)
+       | _                                ->
+           error_message l
+           (fun ppf ->
+              fprintf ppf "@[error@ processing@ theory@ clone@]"))
+  | EcThCloning.CloneError (env, e)  ->
+      error_message (loc cl)
+      (fun ppf -> EcUserMessages.CloneError.pp_clone_error env ppf e)
+  | EcEnv.DuplicatedBinding s        ->
+      error_message (loc cl)
+      (fun ppf -> fprintf ppf "@[duplicated@ binding:@ %s@]" s)
+  | _                                ->
+      error_message (loc cl)
+      (fun ppf ->
+         fprintf ppf "@[error@ processing@ theory@ clone@]")
+
 let require id io =
   try UcStackedScopes.require_theory (None, (id, None), io) with
-  | EcScope.TopError (loc, exn) ->
+  | EcScope.TopError (_, exn) ->
       (match exn with
        | EcScope.HiScopeError (_, msg)         ->
            error_message (EcLocation.loc id) 
            (fun ppf ->
               fprintf ppf
-              ("@[EasyCrypt:@ error@ requiring " ^^
+              ("@[EasyCrypt:@ error@ requiring@ " ^^
                "theory:@;<1 2>%s@]")
               msg)
        | EcScope.ImportError (None, name, e)   ->
@@ -92,8 +185,8 @@ let require id io =
        | _                                     ->
            error_message (EcLocation.loc id)
            (fun ppf ->
-              fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]"))
-  | _                           ->
+              fprintf ppf "@[EasyCrypt:@ error@ requiring@ theory@]"))
+  | _                         ->
       error_message (EcLocation.loc id)
       (fun ppf ->
-         fprintf ppf "@[EasyCrypt:@ error@ requiring theory@]")
+         fprintf ppf "@[EasyCrypt:@ error@ requiring@ theory@]")

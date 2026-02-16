@@ -3,7 +3,7 @@ description
 .
 args: message_match_not_from_ideal_functionality_in_initial_state.uc
 outcome:failure
-[error: message_match_not_from_ideal_functionality_in_initial_state.uc: from line 41 columns 5 to 15]
+[error: message_match_not_from_ideal_functionality_in_initial_state.uc: from line 37 columns 22 to 32]
 
 message path is not one of the possible incoming message paths for initial
 state: Iio.i2sbli

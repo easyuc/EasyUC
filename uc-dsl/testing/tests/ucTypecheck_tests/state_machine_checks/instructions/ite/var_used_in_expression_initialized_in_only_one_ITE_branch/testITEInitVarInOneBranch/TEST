@@ -3,7 +3,7 @@ This test fails because k is used before initilization in case of if conditions 
 .
 args: testITEInitVarInOneBranch.uc
 outcome:  failure
-[error: testITEInitVarInOneBranch.uc: from line 17 columns 59 to 60]
+[error: testITEInitVarInOneBranch.uc: from line 19 columns 59 to 60]
 
 expression uses possibly uninitialzed variable: k
 .

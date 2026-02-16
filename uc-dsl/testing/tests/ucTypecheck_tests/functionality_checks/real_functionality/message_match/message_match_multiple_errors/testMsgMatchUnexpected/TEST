@@ -3,7 +3,7 @@ This test fails because f.D.bla is not an incoming message.
 .
 args: testMsgMatchUnexpected.uc
 outcome:  failure
-[error: testMsgMatchUnexpected.uc: from line 40 columns 6 to 13]
+[error: testMsgMatchUnexpected.uc: from line 34 columns 6 to 13]
 
 message path is not one of the possible incoming message paths:
   D.D.blb, D.D.bla, F.D.blj, F.D.bli, X.D.blj, X.D.bli

@@ -3,7 +3,7 @@ This test fails because sender in if(sender) on line 14 is not boolean
 .
 args: testITEcondNotBoolean.uc
 outcome:  failure
-[error: testITEcondNotBoolean.uc: from line 14 columns 31 to 37]
+[error: testITEcondNotBoolean.uc: from line 17 columns 31 to 37]
 
 This expression has type
    port

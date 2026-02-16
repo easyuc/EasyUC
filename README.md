@@ -1,22 +1,26 @@
-Experiments with Universal Composability in EasyCrypt
+Experiments with Universally Composable (UC) Security in EasyCrypt
 ====================================================================
 
-This repository contains experiments in formalizing Universally
-Composable (UC) Security using the
-[EasyCrypt](https://www.easycrypt.info/trac/) proof assistant. This is
-joint work between researchers
+This is the repository of the EasyUC Project, whose aim is to
+mechanize proofs of Universally Composable (UC) Security using the
+[EasyCrypt](https://www.easycrypt.info) proof assistant.
 
-* Ran Canetti (Boston University, canetti@bu.edu)
-* Tomislav Petrovic (RIT Croatia, tomislav@bu.edu)
+The principal designers and implementors of EasyUC are
+
+* Tomislav Petrovic (formerly Boston University, tomislav@bu.edu)
 * [Alley Stoughton](http://alleystoughton.us) (Boston University, stough@bu.edu)
+
+and the initial development of EasyUC was done in collaboration with
+
 * [Mayank Varia](https://www.mvaria.com) (Boston University, varia@bu.edu)
+* Ran Canetti (Boston University, canetti@bu.edu)
 
-with the assistance of
+Contributions to EasyUC were also made by:
 
-* [Megan Chen](https://cs-people.bu.edu/megchen/)
-  (Boston University, megchen@bu.edu)
+* [Megan Chen](https://meganchen.xyz)
+  (Aarhus University, megchen@bu.edu)
 * [Tarakaram Gollamudi](https://tarakaramg.github.io)
-  (Boston College, gollamudi.ram@gmail.com)
+  (gollamudi.ram@gmail.com)
 * [Uğur Y. Yavuz](https://www.uguryav.uz) (Boston University, uyyavuz@bu.edu)
 
 In our architecture, functionalities (real protocols, or ideal
@@ -44,7 +48,7 @@ UC Domain Specific Language
 We have designed and implemented a parser, typechecker and interpreter
 for a [domain specific language (DSL)](../master/uc-dsl) for
 expressing functionalities (protocols and ideal functionalities) and
-simulators. The DSL will allow crypto theorists to easily write and
+simulators. The DSL allows crypto theorists to easily write and
 understand functionalities and simulators.  Its design was driven by
 the expression of functionalities and simulators in our EasyCrypt
 architecture for UC.  But it allows expression at a much higher level,

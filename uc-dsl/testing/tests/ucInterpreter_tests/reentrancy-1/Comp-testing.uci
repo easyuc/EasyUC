@@ -1,0 +1,402 @@
+(* testing Comp *)
+
+load Comp.
+functionality Comp.CompReal.
+
+prover [""].  (* we'll do without SMT solvers *)
+
+var n1 : int.
+var n2 : int.
+var pt1 : port.
+var pt2 : port.
+assumption envport_pt1 : envport func pt1.
+assumption envport_pt2 : envport func pt2.
+
+(* first experiment with real world *)
+real.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+finish.
+
+(* second experiment with real world *)
+real.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+finish.
+
+(* third experiment with real world *)
+real.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+finish.
+
+(* fourth experiment with real world
+
+   includes some progressless suspend/resume cycles *)
+real.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert fail_out.
+(* resuming Pt1 resulted in failure - it is only waiting for Fwd2 *)
+send env_root_port@_@adv_root_port.
+step.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert fail_out.
+(* resuming Pt2 resulted in failure - it is only waiting for Fwd1 *)
+send env_root_port@_@adv_root_port.
+step.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+finish.
+
+(* corresponding experiments with ideal world - literally
+   the same except for "real" -> "ideal" *)
+
+(* first experiment with real world *)
+ideal.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+finish.
+
+(* second experiment with real world *)
+ideal.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+finish.
+
+(* third experiment with real world *)
+ideal.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+finish.
+
+(* fourth experiment with real world
+
+   includes some progressless suspend/resume cycles *)
+ideal.
+send pt2@Comp.CompDir.Pt2.req(n2)$func.
+run.
+assert msg_out
+((func, 2))@Comp.CompAdv.Pt2.suspend@((adv, 3))
+ctrl_adv.
+send adv_root_port@_@env_root_port.
+run.
+assert msg_out
+adv_root_port@_@env_root_port
+ctrl_env.
+send pt1@Comp.CompDir.Pt1.req(n1)$func.
+run.
+assert msg_out
+((func, 1))@Comp.CompAdv.Pt1.suspend@((adv, 2))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert msg_out
+((func ++ [1], 1))@FwdSched.FwdSchedAdv.req@((adv, 4))
+ctrl_adv.
+send ((adv, 2))@Comp.CompAdv.Pt1.resume$func.
+run.
+assert fail_out.
+(* resuming Pt1 resulted in failure - it is only waiting for Fwd2 *)
+send env_root_port@_@adv_root_port.
+step.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert msg_out
+((func ++ [2], 1))@FwdSched.FwdSchedAdv.req@((adv, 5))
+ctrl_adv.
+send ((adv, 5))@FwdSched.FwdSchedAdv.ok$(func ++ [2]).
+run.
+assert msg_out
+((func, 1))@Comp.CompDir.Pt1.rsp(pt2, n1 + `|n2| - 1)@pt1
+ctrl_env.
+send env_root_port@_@adv_root_port.
+run.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 3))@Comp.CompAdv.Pt2.resume$func.
+run.
+assert fail_out.
+(* resuming Pt2 resulted in failure - it is only waiting for Fwd1 *)
+send env_root_port@_@adv_root_port.
+step.
+assert msg_out
+env_root_port@_@adv_root_port
+ctrl_adv.
+send ((adv, 4))@FwdSched.FwdSchedAdv.ok$(func ++ [1]).
+run.
+assert msg_out
+((func, 2))@Comp.CompDir.Pt2.rsp(pt1, n2 + `|n1| + 1)@pt2
+ctrl_env.
+finish.

@@ -8,12 +8,12 @@ description
 .
 args: -I supporting SMC2.uc
 outcome: failure
-[error: SMC2.uc: from line 225 columns 14 to 44]
+[error: SMC2.uc: from line 230 columns 14 to 44]
 
 message path is not one of the possible outgoing message paths:
   SMC2IF_to_Sim.sim_rsp,
-  SMC2Real.Fwd1.FwAdv.fw_obs,
-  SMC2Real.Fwd2.FwAdv.fw_obs,
   SMC2Real.SMC1.SMC2Sima.sim_req,
-  SMC2Real.SMC2.SMC2Simb.sim_req
+  SMC2Real.SMC2.SMC2Simb.sim_req,
+  SMC2Real.Fwd1.FwAdv.fw_obs,
+  SMC2Real.Fwd2.FwAdv.fw_obs
 .

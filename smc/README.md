@@ -9,8 +9,7 @@ patterns are handled is at least part of the problem. At this point,
 it doesn't seem worthwhile to update the proof.  Instead we are
 working toward a better UC in EasyCrypt methodology, as the original
 proof was too laborious to scale up anyway. This new methodology will
-involve translation from the UC DSL, and you can see work-in-progress
-in smc-next.*
+involve translation from the UC DSL to EasyCrypt.*
 
 We formalized the proof of the UC security of secure message
 communication (SMC) using a one-time pad that's agreed using
