@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# assumes GNU diff is installed using homebrew; change the
+# gnudiff variable as needed
+
+# running
+#
+# easyuc-merge NEW OLD
+#
+# merges file NEW with OLD, putting the result in NEW, and removing
+# OLD
+#
+# the user is asked to approve the changes to files
+#
+# the new and old differences are marked in the result; search for
+#
+#   <<<<< old text <<<<<
+#   >>>>> new text >>>>>
+#   == end of old new ==
+
+# running
+#
+# easyuc-marge NEW
+#
+# is as above, except NEW~ is used as OLD
+
+gnudiff=/opt/homebrew/bin/diff
+
+tmp=/tmp/easyuc-merge-$$
+
+rm -rf $tmp
+
+if [ $# -eq 2 ];
+  then new=$1;
+       old=$2;
+elif [ $# -eq 1 ];
+  then if [ -r $1~ ];
+       then new=$1;
+            old=$1~;
+       else echo "file $1~ does not exist or is not readable";
+            exit 1;
+       fi;
+else echo 'usage: easyuc-merge OLD NEW';
+     echo or;
+     echo 'usage: easyuc-merge OLD';
+     exit 1;
+fi
+
+$gnudiff --old-group-format='<<<<< old text <<<<<
+%<==== end of old ====
+' \
+--new-group-format='>>>>> new text >>>>>
+%>==== end of new ====
+' \
+--unchanged-group-format='%=' \
+--changed-group-format='<<<<< old text <<<<<
+%<>>>>> new text >>>>>
+%>== end of old new ==
+' $old $new > $tmp
+mv -i $tmp $new
+rm -i $old
