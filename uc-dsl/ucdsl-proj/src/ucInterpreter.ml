@@ -2485,16 +2485,16 @@ let rw_step_send_and_transition_from_real_fun_party (c : config_real_running)
     | [comp; sub] -> (comp, sub)
     | _           -> failure "should not happen" in
   let ft = IdPairMap.find fun_sp c.maps.fun_map in
-  match get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
+  match get_child_index_and_comp_inter_porsfi_of_param_or_sub_fun_of_real_fun
         c.maps ft comp with
   | None                   ->
       rw_step_send_and_transition_from_real_fun_party_to_env_or_adv
       c pi dbs rel base fun_sp ft pty_id iip msg msg_args port_form new_rws
       comp sub
-  | Some (child_i, dir_sp) ->
+  | Some (child_i, (root, id, _)) ->
       rw_step_send_and_transition_from_real_fun_party_to_arg_or_sub_fun
       c pi dbs rel fun_sp ft pty_id iip msg msg_args port_form
-      new_rws sub child_i dir_sp
+      new_rws sub child_i (root, id)
 
 let rw_step_send_and_transition (c : config_real_running)
     (path_subst : form -> form) (pi : prover_infos)

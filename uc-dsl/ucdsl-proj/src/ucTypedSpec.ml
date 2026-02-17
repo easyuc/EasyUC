@@ -868,18 +868,18 @@ type msg_mode =  (* message mode *)
   | Dir
   | Adv
 
-let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (top : symbol)
+let get_inter_tyd_mode (maps : maps_tyd) (root : symbol) (id : symbol)
       : (msg_mode * inter_tyd) option =
-  match IdPairMap.find_opt (root, top) maps.dir_inter_map with
+  match IdPairMap.find_opt (root, id) maps.dir_inter_map with
   | None    ->
-      (match IdPairMap.find_opt (root, top) maps.adv_inter_map with
+      (match IdPairMap.find_opt (root, id) maps.adv_inter_map with
        | None    -> None
        | Some it -> Some (Adv, it))
   | Some it -> Some (Dir, it)
 
-let get_inter_tyd (maps : maps_tyd) (root : symbol) (top : symbol)
+let get_inter_tyd (maps : maps_tyd) (root : symbol) (id : symbol)
       : inter_tyd option =
-  match get_inter_tyd_mode maps root top with
+  match get_inter_tyd_mode maps root id with
   | None         -> None
   | Some (_, it) -> Some it
 
@@ -1239,26 +1239,25 @@ let get_pi_of_sub_interface (maps : maps_tyd) (root : symbol)
 
 (* get the child index (used as the suffix of the address) plus the
    porsf_info of the composite direct interface of a parameter or
-   subfunctionality of a real functionality; returns None when top is
+   subfunctionality of a real functionality; returns None when id is
    neither parameter nor subfunctionality *)
 
-let get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
-    (maps : maps_tyd) (ft : fun_tyd) (top : symbol)
-      : (int * symb_pair) option =
-  match (try Some (index_of_param_of_real_fun_tyd ft top) with
+let get_child_index_and_comp_inter_porsfi_of_param_or_sub_fun_of_real_fun
+    (maps : maps_tyd) (ft : fun_tyd) (id : symbol)
+      : (int * porsf_info) option =
+  match (try Some (index_of_param_of_real_fun_tyd ft id) with
          | _ -> None) with
   | Some i ->
-      let (root, id, _) =
-        porsf_info_dir_inter_of_param_of_real_fun_tyd ft top in
-      Some (i + 1, (root, id))
+      let porsfi = porsf_info_dir_inter_of_param_of_real_fun_tyd ft id in
+      Some (i + 1, porsfi)
   | None   ->
-      match (try Some (sub_fun_ord_of_real_fun_tyd ft top) with
+      match (try Some (sub_fun_ord_of_real_fun_tyd ft id) with
              | _ -> None) with
     | Some i ->
-        let (root, id, _) = sub_fun_porsf_info_of_real_fun_tyd ft top in
+        let (root, id, clone) = sub_fun_porsf_info_of_real_fun_tyd ft id in
         let sub_fun_ft = IdPairMap.find (root, id) maps.fun_map in
-        let id_dir = (root, id_dir_inter_of_fun_tyd sub_fun_ft) in
-        Some (i + num_params_of_real_fun_tyd ft + 1, id_dir)
+        let id = id_dir_inter_of_fun_tyd sub_fun_ft in
+        Some (i + num_params_of_real_fun_tyd ft + 1, (root, id, clone))
     | None   -> None
 
 (* Interpreter User Input *)
