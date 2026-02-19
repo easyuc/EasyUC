@@ -3163,6 +3163,9 @@ interleave_info:
 | PROC REWRITE side=side? pos=codepos SLASHEQ
     { Pprocrewrite (side, pos, `Simpl) }
 
+| HOARE SPLIT
+    { Phoaresplit }
+
 | IDASSIGN o=codepos x=lvalue_var
     { Prwprgm (`IdAssign (o, x)) }
 
@@ -3637,8 +3640,8 @@ clone_override:
 | MODULE TYPE x=uqident mode=loc(opclmode) y=uqident
    { (x, PTHO_ModTyp (y, unloc mode)) }
 
-| THEORY x=uqident mode=loc(opclmode) y=uqident
-   { (x, PTHO_Theory (y, unloc mode)) }
+| THEORY x=uqident mode=loc(opclmode) y=uqident renames=brace(clone_rename)?
+   { (x, PTHO_Theory (y, unloc mode, odfl [] renames)) }
 
 realize:
 | REALIZE x=qident
