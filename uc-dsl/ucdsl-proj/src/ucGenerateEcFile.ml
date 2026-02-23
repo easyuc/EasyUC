@@ -73,12 +73,12 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
   let sf = Format.get_str_formatter () in
   let uc_reqs = IdMap.find(root) mt.uc_reqs_map in
   if List.is_empty uc_reqs  then () else
-    Format.fprintf sf "@[require%a.@]@.@." (fun fs reqs->
+    Format.fprintf sf "@[require%a.@]@.@." (fun _ reqs->
        List.iter (fun s ->
          Format.fprintf sf "@ %s" (uc_name s)) reqs) uc_reqs;
 
   let ec_reqs = IdMap.find root mt.ec_reqs_map in
-  let ec_req_imp, ec_req = List.partition (fun (s,b) -> b) ec_reqs in
+  let ec_req_imp, ec_req = List.partition (fun (_,b) -> b) ec_reqs in
   let ec_req_imp = List.filter (fun (s,_) -> s<>"UCBasicTypes") ec_req_imp in
   let print sf reqs = List.iter (fun (s,_) ->
                             Format.fprintf sf "@ %s" s) reqs
@@ -95,8 +95,12 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
 
   Format.fprintf sf "clone UCComposition as UC_Composition.@.@.";
 
-    let ui = unit_info_of_root mt root in
-    begin match ui with
+  let sp_ppna = IdMap.find(root) mt.spec_params_map in
+  Format.fprintf sf "%t@.@." sp_ppna;
+
+  let ui = unit_info_of_root mt root in
+  begin
+    match ui with
     | UI_Singleton _ ->
        Format.fprintf sf "op %s : int.@.@." adv_if_pi_op_name;
        Format.fprintf sf "axiom %s : 0 < %s.@.@."
@@ -105,6 +109,8 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
        Format.fprintf sf "op %s : int.@.@." adv_pi_begin_op_name;
        Format.fprintf sf "axiom %s_gt0 : 0 < %s.@.@."
          adv_pi_begin_op_name adv_pi_begin_op_name;
+       Format.fprintf sf "@.op %s : int = %s.@.@."
+         adv_if_pi_op_name adv_pi_begin_op_name;
        let rf = IdPairMap.find (root,ti.ti_real) mt.fun_map in
        let pinfo = get_info_of_real_func mt root 0 rf in
        IdMap.iter (fun ptname ptinfo ->
@@ -115,6 +121,36 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
               (adv_pt_pi_op_name ptname) adv_pi_begin_op_name ptadvpi
          ) pinfo;
        Format.fprintf sf "@.";
+       let sci = IdMap.find(root) mt.spec_clones_map in
+       let papi0 = string_of_int ti.ti_num_adv_pis in
+       let papi = List.fold_left (fun papi sci ->
+                    match sci with
+                    | SCI_EC ppna ->
+                       Format.fprintf sf "%t@.@." ppna;
+                      papi
+                    | SCI_UC suci ->
+                      match suci.sc_uc_used with
+                      | None -> papi
+                      | Some (_,suub) ->
+                        match suub with
+                        | SC_UC_SubFun n ->
+                          let isf_adv_pi = get_adv_pi_of_nth_sub_fun_of_real_fun
+                            mt root 0 rf n in
+                          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^
+                                                   (string_of_int isf_adv_pi) in
+                          let ppna = suci.sc_uc_ppna_fun
+                                       adv_if_pi_op_name adv_pi_begin_str in
+                          Format.fprintf sf "%t@.@." ppna;
+                          papi
+                        | SC_UC_Param _ ->
+                           let adv_pi_begin_str = adv_pi_begin_op_name^" + "^
+                                                    papi in
+                           let ppna = suci.sc_uc_ppna_fun
+                                        adv_pi_begin_op_name adv_pi_begin_str in
+                           Format.fprintf sf "%t@.@." ppna;
+                           papi^" + "^suci.sc_uc_as^"."^adv_pi_num_op_name
+                    ) papi0 sci in
+(*       
        let nsf = num_sub_funs_of_real_fun_tyd rf in
        for n = 0 to nsf-1 do
          let isf_name = sub_fun_name_nth_of_real_fun_tyd rf n in
@@ -125,13 +161,12 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
          let root = fst (sub_fun_sp_nth_of_real_fun_tyd rf n) in
          clone_singleton_unit sf root isf_name adv_pi_begin_str
        done;
-       Format.fprintf sf "@.op %s : int = %s.@.@."
-         adv_if_pi_op_name adv_pi_begin_op_name;
+       
        let np = num_params_of_real_fun_tyd rf in
        let papi : string ref = ref (string_of_int ti.ti_num_adv_pis) in
        for n = 0 to np-1 do
          let pname = param_name_nth_of_real_fun_tyd rf n in
-         let r,_ = id_dir_inter_of_param_of_real_fun_tyd rf pname in
+         let r,_,_ = porsf_info_dir_inter_of_param_of_real_fun_tyd rf pname (* TODO id_dir_inter_of_param_of_real_fun_tyd rf pname*) in 
          let rui = unit_info_of_root mt r in
          let adv_pi_begin_str = adv_pi_begin_op_name^" + "^(!papi) in
          match rui with
@@ -144,14 +179,14 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
               alias_apb adv_pi_begin_str;
             clone_triple_unit sf r pname alias_apb;
             papi := !papi^" + "^pname^"."^adv_pi_num_op_name
-       done;
-       Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name !papi
-    end ;
+       done;*)
+       Format.fprintf sf "op %s : int = %s.@.@." adv_pi_num_op_name papi
+       end;
   Format.flush_str_formatter ()
 
 
 let dir_int_internals
-(mt : maps_tyd) (root : string) (ft : fun_tyd) : symb_pair IdMap.t =
+(mt : maps_tyd) (ft : fun_tyd) : symb_pair IdMap.t =
   let fbt = EcLocation.unloc ft in
   if is_ideal_fun_body_tyd  fbt
   then IdMap.empty
@@ -162,11 +197,12 @@ let dir_int_internals
     let pms = indexed_map_to_list_keep_keys rfbt.params in
     let pm_nms = fst (List.split pms) in
     let nms = sf_nms @ pm_nms in
-    List.fold_left (fun ret nm ->
+    let ret = List.fold_left (fun ret nm ->
       let dir_int_sp = snd (EcUtils.oget
-        (get_child_index_and_comp_inter_sp_of_param_or_sub_fun_of_real_fun
-          mt root ft nm)) in
-      IdMap.add nm dir_int_sp ret) IdMap.empty nms
+        (get_child_index_and_comp_inter_porsfi_of_param_or_sub_fun_of_real_fun
+          mt ft nm)) in (*TODO check drop root arg*)
+      IdMap.add nm dir_int_sp ret) IdMap.empty nms in
+    IdMap.map (fun (_,p2,p3) -> (p3,p2)) ret (*TODO ret*)
 
 let adv_int_simulated
 (mt : maps_tyd) (root : string) (st : sim_tyd) : symb_pair IdPairMap.t =
@@ -183,7 +219,7 @@ let adv_int_simulated
   let sf_nmifs = IdMap.bindings rfbt.sub_funs in
   let pms = indexed_map_to_list_keep_keys rfbt.params in
   let pm_nms = fst (List.split pms) in
-  let pm_nmifs = List.combine pm_nms sbt.sims_arg_pair_ids in
+  let pm_nmifs = List.combine pm_nms sbt.sims_args(*TODO _pair_ids*) in
   let nmifs = sf_nmifs @ pm_nmifs in
   List.fold_left (fun ret nmif ->
       let ifun = IdPairMap.find (snd nmif) mt.fun_map in
@@ -197,7 +233,7 @@ let adv_int_simulated
         end
       else
         ret
-    ) ret nmifs
+    ) ret (List.map (fun (s,(_,p2,p3))->(s,(p3,p2))) nmifs)(*TODO nmifs*)
 
 let gen_maps (mt : maps_tyd) : maps_gen =
   let scope (root : string) =
@@ -223,7 +259,7 @@ let gen_maps (mt : maps_tyd) : maps_gen =
 
   let fm = IdPairMap.fold (fun sp ft fm ->
     let root, id = sp in
-    let dii = dir_int_internals mt root ft in
+    let dii = dir_int_internals mt ft in
     let rapm =
       if is_real_fun_tyd ft
       then Some (make_rf_addr_port_maps mt root ft)

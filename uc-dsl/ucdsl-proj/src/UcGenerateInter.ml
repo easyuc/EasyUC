@@ -67,14 +67,24 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
     match EcEnv.Op.lookup_opt qepdp env with
     | Some (pth, t) -> pth , t 
     | None ->
-       let qbase = (["Top";"UCBasicTypes"], snd qepdp) in
-       match EcEnv.Op.lookup_opt qbase env with
-       | Some (pth, t) -> pth , t 
-       | None ->
-         let qbase = (["Top";"UCEncoding"], snd qepdp) in
-         match EcEnv.Op.lookup_opt qbase env with
-         | Some (pth, t) -> pth , t 
-         | None ->
+      let ue = EcUnify.UniEnv.create None in
+      let pform = UcUtils.dummyloc (EcParsetree.PFident
+                  (UcUtils.dummyloc ([],snd qepdp), None)) in
+      try
+        let form = EcTyping.trans_form_opt env ue pform None in
+        match form.f_node with
+        | Fop (pth,_) -> let t = EcEnv.Op.by_path pth env in pth,t
+        | _ -> failure ("trying to find by name failed")
+      with 
+      | _ ->
+        let qbase = (["Top";"UCBasicTypes"], snd qepdp) in
+        match EcEnv.Op.lookup_opt qbase env with
+        | Some (pth, t) -> pth , t 
+        | None ->
+          let qbase = (["Top";"UCEncoding"], snd qepdp) in
+          match EcEnv.Op.lookup_opt qbase env with
+          | Some (pth, t) -> pth , t 
+          | None ->
             let qbase = (["Top";"UCUniv"], snd qepdp) in
             match EcEnv.Op.lookup_opt qbase env with
             | Some (pth, t) -> pth , t 

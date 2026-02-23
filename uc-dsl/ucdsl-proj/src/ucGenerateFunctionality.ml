@@ -1079,7 +1079,11 @@ let print_params_FUNC ppf params : unit =
       Format.fprintf ppf "@[}@]@;"
     done;
     Format.fprintf ppf "@[return %s;@]@;}@;" r
- 
+
+  let todo_paramsi (newparams : (porsf_info * int) IdMap.t) : (symb_pair * int) IdMap.t =
+    IdMap.map (fun ((pi1,pi2,pi3),i) ->((pi1,pi3),i) ) newparams
+  let todo_params (newparams : porsf_info  IdMap.t) : symb_pair IdMap.t =
+    IdMap.map (fun (pi1,pi2,pi3) ->(pi1,pi3)) newparams
 
 let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
@@ -1089,7 +1093,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf ppf "@[module %s %a : FUNC = {@]@;<0 2>@[<v>"
     (uc_name id) print_params_FUNC rfbt.params;
   print_vars ppf sc rfbt.parties;
-  print_proc_init ppf sc rfbt.params rfbt.sub_funs rfbt.parties;
+  print_proc_init ppf sc (todo_paramsi rfbt.params) (todo_params rfbt.sub_funs) rfbt.parties;
   IdMap.iter (fun (pn : string) (pt : party_tyd) ->
       let states = (EcLocation.unloc pt).states in
       let sn = (state_name_pt pn) in
@@ -1097,7 +1101,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
       print_mmc_procs sc root mbmap ppf states sn dii IdPairMap.empty (Some pn) "";
       print_proc_parties sc root id mbmap ps sn dii ppf states (Some pn)
   ) rfbt.parties;
-  print_proc_invoke ppf sc rapm rfbt.params rfbt.sub_funs rfbt.parties;
+  print_proc_invoke ppf sc rapm (todo_paramsi rfbt.params) (todo_params rfbt.sub_funs) rfbt.parties;
   Format.fprintf ppf "@]@\n}.";
   ()
 
@@ -1114,7 +1118,7 @@ let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
     rest_module_name print_params_FUNC rest_params;
   let module_pfx = (uc_name id)^"." in
   print_proc_init ppf sc ~module_pfx:module_pfx
-    rest_params rfbt.sub_funs rfbt.parties;
+    (todo_paramsi rest_params) (todo_params rfbt.sub_funs) rfbt.parties;
   IdMap.iter (fun (pn : string) (pt : party_tyd) ->
       let states = (EcLocation.unloc pt).states in
       let sn = (state_name_pt pn) in
@@ -1125,7 +1129,7 @@ let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
         ppf states (Some pn) ~pfx:module_pfx
   ) rfbt.parties;
   print_proc_invoke ppf sc ~module_pfx:module_pfx
-    rapm rest_params rfbt.sub_funs rfbt.parties;
+    rapm (todo_paramsi rest_params) (todo_params rfbt.sub_funs) rfbt.parties;
   Format.fprintf ppf "@]@\n}.";
   ()
 
@@ -2077,7 +2081,7 @@ apply (%s.%s_RFRP_IF_advantage
 by apply %s.disjoint_in_guard_with_all_implies_disjoint_add_rest_with_change. 
 qed.@;@;"
     (rest_composition_clone i)
-    pmth (fst (List.nth (indexed_map_to_list rfbt.params) (i-1)))
+    pmth (fst (List.nth (indexed_map_to_list (todo_paramsi rfbt.params)) (i-1)))
     (compenv i)
     (sim_stack rfbt (i-1))
     (rest_composition_clone i)
