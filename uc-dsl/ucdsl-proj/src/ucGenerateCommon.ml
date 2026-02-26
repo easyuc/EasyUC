@@ -507,7 +507,7 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
     party_int_port_id = pipi;
   }
 
-let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
+let get_msg_info (mp : msg_path) (dii : porsf_info IdMap.t)
       (ais : symb_pair IdPairMap.t) (root : string)
       (mbmap : message_body_tyd SLMap.t)
     : string * bool * string * string * message_body_tyd * string =
@@ -540,7 +540,7 @@ let get_msg_info (mp : msg_path) (dii : symb_pair IdMap.t)
     let pfx, mb =
       if is_internal
       then
-        let root, int_id = IdMap.find iiphd dii in
+        let root, int_id, clone = IdMap.find iiphd dii in(*TODO*)
         let iiptl = List.tl msg_path.inter_id_path in
         let iip = [root]@[int_id]@iiptl in
         let _,mb = get_msg_body mbmap root iip msgn in

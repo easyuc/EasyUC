@@ -186,7 +186,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
 
 
 let dir_int_internals
-(mt : maps_tyd) (ft : fun_tyd) : symb_pair IdMap.t =
+(mt : maps_tyd) (ft : fun_tyd) : porsf_info IdMap.t =
   let fbt = EcLocation.unloc ft in
   if is_ideal_fun_body_tyd  fbt
   then IdMap.empty
@@ -197,12 +197,11 @@ let dir_int_internals
     let pms = indexed_map_to_list_keep_keys rfbt.params in
     let pm_nms = fst (List.split pms) in
     let nms = sf_nms @ pm_nms in
-    let ret = List.fold_left (fun ret nm ->
+    List.fold_left (fun ret nm ->
       let dir_int_sp = snd (EcUtils.oget
         (get_child_index_and_comp_inter_porsfi_of_param_or_sub_fun_of_real_fun
           mt ft nm)) in (*TODO check drop root arg*)
-      IdMap.add nm dir_int_sp ret) IdMap.empty nms in
-    IdMap.map (fun (_,p2,p3) -> (p3,p2)) ret (*TODO ret*)
+      IdMap.add nm dir_int_sp ret) IdMap.empty nms
 
 let adv_int_simulated
 (mt : maps_tyd) (root : string) (st : sim_tyd) : symb_pair IdPairMap.t =
@@ -222,10 +221,10 @@ let adv_int_simulated
   let pm_nmifs = List.combine pm_nms sbt.sims_args(*TODO _pair_ids*) in
   let nmifs = sf_nmifs @ pm_nmifs in
   List.fold_left (fun ret nmif ->
-      let ifun = IdPairMap.find (snd nmif) mt.fun_map in
+      let ifroot,id, _ = (snd nmif) in
+      let ifun = IdPairMap.find (ifroot,id) mt.fun_map in
       let ifunu = EcLocation.unloc ifun in
       let ifbt = ideal_fun_body_tyd_of ifunu in
-      let ifroot = fst (snd nmif) in
       if ifbt.id_adv_inter<>None
       then begin
         let adv_int_sp =  (ifroot, (EcUtils.oget ifbt.id_adv_inter)) in
@@ -233,7 +232,7 @@ let adv_int_simulated
         end
       else
         ret
-    ) ret (List.map (fun (s,(_,p2,p3))->(s,(p3,p2))) nmifs)(*TODO nmifs*)
+    ) ret nmifs
 
 let gen_maps (mt : maps_tyd) : maps_gen =
   let scope (root : string) =

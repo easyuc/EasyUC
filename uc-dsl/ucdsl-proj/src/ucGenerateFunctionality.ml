@@ -115,7 +115,7 @@ let rec print_code (sim_uses : string option)
           (mbmap : message_body_tyd SLMap.t)
           (ppf : Format.formatter)
           (code : instruction_tyd list EcLocation.located)
-          (state_name : string -> string) (dii : symb_pair IdMap.t)
+          (state_name : string -> string) (dii : porsf_info IdMap.t)
           (ais : symb_pair IdPairMap.t)
           (ptn : string option)
           (intprts : EcIdent.t QidMap.t)
@@ -323,7 +323,7 @@ let print_mmc_proc (sim_uses : string option)
       (state_id : string) (params : ty_index Mid.t)
       (vars : (EcIdent.t * ty) EcLocation.located IdMap.t)
       (mmc : msg_match_clause_tyd) (state_name : string -> string)
-      (dii : symb_pair IdMap.t) (ais : symb_pair IdPairMap.t)
+      (dii : porsf_info IdMap.t) (ais : symb_pair IdPairMap.t)
       (ptn : string option) (intprts : EcIdent.t QidMap.t)
       (glob_pfx : string) : unit =
   Format.fprintf ppf "@[proc %s (%a) : %a option = {@]@;<0 2>@[<v>"
@@ -345,7 +345,7 @@ let print_mmc_procs ?(sim_uses : string option = None)
       (sc : EcScope.scope) (root : string)
       (mbmap : message_body_tyd SLMap.t) (ppf : Format.formatter)
       (states : state_tyd IdMap.t) (state_name : string -> string)
-      (dii : symb_pair IdMap.t) (ais : symb_pair IdPairMap.t)
+      (dii : porsf_info IdMap.t) (ais : symb_pair IdPairMap.t)
       (ptn : string option) (glob_pfx : string) : unit =
   IdMap.iter(fun id st -> let st:state_body_tyd = EcLocation.unloc st in
     List.iter(fun mmc ->
@@ -392,7 +392,7 @@ let print_mmc_proc_call  ?(objstr : string = _x) (ppf : Format.formatter)
 
 let print_state_match_branch (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (state_name : string -> string)
-(dii : symb_pair IdMap.t) (glob_pfx : string) (ppf : Format.formatter) (st : state_tyd) : unit =
+(dii : porsf_info IdMap.t) (glob_pfx : string) (ppf : Format.formatter) (st : state_tyd) : unit =
   let st = EcLocation.unloc st in
   let spnt = sparams_map_to_list st.params in
   let print_state_params_names ppf spnt =
@@ -432,7 +432,7 @@ let print_state_match_branch (root : string) (id : string)
 
 let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (procn : string)
-      (state_name : string -> string) (dii : symb_pair IdMap.t)
+      (state_name : string -> string) (dii : porsf_info IdMap.t)
       ?(pfx = "") (ppf : Format.formatter) (states : state_tyd IdMap.t)
       (pno : string option) : unit =
   Format.fprintf ppf "@[proc %s(%s : %a) : %a option = {@]@;<0 2>@[<v>"
@@ -455,7 +455,7 @@ let print_proc_parties (sc : EcScope.scope)(root : string) (id : string)
   
 
 let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (ppf : Format.formatter) (ifbt : ideal_fun_body_tyd) : unit =
   let print_vars () =
      Format.fprintf ppf "@[var %s : %a@]@;" _self (pp_type sc) addr_ty;
@@ -508,7 +508,7 @@ let clone_sim_inter (ppf : Format.formatter) (id : string) =
     Format.fprintf ppf "@[proof *.@]@;@;"
 
 let print_proof_state_match (root : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t) (ais : symb_pair IdPairMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t) (ais : symb_pair IdPairMap.t)
       (ret_pfx : string) (ppf : Format.formatter)
       (st_map : state_tyd IdMap.t) : unit =
     let print_proof_state_match_branch (ppf : Format.formatter)
@@ -617,7 +617,7 @@ let print_lemma_metric_invoke
       (invar_name : string)
       (module_name : string) 
       (root : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t) (ais : symb_pair IdPairMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t) (ais : symb_pair IdPairMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =    
   Format.fprintf ppf "@[lemma %s (n : int) : hoare [@]@;<0 2>@[<v>" iF_invoke;
   Format.fprintf ppf
@@ -642,7 +642,7 @@ let print_lemma_metric_invoke
 
 let print_IF_lemma_metric_invoke (module_name : string) 
       (root : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
   Format.fprintf ppf "@[%a@]" (print_lemma_metric_invoke
                                uc_metric_name_IF
@@ -844,7 +844,7 @@ let print_SIM_state_metric (module_name : string)
 
 
 let print_IF_metric (id : string)(root : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (ppf : Format.formatter) (st_map : state_tyd IdMap.t)
     : unit =
     Format.fprintf ppf "@[%a@]@;@;"
@@ -907,7 +907,7 @@ let print_SIM_metric_good_init_lemmas
 
 let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (ifbt : ideal_fun_body_tyd)
-      (dii : symb_pair IdMap.t) : string =
+      (dii : porsf_info IdMap.t) : string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   if ifbt.id_adv_inter<>None
@@ -1086,7 +1086,7 @@ let print_params_FUNC ppf params : unit =
     IdMap.map (fun (pi1,pi2,pi3) ->(pi1,pi3)) newparams
 
 let print_real_module (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (rapm : rf_addr_port_maps)
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd) : unit =
 
@@ -1106,7 +1106,7 @@ let print_real_module (sc : EcScope.scope) (root : string) (id : string)
   ()
 
 let print_rest_module (sc : EcScope.scope) (root : string) (id : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (rapm : rf_addr_port_maps)
       (rfbt : real_fun_body_tyd) (ppf : Format.formatter) 
       (drop_param : int) : unit =
@@ -1374,7 +1374,7 @@ let print_party_state_metric
     
 let print_module_lemmas ?(rest_idx = None)
       (id : string) (root : string)
-      (mbmap : message_body_tyd SLMap.t) (dii : symb_pair IdMap.t)
+      (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t)
       (gvil : gvil) 
       (ppf : Format.formatter) (rfbt : real_fun_body_tyd)
     : unit =
@@ -2778,7 +2778,7 @@ sim.
 let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t) (rfbt : real_fun_body_tyd)
       (rapm : rf_addr_port_maps)
-      (dii : symb_pair IdMap.t) (gvil : gvil): string =
+      (dii : porsf_info IdMap.t) (gvil : gvil): string =
   let sf = Format.get_str_formatter () in
   Format.fprintf sf "@[<v>";
   Format.fprintf sf "@[%a@]@;@;" print_rf_info_operator rfbt;
@@ -2803,7 +2803,7 @@ let gen_real_fun (sc : EcScope.scope) (root : string) (id : string)
 
 let gen_fun (sc : EcScope.scope) (root : string) (id : string)
       (mbmap : message_body_tyd SLMap.t)
-      (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : symb_pair IdMap.t)
+      (rapm : rf_addr_port_maps option) (ft : fun_tyd) (dii : porsf_info IdMap.t)
       (gvil : gvil): string =
   let fbt = EcLocation.unloc ft in
   match fbt with
