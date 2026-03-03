@@ -5,7 +5,7 @@
 
 uc_requires Forwarding SMC.
 
-ec_requires +EPDPAux.
+ec_requires +EPDPAux SMC2Aux.
 
 (**************************** Begin Unit Parameters ***************************)
 
@@ -117,6 +117,21 @@ uc_clone SMC as SMC2 with
   op (^)           = (^),
   type text        = text2,
   op epdp_text_key = epdp_text2_key.
+
+(* use SMC2Aux to import aliases
+
+   epdp_text1_univ : (text1, univ) epdp
+   epdp_text2_univ : (text2, univ) epdp
+
+   of EPDPs in SMC1.KeyExpText and SMC2.KeyExpText. these are
+   needed by translator, because text1 and text2 are types of
+   message parameters *)
+
+ec_clone import SMC2Aux with
+  type text1         <- text1,
+  type text2         <- text2,
+  op epdp_text1_univ = SMC1.KeyExpText.epdp_text_univ,
+  op epdp_text2_univ = SMC2.KeyExpText.epdp_text_univ.
 
 direct SMC2Pt1 {
   in  pt1@smc_req(pt2 : port, t : text1)  (* 1 *)

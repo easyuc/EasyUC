@@ -4,3 +4,5 @@ cd dsl-test-proj
 ./build
 cd ..
 ln -sf dsl-test-proj/dsl-test .
+cd ../bin
+ln -sf ../testing/dsl-test-proj/dsl-test ucdsl-test
