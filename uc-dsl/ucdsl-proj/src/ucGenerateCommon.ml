@@ -633,7 +633,7 @@ let rec make_pSP (mt : maps_tyd) (funcId : SP.t) (param_idx : int): pSP =
     let np = num_params_of_real_fun_tyd ft in
     let get_nth_param_id n =
       let pname = param_name_nth_of_real_fun_tyd ft n in
-      let r,_,_ = porsf_info_dir_inter_of_param_of_real_fun_tyd ft pname (*TODO replace id_dir_inter_of_param_of_real_fun_tyd ft pname*) in
+      let r,_,_ = porsf_info_dir_inter_of_param_of_real_fun_tyd ft pname  in
       let rui = unit_info_of_root mt r in
       match rui with
       | UI_Singleton si -> (si.si_root, si.si_ideal)
@@ -886,7 +886,7 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
   then fun s1 s2 s3 s4 s5 -> ""
   else
     let parambounds : bound_macro_fun list =
-      List.mapi (fun i (pmnm, (_, r,dirint)) -> (*TODO check triplet porsf*)
+      List.mapi (fun i (pmnm, (r, dirint, _)) -> (*TODO check triplet porsf*)
         let ui = unit_info_of_root mt r in
         let fid = match ui with
           | UI_Triple ti -> (r,ti.ti_real)

@@ -82,7 +82,7 @@ module SL =  (* domain: string list = symbol list *)
 let sing_elt_of_id_set (id_set : IdSet.t) : symbol =
   match IdSet.elements id_set with
   | [x] -> x
-  | _   -> failure "cannot happen"
+  | _   -> failure "cannot happen0"
 
 (* we often refer to elements of type symbol list as "qualified ids";
    note that qsymbol stands for symbol list * symbol *)
@@ -603,11 +603,11 @@ type fun_body_tyd =
 let real_fun_body_tyd_of (fbt : fun_body_tyd) : real_fun_body_tyd =
   match fbt with
   | FunBodyRealTyd rfbt -> rfbt
-  | FunBodyIdealTyd _   -> failure "cannot happen"
+  | FunBodyIdealTyd _   -> failure "cannot happen1"
 
 let ideal_fun_body_tyd_of (fbt : fun_body_tyd) : ideal_fun_body_tyd =
   match fbt with
-  | FunBodyRealTyd _     ->  failure "cannot happen"
+  | FunBodyRealTyd _     ->  failure "cannot happen2"
   | FunBodyIdealTyd ifbt -> ifbt
 
 let is_real_fun_body_tyd (fbt : fun_body_tyd) : bool =
@@ -991,10 +991,10 @@ let basic_adv_inter_names_of_real_fun
        | None        -> IdSet.empty
        | Some adv_id ->
            match unloc (IdPairMap.find (root, adv_id) maps.adv_inter_map) with
-           | BasicTyd _      -> failure "cannot happen"
+           | BasicTyd _      -> failure "cannot happen3"
            | CompositeTyd mp ->
                (IdSet.of_list (List.map snd (IdMap.bindings mp))))
-  | FunBodyIdealTyd _    -> failure "cannot happen"
+  | FunBodyIdealTyd _    -> failure "cannot happen4"
 
 (* assuming units checking has been performed *)
 
@@ -1013,7 +1013,8 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
   let roots4 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
-          IdSet.equal roots3 roots4);
+            IdSet.equal roots3 roots4);
+  IdSet.iter (fun s -> print_endline s)  roots1;
   roots1
 
 type singleton_info =
@@ -1055,7 +1056,7 @@ let num_adv_pis_of_parties_of_real_fun
       (let ibt =
          unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
        match ibt with
-       | BasicTyd _       -> failure "cannot happen"
+       | BasicTyd _       -> failure "cannot happen6"
        | CompositeTyd map -> IdMap.cardinal map)
 
 (* even if a subfunctionality has no adversarial interface, we
@@ -1070,13 +1071,15 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
   let if_names = ideal_fun_names root maps in
   let sim_names = sim_names root maps in
   if IdSet.cardinal rf_names = 0
-  then let if_name = sing_elt_of_id_set if_names in
+  then begin
+    print_endline (root^" if_names cardinality "^(string_of_int (IdSet.cardinal if_names))) ;
+    let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
       UI_Singleton
       {si_root          = root;
        si_ideal         = if_name;
        si_comp_dir      = id_dir_inter_of_fun_tyd ift;
-       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift}
+       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift} end
   else let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
        let rf_name = sing_elt_of_id_set rf_names in
@@ -1149,7 +1152,7 @@ let get_dir_info_of_party_of_real_fun
       let comp = id_dir_inter_of_fun_tyd ft in
       let ibt = unloc (IdPairMap.find (root, comp) maps.dir_inter_map) in
       match ibt with
-      | BasicTyd _       -> failure "cannot happen"
+      | BasicTyd _       -> failure "cannot happen7"
       | CompositeTyd map ->
         Some (comp, sub, id_map_ordinal1_of_sym map sub)
 
@@ -1171,7 +1174,7 @@ let get_adv_info_of_party_of_real_fun
       let ibt =
         unloc (IdPairMap.find (root, comp) maps.adv_inter_map) in
         match ibt with
-        | BasicTyd _       -> failure "cannot happen"
+        | BasicTyd _       -> failure "cannot happen8"
         | CompositeTyd map ->
             let n = id_map_ordinal_of_sym map sub in
             Some (comp, sub, 1 + n, base + 1 + n)

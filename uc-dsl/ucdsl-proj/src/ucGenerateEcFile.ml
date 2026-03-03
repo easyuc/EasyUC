@@ -59,6 +59,7 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
       print_main fs;
       close_out fs
     in
+    print_endline ("print_file "^root);
     let ui = unit_info_of_root mt root in
     match ui with
     | UI_Singleton _ ->
@@ -97,7 +98,7 @@ let print_preamble (mt : maps_tyd) (root : string) : string =
 
   let sp_ppna = IdMap.find(root) mt.spec_params_map in
   Format.fprintf sf "%t@.@." sp_ppna;
-
+print_endline ("print_preamble "^root);
   let ui = unit_info_of_root mt root in
   begin
     match ui with
@@ -303,6 +304,7 @@ let generate_ec (mt : maps_tyd) : unit =
   let roots = roots_of_maps mt in
   (*write default user file if it doesn't exist*)
   IdSet.iter(fun r ->
+    print_endline ("generate_ec default"^r);
     let ui = unit_info_of_root mt r in
     match ui with
     | UI_Triple ti ->
@@ -319,7 +321,8 @@ let generate_ec (mt : maps_tyd) : unit =
     | UI_Singleton _ -> ()
     ) roots;
   (*write UC single underscore files for triple units*)
-    IdSet.iter(fun r ->
+  IdSet.iter(fun r ->
+    print_endline ("generate_ec single_ "^r);
     let ui = unit_info_of_root mt r in
     match ui with
     | UI_Triple ti ->
