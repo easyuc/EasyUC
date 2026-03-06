@@ -12,7 +12,8 @@ open UcTypecheck
 
    (+) checking that recursive uc_requires do not happen (the stack)
 
-   (+) caching of results, to avoid recomputation (the cache) *)
+   (+) caching of results of typechecking within theories,
+       to avoid recomputation (the cache) *)
 
 type cache = maps_tyd * EcScope.scope
 
@@ -43,20 +44,32 @@ let parse_and_typecheck_file_or_id foid =
     match IdMap.find_opt uc_root (!cache) with
     | None                     ->
         let (spec, qual_file) = parse_file_or_id foid in
-        let () =
-          UcStackedScopes.require_theory_start ("UC___" ^ uc_root) `Abstract in
-        let maps =
-          typecheck qual_file
+        (* we typecheck twice, unioning the maps
+           * once with mode TM_Theory, inside the theory "UC_" ^ uc_root,
+             updating the maps with uc_root
+           * once with mode TM_Top, not inside a theory, updating the
+             maps with "_" ^ uc_root *)
+        let () = UcStackedScopes.new_scope () in
+        let maps1 =
+          typecheck qual_file TM_Top
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
-        let () = stack := List.tl (!stack) in
-        let () = UcStackedScopes.require_theory_finish ("UC___" ^ uc_root) in
+        let () = UcStackedScopes.end_scope () in
+        let () =
+          UcStackedScopes.require_theory_start ("UC_" ^ uc_root) `Abstract in
+        let maps2 =
+          typecheck qual_file TM_Theory
+          (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
+          spec in
+        let () = UcStackedScopes.require_theory_finish ("UC_" ^ uc_root) in
         let cur_scope = UcStackedScopes.current_scope () in
-        let () = cache := IdMap.add uc_root (maps, cur_scope) (!cache) in
+        (* we only cache the result of typechecking inside theory *)
+        let () = cache := IdMap.add uc_root (maps2, cur_scope) (!cache) in
+        let () = stack := List.tl (!stack) in
         let () =
           try UcStackedScopes.end_scope () with
           | EcEnv.DuplicatedBinding s -> end_scope_duplicated_binding_err s in
-        maps
+        (union_maps maps1 maps2)
     | Some (maps, saved_scope) ->
         let () = stack := List.tl (!stack) in
         let () = UcStackedScopes.push_scope saved_scope in

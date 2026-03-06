@@ -84,7 +84,14 @@ axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
 
 (***************************** End Unit Parameters ****************************)
 
-ec_clone import KeyExp with
+(* EasyCrypt and UC cloning comes next
+
+   When using the interpreter, the user is responsible for checking
+   that instantiations of abstract types and operators satisfy the
+   given axioms. When the translator is used, EasyCrypt proofs that
+   this is true must be given by the user. *)
+
+ec_clone import KeyExp as KeyExp' with
   type key         <- key,
   op (^^)          <- (^^),
   op kid           <- kid,
@@ -99,6 +106,8 @@ ec_clone import KeyExp with
 
 uc_clone Forwarding as Forwarding1.
 uc_clone Forwarding as Forwarding2.
+
+(* this is the end of the UC DSL preamble *)
 
 (* The composite direct interface has two components, one for each
    of two parties. *)
@@ -130,7 +139,13 @@ direct KEDir {
 
 functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
-     subfunctionalities must be ideal functionalities *)
+     subfunctionalities, which must be ideal functionalities
+
+     the subfunctionalities must come from distinct clones, which must
+     be used in the order in which they were declared above
+
+     if the -units command line option is used, then each UC clone must
+     be used *)
 
   subfun Fw1 = Forwarding1.Forw
   subfun Fw2 = Forwarding2.Forw

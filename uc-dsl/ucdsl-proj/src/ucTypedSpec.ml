@@ -833,7 +833,10 @@ let rec sci_unused_first_clone (scis : spec_clone_info list)
 
    five identifier maps indexed by roots, giving: UC and EC
    requires; ppna's for formatting spec parameters of roots;
-   lists of clones of roots; and scopes of roots *)
+   lists of clones of roots; and scopes of roots
+
+   we use "_" ^ root to save the result of typechecking not inside
+   the theory "UC_" ^ root *)
 
 type maps_tyd =
   {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -849,6 +852,59 @@ type maps_tyd =
    spec_clones_map : spec_clone_info list IdMap.t;    (* lists of clones
                                                          of roots *)
    ec_scope_map    : EcScope.scope IdMap.t}           (* scopes of roots *)
+
+let empty_maps =
+  {dir_inter_map   = IdPairMap.empty;
+   adv_inter_map   = IdPairMap.empty;
+   fun_map         = IdPairMap.empty;
+   sim_map         = IdPairMap.empty;
+   uc_reqs_map     = IdMap.empty;
+   ec_reqs_map     = IdMap.empty;
+   spec_params_map = IdMap.empty;
+   spec_clones_map = IdMap.empty;
+   ec_scope_map    = IdMap.empty}
+
+(* when merging maps, there will never be disagreement in cases when
+   an id pair or id is in the domain of both maps - their values will
+   have the same physical addresses *)
+
+let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
+  {dir_inter_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.dir_inter_map newmap.dir_inter_map;
+   adv_inter_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.adv_inter_map newmap.adv_inter_map;
+   fun_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.fun_map newmap.fun_map;
+   sim_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.sim_map newmap.sim_map;
+   uc_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.uc_reqs_map newmap.uc_reqs_map;
+   ec_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.ec_reqs_map newmap.ec_reqs_map;
+   spec_params_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_params_map newmap.spec_params_map;
+   spec_clones_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_clones_map newmap.spec_clones_map;
+   ec_scope_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.ec_scope_map newmap.ec_scope_map}
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =

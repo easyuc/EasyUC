@@ -111,4 +111,3 @@ op metric_sim_fwd_state (sfs : sim_fwd_state) : int =
   | SFS_WaitOK => 1
   | SFS_Final  => 0
   end.
-

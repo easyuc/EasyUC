@@ -661,7 +661,7 @@ spec_uc_clone :
   | x = loc(UC_CLONE); base = uident; name = prefix(AS, uident)?;
     cw = uc_clone_with?
       { let l = loc base in
-        let base_ = mk_loc l (qsymb_of_symb ("UC___" ^ unloc base)) in
+        let base_ = mk_loc l (qsymb_of_symb ("UC_" ^ unloc base)) in
         let name =
           match name with
           | None      -> base

@@ -63,7 +63,7 @@ assert msg_out
 ((func ++ [2; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
- SMC2.KeyExpText.KeyExp'.epdp_port_port_key_univ.`enc
+ SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1),
   SMC2.epdp_text_key.`enc text2 ^^ (SMC2.KeyExchange.g ^ rand)))
 @((adv, 7))
@@ -124,7 +124,7 @@ assert msg_out
 ((func ++ [2; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
- SMC2.KeyExpText.KeyExp'.epdp_port_port_key_univ.`enc
+ SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1), SMC2.g ^ rand))
 @((adv, 7))
 ctrl_adv.
@@ -133,7 +133,7 @@ assert msg_out
 ((func ++ [2; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
- SMC2.KeyExpText.KeyExp'.epdp_port_port_key_univ.`enc
+ SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1),
   SMC2.epdp_text_key.`enc text2 ^^ (SMC2.KeyExchange.g ^ rand)))
 @((adv, 7))

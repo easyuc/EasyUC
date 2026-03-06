@@ -1,5 +1,6 @@
-ec_requires Blah.
 (* Forwarding *)
+
+ec_requires Blah.
 
 (* Singleton unit consisting of a forwarding ideal functionality. The
    adversary is allowed to delay but not alter message forwarding. *)

@@ -91,7 +91,7 @@ axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
    given axioms. When the translator is used, EasyCrypt proofs that
    this is true must be given by the user. *)
 
-ec_clone import KeyExp with
+ec_clone import KeyExp as KeyExp' with
   type key         <- key,
   op (^^)          <- (^^),
   op kid           <- kid,

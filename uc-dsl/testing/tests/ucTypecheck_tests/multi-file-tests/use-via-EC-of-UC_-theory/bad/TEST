@@ -6,5 +6,5 @@ args: SMC2.uc
 outcome: failure
 [error:]
 
-theory beginning with "UC_" used via EasyCrypt: UC___KeyExchange
+theory beginning with "UC_" used via EasyCrypt: UC_KeyExchange
 .

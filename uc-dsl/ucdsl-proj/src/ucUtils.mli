@@ -71,6 +71,18 @@ val format_strings_comma : Format.formatter -> string list -> unit
 
 val format_id_paths_comma : Format.formatter -> string list list -> unit
 
+(* tests whether string starts with '_' *)
+
+val starts_with_underscore : string -> bool
+
+(* tests whether string has at least one occurrence of "__" *)
+
+val has_double_underscope : string -> bool
+
+(* remove an initial underscore if it exists, otherwise return string *)
+
+val rm_any_initial_underscore : string -> string
+
 (* sl1_starts_with_sl2 sl1 sl2 tests whether sl2 is a prefix (possibly
    all of) sl1 *)
 
