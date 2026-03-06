@@ -205,7 +205,8 @@ let dir_int_internals
       IdMap.add nm dir_int_sp ret) IdMap.empty nms
 
 let adv_int_simulated
-(mt : maps_tyd) (root : string) (st : sim_tyd) : symb_pair IdPairMap.t =
+      (mt : maps_tyd) (root : string) (st : sim_tyd) :
+      (string * string * string) IdPairMap.t =
   let sbt = EcLocation.unloc st in
   let ft = IdPairMap.find (root, sbt.sims) mt.fun_map in 
   let rfbt = real_fun_body_tyd_of (EcLocation.unloc ft) in
@@ -213,7 +214,7 @@ let adv_int_simulated
     if rfbt.id_adv_inter <> None
     then
       let rfaiid = EcUtils.oget rfbt.id_adv_inter in
-      IdPairMap.add (sbt.sims, rfaiid) (root, rfaiid) IdPairMap.empty
+      IdPairMap.add (sbt.sims, rfaiid) (root, rfaiid, root) IdPairMap.empty
     else
       IdPairMap.empty in
   let sf_nmifs = IdMap.bindings rfbt.sub_funs in
@@ -222,13 +223,13 @@ let adv_int_simulated
   let pm_nmifs = List.combine pm_nms sbt.sims_args(*TODO _pair_ids*) in
   let nmifs = sf_nmifs @ pm_nmifs in
   List.fold_left (fun ret nmif ->
-      let ifroot,id, _ = (snd nmif) in
+      let ifroot,id, clone = (snd nmif) in
       let ifun = IdPairMap.find (ifroot,id) mt.fun_map in
       let ifunu = EcLocation.unloc ifun in
       let ifbt = ideal_fun_body_tyd_of ifunu in
       if ifbt.id_adv_inter<>None
       then begin
-        let adv_int_sp =  (ifroot, (EcUtils.oget ifbt.id_adv_inter)) in
+        let adv_int_sp =  (ifroot, (EcUtils.oget ifbt.id_adv_inter),clone) in
         IdPairMap.add (sbt.sims,fst nmif) adv_int_sp ret
         end
       else

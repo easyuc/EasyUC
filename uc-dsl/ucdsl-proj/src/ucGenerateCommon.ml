@@ -508,7 +508,7 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
   }
 
 let get_msg_info (mp : msg_path) (dii : porsf_info IdMap.t)
-      (ais : symb_pair IdPairMap.t) (root : string)
+      (ais : (string * string * string) IdPairMap.t) (root : string)
       (mbmap : message_body_tyd SLMap.t)
     : string * bool * string * string * message_body_tyd * string =
   
@@ -545,13 +545,13 @@ let get_msg_info (mp : msg_path) (dii : porsf_info IdMap.t)
         let iip = [root]@[int_id]@iiptl in
         let _,mb = get_msg_body mbmap root iip msgn in
         let pfx = inter_id_path_str true (List.tl iip) in
-        let pfx = (iiphd)^"."^pfx in
+        let pfx = (clone)^"."^pfx in
         pfx, mb
       else
         if is_simulated
         then
           let key = sim_key msg_path.inter_id_path in
-          let root, int_id = IdPairMap.find key ais in
+          let root, int_id, clone = IdPairMap.find key ais in
           let iiptl = List.tl (List.tl msg_path.inter_id_path) in
           let is_party_interface = int_id = snd key in
           let iip =
@@ -565,7 +565,7 @@ let get_msg_info (mp : msg_path) (dii : porsf_info IdMap.t)
           then
             pfx, mb
           else
-            let pfx = (snd key)^"."^pfx in
+            let pfx = (clone)^"."^pfx in
             pfx, mb
         else   
           let iip = msg_path.inter_id_path in
