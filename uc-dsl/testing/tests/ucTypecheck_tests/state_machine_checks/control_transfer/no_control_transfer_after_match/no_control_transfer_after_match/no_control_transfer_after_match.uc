@@ -13,8 +13,8 @@ functionality F implements D {
    match message with
     y@D.D.bla => {
            match Some 0 with 
-           | Some i => {}
-           | None   => {}
+           | Some i => { }
+           | None   => { }
            end
     }
    end

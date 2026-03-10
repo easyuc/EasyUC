@@ -1307,53 +1307,57 @@ let check_send_and_transition
 
 let check_toplevel_match_clause
     (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
-    (clause : match_clause) : symbol * (bindings * instruction list located) =
-  let filter = fun _ op -> EcDecl.is_ctor op in
-  let PPApp ((cname, tvi), cargs) = fst clause in
-  let tvi = tvi |> EcUtils.omap (transtvi env ue) in
-  let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
-  match cts with
-  | []                          ->
-      tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
-  | _ :: _ :: _                 ->
-      tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
-  | [(cp, tvi), opty, subue, _] ->
-      let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
-      let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
-      let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
-      let ind = (EcUtils.oget (EcDecl.tydecl_as_datatype indty)).tydt_ctors in
-      let ctorsym, ctorty = List.nth ind ctoridx in
-      let args_exp = List.length ctorty in
-      let args_got = List.length cargs in
+    (clause : match_clause) :
+    (symbol * bindings) option * instruction list located =
+  match fst clause with
+  | PPAny                       -> (None, snd clause)
+  | PPApp ((cname, tvi), cargs) ->
+      let filter = fun _ op -> EcDecl.is_ctor op in
+      let tvi = tvi |> EcUtils.omap (transtvi env ue) in
+      let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
+      match cts with
+      | []                          ->
+          tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
+      | _ :: _ :: _                 ->
+          tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
+      | [(cp, tvi), opty, subue, _] ->
+          let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
+          let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
+          let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
+          let ind =
+            (EcUtils.oget (EcDecl.tydecl_as_datatype indty)).tydt_ctors in
+          let ctorsym, ctorty = List.nth ind ctoridx in
+          let args_exp = List.length ctorty in
+          let args_got = List.length cargs in
 
-      if args_exp <> args_got
-      then tyerror cname.pl_loc env
-           (InvalidMatch
-            (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
+          if args_exp <> args_got
+          then tyerror cname.pl_loc env
+               (InvalidMatch
+                (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
 
-      let cargs_lin =
-        List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
-      if has_dup cargs_lin
-      then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
+          let cargs_lin =
+            List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
+          if has_dup cargs_lin
+          then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
 
-      EcUnify.UniEnv.restore ~src:subue ~dst:ue;
+          EcUnify.UniEnv.restore ~src:subue ~dst:ue;
 
-      let ctorty =
-        let tvi = Some (EcUnify.TVIunamed tvi) in
-          fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
-      let pty = EcUnify.UniEnv.fresh ue in
+          let ctorty =
+            let tvi = Some (EcUnify.TVIunamed tvi) in
+            fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
+          let pty = EcUnify.UniEnv.fresh ue in
 
-      (try EcUnify.unify env ue (toarrow ctorty pty) opty with
-       | EcUnify.UnificationFailure _ -> assert false);
-      unify_or_fail env ue l ~expct:pty gindty;
-      let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
-      let pvars =
-        List.map
-        (fun x -> mk_loc (loc x) (create (unloc x)))
-        cargs in
-      let pvars = List.combine pvars ctorty in
+          (try EcUnify.unify env ue (toarrow ctorty pty) opty with
+           | EcUnify.UnificationFailure _ -> assert false);
+          unify_or_fail env ue l ~expct:pty gindty;
+          let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
+          let pvars =
+            List.map
+            (fun x -> mk_loc (loc x) (create (unloc x)))
+            cargs in
+          let pvars = List.combine pvars ctorty in
 
-      ctorsym, (pvars, snd clause)
+          (Some (ctorsym, pvars), snd clause)
 
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -1379,6 +1383,7 @@ and check_match
     (ex : pformula) (clauses : match_clause list located)
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
+  let cloc = loc clauses in
   let exp, ty = check_expr sa env ue ex None in
   let uidmap = EcUnify.UniEnv.assubst ue in
   let ty = EcFol.ty_subst (EcFol.Tuni.subst uidmap) ty in
@@ -1398,30 +1403,51 @@ and check_match
     List.map
     (check_toplevel_match_clause ex_loc env ue ty)
     (unloc clauses) in
-  (* the left-hand-sides of top_results are a subset of the left-hand sides
-     of inddecl.tydt_ctors (with the order perhaps different) *)
-  let () =
-    if List.length top_results < List.length inddecl.tydt_ctors
-      then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial)
-    else if has_dup ~cmp:(fun x y -> compare (fst x) (fst y))
-            top_results
-      then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
-  (* the left-hand-sides of top_results are exactly the left-hand sides
-     of inddecl.tydt_ctors (with the order perhaps different) *)
+  let rec fill_clauses tbl trs =
+    match trs with
+    | []                           ->
+        let missing =
+          List.filter_map
+          (fun (x, _) -> if Msym.mem x tbl then None else Some x)
+          inddecl.tydt_ctors in
+        if missing <> []
+        then tyerror cloc env (InvalidMatch (FXE_MatchPartial missing));
+        tbl
+    | (None, body) :: trs          ->
+        if trs <> [] ||
+           List.for_all (fun (x, _) -> Msym.mem x tbl) inddecl.tydt_ctors
+        then tyerror cloc env (InvalidMatch FXE_MatchDupBranches);
+      (* fill the missing clauses *)
+      let fill tbl (x, tys) =
+        if Msym.mem x tbl then tbl
+        else Msym.add x
+             (List.map (fun ty -> mk_loc _dummy (EcIdent.create "_"), ty) tys,
+              body)
+             tbl in
+      List.fold_left fill tbl inddecl.tydt_ctors
+    | (Some (x, bds), body) :: trs ->
+        if Msym.mem x tbl
+        then tyerror cloc env (InvalidMatch FXE_MatchDupBranches);
+        let tbl = Msym.add x (bds, body) tbl in
+        fill_clauses tbl trs in
+  let tbl = fill_clauses Msym.empty top_results in
+  let top_results_filled =
+    List.map
+    (fun (x, _) -> (x, Msym.find x tbl))
+    inddecl.tydt_ctors in
   let results =
     List.map
     (fun (cons, (bndgs, body)) ->
        let env = bind_locals_avoid_var env sc bndgs in
        cons, (bndgs, check_instructions abip ss sc sa env ue body))
-    top_results in
-  let cls_u =
+    top_results_filled in
+  let cls_no_sa =
     List.map
-    (fun (cons, (bndngs, (ins, _))) ->
-       cons, (bndngs, ins))
+    (fun (cons, (bndngs, (ins, _))) -> (cons, (bndngs, ins)))
     results in
-  let cls = mk_loc (loc clauses) cls_u in
+  let cls = mk_loc (loc clauses) cls_no_sa in
   let sas = List.map (fun (_, (_, (_, sa))) -> sa) results in
-  Match(exp, cls), merge_state_analyses sas
+  (Match(exp, cls), merge_state_analyses sas)
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)

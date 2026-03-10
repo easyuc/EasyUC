@@ -1,0 +1,7 @@
+description
+resolution of test of match instruction with redundant clauses
+because of wildcard.
+.
+args: good.uc
+outcome: success
+.

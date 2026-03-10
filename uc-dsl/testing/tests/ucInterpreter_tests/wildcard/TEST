@@ -1,0 +1,7 @@
+description
+check that interpretation script runs without error - making
+sure wildcard matches work OK
+.
+args:-batch testing.uci
+outcome:success
+.

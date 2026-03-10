@@ -1,0 +1,10 @@
+description
+test of match instruction with redundant clauses
+because of wildcard.
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 18 column 19 to line 20 column 33]
+
+this pattern matching contains duplicated branches
+.

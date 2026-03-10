@@ -1921,6 +1921,9 @@ mcptn(BOP):
   | x1 = bdident; op = loc(ordering_op); tvi = tvars_instan?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
+  | UNDERSCORE
+      { PPAny }
+
 expr_field :
   | x = qident; EQ; e = expr
       { { rf_name = x ; rf_tvi = None; rf_value = e; } }
