@@ -5,7 +5,7 @@
    one-time pad agreed using a key exchange parameter to the real
    functionality. *)
 
-uc_requires (*Forwarding*) KeyExchange.
+uc_requires Forwarding KeyExchange.
 
 ec_requires KeyExpText.
 
@@ -83,7 +83,7 @@ axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
 uc_clone Forwarding.
 
-ec_clone import KeyExpText with
+ec_clone import KeyExpText as KeyExpText' with
   type key         <- key,
   op (^^)          <- (^^),
   op kid           <- kid,
@@ -135,9 +135,13 @@ direct SMCDir {
 (* The real functionality implements the composite direct interface
    SMCDir, and (in this case) no composite adversarial interface. It
    is parameterized by a key exchange functionality, KE, implementing
-   the direct composite interface KeyEx.KEDir, which could be
-   KeyEx.KEReal or KeyEx.KEIdeal. Note that KEDir must be qualified by
-   KeyEx.
+   the direct composite interface KeyExchange.KEDir, which could be
+   KeyExchange.KEReal or KeyExchange.KEIdeal.
+
+   Each subfunctionality and functionality parameter must come from
+   a unique UC clone, and the clones must be used in order, first by
+   the subfunctionalities and then by the parameters. When -units is
+   used, all clones must be used.
 
    The parties of SMCReal can send messages to, and receive messages
    from KE, just as they can with the forwarding subfunctionality

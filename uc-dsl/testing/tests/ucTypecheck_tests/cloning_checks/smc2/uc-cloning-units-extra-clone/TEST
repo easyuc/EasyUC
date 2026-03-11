@@ -1,10 +1,9 @@
 description
-extra UC clone with units checking
+there is an extra clone, with units checking
 .
 args:-units SMC2.uc
 outcome:failure
-[error: SMC2.uc: from line 106 columns 10 to 20]
+[error: SMC.uc: from line 86 columns 10 to 20]
 
-file with root SMC2 is not a valid unit because UC clone Forwarding3 is
-unused
+file with root SMC is not a valid unit because UC clone F is unused
 .

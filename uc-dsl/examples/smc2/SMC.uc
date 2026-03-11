@@ -83,7 +83,7 @@ axiom valid_epdp_text_key : valid_epdp epdp_text_key.
 
 uc_clone Forwarding.
 
-ec_clone import KeyExpText with
+ec_clone import KeyExpText as KeyExpText' with
   type key         <- key,
   op (^^)          <- (^^),
   op kid           <- kid,

@@ -53,7 +53,7 @@
     "match"       , MATCH      ;        (* KW: prog *)
     "for"         , FOR        ;        (* KW: prog *)
     "while"       , WHILE      ;        (* KW: prog *)
-    "assert"      , ASSERT     ;        (* KW: prog *)
+    "raise"       , RAISE      ;        (* KW: prog *)
     "return"      , RETURN     ;        (* KW: prog *)
     "res"         , RES        ;        (* KW: prog *)
     "equiv"       , EQUIV      ;        (* KW: prog *)
@@ -190,6 +190,7 @@
     "of"          , OF         ;        (* KW: global *)
     "const"       , CONST      ;        (* KW: global *)
     "op"          , OP         ;        (* KW: global *)
+    "exception"   , EXCEPTION  ;        (* KW: global *)
     "pred"        , PRED       ;        (* KW: global *)
     "inductive"   , INDUCTIVE  ;        (* KW: global *)
     "notation"    , NOTATION   ;        (* KW: global *)
@@ -334,7 +335,9 @@ let upper   = ['A'-'Z']
 let lower   = ['a'-'z']
 let letter  = upper | lower
 let digit   = ['0'-'9']
+let xdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 let uint    = digit+
+let uxint   = "0x" xdigit+
 
 let ichar  = (letter | digit | '_' | '\'')
 let lident = (lower ichar*) | ('_' ichar+)
@@ -361,6 +364,7 @@ rule main = parse
   | tident       { [TIDENT (Lexing.lexeme lexbuf)] }
   | mident       { [MIDENT (Lexing.lexeme lexbuf)] }
   | uint         { [UINT (BI.of_string (Lexing.lexeme lexbuf))] }
+  | uxint        { [UINT (BI.of_string (Lexing.lexeme lexbuf))] }
 
   | (digit+ as n) '.' (digit+ as f) {
       let nv, fv = BI.of_string n, BI.of_string f in
