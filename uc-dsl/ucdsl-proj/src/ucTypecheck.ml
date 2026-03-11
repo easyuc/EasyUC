@@ -36,21 +36,39 @@ let check_qid2 (qid : pqsymbol) : symb_pair =
          fprintf ppf
          "@[qualified@ id@ must@ have@ exactly@ two@ components@]")
 
-(* convert a named list into an id map, checking for uniqueness
-   of names; get_id returns the name of a list element *)
-
 let check_unique_ids
-    (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> psymbol)
+    (msgf : formatter -> unit) (xs : 'a list) (get_id : 'a -> psymbol)
+      : unit =
+  ignore
+  (List.fold_left
+   (fun ys x ->
+      let id_x = get_id x in
+      if List.exists (fun y -> unloc (get_id y) = unloc id_x) ys
+      then error_message (loc id_x)
+           (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_x))
+      else ys @ [x])
+   [] xs)
+
+(* convert a named list into an id map, checking for uniqueness
+   of names; get_id returns the name of a list element, and
+   msfg is used to generate the beginning of a duplicate error message *)
+
+let check_unique_ids_to_map
+    (msgf : formatter -> unit) (xs : 'a list) (get_id : 'a -> psymbol)
       : 'a IdMap.t =
   let id_map = IdMap.empty in
   List.fold_left
   (fun id_map a ->
      let id_l = get_id a in
-     if exists_id id_map (unloc id_l) then
-       error_message (loc id_l)
-       (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
+     if exists_id id_map (unloc id_l)
+     then error_message (loc id_l)
+          (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
      else IdMap.add (unloc id_l) a id_map)
-  id_map al
+  id_map xs
+
+(* checking for uniqueness of names in a named list; get_id returns
+   the name of a list element, and msfg is used to generate the
+   beginning of a duplicate error message *)
 
 (* EasyCrypt type checks *)
 
@@ -76,7 +94,7 @@ let check_type_top (pty : pty) : ty =
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)
       : ty_index IdMap.t =
-  let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
+  let nt_map = check_unique_ids_to_map msgf ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) ->
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
@@ -97,7 +115,7 @@ let inter_kind_to_str art ik =
 
 let check_basic_inter (mds : message_def list) : inter_body_tyd =
   let msg_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ message@ name@]")
     mds (fun md -> md.id) in
   BasicTyd
@@ -156,7 +174,7 @@ let check_comp_inter
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
     (cis : comp_item list) : inter_body_tyd =
   let comp_item_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ sub-interface@ name@]")
     cis (fun ci -> ci.sub_id) in
   CompositeTyd (IdMap.map (check_comp_item ik root inter_map) comp_item_map)
@@ -1705,7 +1723,7 @@ let check_toplevel_states (id : psymbol) (state_defs : state_def list)
   let init_id = check_exactly_one_initial_state id state_defs in
   let states = List.map (fun sd -> drop_state_construct sd) state_defs in
   let state_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
     states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id) state_map
@@ -1968,10 +1986,11 @@ let check_uc_clone_usage_order
   then error_message l
        (fun ppf ->
           fprintf ppf
-          ("@[UC@ clones@ must@ be@ used@ in@ order,@ "              ^^
-           "first@ by@ subfunctionality@ declarations,@ and@ then@ " ^^
-           "by@ functionality@ parameter@ declarations;@ "           ^^
-           "%s@ was@ already@ used@]")
+          ("@[UC@ clones@ must@ be@ used@ in@ order,@ first@ by@ " ^^
+           "subfunctionality@ declarations@ "                      ^^
+           "(lexicographically@ ordered@ by@ name),@ and@ then@ "  ^^
+           "by@ functionality@ parameter@ declarations@ " ^^
+           "(positionally@ ordered);@ %s@ was@ already@ used@]")
           (match List.nth scis last with
            | SCI_EC _    -> failure "cannot happen"
            | SCI_UC info -> info.sc_uc_as))
@@ -1979,11 +1998,13 @@ let check_uc_clone_usage_order
 let check_real_fun_params
     (root : symbol) (rfname : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
-    (scis : spec_clone_info list) (param_map : fun_param IdMap.t) (last : int)
+    (scis : spec_clone_info list) (params : fun_param list)
+    (last : int)
       : (porsf_info * int) IdMap.t * spec_clone_info list =
-  let check_real_fun_param _ (param : fun_param)
+  let check_real_fun_param
       ((i, map, scis, last)
          : int * (porsf_info * int) IdMap.t * spec_clone_info list * int)
+      (param : fun_param)
         : int * (porsf_info * int) IdMap.t * spec_clone_info list * int =
     let (clone, id) = check_qid2 param.dir_qid in
     let (scis, cloned, j) =
@@ -2016,7 +2037,7 @@ let check_real_fun_params
      scis,
      j) in
   let (_, map, scis, _) =
-    IdMap.fold check_real_fun_param param_map (0, IdMap.empty, scis, last)
+    List.fold_left check_real_fun_param (0, IdMap.empty, scis, last) params
   in (map, scis)
 
 let check_exists_fun_qid
@@ -2120,16 +2141,20 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def)
             check_is_composite_id AdversarialInterKind root
             maps.adv_inter_map id in
       let sub_fun_decls =
-        check_unique_ids
+        check_unique_ids_to_map
         (fun ppf -> fprintf ppf "@[duplicate@ subfunctionality@ name@]")
         fbr.sub_fun_decls (fun x -> x.id) in
-      let fun_params =
+      let () =
         check_unique_ids
-        (fun ppf -> fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
+        (fun ppf ->
+           fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
         fund.params (fun p -> p.id) in
       let () =
         let dup_ids =
-          IdMap.filter (fun id _ -> IdMap.mem id fun_params) sub_fun_decls in
+          IdMap.filter
+          (fun id _ ->
+             List.exists (fun (p : fun_param) -> unloc p.id = id) fund.params)
+          sub_fun_decls in
         if IdMap.is_empty dup_ids then ()
         else let id, dup = IdMap.choose dup_ids in
              error_message (loc dup.id)
@@ -2142,9 +2167,9 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def)
         check_sub_fun_decls root maps fund sub_fun_decls scis in
       let (params, scis) =
         check_real_fun_params root (unloc fund.id)
-        maps.dir_inter_map maps.adv_inter_map scis fun_params last in
+        maps.dir_inter_map maps.adv_inter_map scis fund.params last in
       let party_defs =
-        check_unique_ids
+        check_unique_ids_to_map
         (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
         fbr.party_defs (fun x -> x.id) in
       let parties =

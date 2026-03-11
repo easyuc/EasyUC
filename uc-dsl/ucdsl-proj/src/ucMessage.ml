@@ -1,5 +1,10 @@
 (* UcMessage module *)
 
+(* must open Batteries in order for the setting of pretty printing
+   margin in ucdsl.ml to affect the operation of this module *)
+
+open Batteries
+
 let failure msg = raise (Failure msg)
 
 type message_type =

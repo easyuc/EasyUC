@@ -753,8 +753,12 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
 (* information about EC and UC clones *)
 
 type sc_uc_used_by =
-  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality *)
-  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter *)
+  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality,
+                            where sub-functionalities are ordered
+                            lexicographically *)
+  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter,
+                            where parameters are ordered from left to
+                            right in the real functionality definition *)
 
 type sc_uc_clone_info =
   {sc_uc_as       : symbol;                    (* name of clone *)

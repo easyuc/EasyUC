@@ -1,5 +1,6 @@
 description
-params cloned out of order
+cloning test showing that RF param order is positional, not lexicographic by
+param name
 .
 args:-units SMC2.uc
 outcome: failure
