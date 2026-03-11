@@ -305,7 +305,7 @@ let generate_ec (mt : maps_tyd) : unit =
   let roots = roots_of_maps mt in
   (*write default user file if it doesn't exist*)
   IdSet.iter(fun r ->
-    print_endline ("generate_ec default"^r);
+    print_endline ("generate_ec default "^r);
     let ui = unit_info_of_root mt r in
     match ui with
     | UI_Triple ti ->

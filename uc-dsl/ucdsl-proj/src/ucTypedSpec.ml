@@ -1071,7 +1071,7 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
             IdSet.equal roots3 roots4);
   IdSet.iter (fun s -> print_endline s)  roots1;
-  roots1
+  IdSet.filter (fun r -> (String.get r 0)<>'_')roots1
 
 type singleton_info =
   {si_root          : symbol;
