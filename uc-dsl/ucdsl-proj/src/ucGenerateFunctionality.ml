@@ -534,7 +534,7 @@ let print_proof_state_match (root : string)
                    end
               | Match (form, mcl) -> begin
                   let mcl = EcLocation.unloc mcl in
-                  let mcl = List.rev mcl in (*TODO: check how ec chooses order*)
+                  (* let mcl = List.rev mcl in TODO: check how ec chooses order*)
                   Format.fprintf ppf
                     "@[match. (*match instruction with %i branches*)@]@;"
                     (List.length mcl);
