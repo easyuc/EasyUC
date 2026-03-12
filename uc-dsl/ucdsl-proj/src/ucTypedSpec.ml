@@ -1058,23 +1058,34 @@ let basic_adv_inter_names_of_real_fun
 
 (* assuming units checking has been performed *)
 
-let roots_of_map (map : 'a IdPairMap.t) : IdSet.t =
+let roots_of_map_incl_ (map : 'a IdPairMap.t) : IdSet.t =
   IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
 
+(* return roots of maps_tyd, filtering out the ones beginning with '_' *)
+
 let roots_of_maps (maps : maps_tyd) : IdSet.t =
-  let roots1 =
-    IdSet.union (roots_of_map maps.dir_inter_map)
-    (IdSet.union (roots_of_map maps.adv_inter_map)
-     (IdSet.union (roots_of_map maps.fun_map) (roots_of_map maps.sim_map))) in
-  let roots2 =
+  let roots1 = roots_of_map_incl_ maps.dir_inter_map in
+  let roots2 = roots_of_map_incl_ maps.adv_inter_map in
+  let roots3 = roots_of_map_incl_ maps.fun_map in
+  let roots4 = roots_of_map_incl_ maps.sim_map in
+  let roots5 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.uc_reqs_map)) in
-  let roots3 =
+  let roots6 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_reqs_map)) in
-  let roots4 =
+  let roots7 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.spec_params_map)) in
+  let roots8 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.spec_clones_map)) in
+  let roots9 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
-          IdSet.equal roots3 roots4);
-  roots1
+          IdSet.equal roots3 roots4 && IdSet.equal roots4 roots5 &&
+          IdSet.equal roots5 roots6 && IdSet.equal roots6 roots7 &&
+          IdSet.equal roots7 roots8 && IdSet.equal roots8 roots9);
+  let roots  = IdSet.filter (fun r -> String.get r 0 <> '_') roots1 in
+  let root_s = IdSet.filter (fun r -> String.get r 0 = '_') roots1 in
+  assert (IdSet.equal root_s (IdSet.map (fun r -> "_" ^ r) roots));
+  roots
 
 type singleton_info =
   {si_root          : symbol;
