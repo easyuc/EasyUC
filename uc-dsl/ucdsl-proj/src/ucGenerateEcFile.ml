@@ -146,8 +146,11 @@ print_endline ("print_preamble "^root);
                         | SC_UC_Param _ ->
                            let adv_pi_begin_str = adv_pi_begin_op_name^" + "^
                                                     papi in
+                           let alias_apb = (adv_pi_begin_param suci.sc_uc_as) in
+                           Format.fprintf sf "op %s = %s.@.@."
+                             alias_apb adv_pi_begin_str;
                            let ppna = suci.sc_uc_ppna_fun
-                                        adv_pi_begin_op_name adv_pi_begin_str in
+                                        adv_pi_begin_op_name alias_apb in
                            Format.fprintf sf "%t@.@." ppna;
                            papi^" + "^suci.sc_uc_as^"."^adv_pi_num_op_name
                     ) papi0 sci in

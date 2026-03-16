@@ -1147,29 +1147,29 @@ let print_glob_operator op_name top_type sub_type ppf range =
 
 let print_rf_info_operator ppf (rfbt : real_fun_body_tyd) : unit =
   let deduce_param_pis ppf rfbt =
-      IdMap.iter (fun pmn _ -> Format.fprintf ppf " - %s.%s"
-        pmn  adv_pi_num_op_name) rfbt.params
+      IdMap.iter (fun _ ((_,_,clone),_) -> Format.fprintf ppf " - %s.%s"
+        clone  adv_pi_num_op_name) rfbt.params
   in
   let begin_param_pis ppf rfbt =
       if IdMap.is_empty rfbt.params
       then ()
       else
-        List.iteri (fun i (pmn, _) ->
+        List.iteri (fun i (_, (_,_,clone)) ->
             if i>0 then Format.fprintf ppf "; "
             ;
             Format.fprintf ppf "%s"
-              (adv_pi_begin_param pmn)) (indexed_map_to_list_keep_keys
+              (adv_pi_begin_param clone)) (indexed_map_to_list_keep_keys
                                            rfbt.params)
   in
   let end_param_pis ppf rfbt =
       if IdMap.is_empty rfbt.params
       then ()
       else
-        List.iteri (fun i (pmn, _) ->           
+        List.iteri (fun i (_, (_,_,clone)) ->           
             if i>0 then Format.fprintf ppf "; "
             ;
             Format.fprintf ppf "%s + %s.%s - 1"
-            (adv_pi_begin_param pmn) pmn adv_pi_num_op_name)
+            (adv_pi_begin_param clone) clone adv_pi_num_op_name)
           (indexed_map_to_list_keep_keys rfbt.params)
   in
   Format.fprintf ppf "@[op %s = {|@]@;" rf_info;
@@ -1381,7 +1381,8 @@ let print_module_lemmas ?(rest_idx = None)
   let ridx() = EcUtils.oget rest_idx in
   let parties = rfbt.parties in
   let ptns = fst (List.split (IdMap.bindings parties)) in
-  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let pmns = List.map (fun (_,_,clone) -> clone)
+               (indexed_map_to_list rfbt.params) in
   let pmns = if rest_idx = None
              then pmns
              else List.filteri (fun i _ -> i+1<>ridx())
@@ -1724,7 +1725,8 @@ let print_sequence_of_games_proof  (id : string) ppf
   let pmnum = IdMap.cardinal rfbt.params in
   let mRP = moduleRP id rfbt in
   let _RFRP_Comp_RP_eq_lemma = "equiv_"^mRP^"_Composed1_RP" in
-  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let pmns = List.map (fun (_,_,clone) -> clone)
+               (indexed_map_to_list rfbt.params) in
   let ith_param_real i = module_name_RF (List.nth pmns (i-1)) in
   let ith_param_ideal i = module_name_IF (List.nth pmns (i-1)) in
   let _Comp_RP_Comp_IP_diff_lemma i =

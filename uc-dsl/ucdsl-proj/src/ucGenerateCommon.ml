@@ -691,16 +691,16 @@ let rec get_globVarIds
   match psp with
   | RF (_ , params) ->
     let rfbt = real_fun_body_tyd_of fbt in
-    let subfunglobs = IdMap.mapi (fun id ( _, _ , rid) -> (*TODO check triplet*)
-                          get_subfun_globVarIds thpath id rid) rfbt.sub_funs in
+    let subfunglobs = IdMap.mapi (fun id ( _, _ , clone) ->
+                        get_subfun_globVarIds thpath id clone) rfbt.sub_funs in
     let subfunglobs = List.flatten
                         (snd (List.split (IdMap.bindings subfunglobs))) in
     let partyglobs = IdMap.mapi (fun id _ ->
                          get_party_globVarId funpath id) rfbt.parties in
     let partyglobs = snd (List.split(IdMap.bindings partyglobs)) in
     let ownglobs = [get_self_globVarId funpath] @ partyglobs @ subfunglobs in
-    let param_names = fst (List.split (indexed_map_to_list_keep_keys
-                                         rfbt.params)) in
+    let param_names = List.map (fun (_,_,clone) -> clone)
+               (indexed_map_to_list rfbt.params) in
     let paraml = List.combine param_names params in
     let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
@@ -790,8 +790,7 @@ let filter_indices (l : 'a list) (f : 'a -> bool) : int list =
   List.map (fun i -> i+1) indxs
 
 let param_names (rfbt : real_fun_body_tyd) =
- fst (List.split (indexed_map_to_list_keep_keys
-                                       rfbt.params))
+ List.map (fun (_,_,clone) -> clone) (indexed_map_to_list rfbt.params)
 
 let get_own_glob_range_of_real_fun_glob_core
       (rfbt : real_fun_body_tyd) (gvil : globVarId list) : int list =
@@ -832,7 +831,7 @@ let get_glob_indices_of_real_fun_parties
       else None ) ogrm
 
 let sim_stack_adv rfbt adv i =
-  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let pmns = param_names rfbt in
   let rec firstk k xs =
       if k=0
       then []
