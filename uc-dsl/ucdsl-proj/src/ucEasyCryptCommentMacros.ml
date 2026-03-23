@@ -163,104 +163,54 @@ let rec scan_init (inp : input) (lnum : int) (nest : int)
            (add_char_to_opt_macro_body mac_opt c) d
 and scan_from_open (inp : input) (lnum : int) (nest : int)
     (macs : macro list) (mac_opt : macro option) (c : char) : macro list =
-  if c = '\n'
-    then match input_char_opt inp with
-         | None   ->
-             if nest = 0
-             then macs
-             else raise (ECComMacs_NonterminatedComment (lnum + 1))
-         | Some c ->
-             scan_init inp (lnum + 1) nest macs
-             (add_char_to_opt_macro_body mac_opt '\n') c
-  else if c = '*'
-    then match input_char_opt inp with
-         | None   -> raise (ECComMacs_NonterminatedComment lnum)
-         | Some c ->
-             scan_from_open_star inp lnum (nest + 1) macs
-             (add_char_to_opt_macro_body mac_opt '*') c
-  else if c = '('
-    then match input_char_opt inp with
-         | None   ->
-             if nest = 0
-             then macs
-             else raise (ECComMacs_NonterminatedComment lnum)
-         | Some c ->
-             scan_from_open inp lnum nest macs
-             (add_char_to_opt_macro_body mac_opt '(') c
-  else match input_char_opt inp with
-       | None   ->
-           if nest = 0
-           then macs
-           else raise (ECComMacs_NonterminatedComment lnum)
-       | Some d ->
-           scan_init inp lnum nest macs
-           (add_char_to_opt_macro_body mac_opt c) d
+  if c = '*'
+  then match input_char_opt inp with
+       | None   -> raise (ECComMacs_NonterminatedComment lnum)
+       | Some c ->
+           scan_from_open_star inp lnum (nest + 1) macs
+           (add_char_to_opt_macro_body mac_opt '*') c
+  else scan_init inp lnum nest macs mac_opt c
 and scan_from_open_star (inp : input) (lnum : int) (nest : int)
     (macs : macro list) (mac_opt : macro option) (c : char) : macro list =
-  if c = '\n'
-    then match input_char_opt inp with
-         | None   -> raise (ECComMacs_NonterminatedComment (lnum + 1))
-         | Some c ->
-             scan_init inp (lnum + 1) nest macs
-             (add_char_to_opt_macro_body mac_opt '\n') c
-  else if c = '!'
-    then if nest = 1
-         then match input_char_opt inp with
-              | None   -> raise (ECComMacs_NonterminatedComment lnum)
-              | Some c ->
-                  match scan_name_and_params inp lnum c with
-                  | (lnum, name, params, Some c) ->
-                      scan_init inp lnum nest macs
-                      (Some (macro_empty_body name params)) c
-                  | (lnum, _,    _,      None)   ->
-                      raise (ECComMacs_NonterminatedComment lnum)
-         else match input_char_opt inp with  (* nest >= 2 *)
-              | None   -> raise (ECComMacs_NonterminatedComment lnum)
-              | Some c ->
-                  scan_init inp lnum nest macs
-                  (add_string_to_opt_macro_body mac_opt "!") c
-  else match input_char_opt inp with
-       | None   -> macs
-       | Some d ->
-           scan_init inp lnum nest macs
-           (add_char_to_opt_macro_body mac_opt c) d
+  if c = '!'
+  then if nest = 1
+       then match input_char_opt inp with
+            | None   -> raise (ECComMacs_NonterminatedComment lnum)
+            | Some c ->
+                match scan_name_and_params inp lnum c with
+                | (lnum, name, params, Some c) ->
+                    scan_init inp lnum nest macs
+                    (Some (macro_empty_body name params)) c
+                | (lnum, _,    _,      None)   ->
+                    raise (ECComMacs_NonterminatedComment lnum)
+       else match input_char_opt inp with  (* nest >= 2 *)
+            | None   -> raise (ECComMacs_NonterminatedComment lnum)
+            | Some c ->
+                scan_init inp lnum nest macs
+                (add_string_to_opt_macro_body mac_opt "!") c
+  else scan_init inp lnum nest macs mac_opt c
 and scan_from_star (inp : input) (lnum : int) (nest : int)
     (macs : macro list) (mac_opt : macro option) (c : char) : macro list =
-  if c = '\n'
-    then match input_char_opt inp with
-         | None   ->
-             if nest = 0
-             then macs
-             else raise (ECComMacs_NonterminatedComment (lnum + 1))
-         | Some c ->
-             scan_init inp (lnum + 1) nest macs
-             (add_string_to_opt_macro_body mac_opt "*\n") c
-  else if c = ')'
-    then if nest = 1 && Option.is_some mac_opt
-           then match input_char_opt inp with
-                | None   -> (macs @ [trim_macro_body (Option.get mac_opt)])
-                | Some c ->
-                    scan_init inp lnum 0
-                    (macs @ [trim_macro_body (Option.get mac_opt)])
-                    None c
-         else if nest >= 1
-           then match input_char_opt inp with
-                | None   ->
-                    if nest = 1
-                    then macs
-                    else raise (ECComMacs_NonterminatedComment lnum)
-                | Some c ->
-                    scan_init inp lnum (nest - 1) macs
-                    (add_string_to_opt_macro_body mac_opt "*)") c
-         else raise (ECComMacs_UnmatchedClose lnum)
-  else match input_char_opt inp with
-       | None   ->
-           if nest = 0
-           then macs
-           else raise (ECComMacs_NonterminatedComment lnum)
-       | Some d ->
-           scan_init inp lnum nest macs
-           (add_string_to_opt_macro_body mac_opt ("*" ^ String.of_char c)) d
+  if c = ')'
+  then if nest = 1 && Option.is_some mac_opt
+         then match input_char_opt inp with
+              | None   -> (macs @ [trim_macro_body (Option.get mac_opt)])
+              | Some c ->
+                  scan_init inp lnum 0
+                  (macs @ [trim_macro_body (Option.get mac_opt)])
+                  None c
+       else if nest >= 1
+         then match input_char_opt inp with
+              | None   ->
+                  if nest = 1
+                  then macs
+                  else raise (ECComMacs_NonterminatedComment lnum)
+              | Some c ->
+                  scan_init inp lnum (nest - 1) macs
+                  (add_string_to_opt_macro_body mac_opt "*)") c
+       else raise (ECComMacs_UnmatchedClose lnum)
+  else scan_init inp lnum nest macs
+       (add_char_to_opt_macro_body mac_opt '*') c
 
 let scan_file (filename : string) : macro list =
   let inp = File.open_in filename in
