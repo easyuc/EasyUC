@@ -1,8 +1,4 @@
-
-
 require import UCCore.
-
-require import KeysExponentsAndPlaintexts.
 
 require UC___SMC.
 

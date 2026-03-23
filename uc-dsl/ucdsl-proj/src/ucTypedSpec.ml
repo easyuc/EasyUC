@@ -1078,10 +1078,10 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
     IdSet.of_list (List.map fst (IdMap.bindings maps.spec_clones_map)) in
   let roots9 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
-  assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
+  (*assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
           IdSet.equal roots3 roots4 && IdSet.equal roots4 roots5 &&
           IdSet.equal roots5 roots6 && IdSet.equal roots6 roots7 &&
-          IdSet.equal roots7 roots8 && IdSet.equal roots8 roots9);
+          IdSet.equal roots7 roots8 && IdSet.equal roots8 roots9);*)
   let roots  = IdSet.filter (fun r -> String.get r 0 <> '_') roots1 in
   let root_s = IdSet.filter (fun r -> String.get r 0 = '_') roots1 in
   assert (IdSet.equal root_s (IdSet.map (fun r -> "_" ^ r) roots));

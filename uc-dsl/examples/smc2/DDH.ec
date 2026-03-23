@@ -4,7 +4,39 @@
 
 prover [""].  (* no provers *)
 
-require import AllCore Distr KeysExponentsAndPlaintexts.
+require import AllCore Distr.
+
+(*************************** Begin Theory Parameters **************************)
+
+(* group of keys *)
+
+type key.
+
+op (^^) : key -> key -> key.  (* binary operation *)
+
+(* commutative semigroup of exponents *)
+
+type exp.
+
+op ( * ) : exp -> exp -> exp.  (* multiplication *)
+
+(* full (every element has non-zero weight), uniform (all elements
+   with non-zero weight have same weight) and lossless (sum of all
+   weights is 1%r) distribution over exp
+
+   consequently exp has only finitely many elements *)
+
+op [full uniform lossless] dexp : exp distr.
+
+(* connection between key and exp, via generator key and
+   exponentiation operation *)
+
+op g : key.  (* generator *)
+
+op (^) : key -> exp -> key.  (* exponentiation *)
+
+(**************************** End Theory Parameters ***************************)
+
 
 (******************** Decisional Diffie-Hellman Assumption ********************)
 
