@@ -1,0 +1,15 @@
+description
+test with send and transition where message arguments are in wrong
+order, because the the order is determined by positional ordering
+of parameters not by the lexicographic ordering of parameter names
+.
+args: bad.uc
+outcome: failure
+[error: bad.uc: from line 14 columns 33 to 38]
+
+This expression has type
+   bool
+
+but is expected to have type
+   int
+.

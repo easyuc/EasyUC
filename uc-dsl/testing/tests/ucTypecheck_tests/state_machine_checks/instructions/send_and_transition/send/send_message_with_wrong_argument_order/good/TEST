@@ -1,0 +1,9 @@
+description
+resolution of test with send and transition where message arguments
+are in wrong order, because the the order is determined by positional
+ordering of parameters not by the lexicographic ordering of parameter
+names
+.
+args: good.uc
+outcome: success
+.

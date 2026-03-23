@@ -1,0 +1,10 @@
+description
+test where the RF parameter names are not lexicgraphically ordered
+.
+args: SMC2.uc
+outcome: failure
+[error: SMC2.uc: from line 182 columns 30 to 43]
+
+argument 1 implements composite direct interface SMCa.SMCDir from clone
+SMCa, whereas it should implement SMCb.SMCDir from clone SMCb
+.

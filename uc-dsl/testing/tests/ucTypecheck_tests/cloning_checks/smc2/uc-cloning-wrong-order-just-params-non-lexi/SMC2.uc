@@ -148,17 +148,7 @@ direct SMC2Dir {
   Pt2 : SMC2Pt2
 }
 
-(* Because the four UC clones were created in the order Forwarding1,
-   Forwarding2, SMC1, SMC2, and the subfunctionalities Fwd1 < Fwd2 in
-   the lexicographic order, Fwd1, Fwd2 must come from Forwarding1 and
-   Forwarding2, and the parameters SMC1 and SMC2 must come from
-   SMC1 and SMC2
-
-   this would still be true if Fwd2 was declared before Fwd1, but it
-   would *not* be true of the parameter SMC2 came first (parameter
-   ordering is positional, subfunctionality ordering is lexicographic *)
-
-functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
+functionality SMC2Real(SMC2 : SMC2.SMCDir, SMC1 : SMC1.SMCDir)
     implements SMC2Dir {
   subfun Fwd1 = Forwarding1.Forw
   subfun Fwd2 = Forwarding2.Forw

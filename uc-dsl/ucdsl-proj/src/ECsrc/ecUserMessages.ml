@@ -226,16 +226,18 @@ end = struct
         msg "this pattern matching contains duplicated branches"
 
     | FXE_MatchPartial ids ->
-        msg "this pattern matching is non-exhaustive, @[%a@] %s missing"
-          (EcPrinting.pp_list ",@ " pp_symbol) ids (is_are (List.length ids))
+        msg "this pattern matching is non-exhaustive, %a %s missing"
+          (EcPrinting.pp_list ",@ " pp_symbol) ids
+          (is_are (List.length ids))
 
     | FXE_FixPartial ids ->
         let ppe = EcPrinting.PPEnv.ofenv env in
         let pp_match fmt ids =
           Format.fprintf fmt "[%a]"
             (EcPrinting.pp_list ",@" (EcPrinting.pp_opname ppe)) ids in
-        msg "this pattern matching is non-exhaustive, @[%a@] %s missing"
-          (EcPrinting.pp_list ",@ " pp_match) ids (is_are (List.length ids))
+        msg "this pattern matching is non-exhaustive, %a %s missing"
+          (EcPrinting.pp_list ",@ " pp_match) ids
+          (is_are (List.length ids))
 
     | FXE_FixRedundant fm ->
         msg "this clause is useless: %a" (pp_fix_match env) fm

@@ -3,114 +3,22 @@
 (* Triple unit consisting of real and ideal functionalities, and a
    simulator, for Diffie-Hellman key exchange. *)
 
-(* Requiring a UC file makes the UC files and EasyCrypt theories
-   required directly or indirectly by that file available with
-   explicit qualification. Files UC required must be cloned before
-   being used. *)
+(* Requiring a .uc file makes the definitions of that file, plus those
+   of all the EasyCrypt theories and .uc files required (directly, or
+   indirectly) by that file available *with* explicit
+   qualification. *)
 
 uc_requires Forwarding.
 
 (* Requiring an EasyCrypt theory makes the definitions of that theory,
    plus those of all the EasyCrypt theories required (directly or
-   indirectly) by that theory, available, *with* qualification.  To
-   make the definitions of that theory only available without
-   qualification, prepend the theory with a "+", e.g., `ec_requires
-   +KeyExp`. Here, we don't use a "+", because we only clone KeyExp,
-   below *)
+   indirectly) by that theory, available: *with* qualification, if
+   without a "+"; *without* qualification, if with a "+". *)
 
-ec_requires KeyExp.
-
-(**************************** Begin Unit Parameters ***************************)
-
-(* group of keys *)
-
-type key.
-
-op (^^) : key -> key -> key.  (* binary operation *)
-
-op kid : key.  (* identity *)
-
-op kinv : key -> key.  (* inverse *)
-
-axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
-
-axiom kid_l (x : key) : kid ^^ x = x.
-
-axiom kid_r (x : key) : x ^^ kid = x.
-
-axiom kinv_l (x : key) : kinv x ^^ x = kid.
-
-axiom kinv_r (x : key) : x ^^ kinv x = kid.
-
-(* commutative semigroup of exponents *)
-
-type exp.
-
-op e : exp.  (* some exponent *)
-
-op ( * ) : exp -> exp -> exp.  (* multiplication *)
-
-axiom mulC (q r : exp) : q * r = r * q.
-
-axiom mulA (q r s : exp) : q * r * s = q * (r * s).
-
-op epdp_exp_univ : (exp, univ) epdp.  (* EPDP from exp to univ *)
-
-axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
-
-(* full (every element has non-zero weight), uniform (all elements
-   with non-zero weight have same weight) and lossless (sum of all
-   weights is 1%r) distribution over exp
-
-   consequently exp has only finitely many elements *)
-
-op [full uniform lossless] dexp : exp distr.
-
-(* connection between key and exp, via generator key and
-   exponentiation operation *)
-
-op g : key.  (* generator *)
-
-op (^) : key -> exp -> key.  (* exponentiation *)
-
-axiom double_exp_gen (q1 q2 : exp) : (g ^ q1) ^ q2 = g ^ (q1 * q2).
-
-(* the following axioms say that each key is uniquely generated from g
-   by exponentiation *)
-
-axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
-
-axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
-
-(***************************** End Unit Parameters ****************************)
-
-(* EasyCrypt and UC cloning comes next
-
-   When using the interpreter, the user is responsible for checking
-   that instantiations of abstract types and operators satisfy the
-   given axioms. When the translator is used, EasyCrypt proofs that
-   this is true must be given by the user. *)
-
-ec_clone import KeyExp as KeyExp' with
-  type key         <- key,
-  op (^^)          <- (^^),
-  op kid           <- kid,
-  op kinv          <- kinv,
-  type exp         <- exp,
-  op e             <- e,
-  op ( * )         <- ( * ),
-  op epdp_exp_univ <- epdp_exp_univ,
-  op dexp          <- dexp,
-  op g             <- g,
-  op (^)           <- (^).
-
-(* each UC file must be cloned before being used in a real functionality,
-   and each clone may only be used once *)
+ec_requires +KeysExponentsAndPlaintexts.
 
 uc_clone Forwarding as Forwarding1.
 uc_clone Forwarding as Forwarding2.
-
-(* this is the end of the UC DSL preamble *)
 
 (* The composite direct interface has two components, one for each
    of two parties. *)
@@ -142,19 +50,9 @@ direct KEDir {
 
 functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
-     subfunctionalities, which must be ideal functionalities
+     subfunctionalities must be ideal functionalities *)
 
-     the subfunctionalities must come from distinct clones
-
-     because Forwarding1 and Forwarding2 were claned in that order,
-     above, and Fw1 is < Fw2 in the lexicographic ordering, Fw1 must
-     come from Forwarding1 and Fw2 from Forwarding2; this would be
-     true even if Fw2 was declared before Fw1
-
-     if the -units command line option is used, then each UC clone must
-     be used *)
-
-  subfun Fw1 = Forwarding1.Forw
+  subfun Fw1 = Forwarding1.Forw  (* must be qualified *)
   subfun Fw2 = Forwarding2.Forw
 
   (* Party 1 (Pt1) serves the basic direct interface KEDir.Pt1; this
@@ -267,9 +165,6 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   }
 }
 
-(* The ideal functionality and simulator are structured so as to
-   allow a reduction to Decisional Diffie-Hellman *)
-
 (* basic adversarial interface between ideal functionality and
    simulator *)
 
@@ -330,7 +225,7 @@ functionality KEIdeal implements KEDir KEI2S {
     match message with
     | pt2'@KEDir.Pt2.ke_req2 => {
         if (pt2' = pt2) {
-          send KEI2S.ke_sim_req2 and transition WaitSim2(pt1, q).
+          send KEI2S.ke_sim_req2 and transition WaitSim2(pt1, pt2, q).
         }
         else { fail. }
       }
@@ -338,7 +233,7 @@ functionality KEIdeal implements KEDir KEI2S {
     end
   }
 
-  state WaitSim2(pt1 : port, q : exp) {
+  state WaitSim2(pt1 : port, pt2 : port, q : exp) {
     match message with
     | KEI2S.ke_sim_rsp => {
         send KEDir.Pt1.ke_rsp2(g ^ q)@pt1 and transition Final.
@@ -403,10 +298,8 @@ simulator KESim uses KEI2S simulates KEReal {
        for messages intended for the real functionality, like this
        OK message destined for the first forwarder *)
     | KEReal.Fw1.FwAdv.fw_ok => {
-        (* q2 has to be sampled "early", so as to match it using rnd
-           tactic with sampling of q2 in real functionality *)
         q2 <$ dexp;
-        send KEI2S.ke_sim_rsp and transition WaitReq2(q2).
+        send KEI2S.ke_sim_rsp and transition WaitReq2(q1, q2).
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
@@ -414,19 +307,19 @@ simulator KESim uses KEI2S simulates KEReal {
     end
   }
 
-  state WaitReq2(q2 : exp) {
+  state WaitReq2(q1 : exp, q2 : exp) {
     match message with 
     | KEI2S.ke_sim_req2 => {
         send KEReal.Fw2.FwAdv.fw_obs
              (intport KEReal.Pt2, intport KEReal.Pt1,
               epdp_key_univ.`enc (g ^ q2))
-        and transition WaitAdv2.
+        and transition WaitAdv2(q1, q2).
       }
     | *                 => { fail. }
     end
   }
 
-  state WaitAdv2 {
+  state WaitAdv2(q1 : exp, q2 : exp) {
     match message with 
     | KEReal.Fw2.FwAdv.fw_ok => {
         send KEI2S.ke_sim_rsp and transition Final.
