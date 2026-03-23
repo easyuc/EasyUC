@@ -3,9 +3,9 @@
 (* Triple unit for two way secure message communcation between two
    parties, with two different types of plain texts *)
 
-uc_requires (*Forwarding*) SMC.
+uc_requires Forwarding SMC.
 
-ec_requires +EPDPAux.
+ec_requires +EPDPAux SMC2Aux.
 
 (**************************** Begin Unit Parameters ***************************)
 
@@ -88,6 +88,21 @@ axiom valid_epdp_text2_key : valid_epdp epdp_text2_key.
 uc_clone Forwarding as Forwarding1.
 uc_clone Forwarding as Forwarding2.
 
+uc_clone SMC as SMC1 with
+  type key         = key,
+  op (^^)          = (^^),
+  op kid           = kid,
+  op kinv          = kinv,
+  type exp         = exp,
+  op e             = e,
+  op ( * )         = ( * ),
+  op epdp_exp_univ = epdp_exp_univ,
+  op dexp          = dexp,
+  op g             = g,
+  op (^)           = (^),
+  type text        = text1,
+  op epdp_text_key = epdp_text1_key.
+
 uc_clone SMC as SMC2 with
   type key         = key,
   op (^^)          = (^^),
@@ -103,20 +118,20 @@ uc_clone SMC as SMC2 with
   type text        = text2,
   op epdp_text_key = epdp_text2_key.
 
-uc_clone SMC as SMC1 with
-  type key         = key,
-  op (^^)          = (^^),
-  op kid           = kid,
-  op kinv          = kinv,
-  type exp         = exp,
-  op e             = e,
-  op ( * )         = ( * ),
-  op epdp_exp_univ = epdp_exp_univ,
-  op dexp          = dexp,
-  op g             = g,
-  op (^)           = (^),
-  type text        = text1,
-  op epdp_text_key = epdp_text1_key.
+(* use SMC2Aux to import aliases
+
+   epdp_text1_univ : (text1, univ) epdp
+   epdp_text2_univ : (text2, univ) epdp
+
+   of EPDPs in SMC1.KeyExpText and SMC2.KeyExpText. these are
+   needed by translator, because text1 and text2 are types of
+   message parameters *)
+
+ec_clone import SMC2Aux as SMC2Aux' with
+  type text1         <- text1,
+  type text2         <- text2,
+  op epdp_text1_univ = SMC1.KeyExpText'.epdp_text_univ,
+  op epdp_text2_univ = SMC2.KeyExpText'.epdp_text_univ.
 
 direct SMC2Pt1 {
   in  pt1@smc_req(pt2 : port, t : text1)  (* 1 *)
@@ -133,7 +148,7 @@ direct SMC2Dir {
   Pt2 : SMC2Pt2
 }
 
-functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
+functionality SMC2Real(SMC1 : SMC2.SMCDir, SMC2 : SMC1.SMCDir)
     implements SMC2Dir {
   subfun Fwd1 = Forwarding1.Forw
   subfun Fwd2 = Forwarding2.Forw
@@ -142,7 +157,7 @@ functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
     initial state WaitReq {
       match message with 
       | pt1@SMC2Dir.Pt1.smc_req(pt2, t) => {
-          if (envport pt2 /\ SMC1.KeyExchange.Forwarding1.Forwarding.fwd_const = 3) {
+          if (envport pt2) {
             send Fwd1.D.fw_req
                  (intport Pt2, epdp_port_port_univ.`enc (pt1, pt2))
             and transition WaitFwd2(pt1, t).

@@ -2561,7 +2561,7 @@ let step_real_running_config (c : config_real_running) (pi : prover_infos)
   let (next, rest) = (List.hd inss, List.tl inss) in
   let path_subst : form -> form =
     let root = root_of_real_world_running_context c.rwrc in
-    cond_subst_path_prefix_in_form ["Top"; "UC___" ^ root] c.path in
+    cond_subst_path_prefix_in_form ["Top"; "UC_" ^ root] c.path in
   match unloc next with
   | Assign (lhs, expr)                   ->
       let lc = step_assign c.gc c.lc path_subst dbs lhs expr in
@@ -2888,7 +2888,7 @@ let step_ideal_running_config (c : config_ideal_running) (pi : prover_infos)
   let (next, rest) = (List.hd inss, List.tl inss) in
   let path_subst : form -> form =
     let root = root_of_ideal_world_running_context c.iwrc in
-    cond_subst_path_prefix_in_form ["Top"; "UC___" ^ root] c.path in
+    cond_subst_path_prefix_in_form ["Top"; "UC_" ^ root] c.path in
   match unloc next with
   | Assign (lhs, expr)                   ->
       let lc = step_assign c.gc c.lc path_subst dbs lhs expr in

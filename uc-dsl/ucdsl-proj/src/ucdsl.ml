@@ -142,6 +142,16 @@ let check_file_exists (file : string) : unit =
 (* file ends in ".uc" *)
 
 let check_uc_file (file : string) : unit =
+  let () =
+    let root =
+      UcUtils.capitalized_root_of_filename_with_extension file in
+    if UcUtils.starts_with_underscore root ||
+       UcUtils.has_double_underscope root
+    then error_and_exit
+         (fun ppf ->
+            Format.fprintf ppf
+            ("@[root@ of@ filename@ may@ not@ begin@ with@ '_'@ " ^^
+             "or@ have@ an@ occurrence@ of@ \"__\"@]")) in
   let forbid_option (opt : string) : unit =
     error_and_exit
     (fun ppf ->

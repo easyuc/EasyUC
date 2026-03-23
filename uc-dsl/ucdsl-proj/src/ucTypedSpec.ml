@@ -753,8 +753,12 @@ let initial_state_id_of_sim_tyd (st : sim_tyd) : symbol =
 (* information about EC and UC clones *)
 
 type sc_uc_used_by =
-  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality *)
-  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter *)
+  | SC_UC_SubFun of int  (* UC clone used by nth (from 0) sub-functionality,
+                            where sub-functionalities are ordered
+                            lexicographically *)
+  | SC_UC_Param  of int  (* UC clone used by nth (from 0) parameter,
+                            where parameters are ordered from left to
+                            right in the real functionality definition *)
 
 type sc_uc_clone_info =
   {sc_uc_as       : symbol;                    (* name of clone *)
@@ -833,7 +837,10 @@ let rec sci_unused_first_clone (scis : spec_clone_info list)
 
    five identifier maps indexed by roots, giving: UC and EC
    requires; ppna's for formatting spec parameters of roots;
-   lists of clones of roots; and scopes of roots *)
+   lists of clones of roots; and scopes of roots
+
+   we use "_" ^ root to save the result of typechecking not inside
+   the theory "UC_" ^ root *)
 
 type maps_tyd =
   {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -849,6 +856,59 @@ type maps_tyd =
    spec_clones_map : spec_clone_info list IdMap.t;    (* lists of clones
                                                          of roots *)
    ec_scope_map    : EcScope.scope IdMap.t}           (* scopes of roots *)
+
+let empty_maps =
+  {dir_inter_map   = IdPairMap.empty;
+   adv_inter_map   = IdPairMap.empty;
+   fun_map         = IdPairMap.empty;
+   sim_map         = IdPairMap.empty;
+   uc_reqs_map     = IdMap.empty;
+   ec_reqs_map     = IdMap.empty;
+   spec_params_map = IdMap.empty;
+   spec_clones_map = IdMap.empty;
+   ec_scope_map    = IdMap.empty}
+
+(* when merging maps, there will never be disagreement in cases when
+   an id pair or id is in the domain of both maps - their values will
+   have the same physical addresses *)
+
+let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
+  {dir_inter_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.dir_inter_map newmap.dir_inter_map;
+   adv_inter_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.adv_inter_map newmap.adv_inter_map;
+   fun_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.fun_map newmap.fun_map;
+   sim_map =
+     IdPairMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.sim_map newmap.sim_map;
+   uc_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.uc_reqs_map newmap.uc_reqs_map;
+   ec_reqs_map =
+     IdMap.union
+     (fun _ x y -> assert (x = y); Some x)
+     oldmap.ec_reqs_map newmap.ec_reqs_map;
+   spec_params_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_params_map newmap.spec_params_map;
+   spec_clones_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.spec_clones_map newmap.spec_clones_map;
+   ec_scope_map =
+     IdMap.union
+     (fun _ x y -> assert (x == y); Some x)
+     oldmap.ec_scope_map newmap.ec_scope_map}
 
 let exists_id_pair_maps_tyd
     (maps : maps_tyd) (id_pair : symb_pair) : bool =
@@ -998,23 +1058,34 @@ let basic_adv_inter_names_of_real_fun
 
 (* assuming units checking has been performed *)
 
-let roots_of_map (map : 'a IdPairMap.t) : IdSet.t =
+let roots_of_map_incl_ (map : 'a IdPairMap.t) : IdSet.t =
   IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
 
+(* return roots of maps_tyd, filtering out the ones beginning with '_' *)
+
 let roots_of_maps (maps : maps_tyd) : IdSet.t =
-  let roots1 =
-    IdSet.union (roots_of_map maps.dir_inter_map)
-    (IdSet.union (roots_of_map maps.adv_inter_map)
-     (IdSet.union (roots_of_map maps.fun_map) (roots_of_map maps.sim_map))) in
-  let roots2 =
+  let roots1 = roots_of_map_incl_ maps.dir_inter_map in
+  let roots2 = roots_of_map_incl_ maps.adv_inter_map in
+  let roots3 = roots_of_map_incl_ maps.fun_map in
+  let roots4 = roots_of_map_incl_ maps.sim_map in
+  let roots5 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.uc_reqs_map)) in
-  let roots3 =
+  let roots6 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_reqs_map)) in
-  let roots4 =
+  let roots7 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.spec_params_map)) in
+  let roots8 =
+    IdSet.of_list (List.map fst (IdMap.bindings maps.spec_clones_map)) in
+  let roots9 =
     IdSet.of_list (List.map fst (IdMap.bindings maps.ec_scope_map)) in
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
-          IdSet.equal roots3 roots4);
-  roots1
+          IdSet.equal roots3 roots4 && IdSet.equal roots4 roots5 &&
+          IdSet.equal roots5 roots6 && IdSet.equal roots6 roots7 &&
+          IdSet.equal roots7 roots8 && IdSet.equal roots8 roots9);
+  let roots  = IdSet.filter (fun r -> String.get r 0 <> '_') roots1 in
+  let root_s = IdSet.filter (fun r -> String.get r 0 = '_') roots1 in
+  assert (IdSet.equal root_s (IdSet.map (fun r -> "_" ^ r) roots));
+  roots
 
 type singleton_info =
   {si_root          : symbol;

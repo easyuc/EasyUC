@@ -1,0 +1,9 @@
+description
+
+.
+args: nonexhaustive_match.uc
+outcome: failure
+[error: nonexhaustive_match.uc: from line 18 column 5 to line 19 column 33]
+
+this pattern matching is non-exhaustive, Three is missing
+.

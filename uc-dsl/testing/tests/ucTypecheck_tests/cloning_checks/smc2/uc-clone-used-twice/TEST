@@ -3,7 +3,7 @@ UC clone was already used by a real functionality.
 .
 args:-units SMC2.uc
 outcome:failure
-[error: SMC2.uc: from line 136 columns 51 to 62]
+[error: SMC2.uc: from line 154 columns 17 to 33]
 
-UC clone was already used by a real functionality
+UC clone was already used by real functionality: Forwarding1
 .

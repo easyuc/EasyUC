@@ -3,10 +3,10 @@
 (* Triple unit consisting of real and ideal functionalities, and a
    simulator, for Diffie-Hellman key exchange. *)
 
-(* Requiring a .uc file makes the definitions of that file, plus those
-   of all the EasyCrypt theories and .uc files required (directly, or
-   indirectly) by that file available *with* explicit
-   qualification. *)
+(* Requiring a UC file makes the UC files and EasyCrypt theories
+   required directly or indirectly by that file available with
+   explicit qualification. Files UC required must be cloned before
+   being used. *)
 
 uc_requires Forwarding.
 
@@ -91,7 +91,7 @@ axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
    given axioms. When the translator is used, EasyCrypt proofs that
    this is true must be given by the user. *)
 
-ec_clone import KeyExp with
+ec_clone import KeyExp as KeyExp' with
   type key         <- key,
   op (^^)          <- (^^),
   op kid           <- kid,
@@ -103,6 +103,9 @@ ec_clone import KeyExp with
   op dexp          <- dexp,
   op g             <- g,
   op (^)           <- (^).
+
+(* each UC file must be cloned before being used in a real functionality,
+   and each clone may only be used once *)
 
 uc_clone Forwarding as Forwarding1.
 uc_clone Forwarding as Forwarding2.
@@ -141,8 +144,12 @@ functionality KEReal implements KEDir {  (* no adversarial interface *)
   (* subfunctionalities - two forwarding functionalities
      subfunctionalities, which must be ideal functionalities
 
-     the subfunctionalities must come from distinct clones, which must
-     be used in the order in which they were declared above
+     the subfunctionalities must come from distinct clones
+
+     because Forwarding1 and Forwarding2 were claned in that order,
+     above, and Fw1 is < Fw2 in the lexicographic ordering, Fw1 must
+     come from Forwarding1 and Fw2 from Forwarding2; this would be
+     true even if Fw2 was declared before Fw1
 
      if the -units command line option is used, then each UC clone must
      be used *)

@@ -1,1 +1,0 @@
-type onetwo = [One | Two].

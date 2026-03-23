@@ -16,8 +16,8 @@
    how they are used in message pattern matching and send and
    transition instructions. *)
 
-ec_requires Forwarding.
-ec_clone Forwarding.
+ec_requires ForwardingAux.
+ec_clone ForwardingAux as FA.
 
 direct FwDir' {
   in  pt1@fw_req(pt2 : port, u : univ)  (* message from pt1, requesting to send

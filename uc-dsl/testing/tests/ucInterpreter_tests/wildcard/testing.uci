@@ -1,0 +1,22 @@
+load Goo.
+functionality RF.
+
+var pt : port.
+
+assumption envport_pt1 : envport func pt.
+
+real.
+send pt@Goo.D.D.inp$func.
+step.
+(* match where value will match wildcard *)
+step.
+(* notice top of local context has two bindings with "_",
+   internally with different tags; these can't be references
+   by body *)
+step.
+step.
+assert msg_out
+((func, 1))@Goo.D.D.outp@pt
+ctrl_env.
+
+finish.

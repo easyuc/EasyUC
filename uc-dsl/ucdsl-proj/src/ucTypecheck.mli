@@ -16,20 +16,33 @@ open UcTypedSpec
 
 val max_msg_params : int
 
+type typecheck_mode =
+  | TM_Top
+  | TM_Theory
+
 (* typecheck a specification
 
    the first argument is the qualified name of the .uc file from which
-   spec was lexed
+   spec was lexed; from this, the root is calculated
 
-   the second argument is used for typechecking uc_requires; the
+   if the second argument is TM_Top, the root will be prepended with
+   "_", and so the maps will be updated with this modified symbol;
+   this is used when typechecking does not happen inside a theory
+
+   if the first argument is TM_Theory, the root will not be prepended
+   with "_"; this is used when typechecking is happening inside the
+   theory "UC_" ^ root
+
+   the third argument is used for typechecking uc_requires; the
    located symbol is the (capitalized) root name of the .uc file,
    normally located in the file it was lexed from
 
-   scopes and thus the current environment are manipulated in
-   the background using the extapi_ commands of ecScope *)
+   scopes and thus the current environment are manipulated in the
+   background *)
 
 val typecheck :
-  symbol -> (symbol located -> maps_tyd) -> spec -> maps_tyd
+  symbol -> typecheck_mode -> (symbol located -> maps_tyd) ->
+  spec -> maps_tyd
 
 (* typecheck a real functionality expression *)
 

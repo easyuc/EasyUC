@@ -1,4 +1,4 @@
-ec_requires +OneTwo.
+ec_requires +OneTwoThree.
 
 direct D' {
 in  x@bla()
@@ -17,6 +17,7 @@ functionality F implements D {
 		match One with 
 		| One => {fail.} 
 		| Two => {fail.} 
+                | Three => {fail.}
 		end
      }
    end

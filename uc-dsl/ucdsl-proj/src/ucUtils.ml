@@ -52,6 +52,19 @@ let format_id_paths_comma
     (ppf : Format.formatter) (iops : string list list) : unit =
   format_strings ppf ',' (List.map string_of_id_path iops)
 
+let starts_with_underscore s =
+  try String.get s 0 = '_'
+  with _ -> false
+
+let rm_any_initial_underscore s =
+  if starts_with_underscore s
+  then String.sub s 1 (String.length s - 1)
+  else s
+
+let has_double_underscope s =
+  try let _ = String.find s "__" in true
+  with _ -> false
+
 let rec sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
   match sl1, sl2 with
   | _,           []          -> true

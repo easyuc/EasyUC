@@ -127,11 +127,11 @@ uc_clone SMC as SMC2 with
    needed by translator, because text1 and text2 are types of
    message parameters *)
 
-ec_clone import SMC2Aux with
+ec_clone import SMC2Aux as SMC2Aux' with
   type text1         <- text1,
   type text2         <- text2,
-  op epdp_text1_univ = SMC1.KeyExpText.epdp_text_univ,
-  op epdp_text2_univ = SMC2.KeyExpText.epdp_text_univ.
+  op epdp_text1_univ = SMC1.KeyExpText'.epdp_text_univ,
+  op epdp_text2_univ = SMC2.KeyExpText'.epdp_text_univ.
 
 direct SMC2Pt1 {
   in  pt1@smc_req(pt2 : port, t : text1)  (* 1 *)
@@ -147,6 +147,16 @@ direct SMC2Dir {
   Pt1 : SMC2Pt1
   Pt2 : SMC2Pt2
 }
+
+(* Because the four UC clones were created in the order Forwarding1,
+   Forwarding2, SMC1, SMC2, and the subfunctionalities Fwd1 < Fwd2 in
+   the lexicographic order, Fwd1, Fwd2 must come from Forwarding1 and
+   Forwarding2, and the parameters SMC1 and SMC2 must come from
+   SMC1 and SMC2
+
+   this would still be true if Fwd2 was declared before Fwd1, but it
+   would *not* be true of the parameter SMC2 came first (parameter
+   ordering is positional, subfunctionality ordering is lexicographic *)
 
 functionality SMC2Real(SMC1 : SMC1.SMCDir, SMC2 : SMC2.SMCDir)
     implements SMC2Dir {

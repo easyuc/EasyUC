@@ -3,7 +3,7 @@ abstract operator with duplicated name
 .
 args:-units SMC2.uc
 outcome:failure
-[error: KeyExchange.uc: from line 37 columns 1 to 3]
+[error: KeyExchange.uc: from line 41 columns 1 to 3]
 
 duplicated binding: kinv
 .

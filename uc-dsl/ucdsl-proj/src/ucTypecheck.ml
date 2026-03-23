@@ -36,21 +36,39 @@ let check_qid2 (qid : pqsymbol) : symb_pair =
          fprintf ppf
          "@[qualified@ id@ must@ have@ exactly@ two@ components@]")
 
-(* convert a named list into an id map, checking for uniqueness
-   of names; get_id returns the name of a list element *)
-
 let check_unique_ids
-    (msgf : formatter -> unit) (al : 'a list) (get_id : 'a -> psymbol)
+    (msgf : formatter -> unit) (xs : 'a list) (get_id : 'a -> psymbol)
+      : unit =
+  ignore
+  (List.fold_left
+   (fun ys x ->
+      let id_x = get_id x in
+      if List.exists (fun y -> unloc (get_id y) = unloc id_x) ys
+      then error_message (loc id_x)
+           (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_x))
+      else ys @ [x])
+   [] xs)
+
+(* convert a named list into an id map, checking for uniqueness
+   of names; get_id returns the name of a list element, and
+   msfg is used to generate the beginning of a duplicate error message *)
+
+let check_unique_ids_to_map
+    (msgf : formatter -> unit) (xs : 'a list) (get_id : 'a -> psymbol)
       : 'a IdMap.t =
   let id_map = IdMap.empty in
   List.fold_left
   (fun id_map a ->
      let id_l = get_id a in
-     if exists_id id_map (unloc id_l) then
-       error_message (loc id_l)
-       (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
+     if exists_id id_map (unloc id_l)
+     then error_message (loc id_l)
+          (fun ppf -> fprintf ppf "@[%t:@ %s@]" msgf (unloc id_l))
      else IdMap.add (unloc id_l) a id_map)
-  id_map al
+  id_map xs
+
+(* checking for uniqueness of names in a named list; get_id returns
+   the name of a list element, and msfg is used to generate the
+   beginning of a duplicate error message *)
 
 (* EasyCrypt type checks *)
 
@@ -76,7 +94,7 @@ let check_type_top (pty : pty) : ty =
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)
       : ty_index IdMap.t =
-  let nt_map = check_unique_ids msgf ntl (fun nt -> nt.id) in
+  let nt_map = check_unique_ids_to_map msgf ntl (fun nt -> nt.id) in
   IdMap.map
   (fun (nt : type_binding) ->
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
@@ -97,7 +115,7 @@ let inter_kind_to_str art ik =
 
 let check_basic_inter (mds : message_def list) : inter_body_tyd =
   let msg_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ message@ name@]")
     mds (fun md -> md.id) in
   BasicTyd
@@ -156,7 +174,7 @@ let check_comp_inter
     (ik : inter_kind) (root : symbol) (inter_map : inter_tyd IdPairMap.t)
     (cis : comp_item list) : inter_body_tyd =
   let comp_item_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ sub-interface@ name@]")
     cis (fun ci -> ci.sub_id) in
   CompositeTyd (IdMap.map (check_comp_item ik root inter_map) comp_item_map)
@@ -545,7 +563,6 @@ let cond_subst_path_prefix_in_bip (olds : SL.t) (news : SL.t)
 let cond_subst_path_prefix_in_bips (olds : SL.t) (news : SL.t)
     (bips : basic_inter_path list) : basic_inter_path list =
   List.map (cond_subst_path_prefix_in_bip olds news) bips
-
 
 (* three kinds of basic_inter_path's - ones of a direct interface,
    ones of an adversarial interface, and internal ones (coming from a
@@ -1308,53 +1325,57 @@ let check_send_and_transition
 
 let check_toplevel_match_clause
     (l : EcLocation.t) (env : env) (ue : unienv) (gindty : ty)
-    (clause : match_clause) : symbol * (bindings * instruction list located) =
-  let filter = fun _ op -> EcDecl.is_ctor op in
-  let PPApp ((cname, tvi), cargs) = fst clause in
-  let tvi = tvi |> EcUtils.omap (transtvi env ue) in
-  let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
-  match cts with
-  | []                          ->
-      tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
-  | _ :: _ :: _                 ->
-      tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
-  | [(cp, tvi), opty, subue, _] ->
-      let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
-      let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
-      let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
-      let ind = (EcUtils.oget (EcDecl.tydecl_as_datatype indty)).tydt_ctors in
-      let ctorsym, ctorty = List.nth ind ctoridx in
-      let args_exp = List.length ctorty in
-      let args_got = List.length cargs in
+    (clause : match_clause) :
+    (symbol * bindings) option * instruction list located =
+  match fst clause with
+  | PPAny                       -> (None, snd clause)
+  | PPApp ((cname, tvi), cargs) ->
+      let filter = fun _ op -> EcDecl.is_ctor op in
+      let tvi = tvi |> EcUtils.omap (transtvi env ue) in
+      let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
+      match cts with
+      | []                          ->
+          tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
+      | _ :: _ :: _                 ->
+          tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
+      | [(cp, tvi), opty, subue, _] ->
+          let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
+          let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
+          let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
+          let ind =
+            (EcUtils.oget (EcDecl.tydecl_as_datatype indty)).tydt_ctors in
+          let ctorsym, ctorty = List.nth ind ctoridx in
+          let args_exp = List.length ctorty in
+          let args_got = List.length cargs in
 
-      if args_exp <> args_got
-      then tyerror cname.pl_loc env
-           (InvalidMatch
-            (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
+          if args_exp <> args_got
+          then tyerror cname.pl_loc env
+               (InvalidMatch
+                (FXE_CtorInvalidArity (snd (unloc cname), args_exp, args_got)));
 
-      let cargs_lin =
-        List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
-      if has_dup cargs_lin
-      then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
+          let cargs_lin =
+            List.filter_map (fun o -> EcUtils.omap unloc (unloc o)) cargs in
+          if has_dup cargs_lin
+          then tyerror cname.pl_loc env (InvalidMatch FXE_MatchNonLinear);
 
-      EcUnify.UniEnv.restore ~src:subue ~dst:ue;
+          EcUnify.UniEnv.restore ~src:subue ~dst:ue;
 
-      let ctorty =
-        let tvi = Some (EcUnify.TVIunamed tvi) in
-          fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
-      let pty = EcUnify.UniEnv.fresh ue in
+          let ctorty =
+            let tvi = Some (EcUnify.TVIunamed tvi) in
+            fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
+          let pty = EcUnify.UniEnv.fresh ue in
 
-      (try EcUnify.unify env ue (toarrow ctorty pty) opty with
-       | EcUnify.UnificationFailure _ -> assert false);
-      unify_or_fail env ue l ~expct:pty gindty;
-      let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
-      let pvars =
-        List.map
-        (fun x -> mk_loc (loc x) (create (unloc x)))
-        cargs in
-      let pvars = List.combine pvars ctorty in
+          (try EcUnify.unify env ue (toarrow ctorty pty) opty with
+           | EcUnify.UnificationFailure _ -> assert false);
+          unify_or_fail env ue l ~expct:pty gindty;
+          let create o = EcIdent.create (EcUtils.omap_dfl unloc "_" o) in
+          let pvars =
+            List.map
+            (fun x -> mk_loc (loc x) (create (unloc x)))
+            cargs in
+          let pvars = List.combine pvars ctorty in
 
-      ctorsym, (pvars, snd clause)
+          (Some (ctorsym, pvars), snd clause)
 
 let rec check_ite
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -1380,6 +1401,7 @@ and check_match
     (ex : pformula) (clauses : match_clause list located)
       : instruction_tyd_u * state_analysis =
   let ex_loc = loc ex in
+  let cloc = loc clauses in
   let exp, ty = check_expr sa env ue ex None in
   let uidmap = EcUnify.UniEnv.assubst ue in
   let ty = EcFol.ty_subst (EcFol.Tuni.subst uidmap) ty in
@@ -1399,30 +1421,51 @@ and check_match
     List.map
     (check_toplevel_match_clause ex_loc env ue ty)
     (unloc clauses) in
-  (* the left-hand-sides of top_results are a subset of the left-hand sides
-     of inddecl.tydt_ctors (with the order perhaps different) *)
-  let () =
-    if List.length top_results < List.length inddecl.tydt_ctors
-      then tyerror (loc clauses) env (InvalidMatch FXE_MatchPartial)
-    else if has_dup ~cmp:(fun x y -> compare (fst x) (fst y))
-            top_results
-      then tyerror (loc clauses) env (InvalidMatch FXE_MatchDupBranches) in
-  (* the left-hand-sides of top_results are exactly the left-hand sides
-     of inddecl.tydt_ctors (with the order perhaps different) *)
+  let rec fill_clauses tbl trs =
+    match trs with
+    | []                           ->
+        let missing =
+          List.filter_map
+          (fun (x, _) -> if Msym.mem x tbl then None else Some x)
+          inddecl.tydt_ctors in
+        if missing <> []
+        then tyerror cloc env (InvalidMatch (FXE_MatchPartial missing));
+        tbl
+    | (None, body) :: trs          ->
+        if trs <> [] ||
+           List.for_all (fun (x, _) -> Msym.mem x tbl) inddecl.tydt_ctors
+        then tyerror cloc env (InvalidMatch FXE_MatchDupBranches);
+      (* fill the missing clauses *)
+      let fill tbl (x, tys) =
+        if Msym.mem x tbl then tbl
+        else Msym.add x
+             (List.map (fun ty -> mk_loc _dummy (EcIdent.create "_"), ty) tys,
+              body)
+             tbl in
+      List.fold_left fill tbl inddecl.tydt_ctors
+    | (Some (x, bds), body) :: trs ->
+        if Msym.mem x tbl
+        then tyerror cloc env (InvalidMatch FXE_MatchDupBranches);
+        let tbl = Msym.add x (bds, body) tbl in
+        fill_clauses tbl trs in
+  let tbl = fill_clauses Msym.empty top_results in
+  let top_results_filled =
+    List.map
+    (fun (x, _) -> (x, Msym.find x tbl))
+    inddecl.tydt_ctors in
   let results =
     List.map
     (fun (cons, (bndgs, body)) ->
        let env = bind_locals_avoid_var env sc bndgs in
        cons, (bndgs, check_instructions abip ss sc sa env ue body))
-    top_results in
-  let cls_u =
+    top_results_filled in
+  let cls_no_sa =
     List.map
-    (fun (cons, (bndngs, (ins, _))) ->
-       cons, (bndngs, ins))
+    (fun (cons, (bndngs, (ins, _))) -> (cons, (bndngs, ins)))
     results in
-  let cls = mk_loc (loc clauses) cls_u in
+  let cls = mk_loc (loc clauses) cls_no_sa in
   let sas = List.map (fun (_, (_, (_, sa))) -> sa) results in
-  Match(exp, cls), merge_state_analyses sas
+  (Match(exp, cls), merge_state_analyses sas)
 
 and check_instruction
     (abip : all_basic_inter_paths) (ss : state_sig IdMap.t)
@@ -1680,7 +1723,7 @@ let check_toplevel_states (id : psymbol) (state_defs : state_def list)
   let init_id = check_exactly_one_initial_state id state_defs in
   let states = List.map (fun sd -> drop_state_construct sd) state_defs in
   let state_map =
-    check_unique_ids
+    check_unique_ids_to_map
     (fun ppf -> fprintf ppf "@[duplicate@ state@ name@]")
     states (fun s -> s.id) in
   IdMap.map (check_toplevel_state init_id) state_map
@@ -1812,7 +1855,11 @@ let get_all_basic_inter_paths_of_real_fun_party
     (fun pid (((root', inter_id, clone), _) : porsf_info * int) ->
        let bips = get_basic_inter_paths root' pid inter_id dir_inter_map in
        cond_subst_path_prefix_in_bips
-       ["Top"; ("UC___" ^ root')] ["Top"; "UC___" ^ root; clone] bips)
+       ["Top"; ("UC_" ^ root')]
+       (if starts_with_underscore root
+        then ["Top"; clone]
+        else ["Top"; "UC_" ^ root; clone])
+       bips)
     params in
   let sub_fun_bips_map =
     IdMap.mapi
@@ -1821,7 +1868,11 @@ let get_all_basic_inter_paths_of_real_fun_party
        let dirid = get_dir_inter_id_impl_by_fun_pair_id pid fun_map in
        let bips = get_basic_inter_paths root' sfid dirid dir_inter_map in
        cond_subst_path_prefix_in_bips
-       ["Top"; ("UC___" ^ root')] ["Top"; "UC___" ^ root; clone] bips)
+       ["Top"; ("UC_" ^ root')]
+       (if starts_with_underscore root
+        then ["Top"; clone]
+        else ["Top"; "UC_" ^ root; clone])
+       bips)
     sub_funs in
   let internal_bips_map =
     IdMap.union
@@ -1935,10 +1986,11 @@ let check_uc_clone_usage_order
   then error_message l
        (fun ppf ->
           fprintf ppf
-          ("@[UC@ clones@ must@ be@ used@ in@ order,@ "              ^^
-           "first@ by@ subfunctionality@ declarations,@ and@ then@ " ^^
-           "by@ functionality@ parameter@ declarations;@ "           ^^
-           "%s@ was@ already@ used@]")
+          ("@[UC@ clones@ must@ be@ used@ in@ order,@ first@ by@ " ^^
+           "subfunctionality@ declarations@ "                      ^^
+           "(lexicographically@ ordered@ by@ name),@ and@ then@ "  ^^
+           "by@ functionality@ parameter@ declarations@ " ^^
+           "(positionally@ ordered);@ %s@ was@ already@ used@]")
           (match List.nth scis last with
            | SCI_EC _    -> failure "cannot happen"
            | SCI_UC info -> info.sc_uc_as))
@@ -1946,11 +1998,13 @@ let check_uc_clone_usage_order
 let check_real_fun_params
     (root : symbol) (rfname : symbol) (dir_inter_map : inter_tyd IdPairMap.t)
     (adv_inter_map : inter_tyd IdPairMap.t)
-    (scis : spec_clone_info list) (param_map : fun_param IdMap.t) (last : int)
+    (scis : spec_clone_info list) (params : fun_param list)
+    (last : int)
       : (porsf_info * int) IdMap.t * spec_clone_info list =
-  let check_real_fun_param _ (param : fun_param)
+  let check_real_fun_param
       ((i, map, scis, last)
          : int * (porsf_info * int) IdMap.t * spec_clone_info list * int)
+      (param : fun_param)
         : int * (porsf_info * int) IdMap.t * spec_clone_info list * int =
     let (clone, id) = check_qid2 param.dir_qid in
     let (scis, cloned, j) =
@@ -1983,7 +2037,7 @@ let check_real_fun_params
      scis,
      j) in
   let (_, map, scis, _) =
-    IdMap.fold check_real_fun_param param_map (0, IdMap.empty, scis, last)
+    List.fold_left check_real_fun_param (0, IdMap.empty, scis, last) params
   in (map, scis)
 
 let check_exists_fun_qid
@@ -2087,16 +2141,20 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def)
             check_is_composite_id AdversarialInterKind root
             maps.adv_inter_map id in
       let sub_fun_decls =
-        check_unique_ids
+        check_unique_ids_to_map
         (fun ppf -> fprintf ppf "@[duplicate@ subfunctionality@ name@]")
         fbr.sub_fun_decls (fun x -> x.id) in
-      let fun_params =
+      let () =
         check_unique_ids
-        (fun ppf -> fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
+        (fun ppf ->
+           fprintf ppf "@[duplicate@ functionality@ parameter@ name@]")
         fund.params (fun p -> p.id) in
       let () =
         let dup_ids =
-          IdMap.filter (fun id _ -> IdMap.mem id fun_params) sub_fun_decls in
+          IdMap.filter
+          (fun id _ ->
+             List.exists (fun (p : fun_param) -> unloc p.id = id) fund.params)
+          sub_fun_decls in
         if IdMap.is_empty dup_ids then ()
         else let id, dup = IdMap.choose dup_ids in
              error_message (loc dup.id)
@@ -2109,9 +2167,9 @@ let check_fun (root : symbol) (maps : maps_tyd) (fund : fun_def)
         check_sub_fun_decls root maps fund sub_fun_decls scis in
       let (params, scis) =
         check_real_fun_params root (unloc fund.id)
-        maps.dir_inter_map maps.adv_inter_map scis fun_params last in
+        maps.dir_inter_map maps.adv_inter_map scis fund.params last in
       let party_defs =
-        check_unique_ids
+        check_unique_ids_to_map
         (fun ppf -> fprintf ppf "@[duplicate@ party@ name@]")
         fbr.party_defs (fun x -> x.id) in
       let parties =
@@ -2194,7 +2252,11 @@ let get_sim_basic_inter_id_paths
              (get_basic_inter_paths_from_inter_id cloned basic_adv_id
               adv_inter_map) in
            cond_subst_path_prefix_in_bips
-           ["Top"; ("UC___" ^ cloned)] ["Top"; "UC___" ^ root; clone] bips)
+           ["Top"; ("UC_" ^ cloned)]
+           (if starts_with_underscore root
+            then ["Top"; clone]
+            else ["Top"; "UC_" ^ root; clone])
+           bips)
     [] pids sim_args in
   let subfuns_bips =
     List.fold
@@ -2210,7 +2272,11 @@ let get_sim_basic_inter_id_paths
              (get_basic_inter_paths_from_inter_id cloned basic_adv_id
               adv_inter_map) in
            cond_subst_path_prefix_in_bips
-           ["Top"; ("UC___" ^ cloned)] ["Top"; "UC___" ^ root; clone] bips)
+           ["Top"; ("UC_" ^ cloned)]
+           (if starts_with_underscore root
+            then ["Top"; clone]
+            else ["Top"; "UC_" ^ root; clone])
+           bips)
     [] (IdMap.bindings (real_fun_body_tyd_of sims_body).sub_funs) in
   from_if_bips @ sims_bips @ params_bips @ subfuns_bips
 
@@ -2374,48 +2440,6 @@ let check_defs root maps defs =
 
 (**************************** specification checks ****************************)
 
-(* when merging maps, there will never be disagreement in cases when
-   an id pair or id is in the domain of both maps - their values will
-   have the same physical addresses *)
-
-let union_maps (oldmap : maps_tyd) (newmap : maps_tyd) : maps_tyd =
-  {dir_inter_map =
-     IdPairMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.dir_inter_map newmap.dir_inter_map;
-   adv_inter_map =
-     IdPairMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.adv_inter_map newmap.adv_inter_map;
-   fun_map =
-     IdPairMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.fun_map newmap.fun_map;
-   sim_map =
-     IdPairMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.sim_map newmap.sim_map;
-   uc_reqs_map =
-     IdMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.uc_reqs_map newmap.uc_reqs_map;
-   ec_reqs_map =
-     IdMap.union
-     (fun _ x y -> assert (x = y); Some x)
-     oldmap.ec_reqs_map newmap.ec_reqs_map;
-   spec_params_map =
-     IdMap.union
-     (fun _ x y -> assert (x == y); Some x)
-     oldmap.spec_params_map newmap.spec_params_map;
-   spec_clones_map =
-     IdMap.union
-     (fun _ x y -> assert (x == y); Some x)
-     oldmap.spec_clones_map newmap.spec_clones_map;
-   ec_scope_map =
-     IdMap.union
-     (fun _ x y -> assert (x == y); Some x)
-     oldmap.ec_scope_map newmap.ec_scope_map}
-
 let load_uc_req
     (check_id : psymbol -> maps_tyd) (maps : maps_tyd) (id : psymbol)
       : maps_tyd =
@@ -2578,6 +2602,7 @@ let check_units_params (root : string) (maps : maps_tyd) (rf : fun_tyd) =
 
 let check_units
     (root : symbol) (qual_file : string) (maps : maps_tyd) : unit =
+  let root_clean    = UcUtils.rm_any_initial_underscore root in
   let inter_names   = inter_names root maps in
   let rf_names      = real_fun_names root maps in
   let if_names      = ideal_fun_names root maps in
@@ -2595,7 +2620,7 @@ let check_units
            fprintf ppf
            ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
             "because@ UC@ clone@ %s@ is@ unused@]")
-           root clone) in
+           root_clean clone) in
   if num_rf_names  = 0 &&  (* singleton unit *)
      num_if_names  = 1 &&
      num_sim_names = 0
@@ -2610,7 +2635,7 @@ let check_units
                 fprintf ppf
                 ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                  "because@ interface@ %s@ is@ extraneous@]")
-                root ex_id)
+                root_clean ex_id)
   else if num_rf_names  = 1 &&  (* triple unit *)
           num_if_names  = 1 &&
           num_sim_names = 1
@@ -2637,7 +2662,7 @@ let check_units
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
                     "real@ and@ ideal@ functionalities@ must@ have@ " ^^
                     "the@ same@ composite@ direct@ interfaces@]")
-                   root)
+                   root_clean)
          else if id_adv_inter_of_fun_body_tyd (unloc i_f) <>
                  Some (unloc sim).uses
            then error_message (begin_of_file_loc qual_file)
@@ -2646,7 +2671,7 @@ let check_units
                    ("@[for@ file@ with@ root@ %s@ to@ be@ a@ unit,@ " ^^
                     "ideal@ functionality's@ basic@ adversarial@ interface@ " ^^
                     "must@ be@ used@ by@ simulator@]")
-                   root)
+                   root_clean)
          else if IdSet.mem
                  (Option.get (id_adv_inter_of_fun_body_tyd (unloc i_f)))
                  (basic_adv_inter_names_of_real_fun root maps rf_name)
@@ -2657,7 +2682,7 @@ let check_units
                     "ideal@ functionality's@ basic@ adversarial@ interface@ " ^^
                     "may@ not@ be@ component@ of@ composite@ adversarial@ " ^^
                     "interface@ of@ real@ functionality@]")
-                   root)
+                   root_clean)
          else let () =
                 match IdSet.min_elt_opt extra_inter with
                 | None       -> ()
@@ -2667,9 +2692,9 @@ let check_units
                        fprintf ppf
                        ("@[file@ with@ root@ %s@ is@ not@ a@ valid@ unit@ " ^^
                         "because@ interface@ %s@ is@ extraneous@]")
-                       root ex_id) in
-              check_units_subfuns root maps rf;
-              check_units_params root maps rf;
+                       root_clean ex_id) in
+              check_units_subfuns root_clean maps rf;
+              check_units_params root_clean maps rf;
   else error_message (begin_of_file_loc qual_file)
        (fun ppf ->
           fprintf ppf
@@ -2679,22 +2704,20 @@ let check_units
            "one@ real@ functionality,@ ideal@ functionality,@ and@ " ^^
            "simulator; instead@ it@ has@ %d@ real@ functionalities,@ " ^^
            "%d@ ideal@ functionalities,@ and@ %d@ simulators@]")
-          root num_rf_names num_if_names num_sim_names)
+          root_clean num_rf_names num_if_names num_sim_names)
+
+type typecheck_mode =
+  | TM_Top
+  | TM_Theory
 
 let typecheck
-    (qual_file : string) (check_id : psymbol -> maps_tyd)
-    (spec : spec) : maps_tyd =
+    (qual_file : string) (mode : typecheck_mode)
+    (check_id : psymbol -> maps_tyd) (spec : spec) : maps_tyd =
   let root = UcUtils.capitalized_root_of_filename_with_extension qual_file in
-  let empty_maps =
-    {dir_inter_map   = IdPairMap.empty;
-     adv_inter_map   = IdPairMap.empty;
-     fun_map         = IdPairMap.empty;
-     sim_map         = IdPairMap.empty;
-     uc_reqs_map     = IdMap.empty;
-     ec_reqs_map     = IdMap.empty;
-     spec_params_map = IdMap.empty;
-     spec_clones_map = IdMap.empty;
-     ec_scope_map    = IdMap.empty} in
+  let root =
+    match mode with
+    | TM_Top    -> "_" ^ root  (* not inside theory *)
+    | TM_Theory -> root in     (* inside theory "UC_" ^ root *)
   let maps =
     load_uc_reqs root check_id empty_maps spec.preamble.uc_requires in
   let ec_reqs = load_ec_reqs spec.preamble.ec_requires in
@@ -2727,17 +2750,20 @@ let typecheck
 (* TODO: remove when translator is adapted to cloning *)
 (*
   let () =
-    fprintf Format.std_formatter "@[%t@\n@\n@]" spec_params_ppna in
-  let () =
-    List.iter
-    (fun x ->
-       match x with
-       | SCI_EC ppna ->
-           fprintf Format.std_formatter "@[%t@\n@\n@]" ppna
-       | SCI_UC y ->
-         let f = y.sc_uc_ppna_fun in
-         fprintf Format.std_formatter "@[%t@\n@\n@]" (f "from" "to"))
-    spec_clone_infos in
+    if mode = TM_Top
+    then let () =
+           fprintf Format.std_formatter "printing for root: %s@\n@\n" root in
+         let () =
+           fprintf Format.std_formatter "@[%t@\n@\n@]" spec_params_ppna in
+         List.iter
+         (fun x ->
+            match x with
+            | SCI_EC ppna ->
+                fprintf Format.std_formatter "@[%t@\n@\n@]" ppna
+            | SCI_UC y ->
+              let f = y.sc_uc_ppna_fun in
+              fprintf Format.std_formatter "@[%t@\n@\n@]" (f "from" "to"))
+         spec_clone_infos in
 *)
 (* end TODO *)
   let maps =
@@ -2846,7 +2872,7 @@ let rec inter_check_fun_expr
 
 let inter_check_real_fun_expr
     (root : symbol) (maps : maps_tyd) (fe : fun_expr) : fun_expr_tyd =
-  let fet = inter_check_fun_expr root maps ["Top"; "UC___" ^ root] fe in
+  let fet = inter_check_fun_expr root maps ["Top"; "UC_" ^ root] fe in
   if is_real_at_top_fet fet
   then fet
   else error_message (loc_of_fun_expr fe)
