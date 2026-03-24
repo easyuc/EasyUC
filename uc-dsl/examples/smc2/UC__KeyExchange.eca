@@ -1,6 +1,6 @@
 
 
-(* Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
+(*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
 `|Pr[<<PathPfx>>DDHBound1(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res] -
   Pr[<<PathPfx>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
@@ -10567,8 +10567,6 @@ rewrite -(IF_DDH2 Adv Env func' in_guard' &n).
 byequiv. sim.
 trivial.  trivial. trivial.
   qed.
-
-  (*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard) 0.0 *)
 
 lemma KeyExchange_RFIP_IF_advantage
     (Env <: ENV{-MI, -RFIP, -IF, -SIM, -AllCGs})

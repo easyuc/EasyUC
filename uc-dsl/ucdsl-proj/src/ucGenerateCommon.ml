@@ -850,7 +850,7 @@ type bound_macro_fun = string -> string -> string -> string -> string -> string
 
 let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
       (rfbt : real_fun_body_tyd) (pmno : int) : bound_macro_fun =
-  let pmns = indexed_map_to_list_only_keep_keys rfbt.params in
+  let pmns = param_names rfbt in
   let pmnm = List.nth pmns (pmno-1) in
   fun s1 s2 s3 s4 s5 ->
   bmf
