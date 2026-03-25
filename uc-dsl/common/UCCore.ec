@@ -3177,12 +3177,12 @@ call{1} (MakeInt.MI_after_adv_error IdealFunc (MS(SimCore, Adv))).
 auto.
 rcondf{1} 1; first auto.
 if{2}.
-sp 1 2.
+sp 0 2.
 rcondf{2} 1; first auto.
 auto.
 sp 0 1.
 if{2}.
-sp 1 3.
+sp 0 3.
 rcondf{2} 1; first auto.
 auto.
 if{2}.
