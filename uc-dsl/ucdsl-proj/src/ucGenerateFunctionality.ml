@@ -612,6 +612,11 @@ let print_proof_state_match (root : string)
   Format.fprintf ppf "@[match. (*state match*)@]@;";
   IdMap.iter (fun id st -> Format.fprintf ppf "(*state branch %s*) %a" id
                              print_proof_state_match_branch st) st_map
+let print_user_fill (ppf : Format.formatter) : unit =
+  Format.fprintf ppf "(* BEGIN USER FILL *)@;(*cannot generate body, states have cycles*)@;(* END USER FILL *)@;"
+
+let is_lin (st_map : state_tyd IdMap.t) : bool =
+  (linearize_state_DAG st_map) <> None
 
 let print_lemma_metric_invoke
       (metric_name : string)
@@ -632,6 +637,8 @@ let print_lemma_metric_invoke
     "/\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in oflist [%s] /\\ (oget res).`3.`2 = 1))@;"
     _Adv adv_if_pi_op_name;
   Format.fprintf ppf "@]@;].@;";
+  if (is_lin st_map)
+  then begin
   Format.fprintf ppf "@[proof.@]@;";
   Format.fprintf ppf "@[rewrite /%s /=.@]@;" metric_name;
   Format.fprintf ppf "@[proc.@]@;";
@@ -641,6 +648,7 @@ let print_lemma_metric_invoke
   print_proof_state_match root mbmap dii ais "sp 1." ppf st_map;
   Format.fprintf ppf "@[skip. smt(). (*invoke guard false*)@]@;";
   Format.fprintf ppf "@[qed.@]@;"
+  end else print_user_fill ppf
 
 let print_IF_lemma_metric_invoke (module_name : string) 
       (root : string)
@@ -778,6 +786,8 @@ let print_SIM_lemma_metric_invoke
     "res <> None =>@ %s (glob %s) < n@;"
     metric_name module_name;
   Format.fprintf ppf "@]@;].@;";
+  if (is_lin st_map)
+  then begin
   Format.fprintf ppf "@[proof.@]@;";
   Format.fprintf ppf "@[rewrite /%s /=.@]@;" metric_name;
   Format.fprintf ppf "@[proc.@]@;";
@@ -786,6 +796,7 @@ let print_SIM_lemma_metric_invoke
   Format.fprintf ppf "@[inline.@]@;";
   print_SIM_proof_state_match root mbmap ais "sp 1." ppf st_map;
   Format.fprintf ppf "@[qed.@]@;"
+  end else print_user_fill ppf
   
 let print_ctor_args_state_metric (st_id : string)  (ppf : Format.formatter)
       (st_map : state_tyd IdMap.t) : unit =
@@ -887,27 +898,45 @@ let print_SIM_invar
 
 
 let print_IF_metric_good_init_lemmas
-      (ppf : Format.formatter) (_ : unit): unit =
+      (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
   Format.fprintf ppf "@[lemma %s (g : glob IF) :@]@;"  iF_metric_good;
   Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" _invar_IF uc_metric_name_IF;
+  if (is_lin st_map)
+  then begin
   Format.fprintf ppf "@[  proof. rewrite /%s /=.@]@;" uc_metric_name_IF;
-  Format.fprintf ppf "@[  smt(). qed.@]@;@;@;";
+  Format.fprintf ppf "@[  smt(). qed.@]@;@;@;"
+  end else print_user_fill ppf
+  ;
   Format.fprintf ppf "@[lemma IF_init :@]@;";
   Format.fprintf ppf "@[  hoare [IF.init : true ==> %s (glob IF)].@]@;"
     _invar_IF;
-  Format.fprintf ppf "@[proof. proc. auto. qed.@]@;";
+  if (is_lin st_map)
+  then
+    Format.fprintf ppf "@[proof. proc. auto. qed.@]@;"
+  else print_user_fill ppf
+  ;
   Format.fprintf ppf "@]@;"
 
+
 let print_SIM_metric_good_init_lemmas
-      (ppf : Format.formatter) (module_name : string): unit =
+       (module_name : string) (ppf : Format.formatter)
+      (st_map : state_tyd IdMap.t) : unit =
   Format.fprintf ppf "@[lemma %s (g : glob %s) :@]@;"  (sIM_metric_good module_name) module_name;
   Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" (_invar_SIM module_name) (uc_metric_name_SIM module_name);
+  if (is_lin st_map)
+  then begin
   Format.fprintf ppf "@[  proof. rewrite /%s /=.@]@;" (uc_metric_name_SIM module_name);
-  Format.fprintf ppf "@[  smt(). qed.@]@;@;@;";
+  Format.fprintf ppf "@[  smt(). qed.@]@;@;@;"
+  end else print_user_fill ppf
+  ;
   Format.fprintf ppf "@[lemma %s_init :@]@;" module_name;
   Format.fprintf ppf "@[  hoare [%s.init : true ==> %s (glob %s)].@]@;"
     module_name (_invar_SIM module_name) module_name;
-  Format.fprintf ppf "@[proof. proc. auto. qed.@]@;";
+  if (is_lin st_map)
+  then
+  Format.fprintf ppf "@[proof. proc. auto. qed.@]@;"
+  else print_user_fill ppf
+  ;
   Format.fprintf ppf "@]@;"
 
 let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
@@ -921,7 +950,7 @@ let gen_ideal_fun (sc : EcScope.scope) (root : string) (id : string)
   Format.fprintf sf "@[%a@]@;@;" (print_ideal_module sc root id mbmap dii) ifbt;
   Format.fprintf sf "@[%a@]@;@;" print_IF_invar id;
   Format.fprintf sf "%a" (print_IF_metric id root mbmap dii) ifbt.states;
-  Format.fprintf sf "@[%a@]@;@;" print_IF_metric_good_init_lemmas ();
+  Format.fprintf sf "@[%a@]@;@;" print_IF_metric_good_init_lemmas ifbt.states;
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
@@ -1353,23 +1382,24 @@ let print_party_state_metric
       (name : string) (type_name : string)
   (state_name : string -> string)
   (ppf : Format.formatter) (st_map : state_tyd IdMap.t) : unit =
+  Format.fprintf ppf "@[<v>@[op [smt_opaque] %s (g : %s) : int =@]@;<0 2>"
+  name type_name;
   let lin = linearize_state_DAG st_map in
   match lin with
-  | None -> Format.fprintf ppf
-              "@[(*cannot generate operator %s, states have cycles*)@]" name
+  | None -> print_user_fill ppf
   | Some id_lvl_map ->
      begin
-   
-     Format.fprintf ppf
-       "@[<v>@[op [smt_opaque] %s (g : %s) : int =@]@;<0 2>@[<v>"
-       name type_name;
+     Format.fprintf ppf "@[<v>";
      Format.fprintf ppf "@[match g with@]@;";
      IdMap.iter (fun id lvl ->
          Format.fprintf ppf "@[| %s %a=> %i@]@;"
            (state_name id) (print_ctor_args_state_metric id) st_map lvl
        ) id_lvl_map;
-     Format.fprintf ppf "@[end.@]@;@]@;@]"
+     Format.fprintf ppf "@[end.@]@;@]@;"
      end
+  ;
+  Format.fprintf ppf "@]"
+      
 
     
 let print_module_lemmas ?(rest_idx = None)
@@ -1428,18 +1458,24 @@ let print_module_lemmas ?(rest_idx = None)
         "@[ /\\ ((oget res).`1 = %s => (oget res).`2.`2 \\in  %s))@]"
         mode_Adv adv_pis;
       Format.fprintf ppf "@]@;].@;";
+      if (is_lin st_map)
+      then begin
       Format.fprintf ppf
         "@[proof. rewrite /%s /=. proc. inline. (*inline procedure calls*)@]@;"
         metric_name;
       print_proof_state_match root mbmap dii IdPairMap.empty "" ppf st_map;
       Format.fprintf ppf "@[qed.@]@;"
+      end else print_user_fill ppf
     in
     let print_party_metric_good ppf () =
       Format.fprintf ppf "@[lemma %s (g : %s) :@]@;"
         lemma_pt_metric_good_name stn;
       Format.fprintf ppf "@[  %s g => 0 <= %s g.@]@;" invar_op_name metric_name;
+      if (is_lin st_map)
+      then begin
       Format.fprintf ppf "@[    proof. rewrite /%s /=.@]@;" metric_name;
-      Format.fprintf ppf "@[      smt(). qed.@]@;";
+      Format.fprintf ppf "@[      smt(). qed.@]@;"
+      end else print_user_fill ppf;
     in
     let pt_glob_op_name =  glob_op_name (uc_name id) svn in
     if rest_idx = None
@@ -1475,7 +1511,7 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[(*abbreviation for %s with %s parameters*)@]@;"
       module_name desc;
     Format.fprintf ppf "@[module %s = %s.@]@;@;" 
-      (moduleIRP id rfbt rp rest_idx) (module_name^(module_params_string pmns))
+       (moduleIRP id rfbt rp rest_idx) (module_name^(module_params_string pmns))
   in
   let print_glob_operators (rp : bool) =
     let gvil = if rest_idx = None
@@ -2965,7 +3001,8 @@ let gen_sim (sc : EcScope.scope) (root : string) (id : string)
     (print_simulator_module sc root id mbmap ais) sbt;
     Format.fprintf sf "@[%a@]@;@;" print_SIM_invar id;
     Format.fprintf sf "%a" (print_SIM_metric id root mbmap ais) sbt.states;
-  Format.fprintf sf "@[%a@]@;@;" print_SIM_metric_good_init_lemmas (uc_name id);
+    Format.fprintf sf "@[%a@]@;@;"
+      (print_SIM_metric_good_init_lemmas (uc_name id)) sbt.states;
   Format.fprintf sf "@[<v>%a@]@;"   print_cloneSIM_MS (id,sbt);
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()

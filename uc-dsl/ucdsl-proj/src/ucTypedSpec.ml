@@ -1141,15 +1141,14 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
   let if_names = ideal_fun_names root maps in
   let sim_names = sim_names root maps in
   if IdSet.cardinal rf_names = 0
-  then begin
-    print_endline (root^" if_names cardinality "^(string_of_int (IdSet.cardinal if_names))) ;
+  then
     let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
       UI_Singleton
       {si_root          = root;
        si_ideal         = if_name;
        si_comp_dir      = id_dir_inter_of_fun_tyd ift;
-       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift} end
+       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift}
   else let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
        let rf_name = sing_elt_of_id_set rf_names in

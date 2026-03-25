@@ -863,7 +863,6 @@ let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (uc__name (fst funcId))^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
-  print_endline ("UcEasyCryptCommentMacros.scan_and_check_file "^filename);
   fun s1 s2 s3 s4 s5 ->
   UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3;s4;s5]
 
