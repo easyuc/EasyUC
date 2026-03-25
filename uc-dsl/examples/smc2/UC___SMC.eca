@@ -1,0 +1,2224 @@
+require UC_Forwarding UC_KeyExchange.
+
+require KeyExpText.
+
+require import UCCore.
+
+require UCComposition.
+
+clone UCComposition as UC_Composition.
+
+type key.
+
+op (^^) : key -> key -> key.
+
+op kid : key.
+
+op kinv : key -> key.
+
+axiom kmulA (x y z : key) : x ^^ y ^^ z = x ^^ (y ^^ z).
+
+axiom kid_l (x : key) : kid ^^ x = x.
+
+axiom kid_r (x : key) : x ^^ kid = x.
+
+axiom kinv_l (x : key) : kinv x ^^ x = kid.
+
+axiom kinv_r (x : key) : x ^^ kinv x = kid.
+
+type exp.
+
+op e : exp.
+
+op ( * ) : exp -> exp -> exp.
+
+axiom mulC (q r : exp) : q * r = r * q.
+
+axiom mulA (q r s : exp) : q * r * s = q * (r * s).
+
+op epdp_exp_univ : (exp, univ) epdp.
+
+axiom valid_epdp_exp_univ : valid_epdp epdp_exp_univ.
+
+op [full uniform lossless] dexp : exp Distr.distr.
+
+op g : key.
+
+op (^) : key -> exp -> key.
+
+axiom double_exp_gen (q1 q2 : exp) : g ^ q1 ^ q2 = g ^ (q1 * q2).
+
+axiom gen_surj (x : key) : exists (q : exp), x = g ^ q.
+
+axiom gen_inj (q r : exp) : g ^ q = g ^ r => q = r.
+
+type text.
+
+op epdp_text_key : (text, key) epdp.
+
+axiom valid_epdp_text_key : valid_epdp epdp_text_key.
+
+op _adv_pi_begin : int.
+
+axiom _adv_pi_begin_gt0 : 0 < _adv_pi_begin.
+
+
+op _adv_if_pi : int = _adv_pi_begin.
+
+
+clone UC_Forwarding as Forwarding with
+  op _adv_if_pi <- _adv_pi_begin + 1
+proof *.
+  (* BEGIN USER FILL *)
+realize _adv_if_pi_gt0. smt. qed.
+(* END USER FILL *)
+
+clone import KeyExpText as KeyExpText' with
+  type key <- key,
+  op (^^) : key -> key -> key <- (^^),
+  op kid : key <- kid,
+  op kinv : key -> key <- kinv,
+  type exp <- exp,
+  op e : exp <- e,
+  op ( * ) : exp -> exp -> exp <- ( * ),
+  op epdp_exp_univ : (exp, univ) epdp <- epdp_exp_univ,
+  op dexp : exp Distr.distr <- dexp,
+  op g : key <- g,
+  op (^) : key -> exp -> key <- (^),
+  type text <- text,
+  op epdp_text_key : (text, key) epdp <- epdp_text_key
+proof *.
+  (* BEGIN USER FILL *)
+realize kmulA. smt. qed. 
+realize  kid_l. smt. qed.
+realize  kid_r. smt. qed.
+realize  kinv_l. smt. qed.
+realize  kinv_r. smt. qed.
+realize  mulC. smt. qed.
+realize  mulA. smt. qed.
+realize  valid_epdp_exp_univ. smt. qed.
+realize  dexp_ll. smt. qed.
+realize  dexp_uni. smt. qed.
+realize  dexp_fu. smt. qed.
+realize  double_exp_gen. smt. qed.
+realize  gen_surj. smt. qed.
+realize  gen_inj. smt. qed.
+realize  valid_epdp_text_key. smt. qed.
+(* END USER FILL *)
+
+op _adv_pi_begin_UC_KeyExchange = _adv_pi_begin + 2.
+
+clone UC_KeyExchange as KeyExchange with
+  op _adv_pi_begin <- _adv_pi_begin_UC_KeyExchange,
+  type key = key,
+  op (^^) : key -> key -> key = (^^),
+  op kid : key = kid,
+  op kinv : key -> key = kinv,
+  type exp = exp,
+  op e : exp = e,
+  op ( * ) : exp -> exp -> exp = ( * ),
+  op epdp_exp_univ : (exp, univ) epdp = epdp_exp_univ,
+  op dexp : exp Distr.distr = dexp,
+  op g : key = g,
+  op (^) : key -> exp -> key = (^)
+proof *.
+  (* BEGIN USER FILL *)
+realize kmulA. smt. qed. 
+realize  kid_l. smt. qed.
+realize  kid_r. smt. qed.
+realize  kinv_l. smt. qed.
+realize  kinv_r. smt. qed.
+realize  mulC. smt. qed.
+realize  mulA. smt. qed.
+realize  valid_epdp_exp_univ. smt. qed.
+realize  dexp_ll. smt. qed.
+realize  dexp_uni. smt. qed.
+realize  dexp_fu. smt. qed.
+realize  double_exp_gen. smt. qed.
+realize  gen_surj. smt. qed.
+realize  gen_inj. smt. qed.
+realize  _adv_pi_begin_gt0. smt. qed.
+(* END USER FILL *)
+
+op _adv_pi_num : int = 2 + KeyExchange._adv_pi_num.
+
+abstract theory UC_SMCPt1_abs.
+
+op pi : int.
+
+op _SMC =  [83; 77; 67]. (*SMC as ascii array*)
+
+type _smc_req =
+{
+  smc_req___func : addr;
+  smc_req__pt1 : port;
+  (*data*)
+  smc_req__pt2 : port;
+  smc_req__t : text;
+}.
+op _smc_req =  [115; 109; 99; 95; 114; 101; 113]. (*smc_req as ascii array*)
+
+op _tag__smc_req =  TagBasic _SMC _smc_req.
+op enc__smc_req (x : _smc_req) : msg =
+(Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+(x.`smc_req__pt2, x.`smc_req__t))
+.
+op [opaque smt_opaque] dec__smc_req (m : msg) : _smc_req option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__smc_req) ?
+    None :
+    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec
+    v with
+    | None   => None
+    | Some p =>
+      let (smc_req__pt2 ,smc_req__t) = p in
+      Some
+      {|
+        smc_req___func = pt1.`1; smc_req__pt1 = pt2;
+        smc_req__pt2 = smc_req__pt2;
+        smc_req__t = smc_req__t;
+      |}
+    end
+.
+
+op epdp__smc_req = {|enc = enc__smc_req; dec = dec__smc_req|}.
+
+lemma valid_epdp__smc_req : valid_epdp epdp__smc_req.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__smc_req /= /dec__smc_req /enc__smc_req /=.
+by case x.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
+rewrite /epdp__smc_req /dec__smc_req /enc__smc_req /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__smc_req) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v =
+  Some (u.`smc_req__pt2 ,u.`smc_req__t).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__smc_req.
+hint rewrite epdp : valid_epdp__smc_req.
+
+lemma eq_of_valid__smc_req (m : msg) :
+  is_valid epdp__smc_req m =>
+  m =
+  let x = oget (epdp__smc_req.`dec m) in
+(Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+(x.`smc_req__pt2, x.`smc_req__t)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _smc_req), epdp__smc_req.`dec m = Some x.
+  exists (oget (dec__smc_req m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__smc_req) <-.
+by rewrite !epdp.
+qed.
+
+end UC_SMCPt1_abs.
+
+
+
+abstract theory UC_SMCPt2_abs.
+
+op pi : int.
+
+op _SMC =  [83; 77; 67]. (*SMC as ascii array*)
+
+type _smc_rsp =
+{
+  smc_rsp___func : addr;
+  smc_rsp__pt2 : port;
+  (*data*)
+  smc_rsp__pt1 : port;
+  smc_rsp__t : text;
+}.
+op _smc_rsp =  [115; 109; 99; 95; 114; 115; 112]. (*smc_rsp as ascii array*)
+
+op _tag__smc_rsp =  TagBasic _SMC _smc_rsp.
+op enc__smc_rsp (x : _smc_rsp) : msg =
+(Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+(x.`smc_rsp__pt1, x.`smc_rsp__t))
+.
+op [opaque smt_opaque] dec__smc_rsp (m : msg) : _smc_rsp option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__smc_rsp) ?
+    None :
+    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec
+    v with
+    | None   => None
+    | Some p =>
+      let (smc_rsp__pt1 ,smc_rsp__t) = p in
+      Some
+      {|
+        smc_rsp___func = pt2.`1; smc_rsp__pt2 = pt1;
+        smc_rsp__pt1 = smc_rsp__pt1;
+        smc_rsp__t = smc_rsp__t;
+      |}
+    end
+.
+
+op epdp__smc_rsp = {|enc = enc__smc_rsp; dec = dec__smc_rsp|}.
+
+lemma valid_epdp__smc_rsp : valid_epdp epdp__smc_rsp.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__smc_rsp /= /dec__smc_rsp /enc__smc_rsp /=.
+by case x.
+move => [mod pt2 [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__smc_rsp /dec__smc_rsp /enc__smc_rsp /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__smc_rsp) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v =
+  Some (u.`smc_rsp__pt1 ,u.`smc_rsp__t).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__smc_rsp.
+hint rewrite epdp : valid_epdp__smc_rsp.
+
+lemma eq_of_valid__smc_rsp (m : msg) :
+  is_valid epdp__smc_rsp m =>
+  m =
+  let x = oget (epdp__smc_rsp.`dec m) in
+(Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+(x.`smc_rsp__pt1, x.`smc_rsp__t)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _smc_rsp), epdp__smc_rsp.`dec m = Some x.
+  exists (oget (dec__smc_rsp m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__smc_rsp) <-.
+by rewrite !epdp.
+qed.
+
+end UC_SMCPt2_abs.
+
+
+
+theory UC_SMCDir.
+
+clone UC_SMCPt1_abs as Pt1 with
+  op pi = 1
+proof *.
+
+clone UC_SMCPt2_abs as Pt2 with
+  op pi = 2
+proof *.
+
+end UC_SMCDir.
+
+
+
+abstract theory UC_SMC2Sim_abs.
+
+op pi : int.
+
+op _SMC =  [83; 77; 67]. (*SMC as ascii array*)
+
+type _sim_req =
+{
+  sim_req___func : addr;
+  sim_req___adv : addr;
+  (*data*)
+  sim_req__pt1 : port;
+  sim_req__pt2 : port;
+}.
+op _sim_req =  [115; 105; 109; 95; 114; 101; 113]. (*sim_req as ascii array*)
+
+op _tag__sim_req =  TagBasic _SMC _sim_req.
+op enc__sim_req (x : _sim_req) : msg =
+(Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+(x.`sim_req__pt1, x.`sim_req__pt2))
+.
+op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__sim_req) ?
+    None :
+    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec
+    v with
+    | None   => None
+    | Some p =>
+      let (sim_req__pt1 ,sim_req__pt2) = p in
+      Some
+      {|
+        sim_req___func = pt2.`1; sim_req___adv = pt1.`1;
+        sim_req__pt1 = sim_req__pt1;
+        sim_req__pt2 = sim_req__pt2;
+      |}
+    end
+.
+
+op epdp__sim_req = {|enc = enc__sim_req; dec = dec__sim_req|}.
+
+lemma valid_epdp__sim_req : valid_epdp epdp__sim_req.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__sim_req /= /dec__sim_req /enc__sim_req /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__sim_req /dec__sim_req /enc__sim_req /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__sim_req) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v =
+  Some (u.`sim_req__pt1 ,u.`sim_req__pt2).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__sim_req.
+hint rewrite epdp : valid_epdp__sim_req.
+
+lemma eq_of_valid__sim_req (m : msg) :
+  is_valid epdp__sim_req m =>
+  m =
+  let x = oget (epdp__sim_req.`dec m) in
+(Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
+ (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+(x.`sim_req__pt1, x.`sim_req__pt2)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _sim_req), epdp__sim_req.`dec m = Some x.
+  exists (oget (dec__sim_req m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__sim_req) <-.
+by rewrite !epdp.
+qed.
+
+type _sim_rsp =
+{
+  sim_rsp___func : addr;
+  sim_rsp___adv : addr;
+  (*data*)
+}.
+op _sim_rsp =  [115; 105; 109; 95; 114; 115; 112]. (*sim_rsp as ascii array*)
+
+op _tag__sim_rsp =  TagBasic _SMC _sim_rsp.
+op enc__sim_rsp (x : _sim_rsp) : msg =
+(Adv, (x.`sim_rsp___func, pi), (x.`sim_rsp___adv, _adv_if_pi), _tag__sim_rsp,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__sim_rsp (m : msg) : _sim_rsp option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  _tag__sim_rsp) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        sim_rsp___func = pt1.`1; sim_rsp___adv = pt2.`1;
+      |}
+    end
+.
+
+op epdp__sim_rsp = {|enc = enc__sim_rsp; dec = dec__sim_rsp|}.
+
+lemma valid_epdp__sim_rsp : valid_epdp epdp__sim_rsp.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__sim_rsp /= /dec__sim_rsp /enc__sim_rsp /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__sim_rsp /dec__sim_rsp /enc__sim_rsp /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__sim_rsp) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__sim_rsp.
+hint rewrite epdp : valid_epdp__sim_rsp.
+
+lemma eq_of_valid__sim_rsp (m : msg) :
+  is_valid epdp__sim_rsp m =>
+  m =
+  let x = oget (epdp__sim_rsp.`dec m) in
+(Adv, (x.`sim_rsp___func, pi), (x.`sim_rsp___adv, _adv_if_pi), _tag__sim_rsp,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _sim_rsp), epdp__sim_rsp.`dec m = Some x.
+  exists (oget (dec__sim_rsp m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__sim_rsp) <-.
+by rewrite !epdp.
+qed.
+
+end UC_SMC2Sim_abs.
+
+
+
+clone UC_SMC2Sim_abs as UC_SMC2Sim with
+  op pi = 1
+proof *.
+
+type _state_IF = [ 
+  | _State_IF_Final
+  | _State_IF_WaitReq
+  | _State_IF_WaitSim of (port) & (port) & (text)
+  
+]. 
+
+module UC_SMCIdeal : FUNC= {
+  var _self : addr
+  var _st : _state_IF
+  proc init(self_ : addr) : unit = {
+    _self <- self_; _st <- _State_IF_WaitReq;
+  }
+  proc _State_IF_WaitReq__SMCDir__Pt1__smc_req (pt1 : port, pt2 : port, t : text) : msg option = {
+    var _r : msg option <- None;
+    if (envport _self pt2) {
+      _r <- Some
+        (UC_SMC2Sim.epdp__sim_req.`enc
+        {|
+          UC_SMC2Sim.sim_req___func = _self;
+          UC_SMC2Sim.sim_req___adv = adv;
+          UC_SMC2Sim.sim_req__pt1 = pt1;
+          UC_SMC2Sim.sim_req__pt2 = pt2;
+          
+        |});
+      _st <- _State_IF_WaitSim (pt1) (pt2) (t);
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc _State_IF_WaitSim__SMC2Sim__sim_rsp (pt1 : port, pt2 : port, t : text) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_SMCDir.Pt2.epdp__smc_rsp.`enc
+      {|
+        UC_SMCDir.Pt2.smc_rsp___func = _self;
+        UC_SMCDir.Pt2.smc_rsp__pt2 = pt2;
+        UC_SMCDir.Pt2.smc_rsp__pt1 = pt1;
+        UC_SMCDir.Pt2.smc_rsp__t = t;
+        
+      |});
+    _st <- _State_IF_Final;
+    return _r;
+  }
+  proc parties(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st with
+    | _State_IF_Final => {
+      
+    }
+    | _State_IF_WaitReq => {
+      match UC_SMCDir.Pt1.epdp__smc_req.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_WaitReq__SMCDir__Pt1__smc_req (_x.`UC_SMCDir.Pt1.smc_req__pt1, _x.`UC_SMCDir.Pt1.smc_req__pt2, _x.`UC_SMCDir.Pt1.smc_req__t);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_IF_WaitSim pt1 pt2 t => {
+      match UC_SMC2Sim.epdp__sim_rsp.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_WaitSim__SMC2Sim__sim_rsp (pt1, pt2, t);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)\/ (m.`1 = Adv
+                                                               /\
+                                                               m.`2.`1 = _self
+                                                               /\
+                                                               m.`3.`1 = adv)){
+      r <@ parties(m);
+    }
+  return r;
+  }
+  
+}.
+
+
+(*alias*)
+module IF = UC_SMCIdeal.
+op _invar_IF (g : glob IF) : bool = true.
+
+ 
+
+op glob_UC_SMCIdeal_to__st (g : glob UC_SMCIdeal) / : _state_IF = g.`2.
+op [smt_opaque] _metric_IF (g : glob UC_SMCIdeal) : int =
+  match glob_UC_SMCIdeal_to__st g with
+  | _State_IF_Final => 0
+  | _State_IF_WaitReq => 2
+  | _State_IF_WaitSim _ _ _ => 1
+  end.
+  
+
+
+lemma IF_invoke (n : int) : hoare [
+  UC_SMCIdeal.invoke :
+  _invar_IF (glob UC_SMCIdeal) /\ _metric_IF (glob UC_SMCIdeal) = n
+  ==>
+  _invar_IF (glob UC_SMCIdeal) /\ 
+  (res <> None =>
+  _metric_IF (glob UC_SMCIdeal) < n
+  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in oflist [_adv_if_pi] /\ (oget res).`3.`2 = 1))
+   ].
+proof. rewrite /_metric_IF /=. proc. sp 1. (*initializing return value*)
+if. (*invoke guard*) inline. sp 1. sp 1. (*initializing input, return value*)
+match. (*state match*)
+(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitReq*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
+if. (*if instruction*)
+sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*state branch WaitSim*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 4. (*state param assignment, return value initialization*)sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ skip. smt(). (*invoke guard false*) qed. 
+
+lemma IF_metric_good (g : glob IF) :   _invar_IF g => 0 <= _metric_IF g.
+  proof. rewrite /_metric_IF /=.   smt(). qed.   lemma IF_init :
+  hoare [IF.init : true ==> _invar_IF (glob IF)]. proof. proc. auto. qed. 
+ 
+
+
+op rf_info = {| rfi_num_parties = 2; rfi_num_subfuns = 1; rfi_num_params = 1;
+rfi_adv_pi_begin = _adv_pi_begin;
+rfi_adv_pi_main_end = _adv_pi_begin + _adv_pi_num - 1 - KeyExchange._adv_pi_num;
+rfi_adv_pi_begin_params = [_adv_pi_begin_UC_KeyExchange];
+rfi_adv_pi_end_params = [_adv_pi_begin_UC_KeyExchange + KeyExchange._adv_pi_num - 1];
+|}. 
+
+op _addr_KE (self : addr) : addr = self ++ [1].
+
+op _addr_Fwd (self : addr) : addr = self ++ [2].
+
+op _extport_dir_Pt1 (self : addr) : port = (self, 1).
+op _extport_dir_Pt2 (self : addr) : port = (self, 2).
+
+
+op _intport_Pt1 (self : addr) : port = (self, 1).
+op _intport_Pt2 (self : addr) : port = (self, 2).
+ 
+
+type _state_Pt1 = [ 
+  | _State_Pt1_Final
+  | _State_Pt1_WaitKE2 of (port) & (port) & (text)
+  | _State_Pt1_WaitReq
+  
+].
+type _state_Pt2 = [ 
+  | _State_Pt2_Final
+  | _State_Pt2_WaitFwd of (key)
+  | _State_Pt2_WaitKE1
+  
+].
+
+
+module UC_SMCReal (KE__ : FUNC) : FUNC = {
+  var _self : addr
+  var _st_Pt1 : _state_Pt1
+  var _st_Pt2 : _state_Pt2
+  
+  proc init(self_ : addr) : unit = {
+    _self <- self_;
+  Forwarding.IF.init(_addr_Fwd _self);
+  KE__.init(_addr_KE _self);
+  _st_Pt1 <- _State_Pt1_WaitReq;
+  _st_Pt2 <- _State_Pt2_WaitKE1;
+  }
+  proc _State_Pt1_WaitKE2__KE__Pt1__ke_rsp2 (pt1 : port, pt2 : port, t : text, k : KeyExchange.key) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (Forwarding.UC_FwDir.D.epdp__fw_req.`enc
+      {|
+        Forwarding.UC_FwDir.D.fw_req___func = _addr_Fwd _self;
+        Forwarding.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 _self;
+        Forwarding.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 _self;
+        Forwarding.UC_FwDir.D.fw_req__u = epdp_port_port_key_univ.`enc
+        (pt1, pt2, epdp_text_key.`enc t ^^ k);
+        
+      |});
+    _st_Pt1 <- _State_Pt1_Final;
+    return _r;
+  }
+  proc _State_Pt1_WaitReq__SMCDir__Pt1__smc_req (pt1 : port, pt2 : port, t : text) : msg option = {
+    var _r : msg option <- None;
+    if (envport _self pt2) {
+      _r <- Some
+        (KeyExchange.UC_KEDir.Pt1.epdp__ke_req1.`enc
+        {|
+          KeyExchange.UC_KEDir.Pt1.ke_req1___func = _addr_KE _self;
+          KeyExchange.UC_KEDir.Pt1.ke_req1__pt1 = _intport_Pt1 _self;
+          KeyExchange.UC_KEDir.Pt1.ke_req1__pt2 = _intport_Pt2 _self;
+          
+        |});
+      _st_Pt1 <- _State_Pt1_WaitKE2 (pt1) (pt2) (t);
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc party_Pt1(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st_Pt1 with
+    | _State_Pt1_Final => {
+      
+    }
+    | _State_Pt1_WaitKE2 pt1 pt2 t => {
+      match KeyExchange.UC_KEDir.Pt1.epdp__ke_rsp2.`dec _m with
+      | Some _x => {
+        if (_m.`3.`1 = _addr_KE _self){
+          _r <@ _State_Pt1_WaitKE2__KE__Pt1__ke_rsp2 (pt1, pt2, t, _x.`KeyExchange.UC_KEDir.Pt1.ke_rsp2__k);
+        }
+        
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt1_WaitReq => {
+      match UC_SMCDir.Pt1.epdp__smc_req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_WaitReq__SMCDir__Pt1__smc_req (_x.`UC_SMCDir.Pt1.smc_req__pt1, _x.`UC_SMCDir.Pt1.smc_req__pt2, _x.`UC_SMCDir.Pt1.smc_req__t);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc _State_Pt2_WaitFwd__Fwd__D__fw_rsp (k : key, u : univ) : msg option = {
+    var pt1 : port;
+    var pt2 : port;
+    var x : key;
+    var _r : msg option <- None;
+    match (epdp_port_port_key_univ.`dec u) with
+    | None => {
+    
+      _r <- None;
+      
+    }
+    | Some tr => {
+    
+      (pt1, pt2, x) <- tr;
+      match (epdp_text_key.`dec (x ^^ kinv k)) with
+      | None => {
+      
+        _r <- None;
+        
+      }
+      | Some t => {
+      
+        _r <- Some
+          (UC_SMCDir.Pt2.epdp__smc_rsp.`enc
+          {|
+            UC_SMCDir.Pt2.smc_rsp___func = _self;
+            UC_SMCDir.Pt2.smc_rsp__pt2 = pt2;
+            UC_SMCDir.Pt2.smc_rsp__pt1 = pt1;
+            UC_SMCDir.Pt2.smc_rsp__t = t;
+            
+          |});
+        _st_Pt2 <- _State_Pt2_Final;
+        
+      }
+      end;
+    
+    }
+    end;
+return _r;
+}
+proc _State_Pt2_WaitKE1__KE__Pt2__ke_rsp1 (k : KeyExchange.key) : msg option = {
+  var _r : msg option <- None;
+  _r <- Some
+    (KeyExchange.UC_KEDir.Pt2.epdp__ke_req2.`enc
+    {|
+      KeyExchange.UC_KEDir.Pt2.ke_req2___func = _addr_KE _self;
+      KeyExchange.UC_KEDir.Pt2.ke_req2__pt2 = _intport_Pt2 _self;
+      
+    |});
+  _st_Pt2 <- _State_Pt2_WaitFwd (k);
+  return _r;
+}
+proc party_Pt2(_m : msg) : msg option = {
+  var _r : msg option <- None;
+  match _st_Pt2 with
+  | _State_Pt2_Final => {
+    
+  }
+  | _State_Pt2_WaitFwd k => {
+    match Forwarding.UC_FwDir.D.epdp__fw_rsp.`dec _m with
+    | Some _x => {
+      if (_m.`3.`1 = _addr_Fwd _self){
+        _r <@ _State_Pt2_WaitFwd__Fwd__D__fw_rsp (k, _x.`Forwarding.UC_FwDir.D.fw_rsp__u);
+      }
+      
+    }
+    | None => {
+      
+    }
+    end;
+  }
+  | _State_Pt2_WaitKE1 => {
+    match KeyExchange.UC_KEDir.Pt2.epdp__ke_rsp1.`dec _m with
+    | Some _x => {
+      if (_m.`3.`1 = _addr_KE _self){
+        _r <@ _State_Pt2_WaitKE1__KE__Pt2__ke_rsp1 (_x.`KeyExchange.UC_KEDir.Pt2.ke_rsp1__k);
+      }
+      
+    }
+    | None => {
+      
+    }
+    end;
+  }
+  end;
+  return _r;
+}
+proc invoke(m : msg) : msg option = {
+  var r : msg option <- None;
+  if (_addr_Fwd _self <= m.`2.`1) {r <@ Forwarding.IF.invoke(m);}
+  else {
+  if (_addr_KE _self <= m.`2.`1) {r <@ KE__.invoke(m);}
+  else {
+  if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 _self /\ envport _self m.`3)
+  \/
+  (m.`1 = Dir /\ m.`2 = _intport_Pt1 _self /\ _self < m.`3.`1))
+  {r <@ party_Pt1(m);}
+  else {
+  if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 _self /\ envport _self m.`3)
+  \/
+  (m.`1 = Dir /\ m.`2 = _intport_Pt2 _self /\ _self < m.`3.`1))
+  {r <@ party_Pt2(m);}
+  }
+  }
+  }
+  return r;
+  }
+  
+}. 
+op glob_UC_SMCReal_to__st_Pt2 (g : glob UC_SMCReal) / : _state_Pt2 = g.`3.
+
+op [smt_opaque] _metric_Pt2 (g : _state_Pt2) : int =
+  match g with
+  | _State_Pt2_Final => 0
+  | _State_Pt2_WaitFwd _ => 1
+  | _State_Pt2_WaitKE1 => 2
+  end.
+  
+
+
+lemma _invoke_Pt2 (n : int) (KeyExchange <: FUNC)  : hoare [
+  UC_SMCReal(KeyExchange).party_Pt2 :
+  _metric_Pt2 (glob_UC_SMCReal_to__st_Pt2(glob UC_SMCReal)) = n ==>
+  (res <> None =>
+  _metric_Pt2 (glob_UC_SMCReal_to__st_Pt2(glob UC_SMCReal)) < n
+   /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))
+]. proof. rewrite /_metric_Pt2 /=. proc. inline. (*inline procedure calls*)
+ sp 1. (*initializing input, return value*) match. (*state match*)
+(*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitFwd*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 2. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+match. (*match instruction with 2 branches*)
+(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*branch Some*) sp 1. (*Assign instruction*) 
+match. (*match instruction with 2 branches*)
+(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*branch Some*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+      skip. move => />;smt(). (*address check for internal messages failed case*)
+(*state branch WaitKE1*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  skip. move => />;smt(). (*address check for internal messages failed case*)
+qed. 
+
+op _invar_Pt2 (g : _state_Pt2) : bool = true.
+
+lemma _metric_Pt2_good (g : _state_Pt2) :
+  _invar_Pt2 g => 0 <= _metric_Pt2 g.
+    proof. rewrite /_metric_Pt2 /=.
+      smt(). qed.
+
+
+op glob_UC_SMCReal_to__st_Pt1 (g : glob UC_SMCReal) / : _state_Pt1 = g.`2.
+
+op [smt_opaque] _metric_Pt1 (g : _state_Pt1) : int =
+  match g with
+  | _State_Pt1_Final => 0
+  | _State_Pt1_WaitKE2 _ _ _ => 1
+  | _State_Pt1_WaitReq => 2
+  end.
+  
+
+
+lemma _invoke_Pt1 (n : int) (KeyExchange <: FUNC)  : hoare [
+  UC_SMCReal(KeyExchange).party_Pt1 :
+  _metric_Pt1 (glob_UC_SMCReal_to__st_Pt1(glob UC_SMCReal)) = n ==>
+  (res <> None =>
+  _metric_Pt1 (glob_UC_SMCReal_to__st_Pt1(glob UC_SMCReal)) < n
+   /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))
+]. proof. rewrite /_metric_Pt1 /=. proc. inline. (*inline procedure calls*)
+ sp 1. (*initializing input, return value*) match. (*state match*)
+(*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitKE2*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 4. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  skip. move => />;smt(). (*address check for internal messages failed case*)
+(*state branch WaitReq*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
+if. (*if instruction*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  sp 2. skip. move => />;smt(). (*Fail instruction*)   qed. 
+
+op _invar_Pt1 (g : _state_Pt1) : bool = true.
+
+lemma _metric_Pt1_good (g : _state_Pt1) :
+  _invar_Pt1 g => 0 <= _metric_Pt1 g.
+    proof. rewrite /_metric_Pt1 /=.
+      smt(). qed.
+
+
+(*abbreviation for UC_SMCReal with real parameters*)
+module UC_SMCReal_RP = UC_SMCReal(KeyExchange.RFRP).
+
+op glob_UC_SMCReal_RP_to_own(g : glob UC_SMCReal_RP) / : glob UC_SMCReal =
+(g.`1, g.`2, g.`3, g.`4, g.`5).
+
+op glob_UC_SMCReal_RP_to_KeyExchange(g : glob UC_SMCReal_RP) / : glob KeyExchange.RFRP =
+(g.`6, g.`7, g.`8, g.`9, g.`10, g.`11, g.`12, g.`13).
+
+op glob_UC_SMCReal_to_Fwd(g : glob UC_SMCReal) / : glob Forwarding.IF =
+(g.`4, g.`5).
+
+ op [smt_opaque] _metric_RP (g : glob UC_SMCReal_RP) : int =
+ KeyExchange._metric_RFRP(glob_UC_SMCReal_RP_to_KeyExchange g)
++_metric_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_RP_to_own g))
++_metric_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_RP_to_own g))
++Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_RP_to_own g))
+.
+
+lemma _invoke_RP (n : int)  : hoare [
+  UC_SMCReal_RP.invoke :
+  _metric_RP (glob UC_SMCReal_RP) = n
+  ==>
+  (res <> None =>
+  _metric_RP (glob UC_SMCReal_RP) < n
+/\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_metric_RP /=.
+  proc.
+  sp 1.
+  if.
+  exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_RP_to_own(glob UC_SMCReal_RP)))) => _sub_metric.
+  call (Forwarding.IF_invoke _sub_metric ).
+  skip.
+  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  if.
+  exlim (KeyExchange._metric_RFRP(glob_UC_SMCReal_RP_to_KeyExchange((glob UC_SMCReal_RP)))) => _sub_metric.
+  call (KeyExchange.RFRP_invoke _sub_metric ).
+  skip.
+  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  if.
+  exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_RP_to_own(glob UC_SMCReal_RP)))) => _sub_metric.
+  call (_invoke_Pt1 _sub_metric  KeyExchange.RFRP).
+  skip.
+  smt().
+  if.
+  exlim (_metric_Pt2(glob_UC_SMCReal_to__st_Pt2(glob_UC_SMCReal_RP_to_own(glob UC_SMCReal_RP)))) => _sub_metric.
+  call (_invoke_Pt2 _sub_metric  KeyExchange.RFRP).
+  skip.
+  smt().
+  skip.
+  smt().
+qed.
+
+ op _invar_RP (g : glob UC_SMCReal_RP) : bool =
+  KeyExchange._invar_RFRP(glob_UC_SMCReal_RP_to_KeyExchange g)
+/\_invar_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_RP_to_own g))
+/\_invar_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_RP_to_own g))
+/\Forwarding._invar_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_RP_to_own g))
+.
+
+lemma _metric_good_RP (g : glob UC_SMCReal_RP) :
+_invar_RP g => 0 <= _metric_RP g.
+proof.
+rewrite /_metric_RP /=.
+rewrite /_invar_RP /=.
+smt(
+KeyExchange.RFRP_metric_good
+Forwarding.IF_metric_good
+_metric_Pt1_good
+_metric_Pt2_good
+).
+qed.
+
+lemma _init_RP :
+hoare [ UC_SMCReal_RP.init : true ==> _invar_RP (glob UC_SMCReal_RP)].
+proof. proc. sp. wp.
+call (KeyExchange.RFRP_init).
+call (Forwarding.IF_init).
+skip.
+rewrite /_invar_RP /=.
+smt().
+qed.
+
+(*abbreviation for UC_SMCReal with ideal parameters*)
+module UC_SMCReal_IP = UC_SMCReal(KeyExchange.IF).
+
+op glob_UC_SMCReal_IP_to_own(g : glob UC_SMCReal_IP) / : glob UC_SMCReal =
+(g.`1, g.`2, g.`3, g.`4, g.`5).
+
+op glob_UC_SMCReal_IP_to_KeyExchange(g : glob UC_SMCReal_IP) / : glob KeyExchange.IF =
+(g.`6, g.`7).
+
+ op [smt_opaque] _metric_IP (g : glob UC_SMCReal_IP) : int =
+ KeyExchange._metric_IF(glob_UC_SMCReal_IP_to_KeyExchange g)
++_metric_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_IP_to_own g))
++_metric_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_IP_to_own g))
++Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_IP_to_own g))
+.
+
+lemma _invoke_IP (n : int)  : hoare [
+  UC_SMCReal_IP.invoke :
+  _metric_IP (glob UC_SMCReal_IP) = n
+  ==>
+  (res <> None =>
+  _metric_IP (glob UC_SMCReal_IP) < n
+/\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_metric_IP /=.
+  proc.
+  sp 1.
+  if.
+  exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_IP_to_own(glob UC_SMCReal_IP)))) => _sub_metric.
+  call (Forwarding.IF_invoke _sub_metric ).
+  skip.
+  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  if.
+  exlim (KeyExchange._metric_IF(glob_UC_SMCReal_IP_to_KeyExchange((glob UC_SMCReal_IP)))) => _sub_metric.
+  call (KeyExchange.IF_invoke _sub_metric ).
+  skip.
+  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  if.
+  exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_IP_to_own(glob UC_SMCReal_IP)))) => _sub_metric.
+  call (_invoke_Pt1 _sub_metric  KeyExchange.IF).
+  skip.
+  smt().
+  if.
+  exlim (_metric_Pt2(glob_UC_SMCReal_to__st_Pt2(glob_UC_SMCReal_IP_to_own(glob UC_SMCReal_IP)))) => _sub_metric.
+  call (_invoke_Pt2 _sub_metric  KeyExchange.IF).
+  skip.
+  smt().
+  skip.
+  smt().
+qed.
+
+ op _invar_IP (g : glob UC_SMCReal_IP) : bool =
+  KeyExchange._invar_IF(glob_UC_SMCReal_IP_to_KeyExchange g)
+/\_invar_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_IP_to_own g))
+/\_invar_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_IP_to_own g))
+/\Forwarding._invar_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_IP_to_own g))
+.
+
+lemma _metric_good_IP (g : glob UC_SMCReal_IP) :
+_invar_IP g => 0 <= _metric_IP g.
+proof.
+rewrite /_metric_IP /=.
+rewrite /_invar_IP /=.
+smt(
+KeyExchange.IF_metric_good
+Forwarding.IF_metric_good
+_metric_Pt1_good
+_metric_Pt2_good
+).
+qed.
+
+lemma _init_IP :
+hoare [ UC_SMCReal_IP.init : true ==> _invar_IP (glob UC_SMCReal_IP)].
+proof. proc. sp. wp.
+call (KeyExchange.IF_init).
+call (Forwarding.IF_init).
+skip.
+rewrite /_invar_IP /=.
+smt().
+qed.
+
+ 
+module UC_SMCReal_Rest1  : FUNC = {
+  proc init(self_ : addr) : unit = {
+    UC_SMCReal._self <- self_;
+  Forwarding.IF.init(_addr_Fwd UC_SMCReal._self);
+  UC_SMCReal._st_Pt1 <- _State_Pt1_WaitReq;
+  UC_SMCReal._st_Pt2 <- _State_Pt2_WaitKE1;
+  }
+  proc _State_Pt1_WaitKE2__KE__Pt1__ke_rsp2 (pt1 : port, pt2 : port, t : text, k : KeyExchange.key) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (Forwarding.UC_FwDir.D.epdp__fw_req.`enc
+      {|
+        Forwarding.UC_FwDir.D.fw_req___func = _addr_Fwd UC_SMCReal._self;
+        Forwarding.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_SMCReal._self;
+        Forwarding.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_SMCReal._self;
+        Forwarding.UC_FwDir.D.fw_req__u = epdp_port_port_key_univ.`enc
+        (pt1, pt2, epdp_text_key.`enc t ^^ k);
+        
+      |});
+    UC_SMCReal._st_Pt1 <- _State_Pt1_Final;
+    return _r;
+  }
+  proc _State_Pt1_WaitReq__SMCDir__Pt1__smc_req (pt1 : port, pt2 : port, t : text) : msg option = {
+    var _r : msg option <- None;
+    if (envport UC_SMCReal._self pt2) {
+      _r <- Some
+        (KeyExchange.UC_KEDir.Pt1.epdp__ke_req1.`enc
+        {|
+          KeyExchange.UC_KEDir.Pt1.ke_req1___func = _addr_KE UC_SMCReal._self;
+          KeyExchange.UC_KEDir.Pt1.ke_req1__pt1 = _intport_Pt1 UC_SMCReal._self;
+          KeyExchange.UC_KEDir.Pt1.ke_req1__pt2 = _intport_Pt2
+                                                    UC_SMCReal._self;
+          
+        |});
+      UC_SMCReal._st_Pt1 <- _State_Pt1_WaitKE2 (pt1) (pt2) (t);
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc party_Pt1(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match UC_SMCReal._st_Pt1 with
+    | _State_Pt1_Final => {
+      
+    }
+    | _State_Pt1_WaitKE2 pt1 pt2 t => {
+      match KeyExchange.UC_KEDir.Pt1.epdp__ke_rsp2.`dec _m with
+      | Some _x => {
+        if (_m.`3.`1 = _addr_KE UC_SMCReal._self){
+          _r <@ _State_Pt1_WaitKE2__KE__Pt1__ke_rsp2 (pt1, pt2, t, _x.`KeyExchange.UC_KEDir.Pt1.ke_rsp2__k);
+        }
+        
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_Pt1_WaitReq => {
+      match UC_SMCDir.Pt1.epdp__smc_req.`dec _m with
+      | Some _x => {
+        _r <@ _State_Pt1_WaitReq__SMCDir__Pt1__smc_req (_x.`UC_SMCDir.Pt1.smc_req__pt1, _x.`UC_SMCDir.Pt1.smc_req__pt2, _x.`UC_SMCDir.Pt1.smc_req__t);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc _State_Pt2_WaitFwd__Fwd__D__fw_rsp (k : key, u : univ) : msg option = {
+    var pt1 : port;
+    var pt2 : port;
+    var x : key;
+    var _r : msg option <- None;
+    match (epdp_port_port_key_univ.`dec u) with
+    | None => {
+    
+      _r <- None;
+      
+    }
+    | Some tr => {
+    
+      (pt1, pt2, x) <- tr;
+      match (epdp_text_key.`dec (x ^^ kinv k)) with
+      | None => {
+      
+        _r <- None;
+        
+      }
+      | Some t => {
+      
+        _r <- Some
+          (UC_SMCDir.Pt2.epdp__smc_rsp.`enc
+          {|
+            UC_SMCDir.Pt2.smc_rsp___func = UC_SMCReal._self;
+            UC_SMCDir.Pt2.smc_rsp__pt2 = pt2;
+            UC_SMCDir.Pt2.smc_rsp__pt1 = pt1;
+            UC_SMCDir.Pt2.smc_rsp__t = t;
+            
+          |});
+        UC_SMCReal._st_Pt2 <- _State_Pt2_Final;
+        
+      }
+      end;
+    
+    }
+    end;
+return _r; }
+proc _State_Pt2_WaitKE1__KE__Pt2__ke_rsp1 (k : KeyExchange.key) : msg option = {
+  var _r : msg option <- None;
+  _r <- Some
+    (KeyExchange.UC_KEDir.Pt2.epdp__ke_req2.`enc
+    {|
+      KeyExchange.UC_KEDir.Pt2.ke_req2___func = _addr_KE UC_SMCReal._self;
+      KeyExchange.UC_KEDir.Pt2.ke_req2__pt2 = _intport_Pt2 UC_SMCReal._self;
+      
+    |});
+  UC_SMCReal._st_Pt2 <- _State_Pt2_WaitFwd (k);
+  return _r; } proc party_Pt2(_m : msg) : msg option = {
+  var _r : msg option <- None;
+  match UC_SMCReal._st_Pt2 with
+  | _State_Pt2_Final => {
+    
+  }
+  | _State_Pt2_WaitFwd k => {
+    match Forwarding.UC_FwDir.D.epdp__fw_rsp.`dec _m with
+    | Some _x => {
+      if (_m.`3.`1 = _addr_Fwd UC_SMCReal._self){
+        _r <@ _State_Pt2_WaitFwd__Fwd__D__fw_rsp (k, _x.`Forwarding.UC_FwDir.D.fw_rsp__u);
+      }
+      
+    }
+    | None => {
+      
+    }
+    end;
+  }
+  | _State_Pt2_WaitKE1 => {
+    match KeyExchange.UC_KEDir.Pt2.epdp__ke_rsp1.`dec _m with
+    | Some _x => {
+      if (_m.`3.`1 = _addr_KE UC_SMCReal._self){
+        _r <@ _State_Pt2_WaitKE1__KE__Pt2__ke_rsp1 (_x.`KeyExchange.UC_KEDir.Pt2.ke_rsp1__k);
+      }
+      
+    }
+    | None => {
+      
+    }
+    end;
+  }
+  end;
+  return _r; } proc invoke(m : msg) : msg option = {
+  var r : msg option <- None;
+  if (_addr_Fwd UC_SMCReal._self <= m.`2.`1) {r <@ Forwarding.IF.invoke(m);}
+  else {
+  if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 UC_SMCReal._self /\
+     envport UC_SMCReal._self m.`3)
+  \/
+  (m.`1 = Dir /\ m.`2 = _intport_Pt1 UC_SMCReal._self /\
+  UC_SMCReal._self < m.`3.`1))
+  {r <@ party_Pt1(m);}
+  else {
+  if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 UC_SMCReal._self /\
+     envport UC_SMCReal._self m.`3)
+  \/
+  (m.`1 = Dir /\ m.`2 = _intport_Pt2 UC_SMCReal._self /\
+  UC_SMCReal._self < m.`3.`1))
+  {r <@ party_Pt2(m);}
+  }
+  }
+  return r;
+  }
+  
+}. 
+
+clone UC_Composition.Composition as UC__Rest1 with
+op change_pari = 1,
+op rf_info <- rf_info
+proof *.
+realize rf_info_valid. smt(_adv_pi_begin_gt0). qed.
+realize change_pari_valid. smt(). qed.
+
+
+lemma _invoke_Pt2_Rest1 (n : int)  : hoare [
+  UC_SMCReal_Rest1.party_Pt2 :
+  _metric_Pt2 (glob_UC_SMCReal_to__st_Pt2(glob UC_SMCReal)) = n ==>
+  (res <> None =>
+  _metric_Pt2 (glob_UC_SMCReal_to__st_Pt2(glob UC_SMCReal)) < n
+   /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  UC__Rest1.rest_adv_pis))
+]. proof. rewrite /_metric_Pt2 /=. proc. inline. (*inline procedure calls*)
+ sp 1. (*initializing input, return value*) match. (*state match*)
+(*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitFwd*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 2. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+match. (*match instruction with 2 branches*)
+(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*branch Some*) sp 1. (*Assign instruction*) 
+match. (*match instruction with 2 branches*)
+(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*branch Some*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+      skip. move => />;smt(). (*address check for internal messages failed case*)
+(*state branch WaitKE1*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 1. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  skip. move => />;smt(). (*address check for internal messages failed case*)
+qed. 
+
+lemma _invoke_Pt1_Rest1 (n : int)  : hoare [
+  UC_SMCReal_Rest1.party_Pt1 :
+  _metric_Pt1 (glob_UC_SMCReal_to__st_Pt1(glob UC_SMCReal)) = n ==>
+  (res <> None =>
+  _metric_Pt1 (glob_UC_SMCReal_to__st_Pt1(glob UC_SMCReal)) < n
+   /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  UC__Rest1.rest_adv_pis))
+]. proof. rewrite /_metric_Pt1 /=. proc. inline. (*inline procedure calls*)
+ sp 1. (*initializing input, return value*) match. (*state match*)
+(*state branch Final*)  skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitKE2*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+if. (*address check for internal messages*)
+sp 4. (*state param assignment, return value initialization*)sp 1. (*pattern bindings*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  skip. move => />;smt(). (*address check for internal messages failed case*)
+(*state branch WaitReq*) match. (*message match*)
+ skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
+if. (*if instruction*)
+ sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+  sp 2. skip. move => />;smt(). (*Fail instruction*)   qed. 
+
+op glob_UC_SMCReal_Rest1_to_own(g : glob UC_SMCReal_Rest1) / : glob UC_SMCReal =
+(g.`1, g.`2, g.`3, g.`4, g.`5).
+
+ op [smt_opaque] _metric_Rest1 (g : glob UC_SMCReal_Rest1) : int =
+ _metric_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_Rest1_to_own g))
++_metric_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_Rest1_to_own g))
++Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_Rest1_to_own g))
+.
+
+lemma _invoke_Rest1 (n : int)  : hoare [
+  UC_SMCReal_Rest1.invoke :
+  _metric_Rest1 (glob UC_SMCReal_Rest1) = n
+  ==>
+  (res <> None =>
+  _metric_Rest1 (glob UC_SMCReal_Rest1) < n
+/\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  UC__Rest1.rest_adv_pis))].
+proof.
+rewrite /_metric_Rest1 /=.
+  proc.
+  sp 1.
+  if.
+  exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_Rest1_to_own(glob UC_SMCReal_Rest1)))) => _sub_metric.
+  call (Forwarding.IF_invoke _sub_metric ).
+  skip.
+  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  if.
+  exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_Rest1_to_own(glob UC_SMCReal_Rest1)))) => _sub_metric.
+  call (_invoke_Pt1_Rest1 _sub_metric ).
+  skip.
+  smt().
+  if.
+  exlim (_metric_Pt2(glob_UC_SMCReal_to__st_Pt2(glob_UC_SMCReal_Rest1_to_own(glob UC_SMCReal_Rest1)))) => _sub_metric.
+  call (_invoke_Pt2_Rest1 _sub_metric ).
+  skip.
+  smt().
+  skip.
+  smt().
+qed.
+
+ op _invar_Rest1 (g : glob UC_SMCReal_Rest1) : bool =
+  _invar_Pt1(glob_UC_SMCReal_to__st_Pt1 (glob_UC_SMCReal_Rest1_to_own g))
+/\_invar_Pt2(glob_UC_SMCReal_to__st_Pt2 (glob_UC_SMCReal_Rest1_to_own g))
+/\Forwarding._invar_IF(glob_UC_SMCReal_to_Fwd (glob_UC_SMCReal_Rest1_to_own g))
+.
+
+lemma _metric_good_Rest1 (g : glob UC_SMCReal_Rest1) :
+_invar_Rest1 g => 0 <= _metric_Rest1 g.
+proof.
+rewrite /_metric_Rest1 /=.
+rewrite /_invar_Rest1 /=.
+smt(
+Forwarding.IF_metric_good
+_metric_Pt1_good
+_metric_Pt2_good
+).
+qed.
+
+lemma _init_Rest1 :
+hoare [ UC_SMCReal_Rest1.init : true ==> _invar_Rest1 (glob UC_SMCReal_Rest1)].
+proof. proc. sp. wp.
+call (Forwarding.IF_init).
+skip.
+rewrite /_invar_Rest1 /=.
+smt().
+qed.
+
+ 
+(*abbreviation for 1. composed environment*)
+module COMPENV1(Env : ENV) = UC__Rest1.CompEnv(UC_SMCReal_Rest1,Env).
+ 
+
+
+clone RealFunctionality as RFCore with
+op rf_info <- rf_info
+proof *.
+realize rf_info_valid. smt(_adv_pi_begin_gt0). qed.
+
+module RFRP = RFCore.MakeRF(UC_SMCReal_RP).
+
+lemma RFRP_Core_init :
+  hoare [RFRP.init : true ==> _invar_RP (glob UC_SMCReal_RP)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare (UC_SMCReal_RP) _invar_RP).
+apply _init_RP.
+ qed.
+
+lemma RFRP_Core_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar_RP (glob UC_SMCReal_RP) /\ _metric_RP (glob UC_SMCReal_RP) = n ==>
+   _invar_RP (glob UC_SMCReal_RP) /\
+
+ (res <> None => _metric_RP (glob UC_SMCReal_RP) < n
+
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (UC_SMCReal_RP) _invar_RP _metric_RP).
+apply _invoke_RP.
+ qed.
+
+(* now we lift our invariant, termination metric and lemmas to RFRP *)
+
+op glob_RFRP_to_Core(g : glob RFRP) / : glob UC_SMCReal_RP =
+(g.`1, g.`2, g.`3, g.`4, g.`5, g.`6, g.`7, g.`8, g.`10, g.`11, g.`12, g.`13, g.`14).
+
+op _invar_RFRP : glob RFRP -> bool =
+  fun (g : glob RFRP) => _invar_RP (glob_RFRP_to_Core g).
+
+op _metric_RFRP : glob RFRP -> int =
+  fun (g : glob RFRP) => _metric_RP (glob_RFRP_to_Core g).
+
+lemma RFRP_metric_good (g : glob RFRP) :
+  _invar_RFRP g => 0 <= _metric_RFRP g.
+    proof.
+ smt(_metric_good_RP). qed.
+ lemma RFRP_init :
+  hoare [RFRP.init : true ==> _invar_RFRP (glob RFRP)].
+proof.
+rewrite /_invar_RFRP /=.
+apply RFRP_Core_init.
+ qed.
+ 
+lemma RFRP_invoke (n : int) :
+  hoare
+  [RFRP.invoke :
+   _invar_RFRP (glob RFRP) /\ _metric_RFRP (glob RFRP) = n ==>
+   _invar_RFRP (glob RFRP) /\
+ (res <> None => _metric_RFRP (glob RFRP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_invar_RFRP /_metric_RFRP /=.
+apply RFRP_Core_invoke.
+ qed.
+
+module RFIP = RFCore.MakeRF(UC_SMCReal_IP).
+
+lemma RFIP_Core_init :
+  hoare [RFIP.init : true ==> _invar_IP (glob UC_SMCReal_IP)].
+proof.
+apply (RFCore.MakeRF_init_invar_hoare (UC_SMCReal_IP) _invar_IP).
+apply _init_IP.
+ qed.
+
+lemma RFIP_Core_invoke (n : int) :
+  hoare
+  [RFIP.invoke :
+   _invar_IP (glob UC_SMCReal_IP) /\ _metric_IP (glob UC_SMCReal_IP) = n ==>
+   _invar_IP (glob UC_SMCReal_IP) /\
+
+ (res <> None => _metric_IP (glob UC_SMCReal_IP) < n
+
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+apply (RFCore.MakeRF_invoke_term_metric_hoare (UC_SMCReal_IP) _invar_IP _metric_IP).
+apply _invoke_IP.
+ qed.
+
+(* now we lift our invariant, termination metric and lemmas to RFIP *)
+
+op glob_RFIP_to_Core(g : glob RFIP) / : glob UC_SMCReal_IP =
+(g.`1, g.`2, g.`3, g.`4, g.`5, g.`6, g.`7).
+
+op _invar_RFIP : glob RFIP -> bool =
+  fun (g : glob RFIP) => _invar_IP (glob_RFIP_to_Core g).
+
+op _metric_RFIP : glob RFIP -> int =
+  fun (g : glob RFIP) => _metric_IP (glob_RFIP_to_Core g).
+
+lemma RFIP_metric_good (g : glob RFIP) :
+  _invar_RFIP g => 0 <= _metric_RFIP g.
+    proof.
+ smt(_metric_good_IP). qed.
+ lemma RFIP_init :
+  hoare [RFIP.init : true ==> _invar_RFIP (glob RFIP)].
+proof.
+rewrite /_invar_RFIP /=.
+apply RFIP_Core_init.
+ qed.
+ 
+lemma RFIP_invoke (n : int) :
+  hoare
+  [RFIP.invoke :
+   _invar_RFIP (glob RFIP) /\ _metric_RFIP (glob RFIP) = n ==>
+   _invar_RFIP (glob RFIP) /\
+ (res <> None => _metric_RFIP (glob RFIP) < n
+ /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in  adv_pis_rf_info rf_info))].
+proof.
+rewrite /_invar_RFIP /_metric_RFIP /=.
+apply RFIP_Core_invoke.
+ qed.
+
+ 
+(*all CompGlobs module, abreviation for lemma module restrictions*)
+module AllCGs_ = {
+module OwnCGs = UC_Composition.CompGlobs
+module KeyExchangeAllCGs = KeyExchange.AllCGs
+}. 
+(*all IFs module, abreviation for lemma module restrictions*)
+module AllIFs = {
+module OwnIF = IF
+module KeyExchangeAllIFs = KeyExchange.AllIFs
+}. 
+lemma equiv_UC_SMCReal_RP_Composed1_RP
+    (Env <: ENV{-MI, -RFRP, -AllCGs_})
+    (Adv <: ADV{-MI, -Env,  -RFRP, -AllCGs_})
+    (func' : addr, in_guard' : int fset) &m :
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+-
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP), Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+ .
+ proof. 
+
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+`|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+-
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP), Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+)
+    <=>
+(
+Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+ =
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP), Adv), Env).main(func', in_guard') @ &m : res]
+).
+smt().
+
+apply H.
+clear H.
+
+byequiv => //. 
+
+(*unfold Exper main procedures, put in precondition all up to Adv.init call*)
+proc.
+inline *.
+sp.
+
+ 
+ 
+(*Adv init call doesn't touch any of the globs, because of module restrictions*)
+seq 1 1 : (={func, in_guard, glob Env,
+glob Adv,
+glob MI,
+glob KeyExchange.RFRP,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}).
+call (_ : true).
+skip.
+move => />.
+       
+(*calling ENV main doesn't make a difference in globs between left and right side*)
+call (_ : ={
+glob Adv,
+glob MI,
+glob KeyExchange.RFRP,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+  ); last first.
+skip; move => />.
+       
+(*unfold MI invoke to show the result is the same on both sides*)
+proc.
+
+  (*if m is not in inguard the result is the same on both sides*)
+if; last first.
+sp.
+skip.
+move => />.
+move => />.
+
+(*if m is in inguard the loop will return the same on both sides*) 
+      inline loop.
+(* on both sides before the while loop we have:
+m0 <- m                                              
+r0 <- None     
+not_done <- true
+      
+and after the loop
+r <- r0
+*)
+sp.
+wp.
+ 
+(*the locals and globals are the same after each iteration of the while loop*)
+while (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob KeyExchange.RFRP,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+ skip; move => />.
+ 
+(*case when (MakeInt.MI.func <= m0.`2.`1) is false is similar on both sides*)
+if; last first.
+sim.
+move => />.
+ 
+(*case when (MakeInt.MI.func <= m0.`2.`1) is true,
+if calling invoke has the same result, the rest is similar on both sides*)
+seq 1 1 : (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob KeyExchange.RFRP,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+sim.
+ 
+(*show that MakeRF and MakeRFComp invoke have the same result*)
+inline invoke.
+sp.
+
+(*the if conditions are the same, testing if real functionality is the
+  destination m, in case it is not the destination the results are the same*)
+if; last first.
+sp. skip.
+move => />.
+move => />.
+wp.
+ 
+(*in case real functionality is the destination of m,
+  the loops return the same result*)
+inline loop.
+sp.
+wp.
+ 
+(*each iteration of the wile loop has same result on both sides*)  
+while (={r0, r1, r2, m, m0, m1, m2, not_done, not_done0,
+glob Adv,
+glob MI,
+glob KeyExchange.RFRP,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+); last first.
+ skip. move => />.
+ 
+(*we inline real functionality invoke and composed functionality invoke
+to show the result is the same*)
+inline{1} (1) invoke. 
+inline UC_SMCReal_Rest1.invoke.
+sp 2 0.
+ 
+(*case when message is for the first parameter functionality*)
+ case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+
+(*the message is not for 1. sub-functionality*)
+rcondf{1} 0.
+move => &m0.
+skip.
+move => />.
+smt(not_le_other_branch).
+       
+(*the if conditions on both sides are equivalent and true, and result is the same*)
+rcondt{1} 0.
+move => &m0.
+skip.
+move => />.
+
+rcondt{2} 0.
+move => &m0.
+skip.
+move => />.
+
+sim.
+
+(*case when message is NOT for the first parameter*)
+(*message is NOT for the first parameter on right side*)
+    rcondf {2} 0.
+move => &m0.
+skip.
+move => />.
+sp 0 2.
+ 
+(*if m is for 1. sub-functionality*)
+if.
+move => />.
+sim.
+
+(*message is NOT for the first parameter on left side*)
+rcondf{1} 1.
+move => &m0.
+skip.
+move => />.
+
+(*the rest is similar*)
+ sim.
+ 
+qed.  
+
+(*Simulator stack abreviation*)
+module SIMIP(Adv : ADV) = KeyExchange.SIMCOMP(Adv).
+
+lemma diff_Composed1_RP_Composed1_IP
+    (Env <: ENV{-MI,  -AllCGs_, -RFRP, -SIMIP, -AllIFs})
+    (Adv <: ADV{-MI, -AllCGs_, -Env,  -RFRP, -SIMIP, -AllIFs})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP), Adv), Env).main(func', in_guard') @ &m : res]
+  -
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF), KeyExchange.SIMCOMP(Adv)), Env).main(func', in_guard') @ &m : res]|
+  <=
+`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
+ .
+proof.
+move => experpre disjguard.
+apply (UC__Rest1.composition
+Env (UC_SMCReal_Rest1)
+(Adv) KeyExchange.RFRP
+(KeyExchange.SIMCOMP(Adv))
+KeyExchange.IF
+_invar_Rest1
+_metric_Rest1
+KeyExchange._invar_RFRP
+KeyExchange._metric_RFRP
+KeyExchange._invar_IF
+KeyExchange._metric_IF
+func' in_guard'
+(`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+&m).
+     
+apply _metric_good_Rest1.
+apply _init_Rest1.
+apply _invoke_Rest1.
+
+apply KeyExchange.RFRP_metric_good.
+apply KeyExchange.RFRP_init.
+apply KeyExchange.RFRP_invoke.
+
+apply KeyExchange.IF_metric_good.
+apply KeyExchange.IF_init.
+move => n.
+conseq (KeyExchange.IF_invoke n).
+smt(mem_oflist mem_rangeset).
+trivial.
+
+smt(fsetUC UC__Rest1.union_change_rest_eq_all_adv_pis_of_rf_info disjoint_with_union_implies_disjoint_with_first).
+apply (KeyExchange.KeyExchange_RFRP_IF_advantage
+    (COMPENV1(Env))
+    (Adv)
+    (func' ++ [UC__Rest1.change_pari])
+  (in_guard' `|` UC__Rest1.rest_adv_pis)
+).
+    by rewrite exper_pre_ext1.
+by apply UC__Rest1.disjoint_in_guard_with_all_implies_disjoint_add_rest_with_change. 
+qed.
+ 
+
+
+lemma equiv_Composed1_IP_RFIP
+(Env <: ENV{-MI, -AllCGs_, -RFIP})
+(Adv <: ADV{-MI, -AllCGs_, -Env, -RFIP})
+(func' : addr, in_guard' : int fset) &m :
+exper_pre func' =>
+disjoint in_guard' (adv_pis_rf_info rf_info)  =>
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF), Adv), Env).main(func', in_guard') @ &m : res]
+- Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+.
+
+proof. 
+move => exper_pre disjoint.
+(*change the goal to equal probabilities in order to apply byequiv*)
+have H:
+(
+`|Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF), Adv), Env).main(func', in_guard') @ &m : res]
+-
+Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]| <= 0.0
+)
+    <=>
+(
+Pr[Exper(MI(RFIP,Adv), Env).main(func', in_guard') @ &m : res]
+ =
+Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF), Adv), Env).main(func', in_guard') @ &m : res]
+).
+smt().
+
+apply H.
+clear H.
+
+byequiv => //. 
+
+(*unfold Exper main procedures, put in precondition all up to Adv.init call*)
+proc.
+
+ 
+ (*calling MI.init on both sides results in same memories*)
+   seq 1 1 : (={glob Env, func, in_guard,
+glob Adv,
+glob MI,
+glob KeyExchange.IF,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+).
+(*inline all the inits before Adv.init*) 
+inline *.
+(*all init assignments before Adv.init go into precondition*)
+sp.
+(*calling Adv.init is similar on both sides*)
+sim.
+ 
+(*call Exper.main*)
+call (_ : ={
+glob Adv,
+glob MI,
+glob KeyExchange.IF,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}
+); last first.
+skip. move => />.
+ 
+(*unfold MI.invoke*)
+proc.
+
+(*if conditions and else branches are the same on both sides*)
+if; last first.
+sp. skip. move => />.
+move => />.
+
+(*inline MI.loop on both sides*)
+inline loop.
+
+(*put all before and after while loop into pre and post conditions*)
+sp.
+wp.
+
+while (={r0, m, m0, not_done,
+glob Adv,
+glob MI,
+glob KeyExchange.IF,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+skip. move => />.
+
+(*if message destination sub-address of MI.func, prove else branch first, they are same*)
+if; last first.
+sim.
+move => />.
+
+(*inline invoke on both sides*)
+inline{1} (1) invoke.
+inline{2} (1) invoke.
+sp.
+
+(*if conditions and else branches are same on both sides*)
+if; last first.
+sim.
+move => />.
+
+(*inline loop on both sides*)
+inline loop.
+ sp.
+ 
+(*calls after while loop are similar*)
+seq 1 1 : (={m,m0,m1,m2,r0,r1,r2,not_done, not_done0,
+glob Adv,
+glob MI,
+glob KeyExchange.IF,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+sp.
+sim.
+ 
+(*while invariant*)
+while (={m,m0,m1,m2,r0,r1,r2,not_done, not_done0,
+glob Adv,
+glob MI,
+glob KeyExchange.IF,
+glob UC_SMCReal
+}
+/\ RFCore.MakeRF.self{1} = UC_Composition.CompGlobs.mrfc_self{2}
+/\ UC_SMCReal._self{1} =  UC_Composition.CompGlobs.mrfc_self{2}); last first.
+skip. move => />.
+
+(*case when message is for 2. parameter functionality*)
+case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
+rcondt{2} 0.
+move => &m0. skip. move => />.
+
+(*inline real functionality invoke*)
+inline{1} (1) invoke.
+ sp.
+ 
+(*the message is not for 1. sub-functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />. smt(not_le_other_branch).
+       
+(*message is for 1. parameter functionality*)
+rcondt{1} 0.
+move => &m0. skip. move => />.
+
+(*the rest is similar*)
+sim.
+ 
+(*case when message is NOT for 1. parameter functionality*)
+rcondf{2} 0.
+move => &m0. skip. move => />.
+
+(*inline both invoke calls*)
+inline{1} (1) invoke.
+inline{2} (1) invoke.
+sp.
+
+(*if message is for 1. sub-functionality*)
+if. move => />. sim.
+       
+
+(*message is not for 1. parameter functionality*)
+rcondf{1} 0.
+move => &m0. skip. move => />.
+
+(*the rest is similar*)
+sim.
+ 
+qed.  
+
+
+     lemma exper_RF_RP_IP_Pr_diff
+(Env <: ENV{-MI, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
+    (Adv <: ADV{-MI, -Env, -AllIFs, -RFRP, -AllCGs_, -SIMIP})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFRP,Adv), Env).main(func', in_guard') @ &m : res]
+-
+    Pr[Exper(MI(RFIP,SIMIP(Adv)), Env).main(func', in_guard') @ &m : res]| <=
+ (
+
+`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
+     )
+      .
+     
+proof.
+move => exper disj.
+apply (
+    MakeInt.security_trans
+    (RFRP)
+    (UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP))
+    (RFIP)
+    (Adv)
+    (Adv)
+    (SIMIP(Adv))
+
+    Env
+    func' in_guard'
+    (0.0)
+    (`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+    &m
+). 
+ by apply (equiv_UC_SMCReal_RP_Composed1_RP Env (Adv) func' in_guard' &m).
+
+apply (
+    MakeInt.security_trans
+    (UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.RFRP))
+    (UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF))
+    (RFIP)
+    (Adv)
+    (KeyExchange.SIMCOMP(Adv))
+    (SIMIP(Adv))
+
+    Env
+    func' in_guard'
+    (`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+    (0.0)
+    &m
+). 
+ by apply (diff_Composed1_RP_Composed1_IP Env (Adv) func' in_guard' &m).
+
+ by apply (equiv_Composed1_IP_RFIP Env (SIMIP(Adv)) func' in_guard' &m).
+
+qed.  
+
+ 
+
+
+type _state_SIM = [ 
+  | _State_SIM_Final
+  | _State_SIM_WaitAdv1 of (port) & (port)
+  | _State_SIM_WaitAdv2 of (port) & (port) & (exp)
+  | _State_SIM_WaitAdv3
+  | _State_SIM_WaitReq
+  
+]. 
+
+module UC_SMCSim = {
+  var if_addr_opt : addr option
+  var _st : _state_SIM
+  proc init() : unit = {
+    if_addr_opt <- None; _st <- _State_SIM_WaitReq;
+    
+  }
+  proc _State_SIM_WaitAdv1__SMCReal__KE__KEI2S__ke_sim_rsp (pt1 : port, pt2 : port) : msg option = {
+    var q : exp;
+    var _r : msg option <- None;
+    q <$ dexp;
+    _r <- Some
+      (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
+      {|
+        KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget if_addr_opt);
+        KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv;
+        
+      |});
+    _st <- _State_SIM_WaitAdv2 (pt1) (pt2) (q);
+    return _r;
+  }
+  proc _State_SIM_WaitAdv2__SMCReal__KE__KEI2S__ke_sim_rsp (pt1 : port, pt2 : port, q : exp) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
+      {|
+        Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd (oget if_addr_opt);
+        Forwarding.UC_FwAdv.fw_obs___adv = adv;
+        Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 (oget if_addr_opt);
+        Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 (oget if_addr_opt);
+        Forwarding.UC_FwAdv.fw_obs__u = epdp_port_port_key_univ.`enc
+        (pt1, pt2, g ^ q);
+        
+      |});
+    _st <- _State_SIM_WaitAdv3;
+    return _r;
+  }
+  proc _State_SIM_WaitAdv3__SMCReal__Fwd__FwAdv__fw_ok () : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_SMC2Sim.epdp__sim_rsp.`enc
+      {|
+        UC_SMC2Sim.sim_rsp___func = (oget if_addr_opt);
+        UC_SMC2Sim.sim_rsp___adv = adv;
+        
+      |});
+    _st <- _State_SIM_Final;
+    return _r;
+  }
+  proc _State_SIM_WaitReq__SMC2Sim__sim_req (pt1 : port, pt2 : port) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
+      {|
+        KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE (oget if_addr_opt);
+        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
+        KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1
+                                                  (oget if_addr_opt);
+        KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2
+                                                  (oget if_addr_opt);
+        
+      |});
+    _st <- _State_SIM_WaitAdv1 (pt1) (pt2);
+    return _r;
+  }
+  proc invoke(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    if (if_addr_opt = None) {if_addr_opt <- Some _m.`3.`1;}
+    match _st with
+    | _State_SIM_Final => {
+      
+    }
+    | _State_SIM_WaitAdv1 pt1 pt2 => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_KE (oget if_addr_opt)) /\ (KeyExchange.UC_KEI2S.epdp__ke_sim_rsp.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_WaitAdv1__SMCReal__KE__KEI2S__ke_sim_rsp (pt1, pt2);
+      }
+      
+    }
+    | _State_SIM_WaitAdv2 pt1 pt2 q => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_KE (oget if_addr_opt)) /\ (KeyExchange.UC_KEI2S.epdp__ke_sim_rsp.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_WaitAdv2__SMCReal__KE__KEI2S__ke_sim_rsp (pt1, pt2, q);
+      }
+      
+    }
+    | _State_SIM_WaitAdv3 => {
+      if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Fwd (oget if_addr_opt)) /\ (Forwarding.UC_FwAdv.epdp__fw_ok.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_WaitAdv3__SMCReal__Fwd__FwAdv__fw_ok ();
+      }
+      
+    }
+    | _State_SIM_WaitReq => {
+      if ((_m.`3.`1 = (oget if_addr_opt)) /\ (_m.`2.`1 = adv) /\ (UC_SMC2Sim.epdp__sim_req.`dec _m) <> None)
+      {
+        _r <@ _State_SIM_WaitReq__SMC2Sim__sim_req ((oget (UC_SMC2Sim.epdp__sim_req.`dec _m)).`UC_SMC2Sim.sim_req__pt1, (oget (UC_SMC2Sim.epdp__sim_req.`dec _m)).`UC_SMC2Sim.sim_req__pt2);
+      }
+      
+    }
+    end;
+    return _r;
+  }
+  
+}.
+
+
+op _invar_UC_SMCSim (g : glob UC_SMCSim) : bool = true.
+
+ 
+
+op glob_UC_SMCSim_to__st (g : glob UC_SMCSim) / : _state_SIM = g.`1.
+op [smt_opaque] _metric_UC_SMCSim (g : glob UC_SMCSim) : int =
+  match glob_UC_SMCSim_to__st g with
+  | _State_SIM_Final => 0
+  | _State_SIM_WaitAdv1 _ _ => 3
+  | _State_SIM_WaitAdv2 _ _ _ => 2
+  | _State_SIM_WaitAdv3 => 1
+  | _State_SIM_WaitReq => 4
+  end.
+  
+
+
+lemma UC_SMCSim_invoke (n : int) : hoare [
+  UC_SMCSim.invoke :
+  _invar_UC_SMCSim (glob UC_SMCSim) /\ _metric_UC_SMCSim (glob UC_SMCSim) = n
+  ==>
+  res <> None =>
+  _metric_UC_SMCSim (glob UC_SMCSim) < n
+   ].
+proof. rewrite /_metric_UC_SMCSim /=. proc.
+sp 1. (*initializing return value*)
+seq 1 : (#pre /\ UC_SMCSim.if_addr_opt <> None). sp 1. auto;smt(). (*if_addr_opt initialized after first message is received*)
+inline. match. (*state match*)
+(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch WaitAdv1*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 3. (*state param assignment, return value initialization*)seq 1 : (#pre). rnd. skip. move => />;smt(). (*Sample instruction*)
+ sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*) 
+(*state branch WaitAdv2*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 4. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch WaitAdv3*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
+ (*state branch WaitReq*) if;last first. (*message guard*)
+sp 1. skip. move => />;smt(). (*message guard failed*)
+sp 1. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
+sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)  
+qed. 
+
+lemma UC_SMCSim_metric_good (g : glob UC_SMCSim) :
+  _invar_UC_SMCSim g => 0 <= _metric_UC_SMCSim g.
+  proof. rewrite /_metric_UC_SMCSim /=.   smt(). qed.  
+lemma UC_SMCSim_init :
+  hoare [UC_SMCSim.init : true ==> _invar_UC_SMCSim (glob UC_SMCSim)].
+proof. proc. auto. qed. 
+ 
+
+clone Simulator as MSCore with
+op sim_adv_pi <- _adv_if_pi
+proof *.
+realize sim_adv_pi_ge1. smt(_adv_pi_begin_gt0). qed.
+module SIM(Adv : ADV) = MSCore.MS(UC_SMCSim, Adv).
+
+
