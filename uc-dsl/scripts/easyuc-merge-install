@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cd ..
+mkdir -p bin
+cd bin
+ln -sf ../scripts/easyuc-merge .
