@@ -53,7 +53,8 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 1), (func ++ [1; 1], 2),
  SMC1.KeyExchange.KeyExp'.epdp_port_port_key_univ.`enc
- ((func ++ [1], 1), (func ++ [1], 2), SMC1.KeyExchange.g ^ rand))
+ ((func ++ [1], 1), (func ++ [1], 2),
+  (SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand)))
 @((adv, 7))
 ctrl_adv.
 send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
@@ -65,7 +66,8 @@ assert msg_out
 ((func ++ [1; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1),
- SMC1.KeyExchange.KeyExp'.epdp_key_univ.`enc (SMC1.KeyExchange.g ^ rand1))
+ SMC1.KeyExchange.KeyExp'.epdp_key_univ.`enc
+ (SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand1))
 @((adv, 8))
 ctrl_adv.
 send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
@@ -76,7 +78,9 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  SMC1.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 1), (func, 2),
-  SMC1.epdp_text_key.`enc text1 ^^ (SMC1.KeyExchange.g ^ rand1 ^ rand)))
+  SMC1.(^^)
+  (SMC1.epdp_text_key.`enc text1)
+  (SMC1.KeyExchange.(^) (SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand1) rand)))
 @((adv, 5))
 ctrl_adv.
 send ((adv, 5))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
@@ -99,7 +103,8 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 1), (func ++ [2; 1], 2),
  SMC2.KeyExchange.KeyExp'.epdp_port_port_key_univ.`enc
- ((func ++ [2], 1), (func ++ [2], 2), SMC2.KeyExchange.g ^ rand2))
+ ((func ++ [2], 1), (func ++ [2], 2),
+  (SMC2.KeyExchange.(^) SMC2.KeyExchange.g  rand2)))
 @((adv, 12))
 ctrl_adv.
 send ((adv, 12))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 1])).
@@ -108,7 +113,8 @@ assert msg_out
 ((func ++ [2; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1),
- SMC2.KeyExchange.KeyExp'.epdp_key_univ.`enc (SMC2.KeyExchange.g ^ rand3))
+ SMC2.KeyExchange.KeyExp'.epdp_key_univ.`enc
+ (SMC2.KeyExchange.(^) SMC2.KeyExchange.g rand3))
 @((adv, 13))
 ctrl_adv.
 send ((adv, 13))@Forwarding.FwAdv.fw_ok$((func ++ [2; 1; 2])).
@@ -119,7 +125,11 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1),
-  SMC2.epdp_text_key.`enc text2 ^^ (SMC2.KeyExchange.g ^ rand3 ^ rand2)))
+  (SMC2.(^^)
+   (SMC2.epdp_text_key.`enc text2)
+   (SMC2.KeyExchange.(^)
+    (SMC2.KeyExchange.(^) SMC2.KeyExchange.g rand3)
+    rand2))))
 @((adv, 10))
 ctrl_adv.
 send ((adv, 10))@Forwarding.FwAdv.fw_ok$((func ++ [2; 2])).
@@ -160,7 +170,8 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 1), (func ++ [1; 1], 2),
  SMC1.KeyExchange.KeyExp'.epdp_port_port_key_univ.`enc
- ((func ++ [1], 1), (func ++ [1], 2), SMC1.KeyExchange.g ^ rand))
+ ((func ++ [1], 1), (func ++ [1], 2),
+  SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand))
 @((adv, 7))
 ctrl_adv.
 send ((adv, 7))@Forwarding.FwAdv.fw_ok$((func ++ [1;1;1])).
@@ -169,7 +180,8 @@ assert msg_out
 ((func ++ [1; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [1; 1], 2), (func ++ [1; 1], 1),
- SMC1.KeyExchange.KeyExp'.epdp_key_univ.`enc (SMC1.KeyExchange.g ^ rand1))
+ SMC1.KeyExchange.KeyExp'.epdp_key_univ.`enc
+ (SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand1))
 @((adv, 8))
 ctrl_adv.
 send ((adv, 8))@Forwarding.FwAdv.fw_ok$((func ++ [1; 1; 2])).
@@ -180,7 +192,7 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  SMC1.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
- ((func, 1), (func, 2), SMC1.g ^ rand2))
+ ((func, 1), (func, 2), SMC1.(^) SMC1.g rand2))
 @((adv, 5))
 ctrl_adv.
 (* in contrast, the real assertion was:
@@ -190,9 +202,10 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [1], 1), (func ++ [1], 2),
  SMC1.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 1), (func, 2),
-  SMC1.epdp_text_key.`enc text1 ^^ (SMC1.KeyExchange.g ^ rand1 ^ rand)))
+  SMC1.(^^)
+  (SMC1.epdp_text_key.`enc text1)
+  (SMC1.KeyExchange.(^) (SMC1.KeyExchange.(^) SMC1.KeyExchange.g rand1) rand)))
 @((adv, 5))
-ctrl_adv.
 *)
 send ((adv, 5))@Forwarding.FwAdv.fw_ok$((func ++ [1; 2])).
 run.
@@ -206,7 +219,8 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 1), (func ++ [2; 1], 2),
  SMC2.KeyExchange.KeyExp'.epdp_port_port_key_univ.`enc
- ((func ++ [2], 1), (func ++ [2], 2), SMC2.KeyExchange.g ^ rand3))
+ ((func ++ [2], 1), (func ++ [2], 2),
+  SMC2.KeyExchange.(^) SMC2.KeyExchange.g rand3))
 @((adv, 12))
 ctrl_adv.
 (* real assertion has rand2 *)
@@ -216,7 +230,8 @@ assert msg_out
 ((func ++ [2; 1; 2], 1))@
 Forwarding.FwAdv.fw_obs
 ((func ++ [2; 1], 2), (func ++ [2; 1], 1),
- SMC2.KeyExchange.KeyExp'.epdp_key_univ.`enc (SMC2.KeyExchange.g ^ rand4))
+ SMC2.KeyExchange.KeyExp'.epdp_key_univ.`enc
+ (SMC2.KeyExchange.(^) SMC2.KeyExchange.g rand4))
 @((adv, 13))
 ctrl_adv.
 (* real assertion has rand3 *)
@@ -227,7 +242,7 @@ assert msg_out
 Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
- ((func, 2), (func, 1), SMC2.g ^ rand5))
+ ((func, 2), (func, 1), SMC2.(^) SMC2.g rand5))
 @((adv, 10))
 ctrl_adv.
 (* here was the real assertion:
@@ -237,7 +252,11 @@ Forwarding.FwAdv.fw_obs
 ((func ++ [2], 1), (func ++ [2], 2),
  SMC2.KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
  ((func, 2), (func, 1),
-  SMC2.epdp_text_key.`enc text2 ^^ (SMC2.KeyExchange.g ^ rand3 ^ rand2)))
+  (SMC2.(^^)
+   (SMC2.epdp_text_key.`enc text2)
+   (SMC2.KeyExchange.(^)
+    (SMC2.KeyExchange.(^) SMC2.KeyExchange.g rand3)
+    rand2))))
 @((adv, 10))
 ctrl_adv.
 *)

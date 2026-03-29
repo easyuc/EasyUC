@@ -207,11 +207,18 @@ let tc1_get_stmt side tc =
       tc_error_noXhl ~kinds:(hlkinds_Xhl_r `Stmt) !!tc
 
 (* ------------------------------------------------------------------ *)
-let tc1_process_codepos_range tc (side, cpr) =
+let tc1_process_codepos_or_range tc (side, cpor) =
   let me, _ = tc1_get_stmt side tc in
   let env = FApi.tc1_env tc in
   let env = EcEnv.Memory.push_active_ss me env in
-  EcTyping.trans_codepos_range env cpr
+  EcTyping.trans_codepos_or_range env cpor
+
+(* ------------------------------------------------------------------ *)
+let tc1_process_codegap_range tc (side, cgr) =
+  let me, _ = tc1_get_stmt side tc in
+  let env = FApi.tc1_env tc in
+  let env = EcEnv.Memory.push_active_ss me env in
+  EcTyping.trans_codegap_range env cgr
 
 (* ------------------------------------------------------------------ *)
 let tc1_process_codepos tc (side, cpos) =
@@ -331,22 +338,88 @@ let push_memenvs_pre (hyps : LDecl.hyps) (f : form) =
   | _ -> assert false
 
 (* -------------------------------------------------------------------- *)
-exception InvalidSplit of codepos1
+type logicS = [
+  | `Hoare   of sHoareS
+  | `BdHoare of bdHoareS
+  | `Equiv   of equivS
+  | `EHoare  of eHoareS
+]
 
+let get_logicS (f : form) : logicS =
+  match f.f_node with
+  | FhoareS   hs -> `Hoare   hs
+  | FbdHoareS hs -> `BdHoare hs
+  | FequivS   hs -> `Equiv   hs
+  | FeHoareS  hs -> `EHoare  hs
+  | _ -> destr_error "<program logic> (S)"
+
+let hoareS_read (env : env) (hs : sHoareS) : EcPV.pmvs =
+  EcPV.form_read env PMVS.empty (f_hoareS_r hs)
+
+let bdHoareS_read (env : env) (hs : bdHoareS) : pmvs =
+  form_read env PMVS.empty (f_bdHoareS_r hs)
+
+let equivS_read (env : env) (hs : equivS) : pmvs =
+  form_read env PMVS.empty (f_equivS_r hs)
+
+let eHoareS_read (env : env) (hs : eHoareS) : pmvs =
+  form_read env PMVS.empty (f_eHoareS_r hs)
+
+let logicS_read (env : env) (f : logicS) =
+  match f with
+  | `Hoare   hs -> hoareS_read   env hs
+  | `BdHoare hs -> bdHoareS_read env hs
+  | `Equiv   hs -> equivS_read   env hs
+  | `EHoare  hs -> eHoareS_read  env hs
+
+let logicS_post_read (env : env) (f : logicS) =
+  let add pvs inv = EcPV.form_read env pvs inv in
+
+  match f with
+  | `Hoare hs ->
+      POE.fold add EcPV.PMVS.empty (hs_po hs).hsi_inv
+  | `EHoare hs ->
+      add EcPV.PMVS.empty (ehs_po hs).inv
+  | `BdHoare hs ->
+      add (add EcPV.PMVS.empty (bhs_po hs).inv) (bhs_bd hs).inv
+  | `Equiv es ->
+      add EcPV.PMVS.empty (es_po es).inv
+
+(* -------------------------------------------------------------------- *)
+exception InvalidSplit of [ `Instr of codepos1 | `Gap of codegap1 ]
+
+(* -------------------------------------------------------------------- *)
 let s_split env i s =
-  let module Zpr = EcMatching.Zipper in
-  try  Zpr.split_at_cpos1 env i s
-  with Zpr.InvalidCPos -> raise (InvalidSplit i)
+  let module Pos = EcMatching.Position in
+  try  Pos.split_at_cgap1 env i s
+  with Pos.InvalidCPos -> raise (InvalidSplit (`Gap i))
 
+(* -------------------------------------------------------------------- *)
 let s_split_i env i s =
-  let module Zpr = EcMatching.Zipper in
-  try  Zpr.find_by_cpos1 ~rev:false env i s
-  with Zpr.InvalidCPos -> raise (InvalidSplit i)
+  let module Pos = EcMatching.Position in
+  try  Pos.find_by_cpos1 ~rev:false env i s
+  with Pos.InvalidCPos -> raise (InvalidSplit (`Instr i))
 
+(* -------------------------------------------------------------------- *)
 let o_split ?rev env i s =
-  let module Zpr = EcMatching.Zipper in
-  try  Zpr.may_split_at_cpos1 ?rev env i s
-  with Zpr.InvalidCPos -> raise (InvalidSplit (oget i))
+  let module Pos = EcMatching.Position in
+  try  Pos.may_split_at_cgap1 ?rev env i s
+  with Pos.InvalidCPos -> raise (InvalidSplit (`Gap(oget i)))
+
+(* -------------------------------------------------------------------- *)
+(* Gap processing functions *)
+let tc1_process_codegap1 tc (side, g) =
+  let me, _ = tc1_get_stmt side tc in
+  let env = FApi.tc1_env tc in
+  let env = EcEnv.Memory.push_active_ss me env in
+  EcTyping.trans_codegap1 env g
+
+(* -------------------------------------------------------------------- *)
+let tc1_process_codegap tc (side, g) =
+  let me, _ = tc1_get_stmt side tc in
+  let env = FApi.tc1_env tc in
+  let env = EcEnv.Memory.push_active_ss me env in
+  EcTyping.trans_codegap env g
 
 (* -------------------------------------------------------------------- *)
 let t_hS_or_bhS_or_eS ?th ?teh ?tbh ?te tc =
@@ -692,14 +765,14 @@ let t_fold f (cenv : code_txenv) (cpos : codepos) (_ : form * form) (state, s) =
     let env = EcEnv.LDecl.toenv (snd cenv) in
     let (me, f) = Zpr.fold env cenv cpos (fun _ -> f) state s in
       ((me, f, []) : memenv * _ * form list)
-  with Zpr.InvalidCPos -> tc_error (fst cenv) "invalid code position"
+  with InvalidCPos -> tc_error (fst cenv) "invalid code position"
 
 let t_zip f (cenv : code_txenv) (cpos : codepos) (prpo : form * form) (state, s) =
   try
     let env = EcEnv.LDecl.toenv (snd cenv) in
     let (me, zpr, gs) = f cenv prpo state (Zpr.zipper_of_cpos env cpos s) in
       ((me, Zpr.zip zpr, gs) : memenv * _ * form list)
-  with Zpr.InvalidCPos -> tc_error (fst cenv) "invalid code position"
+  with InvalidCPos -> tc_error (fst cenv) "invalid code position"
 
 let t_code_transform (side : oside) ?(bdhoare = false) cpos tr tx tc =
   let pf = FApi.tc1_penv tc in
