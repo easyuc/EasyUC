@@ -23,6 +23,9 @@
 # easyuc-marge NEW
 #
 # is as above, except NEW~ is used as OLD
+#
+# if OLD and NEW are identical, the user is informed of this,
+# and OLD is automatically deleted
 
 gnudiff=/opt/homebrew/bin/diff
 
