@@ -2,10 +2,8 @@
 ;;; For more information see (info "(emacs) Directory Variables")
 
 (
- (easycrypt-mode .
-  ((easycrypt-load-path . ("../../prelude"))))
 ;; (ucdsl-interpreter-mode .
-;;  ;; ../../prelude is automatically included
-;;  ((ucdsl-interpreter-load-path . ("supporting"))))
+;;  can add directories here
+;;  ../../prelude is automatically included
 )
 

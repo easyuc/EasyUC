@@ -1,0 +1,5 @@
+[general]
+
+provers = Z3
+
+idirs = ../../common

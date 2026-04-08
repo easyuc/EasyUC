@@ -59,3 +59,9 @@ interpretation script [`testing-idealish.uci`](testing-idealish.uci),
 for experimenting with the application of the real functionality of
 `SMC2.uc` to first the ideal functionality of `SMC.uc` and second to
 the completely real functionality of `SMC.uc`.
+
+See the file [`easycrypt.project`](easycrypt.project) for the default
+provers and include paths for EasyCrypt scripts; this applies both when
+running EasyCrypt from the shell and within Emacs. The include path
+for `.uci` scripts is set via the [`.dir-locals.el`](.dir-locals.el)
+file; this only works within Emacs.
