@@ -1,5 +1,6 @@
 [general]
 
 provers = Z3
+provers = CVC5
 
 idirs = ../../common
