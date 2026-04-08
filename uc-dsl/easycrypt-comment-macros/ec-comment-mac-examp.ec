@@ -1,10 +1,11 @@
 (* (* *) *)
+(*(* *) *)
 
 (*! Empty() *)
 
 (*! Foo ( A, Bo1, C  )
 
-hi there (* (*! only macro if at top level
+hi there (*(*! only macro if at top level )*(
 (* *)
 <<A>> -> <<Bo1>>
 

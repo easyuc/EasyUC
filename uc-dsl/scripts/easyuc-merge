@@ -46,6 +46,12 @@ else echo 'usage: easyuc-merge OLD NEW';
      exit 1;
 fi
 
+if cmp -s $old $new;
+then echo files are equal, deleting $old;
+     rm $old;
+     exit 0;
+fi;
+
 $gnudiff --old-group-format='<<<<< old text <<<<<
 %<==== end of old ====
 ' \

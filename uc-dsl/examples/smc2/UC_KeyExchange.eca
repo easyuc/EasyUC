@@ -1,0 +1,37 @@
+
+prover quorum=2 ["Alt-Ergo" "Z3"].
+
+require import UCCore.
+
+require UC__KeyExchange.
+                                
+clone include UC__KeyExchange.
+
+(*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
+`|Pr[<<ParamName>>DDHBound1(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res] -
+  Pr[<<ParamName>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|
+*)
+module SIMCOMP(Adv : ADV) = SIM(Adv).
+
+lemma KeyExchange_RFRP_IF_advantage
+    (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
+    (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
+    (func' : addr, in_guard' : int fset) &m :
+    exper_pre func' =>
+    disjoint in_guard' (adv_pis_rf_info rf_info) =>    
+ `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] -
+   Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]|
+ <=
+ `|Pr[DDHBound1(Env, Adv).main(func', in_guard') @ &m : res] -
+  Pr[DDHBound2(Env, Adv).main(func', in_guard') @ &m : res]|
+.
+    proof.
+      apply (KeyExchange_RFIP_IF_advantage
+      Env
+      Adv
+      func'
+      in_guard'
+      &m)
+      .
+    qed.
+ 

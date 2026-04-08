@@ -1,5 +1,6 @@
 (* -------------------------------------------------------------------- *)
 open EcUtils
+open EcParsetree
 open EcPath
 open EcAst
 open EcModules
@@ -7,31 +8,48 @@ open EcFol
 
 open EcCoreGoal
 open EcLowPhlGoal
+open EcMatching.Position
 
 (* -------------------------------------------------------------------- *)
 module LowInternal = struct
   exception No_wp
 
-  let find_poe hyps memenv (epost,d) (e:EcTypes.expr) =
+  let find_poe hyps memenv epost (e:EcTypes.expr) =
     let m = EcMemory.memory memenv in
     let f = form_of_expr ~m e in
     let f = EcReduction.h_red_until EcReduction.full_red hyps f in
-    let (ex, _tys), args = destr_op_app f in
-    match Mp.find ex epost with
-    | f -> f_app_simpl f args EcTypes.tbool
-    | exception Not_found ->
-      match d with
-      | Some d -> d
-      | None -> tacuerror "missing postcondition for exception %a" EcPrinting.pp_path ex
+    let (ex, tyargs), args = destr_op_app f in
 
+    assert (List.is_empty tyargs);
+
+    let default_exn () =
+      match Mop.find_opt None epost with
+      | Some body -> body
+      | None ->
+        tacuerror
+          "missing postcondition for exception %a"
+          EcPrinting.pp_path ex in
+
+    let body =
+      Mop.find_opt (Some ex) epost
+      |> ofdfl (fun () -> default_exn ()) in
+
+    f_app_simpl body args EcTypes.tbool
 
   let wp_asgn_aux c_pre memenv lv e (lets, f) =
     let m = EcMemory.memory memenv in
     let let1 = lv_subst ?c_pre m lv (ss_inv_of_expr m e).inv in
       (let1::lets, f)
 
-  let rec wp_stmt ?mc
-      onesided c_pre hyps memenv (stmt: EcModules.instr list) letsf epost
+  let rec wp_stmt
+    ?(mc       : (memory * memory) option)
+     (onesided : bool)
+     (c_pre    : form option)
+     (hyps     : EcEnv.LDecl.hyps)
+     (memenv   : memenv)
+     (stmt     : instr list)
+     (letsf    : _)
+     (epost    : form Mop.t)
   =
     match stmt with
     | [] -> (stmt, letsf)
@@ -41,7 +59,16 @@ module LowInternal = struct
           wp_stmt ?mc onesided c_pre hyps memenv stmt' letsf epost
         with No_wp -> (stmt, letsf)
 
-  and wp_instr ?mc onesided c_pre (hyps:EcEnv.LDecl.hyps) memenv i letsf epost =
+  and wp_instr
+      ?(mc       : (memory * memory) option)
+     (onesided : bool)
+     (c_pre    : form option)
+     (hyps     : EcEnv.LDecl.hyps)
+     (memenv   : memenv)
+     (i        : instr)
+     (letsf    : _)
+     (epost    : form Mop.t)
+  =
     match i.i_node with
     | Sasgn (lv,e) ->
       wp_asgn_aux c_pre memenv lv e letsf
@@ -143,10 +170,10 @@ let wp
    (s        : stmt)
    (poe      : exnpost)
 =
-  let { main = post; exnmap = (epost, d) } = poe in
+  let post, epost = POE.destruct poe in
   let (r, letsf) =
     LowInternal.wp_stmt ?mc
-      onesided c_pre hyps m (List.rev s.s_node) ([], post) (epost,d)
+      onesided c_pre hyps m (List.rev s.s_node) ([], post) epost
   in
   let pre = mk_let_of_lv_substs ?mc ~uselet (EcEnv.LDecl.toenv hyps) letsf in
   (List.rev r, pre)
@@ -162,22 +189,24 @@ module TacInternal = struct
     if EcUtils.is_some i && not (List.is_empty rm) then
       tc_error !!tc "remaining %i instruction(s)" (List.length rm)
 
-  let t_hoare_wp ?(uselet=true) i tc =
+  (* [t_hoare_wp gap]: splits the statement at [gap]; instructions before the
+     gap are kept, wp is applied to instructions after the gap. *)
+  let t_hoare_wp ?(uselet=true) (i : codegap1 option) tc =
     let hyps = FApi.tc1_hyps tc in
     let env = EcEnv.LDecl.toenv hyps in
     let hs = tc1_as_hoareS tc in
     let (s_hd, s_wp) = o_split env i hs.hs_s in
     let s_wp = EcModules.stmt s_wp in
-    let { exnmap = (eposts, d) } as post = (hs_po hs).hsi_inv in
+    let { exnmap = eposts } as post = (hs_po hs).hsi_inv in
     let s_wp, post = wp ~uselet ~onesided:true hyps hs.hs_m s_wp post in
     check_wp_progress tc i hs.hs_s s_wp;
     let s = EcModules.stmt (s_hd @ s_wp) in
     let m = fst hs.hs_m in
-    let post = { hsi_m = m; hsi_inv = { main = post; exnmap = (eposts, d)}; } in
+    let post = { hsi_m = m; hsi_inv = { main = post; exnmap = eposts} } in
     let concl = f_hoareS (snd hs.hs_m) (hs_pr hs) s post in
     FApi.xmutate1 tc `Wp [concl]
 
-  let t_ehoare_wp ?(uselet=true) i tc =
+  let t_ehoare_wp ?(uselet=true) (i : codegap1 option) tc =
     let env = FApi.tc1_env tc in
     let hs = tc1_as_ehoareS tc in
     let (s_hd, s_wp) = o_split env i hs.ehs_s in
@@ -189,7 +218,7 @@ module TacInternal = struct
     let concl = f_eHoareS (snd hs.ehs_m) (ehs_pr hs) s {m;inv=post} in
     FApi.xmutate1 tc `Wp [concl]
 
-  let t_bdhoare_wp ?(uselet=true) i tc =
+  let t_bdhoare_wp ?(uselet=true) (i : codegap1 option) tc =
     let hyps = FApi.tc1_hyps tc in
     let env = EcEnv.LDecl.toenv hyps in
     let bhs = tc1_as_bdhoareS tc in
@@ -204,7 +233,7 @@ module TacInternal = struct
     let concl = f_bdHoareS (snd bhs.bhs_m) (bhs_pr bhs) s {m;inv=post} bhs.bhs_cmp (bhs_bd bhs) in
     FApi.xmutate1 tc `Wp [concl]
 
-  let t_equiv_wp ?(uselet=true) ij tc =
+  let t_equiv_wp ?(uselet=true) (ij : (codegap1 * codegap1) option) tc =
     let hyps = FApi.tc1_hyps tc in
     let env = EcEnv.LDecl.toenv hyps in
     let es = tc1_as_equivS tc in
@@ -253,7 +282,9 @@ let t_wp_r ?(uselet=true) k g =
 let t_wp ?(uselet=true) = FApi.t_low1 "wp" (t_wp_r ~uselet)
 
 (* -------------------------------------------------------------------- *)
-let process_wp pos tc =
-  let pos =
-    Option.map (EcTyping.trans_dcodepos1 (FApi.tc1_env tc)) pos
-  in t_wp pos tc
+(* [process_wp gap]: splits the statement at [gap]; instructions before the
+   gap are kept, wp is applied to instructions after the gap. *)
+let process_wp (cpos : pcodegap1 doption option) tc =
+  let env = (FApi.tc1_env tc) in
+  let cpos = Option.map (EcTyping.trans_dcodegap1 env) cpos in
+  t_wp cpos tc

@@ -231,7 +231,6 @@ type octxt = {
 module Renaming : sig
   val rename1 : octxt -> theory_renaming -> renaming
 end = struct
-
   let rename1 oc ((k : theory_renaming_kind list), (r1, r2)) : renaming =
     let e1 =
       try  EcRegexp.regexp (unloc r1)

@@ -73,35 +73,34 @@ clone import KeyExp as KeyExp' with
   op g : key <- g,
   op (^) : key -> exp -> key <- (^)
 proof *.
-
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize kmulA. smt. qed. 
-realize  kid_l. smt. qed.
-realize  kid_r. smt. qed.
-realize  kinv_l. smt. qed.
-realize  kinv_r. smt. qed.
-realize  mulC. smt. qed.
-realize  mulA. smt. qed.
-realize  valid_epdp_exp_univ. smt. qed.
-realize  dexp_ll. smt. qed.
-realize  dexp_uni. smt. qed.
-realize  dexp_fu. smt. qed.
-realize  double_exp_gen. smt. qed.
-realize  gen_surj. smt. qed.
-realize  gen_inj. smt. qed.
+realize kid_l. smt. qed.
+realize kid_r. smt. qed.
+realize kinv_l. smt. qed.
+realize kinv_r. smt. qed.
+realize mulC. smt. qed.
+realize mulA. smt. qed.
+realize valid_epdp_exp_univ. smt. qed.
+realize dexp_ll. smt. qed.
+realize dexp_uni. smt. qed.
+realize dexp_fu. smt. qed.
+realize double_exp_gen. smt. qed.
+realize gen_surj. smt. qed.
+realize gen_inj. smt. qed.
 (* END USER FILL *)
 
 clone UC_Forwarding as Forwarding1 with
   op _adv_if_pi <- _adv_pi_begin + 1
 proof *.
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize _adv_if_pi_gt0. smt. qed.
 (* END USER FILL *)
 
 clone UC_Forwarding as Forwarding2 with
   op _adv_if_pi <- _adv_pi_begin + 2
 proof *.
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize _adv_if_pi_gt0. smt. qed.
 (* END USER FILL *)
 
@@ -353,15 +352,16 @@ op _ke_rsp1 =  [107; 101; 95; 114; 115; 112; 49]. (*ke_rsp1 as ascii array*)
 op _tag__ke_rsp1 =  TagBasic _KeyExchange _ke_rsp1.
 op enc__ke_rsp1 (x : _ke_rsp1) : msg =
 (Dir, x.`ke_rsp1__pt2, (x.`ke_rsp1___func, pi), _tag__ke_rsp1,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_key_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, key> (epdp_port_univ) (epdp_key_univ)).`enc
 (x.`ke_rsp1__pt1, x.`ke_rsp1__k))
 .
 op [opaque smt_opaque] dec__ke_rsp1 (m : msg) : _ke_rsp1 option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__ke_rsp1) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_key_univ)).`dec v
-    with
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, key> (epdp_port_univ) (epdp_key_univ)).`dec
+    v with
     | None   => None
     | Some p =>
       let (ke_rsp1__pt1 ,ke_rsp1__k) = p in
@@ -388,10 +388,11 @@ case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__ke_rsp1) => //.
 rewrite !negb_or /= not_adv.
 move => [#] -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_key_univ)).`dec v =
+  (Top.UCUniv.epdp_pair_univ<:port, key> (epdp_port_univ) (epdp_key_univ)).`dec v =
   Some (u.`ke_rsp1__pt1 ,u.`ke_rsp1__k).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_key_univ)).`dec v) => //.
+  case ((Top.UCUniv.epdp_pair_univ<:port, key> (epdp_port_univ)
+                                                               (epdp_key_univ)).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -406,7 +407,7 @@ lemma eq_of_valid__ke_rsp1 (m : msg) :
   m =
   let x = oget (epdp__ke_rsp1.`dec m) in
 (Dir, x.`ke_rsp1__pt2, (x.`ke_rsp1___func, pi), _tag__ke_rsp1,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_key_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, key> (epdp_port_univ) (epdp_key_univ)).`enc
 (x.`ke_rsp1__pt1, x.`ke_rsp1__k)).
 proof.
 rewrite /is_valid.
@@ -458,7 +459,7 @@ op _tag__ke_sim_req1 =  TagBasic _KeyExchange _ke_sim_req1.
 op enc__ke_sim_req1 (x : _ke_sim_req1) : msg =
 (Adv, (x.`ke_sim_req1___adv, _adv_if_pi), (x.`ke_sim_req1___func, pi),
 _tag__ke_sim_req1,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`ke_sim_req1__pt1, x.`ke_sim_req1__pt2))
 .
 op [opaque smt_opaque] dec__ke_sim_req1 (m : msg) : _ke_sim_req1 option =
@@ -466,7 +467,8 @@ op [opaque smt_opaque] dec__ke_sim_req1 (m : msg) : _ke_sim_req1 option =
   in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
   _tag__ke_sim_req1) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`dec
     v with
     | None   => None
     | Some p =>
@@ -494,10 +496,11 @@ case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__ke_sim_req
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v =
+  (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`dec v =
   Some (u.`ke_sim_req1__pt1 ,u.`ke_sim_req1__pt2).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v) => //.
+  case ((Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ)
+                                                                (epdp_port_univ)).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -513,7 +516,7 @@ lemma eq_of_valid__ke_sim_req1 (m : msg) :
   let x = oget (epdp__ke_sim_req1.`dec m) in
 (Adv, (x.`ke_sim_req1___adv, _adv_if_pi), (x.`ke_sim_req1___func, pi),
 _tag__ke_sim_req1,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`ke_sim_req1__pt1, x.`ke_sim_req1__pt2)).
 proof.
 rewrite /is_valid.
@@ -931,7 +934,7 @@ module UC_KEReal  : FUNC = {
   proc _State_Pt1_WaitFwd2__Fw2__D__fw_rsp (pt1 : port, q1 : exp, u : univ) : msg option = {
     var _r : msg option <- None;
     match (epdp_key_univ.`dec u) with
-    | None => {
+    | None<:key> => {
     
       _r <- None;
       
@@ -1013,7 +1016,7 @@ proc _State_Pt1_WaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg opt
   var q2 : exp;
   var _r : msg option <- None;
   match (epdp_port_port_key_univ.`dec u) with
-  | None => {
+  | None<:(int list * int) * (int list * int) * key> => {
   
     _r <- None;
     

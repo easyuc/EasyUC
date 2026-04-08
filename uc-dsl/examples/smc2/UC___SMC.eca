@@ -69,7 +69,7 @@ op _adv_if_pi : int = _adv_pi_begin.
 clone UC_Forwarding as Forwarding with
   op _adv_if_pi <- _adv_pi_begin + 1
 proof *.
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize _adv_if_pi_gt0. smt. qed.
 (* END USER FILL *)
 
@@ -88,22 +88,22 @@ clone import KeyExpText as KeyExpText' with
   type text <- text,
   op epdp_text_key : (text, key) epdp <- epdp_text_key
 proof *.
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize kmulA. smt. qed. 
-realize  kid_l. smt. qed.
-realize  kid_r. smt. qed.
-realize  kinv_l. smt. qed.
-realize  kinv_r. smt. qed.
-realize  mulC. smt. qed.
-realize  mulA. smt. qed.
-realize  valid_epdp_exp_univ. smt. qed.
-realize  dexp_ll. smt. qed.
-realize  dexp_uni. smt. qed.
-realize  dexp_fu. smt. qed.
-realize  double_exp_gen. smt. qed.
-realize  gen_surj. smt. qed.
-realize  gen_inj. smt. qed.
-realize  valid_epdp_text_key. smt. qed.
+realize kid_l. smt. qed.
+realize kid_r. smt. qed.
+realize kinv_l. smt. qed.
+realize kinv_r. smt. qed.
+realize mulC. smt. qed.
+realize mulA. smt. qed.
+realize valid_epdp_exp_univ. smt. qed.
+realize dexp_ll. smt. qed.
+realize dexp_uni. smt. qed.
+realize dexp_fu. smt. qed.
+realize double_exp_gen. smt. qed.
+realize gen_surj. smt. qed.
+realize gen_inj. smt. qed.
+realize valid_epdp_text_key. smt. qed.
 (* END USER FILL *)
 
 op _adv_pi_begin_UC_KeyExchange = _adv_pi_begin + 2.
@@ -122,22 +122,22 @@ clone UC_KeyExchange as KeyExchange with
   op g : key = g,
   op (^) : key -> exp -> key = (^)
 proof *.
-  (* BEGIN USER FILL *)
+(* BEGIN USER FILL *)
 realize kmulA. smt. qed. 
-realize  kid_l. smt. qed.
-realize  kid_r. smt. qed.
-realize  kinv_l. smt. qed.
-realize  kinv_r. smt. qed.
-realize  mulC. smt. qed.
-realize  mulA. smt. qed.
-realize  valid_epdp_exp_univ. smt. qed.
-realize  dexp_ll. smt. qed.
-realize  dexp_uni. smt. qed.
-realize  dexp_fu. smt. qed.
-realize  double_exp_gen. smt. qed.
-realize  gen_surj. smt. qed.
-realize  gen_inj. smt. qed.
-realize  _adv_pi_begin_gt0. smt. qed.
+realize kid_l. smt. qed.
+realize kid_r. smt. qed.
+realize kinv_l. smt. qed.
+realize kinv_r. smt. qed.
+realize mulC. smt. qed.
+realize mulA. smt. qed.
+realize valid_epdp_exp_univ. smt. qed.
+realize dexp_ll. smt. qed.
+realize dexp_uni. smt. qed.
+realize dexp_fu. smt. qed.
+realize double_exp_gen. smt. qed.
+realize gen_surj. smt. qed.
+realize gen_inj. smt. qed.
+realize _adv_pi_begin_gt0. smt. qed.
 (* END USER FILL *)
 
 op _adv_pi_num : int = 2 + KeyExchange._adv_pi_num.
@@ -161,14 +161,15 @@ op _smc_req =  [115; 109; 99; 95; 114; 101; 113]. (*smc_req as ascii array*)
 op _tag__smc_req =  TagBasic _SMC _smc_req.
 op enc__smc_req (x : _smc_req) : msg =
 (Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`enc
 (x.`smc_req__pt2, x.`smc_req__t))
 .
 op [opaque smt_opaque] dec__smc_req (m : msg) : _smc_req option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__smc_req) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`dec
     v with
     | None   => None
     | Some p =>
@@ -196,10 +197,11 @@ case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__smc_req) => //.
 rewrite !negb_or /= not_adv.
 move => [#] -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v =
+  (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`dec v =
   Some (u.`smc_req__pt2 ,u.`smc_req__t).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v) => //.
+  case ((Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
+                                                                (epdp_text_univ)).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -214,7 +216,7 @@ lemma eq_of_valid__smc_req (m : msg) :
   m =
   let x = oget (epdp__smc_req.`dec m) in
 (Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`enc
 (x.`smc_req__pt2, x.`smc_req__t)).
 proof.
 rewrite /is_valid.
@@ -249,14 +251,15 @@ op _smc_rsp =  [115; 109; 99; 95; 114; 115; 112]. (*smc_rsp as ascii array*)
 op _tag__smc_rsp =  TagBasic _SMC _smc_rsp.
 op enc__smc_rsp (x : _smc_rsp) : msg =
 (Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`enc
 (x.`smc_rsp__pt1, x.`smc_rsp__t))
 .
 op [opaque smt_opaque] dec__smc_rsp (m : msg) : _smc_rsp option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__smc_rsp) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`dec
     v with
     | None   => None
     | Some p =>
@@ -284,10 +287,11 @@ case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__smc_rsp) => //.
 rewrite !negb_or /= not_adv.
 move => [#] -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v =
+  (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`dec v =
   Some (u.`smc_rsp__pt1 ,u.`smc_rsp__t).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`dec v) => //.
+  case ((Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
+                                                                (epdp_text_univ)).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -302,7 +306,7 @@ lemma eq_of_valid__smc_rsp (m : msg) :
   m =
   let x = oget (epdp__smc_rsp.`dec m) in
 (Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_text_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ) (epdp_text_univ)).`enc
 (x.`smc_rsp__pt1, x.`smc_rsp__t)).
 proof.
 rewrite /is_valid.
@@ -351,7 +355,7 @@ op _sim_req =  [115; 105; 109; 95; 114; 101; 113]. (*sim_req as ascii array*)
 op _tag__sim_req =  TagBasic _SMC _sim_req.
 op enc__sim_req (x : _sim_req) : msg =
 (Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`sim_req__pt1, x.`sim_req__pt2))
 .
 op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
@@ -359,7 +363,8 @@ op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
   in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
   _tag__sim_req) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`dec
     v with
     | None   => None
     | Some p =>
@@ -387,10 +392,11 @@ case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__sim_req) =
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v =
+  (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`dec v =
   Some (u.`sim_req__pt1 ,u.`sim_req__pt2).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`dec v) => //.
+  case ((Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ)
+                                                                (epdp_port_univ)).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -405,7 +411,7 @@ lemma eq_of_valid__sim_req (m : msg) :
   m =
   let x = oget (epdp__sim_req.`dec m) in
 (Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
- (Top.UCUniv.epdp_pair_univ (epdp_port_univ) (epdp_port_univ)).`enc
+ (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`sim_req__pt1, x.`sim_req__pt2)).
 proof.
 rewrite /is_valid.
@@ -753,7 +759,7 @@ module UC_SMCReal (KE__ : FUNC) : FUNC = {
     var x : key;
     var _r : msg option <- None;
     match (epdp_port_port_key_univ.`dec u) with
-    | None => {
+    | None<:(int list * int) * (int list * int) * key> => {
     
       _r <- None;
       
@@ -762,7 +768,7 @@ module UC_SMCReal (KE__ : FUNC) : FUNC = {
     
       (pt1, pt2, x) <- tr;
       match (epdp_text_key.`dec (x ^^ kinv k)) with
-      | None => {
+      | None<:text> => {
       
         _r <- None;
         
@@ -1192,7 +1198,7 @@ module UC_SMCReal_Rest1  : FUNC = {
     var x : key;
     var _r : msg option <- None;
     match (epdp_port_port_key_univ.`dec u) with
-    | None => {
+    | None<:(int list * int) * (int list * int) * key> => {
     
       _r <- None;
       
@@ -1201,7 +1207,7 @@ module UC_SMCReal_Rest1  : FUNC = {
     
       (pt1, pt2, x) <- tr;
       match (epdp_text_key.`dec (x ^^ kinv k)) with
-      | None => {
+      | None<:text> => {
       
         _r <- None;
         

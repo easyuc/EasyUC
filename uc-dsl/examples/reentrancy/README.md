@@ -56,3 +56,9 @@ expected responses.  See [Main-testing.uci](Main-testing.uci)
 and [Main-testing-idealish.uci](Main-testing-idealish.uci)
 for experiments involving it (the former using the real functionality
 for `Comp`, and the latter using the ideal functionality).
+
+See the file [`easycrypt.project`](easycrypt.project) for the default
+provers and include paths for EasyCrypt scripts; this applies both when
+running EasyCrypt from the shell and within Emacs. The include path
+for `.uci` scripts is set via the [`.dir-locals.el`](.dir-locals.el)
+file; this only works within Emacs.

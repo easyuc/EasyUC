@@ -230,18 +230,23 @@ and process1_phl (_ : ttenv) (t : phltactic located) (tc : tcenv1) =
     | Plossless                 -> EcPhlHiAuto.t_lossless
     | Prepl_stmt infos          -> EcPhlTrans.process_equiv_trans infos
     | Pprocrewrite (s, p, f)    -> EcPhlRewrite.process_rewrite s p f
-    | Pchangestmt (s, p, c)     -> EcPhlRewrite.process_change_stmt s p c
+    | Pprocrewriteat (x, f)     -> EcPhlRewrite.process_rewrite_at x f
+    | Pchangestmt (s, b, p, c)  -> EcPhlRewrite.process_change_stmt s b p c 
     | Prwprgm infos             -> EcPhlRwPrgm.process_rw_prgm infos
     | Phoaresplit               -> EcPhlHoare.process_hoaresplit
   in
 
   try  tx tc
   with (* PHL Specific low errors *)
-  | EcLowPhlGoal.InvalidSplit cpos1 ->
+  | EcLowPhlGoal.InvalidSplit is ->
       tc_error_lazy !!tc (fun fmt ->
         let ppe = EcPrinting.PPEnv.ofenv (FApi.tc1_env tc) in
         Format.fprintf fmt "invalid split index: %a"
-          (EcPrinting.pp_codepos1 ppe) cpos1)
+        (fun fmt is -> match is with
+        | `Gap gap -> Format.fprintf fmt "%a" EcPrinting.(pp_codegap1 ppe) gap
+        | `Instr i -> Format.fprintf fmt "%a" EcPrinting.(pp_codepos1 ppe) i
+        ) is)
+          
 
 (* -------------------------------------------------------------------- *)
 and process_sub (ttenv : ttenv) tts tc =

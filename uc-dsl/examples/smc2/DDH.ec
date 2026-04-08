@@ -37,7 +37,6 @@ op (^) : key -> exp -> key.  (* exponentiation *)
 
 (**************************** End Theory Parameters ***************************)
 
-
 (******************** Decisional Diffie-Hellman Assumption ********************)
 
 (* DDH Adversary *)

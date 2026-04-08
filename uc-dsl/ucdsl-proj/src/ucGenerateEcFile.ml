@@ -39,7 +39,7 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
     in
     let backup_and_write_eca (filename : string) : unit =
       let fn = filename^".eca" in
-      let bck_fn = filename^"~.eca" in
+      let bck_fn = filename^".eca~" in
       if (Sys.file_exists fn)
       then
         if (not (Sys.file_exists bck_fn))
