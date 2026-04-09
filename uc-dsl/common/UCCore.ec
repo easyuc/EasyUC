@@ -352,6 +352,22 @@ module MI (Func : FUNC, Adv : ADV) : INTER = {
   }
 }.
 
+(* equivs for after_func and after_adv *)
+
+lemma MI_after_func_equiv (Func1 <: FUNC) (Func2 <: FUNC)
+      (Adv <: ADV) :
+  equiv
+  [MI(Func1, Adv).after_func ~ MI(Func2, Adv).after_func :
+   ={r, MI.func} ==> ={res}].
+proof. sim. qed.
+
+lemma MI_after_adv_equiv (Func1 <: FUNC) (Func2 <: FUNC)
+      (Adv <: ADV) :
+  equiv
+  [MI(Func1, Adv).after_adv ~ MI(Func2, Adv).after_adv :
+   ={r, MI.func} ==> ={res}].
+proof. sim. qed.
+
 (* check that invariant is actually preserved: *)
 
 lemma MI_after_func_hoare (Func <: FUNC) (Adv <: ADV) :
@@ -618,6 +634,46 @@ lemma MI_after_adv_error (Func <: FUNC) (Adv <: ADV) :
    res.`1 = None /\ !res.`3] = 1%r.
 proof.
 proc; auto; smt().
+qed.
+
+lemma func_equiv_implies_exper_equal_prob
+      (F1 <: FUNC{-MI})  (F2 <: FUNC{-MI})
+      (Adv <: ADV{-MI, -F1, -F2}) (Env <: ENV{-MI, -F1, -F2, -Adv})
+      (func' : addr) (guard : int fset)
+      (rel : glob F1 -> glob F2 -> bool) &m :
+  equiv [F1.init ~ F2.init : ={self} ==> rel (glob F1){1} (glob F2){2}] =>
+  equiv
+  [F1.invoke ~ F2.invoke :
+   ={m} /\ rel (glob F1){1} (glob F2){2} ==>
+   ={res} /\ rel (glob F1){1} (glob F2){2}] =>
+  Pr[Exper(MI(F1, Adv), Env).main(func', guard) @ &m : res] =
+  Pr[Exper(MI(F2, Adv), Env).main(func', guard) @ &m : res].
+proof.
+move => equiv_init equiv_invoke.
+byequiv => //; proc; inline*.
+seq 6 6 :
+  (={glob Adv, glob Env, func, in_guard, MI.func, MI.in_guard} /\
+   rel (glob F1){1} (glob F2){2}).
+call (_ : true).
+call equiv_init; first auto.
+call
+  (_ :
+   ={glob Adv, MI.func, MI.in_guard} /\
+   rel (glob F1){1} (glob F2){2}).
+proc.   
+if => //.
+inline{1} 1; inline{2} 1; sp 3 3; wp.
+while
+  (={glob Adv, MI.func, MI.in_guard, not_done, m0, r0} /\
+   rel (glob F1){1} (glob F2){2}).
+if => //.
+call (MI_after_func_equiv F1 F2 Adv); first auto.
+call equiv_invoke; first auto.
+call (MI_after_adv_equiv F1 F2 Adv); first auto.
+call (_ : true); first auto.
+auto.
+auto.
+auto.
 qed.
 
 (* transitivity of security, proved using the triangular inequality *)
