@@ -181,7 +181,7 @@ module DDH_Or_Game (Or : DDH_OR, Adv : DDH_OR_ADV) = {
 (* convert a DDH oracle adversary to an ordinary DDH
    adversary *)
 
-module Conv (Adv : DDH_OR_ADV) : DDH_ADV = {
+module DDH_Adv_Conv (Adv : DDH_OR_ADV) : DDH_ADV = {
   module Or : DDH_OR = {
     var k1, k2, k3 : key
     var one, two : bool  (* have the first two keys been requested? *)
@@ -217,7 +217,7 @@ module Conv (Adv : DDH_OR_ADV) : DDH_ADV = {
         
 section.
 
-declare module Adv <: DDH_OR_ADV{-Conv, -DDH1_Or}.
+declare module Adv <: DDH_OR_ADV{-DDH_Adv_Conv, -DDH1_Or}.
 
 (* we use eager/lazy sampling - see PROM *)
 
@@ -327,25 +327,25 @@ qed.
 
 local lemma third (x : input) &m :
   Pr[FullRO.MainD(RO_Disting1, FullRO.RO).distinguish(x) @ &m : res] =
-  Pr[DDH1(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH1(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof.
 byequiv (_ : ={x, glob Adv} ==> _) => //; proc; inline*; wp.
 rcondt{1} 8; first auto; smt(emptyE).
 rcondt{1} 12; first auto; smt(mem_set mem_empty).
 swap{1} 7 -6; swap{1} 11 -9.
 seq 12 11 :
-  (={x0, glob Adv} /\ ={one, two}(RO_Disting1.Or, Conv.Or) /\
+  (={x0, glob Adv} /\ ={one, two}(RO_Disting1.Or, DDH_Adv_Conv.Or) /\
    FullRO.RO.m{1} = (empty.[One <- r0{1}]).[Two <- r1{1}] /\
-   Conv.Or.k1{2} = g ^ r0{1} /\ Conv.Or.k2{2} = g ^ r1{1} /\
-   Conv.Or.k3{2} = g ^ (r0{1} * r1{1})).
+   DDH_Adv_Conv.Or.k1{2} = g ^ r0{1} /\ DDH_Adv_Conv.Or.k2{2} = g ^ r1{1} /\
+   DDH_Adv_Conv.Or.k3{2} = g ^ (r0{1} * r1{1})).
 wp; rnd; rnd; auto.
 exlim r0{1}, r1{1} => r0_L r1_L.
 call
   (_ :
-   ={one, two}(RO_Disting1.Or, Conv.Or) /\
+   ={one, two}(RO_Disting1.Or, DDH_Adv_Conv.Or) /\
    FullRO.RO.m{1} = (empty.[One <- r0_L]).[Two <- r1_L] /\
-   Conv.Or.k1{2} = g ^ r0_L /\ Conv.Or.k2{2} = g ^ r1_L /\
-   Conv.Or.k3{2} = g ^ (r0_L * r1_L)).
+   DDH_Adv_Conv.Or.k1{2} = g ^ r0_L /\ DDH_Adv_Conv.Or.k2{2} = g ^ r1_L /\
+   DDH_Adv_Conv.Or.k3{2} = g ^ (r0_L * r1_L)).
 proc.
 match => //.
 inline*.
@@ -365,21 +365,21 @@ qed.
 
 lemma Reduction1' (x : input) &m :
   Pr[DDH_Or_Game(DDH1_Or, Adv).main(x) @ &m : res] =
-  Pr[DDH1(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH1(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof. by rewrite first second third. qed.
 
 end section.
 
-lemma Reduction1 (Adv <: DDH_OR_ADV{-Conv, -DDH1_Or}) (x : input) &m :
+lemma Reduction1 (Adv <: DDH_OR_ADV{-DDH_Adv_Conv, -DDH1_Or}) (x : input) &m :
   Pr[DDH_Or_Game(DDH1_Or, Adv).main(x) @ &m : res] =
-  Pr[DDH1(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH1(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof. by rewrite (Reduction1' Adv). qed.
 
 (* skip to the end of the section to see the second main lemma *)
 
 section.
 
-declare module Adv <: DDH_OR_ADV{-Conv, -DDH2_Or}.
+declare module Adv <: DDH_OR_ADV{-DDH_Adv_Conv, -DDH2_Or}.
 
 local clone FullRO with
   type in_t    <- three,
@@ -493,7 +493,7 @@ qed.
 
 local lemma third (x : input) &m :
   Pr[FullRO.MainD(RO_Disting2, FullRO.RO).distinguish(x) @ &m : res] =
-  Pr[DDH2(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH2(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof.
 byequiv (_ : ={x, glob Adv} ==> _) => //; proc; inline*; wp.
 rcondt{1} 8; first auto; smt(emptyE).
@@ -501,20 +501,20 @@ rcondt{1} 12; first auto; smt(mem_set mem_empty).
 rcondt{1} 16; first auto; smt(mem_set mem_empty).
 swap{1} 7 -6; swap{1} 11 -9; swap{1} 15 -12.
 seq 16 12 :
-  (={x0, glob Adv} /\ ={one, two}(RO_Disting2.Or, Conv.Or) /\
+  (={x0, glob Adv} /\ ={one, two}(RO_Disting2.Or, DDH_Adv_Conv.Or) /\
    FullRO.RO.m{1} =
    ((empty.[One <- r0{1}]).[Two <- r1{1}]).[Three <- r2{1}] /\
-   Conv.Or.k1{2} = g ^ r0{1} /\ Conv.Or.k2{2} = g ^ r1{1} /\
-   Conv.Or.k3{2} = g ^ r2{1}).
+   DDH_Adv_Conv.Or.k1{2} = g ^ r0{1} /\ DDH_Adv_Conv.Or.k2{2} = g ^ r1{1} /\
+   DDH_Adv_Conv.Or.k3{2} = g ^ r2{1}).
 wp; rnd; rnd; rnd; auto.
 exlim r0{1}, r1{1}, r2{1} => r0_L r1_L r2_L.
 call
   (_ :
-   ={one, two}(RO_Disting2.Or, Conv.Or) /\
+   ={one, two}(RO_Disting2.Or, DDH_Adv_Conv.Or) /\
    FullRO.RO.m{1} =
    ((empty.[One <- r0_L]).[Two <- r1_L]).[Three <- r2_L] /\
-   Conv.Or.k1{2} = g ^ r0_L /\ Conv.Or.k2{2} = g ^ r1_L /\
-   Conv.Or.k3{2} = g ^ r2_L).
+   DDH_Adv_Conv.Or.k1{2} = g ^ r0_L /\ DDH_Adv_Conv.Or.k2{2} = g ^ r1_L /\
+   DDH_Adv_Conv.Or.k3{2} = g ^ r2_L).
 proc; match => //.
 inline*.
 rcondf{1} 3; first auto; smt(mem_set).
@@ -532,24 +532,24 @@ qed.
 
 lemma Reduction2' (x : input) &m :
   Pr[DDH_Or_Game(DDH2_Or, Adv).main(x) @ &m : res] =
-  Pr[DDH2(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH2(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof. by rewrite first second third. qed.
 
 end section.
 
-lemma Reduction2 (Adv <: DDH_OR_ADV{-Conv, -DDH2_Or})
+lemma Reduction2 (Adv <: DDH_OR_ADV{-DDH_Adv_Conv, -DDH2_Or})
                  (x : input) &m :
   Pr[DDH_Or_Game(DDH2_Or, Adv).main(x) @ &m : res] =
-  Pr[DDH2(Conv(Adv)).main(x) @ &m : res].
+  Pr[DDH2(DDH_Adv_Conv(Adv)).main(x) @ &m : res].
 proof. by rewrite (Reduction2' Adv). qed.
 
 (* our main result, reducing lazy decisional Diffie-Hellman
    to ordinary (eager) decisional Diffie-Hellman *)
 
-lemma Reduction (Adv <: DDH_OR_ADV{-Conv, -DDH1_Or, -DDH2_Or})
+lemma Reduction (Adv <: DDH_OR_ADV{-DDH_Adv_Conv, -DDH1_Or, -DDH2_Or})
                 (x : input) &m :
   `|Pr[DDH_Or_Game(DDH1_Or, Adv).main(x) @ &m : res] -
     Pr[DDH_Or_Game(DDH2_Or, Adv).main(x) @ &m : res]| =
-  `|Pr[DDH1(Conv(Adv)).main(x) @ &m : res] -
-    Pr[DDH2(Conv(Adv)).main(x) @ &m : res]|.
+  `|Pr[DDH1(DDH_Adv_Conv(Adv)).main(x) @ &m : res] -
+    Pr[DDH2(DDH_Adv_Conv(Adv)).main(x) @ &m : res]|.
 proof. by rewrite (Reduction1 Adv) (Reduction2 Adv). qed.
