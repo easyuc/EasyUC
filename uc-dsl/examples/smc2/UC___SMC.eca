@@ -1712,19 +1712,19 @@ sp 2 0.
  case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
 
 (*the message is not for 1. sub-functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0.
 skip.
 move => />.
 smt(not_le_other_branch).
        
 (*the if conditions on both sides are equivalent and true, and result is the same*)
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0.
 skip.
 move => />.
 
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0.
 skip.
 move => />.
@@ -1733,7 +1733,7 @@ sim.
 
 (*case when message is NOT for the first parameter*)
 (*message is NOT for the first parameter on right side*)
-    rcondf {2} 0.
+    rcondf {2} 1.
 move => &m0.
 skip.
 move => />.
@@ -1951,7 +1951,7 @@ skip. move => />.
 
 (*case when message is for 2. parameter functionality*)
 case (UC_Composition.CompGlobs.mrfc_self{2} ++ [UC__Rest1.change_pari] <= m2{2}.`2.`1).
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0. skip. move => />.
 
 (*inline real functionality invoke*)
@@ -1959,18 +1959,18 @@ inline{1} (1) invoke.
  sp.
  
 (*the message is not for 1. sub-functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        
 (*message is for 1. parameter functionality*)
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0. skip. move => />.
 
 (*the rest is similar*)
 sim.
  
 (*case when message is NOT for 1. parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />.
 
 (*inline both invoke calls*)
@@ -1983,7 +1983,7 @@ if. move => />. sim.
        
 
 (*message is not for 1. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />.
 
 (*the rest is similar*)
@@ -2196,19 +2196,19 @@ proof. rewrite /_metric_UC_SMCSim /=. proc.
 sp 1. (*initializing return value*)
 seq 1 : (#pre /\ UC_SMCSim.if_addr_opt <> None). sp 1. auto;smt(). (*if_addr_opt initialized after first message is received*)
 inline. match. (*state match*)
-(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch Final*) skip. move => />;smt(). (*empty state match branch code*)
 (*state branch WaitAdv1*) if;last first. (*message guard*)
-sp 1. skip. move => />;smt(). (*message guard failed*)
+skip. move => />;smt(). (*message guard failed*)
 sp 3. (*state param assignment, return value initialization*)seq 1 : (#pre). rnd. skip. move => />;smt(). (*Sample instruction*)
  sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*) 
 (*state branch WaitAdv2*) if;last first. (*message guard*)
-sp 1. skip. move => />;smt(). (*message guard failed*)
+skip. move => />;smt(). (*message guard failed*)
 sp 4. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
  (*state branch WaitAdv3*) if;last first. (*message guard*)
-sp 1. skip. move => />;smt(). (*message guard failed*)
+skip. move => />;smt(). (*message guard failed*)
 sp 1. (*state param assignment, return value initialization*)sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)
  (*state branch WaitReq*) if;last first. (*message guard*)
-sp 1. skip. move => />;smt(). (*message guard failed*)
+skip. move => />;smt(). (*message guard failed*)
 sp 1. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
 sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*)  
 qed. 

@@ -751,8 +751,7 @@ let print_SIM_proof_state_match (root : string)
           Format.fprintf ppf "@[if;last first. (*message guard*)@]@;";
           if List.is_empty (List.tl mmcs)
           then Format.fprintf ppf
-            "@[%s skip. move => />;smt(). (*message guard failed*)@]@;"
-            ret_pfx
+            "@[skip. move => />;smt(). (*message guard failed*)@]@;"
           else print_proof_mm ppf (List.tl mmcs)
           ;
           Format.fprintf ppf
@@ -768,7 +767,7 @@ let print_SIM_proof_state_match (root : string)
   if List.is_empty mmcs
   then 
     Format.fprintf ppf
-            "@[%s skip. move => />;smt(). (*empty state match branch code*)@]@;" ret_pfx
+            "@[skip. move => />;smt(). (*empty state match branch code*)@]@;"
   else
     print_proof_mm ppf mmcs;
   in
@@ -1960,7 +1959,7 @@ sp 2 0.
     do
       Format.fprintf ppf
       "(*the message is not for %i. sub-functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0.
 skip.
 move => />.
@@ -1969,12 +1968,12 @@ smt(not_le_other_branch).
     done;
     Format.fprintf ppf
 "(*the if conditions on both sides are equivalent and true, and result is the same*)
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0.
 skip.
 move => />.
 
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0.
 skip.
 move => />.
@@ -1983,7 +1982,7 @@ sim.
 
 (*case when message is NOT for the first parameter*)
 (*message is NOT for the first parameter on right side*)
-    rcondf {2} 0.
+    rcondf {2} 1.
 move => &m0.
 skip.
 move => />.
@@ -2339,11 +2338,11 @@ seq 1 1 : (%a
     Format.fprintf ppf  
       "(*case when message is for the %i. parameter functionality*)
 case (UC_Composition.CompGlobs.mrfc_self{1} ++ [%s.change_pari] <= m2{1}.`2.`1).
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0. skip. move => />.
 
 (*message is not for right parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
 
 (*inline right invoke*)
@@ -2357,7 +2356,7 @@ sp.
     do
       Format.fprintf ppf
       "(*the message is not for %i. sub-functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
@@ -2366,14 +2365,14 @@ move => &m0. skip. move => />. smt(not_le_other_branch).
     do
       Format.fprintf ppf
       "(*the message is not for %i. parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
     ;
      Format.fprintf ppf
 "(*message is for %i. parameter functionality*)
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0. skip. move => />.
 %a
 move => />.
@@ -2383,12 +2382,12 @@ move => />.
     ;
     Format.fprintf ppf  
       "(*case when message is NOT for the %i. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />.
 
 (*case when message is for the %i. parameter functionality*)
 case (UC_Composition.CompGlobs.mrfc_self{2} ++ [%s.change_pari] <= m2{2}.`2.`1).
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0. skip. move => />.
 
 (*inline left invoke*)
@@ -2403,7 +2402,7 @@ sp.
     do
       Format.fprintf ppf
       "(*the message is not for %i. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
@@ -2412,14 +2411,14 @@ move => &m0. skip. move => />. smt(not_le_other_branch).
     do
       Format.fprintf ppf
       "(*the message is not for %i. sub-functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
     ;
       Format.fprintf ppf
 "(*message is for %i. parameter functionality*)
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0. skip. move => />.
 %a
 @;"
@@ -2428,7 +2427,7 @@ move => &m0. skip. move => />.
     ;
       Format.fprintf ppf
 "(*case when message is NOT for the %i. parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />.
 
 (*inline both invokes*)
@@ -2456,11 +2455,11 @@ if. move => />. sim.
     Format.fprintf ppf  
   "
 (*message is not for %i. parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />.
 
 (*message is not for %i. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />.
 
 (*the rest is similar*)
@@ -2632,7 +2631,7 @@ skip. move => />.
       Format.fprintf ppf
 "(*case when message is for 2. parameter functionality*)
 case (UC_Composition.CompGlobs.mrfc_self{2} ++ [%s.change_pari] <= m2{2}.`2.`1).
-rcondt{2} 0.
+rcondt{2} 1.
 move => &m0. skip. move => />.
 
 (*inline real functionality invoke*)
@@ -2645,7 +2644,7 @@ inline{1} (1) invoke.
     do
       Format.fprintf ppf
       "(*the message is not for %i. sub-functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
@@ -2654,14 +2653,14 @@ move => &m0. skip. move => />. smt(not_le_other_branch).
     do
       Format.fprintf ppf
       "(*the message is not for %i. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />. smt(not_le_other_branch).
        @;" i
     done
     ;
      Format.fprintf ppf
 "(*message is for %i. parameter functionality*)
-rcondt{1} 0.
+rcondt{1} 1.
 move => &m0. skip. move => />.
 @;" pmnum
     ;
@@ -2672,7 +2671,7 @@ sim.
     ;
       Format.fprintf ppf
 "(*case when message is NOT for %i. parameter functionality*)
-rcondf{2} 0.
+rcondf{2} 1.
 move => &m0. skip. move => />.
 
 (*inline both invoke calls*)
@@ -2700,7 +2699,7 @@ if. move => />. sim.
     Format.fprintf ppf
 "
 (*message is not for %i. parameter functionality*)
-rcondf{1} 0.
+rcondf{1} 1.
 move => &m0. skip. move => />.
 
 (*the rest is similar*)
