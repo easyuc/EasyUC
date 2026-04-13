@@ -636,15 +636,25 @@ proof.
 proc; auto; smt().
 qed.
 
+(* lemma giving a sufficient condition, based on a relational
+   invariant on the global variables of F1 and F2, for showing
+
+     Pr[Exper(MI(F1, Adv), Env).main(func', guard) @ &m : res] =
+     Pr[Exper(MI(F2, Adv), Env).main(func', guard) @ &m : res] *)
+
 lemma func_equiv_implies_exper_equal_prob
       (F1 <: FUNC{-MI})  (F2 <: FUNC{-MI})
       (Adv <: ADV{-MI, -F1, -F2}) (Env <: ENV{-MI, -F1, -F2, -Adv})
       (func' : addr) (guard : int fset)
-      (rel : glob F1 -> glob F2 -> bool) &m :
-  equiv [F1.init ~ F2.init : ={self} ==> rel (glob F1){1} (glob F2){2}] =>
+      (rel : glob F1 -> glob F2 -> bool)  (* can depend on func' *)
+      &m :
+  equiv
+  [F1.init ~ F2.init :
+   ={self} /\ self{1} = func' ==>
+   rel (glob F1){1} (glob F2){2}] =>
   equiv
   [F1.invoke ~ F2.invoke :
-   ={m} /\ rel (glob F1){1} (glob F2){2} ==>
+   ={m} /\ func' <= m{1}.`2.`1 /\ rel (glob F1){1} (glob F2){2} ==>
    ={res} /\ rel (glob F1){1} (glob F2){2}] =>
   Pr[Exper(MI(F1, Adv), Env).main(func', guard) @ &m : res] =
   Pr[Exper(MI(F2, Adv), Env).main(func', guard) @ &m : res].
@@ -653,19 +663,19 @@ move => equiv_init equiv_invoke.
 byequiv => //; proc; inline*.
 seq 6 6 :
   (={glob Adv, glob Env, func, in_guard, MI.func, MI.in_guard} /\
-   rel (glob F1){1} (glob F2){2}).
+   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2}).
 call (_ : true).
 call equiv_init; first auto.
 call
   (_ :
-   ={glob Adv, MI.func, MI.in_guard} /\
+   ={glob Adv, MI.func, MI.in_guard} /\ MI.func{1} = func' /\
    rel (glob F1){1} (glob F2){2}).
 proc.   
 if => //.
 inline{1} 1; inline{2} 1; sp 3 3; wp.
 while
   (={glob Adv, MI.func, MI.in_guard, not_done, m0, r0} /\
-   rel (glob F1){1} (glob F2){2}).
+   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2}).
 if => //.
 call (MI_after_func_equiv F1 F2 Adv); first auto.
 call equiv_invoke; first auto.
