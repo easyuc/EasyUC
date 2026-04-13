@@ -244,18 +244,15 @@ If you find that the highlighting of the currently executing code in a
 have carriage return characters in the `.uc` file. Emacs preserves the
 Microsoft end of line encoding when it already exists in a file.
 
-If you would like to customize the load paths used by EasyCrypt and
-the UC DSL interpreter when running in Proof General, you can
-create a file `.dir-locals.el` in the current directory with
-contents
+If you would like to customize the load paths used by the UC DSL
+interpreter when running in Proof General, you can create a file
+`.dir-locals.el` in the current directory with contents
 
 ```
 ;;; Directory Local Variables            -*- no-byte-compile: t -*-
 ;;; For more information see (info "(emacs) Directory Variables")
 
 (
- (easycrypt-mode .
-  ((easycrypt-load-path . (<dir1> <dir2> ...))))
  (ucdsl-interpreter-mode .
   ;; ../../prelude is automatically included
   ((ucdsl-interpreter-load-path . (<dir1> <dir2> ...))))
@@ -264,6 +261,10 @@ contents
 
 where `<dir1> <dir2> ...` has been replaced by a sequence of
 directories, inside double quotation marks. E.g., `"foo" "goo"`.
+
+A `easycrypt.project` file should be used to set the default provers
+and include directories for EasyCrypt, both when run from the shell
+and with Proof General.
 
 To learn how to use the interpreter, read and experiment with the
 script `testing.uci` in [`smc2`](examples/smc2). An example involving

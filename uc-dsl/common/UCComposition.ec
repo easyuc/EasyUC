@@ -2560,7 +2560,7 @@ call{1}
 call{2} (MakeRFComp_after_par_or_rest_error Rest CompEnvStubPar).
 auto; progress; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
-seq 1 1 :
+seq 0 1 :
   (={r} /\ !not_done{1} /\ !not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\
@@ -3833,7 +3833,7 @@ call{1}
 call{2} (MakeRFComp_after_par_or_rest_error Rest CompEnvStubPar).
 auto; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
-seq 1 1 :
+seq 0 1 :
   (={r} /\ !not_done{1} /\ !not_done{2} /\
    ={glob Adv, glob Rest, glob Par} /\
    invar_rest (glob Rest){1} /\ invar_par (glob Par){1} /\

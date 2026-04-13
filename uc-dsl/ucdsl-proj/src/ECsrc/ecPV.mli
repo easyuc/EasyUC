@@ -149,6 +149,24 @@ val s_read  : stmt       pvaccess0
 val f_read  : xpath      pvaccess0
 
 (* -------------------------------------------------------------------- *)
+val zpr_pv :
+     [ `Read | `Write ]
+  -> [ `Before | `After ]
+  -> env
+  -> PV.t
+  -> EcMatching.Zipper.spath
+  -> PV.t
+
+(* -------------------------------------------------------------------- *)
+type pmvs = PV.t EcIdent.Mid.t
+
+module PMVS : sig
+  val empty : pmvs
+end
+
+val form_read : env -> pmvs -> form -> pmvs
+
+(* -------------------------------------------------------------------- *)
 exception EqObsInError
 
 module Mpv2 : sig

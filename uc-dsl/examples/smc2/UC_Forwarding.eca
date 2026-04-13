@@ -1,0 +1,518 @@
+require import UCCore.
+
+require UCComposition.
+
+clone UCComposition as UC_Composition.
+
+
+
+op _adv_if_pi : int.
+
+axiom _adv_if_pi_gt0 : 0 < _adv_if_pi.
+
+abstract theory UC_FwDir'_abs.
+
+op pi : int.
+
+op _Forwarding =  [70; 111; 114; 119; 97; 114; 100; 105; 110; 103].
+(*Forwarding as ascii array*)
+
+type _fw_req =
+{
+  fw_req___func : addr;
+  fw_req__pt1 : port;
+  (*data*)
+  fw_req__pt2 : port;
+  fw_req__u : univ;
+}.
+op _fw_req =  [102; 119; 95; 114; 101; 113]. (*fw_req as ascii array*)
+
+op _tag__fw_req =  TagBasic _Forwarding _fw_req.
+op enc__fw_req (x : _fw_req) : msg =
+(Dir, (x.`fw_req___func, pi), x.`fw_req__pt1, _tag__fw_req,
+ (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                         (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_req__pt2, x.`fw_req__u))
+.
+op [opaque smt_opaque] dec__fw_req (m : msg) : _fw_req option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__fw_req) ?
+    None :
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                            (Top.UCEncoding.epdp_id)).`dec
+    v with
+    | None   => None
+    | Some p =>
+      let (fw_req__pt2 ,fw_req__u) = p in
+      Some
+      {|
+        fw_req___func = pt1.`1; fw_req__pt1 = pt2;
+        fw_req__pt2 = fw_req__pt2;
+        fw_req__u = fw_req__u;
+      |}
+    end
+.
+
+op epdp__fw_req = {|enc = enc__fw_req; dec = dec__fw_req|}.
+
+lemma valid_epdp__fw_req : valid_epdp epdp__fw_req.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__fw_req /= /dec__fw_req /enc__fw_req /=.
+by case x.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
+rewrite /epdp__fw_req /dec__fw_req /enc__fw_req /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__fw_req) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                          (Top.UCEncoding.epdp_id)).`dec v =
+  Some (u.`fw_req__pt2 ,u.`fw_req__u).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                                (Top.UCEncoding.epdp_id)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__fw_req.
+hint rewrite epdp : valid_epdp__fw_req.
+
+lemma eq_of_valid__fw_req (m : msg) :
+  is_valid epdp__fw_req m =>
+  m =
+  let x = oget (epdp__fw_req.`dec m) in
+(Dir, (x.`fw_req___func, pi), x.`fw_req__pt1, _tag__fw_req,
+ (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                         (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_req__pt2, x.`fw_req__u)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _fw_req), epdp__fw_req.`dec m = Some x.
+  exists (oget (dec__fw_req m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__fw_req) <-.
+by rewrite !epdp.
+qed.
+
+type _fw_rsp =
+{
+  fw_rsp___func : addr;
+  fw_rsp__pt2 : port;
+  (*data*)
+  fw_rsp__pt1 : port;
+  fw_rsp__u : univ;
+}.
+op _fw_rsp =  [102; 119; 95; 114; 115; 112]. (*fw_rsp as ascii array*)
+
+op _tag__fw_rsp =  TagBasic _Forwarding _fw_rsp.
+op enc__fw_rsp (x : _fw_rsp) : msg =
+(Dir, x.`fw_rsp__pt2, (x.`fw_rsp___func, pi), _tag__fw_rsp,
+ (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                         (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_rsp__pt1, x.`fw_rsp__u))
+.
+op [opaque smt_opaque] dec__fw_rsp (m : msg) : _fw_rsp option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__fw_rsp) ?
+    None :
+    match
+    (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                            (Top.UCEncoding.epdp_id)).`dec
+    v with
+    | None   => None
+    | Some p =>
+      let (fw_rsp__pt1 ,fw_rsp__u) = p in
+      Some
+      {|
+        fw_rsp___func = pt2.`1; fw_rsp__pt2 = pt1;
+        fw_rsp__pt1 = fw_rsp__pt1;
+        fw_rsp__u = fw_rsp__u;
+      |}
+    end
+.
+
+op epdp__fw_rsp = {|enc = enc__fw_rsp; dec = dec__fw_rsp|}.
+
+lemma valid_epdp__fw_rsp : valid_epdp epdp__fw_rsp.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__fw_rsp /= /dec__fw_rsp /enc__fw_rsp /=.
+by case x.
+move => [mod pt2 [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__fw_rsp /dec__fw_rsp /enc__fw_rsp /=.
+case (mod = Adv \/ pt1_2 <> pi \/ tag <> _tag__fw_rsp) => //.
+rewrite !negb_or /= not_adv.
+move => [#] -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                          (Top.UCEncoding.epdp_id)).`dec v =
+  Some (u.`fw_rsp__pt1 ,u.`fw_rsp__u).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                                (Top.UCEncoding.epdp_id)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__fw_rsp.
+hint rewrite epdp : valid_epdp__fw_rsp.
+
+lemma eq_of_valid__fw_rsp (m : msg) :
+  is_valid epdp__fw_rsp m =>
+  m =
+  let x = oget (epdp__fw_rsp.`dec m) in
+(Dir, x.`fw_rsp__pt2, (x.`fw_rsp___func, pi), _tag__fw_rsp,
+ (Top.UCUniv.epdp_pair_univ<:port, univ> (epdp_port_univ)
+                                                         (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_rsp__pt1, x.`fw_rsp__u)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _fw_rsp), epdp__fw_rsp.`dec m = Some x.
+  exists (oget (dec__fw_rsp m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4.
+move => /(epdp_dec_enc _ _ _ valid_epdp__fw_rsp) <-.
+by rewrite !epdp.
+qed.
+
+end UC_FwDir'_abs.
+
+
+
+theory UC_FwDir.
+
+clone UC_FwDir'_abs as D with
+  op pi = 1
+proof *.
+
+end UC_FwDir.
+
+
+
+abstract theory UC_FwAdv_abs.
+
+op pi : int.
+
+op _Forwarding =  [70; 111; 114; 119; 97; 114; 100; 105; 110; 103].
+(*Forwarding as ascii array*)
+
+type _fw_obs =
+{
+  fw_obs___func : addr;
+  fw_obs___adv : addr;
+  (*data*)
+  fw_obs__pt1 : port;
+  fw_obs__pt2 : port;
+  fw_obs__u : univ;
+}.
+op _fw_obs =  [102; 119; 95; 111; 98; 115]. (*fw_obs as ascii array*)
+
+op _tag__fw_obs =  TagBasic _Forwarding _fw_obs.
+op enc__fw_obs (x : _fw_obs) : msg =
+(Adv, (x.`fw_obs___adv, _adv_if_pi), (x.`fw_obs___func, pi), _tag__fw_obs,
+ (Top.UCUniv.epdp_tuple3_univ<:port, port, univ> (epdp_port_univ)
+                                                                 (epdp_port_univ)
+ (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_obs__pt1, x.`fw_obs__pt2, x.`fw_obs__u))
+.
+op [opaque smt_opaque] dec__fw_obs (m : msg) : _fw_obs option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  _tag__fw_obs) ?
+    None :
+    match
+    (Top.UCUniv.epdp_tuple3_univ<:port, port, univ> (epdp_port_univ)
+                                                                    (
+                                                                    epdp_port_univ)
+     (Top.UCEncoding.epdp_id)).`dec v with
+    | None   => None
+    | Some p =>
+      let (fw_obs__pt1 ,fw_obs__pt2 ,fw_obs__u) = p in
+      Some
+      {|
+        fw_obs___func = pt2.`1; fw_obs___adv = pt1.`1;
+        fw_obs__pt1 = fw_obs__pt1;
+        fw_obs__pt2 = fw_obs__pt2;
+        fw_obs__u = fw_obs__u;
+      |}
+    end
+.
+
+op epdp__fw_obs = {|enc = enc__fw_obs; dec = dec__fw_obs|}.
+
+lemma valid_epdp__fw_obs : valid_epdp epdp__fw_obs.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__fw_obs /= /dec__fw_obs /enc__fw_obs /=.
+by case x.
+move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+rewrite /epdp__fw_obs /dec__fw_obs /enc__fw_obs /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__fw_obs) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (Top.UCUniv.epdp_tuple3_univ<:port, port, univ> (epdp_port_univ)
+                                                                  (epdp_port_univ)
+ (Top.UCEncoding.epdp_id)).`dec v =
+  Some (u.`fw_obs__pt1 ,u.`fw_obs__pt2 ,u.`fw_obs__u).
+  move : match_eq_some.
+  case ((Top.UCUniv.epdp_tuple3_univ<:port, port, univ> (epdp_port_univ)
+ (epdp_port_univ) (Top.UCEncoding.epdp_id)).`dec v) => //.
+  by case.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__fw_obs.
+hint rewrite epdp : valid_epdp__fw_obs.
+
+lemma eq_of_valid__fw_obs (m : msg) :
+  is_valid epdp__fw_obs m =>
+  m =
+  let x = oget (epdp__fw_obs.`dec m) in
+(Adv, (x.`fw_obs___adv, _adv_if_pi), (x.`fw_obs___func, pi), _tag__fw_obs,
+ (Top.UCUniv.epdp_tuple3_univ<:port, port, univ> (epdp_port_univ)
+                                                                 (epdp_port_univ)
+ (Top.UCEncoding.epdp_id)).`enc
+(x.`fw_obs__pt1, x.`fw_obs__pt2, x.`fw_obs__u)).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _fw_obs), epdp__fw_obs.`dec m = Some x.
+  exists (oget (dec__fw_obs m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2 x3 x4 x5.
+move => /(epdp_dec_enc _ _ _ valid_epdp__fw_obs) <-.
+by rewrite !epdp.
+qed.
+
+type _fw_ok =
+{
+  fw_ok___func : addr;
+  fw_ok___adv : addr;
+  (*data*)
+}.
+op _fw_ok =  [102; 119; 95; 111; 107]. (*fw_ok as ascii array*)
+
+op _tag__fw_ok =  TagBasic _Forwarding _fw_ok.
+op enc__fw_ok (x : _fw_ok) : msg =
+(Adv, (x.`fw_ok___func, pi), (x.`fw_ok___adv, _adv_if_pi), _tag__fw_ok,
+ ( epdp_unit_univ).`enc ())
+.
+op [opaque smt_opaque] dec__fw_ok (m : msg) : _fw_ok option =
+  let (mod, pt1, pt2, tag, v) = m
+  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  _tag__fw_ok) ?
+    None :
+    match ( epdp_unit_univ).`dec v with
+    | None   => None
+    | Some p =>
+      Some
+      {|
+        fw_ok___func = pt1.`1; fw_ok___adv = pt2.`1;
+      |}
+    end
+.
+
+op epdp__fw_ok = {|enc = enc__fw_ok; dec = dec__fw_ok|}.
+
+lemma valid_epdp__fw_ok : valid_epdp epdp__fw_ok.
+proof.
+apply epdp_intro.
+move => x.
+rewrite /epdp__fw_ok /= /dec__fw_ok /enc__fw_ok /=.
+by case x.
+move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+rewrite /epdp__fw_ok /dec__fw_ok /enc__fw_ok /=.
+case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__fw_ok) => //.
+rewrite !negb_or /= not_dir.
+move => [#] -> -> -> -> match_eq_some /=.
+have val_v :
+  (
+epdp_unit_univ).`dec v =
+  Some ().
+  move : match_eq_some.
+  case ((
+epdp_unit_univ).`dec v) => //.
+move : match_eq_some.
+rewrite val_v /= => <- /=.
+apply epdp_dec_enc => //.
+qed.
+
+hint simplify [eqtrue] valid_epdp__fw_ok.
+hint rewrite epdp : valid_epdp__fw_ok.
+
+lemma eq_of_valid__fw_ok (m : msg) :
+  is_valid epdp__fw_ok m =>
+  m =
+  let x = oget (epdp__fw_ok.`dec m) in
+(Adv, (x.`fw_ok___func, pi), (x.`fw_ok___adv, _adv_if_pi), _tag__fw_ok,
+ ( epdp_unit_univ).`enc ()).
+proof.
+rewrite /is_valid.
+move => val_m.
+have [] x : exists (x : _fw_ok), epdp__fw_ok.`dec m = Some x.
+  exists (oget (dec__fw_ok m)); rewrite -some_oget; smt(); smt().
+case x => x1 x2.
+move => /(epdp_dec_enc _ _ _ valid_epdp__fw_ok) <-.
+by rewrite !epdp.
+qed.
+
+end UC_FwAdv_abs.
+
+
+
+clone UC_FwAdv_abs as UC_FwAdv with
+  op pi = 1
+proof *.
+
+type _state_IF = [ 
+  | _State_IF_Final
+  | _State_IF_Init
+  | _State_IF_Wait of (port) & (port) & (univ)
+  
+]. 
+
+module UC_Forw : FUNC= {
+  var _self : addr
+  var _st : _state_IF
+  proc init(self_ : addr) : unit = {
+    _self <- self_; _st <- _State_IF_Init;
+  }
+  proc _State_IF_Init__FwDir__D__fw_req (pt1 : port, pt2 : port, u : univ) : msg option = {
+    var _r : msg option <- None;
+    if (envport _self pt2) {
+      _r <- Some
+        (UC_FwAdv.epdp__fw_obs.`enc
+        {|
+          UC_FwAdv.fw_obs___func = _self;
+          UC_FwAdv.fw_obs___adv = adv;
+          UC_FwAdv.fw_obs__pt1 = pt1;
+          UC_FwAdv.fw_obs__pt2 = pt2;
+          UC_FwAdv.fw_obs__u = u;
+          
+        |});
+      _st <- _State_IF_Wait (pt1) (pt2) (u);
+      
+    }
+    else {
+      _r <- None;
+      
+    }
+    return _r;
+  }
+  proc _State_IF_Wait__FwAdv__fw_ok (pt1 : port, pt2 : port, u : univ) : msg option = {
+    var _r : msg option <- None;
+    _r <- Some
+      (UC_FwDir.D.epdp__fw_rsp.`enc
+      {|
+        UC_FwDir.D.fw_rsp___func = _self;
+        UC_FwDir.D.fw_rsp__pt2 = pt2;
+        UC_FwDir.D.fw_rsp__pt1 = pt1;
+        UC_FwDir.D.fw_rsp__u = u;
+        
+      |});
+    _st <- _State_IF_Final;
+    return _r;
+  }
+  proc parties(_m : msg) : msg option = {
+    var _r : msg option <- None;
+    match _st with
+    | _State_IF_Final => {
+      
+    }
+    | _State_IF_Init => {
+      match UC_FwDir.D.epdp__fw_req.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_Init__FwDir__D__fw_req (_x.`UC_FwDir.D.fw_req__pt1, _x.`UC_FwDir.D.fw_req__pt2, _x.`UC_FwDir.D.fw_req__u);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    | _State_IF_Wait pt1 pt2 u => {
+      match UC_FwAdv.epdp__fw_ok.`dec _m with
+      | Some _x => {
+        _r <@ _State_IF_Wait__FwAdv__fw_ok (pt1, pt2, u);
+      }
+      | None => {
+        
+      }
+      end;
+    }
+    end;
+    return _r;
+  }
+  proc invoke(m : msg) : msg option = {
+    var r : msg option <- None;
+    if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)\/ (m.`1 = Adv
+                                                               /\
+                                                               m.`2.`1 = _self
+                                                               /\
+                                                               m.`3.`1 = adv)){
+      r <@ parties(m);
+    }
+  return r;
+  }
+  
+}.
+
+
+(*alias*)
+module IF = UC_Forw.
+op _invar_IF (g : glob IF) : bool = true.
+
+ 
+
+op glob_UC_Forw_to__st (g : glob UC_Forw) / : _state_IF = g.`2.
+op [smt_opaque] _metric_IF (g : glob UC_Forw) : int =
+  match glob_UC_Forw_to__st g with
+  | _State_IF_Final => 0
+  | _State_IF_Init => 2
+  | _State_IF_Wait _ _ _ => 1
+  end.
+  
+
+
+lemma IF_invoke (n : int) : hoare [
+  UC_Forw.invoke :
+  _invar_IF (glob UC_Forw) /\ _metric_IF (glob UC_Forw) = n
+  ==>
+  _invar_IF (glob UC_Forw) /\ 
+  (res <> None =>
+  _metric_IF (glob UC_Forw) < n
+  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in oflist [_adv_if_pi] /\ (oget res).`3.`2 = 1))
+   ].
+proof. rewrite /_metric_IF /=. proc. sp 1. (*initializing return value*)
+if. (*invoke guard*) inline. sp 1. sp 1. (*initializing input, return value*)
+match. (*state match*)
+(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch Init*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
+if. (*if instruction*)
+sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
+(*state branch Wait*) match. (*message match*)
+sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
+sp 4. (*state param assignment, return value initialization*)sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ skip. smt(). (*invoke guard false*) qed. 
+
+lemma IF_metric_good (g : glob IF) :   _invar_IF g => 0 <= _metric_IF g.
+  proof. rewrite /_metric_IF /=.   smt(). qed.   lemma IF_init :
+  hoare [IF.init : true ==> _invar_IF (glob IF)]. proof. proc. auto. qed. 
+ 
+
+
