@@ -73,7 +73,6 @@ clone import KeyExp as KeyExp' with
   op g : key <- g,
   op (^) : key -> exp -> key <- (^)
 proof *.
-
   (* BEGIN USER FILL *)
 realize kmulA. smt. qed. 
 realize  kid_l. smt. qed.
