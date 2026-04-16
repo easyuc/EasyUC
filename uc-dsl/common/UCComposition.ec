@@ -553,6 +553,45 @@ right; exists pari.
 rewrite mem_range mem_rangeset /#.
 qed.
 
+lemma in_rest_adv_pis_by_main (z : int) :
+  rf_info.`rfi_adv_pi_begin <= z <= rf_info.`rfi_adv_pi_main_end =>
+  z \in rest_adv_pis.
+proof. by rewrite in_rest_adv_pis => ->. qed.
+
+lemma in_rest_adv_pis_by_earlier_param (pari z : int) :
+  1 <= pari < change_pari /\
+  nth1_adv_pi_begin_params rf_info pari <= z <=
+  nth1_adv_pi_end_params rf_info pari =>
+  z \in rest_adv_pis.
+proof.
+move => H.
+rewrite in_rest_adv_pis.
+right; left.
+by exists pari.
+qed.
+
+lemma in_rest_adv_pis_by_later_param (pari z : int) :
+  change_pari < pari <= rf_info.`rfi_num_params /\
+  nth1_adv_pi_begin_params rf_info pari <= z <=
+  nth1_adv_pi_end_params rf_info pari =>
+  z \in rest_adv_pis.
+proof.
+move => H.
+rewrite in_rest_adv_pis.
+right; right.
+by exists pari.
+qed.
+
+lemma in_rest_adv_pis_by_other_param (pari z : int) :
+  (1 <= pari < change_pari \/
+   change_pari < pari <= rf_info.`rfi_num_params) /\
+  nth1_adv_pi_begin_params rf_info pari <= z <=
+  nth1_adv_pi_end_params rf_info pari =>
+  z \in rest_adv_pis.
+proof.
+smt(in_rest_adv_pis_by_earlier_param in_rest_adv_pis_by_later_param).
+qed.
+
 lemma union_change_rest_eq_all_adv_pis_of_rf_info :
   change_par_adv_pis `|` rest_adv_pis = adv_pis_rf_info rf_info.
 proof.
