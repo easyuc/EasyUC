@@ -40,12 +40,12 @@ elif [ $# -eq 1 ];
   then if [ -r $1~ ];
        then new=$1;
             old=$1~;
-       else echo "file $1~ does not exist or is not readable";
+       else echo "old file $1~ does not exist or is not readable";
             exit 1;
        fi;
-else echo 'usage: easyuc-merge OLD NEW';
+else echo 'usage: easyuc-merge NEW OLD';
      echo or;
-     echo 'usage: easyuc-merge OLD';
+     echo 'usage: easyuc-merge NEW';
      exit 1;
 fi
 
