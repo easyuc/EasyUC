@@ -955,6 +955,11 @@ rewrite /adv_pis_rf_info /adv_pis_rf_info_first /adv_pis_rf_info_last.
 by case (rfi.`rfi_num_params = 0).
 qed.
 
+lemma mem_adv_pis_rf_info (rfi : rf_info, x : int) :
+  x \in adv_pis_rf_info rfi <=>
+  adv_pis_rf_info_first rfi <= x <= adv_pis_rf_info_last rfi.
+proof. rewrite adv_pis_rf_info_rangeset mem_rangeset /#. qed.
+
 lemma adv_pis_rf_info_first_ge1 (rfi : rf_info) :
   rf_info_valid rfi => 1 <= adv_pis_rf_info_first rfi.
 proof. smt(). qed.
