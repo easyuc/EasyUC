@@ -14,6 +14,11 @@ let rec find_dup ?(cmp = Stdlib.compare) (xs : 'a list ) =
 let has_dup ?(cmp = Stdlib.compare) (xs : 'a list) =
   Option.is_some (find_dup ~cmp xs)
 
+let rec rm_dups_keep_first (xs : 'a list) : 'a list =
+  match xs with
+  | []      -> []
+  | x :: xs -> x :: rm_dups_keep_first (List.remove xs x)
+
 let index_of_ex x xs =
   match List.index_of x xs with
   | None   -> raise Not_found
@@ -74,6 +79,15 @@ let rec sl1_starts_with_sl2 (sl1 : string list) (sl2 : string list) : bool =
 let capitalized_root_of_filename_with_extension file =
   String.capitalize_ascii (Filename.chop_extension (Filename.basename file))
 
+let trim_trailing_slashes (s : string) : string =
+  let cs = List.rev (String.to_list s) in
+  let rec trim ds =
+    match ds with
+    | []      -> []
+    | ['/']   -> ds
+    | e :: es -> if e = '/' then trim es else ds in
+  String.of_list (List.rev (trim cs))
+
 (* the next three functions are adapted from code in
    ECsrc/ecLoader.ml *)
 
@@ -123,15 +137,15 @@ let find_uc_root root prelude_dir include_dirs =
   match normalize_case_of_full_in_dir prelude_dir full with
   | Some res -> Some (Filename.concat prelude_dir res)
   | None     ->
-      match normalize_case_of_full_in_dir "." full with
-      | Some res -> Some res
-      | None     ->
-          List.fold_left
-          (fun opt_res dir ->
-             match opt_res with
-             | Some _ -> opt_res
-             | None   ->
-                 match normalize_case_of_full_in_dir dir full with
-                 | None     -> None
-                 | Some res -> Some (Filename.concat dir res))
-          None include_dirs
+      List.fold_left
+      (fun opt_res dir ->
+         match opt_res with
+         | Some _ -> opt_res
+         | None   ->
+             match normalize_case_of_full_in_dir dir full with
+             | None     -> None
+             | Some res ->
+                 if dir = "."
+                 then Some res
+                 else Some (Filename.concat dir res))
+      None include_dirs

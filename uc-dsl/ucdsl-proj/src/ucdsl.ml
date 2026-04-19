@@ -4,6 +4,8 @@
 
 open Arg
 open Batteries
+open UcUtils
+open UcProjectFiles
 open UcMessage
 open UcParseAndTypecheckFile
 
@@ -14,6 +16,8 @@ let error_and_exit (ppf : Format.formatter -> unit) : 'a =
   Format.pp_print_newline Format.err_formatter ();
   exit 1
 
+(* references for argument processing *)
+
 (* order is *opposite* to the order of the -I options. later -I
    options have higher precedence than earlier ones, and come
    earlier in ! include_dirs_ref
@@ -23,22 +27,14 @@ let error_and_exit (ppf : Format.formatter -> unit) : 'a =
 
 let include_dirs_ref : string list ref = ref []
 
-let trim_trailing_slashes (s : string) : string =
-  let err () =
-    error_and_exit
-    (fun ppf ->
-       Format.fprintf ppf
-       "@[include@ directory@ cannot@ be@ empty@]") in
-  let cs = List.rev (String.to_list s) in
-  let rec trim ds =
-    match ds with
-    | []      -> err ()
-    | ['/']   -> ds
-    | e :: es -> if e = '/' then trim es else ds in
-  String.of_list (List.rev (trim cs))
-
 let include_arg (s : string) =
   let s = trim_trailing_slashes s in
+  let () =
+    if s = ""
+    then error_and_exit
+         (fun ppf ->
+            Format.fprintf ppf
+            "@[include@ directory@ cannot@ be@ empty@]") in
   let incs = s :: List.remove (! include_dirs_ref) s in
   include_dirs_ref := incs; ()
 
@@ -52,15 +48,22 @@ let raw_msg_ref : bool ref = ref false
 let raw_msg_arg () =
   (raw_msg_ref := true; ())
 
-let units_ref : bool ref = ref false
+(* we use option types for units_ref and margin_ref, because
+   ucdsl.project files can set these options, and we need
+   to know if the command line options override these settings *)
+
+let units_ref : bool option ref = ref None
 
 let units_arg () =
-  (units_ref := true; ())
+  (units_ref := Some true; ())
 
-let margin_ref : int ref = ref 78
+let nounits_arg () =
+  (units_ref := Some false; ())
+
+let margin_ref : int option ref = ref None
 
 let margin_arg n =
-  (margin_ref := n; ())
+  (margin_ref := Some n; ())
 
 let interpreter_ref : bool ref = ref false
 
@@ -104,12 +107,17 @@ let arg_specs =
     "<n> Set pretty printing margin (default is 78)");
    ("-raw-msg", Unit raw_msg_arg, "Issue raw messages, for Emacs UC DSL mode");
    ("-units", Unit units_arg, "Require grouping definitions into units");
+   ("-nounits", Unit nounits_arg,
+    "Don't require grouping definitions into units");
    ("-interpreter", Unit interpreter_arg,
-    "Run interpreter; implicit on .uci file; omit file to run interactively");
+    ("Run interpreter; implicit on .uci file; omit file to\n     " ^
+     "run interactively"));
    ("-debug", Unit debug_arg, "Print interpeter debugging messages");
    ("-batch", Unit batch_arg, "Run interpreter in batch mode on .uci file");
    ("-gen", Unit gen_arg, "Generate easycrypt files");
-   ("-run-print-pos", Unit run_print_pos_arg, "Print .uc file positions while executing interpreter run command for .uci file");
+   ("-run-print-pos", Unit run_print_pos_arg,
+    ("Print .uc file positions while executing interpreter\n     " ^
+     "run command for .uci file"));
    ("-version", Unit version_arg, "Print version and exit")
   ]
 
@@ -120,34 +128,71 @@ let () =
   then (Printf.printf "%s\n" UcVersionDoNotEdit.version;
         exit 0)
 
-let () =
-  List.iter
-  (fun x ->
-     if (not (Sys.file_exists x) || not (Sys.is_directory x))
-     then error_and_exit
-          (fun ppf ->
-             Format.fprintf ppf
-             "@[does@ not@ exist@ or@ is@ not@ a@ directory:@ %s@]" x))
-  (! include_dirs_ref)
-
-let () = UcState.set_include_dirs (! include_dirs_ref)
-
-let () =
-  let n = ! margin_ref in
-  if n < 3
-  then error_and_exit
-       (fun ppf ->
-          Format.fprintf ppf
-          "@[invalid@ pretty@ printer@ margin:@ %d@]" n)
-  else (Format.pp_set_margin Format.std_formatter n;
-        Format.pp_set_margin Format.err_formatter n)
-
 let check_file_exists (file : string) : unit =
   if not (Sys.file_exists file)
   then error_and_exit
        (fun ppf ->
           Format.fprintf ppf
           "@[file@ does@ not@ exist:@ %s@]" file)
+
+(* find and process ucdsl.project files *)
+
+let project_params =
+  match ! anony_arg_ref with
+  | [file] ->
+      let () = check_file_exists file in
+      find_and_process_project_file (Some file)
+  | []     -> find_and_process_project_file None
+  | _      ->
+      error_and_exit
+      (fun ppf ->
+         Format.fprintf ppf
+         ("@[more@ than@ one@ anonymous@ argument@ (file)@ " ^^
+          "is@ not@ allowed@]"))
+
+let include_dirs =
+  let cl_incs = ! include_dirs_ref in
+  let proj_incs = project_params.pp_includes in
+  let incs = rm_dups_keep_first (cl_incs @ proj_incs) in
+  let () =  
+    List.iter
+    (fun x ->
+       if (not (Sys.file_exists x) || not (Sys.is_directory x))
+       then error_and_exit
+            (fun ppf ->
+               Format.fprintf ppf
+               "@[does@ not@ exist@ or@ is@ not@ a@ directory:@ %s@]" x))
+    incs in
+  incs
+
+let () = UcState.set_include_dirs include_dirs
+
+let () =
+  let margin =
+    match ! margin_ref with
+    | None        ->
+        (match project_params.pp_margin with
+         | None        -> 78
+         | Some margin -> margin)
+    | Some margin ->
+        if margin < 3
+        then error_and_exit
+             (fun ppf ->
+                Format.fprintf ppf
+                "@[invalid@ pretty@ printer@ margin:@ %d@]" margin)
+        else margin in
+   Format.pp_set_margin Format.std_formatter margin;
+   Format.pp_set_margin Format.err_formatter margin
+
+let () =
+  let units =
+    match ! units_ref with
+    | None       ->
+       (match project_params.pp_units with
+        | None       -> false
+        | Some units -> units)
+    | Some units -> units in
+  if units then UcState.set_units ()
 
 (* file ends in ".uc" *)
 
@@ -169,7 +214,6 @@ let check_uc_file (file : string) : unit =
        "@[-%s@ option@ not@ allowed@ when@ checking@ .uc@ file@]"
        opt) in
   let () = if ! raw_msg_ref then UcState.set_raw_messages () in
-  let () = if ! units_ref then UcState.set_units () in
   let () = if ! interpreter_ref then forbid_option "interpreter" in
   let () = if ! debug_ref then forbid_option "debug" in
   let () = if ! batch_ref then forbid_option "batch" in
@@ -217,15 +261,17 @@ let interpreter_std_in () : unit =
   let () = if ! raw_msg_ref then forbid_option "raw_msg" in
   let () = if ! batch_ref then forbid_option "batch" in
   let () = if ! debug_ref then UcState.set_debugging () in
+  let () = UcState.add_highest_include_dirs "." in
   let () = UcEcInterface.init() in
   UcInterpreterClient.std_IO_client (); exit 0
 
 let () =
   match ! anony_arg_ref with
   | [file]                    ->
+      (* we already know file exists *)
       (match Filename.extension file with
-       | ".uc"  -> (check_file_exists file; check_uc_file file)
-       | ".uci" -> (check_file_exists file; interpreter_file file)
+       | ".uc"  -> check_uc_file file
+       | ".uci" -> check_file_exists file; interpreter_file file
        | _      ->
            error_and_exit
            (fun ppf ->

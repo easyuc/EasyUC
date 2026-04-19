@@ -147,9 +147,47 @@ files that are recursively `uc_required` when it is processed, are
 
 In either case, all clones must be used.
 
-The search path for `.uc` and `.ec` files includes the current directory,
-and can be extended with the `-include` (`-I`) option. E.g., `-I foo`
-means to also search in subdirectory `foo`.
+When running EasyCyrpt, the search path for EasyCrypt files includes
+the directory of the EasyCrypt file being processed (or the current
+working directory if there is no file), followed by the
+sub-directories of the EasyCrypt `theories` directory. The search path
+can be extended using the `-include` (`-I`) command line option. E.g.,
+`-I foo` means to also search in subdirectory `foo`, relative to the
+current working directory. These directories are searched before those
+of the EasyCrypt `theories` directory, and after the directory of the
+file being processed (or current working directory, if there is no
+file).
+
+When running `ucdsl`, the search path for UC DSL files includes the UC
+DSL prelude directory, followed by the directory of the UC DSL file
+being processed (or the current working directory if there is no
+file). The search path can be extended using the `-include` (`-I`)
+command line option. E.g., `-I foo` means to also search in
+subdirectory `foo`, relative to the current working directory.  These
+directories are searched after the prelude directory and the directory
+of the file being processed. The search path for EasyCrypt files is the
+same, except that the EasyCrypt `theories` sub-directories are
+searched last.
+
+An `easycrypt.project` file can be used to set the default provers and
+include directories for EasyCrypt, both when run from the shell and
+with Proof General. Similarly, a `ucdsl.project` file can be used to
+set for `ucdsl` the default include directories, pretty printer
+margin, and whether units checking should be done. The project files
+are found by searching upward in the directory structure from the
+directory of the file being processed by EasyCrypt or `ucdsl`, or from
+the current working directory, if there is no such file.  In
+`ucdsl.project` files, one can have bindings
+
+```
+units   = true          # do units checking
+units   = false         # do not do units checking
+margin  = <int>         # set the pretty printer margin
+include = <directory>   # add directory to include path
+```
+
+Command line options take precedence over bindings in project files.
+See the examples in [`smc2`](examples/smc2).
 
 Emacs Major Mode for Editing UC DSL Files
 --------------------------------------------------------------------
@@ -244,28 +282,6 @@ If you find that the highlighting of the currently executing code in a
 have carriage return characters in the `.uc` file. Emacs preserves the
 Microsoft end of line encoding when it already exists in a file.
 
-If you would like to customize the load paths used by the UC DSL
-interpreter when running in Proof General, you can create a file
-`.dir-locals.el` in the current directory with contents
-
-```
-;;; Directory Local Variables            -*- no-byte-compile: t -*-
-;;; For more information see (info "(emacs) Directory Variables")
-
-(
- (ucdsl-interpreter-mode .
-  ;; ../../prelude is automatically included
-  ((ucdsl-interpreter-load-path . (<dir1> <dir2> ...))))
-)
-```
-
-where `<dir1> <dir2> ...` has been replaced by a sequence of
-directories, inside double quotation marks. E.g., `"foo" "goo"`.
-
-A `easycrypt.project` file should be used to set the default provers
-and include directories for EasyCrypt, both when run from the shell
-and with Proof General.
-
 To learn how to use the interpreter, read and experiment with the
 script `testing.uci` in [`smc2`](examples/smc2). An example involving
 reentrancy can be found in [`reentrancy`](examples/reentrancy).
@@ -302,7 +318,6 @@ To edit the source in Emacs, you'll want to install the following
 `opam` packages:
 
 ```
-opam install tuareg
 opam install merlin
 ```
 

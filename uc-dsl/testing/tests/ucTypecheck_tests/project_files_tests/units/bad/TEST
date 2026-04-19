@@ -1,0 +1,11 @@
+description
+error where units checking specified in ucdsl.projects file is not
+adhered to in .uc files
+.
+args:SMC2.uc
+outcome:failure
+[error: Forwarding.uc: from line 0 columns 1 to 1]
+
+file with root Forwarding is not a valid unit because interface AnotherFwDir
+is extraneous
+.

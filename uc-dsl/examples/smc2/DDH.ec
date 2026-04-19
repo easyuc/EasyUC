@@ -1,4 +1,4 @@
-(* DDH.h *)
+(* DDH.ec *)
 
 (* Decisional Diffie-Hellman Assumption *)
 

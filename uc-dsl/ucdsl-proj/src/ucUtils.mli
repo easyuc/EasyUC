@@ -21,6 +21,11 @@ val find_dup : ?cmp:('a -> 'a -> int) -> 'a list -> 'a option
 
 val has_dup  : ?cmp:('a -> 'a -> int) -> 'a list -> bool
 
+(* remove duplicates, keeping the first occurrences, using (=) for
+   equality *)
+
+val rm_dups_keep_first : 'a list -> 'a list
+
 (* return the index (counting from 0) of the first occurrence of an
    element in a list; raises Not_found if there is no such index
 
@@ -95,19 +100,22 @@ val sl1_starts_with_sl2 : string list -> string list -> bool
 
 val capitalized_root_of_filename_with_extension : string -> string
 
+(* remove extra trailing slashes (trim_trailing_slashes "/" = "/") *)
+
+val trim_trailing_slashes : string -> string
+
 (* find_uc_root root prelude_dir include_dirs
 
    root should consist of a string of letters and digits whose initial
    character is capitalized; prelude_dir should be the fully qualified
    name of the UC DSL prelude directory; the elements of include_dirs
-   should be fully qualified directories
+   should be directories (fully qualified or not) that exist
 
    search for root in first the prelude_dir, or failing that, in the
-   current directory, or failing that, in the directories of
-   include_dirs (from front (highest precedence) to back (lowest
-   precedence)); returns Some of the qualified filename (fully
-   qualified, if not found in the current directory) if the search
-   suceeds, or None if it fails
+   directories of include_dirs (from front (highest precedence) to
+   back (lowest precedence)); returns Some of the qualified filename
+   (./<file> is abbrevited to <file>) if the search suceeds, or None
+   if it fails
 
    when searching in a directory, we first look for the
    uncapitalization (just the first letter) of root concatenated with

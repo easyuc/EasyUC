@@ -1,4 +1,4 @@
-(* UCEasyCryptCommentMacros module *)
+(* UcEasyCryptCommentMacros module *)
 
 open Batteries
 open BatIO

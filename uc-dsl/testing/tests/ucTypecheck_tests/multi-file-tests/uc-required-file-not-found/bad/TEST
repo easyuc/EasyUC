@@ -1,0 +1,9 @@
+description
+UC file not found because in current directory
+.
+args: tmp/Goo.uc
+outcome: failure
+[error: tmp/Goo.uc: from line 1 columns 13 to 16]
+
+unable to find .uc file: Foo
+.

@@ -1,0 +1,7 @@
+description
+resolution of error where units checking specified in ucdsl.projects
+file is not adhered to in .uc files
+.
+args:SMC2.uc
+outcome:success
+.

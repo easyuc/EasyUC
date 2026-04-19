@@ -20,7 +20,7 @@ let lexbuf_from_channel file ch =
 
 type file_or_id =
   (* file name, interpreted relative to working directory, if not
-      fully qualified *)
+     fully qualified *)
   | FOID_File of string
   (* root name of .uc file, initial letter capitalized, and without
      ".uc" and without "/"s, normally located in file that was lexed *)
