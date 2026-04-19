@@ -1,0 +1,10 @@
+description
+scanning error in ucdsl.projects file
+.
+args:SMC2.uc
+outcome:failure
+[error:]
+
+scanning error on line 11 of file:
+/usr/local/share/easycrypt/EasyUC/uc-dsl/testing/tests/ucTypecheck_tests/project_files_tests/scanning_error/bad/ucdsl.project
+.

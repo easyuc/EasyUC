@@ -1,0 +1,6 @@
+description
+resolution of UC file not found because in current directory
+.
+args: -I . tmp/Goo.uc
+outcome: success
+.

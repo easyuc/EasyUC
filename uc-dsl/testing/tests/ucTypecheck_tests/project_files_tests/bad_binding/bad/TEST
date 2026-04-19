@@ -1,0 +1,11 @@
+description
+bad binding in ucdsl.projects file
+.
+args:SMC2.uc
+outcome:failure
+[error:]
+
+bad binding in file
+/usr/local/share/easycrypt/EasyUC/uc-dsl/testing/tests/ucTypecheck_tests/project_files_tests/bad_binding/bad/ucdsl.project:
+units = truex
+.

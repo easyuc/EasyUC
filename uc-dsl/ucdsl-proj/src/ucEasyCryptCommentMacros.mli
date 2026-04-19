@@ -1,4 +1,4 @@
-(* UCEasyCryptCommentMacros module interface *)
+(* UcEasyCryptCommentMacros module interface *)
 
 (* EasyCrypt comment macros are defined as special EasyCrypt
    comments

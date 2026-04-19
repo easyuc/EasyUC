@@ -2747,25 +2747,6 @@ let typecheck
           | None   -> Some spec_clone_infos
           | Some _ -> failure "cannot happen")
        maps.spec_clones_map} in
-(* TODO: remove when translator is adapted to cloning *)
-(*
-  let () =
-    if mode = TM_Top
-    then let () =
-           fprintf Format.std_formatter "printing for root: %s@\n@\n" root in
-         let () =
-           fprintf Format.std_formatter "@[%t@\n@\n@]" spec_params_ppna in
-         List.iter
-         (fun x ->
-            match x with
-            | SCI_EC ppna ->
-                fprintf Format.std_formatter "@[%t@\n@\n@]" ppna
-            | SCI_UC y ->
-              let f = y.sc_uc_ppna_fun in
-              fprintf Format.std_formatter "@[%t@\n@\n@]" (f "from" "to"))
-         spec_clone_infos in
-*)
-(* end TODO *)
   let maps =
     try check_defs root maps spec.definitions with
     | TyError (l, env, tyerr) ->

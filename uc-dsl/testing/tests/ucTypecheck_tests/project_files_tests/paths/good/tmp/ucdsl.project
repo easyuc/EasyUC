@@ -1,0 +1,13 @@
+# ucdsl.project files can have bindings of the form
+#
+#   units   = true
+#   units   = false
+#   margin  = <int>
+#   include = <directory>
+#
+# later bindings have precedence over earlier ones
+# later occurrences of units/margin overrule the previous ones
+# include directories are searched from later to earlier
+
+units = true
+include = ..

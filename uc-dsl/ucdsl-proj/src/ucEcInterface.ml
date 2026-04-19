@@ -51,9 +51,6 @@ let init () =
      (fun x ->
       EcCommands.addidir ~namespace:`System ~recursive:false x)
      include_dirs);
-    (* medium high precedence *)
-    EcCommands.addidir ~namespace:`System ~recursive:false
-    Filename.current_dir_name;
     (* highest precedence *)
     EcCommands.addidir ~namespace:`System ~recursive:false
     UcConfig.uc_prelude_dir;
