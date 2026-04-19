@@ -945,7 +945,7 @@ sp 1. sp 3. skip.
 (* TODO? you can simplify the following line
 sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
 *)
-smt(mem_oflist).
+move => />;smt(mem_oflist).
 (* end TODO? *)
 (* SendAndTransition instruction *)
 sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
