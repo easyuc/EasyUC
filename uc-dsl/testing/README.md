@@ -18,15 +18,8 @@ command-line arguments (see below). It will also generate a log file,
   `.uc` and `.ec` files, as well as subdirectories, all of which
   `dsl-test` ignores.
 
-* `README` files in the directory hierarchy are ignored by
-  `dsl-test`. These files begin with the six characters of `README`,
-  in any case (even a mixture of lower- and uppercase). Occurrences of
-  `log` are also ignored.
-
 * Levels of the directory hierarchy above the unit testing directories
-  may only contain `log` and `README` files, and subdirectories. A
-  directory containing other files will be ignored (and flagged as an
-  error).
+  may contain arbitrary files and directories.
 
 Unit Test Directories
 --------------------------------------------------------------------

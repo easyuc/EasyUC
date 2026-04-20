@@ -25,7 +25,8 @@
    is no such file, and working upwards
 
    relative include directories of the found project file are
-   fully qualified by the directory of the project file *)
+   relatively qualified with reference to the current working
+   directory *)
 
 (* the result of processing the found ucdsl.project file *)
 

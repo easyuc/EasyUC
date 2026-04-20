@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # assumes GNU diff is installed using homebrew; change the
-# gnudiff variable as needed
+# gnudiff variable as needed (script exits with error status
+# if gnudiff is not set to an executable file)
 
 # running
 #
@@ -28,6 +29,11 @@
 # and OLD is automatically deleted
 
 gnudiff=/opt/homebrew/bin/diff
+
+if [ ! -x $gnudiff ];
+then echo \'$gnudiff\' does not exist or is not executable;
+     exit 1;
+fi
 
 tmp=/tmp/easyuc-merge-$$
 
