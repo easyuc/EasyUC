@@ -101,17 +101,8 @@ let parse (file_name : string) =
     close_in ch;
     raise e
 
-(* The acceptable content of a directory are
-     | TEST file + contents + optional sub directories
-     | If a TEST file is found, subfolders will be ignored
-     | Files with names starting with "readme" only +
-       optional sub directories (readme is case insenstive)
-     | Only sub folders will be searched for TEST files/tests
-     | No files but sub directories
-     | All subdirectories will be searched for TEST files/tests
-     | Any others will be ignored
-     | log file
-*)
+(* If a directory has a TEST file, subdirectories (if any) are
+   not visited; otherwise subdirectories are visited *)
 
 let rec walk_directory_tree dir (test_list : string list) (er_string : string) =
   try
@@ -130,17 +121,8 @@ let rec walk_directory_tree dir (test_list : string list) (er_string : string) =
     in
     let dirs = List.rev_map (Filename.concat dir) dirs in
     if List.mem "TEST" files then (test_list @ [ dir ^ "/TEST" ], er_string)
-    else if List.length files = 0 && List.length dirs = 0 then
-      (test_list, er_string)
-    else if
-      (List.length files = 0 && List.length dirs <> 0)
-      || List.for_all
-           (fun x ->
-             if String.length x >= 6 then
-               String.lowercase_ascii (String.sub x 0 6) = "readme"
-             else x = "log")
-           files
-    then
+    else if List.length dirs = 0 then (test_list, er_string)
+    else
       let rec walk_folders f_list t_list e_string =
         match f_list with
         | [] -> (t_list, e_string)
@@ -151,19 +133,6 @@ let rec walk_directory_tree dir (test_list : string list) (er_string : string) =
             walk_folders l t_list_new (e_string ^ e_string_new)
       in
       walk_folders dirs test_list er_string
-    else
-      let dir_content =
-        List.filter
-          (fun x ->
-            (x <> "TEST" && x <> "log")
-            || String.lowercase_ascii (String.sub x 0 6) = "readme")
-          files
-      in
-      let file_list = match dir_content with [] -> "" | e :: _ -> e in
-      ( test_list,
-        er_string ^ "\n" ^ "Error:Unexpected files found in the directory:"
-        ^ dir ^ "\nFor example:\n" ^ dir ^ "/" ^ file_list
-        ^ "\nDirectory ignored, please clean files\n" )
   with
   | Sys_error e -> (test_list, er_string ^ "\nError:" ^ e)
   | Unix_error (_, _, e) -> (test_list, er_string ^ "\nError:" ^ e)

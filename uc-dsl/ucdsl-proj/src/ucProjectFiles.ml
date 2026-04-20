@@ -153,14 +153,18 @@ let scan_bindings (file : string) (inp : input) (lnum : int) (c : char)
 
 (* (project) file will be fully qualified *)
 
-let check_binding (file : string) (bnd : binding) : binding =
-  let file_dir = Filename.dirname file in  (* fully qualified *)
+let check_binding (file : string) (prefix : string)
+    (bnd : binding) : binding =
   match bnd with
   | BString ("include", dir)    ->
      let dir =
        let dir = UcUtils.trim_trailing_slashes dir in
        if Filename.is_relative dir
-       then Filename.concat file_dir dir
+       then if prefix = "."
+               then dir
+            else if dir = "."
+               then prefix
+            else Filename.concat prefix dir
        else dir in
      if (not (Sys.file_exists dir) || not (Sys.is_directory dir))
      then non_loc_error_message
@@ -227,7 +231,7 @@ let resolve (bndgs : binding list) : project_params =
     | _                               -> failure "cannot happen" in
   res pr_init bndgs
 
-let process_project_file (file : string)
+let process_project_file (file : string) (prefix : string)
      : project_params =
   let inp =
     try open_in file with
@@ -247,30 +251,49 @@ let process_project_file (file : string)
                Format.fprintf ppf
                "@[scanning@ error@ on@ line@ %d@ of@ file:@ %s@]"
                lnum file) in
-      let bndgs = List.map (check_binding file) bndgs in
+      let bndgs = List.map (check_binding file prefix) bndgs in
       resolve bndgs
 
 let project_name = "ucdsl.project"
 
+type relat =
+  | Extension    of string
+  | NotExtension of string
+
+let str_of_relat (rel : relat) : string =
+  match rel with
+  | Extension s    -> s
+  | NotExtension s -> s
+
 let find_and_process_project_file (file_opt : string option)
       : project_params =
-  let rec find (path : string) : string option =
+  let rec find (path : string) (rel : relat) : (string * string) option =
     let projfile = Filename.concat path project_name in
-    if Sys.file_exists projfile then Some projfile
-    else if Filename.dirname path = path then None
-    else find (Filename.dirname path) in
+    if Sys.file_exists projfile
+      then Some (projfile, str_of_relat rel)
+    else if Filename.dirname path = path
+      then None
+    else find (Filename.dirname path)
+         (match rel with
+          | Extension ext       ->
+              if ext = "."
+              then NotExtension ".."
+              else Extension (Filename.dirname ext)
+          | NotExtension dotdot ->
+              NotExtension
+              (if dotdot = "" then ".." else dotdot ^ "/..")) in
+  let cwd = Unix.getcwd () in
   let root =
     match file_opt with
-    | Some file ->
-        let dir = Filename.dirname file in
-        if dir = "."
-          then Unix.getcwd ()
-        else if Filename.is_relative dir
-          then Filename.concat (Unix.getcwd ()) dir
-        else dir
-    | None      -> Unix.getcwd () in
-  match find root with
-  | None      -> pr_init
-  | Some file ->
-      try process_project_file file with
+    | None      -> cwd
+    | Some file -> Unix.realpath (Filename.dirname file) in
+  let relat =
+    if String.starts_with root cwd
+    then let ext = String.lchop ~n:(String.length cwd + 1) root in
+         Extension (if ext = "" then "." else ext)
+    else NotExtension "" in
+  match find root relat with
+  | None                -> pr_init
+  | Some (file, prefix) ->
+      try process_project_file file prefix with
       | _ -> exit 1

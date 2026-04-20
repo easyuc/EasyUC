@@ -1,0 +1,11 @@
+description
+error with multiple directories where file can't be found (to be
+fixed by adding include in projects file): project file is
+below working directory
+.
+args:tmp/goo/who/SMC2.uc
+outcome:failure
+[error: tmp/goo/who/SMC2.uc: from line 6 columns 13 to 23]
+
+unable to find .uc file: Forwarding
+.

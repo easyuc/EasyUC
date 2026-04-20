@@ -1,0 +1,9 @@
+[general]
+
+provers = Z3
+provers = CVC5
+provers = Alt-Ergo
+
+quorum = 2
+
+idirs = ../../common
