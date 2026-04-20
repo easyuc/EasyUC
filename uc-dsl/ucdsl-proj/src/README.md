@@ -23,6 +23,10 @@ Program Structure
 * `UcState` ([`ucState.mli`](ucState.mli),
   [`ucState.ml`](ucState.ml)) - module for the UC DSL global state
 
+* `UcProjectFiles` ([`ucProjectFiles.mli`](ucProjectFiles.mli),
+  [`ucProjectFiles.ml`](ucProjectFiles.ml)) -
+  module for processing UC DSL project files
+
 * `UcEcInterface` ([`ucEcInterface.mli`](ucEcInterface.mli),
   [`ucEcInterface.ml`](ucEcInterface.ml)) - module providing
   interface with EasyCrypt
