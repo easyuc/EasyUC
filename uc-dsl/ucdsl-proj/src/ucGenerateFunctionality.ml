@@ -1562,14 +1562,14 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf ".@]@;@;"
   in
   let print_invoke_lemma (rp : bool) =
-    let print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_hint =
+    let print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms proof_term =
       Format.fprintf ppf "@[  if.@]@;";
       Format.fprintf ppf "@[  exlim (%s(%s(%s(glob %s)))) => _sub_metric.@]@;"
         metric globop1 globop2 (moduleIRP id rfbt rp rest_idx);
       Format.fprintf ppf "@[  call (%s _sub_metric %s).@]@;"
         sub_invoke sub_invoke_pms;
       Format.fprintf ppf "@[  skip.@]@;";
-      Format.fprintf ppf "@[  smt(%s).@]@;" smt_hint;
+      Format.fprintf ppf "@[  %s@]@;" proof_term;
     in
     Format.fprintf ppf "@[<v>";
     Format.fprintf ppf "@[lemma %s (n : int)  : hoare [@]@;" (invokeIRP rfbt rp rest_idx);
@@ -1586,21 +1586,35 @@ let print_module_lemmas ?(rest_idx = None)
     Format.fprintf ppf "@[rewrite /%s /=.@]@;" (metric_name_IRP rfbt rp rest_idx);
     Format.fprintf ppf "@[  proc.@]@;";
     Format.fprintf ppf "@[  sp 1.@]@;";
+    let proof_term = match rest_idx with
+      | None -> "smt(mem_adv_pis_rf_info mem_oflist)."
+      | Some i ->
+         "smt("^(rest_composition_clone i)^
+           ".in_rest_adv_pis_by_main mem_oflist)."
+    in
     List.iter (fun (sfn,sfth) ->        
         let metric = sfth^"."^_metric_IF in
         let globop1 = glob_op_name (uc_name id) sfn in
         let globop2 = glob_op_name_own (moduleIRP id rfbt rp rest_idx) in
         let sub_invoke = sfth^"."^iF_invoke in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas 
-      ) sfns;
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms proof_term
+    ) sfns;
     List.iteri (fun i pmn ->
         let metric = pmn^"."^(metricIRF rfbt rp rest_idx i) in
         let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) pmn in
         let globop2 = "" in
         let sub_invoke = pmn^"."^(invokeIRF rfbt rp rest_idx i) in
         let sub_invoke_pms = "" in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms smt_invoke_lemmas
+        let proof_term = match rest_idx with
+          | None -> "smt(mem_adv_pis_rf_info mem_oflist)."
+          | Some ri -> let j = (if i+1 < ri then i+1 else i+2) in
+            "progress; first smt().
+             rewrite ("^(rest_composition_clone ri)
+            ^".in_rest_adv_pis_by_other_param "^(string_of_int j)^").
+smt (mem_adv_pis_rf_info mem_oflist)."
+        in
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms proof_term
       ) pmns;
     List.iter (fun ptn ->
         let pmns = match rest_idx with
@@ -1617,7 +1631,7 @@ let print_module_lemmas ?(rest_idx = None)
         let sub_invoke = (party_invoke_lemma_name ptn) in
         let sub_invoke_pms = List.fold_left(fun acc pmn ->
           acc^" "^pmn)  "" pmns in
-        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms ""
+        print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms "smt()."
       ) ptns;
     Format.fprintf ppf "@[  skip.@]@;";
     Format.fprintf ppf "@[  smt().@]@;";

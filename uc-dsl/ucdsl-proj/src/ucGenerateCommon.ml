@@ -987,52 +987,30 @@ Printf.fprintf fs
 "module %s(Adv : ADV) = SIM(SIMIP(Adv)).
                                                                
 lemma %s_RFRP_IF_advantage
-    (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-    (Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-    (func' : addr, in_guard' : int fset) &m :
-    exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info rf_info) =>
-      
- `|Pr[Exper(MI(RFRP, Adv), Env)
-         .main(func', in_guard')
-           @ &m : res] -
-    Pr[Exper(MI(IF, SIMCOMP(Adv)), Env)
-         .main(func', in_guard')
-      @ &m : res]| <=
+(Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+(Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+(func' : addr, in_guard' : int fset) &m :
+exper_pre func' =>
+disjoint in_guard' (adv_pis_rf_info rf_info) =>      
+`|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] - Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <= %s %s.
+proof.
+move => exper disj.
+apply (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
+Env func' in_guard'
+(%s)
 %s
-+
-%s
-.
-    proof.
-    move => exper disj.
-    apply (
-    MakeInt.security_trans
-    (RFRP)
-    (RFIP)
-    (IF)
-    (Adv)
-    (SIMIP(Adv))
-    (SIMCOMP(Adv))
-
-    Env
-    func' in_guard'
-    (
-%s
-    )
-    (%s)
-    &m
+&m
 ). 
- by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
-
- by apply (%s_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
- qed.
- "
+by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
+by apply (%s_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
+qed.
+"
 simcomp
 root
 paramsumbound
-boundRFIP_IF
+(if boundRFIP_IF = "0.0" then "" else ("+ "^boundRFIP_IF))
 paramsumbound
-boundRFIP_IF
+(if boundRFIP_IF = "0.0" then "0.0" else ("("^boundRFIP_IF^")"))
 root
   in
   let print_UC_file_func_wo_params root boundRFIP_IF =
@@ -1040,26 +1018,18 @@ root
       "module %s(Adv : ADV) = SIM(Adv).
 
 lemma %s_RFRP_IF_advantage
-    (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
-    (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
-    (func' : addr, in_guard' : int fset) &m :
-    exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info rf_info) =>    
- `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] -
-   Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]|
- <=
- %s
+(Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
+(Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
+(func' : addr, in_guard' : int fset) &m :
+exper_pre func' =>
+disjoint in_guard' (adv_pis_rf_info rf_info) =>    
+`|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] - Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <= %s
 .
-    proof.
-      apply (%s_RFIP_IF_advantage
-      Env
-      Adv
-      func'
-      in_guard'
-      &m)
-      .
-    qed.
- "
+proof.
+apply (%s_RFIP_IF_advantage Env Adv func'
+in_guard' &m).
+qed.
+"
 simcomp
 root
 boundRFIP_IF
@@ -1078,13 +1048,8 @@ root
   in
   Printf.fprintf fs
 
-"
-prover quorum=2 [\"Alt-Ergo\" \"Z3\"].
-
-require import UCCore.
-
-require %s.
-                                
+"require import UCCore.
+require %s.         
 clone include %s.
 
 %s

@@ -939,16 +939,8 @@ match. (*state match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
 if. (*if instruction*)
-sp 1. sp 3. skip.
-(* TODO *)
-(* end TODO *)
-(* TODO? you can simplify the following line
-sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
-*)
-move => />;smt(mem_oflist).
-(* end TODO? *)
-(* SendAndTransition instruction *)
-sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
+sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+ sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
 (*state branch WaitReq2*) match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 3. (*state param assignment, return value initialization*)sp 2. (*pattern bindings*)
@@ -1379,30 +1371,22 @@ module UC_SMC2Real (SMC1__ : FUNC, SMC2__ : FUNC) : FUNC = {
    exlim (Forwarding1._metric_IF(glob_UC_SMC2Real_to_Fwd1(glob_UC_SMC2Real_RP_to_own(glob UC_SMC2Real_RP)))) => _sub_metric.
    call (Forwarding1.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (Forwarding2._metric_IF(glob_UC_SMC2Real_to_Fwd2(glob_UC_SMC2Real_RP_to_own(glob UC_SMC2Real_RP)))) => _sub_metric.
    call (Forwarding2.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (SMC1._metric_RFRP(glob_UC_SMC2Real_RP_to_SMC1((glob UC_SMC2Real_RP)))) => _sub_metric.
    call (SMC1.RFRP_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (SMC2._metric_RFRP(glob_UC_SMC2Real_RP_to_SMC2((glob UC_SMC2Real_RP)))) => _sub_metric.
    call (SMC2.RFRP_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (_metric_Pt1(glob_UC_SMC2Real_to__st_Pt1(glob_UC_SMC2Real_RP_to_own(glob UC_SMC2Real_RP)))) => _sub_metric.
    call (_invoke_Pt1 _sub_metric  SMC1.RFRP SMC2.RFRP).
@@ -1489,30 +1473,22 @@ smt(mem_adv_pis_rf_info mem_oflist).
    exlim (Forwarding1._metric_IF(glob_UC_SMC2Real_to_Fwd1(glob_UC_SMC2Real_IP_to_own(glob UC_SMC2Real_IP)))) => _sub_metric.
    call (Forwarding1.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (Forwarding2._metric_IF(glob_UC_SMC2Real_to_Fwd2(glob_UC_SMC2Real_IP_to_own(glob UC_SMC2Real_IP)))) => _sub_metric.
    call (Forwarding2.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (SMC1._metric_IF(glob_UC_SMC2Real_IP_to_SMC1((glob UC_SMC2Real_IP)))) => _sub_metric.
    call (SMC1.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (SMC2._metric_IF(glob_UC_SMC2Real_IP_to_SMC2((glob UC_SMC2Real_IP)))) => _sub_metric.
    call (SMC2.IF_invoke _sub_metric ).
    skip.
-(* TODO *)
-smt(mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
+   smt(mem_adv_pis_rf_info mem_oflist).
    if.
    exlim (_metric_Pt1(glob_UC_SMC2Real_to__st_Pt1(glob_UC_SMC2Real_IP_to_own(glob UC_SMC2Real_IP)))) => _sub_metric.
    call (_invoke_Pt1 _sub_metric  SMC1.IF SMC2.IF).
@@ -1896,26 +1872,19 @@ realize change_pari_valid. smt(). qed.
       exlim (Forwarding1._metric_IF(glob_UC_SMC2Real_to_Fwd1(glob_UC_SMC2Real_Rest1_P_to_own(glob UC_SMC2Real_Rest1_P)))) => _sub_metric.
       call (Forwarding1.IF_invoke _sub_metric ).
       skip.
-(* TODO *)
-smt(UC__Rest1.in_rest_adv_pis_by_main mem_oflist).       
-(* end TODO *)
+      smt(UC__Rest1.in_rest_adv_pis_by_main mem_oflist).
       if.
       exlim (Forwarding2._metric_IF(glob_UC_SMC2Real_to_Fwd2(glob_UC_SMC2Real_Rest1_P_to_own(glob UC_SMC2Real_Rest1_P)))) => _sub_metric.
       call (Forwarding2.IF_invoke _sub_metric ).
       skip.
-(* TODO *)
-smt(UC__Rest1.in_rest_adv_pis_by_main mem_oflist).       
-(* end TODO *)
+      smt(UC__Rest1.in_rest_adv_pis_by_main mem_oflist).
       if.
       exlim (SMC2._metric_RFRP(glob_UC_SMC2Real_Rest1_P_to_SMC2((glob UC_SMC2Real_Rest1_P)))) => _sub_metric.
       call (SMC2.RFRP_invoke _sub_metric ).
       skip.
-(* TODO *)
-(* just using smt can timeout, so better to be more manual: *)
-progress; first smt().
-rewrite (UC__Rest1.in_rest_adv_pis_by_other_param 2).
+      progress; first smt().
+             rewrite (UC__Rest1.in_rest_adv_pis_by_other_param 2).
 smt (mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
       if.
       exlim (_metric_Pt1(glob_UC_SMC2Real_to__st_Pt1(glob_UC_SMC2Real_Rest1_P_to_own(glob UC_SMC2Real_Rest1_P)))) => _sub_metric.
       call (_invoke_Pt1_Rest1 _sub_metric  SMC2.RFRP).
@@ -2300,25 +2269,19 @@ realize change_pari_valid. smt(). qed.
        exlim (Forwarding1._metric_IF(glob_UC_SMC2Real_to_Fwd1(glob_UC_SMC2Real_Rest2_P_to_own(glob UC_SMC2Real_Rest2_P)))) => _sub_metric.
        call (Forwarding1.IF_invoke _sub_metric ).
        skip.
-(* TODO *)
-smt(UC__Rest2.in_rest_adv_pis_by_main mem_oflist).       
-(* end TODO *)
+       smt(UC__Rest2.in_rest_adv_pis_by_main mem_oflist).
        if.
        exlim (Forwarding2._metric_IF(glob_UC_SMC2Real_to_Fwd2(glob_UC_SMC2Real_Rest2_P_to_own(glob UC_SMC2Real_Rest2_P)))) => _sub_metric.
        call (Forwarding2.IF_invoke _sub_metric ).
        skip.
-(* TODO *)
-smt(UC__Rest2.in_rest_adv_pis_by_main mem_oflist).       
-(* end TODO *)
+       smt(UC__Rest2.in_rest_adv_pis_by_main mem_oflist).
        if.
        exlim (SMC1._metric_IF(glob_UC_SMC2Real_Rest2_P_to_SMC1((glob UC_SMC2Real_Rest2_P)))) => _sub_metric.
        call (SMC1.IF_invoke _sub_metric ).
        skip.
-(* TODO *)
-progress; first smt().
-rewrite (UC__Rest2.in_rest_adv_pis_by_other_param 1).
+       progress; first smt().
+             rewrite (UC__Rest2.in_rest_adv_pis_by_other_param 1).
 smt (mem_adv_pis_rf_info mem_oflist).
-(* end TODO *)
        if.
        exlim (_metric_Pt1(glob_UC_SMC2Real_to__st_Pt1(glob_UC_SMC2Real_Rest2_P_to_own(glob UC_SMC2Real_Rest2_P)))) => _sub_metric.
        call (_invoke_Pt1_Rest2 _sub_metric  SMC1.IF).

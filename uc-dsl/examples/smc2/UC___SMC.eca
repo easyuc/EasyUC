@@ -985,12 +985,12 @@ rewrite /_metric_RP /=.
   exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_RP_to_own(glob UC_SMCReal_RP)))) => _sub_metric.
   call (Forwarding.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (KeyExchange._metric_RFRP(glob_UC_SMCReal_RP_to_KeyExchange((glob UC_SMCReal_RP)))) => _sub_metric.
   call (KeyExchange.RFRP_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_RP_to_own(glob UC_SMCReal_RP)))) => _sub_metric.
   call (_invoke_Pt1 _sub_metric  KeyExchange.RFRP).
@@ -1066,12 +1066,12 @@ rewrite /_metric_IP /=.
   exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_IP_to_own(glob UC_SMCReal_IP)))) => _sub_metric.
   call (Forwarding.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (KeyExchange._metric_IF(glob_UC_SMCReal_IP_to_KeyExchange((glob UC_SMCReal_IP)))) => _sub_metric.
   call (KeyExchange.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_IP_to_own(glob UC_SMCReal_IP)))) => _sub_metric.
   call (_invoke_Pt1 _sub_metric  KeyExchange.IF).
@@ -1381,7 +1381,7 @@ rewrite /_metric_Rest1 /=.
   exlim (Forwarding._metric_IF(glob_UC_SMCReal_to_Fwd(glob_UC_SMCReal_Rest1_to_own(glob UC_SMCReal_Rest1)))) => _sub_metric.
   call (Forwarding.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(UC__Rest1.in_rest_adv_pis_by_main mem_oflist).
   if.
   exlim (_metric_Pt1(glob_UC_SMCReal_to__st_Pt1(glob_UC_SMCReal_Rest1_to_own(glob UC_SMCReal_Rest1)))) => _sub_metric.
   call (_invoke_Pt1_Rest1 _sub_metric ).
@@ -2226,5 +2226,6 @@ op sim_adv_pi <- _adv_if_pi
 proof *.
 realize sim_adv_pi_ge1. smt(_adv_pi_begin_gt0). qed.
 module SIM(Adv : ADV) = MSCore.MS(UC_SMCSim, Adv).
+
 
 

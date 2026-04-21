@@ -1234,12 +1234,12 @@ rewrite /_metric /=.
   exlim (Forwarding1._metric_IF(glob_UC_KEReal_to_Fw1(glob_UC_KEReal_to_own(glob UC_KEReal)))) => _sub_metric.
   call (Forwarding1.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (Forwarding2._metric_IF(glob_UC_KEReal_to_Fw2(glob_UC_KEReal_to_own(glob UC_KEReal)))) => _sub_metric.
   call (Forwarding2.IF_invoke _sub_metric ).
   skip.
-  smt(mem_oflist mem_rangeset iota0 iota1 fset0U fsetU0 in_fsetU).
+  smt(mem_adv_pis_rf_info mem_oflist).
   if.
   exlim (_metric_Pt1(glob_UC_KEReal_to__st_Pt1(glob_UC_KEReal_to_own(glob UC_KEReal)))) => _sub_metric.
   call (_invoke_Pt1 _sub_metric ).
