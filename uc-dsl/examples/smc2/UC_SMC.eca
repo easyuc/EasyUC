@@ -1,5 +1,5 @@
 require import UCCore.
-require UC__SMC.         
+require UC__SMC.
 clone include UC__SMC.
 
 (*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
@@ -8,25 +8,28 @@ clone include UC__SMC.
 +
 0.0
 *)
+
 module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
-                                                               
+
 lemma SMC_RFRP_IF_advantage
-(Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-(Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-(func' : addr, in_guard' : int fset) &m :
-exper_pre func' =>
-disjoint in_guard' (adv_pis_rf_info rf_info) =>      
-`|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] - Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <= `|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+      (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+      (Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+      (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] -
+    Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <=
+  `|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
   Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]| .
 proof.
 move => exper disj.
-apply (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
-Env func' in_guard'
-(`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+apply
+  (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
+   Env func' in_guard'
+   (`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
   Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
-0.0
-&m
-). 
+   0.0
+   &m).
 by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
 by apply (SMC_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
 qed.

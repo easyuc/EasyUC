@@ -949,58 +949,54 @@ let print_userfile_stub
   Printf.fprintf fs
 "
 require import UCCore.
-
 require %s.
-
 clone include %s.
 
- %s
+%s
 
 module AllCGs = {module UC__AllCGs = AllCGs_}.
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard) 0.0 *)
   
 lemma %s_RFIP_IF_advantage
-    (Env <: ENV{-MI, -RFIP, -IF, -SIM})
-    (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM})
-    (func' : addr, in_guard' : int fset) &m :
-    exper_pre func' =>
-    disjoint in_guard' (adv_pis_rf_info rf_info) =>
-      (*adv pis of functionality are disj. from in_guard'*)    
- `|Pr[Exper(MI(RFIP, Adv), Env)
-         .main(func', in_guard')
-           @ &m : res] -
-    Pr[Exper(MI(IF, SIM(Adv)), Env)
-         .main(func', in_guard')
-      @ &m : res]| <=
-    0.0
-      .
+      (Env <: ENV{-MI, -RFIP, -IF, -SIM})
+      (Adv <: ADV{-MI, -Env, -RFIP, -IF, -SIM})
+      (func' : addr, in_guard' : int fset) &m :
+      exper_pre func' =>
+      disjoint in_guard' (adv_pis_rf_info rf_info) =>
+      (*adv pis of functionality are disj. from in_guard'*)
+  `|Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <=
+   0.0.
 proof.
 admit.
-qed.     
+qed.
 "
 (uc___name root) (uc___name root) rfip_eq_rfrp root
 
 let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
   let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
 Printf.fprintf fs
-"module %s(Adv : ADV) = SIM(SIMIP(Adv)).
-                                                               
+"
+module %s(Adv : ADV) = SIM(SIMIP(Adv)).
+
 lemma %s_RFRP_IF_advantage
-(Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-(Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
-(func' : addr, in_guard' : int fset) &m :
-exper_pre func' =>
-disjoint in_guard' (adv_pis_rf_info rf_info) =>      
-`|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] - Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <= %s %s.
+      (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+      (Adv <: ADV{-MI, -Env, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
+      (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] -
+    Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <=
+  %s %s.
 proof.
 move => exper disj.
-apply (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
-Env func' in_guard'
-(%s)
-%s
-&m
-). 
+apply
+  (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
+   Env func' in_guard'
+   (%s)
+   %s
+   &m).
 by apply (exper_RF_RP_IP_Pr_diff Env Adv func' in_guard' &m).
 by apply (%s_RFIP_IF_advantage Env (SIMIP(Adv)) func' in_guard' &m).
 qed.
@@ -1015,19 +1011,20 @@ root
   in
   let print_UC_file_func_wo_params root boundRFIP_IF =
     Printf.fprintf fs
-      "module %s(Adv : ADV) = SIM(Adv).
+"
+module %s(Adv : ADV) = SIM(Adv).
 
 lemma %s_RFRP_IF_advantage
-(Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
-(Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
-(func' : addr, in_guard' : int fset) &m :
-exper_pre func' =>
-disjoint in_guard' (adv_pis_rf_info rf_info) =>    
-`|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] - Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <= %s
-.
+      (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})
+      (Adv <: ADV{-MI, -Env, -RFRP, -IF, -SIM, -AllCGs})
+      (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <=
+  %s.
 proof.
-apply (%s_RFIP_IF_advantage Env Adv func'
-in_guard' &m).
+apply (%s_RFIP_IF_advantage Env Adv func' in_guard' &m).
 qed.
 "
 simcomp
@@ -1049,7 +1046,7 @@ root
   Printf.fprintf fs
 
 "require import UCCore.
-require %s.         
+require %s.
 clone include %s.
 
 %s
@@ -1061,6 +1058,3 @@ clone include %s.
   if has_params
   then print_UC_file_func_w_params root paramsumbound boundRFIP_IF
   else print_UC_file_func_wo_params root boundRFIP_IF
-    
-    
-  

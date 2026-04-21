@@ -2226,6 +2226,7 @@ op sim_adv_pi <- _adv_if_pi
 proof *.
 realize sim_adv_pi_ge1. smt(_adv_pi_begin_gt0). qed.
 module SIM(Adv : ADV) = MSCore.MS(UC_SMCSim, Adv).
+>>>>> new text >>>>>
 
 
-
+==== end of new ====
