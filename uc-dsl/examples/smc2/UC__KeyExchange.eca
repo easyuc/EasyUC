@@ -235,7 +235,8 @@ op real_simp_invar_static
   glob_RealSimp_to_self grs      = func.
 
 op real_simp_invar_static_ports
-   (func : addr, grfip : glob RFIP, grs : glob RealSimp, pt1 pt2 : port) : bool =
+   (func : addr, grfip : glob RFIP, grs : glob RealSimp,
+    pt1 pt2 : port) : bool =
   glob_RFIP_to_self grfip        = func /\
   glob_RFIP_to_self_Fw1 grfip    = _addr_Fw1 func /\
   glob_RFIP_to_self_Fw2 grfip    = _addr_Fw2 func /\
@@ -243,7 +244,8 @@ op real_simp_invar_static_ports
   glob_RealSimp_to_self grs      = func /\
   envport func pt1 /\ envport func pt2.
 
-op real_simp_invar0 (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool =
+op real_simp_invar0 (func : addr, grfip : glob RFIP,
+                     grs : glob RealSimp) : bool =
   real_simp_invar_static func grfip grs /\
   (* -- *)
   glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_WaitReq1 /\
@@ -291,7 +293,8 @@ op real_simp_invar3 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
   (* -- *)
   glob_RealSimp_to_st grs        = RealSimpStateWaitAdv2 pt1 pt2 q1 q2.
 
-op real_simp_invar4 (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool =
+op real_simp_invar4 (func : addr, grfip : glob RFIP,
+                     grs : glob RealSimp) : bool =
   real_simp_invar_static func grfip grs /\
   (* -- *)
   glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_Final /\
@@ -301,7 +304,8 @@ op real_simp_invar4 (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool
   (* -- *)
   glob_RealSimp_to_st grs        = RealSimpStateFinal.
 
-inductive real_simp_invar (func : addr, grfip : glob RFIP, grs : glob RealSimp) =
+inductive real_simp_invar (func : addr, grfip : glob RFIP,
+                           grs : glob RealSimp) =
     RealSimpInvar0 of
       (real_simp_invar0 func grfip grs)
   | RealSimpInvar1 (pt1 pt2 : port, q1 : exp) of
@@ -396,8 +400,7 @@ have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
 have m2_src_eq : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
   have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
   by rewrite x2_eq.
-progress; first 13 smt().
-by move : H12; rewrite H11 /= => ->.
+smt(@UCListPO).
 rcondt{1} 1; first auto.
 inline{1} 1; sp 2 0.
 rcondt{1} 1; first auto.
@@ -414,8 +417,8 @@ have -> :
   by smt().
 progress; smt(@UCListPO).
 seq 6 0 :
-  (={pt1, pt2, q1} /\
-   real_simp_invar1 func' (glob RFIP){1} (glob RealSimp){2} pt1{1} pt2{1} q1{1} /\
+  (real_simp_invar1 func' (glob RFIP){1} (glob RealSimp){2}
+   pt1{1} pt2{1} q1{1} /\
    m0{1} = 
    (Forwarding1.UC_FwDir.D.epdp__fw_req.`enc
     (Forwarding1.UC_FwDir.D.mk__fw_req (_addr_Fw1 UC_KEReal._self{1})
@@ -434,9 +437,9 @@ have -> :
   _x{1} = oget (Forwarding1.UC_FwDir.D.epdp__fw_req.`dec _m0{1}) by smt().
 auto; progress; smt().
 seq 1 0 :
-  (! not_done{1} /\ ={pt1, pt2, q1} /\
-   real_simp_invar1 func' (glob RFIP){1} (glob RealSimp){2} pt1{1} pt2{1} q1{1} /\
-   r0{1} = r{2}).
+  (! not_done{1} /\ r0{1} = r{2} /\
+   real_simp_invar1 func' (glob RFIP){1}
+   (glob RealSimp){2} pt1{1} pt2{1} q1{1}).
 exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0').
 auto; smt(_adv_pi_begin_gt0).
