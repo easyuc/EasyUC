@@ -1,34 +1,40 @@
+(* UC__KeyExchange.eca *)
 
+(* The user's part of the KeyExchange security proof. *)
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
 `|Pr[<<PathPfx>>DDHBound1(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res] -
   Pr[<<PathPfx>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
 
-require import  UCCore.
-require RedundantHashing.
-require import FMap.
+require import UCCore FMap.
 
 require UC___KeyExchange.
 clone include UC___KeyExchange.
- module RFIP = RFRP. (*real fun has no params so real fun with ideal params is the same as real fun with real params*)
 
+ (* real functionality has no parameters, so real functionality with
+    ideal parameters is the same as real functionality with real
+    parameters *)
 
- require DDH.
- print ( * ).
+module RFIP = RFRP.
+
+require DDH.
+
 clone import DDH as DDH' with
-type key <- key,
-type exp <- exp,
-  op ( * ) : exp -> exp -> exp <- ( * ),
-  op dexp : exp Distr.distr <- dexp,
-  op g : key <- g,
-  op (^) : key -> exp -> key <- (^)
+  type input <- (addr * int fset),
+  type key   <- key,
+  type exp   <- exp,
+  op ( * )   <- ( * ),
+  op dexp    <- dexp,
+  op g       <- g,
+  op (^)     <- (^)
 proof *.
-realize dexp_ll. smt(). qed.
-realize dexp_uni. smt. qed.
-realize dexp_fu. smt. qed.
-  
+realize dexp_ll. apply dexp_ll. qed.
+realize dexp_uni. apply dexp_uni. qed.
+realize dexp_fu. apply dexp_fu. qed.
  
+(*
+
 type ke_ddh_state = [
     KEDDHStateWaitReq1
   | KEDDHStateWaitAdv1 of port & port
@@ -45,178 +51,17 @@ module DDH_Adv_globs ={
   var _st : ke_ddh_state
 }.
 
+*)
+
 module AllCGs  = {
   module UC__AllCGs_ = AllCGs_
+(*
   module DDH_Globs = DDH_Adv_globs
-  proc foo() = {var x:addr <- MSCore.CombEnvAdv.func;
-                var y: int fset <- MSCore.CombEnvAdv.in_guard;}
-}.
-print glob AllCGs.
-
-print KeyExchange.
-
-module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV = {
-  module KEDDH : FUNC = {
-    proc init(self_ : addr) : unit = {
-      DDH_Adv_globs._self <- self_;
-      DDH_Adv_globs._st <- KEDDHStateWaitReq1;
-    }
-  proc _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
-  var _r : msg option <- None;
-  var _pt1 : port <- _intport_Pt1 DDH_Adv_globs._self;
-  var _pt2 : port <- _intport_Pt2 DDH_Adv_globs._self;
-  var u : univ;
-  if (envport DDH_Adv_globs._self pt2) {
-    u <- (*KEth. missing*)KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, DDH_Adv_globs.k1);
-    _r <- Some
-      ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 DDH_Adv_globs._self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
-        |});
-    DDH_Adv_globs._st <- KEDDHStateWaitAdv1 pt1 pt2;
-    
+*)
+  proc foo() = {
+    var x : addr <- MSCore.CombEnvAdv.func;
+    var y : int fset <- MSCore.CombEnvAdv.in_guard;
   }
-  else { _r <- None;}
-  return _r;
-  }
-
-  proc _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port) : msg option = {
-  var _r : msg option <- None;
-  
-    _r <- Some
-      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-        {|
-          UC_KEDir.Pt2.ke_rsp1___func = DDH_Adv_globs._self;
-          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-          UC_KEDir.Pt2.ke_rsp1__k = DDH_Adv_globs.k3;
-          
-        |});
-      DDH_Adv_globs._st <- KEDDHStateWaitReq2 pt1 pt2;
-    
-  return _r;
-  }
-
-  proc _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2') : msg option = {
-  var u : univ;
-  var _pt1 : port <- _intport_Pt2 DDH_Adv_globs._self;
-  var _pt2 : port <- _intport_Pt1 DDH_Adv_globs._self;
-  var _r : msg option <- None;
-  if (pt2' = pt2) {
-    u <- (*KeyExp'. missing*)KeyExp'.epdp_key_univ.`enc (DDH_Adv_globs.k2);
-    _r <- Some
-      ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 DDH_Adv_globs._self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
-        |});
-    DDH_Adv_globs._st <- KEDDHStateWaitAdv2 pt1 pt2;   
-  }
-  return _r;
-  }
-
-  proc _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port) : msg option = {
-  var _r : msg option <- None;
-  
-    _r <- Some
-          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-          {|
-            UC_KEDir.Pt1.ke_rsp2___func = DDH_Adv_globs._self;
-            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-            UC_KEDir.Pt1.ke_rsp2__k = DDH_Adv_globs.k3;
-            
-          |});
-        DDH_Adv_globs._st <- KEDDHStateFinal;
-  
-  return _r;
-  }
-
-
-  proc invoke(m : msg) : msg option = {
-    var r : msg option <- None;
-    match DDH_Adv_globs._st with
-    | KEDDHStateWaitReq1 => {
-      if( m.`1 = Dir /\ envport DDH_Adv_globs._self m.`3 /\ m.`2 = _extport_dir_Pt1 DDH_Adv_globs._self){
-        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
-        | Some _x => {
-          r <@ _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEDDHStateWaitAdv1 pt1 pt2 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 DDH_Adv_globs._self = m.`2.`1){ 
-        match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEDDHStateWaitReq2 pt1 pt2 => {
-      if( m.`1 = Dir /\ envport DDH_Adv_globs._self m.`3 /\ m.`2 = _extport_dir_Pt2 DDH_Adv_globs._self){
-        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
-        | Some _x => {
-          r <@ _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEDDHStateWaitAdv2 pt1 pt2 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 DDH_Adv_globs._self = m.`2.`1){
-        match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEDDHStateFinal => {}
-    end;
-    return r;
-  }
-}
-    
-    
-  
-
-  proc main(k1_ k2_ k3_ : key) : bool = {
-    var b : bool;
-    DDH_Adv_globs.k1 <- k1_; DDH_Adv_globs.k2 <- k2_; DDH_Adv_globs.k3 <- k3_;
-    b <@ Exper(MI(KEDDH, Adv), Env).main(DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
-    return b;
-  }
-}.
-
-module DDHBound1(Env : ENV, Adv : ADV) = {
- proc main(func : addr, in_guard : int fset) : bool = {
-   var b : bool;
-   DDH_Adv_globs.func <- func;
-   DDH_Adv_globs.in_guard <- in_guard;
-   b <@ DDH'.DDH1(DDH_Adv(Env, Adv)).main();
-   return b;
- }
-}.
-
-module DDHBound2(Env : ENV, Adv : ADV) = {
- proc main(func : addr, in_guard : int fset) : bool = {
-   var b : bool;
-   DDH_Adv_globs.func <- func;
-   DDH_Adv_globs.in_guard <- in_guard;
-   b <@ DDH'.DDH2(DDH_Adv(Env, Adv)).main();
-   return b;
- }
 }.
 
 section.
@@ -224,254 +69,500 @@ section.
 declare module Adv <: ADV{-MI, -RFIP, -IF, -SIM, -AllCGs}.
 declare module Env <: ENV{-Adv, -MI, -RFIP, -IF, -SIM, -AllCGs}.
 
-type ke_real_simp_state = [
-    KERealSimpStateWaitReq1
-  | KERealSimpStateWaitAdv1 of port & port & exp
-  | KERealSimpStateWaitReq2 of port & port & exp & exp
-  | KERealSimpStateWaitAdv2 of port & port & exp & exp
-  | KERealSimpStateFinal
+(* we first move from RFIP to RealSimp, which has a single state
+   machine *)
+
+type real_simp_state = [
+  | RealSimpStateWaitReq1
+  | RealSimpStateWaitAdv1 of port & port & exp
+  | RealSimpStateWaitReq2 of port & port & exp & exp
+  | RealSimpStateWaitAdv2 of port & port & exp & exp
+  | RealSimpStateFinal
 ].
 
-local module KERealSimp : FUNC =
-{
-  var _self : addr
-  var _st : ke_real_simp_state
+local module RealSimp : FUNC = {
+  var self : addr
+  var st : real_simp_state
+
   proc init(self_ : addr) : unit = {
-    _self <- self_;
-    _st <- KERealSimpStateWaitReq1;
+    self <- self_;
+    st <- RealSimpStateWaitReq1;
   }
 
-  proc _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
-  var q1 : exp;
-  var _r : msg option <- None;
-  var _pt1 : port <- _intport_Pt1 _self;
-  var _pt2 : port <- _intport_Pt2 _self;
-  var u : univ;
-  if (envport _self pt2) {
-    q1 <$ dexp;
-    u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
-    _r <- Some
-      ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KERealSimpStateWaitAdv1 pt1 pt2 q1;
-    
-  }
-  else { _r <- None;}
-  return _r;
-  }
-
-  proc _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
-  var k1 : key;
-  var q2 : exp;
-  var _r : msg option <- None;
-  
-    k1 <- g ^ q1;
-    q2 <$ dexp;
-    _r <- Some
-      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-        {|
-          UC_KEDir.Pt2.ke_rsp1___func = _self;
-          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-          UC_KEDir.Pt2.ke_rsp1__k = k1 ^ q2;
-          
-        |});
-      _st <- KERealSimpStateWaitReq2 pt1 pt2 q1 q2;
-    
-  return _r;
-  }
-
-  proc _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2') : msg option = {
-  var u : univ;
-  var _pt1 : port <- _intport_Pt2 _self;
-  var _pt2 : port <- _intport_Pt1 _self;
-  var _r : msg option <- None;
-  if (pt2' = pt2) {
-    u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
-    _r <- Some
-      ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KERealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
-  }
-  return _r;
-  }
-
-  proc _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
-  var _r : msg option <- None;
-  
-    _r <- Some
-          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-          {|
-            UC_KEDir.Pt1.ke_rsp2___func = _self;
-            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q2) ^ q1;
-            
-          |});
-        _st <- KERealSimpStateFinal;
-  
-  return _r;
-  }
-  
-  proc parties(m : msg) : msg option = {
-    var _r : msg option <- None;
-    
+  proc state_RealSimpStateWaitReq1(pt1 : port, pt2 : port) : msg option = {
+    var q1 : exp; var _r : msg option <- None;
+    var _pt1 : port <- _intport_Pt1 self;
+    var _pt2 : port <- _intport_Pt2 self;
+    var u : univ;
+    if (envport self pt2) {
+      q1 <$ dexp;
+      u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
+      _r <-
+        Some
+        (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+         {|Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 self;
+           Forwarding1.UC_FwAdv.fw_obs___adv  = adv;
+           Forwarding1.UC_FwAdv.fw_obs__pt1   = _pt1;
+           Forwarding1.UC_FwAdv.fw_obs__pt2   = _pt2;
+           Forwarding1.UC_FwAdv.fw_obs__u     = u|});
+      st <- RealSimpStateWaitAdv1 pt1 pt2 q1;
+    }
+    else { _r <- None; }
     return _r;
   }
 
+  proc state_RealSimpStateWaitAdv1(pt1 : port, pt2 : port, q1 : exp)
+         : msg option = {
+    var k1 : key; var q2 : exp; var _r : msg option <- None;
+    k1 <- g ^ q1;
+    q2 <$ dexp;
+    _r <-
+      Some
+      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+       {|UC_KEDir.Pt2.ke_rsp1___func = self;
+         UC_KEDir.Pt2.ke_rsp1__pt2   = pt2;
+         UC_KEDir.Pt2.ke_rsp1__pt1   = pt1;
+         UC_KEDir.Pt2.ke_rsp1__k     = k1 ^ q2|});
+    st <- RealSimpStateWaitReq2 pt1 pt2 q1 q2;
+    return _r;
+  }
+
+  proc state_RealSimpStateWaitReq2
+       (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2' : port)
+         : msg option = {
+    var u : univ;
+    var _pt1 : port <- _intport_Pt2 self;
+    var _pt2 : port <- _intport_Pt1 self;
+    var _r : msg option <- None;
+    if (pt2' = pt2) {
+      u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
+      _r <- Some
+        (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
+         {|Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 self;
+           Forwarding2.UC_FwAdv.fw_obs___adv  = adv;
+           Forwarding2.UC_FwAdv.fw_obs__pt1   = _pt1;
+           Forwarding2.UC_FwAdv.fw_obs__pt2   = _pt2;
+           Forwarding2.UC_FwAdv.fw_obs__u     = u|});
+      st <- RealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
+    }
+    return _r;
+  }
+
+  proc state_RealSimpStateWaitAdv2
+       (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
+    var _r : msg option <- None;
+    _r <-
+      Some
+      (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+       {|UC_KEDir.Pt1.ke_rsp2___func = self;
+         UC_KEDir.Pt1.ke_rsp2__pt1   = pt1;
+         UC_KEDir.Pt1.ke_rsp2__k     = (g ^ q2) ^ q1|});
+    st <- RealSimpStateFinal;
+    return _r;
+  }
+  
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    match _st with
-    | KERealSimpStateWaitReq1 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt1 _self){
+    match st with
+    | RealSimpStateWaitReq1               => {
+      if (m.`1 = Dir /\  m.`2 = _extport_dir_Pt1 self /\ envport self m.`3) {
         match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
-        | Some _x => {
-          r <@ _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
-        }
-        | None => {}
+        | Some x => {
+            r <@ state_RealSimpStateWaitReq1
+                 (x.`UC_KEDir.Pt1.ke_req1__pt1, x.`UC_KEDir.Pt1.ke_req1__pt2);
+          }
+        | None    => {}
         end;
       }
     }
-    | KERealSimpStateWaitAdv1 pt1 pt2 q1 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
-        match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
+    | RealSimpStateWaitAdv1 pt1 pt2 q1    => {
+      if (m.`1 = Adv /\ m.`2.`1 = _addr_Fw1 self /\ m.`3.`1 = adv) { 
+        match Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
-        }
-        | None => {}
+            r <@ state_RealSimpStateWaitAdv1(pt1, pt2, q1);
+          }
+        | None   => {}
         end;
       }
     }
-    | KERealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt2 _self){
+    | RealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
+      if (m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 self /\ envport self m.`3) {
         match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
-        | Some _x => {
-          r <@ _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, q1, q2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
-        }
-        | None => {}
+        | Some x => {
+            r <@ state_RealSimpStateWaitReq2
+                 (pt1, pt2, q1, q2, x.`UC_KEDir.Pt2.ke_req2__pt2);
+          }
+        | None    => {}
         end;
       }
     }
-    | KERealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
-        match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
+    | RealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
+      if (m.`1 = Adv /\ _addr_Fw2 self = m.`2.`1 /\ m.`3.`1 = adv) {
+        match Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q1, q2);
-        }
+            r <@ state_RealSimpStateWaitAdv2(pt1, pt2, q1, q2);
+          }
         | None => {}
         end;
       }
     }
-    | KERealSimpStateFinal => {}
+    | RealSimpStateFinal                  => {}
     end;
     return r;
   }
 }.
 
+(* relational invariant for connecting RFIP and RealSimp *)
 
-(* relational invariant for connecting KEReal and KERealSimp *)
+op glob_RFIP_to_self        (g : glob RFIP) : addr                  = g.`1.
+op glob_RFIP_to_st_Pt1      (g : glob RFIP) : _state_Pt1            = g.`2.
+op glob_RFIP_to_st_Pt2      (g : glob RFIP) : _state_Pt2            = g.`3.
+op glob_RFIP_to_self_Fw1    (g : glob RFIP) : addr                  = g.`4.
+op glob_RFIP_to_st_Fw1      (g : glob RFIP) : Forwarding1._state_IF = g.`5.
+op glob_RFIP_to_self_Fw2    (g : glob RFIP) : addr                  = g.`6.
+op glob_RFIP_to_st_Fw2      (g : glob RFIP) : Forwarding2._state_IF = g.`7.
+op glob_RFIP_to_self_MakeRF (g : glob RFIP) : addr                  = g.`8.
 
-type real_simp_rel_st = {
-  real_simp_rel_st_func : addr;
-  real_simp_rel_st_r1s  : _state_Pt1;
-  real_simp_rel_st_r2s  : _state_Pt2;
-  real_simp_rel_st_fws1 : (*Fw1.*)Forwarding1._state_IF;
-  real_simp_rel_st_fws2 : (*Fw2.*)Forwarding2._state_IF;
-  real_simp_rel_st_rss  : ke_real_simp_state;
-}.
+op glob_RealSimp_to_self (g : glob RealSimp) : addr = g.`1.
+op glob_RealSimp_to_st   (g : glob RealSimp) : real_simp_state = g.`2.
 
-op    real_simp_rel0 (st : real_simp_rel_st) : bool =
-  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitReq1) /\
-  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitFwd1) /\
-  (st.`real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1._State_IF_Init) /\
-  (st.`real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2._State_IF_Init) /\
-  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitReq1).
+op real_simp_invar_static
+   (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool =
+  glob_RFIP_to_self grfip        = func /\
+  glob_RFIP_to_self_Fw1 grfip    = _addr_Fw1 func /\
+  glob_RFIP_to_self_Fw2 grfip    = _addr_Fw2 func /\
+  glob_RFIP_to_self_MakeRF grfip = func /\
+  glob_RealSimp_to_self grs      = func.
 
-op real_simp_rel1 (st : real_simp_rel_st, pt1 pt2 : port, q1 : exp) : bool =
-  (envport st.`real_simp_rel_st_func pt1) /\
-  (envport st.`real_simp_rel_st_func pt2) /\
-  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitFwd1) /\
-  (st.`real_simp_rel_st_fws1 =
-     (*Fw1.*)Forwarding1._State_IF_Wait
-     (_intport_Pt1 st.`real_simp_rel_st_func)
-     (_intport_Pt2 st.`real_simp_rel_st_func)
-     (KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))) /\
-  (st.`real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2._State_IF_Init) /\
-  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv1 pt1 pt2 q1).
+op real_simp_invar_static_ports
+   (func : addr, grfip : glob RFIP, grs : glob RealSimp, pt1 pt2 : port) : bool =
+  glob_RFIP_to_self grfip        = func /\
+  glob_RFIP_to_self_Fw1 grfip    = _addr_Fw1 func /\
+  glob_RFIP_to_self_Fw2 grfip    = _addr_Fw2 func /\
+  glob_RFIP_to_self_MakeRF grfip = func /\
+  glob_RealSimp_to_self grs      = func /\
+  envport func pt1 /\ envport func pt2.
 
-  op real_simp_rel2 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) : bool =
-  (envport st.`real_simp_rel_st_func pt1) /\
-  (envport st.`real_simp_rel_st_func pt2) /\
-  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (st.`real_simp_rel_st_r2s  = _State_Pt2_WaitReq2 pt2 q2) /\
-  (st.`real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  (st.`real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2._State_IF_Init) /\
-  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitReq2 pt1 pt2 q1 q2).  
+op real_simp_invar0 (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool =
+  real_simp_invar_static func grfip grs /\
+  (* -- *)
+  glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_WaitReq1 /\
+  glob_RFIP_to_st_Pt2 grfip      = _State_Pt2_WaitFwd1 /\
+  glob_RFIP_to_st_Fw1 grfip      = Forwarding1._State_IF_Init /\
+  glob_RFIP_to_st_Fw2 grfip      = Forwarding2._State_IF_Init /\
+  (* -- *)
+  glob_RealSimp_to_st grs        = RealSimpStateWaitReq1.
 
-op real_simp_rel3 (st : real_simp_rel_st, pt1 pt2 : port, q1 q2 : exp) : bool =
-  (envport st.`real_simp_rel_st_func pt1) /\
-  (envport st.`real_simp_rel_st_func pt2) /\
-  (st.`real_simp_rel_st_r1s  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (st.`real_simp_rel_st_r2s  = _State_Pt2_Final) /\
-  (st.`real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  (st.`real_simp_rel_st_fws2 =
-     (*Fw2.*)Forwarding2._State_IF_Wait
-     (_intport_Pt2 st.`real_simp_rel_st_func)
-     (_intport_Pt1 st.`real_simp_rel_st_func)
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2))) /\
-  (st.`real_simp_rel_st_rss  = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2).
+op real_simp_invar1 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
+                   pt1 pt2 : port, q1 : exp) : bool =
+  real_simp_invar_static_ports func grfip grs pt1 pt2 /\
+  (* -- *)
+  glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_WaitFwd2 pt1 q1 /\
+  glob_RFIP_to_st_Pt2 grfip      = _State_Pt2_WaitFwd1 /\
+  glob_RFIP_to_st_Fw1 grfip      =
+    Forwarding1._State_IF_Wait (_intport_Pt1 func) (_intport_Pt2 func)
+    (KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)) /\
+  glob_RFIP_to_st_Fw2 grfip      = Forwarding2._State_IF_Init /\
+  (* -- *)
+  glob_RealSimp_to_st grs        = RealSimpStateWaitAdv1 pt1 pt2 q1.
 
-op real_simp_rel4 (st : real_simp_rel_st) : bool =
-  (st.`real_simp_rel_st_r1s  = _State_Pt1_Final) /\
-  (st.`real_simp_rel_st_r2s  = _State_Pt2_Final) /\
-  (st.`real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  (st.`real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2._State_IF_Final) /\
-  (st.`real_simp_rel_st_rss  = KERealSimpStateFinal).
+op real_simp_invar2 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
+                   pt1 pt2 : port, q1 q2 : exp) : bool =
+  real_simp_invar_static_ports func grfip grs pt1 pt2 /\
+  (* -- *)
+  glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_WaitFwd2 pt1 q1 /\
+  glob_RFIP_to_st_Pt2 grfip      = _State_Pt2_WaitReq2 pt2 q2 /\
+  glob_RFIP_to_st_Fw1 grfip      = Forwarding1._State_IF_Final /\
+  glob_RFIP_to_st_Fw2 grfip      = Forwarding2._State_IF_Init /\
+  (* -- *)
+  glob_RealSimp_to_st grs        = RealSimpStateWaitReq2 pt1 pt2 q1 q2.
 
-inductive real_simp_rel (st : real_simp_rel_st) =
-    RealSimpRel0 of (real_simp_rel0 st)
-  | RealSimpRel1 (pt1 pt2 : port, q1 : exp) of
-      (real_simp_rel1 st pt1 pt2 q1)
-  | RealSimpRel2 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_simp_rel2 st pt1 pt2 q1 q2)
-  | RealSimpRel3 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_simp_rel3 st pt1 pt2 q1 q2)
-  | RealSimpRel4 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_simp_rel4 st).
+op real_simp_invar3 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
+                   pt1 pt2 : port, q1 q2 : exp) : bool =
+  real_simp_invar_static_ports func grfip grs pt1 pt2 /\
+  (* -- *)
+  glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_WaitFwd2 pt1 q1 /\
+  glob_RFIP_to_st_Pt2 grfip      = _State_Pt2_Final /\
+  glob_RFIP_to_st_Fw1 grfip      = Forwarding1._State_IF_Final /\
+  glob_RFIP_to_st_Fw2 grfip      =
+    Forwarding2._State_IF_Wait (_intport_Pt2 func) (_intport_Pt1 func)
+    (KeyExp'.epdp_key_univ.`enc (g ^ q2)) /\
+  glob_RFIP_to_self_MakeRF grfip = func /\
+  (* -- *)
+  glob_RealSimp_to_st grs        = RealSimpStateWaitAdv2 pt1 pt2 q1 q2.
 
-      op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
-      (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
-   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).     
+op real_simp_invar4 (func : addr, grfip : glob RFIP, grs : glob RealSimp) : bool =
+  real_simp_invar_static func grfip grs /\
+  (* -- *)
+  glob_RFIP_to_st_Pt1 grfip      = _State_Pt1_Final /\
+  glob_RFIP_to_st_Pt2 grfip      = _State_Pt2_Final /\
+  glob_RFIP_to_st_Fw1 grfip      = Forwarding1._State_IF_Final /\
+  glob_RFIP_to_st_Fw2 grfip      = Forwarding2._State_IF_Final /\
+  (* -- *)
+  glob_RealSimp_to_st grs        = RealSimpStateFinal.
 
-local lemma KEReal_KERealSimp_invoke (func : addr) :
+inductive real_simp_invar (func : addr, grfip : glob RFIP, grs : glob RealSimp) =
+    RealSimpInvar0 of
+      (real_simp_invar0 func grfip grs)
+  | RealSimpInvar1 (pt1 pt2 : port, q1 : exp) of
+      (real_simp_invar1 func grfip grs pt1 pt2 q1)
+  | RealSimpInvar2 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_invar2 func grfip grs pt1 pt2 q1 q2)
+  | RealSimpInvar3 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_invar3 func grfip grs pt1 pt2 q1 q2)
+  | RealSimpInvar4 of
+      (real_simp_invar4 func grfip grs).
+
+local lemma RFIP_RealSimp_init (func' : addr) :
+  exper_pre func' =>
   equiv
-  [RFIP.invoke ~ KERealSimp.invoke :
+  [RFIP.init ~ RealSimp.init :
+   _self{1} = self_{2} /\ _self{1} = func' ==>
+   real_simp_invar func' (glob RFIP){1} (glob RealSimp){2}].
+proof.
+move => ep_func'.
+proc; inline; auto; smt(RealSimpInvar0).
+qed.
+
+local lemma RFIP_RealSimp_invoke (func' : addr) :
+  exper_pre func' =>
+  equiv
+  [RFIP.invoke ~ RealSimp.invoke :
+   ={m} /\
+   (m{1}.`1 = Dir /\ func' = m{1}.`2.`1 /\ envport func' m{1}.`3 \/
+    m{1}.`1 = Adv /\ func' <= m{1}.`2.`1 /\
+    m{1}.`3.`1 = adv /\ 0 < m{1}.`3.`2) /\
+   real_simp_invar func' (glob RFIP){1} (glob RealSimp){2} ==>
+   ={res} /\
+   real_simp_invar func' (glob RFIP){1} (glob RealSimp){2}].
+proof.
+move => ep_func'.
+proc.
+exlim (glob RFIP){1}, (glob RealSimp){2} => grfip grs.
+(* the "!!" is a hack to make the ambient case be a boolean one *)
+case @[ambient] (!! real_simp_invar func' grfip grs) =>
+  [/= [] | ?]; last exfalso; smt().
+(* real_simp_invar0 *)
+move => real_simp_invar0_ass.
+sp 1 1.
+match RealSimpStateWaitReq1 {2} 1; first auto; smt().
+if{2}.
+rcondt{1} 1; first auto; smt().
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+rcondf{1} 1; first auto; smt(@UCListPO).
+rcondf{1} 1; first auto; smt(@UCListPO).
+rcondt{1} 1; first auto; smt().
+inline{1} 1; sp 2 0.
+match _State_Pt1_WaitReq1 {1} 1; first auto; smt().
+match => //.
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+move => x1 x2; inline{1} 1; inline{2} 1; sp 3 5.
+if; first smt().
+seq 1 1 : (#pre /\ ={q1}); first auto.
+sp; elim* => r_R st_R _r_R r0_L r1_L _r_L _st_Pt1_L _r0_L.
+seq 1 0 :
+  (not_done{1} /\ ={pt1, pt2, q1} /\
+   real_simp_invar_static_ports func' (glob RFIP){1}
+   (glob RealSimp){2} pt1{1} pt2{1} /\
+   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
+   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_WaitFwd1 /\
+   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Init /\
+   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
+   RealSimp.st{2} = RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
+   m0{1} = 
+   (Forwarding1.UC_FwDir.D.epdp__fw_req.`enc
+    (Forwarding1.UC_FwDir.D.mk__fw_req (_addr_Fw1 UC_KEReal._self{1})
+     (_intport_Pt1 UC_KEReal._self{1}) (_intport_Pt2 UC_KEReal._self{1})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1})))) /\
+   r{2} =
+   Some
+   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+    (Forwarding1.UC_FwAdv.mk__fw_obs
+     (_addr_Fw1 RealSimp.self{2}) adv
+     (_intport_Pt1 RealSimp.self{2}) (_intport_Pt2 RealSimp.self{2})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}))))).
+exlim r0{1} => r0'.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
+auto => /> &1 &2 dec_x1 dec_x2.
+have -> : x1 = x2 by have : Some x1 = Some x2 by rewrite -dec_x1 -dec_x2.
+have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
+have m2_src_eq : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
+  have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
+  by rewrite x2_eq.
+progress; first 13 smt().
+by move : H12; rewrite H11 /= => ->.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+rcondt{1} 1; first auto; progress; smt(@UCListPO).
+inline{1} 1; sp 2 0.
+match _State_IF_Init {1} 1; first auto.
+match Some {1} 1; first auto; progress; smt().
+inline{1} 1; sp 4 0.
+rcondt{1} 1; first auto.
+move => &hr [#] _ -> _ _ dec_eq.
+have -> :
+  _x{hr} = oget (Forwarding1.UC_FwDir.D.epdp__fw_req.`dec _m0{hr})
+  by smt().
+progress; smt(@UCListPO).
+seq 6 0 :
+  (={pt1, pt2, q1} /\
+   real_simp_invar1 func' (glob RFIP){1} (glob RealSimp){2} pt1{1} pt2{1} q1{1} /\
+   m0{1} = 
+   (Forwarding1.UC_FwDir.D.epdp__fw_req.`enc
+    (Forwarding1.UC_FwDir.D.mk__fw_req (_addr_Fw1 UC_KEReal._self{1})
+     (_intport_Pt1 UC_KEReal._self{1}) (_intport_Pt2 UC_KEReal._self{1})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1})))) /\
+   r0{1} = r{2} /\
+   r{2} =
+   Some
+   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+    (Forwarding1.UC_FwAdv.mk__fw_obs
+     (_addr_Fw1 RealSimp.self{2}) adv
+     (_intport_Pt1 RealSimp.self{2}) (_intport_Pt2 RealSimp.self{2})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}))))).
+auto => &1 &2 [#] -> -> -> _ dec_eq.
+have -> :
+  _x{1} = oget (Forwarding1.UC_FwDir.D.epdp__fw_req.`dec _m0{1}) by smt().
+auto; progress; smt().
+seq 1 0 :
+  (! not_done{1} /\ ={pt1, pt2, q1} /\
+   real_simp_invar1 func' (glob RFIP){1} (glob RealSimp){2} pt1{1} pt2{1} q1{1} /\
+   r0{1} = r{2}).
+exlim r0{1} => r0'.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0').
+auto; smt(_adv_pi_begin_gt0).
+rcondf{1} 1; first auto.
+auto; progress; smt(RealSimpInvar1).
+seq 5 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+if{1}.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+if{1}.
+inline{1} 1; sp 2 0.
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_IF_Init {1} 1; first auto; smt().
+match None {1} 1; first auto; smt(Forwarding1.UC_FwDir.D.eq_of_valid__fw_req).
+seq 4 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+if{1}.
+inline{1} 1; sp 2 0.
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_IF_Init {1} 1; first auto; smt().
+match None {1} 1; first auto; smt(Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+seq 4 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+rcondf{1} 1; first auto; smt().
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_Pt2_WaitFwd1 {1} 1; first auto; smt().
+match{1}.
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+rcondf{1} 1; first auto; smt(@UCListPO).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+auto.
+seq 2 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar0).
+auto.
+(* real_simp_invar1 *)
+move => pt1 pt2 q1 real_simp_invar1_ass.
+admit.
+(* real_simp_invar2 *)
+move => pt1 pt2 q1 q2 real_simp_invar2_ass.
+admit.
+(* real_simp_invar3 *)
+move => pt1 pt2 q1 q2 real_simp_invar3_ass.
+admit.
+(* real_simp_invar4 *)
+move => real_simp_invar4_ass.
+admit.
+qed.
+
+local lemma Exper_RFIP_RealSimp (func' : addr) (in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+  Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(RealSimp, Adv), Env).main(func', in_guard') @ &m : res].
+proof.
+move => ep_func disj.
+apply
+  (MakeInt.func_equiv_implies_exper_equal_prob
+   RFIP RealSimp Adv Env func' in_guard' (real_simp_invar func') &m) => //.
+by apply RFIP_RealSimp_init.
+by conseq (RFIP_RealSimp_invoke func' _).
+qed.
+
+op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
+  (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
+  (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).     
+
+local lemma KEReal_RealSimp_invoke (func : addr) :
+  equiv
+  [RFIP.invoke ~ RealSimp.invoke :
     inc func adv /\ ={m} /\
     mi_invoke_loop_calls_func_invoke func m{1} /\
     RFIP.self{1} = func /\
     UC_KEReal._self{1} = func /\ 
    (*Fw1.*)Forwarding1.IF._self{1} =  _addr_Fw1 func /\
    (*Fw2.*)Forwarding2.IF._self{1} =  _addr_Fw2 func /\
-   KERealSimp._self{2} = func /\
+   RealSimp._self{2} = func /\
    real_simp_rel
    {|real_simp_rel_st_func = func;
      real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|} ==>
+     real_simp_rel_st_rss  = RealSimp._st{2}|} ==>
    ={res} /\
    real_simp_rel
    {|real_simp_rel_st_func = func;
@@ -479,7 +570,7 @@ local lemma KEReal_KERealSimp_invoke (func : addr) :
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}].
+     real_simp_rel_st_rss  = RealSimp._st{2}|}].
  proof.
  proc.
 case
@@ -489,7 +580,7 @@ case
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}).
+     real_simp_rel_st_rss  = RealSimp._st{2}|}).
      sp.
  match{2}.
      if{2}.
@@ -505,11 +596,11 @@ case
      rcondf{1} 0. move => &m. skip. move => &hr.
 have H :
      UC_KEReal._self{hr} = func /\
- KERealSimp._self{m} = func /\
+ RealSimp._self{m} = func /\
  m1{hr} = m0{hr} /\
  m0{hr} = m{hr} /\
  m{hr} = m{m} /\
-     m{m}.`2 = _extport_dir_Pt1 KERealSimp._self{m} /\
+     m{m}.`2 = _extport_dir_Pt1 RealSimp._self{m} /\
      _addr_Fw1 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
      smt(not_le_ext_nonnil_l).
      smt().
@@ -517,11 +608,11 @@ have H :
  rcondf{1} 0. move => &m. skip. move => &hr. 
 have H :
      UC_KEReal._self{hr} = func /\
- KERealSimp._self{m} = func /\
+ RealSimp._self{m} = func /\
  m1{hr} = m0{hr} /\
  m0{hr} = m{hr} /\
  m{hr} = m{m} /\
-     m{m}.`2 = _extport_dir_Pt1 KERealSimp._self{m} /\
+     m{m}.`2 = _extport_dir_Pt1 RealSimp._self{m} /\
      _addr_Fw2 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
      smt(not_le_ext_nonnil_l).
      smt().
@@ -542,7 +633,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -583,7 +674,7 @@ match{1}.
          match{1}.
          exfalso. smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
 inline _State_Pt1_WaitReq1__KEDir__Pt1__ke_req1.
-         inline _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1.
+         inline state_RealSimpStateWaitReq1.
 sp.     
          if; last first.
          sp.
@@ -595,7 +686,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -623,8 +714,8 @@ rnd.
     pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
     pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
     pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
-   _pt1{2} = _intport_Pt1 KERealSimp._self{2} /\
-    _pt2{2} = _intport_Pt2 KERealSimp._self{2} /\
+   _pt1{2} = _intport_Pt1 RealSimp._self{2} /\
+    _pt2{2} = _intport_Pt2 RealSimp._self{2} /\
     envport func pt1{1} /\
     envport func pt2{1} /\
     ={m, _x, q1} /\
@@ -634,8 +725,8 @@ rnd.
       UC_KEReal._self{1} = func /\
       (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
       (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-      KERealSimp._self{2} = func /\
-      KERealSimp._st{2} = KERealSimpStateWaitReq1 /\
+      RealSimp._self{2} = func /\
+      RealSimp._st{2} = RealSimpStateWaitReq1 /\
       UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
       UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1 /\
       (*Fw1.*)Forwarding1.IF._st{1} = (*Fw1.*)Forwarding1._State_IF_Init /\
@@ -699,7 +790,7 @@ sp.
     envport func pt2{1} /\
 r{2} =
     Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KERealSimp._self{2};
+      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 RealSimp._self{2};
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func; 
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
@@ -722,9 +813,9 @@ r0{1} =
 UC_KEReal._self{1} = func /\
        (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func /\
        (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func /\
-          KERealSimp._self{2} = func /\
+          RealSimp._self{2} = func /\
       
-      KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
+      RealSimp._st{2} = RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
           (*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Wait
       (_intport_Pt1 UC_KEReal._self{1})
       (_intport_Pt2 UC_KEReal._self{1})
@@ -768,7 +859,7 @@ inline invoke.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -784,7 +875,7 @@ inline invoke.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -806,7 +897,7 @@ if{1}. sp. if{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -822,7 +913,7 @@ if{1}. sp. if{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -845,7 +936,7 @@ sp. match{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -871,7 +962,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -892,7 +983,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -910,7 +1001,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         real_simp_rel_st_rss = RealSimp._st{2}; |}).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -981,16 +1072,16 @@ exfalso. smt().
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      pt1
      pt2
      q1
  ).
  elim* => pt1 pt2 q1.
      sp.
-     case(KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1 pt2 q1);
+     case(RealSimp._st{2} = RealSimpStateWaitAdv1 pt1 pt2 q1);
 last first. exfalso. smt().
-match KERealSimpStateWaitAdv1 {2} 0. 
+match RealSimpStateWaitAdv1 {2} 0. 
  move => &m. skip. smt().
  if{2}.
 match{2}.
@@ -1025,7 +1116,7 @@ match _State_IF_Wait {1} 0.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1063,7 +1154,7 @@ inline _State_IF_Wait__FwAdv__fw_ok.
       seq 1 0 : (
      not_done{1} = true /\
      (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m{1} = Some _x{1} /\
-     KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1{!2} pt2{!2} q1{!2} /\
+     RealSimp._st{2} = RealSimpStateWaitAdv1 pt1{!2} pt2{!2} q1{!2} /\
       r{2} = None /\
        r{1} = None /\
        inc func adv /\
@@ -1078,9 +1169,9 @@ inline _State_IF_Wait__FwAdv__fw_ok.
          UC_KEReal._self{1} = func /\
          (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
          (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         KERealSimp._self{2} = func /\
+         RealSimp._self{2} = func /\
 
-       KERealSimp._st{2} = KERealSimpStateWaitAdv1 pt1 pt2 q1 /\
+       RealSimp._st{2} = RealSimpStateWaitAdv1 pt1 pt2 q1 /\
      (envport func pt1) /\
  (envport func pt2) /\
   (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
@@ -1091,7 +1182,7 @@ inline _State_IF_Wait__FwAdv__fw_ok.
 
          /\
      m{2}.`1 = Adv /\
-     m{2}.`3.`1 = adv /\ _addr_Fw1 KERealSimp._self{2} = m{2}.`2.`1
+     m{2}.`3.`1 = adv /\ _addr_Fw1 RealSimp._self{2} = m{2}.`2.`1
   ).
 
 exlim r0{1} => r0.
@@ -1118,7 +1209,7 @@ inline party_Pt2.
 sp. match Some {1} 0. auto; progress; smt.
 sp.  
 
-inline _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok.
+inline state_RealSimpStateWaitAdv1.
 sp.
 
       sp.
@@ -1135,7 +1226,7 @@ seq 1 0 : (
     envport func pt2 /\
 r{2} =
     Some (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-      {| UC_KEDir.Pt2.ke_rsp1___func = KERealSimp._self{2};
+      {| UC_KEDir.Pt2.ke_rsp1___func = RealSimp._self{2};
          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
         UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
         UC_KEDir.Pt2.ke_rsp1__k = k1{2} ^ q2{2}; |})
@@ -1154,9 +1245,9 @@ r0{1} =
 UC_KEReal._self{1} = func /\
        (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func /\
        (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func /\
-          KERealSimp._self{2} = func /\
+          RealSimp._self{2} = func /\
       
-      KERealSimp._st{2} = KERealSimpStateWaitReq2 pt1 pt2 q1 q2{2} /\
+      RealSimp._st{2} = RealSimpStateWaitReq2 pt1 pt2 q1 q2{2} /\
           (*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Final /\
       UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1 /\
       UC_KEReal._st_Pt2{1} =  _State_Pt2_WaitReq2 pt2 q2{1} /\
@@ -1176,7 +1267,7 @@ rcondf{1} 0. move => &m. skip. trivial.
       real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
       real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.UC_Forw._st{1};
       real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.UC_Forw._st{1};
-      real_simp_rel_st_rss = KERealSimp._st{2}; |}
+      real_simp_rel_st_rss = RealSimp._st{2}; |}
       pt1 pt2 q1 q2{1}.
 smt().    
       smt(RealSimpRel2).
@@ -1200,7 +1291,7 @@ smt().
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -1216,7 +1307,7 @@ smt().
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -1238,7 +1329,7 @@ if{1}. sp. if{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -1255,7 +1346,7 @@ if{1}. sp. if{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1).
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
          rcondf{1} 0.
@@ -1276,7 +1367,7 @@ match{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1294,7 +1385,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1317,7 +1408,7 @@ match{1}.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1335,7 +1426,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1352,7 +1443,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1372,7 +1463,7 @@ sp.
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      pt1
      pt2
      q1
@@ -1380,9 +1471,9 @@ sp.
  ).
      sp.
      elim* => pt1 pt2 q1 q2.
-     case(KERealSimp._st{2} =
-     KERealSimpStateWaitReq2 pt1 pt2 q1 q2); last first. exfalso. auto. smt().
- match KERealSimpStateWaitReq2 {2} 0. auto; smt().
+     case(RealSimp._st{2} =
+     RealSimpStateWaitReq2 pt1 pt2 q1 q2); last first. exfalso. auto. smt().
+ match RealSimpStateWaitReq2 {2} 0. auto; smt().
      if{2}; last first.
      (*not a Dir msg with extport Pt2*)
 if{1}; last first. skip. auto; smt().
@@ -1403,7 +1494,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1420,7 +1511,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1443,7 +1534,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1460,7 +1551,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1484,7 +1575,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1502,7 +1593,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1526,7 +1617,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1543,7 +1634,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1582,7 +1673,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1614,7 +1705,7 @@ case(UC_KEDir.Pt2.epdp__ke_req2.`dec _m{1} = Some _x{2}); last first.
          exfalso. auto; progress;
          smt(UC_KEDir.Pt2.valid_epdp__ke_req2 UC_KEDir.Pt2.eq_of_valid__ke_req2).
 match Some {1} 0. auto; progress; smt(). 
-         inline _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2.
+         inline state_RealSimpStateWaitReq2.
      sp 0 8.
          if{2}; last first.
      (*pt2 port is different than original*)
@@ -1629,7 +1720,7 @@ sp.
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1673,9 +1764,9 @@ seq 1 0 : (
          UC_KEReal._self{1} = func /\
          (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
          (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         KERealSimp._self{2} = func /\
+         RealSimp._self{2} = func /\
 
-       KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
+       RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
      (envport func pt1) /\
  (envport func pt2) /\
   (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
@@ -1744,7 +1835,7 @@ sp.
       real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
       real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
       real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-      real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+      real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
   ).
 
 exlim r0{1} => r0.
@@ -1769,7 +1860,7 @@ case
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      pt1
      pt2
      q1
@@ -1778,8 +1869,8 @@ case
      sp.
  elim*=> pt1 pt2 q1 q2.
 
-case(KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2); last first. exfalso. auto; progress; smt().
-match KERealSimpStateWaitAdv2 {2} 0. auto; smt().
+case(RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2); last first. exfalso. auto; progress; smt().
+match RealSimpStateWaitAdv2 {2} 0. auto; smt().
      if{2}; last first.
      (*not adv msg for Fw2*)
  if{1}; last first. auto; smt().
@@ -1799,7 +1890,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1822,7 +1913,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1843,7 +1934,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1869,7 +1960,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1894,7 +1985,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1915,7 +2006,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1938,7 +2029,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1955,7 +2046,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -1984,7 +2075,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2001,7 +2092,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2027,7 +2118,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} pt1 pt2 q1 q2
+         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2079,9 +2170,9 @@ match Some {1} 0. auto; smt((*Fw1.*)Forwarding1.UC_FwAdv.valid_epdp__fw_ok (*Fw1
          UC_KEReal._self{1} = func /\
          (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
          (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         KERealSimp._self{2} = func /\
+         RealSimp._self{2} = func /\
 
-       KERealSimp._st{2} = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
+       RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
      (envport func pt1) /\
      (envport func pt2) /\
        pt1{!2} = pt1 /\
@@ -2144,7 +2235,7 @@ smt().
            
            sp.
 elim* => r0_L r2_L _r5_L _st_Pt1_L _r7_L.
-        inline _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok.   
+        inline state_RealSimpStateWaitAdv2.   
 sp.
 seq 1 0 : (! not_done{1} /\
     r0{1} = r{2} /\
@@ -2154,7 +2245,7 @@ seq 1 0 : (! not_done{1} /\
       real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
       real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
       real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-      real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+      real_simp_rel_st_rss = RealSimp._st{2}; |} 
   ).
 
   exlim r0{1} => r0.
@@ -2181,12 +2272,12 @@ have H : ! result.`3.
   smt().
       rewrite H //=. clear H.
 have H : r{2} = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-       {| UC_KEDir.Pt1.ke_rsp2___func = KERealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt10{2};
+       {| UC_KEDir.Pt1.ke_rsp2___func = RealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt10{2};
          UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
          rewrite H. clear H.
          have H : pt10{2} = pt1. smt(). rewrite H. clear H.
 have H : r0 = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-       {| UC_KEDir.Pt1.ke_rsp2___func = KERealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
+       {| UC_KEDir.Pt1.ke_rsp2___func = RealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
          UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
          rewrite H //=. clear H.
 smt().     
@@ -2202,11 +2293,11 @@ sp. skip. smt(RealSimpRel4).
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
  ).
  sp.
-     case(KERealSimp._st{2} = KERealSimpStateFinal); last first. exfalso. auto;smt().
- match KERealSimpStateFinal {2} 0. auto;smt().
+     case(RealSimp._st{2} = RealSimpStateFinal); last first. exfalso. auto;smt().
+ match RealSimpStateFinal {2} 0. auto;smt().
      if{1};last first. auto;smt().
  inline loop.
      sp.
@@ -2229,7 +2320,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2247,7 +2338,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2273,7 +2364,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2291,7 +2382,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2313,7 +2404,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2335,7 +2426,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2353,7 +2444,7 @@ seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
          real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
          real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = KERealSimp._st{2}; |} 
+         real_simp_rel_st_rss = RealSimp._st{2}; |} 
      ).
          call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
          skip. move => />.
@@ -2378,13 +2469,13 @@ exfalso.
 move => []; smt().
 qed.
 
-local lemma Exper_KEReal_KERealSimp
+local lemma Exper_KEReal_RealSimp
     (func' : addr) (in_guard' : int fset) &m :
   exper_pre func' =>
   disjoint in_guard' (adv_pis_rf_info rf_info) =>
   Pr[Exper(MI(RFIP, Adv), Env).main
        (func', in_guard') @ &m : res] =
-  Pr[Exper(MI(KERealSimp, Adv), Env).main
+  Pr[Exper(MI(RealSimp, Adv), Env).main
        (func', in_guard') @ &m : res].
      proof.
      print inter_init_pre.
@@ -2399,7 +2490,7 @@ local lemma Exper_KEReal_KERealSimp
          /\ MI.func{1} = func'
        /\ MI.in_guard{1} = in_guard'
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2409,7 +2500,7 @@ local lemma Exper_KEReal_KERealSimp
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      ).
        inline *.
        sp.
@@ -2418,7 +2509,7 @@ local lemma Exper_KEReal_KERealSimp
          /\ MI.func{1} = func'
        /\ MI.in_guard{1} = in_guard'
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2428,7 +2519,7 @@ local lemma Exper_KEReal_KERealSimp
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      ).
        skip.
      move => />.
@@ -2441,7 +2532,7 @@ local lemma Exper_KEReal_KERealSimp
 /\ MI.func{1} = func'
        /\ MI.in_guard{1} = in_guard'
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2451,7 +2542,7 @@ local lemma Exper_KEReal_KERealSimp
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      );
        last first.
        skip; move => />.
@@ -2501,7 +2592,7 @@ m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
         *)      
        
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2511,7 +2602,7 @@ m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|});
+     real_simp_rel_st_rss  = RealSimp._st{2}|});
        last first.
      skip. move => />. smt(). 
      if; last first.
@@ -2521,14 +2612,14 @@ m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
    MI.func{1} = func' /\
    MI.in_guard{1} = in_guard' /\
    RFCore.MakeRF.self{1} = func' /\
-   KERealSimp._self{2} = func' /\
+   RealSimp._self{2} = func' /\
    UC_KEReal._self{1} = func' /\
    (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func' /\
    (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func' /\
    real_simp_rel
      {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
          real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1}; real_simp_rel_st_fws2 =
-         (*Fw2.*)Forwarding2.IF._st{1}; real_simp_rel_st_rss = KERealSimp._st{2}; |}).
+         (*Fw2.*)Forwarding2.IF._st{1}; real_simp_rel_st_rss = RealSimp._st{2}; |}).
        skip. auto;progress; smt().
 
 inline after_adv.
@@ -2540,7 +2631,7 @@ auto;progress;smt().
          
        /\  MakeInt.MI.func{1} <= m0{1}.`2.`1
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2550,12 +2641,12 @@ auto;progress;smt().
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}
+     real_simp_rel_st_rss  = RealSimp._st{2}|}
      ); last first.
      call(_ : ={glob MI, glob Adv} /\ MI.func{1} = func'
          /\ MI.in_guard{1} = in_guard'
        /\ RFCore.MakeRF.self{1} = func'
-       /\ KERealSimp._self{2} = func'
+       /\ RealSimp._self{2} = func'
          /\ UC_KEReal._self{1} = func'
          /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
          /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
@@ -2565,10 +2656,10 @@ auto;progress;smt().
      real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = KERealSimp._st{2}|}*)
+     real_simp_rel_st_rss  = RealSimp._st{2}|}*)
          auto.
 
-     call (KEReal_KERealSimp_invoke func').
+     call (KEReal_RealSimp_invoke func').
          skip.
    move => &1 &2 P. 
        have H: inc func' adv. smt(). rewrite H //=. clear H.
@@ -2582,16 +2673,16 @@ auto;progress;smt().
        have H: (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func'. smt(). rewrite H //=. clear H.
    
    have H: (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func' . smt(). rewrite H //=. clear H.
-       have H:KERealSimp._self{2} = func'  . smt(). rewrite H //=. clear H.
+       have H:RealSimp._self{2} = func'  . smt(). rewrite H //=. clear H.
    
        have H:real_simp_rel
    {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
        real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.UC_Forw._st{1}; real_simp_rel_st_fws2 =
-     (*Fw2.*)Forwarding2.UC_Forw._st{1}; real_simp_rel_st_rss = KERealSimp._st{2}; |} . smt(). rewrite H //=. clear H.
+     (*Fw2.*)Forwarding2.UC_Forw._st{1}; real_simp_rel_st_rss = RealSimp._st{2}; |} . smt(). rewrite H //=. clear H.
    
        have H:forall (result_L result_R : msg option) (_st_Pt1_L : _state_Pt1)
   (_st_Pt2_L : _state_Pt2) (_st_L : (*Fw1.*)Forwarding1._state_IF)
-  (_st_L0 : (*Fw2.*)Forwarding2._state_IF) (_st_R : ke_real_simp_state),
+  (_st_L0 : (*Fw2.*)Forwarding2._state_IF) (_st_R : real_simp_state),
   result_L = result_R /\
   real_simp_rel
     {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
@@ -2637,18 +2728,18 @@ proof *.
 realize doutput_ll. apply dexp_ll. qed.
 
 print RH.HASHING.
-local module (KERealSimpHashingAdv : RH.HASHING_ADV)
+local module (RealSimpHashingAdv : RH.HASHING_ADV)
              (Hash : RH.HASHING) = {
-module KERealSimpHash : FUNC =
+module RealSimpHash : FUNC =
 {
   var _self : addr
-  var _st : ke_real_simp_state
+  var _st : real_simp_state
   proc init(self_ : addr) : unit = {
     _self <- self_;
-  _st <- KERealSimpStateWaitReq1;
+  _st <- RealSimpStateWaitReq1;
   }
 
-  proc _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
+  proc state_RealSimpStateWaitReq1 (pt1 : port, pt2 : port) : msg option = {
   var q1 : exp;
   var _r : msg option <- None;
   var _pt1 : port <- _intport_Pt1 _self;
@@ -2666,14 +2757,14 @@ module KERealSimpHash : FUNC =
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
         |});
-    _st <- KERealSimpStateWaitAdv1 pt1 pt2 q1;
+    _st <- RealSimpStateWaitAdv1 pt1 pt2 q1;
     
   }
   else { _r <- None;}
   return _r;
   }
 
-  proc _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
+  proc state_RealSimpStateWaitAdv1 (pt1 : port, pt2 : port, q1 : exp) : msg option = {
   var k1 : key;
   var q2 : exp;
   var _r : msg option <- None;
@@ -2689,12 +2780,12 @@ module KERealSimpHash : FUNC =
           UC_KEDir.Pt2.ke_rsp1__k = k1 ^ q2;
           
         |});
-      _st <- KERealSimpStateWaitReq2 pt1 pt2 q1 q2;
+      _st <- RealSimpStateWaitReq2 pt1 pt2 q1 q2;
     
   return _r;
   }
 
-  proc _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2') : msg option = {
+  proc state_RealSimpStateWaitReq2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2') : msg option = {
   var u : univ;
   var _pt1 : port <- _intport_Pt2 _self;
   var _pt2 : port <- _intport_Pt1 _self;
@@ -2710,12 +2801,12 @@ module KERealSimpHash : FUNC =
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
         |});
-    _st <- KERealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
+    _st <- RealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
   }
   return _r;
   }
 
-  proc _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
+  proc state_RealSimpStateWaitAdv2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
   var _r : msg option <- None;
 
     _r <- Some
@@ -2726,7 +2817,7 @@ module KERealSimpHash : FUNC =
             UC_KEDir.Pt1.ke_rsp2__k = (g ^ q2) ^ q1;
             
           |});
-        _st <- KERealSimpStateFinal;
+        _st <- RealSimpStateFinal;
   
   return _r;
   }
@@ -2734,47 +2825,47 @@ module KERealSimpHash : FUNC =
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
     match _st with
-    | KERealSimpStateWaitReq1 => {
+    | RealSimpStateWaitReq1 => {
       if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt1 _self){
         match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
         | Some _x => {
-          r <@ _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
+          r <@ state_RealSimpStateWaitReq1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
         }
         | None => {}
         end;
       }
     }
-    | KERealSimpStateWaitAdv1 pt1 pt2 q1 => {
+    | RealSimpStateWaitAdv1 pt1 pt2 q1 => {
       if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
         match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
+          r <@ state_RealSimpStateWaitAdv1 (pt1, pt2, q1);
         }
         | None => {}
         end;
       }
     }
-    | KERealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
+    | RealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
       if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt2 _self){
         match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
         | Some _x => {
-          r <@ _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, q1, q2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
+          r <@ state_RealSimpStateWaitReq2 (pt1, pt2, q1, q2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
         }
         | None => {}
         end;
       }
     }
-    | KERealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
+    | RealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
       if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
         match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q1, q2);
+          r <@ state_RealSimpStateWaitAdv2 (pt1, pt2, q1, q2);
         }
         | None => {}
         end;
       }
     }
-    | KERealSimpStateFinal => {}
+    | RealSimpStateFinal => {}
     end;
     return r;
   }
@@ -2782,39 +2873,39 @@ module KERealSimpHash : FUNC =
 proc main() : bool = {
     var b : bool;
     Hash.rhash(exp1); Hash.rhash(exp2);
-    b <@ Exper(MI(KERealSimpHash, Adv), Env).main
+    b <@ Exper(MI(RealSimpHash, Adv), Env).main
            (DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
     return b;
   }
 }.
 
 type real_simp_hash_rel_st = {
-  real_simp_hash_rel_st_rss : ke_real_simp_state;
+  real_simp_hash_rel_st_rss : real_simp_state;
   real_simp_hash_rel_st_map : (exp_names, exp) fmap;
 }.
 
 pred real_simp_hash_rel0 (st : real_simp_hash_rel_st) =
-  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitReq1 /\
+  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitReq1 /\
   st.`real_simp_hash_rel_st_map.[exp1] = None /\
   st.`real_simp_hash_rel_st_map.[exp2] = None.
 
 pred real_simp_hash_rel1 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 : exp) =
-  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitAdv1 pt1 pt2 q1 /\
+  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitAdv1 pt1 pt2 q1 /\
   st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
   st.`real_simp_hash_rel_st_map.[exp2] = None.
 
 pred real_simp_hash_rel2 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitReq2 pt1 pt2 q1 q2 /\
+  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitReq2 pt1 pt2 q1 q2 /\
   st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
   st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
 
 pred real_simp_hash_rel3 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  st.`real_simp_hash_rel_st_rss = KERealSimpStateWaitAdv2 pt1 pt2 q1 q2 /\
+  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitAdv2 pt1 pt2 q1 q2 /\
   st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
   st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
 
 pred real_simp_hash_rel4 (st : real_simp_hash_rel_st) =
-  st.`real_simp_hash_rel_st_rss = KERealSimpStateFinal /\
+  st.`real_simp_hash_rel_st_rss = RealSimpStateFinal /\
   st.`real_simp_hash_rel_st_map.[exp1] <> None /\
   st.`real_simp_hash_rel_st_map.[exp2] <> None.
 
@@ -2829,30 +2920,30 @@ inductive real_simp_hash_rel (st : real_simp_hash_rel_st) =
   | RealSimpHashRel4  of
       (real_simp_hash_rel4 st).
 
-local lemma KERealSimp_KERealSimpHash_OptHashing_invoke :
+local lemma RealSimp_RealSimpHash_OptHashing_invoke :
   equiv
-  [KERealSimp.invoke ~
-   KERealSimpHashingAdv(RH.OptHashing).KERealSimpHash.invoke :
+  [RealSimp.invoke ~
+   RealSimpHashingAdv(RH.OptHashing).RealSimpHash.invoke :
    ={m} /\
-   ={_self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+   ={_self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
    real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
    ={res} /\
-   ={_self,_st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+   ={_self,_st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
    real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}].
  proof.
    proc.
    sp.
  case
   (real_simp_hash_rel0
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
-   match KERealSimpStateWaitReq1 {1} 0.
+   match RealSimpStateWaitReq1 {1} 0.
      auto; progress; smt().
- match KERealSimpStateWaitReq1 {2} 0.
+ match RealSimpStateWaitReq1 {2} 0.
    auto; progress; smt().
    if.
    auto; progress; smt().
@@ -2861,7 +2952,7 @@ local lemma KERealSimp_KERealSimpHash_OptHashing_invoke :
    auto; progress; smt().
    auto; progress; smt().
  move => _x _x0.
- inline _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1.
+ inline state_RealSimpStateWaitReq1.
 sp.
 if.
    auto; progress; smt().
@@ -2878,16 +2969,16 @@ if.
      sp. skip.
  move => &1 &2 P. 
      have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
      have H : real_simp_hash_rel1
-  {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+  {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
     pt1{2} pt2{2} q1{2}.
 rewrite /real_simp_hash_rel1.
     simplify.
-  have H : KERealSimpHashingAdv.KERealSimpHash._st{2} =
-KERealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2}.
+  have H : RealSimpHashingAdv.RealSimpHash._st{2} =
+RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2}.
     smt(). rewrite H //=. clear H.
 have H : RH.OptHashing.mp{2}.[exp1] = Some q1{2}.
     smt(get_setE). rewrite H //=. clear H.
@@ -2899,15 +2990,15 @@ smt(get_setE). rewrite H //=.
 case
  (exists (pt1 pt2 : port, q1 : exp),
    real_simp_hash_rel1
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
      pt1
      pt2
      q1
  ).
-     match KERealSimpStateWaitAdv1 {1} 0.
+     match RealSimpStateWaitAdv1 {1} 0.
      auto; progress; smt().
- match KERealSimpStateWaitAdv1 {2} 0.
+ match RealSimpStateWaitAdv1 {2} 0.
      auto; progress; smt().
      if.
      auto; progress; smt().
@@ -2916,7 +3007,7 @@ case
      auto; progress; smt().
      auto; progress; smt().
  move => x _0.
-     inline _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok.
+     inline state_RealSimpStateWaitAdv1.
      sp.
      inline hash.
      rcondt{2} 2.  auto; progress; smt().
@@ -2931,10 +3022,10 @@ case
      skip.
  move => &1 &2 P.
      have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
      have H : real_simp_hash_rel2
-{| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+{| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
   real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
   pt1{2}
   pt2{2}
@@ -2946,23 +3037,23 @@ smt(RealSimpHashRel2).
 case
  (exists (pt1 pt2 : port, q1 q2 : exp),
    real_simp_hash_rel2
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
      pt1
      pt2
      q1
      q2
  ).
-  match KERealSimpStateWaitReq2 {1} 0.
+  match RealSimpStateWaitReq2 {1} 0.
      auto; progress; smt().
-  match KERealSimpStateWaitReq2 {2} 0.
+  match RealSimpStateWaitReq2 {2} 0.
      auto; progress; smt().
      if. auto; progress; smt().
      match. auto; progress; smt().
      auto; progress; smt().
      auto; progress; smt().
  move => _x _x0.
-     inline _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2.
+     inline state_RealSimpStateWaitReq2.
    
 sp 8 8.
      
@@ -2970,10 +3061,10 @@ sp 8 8.
      sp.
 skip. move => &1 &2 P.
 have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
+     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
      have H : real_simp_hash_rel3
-{| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+{| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
   real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
   pt1{2}
   pt2{2}
@@ -2987,7 +3078,7 @@ smt(get_setE ).
 case
 (exists (pt1 pt2 : port, q1 q2 : exp),
    real_simp_hash_rel3
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
      pt1
      pt2
@@ -2995,9 +3086,9 @@ case
      q2
  ).
 
-     match KERealSimpStateWaitAdv2 {1} 0.
+     match RealSimpStateWaitAdv2 {1} 0.
      auto; progress; smt().
- match KERealSimpStateWaitAdv2 {2} 0.
+ match RealSimpStateWaitAdv2 {2} 0.
      auto; progress; smt().
  if; last first.
      auto; progress; smt().
@@ -3006,17 +3097,17 @@ case
      auto; progress; smt().
      auto; progress; smt().
  move => x y.
-     inline _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok.
+     inline state_RealSimpStateWaitAdv2.
      sp 5 5.
      
      auto; progress; smt( RealSimpHashRel4).
  case
   (real_simp_hash_rel4
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
-  match  KERealSimpStateFinal {1} 0.
+  match  RealSimpStateFinal {1} 0.
      auto; progress; smt().
- match  KERealSimpStateFinal {2} 0.
+ match  RealSimpStateFinal {2} 0.
      auto; progress; smt().
      sp. auto; progress; smt().
      exfalso.
@@ -3026,13 +3117,13 @@ case
  move => []; smt().
 qed.
 
-local lemma Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+local lemma Exper_RealSimp_GOptHashing_RealSimpHashingAdv
             (func' : addr, in_guard' : int fset) &m :
   DDH_Adv_globs.func{m} = func' =>
   DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[Exper(MI(KERealSimp, Adv), Env).main
+  Pr[Exper(MI(RealSimp, Adv), Env).main
        (func', in_guard') @ &m : res] =
-     Pr[RH.GOptHashing(KERealSimpHashingAdv).main() @ &m : res].
+     Pr[RH.GOptHashing(RealSimpHashingAdv).main() @ &m : res].
      proof.
      move => DDH_Adv_glob_func DDH_Adv_glob_in_guard.
        byequiv.
@@ -3050,15 +3141,15 @@ RH.OptHashing.mp{2} = empty /\
   MakeInt.MI.func{2} = func_{2} /\
   MakeInt.MI.in_guard{2} = in_guard_{2} /\
   self_{2} = MakeInt.MI.func{2} /\
-  KERealSimpHashingAdv.KERealSimpHash._self{2} = self_{2} /\
-  KERealSimpHashingAdv.KERealSimpHash._st{2} = KERealSimpStateWaitReq1 /\
+  RealSimpHashingAdv.RealSimpHash._self{2} = self_{2} /\
+  RealSimpHashingAdv.RealSimpHash._st{2} = RealSimpStateWaitReq1 /\
   func_{1} = func{1} /\
   in_guard_{1} = in_guard{1} /\
   MakeInt.MI.func{1} = func_{1} /\
   MakeInt.MI.in_guard{1} = in_guard_{1} /\
   self_{1} = MakeInt.MI.func{1} /\
-  KERealSimp._self{1} = self_{1} /\
-  KERealSimp._st{1} = KERealSimpStateWaitReq1 /\
+  RealSimp._self{1} = self_{1} /\
+  RealSimp._st{1} = RealSimpStateWaitReq1 /\
   (glob Env){2} = (glob Env){m} /\
   DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
   DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
@@ -3067,11 +3158,11 @@ RH.OptHashing.mp{2} = empty /\
      ).
 call(_:true). auto;progress;smt().
 wp.
-    call(_:(={glob MI, glob Adv} /\ ={ _self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash) /\
+    call(_:(={glob MI, glob Adv} /\ ={ _self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
     MakeInt.MI.func{1} = func' /\
 MakeInt.MI.in_guard{1} = in_guard' /\
    real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = KERealSimp._st{1};
+   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
      real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|})).
 proc.
     if;last first.
@@ -3082,15 +3173,15 @@ sp. wp.
 while (={glob MI, glob Adv, not_done, m, m0, r0}
        /\ MI.func{1} = func'
          /\ MI.in_guard{1} = in_guard'
- /\ ={ _self, _st}(KERealSimp, KERealSimpHashingAdv.KERealSimpHash)
+ /\ ={ _self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash)
        /\ real_simp_hash_rel
-     {| real_simp_hash_rel_st_rss = KERealSimp._st{1};
+     {| real_simp_hash_rel_st_rss = RealSimp._st{1};
          real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
        if.
        auto;progress;smt().
        seq 1 1 : #post.
 
-       call KERealSimp_KERealSimpHash_OptHashing_invoke.
+       call RealSimp_RealSimpHash_OptHashing_invoke.
  auto;progress;smt().  
        inline after_func. auto;progress; smt().
        seq 1 1 : #pre.
@@ -3098,10 +3189,10 @@ while (={glob MI, glob Adv, not_done, m, m0, r0}
      (MakeInt.MI.func{2}, MakeInt.MI.in_guard{2})) /\
     MI.func{1} = func' /\
     MI.in_guard{1} = in_guard' /\
-    (KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2} /\
-     KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2}) /\
+    (RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2} /\
+     RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}) /\
     real_simp_hash_rel
-      {| real_simp_hash_rel_st_rss = KERealSimp._st{1};
+      {| real_simp_hash_rel_st_rss = RealSimp._st{1};
           real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |})*)).
        auto;progress; smt().
        inline after_adv. auto;progress; smt().
@@ -3126,11 +3217,11 @@ have H : in_guard{1} = in_guard'.
     auto;progress;smt(). rewrite H //=. clear H.
 have H : (glob Adv){1} = (glob Adv){2} .
     auto;progress;smt(). rewrite H //=. clear H.
-    have H : KERealSimp._self{1} = KERealSimpHashingAdv.KERealSimpHash._self{2}.
-have H : KERealSimp._self{1} = func{1}.
+    have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}.
+have H : RealSimp._self{1} = func{1}.
     auto;progress;smt(). rewrite H //=. clear H.
 auto;progress;smt(). rewrite H //=. clear H.
-    have H : KERealSimp._st{1} = KERealSimpHashingAdv.KERealSimpHash._st{2} .
+    have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2} .
     auto;progress;smt(). rewrite H //=. clear H.
     have H : MakeInt.MI.func{1} = func'  .
 have H : MakeInt.MI.func{1} = func{1}. smt(). rewrite H //=. clear H.
@@ -3138,12 +3229,12 @@ have H : MakeInt.MI.func{1} = func{1}. smt(). rewrite H //=. clear H.
     have H : MakeInt.MI.in_guard{1} = in_guard' .
     auto;progress;smt(). rewrite H //=. clear H.
 have H : real_simp_hash_rel0
-  {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+  {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.
 rewrite /real_simp_hash_rel0.
-have H : {| real_simp_hash_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{2};
+have H : {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.`real_simp_hash_rel_st_rss =
-    KERealSimpStateWaitReq1 . smt(). rewrite H //=. clear H.
+    RealSimpStateWaitReq1 . smt(). rewrite H //=. clear H.
 auto;progress;smt. smt(RealSimpHashRel0).
     smt().
   smt().
@@ -3153,25 +3244,25 @@ qed.
 type real_simp_hash_ddh1_rel_st = {
   real_simp_hash_ddh1_rel_st_k1  : key;
   real_simp_hash_ddh1_rel_st_k2  : key;
-  real_simp_hash_ddh1_rel_st_rss : ke_real_simp_state;
+  real_simp_hash_ddh1_rel_st_rss : real_simp_state;
   real_simp_hash_ddh1_rel_st_hs  : ke_ddh_state;
 }.
 
 pred real_simp_hash_ddh1_rel0 (st : real_simp_hash_ddh1_rel_st) =
-  st.`real_simp_hash_ddh1_rel_st_rss = KERealSimpStateWaitReq1 /\
+  st.`real_simp_hash_ddh1_rel_st_rss = RealSimpStateWaitReq1 /\
   st.`real_simp_hash_ddh1_rel_st_hs = KEDDHStateWaitReq1.
 
 pred real_simp_hash_ddh1_rel1
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
   st.`real_simp_hash_ddh1_rel_st_rss =
-  KERealSimpStateWaitAdv1 pt1 pt2 (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1) /\
+  RealSimpStateWaitAdv1 pt1 pt2 (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1) /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateWaitAdv1 pt1 pt2.
 
 pred real_simp_hash_ddh1_rel2
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
   st.`real_simp_hash_ddh1_rel_st_rss =
-  KERealSimpStateWaitReq2
+  RealSimpStateWaitReq2
        pt1
        pt2
    (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1)
@@ -3182,7 +3273,7 @@ pred real_simp_hash_ddh1_rel2
 pred real_simp_hash_ddh1_rel3
      (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
   st.`real_simp_hash_ddh1_rel_st_rss =
-  KERealSimpStateWaitAdv2
+  RealSimpStateWaitAdv2
   pt1 pt2
    (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1)
    (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k2) /\
@@ -3192,7 +3283,7 @@ pred real_simp_hash_ddh1_rel3
 pred real_simp_hash_ddh1_rel4
      (st : real_simp_hash_ddh1_rel_st) =
   st.`real_simp_hash_ddh1_rel_st_rss =
-  KERealSimpStateFinal
+  RealSimpStateFinal
    /\
   st.`real_simp_hash_ddh1_rel_st_hs =
   KEDDHStateFinal.
@@ -3208,35 +3299,35 @@ inductive real_simp_hash_ddh1_rel (st : real_simp_hash_ddh1_rel_st) =
   | RealSimpHashDDH1Rel4 of
       (real_simp_hash_ddh1_rel4 st).
 
-local lemma KERealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
+local lemma RealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
   equiv
-  [KERealSimpHashingAdv(RH.NonOptHashing).KERealSimpHash.invoke ~
+  [RealSimpHashingAdv(RH.NonOptHashing).RealSimpHash.invoke ~
    DDH_Adv(Env, Adv).KEDDH.invoke :
    ={m} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
    DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   (KERealSimpHashingAdv.KERealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
+   (RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
    DDH_Adv_globs._self{2} = MI.func{1} /\
    ={glob Adv, glob MI} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
-     KERealSimpHashingAdv.KERealSimpHash._st{1};
+     RealSimpHashingAdv.RealSimpHash._st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}|} ==>
    ={res} /\
    RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
    DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   (KERealSimpHashingAdv.KERealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
+   (RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
    DDH_Adv_globs._self{2} = MI.func{1} /\
    ={glob Adv, glob MI} /\
    real_simp_hash_ddh1_rel
    {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
      real_simp_hash_ddh1_rel_st_rss =
-     KERealSimpHashingAdv.KERealSimpHash._st{1};
+     RealSimpHashingAdv.RealSimpHash._st{1};
      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}|}].
  proof.
    proc.
@@ -3244,9 +3335,9 @@ local lemma KERealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
  case(real_simp_hash_ddh1_rel0
     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
-      match KERealSimpStateWaitReq1 {1} 0. auto; smt().
+      match RealSimpStateWaitReq1 {1} 0. auto; smt().
       match KEDDHStateWaitReq1 {2} 0. auto; smt().
       if; last first. auto; smt().
       auto; smt().
@@ -3254,7 +3345,7 @@ local lemma KERealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
       auto; smt().
   auto; smt().
   move => _x _x0.
-      inline _State_KERealSimpStateWaitReq1__KEDir__Pt1__ke_req1.
+      inline state_RealSimpStateWaitReq1.
       inline _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1.
   sp 5 5.
       if; last first. auto;smt().
@@ -3267,7 +3358,7 @@ inline hash.
       have H : RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}). auto; smt(). rewrite H //=. clear H.
       have H : RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) . auto; smt(). rewrite H //=. clear H.
       have H : DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}). auto; smt(). rewrite H //=. clear H.
-      have H :KERealSimpHashingAdv.KERealSimpHash._self{1} = DDH_Adv_globs._self{2} . auto; smt(). rewrite H //=. clear H.
+      have H :RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} . auto; smt(). rewrite H //=. clear H.
       have H : DDH_Adv_globs._self{2} = MakeInt.MI.func{1} . auto; smt(). rewrite H //=. clear H.
       have H : (glob Adv){1} = (glob Adv){2}. auto; smt(). rewrite H //=. clear H.
       have H : MakeInt.MI.func{1} = MakeInt.MI.func{2} . auto; smt(). rewrite H //=. clear H.
@@ -3275,12 +3366,12 @@ inline hash.
   have H : real_simp_hash_ddh1_rel
   {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
       real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-    real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+    real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
     real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}.
   have H : real_simp_hash_ddh1_rel1
   {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
       real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-    real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+    real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
     real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
     pt1{1} pt2{1} .
     auto; progress; smt().
@@ -3288,7 +3379,7 @@ inline hash.
     rewrite H //=. clear H.
   have H : r{1} = Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
          {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func =
-             _addr_Fw1 KERealSimpHashingAdv.KERealSimpHash._self{1};
+             _addr_Fw1 RealSimpHashingAdv.RealSimpHash._self{1};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1{1};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2{1};
@@ -3309,11 +3400,11 @@ smt().
            real_simp_hash_ddh1_rel1
     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
   pt1 pt2).
 elim* => pt1 pt2.
-      match KERealSimpStateWaitAdv1 {1} 0. auto;smt().
+      match RealSimpStateWaitAdv1 {1} 0. auto;smt().
       match KEDDHStateWaitAdv1 {2} 0. auto;smt().
       if; last first. auto;smt().
   auto;smt().
@@ -3322,7 +3413,7 @@ match.
       auto;smt().
       auto;smt().
   move => _1 _0.
-      inline _State_KERealSimpStateWaitAdv1__Fw1_FwAdv__fw_ok.
+      inline state_RealSimpStateWaitAdv1.
   inline _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok.
 sp 4 3.
 
@@ -3344,7 +3435,7 @@ have Q : real_simp_hash_ddh1_rel2
   {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
       real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
       real_simp_hash_ddh1_rel_st_rss =
-      KERealSimpStateWaitReq2 pt1 pt2 q1{1}
+      RealSimpStateWaitReq2 pt1 pt2 q1{1}
         (oget RH.NonOptHashing.mp{1}.[exp2]); real_simp_hash_ddh1_rel_st_hs =
           KEDDHStateWaitReq2 pt1 pt2; |} pt1 pt2.
           smt().
@@ -3354,11 +3445,11 @@ case ( exists (pt1 pt2 : port),
            real_simp_hash_ddh1_rel2
     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
   pt1 pt2).
 elim* => pt1 pt2.
-      match KERealSimpStateWaitReq2 {1} 0. auto; smt().
+      match RealSimpStateWaitReq2 {1} 0. auto; smt().
       match KEDDHStateWaitReq2 {2} 0. auto; smt().
   if; last first. auto; smt(). auto; smt().
 match.
@@ -3366,7 +3457,7 @@ match.
       auto; smt().
       auto; smt().
   move => _x _x0.
-      inline _State_KERealSimpStateWaitReq2__KEDir__Pt2__ke_req2.
+      inline state_RealSimpStateWaitReq2.
       inline _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2.
   sp 8 6.
       if; last first. auto; smt(). auto; smt().
@@ -3376,7 +3467,7 @@ match.
   {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
       real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
       real_simp_hash_ddh1_rel_st_rss =
-      KERealSimpStateWaitAdv2 pt1 pt2 q1{1}
+      RealSimpStateWaitAdv2 pt1 pt2 q1{1}
         (oget RH.NonOptHashing.mp{1}.[exp2]); real_simp_hash_ddh1_rel_st_hs =
           KEDDHStateWaitAdv2 pt1 pt2; |} pt1 pt2.
       smt().
@@ -3386,16 +3477,16 @@ case ( exists (pt1 pt2 : port),
            real_simp_hash_ddh1_rel3
     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
   pt1 pt2).
       elim* => pt1 pt2.
-      match KERealSimpStateWaitAdv2 {1} 0. auto;smt().
+      match RealSimpStateWaitAdv2 {1} 0. auto;smt().
       match KEDDHStateWaitAdv2 {2} 0. auto;smt().
       if; last first. auto;smt(). auto;smt().
       match. auto;smt(). auto;smt(). auto;smt().
   move => x y.
-      inline _State_KERealSimpStateWaitAdv2__Fw2_FwAdv__fw_ok.
+      inline state_RealSimpStateWaitAdv2.
       inline _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok.
   sp 5 3.
       
@@ -3407,9 +3498,9 @@ case ( exists (pt1 pt2 : port),
 case ( real_simp_hash_ddh1_rel4
     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
-match KERealSimpStateFinal {1} 0. auto;smt().
+match RealSimpStateFinal {1} 0. auto;smt().
       match KEDDHStateFinal {2} 0. auto;smt().
   auto;smt(). 
 exfalso.
@@ -3419,11 +3510,11 @@ exfalso.
   move => [];smt().
 qed.
   
-local lemma KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
+local lemma RealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
             (func' : addr, in_guard' : int fset) &m :
   DDH_Adv_globs.func{m} = func' =>
   DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[RH.GNonOptHashing(KERealSimpHashingAdv).main() @ &m : res] =
+  Pr[RH.GNonOptHashing(RealSimpHashingAdv).main() @ &m : res] =
   Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res].
   proof.
   move => glob_func glob_in_guard.
@@ -3464,8 +3555,8 @@ k1_{2} = g ^ q1{2} /\
     MakeInt.MI.func{1} = func_{1} /\
     MakeInt.MI.in_guard{1} = in_guard_{1} /\
     self_{1} = MakeInt.MI.func{1} /\
-    KERealSimpHashingAdv.KERealSimpHash._self{1} = self_{1} /\
-    KERealSimpHashingAdv.KERealSimpHash._st{1} = KERealSimpStateWaitReq1 /\
+    RealSimpHashingAdv.RealSimpHash._self{1} = self_{1} /\
+    RealSimpHashingAdv.RealSimpHash._st{1} = RealSimpStateWaitReq1 /\
     (exists (mp_L0 : (exp_names, exp) fmap),
        mp_L = mp_L0.[inp1{1} <- out{1}] /\
        inp0{1} = exp2 /\
@@ -3489,12 +3580,12 @@ RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
    DDH_Adv_globs.k3{2} =
    g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   KERealSimpHashingAdv.KERealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
+   RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
    DDH_Adv_globs._self{2} = MI.func{1} /\
    real_simp_hash_ddh1_rel
      {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
          real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-       real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+       real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
        real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
         proc.
         if; last first. auto;smt(). auto;smt().
@@ -3506,12 +3597,12 @@ RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
    RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
    DDH_Adv_globs.k3{2} =
    g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   KERealSimpHashingAdv.KERealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
+   RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
    DDH_Adv_globs._self{2} = MI.func{1} /\
    real_simp_hash_ddh1_rel
      {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
          real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-       real_simp_hash_ddh1_rel_st_rss = KERealSimpHashingAdv.KERealSimpHash._st{1};
+       real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
        real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
     ).
 if; last first.
@@ -3519,7 +3610,7 @@ if; last first.
         inline after_adv. auto; smt().
     auto; smt().
         seq 1 1 : #pre.
-        call (KERealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke).
+        call (RealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke).
         auto; smt().
         inline after_func. auto;smt(). skip. smt().
     elim* => mp_L. move => mp_L0.
@@ -10370,14 +10461,14 @@ lemma RFIP_DDH1 (func': addr, in_guard' : int fset) &m :
   Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res].
   proof.
   move => pre disj func'_eq in_guard'_eq.
-  rewrite (Exper_KEReal_KERealSimp func' in_guard' &m) 1:/#.
+  rewrite (Exper_KEReal_RealSimp func' in_guard' &m) 1:/#.
     trivial.
-rewrite (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+rewrite (Exper_RealSimp_GOptHashing_RealSimpHashingAdv
   func' in_guard' &m).
 trivial. trivial.
   rewrite
-           -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m).
-  rewrite (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
+           -(RH.GNonOptHashing_GOptHashing RealSimpHashingAdv &m).
+  rewrite (RealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
   func' in_guard' &m).
   trivial. trivial.
 trivial.
@@ -10436,14 +10527,14 @@ qed.
     Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res]|.
 proof.
 move => pre disj func'_eq in_guard'_eq.
-  rewrite (Exper_KEReal_KERealSimp func' in_guard' &m) 1:/#.
+  rewrite (Exper_KEReal_RealSimp func' in_guard' &m) 1:/#.
   trivial.
-rewrite (Exper_KERealSimp_GOptHashing_KERealSimpHashingAdv
+rewrite (Exper_RealSimp_GOptHashing_RealSimpHashingAdv
   func' in_guard' &m).
 trivial. trivial.
   rewrite
-           -(RH.GNonOptHashing_GOptHashing KERealSimpHashingAdv &m).
-  rewrite (KERealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
+           -(RH.GNonOptHashing_GOptHashing RealSimpHashingAdv &m).
+  rewrite (RealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
   func' in_guard' &m).
   trivial. trivial.
   have H :

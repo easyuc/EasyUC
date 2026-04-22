@@ -368,7 +368,7 @@ lemma MI_after_adv_equiv (Func1 <: FUNC) (Func2 <: FUNC)
    ={r, MI.func} ==> ={res}].
 proof. sim. qed.
 
-(* check that invariant is actually preserved: *)
+(* next, we check that invariant is actually preserved *)
 
 lemma MI_after_func_hoare (Func <: FUNC) (Adv <: ADV) :
   hoare
@@ -648,18 +648,22 @@ lemma func_equiv_implies_exper_equal_prob
       (func' : addr) (guard : int fset)
       (rel : glob F1 -> glob F2 -> bool)  (* can depend on func' *)
       &m :
+  exper_pre func' =>
   equiv
   [F1.init ~ F2.init :
    ={self} /\ self{1} = func' ==>
    rel (glob F1){1} (glob F2){2}] =>
   equiv
   [F1.invoke ~ F2.invoke :
-   ={m} /\ func' <= m{1}.`2.`1 /\ rel (glob F1){1} (glob F2){2} ==>
+   ={m} /\ rel (glob F1){1} (glob F2){2} /\
+   (m{1}.`1 = Dir /\ func' = m{1}.`2.`1 /\ envport func' m{1}.`3 \/
+    m{1}.`1 = Adv /\ func' <= m{1}.`2.`1 /\
+    m{1}.`3.`1 = adv /\ 0 < m{1}.`3.`2) ==>
    ={res} /\ rel (glob F1){1} (glob F2){2}] =>
   Pr[Exper(MI(F1, Adv), Env).main(func', guard) @ &m : res] =
   Pr[Exper(MI(F2, Adv), Env).main(func', guard) @ &m : res].
 proof.
-move => equiv_init equiv_invoke.
+move => ep_func' equiv_init equiv_invoke.
 byequiv => //; proc; inline*.
 seq 6 6 :
   (={glob Adv, glob Env, func, in_guard, MI.func, MI.in_guard} /\
@@ -675,13 +679,33 @@ if => //.
 inline{1} 1; inline{2} 1; sp 3 3; wp.
 while
   (={glob Adv, MI.func, MI.in_guard, not_done, m0, r0} /\
-   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2}).
+   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2} /\
+   mi_loop_invar func' MI.in_guard{1} r0{1} m0{1} not_done{1}).
 if => //.
+seq 1 1 :
+  (={glob Adv, MI.func, MI.in_guard, not_done, m0, r0} /\
+   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2}).
+call equiv_invoke.
+auto; progress; rewrite /mi_loop_invar in H0; smt(@UCListPO).
+conseq
+  (_ : ={r0, MI.func} ==> ={r0, m0, not_done})
+  (_ :
+   MI.func = func' ==>
+   mi_loop_invar func' MI.in_guard r0 m0 not_done) => //.
+call (MI_after_func_hoare F1 Adv); first auto.
 call (MI_after_func_equiv F1 F2 Adv); first auto.
-call equiv_invoke; first auto.
-call (MI_after_adv_equiv F1 F2 Adv); first auto.
+seq 1 1 :
+  (={glob Adv, MI.func, MI.in_guard, not_done, m0, r0} /\
+   MI.func{1} = func' /\ rel (glob F1){1} (glob F2){2}).
 call (_ : true); first auto.
-auto.
+conseq
+  (_ : ={r0, MI.func} ==> ={r0, m0, not_done})
+  (_ :
+   MI.func = func' ==>
+   mi_loop_invar func' MI.in_guard r0 m0 not_done) => //.
+call (MI_after_adv_hoare F1 Adv); first auto.
+call (MI_after_adv_equiv F1 F2 Adv); first auto.
+auto; progress; smt().
 auto.
 auto.
 qed.
