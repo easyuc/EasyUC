@@ -397,7 +397,7 @@ call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
 auto => /> &1 &2 dec_x1 dec_x2.
 have -> : x1 = x2 by have : Some x1 = Some x2 by rewrite -dec_x1 -dec_x2.
 have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
-have m2_src_eq : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
+have -> : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
   have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
   by rewrite x2_eq.
 smt(@UCListPO).
