@@ -12,9 +12,9 @@ require import UCCore FMap.
 require UC___KeyExchange.
 clone include UC___KeyExchange.
 
- (* real functionality has no parameters, so real functionality with
-    ideal parameters is the same as real functionality with real
-    parameters *)
+(* real functionality has no parameters, so real functionality with
+   ideal parameters is the same as real functionality with real
+   parameters *)
 
 module RFIP = RFRP.
 
@@ -33,26 +33,6 @@ realize dexp_ll. apply dexp_ll. qed.
 realize dexp_uni. apply dexp_uni. qed.
 realize dexp_fu. apply dexp_fu. qed.
  
-(*
-
-type ke_ddh_state = [
-    KEDDHStateWaitReq1
-  | KEDDHStateWaitAdv1 of port & port
-  | KEDDHStateWaitReq2 of port & port
-  | KEDDHStateWaitAdv2 of port & port
-  | KEDDHStateFinal
-].
-
-module DDH_Adv_globs ={
-  var func : addr
-  var in_guard : int fset
-  var k1, k2, k3 : key
-  var _self : addr
-  var _st : ke_ddh_state
-}.
-
-*)
-
 module AllCGs  = {
   module UC__AllCGs_ = AllCGs_
 (*
@@ -223,7 +203,7 @@ op glob_RFIP_to_self_Fw2    (g : glob RFIP) : addr                  = g.`6.
 op glob_RFIP_to_st_Fw2      (g : glob RFIP) : Forwarding2._state_IF = g.`7.
 op glob_RFIP_to_self_MakeRF (g : glob RFIP) : addr                  = g.`8.
 
-op glob_RealSimp_to_self (g : glob RealSimp) : addr = g.`1.
+op glob_RealSimp_to_self (g : glob RealSimp) : addr            = g.`1.
 op glob_RealSimp_to_st   (g : glob RealSimp) : real_simp_state = g.`2.
 
 op real_simp_invar_static
@@ -370,7 +350,37 @@ auto; smt(RealSimpInvar0).
 move => x1 x2; inline{1} 1; inline{2} 1; sp 3 5.
 if; first smt().
 seq 1 1 : (#pre /\ ={q1}); first auto.
-sp; elim* => r_R st_R _r_R r0_L r1_L _r_L _st_Pt1_L _r0_L.
+seq 5 4 :
+  (={pt1, pt2, q1} /\
+   m0{1}.`1 = Dir /\
+   m0{1}.`2 = _extport_dir_Pt1 RealSimp.self{2} /\
+   envport RealSimp.self{2} m0{1}.`3 /\
+   real_simp_invar_static_ports func' (glob RFIP){1}
+   (glob RealSimp){2} pt1{1} pt2{1} /\
+   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
+   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_WaitFwd1 /\
+   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Init /\
+   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
+   RealSimp.st{2} = RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
+   r0{1} = 
+   Some
+   (Forwarding1.UC_FwDir.D.epdp__fw_req.`enc
+    (Forwarding1.UC_FwDir.D.mk__fw_req (_addr_Fw1 UC_KEReal._self{1})
+     (_intport_Pt1 UC_KEReal._self{1}) (_intport_Pt2 UC_KEReal._self{1})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1})))) /\
+   r{2} =
+   Some
+   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+    (Forwarding1.UC_FwAdv.mk__fw_obs
+     (_addr_Fw1 RealSimp.self{2}) adv
+     (_intport_Pt1 RealSimp.self{2}) (_intport_Pt2 RealSimp.self{2})
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}))))).
+auto => /> &1 &2 dec_x1 dec_x2.
+have -> : x1 = x2 by have : Some x1 = Some x2 by rewrite -dec_x1 -dec_x2.
+have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
+have -> /# : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
+  have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
+  by rewrite x2_eq.
 seq 1 0 :
   (not_done{1} /\ ={pt1, pt2, q1} /\
    real_simp_invar_static_ports func' (glob RFIP){1}
@@ -394,13 +404,7 @@ seq 1 0 :
      (KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}))))).
 exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
-auto => /> &1 &2 dec_x1 dec_x2.
-have -> : x1 = x2 by have : Some x1 = Some x2 by rewrite -dec_x1 -dec_x2.
-have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
-have -> : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
-  have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
-  by rewrite x2_eq.
-smt(@UCListPO).
+auto; smt().
 rcondt{1} 1; first auto.
 inline{1} 1; sp 2 0.
 rcondt{1} 1; first auto.
@@ -743,8 +747,7 @@ seq 5 4 :
    glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
    glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
    RealSimp.st{2} = RealSimpStateWaitAdv2 pt1'' pt2'' q1' q2' /\
-   m0{1}.`1 = Dir /\
-   m0{1}.`2 = _extport_dir_Pt2 RealSimp.self{2} /\
+   m0{1}.`1 = Dir /\ m0{1}.`2 = _extport_dir_Pt2 RealSimp.self{2} /\
    r0{1} =
    Some                                       
    (Forwarding2.UC_FwDir.D.epdp__fw_req.`enc
@@ -1072,7 +1075,7 @@ seq 2 0 :
 call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar3).
-auto; smt().
+auto.
 (* real_simp_invar4 *)
 move => real_simp_invar4_ass.
 sp 1 1.
