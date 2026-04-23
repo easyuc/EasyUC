@@ -460,7 +460,8 @@ inline{1} 1; sp 2 0.
 if{1}.
 inline{1} 1; sp 2 0.
 match _State_IF_Init {1} 1; first auto; smt().
-match None {1} 1; first auto; smt(Forwarding1.UC_FwDir.D.eq_of_valid__fw_req).
+match None {1} 1;
+  first auto; smt(Forwarding1.UC_FwDir.D.eq_of_valid__fw_req).
 seq 4 0 : 
   (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
    r0{1} = None /\ ! not_done{1} /\ r{2} = None).
@@ -478,7 +479,8 @@ inline{1} 1; sp 2 0.
 if{1}.
 inline{1} 1; sp 2 0.
 match _State_IF_Init {1} 1; first auto; smt().
-match None {1} 1; first auto; smt(Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+match None {1} 1;
+  first auto; smt(Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
 seq 4 0 : 
   (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
    r0{1} = None /\ ! not_done{1} /\ r{2} = None).
@@ -518,13 +520,199 @@ rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar0).
 auto.
 (* real_simp_invar1 *)
-move => pt1 pt2 q1 real_simp_invar1_ass.
-admit.
+move => pt1' pt2' q1' real_simp_invar1_ass.
+sp 1 1.
+match RealSimpStateWaitAdv1 {2} 1; first auto; smt().
+if{2}.
+rcondt{1} 1; first auto; smt().
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+rcondt{1} 1; first auto; progress; smt(@UCListPO).
+inline{1} 1; sp 2 0.
+rcondt{1} 1; first auto; smt().
+inline{1} 1; sp 2 0.
+match _State_IF_Wait {1} 1; first auto; smt().
+match => //.
+seq 4 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+move => x1 x2; inline{1} 1; inline{2} 1; sp 3 5.
+seq 7 0 :
+  (m0{1}.`1 = UCBasicTypes.Adv /\ m0{1}.`2.`1 = _addr_Fw1 func' /\
+   m0{1}.`3.`1 = adv /\
+   k1{2} = g ^ q1' /\ pt10{2} = pt1' /\ pt20{2} = pt2' /\
+   q10{2} = q1' /\
+   real_simp_invar_static_ports func' (glob RFIP){1}
+   (glob RealSimp){2} pt1' pt2' /\
+   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1' q1' /\
+   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_WaitFwd1 /\
+   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
+   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
+   RealSimp.st{2} = RealSimpStateWaitAdv1 pt1' pt2' q1' /\
+   r0{1} =    
+     Some
+     (Forwarding1.UC_FwDir.D.epdp__fw_rsp.`enc
+      (Forwarding1.UC_FwDir.D.mk__fw_rsp Forwarding1.UC_Forw._self{1}
+       (_intport_Pt2 func') (_intport_Pt1 func')
+       (KeyExp'.epdp_port_port_key_univ.`enc
+        (pt1', pt2', g ^ q1'))))).
+auto; progress; smt().
+seq 1 0 :
+  (not_done{1} /\
+   k1{2} = g ^ q1' /\ pt10{2} = pt1' /\ pt20{2} = pt2' /\
+   q10{2} = q1' /\
+   m0{1} =
+   Forwarding1.UC_FwDir.D.epdp__fw_rsp.`enc
+   (Forwarding1.UC_FwDir.D.mk__fw_rsp Forwarding1.UC_Forw._self{1}
+    (_intport_Pt2 func') (_intport_Pt1 func')
+     (KeyExp'.epdp_port_port_key_univ.`enc (pt1', pt2', g ^ q1'))) /\
+   real_simp_invar_static_ports func' (glob RFIP){1}
+   (glob RealSimp){2} pt1' pt2' /\
+   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1' q1' /\
+   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_WaitFwd1 /\
+   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
+   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
+   RealSimp.st{2} = RealSimpStateWaitAdv1 pt1' pt2' q1').
+exlim r0{1} => r0'.
+call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
+auto; smt().
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+rcondf{1} 1; first auto; progress; smt(@UCListPO).
+rcondf{1} 1; first auto; progress; smt(@UCListPO).
+rcondf{1} 1; first auto; progress; smt().
+rcondt{1} 1; first auto; progress; right; smt(@UCListPO).
+inline{1} 1; sp 2 0.
+match _State_Pt2_WaitFwd1 {1} 1; first auto.
+match Some {1} 1; first auto; progress; smt().
+rcondt{1} 1; first auto; progress; smt().
+inline{1} 1; sp 2 0.
+match Some {1} 1; first auto => &1 [#] u1_eq |> _x_eq.
+move : u1_eq; rewrite -_x_eq; move => ->; smt().
+swap{1} 1 1.
+seq 1 1 : (#pre /\ ={q2}); first auto.
+seq 6 3 :
+  (={q2} /\ r0{1} = _r{2} /\ k1{2} = g ^ q1' /\
+   pt10{2} = pt1' /\ pt20{2} = pt2' /\ q10{2} = q1' /\
+   r0{1} = r{2} /\
+   m0{1} =
+   Forwarding1.UC_FwDir.D.epdp__fw_rsp.`enc
+   (Forwarding1.UC_FwDir.D.mk__fw_rsp
+    Forwarding1.UC_Forw._self{1}
+    (_intport_Pt2 func') (_intport_Pt1 func')
+    (KeyExp'.epdp_port_port_key_univ.`enc
+     (pt1', pt2', g ^ q1'))) /\
+   r0{1} =
+   Some
+   (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+    (UC_KEDir.Pt2.mk__ke_rsp1 func' pt2' pt1'
+     (g ^ q1' ^ q2{1}))) /\
+   real_simp_invar2 func' (glob RFIP){1} (glob RealSimp){2}
+   pt1' pt2' q1' q2{1}).
+auto => &1 &2 [#] dec_u1_eq u1_eq _ dec__m0_eq.
+move => _st_Pt2_eq _m0_eq _ m3_eq _ _ -> -> -> -> m0_eq.
+have _x_eq :
+  _x{1} = oget (Forwarding1.UC_FwDir.D.epdp__fw_rsp.`dec _m0{1})
+  by smt().
+move : dec_u1_eq.
+rewrite u1_eq _x_eq _m0_eq m3_eq m0_eq /= => <-.
+smt(KeyExp'.double_exp KeyExp'.mulC).
+seq 1 0 :
+  (! not_done{1} /\ r0{1} = r{2} /\
+   real_simp_invar2 func' (glob RFIP){1} (glob RealSimp){2}
+   pt1' pt2' q1' q2{1}).
+exlim r0{1} => r0'.
+call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0').
+auto; smt().
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar2).
+if{1}.
+inline{1} 1; sp 3 0.
+rcondt{1} 1; first auto.
+inline{1} 1; sp 2 0.
+if{1}.
+inline{1} 1; sp 2 0.
+rcondf{1} 1; first auto; smt(@UCListPO).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+if{1}.
+inline{1} 1; sp 2 0.
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_IF_Init {1} 1; first auto; smt().
+match{1}.
+seq 4 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+inline{1} 1; sp 4 0.
+exfalso; auto;
+  smt(@UCListPO Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_Pt1_WaitFwd2 {1} 1; first auto; smt().
+match{1}.
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+rcondf{1} 1; first auto;
+  smt(@UCListPO Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+if{1}.
+inline{1} 1; sp 2 0.
+match _State_Pt2_WaitFwd1 {1} 1; first auto; smt().
+match{1}.
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+rcondf{1} 1; first auto;
+  smt(@UCListPO Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+seq 3 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+seq 2 0 : 
+  (grfip = (glob RFIP){1} /\ grs = (glob RealSimp){2} /\
+   r0{1} = None /\ ! not_done{1} /\ r{2} = None).
+call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
+rcondf{1} 1; first auto.
+auto; smt(RealSimpInvar1).
+auto.
 (* real_simp_invar2 *)
-move => pt1 pt2 q1 q2 real_simp_invar2_ass.
+move => pt1' pt2' q1' q2' real_simp_invar2_ass.
+sp 1 1.
 admit.
 (* real_simp_invar3 *)
-move => pt1 pt2 q1 q2 real_simp_invar3_ass.
+move => pt1' pt2' q1' q2' real_simp_invar3_ass.
 admit.
 (* real_simp_invar4 *)
 move => real_simp_invar4_ass.
