@@ -33,6 +33,161 @@ realize dexp_ll. apply dexp_ll. qed.
 realize dexp_uni. apply dexp_uni. qed.
 realize dexp_fu. apply dexp_fu. qed.
  
+(* we make a DDH oracle adversary out of an environment and
+   adversary *)
+
+type ddh_func_state = [
+  | DDHFuncStateWaitReq1
+  | DDHFuncStateWaitAdv1 of port & port & exp
+  | DDHFuncStateWaitReq2 of port & port & exp & exp
+  | DDHFuncStateWaitAdv2 of port & port & exp & exp
+  | DDHFuncStateFinal
+].
+
+module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
+  module DDHFunc : FUNC = {
+    var self : addr
+    var st : ddh_func_state
+
+    proc init(self_ : addr) : unit = {
+      self <- self_;
+      st <- DDHFuncStateWaitReq1;
+    }
+
+    proc state_DDHFuncStateWaitReq1(pt1 : port, pt2 : port) : msg option = {
+      var q1 : exp; var _r : msg option <- None;
+      var _pt1 : port <- _intport_Pt1 self;
+      var _pt2 : port <- _intport_Pt2 self;
+      var u : univ;
+      if (envport self pt2) {
+        q1 <$ dexp;
+        u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
+        _r <-
+          Some
+          (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+           {|Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 self;
+             Forwarding1.UC_FwAdv.fw_obs___adv  = adv;
+             Forwarding1.UC_FwAdv.fw_obs__pt1   = _pt1;
+             Forwarding1.UC_FwAdv.fw_obs__pt2   = _pt2;
+             Forwarding1.UC_FwAdv.fw_obs__u     = u|});
+        st <- DDHFuncStateWaitAdv1 pt1 pt2 q1;
+      }
+      else { _r <- None; }
+      return _r;
+    }
+
+    proc state_DDHFuncStateWaitAdv1(pt1 : port, pt2 : port, q1 : exp)
+           : msg option = {
+      var q2 : exp; var _r : msg option <- None;
+      q2 <$ dexp;
+      _r <-
+        Some
+        (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
+         {|UC_KEDir.Pt2.ke_rsp1___func = self;
+           UC_KEDir.Pt2.ke_rsp1__pt2   = pt2;
+           UC_KEDir.Pt2.ke_rsp1__pt1   = pt1;
+           UC_KEDir.Pt2.ke_rsp1__k     = g ^ q1 ^ q2|});
+      st <- DDHFuncStateWaitReq2 pt1 pt2 q1 q2;
+      return _r;
+    }
+
+    proc state_DDHFuncStateWaitReq2
+         (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2' : port)
+           : msg option = {
+      var u : univ;
+      var _pt1 : port <- _intport_Pt2 self;
+      var _pt2 : port <- _intport_Pt1 self;
+      var _r : msg option <- None;
+      if (pt2' = pt2) {
+        u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
+        _r <- Some
+          (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
+           {|Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 self;
+             Forwarding2.UC_FwAdv.fw_obs___adv  = adv;
+             Forwarding2.UC_FwAdv.fw_obs__pt1   = _pt1;
+             Forwarding2.UC_FwAdv.fw_obs__pt2   = _pt2;
+             Forwarding2.UC_FwAdv.fw_obs__u     = u|});
+        st <- DDHFuncStateWaitAdv2 pt1 pt2 q1 q2;   
+      }
+      return _r;
+    }
+
+    proc state_DDHFuncStateWaitAdv2
+         (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
+      var _r : msg option <- None;
+      _r <-
+        Some
+        (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+         {|UC_KEDir.Pt1.ke_rsp2___func = self;
+           UC_KEDir.Pt1.ke_rsp2__pt1   = pt1;
+           UC_KEDir.Pt1.ke_rsp2__k     = g ^ q2 ^ q1|});
+      st <- DDHFuncStateFinal;
+      return _r;
+    }
+  
+    proc invoke(m : msg) : msg option = {
+      var r : msg option <- None;
+      match st with
+      | DDHFuncStateWaitReq1               => {
+        if (m.`1 = Dir /\  m.`2 = _extport_dir_Pt1 self /\ envport self m.`3) {
+          match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
+          | Some x => {
+              r <@ state_DDHFuncStateWaitReq1
+                   (x.`UC_KEDir.Pt1.ke_req1__pt1, x.`UC_KEDir.Pt1.ke_req1__pt2);
+            }
+          | None    => {}
+          end;
+        }
+      }
+      | DDHFuncStateWaitAdv1 pt1 pt2 q1    => {
+        if (m.`1 = Adv /\ m.`2.`1 = _addr_Fw1 self /\ m.`3.`1 = adv) { 
+          match Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
+          | Some _ => {
+              r <@ state_DDHFuncStateWaitAdv1(pt1, pt2, q1);
+            }
+          | None   => {}
+          end;
+        }
+      }
+      | DDHFuncStateWaitReq2 pt1 pt2 q1 q2 => {
+        if (m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 self /\ envport self m.`3) {
+          match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
+          | Some x => {
+              r <@ state_DDHFuncStateWaitReq2
+                   (pt1, pt2, q1, q2, x.`UC_KEDir.Pt2.ke_req2__pt2);
+            }
+          | None    => {}
+          end;
+        }
+      }
+      | DDHFuncStateWaitAdv2 pt1 pt2 q1 q2 => {
+        if (m.`1 = Adv /\ _addr_Fw2 self = m.`2.`1 /\ m.`3.`1 = adv) {
+          match Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
+          | Some _ => {
+              r <@ state_DDHFuncStateWaitAdv2(pt1, pt2, q1, q2);
+            }
+          | None => {}
+          end;
+        }
+      }
+      | DDHFuncStateFinal                  => {}
+      end;
+      return r;
+    }
+  }
+
+  module Exper (Inter : INTER, Env : ENV) = {
+    module E = Env(Inter)
+
+    proc main(func : addr, in_guard : int fset) : bool = {
+      var b : bool;
+      Inter.init(func, in_guard);
+      b <@ E.main(func, in_guard);
+      return b;
+    }
+  }
+}.
+
 module AllCGs  = {
   module UC__AllCGs_ = AllCGs_
 (*
