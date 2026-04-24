@@ -93,8 +93,7 @@ local module RealSimp : FUNC = {
 
   proc state_RealSimpStateWaitAdv1(pt1 : port, pt2 : port, q1 : exp)
          : msg option = {
-    var k1 : key; var q2 : exp; var _r : msg option <- None;
-    k1 <- g ^ q1;
+    var q2 : exp; var _r : msg option <- None;
     q2 <$ dexp;
     _r <-
       Some
@@ -102,7 +101,7 @@ local module RealSimp : FUNC = {
        {|UC_KEDir.Pt2.ke_rsp1___func = self;
          UC_KEDir.Pt2.ke_rsp1__pt2   = pt2;
          UC_KEDir.Pt2.ke_rsp1__pt1   = pt1;
-         UC_KEDir.Pt2.ke_rsp1__k     = k1 ^ q2|});
+         UC_KEDir.Pt2.ke_rsp1__k     = g ^ q1 ^ q2|});
     st <- RealSimpStateWaitReq2 pt1 pt2 q1 q2;
     return _r;
   }
@@ -136,7 +135,7 @@ local module RealSimp : FUNC = {
       (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
        {|UC_KEDir.Pt1.ke_rsp2___func = self;
          UC_KEDir.Pt1.ke_rsp2__pt1   = pt1;
-         UC_KEDir.Pt1.ke_rsp2__k     = (g ^ q2) ^ q1|});
+         UC_KEDir.Pt1.ke_rsp2__k     = g ^ q2 ^ q1|});
     st <- RealSimpStateFinal;
     return _r;
   }
@@ -544,12 +543,11 @@ seq 4 0 :
 call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar1).
-move => x1 x2; inline{1} 1; inline{2} 1; sp 3 5.
-seq 7 0 :
+move => x1 x2; inline{1} 1; inline{2} 1; sp 0 4.
+seq 10 0 :
   (m0{1}.`1 = UCBasicTypes.Adv /\ m0{1}.`2.`1 = _addr_Fw1 func' /\
    m0{1}.`3.`1 = adv /\
-   k1{2} = g ^ q1' /\ pt10{2} = pt1' /\ pt20{2} = pt2' /\
-   q10{2} = q1' /\
+   pt10{2} = pt1' /\ pt20{2} = pt2' /\ q10{2} = q1' /\
    real_simp_invar_static_ports func' (glob RFIP){1}
    (glob RealSimp){2} pt1' pt2' /\
    glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1' q1' /\
@@ -567,8 +565,7 @@ seq 7 0 :
 auto; progress; smt().
 seq 1 0 :
   (not_done{1} /\
-   k1{2} = g ^ q1' /\ pt10{2} = pt1' /\ pt20{2} = pt2' /\
-   q10{2} = q1' /\
+   pt10{2} = pt1' /\ pt20{2} = pt2' /\ q10{2} = q1' /\
    m0{1} =
    Forwarding1.UC_FwDir.D.epdp__fw_rsp.`enc
    (Forwarding1.UC_FwDir.D.mk__fw_rsp Forwarding1.UC_Forw._self{1}
@@ -600,7 +597,7 @@ move : u1_eq; rewrite -_x_eq; move => ->; smt().
 swap{1} 1 1.
 seq 1 1 : (#pre /\ ={q2}); first auto.
 seq 6 3 :
-  (={q2} /\ r0{1} = _r{2} /\ k1{2} = g ^ q1' /\
+  (={q2} /\ r0{1} = _r{2} /\
    pt10{2} = pt1' /\ pt20{2} = pt2' /\ q10{2} = q1' /\
    r0{1} = r{2} /\
    m0{1} =
@@ -618,7 +615,7 @@ seq 6 3 :
    real_simp_invar2 func' (glob RFIP){1} (glob RealSimp){2}
    pt1' pt2' q1' q2{1}).
 auto => &1 &2 [#] dec_u1_eq u1_eq _ dec__m0_eq.
-move => _st_Pt2_eq _m0_eq _ m3_eq _ _ -> -> -> -> m0_eq.
+move => _st_Pt2_eq _m0_eq _ m3_eq _ _ -> -> -> m0_eq.
 have _x_eq :
   _x{1} = oget (Forwarding1.UC_FwDir.D.epdp__fw_rsp.`dec _m0{1})
   by smt().
@@ -1005,7 +1002,7 @@ seq 5 0 :
    Some
    (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
     (UC_KEDir.Pt1.mk__ke_rsp2 func' pt1' (g ^ q2' ^ q1')))).
-auto => |> &1 &2 dec_to_k1_eq.
+auto => |> &1 &2 dec_to_k2_eq.
 have k2_eq :
   k2{1} = 
   oget
