@@ -40,7 +40,7 @@ type ddh_func_state = [
   | DDHFuncStateWaitReq1
   | DDHFuncStateWaitAdv1 of port & port
   | DDHFuncStateWaitReq2 of port & port
-  | DDHFuncStateWaitAdv2 of port & port
+  | DDHFuncStateWaitAdv2 of port
   | DDHFuncStateFinal
 ].
 
@@ -107,13 +107,12 @@ module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
              Forwarding2.UC_FwAdv.fw_obs__pt1   = _pt1;
              Forwarding2.UC_FwAdv.fw_obs__pt2   = _pt2;
              Forwarding2.UC_FwAdv.fw_obs__u     = u|});
-        st <- DDHFuncStateWaitAdv2 pt1 pt2;   
+        st <- DDHFuncStateWaitAdv2 pt1;
       }
       return _r;
     }
 
-    proc state_DDHFuncStateWaitAdv2
-         (pt1 : port, pt2 : port) : msg option = {
+    proc state_DDHFuncStateWaitAdv2(pt1 : port) : msg option = {
       var _r : msg option <- None;
       var k3 : key;
       k3 <@ Or.get(Three);
@@ -165,12 +164,12 @@ module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
           end;
         }
       }
-      | DDHFuncStateWaitAdv2 pt1 pt2 => {
+      | DDHFuncStateWaitAdv2 pt1 => {
         if (m.`1 = Adv /\ _addr_Fw2 self = m.`2.`1 /\
             m.`3.`1 = adv) {
           match Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
           | Some _ => {
-              r <@ state_DDHFuncStateWaitAdv2(pt1, pt2);
+              r <@ state_DDHFuncStateWaitAdv2(pt1);
             }
           | None   => {}
           end;
@@ -190,14 +189,26 @@ module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
   }
 }.
 
+module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV =
+  DDH_Adv_Conv(DDHOrAdv(Env, Adv)).
+
 module AllCGs  = {
   module UC__AllCGs_ = AllCGs_
-(*
-  module DDH_Globs = DDH_Adv_globs
-*)
   proc foo() = {
-    var x : addr <- MSCore.CombEnvAdv.func;
-    var y : int fset <- MSCore.CombEnvAdv.in_guard;
+    var x1  <- MSCore.CombEnvAdv.func;
+    var x2  <- MSCore.CombEnvAdv.in_guard;
+    var x3  <- DDHOrAdv.DDHFunc.self;
+    var x4  <- DDHOrAdv.DDHFunc.st;
+    var x5  <- DDH1_Or.x_opt;
+    var x6  <- DDH1_Or.y_opt;
+    var x7  <- DDH2_Or.x_opt;
+    var x8  <- DDH2_Or.y_opt;
+    var x9  <- DDH2_Or.z_opt;
+    var x10 <- DDH_Adv_Conv.Or.k1;
+    var x11 <- DDH_Adv_Conv.Or.k2;
+    var x12 <- DDH_Adv_Conv.Or.k3;
+    var x13 <- DDH_Adv_Conv.Or.one;
+    var x14 <- DDH_Adv_Conv.Or.two;
   }
 }.
 
@@ -213,7 +224,7 @@ type real_simp_state = [
   | RealSimpStateWaitReq1
   | RealSimpStateWaitAdv1 of port & port & exp
   | RealSimpStateWaitReq2 of port & port & exp & exp
-  | RealSimpStateWaitAdv2 of port & port & exp & exp
+  | RealSimpStateWaitAdv2 of port & exp & exp
   | RealSimpStateFinal
 ].
 
@@ -279,13 +290,13 @@ local module RealSimp : FUNC = {
            Forwarding2.UC_FwAdv.fw_obs__pt1   = _pt1;
            Forwarding2.UC_FwAdv.fw_obs__pt2   = _pt2;
            Forwarding2.UC_FwAdv.fw_obs__u     = u|});
-      st <- RealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
+      st <- RealSimpStateWaitAdv2 pt1 q1 q2;   
     }
     return _r;
   }
 
   proc state_RealSimpStateWaitAdv2
-       (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
+       (pt1 : port, q1 : exp, q2 : exp) : msg option = {
     var _r : msg option <- None;
     _r <-
       Some
@@ -332,11 +343,11 @@ local module RealSimp : FUNC = {
         end;
       }
     }
-    | RealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
+    | RealSimpStateWaitAdv2 pt1 q1 q2 => {
       if (m.`1 = Adv /\ _addr_Fw2 self = m.`2.`1 /\ m.`3.`1 = adv) {
         match Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-            r <@ state_RealSimpStateWaitAdv2(pt1, pt2, q1, q2);
+            r <@ state_RealSimpStateWaitAdv2(pt1, q1, q2);
           }
         | None   => {}
         end;
@@ -392,7 +403,7 @@ op real_simp_invar0 (func : addr, grfip : glob RFIP,
   glob_RealSimp_to_st grs   = RealSimpStateWaitReq1.
 
 op real_simp_invar1 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
-                   pt1 pt2 : port, q1 : exp) : bool =
+                     pt1 pt2 : port, q1 : exp) : bool =
   real_simp_invar_static_ports func grfip grs pt1 pt2 /\
   (* -- *)
   glob_RFIP_to_st_Pt1 grfip = _State_Pt1_WaitFwd2 pt1 q1 /\
@@ -405,7 +416,7 @@ op real_simp_invar1 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
   glob_RealSimp_to_st grs   = RealSimpStateWaitAdv1 pt1 pt2 q1.
 
 op real_simp_invar2 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
-                   pt1 pt2 : port, q1 q2 : exp) : bool =
+                     pt1 pt2 : port, q1 q2 : exp) : bool =
   real_simp_invar_static_ports func grfip grs pt1 pt2 /\
   (* -- *)
   glob_RFIP_to_st_Pt1 grfip = _State_Pt1_WaitFwd2 pt1 q1 /\
@@ -416,7 +427,7 @@ op real_simp_invar2 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
   glob_RealSimp_to_st grs   = RealSimpStateWaitReq2 pt1 pt2 q1 q2.
 
 op real_simp_invar3 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
-                   pt1 pt2 : port, q1 q2 : exp) : bool =
+                     pt1 pt2 : port, q1 q2 : exp) : bool =
   real_simp_invar_static_ports func grfip grs pt1 pt2 /\
   (* -- *)
   glob_RFIP_to_st_Pt1 grfip = _State_Pt1_WaitFwd2 pt1 q1 /\
@@ -427,7 +438,7 @@ op real_simp_invar3 (func : addr, grfip : glob RFIP, grs : glob RealSimp,
     (KeyExp'.epdp_key_univ.`enc (g ^ q2)) /\
   glob_RFIP_to_self_MakeRF grfip = func /\
   (* -- *)
-  glob_RealSimp_to_st grs   = RealSimpStateWaitAdv2 pt1 pt2 q1 q2.
+  glob_RealSimp_to_st grs   = RealSimpStateWaitAdv2 pt1 q1 q2.
 
 op real_simp_invar4 (func : addr, grfip : glob RFIP,
                      grs : glob RealSimp) : bool =
@@ -442,7 +453,7 @@ op real_simp_invar4 (func : addr, grfip : glob RFIP,
 
 inductive real_simp_invar (func : addr, grfip : glob RFIP,
                            grs : glob RealSimp) =
-    RealSimpInvar0 of
+  | RealSimpInvar0 of
       (real_simp_invar0 func grfip grs)
   | RealSimpInvar1 (pt1 pt2 : port, q1 : exp) of
       (real_simp_invar1 func grfip grs pt1 pt2 q1)
@@ -900,7 +911,7 @@ seq 5 4 :
    glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_Final /\
    glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
    glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
-   RealSimp.st{2} = RealSimpStateWaitAdv2 pt1'' pt2'' q1' q2' /\
+   RealSimp.st{2} = RealSimpStateWaitAdv2 pt1''  q1' q2' /\
    m0{1}.`1 = Dir /\ m0{1}.`2 = _extport_dir_Pt2 RealSimp.self{2} /\
    r0{1} =
    Some                                       
@@ -924,7 +935,7 @@ seq 1 0 :
    glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_Final /\
    glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
    glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
-   RealSimp.st{2} = RealSimpStateWaitAdv2 pt1'' pt2'' q1' q2' /\
+   RealSimp.st{2} = RealSimpStateWaitAdv2 pt1'' q1' q2' /\
    m0{1} =
    Forwarding2.UC_FwDir.D.epdp__fw_req.`enc
    (Forwarding2.UC_FwDir.D.mk__fw_req       
@@ -1087,7 +1098,7 @@ call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar3).
 move => x1 x2; inline{1} 1; inline{2} 1.
-seq 10 8 :
+seq 10 7 :
   (m0{1}.`1 = UCBasicTypes.Adv /\
    _addr_Fw2 func' = m0{1}.`2.`1 /\ m0{1}.`3.`1 = adv /\
    real_simp_invar_static_ports func' (glob RFIP){1}
@@ -1301,11 +1312,10 @@ qed.
 
 local lemma Exper_RFIP_RealSimp (func' : addr) (in_guard' : int fset) &m :
   exper_pre func' =>
-  disjoint in_guard' (adv_pis_rf_info rf_info) =>
   Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] =
   Pr[Exper(MI(RealSimp, Adv), Env).main(func', in_guard') @ &m : res].
 proof.
-move => ep_func disj.
+move => ep_func.
 apply
   (MakeInt.func_equiv_implies_exper_equal_prob
    RFIP RealSimp Adv Env func' in_guard' (real_simp_invar func') &m) => //.
@@ -1313,4051 +1323,654 @@ by apply RFIP_RealSimp_init.
 by conseq (RFIP_RealSimp_invoke func' _).
 qed.
 
-op mi_invoke_loop_calls_func_invoke (func : addr) (m : msg) : bool =
-  (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
-  (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2).     
-
-local lemma KEReal_RealSimp_invoke (func : addr) :
-  equiv
-  [RFIP.invoke ~ RealSimp.invoke :
-    inc func adv /\ ={m} /\
-    mi_invoke_loop_calls_func_invoke func m{1} /\
-    RFIP.self{1} = func /\
-    UC_KEReal._self{1} = func /\ 
-   (*Fw1.*)Forwarding1.IF._self{1} =  _addr_Fw1 func /\
-   (*Fw2.*)Forwarding2.IF._self{1} =  _addr_Fw2 func /\
-   RealSimp._self{2} = func /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|} ==>
-   ={res} /\
-   real_simp_rel
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}].
- proof.
- proc.
-case
-  (real_simp_rel0
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}).
-     sp.
- match{2}.
-     if{2}.
-     match{2}.
-(*is direct message for Pt1 but ke_req1 does not decode*)
-     if{1}.
-     inline loop.
-     sp.
-     rcondt{1} 0.
-     auto.
-     inline{1} invoke.
-     sp.
-     rcondf{1} 0. move => &m. skip. move => &hr.
-have H :
-     UC_KEReal._self{hr} = func /\
- RealSimp._self{m} = func /\
- m1{hr} = m0{hr} /\
- m0{hr} = m{hr} /\
- m{hr} = m{m} /\
-     m{m}.`2 = _extport_dir_Pt1 RealSimp._self{m} /\
-     _addr_Fw1 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
-     smt(not_le_ext_nonnil_l).
-     smt().
-
- rcondf{1} 0. move => &m. skip. move => &hr. 
-have H :
-     UC_KEReal._self{hr} = func /\
- RealSimp._self{m} = func /\
- m1{hr} = m0{hr} /\
- m0{hr} = m{hr} /\
- m{hr} = m{m} /\
-     m{m}.`2 = _extport_dir_Pt1 RealSimp._self{m} /\
-     _addr_Fw2 UC_KEReal._self{hr} <= m1{hr}.`2.`1 => false.
-     smt(not_le_ext_nonnil_l).
-     smt().
-
-rcondt{1} 0.
-move => &m. skip. move => />.
-     inline party_Pt1.
-     sp.
-match{1}.
-exfalso. smt(RealSimpRel0). 
-exfalso. smt(RealSimpRel0). 
-match{1}.
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-         exfalso.
-      smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
-         (*why not just smt(). ????
-         since we have:
-         UC_KEDir.Pt1.epdp__ke_req1.`dec _m{1} = Some _x{1} /\
-         UC_KEDir.Pt1.epdp__ke_req1.`dec  m{2} = None /\
-     _m{1} = m1{1} /\
-     m1{1} = m0{1} /\
-     m0{1} = m{1} /\
-     m{1} = m{2}
-         *)
-         skip. move => />.
-     
-(*is direct message for Pt1 and ke_req1 decodes*)
-     rcondt{1} 0. move => &m. skip. move => />. smt().
-
-inline loop.
-sp.
-         rcondt{1} 0. move => &m. skip. move => />.
-inline invoke.
-sp.
-         rcondf{1} 0. move => &m. skip. move => />. smt(not_le_ext_nonnil_l).
-         rcondf{1} 0. move => &m. skip. move => />. smt(not_le_ext_nonnil_l).
-rcondt{1} 0. move => &m. skip. move => />.    
-         inline party_Pt1.
-sp.
-match{1}.
-         exfalso. smt(RealSimpRel0). 
-         exfalso. smt(RealSimpRel0).
-         match{1}.
-         exfalso. smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
-inline _State_Pt1_WaitReq1__KEDir__Pt1__ke_req1.
-         inline state_RealSimpStateWaitReq1.
-sp.     
-         if; last first.
-         sp.
-         seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-         (! envport func pt2{1}) /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.
-         smt(RealSimpRel0).
-
-         smt().
-         seq 1 1 : (#pre /\ ={q1}).
-rnd.
-      skip. trivial.
-      sp 5 0.
-      elim* => r0_L r1_L _r_L _st_Pt1_L _r1_L.
-
-      seq 1 0 : (
-      not_done{1} /\
-    m0{1} = ((*Fw1.*)Forwarding1.UC_FwDir.D.epdp__fw_req.`enc
-      {| (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req___func = _addr_Fw1 UC_KEReal._self{1};
-        (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__pt1 = _intport_Pt1 UC_KEReal._self{1};
-        (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__pt2 = _intport_Pt2 UC_KEReal._self{1};
-        (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__u =
-        KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}) /\
-    pt1{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 /\
-    pt2{2} = _x{2}.`UC_KEDir.Pt1.ke_req1__pt2 /\
-    pt1{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt1 /\
-    pt2{1} = _x{1}.`UC_KEDir.Pt1.ke_req1__pt2 /\
-   _pt1{2} = _intport_Pt1 RealSimp._self{2} /\
-    _pt2{2} = _intport_Pt2 RealSimp._self{2} /\
-    envport func pt1{1} /\
-    envport func pt2{1} /\
-    ={m, _x, q1} /\
-    inc func adv /\
-      mi_invoke_loop_calls_func_invoke func m{1} /\
-      RFIP.self{1} = func /\
-      UC_KEReal._self{1} = func /\
-      (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
-      (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-      RealSimp._self{2} = func /\
-      RealSimp._st{2} = RealSimpStateWaitReq1 /\
-      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
-      UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1 /\
-      (*Fw1.*)Forwarding1.IF._st{1} = (*Fw1.*)Forwarding1._State_IF_Init /\
-      (*Fw2.*)Forwarding2.IF._st{1} = (*Fw2.*)Forwarding2._State_IF_Init
-  ).
-
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
-      skip. move => &1 &2.
-      have H :
-  UC_KEDir.Pt1.epdp__ke_req1.`dec m{2} = Some _x{2} =>
-  _x{2}.`UC_KEDir.Pt1.ke_req1__pt1 = m{2}.`3. 
-      smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1). 
-smt().
-
-rcondt{1} 0.  move => &m. skip. move => />.
-sp 2 0.  
-rcondt{1} 0.  move => &m. skip. move => />.
-sp 2 0.
-      rcondt{1} 0.  move => &m. skip.
-  smt((*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_req (*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_req
-not_le_ext_nonnil_l     
-   inc_nle_r).
-inline parties.
-      sp 2 0.
-match{1}.
-      exfalso. smt().
-
-  
-(*match{1}. exfalso. smt(). not working, using the case workaround*)
-      case ((*Fw1.*)Forwarding1.UC_FwDir.D.epdp__fw_req.`dec _m1{1} <> Some
-    {| (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req___func = _addr_Fw1 UC_KEReal._self{1};
-    (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__pt1 =
-    _intport_Pt1 UC_KEReal._self{1};
-    (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__pt2 =
-    _intport_Pt2 UC_KEReal._self{1};
-    (*Fw1.*)Forwarding1.UC_FwDir.D.fw_req__u =
-     KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |}
-  ).
-      exfalso. move => &1 &2.
-      auto. progress;smt.
-
-      (*smt((*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_req). *)
-  simplify.
-      match Some {1} 1.
-  move => &m.
-      skip. smt().
-
-inline _State_IF_Init__FwDir__D__fw_req.
-sp 4 1.
-      rcondt{1} 0.
-  move => &m. skip.
-  move => &hr P.
-  smt.
-sp.
-
-      seq 1 0 : (
-    !not_done{1} /\
-    ={pt1, pt2, q1} /\
-    envport func pt1{1} /\
-    envport func pt2{1} /\
-r{2} =
-    Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 RealSimp._self{2};
-        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func; 
-        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
-        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
-        KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}); |})
-
-        /\
-
-r0{1} =
-      Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = (*Fw1.*)Forwarding1.UC_Forw._self{1};
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
-          KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}); |})
-
-          /\
-
-UC_KEReal._self{1} = func /\
-       (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func /\
-       (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func /\
-          RealSimp._self{2} = func /\
-      
-      RealSimp._st{2} = RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2} /\
-          (*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Wait
-      (_intport_Pt1 UC_KEReal._self{1})
-      (_intport_Pt2 UC_KEReal._self{1})
-      (KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1})) /\
-      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1{1} q1{1} /\
-      UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1 /\
-      (*Fw2.*)Forwarding2.UC_Forw._st{1} = (*Fw2.*)Forwarding2._State_IF_Init
-    ).
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
-        skip.  
-        smt(
-        _adv_pi_begin_gt0
-        (*Fw1.*)Forwarding1.UC_FwAdv.valid_epdp__fw_obs
-        (*Fw1.*)Forwarding1.UC_FwAdv.eq_of_valid__fw_obs).
-rcondf{1} 0.
-move => &m. skip. move => />.
-        sp.
-        skip.
-    move => &1 &2 P. (*smt won't work wihout P*)
-        smt(RealSimpRel1).
-
-        exfalso. smt().
-        if{1}; last first.
-        skip. smt(RealSimpRel0).
-        inline loop.
-        sp. rcondt{1} 0. move => &m. skip. move => />.
-
-inline invoke.
-        sp.
-        if{1}. sp. if{1}.
-    inline parties. sp.
-        match _State_IF_Init {1} 0. auto; smt().
-    match None {1} 0. auto; smt((*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_req
-        (*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_req).
-        sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-             sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-if{1}. sp. if{1}.
-    inline parties. sp.
-        match _State_IF_Init {1} 0. auto; smt().
-    match None {1} 0. auto; smt((*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_req
-        (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
-        sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-             sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-     
-        if{1}.
-inline party_Pt1.
-sp. match{1}.
-        exfalso. smt().
-        exfalso. smt().
-        match{1}.
-        sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-exfalso.
-     move => &1 &2 P.   
-have H : m1{1}.`1 <> Dir.
-         smt().
-have H2 : _m{1} = m1{1} /\ m1{1}.`1 <> Dir => UC_KEDir.Pt1.epdp__ke_req1.`dec _m{1} = None.
-         smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 UC_KEDir.Pt1.valid_epdp__ke_req1).
-         smt().
-
-         if{1}; last first.
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-inline party_Pt2.
-         sp. match{1}.
-exfalso. smt().
-         match{1}.
- sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-         rcondf{1} 0. move => &m. skip. move => />. smt.
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel0
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |}).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel0).
-
-exfalso. smt().
-
-         exfalso. smt().
-         exfalso. smt().
-         exfalso. smt().
-     exfalso. smt().
-(*       smt(
-       lpo_nil
-       lpo_nil_non_nil
-       lpo_non_nil_nil
-       lpo_non_nil_eq
-       lpo_pre
-       lpo_eqP
-       lpo_ltP
-       lpo_gtP
-       lpo_sym_lt_gt
-       lpo_lt_trans
-       lpo_gt_trans
-       lpo_lt_ext_nonnil_r
-       lpo_incP
-       lpo_inc_sym
-       lpo_inc_pre
-       lpo_inc_extl
-       lpo_inc_extr
-       lpo_inc_ext
-       concat_nil_r
-       concat_nil_l
-       le_cases
-       leP
-       ltP
-       incP
-       le_drop
-       ge_nil
-       le_nil_iff
-       not_le_cons_nil
-       le_cons
-       le_pre
-       le_pre_l
-       le_refl
-       le_ext_r
-       gt_cons
-       not_lt_cons_nil
-       lt_cons
-       lt_pre
-       lt_pre_l
-       lt_pre_r
-       eq_pre
-       eq_pre_r
-       eq_pre_l
-       not_lt_same
-
-       not_inc_nil_left
-     ).*)  
-     
- case
- (exists (pt1 pt2 : port, q1 : exp),
-   real_simp_rel1
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     pt1
-     pt2
-     q1
- ).
- elim* => pt1 pt2 q1.
-     sp.
-     case(RealSimp._st{2} = RealSimpStateWaitAdv1 pt1 pt2 q1);
-last first. exfalso. smt().
-match RealSimpStateWaitAdv1 {2} 0. 
- move => &m. skip. smt().
- if{2}.
-match{2}.
-     (*is adv for Fw1 but dec fails*)
-
-     rcondt{1} 0. move => &m. skip. smt().
-inline loop.
-sp.
-     rcondt{1} 0. move => &m. skip. smt().
-     inline invoke.
-     sp.
- rcondt{1} 0. move => &m. skip. smt.
-     sp.
-     rcondt{1} 0. move => &m. skip. move => &hr. move => />. smt().
-     inline parties.
- sp.
-     case((*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Wait
-     (_intport_Pt1 func)
-     (_intport_Pt2 func)
-     (KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)));
-last first. exfalso. smt().
-match _State_IF_Wait {1} 0. 
- move => &m. skip. smt().
-       case((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec _m{1} = None);
-       last first. exfalso. smt((*Fw1.*)Forwarding1.UC_FwAdv.valid_epdp__fw_ok (*Fw1.*)Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
-       match None {1} 0. move => &m. skip. smt().
-       sp.
-   seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-
-         (*is adv for Fw1 and dec succeeds*)
-     rcondt{1} 0. move => &m. skip. smt().
-inline loop.
-sp.
-     rcondt{1} 0. move => &m. skip. smt().
-     inline invoke.
-     sp.
- rcondt{1} 0. move => &m. skip. smt.
-     sp.
-     rcondt{1} 0. move => &m. skip. move => &hr. move => />. smt().
-     inline parties.
- sp.
-     case((*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Wait
-     (_intport_Pt1 func)
-     (_intport_Pt2 func)
-     (KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)));
-last first. exfalso. smt().
-match _State_IF_Wait {1} 0. 
-   move => &m. skip. smt().
-   match{1}.
-exfalso. smt((*Fw1.*)Forwarding1.UC_FwAdv.valid_epdp__fw_ok (*Fw1.*)Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
-inline _State_IF_Wait__FwAdv__fw_ok.
-
-       sp.
-
-      seq 1 0 : (
-     not_done{1} = true /\
-     (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m{1} = Some _x{1} /\
-     RealSimp._st{2} = RealSimpStateWaitAdv1 pt1{!2} pt2{!2} q1{!2} /\
-      r{2} = None /\
-       r{1} = None /\
-       inc func adv /\
-     ={m} /\
-     m0{1} =  (*Fw1.*)Forwarding1.UC_FwDir.D.epdp__fw_rsp.`enc
-     {| (*Fw1.*)Forwarding1.UC_FwDir.D.fw_rsp___func = _addr_Fw1 func;
-       (*Fw1.*)Forwarding1.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt2 func;
-       (*Fw1.*)Forwarding1.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt1 func;
-       (*Fw1.*)Forwarding1.UC_FwDir.D.fw_rsp__u = (KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1)); |} /\
-         mi_invoke_loop_calls_func_invoke func m{1} /\
-         RFIP.self{1} = func /\
-         UC_KEReal._self{1} = func /\
-         (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
-         (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         RealSimp._self{2} = func /\
-
-       RealSimp._st{2} = RealSimpStateWaitAdv1 pt1 pt2 q1 /\
-     (envport func pt1) /\
- (envport func pt2) /\
-  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (UC_KEReal._st_Pt2{1}  = _State_Pt2_WaitFwd1) /\
-  ((*Fw1.*)Forwarding1.IF._st{1} = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  ((*Fw2.*)Forwarding2.IF._st{1} = (*Fw2.*)Forwarding2._State_IF_Init) 
-  
-
-         /\
-     m{2}.`1 = Adv /\
-     m{2}.`3.`1 = adv /\ _addr_Fw1 RealSimp._self{2} = m{2}.`2.`1
-  ).
-
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
-      skip. move => &1 &2 P. smt((*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_rsp (*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_rsp). 
-
-rcondt{1} 0.  move => &m. sp. skip. trivial.
-      sp.
-
-rcondf{1} 0. move => &m. sp. skip. smt.
-rcondf{1} 0. move => &m. sp. skip. smt.
-rcondf{1} 0. move => &m. sp. skip. smt.
-rcondt{1} 0. move => &m. sp. skip. smt(@UCListPO (*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_rsp (*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_rsp). 
-inline party_Pt2.
-      sp.
-      case(UC_KEReal._st_Pt2{1} = _State_Pt2_WaitFwd1);
-      last first. exfalso. smt().
-      match  _State_Pt2_WaitFwd1 {1} 0. auto; smt().
-      match Some {1} 0. auto; progress; smt((*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_rsp (*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_rsp).
-
-      rcondt{1} 0. move => &m. skip. smt((*Fw1.*)Forwarding1.UC_FwDir.D.valid_epdp__fw_rsp (*Fw1.*)Forwarding1.UC_FwDir.D.eq_of_valid__fw_rsp). 
-  
-      inline _State_Pt2_WaitFwd1__Fw1__D__fw_rsp.
-sp. match Some {1} 0. auto; progress; smt.
-sp.  
-
-inline state_RealSimpStateWaitAdv1.
-sp.
-
-      sp.
-      seq 1 1 :
-  (#pre /\ ={q2}).
-    rnd. skip. smt().
-
-  
-    sp.
-seq 1 0 : (
-    !not_done{1} /\
-    ={q2, k1} /\
-    envport func pt1 /\
-    envport func pt2 /\
-r{2} =
-    Some (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-      {| UC_KEDir.Pt2.ke_rsp1___func = RealSimp._self{2};
-         UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-        UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-        UC_KEDir.Pt2.ke_rsp1__k = k1{2} ^ q2{2}; |})
-
-        /\
-
-r0{1} =
-      Some (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-      {| UC_KEDir.Pt2.ke_rsp1___func = func;
-        UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-        UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-        UC_KEDir.Pt2.ke_rsp1__k = k1{1} ^ q2{1}; |})
-
-          /\
-
-UC_KEReal._self{1} = func /\
-       (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func /\
-       (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func /\
-          RealSimp._self{2} = func /\
-      
-      RealSimp._st{2} = RealSimpStateWaitReq2 pt1 pt2 q1 q2{2} /\
-          (*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Final /\
-      UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1 /\
-      UC_KEReal._st_Pt2{1} =  _State_Pt2_WaitReq2 pt2 q2{1} /\
-      (*Fw2.*)Forwarding2.UC_Forw._st{1} = (*Fw2.*)Forwarding2._State_IF_Init
-    ).
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
-        skip. move => &1 &2 P. smt.
-    
-rcondf{1} 0. move => &m. skip. trivial.
-        sp. skip. move => &1 &2 P.
-        have H : r{1} = r{2}. smt.
-        rewrite H //=.
-        have H2 : real_simp_rel2
-    {| real_simp_rel_st_func = func;
-      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.UC_Forw._st{1};
-      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.UC_Forw._st{1};
-      real_simp_rel_st_rss = RealSimp._st{2}; |}
-      pt1 pt2 q1 q2{1}.
-smt().    
-      smt(RealSimpRel2).
-
-      (*not adv msg for Fw1*)
-      if{1}; last first. skip. move => />.
-    inline loop.
-      sp.
-      rcondt{1} 0. auto.
-      inline invoke.
-      sp.
-    if{1}. sp. if{1}.
-    inline parties. sp.
-        match _State_IF_Wait {1} 0. auto; smt().
-    match None {1} 0. auto; progress; smt.
-        sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-             sp.
-      seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-
-if{1}. sp. if{1}.
-    inline parties. sp.
-        match _State_IF_Init {1} 0. auto; smt().
-         match None {1} 0. auto; progress; smt(not_le_ext_nonnil_l (*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_req
-        (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
-        sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-     
-             sp.
-     seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).     
-      if{1}.
-      inline party_Pt1.
-      case(UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1); last first. exfalso; smt().
-    sp. match _State_Pt1_WaitFwd2 {1} 0. auto. smt().
-match{1}.
-      sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-rcondf{1} 0.  auto; progress; smt.
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-
-     if{1}.
-      inline party_Pt2.
-      case(UC_KEReal._st_Pt2{1} =  _State_Pt2_WaitFwd1); last first. exfalso; smt().
-    sp. match  _State_Pt2_WaitFwd1 {1} 0. auto. trivial.
-match{1}.
-      sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-rcondf{1} 0.  auto; progress; smt.
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel1
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel1).
-
-
-    
- case
- (exists (pt1 pt2 : port, q1 q2 : exp),
-   real_simp_rel2
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     pt1
-     pt2
-     q1
-     q2
- ).
-     sp.
-     elim* => pt1 pt2 q1 q2.
-     case(RealSimp._st{2} =
-     RealSimpStateWaitReq2 pt1 pt2 q1 q2); last first. exfalso. auto. smt().
- match RealSimpStateWaitReq2 {2} 0. auto; smt().
-     if{2}; last first.
-     (*not a Dir msg with extport Pt2*)
-if{1}; last first. skip. auto; smt().
-inline loop.
-     sp.
- rcondt{1} 0. auto; smt().
-inline invoke.
-     sp.
-     if{1}. sp. if{1}.
- inline parties.
-     sp.
- match _State_IF_Final {1} 0. auto; progress; smt().
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-     sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-if{1}. sp. if{1}.
- inline parties.
-     sp.
-          match _State_IF_Init {1} 0. auto; smt().
-         match None {1} 0. auto; progress; smt(not_le_ext_nonnil_l (*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_req
-        (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-     sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-
-if{1}.
-         inline party_Pt1.
-sp.
-case(UC_KEReal._st_Pt1{1} = _State_Pt1_WaitFwd2 pt1 q1); last first. exfalso. auto. smt().
-match _State_Pt1_WaitFwd2 {1} 0. auto; smt().
-match{1}.
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-         rcondf{1} 0. auto; progress; smt.
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-if{1}.
-inline UC_KEReal.party_Pt2.
-         sp.
-         match _State_Pt2_WaitReq2 {1} 0. auto;smt().
-     match None {1} 0. auto; smt(UC_KEDir.Pt2.valid_epdp__ke_req2
-        UC_KEDir.Pt2.eq_of_valid__ke_req2).
-         
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-     sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-
-         match{2}.
-     (*Dir msg with extport Pt2 but ke_req2 does not decode*)
-         if{1}.
-inline loop.
-         sp.
-         rcondt{1} 0. auto; smt().
-inline invoke.
-         sp.
-         rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
-     rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
-rcondf{1} 0. auto; progress; smt().
-rcondt{1} 0. auto; progress; smt().
-         inline party_Pt2.
-         sp.
-         case (UC_KEReal._st_Pt2{1} = _State_Pt2_WaitReq2 pt2 q2); last first.
-         exfalso. auto; progress; smt().
-match _State_Pt2_WaitReq2 {1} 0. auto; progress; smt().
-         case(UC_KEDir.Pt2.epdp__ke_req2.`dec _m{1} = None); last first.
-         exfalso. auto; progress;
-         smt(UC_KEDir.Pt2.valid_epdp__ke_req2 UC_KEDir.Pt2.eq_of_valid__ke_req2).
-         match None {1} 0.  auto; progress; smt().
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-skip.  
-         smt(RealSimpRel2).
-
- (*Dir msg with extport Pt2 ke_req2 decodes*)
-if{1}.
-inline loop.
-         sp.
-         rcondt{1} 0. auto; smt().
-inline invoke.
-         sp.
-         rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
-     rcondf{1} 0. auto; progress; smt(not_le_ext_nonnil_l).
-rcondf{1} 0. auto; progress; smt().
-rcondt{1} 0. auto; progress; smt().
-         inline party_Pt2.
-         sp.
-         case (UC_KEReal._st_Pt2{1} = _State_Pt2_WaitReq2 pt2 q2); last first.
-         exfalso. auto; progress; smt().
-match _State_Pt2_WaitReq2 {1} 0. auto; progress; smt().
-case(UC_KEDir.Pt2.epdp__ke_req2.`dec _m{1} = Some _x{2}); last first.
-         exfalso. auto; progress;
-         smt(UC_KEDir.Pt2.valid_epdp__ke_req2 UC_KEDir.Pt2.eq_of_valid__ke_req2).
-match Some {1} 0. auto; progress; smt(). 
-         inline state_RealSimpStateWaitReq2.
-     sp 0 8.
-         if{2}; last first.
-     (*pt2 port is different than original*)
-         sp.
-         inline _State_Pt2_WaitReq2__KEDir__Pt2__ke_req2.
-rcondf{1} 5. auto; progress; smt().
-sp.
-    seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel2
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel2).
-         (*pt2 port is same as original*)
-inline _State_Pt2_WaitReq2__KEDir__Pt2__ke_req2.
-         rcondt{1} 5. auto; progress; smt().
-     sp.
-     
-seq 1 0 : (
-       not_done{1} = true /\
-       
-         UC_KEDir.Pt2.epdp__ke_req2.`dec m{2} = Some _x{2} /\
-       _x{2}.`UC_KEDir.Pt2.ke_req2__pt2 = pt2 /\
-     m{2}.`1 = Dir /\
-     envport func m{2}.`3 /\
-         m{2}.`2 = _extport_dir_Pt2 func  /\
-    
-      r{2} = Some ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-         {| (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 func;
-           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _intport_Pt2 func;
-           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _intport_Pt1 func;
-           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = KeyExp'.epdp_key_univ.`enc (g ^ q2) ; |}) /\
-       m0{1} = ((*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_req.`enc
-         {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__u = KeyExp'.epdp_key_univ.`enc (g ^ q2); |})   /\
-       r0{1} = Some m0{1} /\
-      
-       inc func adv /\
-     ={m} /\
-     
-         mi_invoke_loop_calls_func_invoke func m{1} /\
-         RFIP.self{1} = func /\
-         UC_KEReal._self{1} = func /\
-         (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
-         (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         RealSimp._self{2} = func /\
-
-       RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
-     (envport func pt1) /\
- (envport func pt2) /\
-  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (UC_KEReal._st_Pt2{1}  = _State_Pt2_Final) /\
-  ((*Fw1.*)Forwarding1.IF._st{1} = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  ((*Fw2.*)Forwarding2.IF._st{1} = (*Fw2.*)Forwarding2._State_IF_Init)
-  ).
-
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
-      skip. smt().
-
-rcondt{1} 0. by auto.
-      sp.
-      rcondf{1} 0. move => &m. skip. 
-move => &hr P. 
-      have H: m2{hr}.`2.`1 = _addr_Fw2 func. smt(). rewrite H.
-      have I : UC_KEReal._self{hr} = func. smt(). rewrite I.
-  rewrite /_addr_Fw1 /_addr_Fw2.
-      smt(sing_not_le).
-rcondt{1} 0. auto.  
-      sp.
-      rcondt{1} 0.
-  move => &m. skip. move=> &hr P.
-      have H : m6{hr}.`2.`1 = (*Fw2.*)Forwarding2.UC_Forw._self{hr}. smt().
-      rewrite H //=. clear H.
-  have H : m6{hr}.`1 = Dir. smt().
-      rewrite H //=. clear H.
-      have H : (*Fw2.*)Forwarding2.UC_Forw._self{hr} = _addr_Fw2 func. smt().
-      rewrite H //=. clear H.
-  have H : m6{hr}.`3 = _intport_Pt2 func. smt().
-  rewrite H //=. clear H. smt.
-
-inline parties.  
-      sp.
-      case((*Fw2.*)Forwarding2.UC_Forw._st{1} = (*Fw2.*)Forwarding2._State_IF_Init); last first. exfalso. smt().
-      match _State_IF_Init {1} 0. auto.
-case((*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_req.`dec _m1{1} =Some {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
-      (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__u = KeyExp'.epdp_key_univ.`enc (g ^ q2); |});
-      last first. exfalso.
-move => &1 &2 P.
-have H : (*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_req.`dec m0{1} =
-   Some
-  {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req___func = _addr_Fw2 func;
-    (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt1 = _intport_Pt2 func;
-    (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__pt2 = _intport_Pt1 func;
-    (*Fw2.*)Forwarding2.UC_FwDir.D.fw_req__u = KeyExp'.epdp_key_univ.`enc (g ^ q2); |}.
-    smt.
-    have I : m0{1} = _m1{1} . smt().
-  move : H.
-    rewrite I.
-  smt().
-
-match Some {1} 0. auto; smt().
-inline _State_IF_Init__FwDir__D__fw_req.
-rcondt{1} 5. auto; smt.
-sp.
-
-    seq 1 0 : (! not_done{1} /\
-    r0{1} = r{2} /\
-  real_simp_rel3
-    {| real_simp_rel_st_func = func;
-      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-      real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-  ).
-
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
-      skip.
-  
-  move => &1 &2 P.
-  smt((*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_req
-      (*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_req
-        _adv_pi_begin_gt0
-        (*Fw2.*)Forwarding2.UC_FwAdv.valid_epdp__fw_obs
-      (*Fw2.*)Forwarding2.UC_FwAdv.eq_of_valid__fw_obs).
-rcondf{1} 0. auto.
-sp. skip. smt(RealSimpRel3).  
-exfalso. smt().
-
-case
- (exists (pt1 pt2 : port, q1 q2 : exp),
-   real_simp_rel3
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     pt1
-     pt2
-     q1
-     q2
- ).
-     sp.
- elim*=> pt1 pt2 q1 q2.
-
-case(RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2); last first. exfalso. auto; progress; smt().
-match RealSimpStateWaitAdv2 {2} 0. auto; smt().
-     if{2}; last first.
-     (*not adv msg for Fw2*)
- if{1}; last first. auto; smt().
-inline loop.
-     sp.
-     rcondt{1} 0. auto; smt().
- inline invoke.
-     sp.
-     if{1}.
-     sp.
-     if{1}; last first.
- sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-     
-         inline parties.
-         sp.
-         case((*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Final); last first.
-         exfalso. auto; smt().
-         match _State_IF_Final {1} 0. auto; smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-
-if{1}.
-     sp.
-     if{1}; last first.
- sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-     
-         inline parties.
-         sp.
-     case((*Fw2.*)Forwarding2.UC_Forw._st{1} = (*Fw2.*)Forwarding2._State_IF_Wait pt1 pt2 (KeyExp'.epdp_key_univ.`enc (g ^ q2))); last first.
-         exfalso. auto; smt.
-         match _State_IF_Wait {1} 0. auto; smt().
-         case((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec _m{1} = None); last first.
-         exfalso. auto;smt.
-     match None {1} 0. auto; smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-
-if{1}.
-         inline party_Pt1.
-sp.
-         case(UC_KEReal._st_Pt1{1} =  _State_Pt1_WaitFwd2 pt1 q1); last first.
-     exfalso. auto;smt().
-match _State_Pt1_WaitFwd2 {1} 0. auto;smt().
-match{1}.
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-         rcondf{1} 0.
-     move => &m. skip. move=> &hr.
-         have H : mi_invoke_loop_calls_func_invoke func m{hr} => m{hr}.`3.`1 <> _addr_Fw2 func. auto;smt.
-move => P. auto;smt().
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-
-         if{1}.
-     inline party_Pt2.
-         sp.
-         case(UC_KEReal._st_Pt2{1} = _State_Pt2_Final); last first. exfalso. auto; smt().
-     match _State_Pt2_Final {1} 0. auto; smt().
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-
-     match{2}.
-         (*adv msg for Fw2 but fw_ok does not decode*)
-         rcondt{1} 0. auto; smt().
-     inline loop.
-         sp.
-         rcondt{1} 0. auto; smt().
-         inline invoke.
-         sp.
-if{1}. sp. if{1}.
-inline parties. sp.
-         match _State_IF_Final {1} 0. auto; smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-         
-         rcondt{1} 0. auto; smt.
-         sp.
-         rcondt{1} 0. auto; smt.
-         inline parties.
-sp.
-
-         match _State_IF_Wait {1} 0. auto; smt().
-     match None {1} 0. auto; smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel3
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} pt1 pt2 q1 q2
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel3).
-     
-         (*adv msg for Fw2 and fw_ok decodes*)
-         rcondt{1} 0. auto;smt().
-     inline loop.
-         sp.
-         rcondt{1} 0. auto; smt().
-         inline invoke.
-         sp.
-         rcondf{1} 0. auto; progress; smt.
-         rcondt{1} 0. auto; smt.
-         sp.
-         rcondt{1} 0. auto; smt.
-         inline parties.
-         sp.
-case((*Fw2.*)Forwarding2.IF._st{1} = (*Fw2.*)Forwarding2._State_IF_Wait (_intport_Pt2 func) (_intport_Pt1 func) (KeyExp'.epdp_key_univ.`enc (g ^ q2)));last first. exfalso. auto;progress;smt().     
-         match _State_IF_Wait {1} 0. auto; smt().
-match Some {1} 0. auto; smt((*Fw1.*)Forwarding1.UC_FwAdv.valid_epdp__fw_ok (*Fw1.*)Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
-         inline _State_IF_Wait__FwAdv__fw_ok.
-   
-       sp. simplify.
-
-      seq 1 0 : (
-     not_done{1} = true /\
-       
-         (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m{1} = Some _x{1} /\
-     m{2}.`1 = Adv /\
-      m{2}.`3.`1 = adv /\ _addr_Fw2 func = m{2}.`2.`1 /\
-    
-      r{2} = None /\
-       r0{1} = Some m0{1} /\
-      
-       inc func adv /\
-     ={m} /\ m0{1} = (*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_rsp.`enc
-         {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func;
-           (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__u = (KeyExp'.epdp_key_univ.`enc (g ^ q2)); |} /\
-     
-         mi_invoke_loop_calls_func_invoke func m{1} /\
-         RFIP.self{1} = func /\
-         UC_KEReal._self{1} = func /\
-         (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func /\
-         (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func /\
-         RealSimp._self{2} = func /\
-
-       RealSimp._st{2} = RealSimpStateWaitAdv2 pt1 pt2 q1 q2/\
-     (envport func pt1) /\
-     (envport func pt2) /\
-       pt1{!2} = pt1 /\
-       pt2{!2} = pt2 /\
-     pt1{!1} = _intport_Pt2 func /\
-       pt2{!1} = _intport_Pt1 func /\
-       q1{!1} = q1 /\
-       q2{!1} = q2 /\
-      q1{!2} = q1 /\
-       q2{!2} = q2 /\
-  (UC_KEReal._st_Pt1{1}  = _State_Pt1_WaitFwd2 pt1 q1) /\
-  (UC_KEReal._st_Pt2{1}  = _State_Pt2_Final) /\
-  ((*Fw1.*)Forwarding1.IF._st{1} = (*Fw1.*)Forwarding1._State_IF_Final) /\
-  ((*Fw2.*)Forwarding2.IF._st{1} = (*Fw2.*)Forwarding2._State_IF_Final)
-  ).
-
-exlim r0{1} => r0.
-call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0).
-      skip. move => &1 &2 P.  smt((*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_rsp (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_rsp).
-
-      rcondt{1} 0. auto;smt().
-  sp.
-rcondf{1} 0. auto;smt.
-      rcondf{1} 0. auto;smt.
-      rcondt{1} 0. auto;smt.
-  inline party_Pt1.
-      sp.
-     
-      match _State_Pt1_WaitFwd2 {1} 0. auto;smt().
- 
-           match Some {1} 0. auto;progress;smt((*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_rsp (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_rsp).
-           rcondt{1} 0. auto;smt.
-       inline _State_Pt1_WaitFwd2__Fw2__D__fw_rsp.
-      sp.
-      case (KeyExp'.epdp_key_univ.`dec u3{1} = Some (g ^ q2)); last first.
-      exfalso. move => &1 &2 P.
-have H : KeyExp'.epdp_key_univ.`dec u3{1} = Some (g ^ q2).
-  have H : (*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_rsp.`dec ((*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_rsp.`enc
-    {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
-        (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__u = KeyExp'.epdp_key_univ.`enc
-        (g ^ q2); |}) = Some {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
-        (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__u = KeyExp'.epdp_key_univ.`enc
-        (g ^ q2); |}.
-          smt((*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_rsp (*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_rsp).
-      have H' :(*Fw2.*)Forwarding2.UC_FwDir.D.epdp__fw_rsp.`dec (m0{1}) =
-   Some {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
-        (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__u = KeyExp'.epdp_key_univ.`enc
-        (g ^ q2); |}.
-smt().
-have H'': _x0{1} = {| (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp___func = _addr_Fw2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt2 = _intport_Pt1 func;
-        (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__pt1 = _intport_Pt2 func; (*Fw2.*)Forwarding2.UC_FwDir.D.fw_rsp__u = KeyExp'.epdp_key_univ.`enc
-        (g ^ q2); |}. smt().
-      have U3 : u3{1} = KeyExp'.epdp_key_univ.`enc
-      (g ^ q2). smt().
-      rewrite U3.
-smt().
-smt().
-        
-      match Some {1} 0. auto; smt(). 
-           
-           sp.
-elim* => r0_L r2_L _r5_L _st_Pt1_L _r7_L.
-        inline state_RealSimpStateWaitAdv2.   
-sp.
-seq 1 0 : (! not_done{1} /\
-    r0{1} = r{2} /\
-  real_simp_rel4
-    {| real_simp_rel_st_func = func;
-      real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-      real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-      real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-      real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-      real_simp_rel_st_rss = RealSimp._st{2}; |} 
-  ).
-
-  exlim r0{1} => r0.
-  elim* => r_R _st_R.
-call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0).
-      skip.
-  
-  move => &1 &2 P.
-  have H : (r0{!1}, m0{1}.`2.`1).`1 = r0.
-  smt((*Fw2.*)Forwarding2.UC_FwDir.D.eq_of_valid__fw_rsp
-      (*Fw2.*)Forwarding2.UC_FwDir.D.valid_epdp__fw_rsp
-        _adv_pi_begin_gt0
-        UC_KEDir.Pt1.valid_epdp__ke_rsp2
-      UC_KEDir.Pt1.eq_of_valid__ke_rsp2).
-      rewrite H //=. clear H.
-  have H : RFCore.after_core_return RFCore.MakeRF.self{1} r0 m0{1}.`2.`1 .
-  smt().
-      rewrite H //=. clear H.
-  move => result Q.
-have H : result.`1 = r0.
-  smt().
-      rewrite H //=. clear H.
-have H : ! result.`3.
-  smt().
-      rewrite H //=. clear H.
-have H : r{2} = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-       {| UC_KEDir.Pt1.ke_rsp2___func = RealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt10{2};
-         UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
-         rewrite H. clear H.
-         have H : pt10{2} = pt1. smt(). rewrite H. clear H.
-have H : r0 = Some (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-       {| UC_KEDir.Pt1.ke_rsp2___func = RealSimp._self{2}; UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-         UC_KEDir.Pt1.ke_rsp2__k = g ^ q2 ^ q1; |}). smt().
-         rewrite H //=. clear H.
-smt().     
- 
-rcondf{1} 0. auto.
-sp. skip. smt(RealSimpRel4).
-       
- case
- (
-   real_simp_rel4
-   {|real_simp_rel_st_func = func;
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
- ).
- sp.
-     case(RealSimp._st{2} = RealSimpStateFinal); last first. exfalso. auto;smt().
- match RealSimpStateFinal {2} 0. auto;smt().
-     if{1};last first. auto;smt().
- inline loop.
-     sp.
-     rcondt{1} 0. auto;smt().
- inline invoke.
-     sp.
-     if{1}.
-     sp.
-     if{1}.
-     inline parties.
-     sp.
-     case((*Fw1.*)Forwarding1.UC_Forw._st{1} = (*Fw1.*)Forwarding1._State_IF_Final);last first.
-     exfalso. auto; smt().
-     match _State_IF_Final {1} 0. auto;smt().
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-     if{1}.
-     sp.
-     if{1}.
-     inline parties.
-     sp.
-    (* case((*Fw2.*)Forwarding2.UC_Forw._st{1} = (*Fw2.*)Forwarding2._State_IF_Final);last first.
-     exfalso. auto; smt().*)
-     match _State_IF_Final {1} 0. auto;smt().
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-     
-         if{1}.
-         inline party_Pt1.
-         sp.
-         match _State_Pt1_Final {1} 0. auto;smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-     if{1}.
-         inline party_Pt2.
-         sp.
-         match _State_Pt2_Final {1} 0. auto;smt().
-     sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-      sp.
-seq 1 0 : (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
-  real_simp_rel4
-       {| real_simp_rel_st_func = func;
-         real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1};
-         real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-         real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-         real_simp_rel_st_rss = RealSimp._st{2}; |} 
-     ).
-         call{1} (RFCore.MakeRF_after_core_error UC_KEReal).
-         skip. move => />.
-         rcondf{1} 0.
-         trivial.
-         sp.
-         skip.  
-         smt(RealSimpRel4).
-
-
-
-
-
-
-
-
- 
-exfalso.
- move => &1 &2.
- move => [#].
- move => _ _ _ _ _ _ _ _.
-move => []; smt().
-qed.
-
-local lemma Exper_KEReal_RealSimp
-    (func' : addr) (in_guard' : int fset) &m :
-  exper_pre func' =>
-  disjoint in_guard' (adv_pis_rf_info rf_info) =>
-  Pr[Exper(MI(RFIP, Adv), Env).main
-       (func', in_guard') @ &m : res] =
-  Pr[Exper(MI(RealSimp, Adv), Env).main
-       (func', in_guard') @ &m : res].
-     proof.
-     print inter_init_pre.
-     move => exper_pre disjoint.
-       byequiv; first last.
-       trivial.
-     trivial.
-       proc.
-       seq 1 1 : (
-       ={func, in_guard, glob Adv, glob Env, glob MI}
-       /\ func{1} = func'
-         /\ MI.func{1} = func'
-       /\ MI.in_guard{1} = in_guard'
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     ).
-       inline *.
-       sp.
-         call (_ : ={ glob Env, glob MI}
-
-         /\ MI.func{1} = func'
-       /\ MI.in_guard{1} = in_guard'
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     ).
-       skip.
-     move => />.
-     print real_simp_rel0.
-         rewrite RealSimpRel0.
-         rewrite /real_simp_rel0 //.
-
-     
-         call (_ : ={glob MI, glob Adv}
-/\ MI.func{1} = func'
-       /\ MI.in_guard{1} = in_guard'
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     );
-       last first.
-       skip; move => />.
-  
-       proc.
-       if; last first.
-       sp. skip. move => />.
-     move => />.
-     
-       inline loop.
-         sp; wp.
-     print mi_loop_invar.
-     while (={glob MI, glob Adv, not_done, m, m0, r0}
-       /\ MI.func{1} = func'
-         /\ MI.in_guard{1} = in_guard'
-         /\
-
-      (mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1})
-  
-
-        (*
-        op mi_loop_invar
-     (func : addr, in_guard : int fset,
-      r : msg option, m : msg, not_done : bool) : bool =
-  inter_init_pre func /\
-  (not_done =>
-   (m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3) \/
-   (m.`1 = Adv /\ func <= m.`2.`1 /\ m.`3.`1 = adv /\ 0 < m.`3.`2) \/
-   (m.`1 = Adv /\ m.`2.`1 = adv /\
-    (func <= m.`3.`1 /\ 0 < m.`2.`2 \/
-     m.`3 = env_root_port /\ m.`2.`2 = 0 \/
-     envport func m.`3 /\ 0 < m.`2.`2 /\
-     m.`2.`2 \in in_guard))) /\
-  (! not_done =>
-   r = None \/
-   (envport0 func (oget r).`2 /\
-    ((oget r).`1 = Dir /\ (oget r).`2 <> env_root_port /\
-      func = (oget r).`3.`1 \/
-     (oget r).`1 = Adv /\ adv = (oget r).`3.`1 /\ 0 <= (oget r).`3.`2 /\
-        ((oget r).`2 = env_root_port <=> (oget r).`3.`2 = 0)))).
-        
-        op main_guard (func : addr, in_guard : int fset, m : msg) : bool =
-m.`1 = Dir /\ func = m.`2.`1 /\ envport func m.`3 \/
-  m.`1 = Adv /\ m.`2.`1 = adv /\
-  (m.`2.`2 = 0 /\ m.`3 = env_root_port \/
-   0 < m.`2.`2 /\ m.`2.`2 \in in_guard /\ envport func m.`3).
-        *)      
-       
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|});
-       last first.
-     skip. move => />. smt(). 
-     if; last first.
-     seq 1 1 : #post.
- call(_ : 
-    ={glob MI} /\
-   MI.func{1} = func' /\
-   MI.in_guard{1} = in_guard' /\
-   RFCore.MakeRF.self{1} = func' /\
-   RealSimp._self{2} = func' /\
-   UC_KEReal._self{1} = func' /\
-   (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func' /\
-   (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func' /\
-   real_simp_rel
-     {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-         real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1}; real_simp_rel_st_fws2 =
-         (*Fw2.*)Forwarding2.IF._st{1}; real_simp_rel_st_rss = RealSimp._st{2}; |}).
-       skip. auto;progress; smt().
-
-inline after_adv.
-auto;progress;smt().
-       smt().
-
- seq 1 1 : #post. (*
-       ={glob MI, glob Adv, not_done, m, m0, r0} /\ MI.func{1} = func'
-         
-       /\  MakeInt.MI.func{1} <= m0{1}.`2.`1
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}
-     ); last first.
-     call(_ : ={glob MI, glob Adv} /\ MI.func{1} = func'
-         /\ MI.in_guard{1} = in_guard'
-       /\ RFCore.MakeRF.self{1} = func'
-       /\ RealSimp._self{2} = func'
-         /\ UC_KEReal._self{1} = func'
-         /\ (*Fw1.*)Forwarding1.IF._self{1} = _addr_Fw1 func'
-         /\ (*Fw2.*)Forwarding2.IF._self{1} = _addr_Fw2 func'
-       /\ real_simp_rel
-   {|real_simp_rel_st_func = func';
-     real_simp_rel_st_r1s  = UC_KEReal._st_Pt1{1};
-     real_simp_rel_st_r2s  = UC_KEReal._st_Pt2{1};
-     real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.IF._st{1};
-     real_simp_rel_st_fws2 = (*Fw2.*)Forwarding2.IF._st{1};
-     real_simp_rel_st_rss  = RealSimp._st{2}|}*)
-         auto.
-
-     call (KEReal_RealSimp_invoke func').
-         skip.
-   move => &1 &2 P. 
-       have H: inc func' adv. smt(). rewrite H //=. clear H.
-   
-       have H: m0{1} = m0{2}. smt(). rewrite H //=. clear H.
-   
-       have H:RFCore.MakeRF.self{1} = func'. smt(). rewrite H //=. clear H.
-   
-       have H: UC_KEReal._self{1} = func' . smt(). rewrite H //=. clear H.
-   
-       have H: (*Fw1.*)Forwarding1.UC_Forw._self{1} = _addr_Fw1 func'. smt(). rewrite H //=. clear H.
-   
-   have H: (*Fw2.*)Forwarding2.UC_Forw._self{1} = _addr_Fw2 func' . smt(). rewrite H //=. clear H.
-       have H:RealSimp._self{2} = func'  . smt(). rewrite H //=. clear H.
-   
-       have H:real_simp_rel
-   {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = UC_KEReal._st_Pt1{1}; real_simp_rel_st_r2s = UC_KEReal._st_Pt2{1};
-       real_simp_rel_st_fws1 = (*Fw1.*)Forwarding1.UC_Forw._st{1}; real_simp_rel_st_fws2 =
-     (*Fw2.*)Forwarding2.UC_Forw._st{1}; real_simp_rel_st_rss = RealSimp._st{2}; |} . smt(). rewrite H //=. clear H.
-   
-       have H:forall (result_L result_R : msg option) (_st_Pt1_L : _state_Pt1)
-  (_st_Pt2_L : _state_Pt2) (_st_L : (*Fw1.*)Forwarding1._state_IF)
-  (_st_L0 : (*Fw2.*)Forwarding2._state_IF) (_st_R : real_simp_state),
-  result_L = result_R /\
-  real_simp_rel
-    {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
-        real_simp_rel_st_r2s = _st_Pt2_L; real_simp_rel_st_fws1 = _st_L;
-        real_simp_rel_st_fws2 = _st_L0; real_simp_rel_st_rss = _st_R; |} =>
-  (((MakeInt.MI.func{1} = MakeInt.MI.func{2} /\
-     MakeInt.MI.in_guard{1} = MakeInt.MI.in_guard{2}) /\
-    (glob Adv){1} = (glob Adv){2} /\
-    not_done{1} = not_done{2} /\ m{1} = m{2} /\ result_L = result_R) /\
-   MakeInt.MI.func{1} = func' /\
-   MakeInt.MI.in_guard{1} = in_guard' /\
-   mi_loop_invar func' in_guard' result_L m0{2} not_done{1} /\
-   real_simp_rel
-     {| real_simp_rel_st_func = func'; real_simp_rel_st_r1s = _st_Pt1_L;
-         real_simp_rel_st_r2s = _st_Pt2_L; real_simp_rel_st_fws1 = _st_L;
-         real_simp_rel_st_fws2 = _st_L0; real_simp_rel_st_rss = _st_R; |}) /\
-  (not_done{1} <=> not_done{2}) . smt(). 
-   
-    have I:
-mi_loop_invar func' in_guard' r0{1} m0{1} not_done{1} =>
-    mi_invoke_loop_calls_func_invoke func' m0{1}.
-rewrite /mi_loop_invar /mi_invoke_loop_calls_func_invoke.
-  move => />.
-    case (not_done{1}).
-    smt.
-  smt.
-    smt().
-
-inline after_func. auto;progress; smt().
-qed.
-
-
-
-type exp_names = [exp1 | exp2 | exp3].
-
-
-
-local clone RedundantHashing as RH with
-  type input <- exp_names,
-  type output <- exp,
-  op doutput <- dexp
-proof *.
-realize doutput_ll. apply dexp_ll. qed.
-
-print RH.HASHING.
-local module (RealSimpHashingAdv : RH.HASHING_ADV)
-             (Hash : RH.HASHING) = {
-module RealSimpHash : FUNC =
-{
-  var _self : addr
-  var _st : real_simp_state
-  proc init(self_ : addr) : unit = {
-    _self <- self_;
-  _st <- RealSimpStateWaitReq1;
-  }
-
-  proc state_RealSimpStateWaitReq1 (pt1 : port, pt2 : port) : msg option = {
-  var q1 : exp;
-  var _r : msg option <- None;
-  var _pt1 : port <- _intport_Pt1 _self;
-  var _pt2 : port <- _intport_Pt2 _self;
-  var u : univ;
-  if (envport _self pt2) {
-    q1 <@ Hash.hash(exp1);
-    u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
-    _r <- Some
-      ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- RealSimpStateWaitAdv1 pt1 pt2 q1;
-    
-  }
-  else { _r <- None;}
-  return _r;
-  }
-
-  proc state_RealSimpStateWaitAdv1 (pt1 : port, pt2 : port, q1 : exp) : msg option = {
-  var k1 : key;
-  var q2 : exp;
-  var _r : msg option <- None;
-
-    k1 <- g ^ q1;
-    q2 <@ Hash.hash(exp2);
-    _r <- Some
-      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-        {|
-          UC_KEDir.Pt2.ke_rsp1___func = _self;
-          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-          UC_KEDir.Pt2.ke_rsp1__k = k1 ^ q2;
-          
-        |});
-      _st <- RealSimpStateWaitReq2 pt1 pt2 q1 q2;
-    
-  return _r;
-  }
-
-  proc state_RealSimpStateWaitReq2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp, pt2') : msg option = {
-  var u : univ;
-  var _pt1 : port <- _intport_Pt2 _self;
-  var _pt2 : port <- _intport_Pt1 _self;
-  var _r : msg option <- None;
-  if (pt2' = pt2) {
-    u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
-    _r <- Some
-      ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- RealSimpStateWaitAdv2 pt1 pt2 q1 q2;   
-  }
-  return _r;
-  }
-
-  proc state_RealSimpStateWaitAdv2 (pt1 : port, pt2 : port, q1 : exp, q2 : exp) : msg option = {
-  var _r : msg option <- None;
-
-    _r <- Some
-          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-          {|
-            UC_KEDir.Pt1.ke_rsp2___func = _self;
-            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q2) ^ q1;
-            
-          |});
-        _st <- RealSimpStateFinal;
-  
-  return _r;
-  }
-
-  proc invoke(m : msg) : msg option = {
-    var r : msg option <- None;
-    match _st with
-    | RealSimpStateWaitReq1 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt1 _self){
-        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
-        | Some _x => {
-          r <@ state_RealSimpStateWaitReq1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | RealSimpStateWaitAdv1 pt1 pt2 q1 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
-        match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ state_RealSimpStateWaitAdv1 (pt1, pt2, q1);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | RealSimpStateWaitReq2 pt1 pt2 q1 q2 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt2 _self){
-        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
-        | Some _x => {
-          r <@ state_RealSimpStateWaitReq2 (pt1, pt2, q1, q2, _x.`UC_KEDir.Pt2.ke_req2__pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | RealSimpStateWaitAdv2 pt1 pt2 q1 q2 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
-        match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ state_RealSimpStateWaitAdv2 (pt1, pt2, q1, q2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | RealSimpStateFinal => {}
-    end;
-    return r;
-  }
-}
-proc main() : bool = {
-    var b : bool;
-    Hash.rhash(exp1); Hash.rhash(exp2);
-    b <@ Exper(MI(RealSimpHash, Adv), Env).main
-           (DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
-    return b;
-  }
-}.
-
-type real_simp_hash_rel_st = {
-  real_simp_hash_rel_st_rss : real_simp_state;
-  real_simp_hash_rel_st_map : (exp_names, exp) fmap;
-}.
-
-pred real_simp_hash_rel0 (st : real_simp_hash_rel_st) =
-  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitReq1 /\
-  st.`real_simp_hash_rel_st_map.[exp1] = None /\
-  st.`real_simp_hash_rel_st_map.[exp2] = None.
-
-pred real_simp_hash_rel1 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 : exp) =
-  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitAdv1 pt1 pt2 q1 /\
-  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`real_simp_hash_rel_st_map.[exp2] = None.
-
-pred real_simp_hash_rel2 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitReq2 pt1 pt2 q1 q2 /\
-  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
-
-pred real_simp_hash_rel3 (st : real_simp_hash_rel_st, pt1 pt2 : port, q1 q2 : exp) =
-  st.`real_simp_hash_rel_st_rss = RealSimpStateWaitAdv2 pt1 pt2 q1 q2 /\
-  st.`real_simp_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`real_simp_hash_rel_st_map.[exp2] = Some q2.
-
-pred real_simp_hash_rel4 (st : real_simp_hash_rel_st) =
-  st.`real_simp_hash_rel_st_rss = RealSimpStateFinal /\
-  st.`real_simp_hash_rel_st_map.[exp1] <> None /\
-  st.`real_simp_hash_rel_st_map.[exp2] <> None.
-
-inductive real_simp_hash_rel (st : real_simp_hash_rel_st) =
-    RealSimpHashRel0 of (real_simp_hash_rel0 st)
-  | RealSimpHashRel1 (pt1 pt2 : port, q1 : exp) of
-      (real_simp_hash_rel1 st pt1 pt2 q1)
-  | RealSimpHashRel2 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_simp_hash_rel2 st pt1 pt2 q1 q2)
-  | RealSimpHashRel3 (pt1 pt2 : port, q1 q2 : exp) of
-      (real_simp_hash_rel3 st pt1 pt2 q1 q2)
-  | RealSimpHashRel4  of
-      (real_simp_hash_rel4 st).
-
-local lemma RealSimp_RealSimpHash_OptHashing_invoke :
-  equiv
-  [RealSimp.invoke ~
-   RealSimpHashingAdv(RH.OptHashing).RealSimpHash.invoke :
-   ={m} /\
-   ={_self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
-   real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
-   ={res} /\
-   ={_self,_st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
-   real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}].
- proof.
-   proc.
-   sp.
- case
-  (real_simp_hash_rel0
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
-   match RealSimpStateWaitReq1 {1} 0.
-     auto; progress; smt().
- match RealSimpStateWaitReq1 {2} 0.
-   auto; progress; smt().
-   if.
-   auto; progress; smt().
-   match.
-   auto; progress; smt().
-   auto; progress; smt().
-   auto; progress; smt().
- move => _x _x0.
- inline state_RealSimpStateWaitReq1.
-sp.
-if.
-   auto; progress; smt().
-   inline hash.
-   sp 0 1.
-   rcondt{2} 0.
-     auto; progress; smt().
- seq 1 1 : (#pre /\ q1{1} = out{2}).
-     rnd.
-     auto; progress; smt().
- sp 0 1.
- seq 0 1 :  (#pre /\ ={q1}).
-     auto; progress; smt(get_setE).
-     sp. skip.
- move => &1 &2 P. 
-     have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
-     have H : real_simp_hash_rel1
-  {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
-    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
-    pt1{2} pt2{2} q1{2}.
-rewrite /real_simp_hash_rel1.
-    simplify.
-  have H : RealSimpHashingAdv.RealSimpHash._st{2} =
-RealSimpStateWaitAdv1 pt1{2} pt2{2} q1{2}.
-    smt(). rewrite H //=. clear H.
-have H : RH.OptHashing.mp{2}.[exp1] = Some q1{2}.
-    smt(get_setE). rewrite H //=. clear H.
-  have H : RH.OptHashing.mp{2}.[exp2] = None.
-smt(get_setE). rewrite H //=.
-    smt(RealSimpHashRel1).
-    auto; progress; smt().
-    auto; progress; smt().
-case
- (exists (pt1 pt2 : port, q1 : exp),
-   real_simp_hash_rel1
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
-     pt1
-     pt2
-     q1
- ).
-     match RealSimpStateWaitAdv1 {1} 0.
-     auto; progress; smt().
- match RealSimpStateWaitAdv1 {2} 0.
-     auto; progress; smt().
-     if.
-     auto; progress; smt().
-     match.
-     auto; progress; smt().
-     auto; progress; smt().
-     auto; progress; smt().
- move => x _0.
-     inline state_RealSimpStateWaitAdv1.
-     sp.
-     inline hash.
-     rcondt{2} 2.  auto; progress; smt().
-     sp 0 1.
-     seq 1 1 : (#pre /\ q2{1} = out{2}).
-     rnd. auto; progress; smt().
-     sp 0 1.
-     seq 0 1 : (#pre /\ ={q2}).
-     sp.
-     auto; progress; smt(get_setE).
-     sp.
-     skip.
- move => &1 &2 P.
-     have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
-     have H : real_simp_hash_rel2
-{| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
-  real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
-  pt1{2}
-  pt2{2}
-  q1{2}
-q2{2}.
-smt(get_setE ).
-smt(RealSimpHashRel2). 
-  auto; progress; smt().
-case
- (exists (pt1 pt2 : port, q1 q2 : exp),
-   real_simp_hash_rel2
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
-     pt1
-     pt2
-     q1
-     q2
- ).
-  match RealSimpStateWaitReq2 {1} 0.
-     auto; progress; smt().
-  match RealSimpStateWaitReq2 {2} 0.
-     auto; progress; smt().
-     if. auto; progress; smt().
-     match. auto; progress; smt().
-     auto; progress; smt().
-     auto; progress; smt().
- move => _x _x0.
-     inline state_RealSimpStateWaitReq2.
-   
-sp 8 8.
-     
-     if. auto; progress; smt().
-     sp.
-skip. move => &1 &2 P.
-have H : r{1} = r{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}. smt(). rewrite H //=. clear H.
-     have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}. smt(). rewrite H //=. clear H.
-     have H : real_simp_hash_rel3
-{| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
-  real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}
-  pt1{2}
-  pt2{2}
-  q1{2}
-q2{2}.
-smt(get_setE ).
-  smt(RealSimpHashRel3).
-  auto; progress; smt().
-  auto; progress; smt().
-
-case
-(exists (pt1 pt2 : port, q1 q2 : exp),
-   real_simp_hash_rel3
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}
-     pt1
-     pt2
-     q1
-     q2
- ).
-
-     match RealSimpStateWaitAdv2 {1} 0.
-     auto; progress; smt().
- match RealSimpStateWaitAdv2 {2} 0.
-     auto; progress; smt().
- if; last first.
-     auto; progress; smt().
-     auto; progress; smt().
-     match. auto; progress; smt().
-     auto; progress; smt().
-     auto; progress; smt().
- move => x y.
-     inline state_RealSimpStateWaitAdv2.
-     sp 5 5.
-     
-     auto; progress; smt( RealSimpHashRel4).
- case
-  (real_simp_hash_rel4
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|}).
-  match  RealSimpStateFinal {1} 0.
-     auto; progress; smt().
- match  RealSimpStateFinal {2} 0.
-     auto; progress; smt().
-     sp. auto; progress; smt().
-     exfalso.
- move => &1 &2.
- move => [#].
- move => _ _ _ _ _.
- move => []; smt().
-qed.
-
-local lemma Exper_RealSimp_GOptHashing_RealSimpHashingAdv
-            (func' : addr, in_guard' : int fset) &m :
-  DDH_Adv_globs.func{m} = func' =>
-  DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[Exper(MI(RealSimp, Adv), Env).main
-       (func', in_guard') @ &m : res] =
-     Pr[RH.GOptHashing(RealSimpHashingAdv).main() @ &m : res].
-     proof.
-     move => DDH_Adv_glob_func DDH_Adv_glob_in_guard.
-       byequiv.
-       proc.
-       inline*.
-       sp.
-       seq 1 1 : (
-RH.OptHashing.mp{2} = empty /\
-  inp{2} = exp1 /\
-  inp0{2} = exp2 /\
-  func{2} = DDH_Adv_globs.func{2} /\
-  in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-  func_{2} = func{2} /\
-  in_guard_{2} = in_guard{2} /\
-  MakeInt.MI.func{2} = func_{2} /\
-  MakeInt.MI.in_guard{2} = in_guard_{2} /\
-  self_{2} = MakeInt.MI.func{2} /\
-  RealSimpHashingAdv.RealSimpHash._self{2} = self_{2} /\
-  RealSimpHashingAdv.RealSimpHash._st{2} = RealSimpStateWaitReq1 /\
-  func_{1} = func{1} /\
-  in_guard_{1} = in_guard{1} /\
-  MakeInt.MI.func{1} = func_{1} /\
-  MakeInt.MI.in_guard{1} = in_guard_{1} /\
-  self_{1} = MakeInt.MI.func{1} /\
-  RealSimp._self{1} = self_{1} /\
-  RealSimp._st{1} = RealSimpStateWaitReq1 /\
-  (glob Env){2} = (glob Env){m} /\
-  DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
-  DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
-  (func{1}, in_guard{1}) = (func', in_guard') /\
-  (glob Env){1} = (glob Env){m} /\ (glob Adv){1} = (glob Adv){2}
-     ).
-call(_:true). auto;progress;smt().
-wp.
-    call(_:(={glob MI, glob Adv} /\ ={ _self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash) /\
-    MakeInt.MI.func{1} = func' /\
-MakeInt.MI.in_guard{1} = in_guard' /\
-   real_simp_hash_rel
-   {|real_simp_hash_rel_st_rss = RealSimp._st{1};
-     real_simp_hash_rel_st_map = RH.OptHashing.mp{2}|})).
-proc.
-    if;last first.
-auto;progress;smt().
-auto;progress;smt().
-inline loop.
-sp. wp.
-while (={glob MI, glob Adv, not_done, m, m0, r0}
-       /\ MI.func{1} = func'
-         /\ MI.in_guard{1} = in_guard'
- /\ ={ _self, _st}(RealSimp, RealSimpHashingAdv.RealSimpHash)
-       /\ real_simp_hash_rel
-     {| real_simp_hash_rel_st_rss = RealSimp._st{1};
-         real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
-       if.
-       auto;progress;smt().
-       seq 1 1 : #post.
-
-       call RealSimp_RealSimpHash_OptHashing_invoke.
- auto;progress;smt().  
-       inline after_func. auto;progress; smt().
-       seq 1 1 : #pre.
-   call(_ : true (*(((MakeInt.MI.func{1}, MakeInt.MI.in_guard{1}) =
-     (MakeInt.MI.func{2}, MakeInt.MI.in_guard{2})) /\
-    MI.func{1} = func' /\
-    MI.in_guard{1} = in_guard' /\
-    (RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2} /\
-     RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2}) /\
-    real_simp_hash_rel
-      {| real_simp_hash_rel_st_rss = RealSimp._st{1};
-          real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |})*)).
-       auto;progress; smt().
-       inline after_adv. auto;progress; smt().
-       auto;progress; smt().
-  
-       skip. move => &1 &2 P.
-have H : ((func{1}, in_guard{1}).`1 = (func{2}, in_guard{2}).`1 /\
-  (func{1}, in_guard{1}).`2 = (func{2}, in_guard{2}).`2).
-     auto;progress;smt(). rewrite H //=. clear H.
-   have H : (glob Env){1} = (glob Env){2} .
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : (MakeInt.MI.func{1} = MakeInt.MI.func{2} /\
-   MakeInt.MI.in_guard{1} = MakeInt.MI.in_guard{2}).
-have H : MakeInt.MI.func{1} = func{1}.
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : func{1} = func'.
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : MakeInt.MI.in_guard{1} = in_guard{1}.
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : in_guard{1} = in_guard'.
-    auto;progress;smt(). rewrite H //=. clear H.
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : (glob Adv){1} = (glob Adv){2} .
-    auto;progress;smt(). rewrite H //=. clear H.
-    have H : RealSimp._self{1} = RealSimpHashingAdv.RealSimpHash._self{2}.
-have H : RealSimp._self{1} = func{1}.
-    auto;progress;smt(). rewrite H //=. clear H.
-auto;progress;smt(). rewrite H //=. clear H.
-    have H : RealSimp._st{1} = RealSimpHashingAdv.RealSimpHash._st{2} .
-    auto;progress;smt(). rewrite H //=. clear H.
-    have H : MakeInt.MI.func{1} = func'  .
-have H : MakeInt.MI.func{1} = func{1}. smt(). rewrite H //=. clear H.
-    auto;progress;smt(). rewrite H //=. clear H.
-    have H : MakeInt.MI.in_guard{1} = in_guard' .
-    auto;progress;smt(). rewrite H //=. clear H.
-have H : real_simp_hash_rel0
-  {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
-    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.
-rewrite /real_simp_hash_rel0.
-have H : {| real_simp_hash_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{2};
-    real_simp_hash_rel_st_map = RH.OptHashing.mp{2}; |}.`real_simp_hash_rel_st_rss =
-    RealSimpStateWaitReq1 . smt(). rewrite H //=. clear H.
-auto;progress;smt. smt(RealSimpHashRel0).
-    smt().
-  smt().
-qed.
-
-
-type real_simp_hash_ddh1_rel_st = {
-  real_simp_hash_ddh1_rel_st_k1  : key;
-  real_simp_hash_ddh1_rel_st_k2  : key;
-  real_simp_hash_ddh1_rel_st_rss : real_simp_state;
-  real_simp_hash_ddh1_rel_st_hs  : ke_ddh_state;
-}.
-
-pred real_simp_hash_ddh1_rel0 (st : real_simp_hash_ddh1_rel_st) =
-  st.`real_simp_hash_ddh1_rel_st_rss = RealSimpStateWaitReq1 /\
-  st.`real_simp_hash_ddh1_rel_st_hs = KEDDHStateWaitReq1.
-
-pred real_simp_hash_ddh1_rel1
-     (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
-  st.`real_simp_hash_ddh1_rel_st_rss =
-  RealSimpStateWaitAdv1 pt1 pt2 (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1) /\
-  st.`real_simp_hash_ddh1_rel_st_hs =
-  KEDDHStateWaitAdv1 pt1 pt2.
-
-pred real_simp_hash_ddh1_rel2
-     (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
-  st.`real_simp_hash_ddh1_rel_st_rss =
-  RealSimpStateWaitReq2
-       pt1
-       pt2
-   (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1)
-   (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k2) /\
-  st.`real_simp_hash_ddh1_rel_st_hs =
-  KEDDHStateWaitReq2 pt1 pt2.
-
-pred real_simp_hash_ddh1_rel3
-     (st : real_simp_hash_ddh1_rel_st, pt1 pt2 : port) =
-  st.`real_simp_hash_ddh1_rel_st_rss =
-  RealSimpStateWaitAdv2
-  pt1 pt2
-   (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k1)
-   (KeyExp'.log st.`real_simp_hash_ddh1_rel_st_k2) /\
-  st.`real_simp_hash_ddh1_rel_st_hs =
-  KEDDHStateWaitAdv2 pt1 pt2.
-
-pred real_simp_hash_ddh1_rel4
-     (st : real_simp_hash_ddh1_rel_st) =
-  st.`real_simp_hash_ddh1_rel_st_rss =
-  RealSimpStateFinal
-   /\
-  st.`real_simp_hash_ddh1_rel_st_hs =
-  KEDDHStateFinal.
-
-inductive real_simp_hash_ddh1_rel (st : real_simp_hash_ddh1_rel_st) =
-    RealSimpHashDDH1Rel0 of (real_simp_hash_ddh1_rel0 st)
-  | RealSimpHashDDH1Rel1 (pt1 pt2 : port) of
-      (real_simp_hash_ddh1_rel1 st pt1 pt2)
-  | RealSimpHashDDH1Rel2 (pt1 pt2 : port) of
-      (real_simp_hash_ddh1_rel2 st pt1 pt2)
-  | RealSimpHashDDH1Rel3 (pt1 pt2 : port) of
-      (real_simp_hash_ddh1_rel3 st pt1 pt2)
-  | RealSimpHashDDH1Rel4 of
-      (real_simp_hash_ddh1_rel4 st).
-
-local lemma RealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke :
-  equiv
-  [RealSimpHashingAdv(RH.NonOptHashing).RealSimpHash.invoke ~
-   DDH_Adv(Env, Adv).KEDDH.invoke :
-   ={m} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   (RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   ={glob Adv, glob MI} /\
-   real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-     real_simp_hash_ddh1_rel_st_rss =
-     RealSimpHashingAdv.RealSimpHash._st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}|} ==>
-   ={res} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   (RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2}) /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   ={glob Adv, glob MI} /\
-   real_simp_hash_ddh1_rel
-   {|real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-     real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-     real_simp_hash_ddh1_rel_st_rss =
-     RealSimpHashingAdv.RealSimpHash._st{1};
-     real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}|}].
- proof.
-   proc.
-   sp.
- case(real_simp_hash_ddh1_rel0
-    {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-        real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
-      match RealSimpStateWaitReq1 {1} 0. auto; smt().
-      match KEDDHStateWaitReq1 {2} 0. auto; smt().
-      if; last first. auto; smt().
-      auto; smt().
-      match. auto; smt().
-      auto; smt().
-  auto; smt().
-  move => _x _x0.
-      inline state_RealSimpStateWaitReq1.
-      inline _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1.
-  sp 5 5.
-      if; last first. auto;smt().
-  auto;smt(). 
-inline hash.
-      sp 1 0.
-      rcondf{1} 0. auto;smt().
-      sp.
-      skip. move => &1 &2 P.
-      have H : RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}). auto; smt(). rewrite H //=. clear H.
-      have H : RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) . auto; smt(). rewrite H //=. clear H.
-      have H : DDH_Adv_globs.k3{2} = g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}). auto; smt(). rewrite H //=. clear H.
-      have H :RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} . auto; smt(). rewrite H //=. clear H.
-      have H : DDH_Adv_globs._self{2} = MakeInt.MI.func{1} . auto; smt(). rewrite H //=. clear H.
-      have H : (glob Adv){1} = (glob Adv){2}. auto; smt(). rewrite H //=. clear H.
-      have H : MakeInt.MI.func{1} = MakeInt.MI.func{2} . auto; smt(). rewrite H //=. clear H.
-      have H : MakeInt.MI.in_guard{1} = MakeInt.MI.in_guard{2} . auto; smt(). rewrite H //=. clear H.
-  have H : real_simp_hash_ddh1_rel
-  {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-    real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-    real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}.
-  have H : real_simp_hash_ddh1_rel1
-  {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-    real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-    real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
-    pt1{1} pt2{1} .
-    auto; progress; smt().
-    auto; smt(RealSimpHashDDH1Rel1).
-    rewrite H //=. clear H.
-  have H : r{1} = Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-         {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func =
-             _addr_Fw1 RealSimpHashingAdv.RealSimpHash._self{1};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1{1};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2{1};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u{1}; |}). smt(). rewrite H //=. clear H.
-  have H : r{2} = Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-         {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 DDH_Adv_globs._self{2};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1{2};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2{2};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u{2}; |}). smt(). rewrite H //=. clear H.
-           have H : u{1} = u{2}.
-           have H : g ^ q1{1} = DDH_Adv_globs.k1{2}.
-       have H : q1{1} = KeyExp'.log DDH_Adv_globs.k1{2}. smt(). rewrite H //=. clear H. smt(KeyExp'.log_gen).
-smt().
-           smt().
-
-           case ( exists (pt1 pt2 : port),
-           real_simp_hash_ddh1_rel1
-    {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-        real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
-  pt1 pt2).
-elim* => pt1 pt2.
-      match RealSimpStateWaitAdv1 {1} 0. auto;smt().
-      match KEDDHStateWaitAdv1 {2} 0. auto;smt().
-      if; last first. auto;smt().
-  auto;smt().
-match.
-      auto;smt().
-      auto;smt().
-      auto;smt().
-  move => _1 _0.
-      inline state_RealSimpStateWaitAdv1.
-  inline _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok.
-sp 4 3.
-
-      inline hash.
-  sp 2 0.
-      rcondf{1} 0. auto;smt().
-      sp.
-      skip. move => &1 &2 P. progress.
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-      smt(KeyExp'.log_gen KeyExp'.double_exp).
-have Q : real_simp_hash_ddh1_rel2
-  {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss =
-      RealSimpStateWaitReq2 pt1 pt2 q1{1}
-        (oget RH.NonOptHashing.mp{1}.[exp2]); real_simp_hash_ddh1_rel_st_hs =
-          KEDDHStateWaitReq2 pt1 pt2; |} pt1 pt2.
-          smt().
-          smt(RealSimpHashDDH1Rel2).
-
-case ( exists (pt1 pt2 : port),
-           real_simp_hash_ddh1_rel2
-    {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-        real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
-  pt1 pt2).
-elim* => pt1 pt2.
-      match RealSimpStateWaitReq2 {1} 0. auto; smt().
-      match KEDDHStateWaitReq2 {2} 0. auto; smt().
-  if; last first. auto; smt(). auto; smt().
-match.
-      auto; smt().
-      auto; smt().
-      auto; smt().
-  move => _x _x0.
-      inline state_RealSimpStateWaitReq2.
-      inline _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2.
-  sp 8 6.
-      if; last first. auto; smt(). auto; smt().
-      sp. skip. progress.
-      smt(KeyExp'.log_gen).
-  have Q : real_simp_hash_ddh1_rel3
-  {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-      real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss =
-      RealSimpStateWaitAdv2 pt1 pt2 q1{1}
-        (oget RH.NonOptHashing.mp{1}.[exp2]); real_simp_hash_ddh1_rel_st_hs =
-          KEDDHStateWaitAdv2 pt1 pt2; |} pt1 pt2.
-      smt().
-          smt(RealSimpHashDDH1Rel3).
-
-case ( exists (pt1 pt2 : port),
-           real_simp_hash_ddh1_rel3
-    {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-        real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
-  pt1 pt2).
-      elim* => pt1 pt2.
-      match RealSimpStateWaitAdv2 {1} 0. auto;smt().
-      match KEDDHStateWaitAdv2 {2} 0. auto;smt().
-      if; last first. auto;smt(). auto;smt().
-      match. auto;smt(). auto;smt(). auto;smt().
-  move => x y.
-      inline state_RealSimpStateWaitAdv2.
-      inline _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok.
-  sp 5 3.
-      
-      sp.
-  elim* => r_R _st_R _r_R r_L _st_L _r_L.
-      skip. move => &1 &2 P.
-      progress; smt(KeyExp'.gen_log KeyExp'.double_exp mulC RealSimpHashDDH1Rel4).
-
-case ( real_simp_hash_ddh1_rel4
-    {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-        real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-      real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-      real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
-match RealSimpStateFinal {1} 0. auto;smt().
-      match KEDDHStateFinal {2} 0. auto;smt().
-  auto;smt(). 
-exfalso.
-  move => &1 &2.
-  move => [#].
-  move => _ _ _ _ _  _ _ _ _ _ _.
-  move => [];smt().
-qed.
-  
-local lemma RealSimpHashingAdv_NonOptHashing_DDH1_DDH_Adv
-            (func' : addr, in_guard' : int fset) &m :
-  DDH_Adv_globs.func{m} = func' =>
-  DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[RH.GNonOptHashing(RealSimpHashingAdv).main() @ &m : res] =
-  Pr[DDH1(DDH_Adv(Env, Adv)).main() @ &m : res].
-  proof.
-  move => glob_func glob_in_guard.
-    byequiv.
-  proc.
-inline  init.
-    sp 1 0.
-  inline*.
-sp 2 0.
-    rcondt{1} 0. auto;smt(mem_empty).
-    seq 1 1 : (#pre /\ out{1}=q1{2}). rnd. auto;smt().
-    sp 3 0.
-    rcondt{1} 0. auto;smt(get_setE  mem_empty).
-  seq 1 1 : (#pre /\ out0{1}=q2{2}). rnd. auto;smt().
-    sp. wp.
-    seq 1 1 :(
-k1_{2} = g ^ q1{2} /\
-  k2_{2} = g ^ q2{2} /\
-  k3_{2} = g ^ (q1{2} * q2{2}) /\
-  DDH_Adv_globs.k1{2} = k1_{2} /\
-  DDH_Adv_globs.k2{2} = k2_{2} /\
-  DDH_Adv_globs.k3{2} = k3_{2} /\
-  func{2} = DDH_Adv_globs.func{2} /\
-  in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-  func_{2} = func{2} /\
-  in_guard_{2} = in_guard{2} /\
-  MakeInt.MI.func{2} = func_{2} /\
-  MakeInt.MI.in_guard{2} = in_guard_{2} /\
-  self_{2} = MakeInt.MI.func{2} /\
-  DDH_Adv_globs._self{2} = self_{2} /\
-  DDH_Adv_globs._st{2} = KEDDHStateWaitReq1 /\
-  exists (mp_L : (exp_names, exp) fmap),
-    RH.NonOptHashing.mp{1} = mp_L.[inp2{1} <- out0{1}] /\
-    func{1} = DDH_Adv_globs.func{1} /\
-    in_guard{1} = DDH_Adv_globs.in_guard{1} /\
-    func_{1} = func{1} /\
-    in_guard_{1} = in_guard{1} /\
-    MakeInt.MI.func{1} = func_{1} /\
-    MakeInt.MI.in_guard{1} = in_guard_{1} /\
-    self_{1} = MakeInt.MI.func{1} /\
-    RealSimpHashingAdv.RealSimpHash._self{1} = self_{1} /\
-    RealSimpHashingAdv.RealSimpHash._st{1} = RealSimpStateWaitReq1 /\
-    (exists (mp_L0 : (exp_names, exp) fmap),
-       mp_L = mp_L0.[inp1{1} <- out{1}] /\
-       inp0{1} = exp2 /\
-       inp2{1} = inp0{1} /\
-       (inp{1} = exp1 /\
-        inp1{1} = inp{1} /\
-        mp_L0 = empty /\
-        (glob Env){2} = (glob Env){m} /\
-        DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
-        DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
-        (glob Env){1} = (glob Env){m} /\
-        (glob Adv){1} = (glob Adv){2} /\
-        DDH_Adv_globs.in_guard{1} = DDH_Adv_globs.in_guard{m} /\
-        DDH_Adv_globs.func{1} = DDH_Adv_globs.func{m}) /\
-       out{1} = q1{2}) /\
-    out0{1} = q2{2}
-    ).
-        call(_:true). auto;progress;smt().
-        call(_: ={ glob Adv, glob MI} /\
-RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   DDH_Adv_globs.k3{2} =
-   g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   real_simp_hash_ddh1_rel
-     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-       real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}).
-        proc.
-        if; last first. auto;smt(). auto;smt().
-
-inline loop.
-sp. wp.
-    while(={not_done, r0, m0, glob Adv, glob MI} /\
-RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   DDH_Adv_globs.k3{2} =
-   g ^ (KeyExp'.log DDH_Adv_globs.k1{2} * KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RealSimpHashingAdv.RealSimpHash._self{1} = DDH_Adv_globs._self{2} /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   real_simp_hash_ddh1_rel
-     {| real_simp_hash_ddh1_rel_st_k1 = DDH_Adv_globs.k1{2};
-         real_simp_hash_ddh1_rel_st_k2 = DDH_Adv_globs.k2{2};
-       real_simp_hash_ddh1_rel_st_rss = RealSimpHashingAdv.RealSimpHash._st{1};
-       real_simp_hash_ddh1_rel_st_hs = DDH_Adv_globs._st{2}; |}
-    ).
-if; last first.
-        seq 1 1 : #pre. call(_ : true). auto; smt().
-        inline after_adv. auto; smt().
-    auto; smt().
-        seq 1 1 : #pre.
-        call (RealSimpHashingAdv_NonOptHashing_KEDDH_DDH1_invoke).
-        auto; smt().
-        inline after_func. auto;smt(). skip. smt().
-    elim* => mp_L. move => mp_L0.
-        skip. move => &1 &2 P.  progress;smt(get_setE KeyExp'.gen_log RealSimpHashDDH1Rel0).
-    smt().
-smt().    
-  qed.
-
-type ke_hybrid_state = [
-    KEHybridStateWaitReq1
-  | KEHybridStateWaitAdv1 of port & port & exp
-  | KEHybridStateWaitReq2 of port & port & exp & exp & exp
-  | KEHybridStateWaitAdv2 of port & port & exp & exp & exp
-  | KEHybridStateFinal
+(* next we have the real/ideal hybrid functionality, which does the
+   work of the ideal functionality and simulator in a single state
+   machine *)
+
+type hybrid_state = [
+  | HybridStateWaitReq1
+  | HybridStateWaitAdv1 of port & port & exp
+  | HybridStateWaitReq2 of port & port & exp & exp
+  | HybridStateWaitAdv2 of port & exp
+  | HybridStateFinal
 ].
 
-local module (KEHybridHashingAdv : RH.HASHING_ADV)
-             (Hash : RH.HASHING) = {
-  module KEHybridHash : FUNC = {
-    var _self : addr
-    var _st : ke_hybrid_state
-
-    proc init(self_ : addr) : unit = {
-      _self <- self_;
-      _st <- KEHybridStateWaitReq1;
-    }
-
-  proc _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
-  var _r : msg option <- None;
-  var _pt1 : port <- _intport_Pt1 _self;
-  var _pt2 : port <- _intport_Pt2 _self;
-  var q1 : exp;    
-  var u : univ;
-  if (envport _self pt2) {
-    q1 <@ Hash.hash(exp1);
-    u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, (g ^ q1));
-    _r <- Some
-      ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KEHybridStateWaitAdv1 pt1 pt2 q1;
-    
-    }
-    else { _r <- None;}
-    return _r;
-  }
-
-proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
-  var _r : msg option <- None;
-  var q2, q3 : exp;  
-
-    q2 <@ Hash.hash(exp2); q3 <@ Hash.hash(exp3);  
-    _r <- Some
-      (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-        {|
-          UC_KEDir.Pt2.ke_rsp1___func = _self;
-          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-          UC_KEDir.Pt2.ke_rsp1__k = (g ^ q3);
-          
-        |});
-      _st <- KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3;
-    
-  return _r;
-  }
-
-  proc _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2' : port, q1 q2 q3 : exp ) : msg option = {
-  var u : univ;
-  var _pt1 : port <- _intport_Pt2 _self;
-  var _pt2 : port <- _intport_Pt1 _self;
-  var _r : msg option <- None;
-  if (pt2' = pt2) {
-    u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
-    _r <- Some
-      ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3;   
-  }
-  return _r;
-  }
-  proc _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q3 : exp) : msg option = {
-  var _r : msg option <- None;
-
-    _r <- Some
-          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-          {|
-            UC_KEDir.Pt1.ke_rsp2___func = _self;
-            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q3);
-            
-          |});
-        _st <- KEHybridStateFinal;
-  
-  return _r;
-  }
-
-
-  proc invoke(m : msg) : msg option = {
-    var r : msg option <- None;
-    match _st with
-    | KEHybridStateWaitReq1 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt1 _self){
-        match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
-        | Some _x => {
-          r <@ _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEHybridStateWaitAdv1 pt1 pt2 q1 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
-        match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3=> {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt2 _self){
-        match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
-        | Some _x => {
-          r <@ _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2, q1, q2, q3);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3=> {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
-        match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
-        | Some _ => {
-          r <@ _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q3);
-        }
-        | None => {}
-        end;
-      }
-    }
-    | KEHybridStateFinal => {}
-    end;
-    return r;
-    }
-  }
-
-  proc main() : bool = {
-    var b : bool;
-    Hash.rhash(exp1); Hash.rhash(exp2); Hash.rhash(exp3);
-    b <@ Exper(MI(KEHybridHash, Adv), Env).main
-           (DDH_Adv_globs.func, DDH_Adv_globs.in_guard);
-    return b;
-  }
-}.
-type hybrid_hash_ddh2_rel_st = {
-  hybrid_hash_ddh2_rel_st_k1  : key;
-  hybrid_hash_ddh2_rel_st_k2  : key;
-  hybrid_hash_ddh2_rel_st_k3  : key;
-  hybrid_hash_ddh2_rel_st_rss : ke_hybrid_state;
-  hybrid_hash_ddh2_rel_st_hs  : ke_ddh_state;
-}.
-
-pred hybrid_hash_ddh2_rel0 (st : hybrid_hash_ddh2_rel_st) =
-  st.`hybrid_hash_ddh2_rel_st_rss = KEHybridStateWaitReq1 /\
-  st.`hybrid_hash_ddh2_rel_st_hs = KEDDHStateWaitReq1.
-
-pred hybrid_hash_ddh2_rel1
-     (st : hybrid_hash_ddh2_rel_st, pt1 pt2 : port) =
-  st.`hybrid_hash_ddh2_rel_st_rss =
-  KEHybridStateWaitAdv1 pt1 pt2 (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k1) /\
-  st.`hybrid_hash_ddh2_rel_st_hs =
-  KEDDHStateWaitAdv1 pt1 pt2.
-
-pred hybrid_hash_ddh2_rel2
-     (st : hybrid_hash_ddh2_rel_st, pt1 pt2 : port) =
-  st.`hybrid_hash_ddh2_rel_st_rss =
-  KEHybridStateWaitReq2
-  pt1 pt2
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k1)
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k2)
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k3) /\
-  st.`hybrid_hash_ddh2_rel_st_hs =
-  KEDDHStateWaitReq2 pt1 pt2.
-
-pred hybrid_hash_ddh2_rel3
-     (st : hybrid_hash_ddh2_rel_st, pt1 pt2 : port) =
-  st.`hybrid_hash_ddh2_rel_st_rss =
-  KEHybridStateWaitAdv2
-  pt1 pt2
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k1)
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k2)
-   (KeyExp'.log st.`hybrid_hash_ddh2_rel_st_k3) /\
-  st.`hybrid_hash_ddh2_rel_st_hs =
-  KEDDHStateWaitAdv2 pt1 pt2.
-
-pred hybrid_hash_ddh2_rel4
-     (st : hybrid_hash_ddh2_rel_st) =
-  st.`hybrid_hash_ddh2_rel_st_rss =
-  KEHybridStateFinal
-   /\
-  st.`hybrid_hash_ddh2_rel_st_hs =
-  KEDDHStateFinal.
-
-inductive hybrid_hash_ddh2_rel (st : hybrid_hash_ddh2_rel_st) =
-    HybridHashDDH2Rel0 of (hybrid_hash_ddh2_rel0 st)
-  | HybridHashDDH2Rel1 (pt1 pt2 : port) of
-      (hybrid_hash_ddh2_rel1 st pt1 pt2)
-  | HybridHashDDH2Rel2 (pt1 pt2 : port) of
-      (hybrid_hash_ddh2_rel2 st pt1 pt2)
-  | HybridHashDDH2Rel3 (pt1 pt2 : port) of
-      (hybrid_hash_ddh2_rel3 st pt1 pt2)
-  | HybridHashDDH2Rel4 of
-      (hybrid_hash_ddh2_rel4 st).
-
-local lemma KEHybridHashingAdv_NonOptHashing_KEDDH_DDH2_invoke :
-  equiv
-  [KEHybridHashingAdv(RH.NonOptHashing).KEHybridHash.invoke ~
-   DDH_Adv(Env, Adv).KEDDH.invoke :
-   ={m} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (KeyExp'.log DDH_Adv_globs.k3{2}) /\
-   ={glob MI} /\
-   (KEHybridHashingAdv.KEHybridHash._self{1} = DDH_Adv_globs._self{2}) /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   ={glob Adv} /\
-   hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-     hybrid_hash_ddh2_rel_st_rss =
-     KEHybridHashingAdv.KEHybridHash._st{1};
-     hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}|} ==>
-   ={res} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (KeyExp'.log DDH_Adv_globs.k3{2}) /\
-   ={glob MI} /\
-   (KEHybridHashingAdv.KEHybridHash._self{1} = DDH_Adv_globs._self{2}) /\
-   DDH_Adv_globs._self{2} = MI.func{1} /\
-   ={glob Adv} /\
-   hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-     hybrid_hash_ddh2_rel_st_rss =
-     KEHybridHashingAdv.KEHybridHash._st{1};
-     hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}|}].
- proof.
-proc.
-sp.
-   case (hybrid_hash_ddh2_rel0 {|
-      hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-  hybrid_hash_ddh2_rel_st_k2  = DDH_Adv_globs.k2{2};
-  hybrid_hash_ddh2_rel_st_k3  = DDH_Adv_globs.k3{2};
-  hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-  hybrid_hash_ddh2_rel_st_hs  = DDH_Adv_globs._st{2};
-   |}).
-   match KEHybridStateWaitReq1 {1} 0. auto; smt().
-   match KEDDHStateWaitReq1 {2} 0. auto; smt().
-   if; last first. auto; smt(). auto; smt().
-   match. auto; smt(). auto; smt(). auto; smt().
-move => _x _x0.
-   inline _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1.
-   inline _State_KEDDHStateWaitReq1__KEDir__Pt1__ke_req1.
-   sp 5 5.
-   if; last first. auto; smt(). auto; smt().
- inline hash.
-   sp 1 0.
-   rcondf{1} 0. auto; smt().
-   sp. skip. move => &1 &2 P. progress.
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-
- 
-have Q : hybrid_hash_ddh2_rel1  {| hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-      hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-      hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-      hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-   hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}; |}
-   pt1{1} pt2{2}.
-smt().
-   smt(HybridHashDDH2Rel1).
-   case (exists (pt1 pt2 : port),
-   hybrid_hash_ddh2_rel1 {|
-      hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-  hybrid_hash_ddh2_rel_st_k2  = DDH_Adv_globs.k2{2};
-  hybrid_hash_ddh2_rel_st_k3  = DDH_Adv_globs.k3{2};
-  hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-  hybrid_hash_ddh2_rel_st_hs  = DDH_Adv_globs._st{2};
-   |} pt1 pt2).
-elim* => pt1 pt2.
-match KEHybridStateWaitAdv1 {1} 0. auto; smt().
-match KEDDHStateWaitAdv1 {2} 0. auto; smt().
-   if; last first. auto; smt(). auto; smt().
-   match. auto; smt(). auto; smt(). auto; smt().
- move => x y.
-   inline _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok.
-   inline _State_KEDDHStateWaitAdv1__Fw1_FwAdv__fw_ok.
- sp 4 3. 
-   inline hash.
-   sp 1 0.
-   rcondf{1} 0. auto; smt().
-   sp 2 0.
-   rcondf{1} 0. auto; smt().
-   sp.
- sp. skip. move => &1 &2 P. progress.
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-   smt(get_setE KeyExp'.log_gen ).
-have Q : hybrid_hash_ddh2_rel2  {| hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-      hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-      hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-      hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-   hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}; |}
-   pt1 pt2.
-smt().
-   smt(HybridHashDDH2Rel2).
- 
-case (exists (pt1 pt2 : port),
-   hybrid_hash_ddh2_rel2 {|
-      hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-  hybrid_hash_ddh2_rel_st_k2  = DDH_Adv_globs.k2{2};
-  hybrid_hash_ddh2_rel_st_k3  = DDH_Adv_globs.k3{2};
-  hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-  hybrid_hash_ddh2_rel_st_hs  = DDH_Adv_globs._st{2};
-   |} pt1 pt2).
-
-   match KEHybridStateWaitReq2 {1} 0. auto; smt().
-   match KEDDHStateWaitReq2 {2} 0. auto; smt().
-   if; last first. auto; smt(). auto; smt().
-   match. auto; smt(). auto; smt(). auto; smt().
- move => _x _x0.
-   inline _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2.
-   inline _State_KEDDHStateWaitReq2__KEDir__Pt2__ke_req2.
-   sp 9 6.
-   if; last first. auto; smt(). auto; smt().
-   sp. skip. move=> &1 &2 P. progress;
-   smt(get_setE KeyExp'.log_gen HybridHashDDH2Rel3).
-case (exists (pt1 pt2 : port),
-   hybrid_hash_ddh2_rel3 {|
-      hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-  hybrid_hash_ddh2_rel_st_k2  = DDH_Adv_globs.k2{2};
-  hybrid_hash_ddh2_rel_st_k3  = DDH_Adv_globs.k3{2};
-  hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-  hybrid_hash_ddh2_rel_st_hs  = DDH_Adv_globs._st{2};
-   |} pt1 pt2).
-   match KEHybridStateWaitAdv2 {1} 0. auto; smt().
-   match KEDDHStateWaitAdv2 {2} 0. auto; smt().
-   if; last first. auto; smt(). auto; smt().
-   match. auto; smt(). auto; smt(). auto; smt().
- move => x y.
-inline _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok.
-   inline _State_KEDDHStateWaitAdv2__Fw2_FwAdv__fw_ok.
- sp 4 3. wp 1 1.
-
-   sp. skip. move=> &1 &2 P. progress;
-   smt(get_setE KeyExp'.log_gen HybridHashDDH2Rel4).
- case (
-   hybrid_hash_ddh2_rel4 {|
-      hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-  hybrid_hash_ddh2_rel_st_k2  = DDH_Adv_globs.k2{2};
-  hybrid_hash_ddh2_rel_st_k3  = DDH_Adv_globs.k3{2};
-  hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-  hybrid_hash_ddh2_rel_st_hs  = DDH_Adv_globs._st{2};
-   |}).
-match KEHybridStateFinal {1} 0. auto; smt().
-   match KEDDHStateFinal {2} 0. auto; smt().
-   skip. auto; smt().
-exfalso.
- move => &1 &2.
- move => [#].
- move => _ _ _ _ _ _ _ _ _ _ _.
- move => [];
- smt().
-qed.
-
-local lemma KEHybridHashingAdv_NonOptHashing_DDH2_DDH_Adv
-            (func' : addr, in_guard' : int fset) &m :
-  DDH_Adv_globs.func{m} = func' =>
-  DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[RH.GNonOptHashing(KEHybridHashingAdv).main() @ &m : res] =
-  Pr[DDH2(DDH_Adv(Env, Adv)).main() @ &m : res].
-  proof.
-  move => globs_func globs_in_guard.
-    byequiv.
-  proc.
-inline init.
-sp.
-inline RH.GNonOptHashing(KEHybridHashingAdv).HA.main.
-    inline rhash. inline hash.
-  sp.
-    rcondt{1} 0. move=> &m0. skip.  smt(mem_empty).
-    seq 1 1 : (#pre /\ out{1} = q1{2}). rnd. skip. smt().
-    sp.
-  rcondt{1} 0. move=> &m0. skip. smt(mem_set mem_empty).
-    seq 1 1 : (#pre /\ out0{1} = q2{2}). rnd. skip. smt().
-sp.
-  rcondt{1} 0. move=> &m0. skip. smt(mem_set mem_empty).
-    seq 1 1 : (#pre /\ out1{1} = q3{2}). rnd. skip. smt().
-    sp. wp.
-    conseq(_ :
-    ={glob Env, glob Adv, DDH_Adv_globs.in_guard, DDH_Adv_globs.func} /\
-    RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
-    RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
-    RH.NonOptHashing.mp{1}.[exp3] = Some q3{2}
-    ==> b0{1} = b{2}).
-auto; progress; smt(get_setE).         
-  inline *.
-sp.
-seq 1 1 : #pre. call(_:true). auto;smt().
-      wp.
-      conseq(_ :
-    DDH_Adv_globs.k1{2} = g ^ q1{2} /\
-  DDH_Adv_globs.k2{2} = g ^ q2{2} /\
-  DDH_Adv_globs.k3{2} = g ^ q3{2} /\
-MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
-      MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-    DDH_Adv_globs._self{2} = MakeInt.MI.func{2} /\
-      DDH_Adv_globs._st{2} = KEDDHStateWaitReq1 /\
-    KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
-  KEHybridHashingAdv.KEHybridHash._st{1} = KEHybridStateWaitReq1 /\
-={glob Env, glob Adv, glob MI, DDH_Adv_globs.in_guard, DDH_Adv_globs.func, func, in_guard} /\
-  RH.NonOptHashing.mp{1}.[exp1] = Some q1{2} /\
-  RH.NonOptHashing.mp{1}.[exp2] = Some q2{2} /\
-  RH.NonOptHashing.mp{1}.[exp3] = Some q3{2}
-    ==>
-={b1}
-). auto; smt().
-      call(_:
-    RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (KeyExp'.log DDH_Adv_globs.k3{2}) /\
-  MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
-  MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-  DDH_Adv_globs._self{2} = MakeInt.MI.func{2} /\
-  
-  KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
-  
-  (
-   ={glob Adv} /\
-   (MakeInt.MI.func{1}, MakeInt.MI.in_guard{1}) =
-   (MakeInt.MI.func{2}, MakeInt.MI.in_guard{2}) /\
-   ={DDH_Adv_globs.in_guard, DDH_Adv_globs.func}) /\
- hybrid_hash_ddh2_rel
-   {|hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-     hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-     hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-     hybrid_hash_ddh2_rel_st_rss =
-     KEHybridHashingAdv.KEHybridHash._st{1};
-     hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}|}
-  ).
-proc.
-      if; last first. auto;smt(). auto;smt().
-  inline loop.
-      sp. wp.
-  while(
-  (={m, m0, r0, not_done} /\
-   RH.NonOptHashing.mp{1}.[exp1] = Some (KeyExp'.log DDH_Adv_globs.k1{2}) /\
-   RH.NonOptHashing.mp{1}.[exp2] = Some (KeyExp'.log DDH_Adv_globs.k2{2}) /\
-   RH.NonOptHashing.mp{1}.[exp3] = Some (KeyExp'.log DDH_Adv_globs.k3{2}) /\
-   MakeInt.MI.func{2} = DDH_Adv_globs.func{2} /\
-   MakeInt.MI.in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-   DDH_Adv_globs._self{2} = MakeInt.MI.func{2} /\
-   KEHybridHashingAdv.KEHybridHash._self{1} = MakeInt.MI.func{1} /\
-   (={glob Adv, glob MI} /\
-    ={DDH_Adv_globs.in_guard, DDH_Adv_globs.func}) /\
-   hybrid_hash_ddh2_rel
-     {| hybrid_hash_ddh2_rel_st_k1 = DDH_Adv_globs.k1{2};
-         hybrid_hash_ddh2_rel_st_k2 = DDH_Adv_globs.k2{2};
-         hybrid_hash_ddh2_rel_st_k3 = DDH_Adv_globs.k3{2};
-       hybrid_hash_ddh2_rel_st_rss = KEHybridHashingAdv.KEHybridHash._st{1};
-       hybrid_hash_ddh2_rel_st_hs = DDH_Adv_globs._st{2}; |})).
-if.
-       auto; smt().
-       seq 1 1 : #pre.
-       call KEHybridHashingAdv_NonOptHashing_KEDDH_DDH2_invoke.
-       skip. progress. inline after_func. auto; progress; smt().
-       inline after_adv. seq 1 1 : #pre.
-call(_ : true).
-       auto; progress; smt().
-       auto; progress; smt().
-       auto; progress; smt().
- auto; progress; smt(KeyExp'.gen_log HybridHashDDH2Rel0).
-trivial. trivial.
-qed.
-
-
-
-local module KEHybrid : FUNC = {
-  var _self : addr
-  var _st : ke_hybrid_state
+local module Hybrid : FUNC = {
+  var self : addr
+  var st : hybrid_state
 
   proc init(self_ : addr) : unit = {
-    _self <- self_;
-    _st <- KEHybridStateWaitReq1;
-    }
+    self <- self_;
+    st <- HybridStateWaitReq1;
+  }
 
-  proc _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (pt1 : port, pt2 : port) : msg option = {
-  var _r : msg option <- None;
-  var _pt1 : port <- _intport_Pt1 _self;
-  var _pt2 : port <- _intport_Pt2 _self;
-  var q1 : exp;    
-  var u : univ;
-  if (envport _self pt2) {
-    q1 <$ dexp;
-    u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, (g ^ q1));
-    _r <- Some
-      ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KEHybridStateWaitAdv1 pt1 pt2 q1;
-    
+  proc state_HybridStateWaitReq1(pt1 : port, pt2 : port) : msg option = {
+    var q1 : exp; var _r : msg option <- None;
+    var _pt1 : port <- _intport_Pt1 self;
+    var _pt2 : port <- _intport_Pt2 self;
+    var u : univ;
+    if (envport self pt2) {
+      q1 <$ dexp;
+      u <- KeyExp'.epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1);
+      _r <-
+        Some
+        (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
+         {|Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 self;
+           Forwarding1.UC_FwAdv.fw_obs___adv  = adv;
+           Forwarding1.UC_FwAdv.fw_obs__pt1   = _pt1;
+           Forwarding1.UC_FwAdv.fw_obs__pt2   = _pt2;
+           Forwarding1.UC_FwAdv.fw_obs__u     = u|});
+      st <- HybridStateWaitAdv1 pt1 pt2 q1;
     }
-    else { _r <- None;}
+    else { _r <- None; }
     return _r;
   }
 
-
-proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 : exp) : msg option = {
-  var _r : msg option <- None;
-  var q2, q3 : exp;  
-
-     q2 <$ dexp; q3 <$ dexp;  
-    _r <- Some
+  proc state_HybridStateWaitAdv1(pt1 : port, pt2 : port, q1 : exp)
+         : msg option = {
+    var q2, q3 : exp; var _r : msg option <- None;
+    q2 <$ dexp; q3 <$ dexp;
+    _r <-
+      Some
       (UC_KEDir.Pt2.epdp__ke_rsp1.`enc
-        {|
-          UC_KEDir.Pt2.ke_rsp1___func = _self;
-          UC_KEDir.Pt2.ke_rsp1__pt2 = pt2;
-          UC_KEDir.Pt2.ke_rsp1__pt1 = pt1;
-          UC_KEDir.Pt2.ke_rsp1__k = (g ^ q3);
-          
-        |});
-      _st <- KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3;
-    
-  return _r;
+       {|UC_KEDir.Pt2.ke_rsp1___func = self;
+         UC_KEDir.Pt2.ke_rsp1__pt2   = pt2;
+         UC_KEDir.Pt2.ke_rsp1__pt1   = pt1;
+         UC_KEDir.Pt2.ke_rsp1__k     = g ^ q3|});
+    st <- HybridStateWaitReq2 pt1 pt2 q2 q3;
+    return _r;
   }
 
-
-  proc _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1 : port, pt2 : port, pt2' : port, q1 q2 q3 : exp ) : msg option = {
-  var u : univ;
-  var _pt1 : port <- _intport_Pt2 _self;
-  var _pt2 : port <- _intport_Pt1 _self;
-  var _r : msg option <- None;
-  if (pt2' = pt2) {
-    u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
-    _r <- Some
-      ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-        {|
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
-        |});
-    _st <- KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3;   
+  proc state_HybridStateWaitReq2
+       (pt1 : port, pt2 : port, q2 : exp, q3 : exp, pt2' : port)
+         : msg option = {
+    var u : univ;
+    var _pt1 : port <- _intport_Pt2 self;
+    var _pt2 : port <- _intport_Pt1 self;
+    var _r : msg option <- None;
+    if (pt2' = pt2) {
+      u <- KeyExp'.epdp_key_univ.`enc (g ^ q2);
+      _r <- Some
+        (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
+         {|Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 self;
+           Forwarding2.UC_FwAdv.fw_obs___adv  = adv;
+           Forwarding2.UC_FwAdv.fw_obs__pt1   = _pt1;
+           Forwarding2.UC_FwAdv.fw_obs__pt2   = _pt2;
+           Forwarding2.UC_FwAdv.fw_obs__u     = u|});
+      st <- HybridStateWaitAdv2 pt1 q3;   
+    }
+    return _r;
   }
-  return _r;
-}
 
-proc _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1 : port, pt2 : port, q3 : exp) : msg option = {
-  var _r : msg option <- None;
-
-    _r <- Some
-          (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-          {|
-            UC_KEDir.Pt1.ke_rsp2___func = _self;
-            UC_KEDir.Pt1.ke_rsp2__pt1 = pt1;
-            UC_KEDir.Pt1.ke_rsp2__k = (g ^ q3);
-            
-          |});
-        _st <- KEHybridStateFinal;
+  proc state_HybridStateWaitAdv2(pt1 : port, q3 : exp) : msg option = {
+    var _r : msg option <- None;
+    _r <-
+      Some
+      (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
+       {|UC_KEDir.Pt1.ke_rsp2___func = self;
+         UC_KEDir.Pt1.ke_rsp2__pt1   = pt1;
+         UC_KEDir.Pt1.ke_rsp2__k     = g ^ q3|});
+    st <- HybridStateFinal;
+    return _r;
+  }
   
-  return _r;
-  }
-
-
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    match _st with
-    | KEHybridStateWaitReq1 => {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt1 _self){
+    match st with
+    | HybridStateWaitReq1               => {
+      if (m.`1 = Dir /\  m.`2 = _extport_dir_Pt1 self /\ envport self m.`3) {
         match UC_KEDir.Pt1.epdp__ke_req1.`dec m with
-        | Some _x => {
-          r <@ _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1 (_x.`UC_KEDir.Pt1.ke_req1__pt1, _x.`UC_KEDir.Pt1.ke_req1__pt2);
-        }
-        | None => {}
+        | Some x => {
+            r <@ state_HybridStateWaitReq1
+                 (x.`UC_KEDir.Pt1.ke_req1__pt1, x.`UC_KEDir.Pt1.ke_req1__pt2);
+          }
+        | None   => {}
         end;
       }
     }
-    | KEHybridStateWaitAdv1 pt1 pt2 q1 => {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw1 _self = m.`2.`1){ 
-        match (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
+    | HybridStateWaitAdv1 pt1 pt2 q1    => {
+      if (m.`1 = Adv /\ m.`2.`1 = _addr_Fw1 self /\ m.`3.`1 = adv) { 
+        match Forwarding1.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1, pt2, q1);
-        }
-        | None => {}
+            r <@ state_HybridStateWaitAdv1(pt1, pt2, q1);
+          }
+        | None   => {}
         end;
       }
     }
-    | KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3=> {
-      if( m.`1 = Dir /\ envport _self m.`3 /\ m.`2 = _extport_dir_Pt2 _self){
+    | HybridStateWaitReq2 pt1 pt2 q2 q3 => {
+      if (m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 self /\ envport self m.`3) {
         match UC_KEDir.Pt2.epdp__ke_req2.`dec m with
-        | Some _x => {
-          r <@ _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2 (pt1, pt2, _x.`UC_KEDir.Pt2.ke_req2__pt2, q1, q2, q3);
-        }
-        | None => {}
+        | Some x => {
+            r <@ state_HybridStateWaitReq2
+                 (pt1, pt2, q2, q3, x.`UC_KEDir.Pt2.ke_req2__pt2);
+          }
+        | None   => {}
         end;
       }
     }
-    | KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3=> {
-      if(m.`1 = Adv /\  m.`3.`1 = adv /\ _addr_Fw2 _self = m.`2.`1){
-        match (*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
+    | HybridStateWaitAdv2 pt1 q3    => {
+      if (m.`1 = Adv /\ _addr_Fw2 self = m.`2.`1 /\ m.`3.`1 = adv) {
+        match Forwarding2.UC_FwAdv.epdp__fw_ok.`dec m with
         | Some _ => {
-          r <@ _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok (pt1, pt2, q3);
-        }
-        | None => {}
+            r <@ state_HybridStateWaitAdv2(pt1, q3);
+          }
+        | None   => {}
         end;
       }
     }
-    | KEHybridStateFinal => {}
+    | HybridStateFinal                  => {}
     end;
     return r;
   }
 }.
 
-op _invar_KEHybrid (g : glob KEHybrid) : bool = predT g.
+op glob_Hybrid_to_self (g : glob Hybrid) : addr         = g.`1.
+op glob_Hybrid_to_st   (g : glob Hybrid) : hybrid_state = g.`2.
 
- 
+(* we'll need a termination metric for Hybrid *)
 
-op glob_KEHybrid_to__st (g : glob KEHybrid) / : ke_hybrid_state = g.`2.
-op [smt_opaque] _metric_KEHybrid (g : glob KEHybrid) : int =
-  match glob_KEHybrid_to__st g with
-  | KEHybridStateWaitReq1 => 4
-  | KEHybridStateWaitAdv1 _ _ _ => 3
-  | KEHybridStateWaitReq2 _ _ _ _ _ => 2
-  | KEHybridStateWaitAdv2 _ _ _ _ _ => 1
-  | KEHybridStateFinal => 0
+op invar_Hybrid (_ : glob Hybrid) : bool = true.
+
+op metric_Hybrid (g : glob Hybrid) : int =
+  match glob_Hybrid_to_st g with
+  | HybridStateWaitReq1         => 4
+  | HybridStateWaitAdv1 _ _ _   => 3
+  | HybridStateWaitReq2 _ _ _ _ => 2
+  | HybridStateWaitAdv2 _ _     => 1
+  | HybridStateFinal            => 0
   end.
-  
 
+lemma metric_Hybrid_good (g : glob Hybrid) :
+  invar_Hybrid g => 0 <= metric_Hybrid g.
+proof. smt(). qed.
 
-local lemma KEHybrid_invoke (n : int) : hoare [
-  KEHybrid.invoke :
-  _invar_KEHybrid (glob KEHybrid) /\ _metric_KEHybrid (glob KEHybrid) = n
-  ==>
-  (res <> None =>
-  _metric_KEHybrid (glob KEHybrid) < n
-  /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in adv_pis_rf_info rf_info))
-   ].
+local lemma Hybrid_init :
+  hoare [Hybrid.invoke : true ==> invar_Hybrid (glob Hybrid)].
+proof. rewrite /invar_Hybrid; auto. qed.
+
+local lemma Hybrid_invoke (n : int) :
+  hoare
+  [Hybrid.invoke :
+   invar_Hybrid (glob Hybrid) /\ metric_Hybrid (glob Hybrid) = n ==>
+   invar_Hybrid (glob Hybrid) /\
+   (res <> None => metric_Hybrid (glob Hybrid) < n)].
 proof.
-rewrite /_metric_KEHybrid /=.
-  proc. inline. sp.
-  match.
+rewrite /_metric_KEHybrid /=; proc; inline; sp 1.
+match.
 if.
-match.
-  skip. move => />;smt().
-  sp 5.
-  if; last first.
-  sp. skip. move => />;smt().
-  seq 1 : #pre. rnd.
-  skip. move => />;smt().
-  sp.
-  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
-  skip. move => />;smt().
-if; last first.
-  sp. skip. move => />;smt().
-  match.
-  sp. skip. move => />;smt().
-sp 4.
-seq 1 : #pre. rnd.
-  skip. move => />;smt().
-seq 1 : #pre. rnd.
-  skip. move => />;smt().
-sp.
-  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
-  if; last first. skip. move => />;smt().
-  match.
-  skip. move => />;smt().
-sp 9.
-if; last first. sp. skip. move => />;smt().
-sp.
-  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
-  if; last first. sp. skip. move => />;smt().
-match.
-  skip. move => />;smt().
-  sp 4.
-
-sp.
-  skip. move => />;smt(mem_oflist mem_rangeset in_fsetU).
-  skip. move => />;smt().
+match; first auto.
+sp 5.
+if; auto.
+auto.
+if; [match; auto | auto].
+auto; smt().
+auto; smt().
+auto.
 qed.
 
-lemma _metric_KEHybrid_good (g : glob KEHybrid) :
-  _invar_KEHybrid g => 0 <= _metric_KEHybrid g.
-    proof. rewrite /_metric_KEHybrid /=.
-      smt(). qed.
+(* to connect RealSimp and Hybrid, we use a reduction to the
+   Decisional Diffie-Hellman assumption, via DDHOrAdv *) 
 
-type hybrid_hash_rel_st = {
-  hybrid_hash_rel_st_rss : ke_hybrid_state;
-  hybrid_hash_rel_st_map : (exp_names, exp) fmap;
-}.
+op glob_DDHOrAdv_to_func_self (g : glob DDHOrAdv) : addr           = g.`1.
+op glob_DDHOrAdv_to_func_st   (g : glob DDHOrAdv) : ddh_func_state = g.`2.
+op glob_DDHOrAdv_to_mi_func   (g : glob DDHOrAdv) : addr           = g.`3.
+op glob_DDHOrAdv_to_mi_guard  (g : glob DDHOrAdv) : int fset       = g.`4.
 
-pred hybrid_hash_rel0 (st : hybrid_hash_rel_st) =
-  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq1 /\
-  st.`hybrid_hash_rel_st_map.[exp1] = None /\
-  st.`hybrid_hash_rel_st_map.[exp2] = None /\
-  st.`hybrid_hash_rel_st_map.[exp3] = None.
+op glob_DDH1_Or_to_x_opt (g : glob DDH1_Or) : exp option = g.`1.
+op glob_DDH1_Or_to_y_opt (g : glob DDH1_Or) : exp option = g.`2.
 
-pred hybrid_hash_rel1 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 : exp) =
-  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv1 pt1 pt2 q1 /\
-  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`hybrid_hash_rel_st_map.[exp2] = None /\
-  st.`hybrid_hash_rel_st_map.[exp3] = None.
+op real_simp_ddh1_invar_static
+   (func : addr, guard : int fset,
+    grs : glob RealSimp, gadv : glob DDHOrAdv, gor : glob DDH1_Or) : bool =
+  glob_RealSimp_to_self grs       = func /\
+  glob_DDHOrAdv_to_func_self gadv = func /\
+  glob_DDHOrAdv_to_mi_func gadv   = func /\
+  glob_DDHOrAdv_to_mi_guard gadv  = guard.
 
-pred hybrid_hash_rel2 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
-  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitReq2 pt1 pt2 q1 q2 q3 /\
-  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
-  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+op real_simp_ddh1_invar0
+   (func : addr, guard : int fset, grs : glob RealSimp, 
+    gadv : glob DDHOrAdv, gor : glob DDH1_Or) : bool =
+  real_simp_ddh1_invar_static func guard grs gadv gor /\
+  glob_RealSimp_to_st grs       = RealSimpStateWaitReq1 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq1 /\
+  glob_DDH1_Or_to_x_opt gor     = None /\
+  glob_DDH1_Or_to_y_opt gor     = None.
 
-pred hybrid_hash_rel3 (st : hybrid_hash_rel_st, pt1 pt2 : port, q1 q2 q3 : exp) =
-  st.`hybrid_hash_rel_st_rss = KEHybridStateWaitAdv2 pt1 pt2 q1 q2 q3 /\
-  st.`hybrid_hash_rel_st_map.[exp1] = Some q1 /\
-  st.`hybrid_hash_rel_st_map.[exp2] = Some q2 /\
-  st.`hybrid_hash_rel_st_map.[exp3] = Some q3.
+op real_simp_ddh1_invar1
+   (func : addr, guard : int fset, grs : glob RealSimp, 
+    gadv : glob DDHOrAdv, gor : glob DDH1_Or,
+    pt1 pt2 : port, q1 : exp) : bool =
+  real_simp_ddh1_invar_static func guard grs gadv gor /\
+  glob_RealSimp_to_st grs       = RealSimpStateWaitAdv1 pt1 pt2 q1 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv1 pt1 pt2 /\
+  glob_DDH1_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH1_Or_to_y_opt gor     = None.
 
-pred hybrid_hash_rel4 (st : hybrid_hash_rel_st) =
-  st.`hybrid_hash_rel_st_rss = KEHybridStateFinal.
+op real_simp_ddh1_invar2
+   (func : addr, guard : int fset, grs : glob RealSimp, 
+    gadv : glob DDHOrAdv, gor : glob DDH1_Or,
+    pt1 pt2 : port, q1 q2 : exp) : bool =
+  real_simp_ddh1_invar_static func guard grs gadv gor /\
+  glob_RealSimp_to_st grs       = RealSimpStateWaitReq2 pt1 pt2 q1 q2 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq2 pt1 pt2 /\
+  glob_DDH1_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH1_Or_to_y_opt gor     = Some q2.
 
+op real_simp_ddh1_invar3
+   (func : addr, guard : int fset, grs : glob RealSimp, 
+    gadv : glob DDHOrAdv, gor : glob DDH1_Or,
+    pt1 pt2 : port, q1 q2 : exp) : bool =
+  real_simp_ddh1_invar_static func guard grs gadv gor /\
+  glob_RealSimp_to_st grs       = RealSimpStateWaitAdv2 pt1 q1 q2 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv2 pt1 /\
+  glob_DDH1_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH1_Or_to_y_opt gor     = Some q2.
 
+op real_simp_ddh1_invar4
+   (func : addr, guard : int fset, grs : glob RealSimp, 
+    gadv : glob DDHOrAdv, gor : glob DDH1_Or) : bool =
+  real_simp_ddh1_invar_static func guard grs gadv gor /\
+  glob_RealSimp_to_st grs       = RealSimpStateFinal /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateFinal.
 
-inductive hybrid_hash_rel (st : hybrid_hash_rel_st) =
-    HybridHashRel0 of (hybrid_hash_rel0 st)
-  | HybridHashRel1 (pt1 pt2 : port, q1 : exp) of
-      (hybrid_hash_rel1 st pt1 pt2 q1)
-  | HybridHashRel2 (pt1 pt2 : port, q1 q2 q3 : exp) of
-      (hybrid_hash_rel2 st pt1 pt2 q1 q2 q3)
-  | HybridHashRel3 (pt1 pt2 : port, q1 q2 q3 : exp) of
-      (hybrid_hash_rel3 st pt1 pt2 q1 q2 q3)
-  | HybridHashRel4 of (hybrid_hash_rel4 st).
+inductive real_simp_ddh1_invar
+          (func : addr, guard : int fset, grs : glob RealSimp, 
+           gadv : glob DDHOrAdv, gor : glob DDH1_Or) =
+  | RealSimpDDH1Invar0 of
+      (real_simp_ddh1_invar0 func guard grs gadv gor)
+  | RealSimpDDH1Invar1 (pt1 pt2 : port, q1 : exp) of
+      (real_simp_ddh1_invar1 func guard grs gadv gor pt1 pt2 q1)
+  | RealSimpDDH1Invar2 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_ddh1_invar2 func guard grs gadv gor pt1 pt2 q1 q2)
+  | RealSimpDDH1Invar3 (pt1 pt2 : port, q1 q2 : exp) of
+      (real_simp_ddh1_invar3 func guard grs gadv gor pt1 pt2 q1 q2)
+  | RealSimpDDH1Invar4 of
+      (real_simp_ddh1_invar4 func guard grs gadv gor).
 
-local lemma KEHybrid_KEHybridHash_OptHashing_invoke :
-  equiv
-  [KEHybrid.invoke ~
-   KEHybridHashingAdv(RH.OptHashing).KEHybridHash.invoke :
-   ={m} /\
-   ={_self, _st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
-   hybrid_hash_rel
-   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|} ==>
-   ={res} /\
-   ={_self, _st}(KEHybrid, KEHybridHashingAdv.KEHybridHash) /\
-   hybrid_hash_rel
-   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}].
- proof.
+module DDH1Func = DDHOrAdv(Env, Adv, DDH1_Or).DDHFunc.
+
+local lemma Exper_RealSimp_DDH1 (func' : addr) (in_guard' : int fset) &m :
+  exper_pre func' =>
+  Pr[Exper(MI(RealSimp, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[DDH_Or_Game(DDH1_Or, DDHOrAdv(Env, Adv))
+       .main(func', in_guard') @ &m : res].
+proof.
+move => ep_func'; byequiv => //; proc.
+inline*; sp; wp.
+seq 1 1 :
+  (={glob Env, glob Adv, glob MakeInt.MI} /\
+   func{1} = func' /\ func0{2} = func' /\
+   in_guard{1} = in_guard' /\ in_guard0{2} = in_guard' /\
+   MakeInt.MI.func{1} = func' /\
+   MakeInt.MI.in_guard{1} = in_guard' /\
+   RealSimp.self{1} = func' /\
+   RealSimp.st{1} = RealSimpStateWaitReq1 /\
+   DDHOrAdv.DDHFunc.self{2} = func' /\
+   DDHOrAdv.DDHFunc.st{2} = DDHFuncStateWaitReq1 /\
+   DDH1_Or.x_opt{2} = None /\ DDH1_Or.y_opt{2} = None).
+call (_ : true); first auto.
+call
+  (_ :
+   ={glob Adv, glob MakeInt.MI} /\
+   real_simp_ddh1_invar func' in_guard'
+   (glob RealSimp){1} (glob DDHOrAdv){2} (glob DDH1_Or){2}).
 proc.
-   sp.
-   case (hybrid_hash_rel0 {|
-     hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
-   match KEHybridStateWaitReq1 {1} 0. auto;smt().
-   match KEHybridStateWaitReq1 {2} 0. auto;smt().
-   if; last first. auto;smt(). auto;smt().
-   match. auto;smt(). auto;smt(). auto;smt().
- move => _x _x0.
-   inline _State_KEHybridStateWaitReq1__KEDir__Pt1__ke_req1.
-   sp. wp.
-   if; last first. auto;smt(). auto;smt().
-   inline hash.
-   sp. rcondt{2} 0. auto; smt(mem_empty).
-   seq 1 1 : (#pre /\ q1{1} = out{2}).
-   rnd. auto;smt().
-   sp. skip. move=> &1 &2 P.
-   progress.
-   smt(get_setE).
-   smt(). smt(get_setE).
-   have H : hybrid_hash_rel1 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1{1} pt2{1} q1{1}.
-smt(get_setE). smt(HybridHashRel1).
-
-   case ( exists (pt1 pt2:port) (q1:exp),
-   hybrid_hash_rel1 {|
-     hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1).
-elim* => pt1 pt2 q1.
-match KEHybridStateWaitAdv1  {1} 0. auto;smt().
-   match KEHybridStateWaitAdv1  {2} 0. auto;smt().
- if; last first. auto;smt(). auto;smt().
-   match. auto;smt(). auto;smt(). auto;smt().
- move => _x _x0.
-   inline _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok.
-   sp. wp.
-inline hash.
-   sp. rcondt{2} 0. auto; smt(mem_empty).
-   seq 1 1 : (#pre /\ q2{1} = out{2}).
-   rnd. auto;smt().
-   sp. rcondt{2} 0. auto; smt(mem_set).
-   seq 1 1 : (#pre /\ q3{1} = out0{2}).
-   rnd. auto;smt().
-   sp. skip. move=> &1 &2 P.
- have H : hybrid_hash_rel2 {| hybrid_hash_rel_st_rss = KEHybridStateWaitReq2 pt10{1} pt20{1} q10{1} q2{1} q3{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2{1} q3{1}.
-   smt(get_setE).
-   progress;smt(get_setE HybridHashRel2).
-
-case ( exists (pt1 pt2 : port) (q1 q2 q3 : exp),
-   hybrid_hash_rel2 {|
-     hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3).
- elim* => pt1 pt2 q1 q2 q3.
-match KEHybridStateWaitReq2  {1} 0. auto;smt().
-   match KEHybridStateWaitReq2  {2} 0. auto;smt().
- if; last first. auto;smt(). auto;smt().
-   match. auto;smt(). auto;smt(). auto;smt().
- move => _x _x0.
-   inline _State_KEHybridStateWaitReq2__KEDir__Pt2__ke_req2.
-   sp 9 9. wp 1 1. if; last first. auto;smt(). auto;smt().
- sp. skip. move=> &1 &2 P.
-   progress.
-   smt().
-smt().
-   smt().
- have H : hybrid_hash_rel3 {| hybrid_hash_rel_st_rss = KEHybrid._st{1}; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3.
- smt(get_setE). smt(HybridHashRel3).
-case ( exists (pt1 pt2 : port) (q1 q2 q3 : exp),
-   hybrid_hash_rel3 {|
-     hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |} pt1 pt2 q1 q2 q3).
-   elim* => pt1 pt2 q1 q2 q3.
- match KEHybridStateWaitAdv2  {1} 0. auto;smt().
-   match KEHybridStateWaitAdv2  {2} 0. auto;smt().
- if; last first. auto;smt(). auto;smt().
-   match. auto;smt(). auto;smt(). auto;smt().
- move => _x _x0.
-   inline _State_KEHybridStateWaitAdv2__Fw2_FwAdv__fw_ok.
-   sp 4 4. wp 1 1. 
-   sp. skip. move=> &1 &2 P.
- have H : hybrid_hash_rel4 {| hybrid_hash_rel_st_rss = KEHybridStateFinal; hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}.
-   smt(get_setE).
-   progress;smt(HybridHashRel4).
-case (
-   hybrid_hash_rel4 {|
-     hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}; |}).
-   
-match KEHybridStateFinal  {1} 0. auto;smt().
-   match KEHybridStateFinal  {2} 0. auto;smt().
-   auto;smt().
-
- exfalso.
-move => &1 &2. 
-move => [#].
-move => _ _ _ _ _.
-move => []; smt().
+if => //.
+inline{1} 1; inline{2} 1; sp 3 3; wp.
+while
+  (={glob Adv, glob MakeInt.MI, not_done, m0, r0} /\
+   real_simp_ddh1_invar func' in_guard'
+   (glob RealSimp){1} (glob DDHOrAdv){2} (glob DDH1_Or){2}).
+if => //.
+seq 1 1 :
+  (={glob Adv, glob MakeInt.MI, r0} /\
+   real_simp_ddh1_invar func' in_guard'
+   (glob RealSimp){1} (glob DDHOrAdv){2} (glob DDH1_Or){2}).
+call
+  (_ :
+   ={glob Adv, glob MakeInt.MI} /\
+   real_simp_ddh1_invar func' in_guard'
+   (glob RealSimp){1} (glob DDHOrAdv){2} (glob DDH1_Or){2}).
+exlim (glob RealSimp){1}, (glob DDHOrAdv){2}, (glob DDH1_Or){2}
+  => grs gadv gor.
+(* the "!!" is a hack to make the ambient case be a boolean one *)
+case @[ambient] (!! real_simp_ddh1_invar func' in_guard' grs gadv gor) =>
+  [/= [] | ?]; last exfalso; smt().
+(* real_simp_ddh1_invar0 *)
+move => real_simp_ddh1_invar0_ass.
+sp 1 1.
+match RealSimpStateWaitReq1 {1} 1; first auto; smt().
+match DDHFuncStateWaitReq1 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; sp 5 5.
+if; first smt().
+inline{2} 1; sp 0 1.
+match One {2} 1; first auto.
+rcondt{2} 1; first auto; smt().
+seq 1 1 : (#pre /\ q1{1} = x{2}); first auto.
+auto => /> &1 &2 dec_to_x1 dec_to_x2.
+have eq_x1_x2 : x1 = x2.
+  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
+progress; first smt().
+rewrite
+  (RealSimpDDH1Invar1 _ _ _ _ _ 
+   (UC_KEDir.Pt1.ke_req1__pt1 x1) (UC_KEDir.Pt1.ke_req1__pt2 x1)
+   x{2}) /#.
+auto.
+auto.
+(* real_simp_ddh1_invar1 *)
+move => pt1' pt2' q1' real_simp_ddh1_invar1_ass.
+sp 1 1.
+match RealSimpStateWaitAdv1 {1} 1; first auto; smt().
+match DDHFuncStateWaitAdv1 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 4.
+match Two {2} 5; first auto.
+rcondt{2} 5; first auto; smt().
+inline{2} 8.
+match Three {2} 9; first auto.
+swap{1} 5 -4; swap{2} 5 -4.
+rcondt{2} 9; first auto; smt().
+seq 1 1 : (#pre /\ q2{1} = y{2}); first auto.
+auto => /> &1 &2 dec_to_x1 dec_to_x2.
+have eq_x1_x2 : x1 = x2.
+  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
+progress; first smt(KeyExp'.double_exp KeyExp'.mulC).
+rewrite (RealSimpDDH1Invar2 _ _ _ _ _ pt1{1} pt2{1} q1{1} y{2}) /#.
+auto.
+(* real_simp_ddh1_invar2 *)
+move => pt1' pt2'' q1' q2' real_simp_ddh1_invar2_ass.
+sp 1 1.
+match RealSimpStateWaitReq2 {1} 1; first auto; smt().
+match DDHFuncStateWaitReq2 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 7.
+match Two {2} 8; first auto.
+rcondf{2} 8; first auto; smt().
+sp 8 9.
+if; first smt().
+auto; progress; first smt().
+rewrite (RealSimpDDH1Invar3 _ _ _ _ _ pt1{2} pt2{2} q1{1} q2{1}) /#.
+auto.
+auto.
+(* real_simp_ddh1_invar3 *)
+move => pt1' pt2' q1' q2' real_simp_ddh1_invar3_ass.
+sp 1 1.
+match RealSimpStateWaitAdv2 {1} 1; first auto; smt().
+match DDHFuncStateWaitAdv2 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 3.
+match Three {2} 4; first auto.
+rcondt{2} 4; first auto; smt().
+auto; progress; first smt(KeyExp'.double_exp KeyExp'.mulC).
+smt(RealSimpDDH1Invar4).
+auto.
+(* real_simp_ddh1_invar4 *)
+move => real_simp_ddh1_invar4_ass.
+sp 1 1.
+match RealSimpStateFinal {1} 1; first auto; smt().
+match DDHFuncStateFinal {2} 1; first auto; smt().
+auto.
+auto.
+conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
+call (MakeInt.MI_after_func_equiv RealSimp DDH1Func Adv); first auto.
+seq 1 1 :
+  (={glob Adv, glob MakeInt.MI, r0} /\
+   real_simp_ddh1_invar func' in_guard'
+   (glob RealSimp){1} (glob DDHOrAdv){2} (glob DDH1_Or){2}).
+call (_ : true); first auto.
+conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
+call (MakeInt.MI_after_adv_equiv RealSimp DDH1Func Adv); first auto.
+auto.
+auto.
+auto; smt(RealSimpDDH1Invar0).
 qed.
 
-local lemma Exper_KEHybrid_KEHybridHashingAdv_OptHashing
-            (func' : addr, in_guard' : int fset) &m :
-  DDH_Adv_globs.func{m} = func' =>
-  DDH_Adv_globs.in_guard{m} = in_guard' =>
-  Pr[Exper(MI(KEHybrid, Adv), Env).main
-       (func', in_guard') @ &m : res] =
-  Pr[RH.GOptHashing(KEHybridHashingAdv).main() @ &m : res].
-  proof.
-  move => DDH_Adv_globs_func DDH_Adv_globs_in_guard.
-    byequiv.
-    proc.
-    inline*.
-  sp.
-    seq 1 1 : (
-    RH.OptHashing.mp{2} = empty /\
-  inp{2} = exp1 /\
-  inp0{2} = exp2 /\
-  inp1{2} = exp3 /\
-  func{2} = DDH_Adv_globs.func{2} /\
-  in_guard{2} = DDH_Adv_globs.in_guard{2} /\
-  func_{2} = func{2} /\
-  in_guard_{2} = in_guard{2} /\
-  MakeInt.MI.func{2} = func_{2} /\
-  MakeInt.MI.in_guard{2} = in_guard_{2} /\
-  self_{2} = MakeInt.MI.func{2} /\
-  KEHybridHashingAdv.KEHybridHash._self{2} = self_{2} /\
-  KEHybridHashingAdv.KEHybridHash._st{2} = KEHybridStateWaitReq1 /\
-  func_{1} = func{1} /\
-  in_guard_{1} = in_guard{1} /\
-  MakeInt.MI.func{1} = func_{1} /\
-  MakeInt.MI.in_guard{1} = in_guard_{1} /\
-  self_{1} = MakeInt.MI.func{1} /\
-  KEHybrid._self{1} = self_{1} /\
-  KEHybrid._st{1} = KEHybridStateWaitReq1 /\
-  (glob Env){2} = (glob Env){m} /\
-  DDH_Adv_globs.in_guard{2} = DDH_Adv_globs.in_guard{m} /\
-  DDH_Adv_globs.func{2} = DDH_Adv_globs.func{m} /\
-  (func{1}, in_guard{1}) = (func', in_guard') /\
-  (glob Env){1} = (glob Env){m} /\ (glob Adv){1} = (glob Adv){2}
-).
-    call (_ : true). auto; smt().
-wp.
-    call(_ :
-  ={glob Adv,  glob MI} /\
-  MakeInt.MI.func{2} = func' /\
-  MakeInt.MI.in_guard{2} = in_guard' /\
-  KEHybridHashingAdv.KEHybridHash._self{2} = func' /\
-  KEHybrid._self{1} = func' /\
-  DDH_Adv_globs.in_guard{2} = in_guard' /\
-    DDH_Adv_globs.func{2} = func' /\
-  KEHybrid._st{1} = KEHybridHashingAdv.KEHybridHash._st{2} /\
-   hybrid_hash_rel
-   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
-  ).
+op glob_DDH2_Or_to_x_opt (g : glob DDH2_Or) : exp option = g.`1.
+op glob_DDH2_Or_to_y_opt (g : glob DDH2_Or) : exp option = g.`2.
+op glob_DDH2_Or_to_z_opt (g : glob DDH2_Or) : exp option = g.`3.
+
+op real_simp_ddh2_invar_static
+   (func : addr, guard : int fset,
+    grs : glob Hybrid, gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
+  glob_Hybrid_to_self grs         = func /\
+  glob_DDHOrAdv_to_func_self gadv = func /\
+  glob_DDHOrAdv_to_mi_func gadv   = func /\
+  glob_DDHOrAdv_to_mi_guard gadv  = guard.
+
+op real_simp_ddh2_invar0
+   (func : addr, guard : int fset, grs : glob Hybrid, 
+    gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
+  real_simp_ddh2_invar_static func guard grs gadv gor /\
+  glob_Hybrid_to_st grs         = HybridStateWaitReq1 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq1 /\
+  glob_DDH2_Or_to_x_opt gor     = None /\
+  glob_DDH2_Or_to_y_opt gor     = None /\
+  glob_DDH2_Or_to_z_opt gor     = None.
+
+op real_simp_ddh2_invar1
+   (func : addr, guard : int fset, grs : glob Hybrid, 
+    gadv : glob DDHOrAdv, gor : glob DDH2_Or,
+    pt1 pt2 : port, q1 : exp) : bool =
+  real_simp_ddh2_invar_static func guard grs gadv gor /\
+  glob_Hybrid_to_st grs         = HybridStateWaitAdv1 pt1 pt2 q1 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv1 pt1 pt2 /\
+  glob_DDH2_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH2_Or_to_y_opt gor     = None /\
+  glob_DDH2_Or_to_z_opt gor     = None.
+
+op real_simp_ddh2_invar2
+   (func : addr, guard : int fset, grs : glob Hybrid, 
+    gadv : glob DDHOrAdv, gor : glob DDH2_Or,
+    pt1 pt2 : port, q1 q2 q3 : exp) : bool =
+  real_simp_ddh2_invar_static func guard grs gadv gor /\
+  glob_Hybrid_to_st grs         = HybridStateWaitReq2 pt1 pt2 q2 q3 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq2 pt1 pt2 /\
+  glob_DDH2_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH2_Or_to_y_opt gor     = Some q2 /\
+  glob_DDH2_Or_to_z_opt gor     = Some q3.
+
+op real_simp_ddh2_invar3
+   (func : addr, guard : int fset, grs : glob Hybrid, 
+    gadv : glob DDHOrAdv, gor : glob DDH2_Or,
+    pt1 pt2 : port, q1 q2 q3 : exp) : bool =
+  real_simp_ddh2_invar_static func guard grs gadv gor /\
+  glob_Hybrid_to_st grs         = HybridStateWaitAdv2 pt1 q3 /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv2 pt1 /\
+  glob_DDH2_Or_to_x_opt gor     = Some q1 /\
+  glob_DDH2_Or_to_y_opt gor     = Some q2 /\
+  glob_DDH2_Or_to_z_opt gor     = Some q3.
+
+op real_simp_ddh2_invar4
+   (func : addr, guard : int fset, grs : glob Hybrid, 
+    gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
+  real_simp_ddh2_invar_static func guard grs gadv gor /\
+  glob_Hybrid_to_st grs         = HybridStateFinal /\
+  glob_DDHOrAdv_to_func_st gadv = DDHFuncStateFinal.
+
+inductive real_simp_ddh2_invar
+          (func : addr, guard : int fset, grs : glob Hybrid, 
+           gadv : glob DDHOrAdv, gor : glob DDH2_Or) =
+  | HybridDDH2Invar0 of
+      (real_simp_ddh2_invar0 func guard grs gadv gor)
+  | HybridDDH2Invar1 (pt1 pt2 : port, q1 : exp) of
+      (real_simp_ddh2_invar1 func guard grs gadv gor pt1 pt2 q1)
+  | HybridDDH2Invar2 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (real_simp_ddh2_invar2 func guard grs gadv gor pt1 pt2 q1 q2 q3)
+  | HybridDDH2Invar3 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (real_simp_ddh2_invar3 func guard grs gadv gor pt1 pt2 q1 q2 q3)
+  | HybridDDH2Invar4 of
+      (real_simp_ddh2_invar4 func guard grs gadv gor).
+
+module DDH2Func = DDHOrAdv(Env, Adv, DDH2_Or).DDHFunc.
+
+local lemma Exper_Hybrid_DDH2 (func' : addr) (in_guard' : int fset) &m :
+  exper_pre func' =>
+  Pr[Exper(MI(Hybrid, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[DDH_Or_Game(DDH2_Or, DDHOrAdv(Env, Adv))
+       .main(func', in_guard') @ &m : res].
+proof.
+move => ep_func'; byequiv => //; proc.
+inline*; sp; wp.
+seq 1 1 :
+  (={glob Env, glob Adv, glob MakeInt.MI} /\
+   func{1} = func' /\ func0{2} = func' /\
+   in_guard{1} = in_guard' /\ in_guard0{2} = in_guard' /\
+   MakeInt.MI.func{1} = func' /\
+   MakeInt.MI.in_guard{1} = in_guard' /\
+   Hybrid.self{1} = func' /\
+   Hybrid.st{1} = HybridStateWaitReq1 /\
+   DDHOrAdv.DDHFunc.self{2} = func' /\
+   DDHOrAdv.DDHFunc.st{2} = DDHFuncStateWaitReq1 /\
+   DDH2_Or.x_opt{2} = None /\ DDH2_Or.y_opt{2} = None /\
+   DDH2_Or.z_opt{2} = None).
+call (_ : true); first auto.
+call
+  (_ :
+   ={glob Adv, glob MakeInt.MI} /\
+   real_simp_ddh2_invar func' in_guard'
+   (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 proc.
-      if; last first. auto;smt(). auto;smt().
-  inline loop.
-      sp. wp.
-      while(
-   ={m, m0, r0, glob Adv, glob MI} /\
-   MakeInt.MI.func{2} = func' /\
-   MakeInt.MI.in_guard{2} = in_guard' /\
-   KEHybridHashingAdv.KEHybridHash._self{2} = func' /\
-   KEHybrid._self{1} = func' /\
-     DDH_Adv_globs.in_guard{2} = in_guard' /\ DDH_Adv_globs.func{2} = func' /\
-   KEHybrid._st{1} = KEHybridHashingAdv.KEHybridHash._st{2}
-   /\
-   hybrid_hash_rel
-   {|hybrid_hash_rel_st_rss = KEHybrid._st{1};
-     hybrid_hash_rel_st_map = RH.OptHashing.mp{2}|}
-  ).
-
-if;last first.
-      seq 1 1 : #pre. call(_:true). auto;smt().
-  inline after_adv.
-auto;progress;smt().
-      auto;progress;smt().
-      seq 1 1 : #pre.
-      call KEHybrid_KEHybridHash_OptHashing_invoke.
-  skip. move => &1 &2 P.
-      progress; smt().
-      inline after_func.
-  auto;progress;smt().
-skip. move => &1 &2 P.
-      progress; smt().
-      skip. move => &1 &2 P.
-      have H : func{1} = func'. smt().
-  have G : in_guard{1} = in_guard'. smt().
-      progress;smt(HybridHashRel0 mem_empty). smt(). smt(). 
+if => //.
+inline{1} 1; inline{2} 1; sp 3 3; wp.
+while
+  (={glob Adv, glob MakeInt.MI, not_done, m0, r0} /\
+   real_simp_ddh2_invar func' in_guard'
+   (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
+if => //.
+seq 1 1 :
+  (={glob Adv, glob MakeInt.MI, r0} /\
+   real_simp_ddh2_invar func' in_guard'
+   (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
+call
+  (_ :
+   ={glob Adv, glob MakeInt.MI} /\
+   real_simp_ddh2_invar func' in_guard'
+   (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
+exlim (glob Hybrid){1}, (glob DDHOrAdv){2}, (glob DDH2_Or){2}
+  => grs gadv gor.
+(* the "!!" is a hack to make the ambient case be a boolean one *)
+case @[ambient] (!! real_simp_ddh2_invar func' in_guard' grs gadv gor) =>
+  [/= [] | ?]; last exfalso; smt().
+(* real_simp_ddh2_invar0 *)
+move => real_simp_ddh2_invar0_ass.
+sp 1 1.
+match HybridStateWaitReq1 {1} 1; first auto; smt().
+match DDHFuncStateWaitReq1 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; sp 5 5.
+if; first smt().
+inline{2} 1; sp 0 1.
+match One {2} 1; first auto.
+rcondt{2} 1; first auto; smt().
+seq 1 1 : (#pre /\ q1{1} = x{2}); first auto.
+auto => /> &1 &2 dec_to_x1 dec_to_x2.
+have eq_x1_x2 : x1 = x2.
+  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
+progress; first smt().
+rewrite
+  (HybridDDH2Invar1 _ _ _ _ _ 
+   (UC_KEDir.Pt1.ke_req1__pt1 x1) (UC_KEDir.Pt1.ke_req1__pt2 x1)
+   x{2}) /#.
+auto.
+auto.
+(* real_simp_ddh2_invar1 *)
+move => pt1' pt2' q1' real_simp_ddh2_invar1_ass.
+sp 1 1.
+match HybridStateWaitAdv1 {1} 1; first auto; smt().
+match DDHFuncStateWaitAdv1 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 4.
+match Two {2} 5; first auto.
+rcondt{2} 5; first auto; smt().
+inline{2} 8.
+match Three {2} 9; first auto.
+swap{1} 5 -4; swap{2} 5 -4.
+rcondt{2} 9; first auto; smt().
+seq 1 1 : (#pre /\ q2{1} = y{2}); first auto.
+rcondt{2} 8; first auto; smt().
+swap{1} 5 -4; swap{2} 8 -7.
+seq 1 1 : (#pre /\ q3{1} = z0{2}); first auto.
+auto => /> &1 &2 dec_to_x1 dec_to_x2.
+have eq_x1_x2 : x1 = x2.
+  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
+progress; first smt().
+rewrite (HybridDDH2Invar2 _ _ _ _ _ pt1{1} pt2{1} q1{1} y{2} z0{2}) /#.
+auto.
+(* real_simp_ddh2_invar2 *)
+move => pt1' pt2'' q1' q2' q3' real_simp_ddh2_invar2_ass.
+sp 1 1.
+match HybridStateWaitReq2 {1} 1; first auto; smt().
+match DDHFuncStateWaitReq2 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 7.
+match Two {2} 8; first auto.
+rcondf{2} 8; first auto; smt().
+sp 8 9.
+if; first smt().
+auto => /> &1 &2 dec_to_x1 dec_to_x2.
+have eq_x1_x2 : x1 = x2.
+  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
+progress; first smt().
+rewrite (HybridDDH2Invar3 _ _ _ _ _ pt1{2} pt2{2} q1' q2{1} q3{1}) /#.
+auto.
+auto.
+(* real_simp_ddh2_invar3 *)
+move => pt1' pt2' q1' q2' q3' real_simp_ddh2_invar3_ass.
+sp 1 1.
+match HybridStateWaitAdv2 {1} 1; first auto; smt().
+match DDHFuncStateWaitAdv2 {2} 1; first auto; smt().
+if; first smt().
+match => // x1 x2.
+inline{1} 1; inline{2} 1; inline{2} 3.
+match Three {2} 4; first auto.
+rcondt{2} 4; first auto; smt().
+rcondf{2} 4; first auto; smt().
+auto; smt(HybridDDH2Invar4).
+auto.
+(* real_simp_ddh2_invar4 *)
+move => real_simp_ddh2_invar4_ass.
+sp 1 1.
+match HybridStateFinal {1} 1; first auto; smt().
+match DDHFuncStateFinal {2} 1; first auto; smt().
+auto.
+auto.
+conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
+call (MakeInt.MI_after_func_equiv Hybrid DDH2Func Adv); first auto.
+seq 1 1 :
+  (={glob Adv, glob MakeInt.MI, r0} /\
+   real_simp_ddh2_invar func' in_guard'
+   (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
+call (_ : true); first auto.
+conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
+call (MakeInt.MI_after_adv_equiv Hybrid DDH2Func Adv); first auto.
+auto.
+auto.
+auto; smt(HybridDDH2Invar0).
 qed.
+
+local lemma RFIP_Hybrid (func : addr) (in_guard : int fset) &m :
+  exper_pre func =>
+  `|Pr[Exper(MI(RFIP, Adv), Env).main(func, in_guard) @ &m : res] -
+    Pr[Exper(MI(Hybrid, Adv), Env).main(func, in_guard) @ &m : res]| <=
+  `|Pr[DDH1(DDH_Adv(Env, Adv)).main(func, in_guard) @ &m : res] -
+    Pr[DDH2(DDH_Adv(Env, Adv)).main(func, in_guard) @ &m : res]|.
+proof.
+move => ep_func.
+rewrite Exper_RFIP_RealSimp // Exper_RealSimp_DDH1 //.
+by rewrite Exper_Hybrid_DDH2 // (Reduction (DDHOrAdv(Env, Adv))).
+qed.
+
+(* START *)
+
 
 type ke_hybrid_ideal_sim_rel_st = {
   ke_hybrid_ideal_sim_rel_func : addr;
