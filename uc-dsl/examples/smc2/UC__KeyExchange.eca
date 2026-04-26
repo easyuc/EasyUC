@@ -3,8 +3,8 @@
 (* The user's part of the KeyExchange security proof. *)
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
-`|Pr[<<PathPfx>>DDHBound1(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res] -
-  Pr[<<PathPfx>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|
+`|Pr[<<PathPfx>>DDH1(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
+  Pr[<<PathPfx>>DDH2(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
 
 require import UCCore FMap.
@@ -20,7 +20,7 @@ module RFIP = RFRP.
 
 require DDH.
 
-clone import DDH as DDH' with
+clone export DDH as DDH' with
   type input <- (addr * int fset),
   type key   <- key,
   type exp   <- exp,
@@ -1485,11 +1485,11 @@ lemma metric_Hybrid_good (g : glob Hybrid) :
   invar_Hybrid g => 0 <= metric_Hybrid g.
 proof. smt(). qed.
 
-local lemma Hybrid_init :
-  hoare [Hybrid.invoke : true ==> invar_Hybrid (glob Hybrid)].
+local lemma metric_Hybrid_init :
+  hoare [Hybrid.init : true ==> invar_Hybrid (glob Hybrid)].
 proof. rewrite /invar_Hybrid; auto. qed.
 
-local lemma Hybrid_invoke (n : int) :
+local lemma metric_Hybrid_invoke (n : int) :
   hoare
   [Hybrid.invoke :
    invar_Hybrid (glob Hybrid) /\ metric_Hybrid (glob Hybrid) = n ==>
@@ -1735,77 +1735,77 @@ op glob_DDH2_Or_to_x_opt (g : glob DDH2_Or) : exp option = g.`1.
 op glob_DDH2_Or_to_y_opt (g : glob DDH2_Or) : exp option = g.`2.
 op glob_DDH2_Or_to_z_opt (g : glob DDH2_Or) : exp option = g.`3.
 
-op real_simp_ddh2_invar_static
+op hybrid_ddh2_invar_static
    (func : addr, guard : int fset,
-    grs : glob Hybrid, gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
-  glob_Hybrid_to_self grs         = func /\
+    ghy : glob Hybrid, gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
+  glob_Hybrid_to_self ghy         = func /\
   glob_DDHOrAdv_to_func_self gadv = func /\
   glob_DDHOrAdv_to_mi_func gadv   = func /\
   glob_DDHOrAdv_to_mi_guard gadv  = guard.
 
-op real_simp_ddh2_invar0
-   (func : addr, guard : int fset, grs : glob Hybrid, 
+op hybrid_ddh2_invar0
+   (func : addr, guard : int fset, ghy : glob Hybrid, 
     gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
-  real_simp_ddh2_invar_static func guard grs gadv gor /\
-  glob_Hybrid_to_st grs         = HybridStateWaitReq1 /\
+  hybrid_ddh2_invar_static func guard ghy gadv gor /\
+  glob_Hybrid_to_st ghy         = HybridStateWaitReq1 /\
   glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq1 /\
   glob_DDH2_Or_to_x_opt gor     = None /\
   glob_DDH2_Or_to_y_opt gor     = None /\
   glob_DDH2_Or_to_z_opt gor     = None.
 
-op real_simp_ddh2_invar1
-   (func : addr, guard : int fset, grs : glob Hybrid, 
+op hybrid_ddh2_invar1
+   (func : addr, guard : int fset, ghy : glob Hybrid, 
     gadv : glob DDHOrAdv, gor : glob DDH2_Or,
     pt1 pt2 : port, q1 : exp) : bool =
-  real_simp_ddh2_invar_static func guard grs gadv gor /\
-  glob_Hybrid_to_st grs         = HybridStateWaitAdv1 pt1 pt2 q1 /\
+  hybrid_ddh2_invar_static func guard ghy gadv gor /\
+  glob_Hybrid_to_st ghy         = HybridStateWaitAdv1 pt1 pt2 q1 /\
   glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv1 pt1 pt2 /\
   glob_DDH2_Or_to_x_opt gor     = Some q1 /\
   glob_DDH2_Or_to_y_opt gor     = None /\
   glob_DDH2_Or_to_z_opt gor     = None.
 
-op real_simp_ddh2_invar2
-   (func : addr, guard : int fset, grs : glob Hybrid, 
+op hybrid_ddh2_invar2
+   (func : addr, guard : int fset, ghy : glob Hybrid, 
     gadv : glob DDHOrAdv, gor : glob DDH2_Or,
     pt1 pt2 : port, q1 q2 q3 : exp) : bool =
-  real_simp_ddh2_invar_static func guard grs gadv gor /\
-  glob_Hybrid_to_st grs         = HybridStateWaitReq2 pt1 pt2 q2 q3 /\
+  hybrid_ddh2_invar_static func guard ghy gadv gor /\
+  glob_Hybrid_to_st ghy         = HybridStateWaitReq2 pt1 pt2 q2 q3 /\
   glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitReq2 pt1 pt2 /\
   glob_DDH2_Or_to_x_opt gor     = Some q1 /\
   glob_DDH2_Or_to_y_opt gor     = Some q2 /\
   glob_DDH2_Or_to_z_opt gor     = Some q3.
 
-op real_simp_ddh2_invar3
-   (func : addr, guard : int fset, grs : glob Hybrid, 
+op hybrid_ddh2_invar3
+   (func : addr, guard : int fset, ghy : glob Hybrid, 
     gadv : glob DDHOrAdv, gor : glob DDH2_Or,
     pt1 pt2 : port, q1 q2 q3 : exp) : bool =
-  real_simp_ddh2_invar_static func guard grs gadv gor /\
-  glob_Hybrid_to_st grs         = HybridStateWaitAdv2 pt1 q3 /\
+  hybrid_ddh2_invar_static func guard ghy gadv gor /\
+  glob_Hybrid_to_st ghy         = HybridStateWaitAdv2 pt1 q3 /\
   glob_DDHOrAdv_to_func_st gadv = DDHFuncStateWaitAdv2 pt1 /\
   glob_DDH2_Or_to_x_opt gor     = Some q1 /\
   glob_DDH2_Or_to_y_opt gor     = Some q2 /\
   glob_DDH2_Or_to_z_opt gor     = Some q3.
 
-op real_simp_ddh2_invar4
-   (func : addr, guard : int fset, grs : glob Hybrid, 
+op hybrid_ddh2_invar4
+   (func : addr, guard : int fset, ghy : glob Hybrid, 
     gadv : glob DDHOrAdv, gor : glob DDH2_Or) : bool =
-  real_simp_ddh2_invar_static func guard grs gadv gor /\
-  glob_Hybrid_to_st grs         = HybridStateFinal /\
+  hybrid_ddh2_invar_static func guard ghy gadv gor /\
+  glob_Hybrid_to_st ghy         = HybridStateFinal /\
   glob_DDHOrAdv_to_func_st gadv = DDHFuncStateFinal.
 
-inductive real_simp_ddh2_invar
-          (func : addr, guard : int fset, grs : glob Hybrid, 
+inductive hybrid_ddh2_invar
+          (func : addr, guard : int fset, ghy : glob Hybrid, 
            gadv : glob DDHOrAdv, gor : glob DDH2_Or) =
   | HybridDDH2Invar0 of
-      (real_simp_ddh2_invar0 func guard grs gadv gor)
+      (hybrid_ddh2_invar0 func guard ghy gadv gor)
   | HybridDDH2Invar1 (pt1 pt2 : port, q1 : exp) of
-      (real_simp_ddh2_invar1 func guard grs gadv gor pt1 pt2 q1)
+      (hybrid_ddh2_invar1 func guard ghy gadv gor pt1 pt2 q1)
   | HybridDDH2Invar2 (pt1 pt2 : port, q1 q2 q3 : exp) of
-      (real_simp_ddh2_invar2 func guard grs gadv gor pt1 pt2 q1 q2 q3)
+      (hybrid_ddh2_invar2 func guard ghy gadv gor pt1 pt2 q1 q2 q3)
   | HybridDDH2Invar3 (pt1 pt2 : port, q1 q2 q3 : exp) of
-      (real_simp_ddh2_invar3 func guard grs gadv gor pt1 pt2 q1 q2 q3)
+      (hybrid_ddh2_invar3 func guard ghy gadv gor pt1 pt2 q1 q2 q3)
   | HybridDDH2Invar4 of
-      (real_simp_ddh2_invar4 func guard grs gadv gor).
+      (hybrid_ddh2_invar4 func guard ghy gadv gor).
 
 module DDH2Func = DDHOrAdv(Env, Adv, DDH2_Or).DDHFunc.
 
@@ -1833,32 +1833,32 @@ call (_ : true); first auto.
 call
   (_ :
    ={glob Adv, glob MakeInt.MI} /\
-   real_simp_ddh2_invar func' in_guard'
+   hybrid_ddh2_invar func' in_guard'
    (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 proc.
 if => //.
 inline{1} 1; inline{2} 1; sp 3 3; wp.
 while
   (={glob Adv, glob MakeInt.MI, not_done, m0, r0} /\
-   real_simp_ddh2_invar func' in_guard'
+   hybrid_ddh2_invar func' in_guard'
    (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 if => //.
 seq 1 1 :
   (={glob Adv, glob MakeInt.MI, r0} /\
-   real_simp_ddh2_invar func' in_guard'
+   hybrid_ddh2_invar func' in_guard'
    (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 call
   (_ :
    ={glob Adv, glob MakeInt.MI} /\
-   real_simp_ddh2_invar func' in_guard'
+   hybrid_ddh2_invar func' in_guard'
    (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 exlim (glob Hybrid){1}, (glob DDHOrAdv){2}, (glob DDH2_Or){2}
-  => grs gadv gor.
+  => ghy gadv gor.
 (* the "!!" is a hack to make the ambient case be a boolean one *)
-case @[ambient] (!! real_simp_ddh2_invar func' in_guard' grs gadv gor) =>
+case @[ambient] (!! hybrid_ddh2_invar func' in_guard' ghy gadv gor) =>
   [/= [] | ?]; last exfalso; smt().
-(* real_simp_ddh2_invar0 *)
-move => real_simp_ddh2_invar0_ass.
+(* hybrid_ddh2_invar0 *)
+move => hybrid_ddh2_invar0_ass.
 sp 1 1.
 match HybridStateWaitReq1 {1} 1; first auto; smt().
 match DDHFuncStateWaitReq1 {2} 1; first auto; smt().
@@ -1880,8 +1880,8 @@ rewrite
    x{2}) /#.
 auto.
 auto.
-(* real_simp_ddh2_invar1 *)
-move => pt1' pt2' q1' real_simp_ddh2_invar1_ass.
+(* hybrid_ddh2_invar1 *)
+move => pt1' pt2' q1' hybrid_ddh2_invar1_ass.
 sp 1 1.
 match HybridStateWaitAdv1 {1} 1; first auto; smt().
 match DDHFuncStateWaitAdv1 {2} 1; first auto; smt().
@@ -1904,8 +1904,8 @@ have eq_x1_x2 : x1 = x2.
 progress; first smt().
 rewrite (HybridDDH2Invar2 _ _ _ _ _ pt1{1} pt2{1} q1{1} y{2} z0{2}) /#.
 auto.
-(* real_simp_ddh2_invar2 *)
-move => pt1' pt2'' q1' q2' q3' real_simp_ddh2_invar2_ass.
+(* hybrid_ddh2_invar2 *)
+move => pt1' pt2'' q1' q2' q3' hybrid_ddh2_invar2_ass.
 sp 1 1.
 match HybridStateWaitReq2 {1} 1; first auto; smt().
 match DDHFuncStateWaitReq2 {2} 1; first auto; smt().
@@ -1923,8 +1923,8 @@ progress; first smt().
 rewrite (HybridDDH2Invar3 _ _ _ _ _ pt1{2} pt2{2} q1' q2{1} q3{1}) /#.
 auto.
 auto.
-(* real_simp_ddh2_invar3 *)
-move => pt1' pt2' q1' q2' q3' real_simp_ddh2_invar3_ass.
+(* hybrid_ddh2_invar3 *)
+move => pt1' pt2' q1' q2' q3' hybrid_ddh2_invar3_ass.
 sp 1 1.
 match HybridStateWaitAdv2 {1} 1; first auto; smt().
 match DDHFuncStateWaitAdv2 {2} 1; first auto; smt().
@@ -1936,8 +1936,8 @@ rcondt{2} 4; first auto; smt().
 rcondf{2} 4; first auto; smt().
 auto; smt(HybridDDH2Invar4).
 auto.
-(* real_simp_ddh2_invar4 *)
-move => real_simp_ddh2_invar4_ass.
+(* hybrid_ddh2_invar4 *)
+move => hybrid_ddh2_invar4_ass.
 sp 1 1.
 match HybridStateFinal {1} 1; first auto; smt().
 match DDHFuncStateFinal {2} 1; first auto; smt().
@@ -1947,7 +1947,7 @@ conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
 call (MakeInt.MI_after_func_equiv Hybrid DDH2Func Adv); first auto.
 seq 1 1 :
   (={glob Adv, glob MakeInt.MI, r0} /\
-   real_simp_ddh2_invar func' in_guard'
+   hybrid_ddh2_invar func' in_guard'
    (glob Hybrid){1} (glob DDHOrAdv){2} (glob DDH2_Or){2}).
 call (_ : true); first auto.
 conseq (_ : ={r0, MI.func} ==> ={r0, m0, not_done}) => //.
@@ -1957,7 +1957,7 @@ auto.
 auto; smt(HybridDDH2Invar0).
 qed.
 
-local lemma RFIP_Hybrid (func : addr) (in_guard : int fset) &m :
+local lemma Exper_RFIP_Hybrid (func : addr) (in_guard : int fset) &m :
   exper_pre func =>
   `|Pr[Exper(MI(RFIP, Adv), Env).main(func, in_guard) @ &m : res] -
     Pr[Exper(MI(Hybrid, Adv), Env).main(func, in_guard) @ &m : res]| <=
@@ -1969,8 +1969,217 @@ rewrite Exper_RFIP_RealSimp // Exper_RealSimp_DDH1 //.
 by rewrite Exper_Hybrid_DDH2 // (Reduction (DDHOrAdv(Env, Adv))).
 qed.
 
-(* START *)
+(*
+op glob_Hybrid_to_self (g : glob Hybrid) : addr         = g.`1.
+op glob_Hybrid_to_st   (g : glob Hybrid) : hybrid_state = g.`2.
 
+type hybrid_state =
+[HybridStateWaitReq1 | HybridStateWaitAdv1 of port & port & exp |
+   HybridStateWaitReq2 of port & port & exp & exp |
+   HybridStateWaitAdv2 of port & exp | HybridStateFinal].
+
+type _state_IF =
+[_State_IF_Final | _State_IF_WaitReq1 |
+   _State_IF_WaitReq2 of port & port & exp |
+   _State_IF_WaitSim1 of port & port | _State_IF_WaitSim2 of port & exp].
+
+type _state_SIM =
+[_State_SIM_Final | _State_SIM_WaitAdv1 of exp | _State_SIM_WaitAdv2 |
+   _State_SIM_WaitReq1 | _State_SIM_WaitReq2 of exp].
+*)
+
+op glob_IF_to_self (g : glob IF) : addr      = g.`1.
+op glob_IF_to_st   (g : glob IF) : _state_IF = g.`2.
+
+op glob_SIM_to_st (g : glob SIM) : _state_SIM              = g.`1.
+op glob_SIM_to_if_addr_opt (g : glob SIM) : addr option    = g.`2.
+op glob_SIM_to_MS_if_addr_opt (g : glob SIM) : addr option = g.`3.
+
+op hybrid_ideal_sim_invar0
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM) : bool =
+  glob_Hybrid_to_self ghy         = func /\
+  glob_IF_to_self gif             = func /\
+  glob_SIM_to_if_addr_opt gsim    = None /\
+  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_Hybrid_to_st ghy           = HybridStateWaitReq1 /\
+  glob_IF_to_st  gif              = _State_IF_WaitReq1 /\
+  glob_SIM_to_st gsim             = _State_SIM_WaitReq1.
+
+op hybrid_ideal_sim_invar1
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM,
+    pt1 pt2 : port, q1 : exp) : bool =
+  glob_Hybrid_to_self ghy         = func /\
+  glob_IF_to_self gif             = func /\
+  glob_SIM_to_if_addr_opt gsim    = None /\
+  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_Hybrid_to_st ghy           = HybridStateWaitAdv1 pt1 pt2 q1 /\
+  glob_IF_to_st  gif              = _State_IF_WaitSim1 pt1 pt2 /\
+  glob_SIM_to_st gsim             = _State_SIM_WaitAdv1.
+
+op hybrid_ideal_sim_invar2
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM,
+    pt1 pt2 : port, q2 q3 : exp) : bool =
+  envport func pt1 /\ envport func pt1 /\
+  glob_Hybrid_to_self ghy         = func /\
+  glob_IF_to_self gif             = func /\
+  glob_SIM_to_if_addr_opt gsim    = None /\
+  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_Hybrid_to_st ghy           = HybridStateWaitReq2 pt1 pt2 q2 q3 /\
+  glob_IF_to_st  gif              = _State_IF_WaitReq2 pt1 pt2 q3 /\
+  glob_SIM_to_st gsim             = _State_SIM_WaitReq2 q2.
+
+op hybrid_ideal_sim_invar3
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM,
+    pt1 : port, q3 : exp) : bool =
+  envport func pt1 /\
+  glob_Hybrid_to_self ghy         = func /\
+  glob_IF_to_self gif             = func /\
+  glob_SIM_to_if_addr_opt gsim    = None /\
+  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_Hybrid_to_st ghy           = HybridStateWaitAdv2 pt1 q3 /\
+  glob_IF_to_st  gif              = _State_IF_WaitSim2 pt1 q3 /\
+  glob_SIM_to_st gsim             = _State_SIM_WaitAdv2.
+
+op hybrid_ideal_sim_invar4
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM) : bool =
+  glob_Hybrid_to_self ghy         = func /\
+  glob_IF_to_self gif             = func /\
+  glob_SIM_to_if_addr_opt gsim    = None /\
+  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_Hybrid_to_st ghy           = HybridStateFinal /\
+  glob_IF_to_st  gif              = _State_IF_Final /\
+  glob_SIM_to_st gsim             = _State_SIM_Final.
+
+inductive hybrid_ideal_sim_invar
+   (func : addr, ghy : glob Hybrid, gif : glob IF, gsim : glob SIM) =
+  | HybridIdealSimInvar0 of
+      (hybrid_ideal_sim_invar0 func ghy gif gsim)
+  | HybridIdealSimInvar1 (pt1 pt2 : port, q1 : exp) of
+      (hybrid_ideal_sim_invar1 func ghy gif gsim pt1 pt2 q1)
+  | HybridIdealSimInvar2 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_ideal_sim_invar2 func ghy gif gsim pt1 pt2 q2 q3)
+  | HybridIdealSimInvar3 (pt1 pt2 : port, q1 q2 q3 : exp) of
+      (hybrid_ideal_sim_invar3 func ghy gif gsim pt1 q3)
+  | HybridIdealSimInvar4 of
+      (hybrid_ideal_sim_invar4 func ghy gif gsim).
+
+local lemma Exper_Hybrid_KEIdeal_KESim_DummyAdv
+            (Env <: ENV{-MI, -Hybrid, -IF, -MSCore.MS, -SIM})
+            (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (fset1 _adv_if_pi) =>
+  Pr[Exper(MI(Hybrid, DummyAdv), Env)
+       .main(func', in_guard') @ &m : res] =
+  Pr[Exper
+     (MI(IF, MSCore.MS(UC_KESim, DummyAdv)), Env)
+       .main(func', in_guard') @ &m : res].
+proof.
+move => ep disj; byequiv => //; proc; inline*.
+seq 7 10 :
+  (={glob Env, func, in_guard, MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   Hybrid.self{1} = func' /\ IF._self{2} = func' /\
+   MSCore.MS.if_addr_opt{2} = None /\ UC_KESim.if_addr_opt{2} = None /\
+   Hybrid.st{1} = HybridStateWaitReq1 /\
+   IF._st{2} = _State_IF_WaitReq1 /\
+   UC_KESim._st{2} = _State_SIM_WaitReq1); first auto.
+call
+  (_ :
+   ={MI.func, MI.in_guard} /\
+     MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+proc.
+if => //.
+inline loop; sp 3 3; wp.
+conseq
+  (_ :
+   ={not_done, m0, MI.func, MI.in_guard} /\ not_done{1} /\
+    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2} ==>
+   ={r0, MI.func, MI.in_guard} /\
+    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}) => //.
+exlim (glob Hybrid){1}, (glob IF){2}, (glob SIM){2}
+  => ghy gif gsim.
+(* the "!!" is a hack to make the ambient case be a boolean one *)
+case @[ambient] (!! hybrid_ideal_sim_invar func' ghy gif gsim) =>
+  [/= [] | ?]; last exfalso; smt().
+(* hybrid_ideal_sim_invar0 *)
+move => hybrid_ideal_sim_invar0_ass.
+
+
+admit.
+auto.
+auto; smt(HybridIdealSimInvar0).
+qed.
+
+local lemma Exper_Hybrid_KEIdeal_KESim
+            (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (fset1 _adv_if_pi) =>
+  Pr[Exper(MI(Hybrid, Adv), Env).main(func', in_guard') @ &m : res] =
+  Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res].
+proof.
+move => ep disj.
+have /# :
+  `|Pr[Exper(MI(Hybrid, Adv), Env)
+         .main(func', in_guard') @ &m : res] -
+     Pr[Exper(MI(IF, SIM(Adv)), Env)
+          .main(func', in_guard') @ &m : res]| <= 0%r.
+  apply  
+  (MSCore.dummy_adversary Env Adv Hybrid IF UC_KESim
+   invar_Hybrid metric_Hybrid
+   _invar_IF _metric_IF
+   _invar_UC_KESim _metric_UC_KESim
+   func' in_guard' 0%r &m) => //.
+  apply metric_Hybrid_good.
+  apply metric_Hybrid_init.
+  apply metric_Hybrid_invoke.
+  apply IF_metric_good.
+  apply IF_init.
+  move => n; conseq (IF_invoke n) => &hr; smt(mem_oflist).
+  apply UC_KESim_metric_good.
+  by rewrite /_invar_UC_KESim.
+  apply UC_KESim_invoke.
+  by rewrite (Exper_Hybrid_KEIdeal_KESim_DummyAdv (MSCore.CombEnvAdv(Env, Adv))).
+qed.
+
+lemma Exper_RFIP_KEIdeal_KESim (func : addr, in_guard : int fset) &m :
+  exper_pre func =>
+  disjoint in_guard (adv_pis_rf_info rf_info) =>
+  `|Pr[Exper(MI(RFIP, Adv), Env).main(func, in_guard) @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env).main(func, in_guard) @ &m : res]| <=
+  `|Pr[DDH1(DDH_Adv(Env, Adv)).main(func, in_guard) @ &m : res] -
+    Pr[DDH2(DDH_Adv(Env, Adv)).main(func, in_guard) @ &m : res]|.
+proof.
+move => ep disj.
+rewrite -(Exper_Hybrid_KEIdeal_KESim func in_guard &m ep _) //.
+smt(in_fset1 mem_adv_pis_rf_info disjointP).
+by apply Exper_RFIP_Hybrid.
+qed.
+
+end section.
+
+lemma KeyExchange_RFIP_IF_advantage
+      (Env <: ENV{-MI, -RFIP, -IF, -SIM, -AllCGs})
+      (Adv <: ADV{-MI, -RFIP, -IF, -SIM, -AllCGs, -Env})
+      (func' : addr, in_guard' : int fset) &m :
+  exper_pre func' =>
+  disjoint in_guard' (adv_pis_rf_info rf_info) =>
+ `|Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] -
+    Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <=
+  `|Pr[DDH1(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res] -
+    Pr[DDH2(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res]|.
+proof.
+move => ep disj.
+by apply (Exper_RFIP_KEIdeal_KESim Adv Env).
+qed.
+
+
+(*  old
 
 type ke_hybrid_ideal_sim_rel_st = {
   ke_hybrid_ideal_sim_rel_func : addr;
@@ -2051,6 +2260,23 @@ inductive ke_hybrid_ideal_sim_rel (st : ke_hybrid_ideal_sim_rel_st) =
       (ke_hybrid_ideal_sim_rel3 st pt1 pt2 q1 q2 q3)
   | KEHybridIdealSimRel4 of
       (ke_hybrid_ideal_sim_rel4 st).
+
+
+
+
+
+local lemma Exper_KEHybrid_KEIdeal_KESim_dummy_adversary
+    (EnvX <: ENV{-MI, -KEHybrid, -DummyAdv, -UC_KEIdeal, -MSCore.MS, -UC_KESim})
+            (func' : addr, in_guard' : int fset) &m :
+            exper_pre func' =>
+            disjoint in_guard' (fset1 _adv_if_pi) =>
+  `|Pr[Exper(MI(KEHybrid, DummyAdv), EnvX).main
+       (func', in_guard') @ &m : res] -
+  Pr[Exper(MI(UC_KEIdeal, MSCore.MS(UC_KESim, DummyAdv)), EnvX).main
+       (func', in_guard') @ &m : res]| <= 0%r.
+     proof.
+
+
 
 lemma ke_hybrid_ideal_sim_rel_implies_C (st : ke_hybrid_ideal_sim_rel_st) :
     ke_hybrid_ideal_sim_rel st => ke_hybrid_ideal_sim_relC st.
@@ -8067,3 +8293,4 @@ trivial. trivial.
 trivial. trivial.
 smt().
 qed.
+*)

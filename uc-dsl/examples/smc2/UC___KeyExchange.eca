@@ -1361,7 +1361,7 @@ module OwnIF = IF
 
 type _state_SIM = [ 
   | _State_SIM_Final
-  | _State_SIM_WaitAdv1 of (exp)
+  | _State_SIM_WaitAdv1
   | _State_SIM_WaitAdv2
   | _State_SIM_WaitReq1
   | _State_SIM_WaitReq2 of (exp)
@@ -1375,7 +1375,7 @@ module UC_KESim = {
     if_addr_opt <- None; _st <- _State_SIM_WaitReq1;
     
   }
-  proc _State_SIM_WaitAdv1__KEReal__Fw1__FwAdv__fw_ok (q1 : exp) : msg option = {
+  proc _State_SIM_WaitAdv1__KEReal__Fw1__FwAdv__fw_ok () : msg option = {
     var q2 : exp;
     var _r : msg option <- None;
     q2 <$ dexp;
@@ -1416,7 +1416,7 @@ module UC_KESim = {
         (pt1, pt2, g ^ q1);
         
       |});
-    _st <- _State_SIM_WaitAdv1 (q1);
+    _st <- _State_SIM_WaitAdv1;
     return _r;
   }
   proc _State_SIM_WaitReq2__KEI2S__ke_sim_req2 (q2 : exp) : msg option = {
@@ -1441,10 +1441,10 @@ module UC_KESim = {
     | _State_SIM_Final => {
       
     }
-    | _State_SIM_WaitAdv1 q1 => {
+    | _State_SIM_WaitAdv1 => {
       if ((_m.`3.`1 = adv) /\ (_m.`2.`1 = _addr_Fw1 (oget if_addr_opt)) /\ (Forwarding1.UC_FwAdv.epdp__fw_ok.`dec _m) <> None)
       {
-        _r <@ _State_SIM_WaitAdv1__KEReal__Fw1__FwAdv__fw_ok (q1);
+        _r <@ _State_SIM_WaitAdv1__KEReal__Fw1__FwAdv__fw_ok ();
       }
       
     }
@@ -1484,7 +1484,7 @@ op glob_UC_KESim_to__st (g : glob UC_KESim) / : _state_SIM = g.`1.
 op [smt_opaque] _metric_UC_KESim (g : glob UC_KESim) : int =
   match glob_UC_KESim_to__st g with
   | _State_SIM_Final => 0
-  | _State_SIM_WaitAdv1 _ => 3
+  | _State_SIM_WaitAdv1 => 3
   | _State_SIM_WaitAdv2 => 1
   | _State_SIM_WaitReq1 => 4
   | _State_SIM_WaitReq2 _ => 2
@@ -1506,7 +1506,7 @@ inline. match. (*state match*)
 (*state branch Final*) skip. move => />;smt(). (*empty state match branch code*)
 (*state branch WaitAdv1*) if;last first. (*message guard*)
 skip. move => />;smt(). (*message guard failed*)
-sp 2. (*state param assignment, return value initialization*)seq 1 : (#pre). rnd. skip. move => />;smt(). (*Sample instruction*)
+sp 1. (*state param assignment, return value initialization*)seq 1 : (#pre). rnd. skip. move => />;smt(). (*Sample instruction*)
  sp 1. sp 2. skip. move => />;smt(). (*SendAndTransition instruction*) 
 (*state branch WaitAdv2*) if;last first. (*message guard*)
 skip. move => />;smt(). (*message guard failed*)

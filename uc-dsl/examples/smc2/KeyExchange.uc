@@ -387,7 +387,7 @@ simulator KESim uses KEI2S simulates KEReal {
         send KEReal.Fw1.FwAdv.fw_obs
              (intport KEReal.Pt1, intport KEReal.Pt2,
               epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q1))
-        and transition WaitAdv1(q1).
+        and transition WaitAdv1.
       }    
     | *                           => { fail. }
     (* only catches KEI2S.ke_sim_req2; messages from adversary to real
@@ -396,7 +396,7 @@ simulator KESim uses KEI2S simulates KEReal {
     end
   }
 
-  state WaitAdv1(q1 : exp) {
+  state WaitAdv1 {
     var q2 : exp;
     match message with 
     (* because this isn't the initial state, we can pattern match
