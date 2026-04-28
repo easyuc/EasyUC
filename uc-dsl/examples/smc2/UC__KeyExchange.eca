@@ -2010,8 +2010,8 @@ op hybrid_ideal_sim_invar1
     pt1 pt2 : port, q1 : exp) : bool =
   glob_Hybrid_to_self ghy         = func /\
   glob_IF_to_self gif             = func /\
-  glob_SIM_to_if_addr_opt gsim    = None /\
-  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_SIM_to_if_addr_opt gsim    = Some func /\
+  glob_SIM_to_MS_if_addr_opt gsim = Some func /\
   glob_Hybrid_to_st ghy           = HybridStateWaitAdv1 pt1 pt2 q1 /\
   glob_IF_to_st  gif              = _State_IF_WaitSim1 pt1 pt2 /\
   glob_SIM_to_st gsim             = _State_SIM_WaitAdv1.
@@ -2022,8 +2022,8 @@ op hybrid_ideal_sim_invar2
   envport func pt1 /\ envport func pt1 /\
   glob_Hybrid_to_self ghy         = func /\
   glob_IF_to_self gif             = func /\
-  glob_SIM_to_if_addr_opt gsim    = None /\
-  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_SIM_to_if_addr_opt gsim    = Some func /\
+  glob_SIM_to_MS_if_addr_opt gsim = Some func /\
   glob_Hybrid_to_st ghy           = HybridStateWaitReq2 pt1 pt2 q2 q3 /\
   glob_IF_to_st  gif              = _State_IF_WaitReq2 pt1 pt2 q3 /\
   glob_SIM_to_st gsim             = _State_SIM_WaitReq2 q2.
@@ -2034,8 +2034,8 @@ op hybrid_ideal_sim_invar3
   envport func pt1 /\
   glob_Hybrid_to_self ghy         = func /\
   glob_IF_to_self gif             = func /\
-  glob_SIM_to_if_addr_opt gsim    = None /\
-  glob_SIM_to_MS_if_addr_opt gsim = None /\
+  glob_SIM_to_if_addr_opt gsim    = Some func /\
+  glob_SIM_to_MS_if_addr_opt gsim = Some func /\
   glob_Hybrid_to_st ghy           = HybridStateWaitAdv2 pt1 q3 /\
   glob_IF_to_st  gif              = _State_IF_WaitSim2 pt1 q3 /\
   glob_SIM_to_st gsim             = _State_SIM_WaitAdv2.
@@ -2117,7 +2117,205 @@ case @[ambient] (!! hybrid_ideal_sim_invar func' ghy gif gsim) =>
 (* hybrid_ideal_sim_invar0 *)
 move => hybrid_ideal_sim_invar0_ass.
 if => //.
-admit.
+inline{1} 1; inline{2} 1; sp 2 2.
+match HybridStateWaitReq1 {1} 1; first auto; smt().
+if{1}.
+rcondt{2} 1; first auto; smt().
+inline{2} 1; sp 0 2.
+match _State_IF_WaitReq1 {2} 1; first auto; smt().
+match => //.
+seq 2 3 :
+  (={r0} /\ r0{1} = None /\ ! not_done{1} /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{1} (MakeInt.MI_after_func_error Hybrid DummyAdv).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. 
+auto; smt(HybridIdealSimInvar0).
+move => x1 x2; seq 0 0 : (#pre /\ x1 = x2); first by auto => /> &1 &2 ->.
+inline{1} 1; inline{2} 1; sp 5 3.
+if; first smt().
+seq 0 5 :
+  (r0{2} =
+   Some
+   (UC_KEI2S.epdp__ke_sim_req1.`enc           
+    (UC_KEI2S.mk__ke_sim_req1 func' adv pt1{2} pt2{2})) /\
+   ={pt1, pt2, MI.func, MI.in_guard} /\
+   _pt1{1} = _intport_Pt1 func' /\ _pt2{1} = _intport_Pt2 func' /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
+   glob_IF_to_self (glob IF){2} = func' /\
+   glob_SIM_to_if_addr_opt (glob SIM){2} = None /\
+   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = None /\
+   glob_Hybrid_to_st (glob Hybrid){1} = HybridStateWaitReq1 /\
+   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitReq1).
+auto; progress; smt().
+seq 0 1 :
+  (not_done{2} /\
+   m0{2} =
+   (UC_KEI2S.epdp__ke_sim_req1.`enc           
+    (UC_KEI2S.mk__ke_sim_req1 func' adv pt1{2} pt2{2})) /\
+   ={pt1, pt2, MI.func, MI.in_guard} /\
+   _pt1{1} = _intport_Pt1 func' /\ _pt2{1} = _intport_Pt2 func' /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
+   glob_IF_to_self (glob IF){2} = func' /\
+   glob_SIM_to_if_addr_opt (glob SIM){2} = None /\
+   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = None /\
+   glob_Hybrid_to_st (glob Hybrid){1} = HybridStateWaitReq1 /\
+   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitReq1).
+exlim r0{2} => r0'.
+call{2} (MakeInt.MI_after_func_to_adv IF SimDA r0').
+auto; progress; smt(_adv_pi_begin_gt0).
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto; smt(@UCListPO).
+inline{2} 1; sp 0 2.
+rcondt{2} 1; first auto; smt().
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto.
+inline{2} 2; sp 0 4; elim* => if_addr_opt_R.
+rcondt{2} 1; first auto.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 2.
+rcondt{2} 1; first auto.
+sp 0 1; elim* => if_addr_opt_R0.
+match _State_SIM_WaitReq1 {2} 1; first auto.
+rcondt{2} 1; first auto; smt().
+inline{2} 1; sp 0 3.
+seq 1 1 : (#pre /\ ={q1}); first auto.
+seq 5 4 :
+  (r0{1} = r3{2} /\
+   r3{2} =
+   Some                                            
+   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc       
+    (Forwarding1.UC_FwAdv.mk__fw_obs              
+     (_addr_Fw1 func') adv
+     (_intport_Pt1 func') (_intport_Pt2 func')
+     (KeyExp'.epdp_port_port_key_univ.`enc      
+     (pt1{1}, pt2{2}, g ^ q1{1})))) /\
+   ={pt1, pt2, MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
+   glob_IF_to_self (glob IF){2} = func' /\
+   glob_SIM_to_if_addr_opt (glob SIM){2} = Some func' /\
+   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = Some func' /\
+   glob_Hybrid_to_st (glob Hybrid){1} = HybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitAdv1).
+auto.
+seq 1 1 :
+  (not_done{1} /\ not_done0{2} /\ m0{1} = m3{2} /\
+   m0{1} =
+   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc       
+    (Forwarding1.UC_FwAdv.mk__fw_obs              
+     (_addr_Fw1 func') adv
+     (_intport_Pt1 func') (_intport_Pt2 func')
+     (KeyExp'.epdp_port_port_key_univ.`enc      
+     (pt1{1}, pt2{2}, g ^ q1{1})))) /\
+   ={pt1, pt2, MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
+   glob_IF_to_self (glob IF){2} = func' /\
+   glob_SIM_to_if_addr_opt (glob SIM){2} = Some func' /\
+   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = Some func' /\
+   glob_Hybrid_to_st (glob Hybrid){1} = HybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
+   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
+   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitAdv1).
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_func_to_adv Hybrid DummyAdv r0').
+call{2} (MSCore.MS_after_core_continue UC_KESim DummyAdv r0').
+auto; progress; smt(@UCListPO _adv_pi_begin_gt0).
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
+rcondf{1} 1; first auto; smt(@UCListPO).
+rcondt{2} 1; first auto; smt().
+inline{1} 1; inline{2} 1; sp 2 2.
+match None {1} 1; first auto; progress.
+rewrite /Forwarding1.UC_FwAdv.epdp__fw_obs /=.
+rewrite /Forwarding1.UC_FwAdv.enc__fw_obs /=.
+by rewrite /epdp_da_from_env /= /dec_da_from_env /=.
+match None {2} 1; first auto.
+rcondt{1} 1; first auto; progress; smt(_adv_pi_begin_gt0).
+rcondt{2} 1; first auto; progress; smt(_adv_pi_begin_gt0).
+seq 2 2 :
+  (r0{1} = r3{2} /\
+   r0{1} =
+   Some
+   (epdp_da_to_env.`enc
+    {|dte_n = m2{1}.`2.`2; dte_pt = m2{1}.`3; dte_tag = m2{1}.`4;
+      dte_u = m2{1}.`5;|}) /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar1 func' (glob Hybrid){1} (glob IF){2}
+   (glob SIM){2} pt1{1} pt2{1} q1{1}).
+auto; smt().
+seq 1 1 :
+  (r0{1} = r3{2} /\ ! not_done{1} /\ ! not_done0{2} /\
+   MakeInt.after_adv_to_env func' r0{1} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar1 func' (glob Hybrid){1} (glob IF){2}
+   (glob SIM){2} pt1{1} pt2{1} q1{1}).
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_adv_to_env Hybrid DummyAdv r0').
+call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0').
+auto => />; smt(@UCListPO).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (r0{1} = r0{2} /\ ! not_done{2} /\
+   MakeInt.after_adv_to_env func' r0{1} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar1 func' (glob Hybrid){1} (glob IF){2}
+   (glob SIM){2} pt1{1} pt2{1} q1{1}).
+exlim r0{2} => r0'.
+call{2} (MakeInt.MI_after_adv_to_env IF SimDA r0').
+auto.
+rcondf{2} 1; first auto;
+auto.
+auto; smt(HybridIdealSimInvar1).
+seq 4 5 :
+  (={r0} /\ r0{1} = None /\ ! not_done{1} /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{1} (MakeInt.MI_after_func_error Hybrid DummyAdv).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. 
+auto; smt(HybridIdealSimInvar0).
+if{2}.
+inline{2} 1; sp 0 2.
+match _State_IF_WaitReq1 {2} 1; first auto; smt().
+match None {2} 1; first auto;
+  smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
+seq 2 3 :
+  (={r0} /\ ! not_done{1} /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func' (glob Hybrid){1} (glob IF){2}
+   (glob SIM){2}).
+call{1} (MakeInt.MI_after_func_error Hybrid DummyAdv).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
+seq 2 2 :
+  (={r0} /\ ! not_done{1} /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func' (glob Hybrid){1} (glob IF){2}
+   (glob SIM){2}).
+call{1} (MakeInt.MI_after_func_error Hybrid DummyAdv).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
 inline{1} 1; inline{2} 1; sp 2 2.
 rcondf{2} 1; first auto; smt(@UCListPO).
 inline{2} 1; sp 0 3.
@@ -2129,13 +2327,10 @@ if => //.
 sp 2 2; elim* => r2_R r3_R r1_L.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
-  r1{1} =
-  Some
-  (epdp_da_to_env.`enc
-  {|dte_n = m1{1}.`2.`2; dte_pt = m1{1}.`3; dte_tag = m1{1}.`4;
-    dte_u = m1{1}.`5; |}) /\
+   ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   hybrid_ideal_sim_invar func'
+   MakeInt.after_adv_to_env func' r0{1} /\
+   hybrid_ideal_sim_invar0 func'
    (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
 exlim r0{1} => r0'.
 call{1} (MakeInt.MI_after_adv_to_env Hybrid DummyAdv r0').
@@ -2144,34 +2339,168 @@ auto => />; smt(@UCListPO).
 rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
 seq 0 1 :
   (={r0} /\ ! not_done{2} /\
-  r1{1} =
-  Some
-  (epdp_da_to_env.`enc
-  {|dte_n = m1{1}.`2.`2; dte_pt = m1{1}.`3; dte_tag = m1{1}.`4;
-    dte_u = m1{1}.`5; |}) /\
+   ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   hybrid_ideal_sim_invar func'
+   hybrid_ideal_sim_invar0 func'
    (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
 exlim r0{2} => r0'.
 call{2} (MakeInt.MI_after_adv_to_env IF SimDA r0').
-auto; progress.
-
-
-
-
-
-
-
-
-
-
-
-admit.
 auto.
+rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar0).
-*)
+seq 2 2 :
+  (r0{1} = None /\ r2{2} = None /\
+   ! not_done{1} /\ ! not_done0{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_error func' r0{1} /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{1} (MakeInt.MI_after_adv_error Hybrid DummyAdv).
+call{2} (MSCore.MS_after_adv_error UC_KESim DummyAdv).
+auto => />; smt(@UCListPO).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (={r0} /\ ! not_done{2} /\ ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{2} (MakeInt.MI_after_adv_error IF SimDA).
+auto; smt().
+rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
+move => x1 x2; seq 0 0 : (#pre /\ x1 = x2); first by auto => /> &1 &2 ->.
+if => //.
+seq 2 2 :
+  (r0{1} = r2{2} /\
+   r0{1} =
+   Some
+   (UCBasicTypes.Adv, x1.`dfe_pt, (adv, x1.`dfe_n), x1.`dfe_tag,
+    x1.`dfe_u) /\
+   ={MI.func, MI.in_guard} /\
+   (MakeInt.after_adv_to_env func' r0{1} \/
+    MakeInt.after_adv_to_func func' r0{1}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+auto; smt().
+case (MakeInt.after_adv_to_env func' r0{1}).
+seq 1 1 :
+  (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_to_env func' r0{1} /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_adv_to_env Hybrid DummyAdv r0').
+call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0').
+auto; smt().
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (={r0} /\ ! not_done{2} /\  ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{2} => r0'.
+call{2} (MakeInt.MI_after_adv_to_env IF SimDA r0').
+auto.
+rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
+seq 0 0 : (#pre /\ MakeInt.after_adv_to_func func' r0{1});
+  first auto; smt().
+seq 1 1 :
+  (r0{1} = r2{2} /\ r0{1} = Some m0{1} /\ m0{1} = m2{2} /\
+   not_done{1} /\ ! not_done0{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_to_func func' r0{1} /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_adv_to_func Hybrid DummyAdv r0').
+call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0').
+auto; progress [-delta];
+smt(MSCore.MI_after_adv_to_func_implies_after_adv_return_if_addr_opt_unset).
+rcondt{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (={m0} /\ r0{1} = Some m0{1} /\ not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_to_func func' r0{1} /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{2} => r0'.
+call{2} (MakeInt.MI_after_adv_to_func IF SimDA r0').
+auto; smt().
+rcondt{2} 1; first auto.
+rcondt{1} 1; first auto; smt(). rcondt{2} 1; first auto; smt().
+inline{1} 1; inline{2} 1; sp 2 2.
+match HybridStateWaitReq1 {1} 1; first auto; smt().
+rcondf{1} 1; first auto; progress; smt(). sp 1 0; elim* => r0_L.
+seq 1 0 :
+  (r0{1} = None /\ ! not_done{1} /\ r4{2} = None /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_to_func func' (Some m4{2}) /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{1} (MakeInt.MI_after_func_error Hybrid DummyAdv).
+auto; smt().
+rcondf{1} 1; first auto.
+if{2}.
+inline{2} 1; sp 0 2.
+match _State_IF_WaitReq1 {2} 1; first auto; smt().
+match None {2} 1; first auto; progress;
+  smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
+seq 0 3 :
+  (={r0} /\ r0{1} = None /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
+seq 0 2 :
+  (={r0} /\ r0{1} = None /\ ! not_done{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar0 func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{2} (MakeInt.MI_after_func_error IF SimDA).
+auto; smt().
+rcondf{2} 1; first auto.
+auto; smt(HybridIdealSimInvar0).
+seq 2 2 :
+  (r0{1} = None /\ r2{2} = None /\
+   ! not_done{1} /\ ! not_done0{2} /\
+   ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   MakeInt.after_adv_error func' r0{1} /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{1} (MakeInt.MI_after_adv_error Hybrid DummyAdv).
+call{2} (MSCore.MS_after_adv_error UC_KESim DummyAdv).
+auto => />; smt(@UCListPO).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (={r0} /\ ! not_done{2} /\ ={MI.func, MI.in_guard} /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+call{2} (MakeInt.MI_after_adv_error IF SimDA).
+auto; smt().
+rcondf{2} 1; first auto.
+auto.
+move => pt1' pt2' q1' hybrid_ideal_sim_invar1_ass.
 admit.
 admit.
+admit.
+admit.
+auto; smt(HybridIdealSimInvar0).
+auto; smt(HybridIdealSimInvar0).
 qed.
 
 local lemma Exper_Hybrid_KEIdeal_KESim
