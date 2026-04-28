@@ -2063,6 +2063,8 @@ inductive hybrid_ideal_sim_invar
   | HybridIdealSimInvar4 of
       (hybrid_ideal_sim_invar4 func ghy gif gsim).
 
+module SimDA = MSCore.MS(UC_KESim, DummyAdv).
+
 local lemma Exper_Hybrid_KEIdeal_KESim_DummyAdv
             (Env <: ENV{-MI, -Hybrid, -IF, -MSCore.MS, -SIM})
             (func' : addr, in_guard' : int fset) &m :
@@ -2092,16 +2094,21 @@ call
 proc.
 if => //.
 inline loop; sp 3 3; wp.
+rcondt{1} 1; first auto. rcondt{2} 1; first auto.
 conseq
   (_ :
-   ={not_done, m0, MI.func, MI.in_guard} /\ not_done{1} /\
+   ={m0, MI.func, MI.in_guard} /\ not_done{1} /\
     MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   main_guard MI.func{1} MI.in_guard{1} m0{1} /\
+   (m0{1}.`1 = Adv => m0{1}.`2.`2 <> _adv_if_pi) /\
    hybrid_ideal_sim_invar func'
    (glob Hybrid){1} (glob IF){2} (glob SIM){2} ==>
    ={r0, MI.func, MI.in_guard} /\
     MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    hybrid_ideal_sim_invar func'
    (glob Hybrid){1} (glob IF){2} (glob SIM){2}) => //.
+move => />;
+  smt(_adv_pi_begin_gt0 in_fset1 mem_adv_pis_rf_info disjointP).
 exlim (glob Hybrid){1}, (glob IF){2}, (glob SIM){2}
   => ghy gif gsim.
 (* the "!!" is a hack to make the ambient case be a boolean one *)
@@ -2109,11 +2116,62 @@ case @[ambient] (!! hybrid_ideal_sim_invar func' ghy gif gsim) =>
   [/= [] | ?]; last exfalso; smt().
 (* hybrid_ideal_sim_invar0 *)
 move => hybrid_ideal_sim_invar0_ass.
+if => //.
+admit.
+inline{1} 1; inline{2} 1; sp 2 2.
+rcondf{2} 1; first auto; smt(@UCListPO).
+inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto; progress; smt(@UCListPO).
+inline{2} 1; sp 0 2.
+match => //.
+if => //.
+sp 2 2; elim* => r2_R r3_R r1_L.
+seq 1 1 :
+  (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
+  r1{1} =
+  Some
+  (epdp_da_to_env.`enc
+  {|dte_n = m1{1}.`2.`2; dte_pt = m1{1}.`3; dte_tag = m1{1}.`4;
+    dte_u = m1{1}.`5; |}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{1} => r0'.
+call{1} (MakeInt.MI_after_adv_to_env Hybrid DummyAdv r0').
+call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0').
+auto => />; smt(@UCListPO).
+rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
+seq 0 1 :
+  (={r0} /\ ! not_done{2} /\
+  r1{1} =
+  Some
+  (epdp_da_to_env.`enc
+  {|dte_n = m1{1}.`2.`2; dte_pt = m1{1}.`3; dte_tag = m1{1}.`4;
+    dte_u = m1{1}.`5; |}) /\
+   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
+   hybrid_ideal_sim_invar func'
+   (glob Hybrid){1} (glob IF){2} (glob SIM){2}).
+exlim r0{2} => r0'.
+call{2} (MakeInt.MI_after_adv_to_env IF SimDA r0').
+auto; progress.
+
+
+
+
+
+
+
+
+
 
 
 admit.
 auto.
 auto; smt(HybridIdealSimInvar0).
+*)
+admit.
+admit.
 qed.
 
 local lemma Exper_Hybrid_KEIdeal_KESim
