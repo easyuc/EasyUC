@@ -1987,6 +1987,65 @@ rewrite /MakeInt.after_adv_to_func /after_adv_continue.
 smt(inc_le1_not_rl inc_nle_l le_trans ge_nil).
 qed.
 
+lemma DummyAdv_Sim_init_not_sim_adv_pi_equiv
+      (CoreSim <: ADV) (gs : glob MS, gcs : glob CoreSim) :
+  equiv
+  [DummyAdv.invoke ~ MS(CoreSim, DummyAdv).invoke :
+   ={m} /\ m{1}.`1 = Adv /\ m{1}.`2.`1 = adv /\
+   m{1}.`2.`2 <> sim_adv_pi /\ MS.if_addr_opt{2} = None /\
+   (glob MS){2} = gs /\ (glob CoreSim){2} = gcs ==>
+   ={res} /\ (glob MS){2} = gs /\ (glob CoreSim){2} = gcs].
+proof.
+proc; sp 1 1.
+rcondf{2} 1; first auto.
+inline{2} 1; sp 0 3.
+rcondt{2} 1; first auto.
+rcondt{2} 1; first auto.
+inline{2} 1; sp 0 2.
+match => //.
+if => //.
+seq 1 3 :
+  (r{1} = r0{2} /\ ! not_done{2} /\
+   MS.if_addr_opt{2} = None /\
+   (glob MS){2} = gs /\ (glob CoreSim){2} = gcs).
+sp 1 2.
+exlim r0{2} => r0'.
+call{2} (MS_after_adv_return CoreSim DummyAdv r0').
+auto => />; smt(eq_of_valid_da_from_env @UCListPO).
+rcondf{2} 1; first auto.
+auto.
+seq 0 2 :
+  (r{1} = r0{2} /\ ! not_done{2} /\
+   MS.if_addr_opt{2} = None /\
+   (glob MS){2} = gs /\ (glob CoreSim){2} = gcs).
+sp.
+call{2} (MS_after_adv_error CoreSim DummyAdv).
+auto; progress; smt().
+rcondf{2} 1; first auto.
+auto.
+move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
+  first  by auto => /> &2 ->.
+if => //.
+seq 1 3 :
+  (r{1} = r0{2} /\ ! not_done{2} /\
+   MS.if_addr_opt{2} = None /\
+   (glob MS){2} = gs /\ (glob CoreSim){2} = gcs).
+sp.
+exlim r0{2} => r0'.
+call{2} (MS_after_adv_return CoreSim DummyAdv r0').
+auto; progress; smt().
+rcondf{2} 1; first auto.
+auto.
+seq 0 2 :
+  (r{1} = r0{2} /\ ! not_done{2} /\
+   MS.if_addr_opt{2} = None /\
+   (glob MS){2} = gs /\ (glob CoreSim){2} = gcs).
+call{2} (MS_after_adv_error CoreSim DummyAdv).
+auto; progress; smt().
+rcondf{2} 1; first auto.
+auto.
+qed.
+
 (* combined environment, made up of the real environment and
    the adversary *)
 
