@@ -908,30 +908,7 @@ seq 0 0 :
    x2 = oget (UC_KEDir.Pt2.epdp__ke_req2.`dec m{2})).
 auto => &1 &2 |> /#.
 if; first auto; progress; smt().
-seq 5 4 :
-  (real_simp_invar_static_ports func' (glob RFIP){1}
-   (glob RealSimp){2} pt1'' pt2'' /\
-   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1'' q1' /\
-   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_Final /\
-   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
-   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Init /\
-   RealSimp.st{2} = RealSimpStateWaitAdv2 pt1''  q1' q2' /\
-   m0{1}.`1 = Dir /\ m0{1}.`2 = _extport_dir_Pt2 RealSimp.self{2} /\
-   r0{1} =
-   Some                                       
-   (Forwarding2.UC_FwDir.D.epdp__fw_req.`enc
-    (Forwarding2.UC_FwDir.D.mk__fw_req       
-     (_addr_Fw2 func') (_intport_Pt2 func') (_intport_Pt1 func')        
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2')))) /\
-   r{2} =
-   Some                                     
-   (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-    (Forwarding2.UC_FwAdv.mk__fw_obs       
-     (_addr_Fw2 func') adv
-     (_intport_Pt2 func') (_intport_Pt1 func')
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2'))))).
-auto => /> /#.
-seq 1 0 :
+seq 6 4 :
   (not_done{1} /\
    real_simp_invar_static_ports func' (glob RFIP){1}
    (glob RealSimp){2} pt1'' pt2'' /\
@@ -952,7 +929,7 @@ seq 1 0 :
      (_addr_Fw2 func') adv
      (_intport_Pt2 func') (_intport_Pt1 func')
      (KeyExp'.epdp_key_univ.`enc (g ^ q2'))))).
-exlim r0{1} => r0'.
+sp; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
 auto; smt().
 rcondt{1} 1; first auto.
@@ -973,29 +950,12 @@ seq 0 0 :
    (KeyExp'.epdp_key_univ.`enc (g ^ q2'))).
 auto => /> /#.
 rcondt{1} 1; first auto; progress; smt(@UCListPO).
-seq 6 0 :
-  (real_simp_invar3 func' (glob RFIP){1} (glob RealSimp){2}
-   pt1'' pt2'' q1' q2' /\
-   r0{1} = r{2} /\
-   m0{1} =
-   Forwarding2.UC_FwDir.D.epdp__fw_req.`enc
-   (Forwarding2.UC_FwDir.D.mk__fw_req       
-    (_addr_Fw2 func') (_intport_Pt2 func') (_intport_Pt1 func')        
-    (KeyExp'.epdp_key_univ.`enc (g ^ q2'))) /\
-   r{2} =
-   Some                                     
-   (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-    (Forwarding2.UC_FwAdv.mk__fw_obs       
-     (_addr_Fw2 func') adv
-     (_intport_Pt2 func') (_intport_Pt1 func')
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2'))))).
-auto => /> /#.
-seq 1 0 :
+seq 7 0 :
   (! not_done{1} /\
    real_simp_invar3 func' (glob RFIP){1} (glob RealSimp){2}
    pt1'' pt2'' q1' q2' /\
    r0{1} = r{2}).
-exlim r0{1} => r'.
+sp; exlim r0{1} => r'.
 call{1} (RFCore.MakeRF_after_core_return UC_KEReal r').
 auto; smt(_adv_pi_begin_gt0).
 rcondf{1} 1; first auto.
@@ -1102,29 +1062,7 @@ call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar3).
 move => x1 x2; inline{1} 1; inline{2} 1.
-seq 10 7 :
-  (m0{1}.`1 = UCBasicTypes.Adv /\
-   _addr_Fw2 func' = m0{1}.`2.`1 /\ m0{1}.`3.`1 = adv /\
-   real_simp_invar_static_ports func' (glob RFIP){1}
-   (glob RealSimp){2} pt1' pt2' /\
-   glob_RFIP_to_st_Pt1 (glob RFIP){1} = _State_Pt1_WaitFwd2 pt1' q1' /\
-   glob_RFIP_to_st_Pt2 (glob RFIP){1} = _State_Pt2_Final /\
-   glob_RFIP_to_st_Fw1 (glob RFIP){1} = Forwarding1._State_IF_Final /\
-   glob_RFIP_to_st_Fw2 (glob RFIP){1} = Forwarding2._State_IF_Final /\
-   RealSimp.st{2} = RealSimpStateFinal /\
-   r0{1} =
-   Some 
-   (Forwarding2.UC_FwDir.D.epdp__fw_rsp.`enc
-    (Forwarding2.UC_FwDir.D.mk__fw_rsp
-     Forwarding2.UC_Forw._self{1}
-     (_intport_Pt1 func') (_intport_Pt2 func')
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2')))) /\
-   r{2} =
-   Some
-   (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
-    (UC_KEDir.Pt1.mk__ke_rsp2 func' pt1' (g ^ q2' ^ q1')))).
-auto => /> /#.
-seq 1 0 :
+seq 11 7 :
   (not_done{1} /\
    real_simp_invar_static_ports func' (glob RFIP){1}
    (glob RealSimp){2} pt1' pt2' /\
@@ -1143,9 +1081,9 @@ seq 1 0 :
    Some
    (UC_KEDir.Pt1.epdp__ke_rsp2.`enc
     (UC_KEDir.Pt1.mk__ke_rsp2 func' pt1' (g ^ q2' ^ q1')))).
-exlim r0{1} => r0'.
+sp; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
-auto; smt().
+auto; progress; smt().
 rcondt{1} 1; first auto.
 inline{1} 1; sp 2 0.
 rcondf{1} 1; first auto;
@@ -1973,25 +1911,6 @@ rewrite Exper_RFIP_RealSimp // Exper_RealSimp_DDH1 //.
 by rewrite Exper_Hybrid_DDH2 // (Reduction (DDHOrAdv(Env, Adv))).
 qed.
 
-(*
-op glob_Hybrid_to_self (g : glob Hybrid) : addr         = g.`1.
-op glob_Hybrid_to_st   (g : glob Hybrid) : hybrid_state = g.`2.
-
-type hybrid_state =
-[HybridStateWaitReq1 | HybridStateWaitAdv1 of port & port & exp |
-   HybridStateWaitReq2 of port & port & exp & exp |
-   HybridStateWaitAdv2 of port & exp | HybridStateFinal].
-
-type _state_IF =
-[_State_IF_Final | _State_IF_WaitReq1 |
-   _State_IF_WaitReq2 of port & port & exp |
-   _State_IF_WaitSim1 of port & port | _State_IF_WaitSim2 of port & exp].
-
-type _state_SIM =
-[_State_SIM_Final | _State_SIM_WaitAdv1 of exp | _State_SIM_WaitAdv2 |
-   _State_SIM_WaitReq1 | _State_SIM_WaitReq2 of exp].
-*)
-
 op glob_IF_to_self (g : glob IF) : addr      = g.`1.
 op glob_IF_to_st   (g : glob IF) : _state_IF = g.`2.
 
@@ -2199,28 +2118,7 @@ match _State_SIM_WaitReq1 {2} 1; first auto.
 rcondt{2} 1; first auto; smt().
 inline{2} 1; sp 0 3.
 seq 1 1 : (#pre /\ ={q1}); first auto.
-seq 5 4 :
-  (r0{1} = r3{2} /\
-   r3{2} =
-   Some                                            
-   (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc       
-    (Forwarding1.UC_FwAdv.mk__fw_obs              
-     (_addr_Fw1 func') adv
-     (_intport_Pt1 func') (_intport_Pt2 func')
-     (KeyExp'.epdp_port_port_key_univ.`enc      
-     (pt1{1}, pt2{2}, g ^ q1{1})))) /\
-   ={pt1, pt2, MI.func, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   envport func' pt1{1} /\ envport func' pt2{1} /\
-   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
-   glob_IF_to_self (glob IF){2} = func' /\
-   glob_SIM_to_if_addr_opt (glob SIM){2} = Some func' /\
-   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = Some func' /\
-   glob_Hybrid_to_st (glob Hybrid){1} =
-   HybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
-   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
-   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitAdv1); first auto.
-seq 1 1 :
+seq 6 5 :
   (not_done{1} /\ not_done0{2} /\ m0{1} = m3{2} /\
    m0{1} =
    (Forwarding1.UC_FwAdv.epdp__fw_obs.`enc       
@@ -2240,7 +2138,7 @@ seq 1 1 :
    HybridStateWaitAdv1 pt1{1} pt2{1} q1{1} /\
    glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
    glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitAdv1).
-exlim r0{1} => r0'.
+sp; exlim r0{1} => r0'.
 call{1} (MakeInt.MI_after_func_to_adv Hybrid DummyAdv r0').
 call{2} (MSCore.MS_after_core_continue UC_KESim DummyAdv r0').
 auto; progress; smt(@UCListPO _adv_pi_begin_gt0).
@@ -2253,29 +2151,17 @@ match None {1} 1; first auto => |>;
 match None {2} 1; first auto.
 rcondt{1} 1; first auto; progress; smt(_adv_pi_begin_gt0).
 rcondt{2} 1; first auto; progress; smt(_adv_pi_begin_gt0).
-seq 2 2 :
-  (r0{1} = r3{2} /\
-   r0{1} =
-   Some
-   (epdp_da_to_env.`enc
-    {|dte_n = m2{1}.`2.`2; dte_pt = m2{1}.`3; dte_tag = m2{1}.`4;
-      dte_u = m2{1}.`5;|}) /\
-   ={MI.func, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   hybrid_ideal_sim_invar1 func' (glob Hybrid){1} (glob IF){2}
-   (glob SIM){2} pt1{1} pt2{1} q1{1}).
-auto; smt().
-seq 1 1 :
+seq 3 3 :
   (r0{1} = r3{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    MakeInt.after_adv_to_env func' r0{1} /\
    ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    hybrid_ideal_sim_invar1 func' (glob Hybrid){1} (glob IF){2}
    (glob SIM){2} pt1{1} pt2{1} q1{1}).
-exlim r0{1} => r0'.
+sp; exlim r0{1} => r0'.
 call{1} (MakeInt.MI_after_adv_to_env Hybrid DummyAdv r0').
 call{2} (MSCore.MS_after_adv_return UC_KESim DummyAdv r0').
-auto => />; smt(@UCListPO).
+auto; progress; smt(@UCListPO).
 rcondf{1} 1; first auto. rcondf{2} 1; first auto. sp 0 2.
 seq 0 1 :
   (r0{1} = r0{2} /\ ! not_done{2} /\
@@ -2808,31 +2694,7 @@ auto; smt(HybridIdealSimInvar2).
 move => x1 x2; seq 0 0 : (#pre /\ x1 = x2); first by auto => /> &1 &2 ->.
 inline{1} 1; inline{2} 1; sp 8 5.
 if; first smt().
-seq 5 5 :
-  (r0{1} =
-   Some
-   (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-    (Forwarding2.UC_FwAdv.mk__fw_obs
-     (_addr_Fw2 func') adv
-     (_intport_Pt2 func') (_intport_Pt1 func')
-     (KeyExp'.epdp_key_univ.`enc (g ^ q2{1})))) /\
-   r0{2} =
-   Some
-   (UC_KEI2S.epdp__ke_sim_req2.`enc           
-    (UC_KEI2S.mk__ke_sim_req2 func' adv)) /\
-   ={MI.func, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   envport func' pt1{1} /\ envport func' pt2{1} /\
-   glob_Hybrid_to_self (glob Hybrid){1} = func' /\
-   glob_IF_to_self (glob IF){2} = func' /\
-   glob_SIM_to_if_addr_opt (glob SIM){2} = Some func' /\
-   glob_SIM_to_MS_if_addr_opt (glob SIM){2} = Some func' /\
-   glob_Hybrid_to_st (glob Hybrid){1} =
-   HybridStateWaitAdv2 pt1{1} q3{1} /\
-   glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim2 pt1{1} q3{1} /\
-   glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitReq2 q2{1}).
-auto => /> /#.
-seq 1 1 :
+seq 6 6 :
   (not_done{1} /\ not_done{2} /\
    m0{1} =
    (Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
@@ -2854,10 +2716,10 @@ seq 1 1 :
    HybridStateWaitAdv2 pt1{1} q3{1} /\
    glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim2 pt1{1} q3{1} /\
    glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitReq2 q2{1}).
-exlim r0{1}, r0{2} => r0_1 r0_2.
+sp; exlim r0{1}, r0{2} => r0_1 r0_2.
 call{1} (MakeInt.MI_after_func_to_adv Hybrid DummyAdv r0_1).
 call{2} (MakeInt.MI_after_func_to_adv IF SimDA r0_2).
-auto => />; smt(_adv_pi_begin_gt0).
+auto; progress; smt(_adv_pi_begin_gt0 @UCListPO).
 rcondt{1} 1; first auto. rcondt{2} 1; first auto. 
 rcondf{1} 1; first auto; smt(@UCListPO).
 rcondf{2} 1; first auto; smt(@UCListPO).
@@ -2877,25 +2739,7 @@ match  _State_SIM_WaitReq2 {2} 1; first auto; smt().
 rcondt{2} 1; first auto; progress; smt().
 inline{2} 1; sp 0 0.
 exlim m0{1} => m0'.
-seq 2 6 :
-  (m0' =
-   Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
-   (Forwarding2.UC_FwAdv.mk__fw_obs
-    (_addr_Fw2 func') adv
-    (_intport_Pt2 func') (_intport_Pt1 func')
-    (KeyExp'.epdp_key_univ.`enc (g ^ q2{1}))) /\
-   r0{1} =
-   Some
-   (epdp_da_to_env.`enc
-    {|dte_n = m0'.`2.`2; dte_pt = m0'.`3;
-      dte_tag = m0'.`4; dte_u = m0'.`5;|}) /\
-   r3{2} = Some m0' /\
-   ={MI.func, MI.in_guard} /\
-   MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
-   hybrid_ideal_sim_invar3 func' (glob Hybrid){1}
-   (glob IF){2} (glob SIM){2} pt1{1} q3{1}).
-auto => /> /#.
-seq 0 1 :
+seq 2 7 :
   (not_done0{2} /\ m3{2} = m0' /\
    m0' =
    Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
@@ -2912,7 +2756,7 @@ seq 0 1 :
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
    hybrid_ideal_sim_invar3 func' (glob Hybrid){1}
    (glob IF){2} (glob SIM){2} pt1{1} q3{1}).
-exlim r3{2} => r3'.
+sp; exlim r3{2} => r3'.
 call{2} (MSCore.MS_after_core_continue UC_KESim DummyAdv r3').
 auto => />; smt(_adv_pi_begin_gt0 @UCListPO).
 rcondt{2} 1; first auto.
@@ -3400,8 +3244,7 @@ seq 8 6 :
    glob_Hybrid_to_st (glob Hybrid){1} = HybridStateFinal /\
    glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim2 pt1' q3' /\
    glob_SIM_to_st (glob SIM){2} = _State_SIM_Final).
-sp.
-exlim r0{1}, r2{2} => r0' r2'.
+sp; exlim r0{1}, r2{2} => r0' r2'.
 call{1} (MakeInt.MI_after_func_to_env Hybrid DummyAdv r0').
 call{2} (MSCore.MS_after_core_return UC_KESim DummyAdv r2').
 auto; progress; smt().
@@ -3777,6 +3620,5 @@ lemma KeyExchange_RFIP_IF_advantage
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res] -
     Pr[DDH2(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res]|.
 proof.
-move => ep disj.
-by apply (Exper_RFIP_KEIdeal_KESim Adv Env).
+move => ep disj; by apply (Exper_RFIP_KEIdeal_KESim Adv Env).
 qed.
