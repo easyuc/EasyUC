@@ -2,13 +2,6 @@
 
 (* The user's part of the KeyExchange security proof. *)
 
-(* security upper bound - used in the generation of UC_KeyExchange.eca *)
-
-(*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
-`|Pr[<<PathPfx>>DDH1(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
-  Pr[<<PathPfx>>DDH2(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
-*)
-
 require import UCCore FMap.
 
 require UC___KeyExchange.
@@ -3630,3 +3623,10 @@ lemma KeyExchange_RFIP_IF_advantage
 proof.
 move => ep disj; by apply (Exper_RFIP_KEIdeal_KESim Adv Env).
 qed.
+
+(* security upper bound - used in the generation of UC_KeyExchange.eca *)
+
+(*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
+`|Pr[<<PathPfx>>DDH1(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
+  Pr[<<PathPfx>>DDH2(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
+*)
