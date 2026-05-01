@@ -22,7 +22,7 @@ module RFIP = RFRP.
 
 require DDH.
 
-clone export DDH as DDH' with
+clone import DDH as DDH' with
   type input <- (addr * int fset),
   type key   <- key,
   type exp   <- exp,
@@ -34,6 +34,9 @@ proof *.
 realize dexp_ll. apply dexp_ll. qed.
 realize dexp_uni. apply dexp_uni. qed.
 realize dexp_fu. apply dexp_fu. qed.
+
+module DDH1 = DDH'.DDH1.  (* for use when UC__KeyExchange is cloned *)
+module DDH2 = DDH'.DDH2.
 
 (* we make a DDH oracle adversary out of an environment and
    adversary *)
@@ -193,9 +196,6 @@ module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
 
 module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV =
   DDH_Adv_Conv(DDHOrAdv(Env, Adv)).
-
-module DDH1 = DDH'.DDH1.  (* not clear why we need this, given *)
-module DDH2 = DDH'.DDH2.  (* the export of DDH as DDH' *)
 
 (* used in the model restrictions of the lemma of UC_KeyExchange.eca *)
 
