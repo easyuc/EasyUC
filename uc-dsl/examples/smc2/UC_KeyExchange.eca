@@ -3,8 +3,8 @@ require UC__KeyExchange.
 clone include UC__KeyExchange.
 
 (*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
-`|Pr[<<ParamName>>DDH1(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
-  Pr[<<ParamName>>DDH2(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
+`|Pr[<<ParamName>>DDH1(<<ParamName>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
+  Pr[<<ParamName>>DDH2(<<ParamName>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
 
 module SIMCOMP(Adv : ADV) = SIM(Adv).

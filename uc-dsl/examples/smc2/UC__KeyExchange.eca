@@ -5,8 +5,8 @@
 (* security upper bound - used in the generation of UC_KeyExchange.eca *)
 
 (*! Bound_RFIP_IF(PathPfx, Env, Adv, func, in_guard)
-`|Pr[<<PathPfx>>DDH1(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
-  Pr[<<PathPfx>>DDH2(DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
+`|Pr[<<PathPfx>>DDH1(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res] -
+  Pr[<<PathPfx>>DDH2(<<PathPfx>>DDH_Adv(<<Env>>, <<Adv>>)).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
 
 require import UCCore FMap.
@@ -193,6 +193,9 @@ module (DDHOrAdv (Env : ENV, Adv : ADV) : DDH_OR_ADV) (Or : DDH_OR) = {
 
 module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV =
   DDH_Adv_Conv(DDHOrAdv(Env, Adv)).
+
+module DDH1 = DDH'.DDH1.  (* not clear why we need this, given *)
+module DDH2 = DDH'.DDH2.  (* the export of DDH as DDH' *)
 
 (* used in the model restrictions of the lemma of UC_KeyExchange.eca *)
 

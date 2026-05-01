@@ -3,13 +3,13 @@ require UC__SMC2.
 clone include UC__SMC2.
 
 (*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
-`|Pr[<<ParamName>>SMC1.KeyExchange.DDHBound1(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[<<ParamName>>SMC1.KeyExchange.DDHBound2(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[<<ParamName>>SMC1.KeyExchange.DDH1(<<ParamName>>SMC1.KeyExchange.DDH_Adv(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>)).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[<<ParamName>>SMC1.KeyExchange.DDH2(<<ParamName>>SMC1.KeyExchange.DDH_Adv(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>)).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0
 +
-`|Pr[<<ParamName>>SMC2.KeyExchange.DDHBound1(<<ParamName>>SMC2.COMPENV1(<<ParamName>>COMPENV2(<<Env>>)), SMC1.SIMCOMP(<<Adv>>)).main(<<func>> ++ [<<ParamName>>UC__Rest2.change_pari] ++ [<<ParamName>>SMC2.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest2.rest_adv_pis `|` <<ParamName>>SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[<<ParamName>>SMC2.KeyExchange.DDHBound2(<<ParamName>>SMC2.COMPENV1(<<ParamName>>COMPENV2(<<Env>>)), SMC1.SIMCOMP(<<Adv>>)).main(<<func>> ++ [<<ParamName>>UC__Rest2.change_pari] ++ [<<ParamName>>SMC2.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest2.rest_adv_pis `|` <<ParamName>>SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[<<ParamName>>SMC2.KeyExchange.DDH1(<<ParamName>>SMC2.KeyExchange.DDH_Adv(<<ParamName>>SMC2.COMPENV1(<<ParamName>>COMPENV2(<<Env>>)), SMC1.SIMCOMP(<<Adv>>))).main(<<func>> ++ [<<ParamName>>UC__Rest2.change_pari] ++ [<<ParamName>>SMC2.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest2.rest_adv_pis `|` <<ParamName>>SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[<<ParamName>>SMC2.KeyExchange.DDH2(<<ParamName>>SMC2.KeyExchange.DDH_Adv(<<ParamName>>SMC2.COMPENV1(<<ParamName>>COMPENV2(<<Env>>)), SMC1.SIMCOMP(<<Adv>>))).main(<<func>> ++ [<<ParamName>>UC__Rest2.change_pari] ++ [<<ParamName>>SMC2.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest2.rest_adv_pis `|` <<ParamName>>SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0
 +
@@ -26,13 +26,13 @@ lemma SMC2_RFRP_IF_advantage
   disjoint in_guard' (adv_pis_rf_info rf_info) =>
   `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard')@ &m : res] -
     Pr[Exper(MI(IF, SIMCOMP(Adv)), Env).main(func', in_guard')@ &m : res]| <=
-  `|Pr[SMC1.KeyExchange.DDHBound1(SMC1.COMPENV1(COMPENV1(Env)), Adv).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[SMC1.KeyExchange.DDHBound2(SMC1.COMPENV1(COMPENV1(Env)), Adv).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
+  `|Pr[SMC1.KeyExchange.DDH1(SMC1.KeyExchange.DDH_Adv(SMC1.COMPENV1(COMPENV1(Env)), Adv)).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[SMC1.KeyExchange.DDH2(SMC1.KeyExchange.DDH_Adv(SMC1.COMPENV1(COMPENV1(Env)), Adv)).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0
 +
-`|Pr[SMC2.KeyExchange.DDHBound1(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv)).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[SMC2.KeyExchange.DDHBound2(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv)).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[SMC2.KeyExchange.DDH1(SMC2.KeyExchange.DDH_Adv(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv))).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[SMC2.KeyExchange.DDH2(SMC2.KeyExchange.DDH_Adv(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv))).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0 .
 proof.
@@ -40,13 +40,13 @@ move => exper disj.
 apply
   (MakeInt.security_trans RFRP RFIP IF Adv (SIMIP(Adv)) (SIMCOMP(Adv))
    Env func' in_guard'
-   (`|Pr[SMC1.KeyExchange.DDHBound1(SMC1.COMPENV1(COMPENV1(Env)), Adv).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[SMC1.KeyExchange.DDHBound2(SMC1.COMPENV1(COMPENV1(Env)), Adv).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
+   (`|Pr[SMC1.KeyExchange.DDH1(SMC1.KeyExchange.DDH_Adv(SMC1.COMPENV1(COMPENV1(Env)), Adv)).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[SMC1.KeyExchange.DDH2(SMC1.KeyExchange.DDH_Adv(SMC1.COMPENV1(COMPENV1(Env)), Adv)).main(func' ++ [UC__Rest1.change_pari] ++ [SMC1.UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis `|` SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0
 +
-`|Pr[SMC2.KeyExchange.DDHBound1(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv)).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[SMC2.KeyExchange.DDHBound2(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv)).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[SMC2.KeyExchange.DDH1(SMC2.KeyExchange.DDH_Adv(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv))).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[SMC2.KeyExchange.DDH2(SMC2.KeyExchange.DDH_Adv(SMC2.COMPENV1(COMPENV2(Env)), SMC1.SIMCOMP(Adv))).main(func' ++ [UC__Rest2.change_pari] ++ [SMC2.UC__Rest1.change_pari], in_guard' `|` UC__Rest2.rest_adv_pis `|` SMC2.UC__Rest1.rest_adv_pis) @ &m : res]|
 +
 0.0)
    0.0

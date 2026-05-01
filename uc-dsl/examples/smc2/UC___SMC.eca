@@ -1768,8 +1768,8 @@ lemma diff_Composed1_RP_Composed1_IP
   -
 Pr[Exper(MI(UC__Rest1.MakeRFComp(UC_SMCReal_Rest1, KeyExchange.IF), KeyExchange.SIMCOMP(Adv)), Env).main(func', in_guard') @ &m : res]|
   <=
-`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[KeyExchange.DDH1(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDH2(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
  .
 proof.
 move => experpre disjguard.
@@ -1785,8 +1785,8 @@ KeyExchange._metric_RFRP
 KeyExchange._invar_IF
 KeyExchange._metric_IF
 func' in_guard'
-(`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+(`|Pr[KeyExchange.DDH1(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDH2(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
 &m).
      
 apply _metric_good_Rest1.
@@ -2003,8 +2003,8 @@ qed.
     Pr[Exper(MI(RFIP,SIMIP(Adv)), Env).main(func', in_guard') @ &m : res]| <=
  (
 
-`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
+`|Pr[KeyExchange.DDH1(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDH2(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|
      )
       .
      
@@ -2022,8 +2022,8 @@ apply (
     Env
     func' in_guard'
     (0.0)
-    (`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+    (`|Pr[KeyExchange.DDH1(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDH2(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
     &m
 ). 
  by apply (equiv_UC_SMCReal_RP_Composed1_RP Env (Adv) func' in_guard' &m).
@@ -2039,8 +2039,8 @@ apply (
 
     Env
     func' in_guard'
-    (`|Pr[KeyExchange.DDHBound1(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
-  Pr[KeyExchange.DDHBound2(COMPENV1(Env), Adv).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
+    (`|Pr[KeyExchange.DDH1(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res] -
+  Pr[KeyExchange.DDH2(KeyExchange.DDH_Adv(COMPENV1(Env), Adv)).main(func' ++ [UC__Rest1.change_pari], in_guard' `|` UC__Rest1.rest_adv_pis) @ &m : res]|)
     (0.0)
     &m
 ). 
