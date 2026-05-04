@@ -180,8 +180,8 @@ and epdp_constr_univ_ex (sc : EcScope.scope) (ppf : Format.formatter)
   epdp_opex_for_typath ppf sc pth tys;
   epdp_ptyl ppf sc tys
 
-and epdp_fun_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-(ty1 : ty) (ty2 : ty) : unit =
+and epdp_fun_univ_ex (_ : EcScope.scope) (_ : Format.formatter) 
+(_ : ty) (_ : ty) : unit =
   failure "epdp for function types not implemented"
 (*TODO naming convention for function  epdps*)
 (*---------------------------------------------------------------------------*)
@@ -209,12 +209,12 @@ let print_enc_data (sc : EcScope.scope)
     | [] -> Format.fprintf ppf "@[()@]"
     | [pn] -> Format.fprintf ppf "@[%s.`%s@]" var_name (name_record msg_name pn)
     | pn::tl ->
-       let print_tl_args (ppf : Format.formatter) (pns : string list) =
+       let print_tl_args (ppf : Format.formatter) () =
          List.iter (fun pn -> Format.fprintf ppf "@[,@ %s.`%s@]"
                                 var_name (name_record msg_name pn)) tl
          in
        Format.fprintf ppf "@[(%s.`%s%a)@]"
-         var_name (name_record msg_name pn) print_tl_args tl
+         var_name (name_record msg_name pn) print_tl_args ()
   in
   Format.fprintf ppf "@[@ (%a).`%s@ %a@]"
     (print_epdp_data_univ sc) params_map

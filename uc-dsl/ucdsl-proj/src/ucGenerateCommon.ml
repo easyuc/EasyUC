@@ -232,7 +232,7 @@ let moduleIRP (id : string) (rfbt : real_fun_body_tyd)
             else moduleIP id
   | Some i -> rest_nameP id rfbt i
   
-let module_name_IRF (rfbt : real_fun_body_tyd) (real_params : bool)
+let module_name_IRF (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
@@ -242,7 +242,7 @@ let module_name_IRF (rfbt : real_fun_body_tyd) (real_params : bool)
               then module_name_IF
               else module_name_RF
 
-let metricIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+let metricIRF (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
@@ -260,7 +260,7 @@ let metric_name_IRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else uc_metric_IP
   | Some i -> rest_metric i
 
-let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+let invokeIRF (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
@@ -271,7 +271,7 @@ let invokeIRF (rfbt : real_fun_body_tyd) (real_params : bool)
               else rFRP_invoke
 
 
-let invarIRF (rfbt : real_fun_body_tyd) (real_params : bool)
+let invarIRF (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
@@ -314,7 +314,7 @@ let metric_goodIRP (rfbt : real_fun_body_tyd) (real_params : bool)
             else _metric_good_IP
   | Some i -> rest_metric_good i
 
-let metric_goodIRF(rfbt : real_fun_body_tyd) (real_params : bool)
+let metric_goodIRF (real_params : bool)
       (rest_idx : int option) (param_idx : int) =
   match rest_idx with
   | None -> if real_params
@@ -480,7 +480,7 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
     maps ft nm)) (*TODO check drop root arg*)
               ) rfbt.sub_funs in
   let rfinfo = get_info_of_real_func maps root 0 ft in
-  let pedpi = IdMap.mapi ( fun nm pi : int option->
+  let pedpi = IdMap.mapi ( fun _ pi : int option->
                           if pi.pi_pdi <> None
                           then
                             let _,_, port = EcUtils.oget pi.pi_pdi in
@@ -488,7 +488,7 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
                           else
                             None
                 ) rfinfo in
-  let peapi = IdMap.mapi ( fun nm pi : (int * int) option->
+  let peapi = IdMap.mapi ( fun _ pi : (int * int) option->
                           if pi.pi_pai <> None
                           then
                             let _,_, ptport, advport = EcUtils.oget pi.pi_pai in
@@ -496,7 +496,7 @@ let make_rf_addr_port_maps (maps : maps_tyd) (root : string) (ft : fun_tyd)
                           else
                             None
                ) rfinfo in
-  let pipi = IdMap.mapi ( fun nm pi ->
+  let pipi = IdMap.mapi ( fun _ pi ->
     pi.pi_ipi
                ) rfinfo in
   {
@@ -702,7 +702,7 @@ let rec get_globVarIds
     let param_names = List.map (fun (_,_,clone) -> clone)
                (indexed_map_to_list rfbt.params) in
     let paraml = List.combine param_names params in
-    let paraml = List.filter (fun (id, psp) -> psp <> Dropped) paraml in
+    let paraml = List.filter (fun (_, psp) -> psp <> Dropped) paraml in
     let paramglobs = List.map (fun (id, psp) ->
                          let thpath = thpath @ [id] in
                          let funsufix = [uc_name (fst(getSP psp))] in
@@ -882,10 +882,10 @@ and get_params_sum_Bound_RFRP_IF_macro_fun
   let rfbt = real_fun_body_tyd_of fbt in
   let params = indexed_map_to_list_keep_keys rfbt.params in
   if List.length params = 0
-  then fun s1 s2 s3 s4 s5 -> ""
+  then fun _ _ _ _ _ -> ""
   else
     let parambounds : bound_macro_fun list =
-      List.mapi (fun i (pmnm, (r, dirint, _)) -> (*TODO check triplet porsf*)
+      List.mapi (fun i (_, (r, _, _)) -> (*TODO check triplet porsf*)
         let ui = unit_info_of_root mt r in
         let fid = match ui with
           | UI_Triple ti -> (r,ti.ti_real)
@@ -911,7 +911,7 @@ let get_Bound_RFIP_IF (funcId : SP.t) : string =
 let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
     (env : string) (adv : string) (func : string) (in_guard : string) : string =
   let params = indexed_map_to_list_keep_keys rfbt.params in
-  let (pmnm, (funcId,_,_)) = List.nth params (param_no-1) in (*TODO check porsf triplet*)
+  let (_, (funcId,_,_)) = List.nth params (param_no-1) in (*TODO check porsf triplet*)
   let filename = (uc_name funcId)^".eca" in
   let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
   let bmf = fun s1 s2 s3 s4 s5->

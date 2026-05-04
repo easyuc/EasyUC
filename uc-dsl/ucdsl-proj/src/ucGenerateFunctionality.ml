@@ -1528,7 +1528,7 @@ let print_module_lemmas ?(rest_idx = None)
       (get_own_glob_range_of_real_fun_glob_core rfbt gvil);
     List.iteri (fun i pmn -> Format.fprintf ppf "@[%a@]@;@;"
       (print_glob_operator (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
-         (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rfbt rp rest_idx i) pmn))
+         (moduleIRP id rfbt rp rest_idx) ((module_name_IRF rp rest_idx i) pmn))
       (get_glob_range_of_parameter gvil pmn)) pmns;
     if rest_idx = None && rp then begin 
     let ogrs = get_own_glob_ranges_of_real_fun rfbt gvil in
@@ -1547,7 +1547,7 @@ let print_module_lemmas ?(rest_idx = None)
     in
     List.iteri (fun i pmn ->
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (plus()) pmn (metricIRF rfbt rp rest_idx i) (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
+          (plus()) pmn (metricIRF rp rest_idx i) (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
           (plus()) (uc_party_metric_name ptn)
@@ -1601,10 +1601,10 @@ let print_module_lemmas ?(rest_idx = None)
         print_call_sub_invoke metric globop1 globop2 sub_invoke sub_invoke_pms proof_term
     ) sfns;
     List.iteri (fun i pmn ->
-        let metric = pmn^"."^(metricIRF rfbt rp rest_idx i) in
+        let metric = pmn^"."^(metricIRF rp rest_idx i) in
         let globop1 = glob_op_name (moduleIRP id rfbt rp rest_idx) pmn in
         let globop2 = "" in
-        let sub_invoke = pmn^"."^(invokeIRF rfbt rp rest_idx i) in
+        let sub_invoke = pmn^"."^(invokeIRF rp rest_idx i) in
         let sub_invoke_pms = "" in
         let proof_term = match rest_idx with
           | None -> "smt(mem_adv_pis_rf_info mem_oflist)."
@@ -1646,7 +1646,7 @@ smt (mem_adv_pis_rf_info mem_oflist)."
     in
     List.iteri (fun i pmn ->
         Format.fprintf ppf "@[%s%s.%s(%s g)@]@;"
-          (cnj()) pmn (invarIRF rfbt rp rest_idx i)
+          (cnj()) pmn (invarIRF rp rest_idx i)
           (glob_op_name (moduleIRP id rfbt rp rest_idx) pmn)
       ) pmns;
     List.iter (fun ptn ->  Format.fprintf ppf "@[%s%s(%s (%s g))@]@;"
@@ -1676,7 +1676,7 @@ smt (mem_adv_pis_rf_info mem_oflist)."
     Format.fprintf ppf "@[smt(@]@;";
     List.iteri(fun i pmn ->
         Format.fprintf ppf "@[%s.%s@]@;"
-          pmn (metric_goodIRF rfbt rp rest_idx i)
+          pmn (metric_goodIRF rp rest_idx i)
       ) pmns;
     List.iter(fun (_,sfth) ->
         Format.fprintf ppf "@[%s.%s@]@;" sfth iF_metric_good
