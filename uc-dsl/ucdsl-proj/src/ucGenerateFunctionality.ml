@@ -20,7 +20,7 @@ let _x = "_x"
 let _envport = "envport"
 let msg_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
-let parties_str = "parties"
+let parties_str = "dispatcher"
 let loop_str = "loop"
 let proc_party_str (pn : string) = "party_"^pn
 let addr_op_call_sim (name : string) : string =
@@ -225,7 +225,7 @@ let rec print_code (sim_uses : string option)
            (EcUtils.oget sat.msg_expr.port_expr)
     | None ->
       Format.fprintf ppf "@[%s%s = %s;@]@;"
-        pfx (name_record_adv msgn) adv
+        pfx (name_record_adv msgn) adv (*TODO adv remove*)
     end
     ;
     let pm = fst (List.split (params_map_to_list mb.params_map)) in
@@ -475,13 +475,13 @@ let print_ideal_module (sc : EcScope.scope) (root : string) (id : string)
     Format.fprintf ppf "@[var %s : %a option <- None;@]@;"
       r (pp_type sc) msg_ty;
     Format.fprintf ppf
-      "@[if ((%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ envport %s %s.`3)@]"
+      "@[if ((%s.`1 = %s /\\ %s.`2.`1 = %s /\\ envport %s %s.`3)@]"
       m mode_Dir m _self _self m;
     if ifbt.id_adv_inter<>None
     then begin 
-     Format.fprintf ppf "\\/";
+     Format.fprintf ppf "@ \\/";
      Format.fprintf ppf
-       "@[@ (%s.`1 = %s@ /\\@ %s.`2.`1 = %s@ /\\@ %s.`3.`1 = %s))@]{"
+       "@[@ (%s.`1 = %s /\\ %s.`2.`1 = %s /\\ %s.`3.`1 = %s))@]{"
        m mode_Adv m _self m adv
       end
     else
@@ -1076,7 +1076,7 @@ let print_params_FUNC ppf params : unit =
       if has_dir_extport
       then begin
       Format.fprintf ppf
-      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ envport %s%s %s.`3)@]@;"
+      "@[(%s.`1 = %s /\\ %s.`2 = %s /\\ envport %s%s %s.`3)@]@;"
       m mode_Dir m (extport_dir_op_call ~pfx:module_pfx nm)
       module_pfx _self m;
       Format.fprintf ppf "@[\\/@]@;"
@@ -1085,12 +1085,12 @@ let print_params_FUNC ppf params : unit =
       if (adv_extport <> None)
       then begin   
       Format.fprintf ppf
-        "@[(%s.`1 = %s@ /\\@ %s.`2 = %s)@]@;"
+        "@[(%s.`1 = %s /\\ %s.`2 = %s)@]@;"
         m mode_Adv m (extport_adv_op_call ~pfx:module_pfx nm);
       Format.fprintf ppf "@[\\/@]@;"
       end;     
       Format.fprintf ppf
-      "@[(%s.`1 = %s@ /\\@ %s.`2 = %s@ /\\@ %s%s < %s.`3.`1))@]@;"
+      "@[(%s.`1 = %s /\\ %s.`2 = %s /\\ %s%s < %s.`3.`1))@]@;"
       m mode_Dir m (intport_op_call ~pfx:module_pfx nm)
       module_pfx _self m;
       Format.fprintf ppf "@[{%s %s %s(%s);}@]@;"

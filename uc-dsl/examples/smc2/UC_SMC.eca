@@ -9,7 +9,7 @@ clone include UC__SMC.
 0.0
 *)
 
-module SIMCOMP(Adv : ADV) = SIM(SIMIP(Adv)).
+module SIMCOMP = SimComp(SIM, SIMIP).
 
 lemma SMC_RFRP_IF_advantage
       (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})

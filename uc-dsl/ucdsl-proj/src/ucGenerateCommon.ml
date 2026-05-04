@@ -978,7 +978,7 @@ let print_UC_file (fs : out_channel) (mt : maps_tyd) (funcId : SP.t) =
   let print_UC_file_func_w_params root paramsumbound boundRFIP_IF =
 Printf.fprintf fs
 "
-module %s(Adv : ADV) = SIM(SIMIP(Adv)).
+module %s = SimComp(SIM, SIMIP).
 
 lemma %s_RFRP_IF_advantage
       (Env <: ENV{-MI, -RFRP, -AllIFs, -SIMCOMP, -AllCGs})
@@ -1012,7 +1012,7 @@ root
   let print_UC_file_func_wo_params root boundRFIP_IF =
     Printf.fprintf fs
 "
-module %s(Adv : ADV) = SIM(Adv).
+module %s = SIM.
 
 lemma %s_RFRP_IF_advantage
       (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})

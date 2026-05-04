@@ -840,7 +840,7 @@ module UC_SMC2Ideal : FUNC= {
     _st <- _State_IF_Final;
     return _r;
   }
-  proc parties(_m : msg) : msg option = {
+  proc dispatcher(_m : msg) : msg option = {
     var _r : msg option <- None;
     match _st with
     | _State_IF_Final => {
@@ -891,12 +891,9 @@ module UC_SMC2Ideal : FUNC= {
   }
   proc invoke(m : msg) : msg option = {
     var r : msg option <- None;
-    if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)\/ (m.`1 = Adv
-                                                               /\
-                                                               m.`2.`1 = _self
-                                                               /\
-                                                               m.`3.`1 = adv)){
-      r <@ parties(m);
+    if ((m.`1 = Dir /\ m.`2.`1 = _self /\ envport _self m.`3)
+    \/ (m.`1 = Adv /\ m.`2.`1 = _self /\ m.`3.`1 = adv)){
+      r <@ dispatcher(m);
     }
   return r;
   }
@@ -1751,18 +1748,14 @@ module UC_SMC2Real (SMC1__ : FUNC, SMC2__ : FUNC) : FUNC = {
        else {
        if (_addr_SMC2 UC_SMC2Real._self <= m.`2.`1) {r <@ SMC2__.invoke(m);}
        else {
-       if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 UC_SMC2Real._self /\
-          envport UC_SMC2Real._self m.`3)
+       if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 UC_SMC2Real._self /\ envport UC_SMC2Real._self m.`3)
        \/
-       (m.`1 = Dir /\ m.`2 = _intport_Pt1 UC_SMC2Real._self /\
-       UC_SMC2Real._self < m.`3.`1))
+       (m.`1 = Dir /\ m.`2 = _intport_Pt1 UC_SMC2Real._self /\ UC_SMC2Real._self < m.`3.`1))
        {r <@ party_Pt1(m);}
        else {
-       if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 UC_SMC2Real._self /\
-          envport UC_SMC2Real._self m.`3)
+       if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 UC_SMC2Real._self /\ envport UC_SMC2Real._self m.`3)
        \/
-       (m.`1 = Dir /\ m.`2 = _intport_Pt2 UC_SMC2Real._self /\
-       UC_SMC2Real._self < m.`3.`1))
+       (m.`1 = Dir /\ m.`2 = _intport_Pt2 UC_SMC2Real._self /\ UC_SMC2Real._self < m.`3.`1))
        {r <@ party_Pt2(m);}
        }
        }
@@ -2148,18 +2141,14 @@ module COMPENV1(Env : ENV) = UC__Rest1.CompEnv(UC_SMC2Real_Rest1_P,Env).
         else {
         if (_addr_SMC1 UC_SMC2Real._self <= m.`2.`1) {r <@ SMC1__.invoke(m);}
         else {
-        if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 UC_SMC2Real._self /\
-           envport UC_SMC2Real._self m.`3)
+        if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt1 UC_SMC2Real._self /\ envport UC_SMC2Real._self m.`3)
         \/
-        (m.`1 = Dir /\ m.`2 = _intport_Pt1 UC_SMC2Real._self /\
-        UC_SMC2Real._self < m.`3.`1))
+        (m.`1 = Dir /\ m.`2 = _intport_Pt1 UC_SMC2Real._self /\ UC_SMC2Real._self < m.`3.`1))
         {r <@ party_Pt1(m);}
         else {
-        if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 UC_SMC2Real._self /\
-           envport UC_SMC2Real._self m.`3)
+        if((m.`1 = Dir /\ m.`2 = _extport_dir_Pt2 UC_SMC2Real._self /\ envport UC_SMC2Real._self m.`3)
         \/
-        (m.`1 = Dir /\ m.`2 = _intport_Pt2 UC_SMC2Real._self /\
-        UC_SMC2Real._self < m.`3.`1))
+        (m.`1 = Dir /\ m.`2 = _intport_Pt2 UC_SMC2Real._self /\ UC_SMC2Real._self < m.`3.`1))
         {r <@ party_Pt2(m);}
         }
         }

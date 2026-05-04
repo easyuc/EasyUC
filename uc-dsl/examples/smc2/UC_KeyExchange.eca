@@ -7,7 +7,7 @@ clone include UC__KeyExchange.
   Pr[<<ParamName>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|
 *)
 
-module SIMCOMP(Adv : ADV) = SIM(Adv).
+module SIMCOMP = SIM.
 
 lemma KeyExchange_RFRP_IF_advantage
       (Env <: ENV{-MI, -RFRP, -IF, -SIM, -AllCGs})

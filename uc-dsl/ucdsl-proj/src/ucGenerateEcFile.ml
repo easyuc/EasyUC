@@ -11,6 +11,29 @@ type maps_gen =
    preamble_map        : string IdMap.t;}     (* UC and EC requires, port indices
                                                  and clones of subfunctionalities and parameter*)
 
+let backup_and_write_eca (filename : string) (printf : out_channel -> unit)
+    : unit =
+      let fn = filename^".eca" in
+      let bck_fn = filename^".eca~" in
+      if (Sys.file_exists fn)
+      then
+        if (not (Sys.file_exists bck_fn))
+        then
+          begin
+          Sys.rename fn bck_fn;
+          UcMessage.non_loc_warning_message (fun ppf ->
+          Format.fprintf ppf "@[file %s was saved as %s and then re-generated@]"
+            fn bck_fn)
+          end
+        else
+          UcMessage.non_loc_error_message (fun ppf ->
+          Format.fprintf ppf "@[file %s could not be saved as %s, it already exists. Merge files if needed and delete %s@]"
+            fn bck_fn bck_fn)
+      ;
+      let fs = open_out (filename^".eca") in
+      printf fs;
+      close_out fs
+
 let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
   let print_file (root : string) : unit =
     let print_main (fs : out_channel) : unit =
@@ -37,34 +60,12 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
       let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
       IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
     in
-    let backup_and_write_eca (filename : string) : unit =
-      let fn = filename^".eca" in
-      let bck_fn = filename^".eca~" in
-      if (Sys.file_exists fn)
-      then
-        if (not (Sys.file_exists bck_fn))
-        then
-          begin
-          Sys.rename fn bck_fn;
-          UcMessage.non_loc_warning_message (fun ppf ->
-          Format.fprintf ppf "@[file %s was saved as %s and then re-generated@]"
-            fn bck_fn)
-          end
-        else
-          UcMessage.non_loc_error_message (fun ppf ->
-          Format.fprintf ppf "@[file %s could not be saved as %s, it already exists. Merge files if needed and delete %s@]"
-            fn bck_fn bck_fn)
-      ;
-      let fs = open_out (filename^".eca") in
-      print_main fs;
-      close_out fs
-    in
     let ui = unit_info_of_root mt root in
     match ui with
     | UI_Singleton _ ->
-      backup_and_write_eca (uc_name root)
+      backup_and_write_eca (uc_name root) print_main
     | UI_Triple _ ->
-      backup_and_write_eca (uc___name root)
+      backup_and_write_eca (uc___name root) print_main
   in 
   let roots = roots_of_maps mt in
   IdSet.iter (fun r -> print_file r) roots
@@ -326,13 +327,9 @@ let generate_ec (mt : maps_tyd) : unit =
     let ui = unit_info_of_root mt r in
     match ui with
     | UI_Triple ti ->
-      let sufs = (uc_name r)^".eca" in
       let sp = (r, ti.ti_real) in
-      let fs = open_out sufs in
-      begin
-        print_UC_file fs mt sp;
-        close_out fs
-      end
+      let printf fs = print_UC_file fs mt sp in
+      backup_and_write_eca (uc_name r) printf
     | UI_Singleton _ -> ()
     ) roots;
   let mg = gen_maps mt in
