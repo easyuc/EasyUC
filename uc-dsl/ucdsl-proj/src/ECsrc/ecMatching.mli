@@ -31,7 +31,7 @@ module Position : sig
   ]
 
   (* Branch selection *)
-  type codepos_brsel  = [`Cond of bool | `Match of EcSymbols.symbol]
+  type codepos_brsel  = [`Cond of bool | `Match of EcSymbols.symbol | `MatchByPos of int]
   type nm_codepos_brsel = [`Cond of bool | `Match of int]
 
   (* Linear code position inside a block *)
@@ -218,6 +218,8 @@ module Position : sig
   val disjoint : nm_codegap1_range -> nm_codegap1_range -> bool
 
   val nm_codepos1_in_nm_codegap1_range : nm_codepos1 -> nm_codegap1_range -> bool
+
+  val find_first_matching_instr : (instr -> bool) -> stmt -> codepos option
 end
 
 (* -------------------------------------------------------------------- *)
@@ -318,6 +320,7 @@ module EV : sig
   val isset  : ident -> 'a evmap -> bool
   val set    : ident -> 'a -> 'a evmap -> 'a evmap
   val get    : ident -> 'a evmap -> [`Unset | `Set of 'a] option
+  val map    : ('a -> 'a) -> 'a evmap -> 'a evmap
   val doget  : ident -> 'a evmap -> 'a
   val fold   : (ident -> 'a -> 'b -> 'b) -> 'a evmap -> 'b -> 'b
   val filled : 'a evmap -> bool
@@ -411,6 +414,10 @@ module FPosition : sig
   val occurences : ptnpos -> int
 
   val filter : occ -> ptnpos -> ptnpos
+
+  val path_of_singleton_occurence : ptnpos -> int list
+
+  val first_selected_subform : ptnpos -> form -> form
 
   val map : ptnpos -> (form -> form) -> form -> form
 

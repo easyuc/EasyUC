@@ -771,6 +771,12 @@ type matchmode = [
 type prrewrite = [`Rw of ppterm | `Simpl]
 
 (* -------------------------------------------------------------------- *)
+type pecall = pqsymbol * ptyannot option * ppt_arg located list
+
+(* -------------------------------------------------------------------- *)
+type pdirection = [`Forward | `Backward]
+
+(* -------------------------------------------------------------------- *)
 type phltactic =
   | Pskip
   | Prepl_stmt     of trans_info
@@ -796,6 +802,7 @@ type phltactic =
   | Poutline       of outline_info
   | Pinterleave    of interleave_info located
   | Pkill          of (oside * pcodepos * int option)
+  | PsimplifyIf    of (oside * pcodepos option)
   | Pasgncase      of (oside * pcodepos)
   | Prnd           of oside * psemrndpos option * rnd_tac_info_f
   | Prndsem        of bool * oside * pcodegap1
@@ -808,7 +815,7 @@ type phltactic =
   | Pconcave       of (pformula option tuple2 gppterm * pformula)
   | Phrex_elim
   | Phrex_intro    of (pformula list * bool)
-  | Phecall        of (oside * (pqsymbol * ptyannot option * pformula list))
+  | Phecall        of (pdirection * oside * pecall)
   | Pexfalso
   | Pbydeno        of ([`PHoare | `Equiv | `EHoare ] * (deno_ppterm * bool * pformula option))
   | PPr            of (pformula * pformula) option
@@ -926,11 +933,20 @@ and rwarg1 =
   | RWApp    of ppterm
   | RWTactic of rwtactic
 
-and rwoptions = rwside * trepeat option * rwocc * pformula option
+and rwmatch =
+  | RWM_Plain   of pformula
+  | RWM_Context of psymbol * pformula
+
 and rwside    = [`LtoR | `RtoL]
 and rwocc     = rwocci option
 and rwocci    = [`Inclusive of Sint.t | `Exclusive of Sint.t | `All]
 and rwtactic  = [`Ring | `Field]
+
+and rwoptions =
+  { side       : rwside
+  ; repeat     : trepeat option
+  ; occurrence : rwocc
+  ; match_     : rwmatch option }
 
 (* -------------------------------------------------------------------- *)
 let norm_rwocci (x : rwocci) =
@@ -1335,6 +1351,7 @@ type global_action =
   | Greduction   of puserred
   | Ghint        of phint
   | Gprint       of pprint
+  | Gexpect      of (string located * pprint)
   | Gsearch      of pformula list
   | Glocate      of pqsymbol
   | GthOpen      of (is_local * bool * psymbol)

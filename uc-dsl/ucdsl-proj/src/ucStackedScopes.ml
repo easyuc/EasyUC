@@ -24,6 +24,7 @@ let scopes_stack_init () : unit =
       cm_cpufactor = 1;
       cm_nprovers  = 0;
       cm_provers   = None;
+      cm_quorum    = None;
       cm_profile   = false;
       cm_iterate   = false;
   } in

@@ -682,7 +682,10 @@ let process_rewrite1_core ?(close = true) s pt tc =
           tc_error "r-pattern does not match the goal"
       | EcHiGoal.LowRewrite.LRW_RPatternNoRuleMatch ->
           tc_error "r-pattern does not match the rewriting rule"
-
+      | EcHiGoal.LowRewrite.LRW_RPatternNotLinear ->
+          tc_error "context variable must appear exactly once in the r-pattern"
+      | EcHiGoal.LowRewrite.LRW_RPatternNoVariable ->
+          tc_error "context variable does not appear in the r-pattern"
 
 let intro1_rw s tc = (*modified from ecHiGoal.ml*)
   let h = EcIdent.create "_" in

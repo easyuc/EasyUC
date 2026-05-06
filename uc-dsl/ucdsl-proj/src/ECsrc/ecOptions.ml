@@ -10,6 +10,7 @@ type command = [
   | `Runtest of run_option
   | `Why3Config
   | `DocGen of doc_option
+  | `Llm of llm_option
 ]
 
 and options = {
@@ -47,11 +48,19 @@ and doc_option = {
   doco_outdirp   : string option;
 }
 
+and llm_option = {
+  llmo_input     : string;
+  llmo_provers   : prv_options;
+  llmo_lastgoals : bool;
+  llmo_upto      : (int * int option) option;
+}
+
 and prv_options = {
   prvo_maxjobs    : int option;
   prvo_timeout    : int option;
   prvo_cpufactor  : int option;
   prvo_provers    : string list option;
+  prvo_quorum     : int option;
   prvo_pragmas    : string list;
   prvo_ppwidth    : int option;
   prvo_checkall   : bool;
@@ -78,6 +87,7 @@ type ini_options = {
   ini_why3     : string option;
   ini_ovrevict : string list;
   ini_provers  : string list;
+  ini_quorum   : int option;
   ini_timeout  : int option;
   ini_idirs    : (string option * string) list;
   ini_rdirs    : (string option * string) list;
@@ -99,6 +109,8 @@ module Ini : sig
 
   val get_provers : ini_context -> string list
 
+  val get_quorum : ini_context -> int option
+
   val get_timeout : ini_context -> int option
 
   val get_idirs : ini_context -> (string option * string) list
@@ -113,6 +125,8 @@ module Ini : sig
   val get_all_ovrevict : ini_context list -> string list
 
   val get_all_provers : ini_context list -> string list
+
+  val get_all_quorum : ini_context list -> int option
 
   val get_all_timeout : ini_context list -> int option
 
@@ -145,6 +159,9 @@ end = struct
   let get_provers (ini : ini_context) =
     ini.inic_ini.ini_provers
 
+  let get_quorum (ini : ini_context) =
+    ini.inic_ini.ini_quorum
+
   let get_timeout (ini : ini_context) =
     ini.inic_ini.ini_timeout
 
@@ -170,6 +187,9 @@ end = struct
 
   let get_all_provers (ini : ini_context list) =
     List.flatten (List.map get_provers ini)
+
+  let get_all_quorum (ini : ini_context list) =
+    List.find_map_opt get_quorum ini
 
   let get_all_timeout (ini : ini_context list) =
     List.find_map_opt get_timeout ini
@@ -351,6 +371,12 @@ let specs = {
       `Spec  ("trace"  , `Flag  , "Save all goals & messages in .eco");
       `Spec  ("compact", `Int   , "<internal>")]);
 
+    ("llm", "LLM-friendly batch compilation", [
+      `Group "loader";
+      `Group "provers";
+      `Spec  ("lastgoals" , `Flag  , "Print last unproved goals on failure");
+      `Spec  ("upto"      , `String, "Compile up to LINE or LINE:COL and print goals")]);
+
     ("cli", "Run EasyCrypt top-level", [
       `Group "loader";
       `Group "provers";
@@ -377,6 +403,7 @@ let specs = {
     ("provers", "Options related to provers", [
       `Spec ("p"          , `String, "Add a prover to the set of provers");
       `Spec ("max-provers", `Int   , "Maximum number of prover running in the same time");
+      `Spec ("quorum",      `Int   , "Set prover quorum");
       `Spec ("timeout"    , `Int   , "Set the SMT timeout");
       `Spec ("cpu-factor" , `Int   , "Set the timeout CPU factor");
       `Spec ("check-all"  , `Flag  , "Force checking all files");
@@ -495,6 +522,11 @@ let prv_options_of_values ini values =
       end;
       prvo_cpufactor = get_int "cpu-factor" values;
       prvo_provers   = provers;
+      prvo_quorum    = begin
+        match get_int "quorum" values with
+        | None -> Ini.get_all_quorum ini
+        | Some _ as i -> i
+      end;
       prvo_pragmas   = get_string_list "pragmas" values;
       prvo_ppwidth   = begin
         match get_int "pp-width" values with
@@ -532,6 +564,27 @@ let runtest_options_of_values ini values (input, scenarios) =
 let doc_options_of_values values input =
   { doco_input     = input;
     doco_outdirp   = get_string "outdir" values; }
+
+let parse_upto values =
+  get_string "upto" values |> Option.map (fun s ->
+    let invalid () =
+      raise (Arg.Bad (Printf.sprintf
+        "invalid -upto format: expected LINE or LINE:COL, got %S" s)) in
+    match String.split_on_char ':' s with
+    | [line] ->
+        let line = try int_of_string line with Failure _ -> invalid () in
+        (line, None)
+    | [line; col] ->
+        let line = try int_of_string line with Failure _ -> invalid () in
+        let col  = try int_of_string col  with Failure _ -> invalid () in
+        (line, Some col)
+    | _ -> invalid ())
+
+let llm_options_of_values ini values input =
+  { llmo_input     = input;
+    llmo_provers   = prv_options_of_values ini values;
+    llmo_lastgoals = get_flag "lastgoals" values;
+    llmo_upto      = parse_upto values; }
 
 (* -------------------------------------------------------------------- *)
 let parse getini argv =
@@ -602,6 +655,17 @@ let parse getini argv =
 
         | _ ->
           raise (Arg.Bad "this command takes a single input file as argument")
+      end
+
+    | "llm" -> begin
+        match anons with
+        | [input] ->
+           let ini = getini (Some input) in
+           let cmd = `Llm (llm_options_of_values ini values input) in
+           (cmd, ini, true)
+
+        | _ ->
+           raise (Arg.Bad "this command takes a single argument")
       end
 
     | _ -> assert false
@@ -683,6 +747,7 @@ let read_ini_file (filename : string) =
       ini_why3     = tryget  "why3conf";
       ini_ovrevict = trylist "no-evict";
       ini_provers  = trylist "provers" ;
+      ini_quorum   = tryint  "quorum"  ;
       ini_timeout  = tryint  "timeout" ;
       ini_idirs    = List.map parse_idir (trylist "idirs");
       ini_rdirs    = List.map parse_idir (trylist "rdirs"); } in
@@ -691,6 +756,7 @@ let read_ini_file (filename : string) =
     ini_why3     = omap expand ini.ini_why3;
     ini_ovrevict = ini.ini_ovrevict;
     ini_provers  = ini.ini_provers;
+    ini_quorum   = ini.ini_quorum;
     ini_timeout  = ini.ini_timeout;
     ini_idirs    = ini.ini_idirs;
     ini_rdirs    = ini.ini_rdirs; }

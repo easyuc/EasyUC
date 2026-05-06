@@ -398,6 +398,22 @@ let process_print scope p =
   process_pr Format.std_formatter scope p
 
 (* -------------------------------------------------------------------- *)
+let process_expect scope (expected, p) =
+  let buf = Buffer.create 256 in
+  let fmt = Format.formatter_of_buffer buf in
+  process_pr fmt scope p;
+  Format.pp_print_flush fmt ();
+  let actual = Buffer.contents buf in
+  if String.trim actual <> String.trim (unloc expected) then
+    EcScope.hierror ~loc:(loc expected)
+      "expect: output mismatch@\n\
+       --- expected ---@\n\
+       %s@\n\
+       --- actual ---@\n\
+       %s"
+      (unloc expected) actual
+
+(* -------------------------------------------------------------------- *)
 exception Pragma of [`Reset | `Restart]
 
 (* -------------------------------------------------------------------- *)
@@ -782,6 +798,7 @@ and process ?(src : string option) (ld : Loader.loader) (scope : EcScope.scope) 
       | GsctOpen     name -> `Fct   (fun scope -> process_sct_open   scope  name)
       | GsctClose    name -> `Fct   (fun scope -> process_sct_close  scope  name)
       | Gprint       p    -> `Fct   (fun scope -> process_print      scope  p; scope)
+      | Gexpect      x    -> `Fct   (fun scope -> process_expect     scope  x; scope)
       | Gsearch      qs   -> `Fct   (fun scope -> process_search     scope  qs; scope)
       | Glocate      x    -> `Fct   (fun scope -> process_locate     scope  x; scope)
       | Gtactics     t    -> `Fct   (fun scope -> process_tactics    ?src scope  t)
@@ -827,6 +844,7 @@ type checkmode = {
   cm_cpufactor : int;
   cm_nprovers  : int;
   cm_provers   : string list option;
+  cm_quorum    : int option;
   cm_profile   : bool;
   cm_iterate   : bool;
 }
@@ -839,6 +857,7 @@ let initial ~checkmode ~boot ~checkproof =
     EcScope.Prover.po_cpufactor = Some checkmode.cm_cpufactor;
     EcScope.Prover.po_nprovers  = Some checkmode.cm_nprovers;
     EcScope.Prover.po_provers   = (checkmode.cm_provers, []);
+    EcScope.Prover.po_quorum    = checkmode.cm_quorum;
     EcScope.Prover.pl_iterate   = Some (checkmode.cm_iterate);
   } in
 
@@ -1023,6 +1042,13 @@ let pp_current_goal ?(all = false) stream =
                   stream (get_hc g, `One n)
       end
   end
+
+(* -------------------------------------------------------------------- *)
+let pp_current_goal_or_noproof ?(all = false) stream =
+  if Option.is_some (S.xgoal (current ())) then
+    pp_current_goal ~all stream
+  else
+    Format.fprintf stream "No active proof.@\n%!"
 
 (* -------------------------------------------------------------------- *)
 let pp_maybe_current_goal stream =
