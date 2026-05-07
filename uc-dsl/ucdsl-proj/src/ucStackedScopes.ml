@@ -26,7 +26,6 @@ let scopes_stack_init () : unit =
       cm_provers   = None;
       cm_quorum    = None;
       cm_profile   = false;
-      cm_iterate   = false;
   } in
   scopes_stack := [EcCommands.initial ~checkmode ~boot:false ~checkproof:false]
 

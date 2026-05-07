@@ -315,7 +315,6 @@ let check_parsing_adversarial_inter (ni : named_inter) =
         pprov_version   = !version;
         plem_all        = !all;
         plem_max        = !mlemmas;
-        plem_iterate    = !iterate;
         plem_wanted     = !wanted;
         plem_unwanted   = !unwanted;
         plem_dumpin     = !dumpin;
