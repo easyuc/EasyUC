@@ -224,8 +224,7 @@ let rec print_code (sim_uses : string option)
            pfx (name_record_dir_port msgn mb) pp_ex
            (EcUtils.oget sat.msg_expr.port_expr)
     | None ->
-      Format.fprintf ppf "@[%s%s = %s;@]@;"
-        pfx (name_record_adv msgn) adv (*TODO adv remove*)
+       ()
     end
     ;
     let pm = fst (List.split (params_map_to_list mb.params_map)) in

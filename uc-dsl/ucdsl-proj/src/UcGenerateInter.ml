@@ -289,8 +289,6 @@ let print_message
     if isdirect
     then print_record_field_nl sc ppf
            (name_record_dir_port mty_name mb) port_ty
-    else print_record_field_nl sc ppf
-           (name_record_adv mty_name) addr_ty
     ;
     Format.fprintf ppf "@,@[(*data*)@]";
     List.iter (fun (s,t) ->
@@ -316,8 +314,8 @@ let print_message
       if isdirect
       then Format.fprintf ppf "@[%s.`%s@]"
              var_name (name_record_dir_port mty_name mb)
-      else Format.fprintf ppf "@[(%s.`%s,@ %s)@]"
-             var_name (name_record_adv mty_name) __adv_if_pi
+      else Format.fprintf ppf "@[(%s,@ %s)@]"
+             adv __adv_if_pi
     in
     let print_selfport ppf () : unit = Format.fprintf ppf "@[%s.`%s@]"
       var_name (name_record_func mty_name)
@@ -352,7 +350,6 @@ let print_message
   let print_dec_op () : unit =
     let print_dec_op_body (ppf : Format.formatter) (mb : message_body_tyd): unit =
       let otherport = if mb.dir = In then "pt2" else "pt1" in
-      let otherportoraddr = if isdirect then otherport else otherport ^".`1" in
       let selfport = if mb.dir = In then "pt1" else "pt2" in
       let print_params_vars ppf pm : unit =
         let pns = fst (List.split (params_map_to_list pm)) in
@@ -370,17 +367,14 @@ let print_message
             Format.fprintf ppf "@,@[%s@ =@ %s;@]" n n)  pns
       in
       let not_mode = if isdirect then mode_Adv else mode_Dir in
-      let otherfield = if isdirect
-                       then (name_record_dir_port mty_name mb)
-                       else (name_record_adv mty_name) in
       let adv_pi_not = if isdirect
                        then ""
-                       else otherport^".`2 <> "^__adv_if_pi^" \\/ " in
+                       else otherport^" <> ("^adv^","^__adv_if_pi^") \\/ " in
       Format.fprintf ppf
       "@[let@ (mod,@ pt1,@ pt2,@ tag,@ v)@ =@ m@]@,";
       Format.fprintf ppf 
-      "@[in@ (mod@ =@ %s@ \\/@ %s%s.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
-      not_mode adv_pi_not selfport _tag_op_name;
+          "@[in@ (mod@ =@ %s@ \\/@ %s%s.`2@ <>@ pi@ \\/@ tag@ <>@ %s)@ ?@]"
+          not_mode adv_pi_not selfport _tag_op_name;
       Format.fprintf ppf "@,@[<v 2>  ";
       Format.fprintf ppf "@[None@ :@]@,";
       Format.fprintf ppf "@[match@ (%a).`dec@ v@ with@]@,"
@@ -398,11 +392,17 @@ let print_message
       ;
       Format.fprintf ppf "@[Some@]";
       Format.fprintf ppf "@,@[<v 2>{|@,";
-      Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
+      if isdirect then
+        Format.fprintf ppf "@[%s = %s.`1;@ %s@ =@ %s;@]"
         (name_record_func mty_name)
         selfport
-        otherfield
-        otherportoraddr;
+        (name_record_dir_port mty_name mb)
+        otherport
+      else
+        Format.fprintf ppf "@[%s = %s.`1;@]"
+        (name_record_func mty_name)
+        selfport
+      ;
       Format.fprintf ppf "%a"
         (print_data_assign) mb.params_map;
       Format.fprintf ppf "@]@,|}";
@@ -422,16 +422,15 @@ let print_message
   in
 
   let print_valid_epdp_lemma () : unit =
-    let pt2 = if isdirect then "pt2" else "[pt2_1 pt2_2]" in
     let ptsource =
       if mb.dir = UcSpecTypedSpecCommon.In
-      then pt2
+      then "pt2"
       else "[pt1_1 pt1_2]"
     in
     let ptdest =
       if mb.dir = UcSpecTypedSpecCommon.In
       then "[pt1_1 pt1_2]"
-      else pt2
+      else "pt2"
     in
     let print_data_get ppf pm : unit =
       let nr pn = (name_record mty_name pn) in
@@ -462,8 +461,8 @@ let print_message
            "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
          _pi _tag_op_name
     else Format.fprintf ppf
-    "case (mod = Dir \\/ pt2_2 <> %s \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
-         __adv_if_pi _pi  _tag_op_name;
+    "case (mod = Dir \\/ pt2 <> (%s,%s) \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
+         adv __adv_if_pi _pi  _tag_op_name;
       Format.fprintf ppf "rewrite !negb_or /= %s.@,"
     (if isdirect then "not_adv" else "not_dir");
     Format.fprintf ppf "move => [#] -> %s-> -> match_eq_some /=.@,"
@@ -492,8 +491,8 @@ let print_message
   in
   
   let print_eq_of_valid_lemma () : unit =
-    let print_xi_data_many_times ppf i : unit =
-      for i = 1+2 to i+2 do
+    let print_xi_data_many_times ppf (offset, n) : unit =
+      for i = 1+offset to n+offset do
         Format.fprintf ppf "@ x%i" i;
       done  
     in
@@ -514,8 +513,13 @@ let print_message
     Format.fprintf ppf
       "  exists (oget (%s m)); rewrite -some_oget; smt(); smt().@,"
     _dec_op_name;
-    Format.fprintf ppf "@[case x => x1 x2%a.@]@,"
-    print_xi_data_many_times (IdMap.cardinal mb.params_map);
+    if isdirect then
+      Format.fprintf ppf "@[case x => x1 x2%a.@]@,"
+        print_xi_data_many_times (2, (IdMap.cardinal mb.params_map))
+    else
+      Format.fprintf ppf "@[case x => x1 %a.@]@,"
+        print_xi_data_many_times (1, (IdMap.cardinal mb.params_map))
+    ;
     Format.fprintf ppf "move => /(epdp_dec_enc _ _ _ valid_%s) <-.@,"
     _epdp_op_name;
     Format.fprintf ppf "by rewrite !epdp.@,";

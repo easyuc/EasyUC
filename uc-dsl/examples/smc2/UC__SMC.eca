@@ -41,7 +41,6 @@ local module SMCRealKEIdealSimp : FUNC = {
         (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
         {|
           KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE _self;
-          KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 _self;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 _self;
           
@@ -64,7 +63,6 @@ local module SMCRealKEIdealSimp : FUNC = {
         (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
         {|
           KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE _self;
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv;
         |});
     _st <- SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t (g^q);
     return _r;
@@ -76,7 +74,6 @@ local module SMCRealKEIdealSimp : FUNC = {
         (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
         {|
           Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd _self;
-          Forwarding.UC_FwAdv.fw_obs___adv = adv;
           Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 _self;
           Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 _self;
           Forwarding.UC_FwAdv.fw_obs__u = KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
@@ -432,7 +429,6 @@ local lemma SMCRealKEIdealSimp_invoke0_SandT(m : msg) : phoare [
       res = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc                                 
         {|
           KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self;
-          KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self; |})
           /\
@@ -598,7 +594,6 @@ local lemma SMCRealKEIdeal_invoke0_SandT(m : msg) : phoare [
       res = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc                                 
         {|
           KeyExchange.UC_KEI2S.ke_sim_req1___func = KeyExchange.UC_KEIdeal._self;
-          KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 UC_SMCReal._self;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 UC_SMCReal._self; |})  
       /\
@@ -772,18 +767,15 @@ sp 1.
      have _ : r{1} = r8{1}. smt().
      have _ : r8{1} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
              {| KeyExchange.UC_KEI2S.ke_sim_req1___func = KeyExchange.UC_KEIdeal._self{1};
-               KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
                KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = pt11{1};
                KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = pt21{1}; |}). smt().
            have H : r{1} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
              {| KeyExchange.UC_KEI2S.ke_sim_req1___func = KeyExchange.UC_KEIdeal._self{1};
-               KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
                KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = pt11{1};
                KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = pt21{1}; |}).
                have H : r{1} = r8{1}. smt(). rewrite H. clear H.
            have H : r8{1} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
              {| KeyExchange.UC_KEI2S.ke_sim_req1___func = KeyExchange.UC_KEIdeal._self{1};
-               KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
                KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = pt11{1};
                KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = pt21{1}; |}). smt(). rewrite H. clear H.
 
@@ -863,7 +855,6 @@ local lemma SMCRealKEIdealSimp_invoke2_fail (pt1 pt2 : port, t : text, k : key) 
 res = Some (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
         {|
           Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd UC_SMCReal._self;
-          Forwarding.UC_FwAdv.fw_obs___adv = adv;
           Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 UC_SMCReal._self;
           Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 UC_SMCReal._self;
           Forwarding.UC_FwAdv.fw_obs__u = KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
@@ -1135,7 +1126,6 @@ local lemma SMCRealKEIdealSimp_invoke2_SandT (pt1 pt2 : port, t : text, k : key)
       res = Some (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
         {|
           Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self;
-          Forwarding.UC_FwAdv.fw_obs___adv = adv;
           Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self;
           Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self;
           Forwarding.UC_FwAdv.fw_obs__u = KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
@@ -1639,8 +1629,7 @@ local lemma SMCRealKEIdeal_SMCRealKEIdealSimp_invoke :
           seq 1 0 :(
     r{2} =
     Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{2};
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{2}; |}) /\
     SMCRealKEIdealSimp._st{2} =
     SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t (g ^ q{2}) /\
  
@@ -1718,8 +1707,7 @@ match _State_Pt2_WaitKE1 {1} 0. auto;progress;smt().
  
     r{2} =
     Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{2};
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{2}; |}) /\
     SMCRealKEIdealSimp._st{2} =
     SMCRealKEIdealSimpStateWaitAdv2 pt1 pt2 t (g ^ q{2}) /\
 
@@ -2679,7 +2667,6 @@ auto;progress;smt().
     r0{1} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc                                 
         {|
           KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-          KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
           KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1}; |}) /\
     not_done{1} = true /\
@@ -2720,7 +2707,6 @@ auto;progress;smt().
   r0{1} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc                                 
         {|
           KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-          KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
           KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
           KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1}; |}) /\
   not_done{1} = true /\
@@ -2770,7 +2756,6 @@ auto;progress;smt().
     m1{1} =
     KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {| KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 =
         _intport_Pt1 SMCRealKEIdealSimp._self{1};
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 =
@@ -2827,7 +2812,6 @@ auto;progress;smt().
     r0{2} =
     Some (UC_SMC2Sim.epdp__sim_req.`enc
         {| UC_SMC2Sim.sim_req___func = UC_SMCIdeal._self{2};
-          UC_SMC2Sim.sim_req___adv = adv;
           UC_SMC2Sim.sim_req__pt1 = pt1{2};
           UC_SMC2Sim.sim_req__pt2 = pt2{2}; |}) /\
         UC_SMCIdeal._st{2} = _State_IF_WaitSim pt1{2} pt2{2} t{2} /\
@@ -2846,7 +2830,6 @@ auto;progress;smt().
     m1{1} =
     KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {| KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 =
         _intport_Pt1 SMCRealKEIdealSimp._self{1};
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 =
@@ -2911,7 +2894,6 @@ auto;progress;smt().
     r3{2} =
     Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {| KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 =
         _intport_Pt1 (oget UC_SMCSim.if_addr_opt{2});
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 =
@@ -2931,7 +2913,6 @@ auto;progress;smt().
         r0{2} =
         Some (UC_SMC2Sim.epdp__sim_req.`enc
       {| UC_SMC2Sim.sim_req___func = UC_SMCIdeal._self{2};
-        UC_SMC2Sim.sim_req___adv = adv;
         UC_SMC2Sim.sim_req__pt1 = pt1{2};
         UC_SMC2Sim.sim_req__pt2 = pt2{2}; |}) /\
         UC_SMCIdeal._st{2} = _State_IF_WaitSim pt1{2} pt2{2} t{2} /\
@@ -2945,7 +2926,6 @@ auto;progress;smt().
         m1{1} =
     KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {| KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 =
         _intport_Pt1 SMCRealKEIdealSimp._self{1};
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 =
@@ -3008,7 +2988,6 @@ pt1{2} = (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__
     r0{2} =
     Some (UC_SMC2Sim.epdp__sim_req.`enc
       {| UC_SMC2Sim.sim_req___func = UC_SMCIdeal._self{2};
-        UC_SMC2Sim.sim_req___adv = adv;
         UC_SMC2Sim.sim_req__pt1 = pt1{2};
         UC_SMC2Sim.sim_req__pt2 = pt2{2}; |}) /\
     UC_SMCIdeal._st{2} = _State_IF_WaitSim pt1{2} pt2{2} t{2} /\
@@ -3022,7 +3001,6 @@ pt1{2} = (oget (UC_SMCDir.Pt1.epdp__smc_req.`dec m{2})).`UC_SMCDir.Pt1.smc_req__
     m1{1} =
     KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {| KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE SMCRealKEIdealSimp._self{1};
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 =
         _intport_Pt1 SMCRealKEIdealSimp._self{1};
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 =
@@ -3367,14 +3345,12 @@ inline{2} (1) invoke.
               seq 0 1 : (
 
     r2{2} = Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
-        KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2}); |}) /\
     m2{2} = oget r2{2} /\
     not_done0{2} = true /\
       r0{1} =
       Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-        {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
-            KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+        {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1}; |}) /\
       SMCRealKEIdealSimp._st{1} =
           SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
       UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
@@ -3426,13 +3402,11 @@ sp 0 2.
     m2{2} = oget r2{2} /\
     epdp_da_from_env.`dec m4{2} = None /\
     m4{2} = KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2}); |} /\
     not_done0{2} = false /\
     r0{1} =
     Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1}; |}) /\
     SMCRealKEIdealSimp._st{1} =
     SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
     UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
@@ -3478,13 +3452,11 @@ sp 0 2.
     m0{2} = oget r0{2} /\
  
     m4{2} = KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-    {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
-        KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+    {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2}); |} /\
     not_done{2} = false /\
     r0{1} =
     Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
-          KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+      {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1}; |}) /\
     SMCRealKEIdealSimp._st{1} =
     SMCRealKEIdealSimpStateWaitAdv2 pt10{1} pt20{1} t0{1} (g ^ q{1}) /\
     UC_SMCSim._st{2} = _State_SIM_WaitAdv2 pt10{2} pt20{2} q{2} /\
@@ -3526,13 +3498,11 @@ sp 0 2.
         m4{2}.`5; |}) /\
 
   m4{2} = KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-  {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2});
-      KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |} /\
+  {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget UC_SMCSim.if_addr_opt{2}); |} /\
 
   r0{1} =
   Some (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
-    {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1};
-      KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+    {| KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE SMCRealKEIdealSimp._self{1}; |}) /\
   m0{1} = oget r0{1} /\
   not_done{1} = true /\
   SMCRealKEIdealSimp._st{1} =
@@ -3943,7 +3913,6 @@ auto;progress;smt(@UCListPO).
   Some (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
         {|
           Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self{1};
-          Forwarding.UC_FwAdv.fw_obs___adv = adv;
           Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
           Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1};
           Forwarding.UC_FwAdv.fw_obs__u = KeyExpText'.KeyExp'.epdp_port_port_key_univ.`enc
@@ -3987,7 +3956,6 @@ auto;progress;smt(@UCListPO).
   r0{1} =
   Some (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
     {| Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self{1};
-      Forwarding.UC_FwAdv.fw_obs___adv = adv;
       Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__u =
@@ -4039,7 +4007,6 @@ sp 2 0.
         m2{1}.`5; |}) /\
     m2{1} = Forwarding.UC_FwAdv.epdp__fw_obs.`enc
     {| Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self{1};
-      Forwarding.UC_FwAdv.fw_obs___adv = adv;
           Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__u =
@@ -4088,7 +4055,6 @@ sp 2 0.
         m2{1}.`5; |}) /\
   m2{1} = Forwarding.UC_FwAdv.epdp__fw_obs.`enc
   {| Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self{1};
-    Forwarding.UC_FwAdv.fw_obs___adv = adv;
     Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
     Forwarding.UC_FwAdv.fw_obs__pt2 =
     _intport_Pt2 SMCRealKEIdealSimp._self{1};
@@ -4154,7 +4120,6 @@ exlim r2{2} => r2R.
           m2{1}.`5; |}) /\
     m2{1} = Forwarding.UC_FwAdv.epdp__fw_obs.`enc
     {| Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd SMCRealKEIdealSimp._self{1};
-      Forwarding.UC_FwAdv.fw_obs___adv = adv;
       Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 SMCRealKEIdealSimp._self{1};
       Forwarding.UC_FwAdv.fw_obs__u =
@@ -4770,8 +4735,7 @@ call{1} (SMCRealKEIdealSimp_invoke3_fail pt1 pt2 t k).
       seq 0 1 : (
     r2{2} =
     Some (UC_SMC2Sim.epdp__sim_rsp.`enc
-      {| UC_SMC2Sim.sim_rsp___func = oget UC_SMCSim.if_addr_opt{2};
-         UC_SMC2Sim.sim_rsp___adv = adv; |}) /\
+      {| UC_SMC2Sim.sim_rsp___func = oget UC_SMCSim.if_addr_opt{2}; |}) /\
     UC_SMCSim._st{2} = _State_SIM_Final /\
      m2{2} = oget r2{2} /\
      r0{1} =
@@ -4815,8 +4779,7 @@ call{1} (SMCRealKEIdealSimp_invoke3_fail pt1 pt2 t k).
       seq 0 1 : (
   r0{2} =
   Some (UC_SMC2Sim.epdp__sim_rsp.`enc
-      {| UC_SMC2Sim.sim_rsp___func = oget UC_SMCSim.if_addr_opt{2};
-        UC_SMC2Sim.sim_rsp___adv = adv; |}) /\
+      {| UC_SMC2Sim.sim_rsp___func = oget UC_SMCSim.if_addr_opt{2}; |}) /\
   UC_SMCSim._st{2} = _State_SIM_Final /\
   m0{2} = oget r0{2} /\
   not_done{2} = true /\

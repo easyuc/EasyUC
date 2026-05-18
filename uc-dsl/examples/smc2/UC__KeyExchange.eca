@@ -72,7 +72,6 @@ module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV = {
       ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 DDH_Adv_globs._self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
@@ -112,7 +111,6 @@ module DDH_Adv (Env : ENV, Adv : ADV) : DDH_ADV = {
       ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 DDH_Adv_globs._self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
@@ -254,7 +252,6 @@ local module KERealSimp : FUNC =
       ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
@@ -298,7 +295,6 @@ local module KERealSimp : FUNC =
       ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
@@ -700,7 +696,6 @@ sp.
 r{2} =
     Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
       {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KERealSimp._self{2};
-        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func; 
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -711,7 +706,6 @@ r{2} =
 r0{1} =
       Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = (*Fw1.*)Forwarding1.UC_Forw._self{1};
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 func;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 func;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -1654,7 +1648,6 @@ seq 1 0 : (
     
       r{2} = Some ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
          {| (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 func;
-           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
            (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _intport_Pt2 func;
            (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _intport_Pt1 func;
            (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = KeyExp'.epdp_key_univ.`enc (g ^ q2) ; |}) /\
@@ -2661,7 +2654,6 @@ module KERealSimpHash : FUNC =
       ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
@@ -2705,7 +2697,6 @@ module KERealSimpHash : FUNC =
       ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
@@ -3289,13 +3280,11 @@ inline hash.
   have H : r{1} = Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
          {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func =
              _addr_Fw1 KERealSimpHashingAdv.KERealSimpHash._self{1};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1{1};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2{1};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u{1}; |}). smt(). rewrite H //=. clear H.
   have H : r{2} = Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
          {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 DDH_Adv_globs._self{2};
-           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1{2};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2{2};
            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u{2}; |}). smt(). rewrite H //=. clear H.
@@ -3560,7 +3549,6 @@ local module (KEHybridHashingAdv : RH.HASHING_ADV)
       ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
@@ -3602,7 +3590,6 @@ proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 
       ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
@@ -4055,7 +4042,6 @@ local module KEHybrid : FUNC = {
       ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 _self;
-          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u = u;       
@@ -4099,7 +4085,6 @@ proc _State_KEHybridStateWaitAdv1__Fw1_FwAdv__fw_ok (pt1 : port, pt2 : port, q1 
       ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
         {|
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 _self;
-          (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2;
           (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u;       
@@ -5463,7 +5448,6 @@ inline{2} (1) parties.
  r0{2} =
     Some (UC_KEI2S.epdp__ke_sim_req1.`enc
       {| UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
-        UC_KEI2S.ke_sim_req1___adv = adv;
         UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
         UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}) /\
     Some m0{2} = r0{2} /\
@@ -5530,7 +5514,6 @@ seq 1 1 : (#pre /\ ={q1}).
   r0{1} =
       Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5540,7 +5523,6 @@ seq 1 1 : (#pre /\ ={q1}).
   r3{2} =
     Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
             _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5579,7 +5561,6 @@ seq 1 1 : (#pre /\ ={q1}).
       
       have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
         UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
-          UC_KEI2S.ke_sim_req1___adv = adv;
         UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
           UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
       smt(
@@ -5592,7 +5573,6 @@ have Q20 : pt20{2} = pt2{2}.
       
       have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
         UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
-          UC_KEI2S.ke_sim_req1___adv = adv;
         UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
           UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
       smt(
@@ -5605,7 +5585,6 @@ have Q20 : pt20{2} = pt2{2}.
       
       have Q: oget r0{2} =  UC_KEI2S.epdp__ke_sim_req1.`enc {|
         UC_KEI2S.ke_sim_req1___func = UC_KEIdeal._self{2};
-          UC_KEI2S.ke_sim_req1___adv = adv;
         UC_KEI2S.ke_sim_req1__pt1 = pt1{2};
           UC_KEI2S.ke_sim_req1__pt2 = pt2{2}; |}. smt(). rewrite Q. clear Q.
       smt(
@@ -5624,7 +5603,6 @@ seq 0 1 : (
   r0{1} =
       Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5635,7 +5613,6 @@ not_done0{2}= true /\
   r3{2} =
     Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
             _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5679,7 +5656,6 @@ not_done0{2}= true /\
           apply  dest_pi_gt0_implies_dec_epdp_da_from_env_fails.
       have H : m4{hr} = ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{hr});
-       (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
        _intport_Pt1 (oget UC_KESim.if_addr_opt{hr});
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5692,7 +5668,6 @@ rewrite H. clear H.
        rcondt{2} 0. move => &m0. skip. move => &hr P. 
 have H : m4{hr} = ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{hr});
-       (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
        _intport_Pt1 (oget UC_KESim.if_addr_opt{hr});
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5709,7 +5684,6 @@ rewrite H. clear H.
   r0{1} =
       Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5720,7 +5694,6 @@ not_done0{2}= false /\
   m4{2} =
     (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
             _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5764,7 +5737,6 @@ seq 0 1 : (
 r0{1} =
       Some ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5775,7 +5747,6 @@ not_done{2} = false /\
   m4{2} =
     (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
             _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -5830,7 +5801,6 @@ rcondf{2} 0. auto;smt().
           apply  dest_pi_gt0_implies_dec_epdp_da_from_env_fails.
       have H : m2{hr} = ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{hr};
-       (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{hr};
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{hr};
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5840,7 +5810,6 @@ rcondf{2} 0. auto;smt().
        rcondt{1} 0. move => &m0. skip. move => &hr P.
    have H : m2{hr} = ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
      {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{hr};
-         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{hr};
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{hr};
        (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5854,7 +5823,6 @@ have H : m2{hr} = m0{hr}. smt(). rewrite H. clear H.
      
 m2{1} = ((*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
        {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 KEHybrid._self{1};
-         (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 KEHybrid._self{1};
          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 KEHybrid._self{1};
          (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__u =
@@ -5867,7 +5835,6 @@ r0{1} = Some (epdp_da_to_env.`enc
   m4{2} =
     (*Fw1.*)Forwarding1.UC_FwAdv.epdp__fw_obs.`enc
           {| (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___func = _addr_Fw1 (oget UC_KESim.if_addr_opt{2});
-            (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs___adv = adv;
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt1 =
             _intport_Pt1 (oget UC_KESim.if_addr_opt{2});
             (*Fw1.*)Forwarding1.UC_FwAdv.fw_obs__pt2 =
@@ -6961,8 +6928,7 @@ sp 0 4.
             exists (_st_R : _state_SIM),
           _st_R = _State_SIM_WaitAdv1 q1{!2} /\
     r2{2} = Some (UC_KEI2S.epdp__ke_sim_rsp.`enc
-            {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};
-              UC_KEI2S.ke_sim_rsp___adv = adv; |}) /\
+            {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};|}) /\
     q10{2} = q1{!2} /\
      pt10{1} = pt1{!1} /\
      pt20{1} = pt2{!1} /\
@@ -7025,8 +6991,7 @@ sp 0 4.
    
       r0{2} =
       Some (UC_KEI2S.epdp__ke_sim_rsp.`enc
-        {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};
-            UC_KEI2S.ke_sim_rsp___adv = adv; |}) /\
+        {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};|}) /\
       q10{2} = q1{!2} /\
       pt10{1} = pt1{!1} /\
       pt20{1} = pt2{!1} /\
@@ -7417,7 +7382,6 @@ sp 5 0.
     KEHybridStateWaitAdv2 pt10{1} pt20{1} q10{1} q20{1} q30{1} /\
     r0{1} = Some ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
      {| (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 KEHybrid._self{1};
-       (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
        (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 = _pt1{1};
        (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 = _pt2{1};
        (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__u = u{1}; |}) /\
@@ -7581,8 +7545,7 @@ sp 0 5.
      seq 0 1 :(
     r0{2} =
     Some (UC_KEI2S.epdp__ke_sim_req2.`enc
-     {| UC_KEI2S.ke_sim_req2___func = UC_KEIdeal._self{2};
-       UC_KEI2S.ke_sim_req2___adv = adv; |}) /\
+     {| UC_KEI2S.ke_sim_req2___func = UC_KEIdeal._self{2}; |}) /\
    m0{2} = oget r0{2} /\
     UC_KEIdeal._st{2} = _State_IF_WaitSim2 pt10{2} q0{2} /\
     r0{1} =
@@ -7678,7 +7641,6 @@ inline{2} (1) loop.
     UC_KESim._st{2} = _State_SIM_WaitAdv2 /\
     r3{2} = Some ((*Fw2.*)Forwarding2.UC_FwAdv.epdp__fw_obs.`enc
       {| (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___func = _addr_Fw2 (oget UC_KESim.if_addr_opt{2});
-        (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs___adv = adv;
         (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt1 =
         _intport_Pt2 (oget UC_KESim.if_addr_opt{2});
         (*Fw2.*)Forwarding2.UC_FwAdv.fw_obs__pt2 =
@@ -9184,8 +9146,7 @@ inline{2} (1) invoke.
     
     r2{2} =
     Some (UC_KEI2S.epdp__ke_sim_rsp.`enc
-         {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};
-           UC_KEI2S.ke_sim_rsp___adv = adv; |}) /\
+         {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2}; |}) /\
     m2{2} = oget r2{2} /\
     UC_KESim._st{2} = _State_SIM_Final /\
     
@@ -9226,8 +9187,7 @@ inline{2} (1) invoke.
   
   r0{2} =
   Some (UC_KEI2S.epdp__ke_sim_rsp.`enc
-       {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2};
-         UC_KEI2S.ke_sim_rsp___adv = adv; |}) /\
+       {| UC_KEI2S.ke_sim_rsp___func = oget UC_KESim.if_addr_opt{2}; |}) /\
   m0{2} = oget r2{2} /\
   UC_KESim._st{2} = _State_SIM_Final /\
   pt10{1} = pt1{!1} /\

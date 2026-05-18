@@ -345,7 +345,6 @@ op _SMC =  [83; 77; 67]. (*SMC as ascii array*)
 type _sim_req =
 {
   sim_req___func : addr;
-  sim_req___adv : addr;
   (*data*)
   sim_req__pt1 : port;
   sim_req__pt2 : port;
@@ -354,13 +353,13 @@ op _sim_req =  [115; 105; 109; 95; 114; 101; 113]. (*sim_req as ascii array*)
 
 op _tag__sim_req =  TagBasic _SMC _sim_req.
 op enc__sim_req (x : _sim_req) : msg =
-(Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
+(Adv, (adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
  (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`sim_req__pt1, x.`sim_req__pt2))
 .
 op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt1.`2 <> _adv_if_pi \/ pt2.`2 <> pi \/ tag <>
+  in (mod = Dir \/ pt1 <> (adv,_adv_if_pi) \/ pt2.`2 <> pi \/ tag <>
   _tag__sim_req) ?
     None :
     match
@@ -371,7 +370,7 @@ op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
       let (sim_req__pt1 ,sim_req__pt2) = p in
       Some
       {|
-        sim_req___func = pt2.`1; sim_req___adv = pt1.`1;
+        sim_req___func = pt2.`1;
         sim_req__pt1 = sim_req__pt1;
         sim_req__pt2 = sim_req__pt2;
       |}
@@ -386,9 +385,9 @@ apply epdp_intro.
 move => x.
 rewrite /epdp__sim_req /= /dec__sim_req /enc__sim_req /=.
 by case x.
-move => [mod [pt2_1 pt2_2] [pt1_1 pt1_2] tag v] u.
+move => [mod pt2 [pt1_1 pt1_2] tag v] u.
 rewrite /epdp__sim_req /dec__sim_req /enc__sim_req /=.
-case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__sim_req) => //.
+case (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1_2 <> pi \/ tag <> _tag__sim_req) => //.
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
@@ -410,7 +409,7 @@ lemma eq_of_valid__sim_req (m : msg) :
   is_valid epdp__sim_req m =>
   m =
   let x = oget (epdp__sim_req.`dec m) in
-(Adv, (x.`sim_req___adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
+(Adv, (adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
  (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ) (epdp_port_univ)).`enc
 (x.`sim_req__pt1, x.`sim_req__pt2)).
 proof.
@@ -418,7 +417,7 @@ rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : _sim_req), epdp__sim_req.`dec m = Some x.
   exists (oget (dec__sim_req m)); rewrite -some_oget; smt(); smt().
-case x => x1 x2 x3 x4.
+case x => x1  x2 x3.
 move => /(epdp_dec_enc _ _ _ valid_epdp__sim_req) <-.
 by rewrite !epdp.
 qed.
@@ -426,19 +425,18 @@ qed.
 type _sim_rsp =
 {
   sim_rsp___func : addr;
-  sim_rsp___adv : addr;
   (*data*)
 }.
 op _sim_rsp =  [115; 105; 109; 95; 114; 115; 112]. (*sim_rsp as ascii array*)
 
 op _tag__sim_rsp =  TagBasic _SMC _sim_rsp.
 op enc__sim_rsp (x : _sim_rsp) : msg =
-(Adv, (x.`sim_rsp___func, pi), (x.`sim_rsp___adv, _adv_if_pi), _tag__sim_rsp,
+(Adv, (x.`sim_rsp___func, pi), (adv, _adv_if_pi), _tag__sim_rsp,
  ( epdp_unit_univ).`enc ())
 .
 op [opaque smt_opaque] dec__sim_rsp (m : msg) : _sim_rsp option =
   let (mod, pt1, pt2, tag, v) = m
-  in (mod = Dir \/ pt2.`2 <> _adv_if_pi \/ pt1.`2 <> pi \/ tag <>
+  in (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1.`2 <> pi \/ tag <>
   _tag__sim_rsp) ?
     None :
     match ( epdp_unit_univ).`dec v with
@@ -446,7 +444,7 @@ op [opaque smt_opaque] dec__sim_rsp (m : msg) : _sim_rsp option =
     | Some p =>
       Some
       {|
-        sim_rsp___func = pt1.`1; sim_rsp___adv = pt2.`1;
+        sim_rsp___func = pt1.`1;
       |}
     end
 .
@@ -459,9 +457,9 @@ apply epdp_intro.
 move => x.
 rewrite /epdp__sim_rsp /= /dec__sim_rsp /enc__sim_rsp /=.
 by case x.
-move => [mod [pt1_1 pt1_2] [pt2_1 pt2_2] tag v] u.
+move => [mod [pt1_1 pt1_2] pt2 tag v] u.
 rewrite /epdp__sim_rsp /dec__sim_rsp /enc__sim_rsp /=.
-case (mod = Dir \/ pt2_2 <> _adv_if_pi \/ pt1_2 <> pi \/ tag <> _tag__sim_rsp) => //.
+case (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1_2 <> pi \/ tag <> _tag__sim_rsp) => //.
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
@@ -483,14 +481,14 @@ lemma eq_of_valid__sim_rsp (m : msg) :
   is_valid epdp__sim_rsp m =>
   m =
   let x = oget (epdp__sim_rsp.`dec m) in
-(Adv, (x.`sim_rsp___func, pi), (x.`sim_rsp___adv, _adv_if_pi), _tag__sim_rsp,
+(Adv, (x.`sim_rsp___func, pi), (adv, _adv_if_pi), _tag__sim_rsp,
  ( epdp_unit_univ).`enc ()).
 proof.
 rewrite /is_valid.
 move => val_m.
 have [] x : exists (x : _sim_rsp), epdp__sim_rsp.`dec m = Some x.
   exists (oget (dec__sim_rsp m)); rewrite -some_oget; smt(); smt().
-case x => x1 x2.
+case x => x1 .
 move => /(epdp_dec_enc _ _ _ valid_epdp__sim_rsp) <-.
 by rewrite !epdp.
 qed.
@@ -523,7 +521,6 @@ module UC_SMCIdeal : FUNC= {
         (UC_SMC2Sim.epdp__sim_req.`enc
         {|
           UC_SMC2Sim.sim_req___func = _self;
-          UC_SMC2Sim.sim_req___adv = adv;
           UC_SMC2Sim.sim_req__pt1 = pt1;
           UC_SMC2Sim.sim_req__pt2 = pt2;
           
@@ -2070,7 +2067,6 @@ module UC_SMCSim = {
       (KeyExchange.UC_KEI2S.epdp__ke_sim_req2.`enc
       {|
         KeyExchange.UC_KEI2S.ke_sim_req2___func = _addr_KE (oget if_addr_opt);
-        KeyExchange.UC_KEI2S.ke_sim_req2___adv = adv;
         
       |});
     _st <- _State_SIM_WaitAdv2 (pt1) (pt2) (q);
@@ -2082,7 +2078,6 @@ module UC_SMCSim = {
       (Forwarding.UC_FwAdv.epdp__fw_obs.`enc
       {|
         Forwarding.UC_FwAdv.fw_obs___func = _addr_Fwd (oget if_addr_opt);
-        Forwarding.UC_FwAdv.fw_obs___adv = adv;
         Forwarding.UC_FwAdv.fw_obs__pt1 = _intport_Pt1 (oget if_addr_opt);
         Forwarding.UC_FwAdv.fw_obs__pt2 = _intport_Pt2 (oget if_addr_opt);
         Forwarding.UC_FwAdv.fw_obs__u = epdp_port_port_key_univ.`enc
@@ -2098,7 +2093,6 @@ module UC_SMCSim = {
       (UC_SMC2Sim.epdp__sim_rsp.`enc
       {|
         UC_SMC2Sim.sim_rsp___func = (oget if_addr_opt);
-        UC_SMC2Sim.sim_rsp___adv = adv;
         
       |});
     _st <- _State_SIM_Final;
@@ -2110,7 +2104,6 @@ module UC_SMCSim = {
       (KeyExchange.UC_KEI2S.epdp__ke_sim_req1.`enc
       {|
         KeyExchange.UC_KEI2S.ke_sim_req1___func = _addr_KE (oget if_addr_opt);
-        KeyExchange.UC_KEI2S.ke_sim_req1___adv = adv;
         KeyExchange.UC_KEI2S.ke_sim_req1__pt1 = _intport_Pt1
                                                   (oget if_addr_opt);
         KeyExchange.UC_KEI2S.ke_sim_req1__pt2 = _intport_Pt2
