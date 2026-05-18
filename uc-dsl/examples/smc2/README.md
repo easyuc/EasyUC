@@ -61,10 +61,11 @@ for experimenting with the application of the real functionality of
 the completely real functionality of `SMC.uc`.
 
 See the file [`easycrypt.project`](easycrypt.project) for the default
-provers and include paths for EasyCrypt scripts; this applies both when
-running EasyCrypt from the shell and within Emacs. The include path
-for `.uci` scripts is set via the [`.dir-locals.el`](.dir-locals.el)
-file; this only works within Emacs.
+provers and include paths for EasyCrypt scripts; this applies both
+when running EasyCrypt from the shell and within Emacs.  The file
+[`ucdsl.project`](ucdsl.project) sets units checking as the default,
+but can also be used to set the include directories and pretty printer
+margin for `ucdsl`.
 
 A complete security proof for SMC2 involving the EasyCrypt code
 generated from `SMC2.uc` by the UC DSL translator is also contained in
