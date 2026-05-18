@@ -28,7 +28,7 @@ functionalities) have hierarchical addresses, and we build
 abstractions that route messages to their destinations, modeling
 the coroutine-style communication of UC.
 
-Secure Message Communication
+CSF 2019 Paper
 --------------------------------------------------------------------
 
 In our [first full example](../master/smc), we formalized the proof of
@@ -38,7 +38,7 @@ example was to test our EasyCrypt UC architecture, illustrating how
 instances of UC's composition operation and theorem may be formalized
 in EasyCrypt.
 
-This work is described in the extended version of the CSF 2019 paper,
+This work was described in the extended version of the CSF 2019 paper,
 [EasyUC: Using EasyCrypt to Mechanize Proofs of Universally Composable
 Security](https://eprint.iacr.org/2019/582).
 
@@ -57,9 +57,14 @@ prevents errors like badly formed messages (e.g., ones with bad source
 addresses), simulators that interfere with communication between
 environment and adversary, or violations of the coroutine model
 (trying to send two message in sequence, without control having first
-returned).  We are working toward a translator from the DSL into
-EasyCrypt, where the sequence of games security proofs will be
-mechanized.
+returned).
+
+We now have a prototype of a translator from the DSL into EasyCrypt
+code, where sequence of games security proofs are mechanized, as well
+as complete proofs using the generated EasyCrypt code for a two-way
+version of secure message communication, SMC2. Proofs rely
+on two meta theorems proved in EasyCrypt, the EasyUC versions of
+the UC composition and dummy adversary theorems.
 
 Funding Support
 --------------------------------------------------------------------

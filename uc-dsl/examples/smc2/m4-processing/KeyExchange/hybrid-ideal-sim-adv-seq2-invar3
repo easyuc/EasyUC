@@ -1,0 +1,2 @@
+#!/bin/bash
+m4 -D__INVAR__=$'hybrid_ideal_sim_invar3 func\'\n   (glob Hybrid){1} (glob IF){2} (glob SIM){2}\n   pt1\' q3\'' -D__CONSTRUCTOR__=HybridIdealSimInvar3 -D__NUM__=3 hybrid-ideal-sim-adv-seq2.m4

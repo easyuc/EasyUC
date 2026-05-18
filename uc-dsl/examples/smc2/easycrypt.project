@@ -1,5 +1,7 @@
 [general]
 
+timeout = 2
+
 provers = Z3
 provers = CVC5
 provers = Alt-Ergo

@@ -17,16 +17,17 @@ sequence (without first getting control back), or simulators that
 interfere with communication between the environment and adversary.
 
 We have an interpreter for letting the user experiment with their UC
-designs, and are finalizing the implementation of a translator from
+designs, as well as a prototype implementation of a translator from
 the UC DSL into code in EasyCrypt's procedural programming language,
 automatically generating message-routing boilerplate.  Security proofs
 will then be carried out in EasyCrypt using the sequence of games
-approach.
+approach, and we have completed a full security proof of a two-way
+secure message communication SMC2 example.
 
 Some examples are in the [`examples`](examples) subdirectory,
 including the files in the subdirectory [`smc2`](examples/smc2), which
-contains the definitions of the functionalities and simulators of a
-two way SMC (secure message transmission) case study.
+contains the definitions of the functionalities and simulators of
+the SMC2 case study, as well as the full EasyCrypt security proofs.
 
 The OCaml code for a lexer, parser, typechecker and interpreter for
 the DSL can be found in the subdirectory
@@ -285,6 +286,61 @@ Microsoft end of line encoding when it already exists in a file.
 To learn how to use the interpreter, read and experiment with the
 script `testing.uci` in [`smc2`](examples/smc2). An example involving
 reentrancy can be found in [`reentrancy`](examples/reentrancy).
+
+UC DSL Translator
+--------------------------------------------------------------------
+
+To invoke the translator on a `.uc` file, one uses the `-gen`
+(generate) command line option. This first typechecks the UC file and
+all of its dependencies, recursively, using `-units` option, and then
+translates all the UC files into EasyCrypt code. We plan a way of
+marking a UC file as stable, so that its code is not regenerated.
+
+A file *base*`.uc` is translated into three EasyCrypt abstract theories,
+`UC_`*base*`.eca`, `UC__`*base*`.eca` and `UC___`*base*`.eca`.
+
+* The "triple underscore" theory `UC___`*base*`.eca` contains the
+EasyCrypt code generated from *base*`.uc` for the messages interfaces,
+real functionality, ideal functionality and simulator. In the case of
+a parameterized real functionality, it also contains the sequence of
+games proofs taking one from the real functionality applied to
+completely real arguments to the real functionality applied to ideal
+functionalities. This makes use of one application of the composition
+theorem for each argument to the real functionality.
+
+* The "double underscore" theorey `UC__`*base*`.eca` contains the user's
+part of the security proof for *base*`.uc`, taking one from the
+real functionality applied to ideal functionalities to the ideal
+functionality / simulator. This proof will make use of the dummy
+adversary theorem.
+
+* The "single underscore" theory `UC_`*base*`.eca`combines the results
+of the two other files, giving the top-level security lemma. This is
+the theory required by higher level theories. This theory contains
+an EasyCrypt comment macro for the security bound, which is used
+at higher levels, in providing arguments to the composition theorem
+and expressing secrity bounds.
+
+The composition and dummy adversary lemmas require functionalities and
+simulators to be equiped with so-called *termination metrics*. These
+can be supported by an invariant, and bound the number of times a
+functionality/simulator can be invoked before it results in failure.
+In the triple underscore theories, the translator automatically
+generates the termination metrics and supporting lemmas when the
+state machines have no loops. When there are loops, these definitions
+and proofs are left to the user, and marked in the generated code
+by
+```
+(* BEGIN USER FILL *)
+...
+(* END USER FILL *)
+```
+
+When the translator finds that a triple or single underscore theory
+already exists, the old version is backed up to a file ending in `~`.
+(It is an error, if this backup file already exists.) We have a merge
+script, `easyuc-merge`, for merging these two files, deleting the
+backup. See the [`scripts`](scripts) directory.
 
 Unit Testing
 --------------------------------------------------------------------

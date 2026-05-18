@@ -41,4 +41,17 @@ check KeyExpText.ec
 check EPDPAux.ec
 check SMC2Aux.ec
 check DDH.ec
-check DDHExamp.ec
+
+check UC_Forwarding.eca
+
+check UC___KeyExchange.eca
+check UC__KeyExchange.eca
+check UC_KeyExchange.eca
+
+check UC___SMC.eca
+check UC__SMC.eca
+check UC_SMC.eca
+
+check UC___SMC2.eca
+check UC__SMC2.eca
+check UC_SMC2.eca

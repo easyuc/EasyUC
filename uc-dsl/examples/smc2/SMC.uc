@@ -306,7 +306,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
            the rnd tactic to handle the one-time pad argument *)
         q <$ dexp;
         send SMCReal.KE.KEI2S.ke_sim_req2
-        and transition WaitAdv2(pt1, pt2, q).
+        and transition WaitAdv2(pt1, pt2, g ^ q).
       }
     (* messages with addresses not >= address of ideal functionality
        are implicitly passed to environment *)
@@ -314,7 +314,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
     end
   }
 
-  state WaitAdv2(pt1 : port, pt2 : port, q : exp) {
+  state WaitAdv2(pt1 : port, pt2 : port, k : key) {
     match message with 
     | SMCReal.KE.KEI2S.ke_sim_rsp => {
       (* in SMCReal(KeyEx.KEIdeal), the group element being forwarded
@@ -323,7 +323,7 @@ simulator SMCSim uses SMC2Sim simulates SMCReal(KeyExchange.KEIdeal) {
          Diffie-Hellman key exchange *)
         send SMCReal.Fwd.FwAdv.fw_obs
              (intport SMCReal.Pt1, intport SMCReal.Pt2,
-              epdp_port_port_key_univ.`enc (pt1, pt2, g ^ q))
+              epdp_port_port_key_univ.`enc (pt1, pt2, k))
         and transition WaitAdv3.
       }
     | *                           => { fail. }

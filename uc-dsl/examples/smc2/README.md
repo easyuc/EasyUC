@@ -65,3 +65,17 @@ provers and include paths for EasyCrypt scripts; this applies both when
 running EasyCrypt from the shell and within Emacs. The include path
 for `.uci` scripts is set via the [`.dir-locals.el`](.dir-locals.el)
 file; this only works within Emacs.
+
+A complete security proof for SMC2 involving the EasyCrypt code
+generated from `SMC2.uc` by the UC DSL translator is also contained in
+this directory. See the general discussion of the translator,
+including the single, double and triple underscore files, in the
+higher-level [`README`](../../README.md).
+
+In our proofs, we've used m4 macros to express sometimes long
+sequences of proof tactics carrying out symbolic evaluation, used when
+the real and ideal code is dissimilar.  These are repeated in
+different proof contexts, with different instantiations of their
+arguments. We have hope this ad hoc use of macros can be formalized as
+proper EasyCrypt macros, which currently do not exist. See the
+sub-directory `m4-processing`.

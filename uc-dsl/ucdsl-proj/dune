@@ -2,4 +2,5 @@
 
 (install
  (section bin)
- (files (src/ucdsl.exe as ucdsl)))
+ (files (src/ucdsl.exe as ucdsl)
+        (src/ucEasyCryptCommentMacrosTest.exe as easycrypt-comment-macros-test)))

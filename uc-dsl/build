@@ -54,9 +54,16 @@ else dune build --instrument-with bisect_ppx;
 fi
 
 ucdsl_exec=_build/install/default/bin/ucdsl
+easycrypt_comment_macros_test_exec=_build/install/default/bin/easycrypt-comment-macros-test
 
 if [ -e $ucdsl_exec ];
 then mkdir -p ../bin;
      rm -f ../bin/ucdsl # work around macOS code signing issue
      cp -f $ucdsl_exec ../bin/ucdsl;
+fi
+
+if [ -e $easycrypt_comment_macros_test_exec ];
+then mkdir -p ../bin;
+     rm -f ../bin/easycrypt-comment-macros-test # work around macOS code signing issue
+     cp -f $easycrypt_comment_macros_test_exec ../bin/easycrypt-comment-macros-test;
 fi
