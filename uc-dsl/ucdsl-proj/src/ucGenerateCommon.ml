@@ -858,11 +858,47 @@ let apply_param_Bound_RFRP_IF_macro_fun (bmf : bound_macro_fun)
     (s4^" ++ ["^s1^(rest_composition_clone pmno)^".change_pari]")
     (s5^" `|` "^s1^(rest_composition_clone pmno)^".rest_adv_pis")
 
+let scan_macros (filename : string) : UcEasyCryptCommentMacros.macros =
+  try UcEasyCryptCommentMacros.scan_and_check_file filename with
+  | UcEasyCryptCommentMacros.ECComMacs_NonterminatedComment i ->
+     UcMessage.non_loc_error_message
+       (fun ppf -> Format.fprintf ppf
+                     "@[Macro nonterminated comment in %s on line %i@]"
+                     filename i
+       )
+  | UcEasyCryptCommentMacros.ECComMacs_UnmatchedClose i ->
+     UcMessage.non_loc_error_message
+       (fun ppf -> Format.fprintf ppf
+                     "@[Macro unmatched close in %s on line %i@]"
+                     filename i
+       )
+  | UcEasyCryptCommentMacros.ECComMacs_ScanError i ->
+     UcMessage.non_loc_error_message
+       (fun ppf -> Format.fprintf ppf
+                     "@[Macro scan error in %s on line %i@]"
+                     filename i
+       )
+  | UcEasyCryptCommentMacros.ECComMacs_Error s ->
+     UcMessage.non_loc_error_message
+       (fun ppf -> Format.fprintf ppf
+                     "@[Macro scan error %s in %s@]"
+                     s filename
+       )
+
+let apply_macro  (macros : UcEasyCryptCommentMacros.macros)
+      (macro : string) (params : string list) : string =
+  try UcEasyCryptCommentMacros.apply_macro macros macro params with
+  | UcEasyCryptCommentMacros.ECComMacs_Error s ->
+     UcMessage.non_loc_error_message
+       (fun ppf -> Format.fprintf ppf
+                     "@[Apply macro error %s@]" s 
+       )
+
 let get_RFIP_IF_bound_from_macro (funcId : SP.t) : bound_macro_fun =
   let filename = (uc__name (fst funcId))^".eca" in
-  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let macros = scan_macros filename in
   fun s1 s2 s3 s4 s5 ->
-  UcEasyCryptCommentMacros.apply_macro macros "Bound_RFIP_IF" [s1;s2;s3;s4;s5]
+  apply_macro macros "Bound_RFIP_IF" [s1;s2;s3;s4;s5]
 
 let rec get_Bound_RFRP_IF_macro_fun
 (mt : maps_tyd) (funcId : SP.t) : bound_macro_fun =
@@ -911,9 +947,9 @@ let get_param_Bound_RFRP_IF (rfbt : real_fun_body_tyd) (param_no : int)
   let params = indexed_map_to_list_keep_keys rfbt.params in
   let (_, (funcId,_,_)) = List.nth params (param_no-1) in (*TODO check porsf triplet*)
   let filename = (uc_name funcId)^".eca" in
-  let macros = UcEasyCryptCommentMacros.scan_and_check_file filename in
+  let macros = scan_macros filename in
   let bmf = fun s1 s2 s3 s4 s5->
-    UcEasyCryptCommentMacros.apply_macro macros "Bound_RFRP_IF" [s1;s2;s3;s4;s5] in
+    apply_macro macros "Bound_RFRP_IF" [s1;s2;s3;s4;s5] in
   let bmf = apply_param_Bound_RFRP_IF_macro_fun bmf rfbt param_no in
   bmf "" env adv func in_guard
   
