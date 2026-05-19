@@ -9,7 +9,7 @@ rcondt{2} 1; first auto; progress; smt(@UCListPO).
 inline{2} 1; sp 0 2.
 match => //.
 if => //.
-sp 2 2; elim* => r2_R r3_R r1_L.
+sp 2 2.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    ={MI.func, MI.in_guard} /\
@@ -49,8 +49,14 @@ call{2} (MakeInt.MI_after_adv_error IF SimDA).
 auto; smt().
 rcondf{2} 1; first auto.
 auto; smt(__CONSTRUCTOR__).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
-  first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Adv, adv_root_port, env_root_port, TagNoInter,
+    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ
+     epdp_id).`enc (x1.`dfe_pt, x1.`dfe_n, x1.`dfe_tag, x1.`dfe_u))).
+auto => />; smt(eq_of_valid_da_from_env).
 if => //.
 seq 2 2 :
   (r0{1} = r2{2} /\

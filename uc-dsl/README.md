@@ -342,6 +342,14 @@ already exists, the old version is backed up to a file ending in `~`.
 script, `easyuc-merge`, for merging these two files, deleting the
 backup. See the [`scripts`](scripts) directory.
 
+The translator generates some lemmas, in the triple underscore
+theories, with names beginning with underscores. Unfortunately, the
+current release of the EasyCrypt code for Proof General can't handle
+such lemmas. A fix is the [`emacs`](emacs) subdirectory, as well as
+instructions for installing it. (We have submitted a pull request with
+the fix to the Proof General GitHub, but have gotten no response so
+far.)
+
 Unit Testing
 --------------------------------------------------------------------
 

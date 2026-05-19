@@ -518,8 +518,15 @@ call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar0).
 move => x1 x2; inline{1} 1; inline{2} 1; sp 3 5.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Dir, (UC_KEDir.Pt1.ke_req1___func x1, UC_KEDir.Pt1.pi),
+    UC_KEDir.Pt1.ke_req1__pt1 x1, UC_KEDir.Pt1._tag__ke_req1,
+    epdp_port_univ.`enc (UC_KEDir.Pt1.ke_req1__pt2 x1))).
+auto => />; smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
 if; first smt().
-seq 1 1 : (#pre /\ ={q1}); first auto.
+seq 1 1 : (#pre /\ ={q1}); first auto => />.
 seq 6 4 :
   (not_done{1} /\ ={pt1, pt2, q1} /\
    real_simp_invar_static_ports func' (glob RFIP){1}
@@ -543,12 +550,7 @@ seq 6 4 :
      (KeyExp'.epdp_port_port_key_univ.`enc (pt1{2}, pt2{2}, g ^ q1{2}))))).
 sp 5 4; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
-auto => /> &1 &2 dec_x1 dec_x2.
-have -> : x1 = x2 by have : Some x1 = Some x2 by rewrite -dec_x1 -dec_x2.
-have x2_eq : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m{2}) by smt().
-have -> /# : UC_KEDir.Pt1.ke_req1__pt1 x2 = m{2}.`3.
-  have -> /= := UC_KEDir.Pt1.eq_of_valid__ke_req1 m{2} _; first smt().
-  by rewrite x2_eq.
+auto => /> /#.
 rcondt{1} 1; first auto.
 inline{1} 1; sp 2 0.
 rcondt{1} 1; first auto.
@@ -557,13 +559,15 @@ rcondt{1} 1; first auto; progress; smt(@UCListPO).
 inline{1} 1; sp 2 0.
 match _State_IF_Init {1} 1; first auto.
 match Some {1} 1; first auto; progress; smt().
+seq 0 0 :
+  (#pre /\
+   _x{1} =
+   Forwarding1.UC_FwDir.D.mk__fw_req (_addr_Fw1 func')
+   (_intport_Pt1 func') (_intport_Pt2 func')
+   (KeyExp'.epdp_port_port_key_univ.`enc (pt1{1}, pt2{1}, g ^ q1{1}))).
+auto => /> /#.
 inline{1} 1; sp 4 0.
-rcondt{1} 1; first auto.
-move => &hr [#] _ -> _ _ dec_eq.
-have -> :
-  _x{hr} = oget (Forwarding1.UC_FwDir.D.epdp__fw_req.`dec _m0{hr})
-  by smt().
-progress; smt(@UCListPO).
+rcondt{1} 1; first auto; smt(@UCListPO).
 seq 7 0 :
   (! not_done{1} /\ r0{1} = r{2} /\
    real_simp_invar1 func' (glob RFIP){1}
@@ -669,6 +673,14 @@ call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar1).
 move => x1 x2; inline{1} 1; inline{2} 1; sp 0 4.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Adv,
+    (Forwarding1.UC_FwAdv.fw_ok___func x1, Forwarding1.UC_FwAdv.pi),
+     (adv, _adv_pi_begin + 1), Forwarding1.UC_FwAdv._tag__fw_ok,
+     epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
 seq 11 0 :
   (not_done{1} /\
    pt10{2} = pt1' /\ pt20{2} = pt2' /\ q10{2} = q1' /\
@@ -696,10 +708,16 @@ rcondt{1} 1; first auto; progress; right; smt(@UCListPO).
 inline{1} 1; sp 2 0.
 match _State_Pt2_WaitFwd1 {1} 1; first auto.
 match Some {1} 1; first auto; progress; smt().
+seq 0 0 :
+  (#pre /\
+   _x{1} =
+   Forwarding1.UC_FwDir.D.mk__fw_rsp Forwarding1.UC_Forw._self{1}
+   (_intport_Pt2 func') (_intport_Pt1 func')
+   (KeyExp'.epdp_port_port_key_univ.`enc (pt1', pt2', g ^ q1'))).
+auto => /> /#.
 rcondt{1} 1; first auto; progress; smt().
 inline{1} 1; sp 2 0.
-match Some {1} 1; first auto => &1 [#] u1_eq |> _x_eq.
-move : u1_eq; rewrite -_x_eq; move => ->; smt().
+match Some {1} 1; first auto => /> /#.
 swap{1} 1 1.
 seq 1 1 : (#pre /\ ={q2}); first auto.
 seq 7 3 :
@@ -708,9 +726,7 @@ seq 7 3 :
    pt1' pt2' q1' q2{1}).
 sp; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0').
-auto => /> &1 &2.
-rewrite /glob_RFIP_to_self /= => dec_eq _x_eq.
-move : dec_eq; rewrite -_x_eq /= /#.
+auto => /> /#.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar2).
 if{1}.
@@ -815,8 +831,11 @@ auto; smt(RealSimpInvar2).
 move => x1 x2; inline{1} 1; inline{2} 1; sp 4 8.
 seq 0 0 :
   (#pre /\ x1 = x2 /\
-   x2 = oget (UC_KEDir.Pt2.epdp__ke_req2.`dec m{2})).
-auto => &1 &2 |> /#.
+   m{1} = 
+   (Dir, (UC_KEDir.Pt2.ke_req2___func x1, UC_KEDir.Pt2.pi),
+    UC_KEDir.Pt2.ke_req2__pt2 x1, UC_KEDir.Pt2._tag__ke_req2,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(UC_KEDir.Pt2.eq_of_valid__ke_req2).
 if; first auto; progress; smt().
 seq 6 4 :
   (not_done{1} /\
@@ -851,7 +870,6 @@ rcondt{1} 1; first auto; progress; smt(@UCListPO).
 inline{1} 1; sp 2 0.
 match _State_IF_Init {1} 1; first auto; smt().
 match Some {1} 1; first auto; progress; smt().
-inline{1} 1; sp 4 0.
 seq 0 0 :
   (#pre /\
    _x{1} =
@@ -859,6 +877,7 @@ seq 0 0 :
    (_intport_Pt2 func') (_intport_Pt1 func')
    (KeyExp'.epdp_key_univ.`enc (g ^ q2'))).
 auto => /> /#.
+inline{1} 1; sp 4 0.
 rcondt{1} 1; first auto; progress; smt(@UCListPO).
 seq 7 0 :
   (! not_done{1} /\
@@ -972,6 +991,14 @@ call{1} (RFCore.MakeRF_after_core_error UC_KEReal); first auto.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar3).
 move => x1 x2; inline{1} 1; inline{2} 1.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Adv,
+    (Forwarding2.UC_FwAdv.fw_ok___func x1, Forwarding2.UC_FwAdv.pi),
+    (adv, _adv_pi_begin + 2), Forwarding2.UC_FwAdv._tag__fw_ok,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding2.UC_FwAdv.eq_of_valid__fw_ok).
 seq 11 7 :
   (not_done{1} /\
    real_simp_invar_static_ports func' (glob RFIP){1}
@@ -993,11 +1020,11 @@ seq 11 7 :
     (UC_KEDir.Pt1.mk__ke_rsp2 func' pt1' (g ^ q2' ^ q1')))).
 sp; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_continue UC_KEReal r0').
-auto; progress; smt().
+auto => /> /#.
 rcondt{1} 1; first auto.
 inline{1} 1; sp 2 0.
 rcondf{1} 1; first auto;
-  smt(@UCListPO  Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+  smt(@UCListPO Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
 rcondf{1} 1; first auto;
   smt(@UCListPO  Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
 rcondt{1} 1; first auto;
@@ -1006,17 +1033,23 @@ inline{1} 1; sp 2 0.
 match _State_Pt1_WaitFwd2 {1} 1; first auto; smt().
 match Some {1} 1; first auto; progress;
   smt(@UCListPO Forwarding2.UC_FwDir.D.eq_of_valid__fw_req).
+seq 0 0 :
+  (#pre /\
+   _x{1} =
+   (Forwarding2.UC_FwDir.D.mk__fw_rsp Forwarding2.UC_Forw._self{1}
+    (_intport_Pt1 func') (_intport_Pt2 func')
+    (KeyExp'.epdp_key_univ.`enc (g ^ q2')))).
+auto => /> /#.
 rcondt{1} 1; first auto; progress; smt().
 inline{1} 1; sp 4 0.
-match Some {1} 1; first auto => &1 [#] _ |> <- /#.
+match Some {1} 1; first auto => /> /#.
 seq 6 0 :
   (! not_done{1} /\
    real_simp_invar4 func' (glob RFIP){1} (glob RealSimp){2} /\
    r0{1} = r{2}).
 sp; exlim r0{1} => r0'.
 call{1} (RFCore.MakeRF_after_core_return UC_KEReal r0').
-auto => /> &1 &2; rewrite /glob_RFIP_to_self /= => dec_eq _x_eq.
-move : dec_eq; rewrite -_x_eq /= /#.
+auto => /> /#.
 rcondf{1} 1; first auto.
 auto; smt(RealSimpInvar4).
 if{1}.
@@ -1479,18 +1512,22 @@ match DDHFuncStateWaitReq1 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; sp 5 5.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Dir, (UC_KEDir.Pt1.ke_req1___func x1, UC_KEDir.Pt1.pi),
+    UC_KEDir.Pt1.ke_req1__pt1 x1, UC_KEDir.Pt1._tag__ke_req1,
+    epdp_port_univ.`enc (UC_KEDir.Pt1.ke_req1__pt2 x1))).
+auto => />; smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
 if; first smt().
 inline{2} 1; sp 0 1.
 match One {2} 1; first auto.
 rcondt{2} 1; first auto; smt().
 seq 1 1 : (#pre /\ q1{1} = x{2}); first auto.
-auto => /> &1 &2 dec_to_x1 dec_to_x2.
-have eq_x1_x2 : x1 = x2.
-  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
-progress; first smt().
+auto; progress; first smt().
 rewrite
   (RealSimpDDH1Invar1 _ _ _ _ _
-   (UC_KEDir.Pt1.ke_req1__pt1 x1) (UC_KEDir.Pt1.ke_req1__pt2 x1)
+   (UC_KEDir.Pt1.ke_req1__pt1 x2) (UC_KEDir.Pt1.ke_req1__pt2 x2)
    x{2}) /#.
 auto.
 auto.
@@ -1502,6 +1539,14 @@ match DDHFuncStateWaitAdv1 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 4.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Adv,
+    (Forwarding1.UC_FwAdv.fw_ok___func x1, Forwarding1.UC_FwAdv.pi),
+    (adv, _adv_pi_begin + 1), Forwarding1.UC_FwAdv._tag__fw_ok,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
 match Two {2} 5; first auto.
 rcondt{2} 5; first auto; smt().
 inline{2} 8.
@@ -1509,10 +1554,7 @@ match Three {2} 9; first auto.
 swap{1} 5 -4; swap{2} 5 -4.
 rcondt{2} 9; first auto; smt().
 seq 1 1 : (#pre /\ q2{1} = y{2}); first auto.
-auto => /> &1 &2 dec_to_x1 dec_to_x2.
-have eq_x1_x2 : x1 = x2.
-  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
-progress; first smt(KeyExp'.double_exp KeyExp'.mulC).
+auto; progress; first smt(KeyExp'.double_exp KeyExp'.mulC).
 rewrite (RealSimpDDH1Invar2 _ _ _ _ _ pt1{1} pt2{1} q1{1} y{2}) /#.
 auto.
 (* real_simp_ddh1_invar2 *)
@@ -1523,6 +1565,13 @@ match DDHFuncStateWaitReq2 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 7.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Dir, (UC_KEDir.Pt2.ke_req2___func x1, UC_KEDir.Pt2.pi),
+    UC_KEDir.Pt2.ke_req2__pt2 x1, UC_KEDir.Pt2._tag__ke_req2,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(UC_KEDir.Pt2.eq_of_valid__ke_req2).
 match Two {2} 8; first auto.
 rcondf{2} 8; first auto; smt().
 sp 8 9.
@@ -1539,6 +1588,14 @@ match DDHFuncStateWaitAdv2 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 3.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Adv,
+    (Forwarding2.UC_FwAdv.fw_ok___func x1, Forwarding2.UC_FwAdv.pi),
+    (adv, _adv_pi_begin + 2), Forwarding2.UC_FwAdv._tag__fw_ok,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding2.UC_FwAdv.eq_of_valid__fw_ok).
 match Three {2} 4; first auto.
 rcondt{2} 4; first auto; smt().
 auto; progress; first smt(KeyExp'.double_exp KeyExp'.mulC).
@@ -1699,18 +1756,22 @@ match DDHFuncStateWaitReq1 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; sp 5 5.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Dir, (UC_KEDir.Pt1.ke_req1___func x1, UC_KEDir.Pt1.pi),
+    UC_KEDir.Pt1.ke_req1__pt1 x1, UC_KEDir.Pt1._tag__ke_req1,
+    epdp_port_univ.`enc (UC_KEDir.Pt1.ke_req1__pt2 x1))).
+auto => />; smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
 if; first smt().
 inline{2} 1; sp 0 1.
 match One {2} 1; first auto.
 rcondt{2} 1; first auto; smt().
 seq 1 1 : (#pre /\ q1{1} = x{2}); first auto.
-auto => /> &1 &2 dec_to_x1 dec_to_x2.
-have eq_x1_x2 : x1 = x2.
-  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
-progress; first smt().
+auto; progress; first smt().
 rewrite
   (HybridDDH2Invar1 _ _ _ _ _
-   (UC_KEDir.Pt1.ke_req1__pt1 x1) (UC_KEDir.Pt1.ke_req1__pt2 x1)
+   (UC_KEDir.Pt1.ke_req1__pt1 x2) (UC_KEDir.Pt1.ke_req1__pt2 x2)
    x{2}) /#.
 auto.
 auto.
@@ -1722,6 +1783,14 @@ match DDHFuncStateWaitAdv1 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 4.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (UCBasicTypes.Adv,
+    (Forwarding1.UC_FwAdv.fw_ok___func x1, Forwarding1.UC_FwAdv.pi),
+    (adv, _adv_pi_begin + 1), Forwarding1.UC_FwAdv._tag__fw_ok,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding1.UC_FwAdv.eq_of_valid__fw_ok).
 match Two {2} 5; first auto.
 rcondt{2} 5; first auto; smt().
 inline{2} 8.
@@ -1732,10 +1801,7 @@ seq 1 1 : (#pre /\ q2{1} = y{2}); first auto.
 rcondt{2} 8; first auto; smt().
 swap{1} 5 -4; swap{2} 8 -7.
 seq 1 1 : (#pre /\ q3{1} = z0{2}); first auto.
-auto => /> &1 &2 dec_to_x1 dec_to_x2.
-have eq_x1_x2 : x1 = x2.
-  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
-progress; first smt().
+auto; progress; first smt().
 rewrite (HybridDDH2Invar2 _ _ _ _ _ pt1{1} pt2{1} q1{1} y{2} z0{2}) /#.
 auto.
 (* hybrid_ddh2_invar2 *)
@@ -1746,14 +1812,18 @@ match DDHFuncStateWaitReq2 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 7.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Dir, (UC_KEDir.Pt2.ke_req2___func x1, UC_KEDir.Pt2.pi),
+    UC_KEDir.Pt2.ke_req2__pt2 x1, UC_KEDir.Pt2._tag__ke_req2,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(UC_KEDir.Pt2.eq_of_valid__ke_req2).
 match Two {2} 8; first auto.
 rcondf{2} 8; first auto; smt().
 sp 8 9.
 if; first smt().
-auto => /> &1 &2 dec_to_x1 dec_to_x2.
-have eq_x1_x2 : x1 = x2.
-  apply someI; by rewrite -dec_to_x1 -dec_to_x2.
-progress; first smt().
+auto; progress; first smt().
 rewrite (HybridDDH2Invar3 _ _ _ _ _ pt1{2} pt2{2} q1' q2{1} q3{1}) /#.
 auto.
 auto.
@@ -1765,6 +1835,14 @@ match DDHFuncStateWaitAdv2 {2} 1; first auto; smt().
 if; first smt().
 match => // x1 x2.
 inline{1} 1; inline{2} 1; inline{2} 3.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m{1} = 
+   (Adv,
+    (Forwarding2.UC_FwAdv.fw_ok___func x1, Forwarding2.UC_FwAdv.pi),
+    (adv, _adv_pi_begin + 2), Forwarding2.UC_FwAdv._tag__fw_ok,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(Forwarding2.UC_FwAdv.eq_of_valid__fw_ok).
 match Three {2} 4; first auto.
 rcondt{2} 4; first auto; smt().
 rcondf{2} 4; first auto; smt().
@@ -1973,8 +2051,14 @@ call{2} (MakeInt.MI_after_func_error IF SimDA).
 auto; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar0).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2); first by auto => /> &1 &2 ->.
-inline{1} 1; inline{2} 1; sp 5 3.
+move => x1 x2; inline{1} 1; inline{2} 1; sp 5 3.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Dir, (UC_KEDir.Pt1.ke_req1___func x1, UC_KEDir.Pt1.pi),
+    UC_KEDir.Pt1.ke_req1__pt1 x1, UC_KEDir.Pt1._tag__ke_req1,
+    epdp_port_univ.`enc (UC_KEDir.Pt1.ke_req1__pt2 x1))).
+auto => />; smt(UC_KEDir.Pt1.eq_of_valid__ke_req1).
 if; first smt().
 seq 0 5 :
   (r0{2} =
@@ -1992,9 +2076,7 @@ seq 0 5 :
    glob_Hybrid_to_st (glob Hybrid){1} = HybridStateWaitReq1 /\
    glob_IF_to_st  (glob IF){2} = _State_IF_WaitSim1 pt1{2} pt2{2} /\
    glob_SIM_to_st (glob SIM){2} = _State_SIM_WaitReq1).
-auto => &1 &2 |> dec_m0_to_x2.
-have -> : x2 = oget (UC_KEDir.Pt1.epdp__ke_req1.`dec m0{2}) by smt().
-smt(UC_KEDir.Pt1.eq_of_valid__ke_req1 @UCListPO).
+auto => /> /#.
 seq 0 1 :
   (not_done{2} /\
    m0{2} =
@@ -2020,16 +2102,16 @@ inline{2} 1; sp 0 2.
 rcondt{2} 1; first auto; smt().
 rcondt{2} 1; first auto.
 rcondt{2} 1; first auto.
-inline{2} 2; sp 0 4; elim* => if_addr_opt_R.
+inline{2} 2; sp 0 4.
 rcondt{2} 1; first auto.
 rcondf{2} 1; first auto.
 inline{2} 1; sp 0 2.
 rcondt{2} 1; first auto.
-sp 0 1; elim* => if_addr_opt_R0.
+sp 0 1.
 match _State_SIM_WaitReq1 {2} 1; first auto.
 rcondt{2} 1; first auto; smt().
 inline{2} 1; sp 0 3.
-seq 1 1 : (#pre /\ ={q1}); first auto.
+seq 1 1 : (#pre /\ ={q1}); first auto; smt().
 seq 6 5 :
   (not_done{1} /\ not_done0{2} /\ m0{1} = m3{2} /\
    m0{1} =
@@ -2305,7 +2387,7 @@ rcondt{2} 1; first auto; progress; smt(@UCListPO).
 inline{2} 1; sp 0 2.
 match => //.
 if => //.
-sp 2 2; elim* => r2_R r3_R r1_L.
+sp 2 2.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    ={MI.func, MI.in_guard} /\
@@ -2353,8 +2435,14 @@ call{2} (MakeInt.MI_after_adv_error IF SimDA).
 auto; smt().
 rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar1).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
-  first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Adv, adv_root_port, env_root_port, TagNoInter,
+    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ
+     epdp_id).`enc (x1.`dfe_pt, x1.`dfe_n, x1.`dfe_tag, x1.`dfe_u))).
+auto => />; smt(eq_of_valid_da_from_env).
 if => //.
 seq 2 2 :
   (r0{1} = r2{2} /\
@@ -2426,7 +2514,7 @@ match Some {1} 1; first auto;
 inline{1} 1; inline{2} 1.
 swap{1} [5 .. 6] -4; swap{2} 2 -1.
 seq 1 1 : (#pre /\ ={q2}); first auto.
-sp 0 5; elim* => r_R _st_R.
+sp 0 5.
 seq 0 1 :
   (! not_done0{2} /\ ={q2} /\
    pt1' = pt1{1} /\ pt2' = pt2{1} /\ q1' = q1{1} /\
@@ -2598,7 +2686,14 @@ call{2} (MakeInt.MI_after_func_error IF SimDA).
 auto; smt().
 rcondf{1} 1; first auto. rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar2).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2); first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Dir, (UC_KEDir.Pt2.ke_req2___func x1, UC_KEDir.Pt2.pi),
+    UC_KEDir.Pt2.ke_req2__pt2 x1, UC_KEDir.Pt2._tag__ke_req2,
+    epdp_unit_univ.`enc tt)).
+auto => />; smt(UC_KEDir.Pt2.eq_of_valid__ke_req2).
 inline{1} 1; inline{2} 1; sp 8 5.
 if; first smt().
 seq 6 6 :
@@ -2642,7 +2737,7 @@ rcondt{2} 1; first auto.
 rcondf{2} 1; first auto.
 inline{2} 1; sp 0 2.
 rcondf{2} 1; first auto; smt().
-match  _State_SIM_WaitReq2 {2} 1; first auto; smt().
+match _State_SIM_WaitReq2 {2} 1; first auto; smt().
 rcondt{2} 1; first auto; progress; smt().
 inline{2} 1.
 exlim m0{1} => m0'.
@@ -2695,7 +2790,7 @@ call{2} (MakeInt.MI_after_adv_to_env IF SimDA r0').
 auto; progress; smt(@UCListPO).
 rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar3).
-sp 2 4; elim* => r1_R _r_R _r0_R r1_L.
+sp 2 4.
 seq 1 1 :
   (! not_done{1} /\ ! not_done{2} /\
    ={r0} /\ r0{1} = None /\
@@ -2751,7 +2846,7 @@ rcondt{2} 1; first auto; progress; smt(@UCListPO).
 inline{2} 1; sp 0 2.
 match => //.
 if => //.
-sp 2 2; elim* => r2_R r3_R r1_L.
+sp 2 2.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    ={MI.func, MI.in_guard} /\
@@ -2799,8 +2894,14 @@ call{2} (MakeInt.MI_after_adv_error IF SimDA).
 auto; smt().
 rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar2).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
-  first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Adv, adv_root_port, env_root_port, TagNoInter,
+    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ
+     epdp_id).`enc (x1.`dfe_pt, x1.`dfe_n, x1.`dfe_tag, x1.`dfe_u))).
+auto => />; smt(eq_of_valid_da_from_env).
 if => //.
 seq 2 2 :
   (r0{1} = r2{2} /\
@@ -3011,7 +3112,7 @@ rcondt{2} 1; first auto; progress; smt(@UCListPO).
 inline{2} 1; sp 0 2.
 match => //.
 if => //.
-sp 2 2; elim* => r2_R r3_R r1_L.
+sp 2 2.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    ={MI.func, MI.in_guard} /\
@@ -3059,8 +3160,14 @@ call{2} (MakeInt.MI_after_adv_error IF SimDA).
 auto; smt().
 rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar3).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
-  first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Adv, adv_root_port, env_root_port, TagNoInter,
+    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ
+     epdp_id).`enc (x1.`dfe_pt, x1.`dfe_n, x1.`dfe_tag, x1.`dfe_u))).
+auto => />; smt(eq_of_valid_da_from_env).
 if => //.
 seq 2 2 :
   (r0{1} = r2{2} /\
@@ -3323,7 +3430,7 @@ rcondt{2} 1; first auto; progress; smt(@UCListPO).
 inline{2} 1; sp 0 2.
 match => //.
 if => //.
-sp 2 2; elim* => r2_R r3_R r1_L.
+sp 2 2.
 seq 1 1 :
   (r0{1} = r2{2} /\ ! not_done{1} /\ ! not_done0{2} /\
    ={MI.func, MI.in_guard} /\
@@ -3367,8 +3474,14 @@ call{2} (MakeInt.MI_after_adv_error IF SimDA).
 auto; smt().
 rcondf{2} 1; first auto.
 auto; smt(HybridIdealSimInvar4).
-move => x1 x2; seq 0 0 : (#pre /\ x1 = x2);
-  first by auto => /> &1 &2 ->.
+move => x1 x2.
+seq 0 0 :
+  (#pre /\ x1 = x2 /\
+   m1{1} = 
+   (Adv, adv_root_port, env_root_port, TagNoInter,
+    (epdp_tuple4_univ epdp_port_univ epdp_int_univ epdp_tag_univ
+     epdp_id).`enc (x1.`dfe_pt, x1.`dfe_n, x1.`dfe_tag, x1.`dfe_u))).
+auto => />; smt(eq_of_valid_da_from_env).
 if => //.
 seq 2 2 :
   (r0{1} = r2{2} /\
