@@ -1431,8 +1431,8 @@ module Op = struct
     let add_distr_tag
         (pred : path) (bases : string list) (tag : string) (suffix : string) scope
     =
-      if not (EcAlgTactic.is_module_loaded (env scope)) then
-        hierror "for tag %s, load Distr first" tag;
+      if EcEnv.Op.by_path_opt pred (env scope) = None then
+         hierror "for tag %s, load Distr first" tag;
 
       let oppath   = EcPath.pqname (path scope) (unloc op.po_name) in
       let nparams  = List.map EcIdent.fresh tyop.op_tparams in
@@ -2296,19 +2296,13 @@ module Ty = struct
         record.ELI.rc_tparams, Record (scheme, record.ELI.rc_fields)
     in
 
-    bind scope (unloc name, { tyd_params; tyd_type; tyd_loca; })
+    bind scope (unloc name,
+      { tyd_params; tyd_type; tyd_loca; tyd_subtype = None; })
 
   (* ------------------------------------------------------------------ *)
   let add_subtype (scope : scope) ({ pl_desc = subtype } : psubtype located) =
     let loced x = mk_loc _dummy x in
     let env = env scope in
-
-    let scope =
-      let decl = EcDecl.{
-        tyd_params  = [];
-        tyd_type    = Abstract;
-        tyd_loca    = `Global; (* FIXME:SUBTYPE *)
-      } in bind scope (unloc subtype.pst_name, decl) in
 
     let carrier =
       let ue = EcUnify.UniEnv.create None in
@@ -2325,6 +2319,14 @@ module Ty = struct
       let uidmap = EcUnify.UniEnv.close ue in
       let fs = Tuni.subst uidmap in
       f_lambda [(x, GTty carrier)] (Fsubst.f_subst fs pred) in
+
+    let scope =
+      let decl = EcDecl.{
+        tyd_params  = [];
+        tyd_type    = Abstract;
+        tyd_loca    = `Global;
+        tyd_subtype = Some (carrier, pred);
+      } in bind scope (unloc subtype.pst_name, decl) in
 
     let evclone =
       { EcThCloning.evc_empty with
