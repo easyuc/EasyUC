@@ -4264,7 +4264,7 @@ lemma SMC2_RFIP_IF_advantage
   exper_pre func' =>
   disjoint in_guard' (adv_pis_rf_info rf_info) =>
  `|Pr[Exper(MI(RFIP, Adv), Env).main(func', in_guard') @ &m : res] -
-    Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <= 0.0.
+   Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <= 0.0.
 proof.
 move => ep disj; by apply (Exper_RFIP_IF_Sim Adv Env).
 qed.
