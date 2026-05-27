@@ -1,2 +1,0 @@
-#!/bin/bash
-m4 -D__INVAR__=$'hybrid_ideal_sim_invar5 func\'\n   (glob Hybrid){1} (glob IF){2} (glob SIM){2}\n   pt1\' t2\'' -D__CONSTRUCTOR__=HybridIdealSimInvar5 -D__HybridState__=HybridStateWaitAdv4 -D__EQ_OF_VALID_HYBRID__=SMC2.UC_SMC2Sim.eq_of_valid__sim_rsp -D__IF_STATE__=_State_IF_WaitSim2 -D__EQ_OF_VALID_IF__=UC_SMC2IF_to_Sim.eq_of_valid__sim_rsp -D__NUM__=5 hybrid-ideal-sim-funct-seq.m4

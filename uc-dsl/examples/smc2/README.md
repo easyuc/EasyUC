@@ -73,10 +73,15 @@ this directory. See the general discussion of the translator,
 including the single, double and triple underscore files, in the
 higher-level [`README`](../../README.md).
 
-In our proofs, we've used m4 macros to express sometimes long
-sequences of proof tactics carrying out symbolic evaluation, used when
-the real and ideal code is dissimilar.  These are repeated in
-different proof contexts, with different instantiations of their
-arguments. We have hope this ad hoc use of macros can be formalized as
-proper EasyCrypt macros, which currently do not exist. See the
-sub-directory `m4-processing`.
+In our proofs, we've used [m4](https://www.gnu.org/software/m4/)
+macros to express sometimes long sequences of proof tactics carrying
+out symbolic evaluation, used when the real and ideal code are
+dissimilar.  These are repeated in different proof contexts, with
+different instantiations of their arguments. We have hope this ad hoc
+use of macros can be formalized as proper EasyCrypt macros, which
+currently do not exist.  See
+[`hybrid-ideal-sim-adv-seq1.m4`](hybrid-ideal-sim-adv-seq1.m4),
+[`UC__KeyExchange.m4.eca`](UC__KeyExchange.m4.eca),
+[`UC__SMC.m4.eca`](UC__SMC.m4.eca) and
+[`UC__SMC2.m4.eca`](UC__SMC2.m4.eca), as well as the shell script
+[`m4-generation`](m4-generation).

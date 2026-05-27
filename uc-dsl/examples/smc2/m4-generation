@@ -1,0 +1,13 @@
+#!/bin/bash
+
+chmod 644 UC__KeyExchange.eca
+m4 UC__KeyExchange.m4.eca > UC__KeyExchange.eca
+chmod 444 UC__KeyExchange.eca
+
+chmod 644 UC__SMC.eca
+m4 UC__SMC.m4.eca > UC__SMC.eca
+chmod 444 UC__SMC.eca
+
+chmod 644 UC__SMC2.eca
+m4 UC__SMC2.m4.eca > UC__SMC2.eca
+chmod 444 UC__SMC2.eca
