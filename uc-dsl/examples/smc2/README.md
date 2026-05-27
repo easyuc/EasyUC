@@ -84,4 +84,7 @@ currently do not exist.  See
 [`UC__KeyExchange.m4.eca`](UC__KeyExchange.m4.eca),
 [`UC__SMC.m4.eca`](UC__SMC.m4.eca) and
 [`UC__SMC2.m4.eca`](UC__SMC2.m4.eca), as well as the shell script
-[`m4-generation`](m4-generation).
+[`m4-generation`](m4-generation) for generating the files
+[`UC__KeyExchange.eca`](UC__KeyExchange.eca),
+[`UC__SMC.eca`](UC__SMC.eca) and [`UC__SMC2.eca`](UC__SMC2.eca), which
+should not be edited.
