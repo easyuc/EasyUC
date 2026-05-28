@@ -316,10 +316,12 @@ adversary theorem.
 
 * The "single underscore" theory `UC_`*base*`.eca`combines the results
 of the two other files, giving the top-level security lemma. This is
-the theory required by higher level theories. This theory contains
-an EasyCrypt comment macro for the security bound, which is used
-at higher levels, in providing arguments to the composition theorem
-and expressing secrity bounds.
+the theory required by higher level theories. This theory contains an
+EasyCrypt comment macro for the security bound, which is used at
+higher levels, in providing arguments to the composition theorem and
+expressing secrity bounds. This file may be edited by the user, adding
+comments, changing formatting, and perhaps expressing the security
+bound more clearly.
 
 The composition and dummy adversary lemmas require functionalities and
 simulators to be equiped with so-called *termination metrics*. These
@@ -335,6 +337,8 @@ by
 ...
 (* END USER FILL *)
 ```
+Realization of cloning in the triple underscore files must be
+handled by the user, and is similarly marked.
 
 When the translator finds that a triple or single underscore theory
 already exists, the old version is backed up to a file ending in `~`.

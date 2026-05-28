@@ -88,3 +88,9 @@ currently do not exist.  See
 [`UC__KeyExchange.eca`](UC__KeyExchange.eca),
 [`UC__SMC.eca`](UC__SMC.eca) and [`UC__SMC2.eca`](UC__SMC2.eca), which
 should not be edited.
+
+The bash script
+[`count-human-written-lines-of-code`](count-human-written-lines-of-code)
+shows the non-commented non-blank lines of code for the human-written
+part of the SMC2 example.
+

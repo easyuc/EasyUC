@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# count lines of human written code in SMC2
+
+# note:
+# (1) there are a few lines (cloning realizations) in the triple
+#     underscore files that are human written, and not counted below
+# (2) the formatting and expression of the bounds in the top-level
+#     theorem statements of the single underscore files are human written,
+#     but not counted below
+
+easyuc-cloc --by-file \
+  KeyExp.ec \
+  DDH.ec \
+  KeyExpText.ec \
+  EPDPAux.ec \
+  SMC2Aux.ec \
+  Forwarding.uc \
+  KeyExchange.uc \
+  SMC.uc \
+  SMC2.uc \
+  hybrid-ideal-sim-adv-seq1.m4 \
+  UC__KeyExchange.m4.eca \
+  UC__SMC.m4.eca \
+  UC__SMC2.m4.eca
+
