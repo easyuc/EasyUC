@@ -2,6 +2,8 @@ require import UCCore.
 require UC__KeyExchange.
 clone include UC__KeyExchange.
 
+(*! stable() *)
+
 (*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
 `|Pr[<<ParamName>>DDHBound1(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res] -
   Pr[<<ParamName>>DDHBound2(<<Env>>, <<Adv>>).main(<<func>>, <<in_guard>>) @ &m : res]|

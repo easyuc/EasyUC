@@ -11,8 +11,40 @@ type maps_gen =
    preamble_map        : string IdMap.t;}     (* UC and EC requires, port indices
                                                  and clones of subfunctionalities and parameter*)
 
-let backup_and_write_eca (filename : string) (printf : out_channel -> unit)
+let backup_and_write_eca
+    (root : string) (filename : string) (printf : out_channel -> unit)
     : unit =
+  let is_stable =
+    let topfile = (uc_name root)^".eca" in
+    if (Sys.file_exists topfile) then
+      let macros = scan_macros topfile in
+      let ret = UcEasyCryptCommentMacros.has_name macros "stable" in
+      let prelude_dir = UcConfig.uc_prelude_dir in
+      let inc_dirs = UcState.get_include_dirs () in
+      let root_file =
+        match (UcUtils.find_uc_root root prelude_dir inc_dirs) with
+        | None -> UcMessage.non_loc_error_message
+         (fun ppf -> Format.fprintf ppf
+                "@[unable@ to@ find@ .uc@ file:@ %s@]" root
+         )
+        | Some rf -> rf in
+      let root_mtime = (Unix.stat root_file).st_mtime in
+      begin
+      if (Unix.stat topfile).st_mtime < root_mtime
+      then
+        UcMessage.non_loc_warning_message
+         (fun ppf -> Format.fprintf ppf
+                     "@[The file %s was modified after %s was modified, consider removing the stable macro in %s and re-generating@]"
+                      root_file topfile topfile
+         )
+      end;
+        ret
+    else
+      false
+  in
+  if(not is_stable)
+  then
+    begin
       let fn = filename^".eca" in
       let bck_fn = filename^".eca~" in
       if (Sys.file_exists fn)
@@ -33,6 +65,9 @@ let backup_and_write_eca (filename : string) (printf : out_channel -> unit)
       let fs = open_out (filename^".eca") in
       printf fs;
       close_out fs
+    end
+  else ()
+        
 
 let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
   let print_file (root : string) : unit =
@@ -63,9 +98,9 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
     let ui = unit_info_of_root mt root in
     match ui with
     | UI_Singleton _ ->
-      backup_and_write_eca (uc_name root) print_main
+      backup_and_write_eca root (uc_name root) print_main
     | UI_Triple _ ->
-      backup_and_write_eca (uc___name root) print_main
+      backup_and_write_eca root (uc___name root) print_main
   in 
   let roots = roots_of_maps mt in
   IdSet.iter (fun r -> print_file r) roots
@@ -329,7 +364,7 @@ let generate_ec (mt : maps_tyd) : unit =
     | UI_Triple ti ->
       let sp = (r, ti.ti_real) in
       let printf fs = print_UC_file fs mt sp in
-      backup_and_write_eca (uc_name r) printf
+      backup_and_write_eca r (uc_name r) printf
     | UI_Singleton _ -> ()
     ) roots;
   let mg = gen_maps mt in

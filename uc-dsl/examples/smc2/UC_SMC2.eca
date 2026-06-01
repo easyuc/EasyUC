@@ -2,6 +2,8 @@ require import UCCore.
 require UC__SMC2.
 clone include UC__SMC2.
 
+(*! stable() *)
+
 (*! Bound_RFRP_IF(ParamName, Env, Adv, func, in_guard)
 `|Pr[<<ParamName>>SMC1.KeyExchange.DDHBound1(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res] -
   Pr[<<ParamName>>SMC1.KeyExchange.DDHBound2(<<ParamName>>SMC1.COMPENV1(<<ParamName>>COMPENV1(<<Env>>)), <<Adv>>).main(<<func>> ++ [<<ParamName>>UC__Rest1.change_pari] ++ [<<ParamName>>SMC1.UC__Rest1.change_pari], <<in_guard>> `|` <<ParamName>>UC__Rest1.rest_adv_pis `|` <<ParamName>>SMC1.UC__Rest1.rest_adv_pis) @ &m : res]|
