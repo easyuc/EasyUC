@@ -1270,7 +1270,7 @@ op [opaque smt_opaque] epdp_univ_list_univ : (univ list, univ) epdp =
 lemma valid_epdp_univ_list_univ : valid_epdp epdp_univ_list_univ.
 proof.
 apply epdp_intro => [x |].
-rewrite /epdp_univ_list_univ /= /enc_univ_list /dec_univ_list.
+rewrite /epdp_univ_list_univ /= /dec_univ_list.
 elim x => [| x xs IH].
 by rewrite wf_recur 1:wf_lt_list_size /= /dec_univ_list_wf_rec_def.
 rewrite wf_recur 1:wf_lt_list_size /= {1}/dec_univ_list_wf_rec_def

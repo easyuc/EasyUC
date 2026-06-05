@@ -534,8 +534,7 @@ proof.
 have rfi_valid := rf_info_valid.
 have change_pari_valid := change_pari_valid.
 rewrite /rest_adv_pis.
-rewrite !in_fsetU mem_rangeset ltzS !in_union_map !has_map !hasP
-        !/preim.
+rewrite !in_fsetU mem_rangeset ltzS !in_union_map !has_map !hasP /preim.
 split =>
   [[[-> // | [pari] []] | [pari]] |
    [-> // |
