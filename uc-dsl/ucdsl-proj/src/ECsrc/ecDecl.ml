@@ -35,10 +35,11 @@ type ty_body =
 
 
 type tydecl = {
-  tyd_params  : ty_params;
-  tyd_type    : ty_body;
-  tyd_loca    : locality;
-  tyd_subtype : (EcTypes.ty * EcCoreFol.form) option;
+  tyd_params   : ty_params;
+  tyd_type     : ty_body;
+  tyd_loca     : locality;
+  tyd_clinline : bool;
+  tyd_subtype  : (EcTypes.ty * EcCoreFol.form) option;
 }
 
 let tydecl_as_concrete (td : tydecl) =
@@ -66,10 +67,11 @@ let abs_tydecl ?(params = `Int 0) lc =
           (EcUid.NameGen.bulk ~fmt n)
   in
 
-  { tyd_params  = params;
-    tyd_type    = Abstract;
-    tyd_loca    = lc;
-    tyd_subtype = None; }
+  { tyd_params   = params;
+    tyd_type     = Abstract;
+    tyd_loca     = lc;
+    tyd_clinline = false;
+    tyd_subtype  = None; }
 
 (* -------------------------------------------------------------------- *)
 let ty_instantiate (params : ty_params) (args : ty list) (ty : ty) =
@@ -142,7 +144,7 @@ type operator = {
   op_unfold   : int option;
 }
 
-and opopaque = { smt: bool; reduction: bool; }
+and opopaque = { smt: bool; reduction: bool; inline: bool; }
 
 (* -------------------------------------------------------------------- *)
 type axiom_kind = [`Axiom of (Ssym.t * bool) | `Lemma]
@@ -227,7 +229,7 @@ let mk_pred ?clinline ?unfold ~opaque tparams dom body lc =
   gen_op ?clinline ?unfold ~opaque tparams ty kind lc
 
 let optransparent : opopaque =
-  { smt = false; reduction = false; }
+  { smt = false; reduction = false; inline = false; }
 
 let mk_op ?clinline ?unfold ~opaque tparams ty body lc =
   let kind = OB_oper body in

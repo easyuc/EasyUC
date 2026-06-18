@@ -37,6 +37,13 @@ type osymbol_r   = psymbol option
 type osymbol     = osymbol_r located
 
 (* -------------------------------------------------------------------- *)
+(* A bullet at the start of a `.`-terminated tactic phrase. The kind
+   identifies the bullet character (`-`, `+`, `*`); the count is the
+   number of repetitions (`>= 1`). *)
+type bullet_kind = [ `Minus | `Plus | `Star ]
+type bullet = { b_kind : bullet_kind; b_count : int; }
+
+(* -------------------------------------------------------------------- *)
 type pcp_match = [
   | `If
   | `While
@@ -501,6 +508,7 @@ type ppredicate = {
   pp_name   : psymbol;
   pp_tyvars : psymbol list option;
   pp_def    : ppred_def;
+  pp_tags   : psymbol list;
   pp_locality  : locality;
 }
 
@@ -739,10 +747,10 @@ type conseq_contra =
 type conseq_ppterm = (conseq_contra * (conseq_info) option) gppterm
 
 (* -------------------------------------------------------------------- *)
-type sim_info = {
-  sim_pos  : pcodegap1 pair option;
-  sim_hint : (pgamepath option pair * pformula) list * pformula option;
-  sim_eqs  : pformula option
+type psim_info = {
+  psim_pos  : pcodegap1 pair option;
+  psim_hint : (pgamepath option pair * pformula) list * pformula option;
+  psim_eqs  : pformula option
 }
 
 (* -------------------------------------------------------------------- *)
@@ -823,7 +831,7 @@ type phltactic =
   | Pfel           of (pcodegap1 * fel_info)
   | Phoare
   | Pprbounded
-  | Psim           of crushmode option* sim_info
+  | Psim           of crushmode option* psim_info
   | Ptrans_stmt    of trans_info
   | Prw_equiv      of rw_eqv_info
   | Psymmetry
@@ -1027,7 +1035,6 @@ type apply_info = [
   | `Apply   of ppterm list * [`Apply|`Exact|`Alpha]
   | `Top     of [`Apply|`Exact|`Alpha]
   | `Alpha   of ppterm
-  | `ExactType of pqsymbol
 ]
 
 (* -------------------------------------------------------------------- *)
@@ -1040,11 +1047,17 @@ type clear_info = [
 type pgenhave = psymbol * intropattern option * psymbol list * pformula
 
 (* -------------------------------------------------------------------- *)
+type pcongr_mode =
+  | PCongrDefault
+  | PCongrStar
+  | PCongrPattern of pformula
+
+(* -------------------------------------------------------------------- *)
 type logtactic =
   | Preflexivity
   | Passumption
   | Psmt        of pprover_infos
-  | Psplit      of int option
+  | Psplit      of [ `Default of int option | `All of [ `Maybe | `One ] ]
   | Pfield      of psymbol list
   | Pring       of psymbol list
   | Palg_norm
@@ -1052,7 +1065,7 @@ type logtactic =
   | Pleft
   | Pright
   | Ptrivial
-  | Pcongr
+  | Pcongr      of pcongr_mode
   | Pelim       of (prevert * pqsymbol option)
   | Papply      of (apply_info * prevert option)
   | Pcut        of pcut
@@ -1364,8 +1377,8 @@ type global_action =
   | GsctOpen     of osymbol_r
   | GsctClose    of osymbol_r
   | Grealize     of prealize located
-  | Gtactics     of [`Proof | `Actual of ptactic list]
-  | Gtcdump      of (tcdump * ptactic list)
+  | Gtactics     of [`Proof | `Actual of bullet located option * ptactic list]
+  | Gtcdump      of (tcdump * (bullet located option * ptactic list))
   | Gprover_info of pprover_infos
   | Gsave        of save located
   | Gpragma      of psymbol
