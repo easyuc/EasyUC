@@ -166,7 +166,7 @@ let rec epdp_ty_univ_ex (sc : EcScope.scope) (ppf : Format.formatter)
 
 and epdp_ptyl (ppf : Format.formatter) (sc : EcScope.scope)
 (tl : ty list) : unit =
-  List.iter ( fun t -> Format.fprintf ppf "@[@ (%a)@]"
+  List.iter ( fun t -> Format.fprintf ppf "@ @[(%a)@]"
      (epdp_ty_univ_ex sc) t
   ) tl
   
@@ -458,7 +458,7 @@ let print_message
       _epdp_op_name _dec_op_name _enc_op_name;
     if isdirect
     then Format.fprintf ppf
-           "case (mod = Adv \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
+           "case (mod = Adv \\/ pt1_2 <> %s \\/@ tag <> %s) => //.@,"
          _pi _tag_op_name
     else Format.fprintf ppf
     "case (mod = Dir \\/ pt2 <> (%s,%s) \\/ pt1_2 <> %s \\/ tag <> %s) => //.@,"
