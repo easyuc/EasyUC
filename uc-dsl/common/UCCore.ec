@@ -466,7 +466,7 @@ lemma after_func_disj (func : addr, r : msg option) :
   after_func_error func r.
 proof.
 rewrite /after_func_to_env /after_func_to_adv /after_func_error
-        /envport /envport0.
+        /envport.
 case (r = None) => // _ /=.
 case ((oget r).`1) => //=; smt().
 qed.
@@ -528,8 +528,7 @@ lemma after_adv_disj (func : addr, r : msg option) :
   after_adv_to_func func r \/
   after_adv_error func r.
 proof.
-rewrite /after_adv_to_env /after_adv_to_func /after_adv_error
-        /envport /envport0.
+rewrite /after_adv_to_env /after_adv_to_func /after_adv_error.
 case (r = None) => // _ /=.
 case ((oget r).`1) => // /=.
 smt().

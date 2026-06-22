@@ -130,14 +130,16 @@ and process1_logic (ttenv : ttenv) (t : logtactic located) (tc : tcenv1) =
     | Preflexivity        -> process_reflexivity
     | Passumption         -> process_assumption
     | Psmt pi             -> process_smt ~loc:(loc t) ttenv (Some pi)
-    | Psplit i            -> process_split ?i
+    | Psplit (`Default i) -> process_split ?i
+    | Psplit (`All `Maybe)-> process_split_all ~must:false
+    | Psplit (`All `One)  -> process_split_all ~must:true
     | Pfield st           -> process_algebra `Solve `Field st
     | Pring st            -> process_algebra `Solve `Ring  st
     | Palg_norm           -> EcStrongRing.t_alg_eq
     | Pexists fs          -> process_exists fs
     | Pleft               -> process_left
     | Pright              -> process_right
-    | Pcongr              -> process_congr
+    | Pcongr mode         -> process_congr mode
     | Ptrivial            -> process_trivial
     | Pelim pe            -> process_elim pe
     | Papply pe           -> process_apply ~implicits:ttenv.tt_implicits pe

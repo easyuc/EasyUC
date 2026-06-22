@@ -1529,7 +1529,7 @@ op epdp_unit_choice_opt : ((unit, 'a) choice, 'a option) epdp =
 lemma valid_epdp_unit_choice_opt :
   valid_epdp epdp_unit_choice_opt<:'a>.
 proof.
-rewrite /epdp_opt_unit_choice valid_epdp_bijection => opt.
+rewrite valid_epdp_bijection => opt.
 by rewrite unit_choice_to_optK.
 by rewrite opt_to_unit_choiceK.
 qed.
