@@ -36,7 +36,8 @@ val add_elocals : subst -> EcIdent.t list -> expr list -> subst
 val rename_flocal : subst -> EcIdent.t -> EcIdent.t -> ty -> subst
 
 (* -------------------------------------------------------------------- *)
-val freshen_type : (ty_params * ty) -> (ty_params * ty)
+val fresh_tparams : subst -> ty_params -> subst * ty_params
+val freshen_type  : (ty_params * ty) -> (ty_params * ty)
 
 (* -------------------------------------------------------------------- *)
 val subst_theory    : subst -> theory -> theory
@@ -80,6 +81,11 @@ val subst_ts_inv : subst -> ts_inv -> ts_inv
 val subst_inv : subst -> inv -> inv
 
 (* -------------------------------------------------------------------- *)
+val subst_crbinding : ?red:(form -> int option) -> subst -> crbinding -> crbinding
+val subst_bv_opkind : ?red:(form -> int option) -> subst -> bv_opkind -> bv_opkind
+val subst_binding_size : ?red:(form -> int option) -> subst -> binding_size -> binding_size
+
+(* -------------------------------------------------------------------- *)
 val open_oper : operator -> ty list -> ty * operator_kind
 val open_tydecl : tydecl -> ty list -> ty_body
 
@@ -87,15 +93,22 @@ val open_tydecl : tydecl -> ty list -> ty_body
 val ss_inv_rebind : ss_inv -> memory -> ss_inv
 val ss_inv_generalize_as_left : ss_inv -> memory -> memory -> ts_inv
 val ss_inv_generalize_as_right : ss_inv -> memory -> memory -> ts_inv
+
 val f_forall_mems_ss_inv : memenv -> ss_inv -> form
+val f_exists_mems_ss_inv : memenv -> ss_inv -> form
 
 val ts_inv_rebind : ts_inv -> memory -> memory -> ts_inv
 val ts_inv_rebind_left : ts_inv -> memory -> ts_inv
 val ts_inv_rebind_right : ts_inv -> memory -> ts_inv
+
 val f_forall_mems_ts_inv : memenv -> memenv -> ts_inv -> form
+val f_exists_mems_ts_inv : memenv -> memenv -> ts_inv -> form
 
 val ss_inv_forall_ml_ts_inv : memenv -> ts_inv -> ss_inv
 val ss_inv_forall_mr_ts_inv : memenv -> ts_inv -> ss_inv
+
+val ss_inv_exists_ml_ts_inv : memenv -> ts_inv -> ss_inv
+val ss_inv_exists_mr_ts_inv : memenv -> ts_inv -> ss_inv
 
 (* -------------------------------------------------------------------- *)
 val hs_inv_rebind : hs_inv -> memory -> hs_inv

@@ -5,8 +5,29 @@ args: testExprWrongArgType.uc
 outcome: failure
 [error: testExprWrongArgType.uc: from line 16 columns 67 to 68]
 
-no matching operator, named `^', for the following parameters' type:
+`^' cannot be applied to arguments of type:
   [1]: exp
   [2]: key
+the candidates cannot be applied:
+  [operator `Top.Ring.IntID.^']:
+    its #1 argument is expected to have type
+      int
+    but is applied to a value of type
+      exp
+  [operator `Top.Real.^']:
+    its #1 argument is expected to have type
+      real
+    but is applied to a value of type
+      exp
+  [operator `Top.KeysExponentsAndPlainTexts.^']:
+    its #1 argument is expected to have type
+      key
+    but is applied to a value of type
+      exp
+  [operator `Top.Logic.^']:
+    its #1 argument is expected to have type
+      bool
+    but is applied to a value of type
+      exp
 
 .

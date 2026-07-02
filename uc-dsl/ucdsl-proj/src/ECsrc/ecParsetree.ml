@@ -586,18 +586,25 @@ type pswap_kind = {
 
 type interleave_info = oside * (int * int) * ((int * int) list) * int
 
+type pspattern = unit
+
 type pipattern =
   | PtAny
   | PtAsgn  of psymbol list
   | PtIf    of pspattern * [`NoElse | `MaybeElse | `Else of pspattern]
   | PtWhile of pspattern
 
-and pspattern = unit
+type fun_upto_info = {
+  fui_is_ll_variant : bool option;
+  fui_bad : pformula;
+  fui_pre : pformula;
+  fui_pos : pformula option;
+}
 
 type call_info =
   | CI_spec of (pformula * phoare_post)
   | CI_inv of pformula
-  | CI_upto of (pformula * pformula * pformula option)
+  | CI_upto of fun_upto_info
 
 type p_seq_xt_info =
   | PSeqNone
@@ -668,7 +675,7 @@ type fun_info = [
   | `Def
   | `Code
   | `Abs  of pformula
-  | `Upto of pformula * pformula * pformula option
+  | `Upto of fun_upto_info
 ]
 
 (* -------------------------------------------------------------------- *)
@@ -776,6 +783,38 @@ type matchmode = [
 ]
 
 (* -------------------------------------------------------------------- *)
+type bdepvar = [`Var of psymbol | `VarRange of psymbol * int | `Slice of psymbol * (pqsymbol * zint)]
+
+type bdep_info =
+  { n     : int
+  ; m     : int
+  ; invs  : bdepvar list
+  ; inpvs : bdepvar list
+  ; outvs : bdepvar list
+  ; pcond : psymbol
+  ; lane  : psymbol
+  ; perm  : psymbol option 
+  ; debug : bool }
+
+type bdep_eval_info =
+  { in_ty     : pty
+  ; out_ty    : pty
+  ; invs  : bdepvar list
+  ; inpvs : bdepvar list
+  ; outvs : bdepvar list
+  ; lane  : psymbol 
+  ; range : pformula 
+  ; sign  : bool }
+
+type bdepeq_info =
+  { n          : int
+  ; inpvs_l    : bdepvar list
+  ; inpvs_r    : bdepvar list
+  ; out_blocks : (int * bdepvar list * bdepvar list) list
+  ; pcond      : psymbol option 
+  ; preprocess : bool }
+
+(* -------------------------------------------------------------------- *)
 type prrewrite = [`Rw of ppterm | `Simpl]
 
 (* -------------------------------------------------------------------- *)
@@ -798,7 +837,7 @@ type phltactic =
   | Pfusion        of (oside * pcodepos * (int * (int * int)))
   | Punroll        of (oside * pcodepos * [`While | `For of bool])
   | Psplitwhile    of (pexpr * oside * pcodepos)
-  | Pcall          of oside * call_info gppterm
+  | Pcall          of (oside * call_info gppterm)
   | Pcallconcave   of (pformula * call_info gppterm)
   | Prcond         of (oside * bool * pcodepos1)
   | Prmatch        of (oside * symbol * pcodepos1)
@@ -836,7 +875,6 @@ type phltactic =
   | Prw_equiv      of rw_eqv_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
-  | Prwprgm of rwprgm
   | Pprocrewrite   of side option * pcodepos * prrewrite
   | Pprocrewriteat of psymbol * ppterm
   | Pchangestmt    of side option * ptybindings option * prange1_or_insert * pstmt
@@ -857,8 +895,20 @@ type phltactic =
   | Pauto
   | Plossless
 
+    (* Map-reduce *)
+  | Pcircuit of circuit_mode
+
+    (* Program rewriting *)
+  | Prwprgm of rwprgm
+
 and rwprgm = [
   | `IdAssign of pcodepos * pqsymbol
+  | `Change   of pcodepos * ptybindings option * int * pstmt
+]
+
+and circuit_mode = [
+  | `Simplify
+  | `Solve
 ]
 
 and pcfold =
@@ -1094,6 +1144,7 @@ and ptactic_core_r =
   | Por         of ptactic * ptactic
   | Pseq        of ptactics
   | Pcase       of (bool * pcaseoptions * prevertv)
+  | Pextens     of (ptactic_core * psymbol option)
   | Plogic      of logtactic
   | PPhl        of phltactic
   | Pprogress   of ppgoptions * ptactic_core option
@@ -1345,6 +1396,46 @@ type threquire =
   psymbol option * (psymbol * psymbol option) list * [`Import|`Export] option
 
 (* -------------------------------------------------------------------- *)
+type pbind_bitstring =
+  { from_  : pqsymbol
+  ; to_    : pqsymbol
+  ; touint : pqsymbol
+  ; tosint : pqsymbol
+  ; ofint  : pqsymbol
+  ; type_  : pqsymbol
+  ; size   : pformula }
+  
+(* -------------------------------------------------------------------- *)
+type pbind_array =
+  { get    : pqsymbol
+  ; set    : pqsymbol
+  ; tolist : pqsymbol
+  ; oflist : pqsymbol
+  ; type_  : pqsymbol
+  ; size   : pformula }
+
+(* -------------------------------------------------------------------- *)
+type pbind_bvoperator =
+  { name     : string located
+  ; types    : pqsymbol list
+  ; operator : pqsymbol }
+
+(* -------------------------------------------------------------------- *)
+type pbind_circuit =
+  { bindings : (pqsymbol * string located) list 
+  ; file     : string located }
+
+(* -------------------------------------------------------------------- *)
+type pcrbinding_r =
+  | CRB_Bitstring  of pbind_bitstring
+  | CRB_Array      of pbind_array
+  | CRB_BvOperator of pbind_bvoperator
+  | CRB_Circuit    of pbind_circuit
+
+(* -------------------------------------------------------------------- *)
+type pcrbinding = { locality : is_local; binding : pcrbinding_r }
+
+(* -------------------------------------------------------------------- *)
 type global_action =
   | Gmodule      of pmodule_def_or_decl
   | Ginterface   of pinterface
@@ -1384,10 +1475,12 @@ type global_action =
   | Gpragma      of psymbol
   | Goption      of (psymbol * [`Bool of bool | `Int of int])
   | GdumpWhy3    of string
+  | Gcrbinding   of pcrbinding
 
 type global = {
   gl_action : global_action located;
   gl_fail   : bool;
+  gl_expect : string located option;   (* [expect fail "…"]: expected error *)
   gl_debug  : [`Timed | `Break] option;
 }
 
