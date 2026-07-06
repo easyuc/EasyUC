@@ -1,7 +1,4 @@
-(* Security Proof of KeyExchange.uc *)
-
 (*! stable() *)
-
 require import UCCore.
 require UC__KeyExchange.
 clone include UC__KeyExchange.
@@ -22,7 +19,7 @@ lemma KeyExchange_RFRP_IF_advantage
   `|Pr[Exper(MI(RFRP, Adv), Env).main(func', in_guard') @ &m : res] -
     Pr[Exper(MI(IF, SIM(Adv)), Env).main(func', in_guard') @ &m : res]| <=
   `|Pr[DDH1(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res] -
-    Pr[DDH2(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res]|.
+  Pr[DDH2(DDH_Adv(Env, Adv)).main(func', in_guard') @ &m : res]|.
 proof.
 apply (KeyExchange_RFIP_IF_advantage Env Adv func' in_guard' &m).
 qed.

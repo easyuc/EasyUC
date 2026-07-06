@@ -1,3 +1,4 @@
+(*! stable() *)
 require import UCCore.
 
 require UCComposition.
@@ -486,20 +487,33 @@ lemma IF_invoke (n : int) : hoare [
   /\ ((oget res).`1 = Adv => (oget res).`2.`2 \in oflist [_adv_if_pi] /\
   (oget res).`3.`2 = 1))
    ].
-proof. rewrite /_metric_IF /=. proc. sp 1. (*initializing return value*)
-if. (*invoke guard*) inline. sp 1. sp 1. (*initializing input, return value*)
+proof.
+rewrite /_metric_IF /=.
+proc.
+sp 1. (*initializing return value*)
+if. (*invoke guard*)
+inline.
+sp 1. sp 1. (*initializing input, return value*)
 match. (*state match*)
-(*state branch Final*) sp 1. skip. move => />;smt(). (*empty state match branch code*)
-(*state branch Init*) match. (*message match*)
+(*state branch Final*)
+sp 1. skip. move => />;smt(). (*empty state match branch code*)
+(*state branch Init*)
+match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
-sp 1. (*state param assignment, return value initialization*)sp 3. (*pattern bindings*)
+sp 1. (*state param assignment, return value initialization*)
+sp 3. (*pattern bindings*)
 if. (*if instruction*)
-sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)  
-(*state branch Wait*) match. (*message match*)
+sp 1. sp 3. skip.
+move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch Wait*)
+match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
-sp 4. (*state param assignment, return value initialization*)sp 1. sp 3. skip. move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- skip. smt(). (*invoke guard false*) qed. 
+sp 4. (*state param assignment, return value initialization*)
+sp 1. sp 3. skip.
+move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
+skip. smt(). (*invoke guard false*)
+qed.
+
 
 lemma IF_metric_good (g : glob IF) :
   _invar_IF g => 0 <= _metric_IF g.
