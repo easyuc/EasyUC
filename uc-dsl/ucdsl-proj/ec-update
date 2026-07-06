@@ -43,10 +43,31 @@ fi
 cd src/ECsrc
 
 rm -rf phl system
-rm *.{ml,mli} ecParser.mly ecLexer.mll
+rm *.{ml,mli} ecLexer.mll ecParser.mly
+# leave dune, which we'll patch as needed by hand
 
 cp -r $ecsrc/phl .
 cp -r $ecsrc/system .
 cp $ecsrc/*.{ml,mli} .
 cp $ecsrc/ecParser.mly .
 cp $ecsrc/ecLexer.mll .
+
+cd ../..
+
+cd 3rdparty/inifiles-1.2
+rm *.{ml,mli} inilexer.mll parseini.mly
+# leave dune, which we'll patch as needed by hand
+
+cp $ecsrc/../3rdparty/inifiles-1.2/*.{ml,mli} .
+cp $ecsrc/../3rdparty/inifiles-1.2/inilexer.mll .
+cp $ecsrc/../3rdparty/inifiles-1.2/parseini.mly .
+
+cd ../..
+
+cd libs/lospecs
+rm *.{ml,mli} lexer.mll parser.mly
+# leave dune, which we'll patch as needed by hand
+
+cp $ecsrc/../libs/lospecs/*.{ml,mli} .
+cp $ecsrc/../libs/lospecs/lexer.mll .
+cp $ecsrc/../libs/lospecs/parser.mly .

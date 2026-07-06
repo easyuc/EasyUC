@@ -21,6 +21,15 @@
     pty_locality = locality;
   }
 
+  let map_gppterm f a =
+    let fp_head = match a.fp_head with
+      | FPNamed _ as x -> x
+      | FPCut x -> FPCut (f x)
+    in
+    { a with fp_head }
+
+  let apply_gppterm x = map_gppterm (fun f -> f x)
+
   let opdef_of_opbody ty b =
     match b with
     | None            -> PO_abstr ty
@@ -377,6 +386,7 @@
 %token ALIAS
 %token AMP
 %token APPLY
+%token ARRAY
 %token AS
 %token ASSUMPTION
 %token ASYNC
@@ -386,6 +396,8 @@
 %token AXIOMATIZED
 %token BACKSLASH
 %token BETA
+%token BITSTRING
+%token BIND
 %token BY
 %token BYEQUIV
 %token BYPHOARE
@@ -394,6 +406,7 @@
 %token BYUPTO
 %token CALL
 %token CASE
+%token CIRCUIT
 %token CBV
 %token CEQ
 %token CFOLD
@@ -441,6 +454,7 @@
 %token EXLIM
 %token EXPECT
 %token EXPORT
+%token EXTENS
 %token FAIL
 %token FEL
 %token FIRST
@@ -653,7 +667,10 @@ _lident:
 | x=LIDENT   { x }
 | ABORT      { "abort"      }
 | ADMITTED   { "admitted"   }
+| ARRAY      { "array"      }
 | ASYNC      { "async"      }
+| BIND       { "bind"       }
+| BITSTRING  { "bitstring"  }
 | DEBUG      { "debug"      }
 | DUMP       { "dump"       }
 | EXPECT     { "expect"     }
@@ -709,6 +726,7 @@ _lident:
 
 %inline sword:
 |       n=word {  n }
+| PLUS  n=word {  n }
 | MINUS n=word { -n }
 
 (* -------------------------------------------------------------------- *)
@@ -2315,6 +2333,13 @@ intro_pattern:
 | cm=crushmode
    { IPCrush cm }
 
+gpterm_head0(F):
+| p=qident tvi=tvars_app?
+   { (false, FPNamed (p, tvi)) }
+
+| LPAREN exp=iboption(AT) UNDERSCORE? COLON f=F RPAREN
+   { (exp, FPCut f) }
+
 gpterm_head(F):
 | exp=iboption(AT) p=qident tvi=tvars_app?
    { (exp, FPNamed (p, tvi)) }
@@ -2353,7 +2378,7 @@ gpterm_arg:
     { EA_tactic `DoneSmt }
 
 gpterm(F):
-| hd=gpterm_head(F)
+| hd=gpterm_head0(F)
    { mk_pterm (fst hd) (snd hd) [] }
 
 | LPAREN hd=gpterm_head(F) args=loc(gpterm_arg)* RPAREN
@@ -2534,13 +2559,15 @@ conseq_xt:
 
 call_info:
 | f1=form LONGARROW f2=form poe=hoare_epost(none)
-    { CI_spec (f1, { pnormal = f2; pexcept = poe}) }
+    { fun _ -> CI_spec (f1, { pnormal = f2; pexcept = poe}) }
 | f=form
-    { CI_inv  (f) }
-| bad=form COMMA p=form
-    { CI_upto (bad,p,None) }
-| bad=form COMMA p=form COMMA q=form
-    { CI_upto (bad,p,Some q) }
+    { fun _ -> CI_inv  (f) }
+| fui_bad=form COMMA fui_pre=form
+    { fun fui_is_ll_variant ->
+      CI_upto {fui_is_ll_variant; fui_bad; fui_pre; fui_pos = None} }
+| fui_bad=form COMMA fui_pre=form COMMA pos=form
+    { fun fui_is_ll_variant ->
+      CI_upto {fui_is_ll_variant; fui_bad; fui_pre; fui_pos = Some pos} }
 
 icodepos_r:
 | IF       { (`If     :> pcp_match) }
@@ -2646,11 +2673,11 @@ s_codegap1_before_(I):
 | LBRACKET cps=codepos1 DOTDOT cpe=codepos1 RBRACKET
     { (GapBefore cps, GapAfter cpe) }
 
-| LBRACKET cps=codepos1 PLUSGT cpo=loc(mparen(sword)) RBRACKET { 
+| LBRACKET cps=codepos1 PLUSGT cpo=loc(mparen(sword)) RBRACKET {
     if unloc cpo > 0 then begin
         let (offset, base) = cps in
         (GapBefore cps, GapAfter (offset + unloc cpo, base))
-    end else 
+    end else
         parse_error (loc cpo) (Some "cannot give negative offset for codepos range end")
   }
 
@@ -2955,7 +2982,7 @@ eager_tac:
     { Peager_fun_abs f }
 
 | CALL info=gpterm(call_info)
-    { Peager_call info }
+    { Peager_call (apply_gppterm None info) }
 
 form_or_double_form:
 | f=sform
@@ -3033,8 +3060,8 @@ direction:
 | PROC f=sform
    { Pfun (`Abs f) }
 
-| PROC bad=sform p=sform q=sform?
-   { Pfun (`Upto (bad, p, q)) }
+| PROC fui_is_ll_variant=calloptions fui_bad=sform fui_pre=sform fui_pos=sform?
+   { Pfun (`Upto { fui_is_ll_variant; fui_bad; fui_pre; fui_pos }) }
 
 | PROC STAR
    { Pfun `Code }
@@ -3057,11 +3084,11 @@ direction:
 | ASYNC WHILE info=async_while_tac_info
     { Pasyncwhile info }
 
-| CALL s=side? info=gpterm(call_info)
-    { Pcall (s, info) }
+| CALL c=calloptions s=side? info=gpterm(call_info)
+    { Pcall (s, apply_gppterm c info) }
 
 | CALL SLASH fc=sform info=gpterm(call_info)
-    { Pcallconcave (fc,info) }
+    { Pcallconcave (fc, apply_gppterm None info) }
 
 | RCONDT s=side? i=codepos1
     { Prcond (s, true, i) }
@@ -3306,11 +3333,21 @@ direction:
 | PROC REWRITE AT tg=ident f=pterm
     { Pprocrewriteat (tg, f) }
 
+| PROC CHANGE CIRCUIT b=option(bracket(ptybindings)) o=codepos PLUS w=word s=brace(stmt)
+    { Prwprgm (`Change (o, b, w, s)) }
+
 | HOARE SPLIT
     { Phoaresplit }
 
 | IDASSIGN o=codepos x=lvalue_var
     { Prwprgm (`IdAssign (o, x)) }
+
+%public phltactic:
+| CIRCUIT
+  { Pcircuit (`Solve ) }
+
+| CIRCUIT SIMPLIFY
+  { Pcircuit (`Simplify ) }
 
 bdhoare_split:
 | b1=sform b2=sform b3=sform?
@@ -3436,6 +3473,20 @@ caseoption:
 %inline caseoptions:
 | AT xs=bracket(caseoption+) { xs }
 
+
+calloption:
+| b=boption(MINUS) x=lident {
+    match unloc x with
+    | "ll" -> (not b)
+    | _ ->
+       parse_error x.pl_loc
+         (Some ("invalid option: " ^ (unloc x) ^ ", [-]ll expected"))
+  }
+
+%inline calloptions:
+| AT b=bracket(calloption) { Some b }
+| { None }
+
 %inline do_repeat:
 | n=word? NOT      { (`All, n) }
 | n=word? QUESTION { (`Maybe, n) }
@@ -3478,6 +3529,9 @@ tactic_core_r:
 
     { Pcase (odfl false eq, odfl [] opts,
              { pr_view = vw; pr_rev = gp; } ) }
+
+| EXTENS v=option(bracket(lident)) COLON t=tactic_core
+  { Pextens (t, v) }
 
 | PROGRESS opts=pgoptions? t=tactic_core? {
     Pprogress (odfl [] opts, t)
@@ -3933,6 +3987,32 @@ user_red_option:
   }
 
 (* -------------------------------------------------------------------- *)
+(* Circuit & bo bindings                                                *)
+spec_binding:
+| op=qoident LARROW circ=loc(STRING)
+  { (op, circ) }
+
+cr_binding_r:
+| BIND BITSTRING from_=qoident to_=qoident touint=qoident tosint=qoident ofint=qoident type_=qoident size=sform
+  { CRB_Bitstring { from_; to_; touint; tosint; ofint; type_; size; } }
+
+| BIND ARRAY get=qoident set=qoident tolist=qoident oflist=qoident type_=qoident size=sform
+  { CRB_Array { get; set; tolist; oflist; type_; size; } }
+  
+| BIND OP type_=qident operator=qoident name=loc(STRING)
+  { CRB_BvOperator { types = [type_]; operator; name; } }
+
+| BIND OP types=bracket(plist1(qident, AMP)) operator=qoident name=loc(STRING)
+  { CRB_BvOperator { types; operator; name; } }
+
+| BIND CIRCUIT bindings=plist1(spec_binding, COMMA) FROM file=loc(STRING)
+  { CRB_Circuit { bindings; file } }
+
+%inline cr_binding:
+| locality=is_local binding=cr_binding_r
+  { { locality; binding; }}
+
+(* -------------------------------------------------------------------- *)
 (* Search pattern                                                       *)
 %inline search: x=sform_h { x }
 
@@ -3970,6 +4050,7 @@ global_action:
 | gprover_info     { Gprover_info $1 }
 | addrw            { Gaddrw       $1 }
 | hint             { Ghint        $1 }
+| cr_binding       { Gcrbinding   $1 } 
 | x=loc(proofend)  { Gsave        x  }
 | PRINT p=print    { Gprint       p  }
 | EXPECT s=loc(STRING) BY PRINT p=print
@@ -3999,11 +4080,17 @@ stop:
 | DROP DOT { }
 
 global:
-| db=debug_global? fail=boption(FAIL) g=global_action ep=FINAL
+| db=debug_global? f=failmode g=global_action ep=FINAL
   { let lc = EcLocation.make $startpos ep in
     { gl_action = EcLocation.mk_loc lc g;
-      gl_fail   = fail;
+      gl_fail   = fst f;
+      gl_expect = snd f;
       gl_debug  = db; } }
+
+%inline failmode:
+| (* empty *)               { (false, None  ) }
+| FAIL                      { (true , None  ) }
+| EXPECT FAIL s=loc(STRING) { (true , Some s) }
 
 debug_global:
 | TIME  { `Timed }

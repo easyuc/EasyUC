@@ -5,8 +5,15 @@ args: testExprWrongArgTypeVar.uc
 outcome: failure
 [error: testExprWrongArgTypeVar.uc: from line 16 columns 67 to 68]
 
-no matching operator, named `=', for the following parameters' type:
+operator `Top.Pervasive.=' cannot be applied to arguments of type:
   [1]: exp
   [2]: key
-
+its type is
+  'a -> 'a -> bool
+where the type parameters were inferred as:
+  'a = exp
+its #2 argument is expected to have type
+  exp
+but is applied to a value of type
+  key
 .

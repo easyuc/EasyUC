@@ -122,8 +122,15 @@ type filter_error =
 | FE_InvalidIndex of int
 | FE_NoMatch
 
-type goal_shape_error = 
+type goal_shape_error =
 | GSE_ExpectedTwoSided
+
+(* A failed application candidate, tagged by the kind of entity. *)
+type appcand = [
+  | `Op of EcPath.path * EcUnify.op_instance * ty
+  | `Pv of EcTypes.prog_var * ty
+  | `Lc of EcIdent.t * ty
+]
 
 type tyerror =
 | UniVarNotAllowed
@@ -159,6 +166,8 @@ type tyerror =
 | NotAnInductive
 | AbbrevLowArgs
 | UnknownVarOrOp         of qsymbol * ty list
+| UnappliedOp            of qsymbol * ty list * ty option
+                           * (appcand * EcUnify.op_failure) list
 | MultipleOpMatch        of qsymbol * ty list * (opmatch * EcUnify.unienv) list
 | UnknownModName         of qsymbol
 | UnknownTyModName       of qsymbol
@@ -315,22 +324,26 @@ let select_local env (qs,s) =
   else None
 
 (* -------------------------------------------------------------------- *)
-let select_pv env side name ue tvi (psig, retty) =
+(* The program variable [name] if it applies to [psig]/[retty], else the
+   reason it does not. *)
+let select_pv env side name ue tvi (psig, retty)
+    : (_ * ty * EcUnify.unienv) list * (appcand * EcUnify.op_failure) list =
   if   tvi <> None
-  then []
+  then ([], [])
   else
     try
-      let pvs = EcEnv.Var.lookup_progvar ?side name env in
-      let select (pv,ty) =
+      let (pv, ty) = EcEnv.Var.lookup_progvar ?side name env in
+      let subue = UE.copy ue in
+      let expected = toarrow psig (ofdfl (fun () -> UE.fresh subue) retty) in
+      try
+        EcUnify.unify env subue ty expected;
+        ([(pv, ty, subue)], [])
+      with EcUnify.UnificationFailure _ ->
         let subue = UE.copy ue in
-        let texpected = EcUnify.tfun_expected subue ?retty psig in
-          try
-            EcUnify.unify env subue ty texpected;
-            [(pv, ty, subue)]
-          with EcUnify.UnificationFailure _ -> []
-      in
-        select pvs
-    with EcEnv.LookupFailure _ -> []
+        let f = oget (EcUnify.classify_application env subue ty psig retty) in
+        let pv0 = match pv with `Var p -> p | `Proj (p, _) -> p in
+        ([], [(`Pv (pv0, ty), f)])
+    with EcEnv.LookupFailure _ -> ([], [])
 
 (* -------------------------------------------------------------------- *)
 module OpSelect = struct
@@ -350,6 +363,8 @@ module OpSelect = struct
 
   type gopsel =
     opsel * EcTypes.ty * EcUnify.unienv * opmatch
+
+  type opfailure = appcand * EcUnify.op_failure
 end
 
 let gen_select_op
@@ -363,7 +378,7 @@ let gen_select_op
     (ue       : EcUnify.unienv)
     (psig     : EcTypes.dom * EcTypes.ty option)
 
-    : OpSelect.gopsel list
+    : OpSelect.gopsel list * OpSelect.opfailure list Lazy.t
 =
 
   let fpv me (pv, ty, ue) : OpSelect.gopsel =
@@ -404,6 +419,8 @@ let gen_select_op
       |>  Option.to_list
     else [] in
 
+  let pvfailures = ref [] in
+
   let ops () : OpSelect.gopsel list =
     let ops = EcUnify.select_op ~filter:ue_filter tvi env name ue psig in
     let ops = opsc |> ofold (fun opsc -> List.mbfilter (by_scope opsc)) ops in
@@ -412,11 +429,13 @@ let gen_select_op
     (List.map fop ops)
 
   and pvs () : OpSelect.gopsel list =
-    let me, pvs =
+    let me, (pvs, pvf) =
       match EcEnv.Memory.get_active_ss env, actonly with
-      | None, true -> (None, [])
+      | None, true -> (None, ([], []))
       | me  , _    -> (  me, select_pv env me name ue tvi psig)
-    in List.map (fpv me) pvs
+    in
+    pvfailures := pvf;
+    List.map (fpv me) pvs
   in
 
   let select (filters : (unit -> OpSelect.gopsel list) list) : OpSelect.gopsel list =
@@ -425,14 +444,25 @@ let gen_select_op
       filters
     |> odfl [] in
 
-  match mode with
-  | `Expr `InOp   -> select [locals; ops]
-  | `Form
-  | `Expr `InProc ->
-      if forcepv then
-        select [pvs; locals; ops]
-      else
-        select [locals; pvs; ops]
+  let selected =
+    match mode with
+    | `Expr `InOp   -> select [locals; ops]
+    | `Form
+    | `Expr `InProc ->
+        if forcepv then
+          select [pvs; locals; ops]
+        else
+          select [locals; pvs; ops]
+  in
+
+  let opfailures = lazy (
+    !pvfailures
+    @ List.map
+        (fun (p, inst, ty, f) -> (`Op (p, inst, ty), f))
+        (EcUnify.select_op_failures ~filter:ue_filter tvi env name ue psig)
+  ) in
+
+  (selected, opfailures)
 
 (* -------------------------------------------------------------------- *)
 let select_exp_op env mode opsc name ue tvi psig =
@@ -443,6 +473,15 @@ let select_exp_op env mode opsc name ue tvi psig =
 let select_form_op env mode ~forcepv opsc name ue tvi psig =
   gen_select_op ~actonly:true ~mode ~forcepv
     opsc tvi env name ue psig
+
+(* -------------------------------------------------------------------- *)
+(* [UnappliedOp] when candidates of that name exist but fail, else
+   [UnknownVarOrOp]. *)
+let tyerror_noop env loc name esig retty
+    (opfailures : OpSelect.opfailure list Lazy.t) =
+  match Lazy.force opfailures with
+  | [] -> tyerror loc env (UnknownVarOrOp (name, esig))
+  | opfailures -> tyerror loc env (UnappliedOp (name, esig, retty, opfailures))
 
 (* -------------------------------------------------------------------- *)
 let select_proj env opsc name ue tvi recty =
@@ -1668,6 +1707,24 @@ let form_of_opselect
   EcUnify.UniEnv.restore ~src:subue ~dst:ue;
 
   let esig  = List.map (lmap f_ty) args in
+
+  (* Locals are selected without an applicability check (they shadow
+     operators unconditionally), so diagnose a failing application here. *)
+  begin match sel with
+  | `Lc id ->
+      let resolve t = ty_subst (Tuni.subst (EcUnify.UniEnv.assubst ue)) t in
+      let psig = List.map (fun t -> resolve (unloc t)) esig in
+      let ue'  = EcUnify.UniEnv.copy ue in
+      begin match EcUnify.classify_application env ue' ty psig None with
+      | None   -> ()
+      | Some f ->
+          tyerror loc env
+            (UnappliedOp (([], EcIdent.name id), psig, None,
+                          [(`Lc (id, resolve ty), f)]))
+      end
+  | _ -> ()
+  end;
+
   let args  = List.map unloc args in
   let codom = ty_fun_app loc env ue ty esig in
 
@@ -2884,13 +2941,13 @@ and translvalue ue (env : EcEnv.env) lvalue =
 
       let name = ([], EcCoreLib.s_set) in
       let esig = [xty; ety; codom] in
-      let ops = select_exp_op env `InProc None name ue tvi (esig, None) in
+      let ops, opfailures = select_exp_op env `InProc None name ue tvi (esig, None) in
 
       match ops with
       | [] ->
          let uidmap = UE.assubst ue in
          let esig = Tuni.subst_dom uidmap esig in
-          tyerror x.pl_loc env (UnknownVarOrOp (name, esig))
+          tyerror_noop env x.pl_loc name esig None opfailures
 
       | [`Op (p, tys), opty, subue, _] ->
           EcUnify.UniEnv.restore ~src:subue ~dst:ue;
@@ -2903,7 +2960,7 @@ and translvalue ue (env : EcEnv.env) lvalue =
       | [_] ->
           let uidmap = UE.assubst ue in
           let esig = Tuni.subst_dom uidmap esig in
-          tyerror x.pl_loc env (UnknownVarOrOp (name, esig))
+          tyerror_noop env x.pl_loc name esig None opfailures
 
       | _ ->
           let uidmap = UE.assubst ue in
@@ -3195,13 +3252,13 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
 
     | PFident ({ pl_desc = name; pl_loc = loc }, tvi) ->
         let tvi = tvi |> omap (transtvi env ue) in
-        let ops =
+        let ops, opfailures =
           select_form_op
             ~forcepv:(PFS.isforced state)
             env mode opsc name ue tvi ([], tt) in
         begin match ops with
         | [] ->
-            tyerror loc env (UnknownVarOrOp (name, []))
+            tyerror_noop env loc name [] tt opfailures
 
         | [sel] -> begin
             let op = form_of_opselect (env, ue) loc sel [] in
@@ -3357,7 +3414,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
           select_form_op ~forcepv:(PFS.isforced state)
             env mode opsc name ue tvi (esig, tt)
         with
-        | [sel] -> Some (sel, (es, esig, tvi))
+        | [sel], _ -> Some (sel, (es, esig, tvi))
         | _ ->
             Option.iter (fun ps -> ps := !(Option.get ps')) ps;
             EcUnify.UniEnv.restore ~dst:ue ~src:ue';
@@ -3367,7 +3424,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
         let tvi  = tvi |> omap (transtvi env ue) in
         let es   = List.map (transf env) pes in
         let esig = List.map EcFol.f_ty es in
-        let ops  =
+        let ops, opfailures  =
           select_form_op ~forcepv:(PFS.isforced state)
             env mode opsc name ue tvi (esig, tt) in
 
@@ -3375,7 +3432,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
           | [] ->
              let uidmap = UE.assubst ue in
              let esig = Tuni.subst_dom uidmap esig in
-             tyerror loc env (UnknownVarOrOp (name, esig))
+             tyerror_noop env loc name esig tt opfailures
 
           | [sel] ->
               let es = List.map2 (fun e l -> mk_loc l.pl_loc e) es pes in

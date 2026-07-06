@@ -301,9 +301,9 @@ lemma pari_cond_after_par_or_rest_error_equiv
   after_par_or_rest_error func r oda2.
 proof.
 move => le_oda1 le_oda2.
-smt(pari_cond_after_par_or_rest_continue_equiv
-    pari_cond_after_par_or_rest_return_equiv
-    after_par_or_rest_disj).
+have return1 := pari_cond_after_par_or_rest_return_equiv func r oda1.
+have continue1 := pari_cond_after_par_or_rest_continue_equiv func r oda1.
+smt(after_par_or_rest_disj).
 qed.
 
 lemma after_par_or_rest_return_intro_adv_from_param

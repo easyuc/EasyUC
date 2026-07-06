@@ -5,8 +5,29 @@ args:-units SMC2.uc
 outcome:failure
 [error: KeyExchange.uc: from line 55 columns 47 to 48]
 
-no matching operator, named `*', for the following parameters' type:
+`*' cannot be applied to arguments of type:
   [1]: exp
   [2]: int
+the candidates cannot be applied:
+  [operator `Top.*']:
+    its #2 argument is expected to have type
+      exp
+    but is applied to a value of type
+      int
+  [operator `Top.Xint.*']:
+    its #1 argument is expected to have type
+      xint
+    but is applied to a value of type
+      exp
+  [operator `Top.Real.*']:
+    its #1 argument is expected to have type
+      real
+    but is applied to a value of type
+      exp
+  [operator `Top.Int.*']:
+    its #1 argument is expected to have type
+      int
+    but is applied to a value of type
+      exp
 
 .
