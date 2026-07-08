@@ -325,20 +325,39 @@ let check_parsing_adversarial_inter (ni : named_inter) =
 
 (* auxiliary functions for making a type declaration of an axiom *)
 
-let mk_tydecl ~locality (tyvars, name) body =
+let mk_tydecl ~locality (idxvars, tyvars, name) body =
   { pty_name     = name;
+    pty_idxvars  = idxvars;
     pty_tyvars   = tyvars;
     pty_body     = body;
     pty_locality = locality; }
 
-let mk_axiom ~locality (x, ty, pv, vd, f) k =
-  { pa_name     = x;
-    pa_tyvars   = ty;
-    pa_pvars    = pv;
-    pa_vars     = vd;
-    pa_formula  = f;
-    pa_kind     = k;
-    pa_locality = locality; }
+let mk_axiom ~locality (x, idx, nonneg, ty, pv, vd, f) k =
+  { pa_name         = x;
+    pa_idxvars      = idx;
+    pa_idxvars_nneg = nonneg;
+    pa_tyvars       = ty;
+    pa_pvars        = pv;
+    pa_vars         = vd;
+    pa_formula      = f;
+    pa_kind         = k;
+    pa_locality     = locality; }
+
+  (* Trailing `+` on an idxvar name only makes sense on lemma /
+     axiom binders (where it injects [0 <= n =>] into the proof
+     goal). Non-lemma consumers must reject it explicitly so the
+     mark is never silently dropped. *)
+  let reject_nonneg_marker (where : string)
+      (nonneg : EcParsetree.psymbol list) =
+    match nonneg with
+    | [] -> ()
+    | x :: _ ->
+        error_message (loc x)
+        (fun ppf ->
+           Format.fprintf ppf
+           ("@[the@ `+'@ marker@ on@ idxvar@ `%s'@ only@ applies@ to@ " ^^
+            "lemma@ /@ axiom@ binders,@ not@ to@ %s@ declarations@]")
+           (EcLocation.unloc x) where)
 
 %}
 
@@ -629,8 +648,11 @@ clone_with :
       { x }
 
 clone_override:
-  | TYPE; ps = cltyparams; x = ident; mode = opclmode; t = loc(type_exp);
-      { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | TYPE; idx=loption(idxvars_decl); ps = cltyparams; x = ident;
+    mode = opclmode; t = loc(type_exp);
+      { let nonneg = idx |> List.filter snd |> List.map fst in
+        reject_nonneg_marker "clone-with-type" nonneg;
+        (x, PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
 
   | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
@@ -683,8 +705,11 @@ uc_clone_with :
       { x }
 
 uc_clone_override:
-  | TYPE; ps = cltyparams; x = qident; mode = uc_opclmode; t = loc(type_exp);
-      { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | TYPE; idx=loption(idxvars_decl); ps = cltyparams; x = qident;
+    mode = uc_opclmode; t = loc(type_exp);
+      { let nonneg = idx |> List.filter snd |> List.map fst in
+        reject_nonneg_marker "clone-with-type" nonneg;
+        (x, PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
 
   | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
@@ -1724,14 +1749,76 @@ lp_field :
 (* Types *)
 
 simpl_type_exp :
-  | x = qident                    { PTnamed x      }
-  | x = tident                    { PTvar x        }
-  | tya = type_args; x = qident   { PTapp (x, tya) }
-  | LPAREN; ty = type_exp; RPAREN { ty             }
+  | UNDERSCORE
+      { PTunivar }
+  | x = qident
+      { PTnamed x }
+  | x = qident; is = idx_args
+      { PTapp (x, [], is)  }
+  | x = tident
+      { PTvar x }
+  | tya = type_args; x = qident; is = loption(idx_args)
+      { PTapp (x, tya, is) }
+  | LPAREN ty = type_exp RPAREN
+      { ty }
 
 type_args :
-  | ty = loc(simpl_type_exp)                          { [ty] }
-  | LPAREN tys = plist2(loc(type_exp), COMMA) RPAREN  { tys  }
+  | ty = loc(simpl_type_exp)
+      { [ty] }
+  | LPAREN; tys = plist2(loc(type_exp), COMMA); RPAREN
+      { tys  }
+
+(* Indexed-type index arguments: a comma-separated list of polynomial
+   expressions enclosed between `<:` and `>`, e.g. `'a vec<:n+1>` or
+   `('a, 'b) map<:n, m>`. We reuse the LTCOLON/GT framing already used
+   for operator type-variable instantiation (`f<:int>`); a square-
+   bracket framing would conflict with `mod_update_fun`'s codepos
+   ranges in `module M = N with { proc f [ var x : T [..] ] }`. *)
+idx_args :
+  | LTCOLON; xs = plist1(pindex, COMMA); GT
+      { xs }
+
+(* Index-expression sub-grammar (polynomial fragment over the
+   naturals). Precedence: `*` binds tighter than `+`. *)
+pindex_atom :
+  | x = lident
+      { mk_loc x.pl_loc (PIvar x) }
+  | n = loc(UINT)
+      { mk_loc n.pl_loc (PIint n.pl_desc) }
+  | u = loc(UNDERSCORE)
+      { mk_loc u.pl_loc PIhole }
+  | LPAREN; p = pindex; RPAREN
+      { p }
+
+pindex_mul :
+  | a = pindex_atom
+      { a }
+  | a = pindex_mul; STAR; b = pindex_atom
+      { mk_loc (EcLocation.merge a.pl_loc b.pl_loc) (PImul (a, b)) }
+
+pindex :
+  | a = pindex_mul { a }
+  | a = pindex PLUS b = pindex_mul
+      { mk_loc (EcLocation.merge a.pl_loc b.pl_loc) (PIadd (a, b)) }
+
+(* Index-parameter binder. Uses curly braces and naked identifiers
+   (e.g. `{n m}`), distinct from the square-bracket binder used for
+   type variables (`['a 'b]`). When both are present, the index
+   binder must come first: `type {n} 'a vec`.
+
+   A trailing `+` on an identifier marks it as "non-negative by
+   assumption": on lemma / axiom binders this adds a [0 <= n]
+   hypothesis to the proof goal. Ignored on other binder sites. *)
+
+idxvar_item :
+  | x = lident; PLUS
+      { (x, true) }
+  | x = lident
+      { (x, false) }
+
+idxvars_decl :
+  | LBRACE; xs = idxvar_item+; RBRACE
+      { xs }
 
 type_exp :
   | ty = simpl_type_exp                            { ty }
@@ -1770,7 +1857,7 @@ sexpr_u :
   | e = sexpr; PCENT; p = uqident
       { PFscope (p, e) }
 
-  | e=sexpr p=loc(prefix(PCENT, _lident))
+  | e = sexpr; p = loc(prefix(PCENT, _lident))
       { if unloc p = "top" then
           PFscope (pqsymb_of_symb p.pl_loc "<top>", e)
         else
