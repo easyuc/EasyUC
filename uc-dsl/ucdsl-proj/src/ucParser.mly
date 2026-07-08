@@ -683,8 +683,8 @@ uc_clone_with :
       { x }
 
 uc_clone_override:
-  | TYPE; ps = cltyparams; x = qident; mode = uc_opclmode; t = loc(type_exp);
-      { (x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | TYPE; ps = cltyparams; x = ident; mode = uc_opclmode; t = loc(type_exp);
+      { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (ps, t), mode)) }
 
   | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
