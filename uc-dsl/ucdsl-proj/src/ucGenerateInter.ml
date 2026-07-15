@@ -24,7 +24,8 @@ let print_epdp_tag_univ (ppf : Format.formatter) (sc : EcScope.scope) : unit =
   let env = EcScope.env sc in
   let qepdp = (["Top";"UCBasicTypes"], "epdp_tag_univ") in
   let pth, oper = EcEnv.Op.lookup qepdp env in
-  let epdp_opex = e_op pth [] oper.op_ty in
+(* TODO: Tomislav check next line *)
+  let epdp_opex = e_op pth oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
 
@@ -94,7 +95,8 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
                else failure ("couldn't find epdp operator "^(EcSymbols.string_of_qsymbol qepdp))
                           
   in
-  let epdp_opex = e_op pth tyl oper.op_ty in
+(* TODO: Tomislav check next line *)
+  let epdp_opex = e_op pth ~tyargs:tyl oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
 
@@ -119,7 +121,8 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
      let qbase = (["Top";"UCUniv"], name) in
      let env = EcScope.env sc in
      let pth,oper = EcEnv.Op.lookup qbase env in
-     let epdp_opex = e_op pth tyl oper.op_ty in
+(* TODO: Tomislav check next line *)
+     let epdp_opex = e_op pth ~tyargs:tyl oper.op_ty in
      let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
      Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
   | None -> failure "tuples must have between 2 and 8 members"
@@ -160,7 +163,8 @@ let rec epdp_ty_univ_ex (sc : EcScope.scope) (ppf : Format.formatter)
 (t : ty) : unit  =
   match t.ty_node with
   | Ttuple  tys -> epdp_tuple_univ_ex sc ppf tys
-  | Tconstr (pth, tys) -> epdp_constr_univ_ex sc ppf pth tys
+(* TODO: Tomislav check next line *)
+  | Tconstr (pth, tys) -> epdp_constr_univ_ex sc ppf pth tys.types
   | Tfun (ty1, ty2) -> epdp_fun_univ_ex sc ppf ty1 ty2
   | _ -> failure ("Only tuples, constructed types, and functions are supported." )
 

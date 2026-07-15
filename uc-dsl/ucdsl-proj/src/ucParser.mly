@@ -141,11 +141,11 @@ let check_parsing_adversarial_inter (ni : named_inter) =
         | []  ->
             error_message s.pl_loc
             (fun ppf ->
-               Format.fprintf ppf "unknown option: %s" (unloc s))
+               fprintf ppf "unknown option: %s" (unloc s))
         | ls  ->
             error_message s.pl_loc
             (fun ppf ->
-               Format.fprintf ppf
+               fprintf ppf
                "option `%s` is ambiguous; matching ones are: `%s`"
                (unloc s) (String.concat ", " ls))
 
@@ -185,7 +185,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
     let get_error ~optional s name =
       error_message s.pl_loc
       (fun ppf ->
-         Format.fprintf ppf
+         fprintf ppf
           "`%s`: %s`%s` option expected" (unloc s)
           (if optional then "optional " else "")
           name)
@@ -206,7 +206,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       if EcUtils.is_some o then
           error_message s.pl_loc
           (fun ppf ->
-             Format.fprintf ppf
+             fprintf ppf
              "`%s`: no option expected" (unloc s))
 
     let mk_pi_option (s : psymbol) (o : pi option) : smt =
@@ -254,12 +254,12 @@ let check_parsing_adversarial_inter (ni : named_inter) =
         if pp.pp_add_rm <> [] then
           error_message (loc p)
           (fun ppf ->
-             Format.fprintf ppf
+             fprintf ppf
              "use-only elements must come at beginning")
         else if pp.pp_use_only <> [] && is_universal p then
           error_message (loc p)
           (fun ppf ->
-             Format.fprintf ppf
+             fprintf ppf
              "cannot add universal to non-empty use-only")
         else
           match pp.pp_use_only with
@@ -267,7 +267,7 @@ let check_parsing_adversarial_inter (ni : named_inter) =
               if is_universal q then
                 error_message (loc p)
                 (fun ppf ->
-                   Format.fprintf ppf
+                   fprintf ppf
                    "use-only part is already universal")
           | _ -> () in
 
@@ -354,7 +354,7 @@ let mk_axiom ~locality (x, idx, nonneg, ty, pv, vd, f) k =
     | x :: _ ->
         error_message (loc x)
         (fun ppf ->
-           Format.fprintf ppf
+           fprintf ppf
            ("@[the@ `+'@ marker@ on@ idxvar@ `%s'@ only@ applies@ to@ " ^^
             "lemma@ /@ axiom@ binders,@ not@ to@ %s@ declarations@]")
            (EcLocation.unloc x) where)
@@ -443,6 +443,7 @@ let mk_axiom ~locality (x, idx, nonneg, ty, pv, vd, f) k =
 %token LARROW
 %token LBRACE
 %token LBRACKET
+%token LBRACKETCOLON
 %token LESAMPLE
 %token LPAREN
 %token LPBRACE
@@ -590,8 +591,34 @@ typarams:
   | xs = paren(plist1(typaram, COMMA))
       { xs }
 
-%inline tyd_name:
-  | tya = typarams; x = ident { (tya, x) }
+%inline tyd_name :
+  | idx = loption(idxvars_decl); tya = typarams; x = ident
+    { let nonneg = idx |> List.filter snd |> List.map fst in
+      reject_nonneg_marker "type" nonneg;
+      (List.map fst idx, tya, x) }
+
+tyvars_decl :
+  | LBRACKET; tyvars=rlist0(typaram, COMMA); RBRACKET
+  | LBRACKET; tyvars=rlist2(tident, empty); RBRACKET
+      { tyvars }
+
+(* Combined `{idx}` then `['a]` binder. Indices come first; both are
+   independently optional. Returns [(idxvars, nonneg, tyvars_opt)]
+   where:
+   - [idxvars] is the idxvar names in order.
+   - [nonneg] is the subset of idxvars marked with a trailing `+`.
+     Used by lemma / axiom processing to inject [0 <= n] hypotheses;
+     other consumers ignore it.
+   - [tyvars_opt] is [None] when no [...] bracket appeared at all,
+     matching the legacy [tvs |> omap ...] convention so downstream
+     `po_tyvars`-style fields keep distinguishing "no binder given"
+     from "empty binder given". *)
+ix_ty_binder :
+  | idx = idxvars_decl?; ty=tyvars_decl?
+      { let items = EcUtils.odfl [] idx in
+        let idxs   = List.map fst items in
+        let nonneg = items |> List.filter snd |> List.map fst in
+        (idxs, nonneg, ty) }
 
 spec_abstract_type_decl :
   | x = loc(TYPE); tn = tyd_name
@@ -599,13 +626,16 @@ spec_abstract_type_decl :
 
 spec_abstract_operator_decl :
   | x = loc(OP); tags = bracket(ident*)?; name = oident;
-    ty = prefix(COLON, loc(type_exp))
-      { mk_loc (loc x)
+    tvs = ix_ty_binder; ty = prefix(COLON, loc(type_exp))
+      { let (idxvars, nonneg, po_tyvars) = tvs in
+        reject_nonneg_marker "operator" nonneg;
+        mk_loc (loc x)
         {po_kind     = `Op;
          po_name     = name;
          po_aliases  = [];
          po_tags     = odfl [] tags;
-         po_tyvars   = None;
+         po_idxvars  = idxvars;
+         po_tyvars   = po_tyvars;
          po_args     = ([], None);
          po_def      = PO_abstr ty;
          po_ax       = None;
@@ -613,9 +643,12 @@ spec_abstract_operator_decl :
       }
 
 spec_axiom :
-  | x = loc(AXIOM); name = ident; pd = pgtybindings?; COLON; e = expr
-      { mk_loc (loc x)
-        (mk_axiom ~locality:`Global (name, None, None, pd, e)
+  | x = loc(AXIOM); name = ident; tvs = ix_ty_binder;
+    pd = pgtybindings?; COLON; e = expr
+      { let (idxvars, nonneg, tyvars) = tvs in
+        mk_loc (loc x)
+        (mk_axiom ~locality:`Global
+         (name, idxvars, nonneg, tyvars, None, pd, e)
          (PAxiom [])) }
 
 spec_clone :
@@ -652,13 +685,14 @@ clone_override:
     mode = opclmode; t = loc(type_exp);
       { let nonneg = idx |> List.filter snd |> List.map fst in
         reject_nonneg_marker "clone-with-type" nonneg;
-        (x, PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
+        (pqsymb_of_psymb x,
+         PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
 
-  | OP; x = boident; p = ptybinding1*;
+  | OP; x = boident; tyvars = bracket(tident*)? p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
     mode = loc(opclmode); e = expr
       { let ov =
-          { opov_tyvars = None;
+          { opov_tyvars = tyvars;
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
@@ -705,11 +739,12 @@ uc_clone_with :
       { x }
 
 uc_clone_override:
-  | TYPE; idx=loption(idxvars_decl); ps = cltyparams; x = qident;
+  | TYPE; idx=loption(idxvars_decl); ps = cltyparams; x = ident;
     mode = uc_opclmode; t = loc(type_exp);
       { let nonneg = idx |> List.filter snd |> List.map fst in
         reject_nonneg_marker "clone-with-type" nonneg;
-        (x, PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
+        (pqsymb_of_psymb x,
+         PTHO_Type (`BySyntax (List.map fst idx, ps, t), mode)) }
 
   | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
@@ -1282,7 +1317,7 @@ match_in :
       { if List.is_empty (unloc lcs)
         then error_message (loc lcs)
              (fun ppf ->
-                Format.fprintf ppf
+                fprintf ppf
                 "@[at@ least@ one@ matching@ clause@ is@ required@]");
         Match (e, lcs) }
 
@@ -1630,7 +1665,7 @@ args :
       try BI.to_int (unloc n) with
       | BI.Overflow ->
           error_message (loc n)
-          (fun ppf -> Format.fprintf ppf "@[literal@ is@ too@ large@]") }
+          (fun ppf -> fprintf ppf "@[literal@ is@ too@ large@]") }
 
 %inline namespace :
   | nm = rlist1(UIDENT, DOT)
@@ -1831,14 +1866,37 @@ type_exp :
    see below *)
 
 tyvar_byname1 :
-  | x = tident; EQ; ty = loc(type_exp) { (x, ty) }
+  | x = tident EQ ty=loc(type_exp)
+      { (x, ty) }
 
-tyvar_instan :
-  | lt = plist1(loc(type_exp), COMMA) { TVIunamed lt }
-  | lt = plist1(tyvar_byname1, COMMA) { TVInamed lt }
+tyvar_annot :
+  | lt = plist1(loc(type_exp), COMMA)
+      { TVIunamed ([], lt) }
+  | lt = plist1(tyvar_byname1, COMMA)
+      { TVInamed lt }
 
-%inline tvars_instan :
-  | LTCOLON k = loc(tyvar_instan) GT { k }
+(* Explicit op-index instantiation, e.g. `f[:n+1]` or `f[:n,m]<:int>`.
+   The `[:` form is parsed as a single LBRACKETCOLON token by the
+   lexer to avoid clashes with list literals. *)
+%inline idx_app :
+  | LBRACKETCOLON ix = plist1(pindex, COMMA) RBRACKET
+      { ix }
+
+%inline tvars_app :
+  | LTCOLON k = loc(tyvar_annot) GT
+      { k }
+  | ix = loc(idx_app)
+      { mk_loc ix.pl_loc (TVIunamed (ix.pl_desc, [])) }
+  | ix = idx_app LTCOLON k=loc(tyvar_annot) GT
+      { match k.pl_desc with
+        | TVIunamed ([], tys) ->
+            mk_loc k.pl_loc (TVIunamed (ix, tys))
+        | TVIunamed (_, _) | TVInamed _ ->
+            error_message k.pl_loc
+            (fun ppf ->
+               fprintf ppf
+               ("@[cannot@ mix@ explicit@ indices@ with@ " ^^
+                "named-tyvar@ syntax@]")) }
 
 %inline sexpr : x = loc(sexpr_u) { x }
 %inline  expr : x = loc( expr_u) { x }
@@ -1848,7 +1906,7 @@ tyvar_instan :
 %inline idexpr : x = loc(idexpr_u) { x }
 
 idexpr_u :
-  | x = qoident; ti = tvars_instan?
+  | x = qoident; ti = tvars_app?
       { PFident (x, ti) }
 
 (* end UC DSL *)
@@ -1888,27 +1946,27 @@ sexpr_u :
 
 (* end UC DSL *)
 
-  | op = loc(numop); ti = tvars_instan?
+  | op = loc(numop); ti = tvars_app?
        { pfapp_symb op.pl_loc op.pl_desc ti [] }
 
-  | se = sexpr; DLBRACKET; ti = tvars_instan?; e = loc(plist1(expr, COMMA));
+  | se = sexpr; DLBRACKET; ti = tvars_app?; e = loc(plist1(expr, COMMA));
     RBRACKET
       { let e = List.reduce1 (fun _ -> lmap (fun x -> PFtuple x) e) (unloc e) in
         pfget (EcLocation.make $startpos $endpos) ti se e }
 
-  | se = sexpr; DLBRACKET; ti = tvars_instan?; e1=loc(plist1(expr, COMMA));
+  | se = sexpr; DLBRACKET; ti = tvars_app?; e1=loc(plist1(expr, COMMA));
     LARROW e2=expr RBRACKET
       { let e1 =
           List.reduce1 (fun _ -> lmap (fun x -> PFtuple x) e1) (unloc e1) in
         pfset (EcLocation.make $startpos $endpos) ti se e1 e2 }
 
-  | TICKPIPE; ti = tvars_instan?; e = expr; PIPE
+  | TICKPIPE; ti = tvars_app?; e = expr; PIPE
       { pfapp_symb e.pl_loc EcCoreLib.s_abs ti [e] }
 
-  | LBRACKET; ti = tvars_instan?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
+  | LBRACKET; ti = tvars_app?; es = loc(plist0(expr, SEMICOLON)); RBRACKET
       { unloc (pflist es.pl_loc ti es.pl_desc) }
 
-  | LBRACKET; ti = tvars_instan?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
+  | LBRACKET; ti = tvars_app?; e1 = expr; op = loc(DOTDOT); e2=expr; RBRACKET
       { let id =
           PFident (mk_loc op.pl_loc EcCoreLib.s_dinter, ti)
         in PFapp(mk_loc op.pl_loc id, [e1; e2]) }
@@ -1933,7 +1991,7 @@ sexpr_u :
       { if n.pl_desc = 0 then
           error_message n.pl_loc
           (fun ppf ->
-             Format.fprintf ppf "@[tuple@ projections@ start@ at@ 1@]");
+             fprintf ppf "@[tuple@ projections@ start@ at@ 1@]");
         PFproji(e,n.pl_desc - 1) }
 
 expr_u :
@@ -1942,17 +2000,17 @@ expr_u :
   | e = sexpr; args = sexpr+
        { PFapp (e, args) }
 
-  | op = loc(uniop); ti = tvars_instan?; e = expr
+  | op = loc(uniop); ti = tvars_app?; e = expr
        { pfapp_symb op.pl_loc op.pl_desc ti [e] }
 
   | e = expr_chained_orderings %prec prec_below_order
        { fst e }
 
-  | e1 = expr; op = loc(NE); ti = tvars_instan?; e2=expr
+  | e1 = expr; op = loc(NE); ti = tvars_app?; e2=expr
        { pfapp_symb op.pl_loc "[!]" None
          [ mk_loc op.pl_loc (pfapp_symb op.pl_loc "=" ti [e1; e2])] }
 
-  | e1 = expr; op = loc(binop); ti = tvars_instan?; e2=expr
+  | e1 = expr; op = loc(binop); ti = tvars_app?; e2=expr
        { pfapp_symb op.pl_loc op.pl_desc ti [e1; e2] }
 
   | c = expr; QUESTION; e1 = expr; COLON; e2 = expr; %prec LOP2
@@ -1984,27 +2042,27 @@ expr_u :
   | EXIST; pd = pgtybindings; COMMA; e = expr { PFexists (pd, e) }
 
 mcptn(BOP):
-  | c = qoident; tvi = tvars_instan?; ps = bdident*
+  | c = qoident; tvi = tvars_app?; ps = bdident*
       { PPApp ((c, tvi), ps) }
 
-  | LBRACKET; tvi = tvars_instan?; RBRACKET {
+  | LBRACKET; tvi = tvars_app?; RBRACKET {
       let loc = EcLocation.make $startpos $endpos in
       PPApp ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
     }
 
-  | op = loc(uniop); tvi = tvars_instan?
+  | op = loc(uniop); tvi = tvars_app?
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), []) }
 
-  | op = loc(uniop); tvi = tvars_instan? x = bdident
+  | op = loc(uniop); tvi = tvars_app? x = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
 
-  | x1 = bdident; op = loc(NE); tvi = tvars_instan?; x2 = bdident
+  | x1 = bdident; op = loc(NE); tvi = tvars_app?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
 
-  | x1 = bdident; op = loc(BOP); tvi = tvars_instan?; x2 = bdident
+  | x1 = bdident; op = loc(BOP); tvi = tvars_app?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
-  | x1 = bdident; op = loc(ordering_op); tvi = tvars_instan?; x2 = bdident
+  | x1 = bdident; op = loc(ordering_op); tvi = tvars_app?; x2 = bdident
       { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
   | UNDERSCORE
@@ -2015,7 +2073,7 @@ expr_field :
       { { rf_name = x ; rf_tvi = None; rf_value = e; } }
 
 expr_ordering :
-  | e1 = expr; op = loc(ordering_op); ti = tvars_instan?; e2=expr
+  | e1 = expr; op = loc(ordering_op); ti = tvars_app?; e2=expr
       { (op, ti, e1, e2) }
 
 expr_chained_orderings :
@@ -2024,7 +2082,7 @@ expr_chained_orderings :
         (pfapp_symb op.pl_loc (unloc op) ti [e1; e2], e2) }
 
   | e1 = loc(expr_chained_orderings); op = loc(ordering_op);
-    ti = tvars_instan?; e2 = expr
+    ti = tvars_app?; e2 = expr
       { let (lce1, (e1, le)) = (e1.pl_loc, unloc e1) in
         let loc = EcLocation.make $startpos $endpos in
         (pfapp_symb loc "&&" None

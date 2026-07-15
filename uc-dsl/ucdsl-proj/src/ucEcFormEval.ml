@@ -523,9 +523,9 @@ let process_delta_when_args_are_addr_literals p tc =
 
         match op.EcDecl.op_kind with
         | EcDecl.OB_oper (Some (EcDecl.OP_Plain f)) ->
-            (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
+            ((snd p).types, op.EcDecl.op_tparams.tyvars, f, args, Some (fst p))
         | EcDecl.OB_pred (Some (EcDecl.PR_Plain f)) ->
-            (snd p, op.EcDecl.op_tparams, f, args, Some (fst p))
+            ((snd p).types, op.EcDecl.op_tparams.tyvars, f, args, Some (fst p))
         | _ ->
             print_endline "the operator cannot be unfolded";
             EcCoreGoal.tc_error (EcCoreGoal.(!!)tc) "the operator cannot be unfolded"
@@ -572,26 +572,29 @@ let process_delta_when_args_are_addr_literals p tc =
               print_endline "check_ty ty1,ty2 = ";
               Format.printf "%a@." (EcPrinting.pp_type ppe) ty1;
               Format.printf "%a@." (EcPrinting.pp_type ppe) ty2;*)
-  EcReduction.EqTest.for_type env ty1 (EcSubst.subst_ty subst ty2) in
+              EcReduction.EqTest.for_type env ty1 (EcSubst.subst_ty subst ty2) in
             match p.EcAst.f_node, fp.EcAst.f_node with
             | Fop (pp,pp_ty), Fop(fpp,fpp_ty) ->
-               let p_equal = EcPath.p_equal pp fpp in
-           print_endline
-           ("p_equal = "^(string_of_bool p_equal));
-           if p_equal
-           then List.iter2 ( fun ty1 ty2 ->
-                  print_endline (string_of_bool (check_ty env EcSubst.empty ty1 ty2))) pp_ty fpp_ty
-            else ()
-        | _ -> () end;
-          if EcReduction.is_alpha_eq hyps p fp
-          then begin
-              print_endline "is_alpha_eq YES";
-              `Accept (-1)
-            end
-          else begin
-              print_endline "is_alpha_eq NO";
-              `Continue
-              end
+                let p_equal = EcPath.p_equal pp fpp in
+                print_endline ("p_equal = "^(string_of_bool p_equal));
+                if p_equal
+                then List.iter2
+                     (fun ty1 ty2 ->
+                        print_endline (string_of_bool (check_ty env EcSubst.empty ty1 ty2)))
+(* TODO - Tomislav
+   Alley: this is ignoring the indices, and I'm unclear whether this makes sense *)
+                     pp_ty.types fpp_ty.types
+                else ()
+            | _ -> () end;
+            if EcReduction.is_alpha_eq hyps p fp
+            then begin
+                   print_endline "is_alpha_eq YES";
+                   `Accept (-1)
+                 end
+            else begin
+                   print_endline "is_alpha_eq NO";
+                  `Continue
+                 end
         in
           EcMatching.FPosition.select test concl
       in
@@ -607,7 +610,7 @@ let process_delta_when_args_are_addr_literals p tc =
               then begin
                 let body  =
                   EcFol.Tvar.f_subst ~freshen:true tparams
-                  tvi body in
+                  tvi.types body in
                 let body  = EcFol.f_app body args topfp.f_ty in
                 try  EcReduction.h_red EcReduction.beta_red hyps body
                 with EcEnv.NotReducible -> body
@@ -1012,7 +1015,12 @@ let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
   match oty.ty_node with
+  | Tconstr (p,tas) when List.length tas.types = 1 &&
+                         p = EcCoreLib.CI_Option.p_option -> List.hd (tas.types)
+(*
+TODO: Tomislav check
   | Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
+*)
   | _ -> failwith "type is not an option type"
 
 (* adapted from EcHiGoal.ml process_delta *)
@@ -1048,7 +1056,8 @@ let eval_op_form_not_None
   pp_ty hyps oty;
   let ty = get_ty_from_oty oty in
   pp_ty hyps ty;
-  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none [ty] oty in
+(* TODO: Tomislav check *)
+  let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none ~tyargs:[ty] oty in
   (*EcTypes.toption ty*)
   pp_f hyps f_none;
   let concl = EcCoreFol.f_eq (EcCoreFol.f_app opf [form] oty) f_none in
@@ -1068,7 +1077,8 @@ let mk_oget_op_form
   let ty = get_ty_from_oty oty in
   let as_ty_f = EcCoreFol.f_app opf [form] oty in
   let ogetf = 
-  EcCoreFol.f_op EcCoreLib.CI_Option.p_oget [ty] 
+(* TODO: Tomislav check *)
+  EcCoreFol.f_op EcCoreLib.CI_Option.p_oget ~tyargs:[ty] 
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
 
@@ -1092,9 +1102,11 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dt
     let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
     let opty =
       EcCoreSubst.Tvar.subst
-      (EcCoreSubst.Tvar.init op.op_tparams ty_args) op_ret_ty in
+(* TODO: Tomislav check *)
+      (EcCoreSubst.Tvar.init op.op_tparams.tyvars ty_args) op_ret_ty in
     let opf = 
-      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ty_args opty
+(* TODO: Tomislav check *)
+      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ~tyargs:ty_args opty
     in
     (s,opf)
   )              
@@ -1152,7 +1164,8 @@ let deconstruct_data
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");*)
-      deconstruct_data_eval_not_None p ty_args tyd ty_dt
+(* TODO: Tomislav check *)
+      deconstruct_data_eval_not_None p ty_args.types tyd ty_dt
       hyps form pi rw_lems
       end
     | None -> failwith "Only data types can be deconstructed"

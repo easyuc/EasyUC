@@ -348,7 +348,7 @@ let int_le_form (n1 : form) (n2 : form) : form =
 let uc_qsym_prefix_distr = ["Top"; "Distr"]
 
 let support_op (ty : ty) : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_distr, "support")) [ty]
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_distr, "support")) ~tyargs:[ty]
   (tfun (tdistr ty) (tfun ty tbool))
 
 let support_form (ty : ty) (d : form) (x : form) : form =
@@ -394,7 +394,8 @@ let gc_create (env : env) : global_context =
        (f_app inc_op [f_local func_id addr_ty; adv_addr_op]
         tbool))
     ] in
-  LDecl.init env ~locals:(List.rev locs) []
+  LDecl.init env ~locals:(List.rev locs)
+  {idxvars = []; tyvars = []}
 
 let env_of_gc (gc : global_context) : env = LDecl.toenv gc
 
@@ -1080,7 +1081,7 @@ let lc_create (lcbs : local_context_base list) : local_context =
        match lcb with
        | LCB_Bound (id, form)   -> (id, form)
        | LCB_Var (id, ty)       ->
-           (id, f_op EcCoreLib.CI_Witness.p_witness [ty] ty)
+           (id, f_op EcCoreLib.CI_Witness.p_witness ~tyargs:[ty] ty)
        | LCB_EnvPort func       ->
            (envport_id,
             (f_app envport_op [func] (tfun port_ty tbool)))

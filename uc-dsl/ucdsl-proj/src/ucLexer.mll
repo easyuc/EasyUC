@@ -300,34 +300,35 @@ rule read = parse
 
   (* fixed length symbols *)
 
-  | '('     { LPAREN     }
-  | ')'     { RPAREN     }
-  | '{'     { LBRACE     }
-  | '}'     { RBRACE     }
-  | '['     { LBRACKET   }
-  | ']'     { RBRACKET   }
-  | ','     { COMMA      }
-  | ':'     { COLON      }
-  | ";"     { SEMICOLON  }
-  | "%"     { PCENT      }
-  | "?"     { QUESTION   }
-  | "_"     { UNDERSCORE }
-  | '.'     { DOT        }
-  | '|'     { PIPE       }
-  | '@'     { AT         }
-  | "~"     { TILD       }
-  | "<$"    { LESAMPLE   }
-  | "<-"    { LARROW     }
-  | "{0,1}" { RBOOL      }
-  | ".."    { DOTDOT     }
-  | ".["    { DLBRACKET  }
-  | ".`"    { DOTTICK    }
-  | "<:"    { LTCOLON    }
-  | "{|"    { LPBRACE    }
-  | "|}"    { RPBRACE    }
-  | "`|"    { TICKPIPE   }
-  | ":~"    { COLONTILD  }
-  | "$"     { DOLLAR     }
+  | '('     { LPAREN        }
+  | ')'     { RPAREN        }
+  | '{'     { LBRACE        }
+  | '}'     { RBRACE        }
+  | '['     { LBRACKET      }
+  | ']'     { RBRACKET      }
+  | ','     { COMMA         }
+  | ':'     { COLON         }
+  | ";"     { SEMICOLON     }
+  | "%"     { PCENT         }
+  | "?"     { QUESTION      }
+  | "_"     { UNDERSCORE    }
+  | '.'     { DOT           }
+  | '|'     { PIPE          }
+  | '@'     { AT            }
+  | "~"     { TILD          }
+  | "<$"    { LESAMPLE      }
+  | "<-"    { LARROW        }
+  | "{0,1}" { RBOOL         }
+  | ".."    { DOTDOT        }
+  | ".["    { DLBRACKET     }
+  | "[:"    { LBRACKETCOLON }
+  | ".`"    { DOTTICK       }
+  | "<:"    { LTCOLON       }
+  | "{|"    { LPBRACE       }
+  | "|}"    { RPBRACE       }
+  | "`|"    { TICKPIPE      }
+  | ":~"    { COLONTILD     }
+  | "$"     { DOLLAR        }
 
   (* fixed length used as operators for types and/or expressions, but
      sometimes other uses *)

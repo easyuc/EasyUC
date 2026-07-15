@@ -201,67 +201,68 @@ let ec_qsym_prefix_core_int    = ["Top"; "CoreInt"]
 let ec_qsym_prefix_list        = ["Top"; "List"]
 
 let port_ty : ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "port")) []
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "port"))
 
 let addr_ty : ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr")) []
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr"))
 
 (* UC DSL and EasyCrypt operators *)
 
 let env_root_addr_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_addr")) []
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_addr"))
   addr_ty
 
 let env_root_port_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port")) []
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "env_root_port"))
   port_ty
 
 let adv_addr_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv")) []
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv"))
   addr_ty
 
 let adv_root_port_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port")) []
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "adv_root_port"))
   port_ty
 
 let envport_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport")) []
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "envport"))
   (tfun addr_ty (tfun port_ty tbool))
 
 let inc_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) [tint]
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "inc")) ~tyargs:[tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
 let addr_le_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) [tint]
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<=")) ~tyargs:[tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
 let addr_lt_op : form =
-  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) [tint]
+  f_op (EcPath.fromqsymbol (uc_qsym_prefix_list_po, "<")) ~tyargs:[tint]
   (tfun addr_ty (tfun addr_ty tbool))
 
 let addr_concat_op : form =
-  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) [tint]
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, "++")) ~tyargs:[tint]
   (tfun addr_ty (tfun addr_ty addr_ty))
 
 let addr_nil_op : form =
   f_op
-  (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil)) [tint] addr_ty
+  (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_nil))
+  ~tyargs:[tint] addr_ty
 
 let addr_cons_op : form =
-  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons)) [tint]
-  (tfun tint (tfun addr_ty addr_ty))
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_list, EcCoreLib.s_cons))
+  ~tyargs:[tint] (tfun tint (tfun addr_ty addr_ty))
 
 let int_add_op : form =
-  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add")) []
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "add"))
   (tfun tint (tfun tint tbool))
 
 let int_lt_op : form =
-  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "lt")) []
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "lt"))
   (tfun tint (tfun tint tbool))
 
 let int_le_op : form =
-  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le")) []
+  f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le"))
   (tfun tint (tfun tint tbool))
 
 (* values of type EcIdent.t *)
@@ -300,10 +301,11 @@ let cond_subst_path_prefix_in_type (olds : SL.t) (news : SL.t) (ty : ty)
     | Tunivar _        -> error_non_EasyUC_type_or_formula ()
     | Tvar x           -> Tvar x   
     | Ttuple tys       -> Ttuple (List.map cond_subst_ty tys)
-    | Tconstr (p, tys) ->
+    | Tconstr (p, tas) ->
         Tconstr
         (cond_subst_path_prefix olds news p,
-         List.map cond_subst_ty tys)
+         mk_targs ~indices:tas.indices
+         ~types:(List.map cond_subst_ty tas.types) ())
     | Tfun (ty1, ty2)  -> Tfun (cond_subst_ty ty1, cond_subst_ty ty2) in
   cond_subst_ty ty
 
@@ -335,10 +337,12 @@ let cond_subst_path_prefix_in_form (olds : SL.t) (news : SL.t) (f : form)
         Flet (cond_subst_lpattern lpat, cond_subst_form f1, cond_subst_form f2)
     | Fint fzi            -> Fint fzi
     | Flocal id           -> Flocal id
-    | Fop (p, tys)        ->
+    | Fop (p, tas)        ->
         Fop
         (cond_subst_path_prefix olds news p,
-         List.map (cond_subst_path_prefix_in_type olds news) tys)
+         mk_targs ~indices:tas.indices
+         ~types:
+           (List.map (cond_subst_path_prefix_in_type olds news) tas.types) ())
     | Fapp (f, fs)        ->
         Fapp (cond_subst_form f, List.map cond_subst_form fs)
     | Ftuple fs           -> Ftuple (List.map cond_subst_form fs)
@@ -1474,8 +1478,8 @@ let pp_sent_msg_expr_tyd (env : EcEnv.env) (fmt : Format.formatter)
   let no_parens (f : form) : bool =
     is_local f ||
     match f.f_node with
-    | Fop (_, []) -> true
-    | _           -> false in
+    | Fop (_, targs) -> List.is_empty targs.types
+    | _              -> false in
   let pp_portform (fmt : Format.formatter) (f : form) : unit =
     if no_parens f
     then Format.fprintf fmt "%a" (pp_form env) f

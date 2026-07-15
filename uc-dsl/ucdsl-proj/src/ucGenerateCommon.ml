@@ -346,7 +346,8 @@ let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
     let f_if_addr_opt =
       EcFol.f_local (EcIdent.create if_addr_opt) (EcTypes.toption addr_ty) in
     let f_oget (f : EcFol.form) (ty : EcTypes.ty) : EcFol.form =
-      let op = EcFol.f_op EcCoreLib.CI_Option.p_oget [ty]
+(* TODO: Tomislav check *)
+      let op = EcFol.f_op EcCoreLib.CI_Option.p_oget ~tyargs:[ty]
                  (EcTypes.tfun (EcTypes.toption ty) ty)
       in
       EcFol.f_app op [f] ty
@@ -356,7 +357,7 @@ let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
   (* intport substitution *)
   let intport_op_ex (ptnm : string list) : EcFol.form =
     let ptnm = List.nth ptnm ((List.length ptnm)-1) in
-    EcFol.f_op (EcPath.fromqsymbol ([], intport_op_name ptnm)) []
+    EcFol.f_op (EcPath.fromqsymbol ([], intport_op_name ptnm))
       (EcTypes.tfun addr_ty port_ty)
   in
   let intport_self ptnm =

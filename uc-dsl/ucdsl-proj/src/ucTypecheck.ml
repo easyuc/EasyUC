@@ -1334,12 +1334,12 @@ let check_toplevel_match_clause
       let tvi = tvi |> EcUtils.omap (transtvi env ue) in
       let cts = EcUnify.select_op ~filter tvi env (unloc cname) ue ([], None) in
       match cts with
-      | []                          ->
+      | []                             ->
           tyerror cname.pl_loc env (InvalidMatch FXE_CtorUnk)
-      | _ :: _ :: _                 ->
+      | _ :: _ :: _                    ->
           tyerror cname.pl_loc env (InvalidMatch FXE_CtorAmbiguous)
-      | [(cp, tvi), opty, subue, _] ->
-          let ctor = EcUtils.oget (EcEnv.Op.by_path_opt cp env) in
+      | [(cp, _, tvi), opty, subue, _] ->
+          let ctor = EcEnv.Op.by_path cp env in
           let (indp, ctoridx) = EcDecl.operator_as_ctor ctor in
           let indty = EcUtils.oget (EcEnv.Ty.by_path_opt indp env) in
           let ind =
@@ -1360,10 +1360,24 @@ let check_toplevel_match_clause
 
           EcUnify.UniEnv.restore ~src:subue ~dst:ue;
 
-          let ctorty =
-            let tvi = Some (EcUnify.TVIunamed tvi) in
-            fst (EcUnify.UniEnv.opentys ue indty.tyd_params tvi ctorty) in
-          let pty = EcUnify.UniEnv.fresh ue in
+          (* Open the constructor's field types AND its result type with a
+             single substitution so that any fresh index univars allocated
+             for [indty.tyd_params.idxvars] are anchored to a type that
+             actually participates in unification — without this, a 0-field
+             constructor of an indexed datatype leaves its index univars
+             dangling. *)
+          let result_ty =
+            EcTypes.tconstr indp
+              ~indices:(List.map (fun id -> TIVar id) indty.tyd_params.idxvars)
+              ~tyargs:(List.map tvar indty.tyd_params.tyvars) in
+          let ctorty, pty =
+            let tvi = Some (EcUnify.TVIunamed ([], tvi)) in
+            let opened, _ =
+              EcUnify.UniEnv.opentys ue indty.tyd_params tvi
+                (result_ty :: ctorty) in
+            match opened with
+            | r :: rest -> rest, r
+            | []        -> assert false in
 
           (try EcUnify.unify env ue (toarrow ctorty pty) opty with
            | EcUnify.UnificationFailure _ -> assert false);

@@ -19,7 +19,7 @@ let _r = "_r"
 let _x = "_x"
 let _envport = "envport"
 let msg_ty : ty =
-  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg")) []
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "msg"))
 let parties_str = "dispatcher"
 let loop_str = "loop"
 let proc_party_str (pn : string) = "party_"^pn
@@ -272,7 +272,8 @@ let rec print_code (sim_uses : string option)
       let bndngs = List.map (fun (idloc, ty) ->
                        (EcLocation.unloc idloc, ty)) bndngs in
       let pttn = EcTypes.toarrow (snd (List.split bndngs)) ety in
-      let pttn = EcFol.f_op (EcPath.pqoname (EcPath.prefix p) ctor) typ pttn in
+      let pttn = EcFol.f_op (EcPath.pqoname (EcPath.prefix p) ctor)
+                 ~tyargs:typ pttn in
       let pttn = EcFol.f_app pttn (List.map
                 (fun (x, ty) -> EcFol.f_local x ty) bndngs) ety
       in

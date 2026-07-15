@@ -32,23 +32,58 @@ let ppna_list_sep sep (ppnas : ppna list) : ppna =
         fprintf ppf "%t%(%)%t" ppna sep (f ppnas) in
   fprintf ppf "@[%t@]" (f ppnas)
 
+(* vs must be nonempty *)
+
+let pp_idxvars (ppf : formatter) (vs : psymbol list) : unit =
+  fprintf ppf "@[{%a}@]"
+  (pp_list ",@ " pp_symbol) (unlocs vs)
+
+(* vs must be nonempty *)
+
+let pp_tyvars (istydecl : bool) (ppf : formatter)
+    (vs : psymbol list) : unit =
+  if istydecl
+  then match vs with
+       | [v] -> fprintf ppf "%s" (unloc v)
+       | vs  ->
+           fprintf ppf "@[(%a)@]"
+           (pp_list ",@ " pp_symbol) (unlocs vs)
+  else fprintf ppf "@[[%a]@]"
+       (pp_list ",@ " pp_symbol) (unlocs vs)
+
+(* idxvs @ tyvs must be nonempty *)
+
+let pp_idxvars_and_tyvars (tydecl : bool) (ppf : formatter)
+    ((idxvs, tyvs) : psymbol list * psymbol list) : unit =
+  match idxvs, tyvs with
+  | idxvs, []   -> pp_idxvars ppf idxvs
+  | [],    tyvs -> pp_tyvars tydecl ppf tyvs
+  | idxvs, tyvs ->
+      fprintf ppf "%a@ %a"
+      pp_idxvars idxvs (pp_tyvars tydecl) tyvs
+
 let pp_abstract_type_decl (ptyd : ptydecl) : ppna =
   fun (ppf : formatter) ->
     let name = unloc ptyd.pty_name in
-    let tyvars = List.map (unloc) ptyd.pty_tyvars in
-    match List.length tyvars with
-    | 0 -> fprintf ppf "@[type@ %s.@]" name
-    | 1 -> fprintf ppf "@[type@ %s@ %s.@]" (List.hd tyvars) name
-    | _ ->
-        fprintf ppf "@[type@ (%a)@ %s.@]"
-        (pp_list ",@ " pp_symbol) tyvars name
+    let idxvars = ptyd.pty_idxvars in
+    let tyvars = ptyd.pty_tyvars in
+    if List.is_empty idxvars && List.is_empty tyvars
+    then fprintf ppf "@[type@ %s.@]" name
+    else fprintf ppf
+         "@[type@ %a@ %s.@]"
+         (pp_idxvars_and_tyvars true) (idxvars, tyvars)
+         name
 
 let pp_abstract_op_decl (env : EcEnv.env) (po : poperator) : ppna =
   fun (ppf : formatter) ->
-    let ue = EcUnify.UniEnv.create None in
+    let ue =
+      EcTyping.transtyvars ~idxparams:po.po_idxvars env
+      (loc po.po_name, po.po_tyvars) in
     let ppe = PPEnv.ofenv env in
     let tags = List.map unloc po.po_tags in
     let name = unloc (po.po_name) in
+    let idxvars = po.po_idxvars in
+    let tyvars = odfl [] po.po_tyvars in
     let pty =
       match po.po_def with
       | PO_abstr pty -> pty
@@ -56,15 +91,27 @@ let pp_abstract_op_decl (env : EcEnv.env) (po : poperator) : ppna =
     let ty = EcTyping.transty EcTyping.tp_tydecl env ue pty in
     let pp_tags ppf =
       fprintf ppf "@[[%a]@]" (pp_list "@ " pp_symbol) in
-    match List.length tags with
-    | 0 ->
+    match List.is_empty tags,
+          List.is_empty idxvars && List.is_empty tyvars with
+    | false, false ->
         fprintf ppf "@[op@ %a@ :@ %a.@]"
         (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
         (pp_type ppe) ty
-    | _ ->
+    | true,  false ->
         fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
         pp_tags tags
         (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
+        (pp_type ppe) ty
+    | false, true  ->
+        fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
+        (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
+        (pp_idxvars_and_tyvars false) (idxvars, tyvars)
+        (pp_type ppe) ty
+    | true,  true  ->
+        fprintf ppf "@[op@ %a@ %a@ %a@ :@ %a.@]"
+        pp_tags tags
+        (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
+        (pp_idxvars_and_tyvars false) (idxvars, tyvars)
         (pp_type ppe) ty
 
 let pgtybinding_to_ptybinding ((osyms, pgty) : pgtybinding)
@@ -98,18 +145,18 @@ let pp_aptybinding (ppe : PPEnv.t) (ppf : formatter)
   (pp_list "@ " pp_osym) osyms
   (pp_type ppe) ty  
 
-let add_aptybinding_to_env (env : EcEnv.env) ((osyms, ty) : aptybinding)
-      : EcEnv.env =
+let add_aptybinding_to_env (typarams : EcDecl.ty_params) (env : EcEnv.env)
+    ((osyms, ty) : aptybinding) : EcEnv.env =
   let locs =
     List.filter_map
     (omap (fun sym -> (EcIdent.create sym, EcBaseLogic.LD_var (ty, None))))
     osyms in
-  let x = EcEnv.LDecl.init env ~locals:(List.rev locs) [] in
+  let x = EcEnv.LDecl.init env ~locals:(List.rev locs) typarams in
   EcEnv.LDecl.toenv x
 
-let add_aptybindings_to_env (env : EcEnv.env) (aptybs : aptybinding list)
-      : EcEnv.env =
-  List.fold_left add_aptybinding_to_env env aptybs
+let add_aptybindings_to_env (typarams : EcDecl.ty_params) (env : EcEnv.env)
+    (aptybs : aptybinding list) : EcEnv.env =
+  List.fold_left (add_aptybinding_to_env typarams) env aptybs
 
 let pp_aptybindings (ppe : PPEnv.t) (ppf : formatter)
     (aptybs : aptybinding list) : unit =
@@ -118,8 +165,14 @@ let pp_aptybindings (ppe : PPEnv.t) (ppf : formatter)
 
 let pp_axiom (env : EcEnv.env) (pa : paxiom) : ppna =
   fun (ppf : formatter) ->
-    let ue = EcUnify.UniEnv.create None in
+    let ue =
+      EcTyping.transtyvars ~idxparams:pa.pa_idxvars env
+      (loc pa.pa_name, pa.pa_tyvars) in
+    let env = EcTyping.bind_idx_locals env ue in
+    let typarams = EcUnify.UniEnv.tparams ue in
     let name = unloc (pa.pa_name) in
+    let idxvars = pa.pa_idxvars in
+    let tyvars = odfl [] pa.pa_tyvars in
     let ptybs_opt = omap (List.map pgtybinding_to_ptybinding) pa.pa_vars in
     let aptybs_opt = omap (abs_ptybindings env ue) ptybs_opt in
     let pf = pa.pa_formula in
@@ -132,11 +185,17 @@ let pp_axiom (env : EcEnv.env) (pa : paxiom) : ppna =
           | EcUnify.UninstantiateUni -> failure "cannot happen" in
         let ts = EcFol.Tuni.subst uidmap in
         let f = EcFol.Fsubst.f_subst ts f in
-        fprintf ppf "@[axiom@ %s@ :@ %a.@]" name 
-        (pp_form ppe) f
+        if List.is_empty idxvars && List.is_empty tyvars
+        then fprintf ppf "@[axiom@ %s@ :@ %a.@]"
+             name 
+             (pp_form ppe) f
+        else fprintf ppf "@[axiom@ %s@ %a@ :@ %a.@]"
+             name 
+             (pp_idxvars_and_tyvars false) (idxvars, tyvars)
+             (pp_form ppe) f
     | Some aptybs ->
         let ppe = PPEnv.ofenv env in
-        let env' = add_aptybindings_to_env env aptybs in
+        let env' = add_aptybindings_to_env typarams env aptybs in
         let ppe' = PPEnv.ofenv env' in
         let f = EcTyping.trans_form_opt env' ue pf (Some EcTypes.tbool) in
         let uidmap =
@@ -146,9 +205,16 @@ let pp_axiom (env : EcEnv.env) (pa : paxiom) : ppna =
         let subst_ty = EcFol.ty_subst ts in
         let aptybs = aptybindings_type_map subst_ty aptybs in
         let f = EcFol.Fsubst.f_subst ts f in
-        fprintf ppf "@[axiom@ %s@ %a@ :@ %a.@]" name 
-        (pp_aptybindings ppe) aptybs
-        (pp_form ppe') f
+        if List.is_empty idxvars && List.is_empty tyvars
+        then fprintf ppf "@[axiom@ %s@ %a@ :@ %a.@]"
+             name 
+             (pp_aptybindings ppe) aptybs
+             (pp_form ppe') f
+        else fprintf ppf "@[axiom@ %s@ %a@ %a@ :@ %a.@]"
+             name 
+             (pp_idxvars_and_tyvars false) (idxvars, tyvars)
+             (pp_aptybindings ppe) aptybs
+             (pp_form ppe') f
 
 let pp_clmode (ppf : formatter) (clm : clmode) : unit =
   match clm with
@@ -177,33 +243,39 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
   match tho with
   | PTHO_Type tyo ->
       let name = qsym_to_sym name in
-      let ue = EcUnify.UniEnv.create None in
       let ppe = PPEnv.ofenv env in
-      let ((psyms, pty), clm) = by_syntax tyo in
-      let tyvars = List.map unloc psyms in
+      let ((idxvars, tyvars, pty), clm) = by_syntax tyo in
+      let ue =
+        EcTyping.transtyvars ~idxparams:idxvars env
+        (loc pqsym, Some tyvars) in
       let ty = EcTyping.transty EcTyping.tp_tydecl env ue pty in
-       (match List.length tyvars with
-        | 0 ->
-            fprintf ppf "@[type@ %s@ %a@ %a@]" name pp_clmode clm
-            (pp_type ppe) ty  
-        | 1 ->
-            fprintf ppf "@[type@ %s@ %s@ %a@ %a@]" (List.hd tyvars)
-            name pp_clmode clm (pp_type ppe) ty  
-        | _ ->
-            fprintf ppf "@[type@ (%a)@ %s@ %a@ %a@]"
-            (pp_list ",@ " pp_symbol) tyvars
-            name pp_clmode clm (pp_type ppe) ty)
+      if List.is_empty idxvars && List.is_empty tyvars
+      then fprintf ppf "@[type@ %s@ %a@ %a@]"
+           name
+           pp_clmode clm
+           (pp_type ppe) ty
+      else fprintf ppf "@[type@ %s@ %a@ %a@ %a@]"
+           name
+           (pp_idxvars_and_tyvars true) (idxvars, tyvars)
+           pp_clmode clm
+           (pp_type ppe) ty
   | PTHO_Op opo   ->
       let (opod, clm) = by_syntax opo in
-      let () = if opod.opov_tyvars <> None then failure "cannot happen" in
+      let tyvars = opod.opov_tyvars in
+      let ue =
+        EcTyping.transtyvars ~idxparams:[] env
+        (loc pqsym, tyvars) in
+      let env = EcTyping.bind_idx_locals env ue in
+      let ppe = PPEnv.ofenv env in
+      let typarams = EcUnify.UniEnv.tparams ue in
+      let tyvars = odfl [] tyvars in
       let args = opod.opov_args in
       let pty = opod.opov_retty in
       let pf = opod.opov_body in
-      let ue = EcUnify.UniEnv.create None in
       let ty = EcTyping.transty EcTyping.tp_relax env ue pty in
       let args = abs_ptybindings env ue args in
-      let env' = add_aptybindings_to_env env args in
-      let ppe = PPEnv.ofenv env' in
+      let env' = add_aptybindings_to_env typarams env args in
+      let ppe' = PPEnv.ofenv env' in
       let f = EcTyping.trans_form_opt env' ue pf (Some ty) in
       let uidmap =
         try EcUnify.UniEnv.close ue with
@@ -214,18 +286,45 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
       let args = aptybindings_type_map subst_ty args in
       let ty = subst_ty ty in
       let f = subst_form f in
+      (* this will change to including idxvars, presumably *)
+      let pp_tyvars ppf vs =
+        fprintf ppf "[@[%a]@]"     
+        (pp_list "@ " pp_symbol) (unlocs vs) in
       (match List.length args with
        | 0 ->
-           fprintf ppf "@[op@ %a@ :@ %a@ %a@ %a@]"
-           (pp_opname ppe) (EcPath.fromqsymbol name)
-           (pp_type ppe) ty pp_clmode clm
-           (pp_form ppe) f
+           if List.is_empty tyvars
+           then fprintf ppf "@[op@ %a@ :@ %a@ %a@ %a@]"
+                (pp_opname ppe) (EcPath.fromqsymbol name)
+                (pp_type ppe) ty
+                pp_clmode clm
+                (pp_form ppe') f
+           else fprintf ppf "@[op@ %a@ %a@ :@ %a@ %a@ %a@]"
+                (pp_opname ppe) (EcPath.fromqsymbol name)
+                pp_tyvars tyvars
+                (pp_type ppe) ty
+                pp_clmode clm
+                (pp_form ppe') f
        | _ ->
-           fprintf ppf "@[op@ %a@ %a@ :@ %a %a@ %a@]"
-           (pp_opname ppe) (EcPath.fromqsymbol name)
-           (pp_aptybindings ppe) args (pp_type ppe) ty
-           pp_clmode clm (pp_form ppe) f)
+           if List.is_empty tyvars
+           then fprintf ppf "@[op@ %a@ %a@ :@ %a %a@ %a@]"
+                (pp_opname ppe) (EcPath.fromqsymbol name)
+                (pp_aptybindings ppe) args
+                (pp_type ppe) ty
+                pp_clmode clm
+                (pp_form ppe') f
+           else fprintf ppf "@[op@ %a@ %a@ %a@ :@ %a %a@ %a@]"
+                (pp_opname ppe) (EcPath.fromqsymbol name)
+                pp_tyvars tyvars
+                (pp_aptybindings ppe) args
+                (pp_type ppe) ty
+                pp_clmode clm
+                (pp_form ppe') f)
   | _             -> failure "cannot happen"
+
+(*
+  (pp_list "@ " (pp_aptybinding ppe)) aptybs
+*)
+
 
 let pp_theory_cloning (env : EcEnv.env) (tc : theory_cloning) : ppna =
   fun (ppf : formatter) ->
