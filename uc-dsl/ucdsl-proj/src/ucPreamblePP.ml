@@ -254,9 +254,9 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
            name
            pp_clmode clm
            (pp_type ppe) ty
-      else fprintf ppf "@[type@ %s@ %a@ %a@ %a@]"
-           name
+      else fprintf ppf "@[type@ %a@ %s@ %a@ %a@]"
            (pp_idxvars_and_tyvars true) (idxvars, tyvars)
+           name
            pp_clmode clm
            (pp_type ppe) ty
   | PTHO_Op opo   ->
@@ -320,11 +320,6 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
                 pp_clmode clm
                 (pp_form ppe') f)
   | _             -> failure "cannot happen"
-
-(*
-  (pp_list "@ " (pp_aptybinding ppe)) aptybs
-*)
-
 
 let pp_theory_cloning (env : EcEnv.env) (tc : theory_cloning) : ppna =
   fun (ppf : formatter) ->
