@@ -24,7 +24,6 @@ let print_epdp_tag_univ (ppf : Format.formatter) (sc : EcScope.scope) : unit =
   let env = EcScope.env sc in
   let qepdp = (["Top";"UCBasicTypes"], "epdp_tag_univ") in
   let pth, oper = EcEnv.Op.lookup qepdp env in
-(* TODO: Tomislav check next line *)
   let epdp_opex = e_op pth oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
