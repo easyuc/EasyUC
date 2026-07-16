@@ -93,21 +93,21 @@ let pp_abstract_op_decl (env : EcEnv.env) (po : poperator) : ppna =
       fprintf ppf "@[[%a]@]" (pp_list "@ " pp_symbol) in
     match List.is_empty tags,
           List.is_empty idxvars && List.is_empty tyvars with
-    | false, false ->
+    | true,  true  ->
         fprintf ppf "@[op@ %a@ :@ %a.@]"
-        (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
-        (pp_type ppe) ty
-    | true,  false ->
-        fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
-        pp_tags tags
         (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
         (pp_type ppe) ty
     | false, true  ->
         fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
+        pp_tags tags
+        (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
+        (pp_type ppe) ty
+    | true,  false ->
+        fprintf ppf "@[op@ %a@ %a@ :@ %a.@]"
         (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
         (pp_idxvars_and_tyvars false) (idxvars, tyvars)
         (pp_type ppe) ty
-    | true,  true  ->
+    | false, false ->
         fprintf ppf "@[op@ %a@ %a@ %a@ :@ %a.@]"
         pp_tags tags
         (pp_opname ppe) (EcPath.fromqsymbol (qsymb_of_symb name))
