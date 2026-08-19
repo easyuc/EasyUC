@@ -1583,6 +1583,23 @@ and check_instr_not_transfer (instr : instruction_tyd) : unit =
 
 let replace_unif_vars_in_msg_match_code (ue : unienv)
     (is : instruction_tyd list located) : instruction_tyd list located =
+  let () =
+    if not (EcUnify.UniEnv.closed ue)
+    then if EcUnify.UniEnv.closed_tv ue
+         then error_message (loc is)
+              (fun ppf ->
+                 Format.fprintf ppf
+                 "@[cannot@ infer@ all@ index@ parameters@]")
+         else error_message (loc is)
+              (fun ppf ->
+                 Format.fprintf ppf
+                 "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
+
+    let fs      = EcUnify.UniEnv.close_subst ue in
+    let concl   = Fsubst.f_subst fs concl in
+
+
+
   let uidmap =
     try EcUnify.UniEnv.close ue with
     | EcUnify.UninstantiateUni ->
@@ -2896,6 +2913,29 @@ let inter_check_expr
     | Some expct_ty ->
         unify_or_fail env ue (loc pform) ~expct:expct_ty ty in
   (* replace unification variables in formula by types *)
+
+
+    if not (EcUnify.UniEnv.closed ue) then
+      if EcUnify.UniEnv.closed_tv ue then
+        hierror
+          "cannot infer all index parameters in the formula; \
+           supply them explicitly (e.g. `f[:n = 3]')"
+      else
+        hierror "the formula contains free type variables";
+
+    let fs      = EcUnify.UniEnv.close_subst ue in
+    let concl   = Fsubst.f_subst fs concl in
+
+
+
+  let () =
+    if not (EcUnify.UniEnv.closed ue)
+    then error_message (loc pform)
+         (fun ppf ->
+            Format.fprintf ppf
+            "@[top-level@ expressions@ must@ be@ monomorphic@]") in
+
+
   let uidmap =
     try EcUnify.UniEnv.close ue with
     | EcUnify.UninstantiateUni ->

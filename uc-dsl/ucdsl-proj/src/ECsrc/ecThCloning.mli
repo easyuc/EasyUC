@@ -6,9 +6,12 @@ open EcParsetree
 (* -------------------------------------------------------------------- *)
 type incompatible =
 | NotSameNumberOfTyParam of int * int
+| NotSameNumberOfIdxParam of int * int
 | DifferentType of EcTypes.ty * EcTypes.ty
 | OpBody (* of (EcPath.path * EcDecl.operator) * (EcPath.path * EcDecl.operator) *)
 | TyBody (* of (EcPath.path * EcDecl.tydecl) * (EcPath.path * EcDecl.tydecl) *)
+| SubtypeType of (EcTypes.ty * EcTypes.ty option)
+| SubtypePred of (EcAst.form * EcAst.form)
 
 type ovkind =
 | OVK_Type
@@ -35,7 +38,6 @@ type clone_error =
 | CE_InlinedOpIsForm   of qsymbol
 | CE_ProofForLemma     of qsymbol
 | CE_IdxArgMism        of ovkind * qsymbol
-| CE_IndexedNotYetSupported of ovkind * qsymbol
 | CE_NoExceptions
 
 exception CloneError of EcEnv.env * clone_error

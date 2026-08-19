@@ -12,9 +12,12 @@ module Mp = EcPath.Mp
 (* ------------------------------------------------------------------ *)
 type incompatible =
 | NotSameNumberOfTyParam of int * int
+| NotSameNumberOfIdxParam of int * int
 | DifferentType of EcTypes.ty * EcTypes.ty
 | OpBody (* of (EcPath.path * EcDecl.operator) * (EcPath.path * EcDecl.operator) *)
 | TyBody (* of (EcPath.path * EcDecl.tydecl) * (EcPath.path * EcDecl.tydecl) *)
+| SubtypeType of (EcTypes.ty * EcTypes.ty option)
+| SubtypePred of (EcAst.form * EcAst.form)
 
 type ovkind =
 | OVK_Type
@@ -43,7 +46,6 @@ type clone_error =
 | CE_IdxArgMism        of ovkind * qsymbol
 (* Cloning of indexed declarations is not yet supported (Phase 3
    landed the binders but not the index-instantiation surface). *)
-| CE_IndexedNotYetSupported of ovkind * qsymbol
 | CE_NoExceptions
 
 exception CloneError of EcEnv.env * clone_error

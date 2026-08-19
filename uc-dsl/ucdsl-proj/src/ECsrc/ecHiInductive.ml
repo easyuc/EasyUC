@@ -424,7 +424,7 @@ let trans_matchfix
                   ~indices:(List.map (fun id -> EcAst.TIVar id) indty.tyd_params.idxvars)
                   ~tyargs:(List.map tvar indty.tyd_params.tyvars) in
               let ctorty, pty =
-                let tvi = Some (EcUnify.TVIunamed ([], tvi)) in
+                let tvi = Some (EcUnify.TVIunamed (EcUnify.IXunamed [], tvi)) in
                 let opened, _ =
                   EcUnify.UniEnv.opentys ue indty.tyd_params tvi
                     (result_ty :: ctorty) in
@@ -496,7 +496,7 @@ let trans_matchfix
   (* Build the final result *)
   let aout =
     if close then
-      let ts = Tuni.subst (EcUnify.UniEnv.assubst ue) in
+      let ts = EcUnify.UniEnv.as_subst ue in
       let tparams  = EcUnify.UniEnv.tparams ue in
       let codom    = ty_subst ts codom in
       let opexpr   = EcPath.pqname (EcEnv.root env) name in

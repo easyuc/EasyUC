@@ -45,11 +45,20 @@ module Tuni : sig
 end
 
 (* -------------------------------------------------------------------- *)
+(* Freshen a body's declaration parameters of both kinds; idxvars are
+   renamed in BOTH namespaces (tindex positions and int-typed
+   formula-local occurrences). Returns (body, fresh idxvars, fresh
+   tyvars). *)
+val f_freshen_tparams :
+  EcIdent.t list -> EcIdent.t list -> form
+  -> form * EcIdent.t list * EcIdent.t list
+
 module Tvar : sig
-  val init    : EcIdent.t list -> ty list -> ty Mid.t
-  val subst1  : (EcIdent.t * ty) -> ty -> ty
-  val subst   : ty Mid.t -> ty -> ty
-  val f_subst : freshen:bool -> EcIdent.t list -> ty list -> form -> form
+  val init      : EcIdent.t list -> ty list -> ty Mid.t
+  val subst1    : (EcIdent.t * ty) -> ty -> ty
+  val subst     : ty Mid.t -> ty -> ty
+  val f_subst   : freshen:bool -> EcIdent.t list -> ty list -> form -> form
+  val sty_subst : freshen:bool -> EcIdent.t list -> ty list -> (ty * form) option -> (ty * form) option
 end
 
 (* -------------------------------------------------------------------- *)

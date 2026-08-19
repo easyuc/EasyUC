@@ -65,17 +65,17 @@ exception CoreIncompatible
 exception NoException
 
 (* -------------------------------------------------------------------- *)
-let get_open_oper (env : EcEnv.env) (p : EcPath.path) (tys : ty list) =
+let get_open_oper (env : EcEnv.env) (p : EcPath.path) (tys : targs) =
   let oper = EcEnv.Op.by_path p env in
-  let _, okind = EcSubst.open_oper oper tys in
+  let _, okind = EcSubst.open_oper ~indices:tys.indices oper tys.types in
   match okind with
   | OB_oper (Some ob) -> ob
   | _ -> raise CoreIncompatible
 
 (* -------------------------------------------------------------------- *)
-let get_open_pred (env : EcEnv.env) (p : EcPath.path) (tys : ty list) =
+let get_open_pred (env : EcEnv.env) (p : EcPath.path) (tys : targs) =
   let oper = EcEnv.Op.by_path p env in
-  let _, okind = EcSubst.open_oper oper tys in
+  let _, okind = EcSubst.open_oper ~indices:tys.indices oper tys.types in
   match okind with
   | OB_pred (Some pb) -> pb
   | _ -> raise CoreIncompatible
@@ -109,7 +109,13 @@ end = struct
     and nlen = List.length ntp.tyvars in
 
     if rlen <> nlen then
-      raise (Incompatible (NotSameNumberOfTyParam (rlen, nlen)))
+      raise (Incompatible (NotSameNumberOfTyParam (rlen, nlen)));
+
+    let rilen = List.length rtp.idxvars
+    and nilen = List.length ntp.idxvars in
+
+    if rilen <> nilen then
+      raise (Incompatible (NotSameNumberOfIdxParam (rilen, nilen)))
 
   let for_params
     (hyps : hyps)
@@ -127,8 +133,16 @@ end = struct
   let for_ty (env : EcEnv.env) (ue : EcUnify.unienv) (rtyvars, rty) (ntyvars, nty) =
     for_tparams rtyvars ntyvars;
 
-    let subst = CS.Tvar.init rtyvars.tyvars (List.map tvar ntyvars.tyvars) in
-    let rty   = CS.Tvar.subst subst rty in
+    (* Rename the reference declaration's parameters -- type variables
+       AND index variables -- to the override's, then unify. *)
+    let fs =
+      CS.f_subst_init
+        ~tv:(CS.Tvar.init rtyvars.tyvars (List.map tvar ntyvars.tyvars))
+        ~idx:(EcIdent.Mid.of_list
+                (List.combine rtyvars.idxvars
+                   (List.map (fun id -> TIVar id) ntyvars.idxvars)))
+        () in
+    let rty = CS.ty_subst fs rty in
 
     try  EcUnify.unify env ue rty nty
     with EcUnify.UnificationFailure _ ->
@@ -187,12 +201,22 @@ end = struct
       let tparams = List.map tvar params.tyvars in
       let ty_body1 = tyd1.tyd_type in
       let ty_body2 = EcSubst.open_tydecl tyd2 tparams in
+      let subtype1 = CS.Tvar.sty_subst ~freshen:false tyd1.tyd_params.tyvars tparams tyd1.tyd_subtype in
+      let subtype2 = CS.Tvar.sty_subst ~freshen:false tyd2.tyd_params.tyvars tparams tyd2.tyd_subtype in
 
       let hyps = EcEnv.LDecl.init env params in
 
       match ty_body1, ty_body2 with
-      | Abstract, _ -> ()
-
+      | Abstract, _ -> begin
+        match subtype1, subtype2 with
+        | Some (ty1, f1), Some (ty2, f2) ->
+          if not (EcReduction.EqTest.for_type (toenv hyps) ty1 ty2) then
+            raise (Incompatible (SubtypeType (ty1, Some ty2)));
+          if not (EcReduction.is_conv ~ri:ri_compatible hyps f1 f2) then
+            raise (Incompatible (SubtypePred (f1, f2)))
+        |  Some (ty1, _), None -> raise (Incompatible (SubtypeType (ty1, None)))
+        | _, _ -> ()
+        end
       | _, _ -> tybody hyps ty_body1 ty_body2
 
     with CoreIncompatible -> raise (Incompatible TyBody)
@@ -249,11 +273,11 @@ end = struct
       check (EcReduction.is_conv ~ri:ri_compatible hyps f1 f2)
 
     | OP_Plain { f_node = Fop (p, tys) }, _ ->
-      let ob1 = get_open_oper (toenv hyps) p tys.types  in
+      let ob1 = get_open_oper (toenv hyps) p tys  in
       for_oper hyps ob1 ob2
 
     | _, OP_Plain { f_node = Fop (p, tys) } ->
-      let ob2 = get_open_oper (toenv hyps) p tys.types in
+      let ob2 = get_open_oper (toenv hyps) p tys in
       for_oper hyps ob1 ob2
 
     | OP_Constr (p1, i1), OP_Constr (p2, i2) ->
@@ -281,11 +305,11 @@ end = struct
       check (EcReduction.is_conv hyps f1 f2)
 
     | PR_Plain { f_node = Fop (p, tys) }, _ ->
-      let pb1 = get_open_pred (toenv hyps) p tys.types  in
+      let pb1 = get_open_pred (toenv hyps) p tys  in
       for_pred hyps pb1 pb2
 
     | _, PR_Plain { f_node = Fop (p, tys) } ->
-      let pb2 = get_open_pred (toenv hyps) p tys.types  in
+      let pb2 = get_open_pred (toenv hyps) p tys  in
       for_pred hyps pb1 pb2
 
     | PR_Ind pr1, PR_Ind pr2 ->
@@ -305,7 +329,8 @@ end = struct
 
     let oty1, okind1 = oper1.op_ty, oper1.op_kind in
     let tparams = List.map tvar params.tyvars in
-    let oty2, okind2 = EcSubst.open_oper oper2 tparams in
+    let tindices = List.map (fun id -> TIVar id) params.idxvars in
+    let oty2, okind2 = EcSubst.open_oper ~indices:tindices oper2 tparams in
 
     if not (EcReduction.EqTest.for_type env oty1 oty2) then
       raise (Incompatible (DifferentType(oty1, oty2)));
@@ -449,6 +474,57 @@ let for_op_path
 (* -------------------------------------------------------------------- *)
 let for_op_path subst ~opath ~ops p =
   odfl p (for_op_path subst ~opath ~ops p)
+
+(* -------------------------------------------------------------------- *)
+(* Map a ring/field slot through the clone overrides.  An inlined
+   override ([op zeror <- zerow[:n+1]]) carries the body's own
+   instantiation: record it, composed with the slot's recorded one
+   (expressed over the overridden op's formals). *)
+let for_ring_op
+   (subst : EcSubst.subst)
+  ~(opath : EcPath.path)
+  ~(ops   : _ Mp.t)
+   (o     : EcDecl.ring_op)
+=
+  let dflt () =
+    { EcDecl.ro_op = EcSubst.subst_path subst o.EcDecl.ro_op;
+      ro_idxs = List.map (EcSubst.subst_tindex subst) o.EcDecl.ro_idxs;
+      ro_tys  = List.map (EcSubst.subst_ty subst) o.EcDecl.ro_tys; } in
+  match
+    EcPath.remprefix ~prefix:opath ~path:o.EcDecl.ro_op |> omap List.rev
+  with
+  | None | Some [] -> dflt ()
+  | Some (x :: px) ->
+      let q = EcPath.fromqsymbol (List.rev px, x) in
+
+      match Mp.find_opt q ops with
+      | None -> dflt ()
+      | Some (op, alias) ->
+          if alias then dflt () else
+
+          match op.EcDecl.op_kind with
+          | OB_oper (Some (OP_Plain f)) -> begin
+              match f.f_node with
+              | Fop (r, ta) ->
+                  let ro_idxs =
+                    List.map (EcSubst.subst_tindex subst) o.EcDecl.ro_idxs in
+                  let ro_tys =
+                    List.map (EcSubst.subst_ty subst) o.EcDecl.ro_tys in
+                  let fs =
+                    EcCoreSubst.Fsubst.f_subst_init ~freshen:false
+                      ~tv:(EcIdent.Mid.of_list
+                             (List.combine op.EcDecl.op_tparams.tyvars ro_tys))
+                      ~idx:(EcIdent.Mid.of_list
+                             (List.combine op.EcDecl.op_tparams.idxvars ro_idxs))
+                      () in
+                  { EcDecl.ro_op = r;
+                    ro_idxs =
+                      List.map (EcCoreSubst.tindex_subst fs) ta.EcAst.indices;
+                    ro_tys  =
+                      List.map (EcCoreSubst.ty_subst fs) ta.EcAst.types; }
+              | _ -> raise InvInstPath
+            end
+          | _ -> dflt ()
  
 (* -------------------------------------------------------------------- *)
 let for_ty_path (subst : EcSubst.subst) ?(nargs = 0) (p : EcPath.path) =
@@ -485,12 +561,18 @@ let rec replay_tyd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, otyd
             let nargs_p = { idxvars; tyvars } in
             let ue    = EcUnify.UniEnv.create (Some nargs_p) in
             let ntyd  = EcTyping.transty EcTyping.tp_tydecl env ue ntyd in
+            let subtype =
+              match ntyd.ty_node with
+              | Tconstr (p, tys) ->
+                  let reftyd = EcEnv.Ty.by_path p env in
+                  CS.Tvar.sty_subst ~freshen:false reftyd.tyd_params.tyvars tys.types reftyd.tyd_subtype
+              | _ -> None in
             let decl  =
               { tyd_params   = nargs_p;
                 tyd_type     = Concrete ntyd;
                 tyd_loca     = otyd.tyd_loca;
                 tyd_clinline = (mode <> `Alias);
-                tyd_subtype  = None; }
+                tyd_subtype  = subtype; }
 
             in (decl, ntyd)
 
@@ -517,6 +599,7 @@ let rec replay_tyd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, otyd
         | `Direct ty -> begin
           assert (List.is_empty otyd.tyd_params.tyvars
                && List.is_empty otyd.tyd_params.idxvars);
+          assert (otyd.tyd_subtype = None);
           let decl  =
             { tyd_params   = { idxvars = []; tyvars = [] };
               tyd_type     = Concrete ty;
@@ -638,7 +721,10 @@ and replay_opd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopd) =
           match opov with
           | `BySyntax opov ->
               let tp = opov.opov_tyvars in
-              let ue = EcTyping.transtyvars env (loc, tp) in
+              let ue =
+                EcTyping.transtyvars
+                  ~idxparams:opov.opov_idxvars env (loc, tp) in
+              let env = EcTyping.bind_idx_locals env ue in
               let tp = EcTyping.tp_relax in
               let (ty, body) =
                 let codom   = EcTyping.transty tp env ue opov.opov_retty in
@@ -656,10 +742,16 @@ and replay_opd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopd) =
               end;
 
               if not (EcUnify.UniEnv.closed ue) then
-                ove.ovre_hooks.herr
-                  ~loc "this operator body contains free type variables";
+                if EcUnify.UniEnv.closed_tv ue then
+                  ove.ovre_hooks.herr
+                    ~loc "cannot infer all index parameters in this \
+                          operator body; supply them explicitly \
+                          (e.g. `f[:n = 3]')"
+                else
+                  ove.ovre_hooks.herr
+                    ~loc "this operator body contains free type variables";
 
-              let sty     = CS.Tuni.subst (EcUnify.UniEnv.close ue) in
+              let sty     = EcUnify.UniEnv.close_subst ue in
               let body    = EcFol.Fsubst.f_subst sty body in
               let ty      = CS.ty_subst sty ty in
               let tparams = EcUnify.UniEnv.tparams ue in
@@ -752,7 +844,10 @@ and replay_prd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopr) =
         match prov with
         | `BySyntax prov ->
             let tp = prov.prov_tyvars in
-            let ue = EcTyping.transtyvars env (loc, tp) in
+            let ue =
+              EcTyping.transtyvars
+                ~idxparams:prov.prov_idxvars env (loc, tp) in
+            let env = EcTyping.bind_idx_locals env ue in
             let body =
               let env, xs = EcTyping.trans_binding env ue prov.prov_args in
               let body    = EcTyping.trans_form_opt env ue prov.prov_body None in
@@ -772,10 +867,16 @@ and replay_prd (ove : _ ovrenv) (subst, ops, proofs, scope) (import, x, oopr) =
             end;
 
             if not (EcUnify.UniEnv.closed ue) then
-              ove.ovre_hooks.herr
-                ~loc "this predicate body contains free type variables";
+              if EcUnify.UniEnv.closed_tv ue then
+                ove.ovre_hooks.herr
+                  ~loc "cannot infer all index parameters in this \
+                        predicate body; supply them explicitly \
+                        (e.g. `f[:n = 3]')"
+              else
+                ove.ovre_hooks.herr
+                  ~loc "this predicate body contains free type variables";
 
-            let fs = CS.Tuni.subst (EcUnify.UniEnv.close ue) in
+            let fs = EcUnify.UniEnv.close_subst ue in
             let body    = EcFol.Fsubst.f_subst fs body in
             let tparams = EcUnify.UniEnv.tparams ue in
             let newpr   =
@@ -1011,7 +1112,7 @@ and replay_auto
 (* -------------------------------------------------------------------- *)
 and replay_reduction
   (ove : _ ovrenv) (subst, ops, proofs, scope)
-  (import, rules : _ * (EcPath.path * EcTheory.rule_option * EcTheory.rule option) list)
+  (import, ({ red_rules } as red) : _ * EcTheory.reduction_rule)
 =
   let for1 (p, opts, rule) =
     let exception Removed in
@@ -1030,8 +1131,8 @@ and replay_reduction
 
     in (p, opts, rule) in
 
-  let rules = List.map for1 rules in
-  let scope = ove.ovre_hooks.hadd_item scope ~import (Th_reduction rules) in
+  let red_rules = List.map for1 red_rules in
+  let scope = ove.ovre_hooks.hadd_item scope ~import (Th_reduction { red with red_rules }) in
 
   (subst, ops, proofs, scope)
 
@@ -1045,28 +1146,43 @@ and replay_instance
   try
     let (typ, ty) = EcSubst.subst_genty subst (typ, ty) in
     let tc =
-      let rec doring cr =
-        { r_type  = EcSubst.subst_ty subst cr.r_type;
-          r_indices = List.map (EcSubst.subst_tindex subst) cr.r_indices;
-          r_zero  = forpath cr.r_zero;
-          r_one   = forpath cr.r_one;
-          r_add   = forpath cr.r_add;
-          r_opp   = cr.r_opp |> omap forpath;
-          r_mul   = forpath cr.r_mul;
-          r_exp   = cr.r_exp |> omap forpath;
-          r_sub   = cr.r_sub |> omap forpath;
+      let foro = for_ring_op subst ~opath ~ops in
+      let doring cr =
+        { EcDecl.r_name = cr.EcDecl.r_name;
+          r_type  = EcSubst.subst_ty subst cr.EcDecl.r_type;
+          r_zero  = foro cr.EcDecl.r_zero;
+          r_one   = foro cr.EcDecl.r_one;
+          r_add   = foro cr.EcDecl.r_add;
+          r_opp   = omap foro cr.EcDecl.r_opp;
+          r_mul   = foro cr.EcDecl.r_mul;
+          r_exp   = omap foro cr.EcDecl.r_exp;
+          r_sub   = omap foro cr.EcDecl.r_sub;
           r_embed =
-            begin match cr.r_embed with
-            | `Direct  -> `Direct
-            | `Default -> `Default
-            | `Embed p -> `Embed (forpath p)
-            end;
-          r_kind = cr.r_kind; }
-
+            (match cr.EcDecl.r_embed with
+             | `Direct  -> `Direct
+             | `Default -> `Default
+             | `Embed o -> `Embed (foro o));
+          r_kind  = cr.EcDecl.r_kind; }
       and dofield cr =
-        { f_ring = doring cr.f_ring;
-          f_inv  = forpath cr.f_inv;
-          f_div  = cr.f_div |> omap forpath; }
+        let doring cr =
+          { EcDecl.r_name = cr.EcDecl.r_name;
+            r_type  = EcSubst.subst_ty subst cr.EcDecl.r_type;
+            r_zero  = foro cr.EcDecl.r_zero;
+            r_one   = foro cr.EcDecl.r_one;
+            r_add   = foro cr.EcDecl.r_add;
+            r_opp   = omap foro cr.EcDecl.r_opp;
+            r_mul   = foro cr.EcDecl.r_mul;
+            r_exp   = omap foro cr.EcDecl.r_exp;
+            r_sub   = omap foro cr.EcDecl.r_sub;
+            r_embed =
+              (match cr.EcDecl.r_embed with
+               | `Direct  -> `Direct
+               | `Default -> `Default
+               | `Embed o -> `Embed (foro o));
+            r_kind  = cr.EcDecl.r_kind; } in
+        { EcDecl.f_ring = doring cr.EcDecl.f_ring;
+          f_inv  = foro cr.EcDecl.f_inv;
+          f_div  = omap foro cr.EcDecl.f_div; }
       in
         match tc with
         | `Ring    cr -> `Ring  (doring  cr)

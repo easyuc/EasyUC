@@ -525,18 +525,22 @@ and on_modsig (aenv : aenv) (ms:module_sig) =
 (* -------------------------------------------------------------------- *)
 and on_ring (aenv : aenv) (r : ring) =
   on_ty aenv r.r_type;
-  let on_p p = on_opname aenv p in
-  List.iter on_p [r.r_zero; r.r_one; r.r_add; r.r_mul];
-  List.iter (oiter on_p) [r.r_opp; r.r_exp; r.r_sub];
+  let on_o (o : EcDecl.ring_op) =
+    on_opname aenv o.ro_op;
+    List.iter (on_ty aenv) o.ro_tys in
+  List.iter on_o [r.r_zero; r.r_one; r.r_add; r.r_mul];
+  List.iter (oiter on_o) [r.r_opp; r.r_exp; r.r_sub];
   match r.r_embed with
   | `Direct | `Default -> ()
-  | `Embed p -> on_p p
+  | `Embed o -> on_o o
 
 (* -------------------------------------------------------------------- *)
 and on_field (aenv : aenv) (f : field) =
   on_ring aenv f.f_ring;
-  let on_p p = on_opname aenv p in
-  on_p f.f_inv; oiter on_p f.f_div
+  let on_o (o : EcDecl.ring_op) =
+    on_opname aenv o.ro_op;
+    List.iter (on_ty aenv) o.ro_tys in
+  on_o f.f_inv; oiter on_o f.f_div
 
 (* -------------------------------------------------------------------- *)
 and on_instance (aenv : aenv) ty tci =

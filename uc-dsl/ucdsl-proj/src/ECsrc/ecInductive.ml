@@ -38,15 +38,19 @@ let datatype_proj_path (p : EP.path) (x : symbol) =
 
 (* -------------------------------------------------------------------- *)
 let indsc_of_record (rc : record) =
-  let tyargs = List.map tvar rc.rc_tparams.tyvars in
-  let recty  = tconstr_r rc.rc_path (mk_targs ~types:tyargs ()) in
+  let tyargs  = List.map tvar rc.rc_tparams.tyvars in
+  let indices = List.map (fun id -> EcAst.TIVar id) rc.rc_tparams.idxvars in
+  let recty   =
+    tconstr_r rc.rc_path (mk_targs ~indices ~types:tyargs ()) in
   let recx   = fresh_id_of_ty recty in
   let recfm  = FL.f_local recx recty in
   let predty = tfun recty tbool in
   let predx  = EcIdent.create "P" in
   let pred   = FL.f_local predx predty in
   let ctor   = record_ctor_path rc.rc_path in
-  let ctor   = FL.f_op ctor ~tyargs (toarrow (List.map snd rc.rc_fields) recty) in
+  let ctor   =
+    FL.f_op ctor ~indices ~tyargs
+      (toarrow (List.map snd rc.rc_fields) recty) in
   let prem   =
     let ids  = List.map (fun (_, fty) -> (fresh_id_of_ty fty, fty)) rc.rc_fields in
     let vars = List.map (fun (x, xty) -> FL.f_local x xty) ids in
@@ -227,12 +231,13 @@ let indsc_of_datatype ?(normty = identity) (mode : indmode) (dt : datatype) =
             |> omap (FL.f_forall [x, GTty ty1])
 
   and schemec mode (targs, p) pred (ctor, tys) =
-    let tyargs = List.map tvar targs.tyvars in
-    let indty = tconstr ~tyargs p in
+    let tyargs  = List.map tvar targs.tyvars in
+    let indices = List.map (fun id -> EcAst.TIVar id) targs.idxvars in
+    let indty   = tconstr ~indices ~tyargs p in
     let xs    = List.map (fun xty -> (fresh_id_of_ty xty, xty)) tys in
     let cargs = List.map (fun (x, xty) -> FL.f_local x xty) xs in
     let ctor  = EcPath.pqoname (EcPath.prefix tpath) ctor in
-    let ctor  = FL.f_op ctor ~tyargs (toarrow tys indty) in
+    let ctor  = FL.f_op ctor ~indices ~tyargs (toarrow tys indty) in
     let form  = FL.f_app pred [FL.f_app ctor cargs indty] tbool in
     let form  =
       match mode with
@@ -252,7 +257,10 @@ let indsc_of_datatype ?(normty = identity) (mode : indmode) (dt : datatype) =
       form
 
   and scheme mode (targs, p) ctors =
-    let indty  = tconstr ~tyargs:(List.map tvar targs.tyvars) p in
+    let indty  =
+      tconstr p
+        ~indices:(List.map (fun id -> EcAst.TIVar id) targs.idxvars)
+        ~tyargs:(List.map tvar targs.tyvars) in
     let indx   = fresh_id_of_ty indty in
     let indfm  = FL.f_local indx indty in
     let predty = tfun indty tbool in
@@ -269,7 +277,10 @@ let indsc_of_datatype ?(normty = identity) (mode : indmode) (dt : datatype) =
 
 (* -------------------------------------------------------------------- *)
 let datatype_projectors (tpath, tparams, { tydt_ctors = ctors }) =
-  let thety = tconstr ~tyargs:(List.map tvar tparams.tyvars) tpath in
+  let thety =
+    tconstr tpath
+      ~indices:(List.map (fun id -> EcAst.TIVar id) tparams.idxvars)
+      ~tyargs:(List.map tvar tparams.tyvars) in
 
   let do1 i (cname, cty) =
     let thv = EcIdent.create "the" in
@@ -383,7 +394,10 @@ let indsc_of_prind ({ ip_path = p; ip_prind = pri } as pr) =
     FL.f_forall ctor.prc_bds px
   in
 
-  let sc = FL.f_op p ~tyargs:(List.map tvar pr.ip_tparams.tyvars) prty in
+  let sc =
+    FL.f_op p
+      ~indices:(List.map (fun id -> EcAst.TIVar id) pr.ip_tparams.idxvars)
+      ~tyargs:(List.map tvar pr.ip_tparams.tyvars) prty in
   let sc = FL.f_imp (FL.f_app sc prag tbool) pred in
   let sc = FL.f_imps (List.map for1 pri.pri_ctors) sc in
   let sc = FL.f_forall [predx, FL.gtty tbool] sc in
@@ -396,7 +410,10 @@ let introsc_of_prind ({ ip_path = p; ip_prind = pri } as pr) =
   let bds  = List.map (snd_map FL.gtty) pri.pri_args in
   let clty = toarrow (List.map snd pri.pri_args) tbool in
   let clag = (List.map (curry FL.f_local) pri.pri_args) in
-  let cl   = FL.f_op p ~tyargs:(List.map tvar pr.ip_tparams.tyvars) clty in
+  let cl   =
+    FL.f_op p
+      ~indices:(List.map (fun id -> EcAst.TIVar id) pr.ip_tparams.idxvars)
+      ~tyargs:(List.map tvar pr.ip_tparams.tyvars) clty in
   let cl   = FL.f_app cl clag tbool in
 
   let for1 ctor =

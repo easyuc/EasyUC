@@ -201,29 +201,55 @@ type rkind = [
   | `Modulus of (zint option) pair
 ]
 
+(* An instance operator with its own recorded instantiation (indices
+   and types over the instance's binders), captured at typed
+   selection against the carrier. *)
+type ring_op = {
+  ro_op   : EcPath.path;
+  ro_idxs : tindex list;
+  ro_tys  : EcTypes.ty list;
+}
+
+val ring_op_equal : ring_op -> ring_op -> bool
+val ring_op_map :
+     (EcPath.path -> EcPath.path)
+  -> (EcTypes.ty -> EcTypes.ty)
+  -> (tindex -> tindex)
+  -> ring_op -> ring_op
+
 type ring = {
+  r_name  : EcSymbols.symbol option;
   r_type  : EcTypes.ty;
-  r_indices : tindex list;
-  r_zero  : EcPath.path;
-  r_one   : EcPath.path;
-  r_add   : EcPath.path;
-  r_opp   : EcPath.path option;
-  r_mul   : EcPath.path;
-  r_exp   : EcPath.path option;
-  r_sub   : EcPath.path option;
-  r_embed : [ `Direct | `Embed of EcPath.path | `Default];
+  r_zero  : ring_op;
+  r_one   : ring_op;
+  r_add   : ring_op;
+  r_opp   : ring_op option;
+  r_mul   : ring_op;
+  r_exp   : ring_op option;
+  r_sub   : ring_op option;
+  r_embed : [ `Direct | `Embed of ring_op | `Default];
   r_kind  : rkind;
 }
 
 val ring_equal : ring -> ring -> bool
+val ring_map :
+     (EcPath.path -> EcPath.path)
+  -> (EcTypes.ty -> EcTypes.ty)
+  -> (tindex -> tindex)
+  -> ring -> ring
 
 (* -------------------------------------------------------------------- *)
 type field = {
   f_ring : ring;
-  f_inv  : EcPath.path;
-  f_div  : EcPath.path option;
+  f_inv  : ring_op;
+  f_div  : ring_op option;
 }
 val field_equal : field -> field -> bool
+val field_map :
+     (EcPath.path -> EcPath.path)
+  -> (EcTypes.ty -> EcTypes.ty)
+  -> (tindex -> tindex)
+  -> field -> field
 
 (* -------------------------------------------------------------------- *)
 type binding_size = form * (int option)
@@ -287,6 +313,7 @@ type bv_opkind = [
   | `Init     of binding_size (* size_out *)
   | `Get      of binding_size (* size_in *)
   | `AInit    of binding_size * binding_size (* arr_len + size_out *)
+  | `PAInit   of binding_size (* arr_len; element size resolved at use (polymorphic) *)
   | `Map      of binding_size * binding_size * binding_size (* size_in + size_out + arr_size *)
   | `A2B      of (binding_size * binding_size) * binding_size (* (arr_len, elem_sz), out_size *)
   | `B2A      of binding_size * (binding_size * binding_size) (* size in, (arr_len, elem_sz)  *)

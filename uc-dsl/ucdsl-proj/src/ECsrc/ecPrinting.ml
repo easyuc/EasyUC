@@ -247,7 +247,7 @@ module PPEnv = struct
             | `Expr -> fun _ op -> not (EcDecl.is_pred op)
             | `Form -> fun _ _  -> true
           in
-          let tvi = Some (EcUnify.TVIunamed ([], typ)) in
+          let tvi = Some (EcUnify.TVIunamed (EcUnify.IXunamed [], typ)) in
 
         fun sm ->
           check_for_local sm;
@@ -968,17 +968,24 @@ let pp_opname (fmt : Format.formatter) ((nm, op) : symbol list * symbol) =
 
 (* -------------------------------------------------------------------- *)
 let pp_opname_with_tvi
-  (ppe           : PPEnv.t)
-  (fmt           : Format.formatter)
-  ((nm, op, tvi) : symbol list * symbol * ty list option)
+  (ppe                : PPEnv.t)
+  (fmt                : Format.formatter)
+  ((nm, op, ixi, tvi) : symbol list * symbol * tindex list option * ty list option)
 =
+  let pp_ix fmt =
+    match ixi with
+    | None -> ()
+    | Some ixs ->
+        Format.fprintf fmt "[:%a]"
+          (pp_list ",@ " (pp_tindex ppe)) ixs
+  in
   match tvi with
   | None ->
-      pp_opname fmt (nm, op)
+      Format.fprintf fmt "%a%t" pp_opname (nm, op) pp_ix
 
   | Some tvi ->
-      Format.fprintf fmt "%a<:%a>"
-        pp_opname (nm, op)
+      Format.fprintf fmt "%a%t<:%a>"
+        pp_opname (nm, op) pp_ix
         (pp_list ",@ " (pp_type ppe)) tvi
 
 (* -------------------------------------------------------------------- *)
@@ -1143,6 +1150,46 @@ let tvi_dominated (env : EcEnv.env) (op : EcPath.path) (nargs : int) : bool =
         Sid.empty arg_tys in
     List.for_all (fun id -> Sid.mem id covered) tparams.tyvars
 
+(* Index variables RECOVERABLE from a type: an idxvar counts as
+   displayed information only when some index determines it -- i.e.
+   the (normalized) index is affine in exactly that one variable with
+   unit coefficient ([vec<:n>], [vec<:n + 1>]), matching the
+   unifier's invertible fragment. [vec<:n + m>] or [vec<:2 * n>]
+   determine nothing. *)
+let recoverable_idxvar (ti : EcAst.tindex) : EcIdent.t option =
+  match EcAst.tindex_normalize ti with
+  | EcAst.TIVar v -> Some v
+  | EcAst.TIAdd (EcAst.TIConst _, EcAst.TIVar v) -> Some v
+  | _ -> None
+
+let rec ty_idxfv_rec (acc : Sid.t) (ty : ty) : Sid.t =
+  let acc =
+    match ty.ty_node with
+    | Tconstr (_, ta) ->
+        List.fold_left
+          (fun acc ti ->
+            match recoverable_idxvar ti with
+            | Some id -> Sid.add id acc
+            | None    -> acc)
+          acc ta.indices
+    | _ -> acc
+  in
+  ty_fold ty_idxfv_rec acc ty
+
+(* Index counterpart of [tvi_dominated]: all index parameters of [op]
+   can be inferred from the types of the first [nargs] arguments. *)
+let ixs_dominated (env : EcEnv.env) (op : EcPath.path) (nargs : int) : bool =
+  match EcEnv.Op.by_path_opt op env with
+  | None -> false
+  | Some opdecl ->
+    let dom, _ = tyfun_flat opdecl.op_ty in
+    let arg_tys = List.take nargs dom in
+    let covered =
+      List.fold_left ty_idxfv_rec Sid.empty arg_tys in
+    List.for_all
+      (fun id -> Sid.mem id covered)
+      opdecl.op_tparams.idxvars
+
 (* -------------------------------------------------------------------- *)
 let pp_opapp
   (ppe      : PPEnv.t)
@@ -1157,6 +1204,7 @@ let pp_opapp
   (fmt      : Format.formatter)
   ((pred    : [`Expr | `Form]),
   (op       : EcPath.path),
+  (ixs      : EcAst.tindex list),
   (tvi      : EcTypes.ty list),
   (es       : 'a list),
   (tyopt    : ty option))
@@ -1226,14 +1274,23 @@ let pp_opapp
           then None else Some tvi
       in
 
+      let ixs_opt =
+        if List.is_empty ixs then None
+        else
+          let dominated =
+            ixs_dominated ppe.PPEnv.ppe_env op (List.length es) in
+          if dominated && not ppe.PPEnv.ppe_showtvi
+          then None else Some ixs
+      in
+
       fun () ->
         match es with
         | [] ->
-            pp_opname_with_tvi ppe fmt (nm, opname, tvi_opt)
+            pp_opname_with_tvi ppe fmt (nm, opname, ixs_opt, tvi_opt)
 
         | _  ->
             let pp_first = fun _ _ fmt op ->
-              pp_opname_with_tvi ppe fmt (fst op, snd op, tvi_opt) in
+              pp_opname_with_tvi ppe fmt (fst op, snd op, ixs_opt, tvi_opt) in
             let pp fmt () = pp_app ppe ~pp_first ~pp_sub outer fmt ((nm, opname), es) in
             maybe_paren outer max_op_prec pp fmt ()
 
@@ -1967,7 +2024,7 @@ and pp_form_core_r
     in
       pp_opapp ppe f_ty
         (dt_sub, pp_form_r, is_trm, is_tuple, is_proj)
-        lower_left outer fmt (`Form, op, tys, es, tyopt)
+        lower_left outer fmt (`Form, op, tys.indices, tys.types, es, tyopt)
   in
 
   match f.f_node with
@@ -2030,7 +2087,7 @@ and pp_form_core_r
       pp_let ~fv:f2.f_fv ppe pp_form_r outer fmt (lp, f1, f2)
 
   | Fop (op, tvi) ->
-      pp_opapp ppe outer fmt (op, tvi.types, [], Some f.f_ty)
+      pp_opapp ppe outer fmt (op, tvi, [], Some f.f_ty)
 
   | Fapp ({f_node = Fop (op, _)},
             [{f_node = Fapp ({f_node = Fop (op', tys)}, [f1; f2])}])
@@ -2038,10 +2095,10 @@ and pp_form_core_r
         && EcPath.p_equal op' EcCoreLib.CI_Bool.p_eq
     ->
       let negop = EcPath.pqoname (EcPath.prefix op') "<>" in
-      pp_opapp ppe outer fmt (negop, tys.types, [f1; f2], Some f.f_ty)
+      pp_opapp ppe outer fmt (negop, tys, [f1; f2], Some f.f_ty)
 
   | Fapp ({f_node = Fop (p, tys)}, args) ->
-      pp_opapp ppe outer fmt (p, tys.types, args, Some f.f_ty)
+      pp_opapp ppe outer fmt (p, tys, args, Some f.f_ty)
 
   | Fapp (e, args) ->
       pp_app ppe ~pp_first:pp_form_r ~pp_sub:pp_form_r outer fmt (e, args)
@@ -3753,6 +3810,44 @@ and pp_block ppe fmt s =
 and pp_stmt ppe fmt s =
   pp_list "@," (pp_instr ppe) fmt s.s_node
 
+let pp_function ppe fmt (fun_ : function_) =
+  let pp_item ppe fmt = function
+    | `Var pv ->
+        Format.fprintf fmt "@[<hov 2>var %a;@]" (pp_pvdecl ppe) pv
+    | `Instr i ->
+        Format.fprintf fmt "%a" (pp_instr ppe) i
+    | `Return e ->
+        Format.fprintf fmt "@[<hov 2>return@ @[%a@];@]" (pp_expr ppe) e
+  in
+
+  let pp_funhdr ppe fmt fun_ =
+    let with_sig = match fun_.f_def with FBalias _ -> false | _ -> true in
+    Format.fprintf fmt "%a" (pp_funsig ~with_sig ppe) fun_.f_sig in
+
+  let pp_fundef ppe fmt fun_ =
+    match fun_.f_def with
+    | (FBdef def) ->
+      let dummy_mem = EcIdent.create "&hr_dummy" in
+      let _, me = EcEnv.Fun.actmem_body dummy_mem fun_ in
+      let ppe  = PPEnv.push_mem ppe ~active:true me in
+      let vars = List.map (fun x -> `Var    x) def.f_locals in
+      let stmt = List.map (fun x -> `Instr  x) def.f_body.s_node in
+      let ret  = List.map (fun x -> `Return x) (otolist def.f_ret) in
+      let all  = List.filter (fun x -> not (List.is_empty x)) [vars; stmt; ret] in
+
+      if List.is_empty all then Format.fprintf fmt "{}" else
+        Format.fprintf fmt "{@,  @[<v>%a@]@,}"
+          (pp_list "@,@," (pp_list "@," (pp_item ppe))) all;
+
+    | FBalias g ->
+        Format.fprintf fmt "%a" (pp_funname ppe) g
+
+    | FBabs _ ->
+        Format.fprintf fmt "?ABSTRACT?"
+  in
+
+  Format.fprintf fmt "@[<v>%a = %a@]" (pp_funhdr ppe) fun_ (pp_fundef ppe) fun_
+
 let rec pp_modexp ppe fmt (p, me) =
   let params =
     match me.me_body with
@@ -3784,42 +3879,7 @@ and pp_moditem ppe fmt (p, i) =
       Format.fprintf fmt "@[<hov 2>var %a@]" (pp_pvdecl ppe) v
 
   | MI_Function f ->
-    let pp_item ppe fmt = function
-      | `Var pv ->
-          Format.fprintf fmt "@[<hov 2>var %a;@]" (pp_pvdecl ppe) pv
-      | `Instr i ->
-          Format.fprintf fmt "%a" (pp_instr ppe) i
-      | `Return e ->
-          Format.fprintf fmt "@[<hov 2>return@ @[%a@];@]" (pp_expr ppe) e
-    in
-
-    let pp_funsig ppe fmt fun_ =
-      let with_sig = match fun_.f_def with FBalias _ -> false | _ -> true in
-      Format.fprintf fmt "%a" (pp_funsig ~with_sig ppe) fun_.f_sig in
-
-    let pp_fundef ppe fmt fun_ =
-      match fun_.f_def with
-      | (FBdef def) ->
-        let dummy_mem = EcIdent.create "&hr_dummy" in
-        let _, me = EcEnv.Fun.actmem_body dummy_mem fun_ in
-        let ppe  = PPEnv.push_mem ppe ~active:true me in
-        let vars = List.map (fun x -> `Var    x) def.f_locals in
-        let stmt = List.map (fun x -> `Instr  x) def.f_body.s_node in
-        let ret  = List.map (fun x -> `Return x) (otolist def.f_ret) in
-        let all  = List.filter (fun x -> not (List.is_empty x)) [vars; stmt; ret] in
-
-        if List.is_empty all then Format.fprintf fmt "{}" else
-          Format.fprintf fmt "{@,  @[<v>%a@]@,}"
-            (pp_list "@,@," (pp_list "@," (pp_item ppe))) all;
-
-      | FBalias g ->
-          Format.fprintf fmt "%a" (pp_funname ppe) g
-
-      | FBabs _ ->
-          Format.fprintf fmt "?ABSTRACT?"
-    in
-
-    Format.fprintf fmt "@[<v>%a = %a@]" (pp_funsig ppe) f (pp_fundef ppe) f
+    pp_function ppe fmt f
 
 let pp_modexp ppe fmt (mp, me) =
   Format.fprintf fmt "%a." (pp_modexp ppe) (mp, me)
@@ -3944,9 +4004,9 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
               (pp_paren (pp_list ",@ " (pp_tyvar ppe))) typ.tyvars
               (pp_type ppe) ty
               (pp_list "@\n"
-                 (fun fmt (name, op) ->
+                 (fun fmt (name, (op : EcDecl.ring_op)) ->
                    Format.fprintf fmt "op %s = %s"
-                     name (EcPath.tostring op)))
+                     name (EcPath.tostring op.ro_op)))
               ops
       end
 
@@ -3964,9 +4024,16 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
         pp_locality lc
         (pp_rwname ppe) p (pp_list "@ " (pp_axname ppe)) l
 
-  | EcTheory.Th_reduction _ ->
-      (* FIXME: section we should add the lemma in the reduction *)
-      Format.fprintf fmt "hint simplify."
+  | EcTheory.Th_reduction { red_base; red_rules; } ->
+      (* [hint simplify <lemmas>.] for the default base; [hint simplify in
+         <base> : <lemmas>.] for a named one (mirrors the grammar). *)
+      let pp_head fmt = function
+        | None      -> Format.fprintf fmt "hint simplify"
+        | Some base -> Format.fprintf fmt "hint simplify in %s :" base in
+      let lemmas = List.map proj3_1 red_rules in
+      Format.fprintf fmt "%a @[<hov 2>%a@]."
+        pp_head red_base
+        (pp_list ",@ " (pp_axname ppe)) lemmas
 
   | EcTheory.Th_auto { level; base; axioms; locality; } ->
       Format.fprintf fmt "%ahint solve %d %s : %a."
@@ -4028,6 +4095,7 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
         | `Init     _            -> "init"
         | `Get      _            -> "get"
         | `AInit    _            -> "ainit"
+        | `PAInit   _            -> "painit"
         | `Extend  (_, _, false) -> "zextend"
         | `Extend  (_, _, true ) -> "sextend"
         | `Extract  _            -> "extract"
@@ -4101,6 +4169,10 @@ let pp_by_theory
   ) tr
 
 (* -------------------------------------------------------------------- *)
+let pp_rp_indices (ppe : PPEnv.t) (fmt : Format.formatter) ixs =
+  if ixs <> [] then
+    Format.fprintf fmt "[:%a]" (pp_list ",@ " (pp_tindex ppe)) ixs
+
 let rec pp_rule_pattern
   (ppe  : PPEnv.t)
   (fmt  : Format.formatter)
@@ -4109,10 +4181,10 @@ let rec pp_rule_pattern
   match rule with
   | Rule (`Tuple, args) ->
     Format.fprintf fmt "(%a)" (pp_list ",@ " (pp_rule_pattern ppe)) args
-  | Rule (`Op (p, _), []) ->
-    Format.fprintf fmt "%a" (pp_opname ppe) p
-  | Rule (`Op (p, _), args) ->
-    Format.fprintf fmt "%a@ %a" (pp_opname ppe) p
+  | Rule (`Op (p, ixs, _), []) ->
+    Format.fprintf fmt "%a%a" (pp_opname ppe) p (pp_rp_indices ppe) ixs
+  | Rule (`Op (p, ixs, _), args) ->
+    Format.fprintf fmt "%a%a@ %a" (pp_opname ppe) p (pp_rp_indices ppe) ixs
     (pp_list "@ " (pp_paren (pp_rule_pattern ppe))) args
   | Rule (`Proj i, [arg]) ->
     Format.fprintf fmt "(%a)`.%d" (pp_rule_pattern ppe) arg i
@@ -4212,6 +4284,31 @@ module ObjectInfo = struct
   let pr_mod = pr_gen pr_mod_r
 
   (* ------------------------------------------------------------------ *)
+  let pr_fun_r =
+    (* Prefer the substituting lookup so that a concrete or fully-applied
+       procedure prints with its instantiated names.  When the enclosing
+       module still has functor parameters, that lookup fails; we then fall
+       back to the suspended view, which keeps the parameters abstract. *)
+    let lookup qs env =
+      try
+        let (xp, f) = EcEnv.Fun.lookup qs env in
+        (xp, { EcEnv.sp_target = f; sp_params = (0, []); })
+      with EcEnv.LookupFailure _ -> EcEnv.Fun.sp_lookup qs env in
+    { od_name    = "procedures";
+      od_lookup  = lookup;
+      od_printer =
+        (fun ppe fmt (_, susp) ->
+          let (_, params) = susp.EcEnv.sp_params in
+          let (ppe, pp_params) = pp_mod_params ppe params in
+          if List.is_empty params then
+            pp_function ppe fmt susp.EcEnv.sp_target
+          else
+            Format.fprintf fmt "@[<v>(* in functor %t *)@ %a@]"
+              pp_params (pp_function ppe) susp.EcEnv.sp_target); }
+
+  let pr_fun = pr_gen pr_fun_r
+
+  (* ------------------------------------------------------------------ *)
   let pr_mty_r =
     { od_name    = "module types";
       od_lookup  = EcEnv.ModTy.lookup;
@@ -4256,6 +4353,7 @@ module ObjectInfo = struct
                     pr_gen_r ~prcat:true pr_th_r ;
                     pr_gen_r ~prcat:true pr_ax_r ;
                     pr_gen_r ~prcat:true pr_mod_r;
+                    pr_gen_r ~prcat:true pr_fun_r;
                     pr_gen_r ~prcat:true pr_mty_r;
                     pr_gen_r ~prcat:true pr_rw_r ;
                     pr_gen_r ~prcat:true pr_at_r ; ] in

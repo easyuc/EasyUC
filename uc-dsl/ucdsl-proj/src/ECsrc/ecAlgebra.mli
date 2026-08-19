@@ -16,7 +16,7 @@ module RState : sig
 end
 
 (* -------------------------------------------------------------------- *)
-val rapp   : ring -> EcPath.path -> form list -> form
+val rapp   : ring -> EcDecl.ring_op -> form list -> form
 val rzero  : ring -> form
 val rone   : ring -> form
 val radd   : ring -> form -> form -> form

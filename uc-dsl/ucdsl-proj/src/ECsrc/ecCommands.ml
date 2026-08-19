@@ -99,6 +99,8 @@ let gstate_bool_flags = [
   EcGState.pp_showtvi;
   EcGState.circuit_timing;
   EcGState.circuit_debug_smt;
+  EcGState.warn_uninit;
+  EcGState.warn_unused_unfold;
 ]
 
 exception InvalidPragma of string
@@ -350,18 +352,11 @@ module HiPrinting = struct
   let pr_hint_simplify (fmt : Format.formatter) (env : EcEnv.env) =
     let open EcTheory in
 
-    let (hint_simplify: (EcEnv.Reduction.topsym * rule list) list) = EcEnv.Reduction.all env in
-
-    let hint_simplify = List.filter_map (fun (ts, rl) ->
-      match ts with
-      | `Path p -> Some (p, rl)
-      | _ -> None
-    ) hint_simplify
-    in
+    let hint_simplify = EcEnv.Reduction.all env in
 
     let ppe = EcPrinting.PPEnv.ofenv env in
 
-    let pp_hint_simplify ppe fmt = (fun (p,  (rls : rule list)) ->
+    let pp_rules ppe fmt = (fun (p,  (rls : rule list)) ->
       Format.fprintf fmt "@[<b 2>%s:@\n%a@]" (EcPath.basename p)
         (EcPrinting.pp_list "@\n" (fun fmt rl ->
           begin match rl.rl_cond with
@@ -376,7 +371,21 @@ module HiPrinting = struct
       )
     in
 
-    EcPrinting.pp_by_theory ppe pp_hint_simplify fmt hint_simplify
+    let pp_db fmt (base, entries) =
+      let entries = List.filter_map (fun (ts, rl) ->
+        match ts with
+        | `Path p -> Some (p, rl)
+        | _ -> None
+      ) entries in
+
+      if not (List.is_empty entries) then
+        Format.fprintf fmt "@[<v 2>%s:@\n%a@]"
+          (if base = EcEnv.Reduction.dname then "<default>" else base)
+          (EcPrinting.pp_by_theory ppe pp_rules) entries
+    in
+
+    EcPrinting.pp_list "@.@." pp_db fmt
+      (List.filter (fun (_, entries) -> not (List.is_empty entries)) hint_simplify)
 end
 
 (* -------------------------------------------------------------------- *)
@@ -390,6 +399,7 @@ let process_pr fmt scope p =
   | Pr_th   qs -> EcPrinting.ObjectInfo.pr_th   fmt env   (unloc qs)
   | Pr_ax   qs -> EcPrinting.ObjectInfo.pr_ax   fmt env   (unloc qs)
   | Pr_mod  qs -> EcPrinting.ObjectInfo.pr_mod  fmt env   (unloc qs)
+  | Pr_proc qs -> EcPrinting.ObjectInfo.pr_fun  fmt env   (unloc qs)
   | Pr_mty  qs -> EcPrinting.ObjectInfo.pr_mty  fmt env   (unloc qs)
   | Pr_any  qs -> EcPrinting.ObjectInfo.pr_any  fmt env   (unloc qs)
 

@@ -2,7 +2,6 @@
 open EcUtils
 open EcSymbols
 open EcLocation
-open EcTypes
 open EcCoreSubst
 open EcParsetree
 open EcDecl

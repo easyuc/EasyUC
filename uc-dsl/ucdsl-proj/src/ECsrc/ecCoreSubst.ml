@@ -807,6 +807,33 @@ module Tuni = struct
 end
 
 (* -------------------------------------------------------------------- *)
+(* Freshen a body's declaration parameters of BOTH kinds. Idxvars are
+   renamed in both their namespaces: tindex positions AND their
+   int-typed formula-local occurrences (renaming only one leaves the
+   other dangling, making the declaration unusable). Returns the
+   substituted form and the fresh (idxvars, tyvars). *)
+let f_freshen_tparams
+    (idxvars : ident list) (tyvars : ident list) (body : form)
+  : form * ident list * ident list
+=
+  let axipm = List.map EcIdent.fresh idxvars in
+  let axpm  = List.map EcIdent.fresh tyvars in
+  let fs =
+    Fsubst.f_subst_init ~freshen:true
+      ~tv:(List.fold_left2
+             (fun m id v -> Mid.add id (tvar v) m)
+             Mid.empty tyvars axpm)
+      ~idx:(List.fold_left2
+              (fun m id v -> Mid.add id (TIVar v) m)
+              Mid.empty idxvars axipm)
+      () in
+  let fs =
+    List.fold_left2
+      (fun fs oldi newi ->
+        Fsubst.f_bind_local fs oldi (EcCoreFol.f_local newi tint))
+      fs idxvars axipm in
+  (Fsubst.f_subst fs body, axipm, axpm)
+
 module Tvar = struct
   let subst (s : ty Mid.t) (ty : ty) : ty =
     ty_subst { f_subst_id with fs_v = s } ty
@@ -820,4 +847,11 @@ module Tvar = struct
 
   let f_subst ~(freshen : bool) (lv : ident list) (lt : ty list) : form -> form =
     Fsubst.f_subst_tvar ~freshen (init lv lt)
+
+  let sty_subst ~(freshen : bool) (lv : ident list) (lt : ty list) : (ty * form) option -> (ty * form) option =
+    let tsubst = init lv lt in
+    Option.map
+      (fun (ty, f) ->
+        ( subst tsubst ty,
+        Fsubst.f_subst_tvar ~freshen tsubst f ))
 end

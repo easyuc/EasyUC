@@ -109,7 +109,7 @@ type pty_r =
   | PTtuple  of pty list
   | PTnamed  of pqsymbol
   | PTvar    of psymbol
-  | PTapp    of pqsymbol * pty list * pindex list
+  | PTapp    of pqsymbol * pty list * pidxannot
   | PTfun    of pty * pty
   | PTglob   of pmsymbol located
 and pty = pty_r located
@@ -128,11 +128,21 @@ and pindex_r =
   | PIhole
 and pindex = pindex_r located
 
+(* Explicit index instantiation: positional (`f[:3, 4]` / `t<:3, 4>`)
+   or named (`f[:n = 3, m = 4]` / `t<:n = 3, m = 4>`). [IXunamed []]
+   means "no indices provided". Named instantiation may be partial:
+   unnamed indices are inferred. *)
+and pidxannot =
+  | IXunamed of pindex list
+  | IXnamed  of (psymbol * pindex) list
+
 type ptyannot_r =
-  (* Explicit indices first, then explicit types. Either may be empty;
-     when both are empty, no instantiation was provided. *)
-  | TVIunamed of pindex list * pty list
-  | TVInamed  of (psymbol * pty) list
+  (* Explicit indices first, then explicit types. Either side may be
+     empty; when both are empty, no instantiation was provided. The
+     index and type sides are independent: each may be positional or
+     named. *)
+  | TVIunamed of pidxannot * pty list
+  | TVInamed  of pidxannot * (psymbol * pty) list
 
 and ptyannot  = ptyannot_r  located
 
@@ -588,6 +598,25 @@ type pcutdef = {
 type pmpred_args = (osymbol * pformula) list
 
 (* -------------------------------------------------------------------- *)
+(* The [hint …] clause of a [simplify]/[cbv] call. [ph_select] is the
+   unsigned base database selection (empty = use the proof-local default
+   / active set); [ph_dbs] are signed activate ([true]) / deactivate
+   ([false]) deltas on the current set; [ph_select] and [ph_dbs] are
+   mutually exclusive. [ph_hd] is the optional single-mode head filter;
+   [ph_lemmas] are lemmas added to the default DB for this call (lemma
+   sets are add-only -- the head filter restricts which rules apply). *)
+type psimplify_hint = {
+  ph_select : symbol list;
+  ph_dbs    : (bool * symbol) list;
+  ph_hd     : ([`Include | `Exclude] * pqsymbol list) option;
+  ph_lemmas : pqsymbol list;
+}
+
+let empty_simplify_hint = {
+  ph_select = []; ph_dbs = []; ph_hd = None; ph_lemmas = [];
+}
+
+(* -------------------------------------------------------------------- *)
 type preduction = {
   pbeta    : bool;                      (* β-reduction *)
   pdelta   : pqsymbol list option;      (* definition unfolding *)
@@ -597,6 +626,7 @@ type preduction = {
   plogic   : bool;                      (* logical simplification *)
   pmodpath : bool;                      (* modpath normalization *)
   puser    : bool;                      (* user reduction *)
+  phint    : psimplify_hint;            (* use-site [hint …] clause *)
 }
 
 (* -------------------------------------------------------------------- *)
@@ -1002,7 +1032,7 @@ type rwarg = (tfocus located) option * rwarg1 located
 
 and rwarg1 =
   | RWSimpl  of [`Default | `Variant]
-  | RWDelta  of (rwoptions * pformula)
+  | RWDelta  of (bool * rwoptions * pformula)
   | RWRw     of (rwoptions * (rwside * ppterm) list)
   | RWPr     of (psymbol * pformula option)
   | RWDone   of [`Default | `Variant] option
@@ -1124,13 +1154,27 @@ type pcongr_mode =
   | PCongrPattern of pformula
 
 (* -------------------------------------------------------------------- *)
+type phintdbmode = [ `Add | `Remove ]
+
+(* A proof-local simplify-hint command. [PLHClause] applies a unified
+   [hint] clause: signed [+d]/[-d] activate/deactivate databases, signed
+   lemma sets [+{L}]/[-{L}] add/remove local lemmas (default DB), an
+   unsigned database list sets the proof-local default databases, and a
+   [+[ops]]/[-[ops]] filter sets the proof-local default head filter.
+   [PLHClear] / [PLHClearDefault] reset the local lemmas / the defaults. *)
+type plocalhint =
+  | PLHClause of psimplify_hint
+  | PLHClear of symbol option
+  | PLHClearDefault
+
+(* -------------------------------------------------------------------- *)
 type logtactic =
   | Preflexivity
   | Passumption
   | Psmt        of pprover_infos
   | Psplit      of [ `Default of int option | `All of [ `Maybe | `One ] ]
-  | Pfield      of psymbol list
-  | Pring       of psymbol list
+  | Pfield      of psymbol option * psymbol list
+  | Pring       of psymbol option * psymbol list
   | Palg_norm
   | Pexists     of ppt_arg located list
   | Pleft
@@ -1154,6 +1198,7 @@ type logtactic =
   | Pgenhave    of pgenhave
   | Pwlog       of (psymbol list * bool * pformula)
   | Pcoq        of (EcProvers.coq_mode option * psymbol * pprover_infos)
+  | PlocalHint  of plocalhint
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core_r =
@@ -1171,6 +1216,7 @@ and ptactic_core_r =
   | Pprogress   of ppgoptions * ptactic_core option
   | Psubgoal    of ptactic_chain
   | Pnstrict    of ptactic_core
+  | Pwith       of plocalhint * ptactics
   | Padmit
 
 (* -------------------------------------------------------------------- *)
@@ -1218,10 +1264,6 @@ type paxiom = {
   pa_name         : psymbol;
   pa_pvars        : mempred_binding option;
   pa_idxvars      : psymbol list;
-  (* Subset of [pa_idxvars] tagged with a trailing `+` in the binder
-     (e.g. [{n+ m}] marks [n]). For each such idxvar, [start_lemma]
-     wraps the proof goal with a [0 <= n =>] hypothesis. *)
-  pa_idxvars_nneg : psymbol list;
   pa_tyvars       : ptyparams option;
   pa_vars         : pgtybindings option;
   pa_formula      : pformula;
@@ -1238,6 +1280,10 @@ type prealize = {
 (* -------------------------------------------------------------------- *)
 type ptycinstance = {
   pti_name : pqsymbol;
+  pti_as   : psymbol option;
+  (* Index binders of an index-parametric instance ([{n}] in
+     [instance ring [w] with {n} word<:n+1> ...]). *)
+  pti_idx  : psymbol list;
   pti_type : ptyparams * pty;
   pti_ops  : (psymbol * (pty list * pqsymbol)) list;
   pti_axs  : (psymbol * ptactic_core) list;
@@ -1287,6 +1333,7 @@ type pprint =
   | Pr_pr   of pqsymbol
   | Pr_ax   of pqsymbol
   | Pr_mod  of pqsymbol
+  | Pr_proc of pqsymbol
   | Pr_mty  of pqsymbol
   | Pr_glob of pmsymbol located
   | Pr_goal of int
@@ -1370,16 +1417,18 @@ and 'a genoverride = [
 and ty_override_def = psymbol list * psymbol list * pty
 
 and op_override_def = {
-  opov_tyvars : psymbol list option;
-  opov_args   : ptybinding list;
-  opov_retty  : pty;
-  opov_body   : pformula;
+  opov_idxvars : psymbol list;
+  opov_tyvars  : psymbol list option;
+  opov_args    : ptybinding list;
+  opov_retty   : pty;
+  opov_body    : pformula;
 }
 
 and pr_override_def = {
-  prov_tyvars : psymbol list option;
-  prov_args   : ptybinding list;
-  prov_body   : pformula;
+  prov_idxvars : psymbol list;
+  prov_tyvars  : psymbol list option;
+  prov_args    : ptybinding list;
+  prov_body    : pformula;
 }
 
 (* -------------------------------------------------------------------- *)
@@ -1417,7 +1466,7 @@ type puseroption =
   [`Delta | `EqTrue]
 
 type puserred =
-  puseroption list * (pqsymbol list * int option) list
+  symbol option * puseroption list * (pqsymbol list * int option) list
 
 type threquire =
   psymbol option * (psymbol * psymbol option) list * [`Import|`Export] option

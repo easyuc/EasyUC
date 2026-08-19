@@ -148,6 +148,7 @@ type pregoal = {
   g_uid   : handle;
   g_hyps  : LDecl.hyps;
   g_concl : form;
+  g_simpl : EcEnv.simplify_context;
 }
 
 type validation =
@@ -284,6 +285,7 @@ module FApi : sig
    * focused goal local context. *)
   val mutate  : tcenv  -> (handle -> validation) -> ?hyps:LDecl.hyps -> form -> tcenv
   val mutate1 : tcenv1 -> (handle -> validation) -> ?hyps:LDecl.hyps -> form -> tcenv1
+  val map_pregoal1 : (pregoal -> pregoal) -> tcenv1 -> tcenv1
 
   (* Same as xmutate, but for an external node resolution depending on
    * a unbounded numbers of premises. The ['a] argument is the external
@@ -317,6 +319,7 @@ module FApi : sig
   val tc_flat    : ?target:ident -> tcenv -> LDecl.hyps * form
   val tc_eflat   : ?target:ident -> tcenv -> env * LDecl.hyps * form
   val tc_hyps    : ?target:ident -> tcenv -> LDecl.hyps
+  val tc_simplify_context : tcenv -> EcEnv.simplify_context
 
   (* Accessors for focused goal parts (tcenv1) *)
   val tc1_handle : tcenv1 -> handle
@@ -326,6 +329,7 @@ module FApi : sig
   val tc1_hyps   : ?target:ident -> tcenv1 -> LDecl.hyps
   val tc1_goal   : tcenv1 -> form
   val tc1_env    : tcenv1 -> EcEnv.env
+  val tc1_simplify_context : tcenv1 -> EcEnv.simplify_context
 
   (* Low-level tactic markers *)
   val t_low0 : string -> backward -> backward

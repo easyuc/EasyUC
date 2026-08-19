@@ -660,6 +660,12 @@ type reduction_info = {
   logic   : rlogic_info;
   modpath : bool;
   user    : bool;
+  (* Databases selected at the use-site: [None] = no explicit selection
+     (fall back to the proof-local context), [Some dbs] = use exactly
+     [dbs] (replacing the active set). *)
+  user_db : EcSymbols.symbol list option;
+  user_local : EcEnv.simplify_context;
+  user_hd : EcEnv.SimplifyContext.head_filter option;
 }
 
 and deltap      = [Op.redmode | `No]
@@ -676,6 +682,9 @@ let full_red = {
   logic   = Some `Full;
   modpath = true;
   user    = true;
+  user_db = None;
+  user_local = EcEnv.SimplifyContext.empty;
+  user_hd = None;
 }
 
 let no_red = {
@@ -688,6 +697,9 @@ let no_red = {
   logic   = None;
   modpath = false;
   user    = false;
+  user_db = None;
+  user_local = EcEnv.SimplifyContext.empty;
+  user_hd = None;
 }
 
 let beta_red     = { no_red with beta = true; }
@@ -754,6 +766,43 @@ let eta_expand bd f ty =
   (f_app f args ty)
 
 (* -------------------------------------------------------------------- *)
+(* Index patterns are matched WITHOUT the unification engine: a
+   normalized pattern index is a constant (compared canonically),
+   a bare idxvar (bound by assignment on first occurrence, checked
+   by canonical equality on repeats), or [b + k] (solved as
+   [k := term - b] when the term's canonical constant part is at
+   least [b]).  [tindex_of_canonical] puts the constant first, so
+   these three shapes are exactly the affine single-variable
+   fragment in normal form. *)
+type idx_pattern =
+  | IPconst
+  | IPaffine of EcIdent.t * EcBigInt.zint
+
+let classify_idx_pattern (ti : EcAst.tindex) : idx_pattern option =
+  match ti with
+  | TIConst _ -> Some IPconst
+  | TIVar k -> Some (IPaffine (k, EcBigInt.zero))
+  | TIAdd (TIConst b, TIVar k) -> Some (IPaffine (k, b))
+  | _ -> None
+
+(* [term - b] over the naturals, on canonical forms: defined iff the
+   canonical constant part of [term] is at least [b]. *)
+let subtract_const (ti : EcAst.tindex) (b : EcBigInt.zint) =
+  if EcBigInt.sign b = 0 then Some (EcAst.tindex_normalize ti) else
+  match EcAst.tindex_normalize ti with
+  | TIConst c ->
+      if EcBigInt.compare c b >= 0
+      then Some (EcAst.TIConst (EcBigInt.sub c b))
+      else None
+  | TIAdd (TIConst c, rest) ->
+      if EcBigInt.compare c b >= 0 then
+        let c = EcBigInt.sub c b in
+        Some (if EcBigInt.sign c = 0 then rest
+              else EcAst.TIAdd (TIConst c, rest))
+      else None
+  | _ -> None
+
+(* -------------------------------------------------------------------- *)
 let reduce_user_gen simplify ri env hyps f =
   if not ri.user then raise nohead;
 
@@ -765,8 +814,44 @@ let reduce_user_gen simplify ri env hyps f =
     | Fproj (_, i) -> `Proj i
     | _ -> raise nohead in
 
-  let rules = EcEnv.Reduction.get p env in
+  begin match ri.user_hd, p with
+  | Some (`Include hs), `Path p when not (EcPath.Sp.mem p hs) -> raise nohead
+  | Some (`Exclude hs), `Path p when EcPath.Sp.mem p hs -> raise nohead
+  | _ -> ()
+  end;
 
+  let get_rules_for_base base =
+    let rules =
+      EcEnv.Reduction.get_entries ~base p env
+      |> List.map snd
+    in
+    let added =
+      EcEnv.SimplifyContext.added ~base ri.user_local
+      |> List.filter_map (fun ((_, rule) : EcEnv.Reduction.entry) ->
+        let p' : EcEnv.Reduction.topsym =
+          match rule.rl_ptn with
+          | Rule (`Op (p, _, _), _) -> `Path p
+          | Rule (`Tuple, _)  -> `Tuple
+          | Rule (`Proj i, _) -> `Proj i
+          | Var _ | Int _     -> assert false
+        in
+        if p' = p then Some rule else None)
+    in
+    rules @ added
+  in
+
+  (* Use-site selection replaces the active set; otherwise fall back to
+     the proof-local default databases, then to the active set. *)
+  let bases =
+    match ri.user_db with
+    | Some dbs -> dbs
+    | None ->
+        match EcEnv.SimplifyContext.default_db ri.user_local with
+        | Some dbs -> dbs
+        | None -> EcSymbols.Ssym.elements (EcEnv.SimplifyContext.active ri.user_local)
+  in
+
+  let rules = List.flatten (List.map get_rules_for_base bases) in
   if rules = [] then raise nohead;
 
   let module R = EcTheory in
@@ -788,21 +873,39 @@ let reduce_user_gen simplify ri env hyps f =
         | None    -> pv := Mid.add x f !pv
         | Some f' -> check_alpha_eq f f' in
 
+      (* Index side: matcher-free (see [idx_pattern]).  A binding
+         seeds [pv] through [f_of_tindex] so that term-level
+         occurrences of the same idxvar are checked consistent by
+         [check_pv], in either binding order. *)
+      let iv = ref (Mid.empty : EcAst.tindex Mid.t) in
+      let match_index (ti : EcAst.tindex) (ptn : EcAst.tindex) =
+        match classify_idx_pattern ptn with
+        | None -> assert false (* enforced at compilation *)
+        | Some IPconst ->
+            if not (EcAst.tindex_equal ptn ti) then raise NotReducible
+        | Some (IPaffine (k, b)) ->
+            match subtract_const ti b with
+            | None -> raise NotReducible
+            | Some v ->
+                match Mid.find_opt k !iv with
+                | Some v' ->
+                    if not (EcAst.tindex_equal v v') then raise NotReducible
+                | None ->
+                    iv := Mid.add k v !iv;
+                    check_pv k (EcCoreFol.f_of_tindex v) in
+
+      (* Pattern types may mention idxvars bound at DEEPER nodes, so
+         their unification is deferred until the walk has built the
+         full index binding. *)
+      let deferred = ref ([] : (ty list * ty list) list) in
+
       let rec doit f ptn =
         match destr_app f, ptn with
-        | ({ f_node = Fop (p, ta) }, args), R.Rule (`Op (p', tys'), args')
+        | ({ f_node = Fop (p, ta) }, args), R.Rule (`Op (p', ixs', tys'), args')
               when EcPath.p_equal p p' && List.length args = List.length args' ->
 
-          (* User rewrite-rule patterns don't yet carry index args.
-             Rather than crash, treat indexed-op heads as non-matching. *)
-          if not (List.is_empty ta.indices) then raise NotReducible;
-
-          let tys' = List.map (Tvar.subst tvi) tys' in
-
-          begin
-            try  List.iter2 (EcUnify.unify env ue) ta.types tys'
-            with EcUnify.UnificationFailure _ -> raise NotReducible end;
-
+          List.iter2 match_index ta.indices ixs';
+          deferred := (ta.types, tys') :: !deferred;
           List.iter2 doit args args'
 
         | ({ f_node = Ftuple args} , []), R.Rule (`Tuple, args')
@@ -822,16 +925,27 @@ let reduce_user_gen simplify ri env hyps f =
 
       doit f rule.R.rl_ptn;
 
+      let ivsubst = Fsubst.f_subst_init ~freshen:false ~idx:!iv () in
+
+      List.iter (fun (tys, tys') ->
+        let tys' = List.map (Tvar.subst tvi) tys' in
+        let tys' =
+          if Mid.is_empty !iv then tys'
+          else List.map (EcCoreSubst.ty_subst ivsubst) tys' in
+        try  List.iter2 (EcUnify.unify env ue) tys tys'
+        with EcUnify.UnificationFailure _ -> raise NotReducible)
+        !deferred;
+
       if not (EcUnify.UniEnv.closed ue) then
         raise NotReducible;
 
       let subst f =
-        let uidmap = EcUnify.UniEnv.assubst ue in
-        let ts = Tuni.subst uidmap in
+        let ts = EcUnify.UniEnv.as_subst ue in
 
         let subst   = ts in
         let subst   =
           Mid.fold (fun x f s -> Fsubst.f_bind_local s x f) !pv subst in
+        let f = if Mid.is_empty !iv then f else Fsubst.f_subst ivsubst f in
         Fsubst.f_subst subst (Fsubst.f_subst_tvar ~freshen:true tvi f)
       in
 
@@ -895,6 +1009,9 @@ let reduce_logic ri env hyps f p args =
     | Some (`Eq       ), [f1;f2] ->
       begin
         match fst_map f_node (destr_app f1), fst_map f_node (destr_app f2) with
+        (* Ignoring the ctor targs is sound only because datatypes are
+           NON-REFINING (same-typed ctor applications have canonically
+           equal targs); see the twin case in EcCallbyValue.f_eq_simpl. *)
         | (Fop (p1, _), args1), (Fop (p2, _), args2)
             when EcEnv.Op.is_dtype_ctor env p1
                  && EcEnv.Op.is_dtype_ctor env p2 ->
@@ -1090,8 +1207,10 @@ let reduce_head simplify ri env hyps f =
           subst bds pargs in
 
       let body = EcFol.form_of_expr body in
-      (* FIXME subst-refact can we do both subst in once *)
-      let body = Tvar.f_subst ~freshen:true op.EcDecl.op_tparams.tyvars tys.types body in
+      let body =
+        EcFol.f_subst_tparams ~freshen:true
+          op.EcDecl.op_tparams.idxvars op.EcDecl.op_tparams.tyvars
+          tys body in
 
       f_app (Fsubst.f_subst subst body) eargs f.f_ty
 
@@ -1496,9 +1615,12 @@ let rec conv ri env f1 f2 stk =
   | Fapp(f1', args1), Fapp(f2', args2)
       when EqTest_i.for_type env f1'.f_ty f2'.f_ty
         && List.length args1 = List.length args2 -> begin
-    (* So that we do not unfold operators *)
+    (* So that we do not unfold operators. The heads count as equal
+       only at the SAME instantiation: comparing paths alone would
+       make [f[:3] x] and [f[:5] x] convertible. *)
     match f1'.f_node, f2'.f_node with
-    | Fop(p1, _), Fop(p2, _) when EcPath.p_equal p1 p2 ->
+    | Fop(p1, ta1), Fop(p2, ta2)
+        when EcPath.p_equal p1 p2 && EqTest_i.for_targs env ta1 ta2 ->
       conv_next ri env f1' (zapp args1 args2 f1.f_ty stk)
     | _, _ ->
       conv ri env f1' f2' (zapp args1 args2 f1.f_ty stk)
@@ -1753,21 +1875,50 @@ module User = struct
   type error =
     | MissingVarInLhs   of EcIdent.t
     | MissingTyVarInLhs of EcIdent.t
+    | MissingIdxVarInLhs of EcIdent.t
     | NotAnEq
     | NotFirstOrder
+    | IdxNotAffine
     | RuleDependsOnMemOrModule
     | HeadedByVar
 
   exception InvalidUserRule of error
 
+  let string_of_error = function
+    | MissingVarInLhs x ->
+        Printf.sprintf
+          "variable `%s' does not occur in the left-hand side"
+          (EcIdent.name x)
+    | MissingTyVarInLhs a ->
+        Printf.sprintf
+          "type variable `%s' does not occur in the left-hand side"
+          (EcIdent.name a)
+    | MissingIdxVarInLhs k ->
+        Printf.sprintf
+          "index variable `%s' is not bound by an index position of \
+           the left-hand side"
+          (EcIdent.name k)
+    | NotAnEq ->
+        "the lemma is not an (in)equation"
+    | NotFirstOrder ->
+        "the left-hand side is not a first-order pattern"
+    | IdxNotAffine ->
+        "index arguments in the left-hand side must be a constant, an \
+         index variable `k', or `k + b' with `b' a constant"
+    | RuleDependsOnMemOrModule ->
+        "the lemma depends on a memory or a module"
+    | HeadedByVar ->
+        "the left-hand side is headed by a variable"
+
   module R = EcTheory
 
   type rule = EcEnv.Reduction.rule
 
-  type compile_st = { cst_ty_vs : Sid.t; cst_f_vs : Sid.t; }
+  type compile_st =
+    { cst_ty_vs : Sid.t; cst_f_vs : Sid.t; cst_ix_vs : Sid.t; }
 
   let empty_cst : compile_st =
-    { cst_ty_vs = Sid.empty; cst_f_vs = Sid.empty; }
+    { cst_ty_vs = Sid.empty; cst_f_vs = Sid.empty; cst_ix_vs = Sid.empty; }
 
   let compile ~opts ~prio (env : EcEnv.env) p =
     let simp =
@@ -1806,8 +1957,13 @@ module User = struct
     let rule =
       let rec rule (f : form) : EcTheory.rule_pattern =
         match EcFol.destr_app f with
-        | { f_node = Fop (p, ta) }, args when List.is_empty ta.indices -> (* FIXME *)
-            R.Rule (`Op (p, ta.types), List.map rule args)
+        | { f_node = Fop (p, ta) }, args ->
+            let ixs = List.map EcAst.tindex_normalize ta.indices in
+            List.iter (fun ti ->
+              if classify_idx_pattern ti = None then
+                raise (InvalidUserRule IdxNotAffine))
+              ixs;
+            R.Rule (`Op (p, ixs, ta.types), List.map rule args)
         | { f_node = Ftuple args }, [] ->
             R.Rule (`Tuple, List.map rule args)
         | { f_node = Fproj (target, i) }, [] ->
@@ -1828,17 +1984,25 @@ module User = struct
         | R.Int _ -> cst
 
         | R.Rule (op, args) ->
-            let ltyvars =
+            let ltyvars, lixvars =
               match op with
-              | `Op (_, tys) ->
-                List.fold_left (
-                    let rec doit ltyvars = function
-                      | { ty_node = Tvar a } -> Sid.add a ltyvars
-                      | _ as ty -> ty_fold doit ltyvars ty in doit)
-                  cst.cst_ty_vs tys
-              | `Tuple -> cst.cst_ty_vs
-              | `Proj _ -> cst.cst_ty_vs in
-            let cst = {cst with cst_ty_vs = ltyvars } in
+              | `Op (_, ixs, tys) ->
+                let ltyvars =
+                  List.fold_left (
+                      let rec doit ltyvars = function
+                        | { ty_node = Tvar a } -> Sid.add a ltyvars
+                        | _ as ty -> ty_fold doit ltyvars ty in doit)
+                    cst.cst_ty_vs tys in
+                let lixvars =
+                  List.fold_left (fun acc ti ->
+                    match classify_idx_pattern ti with
+                    | Some (IPaffine (k, _)) -> Sid.add k acc
+                    | _ -> acc)
+                    cst.cst_ix_vs ixs in
+                ltyvars, lixvars
+              | `Tuple -> cst.cst_ty_vs, cst.cst_ix_vs
+              | `Proj _ -> cst.cst_ty_vs, cst.cst_ix_vs in
+            let cst = {cst with cst_ty_vs = ltyvars; cst_ix_vs = lixvars } in
             List.fold_left doit cst args
 
       in doit empty_cst rule in
@@ -1865,6 +2029,14 @@ module User = struct
       raise (InvalidUserRule (MissingVarInLhs (Sid.choose mvars)));
     if not (Sid.is_empty mtyvars) then
       raise (InvalidUserRule (MissingTyVarInLhs (Sid.choose mtyvars)));
+
+    (* Idxvars must be inferable from LHS index positions: an idxvar
+       occurring only as an int term (or only in types) cannot be
+       recovered by the matcher-free index matching. *)
+    let mixvars = Sid.diff (Sid.of_list ax.ax_tparams.idxvars) cst.cst_ix_vs in
+
+    if not (Sid.is_empty mixvars) then
+      raise (InvalidUserRule (MissingIdxVarInLhs (Sid.choose mixvars)));
 
     begin match rule with
     | R.Var _ -> raise (InvalidUserRule (HeadedByVar));

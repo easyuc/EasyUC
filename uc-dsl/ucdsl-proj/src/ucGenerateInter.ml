@@ -59,7 +59,7 @@ let enc_op_name (name : string) : string = "enc_"^name
 (* epdp for constructed types -----------------------------------------------*)
 
 let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
-(tp : EcPath.path) (tyl : ty list) : unit =
+(tp : EcPath.path) (ta : targs) : unit =
   let env = EcScope.env sc in
   let qtp = EcPath.toqsymbol tp in
   let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
@@ -95,7 +95,7 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
                           
   in
 (* TODO: Tomislav check next line *)
-  let epdp_opex = e_op pth ~tyargs:tyl oper.op_ty in
+  let epdp_opex = e_op pth ~indices:ta.indices ~tyargs:ta.types oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
   Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
 
@@ -120,12 +120,10 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
      let qbase = (["Top";"UCUniv"], name) in
      let env = EcScope.env sc in
      let pth,oper = EcEnv.Op.lookup qbase env in
-(* TODO: Tomislav check next line *)
      let epdp_opex = e_op pth ~tyargs:tyl oper.op_ty in
      let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
      Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
   | None -> failure "tuples must have between 2 and 8 members"
-
 
 (*---------------------------------------------------------------------------*)
 
@@ -161,9 +159,9 @@ let epdp_basicUCappty_name (tyname : EcSymbols.qsymbol) : string option =
 let rec epdp_ty_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
 (t : ty) : unit  =
   match t.ty_node with
-  | Ttuple  tys -> epdp_tuple_univ_ex sc ppf tys
+  | Ttuple tys -> epdp_tuple_univ_ex sc ppf tys
 (* TODO: Tomislav check next line *)
-  | Tconstr (pth, tys) -> epdp_constr_univ_ex sc ppf pth tys.types
+  | Tconstr (pth, ta) -> epdp_constr_univ_ex sc ppf pth ta
   | Tfun (ty1, ty2) -> epdp_fun_univ_ex sc ppf ty1 ty2
   | _ -> failure ("Only tuples, constructed types, and functions are supported." )
 
@@ -179,9 +177,9 @@ and epdp_tuple_univ_ex (sc : EcScope.scope) (ppf : Format.formatter)
   epdp_ptyl ppf sc tys
 
 and epdp_constr_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-(pth : EcPath.path) (tys : ty list) : unit =
-  epdp_opex_for_typath ppf sc pth tys;
-  epdp_ptyl ppf sc tys
+(pth : EcPath.path) (ta : targs) : unit =
+  epdp_opex_for_typath ppf sc pth ta;
+  epdp_ptyl ppf sc ta.types
 
 and epdp_fun_univ_ex (_ : EcScope.scope) (_ : Format.formatter) 
 (_ : ty) (_ : ty) : unit =

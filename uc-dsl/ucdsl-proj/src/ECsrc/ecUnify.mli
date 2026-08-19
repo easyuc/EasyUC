@@ -11,13 +11,28 @@ exception UninstantiateUni
 
 type unienv
 
+(* Explicit index instantiation: positional or (possibly partial)
+   named. [IXunamed []] means "no indices provided". *)
+type idx_inst =
+| IXunamed of tindex list
+| IXnamed  of (EcSymbols.symbol * tindex) list
+
 type tvar_inst =
 (* (explicit indices, explicit types). Either may be empty; the
-   typing layer falls back to inference for empty sides. *)
-| TVIunamed of tindex list * ty list
-| TVInamed  of (EcSymbols.symbol * ty) list
+   typing layer falls back to inference for empty sides. The index
+   side is independent of the named/positional choice made for the
+   type side. *)
+| TVIunamed of idx_inst * ty list
+| TVInamed  of idx_inst * (EcSymbols.symbol * ty) list
 
 type tvi = tvar_inst option
+
+(* Raised by [opentvi] / [openidx] on an explicitly named parameter
+   that matches no formal of the instantiated declaration. *)
+exception UnknownTypeVariable  of EcSymbols.symbol
+exception UnknownIndexVariable of EcSymbols.symbol
+
+val tvi_indices : tvi -> idx_inst
 type uidmap = uid -> ty option
 
 module UniEnv : sig
@@ -42,15 +57,27 @@ module UniEnv : sig
                 -> EcCoreSubst.f_subst * tindex list * ty list
   val opentys    : unienv -> ty_params -> tvi -> ty list -> ty list * ty list
   val closed     : unienv -> bool
-  val close      : unienv -> ty Muid.t
-  val assubst    : unienv -> ty Muid.t
-  (* Index-univar resolved assignment map (Phase 3.5). *)
-  val iu_close   : unienv -> tindex Muid.t
+  (* The two halves of [closed]: type-univar side / index-univar side,
+     so uninferred indices can be reported as such. *)
+  val closed_tv  : unienv -> bool
+  val closed_iu  : unienv -> bool
+  (* Index-univar resolved assignment map. Specialized: only for
+     consumers that need the raw index half (the proof-term idx-link
+     bridge); everything else goes through the combined substitutions
+     below. *)
   val iu_assubst : unienv -> tindex Muid.t
-  (* Build a complete [f_subst] resolving both type-univars and
-     index-univars. Use this in place of [Tuni.subst (close ue)]
-     when the substituted form may carry indexed types. *)
+  (* Resolve a tindex through the current (possibly chained) index
+     univar assignments. *)
+  val repr_tindex : unienv -> tindex -> tindex
+
+  (* THE closing API. Both build the complete [f_subst] resolving
+     type-univars AND index-univars — closing one kind without the
+     other is not expressible from outside this module.
+     [close_subst] raises [UninstantiateUni] when either side is
+     unresolved; [as_subst] substitutes what is resolved and leaves
+     the rest. *)
   val close_subst : unienv -> EcCoreSubst.f_subst
+  val as_subst    : unienv -> EcCoreSubst.f_subst
   val tparams    : unienv -> ty_params
 end
 
@@ -74,9 +101,16 @@ type op_failure =
   | OF_argument of int * ty * ty   (* 1-based index, expected (param), provided (arg) *)
   | OF_result   of ty * ty         (* operator result type, expected result type *)
   | OF_arity    of int * int       (* expected arity (at most), provided *)
+  | OF_idx_arity   of int * int    (* expected #index params, provided *)
+  | OF_idx_unknown of EcSymbols.symbol (* named index binding no index param *)
+  | OF_tv_arity    of int * int    (* expected #type params, provided *)
+  | OF_tv_unknown  of EcSymbols.symbol (* named tyvar binding no type param *)
 
-(* Constrained type parameters of an operator (those bound while applying it). *)
-type op_instance = (EcIdent.t * ty) list
+(* Parameters of an operator constrained while applying it. *)
+type op_instance = {
+  oi_tys : (EcIdent.t * ty) list;
+  oi_ixs : (EcIdent.t * tindex) list;
+}
 
 (* [None] if [top] applies to [psig] (and [retty]), updating [ue]; otherwise
    [Some] of the first argument/result/arity failure. *)

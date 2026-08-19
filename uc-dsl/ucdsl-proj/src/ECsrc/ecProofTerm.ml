@@ -29,6 +29,7 @@ type pt_env = {
      here so [concretize_env] can synthesise the missing form
      bindings once the tindex univar is resolved. *)
   pte_idx_link : (EcIdent.t * EcUid.uid) list ref;
+  pte_lc : EcEnv.simplify_context;  (* proof-local simplify context *)
 }
 
 type pt_ev = {
@@ -88,26 +89,28 @@ let argkind_of_ptarg arg : argkind =
   | PVASub     _ -> `PTerm
 
 (* -------------------------------------------------------------------- *)
-let ptenv pe hyps (ue, ev) =
+let ptenv ?(simpl = EcEnv.SimplifyContext.empty) pe hyps (ue, ev) =
   { pte_pe = pe;
     pte_hy = hyps;
     pte_ue = EcUnify.UniEnv.copy ue;
     pte_ev = ref ev;
-    pte_idx_link = ref []; }
+    pte_idx_link = ref [];
+    pte_lc = simpl; }
 
 (* -------------------------------------------------------------------- *)
 let copy pe =
-  let cp = ptenv pe.pte_pe pe.pte_hy (pe.pte_ue, !(pe.pte_ev)) in
+  let cp = ptenv ~simpl:pe.pte_lc pe.pte_pe pe.pte_hy (pe.pte_ue, !(pe.pte_ev)) in
   cp.pte_idx_link := !(pe.pte_idx_link);
   cp
 
 (* -------------------------------------------------------------------- *)
-let ptenv_of_penv (hyps : LDecl.hyps) (pe : proofenv) =
+let ptenv_of_penv ?(simpl = EcEnv.SimplifyContext.empty) (hyps : LDecl.hyps) (pe : proofenv) =
   { pte_pe = pe;
     pte_hy = hyps;
     pte_ue = PT.unienv_of_hyps hyps;
     pte_ev = ref EcMatching.MEV.empty;
-    pte_idx_link = ref []; }
+    pte_idx_link = ref [];
+    pte_lc = simpl; }
 
 (* -------------------------------------------------------------------- *)
 let rec get_head_symbol (pt : pt_env) (f : form) =
@@ -132,29 +135,54 @@ let rec get_head_symbol (pt : pt_env) (f : form) =
 
    The matcher binds either side independently; this bridge keeps the
    two namespaces in sync prior to the [can_concretize] check. *)
-let propagate_idx_link (pt : pt_env) : unit =
-  let iu = EcUnify.UniEnv.iu_assubst pt.pte_ue in
+(* Returns [false] when some link is INCONSISTENT: the matcher bound
+   the evar to one index while unification resolved the univar to a
+   conflicting one. Callers must treat that as non-concretizable
+   (silently preferring either side would instantiate the lemma at an
+   index the other namespace disagrees with). *)
+let propagate_idx_link (pt : pt_env) : bool =
+  (* SOUNDNESS GATE. This is the trust boundary where the matcher's
+     binding of a lemma idxvar (as an int [Flocal] evar) enters the
+     index world. Indices range over the NATURALS, and the only
+     natural-by-construction terms are the goal's own index variables:
+     an idxvar evar may be resolved to a [tindex] ONLY when every free
+     variable of that index is a declared index variable of the goal.
+     Without this, matching [plus : 0 <= n] against [0 <= k] for an
+     arbitrary int local [k] would bind [n := k] and let one prove
+     [0 <= k] for every [k], hence [false]. *)
+  let idxok =
+    let ids = (LDecl.tohyps pt.pte_hy).EcBaseLogic.h_tvar.EcDecl.idxvars in
+    let ids = List.fold_right EcIdent.Sid.add ids EcIdent.Sid.empty in
+    fun (ti : EcAst.tindex) ->
+      EcIdent.Mid.for_all
+        (fun id _ -> EcIdent.Sid.mem id ids)
+        (EcAst.tindex_fv ti)
+  in
+  let ok = ref true in
   List.iter (fun (fresh, u) ->
     let fresh_set =
       match EcMatching.MEV.get fresh `Form !(pt.pte_ev) with
       | Some (`Set (`Form _)) -> true
       | _ -> false
     in
+    (* Chase assignment chains: [?u := ?v] with [?v := 5] must read
+       as resolved-to-5, and compound assignments count as resolved
+       once univar-free. *)
     let u_resolved =
-      match EcUid.Muid.find_opt u iu with
-      | Some (EcAst.TIUnivar v) when EcUid.uid_equal v u -> None
-      | x -> x
+      match EcUnify.UniEnv.repr_tindex pt.pte_ue (EcAst.TIUnivar u) with
+      | EcAst.TIUnivar _ -> None
+      | ti -> Some ti
     in
     match fresh_set, u_resolved with
     | true, _ ->
         (match EcMatching.MEV.get fresh `Form !(pt.pte_ev) with
          | Some (`Set (`Form f)) ->
              (match EcCoreFol.tindex_of_form f with
-              | Some ti ->
+              | Some ti when idxok ti ->
                   (try EcUnify.unify_idx (LDecl.toenv pt.pte_hy)
                          pt.pte_ue (EcAst.TIUnivar u) ti
-                   with EcUnify.UnificationFailure _ -> ())
-              | None -> ())
+                   with EcUnify.UnificationFailure _ -> ok := false)
+              | _ -> ())
          | _ -> ())
     | false, Some ti ->
         (match EcCoreFol.f_of_tindex_opt ti with
@@ -163,11 +191,12 @@ let propagate_idx_link (pt : pt_env) : unit =
              pt.pte_ev := EcMatching.MEV.set fresh (`Form f) !(pt.pte_ev)
          | _ -> ())
     | false, None -> ())
-    !(pt.pte_idx_link)
+    !(pt.pte_idx_link);
+  !ok
 
 let can_concretize (pt : pt_env) =
-  propagate_idx_link pt;
-  EcMatching.can_concretize !(pt.pte_ev) pt.pte_ue
+  propagate_idx_link pt
+  && EcMatching.can_concretize !(pt.pte_ev) pt.pte_ue
 
 (* -------------------------------------------------------------------- *)
 let concretize_env pe =
@@ -178,15 +207,13 @@ let concretize_env pe =
      concrete] in the unifier, add a form-level binding
      [n_lem -> Flocal concrete] (typed int) so dangling references
      in the lemma's body get resolved alongside the tindex side. *)
-  let iu = EcUnify.UniEnv.iu_assubst pe.pte_ue in
   let subst =
     List.fold_left (fun s (id, u) ->
-      match EcUid.Muid.find_opt u iu with
-      | Some (EcAst.TIVar tid) ->
-          EcCoreSubst.Fsubst.f_bind_local s id (f_local tid tint)
-      | Some (EcAst.TIConst k) ->
-          EcCoreSubst.Fsubst.f_bind_local s id (f_int k)
-      | _ -> s)
+      let ti =
+        EcUnify.UniEnv.repr_tindex pe.pte_ue (EcAst.TIUnivar u) in
+      match EcCoreFol.f_of_tindex_opt ti with
+      | Some f -> EcCoreSubst.Fsubst.f_bind_local s id f
+      | None   -> s)
       subst !(pe.pte_idx_link)
   in
   CPTEnv subst
@@ -386,9 +413,13 @@ let pattern_form ?name hyps ~ptn subject =
 let pf_form_match (pt : pt_env) ?mode ~ptn subject =
   let mode = mode |> odfl EcMatching.fmrigid in
 
+  (* conversion during matching sees the proof-local simplify context *)
+  let conv_ri =
+    { EcReduction.full_compat with EcReduction.user_local = pt.pte_lc } in
+
   try
     let (ue, ev) =
-      EcMatching.f_match_core mode pt.pte_hy
+      EcMatching.f_match_core ~conv_ri mode pt.pte_hy
         (pt.pte_ue, !(pt.pte_ev)) ptn subject
     in
       EcUnify.UniEnv.restore ~dst:pt.pte_ue ~src:ue;
@@ -396,7 +427,7 @@ let pf_form_match (pt : pt_env) ?mode ~ptn subject =
   with EcMatching.MatchFailure as exn ->
     (* FIXME: should we check for empty inters. with ecmap? *)
     if not mode.fm_conv ||
-       not (EcReduction.is_conv ~ri:EcReduction.full_compat pt.pte_hy ptn subject) then
+       not (EcReduction.is_conv ~ri:conv_ri pt.pte_hy ptn subject) then
       raise exn
 
 (* -------------------------------------------------------------------- *)
@@ -1030,37 +1061,37 @@ let process_full_closed_pterm pe pf =
 let tc1_process_pterm_cut ~prcut tc ff =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_pterm_cut ~prcut (ptenv_of_penv hyps pe) ff
+  process_pterm_cut ~prcut (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 let tc1_process_pterm tc ff =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_pterm (ptenv_of_penv hyps pe) ff
+  process_pterm (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 let tc1_process_full_pterm_cut ~prcut (tc : tcenv1) (ff : 'a gppterm) =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_full_pterm_cut ~prcut (ptenv_of_penv hyps pe) ff
+  process_full_pterm_cut ~prcut (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 let tc1_process_full_pterm ?implicits (tc : tcenv1) (ff : ppterm) =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_full_pterm ?implicits (ptenv_of_penv hyps pe) ff
+  process_full_pterm ?implicits (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 let tc1_process_full_closed_pterm_cut ~prcut (tc : tcenv1) (ff : 'a gppterm) =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_full_closed_pterm_cut ~prcut (ptenv_of_penv hyps pe) ff
+  process_full_closed_pterm_cut ~prcut (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 let tc1_process_full_closed_pterm (tc : tcenv1) (ff : ppterm) =
   let pe   = FApi.tc1_penv tc in
   let hyps = FApi.tc1_hyps tc in
-  process_full_closed_pterm (ptenv_of_penv hyps pe) ff
+  process_full_closed_pterm (ptenv_of_penv ~simpl:(FApi.tc1_simplify_context tc) hyps pe) ff
 
 (* -------------------------------------------------------------------- *)
 type prept = [

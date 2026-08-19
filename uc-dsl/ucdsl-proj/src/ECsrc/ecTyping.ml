@@ -135,6 +135,7 @@ type appcand = [
 type tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
+| FreeIndexVariables
 | TypeVarNotAllowed
 | OnlyMonoTypeAllowed    of symbol option
 | NoConcreteAnonParams
@@ -154,9 +155,11 @@ type tyerror =
 | InvalidTypeAppl        of qsymbol * int * int
 | InvalidIndexAppl       of qsymbol * int * int
 | UnboundIndexVariable   of symbol
+| NegativeIndexLiteral   of EcBigInt.zint
 | IndexMismatch          of tindex * tindex
 | DuplicatedTyVar
 | DuplicatedIndexVar     of symbol
+| TypeHasNoIndexParam    of qsymbol * symbol
 | DuplicatedLocal        of symbol
 | DuplicatedField        of symbol
 | DuplicatedException    of qsymbol
@@ -227,11 +230,12 @@ let unify_or_fail (env : EcEnv.env) ue loc ~expct:ty1 ty2 =
   with EcUnify.UnificationFailure pb ->
     match pb with
     | `TyUni (t1, t2)->
-       let uidmap = UE.assubst ue in
-       let tyinst = ty_subst (Tuni.subst uidmap) in
+       let tyinst = ty_subst (UE.as_subst ue) in
        tyerror loc env (TypeMismatch ((tyinst ty1, tyinst ty2),
                                       (tyinst  t1, tyinst  t2)))
     | `IxUni (i1, i2) ->
+       let i1 = EcUnify.UniEnv.repr_tindex ue i1 in
+       let i2 = EcUnify.UniEnv.repr_tindex ue i2 in
        tyerror loc env (IndexMismatch (i1, i2))
 
 (* -------------------------------------------------------------------- *)
@@ -498,7 +502,7 @@ let select_proj env opsc name ue tvi recty =
 
   (* When the record type is known, resolve the projector from the type so it
      need not be in scope by name; fall back to a name-based search otherwise. *)
-  let ty = ty_subst (Tuni.subst (UE.assubst ue)) recty in
+  let ty = ty_subst (UE.as_subst ue) recty in
   let ops =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (tp, _) -> begin
@@ -1139,17 +1143,46 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
     | Some (p, tydecl) ->
       let nargs       = List.length tyargs in
       let expected    = List.length tydecl.tyd_params.tyvars in
-      let nidx        = List.length idxargs in
       let expected_ix = List.length tydecl.tyd_params.idxvars in
 
       if nargs <> expected then
         tyerror ty.pl_loc env (InvalidTypeAppl (name, expected, nargs));
 
-      if nidx <> expected_ix then
-        tyerror ty.pl_loc env (InvalidIndexAppl (name, expected_ix, nidx));
-
       let tyargs = transtys tp env ue tyargs in
-      let indices = List.map (transtindex env ue) idxargs in
+      let indices =
+        match idxargs with
+        | IXunamed ixs ->
+            let nidx = List.length ixs in
+            if nidx <> expected_ix then
+              tyerror ty.pl_loc env (InvalidIndexAppl (name, expected_ix, nidx));
+            List.map (transtindex env ue) ixs
+
+        | IXnamed ixs ->
+            (* Named instantiation, mirroring the op-site `f[:n = 3]`
+               form: any order, partial (missing indices get a fresh
+               univar, like the `_` hole). *)
+            let inames =
+              List.map EcIdent.name tydecl.tyd_params.idxvars in
+            List.iter (fun (x, _) ->
+              if not (List.mem (unloc x) inames) then
+                tyerror x.pl_loc env
+                  (TypeHasNoIndexParam (name, unloc x)))
+              ixs;
+            let rec dup = function
+              | [] -> ()
+              | (x, _) :: r ->
+                  if List.exists (fun (y, _) -> unloc x = unloc y) r then
+                    tyerror x.pl_loc env (DuplicatedIndexVar (unloc x));
+                  dup r
+            in
+            dup ixs;
+            let ixs = List.map (fun (x, pi) -> unloc x, pi) ixs in
+            List.map (fun v ->
+              match List.assoc_opt (EcIdent.name v) ixs with
+              | Some pi -> transtindex env ue pi
+              | None    -> EcUnify.UniEnv.idx_fresh ue)
+              tydecl.tyd_params.idxvars
+      in
       tconstr ~indices ~tyargs p
     end
   | PTglob gp ->
@@ -1178,7 +1211,7 @@ and transtindex (env : EcEnv.env) (ue : EcUnify.unienv) (pi : pindex) : tindex =
   | PIint n ->
       (* Lexer only produces non-negative UINTs, but defensively. *)
       if EcBigInt.sign n < 0 then
-        tyerror pi.pl_loc env (UnboundIndexVariable "negative literal");
+        tyerror pi.pl_loc env (NegativeIndexLiteral n);
       TIConst n
   | PIadd (a, b) ->
       TIAdd (transtindex env ue a, transtindex env ue b)
@@ -1243,8 +1276,15 @@ let transpattern1 env ue (p : EcParsetree.plpattern) =
 
       let recty  = oget (EcEnv.Ty.by_path_opt recp env) in
       let rec_   = snd (oget (EcDecl.tydecl_as_record recty)) in
-      let reccty = tconstr ~tyargs:(List.map tvar recty.tyd_params.tyvars) recp in
-      let reccty, rectvi = EcUnify.UniEnv.openty ue recty.tyd_params None reccty in
+      let reccty =
+        tconstr recp
+          ~indices:(List.map (fun id -> EcAst.TIVar id)
+                      recty.tyd_params.idxvars)
+          ~tyargs:(List.map tvar recty.tyd_params.tyvars) in
+      (* One opening for the whole pattern: field types must share the
+         record instance's index/type univars. *)
+      let tip, _, _ = EcUnify.UniEnv.openty_r ue recty.tyd_params None in
+      let reccty = ty_subst tip reccty in
       let fields =
         List.fold_left
           (fun map (((_, idx), _, _) as field) ->
@@ -1262,14 +1302,10 @@ let transpattern1 env ue (p : EcParsetree.plpattern) =
             match Mint.find_opt i fields with
             | None ->
                 let pty = EcUnify.UniEnv.fresh ue in
-                let fty = snd (List.nth rec_ i) in
-                let fty, _ =
-                  EcUnify.UniEnv.openty ue recty.tyd_params
-                    (Some (EcUnify.TVIunamed ([], rectvi))) fty
-                in
-                  (try  EcUnify.unify env ue pty fty
-                   with EcUnify.UnificationFailure _ -> assert false);
-                  (None, pty)
+                let fty = ty_subst tip (snd (List.nth rec_ i)) in
+                (try  EcUnify.unify env ue pty fty
+                 with EcUnify.UnificationFailure _ -> assert false);
+                (None, pty)
 
             | Some (_, opty, (_, v)) ->
                 let pty = EcUnify.UniEnv.fresh ue in
@@ -1296,13 +1332,27 @@ let transpattern env ue (p : EcParsetree.plpattern) =
 
 (* -------------------------------------------------------------------- *)
 let transtvi env ue tvi =
+  let transix = function
+    | IXunamed ix ->
+        EcUnify.IXunamed (List.map (transtindex env ue) ix)
+
+    | IXnamed ix ->
+        let add locals (s, i) =
+          if List.exists (fun (s', _) -> unloc s = unloc s') locals then
+            tyerror tvi.pl_loc env (DuplicatedIndexVar (unloc s));
+          (s, transtindex env ue i) :: locals
+        in
+        let ix = List.fold_left add [] ix in
+        EcUnify.IXnamed (List.rev_map (fun (s, i) -> unloc s, i) ix)
+  in
+
   match tvi.pl_desc with
   | TVIunamed (ix, lt) ->
       EcUnify.TVIunamed
-        ( List.map (transtindex env ue) ix
+        ( transix ix
         , List.map (transty tp_relax env ue) lt )
 
-  | TVInamed lst ->
+  | TVInamed (ix, lst) ->
       let add locals (s, t) =
         if List.exists (fun (s', _) -> unloc s = unloc s') locals then
           tyerror tvi.pl_loc env DuplicatedTyVar;
@@ -1310,7 +1360,9 @@ let transtvi env ue tvi =
       in
 
       let lst = List.fold_left add [] lst in
-        EcUnify.TVInamed (List.rev_map (fun (s,t) -> unloc s, t) lst)
+        EcUnify.TVInamed
+          ( transix ix
+          , List.rev_map (fun (s,t) -> unloc s, t) lst )
 
 let rec destr_tfun env ue tf =
   match tf.ty_node with
@@ -1389,8 +1441,8 @@ let trans_record env ue (subtt, proj) (loc, b, fields) =
     tconstr recp
       ~indices:(List.map (fun id -> EcAst.TIVar id) recty.tyd_params.idxvars)
       ~tyargs:(List.map tvar recty.tyd_params.tyvars) in
-  let reccty, rtvi = EcUnify.UniEnv.openty ue recty.tyd_params None reccty in
-  let tysopn = Tvar.init recty.tyd_params.tyvars rtvi in
+  let tip, rixs, rtvi = EcUnify.UniEnv.openty_r ue recty.tyd_params None in
+  let reccty = ty_subst tip reccty in
 
   let fields =
     List.fold_left
@@ -1419,7 +1471,7 @@ let trans_record env ue (subtt, proj) (loc, b, fields) =
       | None ->
           match dflrec with
           | None   -> tyerror loc env (MissingRecField name)
-          | Some _ -> `Dfl (Tvar.subst tysopn rty, name)
+          | Some _ -> `Dfl (ty_subst tip rty, name)
     in List.mapi (fun i (name, rty) -> get_field i name rty) rec_
   in
 
@@ -1435,7 +1487,7 @@ let trans_record env ue (subtt, proj) (loc, b, fields) =
 
       | `Dfl (rty, name) ->
           let nm = oget (EcPath.prefix recp) in
-          (proj (nm, name, (rtvi, reccty), rty, oget dflrec), rty)
+          (proj (nm, name, ((rixs, rtvi), reccty), rty, oget dflrec), rty)
 
     in
       List.map for1 fields
@@ -1446,7 +1498,7 @@ let trans_record env ue (subtt, proj) (loc, b, fields) =
       (EcPath.prefix recp)
       (Printf.sprintf "mk_%s" (EcPath.basename recp))
   in
-    (ctor, fields, (rtvi, reccty))
+    (ctor, fields, ((rixs, rtvi), reccty))
 
 (* -------------------------------------------------------------------- *)
 let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
@@ -1498,7 +1550,7 @@ let trans_branch ~loc env ue gindty ((pb, body) : ppattern * _) =
             ~indices:(List.map (fun id -> TIVar id) indty.tyd_params.idxvars)
             ~tyargs:(List.map tvar indty.tyd_params.tyvars) in
         let ctorty, pty =
-          let tvi = Some (EcUnify.TVIunamed ([], tvi)) in
+          let tvi = Some (EcUnify.TVIunamed (EcUnify.IXunamed [], tvi)) in
           let opened, _ =
             EcUnify.UniEnv.opentys ue indty.tyd_params tvi
               (result_ty :: ctorty) in
@@ -1815,7 +1867,7 @@ let form_of_opselect
      operators unconditionally), so diagnose a failing application here. *)
   begin match sel with
   | `Lc id ->
-      let resolve t = ty_subst (Tuni.subst (EcUnify.UniEnv.assubst ue)) t in
+      let resolve t = ty_subst (EcUnify.UniEnv.as_subst ue) t in
       let psig = List.map (fun t -> resolve (unloc t)) esig in
       let ue'  = EcUnify.UniEnv.copy ue in
       begin match EcUnify.classify_application env ue' ty psig None with
@@ -1874,7 +1926,7 @@ let form_of_opselect
  * - e  is the index to update
  * - ty is the type of the value [x] *)
 
-type lvmap = (path * ty list) *  prog_var * expr * ty
+type lvmap = (path * targs) *  prog_var * expr * ty
 
 type lVAl =
   | Lval  of lvalue
@@ -1884,7 +1936,9 @@ let i_asgn_lv (_loc : EcLocation.t) (_env : EcEnv.env) lv e =
   match lv with
   | Lval lv -> i_asgn (lv, e)
   | LvMap ((op,tys), x, ei, ty) ->
-    let op = e_op op ~tyargs:tys (toarrow [ty; ei.e_ty; e.e_ty] ty) in
+    let op =
+      e_op op ~indices:tys.indices ~tyargs:tys.types
+        (toarrow [ty; ei.e_ty; e.e_ty] ty) in
     i_asgn (LvVar (x,ty), e_app op [e_var x ty; ei; e] ty)
 
 let i_rnd_lv loc env lv e =
@@ -2346,7 +2400,7 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
         | Pups_add (s, after) ->
           let ue  = UE.create (Some { EcDecl.idxvars = []; tyvars = [] }) in
           let s = transstmt env ue s in
-          let ts = Tuni.subst (UE.close ue) in
+          let ts = UE.close_subst ue in
           if after then
             si @ (s_subst ts s).s_node
           else
@@ -2367,7 +2421,7 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
           let loc = e.pl_loc in
           let ue  = UE.create (Some { EcDecl.idxvars = []; tyvars = [] }) in
           let e, ty = transexp env `InProc ue e in
-          let ts = Tuni.subst (UE.close ue) in
+          let ts = UE.close_subst ue in
           let ty = ty_subst ts ty in
           unify_or_fail env ue loc ~expct:tbool ty;
           if after then
@@ -2380,7 +2434,7 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
           let loc = e.pl_loc in
           let ue  = UE.create (Some { EcDecl.idxvars = []; tyvars = [] }) in
           let e, ty = transexp env `InProc ue e in
-          let ts = Tuni.subst (UE.close ue) in
+          let ts = UE.close_subst ue in
           let ty = ty_subst ts ty in
           match i.i_node with
           | Sif (_, t, f) ->
@@ -2433,7 +2487,13 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
               let asgn = EcModules.lv_of_list pvs |> omap (fun lv ->
                   let rty  = ttuple (List.snd p) in
                   let proj = EcInductive.datatype_proj_path typ cn in
-                  let proj = e_op proj ~tyargs:(List.snd tyinst) (tfun e.e_ty (toption rty)) in
+                  let tyidx =
+                    match (EcEnv.ty_hnorm e.e_ty env).ty_node with
+                    | Tconstr (_, ta) -> ta.indices
+                    | _ -> [] in
+                  let proj =
+                    e_op proj ~indices:tyidx ~tyargs:(List.snd tyinst)
+                      (tfun e.e_ty (toption rty)) in
                   let proj = e_app proj [e] (toption rty) in
                   let proj = e_oget proj rty in
                   i_asgn (lv, proj))
@@ -2483,7 +2543,7 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
           let ue  = UE.create (Some { EcDecl.idxvars = []; tyvars = [] }) in
           let e', ty = transexp env `InProc ue e' in
           unify_or_fail env ue loc ~expct:e.e_ty ty;
-          let ts = Tuni.subst (UE.close ue) in
+          let ts = UE.close_subst ue in
           Some (e_subst ts e')
         | _ -> fd.f_ret
       in
@@ -2676,7 +2736,7 @@ and transstruct1 (env : EcEnv.env) (st : pstructure_item located) =
         transbody ue memenv env retty (mk_loc st.pl_loc body)
       in
       (* Close all types *)
-      let ts      = Tuni.subst (UE.assubst ue) in
+      let ts      = UE.as_subst ue in
       let retty   = fundef_check_type (ty_subst ts) env None (retty, decl.pfd_tyresult.pl_loc) in
       let params  = List.map (fundef_check_decl (ty_subst ts) env) params in
       let locals  = List.map (fundef_check_decl (ty_subst ts) env) locals in
@@ -2970,8 +3030,7 @@ and transinstr
 
   | PSmatch (pe, pbranches) -> begin
       let e, ety = transexp env `InProc ue pe in
-      let uidmap = EcUnify.UniEnv.assubst ue in
-      let ety = ty_subst (Tuni.subst uidmap) ety in
+      let ety = ty_subst (EcUnify.UniEnv.as_subst ue) ety in
 
       let inddecl =
         match (EcEnv.ty_hnorm ety env).ty_node with
@@ -3048,26 +3107,22 @@ and translvalue ue (env : EcEnv.env) lvalue =
 
       match ops with
       | [] ->
-         let uidmap = UE.assubst ue in
-         let esig = Tuni.subst_dom uidmap esig in
+         let esig = List.map (ty_subst (UE.as_subst ue)) esig in
           tyerror_noop env x.pl_loc name esig None opfailures
 
-      | [`Op (p, _idxs, tys), opty, subue, _] ->
+      | [`Op (p, idxs, tys), opty, subue, _] ->
           EcUnify.UniEnv.restore ~src:subue ~dst:ue;
-          let uidmap = UE.assubst ue in
-          let esig = Tuni.subst_dom uidmap esig in
+          let esig = List.map (ty_subst (UE.as_subst ue)) esig in
           let esig = toarrow esig xty in
           unify_or_fail env ue lvalue.pl_loc ~expct:esig opty;
-          LvMap ((p, tys), pv, e, xty), codom
+          LvMap ((p, { indices = idxs; types = tys }), pv, e, xty), codom
 
       | [_] ->
-          let uidmap = UE.assubst ue in
-          let esig = Tuni.subst_dom uidmap esig in
+          let esig = List.map (ty_subst (UE.as_subst ue)) esig in
           tyerror_noop env x.pl_loc name esig None opfailures
 
       | _ ->
-          let uidmap = UE.assubst ue in
-          let esig = Tuni.subst_dom uidmap esig in
+          let esig = List.map (ty_subst (UE.as_subst ue)) esig in
           let matches = List.map (fun (_, _, subue, m) -> (m, subue)) ops in
           tyerror x.pl_loc env (MultipleOpMatch (name, esig, matches))
 
@@ -3533,8 +3588,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
 
           begin match ops with
           | [] ->
-             let uidmap = UE.assubst ue in
-             let esig = Tuni.subst_dom uidmap esig in
+             let esig = List.map (ty_subst (UE.as_subst ue)) esig in
              tyerror_noop env loc name esig tt opfailures
 
           | [sel] ->
@@ -3542,8 +3596,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
               form_of_opselect (env, ue) loc sel es
 
           | _ ->
-             let uidmap = UE.assubst ue in
-             let esig = Tuni.subst_dom uidmap esig in
+             let esig = List.map (ty_subst (UE.as_subst ue)) esig in
              let matches = List.map (fun (_, _, subue, m) -> (m, subue)) ops in
              tyerror loc env (MultipleOpMatch (name, esig, matches))
           end
@@ -3583,7 +3636,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
 
     | PFmatch (pcf, pb) ->
        let cf = transf env pcf in
-       let ts = Tuni.subst (UE.assubst ue) in
+       let ts = UE.as_subst ue in
        let cfty = ty_subst ts cf.f_ty in
 
         let inddecl =
@@ -3646,15 +3699,18 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
         f_lambda (List.map (fun (x, ty) -> (x, GTty ty)) xs) f
 
     | PFrecord (b, fields) ->
-        let (ctor, fields, (rtvi, reccty)) =
-          let proj (recp, name, (rtvi, reccty), pty, arg) =
+        let (ctor, fields, ((rixs, rtvi), reccty)) =
+          let proj (recp, name, ((rixs, rtvi), reccty), pty, arg) =
             let proj = EcPath.pqname recp name in
-            let proj = f_op proj ~tyargs:rtvi (tfun reccty pty) in
+            let proj =
+              f_op proj ~indices:rixs ~tyargs:rtvi (tfun reccty pty) in
             f_app proj [arg] pty in
           trans_record env ue
             ((fun f -> let f = transf env f in (f, f.f_ty)), proj)
             (f.pl_loc, b, fields) in
-        let ctor = f_op ctor ~tyargs:rtvi (toarrow (List.map snd fields) reccty) in
+        let ctor =
+          f_op ctor ~indices:rixs ~tyargs:rtvi
+            (toarrow (List.map snd fields) reccty) in
         f_app ctor (List.map fst fields) reccty
 
     | PFproj (subf, x) -> begin
@@ -3677,7 +3733,7 @@ and trans_form_or_pattern env mode ?mv ?ps ue pf tt =
 
     | PFproji (psubf, i) -> begin
       let subf = transf env psubf in
-      let ts   = Tuni.subst (UE.assubst ue) in
+      let ts   = UE.as_subst ue in
       let ty   = ty_subst ts subf.f_ty in
       match (EcEnv.ty_hnorm ty env).ty_node with
       | Ttuple l when i < List.length l ->
@@ -4006,50 +4062,78 @@ let get_instances (tvi, bty) env =
 
   List.pmap (fun ((typ, gty), cr) ->
     let ue = EcUnify.UniEnv.create (Some tvi) in
-    let (gty, _typ) = EcUnify.UniEnv.openty ue typ None gty in
+    let (os, _, _) = EcUnify.UniEnv.openty_r ue typ None in
+    let gty = ty_subst os gty in
       try
         EcUnify.unify env ue bty gty;
         (* [close_subst] resolves both type- and index-univars, so the
-           carrier of a parametric (e.g. index-parametric) instance comes
-           back fully concrete: [word<:?i + 1>] matched against [word<:5>]
-           yields [word<:5>], not [word<:?i + 1>]. *)
+           whole matched instance comes back fully concrete: matching
+           the carrier [word<:?i + 1>] against [word<:5>] pins [?i] and
+           the composed substitution rebinds every recorded slot
+           instantiation (e.g. [exp] at [?i] comes back at [4]). *)
         let ts = EcUnify.UniEnv.close_subst ue in
+        let fty  t  = ty_subst ts (ty_subst os t) in
+        let fidx ti =
+          EcAst.tindex_normalize
+            (EcCoreSubst.tindex_subst ts (EcCoreSubst.tindex_subst os ti)) in
+        let cr =
+          match cr with
+          | `Ring  r -> `Ring  (EcDecl.ring_map  identity fty fidx r)
+          | `Field f -> `Field (EcDecl.field_map identity fty fidx f)
+        in
         Some (inst, ty_subst ts gty, cr)
       with EcUnify.UnificationFailure _ -> None)
     inst
 
-(* The index arguments shared by every op of an instance over [cty]:
-   the carrier's own index list, canonicalised ([4 + 1] -> [5]). *)
-let instance_indices (cty : ty) : tindex list =
-  match cty.ty_node with
-  | Tconstr (_, ta) -> List.map tindex_normalize ta.indices
-  | _ -> []
+(* When [name] is given, only the instance registered under that name is
+   selected; otherwise the first matching instance (registration order) is
+   used, preserving the single-structure behaviour. *)
+let name_selects name iname =
+  match name with None -> true | Some _ -> name = iname
 
-let get_ring (typ, ty) env =
+(* Bare selection ([name] = None) prefers ANONYMOUS instances: a named
+   instance is deliberately addressable and must not capture bare
+   [ring]/[field] calls by registration recency. It is still reachable
+   as a fallback when no anonymous instance covers the carrier. *)
+let get_ring ?name (typ, ty) env =
   let module E = struct exception Found of ring end in
+  let scan accept =
     try
       List.iter
         (fun (_, cty, cr) ->
           match cr with
-          | `Ring cr ->
-              raise (E.Found { cr with r_type = cty;
-                                       r_indices = instance_indices cty })
+          | `Ring cr when accept cr.EcDecl.r_name ->
+              raise (E.Found { cr with r_type = cty })
           | _ -> ())
         (get_instances (typ, ty) env);
       None
     with E.Found cr -> Some cr
+  in
+  match name with
+  | Some _ -> scan (name_selects name)
+  | None ->
+      match scan Option.is_none with
+      | Some _ as r -> r
+      | None -> scan (fun _ -> true)
 
-let get_field (typ, ty) env =
+let get_field ?name (typ, ty) env =
   let module E = struct exception Found of field end in
+  let scan accept =
     try
       List.iter
         (fun (_, cty, cr) ->
           match cr with
-          | `Field cr ->
-              let f_ring = { cr.f_ring with r_type = cty;
-                                            r_indices = instance_indices cty } in
+          | `Field cr when accept cr.EcDecl.f_ring.EcDecl.r_name ->
+              let f_ring = { cr.f_ring with r_type = cty } in
               raise (E.Found { cr with f_ring })
           | _ -> ())
         (get_instances (typ, ty) env);
       None
     with E.Found cr -> Some cr
+  in
+  match name with
+  | Some _ -> scan (name_selects name)
+  | None ->
+      match scan Option.is_none with
+      | Some _ as r -> r
+      | None -> scan (fun _ -> true)

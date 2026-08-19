@@ -299,11 +299,8 @@ let axiomatized_op
   (lc : locality)
   : axiom
 =
-  let axbd, axpm =
-    let bdpm = tparams.tyvars in
-    let axpm = List.map EcIdent.fresh bdpm in
-      (CS.Tvar.f_subst ~freshen:true bdpm (List.map EcTypes.tvar axpm) axbd,
-       axpm)
+  let axbd, axipm, axpm =
+    CS.f_freshen_tparams tparams.idxvars tparams.tyvars axbd
   in
 
   let args, axbd =
@@ -316,11 +313,14 @@ let axiomatized_op
 
   let opargs = List.map (fun (x, ty) -> f_local x (gty_as_ty ty)) args in
   let tyargs = List.map EcTypes.tvar axpm in
-  let op     = f_op path ~tyargs (toarrow (List.map f_ty opargs) axbd.EcAst.f_ty) in
+  let indices = List.map (fun id -> EcAst.TIVar id) axipm in
+  let op     =
+    f_op path ~indices ~tyargs
+      (toarrow (List.map f_ty opargs) axbd.EcAst.f_ty) in
   let op     = f_app op opargs axbd.f_ty in
   let axspec = f_forall args (f_eq op axbd) in
 
-  { ax_tparams = { idxvars = []; tyvars = axpm };
+  { ax_tparams = { idxvars = axipm; tyvars = axpm };
     ax_spec    = axspec;
     ax_kind    = `Axiom (Ssym.empty, false);
     ax_loca    = lc;
@@ -341,19 +341,63 @@ type rkind = [
   | `Modulus of (BI.zint option) pair
 ]
 
+(* An instance operator with its own recorded instantiation, captured
+   at typed selection: the indices/types (over the instance's binders)
+   at which the operator sits at the carrier's type.  E.g. a
+   predecessor-shaped [exp {n} : t<:n+1> -> ...] at carrier [t<:wsz+1>]
+   records [ro_idxs = [wsz]]. *)
+type ring_op = {
+  ro_op   : EcPath.path;
+  ro_idxs : tindex list;
+  ro_tys  : EcTypes.ty list;
+}
+
+let ring_op_equal (o1 : ring_op) (o2 : ring_op) =
+     EcPath.p_equal o1.ro_op o2.ro_op
+  && List.all2 tindex_equal o1.ro_idxs o2.ro_idxs
+  && List.all2 EcTypes.ty_equal o1.ro_tys o2.ro_tys
+
+(* Map over a ring_op's instantiation components (substitutions). *)
+let ring_op_map (fp : EcPath.path -> EcPath.path)
+      (fty : EcTypes.ty -> EcTypes.ty) (fix : tindex -> tindex)
+      (o : ring_op) =
+  { ro_op   = fp o.ro_op;
+    ro_idxs = List.map fix o.ro_idxs;
+    ro_tys  = List.map fty o.ro_tys; }
+
 type ring = {
+  r_name  : EcSymbols.symbol option;
   r_type  : EcTypes.ty;
-  r_indices : tindex list;
-  r_zero  : EcPath.path;
-  r_one   : EcPath.path;
-  r_add   : EcPath.path;
-  r_opp   : EcPath.path option;
-  r_mul   : EcPath.path;
-  r_exp   : EcPath.path option;
-  r_sub   : EcPath.path option;
-  r_embed : [ `Direct | `Embed of EcPath.path | `Default];
+  r_zero  : ring_op;
+  r_one   : ring_op;
+  r_add   : ring_op;
+  r_opp   : ring_op option;
+  r_mul   : ring_op;
+  r_exp   : ring_op option;
+  r_sub   : ring_op option;
+  r_embed : [ `Direct | `Embed of ring_op | `Default];
   r_kind  : rkind;
 }
+
+let ring_map (fp : EcPath.path -> EcPath.path)
+      (fty : EcTypes.ty -> EcTypes.ty) (fix : tindex -> tindex)
+      (r : ring) =
+  let fo = ring_op_map fp fty fix in
+  { r_name  = r.r_name;
+    r_type  = fty r.r_type;
+    r_zero  = fo r.r_zero;
+    r_one   = fo r.r_one;
+    r_add   = fo r.r_add;
+    r_opp   = omap fo r.r_opp;
+    r_mul   = fo r.r_mul;
+    r_exp   = omap fo r.r_exp;
+    r_sub   = omap fo r.r_sub;
+    r_embed =
+      (match r.r_embed with
+       | `Direct  -> `Direct
+       | `Default -> `Default
+       | `Embed o -> `Embed (fo o));
+    r_kind  = r.r_kind; }
 
 let kind_equal k1 k2 =
   match k1, k2 with
@@ -368,32 +412,36 @@ let kind_equal k1 k2 =
 
 let ring_equal r1 r2 =
      EcTypes.ty_equal r1.r_type r2.r_type
-  && List.all2 tindex_equal r1.r_indices r2.r_indices
-  && EcPath.p_equal r1.r_zero r2.r_zero
-  && EcPath.p_equal r1.r_one  r2.r_one
-  && EcPath.p_equal r1.r_add  r2.r_add
-  && EcUtils.oall2 EcPath.p_equal r1.r_opp r2.r_opp
-  && EcPath.p_equal r1.r_mul  r2.r_mul
-  && EcUtils.oall2 EcPath.p_equal r1.r_exp  r2.r_exp
-  && EcUtils.oall2 EcPath.p_equal r1.r_sub r2.r_sub
+  && ring_op_equal r1.r_zero r2.r_zero
+  && ring_op_equal r1.r_one  r2.r_one
+  && ring_op_equal r1.r_add  r2.r_add
+  && EcUtils.oall2 ring_op_equal r1.r_opp r2.r_opp
+  && ring_op_equal r1.r_mul  r2.r_mul
+  && EcUtils.oall2 ring_op_equal r1.r_exp  r2.r_exp
+  && EcUtils.oall2 ring_op_equal r1.r_sub r2.r_sub
   && kind_equal r1.r_kind r2.r_kind
   && match r1.r_embed, r2.r_embed with
     | `Direct  , `Direct   -> true
-    | `Embed p1, `Embed p2 -> EcPath.p_equal p1 p2
+    | `Embed o1, `Embed o2 -> ring_op_equal o1 o2
     | `Default , `Default  -> true
     | _        , _         -> false
 
 
 type field = {
   f_ring : ring;
-  f_inv  : EcPath.path;
-  f_div  : EcPath.path option;
+  f_inv  : ring_op;
+  f_div  : ring_op option;
 }
+
+let field_map fp fty fix (f : field) =
+  { f_ring = ring_map fp fty fix f.f_ring;
+    f_inv  = ring_op_map fp fty fix f.f_inv;
+    f_div  = omap (ring_op_map fp fty fix) f.f_div; }
 
 let field_equal f1 f2 =
      ring_equal f1.f_ring f2.f_ring
-  && EcPath.p_equal f1.f_inv f2.f_inv
-  && EcUtils.oall2 EcPath.p_equal f1.f_div f2.f_div
+  && ring_op_equal f1.f_inv f2.f_inv
+  && EcUtils.oall2 ring_op_equal f1.f_div f2.f_div
 
 (* -------------------------------------------------------------------- *)
 type binding_size = form * (int option)
@@ -457,6 +505,7 @@ type bv_opkind = [
   | `Init     of binding_size (* size_out *)
   | `Get      of binding_size (* size_in *)
   | `AInit    of binding_size * binding_size (* arr_len + size_out *)
+  | `PAInit   of binding_size (* arr_len; element size resolved at use (polymorphic) *)
   | `Map      of binding_size * binding_size * binding_size (* size_in + size_out + arr_size *)
   | `A2B      of (binding_size * binding_size) * binding_size (* (arr_len, elem_sz), out_size *)
   | `B2A      of binding_size * (binding_size * binding_size) (* size in, (arr_len, elem_sz)  *)

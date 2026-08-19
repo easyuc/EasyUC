@@ -419,6 +419,9 @@ let rec f_of_tindex_opt (ti : tindex) : form option =
     end
   | TIUnivar _   -> None
 
+(* CONTRACT: [ti] must be univar-free (callers on open-form paths use
+   [f_of_tindex_opt] and handle [None]); a univar here is an internal
+   invariant violation. *)
 let f_of_tindex (ti : tindex) : form =
   match f_of_tindex_opt ti with
   | Some f -> f

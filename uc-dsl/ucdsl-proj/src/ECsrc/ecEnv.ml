@@ -215,7 +215,7 @@ type preenv = {
   env_tc       : TC.graph;
   env_rwbase   : Sp.t Mip.t;
   env_atbase   : atbase Msym.t;
-  env_redbase  : mredinfo;
+  env_redbase  : mredinfo Msym.t;
   env_ntbase   : ntbase Mop.t;
   env_albase   : path Mp.t;             (* theory aliases   *)
   env_modlcs   : Sid.t;                 (* declared modules *)
@@ -247,9 +247,11 @@ and tcinstance = [
   | `General of EcPath.path
 ]
 
+and redentry = EcPath.path * EcTheory.rule
+
 and redinfo =
-  { ri_priomap : (EcTheory.rule list) Mint.t;
-    ri_list    : (EcTheory.rule list) Lazy.t; }
+  { ri_priomap : (redentry list) Mint.t;
+    ri_list    : (redentry list) Lazy.t; }
 
 and mredinfo = redinfo Mrd.t
 
@@ -349,7 +351,7 @@ let empty gstate =
     env_tc       = TC.Graph.empty;
     env_rwbase   = Mip.empty;
     env_atbase   = Msym.empty;
-    env_redbase  = Mrd.empty;
+    env_redbase  = Msym.empty;
     env_ntbase   = Mop.empty;
     env_albase   = Mp.empty;
     env_modlcs   = Sid.empty;
@@ -1543,15 +1545,20 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Reduction = struct
+  type entry  = redentry
   type rule   = EcTheory.rule
   type topsym = red_topsym
+  type base = symbol
 
-  let add_rule ((_, rule) : path * rule option) (db : mredinfo) =
+  (* The default-database name is owned by [EcSimplifyContext]. *)
+  let dname : symbol = EcSimplifyContext.dname
+
+  let add_rule ((src, rule) : path * rule option) (db : mredinfo) =
     match rule with None -> db | Some rule ->
 
     let p : topsym =
       match rule.rl_ptn with
-      | Rule (`Op p, _)   -> `Path (fst p)
+      | Rule (`Op (p, _, _), _) -> `Path p
       | Rule (`Tuple, _)  -> `Tuple
       | Rule (`Proj i, _) -> `Proj i
       | Var _ | Int _     -> assert false in
@@ -1563,7 +1570,7 @@ module Reduction = struct
         | Some x -> x in
 
       let ri_priomap =
-        let change prules = Some (odfl [] prules @ [rule]) in
+        let change prules = Some (odfl [] prules @ [(src, rule)]) in
         Mint.change change (abs rule.rl_prio) ri_priomap in
 
       let ri_list =
@@ -1574,27 +1581,47 @@ module Reduction = struct
   let add_rules (rules : (path * rule option) list) (db : mredinfo) =
     List.fold_left ((^~) add_rule) db rules
 
-  let add ?(import = true) (rules : (path * rule_option * rule option) list) (env : env) =
-    let rstrip = List.map (fun (x, _, y) -> (x, y)) rules in
+  let updatedb ?(base : symbol option) (rules : (path * rule option) list) (db : mredinfo Msym.t) =
+    let nbase = odfl dname base in
+    let base = Msym.find_def Mrd.empty nbase db in
+    Msym.add nbase (add_rules rules base) db
+
+  let add ?(import = true) ({ red_base; red_rules } : reduction_rule) (env : env) =
+    let rstrip = List.map (fun (x, _, y) -> (x, y)) red_rules in
 
     { env with
-        env_redbase = add_rules rstrip env.env_redbase;
-        env_item = mkitem ~import (Th_reduction rules) :: env.env_item; }
+        env_redbase = updatedb ?base:red_base rstrip env.env_redbase;
+        env_item = mkitem ~import (Th_reduction { red_base; red_rules }) :: env.env_item; }
 
-  let add1 (prule : path * rule_option * rule option) (env : env) =
-    add [prule] env
+  let add1 ?base (prule : path * rule_option * rule option) (env : env) =
+    add { red_base = base; red_rules = [prule] } env
 
-  let get (p : topsym) (env : env) =
-    Mrd.find_opt p env.env_redbase
+  let get_entries ?base (p : topsym) (env : env) =
+    Msym.find_opt (odfl dname base) env.env_redbase
+    |> obind (Mrd.find_opt p)
     |> omap (fun x -> Lazy.force x.ri_list)
     |> odfl []
 
-  (* FIXME: handle other cases, right now only used for print hint *)
+  let get ?base (p : topsym) (env : env) =
+    List.map snd (get_entries ?base p env)
+
+  let getx (base : symbol) (env : env) =
+    Msym.find_def Mrd.empty base env.env_redbase
+    |> Mrd.bindings
+    |> List.map (fun (ts, mr) -> (ts, List.map snd (Lazy.force mr.ri_list)))
+
   let all (env : env) =
-    List.map (fun (ts, mr) ->
-      (ts, Lazy.force mr.ri_list))
-    (Mrd.bindings env.env_redbase)
+    Msym.bindings env.env_redbase
+    |> List.map (fun (base, db) ->
+      (base, List.map (fun (ts, mr) -> (ts, List.map snd (Lazy.force mr.ri_list))) (Mrd.bindings db)))
 end
+
+(* Proof-local simplify context lives in [EcSimplifyContext]; re-exported
+   here so client code can refer to [EcEnv.simplify_context] and
+   [EcEnv.SimplifyContext]. *)
+type simplify_context = EcSimplifyContext.simplify_context
+
+module SimplifyContext = EcSimplifyContext
 
 (* -------------------------------------------------------------------- *)
 module Auto = struct
@@ -2603,8 +2630,17 @@ module Ty = struct
   let unfold (name : EcPath.path) (args : EcAst.targs) (env : env) =
     match by_path_opt name env with
     | Some ({ tyd_type = Concrete body } as tyd) ->
-        Tvar.subst
-          (Tvar.init tyd.tyd_params.tyvars args.types)
+        (* Substitute BOTH parameter kinds: an indexed alias's body
+           mentions its formal index variables. *)
+        (* Ill-arity applications are corrupt nodes: fail loudly. *)
+        assert (List.compare_lengths
+                  tyd.tyd_params.idxvars args.indices = 0);
+        ty_subst
+          (f_subst_init
+             ~tv:(Tvar.init tyd.tyd_params.tyvars args.types)
+             ~idx:(EcIdent.Mid.of_list
+                     (List.combine tyd.tyd_params.idxvars args.indices))
+             ())
           body
     | _ -> raise (LookupFailure (`Path name))
 
@@ -2648,7 +2684,7 @@ module Ty = struct
                 | Datatype _, `Case          -> basename ^ "_case"
                 | _, _ -> assert false
               in
-                Some (EcPath.pqoname prefix basename, tys.types)
+                Some (EcPath.pqoname prefix basename, tys)
           | _ -> None
       end
       | _ -> None
@@ -2764,21 +2800,20 @@ module Op = struct
   let reduce ?mode ?nargs env p (tys : EcAst.targs) =
     let op, f = core_reduce ?mode ?nargs env p in
     let tparams = op.op_tparams in
+    (* Arity mismatches are corrupt applications: fail loudly
+       (silently skipping the substitution produced bodies with
+       dangling parameters). *)
+    assert (List.compare_lengths tys.types tparams.tyvars = 0);
+    assert (List.compare_lengths tys.indices tparams.idxvars = 0);
     let tv =
-      if List.compare_lengths tys.types tparams.tyvars <> 0 then
-        EcIdent.Mid.empty
-      else
-        List.fold_left2
-          (fun m id v -> EcIdent.Mid.add id v m)
-          EcIdent.Mid.empty tparams.tyvars tys.types
+      List.fold_left2
+        (fun m id v -> EcIdent.Mid.add id v m)
+        EcIdent.Mid.empty tparams.tyvars tys.types
     in
     let idx =
-      if List.compare_lengths tys.indices tparams.idxvars <> 0 then
-        EcIdent.Mid.empty
-      else
-        List.fold_left2
-          (fun m id v -> EcIdent.Mid.add id v m)
-          EcIdent.Mid.empty tparams.idxvars tys.indices
+      List.fold_left2
+        (fun m id v -> EcIdent.Mid.add id v m)
+        EcIdent.Mid.empty tparams.idxvars tys.indices
     in
     let fs =
       EcCoreSubst.Fsubst.f_subst_init ~freshen:true ~tv ~idx () in
@@ -2920,15 +2955,16 @@ module Ax = struct
     match by_path_opt p env with
     | Some ({ ax_spec = f } as ax) ->
         let tparams = ax.ax_tparams in
-        if List.compare_lengths idxs tparams.idxvars <> 0
-           && not (List.is_empty idxs) then
+        (* Kernel discipline: the index instantiation must cover the
+           axiom's idxvars exactly -- an empty list is only valid for
+           an index-free axiom (a partial map would leave dangling
+           idxvars in the produced statement). *)
+        if List.compare_lengths idxs tparams.idxvars <> 0 then
           raise (LookupFailure (`Path p));
         let idx_map =
-          if List.is_empty idxs then EcIdent.Mid.empty
-          else
-            List.fold_left2
-              (fun m id v -> EcIdent.Mid.add id v m)
-              EcIdent.Mid.empty tparams.idxvars idxs
+          List.fold_left2
+            (fun m id v -> EcIdent.Mid.add id v m)
+            EcIdent.Mid.empty tparams.idxvars idxs
         in
         let tv_map =
           if List.compare_lengths tys tparams.tyvars <> 0 then
@@ -3681,9 +3717,9 @@ module Theory = struct
   (* ------------------------------------------------------------------ *)
   let bind_rd_th =
     let for1 _path db = function
-      | Th_reduction rules ->
-         let rules = List.map (fun (x, _, y) -> (x, y)) rules in
-         Some (Reduction.add_rules rules db)
+      | Th_reduction { red_base; red_rules } ->
+         let rules = List.map (fun (x, _, y) -> (x, y)) red_rules in
+         Some (Reduction.updatedb ?base:red_base rules db)
       | _ -> None
 
     in bind_base_th for1

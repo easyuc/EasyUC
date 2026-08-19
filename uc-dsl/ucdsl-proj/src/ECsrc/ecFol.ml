@@ -69,8 +69,10 @@ let destr_rint f =
       try destr_int f1 with DestrError _ -> destr_error "destr_rint"
   end
 
-  | Fop (p, _) when EcPath.p_equal p CI.CI_Real.p_real0 -> BI.zero
-  | Fop (p, _) when EcPath.p_equal p CI.CI_Real.p_real1 -> BI.one
+  | Fop (p, { indices = []; types = [] })
+      when EcPath.p_equal p CI.CI_Real.p_real0 -> BI.zero
+  | Fop (p, { indices = []; types = [] })
+      when EcPath.p_equal p CI.CI_Real.p_real1 -> BI.one
 
   | _ -> destr_error "destr_rint"
 
@@ -87,6 +89,37 @@ let fop_real_abs   = f_op CI.CI_Real.p_real_abs  (toarrow [treal]        treal)
 
 let f_int_le f1 f2 = f_app fop_int_le [f1; f2] tbool
 let f_int_lt f1 f2 = f_app fop_int_lt [f1; f2] tbool
+
+(* -------------------------------------------------------------------- *)
+(* Instantiate an operator body at explicit [targs]: type variables via
+   the type substitution; index variables in BOTH their namespaces --
+   tindex positions AND their int-typed formula-local occurrences (an
+   idxvar the body uses as an int term must resolve to the call-site
+   index). Mirrors [EcEnv.Op.reduce]. *)
+let f_subst_tparams
+    ~(freshen  : bool)
+     (idxvars  : EcIdent.t list)
+     (tyvars   : EcIdent.t list)
+     (tys      : targs)
+     (body     : form) : form
+=
+  let tv =
+    List.fold_left2
+      (fun m id v -> Mid.add id v m)
+      Mid.empty tyvars tys.types in
+  let idx =
+    List.fold_left2
+      (fun m id v -> Mid.add id v m)
+      Mid.empty idxvars tys.indices in
+  let fs = Fsubst.f_subst_init ~freshen ~tv ~idx () in
+  let fs =
+    List.fold_left2
+      (fun s id v ->
+        match f_of_tindex_opt v with
+        | Some f -> Fsubst.f_bind_local s id f
+        | None   -> s)
+      fs idxvars tys.indices in
+  Fsubst.f_subst fs body
 
 (* -------------------------------------------------------------------- *)
 let f_real_le  f1 f2 = f_app fop_real_le  [f1; f2] tbool
@@ -759,7 +792,8 @@ let rec f_eq_simpl f1 f2 =
       when f_equal op1 f_op_real_of_int &&
            f_equal op2 f_op_real_of_int
     -> f_false
-  | Fop (op1, _), Fop (op2, _) when
+  | Fop (op1, { indices = []; types = [] }),
+    Fop (op2, { indices = []; types = [] }) when
          (EcPath.p_equal op1 CI.CI_Bool.p_true  &&
           EcPath.p_equal op2 CI.CI_Bool.p_false  )
       || (EcPath.p_equal op2 CI.CI_Bool.p_true  &&
@@ -941,10 +975,11 @@ let int_of_form =
     | SFint x ->
         x
 
-    | SFop ((op, _), [a]) when op_kind op = Some `Int_opp ->
+    | SFop ((op, { indices = []; types = [] }), [a])
+        when op_kind op = Some `Int_opp ->
         BI.neg (doit a)
 
-    | SFop ((op, _), [a1; a2]) -> begin
+    | SFop ((op, { indices = []; types = [] }), [a1; a2]) -> begin
         match op_kind op with
         | Some `Int_add -> BI.add (doit a1) (doit a2)
         | Some `Int_mul -> BI.mul (doit a1) (doit a2)
@@ -957,7 +992,7 @@ let int_of_form =
 
 let real_of_form f =
   match sform_of_form f with
-  | SFop ((op, _), [a]) ->
+  | SFop ((op, { indices = []; types = [] }), [a]) ->
       if   EcPath.p_equal op CI.CI_Real.p_real_of_int
       then int_of_form a
       else None

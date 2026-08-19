@@ -479,6 +479,7 @@ type 'a fv   = 'a -> int EcIdent.Mid.t
 
 val tindex_equal : tindex equality
 val tindex_hash  : tindex hash
+val targ_hash    : int -> targs -> int
 val tindex_fv    : tindex fv
 val targs_equal  : targs  equality
 val targs_fv     : targs  fv

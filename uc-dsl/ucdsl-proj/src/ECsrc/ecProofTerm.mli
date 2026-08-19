@@ -42,6 +42,7 @@ type pt_env = {
      concrete] (typed int) by adding a corresponding [fs_loc] entry
      to the substitution. *)
   pte_idx_link : (EcIdent.t * EcUid.uid) list ref;
+  pte_lc : EcEnv.simplify_context; (* proof-local simplify context *)
 }
 
 type pt_ev = {
@@ -155,9 +156,9 @@ val concretize_e_form_gen : cptenv -> bindings -> form -> form
 val concretize_e_arg      : cptenv -> pt_arg -> pt_arg
 
 (* PTEnv constructor *)
-val ptenv_of_penv : LDecl.hyps -> proofenv -> pt_env
+val ptenv_of_penv : ?simpl:EcEnv.simplify_context -> LDecl.hyps -> proofenv -> pt_env
 
-val ptenv : proofenv -> LDecl.hyps -> (EcUnify.unienv * mevmap) -> pt_env
+val ptenv : ?simpl:EcEnv.simplify_context -> proofenv -> LDecl.hyps -> (EcUnify.unienv * mevmap) -> pt_env
 val copy  : pt_env -> pt_env
 
 (* Proof-terms construction from components *)

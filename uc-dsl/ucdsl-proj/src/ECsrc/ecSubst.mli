@@ -87,7 +87,7 @@ val subst_bv_opkind : ?red:(form -> int option) -> subst -> bv_opkind -> bv_opki
 val subst_binding_size : ?red:(form -> int option) -> subst -> binding_size -> binding_size
 
 (* -------------------------------------------------------------------- *)
-val open_oper : operator -> ty list -> ty * operator_kind
+val open_oper : ?indices:EcAst.tindex list -> operator -> ty list -> ty * operator_kind
 val open_tydecl : tydecl -> ty list -> ty_body
 
 (* -------------------------------------------------------------------- *)

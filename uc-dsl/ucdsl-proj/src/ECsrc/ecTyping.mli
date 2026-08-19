@@ -128,6 +128,7 @@ type goal_shape_error =
 type tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
+| FreeIndexVariables
 | TypeVarNotAllowed
 | OnlyMonoTypeAllowed    of symbol option
 | NoConcreteAnonParams
@@ -147,9 +148,11 @@ type tyerror =
 | InvalidTypeAppl        of qsymbol * int * int
 | InvalidIndexAppl       of qsymbol * int * int
 | UnboundIndexVariable   of symbol
+| NegativeIndexLiteral   of EcBigInt.zint
 | IndexMismatch          of tindex * tindex
 | DuplicatedTyVar
 | DuplicatedIndexVar     of symbol
+| TypeHasNoIndexParam    of qsymbol * symbol
 | DuplicatedLocal        of symbol
 | DuplicatedField        of symbol
 | DuplicatedException    of qsymbol
@@ -330,5 +333,5 @@ val check_modtype :
   env -> mpath -> module_sig -> mty_mr -> unit
 
 (* -------------------------------------------------------------------- *)
-val get_ring  : (ty_params * ty) -> env -> EcDecl.ring  option
-val get_field : (ty_params * ty) -> env -> EcDecl.field option
+val get_ring  : ?name:symbol -> (ty_params * ty) -> env -> EcDecl.ring  option
+val get_field : ?name:symbol -> (ty_params * ty) -> env -> EcDecl.field option

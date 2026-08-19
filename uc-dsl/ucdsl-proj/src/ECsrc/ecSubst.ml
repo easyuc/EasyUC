@@ -900,7 +900,12 @@ let fresh_tparam (s : subst) (x : EcIdent.t) =
 (* -------------------------------------------------------------------- *)
 let fresh_idxparam (s : subst) (x : EcIdent.t) =
   let newx = EcIdent.fresh x in
-  let s = { s with sb_idxvar = Mid.add x (TIVar newx) s.sb_idxvar } in
+  (* both namespaces: tindex positions AND int-typed formula-local
+     occurrences (renaming only one dangles the other) *)
+  let s = { s with
+    sb_idxvar = Mid.add x (TIVar newx) s.sb_idxvar;
+    sb_flocal =
+      Mid.add x (EcCoreFol.f_local newx EcTypes.tint) s.sb_flocal; } in
   (s, newx)
 
 (* -------------------------------------------------------------------- *)
@@ -1060,29 +1065,11 @@ let fresh_scparams (s : subst) (xtys : (EcIdent.t * ty) list) =
 
 (* -------------------------------------------------------------------- *)
 let subst_ring (s : subst) cr =
-  { r_type  = subst_ty s cr.r_type;
-    r_indices = List.map (subst_tindex s) cr.r_indices;
-    r_zero  = subst_path s cr.r_zero;
-    r_one   = subst_path s cr.r_one;
-    r_add   = subst_path s cr.r_add;
-    r_opp   = omap (subst_path s) cr.r_opp;
-    r_mul   = subst_path s cr.r_mul;
-    r_exp   = omap (subst_path s) cr.r_exp;
-    r_sub   = omap (subst_path s) cr.r_sub;
-    r_embed =
-      begin match cr.r_embed with
-      | `Direct  -> `Direct
-      | `Default -> `Default
-      | `Embed p -> `Embed (subst_path s p)
-      end;
-    r_kind = cr.r_kind
-  }
+  EcDecl.ring_map (subst_path s) (subst_ty s) (subst_tindex s) cr
 
 (* -------------------------------------------------------------------- *)
 let subst_field (s : subst) cr =
-  { f_ring = subst_ring s cr.f_ring;
-    f_inv  = subst_path s cr.f_inv;
-    f_div  = omap (subst_path s) cr.f_div; }
+  EcDecl.field_map (subst_path s) (subst_ty s) (subst_tindex s) cr
 
 (* -------------------------------------------------------------------- *)
 let subst_instance (s : subst) tci =
@@ -1120,7 +1107,8 @@ let subst_bv_opkind ?(red: (form -> int option) option) (s: subst) (opk: bv_opki
   | `And s -> `And (ssize s) 
   | `Extract (s1, s2, aligned) -> `Extract (ssize s1, ssize s2, aligned) 
   | `Map (s1, s2, s3) -> `Map (ssize s1, ssize s2, ssize s3) 
-  | `AInit (s1, s2) -> `AInit (ssize s1, ssize s2) 
+  | `AInit (s1, s2) -> `AInit (ssize s1, ssize s2)
+  | `PAInit s -> `PAInit (ssize s)
   | `Sub s -> `Sub (ssize s) 
   | `Get s -> `Get (ssize s) 
   | `Ror s -> `Ror (ssize s) 
@@ -1253,10 +1241,10 @@ let rec subst_theory_item_r (s : subst) (item : theory_item_r) =
   | Th_addrw (b, ls, lc) ->
       Th_addrw (subst_path s b, List.map (subst_path s) ls, lc)
 
-  | Th_reduction rules ->
-      let rules =
-        List.map (fun (p, opts, _) -> (subst_path s p, opts, None)) rules
-      in Th_reduction rules
+  | Th_reduction ({ red_rules } as red) ->
+      let red_rules =
+        List.map (fun (p, opts, _) -> (subst_path s p, opts, None)) red_rules
+      in Th_reduction { red with red_rules }
 
   | Th_auto ({ axioms } as auto_rl) ->
       Th_auto { auto_rl with axioms =
@@ -1308,9 +1296,17 @@ let init_tparams (params : (EcIdent.t * ty) list) : subst =
   List.fold_left (fun s (x, ty) -> add_tyvar s x ty) empty params
 
 (* -------------------------------------------------------------------- *)
-let open_oper op tys =
+let open_oper ?(indices : tindex list = []) op tys =
   let s = List.combine op.op_tparams.tyvars tys in
   let s = init_tparams s in
+  (* Empty [indices] leaves the operator's idxvars in place (the
+     index-free callers' historical behaviour). *)
+  let s =
+    if List.is_empty indices then s else
+      List.fold_left2
+        (fun s x ti -> { s with sb_idxvar = Mid.add x ti s.sb_idxvar })
+        s op.op_tparams.idxvars indices
+  in
   (subst_ty s op.op_ty, subst_op_kind s op.op_kind)
 
 let open_tydecl tyd tys =
