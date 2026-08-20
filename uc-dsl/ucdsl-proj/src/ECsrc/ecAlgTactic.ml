@@ -30,7 +30,15 @@ module Axioms = struct
   let cN    = "Cn"
   let cP    = "Cp"
 
-  let core_add  = ["oner_neq0"; "addr0"; "addrA"; "addrC";]
+  (* [oner_neq0] is not a REQUIRED ring obligation: the tactic's
+     certificates are purely equational (a disequality cannot occur in
+     a normalization proof), so the trivial ring is a sound carrier --
+     e.g. an instance over the whole family [word<:n>], including
+     width 0. It stays OPTIONAL for backward compatibility: a
+     [proof oner_neq0 by ...] clause is accepted and checked
+     (downstream instances, e.g. Jasmin's JWord, discharge it).
+     Fields keep requiring it (division). *)
+  let core_add  = ["addr0"; "addrA"; "addrC";]
   let core_mul  = [ "mulr1"; "mulrA"; "mulrC"; "mulrDl"]
   let core      = core_add @ "addrN" :: core_mul
   let core_bool = core_add @ "addrK" :: "mulrK" :: core_mul
@@ -39,7 +47,7 @@ module Axioms = struct
   let intpow    = ["expr0"; "exprS"]
   let ofint     = ["ofint0"; "ofint1"; "ofintS"; "ofintN"]
   let ofsub     = ["subrE"]
-  let field     = ["mulrV"; "exprN"]
+  let field     = ["oner_neq0"; "mulrV"; "exprN"]
   let ofdiv     = ["divrE"]
   let cNax      = ["Cn_eq0"]
   let cPax      = ["Cp_idp"]
@@ -70,10 +78,10 @@ module Axioms = struct
          (div, (false, ty2 ty))]
 
   let subst_of_ring (cr : ring) =
-    let crcore = [(zero, cr.r_zero.ro_op);
-                  (one , cr.r_one .ro_op);
-                  (add , cr.r_add .ro_op);
-                  (mul , cr.r_mul .ro_op); ] in
+    let crcore = [(zero, cr.r_zero);
+                  (one , cr.r_one );
+                  (add , cr.r_add );
+                  (mul , cr.r_mul ); ] in
 
     let xpath  = fun x -> EcPath.pqname tmod x in
     let add    = fun subst x p -> EcSubst.add_path subst ~src:(xpath x) ~dst:p in
@@ -83,9 +91,9 @@ module Axioms = struct
       EcSubst.add_tydef EcSubst.empty (xpath tname) ([], [], cr.r_type) in
     let subst  =
       List.fold_left (fun subst (x, p) -> add subst x p) subst crcore in
-    let subst  = odfl subst (cr.r_opp |> omap (fun o -> add subst opp o.ro_op)) in
-    let subst  = odfl subst (cr.r_sub |> omap (fun o -> add subst sub o.ro_op)) in
-    let subst  = odfl subst (cr.r_exp |> omap (fun o -> add subst expr o.ro_op)) in
+    let subst  = odfl subst (cr.r_opp |> omap (fun p -> add subst opp p)) in
+    let subst  = odfl subst (cr.r_sub |> omap (fun p -> add subst sub p)) in
+    let subst  = odfl subst (cr.r_exp |> omap (fun p -> add subst expr p)) in
 
     let subst  =
       match cr.r_kind with
@@ -99,7 +107,7 @@ module Axioms = struct
     let subst  =
       match cr.r_embed with
       | `Direct | `Default -> subst
-      | `Embed o -> add subst embed o.ro_op
+      | `Embed p -> add subst embed p
     in
 
     subst
@@ -109,44 +117,34 @@ module Axioms = struct
     let add    = fun subst x p -> EcSubst.add_path subst ~src:(xpath x) ~dst:p in
 
     let subst = subst_of_ring cr.f_ring in
-    let subst = add subst inv cr.f_inv.ro_op in
-    let subst = odfl subst (cr.f_div |> omap (fun o -> add subst div o.ro_op)) in
+    let subst = add subst inv cr.f_inv in
+    let subst = odfl subst (cr.f_div |> omap (fun p -> add subst div p)) in
       subst
 
   (* The op paths of an instance carry their instantiation implicitly
-     (each op records the indices/types at which it sits at the
-     carrier). The template axioms reference the ops without
-     instantiation, and [subst_of_ring] swaps paths but cannot
-     re-introduce it; so we patch the substituted axiom, tagging every
-     instance-op occurrence with its recorded targs. (If two slots
-     share one path they must also share their instantiation; the
-     first registered wins.) *)
-  let ring_op_targs (cr : ring) : EcDecl.ring_op EcPath.Mp.t =
-    let os = [cr.r_zero; cr.r_one; cr.r_add; cr.r_mul] in
-    let os = os @ List.filter_map (fun x -> x) [cr.r_opp; cr.r_sub; cr.r_exp] in
-    let os = match cr.r_embed with `Embed o -> o :: os | _ -> os in
-    List.fold_left
-      (fun m (o : EcDecl.ring_op) ->
-        if EcPath.Mp.mem o.ro_op m then m else EcPath.Mp.add o.ro_op o m)
-      EcPath.Mp.empty os
+     (every op shares the instance's [r_insts]). The template axioms
+     reference the ops without instantiation, and [subst_of_ring]
+     swaps paths but cannot re-introduce it; so we patch the
+     substituted axiom, tagging every instance-op occurrence with the
+     shared targs. A no-op for uninstantiated instances. *)
+  let ring_op_paths (cr : ring) : EcPath.Sp.t =
+    let ps = [cr.r_zero; cr.r_one; cr.r_add; cr.r_mul] in
+    let ps = ps @ List.filter_map (fun x -> x) [cr.r_opp; cr.r_sub; cr.r_exp] in
+    let ps = match cr.r_embed with `Embed p -> p :: ps | _ -> ps in
+    EcPath.Sp.of_list ps
 
-  let field_op_targs (cr : field) : EcDecl.ring_op EcPath.Mp.t =
-    let os = cr.f_inv :: List.filter_map (fun x -> x) [cr.f_div] in
-    List.fold_left
-      (fun m (o : EcDecl.ring_op) ->
-        if EcPath.Mp.mem o.ro_op m then m else EcPath.Mp.add o.ro_op o m)
-      (ring_op_targs cr.f_ring) os
+  let field_op_paths (cr : field) : EcPath.Sp.t =
+    let ps = cr.f_inv :: List.filter_map (fun x -> x) [cr.f_div] in
+    List.fold_left (fun s p -> EcPath.Sp.add p s) (ring_op_paths cr.f_ring) ps
 
-  let inject_targs (opmap : EcDecl.ring_op EcPath.Mp.t) (f : form) =
+  let inject_targs (opset : EcPath.Sp.t) (insts : EcAst.targs) (f : form) =
     let open EcAst in
+    if insts.indices = [] && insts.types = [] then f else
     let rec doit f =
       match f.f_node with
-      | Fop (p, ta) when ta.indices = [] && ta.types = [] -> begin
-          match EcPath.Mp.find_opt p opmap with
-          | Some { ro_idxs = []; ro_tys = []; _ } | None -> f
-          | Some o ->
-              f_op_r p { indices = o.ro_idxs; types = o.ro_tys } (f_ty f)
-        end
+      | Fop (p, ta)
+          when EcPath.Sp.mem p opset && ta.indices = [] && ta.types = [] ->
+          f_op_r p insts (f_ty f)
       | _ -> f_map (fun ty -> ty) doit f
     in doit f
 
@@ -158,21 +156,23 @@ module Axioms = struct
       | `Field cr -> subst_of_field cr
     in
 
-    let opmap =
+    let (opset, insts) =
       match cr with
-      | `Ring  cr -> ring_op_targs  cr
-      | `Field cr -> field_op_targs cr
+      | `Ring  cr -> ring_op_paths  cr, cr.r_insts
+      | `Field cr -> field_op_paths cr, cr.f_ring.r_insts
     in
 
     let for1 axname =
       let ax = EcEnv.Ax.by_path (EcPath.pqname tmod axname) env in
         assert (ax.ax_tparams.tyvars = [] && ax.ax_tparams.idxvars = [] && is_axiom ax.ax_kind);
-        (axname, inject_targs opmap (EcSubst.subst_form subst ax.ax_spec))
+        (axname, inject_targs opset insts (EcSubst.subst_form subst ax.ax_spec))
     in
       List.map for1 axs
 
   let getr env cr axs = get (`Ring  cr) env axs
   let getf env cr axs = get (`Field cr) env axs
+
+  let ring_axioms_1neq0 env (cr : ring) = getr env cr ["oner_neq0"]
 
   let ring_axioms env (cr : ring) =
     let axcore =
@@ -214,6 +214,7 @@ let ring_symbols  = Axioms.ring_symbols
 let field_symbols = Axioms.field_symbols
 
 let ring_axioms  = Axioms.ring_axioms
+let ring_axioms_1neq0 = Axioms.ring_axioms_1neq0
 let field_axioms = Axioms.field_axioms
 
 (* -------------------------------------------------------------------- *)

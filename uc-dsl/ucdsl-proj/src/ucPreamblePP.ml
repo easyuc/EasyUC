@@ -180,11 +180,12 @@ let pp_axiom (env : EcEnv.env) (pa : paxiom) : ppna =
     | None        ->
         let ppe = PPEnv.ofenv env in
         let f = EcTyping.trans_form_opt env ue pf (Some EcTypes.tbool) in
-        let uidmap =
-          try EcUnify.UniEnv.close ue with
-          | EcUnify.UninstantiateUni -> failure "cannot happen" in
-        let ts = EcFol.Tuni.subst uidmap in
-        let f = EcFol.Fsubst.f_subst ts f in
+        let () =
+          if not (EcUnify.UniEnv.closed ue)
+          then failure "cannot happen" in
+        let fs = EcUnify.UniEnv.close_subst ue in
+        let subst_form = EcFol.Fsubst.f_subst fs in
+        let f = subst_form f in
         if List.is_empty idxvars && List.is_empty tyvars
         then fprintf ppf "@[axiom@ %s@ :@ %a.@]"
              name 
@@ -198,13 +199,15 @@ let pp_axiom (env : EcEnv.env) (pa : paxiom) : ppna =
         let env' = add_aptybindings_to_env typarams env aptybs in
         let ppe' = PPEnv.ofenv env' in
         let f = EcTyping.trans_form_opt env' ue pf (Some EcTypes.tbool) in
-        let uidmap =
-          try EcUnify.UniEnv.close ue with
-          | EcUnify.UninstantiateUni -> failure "cannot happen" in
-        let ts = EcFol.Tuni.subst uidmap in
-        let subst_ty = EcFol.ty_subst ts in
+        let () =
+          if not (EcUnify.UniEnv.closed ue)
+          then failure "cannot happen" in
+        let fs = EcUnify.UniEnv.close_subst ue in
+        let subst_form = EcFol.Fsubst.f_subst fs in
+        let subst_ty = EcFol.ty_subst fs in
+        let f = subst_form f in
         let aptybs = aptybindings_type_map subst_ty aptybs in
-        let f = EcFol.Fsubst.f_subst ts f in
+        let f = subst_form f in
         if List.is_empty idxvars && List.is_empty tyvars
         then fprintf ppf "@[axiom@ %s@ %a@ :@ %a.@]"
              name 
@@ -261,9 +264,10 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
            (pp_type ppe) ty
   | PTHO_Op opo   ->
       let (opod, clm) = by_syntax opo in
+      let idxvars = opod.opov_idxvars in
       let tyvars = opod.opov_tyvars in
       let ue =
-        EcTyping.transtyvars ~idxparams:[] env
+        EcTyping.transtyvars ~idxparams:idxvars env
         (loc pqsym, tyvars) in
       let env = EcTyping.bind_idx_locals env ue in
       let ppe = PPEnv.ofenv env in
@@ -277,22 +281,18 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
       let env' = add_aptybindings_to_env typarams env args in
       let ppe' = PPEnv.ofenv env' in
       let f = EcTyping.trans_form_opt env' ue pf (Some ty) in
-      let uidmap =
-        try EcUnify.UniEnv.close ue with
-        | EcUnify.UninstantiateUni -> failure "cannot happen" in
-      let ts = EcFol.Tuni.subst uidmap in
-      let subst_ty = EcFol.ty_subst ts in
-      let subst_form = EcFol.Fsubst.f_subst ts in
+      let () =
+        if not (EcUnify.UniEnv.closed ue)
+        then failure "cannot happen" in
+      let fs = EcUnify.UniEnv.close_subst ue in
+      let subst_form = EcFol.Fsubst.f_subst fs in
+      let subst_ty = EcFol.ty_subst fs in
       let args = aptybindings_type_map subst_ty args in
       let ty = subst_ty ty in
       let f = subst_form f in
-      (* this will change to including idxvars, presumably *)
-      let pp_tyvars ppf vs =
-        fprintf ppf "[@[%a]@]"     
-        (pp_list "@ " pp_symbol) (unlocs vs) in
       (match List.length args with
        | 0 ->
-           if List.is_empty tyvars
+           if List.is_empty idxvars && List.is_empty tyvars
            then fprintf ppf "@[op@ %a@ :@ %a@ %a@ %a@]"
                 (pp_opname ppe) (EcPath.fromqsymbol name)
                 (pp_type ppe) ty
@@ -300,12 +300,12 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
                 (pp_form ppe') f
            else fprintf ppf "@[op@ %a@ %a@ :@ %a@ %a@ %a@]"
                 (pp_opname ppe) (EcPath.fromqsymbol name)
-                pp_tyvars tyvars
+                (pp_idxvars_and_tyvars true) (idxvars, tyvars)
                 (pp_type ppe) ty
                 pp_clmode clm
                 (pp_form ppe') f
        | _ ->
-           if List.is_empty tyvars
+           if List.is_empty idxvars && List.is_empty tyvars
            then fprintf ppf "@[op@ %a@ %a@ :@ %a %a@ %a@]"
                 (pp_opname ppe) (EcPath.fromqsymbol name)
                 (pp_aptybindings ppe) args
@@ -314,7 +314,7 @@ let pp_override (env : EcEnv.env) (ppf : formatter)
                 (pp_form ppe') f
            else fprintf ppf "@[op@ %a@ %a@ %a@ :@ %a %a@ %a@]"
                 (pp_opname ppe) (EcPath.fromqsymbol name)
-                pp_tyvars tyvars
+                (pp_idxvars_and_tyvars true) (idxvars, tyvars)
                 (pp_aptybindings ppe) args
                 (pp_type ppe) ty
                 pp_clmode clm

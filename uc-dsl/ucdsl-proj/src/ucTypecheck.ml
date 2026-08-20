@@ -1371,7 +1371,7 @@ let check_toplevel_match_clause
               ~indices:(List.map (fun id -> TIVar id) indty.tyd_params.idxvars)
               ~tyargs:(List.map tvar indty.tyd_params.tyvars) in
           let ctorty, pty =
-            let tvi = Some (EcUnify.TVIunamed ([], tvi)) in
+            let tvi = Some (EcUnify.TVIunamed (EcUnify.IXunamed [], tvi)) in
             let opened, _ =
               EcUnify.UniEnv.opentys ue indty.tyd_params tvi
                 (result_ty :: ctorty) in
@@ -1417,8 +1417,7 @@ and check_match
   let ex_loc = loc ex in
   let cloc = loc clauses in
   let exp, ty = check_expr sa env ue ex None in
-  let uidmap = EcUnify.UniEnv.assubst ue in
-  let ty = EcFol.ty_subst (EcFol.Tuni.subst uidmap) ty in
+  let ty = ty_subst (EcUnify.UniEnv.as_subst ue) ty in
   let inddecl =
     match (EcEnv.ty_hnorm ty env).ty_node with
     | Tconstr (indp, _) -> begin
@@ -1589,27 +1588,16 @@ let replace_unif_vars_in_msg_match_code (ue : unienv)
          then error_message (loc is)
               (fun ppf ->
                  Format.fprintf ppf
-                 "@[cannot@ infer@ all@ index@ parameters@]")
+                 ("@[cannot@ infer@ all@ type@ index@ parameters@ " ^^
+                  "in@ message@ match@ clause@ body@]"))
          else error_message (loc is)
               (fun ppf ->
                  Format.fprintf ppf
-                 "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
-
-    let fs      = EcUnify.UniEnv.close_subst ue in
-    let concl   = Fsubst.f_subst fs concl in
-
-
-
-  let uidmap =
-    try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstantiateUni ->
-        error_message (loc is)
-        (fun ppf ->
-           Format.fprintf ppf
-           "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
-  let ts = EcFol.Tuni.subst uidmap in
-  let subst_ty = EcFol.ty_subst ts in
-  let subst_form = EcFol.Fsubst.f_subst ts in
+                 ("@[message@ match@ clause@ body@ has@ free@ type@ " ^^
+                  "variables@]")) in
+  let fs = EcUnify.UniEnv.close_subst ue in
+  let subst_form = Fsubst.f_subst fs in
+  let subst_ty = ty_subst fs in
   let replace_expr_list_loc exps =
     mk_loc (loc exps) (List.map subst_form (unloc exps)) in
   let replace_expr_opt = EcUtils.omap subst_form in
@@ -2912,45 +2900,29 @@ let inter_check_expr
     | None          -> ()
     | Some expct_ty ->
         unify_or_fail env ue (loc pform) ~expct:expct_ty ty in
-  (* replace unification variables in formula by types *)
-
-
-    if not (EcUnify.UniEnv.closed ue) then
-      if EcUnify.UniEnv.closed_tv ue then
-        hierror
-          "cannot infer all index parameters in the formula; \
-           supply them explicitly (e.g. `f[:n = 3]')"
-      else
-        hierror "the formula contains free type variables";
-
-    let fs      = EcUnify.UniEnv.close_subst ue in
-    let concl   = Fsubst.f_subst fs concl in
-
-
-
+  (* try to replace unification variables by types and type indices *)
   let () =
     if not (EcUnify.UniEnv.closed ue)
-    then error_message (loc pform)
-         (fun ppf ->
-            Format.fprintf ppf
-            "@[top-level@ expressions@ must@ be@ monomorphic@]") in
-
-
-  let uidmap =
-    try EcUnify.UniEnv.close ue with
-    | EcUnify.UninstantiateUni ->
-        error_message (loc pform)
-        (fun ppf ->
-           Format.fprintf ppf
-           "@[top-level@ expressions@ must@ be@ monomorphic@]") in
-  let ts = EcFol.Tuni.subst uidmap in
-  let form = EcFol.Fsubst.f_subst ts form in
+    then if EcUnify.UniEnv.closed_tv ue
+         then error_message (loc pform)
+              (fun ppf ->
+                 Format.fprintf ppf
+                 ("@[cannot@ infer@ all@ type@ index@ parameters@ " ^^
+                  "in@ expression@]"))
+         else error_message (loc pform)
+              (fun ppf ->
+                 Format.fprintf ppf
+                 "@[expression@ has@ free@ type@ variables@]") in
+  let fs = EcUnify.UniEnv.close_subst ue in
+  let subst_form = Fsubst.f_subst fs in
+  let subst_ty = ty_subst fs in
+  let form = subst_form form in
   (* update result type, using the expected type if supplied (which
      was assumed to have no unification or type variables), and otherwise
      applying the result of the unification to ty *)
   let res_ty =
     match expct_ty_opt with
-    | None          -> EcFol.ty_subst ts ty
+    | None          -> subst_ty ty
     | Some expct_ty -> expct_ty in
   (form, res_ty)
 

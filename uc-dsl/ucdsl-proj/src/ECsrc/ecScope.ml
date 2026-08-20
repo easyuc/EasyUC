@@ -2509,7 +2509,7 @@ module Ty = struct
                       (EcCoreSubst.tindex_subst ts ti))
                   ixs in
               let tys = List.map (ty_subst ts) tys in
-              EcDecl.{ ro_op = p; ro_idxs = ixs; ro_tys = tys }
+              (p, { EcAst.indices = ixs; types = tys })
 
         in
           Mstr.change
@@ -2526,12 +2526,34 @@ module Ty = struct
            if req && not (Mstr.mem x ops) then
              hierror "no definition for operator `%s'" x)
         reqs;
-      List.fold_left
+
+      (* UNIFORMITY: all operators of an instance must resolve to ONE
+         shared instantiation (indices and types alike), recorded once
+         on the instance. *)
+      let insts =
+        Mstr.fold (fun x (loc, (p, i)) acc ->
+          match acc with
+          | None -> Some (x, p, i)
+          | Some (x0, p0, i0) ->
+              if not (EcDecl.targs_equal i0 i) then
+                hierror ~loc
+                  "operators `%s' (%s) and `%s' (%s) resolve to \
+                   different instantiations at the carrier: all \
+                   instance operators must share one"
+                  x0 (EcPath.tostring p0) x (EcPath.tostring p);
+              acc)
+          ops None in
+      let insts =
+        match insts with
+        | None -> { EcAst.indices = []; types = [] }
+        | Some (_, _, i) -> i in
+
+      (List.fold_left
         (fun m (x, _) ->
            match Mstr.find_opt x ops with
            | None -> m
-           | Some (_, p) -> Mstr.add x p m)
-        Mstr.empty reqs
+           | Some (_, (p, _)) -> Mstr.add x p m)
+        Mstr.empty reqs), insts
 
   (* ------------------------------------------------------------------ *)
   let check_tci_axioms scope mode ?(typ = { idxvars = []; tyvars = [] }) axs reqs lc =
@@ -2594,9 +2616,10 @@ module Ty = struct
   let p_field   = EcPath.fromqsymbol ([EcCoreLib.i_top; "Ring"; "Field"  ], "field"  )
 
   (* ------------------------------------------------------------------ *)
-  let ring_of_symmap ?name env ty kind symbols =
+  let ring_of_symmap ?name env ty kind (symbols, insts) =
     { r_name  = name;
       r_type  = ty;
+      r_insts = insts;
       r_zero  = oget (Mstr.find_opt "rzero" symbols);
       r_one   = oget (Mstr.find_opt "rone"  symbols);
       r_add   = oget (Mstr.find_opt "add"   symbols);
@@ -2627,6 +2650,12 @@ module Ty = struct
     let symbols = check_tci_operators env ty tci.pti_ops symbols in
     let cr      = ring_of_symmap ?name:(omap unloc tci.pti_as) env (snd ty) kind symbols in
     let axioms  = EcAlgTactic.ring_axioms env cr in
+    (* [oner_neq0] is optional: required of nobody, but checked when a
+       proof clause supplies it (backward compatibility). *)
+    let axioms  =
+      if List.exists (fun (x, _) -> unloc x = "oner_neq0") tci.pti_axs
+      then EcAlgTactic.ring_axioms_1neq0 env cr @ axioms
+      else axioms in
     let lc      = (tci.pti_loca :> locality) in
     let inter   = check_tci_axioms scope mode ~typ:(fst ty) tci.pti_axs axioms lc in
     let add env p =
@@ -2646,8 +2675,8 @@ module Ty = struct
     in Ax.add_defer scope inter
 
   (* ------------------------------------------------------------------ *)
-  let field_of_symmap ?name env ty symbols =
-    { f_ring = ring_of_symmap ?name env ty `Integer symbols;
+  let field_of_symmap ?name env ty ((symbols, _) as syi) =
+    { f_ring = ring_of_symmap ?name env ty `Integer syi;
       f_inv  = oget (Mstr.find_opt "inv" symbols);
       f_div  = Mstr.find_opt "div" symbols; }
 

@@ -5,5 +5,5 @@ args: bad.uc
 outcome: failure
 [error: bad.uc: from line 15 column 3 to line 18 column 6]
 
-message match clause body must be monomorphic
+message match clause body has free type variables
 .

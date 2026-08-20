@@ -341,62 +341,50 @@ type rkind = [
   | `Modulus of (BI.zint option) pair
 ]
 
-(* An instance operator with its own recorded instantiation, captured
-   at typed selection: the indices/types (over the instance's binders)
-   at which the operator sits at the carrier's type.  E.g. a
-   predecessor-shaped [exp {n} : t<:n+1> -> ...] at carrier [t<:wsz+1>]
-   records [ro_idxs = [wsz]]. *)
-type ring_op = {
-  ro_op   : EcPath.path;
-  ro_idxs : tindex list;
-  ro_tys  : EcTypes.ty list;
-}
-
-let ring_op_equal (o1 : ring_op) (o2 : ring_op) =
-     EcPath.p_equal o1.ro_op o2.ro_op
-  && List.all2 tindex_equal o1.ro_idxs o2.ro_idxs
-  && List.all2 EcTypes.ty_equal o1.ro_tys o2.ro_tys
-
-(* Map over a ring_op's instantiation components (substitutions). *)
-let ring_op_map (fp : EcPath.path -> EcPath.path)
-      (fty : EcTypes.ty -> EcTypes.ty) (fix : tindex -> tindex)
-      (o : ring_op) =
-  { ro_op   = fp o.ro_op;
-    ro_idxs = List.map fix o.ro_idxs;
-    ro_tys  = List.map fty o.ro_tys; }
-
 type ring = {
   r_name  : EcSymbols.symbol option;
   r_type  : EcTypes.ty;
-  r_zero  : ring_op;
-  r_one   : ring_op;
-  r_add   : ring_op;
-  r_opp   : ring_op option;
-  r_mul   : ring_op;
-  r_exp   : ring_op option;
-  r_sub   : ring_op option;
-  r_embed : [ `Direct | `Embed of ring_op | `Default];
+  (* The ONE instantiation (index expressions and type arguments,
+     over the instance's binders) shared by every operator of the
+     instance: typed selection checks each operator resolves to
+     exactly it.  E.g. [{indices = [n+1]; types = []}] for the
+     boolean ring over [word<:n+1>], [{[]; ['a]}] for a ring over
+     ['a -> int]. *)
+  r_insts : EcAst.targs;
+  r_zero  : EcPath.path;
+  r_one   : EcPath.path;
+  r_add   : EcPath.path;
+  r_opp   : EcPath.path option;
+  r_mul   : EcPath.path;
+  r_exp   : EcPath.path option;
+  r_sub   : EcPath.path option;
+  r_embed : [ `Direct | `Embed of EcPath.path | `Default];
   r_kind  : rkind;
 }
+
+let targs_map (fty : EcTypes.ty -> EcTypes.ty) (fix : tindex -> tindex)
+      (ta : EcAst.targs) : EcAst.targs =
+  { indices = List.map fix ta.EcAst.indices;
+    types   = List.map fty ta.EcAst.types; }
 
 let ring_map (fp : EcPath.path -> EcPath.path)
       (fty : EcTypes.ty -> EcTypes.ty) (fix : tindex -> tindex)
       (r : ring) =
-  let fo = ring_op_map fp fty fix in
   { r_name  = r.r_name;
     r_type  = fty r.r_type;
-    r_zero  = fo r.r_zero;
-    r_one   = fo r.r_one;
-    r_add   = fo r.r_add;
-    r_opp   = omap fo r.r_opp;
-    r_mul   = fo r.r_mul;
-    r_exp   = omap fo r.r_exp;
-    r_sub   = omap fo r.r_sub;
+    r_insts = targs_map fty fix r.r_insts;
+    r_zero  = fp r.r_zero;
+    r_one   = fp r.r_one;
+    r_add   = fp r.r_add;
+    r_opp   = omap fp r.r_opp;
+    r_mul   = fp r.r_mul;
+    r_exp   = omap fp r.r_exp;
+    r_sub   = omap fp r.r_sub;
     r_embed =
       (match r.r_embed with
        | `Direct  -> `Direct
        | `Default -> `Default
-       | `Embed o -> `Embed (fo o));
+       | `Embed p -> `Embed (fp p));
     r_kind  = r.r_kind; }
 
 let kind_equal k1 k2 =
@@ -410,38 +398,43 @@ let kind_equal k1 k2 =
 
   | _, _ -> false
 
+let targs_equal (t1 : EcAst.targs) (t2 : EcAst.targs) =
+     List.all2 tindex_equal t1.EcAst.indices t2.EcAst.indices
+  && List.all2 EcTypes.ty_equal t1.EcAst.types t2.EcAst.types
+
 let ring_equal r1 r2 =
      EcTypes.ty_equal r1.r_type r2.r_type
-  && ring_op_equal r1.r_zero r2.r_zero
-  && ring_op_equal r1.r_one  r2.r_one
-  && ring_op_equal r1.r_add  r2.r_add
-  && EcUtils.oall2 ring_op_equal r1.r_opp r2.r_opp
-  && ring_op_equal r1.r_mul  r2.r_mul
-  && EcUtils.oall2 ring_op_equal r1.r_exp  r2.r_exp
-  && EcUtils.oall2 ring_op_equal r1.r_sub r2.r_sub
+  && targs_equal r1.r_insts r2.r_insts
+  && EcPath.p_equal r1.r_zero r2.r_zero
+  && EcPath.p_equal r1.r_one  r2.r_one
+  && EcPath.p_equal r1.r_add  r2.r_add
+  && EcUtils.oall2 EcPath.p_equal r1.r_opp r2.r_opp
+  && EcPath.p_equal r1.r_mul  r2.r_mul
+  && EcUtils.oall2 EcPath.p_equal r1.r_exp  r2.r_exp
+  && EcUtils.oall2 EcPath.p_equal r1.r_sub r2.r_sub
   && kind_equal r1.r_kind r2.r_kind
   && match r1.r_embed, r2.r_embed with
     | `Direct  , `Direct   -> true
-    | `Embed o1, `Embed o2 -> ring_op_equal o1 o2
+    | `Embed p1, `Embed p2 -> EcPath.p_equal p1 p2
     | `Default , `Default  -> true
     | _        , _         -> false
 
 
 type field = {
   f_ring : ring;
-  f_inv  : ring_op;
-  f_div  : ring_op option;
+  f_inv  : EcPath.path;
+  f_div  : EcPath.path option;
 }
 
 let field_map fp fty fix (f : field) =
   { f_ring = ring_map fp fty fix f.f_ring;
-    f_inv  = ring_op_map fp fty fix f.f_inv;
-    f_div  = omap (ring_op_map fp fty fix) f.f_div; }
+    f_inv  = fp f.f_inv;
+    f_div  = omap fp f.f_div; }
 
 let field_equal f1 f2 =
      ring_equal f1.f_ring f2.f_ring
-  && ring_op_equal f1.f_inv f2.f_inv
-  && EcUtils.oall2 ring_op_equal f1.f_div f2.f_div
+  && EcPath.p_equal f1.f_inv f2.f_inv
+  && EcUtils.oall2 EcPath.p_equal f1.f_div f2.f_div
 
 (* -------------------------------------------------------------------- *)
 type binding_size = form * (int option)

@@ -5,5 +5,5 @@ args:-units SMC2.uc
 outcome:failure
 [error: SMC2.uc: from line 100 columns 20 to 22]
 
-parse error
+overriding in UC cloning can only be done with `=`
 .

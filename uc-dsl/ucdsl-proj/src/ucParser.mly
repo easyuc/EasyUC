@@ -323,6 +323,8 @@ let check_parsing_adversarial_inter (ni : named_inter) =
       }
   end
 
+(* indexed types definitions *)
+
 (* No mixed-bucket helper: idxvars and tyvars now use distinct
    bracket families ({...} vs [...]), so the parser can keep them
    separate. *)
@@ -593,7 +595,7 @@ typaram :
   | x = tident
       { (x : ptyparam) }
 
-typarams:
+typarams :
   | empty
       { [] }
   | x = tident
@@ -601,13 +603,13 @@ typarams:
   | xs = paren(plist1(typaram, COMMA))
       { xs }
 
-%inline tyd_name:
+%inline tyd_name :
   | idx = loption(idxvars_decl); tya = typarams; x = ident;
     { (idx, tya, x) }
 
 tyvars_decl :
-  | LBRACKET; tyvars=rlist0(typaram, COMMA); RBRACKET
-  | LBRACKET; tyvars=rlist2(tident, empty); RBRACKET
+  | LBRACKET; tyvars = rlist0(typaram, COMMA); RBRACKET
+  | LBRACKET; tyvars = rlist2(tident, empty); RBRACKET
       { tyvars }
 
 (* Combined `{idx}` then `['a]` binder. Indices come first; both are
@@ -617,9 +619,9 @@ tyvars_decl :
      matching the legacy [tvs |> omap ...] convention so downstream
      `po_tyvars`-style fields keep distinguishing "no binder given"
      from "empty binder given". *)
-ix_ty_binder:
+ix_ty_binder :
   | idx = idxvars_decl?; ty = tyvars_decl?
-    { (EcUtils.odfl [] idx, ty) }
+      { (EcUtils.odfl [] idx, ty) }
 
 spec_abstract_type_decl :
   | x = loc(TYPE); tn = tyd_name
@@ -680,14 +682,14 @@ clone_with :
   | WITH; x = plist1(clone_override, COMMA)
       { x }
 
-clone_override:
+clone_override :
   | TYPE; idx = loption(idxvars_decl); ps = cltyparams; x = ident;
     mode = opclmode; t = loc(type_exp);
       { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (idx, ps, t), mode)) }
 
   | OP; x = boident; idx = loption(idxvars_decl); tyvars = bracket(tident*)?;
     p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
-    mode = loc(uc_opclmode); e = expr
+    mode = loc(opclmode); e = expr
       { let ov =
           { opov_idxvars = idx;
             opov_tyvars  = tyvars;
@@ -737,15 +739,22 @@ uc_clone_with :
   | WITH; x = plist1(uc_clone_override, COMMA)
       { x }
 
-uc_clone_override:
+uc_clone_override :
   | TYPE; idx = loption(idxvars_decl); ps = cltyparams; x = ident;
     mode = opclmode; t = loc(type_exp);
       { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (idx, ps, t), mode)) }
 
   | OP; x = boident; idx = loption(idxvars_decl); tyvars = bracket(tident*)?;
     p = ptybinding1*; sty = ioption(prefix(COLON, loc(type_exp)));
-    mode = loc(uc_opclmode); e = expr
-      { let ov =
+    mode = loc(opclmode); e = expr
+      { let () =
+          if unloc mode <> `Alias
+          then error_message (loc mode)
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[overriding@ in@ UC@ cloning@ can@ only@ be@ done@ " ^^
+                   "with@ `=`@]")) in
+        let ov =
           { opov_idxvars = idx;
             opov_tyvars  = tyvars;
             opov_args    = List.flatten p;
@@ -754,9 +763,6 @@ uc_clone_override:
           } in
         (pqsymb_of_psymb x, PTHO_Op (`BySyntax ov, unloc mode))
       }
-
-uc_opclmode :
-  | EQ { `Alias }
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be
@@ -1630,7 +1636,7 @@ args :
 
 (* Identifiers, Words and Operators
 
-   everything below adapted from an older version of the EasyCrypt
+   everything below adapted from versions of the EasyCrypt
    parser
 
    our expressions (expr) are restricted to what we actually need,
@@ -1807,13 +1813,13 @@ type_args :
    for operator type-variable instantiation (`f<:int>`); a square-
    bracket framing would conflict with `mod_update_fun`'s codepos
    ranges in `module M = N with { proc f [ var x : T [..] ] }`. *)
-idx_args:
-| LTCOLON xs=plist1(pindex, COMMA) GT          { IXunamed xs }
-| LTCOLON xs=plist1(idx_byname1, COMMA) GT     { IXnamed  xs }
+idx_args :
+  | LTCOLON; xs = plist1(pindex, COMMA); GT      { IXunamed xs }
+  | LTCOLON; xs = plist1(idx_byname1, COMMA); GT { IXnamed  xs }
 
 (* `f<:int vec<:3>>` lexes the trailing `>>` as one operator token;
    catch it where the inner application expects its closing `>`. *)
-| LTCOLON plist1(pindex, COMMA) op=loc(LOP1)
+  | LTCOLON; plist1(pindex, COMMA); op = loc(LOP1)
     { ignore op;
       if String.for_all (fun c -> c = '>') (unloc op)
       then error_message op.pl_loc
@@ -1826,29 +1832,29 @@ idx_args:
 
 (* Index-expression sub-grammar (polynomial fragment over the
    naturals). Precedence: `*` binds tighter than `+`. *)
-pindex_atom:
-| x=lident                       { mk_loc x.pl_loc (PIvar x) }
-| n=loc(UINT)
-    { mk_loc n.pl_loc (PIint n.pl_desc) }
-| u=loc(UNDERSCORE)              { mk_loc u.pl_loc PIhole }
-| LPAREN p=pindex RPAREN         { p }
+pindex_atom :
+  | x = lident                { mk_loc x.pl_loc (PIvar x) }
+  | n = loc(UINT)
+      { mk_loc n.pl_loc (PIint n.pl_desc) }
+  | u = loc(UNDERSCORE)       { mk_loc u.pl_loc PIhole }
+  | LPAREN; p = pindex RPAREN { p }
 
-pindex_mul:
-| a=pindex_atom                                  { a }
-| a=pindex_mul STAR b=pindex_atom
+pindex_mul :
+  | a = pindex_atom { a }
+  | a = pindex_mul; STAR; b = pindex_atom
     { mk_loc (EcLocation.merge a.pl_loc b.pl_loc) (PImul (a, b)) }
 
-pindex:
-| a=pindex_mul                                   { a }
-| a=pindex PLUS b=pindex_mul
-    { mk_loc (EcLocation.merge a.pl_loc b.pl_loc) (PIadd (a, b)) }
-| a=pindex MINUS pindex_mul
-    { ignore a;
-      error_message (EcLocation.make $startpos $endpos)
-      (fun ppf ->
-         fprintf ppf
-         ("@[index@ expressions@ range@ over@ the@ naturals:@ " ^^
-          "subtraction@ is@ not@ available@]")) }
+pindex :
+  | a = pindex_mul { a }
+  | a = pindex; PLUS; b = pindex_mul
+      { mk_loc (EcLocation.merge a.pl_loc b.pl_loc) (PIadd (a, b)) }
+  | a = pindex; MINUS; pindex_mul
+      { ignore a;
+        error_message (EcLocation.make $startpos $endpos)
+        (fun ppf ->
+           fprintf ppf
+           ("@[index@ expressions@ range@ over@ the@ naturals:@ " ^^
+            "subtraction@ is@ not@ available@]")) }
 
 (* Index-parameter binder. Uses curly braces and naked identifiers
    (e.g. `{n m}`), distinct from the square-bracket binder used for
@@ -1857,8 +1863,8 @@ pindex:
 
    Non-negativity of indices is not marked here: it is an enforced
    invariant, available as the [Int.ge0_index] axiom. *)
-idxvars_decl:
-  | LBRACE xs=lident+ RBRACE { xs }
+idxvars_decl :
+  | LBRACE; xs = lident+; RBRACE { xs }
 
 type_exp :
   | ty = simpl_type_exp                            { ty }
@@ -1870,62 +1876,62 @@ type_exp :
    our expressions have support for envport and intport -
    see below *)
 
-tyvar_annot_item:
-| ty=loc(type_exp)             { `Pos ty }
-| x=tident EQ ty=loc(type_exp) { `Named (x, ty) }
+tyvar_annot_item :
+  | ty = loc(type_exp)               { `Pos ty }
+  | x = tident; EQ; ty=loc(type_exp) { `Named (x, ty) }
 
-tyvar_annot:
-| items=plist1(loc(tyvar_annot_item), COMMA)
-    { homogeneous_annot ~what:"type"
-        ~pos:  (fun lt -> TVIunamed (IXunamed [], lt))
-        ~named:(fun lt -> TVInamed  (IXunamed [], lt))
-        items }
+tyvar_annot :
+  | items = plist1(loc(tyvar_annot_item), COMMA)
+      { homogeneous_annot ~what:"type"
+          ~pos:  (fun lt -> TVIunamed (IXunamed [], lt))
+          ~named:(fun lt -> TVInamed  (IXunamed [], lt))
+          items }
 
 (* Explicit op-index instantiation, e.g. `f[:n+1]`, `f[:n,m]<:int>`
    or `f[:n = 3, m = 4]`. The `[:` form is parsed as a single
    LBRACKETCOLON token by the lexer to avoid clashes with list
    literals. *)
-idx_byname1:
-| x=lident EQ ix=pindex { (x, ix) }
+idx_byname1 :
+  | x = lident; EQ; ix = pindex { (x, ix) }
 
-idx_annot_item:
-| ix=pindex             { `Pos ix }
-| nx=idx_byname1        { `Named nx }
+idx_annot_item :
+  | ix = pindex      { `Pos ix }
+  | nx = idx_byname1 { `Named nx }
 
-idx_annot:
-| items=plist1(loc(idx_annot_item), COMMA)
-    { homogeneous_annot ~what:"index"
-        ~pos:  (fun ix -> IXunamed ix)
-        ~named:(fun ix -> IXnamed  ix)
-        items }
+idx_annot :
+  | items = plist1(loc(idx_annot_item), COMMA)
+      { homogeneous_annot ~what:"index"
+          ~pos:  (fun ix -> IXunamed ix)
+          ~named:(fun ix -> IXnamed  ix)
+          items }
 
-%inline idx_app:
-| LBRACKETCOLON ix=idx_annot RBRACKET { ix }
+%inline idx_app :
+  | LBRACKETCOLON; ix = idx_annot; RBRACKET { ix }
 
 (* Both annotation orders are accepted (`f[:3]<:int>` and
    `f<:int>[:3]`); the printer stays canonical (indices first). *)
-%inline tvars_app:
-| LTCOLON k=loc(tyvar_annot) GT
-    { k }
-| ix=loc(idx_app)
-    { mk_loc ix.pl_loc (TVIunamed (ix.pl_desc, [])) }
-| ix=idx_app LTCOLON k=loc(tyvar_annot) GT
-    { match k.pl_desc with
-      | TVIunamed (IXunamed [], tys) ->
-          mk_loc k.pl_loc (TVIunamed (ix, tys))
-      | TVInamed (IXunamed [], lts) ->
-          mk_loc k.pl_loc (TVInamed (ix, lts))
-      | TVIunamed (_, _) | TVInamed (_, _) ->
-          assert false (* tyvar_annot never produces indices *) }
-| LTCOLON k=loc(tyvar_annot) GT ix=loc(idx_app)
-    { let loc = EcLocation.merge k.pl_loc ix.pl_loc in
-      match k.pl_desc with
-      | TVIunamed (IXunamed [], tys) ->
-          mk_loc loc (TVIunamed (ix.pl_desc, tys))
-      | TVInamed (IXunamed [], lts) ->
-          mk_loc loc (TVInamed (ix.pl_desc, lts))
-      | TVIunamed (_, _) | TVInamed (_, _) ->
-          assert false (* tyvar_annot never produces indices *) }
+%inline tvars_app :
+  | LTCOLON; k = loc(tyvar_annot); GT
+      { k }
+  | ix = loc(idx_app)
+      { mk_loc ix.pl_loc (TVIunamed (ix.pl_desc, [])) }
+  | ix = idx_app; LTCOLON; k = loc(tyvar_annot); GT
+      { match k.pl_desc with
+        | TVIunamed (IXunamed [], tys) ->
+            mk_loc k.pl_loc (TVIunamed (ix, tys))
+        | TVInamed (IXunamed [], lts) ->
+            mk_loc k.pl_loc (TVInamed (ix, lts))
+        | TVIunamed (_, _) | TVInamed (_, _) ->
+            assert false (* tyvar_annot never produces indices *) }
+  | LTCOLON; k = loc(tyvar_annot); GT; ix = loc(idx_app)
+      { let loc = EcLocation.merge k.pl_loc ix.pl_loc in
+        match k.pl_desc with
+        | TVIunamed (IXunamed [], tys) ->
+            mk_loc loc (TVIunamed (ix.pl_desc, tys))
+        | TVInamed (IXunamed [], lts) ->
+            mk_loc loc (TVInamed (ix.pl_desc, lts))
+        | TVIunamed (_, _) | TVInamed (_, _) ->
+            assert false (* tyvar_annot never produces indices *) }
 
 %inline sexpr : x = loc(sexpr_u) { x }
 %inline  expr : x = loc( expr_u) { x }
@@ -2142,12 +2148,12 @@ ptybindings :
       { [x, ty] }
 
 pgtybinding1 :
-  | x=ptybinding1
+  | x = ptybinding1
       { List.map (fun (xs, ty) -> (xs, PGTY_Type ty)) x }
   (* EasyCrypt has more options *)
 
 pgtybindings :
-  | x=pgtybinding1+ { List.flatten x }
+  | x = pgtybinding1+ { List.flatten x }
 
 (* Localization *)
 

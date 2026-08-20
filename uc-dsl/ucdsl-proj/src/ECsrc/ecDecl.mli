@@ -201,35 +201,24 @@ type rkind = [
   | `Modulus of (zint option) pair
 ]
 
-(* An instance operator with its own recorded instantiation (indices
-   and types over the instance's binders), captured at typed
-   selection against the carrier. *)
-type ring_op = {
-  ro_op   : EcPath.path;
-  ro_idxs : tindex list;
-  ro_tys  : EcTypes.ty list;
-}
-
-val ring_op_equal : ring_op -> ring_op -> bool
-val ring_op_map :
-     (EcPath.path -> EcPath.path)
-  -> (EcTypes.ty -> EcTypes.ty)
-  -> (tindex -> tindex)
-  -> ring_op -> ring_op
-
 type ring = {
   r_name  : EcSymbols.symbol option;
   r_type  : EcTypes.ty;
-  r_zero  : ring_op;
-  r_one   : ring_op;
-  r_add   : ring_op;
-  r_opp   : ring_op option;
-  r_mul   : ring_op;
-  r_exp   : ring_op option;
-  r_sub   : ring_op option;
-  r_embed : [ `Direct | `Embed of ring_op | `Default];
+  (* The ONE instantiation (indices and types, over the instance's
+     binders) shared by every operator of the instance. *)
+  r_insts : EcAst.targs;
+  r_zero  : EcPath.path;
+  r_one   : EcPath.path;
+  r_add   : EcPath.path;
+  r_opp   : EcPath.path option;
+  r_mul   : EcPath.path;
+  r_exp   : EcPath.path option;
+  r_sub   : EcPath.path option;
+  r_embed : [ `Direct | `Embed of EcPath.path | `Default];
   r_kind  : rkind;
 }
+
+val targs_equal : EcAst.targs -> EcAst.targs -> bool
 
 val ring_equal : ring -> ring -> bool
 val ring_map :
@@ -241,8 +230,8 @@ val ring_map :
 (* -------------------------------------------------------------------- *)
 type field = {
   f_ring : ring;
-  f_inv  : ring_op;
-  f_div  : ring_op option;
+  f_inv  : EcPath.path;
+  f_div  : EcPath.path option;
 }
 val field_equal : field -> field -> bool
 val field_map :

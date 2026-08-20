@@ -73,11 +73,12 @@ end
 type eq = form * form
 
 (* -------------------------------------------------------------------- *)
-let rapp r (op : EcDecl.ring_op) args =
+let rapp r (op : EcPath.path) args =
   let opty = toarrow (List.map f_ty args) r.r_type in
-  let indices = if op.ro_idxs = [] then None else Some op.ro_idxs in
-  let tyargs  = if op.ro_tys  = [] then None else Some op.ro_tys  in
-    f_app (f_op op.ro_op ?indices ?tyargs opty) args r.r_type
+  let ta = r.r_insts in
+  let indices = if ta.EcAst.indices = [] then None else Some ta.EcAst.indices in
+  let tyargs  = if ta.EcAst.types   = [] then None else Some ta.EcAst.types   in
+    f_app (f_op op ?indices ?tyargs opty) args r.r_type
 
 let rzero r = rapp r r.r_zero []
 let rone  r = rapp r r.r_one  []
@@ -152,15 +153,15 @@ let emb_fone  r = emb_rone  r.f_ring
 
 (* -------------------------------------------------------------------- *)
 type cringop = [`Zero | `One | `Add | `Opp | `Sub | `Mul | `Exp | `OfInt]
-type cring   = ring * ((cringop * EcDecl.ring_op) Mp.t)
+type cring   = ring * (cringop Mp.t)
 
 (* -------------------------------------------------------------------- *)
 type cfieldop = [cringop | `Inv | `Div]
-type cfield   = field * ((cfieldop * EcDecl.ring_op) Mp.t)
+type cfield   = field * (cfieldop Mp.t)
 
 (* -------------------------------------------------------------------- *)
-(* Recognition is keyed by op path, then checked against the slot's
-   recorded instantiation: an occurrence of the same path at OTHER
+(* Recognition is keyed by op path, then checked against the ring's
+   shared instantiation: an occurrence of the same path at OTHER
    indices/types is not this ring's operator. *)
 let cring_of_ring (r : ring) : cring =
   let cr = [(r.r_zero, `Zero);
@@ -169,24 +170,21 @@ let cring_of_ring (r : ring) : cring =
             (r.r_mul , `Mul );]
   in
 
-  let radd (o : EcDecl.ring_op) tag m = Mp.add o.ro_op (tag, o) m in
-  let cr = List.fold_left (fun m (o, tag) -> radd o tag m) Mp.empty cr in
-  let cr = odfl cr (r.r_opp |> omap (fun o -> radd o `Opp cr)) in
-  let cr = odfl cr (r.r_sub |> omap (fun o -> radd o `Sub cr)) in
-  let cr = odfl cr (r.r_exp |> omap (fun o -> radd o `Exp cr)) in
+  let cr = List.fold_left (fun m (p, op) -> Mp.add p op m) Mp.empty cr in
+  let cr = odfl cr (r.r_opp |> omap (fun p -> Mp.add p `Opp cr)) in
+  let cr = odfl cr (r.r_sub |> omap (fun p -> Mp.add p `Sub cr)) in
+  let cr = odfl cr (r.r_exp |> omap (fun p -> Mp.add p `Exp cr)) in
   let cr = r.r_embed |>
-      (function (`Direct | `Default) -> cr | `Embed o -> radd o `OfInt cr) in
+      (function (`Direct | `Default) -> cr | `Embed p -> Mp.add p `OfInt cr) in
     (r, cr)
 
 let ring_of_cring (cr:cring) = fst cr
 
 (* -------------------------------------------------------------------- *)
 let cfield_of_field (r : field) : cfield =
-  let cr =
-    (snd (cring_of_ring r.f_ring) :> (cfieldop * EcDecl.ring_op) Mp.t) in
-  let cr = Mp.add r.f_inv.ro_op (`Inv, r.f_inv) cr in
-  let cr =
-    odfl cr (r.f_div |> omap (fun o -> Mp.add o.ro_op (`Div, o) cr)) in
+  let cr = (snd (cring_of_ring r.f_ring) :> cfieldop Mp.t) in
+  let cr = Mp.add r.f_inv `Inv cr in
+  let cr = odfl cr (r.f_div |> omap (fun p -> Mp.add p `Div cr)) in
     (r, cr)
 
 let field_of_cfield (cr:cfield) : field = fst cr
@@ -203,11 +201,9 @@ let toring hyps ((r, cr) : cring) (rmap : RState.rstate) (form : form) =
     | Fop (op, ta) -> begin
         match Mp.find_opt op cr with
         | None -> abstract form
-        | Some (_, ro)
-            when not (List.all2 EcAst.tindex_equal ta.indices ro.ro_idxs
-                      && List.all2 ty_equal ta.types ro.ro_tys) ->
+        | Some _ when not (EcDecl.targs_equal ta r.r_insts) ->
           abstract form
-        | Some (op, _) -> begin
+        | Some op -> begin
           match op,args with
           | `Zero, []           -> PEc c0
           | `One , []           -> PEc c1
@@ -270,11 +266,9 @@ let tofield hyps ((r, cr) : cfield) (rmap : RState.rstate) (form : form) =
     | Fop(op, ta) -> begin
         match Mp.find_opt op cr with
         | None -> abstract form
-        | Some (_, ro)
-            when not (List.all2 EcAst.tindex_equal ta.indices ro.ro_idxs
-                      && List.all2 ty_equal ta.types ro.ro_tys) ->
+        | Some _ when not (EcDecl.targs_equal ta r.EcDecl.f_ring.EcDecl.r_insts) ->
           abstract form
-        | Some (op, _) -> begin
+        | Some op -> begin
           match op,args with
           | `Zero, []           -> FEc c0
           | `One , []           -> FEc c1

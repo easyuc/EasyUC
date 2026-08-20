@@ -478,21 +478,24 @@ let for_op_path subst ~opath ~ops p =
 (* -------------------------------------------------------------------- *)
 (* Map a ring/field slot through the clone overrides.  An inlined
    override ([op zeror <- zerow[:n+1]]) carries the body's own
-   instantiation: record it, composed with the slot's recorded one
-   (expressed over the overridden op's formals). *)
-let for_ring_op
+   instantiation, composed with the instance's shared one (expressed
+   over the overridden op's formals). Returns the slot's implied
+   shared instantiation alongside the mapped path: [replay_instance]
+   requires all slots to agree. *)
+let for_ring_slot
    (subst : EcSubst.subst)
   ~(opath : EcPath.path)
   ~(ops   : _ Mp.t)
-   (o     : EcDecl.ring_op)
+   (insts : EcAst.targs)
+   (p     : EcPath.path)
+   : EcPath.path * EcAst.targs
 =
-  let dflt () =
-    { EcDecl.ro_op = EcSubst.subst_path subst o.EcDecl.ro_op;
-      ro_idxs = List.map (EcSubst.subst_tindex subst) o.EcDecl.ro_idxs;
-      ro_tys  = List.map (EcSubst.subst_ty subst) o.EcDecl.ro_tys; } in
-  match
-    EcPath.remprefix ~prefix:opath ~path:o.EcDecl.ro_op |> omap List.rev
-  with
+  let sinsts =
+    { EcAst.indices =
+        List.map (EcSubst.subst_tindex subst) insts.EcAst.indices;
+      types = List.map (EcSubst.subst_ty subst) insts.EcAst.types; } in
+  let dflt () = (EcSubst.subst_path subst p, sinsts) in
+  match EcPath.remprefix ~prefix:opath ~path:p |> omap List.rev with
   | None | Some [] -> dflt ()
   | Some (x :: px) ->
       let q = EcPath.fromqsymbol (List.rev px, x) in
@@ -506,22 +509,20 @@ let for_ring_op
           | OB_oper (Some (OP_Plain f)) -> begin
               match f.f_node with
               | Fop (r, ta) ->
-                  let ro_idxs =
-                    List.map (EcSubst.subst_tindex subst) o.EcDecl.ro_idxs in
-                  let ro_tys =
-                    List.map (EcSubst.subst_ty subst) o.EcDecl.ro_tys in
                   let fs =
                     EcCoreSubst.Fsubst.f_subst_init ~freshen:false
                       ~tv:(EcIdent.Mid.of_list
-                             (List.combine op.EcDecl.op_tparams.tyvars ro_tys))
+                             (List.combine op.EcDecl.op_tparams.tyvars
+                                sinsts.EcAst.types))
                       ~idx:(EcIdent.Mid.of_list
-                             (List.combine op.EcDecl.op_tparams.idxvars ro_idxs))
+                             (List.combine op.EcDecl.op_tparams.idxvars
+                                sinsts.EcAst.indices))
                       () in
-                  { EcDecl.ro_op = r;
-                    ro_idxs =
-                      List.map (EcCoreSubst.tindex_subst fs) ta.EcAst.indices;
-                    ro_tys  =
-                      List.map (EcCoreSubst.ty_subst fs) ta.EcAst.types; }
+                  (r,
+                   { EcAst.indices =
+                       List.map (EcCoreSubst.tindex_subst fs) ta.EcAst.indices;
+                     types =
+                       List.map (EcCoreSubst.ty_subst fs) ta.EcAst.types; })
               | _ -> raise InvInstPath
             end
           | _ -> dflt ()
@@ -1146,27 +1147,22 @@ and replay_instance
   try
     let (typ, ty) = EcSubst.subst_genty subst (typ, ty) in
     let tc =
-      let foro = for_ring_op subst ~opath ~ops in
+      (* Map each slot through the overrides; every slot must imply
+         the SAME shared instantiation (else the replayed instance is
+         dropped). *)
       let doring cr =
-        { EcDecl.r_name = cr.EcDecl.r_name;
-          r_type  = EcSubst.subst_ty subst cr.EcDecl.r_type;
-          r_zero  = foro cr.EcDecl.r_zero;
-          r_one   = foro cr.EcDecl.r_one;
-          r_add   = foro cr.EcDecl.r_add;
-          r_opp   = omap foro cr.EcDecl.r_opp;
-          r_mul   = foro cr.EcDecl.r_mul;
-          r_exp   = omap foro cr.EcDecl.r_exp;
-          r_sub   = omap foro cr.EcDecl.r_sub;
-          r_embed =
-            (match cr.EcDecl.r_embed with
-             | `Direct  -> `Direct
-             | `Default -> `Default
-             | `Embed o -> `Embed (foro o));
-          r_kind  = cr.EcDecl.r_kind; }
-      and dofield cr =
-        let doring cr =
+        let insts = ref None in
+        let foro p =
+          let (p, i) = for_ring_slot subst ~opath ~ops cr.EcDecl.r_insts p in
+          (match !insts with
+           | None -> insts := Some i
+           | Some i0 ->
+               if not (EcDecl.targs_equal i0 i) then raise InvInstPath);
+          p in
+        let cr' =
           { EcDecl.r_name = cr.EcDecl.r_name;
             r_type  = EcSubst.subst_ty subst cr.EcDecl.r_type;
+            r_insts = cr.EcDecl.r_insts (* patched below *);
             r_zero  = foro cr.EcDecl.r_zero;
             r_one   = foro cr.EcDecl.r_one;
             r_add   = foro cr.EcDecl.r_add;
@@ -1178,9 +1174,19 @@ and replay_instance
               (match cr.EcDecl.r_embed with
                | `Direct  -> `Direct
                | `Default -> `Default
-               | `Embed o -> `Embed (foro o));
+               | `Embed p -> `Embed (foro p));
             r_kind  = cr.EcDecl.r_kind; } in
-        { EcDecl.f_ring = doring cr.EcDecl.f_ring;
+        { cr' with EcDecl.r_insts = oget !insts }
+      in
+      let dofield cr =
+        let f_ring = doring cr.EcDecl.f_ring in
+        let foro p =
+          let (p, i) =
+            for_ring_slot subst ~opath ~ops cr.EcDecl.f_ring.EcDecl.r_insts p in
+          if not (EcDecl.targs_equal i f_ring.EcDecl.r_insts) then
+            raise InvInstPath;
+          p in
+        { EcDecl.f_ring = f_ring;
           f_inv  = foro cr.EcDecl.f_inv;
           f_div  = omap foro cr.EcDecl.f_div; }
       in

@@ -4004,9 +4004,9 @@ let rec pp_theory ppe (fmt : Format.formatter) (path, cth) =
               (pp_paren (pp_list ",@ " (pp_tyvar ppe))) typ.tyvars
               (pp_type ppe) ty
               (pp_list "@\n"
-                 (fun fmt (name, (op : EcDecl.ring_op)) ->
+                 (fun fmt (name, op) ->
                    Format.fprintf fmt "op %s = %s"
-                     name (EcPath.tostring op.ro_op)))
+                     name (EcPath.tostring op)))
               ops
       end
 
