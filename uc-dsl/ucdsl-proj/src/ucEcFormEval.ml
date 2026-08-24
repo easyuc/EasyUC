@@ -378,8 +378,6 @@ let should_simplify_further
   let ret = not (is_weakly_simplified concl) in
   print_endline ("should_simplify_further = "^(Bool.to_string ret));
   ret
-                    
-                                               
 
 let progression 
 (f : EcCoreGoal.proof -> EcCoreGoal.proof option)
@@ -582,7 +580,9 @@ let process_delta_when_args_are_addr_literals p tc =
                      (fun ty1 ty2 ->
                         print_endline (string_of_bool (check_ty env EcSubst.empty ty1 ty2)))
 (* TODO - Tomislav
-   Alley: this is ignoring the indices, and I'm unclear whether this makes sense *)
+
+   Alley: this is ignoring the indices (pp_ty.indices and
+   fpp_ty.indices), and I'm unclear whether this makes sense *)
                      pp_ty.types fpp_ty.types
                 else ()
             | _ -> () end;
