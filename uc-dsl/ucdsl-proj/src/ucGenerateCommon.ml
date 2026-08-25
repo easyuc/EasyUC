@@ -346,7 +346,6 @@ let pp_form ?(is_sim:bool=false) ?(intprts : EcIdent.t QidMap.t = QidMap.empty)
     let f_if_addr_opt =
       EcFol.f_local (EcIdent.create if_addr_opt) (EcTypes.toption addr_ty) in
     let f_oget (f : EcFol.form) (ty : EcTypes.ty) : EcFol.form =
-(* TODO: Tomislav check *)
       let op = EcFol.f_op EcCoreLib.CI_Option.p_oget ~tyargs:[ty]
                  (EcTypes.tfun (EcTypes.toption ty) ty)
       in
