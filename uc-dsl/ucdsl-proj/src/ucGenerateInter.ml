@@ -1,12 +1,14 @@
 open UcTypedSpec
 open EcTypes
+open EcFol
 open EcLocation
 open UcMessage
 open UcGenerateCommon
 
+(* we exclude TagNoInter (from UCBasicTypes.ec), because generated code
+   never uses it *)
+
 type tag =
-  | TagNoInter       (* communication not involving messages of an
-                        interface *)
   | TagComposite of  (* message is to/from composite interface *)
       string *       (* unit root file name *)
       string         (* message name *)
@@ -16,17 +18,8 @@ type tag =
 
 let print_tag (ppf : Format.formatter) (tag : tag) : unit =
   match tag with
-  | TagNoInter -> Format.fprintf ppf "TagNoInter"
   | TagComposite (root, name) -> Format.fprintf ppf "TagComposite@ %s@ %s" root name
   | TagBasic (root, name) -> Format.fprintf ppf "TagBasic@ %s@ %s" root name
-
-let print_epdp_tag_univ (ppf : Format.formatter) (sc : EcScope.scope) : unit =
-  let env = EcScope.env sc in
-  let qepdp = (["Top";"UCBasicTypes"], "epdp_tag_univ") in
-  let pth, oper = EcEnv.Op.lookup qepdp env in
-  let epdp_opex = e_op pth oper.op_ty in
-  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
 
 (* iff ucdsl message declaration has some port, it is a direct message *)
 let isdirect (mb : message_body_tyd) : bool =
@@ -95,9 +88,9 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
                           
   in
 (* TODO: Tomislav check next line *)
-  let epdp_opex = e_op pth ~indices:ta.indices ~tyargs:ta.types oper.op_ty in
+  let epdp_opex = f_op pth ~indices:ta.indices ~tyargs:ta.types oper.op_ty in
   let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
+  Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
 
 (*---------------------------------------------------------------------------*)
 
@@ -120,13 +113,15 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
      let qbase = (["Top";"UCUniv"], name) in
      let env = EcScope.env sc in
      let pth,oper = EcEnv.Op.lookup qbase env in
-     let epdp_opex = e_op pth ~tyargs:tyl oper.op_ty in
+     let epdp_opex = f_op pth ~tyargs:tyl oper.op_ty in
+let () = Printf.printf "dumpty: %s\n" (dump_ty oper.op_ty) in
      let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-     Format.fprintf ppf "@[%a@]" (EcPrinting.pp_expr ppe) epdp_opex
+     Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
   | None -> failure "tuples must have between 2 and 8 members"
 
 (*---------------------------------------------------------------------------*)
 
+(* TODO - remove?
 (* epdp for type applications -----------------------------------------------*)
 let epdp_basicUCappty_name (tyname : EcSymbols.qsymbol) : string option =
   let epdp_name (name : string) : string option =
@@ -148,6 +143,7 @@ let epdp_basicUCappty_name (tyname : EcSymbols.qsymbol) : string option =
   | ["UCBasicTypes"] -> epdp_name name
   | [] -> epdp_name name
   | _ -> None
+*)
 
 (*---------------------------------------------------------------------------*)
 
@@ -266,7 +262,6 @@ let get_root_from_tag (tag : tag) : string =
   match tag with
   | TagComposite (r,_) -> r 
   | TagBasic (r,_) -> r
-  | TagNoInter -> failure "TagNoInter has no root"
 
 let print_message
 (ppf : Format.formatter)
@@ -302,7 +297,6 @@ let print_message
     let t,r,m = match tag with
     | TagComposite (r,m) -> ("TagComposite", r, m) 
     | TagBasic (r,m) -> ("TagBasic",r,m)
-    | TagNoInter -> failure "TagNoInter should not show up here"
     in
     print__name_as_ec_str_op ppf m;
     Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s.@]@,"
