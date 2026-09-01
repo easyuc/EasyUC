@@ -46,55 +46,92 @@ let epdp_enc_field : string = "enc"
 
 let enc_op_name (name : string) : string = "enc_"^name
 
-
 (* print epdp for message data ----------------------------------------------*)
 
 (* epdp for constructed types -----------------------------------------------*)
 
+let subst_for_index_and_type_vars
+    (idx_map : (EcIdent.t * tindex) list)
+    (tv_map  : (EcIdent.t * ty) list)
+    (ty      : ty) =
+  let rec subst (ty : ty) : ty =
+    match ty.ty_node with
+    | Tvar v          ->
+        (match List.assoc_opt v tv_map with
+         | None    -> failure "cannot happen"
+         | Some ty -> ty)
+    | Ttuple tys      -> EcAst.mk_ty (Ttuple (List.map subst tys))
+    | Tconstr (p, ta) ->
+        EcAst.mk_ty
+        (Tconstr
+         (p,
+          {indices =
+             List.map
+             (fun idx ->
+                match idx with
+                | EcAst.TIVar v ->
+                    (match List.assoc_opt v idx_map with
+                     | None     -> failure "cannot happen"
+                     | Some ind -> ind)
+                | ind     -> ind)
+             ta.indices;
+           types   = List.map subst ta.types}))
+    | Tfun (ty1, ty2) ->
+        EcAst.mk_ty (Tfun (subst ty1, subst ty2))
+    | _               -> failure "cannot happen" in
+  subst ty
+
 let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
-(tp : EcPath.path) (ta : targs) : unit =
+    (t : ty) (tp : EcPath.path) (ta : targs) : unit =
   let env = EcScope.env sc in
   let qtp = EcPath.toqsymbol tp in
   let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
   let pth, oper =
     match EcEnv.Op.lookup_opt qepdp env with
-    | Some (pth, t) -> pth , t 
-    | None ->
-      let ue = EcUnify.UniEnv.create None in
-      let pform = UcUtils.dummyloc (EcParsetree.PFident
-                  (UcUtils.dummyloc ([],snd qepdp), None)) in
+    | Some (pth, t) -> pth, t 
+    | None          ->
+        let ue = EcUnify.UniEnv.create None in
+        let pform =
+          UcUtils.dummyloc
+          (EcParsetree.PFident
+           (UcUtils.dummyloc ([], snd qepdp), None)) in
       try
         let form = EcTyping.trans_form_opt env ue pform None in
         match form.f_node with
-        | Fop (pth,_) -> let t = EcEnv.Op.by_path pth env in pth,t
-        | _ -> failure ("trying to find by name failed")
+        | Fop (pth, _) -> let t = EcEnv.Op.by_path pth env in pth,t
+        | _            -> failure ("trying to find by name failed")
       with 
       | _ ->
-        let qbase = (["Top";"UCBasicTypes"], snd qepdp) in
+        let qbase = (["Top"; "UCBasicTypes"], snd qepdp) in
         match EcEnv.Op.lookup_opt qbase env with
-        | Some (pth, t) -> pth , t 
-        | None ->
-          let qbase = (["Top";"UCEncoding"], snd qepdp) in
-          match EcEnv.Op.lookup_opt qbase env with
-          | Some (pth, t) -> pth , t 
-          | None ->
-            let qbase = (["Top";"UCUniv"], snd qepdp) in
+        | Some (pth, t) -> pth, t 
+        | None          ->
+            let qbase = (["Top"; "UCUniv"], snd qepdp) in
             match EcEnv.Op.lookup_opt qbase env with
-            | Some (pth, t) -> pth , t 
-            | None ->
-               if qtp = (["Top"; "UCUniv"], "univ")
-               then EcEnv.Op.lookup (["Top"; "UCEncoding"], "epdp_id") env
-               else failure ("couldn't find epdp operator "^(EcSymbols.string_of_qsymbol qepdp))
-                          
-  in
-(* TODO: Tomislav check next line *)
-  let epdp_opex = f_op pth ~indices:ta.indices ~tyargs:ta.types oper.op_ty in
-  let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
-  Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
+            | Some (pth, t) -> pth, t 
+            | None          ->
+                failure ("couldn't find epdp operator " ^ snd qepdp) in
+  let tvars = oper.op_tparams.tyvars in
+  let idxvars = oper.op_tparams.idxvars in
+  let idx_map =
+    try List.combine idxvars ta.indices with
+    | _ -> failure "mismatch of type index vars of operation and type" in
+  let tv_map =
+    try List.combine tvars ta.types with
+    | _ -> failure "mismatch of type vars of operation and type" in
+  let op_ty =
+    toarrow
+    (List.map (fun ty -> epdp_ty ty univ_ty) ta.types)
+    (epdp_ty t univ_ty) in
+  let ue = EcUnify.UniEnv.create None in
+  if try EcUnify.unify env ue op_ty
+         (subst_for_index_and_type_vars idx_map tv_map oper.op_ty); true with
+     | _ -> false
+  then let epdp_opex = f_op pth ~indices:ta.indices ~tyargs:ta.types op_ty in
+       let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
+       Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
+  else failure "bad epdp operator"
 
-(*---------------------------------------------------------------------------*)
-
-(* epdp for tuples ----------------------------------------------------------*)
 let epdp_basicUCtuple_name (arity : int) : string option =
   match arity with
   | 2 -> Some "epdp_pair_univ"
@@ -116,94 +153,56 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
      let op_ty =
        toarrow
        (List.map (fun ty -> epdp_ty ty univ_ty) tyl)
-       (epdp_ty (ttuple tyl) (univ_ty)) in
+       (epdp_ty (ttuple tyl) univ_ty) in
      let epdp_opex = f_op pth ~tyargs:tyl op_ty in
      let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
      Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
-  | None -> failure "tuples must have between 2 and 8 members"
-
-(*---------------------------------------------------------------------------*)
-
-(* TODO - remove?
-(* epdp for type applications -----------------------------------------------*)
-let epdp_basicUCappty_name (tyname : EcSymbols.qsymbol) : string option =
-  let epdp_name (name : string) : string option =
-  match name with
-    | "choice"  -> Some "epdp_choice_univ"
-    | "choice3" -> Some "epdp_choice3_univ"
-    | "choice4" -> Some "epdp_choice4_univ"
-    | "choice5" -> Some "epdp_choice5_univ"
-    | "choice6" -> Some "epdp_choice6_univ"
-    | "choice7" -> Some "epdp_choice7_univ"
-    | "choice8" -> Some "epdp_choice8_univ"
-    | "option"  -> Some "epdp_option_univ"
-    | "list"    -> Some "epdp_list_univ"
-    | _ -> None
-  in
-  let qual,name = tyname in
-  match qual with
-  | ["Top";"UCBasicTypes"] -> epdp_name name
-  | ["UCBasicTypes"] -> epdp_name name
-  | [] -> epdp_name name
-  | _ -> None
-*)
-
-(*---------------------------------------------------------------------------*)
-
-(* epdp for function types --------------------------------------------------*)
-
-(*---------------------------------------------------------------------------*)
+  | None      -> failure "tuples must have between 2 and 8 members"
 
 (* combining epdps to construct epdp for a type -----------------------------*)
+
 let rec epdp_ty_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-(t : ty) : unit  =
+    (t : ty) : unit  =
   match t.ty_node with
-  | Ttuple tys -> epdp_tuple_univ_ex sc ppf tys
-(* TODO: Tomislav check next line *)
-  | Tconstr (pth, ta) -> epdp_constr_univ_ex sc ppf pth ta
-  | Tfun (ty1, ty2) -> epdp_fun_univ_ex sc ppf ty1 ty2
-  | _ -> failure ("Only tuples, constructed types, and functions are supported." )
+  | Ttuple tys        -> epdp_tuple_univ_ex sc ppf tys
+  | Tconstr (pth, ta) -> epdp_constr_univ_ex sc ppf t pth ta
+  | _                 ->
+      failure ("Only tuples, constructed types, and functions are supported." )
 
 and epdp_ptyl (ppf : Format.formatter) (sc : EcScope.scope)
-(tl : ty list) : unit =
+    (tl : ty list) : unit =
   List.iter ( fun t -> Format.fprintf ppf "@ @[(%a)@]"
      (epdp_ty_univ_ex sc) t
   ) tl
   
 and epdp_tuple_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-(tys : ty list) : unit =
+    (tys : ty list) : unit =
   epdp_opex_for_tuple ppf sc tys;
   epdp_ptyl ppf sc tys
 
 and epdp_constr_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-(pth : EcPath.path) (ta : targs) : unit =
-  epdp_opex_for_typath ppf sc pth ta;
+    (t : ty) (pth : EcPath.path) (ta : targs) : unit =
+  epdp_opex_for_typath ppf sc t pth ta;
   epdp_ptyl ppf sc ta.types
 
-and epdp_fun_univ_ex (_ : EcScope.scope) (_ : Format.formatter) 
-(_ : ty) (_ : ty) : unit =
-  failure "epdp for function types not implemented"
-(*TODO naming convention for function  epdps*)
-(*---------------------------------------------------------------------------*)
-
 let print_epdp_data_univ (sc : EcScope.scope) (ppf : Format.formatter) 
-(params_map : ty_index IdMap.t) : unit =
-  let tys = List.map (fun (_,ty) -> ty) (params_map_to_list params_map) in
+    (params_map : ty_index IdMap.t) : unit =
+  let tys = List.map (fun (_, ty) -> ty) (params_map_to_list params_map) in
   match tys with
-  | [] -> Format.fprintf ppf "@ epdp_unit_univ"
+  | []  -> Format.fprintf ppf "@ epdp_unit_univ"
   | [t] -> epdp_ty_univ_ex sc ppf t
-  | _ -> epdp_tuple_univ_ex sc ppf tys
+  | _   -> epdp_tuple_univ_ex sc ppf tys
 
 (*------------------------------------------------------------------------*)
 
 let print_enc_data (sc : EcScope.scope) 
-(var_name : string)
-(msg_name : string)
-(ppf : Format.formatter)
-(params_map : ty_index IdMap.t) 
-: unit =
+    (var_name : string)
+    (msg_name : string)
+    (ppf : Format.formatter)
+    (params_map : ty_index IdMap.t) 
+      : unit =
   let print_enc_args (var_name : string) (msg_name : string )
-  (ppf : Format.formatter) (params_map : ty_index IdMap.t) : unit =
+      (ppf : Format.formatter) (params_map : ty_index IdMap.t) : unit =
     let pns = fst (List.split (params_map_to_list params_map)) in
     match pns with
     | [] -> Format.fprintf ppf "@[()@]"
