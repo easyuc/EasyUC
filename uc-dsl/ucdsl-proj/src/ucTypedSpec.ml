@@ -197,6 +197,8 @@ type ty_index = (ty * int) located
 
 let uc_qsym_prefix_basic_types = ["Top"; "UCBasicTypes"]
 let uc_qsym_prefix_list_po     = ["Top"; "UCListPO"]
+let uc_qsym_prefix_encoding    = ["Top"; "UCEncoding"]
+let uc_qsym_prefix_univ        = ["Top"; "UCUniv"]
 let ec_qsym_prefix_core_int    = ["Top"; "CoreInt"]
 let ec_qsym_prefix_list        = ["Top"; "List"]
 
@@ -205,6 +207,13 @@ let port_ty : ty =
 
 let addr_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr"))
+
+let univ_ty : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_univ, "univ"))
+
+let epdp_ty (ty1 : ty) (ty2 : ty) : ty =
+  tconstr ~tyargs:[ty1; ty2]
+  (EcPath.fromqsymbol (uc_qsym_prefix_encoding, "epdp"))
 
 (* UC DSL and EasyCrypt operators *)
 

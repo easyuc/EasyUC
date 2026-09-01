@@ -107,14 +107,17 @@ let epdp_basicUCtuple_name (arity : int) : string option =
   | _ -> None
 
 let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
-(tyl : ty list) : unit =
+    (tyl : ty list) : unit =
   match epdp_basicUCtuple_name (List.length tyl) with
   | Some name ->
-     let qbase = (["Top";"UCUniv"], name) in
+     let qbase = (["Top"; "UCUniv"], name) in
      let env = EcScope.env sc in
-     let pth,oper = EcEnv.Op.lookup qbase env in
-     let epdp_opex = f_op pth ~tyargs:tyl oper.op_ty in
-let () = Printf.printf "dumpty: %s\n" (dump_ty oper.op_ty) in
+     let pth, _ = EcEnv.Op.lookup qbase env in
+     let op_ty =
+       toarrow
+       (List.map (fun ty -> epdp_ty ty univ_ty) tyl)
+       (epdp_ty (ttuple tyl) (univ_ty)) in
+     let epdp_opex = f_op pth ~tyargs:tyl op_ty in
      let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
      Format.fprintf ppf "@[%a@]" (EcPrinting.pp_form ppe) epdp_opex
   | None -> failure "tuples must have between 2 and 8 members"
