@@ -50,39 +50,8 @@ let enc_op_name (name : string) : string = "enc_"^name
 
 (* epdp for constructed types -----------------------------------------------*)
 
-let subst_for_index_and_type_vars
-    (idx_map : (EcIdent.t * tindex) list)
-    (tv_map  : (EcIdent.t * ty) list)
-    (ty      : ty) =
-  let rec subst (ty : ty) : ty =
-    match ty.ty_node with
-    | Tvar v          ->
-        (match List.assoc_opt v tv_map with
-         | None    -> failure "cannot happen"
-         | Some ty -> ty)
-    | Ttuple tys      -> EcAst.mk_ty (Ttuple (List.map subst tys))
-    | Tconstr (p, ta) ->
-        EcAst.mk_ty
-        (Tconstr
-         (p,
-          {indices =
-             List.map
-             (fun idx ->
-                match idx with
-                | EcAst.TIVar v ->
-                    (match List.assoc_opt v idx_map with
-                     | None     -> failure "cannot happen"
-                     | Some ind -> ind)
-                | ind     -> ind)
-             ta.indices;
-           types   = List.map subst ta.types}))
-    | Tfun (ty1, ty2) ->
-        EcAst.mk_ty (Tfun (subst ty1, subst ty2))
-    | _               -> failure "cannot happen" in
-  subst ty
-
-let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
-    (t : ty) (tp : EcPath.path) (ta : targs) : unit =
+let epdp_opex_for_typath (sc : EcScope.scope) (ppf : Format.formatter)
+    ((t, tp, ta) : ty * EcPath.path * targs) : unit =
   let env = EcScope.env sc in
   let qtp = EcPath.toqsymbol tp in
   let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
@@ -125,7 +94,9 @@ let epdp_opex_for_typath (ppf : Format.formatter) (sc : EcScope.scope)
     (epdp_ty t univ_ty) in
   let ue = EcUnify.UniEnv.create None in
   if try EcUnify.unify env ue op_ty
-         (subst_for_index_and_type_vars idx_map tv_map oper.op_ty); true with
+         (Option.get
+          (subst_for_index_and_type_vars_in_type
+           idx_map tv_map oper.op_ty)); true with
      | _ -> false
   then let epdp_opex = f_op pth ~indices:ta.indices ~tyargs:ta.types op_ty in
        let ppe = EcPrinting.PPEnv.ofenv (EcScope.env sc) in
@@ -143,7 +114,7 @@ let epdp_basicUCtuple_name (arity : int) : string option =
   | 8 -> Some "epdp_tuple8_univ"
   | _ -> None
 
-let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
+let epdp_opex_for_tuple (sc : EcScope.scope) (ppf : Format.formatter)
     (tyl : ty list) : unit =
   match epdp_basicUCtuple_name (List.length tyl) with
   | Some name ->
@@ -162,36 +133,43 @@ let epdp_opex_for_tuple (ppf : Format.formatter) (sc : EcScope.scope)
 (* combining epdps to construct epdp for a type -----------------------------*)
 
 let rec epdp_ty_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-    (t : ty) : unit  =
+    ((t, top) : ty * bool) : unit  =
   match t.ty_node with
-  | Ttuple tys        -> epdp_tuple_univ_ex sc ppf tys
-  | Tconstr (pth, ta) -> epdp_constr_univ_ex sc ppf t pth ta
+  | Ttuple tys        -> epdp_tuple_univ_ex sc ppf (tys, top)
+  | Tconstr (pth, ta) -> epdp_constr_univ_ex sc ppf (t, pth, ta)
   | _                 ->
-      failure ("Only tuples, constructed types, and functions are supported." )
+      failure ("Only tuples and constructed types are supported." )
 
-and epdp_ptyl (ppf : Format.formatter) (sc : EcScope.scope)
-    (tl : ty list) : unit =
-  List.iter ( fun t -> Format.fprintf ppf "@ @[(%a)@]"
-     (epdp_ty_univ_ex sc) t
-  ) tl
+and epdp_ptyl (sc : EcScope.scope) (ppf : Format.formatter)
+    (tyl : ty list) : unit =
+  let tyl = List.map (fun ty -> (ty, false)) tyl in
+  EcPrinting.pp_list "@ " (epdp_ty_univ_ex sc) ppf tyl
   
 and epdp_tuple_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-    (tys : ty list) : unit =
-  epdp_opex_for_tuple ppf sc tys;
-  epdp_ptyl ppf sc tys
+    ((tys, top) : ty list * bool) : unit =
+  if top
+  then Format.fprintf ppf "@[%a@ %a@]"
+       (epdp_opex_for_tuple sc) tys
+       (epdp_ptyl sc) tys
+  else Format.fprintf ppf "@[(@[%a@ %a@])@]"
+       (epdp_opex_for_tuple sc) tys
+       (epdp_ptyl sc) tys
 
 and epdp_constr_univ_ex (sc : EcScope.scope) (ppf : Format.formatter) 
-    (t : ty) (pth : EcPath.path) (ta : targs) : unit =
-  epdp_opex_for_typath ppf sc t pth ta;
-  epdp_ptyl ppf sc ta.types
+    ((t, pth, ta) : ty * EcPath.path * targs) : unit =
+  if List.is_empty ta.types
+  then epdp_opex_for_typath sc ppf (t, pth, ta)
+  else Format.fprintf ppf "@[(@[%a@ %a@])@]"
+       (epdp_opex_for_typath sc) (t, pth, ta)
+       (epdp_ptyl sc) ta.types
 
 let print_epdp_data_univ (sc : EcScope.scope) (ppf : Format.formatter) 
     (params_map : ty_index IdMap.t) : unit =
   let tys = List.map (fun (_, ty) -> ty) (params_map_to_list params_map) in
   match tys with
-  | []  -> Format.fprintf ppf "@ epdp_unit_univ"
-  | [t] -> epdp_ty_univ_ex sc ppf t
-  | _   -> epdp_tuple_univ_ex sc ppf tys
+  | []  -> Format.fprintf ppf "epdp_unit_univ"
+  | [t] -> epdp_ty_univ_ex sc ppf (t, true)
+  | _   -> epdp_tuple_univ_ex sc ppf (tys, true)
 
 (*------------------------------------------------------------------------*)
 
@@ -215,7 +193,7 @@ let print_enc_data (sc : EcScope.scope)
        Format.fprintf ppf "@[(%s.`%s%a)@]"
          var_name (name_record msg_name pn) print_tl_args ()
   in
-  Format.fprintf ppf "@[@ (%a).`%s@ %a@]"
+  Format.fprintf ppf "@[@[(@[%a@]).`%s@]@ @[%a@]@]"
     (print_epdp_data_univ sc) params_map
     epdp_enc_field
     (print_enc_args var_name msg_name) params_map
@@ -329,7 +307,7 @@ let print_message
     in
     let mode = if isdirect then mode_Dir else mode_Adv in
       
-    Format.fprintf ppf "@[(%s,@ %a,@ %a,@ %s,@ %a)@]"
+    Format.fprintf ppf "@[(@[%s,@ %a,@ %a,@ %s,@ %a@])@]"
       mode
       print_ptdest mb.dir
       print_ptsource mb.dir

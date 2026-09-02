@@ -278,6 +278,42 @@ let int_le_op : form =
 
 let envport_id : EcIdent.t = EcIdent.create "envport"
 
+(* substitution for indexed and type variables in types *)
+
+exception SubstForIndexAndTypeVarsFailure
+
+let subst_for_index_and_type_vars_in_type
+    (idx_map : (EcIdent.t * tindex) list)
+    (tv_map  : (EcIdent.t * ty) list)
+    (ty      : ty) : ty option =
+  let rec subst_ti (ti : tindex) : tindex =
+    match ti with
+    | TIVar v          ->
+        (match List.assoc_opt v idx_map with
+         | None    -> raise SubstForIndexAndTypeVarsFailure
+         | Some ti -> ti)
+    | TIAdd (ti1, ti2) -> TIAdd (subst_ti ti1, subst_ti ti2)
+    | TIMul (ti1, ti2) -> TIMul (subst_ti ti1, subst_ti ti2)
+    | ti               -> ti in
+  let rec subst_ty (ty : ty) : ty =
+    match ty.ty_node with
+    | Tvar v          ->
+        (match List.assoc_opt v tv_map with
+         | None    -> raise SubstForIndexAndTypeVarsFailure
+         | Some ty -> ty)
+    | Ttuple tys      -> EcAst.mk_ty (Ttuple (List.map subst_ty tys))
+    | Tconstr (p, ta) ->
+        EcAst.mk_ty
+        (Tconstr
+         (p,
+          {indices = List.map subst_ti ta.indices;
+           types   = List.map subst_ty ta.types}))
+    | Tfun (ty1, ty2) ->
+        EcAst.mk_ty (Tfun (subst_ty ty1, subst_ty ty2))
+    | _               -> raise SubstForIndexAndTypeVarsFailure in
+  try Some (subst_ty ty) with
+  | SubstForIndexAndTypeVarsFailure -> None
+
 (* substitution of path prefixes in types and formulas
 
    when using the following functions, none of the paths involved

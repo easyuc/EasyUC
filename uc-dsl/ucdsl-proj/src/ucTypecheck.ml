@@ -100,6 +100,108 @@ let check_name_type_bindings_top
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
   nt_map
 
+let name_epdp_op (tyname : string) : string = "epdp_" ^ tyname ^ "_univ"
+
+let check_epdp_existence_for_constructed_type (l : EcLocation.t)
+    (ty : ty) (pth : EcPath.path) (ta : targs) : unit =
+  let env = top_env () in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let qtp = EcPath.toqsymbol pth in
+  let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
+  let pth, oper =
+    match EcEnv.Op.lookup_opt qepdp env with
+    | Some (pth, op) -> pth, op
+    | None           ->
+        let ue = EcUnify.UniEnv.create None in
+        let pform =
+          UcUtils.dummyloc
+          (EcParsetree.PFident
+           (UcUtils.dummyloc ([], snd qepdp), None)) in
+      try
+        let form = EcTyping.trans_form_opt env ue pform None in
+        match form.f_node with
+        | Fop (pth, _) -> let op = EcEnv.Op.by_path pth env in pth, op
+        | _            -> failure ""
+      with 
+      | _ ->
+        let qbase = (["Top"; "UCBasicTypes"], snd qepdp) in
+        match EcEnv.Op.lookup_opt qbase env with
+        | Some (pth, op) -> pth, op
+        | None           ->
+            let qbase = (["Top"; "UCUniv"], snd qepdp) in
+            match EcEnv.Op.lookup_opt qbase env with
+            | Some (pth, t) -> pth, t 
+            | None          ->
+                error_message l
+                (fun ppf ->
+                   fprintf ppf
+                   "@[couldn't@ find@ an@ EPDP@ into@ univ@ for@ type:@ %a@]"
+                   (EcPrinting.pp_type ppe) ty) in
+  let tvars = oper.op_tparams.tyvars in
+  let idxvars = oper.op_tparams.idxvars in
+  let idx_map =
+    try List.combine idxvars ta.indices with
+    | _ ->
+        error_message l
+        (fun ppf ->
+           fprintf ppf
+           ("@[operator@ %s@ is@ an@ invalid@ EPDP@ for@ type@ @[%a@]@ " ^^
+            "because@ it@ has@ a@ different@ number@ of@ type@ indices@]")
+           (EcPath.tostring pth) (EcPrinting.pp_type ppe) ty) in
+  let tv_map =
+    try List.combine tvars ta.types with
+    | _ ->
+        error_message l
+        (fun ppf ->
+           fprintf ppf
+           ("@[operator@ %s@ is@ an@ invalid@ EPDP@ for@ type@ @[%a@]@ " ^^
+            "because@ it@ has@ a@ different@ number@ of@ type@ variables@]")
+           (EcPath.tostring pth) (EcPrinting.pp_type ppe) ty) in
+  let op_ty =
+    toarrow
+    (List.map (fun ty -> epdp_ty ty univ_ty) ta.types)
+    (epdp_ty ty univ_ty) in
+  let ue = EcUnify.UniEnv.create None in
+  let subst_op_ty =
+    Option.get
+    (subst_for_index_and_type_vars_in_type idx_map tv_map oper.op_ty) in
+  if try EcUnify.unify env ue op_ty subst_op_ty; false with
+     | _ -> true
+  then error_message l
+       (fun ppf ->
+          fprintf ppf
+          ("@[operator@ %s@ is@ an@ invalid@ EPDP@ for@ type@ @[%a@]@ " ^^
+           "because@ when@ instantiated@ like@ the@ type@ its@ type@ " ^^
+           "is@ @[%a@]@ whereas@ its@ type@ should@ be@ @[%a@]@]")
+          (EcPath.tostring pth) (EcPrinting.pp_type ppe) ty
+          (EcPrinting.pp_type ppe) subst_op_ty
+          (EcPrinting.pp_type ppe) op_ty)
+
+let check_epdp_existence_for_type (l : EcLocation.t) (ty : ty) : unit =
+  let env = top_env() in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let rec check ty : unit =
+    match ty.ty_node with
+    | Ttuple tys        ->
+        (if List.length tys > 8
+         then error_message l
+              (fun ppf ->
+                 fprintf ppf
+                 ("@[this@ tuple@ type@ lacks@ an@ EPDP@ into@ univ,@ " ^^
+                  "because@ it@ has@ more@ than@ 8@ components: @[%a@]@]")
+                 (EcPrinting.pp_type ppe) ty);
+         List.iter check tys)
+    | Tconstr (pth, ta) ->
+        check_epdp_existence_for_constructed_type l ty pth ta
+    | _                 ->
+        error_message l
+        (fun ppf ->
+           fprintf ppf
+           ("@[this@ type@ lacks@ an@ EPDP@ into@ univ,@ because@ it@ is@ " ^^
+            "neither@ a@ tuple@ type@ nor@ a@ constructed@ type:@ @[%a@]@]")
+           (EcPrinting.pp_type ppe) ty)
+  in check ty
+
 (****************************** interface checks ******************************)
 
 type inter_kind =
@@ -133,6 +235,14 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
                  (fun ppf ->
                     fprintf ppf "@[duplicate@ message@ parameter@ name@]")
                  md.params in
+           let () =
+             if UcState.get_gen ()
+             then IdMap.iter
+                  (fun _ tyi ->
+                     let l = loc tyi in
+                     let (ty, _) = unloc tyi in
+                     check_epdp_existence_for_type l ty)
+                  params_map in
            let port =
                  Option.map
                  (fun idl ->

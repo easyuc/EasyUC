@@ -93,11 +93,9 @@ let run_print_pos_arg () =
 let gen_ref : bool ref = ref false
 
 let gen_arg () =
-  (
-    units_arg ();
-    gen_ref := true;
-    ()
-  )
+  (units_arg ();
+   gen_ref := true;
+   ())
 
 let arg_specs =
   [("-I", String include_arg, "<dir> Add directory to include search path");
@@ -214,6 +212,7 @@ let check_uc_file (file : string) : unit =
        "@[-%s@ option@ not@ allowed@ when@ checking@ .uc@ file@]"
        opt) in
   let () = if ! raw_msg_ref then UcState.set_raw_messages () in
+  let () = if ! gen_ref then UcState.set_gen () in
   let () = if ! interpreter_ref then forbid_option "interpreter" in
   let () = if ! debug_ref then forbid_option "debug" in
   let () = if ! batch_ref then forbid_option "batch" in
