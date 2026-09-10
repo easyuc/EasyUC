@@ -499,7 +499,7 @@ direct SMCDir {
 }
 
 So we assign these port indices to components of the composite direct
-interface:
+interface (ordered lexicographically):
 
 Pt1: 1
 Pt2: 2
@@ -514,7 +514,7 @@ pt1@SMC.SMCDir.Pt1.smc_req(pt2, t)@((func, 1))
 
 And in the EasyCrypt translation we would have
 
-(Dir, pt1, (func, 1), TagComposite "SMC" "smc_req",
+(Dir, (func, 1), pt1, TagComposite "SMC" "smc_req",
  <encoding-of> (pt2, t))
 
 Because the root is "SMC", the mode is Dir, and SMCDir is the
@@ -525,7 +525,7 @@ index, 1. And the message is "smc_req".
 
 If we take
 
-(Dir, pt1, (func, 2), TagComposite "SMC" "smc_req",
+(Dir, (func, 2), pt1, TagComposite "SMC" "smc_req",
  <encoding-of> (pt2, t))
 
 this would correspond to 

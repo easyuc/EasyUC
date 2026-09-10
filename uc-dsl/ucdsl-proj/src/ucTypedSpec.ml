@@ -1271,7 +1271,7 @@ let get_dir_info_of_party_of_real_fun
       match ibt with
       | BasicTyd _       -> failure "cannot happen7"
       | CompositeTyd map ->
-        Some (comp, sub, id_map_ordinal1_of_sym map sub)
+          Some (comp, sub, id_map_ordinal1_of_sym map sub)
 
 (* None if the party does not serve a basic adversarial interface;
    otherwise Some (comp, sub, i, j), where [comp; sub] is the basic
