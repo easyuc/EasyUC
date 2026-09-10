@@ -575,6 +575,8 @@ let process_delta_when_args_are_addr_literals p tc =
             | Fop (pp,pp_ty), Fop(fpp,fpp_ty) ->
                 let p_equal = EcPath.p_equal pp fpp in
                 print_endline ("p_equal = "^(string_of_bool p_equal));
+                print_endline ("indices_equal = "^
+                                 (string_of_bool (pp_ty.indices = fpp_ty.indices)));
                 if p_equal
                 then List.iter2
                      (fun ty1 ty2 ->
@@ -582,7 +584,10 @@ let process_delta_when_args_are_addr_literals p tc =
 (* TODO - Tomislav
 
    Alley: this is ignoring the indices (pp_ty.indices and
-   fpp_ty.indices), and I'm unclear whether this makes sense *)
+   fpp_ty.indices), and I'm unclear whether this makes sense
+
+   Tomislav: This is only printf debugging, I have added a structural equality test for indices, but this shouldn't affect the functionality
+ *)
                      pp_ty.types fpp_ty.types
                 else ()
             | _ -> () end;
@@ -1015,11 +1020,13 @@ let eval_condition (hyps : EcEnv.LDecl.hyps) (form : EcCoreFol.form)
 
 let get_ty_from_oty (oty : EcTypes.ty) =  
   match oty.ty_node with
-  | Tconstr (p,tas) when List.length tas.types = 1 &&
-                         p = EcCoreLib.CI_Option.p_option -> List.hd (tas.types)
+  | Tconstr (p,{indices = []; types = [ty]}) when
+                         p = EcCoreLib.CI_Option.p_option -> ty
 (*
 TODO: Tomislav check
-  | Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
+| Tconstr (p,[ty]) when p = EcCoreLib.CI_Option.p_option -> ty
+Tomislav: I have checked, when option type is constructed it gets empty indices and a
+list with one type
 *)
   | _ -> failwith "type is not an option type"
 
@@ -1056,7 +1063,8 @@ let eval_op_form_not_None
   pp_ty hyps oty;
   let ty = get_ty_from_oty oty in
   pp_ty hyps ty;
-(* TODO: Tomislav check *)
+  (* TODO: Tomislav check
+   Tomislav: looks good*)
   let f_none = EcCoreFol.f_op EcCoreLib.CI_Option.p_none ~tyargs:[ty] oty in
   (*EcTypes.toption ty*)
   pp_f hyps f_none;
@@ -1077,7 +1085,8 @@ let mk_oget_op_form
   let ty = get_ty_from_oty oty in
   let as_ty_f = EcCoreFol.f_app opf [form] oty in
   let ogetf = 
-(* TODO: Tomislav check *)
+    (* TODO: Tomislav check
+     Tomislav: looks good*)
   EcCoreFol.f_op EcCoreLib.CI_Option.p_oget ~tyargs:[ty] 
   (EcTypes.tfun (EcTypes.toption ty) ty) in
   EcCoreFol.f_app ogetf [as_ty_f] ty
@@ -1092,7 +1101,7 @@ let deconstruct_data_simplify hyps form rw_lems =
   else failwith "Simplification did not reduce formula to the form of ctor applied to data."
   
 
-let deconstruct_data_eval_not_None p ty_args tyd ty_dt
+let deconstruct_data_eval_not_None p (ty_args:EcTypes.targs) tyd ty_dt
     hyps form pi rw_lems =
   let sopl = 
     EcInductive.datatype_projectors (p, tyd.EcDecl.tyd_params, ty_dt) 
@@ -1102,11 +1111,14 @@ let deconstruct_data_eval_not_None p ty_args tyd ty_dt
     let _, op_ret_ty = EcTypes.tyfun_flat op.EcDecl.op_ty in
     let opty =
       EcCoreSubst.Tvar.subst
-(* TODO: Tomislav check *)
-      (EcCoreSubst.Tvar.init op.op_tparams.tyvars ty_args) op_ret_ty in
+        (* TODO: Tomislav check
+         Tomislav: looks good*)
+      (EcCoreSubst.Tvar.init op.op_tparams.tyvars ty_args.types) op_ret_ty in
     let opf = 
-(* TODO: Tomislav check *)
-      EcCoreFol.f_op (EcInductive.datatype_proj_path p s) ~tyargs:ty_args opty
+      (* TODO: Tomislav check
+         Tomislav: changed the call to use full targs
+       *)
+      EcCoreFol.f_op_r (EcInductive.datatype_proj_path p s) ty_args opty
     in
     (s,opf)
   )              
@@ -1164,8 +1176,9 @@ let deconstruct_data
         (*debugging_message (fun fmt -> Format.fprintf fmt 
         "deconstruction by simplification failed.@. 
          Trying to simplify by evaluating get_as_Constr@.");*)
-(* TODO: Tomislav check *)
-      deconstruct_data_eval_not_None p ty_args.types tyd ty_dt
+        (* TODO: Tomislav check
+         Tomislav: passing full targs as param, not just types*)
+      deconstruct_data_eval_not_None p ty_args tyd ty_dt
       hyps form pi rw_lems
       end
     | None -> failwith "Only data types can be deconstructed"
