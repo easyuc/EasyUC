@@ -1,3 +1,5 @@
+(* UcGenerateInter module *)
+
 open UcTypedSpec
 open EcTypes
 open EcFol
@@ -18,8 +20,10 @@ type tag =
 
 let print_tag (ppf : Format.formatter) (tag : tag) : unit =
   match tag with
-  | TagComposite (root, name) -> Format.fprintf ppf "TagComposite@ %s@ %s" root name
-  | TagBasic (root, name) -> Format.fprintf ppf "TagBasic@ %s@ %s" root name
+  | TagComposite (root, name) ->
+      Format.fprintf ppf "TagComposite@ %s@ %s" root name
+  | TagBasic (root, name)     ->
+      Format.fprintf ppf "TagBasic@ %s@ %s" root name
 
 (* iff ucdsl message declaration has some port, it is a direct message *)
 let isdirect (mb : message_body_tyd) : bool =
@@ -200,12 +204,8 @@ let print_enc_data (sc : EcScope.scope)
 
 (*------------------------------------------------------------------------*)
 
-let print_record_field_nl
-(sc : EcScope.scope)
-(ppf : Format.formatter)
-(fn : string)
-(ty : EcTypes.ty)
-: unit =
+let print_record_field_nl (sc : EcScope.scope) (ppf : Format.formatter)
+    (fn : string) (ty : EcTypes.ty) : unit =
   Format.fprintf ppf "@,@[%s :@ %a;@]" fn (pp_type sc) ty
 
 let dec_op_name (name : string) : string = "dec_"^name
@@ -234,7 +234,7 @@ let print_str_as_ec_str (ppf : Format.formatter) (s : string) : unit =
   Format.fprintf ppf "].@]"
 
 let print__name_as_ec_str_op (ppf : Format.formatter)
-(n : string) : unit =
+    (n : string) : unit =
   Format.fprintf ppf "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@,@,"
     n print_str_as_ec_str n n
 
@@ -243,14 +243,8 @@ let get_root_from_tag (tag : tag) : string =
   | TagComposite (r,_) -> r 
   | TagBasic (r,_) -> r
 
-let print_message
-(ppf : Format.formatter)
-(sc : EcScope.scope)
-(tag : tag)
-(mty_name : string)
-(mb : message_body_tyd)
-    : unit =
-
+let print_message (ppf : Format.formatter) (sc : EcScope.scope)
+    (tag : tag) (mty_name : string) (mb : message_body_tyd) : unit =
   let _mty_name = msg_ty_name mty_name in
   let _enc_op_name = enc_op_name _mty_name in
   let _dec_op_name = dec_op_name _mty_name in
@@ -283,7 +277,8 @@ let print_message
       _tag_op_name t r m
   in
 
-  let print_enc_op_body (ppf : Format.formatter) (mb : message_body_tyd) : unit =
+  let print_enc_op_body (ppf : Format.formatter) (mb : message_body_tyd)
+        : unit =
     let var_name = "x" in
     let print_otherport ppf : unit =
       if isdirect
@@ -526,12 +521,8 @@ let print_message
   write_lemma ppf (lemma_eq_of_valid sh tag name mb);
   sh*)
 
-let gen_basic_int
-(sc : EcScope.scope)
-(id : string)
-(root : string)
-(bibt : basic_inter_body_tyd)
-: string =
+let gen_basic_int (sc : EcScope.scope) (id : string) (root : string)
+    (bibt : basic_inter_body_tyd) : string =
   let sf = Format.get_str_formatter () in
   let name = bi_name id in
   Format.fprintf sf "@[<v>";
@@ -563,9 +554,9 @@ let gen_comp_int (id : string) (sm : string IdMap.t) : string =
   Format.fprintf sf "@]";
   Format.flush_str_formatter ()
 
-let gen_int (sc : EcScope.scope)
-(root : string ) (id : string) (it : inter_tyd) : string = 
+let gen_int (sc : EcScope.scope) (root : string ) (id : string)
+    (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
-  | BasicTyd bibt -> gen_basic_int sc id root bibt
+  | BasicTyd bibt   -> gen_basic_int sc id root bibt
   | CompositeTyd sm -> gen_comp_int id sm

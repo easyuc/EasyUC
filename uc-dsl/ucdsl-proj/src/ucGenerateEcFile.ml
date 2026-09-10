@@ -5,11 +5,14 @@ type maps_gen =
   {basic_dir_inter_map : string IdPairMap.t;  (* basic direct interfaces *)
    comp_dir_inter_map  : string IdPairMap.t;  (* composite direct interfaces *)
    basic_adv_inter_map : string IdPairMap.t;  (* basic adversarial interfaces *)
-   comp_adv_inter_map  : string IdPairMap.t;  (* composite adversarial interfaces *)
+   comp_adv_inter_map  : string IdPairMap.t;  (* composite adversarial
+                                                 interfaces *)
    fun_map             : string IdPairMap.t;  (* functionalities *)
    sim_map             : string IdPairMap.t;  (* simulators *)
-   preamble_map        : string IdMap.t;}     (* UC and EC requires, port indices
-                                                 and clones of subfunctionalities and parameter*)
+   preamble_map        : string IdMap.t;}     (* UC and EC requires, port
+                                                 indices and clones of
+                                                 subfunctionalities and
+                                                 parameters *)
 
 let backup_and_write_eca
     (root : string) (filename : string) (printf : out_channel -> unit)
@@ -369,4 +372,3 @@ let generate_ec (mt : maps_tyd) : unit =
     ) roots;
   let mg = gen_maps mt in
   print_files mt mg
-  
