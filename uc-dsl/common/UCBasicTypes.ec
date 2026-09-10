@@ -483,7 +483,7 @@ hint simplify valid_epdp_tag_univ.
 
 type msg = mode * port * port * tag * univ.
 
-(* consider this example from uc-dsl/examples/smc-case-study/SMC.uc
+(* consider this example from uc-dsl/examples/smc2/SMC.uc
 
 direct SMCPt1 {  (* Party 1 *)
   in pt1@smc_req(pt2 : port, t : text)
@@ -541,18 +541,18 @@ Consider SMCReal, which has
   subfun Fwd = Forwarding.Forw
 
 as a subfunctionality. If func is the address of (this instance) of
-SMCReal, then the address of Fwd will be (func ++ [1]). The internal
+SMCReal, then the address of Fwd will be (func ++ [2]). The internal
 ports of parties Pt1 and Pt2 of SMCReal will be (func, 1) and (func,
 2), respectively. Suppose Fwd is sending a fw_rsp message to Pt2 with
-arguments (pt1, pt2, epdp_text_key.`enc t ^^ k).  In the EasyCrypt
-encoding, this will look like
+arguments (func, 1) and (pt1, pt2, epdp_text_key.`enc t ^^ k).  In the
+EasyCrypt encoding, this will look like
 
-(Dir, (func ++ 1, 1), (func, 2), TagComposite "Forwarding" "fw_rsp",
- <encoding-of> (pt1, pt2, epdp_text_key.`enc t ^^ k))
+(Dir, (func, 2), (func ++ [2], 1), TagComposite "Forwarding" "fw_rsp",
+ <encoding-of> ((func, 1), (pt1, pt2, epdp_text_key.`enc t ^^ k)))
 
 And in the interpreter syntax, this looks like
 
-((func ++ 1, 1))@
+((func ++ [2], 1))@
 Forwarding.FwDir.D.fw_rsp((func, 1), (pt1, pt2, epdp_text_key.`enc t ^^ k))
 @((func, 2))
 
@@ -560,7 +560,7 @@ Forwarding.FwDir.D.fw_rsp((func, 1), (pt1, pt2, epdp_text_key.`enc t ^^ k))
 
 An adversarial message to SMCIdeal could look like
 
-(Adv, (adv, adv_pi), (func, 1), TagBasic "SMC" "sim_rsp",
+(Adv, (func, 1), (adv, adv_pi), TagBasic "SMC" "sim_rsp",
  <encoding-of> ())
 
 In the interpreter syntax, this looks like
@@ -575,7 +575,7 @@ an ideal functionality.
 A message from the root port of the environment to the root port
 of the adversary would look like
 
-(Adv, ([], 0), (adv, 0), TagNoInter, u)
+(Adv, (adv, 0), ([], 0), TagNoInter, u)
 
 for whatever the list of booleans u is.
 
