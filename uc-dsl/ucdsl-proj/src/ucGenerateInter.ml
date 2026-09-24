@@ -18,13 +18,6 @@ type tag =
       string *       (* unit root file name *)
       string         (* message name *)
 
-let print_tag (ppf : Format.formatter) (tag : tag) : unit =
-  match tag with
-  | TagComposite (root, name) ->
-      Format.fprintf ppf "TagComposite@ %s@ %s" root name
-  | TagBasic (root, name)     ->
-      Format.fprintf ppf "TagBasic@ %s@ %s" root name
-
 (* iff ucdsl message declaration has some port, it is a direct message *)
 let isdirect (mb : message_body_tyd) : bool =
   match mb.port with
@@ -238,11 +231,6 @@ let print__name_as_ec_str_op (ppf : Format.formatter)
   Format.fprintf ppf "@[op@ _%s@ =@  %a@ (*%s@ as@ ascii@ array*)@]@,@,"
     n print_str_as_ec_str n n
 
-let get_root_from_tag (tag : tag) : string =
-  match tag with
-  | TagComposite (r,_) -> r 
-  | TagBasic (r,_) -> r
-
 let print_message (ppf : Format.formatter) (sc : EcScope.scope)
     (tag : tag) (mty_name : string) (mb : message_body_tyd) : unit =
   let _mty_name = msg_ty_name mty_name in
@@ -268,9 +256,9 @@ let print_message (ppf : Format.formatter) (sc : EcScope.scope)
   in
 
   let print_tag_mty_name_op () : unit =
-    let t,r,m = match tag with
+    let t, r, m = match tag with
     | TagComposite (r,m) -> ("TagComposite", r, m) 
-    | TagBasic (r,m) -> ("TagBasic",r,m)
+    | TagBasic (r,m)     -> ("TagBasic", r, m)
     in
     print__name_as_ec_str_op ppf m;
     Format.fprintf ppf "@[op@ %s@ =@  %s@ _%s@ _%s.@]@,"
@@ -522,7 +510,7 @@ let print_message (ppf : Format.formatter) (sc : EcScope.scope)
   sh*)
 
 let gen_basic_int (sc : EcScope.scope) (id : string) (root : string)
-    (bibt : basic_inter_body_tyd) : string =
+    (of_comp_if_basic : bool) (bibt : basic_inter_body_tyd) : string =
   let sf = Format.get_str_formatter () in
   let name = bi_name id in
   Format.fprintf sf "@[<v>";
@@ -531,7 +519,10 @@ let gen_basic_int (sc : EcScope.scope) (id : string) (root : string)
   print__name_as_ec_str_op sf root;
   let bibtl = IdMap.bindings bibt in
   List.iter (fun (n, mb) ->
-      let tag = (TagBasic (root, n)) in
+    let tag =
+      if of_comp_if_basic
+      then TagComposite (root, n)
+      else TagBasic (root, n) in
       print_message sf sc tag n mb) bibtl;
   print_str_nl sf (close_theory name);
   Format.fprintf sf "@]";
@@ -555,8 +546,8 @@ let gen_comp_int (id : string) (sm : string IdMap.t) : string =
   Format.flush_str_formatter ()
 
 let gen_int (sc : EcScope.scope) (root : string ) (id : string)
-    (it : inter_tyd) : string = 
+    (of_comp_if_basic : bool) (it : inter_tyd) : string = 
   let ibt = unloc it in
   match ibt with
-  | BasicTyd bibt   -> gen_basic_int sc id root bibt
+  | BasicTyd bibt   -> gen_basic_int sc id root of_comp_if_basic bibt
   | CompositeTyd sm -> gen_comp_int id sm

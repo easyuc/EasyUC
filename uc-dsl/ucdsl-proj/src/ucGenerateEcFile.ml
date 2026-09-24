@@ -278,17 +278,32 @@ let adv_int_simulated
 
 let gen_maps (mt : maps_tyd) : maps_gen =
   let scope (root : string) =
-    IdMap.find root mt.ec_scope_map
-  in
+    IdMap.find root mt.ec_scope_map in
   let roots = roots_of_maps mt in
+  let unit_info_of_roots =
+    IdMap.of_list
+    (List.map
+     (fun root -> (root, unit_info_of_root mt root))
+     (IdSet.to_list roots)) in
   let preambles = IdSet.fold (fun root ps ->
     IdMap.add root (print_preamble mt root) ps ) roots IdMap.empty in
   let f_is_int_basic = fun _ ibt -> is_basic_tyd (EcLocation.unloc ibt) in
   let mtdim_b, mtdim_c = IdPairMap.partition f_is_int_basic mt.dir_inter_map in
-  let f_gen_int = fun sp it dim ->
-      IdPairMap.add sp (
-        UcGenerateInter.gen_int (scope (fst sp)) (fst sp) (snd sp) it
-      ) dim in
+  let f_gen_int sp in_tyd dim =
+    let root, id = sp in
+    let of_comp_if_basic =
+      match EcLocation.unloc in_tyd with
+      | BasicTyd _     ->
+          (match IdMap.find root unit_info_of_roots with
+           | UI_Singleton si ->
+               (match si.si_basic_adv_opt with
+                | None           -> false
+                | Some basic_adv -> id <> basic_adv)
+           | UI_Triple ti    -> id <> ti.ti_if_sim_basic_adv)
+      | CompositeTyd _ -> true (* value irrelevant *) in
+    IdPairMap.add sp
+    (UcGenerateInter.gen_int (scope root) root id of_comp_if_basic in_tyd)
+    dim in
   let dim_b = IdPairMap.fold f_gen_int mtdim_b IdPairMap.empty in
   let dim_c = IdPairMap.fold f_gen_int mtdim_c IdPairMap.empty in
   
@@ -333,13 +348,13 @@ let gen_maps (mt : maps_tyd) : maps_gen =
     IdPairMap.add sp (UcGenerateFunctionality.gen_sim
                         (scope root) root id mbmap sbt ais) sm
     ) mt.sim_map IdPairMap.empty in
-    {basic_dir_inter_map = dim_b;
-     comp_dir_inter_map  = dim_c;
-     basic_adv_inter_map = aim_b;
-     comp_adv_inter_map  = aim_c;
-     fun_map       = fm;
-     sim_map       = sm;
-     preamble_map  = preambles}
+  {basic_dir_inter_map = dim_b;
+   comp_dir_inter_map  = dim_c;
+   basic_adv_inter_map = aim_b;
+   comp_adv_inter_map  = aim_c;
+   fun_map             = fm;
+   sim_map             = sm;
+   preamble_map        = preambles}
 
 let generate_ec (mt : maps_tyd) : unit =
   let roots = roots_of_maps mt in
