@@ -886,10 +886,7 @@ let rec sci_unused_first_clone (scis : spec_clone_info list)
 
    five identifier maps indexed by roots, giving: UC and EC
    requires; ppna's for formatting spec parameters of roots;
-   lists of clones of roots; and scopes of roots
-
-   we use "_" ^ root to save the result of typechecking not inside
-   the theory "UC_" ^ root *)
+   lists of clones of roots; and scopes of roots *)
 
 type maps_tyd =
   {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -1100,23 +1097,23 @@ let basic_adv_inter_names_of_real_fun
        | None        -> IdSet.empty
        | Some adv_id ->
            match unloc (IdPairMap.find (root, adv_id) maps.adv_inter_map) with
-           | BasicTyd _      -> failure "cannot happen3"
+           | BasicTyd _      -> failure "cannot happen"
            | CompositeTyd mp ->
                (IdSet.of_list (List.map snd (IdMap.bindings mp))))
-  | FunBodyIdealTyd _    -> failure "cannot happen4"
+  | FunBodyIdealTyd _    -> failure "cannot happen"
 
 (* assuming units checking has been performed *)
 
-let roots_of_map_incl_ (map : 'a IdPairMap.t) : IdSet.t =
+let roots_of_id_map (map : 'a IdPairMap.t) : IdSet.t =
   IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
 
 (* return roots of maps_tyd, filtering out the ones beginning with '_' *)
 
 let roots_of_maps (maps : maps_tyd) : IdSet.t =
-  let roots1a = roots_of_map_incl_ maps.dir_inter_map in
-  let roots1b = roots_of_map_incl_ maps.adv_inter_map in
-  let roots1c = roots_of_map_incl_ maps.fun_map in
-  let roots1d = roots_of_map_incl_ maps.sim_map in
+  let roots1a = roots_of_id_map maps.dir_inter_map in
+  let roots1b = roots_of_id_map maps.adv_inter_map in
+  let roots1c = roots_of_id_map maps.fun_map in
+  let roots1d = roots_of_id_map maps.sim_map in
   let roots1  =
     IdSet.union roots1a (IdSet.union roots1b (IdSet.union roots1c roots1d)) in
   let roots2  =
@@ -1132,8 +1129,7 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
           IdSet.equal roots3 roots4 && IdSet.equal roots4 roots5 &&
           IdSet.equal roots5 roots6);
-  let roots  = IdSet.filter (fun r -> String.get r 0 <> '_') roots1 in
-  roots
+  roots1
 
 type singleton_info =
   {si_root          : symbol;

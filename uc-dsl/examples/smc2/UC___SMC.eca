@@ -158,18 +158,18 @@ type _smc_req =
 }.
 op _smc_req =  [115; 109; 99; 95; 114; 101; 113]. (*smc_req as ascii array*)
 
-op _tag__smc_req =  TagBasic _SMC _smc_req.
+op _tag__smc_req =  TagComposite _SMC _smc_req.
 op enc__smc_req (x : _smc_req) : msg =
 (Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
- (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-(epdp_text_univ)).`enc (x.`smc_req__pt2, x.`smc_req__t))
+ (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`enc
+ (x.`smc_req__pt2, x.`smc_req__t))
 .
 op [opaque smt_opaque] dec__smc_req (m : msg) : _smc_req option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt1.`2 <> pi \/ tag <> _tag__smc_req) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-    (epdp_text_univ)).`dec v with
+    match (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v
+    with
     | None   => None
     | Some p =>
       let (smc_req__pt2 ,smc_req__t) = p in
@@ -197,14 +197,10 @@ tag <> _tag__smc_req) => //.
 rewrite !negb_or /= not_adv.
 move => [#] -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ<:port, text>
-(epdp_port_univ)
-(epdp_text_univ)).`dec v =
+  (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v =
   Some (u.`smc_req__pt2 ,u.`smc_req__t).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ<:port, text>
-(epdp_port_univ)
-(epdp_text_univ)).`dec v) => //.
+  case ((epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -219,8 +215,8 @@ lemma eq_of_valid__smc_req (m : msg) :
   m =
   let x = oget (epdp__smc_req.`dec m) in
 (Dir, (x.`smc_req___func, pi), x.`smc_req__pt1, _tag__smc_req,
- (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-(epdp_text_univ)).`enc (x.`smc_req__pt2, x.`smc_req__t)).
+ (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`enc
+ (x.`smc_req__pt2, x.`smc_req__t)).
 proof.
 rewrite /is_valid.
 move => val_m.
@@ -251,18 +247,18 @@ type _smc_rsp =
 }.
 op _smc_rsp =  [115; 109; 99; 95; 114; 115; 112]. (*smc_rsp as ascii array*)
 
-op _tag__smc_rsp =  TagBasic _SMC _smc_rsp.
+op _tag__smc_rsp =  TagComposite _SMC _smc_rsp.
 op enc__smc_rsp (x : _smc_rsp) : msg =
 (Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
- (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-(epdp_text_univ)).`enc (x.`smc_rsp__pt1, x.`smc_rsp__t))
+ (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`enc
+ (x.`smc_rsp__pt1, x.`smc_rsp__t))
 .
 op [opaque smt_opaque] dec__smc_rsp (m : msg) : _smc_rsp option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Adv \/ pt2.`2 <> pi \/ tag <> _tag__smc_rsp) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-    (epdp_text_univ)).`dec v with
+    match (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v
+    with
     | None   => None
     | Some p =>
       let (smc_rsp__pt1 ,smc_rsp__t) = p in
@@ -290,14 +286,10 @@ tag <> _tag__smc_rsp) => //.
 rewrite !negb_or /= not_adv.
 move => [#] -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ<:port, text>
-(epdp_port_univ)
-(epdp_text_univ)).`dec v =
+  (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v =
   Some (u.`smc_rsp__pt1 ,u.`smc_rsp__t).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ<:port, text>
-(epdp_port_univ)
-(epdp_text_univ)).`dec v) => //.
+  case ((epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -312,8 +304,8 @@ lemma eq_of_valid__smc_rsp (m : msg) :
   m =
   let x = oget (epdp__smc_rsp.`dec m) in
 (Dir, x.`smc_rsp__pt2, (x.`smc_rsp___func, pi), _tag__smc_rsp,
- (Top.UCUniv.epdp_pair_univ<:port, text> (epdp_port_univ)
-(epdp_text_univ)).`enc (x.`smc_rsp__pt1, x.`smc_rsp__t)).
+ (epdp_pair_univ<:port, text> epdp_port_univ epdp_text_univ).`enc
+ (x.`smc_rsp__pt1, x.`smc_rsp__t)).
 proof.
 rewrite /is_valid.
 move => val_m.
@@ -360,16 +352,16 @@ op _sim_req =  [115; 105; 109; 95; 114; 101; 113]. (*sim_req as ascii array*)
 op _tag__sim_req =  TagBasic _SMC _sim_req.
 op enc__sim_req (x : _sim_req) : msg =
 (Adv, (adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
- (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ)
-(epdp_port_univ)).`enc (x.`sim_req__pt1, x.`sim_req__pt2))
+ (epdp_pair_univ<:port, port> epdp_port_univ epdp_port_univ).`enc
+ (x.`sim_req__pt1, x.`sim_req__pt2))
 .
 op [opaque smt_opaque] dec__sim_req (m : msg) : _sim_req option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt1 <> (adv,_adv_if_pi) \/ pt2.`2 <> pi \/ tag <>
   _tag__sim_req) ?
     None :
-    match (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ)
-    (epdp_port_univ)).`dec v with
+    match (epdp_pair_univ<:port, port> epdp_port_univ epdp_port_univ).`dec v
+    with
     | None   => None
     | Some p =>
       let (sim_req__pt1 ,sim_req__pt2) = p in
@@ -396,14 +388,10 @@ case (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1_2 <> pi \/ tag <> _tag__sim_re
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
-  (Top.UCUniv.epdp_pair_univ<:port, port>
-(epdp_port_univ)
-(epdp_port_univ)).`dec v =
+  (epdp_pair_univ<:port, port> epdp_port_univ epdp_port_univ).`dec v =
   Some (u.`sim_req__pt1 ,u.`sim_req__pt2).
   move : match_eq_some.
-  case ((Top.UCUniv.epdp_pair_univ<:port, port>
-(epdp_port_univ)
-(epdp_port_univ)).`dec v) => //.
+  case ((epdp_pair_univ<:port, port> epdp_port_univ epdp_port_univ).`dec v) => //.
   by case.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
@@ -418,8 +406,8 @@ lemma eq_of_valid__sim_req (m : msg) :
   m =
   let x = oget (epdp__sim_req.`dec m) in
 (Adv, (adv, _adv_if_pi), (x.`sim_req___func, pi), _tag__sim_req,
- (Top.UCUniv.epdp_pair_univ<:port, port> (epdp_port_univ)
-(epdp_port_univ)).`enc (x.`sim_req__pt1, x.`sim_req__pt2)).
+ (epdp_pair_univ<:port, port> epdp_port_univ epdp_port_univ).`enc
+ (x.`sim_req__pt1, x.`sim_req__pt2)).
 proof.
 rewrite /is_valid.
 move => val_m.
@@ -440,14 +428,14 @@ op _sim_rsp =  [115; 105; 109; 95; 114; 115; 112]. (*sim_rsp as ascii array*)
 op _tag__sim_rsp =  TagBasic _SMC _sim_rsp.
 op enc__sim_rsp (x : _sim_rsp) : msg =
 (Adv, (x.`sim_rsp___func, pi), (adv, _adv_if_pi), _tag__sim_rsp,
- ( epdp_unit_univ).`enc ())
+ (epdp_unit_univ).`enc ())
 .
 op [opaque smt_opaque] dec__sim_rsp (m : msg) : _sim_rsp option =
   let (mod, pt1, pt2, tag, v) = m
   in (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1.`2 <> pi \/ tag <>
   _tag__sim_rsp) ?
     None :
-    match ( epdp_unit_univ).`dec v with
+    match (epdp_unit_univ).`dec v with
     | None   => None
     | Some p =>
       Some
@@ -471,12 +459,10 @@ case (mod = Dir \/ pt2 <> (adv,_adv_if_pi) \/ pt1_2 <> pi \/ tag <> _tag__sim_rs
 rewrite !negb_or /= not_dir.
 move => [#] -> -> -> -> match_eq_some /=.
 have val_v :
-  (
-epdp_unit_univ).`dec v =
+  (epdp_unit_univ).`dec v =
   Some ().
   move : match_eq_some.
-  case ((
-epdp_unit_univ).`dec v) => //.
+  case ((epdp_unit_univ).`dec v) => //.
 move : match_eq_some.
 rewrite val_v /= => <- /=.
 apply epdp_dec_enc => //.
@@ -490,7 +476,7 @@ lemma eq_of_valid__sim_rsp (m : msg) :
   m =
   let x = oget (epdp__sim_rsp.`dec m) in
 (Adv, (x.`sim_rsp___func, pi), (adv, _adv_if_pi), _tag__sim_rsp,
- ( epdp_unit_univ).`enc ()).
+ (epdp_unit_univ).`enc ()).
 proof.
 rewrite /is_valid.
 move => val_m.

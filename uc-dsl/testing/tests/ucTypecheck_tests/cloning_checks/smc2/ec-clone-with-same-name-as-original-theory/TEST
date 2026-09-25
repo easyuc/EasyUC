@@ -1,0 +1,9 @@
+description
+error when EC cloning uses same name as original theory
+.
+args:-units SMC2.uc
+outcome:failure
+[error: KeyExchange.uc: from line 94 columns 1 to 9]
+
+duplicated binding: KeyExp
+.

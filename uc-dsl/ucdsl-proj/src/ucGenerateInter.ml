@@ -546,8 +546,8 @@ let gen_comp_int (id : string) (sm : string IdMap.t) : string =
   Format.flush_str_formatter ()
 
 let gen_int (sc : EcScope.scope) (root : string ) (id : string)
-    (of_comp_if_basic : bool) (it : inter_tyd) : string = 
-  let ibt = unloc it in
+    (of_comp_if_basic : bool) (in_tyd : inter_tyd) : string = 
+  let ibt = unloc in_tyd in
   match ibt with
   | BasicTyd bibt   -> gen_basic_int sc id root of_comp_if_basic bibt
   | CompositeTyd sm -> gen_comp_int id sm
