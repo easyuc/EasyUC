@@ -71,10 +71,11 @@ let backup_and_write_eca
     end
   else ()
         
-
 let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
+  let fun_idp_is_ideal_fun idp =
+    is_ideal_fun_tyd (IdPairMap.find idp mt.fun_map) in
   let print_file (root : string) : unit =
-    let print_main (fs : out_channel) : unit =
+    let print_main (triple : bool) (fs : out_channel) : unit =
       let pre = IdMap.find root mg.preamble_map in
       Printf.fprintf fs "%s" pre;
     
@@ -93,7 +94,15 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
       IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) raim_c;
 
       let rootfun = IdPairMap.filter (fun (r,_) _ -> r = root) mg.fun_map in
-      IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootfun;
+      let rootfun = IdPairMap.bindings rootfun in
+      let rootfun =
+        if triple
+        then match rootfun with
+             | [x; y] ->
+                 if fun_idp_is_ideal_fun (fst x) then [x; y] else [y; x]
+             | _      -> UcMessage.failure "cannot happen"
+        else rootfun in
+      List.iter (fun (_, s) -> Printf.fprintf fs "%s\n\n" s) rootfun;
 
       let rootsim = IdPairMap.filter (fun (r,_) _ -> r = root) mg.sim_map in
       IdPairMap.iter (fun _ s -> Printf.fprintf fs "%s\n\n" s) rootsim
@@ -101,9 +110,9 @@ let print_files (mt : maps_tyd) (mg : maps_gen) : unit =
     let ui = unit_info_of_root mt root in
     match ui with
     | UI_Singleton _ ->
-      backup_and_write_eca root (uc_name root) print_main
+        backup_and_write_eca root (uc_name root) (print_main false)
     | UI_Triple _ ->
-      backup_and_write_eca root (uc___name root) print_main
+        backup_and_write_eca root (uc___name root) (print_main true)
   in 
   let roots = roots_of_maps mt in
   IdSet.iter (fun r -> print_file r) roots
