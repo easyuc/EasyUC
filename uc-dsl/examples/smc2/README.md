@@ -94,3 +94,8 @@ The bash script
 shows the non-commented non-blank lines of code for the human-written
 part of the SMC2 example.
 
+The scripts check using versions 2.6.3 of Alt-Ergo, 4.16.0 of Z3 and
+1.2.1 of CVC5.  If you use later versions of these provers and an
+up-to-date version of EasyCrypt, feel free to report any script
+failures.
+
