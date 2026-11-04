@@ -90,8 +90,70 @@ let process_change fp (tc : tcenv1) =
   t_change fp tc
 
 (* -------------------------------------------------------------------- *)
+let process_local_hint (hint : plocalhint) (tc : tcenv1) =
+  let env = FApi.tc1_env tc in
+  let simpl = FApi.tc1_simplify_context tc in
+
+  let simpl =
+    match hint with
+    | PLHClause h ->
+        let opts = EcTheory.{ ur_delta = false; ur_eqtrue = false; } in
+
+        (* signed database deltas: [+d] activate, [-d] deactivate *)
+        let simpl =
+          List.fold_left (fun simpl (add, d) ->
+            if   add
+            then EcEnv.SimplifyContext.activate   [d] simpl
+            else EcEnv.SimplifyContext.deactivate [d] simpl)
+            simpl h.ph_dbs
+        in
+
+        (* lemma additions to the default DB (add-only) *)
+        let simpl =
+          List.fold_left (fun simpl lemma ->
+            let path = EcEnv.Ax.lookup_path (unloc lemma) env in
+            let rules = EcReduction.User.compile ~opts ~prio:0 env path in
+            EcEnv.SimplifyContext.add_rules
+              (List.map (fun rule -> (path, rule)) rules) simpl)
+            simpl h.ph_lemmas
+        in
+
+        (* an unsigned database list sets the proof-local default *)
+        let simpl =
+          match h.ph_select with
+          | [] -> simpl
+          | _  -> EcEnv.SimplifyContext.set_default_db h.ph_select simpl
+        in
+
+        (* a head filter sets the proof-local default head filter *)
+        let hd =
+          h.ph_hd |> omap (fun (mode, ops) ->
+            let ops =
+              List.fold_left (fun acc ps ->
+                match EcEnv.Op.lookup_opt (unloc ps) env with
+                | None   -> tc_lookup_error !!tc ~loc:ps.pl_loc `Operator (unloc ps)
+                | Some p -> (fst p) :: acc
+              ) [] ops
+            in
+            (mode, List.rev ops))
+        in
+        hd |> Option.fold ~none:simpl ~some:(fun hd ->
+          EcEnv.SimplifyContext.set_default_hd (Some hd) simpl)
+
+    | PLHClear base ->
+        EcEnv.SimplifyContext.clear ?base simpl
+
+    | PLHClearDefault ->
+        EcEnv.SimplifyContext.clear_default simpl
+  in
+
+  FApi.tcenv_of_tcenv1
+    (FApi.map_pregoal1 (fun goal -> { goal with g_simpl = simpl }) tc)
+
+(* -------------------------------------------------------------------- *)
 let process_simplify_info ri (tc : tcenv1) =
   let env, hyps, _ = FApi.tc1_eflat tc in
+  let simpl = FApi.tc1_simplify_context tc in
 
   let do1 (sop, sid) ps =
     match ps.pl_desc with
@@ -106,10 +168,66 @@ let process_simplify_info ri (tc : tcenv1) =
   in
 
   let delta_p, delta_h =
-    ri.pdelta
-      |> omap (List.fold_left do1 (Sp.empty, Sid.empty))
-      |> omap (fun (x, y) -> (fun p -> if Sp.mem p x then `Force else `IfApplied), (Sid.mem^~ y))
-      |> odfl ((fun _ -> `IfTransparent), predT)
+    let sop, sid = List.fold_left do1 (Sp.empty, Sid.empty) ri.pdelta.pd_ops in
+    let dflt = if ri.pdelta.pd_all then `IfTransparent else `IfApplied in
+    ((fun p -> if Sp.mem p sop then `Force else dflt),
+     (if ri.pdelta.pd_all then predT else Sid.mem^~ sid))
+  in
+
+  let hint = ri.phint in
+
+  (* Head filter: the clause filter if any, else the proof-local default. *)
+  let user_hd =
+    match hint.ph_hd with
+    | None -> EcEnv.SimplifyContext.default_hd simpl
+    | Some (mode, ops) ->
+        let ops =
+          List.fold_left (fun acc ps ->
+            match EcEnv.Op.lookup_opt (unloc ps) env with
+            | None   -> tc_lookup_error !!tc ~loc:ps.pl_loc `Operator (unloc ps)
+            | Some p -> Sp.add (fst p) acc
+          ) Sp.empty ops
+        in
+        Some (match mode with
+          | `Include -> `Include ops
+          | `Exclude -> `Exclude ops)
+  in
+
+  (* Per-call lemma additions (add-only): compiled and applied to the
+     default DB of a local copy of the proof-local context. *)
+  let simpl =
+    let opts = EcTheory.{ ur_delta = false; ur_eqtrue = false; } in
+    List.fold_left (fun simpl lemma ->
+      let path = EcEnv.Ax.lookup_path (unloc lemma) env in
+      let rules = EcReduction.User.compile ~opts ~prio:0 env path in
+      EcEnv.SimplifyContext.add_rules
+        (List.map (fun rule -> (path, rule)) rules) simpl
+    ) simpl hint.ph_lemmas
+  in
+
+  (* Database list consulted by this call: the unsigned selection if any
+     (else the proof-local default / active set), with the signed
+     activate / deactivate deltas applied in order. [None] when no [hint]
+     clause is present, letting [EcReduction] use its own fallback. *)
+  let user_db =
+    if hint.ph_select = [] && hint.ph_dbs = [] then
+      None
+    else begin
+      let base =
+        if hint.ph_select <> [] then hint.ph_select else
+          match EcEnv.SimplifyContext.default_db simpl with
+          | Some dbs -> dbs
+          | None     -> EcSymbols.Ssym.elements (EcEnv.SimplifyContext.active simpl)
+      in
+      let dbs =
+        List.fold_left (fun dbs (add, d) ->
+          if add
+          then dbs @ [d]
+          else List.filter (fun d' -> d' <> d) dbs)
+          base hint.ph_dbs
+      in
+      Some dbs
+    end
   in
 
   {
@@ -122,6 +240,12 @@ let process_simplify_info ri (tc : tcenv1) =
     EcReduction.logic   = if ri.plogic then Some `Full else None;
     EcReduction.modpath = ri.pmodpath;
     EcReduction.user    = ri.puser;
+    EcReduction.user_db = user_db;
+    EcReduction.user_local = simpl;
+    EcReduction.user_hd =
+      (match user_hd with
+       | Some _ as hd -> hd
+       | None -> EcEnv.SimplifyContext.default_hd simpl);
   }
 
 (*-------------------------------------------------------------------- *)
@@ -181,7 +305,7 @@ let process_clear (info : clear_info) tc =
     t_clears ~leniant:true clear_list tc
 
 (* -------------------------------------------------------------------- *)
-let process_algebra mode kind eqs (tc : tcenv1) =
+let process_algebra mode kind ?name eqs (tc : tcenv1) =
   let (env, hyps, concl) = FApi.tc1_eflat tc in
 
   if not (EcAlgTactic.is_module_loaded env) then
@@ -210,6 +334,10 @@ let process_algebra mode kind eqs (tc : tcenv1) =
 
   let tparams = (LDecl.tohyps hyps).h_tvar in
 
+  let named = omap unloc name in
+  let named_suffix =
+    match named with None -> "" | Some n -> Printf.sprintf " named `%s'" n in
+
   let tactic =
     match
       match mode, kind with
@@ -220,14 +348,14 @@ let process_algebra mode kind eqs (tc : tcenv1) =
     with
     | `Ring t ->
         let r =
-          match TT.get_ring (tparams, ty) env with
-          | None   -> tacuerror "cannot find a ring structure"
+          match TT.get_ring ?name:named (tparams, ty) env with
+          | None   -> tacuerror "cannot find a ring structure%s" named_suffix
           | Some r -> r
         in t r eqs (f1, f2)
     | `Field t ->
         let r =
-          match TT.get_field (tparams, ty) env with
-          | None   -> tacuerror "cannot find a field structure"
+          match TT.get_field ?name:named (tparams, ty) env with
+          | None   -> tacuerror "cannot find a field structure%s" named_suffix
           | Some r -> r
         in t r eqs (f1, f2)
   in
@@ -306,8 +434,11 @@ module LowRewrite = struct
             then Some (ptc, `Bool, (ax, f_true))
             else None
           else None
-        and pt3 = omap base
-          (EcReduction.h_red_opt EcReduction.full_red hyps ax)
+        and pt3 =
+          let ri =
+            { EcReduction.full_red with
+                EcReduction.user_local = pt.PT.ptev_env.PT.pte_lc } in
+          omap base (EcReduction.h_red_opt ri hyps ax)
         in pt1 @ (otolist pt2) @ (odfl [] pt3)) in
 
         let rec doit reduce =
@@ -670,9 +801,10 @@ let process_rewrite1_core
           tc_error !!tc "context variable does not appear in the r-pattern"
 
 (* -------------------------------------------------------------------- *)
-let process_delta ?target ((s :rwside), o, p) tc =
+let process_delta ?(rigid = false) ?target ((s :rwside), o, p) tc =
   let env, hyps, concl = FApi.tc1_eflat tc in
   let o = norm_rwocc o in
+  let occmode = if rigid then Some om_rigid else None in
 
   let idtg, target =
     match target with
@@ -692,7 +824,8 @@ let process_delta ?target ((s :rwside), o, p) tc =
           EcReduction.delta_h = check_id; } in
     let redform = EcReduction.simplify ri hyps target in
 
-    if EcFol.f_equal target redform then
+    if EcGState.get_warn_unused_unfold (EcEnv.gstate env)
+       && EcFol.f_equal target redform then
       EcEnv.notify env `Warning "unused unfold: /%s" x;
 
     t_change ~ri:{ ri with eta = true; beta = true; } ?target:idtg redform tc
@@ -732,13 +865,14 @@ let process_delta ?target ((s :rwside), o, p) tc =
   in
 
   let ri = { EcReduction.full_red with
-               delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent)} in
+               delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent);
+               user_local = FApi.tc1_simplify_context tc; } in
   let na = List.length args in
 
   match s with
   | `LtoR -> begin
     let matches =
-      try  ignore (PT.pf_find_occurence ptenv ~ptn:p target); true
+      try  ignore (PT.pf_find_occurence ptenv ?occmode ~ptn:p target); true
       with PT.FindOccFailure _ -> false
     in
 
@@ -799,23 +933,26 @@ let process_delta ?target ((s :rwside), o, p) tc =
         with EcEnv.NotReducible -> fp
     in
 
-    let matches =
-      try  ignore (PT.pf_find_occurence ptenv ~ptn:fp target); true
-      with PT.FindOccFailure _ -> false
-    in
+    begin
+      match PT.pf_find_occurence ?occmode ptenv ~ptn:fp target with
+      | (_, occmode) ->
+        let p    = concretize_form ptenv p  in
+        let fp   = concretize_form ptenv fp in
+        let cpos =
+          try
+            FPosition.select_form
+              ?xconv:(if rigid then Some `AlphaEq else None)
+              ?keyed:(if rigid then Some occmode.k_keyed else None)
+              hyps o fp target
+          with InvalidOccurence ->
+            tc_error !!tc "invalid occurences selector" in
 
-    if matches then begin
-      let p    = concretize_form ptenv p  in
-      let fp   = concretize_form ptenv fp in
-      let cpos =
-        try  FPosition.select_form hyps o fp target
-        with InvalidOccurence ->
-          tc_error !!tc "invalid occurences selector"
-      in
+        let target = FPosition.map cpos (fun _ -> p) target in
+        t_change ~ri ?target:idtg target tc 
 
-      let target = FPosition.map cpos (fun _ -> p) target in
-      t_change ~ri ?target:idtg target tc
-    end else t_id tc
+      | exception (PT.FindOccFailure _) ->
+        t_id tc
+  end
 
 (* -------------------------------------------------------------------- *)
 let process_rewrite1_r ttenv ?target ri tc =
@@ -837,12 +974,12 @@ let process_rewrite1_r ttenv ?target ri tc =
       let target = target |> omap (fst -| ((LDecl.hyp_by_name^~ hyps) -| unloc)) in
       t_simplify_lg ?target ~delta:`IfApplied (ttenv, logic) tc
 
-  | RWDelta (rwopt, p) -> begin
+  | RWDelta (rigid, rwopt, p) -> begin
       if Option.is_some rwopt.match_ then
         tc_error !!tc "cannot use pattern selection in delta-rewrite rules";
 
       let do1 tc =
-        process_delta ?target (rwopt.side, rwopt.occurrence, p) tc in
+        process_delta ~rigid ?target (rwopt.side, rwopt.occurrence, p) tc in
 
       match rwopt.repeat with
       | None -> do1 tc
@@ -855,15 +992,17 @@ let process_rewrite1_r ttenv ?target ri tc =
         let target = target |> omap (fst -| ((LDecl.hyp_by_name^~ hyps) -| unloc)) in
         let hyps   = FApi.tc1_hyps ?target tc in
 
+        let simpl = FApi.tc1_simplify_context tc in
+
         let ptenv, prw =
           match rwopt.match_ with
           | None ->
-              PT.ptenv_of_penv hyps !!tc, None
+              PT.ptenv_of_penv ~simpl hyps !!tc, None
 
           | Some (RWM_Plain p) ->
               let (ps, ue), p = TTC.tc1_process_pattern tc p in
               let ev = MEV.of_idents (Mid.keys ps) `Form in
-              (PT.ptenv !!tc hyps (ue, ev), Some (p, None))
+              (PT.ptenv ~simpl !!tc hyps (ue, ev), Some (p, None))
 
           | Some (RWM_Context (x, p)) ->
               let ps   = ref Mid.empty in
@@ -874,7 +1013,7 @@ let process_rewrite1_r ttenv ?target ri tc =
               let hyps = LDecl.add_local x (LD_var (xty, None)) hyps in
               let p    = EcTyping.trans_pattern (LDecl.toenv hyps) ps ue p in
               let ev   = MEV.of_idents (x :: Mid.keys !ps) `Form in
-              (PT.ptenv !!tc hyps (ue, ev), Some (p, Some (x, xty))) in
+              (PT.ptenv ~simpl !!tc hyps (ue, ev), Some (p, Some (x, xty))) in
 
         let theside =
           match rwopt.side, subs with

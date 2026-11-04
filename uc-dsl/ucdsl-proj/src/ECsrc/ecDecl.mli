@@ -141,6 +141,13 @@ val is_abbrev    : operator -> bool
 val is_prind     : operator -> bool
 val is_exception : operator -> bool
 
+(* The delta-reduction policy: the (uninstantiated) body of a plain
+   operator or predicate, provided the reduction mode allows unfolding
+   it with [nargs] arguments at hand. *)
+val operator_body :
+  mode:[`Force | `IfTransparent | `IfApplied] -> nargs:int
+  -> operator -> form option
+
 val optransparent : opopaque
 
 val mk_op   : ?clinline:bool -> ?unfold:int -> opaque:opopaque -> ty_params -> ty -> opbody option -> locality -> operator
@@ -199,6 +206,7 @@ type rkind = [
 ]
 
 type ring = {
+  r_name  : EcSymbols.symbol option;
   r_type  : EcTypes.ty;
   r_zero  : EcPath.path;
   r_one   : EcPath.path;
@@ -283,6 +291,7 @@ type bv_opkind = [
   | `Init     of binding_size (* size_out *)
   | `Get      of binding_size (* size_in *)
   | `AInit    of binding_size * binding_size (* arr_len + size_out *)
+  | `PAInit   of binding_size (* arr_len; element size resolved at use (polymorphic) *)
   | `Map      of binding_size * binding_size * binding_size (* size_in + size_out + arr_size *)
   | `A2B      of (binding_size * binding_size) * binding_size (* (arr_len, elem_sz), out_size *)
   | `B2A      of binding_size * (binding_size * binding_size) (* size in, (arr_len, elem_sz)  *)

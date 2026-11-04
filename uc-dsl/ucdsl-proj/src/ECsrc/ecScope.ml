@@ -371,7 +371,7 @@ let get_gdocstrings (sc : scope) : string list =
   sc.sc_globdoc
 
 let get_ldocentities (sc : scope) : docentity list =
-  sc.sc_locdoc.docentities
+  List.rev sc.sc_locdoc.docentities
 
 module DocState = struct
   let empty : docstate =
@@ -414,7 +414,7 @@ module DocState = struct
     { state with srcstringbl = state.srcstringbl @ [srcs] }
 
   let add_entity (state : docstate) (docent : docentity) : docstate =
-    { state with docentities = state.docentities @ [docent] }
+    { state with docentities = docent :: state.docentities }
 
   let add_item (state : docstate) : docstate =
     let state =
@@ -431,7 +431,7 @@ module DocState = struct
       if state.currentproc
       then
         add_entity state (SubDoc ((state.docstringbl, (oget state.currentmode, oget state.currentkind, oget state.currentname, state.srcstringbl)),
-                                 (substate.docentities)))
+                                 (List.rev substate.docentities)))
       else
         state
     in
@@ -1761,7 +1761,10 @@ module Mod = struct
     in
 
     let m = TT.transmod (env scope) ~attop:true ptm in
-    let ur = EcModules.get_uninit_read_of_module (path scope) m in
+    let ur =
+      if EcGState.get_warn_uninit (EcEnv.gstate (env scope)) then
+        EcModules.get_uninit_read_of_module (path scope) m
+      else [] in
 
     if not (List.is_empty ur) then begin
       let ppe = EcPrinting.PPEnv.ofenv (env scope) in
@@ -2088,8 +2091,37 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Reduction = struct
+  (* [hint simplify disable / enable]: switch off / back on, for the rest
+     of the enclosing theory / section of the current file, the rules
+     compiled from the given lemmas. Deliberately not a theory item: a
+     file must never switch off rules in the files requiring it. *)
+  let switch_reduction scope (mode : puserswitch) (base, lemmas) =
+    check_state `InTop "hint simplify" scope;
+
+    let dbname =
+      match base with
+      | None   -> "the default database"
+      | Some b -> Printf.sprintf "database `%s'" b in
+
+    let for1 (name : pqsymbol) =
+      let path = EcEnv.Ax.lookup_path (unloc name) (env scope) in
+      if not (EcEnv.Reduction.has_rules ?base path (env scope)) then
+        hierror ~loc:name.pl_loc "`%s' has no simplify rule in %s"
+          (EcSymbols.string_of_qsymbol (unloc name)) dbname;
+      if mode = `Enable && not (EcEnv.Reduction.is_disabled ?base path (env scope)) then
+        hierror ~loc:name.pl_loc "the simplify rules of `%s' are not disabled in %s"
+          (EcSymbols.string_of_qsymbol (unloc name)) dbname;
+      path in
+
+    let lemmas = List.map for1 lemmas in
+    let sc_env =
+      match mode with
+      | `Disable -> EcSection.disable_reduction ?base lemmas scope.sc_env
+      | `Enable  -> EcSection.enable_reduction  ?base lemmas scope.sc_env in
+    { scope with sc_env }
+
   (* FIXME: section -> allow "local" flag *)
-  let add_reduction scope (opts, reds) =
+  let add_reduction scope (base, opts, reds) =
     check_state `InTop "hint simplify" scope;
 
     let rules =
@@ -2103,15 +2135,23 @@ module Reduction = struct
 
         let red_info =
           EcReduction.User.compile ~opts ~prio:idx (env scope) ax_p in
-        (ax_p, opts, Some red_info) in
+        (ax_p, opts, red_info) in
 
       let rules = List.map (fun (xs, idx) -> List.map (for1 idx) xs) reds in
       List.flatten rules
 
     in
 
-    let item = EcTheory.mkitem ~import:true (EcTheory.Th_reduction rules) in
+    let item =
+      EcTheory.mkitem ~import:true
+        (EcTheory.Th_reduction { red_base = base; red_rules = rules })
+    in
     { scope with sc_env = EcSection.add_item item scope.sc_env }
+
+  let add_reduction scope (red : puserred) =
+    match red with
+    | PURAdd    (base, opts, reds) -> add_reduction scope (base, opts, reds)
+    | PURSwitch (mode, base, lemmas) -> switch_reduction scope mode (base, lemmas)
 end
 
 (* -------------------------------------------------------------------- *)
@@ -2509,8 +2549,9 @@ module Ty = struct
   let p_field   = EcPath.fromqsymbol ([EcCoreLib.i_top; "Ring"; "Field"  ], "field"  )
 
   (* ------------------------------------------------------------------ *)
-  let ring_of_symmap env ty kind symbols =
-    { r_type  = ty;
+  let ring_of_symmap ?name env ty kind symbols =
+    { r_name  = name;
+      r_type  = ty;
       r_zero  = oget (Mstr.find_opt "rzero" symbols);
       r_one   = oget (Mstr.find_opt "rone"  symbols);
       r_add   = oget (Mstr.find_opt "add"   symbols);
@@ -2541,7 +2582,7 @@ module Ty = struct
 
     let symbols = EcAlgTactic.ring_symbols env kind (snd ty) in
     let symbols = check_tci_operators env ty tci.pti_ops symbols in
-    let cr      = ring_of_symmap env (snd ty) kind symbols in
+    let cr      = ring_of_symmap ?name:(omap unloc tci.pti_as) env (snd ty) kind symbols in
     let axioms  = EcAlgTactic.ring_axioms env cr in
     let lc      = (tci.pti_loca :> locality) in
     let inter   = check_tci_axioms scope mode tci.pti_axs axioms lc in
@@ -2562,8 +2603,8 @@ module Ty = struct
     in Ax.add_defer scope inter
 
   (* ------------------------------------------------------------------ *)
-  let field_of_symmap env ty symbols =
-    { f_ring = ring_of_symmap env ty `Integer symbols;
+  let field_of_symmap ?name env ty symbols =
+    { f_ring = ring_of_symmap ?name env ty `Integer symbols;
       f_inv  = oget (Mstr.find_opt "inv" symbols);
       f_div  = Mstr.find_opt "div" symbols; }
 
@@ -2583,7 +2624,7 @@ module Ty = struct
       hierror "field instances cannot be polymorphic";
     let symbols = EcAlgTactic.field_symbols env (snd ty) in
     let symbols = check_tci_operators env ty tci.pti_ops symbols in
-    let cr      = field_of_symmap env (snd ty) symbols in
+    let cr      = field_of_symmap ?name:(omap unloc tci.pti_as) env (snd ty) symbols in
     let axioms  = EcAlgTactic.field_axioms env cr in
     let lc      = (tci.pti_loca :> locality) in
     let inter   = check_tci_axioms scope mode tci.pti_axs axioms lc; in
@@ -2960,6 +3001,11 @@ module Circuit = struct
 
       | "ainit" -> (fun sz -> `AInit (as_seq2 (sz |> List.rev))), [`BV None; `A], "AInit"
 
+      (* Polymorphic array [init]: only the array is bound; the element
+         width is left free and resolved when translated at a concrete
+         element type. *)
+      | "painit" -> (fun sz -> `PAInit (as_seq1 sz)), [`A], "PAInit"
+
       | "shls"  -> 
           let mk sz = let sz1, sz2 = as_seq2 sz in `Shls (sz1, sz2) in
           mk, [`BV None; `BV None], "SHLS"
@@ -3315,46 +3361,33 @@ module Search = struct
   let locate (scope : scope) ({ pl_desc = name } : pqsymbol) =
     let ppe = EcPrinting.PPEnv.ofenv (env scope) in
 
-    let shorten lk p =
-      let lk (p : path) (qs : qsymbol) =
-        match lk qs (env scope) with
-        | Some (p', _) -> p_equal p p'
-        | _ -> false in
-      EcPrinting.shorten_path ppe lk p
-    in
-
     let buffer = Buffer.create 0 in
     let fmt    = Format.formatter_of_buffer buffer in
 
-    let for_kind section getall shorten =
+    let for_kind ?pp_name section getall lookup =
       let objs = getall ?check:None ?name:(Some name) (env scope) in
-      let objs = List.map shorten (List.fst objs) in
 
       if not (List.is_empty objs) then begin
         Format.fprintf fmt "In section [%s]@\n@\n" section;
 
-        List.iter (fun (long, short) ->
-            match short with
-            | None ->
-                Format.fprintf fmt " - %a@\n"
-                  EcSymbols.pp_qsymbol long
-            | Some short ->
-                Format.fprintf fmt " - %a (shorten name: %a)@\n"
-                  EcSymbols.pp_qsymbol long
-                  EcSymbols.pp_qsymbol short
-          )  objs
+        List.iter (fun p ->
+            Format.fprintf fmt " - %a@\n"
+              (EcPrinting.pp_locate_path ?pp_name ppe lookup) p
+          ) (List.fst objs)
       end in
 
-    for_kind "operators" EcEnv.Op.all (shorten EcEnv.Op.lookup_opt);
-    for_kind "types"     EcEnv.Ty.all (shorten EcEnv.Ty.lookup_opt);
-    for_kind "lemmas"    EcEnv.Ax.all (shorten EcEnv.Ax.lookup_opt);
+    for_kind "operators" EcEnv.Op.all EcEnv.Op.lookup_opt
+      ~pp_name:EcPrinting.pp_opqsymbol;
+    for_kind "types"     EcEnv.Ty.all EcEnv.Ty.lookup_opt;
+    for_kind "lemmas"    EcEnv.Ax.all EcEnv.Ax.lookup_opt;
 
     Format.pp_print_flush fmt ();
 
     if Buffer.length buffer = 0 then begin
       Format.fprintf fmt
         "no objects found for `%a'"
-        EcSymbols.pp_qsymbol name
+        EcSymbols.pp_qsymbol name;
+      Format.pp_print_flush fmt ()
     end;
 
     notify scope `Info "%s" (Buffer.contents buffer)

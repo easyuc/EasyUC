@@ -825,6 +825,7 @@ end = struct
     | OVK_Abbrev    -> "abbreviation"
     | OVK_Theory    -> "theory"
     | OVK_Lemma     -> "lemma/axiom"
+    | OVK_ModExpr   -> "module"
     | OVK_ModType   -> "module type"
 
   let pp_incompatible env fmt = function
@@ -839,6 +840,17 @@ end = struct
       Format.fprintf fmt "incompatible body"
     | TyBody  ->
       Format.fprintf fmt "incompatible type declaration"
+    | SubtypeType (ty1, None) ->
+      Format.fprintf fmt "incompatible type. Not a subtype of %a"
+        (EcPrinting.pp_type (EcPrinting.PPEnv.ofenv env)) ty1
+    | SubtypeType (ty1, Some ty2) ->
+      Format.fprintf fmt "incompatible type. The type is a subtype of %a instead of %a"
+        (EcPrinting.pp_type (EcPrinting.PPEnv.ofenv env)) ty2
+        (EcPrinting.pp_type (EcPrinting.PPEnv.ofenv env)) ty1
+    | SubtypePred (f1, f2) ->
+      Format.fprintf fmt "incompatible predicate for subtypes. The predicate for the subtype is %a instead of %a"
+        (EcPrinting.pp_form  (EcPrinting.PPEnv.ofenv env)) f2
+        (EcPrinting.pp_form  (EcPrinting.PPEnv.ofenv env)) f1
 
   let pp_clone_error env fmt error =
     let msg x = Format.fprintf fmt x in
@@ -856,9 +868,9 @@ end = struct
         msg "unknown %s `%s'"
           (string_of_ovkind kd) (string_of_qsymbol x)
 
-    | CE_ThyOverride x ->
-        msg "Cannot override theory `%s`: contains module or exception"
-          (string_of_qsymbol x)
+    | CE_ThyOverride (x, m) ->
+        msg "Cannot override theory `%s': contains stateful module `%s'"
+          (string_of_qsymbol x) (string_of_qsymbol m)
 
     | CE_UnkAbbrev x ->
         msg "unknown abbreviation: `%s'" (string_of_qsymbol x)
@@ -885,6 +897,15 @@ end = struct
 
     | CE_ModIncompatible x ->
         msg "module `%s` is incompatible"
+          (string_of_qsymbol x)
+
+    | CE_ModStateful (x, path) ->
+        let path = List.take (List.length path - 1) path in
+        msg "module `%s' declares state and cannot be overridden"
+          (String.concat "." (fst x @ [snd x] @ path))
+
+    | CE_ModNotConcrete x ->
+        msg "module `%s' is not a concrete top-level module"
           (string_of_qsymbol x)
 
     | CE_InvalidRE x ->

@@ -567,15 +567,42 @@ type pcutdef = {
 type pmpred_args = (osymbol * pformula) list
 
 (* -------------------------------------------------------------------- *)
+(* The [hint …] clause of a [simplify]/[cbv] call. [ph_select] is the
+   unsigned base database selection (empty = use the proof-local default
+   / active set); [ph_dbs] are signed activate ([true]) / deactivate
+   ([false]) deltas on the current set; [ph_select] and [ph_dbs] are
+   mutually exclusive. [ph_hd] is the optional single-mode head filter;
+   [ph_lemmas] are lemmas added to the default DB for this call (lemma
+   sets are add-only -- the head filter restricts which rules apply). *)
+type psimplify_hint = {
+  ph_select : symbol list;
+  ph_dbs    : (bool * symbol) list;
+  ph_hd     : ([`Include | `Exclude] * pqsymbol list) option;
+  ph_lemmas : pqsymbol list;
+}
+
+let empty_simplify_hint = {
+  ph_select = []; ph_dbs = []; ph_hd = None; ph_lemmas = [];
+}
+
+(* -------------------------------------------------------------------- *)
+(* [pd_all] unfolds every transparent definition; [pd_ops] are unfolded
+   unconditionally, opaque ones included. Both may be set at once. *)
+type pdelta = {
+  pd_all : bool;
+  pd_ops : pqsymbol list;
+}
+
 type preduction = {
   pbeta    : bool;                      (* β-reduction *)
-  pdelta   : pqsymbol list option;      (* definition unfolding *)
+  pdelta   : pdelta;                    (* definition unfolding *)
   pzeta    : bool;                      (* let-reduction *)
   piota    : bool;                      (* case/if-reduction *)
   peta     : bool;                      (* η-reduction *)
   plogic   : bool;                      (* logical simplification *)
   pmodpath : bool;                      (* modpath normalization *)
   puser    : bool;                      (* user reduction *)
+  phint    : psimplify_hint;            (* use-site [hint …] clause *)
 }
 
 (* -------------------------------------------------------------------- *)
@@ -875,7 +902,7 @@ type phltactic =
   | Prw_equiv      of rw_eqv_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
-  | Pprocrewrite   of side option * pcodepos * prrewrite
+  | Pprocrewrite   of side option * pcodepos_or_range option * prrewrite
   | Pprocrewriteat of psymbol * ppterm
   | Pchangestmt    of side option * ptybindings option * prange1_or_insert * pstmt
   | Phoaresplit
@@ -981,7 +1008,7 @@ type rwarg = (tfocus located) option * rwarg1 located
 
 and rwarg1 =
   | RWSimpl  of [`Default | `Variant]
-  | RWDelta  of (rwoptions * pformula)
+  | RWDelta  of (bool * rwoptions * pformula)
   | RWRw     of (rwoptions * (rwside * ppterm) list)
   | RWPr     of (psymbol * pformula option)
   | RWDone   of [`Default | `Variant] option
@@ -1103,13 +1130,27 @@ type pcongr_mode =
   | PCongrPattern of pformula
 
 (* -------------------------------------------------------------------- *)
+type phintdbmode = [ `Add | `Remove ]
+
+(* A proof-local simplify-hint command. [PLHClause] applies a unified
+   [hint] clause: signed [+d]/[-d] activate/deactivate databases, signed
+   lemma sets [+{L}]/[-{L}] add/remove local lemmas (default DB), an
+   unsigned database list sets the proof-local default databases, and a
+   [+[ops]]/[-[ops]] filter sets the proof-local default head filter.
+   [PLHClear] / [PLHClearDefault] reset the local lemmas / the defaults. *)
+type plocalhint =
+  | PLHClause of psimplify_hint
+  | PLHClear of symbol option
+  | PLHClearDefault
+
+(* -------------------------------------------------------------------- *)
 type logtactic =
   | Preflexivity
   | Passumption
   | Psmt        of pprover_infos
   | Psplit      of [ `Default of int option | `All of [ `Maybe | `One ] ]
-  | Pfield      of psymbol list
-  | Pring       of psymbol list
+  | Pfield      of psymbol option * psymbol list
+  | Pring       of psymbol option * psymbol list
   | Palg_norm
   | Pexists     of ppt_arg located list
   | Pleft
@@ -1133,6 +1174,7 @@ type logtactic =
   | Pgenhave    of pgenhave
   | Pwlog       of (psymbol list * bool * pformula)
   | Pcoq        of (EcProvers.coq_mode option * psymbol * pprover_infos)
+  | PlocalHint  of plocalhint
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core_r =
@@ -1150,6 +1192,7 @@ and ptactic_core_r =
   | Pprogress   of ppgoptions * ptactic_core option
   | Psubgoal    of ptactic_chain
   | Pnstrict    of ptactic_core
+  | Pwith       of plocalhint * ptactics
   | Padmit
 
 (* -------------------------------------------------------------------- *)
@@ -1212,6 +1255,7 @@ type prealize = {
 (* -------------------------------------------------------------------- *)
 type ptycinstance = {
   pti_name : pqsymbol;
+  pti_as   : psymbol option;
   pti_type : ptyparams * pty;
   pti_ops  : (psymbol * (pty list * pqsymbol)) list;
   pti_axs  : (psymbol * ptactic_core) list;
@@ -1261,6 +1305,7 @@ type pprint =
   | Pr_pr   of pqsymbol
   | Pr_ax   of pqsymbol
   | Pr_mod  of pqsymbol
+  | Pr_proc of pqsymbol
   | Pr_mty  of pqsymbol
   | Pr_glob of pmsymbol located
   | Pr_goal of int
@@ -1321,6 +1366,7 @@ and theory_override =
 | PTHO_Op     of op_override
 | PTHO_Pred   of pr_override
 | PTHO_Axiom  of ax_override
+| PTHO_Module of me_override
 | PTHO_ModTyp of mt_override
 | PTHO_Theory of th_override
 
@@ -1389,8 +1435,17 @@ type phint = {
 type puseroption =
   [`Delta | `EqTrue]
 
+(* [hint simplify]: [PURAdd (db, opts, rules)] adds the rules compiled
+   from lemmas to database [db] (the default one when [None]), as a
+   theory item exported to the files requiring this one; [PURSwitch
+   (mode, db, lemmas)] disables / re-enables the rules of [lemmas] in
+   [db] for the rest of the enclosing theory / section of the current
+   file -- never exported. *)
+type puserswitch = [`Disable | `Enable]
+
 type puserred =
-  puseroption list * (pqsymbol list * int option) list
+  | PURAdd    of symbol option * puseroption list * (pqsymbol list * int option) list
+  | PURSwitch of puserswitch * symbol option * pqsymbol list
 
 type threquire =
   psymbol option * (psymbol * psymbol option) list * [`Import|`Export] option

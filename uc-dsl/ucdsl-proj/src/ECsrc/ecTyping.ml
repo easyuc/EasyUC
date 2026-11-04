@@ -2185,6 +2185,11 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
     if not (List.is_empty sig_.miss_params) then
       tyerror loc env (InvalidModUpdate MUE_Functor);
 
+    (* Prohibit abstract-module updates (a declared module, or a
+       sub-module of one) *)
+    if not (EcPath.is_concrete mp) then
+      tyerror loc env (InvalidModUpdate MUE_AbstractModule);
+
     (* Construct the set of new module variables *)
     let items =
       List.concat_map
@@ -2201,8 +2206,14 @@ and transmod_body ~attop (env : EcEnv.env) x params (me:pmodule_expr) =
     let delete_vars = List.map (fun v -> v.pl_desc) delete_vars in
 
     let me, _ = EcEnv.Mod.by_mpath mp env in
-    let p = match mp.m_top with | `Concrete (p, _) -> p | _ -> assert false in
-    let subst = EcSubst.add_moddef EcSubst.empty ~src:p ~dst:(EcEnv.mroot env) in
+    (* Re-root references to the base module expression [mp] (its own
+       state and procedures, sub-modules included, self-references
+       unsuspended at the base's arguments) onto the module being
+       defined, whose items are copies of the base's.  References to
+       anything else (an enclosing module's state, sibling sub-modules,
+       other modules) denote state that is shared with the base, not
+       copied, and are left untouched. *)
+    let subst = EcSubst.add_moddef EcSubst.empty ~src:mp ~dst:(EcEnv.mroot env) in
     let me = EcSubst.subst_module subst me in
 
     let update_fun env fn plocals pupdates pupdate_res =
@@ -3911,25 +3922,33 @@ let get_instances (tvi, bty) env =
       with EcUnify.UnificationFailure _ -> None)
     inst
 
-let get_ring (typ, ty) env =
+(* When [name] is given, only the instance registered under that name is
+   selected; otherwise the first matching instance (registration order) is
+   used, preserving the single-structure behaviour. *)
+let name_selects name iname =
+  match name with None -> true | Some _ -> name = iname
+
+let get_ring ?name (typ, ty) env =
   let module E = struct exception Found of ring end in
     try
       List.iter
         (fun (_, _, cr) ->
           match cr with
-          | `Ring cr -> raise (E.Found cr)
+          | `Ring cr when name_selects name cr.EcDecl.r_name ->
+              raise (E.Found cr)
           | _ -> ())
         (get_instances (typ, ty) env);
       None
     with E.Found cr -> Some cr
 
-let get_field (typ, ty) env =
+let get_field ?name (typ, ty) env =
   let module E = struct exception Found of field end in
     try
       List.iter
         (fun (_, _, cr) ->
           match cr with
-          | `Field cr -> raise (E.Found cr)
+          | `Field cr when name_selects name cr.EcDecl.f_ring.EcDecl.r_name ->
+              raise (E.Found cr)
           | _ -> ())
         (get_instances (typ, ty) env);
       None

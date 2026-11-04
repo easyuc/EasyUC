@@ -79,7 +79,7 @@ val process_clear       : clear_info -> backward
 val process_smt         : ?loc:EcLocation.t -> ttenv -> pprover_infos option -> backward
 val process_coq         : loc:EcLocation.t -> name:string -> ttenv -> EcProvers.coq_mode option -> pprover_infos -> backward
 val process_apply       : implicits:bool -> apply_t * prevert option -> backward
-val process_delta       : ?target:psymbol -> (rwside * rwocc * pformula) -> backward
+val process_delta       : ?rigid:bool -> ?target:psymbol -> (rwside * rwocc * pformula) -> backward
 val process_rewrite     : ttenv -> ?target:psymbol -> rwarg list -> backward
 val process_subst       : pformula list -> backward
 val process_cut         : ?mode:cutmode -> engine -> ttenv -> cut_t -> backward
@@ -95,6 +95,7 @@ val process_congr       : pcongr_mode -> backward
 val process_solve       : ?bases:symbol list -> ?depth:int -> backward
 val process_trivial     : backward
 val process_change      : pformula -> backward
+val process_local_hint  : plocalhint -> backward
 val process_simplify    : preduction -> backward
 val process_cbv         : preduction -> backward
 val process_pose        : psymbol -> ptybindings -> rwocc -> pformula -> backward
@@ -104,7 +105,7 @@ val process_wlog        : suff:bool -> psymbol list -> pformula -> backward
 val process_genhave     : ttenv -> pgenhave -> backward
 
 (* -------------------------------------------------------------------- *)
-val process_algebra : [`Solve] -> [`Ring|`Field] -> psymbol list -> backward
+val process_algebra : [`Solve] -> [`Ring|`Field] -> ?name:psymbol -> psymbol list -> backward
 
 (* -------------------------------------------------------------------- *)
 val process_crushmode : crushmode -> bool * backward option
