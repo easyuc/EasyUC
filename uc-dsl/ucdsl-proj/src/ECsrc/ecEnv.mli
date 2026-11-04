@@ -455,11 +455,22 @@ module Reduction : sig
   (* Name of the default database (the empty name). *)
   val dname : symbol
   val all : env -> (base * (topsym * rule list) list) list
-  val add1 : ?base:symbol -> path * rule_option * rule option -> env -> env
+  val add1 : ?base:symbol -> path * rule_option * rule list -> env -> env
   val add  : ?import:bool -> reduction_rule -> env -> env
   val get  : ?base:symbol -> topsym -> env -> rule list
   val get_entries : ?base:symbol -> topsym -> env -> entry list
   val getx : symbol -> env -> (topsym * rule list) list
+
+  (* [hint simplify disable / enable]: switch the rules of the given
+     lemmas off / back on in a database, for the rest of the enclosing
+     theory / section of the current file. Not a theory item, so never
+     exported to requiring files, and independent from [add], which only
+     feeds the database. [has_rules] tells whether a database holds rules
+     compiled from a lemma, [is_disabled] whether they are switched off. *)
+  val disable : ?base:symbol -> path list -> env -> env
+  val enable  : ?base:symbol -> path list -> env -> env
+  val has_rules   : ?base:symbol -> path -> env -> bool
+  val is_disabled : ?base:symbol -> path -> env -> bool
 end
 
 (* Proof-local simplify context; defined in [EcSimplifyContext] and

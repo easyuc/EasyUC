@@ -371,7 +371,7 @@ let get_gdocstrings (sc : scope) : string list =
   sc.sc_globdoc
 
 let get_ldocentities (sc : scope) : docentity list =
-  sc.sc_locdoc.docentities
+  List.rev sc.sc_locdoc.docentities
 
 module DocState = struct
   let empty : docstate =
@@ -414,7 +414,7 @@ module DocState = struct
     { state with srcstringbl = state.srcstringbl @ [srcs] }
 
   let add_entity (state : docstate) (docent : docentity) : docstate =
-    { state with docentities = state.docentities @ [docent] }
+    { state with docentities = docent :: state.docentities }
 
   let add_item (state : docstate) : docstate =
     let state =
@@ -431,7 +431,7 @@ module DocState = struct
       if state.currentproc
       then
         add_entity state (SubDoc ((state.docstringbl, (oget state.currentmode, oget state.currentkind, oget state.currentname, state.srcstringbl)),
-                                 (substate.docentities)))
+                                 (List.rev substate.docentities)))
       else
         state
     in
@@ -2137,6 +2137,35 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Reduction = struct
+  (* [hint simplify disable / enable]: switch off / back on, for the rest
+     of the enclosing theory / section of the current file, the rules
+     compiled from the given lemmas. Deliberately not a theory item: a
+     file must never switch off rules in the files requiring it. *)
+  let switch_reduction scope (mode : puserswitch) (base, lemmas) =
+    check_state `InTop "hint simplify" scope;
+
+    let dbname =
+      match base with
+      | None   -> "the default database"
+      | Some b -> Printf.sprintf "database `%s'" b in
+
+    let for1 (name : pqsymbol) =
+      let path = EcEnv.Ax.lookup_path (unloc name) (env scope) in
+      if not (EcEnv.Reduction.has_rules ?base path (env scope)) then
+        hierror ~loc:name.pl_loc "`%s' has no simplify rule in %s"
+          (EcSymbols.string_of_qsymbol (unloc name)) dbname;
+      if mode = `Enable && not (EcEnv.Reduction.is_disabled ?base path (env scope)) then
+        hierror ~loc:name.pl_loc "the simplify rules of `%s' are not disabled in %s"
+          (EcSymbols.string_of_qsymbol (unloc name)) dbname;
+      path in
+
+    let lemmas = List.map for1 lemmas in
+    let sc_env =
+      match mode with
+      | `Disable -> EcSection.disable_reduction ?base lemmas scope.sc_env
+      | `Enable  -> EcSection.enable_reduction  ?base lemmas scope.sc_env in
+    { scope with sc_env }
+
   (* FIXME: section -> allow "local" flag *)
   let add_reduction scope (base, opts, reds) =
     check_state `InTop "hint simplify" scope;
@@ -2157,7 +2186,7 @@ module Reduction = struct
               "invalid rewrite rule `%s': %s"
               (EcSymbols.string_of_qsymbol (unloc name))
               (EcReduction.User.string_of_error e) in
-        (ax_p, opts, Some red_info) in
+        (ax_p, opts, red_info) in
 
       let rules = List.map (fun (xs, idx) -> List.map (for1 idx) xs) reds in
       List.flatten rules
@@ -2169,6 +2198,11 @@ module Reduction = struct
         (EcTheory.Th_reduction { red_base = base; red_rules = rules })
     in
     { scope with sc_env = EcSection.add_item item scope.sc_env }
+
+  let add_reduction scope (red : puserred) =
+    match red with
+    | PURAdd    (base, opts, reds) -> add_reduction scope (base, opts, reds)
+    | PURSwitch (mode, base, lemmas) -> switch_reduction scope mode (base, lemmas)
 end
 
 (* -------------------------------------------------------------------- *)
@@ -3432,46 +3466,33 @@ module Search = struct
   let locate (scope : scope) ({ pl_desc = name } : pqsymbol) =
     let ppe = EcPrinting.PPEnv.ofenv (env scope) in
 
-    let shorten lk p =
-      let lk (p : path) (qs : qsymbol) =
-        match lk qs (env scope) with
-        | Some (p', _) -> p_equal p p'
-        | _ -> false in
-      EcPrinting.shorten_path ppe lk p
-    in
-
     let buffer = Buffer.create 0 in
     let fmt    = Format.formatter_of_buffer buffer in
 
-    let for_kind section getall shorten =
+    let for_kind ?pp_name section getall lookup =
       let objs = getall ?check:None ?name:(Some name) (env scope) in
-      let objs = List.map shorten (List.fst objs) in
 
       if not (List.is_empty objs) then begin
         Format.fprintf fmt "In section [%s]@\n@\n" section;
 
-        List.iter (fun (long, short) ->
-            match short with
-            | None ->
-                Format.fprintf fmt " - %a@\n"
-                  EcSymbols.pp_qsymbol long
-            | Some short ->
-                Format.fprintf fmt " - %a (shorten name: %a)@\n"
-                  EcSymbols.pp_qsymbol long
-                  EcSymbols.pp_qsymbol short
-          )  objs
+        List.iter (fun p ->
+            Format.fprintf fmt " - %a@\n"
+              (EcPrinting.pp_locate_path ?pp_name ppe lookup) p
+          ) (List.fst objs)
       end in
 
-    for_kind "operators" EcEnv.Op.all (shorten EcEnv.Op.lookup_opt);
-    for_kind "types"     EcEnv.Ty.all (shorten EcEnv.Ty.lookup_opt);
-    for_kind "lemmas"    EcEnv.Ax.all (shorten EcEnv.Ax.lookup_opt);
+    for_kind "operators" EcEnv.Op.all EcEnv.Op.lookup_opt
+      ~pp_name:EcPrinting.pp_opqsymbol;
+    for_kind "types"     EcEnv.Ty.all EcEnv.Ty.lookup_opt;
+    for_kind "lemmas"    EcEnv.Ax.all EcEnv.Ax.lookup_opt;
 
     Format.pp_print_flush fmt ();
 
     if Buffer.length buffer = 0 then begin
       Format.fprintf fmt
         "no objects found for `%a'"
-        EcSymbols.pp_qsymbol name
+        EcSymbols.pp_qsymbol name;
+      Format.pp_print_flush fmt ()
     end;
 
     notify scope `Info "%s" (Buffer.contents buffer)

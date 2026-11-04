@@ -642,8 +642,7 @@ module Zipper = struct
    *) 
   let zipper_and_split_of_cgap_range (env: env) (path, (start, fin) : codegap_range) (s: stmt) : zipper * _ * nm_codegap_range =
     let (zpr, ((cpath, _), s)) = zipper_of_cgap_r env (path, start) s in
-    let start = normalize_cgap1 env start s in
-    let fin = normalize_cgap1 env fin s in
+    let (start, fin) = normalize_cgap1_range env (start, fin) s in
     let ss = split_by_nmcgap_range (start, fin) s in
     (zpr, ss, (cpath, (start, fin)))
 
@@ -660,23 +659,13 @@ module Zipper = struct
 
   let zip zpr = zip None ((zpr.z_head, zpr.z_tail), zpr.z_path)
 
-  let after ~strict (zpr: zipper) =
-    let rec doit acc ip =
-      match ip with
-      | ZTop                          -> acc
-      | ZWhile  (_, ((_, is), ip))    -> doit (is :: acc) ip
-      | ZIfThen (_, ((_, is), ip), _) -> doit (is :: acc) ip
-      | ZIfElse (_, _, ((_, is), ip)) -> doit (is :: acc) ip
-      | ZMatch (_, ((_, is), ip), _)  -> doit (is :: acc) ip
-    in
-
-    let after =
-      match zpr.z_tail, strict with
-      | []     , _     -> doit [[]] zpr.z_path
-      | is     , false -> doit [is] zpr.z_path
-      | _ :: is, true  -> doit [is] zpr.z_path
-    in
-      List.rev after
+  let rec in_loop (ip : ipath) =
+    match ip with
+    | ZTop                          -> false
+    | ZWhile  _                     -> true
+    | ZIfThen (_, (_, ip), _)       -> in_loop ip
+    | ZIfElse (_, _, (_, ip))       -> in_loop ip
+    | ZMatch  (_, (_, ip), _)       -> in_loop ip
 
   let fold_range (env: env) cenv (cpr: codegap_range) f state (s: stmt) =
     let zpr, (_pre, s, tl), _nmcpr = zipper_and_split_of_cgap_range env cpr s in

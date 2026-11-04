@@ -112,14 +112,15 @@ let process_local_hint (hint : plocalhint) (tc : tcenv1) =
         let simpl =
           List.fold_left (fun simpl lemma ->
             let path = EcEnv.Ax.lookup_path (unloc lemma) env in
-            let rule =
+            let rules =
               try EcReduction.User.compile ~opts ~prio:0 env path
               with EcReduction.User.InvalidUserRule e ->
                 tc_error !!tc ~loc:lemma.pl_loc
                   "invalid rewrite rule `%s': %s"
                   (EcSymbols.string_of_qsymbol (unloc lemma))
                   (EcReduction.User.string_of_error e) in
-            EcEnv.SimplifyContext.add_rules [(path, rule)] simpl)
+            EcEnv.SimplifyContext.add_rules
+              (List.map (fun rule -> (path, rule)) rules) simpl)
             simpl h.ph_lemmas
         in
 
@@ -173,10 +174,10 @@ let process_simplify_info ri (tc : tcenv1) =
   in
 
   let delta_p, delta_h =
-    ri.pdelta
-      |> omap (List.fold_left do1 (Sp.empty, Sid.empty))
-      |> omap (fun (x, y) -> (fun p -> if Sp.mem p x then `Force else `IfApplied), (Sid.mem^~ y))
-      |> odfl ((fun _ -> `IfTransparent), predT)
+    let sop, sid = List.fold_left do1 (Sp.empty, Sid.empty) ri.pdelta.pd_ops in
+    let dflt = if ri.pdelta.pd_all then `IfTransparent else `IfApplied in
+    ((fun p -> if Sp.mem p sop then `Force else dflt),
+     (if ri.pdelta.pd_all then predT else Sid.mem^~ sid))
   in
 
   let hint = ri.phint in
@@ -204,14 +205,15 @@ let process_simplify_info ri (tc : tcenv1) =
     let opts = EcTheory.{ ur_delta = false; ur_eqtrue = false; } in
     List.fold_left (fun simpl lemma ->
       let path = EcEnv.Ax.lookup_path (unloc lemma) env in
-      let rule =
+      let rules =
         try EcReduction.User.compile ~opts ~prio:0 env path
         with EcReduction.User.InvalidUserRule e ->
           tc_error !!tc ~loc:lemma.pl_loc
             "invalid rewrite rule `%s': %s"
             (EcSymbols.string_of_qsymbol (unloc lemma))
             (EcReduction.User.string_of_error e) in
-      EcEnv.SimplifyContext.add_rules [(path, rule)] simpl
+      EcEnv.SimplifyContext.add_rules
+        (List.map (fun rule -> (path, rule)) rules) simpl
     ) simpl hint.ph_lemmas
   in
 
@@ -444,8 +446,11 @@ module LowRewrite = struct
             then Some (ptc, `Bool, (ax, f_true))
             else None
           else None
-        and pt3 = omap base
-          (EcReduction.h_red_opt EcReduction.full_red hyps ax)
+        and pt3 =
+          let ri =
+            { EcReduction.full_red with
+                EcReduction.user_local = pt.PT.ptev_env.PT.pte_lc } in
+          omap base (EcReduction.h_red_opt ri hyps ax)
         in pt1 @ (otolist pt2) @ (odfl [] pt3)) in
 
         let rec doit reduce =
@@ -895,7 +900,8 @@ let process_delta ?(rigid = false) ?target ((s :rwside), o, p) tc =
   in
 
   let ri = { EcReduction.full_red with
-               delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent)} in
+               delta_p = (fun p -> if Some p = dp then `Force else `IfTransparent);
+               user_local = FApi.tc1_simplify_context tc; } in
   let na = List.length args in
 
   match s with

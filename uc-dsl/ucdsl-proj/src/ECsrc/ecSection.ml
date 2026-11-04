@@ -28,6 +28,27 @@ type cbarg = [
 type cb = cbarg -> unit
 
 (* -------------------------------------------------------------------- *)
+(* Non-global items reachable through the declarations of the operators
+   and types bound so far, keyed by the path of the operator or type. *)
+module Deps : sig
+  type t
+
+  val empty : t
+  val find  : path -> t -> cbarg list
+  val add   : path -> cbarg list -> t -> t
+end = struct
+  type t = cbarg list Mp.t
+
+  let empty : t = Mp.empty
+
+  let find (p : path) (deps : t) : cbarg list =
+    odfl [] (Mp.find_opt p deps)
+
+  let add (p : path) (whos : cbarg list) (deps : t) : t =
+    Mp.add p whos deps
+end
+
+(* -------------------------------------------------------------------- *)
 type dep_error =
   { e_env : EcEnv.env;
     e_who : locality * cbarg;
@@ -115,6 +136,7 @@ type aenv = {
   env   : EcEnv.env;          (* Global environment for dep. analysis *)
   cb    : cb;                 (* Dep. analysis callback *)
   cache : acache ref;         (* Dep. analysis cache *)
+  deps  : Deps.t;             (* Recorded deps. of operators and types *)
 }
 
 and acache = {
@@ -127,8 +149,8 @@ let empty_acache : acache =
   { op = Sp.empty; type_ = Sp.empty; }
 
 (* -------------------------------------------------------------------- *)
-let mkaenv (env : EcEnv.env) (cb : cb) : aenv = 
-  { env; cb; cache = ref empty_acache; }
+let mkaenv ?(deps = Deps.empty) (env : EcEnv.env) (cb : cb) : aenv =
+  { env; cb; cache = ref empty_acache; deps; }
 
 (* -------------------------------------------------------------------- *)
 let rec on_mp (aenv : aenv) (mp : mpath) =
@@ -179,12 +201,18 @@ and on_ty (aenv : aenv) (ty : ty) =
   | Tfun (ty1, ty2)  -> List.iter (on_ty aenv) [ty1; ty2]
 
 (* -------------------------------------------------------------------- *)
+(* A reference to an operator or a type used to trigger a walk of its
+   declaration, and transitively of everything it refers to. The callback
+   only checks localities, and global items always pass, so that walk can
+   only ever report the non-global items reachable from the declaration.
+   That set is recorded once, when the operator or type is bound (see
+   [record_deps]), and replayed here instead. *)
 and on_tyname (aenv : aenv) (p : path) =
   aenv.cb (`Type p);
   if not (Sp.mem p !(aenv.cache).type_) then begin
     let cache = { !(aenv.cache) with type_ = Sp.add p !(aenv.cache).type_ } in
     aenv.cache := cache;
-    on_tydecl aenv (EcEnv.Ty.by_path p aenv.env)
+    List.iter aenv.cb (Deps.find p aenv.deps)
   end
 
 (* -------------------------------------------------------------------- *)
@@ -193,7 +221,7 @@ and on_opname (aenv : aenv) (p : EcPath.path) =
   if not (Sp.mem p !(aenv.cache).op) then begin
     let cache = { !(aenv.cache) with op = Sp.add p !(aenv.cache).op } in
     aenv.cache := cache;
-    on_opdecl aenv (EcEnv.Op.by_path p aenv.env);    
+    List.iter aenv.cb (Deps.find p aenv.deps)
   end
 
 (* -------------------------------------------------------------------- *)
@@ -568,6 +596,7 @@ type scenv = {
   sc_insec : bool;
   sc_abstr : bool;
   sc_items : sc_items;
+  sc_deps  : Deps.t;
 }
 
 and sc_item =
@@ -587,6 +616,7 @@ let initial env =
     sc_insec   = false;
     sc_abstr   = false;
     sc_items   = [];
+    sc_deps    = Deps.empty;
   }
 
 let env scenv = scenv.sc_env
@@ -615,6 +645,42 @@ let locality (env : EcEnv.env) (who : cbarg) =
   | `ModuleType p -> ((EcEnv.ModTy.by_path p env).tms_loca :> locality)
   | `Crbind (_, lc) -> (lc :> locality)
   | `Instance _ -> assert false
+
+(* -------------------------------------------------------------------- *)
+(* Recording of the non-global items reachable from the declaration of an
+   operator or a type, replayed by [on_tyname] and [on_opname]. The walk
+   below replays the records of the items the declaration refers to, so
+   the recorded set is transitive by construction. *)
+let aenv_of (scenv : scenv) (cb : cb) : aenv =
+  mkaenv ~deps:scenv.sc_deps scenv.sc_env cb
+
+let deps_of_decl (scenv : scenv) (walk : aenv -> unit) : cbarg list =
+  let deps = ref [] in
+  let cb (who : cbarg) =
+    match who with
+    | `Type _ | `Op _ | `Module _ | `Typeclass _
+        when locality scenv.sc_env who <> `Global ->
+      if not (List.mem who !deps) then deps := who :: !deps
+    | _ -> () in
+  walk (aenv_of scenv cb); !deps
+
+let record_deps (prefix : path) (item : theory_item) (scenv : scenv) : scenv =
+  let record s walk =
+    { scenv with sc_deps =
+        Deps.add (pqname prefix s) (deps_of_decl scenv walk) scenv.sc_deps } in
+  match item.ti_item with
+  | Th_type     (s, tyd) -> record s (fun aenv -> on_tydecl aenv tyd)
+  | Th_operator (s, op)  -> record s (fun aenv -> on_opdecl aenv op)
+  | _ -> scenv
+
+(* Abstract theories are not bound in the environment until cloned. *)
+let rec record_deps_th (prefix : path) (cth : ctheory) (scenv : scenv) : scenv =
+  if cth.cth_mode = `Abstract then scenv else
+  List.fold_left (fun scenv item ->
+    match item.ti_item with
+    | Th_theory (s, cth) -> record_deps_th (pqname prefix s) cth scenv
+    | _ -> record_deps prefix item scenv)
+    scenv cth.cth_items
 
 (* -------------------------------------------------------------------- *)
 type to_clear =
@@ -1138,13 +1204,14 @@ let generalize_module to_gen prefix me =
         | _ -> () in
 
       try
-        on_mp (mkaenv to_gen.tg_env.sc_env check_gen) mp;
+        on_mp (aenv_of to_gen.tg_env check_gen) mp;
         to_gen, Some (Th_module me)
 
       with Inline ->
         let to_gen = { to_gen with tg_subst =
           EcSubst.add_moddef
-            ~src:(EcPath.pqname prefix me.tme_expr.me_name)
+            ~src:(EcPath.mpath_crt
+                    (EcPath.pqname prefix me.tme_expr.me_name) [] None)
             ~dst:mp to_gen.tg_subst } in
         to_gen, None
     end
@@ -1339,7 +1406,7 @@ let check_tyd scenv prefix name tyd =
         d_modty = [];
         d_tc    = [`Global];
       } in
-    on_tydecl (mkaenv scenv.sc_env (cb scenv from cd)) tyd
+    on_tydecl (aenv_of scenv (cb scenv from cd)) tyd
 
 let is_abstract_op op =
   match op.op_kind with
@@ -1365,7 +1432,7 @@ let check_op scenv prefix name op =
         d_modty = [];
         d_tc    = [`Global];
       } in
-    on_opdecl (mkaenv scenv.sc_env (cb scenv from cd)) op
+    on_opdecl (aenv_of scenv (cb scenv from cd)) op
 
   | `Global ->
     let cd = {
@@ -1377,7 +1444,7 @@ let check_op scenv prefix name op =
         d_modty = [];
         d_tc    = [`Global];
       } in
-    on_opdecl (mkaenv scenv.sc_env (cb scenv from cd)) op
+    on_opdecl (aenv_of scenv (cb scenv from cd)) op
 
 let is_inth scenv =
   match scenv.sc_name with
@@ -1396,7 +1463,7 @@ let check_ax (scenv : scenv) (prefix : path) (name : symbol) (ax : axiom) =
       d_modty = [`Global];
       d_tc    = [`Global];
     } in
-  let doit = on_axiom (mkaenv scenv.sc_env (cb scenv from cd)) in
+  let doit = on_axiom (aenv_of scenv (cb scenv from cd)) in
   let error b s1 s =
     if b then hierror "%s %a %s" s1 (pp_axname scenv) path s in
 
@@ -1428,7 +1495,7 @@ let check_modtype scenv prefix name ms =
   | `Local -> check_section scenv from
   | `Global ->
     if scenv.sc_insec then
-      on_modsig (mkaenv scenv.sc_env (cb scenv from cd_glob)) ms.tms_sig
+      on_modsig (aenv_of scenv (cb scenv from cd_glob)) ms.tms_sig
 
 
 let check_module scenv prefix tme =
@@ -1449,7 +1516,7 @@ let check_module scenv prefix tme =
           d_modty = [`Global];
           d_tc    = [`Global];
         } in
-      on_module (mkaenv scenv.sc_env (cb scenv from cd)) me
+      on_module (aenv_of scenv (cb scenv from cd)) me
     end
   | `Declare -> (* Should be SC_decl_mod ... *)
     assert false
@@ -1459,7 +1526,7 @@ let check_typeclass scenv prefix name tc =
   let from = ((tc.tc_loca :> locality), `Typeclass path) in
   if tc.tc_loca = `Local then check_section scenv from
   else
-    on_typeclass (mkaenv scenv.sc_env (cb scenv from cd_glob)) tc
+    on_typeclass (aenv_of scenv (cb scenv from cd_glob)) tc
 
 let check_instance scenv ty tci lc =
   let from = (lc :> locality), `Instance tci in
@@ -1468,10 +1535,10 @@ let check_instance scenv ty tci lc =
     if scenv.sc_insec then
       match tci with
       | `Ring _ | `Field _ ->
-        on_instance (mkaenv scenv.sc_env (cb scenv from cd_glob) )ty tci
+        on_instance (aenv_of scenv (cb scenv from cd_glob) )ty tci
       | `General _ ->
         let cd = { cd_glob with d_ty = [`Declare; `Global]; } in
-        on_instance (mkaenv scenv.sc_env (cb scenv from cd)) ty tci
+        on_instance (aenv_of scenv (cb scenv from cd)) ty tci
 
 let check_crb_bitstring (scenv : scenv) ((bs, lc) : crb_bitstring * is_local) =
   let from = (lc :> locality), `Crbind (CRB_Bitstring bs, lc) in
@@ -1524,7 +1591,8 @@ let enter_theory (name:symbol) (lc:is_local) (mode:thmode) scenv : scenv =
     sc_abstr = scenv.sc_abstr || mode = `Abstract;
     sc_insec = scenv.sc_insec;
     sc_name  = Th (name, lc, mode);
-    sc_items = []; }
+    sc_items = [];
+    sc_deps  = scenv.sc_deps; }
 
 let exit_theory ?clears ?pempty scenv =
   match scenv.sc_name with
@@ -1532,7 +1600,7 @@ let exit_theory ?clears ?pempty scenv =
   | Top     -> hierror "no theory to close"
   | Th (name, lc, mode) ->
     let cth = EcEnv.Theory.close ?clears ?pempty lc mode scenv.sc_env in
-    let scenv = oget scenv.sc_top in
+    let scenv = { (oget scenv.sc_top) with sc_deps = scenv.sc_deps } in
     name, cth, scenv
 
 (* -----------------------------------------------------------*)
@@ -1562,13 +1630,16 @@ let add_item_ ?(override_locality=None) (item : theory_item) (scenv:scenv) =
     | Th_alias     (n,p)     -> EcEnv.Theory.alias ~import n p env
     | Th_reduction r         -> EcEnv.Reduction.add ~import r env
   in
-  (item, { scenv with
-    sc_env = env;
-    sc_items = SC_th_item item :: scenv.sc_items})
+  let scenv = { scenv with sc_env = env } in
+  let scenv = record_deps (EcEnv.root env) item scenv in
+  (item, { scenv with sc_items = SC_th_item item :: scenv.sc_items })
 
 let add_th ~import (cth : EcEnv.Theory.compiled_theory) scenv =
   let env = EcEnv.Theory.bind ~import cth scenv.sc_env in
-  { scenv with sc_env = env; sc_items = SC_th cth :: scenv.sc_items; }
+  let scenv = { scenv with sc_env = env } in
+  let scenv =
+    record_deps_th (pqname (EcEnv.root env) cth.name) cth.ctheory scenv in
+  { scenv with sc_items = SC_th cth :: scenv.sc_items; }
 
 (* -----------------------------------------------------------*)
 let rec generalize_th_item (to_gen : to_gen) (prefix : path) (th_item : theory_item) =
@@ -1662,6 +1733,13 @@ let generalize_lc_items scenv  =
 let import p scenv =
   { scenv with sc_env = EcEnv.Theory.import p scenv.sc_env }
 
+(* [hint simplify disable / enable]: no theory item, never exported *)
+let disable_reduction ?base (lemmas : EcPath.path list) scenv =
+  { scenv with sc_env = EcEnv.Reduction.disable ?base lemmas scenv.sc_env }
+
+let enable_reduction ?base (lemmas : EcPath.path list) scenv =
+  { scenv with sc_env = EcEnv.Reduction.enable ?base lemmas scenv.sc_env }
+
 let import_vars m scenv =
   { scenv with
     sc_env = EcEnv.Mod.import_vars scenv.sc_env m }
@@ -1732,7 +1810,7 @@ let add_decl_mod id mt scenv =
       d_tc    = [`Global];
     } in
     let from = `Declare, `Module (mpath_abs id []) in
-    on_mty_mr (mkaenv scenv.sc_env (cb scenv from cd)) mt;
+    on_mty_mr (aenv_of scenv (cb scenv from cd)) mt;
     { scenv with
       sc_env = EcEnv.Mod.declare_local id mt scenv.sc_env;
       sc_items = SC_decl_mod (id, mt) :: scenv.sc_items }
@@ -1756,7 +1834,8 @@ let enter_section (name : symbol option) (scenv : scenv) =
     sc_name = Sc name;
     sc_insec = true;
     sc_abstr = false;
-    sc_items = []; }
+    sc_items = [];
+    sc_deps  = scenv.sc_deps; }
 
 let exit_section (name : symbol option) (scenv : scenv) =
   match scenv.sc_name with

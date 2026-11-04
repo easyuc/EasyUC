@@ -128,14 +128,14 @@
     if l = [] then
       { pbeta  = true; pzeta  = true;
         piota  = true; peta   = true;
-        plogic = true; pdelta = None;
+        plogic = true; pdelta = { pd_all = true; pd_ops = []; };
         pmodpath = true; puser = true; phint = hint; }
     else
       let doarg acc = function
-        | `Delta l ->
-            if   l = [] || acc.pdelta = None
-            then { acc with pdelta = None }
-            else { acc with pdelta = Some (oget acc.pdelta @ l) }
+        | `Delta pd ->
+            let pd_all = acc.pdelta.pd_all || pd.pd_all in
+            let pd_ops = acc.pdelta.pd_ops @  pd.pd_ops in
+            { acc with pdelta = { pd_all; pd_ops; } }
 
         | `Zeta    -> { acc with pzeta    = true }
         | `Iota    -> { acc with piota    = true }
@@ -148,7 +148,7 @@
         List.fold_left doarg
           { pbeta  = false; pzeta  = false;
             piota  = false; peta   = false;
-            plogic = false; pdelta = Some [];
+            plogic = false; pdelta = { pd_all = false; pd_ops = []; };
             pmodpath = false; puser = false; phint = hint; } l
 
   let simplify_red = [`Zeta; `Iota; `Beta; `Eta; `Logic; `ModPath; `User]
@@ -2691,13 +2691,19 @@ genpattern:
    head filter is NOT allowed here: those tokens are bullet operators and
    only a keyword ([simplify]/[cbv]) lets them be read as a head filter. *)
 simplify_arg:
-| DELTA l=qoident* { `Delta l }
+| DELTA l=qoident* { `Delta { pd_all = (l = []); pd_ops = l; } }
+| d=delta_arg      { `Delta d }
 | ZETA             { `Zeta }
 | IOTA             { `Iota }
 | BETA             { `Beta }
 | ETA              { `Eta }
 | LOGIC            { `Logic }
 | MODPATH          { `ModPath }
+
+(* [delta[f g]]: unfold every transparent definition and force [f] and
+   [g], opaque or not. Plain [delta] is the bracket-less case. *)
+%inline delta_arg:
+| DELTA l=bracket(qoident+) { { pd_all = true; pd_ops = l; } }
 
 %inline pmode:
 | PLUS  { `Plus  }
@@ -2752,17 +2758,21 @@ simplify:
 | SIMPLIFY hint=simplify_mod
     { mk_simplify ~hint simplify_red }
 | SIMPLIFY l=qoident+ hint=simplify_mod
-    { mk_simplify ~hint (`Delta l  :: simplify_red) }
+    { mk_simplify ~hint (`Delta { pd_all = false; pd_ops = l; } :: simplify_red) }
 | SIMPLIFY DELTA hint=simplify_mod
-    { mk_simplify ~hint (`Delta [] :: simplify_red) }
+    { mk_simplify ~hint (`Delta { pd_all = true; pd_ops = []; } :: simplify_red) }
+| SIMPLIFY d=delta_arg hint=simplify_mod
+    { mk_simplify ~hint (`Delta d :: simplify_red) }
 
 cbv:
 | CBV hint=simplify_mod
     { mk_simplify ~hint simplify_red }
 | CBV l=qoident+ hint=simplify_mod
-    { mk_simplify ~hint (`Delta l  :: simplify_red) }
+    { mk_simplify ~hint (`Delta { pd_all = false; pd_ops = l; } :: simplify_red) }
 | CBV DELTA hint=simplify_mod
-    { mk_simplify ~hint (`Delta [] :: simplify_red) }
+    { mk_simplify ~hint (`Delta { pd_all = true; pd_ops = []; } :: simplify_red) }
+| CBV d=delta_arg hint=simplify_mod
+    { mk_simplify ~hint (`Delta d :: simplify_red) }
 
 conseq:
 | empty                            { None, None }
@@ -3552,10 +3562,13 @@ direction:
 | PROC CHANGE side=side? pos=codegap COLON b=option(bracket(ptybindings)) s=brace(stmt)
     { Pchangestmt (side, b, Gap pos, s) }
 
-| PROC REWRITE side=side? pos=codepos f=pterm
-    { Pprocrewrite (side, pos, `Rw f) }
+| PROC REWRITE side=side? pos=codepos_or_range f=pterm
+    { Pprocrewrite (side, Some pos, `Rw f) }
 
-| PROC REWRITE side=side? pos=codepos SLASHEQ
+| PROC REWRITE side=side? f=gpterm(form_h?)
+    { Pprocrewrite (side, None, `Rw f) }
+
+| PROC REWRITE side=side? pos=codepos_or_range? SLASHEQ
     { Pprocrewrite (side, pos, `Simpl) }
 
 | PROC REWRITE AT tg=ident f=pterm
@@ -4080,11 +4093,8 @@ clone_override:
 | LEMMA x=qoident mode=loc(opclmode) y=qoident
   { x, PTHO_Axiom (y, unloc mode) }
 
-| MODULE uqident loc(opclmode) uqident
-   { parse_error
-       (EcLocation.make $startpos $endpos)
-       (Some "Module overriding is no longer supported.")
-   }
+| MODULE x=uqident mode=loc(opclmode) y=uqident
+   { (x, PTHO_Module (y, unloc mode)) }
 
 | MODULE TYPE x=uqident mode=loc(opclmode) y=uqident
    { (x, PTHO_ModTyp (y, unloc mode)) }
@@ -4211,11 +4221,37 @@ hint:
 
 (* -------------------------------------------------------------------- *)
 (* User reduction                                                       *)
+(* The option list is not written [bracket(...)?]: its empty reduction
+   before the first lemma would conflict with the [disable]/[enable]
+   forms below, which also start with an identifier. *)
 reduction:
-| HINT SIMPLIFY IN db=lident COLON opt=bracket(user_red_option*)? xs=plist1(user_red_info, COMMA)
-    { (Some (unloc db), odfl [] opt, xs) }
-| HINT SIMPLIFY opt=bracket(user_red_option*)? xs=plist1(user_red_info, COMMA)
-    { (None, odfl [] opt, xs) }
+| HINT SIMPLIFY IN db=lident COLON opt=bracket(user_red_option*) xs=plist1(user_red_info, COMMA)
+    { PURAdd (Some (unloc db), opt, xs) }
+| HINT SIMPLIFY IN db=lident COLON xs=plist1(user_red_info, COMMA)
+    { PURAdd (Some (unloc db), [], xs) }
+| HINT SIMPLIFY opt=bracket(user_red_option*) xs=plist1(user_red_info, COMMA)
+    { PURAdd (None, opt, xs) }
+| HINT SIMPLIFY xs=plist1(user_red_info, COMMA)
+    { PURAdd (None, [], xs) }
+
+(* [hint simplify disable L1, L2] / [hint simplify enable L1, L2]: switch
+   the rules of these lemmas off / back on in the (default / named)
+   database, for the rest of the enclosing theory / section of the
+   current file. *)
+| HINT SIMPLIFY IN db=lident COLON sw=user_red_switch xs=plist1(qident, COMMA)
+    { PURSwitch (sw, Some (unloc db), xs) }
+| HINT SIMPLIFY sw=user_red_switch xs=plist1(qident, COMMA)
+    { PURSwitch (sw, None, xs) }
+
+user_red_switch:
+| x=lident {
+    match unloc x with
+    | "disable" -> `Disable
+    | "enable"  -> `Enable
+    | _ ->
+        parse_error x.pl_loc
+          (Some ("expecting `disable' or `enable', not: " ^ (unloc x)))
+  }
 
 user_red_info:
 | x=qident i=prefix(AT, word)?

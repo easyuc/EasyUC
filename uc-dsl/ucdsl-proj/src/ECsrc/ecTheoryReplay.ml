@@ -366,15 +366,13 @@ let check_evtags ?(tags : evtags option) (src : symbol list) =
       let dfl =
         not (List.mem explicit src) &&
         not (List.exists (fun (mode, _) -> mode = `Include) tags) in
-      let stt =
-        List.map (fun src ->
-          let do1 status (mode, dst) =
-            match mode with
-            | `Exclude -> if sym_equal src dst then raise Reject; status
-            | `Include -> status || (sym_equal src dst)
-          in List.fold_left do1 dfl tags)
-          src
-      in List.mem true stt
+      let has_tag dst = List.exists (fun s -> sym_equal s dst) src in
+      let do1 status (mode, dst) =
+        match mode with
+        | `Exclude -> if has_tag dst then raise Reject; status
+        | `Include -> status || has_tag dst
+      in
+      List.fold_left do1 dfl tags
 
   with Reject -> false
 
@@ -1064,11 +1062,61 @@ and replay_modtype
 and replay_mod
   (ove : _ ovrenv) (subst, ops, proofs, scope) (import, (me : top_module_expr))
 =
+  match Msym.find_opt me.tme_expr.me_name ove.ovre_ovrd.evc_modexprs with
+  | None ->
     let subst, name = rename ove subst (`Module, me.tme_expr.me_name) in
     let me = EcSubst.subst_top_module subst me in
     let me = { me with tme_expr = { me.tme_expr with me_name = name } } in
     let item = (Th_module me) in
     (subst, ops, proofs, ove.ovre_hooks.hadd_item scope ~import item)
+
+  (* Both modules are state-free (enforced when the override is elaborated),
+     hence indiscernible once their components are found AST-equal below. *)
+  | Some { pl_desc = (target, mode) } ->
+    let name = me.tme_expr.me_name in
+    let env  = EcSection.env (ove.ovre_hooks.henv scope) in
+
+    assert (EcCoreModules.module_own_state me.tme_expr = None);
+
+    let mp, (newme, newlc) = EcEnv.Mod.lookup (unloc target) env in
+
+    let () =
+      match mp.EcPath.m_top with
+      | `Concrete (_, None) -> () | _ -> assert false in
+
+    let substme =
+      EcSubst.add_moddef subst
+        ~src:(EcPath.mpath_crt (xpath ove name) [] None) ~dst:mp in
+
+    let me    = EcSubst.subst_top_module substme me in
+    let me    = { me with tme_expr = { me.tme_expr with me_name = name } } in
+    let newme = { newme with me_name = name } in
+    let newme = { tme_expr = newme; tme_loca = Option.get newlc; } in
+
+    if not (EcReduction.EqTest.for_mexpr ~body:false env me.tme_expr newme.tme_expr) then
+      clone_error env (CE_ModIncompatible (snd ove.ovre_prefix, name));
+
+    let subst, name =
+      match mode with
+      | `Alias    -> rename ove subst (`Module, name)
+      | `Inline _ -> substme, name in
+
+    let scope =
+      if keep_of_mode mode then
+        let alias =
+          ME_Alias (
+            List.length newme.tme_expr.me_params,
+            EcPath.m_apply mp
+              (List.map
+                 (fun (id, _) -> EcPath.mident id)
+                 newme.tme_expr.me_params)) in
+        let newme =
+          { newme with tme_expr =
+              { newme.tme_expr with me_name = name; me_body = alias } } in
+        ove.ovre_hooks.hadd_item scope ~import (Th_module newme)
+      else scope in
+
+    (subst, ops, proofs, scope)
 
 (* -------------------------------------------------------------------- *)
 and replay_export
@@ -1115,22 +1163,24 @@ and replay_reduction
   (ove : _ ovrenv) (subst, ops, proofs, scope)
   (import, ({ red_rules } as red) : _ * EcTheory.reduction_rule)
 =
-  let for1 (p, opts, rule) =
+  let for1 (p, opts, rules) =
     let exception Removed in
 
     let p = EcSubst.subst_path subst p in
 
-    let rule =
-      obind (fun rule ->
+    let rules =
+      match rules with
+      | [] -> []
+      | rule :: _ ->
         let env = EcSection.env (ove.ovre_hooks.henv scope) in
 
         try
           if not (is_some (EcEnv.Ax.by_path_opt p env)) then
             raise Removed;
-          Some (EcReduction.User.compile ~opts ~prio:rule.rl_prio env p)
-        with EcReduction.User.InvalidUserRule _ | Removed -> None) rule
+          EcReduction.User.compile ~opts ~prio:rule.rl_prio env p
+        with EcReduction.User.InvalidUserRule _ | Removed -> []
 
-    in (p, opts, rule) in
+    in (p, opts, rules) in
 
   let red_rules = List.map for1 red_rules in
   let scope = ove.ovre_hooks.hadd_item scope ~import (Th_reduction { red with red_rules }) in
@@ -1385,7 +1435,7 @@ and replay_alias
   if is_none (EcEnv.Theory.by_path_opt p env) then
     (subst, ops, proofs, scope)
   else
-    let scope = ove.ovre_hooks.hadd_item scope ~import (Th_alias (name, target)) in
+    let scope = ove.ovre_hooks.hadd_item scope ~import (Th_alias (name, p)) in
     (subst, ops, proofs, scope)
 
 (* -------------------------------------------------------------------- *)

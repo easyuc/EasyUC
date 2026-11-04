@@ -311,6 +311,23 @@ let t_bdhoare_call fpre fpost opt_bd tc =
   let bhs_po = ss_inv_rebind (bhs_po bhs) m in
   let bhs_pr = ss_inv_rebind (bhs_pr bhs) m in
 
+  (* The bound of the specification of the called procedure (the bound of
+     the conclusion, or [opt_bd]) is interpreted in the memory the procedure
+     starts from: after [s], and with the local variables of the callee.
+     The bound of the conclusion is interpreted in the initial memory, with
+     the local variables of the caller. The two coincide only if this bound
+     depends neither on local variables nor on variables written by [s]. *)
+  let callee_bd = odfl bhs_bd opt_bd in
+  let fv_bd = PV.fv env callee_bd.m callee_bd.inv in
+
+  if List.exists (fun (pv, _) -> is_loc pv) (fst (PV.elements fv_bd)) then
+    tc_error !!tc "The bound cannot depend on local variables";
+
+  if not (PV.indep env (s_write env s) fv_bd) then
+    tc_error !!tc
+      "The bound cannot depend on variables written by the \
+       statements preceding the call";
+
   (* The function satisfies the specification *)
   let f_concl =
     bdhoare_call_spec !!tc fpre fpost f bhs.bhs_cmp bhs_bd opt_bd in
@@ -733,21 +750,32 @@ let process_call_concave (fc, info) tc =
 
     | _ -> tc_error !!tc "the conclusion is not a ehoare" in
 
-  let process_spec tc =
-    let _, concl = FApi.tc1_flat tc in
+  (* As for [call] (see [process_call]), the specification is typed in the
+     memories of the called procedure, and the invariant in an abstract
+     memory: the local variables of the caller are not in scope (they
+     would be read as the callee's variables of the same name). *)
+  let process_spec tc pre post =
+    let hyps, concl = FApi.tc1_flat tc in
       match concl.f_node  with
       | FeHoareS hs ->
           let (_,f,_) = fst (tc1_last_call tc hs.ehs_s) in
-          (txreal, fun pre post -> f_eHoareF pre f post)
+          let m = EcIdent.create "&hr" in
+          let penv, qenv = LDecl.hoareF m f hyps in
+          let pre  = TTC.pf_process_form !!tc penv txreal pre  in
+          let post = TTC.pf_process_form !!tc qenv txreal post in
+          f_eHoareF {m; inv = pre} f {m; inv = post}
 
       | _ -> tc_error !!tc "the conclusion is not a ehoare" in
 
-  let process_inv tc =
-      let _, concl = FApi.tc1_flat tc in
+  let process_inv tc inv =
+    let hyps, concl = FApi.tc1_flat tc in
     match concl.f_node with
     | FeHoareS hs ->
+        let m = fst hs.ehs_m in
         let (_,f,_) = fst (tc1_last_call tc hs.ehs_s) in
-        (txreal, fun inv -> f_eHoareF inv f inv)
+        let hyps = LDecl.push_active_ss (EcMemory.abstract m) hyps in
+        let inv = {m; inv = TTC.pf_process_form !!tc hyps txreal inv} in
+        (f_eHoareF inv f inv, inv)
 
     | _ -> tc_error !!tc "the conclusion is not a ehoare" in
 
@@ -756,17 +784,13 @@ let process_call_concave (fc, info) tc =
   let process_cut tc info =
     match info with
     | CI_spec (pre, epost) ->
-      let ty,fmake = process_spec tc in
-      let _, pre = TTC.tc1_process_Xhl_form tc ty pre in
-      let _, post = TTC.tc1_process_Xhl_form tc ty epost.pnormal in
-      fmake pre post
+      process_spec tc pre epost.pnormal
 
     | CI_inv inv ->
-      let ty, fmake = process_inv tc in
-      let _, inv = TTC.tc1_process_Xhl_form tc ty inv in
+      let spec, inv = process_inv tc inv in
       subtactic := (fun tc ->
         FApi.t_firsts t_trivial 2 (EcPhlFun.t_fun (Inv_ss inv) tc));
-      fmake inv
+      spec
 
     | _ ->
         tc_error !!tc "cannot supply additional information for call /"

@@ -216,6 +216,12 @@ type preenv = {
   env_rwbase   : Sp.t Mip.t;
   env_atbase   : atbase Msym.t;
   env_redbase  : mredinfo Msym.t;
+  (* Disabled simplify rules ([hint simplify disable / enable]): per
+     database, the lemmas whose rules are switched off for the rest of
+     the enclosing theory / section of the current file. Not a theory
+     item, hence never exported by [require], and dropped with the
+     environment of the enclosing theory / section when it is closed. *)
+  env_redmask  : Sp.t Msym.t;
   env_ntbase   : ntbase Mop.t;
   env_albase   : path Mp.t;             (* theory aliases   *)
   env_modlcs   : Sid.t;                 (* declared modules *)
@@ -352,6 +358,7 @@ let empty gstate =
     env_rwbase   = Mip.empty;
     env_atbase   = Msym.empty;
     env_redbase  = Msym.empty;
+    env_redmask  = Msym.empty;
     env_ntbase   = Mop.empty;
     env_albase   = Mp.empty;
     env_modlcs   = Sid.empty;
@@ -1553,9 +1560,7 @@ module Reduction = struct
   (* The default-database name is owned by [EcSimplifyContext]. *)
   let dname : symbol = EcSimplifyContext.dname
 
-  let add_rule ((src, rule) : path * rule option) (db : mredinfo) =
-    match rule with None -> db | Some rule ->
-
+  let add_rule ((src, rule) : path * rule) (db : mredinfo) =
     let p : topsym =
       match rule.rl_ptn with
       | Rule (`Op (p, _, _), _) -> `Path p
@@ -1578,42 +1583,87 @@ module Reduction = struct
 
       Some { ri_priomap; ri_list }) p db
 
-  let add_rules (rules : (path * rule option) list) (db : mredinfo) =
+  let add_rules (rules : (path * rule) list) (db : mredinfo) =
     List.fold_left ((^~) add_rule) db rules
 
-  let updatedb ?(base : symbol option) (rules : (path * rule option) list) (db : mredinfo Msym.t) =
+  let updatedb ?(base : symbol option) (rules : (path * rule) list) (db : mredinfo Msym.t) =
     let nbase = odfl dname base in
     let base = Msym.find_def Mrd.empty nbase db in
     Msym.add nbase (add_rules rules base) db
 
+  (* The lemmas disabled in [base] by [hint simplify disable]. *)
+  let masked ?(base : symbol option) (env : env) : Sp.t =
+    Msym.find_def Sp.empty (odfl dname base) env.env_redmask
+
+  let unmask (mask : Sp.t) (entries : redentry list) =
+    if Sp.is_empty mask then entries else
+      List.filter (fun (src, _) -> not (Sp.mem src mask)) entries
+
   let add ?(import = true) ({ red_base; red_rules } : reduction_rule) (env : env) =
-    let rstrip = List.map (fun (x, _, y) -> (x, y)) red_rules in
+    let rstrip =
+      List.concat_map (fun (x, _, rules) ->
+        List.map (fun rule -> (x, rule)) rules) red_rules in
 
     { env with
         env_redbase = updatedb ?base:red_base rstrip env.env_redbase;
         env_item = mkitem ~import (Th_reduction { red_base; red_rules }) :: env.env_item; }
 
-  let add1 ?base (prule : path * rule_option * rule option) (env : env) =
+  (* Switch the rules of [lemmas] in [base] off / back on for the rest of
+     the enclosing theory / section. Not a theory item: never exported. *)
+  let switch (mode : [`Disable | `Enable]) ?(base : symbol option) (lemmas : path list) (env : env) =
+    let nbase = odfl dname base in
+    let mask  = Msym.find_def Sp.empty nbase env.env_redmask in
+    let mask  =
+      match mode with
+      | `Disable -> List.fold_left (fun mask p -> Sp.add p mask) mask lemmas
+      | `Enable  -> List.fold_left (fun mask p -> Sp.remove p mask) mask lemmas in
+    let env_redmask =
+      if   Sp.is_empty mask
+      then Msym.remove nbase env.env_redmask
+      else Msym.add nbase mask env.env_redmask in
+    { env with env_redmask }
+
+  let disable ?base lemmas env = switch `Disable ?base lemmas env
+  let enable  ?base lemmas env = switch `Enable  ?base lemmas env
+
+  let is_disabled ?(base : symbol option) (lemma : path) (env : env) =
+    Sp.mem lemma (masked ?base env)
+
+  (* Whether [base] holds rules compiled from [lemma] (masked or not). *)
+  let has_rules ?(base : symbol option) (lemma : path) (env : env) =
+    Msym.find_opt (odfl dname base) env.env_redbase
+    |> omap (fun db ->
+         Mrd.exists (fun _ ri ->
+           List.exists (fun (src, _) -> EcPath.p_equal src lemma) (Lazy.force ri.ri_list)) db)
+    |> odfl false
+
+  let add1 ?base (prule : path * rule_option * rule list) (env : env) =
     add { red_base = base; red_rules = [prule] } env
 
   let get_entries ?base (p : topsym) (env : env) =
     Msym.find_opt (odfl dname base) env.env_redbase
     |> obind (Mrd.find_opt p)
-    |> omap (fun x -> Lazy.force x.ri_list)
+    |> omap (fun x -> unmask (masked ?base env) (Lazy.force x.ri_list))
     |> odfl []
 
   let get ?base (p : topsym) (env : env) =
     List.map snd (get_entries ?base p env)
 
+  (* The rules of a database by head symbol, removals applied (a head
+     left without rules by a removal is dropped). *)
+  let rules_of_db (mask : Sp.t) (db : mredinfo) =
+    Mrd.bindings db
+    |> List.filter_map (fun (ts, mr) ->
+         match List.map snd (unmask mask (Lazy.force mr.ri_list)) with
+         | [] -> None
+         | rules -> Some (ts, rules))
+
   let getx (base : symbol) (env : env) =
-    Msym.find_def Mrd.empty base env.env_redbase
-    |> Mrd.bindings
-    |> List.map (fun (ts, mr) -> (ts, List.map snd (Lazy.force mr.ri_list)))
+    rules_of_db (masked ~base env) (Msym.find_def Mrd.empty base env.env_redbase)
 
   let all (env : env) =
     Msym.bindings env.env_redbase
-    |> List.map (fun (base, db) ->
-      (base, List.map (fun (ts, mr) -> (ts, List.map snd (Lazy.force mr.ri_list))) (Mrd.bindings db)))
+    |> List.map (fun (base, db) -> (base, rules_of_db (masked ~base env) db))
 end
 
 (* Proof-local simplify context lives in [EcSimplifyContext]; re-exported
@@ -2771,23 +2821,9 @@ module Op = struct
   let core_reduce ?(mode = `IfTransparent) ?(nargs = 0) env p =
     let op = oget (by_path_opt p env) in
 
-    match op.op_kind with
-    | OB_oper (Some (OP_Plain f))
-    | OB_pred (Some (PR_Plain f)) -> begin
-        let f =
-          match mode with
-          | `Force ->
-             f
-          | `IfTransparent when not op.op_opaque.reduction ->
-             f
-          | `IfApplied when nargs >= odfl max_int op.op_unfold ->
-             f
-          | _ ->
-             raise NotReducible
-      in (op, f)
-    end
-
-    | _ -> raise NotReducible
+    match EcDecl.operator_body ~mode ~nargs op with
+    | Some f -> (op, f)
+    | None -> raise NotReducible
 
   let reducible ?mode ?nargs env p =
     if Option.is_some (by_path_opt p env) then
@@ -3718,7 +3754,9 @@ module Theory = struct
   let bind_rd_th =
     let for1 _path db = function
       | Th_reduction { red_base; red_rules } ->
-         let rules = List.map (fun (x, _, y) -> (x, y)) red_rules in
+         let rules =
+           List.concat_map (fun (x, _, rules) ->
+             List.map (fun rule -> (x, rule)) rules) red_rules in
          Some (Reduction.updatedb ?base:red_base rules db)
       | _ -> None
 

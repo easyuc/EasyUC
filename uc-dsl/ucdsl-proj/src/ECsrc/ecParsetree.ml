@@ -617,9 +617,16 @@ let empty_simplify_hint = {
 }
 
 (* -------------------------------------------------------------------- *)
+(* [pd_all] unfolds every transparent definition; [pd_ops] are unfolded
+   unconditionally, opaque ones included. Both may be set at once. *)
+type pdelta = {
+  pd_all : bool;
+  pd_ops : pqsymbol list;
+}
+
 type preduction = {
   pbeta    : bool;                      (* β-reduction *)
-  pdelta   : pqsymbol list option;      (* definition unfolding *)
+  pdelta   : pdelta;                    (* definition unfolding *)
   pzeta    : bool;                      (* let-reduction *)
   piota    : bool;                      (* case/if-reduction *)
   peta     : bool;                      (* η-reduction *)
@@ -926,7 +933,7 @@ type phltactic =
   | Prw_equiv      of rw_eqv_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
-  | Pprocrewrite   of side option * pcodepos * prrewrite
+  | Pprocrewrite   of side option * pcodepos_or_range option * prrewrite
   | Pprocrewriteat of psymbol * ppterm
   | Pchangestmt    of side option * ptybindings option * prange1_or_insert * pstmt
   | Phoaresplit
@@ -1394,6 +1401,7 @@ and theory_override =
 | PTHO_Op     of op_override
 | PTHO_Pred   of pr_override
 | PTHO_Axiom  of ax_override
+| PTHO_Module of me_override
 | PTHO_ModTyp of mt_override
 | PTHO_Theory of th_override
 
@@ -1465,8 +1473,17 @@ type phint = {
 type puseroption =
   [`Delta | `EqTrue]
 
+(* [hint simplify]: [PURAdd (db, opts, rules)] adds the rules compiled
+   from lemmas to database [db] (the default one when [None]), as a
+   theory item exported to the files requiring this one; [PURSwitch
+   (mode, db, lemmas)] disables / re-enables the rules of [lemmas] in
+   [db] for the rest of the enclosing theory / section of the current
+   file -- never exported. *)
+type puserswitch = [`Disable | `Enable]
+
 type puserred =
-  symbol option * puseroption list * (pqsymbol list * int option) list
+  | PURAdd    of symbol option * puseroption list * (pqsymbol list * int option) list
+  | PURSwitch of puserswitch * symbol option * pqsymbol list
 
 type threquire =
   psymbol option * (psymbol * psymbol option) list * [`Import|`Export] option
