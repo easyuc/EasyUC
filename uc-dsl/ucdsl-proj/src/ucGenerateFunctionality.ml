@@ -725,7 +725,8 @@ let print_SIM_proof_state_match (root : string)
                    ret_pfx
                 end
               | Fail ->
-                print_instr_proof_step_fail ppf ret_pfx
+                Format.fprintf ppf
+                   "@[%s sp 1. skip. move => />;smt(). (*Fail instruction*)@]" ret_pfx
             in
             let code = EcLocation.unloc code in
             List.iter (fun it -> Format.fprintf ppf "@[%a@]"
