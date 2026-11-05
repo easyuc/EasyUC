@@ -294,6 +294,26 @@ qed.
 
 type univ = bool list.  (* universe values are lists of bits *)
 
+(* univ encoding: *)
+
+op [opaque smt_opaque] enc_univ (x : univ) : univ = x.
+
+op [opaque smt_opaque] dec_univ (x : univ) : univ option = Some x.
+
+op [opaque smt_opaque] epdp_univ_univ : (univ, univ) epdp =
+  {|enc = enc_univ; dec = dec_univ|}.
+
+lemma valid_epdp_univ_univ : valid_epdp epdp_univ_univ.
+proof.
+apply epdp_intro => [x | u x].
+by rewrite /epdp_univ_univ /= /enc_univ /dec_univ.
+rewrite /epdp_univ_univ /= /enc_univ /dec_univ.
+trivial.
+qed.
+
+hint simplify valid_epdp_univ_univ.
+hint rewrite epdp : valid_epdp_univ_univ.
+
 (* unit encoding: *)
 
 op [opaque smt_opaque] enc_unit (x : unit) : univ = [].

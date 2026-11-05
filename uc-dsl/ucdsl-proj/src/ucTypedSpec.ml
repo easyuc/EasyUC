@@ -197,6 +197,8 @@ type ty_index = (ty * int) located
 
 let uc_qsym_prefix_basic_types = ["Top"; "UCBasicTypes"]
 let uc_qsym_prefix_list_po     = ["Top"; "UCListPO"]
+let uc_qsym_prefix_univ        = ["Top"; "UCUniv"]
+let uc_qsym_prefix_encoding    = ["Top"; "UCEncoding"]
 let ec_qsym_prefix_core_int    = ["Top"; "CoreInt"]
 let ec_qsym_prefix_list        = ["Top"; "List"]
 
@@ -205,6 +207,12 @@ let port_ty : ty =
 
 let addr_ty : ty =
   tconstr (EcPath.fromqsymbol (uc_qsym_prefix_basic_types, "addr")) []
+
+let univ_ty : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_univ, "univ")) []
+
+let epdp_ty (ty1 : ty) (ty2 : ty) : ty =
+  tconstr (EcPath.fromqsymbol (uc_qsym_prefix_encoding, "epdp")) [ty1; ty2]
 
 (* UC DSL and EasyCrypt operators *)
 
@@ -264,6 +272,29 @@ let int_le_op : form =
   f_op (EcPath.fromqsymbol (ec_qsym_prefix_core_int, "le")) []
   (tfun tint (tfun tint tbool))
 
+(* substitution for type variables in types *)
+
+exception SubstForTypeVarsFailure
+
+let subst_for_type_vars_in_type
+    (tv_map : (EcIdent.t * ty) list)
+    (ty     : ty) : ty option =
+  let rec subst_ty (ty : ty) : ty =
+    match ty.ty_node with
+    | Tvar v           ->
+        (match List.assoc_opt v tv_map with
+         | None    -> raise SubstForTypeVarsFailure
+         | Some ty -> ty)
+    | Ttuple tys       -> EcAst.mk_ty (Ttuple (List.map subst_ty tys))
+    | Tconstr (p, tys) ->
+        EcAst.mk_ty
+        (Tconstr (p, List.map subst_ty tys))
+    | Tfun (ty1, ty2)  ->
+        EcAst.mk_ty (Tfun (subst_ty ty1, subst_ty ty2))
+    | _                -> raise SubstForTypeVarsFailure in
+  try Some (subst_ty ty) with
+  | SubstForTypeVarsFailure -> None
+
 (* values of type EcIdent.t *)
 
 let envport_id : EcIdent.t = EcIdent.create "envport"
@@ -298,7 +329,7 @@ let cond_subst_path_prefix_in_type (olds : SL.t) (news : SL.t) (ty : ty)
     match node with
     | Tglob   _        -> error_non_EasyUC_type_or_formula ()
     | Tunivar _        -> error_non_EasyUC_type_or_formula ()
-    | Tvar x           -> Tvar x   
+    | Tvar x           -> Tvar x
     | Ttuple tys       -> Ttuple (List.map cond_subst_ty tys)
     | Tconstr (p, tys) ->
         Tconstr
@@ -837,10 +868,7 @@ let rec sci_unused_first_clone (scis : spec_clone_info list)
 
    five identifier maps indexed by roots, giving: UC and EC
    requires; ppna's for formatting spec parameters of roots;
-   lists of clones of roots; and scopes of roots
-
-   we use "_" ^ root to save the result of typechecking not inside
-   the theory "UC_" ^ root *)
+   lists of clones of roots; and scopes of roots *)
 
 type maps_tyd =
   {dir_inter_map   : inter_tyd IdPairMap.t;           (* direct interfaces *)
@@ -1051,23 +1079,23 @@ let basic_adv_inter_names_of_real_fun
        | None        -> IdSet.empty
        | Some adv_id ->
            match unloc (IdPairMap.find (root, adv_id) maps.adv_inter_map) with
-           | BasicTyd _      -> failure "cannot happen3"
+           | BasicTyd _      -> failure "cannot happen"
            | CompositeTyd mp ->
                (IdSet.of_list (List.map snd (IdMap.bindings mp))))
-  | FunBodyIdealTyd _    -> failure "cannot happen4"
+  | FunBodyIdealTyd _    -> failure "cannot happen"
 
 (* assuming units checking has been performed *)
 
-let roots_of_map_incl_ (map : 'a IdPairMap.t) : IdSet.t =
+let roots_of_id_map (map : 'a IdPairMap.t) : IdSet.t =
   IdSet.of_list (List.map (fst |- fst) (IdPairMap.bindings map))
 
 (* return roots of maps_tyd, filtering out the ones beginning with '_' *)
 
 let roots_of_maps (maps : maps_tyd) : IdSet.t =
-  let roots1a = roots_of_map_incl_ maps.dir_inter_map in
-  let roots1b = roots_of_map_incl_ maps.adv_inter_map in
-  let roots1c = roots_of_map_incl_ maps.fun_map in
-  let roots1d = roots_of_map_incl_ maps.sim_map in
+  let roots1a = roots_of_id_map maps.dir_inter_map in
+  let roots1b = roots_of_id_map maps.adv_inter_map in
+  let roots1c = roots_of_id_map maps.fun_map in
+  let roots1d = roots_of_id_map maps.sim_map in
   let roots1  =
     IdSet.union roots1a (IdSet.union roots1b (IdSet.union roots1c roots1d)) in
   let roots2  =
@@ -1083,8 +1111,7 @@ let roots_of_maps (maps : maps_tyd) : IdSet.t =
   assert (IdSet.equal roots1 roots2 && IdSet.equal roots2 roots3 &&
           IdSet.equal roots3 roots4 && IdSet.equal roots4 roots5 &&
           IdSet.equal roots5 roots6);
-  let roots  = IdSet.filter (fun r -> String.get r 0 <> '_') roots1 in
-  roots
+  roots1
 
 type singleton_info =
   {si_root          : symbol;
@@ -1143,11 +1170,11 @@ let unit_info_of_root (maps : maps_tyd) (root : symbol) : unit_info =
   then
     let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
-      UI_Singleton
-      {si_root          = root;
-       si_ideal         = if_name;
-       si_comp_dir      = id_dir_inter_of_fun_tyd ift;
-       si_basic_adv_opt = id_adv_inter_of_fun_tyd ift}
+       UI_Singleton
+       {si_root          = root;
+        si_ideal         = if_name;
+        si_comp_dir      = id_dir_inter_of_fun_tyd ift;
+        si_basic_adv_opt = id_adv_inter_of_fun_tyd ift}
   else let if_name = sing_elt_of_id_set if_names in
        let ift = IdPairMap.find (root, if_name) maps.fun_map in
        let rf_name = sing_elt_of_id_set rf_names in
@@ -1222,7 +1249,7 @@ let get_dir_info_of_party_of_real_fun
       match ibt with
       | BasicTyd _       -> failure "cannot happen7"
       | CompositeTyd map ->
-        Some (comp, sub, id_map_ordinal1_of_sym map sub)
+          Some (comp, sub, id_map_ordinal1_of_sym map sub)
 
 (* None if the party does not serve a basic adversarial interface;
    otherwise Some (comp, sub, i, j), where [comp; sub] is the basic

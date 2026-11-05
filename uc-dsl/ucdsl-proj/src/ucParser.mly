@@ -683,22 +683,33 @@ uc_clone_with :
       { x }
 
 uc_clone_override:
-  | TYPE; ps = cltyparams; x = ident; mode = uc_opclmode; t = loc(type_exp);
-      { (pqsymb_of_psymb x, PTHO_Type (`BySyntax (ps, t), mode)) }
+  | TYPE; ps = cltyparams; x = ident; mode = loc(opclmode); t = loc(type_exp);
+      { let () =
+          if unloc mode <> `Alias
+          then error_message (loc mode)
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[overriding@ in@ UC@ cloning@ can@ only@ be@ done@ " ^^
+                   "with@ `=`@]")) in
+        (pqsymb_of_psymb x, PTHO_Type (`BySyntax (ps, t), unloc mode)) }
 
   | OP; x = boident; p = ptybinding1*;
     sty = ioption(prefix(COLON, loc(type_exp)));
-    mode = loc(uc_opclmode); e = expr
-      { let ov =
+    mode = loc(opclmode); e = expr
+      { let () =
+          if unloc mode <> `Alias
+          then error_message (loc mode)
+               (fun ppf ->
+                  fprintf ppf
+                  ("@[overriding@ in@ UC@ cloning@ can@ only@ be@ done@ " ^^
+                   "with@ `=`@]")) in
+        let ov =
           { opov_tyvars = None;
             opov_args   = List.flatten p;
             opov_retty  = odfl (mk_loc mode.pl_loc PTunivar) sty;
             opov_body   = e } in
         (pqsymb_of_psymb x, PTHO_Op (`BySyntax ov, unloc mode))
       }
-
-uc_opclmode :
-  | EQ { `Alias }
 
 (* A definition is either a definition of an interface, a
    functionality or a simulator.  All of the names must be

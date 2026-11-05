@@ -101,8 +101,16 @@ val get_run_print_pos : unit -> bool
    be grouped into units
 
    default is that grouping into units is not required, but it is
-   set by the interpreter *)
+   set by the interpreter and by the generator (translator) *)
 
 val set_units : unit -> unit
 
 val get_units : unit -> bool
+
+(* boolean saying whether EasyCrypt code generation is requested
+
+   default is that it is not requested *)
+
+val set_gen : unit -> unit
+
+val get_gen : unit -> bool

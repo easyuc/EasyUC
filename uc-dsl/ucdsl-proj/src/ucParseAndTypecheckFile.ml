@@ -44,20 +44,23 @@ let parse_and_typecheck_file_or_id foid =
     match IdMap.find_opt uc_root (!cache) with
     | None                     ->
         let (spec, qual_file) = parse_file_or_id foid in
-        (* we typecheck twice, unioning the maps
-           * once with mode TM_Theory, inside the theory "UC_" ^ uc_root,
+        (* we typecheck twice
+           * first with mode TM_Top, not inside a theory, updating the
+             maps with "_" ^ uc_root, but discarding the results maps,
+             afterward; this is done to catch naming conflicts
+           * second with mode TM_Theory, inside the theory "UC_" ^ uc_root,
              updating the maps with uc_root
-           * once with mode TM_Top, not inside a theory, updating the
-             maps with "_" ^ uc_root
            we do the second (TM_Top) typechecking first, becasue it's
            more restrictive *)
+        (* first *)
         let () = UcStackedScopes.new_scope () in
-        let maps1 =
+        let _ =
           typecheck qual_file TM_Top
           (fun id -> parse_and_typecheck (UcParseFile.FOID_Id id))
           spec in
         (* we can discard this scope, reverting to the old one *)
         let () = UcStackedScopes.end_scope_ignore () in
+        (* second *)
         let () =
           UcStackedScopes.require_theory_start ("UC_" ^ uc_root) `Abstract in
         let maps2 =
@@ -72,8 +75,7 @@ let parse_and_typecheck_file_or_id foid =
         let () =
           try UcStackedScopes.end_scope () with
           | EcEnv.DuplicatedBinding s -> end_scope_duplicated_binding_err s in
-        (* a great deal of overlap in the maps *)
-        union_maps maps1 maps2
+        maps2
     | Some (maps, saved_scope) ->
         let () = stack := List.tl (!stack) in
         let () = UcStackedScopes.push_scope saved_scope in
