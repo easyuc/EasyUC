@@ -1,4 +1,3 @@
-(*! stable() *)
 require import UCCore.
 require UC__KeyExchange.
 clone include UC__KeyExchange.

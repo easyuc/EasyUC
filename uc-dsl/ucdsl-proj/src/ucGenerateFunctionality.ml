@@ -271,6 +271,7 @@ let rec print_code (sim_uses : string option)
     let pp_branch ppf (ctor, (bndngs, codeblock)) =
       let bndngs = List.map (fun (idloc, ty) ->
                        (EcLocation.unloc idloc, ty)) bndngs in
+
       let pttn = EcTypes.toarrow (snd (List.split bndngs)) ety in
       let pttn = EcFol.f_op (EcPath.pqoname (EcPath.prefix p) ctor) typ pttn in
       let pttn = EcFol.f_app pttn (List.map

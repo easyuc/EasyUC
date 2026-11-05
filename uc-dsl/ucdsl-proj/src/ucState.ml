@@ -67,3 +67,10 @@ let units : bool ref = ref false
 let set_units () = units := true
 
 let get_units () = ! units
+
+let gen : bool ref = ref false
+
+let set_gen () = gen := true
+
+let get_gen () = ! gen
+

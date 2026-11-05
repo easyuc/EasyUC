@@ -89,7 +89,7 @@ let is_ec_op_name s =
 
 let check_type_top (pty : pty) : ty =
   let ue = unif_env () in
-  transty tp_nothing (top_env ()) ue pty 
+  transty tp_nothing (top_env ()) ue pty
 
 let check_name_type_bindings_top
     (msgf : formatter -> unit) (ntl : type_binding list)
@@ -99,6 +99,97 @@ let check_name_type_bindings_top
   (fun (nt : type_binding) ->
      mk_loc (loc nt.id) (check_type_top nt.ty, index_of_ex nt ntl))
   nt_map
+
+let name_epdp_op (tyname : string) : string = "epdp_" ^ tyname ^ "_univ"
+
+let check_epdp_existence_for_constructed_type (l : EcLocation.t)
+    (ty : ty) (pth : EcPath.path) (tys : ty list) : unit =
+  let env = top_env () in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let qtp = EcPath.toqsymbol pth in
+  let qepdp = (fst qtp, name_epdp_op (snd qtp)) in
+  let pth, oper =
+    match EcEnv.Op.lookup_opt qepdp env with
+    | Some (pth, op) -> pth, op
+    | None           ->
+        let ue = EcUnify.UniEnv.create None in
+        let pform =
+          UcUtils.dummyloc
+          (EcParsetree.PFident
+           (UcUtils.dummyloc ([], snd qepdp), None)) in
+      try
+        let form = EcTyping.trans_form_opt env ue pform None in
+        match form.f_node with
+        | Fop (pth, _) -> let op = EcEnv.Op.by_path pth env in pth, op
+        | _            -> failure ""
+      with
+      | _ ->
+        let qbase = (["Top"; "UCBasicTypes"], snd qepdp) in
+        match EcEnv.Op.lookup_opt qbase env with
+        | Some (pth, op) -> pth, op
+        | None           ->
+            let qbase = (["Top"; "UCUniv"], snd qepdp) in
+            match EcEnv.Op.lookup_opt qbase env with
+            | Some (pth, t) -> pth, t
+            | None          ->
+                error_message l
+                (fun ppf ->
+                   fprintf ppf
+                   "@[couldn't@ find@ an@ EPDP@ into@ univ@ for@ type:@ %a@]"
+                   (EcPrinting.pp_type ppe) ty) in
+  let tvars = oper.op_tparams in
+  let tv_map =
+    try List.combine tvars tys with
+    | _ ->
+        error_message l
+        (fun ppf ->
+           fprintf ppf
+           ("@[operator@ %s@ is@ an@ invalid@ EPDP@ for@ type@ @[%a@]@ " ^^
+            "because@ it@ has@ a@ different@ number@ of@ type@ variables@]")
+           (EcPath.tostring pth) (EcPrinting.pp_type ppe) ty) in
+  let op_ty =
+    toarrow
+    (List.map (fun ty -> epdp_ty ty univ_ty) tys)
+    (epdp_ty ty univ_ty) in
+  let ue = EcUnify.UniEnv.create None in
+  let subst_op_ty =
+    Option.get (subst_for_type_vars_in_type tv_map oper.op_ty) in
+  if try EcUnify.unify env ue op_ty subst_op_ty; false with
+     | _ -> true
+  then error_message l
+       (fun ppf ->
+          fprintf ppf
+          ("@[operator@ %s@ is@ an@ invalid@ EPDP@ for@ type@ @[%a@]@ " ^^
+           "because@ when@ instantiated@ like@ the@ type@ its@ type@ " ^^
+           "is@ @[%a@]@ whereas@ its@ type@ should@ be@ @[%a@]@]")
+          (EcPath.tostring pth) (EcPrinting.pp_type ppe) ty
+          (EcPrinting.pp_type ppe) subst_op_ty
+          (EcPrinting.pp_type ppe) op_ty)
+
+let check_epdp_existence_for_type (l : EcLocation.t) (ty : ty) : unit =
+  let env = top_env() in
+  let ppe = EcPrinting.PPEnv.ofenv env in
+  let rec check ty : unit =
+    match ty.ty_node with
+    | Ttuple tys        ->
+        (if List.length tys > 8
+         then error_message l
+              (fun ppf ->
+                 fprintf ppf
+                 ("@[this@ tuple@ type@ lacks@ an@ EPDP@ into@ univ,@ " ^^
+                  "because@ it@ has@ more@ than@ 8@ components: @[%a@]@]")
+                 (EcPrinting.pp_type ppe) ty);
+         List.iter check tys)
+    | Tconstr (pth, ts) ->
+        check_epdp_existence_for_constructed_type l ty pth ts
+    | _                 ->
+        error_message l
+        (fun ppf ->
+           fprintf ppf
+           ("@[this@ type@ lacks@ an@ EPDP@ into@ univ,@ because@ it@ is@ " ^^
+            "neither@ a@ tuple@ type@ nor@ a@ constructed@ type:@ @[%a@]@]")
+           (EcPrinting.pp_type ppe) ty)
+  in check ty
 
 (****************************** interface checks ******************************)
 
@@ -133,6 +224,14 @@ let check_basic_inter (mds : message_def list) : inter_body_tyd =
                  (fun ppf ->
                     fprintf ppf "@[duplicate@ message@ parameter@ name@]")
                  md.params in
+           let () =
+             if UcState.get_gen ()
+             then IdMap.iter
+                  (fun _ tyi ->
+                     let l = loc tyi in
+                     let (ty, _) = unloc tyi in
+                     check_epdp_existence_for_type l ty)
+                  params_map in
            let port =
                  Option.map
                  (fun idl ->
@@ -1575,7 +1674,7 @@ let replace_unif_vars_in_msg_match_code (ue : unienv)
         error_message (loc is)
         (fun ppf ->
            Format.fprintf ppf
-           "@[message@ match@ clause@ body@ must@ be@ monomorphic@]") in
+           "@[message@ match@ clause@ body@ has@ free@ type@ variables@]") in
   let ts = EcFol.Tuni.subst uidmap in
   let subst_ty = EcFol.ty_subst ts in
   let subst_form = EcFol.Fsubst.f_subst ts in
@@ -2260,7 +2359,7 @@ let get_sim_basic_inter_id_paths
     [] pids sim_args in
   let subfuns_bips =
     List.fold
-    (fun bips (sfid, (cloned, fun_id, clone)) -> 
+    (fun bips (sfid, (cloned, fun_id, clone)) ->
        let ideal_body = unloc (IdPairMap.find (cloned, fun_id) fun_map) in
        match id_adv_inter_of_fun_body_tyd ideal_body with
        | None              -> bips
@@ -2330,7 +2429,7 @@ let check_sims_fun_args
   let args_dir_porsf_infos =
     List.map
     (fun (cloned, funid, clone) ->
-       (cloned, 
+       (cloned,
         get_dir_inter_id_impl_by_fun_pair_id (cloned, funid) fun_map,
         clone))
     (unlocs (unloc sims_args)) in
@@ -2500,7 +2599,7 @@ let process_axiom (pax : paxiom located) : ppna =
 
 let process_spec_params (sps : spec_param list) : ppna =
   let ppnas =
-    List.map 
+    List.map
     (fun sp ->
        match sp with
        | SP_AbstractTypeDecl ptyd -> process_type_decl ptyd
