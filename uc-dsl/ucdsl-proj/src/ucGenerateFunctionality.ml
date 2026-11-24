@@ -138,7 +138,7 @@ let rec print_code (sim_uses : string option)
     in
  *)
   let print_fail_instr () : unit =
-    Format.fprintf ppf "@[%s <- None;@]" _r
+    () (*Format.fprintf ppf "@[%s <- None;@]" _r*)
   in
   let print_ite_instr form thencode elsecodeo : unit =
     Format.fprintf ppf "@[if (%a) {@]@;<0 2>@[<v>" pp_ex form;
@@ -539,7 +539,7 @@ let print_instr_proof_step_match
 
 let print_instr_proof_step_fail (ppf : Format.formatter) (ret_pfx : string) : unit =
   Format.fprintf ppf
-                   "@[%s sp 2. skip. move => />;smt(). (*Fail instruction*)@]" ret_pfx                 
+                   "@[%s sp 1. skip. move => />;smt(). (*Fail instruction*)@]" ret_pfx                 
 
 let print_proof_state_match (root : string)
       (mbmap : message_body_tyd SLMap.t) (dii : porsf_info IdMap.t) (ais : (string * string * string) IdPairMap.t)
@@ -727,7 +727,7 @@ let print_SIM_proof_state_match (root : string)
                 end
               | Fail ->
                 Format.fprintf ppf
-                   "@[%s sp 1. skip. move => />;smt(). (*Fail instruction*)@]" ret_pfx
+                   "@[%s skip. move => />;smt(). (*Fail instruction*)@]" ret_pfx
             in
             let code = EcLocation.unloc code in
             List.iter (fun it -> Format.fprintf ppf "@[%a@]"

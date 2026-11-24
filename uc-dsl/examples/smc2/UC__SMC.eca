@@ -424,7 +424,7 @@ call{1} (RFCore.MakeRF_after_core_return UC_SMCReal_IP r0').
 auto => />; smt(_adv_pi_begin_gt0 next_of_addr_self_plus @UCListPO).
 rcondf{1} 1; first auto.
 auto; smt(RFIPHybridInvar1).
-seq 5 0 :
+seq 4 0 :
   (grfip = (glob RFIP){1} /\ gh = (glob Hybrid){2} /\
    r0{1} = None /\ ! not_done{1} /\ r{2} = None).
 call{1} (RFCore.MakeRF_after_core_error UC_SMCReal_IP); first auto.
@@ -1378,7 +1378,7 @@ auto.
 rcondf{2} 1; first auto;
 auto.
 auto; smt(HybridIdealSimInvar1).
-seq 4 5 :
+seq 4 4 :
   (={r0} /\ r0{1} = None /\ ! not_done{1} /\ ! not_done{2} /\
    ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\

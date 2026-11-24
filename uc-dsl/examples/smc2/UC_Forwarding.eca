@@ -389,7 +389,7 @@ module UC_Forw : FUNC= {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -492,7 +492,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
 sp 1. sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch Wait*)
+sp 1. sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch Wait*)
 match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 4. (*state param assignment, return value initialization*)

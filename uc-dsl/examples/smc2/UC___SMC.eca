@@ -524,7 +524,7 @@ module UC_SMCIdeal : FUNC= {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -628,7 +628,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
 sp 1. sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSim*)
+sp 1. sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSim*)
 match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 4. (*state param assignment, return value initialization*)
@@ -727,7 +727,7 @@ module UC_SMCReal (KE__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -776,7 +776,7 @@ module UC_SMCReal (KE__ : FUNC) : FUNC = {
     match (epdp_port_port_key_univ.`dec u) with
     | None<:(int list * int) * (int list * int) * key> => {
     
-      _r <- None;
+      
       
     }
     | Some tr => {
@@ -785,7 +785,7 @@ module UC_SMCReal (KE__ : FUNC) : FUNC = {
       match (epdp_text_key.`dec (x ^^ kinv k)) with
       | None<:text> => {
       
-        _r <- None;
+        
         
       }
       | Some t => {
@@ -911,10 +911,10 @@ if. (*address check for internal messages*)
 sp 2. (*state param assignment, return value initialization*)
 sp 1. (*pattern bindings*)
 match. (*match instruction with 2 branches*)
-(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)
+(*branch None*)  sp 1. skip. move => />;smt(). (*Fail instruction*)
 (*branch Some*) sp 1. (*Assign instruction*)
 match. (*match instruction with 2 branches*)
-(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)
+(*branch None*)  sp 1. skip. move => />;smt(). (*Fail instruction*)
 (*branch Some*)  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
 
@@ -980,7 +980,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)
 qed.
 
 
@@ -1194,7 +1194,7 @@ module UC_SMCReal_Rest1  : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -1243,7 +1243,7 @@ module UC_SMCReal_Rest1  : FUNC = {
     match (epdp_port_port_key_univ.`dec u) with
     | None<:(int list * int) * (int list * int) * key> => {
     
-      _r <- None;
+      
       
     }
     | Some tr => {
@@ -1252,7 +1252,7 @@ module UC_SMCReal_Rest1  : FUNC = {
       match (epdp_text_key.`dec (x ^^ kinv k)) with
       | None<:text> => {
       
-        _r <- None;
+        
         
       }
       | Some t => {
@@ -1367,10 +1367,10 @@ if. (*address check for internal messages*)
 sp 2. (*state param assignment, return value initialization*)
 sp 1. (*pattern bindings*)
 match. (*match instruction with 2 branches*)
-(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)
+(*branch None*)  sp 1. skip. move => />;smt(). (*Fail instruction*)
 (*branch Some*) sp 1. (*Assign instruction*)
 match. (*match instruction with 2 branches*)
-(*branch None*)  sp 2. skip. move => />;smt(). (*Fail instruction*)
+(*branch None*)  sp 1. skip. move => />;smt(). (*Fail instruction*)
 (*branch Some*)  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
 
@@ -1417,7 +1417,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)
 qed.
 
 

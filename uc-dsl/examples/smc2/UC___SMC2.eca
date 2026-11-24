@@ -776,7 +776,7 @@ module UC_SMC2Ideal : FUNC= {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -795,7 +795,7 @@ module UC_SMC2Ideal : FUNC= {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -936,7 +936,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
 sp 1. sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitReq2*)
+sp 1. sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitReq2*)
 match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 3. (*state param assignment, return value initialization*)
@@ -944,7 +944,7 @@ sp 2. (*pattern bindings*)
 if. (*if instruction*)
 sp 1. sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-sp 1. sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSim1*)
+sp 1. sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSim1*)
 match. (*message match*)
 sp 1. skip. move => />;smt(). (*None branch of message match, dec failed*)
 sp 4. (*state param assignment, return value initialization*)
@@ -1056,7 +1056,7 @@ module UC_SMC2Real (SMC1__ : FUNC, SMC2__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -1157,7 +1157,7 @@ module UC_SMC2Real (SMC1__ : FUNC, SMC2__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -1296,7 +1296,7 @@ sp 2. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
 match. (*message match*)
  skip. move => />;smt(). (*None branch of message match, dec failed*)
 if. (*address check for internal messages*)
@@ -1357,7 +1357,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
 match. (*message match*)
  skip. move => />;smt(). (*None branch of message match, dec failed*)
 if. (*address check for internal messages*)
@@ -1627,7 +1627,7 @@ module UC_SMC2Real_Rest1 (SMC2__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -1728,7 +1728,7 @@ module UC_SMC2Real_Rest1 (SMC2__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -1861,7 +1861,7 @@ realize change_pari_valid. smt(). qed.
  if. (*if instruction*)
   sp 3. skip.
  move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-  sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
+  sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
  match. (*message match*)
   skip. move => />;smt(). (*None branch of message match, dec failed*)
  if. (*address check for internal messages*)
@@ -1902,7 +1902,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
 match. (*message match*)
  skip. move => />;smt(). (*None branch of message match, dec failed*)
 if. (*address check for internal messages*)
@@ -2053,7 +2053,7 @@ module UC_SMC2Real_Rest2 (SMC1__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -2154,7 +2154,7 @@ module UC_SMC2Real_Rest2 (SMC1__ : FUNC) : FUNC = {
       
     }
     else {
-      _r <- None;
+      
       
     }
     return _r;
@@ -2287,7 +2287,7 @@ realize change_pari_valid. smt(). qed.
  if. (*if instruction*)
   sp 3. skip.
  move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
-  sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
+  sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC1*)
  match. (*message match*)
   skip. move => />;smt(). (*None branch of message match, dec failed*)
  if. (*address check for internal messages*)
@@ -2328,7 +2328,7 @@ sp 3. (*pattern bindings*)
 if. (*if instruction*)
  sp 3. skip.
 move => />;smt(mem_oflist mem_rangeset in_fsetU). (*SendAndTransition instruction*)
- sp 2. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
+ sp 1. skip. move => />;smt(). (*Fail instruction*)(*state branch WaitSMC2*)
 match. (*message match*)
  skip. move => />;smt(). (*None branch of message match, dec failed*)
 if. (*address check for internal messages*)

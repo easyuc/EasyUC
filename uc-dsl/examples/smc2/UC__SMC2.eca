@@ -537,7 +537,7 @@ call{1} (RFCore.MakeRF_after_core_return RFIP_RFCore r0').
 auto => />; smt(_adv_pi_begin_gt0 @UCListPO).
 rcondf{1} 1; first auto.
 auto; smt(RFIP_RFIPS_Invar1).
-seq 5 1 :
+seq 4 1 :
   (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
    rfip_rfips_invar0 func' (glob RFIP){1} (glob Hybrid){2}).
 call{1} (RFCore.MakeRF_after_core_error RFIP_RFCore); first auto.
@@ -1415,7 +1415,7 @@ call{1} (RFCore.MakeRF_after_core_return RFIP_RFCore r0').
 auto => />; smt(_adv_pi_begin_gt0 next_of_addr_self_plus @UCListPO).
 rcondf{1} 1; first auto.
 auto; smt(RFIP_RFIPS_Invar5).
-seq 5 1 :
+seq 4 1 :
   (! not_done{1} /\ r0{1} = None /\ r{2} = None /\
    rfip_rfips_invar4 func' (glob RFIP){1} (glob Hybrid){2}
    pt1' pt2').
@@ -2123,7 +2123,7 @@ auto.
 rcondf{2} 1; first auto;
 auto.
 auto; smt(HybridIdealSimInvar1).
-seq 3 5 :
+seq 3 4 :
   (={r0} /\ r0{1} = None /\ ! not_done{1} /\ ! not_done{2} /\
    ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
@@ -3419,7 +3419,7 @@ auto.
 rcondf{2} 1; first auto;
 auto.
 auto; smt(HybridIdealSimInvar5).
-seq 3 5 :
+seq 3 4 :
   (={r0} /\ r0{1} = None /\ ! not_done{1} /\ ! not_done{2} /\
    ={MI.func, MI.in_guard} /\
    MI.func{1} = func' /\ MI.in_guard{1} = in_guard' /\
